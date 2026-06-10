@@ -1,0 +1,19 @@
+node_modules
+.DS_Store
+
+# Frame app outputs
+apps/frame/bundle
+apps/frame/compiled
+apps/frame/dist
+apps/frame/release
+apps/frame/.parcel-cache
+apps/frame/*.tsbuildinfo
+apps/frame/test/.userData
+
+# Extension outputs
+apps/frame-extension/dist
+apps/frame-extension/.cache
+
+# Local editor state
+.vscode
+*.code-workspace

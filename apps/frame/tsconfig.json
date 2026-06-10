@@ -1,0 +1,40 @@
+{
+  "compilerOptions": {
+    // target floor is electron's bundled node (electron 42 = node 24);
+    // emit stays commonjs by choice: node >= 22.12 require()s ESM-only deps fine, and
+    // switching means "type": "module" repo-wide (jest, parcel, hand-written CJS .js in main/)
+    "target": "es2022",
+    "module": "commonjs",
+    "lib": ["es2022", "dom"],
+
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "allowJs": true,
+
+    "outDir": "./compiled",
+    "typeRoots": ["./node_modules/@types", "./@types"],
+
+    // these packages' "exports" maps lack a "types" condition, so modern
+    // (exports-aware) module resolution can't find their bundled declarations
+    "paths": {
+      "ipfs-http-client": ["./node_modules/ipfs-http-client/types/src/index.d.ts"],
+      "ipfs-unixfs-importer": ["./node_modules/ipfs-unixfs-importer/types/src/index.d.ts"],
+      "ipfs-unixfs-importer/types": ["./node_modules/ipfs-unixfs-importer/types/src/types.d.ts"]
+    }
+  },
+  "include": [
+    "package.json",
+    "./@types/**/*.d.ts",
+    "./main/**/*.ts",
+    "./main/**/*.js",
+    "./resources/**/*.ts",
+    "./resources/**/*.js",
+    "./test/**/*.ts"
+  ],
+  "watchOptions": {
+    "excludeFiles": ["./node_modules/**/*", "./package.json"]
+  }
+}

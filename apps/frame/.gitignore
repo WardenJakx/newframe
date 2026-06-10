@@ -1,0 +1,16 @@
+node_modules
+.DS_Store
+bundle
+.cache
+cache
+hot.json
+nohot.json
+config.json
+dist
+compiled
+release
+test/.userData
+.vscode
+.parcel-cache
+*.tsbuildinfo
+*.code-workspace

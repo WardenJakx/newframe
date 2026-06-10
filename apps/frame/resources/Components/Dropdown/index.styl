@@ -1,0 +1,83 @@
+.dropdownWrap
+  position relative
+  display flex
+  align-items flex-start
+  height 26px
+  z-index 99999999999
+  color var(--outerspace)
+
+.dropdown
+  letter-spacing 1px
+  height 28px
+  border-radius 24px
+  font-weight 300
+  width 130px
+  font-size 13px
+  font-family 'MainFont'
+  text-transform uppercase
+  background var(--ghostA)
+  overflow hidden
+  padding 0px 0px 0px 0px
+  transition var(--standardFast), 0s linear background
+  transform translateZ(0)
+  z-index 99999999999999999
+  pointer-events auto
+  cursor pointer
+  border-bottom 2px solid var(--ghostZ)
+  box-shadow 0px 1px 4px -1px var(--ghostX)
+
+.dropdown:hover
+  background var(--ghostB)
+
+.darkerDrop
+  background var(--ghostB)
+  .dropdownItem
+    .dropdownItemIndicator
+      background var(--ghostA)
+
+.dropdownExpanded
+  padding 18px 0px 18px 0px
+  box-shadow 0px 8px 16px 0px var(--ghostX)
+
+.dropdownItems
+  transition var(--standardFast)
+  transform translateZ(0)
+
+.dropdownItem
+  display flex
+  align-items center
+  height 28px
+  min-height 28px
+  width calc(100% - 20px)
+  box-sizing border-box
+  transform translateZ(0)
+  margin 0px 9px 0px 12px
+  font-weight 400
+  overflow hidden
+  position relative
+  z-index 99999999999999
+  cursor pointer
+
+  * 
+    pointer-events none
+
+  &::before, &::after
+    pointer-events: none
+    content: ''
+    flex: 1
+
+  .dropdownItemIndicator
+    position absolute
+    left 0px
+    top 11px
+    height 7px
+    width 7px
+    border-radius 3.5px
+    background var(--ghostA)
+
+  .dropdownItemIndicatorBad
+    background var(--bad)
+
+  .dropdownItemIndicatorGood
+    background var(--good)
+    

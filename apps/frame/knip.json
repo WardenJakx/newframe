@@ -1,0 +1,27 @@
+{
+  "entry": [
+    "main/index.ts",
+    "app/*/index.js",
+    "app/dash/Accounts/Add/particleWorker.js",
+    "resources/bridge/index.js",
+    "main/dapps/server/inject/index.js",
+    "main/externalData/balances/worker.ts",
+    "main/signers/hot/*/worker.js",
+    "main/windows/viewPreload.ts",
+    "scripts/*.mjs",
+    "build/**/*.js",
+    "test/**/*.test.{js,ts}",
+    "test/e2e/**/*.js"
+  ],
+  "project": ["main/**", "app/**", "resources/**", "scripts/**", "build/**", "test/**"],
+  "ignoreDependencies": [
+    "jest-environment-jsdom",
+    "node-gyp",
+    "@ledgerhq/cryptoassets",
+    "@parcel/transformer-js",
+    "@parcel/transformer-react-refresh-wrap",
+    "web3",
+    "usb-detection",
+    "react-restore"
+  ]
+}

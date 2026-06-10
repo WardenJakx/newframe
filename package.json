@@ -1,0 +1,22 @@
+{
+  "name": "newframe",
+  "private": true,
+  "version": "0.0.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "frame": "bun --cwd apps/frame",
+    "extension": "bun --cwd apps/frame-extension",
+    "build": "bun run frame build && bun run extension build",
+    "dev:frame": "bun run frame dev",
+    "build:frame": "bun run frame build",
+    "build:extension": "bun run extension build",
+    "test": "bun run frame test && bun run extension test",
+    "test:frame": "bun run frame test",
+    "test:extension": "bun run extension test",
+    "lint": "bun run frame lint && bun run extension test"
+  },
+  "packageManager": "bun@1.2.0"
+}

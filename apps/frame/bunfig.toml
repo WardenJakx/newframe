@@ -1,0 +1,6 @@
+[install]
+# Require newly resolved npm package versions to be at least 7 days old.
+minimumReleaseAge = 604800
+# @ledgerhq/hw-transport 6.35.3 is pinned via overrides and was published 2026-06-05;
+# remove this exclusion once it is older than the policy window
+minimumReleaseAgeExcludes = ["@ledgerhq/hw-transport"]
