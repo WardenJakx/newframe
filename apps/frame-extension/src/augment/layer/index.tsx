@@ -1,5 +1,5 @@
 import React from 'react'
-import ReactDOM from 'react-dom'
+import { createRoot } from 'react-dom/client'
 
 import Layer from './Layer'
 
@@ -16,4 +16,4 @@ layer.style.cssText = `
   z-index: 2000;
   overscroll-behavior: none;
 `
-ReactDOM.render(<Layer  />, layer)
+createRoot(layer).render(<Layer />)

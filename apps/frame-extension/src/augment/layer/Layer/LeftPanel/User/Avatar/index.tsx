@@ -12,14 +12,15 @@ import {
   PopNameVerifedIcon
 } from './styled'
 
-class Avatar extends React.Component {
-  constructor (...args) {
+class Avatar extends React.Component<any, any> {
+  declare store: any
+  constructor (...args: [any]) {
     super(...args)
     this.state = {
       hovered: false
     }
   }
-  render () {
+  override render () {
     const { userId } = this.store('layerPop')
     const theme = this.store('theme')
     const user = this.store('users', userId)

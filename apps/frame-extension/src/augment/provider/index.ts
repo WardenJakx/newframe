@@ -1,8 +1,8 @@
-const { EventEmitter } = require('events')
-const ethProvider = require('eth-provider')
+import { EventEmitter } from 'events'
+import ethProvider from 'eth-provider'
 
-async function waitUntil (numTimes, check) {
-  return new Promise(resolve => {
+async function waitUntil (numTimes: number, check: () => any): Promise<void> {
+  return new Promise<void>(resolve => {
     if (check() || !numTimes) return resolve()
     
     setTimeout(() => {
@@ -11,16 +11,16 @@ async function waitUntil (numTimes, check) {
   })
 }
 
-export default function (wrappedProvider) {
+export default function (wrappedProvider: any) {
   const mainnetProvider = ethProvider('infura', { infuraId: '786ade30f36244469480aa5c2bf0743b' })
   const request = wrappedProvider.request
-  const provider = new EventEmitter()
+  const provider: any = new EventEmitter()
 
   let currentChain = 0
 
   const onMainnet = () => currentChain === 1
 
-  provider.request = async ({ method, params }) => {
+  provider.request = async ({ method, params }: { method: string; params?: any }) => {
     if (provider.connected && !wrappedProvider.connected || (!onMainnet() && method === 'eth_call')) {
       // use the fallback provider when not connected and for all contract calls (which need to use mainnet ENS)
       return mainnetProvider.request({ method, params })
@@ -42,17 +42,17 @@ export default function (wrappedProvider) {
 
   wrappedProvider.on('connect', async () => {
     provider.connected = true
-    wrappedProvider.on('chainChanged', chain => {
+    wrappedProvider.on('chainChanged', (chain: any) => {
       currentChain = parseInt(chain)
     })
 
     wrappedProvider.request({ method: 'eth_chainId' })
-      .then(chain => currentChain = parseInt(chain))
+      .then((chain: any) => currentChain = parseInt(chain))
 
     provider.emit('connect')
   })
 
-  wrappedProvider.on('close', data => provider.emit('close', data))
+  wrappedProvider.on('close', (data: any) => provider.emit('close', data))
   
   return provider
 }

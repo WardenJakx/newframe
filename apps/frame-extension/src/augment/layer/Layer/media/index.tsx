@@ -3,15 +3,16 @@ import Restore from 'react-restore'
 
 import { LoadingSpinner } from '../styled'
 
-class _Video extends React.Component {
-  componentDidMount () {
+class _Video extends React.Component<any, any> {
+  declare store: any
+  override componentDidMount () {
     const location = this.props.src.replace(/\./g,'-').replace('://','-').replace(/\//g, '-')
     const storeBlob = this.store('blobMap', location)
     if (!storeBlob) {
       chrome?.runtime?.sendMessage({ method: 'media_blob', src: this.props.src, location })
     }
   }
-  render () {
+  override render () {
     const location = this.props.src.replace(/\./g,'-').replace('://','-').replace(/\//g, '-')
     const storeBlob = this.store('blobMap', location)
     if (!storeBlob) {
@@ -42,8 +43,8 @@ class _Video extends React.Component {
 
 export const Video = Restore.connect(_Video)
 
-class _Image extends React.Component {
-  render () {
+class _Image extends React.Component<any, any> {
+  override render () {
     const svg = this.props.src.endsWith('.svg')
     if (svg) {
       return (

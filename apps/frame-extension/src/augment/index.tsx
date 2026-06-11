@@ -1,6 +1,6 @@
 import React from 'react'
 import Restore from 'react-restore'
-import ReactDOM from 'react-dom'
+import { createRoot } from 'react-dom/client'
 import styled from 'styled-components'
 import n from 'nebula'
 
@@ -16,7 +16,7 @@ const nftSpec = /erc(?:721|1155):(?<address>0x\w+)\/(?<tokenId>\d+)/
 const fallbackProvider = provider(ethProvider())
 const nebula = n('https://ipfs.nebula.land', fallbackProvider)
 
-const firstChild = (element, count, i = 0) => {
+const firstChild = (element: any, count: number, i = 0): any => {
   element = element.children[0]
   if (++i === count) return element
   return firstChild(element, count, i)
@@ -27,11 +27,11 @@ function trim(string = '', prefix = '@') {
   return string
 }
 
-function equalsTwitter(s1, s2) {
+function equalsTwitter(s1: string, s2: string) {
   return trim(s1.toLowerCase(), '@') === trim(s2.toLowerCase(), '@')
 }
 
-function equalsIgnoreCase(s1, s2) {
+function equalsIgnoreCase(s1: string, s2: string) {
   return s1.toLowerCase() === s2.toLowerCase()
 }
 
@@ -39,13 +39,13 @@ function parseAvatarNft(avatar = '') {
   const nftFields = avatar.match(nftSpec)
 
   return {
-    avatarAddress: nftFields ? nftFields.groups.address : '',
-    avatarTokenId: nftFields ? nftFields.groups.tokenId : ''
+    avatarAddress: nftFields ? nftFields.groups!.address : '',
+    avatarTokenId: nftFields ? nftFields.groups!.tokenId : ''
   }
 }
 
-function findNameSectionInHeader(profileHeader) {
-  let handle, ensName, targetElement
+function findNameSectionInHeader(profileHeader: any) {
+  let handle: any, ensName: any, targetElement: any
 
   const headerPhoto = profileHeader.getElementsByTagName('a')[0]
   const headerHref = (headerPhoto || {}).href
@@ -76,14 +76,14 @@ function findNameSectionInHeader(profileHeader) {
   return { targetElement, ensName, handle }
 }
 
-function parseEnsName(nameSpan) {
+function parseEnsName(nameSpan: any) {
   return ((((nameSpan || {}).textContent || '').match(/[\w_\-\.]+.eth/) || [])[0] || '').toLowerCase()
 }
 
-function findNameSectionInTweet(tweet) {
+function findNameSectionInTweet(tweet: any) {
   const tweetLinks = [...tweet.querySelectorAll('a[role=link]')]
 
-  const target = {}
+  const target: any = {}
   tweetLinks.some((link, i) => {
     const spans = [...link.querySelectorAll('span')]
     return spans.some((span) => {
@@ -143,7 +143,7 @@ function updateHeaderBadge(root = document.querySelector('main')) {
   }
 }
 
-async function insertBadge(targetElement, ensName, handle) {
+async function insertBadge(targetElement: any, ensName: string, handle: any) {
   const userId = ensName.replace(/\./g, '-')
   const mount = document.createElement('div')
   mount.setAttribute('handle', handle)
@@ -163,7 +163,7 @@ async function insertBadge(targetElement, ensName, handle) {
   insertAfter(mount, targetElement)
 
   const ConnectedBadge = Restore.connect(Badge, store)
-  ReactDOM.render(<ConnectedBadge userId={userId} />, mount)
+  createRoot(mount).render(<ConnectedBadge userId={userId} />)
 
   // If user has been scanned already
   if (usersChecked.includes(userId)) return
@@ -175,7 +175,7 @@ async function insertBadge(targetElement, ensName, handle) {
 
     const twitter = record.text && record.text['com.twitter'] ? record.text['com.twitter'] : ''
 
-    const user = {
+    const user: any = {
       name: record.name || '',
       avatar: '',
       address: address ? address.toLowerCase() : '',
@@ -194,7 +194,7 @@ async function insertBadge(targetElement, ensName, handle) {
     store.setUser(userId, user)
   } catch (e) {
     console.error('could not show verification badge', e)
-    store.setUser(userId, { error: e.message })
+    store.setUser(userId, { error: (e as any).message })
   }
 }
 
@@ -209,14 +209,15 @@ const Container = styled.div`
   pointer-events: none;
 `
 
-class Badge extends React.Component {
-  constructor() {
-    super()
+class Badge extends React.Component<any, any> {
+  declare store: any
+  constructor(props: any) {
+    super(props)
     this.state = {
       showEthPanel: false
     }
   }
-  badge(size) {
+  badge(size: number) {
     const theme = store('theme')
     const { userId } = this.props
     const user = userId ? this.store('users', userId) : ''
@@ -245,7 +246,7 @@ class Badge extends React.Component {
       </svg>
     )
   }
-  render() {
+  override render() {
     return (
       <Container
         onClick={(e) => {
@@ -270,7 +271,7 @@ class Badge extends React.Component {
           onMouseOver={(e) => {
             e.preventDefault()
             e.stopPropagation()
-            const pos = e.target.getBoundingClientRect()
+            const pos = (e.target as HTMLElement).getBoundingClientRect()
             const position = { x: pos.x, y: pos.y }
             this.store.setLayerPop({ position, active: true, userId: this.props.userId, created: Date.now() })
           }}
@@ -282,15 +283,15 @@ class Badge extends React.Component {
   }
 }
 
-const insertAfter = (newNode, referenceNode) => {
+const insertAfter = (newNode: any, referenceNode: any) => {
   return referenceNode.parentNode.insertBefore(newNode, referenceNode)
 }
 
-const usersChecked = []
+const usersChecked: string[] = []
 
 let currentTheme = ''
 
-const callback = function (mutationsList) {
+const callback = function (mutationsList: any) {
   const composeTweet = document.querySelectorAll('[data-testid=SideNav_NewTweet_Button]')[0]
   const { backgroundColor } = window.getComputedStyle(document.body)
   if (currentTheme !== backgroundColor) {
@@ -298,7 +299,7 @@ const callback = function (mutationsList) {
     currentTheme = backgroundColor
   }
 
-  mutationsList.forEach(async (mutation) => {
+  mutationsList.forEach(async (mutation: any) => {
     if (mutation.type === 'childList') {
       if (mutation.addedNodes.length > 0) {
         const addedNode = mutation.addedNodes[0]
@@ -323,7 +324,7 @@ const callback = function (mutationsList) {
 let augmentOff = false
 
 try {
-  augmentOff = JSON.parse(window.localStorage.getItem('__frameAugmentOff__'))
+  augmentOff = JSON.parse(window.localStorage.getItem('__frameAugmentOff__') as string)
 } catch (e) {
   augmentOff = false
 }
@@ -331,7 +332,7 @@ try {
 if (!augmentOff) {
   updateHeaderBadge(root)
   const observer = new MutationObserver(callback)
-  observer.observe(root, config)
+  observer.observe(root!, config)
 }
 
 // observer.disconnect()

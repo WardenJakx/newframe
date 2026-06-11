@@ -1,7 +1,7 @@
 import React from 'react'
 
 export default {
-  badge: (size, badgeColor = 'currentColor', ethColor = 'currentColor') => {
+  badge: (size: number | string, badgeColor = 'currentColor', ethColor = 'currentColor') => {
     return (
       <svg style={{ height: `${size}px`, width: `${size}px` }}  viewBox='0 0 84 84'>
         <path fill={badgeColor} d='M84,44a16.1,16.1,0,0,0-8.59-14.4,16.63,16.63,0,0,0,1-5.6c0-8.84-6.84-16-15.27-16a14.2,14.2,0,0,0-5.34,1A15,15,0,0,0,28.26,9a14.45,14.45,0,0,0-5.35-1C14.47,8,7.64,15.16,7.64,24a16.63,16.63,0,0,0,1,5.6,16.38,16.38,0,0,0-.82,28.34A17.53,17.53,0,0,0,7.64,60c0,8.84,6.83,16,15.27,16a14.4,14.4,0,0,0,5.34-1,15,15,0,0,0,27.5,0,14.6,14.6,0,0,0,5.34,1c8.44,0,15.27-7.16,15.27-16a15.57,15.57,0,0,0-.13-2.05A16.16,16.16,0,0,0,84,44Z'/>

@@ -3,12 +3,12 @@ import Pylon from '@framelabs/pylon-client'
 
 const pylon = new Pylon('wss://data.pylon.link')
 
-const addressSub = []
-const idMap = {}
+const addressSub: string[] = []
+const idMap: Record<string, string> = {}
 
 pylon.on('inventories', inventories => {
   // Map and type media
-  inventories.forEach(inv => {
+  inventories.forEach((inv: any) => {
     const address = inv.id
     const inventory = inv.data.inventory
 
@@ -21,7 +21,7 @@ pylon.on('inventories', inventories => {
         if (items[a].tokenId < items[b].tokenId) return -1
         if (items[a].tokenId > items[b].tokenId) return 1
         return 0
-      })[0]]?.img
+      })[0]!]?.img
 
       meta.img = { src: img || '' }
       meta.img.type = meta.img.src.endsWith('.mp4') || meta.img.src.endsWith('.mov') ? 'video' : 'img'
@@ -69,17 +69,17 @@ pylon.on('inventories', inventories => {
 })
 
 
-function getMediaType (src) {
+function getMediaType (src: string) {
   return ['.mp4', '.mov'].some(suffix => src.endsWith(suffix)) ? 'video' : 'img'
 }
 
-function convertAssetToMedia (asset) {
+function convertAssetToMedia (asset: any) {
   const { img, animation, thumbnail } = asset
 
-  const image = { src: animation || img || '' }
+  const image: { src: any; type?: string } = { src: animation || img || '' }
   image.type = getMediaType(image.src)
 
-  const thumb = { src: thumbnail || animation || img || ''}
+  const thumb: { src: any; type?: string } = { src: thumbnail || animation || img || ''}
   thumb.type = getMediaType(thumb.src)
 
   return {
@@ -88,7 +88,7 @@ function convertAssetToMedia (asset) {
   }
 }
 
-function addUser (userId, address) {
+function addUser (userId: string, address: string) {
   address = address.toLowerCase()
   if (addressSub.indexOf(address) === -1) addressSub.push(address)
   idMap[address] = userId

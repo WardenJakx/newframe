@@ -1,5 +1,5 @@
 import styled from 'styled-components'
-import { dash, rotate } from '../style'
+import { dash, rotate } from '../../style'
 
 export const LoadingSpinner = styled.div`
   position: absolute;

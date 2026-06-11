@@ -12,14 +12,15 @@ import {
   NameSelect
 } from './styled'
 
-class User extends React.Component {
-  constructor (...args) {
+class User extends React.Component<any, any> {
+  declare store: any
+  constructor (...args: [any]) {
     super(...args)
     this.state = {
       hovered: false
     }
   }
-  badge (size) {
+  badge (size: number) {
     const theme = this.store('theme')
     const { userId } = this.store('layerPop')
     const user = this.store('users', userId)
@@ -43,7 +44,7 @@ class User extends React.Component {
       </svg>
     )
   }
-  render () {
+  override render () {
     const { userId } = this.store('layerPop')
     const user = this.store('users', userId)
     const select = this.store('select')

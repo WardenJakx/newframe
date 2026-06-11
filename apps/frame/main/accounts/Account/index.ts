@@ -415,33 +415,35 @@ class FrameAccount {
         panelNav[0]?.view === 'expandedModule' && panelNav[0]?.data?.id === 'requests'
       const inRequestView = panelNav.map((crumb: any) => crumb.view).includes('requestView')
 
-      if (accountOpen) {
-        if (inRequestView) {
-          nav.back('panel')
-          nav.back('panel')
-        } else if (inExpandedRequestsView) {
-          nav.back('panel')
-        }
+      if (!accountOpen) {
+        store.setAccount(this.summary())
+      }
 
-        nav.forward('panel', {
-          view: 'expandedModule',
+      if (inRequestView) {
+        nav.back('panel')
+        nav.back('panel')
+      } else if (inExpandedRequestsView) {
+        nav.back('panel')
+      }
+
+      nav.forward('panel', {
+        view: 'expandedModule',
+        data: {
+          id: 'requests',
+          account: account
+        }
+      })
+
+      if (!store('tray.open') || !inRequestView) {
+        const crumb = {
+          view: 'requestView',
           data: {
-            id: 'requests',
-            account: account
+            step: 'confirm',
+            accountId: account,
+            requestId: req.handlerId
           }
-        })
-
-        if (!store('tray.open') || !inRequestView) {
-          const crumb = {
-            view: 'requestView',
-            data: {
-              step: 'confirm',
-              accountId: account,
-              requestId: req.handlerId
-            }
-          } as const
-          nav.forward('panel', crumb)
-        }
+        } as const
+        nav.forward('panel', crumb)
       }
 
       setTimeout(() => {

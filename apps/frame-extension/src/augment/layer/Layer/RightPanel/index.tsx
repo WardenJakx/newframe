@@ -26,12 +26,13 @@ import {
 } from './styled'
 
 
-class RightPanel extends React.Component {
-  constructor (...args) {
+class RightPanel extends React.Component<any, any> {
+  declare store: any
+  constructor (...args: [any]) {
     super(...args)
     this.state = {}
   }
-  renderUser (user) {
+  renderUser (user: any) {
     const theme = this.store('theme')
     const img = user.avatar.img
     return (
@@ -76,7 +77,7 @@ class RightPanel extends React.Component {
       </PopRight>
     )
   }
-  renderAsset (user, collection, asset) {
+  renderAsset (user: any, collection: any, asset: any) {
     const collectionName = user.inventory[collection].meta.name
     const assetData = user.inventory[collection].items[asset]
     const tokenId = assetData?.tokenId ? '#' + (assetData.tokenId.length > 9 ? assetData.tokenId.substr(0, 3) + '...' + assetData.tokenId.substr(-3) : assetData.tokenId) : '?'
@@ -107,7 +108,7 @@ class RightPanel extends React.Component {
       </PopRight>
     )
   }
-  renderCollection (user, collection) {
+  renderCollection (user: any, collection: any) {
     const collectionData = user.inventory[collection]
     const count = Object.keys(collectionData.items).length || 0
 
@@ -146,7 +147,7 @@ class RightPanel extends React.Component {
       </PopRightLogo>
     )
   }
-  render () {
+  override render () {
     const { userId  } = this.store('layerPop')
     const user = this.store('users', userId)
 

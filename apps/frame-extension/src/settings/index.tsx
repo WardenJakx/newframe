@@ -2,7 +2,7 @@
 
 import React from 'react'
 import Restore from 'react-restore'
-import ReactDOM from 'react-dom'
+import { createRoot } from 'react-dom/client'
 import styled from 'styled-components'
 
 import { Cluster, ClusterValue, ClusterRow, ClusterBoxMain } from './Cluster'
@@ -17,13 +17,13 @@ const initialState = {
 }
 
 const actions = {
-  setChains: (u, chains) => {
+  setChains: (u: any, chains: any) => {
     u('availableChains', () => chains)
   },
-  setCurrentChain: (u, chain) => {
+  setCurrentChain: (u: any, chain: any) => {
     u('currentChain', () => chain)
   },
-  setFrameConnected: (u, connected) => {
+  setFrameConnected: (u: any, connected: any) => {
     u('frameConnected', () => connected)
   }
 }
@@ -58,7 +58,7 @@ async function getActiveTab() {
   return tabs[0]
 }
 
-async function executeScript(tabId, func, args) {
+async function executeScript(tabId: number, func: (...args: any[]) => any, args: any[]) {
   try {
     const result = await chrome.scripting.executeScript({
       target: { tabId },
@@ -74,12 +74,12 @@ async function executeScript(tabId, func, args) {
   }
 }
 
-async function getLocalSetting(tabId, key) {
-  const results = await executeScript(tabId, (key) => localStorage.getItem(key), [key])
+async function getLocalSetting(tabId: number, key: string) {
+  const results = await executeScript(tabId, (key: string) => localStorage.getItem(key), [key])
 
   if (results && results.length > 0) {
     try {
-      return JSON.parse(results[0].result || false)
+      return JSON.parse((results[0]!.result || false) as any)
     } catch (e) {
       return false
     }
@@ -88,10 +88,10 @@ async function getLocalSetting(tabId, key) {
   return false
 }
 
-async function setLocalSetting(tabId, setting, val) {
+async function setLocalSetting(tabId: number, setting: string, val: any) {
   return executeScript(
     tabId,
-    (key, val) => {
+    (key: string, val: any) => {
       localStorage.setItem(key, val)
       window.location.reload()
     },
@@ -99,23 +99,23 @@ async function setLocalSetting(tabId, setting, val) {
   )
 }
 
-async function toggleLocalSetting(key) {
+async function toggleLocalSetting(key: string) {
   const activeTab = await getActiveTab()
 
   if (activeTab) {
-    const currentValue = await getLocalSetting(activeTab.id, key)
-    setLocalSetting(activeTab.id, key, !currentValue)
+    const currentValue = await getLocalSetting(activeTab.id!, key)
+    setLocalSetting(activeTab.id!, key, !currentValue)
 
     window.close()
   }
 }
 
-const SettingsScroll = styled.div`
+const SettingsScroll = styled.div<{ $scrollBar?: number }>`
   overflow-x: hidden;
   overflow-y: scroll;
   box-sizing: border-box;
   max-height: 580px;
-  margin-right: -${(props) => props.scrollBar || 0}px;
+  margin-right: -${(props) => props.$scrollBar || 0}px;
   background: var(--ghostY);
   margin: 10px;
   border-radius: 30px;
@@ -296,13 +296,13 @@ const CurrentOriginTitle = styled.div`
   }
 `
 
-const ChainButtonIcon = styled.div`
+const ChainButtonIcon = styled.div<{ $selected?: boolean }>`
   position: absolute;
   top: 12px;
   left: 10px;
   width: 20px;
   height: 20px;
-  background: ${(props) => (props.selected ? 'var(--good)' : 'var(--ghostAZ)')};
+  background: ${(props) => (props.$selected ? 'var(--good)' : 'var(--ghostAZ)')};
   border-radius: 10px;
   box-sizing: border-box;
   border: solid 3px var(--ghostZ);
@@ -332,7 +332,7 @@ const Overlay = styled.div`
 
 const originDomainRegex = /^(?<protocol>.+:(?:\/\/)?)(?<origin>[^\#\/]*)/
 
-function parseOrigin(url = '') {
+function parseOrigin(url = ''): any {
   const m = url.match(originDomainRegex)
 
   if (!m) {
@@ -343,11 +343,21 @@ function parseOrigin(url = '') {
   return m.groups || { origin: url, protocol: '' }
 }
 
-const chainConnected = ({ connected }) => connected === undefined || connected
+const chainConnected = ({ connected }: { connected?: boolean }) => connected === undefined || connected
 
 const isInjectedUrl = (url = '') => url.startsWith('http') || url.startsWith('file')
 
-const ChainButton = ({ index, chain, tab, selected }) => {
+const ChainButton = ({
+  index,
+  chain,
+  tab,
+  selected
+}: {
+  index: number
+  chain: any
+  tab: chrome.tabs.Tab
+  selected: boolean
+}) => {
   const { chainId, name } = chain
   const isSelectable = chainConnected(chain)
   return (
@@ -370,7 +380,7 @@ const ChainButton = ({ index, chain, tab, selected }) => {
         }
       }}
     >
-      <ChainButtonIcon selected={selected} />
+      <ChainButtonIcon $selected={selected} />
       <ChainButtonLabel>{name}</ChainButtonLabel>
     </ClusterValue>
   )
@@ -378,7 +388,9 @@ const ChainButton = ({ index, chain, tab, selected }) => {
 
 // const isFirefox = Boolean(window?.browser && browser?.runtime)
 
-class _Settings extends React.Component {
+class _Settings extends React.Component<any, any> {
+  declare store: any
+
   notConnected() {
     return (
       <Cluster>
@@ -392,7 +404,7 @@ class _Settings extends React.Component {
           </ClusterValue>
         </ClusterRow>
         <ClusterRow>
-          <ClusterValue pointerEvents={true}>
+          <ClusterValue $pointerEvents={true}>
             <Download href='https://frame.sh' target='_newtab'>
               Download Frame
             </Download>
@@ -402,7 +414,7 @@ class _Settings extends React.Component {
     )
   }
 
-  unsupportedTab(origin) {
+  unsupportedTab(origin: string) {
     return (
       <Cluster>
         <ClusterRow>
@@ -522,14 +534,14 @@ class _Settings extends React.Component {
     const chains = this.store('availableChains') || []
     const currentChain = this.store('currentChain')
 
-    const rows = chains.reduce((result, value, index, array) => {
+    const rows = chains.reduce((result: any[], value: any, index: number, array: any[]) => {
       if (index % 2 === 0) result.push(array.slice(index, index + 2))
       return result
     }, [])
 
-    return rows.map((row) => (
+    return rows.map((row: any[]) => (
       <ClusterRow style={{ justifyContent: 'flex-start' }}>
-        {row.map((chain, i) => (
+        {row.map((chain: any, i: number) => (
           <ChainButton
             index={i}
             chain={chain}
@@ -545,7 +557,9 @@ class _Settings extends React.Component {
     try {
       const availableChains = this.store('availableChains')
       const currentChain = this.store('currentChain')
-      const currentChainDetails = availableChains.find(({ chainId }) => chainId === currentChain)
+      const currentChainDetails = availableChains.find(
+        ({ chainId }: { chainId: unknown }) => chainId === currentChain
+      )
       if (currentChainDetails && currentChainDetails.name) {
         return currentChainDetails.name
       } else {
@@ -638,11 +652,11 @@ class _Settings extends React.Component {
     )
   }
 
-  render() {
+  override render() {
     return (
       <>
         <Overlay />
-        <SettingsScroll scrollBar={getScrollBarWidth()}>
+        <SettingsScroll $scrollBar={getScrollBarWidth()}>
           <ClusterBoxMain>{this.frameConnected()}</ClusterBoxMain>
           {this.renderMainPanel()}
         </SettingsScroll>
@@ -661,14 +675,14 @@ frameConnect.onMessage.addListener((state) => {
   store.setCurrentChain(state.currentChain)
 })
 
-const updateCurrentChain = (tab) => {
-  chrome.tabs.sendMessage(tab.id, {
+const updateCurrentChain = (tab: chrome.tabs.Tab) => {
+  chrome.tabs.sendMessage(tab.id!, {
     type: 'embedded:action',
     action: { type: 'getChainId' }
   })
 }
 
-async function getInitialSettings(tabId) {
+async function getInitialSettings(tabId: number) {
   return Promise.all([getLocalSetting(tabId, APPEAR_AS_MM), getLocalSetting(tabId, AUGMENT_OFF)])
 }
 
@@ -678,11 +692,11 @@ document.addEventListener('DOMContentLoaded', async function () {
   const activeTab = await getActiveTab()
   const isInjectedTab = isInjectedUrl(activeTab?.url)
 
-  const [mmAppear, augmentOff] = isInjectedTab ? await getInitialSettings(activeTab.id) : [false, false]
+  const [mmAppear, augmentOff] = isInjectedTab ? await getInitialSettings(activeTab!.id!) : [false, false]
 
   if (isInjectedTab) {
     setInterval(() => {
-      updateCurrentChain(activeTab)
+      updateCurrentChain(activeTab!)
     }, 1000)
   }
 
@@ -690,8 +704,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 
   const root = document.getElementById('root')
 
-  ReactDOM.render(
-    <Settings tab={activeTab} isSupportedTab={isInjectedTab} mmAppear={mmAppear} augmentOff={augmentOff} />,
-    root
+  createRoot(root!).render(
+    <Settings tab={activeTab} isSupportedTab={isInjectedTab} mmAppear={mmAppear} augmentOff={augmentOff} />
   )
 })

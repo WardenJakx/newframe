@@ -17,3 +17,4 @@ apps/frame-extension/.cache
 # Local editor state
 .vscode
 *.code-workspace
+.playwright-cli

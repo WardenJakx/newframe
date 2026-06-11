@@ -1,4 +1,4 @@
-import Restore from '../../resources/restore'
+import Restore from 'react-restore'
 import state from './state'
 import * as actions from './actions'
 import persist from './persist'

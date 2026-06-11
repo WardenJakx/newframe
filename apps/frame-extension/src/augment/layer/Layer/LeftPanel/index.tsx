@@ -6,12 +6,12 @@ import User from './User'
 
 import { PopLeft } from './styled'
 
-class LeftPanel extends React.Component {
-  constructor (...args) {
+class LeftPanel extends React.Component<any, any> {
+  constructor (...args: [any]) {
     super(...args)
     this.state = {}
   }
-  render () {
+  override render () {
     return (
       <PopLeft>
         <User />

@@ -10,7 +10,7 @@ import {
 import path from 'path'
 import log from 'electron-log'
 import EventEmitter from 'events'
-import { hexToInt } from '../../resources/utils'
+import { hexToInt, roundGwei } from '../../resources/utils'
 
 import store from '../store'
 import FrameManager from './frames'
@@ -211,7 +211,7 @@ export class Tray {
       if (store('platform') === 'darwin' && store('main.menubarGasPrice')) {
         const gasPrice = store('main.networksMeta.ethereum', 1, 'gas.price.levels.fast')
         if (!gasPrice) return
-        const gasDisplay = Math.round(hexToInt(gasPrice) / 1000000000).toString()
+        const gasDisplay = roundGwei(hexToInt(gasPrice) / 1e9).toString()
         title = gasDisplay // ɢ 🄶 Ⓖ ᴳᵂᴱᴵ
       }
       systemTray.setTitle(title)

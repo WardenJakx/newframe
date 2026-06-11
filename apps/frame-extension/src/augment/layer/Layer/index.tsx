@@ -15,12 +15,13 @@ import {
 } from './styled'
 
 
-class Layer extends React.Component {
-  constructor (...args) {
+class Layer extends React.Component<any, any> {
+  declare store: any
+  constructor (...args: [any]) {
     super(...args)
     this.state = {}
   }
-  componentDidMount () {
+  override componentDidMount () {
     document.addEventListener('scroll', () => {
       this.resetLayer()
     })
@@ -33,11 +34,11 @@ class Layer extends React.Component {
       this.store.setHover(false)
     }
   }
-  block (e) {
+  block (e: any) {
     e.preventDefault()
     e.stopPropagation()
   }
-  render () {
+  override render () {
     const { active, position, userId, created } = this.store('layerPop')
     const user = this.store('users', userId)
     const theme = this.store('theme')

@@ -14,20 +14,22 @@ import {
   PopCollectionsWrapper
 } from './styled'
 
-class Inventory extends React.Component {
-  constructor (...args) {
+class Inventory extends React.Component<any, any> {
+  declare store: any
+  constructor (...args: [any]) {
     super(...args)
     this.state = {
       hovered: false
     }
   }
-  render () {
+  override render () {
     const { userId } = this.store('layerPop')
     const user = this.store('users', userId) || {}
     const select = this.store('select')
     const collection = select?.collection
 
-    let name = collection ? user?.inventory?.[collection]?.meta?.name : '' || ''
+    // Original JS was `: '' || ''` which always evaluates to '' — preserved verbatim minus the redundant `|| ''` (TS2873)
+    let name = collection ? user?.inventory?.[collection]?.meta?.name : ''
     if (name === 'ENS: Ethereum Name Service') name = 'Ethereum Name Service'
     if (name.length > 26) name = name.substr(0, 23) + '...' 
     const paddingRight = (50 - this.store('scrollBarWidth')) + 'px'
@@ -41,13 +43,13 @@ class Inventory extends React.Component {
             <ItemWrap>
               <ItemScroll style={{ paddingRight }}>
                 <PopCollectionsWrapper>
-                  {user.inventory ? Object.keys(user.inventory).sort((key1, key2) => {
+                  {user.inventory ? Object.keys(user.inventory).sort(((key1: string, key2: string) => {
                     const c1 = user.inventory[key1]
                     const c2 = user.inventory[key2]
                     if (c1.meta.priority === c2.meta.priority) return 0
                     if (c1.meta.priority > c2.meta.priority) return -1
                     if (c1.meta.priority < c2.meta.priority) return 1
-                  }).map(key => {
+                  }) as (a: string, b: string) => number).map(key => {
                     return <InventoryItem key={key} collection={key} />
                   }): null}
                   {user.inventory ? Object.keys(user.inventory).length === 0 ? <InventoryNone><span>{'no items'}</span></InventoryNone> : null : <InventoryNone><span>{'loading'}</span></InventoryNone>}

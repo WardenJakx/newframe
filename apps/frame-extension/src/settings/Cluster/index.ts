@@ -51,7 +51,7 @@ export const Cluster = styled.div`
   padding: 2px 0px 1px 0px;
 `
 
-export const ClusterValue = styled.div`
+export const ClusterValue = styled.div<{ $pointerEvents?: boolean; $transparent?: boolean }>`
   flex-grow: 1;
   display: flex;
   justify-content: center;
@@ -74,7 +74,7 @@ export const ClusterValue = styled.div`
   margin-top: 1px;
 
   ${(props) => {
-    return props.pointerEvents
+    return props.$pointerEvents
       ? css`
           * {
             pointer-events: auto;
@@ -89,7 +89,7 @@ export const ClusterValue = styled.div`
 
   ${(props) => {
     return (
-      (props.onClick || props.pointerEvents) &&
+      (props.onClick || props.$pointerEvents) &&
       css`
         cursor: pointer;
         margin-bottom: 0px;
@@ -116,7 +116,7 @@ export const ClusterValue = styled.div`
 
   ${(props) => {
     return (
-      props.transparent &&
+      props.$transparent &&
       css`
         background: transparent;
         box-shadow: none;

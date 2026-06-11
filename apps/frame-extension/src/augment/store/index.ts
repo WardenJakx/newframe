@@ -31,7 +31,7 @@ const store = Restore.create({...initialState, ...persist}, actions)
 //   window.localStorage.setItem('__frameLayer__', JSON.stringify(store()))
 // })
 
-window.__setMediaBlob__ = (blobURL, location, error) => {
+;(window as any).__setMediaBlob__ = (blobURL: string, location: any, error: any) => {
   if (error) return store.setBlob(blobURL, location, error)
   fetch(blobURL)
     .then(res => res.blob())

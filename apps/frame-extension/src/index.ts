@@ -1,5 +1,7 @@
 /* globals chrome */
-const ethProvider = require('eth-provider')
+import ethProvider from 'eth-provider'
+
+type Provider = ReturnType<typeof ethProvider>
 
 const subTypes = [
   'chainChanged',
@@ -11,27 +13,47 @@ const subTypes = [
 ]
 
 // extension state
-let provider
-let settingsPanel, activeTabId
+let provider: Provider | null
+let settingsPanel: chrome.runtime.Port | null, activeTabId: number
 
-const subs = {}
-const pending = {}
+interface PendingRequest {
+  tabId: number
+  payloadId: number
+  method: string
+  params: any
+  origin: string
+}
 
-const frameState = {
+interface Subscription {
+  tabId: number
+  send: (subload: any) => void
+  type: string
+}
+
+const subs: Record<string, Subscription> = {}
+const pending: Record<string, PendingRequest> = {}
+
+interface FrameState {
+  connected: boolean
+  availableChains: any[]
+  currentChain: string
+}
+
+const frameState: FrameState = {
   connected: false,
   availableChains: [],
   currentChain: ''
 }
 
 // helper functions
-const originFromUrl = (url) => {
+const originFromUrl = (url?: string) => {
   if (!url) return ''
   const path = url.split('/')
   return `${path[0]}//${path[2]}`
 }
-const getOrigin = (sender = {}) => originFromUrl(sender.url)
+const getOrigin = (sender: any = {}) => originFromUrl(sender.url)
 
-const subType = (pendingPayload) => {
+const subType = (pendingPayload: PendingRequest) => {
   try {
     const type = pendingPayload.params[0]
     return subTypes.includes(type) ? type : 'unknown'
@@ -40,13 +62,13 @@ const subType = (pendingPayload) => {
   }
 }
 
-const unsubscribeTab = (tabId) => {
+const unsubscribeTab = (tabId: number) => {
   Object.keys(pending).forEach((id) => {
-    if (pending[id].tabId === tabId) delete pending[id]
+    if (pending[id]!.tabId === tabId) delete pending[id]
   })
   Object.keys(subs).forEach((sub) => {
-    if (subs[sub].tabId === tabId) {
-      provider.send({ jsonrpc: '2.0', id: 1, method: 'eth_unsubscribe', params: [sub] })
+    if (subs[sub]!.tabId === tabId) {
+      provider!.send({ jsonrpc: '2.0', id: 1, method: 'eth_unsubscribe', params: [sub] })
       delete subs[sub]
     }
   })
@@ -58,38 +80,38 @@ function updateSettingsPanel() {
   }
 }
 
-function setConnected(connected) {
+function setConnected(connected: boolean) {
   console.debug(`Setting connected to ${connected}`)
 
   frameState.connected = connected
   updateSettingsPanel()
 }
 
-function setChains(chains) {
+function setChains(chains: any[]) {
   console.debug('Setting available chains', { chains })
 
   frameState.availableChains = chains
   updateSettingsPanel()
 }
 
-function setCurrentChain(chain) {
+function setCurrentChain(chain: string) {
   console.debug(`Setting current chain to ${chain}`)
 
   frameState.currentChain = chain
   updateSettingsPanel()
 }
 
-function setIcon(path) {
+function setIcon(path: string) {
   chrome.action.setIcon({ path })
 }
 
-function setPopup(popup) {
+function setPopup(popup: string) {
   chrome.action.setPopup({ popup })
 }
 
 async function fetchAvailableChains() {
   try {
-    const chains = await provider.request({ method: 'wallet_getEthereumChains' })
+    const chains = await provider!.request({ method: 'wallet_getEthereumChains' })
     setChains(chains)
   } catch (e) {
     console.error('Error fetching chains', e)
@@ -97,18 +119,20 @@ async function fetchAvailableChains() {
   }
 }
 
-async function sendEventToTab(tabId, event, args) {
+async function sendEventToTab(tabId: number, event: string, args?: any) {
   try {
     return await chrome.tabs.sendMessage(tabId, { type: 'eth:event', event, args })
   } catch (e) {
+    // tabs without our content script (chrome:// pages, stale tabs) can't receive — expected
+    if ((e as Error)?.message?.includes('Receiving end does not exist')) return
     console.error(`Error sending event "${event}"`, e)
   }
 }
 
-async function sendEvent(event, args = [], selector = {}) {
+async function sendEvent(event: string, args: any[] = [], selector: chrome.tabs.QueryInfo = {}) {
   const tabs = await chrome.tabs.query(selector)
 
-  tabs.filter((tab) => !!tab.url).forEach((tab) => sendEventToTab(tab.id, event, args))
+  tabs.filter((tab) => !!tab.url).forEach((tab) => sendEventToTab(tab.id!, event, args))
 }
 
 function initProvider() {
@@ -139,23 +163,23 @@ function initProvider() {
     }
   })
 
-  provider.connection.on('payload', async (payload) => {
+  provider.connection.on('payload', async (payload: any) => {
     if (typeof payload.id !== 'undefined') {
       if (pending[payload.id]) {
-        const { tabId, payloadId } = pending[payload.id]
-        if (pending[payload.id].method === 'eth_subscribe' && payload.result) {
+        const { tabId, payloadId } = pending[payload.id]!
+        if (pending[payload.id]!.method === 'eth_subscribe' && payload.result) {
           subs[payload.result] = {
             tabId,
-            send: (subload) => chrome.tabs.sendMessage(tabId, subload),
-            type: subType(pending[payload.id])
+            send: (subload) => chrome.tabs.sendMessage(tabId, subload).catch(() => {}),
+            type: subType(pending[payload.id]!)
           }
-        } else if (pending[payload.id].method === 'eth_unsubscribe') {
-          const params = payload.params ? [].concat(payload.params) : []
+        } else if (pending[payload.id]!.method === 'eth_unsubscribe') {
+          const params: any[] = payload.params ? [].concat(payload.params) : []
           params.forEach((sub) => delete subs[sub])
         }
-        chrome.tabs.sendMessage(tabId, Object.assign({}, payload, { id: payloadId, type: 'eth:payload' }))
-        if (pending[payload.id].method === 'eth_chainId' && pending[payload.id].tabId === activeTabId) {
-          const payloadOrigin = pending[payload.id].origin
+        chrome.tabs.sendMessage(tabId, Object.assign({}, payload, { id: payloadId, type: 'eth:payload' })).catch(() => {})
+        if (pending[payload.id]!.method === 'eth_chainId' && pending[payload.id]!.tabId === activeTabId) {
+          const payloadOrigin = pending[payload.id]!.origin
           const activeTab = await chrome.tabs.get(activeTabId)
           const activeTabOrigin = originFromUrl(activeTab.url)
           if (activeTabOrigin === payloadOrigin) {
@@ -172,7 +196,7 @@ function initProvider() {
       subs[payload.params.subscription]
     ) {
       // Emit subscription result to tab
-      const sub = subs[payload.params.subscription]
+      const sub = subs[payload.params.subscription]!
       payload.type = 'eth:payload'
       sub.send(payload)
       if (sub.type === 'chainChanged' && sub.tabId === activeTabId) {
@@ -185,19 +209,19 @@ function initProvider() {
 
 function destroyProvider() {
   if (provider) {
-    provider.close()
+    provider.close!()
     provider = null
   }
 }
 
 function addStateListeners() {
-  function onPortDisconnected(port) {
+  function onPortDisconnected(port: chrome.runtime.Port) {
     settingsPanel = null
     port.onDisconnect.removeListener(onPortDisconnected)
   }
 
-  function setMediaBlob(blobUrl, location, message) {
-    window.__setMediaBlob__(blobUrl, location, message)
+  function setMediaBlob(blobUrl: string, location: any, message?: string) {
+    ;(window as any).__setMediaBlob__(blobUrl, location, message)
   }
 
   chrome.runtime.onMessage.addListener(async (extensionPayload, sender) => {
@@ -218,23 +242,23 @@ function addStateListeners() {
         const blobURL = URL.createObjectURL(blob)
 
         chrome.scripting.executeScript({
-          target: { tabId: sender.tab.id },
+          target: { tabId: sender.tab!.id! },
           func: setMediaBlob,
           args: [blobURL, location]
         })
       } catch (e) {
         chrome.scripting.executeScript({
-          target: { tabId: sender.tab.id },
+          target: { tabId: sender.tab!.id! },
           func: setMediaBlob,
-          args: ['', location, e.message]
+          args: ['', location, (e as Error).message]
         })
       }
     }
 
     if (payload.method === 'frame_summon')
-      return provider.connection.send({ jsonrpc: '2.0', id: 1, method, params })
+      return provider!.connection.send({ jsonrpc: '2.0', id: 1, method, params })
 
-    const id = provider.nextId++
+    const id = provider!.nextId++
     const origin = getOrigin(tab || sender)
     if (!origin) return console.error('No origin found for sender')
     pending[id] = {
@@ -253,7 +277,7 @@ function addStateListeners() {
       __extensionConnecting: payload.__extensionConnecting
     }
 
-    provider.connection.send(load)
+    provider!.connection.send(load)
   })
 
   chrome.runtime.onConnect.addListener((port) => {
@@ -302,7 +326,7 @@ async function addTabListeners() {
     const tab = await chrome.tabs.get(tabId)
     const tabOrigin = getOrigin(tab.url)
     if (tabOrigin.startsWith('http') || tabOrigin.startsWith('file')) {
-      chrome.tabs.sendMessage(tabId, { type: 'embedded:action', action: { type: 'getChainId' } })
+      chrome.tabs.sendMessage(tabId, { type: 'embedded:action', action: { type: 'getChainId' } }).catch(() => {})
     }
   })
 }
@@ -319,11 +343,30 @@ async function setupClientStatusAlarm() {
   chrome.alarms.onAlarm.addListener((alarm) => {
     if (alarm.name === CLIENT_STATUS_ALARM_KEY) {
       if (provider && provider.isConnected()) {
-        provider.request({ jsonrpc: '2.0', id: 1, method: 'web3_clientVersion' })
+        provider.request({ jsonrpc: '2.0', id: 1, method: 'web3_clientVersion' } as any)
       }
     }
   })
 }
+
+// extension reloads orphan content scripts in open tabs (their chrome.runtime dies,
+// silently breaking the page <-> background relay). Re-inject into existing tabs so
+// users don't have to refresh every tab after a reload. inject.js guards against
+// duplicating the page-world provider via a DOM marker.
+chrome.runtime.onInstalled.addListener(async () => {
+  const tabs = await chrome.tabs.query({ url: ['http://*/*', 'https://*/*', 'file://*/*'] })
+  for (const tab of tabs) {
+    if (!tab.id) continue
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id, allFrames: true },
+        files: ['inject.js']
+      })
+    } catch (e) {
+      // tabs that block injection (web store, restricted pages) — ignore
+    }
+  }
+})
 
 setIcon('icons/icon96moon.png')
 setPopup('settings.html')

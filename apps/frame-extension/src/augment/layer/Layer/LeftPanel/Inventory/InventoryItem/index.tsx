@@ -9,14 +9,15 @@ import {
   TextImg
 } from './styled'
 
-class InventoryItem extends React.Component {
-  constructor (...args) {
+class InventoryItem extends React.Component<any, any> {
+  declare store: any
+  constructor (...args: [any]) {
     super(...args)
     this.state = {
       hovered: false
     }
   }
-  render () {
+  override render () {
     const { userId } = this.store('layerPop')
     const user = this.store('users', userId)
 

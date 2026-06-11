@@ -1,5 +1,14 @@
 import EventEmitter from 'events'
-import EthereumProvider from 'ethereum-provider'
+import EthereumProviderModule from 'ethereum-provider'
+
+// ethereum-provider is TS-compiled CJS (`exports.default = Provider`); Bun's
+// node-mode interop hands the whole exports object to a default import
+const EthereumProvider: typeof EthereumProviderModule =
+  (EthereumProviderModule as any).default ?? EthereumProviderModule
+
+function pageMessageTargetOrigin() {
+  return window.location.origin === 'null' ? '*' : window.location.origin
+}
 
 function setProvider() {
   const existingProvider = Object.getOwnPropertyDescriptor(window, 'ethereum')
@@ -12,14 +21,14 @@ function setProvider() {
       enumerable: true
     })
   } else {
-    window.ethereum = provider
+    ;(window as any).ethereum = provider
   }
 }
 
-function shimWeb3(provider, appearAsMetaMask) {
+function shimWeb3(provider: any, appearAsMetaMask: any) {
   let loggedCurrentProvider = false
 
-  if (!window.web3) {
+  if (!(window as any).web3) {
     const SHIM_IDENTIFIER = appearAsMetaMask ? '__isMetaMaskShim__' : '__isFrameShim__'
 
     const shim = { currentProvider: provider }
@@ -39,7 +48,7 @@ function shimWeb3(provider, appearAsMetaMask) {
           )
         } else if (property !== 'currentProvider' && property !== SHIM_IDENTIFIER) {
           console.error(
-            `You are requesting the "${property}" property of window.web3 which no longer supported; use window.ethereum instead.`
+            `You are requesting the "${property as string}" property of window.web3 which no longer supported; use window.ethereum instead.`
           )
         }
         return Reflect.get(target, property, ...args)
@@ -65,7 +74,7 @@ class ExtensionProvider extends EthereumProvider {
   // override the send method in order to add a flag that identifies messages
   // as "connection messages", meaning Frame won't track an origin that sends
   // these requests
-  doSend(method, params, targetChain, waitForConnection) {
+  doSend(method: string, params: any[], targetChain?: any, waitForConnection?: boolean) {
     if (!waitForConnection && (method === 'eth_chainId' || method === 'net_version')) {
       const payload = { jsonrpc: '2.0', id: this.nextId++, method, params, __extensionConnecting: true }
       return new Promise((resolve, reject) => {
@@ -89,7 +98,7 @@ class Connection extends EventEmitter {
     setTimeout(() => this.emit('connect'), 0)
   }
 
-  handleMessage(event) {
+  handleMessage(event: MessageEvent) {
     if (event && event.source === window && event.data) {
       const { type } = event.data
 
@@ -103,8 +112,8 @@ class Connection extends EventEmitter {
     }
   }
 
-  send(payload) {
-    window.postMessage({ type: 'eth:send', payload }, window.location.origin)
+  send(payload: any) {
+    window.postMessage({ type: 'eth:send', payload }, pageMessageTargetOrigin())
   }
 
   close() {
@@ -112,7 +121,7 @@ class Connection extends EventEmitter {
   }
 }
 
-let mmAppear = window.localStorage.getItem('__frameAppearAsMM__')
+let mmAppear: any = window.localStorage.getItem('__frameAppearAsMM__')
 
 try {
   mmAppear = JSON.parse(mmAppear)
@@ -120,7 +129,7 @@ try {
   mmAppear = false
 }
 
-let provider
+let provider: ExtensionProvider | undefined
 
 if (mmAppear) {
   class MetaMaskProvider extends ExtensionProvider {}
@@ -154,7 +163,7 @@ const info = {
   rdns: 'sh.frame'
 }
 
-function broadcastEvent(eventName, detail) {
+function broadcastEvent(eventName: string, detail: any) {
   try {
     const event = new CustomEvent(eventName, { detail })
     window.dispatchEvent(event)
@@ -171,10 +180,13 @@ broadcastEvent('eip6963:announceProvider', Object.freeze({ info, provider }))
 
 setProvider()
 
-shimWeb3(window.ethereum, mmAppear)
+shimWeb3((window as any).ethereum, mmAppear)
 
-const embedded = {
-  getChainId: async () => ({ chainId: await window.ethereum.doSend('eth_chainId', [], undefined, false) })
+const embedded: Record<string, (action: any) => Promise<any>> = {
+  getChainId: async () => ({
+    // use Frame's own provider — window.ethereum may belong to another wallet
+    chainId: await provider?.doSend('eth_chainId', [], undefined, false)
+  })
 }
 
 document.addEventListener('readystatechange', (e) => {
@@ -194,9 +206,9 @@ window.addEventListener('message', async (event) => {
     if (event.data.action) {
       const action = event.data.action
       if (embedded[action.type]) {
-        const res = await embedded[action.type](action)
+        const res = await embedded[action.type]!(action)
         const payload = { method: 'embedded_action_res', params: [action, res] }
-        window.postMessage({ type: 'eth:send', payload }, window.location.origin)
+        window.postMessage({ type: 'eth:send', payload }, pageMessageTargetOrigin())
       } else {
         console.warn(`Could not find embedded action ${action.type}`)
       }

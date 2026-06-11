@@ -32,7 +32,7 @@ const defaultTheme = {
   }
 }
 
-const themes = {}
+const themes: Record<string, typeof defaultTheme> = {}
 
 themes['rgb(21, 32, 43)'] = {
   ...defaultTheme,
@@ -83,8 +83,11 @@ themes['rgb(255, 255, 255)'] = {
   }
 }
 
-export default (backgroundColor) => {
-  if (themes[backgroundColor]) return themes[backgroundColor]
+export type Theme = typeof defaultTheme
+
+export default (backgroundColor?: string) => {
+  const theme = backgroundColor !== undefined ? themes[backgroundColor] : undefined
+  if (theme) return theme
   return defaultTheme
 }
 
