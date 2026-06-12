@@ -39,13 +39,13 @@ class PersistStore extends Conf {
     this.updates[path] = JSON.parse(JSON.stringify(value))
   }
 
-  set(path: any, value?: unknown) {
+  override set(path: any, value?: unknown) {
     if (this.blockUpdates) return
     path = `main.__.${migrations.latest}.${path}`
     super.set(path, value)
   }
 
-  clear() {
+  override clear() {
     this.blockUpdates = true
     super.clear()
   }

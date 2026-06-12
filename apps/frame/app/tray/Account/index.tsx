@@ -1,0 +1,29 @@
+import React from 'react'
+import Restore from 'react-restore'
+
+import Account from './Account'
+
+class Main extends React.Component<any, any> {
+  declare store: Store
+
+  constructor(props: any, context?: any) {
+    super(props, context)
+    this.state = {
+      accountFilter: ''
+    }
+  }
+
+  override render() {
+    const accounts = this.store('main.accounts')
+    const current = this.store('selected.current')
+    const open = this.store('selected.open')
+    if (!open) return
+
+    const currentAccount = accounts[current]
+    if (!currentAccount) return null
+
+    return <Account key={current} {...currentAccount} index={1} />
+  }
+}
+
+export default Restore.connect(Main)

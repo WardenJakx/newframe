@@ -81,8 +81,8 @@ const storeApi = {
   }
 }
 
-export {
-  RequestMode,
+export { RequestMode } from './types'
+export type {
   AccountRequest,
   AccessRequest,
   TransactionRequest,

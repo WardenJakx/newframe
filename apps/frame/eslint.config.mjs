@@ -48,12 +48,12 @@ export default [
   {
     files: [
       '*.{js,mjs,ts}',
-      'scripts/**/*.mjs',
+      'scripts/**/*.ts',
       'main/**/*.{js,ts}',
       'build/**/*.js',
       'resources/**/*.{js,ts}',
-      'test/*.js',
-      'test/__mocks__/*.js',
+      'test/*.{ts,tsx}',
+      'test/__mocks__/*.ts',
       'test/main/**/*.{js,ts}'
     ],
     ignores: ['resources/Components/**/*', 'resources/Hooks/**/*', 'resources/Native/**/*'],
@@ -66,18 +66,18 @@ export default [
   // Renderer process files
   {
     files: [
-      'app/**/*.js',
-      'main/dapps/server/inject/*.js',
-      'resources/keyboard/**/*.js',
-      'resources/Components/**/*.js',
-      'resources/Hooks/**/*.js',
-      'resources/Native/**/*.js',
-      'resources/bridge/index.js',
-      'resources/link/index.js',
-      'test/app/**/*.js',
-      'test/resources/Components/**/*.js',
-      'test/resources/Hooks/**/*.js',
-      'test/resources/Native/**/*.js'
+      'app/**/*.{ts,tsx}',
+      'main/dapps/server/inject/*.ts',
+      'resources/keyboard/**/*.{ts,tsx}',
+      'resources/Components/**/*.{ts,tsx}',
+      'resources/Hooks/**/*.{ts,tsx}',
+      'resources/Native/**/*.{ts,tsx}',
+      'resources/bridge/index.ts',
+      'resources/link/index.ts',
+      'test/app/**/*.{ts,tsx}',
+      'test/resources/Components/**/*.{ts,tsx}',
+      'test/resources/Hooks/**/*.{ts,tsx}',
+      'test/resources/Native/**/*.{ts,tsx}'
     ],
     languageOptions: {
       globals: {
@@ -88,7 +88,7 @@ export default [
   },
   // Renderer entry points
   {
-    files: ['app/*/index.js'],
+    files: ['app/*/index.tsx'],
     languageOptions: {
       globals: {
         process: true
@@ -140,16 +140,16 @@ export default [
   // TODO: simplify as '**/*.{jsx,tsx}'
   {
     files: [
-      'app/**/*.js',
-      'resources/Components/**/*.js',
-      'resources/Hooks/**/*.js',
-      'resources/Native/**/*.js',
-      'resources/svg/index.js',
-      'test/app/**/*.js',
-      'test/resources/Components/**/*.js',
-      'test/resources/Hooks/**/*.js',
-      'test/resources/Native/**/*.js',
-      'test/jest.svg.js'
+      'app/**/*.{ts,tsx}',
+      'resources/Components/**/*.{ts,tsx}',
+      'resources/Hooks/**/*.{ts,tsx}',
+      'resources/Native/**/*.{ts,tsx}',
+      'resources/svg/index.tsx',
+      'test/app/**/*.{ts,tsx}',
+      'test/resources/Components/**/*.{ts,tsx}',
+      'test/resources/Hooks/**/*.{ts,tsx}',
+      'test/resources/Native/**/*.{ts,tsx}',
+      'test/jest.svg.tsx'
     ],
     plugins: {
       react,
@@ -180,7 +180,7 @@ export default [
   },
   // Test files
   {
-    files: ['test/**/*.js', '**/__mocks__/**/*.js'],
+    files: ['test/**/*.{ts,tsx}', '**/__mocks__/**/*.ts'],
     plugins: {
       jest
     },
@@ -196,7 +196,7 @@ export default [
   },
   // Components test files
   {
-    files: ['test/app/**/*.js', 'test/resources/Components/**/*.js', 'app/**/__mocks__/**/*.js'],
+    files: ['test/app/**/*.{ts,tsx}', 'test/resources/Components/**/*.{ts,tsx}', 'app/**/__mocks__/**/*.ts'],
     plugins: {
       'testing-library': testingLibrary
     },

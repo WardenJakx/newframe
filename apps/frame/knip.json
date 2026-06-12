@@ -1,17 +1,17 @@
 {
   "entry": [
     "main/index.ts",
-    "app/*/index.js",
-    "app/dash/Accounts/Add/particleWorker.js",
-    "resources/bridge/index.js",
-    "main/dapps/server/inject/index.js",
+    "app/*/index.tsx",
+    "app/dash/Accounts/Add/particleWorker.ts",
+    "resources/bridge/index.ts",
+    "main/dapps/server/inject/index.ts",
     "main/externalData/balances/worker.ts",
-    "main/signers/hot/*/worker.js",
+    "main/signers/hot/*/worker.ts",
     "main/windows/viewPreload.ts",
-    "scripts/*.mjs",
+    "scripts/*.ts",
     "build/**/*.js",
-    "test/**/*.test.{js,ts}",
-    "test/e2e/**/*.js"
+    "test/**/*.test.{ts,tsx}",
+    "test/e2e/**/*.ts"
   ],
   "project": ["main/**", "app/**", "resources/**", "scripts/**", "build/**", "test/**"],
   "ignoreDependencies": [

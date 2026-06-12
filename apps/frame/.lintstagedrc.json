@@ -1,3 +1,3 @@
 {
-  "**/*.{yml,json,md,html,ts,js}": "prettier --check"
+  "**/*.{yml,json,md,html,ts,tsx,js}": "prettier --check"
 }

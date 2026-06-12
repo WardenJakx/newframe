@@ -15,7 +15,7 @@ import {
   MulticallVersion
 } from './constants'
 
-export { Call }
+export type { Call }
 
 const multicallInterface = new Interface(abi)
 const memoizedInterfaces: Record<string, Interface> = {}

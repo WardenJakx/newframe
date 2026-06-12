@@ -226,7 +226,8 @@ class Signers extends EventEmitter {
 
     // @ts-ignore
     if (signer && signer.unlock) {
-      ;(signer as HotSigner).unlock(password, cb)
+      // at runtime this is a SeedSigner or RingSigner, whose unlock takes (password, cb)
+      ;(signer as RingSigner).unlock(password, cb)
     } else {
       log.error('Signer not unlockable via password, no unlock method')
     }

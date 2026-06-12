@@ -1,7 +1,7 @@
 import * as signatureParser from '../../../main/signatures'
 
 describe('#identify', () => {
-  let typedMessage
+  let typedMessage: any
 
   beforeEach(() => {
     typedMessage = {

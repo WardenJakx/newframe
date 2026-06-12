@@ -1087,7 +1087,7 @@ export class Provider extends EventEmitter {
     this.connection.send(rpcPayload, res, targetChain)
   }
 
-  emit(type: string | symbol, ...args: any[]) {
+  override emit(type: string | symbol, ...args: any[]) {
     return super.emit(type, ...args)
   }
 }

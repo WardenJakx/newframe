@@ -99,7 +99,7 @@ export default class Ledger extends Signer {
     this.status = Status.INITIAL
   }
 
-  async open() {
+  override async open() {
     const transport = await TransportNodeHid.open(this.devicePath)
 
     this.eth = new LedgerEthereumApp(transport)
@@ -107,7 +107,7 @@ export default class Ledger extends Signer {
     this.requestQueue.start()
   }
 
-  close() {
+  override close() {
     this.emit('close')
     this.removeAllListeners()
 
@@ -369,7 +369,7 @@ export default class Ledger extends Signer {
     })
   }
 
-  verifyAddress(index: number, currentAddress: string, display = false, cb: Callback<boolean>) {
+  override verifyAddress(index: number, currentAddress: string, display = false, cb: Callback<boolean>) {
     this.enqueueRequests({
       type: 'verifyAddress',
       execute: async () => {
@@ -408,7 +408,7 @@ export default class Ledger extends Signer {
     })
   }
 
-  signMessage(index: number, message: string, cb: Callback<string>) {
+  override signMessage(index: number, message: string, cb: Callback<string>) {
     this.enqueueRequests({
       type: 'signMessage',
       execute: async () => {
@@ -435,7 +435,11 @@ export default class Ledger extends Signer {
     })
   }
 
-  signTypedData(index: number, typedMessage: TypedMessage<SignTypedDataVersion.V4>, cb: Callback<string>) {
+  override signTypedData(
+    index: number,
+    typedMessage: TypedMessage<SignTypedDataVersion.V4>,
+    cb: Callback<string>
+  ) {
     this.enqueueRequests({
       type: 'signTypedData',
       execute: async () => {
@@ -464,7 +468,7 @@ export default class Ledger extends Signer {
     })
   }
 
-  signTransaction(index: number, rawTx: TransactionData, cb: Callback<string>) {
+  override signTransaction(index: number, rawTx: TransactionData, cb: Callback<string>) {
     const compatibility = signerCompatibility(rawTx, this.summary())
     const ledgerTx = compatibility.compatible ? { ...rawTx } : londonToLegacy(rawTx)
 

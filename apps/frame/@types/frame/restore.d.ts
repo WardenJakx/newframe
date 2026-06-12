@@ -18,4 +18,10 @@ interface Store extends CallableStore {
 
 declare module 'react-restore' {
   export function create(state: any, actions: any): Store
+  export function connect<T>(component: T, store?: Store): T
+  const Restore: {
+    create: typeof create
+    connect: typeof connect
+  }
+  export default Restore
 }

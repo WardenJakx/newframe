@@ -26,7 +26,7 @@ class DappStream extends Readable {
     }
     this.push(null)
   }
-  _read() {
+  override _read() {
     // empty
   }
 }

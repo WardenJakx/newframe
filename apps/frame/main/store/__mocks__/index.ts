@@ -1,22 +1,22 @@
 const create = function () {
-  const internal = {
+  const internal: { state: any; observers: Record<string, { fire: () => void; remove: () => void }> } = {
     state: {},
     observers: {}
   }
 
-  const store = function (...keys) {
+  const store = function (...keys: string[]) {
     const path = keys.join('.').split('.')
     return get(internal.state, path)
   }
 
-  function get(obj, path) {
+  function get(obj: any, path: string[]): any {
     if (!obj) return obj
     if (path.length === 1) return obj[path[0]]
 
     return get(obj[path[0]], path.slice(1))
   }
 
-  function set(obj, path, value) {
+  function set(obj: any, path: string[], value: any): any {
     if (path.length === 1) {
       return { ...obj, [path[0]]: value }
     }
@@ -26,7 +26,7 @@ const create = function () {
     return obj
   }
 
-  store.set = function (...newArgs) {
+  store.set = function (...newArgs: any[]) {
     const args = newArgs
     const path = args
       .slice(0, args.length - 1)
@@ -39,10 +39,10 @@ const create = function () {
 
   store.clear = function () {
     internal.state = {}
-    internal.observers = []
+    internal.observers = {}
   }
 
-  store.observer = function (cb, id) {
+  store.observer = function (cb: () => void, id: string) {
     const observer = {
       fire: () => {
         cb()
@@ -57,7 +57,7 @@ const create = function () {
     return observer
   }
 
-  store.getObserver = function (id) {
+  store.getObserver = function (id: string) {
     return internal.observers[id]
   }
 

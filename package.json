@@ -18,5 +18,13 @@
     "test:extension": "bun run extension test",
     "lint": "bun run frame lint && bun run extension test"
   },
-  "packageManager": "bun@1.2.0"
+  "packageManager": "bun@1.2.0",
+  "overrides": {
+    "@framelabs/logger": "1.1.1",
+    "node-gyp": "12.3.0",
+    "@ledgerhq/hw-transport": "6.35.3",
+    "@ledgerhq/devices": "8.15.0",
+    "@ledgerhq/logs": "6.17.0",
+    "usb": "2.18.0"
+  }
 }

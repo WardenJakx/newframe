@@ -47,7 +47,7 @@ export default class LatticeAdapter extends SignerAdapter {
     this.knownSigners = {}
   }
 
-  open() {
+  override open() {
     this.settingsObserver = store.observer(() => {
       const { baseUrl, derivation, accountLimit } = getGlobalLatticeSettings()
 
@@ -149,7 +149,7 @@ export default class LatticeAdapter extends SignerAdapter {
     }, 'latticeSigners')
   }
 
-  close() {
+  override close() {
     if (this.signerObserver) {
       this.signerObserver.remove()
       this.signerObserver = null
@@ -163,7 +163,7 @@ export default class LatticeAdapter extends SignerAdapter {
     this.knownSigners = {}
   }
 
-  remove(lattice: Lattice) {
+  override remove(lattice: Lattice) {
     log.info(`removing Lattice ${lattice.deviceId}`)
 
     store.removeLattice(lattice.deviceId)
@@ -173,7 +173,7 @@ export default class LatticeAdapter extends SignerAdapter {
     }
   }
 
-  async reload(lattice: Lattice) {
+  override async reload(lattice: Lattice) {
     log.info(`reloading Lattice ${lattice.deviceId}`)
 
     lattice.disconnect()
