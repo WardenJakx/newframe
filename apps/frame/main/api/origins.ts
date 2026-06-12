@@ -165,9 +165,17 @@ export function parseFrameExtension(req: IncomingMessage): FrameExtension | unde
   const query = new URLSearchParams((req.url || '').replace('/', ''))
   const hasExtensionIdentity = query.get('identity') === 'frame-extension'
 
-  if (origin === 'chrome-extension://ldcoohedfbjoobcadoglnnmmfbdlmmhf') {
-    // Match production chrome
-    return { browser: 'chrome', id: 'ldcoohedfbjoobcadoglnnmmfbdlmmhf' }
+  const trustedChromeExtensionIds = [
+    'ldcoohedfbjoobcadoglnnmmfbdlmmhf', // production Chrome Web Store
+    'jdlcmcidcpckmaldjiacnbjeajgnmmgj' // local unpacked build
+  ]
+
+  const chromeExtensionId = trustedChromeExtensionIds.find(
+    (id) => origin === `${extensionPrefixes.chrome}://${id}`
+  )
+
+  if (chromeExtensionId) {
+    return { browser: 'chrome', id: chromeExtensionId }
   } else if (origin.startsWith(`${extensionPrefixes.chrome}://`) && dev && hasExtensionIdentity) {
     // Match Chrome in dev
     const extensionId = origin.substring(extensionPrefixes.chrome.length + 3)

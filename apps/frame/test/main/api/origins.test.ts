@@ -162,6 +162,16 @@ describe('#parseFrameExtension', () => {
     })
   })
 
+  it('correctly identifies the local unpacked Chrome extension', () => {
+    const origin = 'chrome-extension://jdlcmcidcpckmaldjiacnbjeajgnmmgj'
+    const req = { headers: { origin } }
+
+    expect(parseFrameExtension(req as any)).toStrictEqual({
+      browser: 'chrome',
+      id: 'jdlcmcidcpckmaldjiacnbjeajgnmmgj'
+    })
+  })
+
   it('does not recognize a Chrome extension with the wrong id', () => {
     const origin = 'chrome-extension://somebogusid'
     const req = { headers: { origin } }
