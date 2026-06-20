@@ -1,6 +1,0 @@
-{
-  "extends": "./tsconfig",
-  // compile emits only the electron main process (and what it imports);
-  // app/ and test/ are handled by parcel and jest, scripts/ run under bun directly
-  "exclude": ["**/__mocks__/*", "./test/**/*", "./app/**/*", "./scripts/**/*"]
-}

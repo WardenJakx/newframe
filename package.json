@@ -1,5 +1,5 @@
 {
-  "name": "newframe",
+  "name": "newframe-monorepo",
   "private": true,
   "version": "0.0.0",
   "workspaces": [
@@ -7,20 +7,21 @@
     "packages/*"
   ],
   "scripts": {
-    "frame": "bun --cwd apps/frame",
-    "extension": "bun --cwd apps/frame-extension",
-    "build": "bun run frame build && bun run extension build",
-    "dev:frame": "bun run frame dev",
-    "build:frame": "bun run frame build",
-    "build:extension": "bun run extension build",
-    "test": "bun run frame test && bun run extension test",
-    "test:frame": "bun run frame test",
-    "test:extension": "bun run extension test",
-    "lint": "bun run frame lint && bun run extension test"
+    "newframe": "bun --cwd apps/newframe",
+    "newframe-extension": "bun --cwd apps/newframe-extension",
+    "extension": "bun --cwd apps/newframe-extension",
+    "build": "bun run newframe build && bun run newframe-extension build",
+    "dev:newframe": "bun run newframe dev",
+    "build:newframe": "bun run newframe build",
+    "build:newframe-extension": "bun run newframe-extension build",
+    "test": "bun run newframe test && bun run newframe-extension test",
+    "test:newframe": "bun run newframe test",
+    "test:newframe-extension": "bun run newframe-extension test",
+    "lint": "bun run newframe lint && bun run newframe-extension test",
+    "dep:report": "bun scripts/dep-report.ts"
   },
-  "packageManager": "bun@1.2.0",
+  "packageManager": "bun@1.3.12",
   "overrides": {
-    "@framelabs/logger": "1.1.1",
     "node-gyp": "12.3.0",
     "@ledgerhq/hw-transport": "6.35.3",
     "@ledgerhq/devices": "8.15.0",
