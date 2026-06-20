@@ -1,0 +1,2854 @@
+// Newframe Tray v2 - modernized home view
+// Palette from the v2 design handoff (dark plum + teal), chain colors come from --accent vars
+
+$t2-bg = rgba(18, 14, 20, 1)
+$t2-pill = rgba(26, 22, 28, 1)
+$t2-pill-hover = rgba(32, 28, 36, 1)
+$t2-card = rgba(24, 20, 27, 1)
+$t2-card-hover = rgba(30, 26, 34, 1)
+$t2-button = rgba(29, 25, 33, 1)
+$t2-button-hover = rgba(35, 31, 40, 1)
+$t2-menu = rgba(31, 27, 35, 1)
+$t2-menu-hover = rgba(40, 36, 45, 1)
+$t2-knob = rgba(37, 33, 43, 1)
+$t2-text = rgba(248, 255, 255, 1)
+$t2-muted = rgba(223, 223, 237, 0.45)
+$t2-muted-strong = rgba(223, 223, 237, 0.7)
+$t2-muted-soft = rgba(223, 223, 237, 0.35)
+$t2-divider = rgba(248, 255, 255, 0.06)
+$t2-teal = rgb(0, 210, 190)
+$t2-teal-bright = rgb(40, 225, 205)
+$t2-pink = rgb(255, 110, 120)
+
+@keyframes t2RiseIn
+  0%
+    opacity 0
+    transform translateY(8px)
+  100%
+    opacity 1
+    transform translateY(0px)
+
+@keyframes t2AppearBlur
+  0%
+    filter blur(10px)
+    opacity 0
+  100%
+    filter blur(0px)
+    opacity 1
+
+@keyframes t2Spin
+  0%
+    transform rotate(0deg)
+  100%
+    transform rotate(360deg)
+
+.t2Home
+  position absolute
+  top 0
+  right 0
+  bottom 0
+  left 0
+  background $t2-bg
+  color $t2-text
+  font-family 'MainFont'
+  display flex
+  flex-direction column
+  overflow hidden
+
+  *
+    box-sizing border-box
+
+// ==================== top bar ====================
+
+.t2TopBar
+  display flex
+  align-items center
+  justify-content space-between
+  padding 14px 14px 0 14px
+  flex-shrink 0
+  z-index 60
+
+.t2AccountPill
+  display flex
+  align-items center
+  gap 4px
+  padding 5px
+  border-radius 21px
+  background $t2-pill
+  max-width 330px
+
+  &:hover
+    background $t2-pill-hover
+
+.t2AccountPillIdentity
+  display flex
+  align-items center
+  gap 10px
+  min-width 0
+  cursor pointer
+
+  *
+    pointer-events none
+
+.t2AccountPillActions
+  display flex
+  align-items center
+  gap 2px
+  margin-left 2px
+  flex-shrink 0
+
+.t2AccountPillAction
+  height 28px
+  width 28px
+  border-radius 14px
+  display flex
+  justify-content center
+  align-items center
+  color $t2-muted-strong
+  cursor pointer
+  pointer-events auto
+
+  &:hover
+    background $t2-button-hover
+    color $t2-teal
+
+  *
+    pointer-events none
+
+.t2AccountPillIcon
+  height 32px
+  width 32px
+  border-radius 50%
+  background $t2-button
+  display flex
+  justify-content center
+  align-items center
+  color $t2-teal
+  flex-shrink 0
+
+.t2AccountPillText
+  display flex
+  flex-direction column
+  gap 1px
+  min-width 0
+
+.t2AccountPillName
+  font-size 13px
+  font-weight 400
+  white-space nowrap
+  overflow hidden
+  text-overflow ellipsis
+
+.t2AccountPillAddress
+  font-size 10px
+  font-family 'FiraCode'
+  color $t2-muted
+  white-space nowrap
+
+.t2AccountPillChevron
+  color $t2-muted
+  display flex
+  flex-shrink 0
+
+.t2MenuButton
+  height 36px
+  width 36px
+  border-radius 50%
+  display flex
+  justify-content center
+  align-items center
+  background rgba(6, 10, 12, 0.82)
+  cursor pointer
+  color $t2-text
+
+  &:hover
+    background rgba(6, 10, 12, 0.96)
+
+  *
+    pointer-events none
+
+// ==================== settings dropdown ====================
+
+// keep main content in its own stacking layer below the dropdown/overlays so
+// composited text layers (post-animation) can't paint through them
+.t2Hero,
+.t2TabRow,
+.t2SearchWrap,
+.t2Main
+  position relative
+  z-index 1
+
+.t2MenuBackdrop
+  position absolute
+  top 0
+  right 0
+  bottom 0
+  left 0
+  z-index 90
+
+.t2Menu
+  position absolute
+  top 58px
+  right 14px
+  width 264px
+  max-height calc(100% - 78px)
+  overflow-y scroll
+  border-radius 20px
+  background $t2-menu
+  box-shadow 0px 12px 40px rgba(0, 0, 0, 0.55)
+  z-index 95
+  padding 6px
+  animation t2RiseIn 180ms ease-out both
+
+.t2MenuRow
+  display flex
+  align-items center
+  justify-content space-between
+  gap 10px
+  padding 9px 12px
+  border-radius 14px
+
+  &:hover
+    background $t2-menu-hover
+
+.t2MenuNavRow
+  gap 11px
+  padding 11px 12px
+  cursor pointer
+
+  *
+    pointer-events none
+
+.t2MenuRowIcon
+  color rgba(223, 223, 237, 0.55)
+  display flex
+
+.t2MenuRowTitle
+  font-size 13px
+  font-weight 400
+  flex-grow 1
+
+.t2MenuBadge
+  min-width 20px
+  height 20px
+  padding 0 5px
+  border-radius 10px
+  background $t2-bg
+  display flex
+  justify-content center
+  align-items center
+  font-size 11px
+  font-family 'FiraCode'
+  color $t2-muted
+
+.t2MenuBadgeActive
+  color $t2-teal
+
+.t2MenuDivider
+  height 1px
+  background $t2-divider
+  margin 4px 10px
+
+.t2MenuSectionHeader
+  display flex
+  align-items center
+  gap 8px
+  padding 9px 12px 5px 12px
+  font-size 10px
+  font-weight 500
+  text-transform uppercase
+  letter-spacing 1.5px
+  color rgba(223, 223, 237, 0.55)
+
+.t2MenuRowLabel
+  font-size 12px
+  font-weight 400
+
+.t2MenuShortcut
+  font-size 11px
+  font-family 'FiraCode'
+  color $t2-muted-strong
+  background $t2-bg
+  padding 4px 8px
+  border-radius 8px
+  white-space nowrap
+
+.t2MenuValueRow
+  cursor pointer
+
+  *
+    pointer-events none
+
+.t2MenuRowValue
+  display flex
+  align-items center
+  gap 6px
+  font-size 11px
+  font-family 'FiraCode'
+  color $t2-muted-strong
+
+.t2MenuActionValue
+  color $t2-teal
+
+.t2MenuRowValueChevron
+  color $t2-muted-soft
+  display flex
+  transform rotate(90deg)
+
+// ==================== full-screen menu ====================
+
+.t2MenuPanel
+  z-index 90
+  padding 16px
+
+.t2MenuPanelHeader
+  padding 0 0 14px 0
+
+.t2MenuPanelScroll
+  flex-grow 1
+  overflow-y scroll
+  overflow-x hidden
+  padding 2px 0 20px 0
+
+.t2MenuPanelSection
+  display flex
+  flex-direction column
+  gap 8px
+  margin-bottom 18px
+
+.t2MenuPanelSectionTitle
+  padding 0 4px
+  color $t2-muted
+  font-size 11px
+  font-weight 500
+  letter-spacing 0
+  text-transform uppercase
+
+.t2MenuPanelRow
+  min-height 64px
+  display flex
+  align-items center
+  gap 12px
+  padding 12px
+  border-radius 20px
+  background $t2-card
+  cursor pointer
+
+  &:hover
+    background $t2-card-hover
+
+  *
+    pointer-events none
+
+.t2MenuPanelRowDanger
+  color $t2-pink
+
+.t2MenuPanelRowIcon
+  height 36px
+  width 36px
+  border-radius 50%
+  background $t2-button
+  color $t2-teal
+  display flex
+  justify-content center
+  align-items center
+  flex-shrink 0
+
+.t2MenuPanelRowDanger .t2MenuPanelRowIcon
+  color $t2-pink
+
+.t2MenuPanelRowText
+  display flex
+  flex-direction column
+  gap 4px
+  min-width 0
+  flex-grow 1
+
+.t2MenuPanelRowTitle
+  font-size 14px
+  font-weight 500
+  white-space nowrap
+  overflow hidden
+  text-overflow ellipsis
+
+.t2MenuPanelRowDetail
+  font-size 11px
+  font-family 'FiraCode'
+  color $t2-muted
+  white-space nowrap
+  overflow hidden
+  text-overflow ellipsis
+
+.t2MenuPanelRowRight
+  color $t2-muted
+  display flex
+  align-items center
+  flex-shrink 0
+
+.t2BrowserButtons
+  display grid
+  grid-template-columns 1fr 1fr
+  gap 8px
+
+.t2BrowserButton
+  min-height 58px
+  border-radius 20px
+  background $t2-card
+  color $t2-text
+  display flex
+  justify-content center
+  align-items center
+  gap 10px
+  cursor pointer
+  font-size 13px
+  font-weight 500
+
+  &:hover
+    background $t2-card-hover
+
+  > div
+    color $t2-teal
+
+  *
+    pointer-events none
+
+// ==================== settings pages ====================
+
+.t2SettingsScroll
+  padding 0 14px 28px 14px
+
+.t2SettingsSection
+  display flex
+  flex-direction column
+  gap 8px
+  margin-bottom 18px
+
+.t2SettingsSectionTitle
+  padding 0 4px
+  color $t2-muted
+  font-size 11px
+  font-weight 500
+  letter-spacing 0
+  text-transform uppercase
+
+.t2SettingsRow
+  min-height 58px
+  border-radius 18px
+  background $t2-card
+  padding 12px
+  display flex
+  align-items center
+  justify-content space-between
+  gap 12px
+  flex-shrink 0
+
+.t2SettingsSelectRow,
+.t2SettingsActionRow
+  cursor pointer
+
+  &:hover
+    background $t2-card-hover
+
+  *
+    pointer-events none
+
+.t2SettingsRowText
+  display flex
+  flex-direction column
+  gap 4px
+  min-width 0
+  flex-grow 1
+
+.t2SettingsRowTitle
+  font-size 13px
+  font-weight 500
+  white-space nowrap
+  overflow hidden
+  text-overflow ellipsis
+
+.t2SettingsRowDetail
+  font-size 11px
+  color $t2-muted
+  line-height 16px
+
+.t2SettingsRowValue
+  display flex
+  align-items center
+  gap 7px
+  color $t2-muted-strong
+  font-family 'FiraCode'
+  font-size 11px
+  flex-shrink 0
+
+.t2SettingsActionValue
+  color $t2-teal
+  font-family 'FiraCode'
+  font-size 11px
+  flex-shrink 0
+
+.t2SettingsDangerRow .t2SettingsActionValue,
+.t2SettingsDangerButton
+  color $t2-pink
+
+.t2SettingsShortcutRow
+  flex-direction column
+  align-items stretch
+
+.t2SettingsShortcutTop
+  display flex
+  align-items center
+  justify-content space-between
+  gap 12px
+
+.t2SettingsShortcutControls
+  display flex
+  align-items center
+  gap 10px
+  flex-shrink 0
+
+.t2SettingsSmallButton
+  height 28px
+  padding 0 12px
+  border-radius 14px
+  background $t2-button
+  display flex
+  align-items center
+  justify-content center
+  cursor pointer
+  font-size 11px
+  font-weight 500
+
+  &:hover
+    background $t2-button-hover
+
+.t2SettingsShortcutDetails
+  color $t2-muted-strong
+  font-size 12px
+  line-height 18px
+
+  span
+    display flex
+    align-items center
+    flex-wrap wrap
+    gap 6px
+
+  label
+    color $t2-muted
+
+  .keyCommand
+    min-height 24px
+    border-radius 8px
+    background $t2-bg
+    color $t2-text
+    padding 3px 8px
+    font-family 'FiraCode'
+    font-size 11px
+
+.t2SettingsInputRow
+  height 42px
+  border-radius 18px
+  background $t2-pill
+  display flex
+  align-items center
+  padding 0 12px
+
+  input
+    width 100%
+    border none
+    outline none
+    background transparent
+    color $t2-text
+    font-family 'FiraCode'
+    font-size 12px
+    cursor text
+
+    &::placeholder
+      color $t2-muted
+
+.t2SettingsConfirmActions
+  display flex
+  gap 8px
+  flex-shrink 0
+
+.t2InfoRow
+  min-height 58px
+  border-radius 18px
+  background $t2-card
+  padding 12px
+  display flex
+  flex-direction column
+  gap 6px
+
+.t2InfoCopyRow
+  cursor pointer
+
+  &:hover
+    background $t2-card-hover
+
+.t2InfoLabel
+  font-size 11px
+  color $t2-muted
+  text-transform uppercase
+  letter-spacing 0
+
+.t2InfoValue
+  font-size 13px
+  color $t2-text
+  overflow hidden
+  text-overflow ellipsis
+  white-space nowrap
+
+.t2InfoValueMono
+  font-family 'FiraCode'
+  font-size 11px
+
+.loaderWrap
+  width 18px
+  height 18px
+  margin-left 4px
+
+.loader,
+.loader:after
+  border-radius 100%
+  width 7em
+  height 7em
+
+.loader
+  font-size 2px
+  position relative
+  text-indent -9999em
+  border-top 2px solid rgba(223, 223, 237, 0.18)
+  border-right 2px solid rgba(223, 223, 237, 0.18)
+  border-bottom 2px solid rgba(223, 223, 237, 0.18)
+  border-left 2px solid $t2-teal
+  transform translateZ(0)
+  animation t2Spin 1.1s infinite linear !important
+
+// ==================== toggles ====================
+
+.t2Toggle
+  position relative
+  background $t2-pink
+  height 20px
+  width 40px
+  border-radius 10px
+  transition 0.32s cubic-bezier(0.82, 0, 0.12, 1) all
+  cursor pointer
+  flex-shrink 0
+
+.t2ToggleOn
+  background $t2-teal
+
+.t2ToggleKnob
+  position absolute
+  top 2px
+  left 2px
+  bottom 2px
+  width 16px
+  border-radius 10px
+  transition 0.32s cubic-bezier(0.82, 0, 0.12, 1) all
+  background $t2-knob
+  pointer-events none
+
+.t2ToggleOn .t2ToggleKnob
+  transform translateX(20px)
+
+// ==================== hero ====================
+
+.t2Hero
+  padding 32px 20px 24px 20px
+  flex-shrink 0
+  display flex
+  flex-direction column
+  align-items center
+  gap 22px
+
+.t2HeroValue
+  position relative
+  display flex
+  align-items baseline
+  justify-content center
+  font-family 'FiraCode'
+  animation t2AppearBlur 600ms cubic-bezier(0.82, 0, 0.12, 1) both
+
+  &:after
+    content ''
+    position absolute
+    left 100%
+    top 0
+    bottom 0
+    width 52px
+
+  &:hover .t2HeroRefresh
+    opacity 1
+    pointer-events auto
+
+.t2HeroDollars
+  font-size 46px
+  font-weight 400
+  letter-spacing 0
+
+.t2HeroCents
+  font-size 24px
+  font-weight 300
+  letter-spacing 0
+  color $t2-muted
+
+.t2HeroRefresh
+  position absolute
+  left 100%
+  top 50%
+  height 34px
+  width 34px
+  margin-left 12px
+  border-radius 17px
+  background $t2-button
+  color $t2-teal
+  display flex
+  justify-content center
+  align-items center
+  cursor pointer
+  opacity 0
+  pointer-events none
+  z-index 2
+  transform translateY(-50%)
+  transition 0.12s ease-out all
+
+  &:hover
+    background $t2-button-hover
+    color $t2-teal-bright
+
+  *
+    pointer-events none
+
+.t2HeroRefreshActive
+  opacity 1
+  pointer-events none
+
+  > div
+    animation t2Spin 0.7s infinite linear
+
+.t2HeroActions
+  display flex
+  justify-content center
+  gap 10px
+
+.t2HeroButton
+  width 134px
+  height 46px
+  border-radius 23px
+  background $t2-button
+  display flex
+  justify-content center
+  align-items center
+  gap 9px
+  cursor pointer
+  border-bottom 2px solid rgba(13, 9, 15, 1)
+  font-size 14px
+  font-weight 400
+
+  &:hover
+    background $t2-button-hover
+    transform translateY(-1px)
+
+  &:active
+    transform translateY(0px)
+
+  *
+    pointer-events none
+
+.t2HeroButtonDisabled
+  opacity 0.45
+  cursor default
+  color $t2-muted
+
+  &:hover
+    background $t2-button
+    transform none
+
+  &:active
+    transform none
+
+  .t2HeroButtonIcon
+    color $t2-muted
+
+.t2HeroButtonIcon
+  color $t2-teal
+  display flex
+
+// ==================== tabs + network filter ====================
+
+.t2TabRow
+  display flex
+  align-items center
+  justify-content space-between
+  padding 0 18px 10px 18px
+  flex-shrink 0
+
+.t2Tabs
+  display flex
+  gap 18px
+
+.t2Tab
+  display flex
+  flex-direction column
+  align-items center
+  gap 5px
+  cursor pointer
+
+  *
+    pointer-events none
+
+.t2TabLabel
+  font-size 14px
+  font-weight 500
+  color $t2-muted
+
+.t2TabLabelActive
+  color $t2-text
+
+.t2TabBar
+  width 100%
+  height 3px
+  border-radius 2px
+  background transparent
+
+.t2TabBarActive
+  background $t2-teal
+
+.t2NetworkPill
+  height 34px
+  border-radius 17px
+  background $t2-pill
+  display flex
+  align-items center
+  gap 7px
+  padding 0 11px 0 12px
+  cursor pointer
+
+  &:hover
+    background $t2-pill-hover
+
+  *
+    pointer-events none
+
+  span
+    font-size 12px
+    font-weight 400
+
+.t2NetworkPillChevron
+  color $t2-muted
+  display flex
+  transform rotate(180deg)
+
+.t2NetworkDots
+  display grid
+  grid-template-columns 5px 5px
+  gap 2px
+
+  .t2NetworkDotSmall
+    width 5px
+    height 5px
+    border-radius 50%
+
+.t2NetworkDotsLarge
+  grid-template-columns 8px 8px
+  gap 3px
+  padding 4px
+
+  .t2NetworkDotSmall
+    width 8px
+    height 8px
+
+.t2NetworkDot
+  width 9px
+  height 9px
+  border-radius 50%
+
+.t2PillChainIcon
+  display flex
+  justify-content center
+  align-items center
+
+  img
+    border-radius 50%
+    object-fit cover
+
+// ==================== asset search ====================
+
+.t2SearchWrap
+  padding 0 14px 10px 14px
+  flex-shrink 0
+
+.t2Search
+  height 38px
+  border-radius 19px
+  background $t2-pill
+  display flex
+  align-items center
+  gap 9px
+  padding 0 6px 0 14px
+
+  input
+    flex-grow 1
+    border none
+    outline none
+    background transparent
+    color $t2-text
+    font-size 13px
+    font-family 'MainFont'
+    box-shadow none
+    cursor text
+    padding 0
+
+    &::placeholder
+      color $t2-muted
+
+.t2SearchIcon
+  color $t2-muted
+  display flex
+
+.t2SearchClear
+  height 28px
+  width 28px
+  border-radius 50%
+  display flex
+  justify-content center
+  align-items center
+  cursor pointer
+  color $t2-muted
+
+  &:hover
+    background $t2-menu-hover
+
+  *
+    pointer-events none
+
+// ==================== main list ====================
+
+.t2Main
+  flex-grow 1
+  overflow-y scroll
+  overflow-x hidden
+  padding 2px 10px 24px 10px
+
+.t2List
+  display flex
+  flex-direction column
+
+.t2TokenRow
+  display flex
+  align-items center
+  gap 12px
+  padding 10px 8px
+  border-radius 18px
+  cursor pointer
+
+  &:hover
+    background $t2-card
+
+  *
+    pointer-events none
+
+.t2TokenIcon
+  position relative
+  flex-shrink 0
+
+.t2TokenIconInner
+  height 38px
+  width 38px
+  border-radius 50%
+  background $t2-button
+  border 1px solid rgba(248, 255, 255, 0.1)
+  display flex
+  justify-content center
+  align-items center
+  color rgba(248, 255, 255, 0.85)
+  overflow hidden
+
+  img
+    height 100%
+    width 100%
+    object-fit cover
+
+.t2TokenIconGlyph
+  font-size 15px
+  font-weight 500
+  font-family 'FiraCode'
+
+.t2TokenChainBadge
+  position absolute
+  top -7px
+  left -7px
+  height 22px
+  width 22px
+  border-radius 50%
+  border 2px solid $t2-bg
+  background $t2-button
+  box-sizing border-box
+  display flex
+  justify-content center
+  align-items center
+  overflow hidden
+
+  img
+    border-radius 50%
+    object-fit cover
+
+.t2ChainIconDot
+  border-radius 50%
+
+.t2TokenInfo
+  display flex
+  flex-direction column
+  gap 3px
+  flex-grow 1
+  min-width 0
+
+.t2TokenSymbol
+  font-size 15px
+  font-weight 400
+
+.t2TokenAmount
+  font-size 11px
+  font-family 'FiraCode'
+  color $t2-muted
+  white-space nowrap
+  overflow hidden
+  text-overflow ellipsis
+
+.t2TokenValues
+  display flex
+  flex-direction column
+  align-items flex-end
+  gap 3px
+
+.t2TokenFiat
+  font-size 15px
+  font-weight 400
+  font-family 'FiraCode'
+  letter-spacing -0.5px
+
+.t2TokenChange
+  font-size 11px
+  font-family 'FiraCode'
+
+.t2TokenChangeUp
+  color $t2-teal
+
+.t2TokenChangeDown
+  color rgb(255, 110, 155)
+
+.t2LowValueHidden
+  margin 6px 8px 2px 8px
+  padding 9px 12px
+  border-radius 4px
+  background rgba(248, 255, 255, 0.08)
+  color $t2-muted
+  display flex
+  align-items center
+  gap 8px
+  cursor pointer
+  font-size 13px
+  font-weight 500
+  letter-spacing 0
+
+  &:hover
+    background rgba(248, 255, 255, 0.11)
+
+  *
+    pointer-events none
+
+.t2LowValueHiddenChevron
+  display flex
+  color $t2-muted
+  transform rotate(180deg)
+
+.t2LowValueHiddenChevronOpen
+  transform rotate(270deg)
+
+.t2LowValueHiddenLabel
+  flex-grow 1
+  min-width 0
+
+.t2LowValueHiddenValue
+  color $t2-text
+  font-family 'FiraCode'
+  font-size 13px
+  font-weight 600
+
+.t2DustTokenRow
+  margin-left 0
+  background rgba(248, 255, 255, 0.02)
+
+.t2EmptyState
+  padding 50px 0
+  display flex
+  justify-content center
+  align-items center
+  font-size 11px
+  text-transform uppercase
+  letter-spacing 1.5px
+  font-weight 400
+  color $t2-muted-soft
+
+// ==================== overlays ====================
+
+.t2Overlay
+  position absolute
+  top 0
+  right 0
+  bottom 0
+  left 0
+  background $t2-bg
+  z-index 80
+  display flex
+  flex-direction column
+
+.t2OverlayHeader
+  display flex
+  align-items center
+  padding 14px
+  flex-shrink 0
+
+.t2OverlayBack
+  height 36px
+  width 36px
+  border-radius 14px
+  display flex
+  justify-content center
+  align-items center
+  background $t2-pill
+  cursor pointer
+
+  &:hover
+    background $t2-pill-hover
+
+  *
+    pointer-events none
+
+.t2OverlayTitle
+  flex-grow 1
+  text-align center
+  font-size 14px
+  font-weight 500
+  letter-spacing 1.5px
+  text-transform uppercase
+  pointer-events none
+
+.t2OverlaySpacer
+  width 36px
+
+.t2OverlayScroll
+  flex-grow 1
+  overflow-y scroll
+  overflow-x hidden
+  position relative
+
+// ==================== networks overlay ====================
+
+.t2NetworksScroll
+  padding 0 12px 100px 12px
+
+.t2NetworkAll
+  display flex
+  align-items center
+  gap 12px
+  padding 13px 12px
+  border-radius 20px
+  background $t2-pill
+  border 1px solid transparent
+  cursor pointer
+  margin-bottom 10px
+
+  &:hover
+    background $t2-pill-hover
+
+  *
+    pointer-events none
+
+.t2NetworkAllName
+  font-size 14px
+  font-weight 500
+  flex-grow 1
+
+.t2NetworkAllTotal
+  font-size 16px
+  font-weight 400
+  font-family 'FiraCode'
+  letter-spacing -0.5px
+
+.t2NetworkItem
+  border-radius 18px
+  border 1px solid transparent
+  margin-bottom 2px
+
+.t2NetworkSectionTitle
+  padding 10px 4px 6px 4px
+  color $t2-muted
+  font-size 11px
+  font-weight 500
+  letter-spacing 0
+  text-transform uppercase
+
+.t2NetworkSelected
+  border-color rgba(0, 210, 190, 0.45)
+
+.t2NetworkRow
+  display flex
+  align-items center
+  gap 12px
+  padding 11px 12px
+  border-radius 17px
+  cursor pointer
+
+  &:hover
+    background $t2-card
+
+.t2NetworkIcon
+  height 30px
+  width 30px
+  border-radius 50%
+  background $t2-button
+  display flex
+  justify-content center
+  align-items center
+  flex-shrink 0
+  pointer-events none
+  overflow hidden
+
+  img
+    border-radius 50%
+    object-fit cover
+
+.t2NetworkName
+  font-size 14px
+  font-weight 400
+  flex-grow 1
+  pointer-events none
+
+.t2NetworkTotal
+  font-size 13px
+  font-family 'FiraCode'
+  color $t2-muted-strong
+  pointer-events none
+
+.t2NetworkKebab
+  height 28px
+  width 28px
+  border-radius 50%
+  display flex
+  justify-content center
+  align-items center
+  cursor pointer
+  color $t2-muted
+
+  &:hover
+    background $t2-button-hover
+
+  *
+    pointer-events none
+
+.t2NetworkActions
+  display flex
+  flex-direction column
+  align-items flex-start
+  gap 8px
+  padding 2px 12px 10px 54px
+  animation t2RiseIn 160ms ease-out both
+
+.t2NetworkRpcEditor
+  width 100%
+  display flex
+  flex-direction column
+  gap 6px
+
+.t2NetworkRpcLabel
+  display flex
+  justify-content space-between
+  color $t2-muted
+  font-size 11px
+  padding-right 2px
+
+.t2NetworkRpcInputRow
+  width 100%
+  display flex
+  align-items center
+  gap 8px
+
+  input
+    min-width 0
+    flex-grow 1
+    height 30px
+    border none
+    outline none
+    border-radius 15px
+    background $t2-pill
+    color $t2-text
+    padding 0 12px
+    font-family 'FiraCode'
+    font-size 11px
+
+    &::placeholder
+      color $t2-muted
+
+.t2NetworkAction
+  height 30px
+  padding 0 16px
+  border-radius 15px
+  background $t2-button
+  display flex
+  align-items center
+  font-size 11px
+  font-weight 500
+  text-transform uppercase
+  letter-spacing 1px
+  cursor pointer
+
+  &:hover
+    background $t2-button-hover
+
+.t2NetworkActionBad
+  color rgb(255, 110, 155)
+
+.t2NetworkActionGood
+  color $t2-teal
+
+.t2NetworkActionDisabled
+  color $t2-muted
+  cursor default
+
+.t2NetworkActionCancel
+  background transparent
+  color $t2-muted
+
+  &:hover
+    background $t2-button
+
+.t2FloatingAction
+  position absolute
+  bottom 18px
+  left 0
+  right 0
+  display flex
+  justify-content center
+  pointer-events none
+
+.t2FloatingActionButton
+  height 46px
+  padding 0 24px
+  border-radius 23px
+  background $t2-teal
+  color $t2-bg
+  display flex
+  align-items center
+  gap 9px
+  cursor pointer
+  pointer-events auto
+  box-shadow 0px 10px 30px rgba(0, 0, 0, 0.5)
+  font-size 14px
+  font-weight 500
+
+  &:hover
+    background $t2-teal-bright
+
+  *
+    pointer-events none
+
+// ==================== requests overlay ====================
+
+.t2RequestsScroll
+  padding 0 6px 24px 6px
+
+  .accountViewScroll
+    position relative
+    padding-top 0px !important
+
+// ==================== dapps overlay ====================
+
+.t2DappsScroll
+  padding 0 14px 24px 14px
+  display flex
+  flex-direction column
+  gap 8px
+
+.t2DappRow
+  display flex
+  align-items center
+  justify-content space-between
+  padding 14px
+  border-radius 18px
+  background $t2-card
+  flex-shrink 0
+
+.t2DappOrigin
+  font-size 14px
+  font-weight 300
+  white-space nowrap
+  overflow hidden
+  text-overflow ellipsis
+  padding-right 12px
+
+// ==================== accounts panel ====================
+
+.t2AccountsPanel
+  z-index 85
+  padding 16px 16px 20px 16px
+
+.t2AccountsHeader
+  justify-content space-between
+  height 44px
+  padding 0 4px 0 10px
+
+.t2AccountsTitle
+  font-size 15px
+  font-weight 500
+  letter-spacing 1px
+  text-transform uppercase
+
+.t2AccountsClose
+  height 36px
+  width 36px
+  border-radius 14px
+  display flex
+  justify-content center
+  align-items center
+  background $t2-button
+  cursor pointer
+  color $t2-text
+
+  &:hover
+    background $t2-button-hover
+
+  *
+    pointer-events none
+
+.t2AccountsScroll
+  display flex
+  flex-direction column
+  gap 8px
+  padding-top 10px
+
+.t2AccountRow
+  display flex
+  align-items center
+  gap 12px
+  padding 14px
+  border-radius 20px
+  background $t2-card
+  border 1px solid transparent
+  cursor pointer
+  flex-shrink 0
+
+  &:hover
+    background $t2-card-hover
+
+  *
+    pointer-events none
+
+.t2AccountRowSelected
+  border-color rgba(0, 210, 190, 0.45)
+
+.t2AccountRowIcon
+  height 36px
+  width 36px
+  border-radius 50%
+  background $t2-button
+  display flex
+  justify-content center
+  align-items center
+  color $t2-teal
+  flex-shrink 0
+
+.t2AccountRowInfo
+  display flex
+  flex-direction column
+  gap 3px
+  flex-grow 1
+  min-width 0
+
+.t2AccountRowName
+  font-size 14px
+  font-weight 400
+  white-space nowrap
+  overflow hidden
+  text-overflow ellipsis
+
+.t2AccountRowAddress
+  font-size 11px
+  font-family 'FiraCode'
+  color $t2-muted
+
+.t2AccountRowType
+  font-size 9px
+  font-weight 500
+  text-transform uppercase
+  letter-spacing 1.5px
+  color $t2-teal
+
+.t2AccountRowRight
+  display flex
+  align-items center
+  justify-content flex-end
+  gap 8px
+  margin-left auto
+  flex-shrink 0
+
+.t2AccountRowValue
+  min-width 76px
+  text-align right
+  font-size 13px
+  font-weight 500
+  font-family 'FiraCode'
+  letter-spacing 0
+  color $t2-text
+  white-space nowrap
+
+.t2AccountRow:not(.t2AccountRowSelected)
+  .t2AccountRowValue
+    color $t2-muted-strong
+
+.t2AccountRowCheck
+  color $t2-teal
+  display flex
+
+.t2AddAccountButton
+  height 46px
+  border-radius 23px
+  background $t2-button
+  display flex
+  justify-content center
+  align-items center
+  gap 9px
+  cursor pointer
+  flex-shrink 0
+  font-size 13px
+  font-weight 400
+  margin-top 8px
+
+  &:hover
+    background $t2-button-hover
+
+  *
+    pointer-events none
+
+.t2AccountsTools
+  display flex
+  align-items center
+  gap 8px
+  padding 12px 4px 10px 4px
+  flex-shrink 0
+
+.t2AccountsSearch
+  height 38px
+  border-radius 19px
+  background $t2-pill
+  display flex
+  align-items center
+  gap 8px
+  padding 0 6px 0 13px
+  flex-grow 1
+  min-width 0
+
+  input
+    min-width 0
+    flex-grow 1
+    border none
+    outline none
+    background transparent
+    color $t2-text
+    font-size 13px
+    font-family 'MainFont'
+    box-shadow none
+
+    &::placeholder
+      color $t2-muted
+
+.t2AccountsSearchIcon
+  color $t2-muted
+  display flex
+  flex-shrink 0
+
+.t2AccountsSearchClear
+  height 28px
+  width 28px
+  border-radius 14px
+  display flex
+  align-items center
+  justify-content center
+  color $t2-muted
+  cursor pointer
+  flex-shrink 0
+
+  &:hover
+    background $t2-menu-hover
+
+  *
+    pointer-events none
+
+.t2AccountsAddSmall
+  height 38px
+  border-radius 19px
+  padding 0 13px
+  background rgba(0, 210, 190, 0.13)
+  color $t2-teal
+  border 1px solid rgba(0, 210, 190, 0.28)
+  display flex
+  align-items center
+  justify-content center
+  gap 7px
+  cursor pointer
+  font-size 12px
+  font-weight 500
+  flex-shrink 0
+
+  &:hover
+    background rgba(0, 210, 190, 0.2)
+    border-color rgba(0, 210, 190, 0.45)
+
+  *
+    pointer-events none
+
+.t2AccountsNotice
+  margin 0 4px 8px 4px
+  padding 8px 10px
+  border-radius 12px
+  font-size 11px
+  line-height 16px
+  background $t2-card
+
+.t2AccountsNoticeBad
+  color $t2-pink
+
+.t2AccountsScroll
+  padding 0 0 24px 0
+
+.t2AccountRow
+  position relative
+  min-height 64px
+  padding 10px 12px
+  border-radius 16px
+
+.t2AccountRow *
+  pointer-events auto
+
+.t2AccountRowDragging
+  opacity 0.45
+
+.t2AccountRowDropTarget
+  border-color rgba(0, 210, 190, 0.5)
+  background rgba(0, 210, 190, 0.08)
+
+.t2AccountDragHandle
+  width 18px
+  height 34px
+  display grid
+  grid-template-columns repeat(2, 4px)
+  grid-auto-rows 4px
+  align-content center
+  justify-content center
+  gap 4px
+  color $t2-muted
+  cursor grab
+  flex-shrink 0
+
+  &:active
+    cursor grabbing
+
+  &:hover
+    color $t2-teal
+
+  span
+    height 4px
+    width 4px
+    border-radius 50%
+    background currentColor
+    pointer-events none
+
+.t2AccountRowAddress
+  white-space nowrap
+  overflow hidden
+  text-overflow ellipsis
+
+.t2AccountRowName
+  display flex
+  align-items center
+  gap 6px
+  min-width 0
+
+.t2AccountInlineEdit
+  height 18px
+  width 18px
+  border-radius 9px
+  color $t2-muted
+  display flex
+  align-items center
+  justify-content center
+  cursor pointer
+  flex-shrink 0
+
+  &:hover
+    color $t2-teal
+    background $t2-button-hover
+
+  *
+    pointer-events none
+
+.t2AccountRenameInput
+  display flex
+  align-items center
+  gap 4px
+  min-width 0
+
+  input
+    min-width 0
+    width 128px
+    height 22px
+    border none
+    outline none
+    border-radius 0
+    background transparent
+    color $t2-text
+    padding 0
+    font-family 'MainFont'
+    font-size 14px
+    font-weight 400
+    box-shadow none
+
+.t2AccountRenameCancel
+  height 20px
+  width 20px
+  border-radius 10px
+  color $t2-muted
+  display flex
+  align-items center
+  justify-content center
+  cursor pointer
+  flex-shrink 0
+
+  &:hover
+    background $t2-button-hover
+    color $t2-text
+
+  *
+    pointer-events none
+
+.t2AccountRowRight
+  gap 6px
+
+.t2AccountIconButton
+  height 28px
+  width 28px
+  border-radius 14px
+  background transparent
+  color $t2-muted-strong
+  display flex
+  align-items center
+  justify-content center
+  cursor pointer
+  flex-shrink 0
+
+  &:hover
+    background $t2-button-hover
+    color $t2-teal
+
+  *
+    pointer-events none
+
+.t2AccountActionsMenu
+  position absolute
+  top 48px
+  right 34px
+  width 204px
+  border-radius 14px
+  background $t2-menu
+  box-shadow 0 16px 34px rgba(0, 0, 0, 0.42)
+  padding 6px
+  z-index 8
+  display flex
+  flex-direction column
+  gap 2px
+
+.t2AccountAction
+  min-height 34px
+  display flex
+  align-items center
+  padding 0 8px
+  border-radius 10px
+  color $t2-text
+  font-size 12px
+  cursor pointer
+
+  &:hover
+    background $t2-menu-hover
+
+.t2AccountActionDanger
+  color $t2-pink
+
+.t2AccountSeedPrompt
+  display flex
+  flex-direction column
+  gap 2px
+
+.t2AccountSeedPromptTitle
+  padding 6px 8px 2px 8px
+  color $t2-text
+  font-size 12px
+  font-weight 500
+  line-height 16px
+
+.t2AccountSeedPromptDetail
+  padding 0 8px 6px 8px
+  color $t2-muted
+  font-size 11px
+  line-height 15px
+
+.t2PrivateKeyExport
+  min-height 100%
+  padding 0 4px 20px 4px
+  display flex
+  flex-direction column
+
+.t2PrivateKeyHeader
+  height 42px
+  display flex
+  align-items center
+  gap 10px
+  margin-bottom 20px
+
+.t2PrivateKeyBack
+  height 34px
+  width 34px
+  border-radius 14px
+  display flex
+  align-items center
+  justify-content center
+  cursor pointer
+  color $t2-muted-strong
+
+  &:hover
+    background $t2-pill-hover
+    color $t2-text
+
+  *
+    pointer-events none
+
+.t2PrivateKeyTitle
+  font-size 21px
+  line-height 28px
+  font-weight 500
+
+.t2PrivateKeyBody
+  display flex
+  flex-direction column
+  gap 12px
+
+.t2PrivateKeyPassword
+  margin-bottom 2px
+
+.t2PrivateKeyBox
+  min-height 44px
+  width 100%
+  border-radius 2px
+  background rgba(38, 42, 46, 0.84)
+  color $t2-text
+  font-family 'FiraCode'
+  font-size 11px
+  line-height 18px
+  padding 12px
+  word-break break-all
+  user-select text
+  transition filter 120ms ease, color 120ms ease
+
+.t2PrivateKeyBoxBlurred
+  filter blur(5px)
+  color rgba(248, 255, 255, 0.5)
+  user-select none
+
+.t2PrivateKeyError
+  color $t2-pink
+  font-size 12px
+  line-height 17px
+
+.t2PrivateKeyActions
+  display flex
+  align-items center
+  justify-content flex-end
+  gap 12px
+
+.t2PrivateKeyAction
+  min-height 34px
+  border-radius 17px
+  display flex
+  align-items center
+  justify-content center
+  gap 7px
+  padding 0 12px
+  background rgba(0, 210, 190, 0.13)
+  border 1px solid rgba(0, 210, 190, 0.28)
+  color $t2-teal
+  cursor pointer
+  font-size 13px
+  font-weight 500
+
+  &:hover
+    background rgba(0, 210, 190, 0.2)
+
+  *
+    pointer-events none
+
+.t2PrivateKeyActionSubtle
+  background transparent
+  border-color transparent
+  color $t2-text
+
+  &:hover
+    background $t2-button-hover
+
+.t2PrivateKeyWarning
+  margin-top auto
+  min-height 90px
+  border-radius 15px
+  background rgba(107, 88, 43, 0.46)
+  color $t2-text
+  display flex
+  align-items center
+  gap 10px
+  padding 16px 14px
+  font-size 14px
+  line-height 21px
+  font-weight 500
+
+.t2PrivateKeyWarningIcon
+  color rgb(255, 212, 88)
+  flex-shrink 0
+
+.t2InlineAdd
+  padding 0 4px 20px 4px
+
+.t2InlineAddHeader
+  height 42px
+  display flex
+  align-items center
+  gap 10px
+  margin-bottom 10px
+
+.t2InlineAddBack
+  height 34px
+  width 34px
+  border-radius 14px
+  display flex
+  align-items center
+  justify-content center
+  background $t2-pill
+  cursor pointer
+
+  &:hover
+    background $t2-pill-hover
+
+  *
+    pointer-events none
+
+.t2InlineAddTitle
+  font-size 14px
+  font-weight 500
+  text-transform uppercase
+  letter-spacing 1px
+
+.t2InlineAddTypes
+  display grid
+  grid-template-columns 1fr
+  gap 8px
+  margin-bottom 12px
+
+.t2InlineAddType
+  min-height 48px
+  border-radius 16px
+  background $t2-card
+  border 1px solid transparent
+  display flex
+  align-items center
+  gap 10px
+  padding 0 12px
+  cursor pointer
+  font-size 13px
+
+  &:hover
+    background $t2-card-hover
+
+  *
+    pointer-events none
+
+.t2InlineAddTypeSelected
+  border 1px solid rgba(0, 210, 190, 0.45)
+
+.t2InlineAddTypeIcon
+  height 28px
+  width 28px
+  border-radius 14px
+  background $t2-button
+  color $t2-teal
+  display flex
+  align-items center
+  justify-content center
+  flex-shrink 0
+
+.t2InlineAddType
+  span
+    min-width 0
+    overflow hidden
+    text-overflow ellipsis
+    white-space nowrap
+
+.t2StoredSeedCards
+  display flex
+  flex-direction column
+  gap 8px
+  margin-bottom 12px
+
+.t2StoredSeedCard
+  border-radius 16px
+  background $t2-card
+  border 1px solid transparent
+  padding 12px
+
+  &:hover
+    background $t2-card-hover
+
+.t2StoredSeedHeader
+  display flex
+  align-items center
+  gap 10px
+  margin-bottom 10px
+
+.t2StoredSeedIcon
+  height 28px
+  width 28px
+  border-radius 14px
+  background $t2-button
+  color $t2-teal
+  display flex
+  align-items center
+  justify-content center
+  flex-shrink 0
+
+.t2StoredSeedTitle
+  min-width 0
+  flex-grow 1
+  overflow hidden
+  text-overflow ellipsis
+  white-space nowrap
+  font-size 13px
+  font-weight 500
+
+.t2StoredSeedCount
+  color $t2-muted
+  font-size 11px
+  font-family 'FiraCode'
+  flex-shrink 0
+
+.t2StoredSeedWallets
+  display flex
+  flex-direction column
+  gap 5px
+
+.t2StoredSeedWallet
+  display grid
+  grid-template-columns minmax(0, 1fr) auto
+  gap 8px
+  align-items center
+  min-height 28px
+  padding 0 2px
+
+.t2StoredSeedWalletName
+  min-width 0
+  overflow hidden
+  text-overflow ellipsis
+  white-space nowrap
+  font-size 12px
+  color $t2-text
+
+.t2StoredSeedWalletAddress
+  color $t2-muted
+  font-size 11px
+  font-family 'FiraCode'
+  white-space nowrap
+
+.t2StoredSeedMore
+  height 32px
+  border-radius 10px
+  background $t2-pill
+  color $t2-muted-strong
+  display flex
+  align-items center
+  justify-content center
+  gap 6px
+  margin-top 2px
+  font-size 12px
+  cursor pointer
+
+  &:hover
+    background $t2-pill-hover
+
+  *
+    pointer-events none
+
+.t2StoredSeedAddAddress
+  height 38px
+  border-radius 12px
+  background rgba(0, 210, 190, 0.16)
+  border 1px solid rgba(0, 210, 190, 0.32)
+  color $t2-teal
+  display flex
+  align-items center
+  justify-content center
+  gap 8px
+  margin-top 2px
+  font-size 12px
+  font-weight 500
+  cursor pointer
+
+  &:hover
+    background rgba(0, 210, 190, 0.24)
+    border-color rgba(0, 210, 190, 0.52)
+
+  *
+    pointer-events none
+
+.t2InlineAddEmpty
+  display flex
+  flex-direction column
+  gap 12px
+  padding 12px 2px
+  color $t2-muted-strong
+  font-size 13px
+
+.t2InlineAddFile
+  min-height 48px
+  border-radius 16px
+  background $t2-card
+  border 1px solid rgba(248, 255, 255, 0.06)
+  display flex
+  align-items center
+  gap 10px
+  padding 0 12px
+  cursor pointer
+  font-size 13px
+
+  &:hover
+    background $t2-card-hover
+
+  *
+    pointer-events none
+
+.t2InlineAddFileIcon
+  height 28px
+  width 28px
+  border-radius 14px
+  background $t2-button
+  color $t2-teal
+  display flex
+  align-items center
+  justify-content center
+  flex-shrink 0
+
+.t2DerivedAccounts
+  display flex
+  flex-direction column
+  gap 6px
+
+.t2DerivedAccountRow
+  min-height 50px
+  border-radius 12px
+  background $t2-card
+  display grid
+  grid-template-columns 24px minmax(0, 1fr) auto auto 22px
+  align-items center
+  gap 6px
+  padding 8px 9px
+  cursor pointer
+  border 1px solid transparent
+
+  &:hover
+    background $t2-card-hover
+
+  *
+    pointer-events none
+
+.t2DerivedAccountImported
+  border-color rgba(0, 210, 190, 0.18)
+
+.t2DerivedAccountIndex
+  color $t2-muted
+  font-size 11px
+  font-family 'FiraCode'
+
+.t2DerivedAccountIdentity
+  min-width 0
+  display flex
+  flex-direction column
+  gap 3px
+
+.t2DerivedAccountName
+  min-width 0
+  overflow hidden
+  text-overflow ellipsis
+  white-space nowrap
+  font-size 13px
+  color $t2-text
+
+.t2DerivedAccountAddress
+  min-width 0
+  overflow hidden
+  text-overflow ellipsis
+  white-space nowrap
+  font-size 11px
+  font-family 'FiraCode'
+  color $t2-muted
+
+.t2DerivedAccountValue
+  color $t2-muted-strong
+  font-size 11px
+  font-family 'FiraCode'
+  white-space nowrap
+
+.t2DerivedAccountBadge
+  height 21px
+  border-radius 6px
+  padding 0 6px
+  background rgba(0, 210, 190, 0.12)
+  color $t2-teal
+  display flex
+  align-items center
+  font-size 10px
+  font-weight 500
+
+.t2DerivedAccountCheck
+  height 20px
+  width 20px
+  border-radius 10px
+  border 1px solid $t2-muted-strong
+  display flex
+  align-items center
+  justify-content center
+  color $t2-bg
+  background transparent
+
+.t2DerivedAccountImported
+  .t2DerivedAccountCheck
+    border-color transparent
+    background $t2-teal
+
+.t2InlineAddForm
+  display flex
+  flex-direction column
+  gap 10px
+
+.t2InlineInput
+  display flex
+  flex-direction column
+  gap 6px
+
+  label
+    color $t2-muted
+    font-size 11px
+    text-transform uppercase
+    letter-spacing 0.8px
+
+  input,
+  textarea
+    border none
+    outline none
+    border-radius 16px
+    background $t2-pill
+    color $t2-text
+    padding 12px
+    font-family 'FiraCode'
+    font-size 12px
+    box-shadow none
+
+  textarea
+    resize none
+    min-height 96px
+    line-height 18px
+
+.t2InlineAddError,
+.t2InlineAddStatus
+  padding 8px 10px
+  border-radius 12px
+  background $t2-card
+  font-size 12px
+  line-height 17px
+
+.t2InlineAddError
+  color $t2-pink
+
+.t2InlineAddStatus
+  color $t2-teal
+
+.t2InlineAddSubmit
+  height 44px
+  border-radius 22px
+  background $t2-teal
+  color $t2-bg
+  display flex
+  align-items center
+  justify-content center
+  gap 8px
+  cursor pointer
+  font-size 13px
+  font-weight 500
+
+  &:hover
+    background $t2-teal-bright
+
+  *
+    pointer-events none
+
+.t2InlineAddSubmitSubtle
+  background $t2-button
+  color $t2-text
+
+  &:hover
+    background $t2-button-hover
+
+.t2SeedCreateNotice
+  min-height 42px
+  border-radius 14px
+  background rgba(255, 212, 88, 0.08)
+  color rgba(255, 226, 140, 0.92)
+  display flex
+  align-items center
+  gap 9px
+  padding 9px 11px
+  font-size 12px
+  line-height 17px
+
+.t2SeedCreateNoticeIcon
+  color rgb(255, 212, 88)
+  flex-shrink 0
+
+.t2SeedPhraseGrid
+  display grid
+  grid-template-columns repeat(2, minmax(0, 1fr))
+  gap 6px
+
+.t2SeedPhraseWord
+  min-width 0
+  min-height 34px
+  border-radius 10px
+  background $t2-pill
+  display flex
+  align-items center
+  gap 8px
+  padding 7px 9px
+
+  span
+    width 17px
+    color $t2-muted
+    font-size 10px
+    font-family 'FiraCode'
+    flex-shrink 0
+
+  strong
+    min-width 0
+    overflow hidden
+    text-overflow ellipsis
+    white-space nowrap
+    color $t2-text
+    font-size 12px
+    font-family 'FiraCode'
+    font-weight 500
+
+.t2SeedPhraseActions
+  display flex
+  gap 8px
+  flex-wrap wrap
+
+.t2SeedBackupCheck
+  min-height 42px
+  border-radius 14px
+  background $t2-card
+  border 1px solid transparent
+  display flex
+  align-items center
+  gap 10px
+  padding 9px 11px
+  cursor pointer
+  color $t2-muted-strong
+  font-size 12px
+
+  &:hover
+    background $t2-card-hover
+
+  *
+    pointer-events none
+
+.t2SeedBackupCheckOn
+  border-color rgba(0, 210, 190, 0.38)
+  color $t2-text
+
+.t2SeedBackupBox
+  height 18px
+  width 18px
+  border-radius 6px
+  border 1px solid $t2-muted-strong
+  display flex
+  align-items center
+  justify-content center
+  color $t2-bg
+  flex-shrink 0
+
+.t2SeedBackupCheckOn
+  .t2SeedBackupBox
+    border-color transparent
+    background $t2-teal
+
+.t2LatticeCreateForm
+  display flex
+  flex-direction column
+  gap 10px
+  padding-top 4px
+
+.t2HardwareSignerHeader
+  min-height 58px
+  border-radius 18px
+  background $t2-card
+  padding 12px
+  display flex
+  align-items center
+  gap 12px
+
+.t2HardwareSignerIcon
+  height 34px
+  width 34px
+  border-radius 17px
+  background $t2-button
+  color $t2-teal
+  display flex
+  align-items center
+  justify-content center
+  flex-shrink 0
+
+.t2HardwareSignerText
+  min-width 0
+  flex-grow 1
+  display flex
+  flex-direction column
+  gap 4px
+
+.t2HardwareSignerName
+  font-size 13px
+  font-weight 500
+  white-space nowrap
+  overflow hidden
+  text-overflow ellipsis
+
+.t2HardwareSignerStatus
+  font-size 11px
+  color $t2-muted
+  font-family 'FiraCode'
+  white-space nowrap
+  overflow hidden
+  text-overflow ellipsis
+
+.t2HardwareChallenge
+  border-radius 18px
+  background $t2-card
+  padding 12px
+  display flex
+  flex-direction column
+  gap 10px
+
+.t2HardwarePinDots
+  min-height 20px
+  display flex
+  justify-content center
+  align-items center
+  gap 7px
+
+  span
+    height 7px
+    width 7px
+    border-radius 50%
+    background $t2-teal
+
+.t2HardwarePinPad
+  display grid
+  grid-template-columns repeat(3, 1fr)
+  gap 8px
+
+.t2HardwarePinButton
+  height 38px
+  border-radius 12px
+  background $t2-button
+  color $t2-muted-strong
+  display flex
+  align-items center
+  justify-content center
+  cursor pointer
+
+  &:hover
+    background $t2-button-hover
+    color $t2-text
+
+  *
+    pointer-events none
+
+.t2HardwareActions
+  display flex
+  gap 8px
+  flex-wrap wrap
+
+.t2ReceiveOverlay
+  z-index 88
+
+.t2ReceiveBody
+  flex-grow 1
+  display flex
+  flex-direction column
+  align-items center
+  justify-content center
+  padding 0 20px 42px 20px
+
+.t2ReceiveIcon
+  height 42px
+  width 42px
+  border-radius 21px
+  background $t2-button
+  color $t2-teal
+  display flex
+  align-items center
+  justify-content center
+  margin-bottom 8px
+
+.t2ReceiveName
+  font-size 14px
+  font-weight 500
+  margin-bottom 18px
+
+.t2ReceiveQr
+  width 156px
+  height 156px
+  border-radius 16px
+  overflow hidden
+  background white
+  display flex
+  align-items center
+  justify-content center
+  margin-bottom 16px
+
+.t2ReceiveQrCanvas
+  width 156px
+  height 156px
+
+.t2ReceiveAddress
+  max-width 100%
+  height 46px
+  border-radius 23px
+  background $t2-pill
+  color $t2-muted-strong
+  display flex
+  align-items center
+  gap 8px
+  padding 0 13px
+  cursor pointer
+
+  &:hover
+    background $t2-pill-hover
+    color $t2-text
+
+  span
+    min-width 0
+    overflow hidden
+    text-overflow ellipsis
+    white-space nowrap
+    font-family 'FiraCode'
+    font-size 11px
+
+.t2AssetOverlay
+  z-index 88
+
+.t2AssetBody
+  flex-grow 1
+  padding 8px 16px 112px 16px
+  overflow-y auto
+
+.t2AssetHero
+  min-height 112px
+  display flex
+  align-items center
+  gap 14px
+  border-bottom 1px solid $t2-divider
+  margin-bottom 12px
+
+.t2AssetHeroIcon
+  width 54px
+  height 54px
+  display flex
+  align-items center
+  justify-content center
+  flex-shrink 0
+
+  .t2TokenIconInner
+    height 48px
+    width 48px
+
+  .t2TokenChainBadge
+    top -6px
+    left -6px
+
+.t2AssetHeroText
+  min-width 0
+  flex-grow 1
+
+.t2AssetHeroName
+  color $t2-text
+  font-size 20px
+  font-weight 600
+  overflow hidden
+  text-overflow ellipsis
+  white-space nowrap
+
+.t2AssetHeroSub
+  display flex
+  align-items center
+  gap 8px
+  margin-top 6px
+  color $t2-muted-strong
+  font-size 13px
+
+  span
+    min-width 0
+    overflow hidden
+    text-overflow ellipsis
+    white-space nowrap
+
+.t2AssetDetailList
+  display flex
+  flex-direction column
+  border-top 1px solid $t2-divider
+
+.t2AssetDetailRow
+  min-height 58px
+  display flex
+  align-items center
+  justify-content space-between
+  gap 16px
+  border-bottom 1px solid $t2-divider
+
+.t2AssetDetailLabel
+  color $t2-muted
+  font-size 13px
+  font-weight 500
+  flex-shrink 0
+
+.t2AssetDetailValue
+  color $t2-text
+  font-size 14px
+  font-weight 500
+  text-align right
+  min-width 0
+  overflow hidden
+  text-overflow ellipsis
+  white-space nowrap
+
+.t2AssetDetailValueCode
+  font-family 'FiraCode'
+  font-size 10px
+  white-space normal
+  word-break break-all
+  line-height 15px
+
+.t2AssetChainValue
+  display flex
+  align-items center
+  justify-content flex-end
+  gap 8px
+  min-width 0
+
+  span
+    min-width 0
+    overflow hidden
+    text-overflow ellipsis
+    white-space nowrap
+
+.t2AssetChainIcon
+  width 22px
+  height 22px
+  border-radius 50%
+  background $t2-button
+  display flex
+  align-items center
+  justify-content center
+  flex-shrink 0
+  overflow hidden
+
+  img
+    border-radius 50%
+    object-fit cover
+
+.t2AssetFooter
+  position absolute
+  left 0
+  right 0
+  bottom 0
+  height 94px
+  display flex
+  align-items center
+  justify-content center
+  background linear-gradient(180deg, rgba(18, 14, 20, 0), $t2-bg 30%)
+  pointer-events none
+
+.t2AssetSendButton
+  min-width 132px
+  height 48px
+  border-radius 24px
+  background $t2-teal
+  color rgb(8, 16, 18)
+  display flex
+  align-items center
+  justify-content center
+  gap 9px
+  font-size 15px
+  font-weight 700
+  cursor pointer
+  pointer-events auto
+
+  &:hover
+    background $t2-teal-bright
+
+  *
+    pointer-events none
+
+  > div
+    flex-shrink 0
+
+.t2AssetSendButtonDisabled
+  opacity 0.45
+  cursor default
+
+  &:hover
+    background $t2-teal
+
+.t2LockBlocker
+  position absolute
+  top 0
+  right 0
+  bottom 0
+  left 0
+  z-index 999
+  background $t2-bg
+  display flex
+  align-items center
+  justify-content center
+  padding 18px
+
+.t2LockPanel
+  width 100%
+  max-width 292px
+  border-radius 22px
+  background $t2-card
+  padding 24px 18px 18px 18px
+  display flex
+  flex-direction column
+  align-items center
+  gap 12px
+  color $t2-text
+
+.t2LockIcon
+  height 48px
+  width 48px
+  border-radius 24px
+  background $t2-button
+  color $t2-teal
+  display flex
+  align-items center
+  justify-content center
+
+.t2LockChecking
+  height 48px
+  width 48px
+  border-radius 24px
+  background $t2-card
+  display flex
+  align-items center
+  justify-content center
+
+.t2LockSpinner
+  height 18px
+  width 18px
+  border-radius 50%
+  border 2px solid rgba(255, 255, 255, 0.16)
+  border-top-color $t2-teal
+  animation t2Spin 0.8s infinite linear
+
+.t2LockTitle
+  font-size 18px
+  font-weight 500
+
+.t2LockInput
+  width 100%
+
+  input
+    width 100%
+    height 42px
+    border none
+    outline none
+    border-radius 21px
+    background $t2-pill
+    color $t2-text
+    font-family 'MainFont'
+    font-size 14px
+    text-align center
+    box-shadow none
+
+    &::placeholder
+      color $t2-muted
+
+.t2LockError
+  color $t2-pink
+  font-size 12px
+  line-height 17px
+  text-align center
+
+.t2LockSubmit
+  width 100%
+  height 42px
+  border-radius 21px
+  background $t2-teal
+  color $t2-bg
+  display flex
+  align-items center
+  justify-content center
+  cursor pointer
+  font-size 13px
+  font-weight 500
+
+  &:hover
+    background $t2-teal-bright
+
+.t2LockBiometricSubmit
+  background $t2-button
+  color $t2-text
+  gap 8px
+
+  &:hover
+    background $t2-button-hover
+
+  > div
+    color $t2-teal
+
+// ==================== request view (legacy signing flow) overrides ====================
+
+.t2RequestOverlay
+  position absolute
+  top 0
+  right 0
+  bottom 0
+  left 0
+  background $t2-bg
+  z-index 100
+
+  .accountView
+    top 10px !important

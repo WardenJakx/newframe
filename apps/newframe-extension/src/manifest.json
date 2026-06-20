@@ -1,0 +1,49 @@
+{
+  "name": "Newframe Companion",
+  "version": "0.12.3",
+  "manifest_version": 3,
+  "minimum_chrome_version": "121",
+  "description": "Newframe companion creates an injected connection to the Newframe desktop wallet (required) on macOS, Windows or Linux.",
+  "homepage_url": "https://github.com/wardenjakx/newframe/tree/main/apps/newframe-extension",
+  "background": {
+    "service_worker": "index.js",
+    "scripts": ["index.js"]
+  },
+  "action": {
+    "default_title": "Newframe Companion",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "96": "icons/icon96.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": ["file://*/*", "http://*/*", "https://*/*"],
+      "js": ["inject.js"],
+      "run_at": "document_start",
+      "all_frames": true
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["newframe.js"],
+      "matches": ["file://*/*", "https://*/*", "http://*/*"]
+    }
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' ws://127.0.0.1:1248"
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "{77691beb-4c53-48de-ab20-6589a537717a}"
+    }
+  },
+  "permissions": ["activeTab", "alarms", "idle", "scripting"],
+  "host_permissions": ["https://*/*", "http://*/*"],
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "96": "icons/icon96.png"
+  }
+}

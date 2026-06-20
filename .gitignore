@@ -1,20 +1,26 @@
 node_modules
 .DS_Store
 
-# Frame app outputs
-apps/frame/bundle
-apps/frame/compiled
-apps/frame/dist
-apps/frame/release
-apps/frame/.parcel-cache
-apps/frame/*.tsbuildinfo
-apps/frame/test/.userData
+# Newframe app outputs
+apps/newframe/bundle
+apps/newframe/compiled
+apps/newframe/dist
+apps/newframe/dist-preview
+apps/newframe/release
+apps/newframe/.parcel-cache
+apps/newframe/*.tsbuildinfo
+apps/newframe/test/.userData
+apps/newframe/build/icons/
 
 # Extension outputs
-apps/frame-extension/dist
-apps/frame-extension/.cache
+apps/newframe-extension/dist
+apps/newframe-extension/.cache
 
 # Local editor state
 .vscode
 *.code-workspace
 .playwright-cli
+.dev_config.json
+
+
+.docs/
