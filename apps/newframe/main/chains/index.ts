@@ -6,7 +6,6 @@ import { Hardfork, Common } from '@ethereumjs/common'
 import log from 'electron-log'
 
 import store from '../store'
-import BlockMonitor from './blocks'
 import chainConfig from './config'
 import GasMonitor from '../transaction/gasMonitor'
 import { createGasCalculator } from './gas'
@@ -32,7 +31,6 @@ interface ConnectionState {
   connected: boolean
   currentTarget?: string
   provider?: EthersRpcProvider | null
-  blockMonitor?: any
 }
 
 // These chain IDs are known to not support EIP-1559 and will be forced
@@ -70,8 +68,7 @@ class ChainConnection extends EventEmitter {
     this.type = type
     this.chainId = chainId
 
-    // default chain config to istanbul hardfork until a block is received
-    // to update it to london
+    // default to legacy transaction rules until on-demand gas refresh confirms EIP-1559 support
     this.chainConfig = chainConfig(parseInt(this.chainId), 'istanbul')
 
     // TODO: maybe this can be tied into chain config somehow
@@ -110,7 +107,6 @@ class ChainConnection extends EventEmitter {
     })
 
     this[priority].provider = provider
-    this[priority].blockMonitor = this._createBlockMonitor(provider, priority)
 
     void provider.on('error', (err) => this.handleProviderError(priority, err))
     listenForProviderClose(provider, () => this.handleProviderClose(priority, provider))
@@ -142,7 +138,6 @@ class ChainConnection extends EventEmitter {
         this[priority].connected = true
         this[priority].type = ''
         this._handleConnection(priority)
-        this[priority].blockMonitor?.start()
       }
     } catch (err) {
       if (this[priority].provider !== provider) return
@@ -167,77 +162,8 @@ class ChainConnection extends EventEmitter {
     this[priority].connected = false
     this[priority].type = ''
     this[priority].network = ''
-    this.stopBlockMonitor(priority)
     this.update(priority)
     this.emit('close')
-  }
-
-  _createBlockMonitor(provider: EthersRpcProvider, priority: Priority) {
-    const monitor = new BlockMonitor(provider, this.chainId)
-    const allowEip1559 = !legacyChains.includes(parseInt(this.chainId))
-
-    monitor.on('data', async (block: any) => {
-      log.debug(`Updating to block ${parseInt(block.number)} for chain ${parseInt(this.chainId)}`)
-
-      let feeMarket: any = null
-
-      const gasMonitor = new GasMonitor(provider)
-
-      if (allowEip1559 && 'baseFeePerGas' in block) {
-        try {
-          // only consider this an EIP-1559 block if fee market can be loaded
-          const feeHistory = await gasMonitor.getFeeHistory(20, [10, 60])
-          feeMarket = this.gasCalculator.calculateGas(feeHistory)
-
-          this.chainConfig.setHardforkBy({ blockNumber: block.number })
-
-          if (!this.chainConfig.gteHardfork(Hardfork.London)) {
-            // if baseFeePerGas is present in the block header, the hardfork
-            // must be at least London
-            this.chainConfig.setHardfork(Hardfork.London)
-          }
-        } catch (e) {
-          feeMarket = null
-          // log.error(`could not load EIP-1559 fee market for chain ${this.chainId}`, e)
-        }
-      }
-
-      try {
-        if (feeMarket) {
-          const gasPrice = parseInt(feeMarket.maxBaseFeePerGas) + parseInt(feeMarket.maxPriorityFeePerGas)
-
-          store.setGasPrices(this.type, this.chainId, { fast: addHexPrefix(gasPrice.toString(16)) })
-          store.setGasDefault(this.type, this.chainId, 'fast')
-        } else {
-          const gas = await gasMonitor.getGasPrices()
-          const customLevel = store('main.networksMeta', this.type, this.chainId, 'gas.price.levels.custom')
-
-          store.setGasPrices(this.type, this.chainId, {
-            ...gas,
-            custom: customLevel || gas.fast
-          })
-        }
-
-        store.setGasFees(this.type, this.chainId, feeMarket)
-        store.setBlockHeight(this.chainId, parseInt(block.number, 16))
-
-        this.emit('update', { type: 'fees' })
-      } catch (e) {
-        log.error(`could not update gas prices for chain ${this.chainId}`, { feeMarket }, e)
-      }
-    })
-
-    monitor.on('status', (status: string) => {
-      if (status === 'connected' && this[priority].network && this[priority].network !== this.chainId) {
-        this[priority].connected = false
-        this[priority].type = ''
-        this._updateStatus(priority, 'chain mismatch')
-      } else if (this[priority].status !== status) {
-        this._updateStatus(priority, status)
-      }
-    })
-
-    return monitor
   }
 
   update(priority: Priority) {
@@ -277,7 +203,6 @@ class ChainConnection extends EventEmitter {
     const provider = this[priority].provider
     const wasConnected = this[priority].connected
 
-    this.stopBlockMonitor(priority)
     this.killProvider(provider)
     this[priority].provider = null
     this[priority].connected = false
@@ -314,26 +239,14 @@ class ChainConnection extends EventEmitter {
     }
   }
 
-  stopBlockMonitor(priority: Priority) {
-    log.debug('stopBlockMonitor', { chainId: this.chainId, priority })
-
-    if (this[priority].blockMonitor) {
-      this[priority].blockMonitor.stop()
-      this[priority].blockMonitor.removeAllListeners()
-      this[priority].blockMonitor = null
-    }
-  }
-
   connect(chain: any) {
     const connection = chain.connection
 
     log.info(this.type + ':' + this.chainId + "'s connection has been updated")
 
     if (this.network !== connection.network) {
-      this.stopBlockMonitor('primary')
       this.killProvider(this.primary.provider)
       this.primary.provider = null
-      this.stopBlockMonitor('secondary')
       this.killProvider(this.secondary.provider)
       this.secondary.provider = null
       this.primary = { status: 'loading', network: '', type: '', connected: false }
@@ -406,11 +319,9 @@ class ChainConnection extends EventEmitter {
 
     if (this.observer) this.observer.remove()
 
-    this.stopBlockMonitor('primary')
     this.killProvider(this.primary.provider)
     this.primary.provider = null
 
-    this.stopBlockMonitor('secondary')
     this.killProvider(this.secondary.provider)
     this.secondary.provider = null
 
@@ -435,6 +346,49 @@ class ChainConnection extends EventEmitter {
       resError('Not connected to Ethereum network', payload, res)
     }
   }
+
+  private getActiveProvider() {
+    if (this.primary.provider && this.primary.connected) return this.primary.provider
+    if (this.secondary.provider && this.secondary.connected) return this.secondary.provider
+    return null
+  }
+
+  async refreshGasFees() {
+    const provider = this.getActiveProvider()
+    if (!provider) throw new Error(`No active provider for chain ${this.chainId}`)
+
+    const chainId = parseInt(this.chainId)
+    const gasMonitor = new GasMonitor(provider)
+    const allowEip1559 = !legacyChains.includes(chainId)
+    let feeMarket: any = null
+
+    if (allowEip1559) {
+      try {
+        const feeHistory = await gasMonitor.getFeeHistory(20, [10, 60])
+        feeMarket = this.gasCalculator.calculateGas(feeHistory)
+        this.chainConfig.setHardfork(Hardfork.London)
+      } catch (e) {
+        log.debug(`could not load EIP-1559 fee market for chain ${this.chainId}`, e)
+      }
+    }
+
+    if (feeMarket) {
+      const gasPrice = parseInt(feeMarket.maxBaseFeePerGas) + parseInt(feeMarket.maxPriorityFeePerGas)
+
+      store.setGasPrices(this.type, chainId, { fast: addHexPrefix(gasPrice.toString(16)) })
+      store.setGasDefault(this.type, chainId, 'fast')
+    } else {
+      const gas = await gasMonitor.getGasPrices()
+      const customLevel = store('main.networksMeta', this.type, chainId, 'gas.price.levels.custom')
+
+      store.setGasPrices(this.type, chainId, {
+        ...gas,
+        custom: customLevel || gas.fast
+      })
+    }
+
+    store.setGasFees(this.type, chainId, feeMarket)
+  }
 }
 
 class Chains extends EventEmitter {
@@ -444,6 +398,35 @@ class Chains extends EventEmitter {
     super()
     this.connections = {}
 
+    let systemSuspended = false
+    let screenLocked = false
+
+    const isSystemInactive = () => systemSuspended || screenLocked
+
+    const activeConnectionIds = () =>
+      Object.keys(this.connections)
+        .map((type) => Object.keys(this.connections[type]).map((chainId) => `${type}:${chainId}`))
+        .flat()
+
+    const markConnectionInactive = (chainId: string, type = 'ethereum') => {
+      const network = store('main.networks', type, chainId)
+      if (!network) return
+
+      store.setPrimary(type, chainId, {
+        status: network.connection.primary.on ? 'disconnected' : 'off',
+        connected: false,
+        type: '',
+        network: ''
+      })
+
+      store.setSecondary(type, chainId, {
+        status: network.connection.secondary.on ? 'disconnected' : 'off',
+        connected: false,
+        type: '',
+        network: ''
+      })
+    }
+
     const removeConnection = (chainId: string, type = 'ethereum') => {
       if (type in this.connections && chainId in this.connections[type]) {
         this.connections[type][chainId].removeAllListeners()
@@ -452,7 +435,30 @@ class Chains extends EventEmitter {
       }
     }
 
+    const sleepConnection = (chainId: string, type = 'ethereum') => {
+      removeConnection(chainId, type)
+      markConnectionInactive(chainId, type)
+    }
+
+    const sleepConnections = (reason: string) => {
+      const connections = activeConnectionIds()
+      log.info(`System ${reason}, closing active chain connections`, { chains: connections })
+
+      connections.forEach((id) => {
+        const [type, chainId] = id.split(':')
+        sleepConnection(chainId, type)
+      })
+    }
+
     const updateConnections = () => {
+      if (isSystemInactive()) {
+        log.debug('Skipping chain connection updates while system is inactive', {
+          systemSuspended,
+          screenLocked
+        })
+        return
+      }
+
       const networks = store('main.networks')
 
       Object.keys(this.connections).forEach((type) => {
@@ -498,19 +504,34 @@ class Chains extends EventEmitter {
       })
     }
 
-    powerMonitor.on('resume', () => {
-      const activeConnections = Object.keys(this.connections)
-        .map((type) => Object.keys(this.connections[type]).map((chainId) => `${type}:${chainId}`))
-        .flat()
+    const wakeConnections = (reason: string) => {
+      if (isSystemInactive()) {
+        log.info(`System ${reason}, keeping chain connections closed`, { systemSuspended, screenLocked })
+        return
+      }
 
-      log.info('System resuming, resetting active connections', { chains: activeConnections })
-
-      activeConnections.forEach((id) => {
-        const [type, chainId] = id.split(':')
-        removeConnection(chainId, type)
-      })
-
+      log.info(`System ${reason}, restoring chain connections`)
       updateConnections()
+    }
+
+    powerMonitor.on('suspend', () => {
+      systemSuspended = true
+      sleepConnections('suspending')
+    })
+
+    powerMonitor.on('lock-screen', () => {
+      screenLocked = true
+      sleepConnections('locked')
+    })
+
+    powerMonitor.on('resume', () => {
+      systemSuspended = false
+      wakeConnections('resuming')
+    })
+
+    powerMonitor.on('unlock-screen', () => {
+      screenLocked = false
+      wakeConnections('unlocked')
     })
 
     store.observer(updateConnections, 'chains:connections')
@@ -530,6 +551,17 @@ class Chains extends EventEmitter {
     } else {
       this.connections[type][id].send(payload, res)
     }
+  }
+
+  async refreshGasFees(targetChain: Chain) {
+    const { type, id } = targetChain
+    const connection = this.connections[type]?.[id]
+
+    if (!connection) {
+      throw new Error(`Connection for ${type} chain with chainId ${id} did not exist for gas refresh`)
+    }
+
+    await connection.refreshGasFees()
   }
 }
 

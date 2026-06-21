@@ -124,10 +124,6 @@ class Provider extends EventEmitter {
     })
 
     this.connection.on('update', (chain: Chain, event) => {
-      if (event.type === 'fees') {
-        return accounts.updatePendingFees(chain.id)
-      }
-
       if (event.type === 'status') {
         this.emit(`status:${chain.type}:${chain.id}`, event.status)
       }
@@ -498,6 +494,7 @@ class Provider extends EventEmitter {
     try {
       const approvals: RequiredApproval[] = []
       const rawTx = getRawTx(newTx)
+      await this.connection.refreshGasFees({ type: 'ethereum', id: parseInt(rawTx.chainId, 16) })
       const gas = gasFees(rawTx)
       const { chainConfig } = connection
 

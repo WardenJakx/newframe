@@ -1,3 +1,4 @@
+import { powerMonitor } from 'electron'
 import log from 'electron-log'
 
 import store from '../store'
@@ -36,10 +37,84 @@ export default function () {
   let connectedChains: number[] = [],
     activeAccount: Address = ''
   let pauseScanningDelay: NodeJS.Timeout | undefined
+  let balancesRunning = false
+  let systemSuspended = false
+  let screenLocked = false
 
-  balances.start()
+  const isSystemInactive = () => systemSuspended || screenLocked
+
+  function clearPauseScanningDelay() {
+    if (pauseScanningDelay) {
+      clearTimeout(pauseScanningDelay)
+      pauseScanningDelay = undefined
+    }
+  }
+
+  function scannableAddress() {
+    return activeAccount && shouldScanOnChain(activeAccount) ? activeAccount : ('' as Address)
+  }
+
+  function startBalances() {
+    if (balancesRunning || isSystemInactive()) return
+
+    balancesRunning = balances.start()
+    if (balancesRunning) balances.setAddress(scannableAddress())
+  }
+
+  function stopBalances(reason: string) {
+    clearPauseScanningDelay()
+    balances.stop()
+
+    if (!balancesRunning) return
+
+    log.verbose(`stopping external data while system is ${reason}`)
+    balancesRunning = false
+  }
+
+  function resumeBalances(reason: string) {
+    if (isSystemInactive()) {
+      log.verbose(`keeping external data stopped after system ${reason}`, { systemSuspended, screenLocked })
+      return
+    }
+
+    log.verbose(`resuming external data after system ${reason}`)
+    startBalances()
+
+    if (!store('tray.open') && !pauseScanningDelay) {
+      pauseScanningDelay = setTimeout(balances.pause, 1000)
+    }
+  }
+
+  const handleSuspend = () => {
+    systemSuspended = true
+    stopBalances('suspending')
+  }
+
+  const handleResume = () => {
+    systemSuspended = false
+    resumeBalances('resumed')
+  }
+
+  const handleLockScreen = () => {
+    screenLocked = true
+    stopBalances('locked')
+  }
+
+  const handleUnlockScreen = () => {
+    screenLocked = false
+    resumeBalances('unlocked')
+  }
+
+  powerMonitor.on('suspend', handleSuspend)
+  powerMonitor.on('resume', handleResume)
+  powerMonitor.on('lock-screen', handleLockScreen)
+  powerMonitor.on('unlock-screen', handleUnlockScreen)
+
+  startBalances()
 
   const handleNetworkUpdate = debounce((newlyConnected: number[]) => {
+    if (isSystemInactive()) return
+
     log.verbose('updating external data due to network update(s)', { connectedChains, newlyConnected })
 
     if (newlyConnected.length > 0 && activeAccount && shouldScanOnChain(activeAccount)) {
@@ -48,12 +123,16 @@ export default function () {
   }, 500)
 
   const handleAddressUpdate = debounce(() => {
+    if (isSystemInactive()) return
+
     log.verbose('updating external data due to address update(s)', { activeAccount })
 
     balances.setAddress(activeAccount && shouldScanOnChain(activeAccount) ? activeAccount : ('' as Address))
   }, 800)
 
   const handleTokensUpdate = debounce((tokens: Token[]) => {
+    if (isSystemInactive()) return
+
     log.verbose('updating external data due to token update(s)', { activeAccount })
 
     if (activeAccount && shouldScanOnChain(activeAccount)) {
@@ -95,6 +174,8 @@ export default function () {
   const trayObserver = store.observer(() => {
     const open = store('tray.open')
 
+    if (isSystemInactive()) return
+
     if (!open) {
       // pause balance scanning after the tray is out of view for one minute
       if (!pauseScanningDelay) {
@@ -102,8 +183,7 @@ export default function () {
       }
     } else {
       if (pauseScanningDelay) {
-        clearTimeout(pauseScanningDelay)
-        pauseScanningDelay = undefined
+        clearPauseScanningDelay()
 
         balances.resume()
       }
@@ -112,7 +192,7 @@ export default function () {
 
   return {
     refreshBalances: (address = activeAccount) => {
-      if (address && shouldScanOnChain(address)) balances.refresh(address)
+      if (!isSystemInactive() && address && shouldScanOnChain(address)) balances.refresh(address)
     },
     close: () => {
       allNetworksObserver.remove()
@@ -120,11 +200,15 @@ export default function () {
       customTokensObserver.remove()
       trayObserver.remove()
 
-      balances.stop()
+      powerMonitor.off('suspend', handleSuspend)
+      powerMonitor.off('resume', handleResume)
+      powerMonitor.off('lock-screen', handleLockScreen)
+      powerMonitor.off('unlock-screen', handleUnlockScreen)
 
-      if (pauseScanningDelay) {
-        clearTimeout(pauseScanningDelay)
-      }
+      balances.stop()
+      balancesRunning = false
+
+      clearPauseScanningDelay()
     }
   } as DataScanner
 }

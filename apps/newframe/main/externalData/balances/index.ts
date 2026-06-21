@@ -50,12 +50,20 @@ export default function (store: Store) {
   let scan: NodeJS.Timeout | null
   let workerController: BalancesWorkerController | null
   let onResume: (() => void) | null
+  let restartTimer: NodeJS.Timeout | null
 
   function attemptRestart() {
     log.warn(`balances controller stopped, restarting in ${RESTART_WAIT} seconds`)
     stop()
 
-    setTimeout(restart, RESTART_WAIT * 1000)
+    restartTimer = setTimeout(restart, RESTART_WAIT * 1000)
+  }
+
+  function clearRestartTimer() {
+    if (restartTimer) {
+      clearTimeout(restartTimer)
+      restartTimer = null
+    }
   }
 
   function handleClose() {
@@ -78,9 +86,19 @@ export default function (store: Store) {
   }
 
   function start() {
+    clearRestartTimer()
+
+    if (workerController) return true
+
     log.verbose('starting balances updates')
 
-    workerController = new BalancesWorkerController()
+    try {
+      workerController = new BalancesWorkerController()
+    } catch (e) {
+      log.error('could not start balances worker', e)
+      attemptRestart()
+      return false
+    }
 
     workerController.once('close', handleClose)
     workerController.on('chainBalances', (address, balances) => {
@@ -90,9 +108,12 @@ export default function (store: Store) {
     workerController.on('tokenBalances', (address, balances) => {
       handleUpdate(address, handleTokenBalanceUpdate.bind(null, balances))
     })
+
+    return true
   }
 
   function restart() {
+    restartTimer = null
     start()
     setAddress(storeApi.getActiveAddress())
   }
@@ -123,6 +144,8 @@ export default function (store: Store) {
   }
 
   function stop() {
+    clearRestartTimer()
+
     log.verbose('stopping balances updates')
 
     stopScan()
