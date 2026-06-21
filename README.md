@@ -7,7 +7,7 @@
   <br>
   <br>
 </h2>
-<h3 align="center">System-wide Web3 for macOS, Windows, and Linux</h3>
+<h3 align="center">The desktop wallet experience you deserve</h3>
 <br>
 <h5 align="center">
   <a href="#features">Features</a> -
@@ -36,10 +36,12 @@ Newframe is a web3 platform that creates a secure system-wide interface to your 
 
 ### Download the desktop app
 
+- Coming soon. Run from source for now
+<!--
 - [Production releases](https://github.com/wardenjakx/newframe/releases)
 - [Canary releases](https://github.com/wardenjakx/newframe/releases)
 
-After installing, open Newframe from your applications folder or app launcher.
+After installing, open Newframe from your applications folder or app launcher. -->
 
 ### Run from source
 

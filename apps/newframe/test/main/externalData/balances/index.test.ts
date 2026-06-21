@@ -33,6 +33,14 @@ const knownTokens = [
   }
 ]
 
+function token(index: number, chainId = 10) {
+  return {
+    chainId,
+    address: `0x${index.toString(16).padStart(40, '0')}`,
+    symbol: `T${index}`
+  }
+}
+
 let balances: any
 
 beforeAll(() => {
@@ -40,6 +48,7 @@ beforeAll(() => {
 })
 
 beforeEach(() => {
+  store.set('main.tokens.custom', [])
   store.set('main.tokens.known', address, knownTokens)
   store.set('main.networks.ethereum.10', { id: 10, connection: { primary: { connected: true } } })
 
@@ -90,4 +99,35 @@ it('refreshes balances on demand', () => {
 
   expect((balancesController as any).updateKnownTokenBalances).toHaveBeenCalledWith(address, knownTokens)
   expect((balancesController as any).updateChainBalances).toHaveBeenCalledWith(address, [10])
+})
+
+it('caps large known token scans while preserving custom tokens', () => {
+  const customTokens = [token(1000), token(1001)]
+  const discoveredTokens = Array.from({ length: 300 }, (_, i) => token(i + 1))
+
+  store.set('main.tokens.custom', customTokens)
+  store.set('main.tokens.known', address, discoveredTokens)
+  ;(balancesController as any).isRunning.mockReturnValue(true)
+
+  balances.refresh(address)
+
+  expect((balancesController as any).updateKnownTokenBalances).toHaveBeenCalledWith(
+    address,
+    expect.arrayContaining(customTokens)
+  )
+
+  const scannedTokens = (balancesController as any).updateKnownTokenBalances.mock.calls[0][1]
+  expect(scannedTokens).toHaveLength(250)
+  expect(scannedTokens.slice(0, customTokens.length)).toEqual(customTokens)
+})
+
+it('caps direct token update scans', () => {
+  const discoveredTokens = Array.from({ length: 300 }, (_, i) => token(i + 1))
+  ;(balancesController as any).isRunning.mockReturnValue(true)
+
+  balances.addTokens(address, discoveredTokens)
+
+  const scannedTokens = (balancesController as any).updateKnownTokenBalances.mock.calls[0][1]
+  expect(scannedTokens).toHaveLength(250)
+  expect(scannedTokens).toEqual(discoveredTokens.slice(0, 250))
 })

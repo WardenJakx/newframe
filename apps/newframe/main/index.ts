@@ -48,6 +48,8 @@ app.commandLine.appendSwitch('force-color-profile', 'srgb')
 const isDev = process.env.NODE_ENV === 'development'
 log.transports.console.level = process.env.LOG_LEVEL || (isDev ? 'verbose' : 'info')
 
+const MAX_PORTFOLIO_AUTO_DISCOVERY_TOKENS = 250
+
 if (process.env.LOG_LEVEL === 'debug') {
   log.transports.file.level = 'debug'
   log.transports.file.resolvePathFn = () => path.join(app.getPath('userData'), 'logs/debug.log')
@@ -311,7 +313,9 @@ ipcMain.handle('tray:refreshPortfolioBalances', async (e, accountId?: string) =>
         sync: true
       })
       const autoDiscoverTokens = store('main.autoDiscoverTokens') !== false
-      const newTokens = autoDiscoverTokens ? getNewPortfolioTokens(address, portfolio.tokens) : []
+      const newTokens = autoDiscoverTokens
+        ? getNewPortfolioTokens(address, portfolio.tokens).slice(0, MAX_PORTFOLIO_AUTO_DISCOVERY_TOKENS)
+        : []
 
       portfolioValue = portfolio.totalValue
       tokensAdded = newTokens.length
@@ -341,7 +345,9 @@ ipcMain.handle('tray:refreshPortfolioBalances', async (e, accountId?: string) =>
     }
   }
 
-  accounts.refreshBalances(address)
+  if (error) {
+    accounts.refreshBalances(address)
+  }
 
   return { ok: !error, error, tokensAdded, portfolioValue }
 })

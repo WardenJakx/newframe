@@ -1,6 +1,6 @@
 # Newframe Desktop App
 
-Newframe's desktop app is the Electron wallet and system-wide provider surface for macOS, Windows, and Linux. It exposes local JSON-RPC endpoints for native, command-line, and browser clients, and it works with the [Newframe Browser Extension](../newframe-extension/README.md) when a web app expects an injected provider.
+Newframe's desktop app works on macOS, Windows, and Linux. It exposes local JSON-RPC endpoints for native, command-line, and browser clients, and it works with the [Newframe Browser Extension](../newframe-extension/README.md) when a web app expects an injected provider.
 
 For the full project overview, features, and surface map, start with the [root README](../../README.md).
 
@@ -8,10 +8,11 @@ For the full project overview, features, and surface map, start with the [root R
 
 ### Download the app
 
-- [Production releases](https://github.com/wardenjakx/newframe/releases)
+- Coming soon. Run from source for now
+<!-- - [Production releases](https://github.com/wardenjakx/newframe/releases)
 - [Canary releases](https://github.com/wardenjakx/newframe/releases)
 
-After installing, open Newframe from your applications folder or app launcher.
+After installing, open Newframe from your applications folder or app launcher. -->
 
 ### Run from source
 

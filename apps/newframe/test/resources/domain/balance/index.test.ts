@@ -1,6 +1,9 @@
 import {
   sortByTotalValue as byTotalValue,
   createBalance,
+  createBalanceSummarySelector,
+  createBalanceSummaries,
+  createDisplayBalance,
   isLowValueTokenBalance
 } from '../../../../resources/domain/balance'
 
@@ -79,5 +82,102 @@ describe('#isLowValueTokenBalance', () => {
 
   it('treats priced zero-value balances as low value', () => {
     expect(isLowValueTokenBalance({ totalValue: 0, hasPrice: true })).toBe(true)
+  })
+})
+
+describe('#createBalanceSummaries', () => {
+  it('creates sorted lightweight summaries that can be materialized for display', () => {
+    const summaries = createBalanceSummaries({
+      rawBalances: [
+        {
+          address: '0x0000000000000000000000000000000000000001',
+          balance: '0x64',
+          chainId: 1,
+          decimals: 0,
+          displayBalance: '',
+          name: 'Small Token',
+          symbol: 'SMOL'
+        },
+        {
+          address: '0x0000000000000000000000000000000000000002',
+          balance: '0x32',
+          chainId: 1,
+          decimals: 0,
+          displayBalance: '',
+          name: 'Large Token',
+          symbol: 'BIG'
+        }
+      ],
+      rates: {
+        '0x0000000000000000000000000000000000000001': { usd: { price: 1, change24hr: 0 } },
+        '0x0000000000000000000000000000000000000002': { usd: { price: 5, change24hr: 0 } }
+      },
+      networks: {
+        1: { name: 'Mainnet', on: true }
+      },
+      networksMeta: {
+        1: { nativeCurrency: { symbol: 'ETH', decimals: 18 } }
+      },
+      includeChain: (chain) => !!chain.on
+    })
+
+    expect(summaries.map((balance) => balance.symbol)).toEqual(['BIG', 'SMOL'])
+    expect(summaries.map((balance) => balance.totalValue)).toEqual([250, 100])
+    expect(createDisplayBalance(summaries[0]).displayBalance).toBe('50.00')
+  })
+})
+
+describe('#createBalanceSummarySelector', () => {
+  it('reuses summaries until the store inputs or filter cache key change', () => {
+    const rawBalances = [
+      {
+        address: '0x0000000000000000000000000000000000000001',
+        balance: '0x64',
+        chainId: 1,
+        decimals: 0,
+        displayBalance: '',
+        name: 'Token',
+        symbol: 'TOK'
+      }
+    ]
+    const rates = {
+      '0x0000000000000000000000000000000000000001': { usd: { price: 1, change24hr: 0 } }
+    }
+    const networks = {
+      1: { name: 'Mainnet', on: true }
+    }
+    const networksMeta = {
+      1: { nativeCurrency: { symbol: 'ETH', decimals: 18 } }
+    }
+    const selectBalanceSummaries = createBalanceSummarySelector()
+
+    const first = selectBalanceSummaries({
+      rawBalances,
+      rates,
+      networks,
+      networksMeta,
+      includeChain: (chain) => !!chain.on,
+      cacheKey: 'mainnet'
+    })
+    const second = selectBalanceSummaries({
+      rawBalances,
+      rates,
+      networks,
+      networksMeta,
+      includeChain: (chain) => !!chain.on,
+      cacheKey: 'mainnet'
+    })
+    const third = selectBalanceSummaries({
+      rawBalances,
+      rates,
+      networks,
+      networksMeta,
+      includeChain: () => false,
+      cacheKey: 'hidden'
+    })
+
+    expect(second).toBe(first)
+    expect(third).not.toBe(first)
+    expect(third).toHaveLength(0)
   })
 })

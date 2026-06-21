@@ -459,15 +459,12 @@ body
     pointer-events none
 
 .sendRecipientMenu
-  position absolute
-  left 12px
-  right 12px
-  top 96px
+  margin-top 10px
+  max-height 190px
   background $send-menu
   border-radius 14px
-  overflow hidden
+  overflow-y auto
   box-shadow 0 16px 32px rgba(0, 0, 0, 0.28)
-  z-index 8
 
 .sendRecipientMenuTitle
   height 42px
@@ -572,7 +569,7 @@ body
   margin 10px 0 0 8px
 
 .sendTokenCard
-  z-index 2
+  z-index 5
   padding 16px 14px 18px 14px
 
 .sendTokenMain
@@ -718,6 +715,23 @@ body
   overflow hidden
   text-overflow ellipsis
   white-space nowrap
+
+.sendTokenMore
+  width 100%
+  border none
+  outline none
+  color $send-muted-strong
+  background transparent
+  border-radius 11px
+  min-height 38px
+  padding 8px
+  cursor pointer
+  font-size 12px
+  font-weight 600
+
+  &:hover
+    background $send-menu-hover
+    color $send-text
 
 .sendAmountInput
   min-width 70px
