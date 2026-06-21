@@ -22,6 +22,7 @@ export interface TransactionData extends Omit<WidenHexFields<JSONTx>, 'chainId' 
   gas?: string
   from?: string
   feesUpdated?: boolean
+  calldataDigest?: string
   chainId: string
   type: string
   gasFeesSource: GasFeesSource

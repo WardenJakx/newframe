@@ -104,7 +104,7 @@ const TxOverview = ({
   valueColor
 }: any) => {
   const { data: tx = {}, classification } = req
-  const { data: calldata } = tx
+  const { data: calldata, calldataDigest } = tx
 
   const Description = BaseOverviews[classification]
 
@@ -159,6 +159,16 @@ const TxOverview = ({
           <ClusterRow>
             <ClusterValue>
               <div className='_txMainTag _txMainTagWarning'>{'Transaction includes data'}</div>
+            </ClusterValue>
+          </ClusterRow>
+        )}
+        {isNonZeroHex(calldata) && calldataDigest && (
+          <ClusterRow>
+            <ClusterValue>
+              <div className='calldataDigestRow'>
+                <div className='calldataDigestLabel'>Calldata Digest</div>
+                <div className='calldataDigestValue'>{calldataDigest}</div>
+              </div>
             </ClusterValue>
           </ClusterRow>
         )}

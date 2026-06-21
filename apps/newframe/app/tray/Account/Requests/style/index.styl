@@ -2188,6 +2188,39 @@ span
   color var(--good)
   letter-spacing 1px
 
+.signatureDigestRows, .calldataDigestRow
+  width 100%
+  box-sizing border-box
+  padding 12px
+  border-left 2px solid var(--good)
+  background var(--ghostZ)
+  border-radius 8px
+
+.signatureDigestRows
+  margin 2px 0px 24px 0px
+
+.signatureDigestRow + .signatureDigestRow
+  margin-top 14px
+
+.signatureDigestLabel, .calldataDigestLabel
+  color var(--good)
+  font-size 11px
+  font-weight 500
+  letter-spacing 1px
+  text-transform uppercase
+
+.signatureDigestValue, .calldataDigestValue
+  margin-top 5px
+  font-family 'FiraCode'
+  font-size 12px
+  font-weight 300
+  line-height 1.45
+  word-break break-all
+  user-select all
+
+.calldataDigestRow
+  margin-top 0px
+
 .simpleJson
   font-size 14px
 
