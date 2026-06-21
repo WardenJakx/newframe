@@ -10,6 +10,7 @@ import type { TransactionData } from '../../resources/domain/transaction'
 import type { Action } from '../transaction/actions'
 import type { TokenData } from '../contracts/erc20'
 import type { Token } from '../store/state'
+import type { Eip712Digests } from '../signatures/digests'
 
 export enum ReplacementType {
   Speed = 'speed',
@@ -146,6 +147,7 @@ export type SignatureRequest = SignTypedDataRequest | SignRequest
 
 interface DefaultSignTypedDataRequest extends AccountRequest<'signTypedData'> {
   typedMessage: TypedMessage
+  digests?: Eip712Digests
 }
 
 interface EIP2612PermitDomain {
@@ -170,6 +172,7 @@ export interface PermitSignatureRequest extends AccountRequest<'signErc20Permit'
     data: EIP2612TypedData
     version: SignTypedDataVersion
   }
+  digests?: Eip712Digests
   permit: PermitData
   tokenData: TokenData
 }

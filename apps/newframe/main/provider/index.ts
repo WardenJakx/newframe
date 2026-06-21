@@ -25,10 +25,11 @@ import reveal from '../reveal'
 import { getSignerType, Type as SignerType } from '../../resources/domain/signer'
 import { normalizeChainId, TransactionData } from '../../resources/domain/transaction'
 import { populate as populateTransaction, maxFee, classifyTransaction } from '../transaction'
-import { capitalize } from '../../resources/utils'
+import { capitalize, isNonZeroHex } from '../../resources/utils'
 import { ApprovalType } from '../../resources/constants'
 import { createObserver as AssetsObserver, loadAssets } from './assets'
 import { getVersionFromTypedData } from './typedData'
+import { getCalldataDigest, getEip712Digests } from '../signatures/digests'
 
 import { Subscription, SubscriptionType, hasSubscriptionPermission } from './subscriptions'
 import {
@@ -566,11 +567,16 @@ class Provider extends EventEmitter {
           const handlerId = this.addRequestHandler(res)
           const txMetadata = transactionMetadata as TransactionMetadata
           const { feesUpdated, recipientType, ...data } = txMetadata.tx
+          const calldata = data.data
+          const calldataDigest = calldata && isNonZeroHex(calldata) ? getCalldataDigest(calldata) : undefined
 
           const unclassifiedReq = {
             handlerId,
             type: 'transaction',
-            data,
+            data: {
+              ...data,
+              ...(calldataDigest ? { calldataDigest } : {})
+            },
             payload,
             account: (currentAccount as FrameAccount).id,
             origin: payload._origin,
@@ -734,6 +740,7 @@ class Provider extends EventEmitter {
       data: typedData,
       version
     }
+    const digests = getEip712Digests(typedMessage)
 
     const type = sigParser.identify(typedMessage)
 
@@ -741,6 +748,7 @@ class Provider extends EventEmitter {
       handlerId,
       type: 'signTypedData',
       typedMessage,
+      ...(digests ? { digests } : {}),
       payload,
       account: targetAccount.address,
       origin: payload._origin

@@ -35,6 +35,25 @@ const SimpleTypedDataInner = ({ typedData }: { typedData: any }) =>
     </div>
   )
 
+const DigestRows = ({ digests }: { digests?: Record<string, string> }) => {
+  const rows = [
+    ['EIP-712 Digest', digests?.eip712Digest],
+    ['Domain Hash', digests?.domainHash],
+    ['Message Hash', digests?.messageHash]
+  ].filter((row): row is [string, string] => Boolean(row[1]))
+
+  return rows.length ? (
+    <div className='signatureDigestRows'>
+      {rows.map(([label, value]) => (
+        <div key={label} className='signatureDigestRow'>
+          <div className='signatureDigestLabel'>{label}</div>
+          <div className='signatureDigestValue'>{value}</div>
+        </div>
+      ))}
+    </div>
+  ) : null
+}
+
 export const SimpleTypedData = ({ req }: { req: any }) => {
   const type = req.type
   const typedData = req.typedMessage.data || {}
@@ -42,6 +61,7 @@ export const SimpleTypedData = ({ req }: { req: any }) => {
   return type === 'signTypedData' || type === 'signErc20Permit' ? (
     <div className='accountViewScroll cardShow'>
       <div className='txViewData'>
+        <DigestRows digests={req.digests} />
         <div className='txViewDataHeader'>{'Raw Typed Data'}</div>
         <SimpleTypedDataInner {...{ typedData }} />
       </div>
