@@ -18,7 +18,7 @@ let store: any
 let hasSubscriptionPermission: any
 
 jest.mock('../../../main/chains', () => {
-  const chains = { send: jest.fn(), syncDataEmit: jest.fn(), on: jest.fn() }
+  const chains = { send: jest.fn(), syncDataEmit: jest.fn(), on: jest.fn(), refreshGasFees: jest.fn() }
   return { default: chains, ...chains }
 })
 jest.mock('../../../main/accounts', () => {
@@ -77,6 +77,7 @@ beforeEach(() => {
   accountRequests = []
 
   connection.send = jest.fn()
+  connection.refreshGasFees = jest.fn().mockResolvedValue(undefined)
   connection.connections = {
     ethereum: {
       1: { chainConfig: chainConfig(1, 'london'), primary: { connected: true } },
@@ -1715,6 +1716,7 @@ describe('#signAndSend', () => {
       provider.fillTransaction(txJson, (err: any, { tx }: any) => {
         try {
           expect(err).toBeFalsy()
+          expect(connection.refreshGasFees).toHaveBeenCalledWith({ type: 'ethereum', id: 1 })
           expect('to' in tx).toBe(false)
           done()
         } catch (e) {

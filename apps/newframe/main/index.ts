@@ -102,16 +102,44 @@ process.on('unhandledRejection', (e) => {
 })
 
 function startUpdater() {
-  powerMonitor.on('resume', () => {
-    log.debug('System resuming, starting updater')
+  let systemSuspended = false
+  let screenLocked = false
 
+  const isSystemInactive = () => systemSuspended || screenLocked
+
+  const stopUpdater = (reason: string) => {
+    log.debug(`System ${reason}, stopping updater`)
+    updater.stop()
+  }
+
+  const resumeUpdater = (reason: string) => {
+    if (isSystemInactive()) {
+      log.debug(`System ${reason}, keeping updater stopped`, { systemSuspended, screenLocked })
+      return
+    }
+
+    log.debug(`System ${reason}, starting updater`)
     updater.start()
+  }
+
+  powerMonitor.on('resume', () => {
+    systemSuspended = false
+    resumeUpdater('resuming')
   })
 
   powerMonitor.on('suspend', () => {
-    log.debug('System suspending, stopping updater')
+    systemSuspended = true
+    stopUpdater('suspending')
+  })
 
-    updater.stop()
+  powerMonitor.on('unlock-screen', () => {
+    screenLocked = false
+    resumeUpdater('unlocked')
+  })
+
+  powerMonitor.on('lock-screen', () => {
+    screenLocked = true
+    stopUpdater('locked')
   })
 
   updater.start()

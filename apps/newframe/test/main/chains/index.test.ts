@@ -32,11 +32,11 @@ class MockConnection extends EventEmitter {
         if (method === 'eth_chainId') {
           ;(this as any).connected = true
           return resolve(addHexPrefix(chainId.toString(16)))
-        } else if (method === 'eth_getBlockByNumber') {
-          return resolve(block)
         } else if (method === 'eth_gasPrice') {
           return resolve(gasPrice)
         } else if (method === 'eth_feeHistory') {
+          if (feeHistoryError) return reject(feeHistoryError)
+
           return resolve({
             baseFeePerGas: [gweiToHex(15), gweiToHex(8), gweiToHex(9), gweiToHex(8), gweiToHex(7)],
             gasUsedRatio: [0.11, 0.8, 0.2, 0.5],
@@ -50,7 +50,7 @@ class MockConnection extends EventEmitter {
   }
 }
 
-let block: any, gasPrice: any, connectionObserver: any
+let feeHistoryError: Error | undefined, gasPrice: any, connectionObserver: any
 
 const state = {
   main: {
@@ -207,21 +207,15 @@ const fireStoreObservers = () => {
   ;(store as any).__fireObservers()
 }
 
-const waitForFees = (chain: any, done: any, assert: () => void) => {
-  const handler = ({ id }: any, event: any) => {
-    if (id !== parseInt(chain.id) || event.type !== 'fees') return
+const waitForConnection = async () => {
+  await new Promise((resolve) => process.nextTick(resolve))
+  await Promise.resolve()
+}
 
-    chains.off('update', handler)
-
-    try {
-      assert()
-      done()
-    } catch (e) {
-      done(e)
-    }
-  }
-
-  chains.on('update', handler)
+const connectChain = async (chain: any) => {
+  store.toggleConnection('ethereum', chain.id, 'primary', true)
+  fireStoreObservers()
+  await waitForConnection()
 }
 
 beforeAll(async () => {
@@ -236,7 +230,7 @@ beforeAll(async () => {
 beforeEach(() => {
   resetChainState()
   fireStoreObservers()
-  block = {}
+  feeHistoryError = undefined
 
   connectionObserver = store.observer(() => {
     Object.values(mockConnections).forEach((chain) => {
@@ -280,43 +274,32 @@ afterEach((done) => {
 })
 
 Object.values(mockConnections).forEach((chain) => {
-  it(`sets legacy gas prices on a new non-London block on ${chain.name}`, (done) => {
+  it(`sets legacy gas prices when fee market data is unavailable on ${chain.name}`, async () => {
     gasPrice = gweiToHex(6)
-    block = {
-      number: addHexPrefix((8897988 - 20).toString(16))
-    }
+    feeHistoryError = new Error('fee history unavailable')
 
-    waitForFees(chain, done, () => {
-      const gas = store(`main.networksMeta.ethereum.${chain.id}.gas.price.levels`)
+    await connectChain(chain)
+    await chains.refreshGasFees({ type: 'ethereum', id: parseInt(chain.id) })
 
-      expect(gas.fast).toBe(gweiToHex(6))
-    })
+    const gas = store(`main.networksMeta.ethereum.${chain.id}.gas.price.levels`)
 
-    store.toggleConnection('ethereum', chain.id, 'primary', true)
-    fireStoreObservers()
+    expect(gas.fast).toBe(gweiToHex(6))
   })
 
-  it(`sets fee market prices on a new London block on ${chain.name}`, (done) => {
-    block = {
-      number: addHexPrefix((12965200).toString(16)),
-      baseFeePerGas: gweiToHex(9)
-    }
-
+  it(`sets fee market prices on explicit gas refresh on ${chain.name}`, async () => {
     const expectedBaseFee = 7e9 * 1.125 * 1.125
     const expectedPriorityFee = 32e9
 
-    waitForFees(chain, done, () => {
-      const gas = store(`main.networksMeta.ethereum.${chain.id}.gas.price`)
+    await connectChain(chain)
+    await chains.refreshGasFees({ type: 'ethereum', id: parseInt(chain.id) })
 
-      expect(gas.fees.maxBaseFeePerGas).toBe(intToHex(expectedBaseFee))
-      expect(gas.fees.maxPriorityFeePerGas).toBe(intToHex(expectedPriorityFee))
-      expect(gas.fees.maxFeePerGas).toBe(intToHex(expectedBaseFee + expectedPriorityFee))
+    const gas = store(`main.networksMeta.ethereum.${chain.id}.gas.price`)
 
-      expect(gas.selected).toBe('fast')
-      expect(gas.levels.fast).toBe(intToHex(expectedBaseFee + expectedPriorityFee))
-    })
+    expect(gas.fees.maxBaseFeePerGas).toBe(intToHex(expectedBaseFee))
+    expect(gas.fees.maxPriorityFeePerGas).toBe(intToHex(expectedPriorityFee))
+    expect(gas.fees.maxFeePerGas).toBe(intToHex(expectedBaseFee + expectedPriorityFee))
 
-    store.toggleConnection('ethereum', chain.id, 'primary', true)
-    fireStoreObservers()
+    expect(gas.selected).toBe('fast')
+    expect(gas.levels.fast).toBe(intToHex(expectedBaseFee + expectedPriorityFee))
   })
 })
