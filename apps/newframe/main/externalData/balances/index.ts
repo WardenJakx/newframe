@@ -15,6 +15,12 @@ const scanInterval = {
   inactive: 60 * 60 * 24
 }
 
+const MAX_TOKEN_BALANCE_SCAN = 250
+
+function limitTokenScan(tokens: Token[]) {
+  return tokens.slice(0, MAX_TOKEN_BALANCE_SCAN)
+}
+
 export default function (store: Store) {
   const storeApi = {
     getActiveAddress: () => (store('selected.current') || '') as Address,
@@ -196,7 +202,10 @@ export default function (store: Store) {
         (token) => !customTokens.some((t) => t.address === token.address && t.chainId === token.chainId)
       )
 
-    const trackedTokens = [...customTokens, ...knownTokens].filter((t) => chains.includes(t.chainId))
+    const trackedCustomTokens = customTokens.filter((t) => chains.includes(t.chainId))
+    const trackedKnownTokens = knownTokens.filter((t) => chains.includes(t.chainId))
+    const knownTokenCapacity = Math.max(MAX_TOKEN_BALANCE_SCAN - trackedCustomTokens.length, 0)
+    const trackedTokens = [...trackedCustomTokens, ...trackedKnownTokens.slice(0, knownTokenCapacity)]
 
     if (trackedTokens.length > 0) {
       workerController?.updateKnownTokenBalances(address, trackedTokens)
@@ -310,8 +319,14 @@ export default function (store: Store) {
       return
     }
 
-    log.verbose('adding balances updates', { address, tokens: tokens.map((t) => t.address) })
-    runWhenReady(() => workerController?.updateKnownTokenBalances(address, tokens))
+    const trackedTokens = limitTokenScan(tokens)
+
+    log.verbose('adding balances updates', {
+      address,
+      tokenCount: tokens.length,
+      scannedTokenCount: trackedTokens.length
+    })
+    runWhenReady(() => workerController?.updateKnownTokenBalances(address, trackedTokens))
   }
 
   return { start, stop, resume, pause, refresh, setAddress, addNetworks, addTokens }

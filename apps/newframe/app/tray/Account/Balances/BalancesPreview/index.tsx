@@ -3,15 +3,12 @@ import Restore from 'react-restore'
 
 import link from '../../../../../resources/link'
 import svg from '../../../../../resources/svg'
-import { isNetworkConnected } from '../../../../../resources/utils/chains'
 import {
   formatUsdRate,
-  createBalance,
-  sortByTotalValue as byTotalValue,
-  isNativeCurrency,
-  getNativeCurrencyIcon,
+  createBalanceSummarySelector,
+  createDisplayBalance,
   isLowValueTokenBalance,
-  hasPositiveBalance
+  type BalanceSummary
 } from '../../../../../resources/domain/balance'
 import { matchFilter } from '../../../../../resources/utils'
 
@@ -22,6 +19,7 @@ import Balance from '../Balance'
 class BalancesPreview extends React.Component<any, any> {
   declare store: Store
   moduleRef: React.RefObject<HTMLDivElement | null>
+  selectBalanceSummaries = createBalanceSummarySelector()
   resizeObserver?: ResizeObserver
   refreshTimer: any
   resizeTimer: any
@@ -80,30 +78,16 @@ class BalancesPreview extends React.Component<any, any> {
     const networks = this.store('main.networks.ethereum')
     const networksMeta = this.store('main.networksMeta.ethereum')
 
-    return (
-      rawBalances
-        // only show balances from connected networks
-        .filter((rawBalance: any) => isNetworkConnected(networks[rawBalance.chainId]))
-        .filter(hasPositiveBalance)
-        .map((rawBalance: any) => {
-          const isNative = isNativeCurrency(rawBalance.address)
-          const nativeCurrencyInfo = networksMeta[rawBalance.chainId].nativeCurrency || {}
-
-          const rate = isNative ? nativeCurrencyInfo : rates[rawBalance.address || rawBalance.symbol] || {}
-          const logoURI = (isNative && getNativeCurrencyIcon(nativeCurrencyInfo)) || rawBalance.logoURI
-          const name = isNative
-            ? nativeCurrencyInfo.name || networks[rawBalance.chainId].name
-            : rawBalance.name
-          const decimals = isNative ? nativeCurrencyInfo.decimals || 18 : rawBalance.decimals
-          const symbol = (isNative && nativeCurrencyInfo.symbol) || rawBalance.symbol
-
-          return createBalance(
-            { ...rawBalance, logoURI, name, decimals, symbol },
-            networks[rawBalance.chainId].isTestnet ? { price: 0 } : rate.usd
-          )
-        })
-        .sort(byTotalValue)
-    )
+    return this.selectBalanceSummaries({
+      rawBalances,
+      rates,
+      networks,
+      networksMeta,
+      includeChain: (chain) => {
+        return !!(chain.connection?.primary?.connected || chain.connection?.secondary?.connected)
+      },
+      cacheKey: this.props.account
+    })
   }
 
   override render() {
@@ -126,7 +110,7 @@ class BalancesPreview extends React.Component<any, any> {
     const totalDisplayValue = formatUsdRate(totalValue, 0)
     const lastBalanceUpdate = this.store('main.accounts', address, 'balances.lastUpdated')
 
-    const balances = visibleBalances.slice(0, 4)
+    const balances = visibleBalances.slice(0, 4).map((balance: BalanceSummary) => createDisplayBalance(balance))
 
     // scan if balances are more than a minute old
     const scanning =

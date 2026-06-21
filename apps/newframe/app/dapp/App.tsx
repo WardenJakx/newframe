@@ -8,18 +8,19 @@ import Native from '../../resources/Native'
 import svg from '../../resources/svg'
 import { NATIVE_CURRENCY } from '../../resources/constants'
 import {
-  createBalance,
+  createBalanceSummarySelector,
+  createDisplayBalance,
   formatUsdRate,
-  getNativeCurrencyIcon,
   hasPositiveBalance,
-  isNativeCurrency,
-  sortByTotalValue as byTotalValue
+  type BalanceSummary
 } from '../../resources/domain/balance'
 import { cachedImageUrl } from '../../resources/domain/imageCache'
 import { formatUnits, parseUnits, toBigInt } from '../../resources/utils/numbers'
 
 const sendStorageKey = 'send'
 const frameOriginId = uuidv5('newframe-internal', uuidv5.DNS)
+const INITIAL_SEND_TOKEN_ROWS = 50
+const SEND_TOKEN_ROWS_INCREMENT = 50
 
 function tokenKey(token?: any) {
   if (!token) return ''
@@ -42,6 +43,7 @@ function encodeErc20Transfer(to: string, amount: bigint) {
 
 class App extends React.Component<any, any> {
   declare store: Store
+  selectBalanceSummaries = createBalanceSummarySelector()
 
   constructor(props: any, context?: any) {
     super(props, context)
@@ -56,7 +58,8 @@ class App extends React.Component<any, any> {
       launchUpdatedAt: 0,
       status: '',
       submitting: false,
-      tokenOpen: false
+      tokenOpen: false,
+      tokenRowsVisible: INITIAL_SEND_TOKEN_ROWS
     }
   }
 
@@ -78,7 +81,8 @@ class App extends React.Component<any, any> {
         launchAssetKey,
         launchUpdatedAt,
         selectedAssetKey: launchAssetKey,
-        tokenOpen: false
+        tokenOpen: false,
+        tokenRowsVisible: INITIAL_SEND_TOKEN_ROWS
       })
     }
   }
@@ -99,34 +103,21 @@ class App extends React.Component<any, any> {
     return [...ordered, ...missing]
   }
 
-  getBalances() {
+  getBalanceSummaries() {
     const account = this.getCurrentAccount()
     const rawBalances = account ? this.store('main.balances', account.address) || [] : []
     const rates = this.store('main.rates') || {}
     const networks = this.store('main.networks.ethereum') || {}
     const networksMeta = this.store('main.networksMeta.ethereum') || {}
 
-    return rawBalances
-      .filter((rawBalance: any) => {
-        const chain = networks[rawBalance.chainId]
-        return chain && chain.on && networksMeta[rawBalance.chainId]
-      })
-      .filter(hasPositiveBalance)
-      .map((rawBalance: any) => {
-        const isNative = isNativeCurrency(rawBalance.address)
-        const nativeCurrencyInfo = networksMeta[rawBalance.chainId].nativeCurrency || {}
-        const rate = isNative ? nativeCurrencyInfo : rates[rawBalance.address || rawBalance.symbol] || {}
-        const logoURI = (isNative && getNativeCurrencyIcon(nativeCurrencyInfo)) || rawBalance.logoURI
-        const name = isNative ? nativeCurrencyInfo.name || networks[rawBalance.chainId].name : rawBalance.name
-        const decimals = isNative ? nativeCurrencyInfo.decimals || 18 : rawBalance.decimals
-        const symbol = (isNative && nativeCurrencyInfo.symbol) || rawBalance.symbol
-
-        return createBalance(
-          { ...rawBalance, logoURI, name, decimals, symbol },
-          networks[rawBalance.chainId].isTestnet ? { price: 0 } : rate.usd
-        )
-      })
-      .sort(byTotalValue)
+    return this.selectBalanceSummaries({
+      rawBalances,
+      rates,
+      networks,
+      networksMeta,
+      includeChain: (chain) => !!chain.on,
+      cacheKey: account?.address || ''
+    })
   }
 
   chainColor(chainId: number) {
@@ -155,12 +146,16 @@ class App extends React.Component<any, any> {
   }
 
   getSelectedAsset() {
-    const balances = this.getBalances()
+    const balances = this.getBalanceSummaries()
     const launchAsset = this.store('main.dapp.storage', sendStorageKey, 'asset')
     const fallbackKey = tokenKey(launchAsset)
     const selectedKey = this.state.selectedAssetKey || fallbackKey
 
-    return balances.find((balance: any) => tokenKey(balance) === selectedKey) || balances[0]
+    const selectedBalance = balances.find((balance: BalanceSummary) => tokenKey(balance) === selectedKey)
+    if (selectedBalance) return createDisplayBalance(selectedBalance)
+    if (launchAsset && tokenKey(launchAsset) === selectedKey && hasPositiveBalance(launchAsset)) return launchAsset
+
+    return balances[0] ? createDisplayBalance(balances[0]) : null
   }
 
   getAmountBaseUnits(asset: any) {
@@ -406,11 +401,22 @@ class App extends React.Component<any, any> {
   }
 
   renderTokenSelector(asset: any) {
-    const balances = this.getBalances()
+    const balances = this.state.tokenOpen ? this.getBalanceSummaries() : []
+    const selectedKey = tokenKey(asset)
+    const visibleBalances = balances.slice(0, this.state.tokenRowsVisible)
+    const selectedBalance = balances.find((balance: BalanceSummary) => tokenKey(balance) === selectedKey)
+    const menuBalances =
+      selectedBalance && !visibleBalances.some((balance: BalanceSummary) => tokenKey(balance) === selectedKey)
+        ? [selectedBalance, ...visibleBalances]
+        : visibleBalances
+    const rowsHidden = Math.max(balances.length - this.state.tokenRowsVisible, 0)
 
     return (
       <div className='sendTokenPicker'>
-        <button className='sendTokenButton' onClick={() => this.setState({ tokenOpen: !this.state.tokenOpen })}>
+        <button
+          className='sendTokenButton'
+          onClick={() => this.setState({ tokenOpen: !this.state.tokenOpen, recipientOpen: false })}
+        >
           {this.renderTokenIcon(asset)}
           <div className='sendTokenText'>
             <div className='sendTokenSymbol'>{asset?.symbol || 'Token'}</div>
@@ -420,16 +426,38 @@ class App extends React.Component<any, any> {
         </button>
         {this.state.tokenOpen ? (
           <div className='sendTokenMenu'>
-            {balances.map((balance: any) => (
-              <button key={tokenKey(balance)} className='sendTokenOption' onClick={() => this.selectAsset(balance)}>
-                {this.renderTokenIcon(balance)}
-                <div className='sendTokenText'>
-                  <div className='sendTokenSymbol'>{balance.symbol}</div>
-                  <div className='sendTokenChain'>{this.store('main.networks.ethereum', balance.chainId, 'name')}</div>
-                </div>
-                <div className='sendTokenOptionBalance'>{balance.displayBalance}</div>
+            {menuBalances.map((balance: BalanceSummary) => {
+              const displayBalance = createDisplayBalance(balance)
+
+              return (
+                <button
+                  key={tokenKey(balance)}
+                  className='sendTokenOption'
+                  onClick={() => this.selectAsset(displayBalance)}
+                >
+                  {this.renderTokenIcon(displayBalance)}
+                  <div className='sendTokenText'>
+                    <div className='sendTokenSymbol'>{displayBalance.symbol}</div>
+                    <div className='sendTokenChain'>
+                      {this.store('main.networks.ethereum', displayBalance.chainId, 'name')}
+                    </div>
+                  </div>
+                  <div className='sendTokenOptionBalance'>{displayBalance.displayBalance}</div>
+                </button>
+              )
+            })}
+            {rowsHidden > 0 ? (
+              <button
+                className='sendTokenMore'
+                onClick={() =>
+                  this.setState({
+                    tokenRowsVisible: this.state.tokenRowsVisible + SEND_TOKEN_ROWS_INCREMENT
+                  })
+                }
+              >
+                {`Show ${Math.min(SEND_TOKEN_ROWS_INCREMENT, rowsHidden)} more assets`}
               </button>
-            ))}
+            ) : null}
           </div>
         ) : null}
       </div>

@@ -3,16 +3,13 @@ import Restore from 'react-restore'
 
 import link from '../../../../../resources/link'
 import svg from '../../../../../resources/svg'
-import { isNetworkConnected } from '../../../../../resources/utils/chains'
 import Balance from '../Balance'
 import {
   formatUsdRate,
-  createBalance,
-  sortByTotalValue as byTotalValue,
-  isNativeCurrency,
-  getNativeCurrencyIcon,
+  createBalanceSummarySelector,
+  createDisplayBalance,
   isLowValueTokenBalance,
-  hasPositiveBalance
+  type BalanceSummary
 } from '../../../../../resources/domain/balance'
 import { matchFilter } from '../../../../../resources/utils'
 
@@ -21,6 +18,7 @@ import { ClusterBox, Cluster, ClusterRow, ClusterValue } from '../../../../../re
 class BalancesExpanded extends React.Component<any, any> {
   declare store: Store
   moduleRef: React.RefObject<HTMLDivElement | null>
+  selectBalanceSummaries = createBalanceSummarySelector()
   refreshTimer: any
 
   constructor(props: any, context?: any) {
@@ -61,31 +59,21 @@ class BalancesExpanded extends React.Component<any, any> {
     const networks = this.store('main.networks.ethereum')
     const networksMeta = this.store('main.networksMeta.ethereum')
 
-    const balances = rawBalances
-      // only show balances from connected networks
-      .filter((rawBalance: any) => isNetworkConnected(networks[rawBalance.chainId]))
-      .filter(hasPositiveBalance)
-      .map((rawBalance: any) => {
-        const isNative = isNativeCurrency(rawBalance.address)
-        const nativeCurrencyInfo = networksMeta[rawBalance.chainId].nativeCurrency || {}
-
-        const rate = isNative ? nativeCurrencyInfo : rates[rawBalance.address || rawBalance.symbol] || {}
-        const logoURI = (isNative && getNativeCurrencyIcon(nativeCurrencyInfo)) || rawBalance.logoURI
-        const name = isNative ? nativeCurrencyInfo.name || networks[rawBalance.chainId].name : rawBalance.name
-        const decimals = isNative ? nativeCurrencyInfo.decimals || 18 : rawBalance.decimals
-        const symbol = (isNative && nativeCurrencyInfo.symbol) || rawBalance.symbol
-
-        return createBalance(
-          { ...rawBalance, logoURI, name, decimals, symbol },
-          networks[rawBalance.chainId].isTestnet ? { price: 0 } : rate.usd
-        )
-      })
+    const balances = this.selectBalanceSummaries({
+      rawBalances,
+      rates,
+      networks,
+      networksMeta,
+      includeChain: (chain) => {
+        return !!(chain.connection?.primary?.connected || chain.connection?.secondary?.connected)
+      },
+      cacheKey: this.props.account
+    })
       .filter((balance: any) => {
         const filter = this.state.balanceFilter
         const chainName = this.store('main.networks.ethereum', balance.chainId, 'name')
         return matchFilter(filter, [chainName, balance.name, balance.symbol])
       })
-      .sort(byTotalValue)
 
     const visibleBalances = balances.filter((balance: any) => !isLowValueTokenBalance(balance))
     const hiddenLowValueCount = balances.length - visibleBalances.length
@@ -133,7 +121,9 @@ class BalancesExpanded extends React.Component<any, any> {
       storedBalances,
       rates
     )
-    const balances = allBalances.slice(0, this.props.expanded ? allBalances.length : 4)
+    const balances = allBalances
+      .slice(0, this.props.expanded ? allBalances.length : 4)
+      .map((balance: BalanceSummary) => createDisplayBalance(balance))
 
     const lastBalanceUpdate = this.store('main.accounts', address, 'balances.lastUpdated')
 

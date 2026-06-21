@@ -12,12 +12,13 @@ import {
 } from '../../../resources/biometrics'
 import {
   formatUsdRate,
-  createBalance,
-  sortByTotalValue as byTotalValue,
+  createBalanceSummarySelector,
+  createDisplayBalance,
   isNativeCurrency,
-  getNativeCurrencyIcon,
   isLowValueTokenBalance,
-  hasPositiveBalance
+  hasPositiveBalance,
+  type BalanceSummary,
+  type DisplayedBalance
 } from '../../../resources/domain/balance'
 import { cachedImageUrl, isCachedImageReference } from '../../../resources/domain/imageCache'
 import { matchFilter } from '../../../resources/utils'
@@ -53,6 +54,12 @@ const inlineHardwareTypes = [
   { type: 'ledger', title: 'Ledger', icon: 'ledger' },
   { type: 'lattice', title: 'GridPlus', icon: 'lattice' }
 ]
+
+const PORTFOLIO_IMPORTANCE_THRESHOLD = 0.01
+const INITIAL_SECONDARY_POSITION_ROWS = 50
+const SECONDARY_POSITION_ROWS_INCREMENT = 50
+const INITIAL_DUST_ROWS = 50
+const DUST_ROWS_INCREMENT = 50
 
 const AddressQRCode = ({ address }: { address: string }) => {
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null)
@@ -183,6 +190,7 @@ class Home extends React.Component<any, any> {
   lastHomeCommandId = 0
   accountSearchInput: HTMLInputElement | null = null
   hydratingChainIcons = new Set<number>()
+  selectBalanceSummaries = createBalanceSummarySelector()
 
   constructor(props: any, context?: any) {
     super(props, context)
@@ -195,6 +203,9 @@ class Home extends React.Component<any, any> {
       menuOpen: false,
       accountsOpen: false,
       dustExpanded: false,
+      secondaryPositionsExpanded: false,
+      secondaryPositionRowsVisible: INITIAL_SECONDARY_POSITION_ROWS,
+      dustRowsVisible: INITIAL_DUST_ROWS,
       query: '',
       netQuery: '',
       network: 0, // 0 = all networks
@@ -522,29 +533,18 @@ class Home extends React.Component<any, any> {
     const rates = this.store('main.rates')
     const networks = this.store('main.networks.ethereum')
     const networksMeta = this.store('main.networksMeta.ethereum')
+    const showTestnets = this.showTestnets()
 
-    return rawBalances
-      .filter((rawBalance: any) => {
-        const chain = networks[rawBalance.chainId]
-        return this.shouldShowChain(chain) && chain.on && networksMeta[rawBalance.chainId]
-      })
-      .filter(hasPositiveBalance)
-      .map((rawBalance: any) => {
-        const isNative = isNativeCurrency(rawBalance.address)
-        const nativeCurrencyInfo = networksMeta[rawBalance.chainId].nativeCurrency || {}
-
-        const rate = isNative ? nativeCurrencyInfo : rates[rawBalance.address || rawBalance.symbol] || {}
-        const logoURI = (isNative && getNativeCurrencyIcon(nativeCurrencyInfo)) || rawBalance.logoURI
-        const name = isNative ? nativeCurrencyInfo.name || networks[rawBalance.chainId].name : rawBalance.name
-        const decimals = isNative ? nativeCurrencyInfo.decimals || 18 : rawBalance.decimals
-        const symbol = (isNative && nativeCurrencyInfo.symbol) || rawBalance.symbol
-
-        return createBalance(
-          { ...rawBalance, logoURI, name, decimals, symbol },
-          networks[rawBalance.chainId].isTestnet ? { price: 0 } : rate.usd
-        )
-      })
-      .sort(byTotalValue)
+    return this.selectBalanceSummaries({
+      rawBalances,
+      rates,
+      networks,
+      networksMeta,
+      includeChain: (chain) => {
+        return (!chain.isTestnet || showTestnets) && !!chain.on
+      },
+      cacheKey: `${address}:${showTestnets ? 'testnets' : 'mainnets'}`
+    })
   }
 
   accountNavValue(account: any) {
@@ -1917,7 +1917,7 @@ class Home extends React.Component<any, any> {
     )
   }
 
-  renderTokenRow(balance: any, i: number, className = 't2TokenRow cardShow') {
+  renderTokenRow(balance: DisplayedBalance, i: number, className = 't2TokenRow cardShow') {
     const change = balance.priceChange ? parseFloat(balance.priceChange) : 0
     const hasPrice = balance.hasPrice === true
     const fiatValue = isLowValueTokenBalance(balance) ? '<$0.01' : `$${formatUsdRate(balance.totalValue, 2)}`
@@ -1953,19 +1953,55 @@ class Home extends React.Component<any, any> {
     )
   }
 
-  renderPositions(balances: any[]) {
+  renderPositionListMore(hiddenCount: number, label: string, onClick: () => void) {
+    if (hiddenCount <= 0) return null
+
+    return (
+      <div
+        aria-label={label}
+        className='t2PositionListMore'
+        onClick={onClick}
+        onKeyDown={(e) => this.onKeyboardActivate(e, onClick)}
+        role='button'
+        tabIndex={0}
+      >
+        <span>{label}</span>
+        {svg.chevron(12)}
+      </div>
+    )
+  }
+
+  renderPositions(balances: BalanceSummary[]) {
     const networks = this.store('main.networks.ethereum')
     const matchedBalances = balances.filter((balance) => {
       if (!this.inNetworkFilter(balance.chainId)) return false
       const chainName = (networks[balance.chainId] || {}).name || ''
       return matchFilter(this.state.query, [chainName, balance.name, balance.symbol])
     })
+    const matchedTotal = matchedBalances.reduce((sum, balance) => sum + balance.totalValue, 0)
+    const importanceCutoff = matchedTotal * PORTFOLIO_IMPORTANCE_THRESHOLD
+    const thresholdActive = matchedTotal > 0
     const visible = matchedBalances.filter((balance) => !isLowValueTokenBalance(balance))
+    const importantBalances = thresholdActive
+      ? visible.filter((balance) => balance.totalValue > importanceCutoff)
+      : visible
+    const secondaryBalances = thresholdActive
+      ? visible.filter((balance) => balance.totalValue <= importanceCutoff)
+      : []
     const lowValueBalances = matchedBalances.filter(isLowValueTokenBalance)
+    const secondaryRows = secondaryBalances.slice(0, this.state.secondaryPositionRowsVisible)
+    const secondaryRowsHidden = secondaryBalances.length - secondaryRows.length
+    const hiddenSecondaryCount = secondaryBalances.length
+    const hiddenSecondaryValue = secondaryBalances.reduce((sum, balance) => sum + balance.totalValue, 0)
     const hiddenLowValueCount = lowValueBalances.length
+    const secondaryLabel = `${hiddenSecondaryCount} ${
+      hiddenSecondaryCount === 1 ? 'asset' : 'assets'
+    } below 1% hidden`
     const dustLabel = `${hiddenLowValueCount} low value ${
       hiddenLowValueCount === 1 ? 'token' : 'tokens'
     } hidden`
+    const dustRows = lowValueBalances.slice(0, this.state.dustRowsVisible)
+    const dustRowsHidden = lowValueBalances.length - dustRows.length
 
     if (!visible.length && hiddenLowValueCount === 0) {
       return <div className='t2EmptyState'>No Tokens Found</div>
@@ -1973,7 +2009,58 @@ class Home extends React.Component<any, any> {
 
     return (
       <div className='t2List'>
-        {visible.map((balance, i) => this.renderTokenRow(balance, i))}
+        {importantBalances.map((balance, i) => this.renderTokenRow(createDisplayBalance(balance), i))}
+        {hiddenSecondaryCount > 0 ? (
+          <>
+            <div
+              aria-expanded={this.state.secondaryPositionsExpanded}
+              aria-label={secondaryLabel}
+              className='t2LowValueHidden'
+              onClick={() =>
+                this.setState({ secondaryPositionsExpanded: !this.state.secondaryPositionsExpanded })
+              }
+              onKeyDown={(e) =>
+                this.onKeyboardActivate(e, () =>
+                  this.setState({ secondaryPositionsExpanded: !this.state.secondaryPositionsExpanded })
+                )
+              }
+              role='button'
+              tabIndex={0}
+            >
+              <div
+                className={
+                  this.state.secondaryPositionsExpanded
+                    ? 't2LowValueHiddenChevron t2LowValueHiddenChevronOpen'
+                    : 't2LowValueHiddenChevron'
+                }
+              >
+                {svg.chevronLeft(10)}
+              </div>
+              <div className='t2LowValueHiddenLabel'>{secondaryLabel}</div>
+              <div className='t2LowValueHiddenValue'>{`$${formatUsdRate(hiddenSecondaryValue, 2)}`}</div>
+            </div>
+            {this.state.secondaryPositionsExpanded
+              ? secondaryRows.map((balance, i) =>
+                  this.renderTokenRow(
+                    createDisplayBalance(balance),
+                    i,
+                    't2TokenRow t2SecondaryTokenRow cardShow'
+                  )
+                )
+              : null}
+            {this.state.secondaryPositionsExpanded
+              ? this.renderPositionListMore(
+                  secondaryRowsHidden,
+                  `Show ${Math.min(SECONDARY_POSITION_ROWS_INCREMENT, secondaryRowsHidden)} more assets`,
+                  () =>
+                    this.setState({
+                      secondaryPositionRowsVisible:
+                        this.state.secondaryPositionRowsVisible + SECONDARY_POSITION_ROWS_INCREMENT
+                    })
+                )
+              : null}
+          </>
+        ) : null}
         {hiddenLowValueCount > 0 ? (
           <>
             <div
@@ -2000,8 +2087,18 @@ class Home extends React.Component<any, any> {
               <div className='t2LowValueHiddenValue'>{'<$0.01'}</div>
             </div>
             {this.state.dustExpanded
-              ? lowValueBalances.map((balance, i) =>
-                  this.renderTokenRow(balance, i, 't2TokenRow t2DustTokenRow cardShow')
+              ? dustRows.map((balance, i) =>
+                  this.renderTokenRow(createDisplayBalance(balance), i, 't2TokenRow t2DustTokenRow cardShow')
+                )
+              : null}
+            {this.state.dustExpanded
+              ? this.renderPositionListMore(
+                  dustRowsHidden,
+                  `Show ${Math.min(DUST_ROWS_INCREMENT, dustRowsHidden)} more low value tokens`,
+                  () =>
+                    this.setState({
+                      dustRowsVisible: this.state.dustRowsVisible + DUST_ROWS_INCREMENT
+                    })
                 )
               : null}
           </>

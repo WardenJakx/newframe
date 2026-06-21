@@ -13,6 +13,8 @@ export interface DataScanner {
 
 const storeApi = {
   getActiveAddress: () => (store('selected.current') || '') as Address,
+  getAccount: (address: Address) =>
+    store('main.accounts', address) as { lastSignerType?: string } | undefined,
   getCustomTokens: () => (store('main.tokens.custom') || []) as Token[],
   getKnownTokens: (address?: Address) => ((address && store('main.tokens.known', address)) || []) as Token[],
   getConnectedNetworks: () => {
@@ -21,6 +23,11 @@ const storeApi = {
       (n) => (n.connection.primary || {}).connected || (n.connection.secondary || {}).connected
     )
   }
+}
+
+function shouldScanOnChain(address: Address) {
+  const signerType = storeApi.getAccount(address)?.lastSignerType || ''
+  return signerType.toLowerCase() !== 'address'
 }
 
 export default function () {
@@ -35,7 +42,7 @@ export default function () {
   const handleNetworkUpdate = debounce((newlyConnected: number[]) => {
     log.verbose('updating external data due to network update(s)', { connectedChains, newlyConnected })
 
-    if (newlyConnected.length > 0 && activeAccount) {
+    if (newlyConnected.length > 0 && activeAccount && shouldScanOnChain(activeAccount)) {
       balances.addNetworks(activeAccount, newlyConnected)
     }
   }, 500)
@@ -43,13 +50,13 @@ export default function () {
   const handleAddressUpdate = debounce(() => {
     log.verbose('updating external data due to address update(s)', { activeAccount })
 
-    balances.setAddress(activeAccount)
+    balances.setAddress(activeAccount && shouldScanOnChain(activeAccount) ? activeAccount : ('' as Address))
   }, 800)
 
   const handleTokensUpdate = debounce((tokens: Token[]) => {
     log.verbose('updating external data due to token update(s)', { activeAccount })
 
-    if (activeAccount) {
+    if (activeAccount && shouldScanOnChain(activeAccount)) {
       balances.addTokens(activeAccount, tokens)
     }
   })
@@ -105,7 +112,7 @@ export default function () {
 
   return {
     refreshBalances: (address = activeAccount) => {
-      if (address) balances.refresh(address)
+      if (address && shouldScanOnChain(address)) balances.refresh(address)
     },
     close: () => {
       allNetworksObserver.remove()
