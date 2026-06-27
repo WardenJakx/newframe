@@ -36,11 +36,12 @@ class DappsPermissionsPreview extends React.Component<any, any> {
   override render() {
     const permissions = this.store('main.permissions', this.props.account) || {}
     let permissionList = Object.keys(permissions)
+      .filter((o) => permissions[o]?.provider)
       .filter((o) => {
         const { filter = '' } = this.props
         return matchFilter(filter, [permissions[o].origin])
       })
-      .sort((a: any, b: any) => (a.origin < b.origin ? -1 : 1))
+      .sort((a: any, b: any) => (permissions[a].origin < permissions[b].origin ? -1 : 1))
     if (!this.props.expanded) permissionList = permissionList.slice(0, 4)
 
     return (
@@ -55,7 +56,7 @@ class DappsPermissionsPreview extends React.Component<any, any> {
               <ClusterValue>
                 <div className='signerPermission'>
                   <div className='signerPermissionControls'>
-                    <div className='signerPermissionNoPermissions'>No Permissions Set</div>
+                    <div className='signerPermissionNoPermissions'>No Connected Websites</div>
                   </div>
                 </div>
               </ClusterValue>
@@ -69,16 +70,20 @@ class DappsPermissionsPreview extends React.Component<any, any> {
                       <div className='signerPermissionControls'>
                         <div className='signerPermissionOrigin'>{permissions[o].origin}</div>
                         <div
-                          className={
-                            permissions[o].provider
-                              ? 'signerPermissionToggle signerPermissionToggleOn'
-                              : 'signerPermissionToggle'
-                          }
-                          onClick={(_: any) =>
-                            link.send('tray:action', 'toggleAccess', this.props.account, o)
-                          }
+                          aria-label={`Clear ${permissions[o].origin}`}
+                          className='signerPermissionClear'
+                          onClick={() => link.send('tray:action', 'revokePermission', this.props.account, o)}
+                          role='button'
+                          tabIndex={0}
+                          title={`Clear ${permissions[o].origin}`}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault()
+                              link.send('tray:action', 'revokePermission', this.props.account, o)
+                            }
+                          }}
                         >
-                          <div className='signerPermissionToggleSwitch' />
+                          {svg.trash(14)}
                         </div>
                       </div>
                     </div>

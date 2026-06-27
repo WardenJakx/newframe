@@ -402,13 +402,9 @@ store.revokePermission = (address: string, handlerId: string) => {
   update('main.permissions', address, (permissions: any = {}) => {
     if (!permissions[handlerId]) return permissions
 
-    return {
-      ...permissions,
-      [handlerId]: {
-        ...permissions[handlerId],
-        provider: false
-      }
-    }
+    const nextPermissions = { ...permissions }
+    delete nextPermissions[handlerId]
+    return nextPermissions
   })
 }
 

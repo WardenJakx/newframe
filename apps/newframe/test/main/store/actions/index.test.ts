@@ -26,6 +26,7 @@ import {
   updateAccount as updateAccountAction,
   setAutoDiscoverTokens as setAutoDiscoverTokensAction,
   setPortfolioApiKey as setPortfolioApiKeyAction,
+  revokePermission as revokePermissionAction,
   navClearReq as clearNavRequestAction,
   navClearSigner as clearNavSignerAction,
   updateTypedDataRequest as updateTypedDataAction
@@ -638,10 +639,11 @@ describe('#initOrigin', () => {
 
 describe('#clearOrigins', () => {
   let origins: any
+  let permissions: any
 
   const updaterFn = (node: any, update: any) => {
-    expect(node).toBe('main.origins')
-    origins = update()
+    if (node === 'main.origins') origins = update()
+    if (node === 'main.permissions') permissions = update(permissions)
   }
 
   const clearOrigins = () => clearOriginsAction(updaterFn)
@@ -652,20 +654,71 @@ describe('#clearOrigins', () => {
       '8073729a-5e59-53b7-9e69-5d9bcff94087': {},
       'd7acc008-6411-5486-bb2d-0c0cfcddbb92': {}
     }
+    permissions = {
+      '0xabc': {
+        '91f6971d-ba85-52d7-a27e-6af206eb2433': {
+          origin: 'frame.test',
+          provider: true
+        }
+      }
+    }
   })
 
-  it('should clear all existing origins', () => {
+  it('should clear all existing origins and attached permissions', () => {
     ;(clearOrigins as any)(origins)
 
     expect(origins).toEqual({})
+    expect(permissions).toEqual({})
+  })
+})
+
+describe('#revokePermission', () => {
+  let permissions: any
+
+  const updaterFn = (node: any, address: any, update: any) => {
+    expect(node).toBe('main.permissions')
+    permissions[address] = update(permissions[address])
+  }
+
+  const revokePermission = (address: string, originId: string) =>
+    revokePermissionAction(updaterFn, address, originId)
+
+  beforeEach(() => {
+    permissions = {
+      '0xabc': {
+        '8073729a-5e59-53b7-9e69-5d9bcff94087': {
+          origin: 'frame.test',
+          provider: true
+        },
+        'd7acc008-6411-5486-bb2d-0c0cfcddbb92': {
+          origin: 'keep.test',
+          provider: true
+        }
+      }
+    }
+  })
+
+  it('removes the permission entry instead of disabling it', () => {
+    revokePermission('0xabc', '8073729a-5e59-53b7-9e69-5d9bcff94087')
+
+    expect(permissions).toEqual({
+      '0xabc': {
+        'd7acc008-6411-5486-bb2d-0c0cfcddbb92': {
+          origin: 'keep.test',
+          provider: true
+        }
+      }
+    })
   })
 })
 
 describe('#removeOrigin', () => {
   let origins: any
+  let permissions: any
 
   const updaterFn = (node: any, update: any) => {
     if (node === 'main.origins') origins = update(origins)
+    if (node === 'main.permissions') permissions = update(permissions)
   }
 
   const removeOrigin = (originId: any) => removeOriginAction(updaterFn, originId)
@@ -676,14 +729,34 @@ describe('#removeOrigin', () => {
       '8073729a-5e59-53b7-9e69-5d9bcff94087': {},
       'd7acc008-6411-5486-bb2d-0c0cfcddbb92': {}
     }
+    permissions = {
+      '0xabc': {
+        '8073729a-5e59-53b7-9e69-5d9bcff94087': {
+          origin: 'frame.test',
+          provider: true
+        },
+        'd7acc008-6411-5486-bb2d-0c0cfcddbb92': {
+          origin: 'keep.test',
+          provider: true
+        }
+      }
+    }
   })
 
-  it('should remove the specified origin', () => {
+  it('should remove the specified origin and attached permissions', () => {
     removeOrigin('8073729a-5e59-53b7-9e69-5d9bcff94087')
 
     expect(origins).toEqual({
       '91f6971d-ba85-52d7-a27e-6af206eb2433': {},
       'd7acc008-6411-5486-bb2d-0c0cfcddbb92': {}
+    })
+    expect(permissions).toEqual({
+      '0xabc': {
+        'd7acc008-6411-5486-bb2d-0c0cfcddbb92': {
+          origin: 'keep.test',
+          provider: true
+        }
+      }
     })
   })
 })

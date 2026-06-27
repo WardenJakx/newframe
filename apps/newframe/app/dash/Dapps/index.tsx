@@ -2,7 +2,6 @@ import React, { createRef } from 'react'
 import Restore from 'react-restore'
 import link from '../../../resources/link'
 import { isNetworkConnected, isNetworkEnabled } from '../../../resources/utils/chains'
-// import svg from '../../../resources/svg'
 
 import RingIcon from '../../../resources/Components/RingIcon'
 
@@ -12,33 +11,23 @@ function bySessionStartTime(a: any, b: any) {
   return b.session.startedAt - a.session.startedAt
 }
 
-function byLastUpdated(a: any, b: any) {
-  return b.session.lastUpdatedAt - a.session.lastUpdatedAt
-}
-
 const originFilter = ['newframe-internal', 'newframe-extension', 'frame-internal', 'frame-extension']
 
 function getOriginsForChain(chain: any, origins: any) {
-  const { connectedOrigins, disconnectedOrigins } = Object.entries(origins).reduce(
-    (acc: any, [id, origin]: [string, any]) => {
-      if (origin.chain.id === chain.id && !originFilter.includes(origin.name)) {
-        const connected =
-          isNetworkConnected(chain) &&
-          (!origin.session.endedAt || origin.session.startedAt > origin.session.endedAt)
+  const connectedOrigins = Object.entries(origins).reduce((acc: any, [id, origin]: [string, any]) => {
+    if (origin.chain.id === chain.id && !originFilter.includes(origin.name)) {
+      const connected =
+        isNetworkConnected(chain) &&
+        (!origin.session.endedAt || origin.session.startedAt > origin.session.endedAt)
 
-        acc[connected ? 'connectedOrigins' : 'disconnectedOrigins'].push({ ...origin, id })
-      }
+      if (connected) acc.push({ ...origin, id })
+    }
 
-      return acc
-    },
-    { connectedOrigins: [] as any[], disconnectedOrigins: [] as any[] }
-  )
+    return acc
+  }, [] as any[])
 
   return {
-    connected: connectedOrigins.sort(bySessionStartTime),
-    disconnected: disconnectedOrigins
-      .sort(byLastUpdated)
-      .filter((origin: any) => Date.now() - origin.session.lastUpdatedAt < 60 * 60 * 1000)
+    connected: connectedOrigins.sort(bySessionStartTime)
   }
 }
 
@@ -70,9 +59,9 @@ class Indicator extends React.Component<any, any> {
           }
         />
       )
-    } else {
-      return <div className='sliceOriginIndicator sliceOriginIndicatorOff' />
     }
+
+    return null
   }
 }
 
@@ -150,11 +139,8 @@ const ChainOrigins = ({ chain: { name }, origins, primaryColor, icon }: any) => 
       {origins.connected.map((origin: any) => (
         <OriginModule key={origin} origin={origin} connected={true} />
       ))}
-      {origins.disconnected.map((origin: any) => (
-        <OriginModule key={origin} origin={origin} connected={false} />
-      ))}
-      {origins.connected.length === 0 && origins.disconnected.length === 0 ? (
-        <div className='sliceOriginNoDapp'>{'No Dapp Recently Connected'}</div>
+      {origins.connected.length === 0 ? (
+        <div className='sliceOriginNoDapp'>{'No Websites Connected'}</div>
       ) : null}
     </>
   )
@@ -172,30 +158,37 @@ class Dapps extends React.Component<any, any> {
     const origins = this.store('main.origins')
 
     const { dappDetails } = this.props.data
+    const chainsWithOrigins = enabledChains
+      .map((chain) => {
+        const chainOrigins = getOriginsForChain(chain, origins)
+        const { primaryColor, icon } = this.store('main.networksMeta.ethereum', chain.id)
+
+        return { chain, origins: chainOrigins, primaryColor, icon }
+      })
+      .filter(({ origins: chainOrigins }) => chainOrigins.connected.length > 0)
 
     if (dappDetails) {
       return <DappDetails originId={dappDetails} />
     } else {
       return (
         <div className='cardShow' style={{ padding: '0px 0px 64px 0px' }}>
-          {enabledChains.map((chain) => {
-            const chainOrigins = getOriginsForChain(chain, origins)
-            const { primaryColor, icon } = this.store('main.networksMeta.ethereum', chain.id)
-
-            // NOTE: preserved pre-existing behavior — chainOrigins has no `length`
-            // property at runtime, so this condition is always false
-            return (chainOrigins as any).length === 0 ? (
-              <></>
-            ) : (
-              <ChainOrigins
-                key={chain.id}
-                chain={chain}
-                origins={chainOrigins}
-                primaryColor={primaryColor}
-                icon={icon}
-              />
-            )
-          })}
+          {chainsWithOrigins.length ? (
+            <div className='clearOriginsButton' onClick={() => link.send('tray:clearOrigins')}>
+              Clear All Websites
+            </div>
+          ) : null}
+          {chainsWithOrigins.map(({ chain, origins: chainOrigins, primaryColor, icon }) => (
+            <ChainOrigins
+              key={chain.id}
+              chain={chain}
+              origins={chainOrigins}
+              primaryColor={primaryColor}
+              icon={icon}
+            />
+          ))}
+          {chainsWithOrigins.length === 0 ? (
+            <div className='sliceOriginNoDapp'>{'No Websites Connected'}</div>
+          ) : null}
         </div>
       )
     }

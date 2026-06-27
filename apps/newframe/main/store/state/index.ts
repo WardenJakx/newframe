@@ -1165,7 +1165,13 @@ const initial = {
 Object.keys(initial.main.accounts).forEach((id) => {
   // Remove permissions granted to unknown origins
   const permissions = initial.main.permissions[id]
-  if (permissions) delete permissions[uuidv5('Unknown', uuidv5.DNS)]
+  if (permissions) {
+    delete permissions[uuidv5('Unknown', uuidv5.DNS)]
+
+    Object.entries(permissions).forEach(([originId, permission]) => {
+      if (!permission.provider) delete permissions[originId]
+    })
+  }
 
   // remote lastUpdated timestamp from balances
   // TODO: define account schema more accurately

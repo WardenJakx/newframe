@@ -2455,9 +2455,9 @@ class Home extends React.Component<any, any> {
   renderDappsOverlay(current: string) {
     if (this.state.overlay !== 'dapps') return null
     const permissions = (current && this.store('main.permissions', current)) || {}
-    const origins = Object.keys(permissions).sort((a, b) =>
-      permissions[a].origin < permissions[b].origin ? -1 : 1
-    )
+    const origins = Object.keys(permissions)
+      .filter((origin) => permissions[origin]?.provider)
+      .sort((a, b) => (permissions[a].origin < permissions[b].origin ? -1 : 1))
 
     return (
       <div aria-label='Dapps' className='t2Overlay cardShow' role='dialog'>
@@ -2475,20 +2475,46 @@ class Home extends React.Component<any, any> {
             {svg.chevronLeft(16)}
           </div>
           <div className='t2OverlayTitle'>Dapps</div>
-          <div className='t2OverlaySpacer' />
+          {origins.length ? (
+            <div
+              aria-label='Clear all connected websites'
+              className='t2DappsClearAll'
+              onClick={() => link.send('tray:action', 'clearPermissions', current)}
+              onKeyDown={(e) =>
+                this.onKeyboardActivate(e, () => link.send('tray:action', 'clearPermissions', current))
+              }
+              role='button'
+              tabIndex={0}
+              title='Clear all connected websites'
+            >
+              {svg.trash(13)}
+            </div>
+          ) : (
+            <div className='t2OverlaySpacer' />
+          )}
         </div>
         <div className='t2OverlayScroll t2DappsScroll'>
           {origins.length === 0 ? (
-            <div className='t2EmptyState'>No Permissions Set</div>
+            <div className='t2EmptyState'>No Connected Websites</div>
           ) : (
             origins.map((origin) => (
               <div key={origin} className='t2DappRow'>
                 <div className='t2DappOrigin'>{permissions[origin].origin}</div>
-                {this.renderToggle(
-                  !!permissions[origin].provider,
-                  () => link.send('tray:action', 'toggleAccess', current, origin),
-                  `Toggle access for ${permissions[origin].origin}`
-                )}
+                <div
+                  aria-label={`Clear ${permissions[origin].origin}`}
+                  className='t2DappClear'
+                  onClick={() => link.send('tray:action', 'revokePermission', current, origin)}
+                  onKeyDown={(e) =>
+                    this.onKeyboardActivate(e, () =>
+                      link.send('tray:action', 'revokePermission', current, origin)
+                    )
+                  }
+                  role='button'
+                  tabIndex={0}
+                  title={`Clear ${permissions[origin].origin}`}
+                >
+                  {svg.trash(13)}
+                </div>
               </div>
             ))
           )}

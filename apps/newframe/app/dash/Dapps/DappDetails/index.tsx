@@ -43,6 +43,8 @@ class DappDetails extends React.Component<any, any> {
 
   override render() {
     const origin = this.store('main.origins', this.props.originId)
+    if (!origin) return null
+
     return (
       <div className='cardShow'>
         <div className='originSwapOrigin'>
@@ -58,16 +60,16 @@ class DappDetails extends React.Component<any, any> {
             link.send('tray:openExternal', `https://${origin.name}/`)
           }
         }>{'launch dapp'}</div> */}
-        {/* <div 
-          className='clearOriginsButton' 
+        <div
+          className='clearOriginsButton'
           style={{ color: 'var(--bad)' }}
           onClick={() => {
             link.send('tray:removeOrigin', this.props.originId)
-            link.send('tray:action', 'navDash', { view: 'dapps', data: {}})
+            link.send('tray:action', 'navDash', { view: 'dapps', data: {} })
           }}
         >
-          Remove Dapp
-        </div>   */}
+          Clear Website
+        </div>
       </div>
     )
   }

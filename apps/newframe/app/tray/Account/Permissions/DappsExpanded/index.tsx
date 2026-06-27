@@ -1,6 +1,7 @@
 import React from 'react'
 import Restore from 'react-restore'
 import link from '../../../../../resources/link'
+import svg from '../../../../../resources/svg'
 
 import { ClusterBox, Cluster, ClusterRow, ClusterValue } from '../../../../../resources/Components/Cluster'
 
@@ -15,7 +16,9 @@ class DappsPermissionsExpanded extends React.Component<any, any> {
 
   override render() {
     const permissions = this.store('main.permissions', this.props.account) || {}
-    let permissionList = Object.keys(permissions).sort((a: any, b: any) => (a.origin < b.origin ? -1 : 1))
+    let permissionList = Object.keys(permissions)
+      .filter((o) => permissions[o]?.provider)
+      .sort((a: any, b: any) => (permissions[a].origin < permissions[b].origin ? -1 : 1))
     if (!this.props.expanded) permissionList = permissionList.slice(0, 3)
 
     return (
@@ -28,7 +31,7 @@ class DappsPermissionsExpanded extends React.Component<any, any> {
                   <ClusterValue>
                     <div className='signerPermission'>
                       <div className='signerPermissionControls'>
-                        <div className='signerPermissionNoPermissions'>No Permissions Set</div>
+                        <div className='signerPermissionNoPermissions'>No Connected Websites</div>
                       </div>
                     </div>
                   </ClusterValue>
@@ -42,16 +45,22 @@ class DappsPermissionsExpanded extends React.Component<any, any> {
                           <div className='signerPermissionControls'>
                             <div className='signerPermissionOrigin'>{permissions[o].origin}</div>
                             <div
-                              className={
-                                permissions[o].provider
-                                  ? 'signerPermissionToggle signerPermissionToggleOn'
-                                  : 'signerPermissionToggle'
+                              aria-label={`Clear ${permissions[o].origin}`}
+                              className='signerPermissionClear'
+                              onClick={() =>
+                                link.send('tray:action', 'revokePermission', this.props.account, o)
                               }
-                              onClick={(_: any) =>
-                                link.send('tray:action', 'toggleAccess', this.props.account, o)
-                              }
+                              role='button'
+                              tabIndex={0}
+                              title={`Clear ${permissions[o].origin}`}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault()
+                                  link.send('tray:action', 'revokePermission', this.props.account, o)
+                                }
+                              }}
                             >
-                              <div className='signerPermissionToggleSwitch' />
+                              {svg.trash(14)}
                             </div>
                           </div>
                         </div>
@@ -63,16 +72,18 @@ class DappsPermissionsExpanded extends React.Component<any, any> {
             </div>
           </Cluster>
         </ClusterBox>
-        <div className='clearPermissionsButton'>
-          <div
-            onClick={() => {
-              link.send('tray:action', 'clearPermissions', this.props.account)
-            }}
-            className='moduleButton'
-          >
-            Clear All Permissions
+        {permissionList.length ? (
+          <div className='clearPermissionsButton'>
+            <div
+              onClick={() => {
+                link.send('tray:action', 'clearPermissions', this.props.account)
+              }}
+              className='moduleButton'
+            >
+              Clear All Websites
+            </div>
           </div>
-        </div>
+        ) : null}
       </div>
     )
   }

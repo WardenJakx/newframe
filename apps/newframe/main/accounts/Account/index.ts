@@ -165,9 +165,13 @@ class FrameAccount {
   setAccess(req: AccessRequest, access: boolean) {
     const { handlerId, origin, account } = req
     if (account.toLowerCase() === this.address) {
-      // Permissions do no live inside the account summary
-      const { name } = store('main.origins', origin)
-      store.setPermission(this.address, { handlerId, origin: name, provider: access })
+      // Permissions do not live inside the account summary
+      if (access) {
+        const { name } = store('main.origins', origin)
+        store.setPermission(this.address, { handlerId, origin: name, provider: true })
+      } else {
+        store.revokePermission(this.address, handlerId)
+      }
     }
 
     this.resolveRequest(req)
