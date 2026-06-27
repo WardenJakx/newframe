@@ -1,4 +1,3 @@
-import * as Sentry from '@sentry/electron'
 import { createRoot } from 'react-dom/client'
 import Restore from 'react-restore'
 
@@ -6,8 +5,6 @@ import App from './App'
 
 import link from '../../resources/link'
 import appStore from '../store'
-
-Sentry.init({ dsn: 'https://placeholder.sentry.io' })
 
 document.addEventListener('dragover', (e) => e.preventDefault())
 document.addEventListener('drop', (e) => e.preventDefault())
