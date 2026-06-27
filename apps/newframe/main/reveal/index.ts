@@ -8,9 +8,13 @@ import { createProxyProvider } from '../provider/connection'
 import ens from '../ens'
 
 import Erc20Contract from '../contracts/erc20'
-import { decodeCallData, fetchContract, ContractSource } from '../contracts'
+import {
+  decodeCallData,
+  decodeCallDataWithSelectorRegistry,
+  fetchContract,
+  ContractSource
+} from '../contracts'
 import ensContracts from '../contracts/deployments/ens'
-import erc20 from '../externalData/balances/erc-20-abi'
 import { MAX_HEX } from '../../resources/constants'
 
 import type {
@@ -22,8 +26,6 @@ import type { TransactionRequest } from '../accounts'
 
 // TODO: fix generic typing here
 const knownContracts: DecodableContract<unknown>[] = [...ensContracts]
-
-const erc20Abi = JSON.stringify(erc20)
 
 const provider = createProxyProvider(proxyConnection)
 
@@ -175,7 +177,7 @@ const surface = {
   resolveEntityType,
   decode: async (contractAddress = '', chainId: number, calldata: string) => {
     // Decode calldata
-    const contractSources: ContractSource[] = [{ name: 'ERC-20', source: 'Generic ERC-20', abi: erc20Abi }]
+    const contractSources: ContractSource[] = []
     const contractSource = await fetchContract(contractAddress, chainId)
 
     if (contractSource) {
@@ -192,6 +194,16 @@ const surface = {
           source,
           ...decodedCall
         }
+      }
+    }
+
+    const decodedSelectorCall = await decodeCallDataWithSelectorRegistry(calldata)
+    if (decodedSelectorCall) {
+      return {
+        contractAddress: contractAddress.toLowerCase(),
+        contractName: 'Unknown Contract',
+        source: 'Function selector registry',
+        ...decodedSelectorCall
       }
     }
 

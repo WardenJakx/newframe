@@ -104,14 +104,14 @@ class ViewData extends React.Component<any, any> {
     return req.decodedData ? (
       <div className='decodedDataContract'>
         <div className='decodedDataContractArgHeader'>Contract Method</div>
-        <div className='dataUnverified'>unverified abi</div>
-        <div className='dataSource'>{'abi source: ' + req.decodedData.source}</div>
+        <div className='dataUnverified'>decoded calldata</div>
+        <div className='dataSource'>{'decode source: ' + req.decodedData.source}</div>
         <div className='decodedDataContractTarget'>
           <div className='decodedDataSync decodedDataSyncLeft'>{svg.sync(16)}</div>
           <div className='decodedDataSync decodedDataSyncRight'>{svg.sync(16)}</div>
           <div className='decodedDataContractName'>{req.decodedData.contractName}</div>
           <div className='decodedDataContractMethod'>
-            <div>{req.decodedData.method}</div>
+            <div>{req.decodedData.signature || req.decodedData.method}</div>
           </div>
         </div>
         <div className='decodedDataContractArgHeader'>Inputs</div>
@@ -119,7 +119,7 @@ class ViewData extends React.Component<any, any> {
           return (
             <div key={a.name} className='decodedDataContractArg'>
               <div className='overflowBox'>
-                {a.type.indexOf('[]') ? (
+                {a.type.includes('[]') ? (
                   a.value.split(',').map((i: any) => <div key={i}>{i}</div>)
                 ) : (
                   <div>{a.value}</div>

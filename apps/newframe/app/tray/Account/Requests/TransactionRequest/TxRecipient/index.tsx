@@ -83,7 +83,7 @@ class TxRecipient extends React.Component<any, any> {
           {req.decodedData && req.decodedData.source && (
             <ClusterRow>
               <ClusterValue>
-                <div className='clusterTag'>{'abi source: ' + req.decodedData.source}</div>
+                <div className='clusterTag'>{'decode source: ' + req.decodedData.source}</div>
               </ClusterValue>
             </ClusterRow>
           )}
