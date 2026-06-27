@@ -6,7 +6,7 @@ import provider from '../provider'
 import accounts from '../accounts'
 import store from '../store'
 
-import { updateOrigin, isTrusted, parseOrigin } from './origins'
+import { updateOrigin, isTrusted, parseOrigin, parseRequestChainId } from './origins'
 import validPayload from './validPayload'
 import protectedMethods from './protectedMethods'
 
@@ -79,6 +79,9 @@ const handler = (req: IncomingMessage, res: ServerResponse) => {
               rawPayload.params
             )}`
           )
+
+        const requestChainId = parseRequestChainId(req)
+        if (requestChainId && !rawPayload.chainId) rawPayload.chainId = requestChainId
 
         const origin = parseOrigin(req.headers.origin)
         const { payload, chainId } = updateOrigin(rawPayload, origin)

@@ -13,6 +13,7 @@ import {
   updateOrigin,
   isTrusted,
   parseOrigin,
+  parseRequestChainId,
   isKnownExtension,
   FrameExtension,
   parseFrameExtension
@@ -90,6 +91,9 @@ const handler = (socket: FrameWebSocket, req: IncomingMessage) => {
         requestOrigin = 'newframe-extension'
       }
     }
+
+    const requestChainId = parseRequestChainId(req)
+    if (requestChainId && !rawPayload.chainId) rawPayload.chainId = requestChainId
 
     const origin = parseOrigin(requestOrigin)
 
