@@ -12,13 +12,6 @@
     "test/e2e/**/*.ts"
   ],
   "project": ["main/**", "app/**", "resources/**", "scripts/**", "build/**", "test/**"],
-  "ignoreDependencies": [
-    "node-gyp",
-    "@ledgerhq/cryptoassets",
-    "web3",
-    "usb-detection",
-    "buffer",
-    "events"
-  ],
+  "ignoreDependencies": ["node-gyp", "@ledgerhq/cryptoassets", "web3", "usb-detection", "buffer", "events"],
   "ignoreBinaries": ["ditto"]
 }

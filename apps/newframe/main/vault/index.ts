@@ -29,8 +29,7 @@ const validatePassword = (password: string) => {
   if (zxcvbn(password).score < 3) return new Error('Password is too weak')
 }
 
-const deriveKey = (password: string, salt: Buffer) =>
-  crypto.scryptSync(password, salt, 32, KDF_PARAMS)
+const deriveKey = (password: string, salt: Buffer) => crypto.scryptSync(password, salt, 32, KDF_PARAMS)
 
 const hashKey = (key: Buffer) => crypto.createHash('sha256').update(key).digest('hex')
 

@@ -51,7 +51,10 @@ const waitForFrameConnect = () =>
   new Promise<void>((resolve, reject) => {
     if (frame.connected) return resolve()
 
-    const timeout = setTimeout(() => reject(new Error('Timed out waiting for Frame provider connection')), 10_000)
+    const timeout = setTimeout(
+      () => reject(new Error('Timed out waiting for Frame provider connection')),
+      10_000
+    )
 
     frame.once('connect', () => {
       clearTimeout(timeout)

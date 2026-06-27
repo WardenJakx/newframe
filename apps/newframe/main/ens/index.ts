@@ -1,13 +1,5 @@
 import EventEmitter from 'events'
-import {
-  Interface,
-  ZeroAddress,
-  dnsEncode,
-  ensNormalize,
-  getAddress,
-  isAddress,
-  namehash
-} from 'ethers'
+import { Interface, ZeroAddress, dnsEncode, ensNormalize, getAddress, isAddress, namehash } from 'ethers'
 
 import proxyConnection from '../provider/proxy'
 import { createProxyProvider } from '../provider/connection'
@@ -56,7 +48,10 @@ provider.once('connect', async () => {
   }
 })
 
-async function readUniversalResolver(functionName: 'resolveWithGateways' | 'reverseWithGateways', args: unknown[]) {
+async function readUniversalResolver(
+  functionName: 'resolveWithGateways' | 'reverseWithGateways',
+  args: unknown[]
+) {
   const data = universalResolverInterface.encodeFunctionData(functionName, args)
 
   const result = await provider.request<string>({

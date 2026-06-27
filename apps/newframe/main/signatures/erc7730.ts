@@ -3,8 +3,7 @@ import { formatUnits, getAddress, isAddress, keccak256, toUtf8Bytes } from 'ethe
 
 import type { TypedData, TypedMessage } from '../accounts/types'
 
-const REGISTRY_BASE_URL =
-  'https://raw.githubusercontent.com/ethereum/clear-signing-erc7730-registry/master'
+const REGISTRY_BASE_URL = 'https://raw.githubusercontent.com/ethereum/clear-signing-erc7730-registry/master'
 const EIP712_INDEX_URL = `${REGISTRY_BASE_URL}/index.eip712.json`
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000
 const FETCH_TIMEOUT_MS = 4000
@@ -165,10 +164,7 @@ export function getEip712EncodeTypeHash(types: Erc7730TypedDataTypes, primaryTyp
 }
 
 function getPathSegments(path: string) {
-  return path
-    .replace(/^\./, '')
-    .split('.')
-    .filter(Boolean)
+  return path.replace(/^\./, '').split('.').filter(Boolean)
 }
 
 function readPath(source: unknown, path: string): unknown {
@@ -342,7 +338,8 @@ function fieldToRows(
   formattedByPath: Map<string, string>
 ): Erc7730DisplayRow[] | null {
   const resolvedField = resolveFieldReference(field, context)
-  const value = resolvedField.value !== undefined ? resolvedField.value : resolvePath(resolvedField.path, context, base)
+  const value =
+    resolvedField.value !== undefined ? resolvedField.value : resolvePath(resolvedField.path, context, base)
   const visibility = getVisibility(resolvedField.visible, value)
 
   if (!visibility.valid) return null
@@ -417,7 +414,10 @@ function interpolateIntent(template: string, formattedByPath: Map<string, string
   return interpolated
 }
 
-function getTypedMessageFormatMatch(typedData: TypedData, descriptor: Erc7730Descriptor): FormatMatch | undefined {
+function getTypedMessageFormatMatch(
+  typedData: TypedData,
+  descriptor: Erc7730Descriptor
+): FormatMatch | undefined {
   const formats = descriptor.display?.formats || {}
   const primaryType = String(typedData.primaryType)
   let encodeType: string | undefined
@@ -469,7 +469,10 @@ function isDescriptorBoundToTypedData(descriptor: Erc7730Descriptor, typedData: 
     return eip712.deployments.some(({ chainId, address }) => {
       if (chainId !== undefined && !matchesPrimitive(domain.chainId, chainId)) return false
       if (address !== undefined) {
-        return typeof domain.verifyingContract === 'string' && domain.verifyingContract.toLowerCase() === address.toLowerCase()
+        return (
+          typeof domain.verifyingContract === 'string' &&
+          domain.verifyingContract.toLowerCase() === address.toLowerCase()
+        )
       }
 
       return true
@@ -566,17 +569,28 @@ function mergeDescriptors(base: Erc7730Descriptor, override: Erc7730Descriptor):
   return merge(base, override) as Erc7730Descriptor
 }
 
-async function fetchDescriptor(path: string, fetcher: FetchLike, parentPath?: string, depth = 0): Promise<DescriptorResult> {
+async function fetchDescriptor(
+  path: string,
+  fetcher: FetchLike,
+  parentPath?: string,
+  depth = 0
+): Promise<DescriptorResult> {
   const url = getDescriptorUrl(path, parentPath)
   const cached = descriptorCache.get(url)
   if (cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) return { descriptor: cached.value, path }
 
   const descriptor = await fetchJson<Erc7730Descriptor>(url, fetcher)
-  const includes = descriptor.includes ? (Array.isArray(descriptor.includes) ? descriptor.includes : [descriptor.includes]) : []
+  const includes = descriptor.includes
+    ? Array.isArray(descriptor.includes)
+      ? descriptor.includes
+      : [descriptor.includes]
+    : []
 
   const included =
     includes.length && depth < MAX_INCLUDE_DEPTH
-      ? await Promise.all(includes.map((includePath) => fetchDescriptor(includePath, fetcher, path, depth + 1)))
+      ? await Promise.all(
+          includes.map((includePath) => fetchDescriptor(includePath, fetcher, path, depth + 1))
+        )
       : []
   const mergedIncludes = included.reduce<Erc7730Descriptor>(
     (merged, include) => mergeDescriptors(merged, include.descriptor),
@@ -608,7 +622,10 @@ function getTypedDataRegistryLookup(typedMessage: TypedMessage) {
     typedData,
     key: getRegistryKey(chainId, verifyingContract),
     primaryType: String(typedData.primaryType),
-    encodeTypeHash: getEip712EncodeTypeHash(typedData.types as Erc7730TypedDataTypes, String(typedData.primaryType))
+    encodeTypeHash: getEip712EncodeTypeHash(
+      typedData.types as Erc7730TypedDataTypes,
+      String(typedData.primaryType)
+    )
   }
 }
 

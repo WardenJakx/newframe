@@ -22,7 +22,9 @@ function setupComponent(jsx: any, opts: any = {}) {
   const { advanceTimersAfterInput = false, ...options } = opts
   const advanceTimers =
     options.advanceTimers ||
-    (advanceTimersAfterInput === true ? runAllTimers : () => advanceTimersByTime(advanceTimersAfterInput || 0))
+    (advanceTimersAfterInput === true
+      ? runAllTimers
+      : () => advanceTimersByTime(advanceTimersAfterInput || 0))
 
   render(jsx)
 

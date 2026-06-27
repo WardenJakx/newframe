@@ -101,15 +101,10 @@ describe('ERC-7730 typed data clear signing', () => {
   })
 
   test('formats a matching descriptor into clear signing rows', () => {
-    const display = formatErc7730TypedData(
-      { data: TYPED_DATA, version: SignTypedDataVersion.V4 },
-      DESCRIPTOR
-    )
+    const display = formatErc7730TypedData({ data: TYPED_DATA, version: SignTypedDataVersion.V4 }, DESCRIPTOR)
 
     expect(display?.title).toBe('Permit token spend')
-    expect(display?.summary).toBe(
-      'Permit 0x1111111254EEB25477B68fb85Ed929f73A960582 to spend 1.0 USDC'
-    )
+    expect(display?.summary).toBe('Permit 0x1111111254EEB25477B68fb85Ed929f73A960582 to spend 1.0 USDC')
     expect(display?.rows).toEqual([
       {
         label: 'Spender',

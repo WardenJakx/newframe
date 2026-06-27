@@ -60,7 +60,8 @@ const externalWhitelist = [
   'https://opensea.io'
 ]
 
-const isValidReleasePage = (url: string) => url.startsWith('https://github.com/wardenjakx/newframe/releases/tag/')
+const isValidReleasePage = (url: string) =>
+  url.startsWith('https://github.com/wardenjakx/newframe/releases/tag/')
 const isWhitelistedHost = (url: string) =>
   externalWhitelist.some((entry) => url === entry || url.startsWith(entry + '/'))
 

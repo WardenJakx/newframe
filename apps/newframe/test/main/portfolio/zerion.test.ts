@@ -118,7 +118,9 @@ describe('ZerionPortfolioProvider', () => {
       }
     })
 
-    await expect(provider.getWalletPortfolio('0xabc' as Address, [11155111], { sync: true })).resolves.toEqual({
+    await expect(
+      provider.getWalletPortfolio('0xabc' as Address, [11155111], { sync: true })
+    ).resolves.toEqual({
       totalValue: 0,
       absoluteChange1d: 0,
       percentChange1d: 0,

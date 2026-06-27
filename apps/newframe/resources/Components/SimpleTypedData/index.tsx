@@ -31,6 +31,7 @@ const decodeUtf8Hex = (value: string) => {
   try {
     const decoded = new TextDecoder('utf-8', { fatal: true }).decode(new Uint8Array(bytes))
     const printable = decoded.replace(/[\t\n\r]/g, '')
+    // eslint-disable-next-line no-control-regex -- reject decoded non-printable control characters.
     if (!printable || /[\x00-\x1F\x7F]/.test(printable)) return undefined
 
     return `${decoded} (${value})`
@@ -43,7 +44,8 @@ const formatValue = (value: unknown): string | undefined => {
   if (value === undefined) return undefined
   if (value === null) return 'null'
   if (typeof value === 'string') return decodeUtf8Hex(value) || value
-  if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') return String(value)
+  if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint')
+    return String(value)
 
   return undefined
 }
@@ -54,7 +56,9 @@ const flattenJsonRows = (json: unknown, prefix = ''): SimpleJsonRow[] => {
   }
 
   if (isRecord(json)) {
-    return Object.entries(json).flatMap(([key, value]) => flattenJsonRows(value, prefix ? `${prefix}.${key}` : key))
+    return Object.entries(json).flatMap(([key, value]) =>
+      flattenJsonRows(value, prefix ? `${prefix}.${key}` : key)
+    )
   }
 
   const value = formatValue(json)

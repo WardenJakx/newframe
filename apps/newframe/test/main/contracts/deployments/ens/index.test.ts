@@ -28,7 +28,6 @@ describe('registrar', () => {
           data: { name: '', from, to, tokenId }
         })
       })
-
     })
   })
 
@@ -42,7 +41,6 @@ describe('registrar', () => {
         data: { name: '', operator: to, tokenId }
       })
     })
-
   })
 })
 

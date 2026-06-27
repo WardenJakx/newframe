@@ -138,7 +138,7 @@ export function createBalanceSummary({
   const isNative = isNativeCurrency(rawBalance.address)
   const nativeCurrencyInfo = networksMeta[rawBalance.chainId]?.nativeCurrency || {}
   const rate = isNative ? nativeCurrencyInfo : rates[rawBalance.address || rawBalance.symbol || ''] || {}
-  const decimals = isNative ? nativeCurrencyInfo.decimals ?? 18 : rawBalance.decimals ?? 18
+  const decimals = isNative ? (nativeCurrencyInfo.decimals ?? 18) : (rawBalance.decimals ?? 18)
   const quote = chain.isTestnet ? { price: 0, change24hr: 0 } : rate.usd
   const hasPrice = typeof quote?.price === 'number' && !isNaN(quote.price)
   const unformattedBalance = balanceValue({ balance: rawBalance.balance, decimals })
@@ -179,16 +179,14 @@ export function createBalanceSummaries({
 }
 
 export function createBalanceSummarySelector() {
-  let cache:
-    | {
-        cacheKey: unknown
-        rawBalances: unknown
-        rates: unknown
-        networks: unknown
-        networksMeta: unknown
-        balances: BalanceSummary[]
-      }
-    | null = null
+  let cache: {
+    cacheKey: unknown
+    rawBalances: unknown
+    rates: unknown
+    networks: unknown
+    networksMeta: unknown
+    balances: BalanceSummary[]
+  } | null = null
 
   return ({
     rawBalances,

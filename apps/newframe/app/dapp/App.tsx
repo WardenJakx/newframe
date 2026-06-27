@@ -153,7 +153,8 @@ class App extends React.Component<any, any> {
 
     const selectedBalance = balances.find((balance: BalanceSummary) => tokenKey(balance) === selectedKey)
     if (selectedBalance) return createDisplayBalance(selectedBalance)
-    if (launchAsset && tokenKey(launchAsset) === selectedKey && hasPositiveBalance(launchAsset)) return launchAsset
+    if (launchAsset && tokenKey(launchAsset) === selectedKey && hasPositiveBalance(launchAsset))
+      return launchAsset
 
     return balances[0] ? createDisplayBalance(balances[0]) : null
   }
@@ -292,7 +293,11 @@ class App extends React.Component<any, any> {
 
     link.rpc('providerSend', payload, (response: any) => {
       if (response?.error) {
-        this.setState({ error: response.error.message || 'Transaction failed.', status: '', submitting: false })
+        this.setState({
+          error: response.error.message || 'Transaction failed.',
+          status: '',
+          submitting: false
+        })
       } else {
         this.setState({ status: 'Transaction submitted', submitting: false })
       }
@@ -327,7 +332,11 @@ class App extends React.Component<any, any> {
               <div className='sendRecipientAddress'>{recipient.address}</div>
             </div>
             <div className='sendRecipientCopy'>{svg.copy(14)}</div>
-            <button aria-label='Clear recipient' className='sendRecipientClear' onClick={() => this.clearRecipient()}>
+            <button
+              aria-label='Clear recipient'
+              className='sendRecipientClear'
+              onClick={() => this.clearRecipient()}
+            >
               {svg.x(14)}
             </button>
           </div>
@@ -420,7 +429,9 @@ class App extends React.Component<any, any> {
           {this.renderTokenIcon(asset)}
           <div className='sendTokenText'>
             <div className='sendTokenSymbol'>{asset?.symbol || 'Token'}</div>
-            <div className='sendTokenChain'>{this.store('main.networks.ethereum', asset?.chainId, 'name') || ''}</div>
+            <div className='sendTokenChain'>
+              {this.store('main.networks.ethereum', asset?.chainId, 'name') || ''}
+            </div>
           </div>
           <div className='sendTokenChevron'>{svg.chevron(13)}</div>
         </button>

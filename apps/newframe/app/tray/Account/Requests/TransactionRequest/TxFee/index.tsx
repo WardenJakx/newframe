@@ -94,7 +94,9 @@ class TxFee extends React.Component<any, any> {
     }
     const { isTestnet } = this.store('main.networks', chain.type, chain.id)
     const { nativeCurrency } = this.store('main.networksMeta', chain.type, chain.id)
-    const hasNativeUSD = Boolean(nativeCurrency.usd && !isTestnet)
+    const nativeCurrencyUSD = nativeCurrency.usd
+    const shouldDisplayUSDEstimate = Boolean(nativeCurrencyUSD)
+    const nativeCurrencyRate = !isTestnet ? nativeCurrencyUSD : undefined
 
     const maxGas = toBigInt(req.data.gasLimit) ?? 0n
     const maxFeePerGas = toBigInt(req.data[usesBaseFee(req.data) ? 'maxFeePerGas' : 'gasPrice']) ?? 0n
@@ -103,7 +105,7 @@ class TxFee extends React.Component<any, any> {
       : maxFeePerGas * maxGas
 
     const maxFee = displayValueData(maxFeeSourceValue, {
-      currencyRate: hasNativeUSD ? nativeCurrency.usd : undefined,
+      currencyRate: nativeCurrencyRate,
       isTestnet
     } as any)
 
@@ -116,7 +118,7 @@ class TxFee extends React.Component<any, any> {
       ? this.getOptimismFee(minFeePerGas, minGas, req.chainData?.optimism)
       : minFeePerGas * minGas
     const minFee = displayValueData(minFeeSourceValue, {
-      currencyRate: hasNativeUSD ? nativeCurrency.usd : undefined,
+      currencyRate: nativeCurrencyRate,
       isTestnet
     } as any)
 
@@ -143,7 +145,7 @@ class TxFee extends React.Component<any, any> {
                   )}
                 </div>
               </ClusterValue>
-              {hasNativeUSD ? (
+              {shouldDisplayUSDEstimate ? (
                 <ClusterValue>
                   <USDEstimateDisplay minFee={minFee} maxFee={maxFee} nativeCurrency={nativeCurrency} />
                 </ClusterValue>

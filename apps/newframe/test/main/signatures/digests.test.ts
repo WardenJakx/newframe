@@ -64,7 +64,9 @@ describe('ERC-8213 digests', () => {
       version: SignTypedDataVersion.V4
     })
 
-    expect(digests?.eip712Digest).toBe(TypedDataEncoder.hash(TYPED_DATA.domain, TYPED_TYPES, TYPED_DATA.message))
+    expect(digests?.eip712Digest).toBe(
+      TypedDataEncoder.hash(TYPED_DATA.domain, TYPED_TYPES, TYPED_DATA.message)
+    )
     expect(digests?.domainHash).toMatch(/^0x[0-9a-f]{64}$/)
     expect(digests?.messageHash).toMatch(/^0x[0-9a-f]{64}$/)
   })

@@ -1,8 +1,0 @@
-bundle
-compiled
-dist
-package-lock.json
-.cache
-cache
-.vscode
-scratch*
