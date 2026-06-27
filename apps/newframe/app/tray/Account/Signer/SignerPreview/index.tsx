@@ -100,7 +100,7 @@ class Signer extends React.Component<any, any> {
   }
 
   getCurrentStatus(activeSigner: any, hardwareSigner: any) {
-    let status = ''
+    let status: string
     const style: any = {
       marginLeft: '10px',
       padding: '12px'

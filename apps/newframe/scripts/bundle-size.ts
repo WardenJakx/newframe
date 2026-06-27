@@ -72,7 +72,7 @@ function traceActiveFiles(files: string[], entrypoints: string[]) {
 
     active.add(file)
 
-    let contents = ''
+    let contents: string
     try {
       contents = readFileSync(path.join(bundleDir, file), 'utf8')
     } catch {

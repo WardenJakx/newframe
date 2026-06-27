@@ -13,8 +13,6 @@ const measure = (ref: any) => {
   return { height: clientHeight, width: clientWidth }
 }
 
-let lastHeight: any
-
 class Footer extends React.Component<any, any> {
   declare store: Store
 
@@ -31,9 +29,7 @@ class Footer extends React.Component<any, any> {
   override componentDidMount() {
     this.observer = new ResizeObserver(() => {
       const size = measure(this.footerRef)
-      if (size.height !== lastHeight) {
-        link.send('tray:action', 'setFooterHeight', 'panel', size.height)
-      }
+      link.send('tray:action', 'setFooterHeight', 'panel', size.height)
     })
     if (this.observer) this.observer.observe(this.footerRef.current)
   }
