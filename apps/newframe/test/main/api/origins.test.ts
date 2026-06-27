@@ -10,6 +10,8 @@ jest.mock('../../../main/accounts', () => ({ default: accountsMock, ...accountsM
 let accounts: any
 let parseOrigin: any
 let updateOrigin: any
+let normalizeRequestChainId: any
+let parseRequestChainId: any
 let isTrusted: any
 let parseFrameExtension: any
 let isKnownExtension: any
@@ -21,6 +23,8 @@ beforeAll(async () => {
   const originsModule = (await import('../../../main/api/origins')) as Record<string, any>
   parseOrigin = originsModule.parseOrigin
   updateOrigin = originsModule.updateOrigin
+  normalizeRequestChainId = originsModule.normalizeRequestChainId
+  parseRequestChainId = originsModule.parseRequestChainId
   isTrusted = originsModule.isTrusted
   parseFrameExtension = originsModule.parseFrameExtension
   isKnownExtension = originsModule.isKnownExtension
@@ -33,6 +37,7 @@ afterAll(() => {
 beforeEach(() => {
   store.initOrigin = jest.fn()
   store.addOriginRequest = jest.fn()
+  store.switchOriginChain = jest.fn()
 
   store.set('main.origins', {})
   store.set('main.permissions', {})
@@ -107,6 +112,78 @@ describe('#updateOrigin', () => {
       const { chainId } = updateOrigin({ chainId: '0x1' }, 'frame.test')
 
       expect(chainId).toBe('0x1')
+    })
+
+    it('normalizes the payload chain id when one is supplied', () => {
+      const { payload, chainId } = updateOrigin({ chainId: '31337' }, 'frame.test')
+
+      expect(chainId).toBe('0x7a69')
+      expect(payload.chainId).toBe('0x7a69')
+    })
+
+    it('initializes a new origin on a known requested chain', () => {
+      store.set('main.networks.ethereum', 137, { id: 137, type: 'ethereum', on: true })
+
+      updateOrigin({ chainId: '0x89' }, 'frame.test')
+
+      expect(store.initOrigin).toHaveBeenCalledWith(uuidv5('frame.test', uuidv5.DNS), {
+        name: 'frame.test',
+        chain: {
+          type: 'ethereum',
+          id: 137
+        }
+      })
+    })
+
+    it('switches an existing origin to a known requested chain', () => {
+      const originId = uuidv5('frame.test', uuidv5.DNS)
+      store.set('main.networks.ethereum', 137, { id: 137, type: 'ethereum', on: true })
+      store.set('main.origins', originId, { chain: { id: 1, type: 'ethereum' } })
+
+      updateOrigin({ chainId: '0x89' }, 'frame.test')
+
+      expect(store.switchOriginChain).toHaveBeenCalledWith(originId, 137, 'ethereum')
+    })
+
+    it('does not switch an existing origin to an unknown requested chain', () => {
+      const originId = uuidv5('frame.test', uuidv5.DNS)
+      store.set('main.origins', originId, { chain: { id: 1, type: 'ethereum' } })
+
+      const { chainId } = updateOrigin({ chainId: '0x270f' }, 'frame.test')
+
+      expect(chainId).toBe('0x270f')
+      expect(store.switchOriginChain).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('chain id routing', () => {
+    it('normalizes decimal, hex, and CAIP-2 chain ids', () => {
+      expect(normalizeRequestChainId('11155111')).toBe('0xaa36a7')
+      expect(normalizeRequestChainId('0xAA36A7')).toBe('0xaa36a7')
+      expect(normalizeRequestChainId('eip155:11155111')).toBe('0xaa36a7')
+      expect(normalizeRequestChainId(31337)).toBe('0x7a69')
+    })
+
+    it('returns invalid chain ids unchanged so callers can reject them', () => {
+      expect(normalizeRequestChainId('sepolia')).toBe('sepolia')
+    })
+
+    it('parses a chain id from request headers', () => {
+      const req = {
+        headers: { 'x-newframe-chain-id': '31337' },
+        url: '/'
+      }
+
+      expect(parseRequestChainId(req as any)).toBe('0x7a69')
+    })
+
+    it('parses a decimal chain id from the request URL', () => {
+      const req = {
+        headers: {},
+        url: '/?chainId=11155111'
+      }
+
+      expect(parseRequestChainId(req as any)).toBe('0xaa36a7')
     })
   })
 

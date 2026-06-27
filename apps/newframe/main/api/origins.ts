@@ -17,6 +17,9 @@ const extensionPrefixes = {
 }
 
 const protocolRegex = /^(?:ws|http)s?:\/\//
+const hexChainIdRegex = /^0x[0-9a-f]+$/i
+const decimalChainIdRegex = /^[0-9]+$/
+const caipChainIdRegex = /^eip155:([0-9]+)$/i
 
 interface OriginUpdateResult {
   payload: RPCRequestPayload
@@ -54,6 +57,58 @@ export function parseOrigin(origin?: string) {
 
 function invalidOrigin(origin: string) {
   return origin !== origin.replace(/[^0-9a-z/:.[\]-]/gi, '')
+}
+
+export function normalizeRequestChainId(chainId: unknown) {
+  const value = Array.isArray(chainId) ? chainId[0] : chainId
+
+  if (typeof value === 'number' && Number.isInteger(value)) {
+    return `0x${value.toString(16)}`
+  }
+
+  if (typeof value !== 'string' || !value) return undefined
+
+  const trimmed = value.trim()
+  const caipMatch = trimmed.match(caipChainIdRegex)
+
+  if (caipMatch) {
+    return `0x${parseInt(caipMatch[1], 10).toString(16)}`
+  }
+
+  if (hexChainIdRegex.test(trimmed)) {
+    return `0x${parseInt(trimmed, 16).toString(16)}`
+  }
+
+  if (decimalChainIdRegex.test(trimmed)) {
+    return `0x${parseInt(trimmed, 10).toString(16)}`
+  }
+
+  return trimmed
+}
+
+export function parseRequestChainId(req: IncomingMessage) {
+  const headerChainId = normalizeRequestChainId(
+    req.headers['x-newframe-chain-id'] || req.headers['x-frame-chain-id']
+  )
+
+  if (headerChainId) return headerChainId
+
+  try {
+    const url = new URL(req.url || '/', 'http://127.0.0.1')
+    return normalizeRequestChainId(url.searchParams.get('chainId') || url.searchParams.get('chain'))
+  } catch {
+    return undefined
+  }
+}
+
+function knownEthereumChainId(chainId?: string) {
+  if (!chainId || !hexChainIdRegex.test(chainId)) return undefined
+
+  const id = parseInt(chainId, 16)
+
+  if (!Number.isInteger(id)) return undefined
+
+  return store('main.networks.ethereum', id) ? id : undefined
 }
 
 async function getPermission(address: Address, origin: string, payload: RPCRequestPayload) {
@@ -126,6 +181,10 @@ export function updateOrigin(
   const originId = uuidv5(origin, uuidv5.DNS)
   const existingOrigin = store('main.origins', originId)
 
+  const requestedChainId = normalizeRequestChainId(requestPayload.chainId)
+  const requestedKnownChainId = knownEthereumChainId(requestedChainId)
+  const defaultChainId = requestedKnownChainId || existingOrigin?.chain.id || 1
+
   if (!connectionMessage) {
     // the extension will attempt to send messages (eth_chainId and net_version) in order
     // to connect. we don't want to store these origins as they'll come from every site
@@ -133,25 +192,28 @@ export function updateOrigin(
 
     if (existingOrigin) {
       store.addOriginRequest(originId)
+      if (requestedKnownChainId && existingOrigin.chain.id !== requestedKnownChainId) {
+        store.switchOriginChain(originId, requestedKnownChainId, 'ethereum')
+      }
     } else {
       store.initOrigin(originId, {
         name: origin,
         chain: {
-          id: 1,
+          id: defaultChainId,
           type: 'ethereum'
         }
       })
     }
   }
 
-  const chainId = requestPayload.chainId || `0x${(existingOrigin?.chain.id || 1).toString(16)}`
+  const chainId = requestedChainId || `0x${defaultChainId.toString(16)}`
 
   const payload = {
     ...requestPayload,
     _origin: originId
   }
 
-  if (connectionMessage) {
+  if (requestPayload.chainId || connectionMessage) {
     payload.chainId = chainId
   }
 
