@@ -223,9 +223,6 @@ class RequestCommand extends React.Component<any, any> {
     const maxFee = maxFeePerGas * gasLimit
     const maxFeeUSD = hasNativeUSD ? (Number(maxFee) / 1e18) * nativeUSD : 0
 
-    let displayStatus = req.status
-    if (displayStatus === 'verifying') displayStatus = 'waiting for block'
-
     return (
       <>
         <div

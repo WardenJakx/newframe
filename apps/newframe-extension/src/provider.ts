@@ -39,6 +39,17 @@ export interface ProviderConnection extends EventEmitter {
 }
 
 type ProviderEvent = 'networkChanged' | 'chainChanged' | 'chainsChanged' | 'accountsChanged' | 'assetsChanged'
+type ProviderEventResult = {
+  networkChanged: string | number
+  chainChanged: string
+  chainsChanged: string[]
+  accountsChanged: string[]
+  assetsChanged: unknown
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
 
 function createPayload(method: string, params: JsonRpcParams = [], id: number, targetChain?: string) {
   const payload: JsonRpcPayload = { id, method, params, jsonrpc: '2.0' }
@@ -49,10 +60,14 @@ function createPayload(method: string, params: JsonRpcParams = [], id: number, t
 
   if (method !== 'eth_sendTransaction') return payload
 
-  const tx = payload.params?.[0] || {}
-  const txChainId = typeof tx === 'object' && tx && 'chainId' in tx ? (tx as any).chainId : undefined
+  const tx = payload.params?.[0]
+  const txParams = isRecord(tx) ? tx : {}
+  const txChainId =
+    typeof txParams.chainId === 'string' || typeof txParams.chainId === 'number'
+      ? txParams.chainId
+      : undefined
 
-  if (txChainId && parseInt(txChainId) !== parseInt(payload.chainId || txChainId)) {
+  if (txChainId && parseInt(String(txChainId)) !== parseInt(payload.chainId || String(txChainId))) {
     throw new Error(
       `Payload chainId (${txChainId}) inconsistent with specified target chainId: ${targetChain}`
     )
@@ -60,7 +75,7 @@ function createPayload(method: string, params: JsonRpcParams = [], id: number, t
 
   return {
     ...payload,
-    params: [{ ...(tx as object), chainId: txChainId || payload.chainId }, ...(payload.params || []).slice(1)]
+    params: [{ ...txParams, chainId: txChainId || payload.chainId }, ...(payload.params || []).slice(1)]
   }
 }
 
@@ -69,7 +84,7 @@ function normalizeChainId(chainId: string | number) {
 }
 
 export default class InjectedFrameProvider extends EventEmitter {
-  private eventHandlers: Record<ProviderEvent, (result: any) => void>
+  private eventHandlers: { [Event in ProviderEvent]: (result: ProviderEventResult[Event]) => void }
   private promises: Record<number, PendingRequest> = {}
   private attemptedSubscriptions = new Set<string>()
   private subscriptions: string[] = []

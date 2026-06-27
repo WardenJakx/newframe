@@ -53,14 +53,14 @@ describe('#matchFilter', () => {
   it('does not match on falsy properties', () => {
     const filter = 'zero'
     const properties = [undefined]
-    const matched = matchFilter(filter, properties as any)
+    const matched = matchFilter(filter, properties as unknown as string[])
     expect(matched).toBe(false)
   })
 
   it('matches when some properties are falsy', () => {
     const filter = 'zero'
     const properties = [undefined, 'zeroth']
-    const matched = matchFilter(filter, properties as any)
+    const matched = matchFilter(filter, properties as unknown as string[])
     expect(matched).toBe(true)
   })
 })

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 
 import { formatUnits, parseUnits, toBigInt, max } from '../../utils/numbers'
 import svg from '../../svg'
@@ -88,11 +88,7 @@ const EditTokenSpend = ({
   const fromDecimal = (decimalAmount: string) => (parseUnits(decimalAmount, decimals) ?? 0n).toString()
 
   const [mode, setMode] = useState(getMode(requestedAmount, amount))
-  const [custom, setCustom] = useState('')
-
-  useEffect(() => {
-    setCustom(toDecimal(amount))
-  }, [])
+  const [custom, setCustom] = useState(() => toDecimal(amount))
 
   const value = toBigInt(amount)
 

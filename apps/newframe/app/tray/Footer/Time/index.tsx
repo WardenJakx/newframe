@@ -27,19 +27,12 @@ class Time extends React.Component<any, any> {
     const seconds = Math.floor((duration / 1000) % 60)
     const minutes = Math.floor((duration / (1000 * 60)) % 60)
     const hours = Math.floor((duration / (1000 * 60 * 60)) % 24)
-    let label = ''
-    let time: any = ''
     if (hours) {
-      label = hours === 1 ? 'hour ago' : 'hours ago'
-      time = hours
+      return { time: hours, label: hours === 1 ? 'hour ago' : 'hours ago' }
     } else if (minutes) {
-      label = minutes === 1 ? 'minute ago' : 'minutes ago'
-      time = minutes
-    } else {
-      label = 'seconds ago'
-      time = seconds
+      return { time: minutes, label: minutes === 1 ? 'minute ago' : 'minutes ago' }
     }
-    return { time, label }
+    return { time: seconds, label: 'seconds ago' }
   }
 
   override render() {

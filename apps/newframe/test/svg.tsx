@@ -1,6 +1,8 @@
-import { forwardRef } from 'react'
+import { forwardRef, type ForwardedRef, type SVGProps } from 'react'
 
-const Component = (props: any = {}, ref: any = {}) => <svg ref={ref} {...props} />
+const Component = (props: SVGProps<SVGSVGElement>, ref: ForwardedRef<SVGSVGElement>) => (
+  <svg ref={ref} {...props} />
+)
 
 const ReactComponent = forwardRef(Component)
 
