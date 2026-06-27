@@ -23,7 +23,9 @@ function mockApiResponse(
       return Promise.reject(error)
     }
 
-    return Promise.resolve(new Response(typeof body === 'undefined' ? '' : JSON.stringify(body), { status, headers }))
+    return Promise.resolve(
+      new Response(typeof body === 'undefined' ? '' : JSON.stringify(body), { status, headers })
+    )
   }) as typeof fetch)
 }
 
@@ -56,9 +58,8 @@ afterAll(() => {
 
 beforeEach(() => {
   jest.useRealTimers()
-  spyOn(globalThis, 'fetch').mockImplementation(
-    (() => Promise.reject(new Error('Unexpected fetch'))) as unknown as typeof fetch
-  )
+  spyOn(globalThis, 'fetch').mockImplementation((() =>
+    Promise.reject(new Error('Unexpected fetch'))) as unknown as typeof fetch)
 })
 
 afterEach(() => {

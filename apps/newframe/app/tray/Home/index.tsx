@@ -2973,7 +2973,10 @@ class Home extends React.Component<any, any> {
               <div className='t2InfoValue'>{`v${appVersion}`}</div>
             </div>
             {this.renderSettingsActionRow('View License', 'Open', () =>
-              link.send('tray:openExternal', 'https://github.com/wardenjakx/newframe/blob/main/apps/newframe/LICENSE')
+              link.send(
+                'tray:openExternal',
+                'https://github.com/wardenjakx/newframe/blob/main/apps/newframe/LICENSE'
+              )
             )}
             {this.state.resetConfirm ? (
               <div className='t2SettingsRow t2SettingsResetConfirm'>
@@ -3074,11 +3077,7 @@ class Home extends React.Component<any, any> {
     const hasMoreWallets = importedWallets.length > 3
 
     return (
-      <div
-        aria-label={`View ${label} wallets`}
-        className='t2StoredSeedCard'
-        key={signer.id}
-      >
+      <div aria-label={`View ${label} wallets`} className='t2StoredSeedCard' key={signer.id}>
         <div className='t2StoredSeedHeader'>
           <div className='t2StoredSeedIcon'>{this.renderInlineAddIcon('seedling')}</div>
           <div className='t2StoredSeedTitle'>{label}</div>

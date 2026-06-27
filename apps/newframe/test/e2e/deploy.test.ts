@@ -6,7 +6,10 @@ let provider: BrowserProvider
 
 const waitForFrameConnect = () =>
   new Promise<void>((resolve, reject) => {
-    const timeout = setTimeout(() => reject(new Error('Timed out waiting for Frame provider connection')), 10_000)
+    const timeout = setTimeout(
+      () => reject(new Error('Timed out waiting for Frame provider connection')),
+      10_000
+    )
 
     frame.once('connect', () => {
       clearTimeout(timeout)

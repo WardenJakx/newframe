@@ -30,9 +30,8 @@ afterAll(() => {
 
 beforeEach(() => {
   jest.useRealTimers()
-  spyOn(globalThis, 'fetch').mockImplementation(
-    (() => Promise.reject(new Error('Unexpected fetch'))) as unknown as typeof fetch
-  )
+  spyOn(globalThis, 'fetch').mockImplementation((() =>
+    Promise.reject(new Error('Unexpected fetch'))) as unknown as typeof fetch)
 })
 
 afterEach(() => {

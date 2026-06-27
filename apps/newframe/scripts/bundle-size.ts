@@ -105,7 +105,9 @@ function buildReport(): BundleReport {
     throw new Error(`Bundle output not found: ${bundleDir}. Run bun run bundle first.`)
   }
 
-  const files = readdirSync(bundleDir).filter((file) => statSync(path.join(bundleDir, file)).isFile()).sort()
+  const files = readdirSync(bundleDir)
+    .filter((file) => statSync(path.join(bundleDir, file)).isFile())
+    .sort()
   const entrypoints = readEntrypoints()
   const activeFiles = traceActiveFiles(files, entrypoints)
   const activeRuntimeFiles = activeFiles.filter((file) => !file.endsWith('.map'))
@@ -153,7 +155,9 @@ if (outputAsJson) {
   printGroup('Stale or unreferenced', report.staleOrUnreferenced)
 
   console.log('\nBy extension')
-  for (const [extension, group] of Object.entries(report.byExtension).sort((a, b) => b[1].bytes - a[1].bytes)) {
+  for (const [extension, group] of Object.entries(report.byExtension).sort(
+    (a, b) => b[1].bytes - a[1].bytes
+  )) {
     console.log(`${extension.padStart(7)}  ${formatBytes(group.bytes).padStart(8)}  ${group.files} files`)
   }
 

@@ -621,7 +621,11 @@ class _Settings extends React.Component<any, any> {
         <ClusterValue style={{ justifyContent: 'flex-start' }}>
           <SiteStatus>
             <SiteStatusLabel $connected={connected || hasSelectedWallet}>
-              {connected ? 'Connected wallet' : hasSelectedWallet ? 'Connect in Newframe' : 'No wallet selected'}
+              {connected
+                ? 'Connected wallet'
+                : hasSelectedWallet
+                  ? 'Connect in Newframe'
+                  : 'No wallet selected'}
             </SiteStatusLabel>
             <SiteStatusAddress>
               {hasSelectedWallet ? shortAddress(address) : 'Open Newframe to select a wallet'}

@@ -110,7 +110,9 @@ class BalancesPreview extends React.Component<any, any> {
     const totalDisplayValue = formatUsdRate(totalValue, 0)
     const lastBalanceUpdate = this.store('main.accounts', address, 'balances.lastUpdated')
 
-    const balances = visibleBalances.slice(0, 4).map((balance: BalanceSummary) => createDisplayBalance(balance))
+    const balances = visibleBalances
+      .slice(0, 4)
+      .map((balance: BalanceSummary) => createDisplayBalance(balance))
 
     // scan if balances are more than a minute old
     const scanning =

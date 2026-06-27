@@ -68,18 +68,22 @@ class BalancesExpanded extends React.Component<any, any> {
         return !!(chain.connection?.primary?.connected || chain.connection?.secondary?.connected)
       },
       cacheKey: this.props.account
+    }).filter((balance: any) => {
+      const filter = this.state.balanceFilter
+      const chainName = this.store('main.networks.ethereum', balance.chainId, 'name')
+      return matchFilter(filter, [chainName, balance.name, balance.symbol])
     })
-      .filter((balance: any) => {
-        const filter = this.state.balanceFilter
-        const chainName = this.store('main.networks.ethereum', balance.chainId, 'name')
-        return matchFilter(filter, [chainName, balance.name, balance.symbol])
-      })
 
     const visibleBalances = balances.filter((balance: any) => !isLowValueTokenBalance(balance))
     const hiddenLowValueCount = balances.length - visibleBalances.length
     const totalValue = visibleBalances.reduce((a: any, b: any) => a + b.totalValue, 0)
 
-    return { balances: visibleBalances, hiddenLowValueCount, totalDisplayValue: formatUsdRate(totalValue, 0), totalValue }
+    return {
+      balances: visibleBalances,
+      hiddenLowValueCount,
+      totalDisplayValue: formatUsdRate(totalValue, 0),
+      totalValue
+    }
   }
 
   renderAccountFilter() {
@@ -117,10 +121,12 @@ class BalancesExpanded extends React.Component<any, any> {
     const storedBalances = this.store('main.balances', address) || []
     const rates = this.store('main.rates')
 
-    const { balances: allBalances, hiddenLowValueCount, totalDisplayValue, totalValue } = this.getBalances(
-      storedBalances,
-      rates
-    )
+    const {
+      balances: allBalances,
+      hiddenLowValueCount,
+      totalDisplayValue,
+      totalValue
+    } = this.getBalances(storedBalances, rates)
     const balances = allBalances
       .slice(0, this.props.expanded ? allBalances.length : 4)
       .map((balance: BalanceSummary) => createDisplayBalance(balance))

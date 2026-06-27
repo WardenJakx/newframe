@@ -73,9 +73,7 @@ export default async function (opts?: CheckOptions): Promise<VersionUpdate | und
 
   if (latestRelease.tag_name) {
     const latestVersion =
-      latestRelease.tag_name.charAt(0) === 'v'
-        ? latestRelease.tag_name.substring(1)
-        : latestRelease.tag_name
+      latestRelease.tag_name.charAt(0) === 'v' ? latestRelease.tag_name.substring(1) : latestRelease.tag_name
     const isNewerVersion = compareVersions(latestVersion, version) === 1
 
     log.verbose('Manual check found release', {
@@ -84,9 +82,7 @@ export default async function (opts?: CheckOptions): Promise<VersionUpdate | und
       isNewerVersion
     })
 
-    return isNewerVersion
-      ? { version: latestRelease.tag_name, location: latestRelease.html_url }
-      : undefined
+    return isNewerVersion ? { version: latestRelease.tag_name, location: latestRelease.html_url } : undefined
   } else {
     log.verbose('Manual check did not find any releases')
     throw new Error('no releases found')

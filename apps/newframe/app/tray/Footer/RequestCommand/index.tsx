@@ -56,7 +56,8 @@ class RequestCommand extends React.Component<any, any> {
 
     const { isTestnet, explorer } = this.store('main.networks', chain.type, chain.id)
     const nativeCurrency = this.store('main.networksMeta', chain.type, chain.id, 'nativeCurrency')
-    const nativeUSD = nativeCurrency && nativeCurrency.usd && !isTestnet ? nativeCurrency.usd.price : undefined
+    const nativeUSD =
+      nativeCurrency && nativeCurrency.usd && !isTestnet ? nativeCurrency.usd.price : undefined
     const hasNativeUSD = typeof nativeUSD === 'number'
 
     let feeAtTime = '?.??'
@@ -213,7 +214,8 @@ class RequestCommand extends React.Component<any, any> {
       nativeCurrency,
       nativeCurrency: { symbol: currentSymbol = '?' }
     } = this.store('main.networksMeta', chain.type, chain.id)
-    const nativeUSD = nativeCurrency && nativeCurrency.usd && !isTestnet ? nativeCurrency.usd.price : undefined
+    const nativeUSD =
+      nativeCurrency && nativeCurrency.usd && !isTestnet ? nativeCurrency.usd.price : undefined
     const hasNativeUSD = typeof nativeUSD === 'number'
 
     const gasLimit = toBigInt(req.data.gasLimit) ?? 0n

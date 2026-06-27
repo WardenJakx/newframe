@@ -31,7 +31,8 @@ const mockAbi = [
 
 beforeAll(async () => {
   log.transports.console.level = false
-  ;({ decodeCallData, decodeCallDataWithSelectorRegistry, fetchContract } = await import('../../../main/contracts'))
+  ;({ decodeCallData, decodeCallDataWithSelectorRegistry, fetchContract } =
+    await import('../../../main/contracts'))
   ;({ clearFunctionSelectorCache } = await import('../../../main/contracts/selectors'))
   ;({ fetchSourcifyContract } = await import('../../../main/contracts/sources/sourcify'))
   ;({ fetchEtherscanContract } = await import('../../../main/contracts/sources/etherscan'))
@@ -109,8 +110,7 @@ describe('#fetchContract', () => {
 
 describe('#decodeCallData', () => {
   it('decodes a matching ABI method and records the selector/signature', () => {
-    const calldata =
-      '0x6057361d000000000000000000000000000000000000000000000000000000000000007b'
+    const calldata = '0x6057361d000000000000000000000000000000000000000000000000000000000000007b'
 
     expect(decodeCallData(calldata, JSON.stringify(mockAbi))).toStrictEqual({
       selector: '0x6057361d',
@@ -121,8 +121,7 @@ describe('#decodeCallData', () => {
   })
 
   it('rejects a decoded method when re-encoding does not match the original calldata', () => {
-    const calldata =
-      '0x6057361d000000000000000000000000000000000000000000000000000000000000007b00'
+    const calldata = '0x6057361d000000000000000000000000000000000000000000000000000000000000007b00'
 
     expect(decodeCallData(calldata, JSON.stringify(mockAbi))).toBeUndefined()
   })

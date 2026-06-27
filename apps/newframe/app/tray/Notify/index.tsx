@@ -28,7 +28,10 @@ class Notify extends React.Component<any, any> {
               Please read{' '}
               <span
                 onMouseDown={() => {
-                  link.send('tray:openExternal', 'https://github.com/wardenjakx/newframe/blob/main/apps/newframe/LICENSE')
+                  link.send(
+                    'tray:openExternal',
+                    'https://github.com/wardenjakx/newframe/blob/main/apps/newframe/LICENSE'
+                  )
                 }}
               >
                 our license
@@ -70,7 +73,10 @@ class Notify extends React.Component<any, any> {
                   <span
                     className='notifyBodyLink'
                     onMouseDown={() => {
-                      link.send('tray:openExternal', 'https://github.com/wardenjakx/newframe/blob/main/apps/newframe/LICENSE')
+                      link.send(
+                        'tray:openExternal',
+                        'https://github.com/wardenjakx/newframe/blob/main/apps/newframe/LICENSE'
+                      )
                     }}
                   >
                     our license
@@ -352,8 +358,8 @@ class Notify extends React.Component<any, any> {
           </div>
           <div className='notifyBody'>
             <div className='notifyBodyLine'>
-              Newframe hot signers are in alpha! Do not use them with high value accounts and verify your backups
-              are valid. Only proceed if you understand and accept these risks.
+              Newframe hot signers are in alpha! Do not use them with high value accounts and verify your
+              backups are valid. Only proceed if you understand and accept these risks.
             </div>
           </div>
           <div className='notifyInput'>

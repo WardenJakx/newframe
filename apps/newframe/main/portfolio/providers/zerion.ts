@@ -509,10 +509,7 @@ export default class ZerionPortfolioProvider implements PortfolioProvider {
     const zerionChainId = frameToZerionChainIds[chainId]
     if (!zerionChainId) return undefined
 
-    const chain = await this.request<ZerionChainResponse>(
-      `/chains/${encodeURIComponent(zerionChainId)}`,
-      {}
-    )
+    const chain = await this.request<ZerionChainResponse>(`/chains/${encodeURIComponent(zerionChainId)}`, {})
     const imageUrl = chain.data?.attributes?.icon?.url
 
     return imageUrl ? { url: imageUrl } : undefined

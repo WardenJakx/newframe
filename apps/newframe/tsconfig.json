@@ -1,37 +1,19 @@
 {
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    // aligned with bun's recommended config (https://bun.com/docs/runtime/typescript),
-    // except where electron's build pipeline requires otherwise — deviations noted inline
-    "target": "ESNext",
-    "lib": ["ESNext", "DOM", "DOM.Iterable"],
-    // bun recommends "module": "Preserve" + "noEmit": true, but tsgo emits the electron
-    // main process to ./compiled as commonjs (node loads compiled/main as CJS; switching
-    // means "type": "module" repo-wide, which would affect electron-builder configs)
+    // Electron main is loaded as CommonJS from ./compiled. Renderer code is bundled
+    // separately by Bun, so this project config keeps the main-process emit settings.
     "module": "commonjs",
-    "moduleDetection": "force",
-    "jsx": "react-jsx",
-    "allowJs": true,
-    // bun recommends verbatimModuleSyntax, but that forces `import = require()` syntax
-    // under commonjs emit; isolatedModules gives the same per-file-transpile safety
-    // that Bun's bundler and per-file test transpilation rely on
     "isolatedModules": true,
     // lets the forked signer workers use .ts relative imports that emit as .js
     "rewriteRelativeImportExtensions": true,
 
-    "strict": true,
-    "noFallthroughCasesInSwitch": true,
-    "noImplicitOverride": true,
     "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true,
 
     "outDir": "./compiled",
     "typeRoots": ["./node_modules/@types", "./@types"],
     // tsgo doesn't auto-include typeRoots packages; bun-test-globals/bun/node provide test + process globals
-    "types": ["node", "bun", "bun-test-globals"],
-
-    "paths": {}
+    "types": ["node", "bun", "bun-test-globals"]
   },
   "include": [
     "package.json",

@@ -22,7 +22,10 @@ class LedgerMock extends EventEmitter {
   derivation: string | undefined
   accountLimit = 5
 
-  constructor(public devicePath: string, public model: string) {
+  constructor(
+    public devicePath: string,
+    public model: string
+  ) {
     super()
     this.id = uuid('Ledger' + this.devicePath, ns)
   }

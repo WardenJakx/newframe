@@ -171,10 +171,7 @@ class Biometrics {
     )
     decipher.setAuthTag(Buffer.from(biometric.authTag, 'hex'))
 
-    const key = Buffer.concat([
-      decipher.update(Buffer.from(biometric.encryptedKey, 'hex')),
-      decipher.final()
-    ])
+    const key = Buffer.concat([decipher.update(Buffer.from(biometric.encryptedKey, 'hex')), decipher.final()])
 
     return key.toString('hex')
   }
