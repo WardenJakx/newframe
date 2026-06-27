@@ -44,7 +44,6 @@
     "@ledgerhq/hw-transport-node-hid-singleton": "6.35.3",
     "@metamask/eth-sig-util": "^8.2.0",
     "@scure/bip32": "^2.2.0",
-    "@sentry/electron": "7.13.0",
     "@trezor/connect": "^9.7.3",
     "@zxcvbn-ts/core": "^3.0.4",
     "@zxcvbn-ts/language-common": "^3.0.4",

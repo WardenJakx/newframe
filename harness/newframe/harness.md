@@ -67,7 +67,7 @@ Notes:
 - Snapshot refs such as `e5` are temporary. Use them only within the current interactive session.
 - `playwright-cli screenshot` requires `--filename=/path/file.png`; a positional argument is treated as an element selector or snapshot ref.
 - Read live values from a fresh snapshot immediately before reporting them. Balances can change while RPC and balance refresh work is running.
-- Current known console noise includes `Invalid Sentry Dsn: https://placeholder.sentry.io`; treat other new console errors as suspicious.
+- Treat new console errors as suspicious.
 - Opening panels is safe. Clicking account rows, toggles, clear actions, add actions, send, or swap can mutate local state and should be avoided unless explicitly requested.
 
 ## Interaction Contract

@@ -16,7 +16,6 @@ const profileAppName = isDevApp ? devAppName : appName
 app.setName(profileAppName)
 app.setPath('userData', path.join(app.getPath('appData'), profileAppName))
 
-import * as errors from './errors'
 import windows from './windows'
 import menu from './menu'
 import store from './store'
@@ -66,7 +65,6 @@ if (!hasInstanceLock) {
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports -- lazy-loaded for side effects at startup
 require('./rpc')
-errors.init()
 
 log.info(`Chrome: v${process.versions.chrome}`)
 log.info(`Electron: v${process.versions.electron}`)
