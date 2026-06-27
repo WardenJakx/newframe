@@ -23,6 +23,7 @@ import { ApprovalType } from '../../../resources/constants'
 import reveal from '../../reveal'
 import { isTransactionRequest, isTypedMessageSignatureRequest } from '../../../resources/domain/request'
 import Erc20Contract from '../../contracts/erc20'
+import { getErc7730TypedDataDisplay } from '../../signatures/erc7730'
 
 import type { PermitSignatureRequest, TypedMessage } from '../types'
 
@@ -321,7 +322,25 @@ class FrameAccount {
     }
   }
 
+  private async decodeErc7730TypedMessage(req: SignTypedDataRequest) {
+    const knownRequest = this.requests[req.handlerId]
+    if (!knownRequest) return
+
+    try {
+      const erc7730 = await getErc7730TypedDataDisplay(req.typedMessage)
+      const updatedRequest = this.requests[req.handlerId] as SignTypedDataRequest | undefined
+      if (!erc7730 || !updatedRequest) return
+
+      updatedRequest.erc7730 = erc7730
+      this.update()
+    } catch (error) {
+      log.warn('unable to decode ERC-7730 typed message', { error, handlerId: req.handlerId })
+    }
+  }
+
   private async decodeTypedMessage(req: SignTypedDataRequest) {
+    void this.decodeErc7730TypedMessage(req)
+
     if (req.type === 'signTypedData') return
 
     const knownRequest = this.requests[req.handlerId]
