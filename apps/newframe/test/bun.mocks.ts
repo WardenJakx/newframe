@@ -64,7 +64,8 @@ export const electronMock = {
   },
   Notification: jest.fn(),
   powerMonitor: {
-    on: jest.fn()
+    on: jest.fn(),
+    off: jest.fn()
   },
   protocol: {
     handle: jest.fn(),

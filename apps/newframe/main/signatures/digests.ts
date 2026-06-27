@@ -31,10 +31,14 @@ export function getEip712Digests(typedMessage: TypedMessage): Eip712Digests | un
     return undefined
   }
 
-  return {
-    eip712Digest: toHex(TypedDataUtils.eip712Hash(typedData, eip712Version)),
-    domainHash: toHex(TypedDataUtils.eip712DomainHash(typedData, eip712Version)),
-    messageHash: toHex(TypedDataUtils.hashStruct(primaryType as string, message, types, eip712Version))
+  try {
+    return {
+      eip712Digest: toHex(TypedDataUtils.eip712Hash(typedData, eip712Version)),
+      domainHash: toHex(TypedDataUtils.eip712DomainHash(typedData, eip712Version)),
+      messageHash: toHex(TypedDataUtils.hashStruct(primaryType as string, message, types, eip712Version))
+    }
+  } catch {
+    return undefined
   }
 }
 
