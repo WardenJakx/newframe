@@ -123,8 +123,16 @@ const actions = {
   },
   setPermission: (u: U, address: string, permission: any) => {
     u('main.permissions', address, (permissions: any = {}) => {
-      permissions[permission.handlerId] = permission
-      return permissions
+      if (permission.provider) {
+        return {
+          ...permissions,
+          [permission.handlerId]: permission
+        }
+      }
+
+      const nextPermissions = { ...permissions }
+      delete nextPermissions[permission.handlerId]
+      return nextPermissions
     })
   },
   revokePermission: (u: U, address: string, handlerId: string) => {
@@ -133,24 +141,14 @@ const actions = {
     u('main.permissions', address, (permissions: any = {}) => {
       if (!permissions[handlerId]) return permissions
 
-      return {
-        ...permissions,
-        [handlerId]: {
-          ...permissions[handlerId],
-          provider: false
-        }
-      }
+      const nextPermissions = { ...permissions }
+      delete nextPermissions[handlerId]
+      return nextPermissions
     })
   },
   clearPermissions: (u: U, address: string) => {
     u('main.permissions', address, () => {
       return {}
-    })
-  },
-  toggleAccess: (u: U, address: string, handlerId: string) => {
-    u('main.permissions', address, (permissions: any) => {
-      permissions[handlerId].provider = !permissions[handlerId].provider
-      return permissions
     })
   },
   setAccountCloseLock: (u: U, value: any) => {
@@ -554,12 +552,27 @@ const actions = {
   },
   clearOrigins: (u: U) => {
     u('main.origins', () => ({}))
+    u('main.permissions', () => ({}))
   },
   removeOrigin: (u: U, originId: string) => {
     u('windows.dash.nav', () => []) // Reset nav
     u('main.origins', (origins: any) => {
       delete origins[originId]
       return origins
+    })
+    u('main.permissions', (permissions: any = {}) => {
+      return Object.fromEntries(
+        Object.entries(permissions).map(([address, accountPermissions]: [string, any]) => {
+          const nextAccountPermissions = { ...accountPermissions }
+          Object.entries(nextAccountPermissions).forEach(([permissionId, permission]: [string, any]) => {
+            if (permissionId === originId || permission.handlerId === originId) {
+              delete nextAccountPermissions[permissionId]
+            }
+          })
+
+          return [address, nextAccountPermissions]
+        })
+      )
     })
   },
   trustExtension: (u: U, extensionId: string, trusted: boolean) => {

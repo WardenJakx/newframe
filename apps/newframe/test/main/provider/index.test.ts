@@ -206,19 +206,14 @@ describe('#send', () => {
       })
     })
 
-    it('returns the selected address to internal status requests when permission is not granted', (done) => {
+    it('returns the selected address to internal status requests when no permission is attached', (done) => {
       const originId = '8073729a-5e59-53b7-9e69-5d9bcff94087'
 
       store.set('main.origins', originId, {
         name: 'frame.test',
         chain: { id: 1, type: 'ethereum' }
       })
-      store.set('main.permissions', address, {
-        [originId]: {
-          origin: 'frame.test',
-          provider: false
-        }
-      })
+      store.set('main.permissions', address, {})
 
       send({ method: 'frame_getOriginStatus', __frameInternal: true }, (response: any) => {
         expect(response.error).toBeUndefined()
@@ -234,19 +229,14 @@ describe('#send', () => {
       })
     })
 
-    it('does not expose the selected address to non-internal status requests when permission is not granted', (done) => {
+    it('does not expose the selected address to non-internal status requests when no permission is attached', (done) => {
       const originId = '8073729a-5e59-53b7-9e69-5d9bcff94087'
 
       store.set('main.origins', originId, {
         name: 'frame.test',
         chain: { id: 1, type: 'ethereum' }
       })
-      store.set('main.permissions', address, {
-        [originId]: {
-          origin: 'frame.test',
-          provider: false
-        }
-      })
+      store.set('main.permissions', address, {})
 
       send({ method: 'frame_getOriginStatus' }, (response: any) => {
         expect(response.error).toBeUndefined()
@@ -264,7 +254,7 @@ describe('#send', () => {
   })
 
   describe('#frame_disconnectOrigin', () => {
-    it('revokes the selected account permission and notifies origin account subscribers', (done) => {
+    it('removes the selected account permission and notifies origin account subscribers', (done) => {
       const originId = '8073729a-5e59-53b7-9e69-5d9bcff94087'
       const subscription = { id: '0x9509a964a8d24a17fcfc7b77fc575b71', originId }
 
@@ -291,7 +281,7 @@ describe('#send', () => {
         expect(response.error).toBeUndefined()
         expect(response.result.connected).toBe(false)
         expect(response.result.address).toBe('')
-        expect(store('main.permissions', address, originId, 'provider')).toBe(false)
+        expect(store('main.permissions', address, originId)).toBeUndefined()
         expect(store('main.origins', originId, 'session', 'endedAt')).toEqual(expect.any(Number))
         expect(accounts.clearRequestsByOrigin).toHaveBeenCalledWith(address, originId)
         expect(subscriptionEvent.params.subscription).toBe(subscription.id)

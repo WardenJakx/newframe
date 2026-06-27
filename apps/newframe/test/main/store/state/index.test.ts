@@ -269,6 +269,27 @@ it('falls back to a persisted active account when no current account was saved',
   expect(state().selected.current).toBe('0xactive')
 })
 
+it('drops persisted disconnected dapp permission entries', async () => {
+  mockLatestVersion = 2
+  mockVersionedMainState[2] = {
+    accounts: {
+      '0xabc': { id: '0xabc', address: '0xabc', active: true }
+    },
+    permissions: {
+      '0xabc': {
+        connected: { handlerId: 'connected', origin: 'connected.test', provider: true },
+        disconnected: { handlerId: 'disconnected', origin: 'disconnected.test', provider: false }
+      }
+    }
+  }
+
+  const state = await loadState()
+
+  expect(state().main.permissions['0xabc']).toEqual({
+    connected: { handlerId: 'connected', origin: 'connected.test', provider: true }
+  })
+})
+
 it('preserves an older version of the state after creating a newer state entry', async () => {
   mockLatestVersion = 2
 
