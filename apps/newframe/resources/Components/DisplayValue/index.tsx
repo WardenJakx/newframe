@@ -43,23 +43,6 @@ export const DisplayCoinBalance = ({
   />
 )
 
-export const DisplayFiatPrice = ({
-  decimals,
-  currencyRate,
-  isTestnet
-}: {
-  decimals: number
-  currencyRate: any
-  isTestnet?: boolean
-}) => (
-  <DisplayValue
-    type='fiat'
-    value={`1e${decimals}`}
-    valueDataParams={{ decimals, currencyRate, isTestnet, displayFullValue: true }}
-    currencySymbol='$'
-  />
-)
-
 interface DisplayValueProps {
   value: any
   valueDataParams?: any

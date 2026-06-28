@@ -802,9 +802,6 @@ const actions = {
     }
     u('windows.dash', (dash: any) => Object.assign(dash, update))
   },
-  setNotify: (u: U, update: any) => {
-    u('windows.notify.showing', () => update.showing)
-  },
   navHome: (u: U, command: any) => {
     u('tray.homeCommand', () => toHomeCommand(command))
     u('windows.panel.nav', () => [])

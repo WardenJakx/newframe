@@ -1,13 +1,6 @@
 import React from 'react'
 import Restore from 'react-restore'
 
-// import ProviderRequest from './ProviderRequest'
-// import TransactionRequest from './TransactionRequest'
-// import SignatureRequest from './SignatureRequest'
-// import ChainRequest from './ChainRequest'
-// import AddTokenRequest from './AddTokenRequest'
-// import SignTypedDataRequest from './SignTypedDataRequest'
-
 import TxOverview from './TransactionRequest/TxMainNew/overview'
 
 import RequestItem from '../../../../resources/Components/RequestItem'
@@ -19,74 +12,6 @@ import svg from '../../../../resources/svg'
 
 class Requests extends React.Component<any, any> {
   declare store: Store
-  moduleRef: React.RefObject<HTMLDivElement | null>
-  resizeObserver?: ResizeObserver
-
-  constructor(props: any, context?: any) {
-    super(props, context)
-    this.state = {
-      minimized: false
-    }
-    this.moduleRef = React.createRef()
-    if (!this.props.expanded) {
-      this.resizeObserver = new ResizeObserver(() => {
-        if (this.moduleRef && this.moduleRef.current) {
-          link.send('tray:action', 'updateAccountModule', this.props.moduleId, {
-            height: this.moduleRef.current.clientHeight
-          })
-        }
-      })
-    }
-  }
-
-  minimize() {
-    this.setState({ minimized: true })
-  }
-
-  override componentDidMount() {
-    if (this.resizeObserver) this.resizeObserver.observe(this.moduleRef.current as Element)
-  }
-
-  renderPreview() {
-    const reqCount = Object.keys(this.store('main.accounts', this.props.account, 'requests') || {}).length
-    return (
-      <div ref={this.moduleRef} className='balancesBlock'>
-        <div
-          className={'requestsPreview'}
-          onClick={() => {
-            const crumb = {
-              view: 'expandedModule',
-              data: {
-                id: this.props.moduleId,
-                account: this.props.account
-              }
-            }
-            link.send('nav:forward', 'panel', crumb)
-          }}
-          style={reqCount ? { background: 'var(--ghostA)' } : {}}
-        >
-          <div className={'requestPreviewContent'}>
-            <div className={'requestPreviewContentTitle'}>
-              <span style={reqCount ? { color: 'var(--good)' } : {}}>{svg.inbox(13)}</span>
-              <span>{reqCount ? (reqCount === 1 ? '1 Request' : reqCount + ' Requests') : 'Requests'}</span>
-            </div>
-            <div className={'requestPreviewContentArrow'} style={reqCount ? { color: 'var(--good)' } : {}}>
-              {svg.arrowRight(14)}
-              {svg.arrowRight(14)}
-              {svg.arrowRight(14)}
-            </div>
-          </div>
-          <div className={'requestsPreviewArrow'}>
-            <div
-              className={'requestsPreviewArrow1'}
-              style={reqCount ? { background: 'var(--ghostB)' } : {}}
-            />
-          </div>
-          <div className={'requestsPreviewOverlay'} style={reqCount ? { opacity: '1' } : { opacity: '0' }} />
-        </div>
-      </div>
-    )
-  }
 
   renderRequestGroup(origin: any, requests: any) {
     const groupName = this.store('main.origins', origin, 'name')
@@ -295,7 +220,7 @@ class Requests extends React.Component<any, any> {
     )
   }
   override render() {
-    return this.props.expanded ? this.renderExpanded() : this.renderPreview()
+    return this.renderExpanded()
   }
 }
 

@@ -4,7 +4,7 @@ import { NATIVE_CURRENCY } from '../../../resources/constants'
 
 import type { Balance, NativeCurrency, Rate } from '../../store/state'
 
-export type UsdRate = { usd: Rate }
+type UsdRate = { usd: Rate }
 
 interface AssetsChangedHandler {
   assetsChanged: (address: Address, assets: RPC.GetAssets.Assets) => void

@@ -34,13 +34,3 @@ ipcRenderer.on('main:action', (...args: any[]) => {
   args.shift()
   window.postMessage(wrap({ method: 'event', channel: 'action', args, source }), '*')
 })
-
-ipcRenderer.on('main:flex', (...args: any[]) => {
-  args.shift()
-  window.postMessage(wrap({ method: 'event', channel: 'flex', args, source }), '*')
-})
-
-ipcRenderer.on('main:dapp', (...args: any[]) => {
-  args.shift()
-  window.postMessage(wrap({ method: 'event', channel: 'dapp', args, source }), '*')
-})

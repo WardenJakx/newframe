@@ -4,16 +4,7 @@ import Restore from 'react-restore'
 import svg from '../../../resources/svg'
 import link from '../../../resources/link'
 
-import Default from './Default'
-
-import Activity from './Activity'
-import Chains from './Chains'
-import Balances from './Balances'
-import Gas from '../../../resources/Components/Monitor'
-import Permissions from './Permissions'
 import Requests from './Requests'
-import Settings from './Settings'
-import Signer from './Signer'
 
 // move
 import ProviderRequest from './Requests/ProviderRequest'
@@ -35,147 +26,6 @@ const requests: Record<string, any> = {
   addChain: ChainRequest,
   addToken: AddTokenRequest
 }
-
-const modules: Record<string, any> = {
-  gas: Gas,
-  requests: Requests,
-  chains: Chains,
-  activity: Activity,
-  permissions: Permissions,
-  balances: Balances,
-  signer: Signer,
-  settings: Settings
-}
-
-class _AccountModule extends React.Component<any, any> {
-  moduleRef: any
-
-  getModule(moduleId: any, account: any, expanded: any, expandedData: any, filter: any) {
-    const Module = modules[moduleId] || Default
-
-    return (
-      <Module
-        account={account}
-        expanded={expanded}
-        expandedData={expandedData}
-        filter={filter}
-        moduleId={moduleId}
-      />
-    )
-  }
-
-  override render() {
-    const { id, module, top, index, expanded, expandedData, account, filter } = this.props
-    const hidden = false
-    let style: any = {
-      transform: `translateY(${top}px)`,
-      zIndex: 9999 - index,
-      height: module.height,
-      opacity: 1
-    }
-
-    if (hidden) {
-      style = {
-        transform: `translateY(${top}px)`,
-        zIndex: 9999 - index,
-        height: 0,
-        opacity: 0,
-        overflow: 'hidden'
-      }
-    }
-
-    if (expanded) {
-      return this.getModule(id, account, expanded, expandedData, filter)
-    } else {
-      return (
-        <div className={'accountModule'} ref={this.moduleRef} style={style}>
-          <div className='accountModuleInner cardShow'>
-            <div className='accountModuleCard'>
-              {this.getModule(id, account, expanded, expandedData, filter)}
-            </div>
-          </div>
-        </div>
-      )
-    }
-  }
-}
-
-const AccountModule = Restore.connect(_AccountModule)
-
-// account module is position absolute and with a translateX
-class _AccountMain extends React.Component<any, any> {
-  declare store: Store
-
-  constructor(props: any, context?: any) {
-    super(props, context)
-    this.state = {
-      expandedModule: ''
-    }
-  }
-  renderAccountFilter() {
-    return (
-      <div className='panelFilterAccount'>
-        <div className='panelFilterIcon'>{svg.search(12)}</div>
-        <div className='panelFilterInput'>
-          <input
-            tabIndex={-1}
-            type='text'
-            spellCheck='false'
-            onChange={(e) => {
-              const value = e.target.value
-              this.setState({ accountModuleFilter: value })
-            }}
-            value={this.state.accountModuleFilter}
-          />
-        </div>
-        {this.state.accountModuleFilter ? (
-          <div
-            className='panelFilterClear'
-            onClick={() => {
-              this.setState({ accountModuleFilter: '' })
-            }}
-          >
-            {svg.close(12)}
-          </div>
-        ) : null}
-      </div>
-    )
-  }
-
-  override render() {
-    const accountModules = this.store('panel.account.modules')
-    const accountModuleOrder = this.store('panel.account.moduleOrder')
-    let slideHeight = 0
-    const modules = accountModuleOrder.map((id: any, i: number) => {
-      const module = accountModules[id] || { height: 0 }
-      slideHeight += module.height + 12
-      return (
-        <AccountModule
-          key={id}
-          id={id}
-          account={this.props.id}
-          module={module}
-          top={slideHeight - module.height - 12}
-          index={i}
-          filter={this.state.accountModuleFilter}
-        />
-      )
-    })
-    const footerHeight = this.store('windows.panel.footer.height')
-    return (
-      <div className='accountMain' style={{ bottom: footerHeight + 'px' }}>
-        <div className='accountMainScroll'>
-          {this.renderAccountFilter()}
-          <div className='accountMainSlide' style={{ height: slideHeight + 'px' }}>
-            {modules}
-          </div>
-        </div>
-      </div>
-    )
-  }
-}
-
-const AccountMain = Restore.connect(_AccountMain)
 
 // AccountView is a reusable template that provides the option to nav back to main
 class _AccountView extends React.Component<any, any> {
@@ -208,13 +58,6 @@ const AccountView = Restore.connect(_AccountView)
 
 class _AccountBody extends React.Component<any, any> {
   declare store: Store
-
-  constructor(props: any, context?: any) {
-    super(props, context)
-    this.state = {
-      view: 'request'
-    }
-  }
 
   getRequestComponent({ type }: any) {
     return requests[type]
@@ -279,6 +122,8 @@ class _AccountBody extends React.Component<any, any> {
         </AccountView>
       )
     } else if (crumb.view === 'expandedModule') {
+      if (crumb.data?.id !== 'requests') return null
+
       return (
         <AccountView
           back={() => {
@@ -287,31 +132,20 @@ class _AccountBody extends React.Component<any, any> {
           {...this.props}
           accountViewTitle={crumb.data.id}
         >
-          <div
-            className='accountsModuleExpand cardShow'
-            onMouseDown={() => this.setState({ expandedModule: false })}
-          >
+          <div className='accountsModuleExpand cardShow'>
             <div
               className='moduleExpanded'
               onMouseDown={(e) => {
                 e.stopPropagation()
               }}
             >
-              <AccountModule
-                id={crumb.data.id}
-                account={crumb.data.account}
-                module={{ height: 'auto' }}
-                top={0}
-                index={0}
-                expanded={true}
-                expandedData={crumb.data}
-              />
+              <Requests expanded={true} account={crumb.data.account} moduleId='requests' />
             </div>
           </div>
         </AccountView>
       )
     } else {
-      return <AccountMain {...this.props} />
+      return null
     }
   }
 }

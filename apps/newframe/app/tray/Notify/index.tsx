@@ -515,16 +515,6 @@ class Notify extends React.Component<any, any> {
       )
     } else if (notify === 'betaDisclosure') {
       return <div className='notify cardShow'>{this.betaDisclosure()}</div>
-    } else if (notify === 'updateOriginChain') {
-      return (
-        <div className='notify cardShow' onMouseDown={() => this.store.notify()}>
-          {/* <div className='notifyCloseButton' onMouseDown={() => this.store.notify()}>
-            {'close'}
-          </div> */}
-          {/* NOTE: preserved bug — updateOriginChain is not defined on this component */}
-          {(this as any).updateOriginChain(this.store('view.notifyData'))}
-        </div>
-      )
     } else if (notify === 'gasFeeWarning') {
       return (
         <div className='notify cardShow' onMouseDown={() => this.store.notify()}>

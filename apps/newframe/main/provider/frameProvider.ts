@@ -16,8 +16,6 @@ import {
   type SubscriptionPayload
 } from './rpc'
 
-export type { ProviderRequest } from './rpc'
-
 export interface Eip1193Provider {
   request<T = unknown>(payload: ProviderRequest): Promise<T>
 }
@@ -209,7 +207,7 @@ abstract class EventedRequestProvider extends EventEmitter implements Eip1193Pro
   }
 }
 
-export class FrameProxyProvider extends EventedRequestProvider {
+class FrameProxyProvider extends EventedRequestProvider {
   private promises: Record<number, { resolve: (value: unknown) => void; reject: (err: Error) => void }> = {}
 
   constructor(private connection: ProxyConnection) {

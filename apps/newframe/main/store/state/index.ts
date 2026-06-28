@@ -1061,39 +1061,7 @@ const initial = {
     show: false,
     view: 'default',
     viewData: '',
-    account: {
-      moduleOrder: [
-        'requests',
-        // 'activity',
-        // 'gas',
-        'chains',
-        'balances',
-        'permissions',
-        // 'verify',
-        'signer',
-        'settings'
-      ],
-      modules: {
-        requests: {
-          height: 0
-        },
-        activity: {
-          height: 0
-        },
-        balances: {
-          height: 0
-        },
-        permissions: {
-          height: 0
-        },
-        verify: {
-          height: 0
-        },
-        gas: {
-          height: 100
-        }
-      }
-    }
+    account: {}
   },
   flow: {},
   dapps: {},
