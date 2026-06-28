@@ -11,12 +11,6 @@ class SignerStatus extends React.Component<any, any> {
 
   constructor(props: any, context?: any) {
     super(props, context)
-    // this.moduleRef = React.createRef()
-    // this.resizeObserver = new ResizeObserver(() => {
-    //   if (this.moduleRef && this.moduleRef.current) {
-    //     link.send('tray:action', 'updateAccountModule', this.props.moduleId, { height: this.moduleRef.current.clientHeight })
-    //   }
-    // })
     this.state = {
       expand: false,
       shake: false,

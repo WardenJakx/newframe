@@ -62,7 +62,7 @@ export interface Erc7730Descriptor {
   }
 }
 
-export interface Erc7730DisplayRow {
+interface Erc7730DisplayRow {
   label: string
   value: string
   path?: string

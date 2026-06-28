@@ -80,7 +80,7 @@ function floorTo(value: number, decimals: number) {
   return Math.floor(value * scale) / scale
 }
 
-export function balanceValue({ balance, decimals }: { balance?: string; decimals: number }) {
+function balanceValue({ balance, decimals }: { balance?: string; decimals: number }) {
   return Number(formatUnits(toBigInt(balance || 0) ?? 0n, decimals))
 }
 
@@ -123,7 +123,7 @@ export function createBalance(rawBalance: Balance, quote?: Rate): DisplayedBalan
   }
 }
 
-export function createBalanceSummary({
+function createBalanceSummary({
   rawBalance,
   rates = {},
   networks = {},
@@ -241,7 +241,7 @@ export const sortByTotalValue = (a: DisplayedBalance, b: DisplayedBalance) => {
   return balanceValue(b) - balanceValue(a)
 }
 
-export const sortBalanceSummariesByTotalValue = (a: BalanceSummary, b: BalanceSummary) => {
+const sortBalanceSummariesByTotalValue = (a: BalanceSummary, b: BalanceSummary) => {
   const difference = b.totalValue - a.totalValue
   if (difference !== 0) {
     return difference
@@ -254,7 +254,7 @@ export function isNativeCurrency(address: string) {
   return address === NATIVE_CURRENCY
 }
 
-export function getNativeCurrencyIcon(nativeCurrency: { icon?: string; symbol?: string }) {
+function getNativeCurrencyIcon(nativeCurrency: { icon?: string; symbol?: string }) {
   return nativeCurrency.icon || (nativeCurrency.symbol?.toUpperCase() === 'ETH' ? MAINNET_ETH_ICON : '')
 }
 

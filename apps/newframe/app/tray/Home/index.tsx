@@ -1790,17 +1790,6 @@ class Home extends React.Component<any, any> {
             <div className='t2HeroButtonIcon'>{svg.send(14)}</div>
             <span>Send</span>
           </div>
-          <div
-            aria-disabled={!hasAssets}
-            aria-label='Swap'
-            className={hasAssets ? 't2HeroButton' : 't2HeroButton t2HeroButtonDisabled'}
-            role='button'
-            tabIndex={hasAssets ? 0 : -1}
-            title={hasAssets ? 'Swap' : 'No assets available'}
-          >
-            <div className='t2HeroButtonIcon'>{svg.sync(15)}</div>
-            <span>Swap</span>
-          </div>
         </div>
       </div>
     )

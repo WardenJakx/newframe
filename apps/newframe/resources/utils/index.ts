@@ -1,7 +1,6 @@
 import { addHexPrefix } from '@ethereumjs/util'
 import { getAddress as getChecksumAddress } from 'ethers'
 
-const weiToGwei = (wei: number) => wei / 1e9
 const weiToHex = (wei: number) => addHexPrefix(wei.toString(16))
 const gweiToHex = (gwei: number) => weiToHex(gwei * 1e9)
 const hexToInt = (hexStr: string) => parseInt(hexStr, 16)
@@ -99,7 +98,6 @@ export {
   arraysEqual,
   arraysMatch,
   debounce,
-  weiToGwei,
   gweiToHex,
   hexToInt,
   weiIntToEthInt,

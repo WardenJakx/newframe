@@ -23,7 +23,6 @@ link.rpc('getState', (err: any, state: any) => {
   if (err) return console.error('Could not get initial state from main.')
   const store = appStore(state)
   link.send('tray:ready') // turn on api
-  link.send('tray:refreshMain')
 
   store.observer(() => {
     document.body.classList.remove('dark', 'light')
