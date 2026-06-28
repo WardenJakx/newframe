@@ -111,9 +111,6 @@ const defaultState = () => ({
     permissions: {},
     portfolioApiKey: '',
     autoDiscoverTokens: false,
-    privacy: {
-      errorReporting: true
-    },
     rates: {},
     scanning: {},
     signers: {},
