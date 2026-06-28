@@ -322,9 +322,6 @@ const actions = {
   setAutohide: (u: U, v: boolean) => {
     u('main.autohide', () => v)
   },
-  setErrorReporting: (u: U, enable: boolean) => {
-    u('main.privacy.errorReporting', () => enable)
-  },
   setGasFees: (u: U, netType: string, netId: number, fees: any) => {
     u('main.networksMeta', netType, netId, 'gas.price.fees', () => fees)
   },

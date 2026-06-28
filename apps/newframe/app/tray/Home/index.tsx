@@ -2736,13 +2736,6 @@ class Home extends React.Component<any, any> {
           ]
         : []),
       {
-        label: 'Error Reporting',
-        on: this.store('main.privacy.errorReporting'),
-        detail: 'Anonymously report errors',
-        toggle: () =>
-          link.send('tray:action', 'setErrorReporting', !this.store('main.privacy.errorReporting'))
-      },
-      {
         label: 'Show Account Name with ENS',
         on: this.store('main.showLocalNameWithENS'),
         detail: 'Show local account name when ENS is resolved',
