@@ -1714,26 +1714,6 @@ class Home extends React.Component<any, any> {
 
           <div className='t2MenuPanelSection'>
             {this.renderMenuPanelRow({
-              label: 'Add Account',
-              icon: svg.plus(16),
-              onClick: () => this.openInlineAdd()
-            })}
-            {/*
-            {this.renderMenuPanelRow({
-              label: 'Request a Feature',
-              icon: svg.open(16),
-              onClick: () => link.send('tray:openExternal', feedbackUrl)
-            })}
-            {this.renderMenuPanelRow({
-              label: 'Join Discord',
-              icon: svg.handshake(16),
-              onClick: () => link.send('tray:openExternal', discordUrl)
-            })}
-            */}
-          </div>
-
-          <div className='t2MenuPanelSection'>
-            {this.renderMenuPanelRow({
               label: 'App Info',
               detail: this.store('main.instanceId'),
               icon: svg.copy(16),
