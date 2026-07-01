@@ -24,6 +24,7 @@ import reveal from '../../reveal'
 import { isTransactionRequest, isTypedMessageSignatureRequest } from '../../../resources/domain/request'
 import Erc20Contract from '../../contracts/erc20'
 import { getErc7730TypedDataDisplay } from '../../signatures/erc7730'
+import { simulateTransactionEffects } from '../../transaction/simulation'
 
 import type { PermitSignatureRequest, TypedMessage } from '../types'
 
@@ -211,8 +212,35 @@ class FrameAccount {
   clearRequest(handlerId: string) {
     log.info(`clearRequest(${handlerId}) for account ${this.id}`)
 
+    const panelNav = store('windows.panel.nav') || []
+    const wasCurrentRequest =
+      panelNav[0]?.view === 'requestView' && panelNav[0]?.data?.requestId === handlerId
+
     delete this.requests[handlerId]
     store.navClearReq(handlerId, Object.keys(this.requests).length > 0)
+
+    const nextRequest = Object.values(this.requests)
+      .filter(
+        (req) =>
+          req.mode !== RequestMode.Monitor &&
+          !['confirmed', 'declined', 'error', 'success'].includes(req.status || '')
+      )
+      .sort((a, b) => (a.created || 0) - (b.created || 0))[0]
+
+    if (wasCurrentRequest && nextRequest) {
+      if (isTransactionRequest(nextRequest)) {
+        void this.simulateTransaction(nextRequest, true)
+      }
+
+      nav.forward('panel', {
+        view: 'requestView',
+        data: {
+          step: 'confirm',
+          accountId: this.id,
+          requestId: nextRequest.handlerId
+        }
+      })
+    }
 
     this.update()
   }
@@ -295,10 +323,59 @@ class FrameAccount {
         if (knownTxRequest && decodedData) {
           knownTxRequest.decodedData = decodedData
           this.update()
+          void this.enrichErc20TokenData(knownTxRequest)
         }
       } catch (e) {
         log.warn(e)
       }
+    }
+  }
+
+  private async enrichErc20TokenData(req: TransactionRequest) {
+    const { to, chainId } = req.data
+    const signature = req.decodedData?.signature
+
+    if (
+      !to ||
+      !chainId ||
+      !['approve(address,uint256)', 'transfer(address,uint256)'].includes(signature || '')
+    ) {
+      return
+    }
+
+    try {
+      const contract = new Erc20Contract(to, parseInt(chainId, 16))
+      const tokenData = await contract.getTokenData()
+      const knownTxRequest = this.requests[req.handlerId] as TransactionRequest
+
+      if (knownTxRequest) {
+        knownTxRequest.tokenData = tokenData
+        this.update()
+      }
+    } catch (e) {
+      log.warn('unable to fetch erc20 token metadata', { handlerId: req.handlerId, to, chainId, error: e })
+    }
+  }
+
+  private async simulateTransaction(req: TransactionRequest, force = false) {
+    const knownTxRequest = this.requests[req.handlerId] as TransactionRequest | undefined
+    if (!knownTxRequest) return
+    if (!knownTxRequest.data?.chainId) return
+    if (!force && knownTxRequest.simulation?.status === 'loading') return
+
+    knownTxRequest.simulation = {
+      status: 'loading',
+      effects: knownTxRequest.simulation?.effects,
+      updatedAt: Date.now()
+    }
+    this.update()
+
+    const simulation = await simulateTransactionEffects(knownTxRequest)
+    const currentTxRequest = this.requests[req.handlerId] as TransactionRequest | undefined
+
+    if (currentTxRequest) {
+      currentTxRequest.simulation = simulation
+      this.update()
     }
   }
 
@@ -383,6 +460,7 @@ class FrameAccount {
       this.recipientIdentity(req)
       this.decodeCalldata(req)
       this.recognizeActions(req)
+      void this.simulateTransaction(req)
       return
     }
 
@@ -420,22 +498,19 @@ class FrameAccount {
         store.setAccount(this.summary())
       }
 
-      if (inRequestView) {
-        nav.back('panel')
-        nav.back('panel')
-      } else if (inExpandedRequestsView) {
-        nav.back('panel')
-      }
-
-      nav.forward('panel', {
-        view: 'expandedModule',
-        data: {
-          id: 'requests',
-          account: account
+      if (!inRequestView) {
+        if (inExpandedRequestsView) {
+          nav.back('panel')
         }
-      })
 
-      if (!store('tray.open') || !inRequestView) {
+        nav.forward('panel', {
+          view: 'expandedModule',
+          data: {
+            id: 'requests',
+            account: account
+          }
+        })
+
         const crumb = {
           view: 'requestView',
           data: {

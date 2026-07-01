@@ -191,7 +191,7 @@ integration-eth: ensure-newframe-chain
 
 integration-usdc: ensure-newframe-chain
 	@echo "Approving USDC through Newframe. Confirm the request in the wallet."
-	cast send "$(USDC_ADDRESS)" "approve(address,uint256)" "$(TEST_CONTRACT_ADDRESS)" "$(USDC_FLOW_AMOUNT)" \
+	cast send "$(USDC_ADDRESS)" "approve(address,uint256)"  "$(TEST_CONTRACT_ADDRESS)" "$(USDC_FLOW_AMOUNT)" \
 		--unlocked \
 		--from "$(HARNESS_ACCOUNT)" \
 		--rpc-url "$(NEWFRAME_RPC_URL)" \

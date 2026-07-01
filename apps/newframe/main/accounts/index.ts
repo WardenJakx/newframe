@@ -431,7 +431,7 @@ export class Accounts extends EventEmitter {
 
                 account.update()
 
-                if (confirmations > 12) {
+                if (confirmations >= 12) {
                   txRequest.status = RequestStatus.Confirmed
                   txRequest.notice = 'Confirmed'
                   account.update()
@@ -453,8 +453,8 @@ export class Accounts extends EventEmitter {
               }
             }
 
-            setTimeout(() => monitor(), 3000)
-            const monitorTimer = setInterval(monitor, 15000)
+            setTimeout(() => monitor(), 1000)
+            const monitorTimer = setInterval(monitor, 1000)
 
             const statusHandler = (status: string) => {
               if (!isChainAvailable(status)) {
@@ -514,7 +514,7 @@ export class Accounts extends EventEmitter {
                 txRequest.tx = { ...txRequest.tx, confirmations }
                 account.update()
 
-                if (confirmations > 12) {
+                if (confirmations >= 12) {
                   txRequest.status = RequestStatus.Confirmed
                   txRequest.notice = 'Confirmed'
                   account.update()
@@ -809,7 +809,7 @@ export class Accounts extends EventEmitter {
 
       setTimeout(
         () => this.accounts[currentAccount.address] && this.removeRequest(currentAccount, handlerId),
-        2000
+        1000
       )
       currentAccount.update()
     }

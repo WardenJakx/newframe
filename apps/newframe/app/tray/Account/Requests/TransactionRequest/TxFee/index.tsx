@@ -92,8 +92,8 @@ class TxFee extends React.Component<any, any> {
       type: 'ethereum',
       id: parseInt(req.data.chainId, 16)
     }
-    const { isTestnet } = this.store('main.networks', chain.type, chain.id)
-    const { nativeCurrency } = this.store('main.networksMeta', chain.type, chain.id)
+    const { isTestnet } = this.store('main.networks', chain.type, chain.id) || {}
+    const { nativeCurrency = { symbol: '?' } } = this.store('main.networksMeta', chain.type, chain.id) || {}
     const nativeCurrencyUSD = nativeCurrency.usd
     const shouldDisplayUSDEstimate = Boolean(nativeCurrencyUSD)
     const nativeCurrencyRate = !isTestnet ? nativeCurrencyUSD : undefined

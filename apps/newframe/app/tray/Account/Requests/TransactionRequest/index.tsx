@@ -2,11 +2,7 @@ import React from 'react'
 import Restore from 'react-restore'
 
 // New Tx
-import TxMain from './TxMainNew'
-import TxValue from './TxValue'
-import TxFee from './TxFee'
-import TxAction from './TxAction'
-import TxRecipient from './TxRecipient'
+import TxReview from './TxReview'
 import AdjustFee from './AdjustFee'
 import ViewData from './ViewData'
 import EditTokenSpend from '../../../../../resources/Components/EditTokenSpend'
@@ -83,35 +79,13 @@ class TransactionRequest extends React.Component<any, any> {
     if (req.status === 'confirmed') requestClass += ' signerRequestConfirmed'
     else if (error) requestClass += ' signerRequestError'
 
-    const chain = {
-      type: 'ethereum',
-      id: parseInt(req.data.chainId, 'hex' as any)
-    }
-
-    const recognizedActions = req.recognizedActions || []
-
     return (
       <div key={req.handlerId} className={requestClass}>
         {req.type === 'transaction' ? (
           <div className='approveTransaction'>
             <div className='approveTransactionPayload'>
               <div className='_txBody'>
-                <TxMain i={0} {...this.props} req={req} chain={chain} />
-                <TxValue i={1} {...this.props} req={req} chain={chain} />
-                {recognizedActions.map((action: any, i: number) => {
-                  return (
-                    <TxAction
-                      key={'action' + action.type + i}
-                      i={2 + i}
-                      {...this.props}
-                      req={req}
-                      chain={chain}
-                      action={action}
-                    />
-                  )
-                })}
-                <TxRecipient i={3 + recognizedActions.length} {...this.props} req={req} />
-                <TxFee i={4 + recognizedActions.length} {...this.props} req={req} />
+                <TxReview {...this.props} req={req} />
               </div>
             </div>
           </div>

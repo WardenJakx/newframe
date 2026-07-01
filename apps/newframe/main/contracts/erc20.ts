@@ -61,6 +61,19 @@ export default class Erc20Contract {
     )
   }
 
+  static isTransferFrom(data: TransactionDescription) {
+    return (
+      data.name === 'transferFrom' &&
+      data.fragment.inputs.length === 3 &&
+      (data.fragment.inputs[0].name || '').toLowerCase().endsWith('from') &&
+      data.fragment.inputs[0].type === 'address' &&
+      (data.fragment.inputs[1].name || '').toLowerCase().endsWith('to') &&
+      data.fragment.inputs[1].type === 'address' &&
+      (data.fragment.inputs[2].name || '').toLowerCase().endsWith('value') &&
+      data.fragment.inputs[2].type === 'uint256'
+    )
+  }
+
   static decodeCallData(calldata: string) {
     try {
       return erc20Interface.parseTransaction({ data: calldata })
@@ -83,9 +96,10 @@ export default class Erc20Contract {
         .then((supply: bigint) => supply.toString())
         .catch(() => '') // totalSupply is mandatory on the ERC20 interface
     ])
+    const decimals = Number(calls[0] || 0)
 
     return {
-      decimals: calls[0],
+      decimals: Number.isFinite(decimals) ? decimals : 0,
       name: calls[1],
       symbol: calls[2],
       totalSupply: calls[3]

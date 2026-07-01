@@ -1,2 +1,3 @@
+bun run format
 bun run format:check
 bun run lint
