@@ -259,8 +259,20 @@ store.setPrimary = (type: string, id: number, status: any) => {
   update('main.networks', type, id, 'connection.primary', (primary: any) => merge(primary, status))
 }
 
+store.selectPrimary = (type: string, id: number, value: string) => {
+  update('main.networks', type, id, 'connection.primary.current', () => value)
+}
+
+store.setPrimaryCustom = (type: string, id: number, target: string) => {
+  update('main.networks', type, id, 'connection.primary.custom', () => target)
+}
+
 store.setSecondary = (type: string, id: number, status: any) => {
   update('main.networks', type, id, 'connection.secondary', (secondary: any) => merge(secondary, status))
+}
+
+store.setSecondaryCustom = (type: string, id: number, target: string) => {
+  update('main.networks', type, id, 'connection.secondary.custom', () => target)
 }
 
 store.toggleConnection = (type: string, id: number, node: string, on?: boolean) => {
