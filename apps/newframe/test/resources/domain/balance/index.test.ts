@@ -4,6 +4,7 @@ import {
   createBalanceSummarySelector,
   createBalanceSummaries,
   createDisplayBalance,
+  formatBalanceNotionalValue,
   isLowValueTokenBalance
 } from '../../../../resources/domain/balance'
 
@@ -82,6 +83,20 @@ describe('#isLowValueTokenBalance', () => {
 
   it('treats priced zero-value balances as low value', () => {
     expect(isLowValueTokenBalance({ totalValue: 0, hasPrice: true })).toBe(true)
+  })
+})
+
+describe('#formatBalanceNotionalValue', () => {
+  it('displays zero dollars for balances without a price', () => {
+    expect(formatBalanceNotionalValue({ totalValue: 0, hasPrice: false })).toBe('$0')
+  })
+
+  it('keeps the low-value display for priced dust balances', () => {
+    expect(formatBalanceNotionalValue({ totalValue: 0, hasPrice: true })).toBe('<$0.01')
+  })
+
+  it('formats priced balances with cents', () => {
+    expect(formatBalanceNotionalValue({ totalValue: 12.345, hasPrice: true })).toBe('$12.34')
   })
 })
 
