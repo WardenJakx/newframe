@@ -264,6 +264,13 @@ export function isLowValueTokenBalance(balance: { totalValue: number; hasPrice?:
   return formatUsdRate(balance.totalValue, 2) === '0.00'
 }
 
+export function formatBalanceNotionalValue(balance: { totalValue: number; hasPrice?: boolean }) {
+  if (balance.hasPrice === false) return '$0'
+  if (isLowValueTokenBalance(balance)) return '<$0.01'
+
+  return `$${formatUsdRate(balance.totalValue, 2)}`
+}
+
 export function toTokenId(token: WithTokenId) {
   const { chainId, address } = token
   return `${chainId}:${address.toLowerCase()}`

@@ -38,6 +38,12 @@ type RecognitionContext = {
   account?: string
 }
 
+function toHexAmount(value: any) {
+  if (typeof value === 'bigint') return addHexPrefix(value.toString(16))
+  if (value?.toHexString) return value.toHexString()
+  return addHexPrefix(BigInt(value || 0).toString(16))
+}
+
 async function resolveEntityType(address: string, chainId: number): Promise<EntityType> {
   if (!address || !chainId) return 'unknown'
   try {
@@ -80,7 +86,7 @@ async function recogErc20(
       const { decimals, name, symbol } = await contract.getTokenData()
       if (Erc20Contract.isApproval(decoded)) {
         const spenderAddress = decoded.args[0].toLowerCase()
-        const amount = decoded.args[1].toHexString()
+        const amount = toHexAmount(decoded.args[1])
 
         const [spenderIdentity, contractIdentity] = await Promise.all([
           surface.identity(spenderAddress, chainId),
@@ -125,7 +131,7 @@ async function recogErc20(
         } as Erc20Approval
       } else if (Erc20Contract.isTransfer(decoded)) {
         const recipient = decoded.args[0].toLowerCase()
-        const amount = decoded.args[1].toHexString()
+        const amount = toHexAmount(decoded.args[1])
         const identity = await surface.identity(recipient, chainId)
         return {
           id: 'erc20:transfer',

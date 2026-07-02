@@ -214,7 +214,7 @@
 ._txBody
   width 100%
   margin 0px 6px
-  padding-top 22px
+  padding-top 10px
 
 .txDescriptionSummaryStandalone
   display flex
@@ -276,6 +276,440 @@
     border-top 1px solid var(--ghostX)
     padding 10px 20px
     text-transform uppercase
+
+.txReview
+  width calc(100% - 20px)
+  max-width 430px
+  margin 0px auto 18px auto
+  display flex
+  flex-direction column
+  gap 10px
+  font-family 'MainFont'
+
+.txReviewHero
+  background var(--ghostZ)
+  border-radius 18px
+  padding 16px
+  box-shadow 0px 2px 8px var(--ghostY)
+  border-bottom 2px solid var(--ghostX)
+
+  .txReviewHeroNetwork
+    display inline-flex
+    align-items center
+    min-height 20px
+    padding 0px 8px
+    border-radius 10px
+    background var(--ghostA)
+    font-size 11px
+    font-weight 500
+    margin-bottom 10px
+
+  .txReviewHeroTitle
+    font-size 20px
+    font-weight 600
+    line-height 24px
+    word-break break-word
+
+  .txReviewHeroSubtitle
+    margin-top 4px
+    font-size 13px
+    color var(--outerspace08)
+    line-height 18px
+    word-break break-word
+
+  .txReviewStatus
+    margin-top 12px
+    display inline-flex
+    align-items center
+    min-height 24px
+    padding 0px 9px
+    border-radius 12px
+    background var(--ghostA)
+    color var(--good)
+    font-size 11px
+    font-weight 600
+    text-transform uppercase
+
+  .txReviewNotice
+    margin-top 8px
+    color var(--bad)
+    font-size 12px
+    line-height 17px
+    word-break break-word
+
+.txReviewProgress
+  position relative
+  padding 8px 0px
+
+  .txReviewProgressStep
+    position relative
+    display grid
+    grid-template-columns 28px minmax(0, 1fr)
+    min-height 54px
+
+    .txReviewProgressRail
+      position absolute
+      left 13px
+      top 27px
+      bottom -27px
+      width 2px
+      background var(--ghostY)
+
+    .txReviewProgressMarker
+      position relative
+      z-index 2
+      width 28px
+      display flex
+      justify-content center
+      padding-top 8px
+
+    .txReviewProgressMarkerIcon, .txReviewProgressMarkerDot, .txReviewProgressMarkerSpinner
+      width 16px
+      height 16px
+      border-radius 8px
+      display flex
+      justify-content center
+      align-items center
+      background var(--ghostB)
+      color var(--outerspace08)
+
+    .txReviewProgressMarkerDot
+      box-shadow inset 0px 0px 0px 2px var(--ghostX)
+
+    .txReviewProgressMarkerSpinner
+      background transparent
+      border 2px solid var(--ghostX)
+      border-top-color var(--good)
+      box-sizing border-box
+      animation txReviewSpin 0.8s linear infinite
+
+    .txReviewProgressCopy
+      min-width 0
+      padding 5px 0px 10px 6px
+
+    .txReviewProgressTitle
+      font-size 14px
+      font-weight 600
+      line-height 19px
+
+    .txReviewProgressDetail
+      margin-top 2px
+      font-size 12px
+      line-height 17px
+      color var(--outerspace08)
+      word-break break-word
+
+  .txReviewProgressStep:last-child
+    min-height 42px
+
+    .txReviewProgressRail
+      display none
+
+  .txReviewProgressStep-complete
+    .txReviewProgressRail
+      background var(--good)
+
+    .txReviewProgressMarkerIcon
+      background var(--good)
+      color var(--goodOver)
+
+  .txReviewProgressStep-active
+    .txReviewProgressMarkerDot, .txReviewProgressMarkerSpinner
+      background var(--ghostZ)
+      box-shadow inset 0px 0px 0px 2px var(--good)
+
+    .txReviewProgressTitle
+      color var(--good)
+
+  .txReviewProgressStep-error
+    .txReviewProgressMarkerIcon
+      background var(--bad)
+      color var(--badOver)
+
+    .txReviewProgressTitle
+      color var(--bad)
+
+.txReviewSection, .txReviewFee
+  background var(--ghostZ)
+  border-radius 16px
+  box-shadow 0px 1px 5px var(--ghostY)
+  overflow hidden
+
+.txReviewSectionTitle
+  height 32px
+  display flex
+  align-items center
+  padding 0px 12px
+  background var(--ghostB)
+  color var(--outerspace08)
+  font-size 12px
+  font-weight 600
+  text-transform uppercase
+
+.txReviewEffectList, .txReviewDetails
+  padding 6px
+
+.txReviewEffect
+  min-height 48px
+  display grid
+  grid-template-columns 28px minmax(0, 1fr) auto
+  align-items center
+  gap 10px
+  border-radius 10px
+  padding 8px 10px
+  background var(--ghostA)
+
+.txReviewEffect + .txReviewEffect
+  margin-top 4px
+
+.txReviewEffectMeta
+  min-width 0
+
+.txReviewEffectIcon
+  width 26px
+  height 26px
+  border-radius 13px
+  display flex
+  align-items center
+  justify-content center
+  overflow hidden
+  background var(--ghostB)
+  box-shadow inset 0px 0px 0px 1px var(--ghostX)
+  color var(--outerspace)
+  font-size 12px
+  font-weight 700
+
+  img
+    width 100%
+    height 100%
+    object-fit cover
+
+  svg
+    display block
+
+.txReviewEffectIconSymbolFrame
+  width 100%
+  height 100%
+  display flex
+  align-items center
+  justify-content center
+
+.txReviewEffectIconSymbol
+  display block
+  max-width 100%
+  line-height 1
+  letter-spacing 0
+  text-align center
+  white-space nowrap
+  font-size 9px
+
+.txReviewEffectLabel
+  font-size 13px
+  font-weight 600
+
+.txReviewEffectDetail
+  margin-top 2px
+  font-size 11px
+  color var(--outerspace08)
+  line-height 15px
+  word-break break-word
+
+.txReviewEffectAmount
+  display flex
+  align-items center
+  justify-content flex-end
+  min-width 0
+  font-size 14px
+  font-weight 600
+  color var(--good)
+  white-space nowrap
+
+  .displayValue
+    display flex
+    align-items baseline
+    min-width 0
+
+  .displayValueMain
+    overflow hidden
+    text-overflow ellipsis
+
+.txReviewEffect-out
+  .txReviewEffectAmount
+    color var(--bad)
+
+.txReviewEffect-neutral
+  .txReviewEffectAmount
+    color var(--outerspace)
+
+.txReviewEffectPrefix
+  margin-right 2px
+
+.txReviewEffectEmpty
+  min-height 42px
+  display flex
+  align-items center
+  justify-content center
+  border-radius 10px
+  background var(--ghostA)
+  color var(--outerspace08)
+  font-size 12px
+  text-align center
+
+.txReviewDetailRow
+  min-height 38px
+  display grid
+  grid-template-columns 104px minmax(0, 1fr)
+  align-items center
+  gap 10px
+  border-radius 10px
+  padding 6px 10px
+  background var(--ghostA)
+  box-sizing border-box
+
+.txReviewDetailRow + .txReviewDetailRow
+  margin-top 4px
+
+.txReviewDetailRowClickable
+  cursor pointer
+
+.txReviewDetailRowClickable:hover
+  background var(--ghostB)
+
+.txReviewDetailLabel
+  color var(--outerspace08)
+  font-size 11px
+  font-weight 600
+  text-transform uppercase
+
+.txReviewDetailValue
+  min-width 0
+  font-size 12px
+  font-family 'FiraCode'
+  text-align right
+  word-break break-word
+
+.txReviewFeeSummary
+  padding 10px 12px
+  background var(--ghostZ)
+  color var(--outerspace)
+  display grid
+  grid-template-columns minmax(0, 1fr) auto
+  align-items center
+  gap 10px
+  font-family 'MainFont'
+
+.txReviewFeeMain
+  min-width 0
+
+.txReviewFeeLabel
+  color var(--outerspace08)
+  font-size 11px
+  font-weight 600
+  text-transform uppercase
+
+.txReviewFeeValue
+  margin-top 3px
+  font-size 13px
+  font-weight 600
+
+  .displayValue
+    display flex
+    align-items baseline
+
+.txReviewFeeValueWarn
+  color var(--bad)
+
+.txReviewFeeMeta
+  display flex
+  flex-direction column
+  align-items flex-end
+  gap 2px
+  color var(--outerspace08)
+  font-size 11px
+  line-height 15px
+  white-space nowrap
+
+.txReviewFeeRates
+  display grid
+  grid-template-columns repeat(5, minmax(0, 1fr))
+  gap 4px
+  padding 0px 8px 8px 8px
+
+.txReviewFeeRate
+  appearance none
+  border 0
+  min-width 0
+  height 30px
+  border-radius 8px
+  background var(--ghostA)
+  color var(--outerspace08)
+  font-family 'MainFont'
+  font-size 11px
+  font-weight 600
+  cursor pointer
+  overflow hidden
+  text-overflow ellipsis
+
+.txReviewFeeRate:hover
+  background var(--ghostB)
+  color var(--outerspace)
+
+.txReviewFeeRateActive
+  background var(--good)
+  color var(--goodOver)
+
+.txReviewFeeRateActive:hover
+  background var(--good)
+  color var(--goodOver)
+
+@keyframes txReviewSpin
+  to
+    transform rotate(360deg)
+
+.requestNoticeSigning
+  height 116px
+
+.requestNoticeSubmitted
+  height 108px
+
+.txSubmittedCommand
+  width 100%
+  height 100%
+  display flex
+  align-items center
+  justify-content center
+  flex-direction column
+  position relative
+
+  .requestNoticeInnerText
+    position absolute
+    top 10px
+    left 12px
+    right 12px
+    padding 0px
+
+  .requestFooter
+    position relative
+    left auto
+    right auto
+    bottom auto
+    opacity 1
+    transform scale(1)
+    width calc(100% - 28px)
+    margin-top 22px
+
+@media (max-width: 360px)
+  .txReviewDetailRow
+    grid-template-columns 84px minmax(0, 1fr)
+
+  .txReviewFeeSummary
+    grid-template-columns minmax(0, 1fr)
+
+  .txReviewFeeMeta
+    align-items flex-start
+
+  .txReviewFeeRates
+    grid-template-columns repeat(3, minmax(0, 1fr))
 
 @import '../AdjustFee/style'
 @import '../ViewData/style'

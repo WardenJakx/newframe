@@ -405,6 +405,50 @@ describe('#send', () => {
         cb
       )
     })
+
+    it('reactivates an existing disabled chain with the requested primary RPC', (done) => {
+      store.set('main.networks.ethereum', 31337, {
+        id: 31337,
+        on: false,
+        connection: {
+          primary: {
+            on: false,
+            current: 'custom',
+            custom: ''
+          }
+        }
+      })
+      store.set('main.origins', '8073729a-5e59-53b7-9e69-5d9bcff94087', {
+        chain: { id: 1, type: 'ethereum' }
+      })
+
+      const cb = (response: any) => {
+        expect(response.error).toBeFalsy()
+        expect(response.result).toBeNull()
+
+        expect(store('main.networks.ethereum', 31337, 'on')).toBe(true)
+        expect(store('main.networks.ethereum', 31337, 'connection.primary.on')).toBe(true)
+        expect(store('main.networks.ethereum', 31337, 'connection.primary.current')).toBe('custom')
+        expect(store('main.networks.ethereum', 31337, 'connection.primary.custom')).toBe(
+          'http://127.0.0.1:8545'
+        )
+        done()
+      }
+
+      sendRequest(
+        {
+          chainId: '0x7a69',
+          chainName: 'Newframe Local Anvil',
+          nativeCurrency: {
+            name: 'Ether',
+            symbol: 'ETH',
+            decimals: 18
+          },
+          rpcUrls: ['http://127.0.0.1:8545']
+        },
+        cb
+      )
+    })
   })
 
   describe('#wallet_switchEthereumChain', () => {
@@ -1006,6 +1050,33 @@ describe('#send', () => {
         try {
           const initialRequest = accountRequests[0]
           expect(initialRequest.data.chainId).toBe('0x89')
+          done()
+        } catch (e) {
+          done(e)
+        }
+      })
+    })
+
+    it('switches to a known account matching the transaction from address', (done) => {
+      const nextAddress = '0x35f9179059a691d8beecf82fe112f7277e018588'
+      let currentAddress = address
+
+      tx.from = nextAddress
+
+      accounts.current = jest.fn(() => ({ id: currentAddress, getAccounts: () => [currentAddress] }))
+      accounts.get = jest.fn((addr) =>
+        addr === nextAddress ? { id: nextAddress, address: nextAddress, lastSignerType: 'ring' } : undefined
+      )
+      accounts.setSigner = jest.fn((id, cb) => {
+        currentAddress = id
+        cb(null, { id, address: id, lastSignerType: 'ring' })
+      })
+
+      sendTransaction(() => {
+        try {
+          expect(accounts.setSigner).toHaveBeenCalledWith(nextAddress, expect.any(Function))
+          expect(accountRequests[0].account).toBe(nextAddress)
+          expect(accountRequests[0].data.from.toLowerCase()).toBe(nextAddress)
           done()
         } catch (e) {
           done(e)

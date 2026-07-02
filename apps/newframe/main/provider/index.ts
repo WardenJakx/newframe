@@ -554,6 +554,15 @@ class Provider extends EventEmitter {
       const from = tx.from || (currentAccount && currentAccount.id)
 
       if (!currentAccount || !from || !hasAddress(currentAccount, from)) {
+        const accountId = (tx.from || '').toLowerCase()
+
+        if (accountId && accounts.get(accountId)) {
+          return accounts.setSigner(accountId, (err) => {
+            if (err) return resError(err, payload, res)
+            this.sendTransaction(payload, res, targetChain)
+          })
+        }
+
         return resError('Transaction is not from currently selected account', payload, res)
       }
 
@@ -965,7 +974,18 @@ class Provider extends EventEmitter {
 
     const exists = Boolean(store('main.networks', type, id))
     if (exists) {
-      // Ask user if they want to switch chains
+      store.activateNetwork(type, id, true)
+
+      if (rpcUrls[0]) {
+        store.setPrimaryCustom(type, id, rpcUrls[0])
+        store.selectPrimary(type, id, 'custom')
+        store.toggleConnection(type, id, 'primary', true)
+      }
+
+      if (rpcUrls[1]) {
+        store.setSecondaryCustom(type, id, rpcUrls[1])
+      }
+
       this.switchEthereumChain(payload, res)
     } else {
       // Ask user if they want to add this chain

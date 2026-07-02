@@ -14,6 +14,7 @@ import {
   formatUsdRate,
   createBalanceSummarySelector,
   createDisplayBalance,
+  formatBalanceNotionalValue,
   isNativeCurrency,
   isLowValueTokenBalance,
   hasPositiveBalance,
@@ -1888,8 +1889,7 @@ class Home extends React.Component<any, any> {
 
   renderTokenRow(balance: DisplayedBalance, i: number, className = 't2TokenRow cardShow') {
     const change = balance.priceChange ? parseFloat(balance.priceChange) : 0
-    const hasPrice = balance.hasPrice === true
-    const fiatValue = isLowValueTokenBalance(balance) ? '<$0.01' : `$${formatUsdRate(balance.totalValue, 2)}`
+    const fiatValue = formatBalanceNotionalValue(balance)
 
     return (
       <div
@@ -1906,18 +1906,16 @@ class Home extends React.Component<any, any> {
           <div className='t2TokenSymbol'>{balance.symbol}</div>
           <div className='t2TokenAmount'>{balance.displayBalance}</div>
         </div>
-        {hasPrice ? (
-          <div className='t2TokenValues'>
-            <div className='t2TokenFiat'>{fiatValue}</div>
-            {balance.priceChange ? (
-              <div
-                className={change >= 0 ? 't2TokenChange t2TokenChangeUp' : 't2TokenChange t2TokenChangeDown'}
-              >
-                {`${change >= 0 ? '+' : ''}${balance.priceChange}%`}
-              </div>
-            ) : null}
-          </div>
-        ) : null}
+        <div className='t2TokenValues'>
+          <div className='t2TokenFiat'>{fiatValue}</div>
+          {balance.priceChange ? (
+            <div
+              className={change >= 0 ? 't2TokenChange t2TokenChangeUp' : 't2TokenChange t2TokenChangeDown'}
+            >
+              {`${change >= 0 ? '+' : ''}${balance.priceChange}%`}
+            </div>
+          ) : null}
+        </div>
       </div>
     )
   }

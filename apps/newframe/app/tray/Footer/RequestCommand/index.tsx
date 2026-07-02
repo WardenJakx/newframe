@@ -1,10 +1,7 @@
 import React from 'react'
 import Restore from 'react-restore'
 
-import TxBar from './TxBar'
-import TxConfirmations from './TxConfirmations'
 import TxApproval from './TxApproval'
-import Time from '../Time'
 
 import svg from '../../../../resources/svg'
 import link from '../../../../resources/link'
@@ -23,8 +20,7 @@ class RequestCommand extends React.Component<any, any> {
     this.state = {
       allowInput: false,
       dataView: false,
-      signerLocked: false,
-      infoPane: ''
+      signerLocked: false
     }
 
     setTimeout(() => {
@@ -48,33 +44,12 @@ class RequestCommand extends React.Component<any, any> {
   sentStatus() {
     const { req } = this.props
     const { notice, status } = req
-    const success = req.status === 'confirming' || req.status === 'confirmed'
     const chain = {
       type: 'ethereum',
       id: parseInt(req.data.chainId, 'hex' as any)
     }
 
-    const { isTestnet, explorer } = this.store('main.networks', chain.type, chain.id)
-    const nativeCurrency = this.store('main.networksMeta', chain.type, chain.id, 'nativeCurrency')
-    const nativeUSD =
-      nativeCurrency && nativeCurrency.usd && !isTestnet ? nativeCurrency.usd.price : undefined
-    const hasNativeUSD = typeof nativeUSD === 'number'
-
-    let feeAtTime = '?.??'
-
-    if (req && req.tx && req.tx.receipt && hasNativeUSD) {
-      const { gasUsed, effectiveGasPrice } = req.tx.receipt
-      const { type, gasPrice } = req.data
-
-      const paidGas = effectiveGasPrice || (parseInt(type) < 2 ? gasPrice : null)
-
-      if (paidGas) {
-        const feeInWei = parseInt(gasUsed, 'hex' as any) * parseInt(paidGas, 'hex' as any)
-        const feeInEth = feeInWei / 1e18
-        const feeInUsd = feeInEth * nativeUSD
-        feeAtTime = (Math.round(feeInUsd * 100) / 100).toFixed(2)
-      }
-    }
+    const { explorer } = this.store('main.networks', chain.type, chain.id) || {}
 
     const displayNotice = (notice || '').toLowerCase()
     let displayStatus = (req.status || 'pending').toLowerCase()
@@ -86,7 +61,8 @@ class RequestCommand extends React.Component<any, any> {
     }
 
     return (
-      <div>
+      <div className='txSubmittedCommand'>
+        <div className='requestNoticeInnerText'>{displayStatus}</div>
         <div className={req && req.tx && req.tx.hash ? 'requestFooter requestFooterActive' : 'requestFooter'}>
           <div
             className='txActionButtons'
@@ -99,10 +75,11 @@ class RequestCommand extends React.Component<any, any> {
                 <div className='txActionButtonsRow'>
                   <div className={'txActionText'}>Transaction Hash Copied</div>
                 </div>
-              ) : this.state.showHashDetails || status === 'confirming' ? (
+              ) : this.state.showHashDetails || status === 'confirming' || status === 'confirmed' ? (
                 <div className='txActionButtonsRow'>
                   <div
                     className={`txActionButton${explorer ? '' : ' txActionButtonDisabled'}`}
+                    aria-label='Open transaction explorer'
                     onClick={() => {
                       if (explorer && req && req.tx && req.tx.hash) {
                         if (this.store('main.mute.explorerWarning')) {
@@ -117,6 +94,7 @@ class RequestCommand extends React.Component<any, any> {
                   </div>
                   <div
                     className={'txActionButton'}
+                    aria-label='Copy transaction hash'
                     onClick={() => {
                       if (req && req.tx && req.tx.hash) {
                         link.send('tray:copyTxHash', req.tx.hash)
@@ -134,6 +112,7 @@ class RequestCommand extends React.Component<any, any> {
                 <div className='txActionButtonsRow'>
                   <div
                     className='txActionButton txActionButtonBad'
+                    aria-label='Cancel transaction'
                     onClick={() => {
                       link.send('tray:replaceTx', req.handlerId, 'cancel')
                     }}
@@ -142,6 +121,7 @@ class RequestCommand extends React.Component<any, any> {
                   </div>
                   <div
                     className={'txActionButton'}
+                    aria-label='View transaction details'
                     onClick={() => {
                       this.setState({ showHashDetails: true })
                     }}
@@ -150,6 +130,7 @@ class RequestCommand extends React.Component<any, any> {
                   </div>
                   <div
                     className='txActionButton txActionButtonGood'
+                    aria-label='Speed up transaction'
                     onClick={() => {
                       link.send('tray:replaceTx', req.handlerId, 'speed')
                     }}
@@ -161,29 +142,6 @@ class RequestCommand extends React.Component<any, any> {
             ) : null}
           </div>
         </div>
-        <div className={success ? 'txProgressSuccess' : 'txProgressSuccess txProgressHidden'}>
-          {req && req.tx && req.tx.receipt ? (
-            <>
-              <div className='txProgressSuccessItem txProgressSuccessItemLeft'>
-                <div className='txProgressSuccessItemLabel'>In Block</div>
-                <div className='txProgressSuccessItemValue'>
-                  {parseInt(req.tx.receipt.blockNumber, 'hex' as any)}
-                </div>
-              </div>
-              <Time time={req.completed} />
-              <div className='txProgressSuccessItem txProgressSuccessItemCenter'>
-                <div className='txProgressSuccessItemLabel'>Fee</div>
-                <div className='txProgressSuccessItemValue'>
-                  <div style={{ margin: '0px 1px 0px 0px', fontSize: '10px' }}>$</div>
-                  {feeAtTime || '?.??'}
-                </div>
-              </div>
-            </>
-          ) : null}
-        </div>
-        <div className={'requestNoticeInnerText'} style={{ marginTop: '-30px' }}>
-          {displayStatus}
-        </div>
         {isCancelableRequest(status) && (
           <div className='cancelRequest' onClick={() => this.decline(req)}>
             Cancel
@@ -191,16 +149,6 @@ class RequestCommand extends React.Component<any, any> {
         )}
       </div>
     )
-  }
-
-  infoPane() {
-    const { infoPane } = this.state
-    const info: Record<string, string> = {
-      sign: 'When Newframe is waiting for your signer to sign this transaction',
-      send: 'When Newframe is broadcasting this transaction to your selected endpoint',
-      block: 'When Newframe is waiting for this transaction to be included into a block'
-    }
-    return <div className='infoPane'>{info[infoPane]}</div>
   }
 
   signOrDecline() {
@@ -236,6 +184,8 @@ class RequestCommand extends React.Component<any, any> {
         >
           <div
             className='requestDecline'
+            aria-label='Decline transaction'
+            role='button'
             onClick={() => {
               if (this.state.allowInput) this.decline(req)
             }}
@@ -246,6 +196,8 @@ class RequestCommand extends React.Component<any, any> {
           </div>
           <div
             className={this.state.signerLocked ? 'requestSign headShake' : 'requestSign'}
+            aria-label='Sign transaction'
+            role='button'
             onClick={() => {
               if (this.state.allowInput) {
                 link.rpc('signerCompatibility', req.handlerId, (e: any, compatibility: any) => {
@@ -325,8 +277,6 @@ class RequestCommand extends React.Component<any, any> {
     const { req } = this.props
     const { notice, status, mode } = req
 
-    const { infoPane } = this.state
-
     const showWarning = !status && mode !== 'monitor'
     const requiredApproval = showWarning && (req.approvals || []).filter((a: any) => !a.approved)[0]
 
@@ -340,12 +290,12 @@ class RequestCommand extends React.Component<any, any> {
       )
     } else {
       return (
-        <div className='requestNotice'>
+        <div
+          className={notice ? 'requestNotice requestNoticeSubmitted' : 'requestNotice requestNoticeSigning'}
+        >
           <div className='requestNoticeInner'>
-            <TxBar req={req} infoPane={(type: any) => this.setState({ infoPane: type })} />
             {!notice && this.renderPopBar()}
-            {infoPane ? this.infoPane() : notice ? this.sentStatus() : this.signOrDecline()}
-            <TxConfirmations req={req} />
+            {notice ? this.sentStatus() : this.signOrDecline()}
           </div>
         </div>
       )

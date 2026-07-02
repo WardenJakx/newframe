@@ -6,7 +6,7 @@ import type {
 } from '@metamask/eth-sig-util'
 import type { DecodedCallData } from '../contracts'
 import type { Chain } from '../chains'
-import type { TransactionData } from '../../resources/domain/transaction'
+import type { TransactionData, TransactionSimulation } from '../../resources/domain/transaction'
 import type { Action } from '../transaction/actions'
 import type { TokenData } from '../contracts/erc20'
 import type { Token } from '../store/state'
@@ -103,11 +103,13 @@ export interface TransactionRequest extends AccountRequest<'transaction'> {
   payload: RPC.SendTransaction.Request
   data: TransactionData
   decodedData?: DecodedCallData
+  tokenData?: TokenData
   chainData?: {
     optimism?: {
       l1Fees: string
     }
   }
+  simulation?: TransactionSimulation
   tx?: {
     receipt?: TransactionReceipt
     hash?: string
