@@ -14,7 +14,12 @@ import { signerCompatibility as transactionCompatibility, maxFee, SignerCompatib
 
 import { weiIntToEthInt, hexToInt } from '../../resources/utils'
 import { accountPanelCrumb, signerPanelCrumb } from '../../resources/domain/nav'
-import { usesBaseFee, TransactionData, GasFeesSource } from '../../resources/domain/transaction'
+import {
+  usesBaseFee,
+  TransactionData,
+  GasFeesSource,
+  TRANSACTION_CONFIRMATION_TARGET
+} from '../../resources/domain/transaction'
 import { findUnavailableSigners, isSignerReady } from '../../resources/domain/signer'
 
 import {
@@ -69,6 +74,7 @@ function toTransactionsByLayer(requests: Record<string, AccountRequest>, chainId
 }
 
 const frameOriginId = uuidv5('newframe-internal', uuidv5.DNS)
+const CONFIRMED_REQUEST_CLOSE_MS = 3000
 
 const storeApi = {
   getAccounts: function () {
@@ -431,13 +437,13 @@ export class Accounts extends EventEmitter {
 
                 account.update()
 
-                if (confirmations >= 12) {
+                if (confirmations >= TRANSACTION_CONFIRMATION_TARGET) {
                   txRequest.status = RequestStatus.Confirmed
                   txRequest.notice = 'Confirmed'
                   account.update()
                   setTimeout(
                     () => this.accounts[account.address] && this.removeRequest(account, requestId),
-                    8000
+                    CONFIRMED_REQUEST_CLOSE_MS
                   )
                   clear()
                 }
@@ -514,12 +520,12 @@ export class Accounts extends EventEmitter {
                 txRequest.tx = { ...txRequest.tx, confirmations }
                 account.update()
 
-                if (confirmations >= 12) {
+                if (confirmations >= TRANSACTION_CONFIRMATION_TARGET) {
                   txRequest.status = RequestStatus.Confirmed
                   txRequest.notice = 'Confirmed'
                   account.update()
 
-                  removeSubscription(8000)
+                  removeSubscription(CONFIRMED_REQUEST_CLOSE_MS)
                 }
               }
             }

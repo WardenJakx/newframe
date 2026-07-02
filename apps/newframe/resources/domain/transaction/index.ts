@@ -8,6 +8,8 @@ export enum GasFeesSource {
   Frame = 'Frame'
 }
 
+export const TRANSACTION_CONFIRMATION_TARGET = 3
+
 // ethereumjs v10 types JSONTx fields as `0x${string}` templates; Newframe passes
 // plain (but 0x-prefixed at runtime) strings throughout, so widen them here and
 // narrow again at the createTx boundary

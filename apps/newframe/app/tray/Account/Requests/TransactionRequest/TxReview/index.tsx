@@ -6,6 +6,7 @@ import svg from '../../../../../../resources/svg'
 import { DisplayCoinBalance } from '../../../../../../resources/Components/DisplayValue'
 import {
   getPaidTransactionFee,
+  TRANSACTION_CONFIRMATION_TARGET,
   getTransactionEffects,
   getTransactionIntent,
   usesBaseFee
@@ -113,7 +114,7 @@ const TransactionProgress = ({ req }: { req: any }) => {
             ? `Block ${block}`
             : 'Finalized'
           : req.status === 'confirming'
-            ? `${confirmations}/12 confirmations`
+            ? `${confirmations}/${TRANSACTION_CONFIRMATION_TARGET} confirmations`
             : 'Waiting for inclusion'
     }
   ]
@@ -161,9 +162,58 @@ const DetailRow = ({
   )
 }
 
+const ASSET_SYMBOL_MAX_FONT_SIZE = 9
+const ASSET_SYMBOL_MIN_FONT_SIZE = 4
+const ASSET_SYMBOL_PADDING = 4
+
+const FittedAssetSymbol = ({ symbol }: { symbol: string }) => {
+  const frameRef = React.useRef<HTMLDivElement | null>(null)
+  const textRef = React.useRef<HTMLSpanElement | null>(null)
+
+  React.useLayoutEffect(() => {
+    const fit = () => {
+      const frame = frameRef.current
+      const text = textRef.current
+      if (!frame || !text) return
+
+      const maxWidth = frame.clientWidth - ASSET_SYMBOL_PADDING * 2
+      const maxHeight = frame.clientHeight - ASSET_SYMBOL_PADDING * 2
+      if (maxWidth <= 0 || maxHeight <= 0) return
+
+      let size = ASSET_SYMBOL_MAX_FONT_SIZE
+      text.style.fontSize = `${size}px`
+
+      while (
+        size > ASSET_SYMBOL_MIN_FONT_SIZE &&
+        (text.scrollWidth > maxWidth || text.scrollHeight > maxHeight)
+      ) {
+        size -= 0.5
+        text.style.fontSize = `${size}px`
+      }
+    }
+
+    fit()
+
+    if (typeof ResizeObserver === 'undefined' || !frameRef.current) return undefined
+
+    const observer = new ResizeObserver(fit)
+    observer.observe(frameRef.current)
+
+    return () => observer.disconnect()
+  }, [symbol])
+
+  return (
+    <div ref={frameRef} className='txReviewEffectIconSymbolFrame'>
+      <span ref={textRef} className='txReviewEffectIconSymbol' title={symbol}>
+        {symbol}
+      </span>
+    </div>
+  )
+}
+
 const AssetIcon = ({ effect, nativeCurrency }: { effect: any; nativeCurrency: any }) => {
   const icon = effect.logoURI || (effect.kind === 'native' ? nativeCurrency.icon : '')
-  const symbol = effect.symbol || '?'
+  const symbol = (effect.symbol || '?').trim() || '?'
 
   return (
     <div className='txReviewEffectIcon'>
@@ -172,7 +222,7 @@ const AssetIcon = ({ effect, nativeCurrency }: { effect: any; nativeCurrency: an
       ) : effect.kind === 'native' && symbol.toUpperCase() === 'ETH' ? (
         svg.eth(14)
       ) : (
-        <span>{symbol.substring(0, 1).toUpperCase()}</span>
+        <FittedAssetSymbol symbol={symbol} />
       )}
     </div>
   )

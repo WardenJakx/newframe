@@ -4,6 +4,7 @@ import store from '../../../../../../main/store'
 import { screen, render } from '../../../../../componentSetup'
 import TxRequestComponent from '../../../../../../app/tray/Account/Requests/TransactionRequest'
 import { TxClassification } from '../../../../../../main/accounts/types'
+import { TRANSACTION_CONFIRMATION_TARGET } from '../../../../../../resources/domain/transaction'
 
 const TxRequest = Restore.connect(TxRequestComponent, store)
 
@@ -102,11 +103,11 @@ describe('confirm', () => {
     const req = {
       handlerId: 'test-req',
       type: 'transaction',
-      status: 'verifying',
+      status: 'confirming',
       origin: 'test-origin',
       tx: {
         hash: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
-        confirmations: 0
+        confirmations: 1
       },
       data: {
         chainId: '0x89',
@@ -122,7 +123,48 @@ describe('confirm', () => {
     render(<TxRequest req={req} step='confirm' />)
 
     expect(screen.getByLabelText('Transaction progress').textContent).toMatch(/submitted/i)
+    expect(screen.getByLabelText('Transaction progress').textContent).toMatch(
+      `1/${TRANSACTION_CONFIRMATION_TARGET} confirmations`
+    )
     expect(screen.getByLabelText('Network fee').textContent).toMatch(/max fee/i)
+  })
+
+  it('renders the full token symbol in the fallback asset icon', () => {
+    const req = {
+      handlerId: 'test-req',
+      type: 'transaction',
+      origin: 'test-origin',
+      data: {
+        chainId: '0x89',
+        gasLimit: '0x5208',
+        gasPrice: '0x3b9aca00',
+        type: '0x0'
+      },
+      simulation: {
+        status: 'success',
+        effects: [
+          {
+            id: 'sim-usdc-out',
+            kind: 'erc20',
+            direction: 'out',
+            label: 'Asset out',
+            detail: 'Simulated balance change',
+            amount: '0x17d7840',
+            decimals: 6,
+            symbol: 'USDC',
+            assetAddress: '0x0000000000000000000000000000000000000001'
+          }
+        ]
+      },
+      classification: TxClassification.CONTRACT_CALL
+    }
+
+    addRequest(req)
+
+    render(<TxRequest req={req} step='confirm' />)
+
+    const effects = screen.getByLabelText('Transaction effects')
+    expect(effects.querySelector('.txReviewEffectIcon')?.textContent).toBe('USDC')
   })
 
   it('renders fee rate presets for unsigned transactions', () => {

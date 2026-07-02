@@ -2,10 +2,10 @@ import log from 'electron-log'
 import { addHexPrefix, intToHex } from '@ethereumjs/util'
 
 import store from '../../../main/store'
-import { GasFeesSource } from '../../../resources/domain/transaction'
+import { GasFeesSource, TRANSACTION_CONFIRMATION_TARGET } from '../../../resources/domain/transaction'
 import { gweiToHex } from '../../util'
 
-const providerMock = { send: jest.fn(), emit: jest.fn(), on: jest.fn() }
+const providerMock = { send: jest.fn(), emit: jest.fn(), on: jest.fn(), off: jest.fn() }
 const signersMock = { get: jest.fn() }
 const windowsMock = { broadcast: jest.fn(), showTray: jest.fn() }
 const navMock = { on: jest.fn(), forward: jest.fn() }
@@ -697,6 +697,50 @@ describe('#resetNonce', () => {
     request.payload.params[0].nonce = '0x' + (BigInt(request.data.nonce) - 1n).toString(16)
     resetNonce()
     expect(request.data.nonce).toBe(request.payload.params[0].nonce)
+  })
+})
+
+describe('#setTxSent', () => {
+  it('confirms after the target confirmation count and removes after the close delay', async () => {
+    const hash = '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef'
+    const receiptBlock = 100
+    const clearRequest = jest.spyOn(Accounts.current(), 'clearRequest')
+
+    provider.send = jest.fn((payload: any, cb: any) => {
+      if (payload.method === 'eth_subscribe') return cb({ error: { code: -32601, message: 'unsupported' } })
+      if (payload.method === 'eth_blockNumber')
+        return cb({ result: intToHex(receiptBlock + TRANSACTION_CONFIRMATION_TARGET) })
+      if (payload.method === 'eth_getTransactionReceipt') {
+        return cb({
+          result: {
+            status: '0x1',
+            blockNumber: intToHex(receiptBlock),
+            gasUsed: '0x5208'
+          }
+        })
+      }
+
+      cb({ result: null })
+    })
+
+    Accounts.addRequest(request, jest.fn())
+    Accounts.setTxSent(request.handlerId, hash)
+    jest.advanceTimersByTime(1000)
+    await Promise.resolve()
+    await Promise.resolve()
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect((Accounts.current().requests[request.handlerId] as any).status).toBe('confirmed')
+    expect((Accounts.current().requests[request.handlerId] as any).tx.confirmations).toBe(
+      TRANSACTION_CONFIRMATION_TARGET
+    )
+
+    jest.advanceTimersByTime(2999)
+    expect(clearRequest).not.toHaveBeenCalledWith(request.handlerId)
+
+    jest.advanceTimersByTime(1)
+    expect(clearRequest).toHaveBeenCalledWith(request.handlerId)
   })
 })
 
