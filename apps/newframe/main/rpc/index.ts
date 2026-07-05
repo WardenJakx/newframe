@@ -13,7 +13,7 @@ import biometrics from '../biometrics'
 import * as launch from '../launch'
 import provider from '../provider'
 import store from '../store'
-import ens from '../ens'
+import nameResolution from '../nameResolution'
 
 import { arraysEqual, randomLetters } from '../../resources/utils'
 import { isSignatureRequest } from '../signatures'
@@ -301,14 +301,14 @@ const rpc: Record<string, (...args: any[]) => any> = {
   remove(id) {
     signers.remove(id)
   },
-  async resolveEnsName(name, cb) {
-    log.debug('Resolving ENS name', { name })
+  async resolveName(name, cb) {
+    log.debug('Resolving name', { name })
 
     try {
-      const ethAddress = await ens.resolveAddress(name)
+      const ethAddress = await nameResolution.resolveAddress(name)
       cb(null, ethAddress)
     } catch (err) {
-      log.warn(`Could not resolve ENS name ${name}:`, err)
+      log.warn(`Could not resolve name ${name}:`, err)
       return cb(err)
     }
   },

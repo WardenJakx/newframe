@@ -9,7 +9,7 @@ import {
   SignTypedDataRequest,
   TransactionRequest
 } from '..'
-import ens from '../../ens'
+import nameResolution from '../../nameResolution'
 import signers from '../../signers'
 import windows from '../../windows'
 import nav from '../../windows/nav'
@@ -126,10 +126,10 @@ class FrameAccount {
       })
     }
 
-    if (ens.ready()) {
+    if (nameResolution.ready()) {
       this.lookupAddress() // We need to recheck this on every network change...
     } else {
-      ens.once('ready', this.lookupAddress.bind(this))
+      nameResolution.once('ready', this.lookupAddress.bind(this))
     }
 
     this.update()
@@ -137,7 +137,7 @@ class FrameAccount {
 
   async lookupAddress() {
     try {
-      this.ensName = await ens.reverseLookup(this.address)
+      this.ensName = await nameResolution.reverseLookup(this.address)
       this.update()
     } catch (e) {
       log.error('lookupAddress Error:', e)

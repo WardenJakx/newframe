@@ -120,7 +120,7 @@ export interface TransactionRequest extends AccountRequest<'transaction'> {
   automaticFeeUpdateNotice?: {
     previousFee: any
   }
-  recipient?: string // ens name
+  recipient?: string // resolved name
   updatedFees?: boolean
   feeAtTime?: string
   completed?: number

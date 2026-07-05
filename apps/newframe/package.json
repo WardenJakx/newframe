@@ -34,6 +34,7 @@
   },
   "license": "GPL-3.0",
   "dependencies": {
+    "@donnoh/gns-utils": "^0.2.0",
     "@ethereumjs/common": "^10.1.2",
     "@ethereumjs/rlp": "^10.1.2",
     "@ethereumjs/tx": "^10.1.2",

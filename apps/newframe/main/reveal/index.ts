@@ -5,7 +5,7 @@ import { addHexPrefix } from '@ethereumjs/util'
 
 import proxyConnection from '../provider/proxy'
 import { createProxyProvider } from '../provider/connection'
-import ens from '../ens'
+import nameResolution from '../nameResolution'
 
 import Erc20Contract from '../contracts/erc20'
 import {
@@ -64,9 +64,9 @@ async function resolveEntityType(address: string, chainId: number): Promise<Enti
   }
 }
 
-async function resolveEnsName(address: string): Promise<string> {
+async function resolveName(address: string): Promise<string> {
   try {
-    return await ens.reverseLookup(address)
+    return await nameResolution.reverseLookup(address)
   } catch (e) {
     log.warn(e)
     return ''
@@ -165,20 +165,20 @@ function identifyKnownContractActions(
 
 const surface = {
   identity: async (address = '', chainId?: number) => {
-    // Resolve ens, type and other data about address entities
+    // Resolve name, type and other data about address entities
 
     const results = await Promise.allSettled([
       chainId ? resolveEntityType(address, chainId) : Promise.resolve(''),
-      resolveEnsName(address)
+      resolveName(address)
     ])
 
     const type = results[0].status === 'fulfilled' ? results[0].value : ''
-    const ens = results[1].status === 'fulfilled' ? results[1].value : ''
+    const resolvedName = results[1].status === 'fulfilled' ? results[1].value : ''
 
     // TODO: Check the address against various scam dbs
     // TODO: Check the address against user's contact list
     // TODO: Check the address against previously verified contracts
-    return { type, ens }
+    return { type, ens: resolvedName }
   },
   resolveEntityType,
   decode: async (contractAddress = '', chainId: number, calldata: string) => {

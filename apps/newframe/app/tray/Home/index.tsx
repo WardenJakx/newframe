@@ -1,6 +1,7 @@
 import React from 'react'
 import Restore from 'react-restore'
 import QRCode from 'qrcode'
+import { isAddress } from 'ethers'
 
 import link from '../../../resources/link'
 import svg from '../../../resources/svg'
@@ -1020,10 +1021,10 @@ class Home extends React.Component<any, any> {
     })
   }
 
-  resolveEnsName(name: string) {
+  resolveName(name: string) {
     return new Promise<string>((resolve, reject) => {
-      link.rpc('resolveEnsName', name, (err: any, resolvedAddress: string) => {
-        if (err) return reject(err)
+      link.rpc('resolveName', name, (err: any, resolvedAddress: string) => {
+        if (err || !resolvedAddress) return reject(err || new Error('Could not resolve name'))
         resolve(resolvedAddress)
       })
     })
@@ -1244,7 +1245,7 @@ class Home extends React.Component<any, any> {
 
     if (addAccountType === 'watch') {
       try {
-        const address = input.toLowerCase().includes('.eth') ? await this.resolveEnsName(input) : input
+        const address = isAddress(input) ? input : await this.resolveName(input)
         link.rpc('createFromAddress', address, name || 'Watch Account', (err: any) => {
           if (err) return this.setState({ addAccountError: err.message || String(err), addAccountStatus: '' })
           link.rpc('setSigner', address.toLowerCase(), () => {})
@@ -3660,7 +3661,7 @@ class Home extends React.Component<any, any> {
   renderInlineAddForm() {
     const inputLabel =
       this.state.addAccountType === 'watch'
-        ? 'Address or ENS'
+        ? 'Address or gns/ens name'
         : this.state.addAccountType === 'seed'
           ? 'Recovery phrase'
           : 'Private key'
