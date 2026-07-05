@@ -79,6 +79,8 @@ export default [
 
   nodeGlobalsConfig({ files: ['eslint.config.mjs', 'eslint.shared.mjs', 'scripts/**/*.ts'] }),
   ...typescriptConfigs({ basePath: 'scripts', tsconfigRootDir: workspacePath('./') }),
+  nodeGlobalsConfig({ files: ['harness/**/*.ts'] }),
+  ...typescriptConfigs({ basePath: 'harness', tsconfigRootDir: workspacePath('./') }),
 
   globalsConfig({
     basePath: 'packages/react-restore',
