@@ -1,4 +1,5 @@
 import EventEmitter from 'events'
+import { GNS_CONTRACT, gnsAbi, isGwei, normalizeName } from '@donnoh/gns-utils'
 import { Interface, ZeroAddress, dnsEncode, ensNormalize, getAddress, isAddress, namehash } from 'ethers'
 
 import proxyConnection from '../provider/proxy'
@@ -21,6 +22,7 @@ const universalResolverInterface = new Interface([
 ])
 
 const resolverInterface = new Interface(['function addr(bytes32 node) view returns (address)'])
+const gnsInterface = new Interface(gnsAbi)
 
 const isMainnetConnected = (chains: RPC.GetEthereumChains.Chain[]) =>
   !!chains.find((chain) => chain.chainId === 1)?.connected
@@ -48,22 +50,51 @@ provider.once('connect', async () => {
   }
 })
 
+async function readMainnetContract(to: string, data: string) {
+  return provider.request<string>({
+    method: 'eth_call',
+    params: [{ to, data }, 'latest'],
+    chainId: MAINNET_CHAIN_ID
+  })
+}
+
 async function readUniversalResolver(
   functionName: 'resolveWithGateways' | 'reverseWithGateways',
   args: unknown[]
 ) {
   const data = universalResolverInterface.encodeFunctionData(functionName, args)
-
-  const result = await provider.request<string>({
-    method: 'eth_call',
-    params: [{ to: UNIVERSAL_RESOLVER_ADDRESS, data }, 'latest'],
-    chainId: MAINNET_CHAIN_ID
-  })
+  const result = await readMainnetContract(UNIVERSAL_RESOLVER_ADDRESS, data)
 
   return universalResolverInterface.decodeFunctionResult(functionName, result)
 }
 
-async function resolveAddress(name: string) {
+async function readGns(functionName: 'computeId' | 'resolve' | 'reverseResolve', args: unknown[]) {
+  const data = gnsInterface.encodeFunctionData(functionName, args)
+  const result = await readMainnetContract(GNS_CONTRACT, data)
+
+  return gnsInterface.decodeFunctionResult(functionName, result)
+}
+
+function isGnsName(name: string) {
+  const input = name.trim()
+
+  return !!input && (isGwei(input) || !input.includes('.'))
+}
+
+async function resolveGnsAddress(name: string) {
+  try {
+    const [tokenId] = await readGns('computeId', [normalizeName(name)])
+    if (tokenId === 0n) return ''
+
+    const [address] = await readGns('resolve', [tokenId])
+
+    return address === ZeroAddress ? '' : getAddress(address)
+  } catch {
+    return ''
+  }
+}
+
+async function resolveEnsAddress(name: string) {
   const normalized = ensNormalize(name)
   const node = namehash(normalized)
   const data = resolverInterface.encodeFunctionData('addr', [node])
@@ -73,7 +104,28 @@ async function resolveAddress(name: string) {
   return address === ZeroAddress ? '' : getAddress(address)
 }
 
-async function reverseLookup(address: string) {
+async function resolveAddress(name: string) {
+  const input = name.trim()
+  if (!input) return ''
+
+  if (isGnsName(input)) return resolveGnsAddress(input)
+
+  return resolveEnsAddress(input)
+}
+
+async function reverseGnsLookup(address: string) {
+  try {
+    if (!isAddress(address)) return ''
+
+    const [primary] = await readGns('reverseResolve', [getAddress(address)])
+
+    return primary || ''
+  } catch {
+    return ''
+  }
+}
+
+async function reverseEnsLookup(address: string) {
   if (!isAddress(address)) return ''
 
   const [primary] = await readUniversalResolver('reverseWithGateways', [
@@ -83,6 +135,13 @@ async function reverseLookup(address: string) {
   ])
 
   return primary
+}
+
+async function reverseLookup(address: string) {
+  const gnsName = await reverseGnsLookup(address)
+  if (gnsName) return gnsName
+
+  return reverseEnsLookup(address)
 }
 
 export default {

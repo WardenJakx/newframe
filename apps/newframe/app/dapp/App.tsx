@@ -31,6 +31,12 @@ function cleanAddress(address = '') {
   return address.trim().toLowerCase()
 }
 
+function shouldResolveName(input = '') {
+  const value = input.trim()
+
+  return !!value && !/\s/.test(value)
+}
+
 function amountHex(amount: bigint) {
   return `0x${amount.toString(16)}`
 }
@@ -173,10 +179,10 @@ class App extends React.Component<any, any> {
     return ''
   }
 
-  resolveEnsName(name: string) {
+  resolveName(name: string) {
     return new Promise<string>((resolve, reject) => {
-      link.rpc('resolveEnsName', name, (err: any, address: string) => {
-        if (err || !address) reject(err || new Error('Could not resolve ENS name'))
+      link.rpc('resolveName', name, (err: any, address: string) => {
+        if (err || !address) reject(err || new Error('Could not resolve name'))
         else resolve(cleanAddress(address))
       })
     })
@@ -187,8 +193,8 @@ class App extends React.Component<any, any> {
     if (address) return address
 
     const input = this.state.recipientInput.trim()
-    if (input && input.includes('.')) {
-      return this.resolveEnsName(input)
+    if (shouldResolveName(input)) {
+      return this.resolveName(input)
     }
 
     return ''
@@ -227,7 +233,7 @@ class App extends React.Component<any, any> {
   canProceed(asset: any) {
     const amount = asset && this.getAmountBaseUnits(asset)
     const balance = asset ? toBigInt(asset.balance) || 0n : 0n
-    const hasRecipient = !!this.getRecipientAddress() || this.state.recipientInput.trim().includes('.')
+    const hasRecipient = !!this.getRecipientAddress() || shouldResolveName(this.state.recipientInput)
 
     return !!asset && hasRecipient && !!amount && amount > 0n && amount <= balance
   }
@@ -351,7 +357,7 @@ class App extends React.Component<any, any> {
         <div className='sendInputRow'>
           <input
             aria-label='Recipient'
-            placeholder='Address / ENS / Namoshi'
+            placeholder='Address / gns/ens name / Namoshi'
             spellCheck='false'
             value={this.state.recipientInput}
             onChange={(e) =>

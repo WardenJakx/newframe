@@ -19,7 +19,7 @@ jest.mock('../../../../main/accounts', () => ({
 }))
 jest.mock('../../../../main/signers', () => ({ default: {} }))
 jest.mock('../../../../main/windows', () => ({ default: {} }))
-jest.mock('../../../../main/ens', () => ({
+jest.mock('../../../../main/nameResolution', () => ({
   __esModule: true,
   default: {
     ready: jest.fn(() => true),

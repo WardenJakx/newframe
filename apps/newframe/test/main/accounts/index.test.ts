@@ -29,7 +29,7 @@ jest.mock('../../../main/externalData', () => ({
 }))
 jest.mock('../../../main/transaction', () => transactionMock)
 
-jest.mock('../../../main/ens', () => ({
+jest.mock('../../../main/nameResolution', () => ({
   __esModule: true,
   default: {
     ready: () => true,
