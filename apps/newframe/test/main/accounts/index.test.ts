@@ -10,8 +10,10 @@ const signersMock = { get: jest.fn() }
 const windowsMock = { broadcast: jest.fn(), showTray: jest.fn() }
 const navMock = { on: jest.fn(), forward: jest.fn() }
 const externalDataScannerMock = {
-  refreshBalances: jest.fn()
+  refreshBalances: jest.fn(),
+  close: jest.fn()
 }
+const externalDataScannerFactoryMock = jest.fn(() => externalDataScannerMock)
 const transactionMock = {
   addTransaction: jest.fn(),
   maxFee: jest.fn(() => 1e30),
@@ -23,7 +25,7 @@ jest.mock('../../../main/signers', () => ({ default: signersMock, ...signersMock
 jest.mock('../../../main/windows', () => ({ default: windowsMock, ...windowsMock }))
 jest.mock('../../../main/windows/nav', () => ({ default: navMock, ...navMock }))
 jest.mock('../../../main/externalData', () => ({
-  default: jest.fn(() => externalDataScannerMock),
+  default: externalDataScannerFactoryMock,
   start: jest.fn(),
   stop: jest.fn()
 }))
@@ -40,6 +42,7 @@ jest.mock('../../../main/ens', () => ({
 
 let provider: any
 let Accounts: any
+let AccountsClass: any
 let signers: any
 let signerCompatibility: any
 let maxFee: any
@@ -80,7 +83,9 @@ beforeAll(async () => {
   const transaction = await import('../../../main/transaction')
   signerCompatibility = transaction.signerCompatibility
   maxFee = transaction.maxFee
-  Accounts = (await import('../../../main/accounts')).default as any
+  const accountsModule = await import('../../../main/accounts')
+  Accounts = accountsModule.default as any
+  AccountsClass = accountsModule.Accounts as any
 })
 
 afterAll(() => {
@@ -128,6 +133,39 @@ afterEach(() => {
 
 it('sets the account signer', () => {
   expect(Accounts.current().address).toBe('0x22dd63c3619818fdbc262c78baee43cb61e9cccf')
+})
+
+describe('#startDataScanner', () => {
+  it('does not start the external data scanner during construction', () => {
+    new AccountsClass()
+
+    expect(externalDataScannerFactoryMock).not.toHaveBeenCalled()
+  })
+
+  it('starts the external data scanner once', () => {
+    const accounts = new AccountsClass()
+
+    accounts.startDataScanner()
+    accounts.startDataScanner()
+
+    expect(externalDataScannerFactoryMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('ignores balance refreshes before the external data scanner has started', () => {
+    const accounts = new AccountsClass()
+
+    accounts.refreshBalances(account.address)
+
+    expect(externalDataScannerFactoryMock).not.toHaveBeenCalled()
+    expect(externalDataScannerMock.refreshBalances).not.toHaveBeenCalled()
+  })
+
+  it('closes safely before the external data scanner has started', () => {
+    const accounts = new AccountsClass()
+
+    expect(() => accounts.close()).not.toThrow()
+    expect(externalDataScannerMock.close).not.toHaveBeenCalled()
+  })
 })
 
 describe('#updatePendingFees', () => {

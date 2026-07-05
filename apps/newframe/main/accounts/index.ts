@@ -104,7 +104,7 @@ export class Accounts extends EventEmitter {
   _current: string
   accounts: Record<string, FrameAccount>
 
-  private readonly dataScanner: DataScanner
+  private dataScanner?: DataScanner
 
   constructor() {
     super()
@@ -123,8 +123,6 @@ export class Accounts extends EventEmitter {
       (persistedCurrent && this.accounts[persistedCurrent]?.id) ||
       Object.values(this.accounts).find((acct) => acct.active)?.id ||
       ''
-
-    this.dataScanner = ExternalDataScanner()
   }
 
   get(id: string) {
@@ -175,11 +173,17 @@ export class Accounts extends EventEmitter {
     return this._current ? this.accounts[this._current] : null
   }
 
+  startDataScanner() {
+    if (!this.dataScanner) {
+      this.dataScanner = ExternalDataScanner()
+    }
+  }
+
   refreshBalances(address?: Address) {
     const currentAddress = this.current()?.address
     const targetAddress = address || currentAddress
 
-    if (targetAddress) this.dataScanner.refreshBalances(targetAddress)
+    if (targetAddress) this.dataScanner?.refreshBalances(targetAddress)
   }
 
   updateNonce(reqId: string, nonce: string) {
@@ -755,7 +759,8 @@ export class Accounts extends EventEmitter {
   }
 
   close() {
-    this.dataScanner.close()
+    this.dataScanner?.close()
+    this.dataScanner = undefined
     // usbDetect.stopMonitoring()
   }
 
