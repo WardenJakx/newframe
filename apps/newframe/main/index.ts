@@ -422,6 +422,7 @@ ipcMain.on('tray:syncPath', (e, path, value) => {
 ipcMain.on('tray:ready', () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports -- lazy-loaded once the tray is ready
   require('./api')
+  accounts.startDataScanner()
 
   if (!isDev) {
     startUpdater()
