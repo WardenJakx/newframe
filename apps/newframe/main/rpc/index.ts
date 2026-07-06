@@ -164,7 +164,7 @@ const rpc: Record<string, (...args: any[]) => any> = {
     if (req.type === 'transaction') {
       provider.approveTransactionRequest(req, (err, res) => {
         if (err) return accounts.setRequestError(req.handlerId, err)
-        setTimeout(() => accounts.setTxSent(req.handlerId, res as string), 1800)
+        accounts.setTxSent(req.handlerId, res as string)
       })
     } else if (req.type === 'sign') {
       provider.approveSign(req, (err, res) => {

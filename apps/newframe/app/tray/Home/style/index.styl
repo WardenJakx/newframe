@@ -178,6 +178,151 @@ $t2-pink = rgb(255, 110, 120)
   position relative
   z-index 1
 
+.statusGlyph
+  width 24px
+  height 24px
+  border-radius 50%
+  display flex
+  align-items center
+  justify-content center
+  flex-shrink 0
+
+.statusGlyph-small
+  width 16px
+  height 16px
+
+.statusGlyph-pending
+  color $t2-teal
+
+.statusGlyph-completed
+  color $t2-teal
+  background rgba(0, 210, 190, 0.1)
+
+.statusGlyph-failed
+  color $t2-pink
+  background rgba(255, 110, 120, 0.12)
+
+.statusGlyphSpinner
+  width 16px
+  height 16px
+  border 2px solid rgba(0, 210, 190, 0.18)
+  border-top-color $t2-teal
+  border-radius 50%
+  animation t2Spin 900ms linear infinite
+
+.statusGlyph-small .statusGlyphSpinner
+  width 13px
+  height 13px
+  border-width 2px
+
+.statusGlyphDot
+  width 6px
+  height 6px
+  border-radius 50%
+  background $t2-muted
+
+.t2StatusNotifications
+  position relative
+  z-index 2
+  display flex
+  flex-direction column
+  gap 7px
+  padding 10px 18px 0 18px
+  pointer-events none
+  animation t2RiseIn 160ms ease-out both
+
+.t2StatusNotification
+  min-height 58px
+  display grid
+  grid-template-columns 28px 22px minmax(0, 1fr) auto 24px
+  align-items center
+  gap 9px
+  padding 8px 9px 8px 11px
+  border 1px solid rgba(248, 255, 255, 0.1)
+  border-radius 7px
+  background rgba(16, 13, 19, 0.94)
+  box-shadow 0px 10px 28px rgba(0, 0, 0, 0.28)
+  pointer-events auto
+  cursor pointer
+
+  &:hover
+    background rgba(24, 20, 28, 0.98)
+
+  *
+    pointer-events none
+
+.t2StatusNotification-failed
+  border-color rgba(255, 110, 120, 0.22)
+
+.t2StatusNotification-completed
+  border-color rgba(0, 210, 190, 0.22)
+
+.t2StatusNotificationChain
+  width 20px
+  height 20px
+  display flex
+  align-items center
+  justify-content center
+  color $t2-muted-strong
+
+.t2StatusNotificationCopy
+  min-width 0
+  display flex
+  flex-direction column
+  gap 2px
+
+.t2StatusNotificationTopline
+  display flex
+  align-items center
+  gap 7px
+  min-width 0
+  font-size 12px
+  font-weight 500
+  color $t2-text
+
+  span
+    white-space nowrap
+    overflow hidden
+    text-overflow ellipsis
+
+  span:first-child
+    color $t2-muted-strong
+    flex-shrink 0
+
+.t2StatusNotificationDetail
+  min-width 0
+  font-size 10px
+  font-family 'FiraCode'
+  color $t2-muted
+  white-space nowrap
+  overflow hidden
+  text-overflow ellipsis
+
+.t2StatusNotificationTimestamp
+  align-self start
+  padding-top 7px
+  font-size 9px
+  font-family 'FiraCode'
+  color $t2-muted
+  white-space nowrap
+  text-align right
+
+.t2StatusNotificationDismiss
+  grid-column 5
+  width 22px
+  height 22px
+  border-radius 50%
+  display flex
+  align-items center
+  justify-content center
+  color $t2-muted
+  pointer-events auto
+  cursor pointer
+
+  &:hover
+    background $t2-button-hover
+    color $t2-text
+
 .t2MenuBackdrop
   position absolute
   top 0
@@ -1104,6 +1249,117 @@ $t2-pink = rgb(255, 110, 120)
 
   *
     pointer-events none
+
+.t2ActivityList
+  display flex
+  flex-direction column
+  gap 4px
+
+.t2ActivityRow
+  min-height 62px
+  display flex
+  align-items center
+  gap 11px
+  padding 9px 8px
+  border-radius 8px
+  cursor pointer
+
+  &:hover
+    background $t2-card
+
+  *
+    pointer-events none
+
+.t2ActivityIconWrap
+  position relative
+  width 38px
+  height 38px
+  border-radius 50%
+  background $t2-button
+  border 1px solid rgba(248, 255, 255, 0.08)
+  display flex
+  align-items center
+  justify-content center
+  flex-shrink 0
+
+.t2ActivityChainBadge
+  position absolute
+  top -6px
+  left -6px
+  width 20px
+  height 20px
+  border-radius 50%
+  border 2px solid $t2-bg
+  background $t2-button
+  display flex
+  align-items center
+  justify-content center
+  overflow hidden
+
+  img
+    border-radius 50%
+    object-fit cover
+
+.t2ActivityCopy
+  min-width 0
+  flex-grow 1
+  display flex
+  flex-direction column
+  gap 4px
+
+.t2ActivityTitle
+  font-size 14px
+  font-weight 500
+  color $t2-text
+  white-space nowrap
+  overflow hidden
+  text-overflow ellipsis
+
+.t2ActivitySubtitle
+  display flex
+  align-items center
+  gap 8px
+  min-width 0
+  font-size 10px
+  font-family 'FiraCode'
+  color $t2-muted
+
+  span
+    white-space nowrap
+    overflow hidden
+    text-overflow ellipsis
+
+.t2ActivityMeta
+  min-width 82px
+  display flex
+  flex-direction column
+  align-items flex-end
+  gap 4px
+
+.t2ActivityStatus
+  font-size 11px
+  font-weight 500
+  color $t2-muted-strong
+
+.t2ActivityStatus-succeeded
+  color $t2-teal
+
+.t2ActivityStatus-reverted
+  color $t2-pink
+
+.t2ActivityTime
+  font-size 10px
+  font-family 'FiraCode'
+  color $t2-muted
+
+.t2ActivityOverlay
+  z-index 88
+
+.t2ActivityDetailScroll
+  padding 0 12px 28px 12px
+
+  .txReview
+    padding-bottom 0
 
 .t2EmptyState
   padding 50px 0

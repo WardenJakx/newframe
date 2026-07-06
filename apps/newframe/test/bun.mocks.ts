@@ -95,6 +95,7 @@ const defaultState = () => ({
     accounts: {},
     accountOrder: [],
     accountsMeta: {},
+    activity: {},
     balances: {},
     currentAccount: '',
     knownExtensions: {},
@@ -145,7 +146,8 @@ const defaultState = () => ({
   },
   view: {
     data: {},
-    list: []
+    list: [],
+    notifications: {}
   },
   windows: {
     dash: {
@@ -551,10 +553,128 @@ store.setUpdaterLastChecked = (lastChecked: number) => {
   update('main.updater.lastChecked', () => lastChecked)
 }
 
+store.upsertSubmittedActivity = (activity: any) => {
+  const id = activity?.id
+  if (!id) return
+  const now = Date.now()
+
+  update('main.activity', id, (current: any = {}) => ({
+    ...current,
+    ...activity,
+    id,
+    status: 'submitted',
+    submittedAt: activity.submittedAt ?? current.submittedAt ?? now,
+    updatedAt: activity.updatedAt ?? now,
+    confirmations: activity.confirmations ?? current.confirmations ?? 0
+  }))
+}
+
+store.updateActivity = (id: string, activityUpdate: any = {}) => {
+  if (!id) return
+  const now = Date.now()
+
+  update('main.activity', id, (activity: any = { id }) => ({
+    ...activity,
+    ...activityUpdate,
+    id,
+    status: activityUpdate.status ?? activity.status ?? 'confirming',
+    updatedAt: activityUpdate.updatedAt ?? now
+  }))
+}
+
+store.finalizeActivity = (id: string, status: string, activityUpdate: any = {}) => {
+  if (!id) return
+  const now = Date.now()
+
+  update('main.activity', id, (activity: any = { id }) => ({
+    ...activity,
+    ...activityUpdate,
+    id,
+    status,
+    completedAt: activityUpdate.completedAt ?? now,
+    updatedAt: activityUpdate.updatedAt ?? now,
+    confirmations: activityUpdate.confirmations ?? activity.confirmations ?? 0
+  }))
+}
+
+store.pruneActivity = (id: string) => {
+  if (!id) return
+
+  update('main.activity', (activity: any = {}) => {
+    const nextActivity = { ...activity }
+    delete nextActivity[id]
+    return nextActivity
+  })
+}
+
+store.upsertPendingNotification = (notification: any) => {
+  const id = notification?.id
+  if (!id) return
+  const now = Date.now()
+
+  update('view.notifications', id, (current: any = {}) => ({
+    ...current,
+    ...notification,
+    id,
+    state: 'pending',
+    createdAt: notification.createdAt ?? current.createdAt ?? now,
+    updatedAt: notification.updatedAt ?? now,
+    hidden: notification.hidden ?? false
+  }))
+}
+
+store.resolveNotification = (id: string, state: 'completed' | 'failed', notificationUpdate: any = {}) => {
+  if (!id) return
+
+  update('view.notifications', id, (notification: any) => {
+    if (!notification) return notification
+
+    return {
+      ...notification,
+      ...notificationUpdate,
+      id,
+      state,
+      hidden: notificationUpdate.hidden ?? false,
+      updatedAt: notificationUpdate.updatedAt ?? Date.now()
+    }
+  })
+}
+
+store.dismissNotification = (id: string) => {
+  if (!id) return
+  const now = Date.now()
+
+  update('view.notifications', id, (notification: any = { id }) => ({
+    ...notification,
+    id,
+    hidden: true,
+    dismissedAt: now,
+    updatedAt: now
+  }))
+}
+
+store.expireNotification = (id: string) => {
+  if (!id) return
+
+  update('view.notifications', (notifications: any = {}) => {
+    const nextNotifications = { ...notifications }
+    delete nextNotifications[id]
+    return nextNotifications
+  })
+}
+
 store.navClearReq = (handlerId: string) => {
   update('windows.panel.nav', (nav: any[] = []) =>
     nav.filter((navItem) => navItem?.data?.requestId !== handlerId)
   )
+}
+
+store.navForward = (windowId: string, crumb: any) => {
+  update('windows', windowId, 'nav', (nav: any[] = []) => {
+    if (JSON.stringify(nav[0]) !== JSON.stringify(crumb)) return [crumb, ...nav]
+    return nav
+  })
+  update('windows', windowId, 'showing', () => true)
 }
 
 store.navDash = jest.fn()

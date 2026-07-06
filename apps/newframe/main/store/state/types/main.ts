@@ -50,6 +50,37 @@ const notificationTypes = z.enum([
   'signerCompatibilityWarning'
 ])
 
+export const ActivityStatusSchema = z.enum(['submitted', 'confirming', 'succeeded', 'reverted'])
+
+const ActivityDateSchema = z.union([z.number(), z.string(), z.date()]).nullable().optional()
+const ActivityNumberSchema = z.union([z.number(), z.string()]).nullable().optional()
+
+export const ActivityRecordSchema = z
+  .object({
+    id: z.string(),
+    hash: z.string().nullable().optional(),
+    handlerId: z.string().nullable().optional(),
+    address: z.string().nullable().optional(),
+    account: z.string().nullable().optional(),
+    chainId: ActivityNumberSchema,
+    chainType: z.string().nullable().optional(),
+    nonce: ActivityNumberSchema,
+    origin: z.unknown().optional(),
+    submittedAt: ActivityDateSchema,
+    updatedAt: ActivityDateSchema,
+    completedAt: ActivityDateSchema,
+    status: ActivityStatusSchema,
+    confirmations: ActivityNumberSchema,
+    receipt: z.unknown().optional(),
+    data: z.unknown().optional(),
+    payload: z.unknown().optional(),
+    display: z.unknown().optional(),
+    metadata: z.unknown().optional()
+  })
+  .passthrough()
+
+export const ActivitySchema = z.record(z.string().describe('Activity Id'), ActivityRecordSchema).default({})
+
 export const MainSchema = z.object({
   _version: z.coerce.number(),
   instanceId: z.string(), // TODO: uuid
@@ -70,6 +101,7 @@ export const MainSchema = z.object({
   accountOrder: z.array(z.string()).default([]),
   accountsMeta: z.record(z.string(), AccountMetadataSchema),
   balances: z.record(z.string().describe('Address'), z.array(BalanceSchema)),
+  activity: ActivitySchema,
   mute: z.record(notificationTypes, z.boolean()),
   colorway: z.enum(['light', 'dark']),
   colorwayPrimary: ColorwayPrimarySchema,
@@ -79,3 +111,6 @@ export const MainSchema = z.object({
 })
 
 export type Main = z.infer<typeof MainSchema>
+export type Activity = z.infer<typeof ActivitySchema>
+export type ActivityRecord = z.infer<typeof ActivityRecordSchema>
+export type ActivityStatus = z.infer<typeof ActivityStatusSchema>
