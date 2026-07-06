@@ -3270,7 +3270,7 @@ class Home extends React.Component<any, any> {
                 onChange={(e) => this.inputPortfolioApiKey(e)}
               />
             </div>
-            {this.renderSettingsActionRow('Clear Saved Tokens', 'Clear', () =>
+            {this.renderSettingsActionRow('Clear Saved Tokens + Activity', 'Clear', () =>
               link.send('tray:action', 'clearSavedTokens')
             )}
           </div>

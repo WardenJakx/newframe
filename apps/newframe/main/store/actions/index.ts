@@ -840,6 +840,7 @@ const actions = {
       )
 
       main.tokens.known = {}
+      main.activity = {}
 
       if (tokenIds.size > 0) {
         Object.entries((main.balances || {}) as Record<string, any[]>).forEach(([address, balances]) => {

@@ -1520,17 +1520,25 @@ describe('#clearSavedTokens', () => {
           { ...testTokens.badger, balance: '0x2' }
         ],
         '0xd0e3872f5fa8ecb49f1911f605c0da90689a484e': [{ ...testTokens.badger, balance: '0x3' }]
+      },
+      activity: {
+        '0xabc': {
+          id: '0xabc',
+          hash: '0xabc',
+          status: 'succeeded'
+        }
       }
     }
   })
 
-  it('clears cached known tokens and their balances without removing custom tokens', () => {
+  it('clears cached known tokens, their balances, and activity without removing custom tokens', () => {
     clearSavedTokensAction(updaterFn)
 
     expect(main.tokens.custom).toStrictEqual([testTokens.zrx])
     expect(main.tokens.known).toStrictEqual({})
     expect(main.balances[owner]).toStrictEqual([{ ...testTokens.zrx, balance: '0x1' }])
     expect(main.balances['0xd0e3872f5fa8ecb49f1911f605c0da90689a484e']).toStrictEqual([])
+    expect(main.activity).toStrictEqual({})
   })
 })
 
