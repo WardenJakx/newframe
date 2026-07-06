@@ -1712,8 +1712,7 @@ describe('#activity actions', () => {
     }
   }
 
-  const upsertSubmittedActivity = (transaction: any) =>
-    upsertSubmittedActivityAction(updaterFn, transaction)
+  const upsertSubmittedActivity = (transaction: any) => upsertSubmittedActivityAction(updaterFn, transaction)
   const updateActivity = (id: string, update: any) => updateActivityAction(updaterFn, id, update)
   const finalizeActivity = (id: string, status: string, update: any) =>
     finalizeActivityAction(updaterFn, id, status, update)

@@ -44,10 +44,12 @@ const ViewSchema = z
   })
   .passthrough()
 
-const StateSchema = z.object({
-  main: MainSchema,
-  view: ViewSchema
-}).passthrough()
+const StateSchema = z
+  .object({
+    main: MainSchema,
+    view: ViewSchema
+  })
+  .passthrough()
 
 export type StatusNotification = z.infer<typeof StatusNotificationSchema>
 

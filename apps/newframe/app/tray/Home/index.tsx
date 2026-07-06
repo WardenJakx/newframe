@@ -189,8 +189,7 @@ const StatusNotifications = ({
     .filter((notification: any) => notificationExpiresAt(notification) > now)
     .sort(
       (a: any, b: any) =>
-        timestamp(b.createdAt, timestamp(b.updatedAt, 0)) -
-        timestamp(a.createdAt, timestamp(a.updatedAt, 0))
+        timestamp(b.createdAt, timestamp(b.updatedAt, 0)) - timestamp(a.createdAt, timestamp(a.updatedAt, 0))
     )
     .slice(0, 3)
 
@@ -219,7 +218,9 @@ const StatusNotifications = ({
             role='button'
             tabIndex={0}
           >
-            <StatusGlyph state={state === 'completed' ? 'completed' : state === 'failed' ? 'failed' : 'pending'} />
+            <StatusGlyph
+              state={state === 'completed' ? 'completed' : state === 'failed' ? 'failed' : 'pending'}
+            />
             <div className='t2StatusNotificationChain'>{renderChainIcon(notification)}</div>
             <div className='t2StatusNotificationCopy'>
               <div className='t2StatusNotificationTopline'>
@@ -2435,10 +2436,12 @@ class Home extends React.Component<any, any> {
           const chain = this.store('main.networks.ethereum', chainId) || {}
           const status = transactionStatusLabel(activity.status)
           const submittedAt = timestamp(activity.submittedAt, timestamp(activity.updatedAt, 0))
-          const submitted = submittedAt ? new Date(submittedAt).toLocaleTimeString([], {
-            hour: 'numeric',
-            minute: '2-digit'
-          }) : ''
+          const submitted = submittedAt
+            ? new Date(submittedAt).toLocaleTimeString([], {
+                hour: 'numeric',
+                minute: '2-digit'
+              })
+            : ''
           const title = activity.display?.title || 'Transaction'
           const subtitle = activity.display?.subtitle || chain.name || `Chain ${chainId}`
 
@@ -2489,14 +2492,22 @@ class Home extends React.Component<any, any> {
     const symbol = nativeCurrency.symbol || chain.symbol || 'ETH'
     const intent = getTransactionIntent(req, symbol)
     const effects = getTransactionEffects(req, symbol)
-    const receiptBlock = activity.receipt?.blockNumber ? parseInt(activity.receipt.blockNumber, 16) : undefined
-    const originName = activity.origin ? this.store('main.origins', activity.origin, 'name') || activity.origin : ''
+    const receiptBlock = activity.receipt?.blockNumber
+      ? parseInt(activity.receipt.blockNumber, 16)
+      : undefined
+    const originName = activity.origin
+      ? this.store('main.origins', activity.origin, 'name') || activity.origin
+      : ''
     const from = activity.data?.from || activity.account || activity.address
     const to = activity.data?.to
     const details = [
       { label: 'Origin', value: originName },
       { label: 'From', value: this.shortAddress(from), onClick: () => this.copyActivityValue(from) },
-      { label: 'To', value: activity.recipient || this.shortAddress(to), onClick: () => this.copyActivityValue(to) },
+      {
+        label: 'To',
+        value: activity.recipient || this.shortAddress(to),
+        onClick: () => this.copyActivityValue(to)
+      },
       { label: 'Nonce', value: activity.nonce },
       {
         label: 'Hash',
@@ -2510,7 +2521,11 @@ class Home extends React.Component<any, any> {
     ]
 
     return (
-      <div aria-label='Transaction activity details' className='t2Overlay t2ActivityOverlay cardShow' role='dialog'>
+      <div
+        aria-label='Transaction activity details'
+        className='t2Overlay t2ActivityOverlay cardShow'
+        role='dialog'
+      >
         <div className='t2OverlayHeader'>
           <div
             aria-label='Back to activity'

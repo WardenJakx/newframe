@@ -1,10 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import {
-  LinkInvokeChannels,
-  LinkRpcMethods,
-  LinkSendChannels,
-  type NewframeHost
-} from './contracts'
+import { LinkInvokeChannels, LinkRpcMethods, LinkSendChannels, type NewframeHost } from './contracts'
 import rpc from './rpc'
 
 const sendChannels = new Set<string>(LinkSendChannels)

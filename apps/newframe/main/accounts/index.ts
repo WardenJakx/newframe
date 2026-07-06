@@ -59,10 +59,12 @@ function cloneForActivity(value: any) {
   if (value === undefined) return undefined
 
   try {
-    return JSON.parse(JSON.stringify(value, (_key, nextValue) => {
-      if (typeof nextValue === 'function') return undefined
-      return nextValue
-    }))
+    return JSON.parse(
+      JSON.stringify(value, (_key, nextValue) => {
+        if (typeof nextValue === 'function') return undefined
+        return nextValue
+      })
+    )
   } catch {
     return undefined
   }
@@ -264,7 +266,6 @@ export class Accounts extends EventEmitter {
   private upsertTransactionNotification(account: FrameAccount, req: TransactionRequest, hash: string) {
     const chain = this.getTransactionChain(req)
     const display = this.getTransactionActivityDisplay(req, chain)
-    const chainName = chain ? store('main.networks.ethereum', chain.id, 'name') : ''
     const now = Date.now()
 
     store.upsertPendingNotification({
@@ -287,7 +288,12 @@ export class Accounts extends EventEmitter {
     })
   }
 
-  private recordSubmittedTransaction(account: FrameAccount, handlerId: string, req: TransactionRequest, hash: string) {
+  private recordSubmittedTransaction(
+    account: FrameAccount,
+    handlerId: string,
+    req: TransactionRequest,
+    hash: string
+  ) {
     store.upsertSubmittedActivity(this.transactionActivityRecord(account, handlerId, req, hash))
     this.upsertTransactionNotification(account, req, hash)
   }
@@ -578,7 +584,10 @@ export class Accounts extends EventEmitter {
       if (!targetChain) return this.stopActivityMonitor(activity.id)
 
       try {
-        const { confirmations, receipt } = await this.getActivityReceiptConfirmations(currentActivity, targetChain)
+        const { confirmations, receipt } = await this.getActivityReceiptConfirmations(
+          currentActivity,
+          targetChain
+        )
         if (!receipt) return
 
         const txRequest = this.toActivityRequest({
@@ -897,7 +906,9 @@ export class Accounts extends EventEmitter {
                 }
 
                 if (receiptStatus && txRequest.data?.nonce) {
-                  this.pruneSameNonceActivityLosers(this.transactionActivityRecord(account, id, txRequest, hash))
+                  this.pruneSameNonceActivityLosers(
+                    this.transactionActivityRecord(account, id, txRequest, hash)
+                  )
 
                   // Drop any other pending txs with same nonce.
                   Object.keys(account.requests).forEach((k) => {
