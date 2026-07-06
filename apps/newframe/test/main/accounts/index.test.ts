@@ -780,6 +780,152 @@ describe('#setTxSent', () => {
     jest.advanceTimersByTime(1)
     expect(clearRequest).toHaveBeenCalledWith(request.handlerId)
   })
+
+  it('does not drop a same-nonce request on another chain', async () => {
+    const hash = '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef'
+    const receiptBlock = 100
+    const otherChainRequest = {
+      ...request,
+      handlerId: 2,
+      data: {
+        ...request.data,
+        chainId: '0xa'
+      },
+      payload: {
+        ...request.payload,
+        id: 8
+      },
+      status: 'verifying',
+      tx: {
+        hash: '0xabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd',
+        confirmations: 0
+      }
+    }
+
+    provider.send = jest.fn((payload: any, cb: any) => {
+      if (payload.method === 'eth_subscribe') return cb({ error: { code: -32601, message: 'unsupported' } })
+      if (payload.method === 'eth_blockNumber')
+        return cb({ result: intToHex(receiptBlock + TRANSACTION_CONFIRMATION_TARGET) })
+      if (payload.method === 'eth_getTransactionReceipt') {
+        return cb({
+          result: {
+            status: '0x1',
+            blockNumber: intToHex(receiptBlock),
+            gasUsed: '0x5208'
+          }
+        })
+      }
+
+      cb({ result: null })
+    })
+
+    Accounts.addRequest(request, jest.fn())
+    Accounts.current().requests[otherChainRequest.handlerId] = otherChainRequest
+    Accounts.setTxSent(request.handlerId, hash)
+    jest.advanceTimersByTime(1000)
+    await Promise.resolve()
+    await Promise.resolve()
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect((Accounts.current().requests[otherChainRequest.handlerId] as any).status).toBe('verifying')
+  })
+
+  it('opens a queued request after popping the submitted transaction request', () => {
+    const hash = '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef'
+    const queuedRequest = {
+      ...request,
+      handlerId: 2,
+      data: {
+        ...request.data,
+        nonce: '0xb'
+      },
+      payload: {
+        ...request.payload,
+        id: 8
+      }
+    }
+
+    provider.send = jest.fn()
+
+    Accounts.addRequest(request, jest.fn())
+    store.set('windows.panel.nav', [
+      {
+        view: 'requestView',
+        data: {
+          step: 'confirm',
+          accountId: account.address,
+          requestId: request.handlerId
+        }
+      }
+    ])
+    Accounts.addRequest(queuedRequest, jest.fn())
+
+    Accounts.setTxSent(request.handlerId, hash)
+
+    expect(store('windows.panel.nav', 0)).toEqual({
+      view: 'requestView',
+      data: {
+        step: 'confirm',
+        accountId: account.address,
+        requestId: queuedRequest.handlerId
+      }
+    })
+  })
+
+  it('resumes non-terminal persisted activity after construction', async () => {
+    const hash = '0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'
+    const receiptBlock = 200
+
+    provider.send = jest.fn((payload: any, cb: any) => {
+      if (payload.method === 'eth_getTransactionReceipt') {
+        return cb({
+          result: {
+            status: '0x1',
+            blockNumber: intToHex(receiptBlock),
+            gasUsed: '0x5208'
+          }
+        })
+      }
+      if (payload.method === 'eth_blockNumber')
+        return cb({ result: intToHex(receiptBlock + TRANSACTION_CONFIRMATION_TARGET) })
+
+      cb({ result: null })
+    })
+
+    store.set('main.activity', {
+      [hash]: {
+        id: hash,
+        hash,
+        account: account.address,
+        address: account.address,
+        chainId: 1,
+        chainType: 'ethereum',
+        nonce: request.data.nonce,
+        status: 'submitted',
+        confirmations: 0,
+        submittedAt: Date.now(),
+        updatedAt: Date.now(),
+        data: {
+          ...request.data,
+          from: account.address,
+          chainId: '0x1'
+        }
+      }
+    })
+
+    new AccountsClass()
+    await Promise.resolve()
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(store('main.activity', hash)).toEqual(
+      expect.objectContaining({
+        status: 'succeeded',
+        confirmations: TRANSACTION_CONFIRMATION_TARGET
+      })
+    )
+  })
 })
 
 describe('#resolveRequest', () => {

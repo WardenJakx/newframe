@@ -40,12 +40,56 @@ import { openBlockExplorer } from '../windows/window'
 import { ApprovalType } from '../../resources/constants'
 import { accountNS } from '../../resources/domain/account'
 import { chainUsesOptimismFees } from '../../resources/utils/chains'
+import type { ActivityRecord } from '../store/state'
 
 function notify(title: string, body: string, action: (event: Electron.Event) => void) {
   const notification = new Notification({ title, body })
   notification.on('click', action)
 
   setTimeout(() => notification.show(), 1000)
+}
+
+function shortHash(hash?: string) {
+  if (!hash) return ''
+  return `${hash.substring(0, 6)}...${hash.substring(hash.length - 4)}`
+}
+
+function cloneForActivity(value: any) {
+  if (value === undefined) return undefined
+
+  try {
+    return JSON.parse(JSON.stringify(value, (_key, nextValue) => {
+      if (typeof nextValue === 'function') return undefined
+      return nextValue
+    }))
+  } catch {
+    return undefined
+  }
+}
+
+function transactionActivityId(hash: string) {
+  return hash
+}
+
+function transactionNotificationId(hash: string) {
+  return `transaction:${hash}`
+}
+
+function normalizeQuantity(value?: string | number | null) {
+  if (value === undefined || value === null || value === '') return ''
+
+  try {
+    return BigInt(value).toString()
+  } catch {
+    return String(value).toLowerCase()
+  }
+}
+
+function normalizeChainId(value?: string | number | null) {
+  if (value === undefined || value === null || value === '') return undefined
+
+  const chainId = typeof value === 'string' ? parseInt(value, value.startsWith('0x') ? 16 : 10) : value
+  return Number.isFinite(chainId) ? chainId : undefined
 }
 
 function toTransactionsByLayer(requests: Record<string, AccountRequest>, chainId?: number) {
@@ -105,6 +149,7 @@ export class Accounts extends EventEmitter {
   accounts: Record<string, FrameAccount>
 
   private dataScanner?: DataScanner
+  private activityMonitors: Record<string, () => void> = {}
 
   constructor() {
     super()
@@ -123,6 +168,8 @@ export class Accounts extends EventEmitter {
       (persistedCurrent && this.accounts[persistedCurrent]?.id) ||
       Object.values(this.accounts).find((acct) => acct.active)?.id ||
       ''
+
+    this.resumeActivityTracking()
   }
 
   get(id: string) {
@@ -131,6 +178,404 @@ export class Accounts extends EventEmitter {
 
   private getTransactionRequest(account: FrameAccount, id: string): TransactionRequest {
     return account.getRequest(id)
+  }
+
+  private getTransactionChain(req: TransactionRequest): Chain | undefined {
+    const chainId = req.data?.chainId ? parseInt(req.data.chainId, 16) : 0
+    if (!chainId) return undefined
+
+    return {
+      type: 'ethereum',
+      id: chainId
+    }
+  }
+
+  private getTransactionActivityDisplay(req: TransactionRequest, chain?: Chain) {
+    const value = req.data?.value
+    const chainSymbol =
+      (chain ? store('main.networks.ethereum', chain.id, 'symbol') : '') ||
+      (chain ? store('main.networksMeta.ethereum', chain.id, 'nativeCurrency.symbol') : '') ||
+      'ETH'
+
+    if (value && value !== '0x0') {
+      return {
+        title: `Send ${chainSymbol}`,
+        subtitle: 'Native transfer'
+      }
+    }
+
+    if (req.decodedData?.method) {
+      return {
+        title: req.decodedData.method,
+        subtitle: req.decodedData.contractName || 'Contract interaction'
+      }
+    }
+
+    return {
+      title: req.classification === 'CONTRACT_DEPLOY' ? 'Deploy contract' : 'Transaction',
+      subtitle: req.classification === 'CONTRACT_DEPLOY' ? 'Contract creation' : 'Submitted transaction'
+    }
+  }
+
+  private transactionActivityRecord(
+    account: FrameAccount,
+    handlerId: string,
+    req: TransactionRequest,
+    hash: string
+  ): ActivityRecord {
+    const chain = this.getTransactionChain(req)
+    const display = this.getTransactionActivityDisplay(req, chain)
+
+    return {
+      id: transactionActivityId(hash),
+      hash,
+      handlerId,
+      account: account.address,
+      address: account.address,
+      chainId: chain?.id,
+      chainType: chain?.type || 'ethereum',
+      nonce: req.data?.nonce,
+      origin: req.origin,
+      submittedAt: Date.now(),
+      updatedAt: Date.now(),
+      status: 'submitted' as const,
+      confirmations: req.tx?.confirmations || 0,
+      receipt: cloneForActivity(req.tx?.receipt),
+      data: cloneForActivity(req.data),
+      payload: cloneForActivity(req.payload),
+      decodedData: cloneForActivity(req.decodedData),
+      tokenData: cloneForActivity(req.tokenData),
+      chainData: cloneForActivity(req.chainData),
+      simulation: cloneForActivity(req.simulation),
+      recognizedActions: cloneForActivity(req.recognizedActions),
+      classification: req.classification,
+      recipient: req.recipient,
+      recipientType: req.recipientType,
+      display
+    }
+  }
+
+  private upsertTransactionNotification(account: FrameAccount, req: TransactionRequest, hash: string) {
+    const chain = this.getTransactionChain(req)
+    const display = this.getTransactionActivityDisplay(req, chain)
+    const chainName = chain ? store('main.networks.ethereum', chain.id, 'name') : ''
+    const now = Date.now()
+
+    store.upsertPendingNotification({
+      id: transactionNotificationId(hash),
+      state: 'pending',
+      title: display.title,
+      detail: chainName ? `${chainName} ${shortHash(hash)}` : shortHash(hash),
+      createdAt: now,
+      updatedAt: now,
+      expiresAt: now + 60 * 1000,
+      leadingIcon: chain ? { chainType: chain.type, chainId: chain.id } : undefined,
+      target: {
+        type: 'transactionActivity',
+        activityId: transactionActivityId(hash),
+        hash,
+        account: account.address,
+        chainId: chain?.id,
+        chainType: chain?.type || 'ethereum'
+      }
+    })
+  }
+
+  private recordSubmittedTransaction(account: FrameAccount, handlerId: string, req: TransactionRequest, hash: string) {
+    store.upsertSubmittedActivity(this.transactionActivityRecord(account, handlerId, req, hash))
+    this.upsertTransactionNotification(account, req, hash)
+  }
+
+  private updateTransactionActivity(req: TransactionRequest, confirmations: number) {
+    const hash = req.tx?.hash
+    if (!hash) return
+
+    const receipt = cloneForActivity(req.tx?.receipt)
+    const receiptStatus = (req.tx?.receipt as any)?.status
+
+    if (receiptStatus === '0x0') {
+      return this.finalizeTransactionActivity(req, 'reverted', {
+        receipt,
+        confirmations
+      })
+    }
+
+    store.updateActivity(transactionActivityId(hash), {
+      status: 'confirming',
+      confirmations,
+      receipt,
+      updatedAt: Date.now()
+    })
+  }
+
+  private finalizeTransactionActivity(
+    req: TransactionRequest,
+    status: 'succeeded' | 'reverted',
+    update: any = {}
+  ) {
+    const hash = req.tx?.hash
+    if (!hash) return
+
+    const now = Date.now()
+    const notificationState = status === 'succeeded' ? 'completed' : 'failed'
+
+    store.finalizeActivity(transactionActivityId(hash), status, {
+      ...update,
+      receipt: update.receipt ?? cloneForActivity(req.tx?.receipt),
+      confirmations: update.confirmations ?? req.tx?.confirmations ?? 0,
+      completedAt: update.completedAt ?? now,
+      updatedAt: update.updatedAt ?? now
+    })
+
+    store.resolveNotification(transactionNotificationId(hash), notificationState, {
+      detail: status === 'succeeded' ? 'Confirmed' : 'Reverted',
+      expiresAt: now + 3000,
+      updatedAt: now
+    })
+  }
+
+  private pruneTransactionActivity(req: TransactionRequest) {
+    const hash = req.tx?.hash
+    if (!hash) return
+
+    store.pruneActivity(transactionActivityId(hash))
+  }
+
+  private receiptWasReverted(req: TransactionRequest) {
+    return (req.tx?.receipt as any)?.status === '0x0'
+  }
+
+  private transactionChainId(req: TransactionRequest) {
+    return normalizeChainId(req.data?.chainId)
+  }
+
+  private transactionNonce(req: TransactionRequest) {
+    return normalizeQuantity(req.data?.nonce)
+  }
+
+  private inSameNonceLane(a: TransactionRequest, b: TransactionRequest) {
+    const aChainId = this.transactionChainId(a)
+    const bChainId = this.transactionChainId(b)
+    const aNonce = this.transactionNonce(a)
+    const bNonce = this.transactionNonce(b)
+
+    return Boolean(aChainId && bChainId && aChainId === bChainId && aNonce && bNonce && aNonce === bNonce)
+  }
+
+  private activityChainId(activity: ActivityRecord) {
+    return normalizeChainId(activity.chainId ?? (activity.data as any)?.chainId)
+  }
+
+  private activityNonce(activity: ActivityRecord) {
+    return normalizeQuantity(activity.nonce ?? (activity.data as any)?.nonce)
+  }
+
+  private activityAccount(activity: ActivityRecord) {
+    return (activity.account || activity.address || (activity.data as any)?.from || '').toLowerCase()
+  }
+
+  private isNonTerminalActivity(activity?: ActivityRecord) {
+    return activity?.status === 'submitted' || activity?.status === 'confirming'
+  }
+
+  private getActivityChain(activity: ActivityRecord): Chain | undefined {
+    const chainId = this.activityChainId(activity)
+    if (!chainId) return undefined
+
+    return {
+      type: 'ethereum',
+      id: chainId
+    }
+  }
+
+  private toActivityRequest(activity: ActivityRecord): TransactionRequest {
+    const chainId = this.activityChainId(activity)
+    const data = {
+      ...((activity.data as any) || {}),
+      chainId: (activity.data as any)?.chainId || (chainId ? addHexPrefix(chainId.toString(16)) : undefined),
+      nonce: (activity.data as any)?.nonce || activity.nonce
+    }
+
+    return {
+      type: 'transaction',
+      handlerId: activity.handlerId || activity.id,
+      origin: (activity.origin as string) || frameOriginId,
+      account: this.activityAccount(activity),
+      payload:
+        (activity.payload as RPC.SendTransaction.Request) ||
+        ({
+          id: 1,
+          jsonrpc: '2.0',
+          method: 'eth_sendTransaction',
+          params: [data]
+        } as RPC.SendTransaction.Request),
+      data,
+      decodedData: activity.decodedData,
+      tokenData: activity.tokenData,
+      chainData: activity.chainData,
+      simulation: activity.simulation,
+      tx: {
+        hash: activity.hash || undefined,
+        receipt: activity.receipt as TransactionReceipt,
+        confirmations: Number(activity.confirmations || 0)
+      },
+      approvals: [],
+      status: activity.status === 'confirming' ? RequestStatus.Confirming : RequestStatus.Verifying,
+      mode: RequestMode.Monitor,
+      notice: activity.status === 'confirming' ? 'Confirming' : 'Verifying',
+      feesUpdatedByUser: false,
+      recipient: activity.recipient,
+      recipientType: activity.recipientType || '',
+      recognizedActions: activity.recognizedActions || [],
+      classification: activity.classification
+    } as unknown as TransactionRequest
+  }
+
+  private async getActivityReceiptConfirmations(activity: ActivityRecord, targetChain: Chain) {
+    return new Promise<{ confirmations: number; receipt?: TransactionReceipt }>((resolve, reject) => {
+      const targetChainId = addHexPrefix(targetChain.id.toString(16))
+
+      this.sendRequest(
+        { method: 'eth_getTransactionReceipt', params: [activity.hash], chainId: targetChainId },
+        (receiptRes: RPCResponsePayload) => {
+          if (receiptRes.error) return reject(receiptRes.error)
+
+          const receipt = receiptRes.result as TransactionReceipt | undefined
+          if (!receipt) {
+            return resolve({ confirmations: Number(activity.confirmations || 0) })
+          }
+
+          this.sendRequest(
+            { method: 'eth_blockNumber', params: [], chainId: targetChainId },
+            (blockRes: RPCResponsePayload) => {
+              if (blockRes.error) return reject(new Error(JSON.stringify(blockRes.error)))
+
+              const blockHeight = parseInt(blockRes.result, 16)
+              const receiptBlock = parseInt(receipt.blockNumber, 16)
+
+              resolve({
+                confirmations: Math.max(blockHeight - receiptBlock, 0),
+                receipt
+              })
+            }
+          )
+        }
+      )
+    })
+  }
+
+  private pruneSameNonceActivityLosers(winningActivity: ActivityRecord) {
+    const winnerHash = (winningActivity.hash || '').toLowerCase()
+    const winnerAccount = this.activityAccount(winningActivity)
+    const winnerChainId = this.activityChainId(winningActivity)
+    const winnerNonce = this.activityNonce(winningActivity)
+
+    if (!winnerHash || !winnerAccount || !winnerChainId || !winnerNonce) return
+
+    const activity = (store('main.activity') || {}) as Record<string, ActivityRecord>
+    Object.values(activity).forEach((candidate) => {
+      if (!this.isNonTerminalActivity(candidate)) return
+      if ((candidate.hash || '').toLowerCase() === winnerHash) return
+      if (this.activityAccount(candidate) !== winnerAccount) return
+      if (this.activityChainId(candidate) !== winnerChainId) return
+      if (this.activityNonce(candidate) !== winnerNonce) return
+
+      store.pruneActivity(candidate.id)
+      this.stopActivityMonitor(candidate.id)
+    })
+  }
+
+  private stopActivityMonitor(id: string) {
+    this.activityMonitors[id]?.()
+    delete this.activityMonitors[id]
+  }
+
+  private resumeActivityMonitor(activity: ActivityRecord) {
+    if (!activity.id || this.activityMonitors[activity.id] || !activity.hash) return
+    if (!this.isNonTerminalActivity(activity)) return
+
+    const monitor = async () => {
+      const currentActivity = ((store('main.activity') || {}) as Record<string, ActivityRecord>)[activity.id]
+      if (!this.isNonTerminalActivity(currentActivity) || !currentActivity.hash) {
+        return this.stopActivityMonitor(activity.id)
+      }
+
+      const targetChain = this.getActivityChain(currentActivity)
+      if (!targetChain) return this.stopActivityMonitor(activity.id)
+
+      try {
+        const { confirmations, receipt } = await this.getActivityReceiptConfirmations(currentActivity, targetChain)
+        if (!receipt) return
+
+        const txRequest = this.toActivityRequest({
+          ...currentActivity,
+          confirmations,
+          receipt
+        })
+        txRequest.tx = {
+          ...txRequest.tx,
+          confirmations,
+          receipt
+        }
+
+        this.pruneSameNonceActivityLosers(currentActivity)
+
+        if ((receipt as any)?.status === '0x0') {
+          this.finalizeTransactionActivity(txRequest, 'reverted', { confirmations, receipt })
+          return this.stopActivityMonitor(activity.id)
+        }
+
+        if (confirmations >= TRANSACTION_CONFIRMATION_TARGET) {
+          this.finalizeTransactionActivity(txRequest, 'succeeded', { confirmations, receipt })
+          return this.stopActivityMonitor(activity.id)
+        }
+
+        store.updateActivity(activity.id, {
+          status: 'confirming',
+          confirmations,
+          receipt,
+          updatedAt: Date.now()
+        })
+      } catch (e) {
+        log.error('error resuming activity transaction monitor', e)
+      }
+    }
+
+    const timer = setInterval(monitor, 15 * 1000)
+    this.activityMonitors[activity.id] = () => clearInterval(timer)
+    void monitor()
+  }
+
+  private resumeActivityTracking() {
+    const activity = (store('main.activity') || {}) as Record<string, ActivityRecord>
+
+    Object.values(activity).forEach((record) => {
+      this.resumeActivityMonitor(record)
+    })
+  }
+
+  private openNextActionableRequest(account: FrameAccount) {
+    const panelNav = store('windows.panel.nav') || []
+    if (panelNav[0]?.view === 'requestView') return
+
+    const nextRequest = Object.values(account.requests)
+      .filter(
+        (req) =>
+          req.mode !== RequestMode.Monitor &&
+          !['confirmed', 'declined', 'error', 'success'].includes(req.status || '')
+      )
+      .sort((a, b) => (a.created || 0) - (b.created || 0))[0]
+
+    if (!nextRequest) return
+
+    store.navForward('panel', {
+      view: 'requestView',
+      data: {
+        step: 'confirm',
+        accountId: account.id,
+        requestId: nextRequest.handlerId
+      }
+    })
   }
 
   async add(address: Address, name = '', options = {}, cb: Callback<FrameAccount> = () => {}) {
@@ -357,35 +802,65 @@ export class Accounts extends EventEmitter {
                   }
                 }
 
-                if (receiptRes.result.status === '0x1' && txRequest.status === RequestStatus.Verifying) {
-                  txRequest.status = RequestStatus.Confirming
-                  txRequest.notice = 'Confirming'
-                  txRequest.completed = Date.now()
-                  const hash = txRequest.tx.hash || ''
-                  const h = hash.substring(0, 6) + '...' + hash.substring(hash.length - 4)
-                  const body = `Transaction ${h} successful! \n Click for details`
+                const blockHeight = parseInt(res.result, 16)
+                const receiptBlock = parseInt((txRequest.tx.receipt as TransactionReceipt).blockNumber, 16)
+                const confirmations = blockHeight - receiptBlock
 
-                  // Drop any other pending txs with same nonce
+                txRequest.tx = {
+                  ...txRequest.tx,
+                  confirmations
+                }
+
+                this.updateTransactionActivity(txRequest, confirmations)
+
+                const receiptStatus = receiptRes.result.status
+
+                if (receiptStatus === '0x0' && txRequest.status === RequestStatus.Verifying) {
+                  txRequest.status = RequestStatus.Error
+                  txRequest.notice = 'Reverted'
+                  txRequest.completed = Date.now()
+                  account.update()
+                }
+
+                if (receiptStatus && txRequest.data?.nonce) {
+                  this.pruneSameNonceActivityLosers(this.transactionActivityRecord(account, id, txRequest, hash))
+
+                  // Drop any other pending txs with same nonce.
                   Object.keys(account.requests).forEach((k) => {
+                    if (k === id) return
+
+                    const maybeTxReq = account.requests[k]
+                    if (maybeTxReq?.type !== 'transaction') return
+
                     const txReq = this.getTransactionRequest(account, k)
-                    if (
-                      txReq.status === RequestStatus.Verifying &&
-                      txReq.data.nonce === (account.requests[id] as TransactionRequest).data.nonce
-                    ) {
+                    const canStillBePending =
+                      !txReq.tx?.receipt &&
+                      [RequestStatus.Verifying, RequestStatus.Sent, RequestStatus.Sending].includes(
+                        txReq.status as RequestStatus
+                      )
+
+                    if (canStillBePending && this.inSameNonceLane(txReq, txRequest)) {
+                      this.pruneTransactionActivity(txReq)
                       txReq.status = RequestStatus.Error
                       txReq.notice = 'Dropped'
                       setTimeout(() => this.accounts[account.address] && this.removeRequest(account, k), 8000)
                     }
                   })
+                }
+
+                if (receiptStatus === '0x1' && txRequest.status === RequestStatus.Verifying) {
+                  txRequest.status = RequestStatus.Confirming
+                  txRequest.notice = 'Confirming'
+                  txRequest.completed = Date.now()
+                  const hash = txRequest.tx.hash || ''
+                  const body = `Transaction ${shortHash(hash)} successful! \n Click for details`
 
                   // If Newframe is hidden, trigger native notification
                   notify('Transaction Successful', body, () => {
                     openBlockExplorer(targetChain, hash)
                   })
                 }
-                const blockHeight = parseInt(res.result, 16)
-                const receiptBlock = parseInt((txRequest.tx.receipt as TransactionReceipt).blockNumber, 16)
-                resolve(blockHeight - receiptBlock)
+                resolve(confirmations)
               }
             }
           )
@@ -441,9 +916,19 @@ export class Accounts extends EventEmitter {
 
                 account.update()
 
+                if (this.receiptWasReverted(txRequest)) {
+                  setTimeout(
+                    () => this.accounts[account.address] && this.removeRequest(account, requestId),
+                    CONFIRMED_REQUEST_CLOSE_MS
+                  )
+                  clear()
+                  return
+                }
+
                 if (confirmations >= TRANSACTION_CONFIRMATION_TARGET) {
                   txRequest.status = RequestStatus.Confirmed
                   txRequest.notice = 'Confirmed'
+                  this.finalizeTransactionActivity(txRequest, 'succeeded', { confirmations })
                   account.update()
                   setTimeout(
                     () => this.accounts[account.address] && this.removeRequest(account, requestId),
@@ -524,9 +1009,14 @@ export class Accounts extends EventEmitter {
                 txRequest.tx = { ...txRequest.tx, confirmations }
                 account.update()
 
+                if (this.receiptWasReverted(txRequest)) {
+                  return removeSubscription(CONFIRMED_REQUEST_CLOSE_MS)
+                }
+
                 if (confirmations >= TRANSACTION_CONFIRMATION_TARGET) {
                   txRequest.status = RequestStatus.Confirmed
                   txRequest.notice = 'Confirmed'
+                  this.finalizeTransactionActivity(txRequest, 'succeeded', { confirmations })
                   account.update()
 
                   removeSubscription(CONFIRMED_REQUEST_CLOSE_MS)
@@ -761,6 +1251,7 @@ export class Accounts extends EventEmitter {
   close() {
     this.dataScanner?.close()
     this.dataScanner = undefined
+    Object.keys(this.activityMonitors).forEach((id) => this.stopActivityMonitor(id))
     // usbDetect.stopMonitoring()
   }
 
@@ -924,11 +1415,16 @@ export class Accounts extends EventEmitter {
 
     const currentAccount = this.current()
     if (currentAccount && currentAccount.requests[handlerId]) {
-      currentAccount.requests[handlerId].status = RequestStatus.Verifying
-      currentAccount.requests[handlerId].notice = 'Verifying'
-      currentAccount.requests[handlerId].mode = RequestMode.Monitor
+      const txRequest = this.getTransactionRequest(currentAccount, handlerId)
+
+      txRequest.status = RequestStatus.Verifying
+      txRequest.notice = 'Verifying'
+      txRequest.mode = RequestMode.Monitor
       currentAccount.update()
 
+      this.recordSubmittedTransaction(currentAccount, handlerId, txRequest, hash)
+      store.navClearReq(handlerId, false)
+      this.openNextActionableRequest(currentAccount)
       this.txMonitor(currentAccount, handlerId, hash)
     }
   }

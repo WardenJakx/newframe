@@ -27,10 +27,20 @@ import {
   setAutoDiscoverTokens as setAutoDiscoverTokensAction,
   setPortfolioApiKey as setPortfolioApiKeyAction,
   revokePermission as revokePermissionAction,
+  upsertSubmittedActivity as upsertSubmittedActivityAction,
+  updateActivity as updateActivityAction,
+  finalizeActivity as finalizeActivityAction,
+  pruneActivity as pruneActivityAction,
   navClearReq as clearNavRequestAction,
   navClearSigner as clearNavSignerAction,
   updateTypedDataRequest as updateTypedDataAction
 } from '../../../../main/store/actions'
+import {
+  dismissNotification as dismissNotificationAction,
+  expireNotification as expireNotificationAction,
+  resolveNotification as resolveNotificationAction,
+  upsertPendingNotification as upsertPendingNotificationAction
+} from '../../../../resources/store/actions.panel'
 import { NATIVE_CURRENCY } from '../../../../resources/constants'
 import { toTokenId } from '../../../../resources/domain/balance'
 
@@ -1676,5 +1686,177 @@ describe('#updateTypedDataRequest', () => {
     })
 
     expect(requests[request].typedMessage.data.oldAttribute).toBeTruthy()
+  })
+})
+
+describe('#activity actions', () => {
+  let activity: any
+
+  const updaterFn = (node: any, ...args: any[]) => {
+    expect(node).toBe('main.activity')
+
+    if (typeof args[0] === 'string') {
+      const [id, update] = args
+      activity[id] = update(activity[id])
+    } else {
+      const [update] = args
+      activity = update(activity)
+    }
+  }
+
+  const upsertSubmittedActivity = (transaction: any) =>
+    upsertSubmittedActivityAction(updaterFn, transaction)
+  const updateActivity = (id: string, update: any) => updateActivityAction(updaterFn, id, update)
+  const finalizeActivity = (id: string, status: string, update: any) =>
+    finalizeActivityAction(updaterFn, id, status, update)
+  const pruneActivity = (id: string) => pruneActivityAction(updaterFn, id)
+
+  beforeEach(() => {
+    activity = {}
+  })
+
+  it('tracks a transaction activity lifecycle', () => {
+    const submittedAt = new Date('2024-01-01T00:00:00.000Z')
+    const confirmingAt = new Date('2024-01-01T00:01:00.000Z')
+    const completedAt = new Date('2024-01-01T00:02:00.000Z')
+
+    jest.setSystemTime(submittedAt)
+    upsertSubmittedActivity({
+      id: 'tx-1',
+      hash: '0x123',
+      handlerId: 'handler-1',
+      account: owner,
+      chainId: 1,
+      chainType: 'ethereum',
+      origin: 'frame.test',
+      payload: { method: 'eth_sendTransaction' },
+      display: { title: 'Send ETH' }
+    })
+
+    expect(activity['tx-1']).toEqual({
+      id: 'tx-1',
+      hash: '0x123',
+      handlerId: 'handler-1',
+      account: owner,
+      chainId: 1,
+      chainType: 'ethereum',
+      origin: 'frame.test',
+      payload: { method: 'eth_sendTransaction' },
+      display: { title: 'Send ETH' },
+      status: 'submitted',
+      submittedAt: submittedAt.getTime(),
+      updatedAt: submittedAt.getTime(),
+      confirmations: 0
+    })
+
+    jest.setSystemTime(confirmingAt)
+    updateActivity('tx-1', { status: 'confirming', confirmations: 2 })
+
+    expect(activity['tx-1']).toEqual(
+      expect.objectContaining({
+        status: 'confirming',
+        confirmations: 2,
+        updatedAt: confirmingAt.getTime()
+      })
+    )
+
+    jest.setSystemTime(completedAt)
+    finalizeActivity('tx-1', 'succeeded', { receipt: { status: '0x1' } })
+
+    expect(activity['tx-1']).toEqual(
+      expect.objectContaining({
+        status: 'succeeded',
+        completedAt: completedAt.getTime(),
+        updatedAt: completedAt.getTime(),
+        receipt: { status: '0x1' }
+      })
+    )
+
+    pruneActivity('tx-1')
+
+    expect(activity).toEqual({})
+  })
+})
+
+describe('#status notification actions', () => {
+  let notifications: any
+
+  const updaterFn = (node: any, ...args: any[]) => {
+    expect(node).toBe('view.notifications')
+
+    if (typeof args[0] === 'string') {
+      const [id, update] = args
+      notifications[id] = update(notifications[id])
+    } else {
+      const [update] = args
+      notifications = update(notifications)
+    }
+  }
+
+  const upsertPendingNotification = (notification: any) =>
+    upsertPendingNotificationAction(updaterFn, notification)
+  const resolveNotification = (id: string, state: 'completed' | 'failed', update: any) =>
+    resolveNotificationAction(updaterFn, id, state, update)
+  const dismissNotification = (id: string) => dismissNotificationAction(updaterFn, id)
+  const expireNotification = (id: string) => expireNotificationAction(updaterFn, id)
+
+  beforeEach(() => {
+    notifications = {}
+  })
+
+  it('tracks a transient status notification lifecycle', () => {
+    const createdAt = new Date('2024-01-01T00:00:00.000Z')
+    const resolvedAt = new Date('2024-01-01T00:01:00.000Z')
+    const dismissedAt = new Date('2024-01-01T00:02:00.000Z')
+    const expiresAt = resolvedAt.getTime() + 5000
+
+    jest.setSystemTime(createdAt)
+    upsertPendingNotification({
+      id: 'notification-1',
+      title: 'Transaction submitted',
+      detail: 'Waiting for confirmation',
+      target: { activityId: 'tx-1' }
+    })
+
+    expect(notifications['notification-1']).toEqual({
+      id: 'notification-1',
+      title: 'Transaction submitted',
+      detail: 'Waiting for confirmation',
+      target: { activityId: 'tx-1' },
+      state: 'pending',
+      createdAt: createdAt.getTime(),
+      updatedAt: createdAt.getTime(),
+      hidden: false
+    })
+
+    jest.setSystemTime(resolvedAt)
+    resolveNotification('notification-1', 'completed', {
+      detail: 'Confirmed',
+      expiresAt
+    })
+
+    expect(notifications['notification-1']).toEqual(
+      expect.objectContaining({
+        state: 'completed',
+        detail: 'Confirmed',
+        expiresAt,
+        updatedAt: resolvedAt.getTime()
+      })
+    )
+
+    jest.setSystemTime(dismissedAt)
+    dismissNotification('notification-1')
+
+    expect(notifications['notification-1']).toEqual(
+      expect.objectContaining({
+        hidden: true,
+        dismissedAt: dismissedAt.getTime(),
+        updatedAt: dismissedAt.getTime()
+      })
+    )
+
+    expireNotification('notification-1')
+
+    expect(notifications).toEqual({})
   })
 })

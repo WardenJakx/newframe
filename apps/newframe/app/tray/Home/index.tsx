@@ -26,6 +26,13 @@ import { cachedImageUrl, isCachedImageReference } from '../../../resources/domai
 import { matchFilter } from '../../../resources/utils'
 
 import Requests from '../Account/Requests'
+import TransactionInformation from '../Account/Requests/TransactionRequest/TransactionInformation'
+import StatusGlyph from '../../../resources/Components/StatusGlyph'
+import {
+  getTransactionEffects,
+  getTransactionIntent,
+  TRANSACTION_CONFIRMATION_TARGET
+} from '../../../resources/domain/transaction'
 
 const signerTypeLabels: Record<string, string> = {
   ring: 'Hot Signer',
@@ -62,6 +69,162 @@ const INITIAL_SECONDARY_POSITION_ROWS = 50
 const SECONDARY_POSITION_ROWS_INCREMENT = 50
 const INITIAL_DUST_ROWS = 50
 const DUST_ROWS_INCREMENT = 50
+const PENDING_NOTIFICATION_MS = 60 * 1000
+const RESOLVED_NOTIFICATION_MS = 3000
+
+const timestamp = (value: any, fallback = 0) => {
+  if (typeof value === 'number') return value
+  if (value instanceof Date) return value.getTime()
+  if (typeof value === 'string') {
+    const parsed = Date.parse(value)
+    if (!Number.isNaN(parsed)) return parsed
+    const numeric = Number(value)
+    if (!Number.isNaN(numeric)) return numeric
+  }
+  return fallback
+}
+
+const notificationExpiresAt = (notification: any) => {
+  const fallbackBase = timestamp(notification.updatedAt, timestamp(notification.createdAt, Date.now()))
+  const fallbackDuration =
+    notification.state === 'pending' ? PENDING_NOTIFICATION_MS : RESOLVED_NOTIFICATION_MS
+  return timestamp(notification.expiresAt, fallbackBase + fallbackDuration)
+}
+
+const transactionStatusLabel = (status?: string) => {
+  switch (status) {
+    case 'submitted':
+      return 'Submitted'
+    case 'confirming':
+      return 'Confirming'
+    case 'succeeded':
+      return 'Confirmed'
+    case 'reverted':
+      return 'Reverted'
+    default:
+      return 'Submitted'
+  }
+}
+
+const requestStatusFromActivity = (status?: string) => {
+  switch (status) {
+    case 'submitted':
+      return 'verifying'
+    case 'confirming':
+      return 'confirming'
+    case 'succeeded':
+      return 'confirmed'
+    case 'reverted':
+      return 'error'
+    default:
+      return 'verifying'
+  }
+}
+
+const activityGlyphState = (status?: string) => {
+  if (status === 'succeeded') return 'completed'
+  if (status === 'reverted') return 'failed'
+  return 'pending'
+}
+
+const notificationLabel = (state?: string) => {
+  if (state === 'completed') return 'Confirmed'
+  if (state === 'failed') return 'Failed'
+  return 'Pending'
+}
+
+const StatusNotifications = ({
+  notifications,
+  renderChainIcon,
+  onDismiss,
+  onExpire,
+  onOpen
+}: {
+  notifications: Record<string, any>
+  renderChainIcon: (notification: any) => React.ReactNode
+  onDismiss: (id: string) => void
+  onExpire: (id: string) => void
+  onOpen: (notification: any) => void
+}) => {
+  const entries = Object.values(notifications || {})
+
+  React.useEffect(() => {
+    const timers = entries.map((notification: any) => {
+      const expiresAt = notificationExpiresAt(notification)
+      const wait = Math.max(0, expiresAt - Date.now())
+
+      return setTimeout(() => onExpire(notification.id), wait)
+    })
+
+    return () => timers.forEach((timer) => clearTimeout(timer))
+  }, [notifications, onExpire])
+
+  const now = Date.now()
+  const visible = entries
+    .filter((notification: any) => notification?.id && !notification.hidden)
+    .filter((notification: any) => notificationExpiresAt(notification) > now)
+    .sort(
+      (a: any, b: any) =>
+        timestamp(b.createdAt, timestamp(b.updatedAt, 0)) -
+        timestamp(a.createdAt, timestamp(a.updatedAt, 0))
+    )
+    .slice(0, 3)
+
+  if (!visible.length) return null
+
+  return (
+    <div aria-label='Status notifications' className='t2StatusNotifications'>
+      {visible.map((notification: any) => {
+        const state = notification.state || 'pending'
+        return (
+          <div
+            key={notification.id}
+            aria-label={`${notificationLabel(state)} ${notification.title || ''}`}
+            className={`t2StatusNotification t2StatusNotification-${state}`}
+            onClick={() => onOpen(notification)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                onOpen(notification)
+              }
+            }}
+            role='button'
+            tabIndex={0}
+          >
+            <StatusGlyph state={state === 'completed' ? 'completed' : state === 'failed' ? 'failed' : 'pending'} />
+            <div className='t2StatusNotificationChain'>{renderChainIcon(notification)}</div>
+            <div className='t2StatusNotificationCopy'>
+              <div className='t2StatusNotificationTopline'>
+                <span>{notificationLabel(state)}</span>
+                <span>{notification.title}</span>
+              </div>
+              <div className='t2StatusNotificationDetail'>{notification.detail}</div>
+            </div>
+            <div
+              aria-label='Dismiss notification'
+              className='t2StatusNotificationDismiss'
+              onClick={(e) => {
+                e.stopPropagation()
+                onDismiss(notification.id)
+              }}
+              onKeyDown={(e) => {
+                e.stopPropagation()
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  onDismiss(notification.id)
+                }
+              }}
+              role='button'
+              tabIndex={0}
+            >
+              {svg.x(9)}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
 
 const AddressQRCode = ({ address }: { address: string }) => {
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null)
@@ -249,6 +412,7 @@ class Home extends React.Component<any, any> {
       addHardwarePairCode: '',
       pendingChainRequest: null,
       assetDetails: null,
+      activityDetails: '',
       receiveAccount: '',
       latticeEndpoint,
       latticeEndpointMode,
@@ -530,6 +694,50 @@ class Home extends React.Component<any, any> {
     return this.state.network === 0 || this.state.network === chainId
   }
 
+  getActivityRecords(account: any) {
+    const activity = this.store('main.activity') || {}
+    const address = (account?.address || '').toLowerCase()
+
+    return Object.values(activity)
+      .filter((record: any) => {
+        const recordAddress = (record.account || record.address || '').toLowerCase()
+        const chainId = Number(record.chainId)
+        return recordAddress === address && this.inNetworkFilter(chainId)
+      })
+      .sort(
+        (a: any, b: any) =>
+          timestamp(b.submittedAt, timestamp(b.updatedAt, 0)) -
+          timestamp(a.submittedAt, timestamp(a.updatedAt, 0))
+      )
+  }
+
+  copyActivityValue(value?: string) {
+    if (!value) return
+    link.send('tray:clipboardData', value)
+  }
+
+  activityRequestLike(activity: any) {
+    return {
+      ...activity,
+      type: 'transaction',
+      data: activity.data || {},
+      payload: activity.payload,
+      decodedData: activity.decodedData,
+      tokenData: activity.tokenData,
+      simulation: activity.simulation,
+      recognizedActions: activity.recognizedActions || [],
+      classification: activity.classification,
+      recipient: activity.recipient,
+      status: requestStatusFromActivity(activity.status),
+      notice: transactionStatusLabel(activity.status),
+      tx: {
+        hash: activity.hash,
+        confirmations: activity.confirmations || 0,
+        receipt: activity.receipt
+      }
+    }
+  }
+
   getBalances(address: string) {
     const rawBalances = this.store('main.balances', address) || []
     const rates = this.store('main.rates')
@@ -571,6 +779,38 @@ class Home extends React.Component<any, any> {
     })
     link.send('*:addFrame', 'dappLauncher')
     link.send('tray:action', 'setDash', { showing: false })
+  }
+
+  openActivityTarget(target: any) {
+    const activityId = target?.activityId || target?.hash || ''
+    if (!activityId) return
+
+    const current = this.store('selected.current')
+    const account = target.account || ''
+
+    if (account && account !== current) {
+      link.rpc('setSigner', account, () => {})
+    }
+
+    this.setState({
+      tab: 'activity',
+      query: '',
+      overlay: null,
+      accountsOpen: false,
+      activityDetails: activityId
+    })
+  }
+
+  openActivity(activity: any) {
+    if (!activity?.id) return
+
+    this.setState({
+      tab: 'activity',
+      query: '',
+      overlay: null,
+      accountsOpen: false,
+      activityDetails: activity.id
+    })
   }
 
   selectedWalletHasAssets() {
@@ -2154,8 +2394,132 @@ class Home extends React.Component<any, any> {
     )
   }
 
-  renderActivity() {
-    return <div className='t2EmptyState'>No Activity Yet</div>
+  renderActivity(account: any) {
+    const records = this.getActivityRecords(account)
+
+    if (!records.length) return <div className='t2EmptyState'>No Activity Yet</div>
+
+    return (
+      <div className='t2ActivityList'>
+        {records.map((activity: any) => {
+          const chainId = Number(activity.chainId)
+          const chain = this.store('main.networks.ethereum', chainId) || {}
+          const status = transactionStatusLabel(activity.status)
+          const submittedAt = timestamp(activity.submittedAt, timestamp(activity.updatedAt, 0))
+          const submitted = submittedAt ? new Date(submittedAt).toLocaleTimeString([], {
+            hour: 'numeric',
+            minute: '2-digit'
+          }) : ''
+          const title = activity.display?.title || 'Transaction'
+          const subtitle = activity.display?.subtitle || chain.name || `Chain ${chainId}`
+
+          return (
+            <div
+              key={activity.id}
+              aria-label={`${title} ${status}`}
+              className='t2ActivityRow cardShow'
+              onClick={() => this.openActivity(activity)}
+              onKeyDown={(e) => this.onKeyboardActivate(e, () => this.openActivity(activity))}
+              role='button'
+              tabIndex={0}
+            >
+              <div className='t2ActivityIconWrap'>
+                <StatusGlyph state={activityGlyphState(activity.status) as any} />
+                <div className='t2ActivityChainBadge'>{this.chainIcon(chainId, 16, 10, 8)}</div>
+              </div>
+              <div className='t2ActivityCopy'>
+                <div className='t2ActivityTitle'>{title}</div>
+                <div className='t2ActivitySubtitle'>
+                  <span>{subtitle}</span>
+                  {activity.hash ? <span>{this.shortAddress(activity.hash)}</span> : null}
+                </div>
+              </div>
+              <div className='t2ActivityMeta'>
+                <div className={`t2ActivityStatus t2ActivityStatus-${activity.status}`}>{status}</div>
+                <div className='t2ActivityTime'>{submitted}</div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    )
+  }
+
+  renderActivityDetails() {
+    const activityId = this.state.activityDetails
+    if (!activityId) return null
+
+    const activity = this.store('main.activity', activityId)
+    if (!activity) return null
+
+    const req = this.activityRequestLike(activity)
+    const chainId = Number(activity.chainId)
+    const chain = this.store('main.networks.ethereum', chainId) || {}
+    const meta = this.store('main.networksMeta.ethereum', chainId) || {}
+    const nativeCurrency = meta.nativeCurrency || { symbol: chain.symbol || 'ETH' }
+    const symbol = nativeCurrency.symbol || chain.symbol || 'ETH'
+    const intent = getTransactionIntent(req, symbol)
+    const effects = getTransactionEffects(req, symbol)
+    const receiptBlock = activity.receipt?.blockNumber ? parseInt(activity.receipt.blockNumber, 16) : undefined
+    const originName = activity.origin ? this.store('main.origins', activity.origin, 'name') || activity.origin : ''
+    const from = activity.data?.from || activity.account || activity.address
+    const to = activity.data?.to
+    const details = [
+      { label: 'Origin', value: originName },
+      { label: 'From', value: this.shortAddress(from), onClick: () => this.copyActivityValue(from) },
+      { label: 'To', value: activity.recipient || this.shortAddress(to), onClick: () => this.copyActivityValue(to) },
+      { label: 'Nonce', value: activity.nonce },
+      {
+        label: 'Hash',
+        value: this.shortAddress(activity.hash),
+        onClick: () => this.copyActivityValue(activity.hash)
+      },
+      { label: 'Contract', value: activity.decodedData?.contractName },
+      { label: 'Method', value: activity.decodedData?.method },
+      { label: 'Decode source', value: activity.decodedData?.source },
+      { label: 'Block', value: receiptBlock ? String(receiptBlock) : undefined }
+    ]
+
+    return (
+      <div aria-label='Transaction activity details' className='t2Overlay t2ActivityOverlay cardShow' role='dialog'>
+        <div className='t2OverlayHeader'>
+          <div
+            aria-label='Back to activity'
+            className='t2OverlayBack'
+            onClick={() => this.setState({ activityDetails: '' })}
+            onKeyDown={(e) => this.onKeyboardActivate(e, () => this.setState({ activityDetails: '' }))}
+            role='button'
+            tabIndex={0}
+          >
+            {svg.chevronLeft(13)}
+          </div>
+          <div className='t2OverlayTitle'>Activity</div>
+          <div className='t2OverlaySpacer' />
+        </div>
+        <div className='t2OverlayScroll t2ActivityDetailScroll'>
+          <TransactionInformation
+            networkName={chain.name || `Chain ${chainId}`}
+            networkColor={meta.primaryColor ? `var(--${meta.primaryColor})` : undefined}
+            title={activity.display?.title || intent.title}
+            subtitle={activity.display?.subtitle || intent.subtitle}
+            statusLabel={transactionStatusLabel(activity.status)}
+            notice={activity.status === 'reverted' ? 'Transaction reverted on-chain' : undefined}
+            progress={{
+              status: requestStatusFromActivity(activity.status),
+              notice: transactionStatusLabel(activity.status),
+              txHash: activity.hash,
+              confirmations: activity.confirmations || 0,
+              confirmationTarget: TRANSACTION_CONFIRMATION_TARGET,
+              blockNumber: receiptBlock
+            }}
+            effects={effects}
+            effectsEmptyText='No direct asset changes detected'
+            details={details}
+            nativeCurrency={nativeCurrency}
+          />
+        </div>
+      </div>
+    )
   }
 
   renderNetworksOverlay(balances: any[]) {
@@ -4207,19 +4571,31 @@ class Home extends React.Component<any, any> {
     const accounts = this.store('main.accounts') || {}
     const account = accounts[current]
     const balances = account ? this.getBalances(account.address) : []
+    const notifications = this.store('view.notifications') || {}
 
     return (
       <div className='t2Home'>
         {this.renderTopBar(account)}
         {this.renderMenu(account)}
+        <StatusNotifications
+          notifications={notifications}
+          renderChainIcon={(notification) => {
+            const chainId = Number(notification.leadingIcon?.chainId || notification.target?.chainId)
+            return chainId ? this.chainIcon(chainId, 16, 10, 8) : null
+          }}
+          onDismiss={(id) => link.send('tray:action', 'dismissNotification', id)}
+          onExpire={(id) => link.send('tray:action', 'expireNotification', id)}
+          onOpen={(notification) => this.openActivityTarget(notification.target)}
+        />
         {this.renderHero(balances)}
         {this.renderTabs()}
         {this.renderSearch()}
         <div className='t2Main'>
-          {this.state.tab === 'positions' ? this.renderPositions(balances) : this.renderActivity()}
+          {this.state.tab === 'positions' ? this.renderPositions(balances) : this.renderActivity(account)}
         </div>
         {this.renderNetworksOverlay(balances)}
         {this.renderAssetDetailsOverlay()}
+        {this.renderActivityDetails()}
         {this.renderRequestsOverlay(current)}
         {this.renderDappsOverlay(current)}
         {this.renderAddChainOverlay()}

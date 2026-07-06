@@ -11,6 +11,7 @@ import * as panelActions from '../../../resources/store/actions.panel'
 type U = (...args: any[]) => void
 
 const supportedNetworkTypes = ['ethereum']
+const completedActivityStatuses = new Set(['succeeded', 'reverted'])
 const homeDashViews = new Set(['accounts', 'chains', 'settings'])
 let homeCommandId = 0
 
@@ -169,6 +170,72 @@ const actions = {
   },
   setUpdaterLastChecked: (u: U, lastChecked: number) => {
     u('main.updater.lastChecked', () => lastChecked)
+  },
+  upsertSubmittedActivity: (u: U, activity: any) => {
+    const id = activity?.id
+    if (!id) return
+
+    const now = Date.now()
+
+    u('main.activity', id, (existingActivity: any = {}) => {
+      const submittedActivity = {
+        ...existingActivity,
+        ...activity,
+        id,
+        status: 'submitted',
+        submittedAt: activity.submittedAt ?? existingActivity.submittedAt ?? now,
+        updatedAt: activity.updatedAt ?? now,
+        confirmations: activity.confirmations ?? existingActivity.confirmations ?? 0
+      }
+
+      if (activity.completedAt === undefined) delete submittedActivity.completedAt
+
+      return submittedActivity
+    })
+  },
+  updateActivity: (u: U, id: string, update: any = {}) => {
+    if (!id) return
+
+    const now = Date.now()
+
+    u('main.activity', id, (activity: any = { id }) => {
+      return {
+        ...activity,
+        ...update,
+        id,
+        status: update.status ?? activity.status ?? 'confirming',
+        updatedAt: update.updatedAt ?? now
+      }
+    })
+  },
+  finalizeActivity: (u: U, id: string, status: string, update: any = {}) => {
+    if (!id) return
+    if (!completedActivityStatuses.has(status)) {
+      return log.warn(`Invalid finalized activity status: ${status}`)
+    }
+
+    const completedAt = update.completedAt ?? Date.now()
+
+    u('main.activity', id, (activity: any = { id }) => {
+      return {
+        ...activity,
+        ...update,
+        id,
+        status,
+        completedAt,
+        updatedAt: update.updatedAt ?? completedAt,
+        confirmations: update.confirmations ?? activity.confirmations ?? 0
+      }
+    })
+  },
+  pruneActivity: (u: U, id: string) => {
+    if (!id) return
+
+    u('main.activity', (activity: any = {}) => {
+      const nextActivity = { ...activity }
+      delete nextActivity[id]
+      return nextActivity
+    })
   },
   setAccount: (u: U, account: any) => {
     u('selected.current', () => account.id)
@@ -991,5 +1058,9 @@ export const revokePermission = actions.revokePermission
 export const navClearReq = actions.navClearReq
 export const navClearSigner = actions.navClearSigner
 export const updateTypedDataRequest = actions.updateTypedDataRequest
+export const upsertSubmittedActivity = actions.upsertSubmittedActivity
+export const updateActivity = actions.updateActivity
+export const finalizeActivity = actions.finalizeActivity
+export const pruneActivity = actions.pruneActivity
 
 export default actions

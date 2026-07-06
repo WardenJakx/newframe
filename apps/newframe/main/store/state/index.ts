@@ -20,10 +20,36 @@ export type { NativeCurrency } from './types/nativeCurrency'
 export type { Gas, GasFees } from './types/gas'
 export type { Rate } from './types/rate'
 export type { ColorwayPalette } from './types/colors'
+export type { Activity, ActivityRecord, ActivityStatus } from './types/main'
+
+const StatusNotificationSchema = z
+  .object({
+    id: z.string(),
+    state: z.enum(['pending', 'completed', 'failed']),
+    title: z.string().nullable().optional(),
+    detail: z.string().nullable().optional(),
+    createdAt: z.union([z.number(), z.string(), z.date()]).nullable().optional(),
+    updatedAt: z.union([z.number(), z.string(), z.date()]).nullable().optional(),
+    expiresAt: z.union([z.number(), z.string(), z.date()]).nullable().optional(),
+    dismissedAt: z.union([z.number(), z.string(), z.date()]).nullable().optional(),
+    hidden: z.boolean().optional(),
+    target: z.unknown().optional(),
+    metadata: z.unknown().optional()
+  })
+  .passthrough()
+
+const ViewSchema = z
+  .object({
+    notifications: z.record(z.string().describe('Notification Id'), StatusNotificationSchema).default({})
+  })
+  .passthrough()
 
 const StateSchema = z.object({
-  main: MainSchema
-})
+  main: MainSchema,
+  view: ViewSchema
+}).passthrough()
+
+export type StatusNotification = z.infer<typeof StatusNotificationSchema>
 
 const latestStateVersion = () => {
   // TODO: validate state and type it here?
@@ -280,6 +306,7 @@ const mainState: M = {
   addresses: main('addresses', {}), // Should be removed after 0.5 release
   permissions: main('permissions', {}),
   balances: main('balances', {}),
+  activity: main('activity', {}),
   accountOrder: main('accountOrder', []),
   tokens: main('tokens', { custom: [], known: {} }),
   rates: main('rates', {}),
@@ -1071,6 +1098,7 @@ const initial = {
     data: {},
     notify: '',
     notifyData: {},
+    notifications: {},
     badge: '',
     addAccount: '', // Add view (needs to be merged into Phase)
     addNetwork: false, // Phase view (needs to be merged with Add)
