@@ -1,36 +1,45 @@
-import { ipcRenderer } from 'electron'
+import { contextBridge, ipcRenderer } from 'electron'
+import {
+  LinkInvokeChannels,
+  LinkRpcMethods,
+  LinkSendChannels,
+  type NewframeHost
+} from './contracts'
 import rpc from './rpc'
 
-const unwrap = (v: any) => (v !== undefined && v !== null ? JSON.parse(v) : v)
-const wrap = (v: any) => (v !== undefined && v !== null ? JSON.stringify(v) : v)
-const source = 'bridge:link'
+const sendChannels = new Set<string>(LinkSendChannels)
+const invokeChannels = new Set<string>(LinkInvokeChannels)
+const rpcMethods = new Set<string>(LinkRpcMethods)
 
-window.addEventListener(
-  'message',
-  (e: MessageEvent) => {
-    // only accept messages from this window; file:// pages have an opaque ("null")
-    // origin in modern Chromium so origin strings can't be used for this check
-    if (e.source !== window || e.data.source?.includes('react-devtools')) return
-    const data = unwrap(e.data)
-    if (data.source !== source) {
-      if (data.method === 'rpc') {
-        return rpc(...data.args, (...args: any[]) =>
-          (e.source as Window).postMessage(wrap({ method: 'rpc', id: data.id, args, source }), '*')
-        )
-      }
-      if (data.method === 'event') return ipcRenderer.send(...(data.args as [string, ...any[]]))
-      if (data.method === 'invoke') {
-        ;(async () => {
-          const args = await ipcRenderer.invoke(...(data.args as [string, ...any[]]))
-          window.postMessage(wrap({ method: 'invoke', channel: 'action', id: data.id, args, source }), '*')
-        })()
-      }
-    }
+const isKnownSend = (channel: unknown) => typeof channel === 'string' && sendChannels.has(channel)
+const isKnownInvoke = (channel: unknown) => typeof channel === 'string' && invokeChannels.has(channel)
+const isKnownRpc = (method: unknown) => typeof method === 'string' && rpcMethods.has(method)
+
+const unknown = (type: string, name: unknown) => new Error(`Unknown ${type}: ${String(name)}`)
+
+const host: NewframeHost = {
+  send(channel, args = []) {
+    if (!isKnownSend(channel)) return console.warn(unknown('send channel', channel).message)
+
+    ipcRenderer.send(channel, ...args)
   },
-  false
-)
+  invoke(channel, args = []) {
+    if (!isKnownInvoke(channel)) return Promise.reject(unknown('invoke channel', channel))
 
-ipcRenderer.on('main:action', (...args: any[]) => {
-  args.shift()
-  window.postMessage(wrap({ method: 'event', channel: 'action', args, source }), '*')
-})
+    return ipcRenderer.invoke(channel, ...args)
+  },
+  rpc(method, args = []) {
+    if (!isKnownRpc(method)) return Promise.reject(unknown('RPC method', method))
+
+    return rpc(method, args)
+  },
+  onAction(handler) {
+    const wrapped = (_event: unknown, ...args: unknown[]) => handler(...args)
+
+    ipcRenderer.on('main:action', wrapped)
+
+    return () => ipcRenderer.removeListener('main:action', wrapped)
+  }
+}
+
+contextBridge.exposeInMainWorld('__NEWFRAME_HOST__', host)
