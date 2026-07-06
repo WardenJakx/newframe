@@ -234,7 +234,7 @@ $t2-pink = rgb(255, 110, 120)
 .t2StatusNotification
   min-height 58px
   display grid
-  grid-template-columns 28px 22px minmax(0, 1fr) 24px
+  grid-template-columns 28px 22px minmax(0, 1fr) auto 24px
   align-items center
   gap 9px
   padding 8px 9px 8px 11px
@@ -298,7 +298,17 @@ $t2-pink = rgb(255, 110, 120)
   overflow hidden
   text-overflow ellipsis
 
+.t2StatusNotificationTimestamp
+  align-self start
+  padding-top 7px
+  font-size 9px
+  font-family 'FiraCode'
+  color $t2-muted
+  white-space nowrap
+  text-align right
+
 .t2StatusNotificationDismiss
+  grid-column 5
   width 22px
   height 22px
   border-radius 50%

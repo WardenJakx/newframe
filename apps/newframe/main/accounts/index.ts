@@ -18,7 +18,8 @@ import {
   usesBaseFee,
   TransactionData,
   GasFeesSource,
-  TRANSACTION_CONFIRMATION_TARGET
+  TRANSACTION_CONFIRMATION_TARGET,
+  getTransactionIntent
 } from '../../resources/domain/transaction'
 import { findUnavailableSigners, isSignerReady } from '../../resources/domain/signer'
 
@@ -196,6 +197,11 @@ export class Accounts extends EventEmitter {
       (chain ? store('main.networks.ethereum', chain.id, 'symbol') : '') ||
       (chain ? store('main.networksMeta.ethereum', chain.id, 'nativeCurrency.symbol') : '') ||
       'ETH'
+    const intent = getTransactionIntent(req, chainSymbol)
+
+    if (intent.title !== 'Review transaction') {
+      return intent
+    }
 
     if (value && value !== '0x0') {
       return {
@@ -265,7 +271,7 @@ export class Accounts extends EventEmitter {
       id: transactionNotificationId(hash),
       state: 'pending',
       title: display.title,
-      detail: chainName ? `${chainName} ${shortHash(hash)}` : shortHash(hash),
+      detail: shortHash(hash),
       createdAt: now,
       updatedAt: now,
       expiresAt: now + 60 * 1000,
@@ -286,6 +292,54 @@ export class Accounts extends EventEmitter {
     this.upsertTransactionNotification(account, req, hash)
   }
 
+  syncTransactionActivity(account: FrameAccount, req: TransactionRequest) {
+    const hash = req.tx?.hash
+    if (!hash) return
+
+    const id = transactionActivityId(hash)
+    const activity = store('main.activity', id)
+    if (!activity) return
+
+    const display = this.getTransactionActivityDisplay(req, this.getTransactionChain(req))
+
+    store.updateActivity(id, {
+      display,
+      data: cloneForActivity(req.data),
+      payload: cloneForActivity(req.payload),
+      decodedData: cloneForActivity(req.decodedData),
+      tokenData: cloneForActivity(req.tokenData),
+      chainData: cloneForActivity(req.chainData),
+      simulation: cloneForActivity(req.simulation),
+      recognizedActions: cloneForActivity(req.recognizedActions),
+      classification: req.classification,
+      recipient: req.recipient,
+      recipientType: req.recipientType,
+      updatedAt: Date.now()
+    })
+
+    const notificationId = transactionNotificationId(hash)
+    const notification = store('view.notifications', notificationId)
+    if (!notification) return
+
+    const update = {
+      title: display.title,
+      detail: shortHash(hash),
+      updatedAt: notification.updatedAt,
+      expiresAt: notification.expiresAt,
+      hidden: notification.hidden
+    }
+
+    if (notification.state === 'pending') {
+      store.upsertPendingNotification({
+        ...notification,
+        ...update,
+        id: notificationId
+      })
+    } else {
+      store.resolveNotification(notificationId, notification.state, update)
+    }
+  }
+
   private updateTransactionActivity(req: TransactionRequest, confirmations: number) {
     const hash = req.tx?.hash
     if (!hash) return
@@ -304,6 +358,15 @@ export class Accounts extends EventEmitter {
       status: 'confirming',
       confirmations,
       receipt,
+      display: this.getTransactionActivityDisplay(req, this.getTransactionChain(req)),
+      decodedData: cloneForActivity(req.decodedData),
+      tokenData: cloneForActivity(req.tokenData),
+      chainData: cloneForActivity(req.chainData),
+      simulation: cloneForActivity(req.simulation),
+      recognizedActions: cloneForActivity(req.recognizedActions),
+      classification: req.classification,
+      recipient: req.recipient,
+      recipientType: req.recipientType,
       updatedAt: Date.now()
     })
   }
@@ -318,9 +381,19 @@ export class Accounts extends EventEmitter {
 
     const now = Date.now()
     const notificationState = status === 'succeeded' ? 'completed' : 'failed'
+    const display = this.getTransactionActivityDisplay(req, this.getTransactionChain(req))
 
     store.finalizeActivity(transactionActivityId(hash), status, {
       ...update,
+      display,
+      decodedData: cloneForActivity(req.decodedData),
+      tokenData: cloneForActivity(req.tokenData),
+      chainData: cloneForActivity(req.chainData),
+      simulation: cloneForActivity(req.simulation),
+      recognizedActions: cloneForActivity(req.recognizedActions),
+      classification: req.classification,
+      recipient: req.recipient,
+      recipientType: req.recipientType,
       receipt: update.receipt ?? cloneForActivity(req.tx?.receipt),
       confirmations: update.confirmations ?? req.tx?.confirmations ?? 0,
       completedAt: update.completedAt ?? now,
@@ -328,7 +401,8 @@ export class Accounts extends EventEmitter {
     })
 
     store.resolveNotification(transactionNotificationId(hash), notificationState, {
-      detail: status === 'succeeded' ? 'Confirmed' : 'Reverted',
+      title: display.title,
+      detail: shortHash(hash),
       expiresAt: now + 3000,
       updatedAt: now
     })

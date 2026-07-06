@@ -133,6 +133,30 @@ const notificationLabel = (state?: string) => {
   return 'Pending'
 }
 
+const shortHash = (hash?: string) => {
+  if (!hash) return ''
+  return `${hash.substring(0, 6)}...${hash.substring(hash.length - 4)}`
+}
+
+const notificationMetadata = (notification: any, label: string) => {
+  const detail = String(notification.detail || '').trim()
+  if (detail && detail.toLowerCase() !== label.toLowerCase()) return detail
+
+  return shortHash(notification.target?.hash || notification.metadata?.hash)
+}
+
+const notificationTimestamp = (notification: any) => {
+  const shownAt = timestamp(notification.createdAt, timestamp(notification.updatedAt, 0))
+  if (!shownAt) return ''
+
+  return new Intl.DateTimeFormat(undefined, {
+    hour: 'numeric',
+    minute: '2-digit',
+    second: '2-digit',
+    fractionalSecondDigits: 3
+  }).format(new Date(shownAt))
+}
+
 const StatusNotifications = ({
   notifications,
   renderChainIcon,
@@ -176,10 +200,14 @@ const StatusNotifications = ({
     <div aria-label='Status notifications' className='t2StatusNotifications'>
       {visible.map((notification: any) => {
         const state = notification.state || 'pending'
+        const label = notificationLabel(state)
+        const metadata = notificationMetadata(notification, label)
+        const shownAt = notificationTimestamp(notification)
+
         return (
           <div
             key={notification.id}
-            aria-label={`${notificationLabel(state)} ${notification.title || ''}`}
+            aria-label={`${label} ${notification.title || ''}`}
             className={`t2StatusNotification t2StatusNotification-${state}`}
             onClick={() => onOpen(notification)}
             onKeyDown={(e) => {
@@ -195,11 +223,12 @@ const StatusNotifications = ({
             <div className='t2StatusNotificationChain'>{renderChainIcon(notification)}</div>
             <div className='t2StatusNotificationCopy'>
               <div className='t2StatusNotificationTopline'>
-                <span>{notificationLabel(state)}</span>
+                <span>{label}</span>
                 <span>{notification.title}</span>
               </div>
-              <div className='t2StatusNotificationDetail'>{notification.detail}</div>
+              {metadata ? <div className='t2StatusNotificationDetail'>{metadata}</div> : null}
             </div>
+            {shownAt ? <div className='t2StatusNotificationTimestamp'>{shownAt}</div> : null}
             <div
               aria-label='Dismiss notification'
               className='t2StatusNotificationDismiss'

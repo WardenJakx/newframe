@@ -303,6 +303,7 @@ class FrameAccount {
         if (recipient && knownTxRequest) {
           knownTxRequest.recipient = recipient.ens
           this.update()
+          this.accounts.syncTransactionActivity?.(this, knownTxRequest)
         }
       } catch (e) {
         log.warn(e)
@@ -323,6 +324,7 @@ class FrameAccount {
         if (knownTxRequest && decodedData) {
           knownTxRequest.decodedData = decodedData
           this.update()
+          this.accounts.syncTransactionActivity?.(this, knownTxRequest)
           void this.enrichErc20TokenData(knownTxRequest)
         }
       } catch (e) {
@@ -351,6 +353,7 @@ class FrameAccount {
       if (knownTxRequest) {
         knownTxRequest.tokenData = tokenData
         this.update()
+        this.accounts.syncTransactionActivity?.(this, knownTxRequest)
       }
     } catch (e) {
       log.warn('unable to fetch erc20 token metadata', { handlerId: req.handlerId, to, chainId, error: e })
@@ -376,6 +379,7 @@ class FrameAccount {
     if (currentTxRequest) {
       currentTxRequest.simulation = simulation
       this.update()
+      this.accounts.syncTransactionActivity?.(this, currentTxRequest)
     }
   }
 
@@ -396,6 +400,7 @@ class FrameAccount {
         if (knownTxRequest && actions) {
           knownTxRequest.recognizedActions = actions
           this.update()
+          this.accounts.syncTransactionActivity?.(this, knownTxRequest)
         }
       } catch (e) {
         log.warn(e)
