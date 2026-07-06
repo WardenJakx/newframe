@@ -415,55 +415,27 @@ async function cdpEvaluate<T>(page: Page, expression: string) {
 }
 
 async function linkRpc<T>(page: Page, method: string, ...args: unknown[]): Promise<T> {
-  const response = await cdpEvaluate<unknown[]>(
+  const response = await cdpEvaluate<unknown>(
     page,
     `
-      (() => {
+      (async () => {
         const rpcMethod = ${literal(method)}
         const rpcArgs = ${literal(args)}
+        const host = window.__NEWFRAME_HOST__
 
-        return new Promise((resolve, reject) => {
-          const id = 'harness:' + Date.now() + ':' + Math.random()
-          const timer = window.setTimeout(() => {
-            window.removeEventListener('message', onMessage)
-            reject(new Error('Timed out waiting for ' + rpcMethod))
-          }, 15_000)
-
-          function onMessage(event) {
-            if (event.source !== window) return
-            const data = unwrapMessage(event.data)
-            if (!data || data.source !== 'bridge:link' || data.method !== 'rpc' || data.id !== id) return
-
-            window.clearTimeout(timer)
-            window.removeEventListener('message', onMessage)
-            resolve(data.args || [])
-          }
-
-          window.addEventListener('message', onMessage)
-          window.postMessage(
-            JSON.stringify({ id, method: 'rpc', source: 'tray:link', args: [rpcMethod, ...rpcArgs] }),
-            '*'
-          )
-
-          function unwrapMessage(data) {
-            if (typeof data === 'string') {
-              try {
-                return JSON.parse(data)
-              } catch {
-                return undefined
-              }
-            }
-
-            return data
-          }
-        })
+        if (!host) throw new Error('Newframe host bridge is not available')
+        return host.rpc(rpcMethod, rpcArgs)
       })()
     `
   )
 
-  const [err, value] = response as [unknown, T]
-  if (err) throw new Error(typeof err === 'string' ? err : JSON.stringify(err))
-  return value
+  if (Array.isArray(response)) {
+    const [err, value] = response as [unknown, T]
+    if (err) throw new Error(typeof err === 'string' ? err : JSON.stringify(err))
+    return value
+  }
+
+  return response as T
 }
 
 async function linkRpcNoWait(page: Page, method: string, ...args: unknown[]) {
@@ -473,12 +445,12 @@ async function linkRpcNoWait(page: Page, method: string, ...args: unknown[]) {
       (() => {
         const rpcMethod = ${literal(method)}
         const rpcArgs = ${literal(args)}
-        const id = 'harness:' + Date.now() + ':' + Math.random()
+        const host = window.__NEWFRAME_HOST__
 
-        window.postMessage(
-          JSON.stringify({ id, method: 'rpc', source: 'tray:link', args: [rpcMethod, ...rpcArgs] }),
-          '*'
-        )
+        if (!host) throw new Error('Newframe host bridge is not available')
+
+        const response = host.rpc(rpcMethod, rpcArgs)
+        if (response && typeof response.catch === 'function') response.catch(() => undefined)
 
         return true
       })()
@@ -493,11 +465,10 @@ async function linkSend(page: Page, channel: string, ...args: unknown[]) {
       (() => {
         const channel = ${literal(channel)}
         const args = ${literal(args)}
+        const host = window.__NEWFRAME_HOST__
 
-        window.postMessage(
-          JSON.stringify({ method: 'event', source: 'tray:link', args: [channel, ...args] }),
-          '*'
-        )
+        if (!host) throw new Error('Newframe host bridge is not available')
+        host.send(channel, args)
         return true
       })()
     `
@@ -505,53 +476,21 @@ async function linkSend(page: Page, channel: string, ...args: unknown[]) {
 }
 
 async function linkInvoke<T>(page: Page, channel: string, ...args: unknown[]): Promise<T> {
-  const response = await cdpEvaluate<unknown[]>(
+  const response = await cdpEvaluate<unknown>(
     page,
     `
-      (() => {
+      (async () => {
         const invokeChannel = ${literal(channel)}
         const invokeArgs = ${literal(args)}
+        const host = window.__NEWFRAME_HOST__
 
-        return new Promise((resolve, reject) => {
-          const id = 'harness:' + Date.now() + ':' + Math.random()
-          const timer = window.setTimeout(() => {
-            window.removeEventListener('message', onMessage)
-            reject(new Error('Timed out waiting for invoke ' + invokeChannel))
-          }, 30_000)
-
-          function onMessage(event) {
-            if (event.source !== window) return
-            const data = unwrapMessage(event.data)
-            if (!data || data.source !== 'bridge:link' || data.method !== 'invoke' || data.id !== id) return
-
-            window.clearTimeout(timer)
-            window.removeEventListener('message', onMessage)
-            resolve(data.args || [])
-          }
-
-          function unwrapMessage(data) {
-            if (typeof data === 'string') {
-              try {
-                return JSON.parse(data)
-              } catch {
-                return undefined
-              }
-            }
-
-            return data
-          }
-
-          window.addEventListener('message', onMessage)
-          window.postMessage(
-            JSON.stringify({ id, method: 'invoke', source: 'tray:link', args: [invokeChannel, ...invokeArgs] }),
-            '*'
-          )
-        })
+        if (!host) throw new Error('Newframe host bridge is not available')
+        return host.invoke(invokeChannel, invokeArgs)
       })()
     `
   )
 
-  return (response as [T])[0]
+  return Array.isArray(response) ? (response as [T])[0] : (response as T)
 }
 
 async function trayAction(page: Page, action: string, ...args: unknown[]) {
