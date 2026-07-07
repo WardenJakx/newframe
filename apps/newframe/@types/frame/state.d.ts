@@ -2,6 +2,7 @@ type HexAmount = string
 
 interface Frame {
   id: string
+  route?: string
 }
 
 type SignerType = 'ring' | 'seed' | 'address' | 'trezor' | 'ledger' | 'lattice'

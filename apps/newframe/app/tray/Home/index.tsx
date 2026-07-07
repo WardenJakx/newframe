@@ -23,6 +23,11 @@ import {
   type BalanceSummary,
   type DisplayedBalance
 } from '../../../resources/domain/balance'
+import {
+  buildDappLauncherRoute,
+  DAPP_LAUNCHER_FRAME_ID,
+  toCanonicalAssetId
+} from '../../../resources/domain/dappLauncher'
 import { cachedImageUrl, isCachedImageReference } from '../../../resources/domain/imageCache'
 import { matchFilter } from '../../../resources/utils'
 
@@ -80,7 +85,6 @@ const PENDING_NOTIFICATION_MS = 60 * 1000
 const RESOLVED_NOTIFICATION_MS = 3000
 const ANVIL_CHAIN_ID = 31337
 const TRADE_DISABLED_CHAIN_LABEL = 'Select Anvil to trade'
-const DAPP_LAUNCHER_STORAGE_KEY = 'dappLauncher'
 const FRAME_ORIGIN_ID = uuidv5('newframe-internal', uuidv5.DNS)
 
 const timestamp = (value: any, fallback = 0) => {
@@ -1004,18 +1008,10 @@ class Home extends React.Component<any, any> {
     if (asset && !hasPositiveBalance(asset)) return
     if (!asset && !this.selectedWalletHasAssets()) return
 
-    const updatedAt = Date.now()
-
-    link.send('tray:action', 'setDappStorage', 'send', {
-      asset: asset || null,
-      mode: 'send',
-      updatedAt
+    link.send('*:addFrame', {
+      id: DAPP_LAUNCHER_FRAME_ID,
+      route: buildDappLauncherRoute('send', toCanonicalAssetId(asset))
     })
-    link.send('tray:action', 'setDappStorage', DAPP_LAUNCHER_STORAGE_KEY, {
-      mode: 'send',
-      updatedAt
-    })
-    link.send('*:addFrame', 'dappLauncher')
     link.send('tray:action', 'setDash', { showing: false })
   }
 
@@ -1036,19 +1032,10 @@ class Home extends React.Component<any, any> {
   openTrade(asset?: any) {
     if (!this.canOpenTrade(asset)) return
 
-    const updatedAt = Date.now()
-    const launchData = {
-      asset: asset || null,
-      mode: 'trade',
-      updatedAt
-    }
-
-    link.send('tray:action', 'setDappStorage', 'trade', launchData)
-    link.send('tray:action', 'setDappStorage', DAPP_LAUNCHER_STORAGE_KEY, {
-      mode: 'trade',
-      updatedAt
+    link.send('*:addFrame', {
+      id: DAPP_LAUNCHER_FRAME_ID,
+      route: buildDappLauncherRoute('trade', toCanonicalAssetId(asset))
     })
-    link.send('*:addFrame', 'dappLauncher')
     link.send('tray:action', 'setDash', { showing: false })
   }
 
