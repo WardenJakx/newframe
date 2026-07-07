@@ -1,8 +1,7 @@
-import { v5 as uuidv5 } from 'uuid'
-
 import { NATIVE_CURRENCY } from '../../../resources/constants'
+import { buildInternalDappOrigin, internalDappOriginId } from '../dappOrigin'
 
-export const frameOriginId = uuidv5('newframe-internal', uuidv5.DNS)
+export const frameOriginId = internalDappOriginId
 
 export interface SendTransactionAccount {
   address: string
@@ -117,8 +116,5 @@ export function buildProviderSendPayload({
 }
 
 export function buildSendOrigin(chainId: number) {
-  return {
-    name: 'newframe-internal',
-    chain: { id: chainId, type: 'ethereum' }
-  }
+  return buildInternalDappOrigin(chainId)
 }

@@ -10,7 +10,7 @@ import {
 import { resolveSendAssetFromRouteAssetId, toCanonicalAssetId } from '../../../resources/domain/dappLauncher'
 import svg from '../../../resources/svg'
 import { formatUnits, toBigInt } from '../../../resources/utils/numbers'
-import { createSendViewSelector, type SendAccount } from '../../state/selectors/send'
+import { createDappWalletSelector, type DappWalletAccount } from '../../state/selectors/dappWallet'
 import { useAppSelector } from '../../state/useAppSelector'
 import AccountIcon from './AccountIcon'
 import TokenIcon from './TokenIcon'
@@ -23,12 +23,12 @@ interface SendProps {
   assetId?: string | null
 }
 
-function recipientName(account: SendAccount) {
+function recipientName(account: DappWalletAccount) {
   return account.ensName || account.name
 }
 
 export default function Send({ assetId }: SendProps) {
-  const selectSendView = React.useMemo(() => createSendViewSelector(), [])
+  const selectSendView = React.useMemo(() => createDappWalletSelector(), [])
   const { accounts, balanceSummaries, currentAccount, networks, networksMeta } =
     useAppSelector(selectSendView)
   const [state, dispatch] = React.useReducer(sendReducer, assetId, createInitialSendState)
@@ -53,7 +53,7 @@ export default function Send({ assetId }: SendProps) {
     dispatch({ type: 'toggleRecipientOpen' })
   }, [])
 
-  const handleSelectRecipient = React.useCallback((recipient: SendAccount) => {
+  const handleSelectRecipient = React.useCallback((recipient: DappWalletAccount) => {
     dispatch({ type: 'selectRecipient', recipient })
   }, [])
 

@@ -1,0 +1,147 @@
+import {
+  createInitialTradeState,
+  getTradeInputAmount,
+  tradeReducer
+} from '../../../../app/dapp/Trade/tradeReducer'
+import {
+  FLASH_LIMIT_ORDER_TYPE,
+  FLASH_MARKET_ORDER_TYPE,
+  FLASH_NATIVE_ETH_ASSET,
+  FLASH_USDC_ASSET,
+  FLASH_WETH_ASSET,
+  type FlashQuote
+} from '../../../../resources/domain/flash'
+import { NATIVE_CURRENCY } from '../../../../resources/constants'
+
+function marketQuote(id = 'quote-1'): FlashQuote {
+  return {
+    id,
+    side: 'sell',
+    orderType: FLASH_MARKET_ORDER_TYPE,
+    targetAsset: FLASH_WETH_ASSET,
+    contraAsset: FLASH_USDC_ASSET,
+    spentAsset: FLASH_WETH_ASSET,
+    receiveAsset: FLASH_USDC_ASSET,
+    inputAmount: '1',
+    outputAmount: '2400',
+    steps: [
+      { id: 'approve', kind: 'approve', label: 'Approve WETH', status: 'required' },
+      { id: 'sign', kind: 'sign', label: 'Sign quote', status: 'required' },
+      { id: 'submit', kind: 'submit', label: 'Submit trade', status: 'required' }
+    ],
+    actions: {
+      approval: {
+        id: 'approval',
+        kind: 'approve',
+        label: 'Approve WETH',
+        asset: FLASH_WETH_ASSET,
+        amount: '1',
+        amountRaw: '1000000000000000000',
+        tx: {
+          chainId: FLASH_WETH_ASSET.chainId,
+          to: '0xspender',
+          data: '0x'
+        }
+      }
+    }
+  }
+}
+
+describe('tradeReducer', () => {
+  it('initializes side and contra asset from available balances', () => {
+    const withTargetBalance = createInitialTradeState({
+      balances: [{ assetId: FLASH_WETH_ASSET.id, symbol: FLASH_WETH_ASSET.symbol, balance: '1' }]
+    })
+    const withoutTargetBalance = createInitialTradeState({
+      balances: [{ assetId: FLASH_USDC_ASSET.id, symbol: FLASH_USDC_ASSET.symbol, balance: '1' }]
+    })
+
+    expect(withTargetBalance.side).toBe('sell')
+    expect(withTargetBalance.contraAsset).toBe(FLASH_USDC_ASSET)
+    expect(withoutTargetBalance.side).toBe('buy')
+  })
+
+  it('keeps target and contra assets distinct when selecting assets', () => {
+    const state = createInitialTradeState()
+    const next = tradeReducer(state, {
+      type: 'selectAsset',
+      field: 'target',
+      asset: state.contraAsset
+    })
+
+    expect(next.targetAsset).toBe(state.contraAsset)
+    expect(next.contraAsset).not.toBe(next.targetAsset)
+  })
+
+  it('clears market execution state on input changes and ignores stale quote responses', () => {
+    const entered = tradeReducer(createInitialTradeState(), {
+      type: 'setInputAmount',
+      inputAmount: '1'
+    })
+    const requested = tradeReducer(entered, {
+      type: 'quoteRequested',
+      requestKey: 'fresh'
+    })
+    const stale = tradeReducer(requested, {
+      type: 'quoteSucceeded',
+      requestKey: 'stale',
+      quote: marketQuote('stale'),
+      flashPayload: { quoteId: 'stale' }
+    })
+    const succeeded = tradeReducer(stale, {
+      type: 'quoteSucceeded',
+      requestKey: 'fresh',
+      quote: marketQuote('fresh'),
+      flashPayload: { quoteId: 'fresh' }
+    })
+
+    expect(entered.quote).toBe(null)
+    expect(requested.pendingAction).toBe('quote')
+    expect(stale.quote).toBe(null)
+    expect(succeeded.quote?.id).toBe('fresh')
+    expect(succeeded.contraAmount).toBe('2400')
+  })
+
+  it('invalidates market quote and action state on account changes without resetting the ticket', () => {
+    const ready = tradeReducer(
+      tradeReducer(tradeReducer(createInitialTradeState(), { type: 'setInputAmount', inputAmount: '1' }), {
+        type: 'quoteRequested',
+        requestKey: 'fresh'
+      }),
+      {
+        type: 'quoteSucceeded',
+        requestKey: 'fresh',
+        quote: marketQuote('fresh'),
+        flashPayload: { quoteId: 'fresh' }
+      }
+    )
+    const pending = tradeReducer(ready, {
+      type: 'actionStarted',
+      actionQuoteId: 'fresh',
+      stepKind: 'approve',
+      status: 'Confirm in Newframe'
+    })
+    const changed = tradeReducer(pending, { type: 'accountChanged' })
+
+    expect(getTradeInputAmount(changed)).toBe('1')
+    expect(changed.targetAsset).toBe(FLASH_WETH_ASSET)
+    expect(changed.contraAsset).toBe(FLASH_USDC_ASSET)
+    expect(changed.quote).toBe(null)
+    expect(changed.flashPayload).toBe(null)
+    expect(changed.actionQuoteId).toBe('')
+    expect(changed.pendingAction).toBe('quote')
+  })
+
+  it('keeps non-market orders as local visual previews', () => {
+    const state = createInitialTradeState({
+      assetId: `${FLASH_NATIVE_ETH_ASSET.chainId}:${NATIVE_CURRENCY}`
+    })
+    const withAmount = tradeReducer(state, { type: 'setInputAmount', inputAmount: '2' })
+    const limit = tradeReducer(withAmount, { type: 'setOrderType', orderType: FLASH_LIMIT_ORDER_TYPE })
+
+    expect(limit.orderType).toBe(FLASH_LIMIT_ORDER_TYPE)
+    expect(limit.quote?.orderType).toBe(FLASH_LIMIT_ORDER_TYPE)
+    expect(limit.pendingAction).toBe('')
+    expect(limit.quoteLoading).toBe(false)
+  })
+})
