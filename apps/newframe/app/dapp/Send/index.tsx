@@ -1,11 +1,11 @@
 import React from 'react'
 
 import Native from '../../../resources/Native'
+import TokenSelector from '../../../resources/Components/TokenSelector'
 import {
   createDisplayBalance,
-  formatUsdRate,
-  type BalanceSummary,
-  type DisplayedBalance
+  formatBalanceNotionalValue,
+  formatUsdRate
 } from '../../../resources/domain/balance'
 import { resolveSendAssetFromRouteAssetId, toCanonicalAssetId } from '../../../resources/domain/dappLauncher'
 import svg from '../../../resources/svg'
@@ -13,7 +13,6 @@ import { formatUnits, toBigInt } from '../../../resources/utils/numbers'
 import { createDappWalletSelector, type DappWalletAccount } from '../../state/selectors/dappWallet'
 import { useAppSelector } from '../../state/useAppSelector'
 import AccountIcon from './AccountIcon'
-import TokenIcon from './TokenIcon'
 import { createInitialSendState, sendReducer, SEND_TOKEN_ROWS_INCREMENT } from './sendReducer'
 import { buildProviderSendPayload, buildSendTransaction, shouldResolveName } from './sendTransaction'
 import { closeSend, initSendOrigin, providerSend, resolveName } from './sendService'
@@ -61,12 +60,12 @@ export default function Send({ assetId }: SendProps) {
     dispatch({ type: 'clearRecipient' })
   }, [])
 
-  const handleToggleTokenPicker = React.useCallback(() => {
-    dispatch({ type: 'toggleTokenOpen' })
+  const handleTokenPickerOpenChange = React.useCallback((tokenOpen: boolean) => {
+    dispatch({ type: 'setTokenOpen', tokenOpen })
   }, [])
 
-  const handleSelectAsset = React.useCallback((selectedAsset: BalanceSummary | DisplayedBalance) => {
-    dispatch({ type: 'selectAsset', selectedAssetKey: toCanonicalAssetId(selectedAsset) })
+  const handleSelectAsset = React.useCallback((selectedAssetKey: string) => {
+    dispatch({ type: 'selectAsset', selectedAssetKey })
   }, [])
 
   const handleShowMoreTokens = React.useCallback(() => {
@@ -160,15 +159,27 @@ export default function Send({ assetId }: SendProps) {
     }
   }, [asset, currentAccount, resolveRecipientAddress, state.amount])
 
-  const tokenBalances = state.tokenOpen ? balanceSummaries : []
   const selectedKey = toCanonicalAssetId(asset)
-  const visibleBalances = tokenBalances.slice(0, state.tokenRowsVisible)
-  const selectedBalance = tokenBalances.find((balance) => toCanonicalAssetId(balance) === selectedKey)
+  const visibleBalances = balanceSummaries.slice(0, state.tokenRowsVisible)
+  const selectedBalance = balanceSummaries.find((balance) => toCanonicalAssetId(balance) === selectedKey)
   const menuBalances =
     selectedBalance && !visibleBalances.some((balance) => toCanonicalAssetId(balance) === selectedKey)
       ? [selectedBalance, ...visibleBalances]
       : visibleBalances
-  const rowsHidden = Math.max(tokenBalances.length - state.tokenRowsVisible, 0)
+  const selectorBalances = state.tokenOpen ? menuBalances : selectedBalance ? [selectedBalance] : []
+  const tokenItems = selectorBalances.map((balance) => {
+    const displayBalance = createDisplayBalance(balance)
+
+    return {
+      id: toCanonicalAssetId(balance),
+      symbol: displayBalance.symbol,
+      amountLabel: displayBalance.displayBalance,
+      notionalLabel: formatBalanceNotionalValue(displayBalance),
+      chainId: displayBalance.chainId,
+      logoURI: balance.logoURI
+    }
+  })
+  const rowsHidden = Math.max(balanceSummaries.length - state.tokenRowsVisible, 0)
   const amount = Number(state.amount || 0)
   const price = Number(asset?.usdRate?.price || 0)
   const fiatValue = amount > 0 && price > 0 ? `$${formatUsdRate(amount * price, 2)}` : '$0.00'
@@ -256,43 +267,23 @@ export default function Send({ assetId }: SendProps) {
           <div className='sendCard sendTokenCard'>
             <div className='sendSectionTitle'>Send token</div>
             <div className='sendTokenMain'>
-              <div className='sendTokenPicker'>
-                <button className='sendTokenButton' onClick={handleToggleTokenPicker}>
-                  <TokenIcon asset={asset} networks={networks} networksMeta={networksMeta} />
-                  <div className='sendTokenText'>
-                    <div className='sendTokenSymbol'>{asset.symbol || 'Token'}</div>
-                    <div className='sendTokenChain'>{networks[asset.chainId]?.name || ''}</div>
-                  </div>
-                  <div className='sendTokenChevron'>{svg.chevron(13)}</div>
-                </button>
-                {state.tokenOpen ? (
-                  <div className='sendTokenMenu'>
-                    {menuBalances.map((balance) => {
-                      const displayBalance = createDisplayBalance(balance)
-
-                      return (
-                        <button
-                          key={toCanonicalAssetId(balance)}
-                          className='sendTokenOption'
-                          onClick={() => handleSelectAsset(displayBalance)}
-                        >
-                          <TokenIcon asset={displayBalance} networks={networks} networksMeta={networksMeta} />
-                          <div className='sendTokenText'>
-                            <div className='sendTokenSymbol'>{displayBalance.symbol}</div>
-                            <div className='sendTokenChain'>{networks[displayBalance.chainId]?.name}</div>
-                          </div>
-                          <div className='sendTokenOptionBalance'>{displayBalance.displayBalance}</div>
-                        </button>
-                      )
-                    })}
-                    {rowsHidden > 0 ? (
-                      <button className='sendTokenMore' onClick={handleShowMoreTokens}>
-                        {`Show ${Math.min(SEND_TOKEN_ROWS_INCREMENT, rowsHidden)} more assets`}
-                      </button>
-                    ) : null}
-                  </div>
-                ) : null}
-              </div>
+              <TokenSelector
+                ariaLabel='Select send token'
+                footer={
+                  rowsHidden > 0 ? (
+                    <button className='sendTokenMore' onClick={handleShowMoreTokens} type='button'>
+                      {`Show ${Math.min(SEND_TOKEN_ROWS_INCREMENT, rowsHidden)} more assets`}
+                    </button>
+                  ) : null
+                }
+                items={tokenItems}
+                networks={networks}
+                networksMeta={networksMeta}
+                onOpenChange={handleTokenPickerOpenChange}
+                onSelect={handleSelectAsset}
+                open={state.tokenOpen}
+                selectedId={selectedKey}
+              />
               <input
                 aria-label='Amount'
                 className='sendAmountInput'

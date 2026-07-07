@@ -6,7 +6,9 @@ import { v5 as uuidv5 } from 'uuid'
 
 import link from '../../../resources/link'
 import svg from '../../../resources/svg'
+import ChainTokenIcon from '../../../resources/Components/ChainTokenIcon'
 import KeyboardShortcutConfigurator from '../../../resources/Components/KeyboardShortcutConfigurator'
+import TokenOptionRow from '../../../resources/Components/TokenOptionRow'
 import {
   createWebAuthnBiometricCredential,
   isBiometricUserCanceledError,
@@ -2475,24 +2477,20 @@ class Home extends React.Component<any, any> {
     )
   }
 
-  renderTokenIcon(balance: any) {
-    return (
-      <div className='t2TokenIcon'>
-        <div className='t2TokenIconInner'>
-          {balance.logoURI ? (
-            <img src={cachedImageUrl(balance.logoURI)} alt='' />
-          ) : (
-            <span className='t2TokenIconGlyph'>{(balance.symbol || '?').substring(0, 1)}</span>
-          )}
-        </div>
-        <div className='t2TokenChainBadge'>{this.chainIcon(balance.chainId, 18, 11, 9)}</div>
-      </div>
-    )
-  }
-
   renderTokenRow(balance: DisplayedBalance, i: number, className = 't2TokenRow cardShow') {
     const change = balance.priceChange ? parseFloat(balance.priceChange) : 0
     const fiatValue = formatBalanceNotionalValue(balance)
+    const networks = this.store('main.networks.ethereum') || {}
+    const networksMeta = this.store('main.networksMeta.ethereum') || {}
+    const item = {
+      id: `${balance.chainId}:${balance.address}:${i}`,
+      symbol: balance.symbol,
+      amountLabel: balance.displayBalance,
+      notionalLabel: fiatValue,
+      chainId: balance.chainId,
+      logoURI: balance.logoURI,
+      rightSubLabel: balance.priceChange ? `${change >= 0 ? '+' : ''}${balance.priceChange}%` : undefined
+    }
 
     return (
       <div
@@ -2504,21 +2502,7 @@ class Home extends React.Component<any, any> {
         role='button'
         tabIndex={0}
       >
-        {this.renderTokenIcon(balance)}
-        <div className='t2TokenInfo'>
-          <div className='t2TokenSymbol'>{balance.symbol}</div>
-          <div className='t2TokenAmount'>{balance.displayBalance}</div>
-        </div>
-        <div className='t2TokenValues'>
-          <div className='t2TokenFiat'>{fiatValue}</div>
-          {balance.priceChange ? (
-            <div
-              className={change >= 0 ? 't2TokenChange t2TokenChangeUp' : 't2TokenChange t2TokenChangeDown'}
-            >
-              {`${change >= 0 ? '+' : ''}${balance.priceChange}%`}
-            </div>
-          ) : null}
-        </div>
+        <TokenOptionRow item={item} networks={networks} networksMeta={networksMeta} showRightSubLabel />
       </div>
     )
   }
@@ -2714,7 +2698,16 @@ class Home extends React.Component<any, any> {
         </div>
         <div className='t2AssetBody'>
           <div className='t2AssetHero'>
-            <div className='t2AssetHeroIcon'>{this.renderTokenIcon(asset)}</div>
+            <div className='t2AssetHeroIcon'>
+              <ChainTokenIcon
+                chainId={asset.chainId}
+                logoURI={asset.logoURI}
+                networks={this.store('main.networks.ethereum') || {}}
+                networksMeta={this.store('main.networksMeta.ethereum') || {}}
+                size='md'
+                symbol={asset.symbol}
+              />
+            </div>
             <div className='t2AssetHeroText'>
               <div className='t2AssetHeroName'>{asset.name || asset.symbol}</div>
               <div className='t2AssetHeroSub'>

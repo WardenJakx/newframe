@@ -1,0 +1,251 @@
+.chainTokenIcon
+  position relative
+  flex-shrink 0
+
+.chainTokenIconMd
+  width 38px
+  height 38px
+
+.chainTokenIconSm
+  width 30px
+  height 30px
+
+.chainTokenIconInner
+  width 100%
+  height 100%
+  border-radius 50%
+  background var(--ghostB)
+  border 1px solid rgba(248, 255, 255, 0.1)
+  display flex
+  align-items center
+  justify-content center
+  color rgba(248, 255, 255, 0.85)
+  overflow hidden
+
+  img
+    width 100%
+    height 100%
+    object-fit cover
+
+.chainTokenIconSymbol
+  max-width calc(100% - 6px)
+  overflow hidden
+  color rgba(248, 255, 255, 0.9)
+  font-family 'FiraCode'
+  font-size 11px
+  font-weight 500
+  line-height 1
+  text-align center
+  text-overflow clip
+  white-space nowrap
+
+.chainTokenIconMd
+  .chainTokenIconSymbol
+    font-size 11px
+
+.chainTokenIconSm
+  .chainTokenIconSymbol
+    font-size 9px
+
+.chainTokenIconChainBadge
+  position absolute
+  top -7px
+  left -7px
+  width 22px
+  height 22px
+  border-radius 50%
+  border 2px solid var(--ghostZ)
+  background var(--ghostB)
+  box-sizing border-box
+  display flex
+  align-items center
+  justify-content center
+  overflow hidden
+
+  img
+    width 18px
+    height 18px
+    border-radius 50%
+    object-fit cover
+
+.chainTokenIconSm
+  .chainTokenIconChainBadge
+    top -5px
+    left -5px
+    width 18px
+    height 18px
+
+    img
+      width 14px
+      height 14px
+
+.chainTokenIconChainGlyph
+  display flex
+  align-items center
+  justify-content center
+
+.chainTokenIconChainDot
+  width 9px
+  height 9px
+  border-radius 50%
+
+.chainTokenIconSm
+  .chainTokenIconChainDot
+    width 7px
+    height 7px
+
+.tokenOptionRow
+  width 100%
+  min-width 0
+  display flex
+  align-items center
+  gap 12px
+  color var(--outerspace)
+  text-align left
+  pointer-events none
+
+.tokenOptionRowText
+  min-width 0
+  flex 1
+  display flex
+  flex-direction column
+  gap 3px
+
+.tokenOptionRowSymbol
+  min-width 0
+  overflow hidden
+  text-overflow ellipsis
+  white-space nowrap
+  font-size 15px
+  font-weight 700
+  line-height 18px
+
+.tokenOptionRowAmount
+  min-width 0
+  overflow hidden
+  text-overflow ellipsis
+  white-space nowrap
+  color var(--outerspace04)
+  font-family 'FiraCode'
+  font-size 11px
+  font-weight 400
+
+.tokenOptionRowRight
+  min-width 72px
+  max-width 132px
+  flex-shrink 0
+  display flex
+  flex-direction column
+  align-items flex-end
+  gap 3px
+
+.tokenOptionRowNotional
+  max-width 100%
+  overflow hidden
+  color var(--outerspace)
+  font-family 'FiraCode'
+  font-size 15px
+  font-weight 500
+  line-height 18px
+  text-overflow ellipsis
+  white-space nowrap
+
+.tokenOptionRowRightSubLabel
+  max-width 100%
+  overflow hidden
+  font-family 'FiraCode'
+  font-size 11px
+  font-weight 400
+  text-overflow ellipsis
+  white-space nowrap
+
+.tokenOptionRowRightSubLabelUp
+  color var(--accent1)
+
+.tokenOptionRowRightSubLabelDown
+  color rgb(255, 110, 155)
+
+.tokenSelector
+  position relative
+  flex-shrink 0
+
+.tokenSelectorTrigger
+  width 126px
+  height 48px
+  border none
+  outline none
+  border-radius 8px
+  background var(--ghostA)
+  color var(--outerspace)
+  display flex
+  align-items center
+  gap 8px
+  padding 0 10px
+  cursor pointer
+  font-family 'MainFont'
+  font-size 15px
+  font-weight 800
+
+  &:hover
+    background var(--ghostB)
+
+.tokenSelectorTriggerDisabled
+  cursor default
+  opacity 0.5
+
+  &:hover
+    background var(--ghostA)
+
+.tokenSelectorTriggerPlaceholder
+  color var(--outerspace04)
+
+.tokenSelectorTriggerSymbol
+  min-width 0
+  overflow hidden
+  text-overflow ellipsis
+  white-space nowrap
+
+.tokenSelectorChevron
+  margin-left auto
+  color var(--outerspace04)
+  display flex
+  flex-shrink 0
+  transform rotate(180deg)
+
+.tokenSelectorMenu
+  position absolute
+  top 54px
+  left 0
+  width 336px
+  max-width calc(100vw - 48px)
+  z-index 20
+  border-radius 8px
+  background var(--ghostC)
+  box-shadow 0 16px 32px rgba(0, 0, 0, 0.34)
+  padding 8px
+
+.tokenSelectorListbox
+  max-height 238px
+  overflow-y auto
+
+.tokenSelectorOption
+  width 100%
+  min-height 64px
+  border none
+  outline none
+  border-radius 6px
+  background transparent
+  color var(--outerspace)
+  display flex
+  align-items center
+  padding 8px
+  cursor pointer
+
+  &:hover
+    background rgba(248, 255, 255, 0.06)
+
+.tokenSelectorOptionHighlighted
+  background rgba(248, 255, 255, 0.06)
+
+.tokenSelectorFooter
+  margin-top 4px

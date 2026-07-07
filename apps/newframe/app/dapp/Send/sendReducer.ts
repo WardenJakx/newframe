@@ -21,12 +21,12 @@ export type SendWorkflowAction =
   | { type: 'setAmount'; amount: string }
   | { type: 'setMaxAmount'; amount: string }
   | { type: 'setRecipientInput'; recipientInput: string }
+  | { type: 'setTokenOpen'; tokenOpen: boolean }
   | { type: 'showMoreTokens' }
   | { type: 'submitFailed'; error: string }
   | { type: 'submitStarted' }
   | { type: 'submitSucceeded' }
   | { type: 'toggleRecipientOpen' }
-  | { type: 'toggleTokenOpen' }
   | { type: 'validationFailed'; error: string }
 
 export function createInitialSendState(assetId?: string | null): SendWorkflowState {
@@ -88,6 +88,12 @@ export function sendReducer(state: SendWorkflowState, action: SendWorkflowAction
         recipientInput: action.recipientInput,
         recipientOpen: true
       }
+    case 'setTokenOpen':
+      return {
+        ...state,
+        recipientOpen: action.tokenOpen ? false : state.recipientOpen,
+        tokenOpen: action.tokenOpen
+      }
     case 'showMoreTokens':
       return {
         ...state,
@@ -117,12 +123,6 @@ export function sendReducer(state: SendWorkflowState, action: SendWorkflowAction
       return {
         ...state,
         recipientOpen: !state.recipientOpen
-      }
-    case 'toggleTokenOpen':
-      return {
-        ...state,
-        recipientOpen: false,
-        tokenOpen: !state.tokenOpen
       }
     case 'validationFailed':
       return {
