@@ -4,7 +4,6 @@ name = "newframe-monorepo"
 
 [setup]
 script = '''
-cp apps/newframe/.env "$CODEX_WORKTREE_PATH/apps/newframe/.env"
 cd "$CODEX_WORKTREE_PATH"
 bun install
 cd newframe-contracts
