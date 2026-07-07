@@ -15,7 +15,7 @@ import { useAppSelector } from '../../state/useAppSelector'
 import AccountIcon from './AccountIcon'
 import TokenIcon from './TokenIcon'
 import { createInitialSendState, sendReducer, SEND_TOKEN_ROWS_INCREMENT } from './sendReducer'
-import { buildProviderSendPayload, buildSendTransaction, shouldResolveName } from './sendTransaction'
+import { buildProviderSendPayload, buildSendTransaction, cleanAddress, shouldResolveName } from './sendTransaction'
 import { closeSend, initSendOrigin, providerSend, resolveName } from './sendService'
 import { canProceed, getAmountBaseUnits, getRecipientAddress, validateSendRequest } from './sendValidation'
 
@@ -40,6 +40,16 @@ export default function Send({ assetId }: SendProps) {
   const asset = React.useMemo(() => {
     return selectedAssetSummary ? createDisplayBalance(selectedAssetSummary) : null
   }, [selectedAssetSummary])
+  const recipientAccounts = React.useMemo(() => {
+    const senderAddress = cleanAddress(currentAccount?.address)
+
+    return accounts.filter((account) => {
+      if (currentAccount?.id && account.id === currentAccount.id) return false
+      if (senderAddress && cleanAddress(account.address) === senderAddress) return false
+
+      return true
+    })
+  }, [accounts, currentAccount?.address, currentAccount?.id])
 
   const handleClose = React.useCallback(() => {
     closeSend()
@@ -234,7 +244,7 @@ export default function Send({ assetId }: SendProps) {
               {state.recipientOpen ? (
                 <div className='sendRecipientMenu'>
                   <div className='sendRecipientMenuTitle'>{svg.wallet(14)} My wallets</div>
-                  {accounts.map((account) => (
+                  {recipientAccounts.map((account) => (
                     <button
                       className='sendWalletRow'
                       key={account.id}
