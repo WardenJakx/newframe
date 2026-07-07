@@ -8,6 +8,10 @@ export interface Store {
 
 export function create(state: any, actions?: any): Store
 
+/**
+ * @deprecated Legacy render-tracking bridge. New React components should use
+ * app/state/useAppSelector with typed selectors instead of Restore.connect.
+ */
 export function connect<T>(component: T, store?: Store): T
 
 declare const Restore: {
