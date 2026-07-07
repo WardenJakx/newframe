@@ -1361,6 +1361,341 @@ $t2-pink = rgb(255, 110, 120)
   .txReview
     padding-bottom 0
 
+.t2OrderList
+  display flex
+  flex-direction column
+  gap 4px
+
+.t2OrderRow
+  min-height 74px
+  display grid
+  grid-template-columns 22px 70px minmax(0, 1fr) minmax(62px, auto)
+  grid-template-areas "cancel status copy size" "cancel asset copy contra"
+  align-items center
+  column-gap 9px
+  row-gap 5px
+  padding 9px 8px
+  border-radius 8px
+  cursor pointer
+
+  &:hover
+    background $t2-card
+
+.t2OrderCancelSlot
+  grid-area cancel
+  width 22px
+  display flex
+  align-items center
+  justify-content center
+
+.t2OrderCancel
+  width 20px
+  height 20px
+  border-radius 50%
+  display flex
+  align-items center
+  justify-content center
+  color $t2-muted
+  background rgba(248, 255, 255, 0.05)
+  cursor pointer
+
+  &:hover
+    color $t2-pink
+    background rgba(255, 110, 120, 0.12)
+
+  *
+    pointer-events none
+
+.t2OrderStatusBlock
+  grid-area status
+  min-width 0
+  display flex
+  flex-direction column
+  gap 3px
+
+.t2OrderStatus
+  font-size 11px
+  font-weight 500
+  color $t2-muted-strong
+  white-space nowrap
+  overflow hidden
+  text-overflow ellipsis
+
+.t2OrderStatus-open,
+.t2OrderStatus-pending,
+.t2OrderStatus-submitted,
+.t2OrderStatus-accepted,
+.t2OrderStatus-active,
+.t2OrderStatus-working,
+.t2OrderStatus-created,
+.t2OrderStatus-filled,
+.t2OrderStatus-complete,
+.t2OrderStatus-completed
+  color $t2-teal
+
+.t2OrderStatus-cancelled,
+.t2OrderStatus-canceled,
+.t2OrderStatus-failed,
+.t2OrderStatus-rejected,
+.t2OrderStatus-expired
+  color $t2-pink
+
+.t2OrderCreated
+  font-size 10px
+  font-family 'FiraCode'
+  color $t2-muted
+  white-space nowrap
+
+.t2OrderAssetColumn
+  grid-area asset
+  min-width 0
+
+.t2OrderCopy
+  grid-area copy
+  min-width 0
+  display flex
+  flex-direction column
+  gap 4px
+
+.t2OrderIntent
+  font-size 14px
+  font-weight 500
+  color $t2-text
+  white-space nowrap
+  overflow hidden
+  text-overflow ellipsis
+
+.t2OrderSubline
+  display flex
+  align-items center
+  gap 8px
+  min-width 0
+  font-size 10px
+  font-family 'FiraCode'
+  color $t2-muted
+
+  span
+    white-space nowrap
+    overflow hidden
+    text-overflow ellipsis
+
+.t2OrderCancelInlineError
+  color $t2-pink
+
+.t2OrderSize
+  grid-area size
+  justify-self end
+  max-width 96px
+  font-size 11px
+  font-family 'FiraCode'
+  color $t2-muted-strong
+  white-space nowrap
+  overflow hidden
+  text-overflow ellipsis
+
+.t2OrderContra
+  grid-area contra
+  justify-self end
+  min-width 0
+  max-width 120px
+
+.t2OrderAssetPill
+  min-width 0
+  display inline-flex
+  align-items center
+  gap 5px
+  color $t2-muted-strong
+  font-size 11px
+  font-family 'FiraCode'
+  white-space nowrap
+
+  > span:last-child
+    min-width 0
+    overflow hidden
+    text-overflow ellipsis
+
+.t2OrderAssetPrefix
+  color $t2-muted
+  font-family 'MainFont'
+  font-size 10px
+
+.t2OrderAssetIcon
+  position relative
+  width 24px
+  height 24px
+  flex-shrink 0
+
+.t2OrderAssetIconInner
+  width 24px
+  height 24px
+  border-radius 50%
+  background $t2-button
+  border 1px solid rgba(248, 255, 255, 0.1)
+  display flex
+  align-items center
+  justify-content center
+  color $t2-teal
+  overflow hidden
+
+  img
+    width 100%
+    height 100%
+    object-fit cover
+
+  span
+    color $t2-text
+    font-size 10px
+    font-weight 600
+    font-family 'FiraCode'
+
+.t2OrderAssetChainBadge
+  position absolute
+  top -5px
+  left -5px
+  width 14px
+  height 14px
+  border-radius 50%
+  border 2px solid $t2-bg
+  background $t2-button
+  display flex
+  align-items center
+  justify-content center
+  overflow hidden
+
+  img
+    border-radius 50%
+    object-fit cover
+
+.t2OrderOverlay
+  z-index 88
+
+.t2OrderDetailScroll
+  padding 0 12px 28px 12px
+
+.t2OrderDetailHero
+  border-radius 8px
+  background $t2-card
+  padding 13px
+  margin-bottom 10px
+  display flex
+  flex-direction column
+  gap 10px
+
+.t2OrderDetailPair
+  display grid
+  grid-template-columns minmax(0, auto) minmax(0, 1fr) minmax(0, auto)
+  align-items center
+  gap 10px
+
+.t2OrderDetailIntent
+  min-width 0
+  text-align center
+  font-size 15px
+  font-weight 500
+  color $t2-text
+  white-space nowrap
+  overflow hidden
+  text-overflow ellipsis
+
+.t2OrderDetailMeta
+  display flex
+  align-items center
+  flex-wrap wrap
+  gap 7px
+  color $t2-muted
+  font-size 11px
+  font-family 'FiraCode'
+
+  span
+    min-height 22px
+    border-radius 4px
+    background rgba(248, 255, 255, 0.05)
+    padding 4px 7px
+
+.t2OrderCancelError
+  color $t2-pink
+  font-size 11px
+  line-height 16px
+
+.t2OrderDetailList
+  display flex
+  flex-direction column
+  gap 7px
+
+.t2OrderDetailRow
+  min-height 44px
+  border-radius 8px
+  background rgba(248, 255, 255, 0.04)
+  padding 9px 10px
+  display flex
+  align-items center
+  justify-content space-between
+  gap 12px
+
+.t2OrderDetailLabel
+  color $t2-muted
+  font-size 11px
+  text-transform uppercase
+  letter-spacing 0
+  flex-shrink 0
+
+.t2OrderDetailValue
+  min-width 0
+  color $t2-text
+  font-size 12px
+  text-align right
+  overflow hidden
+  text-overflow ellipsis
+  white-space nowrap
+
+.t2OrderDetailValueCode
+  font-family 'FiraCode'
+  font-size 10px
+
+.t2OrderChainValue
+  display inline-flex
+  align-items center
+  justify-content flex-end
+  gap 6px
+  min-width 0
+
+.t2OrderChainIcon
+  width 18px
+  height 18px
+  display flex
+  align-items center
+  justify-content center
+  flex-shrink 0
+  overflow hidden
+
+  img
+    border-radius 50%
+    object-fit cover
+
+.t2OrderJsonSection
+  margin-top 10px
+  border-radius 8px
+  background rgba(248, 255, 255, 0.04)
+  padding 10px
+
+  pre
+    margin 0
+    max-height 180px
+    overflow auto
+    color $t2-muted-strong
+    font-size 10px
+    line-height 15px
+    font-family 'FiraCode'
+    white-space pre-wrap
+    word-break break-word
+
+.t2OrderJsonTitle
+  margin-bottom 7px
+  color $t2-muted
+  font-size 11px
+  text-transform uppercase
+  letter-spacing 0
+
 .t2EmptyState
   padding 50px 0
   display flex

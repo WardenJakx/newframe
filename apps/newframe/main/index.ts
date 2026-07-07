@@ -32,6 +32,7 @@ import { showUnhandledExceptionDialog } from './windows/dialog'
 import { openBlockExplorer, openExternal } from './windows/window'
 import Erc20Contract from './contracts/erc20'
 import { toTokenId } from '../resources/domain/balance'
+import { normalizeDappLauncherFrameRequest } from '../resources/domain/dappLauncher'
 import { cachedImageReference, isCachedImageReference } from '../resources/domain/imageCache'
 import { getErrorCode } from '../resources/utils'
 
@@ -449,15 +450,17 @@ ipcMain.on('frame:unmax', (e) => {
   windows.unmax(e)
 })
 
-ipcMain.on('*:addFrame', (e, id) => {
-  const existingFrame = store('main.frames', id)
+ipcMain.on('*:addFrame', (e, frameRequest) => {
+  const frame = normalizeDappLauncherFrameRequest(frameRequest)
+  if (!frame) return
+
+  const existingFrame = store('main.frames', frame.id)
 
   if (existingFrame) {
-    windows.refocusFrame(id)
+    store.updateFrame(frame.id, frame)
+    windows.refocusFrame(frame.id)
   } else {
-    store.addFrame({
-      id
-    })
+    store.addFrame(frame)
   }
 })
 

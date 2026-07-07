@@ -20,7 +20,9 @@ const cdpPort = 9333
 const anvilRpcUrl = `http://127.0.0.1:${anvilPort}`
 const harnessOrigin = 'newframe-contracts.local'
 const harnessAccountAddress = '0x35f9179059a691d8beecf82fe112f7277e018588'
+const dappLauncherFrameId = 'dappLauncher'
 const nativeCurrencyAddress = '0x0000000000000000000000000000000000000000'
+const wethAddress = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2'
 const anvilChainId = 31337
 const oneEthWei = 1_000_000_000_000_000_000n
 
@@ -383,6 +385,18 @@ function literal(value: unknown) {
   return JSON.stringify(value) ?? 'undefined'
 }
 
+function canonicalAssetId(chainId: number, address: string) {
+  return `${chainId}:${address.toLowerCase()}`
+}
+
+function launcherRoute(route: 'send' | 'trade', assetId = '') {
+  return assetId ? `/${route}?assetId=${encodeURIComponent(assetId)}` : `/${route}`
+}
+
+async function waitForDappRoute(page: Page, route: 'send' | 'trade') {
+  await page.waitForURL((url) => url.hash.startsWith(`#/${route}`), { timeout: 15_000 })
+}
+
 async function cdpSession(page: Page) {
   let session = pageSessions.get(page)
 
@@ -496,6 +510,14 @@ async function linkInvoke<T>(page: Page, channel: string, ...args: unknown[]): P
 async function trayAction(page: Page, action: string, ...args: unknown[]) {
   await linkSend(page, 'tray:action', action, ...args)
   await sleep(100)
+}
+
+async function openDappLauncherRoute(tray: Page, route: string) {
+  await linkSend(tray, '*:addFrame', {
+    id: dappLauncherFrameId,
+    route
+  })
+  await trayAction(tray, 'setDash', { showing: false })
 }
 
 async function getAppState(page: Page) {
@@ -835,6 +857,99 @@ async function clearPanelAndOverlays(page: Page) {
   }
 }
 
+async function openTradeTicket(app: Browser, tray: Page) {
+  await openDappLauncherRoute(tray, launcherRoute('trade', canonicalAssetId(anvilChainId, wethAddress)))
+
+  const tradePage = await waitForElectronPage(app, 'bundle/dapp.html')
+  await waitForDappRoute(tradePage, 'trade')
+  await tradePage.getByRole('tab', { name: 'Market' }).waitFor({ state: 'visible', timeout: 15_000 })
+
+  return tradePage
+}
+
+async function assertTradeTicketVisualControls(page: Page) {
+  const staleDirectionGroup = page.getByRole('group', { name: 'Trade direction' })
+
+  if ((await staleDirectionGroup.count()) > 0) {
+    fail('Trade ticket still exposes the old explicit BUY/SELL segmented control')
+  }
+
+  await page.getByRole('button', { name: /Switch to (BUY|SELL)/ }).waitFor({
+    state: 'visible',
+    timeout: 5_000
+  })
+  await page.getByRole('button', { name: /Select target asset/i }).waitFor({
+    state: 'visible',
+    timeout: 5_000
+  })
+  await page.getByRole('button', { name: /Select contra asset/i }).waitFor({
+    state: 'visible',
+    timeout: 5_000
+  })
+}
+
+async function screenshotTradeTicketVisualStates(app: Browser, tray: Page) {
+  const tradePage = await openTradeTicket(app, tray)
+  await assertTradeTicketVisualControls(tradePage)
+  await screenshot(tradePage, '10a-trade-market-open.png')
+
+  await tradePage.getByRole('button', { name: /Switch to (BUY|SELL)/ }).click()
+  await tradePage.getByRole('button', { name: /Switch to (BUY|SELL)/ }).waitFor({
+    state: 'visible',
+    timeout: 5_000
+  })
+  await screenshot(tradePage, '10b-trade-direction-switched.png')
+
+  await tradePage.getByRole('button', { name: /Select target asset/i }).click()
+  await tradePage
+    .getByRole('button', { name: /Choose target asset/i })
+    .first()
+    .waitFor({
+      state: 'visible',
+      timeout: 5_000
+    })
+  await screenshot(tradePage, '10c-trade-target-asset-menu.png')
+
+  await tradePage.getByRole('button', { name: /Select target asset/i }).click()
+  await tradePage.getByRole('button', { name: /Select contra asset/i }).click()
+  await tradePage.getByRole('button', { name: /Choose contra asset ETH Ether 0xeeeee/i }).waitFor({
+    state: 'visible',
+    timeout: 5_000
+  })
+  await screenshot(tradePage, '10d-trade-contra-asset-menu.png')
+
+  await tradePage.getByRole('button', { name: /Select contra asset/i }).click()
+  await tradePage.getByRole('tab', { name: 'Limit' }).click()
+
+  const limitOrderType = tradePage.getByLabel('Limit order type')
+  await limitOrderType.waitFor({ state: 'visible', timeout: 5_000 })
+
+  const box = await limitOrderType.boundingBox()
+  if (!box || box.width < 300) fail('Limit order type selector is not rendering as a full-width row')
+
+  await screenshot(tradePage, '10e-trade-limit-order-type-row.png')
+
+  await openDappLauncherRoute(tray, launcherRoute('send'))
+  await waitForDappRoute(tradePage, 'send')
+  await tradePage.getByRole('textbox', { name: 'Recipient' }).waitFor({ state: 'visible', timeout: 15_000 })
+
+  const resetSendAmount = await tradePage.getByRole('textbox', { name: 'Amount' }).inputValue()
+  if (resetSendAmount !== '1') fail(`Send relaunch did not reset amount; found "${resetSendAmount}"`)
+
+  await screenshot(tradePage, '10f-relaunch-send-reset.png')
+
+  await openDappLauncherRoute(tray, launcherRoute('trade', canonicalAssetId(anvilChainId, wethAddress)))
+  await waitForDappRoute(tradePage, 'trade')
+  await tradePage.getByRole('tab', { name: 'Market' }).waitFor({ state: 'visible', timeout: 15_000 })
+  await assertTradeTicketVisualControls(tradePage)
+  await screenshot(tradePage, '10g-relaunch-trade-reset.png')
+
+  await tradePage
+    .getByRole('button', { name: 'Close Trade' })
+    .click()
+    .catch(() => undefined)
+}
+
 async function bootstrap() {
   await withStage('preflight', async () => {
     await fsp.mkdir(screenshotDir, { recursive: true })
@@ -1077,6 +1192,10 @@ async function runFlow(app: Browser) {
     await ethAssetDetails.click()
     await tray.getByRole('dialog', { name: 'Asset details' }).waitFor({ state: 'visible' })
     await screenshot(tray, '10-eth-asset-details.png')
+  })
+
+  await withStage('trade ticket visuals', async () => {
+    await screenshotTradeTicketVisualStates(app, tray)
   })
 
   await withStage('built-in send', async () => {

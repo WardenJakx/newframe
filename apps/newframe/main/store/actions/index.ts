@@ -237,6 +237,56 @@ const actions = {
       return nextActivity
     })
   },
+  upsertOrder: (u: U, order: any) => {
+    const orderId = order?.orderId
+    if (!orderId) return
+
+    const now = Date.now()
+
+    u('main.orders', orderId, (existingOrder: any = {}) => {
+      const source =
+        order.source ?? order.provider ?? existingOrder.source ?? existingOrder.provider ?? 'flash'
+      const provider =
+        order.provider ?? order.source ?? existingOrder.provider ?? existingOrder.source ?? source
+
+      return {
+        ...existingOrder,
+        ...order,
+        orderId,
+        provider,
+        source,
+        createdAt: order.createdAt ?? existingOrder.createdAt ?? now,
+        updatedAt: order.updatedAt ?? now
+      }
+    })
+  },
+  updateOrder: (u: U, orderId: string, update: any = {}) => {
+    if (!orderId) return
+
+    const now = Date.now()
+
+    u('main.orders', (orders: any = {}) => {
+      const existingOrder = orders[orderId]
+      if (!existingOrder) return orders
+
+      const source =
+        update.source ?? update.provider ?? existingOrder.source ?? existingOrder.provider ?? 'flash'
+      const provider =
+        update.provider ?? update.source ?? existingOrder.provider ?? existingOrder.source ?? source
+
+      return {
+        ...orders,
+        [orderId]: {
+          ...existingOrder,
+          ...update,
+          orderId,
+          provider,
+          source,
+          updatedAt: update.updatedAt ?? now
+        }
+      }
+    })
+  },
   setAccount: (u: U, account: any) => {
     u('selected.current', () => account.id)
     u('main.currentAccount', () => account.id)
@@ -1063,5 +1113,7 @@ export const upsertSubmittedActivity = actions.upsertSubmittedActivity
 export const updateActivity = actions.updateActivity
 export const finalizeActivity = actions.finalizeActivity
 export const pruneActivity = actions.pruneActivity
+export const upsertOrder = actions.upsertOrder
+export const updateOrder = actions.updateOrder
 
 export default actions

@@ -853,3 +853,565 @@ body
 
   .sendTokenButton
     width 178px
+
+// ==================== local trade app ====================
+
+.tradeApp
+  position absolute
+  top 0
+  right 0
+  bottom 0
+  left 0
+  background $send-bg
+  color $send-text
+  font-family 'MainFont'
+  overflow hidden
+  display flex
+  flex-direction column
+  -webkit-user-select none
+
+  *
+    box-sizing border-box
+    letter-spacing 0
+
+.tradeBody
+  position relative
+  flex-grow 1
+  min-height 0
+  overflow-y auto
+  overflow-x hidden
+  display flex
+  flex-direction column
+  padding 0 12px 100px 12px
+
+.tradeTabsWrap
+  margin 0 0 12px 0
+  min-height 34px
+
+.tradeTabs
+  width fit-content
+  height 34px
+  display inline-flex
+  align-items center
+  gap 8px
+
+.tradeTab
+  border none
+  outline none
+  height 30px
+  border-radius 999px
+  background transparent
+  color $send-muted-strong
+  cursor pointer
+  font-size 13px
+  font-weight 700
+  display flex
+  align-items center
+  justify-content center
+  padding 0 14px
+
+  &:hover
+    color $send-text
+    background rgba(248, 255, 255, 0.045)
+
+.tradeTabActive
+  background rgba(196, 248, 103, 0.14)
+  color rgb(196, 248, 103)
+
+  &:hover
+    color rgb(196, 248, 103)
+    background rgba(196, 248, 103, 0.18)
+
+.tradeLimitSelectRow
+  margin-top 10px
+  display flex
+  justify-content flex-start
+  width 100%
+
+.tradeLimitSelect
+  width 100%
+  height 46px
+  border 1px solid $send-divider
+  outline none
+  border-radius 8px
+  background $send-pill
+  color $send-text
+  padding 0 14px
+  font-family 'MainFont'
+  font-size 15px
+  font-weight 800
+
+.tradeTicket
+  position relative
+  z-index 4
+
+.tradeAssetCard
+  position relative
+  overflow visible
+  background $send-card
+  border 1px solid $send-divider
+  border-radius 8px
+  padding 12px
+  margin-bottom 8px
+
+.tradeAssetCardEditable
+  border-color rgba(0, 210, 190, 0.35)
+  background rgba(25, 23, 30, 1)
+
+.tradeAssetCardHeader
+  min-height 30px
+  display flex
+  align-items center
+  justify-content space-between
+  gap 8px
+
+.tradeIntentLine
+  min-width 0
+  display flex
+  align-items center
+  gap 7px
+  color $send-text
+  font-size 14px
+  font-weight 800
+  text-transform uppercase
+
+  > span
+    min-width 0
+    overflow hidden
+    text-overflow ellipsis
+    white-space nowrap
+
+.tradeIntentBuy
+  color rgb(196, 248, 103)
+
+.tradeIntentSell
+  color rgb(255, 105, 125)
+
+.tradeDirectionSwitch
+  width 24px
+  height 24px
+  border none
+  outline none
+  border-radius 6px
+  background rgba(248, 255, 255, 0.055)
+  color $send-muted-strong
+  cursor pointer
+  flex-shrink 0
+  display flex
+  align-items center
+  justify-content center
+  padding 0
+
+  &:hover
+    color $send-teal-bright
+    background rgba(0, 210, 190, 0.13)
+
+  svg
+    width 14px
+    height 14px
+
+  path
+    fill currentColor
+
+.tradeAssetAmountRow
+  min-height 58px
+  margin-top 10px
+  display flex
+  align-items center
+  justify-content space-between
+  gap 10px
+
+.tradeAssetSelector
+  position relative
+  flex-shrink 0
+
+.tradeAssetButton
+  width 126px
+  height 48px
+  border none
+  outline none
+  border-radius 8px
+  background $send-pill
+  color $send-text
+  display flex
+  align-items center
+  gap 8px
+  padding 0 10px
+  cursor pointer
+  font-family 'MainFont'
+  font-size 15px
+  font-weight 800
+
+  &:hover
+    background $send-pill-hover
+
+.tradeAssetChevron
+  margin-left auto
+  color $send-muted-strong
+  display flex
+  transform rotate(180deg)
+
+.tradeAssetIcon
+  width 30px
+  height 30px
+  border-radius 50%
+  flex-shrink 0
+  display flex
+  align-items center
+  justify-content center
+  border 1px solid rgba(248, 255, 255, 0.1)
+
+.tradeAssetIconETH
+  background rgba(91, 128, 230, 0.22)
+  color rgb(128, 170, 255)
+
+.tradeAssetIconWETH
+  background rgba(224, 163, 74, 0.2)
+  color rgb(245, 194, 103)
+
+.tradeAssetIconUSDC
+  background rgba(58, 130, 235, 0.22)
+  color rgb(107, 174, 255)
+
+.tradeAssetMenu
+  position absolute
+  top 54px
+  left 0
+  width 336px
+  max-width calc(100vw - 48px)
+  z-index 20
+  border-radius 8px
+  background $send-menu
+  box-shadow 0 16px 32px rgba(0, 0, 0, 0.34)
+  padding 8px
+
+.tradeAssetOption
+  width 100%
+  min-height 64px
+  border none
+  outline none
+  border-radius 6px
+  background transparent
+  color $send-text
+  display flex
+  align-items center
+  gap 10px
+  padding 8px
+  cursor pointer
+  text-align left
+
+  &:hover
+    background $send-menu-hover
+
+.tradeAssetOptionText
+  min-width 0
+  flex 1
+  display flex
+  flex-direction column
+  gap 2px
+
+  span
+    font-size 14px
+    font-weight 800
+
+  small
+    color $send-muted-strong
+    font-size 11px
+    overflow hidden
+    text-overflow ellipsis
+    white-space nowrap
+
+.tradeAssetOptionBalance
+  min-width 86px
+  max-width 108px
+  flex-shrink 0
+  display flex
+  flex-direction column
+  align-items flex-end
+  gap 2px
+  color $send-text
+
+  span
+    max-width 100%
+    overflow hidden
+    text-overflow ellipsis
+    white-space nowrap
+    font-family 'FiraCode'
+    font-size 12px
+    font-weight 700
+
+  small
+    color $send-muted-strong
+    font-size 10px
+    font-weight 700
+
+.tradeAmountInput
+  min-width 0
+  flex-grow 1
+  border none
+  outline none
+  background transparent
+  color $send-text
+  font-family 'FiraCode'
+  font-size 28px
+  line-height 34px
+  text-align right
+  padding 4px 0
+
+  &::placeholder
+    color rgba(223, 223, 237, 0.28)
+
+  &[readonly]
+    color $send-muted-strong
+
+.tradeBalanceControls
+  min-height 28px
+  max-width calc(100% - 110px)
+  margin-left auto
+  display flex
+  align-items center
+  justify-content flex-end
+  gap 8px
+  color $send-muted-strong
+
+.tradeBalanceText
+  min-width 0
+  overflow hidden
+  text-overflow ellipsis
+  white-space nowrap
+  font-size 12px
+
+.tradeBalanceButtons
+  display flex
+  align-items center
+  gap 5px
+  flex-shrink 0
+
+  button
+    height 24px
+    min-width 46px
+    border none
+    outline none
+    border-radius 6px
+    background rgba(0, 210, 190, 0.12)
+    color $send-teal
+    cursor pointer
+    font-size 11px
+    font-weight 800
+
+    &:hover
+      background rgba(0, 210, 190, 0.2)
+      color $send-teal-bright
+
+.tradeOutputNote
+  min-height 30px
+  margin-top 9px
+  display flex
+  align-items center
+  justify-content flex-end
+  color $send-muted-strong
+  font-size 12px
+
+.tradeQuoteMeta
+  min-height 36px
+  margin 8px 0
+  border 1px solid $send-divider
+  border-radius 8px
+  color $send-muted-strong
+  background rgba(248, 255, 255, 0.035)
+  padding 8px 10px
+  display flex
+  align-items center
+  justify-content space-between
+  gap 8px
+  font-size 12px
+
+  span
+    min-width 0
+    overflow hidden
+    text-overflow ellipsis
+    white-space nowrap
+
+.tradeStepTracker
+  display flex
+  gap 6px
+  margin 12px 0 8px 0
+  margin-top auto
+  padding-top 14px
+
+.tradeStep
+  min-width 0
+  flex 1
+  height 38px
+  border 1px solid $send-divider
+  border-radius 8px
+  background rgba(248, 255, 255, 0.035)
+  color $send-muted-strong
+  display flex
+  align-items center
+  gap 6px
+  padding 0 8px
+
+  span
+    min-width 0
+    overflow hidden
+    text-overflow ellipsis
+    white-space nowrap
+    font-size 11px
+    font-weight 700
+
+.tradeStepDot
+  width 18px
+  height 18px
+  border-radius 50%
+  flex-shrink 0
+  display flex
+  align-items center
+  justify-content center
+  background rgba(248, 255, 255, 0.08)
+  color $send-muted-strong
+  font-size 10px
+  font-weight 800
+
+.tradeSteprequired
+  border-color rgba(0, 210, 190, 0.18)
+
+  .tradeStepDot
+    background rgba(0, 210, 190, 0.15)
+    color $send-teal
+
+.tradeAdvanced
+  position absolute
+  top 0
+  right 0
+  z-index 22
+  margin-top 0
+
+.tradeAdvancedToggle
+  width auto
+  height 32px
+  border 1px solid $send-divider
+  outline none
+  border-radius 999px
+  background rgba(248, 255, 255, 0.035)
+  color $send-muted-strong
+  display flex
+  align-items center
+  gap 6px
+  padding 0 10px
+  cursor pointer
+  font-size 12px
+  font-weight 700
+
+  &:hover
+    background $send-pill-hover
+    color $send-text
+
+  > span
+    display flex
+    align-items center
+
+.tradeAdvancedChevron
+  margin-left auto
+  display flex
+  transform rotate(180deg)
+
+.tradeAdvancedChevronOpen
+  transform rotate(0deg)
+
+.tradeAdvancedPanel
+  position absolute
+  top 40px
+  right 0
+  width 280px
+  border 1px solid $send-divider
+  border-radius 8px
+  background $send-menu
+  box-shadow 0 16px 32px rgba(0, 0, 0, 0.34)
+  padding 10px
+
+.tradeSettingRow
+  min-height 38px
+  display flex
+  align-items center
+  justify-content space-between
+  gap 10px
+  color $send-muted-strong
+  font-size 13px
+  font-weight 700
+
+.tradeSlippageInput
+  width 96px
+  height 32px
+  border-radius 7px
+  background $send-pill
+  display flex
+  align-items center
+  padding 0 8px
+  color $send-muted-strong
+
+  input
+    width 100%
+    min-width 0
+    border none
+    outline none
+    background transparent
+    color $send-text
+    font-family 'FiraCode'
+    font-size 13px
+    text-align right
+    padding 0 4px 0 0
+
+.tradeCheckRow
+  input
+    width 16px
+    height 16px
+    accent-color $send-teal
+
+.tradeFooter
+  position absolute
+  left 12px
+  right 12px
+  bottom 12px
+  height 62px
+  border-radius 8px
+  background $send-pill
+  border 1px solid $send-divider
+  box-shadow 0 12px 28px rgba(0, 0, 0, 0.28)
+  display flex
+  align-items center
+  justify-content center
+  padding 8px
+  z-index 20
+
+.tradePrimaryButton
+  width 100%
+  height 46px
+  border none
+  outline none
+  border-radius 8px
+  background $send-teal
+  color rgb(8, 16, 18)
+  cursor pointer
+  display flex
+  align-items center
+  justify-content center
+  font-size 14px
+  font-weight 800
+
+  &:hover
+    background $send-teal-bright
+
+.tradePrimaryButtonDisabled
+  cursor default
+  opacity 0.46
+
+@media (max-width: 390px)
+  .tradeAssetButton
+    width 108px
+
+  .tradeAmountInput
+    font-size 24px
+
+  .tradeStep
+    padding 0 6px

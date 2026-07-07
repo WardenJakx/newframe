@@ -8,6 +8,7 @@ const isDev = process.env.NODE_ENV === 'development'
 
 export interface FrameInstance extends BrowserWindow {
   frameId?: string
+  frameRoute?: string
 }
 
 const place = (frameInstance: FrameInstance) => {
@@ -22,7 +23,25 @@ const place = (frameInstance: FrameInstance) => {
   frameInstance.setPosition(pos.x - 440, pos.y + 80)
 }
 
+const routeHash = (route?: string) => {
+  return route && route.startsWith('/') ? `#${route}` : ''
+}
+
+const frameUrl = (frame: Frame) => {
+  const baseUrl = isDev
+    ? 'http://localhost:1234/dapp/index.dev.html'
+    : `file://${process.env.BUNDLE_LOCATION}/dapp.html`
+
+  return `${baseUrl}${routeHash(frame.route)}`
+}
+
+const load = (frameInstance: FrameInstance, frame: Frame) => {
+  frameInstance.frameRoute = frame.route || ''
+  frameInstance.loadURL(frameUrl(frame))
+}
+
 export default {
+  load,
   create: (frame: Frame) => {
     const frameInstance: FrameInstance = createWindow('frameInstance', {
       x: 0,
@@ -34,9 +53,7 @@ export default {
       icon: path.join(__dirname, './AppIcon.png')
     })
 
-    frameInstance.loadURL(
-      isDev ? 'http://localhost:1234/dapp/index.dev.html' : `file://${process.env.BUNDLE_LOCATION}/dapp.html`
-    )
+    load(frameInstance, frame)
 
     frameInstance.on('ready-to-show', () => {
       frameInstance.show()

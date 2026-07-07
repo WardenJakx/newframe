@@ -69,6 +69,17 @@ export default class FrameManager {
         frameInstance.on('focus', () => frameInstance.webContents.focus())
       })
 
+    frameIds
+      .filter((frameId) => instanceIds.includes(frameId))
+      .forEach((frameId) => {
+        const frameInstance = this.frameInstances[frameId]
+        const route = frames[frameId].route || ''
+
+        if (frameInstance && !frameInstance.isDestroyed() && frameInstance.frameRoute !== route) {
+          frameInstances.load(frameInstance, frames[frameId])
+        }
+      })
+
     // destroy each frame instance that is no longer in the store
     instanceIds
       .filter((instanceId) => !frameIds.includes(instanceId))
