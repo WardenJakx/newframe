@@ -13,9 +13,15 @@ ANVIL_HOST ?= 127.0.0.1
 HARNESS_ACCOUNT ?= 0x35f9179059a691d8beecf82fe112f7277e018588
 HARNESS_ETH_BALANCE_HEX ?= 0x56bc75e2d63100000
 HARNESS_USDC_BALANCE ?= 1000000000000
+HARNESS_WETH_BALANCE ?= 10000000000000000000
 
 USDC_ADDRESS ?= 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
+WETH_ADDRESS ?= 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2
+MOCK_FLASH_SETTLEMENT_ADDRESS ?= 0x0000000000000000000000000000000000005e77
 TEST_CONTRACT_ADDRESS ?= 0x0000000000000000000000000000000000001337
+
+MOCK_FLASH_SETTLEMENT_USDC_LIQUIDITY ?= 1000000000000
+MOCK_FLASH_SETTLEMENT_WETH_LIQUIDITY ?= 100000000000000000000
 
 ANVIL_DEPLOYER_PRIVATE_KEY ?= 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
 
@@ -30,7 +36,7 @@ help:
 	@echo "Targets:"
 	@echo "  make anvil                Run Anvil in the foreground, mining every second"
 	@echo "  make anvil-bg             Run Anvil in the background and write .anvil.pid/.anvil.log"
-	@echo "  make seed                 Etch MockUSDC/TestContract into Anvil and fund the harness account"
+	@echo "  make seed                 Etch mock contracts into Anvil and fund the harness account"
 	@echo "  make smoke-direct         Verify ETH + USDC transactions directly on Anvil"
 	@echo "  make setup                Build, start Anvil in background, seed, and verify balances"
 	@echo "  make ensure-newframe-chain Add/switch Newframe to local Anvil when needed"
@@ -97,11 +103,42 @@ seed: build wait-anvil
 	@echo "Etching MockUSDC at $(USDC_ADDRESS)"
 	@MOCK_USDC_CODE="$$(forge inspect src/MockUSDC.sol:MockUSDC deployedBytecode)"; \
 		cast rpc anvil_setCode "$(USDC_ADDRESS)" "$$MOCK_USDC_CODE" --rpc-url "$(ANVIL_RPC_URL)" >/dev/null
+	@echo "Etching WETH9 at $(WETH_ADDRESS)"
+	@WETH_CODE="$$(forge inspect src/WETH9.sol:WETH9 deployedBytecode)"; \
+		cast rpc anvil_setCode "$(WETH_ADDRESS)" "$$WETH_CODE" --rpc-url "$(ANVIL_RPC_URL)" >/dev/null
+	@echo "Etching MockFlashSettlement at $(MOCK_FLASH_SETTLEMENT_ADDRESS)"
+	@MOCK_FLASH_SETTLEMENT_CODE="$$(forge inspect src/MockFlashSettlement.sol:MockFlashSettlement deployedBytecode)"; \
+		cast rpc anvil_setCode "$(MOCK_FLASH_SETTLEMENT_ADDRESS)" "$$MOCK_FLASH_SETTLEMENT_CODE" --rpc-url "$(ANVIL_RPC_URL)" >/dev/null
 	@echo "Etching TestContract at $(TEST_CONTRACT_ADDRESS)"
 	@TEST_CONTRACT_CODE="$$(forge inspect src/TestContract.sol:TestContract deployedBytecode)"; \
 		cast rpc anvil_setCode "$(TEST_CONTRACT_ADDRESS)" "$$TEST_CONTRACT_CODE" --rpc-url "$(ANVIL_RPC_URL)" >/dev/null
 	@echo "Minting seeded USDC to $(HARNESS_ACCOUNT)"
 	@cast send "$(USDC_ADDRESS)" "mint(address,uint256)" "$(HARNESS_ACCOUNT)" "$(HARNESS_USDC_BALANCE)" \
+		--rpc-url "$(ANVIL_RPC_URL)" \
+		--private-key "$(ANVIL_DEPLOYER_PRIVATE_KEY)" \
+		--confirmations 1 >/dev/null
+	@echo "Minting settlement USDC liquidity to $(MOCK_FLASH_SETTLEMENT_ADDRESS)"
+	@cast send "$(USDC_ADDRESS)" "mint(address,uint256)" "$(MOCK_FLASH_SETTLEMENT_ADDRESS)" "$(MOCK_FLASH_SETTLEMENT_USDC_LIQUIDITY)" \
+		--rpc-url "$(ANVIL_RPC_URL)" \
+		--private-key "$(ANVIL_DEPLOYER_PRIVATE_KEY)" \
+		--confirmations 1 >/dev/null
+	@echo "Minting seeded WETH to $(HARNESS_ACCOUNT)"
+	@cast send "$(WETH_ADDRESS)" "deposit()" \
+		--value "$(HARNESS_WETH_BALANCE)" \
+		--rpc-url "$(ANVIL_RPC_URL)" \
+		--private-key "$(ANVIL_DEPLOYER_PRIVATE_KEY)" \
+		--confirmations 1 >/dev/null
+	@cast send "$(WETH_ADDRESS)" "transfer(address,uint256)" "$(HARNESS_ACCOUNT)" "$(HARNESS_WETH_BALANCE)" \
+		--rpc-url "$(ANVIL_RPC_URL)" \
+		--private-key "$(ANVIL_DEPLOYER_PRIVATE_KEY)" \
+		--confirmations 1 >/dev/null
+	@echo "Minting settlement WETH liquidity to $(MOCK_FLASH_SETTLEMENT_ADDRESS)"
+	@cast send "$(WETH_ADDRESS)" "deposit()" \
+		--value "$(MOCK_FLASH_SETTLEMENT_WETH_LIQUIDITY)" \
+		--rpc-url "$(ANVIL_RPC_URL)" \
+		--private-key "$(ANVIL_DEPLOYER_PRIVATE_KEY)" \
+		--confirmations 1 >/dev/null
+	@cast send "$(WETH_ADDRESS)" "transfer(address,uint256)" "$(MOCK_FLASH_SETTLEMENT_ADDRESS)" "$(MOCK_FLASH_SETTLEMENT_WETH_LIQUIDITY)" \
 		--rpc-url "$(ANVIL_RPC_URL)" \
 		--private-key "$(ANVIL_DEPLOYER_PRIVATE_KEY)" \
 		--confirmations 1 >/dev/null
@@ -112,8 +149,18 @@ verify-seed:
 	@cast balance "$(HARNESS_ACCOUNT)" --rpc-url "$(ANVIL_RPC_URL)"
 	@echo "USDC balance:"
 	@cast call "$(USDC_ADDRESS)" "balanceOf(address)(uint256)" "$(HARNESS_ACCOUNT)" --rpc-url "$(ANVIL_RPC_URL)"
+	@echo "WETH balance:"
+	@cast call "$(WETH_ADDRESS)" "balanceOf(address)(uint256)" "$(HARNESS_ACCOUNT)" --rpc-url "$(ANVIL_RPC_URL)"
+	@echo "Settlement USDC liquidity:"
+	@cast call "$(USDC_ADDRESS)" "balanceOf(address)(uint256)" "$(MOCK_FLASH_SETTLEMENT_ADDRESS)" --rpc-url "$(ANVIL_RPC_URL)"
+	@echo "Settlement WETH liquidity:"
+	@cast call "$(WETH_ADDRESS)" "balanceOf(address)(uint256)" "$(MOCK_FLASH_SETTLEMENT_ADDRESS)" --rpc-url "$(ANVIL_RPC_URL)"
 	@echo "TestContract code bytes:"
 	@cast code "$(TEST_CONTRACT_ADDRESS)" --rpc-url "$(ANVIL_RPC_URL)" | wc -c | tr -d ' '
+	@echo "WETH9 code bytes:"
+	@cast code "$(WETH_ADDRESS)" --rpc-url "$(ANVIL_RPC_URL)" | wc -c | tr -d ' '
+	@echo "MockFlashSettlement code bytes:"
+	@cast code "$(MOCK_FLASH_SETTLEMENT_ADDRESS)" --rpc-url "$(ANVIL_RPC_URL)" | wc -c | tr -d ' '
 
 smoke-direct:
 	@echo "Sending direct ETH + USDC smoke transactions on Anvil with harness account impersonation"

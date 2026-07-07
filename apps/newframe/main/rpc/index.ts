@@ -14,6 +14,7 @@ import * as launch from '../launch'
 import provider from '../provider'
 import store from '../store'
 import nameResolution from '../nameResolution'
+import flash from '../flash'
 
 import { arraysEqual, randomLetters } from '../../resources/utils'
 import { isSignatureRequest } from '../signatures'
@@ -34,6 +35,10 @@ const callbackWhenResolved = async <T>(fn: () => Promise<T> | T, cb: (err: unkno
   } catch (e) {
     cb(e)
   }
+}
+
+const optionalRpcPayload = (payload: any, cb?: any) => {
+  return typeof payload === 'function' ? [{}, payload] : [payload, cb]
 }
 
 const signerSummaryCallback =
@@ -209,6 +214,31 @@ const rpc: Record<string, (...args: any[]) => any> = {
   },
   generatePhrase(cb) {
     signers.newPhrase(cb)
+  },
+  flashQuote(payload, cb) {
+    const [request, done] = optionalRpcPayload(payload, cb)
+
+    callbackWhenResolved(() => flash.quote(request), done)
+  },
+  flashSubmitOrder(payload, cb) {
+    const [request, done] = optionalRpcPayload(payload, cb)
+
+    callbackWhenResolved(() => flash.submitOrder(request), done)
+  },
+  flashListOrders(payload, cb) {
+    const [request, done] = optionalRpcPayload(payload, cb)
+
+    callbackWhenResolved(() => flash.listOrders(request), done)
+  },
+  flashGetOrder(payload, cb) {
+    const [request, done] = optionalRpcPayload(payload, cb)
+
+    callbackWhenResolved(() => flash.getOrder(request), done)
+  },
+  flashCancelOrder(payload, cb) {
+    const [request, done] = optionalRpcPayload(payload, cb)
+
+    callbackWhenResolved(() => flash.cancelOrder(request), done)
   },
   async locateKeystore(cb) {
     try {

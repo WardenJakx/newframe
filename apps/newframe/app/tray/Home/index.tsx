@@ -2,6 +2,7 @@ import React from 'react'
 import Restore from 'react-restore'
 import QRCode from 'qrcode'
 import { isAddress } from 'ethers'
+import { v5 as uuidv5 } from 'uuid'
 
 import link from '../../../resources/link'
 import svg from '../../../resources/svg'
@@ -33,6 +34,12 @@ import {
   getTransactionIntent,
   TRANSACTION_CONFIRMATION_TARGET
 } from '../../../resources/domain/transaction'
+import {
+  formatPairIntent,
+  getContraPreposition,
+  getDirectionLabel,
+  type FlashTradeSide
+} from '../../../resources/domain/flash'
 
 const signerTypeLabels: Record<string, string> = {
   ring: 'Hot Signer',
@@ -71,6 +78,10 @@ const INITIAL_DUST_ROWS = 50
 const DUST_ROWS_INCREMENT = 50
 const PENDING_NOTIFICATION_MS = 60 * 1000
 const RESOLVED_NOTIFICATION_MS = 3000
+const ANVIL_CHAIN_ID = 31337
+const TRADE_DISABLED_CHAIN_LABEL = 'Select Anvil to trade'
+const DAPP_LAUNCHER_STORAGE_KEY = 'dappLauncher'
+const FRAME_ORIGIN_ID = uuidv5('newframe-internal', uuidv5.DNS)
 
 const timestamp = (value: any, fallback = 0) => {
   if (typeof value === 'number') return value
@@ -384,6 +395,7 @@ class Home extends React.Component<any, any> {
   homeCommandObserver: any
   lastHomeCommandId = 0
   accountSearchInput: HTMLInputElement | null = null
+  orderCancelPending = ''
   hydratingChainIcons = new Set<number>()
   selectBalanceSummaries = createBalanceSummarySelector()
 
@@ -443,6 +455,8 @@ class Home extends React.Component<any, any> {
       pendingChainRequest: null,
       assetDetails: null,
       activityDetails: '',
+      orderDetails: '',
+      orderCancelError: null,
       receiveAccount: '',
       latticeEndpoint,
       latticeEndpointMode,
@@ -741,6 +755,193 @@ class Home extends React.Component<any, any> {
       )
   }
 
+  normalizeOrderSide(side = ''): FlashTradeSide | '' {
+    const normalized = String(side).toLowerCase()
+    return normalized === 'buy' || normalized === 'sell' ? normalized : ''
+  }
+
+  getOrderRecords(account: any) {
+    const orders = this.store('main.orders') || {}
+    const address = (account?.address || '').toLowerCase()
+
+    return Object.entries(orders)
+      .map(([id, order]: [string, any]) => ({ ...order, orderId: order.orderId || id }))
+      .filter((order: any) => {
+        const orderAddress = (order.accountAddress || order.account || order.address || '').toLowerCase()
+        const chainId = Number(order.chainId)
+        return orderAddress === address && this.inNetworkFilter(chainId)
+      })
+      .sort((a: any, b: any) => {
+        const openSort = Number(!this.isOpenOrder(a)) - Number(!this.isOpenOrder(b))
+        if (openSort !== 0) return openSort
+
+        return (
+          timestamp(b.createdAt, timestamp(b.updatedAt, 0)) -
+          timestamp(a.createdAt, timestamp(a.updatedAt, 0))
+        )
+      })
+  }
+
+  orderStatus(order: any) {
+    return String(order.status || order.rawStatus || '')
+      .trim()
+      .toLowerCase()
+  }
+
+  isOpenOrder(order: any) {
+    if (order.open === true) return true
+    if (order.open === false) return false
+
+    const status = this.orderStatus(order)
+    if (['open', 'pending', 'submitted', 'accepted', 'active', 'working', 'created'].includes(status)) {
+      return true
+    }
+
+    if (order.terminalAt) return false
+
+    return ![
+      'filled',
+      'complete',
+      'completed',
+      'cancelled',
+      'canceled',
+      'failed',
+      'rejected',
+      'expired'
+    ].includes(status)
+  }
+
+  titleize(value = '') {
+    return String(value || '')
+      .replace(/[-_]+/g, ' ')
+      .trim()
+      .replace(/\b\w/g, (letter) => letter.toUpperCase())
+  }
+
+  orderStatusLabel(order: any) {
+    return this.titleize(order.status || order.rawStatus || 'Unknown')
+  }
+
+  orderTypeLabel(order: any) {
+    return this.titleize(order.orderType || 'Order')
+  }
+
+  orderSideLabel(order: any) {
+    const side = this.normalizeOrderSide(order.side)
+    return side ? getDirectionLabel(side) : this.titleize(order.side || 'Side')
+  }
+
+  orderAssetSymbol(asset: any) {
+    return String(asset?.symbol || asset?.assetSymbol || asset?.ticker || asset?.id || 'Asset').toUpperCase()
+  }
+
+  orderAssetName(asset: any) {
+    return String(asset?.name || this.orderAssetSymbol(asset))
+  }
+
+  formatOrderAmount(value: any) {
+    if (value === undefined || value === null || value === '') return ''
+
+    const numeric = typeof value === 'number' ? value : Number(String(value).replace(/,/g, ''))
+    if (Number.isFinite(numeric)) {
+      return numeric.toLocaleString(undefined, {
+        maximumFractionDigits: numeric >= 1 ? 6 : 8
+      })
+    }
+
+    return String(value)
+  }
+
+  orderSize(order: any) {
+    const size = this.formatOrderAmount(order.qty)
+    if (!size) return ''
+
+    return `${size} ${this.orderAssetSymbol(order.targetAsset)}`
+  }
+
+  orderDate(value: any) {
+    const time = timestamp(value, 0)
+    if (!time) return ''
+
+    return new Intl.DateTimeFormat(undefined, {
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit'
+    }).format(new Date(time))
+  }
+
+  orderDateTime(value: any) {
+    const time = timestamp(value, 0)
+    if (!time) return ''
+
+    return new Intl.DateTimeFormat(undefined, {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      second: '2-digit'
+    }).format(new Date(time))
+  }
+
+  orderPairIntent(order: any) {
+    const side = this.normalizeOrderSide(order.side)
+    const targetSymbol = this.orderAssetSymbol(order.targetAsset)
+    const contraSymbol = this.orderAssetSymbol(order.contraAsset)
+
+    if (!side) return `${targetSymbol} / ${contraSymbol}`
+
+    return formatPairIntent({
+      side,
+      targetAsset: { ...(order.targetAsset || {}), symbol: targetSymbol } as any,
+      contraAsset: { ...(order.contraAsset || {}), symbol: contraSymbol } as any
+    })
+  }
+
+  orderJson(value: any) {
+    if (value === undefined || value === null) return ''
+
+    try {
+      return JSON.stringify(value, null, 2)
+    } catch (err) {
+      return String(value)
+    }
+  }
+
+  orderChainIdNumber(chainId: any) {
+    const value =
+      typeof chainId === 'string'
+        ? Number.parseInt(chainId, chainId.toLowerCase().startsWith('0x') ? 16 : 10)
+        : Number(chainId)
+
+    if (!Number.isInteger(value) || value <= 0) throw new Error('Invalid Flash order chain.')
+
+    return value
+  }
+
+  orderChainIdHex(chainId: any) {
+    return `0x${this.orderChainIdNumber(chainId).toString(16)}`
+  }
+
+  orderErrorMessage(error: any, fallback: string) {
+    if (!error) return fallback
+    if (typeof error === 'string') return error
+    if (error.message) return error.message
+    if (error.error?.message) return error.error.message
+
+    return fallback
+  }
+
+  providerResponseError(response: any, fallback: string) {
+    return response?.error ? this.orderErrorMessage(response.error, fallback) : ''
+  }
+
+  orderCancelErrorMessage(orderId: string) {
+    const error = this.state.orderCancelError
+    return error?.orderId === orderId ? error.message : ''
+  }
+
   copyActivityValue(value?: string) {
     if (!value) return
     link.send('tray:clipboardData', value)
@@ -803,9 +1004,49 @@ class Home extends React.Component<any, any> {
     if (asset && !hasPositiveBalance(asset)) return
     if (!asset && !this.selectedWalletHasAssets()) return
 
+    const updatedAt = Date.now()
+
     link.send('tray:action', 'setDappStorage', 'send', {
       asset: asset || null,
-      updatedAt: Date.now()
+      mode: 'send',
+      updatedAt
+    })
+    link.send('tray:action', 'setDappStorage', DAPP_LAUNCHER_STORAGE_KEY, {
+      mode: 'send',
+      updatedAt
+    })
+    link.send('*:addFrame', 'dappLauncher')
+    link.send('tray:action', 'setDash', { showing: false })
+  }
+
+  tradeChainId(asset?: any) {
+    return Number(asset?.chainId || this.state.network || 0)
+  }
+
+  canOpenTrade(asset?: any) {
+    const chainId = this.tradeChainId(asset)
+    const chain = this.store('main.networks.ethereum', chainId)
+    return chainId === ANVIL_CHAIN_ID && !!chain
+  }
+
+  tradeTitle(asset?: any) {
+    return this.canOpenTrade(asset) ? 'Trade' : TRADE_DISABLED_CHAIN_LABEL
+  }
+
+  openTrade(asset?: any) {
+    if (!this.canOpenTrade(asset)) return
+
+    const updatedAt = Date.now()
+    const launchData = {
+      asset: asset || null,
+      mode: 'trade',
+      updatedAt
+    }
+
+    link.send('tray:action', 'setDappStorage', 'trade', launchData)
+    link.send('tray:action', 'setDappStorage', DAPP_LAUNCHER_STORAGE_KEY, {
+      mode: 'trade',
+      updatedAt
     })
     link.send('*:addFrame', 'dappLauncher')
     link.send('tray:action', 'setDash', { showing: false })
@@ -827,6 +1068,7 @@ class Home extends React.Component<any, any> {
       query: '',
       overlay: null,
       accountsOpen: false,
+      orderDetails: '',
       activityDetails: activityId
     })
   }
@@ -839,8 +1081,86 @@ class Home extends React.Component<any, any> {
       query: '',
       overlay: null,
       accountsOpen: false,
+      orderDetails: '',
       activityDetails: activity.id
     })
+  }
+
+  openOrder(order: any) {
+    if (!order?.orderId) return
+
+    this.setState({
+      tab: 'orders',
+      query: '',
+      overlay: null,
+      accountsOpen: false,
+      activityDetails: '',
+      orderDetails: order.orderId
+    })
+  }
+
+  signOrderCancel(order: any, orderId: string) {
+    const accountAddress = order.accountAddress || order.account || order.address || ''
+
+    if (!isAddress(accountAddress)) throw new Error('Order is missing an account address.')
+
+    const chainIdNumber = this.orderChainIdNumber(order.chainId)
+    const chainId = this.orderChainIdHex(chainIdNumber)
+    const message = `Definitive Flash v1 — Cancel Order\nOrder: ${orderId}`
+
+    link.send('tray:action', 'initOrigin', FRAME_ORIGIN_ID, {
+      name: 'newframe-internal',
+      chain: { id: chainIdNumber, type: 'ethereum' }
+    })
+
+    const payload = {
+      id: Date.now(),
+      jsonrpc: '2.0',
+      method: 'personal_sign',
+      chainId,
+      params: [message, accountAddress],
+      _origin: FRAME_ORIGIN_ID
+    }
+
+    return new Promise<string>((resolve, reject) => {
+      link.rpc('providerSend', payload, (response: any) => {
+        const error = this.providerResponseError(response, 'Cancel signature failed.')
+        const signature = response?.result
+
+        if (error) return reject(new Error(error))
+        if (!signature) return reject(new Error('Cancel signature was not returned.'))
+
+        resolve(signature)
+      })
+    })
+  }
+
+  async cancelOrder(order: any) {
+    const orderId = order?.orderId
+
+    if (!orderId || this.orderCancelPending) return
+
+    this.orderCancelPending = orderId
+
+    try {
+      const signature = await this.signOrderCancel(order, orderId)
+      await this.rpc('flashCancelOrder', { orderId, signature })
+
+      if (this.orderCancelPending === orderId && this.state.orderCancelError?.orderId === orderId) {
+        this.setState({ orderCancelError: null })
+      }
+    } catch (error) {
+      if (this.orderCancelPending === orderId) {
+        this.setState({
+          orderCancelError: {
+            orderId,
+            message: this.orderErrorMessage(error, 'Cancel failed.')
+          }
+        })
+      }
+    } finally {
+      if (this.orderCancelPending === orderId) this.orderCancelPending = ''
+    }
   }
 
   selectedWalletHasAssets() {
@@ -2005,6 +2325,7 @@ class Home extends React.Component<any, any> {
 
   renderHero(balances: any[]) {
     const hasAssets = balances.length > 0
+    const canTrade = this.canOpenTrade()
     const total = balances
       .filter((balance) => this.inNetworkFilter(balance.chainId))
       .reduce((sum, balance) => sum + balance.totalValue, 0)
@@ -2041,6 +2362,19 @@ class Home extends React.Component<any, any> {
           >
             <div className='t2HeroButtonIcon'>{svg.send(14)}</div>
             <span>Send</span>
+          </div>
+          <div
+            aria-disabled={!canTrade}
+            aria-label='Trade'
+            className={canTrade ? 't2HeroButton' : 't2HeroButton t2HeroButtonDisabled'}
+            onClick={canTrade ? () => this.openTrade() : undefined}
+            onKeyDown={canTrade ? (e) => this.onKeyboardActivate(e, () => this.openTrade()) : undefined}
+            role='button'
+            tabIndex={canTrade ? 0 : -1}
+            title={this.tradeTitle()}
+          >
+            <div className='t2HeroButtonIcon'>{svg.sync(14)}</div>
+            <span>Trade</span>
           </div>
         </div>
       </div>
@@ -2079,6 +2413,17 @@ class Home extends React.Component<any, any> {
           >
             <div className={tab === 'activity' ? 't2TabLabel t2TabLabelActive' : 't2TabLabel'}>Activity</div>
             <div className={tab === 'activity' ? 't2TabBar t2TabBarActive' : 't2TabBar'} />
+          </div>
+          <div
+            aria-selected={tab === 'orders'}
+            className='t2Tab'
+            onClick={() => this.setState({ tab: 'orders', query: '' })}
+            onKeyDown={(e) => this.onKeyboardActivate(e, () => this.setState({ tab: 'orders', query: '' }))}
+            role='tab'
+            tabIndex={tab === 'orders' ? 0 : -1}
+          >
+            <div className={tab === 'orders' ? 't2TabLabel t2TabLabelActive' : 't2TabLabel'}>Orders</div>
+            <div className={tab === 'orders' ? 't2TabBar t2TabBarActive' : 't2TabBar'} />
           </div>
         </div>
         <div
@@ -2350,6 +2695,7 @@ class Home extends React.Component<any, any> {
     if (!asset) return null
 
     const canSendAsset = hasPositiveBalance(asset)
+    const canTradeAsset = this.canOpenTrade(asset)
     const chain = this.store('main.networks.ethereum', asset.chainId) || {}
     const price = Number(asset?.usdRate?.price || 0)
     const priceDisplay = price > 0 ? `$${formatUsdRate(price, 2)}` : '$0.00'
@@ -2419,6 +2765,238 @@ class Home extends React.Component<any, any> {
             {svg.send(14)}
             <span>Send</span>
           </div>
+          <div
+            aria-disabled={!canTradeAsset}
+            aria-label={`Trade ${asset.symbol}`}
+            className={canTradeAsset ? 't2AssetSendButton' : 't2AssetSendButton t2AssetSendButtonDisabled'}
+            onClick={canTradeAsset ? () => this.openTrade(asset) : undefined}
+            onKeyDown={
+              canTradeAsset ? (e) => this.onKeyboardActivate(e, () => this.openTrade(asset)) : undefined
+            }
+            role='button'
+            style={{ marginLeft: '10px' }}
+            tabIndex={canTradeAsset ? 0 : -1}
+            title={canTradeAsset ? `Trade ${asset.symbol}` : TRADE_DISABLED_CHAIN_LABEL}
+          >
+            {svg.sync(14)}
+            <span>Trade</span>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  renderOrderAssetIcon(asset: any, fallbackChainId?: number) {
+    const symbol = this.orderAssetSymbol(asset)
+    const chainId = Number(asset?.chainId || fallbackChainId || 0)
+    const logo = asset?.logoURI || asset?.logoUrl || asset?.icon
+
+    return (
+      <div className='t2OrderAssetIcon'>
+        <div className='t2OrderAssetIconInner'>
+          {logo ? (
+            <img src={cachedImageUrl(logo)} alt='' />
+          ) : symbol === 'USDC' ? (
+            svg.usd(14)
+          ) : symbol === 'ETH' || symbol === 'WETH' ? (
+            svg.eth(14)
+          ) : (
+            <span>{symbol.substring(0, 1)}</span>
+          )}
+        </div>
+        {chainId ? <div className='t2OrderAssetChainBadge'>{this.chainIcon(chainId, 12, 8, 6)}</div> : null}
+      </div>
+    )
+  }
+
+  renderOrderAssetPill(asset: any, fallbackChainId?: number, prefix = '') {
+    return (
+      <div className='t2OrderAssetPill' title={this.orderAssetName(asset)}>
+        {prefix ? <span className='t2OrderAssetPrefix'>{prefix}</span> : null}
+        {this.renderOrderAssetIcon(asset, fallbackChainId)}
+        <span>{this.orderAssetSymbol(asset)}</span>
+      </div>
+    )
+  }
+
+  renderOrders(account: any) {
+    const records = this.getOrderRecords(account)
+
+    if (!records.length) return <div className='t2EmptyState'>No Orders Yet</div>
+
+    return (
+      <div className='t2OrderList'>
+        {records.map((order: any) => {
+          const chainId = Number(order.chainId)
+          const open = this.isOpenOrder(order)
+          const side = this.normalizeOrderSide(order.side)
+          const statusKey = this.orderStatus(order).replace(/[^a-z0-9]+/g, '-') || 'unknown'
+          const cancelError = this.orderCancelErrorMessage(order.orderId)
+          const contraPrefix = side ? getContraPreposition(side) : 'with'
+
+          return (
+            <div
+              key={order.orderId}
+              aria-label={`${this.orderPairIntent(order)} order details`}
+              className='t2OrderRow cardShow'
+              onClick={() => this.openOrder(order)}
+              onKeyDown={(e) => this.onKeyboardActivate(e, () => this.openOrder(order))}
+              role='button'
+              tabIndex={0}
+            >
+              <div className='t2OrderCancelSlot'>
+                {open ? (
+                  <div
+                    aria-label='Cancel order'
+                    className='t2OrderCancel'
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      void this.cancelOrder(order)
+                    }}
+                    onKeyDown={(e) => {
+                      e.stopPropagation()
+                      this.onKeyboardActivate(e, () => void this.cancelOrder(order))
+                    }}
+                    role='button'
+                    tabIndex={0}
+                    title='Cancel order'
+                  >
+                    {svg.x(9)}
+                  </div>
+                ) : null}
+              </div>
+              <div className='t2OrderStatusBlock'>
+                <div className={`t2OrderStatus t2OrderStatus-${statusKey}`}>
+                  {this.orderStatusLabel(order)}
+                </div>
+                <div className='t2OrderCreated'>{this.orderDate(order.createdAt)}</div>
+              </div>
+              <div className='t2OrderAssetColumn'>
+                {this.renderOrderAssetPill(order.targetAsset, chainId)}
+              </div>
+              <div className='t2OrderCopy'>
+                <div className='t2OrderIntent'>{this.orderPairIntent(order)}</div>
+                <div className='t2OrderSubline'>
+                  <span>{this.orderSideLabel(order)}</span>
+                  <span>{this.orderTypeLabel(order)}</span>
+                  {cancelError ? (
+                    <span className='t2OrderCancelInlineError' title={cancelError}>
+                      {cancelError}
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+              <div className='t2OrderSize'>{this.orderSize(order)}</div>
+              <div className='t2OrderContra'>
+                {this.renderOrderAssetPill(order.contraAsset, chainId, contraPrefix)}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    )
+  }
+
+  renderOrderDetails() {
+    const orderId = this.state.orderDetails
+    if (!orderId) return null
+
+    const order = this.store('main.orders', orderId)
+    if (!order) return null
+
+    const chainId = Number(order.chainId)
+    const chain = this.store('main.networks.ethereum', chainId) || {}
+    const side = this.normalizeOrderSide(order.side)
+    const cancelError = this.orderCancelErrorMessage(orderId)
+    const detailRow = (label: string, value: any, monospace = false) => {
+      if (value === undefined || value === null || value === '') return null
+
+      return (
+        <div className='t2OrderDetailRow'>
+          <div className='t2OrderDetailLabel'>{label}</div>
+          <div className={monospace ? 't2OrderDetailValue t2OrderDetailValueCode' : 't2OrderDetailValue'}>
+            {value}
+          </div>
+        </div>
+      )
+    }
+    const rawPayload = this.orderJson(order.rawPayload)
+    const rawStatusPayload = this.orderJson(order.rawStatusPayload)
+
+    return (
+      <div aria-label='Order details' className='t2Overlay t2OrderOverlay cardShow' role='dialog'>
+        <div className='t2OverlayHeader'>
+          <div
+            aria-label='Back to orders'
+            className='t2OverlayBack'
+            onClick={() => this.setState({ orderDetails: '' })}
+            onKeyDown={(e) => this.onKeyboardActivate(e, () => this.setState({ orderDetails: '' }))}
+            role='button'
+            tabIndex={0}
+          >
+            {svg.chevronLeft(13)}
+          </div>
+          <div className='t2OverlayTitle'>Order</div>
+          <div className='t2OverlaySpacer' />
+        </div>
+        <div className='t2OverlayScroll t2OrderDetailScroll'>
+          <div className='t2OrderDetailHero'>
+            <div className='t2OrderDetailPair'>
+              {this.renderOrderAssetPill(order.targetAsset, chainId)}
+              <div className='t2OrderDetailIntent'>{this.orderPairIntent(order)}</div>
+              {this.renderOrderAssetPill(
+                order.contraAsset,
+                chainId,
+                side ? getContraPreposition(side) : 'with'
+              )}
+            </div>
+            <div className='t2OrderDetailMeta'>
+              <span>{this.orderStatusLabel(order)}</span>
+              <span>{this.orderTypeLabel(order)}</span>
+              <span>{this.orderSize(order)}</span>
+            </div>
+            {cancelError ? <div className='t2OrderCancelError'>Cancel failed: {cancelError}</div> : null}
+          </div>
+          <div className='t2OrderDetailList'>
+            {detailRow('Order ID', order.orderId || orderId, true)}
+            {detailRow('Provider', order.provider || order.source)}
+            {detailRow('Environment', order.environment)}
+            {detailRow('Profile', order.profile)}
+            {detailRow('Account', this.shortAddress(order.accountAddress), true)}
+            {detailRow(
+              'Chain',
+              <div className='t2OrderChainValue'>
+                <div className='t2OrderChainIcon'>{this.chainIcon(chainId, 18, 11, 9)}</div>
+                <span>{chain.name || `Chain ${chainId}`}</span>
+              </div>
+            )}
+            {detailRow('Status', this.orderStatusLabel(order))}
+            {detailRow('Raw status', order.rawStatus)}
+            {detailRow('Side', this.orderSideLabel(order))}
+            {detailRow('Type', this.orderTypeLabel(order))}
+            {detailRow('Size', this.orderSize(order))}
+            {detailRow('Spent amount', this.formatOrderAmount(order.spentAmount))}
+            {detailRow('Output amount', this.formatOrderAmount(order.outputAmount))}
+            {detailRow('Estimated output', this.formatOrderAmount(order.estimatedOutputAmount))}
+            {detailRow('Filled output', this.formatOrderAmount(order.filledOutputAmount))}
+            {detailRow('Average fill price', this.formatOrderAmount(order.averageFillPrice))}
+            {detailRow('Created', this.orderDateTime(order.createdAt))}
+            {detailRow('Updated', this.orderDateTime(order.updatedAt))}
+            {detailRow('Terminal', this.orderDateTime(order.terminalAt))}
+            {detailRow('Fill hash', order.fillHash || order.fillTransactionHash, true)}
+          </div>
+          {rawStatusPayload ? (
+            <div className='t2OrderJsonSection'>
+              <div className='t2OrderJsonTitle'>Status Payload</div>
+              <pre>{rawStatusPayload}</pre>
+            </div>
+          ) : null}
+          {rawPayload ? (
+            <div className='t2OrderJsonSection'>
+              <div className='t2OrderJsonTitle'>Raw Payload</div>
+              <pre>{rawPayload}</pre>
+            </div>
+          ) : null}
         </div>
       </div>
     )
@@ -4635,11 +5213,16 @@ class Home extends React.Component<any, any> {
         {this.renderTabs()}
         {this.renderSearch()}
         <div className='t2Main'>
-          {this.state.tab === 'positions' ? this.renderPositions(balances) : this.renderActivity(account)}
+          {this.state.tab === 'positions'
+            ? this.renderPositions(balances)
+            : this.state.tab === 'activity'
+              ? this.renderActivity(account)
+              : this.renderOrders(account)}
         </div>
         {this.renderNetworksOverlay(balances)}
         {this.renderAssetDetailsOverlay()}
         {this.renderActivityDetails()}
+        {this.renderOrderDetails()}
         {this.renderRequestsOverlay(current)}
         {this.renderDappsOverlay(current)}
         {this.renderAddChainOverlay()}

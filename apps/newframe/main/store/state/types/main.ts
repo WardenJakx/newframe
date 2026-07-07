@@ -81,6 +81,51 @@ export const ActivityRecordSchema = z
 
 export const ActivitySchema = z.record(z.string().describe('Activity Id'), ActivityRecordSchema).default({})
 
+const OrderTimestampSchema = z.union([z.number(), z.string(), z.date()])
+const OrderOptionalTimestampSchema = OrderTimestampSchema.nullable().optional()
+const OrderAmountSchema = z.union([z.number(), z.string()])
+const OrderOptionalAmountSchema = OrderAmountSchema.nullable().optional()
+
+export const OrderRecordSchema = z
+  .object({
+    orderId: z.string(),
+    accountAddress: z.string(),
+    chainId: z.union([z.number(), z.string()]),
+    provider: z.string().optional(),
+    source: z.string().optional(),
+    environment: z.string().nullable().optional(),
+    profile: z.string().nullable().optional(),
+    status: z.string(),
+    rawStatus: z.string().nullable().optional(),
+    orderType: z.string(),
+    side: z.string(),
+    targetAsset: z.unknown(),
+    contraAsset: z.unknown(),
+    qty: OrderAmountSchema,
+    spentAsset: z.unknown().optional(),
+    spentAmount: OrderOptionalAmountSchema,
+    outputAmount: OrderOptionalAmountSchema,
+    estimatedOutputAmount: OrderOptionalAmountSchema,
+    filledOutputAmount: OrderOptionalAmountSchema,
+    averageFillPrice: OrderOptionalAmountSchema,
+    createdAt: OrderTimestampSchema,
+    updatedAt: OrderTimestampSchema,
+    terminalAt: OrderOptionalTimestampSchema,
+    open: z.boolean().optional(),
+    cancellable: z.boolean().optional(),
+    rawPayload: z.unknown().optional(),
+    rawStatusPayload: z.unknown().optional(),
+    fillHash: z.string().nullable().optional(),
+    fillTransactionHash: z.string().nullable().optional()
+  })
+  .passthrough()
+  .refine((order) => Boolean(order.provider || order.source), {
+    message: 'Order record requires provider or source',
+    path: ['source']
+  })
+
+export const OrdersSchema = z.record(z.string().describe('Flash Order Id'), OrderRecordSchema).default({})
+
 export const MainSchema = z.object({
   _version: z.coerce.number(),
   instanceId: z.string(), // TODO: uuid
@@ -102,6 +147,7 @@ export const MainSchema = z.object({
   accountsMeta: z.record(z.string(), AccountMetadataSchema),
   balances: z.record(z.string().describe('Address'), z.array(BalanceSchema)),
   activity: ActivitySchema,
+  orders: OrdersSchema,
   mute: z.record(notificationTypes, z.boolean()),
   colorway: z.enum(['light', 'dark']),
   colorwayPrimary: ColorwayPrimarySchema,
@@ -114,3 +160,5 @@ export type Main = z.infer<typeof MainSchema>
 export type Activity = z.infer<typeof ActivitySchema>
 export type ActivityRecord = z.infer<typeof ActivityRecordSchema>
 export type ActivityStatus = z.infer<typeof ActivityStatusSchema>
+export type Orders = z.infer<typeof OrdersSchema>
+export type OrderRecord = z.infer<typeof OrderRecordSchema>

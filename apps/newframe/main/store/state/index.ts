@@ -20,7 +20,7 @@ export type { NativeCurrency } from './types/nativeCurrency'
 export type { Gas, GasFees } from './types/gas'
 export type { Rate } from './types/rate'
 export type { ColorwayPalette } from './types/colors'
-export type { Activity, ActivityRecord, ActivityStatus } from './types/main'
+export type { Activity, ActivityRecord, ActivityStatus, Orders, OrderRecord } from './types/main'
 
 const StatusNotificationSchema = z
   .object({
@@ -309,6 +309,7 @@ const mainState: M = {
   permissions: main('permissions', {}),
   balances: main('balances', {}),
   activity: main('activity', {}),
+  orders: main('orders', {}),
   accountOrder: main('accountOrder', []),
   tokens: main('tokens', { custom: [], known: {} }),
   rates: main('rates', {}),
