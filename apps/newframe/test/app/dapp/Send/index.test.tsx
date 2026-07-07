@@ -135,6 +135,14 @@ describe('Send', () => {
     expect(screen.getByText('USDC')).toBeTruthy()
   })
 
+  it('does not show the sending wallet as a recipient option', () => {
+    render(<Send assetId={nativeAssetId} />)
+
+    expect(screen.getByText('Recipient')).toBeTruthy()
+    expect(screen.queryByText('Sender')).toBeNull()
+    expect(screen.queryByText(sender.address)).toBeNull()
+  })
+
   it('submits a native transfer through the Send service flow', async () => {
     ;(link.rpc as Mock<any>).mockImplementation((method: string, _payload: any, callback: any) => {
       if (method === 'providerSend') callback({})
