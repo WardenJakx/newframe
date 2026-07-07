@@ -73,6 +73,7 @@ export type TradeWorkflowAction =
     }
   | { type: 'quoteRequested'; requestKey: string }
   | { type: 'selectAsset'; asset: FlashAsset; field: TradeAssetField }
+  | { type: 'setAssetOpen'; field: TradeAssetField; open: boolean }
   | { type: 'setInputAmount'; inputAmount: string }
   | { type: 'setOrderType'; orderType: FlashOrderType }
   | { type: 'settingsChanged'; quickTrade?: boolean; slippage?: string }
@@ -82,7 +83,6 @@ export type TradeWorkflowAction =
   | { type: 'submitStarted'; actionQuoteId: string }
   | { type: 'submitSucceeded'; actionQuoteId: string }
   | { type: 'toggleAdvancedOpen' }
-  | { type: 'toggleAssetOpen'; field: TradeAssetField }
   | { type: 'toggleSide' }
 
 export interface CreateInitialTradeStateOptions {
@@ -392,6 +392,18 @@ export function tradeReducer(state: TradeWorkflowState, action: TradeWorkflowAct
       }
     case 'selectAsset':
       return selectTradeAsset(state, action.field, action.asset)
+    case 'setAssetOpen':
+      return action.field === 'target'
+        ? {
+            ...state,
+            contraOpen: action.open ? false : state.contraOpen,
+            targetOpen: action.open
+          }
+        : {
+            ...state,
+            contraOpen: action.open,
+            targetOpen: action.open ? false : state.targetOpen
+          }
     case 'setInputAmount':
       return applyTradeInputAmount(state, action.inputAmount)
     case 'setOrderType':
@@ -468,18 +480,6 @@ export function tradeReducer(state: TradeWorkflowState, action: TradeWorkflowAct
         ...state,
         advancedOpen: !state.advancedOpen
       }
-    case 'toggleAssetOpen':
-      return action.field === 'target'
-        ? {
-            ...state,
-            contraOpen: false,
-            targetOpen: !state.targetOpen
-          }
-        : {
-            ...state,
-            contraOpen: !state.contraOpen,
-            targetOpen: false
-          }
     case 'toggleSide':
       return applyTradeInputAmount(state, state.quote?.outputAmount || '', {
         side: state.side === 'buy' ? 'sell' : 'buy'

@@ -76,19 +76,6 @@ export function isSameFlashAsset(a?: FlashAsset | null, b?: FlashAsset | null) {
   return !!a && !!b && (a.id === b.id || a.symbol === b.symbol)
 }
 
-export function truncateTradeAddress(address = '') {
-  if (!address) return ''
-  if (address.length <= 12) return address
-
-  return `${address.slice(0, 6)}...${address.slice(-4)}`
-}
-
-export function tradeAssetAddressLabel(asset: FlashAsset) {
-  if (asset.isNative) return '0xeeeee'
-
-  return truncateTradeAddress(asset.address || '')
-}
-
 export function cleanTradeAmount(amount = '') {
   return amount.trim().replace(/,/g, '')
 }

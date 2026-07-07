@@ -132,7 +132,7 @@ describe('Send', () => {
 
     render(<Send assetId={`${chainId}:${tokenAddress}`} />)
 
-    expect(screen.getByText('USDC')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Select send token' }).textContent).toContain('USDC')
   })
 
   it('does not show the sending wallet as a recipient option', () => {

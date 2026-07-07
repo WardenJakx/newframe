@@ -901,18 +901,15 @@ async function screenshotTradeTicketVisualStates(app: Browser, tray: Page) {
   await screenshot(tradePage, '10b-trade-direction-switched.png')
 
   await tradePage.getByRole('button', { name: /Select target asset/i }).click()
-  await tradePage
-    .getByRole('button', { name: /Choose target asset/i })
-    .first()
-    .waitFor({
-      state: 'visible',
-      timeout: 5_000
-    })
+  await tradePage.getByRole('option', { name: /\bWETH\b.*\$0\.00/i }).waitFor({
+    state: 'visible',
+    timeout: 5_000
+  })
   await screenshot(tradePage, '10c-trade-target-asset-menu.png')
 
   await tradePage.getByRole('button', { name: /Select target asset/i }).click()
   await tradePage.getByRole('button', { name: /Select contra asset/i }).click()
-  await tradePage.getByRole('button', { name: /Choose contra asset ETH Ether 0xeeeee/i }).waitFor({
+  await tradePage.getByRole('option', { name: /\bUSDC\b.*\$0\.00/i }).waitFor({
     state: 'visible',
     timeout: 5_000
   })

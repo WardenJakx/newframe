@@ -1,7 +1,8 @@
 import React from 'react'
 
 import Native from '../../../resources/Native'
-import { createDisplayBalance } from '../../../resources/domain/balance'
+import TokenSelector from '../../../resources/Components/TokenSelector'
+import { createDisplayBalance, formatUsdRate } from '../../../resources/domain/balance'
 import {
   FLASH_LIMIT_ORDER_TYPE,
   FLASH_MARKET_ORDER_TYPE,
@@ -42,7 +43,6 @@ import {
   marketTradeQuoteRequestKey,
   objectRecord,
   providerResponseError,
-  tradeAssetAddressLabel,
   tradeErrorMessage,
   TRADE_LIMIT_ORDER_TYPES,
   TRADE_ORDER_LABELS
@@ -88,7 +88,7 @@ function buildQuoteEffectRequest({
 
 export default function Trade({ assetId }: TradeProps) {
   const selectDappWallet = React.useMemo(() => createDappWalletSelector(), [])
-  const { balanceSummaries, currentAccount } = useAppSelector(selectDappWallet)
+  const { balanceSummaries, currentAccount, networks, networksMeta } = useAppSelector(selectDappWallet)
   const flashBalanceEntries = React.useMemo(
     () => getFlashBalanceEntries(balanceSummaries),
     [balanceSummaries]
@@ -199,6 +199,38 @@ export default function Trade({ assetId }: TradeProps) {
       return createDisplayBalance(balance).displayBalance
     },
     [balanceSummaries]
+  )
+
+  const getTradeNotionalLabel = React.useCallback(
+    (asset: FlashAsset) => {
+      const balance = findTradeBalance(asset, balanceSummaries)
+
+      return `$${formatUsdRate(balance?.totalValue || 0, 2)}`
+    },
+    [balanceSummaries]
+  )
+
+  const getTradeLogoURI = React.useCallback(
+    (asset: FlashAsset) => {
+      const balance = findTradeBalance(asset, balanceSummaries)
+
+      return (
+        balance?.logoURI || (asset.isNative ? networksMeta[asset.chainId]?.nativeCurrency?.icon || '' : '')
+      )
+    },
+    [balanceSummaries, networksMeta]
+  )
+
+  const createTradeSelectorItem = React.useCallback(
+    (asset: FlashAsset) => ({
+      id: asset.id,
+      symbol: asset.symbol,
+      amountLabel: getTradeDisplayBalance(asset),
+      notionalLabel: getTradeNotionalLabel(asset),
+      chainId: asset.chainId,
+      logoURI: getTradeLogoURI(asset)
+    }),
+    [getTradeDisplayBalance, getTradeLogoURI, getTradeNotionalLabel]
   )
 
   const handleSetTradeBalanceAmount = React.useCallback(
@@ -429,60 +461,25 @@ export default function Trade({ assetId }: TradeProps) {
     )
   }
 
-  const renderTradeAssetIcon = (asset: FlashAsset) => {
-    return (
-      <div className={`tradeAssetIcon tradeAssetIcon${asset.symbol}`}>
-        {asset.symbol === 'USDC' ? svg.usd(16) : svg.eth(16)}
-      </div>
-    )
-  }
-
   const renderTradeAssetSelector = (field: TradeAssetField, asset: FlashAsset, oppositeAsset: FlashAsset) => {
     const open = field === 'target' ? state.targetOpen : state.contraOpen
     const options = FLASH_P0_ASSETS.filter((option) => !isSameFlashAsset(option, oppositeAsset))
+    const items = options.map(createTradeSelectorItem)
 
     return (
-      <div className='tradeAssetSelector'>
-        <button
-          aria-label={`Select ${field} asset ${asset.symbol}`}
-          className='tradeAssetButton'
-          onClick={() => dispatch({ type: 'toggleAssetOpen', field })}
-          type='button'
-        >
-          {renderTradeAssetIcon(asset)}
-          <span>{asset.symbol}</span>
-          <div className='tradeAssetChevron'>{svg.chevron(11)}</div>
-        </button>
-        {open ? (
-          <div className='tradeAssetMenu'>
-            {options.map((option) => {
-              const balance = getTradeDisplayBalance(option)
-              const address = tradeAssetAddressLabel(option)
-
-              return (
-                <button
-                  aria-label={`Choose ${field} asset ${option.symbol} ${option.name} ${address} balance ${balance}`}
-                  className='tradeAssetOption'
-                  key={option.id}
-                  onClick={() => dispatch({ type: 'selectAsset', field, asset: option })}
-                  type='button'
-                >
-                  {renderTradeAssetIcon(option)}
-                  <div className='tradeAssetOptionText'>
-                    <span>{option.symbol}</span>
-                    <small>{option.name}</small>
-                    <small>{address}</small>
-                  </div>
-                  <div className='tradeAssetOptionBalance'>
-                    <span>{balance}</span>
-                    <small>{option.symbol}</small>
-                  </div>
-                </button>
-              )
-            })}
-          </div>
-        ) : null}
-      </div>
+      <TokenSelector
+        ariaLabel={`Select ${field} asset`}
+        items={items}
+        networks={networks}
+        networksMeta={networksMeta}
+        onOpenChange={(nextOpen) => dispatch({ type: 'setAssetOpen', field, open: nextOpen })}
+        onSelect={(id) => {
+          const selected = options.find((option) => option.id === id)
+          if (selected) dispatch({ type: 'selectAsset', field, asset: selected })
+        }}
+        open={open}
+        selectedId={asset.id}
+      />
     )
   }
 

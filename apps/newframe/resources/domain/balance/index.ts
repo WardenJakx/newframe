@@ -5,6 +5,7 @@ import type { WithTokenId, Balance, Rate } from '../../../main/store/state'
 
 export interface DisplayedBalance extends Balance {
   displayBalance: string
+  logoURI?: string
   price: string
   priceChange: string | false
   usdRate: Rate
