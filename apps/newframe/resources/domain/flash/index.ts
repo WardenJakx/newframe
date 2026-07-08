@@ -1,4 +1,5 @@
 export const FLASH_ANVIL_CHAIN_ID = 31337
+export const FLASH_BASE_CHAIN_ID = 8453
 
 export const FLASH_NATIVE_ETH_ASSET_ID = 'native-eth'
 export const FLASH_WETH_ASSET_ID = 'weth'
@@ -11,6 +12,8 @@ export const FLASH_USDC_ASSET_SYMBOL = 'USDC'
 export const FLASH_NATIVE_ETH_TOKEN_ADDRESS = '0x0000000000000000000000000000000000000000'
 export const FLASH_WETH_ADDRESS = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2'
 export const FLASH_USDC_ADDRESS = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'
+export const FLASH_BASE_WETH_ADDRESS = '0x4200000000000000000000000000000000000006'
+export const FLASH_BASE_USDC_ADDRESS = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913'
 export const FLASH_MOCK_SETTLEMENT_ADDRESS = '0x0000000000000000000000000000000000005e77'
 
 export const FLASH_MARKET_ORDER_TYPE = 'market'
@@ -169,6 +172,12 @@ export interface FlashDefaultAssetOptions {
   balances?: FlashAssetBalances | null
 }
 
+export interface FlashRuntime {
+  environment?: string | null
+  isDev?: boolean | null
+  profile?: string | null
+}
+
 export const FLASH_NATIVE_ETH_ASSET = {
   id: FLASH_NATIVE_ETH_ASSET_ID,
   symbol: FLASH_NATIVE_ETH_ASSET_SYMBOL,
@@ -186,7 +195,7 @@ export const FLASH_WETH_ASSET = {
   chainId: FLASH_ANVIL_CHAIN_ID,
   isNative: false,
   address: FLASH_WETH_ADDRESS
-} as const satisfies FlashAsset
+} as const satisfies FlashAsset 
 
 export const FLASH_USDC_ASSET = {
   id: FLASH_USDC_ASSET_ID,
@@ -201,11 +210,70 @@ export const FLASH_USDC_ASSET = {
 export const FLASH_P0_ASSETS = [FLASH_NATIVE_ETH_ASSET, FLASH_WETH_ASSET, FLASH_USDC_ASSET] as const
 export const FLASH_DEFAULT_TARGET_ASSET = FLASH_WETH_ASSET
 
-const FLASH_DEFAULT_CONTRA_ASSET_PRIORITY = [
-  FLASH_USDC_ASSET,
-  FLASH_WETH_ASSET,
-  FLASH_NATIVE_ETH_ASSET
-] as const
+const FLASH_TOKEN_ADDRESSES: Record<number, { weth: string; usdc: string }> = {
+  [FLASH_ANVIL_CHAIN_ID]: {
+    weth: FLASH_WETH_ADDRESS,
+    usdc: FLASH_USDC_ADDRESS
+  },
+  [FLASH_BASE_CHAIN_ID]: {
+    weth: FLASH_BASE_WETH_ADDRESS,
+    usdc: FLASH_BASE_USDC_ADDRESS
+  }
+}
+
+export function getFlashDefaultChainId(runtime: FlashRuntime = {}) {
+  if (runtime.isDev || runtime.profile === 'dev' || runtime.environment === 'development') {
+    return FLASH_ANVIL_CHAIN_ID
+  }
+
+  return FLASH_BASE_CHAIN_ID
+}
+
+export function isFlashChainSupported(chainId: number, runtime: FlashRuntime = {}) {
+  return chainId === getFlashDefaultChainId(runtime)
+}
+
+export function getFlashAssetsForChain(chainId: number): FlashAsset[] {
+  const supportedChainId = FLASH_TOKEN_ADDRESSES[chainId] ? chainId : FLASH_ANVIL_CHAIN_ID
+  if (supportedChainId === FLASH_ANVIL_CHAIN_ID) return [...FLASH_P0_ASSETS]
+
+  const addresses = FLASH_TOKEN_ADDRESSES[supportedChainId]
+
+  return [
+    {
+      ...FLASH_NATIVE_ETH_ASSET,
+      chainId: supportedChainId
+    },
+    {
+      ...FLASH_WETH_ASSET,
+      address: addresses.weth,
+      chainId: supportedChainId
+    },
+    {
+      ...FLASH_USDC_ASSET,
+      address: addresses.usdc,
+      chainId: supportedChainId
+    }
+  ]
+}
+
+export function getFlashDefaultTargetAsset(chainId = FLASH_ANVIL_CHAIN_ID) {
+  return (
+    getFlashAssetsForChain(chainId).find((asset) => asset.id === FLASH_WETH_ASSET_ID) || {
+      ...FLASH_DEFAULT_TARGET_ASSET,
+      chainId
+    }
+  )
+}
+
+function getFlashDefaultContraAssetPriority(chainId: number) {
+  const assets = getFlashAssetsForChain(chainId)
+  const usdc = assets.find((asset) => asset.id === FLASH_USDC_ASSET_ID)
+  const weth = assets.find((asset) => asset.id === FLASH_WETH_ASSET_ID)
+  const nativeEth = assets.find((asset) => asset.id === FLASH_NATIVE_ETH_ASSET_ID)
+
+  return [usdc, weth, nativeEth].filter(Boolean) as FlashAsset[]
+}
 
 export function getSpentAsset({ side, targetAsset, contraAsset }: FlashAssetPair): FlashAsset {
   return side === 'buy' ? contraAsset : targetAsset
@@ -228,14 +296,14 @@ export function formatPairIntent({ side, targetAsset, contraAsset }: FlashAssetP
 }
 
 export function getDefaultContraAsset({ targetAsset, balances }: FlashDefaultAssetOptions): FlashAsset {
-  const candidates = FLASH_DEFAULT_CONTRA_ASSET_PRIORITY.filter(
+  const candidates = getFlashDefaultContraAssetPriority(targetAsset.chainId).filter(
     (asset) => !isSameFlashAsset(asset, targetAsset)
   )
 
   return (
     candidates.find((asset) => hasAssetBalance(asset, balances)) ||
     candidates[0] ||
-    FLASH_DEFAULT_CONTRA_ASSET_PRIORITY[0]
+    getFlashDefaultContraAssetPriority(FLASH_ANVIL_CHAIN_ID)[0]
   )
 }
 

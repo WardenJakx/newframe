@@ -1,9 +1,9 @@
 import { resolveFlashAssetFromRouteAssetId } from '../../../resources/domain/dappLauncher'
 import {
   FLASH_MARKET_ORDER_TYPE,
-  FLASH_P0_ASSETS,
   getDefaultContraAsset,
   getDefaultSide,
+  getFlashAssetsForChain,
   getSpentAsset,
   type FlashAsset,
   type FlashAssetBalances,
@@ -88,6 +88,7 @@ export type TradeWorkflowAction =
 export interface CreateInitialTradeStateOptions {
   assetId?: string | null
   balances?: FlashAssetBalances | null
+  chainId?: number | null
 }
 
 function resolveContraAsset(targetAsset: FlashAsset, balances?: FlashAssetBalances | null) {
@@ -98,15 +99,17 @@ function resolveContraAsset(targetAsset: FlashAsset, balances?: FlashAssetBalanc
   const fallback = getDefaultContraAsset({ targetAsset })
 
   return isSameFlashAsset(targetAsset, fallback)
-    ? FLASH_P0_ASSETS.find((option) => !isSameFlashAsset(option, targetAsset)) || contraAsset
+    ? getFlashAssetsForChain(targetAsset.chainId).find((option) => !isSameFlashAsset(option, targetAsset)) ||
+        contraAsset
     : fallback
 }
 
 export function createInitialTradeState({
   assetId,
-  balances
+  balances,
+  chainId
 }: CreateInitialTradeStateOptions = {}): TradeWorkflowState {
-  const targetAsset = resolveFlashAssetFromRouteAssetId(assetId)
+  const targetAsset = resolveFlashAssetFromRouteAssetId(assetId, chainId)
 
   return {
     actionQuoteId: '',
@@ -236,7 +239,9 @@ function selectTradeAsset(state: TradeWorkflowState, field: TradeAssetField, ass
   if (isSameFlashAsset(targetAsset, contraAsset)) {
     const replacement = getDefaultContraAsset({ targetAsset })
     contraAsset = isSameFlashAsset(targetAsset, replacement)
-      ? FLASH_P0_ASSETS.find((option) => !isSameFlashAsset(option, targetAsset)) || contraAsset
+      ? getFlashAssetsForChain(targetAsset.chainId).find(
+          (option) => !isSameFlashAsset(option, targetAsset)
+        ) || contraAsset
       : replacement
   }
 

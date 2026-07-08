@@ -3,13 +3,14 @@ import React from 'react'
 import Native from '../../../resources/Native'
 import TokenSelector from '../../../resources/Components/TokenSelector'
 import { createDisplayBalance, formatUsdRate } from '../../../resources/domain/balance'
+import { parseCanonicalAssetId } from '../../../resources/domain/dappLauncher'
 import {
   FLASH_LIMIT_ORDER_TYPE,
   FLASH_MARKET_ORDER_TYPE,
-  FLASH_P0_ASSETS,
   FLASH_TWAP_ORDER_TYPE,
   getContraPreposition,
   getDirectionLabel,
+  getFlashAssetsForChain,
   type FlashAsset,
   type FlashOrderType,
   type FlashQuote,
@@ -52,6 +53,7 @@ const MARKET_QUOTE_DEBOUNCE_MS = 250
 
 interface TradeProps {
   assetId?: string | null
+  chainId?: number
 }
 
 function buildQuoteEffectRequest({
@@ -86,16 +88,22 @@ function buildQuoteEffectRequest({
   }
 }
 
-export default function Trade({ assetId }: TradeProps) {
+export default function Trade({ assetId, chainId }: TradeProps) {
   const selectDappWallet = React.useMemo(() => createDappWalletSelector(), [])
   const { balanceSummaries, currentAccount, networks, networksMeta } = useAppSelector(selectDappWallet)
+  const initialTradeChainId = React.useMemo(() => {
+    return parseCanonicalAssetId(assetId)?.chainId || chainId
+  }, [assetId, chainId])
+  const initialTradeAssets = React.useMemo(() => {
+    return initialTradeChainId ? getFlashAssetsForChain(initialTradeChainId) : undefined
+  }, [initialTradeChainId])
   const flashBalanceEntries = React.useMemo(
-    () => getFlashBalanceEntries(balanceSummaries),
-    [balanceSummaries]
+    () => getFlashBalanceEntries(balanceSummaries, initialTradeAssets),
+    [balanceSummaries, initialTradeAssets]
   )
   const [state, dispatch] = React.useReducer(
     tradeReducer,
-    { assetId, balances: flashBalanceEntries },
+    { assetId, balances: flashBalanceEntries, chainId },
     createInitialTradeState
   )
   const mountedRef = React.useRef(false)
@@ -463,7 +471,9 @@ export default function Trade({ assetId }: TradeProps) {
 
   const renderTradeAssetSelector = (field: TradeAssetField, asset: FlashAsset, oppositeAsset: FlashAsset) => {
     const open = field === 'target' ? state.targetOpen : state.contraOpen
-    const options = FLASH_P0_ASSETS.filter((option) => !isSameFlashAsset(option, oppositeAsset))
+    const options = getFlashAssetsForChain(asset.chainId).filter(
+      (option) => !isSameFlashAsset(option, oppositeAsset)
+    )
     const items = options.map(createTradeSelectorItem)
 
     return (

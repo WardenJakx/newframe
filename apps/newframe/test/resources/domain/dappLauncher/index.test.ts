@@ -7,6 +7,9 @@ import {
   toCanonicalAssetId
 } from '../../../../resources/domain/dappLauncher'
 import {
+  FLASH_BASE_CHAIN_ID,
+  FLASH_BASE_USDC_ADDRESS,
+  FLASH_BASE_WETH_ADDRESS,
   FLASH_DEFAULT_TARGET_ASSET,
   FLASH_NATIVE_ETH_ASSET,
   FLASH_USDC_ASSET,
@@ -94,6 +97,17 @@ describe('#buildDappLauncherRoute', () => {
       '/send?assetId=31337%3A0x0000000000000000000000000000000000000000'
     )
   })
+
+  it('encodes the optional chain id query param', () => {
+    expect(buildDappLauncherRoute('trade', '', FLASH_BASE_CHAIN_ID)).toBe('/trade?chainId=8453')
+    expect(
+      buildDappLauncherRoute(
+        'trade',
+        `${FLASH_BASE_CHAIN_ID}:${FLASH_BASE_WETH_ADDRESS.toLowerCase()}`,
+        FLASH_BASE_CHAIN_ID
+      )
+    ).toBe('/trade?assetId=8453%3A0x4200000000000000000000000000000000000006&chainId=8453')
+  })
 })
 
 describe('#resolveSendAssetFromRouteAssetId', () => {
@@ -150,6 +164,24 @@ describe('#resolveFlashAssetFromRouteAssetId', () => {
     expect(resolveFlashAssetFromRouteAssetId('31337:0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48')).toBe(
       FLASH_USDC_ASSET
     )
+  })
+
+  it('resolves supported Base token ids', () => {
+    expect(
+      resolveFlashAssetFromRouteAssetId(`${FLASH_BASE_CHAIN_ID}:${FLASH_BASE_USDC_ADDRESS.toLowerCase()}`)
+    ).toMatchObject({
+      address: FLASH_BASE_USDC_ADDRESS,
+      chainId: FLASH_BASE_CHAIN_ID,
+      symbol: 'USDC'
+    })
+  })
+
+  it('uses a route chain fallback when no asset id is provided', () => {
+    expect(resolveFlashAssetFromRouteAssetId(null, FLASH_BASE_CHAIN_ID)).toMatchObject({
+      address: FLASH_BASE_WETH_ADDRESS,
+      chainId: FLASH_BASE_CHAIN_ID,
+      symbol: 'WETH'
+    })
   })
 
   it('falls back for missing, invalid, or unsupported ids', () => {

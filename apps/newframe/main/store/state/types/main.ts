@@ -17,6 +17,12 @@ const UpdaterPreferencesSchema = z.object({
   lastChecked: z.number().default(0)
 })
 
+const RuntimeSchema = z.object({
+  environment: z.string().nullable().optional(),
+  isDev: z.boolean().optional(),
+  profile: z.string().nullable().optional()
+})
+
 // these are individual keys on the main state object
 const PreferencesSchema = {
   launch: z.boolean().default(false).describe('Launch Newframe on system start'),
@@ -129,6 +135,7 @@ export const OrdersSchema = z.record(z.string().describe('Flash Order Id'), Orde
 export const MainSchema = z.object({
   _version: z.coerce.number(),
   instanceId: z.string(), // TODO: uuid
+  runtime: RuntimeSchema,
   networks: z.object({
     ethereum: z.record(z.coerce.number(), ChainSchema)
   }),

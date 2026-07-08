@@ -43,8 +43,10 @@ import {
 } from '../../../resources/domain/transaction'
 import {
   formatPairIntent,
+  getFlashDefaultChainId,
   getContraPreposition,
   getDirectionLabel,
+  isFlashChainSupported,
   type FlashTradeSide
 } from '../../../resources/domain/flash'
 
@@ -85,8 +87,7 @@ const INITIAL_DUST_ROWS = 50
 const DUST_ROWS_INCREMENT = 50
 const PENDING_NOTIFICATION_MS = 60 * 1000
 const RESOLVED_NOTIFICATION_MS = 3000
-const ANVIL_CHAIN_ID = 31337
-const TRADE_DISABLED_CHAIN_LABEL = 'Select Anvil to trade'
+const TRADE_DISABLED_CHAIN_LABEL = 'Trade unavailable on this chain'
 const FRAME_ORIGIN_ID = uuidv5('newframe-internal', uuidv5.DNS)
 
 const timestamp = (value: any, fallback = 0) => {
@@ -1018,13 +1019,18 @@ class Home extends React.Component<any, any> {
   }
 
   tradeChainId(asset?: any) {
-    return Number(asset?.chainId || this.state.network || 0)
+    const assetChainId = Number(asset?.chainId)
+    if (Number.isInteger(assetChainId) && assetChainId > 0) return assetChainId
+
+    const selectedChainId = Number(this.state.network)
+    if (Number.isInteger(selectedChainId) && selectedChainId > 0) return selectedChainId
+
+    return getFlashDefaultChainId(this.store('main.runtime') || {})
   }
 
   canOpenTrade(asset?: any) {
     const chainId = this.tradeChainId(asset)
-    const chain = this.store('main.networks.ethereum', chainId)
-    return chainId === ANVIL_CHAIN_ID && !!chain
+    return isFlashChainSupported(chainId, this.store('main.runtime') || {})
   }
 
   tradeTitle(asset?: any) {
@@ -1033,10 +1039,11 @@ class Home extends React.Component<any, any> {
 
   openTrade(asset?: any) {
     if (!this.canOpenTrade(asset)) return
+    const chainId = this.tradeChainId(asset)
 
     link.send('*:addFrame', {
       id: DAPP_LAUNCHER_FRAME_ID,
-      route: buildDappLauncherRoute('trade', toCanonicalAssetId(asset))
+      route: buildDappLauncherRoute('trade', toCanonicalAssetId(asset), chainId)
     })
     link.send('tray:action', 'setDash', { showing: false })
   }

@@ -1,6 +1,11 @@
 import { NATIVE_CURRENCY } from '../../constants'
 import { hasPositiveBalance } from '../balance'
-import { FLASH_DEFAULT_TARGET_ASSET, FLASH_P0_ASSETS, type FlashAsset } from '../flash'
+import {
+  FLASH_DEFAULT_TARGET_ASSET,
+  getFlashAssetsForChain,
+  getFlashDefaultTargetAsset,
+  type FlashAsset
+} from '../flash'
 
 export const DAPP_LAUNCHER_FRAME_ID = 'dappLauncher'
 export const DAPP_LAUNCHER_NATIVE_ASSET_ADDRESS = NATIVE_CURRENCY
@@ -59,10 +64,15 @@ export function canonicalAssetAddress(address: unknown) {
   return /^0x[0-9a-f]{40}$/.test(value) ? value : ''
 }
 
-export function buildDappLauncherRoute(route: DappLauncherRouteName, assetId = '') {
-  const encodedAssetId = assetId ? `?assetId=${encodeURIComponent(assetId)}` : ''
+export function buildDappLauncherRoute(route: DappLauncherRouteName, assetId = '', chainId?: number) {
+  const searchParams = new URLSearchParams()
 
-  return `/${route}${encodedAssetId}`
+  if (assetId) searchParams.set('assetId', assetId)
+  if (Number.isInteger(chainId) && Number(chainId) > 0) searchParams.set('chainId', String(chainId))
+
+  const search = searchParams.toString()
+
+  return `/${route}${search ? `?${search}` : ''}`
 }
 
 export function resolveSendAssetFromRouteAssetId<
@@ -80,13 +90,20 @@ export function resolveSendAssetFromRouteAssetId<
   return sendableAssets[0] || null
 }
 
-export function resolveFlashAssetFromRouteAssetId(assetId?: string | null): FlashAsset {
+export function resolveFlashAssetFromRouteAssetId(
+  assetId?: string | null,
+  fallbackChainId?: number | null
+): FlashAsset {
   const routeAsset = parseCanonicalAssetId(assetId)
 
-  if (!routeAsset) return FLASH_DEFAULT_TARGET_ASSET
+  if (!routeAsset) {
+    return Number.isInteger(fallbackChainId) && Number(fallbackChainId) > 0
+      ? getFlashDefaultTargetAsset(Number(fallbackChainId))
+      : FLASH_DEFAULT_TARGET_ASSET
+  }
 
   return (
-    FLASH_P0_ASSETS.find((asset) => {
+    getFlashAssetsForChain(routeAsset.chainId).find((asset) => {
       return (
         Number(asset.chainId) === routeAsset.chainId &&
         canonicalAssetAddress(asset.isNative ? DAPP_LAUNCHER_NATIVE_ASSET_ADDRESS : asset.address) ===

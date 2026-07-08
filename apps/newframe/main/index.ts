@@ -45,6 +45,10 @@ app.commandLine.appendSwitch('ignore-gpu-blacklist', 'true')
 app.commandLine.appendSwitch('enable-native-gpu-memory-buffers', 'true')
 app.commandLine.appendSwitch('force-color-profile', 'srgb')
 
+if (process.env.NEWFRAME_HARNESS_CDP_PORT) {
+  app.commandLine.appendSwitch('remote-debugging-port', process.env.NEWFRAME_HARNESS_CDP_PORT)
+}
+
 const isDev = process.env.NODE_ENV === 'development'
 log.transports.console.level = process.env.LOG_LEVEL || (isDev ? 'verbose' : 'info')
 
