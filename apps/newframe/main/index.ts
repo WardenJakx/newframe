@@ -454,17 +454,17 @@ ipcMain.on('frame:unmax', (e) => {
   windows.unmax(e)
 })
 
-ipcMain.on('*:addFrame', (e, frameRequest) => {
+ipcMain.on('*:addFrame', (_e, frameRequest) => {
   const frame = normalizeDappLauncherFrameRequest(frameRequest)
   if (!frame) return
 
   const existingFrame = store('main.frames', frame.id)
 
+  store.setFramePanel(frame)
+  store.setDash({ showing: false })
+
   if (existingFrame) {
-    store.updateFrame(frame.id, frame)
     windows.refocusFrame(frame.id)
-  } else {
-    store.addFrame(frame)
   }
 })
 

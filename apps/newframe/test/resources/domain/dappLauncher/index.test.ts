@@ -51,12 +51,29 @@ describe('#normalizeDappLauncherFrameRequest', () => {
       })
     ).toStrictEqual({
       id: 'dappLauncher',
+      presentation: 'secondaryPanel',
       route: '/trade?assetId=31337%3A0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'
     })
   })
 
+  it('normalizes arbitrary frame ids into the single secondary panel', () => {
+    expect(
+      normalizeDappLauncherFrameRequest({
+        id: 'legacyTradeWindow',
+        route: '/trade'
+      })
+    ).toStrictEqual({
+      id: 'dappLauncher',
+      presentation: 'secondaryPanel',
+      route: '/trade'
+    })
+  })
+
   it('keeps deprecated string frame requests working', () => {
-    expect(normalizeDappLauncherFrameRequest('dappLauncher')).toStrictEqual({ id: 'dappLauncher' })
+    expect(normalizeDappLauncherFrameRequest('dappLauncher')).toStrictEqual({
+      id: 'dappLauncher',
+      presentation: 'secondaryPanel'
+    })
   })
 
   it('rejects invalid frame requests', () => {

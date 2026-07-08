@@ -1,6 +1,5 @@
 import React from 'react'
 
-import Native from '../../../resources/Native'
 import TokenSelector from '../../../resources/Components/TokenSelector'
 import { createDisplayBalance, formatUsdRate } from '../../../resources/domain/balance'
 import { parseCanonicalAssetId } from '../../../resources/domain/dappLauncher'
@@ -686,7 +685,6 @@ export default function Trade({ assetId, chainId }: TradeProps) {
 
   return (
     <div className='tradeApp'>
-      <Native />
       <div className='sendHeader'>
         <button aria-label='Close Trade' className='sendBackButton' onClick={closeTrade}>
           {svg.chevronLeft(18)}

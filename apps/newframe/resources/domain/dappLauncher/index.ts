@@ -8,6 +8,7 @@ import {
 } from '../flash'
 
 export const DAPP_LAUNCHER_FRAME_ID = 'dappLauncher'
+export const DAPP_LAUNCHER_FRAME_PRESENTATION = 'secondaryPanel'
 export const DAPP_LAUNCHER_NATIVE_ASSET_ADDRESS = NATIVE_CURRENCY
 
 export type DappLauncherRouteName = 'send' | 'trade'
@@ -18,20 +19,31 @@ export interface DappLauncherRoute {
 }
 
 export interface DappLauncherFrame {
-  id: typeof DAPP_LAUNCHER_FRAME_ID | string
+  id: typeof DAPP_LAUNCHER_FRAME_ID
+  presentation: typeof DAPP_LAUNCHER_FRAME_PRESENTATION
   route?: string
 }
 
-/** @deprecated Use DappLauncherFrame objects with { id, route }. */
+export interface DappLauncherFrameRequestObject {
+  id: string
+  route?: string
+}
+
+/** @deprecated Use request objects with { id, route }. */
 export type LegacyDappLauncherFrameRequest = string
-export type DappLauncherFrameRequest = DappLauncherFrame | LegacyDappLauncherFrameRequest
+export type DappLauncherFrameRequest = DappLauncherFrameRequestObject | LegacyDappLauncherFrameRequest
 
 export function normalizeDappLauncherFrameRequest(frame: DappLauncherFrameRequest): DappLauncherFrame | null {
-  if (typeof frame === 'string') return frame ? { id: frame } : null
+  if (typeof frame === 'string') {
+    return frame
+      ? { id: DAPP_LAUNCHER_FRAME_ID, presentation: DAPP_LAUNCHER_FRAME_PRESENTATION }
+      : null
+  }
   if (!frame || typeof frame !== 'object' || typeof frame.id !== 'string' || !frame.id) return null
 
   return {
-    id: frame.id,
+    id: DAPP_LAUNCHER_FRAME_ID,
+    presentation: DAPP_LAUNCHER_FRAME_PRESENTATION,
     ...(typeof frame.route === 'string' && frame.route ? { route: frame.route } : {})
   }
 }

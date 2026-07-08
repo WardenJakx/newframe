@@ -1,6 +1,5 @@
 import React from 'react'
 
-import Native from '../../../resources/Native'
 import TokenSelector from '../../../resources/Components/TokenSelector'
 import {
   createDisplayBalance,
@@ -203,7 +202,6 @@ export default function Send({ assetId }: SendProps) {
 
   return (
     <div className='sendApp'>
-      <Native />
       <div className='sendHeader'>
         <button aria-label='Close Send' className='sendBackButton' onClick={handleClose}>
           {svg.chevronLeft(18)}

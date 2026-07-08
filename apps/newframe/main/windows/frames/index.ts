@@ -135,6 +135,7 @@ export default class FrameManager {
   refocus(id: string) {
     const frameInstance = this.frameInstances[id]
     if (frameInstance) {
+      const frame = getFrames()[id]
       frameInstance.setVisibleOnAllWorkspaces(true, {
         visibleOnFullScreen: true,
         skipTransformProcessType: true
@@ -143,9 +144,36 @@ export default class FrameManager {
         visibleOnFullScreen: true,
         skipTransformProcessType: true
       })
-      frameInstance.show()
-      frameInstance.focus()
+      if (frame) {
+        frameInstances.show(frameInstance, frame)
+      } else {
+        frameInstance.show()
+        frameInstance.focus()
+      }
     }
+  }
+
+  showAll() {
+    const frames = getFrames()
+
+    Object.keys(this.frameInstances).forEach((frameId) => {
+      const frameInstance = this.frameInstances[frameId]
+      const frame = frames[frameId]
+
+      if (frameInstance && frame && !frameInstance.isDestroyed()) {
+        frameInstances.show(frameInstance, frame)
+      }
+    })
+  }
+
+  hideAll() {
+    Object.keys(this.frameInstances).forEach((frameId) => {
+      const frameInstance = this.frameInstances[frameId]
+
+      if (frameInstance && !frameInstance.isDestroyed() && frameInstance.isVisible()) {
+        frameInstance.hide()
+      }
+    })
   }
 
   isFrameShowing() {

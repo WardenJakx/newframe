@@ -1028,6 +1028,10 @@ const actions = {
   addFrame: (u: U, frame: any) => {
     u('main.frames', frame.id, () => frame)
   },
+  setFramePanel: (u: U, frame: any) => {
+    u('main.frames', () => ({ [frame.id]: frame }))
+    u('main.focusedFrame', () => frame.id)
+  },
   updateFrame: (u: U, frameId: string, update: any) => {
     u('main.frames', frameId, (frame: any) => Object.assign({}, frame, update))
   },
