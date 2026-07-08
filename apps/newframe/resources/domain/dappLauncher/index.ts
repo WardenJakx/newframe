@@ -35,9 +35,7 @@ export type DappLauncherFrameRequest = DappLauncherFrameRequestObject | LegacyDa
 
 export function normalizeDappLauncherFrameRequest(frame: DappLauncherFrameRequest): DappLauncherFrame | null {
   if (typeof frame === 'string') {
-    return frame
-      ? { id: DAPP_LAUNCHER_FRAME_ID, presentation: DAPP_LAUNCHER_FRAME_PRESENTATION }
-      : null
+    return frame ? { id: DAPP_LAUNCHER_FRAME_ID, presentation: DAPP_LAUNCHER_FRAME_PRESENTATION } : null
   }
   if (!frame || typeof frame !== 'object' || typeof frame.id !== 'string' || !frame.id) return null
 

@@ -13,7 +13,12 @@ import { createDappWalletSelector, type DappWalletAccount } from '../../state/se
 import { useAppSelector } from '../../state/useAppSelector'
 import AccountIcon from './AccountIcon'
 import { createInitialSendState, sendReducer, SEND_TOKEN_ROWS_INCREMENT } from './sendReducer'
-import { buildProviderSendPayload, buildSendTransaction, cleanAddress, shouldResolveName } from './sendTransaction'
+import {
+  buildProviderSendPayload,
+  buildSendTransaction,
+  cleanAddress,
+  shouldResolveName
+} from './sendTransaction'
 import { closeSend, initSendOrigin, providerSend, resolveName } from './sendService'
 import { canProceed, getAmountBaseUnits, getRecipientAddress, validateSendRequest } from './sendValidation'
 
