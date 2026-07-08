@@ -1015,7 +1015,6 @@ class Home extends React.Component<any, any> {
       id: DAPP_LAUNCHER_FRAME_ID,
       route: buildDappLauncherRoute('send', toCanonicalAssetId(asset))
     })
-    link.send('tray:action', 'setDash', { showing: false })
   }
 
   tradeChainId(asset?: any) {
@@ -1045,7 +1044,6 @@ class Home extends React.Component<any, any> {
       id: DAPP_LAUNCHER_FRAME_ID,
       route: buildDappLauncherRoute('trade', toCanonicalAssetId(asset), chainId)
     })
-    link.send('tray:action', 'setDash', { showing: false })
   }
 
   openActivityTarget(target: any) {

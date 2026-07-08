@@ -42,6 +42,7 @@ let glide = false
 
 const app = {
   hide: () => {
+    frameManager.hideAll()
     tray.hide()
     if (dash.isVisible()) {
       dash.hide('app')
@@ -52,6 +53,7 @@ const app = {
     if (dash.hiddenByAppHide || dash.isVisible()) {
       store.setDash({ showing: true })
     }
+    frameManager.showAll()
   },
   toggle: () => {
     const eventName = tray.isVisible() ? 'hide' : 'show'

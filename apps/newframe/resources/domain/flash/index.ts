@@ -195,7 +195,7 @@ export const FLASH_WETH_ASSET = {
   chainId: FLASH_ANVIL_CHAIN_ID,
   isNative: false,
   address: FLASH_WETH_ADDRESS
-} as const satisfies FlashAsset 
+} as const satisfies FlashAsset
 
 export const FLASH_USDC_ASSET = {
   id: FLASH_USDC_ASSET_ID,
