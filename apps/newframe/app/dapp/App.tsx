@@ -21,8 +21,12 @@ function useHashRoute() {
 function App() {
   const route = useHashRoute()
   const assetId = route.searchParams.get('assetId')
+  const chainIdValue = Number(route.searchParams.get('chainId'))
+  const chainId = Number.isInteger(chainIdValue) && chainIdValue > 0 ? chainIdValue : undefined
 
-  if (route.name === 'trade') return <Trade assetId={assetId} key={`trade:${assetId || ''}`} />
+  if (route.name === 'trade') {
+    return <Trade assetId={assetId} chainId={chainId} key={`trade:${assetId || ''}:${chainId || ''}`} />
+  }
 
   return <Send assetId={assetId} key={`send:${assetId || ''}`} />
 }

@@ -240,10 +240,18 @@ const clone = (value: any) => JSON.parse(JSON.stringify(value))
 const persistedPortfolioApiKey = main('portfolioApiKey', '')
 const portfolioApiKey =
   typeof persistedPortfolioApiKey === 'string' ? persistedPortfolioApiKey.replace(/\s+/g, '') : ''
+const runtimeEnvironment = process.env.NODE_ENV || null
+const runtimeProfile = process.env.FRAME_PROFILE || null
+const runtimeDefaultApp = Boolean((process as NodeJS.Process & { defaultApp?: boolean }).defaultApp)
 
 const mainState: M = {
   _version: main('_version', 1),
   instanceId: main('instanceId', generateUuid()),
+  runtime: {
+    environment: runtimeEnvironment,
+    isDev: runtimeProfile === 'dev' || runtimeEnvironment === 'development' || runtimeDefaultApp,
+    profile: runtimeProfile
+  },
   colorway: main('colorway', 'dark'),
   colorwayPrimary: {
     dark: {

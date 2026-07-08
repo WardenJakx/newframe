@@ -222,11 +222,17 @@ function readHarnessPassword() {
 }
 
 function newframeEnv() {
-  const env = { ...process.env, NODE_ENV: 'production', FRAME_PROFILE: 'dev' }
+  const env = {
+    ...process.env,
+    NODE_ENV: 'production',
+    FRAME_PROFILE: 'dev',
+    NEWFRAME_HARNESS_CDP_PORT: String(cdpPort)
+  }
 
   for (const key of passwordEnvKeys) {
     delete env[key]
   }
+  delete env.ELECTRON_RUN_AS_NODE
 
   return env
 }
@@ -1013,7 +1019,7 @@ async function launchApp() {
     const requireFromApp = createRequire(path.join(appDir, 'package.json'))
     const electronPath = requireFromApp('electron') as string
 
-    electronProcess = spawn(electronPath, [`--remote-debugging-port=${cdpPort}`, './compiled/main'], {
+    electronProcess = spawn(electronPath, ['./compiled/main'], {
       cwd: appDir,
       env: newframeEnv(),
       stdio: ['ignore', 'pipe', 'pipe']

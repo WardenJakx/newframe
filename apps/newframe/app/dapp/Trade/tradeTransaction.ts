@@ -393,16 +393,21 @@ export function findTradeBalance(asset: FlashAsset, balances: BalanceSummary[]) 
   return balances.find((balance) => {
     const symbolMatches = (balance.symbol || '').toUpperCase() === asset.symbol
     const chainMatches = Number(balance.chainId) === asset.chainId
+    const balanceAddress = (balance.address || '').toLowerCase()
+    const assetAddress = (asset.address || '').toLowerCase()
     const nativeMatches = asset.isNative
-      ? balance.address === NATIVE_CURRENCY
-      : balance.address !== NATIVE_CURRENCY
+      ? balanceAddress === NATIVE_CURRENCY
+      : balanceAddress === assetAddress
 
     return symbolMatches && chainMatches && nativeMatches
   })
 }
 
-export function getFlashBalanceEntries(balances: BalanceSummary[]) {
-  return FLASH_P0_ASSETS.map((asset) => {
+export function getFlashBalanceEntries(
+  balances: BalanceSummary[],
+  assets: readonly FlashAsset[] = FLASH_P0_ASSETS
+) {
+  return assets.map((asset) => {
     const balance = findTradeBalance(asset, balances)
 
     return {
