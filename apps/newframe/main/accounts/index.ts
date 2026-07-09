@@ -701,6 +701,18 @@ export class Accounts extends EventEmitter {
     return this._current ? this.accounts[this._current] : null
   }
 
+  private defaultAccountAfterRemoving(address: string) {
+    const accountOrder = (store('main.accountOrder') || []) as string[]
+    const orderedAccount = accountOrder
+      .filter((id) => id !== address)
+      .map((id) => this.accounts[id])
+      .find(Boolean)
+
+    return (
+      orderedAccount || Object.values(this.accounts).find((account) => account.address !== address) || null
+    )
+  }
+
   startDataScanner() {
     if (!this.dataScanner) {
       this.dataScanner = ExternalDataScanner()
@@ -1545,14 +1557,23 @@ export class Accounts extends EventEmitter {
     address = address.toLowerCase()
 
     const currentAccount = this.current()
-    if (currentAccount && currentAccount.address === address) {
-      store.unsetAccount()
+    const selectedAccountId = ((store('main.currentAccount') || store('selected.current') || '') as string)
+      .toLowerCase()
+      .trim()
+    const removingCurrentAccount =
+      this._current === address || currentAccount?.address === address || selectedAccountId === address
 
-      const defaultAccount = (Object.values(this.accounts).filter((a) => a.address !== address) || [])[0]
+    if (removingCurrentAccount) {
+      const defaultAccount = this.defaultAccountAfterRemoving(address)
+
       if (defaultAccount) {
         this._current = defaultAccount.id
         defaultAccount.active = true
         defaultAccount.update()
+        store.setAccount(defaultAccount.summary())
+      } else {
+        this._current = ''
+        store.unsetAccount()
       }
     }
 

@@ -389,6 +389,15 @@ store.updateAccount = (account: any) => {
   )
 }
 
+store.removeAccount = (id: string) => {
+  update('main.accounts', (accounts: any = {}) => {
+    delete accounts[id]
+    return accounts
+  })
+  update('main.currentAccount', (currentAccount: string) => (currentAccount === id ? '' : currentAccount))
+  update('main.accountOrder', (order: string[] = []) => order.filter((accountId) => accountId !== id))
+}
+
 store.setAccount = (account: any) => {
   update('selected.current', () => account.id)
   update('main.currentAccount', () => account.id)

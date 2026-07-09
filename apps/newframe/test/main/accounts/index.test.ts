@@ -135,6 +135,26 @@ it('sets the account signer', () => {
   expect(Accounts.current().address).toBe('0x22dd63c3619818fdbc262c78baee43cb61e9cccf')
 })
 
+it('selects the first remaining account when removing the current account', () => {
+  store.set('main.accountOrder', [account2.address, account.address])
+
+  Accounts.remove(account.address)
+
+  expect(Accounts.current().address).toBe(account2.address)
+  expect(store('main.currentAccount')).toBe(account2.address)
+  expect(store('selected.current')).toBe(account2.address)
+  expect(store('main.accounts', account.address)).toBeUndefined()
+})
+
+it('clears the selected account when removing the last account', () => {
+  Accounts.remove(account2.address)
+  Accounts.remove(account.address)
+
+  expect(Accounts.current()).toBeNull()
+  expect(store('main.currentAccount')).toBe('')
+  expect(store('selected.current')).toBe('')
+})
+
 describe('#startDataScanner', () => {
   it('does not start the external data scanner during construction', () => {
     new AccountsClass()
