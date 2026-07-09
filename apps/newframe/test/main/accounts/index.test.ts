@@ -1021,6 +1021,7 @@ describe('#signerCompatibility', () => {
 
     activeSigner = {
       id: '12',
+      type: 'seed',
       addresses: [account.id],
       summary: jest.fn()
     }
@@ -1081,29 +1082,24 @@ describe('#signerCompatibility', () => {
     expect(cb).toHaveBeenCalledWith(null, compatibility)
   })
 
-  it('should open the signer panel for a signer that is not ready', () => {
+  it('should not open the signer panel for a hot signer that is not ready', () => {
     const cb = jest.fn()
 
     activeSigner.status = 'locked'
 
     Accounts.signerCompatibility(request.handlerId, cb)
 
-    expect(store.navDash).toHaveBeenCalledWith({
-      data: {
-        signer: activeSigner.id
-      },
-      view: 'expandedSigner'
-    })
+    expect(store.navDash).not.toHaveBeenCalled()
   })
 
-  it('should return an error when the signer is not ready', () => {
+  it('should return an app lock error when a hot signer is not ready', () => {
     const cb = jest.fn()
 
     activeSigner.status = 'locked'
 
     Accounts.signerCompatibility(request.handlerId, cb)
 
-    expect(cb).toHaveBeenCalledWith(new Error('Signer unavailable'))
+    expect(cb).toHaveBeenCalledWith(new Error('Newframe locked'))
   })
 
   it('should return an error when there is no signer', () => {

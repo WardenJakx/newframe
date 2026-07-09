@@ -17,7 +17,6 @@ interface Signer {
   addresses: Address[]
   status: string
   createdAt: number
-  encryptionVersion?: number
 }
 
 interface Account {

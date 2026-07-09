@@ -10,8 +10,6 @@ import store from '../../../store'
 
 type WorkerCallback = (err: Error | null, result?: any) => void
 
-// Mock windows module during tests
-const windows = app ? require('../../../windows') : { broadcast: () => {} }
 // Mock user data dir during tests
 const USER_DATA = app
   ? app.getPath('userData')
@@ -22,9 +20,6 @@ class HotSigner extends Signer {
   network?: string
   encryptedKeys?: string
   encryptedSeed?: string
-  // 1 (or absent) = secret encrypted directly with a user password,
-  // 2 = secret encrypted with the app vault key
-  encryptionVersion: number
   ready: boolean
   _worker: ChildProcess
   _token?: string
@@ -34,7 +29,6 @@ class HotSigner extends Signer {
     super()
     this.status = 'locked'
     this.addresses = (signer && signer.addresses) || []
-    this.encryptionVersion = (signer && signer.encryptionVersion) || 1
     this._worker = fork(workerPath)
     this._worker.on('error', (err) => {
       if (!this._closed) log.error('Hot signer worker error', err)
@@ -45,8 +39,8 @@ class HotSigner extends Signer {
 
   save(data?: any) {
     // Construct signer
-    const { id, addresses, type, network, encryptionVersion } = this
-    const signer = { id, addresses, type, network, encryptionVersion, ...data }
+    const { id, addresses, type, network } = this
+    const signer = { id, addresses, type, network, ...data }
 
     // Ensure signers directory exists
     fs.mkdirSync(SIGNERS_PATH, { recursive: true })
@@ -130,12 +124,6 @@ class HotSigner extends Signer {
     log.info('Signer updated')
   }
 
-  override summary() {
-    // expose encryption version so the UI knows whether this signer
-    // unlocks with the vault password or a legacy per-signer password
-    return { ...super.summary(), encryptionVersion: this.encryptionVersion }
-  }
-
   override signMessage(index: number, message: string, cb: Callback<string>) {
     const payload = { method: 'signMessage', params: { index, message } }
     this._callWorker(payload, cb as WorkerCallback)
@@ -161,9 +149,9 @@ class HotSigner extends Signer {
     this._callWorker(payload, (err: Error | null, verified?: any) => {
       if (err || !verified) {
         if (!err) {
-          store.notify('hotSignerMismatch')
           err = new Error('Unable to verify address')
         }
+        this.emit('lockApp')
         this.lock(() => {
           if (err) {
             log.error('HotSigner verifyAddress: Unable to verify address')

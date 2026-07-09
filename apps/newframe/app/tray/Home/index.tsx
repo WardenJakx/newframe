@@ -639,7 +639,7 @@ class Home extends React.Component<any, any> {
   }
 
   lockFrame() {
-    link.rpc('lockVault', (err: any) => {
+    link.rpc('lockApp', (err: any) => {
       if (err) {
         return this.setState({ biometricsError: err.message || String(err) })
       }
@@ -1544,8 +1544,12 @@ class Home extends React.Component<any, any> {
   }
 
   refreshAddVaultState() {
-    link.rpc('vaultState', (err: any, vaultState: any) => {
-      this.setState({ addVaultState: err ? { exists: false, unlocked: false } : vaultState })
+    link.rpc('appLockState', (err: any, appLockState: any) => {
+      this.setState({
+        addVaultState: err
+          ? { exists: false, unlocked: false }
+          : { exists: appLockState.vaultExists, unlocked: !appLockState.locked }
+      })
     })
   }
 
@@ -3617,7 +3621,6 @@ class Home extends React.Component<any, any> {
     const platform = this.store('platform')
     const summonShortcut = this.store('main.shortcuts.summon')
     const colorway = this.store('main.colorway')
-    const accountCloseLock = this.store('main.accountCloseLock')
     const biometricUnlock = !!this.store('main.biometricUnlock')
     const trezorDerivation = this.store('main.trezor.derivation')
     const ledgerDerivation = this.store('main.ledger.derivation')
@@ -3635,10 +3638,6 @@ class Home extends React.Component<any, any> {
     const colorwayOptions = [
       { text: 'Dark', value: 'dark' },
       { text: 'Light', value: 'light' }
-    ]
-    const lockOptions = [
-      { text: 'Close', value: true },
-      { text: 'Quit', value: false }
     ]
     const trezorOptions = [
       { text: 'Standard', value: 'standard' },
@@ -3798,9 +3797,6 @@ class Home extends React.Component<any, any> {
             )}
             {this.renderSettingsSelectRow('Colorway', colorwayOptions, colorway, (value) =>
               link.send('tray:action', 'setColorway', value)
-            )}
-            {this.renderSettingsSelectRow('Lock Hot Signers on', lockOptions, accountCloseLock, (value) =>
-              link.send('tray:action', 'setAccountCloseLock', value)
             )}
             {this.renderSettingsActionRow('Lock Newframe', 'Lock', () => this.lockFrame())}
           </div>

@@ -60,20 +60,6 @@ class SeedSigner extends HotSigner {
   override unlock(password: string, cb: Callback) {
     super.unlock(password, { encryptedSeed: this.encryptedSeed }, cb)
   }
-
-  // Re-encrypt the seed under a new secret (used to migrate legacy
-  // password-encrypted signers to the vault key)
-  reencrypt(oldPassword: string, newPassword: string, cb: Callback) {
-    const params = { encryptedSeed: this.encryptedSeed, password: oldPassword, newPassword }
-    this._callWorker({ method: 'reencryptSeed', params }, (err, encryptedSeed) => {
-      if (err) return cb(err)
-      this.encryptedSeed = encryptedSeed
-      this.encryptionVersion = 2
-      this.save()
-      this.update()
-      cb(null)
-    })
-  }
 }
 
 export default SeedSigner

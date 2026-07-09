@@ -83,20 +83,6 @@ class RingSigner extends HotSigner {
     super.unlock(password, { encryptedKeys: this.encryptedKeys }, cb)
   }
 
-  // Re-encrypt the keys under a new secret (used to migrate legacy
-  // password-encrypted signers to the vault key)
-  reencrypt(oldPassword: string, newPassword: string, cb: Callback) {
-    const params = { encryptedKeys: this.encryptedKeys, password: oldPassword, newPassword }
-    this._callWorker({ method: 'reencryptKeys', params }, (err, encryptedKeys) => {
-      if (err) return cb(err)
-      this.encryptedKeys = encryptedKeys
-      this.encryptionVersion = 2
-      this.save()
-      this.update()
-      cb(null)
-    })
-  }
-
   addPrivateKey(key: string, password: string, cb: Callback) {
     // Validate private key
     let wallet: Wallet

@@ -152,9 +152,6 @@ const actions = {
       return {}
     })
   },
-  setAccountCloseLock: (u: U, value: any) => {
-    u('main.accountCloseLock', () => Boolean(value))
-  },
   syncPath: (u: U, path: string, value: any) => {
     if (!path || path === '*' || path.startsWith('main')) return // Don't allow updates to main state
     u(path, () => value)
