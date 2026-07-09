@@ -38,6 +38,11 @@ export interface DappWalletSelectorValue {
   currentAccount: DappWalletAccount | null
   networks: Record<string | number, DappWalletEthereumNetwork>
   networksMeta: Record<string | number, DappWalletEthereumNetworkMeta>
+  runtime: {
+    environment?: string | null
+    isDev?: boolean | null
+    profile?: string | null
+  }
 }
 
 interface DappWalletRendererState extends RendererState {
@@ -52,11 +57,14 @@ interface DappWalletRendererState extends RendererState {
       ethereum?: Record<string | number, DappWalletEthereumNetworkMeta>
     }
     rates?: Record<string, { usd?: Rate }>
+    runtime?: DappWalletSelectorValue['runtime']
   }
   selected?: {
     current?: string
   }
 }
+
+const EMPTY_RUNTIME: DappWalletSelectorValue['runtime'] = {}
 
 function createOrderedAccountsSelector() {
   let previousAccountsById: Record<string, DappWalletAccount> | undefined
@@ -97,6 +105,7 @@ export function createDappWalletSelector() {
     const networks = main.networks?.ethereum || {}
     const networksMeta = main.networksMeta?.ethereum || {}
     const rates = main.rates || {}
+    const runtime = main.runtime || EMPTY_RUNTIME
     const balanceSummaries = selectBalanceSummaries({
       rawBalances,
       rates,
@@ -112,7 +121,8 @@ export function createDappWalletSelector() {
       previousResult.balanceSummaries === balanceSummaries &&
       previousResult.currentAccount === currentAccount &&
       previousResult.networks === networks &&
-      previousResult.networksMeta === networksMeta
+      previousResult.networksMeta === networksMeta &&
+      previousResult.runtime === runtime
     ) {
       return previousResult
     }
@@ -122,7 +132,8 @@ export function createDappWalletSelector() {
       balanceSummaries,
       currentAccount,
       networks,
-      networksMeta
+      networksMeta,
+      runtime
     }
 
     return previousResult

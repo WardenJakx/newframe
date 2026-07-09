@@ -172,22 +172,25 @@ describe('#resolveSendAssetFromRouteAssetId', () => {
 
 describe('#resolveFlashAssetFromRouteAssetId', () => {
   it('resolves native sentinel ids to Flash native ETH', () => {
-    expect(resolveFlashAssetFromRouteAssetId('31337:0x0000000000000000000000000000000000000000')).toBe(
+    expect(resolveFlashAssetFromRouteAssetId('31337:0x0000000000000000000000000000000000000000')).toEqual(
       FLASH_NATIVE_ETH_ASSET
     )
   })
 
   it('resolves supported token ids', () => {
-    expect(resolveFlashAssetFromRouteAssetId('31337:0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48')).toBe(
-      FLASH_USDC_ASSET
-    )
+    expect(
+      resolveFlashAssetFromRouteAssetId('31337:0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48')
+    ).toMatchObject({
+      chainId: FLASH_USDC_ASSET.chainId,
+      symbol: FLASH_USDC_ASSET.symbol
+    })
   })
 
   it('resolves supported Base token ids', () => {
     expect(
       resolveFlashAssetFromRouteAssetId(`${FLASH_BASE_CHAIN_ID}:${FLASH_BASE_USDC_ADDRESS.toLowerCase()}`)
     ).toMatchObject({
-      address: FLASH_BASE_USDC_ADDRESS,
+      address: FLASH_BASE_USDC_ADDRESS.toLowerCase(),
       chainId: FLASH_BASE_CHAIN_ID,
       symbol: 'USDC'
     })
@@ -204,8 +207,9 @@ describe('#resolveFlashAssetFromRouteAssetId', () => {
   it('falls back for missing, invalid, or unsupported ids', () => {
     expect(resolveFlashAssetFromRouteAssetId()).toBe(FLASH_DEFAULT_TARGET_ASSET)
     expect(resolveFlashAssetFromRouteAssetId('31337:not-an-address')).toBe(FLASH_DEFAULT_TARGET_ASSET)
-    expect(resolveFlashAssetFromRouteAssetId('1:0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2')).toBe(
-      FLASH_DEFAULT_TARGET_ASSET
-    )
+    expect(resolveFlashAssetFromRouteAssetId('1:0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2')).toMatchObject({
+      chainId: 1,
+      symbol: 'WETH'
+    })
   })
 })

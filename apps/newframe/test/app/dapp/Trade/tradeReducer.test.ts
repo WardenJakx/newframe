@@ -57,7 +57,10 @@ describe('tradeReducer', () => {
     })
 
     expect(withTargetBalance.side).toBe('sell')
-    expect(withTargetBalance.contraAsset).toBe(FLASH_USDC_ASSET)
+    expect(withTargetBalance.contraAsset).toMatchObject({
+      chainId: FLASH_USDC_ASSET.chainId,
+      symbol: FLASH_USDC_ASSET.symbol
+    })
     expect(withoutTargetBalance.side).toBe('buy')
   })
 
@@ -125,23 +128,32 @@ describe('tradeReducer', () => {
 
     expect(getTradeInputAmount(changed)).toBe('1')
     expect(changed.targetAsset).toBe(FLASH_WETH_ASSET)
-    expect(changed.contraAsset).toBe(FLASH_USDC_ASSET)
+    expect(changed.contraAsset).toMatchObject({
+      chainId: FLASH_USDC_ASSET.chainId,
+      symbol: FLASH_USDC_ASSET.symbol
+    })
     expect(changed.quote).toBe(null)
     expect(changed.flashPayload).toBe(null)
     expect(changed.actionQuoteId).toBe('')
     expect(changed.pendingAction).toBe('quote')
   })
 
-  it('keeps non-market orders as local visual previews', () => {
+  it('does not create renderer-local non-market quotes', () => {
     const state = createInitialTradeState({
       assetId: `${FLASH_NATIVE_ETH_ASSET.chainId}:${NATIVE_CURRENCY}`
     })
     const withAmount = tradeReducer(state, { type: 'setInputAmount', inputAmount: '2' })
     const limit = tradeReducer(withAmount, { type: 'setOrderType', orderType: FLASH_LIMIT_ORDER_TYPE })
+    const quoted = tradeReducer(limit, {
+      type: 'setOrderField',
+      field: 'limitNotionalPrice',
+      value: '2500'
+    })
 
     expect(limit.orderType).toBe(FLASH_LIMIT_ORDER_TYPE)
-    expect(limit.quote?.orderType).toBe(FLASH_LIMIT_ORDER_TYPE)
-    expect(limit.pendingAction).toBe('')
-    expect(limit.quoteLoading).toBe(false)
+    expect(limit.quote).toBe(null)
+    expect(quoted.quote).toBe(null)
+    expect(quoted.pendingAction).toBe('quote')
+    expect(quoted.quoteLoading).toBe(true)
   })
 })

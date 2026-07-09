@@ -2,14 +2,16 @@ import React from 'react'
 
 import TokenSelector from '../../../resources/Components/TokenSelector'
 import { createDisplayBalance, formatUsdRate } from '../../../resources/domain/balance'
-import { parseCanonicalAssetId } from '../../../resources/domain/dappLauncher'
 import {
+  FLASH_BRACKET_ORDER_TYPE,
   FLASH_LIMIT_ORDER_TYPE,
   FLASH_MARKET_ORDER_TYPE,
+  FLASH_STOP_LOSS_ORDER_TYPE,
+  FLASH_STOP_ORDER_TYPE,
+  FLASH_TAKE_PROFIT_ORDER_TYPE,
   FLASH_TWAP_ORDER_TYPE,
   getContraPreposition,
   getDirectionLabel,
-  getFlashAssetsForChain,
   type FlashAsset,
   type FlashOrderType,
   type FlashQuote,
@@ -22,6 +24,7 @@ import { useAppSelector } from '../../state/useAppSelector'
 import { closeTrade, flashQuote, flashSubmitOrder, initTradeOrigin, providerSend } from './tradeService'
 import {
   createInitialTradeState,
+  getTradeOrderFields,
   getTradeInputAmount,
   getTradeSpentAsset,
   tradeReducer,
@@ -29,7 +32,8 @@ import {
   type TradeWorkflowState
 } from './tradeReducer'
 import {
-  buildMarketTradeQuoteRequest,
+  buildTradeAssetOptions,
+  buildTradeQuoteRequest,
   buildTradeActionPayload,
   buildTradeSignaturePayload,
   buildTradeSubmitRequest,
@@ -63,10 +67,12 @@ function buildQuoteEffectRequest({
   state: TradeWorkflowState
 }) {
   try {
-    const request = buildMarketTradeQuoteRequest({
+    const request = buildTradeQuoteRequest({
       accountAddress,
       contraAsset: state.contraAsset,
+      ...getTradeOrderFields(state),
       inputAmount: getTradeInputAmount(state),
+      orderType: state.orderType,
       quickTrade: state.quickTrade,
       side: state.side,
       slippage: state.slippage,
@@ -89,20 +95,19 @@ function buildQuoteEffectRequest({
 
 export default function Trade({ assetId, chainId }: TradeProps) {
   const selectDappWallet = React.useMemo(() => createDappWalletSelector(), [])
-  const { balanceSummaries, currentAccount, networks, networksMeta } = useAppSelector(selectDappWallet)
-  const initialTradeChainId = React.useMemo(() => {
-    return parseCanonicalAssetId(assetId)?.chainId || chainId
-  }, [assetId, chainId])
-  const initialTradeAssets = React.useMemo(() => {
-    return initialTradeChainId ? getFlashAssetsForChain(initialTradeChainId) : undefined
-  }, [initialTradeChainId])
+  const { balanceSummaries, currentAccount, networks, networksMeta, runtime } =
+    useAppSelector(selectDappWallet)
+  const tradeAssets = React.useMemo(
+    () => buildTradeAssetOptions({ balances: balanceSummaries, networks, runtime }),
+    [balanceSummaries, networks, runtime]
+  )
   const flashBalanceEntries = React.useMemo(
-    () => getFlashBalanceEntries(balanceSummaries, initialTradeAssets),
-    [balanceSummaries, initialTradeAssets]
+    () => getFlashBalanceEntries(balanceSummaries, tradeAssets),
+    [balanceSummaries, tradeAssets]
   )
   const [state, dispatch] = React.useReducer(
     tradeReducer,
-    { assetId, balances: flashBalanceEntries, chainId },
+    { assetId, assets: tradeAssets, balances: flashBalanceEntries, chainId },
     createInitialTradeState
   )
   const mountedRef = React.useRef(false)
@@ -111,20 +116,22 @@ export default function Trade({ assetId, chainId }: TradeProps) {
   const previousAccountAddressRef = React.useRef(accountAddress)
   const inputAmount = getTradeInputAmount(state)
   const quoteEffectRequest = React.useMemo(() => {
-    if (state.orderType !== FLASH_MARKET_ORDER_TYPE) {
-      return { error: '', request: null, requestKey: '' }
-    }
-
     return buildQuoteEffectRequest({ accountAddress, state })
   }, [
     accountAddress,
     inputAmount,
     state.contraAsset,
+    state.durationSeconds,
+    state.limitNotionalPrice,
     state.orderType,
     state.quickTrade,
     state.side,
     state.slippage,
-    state.targetAsset
+    state.stopLossNotionalPrice,
+    state.takeProfitNotionalPrice,
+    state.targetAsset,
+    state.triggerNotionalPrice,
+    state.twapBucketCount
   ])
 
   React.useEffect(() => {
@@ -140,6 +147,10 @@ export default function Trade({ assetId, chainId }: TradeProps) {
   }, [state])
 
   React.useEffect(() => {
+    dispatch({ type: 'setAssetOptions', assets: tradeAssets, balances: flashBalanceEntries })
+  }, [flashBalanceEntries, tradeAssets])
+
+  React.useEffect(() => {
     if (previousAccountAddressRef.current === accountAddress) return
 
     previousAccountAddressRef.current = accountAddress
@@ -147,8 +158,6 @@ export default function Trade({ assetId, chainId }: TradeProps) {
   }, [accountAddress])
 
   React.useEffect(() => {
-    if (state.orderType !== FLASH_MARKET_ORDER_TYPE) return
-
     if (quoteEffectRequest.error) {
       dispatch({ type: 'quoteBuildFailed', error: quoteEffectRequest.error })
       return
@@ -171,7 +180,7 @@ export default function Trade({ assetId, chainId }: TradeProps) {
           if (!quote) {
             dispatch({
               type: 'quoteFailed',
-              error: 'Flash quote did not return a market quote.',
+              error: 'Flash quote did not return an order quote.',
               requestKey: quoteEffectRequest.requestKey
             })
             return
@@ -196,7 +205,7 @@ export default function Trade({ assetId, chainId }: TradeProps) {
     }, MARKET_QUOTE_DEBOUNCE_MS)
 
     return () => clearTimeout(timer)
-  }, [quoteEffectRequest, state.orderType])
+  }, [quoteEffectRequest])
 
   const getTradeDisplayBalance = React.useCallback(
     (asset: FlashAsset) => {
@@ -261,6 +270,7 @@ export default function Trade({ assetId, chainId }: TradeProps) {
       const submitRequest = buildTradeSubmitRequest({
         accountAddress,
         flashPayload,
+        ...getTradeOrderFields(latestStateRef.current),
         quickTrade: latestStateRef.current.quickTrade,
         quote,
         signature,
@@ -468,11 +478,118 @@ export default function Trade({ assetId, chainId }: TradeProps) {
     )
   }
 
+  const renderOrderInput = ({
+    ariaLabel,
+    field,
+    inputMode = 'decimal',
+    label,
+    placeholder
+  }: {
+    ariaLabel: string
+    field:
+      | 'durationSeconds'
+      | 'limitNotionalPrice'
+      | 'stopLossNotionalPrice'
+      | 'takeProfitNotionalPrice'
+      | 'triggerNotionalPrice'
+      | 'twapBucketCount'
+    inputMode?: 'decimal' | 'numeric'
+    label: string
+    placeholder: string
+  }) => {
+    return (
+      <label className='tradeOrderField'>
+        <span>{label}</span>
+        <input
+          aria-label={ariaLabel}
+          inputMode={inputMode}
+          onChange={(e) => dispatch({ type: 'setOrderField', field, value: e.target.value })}
+          placeholder={placeholder}
+          value={state[field]}
+        />
+      </label>
+    )
+  }
+
+  const renderTradeOrderFields = () => {
+    if (state.orderType === FLASH_MARKET_ORDER_TYPE) return null
+
+    if (state.orderType === FLASH_LIMIT_ORDER_TYPE) {
+      return (
+        <div className='tradeOrderFields'>
+          {renderOrderInput({
+            ariaLabel: 'Limit price',
+            field: 'limitNotionalPrice',
+            label: 'Limit price',
+            placeholder: '0'
+          })}
+        </div>
+      )
+    }
+
+    if (
+      [FLASH_STOP_ORDER_TYPE, FLASH_STOP_LOSS_ORDER_TYPE, FLASH_TAKE_PROFIT_ORDER_TYPE].includes(
+        state.orderType
+      )
+    ) {
+      return (
+        <div className='tradeOrderFields'>
+          {renderOrderInput({
+            ariaLabel: 'Trigger price',
+            field: 'triggerNotionalPrice',
+            label: 'Trigger price',
+            placeholder: '0'
+          })}
+        </div>
+      )
+    }
+
+    if (state.orderType === FLASH_BRACKET_ORDER_TYPE) {
+      return (
+        <div className='tradeOrderFields tradeOrderFieldsTwo'>
+          {renderOrderInput({
+            ariaLabel: 'Take-profit price',
+            field: 'takeProfitNotionalPrice',
+            label: 'Take profit',
+            placeholder: '0'
+          })}
+          {renderOrderInput({
+            ariaLabel: 'Stop-loss price',
+            field: 'stopLossNotionalPrice',
+            label: 'Stop loss',
+            placeholder: '0'
+          })}
+        </div>
+      )
+    }
+
+    if (state.orderType === FLASH_TWAP_ORDER_TYPE) {
+      return (
+        <div className='tradeOrderFields tradeOrderFieldsTwo'>
+          {renderOrderInput({
+            ariaLabel: 'TWAP duration seconds',
+            field: 'durationSeconds',
+            inputMode: 'numeric',
+            label: 'Duration',
+            placeholder: '3600'
+          })}
+          {renderOrderInput({
+            ariaLabel: 'TWAP buckets',
+            field: 'twapBucketCount',
+            inputMode: 'numeric',
+            label: 'Buckets',
+            placeholder: '6'
+          })}
+        </div>
+      )
+    }
+
+    return null
+  }
+
   const renderTradeAssetSelector = (field: TradeAssetField, asset: FlashAsset, oppositeAsset: FlashAsset) => {
     const open = field === 'target' ? state.targetOpen : state.contraOpen
-    const options = getFlashAssetsForChain(asset.chainId).filter(
-      (option) => !isSameFlashAsset(option, oppositeAsset)
-    )
+    const options = state.assetOptions.filter((option) => !isSameFlashAsset(option, oppositeAsset))
     const items = options.map(createTradeSelectorItem)
 
     return (
@@ -695,6 +812,7 @@ export default function Trade({ assetId, chainId }: TradeProps) {
       <div className='tradeBody'>
         <div className='tradeTicket'>
           {renderTradeTabs()}
+          {renderTradeOrderFields()}
           {renderTradeAssetCard('target')}
           {renderTradeAssetCard('contra')}
         </div>

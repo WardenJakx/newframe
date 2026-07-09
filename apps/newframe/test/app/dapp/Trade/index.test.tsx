@@ -70,6 +70,11 @@ function initializeTradeState() {
         [FLASH_USDC_ADDRESS]: {
           usd: { price: 1, change24hr: 0 }
         }
+      },
+      runtime: {
+        profile: 'dev',
+        isDev: true,
+        environment: 'test'
       }
     }
   })

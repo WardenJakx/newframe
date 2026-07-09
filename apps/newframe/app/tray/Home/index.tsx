@@ -1017,9 +1017,25 @@ class Home extends React.Component<any, any> {
     })
   }
 
-  tradeChainId(asset?: any) {
+  firstTradeAsset(balances: any[] = []) {
+    return balances.find((balance) => {
+      const chainId = Number(balance?.chainId)
+
+      return (
+        hasPositiveBalance(balance) &&
+        Number.isInteger(chainId) &&
+        this.chainEnabled(chainId) &&
+        isFlashChainSupported(chainId, this.store('main.runtime') || {})
+      )
+    })
+  }
+
+  tradeChainId(asset?: any, balances: any[] = []) {
     const assetChainId = Number(asset?.chainId)
     if (Number.isInteger(assetChainId) && assetChainId > 0) return assetChainId
+
+    const tradeAssetChainId = Number(this.firstTradeAsset(balances)?.chainId)
+    if (Number.isInteger(tradeAssetChainId) && tradeAssetChainId > 0) return tradeAssetChainId
 
     const selectedChainId = Number(this.state.network)
     if (Number.isInteger(selectedChainId) && selectedChainId > 0) return selectedChainId
@@ -1027,22 +1043,25 @@ class Home extends React.Component<any, any> {
     return getFlashDefaultChainId(this.store('main.runtime') || {})
   }
 
-  canOpenTrade(asset?: any) {
-    const chainId = this.tradeChainId(asset)
-    return isFlashChainSupported(chainId, this.store('main.runtime') || {})
+  canOpenTrade(asset?: any, balances: any[] = []) {
+    if (!asset && !this.firstTradeAsset(balances)) return false
+
+    const chainId = this.tradeChainId(asset, balances)
+    return this.chainEnabled(chainId) && isFlashChainSupported(chainId, this.store('main.runtime') || {})
   }
 
-  tradeTitle(asset?: any) {
-    return this.canOpenTrade(asset) ? 'Trade' : TRADE_DISABLED_CHAIN_LABEL
+  tradeTitle(asset?: any, balances: any[] = []) {
+    return this.canOpenTrade(asset, balances) ? 'Trade' : TRADE_DISABLED_CHAIN_LABEL
   }
 
-  openTrade(asset?: any) {
-    if (!this.canOpenTrade(asset)) return
-    const chainId = this.tradeChainId(asset)
+  openTrade(asset?: any, balances: any[] = []) {
+    const selectedAsset = asset || this.firstTradeAsset(balances)
+    if (!this.canOpenTrade(selectedAsset, balances)) return
+    const chainId = this.tradeChainId(selectedAsset, balances)
 
     link.send('*:addFrame', {
       id: DAPP_LAUNCHER_FRAME_ID,
-      route: buildDappLauncherRoute('trade', toCanonicalAssetId(asset), chainId)
+      route: buildDappLauncherRoute('trade', toCanonicalAssetId(selectedAsset), chainId)
     })
   }
 
@@ -2319,7 +2338,7 @@ class Home extends React.Component<any, any> {
 
   renderHero(balances: any[]) {
     const hasAssets = balances.length > 0
-    const canTrade = this.canOpenTrade()
+    const canTrade = this.canOpenTrade(undefined, balances)
     const total = balances
       .filter((balance) => this.inNetworkFilter(balance.chainId))
       .reduce((sum, balance) => sum + balance.totalValue, 0)
@@ -2361,11 +2380,15 @@ class Home extends React.Component<any, any> {
             aria-disabled={!canTrade}
             aria-label='Trade'
             className={canTrade ? 't2HeroButton' : 't2HeroButton t2HeroButtonDisabled'}
-            onClick={canTrade ? () => this.openTrade() : undefined}
-            onKeyDown={canTrade ? (e) => this.onKeyboardActivate(e, () => this.openTrade()) : undefined}
+            onClick={canTrade ? () => this.openTrade(undefined, balances) : undefined}
+            onKeyDown={
+              canTrade
+                ? (e) => this.onKeyboardActivate(e, () => this.openTrade(undefined, balances))
+                : undefined
+            }
             role='button'
             tabIndex={canTrade ? 0 : -1}
-            title={this.tradeTitle()}
+            title={this.tradeTitle(undefined, balances)}
           >
             <div className='t2HeroButtonIcon'>{svg.sync(14)}</div>
             <span>Trade</span>

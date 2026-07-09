@@ -15,9 +15,11 @@ const outputDir = '/tmp/newframe-visual-harness'
 const screenshotDir = path.join(outputDir, 'screenshots')
 
 const anvilPort = 8545
+const localTradeServicePort = 8422
 const newframeRpcPort = 1248
-const cdpPort = 9333
+const cdpPort = Number(process.env.NEWFRAME_HARNESS_CDP_PORT || 9333)
 const anvilRpcUrl = `http://127.0.0.1:${anvilPort}`
+const localTradeServiceHealthUrl = `http://127.0.0.1:${localTradeServicePort}/health`
 const harnessOrigin = 'newframe-contracts.local'
 const harnessAccountAddress = '0x35f9179059a691d8beecf82fe112f7277e018588'
 const dappLauncherFrameId = 'dappLauncher'
@@ -138,6 +140,7 @@ const summary: HarnessSummary = { ok: false, failedStage: null, screenshots: [] 
 let browser: Browser | undefined
 let electronProcess: ChildProcessWithoutNullStreams | undefined
 let anvilProcess: ChildProcessWithoutNullStreams | undefined
+let localTradeServiceProcess: ChildProcessWithoutNullStreams | undefined
 const runningCommands = new Set<RunningCommand>()
 const pageSessions = new WeakMap<Page, Promise<CDPSession>>()
 let cleanupStarted = false
@@ -255,6 +258,27 @@ async function assertPortFree(port: number, label: string) {
   }
 }
 
+async function waitForHttpOk(url: string, label: string, timeoutMs = 15_000) {
+  const started = Date.now()
+  let lastError: unknown
+
+  while (Date.now() - started < timeoutMs) {
+    try {
+      const response = await fetch(url)
+      if (response.ok) return
+      lastError = new Error(`${label} returned HTTP ${response.status}`)
+    } catch (err) {
+      lastError = err
+    }
+
+    await sleep(250)
+  }
+
+  fail(
+    `Timed out waiting for ${label} at ${url}${lastError instanceof Error ? `: ${lastError.message}` : ''}`
+  )
+}
+
 function commandOutputCollector(child: ChildProcessWithoutNullStreams) {
   let output = ''
   const append = (chunk: Buffer) => {
@@ -349,6 +373,9 @@ async function cleanup() {
 
   await stopProcess(electronProcess, 'electron').catch(() => undefined)
   electronProcess = undefined
+
+  await stopProcess(localTradeServiceProcess, 'local trade service').catch(() => undefined)
+  localTradeServiceProcess = undefined
 
   await stopProcess(anvilProcess, 'anvil').catch(() => undefined)
   anvilProcess = undefined
@@ -850,6 +877,12 @@ async function signCurrentTransaction(
   await screenshot(page, submittedScreenshot)
 }
 
+async function signCurrentSignature(page: Page, request: CurrentRequest, submittedScreenshot: string) {
+  await linkRpcNoWait(page, 'approveRequest', request)
+  await waitForRequestStatus(page, request.handlerId)
+  await screenshot(page, submittedScreenshot)
+}
+
 async function clearPanelAndOverlays(page: Page) {
   await trayAction(page, 'navBack', 'panel', 99)
 
@@ -953,6 +986,104 @@ async function screenshotTradeTicketVisualStates(app: Browser, tray: Page) {
     .catch(() => undefined)
 }
 
+async function waitForFlashOrder(
+  page: Page,
+  predicate: (order: any) => boolean,
+  timeoutMs: number,
+  message: string
+) {
+  const state = await waitForState(
+    page,
+    (candidate) => Object.values((candidate.main as any)?.orders || {}).some(predicate),
+    timeoutMs,
+    message
+  )
+
+  return Object.values((state.main as any)?.orders || {}).find(predicate)
+}
+
+async function ensureTradeSellSide(tradePage: Page) {
+  const switchToSell = tradePage.getByRole('button', { name: /Switch to SELL/i })
+
+  if (await switchToSell.isVisible({ timeout: 1_000 }).catch(() => false)) {
+    await switchToSell.click()
+  }
+
+  await tradePage.getByLabel('WETH amount').waitFor({ state: 'visible', timeout: 5_000 })
+}
+
+async function runTradeMarketE2E(app: Browser, tray: Page) {
+  const tradePage = await openTradeTicket(app, tray)
+
+  await ensureTradeSellSide(tradePage)
+  await tradePage.getByLabel('WETH amount').fill('0.01')
+  await tradePage
+    .getByRole('button', { name: /Approve WETH/i })
+    .waitFor({ state: 'visible', timeout: 20_000 })
+  await screenshot(tradePage, '21a-trade-market-quoted.png')
+  await tradePage.getByRole('button', { name: /Approve WETH/i }).click()
+
+  const approveRequest = await waitForCurrentRequest(tray, 'transaction', new Set(), 30_000)
+  await screenshot(tray, '21b-trade-market-approve-review.png')
+  await signCurrentTransaction(tray, approveRequest, '21c-trade-market-approve-submitted.png', [
+    '21b-trade-market-approve-warning.png',
+    '21c-trade-market-approve-post-sign-warning.png'
+  ])
+
+  await tradePage
+    .getByRole('button', { name: /Review\/sign/i })
+    .waitFor({ state: 'visible', timeout: 20_000 })
+  await screenshot(tradePage, '21d-trade-market-ready-to-sign.png')
+  await tradePage.getByRole('button', { name: /Review\/sign/i }).click()
+
+  const signRequest = await waitForCurrentRequest(tray, 'signTypedData', new Set(), 30_000)
+  await screenshot(tray, '21e-trade-market-sign-review.png')
+  await signCurrentSignature(tray, signRequest, '21f-trade-market-sign-submitted.png')
+
+  await waitForFlashOrder(
+    tray,
+    (order) => order?.orderType === 'market' && order?.status === 'filled',
+    30_000,
+    'Market Flash order did not fill'
+  )
+  await screenshot(tray, '21g-trade-market-filled.png')
+  await clearPanelAndOverlays(tray)
+}
+
+async function runTradeNonMarketE2E(app: Browser, tray: Page) {
+  const tradePage = await openTradeTicket(app, tray)
+
+  await ensureTradeSellSide(tradePage)
+  await tradePage.getByRole('tab', { name: 'Limit' }).click()
+  await tradePage.getByLabel('Limit price').fill('2500')
+  await tradePage.getByLabel('WETH amount').fill('0.01')
+  await tradePage
+    .getByRole('button', { name: /Review\/sign/i })
+    .waitFor({ state: 'visible', timeout: 20_000 })
+  await screenshot(tradePage, '22a-trade-limit-quoted.png')
+  await tradePage.getByRole('button', { name: /Review\/sign/i }).click()
+
+  const signRequest = await waitForCurrentRequest(tray, 'signTypedData', new Set(), 30_000)
+  await screenshot(tray, '22b-trade-limit-sign-review.png')
+  await signCurrentSignature(tray, signRequest, '22c-trade-limit-sign-submitted.png')
+
+  const order = await waitForFlashOrder(
+    tray,
+    (candidate) => candidate?.orderType === 'limit' && candidate?.status === 'accepted' && candidate?.open,
+    15_000,
+    'Limit Flash order was not accepted as open'
+  )
+
+  await sleep(4_000)
+
+  const latest = await getAppState(tray)
+  const stored = (latest.main as any)?.orders?.[(order as any).orderId]
+  if (!stored?.open || stored.status !== 'accepted') fail('Limit Flash order filled or closed unexpectedly')
+
+  await screenshot(tray, '22d-trade-limit-open.png')
+  await clearPanelAndOverlays(tray)
+}
+
 async function bootstrap() {
   await withStage('preflight', async () => {
     await fsp.mkdir(screenshotDir, { recursive: true })
@@ -966,6 +1097,7 @@ async function bootstrap() {
       ensureCommand('cast'),
       ensureCommand('forge'),
       assertPortFree(anvilPort, 'Anvil'),
+      assertPortFree(localTradeServicePort, 'Local trade service'),
       assertPortFree(cdpPort, 'Electron CDP'),
       assertPortFree(newframeRpcPort, 'Newframe RPC')
     ])
@@ -990,6 +1122,38 @@ async function bootstrap() {
     })()
 
     await Promise.all([seed, build])
+  })
+
+  await withStage('local trade service', async () => {
+    localTradeServiceProcess = spawn('bun', ['./scripts/local-trade-service.ts'], {
+      cwd: appDir,
+      env: {
+        ...process.env,
+        ANVIL_RPC_URL: anvilRpcUrl,
+        FLASH_LOCAL_TRADE_PORT: String(localTradeServicePort)
+      },
+      stdio: ['ignore', 'pipe', 'pipe']
+    })
+    const output = commandOutputCollector(localTradeServiceProcess)
+    const exitPromise = new Promise<never>((_, reject) => {
+      localTradeServiceProcess?.once('error', (err) => {
+        reject(new Error(`Local trade service failed to start: ${err.message}`))
+      })
+      localTradeServiceProcess?.once('exit', (code, signal) => {
+        if (!cleanupStarted) {
+          reject(
+            new Error(
+              `Local trade service exited with ${signal || `code ${code ?? 'unknown'}`}${
+                output() ? `\n\n${tail(output())}` : ''
+              }`
+            )
+          )
+        }
+      })
+    })
+    exitPromise.catch(() => undefined)
+
+    await Promise.race([waitForHttpOk(localTradeServiceHealthUrl, 'local trade service'), exitPromise])
   })
 }
 
@@ -1201,8 +1365,23 @@ async function runFlow(app: Browser) {
     await screenshotTradeTicketVisualStates(app, tray)
   })
 
+  await withStage('trade market e2e', async () => {
+    await runTradeMarketE2E(app, tray)
+  })
+
+  await withStage('trade non-market e2e', async () => {
+    await runTradeNonMarketE2E(app, tray)
+  })
+
   await withStage('built-in send', async () => {
-    await tray.getByRole('button', { name: 'Send ETH' }).click()
+    const sendEthButton = tray.getByRole('button', { name: 'Send ETH' })
+
+    if (!(await sendEthButton.isVisible({ timeout: 1_000 }).catch(() => false))) {
+      await tray.getByRole('button', { name: 'ETH asset details' }).click()
+      await tray.getByRole('dialog', { name: 'Asset details' }).waitFor({ state: 'visible' })
+    }
+
+    await sendEthButton.click()
     const sendPage = await waitForElectronPage(app, 'bundle/dapp.html')
     await sendPage.getByRole('textbox', { name: 'Recipient' }).waitFor({ state: 'visible', timeout: 15_000 })
     await screenshot(sendPage, '11-send-open.png')

@@ -111,7 +111,7 @@ type M = Main & {
   dapp: any
 }
 
-const defaultEnabledEthereumChainIds = new Set([1, 10, 56, 137, 999, 8453, 42161, 43114])
+const defaultEnabledEthereumChainIds = new Set([1, 10, 56, 137, 999, 8453, 9745, 81457, 42161, 43114, 143])
 
 const networkGas = () => ({
   price: {
@@ -172,6 +172,28 @@ const requiredDefaultEthereumNetworks: Record<number, any> = {
     connection: customRpcConnection('https://rpc.hyperliquid.xyz/evm'),
     on: true
   },
+  9745: {
+    id: 9745,
+    type: 'ethereum',
+    layer: 'mainnet',
+    isTestnet: false,
+    name: 'Plasma',
+    explorer: 'https://plasmascan.to',
+    gas: networkGas(),
+    connection: customRpcConnection('https://rpc.plasma.to'),
+    on: true
+  },
+  81457: {
+    id: 81457,
+    type: 'ethereum',
+    layer: 'rollup',
+    isTestnet: false,
+    name: 'Blast',
+    explorer: 'https://blastscan.io',
+    gas: networkGas(),
+    connection: customRpcConnection('https://rpc.blast.io'),
+    on: true
+  },
   43114: {
     id: 43114,
     type: 'ethereum',
@@ -181,6 +203,17 @@ const requiredDefaultEthereumNetworks: Record<number, any> = {
     explorer: 'https://snowtrace.io',
     gas: networkGas(),
     connection: customRpcConnection('https://api.avax.network/ext/bc/C/rpc'),
+    on: true
+  },
+  143: {
+    id: 143,
+    type: 'ethereum',
+    layer: 'mainnet',
+    isTestnet: false,
+    name: 'Monad',
+    explorer: 'https://monadvision.com',
+    gas: networkGas(),
+    connection: customRpcConnection('https://rpc.monad.xyz'),
     on: true
   }
 }
@@ -218,6 +251,38 @@ const requiredDefaultEthereumNetworksMeta: Record<number, any> = {
     icon: '',
     primaryColor: 'accent3'
   },
+  9745: {
+    blockHeight: 0,
+    gas: networkMetaGas(),
+    nativeCurrency: {
+      symbol: 'XPL',
+      usd: {
+        price: 0,
+        change24hr: 0
+      },
+      icon: '',
+      name: 'Plasma',
+      decimals: 18
+    },
+    icon: '',
+    primaryColor: 'accent5'
+  },
+  81457: {
+    blockHeight: 0,
+    gas: networkMetaGas(),
+    nativeCurrency: {
+      symbol: 'ETH',
+      usd: {
+        price: 0,
+        change24hr: 0
+      },
+      icon: '',
+      name: 'Ether',
+      decimals: 18
+    },
+    icon: '',
+    primaryColor: 'accent4'
+  },
   43114: {
     blockHeight: 0,
     gas: networkMetaGas(),
@@ -233,6 +298,22 @@ const requiredDefaultEthereumNetworksMeta: Record<number, any> = {
     },
     icon: '',
     primaryColor: 'accent8'
+  },
+  143: {
+    blockHeight: 0,
+    gas: networkMetaGas(),
+    nativeCurrency: {
+      symbol: 'MON',
+      usd: {
+        price: 0,
+        change24hr: 0
+      },
+      icon: '',
+      name: 'Monad',
+      decimals: 18
+    },
+    icon: '',
+    primaryColor: 'accent6'
   }
 }
 

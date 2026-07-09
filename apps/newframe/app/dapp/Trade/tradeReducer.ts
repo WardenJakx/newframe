@@ -1,10 +1,15 @@
-import { resolveFlashAssetFromRouteAssetId } from '../../../resources/domain/dappLauncher'
+import {
+  parseCanonicalAssetId,
+  resolveFlashAssetFromRouteAssetId
+} from '../../../resources/domain/dappLauncher'
 import {
   FLASH_MARKET_ORDER_TYPE,
   getDefaultContraAsset,
   getDefaultSide,
   getFlashAssetsForChain,
+  getFlashDefaultTargetAsset,
   getSpentAsset,
+  toFlashApiAssetAddress,
   type FlashAsset,
   type FlashAssetBalances,
   type FlashOrderType,
@@ -13,10 +18,13 @@ import {
   type FlashTradeSide
 } from '../../../resources/domain/flash'
 import {
-  isSameFlashAsset,
-  simulateVisualTradeQuote,
+  TRADE_DEFAULT_DURATION_SECONDS,
   TRADE_DEFAULT_SLIPPAGE,
+  TRADE_DEFAULT_TWAP_BUCKETS,
+  getTradeValidationError,
+  isSameFlashAsset,
   tradeAmountNumber,
+  type TradeOrderFields,
   type TradePendingAction,
   withTradeStepStatus
 } from './tradeTransaction'
@@ -24,11 +32,14 @@ import {
 export interface TradeWorkflowState {
   actionQuoteId: string
   advancedOpen: boolean
+  assetOptions: FlashAsset[]
   contraAsset: FlashAsset
   contraAmount: string
   contraOpen: boolean
+  durationSeconds: string
   error: string
   flashPayload: unknown
+  limitNotionalPrice: string
   orderType: FlashOrderType
   pendingAction: TradePendingAction
   quickTrade: boolean
@@ -39,10 +50,14 @@ export interface TradeWorkflowState {
   signature: string
   slippage: string
   status: string
+  stopLossNotionalPrice: string
   submitting: boolean
+  takeProfitNotionalPrice: string
   targetAsset: FlashAsset
   targetAmount: string
   targetOpen: boolean
+  triggerNotionalPrice: string
+  twapBucketCount: string
 }
 
 export type TradeAssetField = 'target' | 'contra'
@@ -74,7 +89,9 @@ export type TradeWorkflowAction =
   | { type: 'quoteRequested'; requestKey: string }
   | { type: 'selectAsset'; asset: FlashAsset; field: TradeAssetField }
   | { type: 'setAssetOpen'; field: TradeAssetField; open: boolean }
+  | { type: 'setAssetOptions'; assets: FlashAsset[]; balances?: FlashAssetBalances | null }
   | { type: 'setInputAmount'; inputAmount: string }
+  | { type: 'setOrderField'; field: keyof TradeOrderFields; value: string }
   | { type: 'setOrderType'; orderType: FlashOrderType }
   | { type: 'settingsChanged'; quickTrade?: boolean; slippage?: string }
   | { type: 'signatureSucceeded'; actionQuoteId: string; signature: string }
@@ -87,38 +104,106 @@ export type TradeWorkflowAction =
 
 export interface CreateInitialTradeStateOptions {
   assetId?: string | null
+  assets?: FlashAsset[]
   balances?: FlashAssetBalances | null
   chainId?: number | null
 }
 
-function resolveContraAsset(targetAsset: FlashAsset, balances?: FlashAssetBalances | null) {
-  const contraAsset = getDefaultContraAsset({ targetAsset, balances })
+function assetAddress(asset: FlashAsset) {
+  return toFlashApiAssetAddress(asset).toLowerCase()
+}
 
-  if (!isSameFlashAsset(targetAsset, contraAsset)) return contraAsset
+function findAssetByRouteId(assetId: string | null | undefined, assets: readonly FlashAsset[]) {
+  const routeAsset = parseCanonicalAssetId(assetId)
+  if (!routeAsset) return null
 
-  const fallback = getDefaultContraAsset({ targetAsset })
+  return (
+    assets.find((asset) => {
+      return asset.chainId === routeAsset.chainId && assetAddress(asset) === routeAsset.address
+    }) || null
+  )
+}
 
-  return isSameFlashAsset(targetAsset, fallback)
-    ? getFlashAssetsForChain(targetAsset.chainId).find((option) => !isSameFlashAsset(option, targetAsset)) ||
-        contraAsset
-    : fallback
+function defaultAssetForChain(chainId: number, assets: readonly FlashAsset[]) {
+  const sameChain = assets.filter((asset) => asset.chainId === chainId)
+
+  return (
+    sameChain.find((asset) => asset.symbol.toUpperCase() === 'WETH') ||
+    sameChain.find((asset) => !asset.isNative) ||
+    sameChain[0] ||
+    getFlashDefaultTargetAsset(chainId)
+  )
+}
+
+function resolveTargetAsset({
+  assetId,
+  assets = [],
+  chainId
+}: {
+  assetId?: string | null
+  assets?: FlashAsset[]
+  chainId?: number | null
+}) {
+  const routeAsset = findAssetByRouteId(assetId, assets)
+  if (routeAsset) return routeAsset
+
+  const parsedRoute = parseCanonicalAssetId(assetId)
+  const fallbackChainId = parsedRoute?.chainId || chainId
+
+  if (Number.isInteger(fallbackChainId) && Number(fallbackChainId) > 0) {
+    const asset = defaultAssetForChain(Number(fallbackChainId), assets)
+    if (asset) return asset
+  }
+
+  return resolveFlashAssetFromRouteAssetId(assetId, chainId)
+}
+
+function sameChainAssetOptions(targetAsset: FlashAsset, assets: readonly FlashAsset[]) {
+  const sameChain = assets.filter((asset) => asset.chainId === targetAsset.chainId)
+
+  return sameChain.length ? sameChain : getFlashAssetsForChain(targetAsset.chainId)
+}
+
+function resolveContraAsset(
+  targetAsset: FlashAsset,
+  balances?: FlashAssetBalances | null,
+  assets: readonly FlashAsset[] = []
+) {
+  const contraAsset = getDefaultContraAsset({
+    assets: sameChainAssetOptions(targetAsset, assets),
+    targetAsset,
+    balances
+  })
+
+  if (!isSameFlashAsset(targetAsset, contraAsset) && contraAsset.chainId === targetAsset.chainId) {
+    return contraAsset
+  }
+
+  return (
+    sameChainAssetOptions(targetAsset, assets).find((option) => !isSameFlashAsset(option, targetAsset)) ||
+    contraAsset
+  )
 }
 
 export function createInitialTradeState({
   assetId,
+  assets = [],
   balances,
   chainId
 }: CreateInitialTradeStateOptions = {}): TradeWorkflowState {
-  const targetAsset = resolveFlashAssetFromRouteAssetId(assetId, chainId)
+  const targetAsset = resolveTargetAsset({ assetId, assets, chainId })
 
   return {
     actionQuoteId: '',
     advancedOpen: false,
-    contraAsset: resolveContraAsset(targetAsset, balances),
+    assetOptions: assets,
+    contraAsset: resolveContraAsset(targetAsset, balances, assets),
     contraAmount: '',
     contraOpen: false,
+    durationSeconds: TRADE_DEFAULT_DURATION_SECONDS,
     error: '',
     flashPayload: null,
+    limitNotionalPrice: '',
     orderType: FLASH_MARKET_ORDER_TYPE,
     pendingAction: '',
     quickTrade: false,
@@ -129,10 +214,14 @@ export function createInitialTradeState({
     signature: '',
     slippage: TRADE_DEFAULT_SLIPPAGE,
     status: '',
+    stopLossNotionalPrice: '',
     submitting: false,
+    takeProfitNotionalPrice: '',
     targetAsset,
     targetAmount: '',
-    targetOpen: false
+    targetOpen: false,
+    triggerNotionalPrice: '',
+    twapBucketCount: TRADE_DEFAULT_TWAP_BUCKETS
   }
 }
 
@@ -148,8 +237,41 @@ export function getTradeSpentAsset(state: TradeWorkflowState) {
   })
 }
 
+export function getTradeOrderFields(state: TradeWorkflowState): TradeOrderFields {
+  return {
+    durationSeconds: state.durationSeconds,
+    limitNotionalPrice: state.limitNotionalPrice,
+    stopLossNotionalPrice: state.stopLossNotionalPrice,
+    takeProfitNotionalPrice: state.takeProfitNotionalPrice,
+    triggerNotionalPrice: state.triggerNotionalPrice,
+    twapBucketCount: state.twapBucketCount
+  }
+}
+
 function tradeHasValidInput(state: TradeWorkflowState) {
-  return !!tradeAmountNumber(getTradeInputAmount(state))
+  return (
+    !!tradeAmountNumber(getTradeInputAmount(state)) &&
+    !getTradeValidationError({
+      ...getTradeOrderFields(state),
+      inputAmount: getTradeInputAmount(state),
+      orderType: state.orderType
+    })
+  )
+}
+
+function clearedExecutionState(quoteLoading = false) {
+  return {
+    actionQuoteId: '',
+    error: '',
+    flashPayload: null,
+    pendingAction: '' as TradePendingAction,
+    quote: null,
+    quoteLoading,
+    quoteRequestKey: '',
+    signature: '',
+    status: '',
+    submitting: false
+  }
 }
 
 function applyTradeInputAmount(
@@ -158,48 +280,13 @@ function applyTradeInputAmount(
   nextState: Partial<TradeWorkflowState> = {}
 ): TradeWorkflowState {
   const merged = { ...state, ...nextState }
-  const { side, orderType, targetAsset, contraAsset } = merged
-
-  if (orderType === FLASH_MARKET_ORDER_TYPE) {
-    return {
-      ...merged,
-      actionQuoteId: '',
-      contraAmount: side === 'buy' ? inputAmount : '',
-      error: '',
-      flashPayload: null,
-      pendingAction: '',
-      quote: null,
-      quoteLoading: false,
-      quoteRequestKey: '',
-      signature: '',
-      status: '',
-      submitting: false,
-      targetAmount: side === 'sell' ? inputAmount : ''
-    }
-  }
-
-  const quote = simulateVisualTradeQuote({
-    side,
-    orderType,
-    targetAsset,
-    contraAsset,
-    inputAmount
-  })
+  const { side } = merged
 
   return {
     ...merged,
-    actionQuoteId: '',
-    contraAmount: side === 'buy' ? inputAmount : quote?.outputAmount || '',
-    error: '',
-    flashPayload: null,
-    pendingAction: '',
-    quote,
-    quoteLoading: false,
-    quoteRequestKey: '',
-    signature: '',
-    status: '',
-    submitting: false,
-    targetAmount: side === 'sell' ? inputAmount : quote?.outputAmount || ''
+    ...clearedExecutionState(false),
+    contraAmount: side === 'buy' ? inputAmount : '',
+    targetAmount: side === 'sell' ? inputAmount : ''
   }
 }
 
@@ -220,29 +307,42 @@ function clearQuoteIfNeeded(state: TradeWorkflowState): TradeWorkflowState {
 
   return {
     ...state,
+    ...clearedExecutionState(false)
+  }
+}
+
+function withQuoteRefresh(state: TradeWorkflowState): TradeWorkflowState {
+  if (!tradeHasValidInput(state)) return clearQuoteIfNeeded(state)
+
+  return {
+    ...state,
     actionQuoteId: '',
     error: '',
     flashPayload: null,
-    pendingAction: '',
+    pendingAction: 'quote' as TradePendingAction,
     quote: null,
-    quoteLoading: false,
+    quoteLoading: true,
     quoteRequestKey: '',
     signature: '',
-    status: ''
+    status: 'Getting quote',
+    submitting: false
   }
 }
 
 function selectTradeAsset(state: TradeWorkflowState, field: TradeAssetField, asset: FlashAsset) {
-  const targetAsset = field === 'target' ? asset : state.targetAsset
+  let targetAsset = field === 'target' ? asset : state.targetAsset
   let contraAsset = field === 'contra' ? asset : state.contraAsset
 
+  if (field === 'target' && contraAsset.chainId !== targetAsset.chainId) {
+    contraAsset = resolveContraAsset(targetAsset, null, state.assetOptions)
+  }
+
+  if (field === 'contra' && targetAsset.chainId !== contraAsset.chainId) {
+    targetAsset = defaultAssetForChain(contraAsset.chainId, state.assetOptions)
+  }
+
   if (isSameFlashAsset(targetAsset, contraAsset)) {
-    const replacement = getDefaultContraAsset({ targetAsset })
-    contraAsset = isSameFlashAsset(targetAsset, replacement)
-      ? getFlashAssetsForChain(targetAsset.chainId).find(
-          (option) => !isSameFlashAsset(option, targetAsset)
-        ) || contraAsset
-      : replacement
+    contraAsset = resolveContraAsset(targetAsset, null, state.assetOptions)
   }
 
   return applyTradeInputAmount(state, getTradeInputAmount(state), {
@@ -264,48 +364,46 @@ function refreshForSettings(
     status: ''
   }
 
-  if (merged.orderType !== FLASH_MARKET_ORDER_TYPE) return merged
-  if (!tradeHasValidInput(merged)) return clearQuoteIfNeeded(merged)
+  return withQuoteRefresh(merged)
+}
+
+function updateAssetOptions(
+  state: TradeWorkflowState,
+  assets: FlashAsset[],
+  balances?: FlashAssetBalances | null
+) {
+  const targetAsset =
+    assets.find((asset) => isSameFlashAsset(asset, state.targetAsset)) ||
+    defaultAssetForChain(state.targetAsset.chainId, assets)
+  const contraAsset =
+    assets.find(
+      (asset) => isSameFlashAsset(asset, state.contraAsset) && asset.chainId === targetAsset.chainId
+    ) || resolveContraAsset(targetAsset, balances, assets)
 
   return {
-    ...merged,
-    actionQuoteId: '',
-    flashPayload: null,
-    pendingAction: 'quote',
-    quoteLoading: true,
-    quoteRequestKey: '',
-    signature: '',
-    status: 'Getting quote'
+    ...state,
+    assetOptions: assets,
+    contraAsset,
+    targetAsset
   }
 }
 
 export function tradeReducer(state: TradeWorkflowState, action: TradeWorkflowAction): TradeWorkflowState {
   switch (action.type) {
     case 'accountChanged':
-      if (state.orderType !== FLASH_MARKET_ORDER_TYPE) {
-        return {
-          ...state,
-          actionQuoteId: '',
-          flashPayload: null,
-          pendingAction: '',
-          signature: '',
-          submitting: false
-        }
-      }
-
-      return {
+      return withQuoteRefresh({
         ...state,
         actionQuoteId: '',
         error: '',
         flashPayload: null,
-        pendingAction: tradeHasValidInput(state) ? 'quote' : '',
+        pendingAction: '' as TradePendingAction,
         quote: null,
-        quoteLoading: tradeHasValidInput(state),
+        quoteLoading: false,
         quoteRequestKey: '',
         signature: '',
-        status: tradeHasValidInput(state) ? 'Getting quote' : '',
+        status: '',
         submitting: false
-      }
+      })
     case 'actionFailed':
       if (state.actionQuoteId !== action.actionQuoteId) return state
 
@@ -327,7 +425,12 @@ export function tradeReducer(state: TradeWorkflowState, action: TradeWorkflowAct
         status: action.status
       }
     case 'actionSucceeded':
-      if (state.actionQuoteId !== action.actionQuoteId) return state
+      if (
+        state.actionQuoteId !== action.actionQuoteId &&
+        !state.quote?.steps.some((step) => step.kind === action.stepKind)
+      ) {
+        return state
+      }
 
       return {
         ...state,
@@ -342,15 +445,8 @@ export function tradeReducer(state: TradeWorkflowState, action: TradeWorkflowAct
     case 'quoteBuildFailed':
       return {
         ...state,
-        actionQuoteId: '',
-        error: action.error,
-        flashPayload: null,
-        pendingAction: '',
-        quote: null,
-        quoteLoading: false,
-        quoteRequestKey: '',
-        signature: '',
-        status: ''
+        ...clearedExecutionState(false),
+        error: action.error
       }
     case 'quoteCleared':
       return clearQuoteIfNeeded(state)
@@ -359,13 +455,8 @@ export function tradeReducer(state: TradeWorkflowState, action: TradeWorkflowAct
 
       return {
         ...state,
-        actionQuoteId: '',
-        error: action.error,
-        flashPayload: null,
-        pendingAction: '',
-        quote: null,
-        quoteLoading: false,
-        status: ''
+        ...clearedExecutionState(false),
+        error: action.error
       }
     case 'quoteRequested':
       return {
@@ -409,8 +500,14 @@ export function tradeReducer(state: TradeWorkflowState, action: TradeWorkflowAct
             contraOpen: action.open,
             targetOpen: action.open ? false : state.targetOpen
           }
+    case 'setAssetOptions':
+      return updateAssetOptions(state, action.assets, action.balances)
     case 'setInputAmount':
       return applyTradeInputAmount(state, action.inputAmount)
+    case 'setOrderField':
+      return refreshForSettings(state, {
+        [action.field]: action.value
+      } as Partial<TradeWorkflowState>)
     case 'setOrderType':
       return applyTradeInputAmount(state, getTradeInputAmount(state), {
         orderType: action.orderType

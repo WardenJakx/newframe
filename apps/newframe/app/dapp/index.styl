@@ -800,6 +800,43 @@ body
   font-size 15px
   font-weight 800
 
+.tradeOrderFields
+  display grid
+  grid-template-columns 1fr
+  gap 8px
+  margin -2px 0 10px 0
+
+.tradeOrderFieldsTwo
+  grid-template-columns repeat(2, minmax(0, 1fr))
+
+.tradeOrderField
+  min-width 0
+  height 48px
+  border 1px solid $send-divider
+  border-radius 8px
+  background rgba(248, 255, 255, 0.035)
+  display flex
+  align-items center
+  gap 8px
+  padding 0 10px
+
+  span
+    color $send-muted-strong
+    font-size 12px
+    font-weight 800
+    white-space nowrap
+
+  input
+    min-width 0
+    width 100%
+    border none
+    outline none
+    background transparent
+    color $send-text
+    font-family 'FiraCode'
+    font-size 14px
+    text-align right
+
 .tradeTicket
   position relative
   z-index 4
