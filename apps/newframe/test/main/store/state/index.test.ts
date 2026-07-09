@@ -171,7 +171,7 @@ it('enables only the supported production networks by default', async () => {
     .map((network: any) => network.id)
     .sort((a, b) => a - b)
 
-  expect(enabledChainIds).toEqual([1, 10, 56, 137, 999, 8453, 42161, 43114])
+  expect(enabledChainIds).toEqual([1, 10, 56, 137, 143, 999, 8453, 9745, 42161, 43114, 81457])
 })
 
 it('normalizes persisted network state to the supported production networks', async () => {
@@ -228,9 +228,12 @@ it('normalizes persisted network state to the supported production networks', as
     .map((network: any) => network.id)
     .sort((a, b) => a - b)
 
-  expect(enabledChainIds).toEqual([1, 10, 56, 137, 999, 8453, 42161, 43114])
+  expect(enabledChainIds).toEqual([1, 10, 56, 137, 143, 999, 8453, 9745, 42161, 43114, 81457])
   expect(networks[56].connection.primary.custom).toBe('https://bsc-dataseed.bnbchain.org')
   expect(networks[999].connection.primary.custom).toBe('https://rpc.hyperliquid.xyz/evm')
+  expect(networks[143].connection.primary.custom).toBe('https://rpc.monad.xyz')
+  expect(networks[9745].connection.primary.custom).toBe('https://rpc.plasma.to')
+  expect(networks[81457].connection.primary.custom).toBe('https://rpc.blast.io')
   expect(networks[43114].connection.primary.custom).toBe('https://api.avax.network/ext/bc/C/rpc')
   expect(networks[1].connection.primary.current).toBe('chainlist')
   expect(networks[137].connection.primary.current).toBe('chainlist')

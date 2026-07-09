@@ -7,6 +7,7 @@
     "clean": "rimraf dist dist-preview bundle compiled node_modules",
     "setup": "bun install && bun run rebuild:natives",
     "dev": "bun run compile && bun run bundle && bun ./scripts/run-harness-newframe.ts",
+    "trade:local": "bun ./scripts/local-trade-service.ts",
     "harness:newframe": "bun run dev",
     "bundle": "rimraf bundle && bun build resources/bridge/index.ts --outfile=./bundle/bridge.js --target=browser --format=cjs --external=electron --sourcemap=inline && bun ./scripts/bundle-renderer-bun.ts",
     "sync:assets": "bun ./scripts/sync-assets.ts",
@@ -23,7 +24,7 @@
     "publish:linux:arm64": "bun run sync:assets && electron-builder -c.snap.publish=github --config=build/electron-builder-linux-arm64.js",
     "rebuild:natives": "electron-builder install-app-deps",
     "test": "bun run test:unit && bun run test:e2e",
-    "test:unit": "bun ./scripts/test-main.ts && bun test --preload ./test/bun.dom.ts --timeout 500 test/app test/resources/Hooks test/resources/Components && bun test --preload ./test/bun.setup.ts --timeout 1000 test/resources/domain test/resources/utils",
+    "test:unit": "bun ./scripts/test-main.ts && bun test --preload ./test/bun.dom.ts --timeout 500 test/app test/resources/Hooks test/resources/Components && bun test --preload ./test/bun.setup.ts --timeout 1000 test/resources/domain test/resources/utils test/scripts",
     "test:e2e": "bun test --preload ./test/bun.setup.ts --timeout 30000 test/e2e",
     "test:usbAdapters": "bun test --preload ./test/bun.setup.ts --timeout 1000 test/main/signers/ledger/adapter.test.ts"
   },

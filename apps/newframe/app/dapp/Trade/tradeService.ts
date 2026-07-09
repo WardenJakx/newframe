@@ -12,8 +12,15 @@ export function initTradeOrigin(chainId: number) {
 
 export function providerSend(payload: ProviderSendPayload) {
   return new Promise<any>((resolve) => {
-    link.rpc('providerSend', payload, (response: any) => {
-      resolve(response)
+    link.rpc('providerSend', payload, (...responseArgs: any[]) => {
+      const [errOrResponse, result] = responseArgs
+
+      if (responseArgs.length > 1) {
+        resolve(errOrResponse ? { error: errOrResponse } : { result })
+        return
+      }
+
+      resolve(errOrResponse)
     })
   })
 }

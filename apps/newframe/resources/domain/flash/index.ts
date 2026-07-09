@@ -1,20 +1,17 @@
+import { NATIVE_CURRENCY } from '../../constants'
+
 export const FLASH_ANVIL_CHAIN_ID = 31337
 export const FLASH_BASE_CHAIN_ID = 8453
 
-export const FLASH_NATIVE_ETH_ASSET_ID = 'native-eth'
-export const FLASH_WETH_ASSET_ID = 'weth'
-export const FLASH_USDC_ASSET_ID = 'usdc'
-
-export const FLASH_NATIVE_ETH_ASSET_SYMBOL = 'ETH'
-export const FLASH_WETH_ASSET_SYMBOL = 'WETH'
-export const FLASH_USDC_ASSET_SYMBOL = 'USDC'
-
-export const FLASH_NATIVE_ETH_TOKEN_ADDRESS = '0x0000000000000000000000000000000000000000'
+export const FLASH_NATIVE_ETH_TOKEN_ADDRESS = NATIVE_CURRENCY
 export const FLASH_WETH_ADDRESS = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2'
 export const FLASH_USDC_ADDRESS = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'
 export const FLASH_BASE_WETH_ADDRESS = '0x4200000000000000000000000000000000000006'
 export const FLASH_BASE_USDC_ADDRESS = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913'
-export const FLASH_MOCK_SETTLEMENT_ADDRESS = '0x0000000000000000000000000000000000005e77'
+
+export const FLASH_NATIVE_ETH_ASSET_SYMBOL = 'ETH'
+export const FLASH_WETH_ASSET_SYMBOL = 'WETH'
+export const FLASH_USDC_ASSET_SYMBOL = 'USDC'
 
 export const FLASH_MARKET_ORDER_TYPE = 'market'
 export const FLASH_LIMIT_ORDER_TYPE = 'limit'
@@ -27,26 +24,17 @@ export const FLASH_BRACKET_ORDER_TYPE = 'bracket'
 export const FLASH_TRADE_SIDES = ['buy', 'sell'] as const
 export type FlashTradeSide = (typeof FLASH_TRADE_SIDES)[number]
 
-export const FLASH_P0_ORDER_TYPES = [
-  FLASH_MARKET_ORDER_TYPE,
-  FLASH_LIMIT_ORDER_TYPE,
-  FLASH_TWAP_ORDER_TYPE,
-  FLASH_STOP_ORDER_TYPE,
-  FLASH_STOP_LOSS_ORDER_TYPE,
-  FLASH_TAKE_PROFIT_ORDER_TYPE,
-  FLASH_BRACKET_ORDER_TYPE
-] as const
-export type FlashOrderType = (typeof FLASH_P0_ORDER_TYPES)[number]
+export type FlashOrderType =
+  | typeof FLASH_MARKET_ORDER_TYPE
+  | typeof FLASH_LIMIT_ORDER_TYPE
+  | typeof FLASH_TWAP_ORDER_TYPE
+  | typeof FLASH_STOP_ORDER_TYPE
+  | typeof FLASH_STOP_LOSS_ORDER_TYPE
+  | typeof FLASH_TAKE_PROFIT_ORDER_TYPE
+  | typeof FLASH_BRACKET_ORDER_TYPE
 
-export type FlashAssetId =
-  | typeof FLASH_NATIVE_ETH_ASSET_ID
-  | typeof FLASH_WETH_ASSET_ID
-  | typeof FLASH_USDC_ASSET_ID
-
-export type FlashAssetSymbol =
-  | typeof FLASH_NATIVE_ETH_ASSET_SYMBOL
-  | typeof FLASH_WETH_ASSET_SYMBOL
-  | typeof FLASH_USDC_ASSET_SYMBOL
+export type FlashAssetId = string
+export type FlashAssetSymbol = string
 
 export interface FlashAsset {
   id: FlashAssetId
@@ -159,15 +147,8 @@ export interface FlashTicketState {
   contraAmount: string
 }
 
-export type FlashQuoteStatus = 'idle' | 'loading' | 'ready' | 'error'
-
-export interface FlashQuoteState {
-  status: FlashQuoteStatus
-  quote: FlashQuote | null
-  error: string | null
-}
-
 export interface FlashDefaultAssetOptions {
+  assets?: readonly FlashAsset[]
   targetAsset: FlashAsset
   balances?: FlashAssetBalances | null
 }
@@ -178,13 +159,64 @@ export interface FlashRuntime {
   profile?: string | null
 }
 
+interface FlashBalanceSummaryLike {
+  address?: unknown
+  balance?: FlashBalanceValue
+  chainId?: unknown
+  decimals?: unknown
+  name?: unknown
+  symbol?: unknown
+}
+
+const FLASH_DEV_SUPPORTED_CHAIN_IDS = [FLASH_ANVIL_CHAIN_ID] as const
+const FLASH_PROD_SUPPORTED_CHAIN_IDS = [1, 10, 56, 137, 999, 8453, 9745, 81457, 42161, 43114, 143] as const
+
+const FLASH_CHAIN_SLUGS: Record<number, string> = {
+  1: 'ethereum',
+  10: 'optimism',
+  56: 'bsc',
+  137: 'polygon',
+  999: 'hyperevm',
+  8453: 'base',
+  9745: 'plasma',
+  81457: 'blast',
+  42161: 'arbitrum',
+  43114: 'avalanche',
+  143: 'monad',
+  [FLASH_ANVIL_CHAIN_ID]: 'anvil'
+}
+
+const FLASH_TOKEN_ADDRESSES: Record<number, { weth?: string; usdc?: string }> = {
+  [FLASH_ANVIL_CHAIN_ID]: {
+    weth: FLASH_WETH_ADDRESS,
+    usdc: FLASH_USDC_ADDRESS
+  },
+  1: {
+    weth: FLASH_WETH_ADDRESS,
+    usdc: FLASH_USDC_ADDRESS
+  },
+  [FLASH_BASE_CHAIN_ID]: {
+    weth: FLASH_BASE_WETH_ADDRESS,
+    usdc: FLASH_BASE_USDC_ADDRESS
+  }
+}
+
+export function flashAssetId(chainId: number, address: string) {
+  return `${chainId}:${normalizeFlashAddress(address)}`
+}
+
+export const FLASH_NATIVE_ETH_ASSET_ID = flashAssetId(FLASH_ANVIL_CHAIN_ID, FLASH_NATIVE_ETH_TOKEN_ADDRESS)
+export const FLASH_WETH_ASSET_ID = flashAssetId(FLASH_ANVIL_CHAIN_ID, FLASH_WETH_ADDRESS)
+export const FLASH_USDC_ASSET_ID = flashAssetId(FLASH_ANVIL_CHAIN_ID, FLASH_USDC_ADDRESS)
+
 export const FLASH_NATIVE_ETH_ASSET = {
   id: FLASH_NATIVE_ETH_ASSET_ID,
   symbol: FLASH_NATIVE_ETH_ASSET_SYMBOL,
   name: 'Ether',
   decimals: 18,
   chainId: FLASH_ANVIL_CHAIN_ID,
-  isNative: true
+  isNative: true,
+  address: FLASH_NATIVE_ETH_TOKEN_ADDRESS
 } as const satisfies FlashAsset
 
 export const FLASH_WETH_ASSET = {
@@ -207,70 +239,154 @@ export const FLASH_USDC_ASSET = {
   address: FLASH_USDC_ADDRESS
 } as const satisfies FlashAsset
 
-export const FLASH_P0_ASSETS = [FLASH_NATIVE_ETH_ASSET, FLASH_WETH_ASSET, FLASH_USDC_ASSET] as const
 export const FLASH_DEFAULT_TARGET_ASSET = FLASH_WETH_ASSET
 
-const FLASH_TOKEN_ADDRESSES: Record<number, { weth: string; usdc: string }> = {
-  [FLASH_ANVIL_CHAIN_ID]: {
-    weth: FLASH_WETH_ADDRESS,
-    usdc: FLASH_USDC_ADDRESS
-  },
-  [FLASH_BASE_CHAIN_ID]: {
-    weth: FLASH_BASE_WETH_ADDRESS,
-    usdc: FLASH_BASE_USDC_ADDRESS
+function isDevFlashRuntime(runtime: FlashRuntime = {}) {
+  return runtime.profile === 'dev' || runtime.isDev === true || runtime.environment === 'development'
+}
+
+function normalizeFlashAddress(address?: unknown) {
+  const value = typeof address === 'string' ? address.trim().toLowerCase() : ''
+
+  return /^0x[0-9a-f]{40}$/.test(value) ? value : FLASH_NATIVE_ETH_TOKEN_ADDRESS
+}
+
+function createFlashAsset({
+  address,
+  chainId,
+  decimals,
+  isNative,
+  name,
+  symbol
+}: {
+  address: string
+  chainId: number
+  decimals: number
+  isNative: boolean
+  name: string
+  symbol: string
+}): FlashAsset {
+  const normalizedAddress = normalizeFlashAddress(address)
+
+  return {
+    id: flashAssetId(chainId, normalizedAddress),
+    symbol,
+    name,
+    decimals,
+    chainId,
+    isNative,
+    address: normalizedAddress
   }
 }
 
-export function getFlashDefaultChainId(runtime: FlashRuntime = {}) {
-  if (runtime.isDev || runtime.profile === 'dev' || runtime.environment === 'development') {
-    return FLASH_ANVIL_CHAIN_ID
-  }
-
-  return FLASH_BASE_CHAIN_ID
+export function getFlashSupportedChainIds(runtime: FlashRuntime = {}): number[] {
+  return isDevFlashRuntime(runtime) ? [...FLASH_DEV_SUPPORTED_CHAIN_IDS] : [...FLASH_PROD_SUPPORTED_CHAIN_IDS]
 }
 
 export function isFlashChainSupported(chainId: number, runtime: FlashRuntime = {}) {
-  return chainId === getFlashDefaultChainId(runtime)
+  return getFlashSupportedChainIds(runtime).includes(Number(chainId))
+}
+
+export function getFlashChainSlug(chainId: number) {
+  return FLASH_CHAIN_SLUGS[Number(chainId)] || ''
+}
+
+export function getFlashDefaultChainId(runtime: FlashRuntime = {}, availableChainIds?: readonly number[]) {
+  const supported = getFlashSupportedChainIds(runtime)
+  const available = (availableChainIds || [])
+    .map((chainId) => Number(chainId))
+    .filter((chainId) => Number.isInteger(chainId) && supported.includes(chainId))
+
+  return available[0] || supported[0] || FLASH_ANVIL_CHAIN_ID
+}
+
+export function toFlashApiAssetAddress(asset: FlashAsset) {
+  return asset.isNative ? FLASH_NATIVE_ETH_TOKEN_ADDRESS : normalizeFlashAddress(asset.address)
+}
+
+export function balanceSummaryToFlashAsset(balance: FlashBalanceSummaryLike): FlashAsset {
+  const chainId = Number(balance.chainId)
+  if (!Number.isInteger(chainId) || chainId <= 0) throw new Error('Invalid Flash balance chain id')
+
+  const address = normalizeFlashAddress(balance.address)
+  const isNative = address === FLASH_NATIVE_ETH_TOKEN_ADDRESS
+  const symbol = String(balance.symbol || (isNative ? FLASH_NATIVE_ETH_ASSET_SYMBOL : '')).trim()
+
+  if (!symbol) throw new Error('Invalid Flash balance symbol')
+
+  const decimals = Number(balance.decimals)
+
+  return createFlashAsset({
+    address,
+    chainId,
+    decimals: Number.isInteger(decimals) && decimals >= 0 ? decimals : isNative ? 18 : 18,
+    isNative,
+    name: String(balance.name || symbol),
+    symbol
+  })
 }
 
 export function getFlashAssetsForChain(chainId: number): FlashAsset[] {
-  const supportedChainId = FLASH_TOKEN_ADDRESSES[chainId] ? chainId : FLASH_ANVIL_CHAIN_ID
-  if (supportedChainId === FLASH_ANVIL_CHAIN_ID) return [...FLASH_P0_ASSETS]
+  const normalizedChainId = Number(chainId)
+  const addresses = FLASH_TOKEN_ADDRESSES[normalizedChainId]
 
-  const addresses = FLASH_TOKEN_ADDRESSES[supportedChainId]
+  if (!addresses) {
+    return [
+      createFlashAsset({
+        address: FLASH_NATIVE_ETH_TOKEN_ADDRESS,
+        chainId: normalizedChainId,
+        decimals: 18,
+        isNative: true,
+        name: 'Native Asset',
+        symbol: FLASH_NATIVE_ETH_ASSET_SYMBOL
+      })
+    ]
+  }
 
   return [
-    {
-      ...FLASH_NATIVE_ETH_ASSET,
-      chainId: supportedChainId
-    },
-    {
-      ...FLASH_WETH_ASSET,
-      address: addresses.weth,
-      chainId: supportedChainId
-    },
-    {
-      ...FLASH_USDC_ASSET,
-      address: addresses.usdc,
-      chainId: supportedChainId
-    }
+    createFlashAsset({
+      address: FLASH_NATIVE_ETH_TOKEN_ADDRESS,
+      chainId: normalizedChainId,
+      decimals: 18,
+      isNative: true,
+      name: 'Ether',
+      symbol: FLASH_NATIVE_ETH_ASSET_SYMBOL
+    }),
+    createFlashAsset({
+      address: addresses.weth || FLASH_WETH_ADDRESS,
+      chainId: normalizedChainId,
+      decimals: 18,
+      isNative: false,
+      name: 'Wrapped Ether',
+      symbol: FLASH_WETH_ASSET_SYMBOL
+    }),
+    createFlashAsset({
+      address: addresses.usdc || FLASH_USDC_ADDRESS,
+      chainId: normalizedChainId,
+      decimals: 6,
+      isNative: false,
+      name: 'USD Coin',
+      symbol: FLASH_USDC_ASSET_SYMBOL
+    })
   ]
 }
 
 export function getFlashDefaultTargetAsset(chainId = FLASH_ANVIL_CHAIN_ID) {
   return (
-    getFlashAssetsForChain(chainId).find((asset) => asset.id === FLASH_WETH_ASSET_ID) || {
+    getFlashAssetsForChain(chainId).find((asset) => asset.symbol === FLASH_WETH_ASSET_SYMBOL) ||
+    getFlashAssetsForChain(chainId)[0] || {
       ...FLASH_DEFAULT_TARGET_ASSET,
-      chainId
+      chainId,
+      id: flashAssetId(chainId, toFlashApiAssetAddress(FLASH_DEFAULT_TARGET_ASSET))
     }
   )
 }
 
 function getFlashDefaultContraAssetPriority(chainId: number) {
   const assets = getFlashAssetsForChain(chainId)
-  const usdc = assets.find((asset) => asset.id === FLASH_USDC_ASSET_ID)
-  const weth = assets.find((asset) => asset.id === FLASH_WETH_ASSET_ID)
-  const nativeEth = assets.find((asset) => asset.id === FLASH_NATIVE_ETH_ASSET_ID)
+  const usdc = assets.find((asset) => asset.symbol === FLASH_USDC_ASSET_SYMBOL)
+  const weth = assets.find((asset) => asset.symbol === FLASH_WETH_ASSET_SYMBOL)
+  const nativeEth = assets.find((asset) => asset.isNative)
 
   return [usdc, weth, nativeEth].filter(Boolean) as FlashAsset[]
 }
@@ -295,16 +411,38 @@ export function formatPairIntent({ side, targetAsset, contraAsset }: FlashAssetP
   return `${targetAsset.symbol} ${side === 'buy' ? '<-' : '->'} ${contraAsset.symbol}`
 }
 
-export function getDefaultContraAsset({ targetAsset, balances }: FlashDefaultAssetOptions): FlashAsset {
-  const candidates = getFlashDefaultContraAssetPriority(targetAsset.chainId).filter(
-    (asset) => !isSameFlashAsset(asset, targetAsset)
+export function getDefaultContraAsset({
+  assets,
+  targetAsset,
+  balances
+}: FlashDefaultAssetOptions): FlashAsset {
+  const sameChainOptions = sortContraCandidates(
+    (assets || getFlashDefaultContraAssetPriority(targetAsset.chainId)).filter(
+      (asset) => asset.chainId === targetAsset.chainId && !isSameFlashAsset(asset, targetAsset)
+    )
   )
+  const candidates = sameChainOptions.length
+    ? sameChainOptions
+    : getFlashDefaultContraAssetPriority(targetAsset.chainId).filter(
+        (asset) => !isSameFlashAsset(asset, targetAsset)
+      )
 
   return (
     candidates.find((asset) => hasAssetBalance(asset, balances)) ||
     candidates[0] ||
     getFlashDefaultContraAssetPriority(FLASH_ANVIL_CHAIN_ID)[0]
   )
+}
+
+function sortContraCandidates(assets: FlashAsset[]) {
+  const priority = (asset: FlashAsset) => {
+    if (asset.symbol.toUpperCase() === FLASH_USDC_ASSET_SYMBOL) return 0
+    if (asset.symbol.toUpperCase() === FLASH_WETH_ASSET_SYMBOL) return 1
+    if (asset.isNative) return 2
+    return 3
+  }
+
+  return [...assets].sort((a, b) => priority(a) - priority(b))
 }
 
 export function getDefaultSide({ targetAsset, balances }: FlashDefaultAssetOptions): FlashTradeSide {
@@ -314,7 +452,13 @@ export function getDefaultSide({ targetAsset, balances }: FlashDefaultAssetOptio
 }
 
 function isSameFlashAsset(a: FlashAsset, b: FlashAsset) {
-  return a.id === b.id || a.symbol === b.symbol
+  return (
+    a.id === b.id ||
+    (a.chainId === b.chainId &&
+      normalizeFlashAddress(toFlashApiAssetAddress(a)) ===
+        normalizeFlashAddress(toFlashApiAssetAddress(b))) ||
+    (a.chainId === b.chainId && a.symbol.toUpperCase() === b.symbol.toUpperCase())
+  )
 }
 
 function hasAssetBalance(asset: FlashAsset, balances?: FlashAssetBalances | null) {
@@ -341,7 +485,9 @@ function getAssetBalanceValue(asset: FlashAsset, balances?: FlashAssetBalances |
 
 function isAssetBalanceForAsset(balance: FlashAssetBalance, asset: FlashAsset) {
   return (
-    balance.assetId === asset.id || balance.id === asset.id || balance.symbol?.toUpperCase() === asset.symbol
+    balance.assetId === asset.id ||
+    balance.id === asset.id ||
+    balance.symbol?.toUpperCase() === asset.symbol.toUpperCase()
   )
 }
 
