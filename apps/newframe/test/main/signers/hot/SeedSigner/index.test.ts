@@ -1,4 +1,5 @@
 import path from 'path'
+import fs from 'fs'
 import { rm } from 'fs/promises'
 import { Mnemonic, randomBytes } from 'ethers'
 import log from 'electron-log'
@@ -67,6 +68,10 @@ describe('Seed signer', () => {
         expect(signer.status).toBe('ok')
         expect(signer.addresses.length).toBe(100)
         expect(store(`main.signers.${signer.id}.id`)).toBe(signer.id)
+        const storedSigner = JSON.parse(
+          fs.readFileSync(path.resolve(SIGNER_PATH, `${signer.id}.json`), 'utf8')
+        )
+        expect(storedSigner.encryptionVersion).toBe(undefined)
         done()
       })
     } catch (e) {

@@ -347,41 +347,6 @@ class Notify extends React.Component<any, any> {
     )
   }
 
-  hotSignerMismatch() {
-    return (
-      <div
-        className='notifyBoxWrap'
-        onMouseDown={(e) => e.stopPropagation()}
-        style={
-          this.store('view.notify') === 'hotSignerMismatch'
-            ? { transform: 'translateX(calc(-100% - 100px))' }
-            : {}
-        }
-      >
-        <div className='notifyBox'>
-          <div className='notifyTitle'>
-            <div>Hot Signer Address Mismatch</div>
-          </div>
-          <div className='notifyBody'>
-            <div className='notifyBodyLine'>
-              The unlocked hot signer did not match the address shown in Newframe and has been relocked.
-            </div>
-          </div>
-          <div className='notifyInput'>
-            <div
-              className='notifyInputOption notifyInputSingleButton'
-              onMouseDown={() => {
-                link.send('tray:action', 'backDash')
-              }}
-            >
-              <div className='notifyInputOptionText'>OK</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
   openExternal({ url }: any) {
     return (
       <div className='notifyBoxWrap' onMouseDown={(e) => e.stopPropagation()}>
@@ -483,8 +448,6 @@ class Notify extends React.Component<any, any> {
       return <div className='notify cardShow'>{this.contractData()}</div>
     } else if (notify === 'hotAccountWarning') {
       return <div className='notify cardShow'>{this.hotAccountWarning()}</div>
-    } else if (notify === 'hotSignerMismatch') {
-      return <div className='notify cardShow'>{this.hotSignerMismatch()}</div>
     } else if (notify === 'confirmRemoveChain') {
       const { chain } = notifyData
 

@@ -21,7 +21,7 @@ import {
   TRANSACTION_CONFIRMATION_TARGET,
   getTransactionIntent
 } from '../../resources/domain/transaction'
-import { findUnavailableSigners, isSignerReady } from '../../resources/domain/signer'
+import { findUnavailableSigners, isHardwareSigner, isSignerReady } from '../../resources/domain/signer'
 
 import {
   AccountRequest,
@@ -1327,8 +1327,12 @@ export class Accounts extends EventEmitter {
     }
 
     if (!isSignerReady(signer)) {
-      // if the signer is not ready to sign, open the signer panel so that
-      // the user can unlock it or reconnect
+      // Hot signer availability is app-lock state. Only hardware signers
+      // should use signer-specific unavailable navigation.
+      if (!isHardwareSigner(signer)) return cb(new Error('Newframe locked'))
+
+      // if the hardware signer is not ready to sign, open the signer panel so
+      // that the user can reconnect or complete the device-specific flow
       return signerUnavailable(signer)
     }
 

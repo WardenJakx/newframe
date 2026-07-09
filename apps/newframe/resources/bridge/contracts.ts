@@ -52,6 +52,7 @@ export type LinkInvokeChannel = (typeof LinkInvokeChannels)[number]
 export const LinkRpcMethods = [
   'addKeystore',
   'addPrivateKey',
+  'appLockState',
   'approveRequest',
   'biometricsState',
   'changeVaultPassword',
@@ -80,8 +81,7 @@ export const LinkRpcMethods = [
   'latticePair',
   'launchStatus',
   'locateKeystore',
-  'lockSigner',
-  'lockVault',
+  'lockApp',
   'openExplorer',
   'providerSend',
   'remove',
@@ -101,12 +101,10 @@ export const LinkRpcMethods = [
   'trezorEnterPhrase',
   'trezorPhrase',
   'trezorPin',
-  'unlockSigner',
-  'unlockVault',
-  'unlockVaultWithBiometrics',
+  'unlockApp',
+  'unlockAppWithBiometrics',
   'unsetSigner',
   'updateRequest',
-  'vaultState',
   'verifyAddress'
 ] as const
 

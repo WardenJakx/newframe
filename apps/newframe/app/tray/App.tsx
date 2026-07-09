@@ -15,6 +15,12 @@ import {
 } from '../../resources/biometrics'
 
 type AppLockStatus = 'checking' | 'locked' | 'unlocked'
+type AppLockState = {
+  locked: boolean
+  vaultExists: boolean
+  biometricUnlockEnabled: boolean
+  biometricAvailable: boolean
+}
 type BiometricsState = {
   enabled: boolean
   method: 'webauthn' | 'native' | ''
@@ -24,14 +30,15 @@ type BiometricsState = {
 
 class Panel extends React.Component<any, any> {
   declare store: Store
-  vaultRefreshTimer: any
+  appLockRefreshTimer: any
   biometricsObserver: any
+  appLockStateListener: any
   lastBiometricUnlock = false
 
   constructor(props: any, context?: any) {
     super(props, context)
     this.state = {
-      vault: null,
+      appLock: null,
       password: '',
       unlockError: '',
       unlocking: false,
@@ -42,9 +49,13 @@ class Panel extends React.Component<any, any> {
   }
 
   override componentDidMount() {
-    this.refreshVaultState()
+    this.refreshAppLockState()
     this.refreshBiometricsState()
     this.lastBiometricUnlock = !!this.store('main.biometricUnlock')
+    this.appLockStateListener = (action: string) => {
+      if (action === 'appLockStateChanged') this.refreshAppLockState()
+    }
+    link.on('action', this.appLockStateListener)
     this.biometricsObserver = this.store.observer(() => {
       const biometricUnlock = !!this.store('main.biometricUnlock')
       if (biometricUnlock === this.lastBiometricUnlock) return
@@ -55,13 +66,23 @@ class Panel extends React.Component<any, any> {
   }
 
   override componentWillUnmount() {
-    clearTimeout(this.vaultRefreshTimer)
+    clearTimeout(this.appLockRefreshTimer)
+    if (this.appLockStateListener) link.removeListener('action', this.appLockStateListener)
     if (this.biometricsObserver) this.biometricsObserver.remove()
   }
 
-  refreshVaultState() {
-    link.rpc('vaultState', (err: any, vault: any) => {
-      this.setState({ vault: err ? { exists: false, unlocked: true } : vault })
+  refreshAppLockState() {
+    link.rpc('appLockState', (err: any, appLock: AppLockState) => {
+      this.setState({
+        appLock: err
+          ? {
+              locked: false,
+              vaultExists: false,
+              biometricUnlockEnabled: false,
+              biometricAvailable: false
+            }
+          : appLock
+      })
     })
   }
 
@@ -89,25 +110,10 @@ class Panel extends React.Component<any, any> {
     }
   }
 
-  hotSigners() {
-    const signers = this.store('main.signers') || {}
-    return (Object.values(signers) as any[]).filter((signer: any) => ['ring', 'seed'].includes(signer.type))
-  }
-
-  lockedHotSigners() {
-    return this.hotSigners().filter((signer: any) => {
-      if (signer.status !== 'locked') return false
-
-      const vaultSignerIsHydrating = signer.encryptionVersion === 2 && this.state.vault?.unlocked
-      return !vaultSignerIsHydrating
-    })
-  }
-
   appLockStatus(): AppLockStatus {
-    const vault = this.state.vault
-    if (!vault) return 'checking'
-    if (vault.exists && !vault.unlocked) return 'locked'
-    if (this.lockedHotSigners().length > 0) return 'locked'
+    const appLock = this.state.appLock as AppLockState | null
+    if (!appLock) return 'checking'
+    if (appLock.locked) return 'locked'
     return 'unlocked'
   }
 
@@ -115,23 +121,18 @@ class Panel extends React.Component<any, any> {
     if (this.state.unlocking) return
 
     const password = this.state.password
-    const legacySigner = this.lockedHotSigners().find((signer: any) => signer.encryptionVersion !== 2)
     const done = (err: any) => {
       if (err) {
         return this.setState({ unlocking: false, unlockError: err.message || String(err) })
       }
 
       this.setState({ unlocking: false, unlockError: '', password: '' })
-      this.vaultRefreshTimer = setTimeout(() => this.refreshVaultState(), 100)
+      this.appLockRefreshTimer = setTimeout(() => this.refreshAppLockState(), 100)
     }
 
     this.setState({ unlocking: true, unlockError: '' })
 
-    if (legacySigner) {
-      link.rpc('unlockSigner', legacySigner.id, password, done)
-    } else {
-      link.rpc('unlockVault', password, done)
-    }
+    link.rpc('unlockApp', password, done)
   }
 
   async unlockWithBiometrics() {
@@ -145,15 +146,15 @@ class Panel extends React.Component<any, any> {
     try {
       if (biometrics.method === 'webauthn') {
         const secret = await getWebAuthnBiometricSecret(biometrics.credential)
-        await this.rpc('unlockVaultWithBiometrics', { method: 'webauthn', secret })
+        await this.rpc('unlockAppWithBiometrics', { method: 'webauthn', secret })
       } else if (biometrics.method === 'native') {
-        await this.rpc('unlockVaultWithBiometrics', { method: 'native' })
+        await this.rpc('unlockAppWithBiometrics', { method: 'native' })
       } else {
         throw new Error('Biometric unlock is not configured')
       }
 
       this.setState({ biometricUnlocking: false, unlockError: '', password: '' })
-      this.vaultRefreshTimer = setTimeout(() => this.refreshVaultState(), 100)
+      this.appLockRefreshTimer = setTimeout(() => this.refreshAppLockState(), 100)
     } catch (err: any) {
       this.setState({
         biometricUnlocking: false,
@@ -164,7 +165,6 @@ class Panel extends React.Component<any, any> {
 
   renderBiometricUnlockButton() {
     if (!this.state.biometricAvailable) return null
-    if (this.lockedHotSigners().some((signer: any) => signer.encryptionVersion !== 2)) return null
 
     return (
       <div
@@ -238,10 +238,10 @@ class Panel extends React.Component<any, any> {
   }
 
   override render() {
-    const opacity = this.store('tray.initial') ? 0 : 1
     const crumb = this.store('windows.panel.nav')[0] || {}
     const requestViewOpen = crumb.view === 'requestView' || crumb.view === 'expandedModule'
     const lockStatus = this.appLockStatus()
+    const opacity = lockStatus === 'unlocked' && this.store('tray.initial') ? 0 : 1
 
     if (lockStatus !== 'unlocked') {
       return (

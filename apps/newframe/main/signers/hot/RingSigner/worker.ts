@@ -43,22 +43,6 @@ class RingSignerWorker extends HotSignerWorker {
     pseudoCallback(null, encryptedKeys)
   }
 
-  reencryptKeys(
-    {
-      encryptedKeys,
-      password,
-      newPassword
-    }: { encryptedKeys: string; password: string; newPassword: string },
-    pseudoCallback: PseudoCallback
-  ) {
-    try {
-      const keys = this._decrypt(encryptedKeys, password)
-      pseudoCallback(null, this._encrypt(keys, newPassword))
-    } catch (e) {
-      pseudoCallback('Invalid password')
-    }
-  }
-
   removeKey(
     { encryptedKeys, index, password }: { encryptedKeys: string; index: number; password: string },
     pseudoCallback: PseudoCallback

@@ -759,14 +759,6 @@ class HotSignerWorkerMock extends EventEmitter {
       }
       case 'encryptSeed':
         return encodeWorkerData({ kind: 'seed', password: params.password, seed: params.seed })
-      case 'reencryptKeys': {
-        const current = decodeWorkerData(params.encryptedKeys, params.password)
-        return encodeWorkerData({ ...current, password: params.newPassword })
-      }
-      case 'reencryptSeed': {
-        const current = decodeWorkerData(params.encryptedSeed, params.password)
-        return encodeWorkerData({ ...current, password: params.newPassword })
-      }
       case 'unlock':
         decodeWorkerData(params.encryptedKeys || params.encryptedSeed, params.password)
         this.locked = false

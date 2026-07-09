@@ -28,10 +28,6 @@ const PreferencesSchema = {
   launch: z.boolean().default(false).describe('Launch Newframe on system start'),
   reveal: z.boolean().default(false).describe('Show Newframe when user glides mouse to edge of screen'),
   autohide: z.boolean().default(false).describe('Automatically hide Newframe when it loses focus'),
-  accountCloseLock: z
-    .boolean()
-    .default(false)
-    .describe("Lock an account when it's closed instead of when Newframe restarts"),
   showLocalNameWithENS: z.boolean(),
   autoDiscoverTokens: z
     .boolean()
@@ -49,7 +45,6 @@ const notificationTypes = z.enum([
   'welcomeWarning',
   'externalLinkWarning',
   'explorerWarning',
-  'signerRelockChange',
   'gasFeeWarning',
   'betaDisclosure',
   'onboardingWindow',

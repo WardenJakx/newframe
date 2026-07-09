@@ -85,6 +85,10 @@ describe('Ring signer', () => {
         expect(signer.id).not.toBe(undefined)
         expect(signer.addresses[0]).toBe(signer.addresses[0].toLowerCase())
         expect(store(`main.signers.${signer.id}.id`)).toBe(signer.id)
+        const storedSigner = JSON.parse(
+          fs.readFileSync(path.resolve(SIGNER_PATH, `${signer.id}.json`), 'utf8')
+        )
+        expect(storedSigner.encryptionVersion).toBe(undefined)
         done()
       })
     } catch (e) {

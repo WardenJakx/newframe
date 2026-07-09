@@ -1216,7 +1216,7 @@ async function forceLockAndUnlock(tray: Page) {
     const unlockDialog = tray.getByRole('dialog', { name: 'Unlock Newframe' })
 
     if (!(await unlockDialog.isVisible({ timeout: 2_000 }).catch(() => false))) {
-      await linkRpc(tray, 'lockVault')
+      await linkRpc(tray, 'lockApp')
       await unlockDialog.waitFor({ state: 'visible', timeout: 15_000 })
     }
 

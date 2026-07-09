@@ -5,6 +5,7 @@ import { randomBytes } from 'crypto'
 import { isAddress } from 'ethers'
 import { openFileDialog } from '../windows/dialog'
 import { openBlockExplorer } from '../windows/window'
+import windows from '../windows'
 
 import accounts from '../accounts'
 import signers from '../signers'
@@ -46,6 +47,25 @@ const signerSummaryCallback =
     if (err) return cb(err)
     cb(err, signer && typeof signer.summary === 'function' ? signer.summary() : signer)
   }
+
+const getAppLockState = () => {
+  const vaultSummary = vault.summary()
+  const biometricSummary = biometrics.summary()
+  const biometricAvailable =
+    biometricSummary.enabled &&
+    (biometricSummary.method === 'native'
+      ? biometricSummary.nativeAvailable
+      : biometricSummary.method === 'webauthn')
+
+  return {
+    locked: vaultSummary.exists && !vaultSummary.unlocked,
+    vaultExists: vaultSummary.exists,
+    biometricUnlockEnabled: biometricSummary.enabled,
+    biometricAvailable
+  }
+}
+
+const publishAppLockState = () => windows.broadcastAction('appLockStateChanged')
 
 const rpc: Record<string, (...args: any[]) => any> = {
   getState: (cb) => {
@@ -165,6 +185,12 @@ const rpc: Record<string, (...args: any[]) => any> = {
     accounts.updateRequest(reqId, data, actionId)
   },
   approveRequest(req) {
+    if (vault.exists() && !vault.isUnlocked()) {
+      accounts.setRequestError(req.handlerId, new Error('Newframe locked'))
+      publishAppLockState()
+      return
+    }
+
     accounts.setRequestPending(req)
     if (req.type === 'transaction') {
       provider.approveTransactionRequest(req, (err, res) => {
@@ -278,14 +304,8 @@ const rpc: Record<string, (...args: any[]) => any> = {
   addKeystore(id, keystore, keystorePassword, password, cb) {
     signers.addKeystore(id, keystore, keystorePassword, password, cb)
   },
-  unlockSigner(id, password, cb) {
-    signers.unlock(id, password, cb)
-  },
-  lockSigner(id, cb) {
-    signers.lock(id, cb)
-  },
-  vaultState(cb) {
-    cb(null, vault.summary())
+  appLockState(cb) {
+    cb(null, getAppLockState())
   },
   biometricsState(cb) {
     cb(null, biometrics.summary())
@@ -303,6 +323,7 @@ const rpc: Record<string, (...args: any[]) => any> = {
       }
 
       store.setBiometricUnlock(true)
+      publishAppLockState()
       return biometrics.summary()
     }, cb)
   },
@@ -310,17 +331,18 @@ const rpc: Record<string, (...args: any[]) => any> = {
     callbackWhenResolved(() => {
       biometrics.disable()
       store.setBiometricUnlock(false)
+      publishAppLockState()
       return biometrics.summary()
     }, cb)
   },
-  unlockVault(password, cb) {
-    signers.unlockVault(password, cb)
+  unlockApp(password, cb) {
+    signers.unlockApp(password, cb)
   },
-  unlockVaultWithBiometrics(payload, cb) {
-    signers.unlockVaultWithBiometrics(payload, cb)
+  unlockAppWithBiometrics(payload, cb) {
+    signers.unlockAppWithBiometrics(payload, cb)
   },
-  lockVault(cb) {
-    signers.lockVault(cb)
+  lockApp(cb) {
+    signers.lockApp(cb)
   },
   exportAccountPrivateKey(address, password, cb) {
     signers.exportAccountPrivateKey(address, password, cb)

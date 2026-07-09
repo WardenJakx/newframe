@@ -39,7 +39,7 @@ export const createFromSeed = (signers: any, seed: string, password: string, cb:
   if (!seed) return cb(new Error('Seed required to create hot signer'))
   const vaultKey = acquireVaultKey(password, cb)
   if (!vaultKey) return
-  const signer = new SeedSigner({ encryptionVersion: 2 })
+  const signer = new SeedSigner()
   signer.addSeed(seed, vaultKey, (err: Error | null, result?: any) => {
     if (err) {
       signer.close()
@@ -54,7 +54,7 @@ export const createFromPhrase = (signers: any, phrase: string, password: string,
   if (!phrase) return cb(new Error('Phrase required to create hot signer'))
   const vaultKey = acquireVaultKey(password, cb)
   if (!vaultKey) return
-  const signer = new SeedSigner({ encryptionVersion: 2 })
+  const signer = new SeedSigner()
   signer.addPhrase(phrase, vaultKey, (err) => {
     if (err) {
       signer.close()
@@ -71,7 +71,7 @@ export const createFromPrivateKey = (signers: any, privateKey: string, password:
   if (!privateKeyHex) return cb(new Error('Private key required to create hot signer'))
   const vaultKey = acquireVaultKey(password, cb)
   if (!vaultKey) return
-  const signer = new RingSigner({ encryptionVersion: 2 })
+  const signer = new RingSigner()
 
   signer.addPrivateKey(privateKeyHex, vaultKey, (err) => {
     if (err) {
@@ -94,7 +94,7 @@ export const createFromKeystore = (
   if (!keystorePassword) return cb(new Error('Keystore password required'))
   const vaultKey = acquireVaultKey(password, cb)
   if (!vaultKey) return
-  const signer = new RingSigner({ encryptionVersion: 2 })
+  const signer = new RingSigner()
   signer.addKeystore(keystore, keystorePassword, vaultKey, (err) => {
     if (err) {
       signer.close()
@@ -125,14 +125,14 @@ export const scan = (signers: any) => {
     // Add stored signers
     for (const id of Object.keys(storedSigners)) {
       await wait(100)
-      const { addresses, encryptedKeys, encryptedSeed, type, network, encryptionVersion } = storedSigners[id]
+      const { addresses, encryptedKeys, encryptedSeed, type, network } = storedSigners[id]
       if (addresses && addresses.length) {
         const id = crypt.stringToKey(addresses.join()).toString('hex')
         if (!signers.exists(id)) {
           if (type === 'seed') {
-            signers.add(new SeedSigner({ network, addresses, encryptedSeed, encryptionVersion }))
+            signers.add(new SeedSigner({ network, addresses, encryptedSeed }))
           } else if (type === 'ring') {
-            signers.add(new RingSigner({ network, addresses, encryptedKeys, encryptionVersion }))
+            signers.add(new RingSigner({ network, addresses, encryptedKeys }))
           }
         }
       }

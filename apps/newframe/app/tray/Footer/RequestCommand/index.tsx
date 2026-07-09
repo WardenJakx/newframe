@@ -36,6 +36,24 @@ class RequestCommand extends React.Component<any, any> {
     link.rpc('declineRequest', req, () => {}) // Move to link.send
   }
 
+  ensureAppUnlocked(next: () => void) {
+    link.rpc('appLockState', (err: any, appLockState: any) => {
+      if (!err && appLockState?.locked) {
+        link.emit('action', 'appLockStateChanged')
+        return
+      }
+
+      next()
+    })
+  }
+
+  shakeSignerUnavailable() {
+    this.setState({ signerLocked: true })
+    setTimeout(() => {
+      this.setState({ signerLocked: false })
+    }, 3000)
+  }
+
   toDisplayUSD(usd: any) {
     // round up to 2 decimal places
     return (Math.ceil(usd * 100) / 100).toFixed(2)
@@ -200,33 +218,36 @@ class RequestCommand extends React.Component<any, any> {
             role='button'
             onClick={() => {
               if (this.state.allowInput) {
-                link.rpc('signerCompatibility', req.handlerId, (e: any, compatibility: any) => {
-                  if (e === 'No signer') {
-                    this.store.notify('noSignerWarning', { req })
-                  } else if (e === 'Signer unavailable') {
-                    this.setState({ signerLocked: true })
-                    setTimeout(() => {
-                      this.setState({ signerLocked: false })
-                    }, 3000)
-                  } else if (
-                    !compatibility.compatible &&
-                    !this.store('main.mute.signerCompatibilityWarning')
-                  ) {
-                    this.store.notify('signerCompatibilityWarning', { req, compatibility, chain: chain })
-                  } else if (
-                    hasNativeUSD &&
-                    (maxFeeUSD > FEE_WARNING_THRESHOLD_USD || this.toDisplayUSD(maxFeeUSD) === '0.00') &&
-                    !this.store('main.mute.gasFeeWarning')
-                  ) {
-                    this.store.notify('gasFeeWarning', {
-                      req,
-                      feeUSD: this.toDisplayUSD(maxFeeUSD),
-                      currentSymbol
-                    })
-                  } else {
-                    this.approve(req.handlerId, req)
-                  }
-                })
+                this.ensureAppUnlocked(() =>
+                  link.rpc('signerCompatibility', req.handlerId, (e: any, compatibility: any) => {
+                    if (e === 'No signer') {
+                      this.store.notify('noSignerWarning', { req })
+                    } else if (e === 'Newframe locked') {
+                      link.emit('action', 'appLockStateChanged')
+                    } else if (e === 'Signer unavailable') {
+                      this.shakeSignerUnavailable()
+                    } else if (e) {
+                      return
+                    } else if (
+                      !compatibility.compatible &&
+                      !this.store('main.mute.signerCompatibilityWarning')
+                    ) {
+                      this.store.notify('signerCompatibilityWarning', { req, compatibility, chain: chain })
+                    } else if (
+                      hasNativeUSD &&
+                      (maxFeeUSD > FEE_WARNING_THRESHOLD_USD || this.toDisplayUSD(maxFeeUSD) === '0.00') &&
+                      !this.store('main.mute.gasFeeWarning')
+                    ) {
+                      this.store.notify('gasFeeWarning', {
+                        req,
+                        feeUSD: this.toDisplayUSD(maxFeeUSD),
+                        currentSymbol
+                      })
+                    } else {
+                      this.approve(req.handlerId, req)
+                    }
+                  })
+                )
               }
             }}
           >
@@ -366,18 +387,21 @@ class RequestCommand extends React.Component<any, any> {
               style={{ pointerEvents: this.state.allowInput ? 'auto' : 'none' }}
               onClick={() => {
                 if (this.state.allowInput) {
-                  link.rpc('signerCompatibility', req.handlerId, (e: any) => {
-                    if (e === 'No signer') {
-                      this.store.notify('noSignerWarning', { req })
-                    } else if (e === 'Signer unavailable') {
-                      this.setState({ signerLocked: true })
-                      setTimeout(() => {
-                        this.setState({ signerLocked: false })
-                      }, 3000)
-                    } else {
-                      this.approve(req.handlerId, req)
-                    }
-                  })
+                  this.ensureAppUnlocked(() =>
+                    link.rpc('signerCompatibility', req.handlerId, (e: any) => {
+                      if (e === 'No signer') {
+                        this.store.notify('noSignerWarning', { req })
+                      } else if (e === 'Newframe locked') {
+                        link.emit('action', 'appLockStateChanged')
+                      } else if (e === 'Signer unavailable') {
+                        this.shakeSignerUnavailable()
+                      } else if (e) {
+                        return
+                      } else {
+                        this.approve(req.handlerId, req)
+                      }
+                    })
+                  )
                 }
               }}
             >

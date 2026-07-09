@@ -495,7 +495,7 @@ const init = () => {
   })
 }
 
-const send = (id: string, channel: string, ...args: string[]) => {
+const send = (id: string, channel: string, ...args: any[]) => {
   if (windows[id] && !windows[id].isDestroyed()) {
     windows[id].webContents.send(channel, ...args)
   } else {
@@ -503,7 +503,7 @@ const send = (id: string, channel: string, ...args: string[]) => {
   }
 }
 
-const broadcast = (channel: string, ...args: string[]) => {
+const broadcast = (channel: string, ...args: any[]) => {
   Object.keys(windows).forEach((id) => send(id, channel, ...args))
   frameManager.broadcast(channel, args)
 }
@@ -521,6 +521,9 @@ export default {
   },
   refocusFrame(frameId: string) {
     frameManager.refocus(frameId)
+  },
+  broadcastAction(action: string, ...args: any[]) {
+    broadcast('main:action', action, ...args)
   },
   close(e: IpcMainEvent) {
     windowFromWebContents(e.sender).close()

@@ -6,7 +6,6 @@ import svg from '../../../resources/svg'
 import { capitalize, getAddress } from '../../../resources/utils'
 import { isHardwareSigner, getSignerDisplayType } from '../../../resources/domain/signer'
 
-import SignerStatus from './SignerStatus'
 import ReloadSignerButton from './ReloadSignerButton'
 
 function isLoading(status = '') {
@@ -349,12 +348,6 @@ class Signer extends React.Component<any, any> {
     )
   }
 
-  renderSignerStatus() {
-    const signer = this.store('main.signers', this.props.id)
-
-    return <SignerStatus signer={signer} />
-  }
-
   renderExpanded() {
     const { id, type, tag, index = 0 } = this.props
     const signer = this.store('main.signers', id)
@@ -400,7 +393,6 @@ class Signer extends React.Component<any, any> {
           </div>
         ) : status === 'ok' || isLocked ? (
           <>
-            {this.renderSignerStatus()}
             <div className='signerAddedAccountTitle'>{'available accounts'}</div>
             <div className='signerAccounts'>
               {signer.addresses

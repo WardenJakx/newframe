@@ -16,6 +16,7 @@ import HotSigner from './hot/HotSigner'
 import store from '../store'
 import vault from '../vault'
 import biometrics, { type BiometricUnlockPayload } from '../biometrics'
+import windows from '../windows'
 
 const registeredAdapters = [new LedgerAdapter(), new TrezorAdapter(), new LatticeAdapter()]
 
@@ -97,11 +98,18 @@ class Signers extends EventEmitter {
 
       store.newSigner(signer.summary())
 
-      // while the app is unlocked, vault signers come up unlocked
-      const hotSigner = signer as SeedSigner | RingSigner
-      if (hotSigner.encryptionVersion === 2 && hotSigner.status === 'locked' && vault.isUnlocked()) {
+      if (signer instanceof HotSigner) {
+        signer.on('lockApp', () => this.lockApp(() => {}))
+      }
+
+      // while the app is unlocked, hot signers come up unlocked
+      if (signer instanceof HotSigner && signer.status === 'locked' && vault.isUnlocked()) {
+        const hotSigner = signer as SeedSigner | RingSigner
         hotSigner.unlock(vault.getKey() as string, (err: Error | null) => {
-          if (err) log.error(`Failed to unlock signer ${hotSigner.id} with vault key`, err)
+          if (err) {
+            log.error(`Failed to unlock signer ${hotSigner.id} with vault key`, err)
+            this.lockApp(() => {})
+          }
         })
       }
     }
@@ -160,11 +168,28 @@ class Signers extends EventEmitter {
     return this.signers[id]
   }
 
+  private publishAppLockState() {
+    try {
+      windows.broadcastAction('appLockStateChanged')
+    } catch (e) {
+      log.debug('Unable to publish app lock state change', e)
+    }
+  }
+
   // Creating a hot signer may create or unlock the vault, in which case any
-  // other locked vault signers come along for the ride
+  // other locked hot signers come along for the ride
   private afterCreate(cb: Callback<Signer>): Callback<Signer> {
     return (err, signer) => {
-      if (!err && vault.isUnlocked()) this.unlockVaultSigners(vault.getKey() as string)
+      if (!err && vault.isUnlocked()) {
+        this.hydrateHotSigners(vault.getKey() as string, undefined, (hydrateErr) => {
+          if (hydrateErr) {
+            log.error('Failed to hydrate hot signers after creating signer', hydrateErr)
+            this.lockApp(() => {})
+          } else {
+            this.publishAppLockState()
+          }
+        })
+      }
       cb(err, signer)
     }
   }
@@ -185,36 +210,6 @@ class Signers extends EventEmitter {
     hot.createFromKeystore(this, keystore, keystorePassword, password, this.afterCreate(cb))
   }
 
-  // Resolves the secret used to encrypt a hot signer's payload. Vault
-  // signers (encryptionVersion 2) use the vault key — the password, if
-  // provided, is the master password used to unlock the vault. Legacy
-  // signers still use their own password directly
-  private resolveSignerSecret(signer: HotSigner, password: string): string {
-    if (signer.encryptionVersion === 2) return vault.acquireKey(password)
-    return password
-  }
-
-  // After a legacy signer is unlocked with its own password, re-encrypt it
-  // under the vault key so future unlocks use the master password
-  private migrateLegacySigner(signer: HotSigner, password: string) {
-    let vaultKey: string
-
-    try {
-      // The signer's password becomes the vault master password if no
-      // vault exists yet. If a locked vault exists, only migrate when the
-      // passwords match — otherwise leave the signer as legacy for now
-      vaultKey = vault.acquireKey(password)
-    } catch (e) {
-      log.warn(`Not migrating legacy signer ${signer.id} to vault`, e)
-      return
-    }
-
-    ;(signer as SeedSigner | RingSigner).reencrypt(password, vaultKey, (err: Error | null) => {
-      if (err) return log.error(`Failed to migrate legacy signer ${signer.id} to vault`, err)
-      log.info(`Migrated legacy signer ${signer.id} to vault encryption`)
-    })
-  }
-
   addPrivateKey(id: string, privateKey: string, password: string, cb: Callback<Signer>) {
     // Get signer
     const signer = this.get(id)
@@ -225,7 +220,7 @@ class Signers extends EventEmitter {
 
     let secret
     try {
-      secret = this.resolveSignerSecret(signer as RingSigner, password)
+      secret = vault.acquireKey(password)
     } catch (e) {
       return cb(e as Error, undefined)
     }
@@ -244,7 +239,7 @@ class Signers extends EventEmitter {
 
     let secret
     try {
-      secret = this.resolveSignerSecret(signer as RingSigner, password)
+      secret = vault.acquireKey(password)
     } catch (e) {
       return cb(e as Error, undefined)
     }
@@ -268,7 +263,7 @@ class Signers extends EventEmitter {
 
     let secret
     try {
-      secret = this.resolveSignerSecret(signer as RingSigner, password)
+      secret = vault.acquireKey(password)
     } catch (e) {
       return cb(e as Error, undefined)
     }
@@ -276,69 +271,28 @@ class Signers extends EventEmitter {
     ;(signer as RingSigner).addKeystore(keystore, keystorePassword, secret, cb)
   }
 
-  // Unlocks every locked vault signer with the vault key
-  private unlockVaultSigners(vaultKey: string, excludeId?: string) {
-    Object.values(this.signers).forEach((signer) => {
-      if (signer.id === excludeId) return
-      const hotSigner = signer as SeedSigner | RingSigner
-      if (hotSigner.encryptionVersion === 2 && hotSigner.status === 'locked' && hotSigner.unlock) {
-        hotSigner.unlock(vaultKey, (err: Error | null) => {
-          if (err) log.error(`Failed to unlock signer ${hotSigner.id} with vault key`, err)
-        })
-      }
-    })
-  }
+  // Hydrates every locked hot signer with the app vault key.
+  private hydrateHotSigners(vaultKey: string, excludeId?: string, cb: Callback<boolean> = () => {}) {
+    const lockedHotSigners = Object.values(this.signers).filter(
+      (signer) => signer.id !== excludeId && signer instanceof HotSigner && signer.status === 'locked'
+    ) as Array<SeedSigner | RingSigner>
 
-  // Locking is app-wide: locks the vault and every hot signer
-  lock(id: string, cb: Callback<Signer>) {
-    vault.lock()
+    if (lockedHotSigners.length === 0) return cb(null, true)
 
-    let calledBack = false
+    let remaining = lockedHotSigners.length
+    let firstError: Error | null = null
 
-    Object.values(this.signers).forEach((signer) => {
-      if (signer instanceof HotSigner && signer.status !== 'locked') {
-        const isTarget = signer.id === id
-        if (isTarget) calledBack = true
-        signer.lock(isTarget ? (cb as any) : () => {})
-      }
-    })
-
-    // target signer was already locked or isn't a hot signer
-    if (!calledBack) cb(null, undefined)
-  }
-
-  // Unlocking is app-wide: the password unlocks the vault session and with
-  // it every vault signer. Legacy signers unlock with their own password
-  // and migrate to the vault
-  unlock(id: string, password: string, cb: Callback<Signer>) {
-    const signer = this.signers[id]
-
-    // @ts-ignore
-    if (signer && signer.unlock) {
-      const hotSigner = signer as SeedSigner | RingSigner
-
-      if (hotSigner.encryptionVersion === 2) {
-        let vaultKey: string
-        try {
-          vaultKey = vault.acquireKey(password)
-        } catch (e) {
-          return cb(e as Error, undefined)
+    lockedHotSigners.forEach((hotSigner) => {
+      hotSigner.unlock(vaultKey, (err: Error | null) => {
+        if (err) {
+          firstError = firstError || err
+          log.error(`Failed to unlock signer ${hotSigner.id} with vault key`, err)
         }
-        hotSigner.unlock(vaultKey, cb)
-        this.unlockVaultSigners(vaultKey, hotSigner.id)
-      } else {
-        // legacy signer encrypted directly with its own password
-        hotSigner.unlock(password, (err: Error | null) => {
-          if (err) return cb(err, undefined)
-          this.migrateLegacySigner(hotSigner, password)
-          // migration may have created or unlocked the vault
-          if (vault.isUnlocked()) this.unlockVaultSigners(vault.getKey() as string, hotSigner.id)
-          cb(null, undefined)
-        })
-      }
-    } else {
-      log.error('Signer not unlockable via password, no unlock method')
-    }
+
+        remaining -= 1
+        if (remaining === 0) cb(firstError, firstError ? undefined : true)
+      })
+    })
   }
 
   exportAccountPrivateKey(address: string, password: string, cb: Callback<{ type: string; value: string }>) {
@@ -361,32 +315,6 @@ class Signers extends EventEmitter {
         cb(null, { type: 'privateKey', value: value as string })
       })
 
-    if (signer.encryptionVersion === 2) {
-      let vaultKey: string
-      try {
-        vaultKey = vault.unlock(password)
-      } catch (e) {
-        return cb(e as Error, undefined)
-      }
-
-      this.unlockVaultSigners(vaultKey, signer.id)
-
-      if (signer.status === 'ok') return exportKey()
-      return (signer as SeedSigner | RingSigner).unlock(vaultKey, (err: Error | null) => {
-        if (err) return cb(err, undefined)
-        exportKey()
-      })
-    }
-
-    ;(signer as SeedSigner | RingSigner).unlock(password, (err: Error | null) => {
-      if (err) return cb(err, undefined)
-      this.migrateLegacySigner(signer, password)
-      exportKey()
-    })
-  }
-
-  // Unlocks the vault and every hot signer encrypted with it
-  unlockVault(password: string, cb: Callback<boolean>) {
     let vaultKey: string
     try {
       vaultKey = vault.unlock(password)
@@ -394,24 +322,65 @@ class Signers extends EventEmitter {
       return cb(e as Error, undefined)
     }
 
-    this.unlockVaultSigners(vaultKey)
+    this.hydrateHotSigners(vaultKey, signer.id, (hydrateErr) => {
+      if (hydrateErr) {
+        this.lockApp(() => {})
+        return cb(hydrateErr, undefined)
+      }
 
-    cb(null, true)
+      this.publishAppLockState()
+
+      if (signer.status === 'ok') return exportKey()
+      return (signer as SeedSigner | RingSigner).unlock(vaultKey, (err: Error | null) => {
+        if (err) {
+          this.lockApp(() => {})
+          return cb(err, undefined)
+        }
+        exportKey()
+      })
+    })
   }
 
-  unlockVaultWithBiometrics(payload: BiometricUnlockPayload, cb: Callback<boolean>) {
+  // Unlocks the app vault and hydrates every vault-backed hot signer.
+  unlockApp(password: string, cb: Callback<boolean>) {
+    let vaultKey: string
+    try {
+      vaultKey = vault.unlock(password)
+    } catch (e) {
+      return cb(e as Error, undefined)
+    }
+
+    this.hydrateHotSigners(vaultKey, undefined, (err) => {
+      if (err) {
+        this.lockApp(() => {})
+        return cb(err, undefined)
+      }
+
+      this.publishAppLockState()
+      cb(null, true)
+    })
+  }
+
+  unlockAppWithBiometrics(payload: BiometricUnlockPayload, cb: Callback<boolean>) {
     biometrics
       .unlock(payload)
       .then((vaultKey) => {
         vault.unlockWithKey(vaultKey)
-        this.unlockVaultSigners(vaultKey)
-        cb(null, true)
+        this.hydrateHotSigners(vaultKey, undefined, (err) => {
+          if (err) {
+            this.lockApp(() => {})
+            return cb(err, undefined)
+          }
+
+          this.publishAppLockState()
+          cb(null, true)
+        })
       })
       .catch((e) => cb(e as Error, undefined))
   }
 
-  // Locks the vault and every hot signer
-  lockVault(cb: Callback<boolean>) {
+  // Locks the app vault and clears every hot signer worker secret.
+  lockApp(cb: Callback<boolean>) {
     vault.lock()
 
     Object.values(this.signers).forEach((signer) => {
@@ -420,6 +389,7 @@ class Signers extends EventEmitter {
       }
     })
 
+    this.publishAppLockState()
     cb(null, true)
   }
 
