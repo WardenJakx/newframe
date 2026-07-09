@@ -27,6 +27,8 @@ interface ProxyConnection extends EventEmitter {
 
 const frameTargets = ['ws://127.0.0.1:1248', 'http://127.0.0.1:1248']
 const providerEvents = ['networkChanged', 'chainChanged', 'chainsChanged', 'accountsChanged', 'assetsChanged']
+const DEFAULT_RECONNECT_INTERVAL = 5000
+const MAX_RECONNECT_INTERVAL = 60 * 1000
 
 function normalizeChainId(chainId: string | number) {
   return typeof chainId === 'number' ? `0x${chainId.toString(16)}` : chainId
@@ -261,6 +263,7 @@ class FrameProvider extends EventedRequestProvider {
   private currentProvider?: EthersRpcProvider
   private connectTimer?: NodeJS.Timeout
   private connectAttempt = 0
+  private reconnectDelay: number
   private closing = false
 
   constructor(
@@ -269,7 +272,8 @@ class FrameProvider extends EventedRequestProvider {
   ) {
     super()
 
-    setTimeout(() => this.connect(), 0)
+    this.reconnectDelay = this.baseReconnectInterval()
+    this.connectTimer = setTimeout(() => this.connect(), 0)
   }
 
   close() {
@@ -313,6 +317,7 @@ class FrameProvider extends EventedRequestProvider {
         if (attempt !== this.connectAttempt || this.closing || this.currentProvider !== provider) return
 
         this.markConnected(chainId)
+        this.resetReconnectBackoff()
       })
       .catch((error) => {
         if (attempt !== this.connectAttempt || this.closing) return
@@ -324,7 +329,7 @@ class FrameProvider extends EventedRequestProvider {
         } else {
           this.connected = false
           this.handleProviderError(error)
-          this.connectTimer = setTimeout(() => this.connect(0), this.options.interval || 5000)
+          this.scheduleReconnect()
         }
       })
   }
@@ -349,7 +354,24 @@ class FrameProvider extends EventedRequestProvider {
     }
 
     clearTimeout(this.connectTimer)
-    this.connectTimer = setTimeout(() => this.connect(0), this.options.interval || 5000)
+    this.scheduleReconnect()
+  }
+
+  private baseReconnectInterval() {
+    return this.options.interval || DEFAULT_RECONNECT_INTERVAL
+  }
+
+  private resetReconnectBackoff() {
+    this.reconnectDelay = this.baseReconnectInterval()
+  }
+
+  private scheduleReconnect() {
+    if (this.closing) return
+
+    clearTimeout(this.connectTimer)
+    const delay = this.reconnectDelay
+    this.connectTimer = setTimeout(() => this.connect(0), delay)
+    this.reconnectDelay = Math.min(this.reconnectDelay * 2, MAX_RECONNECT_INTERVAL)
   }
 }
 
