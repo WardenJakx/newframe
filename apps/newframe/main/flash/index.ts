@@ -124,6 +124,7 @@ interface FlashOrderRecord {
 
 const FLASH_DEV_BASE_URL = 'http://127.0.0.1:8422/v1'
 const FLASH_PROD_BASE_URL = 'https://flash.definitive.fi/v1'
+const FLASH_API_KEY = 'dpka_513a2bd7_57a2_46d2_927b_2a3857fe271b'
 const FLASH_MARKET_ORDER_NOTIFICATION_MS = 60 * 1000
 const FLASH_RESOLVED_ORDER_NOTIFICATION_MS = 3 * 1000
 const FLASH_MARKET_ORDER_POLL_MS = 3 * 1000
@@ -174,10 +175,6 @@ export function flashBaseUrl() {
   return isDevRuntime() ? FLASH_DEV_BASE_URL : FLASH_PROD_BASE_URL
 }
 
-function flashApiKey() {
-  return String(process.env.FLASH_API_KEY || '').trim()
-}
-
 export function flashHeaders() {
   const headers: Record<string, string> = {
     accept: 'application/json',
@@ -185,9 +182,7 @@ export function flashHeaders() {
   }
 
   if (!isDevRuntime()) {
-    const apiKey = flashApiKey()
-    if (!apiKey) throw new Error('FLASH_API_KEY is required for Flash API requests outside FRAME_PROFILE=dev')
-    headers['x-definitive-api-key'] = apiKey
+    headers['x-definitive-api-key'] = FLASH_API_KEY
   }
 
   return headers
