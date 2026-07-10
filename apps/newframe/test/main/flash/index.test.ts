@@ -28,7 +28,6 @@ function quoteRequest() {
 describe('main Flash facade helpers', () => {
   beforeEach(() => {
     process.env.FRAME_PROFILE = 'dev' as any
-    delete process.env.FLASH_API_KEY
   })
 
   afterEach(() => {
@@ -43,15 +42,12 @@ describe('main Flash facade helpers', () => {
     expect(flashBaseUrl()).toBe('https://flash.definitive.fi/v1')
   })
 
-  it('adds auth only for non-dev requests and fails clearly without an API key', () => {
+  it('adds packaged auth only for non-dev requests', () => {
     process.env.FRAME_PROFILE = 'dev' as any
     expect(flashHeaders()['x-definitive-api-key']).toBeUndefined()
 
     process.env.FRAME_PROFILE = 'prod' as any
-    expect(() => flashHeaders()).toThrow('FLASH_API_KEY is required')
-
-    process.env.FLASH_API_KEY = 'flash_test_key'
-    expect(flashHeaders()['x-definitive-api-key']).toBe('flash_test_key')
+    expect(flashHeaders()['x-definitive-api-key']).toBe('dpka_513a2bd7_57a2_46d2_927b_2a3857fe271b')
   })
 
   it('maps app quote payloads to Flash REST quote bodies', () => {
