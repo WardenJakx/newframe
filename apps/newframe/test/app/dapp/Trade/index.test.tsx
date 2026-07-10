@@ -30,7 +30,7 @@ const other = {
   lastSignerType: 'address'
 }
 
-function initializeTradeState() {
+function initializeTradeState(balances = [wethBalance()]) {
   initializeRendererStateStore({
     selected: {
       current: sender.id
@@ -42,7 +42,7 @@ function initializeTradeState() {
       },
       accountOrder: [sender.id, other.id],
       balances: {
-        [sender.address]: [wethBalance()],
+        [sender.address]: balances,
         [other.address]: [wethBalance()]
       },
       networks: {
@@ -98,6 +98,18 @@ function wethBalance() {
     displayBalance: '',
     name: 'Wrapped Ether',
     symbol: 'WETH'
+  }
+}
+
+function tokenBalance(index: number) {
+  return {
+    address: `0x${(index + 100).toString(16).padStart(40, '0')}`,
+    balance: '1',
+    chainId: FLASH_ANVIL_CHAIN_ID,
+    decimals: 18,
+    displayBalance: '',
+    name: `Token ${index}`,
+    symbol: `T${index}`
   }
 }
 
@@ -181,5 +193,17 @@ describe('Trade', () => {
     expect((screen.getByLabelText('WETH amount') as HTMLInputElement).value).toBe('1')
     expect(quoteCalls).toHaveLength(2)
     expect(quoteCalls[1].accountAddress).toBe(other.address)
+  })
+
+  it('paginates large asset menus instead of rendering the full portfolio', () => {
+    initializeTradeState([wethBalance(), ...Array.from({ length: 120 }, (_, index) => tokenBalance(index))])
+
+    render(<Trade assetId={`${FLASH_ANVIL_CHAIN_ID}:${FLASH_WETH_ADDRESS}`} />)
+
+    fireEvent.click(screen.getByLabelText('Select target asset'))
+
+    expect(screen.getAllByRole('option')).toHaveLength(50)
+    fireEvent.click(screen.getByText('Show 50 more assets'))
+    expect(screen.getAllByRole('option')).toHaveLength(100)
   })
 })

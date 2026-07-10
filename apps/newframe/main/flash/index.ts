@@ -1,4 +1,5 @@
 import store from '../store'
+import { getMainRuntime } from '../runtime'
 import {
   FLASH_MARKET_ORDER_TYPE,
   getFlashChainSlug,
@@ -162,19 +163,15 @@ const FLASH_CHAIN_IDS_BY_SLUG: Record<string, number> = {
 }
 
 function runtime(): FlashRuntime & { environment: string; profile: string | null } {
-  return {
-    environment: process.env.NODE_ENV || 'development',
-    isDev: process.env.FRAME_PROFILE === 'dev',
-    profile: process.env.FRAME_PROFILE || null
-  }
+  return getMainRuntime()
 }
 
-function isDevProfile() {
-  return process.env.FRAME_PROFILE === 'dev'
+function isDevRuntime() {
+  return runtime().isDev === true
 }
 
 export function flashBaseUrl() {
-  return isDevProfile() ? FLASH_DEV_BASE_URL : FLASH_PROD_BASE_URL
+  return isDevRuntime() ? FLASH_DEV_BASE_URL : FLASH_PROD_BASE_URL
 }
 
 function flashApiKey() {
@@ -187,7 +184,7 @@ export function flashHeaders() {
     'content-type': 'application/json'
   }
 
-  if (!isDevProfile()) {
+  if (!isDevRuntime()) {
     const apiKey = flashApiKey()
     if (!apiKey) throw new Error('FLASH_API_KEY is required for Flash API requests outside FRAME_PROFILE=dev')
     headers['x-definitive-api-key'] = apiKey

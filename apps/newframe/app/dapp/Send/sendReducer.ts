@@ -1,5 +1,10 @@
-export const INITIAL_SEND_TOKEN_ROWS = 50
-export const SEND_TOKEN_ROWS_INCREMENT = 50
+import {
+  INITIAL_TOKEN_SELECTOR_ROWS,
+  TOKEN_SELECTOR_ROWS_INCREMENT
+} from '../../../resources/Components/tokenSelectorModel'
+
+export const INITIAL_SEND_TOKEN_ROWS = INITIAL_TOKEN_SELECTOR_ROWS
+export const SEND_TOKEN_ROWS_INCREMENT = TOKEN_SELECTOR_ROWS_INCREMENT
 
 export interface SendWorkflowState {
   amount: string

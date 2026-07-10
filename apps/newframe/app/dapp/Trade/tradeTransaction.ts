@@ -1,4 +1,3 @@
-import { NATIVE_CURRENCY } from '../../../resources/constants'
 import { type BalanceSummary } from '../../../resources/domain/balance'
 import {
   FLASH_BRACKET_ORDER_TYPE,
@@ -471,21 +470,23 @@ export function marketTradeQuoteRequestKey(request: TradeQuoteRequest) {
   ])
 }
 
-export function findTradeBalance(asset: FlashAsset, balances: BalanceSummary[]) {
-  return balances.find((balance) => {
-    const chainMatches = Number(balance.chainId) === asset.chainId
-    const balanceAddress = (balance.address || '').toLowerCase()
-    const assetAddress = toFlashApiAssetAddress(asset).toLowerCase()
-    const nativeMatches = asset.isNative
-      ? balanceAddress === NATIVE_CURRENCY
-      : balanceAddress === assetAddress
-
-    return chainMatches && nativeMatches
-  })
-}
-
 function tradeAssetMapKey(asset: FlashAsset) {
   return `${asset.chainId}:${toFlashApiAssetAddress(asset).toLowerCase()}`
+}
+
+export function createTradeBalanceIndex(balances: BalanceSummary[]) {
+  const balanceIndex = new Map<string, BalanceSummary>()
+
+  balances.forEach((balance) => {
+    try {
+      const asset = balanceSummaryToFlashAsset(balance)
+      balanceIndex.set(tradeAssetMapKey(asset), balance)
+    } catch {
+      // Ignore malformed portfolio rows; they cannot be indexed as Flash assets.
+    }
+  })
+
+  return balanceIndex
 }
 
 function networkEnabled(networks: Record<string | number, { on?: boolean }>, chainId: number) {
@@ -525,9 +526,13 @@ export function buildTradeAssetOptions({
   return Array.from(assets.values())
 }
 
-export function getFlashBalanceEntries(balances: BalanceSummary[], assets: readonly FlashAsset[]) {
+export function getFlashBalanceEntries(
+  balances: BalanceSummary[],
+  assets: readonly FlashAsset[],
+  balanceIndex = createTradeBalanceIndex(balances)
+) {
   return assets.map((asset) => {
-    const balance = findTradeBalance(asset, balances)
+    const balance = balanceIndex.get(tradeAssetMapKey(asset))
 
     return {
       id: asset.id,

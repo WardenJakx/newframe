@@ -69,6 +69,21 @@ describe('main Flash facade helpers', () => {
     })
   })
 
+  it('accepts mainnet when the packaged runtime has no explicit environment', () => {
+    delete (process.env as Partial<NodeJS.ProcessEnv>).NODE_ENV
+    delete (process.env as Partial<NodeJS.ProcessEnv>).FRAME_PROFILE
+
+    const request: FlashQuoteRequest = quoteRequest()
+    request.chainId = 1
+    request.targetAsset = { ...FLASH_WETH_ASSET, chainId: 1, id: `1:${FLASH_WETH_ASSET.address}` }
+    request.contraAsset = { ...FLASH_USDC_ASSET, chainId: 1, id: `1:${FLASH_USDC_ASSET.address}` }
+
+    expect(buildFlashQuoteBody(request)).toMatchObject({
+      targetChain: 'ethereum',
+      contraChain: 'ethereum'
+    })
+  })
+
   it('normalizes Flash REST quote responses into renderer quote shape', () => {
     const quote = normalizeFlashQuoteResponse(
       {

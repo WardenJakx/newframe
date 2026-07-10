@@ -1,9 +1,10 @@
 import React from 'react'
 
 import TokenSelector from '../../../resources/Components/TokenSelector'
+import { getTokenSelectorPage } from '../../../resources/Components/tokenSelectorModel'
 import {
+  createBalanceTokenSelectorItem,
   createDisplayBalance,
-  formatBalanceNotionalValue,
   formatUsdRate
 } from '../../../resources/domain/balance'
 import { resolveSendAssetFromRouteAssetId, toCanonicalAssetId } from '../../../resources/domain/dappLauncher'
@@ -174,26 +175,14 @@ export default function Send({ assetId }: SendProps) {
   }, [asset, currentAccount, resolveRecipientAddress, state.amount])
 
   const selectedKey = toCanonicalAssetId(asset)
-  const visibleBalances = balanceSummaries.slice(0, state.tokenRowsVisible)
-  const selectedBalance = balanceSummaries.find((balance) => toCanonicalAssetId(balance) === selectedKey)
-  const menuBalances =
-    selectedBalance && !visibleBalances.some((balance) => toCanonicalAssetId(balance) === selectedKey)
-      ? [selectedBalance, ...visibleBalances]
-      : visibleBalances
-  const selectorBalances = state.tokenOpen ? menuBalances : selectedBalance ? [selectedBalance] : []
-  const tokenItems = selectorBalances.map((balance) => {
-    const displayBalance = createDisplayBalance(balance)
-
-    return {
-      id: toCanonicalAssetId(balance),
-      symbol: displayBalance.symbol,
-      amountLabel: displayBalance.displayBalance,
-      notionalLabel: formatBalanceNotionalValue(displayBalance),
-      chainId: displayBalance.chainId,
-      logoURI: balance.logoURI
-    }
+  const { items: selectorBalances, rowsHidden } = getTokenSelectorPage({
+    getId: toCanonicalAssetId,
+    items: balanceSummaries,
+    open: state.tokenOpen,
+    rowsVisible: state.tokenRowsVisible,
+    selectedId: selectedKey
   })
-  const rowsHidden = Math.max(balanceSummaries.length - state.tokenRowsVisible, 0)
+  const tokenItems = selectorBalances.map(createBalanceTokenSelectorItem)
   const amount = Number(state.amount || 0)
   const price = Number(asset?.usdRate?.price || 0)
   const fiatValue = amount > 0 && price > 0 ? `$${formatUsdRate(amount * price, 2)}` : '$0.00'
@@ -284,7 +273,7 @@ export default function Send({ assetId }: SendProps) {
                 ariaLabel='Select send token'
                 footer={
                   rowsHidden > 0 ? (
-                    <button className='sendTokenMore' onClick={handleShowMoreTokens} type='button'>
+                    <button className='tokenSelectorMore' onClick={handleShowMoreTokens} type='button'>
                       {`Show ${Math.min(SEND_TOKEN_ROWS_INCREMENT, rowsHidden)} more assets`}
                     </button>
                   ) : null
