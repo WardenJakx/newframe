@@ -380,6 +380,14 @@ function updateAssetOptions(
       (asset) => isSameFlashAsset(asset, state.contraAsset) && asset.chainId === targetAsset.chainId
     ) || resolveContraAsset(targetAsset, balances, assets)
 
+  if (
+    state.assetOptions === assets &&
+    state.targetAsset === targetAsset &&
+    state.contraAsset === contraAsset
+  ) {
+    return state
+  }
+
   return {
     ...state,
     assetOptions: assets,

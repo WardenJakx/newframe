@@ -229,6 +229,19 @@ export function createDisplayBalance(balance: BalanceSummary): DisplayedBalance 
   return createBalance(rawBalance, quote)
 }
 
+export function createBalanceTokenSelectorItem(balance: BalanceSummary) {
+  const displayBalance = createDisplayBalance(balance)
+
+  return {
+    id: toTokenId(balance),
+    symbol: displayBalance.symbol,
+    amountLabel: displayBalance.displayBalance,
+    notionalLabel: formatBalanceNotionalValue(displayBalance),
+    chainId: displayBalance.chainId,
+    logoURI: balance.logoURI
+  }
+}
+
 export function hasPositiveBalance(balance: { balance?: string }) {
   return (toBigInt(balance.balance || 0) ?? 0n) > 0n
 }

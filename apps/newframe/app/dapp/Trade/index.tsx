@@ -1,7 +1,12 @@
 import React from 'react'
 
 import TokenSelector from '../../../resources/Components/TokenSelector'
-import { createDisplayBalance, formatUsdRate } from '../../../resources/domain/balance'
+import {
+  getTokenSelectorPage,
+  INITIAL_TOKEN_SELECTOR_ROWS,
+  TOKEN_SELECTOR_ROWS_INCREMENT
+} from '../../../resources/Components/tokenSelectorModel'
+import { createBalanceTokenSelectorItem, createDisplayBalance } from '../../../resources/domain/balance'
 import {
   FLASH_BRACKET_ORDER_TYPE,
   FLASH_LIMIT_ORDER_TYPE,
@@ -39,7 +44,7 @@ import {
   buildTradeSubmitRequest,
   buildVisualTradeSteps,
   canReviewTrade,
-  findTradeBalance,
+  createTradeBalanceIndex,
   getFlashBalanceEntries,
   getNextTradeAction,
   getTradePrimaryLabel,
@@ -101,15 +106,20 @@ export default function Trade({ assetId, chainId }: TradeProps) {
     () => buildTradeAssetOptions({ balances: balanceSummaries, networks, runtime }),
     [balanceSummaries, networks, runtime]
   )
+  const tradeBalanceIndex = React.useMemo(() => createTradeBalanceIndex(balanceSummaries), [balanceSummaries])
   const flashBalanceEntries = React.useMemo(
-    () => getFlashBalanceEntries(balanceSummaries, tradeAssets),
-    [balanceSummaries, tradeAssets]
+    () => getFlashBalanceEntries(balanceSummaries, tradeAssets, tradeBalanceIndex),
+    [balanceSummaries, tradeAssets, tradeBalanceIndex]
   )
   const [state, dispatch] = React.useReducer(
     tradeReducer,
     { assetId, assets: tradeAssets, balances: flashBalanceEntries, chainId },
     createInitialTradeState
   )
+  const [assetRowsVisible, setAssetRowsVisible] = React.useState<Record<TradeAssetField, number>>({
+    target: INITIAL_TOKEN_SELECTOR_ROWS,
+    contra: INITIAL_TOKEN_SELECTOR_ROWS
+  })
   const mountedRef = React.useRef(false)
   const latestStateRef = React.useRef(state)
   const accountAddress = currentAccount?.address || ''
@@ -209,55 +219,52 @@ export default function Trade({ assetId, chainId }: TradeProps) {
 
   const getTradeDisplayBalance = React.useCallback(
     (asset: FlashAsset) => {
-      const balance = findTradeBalance(asset, balanceSummaries)
+      const balance = tradeBalanceIndex.get(asset.id)
       if (!balance) return '0'
 
       return createDisplayBalance(balance).displayBalance
     },
-    [balanceSummaries]
-  )
-
-  const getTradeNotionalLabel = React.useCallback(
-    (asset: FlashAsset) => {
-      const balance = findTradeBalance(asset, balanceSummaries)
-
-      return `$${formatUsdRate(balance?.totalValue || 0, 2)}`
-    },
-    [balanceSummaries]
+    [tradeBalanceIndex]
   )
 
   const getTradeLogoURI = React.useCallback(
     (asset: FlashAsset) => {
-      const balance = findTradeBalance(asset, balanceSummaries)
+      const balance = tradeBalanceIndex.get(asset.id)
 
       return (
         balance?.logoURI || (asset.isNative ? networksMeta[asset.chainId]?.nativeCurrency?.icon || '' : '')
       )
     },
-    [balanceSummaries, networksMeta]
+    [networksMeta, tradeBalanceIndex]
   )
 
   const createTradeSelectorItem = React.useCallback(
-    (asset: FlashAsset) => ({
-      id: asset.id,
-      symbol: asset.symbol,
-      amountLabel: getTradeDisplayBalance(asset),
-      notionalLabel: getTradeNotionalLabel(asset),
-      chainId: asset.chainId,
-      logoURI: getTradeLogoURI(asset)
-    }),
-    [getTradeDisplayBalance, getTradeLogoURI, getTradeNotionalLabel]
+    (asset: FlashAsset) => {
+      const balance = tradeBalanceIndex.get(asset.id)
+
+      if (balance) return { ...createBalanceTokenSelectorItem(balance), id: asset.id }
+
+      return {
+        id: asset.id,
+        symbol: asset.symbol,
+        amountLabel: '0',
+        notionalLabel: '$0.00',
+        chainId: asset.chainId,
+        logoURI: getTradeLogoURI(asset)
+      }
+    },
+    [getTradeLogoURI, tradeBalanceIndex]
   )
 
   const handleSetTradeBalanceAmount = React.useCallback(
     (asset: FlashAsset, portion: 'half' | 'max') => {
-      const balance = findTradeBalance(asset, balanceSummaries)
+      const balance = tradeBalanceIndex.get(asset.id)
       const rawBalance = toBigInt(balance?.balance || 0) || 0n
       const amount = portion === 'half' ? rawBalance / 2n : rawBalance
 
       dispatch({ type: 'setInputAmount', inputAmount: formatUnits(amount, asset.decimals) })
     },
-    [balanceSummaries]
+    [tradeBalanceIndex]
   )
 
   const submitSignedTrade = React.useCallback(
@@ -590,11 +597,34 @@ export default function Trade({ assetId, chainId }: TradeProps) {
   const renderTradeAssetSelector = (field: TradeAssetField, asset: FlashAsset, oppositeAsset: FlashAsset) => {
     const open = field === 'target' ? state.targetOpen : state.contraOpen
     const options = state.assetOptions.filter((option) => !isSameFlashAsset(option, oppositeAsset))
-    const items = options.map(createTradeSelectorItem)
+    const { items: selectorOptions, rowsHidden } = getTokenSelectorPage({
+      getId: (option) => option.id,
+      items: options,
+      open,
+      rowsVisible: assetRowsVisible[field],
+      selectedId: asset.id
+    })
+    const items = selectorOptions.map(createTradeSelectorItem)
 
     return (
       <TokenSelector
         ariaLabel={`Select ${field} asset`}
+        footer={
+          rowsHidden > 0 ? (
+            <button
+              className='tokenSelectorMore'
+              onClick={() =>
+                setAssetRowsVisible((rows) => ({
+                  ...rows,
+                  [field]: rows[field] + TOKEN_SELECTOR_ROWS_INCREMENT
+                }))
+              }
+              type='button'
+            >
+              {`Show ${Math.min(TOKEN_SELECTOR_ROWS_INCREMENT, rowsHidden)} more assets`}
+            </button>
+          ) : null
+        }
         items={items}
         networks={networks}
         networksMeta={networksMeta}
