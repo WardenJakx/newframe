@@ -52,7 +52,7 @@ class Requests extends React.Component<any, any> {
                   handlerId={req.handlerId}
                   i={i}
                   title={'Account Access'}
-                  color={'var(--outerspace)'}
+                  color={'var(--color-text-primary)'}
                   svgName={'accounts'}
                 >
                   <div style={{ height: '10px' }} />
@@ -67,7 +67,7 @@ class Requests extends React.Component<any, any> {
                   handlerId={req.handlerId}
                   i={i}
                   title={'Sign Message'}
-                  color={'var(--outerspace)'}
+                  color={'var(--color-text-primary)'}
                   svgName={'sign'}
                 >
                   <div style={{ height: '10px' }} />
@@ -82,7 +82,7 @@ class Requests extends React.Component<any, any> {
                   handlerId={req.handlerId}
                   i={i}
                   title={'Sign Data'}
-                  color={'var(--outerspace)'}
+                  color={'var(--color-text-primary)'}
                   svgName={'sign'}
                 >
                   <div style={{ height: '10px' }} />
@@ -116,7 +116,7 @@ class Requests extends React.Component<any, any> {
                   handlerId={req.handlerId}
                   i={i}
                   title={'Add Chain'}
-                  color={'var(--outerspace)'}
+                  color={'var(--color-text-primary)'}
                   svgName={'chain'}
                 >
                   <div style={{ height: '10px' }} />
@@ -131,7 +131,7 @@ class Requests extends React.Component<any, any> {
                   handlerId={req.handlerId}
                   i={i}
                   title={'Switch Chain'}
-                  color={'var(--outerspace)'}
+                  color={'var(--color-text-primary)'}
                   svgName={'chain'}
                 >
                   <div style={{ height: '10px' }} />
@@ -146,7 +146,7 @@ class Requests extends React.Component<any, any> {
                   handlerId={req.handlerId}
                   i={i}
                   title={'Add Tokens'}
-                  color={'var(--outerspace)'}
+                  color={'var(--color-text-primary)'}
                   svgName={'tokens'}
                 >
                   <div style={{ height: '10px' }} />

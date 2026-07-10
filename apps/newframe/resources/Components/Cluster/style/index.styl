@@ -7,7 +7,7 @@
   transform translate3d(0, 0, 0)
   font-family 'MainFont'
   display flow-root
-  background var(--ghostZ)
+  background var(--color-bg-primary)
   margin 6px
   padding 2px 0px 1px 0px
 
@@ -34,9 +34,9 @@
     transition all linear 0.1s
     transform translate3d(0, 0, 0)
     font-family 'MainFont'
-    background var(--ghostA)
-    box-shadow 0px 1px 2px var(--ghostX)
-    border-bottom 2px solid var(--ghostZ)
+    background var(--color-bg-raised)
+    box-shadow 0px 1px 2px var(--color-shadow-default)
+    border-bottom 2px solid var(--color-bg-primary)
     overflow hidden
     margin-top 1px
 
@@ -63,17 +63,17 @@
       pointer-events auto
 
   .clusterValueClickable:hover
-    background var(--ghostB)
+    background var(--color-bg-control)
     transform translateY(-1px)
-    border-bottom 2px solid var(--ghostZ)
-    box-shadow 0px 4px 30px -8px var(--ghostX)
+    border-bottom 2px solid var(--color-bg-primary)
+    box-shadow 0px 4px 30px -8px var(--color-shadow-default)
     position relative
     z-index 300000
   
   .clusterValueClickable:active
-    background var(--ghostB)
+    background var(--color-bg-control)
     transform translateY(0px)
-    box-shadow 0px 2px 4px var(--ghostX)
+    box-shadow 0px 2px 4px var(--color-shadow-default)
 
   .clusterValueTransparent
     background transparent
@@ -158,7 +158,7 @@
 
   .clusterFocusHighlight
     font-size 16px
-    color var(--good)
+    color var(--color-action-primary)
 
 .clusterAddress
   padding 12px
@@ -192,10 +192,10 @@
   z-index 40000
   border-radius 8px
   font-weight 500
-  background var(--ghostB)
+  background var(--color-bg-control)
   opacity 0
   z-index 4
-  box-shadow 0px 4px 4px var(--ghostZ)
+  box-shadow 0px 4px 4px var(--color-bg-primary)
   transition 0.05s linear all
 
 .clusterFira

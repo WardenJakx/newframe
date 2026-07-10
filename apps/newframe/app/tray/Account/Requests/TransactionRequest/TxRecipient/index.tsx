@@ -65,7 +65,10 @@ class TxRecipient extends React.Component<any, any> {
           {req.decodedData && req.decodedData.method ? (
             <ClusterRow>
               <ClusterValue>
-                <span className={'clusterTag'} style={{ color: 'var(--good)', fontSize: '16px' }}>
+                <span
+                  className={'clusterTag'}
+                  style={{ color: 'var(--color-action-primary)', fontSize: '16px' }}
+                >
                   {(() => {
                     if (req.decodedData.method.length > 17) return `${req.decodedData.method.substr(0, 15)}..`
                     return req.decodedData.method

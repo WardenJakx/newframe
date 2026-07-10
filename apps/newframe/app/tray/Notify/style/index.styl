@@ -12,10 +12,10 @@
   align-items center
   text-align center
   opacity 1
-  background var(--ghostY)
+  background var(--color-bg-primary)
   
   ::selection
-    background var(--moon) //  #ffb7b7
+    background var(--color-status-danger)
 
   .notifyCloseButton
     position absolute
@@ -32,8 +32,8 @@
     font-size 11px
     font-weight 300
     cursor pointer
-    background var(--ghostB)
-    color var(--moon)
+    background var(--color-bg-control)
+    color var(--color-status-danger)
 
     *
       pointer-events none
@@ -46,7 +46,7 @@
   //   left 0
   //   position absolute
   //   border-radius 12px
-  //   background var(--ghostB)
+  //   background var(--color-bg-control)
   //   z-index 2
 
   .notifyBoxWrap
@@ -59,7 +59,7 @@
     right 0px
     padding 8px
     transition var(--standard)
-    background var(--ghostZ)
+    background var(--color-bg-primary)
     display flex
     justify-content center
     align-items center
@@ -78,7 +78,7 @@
       position absolute
       top 0px
       right 0px
-      color var(--outerspace)
+      color var(--color-text-primary)
       z-index 3
       height 40px
       width 40px
@@ -98,7 +98,7 @@
         position relative
         z-index 3
         margin-bottom 40px
-        color var(--moon)
+        color var(--color-status-danger)
 
       .notifySubtitle
         font-size 16px
@@ -119,7 +119,7 @@
           width 96px
           height 96px
           border-radius 24px
-          // box-shadow 0px 30px 24px -10px var(--doubleThick)
+          // box-shadow 0px 30px 24px -10px var(--color-shadow-strong)
 
       .notifyBody
         font-size 14px
@@ -145,8 +145,8 @@
         .notifyBodyUpdate
           padding 8px
           margin-bottom 8px
-          background var(--moon)
-          color var(--moonOver)
+          background var(--color-status-danger)
+          color var(--color-text-inverse)
           border-radius 8px
           margin-top 50px
           font-size 13px
@@ -159,14 +159,14 @@
         .notifyBodyHash
           font-size 14px
           font-family 'FiraCode'
-          background var(--ghostB)
+          background var(--color-bg-control)
           line-height 20px
-          box-shadow inset 0px 2px 14px var(--ghostB)
+          box-shadow inset 0px 2px 14px var(--color-bg-control)
           padding 18px
           border-radius 12px
           margin-top 28px
-          border 1px solid var(--ghostC)
-          text-shadow 0px 2px 0px var(--ghostB)
+          border 1px solid var(--color-bg-hover)
+          text-shadow 0px 2px 0px var(--color-bg-control)
           max-height 58px
 
         .notifyBodyPrice
@@ -175,7 +175,7 @@
 
         .notifyBodyQuestion
           padding-top 40px
-          color var(--moon)
+          color var(--color-status-danger)
 
       .notifyCheck
         display flex
@@ -194,9 +194,9 @@
           min-width 32px
           min-height 32px
           border-radius 16px
-          background var(--ghostC)
-          border 1px solid var(--ghostZ)
-          box-shadow cardDrop, 0px 2px 1px var(--ghostA), 0px 0px 7px 2px var(--ghostB)
+          background var(--color-bg-hover)
+          border 1px solid var(--color-bg-primary)
+          box-shadow 0px 1px 1px var(--color-shadow-subtle), 0px 2px 1px var(--color-bg-raised), 0px 0px 7px 2px var(--color-bg-control)
           margin-right 10px
           box-sizing border-box
           display flex
@@ -211,7 +211,7 @@
             height 22px
 
         .notifyCheckBox:hover
-          background var(--ghostD)
+          background var(--color-bg-hover)
 
         .notifyCheckText
           text-align left
@@ -233,11 +233,11 @@
           justify-content center
           align-items center
           box-sizing border-box
-          background var(--ghostA)
+          background var(--color-bg-raised)
           height 40px
           font-weight 300
           padding-top 1px
-          box-shadow cardDrop, 0px 2px 1px var(--ghostA), 0px 0px 7px 2px var(--ghostB)
+          box-shadow 0px 1px 1px var(--color-shadow-subtle), 0px 2px 1px var(--color-bg-raised), 0px 0px 7px 2px var(--color-bg-control)
           text-transform uppercase
           font-size 14px
           font-weight 400
@@ -252,10 +252,10 @@
             padding-bottom 2px
 
         .notifyBetaGo
-          color var(--good)
+          color var(--color-action-primary)
 
         .notifyInputOption:hover:before
-          background var(--ghostD)
+          background var(--color-bg-hover)
 
         .notifyInputDeny:before
           content ''
@@ -264,7 +264,7 @@
           left 0
           right 0
           bottom 2px
-          background var(--ghostB)
+          background var(--color-bg-control)
           z-index 2
           border-top-left-radius 19px
           border-bottom-left-radius 19px
@@ -280,7 +280,7 @@
           left 0
           right 0
           bottom 2px
-          background var(--ghostB)
+          background var(--color-bg-control)
           z-index 2
           border-top-right-radius 19px
           border-bottom-right-radius 19px
@@ -296,7 +296,7 @@
           left 0
           right 0
           bottom 2px
-          background var(--ghostC)
+          background var(--color-bg-hover)
           z-index 2
           border-radius 19px
 
@@ -315,13 +315,13 @@
       text-align cleft
       line-height 18px
       font-weight 300
-      color var(--outerspace08)
+      color var(--color-text-secondary)
 
       .introInstructionItem
         margin-bottom 20px
         padding 0px 20px
         span
-          color var(--pending)
+          color var(--color-status-pending)
           text-decoration none
 
       .introInstructionList
@@ -329,9 +329,8 @@
         border-radius 6px
         padding 16px
         font-weight 400
-        background var(--pending)
-        color var(--spacewhite)
+        background var(--color-status-pending)
+        color var(--color-bg-hover)
         div
           font-size 14px
           line-height 26px
-

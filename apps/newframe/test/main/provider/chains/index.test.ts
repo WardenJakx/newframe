@@ -330,10 +330,6 @@ function setChains(chainState: any, chainMetaState = chainMeta) {
       return chainMetaState
     }
 
-    if (node === 'main.colorway') {
-      return 'dark'
-    }
-
     throw new Error('unexpected store access!')
   })
 }

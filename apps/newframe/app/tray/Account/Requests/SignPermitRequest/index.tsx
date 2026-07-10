@@ -97,7 +97,7 @@ const PermitOverview = ({ req, chainData, originName }: any) => {
                     <ClusterValue>
                       <div
                         className='clusterTag'
-                        style={{ color: 'var(--moon)' }}
+                        style={{ color: 'var(--color-status-danger)' }}
                       >{`is requesting permission to spend`}</div>
                     </ClusterValue>
                   </ClusterRow>

@@ -4,6 +4,7 @@ import Restore from 'react-restore'
 import RingIcon from '../../../../resources/Components/RingIcon'
 import link from '../../../../resources/link'
 import svg from '../../../../resources/svg'
+import { chainColorCssVariable } from '../../../../resources/style/tokens/colors'
 
 const invalidFormatError = 'INVALID CONTRACT ADDRESS'
 const unableToVerifyError = `COULD NOT FIND TOKEN WITH ADDRESS`
@@ -80,11 +81,7 @@ class AddTokenChainScreenComponent extends Component<any, any> {
                   }}
                 >
                   <div className='originChainItemIcon'>
-                    <RingIcon
-                      color={primaryColor ? `var(--${primaryColor})` : 'var(--moon)'}
-                      img={icon}
-                      small={true}
-                    />
+                    <RingIcon color={chainColorCssVariable(primaryColor)} img={icon} small={true} />
                   </div>
                   {chain.name}
                 </div>
@@ -154,7 +151,7 @@ const EnterAddress = ({ chain }: any) => {
               <div
                 className='newTokenChainSelectSubtitle'
                 style={{
-                  color: color ? `var(--${color})` : 'var(--moon)'
+                  color: chainColorCssVariable(color)
                 }}
               >
                 {`on ${chainName}`}
@@ -287,7 +284,7 @@ const TokenDetailsForm = ({ req, chain, tokenData, isEdit }: any) => {
               <div
                 className='newTokenChainSelectSubtitle'
                 style={{
-                  color: color ? `var(--${color})` : 'var(--moon)'
+                  color: chainColorCssVariable(color)
                 }}
               >
                 {`on ${chainName}`}

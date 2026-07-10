@@ -24,7 +24,7 @@ body
       right 0
       bottom 0 
       left 0
-      background linear-gradient(-35deg, var(--overlayA) 0%, var(--overlayB) 100%)
+      background linear-gradient(-35deg, var(--color-overlay-start) 0%, var(--color-overlay-end) 100%)
       z-index 999
       pointer-events none
 
@@ -36,7 +36,7 @@ body
       bottom 0px
       z-index 0
       border-radius 6px
-      box-shadow cardDrop, 0px 0px 2px outerspace03
+      box-shadow 0px 1px 1px var(--color-shadow-subtle), 0px 0px 2px var(--color-text-disabled)
       pointer-events none
 
     .splash
@@ -66,13 +66,13 @@ body
         justify-content center
         align-items center
         flex-direction column
-        color var(--outerspace)
+        color var(--color-text-primary)
         margin 6px 0px
 
         .accountIcon
           height 58px
           width 58px
-          background var(--ghostA)
+          background var(--color-bg-raised)
           border-radius 16px
           display flex
           justify-content center
@@ -81,7 +81,7 @@ body
           cursor pointer
 
         .accountIcon:hover
-          background var(--ghostB)
+          background var(--color-bg-control)
 
       .dappIcons
         position absolute
@@ -109,8 +109,8 @@ body
       left 0px
       bottom 0
       right 0
-      // border-left 1px solid var(--ghostX)
-      color var(--outerspace)
+      // border-left 1px solid var(--color-border-default)
+      color var(--color-text-primary)
       display flex
       justify-content center
       align-items center
@@ -152,10 +152,10 @@ body
           text-indent -9999em
           transform translateZ(0)
           animation load8 0.48s infinite linear !important
-          border-top 3px solid var(--ghostY)
-          border-right 3px solid var(--ghostY)
-          border-bottom 3px solid var(--ghostY)
-          border-left 3px solid var(--ghostD)
+          border-top 3px solid var(--color-bg-primary)
+          border-right 3px solid var(--color-bg-primary)
+          border-bottom 3px solid var(--color-bg-primary)
+          border-left 3px solid var(--color-bg-hover)
           will-change transform
 
         @keyframes load8
@@ -167,9 +167,9 @@ body
       .mainDappEnableChains
         height 40px
         margin-top 30px
-        background var(--ghostC)
-        border-bottom 2px solid var(--ghostZ)
-        box-shadow 0px 1px 4px var(--ghostX)
+        background var(--color-bg-hover)
+        border-bottom 2px solid var(--color-bg-primary)
+        box-shadow 0px 1px 4px var(--color-shadow-default)
         border-radius 15px
         box-sizing border-box
         cursor pointer
@@ -183,15 +183,15 @@ body
         padding 1px 20px 0px 21px
 
       .mainDappEnableChains:hover
-        background var(--ghostD)
-        color var(--outerspace)
+        background var(--color-bg-hover)
+        color var(--color-text-primary)
 
       .mainApps
         width 600px
         height 300px
         border-radius 16px
-        // border 1px solid var(--ghostY)
-        background var(--ghostY)
+        // border 1px solid var(--color-bg-primary)
+        background var(--color-bg-primary)
 
     .top
       position absolute
@@ -208,7 +208,7 @@ body
         left 0
         right 0
         opacity 0.2
-        background white
+        background var(--color-border-strong)
       
       .title
         position absolute
@@ -266,9 +266,8 @@ body
       // border-bottom-right-radius 4px
       // border-bottom-left-radius 4px
       // border-bottom-right-radius 4px
-      border-bottom 2px solid outerspace05
-      // border-top 2px solid thick
-      box-shadow reverseCardDrop // , 0px 0px 4px rgba(10, 10, 40, 0.2)
+      border-bottom 2px solid var(--color-border-subtle)
+      box-shadow 0px -1px 1px var(--color-shadow-subtle)
       pointer-events none
 
     .webloading
@@ -281,11 +280,10 @@ body
       z-index 100
       transition var(--standard)
       border-radius 6px
-      background linear-gradient(180deg, highlight 0%, thick 100%)
+      background linear-gradient(180deg, var(--color-bg-raised) 0%, var(--color-bg-primary) 100%)
       display flex
       justify-content center
       align-items center
-      // box-shadow reverseCardDrop, 0px 0px 4px rgba(25, 25, 50, 0.2)
 
       img
         position absolute
@@ -319,26 +317,8 @@ body
 
 // ==================== local send app ====================
 
-$send-bg = rgba(18, 14, 20, 1)
-$send-pill = rgba(26, 22, 28, 1)
-$send-pill-hover = rgba(32, 28, 36, 1)
-$send-card = rgba(24, 20, 27, 1)
-$send-card-hover = rgba(30, 26, 34, 1)
-$send-button = rgba(29, 25, 33, 1)
-$send-button-hover = rgba(35, 31, 40, 1)
-$send-menu = rgba(31, 27, 35, 1)
-$send-menu-hover = rgba(40, 36, 45, 1)
-$send-text = rgba(248, 255, 255, 1)
-$send-muted = rgba(223, 223, 237, 0.45)
-$send-muted-strong = rgba(223, 223, 237, 0.7)
-$send-divider = rgba(248, 255, 255, 0.06)
-$send-teal = rgb(0, 210, 190)
-$send-teal-bright = rgb(40, 225, 205)
-$send-warning = rgb(241, 201, 80)
-$send-danger = rgb(255, 110, 120)
-
 body
-  background $send-bg
+  background var(--color-bg-primary)
 
 .sendApp
   position absolute
@@ -346,8 +326,8 @@ body
   right 0
   bottom 0
   left 0
-  background $send-bg
-  color $send-text
+  background var(--color-bg-primary)
+  color var(--color-text-primary)
   font-family 'MainFont'
   overflow hidden
   display flex
@@ -375,7 +355,7 @@ body
   border none
   outline none
   background transparent
-  color $send-muted-strong
+  color var(--color-text-secondary)
   display flex
   align-items center
   justify-content center
@@ -384,8 +364,8 @@ body
   border-radius 18px
 
   &:hover
-    background $send-button-hover
-    color $send-teal
+    background var(--color-bg-hover)
+    color var(--color-action-primary)
 
   *
     pointer-events none
@@ -393,7 +373,7 @@ body
 .sendTitle
   font-size 20px
   font-weight 600
-  color $send-text
+  color var(--color-text-primary)
 
 .sendBody
   position relative
@@ -404,7 +384,7 @@ body
 
 .sendCard
   position relative
-  background $send-card
+  background var(--color-bg-card)
   border-radius 14px
   padding 14px
   margin-bottom 10px
@@ -416,7 +396,7 @@ body
   padding 14px 12px 13px 12px
 
 .sendSectionTitle
-  color $send-muted-strong
+  color var(--color-text-secondary)
   font-size 15px
   font-weight 500
   margin-bottom 12px
@@ -424,7 +404,7 @@ body
 .sendInputRow
   height 48px
   border-radius 13px
-  background $send-pill
+  background var(--color-bg-raised)
   display flex
   align-items center
   padding 0 6px 0 12px
@@ -434,21 +414,21 @@ body
     min-width 0
     border none
     outline none
-    color $send-text
+    color var(--color-text-primary)
     background transparent
     font-family 'MainFont'
     font-size 15px
     padding 0
 
     &::placeholder
-      color $send-muted-strong
+      color var(--color-text-secondary)
 
 .sendInputToggle
   width 34px
   height 34px
   border none
   background transparent
-  color $send-muted-strong
+  color var(--color-text-secondary)
   display flex
   align-items center
   justify-content center
@@ -461,10 +441,10 @@ body
 .sendRecipientMenu
   margin-top 10px
   max-height 190px
-  background $send-menu
+  background var(--color-bg-control)
   border-radius 14px
   overflow-y auto
-  box-shadow 0 16px 32px rgba(0, 0, 0, 0.28)
+  box-shadow 0 16px 32px var(--color-shadow-default)
 
 .sendRecipientMenuTitle
   height 42px
@@ -472,17 +452,17 @@ body
   display flex
   align-items center
   gap 8px
-  color $send-muted-strong
+  color var(--color-text-secondary)
   font-size 14px
-  border-bottom 1px solid $send-divider
+  border-bottom 1px solid var(--color-border-subtle)
 
 .sendWalletRow
   width 100%
   min-height 56px
   border none
   outline none
-  background $send-menu
-  color $send-text
+  background var(--color-bg-control)
+  color var(--color-text-primary)
   display flex
   align-items center
   gap 10px
@@ -491,7 +471,7 @@ body
   cursor pointer
 
   &:hover
-    background $send-menu-hover
+    background var(--color-bg-hover)
 
 .sendAccountIcon
   width 34px
@@ -501,8 +481,8 @@ body
   display flex
   align-items center
   justify-content center
-  background $send-button
-  color $send-teal
+  background var(--color-bg-control)
+  color var(--color-action-primary)
 
   *
     pointer-events none
@@ -514,7 +494,7 @@ body
 
 .sendWalletName,
 .sendRecipientName
-  color $send-text
+  color var(--color-text-primary)
   font-size 16px
   font-weight 600
   overflow hidden
@@ -523,7 +503,7 @@ body
 
 .sendWalletAddress,
 .sendRecipientAddress
-  color $send-muted-strong
+  color var(--color-text-secondary)
   font-family 'FiraCode'
   font-size 11px
   overflow hidden
@@ -533,19 +513,19 @@ body
 
 .sendWalletCopy,
 .sendRecipientCopy
-  color $send-muted-strong
+  color var(--color-text-secondary)
   display flex
   flex-shrink 0
 
 .sendRecipientPill
   min-height 58px
-  border 1px solid $send-teal
+  border 1px solid var(--color-action-primary)
   border-radius 15px
   display flex
   align-items center
   gap 10px
   padding 8px 10px
-  background $send-pill
+  background var(--color-bg-raised)
 
 .sendRecipientClear
   width 30px
@@ -553,7 +533,7 @@ body
   border none
   outline none
   background transparent
-  color $send-muted-strong
+  color var(--color-text-secondary)
   padding 0
   cursor pointer
   display flex
@@ -564,7 +544,7 @@ body
     pointer-events none
 
 .sendRecipientNotice
-  color $send-warning
+  color var(--color-status-warning)
   font-size 13px
   margin 10px 0 0 8px
 
@@ -582,7 +562,7 @@ body
   width 100%
   border none
   outline none
-  color $send-muted-strong
+  color var(--color-text-secondary)
   background transparent
   border-radius 11px
   min-height 38px
@@ -592,8 +572,8 @@ body
   font-weight 600
 
   &:hover
-    background $send-menu-hover
-    color $send-text
+    background var(--color-bg-hover)
+    color var(--color-text-primary)
 
 .sendAmountInput
   min-width 70px
@@ -601,7 +581,7 @@ body
   border none
   outline none
   background transparent
-  color $send-text
+  color var(--color-text-primary)
   font-family 'FiraCode'
   font-size 28px
   text-align right
@@ -619,7 +599,7 @@ body
   align-items center
   gap 7px
   min-width 0
-  color $send-muted-strong
+  color var(--color-text-secondary)
   font-size 13px
 
   span
@@ -633,36 +613,36 @@ body
     border none
     outline none
     border-radius 12px
-    background rgba(0, 210, 190, 0.12)
-    color $send-teal
+    background var(--color-action-primary-subtle)
+    color var(--color-action-primary)
     padding 0 10px
     cursor pointer
 
     &:hover
-      background rgba(0, 210, 190, 0.18)
-      color $send-teal-bright
+      background var(--color-action-primary-subtle)
+      color var(--color-action-primary-hover)
 
 .sendFiatValue
-  color $send-muted-strong
+  color var(--color-text-secondary)
   font-family 'FiraCode'
   font-size 13px
   flex-shrink 0
 
 .sendMessage
   text-align center
-  color $send-muted-strong
+  color var(--color-text-secondary)
   font-size 13px
   padding 5px 12px
 
 .sendMessageError
-  color $send-danger
+  color var(--color-status-danger)
 
 .sendEmpty
   flex-grow 1
   display flex
   align-items center
   justify-content center
-  color $send-muted-strong
+  color var(--color-text-secondary)
   font-size 14px
 
 .sendFooter
@@ -673,9 +653,9 @@ body
   height 64px
   transform translateX(-50%)
   border-radius 32px
-  background $send-pill
-  border 1px solid $send-divider
-  box-shadow 0 12px 28px rgba(0, 0, 0, 0.28)
+  background var(--color-bg-raised)
+  border 1px solid var(--color-border-subtle)
+  box-shadow 0 12px 28px var(--color-shadow-default)
   display flex
   align-items center
   justify-content center
@@ -696,11 +676,11 @@ body
 .sendProceedButton
   width 140px
   cursor pointer
-  background $send-teal
-  color rgb(8, 16, 18)
+  background var(--color-action-primary)
+  color var(--color-action-primary-text)
 
   &:hover
-    background $send-teal-bright
+    background var(--color-action-primary-hover)
 
 .sendProceedButtonDisabled
   cursor default
@@ -721,8 +701,8 @@ body
   right 0
   bottom 0
   left 0
-  background $send-bg
-  color $send-text
+  background var(--color-bg-primary)
+  color var(--color-text-primary)
   font-family 'MainFont'
   overflow hidden
   display flex
@@ -760,7 +740,7 @@ body
   height 30px
   border-radius 999px
   background transparent
-  color $send-muted-strong
+  color var(--color-text-secondary)
   cursor pointer
   font-size 13px
   font-weight 700
@@ -770,16 +750,16 @@ body
   padding 0 14px
 
   &:hover
-    color $send-text
-    background rgba(248, 255, 255, 0.045)
+    color var(--color-text-primary)
+    background var(--color-border-subtle)
 
 .tradeTabActive
-  background rgba(196, 248, 103, 0.14)
-  color rgb(196, 248, 103)
+  background var(--color-status-special-subtle)
+  color var(--color-status-special)
 
   &:hover
-    color rgb(196, 248, 103)
-    background rgba(196, 248, 103, 0.18)
+    color var(--color-status-special)
+    background var(--color-status-special-subtle)
 
 .tradeLimitSelectRow
   margin-top 10px
@@ -790,11 +770,11 @@ body
 .tradeLimitSelect
   width 100%
   height 46px
-  border 1px solid $send-divider
+  border 1px solid var(--color-border-subtle)
   outline none
   border-radius 8px
-  background $send-pill
-  color $send-text
+  background var(--color-bg-raised)
+  color var(--color-text-primary)
   padding 0 14px
   font-family 'MainFont'
   font-size 15px
@@ -812,16 +792,16 @@ body
 .tradeOrderField
   min-width 0
   height 48px
-  border 1px solid $send-divider
+  border 1px solid var(--color-border-subtle)
   border-radius 8px
-  background rgba(248, 255, 255, 0.035)
+  background var(--color-border-subtle)
   display flex
   align-items center
   gap 8px
   padding 0 10px
 
   span
-    color $send-muted-strong
+    color var(--color-text-secondary)
     font-size 12px
     font-weight 800
     white-space nowrap
@@ -832,7 +812,7 @@ body
     border none
     outline none
     background transparent
-    color $send-text
+    color var(--color-text-primary)
     font-family 'FiraCode'
     font-size 14px
     text-align right
@@ -844,15 +824,15 @@ body
 .tradeAssetCard
   position relative
   overflow visible
-  background $send-card
-  border 1px solid $send-divider
+  background var(--color-bg-card)
+  border 1px solid var(--color-border-subtle)
   border-radius 8px
   padding 12px
   margin-bottom 8px
 
 .tradeAssetCardEditable
-  border-color rgba(0, 210, 190, 0.35)
-  background rgba(25, 23, 30, 1)
+  border-color var(--color-action-primary-border)
+  background var(--color-bg-raised)
 
 .tradeAssetCardHeader
   min-height 30px
@@ -866,7 +846,7 @@ body
   display flex
   align-items center
   gap 7px
-  color $send-text
+  color var(--color-text-primary)
   font-size 14px
   font-weight 800
   text-transform uppercase
@@ -878,10 +858,10 @@ body
     white-space nowrap
 
 .tradeIntentBuy
-  color rgb(196, 248, 103)
+  color var(--color-status-special)
 
 .tradeIntentSell
-  color rgb(255, 105, 125)
+  color var(--color-status-danger)
 
 .tradeDirectionSwitch
   width 24px
@@ -889,8 +869,8 @@ body
   border none
   outline none
   border-radius 6px
-  background rgba(248, 255, 255, 0.055)
-  color $send-muted-strong
+  background var(--color-border-subtle)
+  color var(--color-text-secondary)
   cursor pointer
   flex-shrink 0
   display flex
@@ -899,8 +879,8 @@ body
   padding 0
 
   &:hover
-    color $send-teal-bright
-    background rgba(0, 210, 190, 0.13)
+    color var(--color-action-primary-hover)
+    background var(--color-action-primary-subtle)
 
   svg
     width 14px
@@ -923,7 +903,7 @@ body
   border none
   outline none
   background transparent
-  color $send-text
+  color var(--color-text-primary)
   font-family 'FiraCode'
   font-size 28px
   line-height 34px
@@ -931,10 +911,10 @@ body
   padding 4px 0
 
   &::placeholder
-    color rgba(223, 223, 237, 0.28)
+    color var(--color-text-disabled)
 
   &[readonly]
-    color $send-muted-strong
+    color var(--color-text-secondary)
 
 .tradeBalanceControls
   min-height 28px
@@ -944,7 +924,7 @@ body
   align-items center
   justify-content flex-end
   gap 8px
-  color $send-muted-strong
+  color var(--color-text-secondary)
 
 .tradeBalanceText
   min-width 0
@@ -965,15 +945,15 @@ body
     border none
     outline none
     border-radius 6px
-    background rgba(0, 210, 190, 0.12)
-    color $send-teal
+    background var(--color-action-primary-subtle)
+    color var(--color-action-primary)
     cursor pointer
     font-size 11px
     font-weight 800
 
     &:hover
-      background rgba(0, 210, 190, 0.2)
-      color $send-teal-bright
+      background var(--color-action-primary-border)
+      color var(--color-action-primary-hover)
 
 .tradeOutputNote
   min-height 30px
@@ -981,16 +961,16 @@ body
   display flex
   align-items center
   justify-content flex-end
-  color $send-muted-strong
+  color var(--color-text-secondary)
   font-size 12px
 
 .tradeQuoteMeta
   min-height 36px
   margin 8px 0
-  border 1px solid $send-divider
+  border 1px solid var(--color-border-subtle)
   border-radius 8px
-  color $send-muted-strong
-  background rgba(248, 255, 255, 0.035)
+  color var(--color-text-secondary)
+  background var(--color-border-subtle)
   padding 8px 10px
   display flex
   align-items center
@@ -1015,10 +995,10 @@ body
   min-width 0
   flex 1
   height 38px
-  border 1px solid $send-divider
+  border 1px solid var(--color-border-subtle)
   border-radius 8px
-  background rgba(248, 255, 255, 0.035)
-  color $send-muted-strong
+  background var(--color-border-subtle)
+  color var(--color-text-secondary)
   display flex
   align-items center
   gap 6px
@@ -1040,17 +1020,17 @@ body
   display flex
   align-items center
   justify-content center
-  background rgba(248, 255, 255, 0.08)
-  color $send-muted-strong
+  background var(--color-border-default)
+  color var(--color-text-secondary)
   font-size 10px
   font-weight 800
 
 .tradeSteprequired
-  border-color rgba(0, 210, 190, 0.18)
+  border-color var(--color-action-primary-subtle)
 
   .tradeStepDot
-    background rgba(0, 210, 190, 0.15)
-    color $send-teal
+    background var(--color-action-primary-subtle)
+    color var(--color-action-primary)
 
 .tradeAdvanced
   position absolute
@@ -1062,11 +1042,11 @@ body
 .tradeAdvancedToggle
   width auto
   height 32px
-  border 1px solid $send-divider
+  border 1px solid var(--color-border-subtle)
   outline none
   border-radius 999px
-  background rgba(248, 255, 255, 0.035)
-  color $send-muted-strong
+  background var(--color-border-subtle)
+  color var(--color-text-secondary)
   display flex
   align-items center
   gap 6px
@@ -1076,8 +1056,8 @@ body
   font-weight 700
 
   &:hover
-    background $send-pill-hover
-    color $send-text
+    background var(--color-bg-hover)
+    color var(--color-text-primary)
 
   > span
     display flex
@@ -1096,10 +1076,10 @@ body
   top 40px
   right 0
   width 280px
-  border 1px solid $send-divider
+  border 1px solid var(--color-border-subtle)
   border-radius 8px
-  background $send-menu
-  box-shadow 0 16px 32px rgba(0, 0, 0, 0.34)
+  background var(--color-bg-control)
+  box-shadow 0 16px 32px var(--color-shadow-default)
   padding 10px
 
 .tradeSettingRow
@@ -1108,7 +1088,7 @@ body
   align-items center
   justify-content space-between
   gap 10px
-  color $send-muted-strong
+  color var(--color-text-secondary)
   font-size 13px
   font-weight 700
 
@@ -1116,11 +1096,11 @@ body
   width 96px
   height 32px
   border-radius 7px
-  background $send-pill
+  background var(--color-bg-raised)
   display flex
   align-items center
   padding 0 8px
-  color $send-muted-strong
+  color var(--color-text-secondary)
 
   input
     width 100%
@@ -1128,7 +1108,7 @@ body
     border none
     outline none
     background transparent
-    color $send-text
+    color var(--color-text-primary)
     font-family 'FiraCode'
     font-size 13px
     text-align right
@@ -1138,7 +1118,7 @@ body
   input
     width 16px
     height 16px
-    accent-color $send-teal
+    accent-color var(--color-action-primary)
 
 .tradeFooter
   position absolute
@@ -1147,9 +1127,9 @@ body
   bottom 12px
   height 62px
   border-radius 8px
-  background $send-pill
-  border 1px solid $send-divider
-  box-shadow 0 12px 28px rgba(0, 0, 0, 0.28)
+  background var(--color-bg-raised)
+  border 1px solid var(--color-border-subtle)
+  box-shadow 0 12px 28px var(--color-shadow-default)
   display flex
   align-items center
   justify-content center
@@ -1162,8 +1142,8 @@ body
   border none
   outline none
   border-radius 8px
-  background $send-teal
-  color rgb(8, 16, 18)
+  background var(--color-action-primary)
+  color var(--color-action-primary-text)
   cursor pointer
   display flex
   align-items center
@@ -1172,7 +1152,7 @@ body
   font-weight 800
 
   &:hover
-    background $send-teal-bright
+    background var(--color-action-primary-hover)
 
 .tradePrimaryButtonDisabled
   cursor default

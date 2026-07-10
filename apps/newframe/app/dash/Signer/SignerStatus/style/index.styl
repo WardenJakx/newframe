@@ -43,7 +43,7 @@
     display none
 
     .signerStatusTopArrow
-      background var(--ghostB)
+      background var(--color-bg-control)
       width 20px
       height 20px 
       border-top-left-radius 3px
@@ -53,9 +53,9 @@
       left 26px
 
   .signerStatusMain
-    background var(--ghostZ)
+    background var(--color-bg-primary)
     border-radius 20px
-    // box-shadow 0px 0px 10px var(--ghostZ), 0px 10px 20px var(--ghostZ)
+    // box-shadow 0px 0px 10px var(--color-bg-primary), 0px 10px 20px var(--color-bg-primary)
     padding 3px
     margin 12px 6px 21px 6px
 
@@ -76,7 +76,7 @@
     text-transform uppercase
     font-size 13px
     font-weight 400
-    text-shadow 0px 1px 2px var(--ghostX)
+    text-shadow 0px 1px 2px var(--color-shadow-default)
 
   .signerUnlockInput
     position relative
@@ -84,14 +84,14 @@
     width 100%
     border 0
     outline 0
-    background var(--ghostZ)
+    background var(--color-bg-primary)
     font-size 26px
     letter-spacing 6px
     display flex
     justify-content center
     align-items center
     text-align center
-    color var(--outerspace)
+    color var(--color-text-primary)
     box-sizing border-box
     border-radius 8px
     border-top-right-radius 17px
@@ -119,8 +119,8 @@
 
   .signerUnlockSubmit
     height 30px
-    background var(--ghostA)
-    color var(--outerspace)
+    background var(--color-bg-raised)
+    color var(--color-text-primary)
     font-size 12px
     box-sizing border-box
     padding-top 1px
@@ -142,14 +142,14 @@
       pointer-events none
 
   .signerUnlockSubmit:hover
-    background var(--ghostB)
+    background var(--color-bg-control)
     // animation 5s shake ease-in-out infinite alternate
-    // box-shadow 0px 2px 8px var(--ghostZ)
+    // box-shadow 0px 2px 8px var(--color-bg-primary)
 
   .signerUnlockSubmit:active
     transform translateY(0px)
     // animation shake-little 2s ease-in-out infinite
-    // box-shadow 0px 2px 8px var(--ghostZ)
+    // box-shadow 0px 2px 8px var(--color-bg-primary)
 
 .headShake
   animation-duration 1s

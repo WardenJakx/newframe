@@ -19,7 +19,7 @@ class Bridge extends React.Component<any, any> {
                   <div
                     className='badgeInputInner'
                     onMouseDown={() => link.send('tray:updateRestart')}
-                    style={{ color: 'var(--good)' }}
+                    style={{ color: 'var(--color-action-primary)' }}
                   >
                     Restart Now
                   </div>
@@ -30,7 +30,7 @@ class Bridge extends React.Component<any, any> {
                   <div
                     className='badgeInputInner'
                     onMouseDown={() => link.send('tray:action', 'updateBadge', '')}
-                    style={{ color: 'var(--moon)' }}
+                    style={{ color: 'var(--color-status-danger)' }}
                   >
                     Restart Later
                   </div>
@@ -55,7 +55,7 @@ class Bridge extends React.Component<any, any> {
                     onMouseDown={() => {
                       link.send('tray:installAvailableUpdate', badge.version)
                     }}
-                    style={{ color: 'var(--good)' }}
+                    style={{ color: 'var(--color-action-primary)' }}
                   >
                     Install Update
                   </div>
@@ -68,7 +68,7 @@ class Bridge extends React.Component<any, any> {
                     onMouseDown={() => {
                       link.send('tray:dismissUpdate', badge.version, true)
                     }}
-                    style={{ color: 'var(--moon)' }}
+                    style={{ color: 'var(--color-status-danger)' }}
                   >
                     Remind Me Later
                   </div>

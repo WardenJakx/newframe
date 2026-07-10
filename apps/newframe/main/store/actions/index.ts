@@ -898,11 +898,6 @@ const actions = {
       return main
     })
   },
-  setColorway: (u: U, colorway: string) => {
-    u('main.colorway', () => {
-      return colorway
-    })
-  },
   // Dashboard
   toggleDash: (u: U, force?: string) => {
     u('windows.dash.showing', (s: boolean) => (force === 'hide' ? false : force === 'show' ? true : !s))

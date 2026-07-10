@@ -24,13 +24,7 @@ link.rpc('getState', (err: any, state: any) => {
   const store = appStore(state)
   link.send('tray:ready') // turn on api
 
-  store.observer(() => {
-    document.body.classList.remove('dark', 'light')
-    document.body.classList.add('clip', store('main.colorway'))
-    setTimeout(() => {
-      document.body.classList.remove('clip')
-    }, 100)
-  })
+  document.body.classList.add('dark')
   store.observer(() => {
     if (store('tray.open')) {
       document.body.classList.remove('suspend')

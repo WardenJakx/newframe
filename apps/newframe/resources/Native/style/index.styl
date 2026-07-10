@@ -43,9 +43,9 @@
       display flex
       justify-content center
       align-items center
-      color white
+      color var(--color-text-primary)
       border-radius 11px
-      background rgba(255, 255, 255, 0.05)
+      background var(--color-border-subtle)
       flex 1
       flex-shrink 0
 
@@ -71,7 +71,7 @@
         pointer-events none
 
     .linuxControlsButton:hover
-      background rgba(255, 255, 255, 0.1)
+      background var(--color-border-default)
 
   .windowsGrab
     position absolute 
@@ -94,7 +94,7 @@
       display flex
       justify-content center
       align-items center
-      color white
+      color var(--color-text-primary)
       border-radius 4px
 
       svg
@@ -105,7 +105,7 @@
         pointer-events none
 
     .windowsControlsButton:hover
-      background rgba(255, 255, 255, 0.02)
+      background var(--color-border-subtle)
 
 .macTitle
   height 30px
@@ -120,13 +120,13 @@
 
   &:hover
     .titleClose
-      background #fc615d
+      background var(--color-system-native-close)
 
     .titleMin
-      background #fdbd41
+      background var(--color-system-native-minimize)
 
     .titleFull
-      background #34c84a
+      background var(--color-system-native-maximize)
 
   .macTitleButton
     height 30px
@@ -139,20 +139,20 @@
   .titleClose
     width 12px
     height 12px
-    background rgba(0, 0, 50, 0.15)
+    background var(--color-shadow-subtle)
     border-radius 50%
     pointer-events none
 
   .titleMin
     width 12px
     height 12px
-    background rgba(0, 0, 50, 0.15)
+    background var(--color-shadow-subtle)
     border-radius 50%
     pointer-events none
 
   .titleFull
     width 12px
     height 12px
-    background rgba(0, 0, 50, 0.15)
+    background var(--color-shadow-subtle)
     border-radius 50%
     pointer-events none

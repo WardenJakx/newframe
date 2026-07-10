@@ -5,7 +5,7 @@
   margin 6px
   padding-bottom 24px
   border-radius 27px
-  background var(--ghostA)
+  background var(--color-bg-raised)
   transform translate3d(0, 0, 0)
   padding-top 8px
 
@@ -17,12 +17,12 @@
   margin 6px 0px 0px 0px
   padding-bottom 24px
   border-radius 27px
-  box-shadow 0px 4px 8px var(--ghostY)
+  box-shadow 0px 4px 8px var(--color-bg-primary)
   transform translate3d(0, 0, 0)
   border-radius 27px
-  background var(--ghostAZ)
-  box-shadow 0px 4px 8px var(--ghostY), 0px 2px 8px var(--ghostY)
-  border-bottom 2px solid var(--ghostY)
+  background var(--color-bg-secondary)
+  box-shadow 0px 4px 8px var(--color-bg-primary), 0px 2px 8px var(--color-bg-primary)
+  border-bottom 2px solid var(--color-bg-primary)
 
 .signerMenuItems
   display flex
@@ -63,7 +63,7 @@
       width 28px
       height 28px
       right -34px
-      color var(--good)
+      color var(--color-action-primary)
       display flex
       align-items center
       cursor pointer
@@ -77,8 +77,8 @@
   width 54px
   border-radius 20px
   box-sizing border-box
-  background var(--ghostA)
-  border 3px solid var(--ghostZ)
+  background var(--color-bg-raised)
+  border 3px solid var(--color-bg-primary)
   cursor pointer
   display flex
   justify-content center
@@ -88,10 +88,10 @@
     pointer-events none
 
 .signerExpand:hover
-  background var(--ghostB)
+  background var(--color-bg-control)
 
 .signerNameFocused
-  background var(--ghostZ)
+  background var(--color-bg-primary)
   .signerNameUpdate
     opacity 1
     
@@ -112,16 +112,16 @@
   font-size 12px
   text-transform uppercase
   font-weight 400
-  background var(--ghostZ)
+  background var(--color-bg-primary)
   width 10px
   height 10px
   border-radius 5px
 
 .signerStatusIndicatorLocked
-  background var(--moon)
+  background var(--color-status-danger)
 
 .signerStatusIndicatorReady
-  background var(--good)
+  background var(--color-action-primary)
 
 .signerStatusText
   padding 0px 32px 16px 32px
@@ -132,16 +132,16 @@
   text-align center
   font-weight 500
   letter-spacing 1px
-  color var(--outerspace)
+  color var(--color-text-primary)
 
 .signerStatusError
-  color var(--bad)
+  color var(--color-status-danger)
 
 .signerStatusIssue
-  color var(--moon)
+  color var(--color-status-danger)
 
 .signerStatusReady
-  color var(--good)
+  color var(--color-action-primary)
 
 .signerBottom
   left 0
@@ -166,14 +166,14 @@
     text-align center
 
   .signerBottomPageBack
-    background var(--ghostA)
+    background var(--color-bg-raised)
     padding 2px 1px 2px 2px
     height 30px
     width 45px
     border-radius 15px
     cursor pointer
     box-sizing border-box
-    border 3px solid var(--ghostZ)
+    border 3px solid var(--color-bg-primary)
     cursor pointer
     box-sizing border-box
     display flex
@@ -182,7 +182,7 @@
       pointer-events none
 
   .signerBottomPageNext
-    background var(--ghostA)
+    background var(--color-bg-raised)
     transform rotate(180deg)
     padding 2px 2px 2px 1px
     height 30px
@@ -190,14 +190,14 @@
     border-radius 15px
     cursor pointer
     box-sizing border-box
-    border 3px solid var(--ghostZ)
+    border 3px solid var(--color-bg-primary)
     display flex
     justify-content center
     *
       pointer-events none
 
   .signerBottomPageBack:hover, .signerBottomPageNext:hover
-    background var(--ghostB)
+    background var(--color-bg-control)
 
 .signerDrawer
   position relative
@@ -207,8 +207,8 @@
     position absolute
     height 20px
     border-radius 13px
-    border 3px solid var(--ghostZ)
-    background var(--ghostA)
+    border 3px solid var(--color-bg-primary)
+    background var(--color-bg-raised)
     z-index 2
     top 14px
     left 50%
@@ -222,13 +222,13 @@
     align-items center
     text-transform uppercase
     cursor pointer
-    color var(--outerspace)
+    color var(--color-text-primary)
     transition var(--standardFast)
     font-weight 400
 
   .showControls:hover
-    background var(--ghostB)
-    color var(--outerspace)
+    background var(--color-bg-control)
+    color var(--color-text-primary)
 
   .showControlsLine
     height 3px
@@ -236,7 +236,7 @@
     top 50%
     left 0
     right 0
-    background var(--ghostZ)
+    background var(--color-bg-primary)
     z-index 1
     margin-top -3px
 
@@ -252,7 +252,7 @@
     box-sizing border-box
     font-size 16px
     font-weight 400
-    border 2px solid var(--ghostA)
+    border 2px solid var(--color-bg-raised)
     border-radius 9px
 
     .signerControlDetailKey
@@ -267,9 +267,9 @@
   .signerControlOption
     height 52px
     margin 0px 10px 11px 10px
-    background var(--ghostA)
+    background var(--color-bg-raised)
     border-radius 20px
-    color var(--outerspace)
+    color var(--color-text-primary)
     display flex
     justify-content center
     align-items center
@@ -279,22 +279,22 @@
     letter-spacing 0px
     box-sizing border-box
     text-transform uppercase
-    border 3px solid var(--ghostZ)
+    border 3px solid var(--color-bg-primary)
 
     *
       pointer-events none
 
   .signerControlOption:hover
-    background var(--ghostB)
+    background var(--color-bg-control)
 
   .signerControlOptionImportant
-    color var(--bad)
+    color var(--color-status-danger)
 
   .signerControlOptionEffect
-    color var(--moon)
+    color var(--color-status-danger)
 
   .signerControlOptionSuccess
-    color var(--good)
+    color var(--color-action-primary)
 
 .signerLatticePair
   height 200px
@@ -307,10 +307,10 @@
     font-size 14px
     font-weight 300
     text-transform none
-    color var(--moon)
+    color var(--color-status-danger)
 
   .signerLatticePairInput
-    background var(--ghostC)
+    background var(--color-bg-hover)
     height 60px
     border-radius 12px
     margin 10px 10px 20px 10px
@@ -321,7 +321,7 @@
       background transparent
       border none
       outline none
-      color var(--outerspace)
+      color var(--color-text-primary)
       text-align center
       font-size 22px
       letter-spacing 6px
@@ -334,7 +334,7 @@
     display flex
     justify-content center
     align-items center
-    background var(--ghostC)
+    background var(--color-bg-hover)
     border-radius 12px
     position relative
     left 50%
@@ -367,7 +367,7 @@
   display flex
   justify-content center
   align-items center
-  color var(--outerspace)
+  color var(--color-text-primary)
 
   .signerAccountsTitleActiveCount
     font-size 13px
@@ -382,7 +382,7 @@
     justify-content center
     align-items center
     padding-left 1px
-    background var(--ghostB)
+    background var(--color-bg-control)
 
 .signerAccounts
   //position absolute
@@ -400,7 +400,7 @@
   // height 204px
   overflow hidden
   // overflow-x hidden
-  background var(--ghostZ)
+  background var(--color-bg-primary)
   border-radius 20px
 
   .signerAccount:first-child
@@ -423,7 +423,7 @@
     letter-spacing 1px
 
   .signerAccountsAdd:hover
-    color var(--good)
+    color var(--color-action-primary)
 
   .signerAccount
     display flex
@@ -431,8 +431,8 @@
     margin 3px
     width calc(100% - 6px)
     position relative
-    background var(--ghostZ)
-    color var(--outerspace)
+    background var(--color-bg-primary)
+    color var(--color-text-primary)
     border-radius 8px
     box-sizing border-box
     cursor pointer
@@ -478,30 +478,30 @@
       display flex
       justify-content center
       align-items center
-      color var(--ghostZ)
-      background var(--outerspace)
+      color var(--color-bg-primary)
+      background var(--color-text-primary)
 
   .signerAccountAdded
-    background var(--ghostA)
+    background var(--color-bg-raised)
 
     // .signerAccountIndex
-    //   color var(--good)
+    //   color var(--color-action-primary)
 
     .signerAccountCheck
-      background var(--good)
+      background var(--color-action-primary)
 
   .signerAccount:hover
-    background var(--ghostA)
+    background var(--color-bg-raised)
 
   .signerAccountAdded:hover
-    background var(--ghostB)
+    background var(--color-bg-control)
 
   .signerAccountDisabled
-    background var(--ghostA)
+    background var(--color-bg-raised)
     cursor auto
 
   .signerAccountDisabled:hover
-    background var(--ghostA)
+    background var(--color-bg-raised)
 
 .signerLoading
   height 60px
@@ -520,10 +520,10 @@
   font-size 10px
   position relative
   text-indent -9999em
-  border-top 3px solid var(--ghostZ)
-  border-right 3px solid var(--ghostZ)
-  border-bottom 3px solid var(--ghostZ)
-  border-left 3px solid var(--good)
+  border-top 3px solid var(--color-bg-primary)
+  border-right 3px solid var(--color-bg-primary)
+  border-bottom 3px solid var(--color-bg-primary)
+  border-left 3px solid var(--color-action-primary)
   transform translateZ(0)
   animation load8 0.5s infinite linear
   will-change transform
@@ -553,7 +553,7 @@
     display flex
     justify-content center
     align-items center
-    background var(--ghostY)
+    background var(--color-bg-primary)
     height 36px
     border-radius 8px
     width calc(100% - 20px)
@@ -576,7 +576,7 @@
       outline 0
       border 0
       background transparent
-      color var(--outerspace)
+      color var(--color-text-primary)
       letter-spacing 4px
 
   .trezorPinWrap
@@ -609,8 +609,8 @@
       position relative
       font-size 13px
       padding-bottom 2px
-      background var(--ghostB)
-      box-shadow 0px 2px 6px var(--ghostZ)
+      background var(--color-bg-control)
+      box-shadow 0px 2px 6px var(--color-bg-primary)
 
       .signerPinDelete
         position absolute
@@ -622,11 +622,11 @@
         width 40px
         left -40px
         border-radius 8px
-        background var(--ghostC)
+        background var(--color-bg-hover)
         cursor pointer
         
       .signerPinDelete:hover
-        background var(--ghostD)
+        background var(--color-bg-hover)
 
     .signerPinSubmit
       width 250px
@@ -643,7 +643,7 @@
         left 0px
 
     .signerPinSubmit:hover
-      background var(--ghostC)
+      background var(--color-bg-hover)
 
     .trezorPinInputWrap
       width 100%

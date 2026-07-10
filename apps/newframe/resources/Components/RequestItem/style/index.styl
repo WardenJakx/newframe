@@ -22,22 +22,22 @@
   transform translateY(-1px)
   position relative
   z-index 300000
-  background var(--ghostB)
+  background var(--color-bg-control)
   transform translateY(-1px)
-  border-bottom 2px solid var(--ghostZ)
-  box-shadow 0px 8px 30px -12px var(--ghostX)
+  border-bottom 2px solid var(--color-bg-primary)
+  box-shadow 0px 8px 30px -12px var(--color-shadow-default)
 
   .clusterValue
-    background var(--ghostB) !important
+    background var(--color-bg-control) !important
   
 .requestItem:active
   transform translateY(0px)
-  box-shadow 0px 2px 4px var(--ghostX)
+  box-shadow 0px 2px 4px var(--color-shadow-default)
   position relative
   z-index 300000
-  background var(--ghostB)
+  background var(--color-bg-control)
   transform translateY(0px)
-  box-shadow 0px 2px 4px var(--ghostX)
+  box-shadow 0px 2px 4px var(--color-shadow-default)
 
 .requestItem:first-child
   border-radius 16px
@@ -104,14 +104,14 @@
   font-size 11px
   margin 14px
   letter-spacing 1px
-  border-top 2px solid var(--ghostZ)
+  border-top 2px solid var(--color-bg-primary)
   padding 12px 12px 0px 12px
 
 .requestItemNoticeGood
-  color var(--good)
+  color var(--color-action-primary)
 
 .requestItemNoticeBad
-  color var(--bad)
+  color var(--color-status-danger)
 
 .requestItemDetails
   position relative
@@ -153,21 +153,21 @@
 
 .requestItemDetailsGood
   .requestItemLine
-    color var(--good)
+    color var(--color-action-primary)
   .requestItemLineShadow
-    color var(--ghostX)
+    color var(--color-text-inverse)
   .requestItemDetailsIndicator
     .requestItemDetailsIndicatorMarker
-      background var(--good)
+      background var(--color-action-primary)
 
 .requestItemDetailsBad
   .requestItemLine
-    color var(--bad)
+    color var(--color-status-danger)
   .requestItemLineShadow
-    color var(--ghostX)
+    color var(--color-text-inverse)
   .requestItemDetailsIndicator
     .requestItemDetailsIndicatorMarker
-      background var(--bad)
+      background var(--color-status-danger)
 
 .requestItemRow
   position relative
@@ -185,7 +185,7 @@
     justify-content center
     align-items center
     position relative
-    // color var(--good)
+    // color var(--color-action-primary)
     
   .requestItemRowIconLarge
     width 40px
@@ -193,7 +193,7 @@
     display flex
     justify-content center
     align-items center
-    //color var(--moon)
+    //color var(--color-status-danger)
 
   .requestItemRowChainIcon
     position absolute
@@ -239,9 +239,9 @@
   opacity 1
   padding 10.5px 0px
   border-radius 20px
-  background var(--ghostZ)
-  box-shadow inset 0px 0px 4px var(--ghostY)
-  color var(--moon)
+  background var(--color-bg-primary)
+  box-shadow inset 0px 0px 4px var(--color-bg-primary)
+  color var(--color-status-danger)
   display none
   
   svg
@@ -254,7 +254,7 @@
 
 .requestItemLineShadow
   background none
-  color var(--ghostX)
+  color var(--color-text-inverse)
   box-shadow none
   display none
   svg
@@ -304,7 +304,7 @@
       align-items center
       font-size 13px
       font-weight 400
-      color var(--mint)
+      color var(--color-text-muted)
 
   .requestItemMain
     margin-top 1px
@@ -338,7 +338,7 @@
 
   .requestItemTitleSubIcon
     margin 1px 9px 0px -5px
-    color var(--outerspace)
+    color var(--color-text-primary)
 
   .requestItemTitleSubText
     font-weight 400
@@ -355,7 +355,7 @@
   display flex
   justify-content center
   align-items center
-  //color var(--moon)
+  //color var(--color-status-danger)
   margin-top -2px
 
   div
@@ -428,14 +428,14 @@
   justify-content center
   align-items center
   border-radius 6px
-  box-shadow inset 0px 0px 3px var(--ghostX)
+  box-shadow inset 0px 0px 3px var(--color-shadow-default)
   margin-right 4px
 
   .requestItemDetailsIndicatorMarker
     height 6px
     width 6px
     border-radius 3px
-    background var(--moon)
+    background var(--color-status-danger)
     z-index 4
     position relative
     top 0px

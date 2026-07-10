@@ -14,12 +14,12 @@
   width 100%
   height 100%
   border-radius 50%
-  background var(--ghostB)
-  border 1px solid rgba(248, 255, 255, 0.1)
+  background var(--color-bg-control)
+  border 1px solid var(--color-border-default)
   display flex
   align-items center
   justify-content center
-  color rgba(248, 255, 255, 0.85)
+  color var(--color-text-secondary)
   overflow hidden
 
   img
@@ -30,7 +30,7 @@
 .chainTokenIconSymbol
   max-width calc(100% - 6px)
   overflow hidden
-  color rgba(248, 255, 255, 0.9)
+  color var(--color-text-primary)
   font-family 'FiraCode'
   font-size 11px
   font-weight 500
@@ -54,8 +54,8 @@
   width 22px
   height 22px
   border-radius 50%
-  border 2px solid var(--ghostZ)
-  background var(--ghostB)
+  border 2px solid var(--color-bg-primary)
+  background var(--color-bg-control)
   box-sizing border-box
   display flex
   align-items center
@@ -100,7 +100,7 @@
   display flex
   align-items center
   gap 12px
-  color var(--outerspace)
+  color var(--color-text-primary)
   text-align left
   pointer-events none
 
@@ -125,7 +125,7 @@
   overflow hidden
   text-overflow ellipsis
   white-space nowrap
-  color var(--outerspace04)
+  color var(--color-text-muted)
   font-family 'FiraCode'
   font-size 11px
   font-weight 400
@@ -142,7 +142,7 @@
 .tokenOptionRowNotional
   max-width 100%
   overflow hidden
-  color var(--outerspace)
+  color var(--color-text-primary)
   font-family 'FiraCode'
   font-size 15px
   font-weight 500
@@ -160,10 +160,10 @@
   white-space nowrap
 
 .tokenOptionRowRightSubLabelUp
-  color var(--accent1)
+  color var(--color-chain-mainnet)
 
 .tokenOptionRowRightSubLabelDown
-  color rgb(255, 110, 155)
+  color var(--color-status-danger)
 
 .tokenSelector
   position relative
@@ -175,8 +175,8 @@
   border none
   outline none
   border-radius 8px
-  background var(--ghostA)
-  color var(--outerspace)
+  background var(--color-bg-raised)
+  color var(--color-text-primary)
   display flex
   align-items center
   gap 8px
@@ -187,17 +187,17 @@
   font-weight 800
 
   &:hover
-    background var(--ghostB)
+    background var(--color-bg-control)
 
 .tokenSelectorTriggerDisabled
   cursor default
   opacity 0.5
 
   &:hover
-    background var(--ghostA)
+    background var(--color-bg-raised)
 
 .tokenSelectorTriggerPlaceholder
-  color var(--outerspace04)
+  color var(--color-text-muted)
 
 .tokenSelectorTriggerSymbol
   min-width 0
@@ -207,7 +207,7 @@
 
 .tokenSelectorChevron
   margin-left auto
-  color var(--outerspace04)
+  color var(--color-text-muted)
   display flex
   flex-shrink 0
   transform rotate(180deg)
@@ -220,8 +220,8 @@
   max-width calc(100vw - 48px)
   z-index 20
   border-radius 8px
-  background var(--ghostC)
-  box-shadow 0 16px 32px rgba(0, 0, 0, 0.34)
+  background var(--color-bg-hover)
+  box-shadow 0 16px 32px var(--color-shadow-default)
   padding 8px
 
 .tokenSelectorListbox
@@ -235,17 +235,17 @@
   outline none
   border-radius 6px
   background transparent
-  color var(--outerspace)
+  color var(--color-text-primary)
   display flex
   align-items center
   padding 8px
   cursor pointer
 
   &:hover
-    background rgba(248, 255, 255, 0.06)
+    background var(--color-border-subtle)
 
 .tokenSelectorOptionHighlighted
-  background rgba(248, 255, 255, 0.06)
+  background var(--color-border-subtle)
 
 .tokenSelectorFooter
   margin-top 4px

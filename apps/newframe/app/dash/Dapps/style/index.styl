@@ -28,15 +28,15 @@
   font-weight 400
   margin 6px
   border-radius 26px
-  background var(--ghostA)
-  border-bottom 2px solid var(--ghostZ)
-  box-shadow 0px 2px 4px var(--ghostY)
+  background var(--color-bg-raised)
+  border-bottom 2px solid var(--color-bg-primary)
+  box-shadow 0px 2px 4px var(--color-bg-primary)
   *
     pointer-events none
 
   .sliceOriginTitle
     padding 0px 48px 1px 48px
-    color var(--outerspace)
+    color var(--color-text-primary)
     font-weight 400
     width 180px
     direction rtl
@@ -47,7 +47,7 @@
     font-weight 300
 
 .sliceOrigin:hover
-  background var(--ghostB)
+  background var(--color-bg-control)
 
 .sliceOriginNoDapp
   display flex
@@ -62,8 +62,8 @@
   font-weight 400
   margin 6px
   border-radius 26px
-  background var(--ghostZ)
-  border 3px solid var(--ghostY)
+  background var(--color-bg-primary)
+  border 3px solid var(--color-bg-primary)
   *
     pointer-events none
 
@@ -76,16 +76,16 @@
   text-transform uppercase
   font-size 10px
   font-weight 300
-  color var(--good)
+  color var(--color-action-primary)
   cursor pointer
   *
     pointer-events none
 
 .viewAllOrigin:hover
-  color var(--goodLight)
+  color var(--color-action-primary-hover)
   
 .sliceOriginIndicator
-  color var(--outerspace)
+  color var(--color-text-primary)
   cursor pointer
   position absolute 
   top 50%
@@ -99,17 +99,17 @@
   justify-content center
   align-items center
   border-radius 12px
-  background var(--good)
+  background var(--color-action-primary)
   *
     pointer-events none
 
 .sliceOriginIndicatorOff
-  background var(--ghostY)
-  box-shadow 0px 0px 0px var(--ghostX)
+  background var(--color-bg-primary)
+  box-shadow 0px 0px 0px var(--color-shadow-default)
 
 .sliceOriginIndicatorActive
-  background var(--goodHighlight)
-  box-shadow 0px 0px 4px var(--goodHighlight)
+  background var(--color-action-primary-hover)
+  box-shadow 0px 0px 4px var(--color-action-primary-hover)
 
 .sliceOriginReqs
   margin-right 24px
@@ -151,7 +151,7 @@
   padding-left 1px
   
 .originSwapChainList
-  background var(--ghostZ)
+  background var(--color-bg-primary)
   border-radius 12px
 
   .originChainItem
@@ -163,22 +163,22 @@
     margin 6px
     border-radius 26px
     cursor pointer
-    background var(--ghostA)
-    box-shadow 0px 2px 4px var(--ghostX)
+    background var(--color-bg-raised)
+    box-shadow 0px 2px 4px var(--color-shadow-default)
     margin-bottom 10px
     font-size 18px
     font-weight 400
-    border-bottom 2px solid var(--ghostZ)
+    border-bottom 2px solid var(--color-bg-primary)
     transform translateY(0px)
 
   .originChainItem:hover
-    background var(--ghostB)
-    box-shadow 0px 4px 8px var(--ghostX)
+    background var(--color-bg-control)
+    box-shadow 0px 4px 8px var(--color-shadow-default)
     transform translateY(-1px)
 
   .originChainItem:active
-    background var(--ghostB)
-    box-shadow 0px 1px 2px var(--ghostX)
+    background var(--color-bg-control)
+    box-shadow 0px 1px 2px var(--color-shadow-default)
     transform translateY(0px)
 
   .originChainItemIcon
@@ -195,8 +195,8 @@
     display flex
     justify-content center
     align-items center
-    background var(--ghostZ)
+    background var(--color-bg-primary)
     border-radius 12px
 
   .originChainItemActive
-    color var(--good)
+    color var(--color-action-primary)

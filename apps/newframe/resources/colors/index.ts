@@ -1,42 +1,29 @@
-import { padToEven } from '@ethereumjs/util'
-
 import type { ColorwayPalette } from '../../main/store/state'
+import { chainColors, type ChainColorName } from '../style/tokens/colors'
 
-const light: ColorwayPalette = {
-  accent1: { r: 0, g: 170, b: 120 },
-  accent2: { r: 255, g: 153, b: 51 },
-  accent3: { r: 255, g: 0, b: 174 },
-  accent4: { r: 246, g: 36, b: 35 },
-  accent5: { r: 90, g: 181, b: 178 },
-  accent6: { r: 140, g: 97, b: 232 },
-  accent7: { r: 62, g: 173, b: 241 },
-  accent8: { r: 60, g: 40, b: 234 }
+const accentChainMap: Record<keyof ColorwayPalette, ChainColorName> = {
+  accent1: 'mainnet',
+  accent2: 'testnet',
+  accent3: 'default',
+  accent4: 'optimism',
+  accent5: 'gnosis',
+  accent6: 'polygon',
+  accent7: 'arbitrum',
+  accent8: 'other'
 }
 
-const dark: ColorwayPalette = {
-  accent1: { r: 0, g: 210, b: 190 },
-  accent2: { r: 255, g: 153, b: 51 },
-  accent3: { r: 255, g: 0, b: 174 },
-  accent4: { r: 246, g: 36, b: 35 },
-  accent5: { r: 90, g: 181, b: 178 },
-  accent6: { r: 140, g: 97, b: 232 },
-  accent7: { r: 62, g: 173, b: 241 },
-  accent8: { r: 60, g: 40, b: 234 }
+function toRgb(hex: string) {
+  const value = hex.replace('#', '')
+  return {
+    r: Number.parseInt(value.slice(0, 2), 16),
+    g: Number.parseInt(value.slice(2, 4), 16),
+    b: Number.parseInt(value.slice(4, 6), 16)
+  }
 }
 
-const colorways: Record<Colorway, ColorwayPalette> = { light, dark }
+export function getColor(key: keyof ColorwayPalette) {
+  const hex = chainColors[accentChainMap[key]]
+  const color = toRgb(hex)
 
-function toHex(color: number) {
-  return padToEven(color.toString(16))
-}
-
-export function getColor(key: keyof ColorwayPalette, colorway: Colorway) {
-  const color = colorways[colorway][key]
-
-  return { ...color, hex: `#${toHex(color.r)}${toHex(color.g)}${toHex(color.b)}` }
-}
-
-export enum Colorway {
-  light = 'light',
-  dark = 'dark'
+  return { ...color, hex }
 }
