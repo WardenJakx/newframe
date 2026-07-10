@@ -4,8 +4,8 @@
   input
     outline 0
     border 0
-    background var(--ghostC)
-    color var(--outerspace)
+    background var(--color-bg-hover)
+    color var(--color-text-primary)
     text-align center
     width 200px
     font-size 21px
@@ -14,14 +14,14 @@
     border-radius 12px
     font-family 'FiraCode'
     transition var(--standardFast)
-    box-shadow 0px 0px 0px var(--ghostA)
+    box-shadow 0px 0px 0px var(--color-bg-raised)
 
   input:focus
     transform scale(1.2) translateY(-2px)
-    box-shadow 0px 10px 20px var(--ghostA)
+    box-shadow 0px 10px 20px var(--color-bg-raised)
 
   // input:focus::selection
-  //   background var(--moonHighlight)
+  //   background var(--color-action-danger-hover)
 
   .txFeeOverlayInset
     max-height 100%
@@ -77,11 +77,11 @@
 //   padding 32px 11px 11px 11px
 //   position relative
 //   border-radius 8px
-//   background var(--ghostC)
+//   background var(--color-bg-hover)
 
 .dataUnverified
   position absolute
-  color var(--bad)
+  color var(--color-status-danger)
   top 9px
   right 15px
   font-size 11px
@@ -142,7 +142,7 @@
     font-family 'MainFont'
     font-weight 300
     font-size 16px
-    color var(--moon)
+    color var(--color-status-danger)
 
 .decodedDataContractArgHeader
   font-size 12px
@@ -155,8 +155,8 @@
   display flex
   align-items center
   justify-content center
-  color var(--outerspace)
-  background var(--ghostD)
+  color var(--color-text-primary)
+  background var(--color-bg-hover)
   border-radius 8px
 
 .decodedDataContractArg

@@ -1,8 +1,9 @@
-const latest = 1
+const latest = 2
 
 export default {
   apply: (state: any) => {
-    state.main._version = state.main._version || latest
+    state.main.colorway = 'dark'
+    state.main._version = latest
 
     return state
   },

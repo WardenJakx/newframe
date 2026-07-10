@@ -1,5 +1,5 @@
 ._txButton
-  background var(--ghostB)
+  background var(--color-bg-control)
   border-radius 19px
   transform translateY(0px)
   cursor pointer
@@ -10,29 +10,29 @@
     pointer-events none
 
 ._txButton:hover
-  // background var(--good)
-  color var(--goodOver)
-  box-shadow 0px 12px 12px var(--ghostZ)
+  // background var(--color-action-primary)
+  color var(--color-action-primary-text)
+  box-shadow 0px 12px 12px var(--color-bg-primary)
   animation 5s shake ease-in-out infinite alternate
 
 ._txButton:hover::after
   content ''
   position absolute
   inset 0
-  background white
-  background var(--good)
+  background var(--color-text-primary)
+  background var(--color-action-primary)
   z-index 3
 
 ._txButtonBad:hover
-  color var(--badOver)
+  color var(--color-text-inverse)
 
 ._txButtonBad:hover::after
   content ''
   position absolute
   inset 0
-  background white
-  color var(--badOver)
-  background var(--bad)
+  background var(--color-text-primary)
+  color var(--color-text-inverse)
+  background var(--color-status-danger)
   z-index 3
 
 ._txButton:active
@@ -41,7 +41,7 @@
   // animation-duration 2s
   // animation-timing-function: ease-in-out
   // animation-iteration-count: infinite
-  box-shadow 0px 2px 2px var(--ghostX)
+  box-shadow 0px 2px 2px var(--color-shadow-default)
 
 @keyframes shake 
   0% 
@@ -160,11 +160,11 @@
 
 .txViewData
   margin 64px 8px
-  background var(--ghostA)
+  background var(--color-bg-raised)
   padding 32px 6px 64px 6px
   border-radius 26px
-  border-bottom 2px solid var(--ghostZ)
-  box-shadow 0px 4px 8px var(--ghostY), 0px 2px 8px var(--ghostY)
+  border-bottom 2px solid var(--color-bg-primary)
+  box-shadow 0px 4px 8px var(--color-bg-primary), 0px 2px 8px var(--color-bg-primary)
 
   .txViewDataHeader
     padding 0px 0px
@@ -185,7 +185,7 @@
   right 10px
   height 30px
   z-index 100000
-  box-shadow 0px 0px 0px var(--ghostZ)
+  box-shadow 0px 0px 0px var(--color-bg-primary)
   
   ._txModuleInner
     position absolute 
@@ -193,7 +193,7 @@
     right 0
     bottom 0
     left 0
-    background var(--ghostC)
+    background var(--color-bg-hover)
     border-radius 8px
     display flex
     flex-direction row
@@ -207,7 +207,7 @@
       align-items center
       text-transform uppercase
       font-size 12px
-      // border-right 1px solid var(--ghostA)
+      // border-right 1px solid var(--color-bg-raised)
       padding 0px 6px
       font-family 'FiraCode'
 
@@ -224,7 +224,7 @@
   padding 18px 6px 20px 6px
   font-size 16px
   font-weight 600
-  border-top 2px solid var(--ghostY)
+  border-top 2px solid var(--color-bg-primary)
   margin 12px 12px 0px 12px
   font-family VCR
   text-transform uppercase
@@ -273,7 +273,7 @@
   ._txDescriptionTag
     font-size 10px
     width 100%
-    border-top 1px solid var(--ghostX)
+    border-top 1px solid var(--color-border-default)
     padding 10px 20px
     text-transform uppercase
 
@@ -287,11 +287,11 @@
   font-family 'MainFont'
 
 .txReviewHero
-  background var(--ghostZ)
+  background var(--color-bg-primary)
   border-radius 18px
   padding 16px
-  box-shadow 0px 2px 8px var(--ghostY)
-  border-bottom 2px solid var(--ghostX)
+  box-shadow 0px 2px 8px var(--color-bg-primary)
+  border-bottom 2px solid var(--color-border-default)
 
   .txReviewHeroNetwork
     display inline-flex
@@ -299,7 +299,7 @@
     min-height 20px
     padding 0px 8px
     border-radius 10px
-    background var(--ghostA)
+    background var(--color-bg-raised)
     font-size 11px
     font-weight 500
     margin-bottom 10px
@@ -313,7 +313,7 @@
   .txReviewHeroSubtitle
     margin-top 4px
     font-size 13px
-    color var(--outerspace08)
+    color var(--color-text-secondary)
     line-height 18px
     word-break break-word
 
@@ -324,15 +324,15 @@
     min-height 24px
     padding 0px 9px
     border-radius 12px
-    background var(--ghostA)
-    color var(--good)
+    background var(--color-bg-raised)
+    color var(--color-action-primary)
     font-size 11px
     font-weight 600
     text-transform uppercase
 
   .txReviewNotice
     margin-top 8px
-    color var(--bad)
+    color var(--color-status-danger)
     font-size 12px
     line-height 17px
     word-break break-word
@@ -353,7 +353,7 @@
       top 27px
       bottom -27px
       width 2px
-      background var(--ghostY)
+      background var(--color-bg-primary)
 
     .txReviewProgressMarker
       position relative
@@ -370,16 +370,16 @@
       display flex
       justify-content center
       align-items center
-      background var(--ghostB)
-      color var(--outerspace08)
+      background var(--color-bg-control)
+      color var(--color-text-secondary)
 
     .txReviewProgressMarkerDot
-      box-shadow inset 0px 0px 0px 2px var(--ghostX)
+      box-shadow inset 0px 0px 0px 2px var(--color-shadow-default)
 
     .txReviewProgressMarkerSpinner
       background transparent
-      border 2px solid var(--ghostX)
-      border-top-color var(--good)
+      border 2px solid var(--color-border-default)
+      border-top-color var(--color-action-primary)
       box-sizing border-box
       animation txReviewSpin 0.8s linear infinite
 
@@ -396,7 +396,7 @@
       margin-top 2px
       font-size 12px
       line-height 17px
-      color var(--outerspace08)
+      color var(--color-text-secondary)
       word-break break-word
 
   .txReviewProgressStep:last-child
@@ -407,32 +407,32 @@
 
   .txReviewProgressStep-complete
     .txReviewProgressRail
-      background var(--good)
+      background var(--color-action-primary)
 
     .txReviewProgressMarkerIcon
-      background var(--good)
-      color var(--goodOver)
+      background var(--color-action-primary)
+      color var(--color-action-primary-text)
 
   .txReviewProgressStep-active
     .txReviewProgressMarkerDot, .txReviewProgressMarkerSpinner
-      background var(--ghostZ)
-      box-shadow inset 0px 0px 0px 2px var(--good)
+      background var(--color-bg-primary)
+      box-shadow inset 0px 0px 0px 2px var(--color-action-primary)
 
     .txReviewProgressTitle
-      color var(--good)
+      color var(--color-action-primary)
 
   .txReviewProgressStep-error
     .txReviewProgressMarkerIcon
-      background var(--bad)
-      color var(--badOver)
+      background var(--color-status-danger)
+      color var(--color-text-inverse)
 
     .txReviewProgressTitle
-      color var(--bad)
+      color var(--color-status-danger)
 
 .txReviewSection, .txReviewFee
-  background var(--ghostZ)
+  background var(--color-bg-primary)
   border-radius 16px
-  box-shadow 0px 1px 5px var(--ghostY)
+  box-shadow 0px 1px 5px var(--color-bg-primary)
   overflow hidden
 
 .txReviewSectionTitle
@@ -440,8 +440,8 @@
   display flex
   align-items center
   padding 0px 12px
-  background var(--ghostB)
-  color var(--outerspace08)
+  background var(--color-bg-control)
+  color var(--color-text-secondary)
   font-size 12px
   font-weight 600
   text-transform uppercase
@@ -457,7 +457,7 @@
   gap 10px
   border-radius 10px
   padding 8px 10px
-  background var(--ghostA)
+  background var(--color-bg-raised)
 
 .txReviewEffect + .txReviewEffect
   margin-top 4px
@@ -473,9 +473,9 @@
   align-items center
   justify-content center
   overflow hidden
-  background var(--ghostB)
-  box-shadow inset 0px 0px 0px 1px var(--ghostX)
-  color var(--outerspace)
+  background var(--color-bg-control)
+  box-shadow inset 0px 0px 0px 1px var(--color-shadow-default)
+  color var(--color-text-primary)
   font-size 12px
   font-weight 700
 
@@ -510,7 +510,7 @@
 .txReviewEffectDetail
   margin-top 2px
   font-size 11px
-  color var(--outerspace08)
+  color var(--color-text-secondary)
   line-height 15px
   word-break break-word
 
@@ -521,7 +521,7 @@
   min-width 0
   font-size 14px
   font-weight 600
-  color var(--good)
+  color var(--color-action-primary)
   white-space nowrap
 
   .displayValue
@@ -535,11 +535,11 @@
 
 .txReviewEffect-out
   .txReviewEffectAmount
-    color var(--bad)
+    color var(--color-status-danger)
 
 .txReviewEffect-neutral
   .txReviewEffectAmount
-    color var(--outerspace)
+    color var(--color-text-primary)
 
 .txReviewEffectPrefix
   margin-right 2px
@@ -550,8 +550,8 @@
   align-items center
   justify-content center
   border-radius 10px
-  background var(--ghostA)
-  color var(--outerspace08)
+  background var(--color-bg-raised)
+  color var(--color-text-secondary)
   font-size 12px
   text-align center
 
@@ -563,7 +563,7 @@
   gap 10px
   border-radius 10px
   padding 6px 10px
-  background var(--ghostA)
+  background var(--color-bg-raised)
   box-sizing border-box
 
 .txReviewDetailRow + .txReviewDetailRow
@@ -573,10 +573,10 @@
   cursor pointer
 
 .txReviewDetailRowClickable:hover
-  background var(--ghostB)
+  background var(--color-bg-control)
 
 .txReviewDetailLabel
-  color var(--outerspace08)
+  color var(--color-text-secondary)
   font-size 11px
   font-weight 600
   text-transform uppercase
@@ -590,8 +590,8 @@
 
 .txReviewFeeSummary
   padding 10px 12px
-  background var(--ghostZ)
-  color var(--outerspace)
+  background var(--color-bg-primary)
+  color var(--color-text-primary)
   display grid
   grid-template-columns minmax(0, 1fr) auto
   align-items center
@@ -602,7 +602,7 @@
   min-width 0
 
 .txReviewFeeLabel
-  color var(--outerspace08)
+  color var(--color-text-secondary)
   font-size 11px
   font-weight 600
   text-transform uppercase
@@ -617,14 +617,14 @@
     align-items baseline
 
 .txReviewFeeValueWarn
-  color var(--bad)
+  color var(--color-status-danger)
 
 .txReviewFeeMeta
   display flex
   flex-direction column
   align-items flex-end
   gap 2px
-  color var(--outerspace08)
+  color var(--color-text-secondary)
   font-size 11px
   line-height 15px
   white-space nowrap
@@ -641,8 +641,8 @@
   min-width 0
   height 30px
   border-radius 8px
-  background var(--ghostA)
-  color var(--outerspace08)
+  background var(--color-bg-raised)
+  color var(--color-text-secondary)
   font-family 'MainFont'
   font-size 11px
   font-weight 600
@@ -651,16 +651,16 @@
   text-overflow ellipsis
 
 .txReviewFeeRate:hover
-  background var(--ghostB)
-  color var(--outerspace)
+  background var(--color-bg-control)
+  color var(--color-text-primary)
 
 .txReviewFeeRateActive
-  background var(--good)
-  color var(--goodOver)
+  background var(--color-action-primary)
+  color var(--color-action-primary-text)
 
 .txReviewFeeRateActive:hover
-  background var(--good)
-  color var(--goodOver)
+  background var(--color-action-primary)
+  color var(--color-action-primary-text)
 
 @keyframes txReviewSpin
   to

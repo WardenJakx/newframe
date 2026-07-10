@@ -65,7 +65,7 @@ afterAll(() => {
 })
 
 beforeEach(() => {
-  store.set('main.colorway', 'light')
+  store.set('main.colorway', 'dark')
   store.set('main.accounts', {})
   store.set('main.origins', {})
 

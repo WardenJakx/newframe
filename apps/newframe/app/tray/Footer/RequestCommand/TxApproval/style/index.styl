@@ -29,7 +29,7 @@
       padding 10px 20px
 
       .approveTransactionWarningIcon
-        color var(--moon)
+        color var(--color-status-danger)
       
     .approveTransactionWarningMessage
       display flex
@@ -63,7 +63,7 @@
       pointer-events auto
 
 ._txActionButton
-  background var(--ghostA)
+  background var(--color-bg-raised)
   box-sizing border-box
   height 60px
   margin 1px
@@ -81,17 +81,17 @@
   flex-grow 1
 
 ._txActionButton:hover
-  background var(--ghostB)
+  background var(--color-bg-control)
   transform translateY(-1px)
-  box-shadow 0px 3px 4px var(--ghostY)
+  box-shadow 0px 3px 4px var(--color-bg-primary)
 
 ._txActionButton:active
-  background var(--ghostA)
+  background var(--color-bg-raised)
   transform translateY(1px)
-  box-shadow 0px 1px 0px var(--ghostY)
+  box-shadow 0px 1px 0px var(--color-bg-primary)
 
 ._txActionButtonGood
-  color var(--good)
+  color var(--color-action-primary)
 
 ._txActionButtonBad
-  color var(--bad)
+  color var(--color-status-danger)

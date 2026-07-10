@@ -107,7 +107,7 @@ class _RequestItem extends React.Component<any, any> {
               </div>
               <div className='requestItemTitleTime'>
                 {this.state.ago === 'NEW' ? (
-                  <div className='requestItemTitleTimeItem' style={{ color: 'var(--good)' }}>
+                  <div className='requestItemTitleTimeItem' style={{ color: 'var(--color-action-primary)' }}>
                     {this.state.ago}
                   </div>
                 ) : (
@@ -126,7 +126,7 @@ class _RequestItem extends React.Component<any, any> {
               <div
                 role='alert'
                 className={requestItemNoticeClass}
-                style={notice === 'see signer' ? { color: 'var(--good)' } : {}}
+                style={notice === 'see signer' ? { color: 'var(--color-action-primary)' } : {}}
               >
                 {notice}
               </div>

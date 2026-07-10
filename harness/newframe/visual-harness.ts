@@ -11,7 +11,7 @@ import { chromium, type Browser, type CDPSession, type Page } from 'playwright-c
 const rootDir = path.resolve(import.meta.dirname, '../..')
 const appDir = path.join(rootDir, 'apps/newframe')
 const contractsDir = path.join(rootDir, 'newframe-contracts')
-const outputDir = '/tmp/newframe-visual-harness'
+const outputDir = process.env.NEWFRAME_HARNESS_OUTPUT_DIR || '/tmp/newframe-visual-harness'
 const screenshotDir = path.join(outputDir, 'screenshots')
 
 const anvilPort = 8545
@@ -107,6 +107,7 @@ type AppState = {
     origins?: Record<string, AppOrigin>
     permissions?: Record<string, Record<string, AppPermission>>
     showTestnets?: boolean
+    signers?: Record<string, unknown>
   }
   selected?: { current?: string }
   windows?: {
@@ -388,6 +389,90 @@ async function screenshot(page: Page, filename: string) {
   await page.screenshot({ path: path.join(screenshotDir, filename) })
   summary.screenshots.push(filename)
   await writeSummary()
+}
+
+async function assertColorTokens(page: Page, renderer: string) {
+  await page.waitForLoadState('load')
+  const result = await cdpEvaluate<{
+    actionValue: string
+    alphaColor: string
+    colorMixSupported: boolean
+    primitiveColor: string
+    primitiveValue: string
+    semanticColor: string
+    semanticValue: string
+  }>(
+    page,
+    `(() => {
+      const rootStyle = getComputedStyle(document.documentElement)
+      const semanticValue = rootStyle.getPropertyValue('--color-bg-primary').trim()
+      const primitiveValue = rootStyle.getPropertyValue('--color-plum-950').trim()
+      const actionValue = rootStyle.getPropertyValue('--color-action-primary').trim()
+      const semanticProbe = document.createElement('div')
+      const primitiveProbe = document.createElement('div')
+      const alphaProbe = document.createElement('div')
+
+      semanticProbe.style.backgroundColor = 'var(--color-bg-primary)'
+      primitiveProbe.style.backgroundColor = 'var(--color-plum-950)'
+      alphaProbe.style.backgroundColor =
+        'color-mix(in srgb, var(--color-action-primary) 12%, transparent)'
+      semanticProbe.style.display = primitiveProbe.style.display = alphaProbe.style.display = 'none'
+      document.body.append(semanticProbe, primitiveProbe, alphaProbe)
+
+      const semanticColor = getComputedStyle(semanticProbe).backgroundColor
+      const primitiveColor = getComputedStyle(primitiveProbe).backgroundColor
+      const alphaColor = getComputedStyle(alphaProbe).backgroundColor
+      semanticProbe.remove()
+      primitiveProbe.remove()
+      alphaProbe.remove()
+
+      return {
+        actionValue,
+        alphaColor,
+        colorMixSupported: CSS.supports(
+          'background-color',
+          'color-mix(in srgb, rgb(0, 210, 190) 12%, transparent)'
+        ),
+        primitiveColor,
+        primitiveValue,
+        semanticColor,
+        semanticValue
+      }
+    })()`
+  )
+
+  if (!result.semanticValue || !result.primitiveValue || !result.actionValue) {
+    fail(`${renderer} is missing generated color custom properties: ${JSON.stringify(result)}`)
+  }
+  if (result.semanticColor !== result.primitiveColor) {
+    fail(`${renderer} semantic background does not resolve to its primitive`)
+  }
+  if (!result.colorMixSupported || !result.alphaColor || result.alphaColor === 'rgba(0, 0, 0, 0)') {
+    fail(`${renderer} does not resolve color-mix() alpha tokens`)
+  }
+}
+
+async function screenshotDashboardVisualStates(app: Browser, tray: Page) {
+  const dash = await waitForElectronPage(app, 'bundle/dash.html')
+  await assertColorTokens(dash, 'Dashboard')
+  await screenshot(dash, '00a-dashboard-home.png')
+
+  await trayAction(tray, 'navDash', { view: 'tokens', data: {} })
+  await sleep(800)
+  await screenshot(dash, '00b-dashboard-tokens.png')
+
+  await trayAction(tray, 'navDash', { view: 'dapps', data: {} })
+  await sleep(800)
+  await screenshot(dash, '00c-dashboard-dapps.png')
+
+  const signerId = Object.keys((await getAppState(tray)).main?.signers || {})[0]
+  if (signerId) {
+    await trayAction(tray, 'navDash', { view: 'expandedSigner', data: { signer: signerId } })
+    await sleep(800)
+    await screenshot(dash, '00d-dashboard-signer.png')
+  }
+
+  await trayAction(tray, 'backDash', 10)
 }
 
 function browserPages(app: Browser) {
@@ -929,6 +1014,7 @@ async function assertTradeTicketVisualControls(page: Page) {
 
 async function screenshotTradeTicketVisualStates(app: Browser, tray: Page) {
   const tradePage = await openTradeTicket(app, tray)
+  await assertColorTokens(tradePage, 'Dapp')
   await assertTradeTicketVisualControls(tradePage)
   await screenshot(tradePage, '10a-trade-market-open.png')
 
@@ -1234,6 +1320,42 @@ async function forceLockAndUnlock(tray: Page) {
   })
 }
 
+async function screenshotTrayOverlayVisualStates(tray: Page) {
+  const mainMenuButton = tray.getByRole('button', { name: 'Main menu' })
+
+  await mainMenuButton.click()
+  const menu = tray.getByRole('dialog', { name: 'Main menu' })
+  await menu.waitFor({ state: 'visible' })
+  await sleep(500)
+  await screenshot(tray, '02a-main-menu.png')
+
+  for (const [label, filename] of [
+    ['Requests', '02b-requests-overlay.png'],
+    ['Dapps', '02c-dapps-overlay.png'],
+    ['Settings', '02d-settings-overlay.png']
+  ] as const) {
+    await menu.getByRole('button', { name: label }).click()
+    const overlay = tray.getByRole('dialog', { name: label })
+    await overlay.waitFor({ state: 'visible' })
+    await sleep(500)
+    await screenshot(tray, filename)
+    await overlay.getByRole('button', { name: 'Back' }).click()
+    await menu.waitFor({ state: 'visible' })
+    await sleep(500)
+  }
+
+  await menu.getByRole('button', { name: 'Close menu' }).click()
+  await menu.waitFor({ state: 'hidden' })
+
+  await tray.getByRole('button', { name: 'Network filter' }).click()
+  const networks = tray.getByRole('dialog', { name: 'Networks' })
+  await networks.waitFor({ state: 'visible' })
+  await sleep(500)
+  await screenshot(tray, '02e-networks-overlay.png')
+  await networks.getByRole('button', { name: 'Back' }).click()
+  await networks.waitFor({ state: 'hidden' })
+}
+
 async function resetHarnessState(tray: Page) {
   await withStage('reset harness-owned state', async () => {
     const state = await getAppState(tray)
@@ -1279,9 +1401,12 @@ async function runFlow(app: Browser) {
     if (message.type() === 'error') consoleErrors.push(message.text())
   })
 
+  await assertColorTokens(tray, 'Tray')
+  await withStage('dashboard visuals', async () => screenshotDashboardVisualStates(app, tray))
   await forceLockAndUnlock(tray)
   await resetHarnessState(tray)
   await screenshot(tray, '02-unlocked-home.png')
+  await withStage('tray overlay visuals', async () => screenshotTrayOverlayVisualStates(tray))
 
   const { harness, vitalik } = findHarnessAccounts(await getAppState(tray))
 

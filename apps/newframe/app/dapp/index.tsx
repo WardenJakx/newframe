@@ -26,13 +26,7 @@ link.rpc('getFrameId', (err: any, frameId: any) => {
     if (err) return console.error('Could not get initial state from main')
     const store = appStore(state)
     ;(window as any).store = store
-    store.observer(() => {
-      document.body.classList.remove('dark', 'light')
-      document.body.classList.add('clip', store('main.colorway'))
-      setTimeout(() => {
-        document.body.classList.remove('clip')
-      }, 100)
-    })
+    document.body.classList.add('dark')
     const root = createRoot(document.getElementById('dapp') as HTMLElement)
     const Dapp = Restore.connect(AppComponent, store)
     root.render(<Dapp />)

@@ -61,10 +61,10 @@
   font-size 7px
   position relative
   text-indent -9999em
-  border-top 6px solid var(--outerspace01)
-  border-right 6px solid var(--outerspace01)
-  border-bottom 6px solid var(--outerspace01)
-  border-left 6px solid var(--outerspace08)
+  border-top 6px solid var(--color-text-disabled)
+  border-right 6px solid var(--color-text-disabled)
+  border-bottom 6px solid var(--color-text-disabled)
+  border-left 6px solid var(--color-text-secondary)
   transform translateZ(0)
   animation load8 1.1s infinite linear !important
 }
@@ -113,7 +113,7 @@
   width 100px
   height 100px
   margin 100px auto
-  background-color var(--outerspace08)
+  background-color var(--color-text-secondary)
   border-radius 100%
   animation sk-scaleout 600ms infinite var(--cubic)
   will-change transform, opacity
@@ -122,7 +122,7 @@
   width 100px
   height 100px
   margin 100px auto
-  background-color var(--outerspace08)
+  background-color var(--color-text-secondary)
   border-radius 100%
   animation sk-scaleout 600ms infinite var(--cubic)
 
@@ -164,7 +164,7 @@
   font-weight 300
 
   .requestCount
-    background var(--thin)
+    background var(--color-border-subtle)
     width 50px
     height 20px
     border-radius 15px
@@ -183,7 +183,7 @@
   padding-right 10px
 
   svg
-    color var(--outerspace08)
+    color var(--color-text-secondary)
 
 .requestGroup
   padding 16px 20px 7px 20px
@@ -208,13 +208,13 @@
     height 22px
     width 22px
     border-radius 11px
-    background var(--ghostB)
+    background var(--color-bg-control)
     position relative
     display flex
     justify-content center
     align-items center
-    border 2px solid var(--ghostZ)
-    color var(--mint)
+    border 2px solid var(--color-bg-primary)
+    color var(--color-text-muted)
 
     .requestGroupButtonLabel
       position absolute
@@ -232,7 +232,7 @@
       border-radius 9px
       opacity 0
       pointer-events none
-      background var(--ghostB)
+      background var(--color-bg-control)
       letter-spacing 1px
       padding-left 2px
 
@@ -247,7 +247,7 @@
   padding 0px 3px 21px 3px
   box-sizing border-box
   overflow auto
-  background var(--ghostZ)
+  background var(--color-bg-primary)
   position relative
   min-height calc(100% - 25px)
 
@@ -279,15 +279,15 @@
     justify-content center
     align-items center
     transition var(--standard)
-    background var(--ghostA)
-    color var(--outerspace04)
+    background var(--color-bg-raised)
+    color var(--color-text-muted)
     margin-top 3px
     height 48px
     font-weight 400
     border-radius 17px
     padding-top 2px
-    border-bottom 2px solid var(--ghostZ)
-    box-shadow 0px 2px 4px var(--ghostY)
+    border-bottom 2px solid var(--color-bg-primary)
+    box-shadow 0px 2px 4px var(--color-bg-primary)
 
   .recentRequests
     position absolute
@@ -305,7 +305,7 @@
     font-weight 300
     letter-spacing 2px
     transition var(--standard)
-    color var(--outerspace08)
+    color var(--color-text-secondary)
 
 .signerRequestItems
   overflow scroll
@@ -320,7 +320,7 @@
   justify-content space-between
   transition var(--standardFast)
   z-index 2000
-  color var(--outerspace)
+  color var(--color-text-primary)
   transform translateZ(0)
 
 .requestMeta
@@ -342,7 +342,7 @@
     position absolute 
     left 12px
     top 12px
-    background var(--ghostZ)
+    background var(--color-bg-primary)
     width 48px
     height 48px
     border-radius 24px
@@ -350,12 +350,12 @@
     display flex
     justify-content center
     align-items center
-    color var(--outerspace)
+    color var(--color-text-primary)
 
     img
       max-height 24px
       max-width 24px
-      color var(--outerspace)
+      color var(--color-text-primary)
   
   .requestMetaChainInfo
     position absolute 
@@ -391,12 +391,12 @@
 
   .requestMetaOriginIcon
     margin-right 4px
-    color var(--good)
+    color var(--color-action-primary)
 
 .requestMetaNonce
   height 24px
   border-radius 6px
-  background var(--ghostB)
+  background var(--color-bg-control)
   display flex
       
 .requestOverlay
@@ -417,7 +417,7 @@
     height 1000%
     width 90px
     animation sheen 12s infinite ease
-    background linear-gradient(90deg, rgba(247, 251, 255, 0), rgba(237, 241, 255, 0.7), rgba(247, 251, 255, 0))
+    background linear-gradient(90deg, transparent, var(--color-text-secondary), transparent)
     background-blend-mode multiply
     will-change transform
 
@@ -430,7 +430,7 @@
 .signerRequestPending
   align-items center
   svg
-    color var(--outerspace08)
+    color var(--color-text-secondary)
   .requestApprove
     opacity 0
     pointer-events none
@@ -449,20 +449,20 @@
 
 .signerRequestMonitor
   align-items center
-  background var(--ghostA)
+  background var(--color-bg-raised)
   svg
-    color var(--outerspace)
+    color var(--color-text-primary)
   .requestApprove
     opacity 0
     pointer-events none
 
 .requestNoticeError
-  color var(--bad)
-  fill car(--bad)
+  color var(--color-status-danger)
+  fill var(--color-status-danger)
 
 .requestNoticeSuccess
-  color var(--good)
-  fill car(--good)
+  color var(--color-action-primary)
+  fill var(--color-action-primary)
 
 .requestNotice, .requestCover
   box-sizing border-box
@@ -502,7 +502,7 @@
 
   .cancelRequest
     font-size 10px
-    background var(--thin)
+    background var(--color-border-subtle)
     height 20px
     width  100px
     margin 16px auto 0px auto
@@ -518,7 +518,7 @@
       pointer-events none
 
   .cancelRequest:hover
-    background var(--thick)
+    background var(--color-border-default)
 
 .requestProvider
   display flex
@@ -531,8 +531,8 @@
   border-radius 20px
   width calc(100% - 16px)
   box-sizing border-box
-  background var(--ghostA)
-  box-shadow 0px 6px 6px var(--ghostY)
+  background var(--color-bg-raised)
+  box-shadow 0px 6px 6px var(--color-bg-primary)
   font-family 'MainFont'
 
   .requestProviderOrigin
@@ -570,7 +570,7 @@
 //   content ''
 //   position absolute
 //   inset 4px
-//   background var(--ghostZ)
+//   background var(--color-bg-primary)
 //   border-radius 18px
 //   z-index 99999999
 
@@ -593,7 +593,7 @@
   right 16px
   border-radius 26px
   z-index 99999999
-  background var(--ghostZ)
+  background var(--color-bg-primary)
   padding 2px
 
 .automaticFeeUpdate
@@ -609,7 +609,7 @@
   font-weight 300
   transform scale(0.8)
   filter blur(20px)
-  background linear-gradient(to top, var(--ghostZ) 25%, var(--ghostZ0) 100%)
+  background linear-gradient(to top, var(--color-bg-primary) 25%, transparent 100%)
   position absolute
   top -58px
   left 8px
@@ -662,7 +662,7 @@
       border-radius 20px
 
     .txActionText
-      background var(--ghostA)
+      background var(--color-bg-raised)
       height 40px
       display flex
       margin 1px
@@ -671,12 +671,12 @@
       align-items center
       padding-top 3px
       box-sizing border-box
-      background var(--ghostA)
-      box-shadow 0px 1px 2px var(--ghostZ)
-      border-bottom 2px solid var(--ghostZ)
+      background var(--color-bg-raised)
+      box-shadow 0px 1px 2px var(--color-bg-primary)
+      border-bottom 2px solid var(--color-bg-primary)
 
     .txActionButton
-      background var(--ghostA)
+      background var(--color-bg-raised)
       box-sizing border-box
       height 40px
       margin 1px
@@ -687,27 +687,27 @@
       align-items center
       padding-top 3px
       box-sizing border-box
-      background var(--ghostA)
-      box-shadow 0px 1px 2px var(--ghostZ)
+      background var(--color-bg-raised)
+      box-shadow 0px 1px 2px var(--color-bg-primary)
     
     .txActionButton:hover
-      background var(--ghostB)
+      background var(--color-bg-control)
 
     .txActionButtonGood
-      color var(--good)
+      color var(--color-action-primary)
 
     .txActionButtonBad
-      color var(--bad)
+      color var(--color-status-danger)
     
     .txActionButtonDisabled
-      color var(--outerspace05)
+      color var(--color-text-muted)
       cursor default
     
     .txActionButtonDisabled:hover
-      background var(--ghostA)
+      background var(--color-bg-raised)
 
   .requestApproveFeeReject
-    color var(--moon)
+    color var(--color-status-danger)
     position absolute 
     left 10px
     bottom 11px
@@ -715,7 +715,7 @@
     right calc(50% + 2.5px)
 
   .requestApproveFeeAccept
-    color var(--good)
+    color var(--color-action-primary)
     position absolute 
     right 10px
     bottom 11px
@@ -747,7 +747,7 @@
     display none
 
     svg
-      color var(--outerspace08)
+      color var(--color-text-secondary)
 
   .approveRequestHeader
     position absolute
@@ -760,8 +760,8 @@
     align-items center
     font-weight 400
     font-size 14px
-    background var(--ghostD)
-    color var(--outerspace)
+    background var(--color-bg-hover)
+    color var(--color-text-primary)
     border-radius 8px
     text-transform uppercase
 
@@ -786,11 +786,11 @@
       font-size 10px
       text-align center
       font-weight 300
-      background var(--good)
-      color var(--spacewhite)
+      background var(--color-action-primary)
+      color var(--color-bg-hover)
 
     .approveRequestHeaderTagInvalid
-      background var(--bad)
+      background var(--color-status-danger)
 
     .approveRequestHeaderIcon
       width 40px
@@ -803,7 +803,7 @@
       position absolute
       border-radius 2px
       left 5px
-      color var(--outerspace08)
+      color var(--color-text-secondary)
 
     .approveRequestHeaderNonce
       width 80px
@@ -816,7 +816,7 @@
       position absolute
       border-radius 2px
       right 10px
-      color var(--outerspace08)
+      color var(--color-text-secondary)
 
     .approveRequestHeaderClose
       width 60px
@@ -845,8 +845,8 @@
     bottom 60px
     left 5px
     right 5px
-    background var(--ghostD)
-    color var(--moon)
+    background var(--color-bg-hover)
+    color var(--color-status-danger)
     border-radius 8px
     height 24px
     z-index 2000
@@ -905,7 +905,7 @@
   font-family 'FiraCode'
   margin 2px 8px 0px 0px 
   padding 0px 16px
-  background var(--ghostD)
+  background var(--color-bg-hover)
   border-radius 12px
   height 25px
   min-height 25px
@@ -937,17 +937,17 @@
   font-family 'FiraCode'
   margin 2px 0px 0px 8px 
   padding 0px 16px
-  background var(--ghostD)
+  background var(--color-bg-hover)
   border-radius 12px
   height 24px
   min-height 24px
   max-height 24px
 
 .transactionWarning
-  color var(--bad)
+  color var(--color-status-danger)
 
 .transactionFeeWarning
-  color var(--bad)
+  color var(--color-status-danger)
   position absolute
   top 0
   left 0
@@ -988,7 +988,7 @@
   display flex
   justify-content center
   align-items center
-  color var(--outerspace08)
+  color var(--color-text-secondary)
   font-size 14px
   font-weight 400
   letter-spacing 1px
@@ -1009,8 +1009,8 @@
     letter-spacing 1px
     font-weight 400
     z-index 10
-    background var(--ghostD)
-    box-shadow 0px 2px 0px var(--thick), 0px 8px 8px -2px var(--thick), 0px 0px 10px -2px var(--thick)
+    background var(--color-bg-hover)
+    box-shadow 0px 2px 0px var(--color-shadow-default), 0px 8px 8px -2px var(--color-shadow-default), 0px 0px 10px -2px var(--color-shadow-default)
 
     .transactionDataLabel
       display flex
@@ -1026,7 +1026,7 @@
       align-items center
       z-index 10
       transition var(--standard)
-      color var(--outerspace08)
+      color var(--color-text-secondary)
 
     .transactionDataIndicator
       width 21px
@@ -1036,7 +1036,7 @@
       z-index 10
       transform rotate(-180deg)
       transition var(--standardSlow)
-      border 2px solid var(--thick)
+      border 2px solid var(--color-border-default)
       border-radius 12px
       margin 4px
 
@@ -1047,7 +1047,7 @@
 
 .transactionDataBody
   position absolute
-  color var(--outerspace08)
+  color var(--color-text-secondary)
   top 35px
   left 0
   right 0
@@ -1057,12 +1057,12 @@
   user-select all
   overflow hidden
   z-index 90
-  background var(--ghostD)
+  background var(--color-bg-hover)
   border-radius 12px
   opacity 0
   pointer-events none
   transition var(--standard)
-  box-shadow 0px 2px 0px var(--thick), 0px 8px 8px -2px var(--thick), 0px 0px 10px -2px var(--thick)
+  box-shadow 0px 2px 0px var(--color-shadow-default), 0px 8px 8px -2px var(--color-shadow-default), 0px 0px 10px -2px var(--color-shadow-default)
 
   .transactionDataBodyCopied
     position absolute
@@ -1115,9 +1115,9 @@
       top 0px
 
 .transactionNoData
-  background var(--ghostD)
+  background var(--color-bg-hover)
   border-radius 12px
-  box-shadow 0px 2px 0px var(--thick), 0px 8px 8px -2px var(--thick), 0px 0px 10px -2px var(--thick)
+  box-shadow 0px 2px 0px var(--color-shadow-default), 0px 8px 8px -2px var(--color-shadow-default), 0px 0px 10px -2px var(--color-shadow-default)
 
 .transactionTo
   height 60px
@@ -1213,7 +1213,7 @@
   z-index 999999999
   border-radius 24px
   position relative
-  background var(--ghostZ)
+  background var(--color-bg-primary)
   animation 0.48s fadeUp ease-out
   margin 10px 8px 40px 8px
 
@@ -1257,12 +1257,12 @@
     height 4px
     border-radius 2px
     width 30px
-    background var(--bad)
+    background var(--color-status-danger)
     bottom 26px
     z-index 80
 
   .requestDeclineButton:hover:before
-    background var(--badOver)
+    background var(--color-text-inverse)
 
   .requestSign
     position absolute
@@ -1305,12 +1305,12 @@
     height 4px
     border-radius 2px
     width 30px
-    background var(--good)
+    background var(--color-action-primary)
     bottom 26px
     z-index 98
 
   .requestSignButton:hover:before
-    background var(--goodOver)
+    background var(--color-action-primary-text)
 
 .requestApproveSimple
   bottom 40px
@@ -1358,23 +1358,23 @@
   .txProgressConfirmsItem
     font-size 12px
     font-weight 300
-    color var(--ghostY)
+    color var(--color-bg-primary)
     svg
       max-width 14px
       min-width 14px
-      color var(--outerspace)
+      color var(--color-text-primary)
       transition var(--standardFast)
       animation pending 4.2s linear infinite
-      color var(--ghostX)
+      color var(--color-text-inverse)
       will-change opacity
 
   .txProgressConfirmsItemActive
     svg
-      color var(--good)
+      color var(--color-action-primary)
 
   .txProgressConfirmsItemGood
     svg
-      color var(--good)
+      color var(--color-action-primary)
 
   *:nth-child(1) 
     svg
@@ -1427,7 +1427,7 @@
   height 4px
   border-radius 2px
   width 100%
-  background var(--outerspace08)
+  background var(--color-text-secondary)
   top 43px
   left 14px
   width 24px
@@ -1460,7 +1460,7 @@
   display flex
   justify-content center
   align-items center
-  color var(--outerspace)
+  color var(--color-text-primary)
   font-size 14px
   position relative
   top -1px
@@ -1470,7 +1470,7 @@
   padding 0
 
 .monitorSubHighlight
-  color var(--outerspace)
+  color var(--color-text-primary)
   font-size 14px
   text-transform uppercase
   position relative
@@ -1489,7 +1489,7 @@ span
   padding 0px 3px 0px 0px
 
 .txNonceMarker
-  background var(--ghostD)
+  background var(--color-bg-hover)
   width 29px
   border-radius 6px
 
@@ -1504,7 +1504,7 @@ span
   align-items center
 
 .txNonceHidden
-  color var(--outerspace06)
+  color var(--color-text-muted)
   opacity 0
 
 .txNonceControl
@@ -1540,7 +1540,7 @@ span
   text-align center
   font-size 10px
   text-transform uppercase
-  border-right 1px solid var(--ghostC)
+  border-right 1px solid var(--color-bg-hover)
   display flex
   justify-content center 
   align-items center
@@ -1566,7 +1566,7 @@ span
   display flex
   justify-content space-between
   font-weight 400
-  color var(--outerspace08)
+  color var(--color-text-secondary)
   box-sizing border-box
 
 .monitorBot
@@ -1588,7 +1588,7 @@ span
   align-items center
   font-weight 00
   letter-spacing 1px
-  color var(--outerspace08)
+  color var(--color-text-secondary)
 
   span
     padding 0px 7px 0px 0px
@@ -1610,7 +1610,7 @@ span
   letter-spacing 0.2px
   font-weight 300
   border-radius 16px
-  background var(--ghostD)
+  background var(--color-bg-hover)
   z-index 20000000009999
   
   .txAugmentCancel
@@ -1622,7 +1622,7 @@ span
     border-top-left-radius 16px
     border-bottom-left-radius 16px
     right 72%
-    color var(--bad)
+    color var(--color-status-danger)
     display flex
     justify-content center
     align-items center
@@ -1640,7 +1640,7 @@ span
     border-top-right-radius 16px
     border-bottom-right-radius 16px
     left 72%
-    color var(--good)
+    color var(--color-action-primary)
     display flex
     justify-content center
     align-items center
@@ -1685,39 +1685,39 @@ span
       padding 0px 14px
       box-sizing border-box
       cursor pointer
-      background var(--ghostD)
+      background var(--color-bg-hover)
 
       *
         pointer-events none
 
     .txDetailsOptionsOpen:hover, .txDetailsOptionsCopy:hover
-      background var(--ghostD)
+      background var(--color-bg-hover)
       transform scale(1.05)
-      box-shadow 0px 14px 6px -3px var(--ghostB)
+      box-shadow 0px 14px 6px -3px var(--color-bg-control)
 
   .txDetailsOptionsTxHash
-    color var(--good)
+    color var(--color-action-primary)
 
   .txDetailsHide
     pointer-events none 
     opacity 0
 
   .txAugmentCancel:hover, .txAugmentSpeedUp:hover
-    background var(--ghostD)
+    background var(--color-bg-hover)
     transform scale(1.05)
-    box-shadow 0px 14px 6px -3px var(--ghostB)
+    box-shadow 0px 14px 6px -3px var(--color-bg-control)
 
 .txAugmentHidden
   .txAugmentCancel
     opacity 0
     transition var(--standard)
-    background var(--ghostD)
+    background var(--color-bg-hover)
     transform translateY(-25px) scale(1.05)
-    box-shadow 0px 4px 5px -3px var(--thick), 0px 35px 20px -5px var(--thick)
+    box-shadow 0px 4px 5px -3px var(--color-shadow-default), 0px 35px 20px -5px var(--color-shadow-default)
     pointer-events none
   .txAugmentSpeedUp
     opacity 0
-    background var(--ghostD)
+    background var(--color-bg-hover)
     transform translateY(-25px) scale(1.05)
     transform translateY(-25px)   
     transition var(--standard)
@@ -1742,7 +1742,7 @@ span
   padding-top 2px
  
   svg
-    color var(--outerspace08)
+    color var(--color-text-secondary)
     padding 4px 5px 2px 5px
 
 .txSuccessHashShow
@@ -1823,11 +1823,11 @@ span
   .txProgressSuccessItemCenter
     right 113px
     left 130px
-    border-left 2px solid var(--ghostA)
+    border-left 2px solid var(--color-bg-raised)
   .txProgressSuccessItemRight
     right 0
     width 110px
-    border-left 2px solid var(--ghostA)
+    border-left 2px solid var(--color-bg-raised)
 
 .txProgressHidden
   opacity 0
@@ -1841,7 +1841,7 @@ span
   width 100%
 
 .txProgressDetailExpand
-  color var(--outerspace05)
+  color var(--color-text-muted)
   font-size 11px
 
 .txProgressDetailError
@@ -1882,7 +1882,7 @@ span
         right 0px
         height 2px
         margin-top -1px
-        background var(--ghostY)
+        background var(--color-bg-primary)
         z-index 982
 
       .txProgressSteps
@@ -1915,7 +1915,7 @@ span
 
           .txProgressStepIcon:hover
             svg
-              color var(--good)
+              color var(--color-action-primary)
 
           .txProgressStepIconHidden
             transform translateY(-50px)
@@ -1933,7 +1933,7 @@ span
             margin-top -6px
             margin-left -6px
             border-radius 12px
-            background var(--ghostA)
+            background var(--color-bg-raised)
 
           .txProgressStepCenter
             position absolute
@@ -1945,10 +1945,10 @@ span
             margin-top -3px
             margin-left -3px
             border-radius 3px
-            background var(--ghostZ)
+            background var(--color-bg-primary)
 
           .txProgressStepCenterOn
-            background var(--outerspace)
+            background var(--color-text-primary)
 
     .txProgressFront
       position absolute
@@ -1977,7 +1977,7 @@ span
           right 0
           height 2px
           margin-top -1px
-          background var(--outerspace)
+          background var(--color-text-primary)
           transition var(--standard)
 
         .txProgressLoading
@@ -2002,7 +2002,7 @@ span
             right 0
             width 50%
             height 50%
-            background var(--outerspace)
+            background var(--color-text-primary)
 
           .txProgressLoadingCenter
             position absolute
@@ -2010,7 +2010,7 @@ span
             height calc(100% - 4px)
             width calc(100% - 4px)
             border-radius 18px
-            background var(--ghostD)
+            background var(--color-bg-hover)
             top 2px
             left 2px
 
@@ -2022,7 +2022,7 @@ span
             border-radius 18px
             top 4px
             left 4px
-            background var(--outerspace)
+            background var(--color-text-primary)
 
   .txBarSheen
     position absolute
@@ -2030,36 +2030,36 @@ span
     height 30px
     width 200px
     animation sheen 12s infinite ease
-    background linear-gradient(90deg, rgba(247, 251, 255, 0), rgba(237, 241, 255, 0.5), rgba(247, 251, 255, 0))
+    background linear-gradient(90deg, transparent, var(--color-text-muted), transparent)
     background-blend-mode multiply
 
 .txBarSuccess
   .txProgressTail
     transition var(--standardSlow)
-    background var(--good) !important
+    background var(--color-action-primary) !important
   .txProgressLoadingBox
     transition var(--standardSlow)
-    background var(--good)  !important
+    background var(--color-action-primary)  !important
   .txProgressLoadingDot
     transition var(--standardSlow)
-    background var(--good)  !important
+    background var(--color-action-primary)  !important
   .txProgressStepCenterOn
     transition var(--standardSlow)
-    background var(--good)  !important
+    background var(--color-action-primary)  !important
 
 .txBarError
   .txProgressTail
     transition var(--standardSlow)
-    background var(--bad) !important
+    background var(--color-status-danger) !important
   .txProgressLoadingBox
     transition var(--standardSlow)
-    background var(--bad) !important
+    background var(--color-status-danger) !important
   .txProgressLoadingDot
     transition var(--standardSlow)
-    background var(--bad) !important
+    background var(--color-status-danger) !important
   .txProgressStepCenterOn
     transition var(--standardSlow)
-    background var(--bad) !important
+    background var(--color-status-danger) !important
 
 
 .txBarCondensed
@@ -2071,7 +2071,7 @@ span
 .confirmBar
   position absolute
   z-index 1001
-  background var(--ghostD)
+  background var(--color-bg-hover)
   height 60px
   width 310px
   bottom 10px
@@ -2092,10 +2092,10 @@ span
     align-items center
     z-index 2450
     padding-left 19px
-    color var(--spacewhite)
+    color var(--color-bg-hover)
     svg
-      fill var(--spacewhite)
-      color var(--spacewhite)
+      fill var(--color-bg-hover)
+      color var(--color-bg-hover)
   .confirmBarEndText
     position absolute
     right 0
@@ -2108,8 +2108,8 @@ span
     z-index 1150
     padding-right 9px
     svg
-      fill var(--outerspace)
-      color var(--outerspace)
+      fill var(--color-text-primary)
+      color var(--color-text-primary)
   .confirmBarStart
     z-index 1204
     position absolute
@@ -2119,9 +2119,9 @@ span
     transform rotate(45deg)
     top -29px
     border-radius 12px
-    background var(--ghostD)
+    background var(--color-bg-hover)
     border-radius 12px
-    box-shadow 5px -5px 40px var(--thick)
+    box-shadow 5px -5px 40px var(--color-shadow-default)
   .confirmBarSent
     z-index 1202
     left 0px
@@ -2131,15 +2131,15 @@ span
     position absolute
     width 120px
     height 120px
-    background var(--ghostD)
-    box-shadow 5px -5px 40px var(--thick)
+    background var(--color-bg-hover)
+    box-shadow 5px -5px 40px var(--color-shadow-default)
     transform rotate(45deg)
     top -29px
     margin-left -60px
     border-radius 12px
 
 .confirmBarDropBottom
-  box-shadow cardDrop, 0px 2px 0px var(--thick), 0px 8px 8px -2px var(--thick), 0px 0px 10px -2px var(--thick)
+  box-shadow 0px 1px 1px var(--color-shadow-subtle), 0px 2px 0px var(--color-shadow-default), 0px 8px 8px -2px var(--color-shadow-default), 0px 0px 10px -2px var(--color-shadow-default)
 
 .txMonitorBar
   position absolute
@@ -2151,7 +2151,7 @@ span
 
 .signerRequestSuccess
   .monitorIconIndicator
-    background var(--good) !important
+    background var(--color-action-primary) !important
 
 .signerRequestMonitor
   .txStatus
@@ -2159,10 +2159,10 @@ span
 
 .signerRequestError
   .monitorIconIndicator
-    background var(--bad) !important
+    background var(--color-status-danger) !important
   .txProgressConfirmsItem
     svg
-      color var(--bad) !important
+      color var(--color-status-danger) !important
 
 .signerUnlockRequest
   display flex
@@ -2183,17 +2183,17 @@ span
   padding 8px 2px
   font-weight 400
   margin-top 40px
-  border-bottom 2px solid var(--ghostZ)
+  border-bottom 2px solid var(--color-bg-primary)
   text-transform uppercase
-  color var(--good)
+  color var(--color-action-primary)
   letter-spacing 1px
 
 .signatureDigestRows, .calldataDigestRow
   width 100%
   box-sizing border-box
   padding 12px
-  border-left 2px solid var(--good)
-  background var(--ghostZ)
+  border-left 2px solid var(--color-action-primary)
+  background var(--color-bg-primary)
   border-radius 8px
 
 .signatureDigestRows
@@ -2207,15 +2207,15 @@ span
   width 100%
   box-sizing border-box
   padding 14px
-  border-left 2px solid var(--good)
-  background var(--ghostZ)
+  border-left 2px solid var(--color-action-primary)
+  background var(--color-bg-primary)
   border-radius 8px
 
 .erc7730Title
   font-size 16px
   font-weight 500
   line-height 1.35
-  color var(--good)
+  color var(--color-action-primary)
 
 .erc7730Intent
   margin-top 6px
@@ -2223,7 +2223,7 @@ span
   font-weight 500
   letter-spacing 1px
   text-transform uppercase
-  color var(--outerspace08)
+  color var(--color-text-secondary)
 
 .erc7730Rows
   margin-top 16px
@@ -2232,7 +2232,7 @@ span
   margin-top 14px
 
 .erc7730Label
-  color var(--good)
+  color var(--color-action-primary)
   font-size 11px
   font-weight 500
   letter-spacing 1px
@@ -2262,7 +2262,7 @@ span
   margin-top 14px
 
 .signatureDigestLabel, .calldataDigestLabel
-  color var(--good)
+  color var(--color-action-primary)
   font-size 11px
   font-weight 500
   letter-spacing 1px
@@ -2302,7 +2302,7 @@ span
 
   .simpleJsonValue
     margin 8px 10px 10px 3px
-    border-left 2px solid var(--good)
+    border-left 2px solid var(--color-action-primary)
     padding 4px 7px 2px 7px
     font-size 13px
     width calc(100% - 3px)

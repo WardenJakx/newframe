@@ -60,7 +60,7 @@ const Details = ({ address, name }: { address: string; name?: string }) => {
 const Description = ({ isRevoke }: { isRevoke: boolean }) => (
   <ClusterRow>
     <ClusterValue>
-      <div className='clusterTag' style={{ color: 'var(--moon)' }}>
+      <div className='clusterTag' style={{ color: 'var(--color-status-danger)' }}>
         {isRevoke ? <span>{'revoke approval to spend'}</span> : <span>{'grant approval to spend'}</span>}
       </div>
     </ClusterValue>
@@ -181,7 +181,7 @@ const EditTokenSpend = ({
                   <div
                     key={mode + amount}
                     className='approveTokenSpendAmountSubmit'
-                    style={{ color: 'var(--good)' }}
+                    style={{ color: 'var(--color-action-primary)' }}
                   >
                     {svg.check(20)}
                   </div>
@@ -234,7 +234,7 @@ const EditTokenSpend = ({
             <ClusterValue onClick={() => resetToRequestAmount()}>
               <div
                 className='clusterTag'
-                style={mode === 'requested' ? { color: 'var(--good)' } : {}}
+                style={mode === 'requested' ? { color: 'var(--color-action-primary)' } : {}}
                 role='button'
               >
                 {'Requested'}
@@ -249,7 +249,7 @@ const EditTokenSpend = ({
             >
               <div
                 className='clusterTag'
-                style={mode === 'unlimited' ? { color: 'var(--good)' } : {}}
+                style={mode === 'unlimited' ? { color: 'var(--color-action-primary)' } : {}}
                 role='button'
               >
                 {'Unlimited'}
@@ -264,7 +264,11 @@ const EditTokenSpend = ({
                   setCustom('')
                 }}
               >
-                <div className={'clusterTag'} style={isCustom ? { color: 'var(--good)' } : {}} role='button'>
+                <div
+                  className={'clusterTag'}
+                  style={isCustom ? { color: 'var(--color-action-primary)' } : {}}
+                  role='button'
+                >
                   Custom
                 </div>
               </ClusterValue>

@@ -14,6 +14,16 @@ interface ChainTokenIconProps {
 }
 
 const ethChains = ['ethereum', 'mainnet', 'görli', 'goerli', 'sepolia', 'ropsten', 'rinkeby', 'kovan']
+const accentChainMap: Record<string, string> = {
+  accent1: 'mainnet',
+  accent2: 'testnet',
+  accent3: 'default',
+  accent4: 'optimism',
+  accent5: 'gnosis',
+  accent6: 'polygon',
+  accent7: 'arbitrum',
+  accent8: 'other'
+}
 
 function symbolFallback(symbol: string) {
   return symbol ? symbol.slice(0, 5) : '?'
@@ -22,12 +32,13 @@ function symbolFallback(symbol: string) {
 function chainColor(chainId: number, networksMeta: ChainTokenIconProps['networksMeta']) {
   const primaryColor = networksMeta[chainId]?.primaryColor || ''
 
-  if (!primaryColor) return 'var(--moon)'
+  if (!primaryColor) return 'var(--color-status-danger)'
   if (primaryColor.startsWith('var(') || primaryColor.startsWith('#') || primaryColor.startsWith('rgb')) {
     return primaryColor
   }
 
-  return `var(--${primaryColor})`
+  const chainColor = accentChainMap[primaryColor]
+  return chainColor ? `var(--color-chain-${chainColor})` : 'var(--color-chain-other)'
 }
 
 function warnImageFailure(message: string, details: Record<string, unknown>) {

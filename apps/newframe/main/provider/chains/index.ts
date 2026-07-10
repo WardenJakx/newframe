@@ -1,6 +1,6 @@
 import { isDeepStrictEqual } from 'util'
 
-import { Colorway, getColor } from '../../../resources/colors'
+import { getColor } from '../../../resources/colors'
 import store from '../../store'
 
 import type { Chain, ChainMetadata, Origin } from '../../store/state'
@@ -15,9 +15,6 @@ const storeApi = {
   },
   getChainsMeta: (): Record<string, ChainMetadata> => {
     return store('main.networksMeta.ethereum') || {}
-  },
-  getColorway: (): Colorway => {
-    return store('main.colorway') as Colorway
   }
 }
 
@@ -73,7 +70,6 @@ function createOriginChainObserver(handler: ChainChangedHandler & NetworkChanged
 function getActiveChains(): RPC.GetEthereumChains.Chain[] {
   const chains = storeApi.getChains()
   const meta = storeApi.getChainsMeta()
-  const colorway = storeApi.getColorway()
 
   return Object.values(chains)
     .filter((chain) => chain.on)
@@ -84,7 +80,7 @@ function getActiveChains(): RPC.GetEthereumChains.Chain[] {
       const { icon: currencyIcon, name: currencyName, symbol, decimals } = nativeCurrency
 
       const icons = currencyIcon ? [{ url: currencyIcon }] : []
-      const colors = primaryColor ? [getColor(primaryColor, colorway)] : []
+      const colors = primaryColor ? [getColor(primaryColor)] : []
 
       return {
         chainId: id,

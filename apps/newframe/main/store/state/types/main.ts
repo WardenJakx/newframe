@@ -3,7 +3,6 @@ import { z } from 'zod'
 import { AccountMetadataSchema, AccountSchema } from './account'
 import { BalanceSchema } from './balance'
 import { ChainMetadataSchema, ChainSchema } from './chain'
-import { ColorwayPrimarySchema } from './colors'
 import { OriginSchema } from './origin'
 import { PermissionSchema } from './permission'
 import { ShortcutSchema } from './shortcuts'
@@ -151,8 +150,7 @@ export const MainSchema = z.object({
   activity: ActivitySchema,
   orders: OrdersSchema,
   mute: z.record(notificationTypes, z.boolean()),
-  colorway: z.enum(['light', 'dark']),
-  colorwayPrimary: ColorwayPrimarySchema,
+  colorway: z.literal('dark'),
   shortcuts: ShortcutsSchema,
   updater: UpdaterPreferencesSchema,
   ...PreferencesSchema

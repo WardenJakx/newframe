@@ -32,6 +32,7 @@ import {
 } from '../../../resources/domain/dappLauncher'
 import { cachedImageUrl, isCachedImageReference } from '../../../resources/domain/imageCache'
 import { matchFilter } from '../../../resources/utils'
+import { chainColorCssVariable, resolveSystemColor } from '../../../resources/style/tokens/colors'
 
 import Requests from '../Account/Requests'
 import TransactionInformation from '../Account/Requests/TransactionRequest/TransactionInformation'
@@ -285,8 +286,8 @@ const AddressQRCode = ({ address }: { address: string }) => {
       margin: 1,
       width: 156,
       color: {
-        dark: '#000000',
-        light: '#ffffff'
+        dark: resolveSystemColor('qr-foreground'),
+        light: resolveSystemColor('qr-background')
       }
     }).catch((err) => console.error('Unable to render QR code', err))
   }, [address])
@@ -685,7 +686,7 @@ class Home extends React.Component<any, any> {
 
   chainColor(chainId: number) {
     const primaryColor = this.store('main.networksMeta.ethereum', chainId, 'primaryColor')
-    return primaryColor ? `var(--${primaryColor})` : 'var(--moon)'
+    return chainColorCssVariable(primaryColor)
   }
 
   // chain icon: cached or remote icon from networksMeta, eth glyph for ethereum
@@ -3620,7 +3621,6 @@ class Home extends React.Component<any, any> {
 
     const platform = this.store('platform')
     const summonShortcut = this.store('main.shortcuts.summon')
-    const colorway = this.store('main.colorway')
     const biometricUnlock = !!this.store('main.biometricUnlock')
     const trezorDerivation = this.store('main.trezor.derivation')
     const ledgerDerivation = this.store('main.ledger.derivation')
@@ -3635,10 +3635,6 @@ class Home extends React.Component<any, any> {
         ? 'Fetch portfolio tokens and balances from Zerion'
         : 'Add a Zerion API key to enable'
 
-    const colorwayOptions = [
-      { text: 'Dark', value: 'dark' },
-      { text: 'Light', value: 'light' }
-    ]
     const trezorOptions = [
       { text: 'Standard', value: 'standard' },
       { text: 'Legacy', value: 'legacy' },
@@ -3794,9 +3790,6 @@ class Home extends React.Component<any, any> {
             <div className='t2SettingsSectionTitle'>App</div>
             {toggleRows.map((setting) =>
               this.renderSettingsToggleRow(setting.label, setting.on, setting.toggle, setting.detail)
-            )}
-            {this.renderSettingsSelectRow('Colorway', colorwayOptions, colorway, (value) =>
-              link.send('tray:action', 'setColorway', value)
             )}
             {this.renderSettingsActionRow('Lock Newframe', 'Lock', () => this.lockFrame())}
           </div>

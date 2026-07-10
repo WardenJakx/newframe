@@ -9,10 +9,10 @@
     padding 0px 10px
     align-items center
     border-radius 6px
-    box-shadow 0px 5px 7px -3px var(--ghostZ)
+    box-shadow 0px 5px 7px -3px var(--color-bg-primary)
 
     .customTokensAddToken
-      background var(--ghostC)
+      background var(--color-bg-hover)
       height 30px
       border-radius 12px
       display flex
@@ -28,7 +28,7 @@
         pointer-events none
 
     .customTokensAddToken:hover
-      background var(--ghostD)
+      background var(--color-bg-hover)
 
   .customTokensFooter
     position absolute
@@ -67,7 +67,7 @@
     align-items center
     text-transform uppercase
     font-family 'MainFont'
-    color var(--outerspace05)
+    color var(--color-text-muted)
 
   .customTokensListItem
     position relative
@@ -76,7 +76,7 @@
     height 50px
     padding 0px 4px
     overflow hidden
-    border-bottom 1px solid var(--ghostY)
+    border-bottom 1px solid var(--color-bg-primary)
 
     .customTokensListItemTitle
       display flex
@@ -96,7 +96,7 @@
         cursor pointer
         padding 7px
         box-sizing border-box
-        background var(--ghostB)
+        background var(--color-bg-control)
         transition var(--standardFast)
         transform rotate(-180deg)
         
@@ -104,7 +104,7 @@
           pointer-events none
 
       .customTokensListItemExpand:hover
-        background var(--ghostC)
+        background var(--color-bg-hover)
 
       .customTokensListItemExpandActive
         transform rotate(0deg)
@@ -124,8 +124,8 @@
           right 0
           border-radius 13px
           position absolute
-          background var(--outerspace)
-          color var(--ghostD)
+          background var(--color-text-primary)
+          color var(--color-bg-hover)
           display flex
           justify-content center
           align-items center
@@ -141,8 +141,8 @@
           width 28px
           border-radius 20px
           margin-right 12px
-          border 2px solid var(--ghostC)
-          background var(--ghostC)
+          border 2px solid var(--color-bg-hover)
+          background var(--color-bg-hover)
           overflow hidden
 
         .customTokensListItemText
@@ -169,7 +169,7 @@
           font-size 12px
           font-weight 300
           font-family 'MainFont'
-          color var(--outerspace05)
+          color var(--color-text-muted)
           line-height 12px
 
       .customTokensListItemChain
@@ -196,7 +196,7 @@
       margin 0px 10px
       border-radius 9px
       font-family 'FiraCode'
-      background var(--ghostB)
+      background var(--color-bg-control)
       // border-radius 12px
       // margin 0px 3px 0px 3px
       padding-top 1px
@@ -221,25 +221,25 @@
         border-radius 10px
         cursor pointer
         text-transform uppercase
-        background var(--ghostB)
+        background var(--color-bg-control)
 
         *
           pointer-events none
 
       .customTokensListItemButton:hover
-        background var(--ghostC)
+        background var(--color-bg-hover)
 
       .editButton
-        color var(--good)
+        color var(--color-action-primary)
         margin-right 8px
 
       .removeButton
-        color var(--bad)
+        color var(--color-status-danger)
         margin-left 8px
 
   .customTokensListItemExpanded
     height 122px
-    // background var(--ghostY)
+    // background var(--color-bg-primary)
 
   .customTokensListItemChainDecimal
     display flex

@@ -14,7 +14,7 @@
   transform translate3d(0, 0, 0)
   font-family 'MainFont'
   padding 0px
-  background var(--ghostA)
+  background var(--color-bg-raised)
   margin-top 5px
   cursor pointer
   flex-grow 1
@@ -62,12 +62,12 @@
 ._txFeeGwei:hover
   // flex 1
   // padding 0px 10px
-  // background var(--moon)
-  // color var(--moonOver)
-  background var(--ghostB)
+  // background var(--color-status-danger)
+  // color var(--color-text-inverse)
+  background var(--color-bg-control)
   // transform translateY(-5px)
-  // box-shadow 0px 20px 30px -5px var(--ghostX)
-  // border-bottom 1px solid var(--goodDark)
+  // box-shadow 0px 20px 30px -5px var(--color-shadow-default)
+  // border-bottom 1px solid var(--color-action-primary-text)
   // animation 4s shake ease-in-out infinite alternate
 
 ._txFeeGwei:active
@@ -76,7 +76,7 @@
   // animation-duration 2s
   // animation-timing-function: ease-in-out
   // animation-iteration-count: infinite
-  // box-shadow 0px 5px 8px 0px var(--ghostZ)
+  // box-shadow 0px 5px 8px 0px var(--color-bg-primary)
 
 ._txFeeUSDTagValue
   font-size 13px
@@ -106,12 +106,12 @@
     padding 1px
     
   ._txFeeValueCurrency
-    color var(--mint)
+    color var(--color-text-muted)
     font-size 10px
     font-weight 600
 
 ._txFeeValueDefaultWarn
-  color var(--bad)
+  color var(--color-status-danger)
 
 ._txFeeValueHover
   position absolute
@@ -160,7 +160,7 @@
 //   opacity 1
 
 ._txFeeBar:hover
-  background var(--ghostB)      
+  background var(--color-bg-control)
 
 @keyframes wavey
   0%
@@ -331,12 +331,12 @@
 //       text-align center
 //       letter-spacing .4em
 //     .front
-//       background-color #222
-//       color #fff
+//       background-color var(--color-bg-control)
+//       color var(--color-text-primary)
 //       transform rotateY(0) translateZ(24px)
 //     .back
-//       background-color rgba(white,.0)
-//       color rgba(#222,.0)
+//       background-color transparent
+//       color transparent
 //       transform rotateX(90deg) translateZ(24px)
 //       overflow hidden
 //       &:after
@@ -346,18 +346,18 @@
 //         left -10%
 //         width 120%
 //         height 50%
-//         background #222
+//         background var(--color-bg-control)
 //         transform rotate(8deg)
 //         transition all .5s ease
 //         transition-delay .15s
 //     &:hover
 //       transform translateZ(-24px) rotateX(-90deg)
 //       .front
-//         background black
+//         background var(--color-bg-primary)
 //         transition all .8s ease
 //       .back
-//         color #222
+//         color var(--color-text-inverse)
 //         transition color .4s linear
-//         background white
+//         background var(--color-text-primary)
 //         &:after
 //           transform rotate(6deg) translate(100px,-18px)

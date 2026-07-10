@@ -3,6 +3,7 @@ import log from 'electron-log'
 import path from 'path'
 
 import store from '../store'
+import { resolveSemanticColor } from '../../resources/style/tokens/colors'
 
 import type { ChainId } from '../store/state'
 
@@ -19,7 +20,7 @@ export function createWindow(
     acceptFirstMouse: true,
     transparent: process.platform === 'darwin',
     show: false,
-    backgroundColor: store('main.colorwayPrimary', store('main.colorway'), 'background'),
+    backgroundColor: resolveSemanticColor('bg-primary'),
     skipTaskbar: process.platform !== 'linux',
     webPreferences: {
       ...webPreferences,

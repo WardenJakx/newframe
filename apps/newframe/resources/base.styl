@@ -1,3 +1,5 @@
+@import './style/tokens/colors.generated.css'
+
 @font-face
   font-family 'VCR'
   font-weight 100 700
@@ -169,9 +171,6 @@
     transform: translate(0, 0) rotate(0)  
 
 body
-  // Shadows
-  --cardDrop 0px 1px 1px rgba(0, 34, 32, 0.1)
-
   // Transistions
   --standardFaster .08s cubic-bezier(.82,0,.12,1) all
   --standardFast .16s cubic-bezier(.82,0,.12,1) all
@@ -192,7 +191,7 @@ body
   right 0
   bottom 0 
   left 0
-  background linear-gradient(-35deg, var(--overlayA) 0%, var(--overlayB) 100%)
+  background linear-gradient(-35deg, var(--color-overlay-start) 0%, var(--color-overlay-end) 100%)
   z-index 9999999999999999
   pointer-events none
 
@@ -204,266 +203,8 @@ body
   *
     transition none !important
 
-.light, .dark
-  --hardware rgba(110, 230, 255, 1)
-  --hardware2 rgba(190, 220, 255, 1)
-
-  --smart rgba(150, 255, 210, 1)
-  --smart04 rgba(150, 255, 210, 0.4)
-  --smart02 rgba(150, 255, 210, 0.2)
-  --smartShade rgba(100, 205, 150, 1)
-  --hot rgba(255, 150, 150, 1)
-
-  --shader rgba(16, 44, 60, 0.7)
-  // --oldPhase #212d2e
-  // --oldPhaseShade #1c2526
-  --phase rgba(18, 45, 56, 1)
-  --phaseLight rgba(28, 60, 76, 1)
-  // --phaseLighter rgba(38, 70, 86, 1)
-  --phaseShade rgba(8 , 20, 26, 1)
-
-  --goodHighlighter rgb(150, 255, 235)
-  --goodHighlight rgb(120, 255, 235)
-  --goodLight rgb(0, 220, 200)
-  --goodOver rgba(0, 90, 100, 1)
-  --good rgb(0, 210, 190)
-  --goodUp rgb(120, 230, 200)
-
-  --goodShade rgb(0, 190, 160)
-  --good0 rgba(0, 210, 180, 0)
-  --good01 rgba(0, 210, 180, 0.1)
-  --good02 rgba(0, 210, 180, 0.2)
-  --good03 rgba(0, 210, 180, 0.3)
-  --good04 rgba(0, 210, 180, 0.4)
-  --good06 rgba(0, 210, 180, 0.6)
-
-  --goodDark rgba(0, 70, 50, 1)
-
-  --badOver rgb(140, 00, 50)
-  --bad rgb(255, 110, 155)
-  --bad0 rgba(255, 110, 155, 0)
-  --bad01 rgba(255, 110, 155, 0.1)
-  --bad04 rgba(255, 110, 155, 0.4)
-  --bad06 rgba(255, 110, 155, 0.6)
-
-
-
-
-  // --badLight rgb(255, 104, 159)
-  // --badLighter rgb(255, 107, 163)
-  // --badShade rgb(230, 80, 135)
-  // --badDark rgb(100, 0, 00)
-
-  // --pendingHighlight rgb(104, 121, 255)
-  --pendingOver rgb(34, 0, 65)
-  --pending rgb(134, 110, 255)
-  // --pending02 rgba(94, 110, 255, 0.4)
-  // --pending01 rgba(94, 110, 255, 0.2)
-  --pending04 rgba(134, 110, 255, 0.4)
-  --pendingShade rgb(114, 90, 235)
-  --pendingShade2 rgb(104, 80, 225)
-  --pendingOver rgb(240, 240, 255)
-
-  --warning rgb(230, 184, 0)
-
-  --foreverwhite rgba(242, 242, 255, 1)
-
-  // --moon rgba(242, 168, 59, 1)
-  --moonHighlight rgba(255, 215, 215, 1)
-  --moonOver rgba(165, 25, 25, 1)
-  --moon rgba(255, 185, 185, 1)
-  --moonDark rgba(185, 85, 85, 1)
-  --moon06 rgba(255, 145, 105, 0.6)
-  --moonLight rgba(255, 190, 190, 1)
-
-  --mint rgba(210, 255, 250, 1)
-  --mintOver rgba(15, 55, 55, 1)
-
-  // Accents
-  --accent1 rgb(0, 210, 190) // Main
-  --accent2 rgb(255, 153, 51) // Testnets
-  --accent3 rgb(255, 102, 207) // Default
-  --accent4 rgb(242, 99, 99) // Optimism
-  --accent5 rgb(90, 181, 178) // Gnosis
-  --accent6 rgb(152, 120, 221) // Polygon
-  --accent7 rgb(62, 173, 241) // Arbitrum
-  --accent8 rgb(106, 131, 255)  // Other
-
-  // // Shadows
-  // --cardDrop 0px 1px 1px rgba(0, 34, 32, 0.1)
-
-  // // Transistions
-  // --standard .32s cubic-bezier(.82,0,.12,1) all
-  // --standardVibe .48s cubic-bezier(.82,0,.12,1) all
-  // --standardSlow .64s cubic-bezier(.82,0,.12,1) all
-  // --var(--standardSlower) .96s cubic-bezier(.82,0,.12,1) all
-  // --standardSlowest 1.6s cubic-bezier(.82,0,.12,1) all
-  // --standardFast .16s cubic-bezier(.82,0,.12,1) all
-
-  // --slowRocket 2.4s cubic-bezier(.52,0,.12,1) all
-  // // 0.18s cubic-bezier(0.8, 1, 0.2, 1) all
-  // --cubic cubic-bezier(.82,0,.12,1)
-
-.light
-  // --bg rgba(228, 232, 248, 1) // #dadfea // #dce1e8
-  // --bg0 rgba(228, 232, 248, 0)
-  --v #4e5758
-  --outerspace01 rgba(14, 18, 38, 0.1)
-  --outerspace02 rgba(16, 12, 42, 0.2)
-  --outerspace03 rgba(18, 26, 46, 0.3)
-  --outerspace05 rgba(20, 30, 50, 0.5)
-  --outerspace06 rgba(22, 34, 54, 0.6)
-  --outerspace07 rgba(24, 38, 58, 0.7)
-  --outerspace08 rgba(26, 42, 62, 0.8)
-  --outerspace09 rgba(28, 46, 66, 0.9)
-  --outerspace rgba(30, 50, 70, 1)
-
-  // --outerspace01 rgba(1, 21, 44, 0.1)
-  // --outerspace02 rgba(4, 24, 48, 0.2)
-  // --outerspace03 rgba(7, 27, 52, 0.3)
-  // --outerspace05 rgba(10, 30, 56, 0.5)
-  // --outerspace06 rgba(13, 33, 60, 0.6)
-  // --outerspace07 rgba(16, 36, 64, 0.7)
-  // --outerspace08 rgba(19, 39, 68, 0.8)
-  // --outerspace09 rgba(22, 42, 72, 0.9)
-  // --outerspace rgba(25, 45, 76, 1)
-
-  // --outerspaceShade #1c2526
-  --outerspaceLight #29393a
-  --outerspacePulse #395153
-  --outerspacePhase rgba(30, 65, 70, 1)
-
-  --outerspaceDark #0b1819
-  --spacewhite rgba(247, 251, 255, 1)
-  
-  --ghostX02 rgba(192, 181, 211, 0.2)
-  --ghostX04 rgba(192, 181, 211, 0.4)
-  --ghostX09 rgba(192, 181, 211, 0.9)
-  --ghostX rgba(192, 181, 211, 1)
-  --ghostY rgba(208, 199, 222, 1)
-  --ghostZ0 rgba(224, 217, 233, 0)
-  --ghostZ05 rgba(224, 217, 233, 0.5)
-  --ghostZ08 rgba(224, 217, 233, 0.8)
-  --ghostZ rgba(224, 217, 233, 1)
-
-  --ghostAZ rgba(232, 223, 238, 1)
-
-  --ghostA05 rgba(240, 230, 243, 0.5)
-  --ghostA rgba(240, 230, 243, 1)
-
-  --ghostB0 rgba(244, 238, 246, 0)
-  --ghostB05 rgba(244, 238, 246, 0.5)
-  --ghostB rgba(244, 238, 246, 1)
-  --ghostC0 rgba(248, 246, 249, 0)
-  --ghostC rgba(248, 246, 249, 1)
-  --ghostD rgba(252, 250, 252, 1)
-
-
-  // --ghostE04 rgba(255, 253, 254, 0.4)
-  // --ghostE rgba(255, 253, 254, 1)
-  // --ghostF rgba(255, 255, 255, 1)
-
-  --moon rgb(255, 100, 110)
-  --moonDark rgba(215, 90, 40, 1)
-  --moonLight rgba(255, 135, 135, 1)
-  --moonOver rgba(255, 240, 240, 1)
-
-  --goodHighlighter rgb(150, 210, 180)
-  --goodHighlight rgb(120, 210, 180)
-  --good rgb(0, 170, 120)
-  --goodOver rgba(230, 255, 255, 1)
-  --goodUp rgb(0, 200, 200)
-  --goodDark rgb(0, 90, 90)
-  // --bad rgba(215, 100, 135, 1)
-  --badOver rgba(255, 235, 240, 1)
-  --bad rgba(255, 50, 100, 1) // rgba(235, 90, 140, 1)
-  --bad0 rgba(235, 30, 140, 0)
-
-  ::selection 
-    background-color var(--outerspace02)
-
-  --overlayA rgba(200, 255, 255, 0.04)
-  --overlayB rgba(50, 255, 225, 0.04) 
-
-  --thinner rgba(16, 44, 180, .02)
-  --thin rgba(16, 44, 180, .04)
-  --thick rgba(16, 44, 180, .07)
-  --doubleThick rgba(16, 44, 180, .14)
-  --tripleThick rgba(16, 44, 180, .21)
-  --thick0 rgba(16, 44, 180, 0)
-
-  // Accent Overrides
-  --accent1 rgb(0, 170, 120) // Main
-  --accent2 rgb(239, 92, 1) // Testnets
-  --accent3 rgb(255, 0, 174) // Default
-  --accent4 rgb(246, 36, 35) // Optimism
-  --accent5 rgb(45, 155, 152) // Gnosis
-  --accent6 rgb(140, 97, 232) // Polygon
-  --accent7 rgb(31, 144, 214) // Arbitrum
-  --accent8 rgb(44, 78, 249) // Other
-
-  --mint rgb(70, 85, 100)
-  --mintOver rgba(15, 55, 55, 1)
-
-.dark
-  --v #4e5758
-  --outerspace01 rgba(214, 214, 217, 0.1)
-  --outerspace02 rgba(217, 217, 222, 0.2)
-  --outerspace03 rgba(220, 220, 227, 0.3)
-  --outerspace04 rgba(223, 223, 237, 0.4)
-  --outerspace05 rgba(226, 226, 240, 0.5)
-  --outerspace06 rgba(229, 229, 243, 0.6)
-  --outerspace07 rgba(232, 232, 246, 0.7)
-  --outerspace08 rgba(235, 235, 249, 0.8)
-  --outerspace09 rgba(238, 238, 252, 0.9)
-  --outerspace rgba(248, 255, 255, 1)
-  
-  // --outerspaceShade #1c2526
-  --outerspaceLight #29393a
-  --outerspacePulse #395153
-  --outerspacePhase rgba(30, 65, 70, 1)
-  --outerspaceShader rgb(16, 36, 38)
-  --outerspaceDark #0b1819
-  --spacewhite rgba(38, 42, 50, 1) 
-
-  --ghostX09 rgba(8, 4, 10, 0.9)
-  --ghostX04 rgba(8, 4, 10, 0.4)
-  --ghostX rgba(8, 4, 10, 1)
-
-  --ghostY rgba(13, 9, 15, 1)
-
-  --ghostZ0 rgba(18, 14, 20, 0)
-  --ghostZ05 rgba(18, 14, 20, 0.5)
-  --ghostZ08 rgba(18, 14, 20, 0.8)
-  --ghostZ rgba(18, 14, 20, 1) 
-
-  --ghostAZ rgba(22, 18, 24, 1)
-
-  --ghostA05 rgba(26, 22, 28, 0.5)
-  --ghostA rgba(26, 22, 28, 1)
-
-  --ghostB0 rgba(29, 25, 33, 0)
-  --ghostB05 rgba(29, 25, 33, 0.2)
-  --ghostB rgba(29, 25, 33, 1)
-  --ghostC0 rgba(33, 29, 38, 0)
-  --ghostC rgba(33, 29, 38, 1)
-  --ghostD rgba(37, 33, 43, 1)
-
-  --moon rgba(255, 165, 155, 1)
-  --moonOver rgba(135, 25, 0, 1)
-
-  ::selection 
-    background-color var(--outerspace02)
-
-  --overlayA rgba(80, 0, 100, 0.03) 
-  --overlayB rgba(30, 180, 180, 0.03)
-
-  --thinner rgba(0, 0, 10, .1)
-  --thin rgba(0, 0, 10, .2)
-  --thick rgba(0, 0, 10, .3)
-  --doubleThick rgba(0, 0, 10, .4)
-  --tripleThick rgba(0, 0, 10, .5)
-  --thick0 rgba(0, 0, 10, 0)
+::selection
+  background-color var(--color-border-default)
 
 @keyframes cardShow
   0%
@@ -521,7 +262,7 @@ body
   display flex
   justify-content center
   align-items center
-  color var(--outerspace)
+  color var(--color-text-primary)
 
 .line
   display none
@@ -549,16 +290,16 @@ body
 	  transform translateX(0)
   80%
 	  transform translateX(0)
-	  color var(--outerspace)
+	  color var(--color-text-primary)
   85%
 	  transform translateX(-3px)
-	  color var(--good)
+	  color var(--color-action-primary)
   90%
 	  transform translateX(0px)
-	  color var(--bad)
+	  color var(--color-status-danger)
   95%
 	  transform translateX(3px)
-	  color var(--outerspace)
+	  color var(--color-text-primary)
   100%
 	  transform translateX(0)
 
@@ -567,16 +308,16 @@ body
 	  transform translateX(0)
   80%
 	  transform translateX(0)
-	  color var(--outerspace)
+	  color var(--color-text-primary)
   85%
 	  transform translateX(5px)
-	  color var(--good)
+	  color var(--color-action-primary)
   90%
 	  transform translateX(5px)
-	  color var(--bad)
+	  color var(--color-status-danger)
   95%
 	  transform translateX(3px)
-	  color var(--outerspace)
+	  color var(--color-text-primary)
   100%
 	  transform translateX(0)
 
@@ -588,16 +329,16 @@ body
 	  transform translateX(0)
   80%
 	  transform translateX(0)
-	  color var(--outerspace)
+	  color var(--color-text-primary)
   85%
 	  transform translateX(-2px)
-	  color var(--good)
+	  color var(--color-action-primary)
   90%
 	  transform translateX(-4px)
-	  color var(--bad)
+	  color var(--color-status-danger)
   95%
 	  transform translateX(4px)
-	  color var(--outerspace)
+	  color var(--color-text-primary)
   100%
 	  transform translateX(0)
 
@@ -609,16 +350,16 @@ body
 	  transform translateX(0)
   80%
 	  transform translateX(0)
-	  color var(--outerspace)
+	  color var(--color-text-primary)
   85%
 	  transform translateX(3px)
-	  color var(--good)
+	  color var(--color-action-primary)
   90%
 	  transform translateX(1px)
-	  color var(--bad)
+	  color var(--color-status-danger)
   95%
 	  transform translateX(-2px)
-	  color var(--outerspace)
+	  color var(--color-text-primary)
   100%
 	  transform translateX(0)
 
@@ -630,16 +371,16 @@ body
 	  transform translateX(0)
   80%
 	  transform translateX(0)
-	  color var(--outerspace)
+	  color var(--color-text-primary)
   85%
 	  transform translateX(-2px)
-	  color var(--good)
+	  color var(--color-action-primary)
   90%
 	  transform translateX(-3px)
-	  color var(--bad)
+	  color var(--color-status-danger)
   95%
 	  transform translateX(-4px)
-	  color var(--outerspace)
+	  color var(--color-text-primary)
   100%
 	  transform translateX(0)
 
@@ -651,16 +392,16 @@ body
 	  transform translateX(0)
   80%
 	  transform translateX(0)
-	  color var(--outerspace)
+	  color var(--color-text-primary)
   85%
 	  transform translateX(-4px)
-	  color var(--good)
+	  color var(--color-action-primary)
   90%
 	  transform translateX(-4px)
-	  color var(--bad)
+	  color var(--color-status-danger)
   95%
 	  transform translateX(1px)
-	  color var(--outerspace)
+	  color var(--color-text-primary)
   100%
 	  transform translateX(0)
 
@@ -672,16 +413,16 @@ body
 	  transform translateX(0)
   80%
 	  transform translateX(0)
-	  color var(--outerspace)
+	  color var(--color-text-primary)
   85%
 	  transform translateX(2px)
-	  color var(--good)
+	  color var(--color-action-primary)
   90%
 	  transform translateX(-3px)
-	  color var(--bad)
+	  color var(--color-status-danger)
   95%
 	  transform translateX(4px)
-	  color var(--outerspace)
+	  color var(--color-text-primary)
   100%
 	  transform translateX(0)
 
@@ -693,16 +434,16 @@ body
 	  transform translateX(0)
   80%
 	  transform translateX(0)
-	  color var(--outerspace)
+	  color var(--color-text-primary)
   85%
 	  transform translateX(0px)
-	  color var(--good)
+	  color var(--color-action-primary)
   90%
 	  transform translateX(-2px)
-	  color var(--bad)
+	  color var(--color-status-danger)
   95%
 	  transform translateX(2px)
-	  color var(--outerspace)
+	  color var(--color-text-primary)
   100%
 	  transform translateX(0)
 
@@ -714,16 +455,16 @@ body
 	  transform translateX(0)
   80%
 	  transform translateX(0)
-	  color var(--outerspace)
+	  color var(--color-text-primary)
   85%
 	  transform translateX(-3px)
-	  color var(--good)
+	  color var(--color-action-primary)
   90%
 	  transform translateX(-1px)
-	  color var(--bad)
+	  color var(--color-status-danger)
   95%
 	  transform translateX(-4px)
-	  color var(--outerspace)
+	  color var(--color-text-primary)
   100%
 	  transform translateX(0)
 
@@ -735,16 +476,16 @@ body
 		transform translateX(0)
 	80%
     transform translateX(0)
-    color var(--outerspace)
+    color var(--color-text-primary)
 	85%
     transform translateX(-1px)
-    color var(--good)
+    color var(--color-action-primary)
 	90%
     transform translateX(-3px)
-    color var(--bad)
+    color var(--color-status-danger)
 	95%
     transform translateX(-1px)
-    color var(--outerspace)
+    color var(--color-text-primary)
 	100%
 		transform translateX(0)
 

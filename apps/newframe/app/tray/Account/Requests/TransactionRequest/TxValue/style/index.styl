@@ -33,12 +33,12 @@
 ._txMain
   position relative
   z-index 100001
-  background var(--ghostAZ)
+  background var(--color-bg-secondary)
   margin 0px 6px 16px 6px
   border-radius 26px
   overflow hidden
-  box-shadow 0px 4px 8px var(--ghostY), 0px 2px 8px var(--ghostY)
-  border-bottom 2px solid var(--ghostZ)
+  box-shadow 0px 4px 8px var(--color-bg-primary), 0px 2px 8px var(--color-bg-primary)
+  border-bottom 2px solid var(--color-bg-primary)
   padding 0
 
   ._txMainInner
@@ -65,7 +65,7 @@
       font-family 'MainFont'
       display flow-root
       padding 3px 3px 1px 3px
-      background var(--ghostZ)
+      background var(--color-bg-primary)
       margin 6px
 
       svg
@@ -101,7 +101,7 @@
           justify-content center
           align-items center
           border-radius 12px
-          background var(--ghostA)
+          background var(--color-bg-raised)
           margin-right 5px
 
         ._txMainTransferringPart:last-child
@@ -142,9 +142,9 @@
         font-family 'MainFont'
         padding 12px
         margin-top 1px
-        background var(--ghostA)
-        box-shadow 0px 1px 2px var(--ghostX)
-        border-bottom 2px solid var(--ghostZ)
+        background var(--color-bg-raised)
+        box-shadow 0px 1px 2px var(--color-shadow-default)
+        border-bottom 2px solid var(--color-bg-primary)
         
         svg
           position relative
@@ -164,18 +164,18 @@
           pointer-events none
 
       ._txMainValueClickable:hover
-        background var(--ghostB)
+        background var(--color-bg-control)
         transform translateY(-1px)
-        border-bottom 2px solid var(--ghostZ)
-        box-shadow 0px 8px 30px -12px var(--ghostX)
+        border-bottom 2px solid var(--color-bg-primary)
+        box-shadow 0px 8px 30px -12px var(--color-shadow-default)
         position relative
         z-index 300000
 
         
       ._txMainValueClickable:active
-        background var(--ghostB)
+        background var(--color-bg-control)
         transform translateY(0px)
-        box-shadow 0px 2px 4px var(--ghostX)
+        box-shadow 0px 2px 4px var(--color-shadow-default)
 
   ._txMainTagFee
     position relative
@@ -192,9 +192,9 @@
     height 52px
     margin-top 1px
     border-radius 16px
-    background var(--ghostA)
-    box-shadow 0px 1px 2px var(--ghostX)
-    border-bottom 2px solid var(--ghostZ)
+    background var(--color-bg-raised)
+    box-shadow 0px 1px 2px var(--color-shadow-default)
+    border-bottom 2px solid var(--color-bg-primary)
 
   ._txMainTag
     position relative
@@ -212,17 +212,17 @@
     margin-top 1px
 
   ._txMainTagWarning
-    color var(--moon)
+    color var(--color-status-danger)
 
   ._txMainTagBad
-    color var(--bad)
+    color var(--color-status-danger)
   
   ._txMainTagGood
-    color var(--good)
+    color var(--color-action-primary)
 
 ._txContinueButton
   margin-top 64px
-  background var(--ghostA)
+  background var(--color-bg-raised)
   border-radius 14px
   height 60px
   cursor pointer
@@ -236,7 +236,7 @@
   font-size 14px
 
 ._txContinueButton:hover
-  background var(--ghostB)
+  background var(--color-bg-control)
 
 // ._txMain:hover
 //   animation shake 8s ease-in-out infinite alternate
