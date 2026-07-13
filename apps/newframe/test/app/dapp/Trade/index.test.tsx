@@ -29,6 +29,12 @@ const other = {
   name: 'Other',
   lastSignerType: 'address'
 }
+const newAccount = {
+  id: 'new-account',
+  address: '0x0000000000000000000000000000000000000003',
+  name: 'New Account',
+  lastSignerType: 'address'
+}
 
 function initializeTradeState(balances = [wethBalance()]) {
   initializeRendererStateStore({
@@ -193,6 +199,34 @@ describe('Trade', () => {
     expect((screen.getByLabelText('WETH amount') as HTMLInputElement).value).toBe('1')
     expect(quoteCalls).toHaveLength(2)
     expect(quoteCalls[1].accountAddress).toBe(other.address)
+  })
+
+  it('stays mounted when a newly created account is selected before balances exist', async () => {
+    render(<Trade assetId={`${FLASH_ANVIL_CHAIN_ID}:${FLASH_WETH_ADDRESS}`} />)
+
+    await act(async () => {
+      applyRestoreActionBatch([
+        {
+          updates: [
+            {
+              path: `main.accounts.${newAccount.id}`,
+              value: newAccount
+            },
+            {
+              path: 'main.accountOrder',
+              value: [sender.id, other.id, newAccount.id]
+            },
+            {
+              path: 'selected.current',
+              value: newAccount.id
+            }
+          ]
+        }
+      ])
+    })
+
+    expect(screen.getByText('Trade')).toBeTruthy()
+    expect(screen.getByLabelText('Close Trade')).toBeTruthy()
   })
 
   it('paginates large asset menus instead of rendering the full portfolio', () => {
