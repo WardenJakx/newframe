@@ -14,6 +14,7 @@ import { hexToInt, roundGwei } from '../../resources/utils'
 
 import store from '../store'
 import FrameManager from './frames'
+import { broadcastToWindows } from './broadcast'
 import { createWindow } from './window'
 import { SystemTray, SystemTrayEventHandlers } from './systemTray'
 import { registerShortcut } from '../keyboardShortcuts'
@@ -116,8 +117,14 @@ function initWindow(id: string, opts: Electron.BrowserWindowConstructorOptions) 
     ? `http://localhost:1234/${id}/index.dev.html`
     : new URL(path.join(process.env.BUNDLE_LOCATION, `${id}.html`), 'file:')
 
-  windows[id] = createWindow(id, opts)
-  windows[id].loadURL(url.toString())
+  const window = createWindow(id, opts)
+  windows[id] = window
+
+  window.once('closed', () => {
+    if (windows[id] === window) delete windows[id]
+  })
+
+  window.loadURL(url.toString())
 }
 
 function initTrayWindow() {
@@ -130,7 +137,6 @@ function initTrayWindow() {
   }
   initWindow('tray', trayOpts)
 
-  windows.tray.on('closed', () => delete windows.tray)
   windows.tray.webContents.session.setPermissionRequestHandler((webContents, permission, res) => res(false))
   windows.tray.setResizable(false)
   windows.tray.setMovable(false)
@@ -468,7 +474,8 @@ const init = () => {
       dash.show()
     } else {
       dash.hide()
-      windows.tray.focus()
+      const trayWindow = windows.tray
+      if (trayWindow && !trayWindow.isDestroyed()) trayWindow.focus()
     }
   }, 'windows:dash')
 
@@ -495,16 +502,8 @@ const init = () => {
   })
 }
 
-const send = (id: string, channel: string, ...args: any[]) => {
-  if (windows[id] && !windows[id].isDestroyed()) {
-    windows[id].webContents.send(channel, ...args)
-  } else {
-    log.error(new Error(`A window with id "${id}" does not exist (windows.send)`))
-  }
-}
-
 const broadcast = (channel: string, ...args: any[]) => {
-  Object.keys(windows).forEach((id) => send(id, channel, ...args))
+  broadcastToWindows(windows, channel, ...args)
   frameManager.broadcast(channel, args)
 }
 
