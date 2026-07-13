@@ -2283,7 +2283,8 @@ class Home extends React.Component<any, any> {
                   latticeEndpoint: this.store('main.latticeSettings.endpointCustom'),
                   latticeEndpointMode: this.store('main.latticeSettings.endpointMode'),
                   portfolioApiKey: this.store('main.portfolioApiKey'),
-                  portfolioApiKeyRequired: false
+                  portfolioApiKeyRequired: false,
+                  resetConfirm: false
                 })
             })}
           </div>
@@ -2327,7 +2328,7 @@ class Home extends React.Component<any, any> {
               label: 'App Info',
               detail: this.store('main.instanceId'),
               icon: svg.copy(16),
-              onClick: () => this.setState({ overlay: 'about', menuOpen: false, resetConfirm: false })
+              onClick: () => this.setState({ overlay: 'about', menuOpen: false })
             })}
             {this.renderMenuPanelRow({
               label: 'Quit',
@@ -3396,9 +3397,11 @@ class Home extends React.Component<any, any> {
           <div
             aria-label='Back'
             className='t2OverlayBack'
-            onClick={() => this.setState({ overlay: null, menuOpen: true })}
+            onClick={() => this.setState({ overlay: null, menuOpen: true, resetConfirm: false })}
             onKeyDown={(e) =>
-              this.onKeyboardActivate(e, () => this.setState({ overlay: null, menuOpen: true }))
+              this.onKeyboardActivate(e, () =>
+                this.setState({ overlay: null, menuOpen: true, resetConfirm: false })
+              )
             }
             role='button'
             tabIndex={0}
@@ -3786,12 +3789,47 @@ class Home extends React.Component<any, any> {
             </div>
           </div>
 
-          <div className='t2SettingsSection'>
+          <div aria-label='App' className='t2SettingsSection' role='group'>
             <div className='t2SettingsSectionTitle'>App</div>
             {toggleRows.map((setting) =>
               this.renderSettingsToggleRow(setting.label, setting.on, setting.toggle, setting.detail)
             )}
             {this.renderSettingsActionRow('Lock Newframe', 'Lock', () => this.lockFrame())}
+            {this.renderSettingsActionRow('Reset Saved Data', 'Reset', () =>
+              link.send('tray:action', 'resetSavedData')
+            )}
+            {this.state.resetConfirm ? (
+              <div className='t2SettingsRow t2SettingsResetConfirm'>
+                <div className='t2SettingsRowText'>
+                  <div className='t2SettingsRowTitle'>Reset All Settings & Data?</div>
+                </div>
+                <div className='t2SettingsConfirmActions'>
+                  <div
+                    className='t2SettingsSmallButton t2SettingsDangerButton'
+                    onClick={() => link.send('tray:resetAllSettings')}
+                    role='button'
+                    tabIndex={0}
+                  >
+                    Yes
+                  </div>
+                  <div
+                    className='t2SettingsSmallButton'
+                    onClick={() => this.setState({ resetConfirm: false })}
+                    role='button'
+                    tabIndex={0}
+                  >
+                    No
+                  </div>
+                </div>
+              </div>
+            ) : (
+              this.renderSettingsActionRow(
+                'Reset All Settings & Data',
+                'Reset',
+                () => this.setState({ resetConfirm: true }),
+                true
+              )
+            )}
           </div>
 
           <div className='t2SettingsSection'>
@@ -3860,9 +3898,6 @@ class Home extends React.Component<any, any> {
                 onChange={(e) => this.inputPortfolioApiKey(e)}
               />
             </div>
-            {this.renderSettingsActionRow('Clear Saved Tokens + Activity', 'Clear', () =>
-              link.send('tray:action', 'clearSavedTokens')
-            )}
           </div>
         </div>
       </div>
@@ -3883,11 +3918,9 @@ class Home extends React.Component<any, any> {
           <div
             aria-label='Back'
             className='t2OverlayBack'
-            onClick={() => this.setState({ overlay: null, menuOpen: true, resetConfirm: false })}
+            onClick={() => this.setState({ overlay: null, menuOpen: true })}
             onKeyDown={(e) =>
-              this.onKeyboardActivate(e, () =>
-                this.setState({ overlay: null, menuOpen: true, resetConfirm: false })
-              )
+              this.onKeyboardActivate(e, () => this.setState({ overlay: null, menuOpen: true }))
             }
             role='button'
             tabIndex={0}
@@ -3920,38 +3953,6 @@ class Home extends React.Component<any, any> {
               link.send(
                 'tray:openExternal',
                 'https://github.com/wardenjakx/newframe/blob/main/apps/newframe/LICENSE'
-              )
-            )}
-            {this.state.resetConfirm ? (
-              <div className='t2SettingsRow t2SettingsResetConfirm'>
-                <div className='t2SettingsRowText'>
-                  <div className='t2SettingsRowTitle'>Reset All Settings & Data?</div>
-                </div>
-                <div className='t2SettingsConfirmActions'>
-                  <div
-                    className='t2SettingsSmallButton t2SettingsDangerButton'
-                    onClick={() => link.send('tray:resetAllSettings')}
-                    role='button'
-                    tabIndex={0}
-                  >
-                    Yes
-                  </div>
-                  <div
-                    className='t2SettingsSmallButton'
-                    onClick={() => this.setState({ resetConfirm: false })}
-                    role='button'
-                    tabIndex={0}
-                  >
-                    No
-                  </div>
-                </div>
-              </div>
-            ) : (
-              this.renderSettingsActionRow(
-                'Reset All Settings & Data',
-                'Reset',
-                () => this.setState({ resetConfirm: true }),
-                true
               )
             )}
           </div>
