@@ -14,6 +14,7 @@
     "extension": "bun --cwd apps/newframe-extension",
     "build": "bun run newframe build && bun run newframe-extension build",
     "dev:newframe": "bun run newframe dev",
+    "harness:newframe": "bun run newframe harness:newframe",
     "build:newframe": "bun run newframe build",
     "build:newframe-extension": "bun run newframe-extension build",
     "test": "bun run test:unit",
