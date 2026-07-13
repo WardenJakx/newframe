@@ -151,6 +151,7 @@ export interface FlashDefaultAssetOptions {
   assets?: readonly FlashAsset[]
   targetAsset: FlashAsset
   balances?: FlashAssetBalances | null
+  side?: FlashTradeSide
 }
 
 export interface FlashRuntime {
@@ -414,23 +415,44 @@ export function formatPairIntent({ side, targetAsset, contraAsset }: FlashAssetP
 export function getDefaultContraAsset({
   assets,
   targetAsset,
-  balances
+  balances,
+  side
 }: FlashDefaultAssetOptions): FlashAsset {
+  const defaultCandidates = getFlashDefaultContraAssetPriority(targetAsset.chainId).filter(
+    (asset) => !isSameFlashAsset(asset, targetAsset)
+  )
   const sameChainOptions = sortContraCandidates(
     (assets || getFlashDefaultContraAssetPriority(targetAsset.chainId)).filter(
       (asset) => asset.chainId === targetAsset.chainId && !isSameFlashAsset(asset, targetAsset)
     )
   )
-  const candidates = sameChainOptions.length
-    ? sameChainOptions
-    : getFlashDefaultContraAssetPriority(targetAsset.chainId).filter(
-        (asset) => !isSameFlashAsset(asset, targetAsset)
-      )
+  const candidates =
+    side === 'sell'
+      ? uniqueFlashAssets(
+          sortContraCandidates([...sameChainOptions, ...defaultCandidates].filter(isPreferredSellContraAsset))
+        )
+      : sameChainOptions.length
+        ? sameChainOptions
+        : defaultCandidates
 
   return (
     candidates.find((asset) => hasAssetBalance(asset, balances)) ||
     candidates[0] ||
     getFlashDefaultContraAssetPriority(FLASH_ANVIL_CHAIN_ID)[0]
+  )
+}
+
+function isPreferredSellContraAsset(asset: FlashAsset) {
+  return (
+    asset.symbol.toUpperCase() === FLASH_USDC_ASSET_SYMBOL ||
+    asset.isNative ||
+    asset.symbol.toUpperCase() === FLASH_WETH_ASSET_SYMBOL
+  )
+}
+
+function uniqueFlashAssets(assets: FlashAsset[]) {
+  return assets.filter(
+    (asset, index) => assets.findIndex((candidate) => isSameFlashAsset(candidate, asset)) === index
   )
 }
 

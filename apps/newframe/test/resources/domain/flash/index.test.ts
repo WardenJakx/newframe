@@ -1,8 +1,12 @@
 import {
   FLASH_ANVIL_CHAIN_ID,
   FLASH_BASE_CHAIN_ID,
+  FLASH_NATIVE_ETH_ASSET,
   FLASH_NATIVE_ETH_TOKEN_ADDRESS,
+  FLASH_USDC_ASSET,
+  FLASH_WETH_ASSET,
   balanceSummaryToFlashAsset,
+  getDefaultContraAsset,
   getFlashChainSlug,
   getFlashDefaultChainId,
   getFlashSupportedChainIds,
@@ -64,5 +68,84 @@ describe('flash domain helpers', () => {
     expect(toFlashApiAssetAddress(native)).toBe(FLASH_NATIVE_ETH_TOKEN_ADDRESS)
     expect(token.id).toBe('1:0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48')
     expect(token.symbol).toBe('USDC')
+  })
+
+  it('uses the preferred balance priority for the default sell contra asset', () => {
+    const targetAsset = {
+      id: `${FLASH_ANVIL_CHAIN_ID}:0x0000000000000000000000000000000000000001`,
+      symbol: 'TOKEN',
+      name: 'Token',
+      decimals: 18,
+      chainId: FLASH_ANVIL_CHAIN_ID,
+      isNative: false,
+      address: '0x0000000000000000000000000000000000000001'
+    }
+    const otherAsset = {
+      ...targetAsset,
+      id: `${FLASH_ANVIL_CHAIN_ID}:0x0000000000000000000000000000000000000002`,
+      symbol: 'OTHER',
+      name: 'Other Token',
+      address: '0x0000000000000000000000000000000000000002'
+    }
+    const assets = [FLASH_WETH_ASSET, targetAsset, otherAsset, FLASH_NATIVE_ETH_ASSET, FLASH_USDC_ASSET]
+
+    expect(
+      getDefaultContraAsset({
+        assets,
+        balances: [
+          { assetId: FLASH_USDC_ASSET.id, balance: '1' },
+          { assetId: FLASH_NATIVE_ETH_ASSET.id, balance: '1' },
+          { assetId: FLASH_WETH_ASSET.id, balance: '1' }
+        ],
+        side: 'sell',
+        targetAsset
+      })
+    ).toBe(FLASH_USDC_ASSET)
+
+    expect(
+      getDefaultContraAsset({
+        assets,
+        balances: [
+          { assetId: FLASH_WETH_ASSET.id, balance: '1' },
+          { assetId: FLASH_NATIVE_ETH_ASSET.id, balance: '1' }
+        ],
+        side: 'sell',
+        targetAsset
+      })
+    ).toBe(FLASH_WETH_ASSET)
+    expect(
+      getDefaultContraAsset({
+        assets,
+        balances: [{ assetId: FLASH_NATIVE_ETH_ASSET.id, balance: '1' }],
+        side: 'sell',
+        targetAsset
+      })
+    ).toBe(FLASH_NATIVE_ETH_ASSET)
+    expect(
+      getDefaultContraAsset({
+        assets,
+        balances: [{ assetId: otherAsset.id, balance: '1' }],
+        side: 'sell',
+        targetAsset
+      })
+    ).toBe(FLASH_USDC_ASSET)
+    expect(
+      getDefaultContraAsset({
+        assets,
+        balances: [
+          { assetId: FLASH_WETH_ASSET.id, balance: '1' },
+          { assetId: FLASH_NATIVE_ETH_ASSET.id, balance: '1' }
+        ],
+        side: 'buy',
+        targetAsset
+      })
+    ).toBe(FLASH_WETH_ASSET)
+    expect(assets).toEqual([
+      FLASH_WETH_ASSET,
+      targetAsset,
+      otherAsset,
+      FLASH_NATIVE_ETH_ASSET,
+      FLASH_USDC_ASSET
+    ])
   })
 })
