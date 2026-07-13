@@ -10,46 +10,31 @@ It gives us a deterministic Anvil chain with:
 
 ## Setup
 
+Anvil startup and seeding are owned by the TypeScript harness definitions. The regular and visual
+harnesses both start the same managed Anvil service, build the contracts, etch the mocks, and seed
+the configured balances before launching their workflows.
+
+Start the regular harness from `apps/newframe/`:
+
 ```sh
-make setup
+bun run harness:newframe
 ```
 
-This starts Anvil on `127.0.0.1:8545` with `--block-time 1`, funds the harness account with 100 ETH, etches the mock contracts, and mints seeded USDC.
-
-Run local Foundry tests:
+Or start the visual harness from the repository root:
 
 ```sh
-make test
+bun run visual:harness:newframe
 ```
 
-Verify the live Anvil setup without Newframe:
+Both start Anvil on `127.0.0.1:8545` with `--block-time 1`, fund the harness account with 100 ETH,
+etch the mock contracts, and seed USDC and WETH liquidity.
+
+The TypeScript harness definitions are the only supported way to manage this local Anvil setup and
+run the Newframe integration flows.
+
+For standalone contract development, run Foundry directly from `newframe-contracts/`:
 
 ```sh
-make smoke-direct
-```
-
-## Newframe Flow
-
-Start Newframe separately, then run one of the integration targets:
-
-```sh
-make integration-eth
-make integration-usdc
-```
-
-The integration targets first make sure Newframe knows the local Anvil chain. If chain `31337` is missing, they request `wallet_addEthereumChain`; approve the prompt in Newframe, then the transaction request continues.
-
-To only add/switch the local chain without sending a flow transaction:
-
-```sh
-make ensure-newframe-chain
-```
-
-Both targets use Newframe's RPC proxy at `http://127.0.0.1:1248?chainId=31337` with `cast --unlocked`, so Newframe receives `eth_sendTransaction` requests and presents the wallet UI.
-
-Useful direct checks:
-
-```sh
-make verify-seed
-cast call 0x0000000000000000000000000000000000001337 "ethDeposits(address)(uint256)" 0x35f9179059a691d8beecf82fe112f7277e018588 --rpc-url http://127.0.0.1:8545
+forge build
+forge test
 ```

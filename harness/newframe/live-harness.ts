@@ -3,6 +3,8 @@ import path from 'node:path'
 import { unlockHarnessNewframe } from '../../apps/newframe/scripts/unlock-harness-newframe.ts'
 
 import { HarnessRuntime, installSignalHandlers } from './core/service.ts'
+import { createAnvilService } from './services/anvil.ts'
+import { createSeedAnvilService } from './services/contracts.ts'
 import { createElectronProcessService } from './services/electron.ts'
 import { createLocalTradeService } from './services/local-trade.ts'
 
@@ -21,6 +23,9 @@ export async function runLiveHarness() {
   const removeSignalHandlers = installSignalHandlers(runtime)
 
   try {
+    await runtime.start(createAnvilService())
+    const seed = await runtime.start(createSeedAnvilService())
+    await runtime.watch(seed.completed)
     await runtime.start(createLocalTradeService({ stdio: 'inherit' }))
     const frame = await runtime.watch(runtime.start(createElectronProcessService()))
     void runUnlock()
