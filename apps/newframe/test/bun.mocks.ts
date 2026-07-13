@@ -108,6 +108,7 @@ const defaultState = () => ({
     },
     networks: { ethereum: {} },
     networksMeta: { ethereum: {} },
+    orders: {},
     origins: {},
     permissions: {},
     portfolioApiKey: '',
@@ -614,6 +615,23 @@ store.pruneActivity = (id: string) => {
     delete nextActivity[id]
     return nextActivity
   })
+}
+
+store.upsertOrder = (order: any) => {
+  const orderId = order?.orderId
+  if (!orderId) return
+
+  update('main.orders', orderId, (current: any = {}) => ({
+    ...current,
+    ...order,
+    orderId
+  }))
+}
+
+store.updateOrder = (orderId: string, orderUpdate: any = {}) => {
+  if (!orderId || !store('main.orders', orderId)) return
+
+  update('main.orders', orderId, (order: any) => ({ ...order, ...orderUpdate, orderId }))
 }
 
 store.upsertPendingNotification = (notification: any) => {

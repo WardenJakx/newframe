@@ -2,6 +2,7 @@ import {
   getPaidTransactionFee,
   getTransactionEffects,
   getTransactionIntent,
+  getTransactionPositionTokens,
   normalizeChainId,
   typeSupportsBaseFee,
   usesBaseFee
@@ -340,6 +341,61 @@ describe('#getTransactionEffects', () => {
         decimals: 6,
         symbol: 'USDC',
         detail: 'For spender 0x000000...001337'
+      }
+    ])
+  })
+})
+
+describe('#getTransactionPositionTokens', () => {
+  it('returns unique ERC-20 balance deltas with account-position metadata', () => {
+    const usdc = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'
+    const req = {
+      data: { chainId: '0xa' },
+      simulation: {
+        status: 'success',
+        effects: [
+          {
+            id: 'native-out',
+            kind: 'native',
+            direction: 'out',
+            symbol: 'ETH'
+          },
+          {
+            id: 'usdc-in',
+            kind: 'erc20',
+            direction: 'in',
+            decimals: 6,
+            symbol: 'USDC',
+            assetAddress: usdc,
+            logoURI: 'usdc.svg'
+          },
+          {
+            id: 'usdc-out',
+            kind: 'erc20',
+            direction: 'out',
+            decimals: 6,
+            symbol: 'USDC',
+            assetAddress: usdc
+          },
+          {
+            id: 'allowance',
+            kind: 'erc20',
+            direction: 'neutral',
+            decimals: 18,
+            symbol: 'IGNORED',
+            assetAddress: '0x0000000000000000000000000000000000001337'
+          }
+        ]
+      }
+    }
+
+    expect(getTransactionPositionTokens(req)).toStrictEqual([
+      {
+        address: usdc.toLowerCase(),
+        chainId: 10,
+        decimals: 6,
+        name: 'USDC',
+        symbol: 'USDC'
       }
     ])
   })

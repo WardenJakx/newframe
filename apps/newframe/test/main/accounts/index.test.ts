@@ -11,6 +11,7 @@ const windowsMock = { broadcast: jest.fn(), showTray: jest.fn() }
 const navMock = { on: jest.fn(), forward: jest.fn() }
 const externalDataScannerMock = {
   refreshBalances: jest.fn(),
+  refreshPositions: jest.fn(),
   close: jest.fn()
 }
 const externalDataScannerFactoryMock = jest.fn(() => externalDataScannerMock)
@@ -185,6 +186,25 @@ describe('#startDataScanner', () => {
 
     expect(() => accounts.close()).not.toThrow()
     expect(externalDataScannerMock.close).not.toHaveBeenCalled()
+  })
+
+  it('tracks and refreshes affected positions from an external order lifecycle', () => {
+    const accounts = new AccountsClass()
+    const token = {
+      address: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48',
+      chainId: 31337,
+      decimals: 6,
+      name: 'USD Coin',
+      symbol: 'USDC'
+    }
+
+    accounts.startDataScanner()
+
+    expect(accounts.refreshPositions(account.address, 31337, [token])).toBe(true)
+    expect(store('main.tokens.known', account.address)).toContainEqual(token)
+    expect(externalDataScannerMock.refreshPositions).toHaveBeenCalledWith(account.address, 31337, [token])
+
+    accounts.close()
   })
 })
 
@@ -759,6 +779,106 @@ describe('#resetNonce', () => {
 })
 
 describe('#setTxSent', () => {
+  it('does not replace metadata for an affected token that is already saved', () => {
+    const hash = '0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'
+    const usdc = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'
+    const savedToken = {
+      address: usdc,
+      chainId: 1,
+      decimals: 6,
+      logoURI: 'saved-usdc.svg',
+      name: 'USD Coin',
+      symbol: 'USDC'
+    }
+    store.set('main.tokens.known', account.address, [savedToken])
+    provider.send = jest.fn()
+
+    Accounts.addRequest(request, jest.fn())
+    ;(Accounts.current().requests[request.handlerId] as any).simulation = {
+      status: 'success',
+      effects: [
+        {
+          id: 'sim-usdc-out',
+          kind: 'erc20',
+          direction: 'out',
+          decimals: 6,
+          symbol: 'USDC',
+          assetAddress: usdc
+        }
+      ]
+    }
+    Accounts.setTxSent(request.handlerId, hash)
+
+    expect(store('main.tokens.known', account.address)).toStrictEqual([savedToken])
+  })
+
+  it('saves affected tokens and refreshes transaction positions when the receipt lands', async () => {
+    const hash = '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+    const receiptBlock = 100
+    const usdc = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'
+    request.account = account.address
+    const simulation = {
+      status: 'success',
+      effects: [
+        {
+          id: 'sim-usdc-in',
+          kind: 'erc20',
+          direction: 'in',
+          label: 'Asset in',
+          amount: '0x17d7840',
+          decimals: 6,
+          symbol: 'USDC',
+          assetAddress: usdc
+        }
+      ]
+    }
+    store.set('main.tokens.known', account.address, [])
+
+    provider.send = jest.fn((payload: any, cb: any) => {
+      if (payload.method === 'eth_subscribe') return cb({ error: { code: -32601, message: 'unsupported' } })
+      if (payload.method === 'eth_blockNumber') {
+        return cb({ result: intToHex(receiptBlock + TRANSACTION_CONFIRMATION_TARGET) })
+      }
+      if (payload.method === 'eth_getTransactionReceipt') {
+        return cb({
+          result: {
+            status: '0x1',
+            blockNumber: intToHex(receiptBlock),
+            gasUsed: '0x5208'
+          }
+        })
+      }
+
+      cb({ result: null })
+    })
+
+    Accounts.startDataScanner()
+    Accounts.addRequest(request, jest.fn())
+    ;(Accounts.current().requests[request.handlerId] as any).simulation = simulation
+    Accounts.setTxSent(request.handlerId, hash)
+
+    const expectedToken = {
+      address: usdc.toLowerCase(),
+      chainId: 1,
+      decimals: 6,
+      name: 'USDC',
+      symbol: 'USDC'
+    }
+    expect(store('main.tokens.known', account.address)).toContainEqual(expectedToken)
+
+    jest.advanceTimersByTime(1000)
+    await Promise.resolve()
+    await Promise.resolve()
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(externalDataScannerMock.refreshPositions).toHaveBeenCalledTimes(1)
+    expect(externalDataScannerMock.refreshPositions).toHaveBeenCalledWith(account.address, 1, [expectedToken])
+    expect(store('main.activity', hash, 'positionsRefreshedAt')).toEqual(expect.any(Number))
+
+    Accounts.close()
+  })
+
   it('confirms after the target confirmation count and removes after the close delay', async () => {
     const hash = '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef'
     const receiptBlock = 100

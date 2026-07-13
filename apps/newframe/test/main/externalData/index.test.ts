@@ -13,7 +13,14 @@ beforeAll(async () => {
 beforeEach(() => {
   store.set('tray.open', true)
 
-  mockBalances = { start: jest.fn(), stop: jest.fn(), pause: jest.fn(), resume: jest.fn() }
+  mockBalances = {
+    start: jest.fn(),
+    stop: jest.fn(),
+    pause: jest.fn(),
+    resume: jest.fn(),
+    refresh: jest.fn(),
+    refreshPositions: jest.fn()
+  }
   dataManager = externalData()
 })
 

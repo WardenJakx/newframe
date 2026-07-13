@@ -217,6 +217,31 @@ export default function (store: Store) {
     runWhenReady(() => updateActiveBalances(address))
   }
 
+  function refreshPositions(address: Address, chainId: number, tokens: Token[]) {
+    if (!workerController) {
+      log.warn(`tried to refresh positions for ${address} but balances controller is not running`)
+      return
+    }
+
+    if (!address || !Number.isInteger(chainId) || chainId <= 0) return
+
+    const affectedTokens = limitTokenScan(
+      tokens.filter((token) => token.chainId === chainId && token.address !== NATIVE_CURRENCY)
+    )
+
+    log.verbose(`refreshing transaction positions for ${address}`, {
+      chainId,
+      tokenCount: affectedTokens.length
+    })
+    runWhenReady(() => {
+      if (affectedTokens.length > 0) {
+        workerController?.updateKnownTokenBalances(address, affectedTokens)
+      }
+
+      workerController?.updateChainBalances(address, [chainId])
+    })
+  }
+
   function updateBalances(address: Address, chains: number[]) {
     const customTokens = storeApi.getCustomTokens()
     const knownTokens = storeApi
@@ -352,5 +377,5 @@ export default function (store: Store) {
     runWhenReady(() => workerController?.updateKnownTokenBalances(address, trackedTokens))
   }
 
-  return { start, stop, resume, pause, refresh, setAddress, addNetworks, addTokens }
+  return { start, stop, resume, pause, refresh, refreshPositions, setAddress, addNetworks, addTokens }
 }

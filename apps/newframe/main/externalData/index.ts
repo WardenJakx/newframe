@@ -10,6 +10,7 @@ import type { Chain, Token } from '../store/state'
 export interface DataScanner {
   close: () => void
   refreshBalances: (address?: Address) => void
+  refreshPositions: (address: Address, chainId: number, tokens: Token[]) => void
 }
 
 const storeApi = {
@@ -193,6 +194,11 @@ export default function () {
   return {
     refreshBalances: (address = activeAccount) => {
       if (!isSystemInactive() && address && shouldScanOnChain(address)) balances.refresh(address)
+    },
+    refreshPositions: (address, chainId, tokens) => {
+      if (!isSystemInactive() && address && shouldScanOnChain(address)) {
+        balances.refreshPositions(address, chainId, tokens)
+      }
     },
     close: () => {
       allNetworksObserver.remove()

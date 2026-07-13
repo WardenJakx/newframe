@@ -1,10 +1,14 @@
-import { afterEach, beforeEach, describe, expect, it } from 'bun:test'
+import { afterEach, beforeEach, describe, expect, it, jest } from 'bun:test'
 
 import {
   buildFlashQuoteBody,
   flashBaseUrl,
   flashHeaders,
-  normalizeFlashQuoteResponse
+  getOrder,
+  normalizeFlashQuoteResponse,
+  setFlashPositionSync,
+  stopOpenOrderPolling,
+  submitOrder
 } from '../../../main/flash'
 import type { FlashQuoteRequest } from '../../../main/flash'
 import { FLASH_MARKET_ORDER_TYPE, FLASH_USDC_ASSET, FLASH_WETH_ASSET } from '../../../resources/domain/flash'
@@ -110,5 +114,109 @@ describe('main Flash facade helpers', () => {
     expect(quote.outputAmount).toBe('2398.08')
     expect(quote.actions?.approval?.tx.to).toBe(FLASH_WETH_ASSET.address)
     expect(quote.steps.map((step) => step.kind)).toEqual(['approve', 'sign', 'submit'])
+  })
+
+  it('tracks submitted order assets and refreshes positions on partial fills and terminal states', async () => {
+    const request = { ...quoteRequest(), orderType: 'limit' as const }
+    const quote = normalizeFlashQuoteResponse(
+      {
+        quoteId: 'position-quote',
+        inputAmount: '1',
+        outputAmount: '2398.08',
+        evm: { orderTypedData: { domain: { chainId: 31337 }, types: {}, message: {} } }
+      },
+      request
+    )
+    const orderId = 'position-order'
+    const orderResponse = (status: string, filledOutputAmount?: string) => ({
+      orderId,
+      status,
+      filledOutputAmount,
+      quote: {
+        quoteId: quote.id,
+        side: quote.side,
+        orderType: quote.orderType,
+        targetAsset: quote.targetAsset,
+        contraAsset: quote.contraAsset,
+        inputAmount: quote.inputAmount,
+        outputAmount: quote.outputAmount
+      }
+    })
+    const responses = [
+      { orderId, status: 'accepted' },
+      orderResponse('partially_filled', '1000'),
+      orderResponse('partially_filled', '1000'),
+      orderResponse('partially_filled', '1500'),
+      orderResponse('cancelled', '1500')
+    ]
+    const originalFetch = globalThis.fetch
+    const track = jest.fn()
+    const refresh = jest.fn()
+
+    globalThis.fetch = jest.fn(async () => {
+      const payload = responses.shift()
+      if (!payload) throw new Error('Unexpected Flash request')
+
+      return new Response(JSON.stringify(payload), {
+        status: 200,
+        headers: { 'content-type': 'application/json' }
+      })
+    }) as unknown as typeof fetch
+    setFlashPositionSync({ track, refresh })
+
+    try {
+      await submitOrder({
+        ...request,
+        accountAddress: request.accountAddress,
+        quote,
+        quoteId: quote.id,
+        signature: '0xsignature'
+      })
+
+      expect(track).toHaveBeenCalledTimes(1)
+      expect(track).toHaveBeenCalledWith({
+        address: request.accountAddress,
+        chainId: 31337,
+        tokens: [
+          {
+            address: FLASH_WETH_ASSET.address.toLowerCase(),
+            chainId: 31337,
+            decimals: 18,
+            name: 'Wrapped Ether',
+            symbol: 'WETH'
+          },
+          {
+            address: FLASH_USDC_ASSET.address.toLowerCase(),
+            chainId: 31337,
+            decimals: 6,
+            name: 'USD Coin',
+            symbol: 'USDC'
+          }
+        ]
+      })
+      expect(refresh).not.toHaveBeenCalled()
+
+      await getOrder({ orderId })
+      expect(refresh).toHaveBeenCalledTimes(1)
+
+      await getOrder({ orderId })
+      expect(refresh).toHaveBeenCalledTimes(1)
+
+      await getOrder({ orderId })
+      expect(refresh).toHaveBeenCalledTimes(2)
+
+      await getOrder({ orderId })
+      expect(refresh).toHaveBeenCalledTimes(3)
+      expect(refresh).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          address: request.accountAddress,
+          chainId: 31337
+        })
+      )
+    } finally {
+      stopOpenOrderPolling()
+      setFlashPositionSync()
+      globalThis.fetch = originalFetch
+    }
   })
 })
