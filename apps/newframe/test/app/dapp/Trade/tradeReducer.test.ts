@@ -87,7 +87,7 @@ describe('tradeReducer', () => {
     })
 
     expect(state.side).toBe('sell')
-    expect(state.contraAsset).toBe(FLASH_NATIVE_ETH_ASSET)
+    expect(state.contraAsset).toBe(FLASH_WETH_ASSET)
     expect(state.assetOptions).toEqual(assets)
   })
 

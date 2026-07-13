@@ -87,13 +87,7 @@ describe('flash domain helpers', () => {
       name: 'Other Token',
       address: '0x0000000000000000000000000000000000000002'
     }
-    const assets = [
-      FLASH_WETH_ASSET,
-      targetAsset,
-      otherAsset,
-      FLASH_NATIVE_ETH_ASSET,
-      FLASH_USDC_ASSET
-    ]
+    const assets = [FLASH_WETH_ASSET, targetAsset, otherAsset, FLASH_NATIVE_ETH_ASSET, FLASH_USDC_ASSET]
 
     expect(
       getDefaultContraAsset({
@@ -118,15 +112,15 @@ describe('flash domain helpers', () => {
         side: 'sell',
         targetAsset
       })
-    ).toBe(FLASH_NATIVE_ETH_ASSET)
+    ).toBe(FLASH_WETH_ASSET)
     expect(
       getDefaultContraAsset({
         assets,
-        balances: [{ assetId: FLASH_WETH_ASSET.id, balance: '1' }],
+        balances: [{ assetId: FLASH_NATIVE_ETH_ASSET.id, balance: '1' }],
         side: 'sell',
         targetAsset
       })
-    ).toBe(FLASH_WETH_ASSET)
+    ).toBe(FLASH_NATIVE_ETH_ASSET)
     expect(
       getDefaultContraAsset({
         assets,
