@@ -29,7 +29,7 @@
     "format:check": "prettier --check '**/*.{yml,json,md,html,ts,tsx,js,mjs}' --cache",
     "check": "bun run format:check && bun run lint && bun run typecheck && bun run test",
     "dep:report": "bun scripts/dep-report.ts",
-    "visual:harness:newframe": "node --experimental-strip-types harness/newframe/visual-harness.ts"
+    "visual:harness:newframe": "bun exec 'node --experimental-strip-types harness/newframe/visual-harness.ts'"
   },
   "packageManager": "bun@1.3.12",
   "devDependencies": {

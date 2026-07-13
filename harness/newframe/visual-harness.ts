@@ -1,12 +1,18 @@
-import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
+import { spawn, type ChildProcess } from 'node:child_process'
+import fsp from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import net from 'node:net'
-import fs from 'node:fs'
-import fsp from 'node:fs/promises'
 import path from 'node:path'
 import process from 'node:process'
 
-import { chromium, type Browser, type CDPSession, type Page } from 'playwright-core'
+import { _electron as electron, type ElectronApplication, type Page } from 'playwright-core'
+
+import type {
+  LinkInvokeChannel,
+  LinkRpcMethod,
+  LinkSendChannel,
+  NewframeHost
+} from '../../apps/newframe/resources/bridge/contracts'
 
 const rootDir = path.resolve(import.meta.dirname, '../..')
 const appDir = path.join(rootDir, 'apps/newframe')
@@ -17,7 +23,7 @@ const screenshotDir = path.join(outputDir, 'screenshots')
 const anvilPort = 8545
 const localTradeServicePort = 8422
 const newframeRpcPort = 1248
-const cdpPort = Number(process.env.NEWFRAME_HARNESS_CDP_PORT || 9333)
+const uiTimeoutMs = Number(process.env.NEWFRAME_HARNESS_UI_TIMEOUT_MS || 10_000)
 const anvilRpcUrl = `http://127.0.0.1:${anvilPort}`
 const localTradeServiceHealthUrl = `http://127.0.0.1:${localTradeServicePort}/health`
 const harnessOrigin = 'newframe-contracts.local'
@@ -29,7 +35,6 @@ const anvilChainId = 31337
 const oneEthWei = 1_000_000_000_000_000_000n
 
 const passwordEnvKeys = ['NEWFRAME_HARNESS_PASSWORD', 'FRAME_HARNESS_PASSWORD']
-const passwordEnvFiles = ['.env.harness.local', '.env.harness', '.env.local', '.env']
 const finalRequestStatuses = new Set(['confirmed', 'declined', 'error', 'success'])
 
 type HarnessSummary = {
@@ -46,7 +51,7 @@ type AccountInfo = {
 }
 
 type RunningCommand = {
-  child: ChildProcessWithoutNullStreams
+  child: ChildProcess
   label: string
   output: () => string
   promise: Promise<void>
@@ -123,27 +128,28 @@ type AppState = {
   }
 }
 
-type RuntimeEvaluateResponse<T> = {
-  result?: {
-    value?: T
-    description?: string
-  }
-  exceptionDetails?: {
-    text?: string
-    exception?: {
-      description?: string
-    }
-  }
+type ElectronDiagnostics = {
+  appReady: boolean
+  mainPid: number
+  userData: string
+  windows: Array<{
+    crashed: boolean
+    destroyed: boolean
+    id: number
+    loading: boolean
+    title: string
+    url: string
+    visible: boolean
+  }>
 }
 
 let stage = 'startup'
 const summary: HarnessSummary = { ok: false, failedStage: null, screenshots: [] }
-let browser: Browser | undefined
-let electronProcess: ChildProcessWithoutNullStreams | undefined
-let anvilProcess: ChildProcessWithoutNullStreams | undefined
-let localTradeServiceProcess: ChildProcessWithoutNullStreams | undefined
+let electronApp: ElectronApplication | undefined
+let anvilProcess: ChildProcess | undefined
+let localTradeServiceProcess: ChildProcess | undefined
 const runningCommands = new Set<RunningCommand>()
-const pageSessions = new WeakMap<Page, Promise<CDPSession>>()
+let electronOutput = () => ''
 let cleanupStarted = false
 
 function log(message: string) {
@@ -152,6 +158,21 @@ function log(message: string) {
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+async function withTimeout<T>(promise: Promise<T>, label: string, timeoutMs = uiTimeoutMs) {
+  let timer: NodeJS.Timeout | undefined
+
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`${label} timed out after ${timeoutMs}ms`)), timeoutMs)
+      })
+    ])
+  } finally {
+    if (timer) clearTimeout(timer)
+  }
 }
 
 async function writeSummary() {
@@ -173,36 +194,67 @@ async function withStage<T>(name: string, fn: () => Promise<T>): Promise<T> {
   return fn()
 }
 
-function parseEnvValue(value: string) {
-  const trimmed = value.trim()
-  const quote = trimmed[0]
+async function logElectronDiagnostics(app: ElectronApplication, label: string) {
+  const rendererPages = app.windows().map((page) => page.url() || '<blank>')
+  const diagnostics = await withTimeout(
+    app.evaluate(({ app, BrowserWindow }) => {
+      return {
+        appReady: app.isReady(),
+        mainPid: process.pid,
+        userData: app.getPath('userData'),
+        windows: BrowserWindow.getAllWindows().map((window) => ({
+          crashed: window.webContents.isCrashed(),
+          destroyed: window.isDestroyed(),
+          id: window.id,
+          loading: window.webContents.isLoading(),
+          title: window.getTitle(),
+          url: window.webContents.getURL(),
+          visible: window.isVisible()
+        }))
+      } satisfies ElectronDiagnostics
+    }),
+    `${label} main-process diagnostics`,
+    2_000
+  ).catch((err) => ({ diagnosticError: err instanceof Error ? err.message : String(err) }))
 
-  if ((quote === '"' || quote === "'") && trimmed.endsWith(quote)) {
-    return trimmed.slice(1, -1)
-  }
-
-  return trimmed
+  log(`${label}: ${JSON.stringify({ diagnostics, rendererPages })}`)
 }
 
-function readEnvFile(filePath: string) {
-  if (!fs.existsSync(filePath)) return {}
+function monitorElectron(app: ElectronApplication) {
+  const child = app.process()
+  electronOutput = commandOutputCollector(child)
 
-  return fs
-    .readFileSync(filePath, 'utf8')
-    .split(/\r?\n/)
-    .reduce<Record<string, string>>((env, rawLine) => {
-      const line = rawLine.trim()
-      if (!line || line.startsWith('#')) return env
+  const monitorPage = (page: Page) => {
+    page.on('crash', () => log(`Electron renderer crashed: ${page.url() || '<blank>'}`))
+    page.on('pageerror', (err) => log(`Electron renderer page error: ${err.message}`))
+  }
 
-      const normalizedLine = line.startsWith('export ') ? line.slice('export '.length).trim() : line
-      const separator = normalizedLine.indexOf('=')
-      if (separator === -1) return env
+  app.windows().forEach(monitorPage)
+  app.on('window', monitorPage)
+  app.on('close', () => {
+    if (!cleanupStarted) {
+      log(`Electron application closed unexpectedly with exit code ${child.exitCode ?? 'unknown'}`)
+    }
+  })
+}
 
-      const key = normalizedLine.slice(0, separator).trim()
-      if (key) env[key] = parseEnvValue(normalizedLine.slice(separator + 1))
+async function captureElectronFailureArtifacts(app: ElectronApplication) {
+  await logElectronDiagnostics(app, `failure at stage "${stage}"`).catch((err) => {
+    log(`could not collect Electron diagnostics: ${err instanceof Error ? err.message : String(err)}`)
+  })
 
-      return env
-    }, {})
+  const output = electronOutput()
+  if (output) log(`Electron process output before failure:\n${tail(output)}`)
+
+  for (const [index, page] of app.windows().entries()) {
+    await withTimeout(
+      screenshot(page, `debug-failure-renderer-${index}.png`),
+      `failure screenshot for renderer ${index}`,
+      5_000
+    ).catch((err) => {
+      log(`could not capture renderer ${index}: ${err instanceof Error ? err.message : String(err)}`)
+    })
+  }
 }
 
 function readHarnessPassword() {
@@ -210,33 +262,20 @@ function readHarnessPassword() {
     const value = process.env[key]
     if (value) return value
   }
-
-  for (const baseDir of [rootDir, appDir]) {
-    for (const file of passwordEnvFiles) {
-      const values = readEnvFile(path.join(baseDir, file))
-
-      for (const key of passwordEnvKeys) {
-        const value = values[key]
-        if (value) return value
-      }
-    }
-  }
-
   return ''
 }
 
 function newframeEnv() {
-  const env = {
-    ...process.env,
+  const env: Record<string, string> = {
+    ...Object.fromEntries(
+      Object.entries(process.env).filter(
+        (entry): entry is [string, string] =>
+          entry[1] !== undefined && entry[0] !== 'ELECTRON_RUN_AS_NODE' && !passwordEnvKeys.includes(entry[0])
+      )
+    ),
     NODE_ENV: 'production',
-    FRAME_PROFILE: 'dev',
-    NEWFRAME_HARNESS_CDP_PORT: String(cdpPort)
+    FRAME_PROFILE: 'dev'
   }
-
-  for (const key of passwordEnvKeys) {
-    delete env[key]
-  }
-  delete env.ELECTRON_RUN_AS_NODE
 
   return env
 }
@@ -280,14 +319,14 @@ async function waitForHttpOk(url: string, label: string, timeoutMs = 15_000) {
   )
 }
 
-function commandOutputCollector(child: ChildProcessWithoutNullStreams) {
+function commandOutputCollector(child: ChildProcess) {
   let output = ''
   const append = (chunk: Buffer) => {
     output = tail(output + chunk.toString(), 20_000)
   }
 
-  child.stdout.on('data', append)
-  child.stderr.on('data', append)
+  child.stdout?.on('data', append)
+  child.stderr?.on('data', append)
 
   return () => output
 }
@@ -307,7 +346,7 @@ function startCommand(label: string, command: string, args: string[], cwd: strin
     promise: new Promise<void>((resolve, reject) => {
       child.once('error', (err) => {
         runningCommands.delete(running)
-        reject(new Error(`${label} failed to start: ${err.message}`))
+        reject(new Error(`${label} failed to start: ${err.message}`, { cause: err }))
       })
       child.once('exit', (code, signal) => {
         runningCommands.delete(running)
@@ -344,7 +383,7 @@ async function ensureCommand(command: string, args = ['--version']) {
   })
 }
 
-async function stopProcess(child: ChildProcessWithoutNullStreams | undefined, label: string) {
+async function stopProcess(child: ChildProcess | undefined, label: string) {
   if (!child || child.killed || child.exitCode !== null) return
 
   child.kill('SIGTERM')
@@ -367,13 +406,19 @@ async function cleanup() {
     await stopProcess(running.child, running.label).catch(() => undefined)
   }
 
-  if (browser) {
-    await browser.close().catch(() => undefined)
-    browser = undefined
-  }
+  if (electronApp) {
+    const app = electronApp
+    electronApp = undefined
+    const child = app.process()
 
-  await stopProcess(electronProcess, 'electron').catch(() => undefined)
-  electronProcess = undefined
+    await Promise.race([
+      app.close().catch(() => undefined),
+      sleep(3_000).then(() => {
+        if (child.exitCode === null) child.kill('SIGKILL')
+      })
+    ])
+    log('stopped electron')
+  }
 
   await stopProcess(localTradeServiceProcess, 'local trade service').catch(() => undefined)
   localTradeServiceProcess = undefined
@@ -392,54 +437,43 @@ async function screenshot(page: Page, filename: string) {
 }
 
 async function assertColorTokens(page: Page, renderer: string) {
-  await page.waitForLoadState('load')
-  const result = await cdpEvaluate<{
-    actionValue: string
-    alphaColor: string
-    colorMixSupported: boolean
-    primitiveColor: string
-    primitiveValue: string
-    semanticColor: string
-    semanticValue: string
-  }>(
-    page,
-    `(() => {
-      const rootStyle = getComputedStyle(document.documentElement)
-      const semanticValue = rootStyle.getPropertyValue('--color-bg-primary').trim()
-      const primitiveValue = rootStyle.getPropertyValue('--color-plum-950').trim()
-      const actionValue = rootStyle.getPropertyValue('--color-action-primary').trim()
-      const semanticProbe = document.createElement('div')
-      const primitiveProbe = document.createElement('div')
-      const alphaProbe = document.createElement('div')
+  await withTimeout(page.waitForLoadState('load', { timeout: uiTimeoutMs }), `${renderer} load state`)
+  const evaluation = page.evaluate(() => {
+    const rootStyle = getComputedStyle(document.documentElement)
+    const semanticValue = rootStyle.getPropertyValue('--color-bg-primary').trim()
+    const primitiveValue = rootStyle.getPropertyValue('--color-plum-950').trim()
+    const actionValue = rootStyle.getPropertyValue('--color-action-primary').trim()
+    const semanticProbe = document.createElement('div')
+    const primitiveProbe = document.createElement('div')
+    const alphaProbe = document.createElement('div')
 
-      semanticProbe.style.backgroundColor = 'var(--color-bg-primary)'
-      primitiveProbe.style.backgroundColor = 'var(--color-plum-950)'
-      alphaProbe.style.backgroundColor =
-        'color-mix(in srgb, var(--color-action-primary) 12%, transparent)'
-      semanticProbe.style.display = primitiveProbe.style.display = alphaProbe.style.display = 'none'
-      document.body.append(semanticProbe, primitiveProbe, alphaProbe)
+    semanticProbe.style.backgroundColor = 'var(--color-bg-primary)'
+    primitiveProbe.style.backgroundColor = 'var(--color-plum-950)'
+    alphaProbe.style.backgroundColor = 'color-mix(in srgb, var(--color-action-primary) 12%, transparent)'
+    semanticProbe.style.display = primitiveProbe.style.display = alphaProbe.style.display = 'none'
+    document.body.append(semanticProbe, primitiveProbe, alphaProbe)
 
-      const semanticColor = getComputedStyle(semanticProbe).backgroundColor
-      const primitiveColor = getComputedStyle(primitiveProbe).backgroundColor
-      const alphaColor = getComputedStyle(alphaProbe).backgroundColor
-      semanticProbe.remove()
-      primitiveProbe.remove()
-      alphaProbe.remove()
+    const semanticColor = getComputedStyle(semanticProbe).backgroundColor
+    const primitiveColor = getComputedStyle(primitiveProbe).backgroundColor
+    const alphaColor = getComputedStyle(alphaProbe).backgroundColor
+    semanticProbe.remove()
+    primitiveProbe.remove()
+    alphaProbe.remove()
 
-      return {
-        actionValue,
-        alphaColor,
-        colorMixSupported: CSS.supports(
-          'background-color',
-          'color-mix(in srgb, rgb(0, 210, 190) 12%, transparent)'
-        ),
-        primitiveColor,
-        primitiveValue,
-        semanticColor,
-        semanticValue
-      }
-    })()`
-  )
+    return {
+      actionValue,
+      alphaColor,
+      colorMixSupported: CSS.supports(
+        'background-color',
+        'color-mix(in srgb, rgb(0, 210, 190) 12%, transparent)'
+      ),
+      primitiveColor,
+      primitiveValue,
+      semanticColor,
+      semanticValue
+    }
+  })
+  const result = await withTimeout(evaluation, `${renderer} color-token evaluation`)
 
   if (!result.semanticValue || !result.primitiveValue || !result.actionValue) {
     fail(`${renderer} is missing generated color custom properties: ${JSON.stringify(result)}`)
@@ -452,7 +486,7 @@ async function assertColorTokens(page: Page, renderer: string) {
   }
 }
 
-async function screenshotDashboardVisualStates(app: Browser, tray: Page) {
+async function screenshotDashboardVisualStates(app: ElectronApplication, tray: Page) {
   const dash = await waitForElectronPage(app, 'bundle/dash.html')
   await assertColorTokens(dash, 'Dashboard')
   await screenshot(dash, '00a-dashboard-home.png')
@@ -475,21 +509,17 @@ async function screenshotDashboardVisualStates(app: Browser, tray: Page) {
   await trayAction(tray, 'backDash', 10)
 }
 
-function browserPages(app: Browser) {
-  return app.contexts().flatMap((context) => context.pages())
-}
-
-async function waitForElectronPage(app: Browser, urlPart: string, timeoutMs = 30_000) {
+async function waitForElectronPage(app: ElectronApplication, urlPart: string, timeoutMs = uiTimeoutMs) {
   const started = Date.now()
-  let lastLog = 0
+  let lastLog = started
 
   while (Date.now() - started < timeoutMs) {
-    const page = browserPages(app).find((candidate) => candidate.url().includes(urlPart))
+    const page = app.windows().find((candidate) => candidate.url().includes(urlPart))
     if (page) return page
 
     if (Date.now() - lastLog > 2_500) {
       lastLog = Date.now()
-      const urls = browserPages(app).map((candidate) => candidate.url() || '<blank>')
+      const urls = app.windows().map((candidate) => candidate.url() || '<blank>')
       log(`waiting for ${urlPart}; pages: ${urls.join(', ') || '<none>'}`)
     }
 
@@ -497,10 +527,6 @@ async function waitForElectronPage(app: Browser, urlPart: string, timeoutMs = 30
   }
 
   fail(`Timed out waiting for Electron page containing ${urlPart}`)
-}
-
-function literal(value: unknown) {
-  return JSON.stringify(value) ?? 'undefined'
 }
 
 function canonicalAssetId(chainId: number, address: string) {
@@ -512,54 +538,39 @@ function launcherRoute(route: 'send' | 'trade', assetId = '') {
 }
 
 async function waitForDappRoute(page: Page, route: 'send' | 'trade') {
-  await page.waitForURL((url) => url.hash.startsWith(`#/${route}`), { timeout: 15_000 })
+  await page.waitForURL((url) => url.hash.startsWith(`#/${route}`), { timeout: uiTimeoutMs })
 }
 
-async function cdpSession(page: Page) {
-  let session = pageSessions.get(page)
+type HostOperation =
+  | { kind: 'invoke'; channel: LinkInvokeChannel; args: unknown[] }
+  | { kind: 'rpc'; method: LinkRpcMethod; args: unknown[]; wait: boolean }
+  | { kind: 'send'; channel: LinkSendChannel; args: unknown[] }
 
-  if (!session) {
-    session = page.context().newCDPSession(page)
-    pageSessions.set(page, session)
-  }
+async function evaluateHost(page: Page, operation: HostOperation) {
+  return page.evaluate(async (operation) => {
+    const host = (window as typeof window & { __NEWFRAME_HOST__?: NewframeHost }).__NEWFRAME_HOST__
 
-  return session
+    if (!host) throw new Error('Newframe host bridge is not available')
+
+    if (operation.kind === 'invoke') {
+      return host.invoke(operation.channel, operation.args)
+    }
+
+    if (operation.kind === 'send') {
+      host.send(operation.channel, operation.args)
+      return undefined
+    }
+
+    const response = host.rpc(operation.method, operation.args)
+    if (operation.wait) return response
+
+    void response.catch(() => undefined)
+    return undefined
+  }, operation)
 }
 
-async function cdpEvaluate<T>(page: Page, expression: string) {
-  const session = await cdpSession(page)
-  const response = (await session.send('Runtime.evaluate', {
-    expression,
-    awaitPromise: true,
-    returnByValue: true
-  })) as RuntimeEvaluateResponse<T>
-
-  if (response.exceptionDetails) {
-    throw new Error(
-      response.exceptionDetails.exception?.description ||
-        response.exceptionDetails.text ||
-        response.result?.description ||
-        'CDP Runtime.evaluate failed'
-    )
-  }
-
-  return response.result?.value as T
-}
-
-async function linkRpc<T>(page: Page, method: string, ...args: unknown[]): Promise<T> {
-  const response = await cdpEvaluate<unknown>(
-    page,
-    `
-      (async () => {
-        const rpcMethod = ${literal(method)}
-        const rpcArgs = ${literal(args)}
-        const host = window.__NEWFRAME_HOST__
-
-        if (!host) throw new Error('Newframe host bridge is not available')
-        return host.rpc(rpcMethod, rpcArgs)
-      })()
-    `
-  )
+async function linkRpc<T>(page: Page, method: LinkRpcMethod, ...args: unknown[]): Promise<T> {
+  const response = await evaluateHost(page, { kind: 'rpc', method, args, wait: true })
 
   if (Array.isArray(response)) {
     const [err, value] = response as [unknown, T]
@@ -570,57 +581,16 @@ async function linkRpc<T>(page: Page, method: string, ...args: unknown[]): Promi
   return response as T
 }
 
-async function linkRpcNoWait(page: Page, method: string, ...args: unknown[]) {
-  await cdpEvaluate(
-    page,
-    `
-      (() => {
-        const rpcMethod = ${literal(method)}
-        const rpcArgs = ${literal(args)}
-        const host = window.__NEWFRAME_HOST__
-
-        if (!host) throw new Error('Newframe host bridge is not available')
-
-        const response = host.rpc(rpcMethod, rpcArgs)
-        if (response && typeof response.catch === 'function') response.catch(() => undefined)
-
-        return true
-      })()
-    `
-  )
+async function linkRpcNoWait(page: Page, method: LinkRpcMethod, ...args: unknown[]) {
+  await evaluateHost(page, { kind: 'rpc', method, args, wait: false })
 }
 
-async function linkSend(page: Page, channel: string, ...args: unknown[]) {
-  await cdpEvaluate(
-    page,
-    `
-      (() => {
-        const channel = ${literal(channel)}
-        const args = ${literal(args)}
-        const host = window.__NEWFRAME_HOST__
-
-        if (!host) throw new Error('Newframe host bridge is not available')
-        host.send(channel, args)
-        return true
-      })()
-    `
-  )
+async function linkSend(page: Page, channel: LinkSendChannel, ...args: unknown[]) {
+  await evaluateHost(page, { kind: 'send', channel, args })
 }
 
-async function linkInvoke<T>(page: Page, channel: string, ...args: unknown[]): Promise<T> {
-  const response = await cdpEvaluate<unknown>(
-    page,
-    `
-      (async () => {
-        const invokeChannel = ${literal(channel)}
-        const invokeArgs = ${literal(args)}
-        const host = window.__NEWFRAME_HOST__
-
-        if (!host) throw new Error('Newframe host bridge is not available')
-        return host.invoke(invokeChannel, invokeArgs)
-      })()
-    `
-  )
+async function linkInvoke<T>(page: Page, channel: LinkInvokeChannel, ...args: unknown[]): Promise<T> {
+  const response = await evaluateHost(page, { kind: 'invoke', channel, args })
 
   return Array.isArray(response) ? (response as [T])[0] : (response as T)
 }
@@ -843,7 +813,7 @@ async function setNativeAnvilBalance(page: Page, account: AccountInfo) {
   })
 }
 
-function normalizeAddChain(chain: AddChain) {
+function normalizeAddChain(chain: AddChain | undefined) {
   return {
     ...chain,
     explorer: typeof chain?.explorer === 'string' ? chain.explorer : ''
@@ -981,7 +951,7 @@ async function clearPanelAndOverlays(page: Page) {
   }
 }
 
-async function openTradeTicket(app: Browser, tray: Page) {
+async function openTradeTicket(app: ElectronApplication, tray: Page) {
   await openDappLauncherRoute(tray, launcherRoute('trade', canonicalAssetId(anvilChainId, wethAddress)))
 
   const tradePage = await waitForElectronPage(app, 'bundle/dapp.html')
@@ -1012,7 +982,7 @@ async function assertTradeTicketVisualControls(page: Page) {
   })
 }
 
-async function screenshotTradeTicketVisualStates(app: Browser, tray: Page) {
+async function screenshotTradeTicketVisualStates(app: ElectronApplication, tray: Page) {
   const tradePage = await openTradeTicket(app, tray)
   await assertColorTokens(tradePage, 'Dapp')
   await assertTradeTicketVisualControls(tradePage)
@@ -1098,7 +1068,7 @@ async function ensureTradeSellSide(tradePage: Page) {
   await tradePage.getByLabel('WETH amount').waitFor({ state: 'visible', timeout: 5_000 })
 }
 
-async function runTradeMarketE2E(app: Browser, tray: Page) {
+async function runTradeMarketE2E(app: ElectronApplication, tray: Page) {
   const tradePage = await openTradeTicket(app, tray)
 
   await ensureTradeSellSide(tradePage)
@@ -1136,7 +1106,7 @@ async function runTradeMarketE2E(app: Browser, tray: Page) {
   await clearPanelAndOverlays(tray)
 }
 
-async function runTradeNonMarketE2E(app: Browser, tray: Page) {
+async function runTradeNonMarketE2E(app: ElectronApplication, tray: Page) {
   const tradePage = await openTradeTicket(app, tray)
 
   await ensureTradeSellSide(tradePage)
@@ -1175,6 +1145,9 @@ async function bootstrap() {
     await fsp.mkdir(screenshotDir, { recursive: true })
     await writeSummary()
     createRequire(path.join(appDir, 'package.json'))('electron')
+    const password = readHarnessPassword()
+    log(`unlock password configured: ${password.length > 0}`)
+    if (!password) fail('Newframe unlock password is not configured')
 
     await Promise.all([
       ensureCommand('bun'),
@@ -1184,13 +1157,12 @@ async function bootstrap() {
       ensureCommand('forge'),
       assertPortFree(anvilPort, 'Anvil'),
       assertPortFree(localTradeServicePort, 'Local trade service'),
-      assertPortFree(cdpPort, 'Electron CDP'),
       assertPortFree(newframeRpcPort, 'Newframe RPC')
     ])
   })
 
   await withStage('bootstrap build and anvil', async () => {
-    anvilProcess = spawn(
+    const child = spawn(
       'anvil',
       ['--host', '127.0.0.1', '--port', String(anvilPort), '--chain-id', String(anvilChainId)],
       {
@@ -1199,7 +1171,8 @@ async function bootstrap() {
         stdio: ['ignore', 'pipe', 'pipe']
       }
     )
-    commandOutputCollector(anvilProcess)
+    anvilProcess = child
+    commandOutputCollector(child)
 
     const seed = runCommand('contracts seed', 'make', ['seed'], contractsDir)
     const build = (async () => {
@@ -1211,7 +1184,7 @@ async function bootstrap() {
   })
 
   await withStage('local trade service', async () => {
-    localTradeServiceProcess = spawn('bun', ['./scripts/local-trade-service.ts'], {
+    const child = spawn('bun', ['./scripts/local-trade-service.ts'], {
       cwd: appDir,
       env: {
         ...process.env,
@@ -1220,12 +1193,13 @@ async function bootstrap() {
       },
       stdio: ['ignore', 'pipe', 'pipe']
     })
-    const output = commandOutputCollector(localTradeServiceProcess)
+    localTradeServiceProcess = child
+    const output = commandOutputCollector(child)
     const exitPromise = new Promise<never>((_, reject) => {
-      localTradeServiceProcess?.once('error', (err) => {
-        reject(new Error(`Local trade service failed to start: ${err.message}`))
+      child.once('error', (err) => {
+        reject(new Error(`Local trade service failed to start: ${err.message}`, { cause: err }))
       })
-      localTradeServiceProcess?.once('exit', (code, signal) => {
+      child.once('exit', (code, signal) => {
         if (!cleanupStarted) {
           reject(
             new Error(
@@ -1243,56 +1217,23 @@ async function bootstrap() {
   })
 }
 
-async function connectOverCdp(timeoutMs = 30_000) {
-  const endpoint = `http://127.0.0.1:${cdpPort}`
-  const started = Date.now()
-  let lastError: unknown
-
-  while (Date.now() - started < timeoutMs) {
-    try {
-      return await chromium.connectOverCDP(endpoint, { noDefaults: true, timeout: 1_000 })
-    } catch (err) {
-      lastError = err
-      await sleep(250)
-    }
-  }
-
-  throw new Error(
-    `Timed out connecting to Electron CDP at ${endpoint}${
-      lastError instanceof Error ? `\n${lastError.message}` : ''
-    }`
-  )
-}
-
 async function launchApp() {
   return withStage('launch electron', async () => {
     const requireFromApp = createRequire(path.join(appDir, 'package.json'))
     const electronPath = requireFromApp('electron') as string
 
-    electronProcess = spawn(electronPath, ['./compiled/main'], {
+    const app = await electron.launch({
+      args: ['./compiled/main'],
+      colorScheme: 'no-preference',
       cwd: appDir,
+      executablePath: electronPath,
       env: newframeEnv(),
-      stdio: ['ignore', 'pipe', 'pipe']
+      timeout: 15_000
     })
-    const output = commandOutputCollector(electronProcess)
-    const exitPromise = new Promise<never>((_, reject) => {
-      electronProcess?.once('error', (err) => {
-        reject(new Error(`Electron failed to start: ${err.message}`))
-      })
-      electronProcess?.once('exit', (code, signal) => {
-        reject(
-          new Error(
-            `Electron exited before CDP attach with ${signal || `code ${code ?? 'unknown'}`}${
-              output() ? `\n\n${tail(output())}` : ''
-            }`
-          )
-        )
-      })
-    })
-
-    const app = await Promise.race([connectOverCdp(), exitPromise])
-    browser = app
-    log(`connected to Electron CDP on ${cdpPort}`)
+    app.context().setDefaultTimeout(uiTimeoutMs)
+    app.context().setDefaultNavigationTimeout(uiTimeoutMs)
+    electronApp = app
+    monitorElectron(app)
     return app
   })
 }
@@ -1303,7 +1244,7 @@ async function forceLockAndUnlock(tray: Page) {
 
     if (!(await unlockDialog.isVisible({ timeout: 2_000 }).catch(() => false))) {
       await linkRpc(tray, 'lockApp')
-      await unlockDialog.waitFor({ state: 'visible', timeout: 15_000 })
+      await unlockDialog.waitFor({ state: 'visible', timeout: uiTimeoutMs })
     }
 
     await screenshot(tray, '01-lock-screen.png')
@@ -1311,12 +1252,34 @@ async function forceLockAndUnlock(tray: Page) {
 
   await withStage('unlock', async () => {
     const password = readHarnessPassword()
+    log(`unlock attempt has password: ${password.length > 0}`)
     if (!password) fail('Newframe unlock password is not configured')
 
     const dialog = tray.getByRole('dialog', { name: 'Unlock Newframe' })
-    await dialog.getByRole('textbox', { name: 'Newframe password' }).fill(password)
-    await dialog.getByRole('button', { name: 'Unlock' }).click()
-    await tray.getByRole('button', { name: 'Main menu' }).waitFor({ state: 'visible', timeout: 20_000 })
+    const passwordInput = dialog.getByRole('textbox', { name: 'Newframe password' })
+    const unlockButton = dialog.getByRole('button', { name: 'Unlock' })
+    const mainMenu = tray.getByRole('button', { name: 'Main menu' })
+
+    try {
+      await passwordInput.fill(password)
+      log(`unlock input populated: ${(await passwordInput.inputValue()).length > 0}`)
+      log(`unlock button enabled: ${!(await unlockButton.isDisabled())}`)
+      await unlockButton.click()
+      await mainMenu.waitFor({ state: 'visible', timeout: uiTimeoutMs })
+    } catch (err) {
+      const diagnostics = {
+        buttonDisabled: await unlockButton.isDisabled().catch(() => null),
+        dialogText: await dialog.innerText().catch(() => '<unavailable>'),
+        dialogVisible: await dialog.isVisible().catch(() => false),
+        inputPopulated: await passwordInput
+          .inputValue()
+          .then((value) => value.length > 0)
+          .catch(() => false),
+        mainMenuVisible: await mainMenu.isVisible().catch(() => false)
+      }
+      log(`unlock failed: ${JSON.stringify(diagnostics)}`)
+      throw err
+    }
   })
 }
 
@@ -1393,17 +1356,19 @@ async function resetHarnessState(tray: Page) {
   })
 }
 
-async function runFlow(app: Browser) {
-  const tray = await waitForElectronPage(app, 'bundle/tray.html')
+async function runFlow(app: ElectronApplication) {
+  const tray = await withStage('wait for tray renderer', async () => {
+    return waitForElectronPage(app, 'bundle/tray.html')
+  })
   const consoleErrors: string[] = []
 
   tray.on('console', (message) => {
     if (message.type() === 'error') consoleErrors.push(message.text())
   })
 
-  await assertColorTokens(tray, 'Tray')
-  await withStage('dashboard visuals', async () => screenshotDashboardVisualStates(app, tray))
   await forceLockAndUnlock(tray)
+  await withStage('tray readiness', async () => assertColorTokens(tray, 'Tray'))
+  await withStage('dashboard visuals', async () => screenshotDashboardVisualStates(app, tray))
   await resetHarnessState(tray)
   await screenshot(tray, '02-unlocked-home.png')
   await withStage('tray overlay visuals', async () => screenshotTrayOverlayVisualStates(tray))
@@ -1600,6 +1565,7 @@ async function main() {
   } catch (err) {
     summary.ok = false
     summary.failedStage = stage
+    if (electronApp) await captureElectronFailureArtifacts(electronApp)
     await writeSummary().catch(() => undefined)
     throw err
   } finally {
