@@ -101,6 +101,18 @@ it('refreshes balances on demand', () => {
   expect((balancesController as any).updateChainBalances).toHaveBeenCalledWith(address, [10])
 })
 
+it('refreshes affected tokens and the native balance for a transaction chain', () => {
+  const affectedTokens = [token(1, 10), token(2, 1)]
+  ;(balancesController as any).isRunning.mockReturnValue(true)
+
+  balances.refreshPositions(address, 10, affectedTokens)
+
+  expect((balancesController as any).updateKnownTokenBalances).toHaveBeenCalledWith(address, [
+    affectedTokens[0]
+  ])
+  expect((balancesController as any).updateChainBalances).toHaveBeenCalledWith(address, [10])
+})
+
 it('caps large known token scans while preserving custom tokens', () => {
   const customTokens = [token(1000), token(1001)]
   const discoveredTokens = Array.from({ length: 300 }, (_, i) => token(i + 1))

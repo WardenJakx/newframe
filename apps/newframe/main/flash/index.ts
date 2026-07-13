@@ -18,6 +18,8 @@ import {
   type FlashTradeSide
 } from '../../resources/domain/flash'
 
+import type { Token } from '../store/state'
+
 type FlashOrderStatus =
   | 'pending'
   | 'accepted'
@@ -122,6 +124,17 @@ interface FlashOrderRecord {
   fillTransactionHash?: string | null
 }
 
+export interface FlashOrderPositionUpdate {
+  address: string
+  chainId: number
+  tokens: Token[]
+}
+
+export interface FlashPositionSync {
+  refresh: (update: FlashOrderPositionUpdate) => void
+  track: (update: FlashOrderPositionUpdate) => void
+}
+
 const FLASH_DEV_BASE_URL = 'http://127.0.0.1:8422/v1'
 const FLASH_PROD_BASE_URL = 'https://flash.definitive.fi/v1'
 const FLASH_API_KEY = 'dpka_513a2bd7_57a2_46d2_927b_2a3857fe271b'
@@ -147,6 +160,7 @@ interface FlashMarketOrderPoller {
 const marketOrderPollers = new Map<string, FlashMarketOrderPoller>()
 let openOrderPoller: ReturnType<typeof setInterval> | null = null
 let openOrderRefresh: Promise<FlashOrderRecord[]> | null = null
+let positionSync: FlashPositionSync | null = null
 
 const FLASH_CHAIN_IDS_BY_SLUG: Record<string, number> = {
   ethereum: 1,
@@ -318,6 +332,76 @@ function isOpenStatus(status: FlashOrderStatus) {
 
 function isTerminalStatus(status: FlashOrderStatus) {
   return terminalStatuses.has(status)
+}
+
+export function setFlashPositionSync(sync?: FlashPositionSync) {
+  positionSync = sync || null
+}
+
+function orderPositionTokens(record: FlashOrderRecord) {
+  const tokens = new Map<string, Token>()
+  const affectedAssets = [record.spentAsset, record.receiveAsset]
+
+  affectedAssets.forEach((asset) => {
+    const address = (asset.address || '').trim().toLowerCase()
+    if (asset.isNative || !/^0x[0-9a-f]{40}$/.test(address)) return
+
+    const token = {
+      address,
+      chainId: asset.chainId || record.chainId,
+      decimals: asset.decimals,
+      name: asset.name || asset.symbol,
+      symbol: asset.symbol
+    }
+
+    tokens.set(`${token.chainId}:${address}`, token)
+  })
+
+  return [...tokens.values()]
+}
+
+function positionTokenIds(record: FlashOrderRecord) {
+  return orderPositionTokens(record)
+    .map((token) => `${token.chainId}:${token.address}`)
+    .sort()
+    .join(',')
+}
+
+function shouldTrackOrderPositions(previous: FlashOrderRecord | undefined, record: FlashOrderRecord) {
+  return (
+    !previous ||
+    previous.accountAddress !== record.accountAddress ||
+    previous.chainId !== record.chainId ||
+    positionTokenIds(previous) !== positionTokenIds(record)
+  )
+}
+
+function shouldRefreshOrderPositions(previous: FlashOrderRecord | undefined, record: FlashOrderRecord) {
+  if (record.status !== 'partially-filled' && !isTerminalStatus(record.status)) return false
+  if (!previous || previous.status !== record.status) return true
+
+  return (
+    previous.filledOutputAmount !== record.filledOutputAmount ||
+    previous.fillHash !== record.fillHash ||
+    previous.fillTransactionHash !== record.fillTransactionHash
+  )
+}
+
+function syncOrderPositions(previous: FlashOrderRecord | undefined, record: FlashOrderRecord) {
+  if (!positionSync) return
+
+  const update = {
+    address: record.accountAddress,
+    chainId: record.chainId,
+    tokens: orderPositionTokens(record)
+  }
+
+  try {
+    if (shouldTrackOrderPositions(previous, record)) positionSync.track(update)
+    if (shouldRefreshOrderPositions(previous, record)) positionSync.refresh(update)
+  } catch (error) {
+    console.warn('could not sync positions for Flash order', { orderId: record.orderId }, error)
+  }
 }
 
 function normalizeSlippage(slippage?: string | number) {
@@ -893,7 +977,9 @@ function normalizeOrderRecord(rawOrder: unknown, fallback?: FlashOrderRecord | n
 }
 
 function upsertRecord(record: FlashOrderRecord) {
+  const previous = getRecord(record.orderId)
   store.upsertOrder(record)
+  syncOrderPositions(previous, record)
   return record
 }
 
@@ -902,6 +988,8 @@ function updateRecord(orderId: string, record: FlashOrderRecord) {
 
   if (existing) store.updateOrder(orderId, record)
   else store.upsertOrder(record)
+
+  syncOrderPositions(existing, record)
 
   return record
 }
@@ -1213,6 +1301,7 @@ export default {
   getOrder,
   cancelOrder,
   refreshOpenOrders,
+  setPositionSync: setFlashPositionSync,
   startOpenOrderPolling,
   stopOpenOrderPolling
 }

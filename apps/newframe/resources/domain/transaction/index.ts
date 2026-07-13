@@ -57,6 +57,15 @@ export interface TransactionEffect {
   logoURI?: string
 }
 
+export interface TransactionPositionToken {
+  address: string
+  chainId: number
+  decimals: number
+  logoURI?: string
+  name: string
+  symbol: string
+}
+
 export type TransactionSimulationStatus = 'loading' | 'success' | 'unavailable' | 'error'
 
 export interface TransactionSimulation {
@@ -300,6 +309,34 @@ export function getTransactionEffects(req: any, nativeSymbol = 'ETH'): Transacti
   const deterministicNeutralEffects = deterministicEffects.filter((effect) => effect.direction === 'neutral')
 
   return [...simulatedEffects, ...deterministicNeutralEffects]
+}
+
+export function getTransactionPositionTokens(req: any): TransactionPositionToken[] {
+  const chainId = parseChainId(req?.data?.chainId ?? req?.chainId)
+  if (!Number.isInteger(chainId) || chainId <= 0) return []
+
+  const tokens = new Map<string, TransactionPositionToken>()
+
+  getTransactionEffects(req).forEach((effect) => {
+    const address = (effect.assetAddress || '').trim().toLowerCase()
+    if (effect.kind !== 'erc20' || effect.direction === 'neutral') return
+    if (!/^0x[0-9a-f]{40}$/.test(address)) return
+
+    const symbol = effect.symbol || 'Token'
+    const decimals = Number.isInteger(effect.decimals) ? Number(effect.decimals) : 18
+    const token = {
+      address,
+      chainId,
+      decimals,
+      name: symbol,
+      symbol,
+      ...(effect.logoURI ? { logoURI: effect.logoURI } : {})
+    }
+
+    tokens.set(`${chainId}:${address}`, token)
+  })
+
+  return [...tokens.values()]
 }
 
 export function getPaidTransactionFee(req: any) {

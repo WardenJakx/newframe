@@ -21,6 +21,7 @@ import menu from './menu'
 import store from './store'
 import './localServer'
 import accounts from './accounts'
+import flash from './flash'
 import * as launch from './launch'
 import updater from './updater'
 import signers from './signers'
@@ -66,6 +67,11 @@ if (!hasInstanceLock) {
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports -- lazy-loaded for side effects at startup
 require('./rpc')
+
+flash.setPositionSync({
+  track: ({ address, tokens }) => accounts.trackPositionTokens(address as Address, tokens),
+  refresh: ({ address, chainId, tokens }) => accounts.refreshPositions(address as Address, chainId, tokens)
+})
 
 log.info(`Chrome: v${process.versions.chrome}`)
 log.info(`Electron: v${process.versions.electron}`)

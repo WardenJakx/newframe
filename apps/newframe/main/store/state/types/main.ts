@@ -69,6 +69,7 @@ export const ActivityRecordSchema = z
     submittedAt: ActivityDateSchema,
     updatedAt: ActivityDateSchema,
     completedAt: ActivityDateSchema,
+    positionsRefreshedAt: ActivityDateSchema,
     status: ActivityStatusSchema,
     confirmations: ActivityNumberSchema,
     receipt: z.unknown().optional(),

@@ -19,7 +19,8 @@ import {
   TransactionData,
   GasFeesSource,
   TRANSACTION_CONFIRMATION_TARGET,
-  getTransactionIntent
+  getTransactionIntent,
+  getTransactionPositionTokens
 } from '../../resources/domain/transaction'
 import { findUnavailableSigners, isHardwareSigner, isSignerReady } from '../../resources/domain/signer'
 
@@ -40,8 +41,9 @@ import { ActionType } from '../transaction/actions'
 import { openBlockExplorer } from '../windows/window'
 import { ApprovalType } from '../../resources/constants'
 import { accountNS } from '../../resources/domain/account'
+import { toTokenId } from '../../resources/domain/balance'
 import { chainUsesOptimismFees } from '../../resources/utils/chains'
-import type { ActivityRecord } from '../store/state'
+import type { ActivityRecord, Token } from '../store/state'
 
 function notify(title: string, body: string, action: (event: Electron.Event) => void) {
   const notification = new Notification({ title, body })
@@ -153,6 +155,7 @@ export class Accounts extends EventEmitter {
 
   private dataScanner?: DataScanner
   private activityMonitors: Record<string, () => void> = {}
+  private pendingPositionRefreshes = new Map<string, TransactionRequest>()
 
   constructor() {
     super()
@@ -294,13 +297,74 @@ export class Accounts extends EventEmitter {
     req: TransactionRequest,
     hash: string
   ) {
+    this.saveTransactionPositionTokens(account.address, req)
     store.upsertSubmittedActivity(this.transactionActivityRecord(account, handlerId, req, hash))
     this.upsertTransactionNotification(account, req, hash)
+  }
+
+  private transactionPositionTokens(req: TransactionRequest) {
+    return getTransactionPositionTokens(req) as Token[]
+  }
+
+  private savePositionTokens(address: Address, affectedTokens: Token[]) {
+    const savedTokens = [
+      ...((store('main.tokens.custom') || []) as Token[]),
+      ...((store('main.tokens.known', address) || []) as Token[])
+    ]
+    const savedTokenIndex = new Map(savedTokens.map((token) => [toTokenId(token), token]))
+    const tokens = affectedTokens.map((token) => {
+      const savedToken = savedTokenIndex.get(toTokenId(token))
+
+      return savedToken ? { ...token, ...savedToken } : token
+    })
+    const newTokens = tokens.filter((token) => !savedTokenIndex.has(toTokenId(token)))
+    if (newTokens.length > 0) store.addKnownTokens(address, newTokens)
+
+    return tokens
+  }
+
+  private saveTransactionPositionTokens(address: Address, req: TransactionRequest) {
+    return this.savePositionTokens(address, this.transactionPositionTokens(req))
+  }
+
+  trackPositionTokens(address: Address, tokens: Token[]) {
+    return this.savePositionTokens(address.toLowerCase() as Address, tokens)
+  }
+
+  refreshPositions(address: Address, chainId: number, tokens: Token[]) {
+    const normalizedAddress = address.toLowerCase() as Address
+    const trackedTokens = this.savePositionTokens(normalizedAddress, tokens)
+
+    if (!this.dataScanner) return false
+
+    this.dataScanner.refreshPositions(normalizedAddress, chainId, trackedTokens)
+    return true
+  }
+
+  private refreshTransactionPositions(req: TransactionRequest) {
+    const hash = req.tx?.hash
+    const chainId = this.transactionChainId(req)
+    const address = (req.account || req.data?.from || '').toLowerCase() as Address
+    if (!hash || !chainId || !address || !req.tx?.receipt) return
+
+    const activity = store('main.activity', transactionActivityId(hash)) as ActivityRecord | undefined
+    if (activity?.positionsRefreshedAt) return
+
+    const tokens = this.transactionPositionTokens(req)
+    if (!this.refreshPositions(address, chainId, tokens)) {
+      this.pendingPositionRefreshes.set(hash, req)
+      return
+    }
+
+    store.updateActivity(transactionActivityId(hash), { positionsRefreshedAt: Date.now() })
+    this.pendingPositionRefreshes.delete(hash)
   }
 
   syncTransactionActivity(account: FrameAccount, req: TransactionRequest) {
     const hash = req.tx?.hash
     if (!hash) return
+
+    this.saveTransactionPositionTokens(account.address, req)
 
     const id = transactionActivityId(hash)
     const activity = store('main.activity', id)
@@ -601,6 +665,8 @@ export class Accounts extends EventEmitter {
           receipt
         }
 
+        this.refreshTransactionPositions(txRequest)
+
         this.pruneSameNonceActivityLosers(currentActivity)
 
         if ((receipt as any)?.status === '0x0') {
@@ -716,6 +782,7 @@ export class Accounts extends EventEmitter {
   startDataScanner() {
     if (!this.dataScanner) {
       this.dataScanner = ExternalDataScanner()
+      this.pendingPositionRefreshes.forEach((req) => this.refreshTransactionPositions(req))
     }
   }
 
@@ -871,6 +938,8 @@ export class Accounts extends EventEmitter {
                   receipt: receiptRes.result,
                   confirmations: txRequest.tx?.confirmations || 0
                 }
+
+                this.refreshTransactionPositions(txRequest)
 
                 account.update()
 
@@ -1352,6 +1421,7 @@ export class Accounts extends EventEmitter {
   close() {
     this.dataScanner?.close()
     this.dataScanner = undefined
+    this.pendingPositionRefreshes.clear()
     Object.keys(this.activityMonitors).forEach((id) => this.stopActivityMonitor(id))
     // usbDetect.stopMonitoring()
   }
