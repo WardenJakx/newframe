@@ -1,0 +1,465 @@
+import type { ElectronApplication, Page } from 'playwright-core'
+
+import type {
+  LinkInvokeChannel,
+  LinkRpcMethod,
+  LinkSendChannel,
+  NewframeHost
+} from '../../../apps/newframe/resources/bridge/contracts.ts'
+import { anvilChainId } from '../core/config.ts'
+import { sleep, withTimeout } from '../core/utils.ts'
+import type { AnvilClient } from './anvil-client.ts'
+import type { AccountInfo, AddChain, AppState, CurrentRequest, FlashOrder, HarnessAccounts } from './types.ts'
+import type { VisualHarnessRuntime } from './runtime.ts'
+
+export const harnessOrigin = 'newframe-contracts.local'
+export const harnessAccountAddress = '0x35f9179059a691d8beecf82fe112f7277e018588'
+export const nativeCurrencyAddress = '0x0000000000000000000000000000000000000000'
+export const wethAddress = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2'
+export const oneEthWei = 1_000_000_000_000_000_000n
+
+const dappLauncherFrameId = 'dappLauncher'
+const finalRequestStatuses = new Set(['confirmed', 'declined', 'error', 'success'])
+
+type HostOperation =
+  | { kind: 'invoke'; channel: LinkInvokeChannel; args: unknown[] }
+  | { kind: 'rpc'; method: LinkRpcMethod; args: unknown[]; wait: boolean }
+  | { kind: 'send'; channel: LinkSendChannel; args: unknown[] }
+
+export async function waitForElectronPage(
+  app: ElectronApplication,
+  urlPart: string,
+  runtime: VisualHarnessRuntime,
+  timeoutMs = runtime.uiTimeoutMs
+) {
+  const started = Date.now()
+  let lastLog = started
+
+  while (Date.now() - started < timeoutMs) {
+    const page = app.windows().find((candidate) => candidate.url().includes(urlPart))
+    if (page) return page
+
+    if (Date.now() - lastLog > 2_500) {
+      lastLog = Date.now()
+      const urls = app.windows().map((candidate) => candidate.url() || '<blank>')
+      runtime.log(`waiting for ${urlPart}; pages: ${urls.join(', ') || '<none>'}`)
+    }
+
+    await sleep(250)
+  }
+
+  return runtime.fail(`Timed out waiting for Electron page containing ${urlPart}`)
+}
+
+export class NewframeDriver {
+  readonly anvil: AnvilClient
+  readonly app: ElectronApplication
+  readonly runtime: VisualHarnessRuntime
+  readonly tray: Page
+
+  constructor(app: ElectronApplication, tray: Page, runtime: VisualHarnessRuntime, anvil: AnvilClient) {
+    this.app = app
+    this.tray = tray
+    this.runtime = runtime
+    this.anvil = anvil
+  }
+
+  screenshot(page: Page, filename: string) {
+    return this.runtime.screenshot(page, filename)
+  }
+
+  fail(message: string): never {
+    return this.runtime.fail(message)
+  }
+
+  async waitForElectronPage(urlPart: string, timeoutMs = this.runtime.uiTimeoutMs) {
+    return waitForElectronPage(this.app, urlPart, this.runtime, timeoutMs)
+  }
+
+  async assertColorTokens(page: Page, renderer: string) {
+    const timeout = this.runtime.uiTimeoutMs
+    await withTimeout(page.waitForLoadState('load', { timeout }), `${renderer} load state`, timeout)
+    const evaluation = page.evaluate(() => {
+      const rootStyle = getComputedStyle(document.documentElement)
+      const semanticValue = rootStyle.getPropertyValue('--color-bg-primary').trim()
+      const primitiveValue = rootStyle.getPropertyValue('--color-plum-950').trim()
+      const actionValue = rootStyle.getPropertyValue('--color-action-primary').trim()
+      const semanticProbe = document.createElement('div')
+      const primitiveProbe = document.createElement('div')
+      const alphaProbe = document.createElement('div')
+
+      semanticProbe.style.backgroundColor = 'var(--color-bg-primary)'
+      primitiveProbe.style.backgroundColor = 'var(--color-plum-950)'
+      alphaProbe.style.backgroundColor = 'color-mix(in srgb, var(--color-action-primary) 12%, transparent)'
+      semanticProbe.style.display = primitiveProbe.style.display = alphaProbe.style.display = 'none'
+      document.body.append(semanticProbe, primitiveProbe, alphaProbe)
+
+      const semanticColor = getComputedStyle(semanticProbe).backgroundColor
+      const primitiveColor = getComputedStyle(primitiveProbe).backgroundColor
+      const alphaColor = getComputedStyle(alphaProbe).backgroundColor
+      semanticProbe.remove()
+      primitiveProbe.remove()
+      alphaProbe.remove()
+
+      return {
+        actionValue,
+        alphaColor,
+        colorMixSupported: CSS.supports(
+          'background-color',
+          'color-mix(in srgb, rgb(0, 210, 190) 12%, transparent)'
+        ),
+        primitiveColor,
+        primitiveValue,
+        semanticColor,
+        semanticValue
+      }
+    })
+    const result = await withTimeout(evaluation, `${renderer} color-token evaluation`, timeout)
+
+    if (!result.semanticValue || !result.primitiveValue || !result.actionValue) {
+      this.fail(`${renderer} is missing generated color custom properties: ${JSON.stringify(result)}`)
+    }
+    if (result.semanticColor !== result.primitiveColor) {
+      this.fail(`${renderer} semantic background does not resolve to its primitive`)
+    }
+    if (!result.colorMixSupported || !result.alphaColor || result.alphaColor === 'rgba(0, 0, 0, 0)') {
+      this.fail(`${renderer} does not resolve color-mix() alpha tokens`)
+    }
+  }
+
+  canonicalAssetId(chainId: number, address: string) {
+    return `${chainId}:${address.toLowerCase()}`
+  }
+
+  launcherRoute(route: 'send' | 'trade', assetId = '') {
+    return assetId ? `/${route}?assetId=${encodeURIComponent(assetId)}` : `/${route}`
+  }
+
+  async waitForDappRoute(page: Page, route: 'send' | 'trade') {
+    await page.waitForURL((url) => url.hash.startsWith(`#/${route}`), { timeout: this.runtime.uiTimeoutMs })
+  }
+
+  private async evaluateHost(page: Page, operation: HostOperation) {
+    return page.evaluate(async (operation) => {
+      const host = (window as typeof window & { __NEWFRAME_HOST__?: NewframeHost }).__NEWFRAME_HOST__
+
+      if (!host) throw new Error('Newframe host bridge is not available')
+
+      if (operation.kind === 'invoke') return host.invoke(operation.channel, operation.args)
+      if (operation.kind === 'send') {
+        host.send(operation.channel, operation.args)
+        return undefined
+      }
+
+      const response = host.rpc(operation.method, operation.args)
+      if (operation.wait) return response
+      void response.catch(() => undefined)
+      return undefined
+    }, operation)
+  }
+
+  async linkRpc<T>(page: Page, method: LinkRpcMethod, ...args: unknown[]): Promise<T> {
+    const response = await this.evaluateHost(page, { kind: 'rpc', method, args, wait: true })
+
+    if (Array.isArray(response)) {
+      const [err, value] = response as [unknown, T]
+      if (err) throw new Error(typeof err === 'string' ? err : JSON.stringify(err))
+      return value
+    }
+
+    return response as T
+  }
+
+  async linkRpcNoWait(page: Page, method: LinkRpcMethod, ...args: unknown[]) {
+    await this.evaluateHost(page, { kind: 'rpc', method, args, wait: false })
+  }
+
+  async linkSend(page: Page, channel: LinkSendChannel, ...args: unknown[]) {
+    await this.evaluateHost(page, { kind: 'send', channel, args })
+  }
+
+  async linkInvoke<T>(page: Page, channel: LinkInvokeChannel, ...args: unknown[]): Promise<T> {
+    const response = await this.evaluateHost(page, { kind: 'invoke', channel, args })
+    return Array.isArray(response) ? (response as [T])[0] : (response as T)
+  }
+
+  async trayAction(action: string, ...args: unknown[]) {
+    await this.linkSend(this.tray, 'tray:action', action, ...args)
+    await sleep(100)
+  }
+
+  async openDappLauncherRoute(route: string) {
+    await this.linkSend(this.tray, '*:addFrame', { id: dappLauncherFrameId, route })
+    await this.trayAction('setDash', { showing: false })
+  }
+
+  getAppState() {
+    return this.linkRpc<AppState>(this.tray, 'getState')
+  }
+
+  async waitForState(
+    predicate: (state: AppState) => boolean,
+    timeoutMs: number,
+    message: string
+  ): Promise<AppState> {
+    const started = Date.now()
+    let latest: AppState | undefined
+
+    while (Date.now() - started < timeoutMs) {
+      latest = await this.getAppState()
+      if (predicate(latest)) return latest
+      await sleep(250)
+    }
+
+    throw new Error(`${message}${latest ? '' : '; state was unavailable'}`)
+  }
+
+  currentRequest(state: AppState): CurrentRequest | undefined {
+    const crumb = state.windows?.panel?.nav?.[0]
+    if (crumb?.view !== 'requestView') return undefined
+
+    const accountId = crumb.data?.accountId || ''
+    const requestId = crumb.data?.requestId || ''
+    const request = state.main?.accounts?.[accountId]?.requests?.[requestId]
+    const handlerId = request?.handlerId || requestId
+
+    return request ? { ...request, accountId, handlerId } : undefined
+  }
+
+  async waitForCurrentRequest(type: string, excludeIds = new Set<string>(), timeoutMs = 60_000) {
+    const state = await this.waitForState(
+      (candidate) => {
+        const request = this.currentRequest(candidate)
+        if (!request || request.type !== type) return false
+        if (excludeIds.has(request.handlerId)) return false
+        return !finalRequestStatuses.has(String(request.status || '').toLowerCase())
+      },
+      timeoutMs,
+      `Timed out waiting for current ${type} request`
+    )
+
+    const request = this.currentRequest(state)
+    if (!request) return this.fail(`Timed out waiting for current ${type} request`)
+    return request
+  }
+
+  async waitForRequestStatus(handlerId: string, timeoutMs = 15_000) {
+    await this.waitForState(
+      (state) => {
+        const accounts = Object.values(state.main?.accounts || {})
+        const request = accounts.map((account) => account.requests?.[handlerId]).find(Boolean)
+        if (!request) return true
+        const status = String(request.status || '').toLowerCase()
+        return Boolean(request.notice || request.tx?.hash || (status && status !== 'pending'))
+      },
+      timeoutMs,
+      `Timed out waiting for request ${handlerId} to submit`
+    ).catch(() => undefined)
+  }
+
+  findHarnessAccounts(state: AppState): HarnessAccounts {
+    const accounts = Object.values(state.main?.accounts || {}) as AccountInfo[]
+    const harness = accounts.find((account) => {
+      return [account.id, account.address].some(
+        (value) => String(value || '').toLowerCase() === harnessAccountAddress
+      )
+    })
+    const vitalik = accounts.find((account) => {
+      return [account.ensName, account.name].some(
+        (value) => String(value || '').toLowerCase() === 'vitalik.eth'
+      )
+    })
+
+    if (!harness) this.fail(`Reused profile is missing seeded harness account ${harnessAccountAddress}`)
+    if (!vitalik) this.fail('Reused profile is missing an account displayed as vitalik.eth')
+
+    return {
+      harness: {
+        ...harness,
+        id: String(harness.id || harness.address).toLowerCase(),
+        address: String(harness.address || harness.id).toLowerCase()
+      },
+      vitalik: {
+        ...vitalik,
+        id: String(vitalik.id || vitalik.address).toLowerCase(),
+        address: String(vitalik.address || vitalik.id).toLowerCase()
+      }
+    }
+  }
+
+  async selectAccount(account: AccountInfo, searchValue: string, screenshotName?: string) {
+    await this.tray.getByRole('button', { name: 'Accounts' }).click()
+    const dialog = this.tray.getByRole('dialog', { name: 'Accounts' })
+    await dialog.waitFor({ state: 'visible' })
+    await dialog.getByRole('textbox', { name: 'Search accounts' }).fill(searchValue)
+    await dialog.locator('.t2AccountRow').first().waitFor({ state: 'visible', timeout: 10_000 })
+
+    if (screenshotName) await this.screenshot(this.tray, screenshotName)
+
+    const displayName = account.ensName || account.name || ''
+    const shortAddress = `${account.address.slice(0, 5)}…${account.address.slice(-4)}`
+    const escapedName = (displayName || shortAddress).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const row = dialog.getByRole('button', { name: new RegExp(escapedName, 'i') }).first()
+
+    if ((await row.count()) > 0) {
+      await row.click()
+    } else {
+      // TODO: replace this with a stronger app-level accessible label if account rows stop exposing row text.
+      await dialog.locator('.t2AccountRow').first().click()
+    }
+
+    await dialog.waitFor({ state: 'hidden', timeout: 10_000 })
+    await this.waitForSelectedAccount(account)
+  }
+
+  async selectNetwork(name: string) {
+    const dialog = this.tray.getByRole('dialog', { name: 'Networks' })
+
+    if (!(await dialog.isVisible({ timeout: 500 }).catch(() => false))) {
+      await this.tray.getByRole('button', { name: 'Network filter' }).click()
+      await dialog.waitFor({ state: 'visible' })
+    }
+
+    await dialog.getByRole('textbox', { name: 'Search networks' }).fill(name)
+    await dialog.getByRole('button', { name, exact: true }).click()
+    await dialog.waitFor({ state: 'hidden', timeout: 10_000 })
+  }
+
+  async waitForSelectedAccount(account: AccountInfo, timeoutMs = 5_000) {
+    await this.waitForState(
+      (state) => String(state.selected?.current || '').toLowerCase() === account.id.toLowerCase(),
+      timeoutMs,
+      `Expected selected account to be ${account.id}`
+    )
+  }
+
+  async setSelectedAccount(account: AccountInfo) {
+    const selected = String((await this.getAppState()).selected?.current || '').toLowerCase()
+    if (selected !== account.id.toLowerCase()) await this.linkRpc(this.tray, 'setSigner', account.id)
+    await this.waitForSelectedAccount(account)
+  }
+
+  nativeAnvilBalance(state: AppState, address: string) {
+    const balances = state.main?.balances?.[address.toLowerCase()] || []
+    return balances.find((balance) => {
+      return (
+        Number(balance.chainId) === anvilChainId &&
+        String(balance.address || '').toLowerCase() === nativeCurrencyAddress
+      )
+    })
+  }
+
+  async setNativeAnvilBalance(account: AccountInfo) {
+    const balance = await this.anvil.balance(account.address)
+    await this.trayAction('setBalance', account.address, {
+      address: nativeCurrencyAddress,
+      balance: `0x${balance.toString(16)}`,
+      chainId: anvilChainId,
+      displayBalance: this.formatUnits(balance, 18n),
+      symbol: 'ETH'
+    })
+  }
+
+  normalizeAddChain(chain: AddChain | undefined) {
+    return { ...chain, explorer: typeof chain?.explorer === 'string' ? chain.explorer : '' }
+  }
+
+  async refreshBalances(account: AccountInfo) {
+    await this.linkInvoke(this.tray, 'tray:refreshPortfolioBalances', account.id).catch(() => undefined)
+  }
+
+  async maybeProceedWarning(filename: string) {
+    const proceed = this.tray.getByText('Proceed', { exact: true }).last()
+    if (!(await proceed.isVisible({ timeout: 750 }).catch(() => false))) return false
+
+    await this.screenshot(this.tray, filename)
+    await proceed.click()
+    await sleep(500)
+    return true
+  }
+
+  async signCurrentTransaction(
+    request: CurrentRequest,
+    submittedScreenshot: string,
+    warningScreenshots: string[]
+  ) {
+    if (warningScreenshots[0]) await this.maybeProceedWarning(warningScreenshots[0])
+
+    // TODO: the visible Sign button has an intentional UI delay; approve via the same app RPC after review.
+    await this.linkRpcNoWait(this.tray, 'approveRequest', request)
+    void this.anvil.mineBlocksOver(10, 150).catch(() => undefined)
+
+    if (warningScreenshots[1]) await this.maybeProceedWarning(warningScreenshots[1])
+    await this.waitForRequestStatus(request.handlerId)
+    await this.screenshot(this.tray, submittedScreenshot)
+  }
+
+  async signCurrentSignature(request: CurrentRequest, submittedScreenshot: string) {
+    await this.linkRpcNoWait(this.tray, 'approveRequest', request)
+    await this.waitForRequestStatus(request.handlerId)
+    await this.screenshot(this.tray, submittedScreenshot)
+  }
+
+  async clearPanelAndOverlays() {
+    await this.trayAction('navBack', 'panel', 99)
+
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const backToPositions = this.tray.getByRole('button', { name: 'Back to positions' })
+      if (!(await backToPositions.isVisible({ timeout: 500 }).catch(() => false))) break
+      await backToPositions.click()
+      await sleep(300)
+    }
+  }
+
+  async openTradeTicket() {
+    await this.openDappLauncherRoute(
+      this.launcherRoute('trade', this.canonicalAssetId(anvilChainId, wethAddress))
+    )
+    const tradePage = await this.waitForElectronPage('bundle/dapp.html')
+    await this.waitForDappRoute(tradePage, 'trade')
+    await tradePage.getByRole('tab', { name: 'Market' }).waitFor({ state: 'visible', timeout: 15_000 })
+    return tradePage
+  }
+
+  async assertTradeTicketVisualControls(page: Page) {
+    if ((await page.getByRole('group', { name: 'Trade direction' }).count()) > 0) {
+      this.fail('Trade ticket still exposes the old explicit BUY/SELL segmented control')
+    }
+
+    await page.getByRole('button', { name: /Switch to (BUY|SELL)/ }).waitFor({
+      state: 'visible',
+      timeout: 5_000
+    })
+    await page.getByRole('button', { name: /Select target asset/i }).waitFor({
+      state: 'visible',
+      timeout: 5_000
+    })
+    await page.getByRole('button', { name: /Select contra asset/i }).waitFor({
+      state: 'visible',
+      timeout: 5_000
+    })
+  }
+
+  async waitForFlashOrder(predicate: (order: FlashOrder) => boolean, timeoutMs: number, message: string) {
+    const state = await this.waitForState(
+      (candidate) => Object.values(candidate.main?.orders || {}).some(predicate),
+      timeoutMs,
+      message
+    )
+    return Object.values(state.main?.orders || {}).find(predicate) as FlashOrder
+  }
+
+  async ensureTradeSellSide(tradePage: Page) {
+    const switchToSell = tradePage.getByRole('button', { name: /Switch to SELL/i })
+    if (await switchToSell.isVisible({ timeout: 1_000 }).catch(() => false)) await switchToSell.click()
+    await tradePage.getByLabel('WETH amount').waitFor({ state: 'visible', timeout: 5_000 })
+  }
+
+  private formatUnits(value: bigint, decimals: bigint) {
+    const scale = 10n ** decimals
+    const whole = value / scale
+    const fraction = value % scale
+    if (fraction === 0n) return `${whole}.0`
+    return `${whole}.${fraction.toString().padStart(Number(decimals), '0').replace(/0+$/, '')}`
+  }
+}
