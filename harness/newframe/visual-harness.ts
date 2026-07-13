@@ -1238,15 +1238,10 @@ async function launchApp() {
   })
 }
 
-async function forceLockAndUnlock(tray: Page) {
+async function unlockWallet(tray: Page) {
   await withStage('lock screen', async () => {
     const unlockDialog = tray.getByRole('dialog', { name: 'Unlock Newframe' })
-
-    if (!(await unlockDialog.isVisible({ timeout: 2_000 }).catch(() => false))) {
-      await linkRpc(tray, 'lockApp')
-      await unlockDialog.waitFor({ state: 'visible', timeout: uiTimeoutMs })
-    }
-
+    await unlockDialog.waitFor({ state: 'visible', timeout: uiTimeoutMs })
     await screenshot(tray, '01-lock-screen.png')
   })
 
@@ -1366,7 +1361,7 @@ async function runFlow(app: ElectronApplication) {
     if (message.type() === 'error') consoleErrors.push(message.text())
   })
 
-  await forceLockAndUnlock(tray)
+  await unlockWallet(tray)
   await withStage('tray readiness', async () => assertColorTokens(tray, 'Tray'))
   await withStage('dashboard visuals', async () => screenshotDashboardVisualStates(app, tray))
   await resetHarnessState(tray)
