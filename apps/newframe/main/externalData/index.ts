@@ -118,8 +118,12 @@ export default function () {
 
     log.verbose('updating external data due to network update(s)', { connectedChains, newlyConnected })
 
-    if (newlyConnected.length > 0 && activeAccount && shouldScanOnChain(activeAccount)) {
-      balances.addNetworks(activeAccount, newlyConnected)
+    if (newlyConnected.length > 0 && activeAccount) {
+      if (shouldScanOnChain(activeAccount)) {
+        balances.addNetworks(activeAccount, newlyConnected)
+      } else {
+        balances.refresh(activeAccount)
+      }
     }
   }, 500)
 
@@ -128,7 +132,12 @@ export default function () {
 
     log.verbose('updating external data due to address update(s)', { activeAccount })
 
-    balances.setAddress(activeAccount && shouldScanOnChain(activeAccount) ? activeAccount : ('' as Address))
+    if (activeAccount && !shouldScanOnChain(activeAccount)) {
+      balances.setAddress('' as Address)
+      balances.refresh(activeAccount)
+    } else {
+      balances.setAddress(activeAccount)
+    }
   }, 800)
 
   const handleTokensUpdate = debounce((tokens: Token[]) => {
@@ -193,7 +202,7 @@ export default function () {
 
   return {
     refreshBalances: (address = activeAccount) => {
-      if (!isSystemInactive() && address && shouldScanOnChain(address)) balances.refresh(address)
+      if (!isSystemInactive() && address) balances.refresh(address)
     },
     refreshPositions: (address, chainId, tokens) => {
       if (!isSystemInactive() && address && shouldScanOnChain(address)) {

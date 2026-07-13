@@ -50,7 +50,27 @@ beforeAll(() => {
 beforeEach(() => {
   store.set('main.tokens.custom', [])
   store.set('main.tokens.known', address, knownTokens)
-  store.set('main.networks.ethereum.10', { id: 10, connection: { primary: { connected: true } } })
+  store.set('main.networks.ethereum.10', {
+    id: 10,
+    name: 'Optimism',
+    on: true,
+    connection: { primary: { connected: true } }
+  })
+  store.set('main.networksMeta.ethereum.10', {
+    nativeCurrency: { symbol: 'ETH', decimals: 18 }
+  })
+  store.set('main.balances', address, [
+    {
+      ...knownTokens[0],
+      balance: '0xde0b6b3a7640000',
+      decimals: 18,
+      displayBalance: '1',
+      name: 'Optimism'
+    }
+  ])
+  store.set('main.rates', knownTokens[0].address, {
+    usd: { price: 2, change24hr: 0 }
+  })
 
   balances = BalancesScanner(store)
   balances.start()
@@ -101,6 +121,64 @@ it('refreshes balances on demand', () => {
   expect((balancesController as any).updateChainBalances).toHaveBeenCalledWith(address, [10])
 })
 
+it('only manually refreshes non-dust valued tokens and curated blue chips', () => {
+  const valuable = { ...token(1), name: 'Valuable', decimals: 18 }
+  const dust = { ...token(2), name: 'Dust', decimals: 18 }
+  const noPrice = { ...token(3), name: 'No Price', decimals: 18 }
+  const weth = {
+    ...token(4),
+    name: 'Wrapped Ether',
+    symbol: 'WETH',
+    decimals: 18
+  }
+  const usdc = { ...token(5), name: 'USD Coin', symbol: 'USDC', decimals: 6 }
+  const custom = { ...token(6), name: 'Custom', decimals: 18 }
+  const tokens = [valuable, dust, noPrice, weth, usdc]
+  const oneToken = '0xde0b6b3a7640000'
+
+  store.set('main.tokens.known', address, tokens)
+  store.set('main.tokens.custom', [custom])
+  store.set(
+    'main.balances',
+    address,
+    [...tokens, custom].map((trackedToken) => ({
+      ...trackedToken,
+      balance: [weth, usdc].includes(trackedToken) ? '0x0' : oneToken,
+      displayBalance: [weth, usdc].includes(trackedToken) ? '0' : '1'
+    }))
+  )
+  store.set('main.rates', valuable.address, { usd: { price: 2, change24hr: 0 } })
+  store.set('main.rates', dust.address, { usd: { price: 0.001, change24hr: 0 } })
+  ;(balancesController as any).isRunning.mockReturnValue(true)
+
+  balances.refresh(address)
+
+  expect((balancesController as any).updateKnownTokenBalances).toHaveBeenCalledWith(address, [
+    custom,
+    valuable,
+    weth,
+    usdc
+  ])
+  expect((balancesController as any).updateChainBalances).toHaveBeenCalledWith(address, [10])
+})
+
+it('manually refreshes every custom token without applying the discovery scan cap', () => {
+  const customTokens = Array.from({ length: 300 }, (_, i) => ({
+    ...token(i + 1),
+    name: `Custom ${i + 1}`,
+    decimals: 18
+  }))
+
+  store.set('main.tokens.custom', customTokens)
+  store.set('main.tokens.known', address, [])
+  store.set('main.balances', address, [])
+  ;(balancesController as any).isRunning.mockReturnValue(true)
+
+  balances.refresh(address)
+
+  expect((balancesController as any).updateKnownTokenBalances).toHaveBeenCalledWith(address, customTokens)
+})
+
 it('refreshes affected tokens and the native balance for a transaction chain', () => {
   const affectedTokens = [token(1, 10), token(2, 1)]
   ;(balancesController as any).isRunning.mockReturnValue(true)
@@ -121,7 +199,8 @@ it('caps large known token scans while preserving custom tokens', () => {
   store.set('main.tokens.known', address, discoveredTokens)
   ;(balancesController as any).isRunning.mockReturnValue(true)
 
-  balances.refresh(address)
+  balances.setAddress(address)
+  jest.advanceTimersByTime(0)
 
   expect((balancesController as any).updateKnownTokenBalances).toHaveBeenCalledWith(
     address,

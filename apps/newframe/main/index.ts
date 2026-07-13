@@ -28,7 +28,7 @@ import signers from './signers'
 import biometrics from './biometrics'
 import persist from './store/persist'
 import imageCache from './imageCache'
-import { createPortfolioProvider } from './portfolio'
+import { getTokenDiscoveryProvider } from './portfolio'
 import { showUnhandledExceptionDialog } from './windows/dialog'
 import { openBlockExplorer, openExternal } from './windows/window'
 import Erc20Contract from './contracts/erc20'
@@ -150,11 +150,6 @@ function startUpdater() {
   updater.start()
 }
 
-function getPortfolioApiKey() {
-  const apiKey = store('main.portfolioApiKey')
-  return typeof apiKey === 'string' ? apiKey.trim() : ''
-}
-
 function getEnabledNetworkChainIds() {
   const networks = Object.values((store('main.networks.ethereum') || {}) as Record<string, Chain>)
 
@@ -183,10 +178,10 @@ async function hydrateChainIcon(chainId: number) {
   let sourceUrl = existingIcon
 
   if (!sourceUrl) {
-    const apiKey = getPortfolioApiKey()
-    if (!apiKey) return { ok: false, error: 'missing_api_key' }
+    const discovery = getTokenDiscoveryProvider()
+    if (!discovery.ok) return { ok: false, error: discovery.error }
 
-    const image = await createPortfolioProvider({ apiKey }).getChainImage(chainId)
+    const image = await discovery.provider.getChainImage(chainId)
     sourceUrl = image?.url || ''
   }
 
@@ -331,20 +326,18 @@ ipcMain.handle('tray:refreshPortfolioBalances', async (e, accountId?: string) =>
   let portfolioValue: number | null = null
   let error: string | undefined
 
-  const apiKey = getPortfolioApiKey()
+  const discovery = getTokenDiscoveryProvider()
   const chainIds = getEnabledNetworkChainIds()
 
-  if (!apiKey) {
-    error = 'missing_api_key'
+  if (!discovery.ok) {
+    error = discovery.error
   } else {
     try {
-      const portfolio = await createPortfolioProvider({ apiKey }).getWalletPortfolio(address, chainIds, {
-        sync: true
-      })
-      const autoDiscoverTokens = store('main.autoDiscoverTokens') !== false
-      const newTokens = autoDiscoverTokens
-        ? getNewPortfolioTokens(address, portfolio.tokens).slice(0, MAX_PORTFOLIO_AUTO_DISCOVERY_TOKENS)
-        : []
+      const portfolio = await discovery.provider.getWalletPortfolio(address, chainIds, { sync: true })
+      const newTokens = getNewPortfolioTokens(address, portfolio.tokens).slice(
+        0,
+        MAX_PORTFOLIO_AUTO_DISCOVERY_TOKENS
+      )
 
       portfolioValue = portfolio.totalValue
       tokensAdded = newTokens.length
@@ -374,9 +367,9 @@ ipcMain.handle('tray:refreshPortfolioBalances', async (e, accountId?: string) =>
     }
   }
 
-  if (error) {
-    accounts.refreshBalances(address)
-  }
+  // Always refresh the targeted on-chain set. This is the fallback when
+  // discovery is unavailable and also covers networks unsupported by it.
+  accounts.refreshBalances(address)
 
   return { ok: !error, error, tokensAdded, portfolioValue }
 })
