@@ -1,16 +1,17 @@
 import { oneEthWei } from '../driver.ts'
 import type { VisualStage } from '../types.ts'
-import { requireAccounts } from './helpers.ts'
+import { requireAccounts, revealAssetDetailsButton } from './helpers.ts'
 
 export const sendStage: VisualStage = {
   name: 'built-in send',
   async run(context) {
     const { anvil, driver, runtime, tray } = context
     const { vitalik } = await requireAccounts(context)
+    await driver.clearPanelAndOverlays()
     const sendEthButton = tray.getByRole('button', { name: 'Send ETH' })
 
     if (!(await sendEthButton.isVisible({ timeout: 1_000 }).catch(() => false))) {
-      await tray.getByRole('button', { name: 'ETH asset details' }).click()
+      await (await revealAssetDetailsButton(tray, 'ETH')).click()
       await tray.getByRole('dialog', { name: 'Asset details' }).waitFor({ state: 'visible' })
     }
 

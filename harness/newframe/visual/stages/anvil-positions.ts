@@ -1,5 +1,5 @@
 import type { VisualStage } from '../types.ts'
-import { requireAccounts } from './helpers.ts'
+import { requireAccounts, revealAssetDetailsButton } from './helpers.ts'
 
 export const anvilPositionsStage: VisualStage = {
   name: 'anvil eth positions',
@@ -15,7 +15,7 @@ export const anvilPositionsStage: VisualStage = {
       5_000,
       'Anvil ETH did not appear for the seeded harness account'
     )
-    const ethAssetDetails = tray.getByRole('button', { name: 'ETH asset details' })
+    const ethAssetDetails = await revealAssetDetailsButton(tray, 'ETH')
     await ethAssetDetails.waitFor({ state: 'visible', timeout: 5_000 }).catch(async (err) => {
       await runtime.screenshot(tray, '09-anvil-network-positions.png')
       throw err

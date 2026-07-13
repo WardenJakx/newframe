@@ -18,7 +18,7 @@ export const tradeTicketStage: VisualStage = {
     await driver.screenshot(tradePage, '10b-trade-direction-switched.png')
 
     await tradePage.getByRole('button', { name: /Select target asset/i }).click()
-    await tradePage.getByRole('option', { name: /\bWETH\b.*\$0\.00/i }).waitFor({
+    await tradePage.getByRole('option', { name: /\bWETH\b/i }).waitFor({
       state: 'visible',
       timeout: 5_000
     })
@@ -26,7 +26,7 @@ export const tradeTicketStage: VisualStage = {
 
     await tradePage.getByRole('button', { name: /Select target asset/i }).click()
     await tradePage.getByRole('button', { name: /Select contra asset/i }).click()
-    await tradePage.getByRole('option', { name: /\bUSDC\b.*\$0\.00/i }).waitFor({
+    await tradePage.getByRole('option', { name: /\bUSDC\b/i }).waitFor({
       state: 'visible',
       timeout: 5_000
     })

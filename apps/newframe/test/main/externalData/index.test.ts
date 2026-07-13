@@ -14,18 +14,44 @@ beforeEach(() => {
   store.set('tray.open', true)
 
   mockBalances = {
+    addNetworks: jest.fn(),
+    addTokens: jest.fn(),
     start: jest.fn(),
     stop: jest.fn(),
     pause: jest.fn(),
     resume: jest.fn(),
     refresh: jest.fn(),
-    refreshPositions: jest.fn()
+    refreshPositions: jest.fn(),
+    setAddress: jest.fn()
   }
   dataManager = externalData()
 })
 
 afterEach(() => {
   dataManager.close()
+})
+
+describe('address updates', () => {
+  const address = '0x0000000000000000000000000000000000001234'
+
+  it('runs a targeted one-shot refresh when selecting a watch account', () => {
+    store.set('main.accounts', address, { address, lastSignerType: 'Address' })
+    store.set('selected.current', address)
+    ;(store.getObserver('externalData:activeAccount') as any).fire()
+
+    jest.advanceTimersByTime(800)
+
+    expect(mockBalances.setAddress).toHaveBeenCalledWith('')
+    expect(mockBalances.refresh).toHaveBeenCalledWith(address)
+  })
+
+  it('allows a manual on-chain refresh for a watch account', () => {
+    store.set('main.accounts', address, { address, lastSignerType: 'Address' })
+
+    dataManager.refreshBalances(address)
+
+    expect(mockBalances.refresh).toHaveBeenCalledWith(address)
+  })
 })
 
 describe('hiding and showing the tray', () => {
