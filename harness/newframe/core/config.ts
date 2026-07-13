@@ -6,15 +6,39 @@ export const rootDir = path.resolve(import.meta.dirname, '../../..')
 export const appDir = path.join(rootDir, 'apps/newframe')
 export const contractsDir = path.join(rootDir, 'newframe-contracts')
 
+function positiveInteger(value: string | undefined, fallback: number, label: string) {
+  const parsed = Number(value || fallback)
+  if (!Number.isInteger(parsed) || parsed <= 0) throw new Error(`Invalid ${label}: ${value}`)
+
+  return parsed
+}
+
 export const ports = {
-  anvil: Number(process.env.NEWFRAME_HARNESS_ANVIL_PORT || 8545),
+  anvil: positiveInteger(
+    process.env.NEWFRAME_HARNESS_ANVIL_PORT || process.env.ANVIL_PORT,
+    8545,
+    'Anvil port'
+  ),
   cdp: Number(process.env.NEWFRAME_HARNESS_CDP_PORT || 9333),
   localTrade: Number(process.env.FLASH_LOCAL_TRADE_PORT || 8422),
   newframeRpc: 1248
 } as const
 
-export const anvilChainId = 31337
-export const anvilRpcUrl = `http://127.0.0.1:${ports.anvil}`
+export const anvilHost = process.env.NEWFRAME_HARNESS_ANVIL_HOST || process.env.ANVIL_HOST || '127.0.0.1'
+export const anvilChainId = positiveInteger(
+  process.env.NEWFRAME_HARNESS_ANVIL_CHAIN_ID || process.env.CHAIN_ID,
+  31337,
+  'Anvil chain ID'
+)
+export const anvilBlockTimeSeconds = positiveInteger(
+  process.env.NEWFRAME_HARNESS_ANVIL_BLOCK_TIME || process.env.ANVIL_BLOCK_TIME,
+  1,
+  'Anvil block time'
+)
+export const anvilRpcUrl =
+  process.env.NEWFRAME_HARNESS_ANVIL_RPC_URL ||
+  process.env.ANVIL_RPC_URL ||
+  `http://${anvilHost}:${ports.anvil}`
 export const newframeRpcUrl = `http://127.0.0.1:${ports.newframeRpc}`
 export const localTradeServiceHealthUrl = `http://127.0.0.1:${ports.localTrade}/health`
 export const passwordEnvKeys = ['NEWFRAME_HARNESS_PASSWORD', 'FRAME_HARNESS_PASSWORD'] as const
@@ -52,16 +76,6 @@ export function newframeEnv(overrides: NodeJS.ProcessEnv = {}): Record<string, s
   for (const key of passwordEnvKeys) delete env[key]
 
   return env
-}
-
-export function contractsEnv() {
-  return definedEnv({
-    ANVIL_PORT: String(ports.anvil),
-    ANVIL_RPC_URL: anvilRpcUrl,
-    CHAIN_ID: String(anvilChainId),
-    NEWFRAME_BASE_RPC_URL: newframeRpcUrl,
-    NEWFRAME_RPC_URL: `${newframeRpcUrl}?chainId=${anvilChainId}`
-  })
 }
 
 export function electronExecutable() {

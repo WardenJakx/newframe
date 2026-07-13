@@ -8,7 +8,7 @@ import { ensureCommand } from './core/process.ts'
 import { expectSuccessfulExit, ProcessService } from './core/process-service.ts'
 import { HarnessRuntime, installSignalHandlers } from './core/service.ts'
 import { createAnvilService } from './services/anvil.ts'
-import { createContractsCommandService } from './services/contracts.ts'
+import { createSeedAnvilService } from './services/contracts.ts'
 import { ElectronApplicationService } from './services/electron.ts'
 import { createLocalTradeService } from './services/local-trade.ts'
 import { AnvilClient } from './visual/anvil-client.ts'
@@ -41,28 +41,17 @@ async function bootstrap(services: HarnessRuntime, visual: VisualHarnessRuntime)
   visual.log(`unlock password configured: ${password.length > 0}`)
   if (!password) visual.fail('Newframe unlock password is not configured')
 
-  await Promise.all([
-    ensureCommand('bun'),
-    ensureCommand('make'),
-    ensureCommand('anvil'),
-    ensureCommand('cast'),
-    ensureCommand('forge')
-  ])
+  await Promise.all([ensureCommand('bun'), ensureCommand('anvil'), ensureCommand('forge')])
 
   visual.currentStage = 'bootstrap build and anvil'
   visual.log('bootstrap build and anvil')
   await services.start(createAnvilService())
 
   const [seed, compile] = await Promise.all([
-    services.start(createContractsCommandService('contracts seed', 'seed')),
+    services.start(createSeedAnvilService()),
     services.start(buildCommand('newframe compile', ['bun', 'run', 'compile'], appDir))
   ])
-  await services.watch(
-    Promise.all([
-      expectSuccessfulExit(seed, 'contracts seed'),
-      expectSuccessfulExit(compile, 'newframe compile')
-    ])
-  )
+  await services.watch(Promise.all([seed.completed, expectSuccessfulExit(compile, 'newframe compile')]))
 
   const bundle = await services.start(buildCommand('newframe bundle', ['bun', 'run', 'bundle'], appDir))
   await services.watch(expectSuccessfulExit(bundle, 'newframe bundle'))

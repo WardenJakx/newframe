@@ -14,13 +14,6 @@ From `apps/newframe`:
 bun run harness:newframe
 ```
 
-This runs:
-
-1. `bun run compile`
-2. `bun run bundle`
-3. The local Flash service and its health check
-4. `electron --remote-debugging-port=9333 ./compiled/main`
-
 The live-local and visual entrypoints use the same lifecycle modules under `harness/newframe/` for
 Electron, Anvil, the local Flash service, health checks, failure monitoring, signals, and reverse-order
 cleanup.
