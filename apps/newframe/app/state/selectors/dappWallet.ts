@@ -65,13 +65,18 @@ interface DappWalletRendererState extends RendererState {
 }
 
 const EMPTY_RUNTIME: DappWalletSelectorValue['runtime'] = {}
+const EMPTY_ACCOUNTS: Record<string, DappWalletAccount> = {}
+const EMPTY_BALANCES: Balance[] = []
+const EMPTY_NETWORKS: Record<string | number, DappWalletEthereumNetwork> = {}
+const EMPTY_NETWORKS_META: Record<string | number, DappWalletEthereumNetworkMeta> = {}
+const EMPTY_RATES: Record<string, { usd?: Rate }> = {}
 
 function createOrderedAccountsSelector() {
   let previousAccountsById: Record<string, DappWalletAccount> | undefined
   let previousAccountOrder: string[] | undefined
   let previousOrderedAccounts: DappWalletAccount[] = []
 
-  return (accountsById: Record<string, DappWalletAccount> = {}, accountOrder?: string[]) => {
+  return (accountsById: Record<string, DappWalletAccount>, accountOrder?: string[]) => {
     if (accountsById === previousAccountsById && accountOrder === previousAccountOrder) {
       return previousOrderedAccounts
     }
@@ -98,13 +103,15 @@ export function createDappWalletSelector() {
   return (state: DappWalletRendererState): DappWalletSelectorValue => {
     const main = state.main || {}
     const selectedAccountId = state.selected?.current || ''
-    const accountsById = main.accounts || {}
+    const accountsById = main.accounts || EMPTY_ACCOUNTS
     const currentAccount = accountsById[selectedAccountId] || null
     const accounts = selectOrderedAccounts(accountsById, main.accountOrder)
-    const rawBalances = currentAccount?.address ? main.balances?.[currentAccount.address] || [] : []
-    const networks = main.networks?.ethereum || {}
-    const networksMeta = main.networksMeta?.ethereum || {}
-    const rates = main.rates || {}
+    const rawBalances = currentAccount?.address
+      ? main.balances?.[currentAccount.address] || EMPTY_BALANCES
+      : EMPTY_BALANCES
+    const networks = main.networks?.ethereum || EMPTY_NETWORKS
+    const networksMeta = main.networksMeta?.ethereum || EMPTY_NETWORKS_META
+    const rates = main.rates || EMPTY_RATES
     const runtime = main.runtime || EMPTY_RUNTIME
     const balanceSummaries = selectBalanceSummaries({
       rawBalances,

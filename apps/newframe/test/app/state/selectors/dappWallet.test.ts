@@ -60,4 +60,25 @@ describe('createDappWalletSelector', () => {
     expect(result.balanceSummaries[0].symbol).toBe('ETH')
     expect(selectDappWallet(state)).toBe(result)
   })
+
+  it('keeps the snapshot stable for an account whose balances have not loaded yet', () => {
+    const account = { id: 'new', address: '0xnew', name: 'New Account' }
+    const selectDappWallet = createDappWalletSelector()
+    const state = {
+      selected: { current: account.id },
+      main: {
+        accounts: { [account.id]: account },
+        accountOrder: [account.id],
+        balances: {},
+        networks: { ethereum: {} },
+        networksMeta: { ethereum: {} },
+        rates: {}
+      }
+    }
+
+    const result = selectDappWallet(state)
+
+    expect(result.balanceSummaries).toEqual([])
+    expect(selectDappWallet(state)).toBe(result)
+  })
 })
