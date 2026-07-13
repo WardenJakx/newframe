@@ -11,7 +11,7 @@ import {
   removeCustomTokens as removeTokensAction,
   addKnownTokens as addKnownTokensAction,
   removeKnownTokens as removeKnownTokensAction,
-  clearSavedTokens as clearSavedTokensAction,
+  resetSavedData as resetSavedDataAction,
   setScanning as setScanningAction,
   initOrigin as initOriginAction,
   clearOrigins as clearOriginsAction,
@@ -1497,7 +1497,7 @@ describe('#removeKnownTokens', () => {
   })
 })
 
-describe('#clearSavedTokens', () => {
+describe('#resetSavedData', () => {
   let main: any
 
   const updaterFn = (node: any, update: any) => {
@@ -1527,18 +1527,25 @@ describe('#clearSavedTokens', () => {
           hash: '0xabc',
           status: 'succeeded'
         }
+      },
+      orders: {
+        'order-1': {
+          orderId: 'order-1',
+          status: 'open'
+        }
       }
     }
   })
 
-  it('clears cached known tokens, their balances, and activity without removing custom tokens', () => {
-    clearSavedTokensAction(updaterFn)
+  it('clears cached known tokens, their balances, activity, and orders without removing custom tokens', () => {
+    resetSavedDataAction(updaterFn)
 
     expect(main.tokens.custom).toStrictEqual([testTokens.zrx])
     expect(main.tokens.known).toStrictEqual({})
     expect(main.balances[owner]).toStrictEqual([{ ...testTokens.zrx, balance: '0x1' }])
     expect(main.balances['0xd0e3872f5fa8ecb49f1911f605c0da90689a484e']).toStrictEqual([])
     expect(main.activity).toStrictEqual({})
+    expect(main.orders).toStrictEqual({})
   })
 })
 

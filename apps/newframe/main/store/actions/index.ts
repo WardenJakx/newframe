@@ -875,7 +875,7 @@ const actions = {
       existing.filter((token) => !needsRemoval(token))
     )
   },
-  clearSavedTokens: (u: U) => {
+  resetSavedData: (u: U) => {
     u('main', (main: any) => {
       const knownTokens = main.tokens?.known || {}
       const customTokenIds = new Set(((main.tokens?.custom || []) as any[]).map(toTokenId))
@@ -888,6 +888,7 @@ const actions = {
 
       main.tokens.known = {}
       main.activity = {}
+      main.orders = {}
 
       if (tokenIds.size > 0) {
         Object.entries((main.balances || {}) as Record<string, any[]>).forEach(([address, balances]) => {
@@ -1086,7 +1087,7 @@ export const addCustomTokens = actions.addCustomTokens
 export const removeCustomTokens = actions.removeCustomTokens
 export const addKnownTokens = actions.addKnownTokens
 export const removeKnownTokens = actions.removeKnownTokens
-export const clearSavedTokens = actions.clearSavedTokens
+export const resetSavedData = actions.resetSavedData
 export const setScanning = actions.setScanning
 export const initOrigin = actions.initOrigin
 export const clearOrigins = actions.clearOrigins
