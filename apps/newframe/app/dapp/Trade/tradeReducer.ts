@@ -167,12 +167,14 @@ function sameChainAssetOptions(targetAsset: FlashAsset, assets: readonly FlashAs
 function resolveContraAsset(
   targetAsset: FlashAsset,
   balances?: FlashAssetBalances | null,
-  assets: readonly FlashAsset[] = []
+  assets: readonly FlashAsset[] = [],
+  side?: FlashTradeSide
 ) {
   const contraAsset = getDefaultContraAsset({
     assets: sameChainAssetOptions(targetAsset, assets),
     targetAsset,
-    balances
+    balances,
+    side
   })
 
   if (!isSameFlashAsset(targetAsset, contraAsset) && contraAsset.chainId === targetAsset.chainId) {
@@ -192,12 +194,13 @@ export function createInitialTradeState({
   chainId
 }: CreateInitialTradeStateOptions = {}): TradeWorkflowState {
   const targetAsset = resolveTargetAsset({ assetId, assets, chainId })
+  const side = getDefaultSide({ targetAsset, balances })
 
   return {
     actionQuoteId: '',
     advancedOpen: false,
     assetOptions: assets,
-    contraAsset: resolveContraAsset(targetAsset, balances, assets),
+    contraAsset: resolveContraAsset(targetAsset, balances, assets, side),
     contraAmount: '',
     contraOpen: false,
     durationSeconds: TRADE_DEFAULT_DURATION_SECONDS,
@@ -210,7 +213,7 @@ export function createInitialTradeState({
     quote: null,
     quoteLoading: false,
     quoteRequestKey: '',
-    side: getDefaultSide({ targetAsset, balances }),
+    side,
     signature: '',
     slippage: TRADE_DEFAULT_SLIPPAGE,
     status: '',
@@ -334,7 +337,7 @@ function selectTradeAsset(state: TradeWorkflowState, field: TradeAssetField, ass
   let contraAsset = field === 'contra' ? asset : state.contraAsset
 
   if (field === 'target' && contraAsset.chainId !== targetAsset.chainId) {
-    contraAsset = resolveContraAsset(targetAsset, null, state.assetOptions)
+    contraAsset = resolveContraAsset(targetAsset, null, state.assetOptions, state.side)
   }
 
   if (field === 'contra' && targetAsset.chainId !== contraAsset.chainId) {
@@ -342,7 +345,7 @@ function selectTradeAsset(state: TradeWorkflowState, field: TradeAssetField, ass
   }
 
   if (isSameFlashAsset(targetAsset, contraAsset)) {
-    contraAsset = resolveContraAsset(targetAsset, null, state.assetOptions)
+    contraAsset = resolveContraAsset(targetAsset, null, state.assetOptions, state.side)
   }
 
   return applyTradeInputAmount(state, getTradeInputAmount(state), {
@@ -378,7 +381,7 @@ function updateAssetOptions(
   const contraAsset =
     assets.find(
       (asset) => isSameFlashAsset(asset, state.contraAsset) && asset.chainId === targetAsset.chainId
-    ) || resolveContraAsset(targetAsset, balances, assets)
+    ) || resolveContraAsset(targetAsset, balances, assets, state.side)
 
   if (
     state.assetOptions === assets &&

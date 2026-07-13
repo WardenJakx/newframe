@@ -9,6 +9,7 @@ import {
   FLASH_NATIVE_ETH_ASSET,
   FLASH_USDC_ASSET,
   FLASH_WETH_ASSET,
+  type FlashAsset,
   type FlashQuote
 } from '../../../../resources/domain/flash'
 import { NATIVE_CURRENCY } from '../../../../resources/constants'
@@ -62,6 +63,32 @@ describe('tradeReducer', () => {
       symbol: FLASH_USDC_ASSET.symbol
     })
     expect(withoutTargetBalance.side).toBe('buy')
+  })
+
+  it('uses the sell-specific contra priority during initialization', () => {
+    const targetAsset: FlashAsset = {
+      id: `${FLASH_WETH_ASSET.chainId}:0x0000000000000000000000000000000000000001`,
+      symbol: 'TOKEN',
+      name: 'Token',
+      decimals: 18,
+      chainId: FLASH_WETH_ASSET.chainId,
+      isNative: false,
+      address: '0x0000000000000000000000000000000000000001'
+    }
+    const assets = [FLASH_WETH_ASSET, targetAsset, FLASH_NATIVE_ETH_ASSET, FLASH_USDC_ASSET]
+    const state = createInitialTradeState({
+      assetId: targetAsset.id,
+      assets,
+      balances: [
+        { assetId: targetAsset.id, balance: '1' },
+        { assetId: FLASH_WETH_ASSET.id, balance: '1' },
+        { assetId: FLASH_NATIVE_ETH_ASSET.id, balance: '1' }
+      ]
+    })
+
+    expect(state.side).toBe('sell')
+    expect(state.contraAsset).toBe(FLASH_NATIVE_ETH_ASSET)
+    expect(state.assetOptions).toEqual(assets)
   })
 
   it('keeps target and contra assets distinct when selecting assets', () => {
