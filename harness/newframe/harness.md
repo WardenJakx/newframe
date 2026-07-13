@@ -18,7 +18,12 @@ This runs:
 
 1. `bun run compile`
 2. `bun run bundle`
-3. `electron --remote-debugging-port=9333 ./compiled/main`
+3. The local Flash service and its health check
+4. `electron --remote-debugging-port=9333 ./compiled/main`
+
+The live-local and visual entrypoints use the same lifecycle modules under `harness/newframe/` for
+Electron, Anvil, the local Flash service, health checks, failure monitoring, signals, and reverse-order
+cleanup.
 
 Close any normal running Newframe instance first. The app has a single-instance lock, and this harness must be the process that owns the local profile.
 
@@ -112,3 +117,37 @@ Avoid by default:
 - Removing accounts, chains, permissions, or saved tokens.
 - Sending transactions.
 - Selecting a different account unless the user asks.
+
+## Harness Architecture
+
+The harness is split by responsibility:
+
+- `core/` owns process execution, service lifecycle, configuration, health checks, and cleanup.
+- `services/` contains one factory per managed dependency (`electron.ts`, `anvil.ts`,
+  `local-trade.ts`, and contract harness commands in `contracts.ts`).
+- `live-harness.ts` is the regular live-local entrypoint.
+- `visual-harness.ts` is only the visual entrypoint and high-level orchestration.
+- `visual/driver.ts` owns reusable Newframe interactions and state polling.
+- `visual/anvil-client.ts` owns reusable Anvil RPC interactions.
+- `visual/runtime.ts` owns stages, screenshots, summaries, and failure artifacts.
+- `visual/stages/` contains one visual surface per file. `visual/stages/index.ts` defines their order.
+
+### Add a visual surface
+
+1. Add a file in `visual/stages/` that exports a `VisualStage` with a name and `run(context)` method.
+2. Use the context's `driver`, `anvil`, and `runtime` instead of reimplementing bridge, polling,
+   screenshot, or chain helpers.
+3. Register the stage in `visual/stages/index.ts` at the point where it should run.
+
+The entrypoint and stage runner do not need to change.
+
+### Add a mock service
+
+1. Add a factory in `services/` that implements `HarnessService` directly or returns a
+   `ProcessService`.
+2. Put port checks and readiness/health checks in the service's startup configuration.
+3. Add a shared service to the relevant entrypoint with `runtime.start(service)`, or start a
+   surface-specific service from its stage with `context.services.start(service)`.
+
+The shared runtime monitors unexpected exits and always stops started services in reverse order, so
+each service only owns its own startup and cleanup behavior.

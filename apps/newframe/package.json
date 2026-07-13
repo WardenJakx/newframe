@@ -6,7 +6,7 @@
   "scripts": {
     "clean": "rimraf dist dist-preview bundle compiled node_modules",
     "setup": "bun install && bun run rebuild:natives",
-    "dev": "bun run compile && bun run bundle && bun ./scripts/run-harness-newframe.ts",
+    "dev": "bun run compile && bun run bundle && bun ../../harness/newframe/live-harness.ts",
     "trade:local": "bun ./scripts/local-trade-service.ts",
     "harness:newframe": "bun run dev",
     "bundle": "bun run tokens:generate && rimraf bundle && bun build resources/bridge/index.ts --outfile=./bundle/bridge.js --target=browser --format=cjs --external=electron --sourcemap=inline && bun ./scripts/bundle-renderer-bun.ts",
