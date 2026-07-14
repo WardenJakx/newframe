@@ -136,6 +136,7 @@ describe('canonical state persistence', () => {
         main: {
           _version: 2,
           colorway: 'dark',
+          colorwayPrimary: { dark: { background: '#000', text: '#fff' } },
           hardwareDerivation: 'mainnet',
           dapp: { storage: { secret: true } },
           mute: {
@@ -155,6 +156,7 @@ describe('canonical state persistence', () => {
 
     expect(migrated.main).not.toHaveProperty('_version')
     expect(migrated.main).not.toHaveProperty('colorway')
+    expect(migrated.main).not.toHaveProperty('colorwayPrimary')
     expect(migrated.main).not.toHaveProperty('hardwareDerivation')
     expect(migrated.main).not.toHaveProperty('dapp')
     expect(migrated.main.mute).toEqual({
