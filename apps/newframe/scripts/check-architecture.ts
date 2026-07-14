@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs'
 import { readdir, readFile } from 'node:fs/promises'
 import path from 'node:path'
 
@@ -26,10 +27,10 @@ async function sourceFiles() {
     path.join(appRoot, 'main'),
     path.join(appRoot, 'resources'),
     path.join(appRoot, 'test'),
-    path.join(repositoryRoot, 'apps/newframe-extension/src'),
-    path.join(repositoryRoot, 'packages')
+    path.join(repositoryRoot, 'apps/newframe-extension/src')
   ]
-  const files = (await Promise.all(roots.map(walk)))
+  const optionalRoots = [path.join(repositoryRoot, 'packages')].filter(existsSync)
+  const files = (await Promise.all([...roots, ...optionalRoots].map(walk)))
     .flat()
     .filter((file) => sourceExtensions.has(path.extname(file)))
   const manifests = [

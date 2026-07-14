@@ -154,6 +154,7 @@ function migrateLegacyDurableState(value: unknown) {
     appLock: _appLock,
     balances: _balances,
     colorway: _colorway,
+    colorwayPrimary: _colorwayPrimary,
     dapp: _dapp,
     focusedFrame: _focusedFrame,
     frames: _frames,
