@@ -43,10 +43,10 @@ const isInternalMethod = (method: string) => trustedInternalMethods.includes(met
 
 const storeApi = {
   getPermission: (address: Address, origin: string) => {
-    const permissions: Record<string, Permission> = store('main.permissions', address) || {}
+    const permissions: Record<string, Permission> = store.getState().main.permissions[address] || {}
     return Object.values(permissions).find((p) => p.origin === origin)
   },
-  getKnownExtension: (id: string) => store('main.knownExtensions', id) as boolean
+  getKnownExtension: (id: string) => store.getState().main.knownExtensions[id] as boolean
 }
 
 export function parseOrigin(origin?: string) {
@@ -108,7 +108,7 @@ function knownEthereumChainId(chainId?: string) {
 
   if (!Number.isInteger(id)) return undefined
 
-  return store('main.networks.ethereum', id) ? id : undefined
+  return store.getState().main.networks.ethereum[id] ? id : undefined
 }
 
 async function getPermission(address: Address, origin: string, payload: RPCRequestPayload) {
@@ -123,21 +123,23 @@ async function requestExtensionPermission(extension: FrameExtension) {
   }
 
   const result = new Promise<boolean>((resolve) => {
-    const obs = store.observer(() => {
-      const isActive = extension.id in activeExtensionChecks
-      const isAllowed = store('main.knownExtensions', extension.id)
+    const unsubscribe = store.subscribe(
+      (state) => state.main.knownExtensions[extension.id],
+      (isAllowed) => {
+        const isActive = extension.id in activeExtensionChecks
 
-      // wait for a response
-      if (isActive && typeof isAllowed !== 'undefined') {
-        delete activeExtensionChecks[extension.id]
-        obs.remove()
-        resolve(isAllowed)
+        // wait for a response
+        if (isActive && typeof isAllowed !== 'undefined') {
+          delete activeExtensionChecks[extension.id]
+          unsubscribe()
+          resolve(isAllowed)
+        }
       }
-    }, 'origins:requestExtension')
+    )
   })
 
   activeExtensionChecks[extension.id] = result
-  store.notify('extensionConnect', extension)
+  store.getState().notify('extensionConnect', extension)
 
   return result
 }
@@ -160,7 +162,7 @@ async function requestPermission(address: Address, fullPayload: RPCRequestPayloa
     }
 
     accounts.addRequest(request, () => {
-      const { name: originName } = store('main.origins', originId)
+      const { name: originName } = store.getState().main.origins[originId]
       const permission = storeApi.getPermission(address, originName)
 
       delete activePermissionChecks[permissionCheckId]
@@ -179,7 +181,7 @@ export function updateOrigin(
   connectionMessage = false
 ): OriginUpdateResult {
   const originId = uuidv5(origin, uuidv5.DNS)
-  const existingOrigin = store('main.origins', originId)
+  const existingOrigin = store.getState().main.origins[originId]
 
   const requestedChainId = normalizeRequestChainId(requestPayload.chainId)
   const requestedKnownChainId = knownEthereumChainId(requestedChainId)
@@ -191,12 +193,12 @@ export function updateOrigin(
     // the user visits in their browser
 
     if (existingOrigin) {
-      store.addOriginRequest(originId)
+      store.getState().addOriginRequest(originId)
       if (requestedKnownChainId && existingOrigin.chain.id !== requestedKnownChainId) {
-        store.switchOriginChain(originId, requestedKnownChainId, 'ethereum')
+        store.getState().switchOriginChain(originId, requestedKnownChainId, 'ethereum')
       }
     } else {
-      store.initOrigin(originId, {
+      store.getState().initOrigin(originId, {
         name: origin,
         chain: {
           id: defaultChainId,
@@ -265,7 +267,7 @@ export async function isKnownExtension(extension: FrameExtension) {
 
 export async function isTrusted(payload: RPCRequestPayload) {
   // Permission granted to unknown origins only persist until Newframe is closed, they are not permanent
-  const { name: originName } = store('main.origins', payload._origin) as { name: string }
+  const { name: originName } = store.getState().main.origins[payload._origin] as { name: string }
   const currentAccount = accounts.current()
 
   if (isTrustedOrigin(originName) && isInternalMethod(payload.method)) {

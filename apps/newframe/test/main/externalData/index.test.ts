@@ -11,7 +11,9 @@ beforeAll(async () => {
 })
 
 beforeEach(() => {
-  store.set('tray.open', true)
+  store.setState((state) => {
+    state.tray.open = true
+  })
 
   mockBalances = {
     addNetworks: jest.fn(),
@@ -35,9 +37,10 @@ describe('address updates', () => {
   const address = '0x0000000000000000000000000000000000001234'
 
   it('runs a targeted one-shot refresh when selecting a watch account', () => {
-    store.set('main.accounts', address, { address, lastSignerType: 'Address' })
-    store.set('selected.current', address)
-    ;(store.getObserver('externalData:activeAccount') as any).fire()
+    store.setState((state) => {
+      state.main.accounts[address] = { address, lastSignerType: 'Address' } as any
+      state.main.currentAccount = address
+    })
 
     jest.advanceTimersByTime(800)
 
@@ -46,7 +49,9 @@ describe('address updates', () => {
   })
 
   it('allows a manual on-chain refresh for a watch account', () => {
-    store.set('main.accounts', address, { address, lastSignerType: 'Address' })
+    store.setState((state) => {
+      state.main.accounts[address] = { address, lastSignerType: 'Address' } as any
+    })
 
     dataManager.refreshBalances(address)
 
@@ -83,8 +88,9 @@ describe('hiding and showing the tray', () => {
 })
 
 function setTrayShown(shown: any) {
-  store.set('tray.open', shown)
-  ;(store.getObserver('externalData:tray') as any).fire()
+  store.setState((state) => {
+    state.tray.open = shown
+  })
 
   jest.advanceTimersByTime(1000 * 60)
 }

@@ -1,115 +1,132 @@
-// Panel view actions
+// Panel view actions. These are private canonical-store mutations, not renderer commands.
 
-type Updater = (...args: any[]) => void
+import type { Draft } from 'immer'
+
+import type { CanonicalState } from '../../main/store/state'
+
+export type CanonicalSet = (update: (state: Draft<CanonicalState>) => void) => void
+export type CanonicalGet = () => CanonicalState
+
 type NotificationState = 'pending' | 'completed' | 'failed'
+type MutableRecord = Record<string, any>
+type MutableCanonicalState = Omit<Draft<CanonicalState>, 'view'> & {
+  view: MutableRecord & { notifications: Record<string, MutableRecord> }
+}
 
 let trayInitial = true
-const resolvedNotificationStates = new Set(['completed', 'failed'])
+const resolvedNotificationStates = new Set<NotificationState>(['completed', 'failed'])
 
-export const stateSync = (u: Updater, _actions: string) => {
-  try {
-    const actions = JSON.parse(_actions)
-    actions.forEach((action: { updates: { path: string; value: any }[] }) => {
-      action.updates.forEach((update) => {
-        u(update.path, () => update.value)
+const mutable = (state: Draft<CanonicalState>) => state as unknown as MutableCanonicalState
+
+export function createPanelActions(set: CanonicalSet, _get: CanonicalGet) {
+  return {
+    notify: (type: string, data: any = {}) => {
+      set((draft) => {
+        const state = mutable(draft)
+        state.view.notify = type
+        state.view.notifyData = data
       })
-    })
-  } catch (e) {
-    console.error('State Syncing Error', e)
+    },
+
+    upsertPendingNotification: (notification: any) => {
+      const id = notification?.id
+      if (!id) return
+
+      const now = Date.now()
+
+      set((draft) => {
+        const notifications = mutable(draft).view.notifications
+        const existingNotification = notifications[id] || {}
+        const pendingNotification = {
+          ...existingNotification,
+          ...notification,
+          id,
+          state: 'pending',
+          createdAt: notification.createdAt ?? existingNotification.createdAt ?? now,
+          updatedAt: notification.updatedAt ?? now,
+          hidden: notification.hidden ?? false
+        }
+
+        if (notification.dismissedAt === undefined) delete pendingNotification.dismissedAt
+        notifications[id] = pendingNotification
+      })
+    },
+
+    resolveNotification: (id: string, state: Exclude<NotificationState, 'pending'>, update: any = {}) => {
+      if (!id || !resolvedNotificationStates.has(state)) return
+
+      const now = Date.now()
+
+      set((draft) => {
+        const notifications = mutable(draft).view.notifications
+        const notification = notifications[id]
+        if (!notification) return
+
+        const resolvedNotification = {
+          ...notification,
+          ...update,
+          id,
+          state,
+          hidden: update.hidden ?? false,
+          updatedAt: update.updatedAt ?? now
+        }
+
+        if (update.dismissedAt === undefined) delete resolvedNotification.dismissedAt
+        notifications[id] = resolvedNotification
+      })
+    },
+
+    dismissNotification: (id: string, update: any = {}) => {
+      if (!id) return
+
+      const dismissedAt = update.dismissedAt ?? Date.now()
+
+      set((draft) => {
+        const notifications = mutable(draft).view.notifications
+        const notification = notifications[id] || { id }
+        notifications[id] = {
+          ...notification,
+          ...update,
+          id,
+          state: update.state ?? notification.state ?? 'pending',
+          hidden: true,
+          dismissedAt,
+          updatedAt: update.updatedAt ?? dismissedAt
+        }
+      })
+    },
+
+    expireNotification: (id: string) => {
+      if (!id) return
+
+      set((draft) => {
+        delete mutable(draft).view.notifications[id]
+      })
+    },
+
+    updateBadge: (type: string, version: any) => {
+      set((draft) => {
+        mutable(draft).view.badge = { type, version }
+      })
+    },
+
+    trayOpen: (open: boolean) => {
+      const clearInitial = open && trayInitial
+      if (clearInitial) trayInitial = false
+
+      set((draft) => {
+        mutable(draft).tray.open = open
+      })
+
+      if (clearInitial) {
+        setTimeout(() => {
+          set((draft) => {
+            mutable(draft).tray.initial = false
+          })
+        }, 30)
+      }
+    }
   }
 }
-export const syncPanel = (u: Updater, panel: any) => u('panel', () => panel)
-export const notify = (u: Updater, type: string, data = {}) => {
-  u('view.notify', () => type)
-  u('view.notifyData', () => data)
-}
-export const upsertPendingNotification = (u: Updater, notification: any) => {
-  const id = notification?.id
-  if (!id) return
 
-  const now = Date.now()
-
-  u('view.notifications', id, (existingNotification: any = {}) => {
-    const pendingNotification = {
-      ...existingNotification,
-      ...notification,
-      id,
-      state: 'pending',
-      createdAt: notification.createdAt ?? existingNotification.createdAt ?? now,
-      updatedAt: notification.updatedAt ?? now,
-      hidden: notification.hidden ?? false
-    }
-
-    if (notification.dismissedAt === undefined) delete pendingNotification.dismissedAt
-
-    return pendingNotification
-  })
-}
-export const resolveNotification = (
-  u: Updater,
-  id: string,
-  state: Exclude<NotificationState, 'pending'>,
-  update: any = {}
-) => {
-  if (!id) return
-  if (!resolvedNotificationStates.has(state)) return
-
-  const now = Date.now()
-
-  u('view.notifications', id, (notification: any) => {
-    if (!notification) return notification
-
-    const resolvedNotification = {
-      ...notification,
-      ...update,
-      id,
-      state,
-      hidden: update.hidden ?? false,
-      updatedAt: update.updatedAt ?? now
-    }
-
-    if (update.dismissedAt === undefined) delete resolvedNotification.dismissedAt
-
-    return resolvedNotification
-  })
-}
-export const dismissNotification = (u: Updater, id: string, update: any = {}) => {
-  if (!id) return
-
-  const dismissedAt = update.dismissedAt ?? Date.now()
-
-  u('view.notifications', id, (notification: any = { id }) => ({
-    ...notification,
-    ...update,
-    id,
-    state: update.state ?? notification.state ?? 'pending',
-    hidden: true,
-    dismissedAt,
-    updatedAt: update.updatedAt ?? dismissedAt
-  }))
-}
-export const expireNotification = (u: Updater, id: string) => {
-  if (!id) return
-
-  u('view.notifications', (notifications: any = {}) => {
-    const nextNotifications = { ...notifications }
-    delete nextNotifications[id]
-    return nextNotifications
-  })
-}
-export const updateBadge = (u: Updater, type: string, version: any) =>
-  u('view.badge', () => ({ type, version }))
-export const setPanelView = (u: Updater, view: string) => u('panel.view', () => view)
-export const trayOpen = (u: Updater, open: boolean) => {
-  u('tray.open', () => open)
-  if (open && trayInitial) {
-    trayInitial = false
-    setTimeout(() => {
-      u('tray.initial', () => false)
-    }, 30)
-  }
-}
-export const setSignerView = (u: Updater, view: string) => {
-  u('selected.showAccounts', () => false)
-  u('selected.view', () => view)
-}
+export type PanelActions = ReturnType<typeof createPanelActions>

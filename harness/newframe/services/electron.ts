@@ -9,6 +9,7 @@ import { assertPortFree, sleep } from '../core/utils.ts'
 
 type ElectronLaunchSettings = {
   remoteDebugging?: boolean
+  visualHarness?: boolean
 }
 
 export function electronLaunchSettings(options: ElectronLaunchSettings = {}) {
@@ -18,7 +19,7 @@ export function electronLaunchSettings(options: ElectronLaunchSettings = {}) {
   return {
     args,
     cwd: appDir,
-    env: newframeEnv(),
+    env: newframeEnv(options.visualHarness ? { NEWFRAME_VISUAL_HARNESS: 'true' } : {}),
     executablePath: electronExecutable()
   }
 }
@@ -64,7 +65,7 @@ export class ElectronApplicationService implements HarnessService<ElectronApplic
 
     await assertPortFree(ports.newframeRpc, 'Newframe RPC')
 
-    const settings = electronLaunchSettings()
+    const settings = electronLaunchSettings({ visualHarness: true })
     const app = await this.launcher.launch({
       ...settings,
       colorScheme: 'no-preference',

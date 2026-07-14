@@ -37,7 +37,7 @@ class _RequestItem extends React.Component<any, any> {
     clearInterval(this.timer)
   }
   override render() {
-    const { account, title, svgName, img, color, headerMode, req, children } = this.props
+    const { title, svgName, img, color, headerMode, req, children } = this.props
 
     let requestItemDetailsClass = 'requestItemDetails'
     let requestItemNoticeClass = 'requestItemNotice'
@@ -60,20 +60,7 @@ class _RequestItem extends React.Component<any, any> {
         <ClusterValue
           onClick={
             !headerMode
-              ? () => {
-                  const crumb = {
-                    view: 'requestView',
-                    data: {
-                      step: 'confirm',
-                      accountId: account,
-                      requestId: req.handlerId
-                    },
-                    position: {
-                      bottom: req.type === 'transaction' ? '200px' : '140px'
-                    }
-                  }
-                  link.send('nav:forward', 'panel', crumb)
-                }
+              ? () => void link.executeCommand({ type: 'panel.request-open', requestId: req.handlerId })
               : null
           }
         >

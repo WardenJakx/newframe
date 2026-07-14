@@ -1,10 +1,8 @@
 import React from 'react'
-import Restore from 'react-restore'
 import svg from '../../../../../resources/svg'
+import { useNetwork, useOriginName } from '../state'
 
-class ChainRequest extends React.Component<any, any> {
-  declare store: Store
-
+export class ChainRequest extends React.Component<any, any> {
   constructor(props: any, context?: any) {
     super(props, context)
     this.state = { allowInput: false }
@@ -22,9 +20,10 @@ class ChainRequest extends React.Component<any, any> {
     if (status === 'pending') requestClass += ' signerRequestPending'
     if (status === 'error') requestClass += ' signerRequestError'
 
+    const { originName, networkName } = this.props
     let originClass = 'requestProviderOrigin'
-    if (origin.length > 28) originClass = 'requestProviderOrigin requestProviderOrigin18'
-    if (origin.length > 36) originClass = 'requestProviderOrigin requestProviderOrigin12'
+    if (originName.length > 28) originClass = 'requestProviderOrigin requestProviderOrigin18'
+    if (originName.length > 36) originClass = 'requestProviderOrigin requestProviderOrigin12'
     return (
       <div key={this.props.req.id || this.props.req.handlerId} className={requestClass}>
         <div className='approveRequest'>
@@ -45,15 +44,11 @@ class ChainRequest extends React.Component<any, any> {
           ) : (
             <div className='approveTransactionPayload'>
               <div className='requestChainInner'>
-                <div className={originClass}>{this.store('main.origins', this.props.req.origin, 'name')}</div>
+                <div className={originClass}>{originName}</div>
                 <div className={'requestChainOriginSub'}>
                   {type === 'switchChain' ? 'wants to switch to chain' : 'wants to add chain'}
                 </div>
-                <div className='requestChainName'>
-                  {type === 'switchChain'
-                    ? this.store('main.networks', chain.type, parseInt(chain.id), 'name')
-                    : chain.name}
-                </div>
+                <div className='requestChainName'>{type === 'switchChain' ? networkName : chain.name}</div>
               </div>
             </div>
           )}
@@ -63,4 +58,9 @@ class ChainRequest extends React.Component<any, any> {
   }
 }
 
-export default Restore.connect(ChainRequest)
+export default function ChainRequestWithState(props: any) {
+  const { req } = props
+  const originName = useOriginName(req.origin)
+  const network = useNetwork(req.chain.type, parseInt(req.chain.id))
+  return <ChainRequest {...props} originName={originName} networkName={network.name} />
+}

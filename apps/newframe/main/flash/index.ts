@@ -83,6 +83,7 @@ export interface FlashSubmitOrderRequest extends FlashQuoteRequest {
   signature?: string
   orderSignature?: string
   rawPayload?: unknown
+  idempotencyKey?: string
 }
 
 export interface FlashListOrdersRequest {
@@ -835,7 +836,7 @@ async function flashRequest(path: string, init: RequestInit = {}) {
 }
 
 function storeOrders() {
-  return (store('main.orders') || {}) as Record<string, FlashOrderRecord>
+  return (store.getState().main.orders || {}) as unknown as Record<string, FlashOrderRecord>
 }
 
 function titleize(value: string) {
@@ -900,7 +901,7 @@ function orderNotificationMetadata(record: FlashOrderRecord) {
 function upsertPendingOrderNotification(record: FlashOrderRecord, now = Date.now()) {
   const createdAt = record.createdAt || now
 
-  store.upsertPendingNotification({
+  store.getState().upsertPendingNotification({
     id: orderNotificationId(record.orderId),
     state: 'pending',
     title: orderNotificationTitle(record),
@@ -924,18 +925,20 @@ function terminalOrderNotificationState(record: FlashOrderRecord) {
 function resolveOrderNotification(record: FlashOrderRecord, now = Date.now()) {
   if (!isTerminalStatus(record.status)) return
 
-  store.resolveNotification(orderNotificationId(record.orderId), terminalOrderNotificationState(record), {
-    title: orderNotificationTitle(record),
-    detail: orderNotificationDetail(record, record.status),
-    expiresAt: now + FLASH_RESOLVED_ORDER_NOTIFICATION_MS,
-    updatedAt: now,
-    target: orderNotificationTarget(record),
-    metadata: orderNotificationMetadata(record)
-  })
+  store
+    .getState()
+    .resolveNotification(orderNotificationId(record.orderId), terminalOrderNotificationState(record), {
+      title: orderNotificationTitle(record),
+      detail: orderNotificationDetail(record, record.status),
+      expiresAt: now + FLASH_RESOLVED_ORDER_NOTIFICATION_MS,
+      updatedAt: now,
+      target: orderNotificationTarget(record),
+      metadata: orderNotificationMetadata(record)
+    })
 }
 
 function dropOrderNotification(orderId: string) {
-  store.expireNotification(orderNotificationId(orderId))
+  store.getState().expireNotification(orderNotificationId(orderId))
 }
 
 function terminalWithinNotificationWindow(record: FlashOrderRecord, deadline: number) {
@@ -1217,7 +1220,7 @@ function normalizeOrderRecord(rawOrder: unknown, fallback?: FlashOrderRecord | n
 
 function upsertRecord(record: FlashOrderRecord) {
   const previous = getRecord(record.orderId)
-  store.upsertOrder(record)
+  store.getState().upsertOrder(record)
   syncOrderPositions(previous, record)
   return record
 }
@@ -1225,8 +1228,8 @@ function upsertRecord(record: FlashOrderRecord) {
 function updateRecord(orderId: string, record: FlashOrderRecord) {
   const existing = storeOrders()[orderId]
 
-  if (existing) store.updateOrder(orderId, record)
-  else store.upsertOrder(record)
+  if (existing) store.getState().updateOrder(orderId, record)
+  else store.getState().upsertOrder(record)
 
   syncOrderPositions(existing, record)
 
@@ -1474,6 +1477,7 @@ export async function submitOrder(request: FlashSubmitOrderRequest) {
   const body = buildFlashSubmitBody(request)
   const raw = await flashRequest('/order', {
     method: 'POST',
+    headers: request.idempotencyKey ? { 'Idempotency-Key': request.idempotencyKey } : undefined,
     body: JSON.stringify(body)
   })
   const payload = objectPayload(raw)

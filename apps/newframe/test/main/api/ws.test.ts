@@ -39,7 +39,7 @@ beforeAll(async () => {
 })
 
 beforeEach(() => {
-  store.initOrigin = jest.fn()
+  ;(store.getState().initOrigin as any).mockImplementation(() => {})
 
   socketConnection = new EventEmitter()
   mockSocket = new EventEmitter()

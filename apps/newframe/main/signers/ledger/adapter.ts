@@ -5,15 +5,20 @@ import TransportNodeHid from '@ledgerhq/hw-transport-node-hid-singleton'
 import { Subscription } from '@ledgerhq/hw-transport'
 // type-only: at runtime node-hid is used solely inside the Ledger transports
 import type { Device } from 'node-hid'
+import { shallow } from 'zustand/vanilla/shallow'
 
 import { Derivation } from '../Signer/derive'
 import { SignerAdapter } from '../adapters'
 import Ledger from './Ledger'
 import store from '../../store'
 
-function updateDerivation(ledger: Ledger, derivation = store('main.ledger.derivation'), accountLimit = 0) {
+function updateDerivation(
+  ledger: Ledger,
+  derivation = store.getState().main.ledger.derivation,
+  accountLimit = 0
+) {
   const liveAccountLimit =
-    accountLimit || (derivation === Derivation.live ? store('main.ledger.liveAccountLimit') : 0)
+    accountLimit || (derivation === Derivation.live ? store.getState().main.ledger.liveAccountLimit : 0)
 
   ledger.derivation = derivation
   ledger.accountLimit = liveAccountLimit
@@ -30,7 +35,7 @@ export default class LedgerSignerAdapter extends SignerAdapter {
   private knownSigners: { [devicePath: string]: Ledger }
   private disconnections: Disconnection[]
 
-  private observer: any
+  private unsubscribeDerivation?: () => void
   private usbListener: Subscription | null = null
 
   constructor() {
@@ -41,20 +46,22 @@ export default class LedgerSignerAdapter extends SignerAdapter {
   }
 
   override open() {
-    this.observer = store.observer(() => {
-      const ledgerDerivation = store('main.ledger.derivation')
-      const liveAccountLimit = store('main.ledger.liveAccountLimit')
-
-      Object.values(this.knownSigners).forEach((ledger) => {
-        if (
-          ledger.derivation !== ledgerDerivation ||
-          (ledger.derivation === 'live' && ledger.accountLimit !== liveAccountLimit)
-        ) {
-          updateDerivation(ledger, ledgerDerivation, liveAccountLimit)
-          ledger.deriveAddresses()
-        }
-      })
-    })
+    this.unsubscribeDerivation?.()
+    this.unsubscribeDerivation = store.subscribe(
+      (state) => [state.main.ledger.derivation, state.main.ledger.liveAccountLimit] as const,
+      ([ledgerDerivation, liveAccountLimit]) => {
+        Object.values(this.knownSigners).forEach((ledger) => {
+          if (
+            ledger.derivation !== ledgerDerivation ||
+            (ledger.derivation === 'live' && ledger.accountLimit !== liveAccountLimit)
+          ) {
+            updateDerivation(ledger, ledgerDerivation, liveAccountLimit)
+            ledger.deriveAddresses()
+          }
+        })
+      },
+      { equalityFn: shallow, fireImmediately: true }
+    )
 
     this.usbListener = TransportNodeHid.listen({
       next: (evt) => {
@@ -79,10 +86,8 @@ export default class LedgerSignerAdapter extends SignerAdapter {
   }
 
   override close() {
-    if (this.observer) {
-      this.observer.remove()
-      this.observer = null
-    }
+    this.unsubscribeDerivation?.()
+    this.unsubscribeDerivation = undefined
 
     if (this.usbListener) {
       this.usbListener.unsubscribe()
@@ -149,7 +154,7 @@ export default class LedgerSignerAdapter extends SignerAdapter {
 
     this.emit('add', ledger)
 
-    store.navHome({
+    store.getState().navHome({
       view: 'accounts',
       data: { showAddAccounts: true, newAccountType: 'ledger', selectedSigner: ledger.id }
     })

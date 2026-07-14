@@ -8,7 +8,6 @@ import {
   FLASH_STOP_ORDER_TYPE,
   FLASH_TAKE_PROFIT_ORDER_TYPE,
   getDefaultContraAsset,
-  getDefaultContraAssetForChain,
   getDefaultSide,
   getFlashAssetsForChain,
   getFlashDefaultTargetAsset,
@@ -196,26 +195,6 @@ function resolveContraAsset(
   )
 }
 
-function resolveTargetAfterContra(
-  preferredTarget: FlashAsset,
-  contraAsset: FlashAsset,
-  assets: readonly FlashAsset[]
-) {
-  const sameChainOptions = sameChainAssetOptions(contraAsset, assets)
-  const candidates = [
-    preferredTarget,
-    defaultAssetForChain(contraAsset.chainId, sameChainOptions),
-    ...sameChainOptions.filter((asset) => !asset.isNative),
-    ...sameChainOptions
-  ]
-
-  return (
-    candidates.find(
-      (asset) => asset.chainId === contraAsset.chainId && !isSameFlashAsset(asset, contraAsset)
-    ) || preferredTarget
-  )
-}
-
 function resolveInitialTradePair({
   assetId,
   assets,
@@ -235,12 +214,8 @@ function resolveInitialTradePair({
     }
   }
 
-  const contraAsset = getDefaultContraAssetForChain({
-    assets: sameChainAssetOptions(preferredTarget, assets),
-    balances,
-    chainId: preferredTarget.chainId
-  })
-  const targetAsset = resolveTargetAfterContra(preferredTarget, contraAsset, assets)
+  const targetAsset = preferredTarget
+  const contraAsset = resolveContraAsset(targetAsset, null, assets)
 
   return {
     contraAsset,
@@ -561,7 +536,7 @@ export function tradeReducer(state: TradeWorkflowState, action: TradeWorkflowAct
       return {
         ...state,
         actionQuoteId: '',
-        contraAmount: action.quote.side === 'buy' ? action.quote.inputAmount : action.quote.outputAmount,
+        contraAmount: action.quote.side === 'buy' ? state.contraAmount : action.quote.outputAmount,
         error: '',
         flashPayload: action.flashPayload,
         pendingAction: '',
@@ -569,7 +544,7 @@ export function tradeReducer(state: TradeWorkflowState, action: TradeWorkflowAct
         quoteLoading: false,
         signature: '',
         status: '',
-        targetAmount: action.quote.side === 'sell' ? action.quote.inputAmount : action.quote.outputAmount
+        targetAmount: action.quote.side === 'sell' ? state.targetAmount : action.quote.outputAmount
       }
     case 'selectAsset':
       return selectTradeAsset(state, action.field, action.asset)

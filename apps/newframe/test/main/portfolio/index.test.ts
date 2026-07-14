@@ -3,8 +3,10 @@ import { getTokenDiscoveryProvider } from '../../../main/portfolio'
 
 describe('#getTokenDiscoveryProvider', () => {
   it('does not construct a provider when token discovery is disabled', () => {
-    store.set('main.autoDiscoverTokens', false)
-    store.set('main.portfolioApiKey', 'zk_test')
+    store.setState((state) => {
+      state.main.autoDiscoverTokens = false
+      state.main.portfolioApiKey = 'zk_test'
+    })
 
     expect(getTokenDiscoveryProvider()).toEqual({
       ok: false,
@@ -13,15 +15,19 @@ describe('#getTokenDiscoveryProvider', () => {
   })
 
   it('does not construct a provider without an API key', () => {
-    store.set('main.autoDiscoverTokens', true)
-    store.set('main.portfolioApiKey', '')
+    store.setState((state) => {
+      state.main.autoDiscoverTokens = true
+      state.main.portfolioApiKey = ''
+    })
 
     expect(getTokenDiscoveryProvider()).toEqual({ ok: false, error: 'missing_api_key' })
   })
 
   it('returns the configured provider only when discovery is enabled with a key', () => {
-    store.set('main.autoDiscoverTokens', true)
-    store.set('main.portfolioApiKey', ' zk_test ')
+    store.setState((state) => {
+      state.main.autoDiscoverTokens = true
+      state.main.portfolioApiKey = ' zk_test '
+    })
 
     const access = getTokenDiscoveryProvider()
 

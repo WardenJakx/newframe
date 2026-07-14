@@ -67,6 +67,7 @@ export interface AccountRequest<T extends RequestType = RequestType> extends Req
   mode?: RequestMode
   notice?: string
   created?: number
+  /** Runtime-only transport capability. FrameAccount removes this before canonical storage. */
   res?: (response?: RPCResponsePayload) => void
 }
 
@@ -75,11 +76,15 @@ export interface TransactionReceipt {
   blockNumber: string
 }
 
-interface Approval {
+export interface Approval {
   type: string
   data: any
   approved: boolean
-  approve: (data: any) => void
+}
+
+export type CanonicalAccountRequest = Omit<AccountRequest, 'res'> & {
+  approvals?: Approval[]
+  recognizedActions?: Array<Omit<Action<unknown>, 'update'>>
 }
 
 interface Permit {

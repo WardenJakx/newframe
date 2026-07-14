@@ -50,7 +50,7 @@ class MockConnection extends EventEmitter {
   }
 }
 
-let feeHistoryError: Error | undefined, gasPrice: any, connectionObserver: any
+let feeHistoryError: Error | undefined, gasPrice: any
 
 const state = {
   main: {
@@ -200,11 +200,9 @@ const mockConnections = {
 let chains: any
 
 const resetChainState = () => {
-  store.set('main', JSON.parse(JSON.stringify(state.main)))
-}
-
-const fireStoreObservers = () => {
-  ;(store as any).__fireObservers()
+  store.setState((current) => {
+    current.main = JSON.parse(JSON.stringify(state.main))
+  })
 }
 
 const waitForConnection = async () => {
@@ -213,8 +211,7 @@ const waitForConnection = async () => {
 }
 
 const connectChain = async (chain: any) => {
-  store.toggleConnection('ethereum', chain.id, 'primary', true)
-  fireStoreObservers()
+  store.getState().toggleConnection('ethereum', Number(chain.id), 'primary', true)
   await waitForConnection()
 }
 
@@ -224,35 +221,19 @@ beforeAll(async () => {
 
   // need to import this after mocks are set up
   chains = (await import('../../../main/chains')).default
-  fireStoreObservers()
 })
 
 beforeEach(() => {
   resetChainState()
-  fireStoreObservers()
   feeHistoryError = undefined
 
-  connectionObserver = store.observer(() => {
-    Object.values(mockConnections).forEach((chain) => {
-      const primary = store(`main.networks.ethereum.${chain.id}.connection.primary`)
-
-      if (primary.on) {
-        ;(chain.connection as any).connect()
-      }
-    })
-  })
-
   Object.values(mockConnections).forEach((chain) => {
-    store.setGasPrices('ethereum', chain.id, {})
-    store.setGasFees('ethereum', chain.id, {})
+    store.getState().setGasPrices('ethereum', Number(chain.id), {})
+    store.getState().setGasFees('ethereum', Number(chain.id), {})
   })
 })
 
 afterEach((done) => {
-  if (connectionObserver) {
-    connectionObserver.remove()
-  }
-
   const activeConnection: any = Object.values(mockConnections).find(
     (conn) => (conn.connection as any).connected
   )
@@ -269,8 +250,7 @@ afterEach((done) => {
     }
   })
 
-  store.toggleConnection('ethereum', activeConnection.id, 'primary', false)
-  fireStoreObservers()
+  store.getState().toggleConnection('ethereum', Number(activeConnection.id), 'primary', false)
 })
 
 Object.values(mockConnections).forEach((chain) => {
@@ -281,7 +261,7 @@ Object.values(mockConnections).forEach((chain) => {
     await connectChain(chain)
     await chains.refreshGasFees({ type: 'ethereum', id: parseInt(chain.id) })
 
-    const gas = store(`main.networksMeta.ethereum.${chain.id}.gas.price.levels`)
+    const gas = store.getState().main.networksMeta.ethereum[Number(chain.id)].gas.price.levels
 
     expect(gas.fast).toBe(gweiToHex(6))
   })
@@ -293,11 +273,11 @@ Object.values(mockConnections).forEach((chain) => {
     await connectChain(chain)
     await chains.refreshGasFees({ type: 'ethereum', id: parseInt(chain.id) })
 
-    const gas = store(`main.networksMeta.ethereum.${chain.id}.gas.price`)
+    const gas = store.getState().main.networksMeta.ethereum[Number(chain.id)].gas.price
 
-    expect(gas.fees.maxBaseFeePerGas).toBe(intToHex(expectedBaseFee))
-    expect(gas.fees.maxPriorityFeePerGas).toBe(intToHex(expectedPriorityFee))
-    expect(gas.fees.maxFeePerGas).toBe(intToHex(expectedBaseFee + expectedPriorityFee))
+    expect(gas.fees?.maxBaseFeePerGas).toBe(intToHex(expectedBaseFee))
+    expect(gas.fees?.maxPriorityFeePerGas).toBe(intToHex(expectedPriorityFee))
+    expect(gas.fees?.maxFeePerGas).toBe(intToHex(expectedBaseFee + expectedPriorityFee))
 
     expect(gas.selected).toBe('fast')
     expect(gas.levels.fast).toBe(intToHex(expectedBaseFee + expectedPriorityFee))

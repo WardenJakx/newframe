@@ -1,5 +1,5 @@
 import React from 'react'
-import Restore from 'react-restore'
+import { useShallow } from 'zustand/react/shallow'
 
 import Account from './Account'
 import Notify from './Notify'
@@ -11,34 +11,54 @@ import svg from '../../resources/svg'
 import {
   getWebAuthnBiometricSecret,
   isBiometricUserCanceledError,
-  isWebAuthnBiometricsSupported
+  isWebAuthnBiometricsSupported,
+  type StoredWebAuthnCredential
 } from '../../resources/biometrics'
+import { useWalletSelector } from '../state/useAppSelector'
+import type { TrayRendererState } from './state'
+import { TrayNotificationProvider } from './notification'
+import { RequestViewProvider } from './requestView'
 
-type AppLockStatus = 'checking' | 'locked' | 'unlocked'
-type AppLockState = {
-  locked: boolean
-  vaultExists: boolean
-  biometricUnlockEnabled: boolean
-  biometricAvailable: boolean
-}
 type BiometricsState = {
   enabled: boolean
   method: 'webauthn' | 'native' | ''
-  credential?: any
+  credential?: StoredWebAuthnCredential
   nativeAvailable: boolean
 }
 
-class Panel extends React.Component<any, any> {
-  declare store: Store
-  appLockRefreshTimer: any
-  biometricsObserver: any
-  appLockStateListener: any
-  lastBiometricUnlock = false
+type PanelProps = {
+  appLocked: boolean
+  biometricUnlock: boolean
+  crumb: { view?: string; data?: { requestId?: string } }
+  initial: boolean
+}
+type PanelState = {
+  biometricAvailable: boolean
+  biometrics: BiometricsState | null
+  biometricUnlocking: boolean
+  password: string
+  unlockError: string
+  unlocking: boolean
+}
 
-  constructor(props: any, context?: any) {
-    super(props, context)
+const EMPTY_CRUMB = {}
+const isAppLocked = (appLock: unknown) =>
+  !!appLock && typeof appLock === 'object' && 'locked' in appLock && appLock.locked === true
+const errorMessage = (error: unknown) => {
+  if (error && typeof error === 'object' && 'message' in error) return String(error.message)
+  return String(error)
+}
+const selectPanelState = (state: TrayRendererState): PanelProps => ({
+  appLocked: isAppLocked(state.appLock),
+  biometricUnlock: !!state.biometricUnlock,
+  crumb: state.windows.panel.nav[0] || EMPTY_CRUMB,
+  initial: state.tray.initial
+})
+
+class Panel extends React.Component<PanelProps, PanelState> {
+  constructor(props: PanelProps) {
+    super(props)
     this.state = {
-      appLock: null,
       password: '',
       unlockError: '',
       unlocking: false,
@@ -49,60 +69,26 @@ class Panel extends React.Component<any, any> {
   }
 
   override componentDidMount() {
-    this.refreshAppLockState()
-    this.refreshBiometricsState()
-    this.lastBiometricUnlock = !!this.store('main.biometricUnlock')
-    this.appLockStateListener = (action: string) => {
-      if (action === 'appLockStateChanged') this.refreshAppLockState()
-    }
-    link.on('action', this.appLockStateListener)
-    this.biometricsObserver = this.store.observer(() => {
-      const biometricUnlock = !!this.store('main.biometricUnlock')
-      if (biometricUnlock === this.lastBiometricUnlock) return
-
-      this.lastBiometricUnlock = biometricUnlock
-      this.refreshBiometricsState()
-    })
+    void this.refreshBiometricsState()
   }
 
-  override componentWillUnmount() {
-    clearTimeout(this.appLockRefreshTimer)
-    if (this.appLockStateListener) link.removeListener('action', this.appLockStateListener)
-    if (this.biometricsObserver) this.biometricsObserver.remove()
-  }
-
-  refreshAppLockState() {
-    link.rpc('appLockState', (err: any, appLock: AppLockState) => {
-      this.setState({
-        appLock: err
-          ? {
-              locked: false,
-              vaultExists: false,
-              biometricUnlockEnabled: false,
-              biometricAvailable: false
-            }
-          : appLock
-      })
-    })
-  }
-
-  rpc<T>(method: string, ...args: any[]) {
-    return new Promise<T>((resolve, reject) => {
-      link.rpc(method, ...args, (err: any, value: T) => {
-        if (err) return reject(new Error(err.message || String(err)))
-        resolve(value)
-      })
-    })
+  override componentDidUpdate(previous: PanelProps) {
+    if (previous.biometricUnlock !== this.props.biometricUnlock) void this.refreshBiometricsState()
   }
 
   async refreshBiometricsState() {
     try {
-      const biometrics = await this.rpc<BiometricsState>('biometricsState')
+      const status = await link.executeQuery({ type: 'security.status' })
+      if (!status.ok) throw new Error(status.message || 'Could not read biometric configuration')
+
+      const biometrics: BiometricsState = status.biometrics
       const biometricAvailable =
-        biometrics.enabled &&
+        status.biometricAvailable &&
         (biometrics.method === 'native'
           ? biometrics.nativeAvailable
-          : biometrics.method === 'webauthn' && (await isWebAuthnBiometricsSupported()))
+          : biometrics.method === 'webauthn' &&
+            !!biometrics.credential &&
+            (await isWebAuthnBiometricsSupported()))
 
       this.setState({ biometrics, biometricAvailable })
     } catch {
@@ -110,55 +96,47 @@ class Panel extends React.Component<any, any> {
     }
   }
 
-  appLockStatus(): AppLockStatus {
-    const appLock = this.state.appLock as AppLockState | null
-    if (!appLock) return 'checking'
-    if (appLock.locked) return 'locked'
-    return 'unlocked'
-  }
-
-  unlockApp() {
+  async unlockApp() {
     if (this.state.unlocking) return
 
     const password = this.state.password
-    const done = (err: any) => {
-      if (err) {
-        return this.setState({ unlocking: false, unlockError: err.message || String(err) })
-      }
-
-      this.setState({ unlocking: false, unlockError: '', password: '' })
-      this.appLockRefreshTimer = setTimeout(() => this.refreshAppLockState(), 100)
-    }
-
     this.setState({ unlocking: true, unlockError: '' })
 
-    link.rpc('unlockApp', password, done)
+    try {
+      const result = await link.executeCommand({ type: 'security.unlock', method: 'password', password })
+      if (!result.ok) throw new Error(result.message || 'Could not unlock Newframe')
+      this.setState({ unlocking: false, unlockError: '', password: '' })
+    } catch (error) {
+      this.setState({ unlocking: false, unlockError: errorMessage(error) })
+    }
   }
 
   async unlockWithBiometrics() {
     if (this.state.biometricUnlocking || !this.state.biometricAvailable) return
 
-    const biometrics = this.state.biometrics as BiometricsState | null
+    const biometrics = this.state.biometrics
     if (!biometrics?.enabled) return
 
     this.setState({ biometricUnlocking: true, unlockError: '' })
 
     try {
       if (biometrics.method === 'webauthn') {
+        if (!biometrics.credential) throw new Error('Biometric credential is unavailable')
         const secret = await getWebAuthnBiometricSecret(biometrics.credential)
-        await this.rpc('unlockAppWithBiometrics', { method: 'webauthn', secret })
+        const result = await link.executeCommand({ type: 'security.unlock', method: 'webauthn', secret })
+        if (!result.ok) throw new Error(result.message || 'Could not unlock Newframe')
       } else if (biometrics.method === 'native') {
-        await this.rpc('unlockAppWithBiometrics', { method: 'native' })
+        const result = await link.executeCommand({ type: 'security.unlock', method: 'native' })
+        if (!result.ok) throw new Error(result.message || 'Could not unlock Newframe')
       } else {
         throw new Error('Biometric unlock is not configured')
       }
 
       this.setState({ biometricUnlocking: false, unlockError: '', password: '' })
-      this.appLockRefreshTimer = setTimeout(() => this.refreshAppLockState(), 100)
-    } catch (err: any) {
+    } catch (err) {
       this.setState({
         biometricUnlocking: false,
-        unlockError: isBiometricUserCanceledError(err) ? '' : err.message || String(err)
+        unlockError: isBiometricUserCanceledError(err) ? '' : errorMessage(err)
       })
     }
   }
@@ -227,26 +205,15 @@ class Panel extends React.Component<any, any> {
     )
   }
 
-  renderLockChecking() {
-    return (
-      <div aria-label='Checking Newframe lock' className='t2LockBlocker' role='status'>
-        <div className='t2LockChecking'>
-          <div className='t2LockSpinner' />
-        </div>
-      </div>
-    )
-  }
-
   override render() {
-    const crumb = this.store('windows.panel.nav')[0] || {}
+    const { crumb } = this.props
     const requestViewOpen = crumb.view === 'requestView' || crumb.view === 'expandedModule'
-    const lockStatus = this.appLockStatus()
-    const opacity = lockStatus === 'unlocked' && this.store('tray.initial') ? 0 : 1
+    const opacity = !this.props.appLocked && this.props.initial ? 0 : 1
 
-    if (lockStatus !== 'unlocked') {
+    if (this.props.appLocked) {
       return (
         <div id='panel' style={{ opacity }}>
-          {lockStatus === 'locked' ? this.renderLockBlocker() : this.renderLockChecking()}
+          {this.renderLockBlocker()}
         </div>
       )
     }
@@ -257,14 +224,23 @@ class Panel extends React.Component<any, any> {
         <Notify />
         <Home />
         {requestViewOpen ? (
-          <div className='t2RequestOverlay'>
-            <Account />
-          </div>
+          <RequestViewProvider key={crumb.data?.requestId || crumb.view}>
+            <div className='t2RequestOverlay'>
+              <Account />
+            </div>
+            <Footer />
+          </RequestViewProvider>
         ) : null}
-        {requestViewOpen ? <Footer /> : null}
       </div>
     )
   }
 }
 
-export default Restore.connect(Panel)
+export default function App() {
+  const panelState = useWalletSelector(useShallow(selectPanelState))
+  return (
+    <TrayNotificationProvider>
+      <Panel {...panelState} />
+    </TrayNotificationProvider>
+  )
+}

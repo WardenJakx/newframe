@@ -1,5 +1,4 @@
 import React from 'react'
-import Restore from 'react-restore'
 
 import TxOverview from './TransactionRequest/TxMainNew/overview'
 
@@ -9,12 +8,11 @@ import { ClusterBox, Cluster } from '../../../../resources/Components/Cluster'
 
 import link from '../../../../resources/link'
 import svg from '../../../../resources/svg'
+import { useAccountRequests, useEthereumNetworkMetadata, useEthereumNetworks, useOrigins } from './state'
 
-class Requests extends React.Component<any, any> {
-  declare store: Store
-
+export class Requests extends React.Component<any, any> {
   renderRequestGroup(origin: any, requests: any) {
-    const groupName = this.store('main.origins', origin, 'name')
+    const groupName = this.props.origins[origin]?.name || origin
     // const favicon = `https://s2.googleusercontent.com/s2/favicons?sz=256&domain_url=https://` + groupName
 
     return (
@@ -29,7 +27,11 @@ class Requests extends React.Component<any, any> {
           <div
             className='requestGroupButton'
             onClick={() => {
-              link.send('tray:clearRequestsByOrigin', this.props.account, origin)
+              void link.executeCommand({
+                type: 'request.clear-origin',
+                accountId: this.props.account,
+                originId: origin
+              })
             }}
           >
             {svg.x(14)}
@@ -90,8 +92,8 @@ class Requests extends React.Component<any, any> {
               )
             } else if (req.type === 'signErc20Permit') {
               const chainId = req.typedMessage.data.domain.chainId
-              const chainName = this.store('main.networks.ethereum', chainId, 'name')
-              const { primaryColor, icon } = this.store('main.networksMeta.ethereum', chainId)
+              const chainName = this.props.networks[chainId]?.name
+              const { primaryColor, icon } = this.props.networkMetadata[chainId] || {}
 
               return (
                 <RequestItem
@@ -154,13 +156,13 @@ class Requests extends React.Component<any, any> {
               )
             } else if (req.type === 'transaction') {
               const chainId = parseInt(req.data.chainId, 16)
-              const chainName = this.store('main.networks.ethereum', chainId, 'name')
+              const chainName = this.props.networks[chainId]?.name
               const {
                 primaryColor,
                 icon,
-                nativeCurrency: { symbol: currentSymbol = '?' }
-              } = this.store('main.networksMeta.ethereum', chainId)
-              const originName = this.store('main.origins', req.origin, 'name')
+                nativeCurrency: { symbol: currentSymbol = '?' } = {}
+              } = this.props.networkMetadata[chainId] || {}
+              const originName = this.props.origins[req.origin]?.name || req.origin
               return (
                 <RequestItem
                   key={req.type + i}
@@ -190,8 +192,7 @@ class Requests extends React.Component<any, any> {
   }
 
   renderExpanded() {
-    const activeAccount = this.store('main.accounts', this.props.account)
-    const requests = Object.values(activeAccount.requests || {}).sort((a: any, b: any) => {
+    const requests = Object.values(this.props.accountRequests).sort((a: any, b: any) => {
       if (a.created > b.created) return -1
       if (a.created < b.created) return 1
       return 0
@@ -224,4 +225,18 @@ class Requests extends React.Component<any, any> {
   }
 }
 
-export default Restore.connect(Requests)
+export default function RequestsWithState(props: any) {
+  const accountRequests = useAccountRequests(props.account)
+  const networks = useEthereumNetworks()
+  const networkMetadata = useEthereumNetworkMetadata()
+  const origins = useOrigins()
+  return (
+    <Requests
+      {...props}
+      accountRequests={accountRequests}
+      networks={networks}
+      networkMetadata={networkMetadata}
+      origins={origins}
+    />
+  )
+}

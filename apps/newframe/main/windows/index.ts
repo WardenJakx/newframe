@@ -1,26 +1,37 @@
 import {
   app as electronApp,
   BrowserWindow,
-  ipcMain,
   screen,
   globalShortcut,
-  IpcMainEvent,
-  WebContents
+  type IpcMainEvent,
+  type WebContents
 } from 'electron'
 import path from 'path'
 import log from 'electron-log'
 import EventEmitter from 'events'
+import { shallow } from 'zustand/vanilla/shallow'
 import { hexToInt, roundGwei } from '../../resources/utils'
 
 import store from '../store'
 import FrameManager from './frames'
-import { broadcastToWindows } from './broadcast'
 import { createWindow } from './window'
 import { SystemTray, SystemTrayEventHandlers } from './systemTray'
 import { registerShortcut } from '../keyboardShortcuts'
 import { Shortcut } from '../store/state/types/shortcuts'
 
 type Windows = { [key: string]: BrowserWindow }
+
+export function onTrayRendererReady(webContents: Pick<WebContents, 'off' | 'once'>, ready: () => void) {
+  let handled = false
+  const handler = () => {
+    if (handled) return
+    handled = true
+    ready()
+  }
+
+  webContents.once('did-finish-load', handler)
+  return () => webContents.off('did-finish-load', handler)
+}
 
 const events = new EventEmitter()
 const frameManager = new FrameManager()
@@ -52,7 +63,7 @@ const app = {
   show: () => {
     tray.show()
     if (dash.hiddenByAppHide || dash.isVisible()) {
-      store.setDash({ showing: true })
+      store.getState().setDash({ show: true })
     }
     frameManager.showAll()
   },
@@ -71,7 +82,7 @@ const systemTrayEventHandlers: SystemTrayEventHandlers = {
   clickShow: () => app.show()
 }
 const systemTray = new SystemTray(systemTrayEventHandlers)
-const getDisplaySummonShortcut = () => store('main.shortcuts.altSlash')
+const getDisplaySummonShortcut = () => store.getState().main.shortcuts.altSlash
 
 const topRight = (window: BrowserWindow) => {
   const area = screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).workArea
@@ -111,7 +122,7 @@ const detectMouse = () => {
   }, 50)
 }
 
-function initWindow(id: string, opts: Electron.BrowserWindowConstructorOptions) {
+function initWindow(id: string, opts: Electron.BrowserWindowConstructorOptions, rendererReady?: () => void) {
   // in development, serve files from local filesystem instead of the created bundle
   const url = isDev
     ? `http://localhost:1234/${id}/index.dev.html`
@@ -119,15 +130,20 @@ function initWindow(id: string, opts: Electron.BrowserWindowConstructorOptions) 
 
   const window = createWindow(id, opts)
   windows[id] = window
+  const removeRendererReady = rendererReady
+    ? onTrayRendererReady(window.webContents, rendererReady)
+    : () => {}
 
   window.once('closed', () => {
+    removeRendererReady()
     if (windows[id] === window) delete windows[id]
   })
 
   window.loadURL(url.toString())
+  return { removeRendererReady, window }
 }
 
-function initTrayWindow() {
+function initTrayWindow(rendererReady: () => void) {
   const trayOpts: Electron.BrowserWindowConstructorOptions = {
     width: trayWidth,
     icon: path.join(__dirname, './AppIcon.png')
@@ -135,22 +151,22 @@ function initTrayWindow() {
   if (isMacOS) {
     trayOpts.type = 'panel'
   }
-  initWindow('tray', trayOpts)
+  const { removeRendererReady, window: trayWindow } = initWindow('tray', trayOpts, rendererReady)
 
-  windows.tray.webContents.session.setPermissionRequestHandler((webContents, permission, res) => res(false))
-  windows.tray.setResizable(false)
-  windows.tray.setMovable(false)
+  trayWindow.webContents.session.setPermissionRequestHandler((webContents, permission, res) => res(false))
+  trayWindow.setResizable(false)
+  trayWindow.setMovable(false)
 
   const { width, height, x, y } = screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).workArea
-  windows.tray.setPosition(width + x, height + y)
+  trayWindow.setPosition(width + x, height + y)
 
-  windows.tray.on('show', () => {
+  trayWindow.on('show', () => {
     if (process.platform === 'win32') {
       systemTray.closeContextMenu()
     }
     systemTray.setContextMenu('hide', { displaySummonShortcut: getDisplaySummonShortcut() })
   })
-  windows.tray.on('hide', () => {
+  trayWindow.on('hide', () => {
     if (process.platform === 'win32') {
       systemTray.closeContextMenu()
     }
@@ -158,7 +174,7 @@ function initTrayWindow() {
   })
 
   setTimeout(() => {
-    windows.tray.on('focus', () => {
+    trayWindow.on('focus', () => {
       if (isMacOS) {
         glide = false
       }
@@ -167,21 +183,21 @@ function initTrayWindow() {
   }, 2000)
 
   if (devToolsEnabled) {
-    windows.tray.webContents.openDevTools()
+    trayWindow.webContents.openDevTools()
   }
 
   setTimeout(() => {
-    windows.tray.on('blur', () => {
+    trayWindow.on('blur', () => {
       setTimeout(() => {
         if (tray.canAutoHide()) {
           tray.hide()
         }
       }, 100)
     })
-    windows.tray.focus()
+    trayWindow.focus()
   }, 1260)
 
-  windows.tray.once('ready-to-show', () => {
+  trayWindow.once('ready-to-show', () => {
     if (!openedAtLogin) {
       tray.show()
     }
@@ -192,51 +208,65 @@ function initTrayWindow() {
     screen.on('display-removed', () => tray.hide())
     screen.on('display-metrics-changed', () => tray.hide())
   }, 30 * 1000)
+
+  return removeRendererReady
 }
 
 class Tray {
   private recentDisplayEvent = false
   private recentDisplayEventTimeout?: NodeJS.Timeout
-  private gasObserver: Observer
+  private gasObserver: () => void
+  private removeRendererReady: () => void
   private ready = false
   private readyHandler: () => void
 
   constructor() {
-    this.gasObserver = store.observer(() => {
+    const updateGasTitle = () => {
       let title = ''
-      if (store('platform') === 'darwin' && store('main.menubarGasPrice')) {
-        const gasPrice = store('main.networksMeta.ethereum', 1, 'gas.price.levels.fast')
+      if (store.getState().platform === 'darwin' && store.getState().main.menubarGasPrice) {
+        const gasPrice = store.getState().main.networksMeta.ethereum[1].gas.price.levels.fast
         if (!gasPrice) return
         const gasDisplay = roundGwei(hexToInt(gasPrice) / 1e9).toString()
         title = gasDisplay // ɢ 🄶 Ⓖ ᴳᵂᴱᴵ
       }
       systemTray.setTitle(title)
-    })
+    }
+    updateGasTitle()
+    this.gasObserver = store.subscribe(
+      (state) =>
+        [
+          state.platform,
+          state.main.menubarGasPrice,
+          state.main.networksMeta.ethereum[1]?.gas.price.levels.fast
+        ] as const,
+      updateGasTitle,
+      { equalityFn: shallow }
+    )
     this.readyHandler = () => {
+      if (this.ready || !windows.tray || windows.tray.isDestroyed()) return
       this.ready = true
       systemTray.init(windows.tray)
       systemTray.setContextMenu('hide', { displaySummonShortcut: getDisplaySummonShortcut() })
       if (showOnReady) {
-        store.trayOpen(true)
+        store.getState().trayOpen(true)
       }
 
-      const showOnboardingWindow = !store('main.mute.onboardingWindow')
+      const showOnboardingWindow = !store.getState().main.mute.onboardingWindow
 
-      if (store('windows.dash.showing')) {
+      if (store.getState().windows.dash.show) {
         setTimeout(() => {
-          store.setDash({ showing: true })
+          store.getState().setDash({ show: true })
         }, 300)
       }
 
       if (showOnboardingWindow) {
         setTimeout(() => {
-          store.navHome({ view: 'accounts', data: { showAddAccounts: true } })
-          store.completeOnboarding()
+          store.getState().navHome({ view: 'accounts', data: { showAddAccounts: true } })
+          store.getState().completeOnboarding()
         }, 600)
       }
     }
-    ipcMain.once('tray:ready', this.readyHandler)
-    initTrayWindow()
+    this.removeRendererReady = initTrayWindow(this.readyHandler)
   }
 
   isReady() {
@@ -248,8 +278,8 @@ class Tray {
   }
 
   canAutoHide() {
-    const autoHideOn = !!store('main.autohide')
-    const dashShowing = !!store('windows.dash.showing')
+    const autoHideOn = !!store.getState().main.autohide
+    const dashShowing = !!store.getState().windows.dash.show
     const isFrameShowing = frameManager.isFrameShowing()
 
     log.debug(`%ccanAutoHide ${JSON.stringify({ autoHideOn, dashShowing, isFrameShowing })}`, 'color: blue')
@@ -267,9 +297,9 @@ class Tray {
       this.recentDisplayEvent = false
     }, 150)
 
-    store.toggleDash('hide')
-    store.trayOpen(false)
-    if (store('main.reveal')) {
+    store.getState().toggleDash('hide')
+    store.getState().trayOpen(false)
+    if (store.getState().main.reveal) {
       detectMouse()
     }
     windows.tray.emit('hide')
@@ -308,7 +338,7 @@ class Tray {
     windows.tray.setMaximumSize(trayWidth, height)
     const pos = topRight(windows.tray)
     windows.tray.setPosition(pos.x, pos.y)
-    store.trayOpen(true)
+    store.getState().trayOpen(true)
     windows.tray.emit('show')
     if (glide && isMacOS) {
       windows.tray.showInactive()
@@ -336,8 +366,8 @@ class Tray {
   }
 
   destroy() {
-    this.gasObserver.remove()
-    ipcMain.off('tray:ready', this.readyHandler)
+    this.gasObserver()
+    this.removeRendererReady()
   }
 }
 
@@ -419,13 +449,12 @@ class Dash {
   }
 }
 
-ipcMain.on('tray:quit', () => electronApp.quit())
-ipcMain.on('tray:mouseout', () => {
+const handleTrayMouseout = () => {
   if (glide && !(windows.dash && windows.dash.isVisible())) {
     glide = false
     app.hide()
   }
-})
+}
 
 // deny navigation, webview attachment & new windows on creation of webContents
 // also set elsewhere but enforced globally here to minimize possible vectors of attack
@@ -435,10 +464,6 @@ electronApp.on('web-contents-created', (_e, contents) => {
   contents.on('will-navigate', (e) => e.preventDefault())
   contents.on('will-attach-webview', (e) => e.preventDefault())
   contents.setWindowOpenHandler(() => ({ action: 'deny' }))
-})
-
-electronApp.on('ready', () => {
-  frameManager.start()
 })
 
 if (isDev) {
@@ -451,43 +476,42 @@ if (isDev) {
   })
 }
 
-ipcMain.on('*:contextmenu', (e, x, y) => {
-  if (isDev) {
-    e.sender.inspectElement(x, y)
-  }
-})
-
-const windowFromWebContents = (webContents: WebContents) =>
-  BrowserWindow.fromWebContents(webContents) as BrowserWindow
+let stateUnsubscribers: Array<() => void> = []
+let frameManagerStarted = false
 
 const init = () => {
+  if (tray && windows.tray && !windows.tray.isDestroyed()) return
+
+  if (!frameManagerStarted) {
+    frameManager.start()
+    frameManagerStarted = true
+  }
+
+  const activeDash = dash && windows.dash && !windows.dash.isDestroyed() ? dash : undefined
   if (tray) {
     tray.destroy()
   }
 
   tray = new Tray()
-  dash = new Dash()
+  dash = activeDash || new Dash()
 
-  // data change events
-  store.observer(() => {
-    if (store('windows.dash.showing')) {
+  stateUnsubscribers.forEach((unsubscribe) => unsubscribe())
+
+  const updateDashVisibility = (show: boolean) => {
+    if (show) {
       dash.show()
     } else {
       dash.hide()
       const trayWindow = windows.tray
       if (trayWindow && !trayWindow.isDestroyed()) trayWindow.focus()
     }
-  }, 'windows:dash')
+  }
 
-  store.observer(() => {
-    if (store('tray.homeCommand')) {
-      tray.show()
-    }
-  }, 'tray:homeCommand')
+  const updateHomeCommand = (homeCommand: unknown) => {
+    if (homeCommand) tray.show()
+  }
 
-  store.observer(() => broadcast('permissions', JSON.stringify(store('permissions'))))
-  store.observer(() => {
-    const summonShortcut: Shortcut = store('main.shortcuts.summon')
+  const updateSummonShortcut = (summonShortcut: Shortcut) => {
     const summonHandler = (accelerator: string) => {
       app.toggle()
       if (tray?.isReady()) {
@@ -499,19 +523,22 @@ const init = () => {
     }
 
     registerShortcut(summonShortcut, summonHandler)
-  })
-}
+  }
 
-const broadcast = (channel: string, ...args: any[]) => {
-  broadcastToWindows(windows, channel, ...args)
-  frameManager.broadcast(channel, args)
-}
+  const state = store.getState()
+  updateDashVisibility(Boolean(state.windows.dash.show))
+  updateHomeCommand(state.tray.homeCommand)
+  updateSummonShortcut(state.main.shortcuts.summon)
 
-store.api.feed((_state, actions) => {
-  broadcast('main:action', 'stateSync', JSON.stringify(actions))
-})
+  stateUnsubscribers = [
+    store.subscribe((next) => Boolean(next.windows.dash.show), updateDashVisibility),
+    store.subscribe((next) => next.tray.homeCommand, updateHomeCommand),
+    store.subscribe((next) => next.main.shortcuts.summon, updateSummonShortcut)
+  ]
+}
 
 export default {
+  handleTrayMouseout,
   toggleTray() {
     tray.toggle()
   },
@@ -521,20 +548,8 @@ export default {
   refocusFrame(frameId: string) {
     frameManager.refocus(frameId)
   },
-  broadcastAction(action: string, ...args: any[]) {
-    broadcast('main:action', action, ...args)
-  },
-  close(e: IpcMainEvent) {
-    windowFromWebContents(e.sender).close()
-  },
-  max(e: IpcMainEvent) {
-    windowFromWebContents(e.sender).maximize()
-  },
-  unmax(e: IpcMainEvent) {
-    windowFromWebContents(e.sender).unmaximize()
-  },
-  min(e: IpcMainEvent) {
-    windowFromWebContents(e.sender).minimize()
+  close(e: Pick<IpcMainEvent, 'sender'>) {
+    BrowserWindow.fromWebContents(e.sender)?.close()
   },
   init
 }

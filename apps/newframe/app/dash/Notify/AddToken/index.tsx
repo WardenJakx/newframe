@@ -1,9 +1,7 @@
 import React from 'react'
-import Restore from 'react-restore'
 import link from '../../../../resources/link'
 
 class AddToken extends React.Component<any, any> {
-  declare store: Store
   nameDefault: any
   symbolDefault: any
   chainDefault: any
@@ -204,10 +202,12 @@ class AddToken extends React.Component<any, any> {
                   onMouseDown={() => {
                     const { name, symbol, chainId, address, decimals, logoURI } = this.state
                     const token = { name, symbol, chainId, address, decimals, logoURI }
-                    link.send('tray:addToken', token)
-                    setTimeout(() => {
-                      this.store.notify()
-                    }, 400)
+                    void link.executeCommand({
+                      type: 'token.add',
+                      token,
+                      completion: 'dismiss-notification',
+                      edit: false
+                    })
                   }}
                 >
                   Add Token
@@ -223,4 +223,4 @@ class AddToken extends React.Component<any, any> {
   }
 }
 
-export default Restore.connect(AddToken)
+export default AddToken

@@ -1,4 +1,3 @@
-import link from '../../../../../../resources/link'
 import EnsOverview from '../../Ens'
 
 import svg from '../../../../../../resources/svg'
@@ -8,6 +7,7 @@ import { Cluster, ClusterRow, ClusterValue } from '../../../../../../resources/C
 import { DisplayValue } from '../../../../../../resources/Components/DisplayValue'
 import RequestHeader from '../../../../../../resources/Components/RequestHeader'
 import { toBigInt } from '../../../../../../resources/utils/numbers'
+import { useRequestView } from '../../../../requestView'
 
 const SimpleContractCallOverview = ({ method }: { method?: any }) => {
   const body = method ? `Calling Contract Method ${method}` : 'Calling Contract'
@@ -93,6 +93,15 @@ const BaseOverviews: Record<string, any> = {
   NATIVE_TRANSFER: SendOverview
 }
 
+const DataClusterValue = ({ children, valueColor }: any) => {
+  const requestView = useRequestView()
+  return (
+    <ClusterValue onClick={() => requestView.open({ step: 'viewData' })} style={{ background: valueColor }}>
+      {children}
+    </ClusterValue>
+  )
+}
+
 const TxOverview = ({
   req,
   chainName,
@@ -120,12 +129,7 @@ const TxOverview = ({
     return (
       <Cluster>
         <ClusterRow>
-          <ClusterValue
-            onClick={() => {
-              link.send('nav:update', 'panel', { data: { step: 'viewData' } })
-            }}
-            style={{ background: valueColor }}
-          >
+          <DataClusterValue valueColor={valueColor}>
             <div className='_txDescription'>
               <RequestHeader chain={chainName} chainColor={chainColor}>
                 <div className='requestItemTitleSub'>
@@ -137,7 +141,7 @@ const TxOverview = ({
                 </div>
               </RequestHeader>
             </div>
-          </ClusterValue>
+          </DataClusterValue>
         </ClusterRow>
         {replacementStatus.replacement &&
           (replacementStatus.possible ? (

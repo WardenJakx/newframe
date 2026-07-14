@@ -1,11 +1,14 @@
 import type { Mock } from 'bun:test'
 import { act } from '@testing-library/react'
-import Restore from 'react-restore'
 
 import { fireEvent, render, screen, waitFor } from '../../../componentSetup'
 import Trade from '../../../../app/dapp/Trade'
-import { applyRestoreActionBatch, initializeRendererStateStore } from '../../../../app/state/rendererStore'
-import store from '../../../../main/store'
+import {
+  applyStateMessage,
+  beginStateConnection,
+  dappRendererStateStoreReadApi,
+  resetStateMirrorForTests
+} from '../../../../app/state/rendererStore'
 import link from '../../../../resources/link'
 import {
   FLASH_ANVIL_CHAIN_ID,
@@ -16,6 +19,7 @@ import {
   FLASH_WETH_ASSET,
   type FlashQuote
 } from '../../../../resources/domain/flash'
+import { STATE_STREAM_SCHEMA_VERSION } from '../../../../resources/state/protocol'
 
 const sender = {
   id: 'sender',
@@ -36,12 +40,31 @@ const newAccount = {
   lastSignerType: 'address'
 }
 
+let stateRevision = 0
+
+function updateTradeState(changes: Record<string, unknown>) {
+  const baseRevision = stateRevision
+  stateRevision += 1
+
+  return applyStateMessage({
+    schemaVersion: STATE_STREAM_SCHEMA_VERSION,
+    streamId: 'trade-test',
+    baseRevision,
+    revision: stateRevision,
+    changes
+  })
+}
+
 function initializeTradeState(balances = [wethBalance()]) {
-  initializeRendererStateStore({
-    selected: {
-      current: sender.id
-    },
-    main: {
+  stateRevision = 0
+  resetStateMirrorForTests()
+  beginStateConnection('dapp')
+  applyStateMessage({
+    schemaVersion: STATE_STREAM_SCHEMA_VERSION,
+    streamId: 'trade-test',
+    revision: 0,
+    state: {
+      currentAccount: sender.id,
       accounts: {
         [sender.id]: sender,
         [other.id]: other
@@ -55,6 +78,8 @@ function initializeTradeState(balances = [wethBalance()]) {
         ethereum: {
           [FLASH_ANVIL_CHAIN_ID]: {
             id: FLASH_ANVIL_CHAIN_ID,
+            explorer: '',
+            isTestnet: true,
             name: 'Local',
             on: true
           }
@@ -63,6 +88,7 @@ function initializeTradeState(balances = [wethBalance()]) {
       networksMeta: {
         ethereum: {
           [FLASH_ANVIL_CHAIN_ID]: {
+            primaryColor: 'accent1',
             nativeCurrency: {
               symbol: 'ETH',
               name: 'Ether',
@@ -83,15 +109,6 @@ function initializeTradeState(balances = [wethBalance()]) {
         environment: 'test'
       }
     }
-  })
-}
-
-function initializeNativeChromeState() {
-  ;(window as any).frameId = 'dappLauncher'
-  store.set('platform', 'darwin')
-  store.set('main.frames', (window as any).frameId, {
-    fullscreen: false,
-    maximized: false
   })
 }
 
@@ -165,13 +182,8 @@ function quote(id: string, inputAmount: string): FlashQuote {
 }
 
 describe('Trade', () => {
-  beforeAll(() => {
-    Restore.connect(() => null, store)
-  })
-
   beforeEach(() => {
     initializeTradeState()
-    initializeNativeChromeState()
   })
 
   it('initializes generic Trade with the preferred contra before the target asset', () => {
@@ -188,14 +200,17 @@ describe('Trade', () => {
   it('re-quotes market trades when the selected account changes without clearing the ticket', async () => {
     const quoteCalls: any[] = []
 
-    ;(link.rpc as Mock<any>).mockImplementation((method: string, payload: any, callback: any) => {
-      if (method === 'flashQuote') {
-        quoteCalls.push(payload)
-        callback(null, {
-          quote: quote(`quote-${quoteCalls.length}`, payload.qty),
+    ;(link.executeQuery as Mock<any>).mockImplementation(async (query: any) => {
+      if (query.type === 'flash.quote') {
+        quoteCalls.push(query.request)
+        return {
+          ok: true,
+          quote: quote(`quote-${quoteCalls.length}`, query.request.qty),
           flash: { quoteId: `quote-${quoteCalls.length}` }
-        })
+        }
       }
+
+      return { ok: false, error: 'invalid_query' }
     })
 
     render(<Trade assetId={`${FLASH_ANVIL_CHAIN_ID}:${FLASH_WETH_ADDRESS}`} />)
@@ -216,14 +231,12 @@ describe('Trade', () => {
     expect(screen.queryByText('+0.42%')).toBe(null)
     expect(screen.getByText('Sign order')).toBeTruthy()
     expect(quoteCalls).toHaveLength(1)
-    expect(quoteCalls[0].accountAddress).toBe(sender.address)
+    expect(quoteCalls[0]).not.toHaveProperty('accountAddress')
+    expect(quoteCalls[0]).not.toHaveProperty('targetChain')
+    expect(quoteCalls[0]).not.toHaveProperty('contraChain')
 
     await act(async () => {
-      applyRestoreActionBatch([
-        {
-          updates: [{ path: 'selected.current', value: other.id }]
-        }
-      ])
+      updateTradeState({ currentAccount: other.id })
     })
     await act(async () => {
       jest.advanceTimersByTime(250)
@@ -231,7 +244,77 @@ describe('Trade', () => {
 
     expect((screen.getByLabelText('WETH amount') as HTMLInputElement).value).toBe('1')
     expect(quoteCalls).toHaveLength(2)
-    expect(quoteCalls[1].accountAddress).toBe(other.address)
+    expect(quoteCalls[1]).not.toHaveProperty('accountAddress')
+  })
+
+  it('does not re-quote when synchronized balances are semantically unchanged during signing', async () => {
+    const quoteCalls: any[] = []
+    const submitCommands: any[] = []
+    let resolveSignature!: (value: any) => void
+    const signatureResult = new Promise((resolve) => {
+      resolveSignature = resolve
+    })
+
+    ;(link.executeQuery as Mock<any>).mockImplementation(async (query: any) => {
+      if (query.type !== 'flash.quote') return { ok: false, error: 'invalid_query' }
+      quoteCalls.push(query.request)
+      return {
+        ok: true,
+        quote: quote(`quote-${quoteCalls.length}`, query.request.qty),
+        flash: { quoteId: `quote-${quoteCalls.length}` }
+      }
+    })
+    ;(link.executeCommand as Mock<any>).mockImplementation(async (command: any) => {
+      if (command.type === 'typedData.signV4') return signatureResult
+      if (command.type === 'flash.submit') {
+        submitCommands.push(command)
+        return { ok: true, orderId: 'order-1' }
+      }
+      return { ok: true }
+    })
+
+    render(<Trade assetId={`${FLASH_ANVIL_CHAIN_ID}:${FLASH_WETH_ADDRESS}`} />)
+    fireEvent.change(screen.getByLabelText('WETH amount'), { target: { value: '1' } })
+    await act(async () => jest.advanceTimersByTime(250))
+    fireEvent.click(await screen.findByRole('button', { name: 'Review/sign' }))
+
+    await waitFor(() =>
+      expect(link.executeCommand).toHaveBeenCalledWith(expect.objectContaining({ type: 'typedData.signV4' }))
+    )
+    await act(async () => {
+      const mirrored = dappRendererStateStoreReadApi.getState()
+      updateTradeState({
+        balances: {
+          ...mirrored.balances,
+          [sender.address]: mirrored.balances[sender.address].map((balance) => ({ ...balance }))
+        },
+        rates: { ...mirrored.rates }
+      })
+      jest.advanceTimersByTime(500)
+    })
+
+    expect(quoteCalls).toHaveLength(1)
+    resolveSignature({ ok: true, signature: `0x${'1'.repeat(130)}` })
+    await waitFor(() => expect(submitCommands).toHaveLength(1))
+  })
+
+  it('preserves the entered amount when Flash normalizes the quote input', async () => {
+    const quoteCalls: any[] = []
+
+    ;(link.executeQuery as Mock<any>).mockImplementation(async (query: any) => {
+      if (query.type !== 'flash.quote') return { ok: false, error: 'invalid_query' }
+      quoteCalls.push(query.request)
+      return { ok: true, quote: quote('normalized-quote', '1'), flash: {} }
+    })
+
+    render(<Trade assetId={`${FLASH_ANVIL_CHAIN_ID}:${FLASH_WETH_ADDRESS}`} />)
+    fireEvent.change(screen.getByLabelText('WETH amount'), { target: { value: '1.0' } })
+    await act(async () => jest.advanceTimersByTime(250))
+    await screen.findByRole('button', { name: 'Review/sign' })
+    await act(async () => jest.advanceTimersByTime(500))
+
+    expect((screen.getByLabelText('WETH amount') as HTMLInputElement).value).toBe('1.0')
+    expect(quoteCalls).toHaveLength(1)
   })
 
   it('maps the balance percentage slider to the spent asset amount', () => {
@@ -259,7 +342,7 @@ describe('Trade', () => {
   })
 
   it('signs a quoted permit before the order and echoes both typed-data payloads', async () => {
-    const providerPayloads: any[] = []
+    const signCommands: any[] = []
     let submitPayload: any = null
     const orderTypedData = {
       domain: { chainId: FLASH_ANVIL_CHAIN_ID },
@@ -284,16 +367,27 @@ describe('Trade', () => {
         permitTypedDataRaw
       }
     }
-    ;(link.rpc as Mock<any>).mockImplementation((method: string, payload: any, callback: any) => {
-      if (method === 'flashQuote') callback(null, { quote: permitQuote, flash: permitQuote.raw })
-      if (method === 'providerSend') {
-        providerPayloads.push(payload)
-        callback({ result: providerPayloads.length === 1 ? '0xpermit' : '0xorder' })
+    ;(link.executeQuery as Mock<any>).mockImplementation(async (query: any) => {
+      if (query.type === 'flash.quote') {
+        return { ok: true, quote: permitQuote, flash: permitQuote.raw }
       }
-      if (method === 'flashSubmitOrder') {
-        submitPayload = payload
-        callback(null, { orderId: 'permit-order' })
+
+      return { ok: false, error: 'invalid_query' }
+    })
+    ;(link.executeCommand as Mock<any>).mockImplementation(async (command: any) => {
+      if (command.type === 'typedData.signV4') {
+        signCommands.push(command)
+        return {
+          ok: true,
+          signature: signCommands.length === 1 ? `0x${'1'.repeat(130)}` : `0x${'2'.repeat(130)}`
+        }
       }
+      if (command.type === 'flash.submit') {
+        submitPayload = command.order
+        return { ok: true, orderId: 'permit-order' }
+      }
+
+      return { ok: true }
     })
 
     render(<Trade assetId={`${FLASH_ANVIL_CHAIN_ID}:${FLASH_WETH_ADDRESS}`} />)
@@ -302,19 +396,31 @@ describe('Trade', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'Review/sign' }))
     await act(async () => {
-      for (let index = 0; index < 8; index += 1) await Promise.resolve()
+      for (let index = 0; index < 20; index += 1) await Promise.resolve()
     })
 
+    expect(signCommands).toHaveLength(2)
     await waitFor(() => expect(submitPayload).toBeTruthy())
-    expect(providerPayloads).toHaveLength(2)
-    expect(JSON.parse(providerPayloads[0].params[1]).primaryType).toBe('Permit')
-    expect(JSON.parse(providerPayloads[1].params[1]).primaryType).toBe('Order')
+    expect(signCommands[0]).toMatchObject({
+      type: 'typedData.signV4',
+      chainId: FLASH_ANVIL_CHAIN_ID,
+      typedData: { primaryType: 'Permit' }
+    })
+    expect(signCommands[1]).toMatchObject({
+      type: 'typedData.signV4',
+      chainId: FLASH_ANVIL_CHAIN_ID,
+      typedData: { primaryType: 'Order' }
+    })
     expect(submitPayload).toMatchObject({
       evmOrderTypedData: orderTypedDataRaw,
-      evmPermitSignature: '0xpermit',
+      evmPermitSignature: `0x${'1'.repeat(130)}`,
       evmPermitTypedData: permitTypedDataRaw,
-      signature: '0xorder'
+      signature: `0x${'2'.repeat(130)}`
     })
+    expect(submitPayload).not.toHaveProperty('accountAddress')
+    expect(submitPayload).not.toHaveProperty('targetChain')
+    expect(submitPayload).not.toHaveProperty('contraChain')
+    expect(submitPayload.quote.id).toBe('permit-quote')
   })
 
   it('exposes the new order tabs and progressive advanced fields', () => {
@@ -387,24 +493,15 @@ describe('Trade', () => {
     render(<Trade assetId={`${FLASH_ANVIL_CHAIN_ID}:${FLASH_WETH_ADDRESS}`} />)
 
     await act(async () => {
-      applyRestoreActionBatch([
-        {
-          updates: [
-            {
-              path: `main.accounts.${newAccount.id}`,
-              value: newAccount
-            },
-            {
-              path: 'main.accountOrder',
-              value: [sender.id, other.id, newAccount.id]
-            },
-            {
-              path: 'selected.current',
-              value: newAccount.id
-            }
-          ]
-        }
-      ])
+      const state = dappRendererStateStoreReadApi.getState()
+      updateTradeState({
+        accounts: {
+          ...state.accounts,
+          [newAccount.id]: newAccount
+        },
+        accountOrder: [sender.id, other.id, newAccount.id],
+        currentAccount: newAccount.id
+      })
     })
 
     expect(screen.getByText('Trade')).toBeTruthy()

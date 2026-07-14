@@ -5,7 +5,7 @@ import { FetchRequest, JsonRpcApiProvider, JsonRpcProvider, WebSocketProvider } 
 export type RpcParams = readonly unknown[] | Record<string, unknown>
 
 export interface ProviderRequest {
-  id?: number
+  id?: string | number
   jsonrpc?: '2.0'
   method: string
   params?: RpcParams
@@ -19,13 +19,13 @@ export interface ProviderOptions {
 }
 
 export interface RpcPayload extends ProviderRequest {
-  id: number
+  id: string | number
   jsonrpc: '2.0'
   params: RpcParams
 }
 
 export interface RpcResult {
-  id: number
+  id: string | number
   jsonrpc?: '2.0'
   result?: unknown
   error?: {

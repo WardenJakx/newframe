@@ -77,6 +77,7 @@ export type AppState = {
     accounts?: Record<string, AppAccount>
     accountOrder?: string[]
     balances?: Record<string, AppBalance[]>
+    currentAccount?: string
     networks?: { ethereum?: Record<string, AppNetwork> }
     orders?: Record<string, FlashOrder>
     origins?: Record<string, AppOrigin>
@@ -84,7 +85,6 @@ export type AppState = {
     showTestnets?: boolean
     signers?: Record<string, unknown>
   }
-  selected?: { current?: string }
   windows?: {
     panel?: {
       nav?: Array<{

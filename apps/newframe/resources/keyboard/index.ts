@@ -1,21 +1,15 @@
 import type { Shortcut, ShortcutKey, ModifierKey } from '../../main/store/state/types/shortcuts'
-import link from '../link'
 import { Platform, metaKeyMap, shortcutKeyMap } from './mappings'
 
 export type KeyboardLayout = {
   get: (key: string) => string
 }
 
-// https://www.w3.org/TR/uievents-code/#keyboard-101
-const isUSLayout = () => keyboardLayout?.get('Backslash') === '\\'
 let keyboardLayout: KeyboardLayout | undefined
 
 if (global?.navigator) {
   navigator.keyboard.getLayoutMap().then((layout) => {
     keyboardLayout = layout
-    ;(link as any).send('tray:action', 'setKeyboardLayout', {
-      isUS: isUSLayout()
-    })
   })
 
   // TODO: keyboard layoutchange event listener when Electron supports it

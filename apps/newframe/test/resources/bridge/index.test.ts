@@ -1,8 +1,18 @@
-import { beforeEach, describe, expect, it, jest, mock, spyOn } from 'bun:test'
+import { beforeEach, describe, expect, it, jest, mock } from 'bun:test'
 
-import type { NewframeHost } from '../../../resources/bridge/contracts'
+import {
+  ExecuteCommandChannel,
+  ExecuteQueryChannel,
+  type NewframeHost
+} from '../../../resources/bridge/contracts'
+import {
+  StateConnectChannel,
+  StateDisconnectChannel,
+  StateMessageChannel,
+  type StateMessage
+} from '../../../resources/state/protocol'
 
-type Listener = (...args: any[]) => void
+type Listener = (...args: unknown[]) => void
 
 const listeners = new Map<string, Listener[]>()
 const contextBridge = {
@@ -13,15 +23,7 @@ const ipcRenderer = {
   on: jest.fn((channel: string, listener: Listener) => {
     listeners.set(channel, [...(listeners.get(channel) || []), listener])
     return ipcRenderer
-  }),
-  removeListener: jest.fn((channel: string, listener: Listener) => {
-    listeners.set(
-      channel,
-      (listeners.get(channel) || []).filter((current) => current !== listener)
-    )
-    return ipcRenderer
-  }),
-  send: jest.fn()
+  })
 }
 
 mock.module('electron', () => ({
@@ -38,114 +40,96 @@ const loadHost = async () => {
   return contextBridge.exposeInMainWorld.mock.calls.at(-1)?.[1] as NewframeHost
 }
 
-const emit = (channel: string, ...args: any[]) => {
-  const channelListeners = [...(listeners.get(channel) || [])]
-
-  channelListeners.forEach((listener) => listener(...args))
+const emit = (channel: string, ...args: unknown[]) => {
+  ;(listeners.get(channel) || []).forEach((listener) => listener(...args))
 }
 
 beforeEach(() => {
-  listeners.delete('main:action')
+  listeners.clear()
   contextBridge.exposeInMainWorld.mockClear()
   ipcRenderer.invoke.mockReset()
   ipcRenderer.on.mockClear()
-  ipcRenderer.removeListener.mockClear()
-  ipcRenderer.send.mockClear()
 })
 
 describe('preload bridge host', () => {
-  it('exposes the Newframe host through contextBridge', async () => {
+  it('exposes only the typed application capabilities', async () => {
     const host = await loadHost()
 
     expect(contextBridge.exposeInMainWorld).toHaveBeenCalledWith('__NEWFRAME_HOST__', host)
-    expect(typeof host.send).toBe('function')
-    expect(typeof host.invoke).toBe('function')
-    expect(typeof host.rpc).toBe('function')
-    expect(typeof host.onAction).toBe('function')
+    expect(Object.keys(host).sort()).toEqual([
+      'connectState',
+      'disconnectState',
+      'executeCommand',
+      'executeQuery'
+    ])
   })
 
-  it('forwards known send channels to ipcRenderer.send', async () => {
+  it('executes commands over the fixed command channel', async () => {
     const host = await loadHost()
+    const command = { type: 'account.select', accountId: '0xabc' } as const
+    ipcRenderer.invoke.mockResolvedValueOnce({ ok: true })
 
-    host.send('tray:clipboardData', ['0xabc'])
-
-    expect(ipcRenderer.send).toHaveBeenCalledWith('tray:clipboardData', '0xabc')
+    await expect(host.executeCommand(command)).resolves.toEqual({ ok: true })
+    expect(ipcRenderer.invoke).toHaveBeenCalledWith(ExecuteCommandChannel, command)
   })
 
-  it('warns and no-ops unknown send channels', async () => {
-    const warn = spyOn(console, 'warn').mockImplementation(() => {})
+  it('executes queries over the fixed query channel', async () => {
     const host = await loadHost()
-
-    host.send('tray:notReal' as any, ['payload'])
-
-    expect(warn).toHaveBeenCalledWith('Unknown send channel: tray:notReal')
-    expect(ipcRenderer.send).not.toHaveBeenCalled()
-
-    warn.mockRestore()
-  })
-
-  it('forwards known invoke channels to ipcRenderer.invoke', async () => {
-    const host = await loadHost()
-    ipcRenderer.invoke.mockResolvedValueOnce({ symbol: 'ETH' })
-
-    await expect(host.invoke('tray:getTokenDetails', ['0xabc', 1])).resolves.toEqual({
-      symbol: 'ETH'
+    const query = { type: 'name.resolve', name: 'alice.eth' } as const
+    ipcRenderer.invoke.mockResolvedValueOnce({
+      ok: true,
+      address: '0x1111111111111111111111111111111111111111'
     })
 
-    expect(ipcRenderer.invoke).toHaveBeenCalledWith('tray:getTokenDetails', '0xabc', 1)
+    await expect(host.executeQuery(query)).resolves.toEqual({
+      ok: true,
+      address: '0x1111111111111111111111111111111111111111'
+    })
+    expect(ipcRenderer.invoke).toHaveBeenCalledWith(ExecuteQueryChannel, query)
   })
 
-  it('rejects unknown invoke channels', async () => {
-    const host = await loadHost()
-
-    await expect(host.invoke('tray:notReal' as any, [])).rejects.toThrow(
-      'Unknown invoke channel: tray:notReal'
-    )
-    expect(ipcRenderer.invoke).not.toHaveBeenCalled()
-  })
-
-  it('uses the promise RPC helper for known RPC methods', async () => {
-    const host = await loadHost()
-    const response = host.rpc('getState', [{ ready: true }, null])
-    const sendCall = ipcRenderer.send.mock.calls.at(-1)
-
-    expect(sendCall?.[0]).toBe('main:rpc')
-    expect(sendCall?.[2]).toBe(JSON.stringify('getState'))
-    expect(sendCall?.[3]).toBe(JSON.stringify({ ready: true }))
-    expect(sendCall?.[4]).toBeNull()
-
-    emit(
-      'main:rpc',
-      {},
-      JSON.parse(sendCall?.[1] as string),
-      JSON.stringify(null),
-      JSON.stringify({ ok: true })
-    )
-
-    await expect(response).resolves.toEqual([null, { ok: true }])
-  })
-
-  it('rejects unknown RPC methods', async () => {
-    const host = await loadHost()
-
-    await expect(host.rpc('notReal' as any, [])).rejects.toThrow('Unknown RPC method: notReal')
-    expect(ipcRenderer.send).not.toHaveBeenCalled()
-  })
-
-  it('strips the event object from main:action and removes the listener on cleanup', async () => {
+  it('connects the state stream and strips the Electron event from messages', async () => {
     const host = await loadHost()
     const handler = jest.fn()
+    const snapshot: StateMessage = {
+      schemaVersion: 1,
+      streamId: 'stream-1',
+      revision: 0,
+      state: { selectedAccountId: '0xabc' }
+    }
+    ipcRenderer.invoke.mockResolvedValueOnce({ ok: true })
 
-    const cleanup = host.onAction(handler)
+    await expect(host.connectState(handler)).resolves.toEqual({ ok: true })
+    emit(StateMessageChannel, { sender: 'electron' }, snapshot)
 
-    emit('main:action', { sender: 'main' }, 'approve', { id: 1 })
+    expect(ipcRenderer.invoke).toHaveBeenCalledWith(StateConnectChannel)
+    expect(handler).toHaveBeenCalledWith(snapshot)
+  })
 
-    expect(handler).toHaveBeenCalledWith('approve', { id: 1 })
+  it('disconnects the state stream and stops delivering messages', async () => {
+    const host = await loadHost()
+    const handler = jest.fn()
+    const snapshot: StateMessage = {
+      schemaVersion: 1,
+      streamId: 'stream-1',
+      revision: 0,
+      state: {}
+    }
+    ipcRenderer.invoke.mockResolvedValue({ ok: true })
 
-    cleanup()
-    emit('main:action', { sender: 'main' }, 'after-cleanup')
+    await host.connectState(handler)
+    emit(StateMessageChannel, {}, snapshot)
+    await expect(host.disconnectState()).resolves.toEqual({ ok: true })
+    emit(StateMessageChannel, {}, snapshot)
 
-    expect(ipcRenderer.removeListener).toHaveBeenCalledWith('main:action', expect.any(Function))
+    expect(ipcRenderer.invoke).toHaveBeenLastCalledWith(StateDisconnectChannel)
     expect(handler).toHaveBeenCalledTimes(1)
+  })
+
+  it('rejects invalid state connection results at the preload boundary', async () => {
+    const host = await loadHost()
+    ipcRenderer.invoke.mockResolvedValueOnce({ ok: true, unexpected: true })
+
+    await expect(host.connectState(jest.fn())).rejects.toThrow()
   })
 })

@@ -8,15 +8,17 @@ const usdc = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'
 
 describe('#effectsFromTrace', () => {
   it('detects simulated ERC-20 asset out from an internal transferFrom call', async () => {
-    store.set('main.tokens.known', account.toLowerCase(), [
-      {
-        address: usdc.toLowerCase(),
-        chainId: 31337,
-        decimals: 6,
-        name: 'Mock USD Coin',
-        symbol: 'USDC'
-      }
-    ])
+    store.setState((state) => {
+      state.main.tokens.known[account.toLowerCase()] = [
+        {
+          address: usdc.toLowerCase(),
+          chainId: 31337,
+          decimals: 6,
+          name: 'Mock USD Coin',
+          symbol: 'USDC'
+        }
+      ]
+    })
 
     const effects = await effectsFromTrace(
       {

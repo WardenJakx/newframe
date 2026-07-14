@@ -12,11 +12,11 @@ export type TokenDiscoveryProviderAccess =
 // Keep provider construction and preference checks behind this boundary so a
 // caller cannot accidentally use token discovery when the user disabled it.
 export function getTokenDiscoveryProvider(): TokenDiscoveryProviderAccess {
-  if (store('main.autoDiscoverTokens') !== true) {
+  if (store.getState().main.autoDiscoverTokens !== true) {
     return { ok: false, error: 'token_discovery_disabled' }
   }
 
-  const configuredApiKey = store('main.portfolioApiKey')
+  const configuredApiKey = store.getState().main.portfolioApiKey
   const apiKey = typeof configuredApiKey === 'string' ? configuredApiKey.trim() : ''
 
   if (!apiKey) return { ok: false, error: 'missing_api_key' }

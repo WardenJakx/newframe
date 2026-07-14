@@ -12,7 +12,7 @@ const SIGNER_PATH = path.resolve(__dirname, '../.userData/signers')
 const VAULT_PATH = path.resolve(__dirname, '../.userData/vault.json')
 
 // Stubs
-const signers = { add: () => {} }
+const signers = { add: jest.fn() }
 // Util
 const removePath = (target: string) => rm(target, { recursive: true, force: true })
 const clean = () => Promise.all([removePath(SIGNER_PATH), removePath(VAULT_PATH)])
@@ -51,7 +51,7 @@ describe('Seed signer', () => {
     try {
       hot.createFromPhrase(signers, mnemonic, PASSWORD, (err: any) => {
         expect(err).toBeTruthy()
-        expect(store('main.signers')).toEqual({})
+        expect(store.getState().main.signers).toEqual({})
         done()
       })
     } catch (e) {
@@ -67,7 +67,8 @@ describe('Seed signer', () => {
         expect(err).toBe(null)
         expect(signer.status).toBe('ok')
         expect(signer.addresses.length).toBe(100)
-        expect(store(`main.signers.${signer.id}.id`)).toBe(signer.id)
+        expect(signers.add).toHaveBeenCalledWith(signer)
+        expect(store.getState().main.signers).toEqual({})
         const storedSigner = JSON.parse(
           fs.readFileSync(path.resolve(SIGNER_PATH, `${signer.id}.json`), 'utf8')
         )
@@ -208,7 +209,7 @@ describe('Seed signer', () => {
   test('Close signer', (done) => {
     try {
       signer.close()
-      expect(store(`main.signers.${signer.id}`)).toBe(undefined)
+      expect(store.getState().main.signers[signer.id]).toBe(undefined)
       done()
     } catch (e) {
       done(e)

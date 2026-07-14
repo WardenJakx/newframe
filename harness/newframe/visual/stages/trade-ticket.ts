@@ -130,9 +130,9 @@ export const tradeTicketStage: VisualStage = {
     await tradePage.getByRole('tab', { name: 'Market' }).waitFor({ state: 'visible', timeout: 15_000 })
     await driver.assertTradeTicketVisualControls(tradePage)
     await driver.screenshot(tradePage, '10j-relaunch-trade-reset.png')
-    await tradePage
-      .getByRole('button', { name: 'Close Trade' })
-      .click()
-      .catch(() => undefined)
+    await Promise.all([
+      tradePage.waitForEvent('close'),
+      tradePage.getByRole('button', { name: 'Close Trade' }).click()
+    ])
   }
 }

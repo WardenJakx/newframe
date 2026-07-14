@@ -145,6 +145,7 @@ async function reverseLookup(address: string) {
 }
 
 export default {
+  off: events.off.bind(events),
   once: events.once.bind(events),
   ready: () => isReady,
   resolveAddress,

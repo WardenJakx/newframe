@@ -18,27 +18,30 @@ interface KnownSigners {
 
 export default class TrezorSignerAdapter extends SignerAdapter {
   private knownSigners: KnownSigners = {}
-  private observer?: Observer
+  private unsubscribeDerivation?: () => void
 
   constructor() {
     super('trezor')
   }
 
   override open() {
-    this.observer = store.observer(() => {
-      const trezorDerivation = store('main.trezor.derivation')
+    this.unsubscribeDerivation?.()
+    this.unsubscribeDerivation = store.subscribe(
+      (state) => state.main.trezor.derivation,
+      (trezorDerivation) => {
+        Object.values(this.knownSigners).forEach((signerInfo) => {
+          const trezor = signerInfo.signer
+          if (trezor.derivation !== trezorDerivation) {
+            trezor.derivation = trezorDerivation
 
-      Object.values(this.knownSigners).forEach((signerInfo) => {
-        const trezor = signerInfo.signer
-        if (trezor.derivation !== trezorDerivation) {
-          trezor.derivation = trezorDerivation
-
-          if (trezor.status === Status.OK) {
-            trezor.deriveAddresses()
+            if (trezor.status === Status.OK) {
+              trezor.deriveAddresses()
+            }
           }
-        }
-      })
-    })
+        })
+      },
+      { fireImmediately: true }
+    )
 
     TrezorBridge.on('trezor:detected', (path: string) => {
       // create a new signer whenever a Trezor is detected, but it won't be opened
@@ -54,7 +57,7 @@ export default class TrezorSignerAdapter extends SignerAdapter {
       const id = Trezor.generateId(device.path)
       const trezor = this.knownSigners[id]?.signer || this.initTrezor(device.path)
 
-      trezor.derivation = store('main.trezor.derivation')
+      trezor.derivation = store.getState().main.trezor.derivation
 
       try {
         await trezor.open(device)
@@ -165,7 +168,7 @@ export default class TrezorSignerAdapter extends SignerAdapter {
 
     this.emit('add', trezor)
 
-    store.navHome({
+    store.getState().navHome({
       view: 'accounts',
       data: { showAddAccounts: true, newAccountType: 'trezor', selectedSigner: trezor.id }
     })
@@ -182,10 +185,8 @@ export default class TrezorSignerAdapter extends SignerAdapter {
   }
 
   override close() {
-    if (this.observer) {
-      this.observer.remove()
-      this.observer = undefined
-    }
+    this.unsubscribeDerivation?.()
+    this.unsubscribeDerivation = undefined
 
     TrezorBridge.close()
 

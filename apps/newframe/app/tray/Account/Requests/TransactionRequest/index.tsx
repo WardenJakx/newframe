@@ -1,5 +1,4 @@
 import React from 'react'
-import Restore from 'react-restore'
 
 // New Tx
 import TxReview from './TxReview'
@@ -8,10 +7,9 @@ import ViewData from './ViewData'
 import EditTokenSpend from '../../../../../resources/Components/EditTokenSpend'
 import link from '../../../../../resources/link'
 import { erc20Interface } from '../../../../../resources/contracts'
+import { useRequestView } from '../../../requestView'
 
-class TransactionRequest extends React.Component<any, any> {
-  declare store: Store
-
+export class TransactionRequest extends React.Component<any, any> {
   constructor(props: any, context?: any) {
     super(props, context)
     this.state = { allowInput: false, dataView: false, showHashDetails: false }
@@ -41,10 +39,9 @@ class TransactionRequest extends React.Component<any, any> {
   }
 
   renderTokenSpend() {
-    const crumb = this.store('windows.panel.nav')[0] || {}
-    const { actionId } = crumb.data
+    const { actionId } = this.props
     const { req } = this.props
-    if (!req) return null
+    if (!req || actionId !== 'erc20:approve') return null
 
     const { handlerId } = req
     const approval = (req.recognizedActions || []).find((action: any) => action.id === actionId)
@@ -58,7 +55,15 @@ class TransactionRequest extends React.Component<any, any> {
       <EditTokenSpend
         data={data}
         requestedAmount={requestedAmount}
-        updateRequest={(amount: any) => link.rpc('updateRequest', handlerId, { amount }, actionId, () => {})}
+        updateRequest={(amount: string) => {
+          void link.executeCommand({
+            type: 'request.token-approval-update',
+            requestKind: 'transaction',
+            requestId: handlerId,
+            actionId: 'erc20:approve',
+            amount: String(amount)
+          })
+        }}
         canRevoke={true}
       />
     )
@@ -112,4 +117,7 @@ class TransactionRequest extends React.Component<any, any> {
   }
 }
 
-export default Restore.connect(TransactionRequest)
+export default function TransactionRequestWithState(props: any) {
+  const { actionId, step } = useRequestView()
+  return <TransactionRequest {...props} actionId={actionId} step={step} />
+}

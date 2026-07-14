@@ -9,7 +9,7 @@ apps/newframe/dist-preview
 apps/newframe/release
 apps/newframe/.parcel-cache
 apps/newframe/*.tsbuildinfo
-apps/newframe/test/.userData
+apps/newframe/test/**/.userData
 apps/newframe/build/icons/
 
 # Extension outputs

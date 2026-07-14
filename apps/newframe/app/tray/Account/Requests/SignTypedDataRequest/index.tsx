@@ -1,12 +1,10 @@
 import React from 'react'
-import Restore from 'react-restore'
 
 import { SimpleTypedData as TypedSignatureOverview } from '../../../../../resources/Components/SimpleTypedData'
 import { getSignatureRequestClass } from '../../../../../resources/domain/request'
+import { useOriginName } from '../state'
 
-class TransactionRequest extends React.Component<any, any> {
-  declare store: Store
-
+export class TransactionRequest extends React.Component<any, any> {
   constructor(props: any, context?: any) {
     super(props, context)
     this.state = { allowInput: false, dataView: false }
@@ -21,7 +19,7 @@ class TransactionRequest extends React.Component<any, any> {
 
   override render() {
     const { req } = this.props
-    const originName = this.store('main.origins', req.origin, 'name')
+    const { originName } = this.props
     const requestClass = getSignatureRequestClass(req)
 
     return (
@@ -32,4 +30,7 @@ class TransactionRequest extends React.Component<any, any> {
   }
 }
 
-export default Restore.connect(TransactionRequest)
+export default function TransactionRequestWithState(props: any) {
+  const originName = useOriginName(props.req.origin)
+  return <TransactionRequest {...props} originName={originName} />
+}

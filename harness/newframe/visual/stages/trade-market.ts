@@ -24,17 +24,24 @@ export const tradeMarketStage: VisualStage = {
       .getByRole('button', { name: /Review\/sign/i })
       .waitFor({ state: 'visible', timeout: 20_000 })
     await driver.screenshot(tradePage, '21d-trade-market-ready-to-sign.png')
+    const existingOrderIds = new Set(Object.keys((await driver.getAppState()).main?.orders || {}))
     await tradePage.getByRole('button', { name: /Review\/sign/i }).click()
 
     const signRequest = await driver.waitForCurrentRequest('signTypedData', new Set(), 30_000)
     await driver.screenshot(tray, '21e-trade-market-sign-review.png')
     await driver.signCurrentSignature(signRequest, '21f-trade-market-sign-submitted.png')
 
-    await driver.waitForFlashOrder(
-      (order) => order.orderType === 'market' && order.status === 'filled',
+    const order = await driver.waitForFlashOrder(
+      (order) =>
+        order.orderType === 'market' &&
+        order.status === 'filled' &&
+        Boolean(order.orderId) &&
+        !existingOrderIds.has(order.orderId || ''),
       30_000,
-      'Market Flash order did not fill'
+      'A newly submitted market Flash order did not fill'
     )
+    if (!order.orderId) driver.fail('The new market Flash order has no order id')
+    await driver.assertFlashOrderVisible(order.orderId)
     await driver.screenshot(tray, '21g-trade-market-filled.png')
     await driver.clearPanelAndOverlays()
   }

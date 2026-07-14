@@ -1,5 +1,3 @@
-import React from 'react'
-import Restore from 'react-restore'
 import svg from '../../../resources/svg'
 import { cachedImageUrl } from '../../domain/imageCache'
 
@@ -9,6 +7,12 @@ interface IconProps {
   svgSize?: number
   img?: string
   small?: boolean
+}
+
+interface RingIconProps extends IconProps {
+  block?: boolean
+  color?: string
+  noRing?: boolean
 }
 
 const Icon = ({ svgName, alt = '', svgSize = 16, img, small }: IconProps) => {
@@ -29,31 +33,16 @@ const Icon = ({ svgName, alt = '', svgSize = 16, img, small }: IconProps) => {
   return svg.eth(small ? 13 : 18)
 }
 
-class RingIcon extends React.Component<any, any> {
-  constructor(props: any, context?: any) {
-    super(props, context)
-    this.state = {}
-  }
-
-  override render() {
-    const { color, svgName, svgSize, img, small, block, noRing, alt } = this.props
-    let ringIconClass = 'ringIcon'
-    if (small) ringIconClass += ' ringIconSmall'
-    if (block) ringIconClass += ' ringIconBlock'
-    if (noRing) ringIconClass += ' ringIconNoRing'
-    return (
-      <div
-        className={ringIconClass}
-        style={{
-          borderColor: color
-        }}
-      >
-        <div className='ringIconInner' style={block ? { color } : { background: color }}>
-          <Icon svgName={svgName} svgSize={svgSize} img={img} alt={alt} small={small} />
-        </div>
+export default function RingIcon({ color, svgName, svgSize, img, small, block, noRing, alt }: RingIconProps) {
+  let ringIconClass = 'ringIcon'
+  if (small) ringIconClass += ' ringIconSmall'
+  if (block) ringIconClass += ' ringIconBlock'
+  if (noRing) ringIconClass += ' ringIconNoRing'
+  return (
+    <div className={ringIconClass} style={{ borderColor: color }}>
+      <div className='ringIconInner' style={block ? { color } : { background: color }}>
+        <Icon svgName={svgName} svgSize={svgSize} img={img} alt={alt} small={small} />
       </div>
-    )
-  }
+    </div>
+  )
 }
-
-export default Restore.connect(RingIcon)

@@ -1,49 +1,38 @@
 import type { Mock } from 'bun:test'
-import Restore from 'react-restore'
 
 import { screen, render, waitFor } from '../../../../componentSetup'
-import store from '../../../../../main/store'
 import link from '../../../../../resources/link'
-import AddTokenComponent from '../../../../../app/dash/Tokens/AddToken'
+import AddToken from '../../../../../app/dash/Tokens/AddToken'
+import { resetStateMirrorForTests } from '../../../../../app/state/rendererStore'
 
-const AddToken = Restore.connect(AddTokenComponent, store)
-
-beforeAll(() => {
-  Object.values(store('main.networks.ethereum') || {}).forEach((network: any) => {
-    store.activateNetwork('ethereum', network.id, false)
-  })
-
-  store.addNetwork({
-    id: 1,
-    type: 'ethereum',
-    name: 'Mainnet',
-    explorer: 'https://etherscan.io',
-    symbol: 'ETH',
-    on: true,
-    connection: {
-      primary: { connected: true }
-    }
-  })
-
-  store.setPrimary('ethereum', 1, { connected: false })
-  store.activateNetwork('ethereum', 1, true)
-
-  store.removeNetwork({ type: 'ethereum', id: 137 })
-  store.addNetwork({
-    id: 137,
-    type: 'ethereum',
-    name: 'Polygon',
-    explorer: 'https://polygonscan.com',
-    symbol: 'MATIC',
-    on: true,
-    connection: {
-      primary: { connected: true }
+const networks = {
+  ethereum: {
+    1: {
+      id: 1,
+      type: 'ethereum',
+      name: 'Mainnet',
+      explorer: 'https://etherscan.io',
+      on: true
     },
-    primaryColor: 'accent7'
-  })
+    137: {
+      id: 137,
+      type: 'ethereum',
+      name: 'Polygon',
+      explorer: 'https://polygonscan.com',
+      on: true
+    }
+  }
+}
 
-  store.setPrimary('ethereum', 137, { connected: false })
-  store.activateNetwork('ethereum', 137, true)
+const networksMeta = {
+  ethereum: {
+    1: { primaryColor: 'accent1', nativeCurrency: { symbol: 'ETH' } },
+    137: { primaryColor: 'accent7', nativeCurrency: { symbol: 'MATIC' } }
+  }
+}
+
+beforeEach(() => {
+  resetStateMirrorForTests({ networks, networksMeta })
 })
 
 describe('selecting token chain', () => {
@@ -55,13 +44,13 @@ describe('selecting token chain', () => {
   })
 
   it('should update add token navigation when a chain is selected', async () => {
-    // 200 ms UI delay after clicking the button to select a chain
-    const { user } = render(<AddToken />, { advanceTimersAfterInput: true })
+    const { user } = render(<AddToken />)
 
     const polygonButton = screen.getByRole('button', { name: 'Polygon' })
     await user.click(polygonButton)
 
-    expect(link.send).toHaveBeenCalledWith('tray:action', 'navDash', {
+    expect(link.executeCommand).toHaveBeenCalledWith({
+      type: 'dash.navigate',
       view: 'tokens',
       data: {
         notify: 'addToken',
@@ -93,8 +82,9 @@ describe('setting token address', () => {
     const setAddressButton = screen.getByRole('button', { name: 'Set Address' })
     await user.click(setAddressButton)
 
-    expect(link.send).toHaveBeenCalledTimes(1)
-    expect(link.send).toHaveBeenCalledWith('nav:forward', 'dash', {
+    expect(link.executeCommand).toHaveBeenCalledTimes(1)
+    expect(link.executeCommand).toHaveBeenCalledWith({
+      type: 'dash.navigate',
       view: 'tokens',
       data: {
         notify: 'addToken',
@@ -108,17 +98,13 @@ describe('setting token address', () => {
   })
 
   it('should update add token navigation when a contracts details cannot be validated on-chain', async () => {
-    store.setPrimary('ethereum', 1, { connected: true })
-    ;(link.invoke as Mock<any>).mockImplementationOnce((action: any, address: any, chainId: any) => {
-      expect(action).toBe('tray:getTokenDetails')
-      expect(address).toBe('0x3432b6a60d23ca0dfca7761b7ab56459d9c964d0')
-      expect(chainId).toBe(1)
-      return {
-        decimals: 0,
-        name: '',
-        symbol: '',
-        totalSupply: ''
-      }
+    ;(link.executeQuery as Mock<any>).mockImplementationOnce((query: any) => {
+      expect(query).toEqual({
+        type: 'token.lookup',
+        address: '0x3432b6a60d23ca0dfca7761b7ab56459d9c964d0',
+        chainId: 1
+      })
+      return { ok: false, error: 'not_found' }
     })
 
     const { user } = render(<AddToken data={{ notifyData: { chain: { id: 1 } } }} />)
@@ -128,8 +114,9 @@ describe('setting token address', () => {
     const setAddressButton = screen.getByRole('button', { name: 'Set Address' })
     await user.click(setAddressButton)
 
-    expect(link.send).toHaveBeenCalledTimes(1)
-    expect(link.send).toHaveBeenCalledWith('nav:forward', 'dash', {
+    expect(link.executeCommand).toHaveBeenCalledTimes(1)
+    expect(link.executeCommand).toHaveBeenCalledWith({
+      type: 'dash.navigate',
       view: 'tokens',
       data: {
         notify: 'addToken',
@@ -137,12 +124,7 @@ describe('setting token address', () => {
           chain: { id: 1 },
           address: '0x3432b6a60d23ca0dfca7761b7ab56459d9c964d0',
           error: `COULD NOT FIND TOKEN WITH ADDRESS 0x3432b6a60d23ca0dfca7761b7ab56459d9c964d0`,
-          tokenData: {
-            decimals: 0,
-            name: '',
-            symbol: '',
-            totalSupply: ''
-          }
+          tokenData: {}
         }
       }
     })
@@ -156,11 +138,13 @@ describe('setting token address', () => {
       totalSupply: '100000'
     }
 
-    ;(link.invoke as Mock<any>).mockImplementationOnce((action: any, address: any, chainId: any) => {
-      expect(action).toBe('tray:getTokenDetails')
-      expect(address).toBe('0x3432b6a60d23ca0dfca7761b7ab56459d9c964d0')
-      expect(chainId).toBe(1)
-      return mockTokenData
+    ;(link.executeQuery as Mock<any>).mockImplementationOnce((query: any) => {
+      expect(query).toEqual({
+        type: 'token.lookup',
+        address: '0x3432b6a60d23ca0dfca7761b7ab56459d9c964d0',
+        chainId: 1
+      })
+      return { ok: true, token: mockTokenData }
     })
 
     const { user } = render(<AddToken data={{ notifyData: { chain: { id: 1 } } }} />)
@@ -170,8 +154,9 @@ describe('setting token address', () => {
     const setAddressButton = screen.getByRole('button', { name: 'Set Address' })
     await user.click(setAddressButton)
 
-    expect(link.send).toHaveBeenCalledTimes(1)
-    expect(link.send).toHaveBeenCalledWith('nav:forward', 'dash', {
+    expect(link.executeCommand).toHaveBeenCalledTimes(1)
+    expect(link.executeCommand).toHaveBeenCalledWith({
+      type: 'dash.navigate',
       view: 'tokens',
       data: {
         notify: 'addToken',
@@ -291,8 +276,6 @@ describe('setting token details', () => {
   })
 
   it('should populate fields with token data', async () => {
-    store.setPrimary('ethereum', 137, { connected: true })
-
     const mockToken = { name: 'Frame Test on Polygon', symbol: 'mFRT', decimals: 18, totalSupply: '1066' }
 
     render(

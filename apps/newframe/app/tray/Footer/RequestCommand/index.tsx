@@ -1,5 +1,5 @@
 import React from 'react'
-import Restore from 'react-restore'
+import { useShallow } from 'zustand/react/shallow'
 
 import TxApproval from './TxApproval'
 
@@ -9,42 +9,67 @@ import link from '../../../../resources/link'
 import { toBigInt } from '../../../../resources/utils/numbers'
 import { usesBaseFee } from '../../../../resources/domain/transaction'
 import { isCancelableRequest, isSignatureRequest } from '../../../../resources/domain/request'
+import { useWalletSelector } from '../../../state/useAppSelector'
+import type { WalletRendererState } from '../../../../resources/state/projections'
+import { useTrayNotification, type TrayNotifier } from '../../notification'
+import { useRequestView, type RequestViewStep } from '../../requestView'
 
 const FEE_WARNING_THRESHOLD_USD = 50
+type RequestReference = { handlerId: string }
+type SignerCompatibility = { signer: string; tx: string; compatible: boolean }
 
-class RequestCommand extends React.Component<any, any> {
-  declare store: Store
+interface RequestCommandSharedState {
+  appLocked: boolean
+  chain: any
+  chainMeta: any
+  explorerWarningMuted: boolean
+  gasFeeWarningMuted: boolean
+  signerCompatibilityWarningMuted: boolean
+  step: RequestViewStep
+}
 
-  constructor(props: any, context?: any) {
+interface RequestCommandProps {
+  notify: TrayNotifier
+  req: any
+  shared: RequestCommandSharedState
+  signingDelay?: number
+}
+
+const EMPTY_CHAIN = {}
+const EMPTY_CHAIN_META = { nativeCurrency: {} }
+
+export class RequestCommand extends React.Component<RequestCommandProps, any> {
+  private allowInputTimer?: ReturnType<typeof setTimeout>
+
+  constructor(props: RequestCommandProps, context?: any) {
     super(props, context)
     this.state = {
       allowInput: false,
       dataView: false,
       signerLocked: false
     }
+  }
 
-    setTimeout(() => {
+  override componentDidMount() {
+    this.allowInputTimer = setTimeout(() => {
       this.setState({ allowInput: true })
-    }, props.signingDelay || 0)
+    }, this.props.signingDelay || 0)
   }
 
-  approve(reqId: any, req: any) {
-    link.rpc('approveRequest', req, () => {}) // Move to link.send
+  override componentWillUnmount() {
+    if (this.allowInputTimer !== undefined) clearTimeout(this.allowInputTimer)
   }
 
-  decline(req: any) {
-    link.rpc('declineRequest', req, () => {}) // Move to link.send
+  approve(requestId: string) {
+    void link.executeCommand({ type: 'request.approve', requestId })
+  }
+
+  decline(req: RequestReference) {
+    void link.executeCommand({ type: 'request.reject', requestId: req.handlerId })
   }
 
   ensureAppUnlocked(next: () => void) {
-    link.rpc('appLockState', (err: any, appLockState: any) => {
-      if (!err && appLockState?.locked) {
-        link.emit('action', 'appLockStateChanged')
-        return
-      }
-
-      next()
-    })
+    if (!this.props.shared.appLocked) next()
   }
 
   shakeSignerUnavailable() {
@@ -52,6 +77,27 @@ class RequestCommand extends React.Component<any, any> {
     setTimeout(() => {
       this.setState({ signerLocked: false })
     }, 3000)
+  }
+
+  async withSignerCompatibility(req: RequestReference, next: (compatibility: SignerCompatibility) => void) {
+    const result = await link.executeQuery({
+      type: 'request.signer-compatibility',
+      requestId: req.handlerId
+    })
+
+    if (!result.ok) {
+      if (result.error === 'no_signer') this.props.notify('noSignerWarning', { req })
+      else if (result.error === 'signer_unavailable') {
+        const recovery = await link.executeCommand({
+          type: 'request.signer-recovery-open',
+          requestId: req.handlerId
+        })
+        if (!recovery.ok) this.shakeSignerUnavailable()
+      }
+      return
+    }
+
+    next(result.compatibility)
   }
 
   toDisplayUSD(usd: any) {
@@ -67,7 +113,7 @@ class RequestCommand extends React.Component<any, any> {
       id: parseInt(req.data.chainId, 'hex' as any)
     }
 
-    const { explorer } = this.store('main.networks', chain.type, chain.id) || {}
+    const { explorer } = this.props.shared.chain
 
     const displayNotice = (notice || '').toLowerCase()
     let displayStatus = (req.status || 'pending').toLowerCase()
@@ -100,10 +146,14 @@ class RequestCommand extends React.Component<any, any> {
                     aria-label='Open transaction explorer'
                     onClick={() => {
                       if (explorer && req && req.tx && req.tx.hash) {
-                        if (this.store('main.mute.explorerWarning')) {
-                          link.send('tray:openExplorer', chain, req.tx.hash)
+                        if (this.props.shared.explorerWarningMuted) {
+                          void link.executeCommand({
+                            type: 'explorer.open',
+                            chainId: chain.id,
+                            transactionHash: req.tx.hash
+                          })
                         } else {
-                          this.store.notify('openExplorer', { hash: req.tx.hash, chain: chain })
+                          this.props.notify('openExplorer', { hash: req.tx.hash, chain })
                         }
                       }
                     }}
@@ -115,7 +165,7 @@ class RequestCommand extends React.Component<any, any> {
                     aria-label='Copy transaction hash'
                     onClick={() => {
                       if (req && req.tx && req.tx.hash) {
-                        link.send('tray:copyTxHash', req.tx.hash)
+                        void link.executeCommand({ type: 'clipboard.write', text: req.tx.hash })
                         this.setState({ txHashCopied: true, showHashDetails: false })
                         setTimeout(() => {
                           this.setState({ txHashCopied: false })
@@ -132,7 +182,12 @@ class RequestCommand extends React.Component<any, any> {
                     className='txActionButton txActionButtonBad'
                     aria-label='Cancel transaction'
                     onClick={() => {
-                      link.send('tray:replaceTx', req.handlerId, 'cancel')
+                      void link.executeCommand({
+                        type: 'transaction.replace',
+                        requestId: req.handlerId,
+                        replacement: 'cancel',
+                        idempotencyKey: crypto.randomUUID()
+                      })
                     }}
                   >
                     Cancel
@@ -150,7 +205,12 @@ class RequestCommand extends React.Component<any, any> {
                     className='txActionButton txActionButtonGood'
                     aria-label='Speed up transaction'
                     onClick={() => {
-                      link.send('tray:replaceTx', req.handlerId, 'speed')
+                      void link.executeCommand({
+                        type: 'transaction.replace',
+                        requestId: req.handlerId,
+                        replacement: 'speed',
+                        idempotencyKey: crypto.randomUUID()
+                      })
                     }}
                   >
                     Speed Up
@@ -175,11 +235,11 @@ class RequestCommand extends React.Component<any, any> {
       type: 'ethereum',
       id: parseInt(req.data.chainId, 'hex' as any)
     }
-    const isTestnet = this.store('main.networks', chain.type, chain.id, 'isTestnet')
+    const isTestnet = this.props.shared.chain.isTestnet
     const {
       nativeCurrency,
       nativeCurrency: { symbol: currentSymbol = '?' }
-    } = this.store('main.networksMeta', chain.type, chain.id)
+    } = this.props.shared.chainMeta
     const nativeUSD =
       nativeCurrency && nativeCurrency.usd && !isTestnet ? nativeCurrency.usd.price : undefined
     const hasNativeUSD = typeof nativeUSD === 'number'
@@ -218,35 +278,25 @@ class RequestCommand extends React.Component<any, any> {
             role='button'
             onClick={() => {
               if (this.state.allowInput) {
-                this.ensureAppUnlocked(() =>
-                  link.rpc('signerCompatibility', req.handlerId, (e: any, compatibility: any) => {
-                    if (e === 'No signer') {
-                      this.store.notify('noSignerWarning', { req })
-                    } else if (e === 'Newframe locked') {
-                      link.emit('action', 'appLockStateChanged')
-                    } else if (e === 'Signer unavailable') {
-                      this.shakeSignerUnavailable()
-                    } else if (e) {
-                      return
-                    } else if (
-                      !compatibility.compatible &&
-                      !this.store('main.mute.signerCompatibilityWarning')
-                    ) {
-                      this.store.notify('signerCompatibilityWarning', { req, compatibility, chain: chain })
-                    } else if (
-                      hasNativeUSD &&
-                      (maxFeeUSD > FEE_WARNING_THRESHOLD_USD || this.toDisplayUSD(maxFeeUSD) === '0.00') &&
-                      !this.store('main.mute.gasFeeWarning')
-                    ) {
-                      this.store.notify('gasFeeWarning', {
-                        req,
-                        feeUSD: this.toDisplayUSD(maxFeeUSD),
-                        currentSymbol
-                      })
-                    } else {
-                      this.approve(req.handlerId, req)
-                    }
-                  })
+                this.ensureAppUnlocked(
+                  () =>
+                    void this.withSignerCompatibility(req, (compatibility) => {
+                      if (!compatibility.compatible && !this.props.shared.signerCompatibilityWarningMuted) {
+                        this.props.notify('signerCompatibilityWarning', { req, compatibility, chain })
+                      } else if (
+                        hasNativeUSD &&
+                        (maxFeeUSD > FEE_WARNING_THRESHOLD_USD || this.toDisplayUSD(maxFeeUSD) === '0.00') &&
+                        !this.props.shared.gasFeeWarningMuted
+                      ) {
+                        this.props.notify('gasFeeWarning', {
+                          req,
+                          feeUSD: this.toDisplayUSD(maxFeeUSD),
+                          currentSymbol
+                        })
+                      } else {
+                        this.approve(req.handlerId)
+                      }
+                    })
                 )
               }
             }}
@@ -281,8 +331,9 @@ class RequestCommand extends React.Component<any, any> {
             <div
               className='txActionButton txActionButtonGood'
               onClick={() => {
-                link.rpc('removeFeeUpdateNotice', req.handlerId, (e: any) => {
-                  if (e) console.error(e)
+                void link.executeCommand({
+                  type: 'transaction.fee-notice-dismiss',
+                  requestId: req.handlerId
                 })
               }}
             >
@@ -387,20 +438,11 @@ class RequestCommand extends React.Component<any, any> {
               style={{ pointerEvents: this.state.allowInput ? 'auto' : 'none' }}
               onClick={() => {
                 if (this.state.allowInput) {
-                  this.ensureAppUnlocked(() =>
-                    link.rpc('signerCompatibility', req.handlerId, (e: any) => {
-                      if (e === 'No signer') {
-                        this.store.notify('noSignerWarning', { req })
-                      } else if (e === 'Newframe locked') {
-                        link.emit('action', 'appLockStateChanged')
-                      } else if (e === 'Signer unavailable') {
-                        this.shakeSignerUnavailable()
-                      } else if (e) {
-                        return
-                      } else {
-                        this.approve(req.handlerId, req)
-                      }
-                    })
+                  this.ensureAppUnlocked(
+                    () =>
+                      void this.withSignerCompatibility(req, () => {
+                        this.approve(req.handlerId)
+                      })
                   )
                 }
               }}
@@ -418,9 +460,7 @@ class RequestCommand extends React.Component<any, any> {
   override render() {
     const { req } = this.props
     if (!req) return null
-    const crumb = this.store('windows.panel.nav')[0] || {}
-
-    if (req.type === 'transaction' && crumb.data.step === 'confirm') {
+    if (req.type === 'transaction' && this.props.shared.step === 'confirm') {
       return this.renderTxCommand()
     } else if (isSignatureRequest(req)) {
       return this.renderSignDataCommand()
@@ -430,4 +470,27 @@ class RequestCommand extends React.Component<any, any> {
   }
 }
 
-export default Restore.connect(RequestCommand)
+export default function RequestCommandContainer(props: Omit<RequestCommandProps, 'notify' | 'shared'>) {
+  const chainId = parseInt(props.req?.data?.chainId || '0', 16)
+  const { notify } = useTrayNotification()
+  const { step } = useRequestView()
+  const selector = React.useMemo(
+    () =>
+      (state: WalletRendererState): Omit<RequestCommandSharedState, 'step'> => {
+        const mute = state.mute
+
+        return {
+          appLocked: state.appLock.locked,
+          chain: state.networks.ethereum[chainId] || EMPTY_CHAIN,
+          chainMeta: state.networksMeta.ethereum[chainId] || EMPTY_CHAIN_META,
+          explorerWarningMuted: !!mute?.explorerWarning,
+          gasFeeWarningMuted: !!mute?.gasFeeWarning,
+          signerCompatibilityWarningMuted: !!mute?.signerCompatibilityWarning
+        }
+      },
+    [chainId]
+  )
+  const synchronized = useWalletSelector(useShallow(selector))
+
+  return <RequestCommand {...props} notify={notify} shared={{ ...synchronized, step }} />
+}

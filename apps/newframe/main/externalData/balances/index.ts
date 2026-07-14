@@ -1,10 +1,12 @@
 import log from 'electron-log'
+import type { StoreApi } from 'zustand/vanilla'
 
 import { NATIVE_CURRENCY } from '../../../resources/constants'
 import { createBalanceSummaries, isLowValueTokenBalance, toTokenId } from '../../../resources/domain/balance'
 import BalancesWorkerController from './controller'
 import { CurrencyBalance, TokenBalance } from './scan'
 
+import type { CanonicalStore } from '../../store'
 import type { Balance, Chain, ChainMetadata, Rate, Token } from '../../store/state'
 
 const RESTART_WAIT = 5 // seconds
@@ -88,31 +90,31 @@ export function selectManualRefreshTokens({
   )
 }
 
-export default function (store: Store) {
+export default function (store: Pick<StoreApi<CanonicalStore>, 'getState'>) {
   const storeApi = {
-    getActiveAddress: () => (store('selected.current') || '') as Address,
-    getNetwork: (id: number) => (store('main.networks.ethereum', id) || {}) as Chain,
-    getNativeCurrencySymbol: (id: number) =>
-      store('main.networksMeta.ethereum', id, 'nativeCurrency', 'symbol') as string,
+    getActiveAddress: () => (store.getState().main.currentAccount || '') as Address,
+    getNetwork: (id: number) => (store.getState().main.networks.ethereum[id] || {}) as Chain,
     getConnectedNetworks: () => {
-      const networks = Object.values(store('main.networks.ethereum') || {}) as Chain[]
+      const networks = Object.values(store.getState().main.networks.ethereum || {}) as Chain[]
       return networks.filter(
         (n) => (n.connection.primary || {}).connected || (n.connection.secondary || {}).connected
       )
     },
-    getCustomTokens: () => (store('main.tokens.custom') || []) as Token[],
-    getKnownTokens: (address?: Address): Token[] => (address && store('main.tokens.known', address)) || [],
-    getBalances: (address: Address) => (store('main.balances', address) || []) as Balance[],
-    getNetworks: () => (store('main.networks.ethereum') || {}) as Record<number, Chain>,
-    getNetworksMeta: () => (store('main.networksMeta.ethereum') || {}) as Record<number, ChainMetadata>,
-    getRates: () => (store('main.rates') || {}) as Record<string, { usd?: Rate }>,
+    getCustomTokens: () => (store.getState().main.tokens.custom || []) as Token[],
+    getKnownTokens: (address?: Address): Token[] =>
+      (address && store.getState().main.tokens.known[address]) || [],
+    getBalances: (address: Address) => (store.getState().main.balances[address] || []) as Balance[],
+    getNetworks: () => (store.getState().main.networks.ethereum || {}) as Record<number, Chain>,
+    getNetworksMeta: () =>
+      (store.getState().main.networksMeta.ethereum || {}) as Record<number, ChainMetadata>,
+    getRates: () => (store.getState().main.rates || {}) as Record<string, { usd?: Rate }>,
     getCurrencyBalances: (address: Address) => {
-      return ((store('main.balances', address) || []) as Balance[]).filter(
+      return ((store.getState().main.balances[address] || []) as Balance[]).filter(
         (balance) => balance.address === NATIVE_CURRENCY
       )
     },
     getTokenBalances: (address: Address) => {
-      return ((store('main.balances', address) || []) as Balance[]).filter(
+      return ((store.getState().main.balances[address] || []) as Balance[]).filter(
         (balance) => balance.address !== NATIVE_CURRENCY
       )
     }
@@ -362,24 +364,29 @@ export default function (store: Store) {
   function handleUpdate(address: Address, updateFn: (address: Address) => void) {
     // because updates come from another process its possible to receive updates after an account
     // has been removed but before we stop the scan, so check to make sure the account exists
-    if (store('main.accounts', address)) {
+    if (store.getState().main.accounts[address]) {
       updateFn(address)
     }
   }
 
   function handleChainBalanceUpdate(balances: CurrencyBalance[], address: Address) {
     const currentChainBalances = storeApi.getCurrencyBalances(address)
+    const networksMeta = storeApi.getNetworksMeta()
 
     // only update balances that have changed
     balances
       .filter(
         (balance) =>
+          networksMeta[balance.chainId] &&
           (currentChainBalances.find((b) => b.chainId === balance.chainId) || {}).balance !== balance.balance
       )
       .forEach((balance) => {
-        store.setBalance(address, {
+        const nativeCurrency = networksMeta[balance.chainId].nativeCurrency
+        store.getState().setBalance(address, {
           ...balance,
-          symbol: storeApi.getNativeCurrencySymbol(balance.chainId),
+          name: nativeCurrency.name,
+          symbol: nativeCurrency.symbol,
+          decimals: nativeCurrency.decimals,
           address: NATIVE_CURRENCY
         })
       })
@@ -388,10 +395,13 @@ export default function (store: Store) {
   function handleTokenBalanceUpdate(balances: TokenBalance[], address: Address) {
     // only update balances if any have changed
     const currentTokenBalances = storeApi.getTokenBalances(address)
+    const networks = storeApi.getNetworks()
     const customTokens = new Set(storeApi.getCustomTokens().map(toTokenId))
     const isCustomToken = (balance: Balance) => customTokens.has(toTokenId(balance))
 
     const changedBalances = balances.filter((newBalance) => {
+      if (!networks[newBalance.chainId]) return false
+
       const currentBalance = currentTokenBalances.find(
         (b) => b.address === newBalance.address && b.chainId === newBalance.chainId
       )
@@ -404,7 +414,7 @@ export default function (store: Store) {
     })
 
     if (changedBalances.length > 0) {
-      store.setBalances(address, changedBalances)
+      store.getState().setBalances(address, changedBalances)
 
       const knownTokens = new Set(storeApi.getKnownTokens(address).map(toTokenId))
       const isKnown = (balance: TokenBalance) => knownTokens.has(toTokenId(balance))
@@ -413,7 +423,7 @@ export default function (store: Store) {
       const unknownBalances = changedBalances.filter((b) => parseInt(b.balance) > 0 && !isKnown(b))
 
       if (unknownBalances.length > 0) {
-        store.addKnownTokens(address, unknownBalances)
+        store.getState().addKnownTokens(address, unknownBalances)
       }
 
       // remove zero balances from the list of known tokens
@@ -426,11 +436,11 @@ export default function (store: Store) {
       }, new Set<string>())
 
       if (zeroBalances.size) {
-        store.removeKnownTokens(address, zeroBalances)
+        store.getState().removeKnownTokens(address, zeroBalances)
       }
     }
 
-    store.accountTokensUpdated(address)
+    store.getState().accountTokensUpdated(address)
   }
 
   function setAddress(address: Address) {

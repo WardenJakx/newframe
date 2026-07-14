@@ -14,13 +14,14 @@ export interface DataScanner {
 }
 
 const storeApi = {
-  getActiveAddress: () => (store('selected.current') || '') as Address,
+  getActiveAddress: () => (store.getState().main.currentAccount || '') as Address,
   getAccount: (address: Address) =>
-    store('main.accounts', address) as { lastSignerType?: string } | undefined,
-  getCustomTokens: () => (store('main.tokens.custom') || []) as Token[],
-  getKnownTokens: (address?: Address) => ((address && store('main.tokens.known', address)) || []) as Token[],
+    store.getState().main.accounts[address] as { lastSignerType?: string } | undefined,
+  getCustomTokens: () => (store.getState().main.tokens.custom || []) as Token[],
+  getKnownTokens: (address?: Address) =>
+    ((address && store.getState().main.tokens.known[address]) || []) as Token[],
   getConnectedNetworks: () => {
-    const networks = Object.values(store('main.networks.ethereum') || {}) as Chain[]
+    const networks = Object.values(store.getState().main.networks.ethereum || {}) as Chain[]
     return networks.filter(
       (n) => (n.connection.primary || {}).connected || (n.connection.secondary || {}).connected
     )
@@ -81,7 +82,7 @@ export default function () {
     log.verbose(`resuming external data after system ${reason}`)
     startBalances()
 
-    if (!store('tray.open') && !pauseScanningDelay) {
+    if (!store.getState().tray.open && !pauseScanningDelay) {
       pauseScanningDelay = setTimeout(balances.pause, 1000)
     }
   }
@@ -150,7 +151,7 @@ export default function () {
     }
   })
 
-  const allNetworksObserver = store.observer(() => {
+  const handleNetworksChange = () => {
     const connectedNetworkIds = storeApi
       .getConnectedNetworks()
       .map((n) => n.id)
@@ -162,9 +163,11 @@ export default function () {
 
       handleNetworkUpdate(newlyConnectedNetworks)
     }
-  }, 'externalData:networks')
+  }
+  handleNetworksChange()
+  const unsubscribeNetworks = store.subscribe((state) => state.main.networks, handleNetworksChange)
 
-  const activeAddressObserver = store.observer(() => {
+  const handleAccountChange = () => {
     const activeAddress = storeApi.getActiveAddress()
     const knownTokens = storeApi.getKnownTokens(activeAddress)
 
@@ -174,15 +177,29 @@ export default function () {
     } else {
       handleTokensUpdate(knownTokens)
     }
-  }, 'externalData:activeAccount')
+  }
+  handleAccountChange()
+  const unsubscribeAccount = store.subscribe(
+    (state) => ({ currentAccount: state.main.currentAccount, knownTokens: state.main.tokens.known }),
+    handleAccountChange,
+    {
+      equalityFn: (previous, current) =>
+        previous.currentAccount === current.currentAccount && previous.knownTokens === current.knownTokens
+    }
+  )
 
-  const customTokensObserver = store.observer(() => {
+  const handleCustomTokensChange = () => {
     const customTokens = storeApi.getCustomTokens()
     handleTokensUpdate(customTokens)
-  }, 'externalData:customTokens')
+  }
+  handleCustomTokensChange()
+  const unsubscribeCustomTokens = store.subscribe(
+    (state) => state.main.tokens.custom,
+    handleCustomTokensChange
+  )
 
-  const trayObserver = store.observer(() => {
-    const open = store('tray.open')
+  const handleTrayChange = () => {
+    const open = store.getState().tray.open
 
     if (isSystemInactive()) return
 
@@ -198,7 +215,9 @@ export default function () {
         balances.resume()
       }
     }
-  }, 'externalData:tray')
+  }
+  handleTrayChange()
+  const unsubscribeTray = store.subscribe((state) => state.tray.open, handleTrayChange)
 
   return {
     refreshBalances: (address = activeAccount) => {
@@ -210,10 +229,10 @@ export default function () {
       }
     },
     close: () => {
-      allNetworksObserver.remove()
-      activeAddressObserver.remove()
-      customTokensObserver.remove()
-      trayObserver.remove()
+      unsubscribeNetworks()
+      unsubscribeAccount()
+      unsubscribeCustomTokens()
+      unsubscribeTray()
 
       powerMonitor.off('suspend', handleSuspend)
       powerMonitor.off('resume', handleResume)

@@ -1,29 +1,23 @@
-import React from 'react'
-import Restore from 'react-restore'
+import { useShallow } from 'zustand/react/shallow'
 
 import Account from './Account'
+import { useWalletSelector } from '../../state/useAppSelector'
+import type { TrayRendererState } from '../state'
 
-class Main extends React.Component<any, any> {
-  declare store: Store
+const selectCurrentAccount = (state: TrayRendererState) => {
+  const current = state.currentAccount
 
-  constructor(props: any, context?: any) {
-    super(props, context)
-    this.state = {
-      accountFilter: ''
-    }
-  }
-
-  override render() {
-    const accounts = this.store('main.accounts')
-    const current = this.store('selected.current')
-    const open = this.store('selected.open')
-    if (!open) return
-
-    const currentAccount = accounts[current]
-    if (!currentAccount) return null
-
-    return <Account key={current} {...currentAccount} index={1} />
+  return {
+    account: state.accounts[current],
+    current,
+    open: state.selected.open
   }
 }
 
-export default Restore.connect(Main)
+export default function Main() {
+  const { account, current, open } = useWalletSelector(useShallow(selectCurrentAccount))
+  if (!open) return null
+  if (!account) return null
+
+  return <Account key={current} {...account} index={1} />
+}

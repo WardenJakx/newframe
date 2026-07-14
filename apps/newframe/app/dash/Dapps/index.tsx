@@ -1,11 +1,14 @@
 import React, { createRef } from 'react'
-import Restore from 'react-restore'
+import { useShallow } from 'zustand/react/shallow'
 import link from '../../../resources/link'
 import { isNetworkConnected, isNetworkEnabled } from '../../../resources/utils/chains'
 
 import RingIcon from '../../../resources/Components/RingIcon'
 
 import DappDetails from './DappDetails'
+import { useWalletSelector } from '../../state/useAppSelector'
+import type { DashChain, DashChainMetadata, DashRendererState } from '../state'
+import type { Origin } from '../../../main/store/state'
 
 function bySessionStartTime(a: any, b: any) {
   return b.session.startedAt - a.session.startedAt
@@ -32,8 +35,6 @@ function getOriginsForChain(chain: any, origins: any) {
 }
 
 class Indicator extends React.Component<any, any> {
-  declare store: Store
-
   constructor(props: any) {
     super(props)
 
@@ -65,8 +66,7 @@ class Indicator extends React.Component<any, any> {
   }
 }
 
-class _OriginModule extends React.Component<any, any> {
-  declare store: Store
+class OriginModule extends React.Component<any, any> {
   ref: any
   requestUpdates: any
 
@@ -109,7 +109,11 @@ class _OriginModule extends React.Component<any, any> {
         <div
           className='sliceOrigin'
           onClick={() => {
-            link.send('tray:action', 'navDash', { view: 'dapps', data: { dappDetails: origin.id } })
+            void link.executeCommand({
+              type: 'dash.navigate',
+              view: 'dapps',
+              data: { dappDetails: origin.id }
+            })
           }}
         >
           <Indicator key={origin.session.lastUpdatedAt} connected={connected} />
@@ -124,8 +128,6 @@ class _OriginModule extends React.Component<any, any> {
     )
   }
 }
-
-const OriginModule = Restore.connect(_OriginModule)
 
 const ChainOrigins = ({ chain: { name }, origins, primaryColor, icon }: any) => {
   return (
@@ -146,53 +148,55 @@ const ChainOrigins = ({ chain: { name }, origins, primaryColor, icon }: any) => 
   )
 }
 
-class Dapps extends React.Component<any, any> {
-  declare store: Store
+const EMPTY_CHAINS: Record<string | number, DashChain> = {}
+const EMPTY_CHAIN_METADATA: Record<string | number, DashChainMetadata> = {}
+const EMPTY_ORIGINS: Record<string, Origin> = {}
 
-  getEnabledChains() {
-    return (Object.values(this.store('main.networks.ethereum')) as any[]).filter(isNetworkEnabled)
+const selectDappsState = (state: DashRendererState) => ({
+  chains: state.networks.ethereum || EMPTY_CHAINS,
+  chainMetadata: state.networksMeta.ethereum || EMPTY_CHAIN_METADATA,
+  origins: state.origins || EMPTY_ORIGINS
+})
+
+export default function Dapps({ data }: any) {
+  const { chains, chainMetadata, origins } = useWalletSelector(useShallow(selectDappsState))
+  const enabledChains = Object.values(chains).filter(isNetworkEnabled)
+  const { dappDetails } = data
+  const chainsWithOrigins = enabledChains
+    .map((chain) => {
+      const chainOrigins = getOriginsForChain(chain, origins)
+      const { primaryColor, icon } = chainMetadata[chain.id] || {}
+
+      return { chain, origins: chainOrigins, primaryColor, icon }
+    })
+    .filter(({ origins: chainOrigins }) => chainOrigins.connected.length > 0)
+
+  if (dappDetails) {
+    return <DappDetails originId={dappDetails} />
   }
 
-  override render() {
-    const enabledChains = this.getEnabledChains()
-    const origins = this.store('main.origins')
-
-    const { dappDetails } = this.props.data
-    const chainsWithOrigins = enabledChains
-      .map((chain) => {
-        const chainOrigins = getOriginsForChain(chain, origins)
-        const { primaryColor, icon } = this.store('main.networksMeta.ethereum', chain.id)
-
-        return { chain, origins: chainOrigins, primaryColor, icon }
-      })
-      .filter(({ origins: chainOrigins }) => chainOrigins.connected.length > 0)
-
-    if (dappDetails) {
-      return <DappDetails originId={dappDetails} />
-    } else {
-      return (
-        <div className='cardShow' style={{ padding: '0px 0px 64px 0px' }}>
-          {chainsWithOrigins.length ? (
-            <div className='clearOriginsButton' onClick={() => link.send('tray:clearOrigins')}>
-              Clear All Websites
-            </div>
-          ) : null}
-          {chainsWithOrigins.map(({ chain, origins: chainOrigins, primaryColor, icon }) => (
-            <ChainOrigins
-              key={chain.id}
-              chain={chain}
-              origins={chainOrigins}
-              primaryColor={primaryColor}
-              icon={icon}
-            />
-          ))}
-          {chainsWithOrigins.length === 0 ? (
-            <div className='sliceOriginNoDapp'>{'No Websites Connected'}</div>
-          ) : null}
+  return (
+    <div className='cardShow' style={{ padding: '0px 0px 64px 0px' }}>
+      {chainsWithOrigins.length ? (
+        <div
+          className='clearOriginsButton'
+          onClick={() => void link.executeCommand({ type: 'origin.clear' })}
+        >
+          Clear All Websites
         </div>
-      )
-    }
-  }
+      ) : null}
+      {chainsWithOrigins.map(({ chain, origins: chainOrigins, primaryColor, icon }) => (
+        <ChainOrigins
+          key={chain.id}
+          chain={chain}
+          origins={chainOrigins}
+          primaryColor={primaryColor}
+          icon={icon}
+        />
+      ))}
+      {chainsWithOrigins.length === 0 ? (
+        <div className='sliceOriginNoDapp'>{'No Websites Connected'}</div>
+      ) : null}
+    </div>
+  )
 }
-
-export default Restore.connect(Dapps)

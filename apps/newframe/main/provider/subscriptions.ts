@@ -32,7 +32,7 @@ export function hasSubscriptionPermission(subType: string, address: string, orig
     return false
   }
 
-  const permissions = (store('main.permissions', address) || {}) as Record<string, Permission>
+  const permissions = (store.getState().main.permissions[address] || {}) as Record<string, Permission>
   const permission = Object.values(permissions).find(({ origin }) => {
     return uuid(origin, uuid.DNS) === originId
   })

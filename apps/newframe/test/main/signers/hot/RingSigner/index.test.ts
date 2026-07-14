@@ -13,7 +13,7 @@ const VAULT_PATH = path.resolve(__dirname, '../.userData/vault.json')
 const FILE_PATH = path.resolve(__dirname, 'keystore.json')
 
 // Stubs
-const signers = { add: () => {} }
+const signers = { add: jest.fn() }
 // Util
 const removePath = (target: string) => rm(target, { recursive: true, force: true })
 const clean = () => Promise.all([removePath(SIGNER_PATH), removePath(VAULT_PATH)])
@@ -52,7 +52,7 @@ describe('Ring signer', () => {
     try {
       hot.createFromPrivateKey(signers, privateKey, PASSWORD, (err: any) => {
         expect(err).toBeTruthy()
-        expect(store('main.signers')).toEqual({})
+        expect(store.getState().main.signers).toEqual({})
         done()
       })
     } catch (e) {
@@ -66,7 +66,7 @@ describe('Ring signer', () => {
     try {
       hot.createFromKeystore(signers, keystore, 'test', PASSWORD, (err: any) => {
         expect(err).toBeTruthy()
-        expect(store('main.signers')).toEqual({})
+        expect(store.getState().main.signers).toEqual({})
         done()
       })
     } catch (e) {
@@ -84,7 +84,8 @@ describe('Ring signer', () => {
         expect(signer.status).toBe('ok')
         expect(signer.id).not.toBe(undefined)
         expect(signer.addresses[0]).toBe(signer.addresses[0].toLowerCase())
-        expect(store(`main.signers.${signer.id}.id`)).toBe(signer.id)
+        expect(signers.add).toHaveBeenCalledWith(signer)
+        expect(store.getState().main.signers).toEqual({})
         const storedSigner = JSON.parse(
           fs.readFileSync(path.resolve(SIGNER_PATH, `${signer.id}.json`), 'utf8')
         )
@@ -122,7 +123,7 @@ describe('Ring signer', () => {
   test('Close signer', (done) => {
     try {
       signer.close()
-      expect(store(`main.signers.${signer.id}`)).toBe(undefined)
+      expect(store.getState().main.signers[signer.id]).toBe(undefined)
       done()
     } catch (e) {
       done(e)

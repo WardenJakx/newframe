@@ -48,6 +48,6 @@ it('send the copied data to the clipboard', async () => {
   const clickToCopyButton = screen.getByRole('button')
   await user.click(clickToCopyButton)
 
-  expect(link.send).toHaveBeenCalledTimes(1)
-  expect(link.send).toHaveBeenCalledWith('tray:clipboardData', 'use frame!')
+  expect(link.executeCommand).toHaveBeenCalledTimes(1)
+  expect(link.executeCommand).toHaveBeenCalledWith({ type: 'clipboard.write', text: 'use frame!' })
 })

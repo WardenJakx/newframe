@@ -9,8 +9,14 @@ import EditTokenSpend from '../../../../../resources/Components/EditTokenSpend'
 import { SimpleTypedData as TypedSignatureOverview } from '../../../../../resources/Components/SimpleTypedData'
 import { getSignatureRequestClass } from '../../../../../resources/domain/request'
 import useCopiedMessage from '../../../../../resources/Hooks/useCopiedMessage'
+import { useRequestView, type RequestViewState } from '../../../requestView'
 
-const PermitOverview = ({ req, chainData, originName }: any) => {
+const PermitOverview = ({
+  req,
+  chainData,
+  originName,
+  open
+}: any & { open(next: RequestViewState): void }) => {
   const { chainColor, chainName, icon } = chainData
   const {
     permit: { spender, value, deadline },
@@ -46,9 +52,7 @@ const PermitOverview = ({ req, chainData, originName }: any) => {
                 <ClusterRow>
                   <ClusterValue
                     onClick={() => {
-                      link.send('nav:update', 'panel', {
-                        data: { step: 'viewRaw' }
-                      })
+                      open({ step: 'viewRaw' })
                     }}
                   >
                     <div className='_txDescription'>
@@ -106,12 +110,7 @@ const PermitOverview = ({ req, chainData, originName }: any) => {
                       onClick={
                         tokenData.decimals &&
                         (() => {
-                          link.send('nav:update', 'panel', {
-                            data: {
-                              step: 'adjustPermit',
-                              tokenData
-                            }
-                          })
+                          open({ step: 'adjustPermit' })
                         })
                       }
                     >
@@ -147,36 +146,17 @@ const PermitOverview = ({ req, chainData, originName }: any) => {
 }
 
 const EditPermit = ({ req }: any) => {
-  const { typedMessage, permit, tokenData } = req
+  const { permit, tokenData } = req
 
   const { verifyingContract: contract, spender, value: amount, deadline: deadlineInSeconds } = permit
 
   const updateRequest = (newAmt: any) => {
-    const updated = {
-      ...typedMessage,
-      data: {
-        ...typedMessage.data,
-        message: {
-          ...typedMessage.data.message,
-          value: newAmt
-        }
-      }
-    }
-
-    link.rpc(
-      'updateRequest',
-      req.handlerId,
-      {
-        typedMessage: updated,
-        permit: {
-          ...permit,
-          value: newAmt
-        },
-        tokenData
-      },
-      null,
-      () => {}
-    )
+    void link.executeCommand({
+      type: 'request.token-approval-update',
+      requestKind: 'permit',
+      requestId: req.handlerId,
+      amount: String(newAmt)
+    })
   }
   const deadline = deadlineInSeconds * 1000
 
@@ -202,6 +182,7 @@ const EditPermit = ({ req }: any) => {
 }
 
 const PermitRequest = ({ req, originName, step, chainData }: any) => {
+  const requestView = useRequestView()
   const requestClass = getSignatureRequestClass(req)
 
   const renderStep = () => {
@@ -211,7 +192,9 @@ const PermitRequest = ({ req, originName, step, chainData }: any) => {
       case 'viewRaw':
         return <TypedSignatureOverview {...({ originName, req } as any)} />
       default:
-        return <PermitOverview originName={originName} req={req} chainData={chainData} />
+        return (
+          <PermitOverview originName={originName} req={req} chainData={chainData} open={requestView.open} />
+        )
     }
   }
 

@@ -14,6 +14,7 @@ export const tradeLimitStage: VisualStage = {
       .getByRole('button', { name: /Review\/sign/i })
       .waitFor({ state: 'visible', timeout: 20_000 })
     await driver.screenshot(tradePage, '22a-trade-limit-quoted.png')
+    const existingOrderIds = new Set(Object.keys((await driver.getAppState()).main?.orders || {}))
     await tradePage.getByRole('button', { name: /Review\/sign/i }).click()
 
     const signRequest = await driver.waitForCurrentRequest('signTypedData', new Set(), 30_000)
@@ -22,9 +23,13 @@ export const tradeLimitStage: VisualStage = {
 
     const order = await driver.waitForFlashOrder(
       (candidate) =>
-        candidate.orderType === 'limit' && candidate.status === 'accepted' && Boolean(candidate.open),
+        candidate.orderType === 'limit' &&
+        candidate.status === 'accepted' &&
+        Boolean(candidate.open) &&
+        Boolean(candidate.orderId) &&
+        !existingOrderIds.has(candidate.orderId || ''),
       15_000,
-      'Limit Flash order was not accepted as open'
+      'A newly submitted limit Flash order was not accepted as open'
     )
 
     await sleep(4_000)
@@ -34,6 +39,8 @@ export const tradeLimitStage: VisualStage = {
     if (!stored?.open || stored.status !== 'accepted')
       driver.fail('Limit Flash order filled or closed unexpectedly')
 
+    if (!order.orderId) driver.fail('The new limit Flash order has no order id')
+    await driver.assertFlashOrderVisible(order.orderId)
     await driver.screenshot(tray, '22d-trade-limit-open.png')
     await driver.clearPanelAndOverlays()
   }

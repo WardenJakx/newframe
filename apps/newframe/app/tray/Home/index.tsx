@@ -1,8 +1,6 @@
 import React from 'react'
-import Restore from 'react-restore'
 import QRCode from 'qrcode'
-import { isAddress } from 'ethers'
-import { v5 as uuidv5 } from 'uuid'
+import { useShallow } from 'zustand/react/shallow'
 
 import link from '../../../resources/link'
 import svg from '../../../resources/svg'
@@ -25,14 +23,12 @@ import {
   type BalanceSummary,
   type DisplayedBalance
 } from '../../../resources/domain/balance'
-import {
-  buildDappLauncherRoute,
-  DAPP_LAUNCHER_FRAME_ID,
-  toCanonicalAssetId
-} from '../../../resources/domain/dappLauncher'
+import { toCanonicalAssetId } from '../../../resources/domain/dappLauncher'
 import { cachedImageUrl, isCachedImageReference } from '../../../resources/domain/imageCache'
 import { matchFilter } from '../../../resources/utils'
 import { chainColorCssVariable, resolveSystemColor } from '../../../resources/style/tokens/colors'
+import { useWalletSelector } from '../../state/useAppSelector'
+import type { WalletRendererState } from '../../../resources/state/projections'
 
 import Requests from '../Account/Requests'
 import TransactionInformation from '../Account/Requests/TransactionRequest/TransactionInformation'
@@ -89,7 +85,98 @@ const DUST_ROWS_INCREMENT = 50
 const PENDING_NOTIFICATION_MS = 60 * 1000
 const RESOLVED_NOTIFICATION_MS = 3000
 const TRADE_DISABLED_CHAIN_LABEL = 'Trade unavailable on this chain'
-const FRAME_ORIGIN_ID = uuidv5('newframe-internal', uuidv5.DNS)
+type RecordById<T = any> = Record<string | number, T>
+type HomeAccount = WalletRendererState['accounts'][string]
+type HomeSigner = WalletRendererState['signers'][string]
+
+type HomeRendererState = WalletRendererState
+
+interface HomeSharedState {
+  accountOrder: string[]
+  accounts: Record<string, HomeAccount>
+  activity: Record<string, any>
+  autoDiscoverTokens: boolean
+  autohide: boolean
+  balances: Record<string, any[]>
+  biometricUnlock: boolean
+  currentAccount: string
+  homeCommand: any
+  instanceId: string
+  latticeAccountLimit?: number
+  latticeDerivation?: string
+  latticeEndpoint: string
+  latticeEndpointMode: string
+  launch: boolean
+  ledgerDerivation?: string
+  liveAccountLimit?: number
+  menubarGasPrice: boolean
+  networks: RecordById
+  networksMeta: RecordById
+  notifications: Record<string, any>
+  orders: Record<string, any>
+  origins: Record<string, any>
+  permissions: Record<string, Record<string, any>>
+  platform: string
+  portfolioApiKey: string
+  rates: Record<string, any>
+  reveal: boolean
+  runtime: Record<string, any>
+  selectedOpen: boolean
+  showLocalNameWithENS: boolean
+  showTestnets: boolean
+  signers: Record<string, HomeSigner>
+  summonShortcut: any
+  trezorDerivation?: string
+}
+
+interface HomeProps {
+  shared: HomeSharedState
+}
+
+const EMPTY_ARRAY: any[] = []
+const EMPTY_RECORD: Record<string, any> = {}
+
+const selectHomeSharedState = (state: HomeRendererState): HomeSharedState => {
+  const main = state
+
+  return {
+    accountOrder: main.accountOrder || EMPTY_ARRAY,
+    accounts: main.accounts || EMPTY_RECORD,
+    activity: main.activity || EMPTY_RECORD,
+    autoDiscoverTokens: !!main.autoDiscoverTokens,
+    autohide: !!main.autohide,
+    balances: main.balances || EMPTY_RECORD,
+    biometricUnlock: !!main.biometricUnlock,
+    currentAccount: main.currentAccount || '',
+    homeCommand: state.tray?.homeCommand || null,
+    instanceId: main.instanceId || '',
+    latticeAccountLimit: main.latticeSettings?.accountLimit,
+    latticeDerivation: main.latticeSettings?.derivation,
+    latticeEndpoint: main.latticeSettings?.endpointCustom || '',
+    latticeEndpointMode: main.latticeSettings?.endpointMode || 'default',
+    launch: !!main.launch,
+    ledgerDerivation: main.ledger?.derivation,
+    liveAccountLimit: main.ledger?.liveAccountLimit,
+    menubarGasPrice: !!main.menubarGasPrice,
+    networks: main.networks?.ethereum || EMPTY_RECORD,
+    networksMeta: main.networksMeta?.ethereum || EMPTY_RECORD,
+    notifications: state.view?.notifications || EMPTY_RECORD,
+    orders: main.orders || EMPTY_RECORD,
+    origins: main.origins || EMPTY_RECORD,
+    permissions: main.permissions || EMPTY_RECORD,
+    platform: state.platform || '',
+    portfolioApiKey: main.portfolioApiKey || '',
+    rates: main.rates || EMPTY_RECORD,
+    reveal: !!main.reveal,
+    runtime: main.runtime || EMPTY_RECORD,
+    selectedOpen: !!state.selected?.open,
+    showLocalNameWithENS: !!main.showLocalNameWithENS,
+    showTestnets: !!main.showTestnets,
+    signers: main.signers || EMPTY_RECORD,
+    summonShortcut: main.shortcuts?.summon,
+    trezorDerivation: main.trezor?.derivation
+  }
+}
 
 const timestamp = (value: any, fallback = 0) => {
   if (typeof value === 'number') return value
@@ -391,8 +478,7 @@ const shortcutKeyDisplay: Record<string, string> = {
 // const feedbackUrl = 'https://feedback.newframe.sh'
 // const discordUrl = 'https://discord.gg/UH7NGqY'
 
-class Home extends React.Component<any, any> {
-  declare store: Store
+export class Home extends React.Component<HomeProps, any> {
   refreshTimer: any
   inputLatticeTimeout: any
   inputPortfolioApiKeyTimeout: any
@@ -400,18 +486,15 @@ class Home extends React.Component<any, any> {
   seedPhraseCopiedTimeout: any
   accountFeedbackTimeout: any
   accountSearchTimeout: any
-  homeCommandObserver: any
   lastHomeCommandId = 0
   accountSearchInput: HTMLInputElement | null = null
   orderCancelPending = ''
   hydratingChainIcons = new Set<number>()
   selectBalanceSummaries = createBalanceSummarySelector()
 
-  constructor(props: any, context?: any) {
+  constructor(props: HomeProps, context?: any) {
     super(props, context)
-    const latticeEndpoint = this.store('main.latticeSettings.endpointCustom')
-    const latticeEndpointMode = this.store('main.latticeSettings.endpointMode')
-    const portfolioApiKey = this.store('main.portfolioApiKey')
+    const { latticeEndpoint, latticeEndpointMode, portfolioApiKey } = props.shared
     this.state = {
       tab: 'positions',
       overlay: null,
@@ -485,33 +568,40 @@ class Home extends React.Component<any, any> {
     clearTimeout(this.seedPhraseCopiedTimeout)
     clearTimeout(this.accountFeedbackTimeout)
     clearTimeout(this.accountSearchTimeout)
-    if (this.homeCommandObserver) this.homeCommandObserver.remove()
   }
 
   override componentDidMount() {
-    const current = this.store('selected.current')
-    const open = this.store('selected.open')
+    const { accounts, currentAccount: current, homeCommand, selectedOpen: open } = this.props.shared
     if (!current || !open) {
-      const accounts = this.store('main.accounts') || {}
       const id = current || Object.keys(accounts)[0]
-      if (id) link.rpc('setSigner', id, () => {})
+      if (id) void link.executeCommand({ type: 'account.select', accountId: id })
     }
 
-    this.homeCommandObserver = this.store.observer(() => {
-      const command = this.store('tray.homeCommand')
-      if (!command || command.id === this.lastHomeCommandId) return
-
-      this.lastHomeCommandId = command.id
-      this.applyHomeCommand(command)
-      link.send('tray:action', 'clearHomeCommand', command.id)
-    }, 'tray:homeCommand')
+    this.consumeHomeCommand(homeCommand)
 
     this.hydrateVisibleChainIcons()
   }
 
-  override componentDidUpdate(prevProps: any, prevState: any) {
+  override componentDidUpdate(prevProps: HomeProps, prevState: any) {
+    if (prevProps.shared.homeCommand !== this.props.shared.homeCommand) {
+      this.consumeHomeCommand(this.props.shared.homeCommand)
+    }
+
     if (prevState.network !== this.state.network || prevState.overlay !== this.state.overlay) {
       this.hydrateVisibleChainIcons()
+    }
+  }
+
+  consumeHomeCommand(command: any) {
+    if (!command || command.id === this.lastHomeCommandId) return
+
+    this.lastHomeCommandId = command.id
+    this.applyHomeCommand(command)
+    const deferredForChainApproval =
+      (command.view === 'networks' && command.data?.newChain && !command.data?.request) ||
+      (command.view === 'addChain' && !command.data?.request)
+    if (!deferredForChainApproval) {
+      void link.executeCommand({ type: 'home.command-consume', commandId: command.id })
     }
   }
 
@@ -523,9 +613,9 @@ class Home extends React.Component<any, any> {
         overlay: 'settings',
         menuOpen: false,
         accountsOpen: false,
-        latticeEndpoint: this.store('main.latticeSettings.endpointCustom'),
-        latticeEndpointMode: this.store('main.latticeSettings.endpointMode'),
-        portfolioApiKey: this.store('main.portfolioApiKey'),
+        latticeEndpoint: this.props.shared.latticeEndpoint,
+        latticeEndpointMode: this.props.shared.latticeEndpointMode,
+        portfolioApiKey: this.props.shared.portfolioApiKey,
         portfolioApiKeyRequired: false
       })
     }
@@ -536,7 +626,7 @@ class Home extends React.Component<any, any> {
           overlay: 'addChain',
           menuOpen: false,
           accountsOpen: false,
-          pendingChainRequest: { chain: data.newChain }
+          pendingChainRequest: { chain: data.newChain, homeCommandId: command.id }
         })
       }
 
@@ -557,7 +647,7 @@ class Home extends React.Component<any, any> {
         overlay: 'addChain',
         menuOpen: false,
         accountsOpen: false,
-        pendingChainRequest: data
+        pendingChainRequest: { ...data, ...(!data.request ? { homeCommandId: command.id } : {}) }
       })
     }
 
@@ -576,12 +666,12 @@ class Home extends React.Component<any, any> {
   }
 
   getChains() {
-    const networks = this.store('main.networks.ethereum') || {}
+    const networks = this.props.shared.networks
     return Object.keys(networks).map((id) => ({ chainId: parseInt(id), ...networks[id] }))
   }
 
   showTestnets() {
-    return !!this.store('main.showTestnets')
+    return this.props.shared.showTestnets
   }
 
   shouldShowChain(chain: any) {
@@ -592,13 +682,8 @@ class Home extends React.Component<any, any> {
     return this.getChains().filter((chain) => this.shouldShowChain(chain))
   }
 
-  rpc<T>(method: string, ...args: any[]) {
-    return new Promise<T>((resolve, reject) => {
-      link.rpc(method, ...args, (err: any, value: T) => {
-        if (err) return reject(new Error(err.message || String(err)))
-        resolve(value)
-      })
-    })
+  operationError(result: { ok: false; error: string }, fallback: string) {
+    return 'message' in result && typeof result.message === 'string' ? result.message : fallback
   }
 
   async setBiometricUnlock(enabled: boolean) {
@@ -608,7 +693,8 @@ class Home extends React.Component<any, any> {
 
     try {
       if (!enabled) {
-        await this.rpc('disableBiometrics')
+        const result = await link.executeCommand({ type: 'security.configure', mode: 'disabled' })
+        if (!result.ok) throw new Error(this.operationError(result, 'Could not disable biometrics.'))
         return
       }
 
@@ -616,7 +702,12 @@ class Home extends React.Component<any, any> {
       if (await isWebAuthnBiometricsSupported()) {
         try {
           const enrollment = await createWebAuthnBiometricCredential()
-          await this.rpc('enableBiometrics', { method: 'webauthn', ...enrollment })
+          const result = await link.executeCommand({
+            type: 'security.configure',
+            mode: 'webauthn',
+            ...enrollment
+          })
+          if (!result.ok) throw new Error(this.operationError(result, 'Could not enable biometrics.'))
           return
         } catch (err: any) {
           if (isBiometricUserCanceledError(err)) throw err
@@ -624,12 +715,14 @@ class Home extends React.Component<any, any> {
         }
       }
 
-      const biometrics = await this.rpc<{ nativeAvailable: boolean }>('biometricsState')
-      if (!biometrics.nativeAvailable) {
+      const status = await link.executeQuery({ type: 'security.status' })
+      if (!status.ok) throw new Error(this.operationError(status, 'Could not check biometrics.'))
+      if (!status.biometrics.nativeAvailable) {
         throw webAuthnError || new Error('Biometrics are not available on this device')
       }
 
-      await this.rpc('enableBiometrics', { method: 'native' })
+      const result = await link.executeCommand({ type: 'security.configure', mode: 'native' })
+      if (!result.ok) throw new Error(this.operationError(result, 'Could not enable biometrics.'))
     } catch (err: any) {
       this.setState({
         biometricsError: isBiometricUserCanceledError(err) ? '' : err.message || String(err)
@@ -639,14 +732,13 @@ class Home extends React.Component<any, any> {
     }
   }
 
-  lockFrame() {
-    link.rpc('lockApp', (err: any) => {
-      if (err) {
-        return this.setState({ biometricsError: err.message || String(err) })
-      }
-
+  async lockFrame() {
+    const result = await link.executeCommand({ type: 'wallet.lock' })
+    if (result.ok) {
       this.setState({ overlay: null, menuOpen: false, biometricsError: '' })
-    })
+    } else {
+      this.setState({ biometricsError: this.operationError(result, 'Could not lock Newframe.') })
+    }
   }
 
   getNetworkPrimaryRpcValue(chain: any) {
@@ -664,41 +756,39 @@ class Home extends React.Component<any, any> {
     })
   }
 
-  saveNetworkPrimaryRpc(chainId: number) {
+  async saveNetworkPrimaryRpc(chainId: number) {
     const value = String(
       this.state.networkRpcDrafts?.[chainId] ??
-        this.store('main.networks.ethereum', chainId, 'connection.primary.custom') ??
+        this.props.shared.networks[chainId]?.connection?.primary?.custom ??
         ''
     ).trim()
     if (!value) return
 
-    link.send('tray:action', 'setPrimaryCustom', 'ethereum', chainId, value)
-    link.send('tray:action', 'selectPrimary', 'ethereum', chainId, 'custom')
-    link.send('tray:action', 'toggleConnection', 'ethereum', chainId, 'primary', true)
+    await link.executeCommand({ type: 'network.primary-rpc-set', chainId, url: value })
   }
 
   setShowTestnets(value: boolean) {
-    link.send('tray:action', 'setShowTestnets', value)
+    void link.executeCommand({ type: 'settings.update', setting: 'show-testnets', value })
 
-    const selectedChain = this.store('main.networks.ethereum', this.state.network)
+    const selectedChain = this.props.shared.networks[this.state.network]
     if (!value && selectedChain?.isTestnet) this.setState({ network: 0 })
   }
 
   chainColor(chainId: number) {
-    const primaryColor = this.store('main.networksMeta.ethereum', chainId, 'primaryColor')
+    const primaryColor = this.props.shared.networksMeta[chainId]?.primaryColor
     return chainColorCssVariable(primaryColor)
   }
 
   // chain icon: cached or remote icon from networksMeta, eth glyph for ethereum
   // chains, colored dot as the last resort (same fallback chain as RingIcon)
   chainIcon(chainId: number, imgSize = 16, glyphSize = 12, dotSize = 9) {
-    const icon = this.store('main.networksMeta.ethereum', chainId, 'icon')
+    const icon = this.props.shared.networksMeta[chainId]?.icon
     if (icon) {
       return (
         <img src={cachedImageUrl(icon)} alt='' style={{ width: `${imgSize}px`, height: `${imgSize}px` }} />
       )
     }
-    const chain = this.store('main.networks.ethereum', chainId) || {}
+    const chain = this.props.shared.networks[chainId] || {}
     const ethChains = ['mainnet', 'görli', 'goerli', 'sepolia', 'ropsten', 'rinkeby', 'kovan']
     if (ethChains.includes((chain.name || '').toLowerCase())) return svg.eth(glyphSize)
     return (
@@ -710,12 +800,12 @@ class Home extends React.Component<any, any> {
   }
 
   chainEnabled(chainId: number) {
-    const chain = this.store('main.networks.ethereum', chainId)
+    const chain = this.props.shared.networks[chainId]
     return !!(chain && chain.on)
   }
 
   chainIconNeedsHydration(chainId: number) {
-    const icon = this.store('main.networksMeta.ethereum', chainId, 'icon')
+    const icon = this.props.shared.networksMeta[chainId]?.icon
     return !icon || !isCachedImageReference(icon)
   }
 
@@ -723,7 +813,7 @@ class Home extends React.Component<any, any> {
     if (!chainId || this.hydratingChainIcons.has(chainId) || !this.chainIconNeedsHydration(chainId)) return
 
     this.hydratingChainIcons.add(chainId)
-    link.invoke('tray:hydrateChainIcon', chainId).finally(() => {
+    link.executeCommand({ type: 'network.icon-hydrate', chainId }).finally(() => {
       this.hydratingChainIcons.delete(chainId)
     })
   }
@@ -741,13 +831,13 @@ class Home extends React.Component<any, any> {
   }
 
   inNetworkFilter(chainId: number) {
-    const chain = this.store('main.networks.ethereum', chainId)
+    const chain = this.props.shared.networks[chainId]
     if (!this.shouldShowChain(chain)) return false
     return this.state.network === 0 || this.state.network === chainId
   }
 
   getActivityRecords(account: any) {
-    const activity = this.store('main.activity') || {}
+    const activity = this.props.shared.activity
     const address = (account?.address || '').toLowerCase()
 
     return Object.values(activity)
@@ -769,7 +859,7 @@ class Home extends React.Component<any, any> {
   }
 
   getOrderRecords(account: any) {
-    const orders = this.store('main.orders') || {}
+    const orders = this.props.shared.orders
     const address = (account?.address || '').toLowerCase()
 
     return Object.entries(orders)
@@ -917,21 +1007,6 @@ class Home extends React.Component<any, any> {
     }
   }
 
-  orderChainIdNumber(chainId: any) {
-    const value =
-      typeof chainId === 'string'
-        ? Number.parseInt(chainId, chainId.toLowerCase().startsWith('0x') ? 16 : 10)
-        : Number(chainId)
-
-    if (!Number.isInteger(value) || value <= 0) throw new Error('Invalid Flash order chain.')
-
-    return value
-  }
-
-  orderChainIdHex(chainId: any) {
-    return `0x${this.orderChainIdNumber(chainId).toString(16)}`
-  }
-
   orderErrorMessage(error: any, fallback: string) {
     if (!error) return fallback
     if (typeof error === 'string') return error
@@ -941,10 +1016,6 @@ class Home extends React.Component<any, any> {
     return fallback
   }
 
-  providerResponseError(response: any, fallback: string) {
-    return response?.error ? this.orderErrorMessage(response.error, fallback) : ''
-  }
-
   orderCancelErrorMessage(orderId: string) {
     const error = this.state.orderCancelError
     return error?.orderId === orderId ? error.message : ''
@@ -952,7 +1023,7 @@ class Home extends React.Component<any, any> {
 
   copyActivityValue(value?: string) {
     if (!value) return
-    link.send('tray:clipboardData', value)
+    void link.executeCommand({ type: 'clipboard.write', text: value })
   }
 
   activityRequestLike(activity: any) {
@@ -978,10 +1049,8 @@ class Home extends React.Component<any, any> {
   }
 
   getBalances(address: string) {
-    const rawBalances = this.store('main.balances', address) || []
-    const rates = this.store('main.rates')
-    const networks = this.store('main.networks.ethereum')
-    const networksMeta = this.store('main.networksMeta.ethereum')
+    const rawBalances = this.props.shared.balances[address] || []
+    const { networks, networksMeta, rates } = this.props.shared
     const showTestnets = this.showTestnets()
 
     return this.selectBalanceSummaries({
@@ -998,7 +1067,7 @@ class Home extends React.Component<any, any> {
 
   accountNavValue(account: any) {
     if (!account || !account.address) return '---'
-    const rawBalances = this.store('main.balances', account.address)
+    const rawBalances = this.props.shared.balances[account.address]
     if (!Array.isArray(rawBalances) || rawBalances.length === 0) return '---'
 
     const total = this.getBalances(account.address).reduce(
@@ -1012,9 +1081,10 @@ class Home extends React.Component<any, any> {
     if (asset && !hasPositiveBalance(asset)) return
     if (!asset && !this.selectedWalletHasAssets()) return
 
-    link.send('*:addFrame', {
-      id: DAPP_LAUNCHER_FRAME_ID,
-      route: buildDappLauncherRoute('send', toCanonicalAssetId(asset))
+    void link.executeCommand({
+      type: 'dapp.open',
+      feature: 'send',
+      assetId: toCanonicalAssetId(asset)
     })
   }
 
@@ -1026,7 +1096,7 @@ class Home extends React.Component<any, any> {
         hasPositiveBalance(balance) &&
         Number.isInteger(chainId) &&
         this.chainEnabled(chainId) &&
-        isFlashChainSupported(chainId, this.store('main.runtime') || {})
+        isFlashChainSupported(chainId, this.props.shared.runtime)
       )
     })
   }
@@ -1041,14 +1111,14 @@ class Home extends React.Component<any, any> {
     const selectedChainId = Number(this.state.network)
     if (Number.isInteger(selectedChainId) && selectedChainId > 0) return selectedChainId
 
-    return getFlashDefaultChainId(this.store('main.runtime') || {})
+    return getFlashDefaultChainId(this.props.shared.runtime)
   }
 
   canOpenTrade(asset?: any, balances: any[] = []) {
     if (!asset && !this.firstTradeAsset(balances)) return false
 
     const chainId = this.tradeChainId(asset, balances)
-    return this.chainEnabled(chainId) && isFlashChainSupported(chainId, this.store('main.runtime') || {})
+    return this.chainEnabled(chainId) && isFlashChainSupported(chainId, this.props.shared.runtime)
   }
 
   tradeTitle(asset?: any, balances: any[] = []) {
@@ -1060,9 +1130,11 @@ class Home extends React.Component<any, any> {
     if (!this.canOpenTrade(contextAsset, balances)) return
     const chainId = this.tradeChainId(contextAsset, balances)
 
-    link.send('*:addFrame', {
-      id: DAPP_LAUNCHER_FRAME_ID,
-      route: buildDappLauncherRoute('trade', asset ? toCanonicalAssetId(asset) : '', chainId)
+    void link.executeCommand({
+      type: 'dapp.open',
+      feature: 'trade',
+      assetId: asset ? toCanonicalAssetId(asset) : '',
+      chainId
     })
   }
 
@@ -1070,11 +1142,11 @@ class Home extends React.Component<any, any> {
     const activityId = target?.activityId || target?.hash || ''
     if (!activityId) return
 
-    const current = this.store('selected.current')
+    const current = this.props.shared.currentAccount
     const account = target.account || ''
 
     if (account && account !== current) {
-      link.rpc('setSigner', account, () => {})
+      void link.executeCommand({ type: 'account.select', accountId: account })
     }
 
     this.setState({
@@ -1113,42 +1185,6 @@ class Home extends React.Component<any, any> {
     })
   }
 
-  signOrderCancel(order: any, orderId: string) {
-    const accountAddress = order.accountAddress || order.account || order.address || ''
-
-    if (!isAddress(accountAddress)) throw new Error('Order is missing an account address.')
-
-    const chainIdNumber = this.orderChainIdNumber(order.chainId)
-    const chainId = this.orderChainIdHex(chainIdNumber)
-    const message = `Definitive Flash v1 — Cancel Order\nOrder: ${orderId}`
-
-    link.send('tray:action', 'initOrigin', FRAME_ORIGIN_ID, {
-      name: 'newframe-internal',
-      chain: { id: chainIdNumber, type: 'ethereum' }
-    })
-
-    const payload = {
-      id: Date.now(),
-      jsonrpc: '2.0',
-      method: 'personal_sign',
-      chainId,
-      params: [message, accountAddress],
-      _origin: FRAME_ORIGIN_ID
-    }
-
-    return new Promise<string>((resolve, reject) => {
-      link.rpc('providerSend', payload, (response: any) => {
-        const error = this.providerResponseError(response, 'Cancel signature failed.')
-        const signature = response?.result
-
-        if (error) return reject(new Error(error))
-        if (!signature) return reject(new Error('Cancel signature was not returned.'))
-
-        resolve(signature)
-      })
-    })
-  }
-
   async cancelOrder(order: any) {
     const orderId = order?.orderId
 
@@ -1157,8 +1193,8 @@ class Home extends React.Component<any, any> {
     this.orderCancelPending = orderId
 
     try {
-      const signature = await this.signOrderCancel(order, orderId)
-      await this.rpc('flashCancelOrder', { orderId, signature })
+      const result = await link.executeCommand({ type: 'flash.order-cancel', orderId })
+      if (!result.ok) throw new Error(this.operationError(result, 'Cancel failed.'))
 
       if (this.orderCancelPending === orderId && this.state.orderCancelError?.orderId === orderId) {
         this.setState({ orderCancelError: null })
@@ -1178,8 +1214,7 @@ class Home extends React.Component<any, any> {
   }
 
   selectedWalletHasAssets() {
-    const current = this.store('selected.current')
-    const accounts = this.store('main.accounts') || {}
+    const { accounts, currentAccount: current } = this.props.shared
     const account = accounts[current]
 
     return !!account && this.getBalances(account.address).length > 0
@@ -1187,7 +1222,7 @@ class Home extends React.Component<any, any> {
 
   accountDisplayName(account: any) {
     if (!account) return ''
-    const showLocal = this.store('main.showLocalNameWithENS')
+    const showLocal = this.props.shared.showLocalNameWithENS
     return account.ensName && !showLocal ? account.ensName : account.name
   }
 
@@ -1253,7 +1288,7 @@ class Home extends React.Component<any, any> {
       if (accounts[a].created < accounts[b].created) return -1
       return 0
     })
-    const accountOrder = (this.store('main.accountOrder') || []) as string[]
+    const accountOrder = this.props.shared.accountOrder
     const ordered = accountOrder.filter((id) => accounts[id])
 
     createdOrder.forEach((id) => {
@@ -1292,7 +1327,11 @@ class Home extends React.Component<any, any> {
 
   reorderAccount(fromId: string, toId: string) {
     if (!fromId || !toId || fromId === toId) return
-    link.send('tray:action', 'reorderAccounts', fromId, toId)
+    void link.executeCommand({
+      type: 'account.reorder',
+      fromAccountId: fromId,
+      toAccountId: toId
+    })
   }
 
   startAccountDrag(e: React.DragEvent, accountId: string) {
@@ -1331,7 +1370,7 @@ class Home extends React.Component<any, any> {
 
   copyAccountAddress(account: any) {
     if (!account?.address) return
-    link.send('tray:clipboardData', account.address)
+    void link.executeCommand({ type: 'clipboard.write', text: account.address })
     this.flashAccountFeedback('accountCopied', account.id)
   }
 
@@ -1355,18 +1394,18 @@ class Home extends React.Component<any, any> {
 
   saveRenameAccount(accountId: string, nextName: string) {
     const name = (nextName || '').trim()
-    if (name) link.send('tray:renameAccount', accountId, name)
+    if (name) void link.executeCommand({ type: 'account.rename', accountId, name })
     this.setState({ accountRenaming: '' })
   }
 
-  seedSignerForAccount(account?: Account | null): Signer | null {
+  seedSignerForAccount(account?: HomeAccount | null): HomeSigner | null {
     if (this.accountType(account).toLowerCase() !== 'seed' || !account?.signer) return null
 
-    const signer = this.store('main.signers', account.signer) as Signer | undefined
+    const signer = this.props.shared.signers[account.signer]
     return signer?.type === 'seed' ? signer : null
   }
 
-  isLastAccountForSeedPhrase(account: Account, accounts: Record<string, Account>) {
+  isLastAccountForSeedPhrase(account: HomeAccount, accounts: Record<string, HomeAccount>) {
     const signer = this.seedSignerForAccount(account)
     if (!signer) return false
 
@@ -1376,12 +1415,10 @@ class Home extends React.Component<any, any> {
   }
 
   removeAccount(accountId: string, options: { removeSeedPhrase?: boolean } = {}) {
-    const accounts = (this.store('main.accounts') || {}) as Record<string, Account>
-    const account = accounts[accountId]
-    const seedSigner = options.removeSeedPhrase ? this.seedSignerForAccount(account) : null
-
-    link.rpc('removeAccount', accountId, {}, () => {
-      if (seedSigner) link.send('dash:removeSigner', seedSigner.id)
+    void link.executeCommand({
+      type: 'account.remove',
+      address: accountId,
+      removeSeedSigner: !!options.removeSeedPhrase
     })
     this.setState({ accountRemoving: '', accountMenu: '' })
   }
@@ -1436,36 +1473,39 @@ class Home extends React.Component<any, any> {
     this.setState({ accountsOpen: true, menuOpen: false })
   }
 
-  unlockPrivateKeyExport(account: any) {
+  async unlockPrivateKeyExport(account: any) {
     const password = this.state.accountExportPassword
     if (!account?.address || this.state.accountExportLoading) return
     if (!password) return this.setState({ accountExportError: 'Password required' })
 
     this.setState({ accountExportLoading: true, accountExportError: '', accountExportCopied: false })
 
-    link.rpc('exportAccountPrivateKey', account.address, password, (err: any, secret: any) => {
-      if (err) {
-        return this.setState({
-          accountExportLoading: false,
-          accountExportError: err.message || String(err),
-          accountExportSecret: '',
-          accountExportRevealed: false
-        })
-      }
-
+    const result = await link.executeQuery({
+      type: 'account.private-key-export',
+      accountId: account.address,
+      password
+    })
+    if (result.ok) {
       this.setState({
         accountExportLoading: false,
         accountExportPassword: '',
-        accountExportSecret: secret?.value || '',
+        accountExportSecret: result.privateKey,
         accountExportRevealed: false,
         accountExportError: ''
       })
-    })
+    } else {
+      this.setState({
+        accountExportLoading: false,
+        accountExportError: this.operationError(result, 'Could not export the private key.'),
+        accountExportSecret: '',
+        accountExportRevealed: false
+      })
+    }
   }
 
   copyExportedPrivateKey() {
     if (!this.state.accountExportSecret) return
-    link.send('tray:clipboardData', this.state.accountExportSecret)
+    void link.executeCommand({ type: 'clipboard.write', text: this.state.accountExportSecret })
     this.setState({ accountExportCopied: true })
   }
 
@@ -1544,14 +1584,15 @@ class Home extends React.Component<any, any> {
     this.openInlineAdd()
   }
 
-  refreshAddVaultState() {
-    link.rpc('appLockState', (err: any, appLockState: any) => {
+  async refreshAddVaultState() {
+    const status = await link.executeQuery({ type: 'security.status' })
+    if (status.ok) {
       this.setState({
-        addVaultState: err
-          ? { exists: false, unlocked: false }
-          : { exists: appLockState.vaultExists, unlocked: !appLockState.locked }
+        addVaultState: { exists: status.vaultExists, unlocked: !status.locked }
       })
-    })
+    } else {
+      this.setState({ addVaultState: { exists: false, unlocked: false } })
+    }
   }
 
   backInlineAdd() {
@@ -1629,15 +1670,6 @@ class Home extends React.Component<any, any> {
     })
   }
 
-  resolveName(name: string) {
-    return new Promise<string>((resolve, reject) => {
-      link.rpc('resolveName', name, (err: any, resolvedAddress: string) => {
-        if (err || !resolvedAddress) return reject(err || new Error('Could not resolve name'))
-        resolve(resolvedAddress)
-      })
-    })
-  }
-
   addErrorMessage(err: any) {
     return err?.message || String(err)
   }
@@ -1656,60 +1688,50 @@ class Home extends React.Component<any, any> {
       : 'Create Newframe password'
   }
 
-  createAccountFromSigner(signer: any, name: string, defaultName = 'Hot Account') {
-    const address = signer?.addresses?.[0]
-    if (!address)
-      return this.setState({ addAccountError: 'No account address was created', addAccountStatus: '' })
-
-    link.rpc('createAccount', address, name || defaultName, { type: signer.type }, (createErr: any) => {
-      if (createErr) {
-        return this.setState({
-          addAccountError: this.addErrorMessage(createErr),
-          addAccountStatus: ''
-        })
-      }
-
-      link.rpc('setSigner', address.toLowerCase(), () => {})
-      this.resetInlineAdd()
-    })
-  }
-
-  createStoredSeedAccount(signer: any, address: string) {
-    const accounts = this.store('main.accounts') || {}
+  async createStoredSeedAccount(signer: any, address: string) {
+    const accounts = this.props.shared.accounts
     const id = address.toLowerCase()
 
     if (accounts[id]) {
-      link.rpc('setSigner', id, () => {})
+      await link.executeCommand({ type: 'account.select', accountId: id })
       return this.resetInlineAdd()
     }
 
     this.setState({ addAccountError: '', addAccountStatus: 'Adding account' })
 
-    link.rpc('createAccount', address, 'Hot Account', { type: signer.type }, (err: any) => {
-      if (err) return this.setState({ addAccountError: this.addErrorMessage(err), addAccountStatus: '' })
-      link.rpc('setSigner', id, () => {})
-      this.resetInlineAdd()
+    const result = await link.executeCommand({
+      type: 'account.add-from-signer',
+      signerId: signer.id,
+      address,
+      name: 'Hot Account'
     })
+    if (result.ok) {
+      this.resetInlineAdd()
+    } else {
+      this.setState({
+        addAccountError: this.operationError(result, 'Could not add the account.'),
+        addAccountStatus: ''
+      })
+    }
   }
 
-  locateInlineKeystore() {
+  async locateInlineKeystore() {
     this.setState({ addAccountError: '', addAccountStatus: 'Selecting JSON backup file' })
 
-    link.rpc('locateKeystore', (err: any, keystore: any) => {
-      if (err) {
-        return this.setState({
-          addAccountKeystore: null,
-          addAccountError: this.addErrorMessage(err),
-          addAccountStatus: ''
-        })
-      }
-
+    const result = await link.executeCommand({ type: 'keystore.locate' })
+    if (result.ok) {
       this.setState({
-        addAccountKeystore: keystore,
+        addAccountKeystore: result.keystore,
         addAccountError: '',
         addAccountStatus: 'JSON backup file selected'
       })
-    })
+    } else {
+      this.setState({
+        addAccountKeystore: null,
+        addAccountError: this.operationError(result, 'Could not select the keystore.'),
+        addAccountStatus: ''
+      })
+    }
   }
 
   selectHardwareSigner(signerId: string) {
@@ -1723,7 +1745,7 @@ class Home extends React.Component<any, any> {
     })
   }
 
-  createLatticeSigner() {
+  async createLatticeSigner() {
     const deviceId = (this.state.addAccountInput || '').trim()
     const deviceName = (this.state.addAccountName || '').trim() || 'GridPlus'
 
@@ -1731,21 +1753,24 @@ class Home extends React.Component<any, any> {
 
     this.setState({ addAccountError: '', addAccountStatus: 'Creating Lattice signer' })
 
-    link.rpc('createLattice', deviceId, deviceName, (err: any, signer: any) => {
-      if (err) {
-        return this.setState({
-          addAccountError: this.addErrorMessage(err),
-          addAccountStatus: ''
-        })
-      }
-
+    const result = await link.executeCommand({
+      type: 'signer.lattice-create',
+      deviceId,
+      deviceName
+    })
+    if (result.ok) {
       this.setState({
         addAccountStatus: 'Connecting to GridPlus',
         addAccountInput: '',
         addAccountName: 'GridPlus',
-        addAccountSelectedSigner: signer?.id || `lattice-${deviceId}`
+        addAccountSelectedSigner: result.signerId
       })
-    })
+    } else {
+      this.setState({
+        addAccountError: this.operationError(result, 'Could not create the GridPlus signer.'),
+        addAccountStatus: ''
+      })
+    }
   }
 
   hardwareAccountName(signer: any) {
@@ -1753,41 +1778,43 @@ class Home extends React.Component<any, any> {
     return `${label} Account`
   }
 
-  addHardwareAccount(signer: any, address: string) {
+  async addHardwareAccount(signer: any, address: string) {
     const id = (address || '').toLowerCase()
     if (!signer?.type || !id) return
 
-    const accounts = this.store('main.accounts') || {}
+    const accounts = this.props.shared.accounts
 
     if (accounts[id]) {
-      link.rpc('setSigner', id, () => {})
+      await link.executeCommand({ type: 'account.select', accountId: id })
       return this.resetInlineAdd()
     }
 
     this.setState({ addAccountError: '', addAccountStatus: 'Adding account' })
 
-    link.rpc(
-      'createAccount',
+    const result = await link.executeCommand({
+      type: 'account.add-from-signer',
+      signerId: signer.id,
       address,
-      this.hardwareAccountName(signer),
-      { type: signer.type },
-      (err: any) => {
-        if (err) return this.setState({ addAccountError: this.addErrorMessage(err), addAccountStatus: '' })
-        link.rpc('setSigner', id, () => {})
-        this.resetInlineAdd()
-      }
-    )
+      name: this.hardwareAccountName(signer)
+    })
+    if (result.ok) this.resetInlineAdd()
+    else {
+      this.setState({
+        addAccountError: this.operationError(result, 'Could not add the hardware account.'),
+        addAccountStatus: ''
+      })
+    }
   }
 
   reloadHardwareSigner(signer: any) {
     if (!signer?.id) return
-    link.send('dash:reloadSigner', signer.id)
+    void link.executeCommand({ type: 'signer.reload', signerId: signer.id })
     this.setState({ addAccountError: '', addAccountStatus: 'Connecting hardware wallet' })
   }
 
   removeHardwareSigner(signer: any) {
     if (!signer?.id) return
-    link.send('dash:removeSigner', signer.id)
+    void link.executeCommand({ type: 'signer.disconnect', signerId: signer.id })
     this.setState({ addAccountSelectedSigner: '', addAccountError: '', addAccountStatus: '' })
   }
 
@@ -1803,30 +1830,53 @@ class Home extends React.Component<any, any> {
     if (!signer?.id) return
     if (!this.state.addHardwarePin) return this.setState({ addAccountError: 'PIN required' })
 
-    link.rpc('trezorPin', signer.id, this.state.addHardwarePin, () => {})
+    void link.executeCommand({
+      type: 'signer.trezor-input',
+      signerId: signer.id,
+      input: 'pin',
+      value: this.state.addHardwarePin
+    })
     this.setState({ addHardwarePin: '', addAccountError: '', addAccountStatus: 'PIN submitted' })
   }
 
   submitHardwarePhrase(signer: any) {
     if (!signer?.id) return
-    link.rpc('trezorPhrase', signer.id, this.state.addHardwarePhrase || '', () => {})
+    void link.executeCommand({
+      type: 'signer.trezor-input',
+      signerId: signer.id,
+      input: 'passphrase',
+      value: this.state.addHardwarePhrase || ''
+    })
     this.setState({ addHardwarePhrase: '', addAccountError: '', addAccountStatus: 'Passphrase submitted' })
   }
 
   submitHardwarePhraseOnDevice(signer: any) {
     if (!signer?.id) return
-    link.rpc('trezorEnterPhrase', signer.id, () => {})
+    void link.executeCommand({
+      type: 'signer.trezor-input',
+      signerId: signer.id,
+      input: 'device-passphrase'
+    })
     this.setState({ addAccountError: '', addAccountStatus: 'Continue on device' })
   }
 
-  pairHardwareLattice(signer: any) {
+  async pairHardwareLattice(signer: any) {
     if (!signer?.id) return
     if (!this.state.addHardwarePairCode) return this.setState({ addAccountError: 'Pairing code required' })
 
-    link.rpc('latticePair', signer.id, this.state.addHardwarePairCode, (err: any) => {
-      if (err) return this.setState({ addAccountError: this.addErrorMessage(err), addAccountStatus: '' })
-      this.setState({ addHardwarePairCode: '', addAccountError: '', addAccountStatus: 'GridPlus paired' })
+    const result = await link.executeCommand({
+      type: 'signer.lattice-pair',
+      signerId: signer.id,
+      pairCode: this.state.addHardwarePairCode
     })
+    if (result.ok) {
+      this.setState({ addHardwarePairCode: '', addAccountError: '', addAccountStatus: 'GridPlus paired' })
+    } else {
+      this.setState({
+        addAccountError: this.operationError(result, 'Could not pair GridPlus.'),
+        addAccountStatus: ''
+      })
+    }
   }
 
   async createInlineAccount() {
@@ -1851,46 +1901,54 @@ class Home extends React.Component<any, any> {
 
     this.setState({ addAccountError: '', addAccountStatus: 'Adding account' })
 
-    if (addAccountType === 'watch') {
-      try {
-        const address = isAddress(input) ? input : await this.resolveName(input)
-        link.rpc('createFromAddress', address, name || 'Watch Account', (err: any) => {
-          if (err) return this.setState({ addAccountError: err.message || String(err), addAccountStatus: '' })
-          link.rpc('setSigner', address.toLowerCase(), () => {})
-          this.resetInlineAdd()
-        })
-      } catch (err: any) {
-        this.setState({ addAccountError: err.message || String(err), addAccountStatus: '' })
+    try {
+      const result =
+        addAccountType === 'watch'
+          ? await link.executeCommand({
+              type: 'account.watch-add',
+              addressOrName: input,
+              name: name || 'Watch Account'
+            })
+          : addAccountType === 'keystore'
+            ? addAccountKeystore && addAccountKeystorePassword
+              ? await link.executeCommand({
+                  type: 'signer.import',
+                  source: 'keystore',
+                  keystore: addAccountKeystore,
+                  keystorePassword: addAccountKeystorePassword,
+                  framePassword: addAccountPassword,
+                  accountName: name || 'Hot Account'
+                })
+              : null
+            : await link.executeCommand(
+                addAccountType === 'seed'
+                  ? {
+                      type: 'signer.import',
+                      source: 'phrase',
+                      phrase: input,
+                      framePassword: addAccountPassword,
+                      accountName: name || 'Hot Account'
+                    }
+                  : {
+                      type: 'signer.import',
+                      source: 'private-key',
+                      privateKey: input,
+                      framePassword: addAccountPassword,
+                      accountName: name || 'Hot Account'
+                    }
+              )
+
+      if (!result) {
+        const message = addAccountKeystore
+          ? 'JSON backup file password required'
+          : 'Choose a JSON backup file'
+        return this.setState({ addAccountError: message, addAccountStatus: '' })
       }
-      return
+      if (!result.ok) throw new Error(this.operationError(result, 'Could not add the account.'))
+      this.resetInlineAdd()
+    } catch (err: any) {
+      this.setState({ addAccountError: this.addErrorMessage(err), addAccountStatus: '' })
     }
-
-    if (addAccountType === 'keystore') {
-      if (!addAccountKeystore) {
-        return this.setState({ addAccountError: 'Choose a JSON backup file', addAccountStatus: '' })
-      }
-      if (!addAccountKeystorePassword) {
-        return this.setState({ addAccountError: 'JSON backup file password required', addAccountStatus: '' })
-      }
-
-      return link.rpc(
-        'createFromKeystore',
-        addAccountKeystore,
-        addAccountPassword,
-        addAccountKeystorePassword,
-        (err: any, signer: any) => {
-          if (err) return this.setState({ addAccountError: this.addErrorMessage(err), addAccountStatus: '' })
-          this.createAccountFromSigner(signer, name)
-        }
-      )
-    }
-
-    const method = addAccountType === 'seed' ? 'createFromPhrase' : 'createFromPrivateKey'
-
-    link.rpc(method, input, addAccountPassword, (err: any, signer: any) => {
-      if (err) return this.setState({ addAccountError: this.addErrorMessage(err), addAccountStatus: '' })
-      this.createAccountFromSigner(signer, name)
-    })
   }
 
   refreshPortfolioBalances(e: React.MouseEvent) {
@@ -1901,12 +1959,9 @@ class Home extends React.Component<any, any> {
 
     this.setState({ refreshingPortfolio: true })
 
-    link
-      .invoke('tray:refreshPortfolioBalances', this.store('selected.current'))
-      .catch(() => undefined)
-      .finally(() => {
-        this.refreshTimer = setTimeout(() => this.setState({ refreshingPortfolio: false }), 1000)
-      })
+    link.executeCommand({ type: 'portfolio.refresh' }).finally(() => {
+      this.refreshTimer = setTimeout(() => this.setState({ refreshingPortfolio: false }), 1000)
+    })
   }
 
   inputLatticeEndpoint(e: React.ChangeEvent<HTMLInputElement>) {
@@ -1915,7 +1970,12 @@ class Home extends React.Component<any, any> {
     const value = e.target.value.replace(/\s+/g, '')
     this.setState({ latticeEndpoint: value })
     this.inputLatticeTimeout = setTimeout(
-      () => link.send('tray:action', 'setLatticeEndpointCustom', this.state.latticeEndpoint),
+      () =>
+        void link.executeCommand({
+          type: 'settings.update',
+          setting: 'lattice-endpoint',
+          value: this.state.latticeEndpoint
+        }),
       1000
     )
   }
@@ -1926,35 +1986,48 @@ class Home extends React.Component<any, any> {
     const value = e.target.value.replace(/\s+/g, '')
     this.setState({ portfolioApiKey: value, portfolioApiKeyRequired: false })
     this.inputPortfolioApiKeyTimeout = setTimeout(
-      () => link.send('tray:action', 'setPortfolioApiKey', this.state.portfolioApiKey),
+      () =>
+        void link.executeCommand({
+          type: 'settings.update',
+          setting: 'portfolio-api-key',
+          value: this.state.portfolioApiKey
+        }),
       1000
     )
   }
 
   toggleAutoDiscoverTokens() {
-    const enabled = !!this.store('main.autoDiscoverTokens')
+    const enabled = this.props.shared.autoDiscoverTokens
 
     if (enabled) {
-      return link.send('tray:action', 'setAutoDiscoverTokens', false)
+      return void link.executeCommand({
+        type: 'settings.update',
+        setting: 'auto-discover-tokens',
+        value: false
+      })
     }
 
     const apiKey = (this.state.portfolioApiKey || '').trim()
     if (!apiKey) return this.setState({ portfolioApiKeyRequired: true })
 
     clearTimeout(this.inputPortfolioApiKeyTimeout)
-    link.send('tray:action', 'setPortfolioApiKey', apiKey)
-    link.send('tray:action', 'setAutoDiscoverTokens', true)
+    void link.executeCommand({
+      type: 'settings.update',
+      setting: 'auto-discover-tokens',
+      value: true,
+      apiKey
+    })
     this.setState({ portfolioApiKey: apiKey, portfolioApiKeyRequired: false })
   }
 
   copyInstanceId(instanceId: string) {
     clearTimeout(this.instanceIdCopiedTimeout)
-    link.send('tray:clipboardData', instanceId)
+    void link.executeCommand({ type: 'clipboard.write', text: instanceId })
     this.setState({ instanceIdCopied: true })
     this.instanceIdCopiedTimeout = setTimeout(() => this.setState({ instanceIdCopied: false }), 1800)
   }
 
-  generateInlineSeedPhrase() {
+  async generateInlineSeedPhrase() {
     this.setState({
       addAccountError: '',
       addAccountStatus: 'Generating recovery phrase',
@@ -1963,21 +2036,20 @@ class Home extends React.Component<any, any> {
       addGeneratedPhraseCopied: false
     })
 
-    link.rpc('generatePhrase', (err: any, phrase: string) => {
-      if (err) {
-        return this.setState({
-          addAccountError: this.addErrorMessage(err),
-          addAccountStatus: '',
-          addGeneratedPhrase: ''
-        })
-      }
-
+    const result = await link.executeQuery({ type: 'seed.generate' })
+    if (result.ok) {
       this.setState({
-        addGeneratedPhrase: phrase,
+        addGeneratedPhrase: result.phrase,
         addAccountError: '',
         addAccountStatus: ''
       })
-    })
+    } else {
+      this.setState({
+        addAccountError: this.operationError(result, 'Could not generate a recovery phrase.'),
+        addAccountStatus: '',
+        addGeneratedPhrase: ''
+      })
+    }
   }
 
   copyGeneratedSeedPhrase() {
@@ -1985,12 +2057,12 @@ class Home extends React.Component<any, any> {
     if (!phrase) return
 
     clearTimeout(this.seedPhraseCopiedTimeout)
-    link.send('tray:clipboardData', phrase)
+    void link.executeCommand({ type: 'clipboard.write', text: phrase })
     this.setState({ addGeneratedPhraseCopied: true })
     this.seedPhraseCopiedTimeout = setTimeout(() => this.setState({ addGeneratedPhraseCopied: false }), 1800)
   }
 
-  createGeneratedSeedAccount() {
+  async createGeneratedSeedAccount() {
     const phrase = (this.state.addGeneratedPhrase || '').trim()
     const name = (this.state.addAccountName || '').trim()
     const password = this.state.addAccountPassword || ''
@@ -2005,10 +2077,20 @@ class Home extends React.Component<any, any> {
 
     this.setState({ addAccountError: '', addAccountStatus: 'Creating account' })
 
-    link.rpc('createFromPhrase', phrase, password, (err: any, signer: any) => {
-      if (err) return this.setState({ addAccountError: this.addErrorMessage(err), addAccountStatus: '' })
-      this.createAccountFromSigner(signer, name)
+    const result = await link.executeCommand({
+      type: 'signer.import',
+      source: 'phrase',
+      phrase,
+      framePassword: password,
+      accountName: name || 'Hot Account'
     })
+    if (result.ok) this.resetInlineAdd()
+    else {
+      this.setState({
+        addAccountError: this.operationError(result, 'Could not create the account.'),
+        addAccountStatus: ''
+      })
+    }
   }
 
   signerIcon(type: string, size = 16) {
@@ -2119,8 +2201,7 @@ class Home extends React.Component<any, any> {
   }
 
   renderShortcut() {
-    const shortcut = this.store('main.shortcuts.summon')
-    const platform = this.store('platform')
+    const { platform, summonShortcut: shortcut } = this.props.shared
     const modifiers = (shortcut.modifierKeys || []).map((key: string) => {
       if (key === 'Alt') return platform === 'darwin' ? 'Option' : 'Alt'
       if (key === 'Meta' || key === 'Super') return platform === 'darwin' ? 'Cmd' : 'Win'
@@ -2280,53 +2361,19 @@ class Home extends React.Component<any, any> {
                 this.setState({
                   overlay: 'settings',
                   menuOpen: false,
-                  latticeEndpoint: this.store('main.latticeSettings.endpointCustom'),
-                  latticeEndpointMode: this.store('main.latticeSettings.endpointMode'),
-                  portfolioApiKey: this.store('main.portfolioApiKey'),
+                  latticeEndpoint: this.props.shared.latticeEndpoint,
+                  latticeEndpointMode: this.props.shared.latticeEndpointMode,
+                  portfolioApiKey: this.props.shared.portfolioApiKey,
                   portfolioApiKeyRequired: false,
                   resetConfirm: false
                 })
             })}
           </div>
 
-          {/*
-          <div className='t2MenuPanelSection'>
-            <div className='t2MenuPanelSectionTitle'>Browser Extension</div>
-            <div className='t2BrowserButtons'>
-              <div
-                aria-label='Chrome extension'
-                className='t2BrowserButton'
-                onClick={() => link.send('tray:openExternal', chromeExtensionUrl)}
-                onKeyDown={(e) =>
-                  this.onKeyboardActivate(e, () => link.send('tray:openExternal', chromeExtensionUrl))
-                }
-                role='button'
-                tabIndex={0}
-              >
-                {svg.chrome(22)}
-                <span>Chrome</span>
-              </div>
-              <div
-                aria-label='Firefox extension'
-                className='t2BrowserButton'
-                onClick={() => link.send('tray:openExternal', firefoxExtensionUrl)}
-                onKeyDown={(e) =>
-                  this.onKeyboardActivate(e, () => link.send('tray:openExternal', firefoxExtensionUrl))
-                }
-                role='button'
-                tabIndex={0}
-              >
-                {svg.firefox(22)}
-                <span>Firefox</span>
-              </div>
-            </div>
-          </div>
-          */}
-
           <div className='t2MenuPanelSection'>
             {this.renderMenuPanelRow({
               label: 'App Info',
-              detail: this.store('main.instanceId'),
+              detail: this.props.shared.instanceId,
               icon: svg.copy(16),
               onClick: () => this.setState({ overlay: 'about', menuOpen: false })
             })}
@@ -2334,7 +2381,7 @@ class Home extends React.Component<any, any> {
               label: 'Quit',
               icon: svg.x(15),
               danger: true,
-              onClick: () => link.send('tray:quit')
+              onClick: () => void link.executeCommand({ type: 'app.quit' })
             })}
           </div>
         </div>
@@ -2514,8 +2561,7 @@ class Home extends React.Component<any, any> {
   renderTokenRow(balance: DisplayedBalance, i: number, className = 't2TokenRow cardShow') {
     const change = balance.priceChange ? parseFloat(balance.priceChange) : 0
     const fiatValue = formatBalanceNotionalValue(balance)
-    const networks = this.store('main.networks.ethereum') || {}
-    const networksMeta = this.store('main.networksMeta.ethereum') || {}
+    const { networks, networksMeta } = this.props.shared
     const item = {
       id: `${balance.chainId}:${balance.address}:${i}`,
       symbol: balance.symbol,
@@ -2560,7 +2606,7 @@ class Home extends React.Component<any, any> {
   }
 
   renderPositions(balances: BalanceSummary[]) {
-    const networks = this.store('main.networks.ethereum')
+    const networks = this.props.shared.networks
     const matchedBalances = balances.filter((balance) => {
       if (!this.inNetworkFilter(balance.chainId)) return false
       const chainName = (networks[balance.chainId] || {}).name || ''
@@ -2701,7 +2747,7 @@ class Home extends React.Component<any, any> {
 
     const canSendAsset = hasPositiveBalance(asset)
     const canTradeAsset = this.canOpenTrade(asset)
-    const chain = this.store('main.networks.ethereum', asset.chainId) || {}
+    const chain = this.props.shared.networks[asset.chainId] || {}
     const price = Number(asset?.usdRate?.price || 0)
     const priceDisplay = price > 0 ? `$${formatUsdRate(price, 2)}` : '$0.00'
     const contractAddress = isNativeCurrency(asset.address) ? 'Native asset' : asset.address
@@ -2736,8 +2782,8 @@ class Home extends React.Component<any, any> {
               <ChainTokenIcon
                 chainId={asset.chainId}
                 logoURI={asset.logoURI}
-                networks={this.store('main.networks.ethereum') || {}}
-                networksMeta={this.store('main.networksMeta.ethereum') || {}}
+                networks={this.props.shared.networks}
+                networksMeta={this.props.shared.networksMeta}
                 size='md'
                 symbol={asset.symbol}
               />
@@ -2853,6 +2899,7 @@ class Home extends React.Component<any, any> {
               key={order.orderId}
               aria-label={`${this.orderPairIntent(order)} order details`}
               className='t2OrderRow cardShow'
+              data-order-id={order.orderId}
               onClick={() => this.openOrder(order)}
               onKeyDown={(e) => this.onKeyboardActivate(e, () => this.openOrder(order))}
               role='button'
@@ -2915,11 +2962,11 @@ class Home extends React.Component<any, any> {
     const orderId = this.state.orderDetails
     if (!orderId) return null
 
-    const order = this.store('main.orders', orderId)
+    const order = this.props.shared.orders[orderId]
     if (!order) return null
 
     const chainId = Number(order.chainId)
-    const chain = this.store('main.networks.ethereum', chainId) || {}
+    const chain = this.props.shared.networks[chainId] || {}
     const side = this.normalizeOrderSide(order.side)
     const cancelError = this.orderCancelErrorMessage(orderId)
     const detailRow = (label: string, value: any, monospace = false) => {
@@ -3025,7 +3072,7 @@ class Home extends React.Component<any, any> {
       <div className='t2ActivityList'>
         {records.map((activity: any) => {
           const chainId = Number(activity.chainId)
-          const chain = this.store('main.networks.ethereum', chainId) || {}
+          const chain = this.props.shared.networks[chainId] || {}
           const status = transactionStatusLabel(activity.status)
           const submittedAt = timestamp(activity.submittedAt, timestamp(activity.updatedAt, 0))
           const submitted = submittedAt
@@ -3073,13 +3120,13 @@ class Home extends React.Component<any, any> {
     const activityId = this.state.activityDetails
     if (!activityId) return null
 
-    const activity = this.store('main.activity', activityId)
+    const activity = this.props.shared.activity[activityId]
     if (!activity) return null
 
     const req = this.activityRequestLike(activity)
     const chainId = Number(activity.chainId)
-    const chain = this.store('main.networks.ethereum', chainId) || {}
-    const meta = this.store('main.networksMeta.ethereum', chainId) || {}
+    const chain = this.props.shared.networks[chainId] || {}
+    const meta = this.props.shared.networksMeta[chainId] || {}
     const nativeCurrency = meta.nativeCurrency || { symbol: chain.symbol || 'ETH' }
     const symbol = nativeCurrency.symbol || chain.symbol || 'ETH'
     const intent = getTransactionIntent(req, symbol)
@@ -3088,7 +3135,7 @@ class Home extends React.Component<any, any> {
       ? parseInt(activity.receipt.blockNumber, 16)
       : undefined
     const originName = activity.origin
-      ? this.store('main.origins', activity.origin, 'name') || activity.origin
+      ? this.props.shared.origins[activity.origin]?.name || activity.origin
       : ''
     const from = activity.data?.from || activity.account || activity.address
     const to = activity.data?.to
@@ -3289,7 +3336,11 @@ class Home extends React.Component<any, any> {
                     }
                     onClick={(e) => {
                       e.stopPropagation()
-                      link.send('tray:action', 'activateNetwork', 'ethereum', chain.chainId, !on)
+                      void link.executeCommand({
+                        type: 'network.activation-set',
+                        chainId: chain.chainId,
+                        enabled: !on
+                      })
                       const resetNetwork = on && this.state.network === chain.chainId
                       this.setState({ kebab: 0, ...(resetNetwork ? { network: 0 } : {}) })
                     }}
@@ -3424,7 +3475,7 @@ class Home extends React.Component<any, any> {
 
   renderDappsOverlay(current: string) {
     if (this.state.overlay !== 'dapps') return null
-    const permissions = (current && this.store('main.permissions', current)) || {}
+    const permissions = (current && this.props.shared.permissions[current]) || {}
     const origins = Object.keys(permissions)
       .filter((origin) => permissions[origin]?.provider)
       .sort((a, b) => (permissions[a].origin < permissions[b].origin ? -1 : 1))
@@ -3449,9 +3500,12 @@ class Home extends React.Component<any, any> {
             <div
               aria-label='Clear all connected websites'
               className='t2DappsClearAll'
-              onClick={() => link.send('tray:action', 'clearPermissions', current)}
+              onClick={() => void link.executeCommand({ type: 'permission.clear', accountId: current })}
               onKeyDown={(e) =>
-                this.onKeyboardActivate(e, () => link.send('tray:action', 'clearPermissions', current))
+                this.onKeyboardActivate(
+                  e,
+                  () => void link.executeCommand({ type: 'permission.clear', accountId: current })
+                )
               }
               role='button'
               tabIndex={0}
@@ -3473,10 +3527,22 @@ class Home extends React.Component<any, any> {
                 <div
                   aria-label={`Clear ${permissions[origin].origin}`}
                   className='t2DappClear'
-                  onClick={() => link.send('tray:action', 'revokePermission', current, origin)}
+                  onClick={() =>
+                    void link.executeCommand({
+                      type: 'permission.clear',
+                      accountId: current,
+                      originId: origin
+                    })
+                  }
                   onKeyDown={(e) =>
-                    this.onKeyboardActivate(e, () =>
-                      link.send('tray:action', 'revokePermission', current, origin)
+                    this.onKeyboardActivate(
+                      e,
+                      () =>
+                        void link.executeCommand({
+                          type: 'permission.clear',
+                          accountId: current,
+                          originId: origin
+                        })
                     )
                   }
                   role='button'
@@ -3495,16 +3561,29 @@ class Home extends React.Component<any, any> {
 
   approvePendingChain() {
     const pending = this.state.pendingChainRequest || {}
-    const chain = pending.chain || pending.request?.chain
-    if (!chain) return
+    const requestId = pending.request?.handlerId
+    const homeCommandId = pending.homeCommandId
+    if (!requestId && !homeCommandId) return
 
-    link.send('tray:addChain', chain, pending.request)
+    void link.executeCommand({
+      type: 'network.request-resolve',
+      approved: true,
+      ...(requestId ? { requestId } : { homeCommandId })
+    })
     this.setState({ overlay: 'networks', pendingChainRequest: null, netQuery: '', kebab: 0 })
   }
 
   rejectPendingChain() {
     const pending = this.state.pendingChainRequest || {}
-    if (pending.request) link.send('tray:rejectRequest', pending.request)
+    const requestId = pending.request?.handlerId
+    const homeCommandId = pending.homeCommandId
+    if (requestId || homeCommandId) {
+      void link.executeCommand({
+        type: 'network.request-resolve',
+        approved: false,
+        ...(requestId ? { requestId } : { homeCommandId })
+      })
+    }
     this.setState({ overlay: null, pendingChainRequest: null })
   }
 
@@ -3576,7 +3655,7 @@ class Home extends React.Component<any, any> {
   renderReceiveOverlay(accounts: Record<string, any>) {
     if (this.state.overlay !== 'receive') return null
 
-    const account = accounts[this.state.receiveAccount] || accounts[this.store('selected.current')]
+    const account = accounts[this.state.receiveAccount] || accounts[this.props.shared.currentAccount]
     if (!account) return null
 
     return (
@@ -3622,14 +3701,16 @@ class Home extends React.Component<any, any> {
   renderSettingsOverlay() {
     if (this.state.overlay !== 'settings') return null
 
-    const platform = this.store('platform')
-    const summonShortcut = this.store('main.shortcuts.summon')
-    const biometricUnlock = !!this.store('main.biometricUnlock')
-    const trezorDerivation = this.store('main.trezor.derivation')
-    const ledgerDerivation = this.store('main.ledger.derivation')
-    const liveAccountLimit = this.store('main.ledger.liveAccountLimit')
-    const latticeDerivation = this.store('main.latticeSettings.derivation')
-    const latticeAccountLimit = this.store('main.latticeSettings.accountLimit')
+    const {
+      biometricUnlock,
+      latticeAccountLimit,
+      latticeDerivation,
+      ledgerDerivation,
+      liveAccountLimit,
+      platform,
+      summonShortcut,
+      trezorDerivation
+    } = this.props.shared
     const portfolioApiKey = this.state.portfolioApiKey || ''
     const hasPortfolioApiKey = portfolioApiKey.trim().length > 0
     const portfolioApiKeyDetail = this.state.portfolioApiKeyRequired
@@ -3668,38 +3749,62 @@ class Home extends React.Component<any, any> {
     const toggleRows = [
       {
         label: 'Auto-hide',
-        on: this.store('main.autohide'),
+        on: this.props.shared.autohide,
         detail: 'Hide Newframe on loss of focus',
-        toggle: () => link.send('tray:action', 'setAutohide', !this.store('main.autohide'))
+        toggle: () =>
+          void link.executeCommand({
+            type: 'settings.update',
+            setting: 'autohide',
+            value: !this.props.shared.autohide
+          })
       },
       {
         label: 'Run on Startup',
-        on: this.store('main.launch'),
+        on: this.props.shared.launch,
         detail: 'Run Newframe when your computer starts',
-        toggle: () => link.send('tray:action', 'toggleLaunch')
+        toggle: () =>
+          void link.executeCommand({
+            type: 'settings.update',
+            setting: 'launch',
+            value: !this.props.shared.launch
+          })
       },
       {
         label: 'Glide',
-        on: this.store('main.reveal'),
+        on: this.props.shared.reveal,
         detail: "Mouse to display's right edge to summon Newframe",
-        toggle: () => link.send('tray:action', 'toggleReveal')
+        toggle: () =>
+          void link.executeCommand({
+            type: 'settings.update',
+            setting: 'reveal',
+            value: !this.props.shared.reveal
+          })
       },
       ...(platform === 'darwin'
         ? [
             {
               label: 'Display Gas in Menubar',
-              on: this.store('main.menubarGasPrice'),
+              on: this.props.shared.menubarGasPrice,
               detail: 'Show mainnet gas price in the menu bar',
               toggle: () =>
-                link.send('tray:action', 'setMenubarGasPrice', !this.store('main.menubarGasPrice'))
+                void link.executeCommand({
+                  type: 'settings.update',
+                  setting: 'menubar-gas-price',
+                  value: !this.props.shared.menubarGasPrice
+                })
             }
           ]
         : []),
       {
         label: 'Show Account Name with ENS',
-        on: this.store('main.showLocalNameWithENS'),
+        on: this.props.shared.showLocalNameWithENS,
         detail: 'Show local account name when ENS is resolved',
-        toggle: () => link.send('tray:action', 'toggleShowLocalNameWithENS')
+        toggle: () =>
+          void link.executeCommand({
+            type: 'settings.update',
+            setting: 'show-local-name-with-ens',
+            value: !this.props.shared.showLocalNameWithENS
+          })
       },
       {
         label: 'Show Testnets',
@@ -3749,17 +3854,21 @@ class Home extends React.Component<any, any> {
                     aria-label={summonShortcut.configuring ? 'Cancel shortcut edit' : 'Edit shortcut'}
                     className='t2SettingsSmallButton'
                     onClick={() => {
-                      link.send('tray:action', 'setShortcut', 'summon', {
-                        ...summonShortcut,
-                        configuring: !summonShortcut.configuring
+                      void link.executeCommand({
+                        type: 'settings.update',
+                        setting: 'shortcut-configuring',
+                        value: !summonShortcut.configuring
                       })
                     }}
                     onKeyDown={(e) =>
-                      this.onKeyboardActivate(e, () =>
-                        link.send('tray:action', 'setShortcut', 'summon', {
-                          ...summonShortcut,
-                          configuring: !summonShortcut.configuring
-                        })
+                      this.onKeyboardActivate(
+                        e,
+                        () =>
+                          void link.executeCommand({
+                            type: 'settings.update',
+                            setting: 'shortcut-configuring',
+                            value: !summonShortcut.configuring
+                          })
                       )
                     }
                     role='button'
@@ -3770,9 +3879,10 @@ class Home extends React.Component<any, any> {
                   {this.renderToggle(
                     summonShortcut.enabled,
                     () =>
-                      link.send('tray:action', 'setShortcut', 'summon', {
-                        ...summonShortcut,
-                        enabled: !summonShortcut.enabled
+                      void link.executeCommand({
+                        type: 'settings.update',
+                        setting: 'shortcut-enabled',
+                        value: !summonShortcut.enabled
                       }),
                     'Summon Shortcut'
                   )}
@@ -3781,6 +3891,13 @@ class Home extends React.Component<any, any> {
               <div className='t2SettingsShortcutDetails'>
                 <KeyboardShortcutConfigurator
                   actionText='summon Newframe'
+                  onChange={(value) =>
+                    void link.executeCommand({
+                      type: 'settings.update',
+                      setting: 'summon-shortcut',
+                      value
+                    })
+                  }
                   shortcut={summonShortcut}
                   shortcutName='summon'
                   platform={platform}
@@ -3795,8 +3912,10 @@ class Home extends React.Component<any, any> {
               this.renderSettingsToggleRow(setting.label, setting.on, setting.toggle, setting.detail)
             )}
             {this.renderSettingsActionRow('Lock Newframe', 'Lock', () => this.lockFrame())}
-            {this.renderSettingsActionRow('Reset Saved Data', 'Reset', () =>
-              link.send('tray:action', 'resetSavedData')
+            {this.renderSettingsActionRow(
+              'Reset Saved Data',
+              'Reset',
+              () => void link.executeCommand({ type: 'wallet.reset', scope: 'saved-data' })
             )}
             {this.state.resetConfirm ? (
               <div className='t2SettingsRow t2SettingsResetConfirm'>
@@ -3806,7 +3925,9 @@ class Home extends React.Component<any, any> {
                 <div className='t2SettingsConfirmActions'>
                   <div
                     className='t2SettingsSmallButton t2SettingsDangerButton'
-                    onClick={() => link.send('tray:resetAllSettings')}
+                    onClick={() =>
+                      void link.executeCommand({ type: 'wallet.reset', scope: 'all-settings-data' })
+                    }
                     role='button'
                     tabIndex={0}
                   >
@@ -3834,35 +3955,61 @@ class Home extends React.Component<any, any> {
 
           <div className='t2SettingsSection'>
             <div className='t2SettingsSectionTitle'>Signer Defaults</div>
-            {this.renderSettingsSelectRow('Trezor Derivation', trezorOptions, trezorDerivation, (value) =>
-              link.send('tray:action', 'setTrezorDerivation', value)
+            {this.renderSettingsSelectRow(
+              'Trezor Derivation',
+              trezorOptions,
+              trezorDerivation,
+              (value) =>
+                void link.executeCommand({ type: 'settings.update', setting: 'trezor-derivation', value })
             )}
-            {this.renderSettingsSelectRow('Ledger Derivation', ledgerOptions, ledgerDerivation, (value) =>
-              link.send('tray:action', 'setLedgerDerivation', value)
+            {this.renderSettingsSelectRow(
+              'Ledger Derivation',
+              ledgerOptions,
+              ledgerDerivation,
+              (value) =>
+                void link.executeCommand({ type: 'settings.update', setting: 'ledger-derivation', value })
             )}
             {ledgerDerivation === 'live'
               ? this.renderSettingsSelectRow(
                   'Ledger Live Accounts',
                   accountLimitOptions,
                   liveAccountLimit,
-                  (value) => link.send('tray:action', 'setLiveAccountLimit', value)
+                  (value) =>
+                    void link.executeCommand({
+                      type: 'settings.update',
+                      setting: 'ledger-live-account-limit',
+                      value
+                    })
                 )
               : null}
-            {this.renderSettingsSelectRow('Lattice Derivation', latticeOptions, latticeDerivation, (value) =>
-              link.send('tray:action', 'setLatticeDerivation', value)
+            {this.renderSettingsSelectRow(
+              'Lattice Derivation',
+              latticeOptions,
+              latticeDerivation,
+              (value) =>
+                void link.executeCommand({ type: 'settings.update', setting: 'lattice-derivation', value })
             )}
             {this.renderSettingsSelectRow(
               'Lattice Accounts',
               accountLimitOptions,
               latticeAccountLimit,
-              (value) => link.send('tray:action', 'setLatticeAccountLimit', value)
+              (value) =>
+                void link.executeCommand({
+                  type: 'settings.update',
+                  setting: 'lattice-account-limit',
+                  value
+                })
             )}
             {this.renderSettingsSelectRow(
               'Lattice Relay',
               relayOptions,
               this.state.latticeEndpointMode,
               (value) => {
-                link.send('tray:action', 'setLatticeEndpointMode', value)
+                void link.executeCommand({
+                  type: 'settings.update',
+                  setting: 'lattice-endpoint-mode',
+                  value
+                })
                 this.setState({ latticeEndpointMode: value })
               }
             )}
@@ -3883,7 +4030,7 @@ class Home extends React.Component<any, any> {
             <div className='t2SettingsSectionTitle'>Tokens</div>
             {this.renderSettingsToggleRow(
               'Auto-Discover Tokens',
-              this.store('main.autoDiscoverTokens'),
+              this.props.shared.autoDiscoverTokens,
               () => this.toggleAutoDiscoverTokens(),
               portfolioApiKeyDetail
             )}
@@ -3910,7 +4057,7 @@ class Home extends React.Component<any, any> {
     // TODO: move this to global state passed over IPC
     // eslint-disable-next-line
     const appVersion = require('../../../package.json').version
-    const instanceId = this.store('main.instanceId')
+    const instanceId = this.props.shared.instanceId
 
     return (
       <div aria-label='App Info' className='t2Overlay cardShow' role='dialog'>
@@ -3949,11 +4096,14 @@ class Home extends React.Component<any, any> {
               <div className='t2InfoLabel'>Version</div>
               <div className='t2InfoValue'>{`v${appVersion}`}</div>
             </div>
-            {this.renderSettingsActionRow('View License', 'Open', () =>
-              link.send(
-                'tray:openExternal',
-                'https://github.com/wardenjakx/newframe/blob/main/apps/newframe/LICENSE'
-              )
+            {this.renderSettingsActionRow(
+              'View License',
+              'Open',
+              () =>
+                void link.executeCommand({
+                  type: 'external.open',
+                  url: 'https://github.com/wardenjakx/newframe/blob/main/apps/newframe/LICENSE'
+                })
             )}
           </div>
         </div>
@@ -4073,12 +4223,10 @@ class Home extends React.Component<any, any> {
   }
 
   renderStoredSeedAdd() {
-    const signers = Object.values(this.store('main.signers') || {}).filter(
-      (signer: any) => signer.type === 'seed'
-    )
-    const accounts = this.store('main.accounts') || {}
+    const signers = Object.values(this.props.shared.signers).filter((signer: any) => signer.type === 'seed')
+    const accounts = this.props.shared.accounts
     const selectedSigner = this.state.addAccountSelectedSigner
-      ? this.store('main.signers', this.state.addAccountSelectedSigner)
+      ? this.props.shared.signers[this.state.addAccountSelectedSigner]
       : null
 
     if (!signers.length) {
@@ -4325,11 +4473,9 @@ class Home extends React.Component<any, any> {
 
   renderHardwareAdd() {
     const type = this.state.addAccountType
-    const signers = Object.values(this.store('main.signers') || {}).filter(
-      (signer: any) => signer.type === type
-    )
+    const signers = Object.values(this.props.shared.signers).filter((signer: any) => signer.type === type)
     const selectedSigner = this.state.addAccountSelectedSigner
-      ? this.store('main.signers', this.state.addAccountSelectedSigner)
+      ? this.props.shared.signers[this.state.addAccountSelectedSigner]
       : null
     const title = type === 'ledger' ? 'Ledger' : type === 'trezor' ? 'Trezor' : 'GridPlus'
 
@@ -4449,7 +4595,7 @@ class Home extends React.Component<any, any> {
           <div className='t2DerivedAccounts'>
             {addresses.map((address: string, index: number) => {
               const id = address.toLowerCase()
-              const accounts = this.store('main.accounts') || {}
+              const accounts = this.props.shared.accounts
               const imported = !!accounts[id]
               return (
                 <div
@@ -4888,7 +5034,7 @@ class Home extends React.Component<any, any> {
 
   renderAccountsPanel(current: string) {
     if (!this.state.accountsOpen) return null
-    const accounts = this.store('main.accounts') || {}
+    const accounts = this.props.shared.accounts
     const ids = this.orderedAccountIds(accounts)
     const accountQuery = this.state.accountQuery.trim()
     const visibleIds = ids.filter((id) => this.accountMatchesQuery(accounts[id], accountQuery))
@@ -4985,12 +5131,12 @@ class Home extends React.Component<any, any> {
                     onDrop={(e) => this.dropAccount(e, id)}
                     onClick={() => {
                       this.setState({ accountsOpen: false })
-                      if (!selected) link.rpc('setSigner', id, () => {})
+                      if (!selected) void link.executeCommand({ type: 'account.select', accountId: id })
                     }}
                     onKeyDown={(e) =>
                       this.onKeyboardActivate(e, () => {
                         this.setState({ accountsOpen: false })
-                        if (!selected) link.rpc('setSigner', id, () => {})
+                        if (!selected) void link.executeCommand({ type: 'account.select', accountId: id })
                       })
                     }
                     role='button'
@@ -5187,11 +5333,9 @@ class Home extends React.Component<any, any> {
   }
 
   override render() {
-    const current = this.store('selected.current')
-    const accounts = this.store('main.accounts') || {}
+    const { accounts, currentAccount: current, notifications } = this.props.shared
     const account = accounts[current]
     const balances = account ? this.getBalances(account.address) : []
-    const notifications = this.store('view.notifications') || {}
 
     return (
       <div className='t2Home'>
@@ -5203,8 +5347,12 @@ class Home extends React.Component<any, any> {
             const chainId = Number(notification.leadingIcon?.chainId || notification.target?.chainId)
             return chainId ? this.chainIcon(chainId, 16, 10, 8) : null
           }}
-          onDismiss={(id) => link.send('tray:action', 'dismissNotification', id)}
-          onExpire={(id) => link.send('tray:action', 'expireNotification', id)}
+          onDismiss={(id) =>
+            void link.executeCommand({ type: 'notification.update', notificationId: id, action: 'dismiss' })
+          }
+          onExpire={(id) =>
+            void link.executeCommand({ type: 'notification.update', notificationId: id, action: 'expire' })
+          }
           onOpen={(notification) => this.openActivityTarget(notification.target)}
         />
         {this.renderHero(balances)}
@@ -5233,4 +5381,7 @@ class Home extends React.Component<any, any> {
   }
 }
 
-export default Restore.connect(Home)
+export default function HomeContainer() {
+  const shared = useWalletSelector(useShallow(selectHomeSharedState))
+  return <Home shared={shared} />
+}

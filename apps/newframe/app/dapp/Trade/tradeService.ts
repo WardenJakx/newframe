@@ -1,44 +1,55 @@
 import link from '../../../resources/link'
-import { buildInternalDappOrigin, internalDappOriginId } from '../dappOrigin'
-import type { MarketTradeQuoteRequest, ProviderSendPayload } from './tradeTransaction'
+import type {
+  FlashQuoteRequest,
+  FlashSubmitOrder,
+  TypedDataSignCommand
+} from '../../../resources/bridge/operations'
+import type { MarketTradeQuoteRequest, TradeSubmitRequest } from './tradeTransaction'
 
 export function closeTrade() {
-  link.send('frame:close')
+  void link.executeCommand({ type: 'dapp.close' })
 }
 
-export function initTradeOrigin(chainId: number) {
-  link.send('tray:action', 'initOrigin', internalDappOriginId, buildInternalDappOrigin(chainId))
+export function submitTransaction(
+  chainId: number,
+  transaction: { to: string; data?: string; value?: string },
+  idempotencyKey: string
+) {
+  return link.executeCommand({ type: 'transaction.submit', idempotencyKey, chainId, transaction })
 }
 
-export function providerSend(payload: ProviderSendPayload) {
-  return new Promise<any>((resolve) => {
-    link.rpc('providerSend', payload, (...responseArgs: any[]) => {
-      const [errOrResponse, result] = responseArgs
+export function signTypedData(chainId: number, typedData: TypedDataSignCommand['typedData']) {
+  return link.executeCommand({ type: 'typedData.signV4', chainId, typedData })
+}
 
-      if (responseArgs.length > 1) {
-        resolve(errOrResponse ? { error: errOrResponse } : { result })
-        return
-      }
-
-      resolve(errOrResponse)
-    })
+export async function flashQuote(request: MarketTradeQuoteRequest) {
+  const {
+    accountAddress: _accountAddress,
+    contraChain: _contraChain,
+    targetChain: _targetChain,
+    ...wireRequest
+  } = request
+  const result = await link.executeQuery({
+    type: 'flash.quote',
+    request: wireRequest as FlashQuoteRequest
   })
+  if (!result.ok) throw new Error(result.message || 'Flash quote failed.')
+
+  return { quote: result.quote, flash: result.flash }
 }
 
-export function flashQuote(request: MarketTradeQuoteRequest) {
-  return new Promise<any>((resolve, reject) => {
-    link.rpc('flashQuote', request, (err: any, result: any) => {
-      if (err) reject(err)
-      else resolve(result)
-    })
+export async function flashSubmitOrder(request: TradeSubmitRequest) {
+  const {
+    accountAddress: _accountAddress,
+    contraChain: _contraChain,
+    targetChain: _targetChain,
+    ...wireOrder
+  } = request
+  const result = await link.executeCommand({
+    type: 'flash.submit',
+    order: wireOrder as FlashSubmitOrder
   })
-}
+  if (!result.ok) throw new Error(result.message || 'Flash order submission failed.')
 
-export function flashSubmitOrder(request: unknown) {
-  return new Promise<any>((resolve, reject) => {
-    link.rpc('flashSubmitOrder', request, (err: any, result: any) => {
-      if (err) reject(err)
-      else resolve(result)
-    })
-  })
+  return { orderId: result.orderId }
 }

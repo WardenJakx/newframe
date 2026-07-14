@@ -1,26 +1,30 @@
 // Frames are the windows that run internal tools.
 // They are rendered based on the state of `main.frames`
-import log from 'electron-log'
+import { shallow } from 'zustand/vanilla/shallow'
 import store from '../../store'
 
 import frameInstances, { FrameInstance } from './frameInstances.js'
 
 function getFrames(): Record<string, Frame> {
-  return store('main.frames')
+  return store.getState().main.frames
 }
 
 export default class FrameManager {
   private frameInstances: Record<string, FrameInstance> = {}
 
   start() {
-    store.observer(() => {
-      const inFocus = store('main.focusedFrame')
-
-      const frames = getFrames()
-
+    const manageCurrentFrames = ([frames, inFocus]: [Record<string, Frame>, string]) => {
       this.manageFrames(frames, inFocus)
-      // manageOverlays(frames)
-    })
+    }
+    const selectFrames = () =>
+      [getFrames(), store.getState().main.focusedFrame] as [Record<string, Frame>, string]
+
+    manageCurrentFrames(selectFrames())
+    store.subscribe(
+      (state) => [state.main.frames, state.main.focusedFrame] as [Record<string, Frame>, string],
+      manageCurrentFrames,
+      { equalityFn: shallow }
+    )
   }
 
   manageFrames(frames: Record<string, Frame>, inFocus: string) {
@@ -37,32 +41,32 @@ export default class FrameManager {
 
         frameInstance.on('closed', () => {
           this.removeFrameInstance(frameId)
-          store.removeFrame(frameId)
+          store.getState().removeFrame(frameId)
         })
 
         frameInstance.on('maximize', () => {
-          store.updateFrame(frameId, { maximized: true })
+          store.getState().updateFrame(frameId, { maximized: true })
         })
 
         frameInstance.on('unmaximize', () => {
-          store.updateFrame(frameId, { maximized: false })
+          store.getState().updateFrame(frameId, { maximized: false })
         })
 
         frameInstance.on('enter-full-screen', () => {
-          store.updateFrame(frameId, { fullscreen: true })
+          store.getState().updateFrame(frameId, { fullscreen: true })
         })
 
         frameInstance.on('leave-full-screen', () => {
-          const platform = store('platform')
+          const platform = store.getState().platform
           // Handle broken linux window events
           if (platform !== 'win32' && platform !== 'darwin' && !frameInstance.isFullScreen()) {
             if (frameInstance.isMaximized()) {
-              store.updateFrame(frameId, { maximized: true })
+              store.getState().updateFrame(frameId, { maximized: true })
             } else {
-              store.updateFrame(frameId, { maximized: false })
+              store.getState().updateFrame(frameId, { maximized: false })
             }
           } else {
-            store.updateFrame(frameId, { fullscreen: false })
+            store.getState().updateFrame(frameId, { fullscreen: false })
           }
         })
 
@@ -111,25 +115,6 @@ export default class FrameManager {
     }
 
     return frameInstance
-  }
-
-  private sendMessageToFrame(frameId: string, channel: string, ...args: any) {
-    const frameInstance = this.frameInstances[frameId]
-
-    if (frameInstance && !frameInstance.isDestroyed()) {
-      const webContents = frameInstance.webContents
-      webContents.send(channel, ...args)
-    } else {
-      log.error(
-        new Error(
-          `Tried to send a message to frame with id ${frameId} but it does not exist or has been destroyed`
-        )
-      )
-    }
-  }
-
-  broadcast(channel: string, args: any[]) {
-    Object.keys(this.frameInstances).forEach((id) => this.sendMessageToFrame(id, channel, ...args))
   }
 
   refocus(id: string) {

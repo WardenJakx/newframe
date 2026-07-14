@@ -23,7 +23,6 @@ interface Account {
   id: string
   name: string
   lastSignerType: SignerType
-  active: boolean
   address: Address
   status: AccountStatus
   signer: string

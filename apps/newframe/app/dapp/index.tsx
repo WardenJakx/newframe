@@ -1,10 +1,9 @@
 import { createRoot } from 'react-dom/client'
-import Restore from 'react-restore'
 
 import App from './App'
 
 import link from '../../resources/link'
-import appStore from '../store'
+import { connectRendererState } from '../state/connectState'
 
 document.addEventListener('dragover', (e) => e.preventDefault())
 document.addEventListener('drop', (e) => e.preventDefault())
@@ -13,18 +12,20 @@ function AppComponent() {
   return <App />
 }
 
-link.rpc('getFrameId', (err: any, frameId: any) => {
-  if (err) return console.error('Could not get frameId from main', err)
-  ;(window as any).frameId = frameId
-  link.rpc('getState', (err: any, state: any) => {
-    if (err) return console.error('Could not get initial state from main')
-    const store = appStore(state)
-    ;(window as any).store = store
-    document.body.classList.add('dark')
-    const root = createRoot(document.getElementById('dapp') as HTMLElement)
-    const Dapp = Restore.connect(AppComponent, store)
-    root.render(<Dapp />)
+async function start() {
+  const disconnect = await connectRendererState('dapp')
+  window.addEventListener('beforeunload', () => void disconnect(), { once: true })
+  document.body.classList.add('dark')
+  const root = createRoot(document.getElementById('dapp') as HTMLElement)
+  root.render(<AppComponent />)
+}
+
+void start().catch((error) => console.error('Could not connect dapp state', error))
+
+document.addEventListener('contextmenu', (event) => {
+  void link.executeCommand({
+    type: 'dapp.context-menu',
+    x: event.clientX,
+    y: event.clientY
   })
 })
-
-document.addEventListener('contextmenu', (e) => link.send('*:contextmenu', e.clientX, e.clientY))

@@ -11,16 +11,11 @@ import { resolveSendAssetFromRouteAssetId, toCanonicalAssetId } from '../../../r
 import svg from '../../../resources/svg'
 import { formatUnits, toBigInt } from '../../../resources/utils/numbers'
 import { createDappWalletSelector, type DappWalletAccount } from '../../state/selectors/dappWallet'
-import { useAppSelector } from '../../state/useAppSelector'
+import { useDappSelector } from '../../state/useAppSelector'
 import AccountIcon from './AccountIcon'
 import { createInitialSendState, sendReducer, SEND_TOKEN_ROWS_INCREMENT } from './sendReducer'
-import {
-  buildProviderSendPayload,
-  buildSendTransaction,
-  cleanAddress,
-  shouldResolveName
-} from './sendTransaction'
-import { closeSend, initSendOrigin, providerSend, resolveName } from './sendService'
+import { buildSendTransaction, cleanAddress, shouldResolveName } from './sendTransaction'
+import { closeSend, resolveName, submitTransaction } from './sendService'
 import { canProceed, getAmountBaseUnits, getRecipientAddress, validateSendRequest } from './sendValidation'
 
 interface SendProps {
@@ -34,7 +29,7 @@ function recipientName(account: DappWalletAccount) {
 export default function Send({ assetId }: SendProps) {
   const selectSendView = React.useMemo(() => createDappWalletSelector(), [])
   const { accounts, balanceSummaries, currentAccount, networks, networksMeta } =
-    useAppSelector(selectSendView)
+    useDappSelector(selectSendView)
   const [state, dispatch] = React.useReducer(sendReducer, assetId, createInitialSendState)
 
   const selectedAssetSummary = React.useMemo(() => {
@@ -149,25 +144,24 @@ export default function Send({ assetId }: SendProps) {
     }
 
     const transaction = buildSendTransaction({
-      account: { address: currentAccount.address || '' },
       amount,
       asset,
       recipientAddress
     })
-    const payload = buildProviderSendPayload({
-      chainId: asset.chainId,
-      transaction
-    })
-
-    initSendOrigin(asset.chainId)
     dispatch({ type: 'submitStarted' })
 
-    const response = await providerSend(payload)
+    let response
+    try {
+      response = await submitTransaction(asset.chainId, transaction, crypto.randomUUID())
+    } catch {
+      dispatch({ type: 'submitFailed', error: 'Transaction failed.' })
+      return
+    }
 
-    if (response?.error) {
+    if (!response.ok) {
       dispatch({
         type: 'submitFailed',
-        error: response.error.message || 'Transaction failed.'
+        error: response.message || 'Transaction failed.'
       })
     } else {
       dispatch({ type: 'submitSucceeded' })

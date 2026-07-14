@@ -91,6 +91,14 @@ describe('tradeReducer', () => {
       balances: [{ assetId: FLASH_USDC_ASSET.id, balance: '1000000000000' }],
       chainId: FLASH_WETH_ASSET.chainId
     })
+    const onlyWeth = createInitialTradeState({
+      assets,
+      balances: [
+        { assetId: FLASH_WETH_ASSET.id, balance: '10000000000000000000' },
+        { assetId: FLASH_NATIVE_ETH_ASSET.id, balance: '10000000000000000000' }
+      ],
+      chainId: FLASH_WETH_ASSET.chainId
+    })
 
     expect(generic.targetAsset).toBe(FLASH_WETH_ASSET)
     expect(generic.contraAsset).toBe(FLASH_USDC_ASSET)
@@ -101,6 +109,9 @@ describe('tradeReducer', () => {
     expect(onlyUsdc.targetAsset).toBe(FLASH_WETH_ASSET)
     expect(onlyUsdc.contraAsset).toBe(FLASH_USDC_ASSET)
     expect(onlyUsdc.side).toBe('buy')
+    expect(onlyWeth.targetAsset).toBe(FLASH_WETH_ASSET)
+    expect(onlyWeth.contraAsset).toBe(FLASH_USDC_ASSET)
+    expect(onlyWeth.side).toBe('sell')
   })
 
   it('uses the sell-specific contra priority during initialization', () => {

@@ -9,7 +9,7 @@
   "description": "Newframe Companion Extension",
   "main": "src",
   "scripts": {
-    "test": "bun run lint",
+    "test": "bun test && bun run lint",
     "lint": "eslint .",
     "lint:fix": "eslint --fix .",
     "format": "prettier --write '**/*.{yml,json,md,html,ts,tsx,js,mjs}' --config ../../.prettierrc.json --ignore-path ../../.prettierignore",
@@ -31,8 +31,8 @@
     "events": "3.3.0",
     "react": "19.2.7",
     "react-dom": "19.2.7",
-    "react-restore": "workspace:*",
-    "styled-components": "^6.4.2"
+    "styled-components": "^6.4.2",
+    "zustand": "^5.0.14"
   },
   "peerDependencies": {
     "typescript": "^6.0.3"

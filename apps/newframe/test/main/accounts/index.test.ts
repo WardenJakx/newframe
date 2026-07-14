@@ -48,6 +48,11 @@ let signers: any
 let signerCompatibility: any
 let maxFee: any
 
+const storeState = () => store.getState() as any
+const canonicalRequest = (id: string | number = request.handlerId) => Accounts.current().requests[id] as any
+const patchRequest = (update: (request: any) => void, id: string | number = request.handlerId) =>
+  Accounts.current().patchRequest(id, update)
+
 const account = {
   id: '0x22dd63c3619818fdbc262c78baee43cb61e9cccf',
   name: 'Seed Account',
@@ -67,7 +72,6 @@ const account2 = {
   lastSignerType: 'ledger',
   address: '0xef8f1bbe054ad30c6af774ed7a7c70a74ef77ac5',
   status: 'ok',
-  active: false,
   signer: '',
   requests: {},
   ensName: '',
@@ -137,14 +141,36 @@ it('sets the account signer', () => {
 })
 
 it('selects the first remaining account when removing the current account', () => {
-  store.set('main.accountOrder', [account2.address, account.address])
+  store.setState((state: any) => {
+    state.main.accountOrder = [account2.address, account.address]
+  })
 
   Accounts.remove(account.address)
 
   expect(Accounts.current().address).toBe(account2.address)
-  expect(store('main.currentAccount')).toBe(account2.address)
-  expect(store('selected.current')).toBe(account2.address)
-  expect(store('main.accounts', account.address)).toBeUndefined()
+  expect(storeState().main.currentAccount).toBe(account2.address)
+  expect(storeState().main.accounts[account.address]).toBeUndefined()
+})
+
+it('rejects pending requests before removing their account', () => {
+  const respond = jest.fn()
+  const pendingRequest = {
+    handlerId: 'pending-signature',
+    type: 'sign',
+    origin: '0r161n',
+    account: account.address,
+    payload: { id: 42, jsonrpc: '2.0', method: 'eth_sign', params: [account.address, '0x01'] }
+  }
+
+  Accounts.current().addRequest(pendingRequest, respond)
+  Accounts.remove(account.address)
+
+  expect(respond).toHaveBeenCalledWith({
+    id: 42,
+    jsonrpc: '2.0',
+    error: { code: 4001, message: 'User rejected the request' }
+  })
+  expect(storeState().main.accounts[account.address]).toBeUndefined()
 })
 
 it('clears the selected account when removing the last account', () => {
@@ -152,17 +178,50 @@ it('clears the selected account when removing the last account', () => {
   Accounts.remove(account.address)
 
   expect(Accounts.current()).toBeNull()
-  expect(store('main.currentAccount')).toBe('')
-  expect(store('selected.current')).toBe('')
+  expect(storeState().main.currentAccount).toBe('')
 })
 
-describe('#startDataScanner', () => {
-  it('does not start the external data scanner during construction', () => {
-    new AccountsClass()
+describe('#initialize', () => {
+  it('does not instantiate persisted accounts or start services during construction', () => {
+    const accounts = new AccountsClass()
 
+    expect(accounts.accounts).toEqual({})
     expect(externalDataScannerFactoryMock).not.toHaveBeenCalled()
   })
 
+  it('instantiates persisted accounts only during explicit post-hydration initialization', () => {
+    const persistedAccounts = storeState().main.accounts
+    store.setState((state: any) => {
+      state.main.accounts = {}
+    })
+    const accounts = new AccountsClass()
+
+    expect(accounts.accounts[account.address]).toBeUndefined()
+
+    store.setState((state: any) => {
+      state.main.accounts = persistedAccounts
+    })
+    accounts.initialize()
+
+    expect(accounts.accounts[account.address]?.address).toBe(account.address)
+
+    accounts.close()
+  })
+
+  it('initializes persisted accounts only once', () => {
+    const accounts = new AccountsClass()
+
+    accounts.initialize()
+    const initializedAccount = accounts.accounts[account.address]
+    accounts.initialize()
+
+    expect(accounts.accounts[account.address]).toBe(initializedAccount)
+
+    accounts.close()
+  })
+})
+
+describe('#startDataScanner', () => {
   it('starts the external data scanner once', () => {
     const accounts = new AccountsClass()
 
@@ -201,7 +260,7 @@ describe('#startDataScanner', () => {
     accounts.startDataScanner()
 
     expect(accounts.refreshPositions(account.address, 31337, [token])).toBe(true)
-    expect(store('main.tokens.known', account.address)).toContainEqual(token)
+    expect(storeState().main.tokens.known[account.address]).toContainEqual(token)
     expect(externalDataScannerMock.refreshPositions).toHaveBeenCalledWith(account.address, 31337, [token])
 
     accounts.close()
@@ -212,7 +271,7 @@ describe('#updatePendingFees', () => {
   beforeEach(() => {
     request.data.gasFeesSource = GasFeesSource.Frame
 
-    store.setGasFees('ethereum', parseInt(request.data.chainId), {
+    storeState().setGasFees('ethereum', parseInt(request.data.chainId), {
       maxBaseFeePerGas: gweiToHex(9),
       maxPriorityFeePerGas: gweiToHex(2)
     })
@@ -222,8 +281,8 @@ describe('#updatePendingFees', () => {
     Accounts.addRequest(request)
     Accounts.updatePendingFees(parseInt(request.data.chainId))
 
-    expect(request.data.maxFeePerGas).toBe(gweiToHex(11))
-    expect(request.data.maxPriorityFeePerGas).toBe(gweiToHex(2))
+    expect(canonicalRequest().data.maxFeePerGas).toBe(gweiToHex(11))
+    expect(canonicalRequest().data.maxPriorityFeePerGas).toBe(gweiToHex(2))
   })
 
   it('does not update a transaction with gas fees provided by a dapp', () => {
@@ -278,28 +337,36 @@ describe('#setBaseFee', () => {
   })
 
   it('does not set a base fee on a non-transaction request', () => {
-    request.type = 'message'
+    patchRequest((request) => {
+      request.type = 'message'
+    })
 
     expect(() => setBaseFee('0x1dcd65000')).toThrow()
   })
 
   it('does not set a base fee on a locked request', () => {
-    request.locked = true
+    patchRequest((request) => {
+      request.locked = true
+    })
 
     expect(() => setBaseFee('0x1dcd65000')).toThrow()
     expect((Accounts.current().requests[1] as any).data.maxFeePerGas).toBe(request.data.maxFeePerGas)
   })
 
   it('does not set a base fee on an automatic update if fees were manually set by the user', () => {
-    request.feesUpdatedByUser = true
+    patchRequest((request) => {
+      request.feesUpdatedByUser = true
+    })
 
     expect(() => setBaseFee('0x1dcd65000')).toThrow()
     expect((Accounts.current().requests[1] as any).data.maxFeePerGas).toBe(request.data.maxFeePerGas)
   })
 
   it('applies automatic base fee update', () => {
-    request.data.maxFeePerGas = gweiToHex(10)
-    request.data.maxPriorityFeePerGas = gweiToHex(2)
+    patchRequest((request) => {
+      request.data.maxFeePerGas = gweiToHex(10)
+      request.data.maxPriorityFeePerGas = gweiToHex(2)
+    })
 
     const updatedBaseFee = 6 // gwei
 
@@ -311,8 +378,10 @@ describe('#setBaseFee', () => {
   })
 
   it('applies user-initiated base fee update', () => {
-    request.data.maxFeePerGas = gweiToHex(10)
-    request.data.maxPriorityFeePerGas = gweiToHex(2)
+    patchRequest((request) => {
+      request.data.maxFeePerGas = gweiToHex(10)
+      request.data.maxPriorityFeePerGas = gweiToHex(2)
+    })
 
     setBaseFee(gweiToHex(6), 1, true)
 
@@ -320,8 +389,10 @@ describe('#setBaseFee', () => {
   })
 
   it('does not update if the base fee has not changed', () => {
-    request.data.maxFeePerGas = gweiToHex(10)
-    request.data.maxPriorityFeePerGas = gweiToHex(2)
+    patchRequest((request) => {
+      request.data.maxFeePerGas = gweiToHex(10)
+      request.data.maxPriorityFeePerGas = gweiToHex(2)
+    })
 
     setBaseFee(gweiToHex(8))
 
@@ -344,7 +415,9 @@ describe('#setBaseFee', () => {
     const maxTotalFee = maxTotal / gasLimit
     const highBaseFee = intToHex(maxTotalFee + 10e9) // add 10 gwei to exceed the maximum limit
 
-    request.data.gasLimit = intToHex(gasLimit)
+    patchRequest((request) => {
+      request.data.gasLimit = intToHex(gasLimit)
+    })
     ;(maxFee as any).mockReturnValue(maxTotal)
 
     setBaseFee(highBaseFee)
@@ -353,8 +426,10 @@ describe('#setBaseFee', () => {
   })
 
   it('updates the feesUpdatedByUser flag', () => {
-    request.data.maxFeePerGas = gweiToHex(10)
-    request.data.maxPriorityFeePerGas = gweiToHex(2)
+    patchRequest((request) => {
+      request.data.maxFeePerGas = gweiToHex(10)
+      request.data.maxPriorityFeePerGas = gweiToHex(2)
+    })
 
     setBaseFee(gweiToHex(10), 1, true)
 
@@ -393,20 +468,26 @@ describe('#setPriorityFee', () => {
   })
 
   it('does not set a priority fee on a non-transaction request', () => {
-    request.type = 'message'
+    patchRequest((request) => {
+      request.type = 'message'
+    })
 
     expect(() => setPriorityFee('0x12a05f200')).toThrow()
   })
 
   it('does not set a priority fee on a locked request', () => {
-    request.locked = true
+    patchRequest((request) => {
+      request.locked = true
+    })
 
     expect(() => setPriorityFee('0x12a05f200')).toThrow()
     expect((Accounts.current().requests[1] as any).data.maxFeePerGas).toBe(request.data.maxFeePerGas)
   })
 
   it('does not set a priority fee on an automatic update if fees were manually set by the user', () => {
-    request.feesUpdatedByUser = true
+    patchRequest((request) => {
+      request.feesUpdatedByUser = true
+    })
 
     expect(() => setPriorityFee('0x12a05f200')).toThrow()
     expect((Accounts.current().requests[1] as any).data.maxFeePerGas).toBe(request.data.maxFeePerGas)
@@ -424,8 +505,10 @@ describe('#setPriorityFee', () => {
   })
 
   it('does not update if the priority fee has not changed', () => {
-    request.data.maxFeePerGas = gweiToHex(10)
-    request.data.maxPriorityFeePerGas = gweiToHex(2)
+    patchRequest((request) => {
+      request.data.maxFeePerGas = gweiToHex(10)
+      request.data.maxPriorityFeePerGas = gweiToHex(2)
+    })
 
     setPriorityFee(gweiToHex(2))
 
@@ -450,14 +533,18 @@ describe('#setPriorityFee', () => {
     const gasLimit = 1e7
     const maxTotalFee = maxTotal / gasLimit
 
-    request.data.gasLimit = intToHex(gasLimit)
-    request.data.maxFeePerGas = gweiToHex(190)
-    request.data.maxPriorityFeePerGas = gweiToHex(40)
+    patchRequest((request) => {
+      request.data.gasLimit = intToHex(gasLimit)
+      request.data.maxFeePerGas = gweiToHex(190)
+      request.data.maxPriorityFeePerGas = gweiToHex(40)
+    })
     ;(maxFee as any).mockReturnValue(maxTotal)
 
     const highPriorityFee = 60e9 // add 20 gwei to the above to exceed the maximum limit
     const expectedPriorityFee =
-      maxTotalFee - (parseInt(request.data.maxFeePerGas) - parseInt(request.data.maxPriorityFeePerGas))
+      maxTotalFee -
+      (parseInt(canonicalRequest().data.maxFeePerGas) -
+        parseInt(canonicalRequest().data.maxPriorityFeePerGas))
 
     setPriorityFee(highPriorityFee)
 
@@ -477,7 +564,9 @@ describe('#setPriorityFee', () => {
 describe('#setGasPrice', () => {
   beforeEach(() => {
     Accounts.addRequest(request, jest.fn())
-    request.data.type = '0x0'
+    patchRequest((request) => {
+      request.data.type = '0x0'
+    })
   })
 
   const setGasPrice = (price: any, requestId = 1, userUpdate = false) =>
@@ -506,20 +595,26 @@ describe('#setGasPrice', () => {
   })
 
   it('does not set a gas price on a non-transaction request', () => {
-    request.type = 'message'
+    patchRequest((request) => {
+      request.type = 'message'
+    })
 
     expect(() => setGasPrice('0x23')).toThrow()
   })
 
   it('does not set a gas price on a locked request', () => {
-    request.locked = true
+    patchRequest((request) => {
+      request.locked = true
+    })
 
     expect(() => setGasPrice('0x23')).toThrow()
     expect((Accounts.current().requests[1] as any).data.gasPrice).toBe(request.data.gasPrice)
   })
 
   it('does not set a gas price on an automatic update if fees were manually set by the user', () => {
-    request.feesUpdatedByUser = true
+    patchRequest((request) => {
+      request.feesUpdatedByUser = true
+    })
 
     expect(() => setGasPrice('0x23')).toThrow()
     expect((Accounts.current().requests[1] as any).data.gasPrice).toBe(request.data.gasPrice)
@@ -532,7 +627,9 @@ describe('#setGasPrice', () => {
   })
 
   it('does not update if the gas price has not changed', () => {
-    request.data.gasPrice = gweiToHex(10)
+    patchRequest((request) => {
+      request.data.gasPrice = gweiToHex(10)
+    })
 
     setGasPrice(gweiToHex(10))
 
@@ -545,7 +642,9 @@ describe('#setGasPrice', () => {
     const maxTotalFee = maxTotal / gasLimit
     const highPrice = intToHex(maxTotalFee + 10e9) // 250 gwei
 
-    request.data.gasLimit = intToHex(gasLimit)
+    patchRequest((request) => {
+      request.data.gasLimit = intToHex(gasLimit)
+    })
     ;(maxFee as any).mockReturnValue(maxTotal)
 
     setGasPrice(highPrice)
@@ -563,7 +662,9 @@ describe('#setGasPrice', () => {
   })
 
   it('updates the feesUpdatedByUser flag', () => {
-    request.data.gasPrice = gweiToHex(30)
+    patchRequest((request) => {
+      request.data.gasPrice = gweiToHex(30)
+    })
 
     setGasPrice(gweiToHex(45), 1, true)
 
@@ -602,20 +703,26 @@ describe('#setGasLimit', () => {
   })
 
   it('does not set a gas limit on a non-transaction request', () => {
-    request.type = 'message'
+    patchRequest((request) => {
+      request.type = 'message'
+    })
 
     expect(() => setGasLimit('0x61a8')).toThrow()
   })
 
   it('does not set a gas limit on a locked request', () => {
-    request.locked = true
+    patchRequest((request) => {
+      request.locked = true
+    })
 
     expect(() => setGasLimit('0x61a8')).toThrow()
     expect((Accounts.current().requests[1] as any).data.gasLimit).toBe(request.data.gasLimit)
   })
 
   it('does not set a gas limit on an automatic update if fees were manually set by the user', () => {
-    request.feesUpdatedByUser = true
+    patchRequest((request) => {
+      request.feesUpdatedByUser = true
+    })
 
     expect(() => setGasLimit('0x61a8')).toThrow()
     expect((Accounts.current().requests[1] as any).data.gasLimit).toBe(request.data.gasLimit)
@@ -633,8 +740,10 @@ describe('#setGasLimit', () => {
     const maxLimit = maxTotalFee / gasPrice
     const gasLimit = intToHex(maxLimit + 1e5) // add 10000 to exceed the maximum limit
 
-    request.data.type = '0x0'
-    request.data.gasPrice = intToHex(gasPrice)
+    patchRequest((request) => {
+      request.data.type = '0x0'
+      request.data.gasPrice = intToHex(gasPrice)
+    })
     ;(maxFee as any).mockReturnValue(maxTotalFee)
 
     setGasLimit(gasLimit)
@@ -648,8 +757,10 @@ describe('#setGasLimit', () => {
     const maxLimit = maxTotalFee / maxFeePerGas
     const gasLimit = intToHex(maxLimit + 1e5) // add 10000 to exceed the maximum limit
 
-    request.data.type = '0x2'
-    request.data.maxFeePerGas = intToHex(maxFeePerGas)
+    patchRequest((request) => {
+      request.data.type = '0x2'
+      request.data.maxFeePerGas = intToHex(maxFeePerGas)
+    })
     ;(maxFee as any).mockReturnValue(maxTotalFee)
 
     setGasLimit(gasLimit)
@@ -703,9 +814,10 @@ describe('#adjustNonce', () => {
   })
 
   it('does not adjust a request if no account is active', () => {
+    Accounts.setSigner(undefined, jest.fn())
     adjustNonce(1)
 
-    expect((Accounts.current().requests[1] as any).data.nonce).toBe(request.data.nonce)
+    expect(storeState().main.accounts[account.address].requests[1].data.nonce).toBe(request.data.nonce)
   })
 
   it('adjusts the provided nonce up one increment', () => {
@@ -727,7 +839,9 @@ describe('#adjustNonce', () => {
   it('gets the latest nonce from the chain', () => {
     onChainNonce = '0x5'
 
-    delete request.data.nonce
+    patchRequest((request) => {
+      delete request.data.nonce
+    })
 
     adjustNonce(1)
 
@@ -738,7 +852,9 @@ describe('#adjustNonce', () => {
     onChainNonce = '0x5'
     const expectedNonce = addHexPrefix((parseInt(onChainNonce) - 1).toString(16))
 
-    delete request.data.nonce
+    patchRequest((request) => {
+      delete request.data.nonce
+    })
 
     adjustNonce(-1)
 
@@ -766,15 +882,20 @@ describe('#resetNonce', () => {
   const resetNonce = (requestId = 1) => Accounts.resetNonce(requestId)
 
   it('it will un-set the nonce when not present inside the tx request payload', () => {
-    delete request.payload.params[0].nonce
+    patchRequest((request) => {
+      delete request.payload.params[0].nonce
+    })
     resetNonce()
-    expect(request.data.nonce).toBe(undefined)
+    expect(canonicalRequest().data.nonce).toBe(undefined)
   })
 
   it('it will revert to the nonce inside the tx request payload when present', () => {
-    request.payload.params[0].nonce = '0x' + (BigInt(request.data.nonce) - 1n).toString(16)
+    const initialNonce = canonicalRequest().data.nonce
+    patchRequest((request) => {
+      request.payload.params[0].nonce = '0x' + (BigInt(initialNonce) - 1n).toString(16)
+    })
     resetNonce()
-    expect(request.data.nonce).toBe(request.payload.params[0].nonce)
+    expect(canonicalRequest().data.nonce).toBe(canonicalRequest().payload.params[0].nonce)
   })
 })
 
@@ -790,26 +911,30 @@ describe('#setTxSent', () => {
       name: 'USD Coin',
       symbol: 'USDC'
     }
-    store.set('main.tokens.known', account.address, [savedToken])
+    store.setState((state: any) => {
+      state.main.tokens.known[account.address] = [savedToken]
+    })
     provider.send = jest.fn()
 
     Accounts.addRequest(request, jest.fn())
-    ;(Accounts.current().requests[request.handlerId] as any).simulation = {
-      status: 'success',
-      effects: [
-        {
-          id: 'sim-usdc-out',
-          kind: 'erc20',
-          direction: 'out',
-          decimals: 6,
-          symbol: 'USDC',
-          assetAddress: usdc
-        }
-      ]
-    }
+    patchRequest((request) => {
+      request.simulation = {
+        status: 'success',
+        effects: [
+          {
+            id: 'sim-usdc-out',
+            kind: 'erc20',
+            direction: 'out',
+            decimals: 6,
+            symbol: 'USDC',
+            assetAddress: usdc
+          }
+        ]
+      }
+    })
     Accounts.setTxSent(request.handlerId, hash)
 
-    expect(store('main.tokens.known', account.address)).toStrictEqual([savedToken])
+    expect(storeState().main.tokens.known[account.address]).toStrictEqual([savedToken])
   })
 
   it('saves affected tokens and refreshes transaction positions when the receipt lands', async () => {
@@ -832,7 +957,9 @@ describe('#setTxSent', () => {
         }
       ]
     }
-    store.set('main.tokens.known', account.address, [])
+    store.setState((state: any) => {
+      state.main.tokens.known[account.address] = []
+    })
 
     provider.send = jest.fn((payload: any, cb: any) => {
       if (payload.method === 'eth_subscribe') return cb({ error: { code: -32601, message: 'unsupported' } })
@@ -854,7 +981,9 @@ describe('#setTxSent', () => {
 
     Accounts.startDataScanner()
     Accounts.addRequest(request, jest.fn())
-    ;(Accounts.current().requests[request.handlerId] as any).simulation = simulation
+    patchRequest((request) => {
+      request.simulation = simulation
+    })
     Accounts.setTxSent(request.handlerId, hash)
 
     const expectedToken = {
@@ -864,7 +993,7 @@ describe('#setTxSent', () => {
       name: 'USDC',
       symbol: 'USDC'
     }
-    expect(store('main.tokens.known', account.address)).toContainEqual(expectedToken)
+    expect(storeState().main.tokens.known[account.address]).toContainEqual(expectedToken)
 
     jest.advanceTimersByTime(1000)
     await Promise.resolve()
@@ -874,7 +1003,7 @@ describe('#setTxSent', () => {
 
     expect(externalDataScannerMock.refreshPositions).toHaveBeenCalledTimes(1)
     expect(externalDataScannerMock.refreshPositions).toHaveBeenCalledWith(account.address, 1, [expectedToken])
-    expect(store('main.activity', hash, 'positionsRefreshedAt')).toEqual(expect.any(Number))
+    expect(storeState().main.activity[hash].positionsRefreshedAt).toEqual(expect.any(Number))
 
     Accounts.close()
   })
@@ -960,7 +1089,7 @@ describe('#setTxSent', () => {
     })
 
     Accounts.addRequest(request, jest.fn())
-    Accounts.current().requests[otherChainRequest.handlerId] = otherChainRequest
+    storeState().upsertAccountRequest(account.address, otherChainRequest)
     Accounts.setTxSent(request.handlerId, hash)
     jest.advanceTimersByTime(1000)
     await Promise.resolve()
@@ -989,21 +1118,23 @@ describe('#setTxSent', () => {
     provider.send = jest.fn()
 
     Accounts.addRequest(request, jest.fn())
-    store.set('windows.panel.nav', [
-      {
-        view: 'requestView',
-        data: {
-          step: 'confirm',
-          accountId: account.address,
-          requestId: request.handlerId
+    store.setState((state: any) => {
+      state.windows.panel.nav = [
+        {
+          view: 'requestView',
+          data: {
+            step: 'confirm',
+            accountId: account.address,
+            requestId: request.handlerId
+          }
         }
-      }
-    ])
+      ]
+    })
     Accounts.addRequest(queuedRequest, jest.fn())
 
     Accounts.setTxSent(request.handlerId, hash)
 
-    expect(store('windows.panel.nav', 0)).toEqual({
+    expect(storeState().windows.panel.nav[0]).toEqual({
       view: 'requestView',
       data: {
         step: 'confirm',
@@ -1013,7 +1144,7 @@ describe('#setTxSent', () => {
     })
   })
 
-  it('resumes non-terminal persisted activity after construction', async () => {
+  it('resumes non-terminal persisted activity during initialization', async () => {
     const hash = '0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'
     const receiptBlock = 200
 
@@ -1033,38 +1164,43 @@ describe('#setTxSent', () => {
       cb({ result: null })
     })
 
-    store.set('main.activity', {
-      [hash]: {
-        id: hash,
-        hash,
-        account: account.address,
-        address: account.address,
-        chainId: 1,
-        chainType: 'ethereum',
-        nonce: request.data.nonce,
-        status: 'submitted',
-        confirmations: 0,
-        submittedAt: Date.now(),
-        updatedAt: Date.now(),
-        data: {
-          ...request.data,
-          from: account.address,
-          chainId: '0x1'
+    store.setState((state: any) => {
+      state.main.activity = {
+        [hash]: {
+          id: hash,
+          hash,
+          account: account.address,
+          address: account.address,
+          chainId: 1,
+          chainType: 'ethereum',
+          nonce: request.data.nonce,
+          status: 'submitted',
+          confirmations: 0,
+          submittedAt: Date.now(),
+          updatedAt: Date.now(),
+          data: {
+            ...request.data,
+            from: account.address,
+            chainId: '0x1'
+          }
         }
       }
     })
 
-    new AccountsClass()
+    const accounts = new AccountsClass()
+    accounts.initialize()
     await Promise.resolve()
     await Promise.resolve()
     await Promise.resolve()
 
-    expect(store('main.activity', hash)).toEqual(
+    expect(storeState().main.activity[hash]).toEqual(
       expect.objectContaining({
         status: 'succeeded',
         confirmations: TRANSACTION_CONFIRMATION_TARGET
       })
     )
+
+    accounts.close()
   })
 })
 
@@ -1137,7 +1273,7 @@ describe('#signerCompatibility', () => {
   }
 
   beforeEach(() => {
-    store.navDash = jest.fn()
+    storeState().navDash.mockImplementation(() => {})
 
     activeSigner = {
       id: '12',
@@ -1146,20 +1282,19 @@ describe('#signerCompatibility', () => {
       summary: jest.fn()
     }
 
-    store.newSigner(lockedSeedSigner)
+    storeState().newSigner(lockedSeedSigner)
     ;(signers.get as any).mockImplementation((id: any) => {
       if (id === activeSigner.id) return activeSigner
       if (id === lockedSeedSigner.id) return lockedSeedSigner
     })
 
-    Accounts.accounts[account.id].lastSignerType = 'seed'
-    Accounts.accounts[account.id].signer = activeSigner.id
+    Accounts.accounts[account.id].patch({ lastSignerType: 'seed', signer: activeSigner.id })
     Accounts.addRequest(request)
   })
 
   afterEach(() => {
-    store.removeSigner(activeSigner.id)
-    store.removeSigner(lockedSeedSigner.id)
+    storeState().removeSigner(activeSigner.id)
+    storeState().removeSigner(lockedSeedSigner.id)
 
     Accounts.removeRequests([request.handlerId])
   })
@@ -1172,15 +1307,14 @@ describe('#signerCompatibility', () => {
 
       activeSigner.status = 'disconnected'
       activeSigner.type = signerType
-      store.newSigner(activeSigner)
+      storeState().newSigner(activeSigner)
 
-      Accounts.accounts[account.id].signer = undefined
-      Accounts.accounts[account.id].lastSignerType = signerType
+      Accounts.accounts[account.id].patch({ signer: '', lastSignerType: signerType })
 
       Accounts.signerCompatibility(request.handlerId, cb)
 
       expect(cb).toHaveBeenCalledWith(new Error('Signer unavailable'))
-      expect(store.navDash).toHaveBeenCalledWith({
+      expect(storeState().navDash).toHaveBeenCalledWith({
         data: {
           signer: activeSigner.id
         },
@@ -1198,7 +1332,7 @@ describe('#signerCompatibility', () => {
 
     Accounts.signerCompatibility(request.handlerId, cb)
 
-    expect(store.navDash).not.toHaveBeenCalled()
+    expect(storeState().navDash).not.toHaveBeenCalled()
     expect(cb).toHaveBeenCalledWith(null, compatibility)
   })
 
@@ -1209,7 +1343,7 @@ describe('#signerCompatibility', () => {
 
     Accounts.signerCompatibility(request.handlerId, cb)
 
-    expect(store.navDash).not.toHaveBeenCalled()
+    expect(storeState().navDash).not.toHaveBeenCalled()
   })
 
   it('should return an app lock error when a hot signer is not ready', () => {
@@ -1225,11 +1359,11 @@ describe('#signerCompatibility', () => {
   it('should return an error when there is no signer', () => {
     const cb = jest.fn()
 
-    Accounts.accounts[account.id].signer = undefined
+    Accounts.accounts[account.id].patch({ signer: '' })
 
     Accounts.signerCompatibility(request.handlerId, cb)
 
-    expect(store.navDash).not.toHaveBeenCalled()
+    expect(storeState().navDash).not.toHaveBeenCalled()
     expect(cb).toHaveBeenCalledWith(new Error('No signer'))
   })
 })

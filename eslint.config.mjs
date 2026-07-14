@@ -82,15 +82,6 @@ export default [
   nodeGlobalsConfig({ files: ['harness/**/*.ts'] }),
   ...typescriptConfigs({ basePath: 'harness', tsconfigRootDir: workspacePath('./') }),
 
-  globalsConfig({
-    basePath: 'packages/react-restore',
-    files: ['**/*.js'],
-    globals: {
-      setTimeout: 'readonly'
-    }
-  }),
-  ...typescriptConfigs({ basePath: 'packages/react-restore', tsconfigRootDir: workspacePath('./') }),
-
   nodeGlobalsConfig({
     basePath: newframe,
     files: newframeMainFiles,
