@@ -1,16 +1,19 @@
 import { isValidAddress } from '@ethereumjs/util'
-import { Component, useEffect, useRef, useState } from 'react'
-import Restore from 'react-restore'
+import { useEffect, useRef, useState } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import RingIcon from '../../../../resources/Components/RingIcon'
 import link from '../../../../resources/link'
 import svg from '../../../../resources/svg'
 import { chainColorCssVariable } from '../../../../resources/style/tokens/colors'
+import { useWalletSelector } from '../../../state/useAppSelector'
+import type { DashChain, DashChainMetadata, DashRendererState } from '../../state'
 
 const invalidFormatError = 'INVALID CONTRACT ADDRESS'
 const unableToVerifyError = `COULD NOT FIND TOKEN WITH ADDRESS`
 
-const navForward = async (notifyData: any) =>
-  link.send('nav:forward', 'dash', {
+const navForward = (notifyData: any) =>
+  link.executeCommand({
+    type: 'dash.navigate',
     view: 'tokens',
     data: {
       notify: 'addToken',
@@ -18,7 +21,7 @@ const navForward = async (notifyData: any) =>
     }
   })
 
-const navBack = async (steps = 1) => link.send('nav:back', 'dash', steps)
+const navBack = (steps = 1) => link.executeCommand({ type: 'dash.back', steps })
 
 const TokenError = ({ text, onContinue }: any) => {
   return (
@@ -44,69 +47,69 @@ const TokenError = ({ text, onContinue }: any) => {
   )
 }
 
-class AddTokenChainScreenComponent extends Component<any, any> {
-  declare store: Store
+const EMPTY_CHAINS: Record<string | number, DashChain> = {}
+const EMPTY_CHAIN_METADATA: Record<string | number, DashChainMetadata> = {}
 
-  override render() {
-    const activeChains = (Object.values(this.store('main.networks.ethereum')) as any[]).filter(
-      (chain) => chain.on
-    )
+const selectChainState = (state: DashRendererState) => ({
+  chains: state.networks.ethereum || EMPTY_CHAINS,
+  chainMetadata: state.networksMeta.ethereum || EMPTY_CHAIN_METADATA
+})
 
-    return (
-      <div className='newTokenView cardShow'>
-        <div className='newTokenChainSelectTitle'>{`Select token's chain`}</div>
-        <div className='newTokenChainSelectChain'>
-          <div className='originSwapChainList'>
-            {activeChains.map((chain) => {
-              const chainId = chain.id
-              const { primaryColor, icon } = this.store('main.networksMeta.ethereum', chainId)
+function SelectChain() {
+  const { chains, chainMetadata } = useWalletSelector(useShallow(selectChainState))
+  const activeChains = Object.values(chains).filter((chain) => chain.on)
 
-              return (
-                <div
-                  className='originChainItem'
-                  key={chainId}
-                  role='button'
-                  onClick={() => {
-                    this.setState({ chainId })
+  return (
+    <div className='newTokenView cardShow'>
+      <div className='newTokenChainSelectTitle'>{`Select token's chain`}</div>
+      <div className='newTokenChainSelectChain'>
+        <div className='originSwapChainList'>
+          {activeChains.map((chain) => {
+            const chainId = chain.id
+            const { primaryColor, icon } = chainMetadata[chainId] || {}
 
-                    setTimeout(() => {
-                      link.send('tray:action', 'navDash', {
-                        view: 'tokens',
-                        data: {
-                          notify: 'addToken',
-                          notifyData: { chain: { id: chainId, color: primaryColor, name: chain.name } }
-                        }
-                      })
-                    }, 200)
-                  }}
-                >
-                  <div className='originChainItemIcon'>
-                    <RingIcon color={chainColorCssVariable(primaryColor)} img={icon} small={true} />
-                  </div>
-                  {chain.name}
+            return (
+              <div
+                className='originChainItem'
+                key={chainId}
+                role='button'
+                onClick={() => {
+                  void link.executeCommand({
+                    type: 'dash.navigate',
+                    view: 'tokens',
+                    data: {
+                      notify: 'addToken',
+                      notifyData: {
+                        chain: { id: chainId, color: primaryColor || '', name: chain.name }
+                      }
+                    }
+                  })
+                }}
+              >
+                <div className='originChainItemIcon'>
+                  <RingIcon color={chainColorCssVariable(primaryColor)} img={icon} small={true} />
                 </div>
-              )
-            })}
-          </div>
-        </div>
-        <div className='newTokenChainSelectFooter'>
-          {'Chain not listed?'}
-          <div
-            className='newTokenEnableChainLink'
-            role='link'
-            onClick={() => {
-              link.send('tray:action', 'navHome', { view: 'networks', data: {} })
-            }}
-          >
-            {'Enable it in Chains'}
-          </div>
+                {chain.name}
+              </div>
+            )
+          })}
         </div>
       </div>
-    )
-  }
+      <div className='newTokenChainSelectFooter'>
+        {'Chain not listed?'}
+        <div
+          className='newTokenEnableChainLink'
+          role='link'
+          onClick={() => {
+            void link.executeCommand({ type: 'wallet.navigate-home', view: 'networks' })
+          }}
+        >
+          {'Enable it in Chains'}
+        </div>
+      </div>
+    </div>
+  )
 }
-
-const SelectChain = Restore.connect(AddTokenChainScreenComponent)
 
 const EnterAddress = ({ chain }: any) => {
   const [isFetching, setFetching] = useState(false)
@@ -117,8 +120,13 @@ const EnterAddress = ({ chain }: any) => {
   const resolveTokenData = async () => {
     setFetching(true)
 
-    const tokenData = await link.invoke('tray:getTokenDetails', contractAddress, chain.id)
-    const error = tokenData.totalSupply ? null : `${unableToVerifyError} ${contractAddress}`
+    const result = await link.executeQuery({
+      type: 'token.lookup',
+      address: contractAddress,
+      chainId: chain.id
+    })
+    const tokenData = result.ok ? result.token : {}
+    const error = result.ok ? null : `${unableToVerifyError} ${contractAddress}`
     return navForward({ error, tokenData, address: contractAddress, chain })
   }
 
@@ -227,17 +235,13 @@ const TokenDetailsForm = ({ req, chain, tokenData, isEdit }: any) => {
       logoURI: logoUri === tokenDetailsDefaults.logoURI ? '' : logoUri
     }
 
-    const backSteps = isEdit ? 2 : 4
-
-    link.send('tray:addToken', token, req)
-
-    setTimeout(() => {
-      navBack(backSteps)
-      link.send('nav:forward', 'dash', {
-        view: 'tokens',
-        data: {}
-      })
-    }, 250)
+    void link.executeCommand({
+      type: 'token.add',
+      token,
+      requestId: req?.handlerId,
+      completion: 'return-to-tokens',
+      edit: Boolean(isEdit)
+    })
   }
 
   const focusSubmitButton = () => {

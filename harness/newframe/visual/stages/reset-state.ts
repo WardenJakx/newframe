@@ -5,6 +5,8 @@ import type { VisualStage } from '../types.ts'
 export const resetStateStage: VisualStage = {
   name: 'reset harness-owned state',
   async run({ driver }) {
+    const dash = await driver.waitForElectronPage('bundle/dash.html')
+    await driver.executeCommand(driver.tray, { type: 'wallet.reset', scope: 'saved-data' })
     const state = await driver.getAppState()
     const originIds = new Set<string>()
 
@@ -21,14 +23,29 @@ export const resetStateStage: VisualStage = {
       })
     })
 
-    for (const originId of originIds) await driver.linkSend(driver.tray, 'tray:removeOrigin', originId)
+    for (const originId of originIds) {
+      if (state.main?.origins?.[originId]) {
+        await driver.executeCommand(dash, { type: 'origin.remove', originId })
+      }
+    }
 
-    await driver.trayAction('removeNetwork', { type: 'ethereum', id: anvilChainId })
-    await driver.trayAction('setShowTestnets', true)
+    if (state.main?.networks?.ethereum?.[String(anvilChainId)]) {
+      await driver.executeCommand(dash, { type: 'network.remove', chainId: anvilChainId })
+    }
+    await driver.executeCommand(driver.tray, {
+      type: 'settings.update',
+      setting: 'show-testnets',
+      value: true
+    })
     await driver.waitForState(
       (candidate) => {
         const networks = candidate.main?.networks?.ethereum || {}
-        return candidate.main?.showTestnets === true && !networks[String(anvilChainId)]
+        const orders = candidate.main?.orders || {}
+        return (
+          candidate.main?.showTestnets === true &&
+          !networks[String(anvilChainId)] &&
+          Object.keys(orders).length === 0
+        )
       },
       5_000,
       'Harness-owned state did not reset'

@@ -1,36 +1,11 @@
 import { createBalanceSummarySelector, type BalanceSummary } from '../../../resources/domain/balance'
 
-import type { Balance, Rate } from '../../../main/store/state'
-import type { RendererState } from '../rendererStore'
+import type { Balance } from '../../../main/store/state'
+import type { DappRendererState } from '../../../resources/state/projections'
 
-export interface DappWalletAccount {
-  address?: string
-  ensName?: string
-  id?: string
-  lastSignerType?: string
-  name?: string
-}
-
-export interface DappWalletEthereumNetwork {
-  id?: number
-  isTestnet?: boolean
-  name?: string
-  on?: boolean
-  [key: string]: unknown
-}
-
-export interface DappWalletEthereumNetworkMeta {
-  icon?: string
-  nativeCurrency?: {
-    decimals?: number
-    icon?: string
-    name?: string
-    symbol?: string
-    usd?: Rate
-  }
-  primaryColor?: string
-  [key: string]: unknown
-}
+export type DappWalletAccount = DappRendererState['accounts'][string]
+export type DappWalletEthereumNetwork = DappRendererState['networks']['ethereum'][number]
+export type DappWalletEthereumNetworkMeta = DappRendererState['networksMeta']['ethereum'][number]
 
 export interface DappWalletSelectorValue {
   accounts: DappWalletAccount[]
@@ -38,38 +13,14 @@ export interface DappWalletSelectorValue {
   currentAccount: DappWalletAccount | null
   networks: Record<string | number, DappWalletEthereumNetwork>
   networksMeta: Record<string | number, DappWalletEthereumNetworkMeta>
-  runtime: {
-    environment?: string | null
-    isDev?: boolean | null
-    profile?: string | null
-  }
+  runtime: DappRendererState['runtime']
 }
 
-interface DappWalletRendererState extends RendererState {
-  main?: {
-    accountOrder?: string[]
-    accounts?: Record<string, DappWalletAccount>
-    balances?: Record<string, Balance[]>
-    networks?: {
-      ethereum?: Record<string | number, DappWalletEthereumNetwork>
-    }
-    networksMeta?: {
-      ethereum?: Record<string | number, DappWalletEthereumNetworkMeta>
-    }
-    rates?: Record<string, { usd?: Rate }>
-    runtime?: DappWalletSelectorValue['runtime']
-  }
-  selected?: {
-    current?: string
-  }
-}
-
-const EMPTY_RUNTIME: DappWalletSelectorValue['runtime'] = {}
 const EMPTY_ACCOUNTS: Record<string, DappWalletAccount> = {}
 const EMPTY_BALANCES: Balance[] = []
 const EMPTY_NETWORKS: Record<string | number, DappWalletEthereumNetwork> = {}
 const EMPTY_NETWORKS_META: Record<string | number, DappWalletEthereumNetworkMeta> = {}
-const EMPTY_RATES: Record<string, { usd?: Rate }> = {}
+const EMPTY_RATES: DappRendererState['rates'] = {}
 
 function createOrderedAccountsSelector() {
   let previousAccountsById: Record<string, DappWalletAccount> | undefined
@@ -100,19 +51,18 @@ export function createDappWalletSelector() {
   const selectOrderedAccounts = createOrderedAccountsSelector()
   let previousResult: DappWalletSelectorValue | null = null
 
-  return (state: DappWalletRendererState): DappWalletSelectorValue => {
-    const main = state.main || {}
-    const selectedAccountId = state.selected?.current || ''
-    const accountsById = main.accounts || EMPTY_ACCOUNTS
+  return (state: DappRendererState): DappWalletSelectorValue => {
+    const selectedAccountId = state.currentAccount
+    const accountsById = state.accounts || EMPTY_ACCOUNTS
     const currentAccount = accountsById[selectedAccountId] || null
-    const accounts = selectOrderedAccounts(accountsById, main.accountOrder)
+    const accounts = selectOrderedAccounts(accountsById, state.accountOrder)
     const rawBalances = currentAccount?.address
-      ? main.balances?.[currentAccount.address] || EMPTY_BALANCES
+      ? state.balances[currentAccount.address] || EMPTY_BALANCES
       : EMPTY_BALANCES
-    const networks = main.networks?.ethereum || EMPTY_NETWORKS
-    const networksMeta = main.networksMeta?.ethereum || EMPTY_NETWORKS_META
-    const rates = main.rates || EMPTY_RATES
-    const runtime = main.runtime || EMPTY_RUNTIME
+    const networks = state.networks.ethereum || EMPTY_NETWORKS
+    const networksMeta = state.networksMeta.ethereum || EMPTY_NETWORKS_META
+    const rates = state.rates || EMPTY_RATES
+    const runtime = state.runtime
     const balanceSummaries = selectBalanceSummaries({
       rawBalances,
       rates,

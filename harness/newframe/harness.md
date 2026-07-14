@@ -125,6 +125,11 @@ The harness is split by responsibility:
 - `visual/runtime.ts` owns stages, screenshots, summaries, and failure artifacts.
 - `visual/stages/` contains one visual surface per file. `visual/stages/index.ts` defines their order.
 
+The visual driver is fully typed: every renderer-bound operation uses the application's command/query bridge,
+with no generic channel or RPC fallback. State assertions run in Electron's main process against a read-only
+canonical snapshot; that getter exists only when the visual harness launches the dev profile with
+`NEWFRAME_VISUAL_HARNESS=true` and is never exposed to renderers.
+
 ### Add a visual surface
 
 1. Add a file in `visual/stages/` that exports a `VisualStage` with a name and `run(context)` method.

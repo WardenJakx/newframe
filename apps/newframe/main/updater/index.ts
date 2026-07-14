@@ -110,7 +110,7 @@ class Updater {
   }
 
   private lastCheckedAt() {
-    return Number(store('main.updater.lastChecked')) || 0
+    return Number(store.getState().main.updater.lastChecked) || 0
   }
 
   private nextCheckDelay() {
@@ -136,7 +136,7 @@ class Updater {
       return false
     }
 
-    store.setUpdaterLastChecked(now)
+    store.getState().setUpdaterLastChecked(now)
     return true
   }
 
@@ -153,10 +153,10 @@ class Updater {
       this.availableVersion = version
       this.availableUpdate = location
 
-      const remindOk = !store('main.updater.dontRemind').includes(version)
+      const remindOk = !store.getState().main.updater.dontRemind.includes(version)
 
       if (remindOk) {
-        store.updateBadge('updateAvailable', this.availableVersion)
+        store.getState().updateBadge('updateAvailable', this.availableVersion)
       } else {
         log.verbose(`Update to version ${version} is available but user chose to skip`)
       }
@@ -169,7 +169,7 @@ class Updater {
   private readyForInstall() {
     this.installerReady = true
 
-    store.updateBadge('updateReady')
+    store.getState().updateBadge('updateReady', this.availableVersion)
   }
 
   private checkForAutoUpdate() {

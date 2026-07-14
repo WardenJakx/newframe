@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import link from '../link'
 
-const useCopiedMessage = (value: unknown): [boolean, () => void] => {
+const useCopiedMessage = (value: string): [boolean, () => void] => {
   const [showMessage, setShowMessage] = useState(false)
 
   const copyToClipboard = () => {
-    link.send('tray:clipboardData', value)
+    void link.executeCommand({ type: 'clipboard.write', text: value })
     setShowMessage(true)
     setTimeout(() => setShowMessage(false), 1000)
   }

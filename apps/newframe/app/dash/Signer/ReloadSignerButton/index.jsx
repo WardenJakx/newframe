@@ -4,7 +4,7 @@ const ReloadSignerButton = ({ id }) => (
   <div
     className='signerControlOption'
     onMouseDown={() => {
-      link.send('dash:reloadSigner', id)
+      void link.executeCommand({ type: 'signer.reload', signerId: id })
     }}
   >
     Reload Signer

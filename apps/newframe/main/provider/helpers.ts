@@ -5,6 +5,7 @@ import { isHexString } from 'ethers'
 
 import store from '../store'
 import protectedMethods from '../api/protectedMethods'
+import type { TransactionRequest } from '../accounts'
 import { usesBaseFee, TransactionData, GasFeesSource } from '../../resources/domain/transaction'
 import { getAddress } from '../../resources/utils'
 import isUtf8 from './isUtf8'
@@ -24,7 +25,8 @@ export function decodeMessage(rawMessage: string) {
 export function checkExistingNonceGas(tx: TransactionData) {
   const { from, nonce } = tx
 
-  const reqs = store('main.accounts', (from || '').toLowerCase(), 'requests')
+  const account = store.getState().main.accounts[(from || '').toLowerCase()]
+  const reqs = (account?.requests || {}) as Record<string, TransactionRequest>
 
   const requests = Object.keys(reqs || {}).map((key) => reqs[key])
   const existing = requests.filter(
@@ -33,8 +35,8 @@ export function checkExistingNonceGas(tx: TransactionData) {
 
   if (existing.length > 0) {
     if (tx.maxPriorityFeePerGas && tx.maxFeePerGas) {
-      const existingFee = Math.max(...existing.map((r) => r.data.maxPriorityFeePerGas))
-      const existingMax = Math.max(...existing.map((r) => r.data.maxFeePerGas))
+      const existingFee = Math.max(...existing.map((r) => Number(r.data.maxPriorityFeePerGas || 0)))
+      const existingMax = Math.max(...existing.map((r) => Number(r.data.maxFeePerGas || 0)))
       const feeInt = parseInt(tx.maxPriorityFeePerGas)
       const maxInt = parseInt(tx.maxFeePerGas)
       if (existingFee * 1.1 >= feeInt || existingMax * 1.1 >= maxInt) {
@@ -47,7 +49,7 @@ export function checkExistingNonceGas(tx: TransactionData) {
         tx.feesUpdated = true
       }
     } else if (tx.gasPrice) {
-      const existingPrice = Math.max(...existing.map((r) => r.data.gasPrice))
+      const existingPrice = Math.max(...existing.map((r) => Number(r.data.gasPrice || 0)))
       const priceInt = parseInt(tx.gasPrice)
       if (existingPrice >= priceInt) {
         // Bump price by 10%
@@ -108,7 +110,7 @@ export function getRawTx(newTx: RPC.SendTransaction.TxParams): TransactionData {
 }
 
 export function gasFees(rawTx: TransactionData) {
-  return store('main.networksMeta', 'ethereum', parseInt(rawTx.chainId, 16), 'gas')
+  return store.getState().main.networksMeta.ethereum[parseInt(rawTx.chainId, 16)].gas
 }
 
 export function resError(errorData: string | EVMError, request: RPCId, res: RPCErrorCallback) {

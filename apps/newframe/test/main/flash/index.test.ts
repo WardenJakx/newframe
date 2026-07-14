@@ -539,8 +539,17 @@ describe('main Flash facade helpers', () => {
         accountAddress: request.accountAddress,
         quote,
         quoteId: quote.id,
+        idempotencyKey: quote.id,
         signature: '0xsignature'
       })
+
+      expect(globalThis.fetch).toHaveBeenNthCalledWith(
+        1,
+        expect.any(URL),
+        expect.objectContaining({
+          headers: expect.objectContaining({ 'Idempotency-Key': quote.id })
+        })
+      )
 
       expect(track).toHaveBeenCalledTimes(1)
       expect(track).toHaveBeenCalledWith({

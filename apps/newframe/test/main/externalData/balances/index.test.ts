@@ -2,6 +2,7 @@ import BalancesScanner from '../../../../main/externalData/balances'
 import store from '../../../../main/store'
 import log from 'electron-log'
 import { EventEmitter } from 'events'
+import { NATIVE_CURRENCY } from '../../../../resources/constants'
 
 const controllerEvents = new EventEmitter()
 const balancesControllerMock = {
@@ -48,28 +49,32 @@ beforeAll(() => {
 })
 
 beforeEach(() => {
-  store.set('main.tokens.custom', [])
-  store.set('main.tokens.known', address, knownTokens)
-  store.set('main.networks.ethereum.10', {
-    id: 10,
-    name: 'Optimism',
-    on: true,
-    connection: { primary: { connected: true } }
-  })
-  store.set('main.networksMeta.ethereum.10', {
-    nativeCurrency: { symbol: 'ETH', decimals: 18 }
-  })
-  store.set('main.balances', address, [
-    {
-      ...knownTokens[0],
-      balance: '0xde0b6b3a7640000',
-      decimals: 18,
-      displayBalance: '1',
-      name: 'Optimism'
+  controllerEvents.removeAllListeners()
+  store.setState((state) => {
+    const main = state.main as any
+    main.tokens.custom = []
+    main.tokens.known[address] = knownTokens
+    main.networks.ethereum[10] = {
+      id: 10,
+      name: 'Optimism',
+      on: true,
+      connection: { primary: { connected: true } }
     }
-  ])
-  store.set('main.rates', knownTokens[0].address, {
-    usd: { price: 2, change24hr: 0 }
+    main.networksMeta.ethereum[10] = {
+      nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 }
+    }
+    main.balances[address] = [
+      {
+        ...knownTokens[0],
+        balance: '0xde0b6b3a7640000',
+        decimals: 18,
+        displayBalance: '1',
+        name: 'Optimism'
+      }
+    ]
+    main.rates[knownTokens[0].address] = {
+      usd: { price: 2, change24hr: 0 }
+    }
   })
 
   balances = BalancesScanner(store)
@@ -136,19 +141,18 @@ it('only manually refreshes non-dust valued tokens and curated blue chips', () =
   const tokens = [valuable, dust, noPrice, weth, usdc]
   const oneToken = '0xde0b6b3a7640000'
 
-  store.set('main.tokens.known', address, tokens)
-  store.set('main.tokens.custom', [custom])
-  store.set(
-    'main.balances',
-    address,
-    [...tokens, custom].map((trackedToken) => ({
+  store.setState((state) => {
+    const main = state.main as any
+    main.tokens.known[address] = tokens
+    main.tokens.custom = [custom]
+    main.balances[address] = [...tokens, custom].map((trackedToken) => ({
       ...trackedToken,
       balance: [weth, usdc].includes(trackedToken) ? '0x0' : oneToken,
       displayBalance: [weth, usdc].includes(trackedToken) ? '0' : '1'
     }))
-  )
-  store.set('main.rates', valuable.address, { usd: { price: 2, change24hr: 0 } })
-  store.set('main.rates', dust.address, { usd: { price: 0.001, change24hr: 0 } })
+    main.rates[valuable.address] = { usd: { price: 2, change24hr: 0 } }
+    main.rates[dust.address] = { usd: { price: 0.001, change24hr: 0 } }
+  })
   ;(balancesController as any).isRunning.mockReturnValue(true)
 
   balances.refresh(address)
@@ -169,9 +173,11 @@ it('manually refreshes every custom token without applying the discovery scan ca
     decimals: 18
   }))
 
-  store.set('main.tokens.custom', customTokens)
-  store.set('main.tokens.known', address, [])
-  store.set('main.balances', address, [])
+  store.setState((state) => {
+    state.main.tokens.custom = customTokens
+    state.main.tokens.known[address] = []
+    state.main.balances[address] = []
+  })
   ;(balancesController as any).isRunning.mockReturnValue(true)
 
   balances.refresh(address)
@@ -195,8 +201,10 @@ it('caps large known token scans while preserving custom tokens', () => {
   const customTokens = [token(1000), token(1001)]
   const discoveredTokens = Array.from({ length: 300 }, (_, i) => token(i + 1))
 
-  store.set('main.tokens.custom', customTokens)
-  store.set('main.tokens.known', address, discoveredTokens)
+  store.setState((state) => {
+    state.main.tokens.custom = customTokens
+    state.main.tokens.known[address] = discoveredTokens
+  })
   ;(balancesController as any).isRunning.mockReturnValue(true)
 
   balances.setAddress(address)
@@ -221,4 +229,43 @@ it('caps direct token update scans', () => {
   const scannedTokens = (balancesController as any).updateKnownTokenBalances.mock.calls[0][1]
   expect(scannedTokens).toHaveLength(250)
   expect(scannedTokens).toEqual(discoveredTokens.slice(0, 250))
+})
+
+it('enriches native worker balances with canonical currency metadata', () => {
+  store.setState((state) => {
+    const main = state.main as any
+    main.accounts[address] = { id: address, address, requests: {} }
+  })
+
+  balancesController.emit('chainBalances', address, [{ chainId: 10, balance: '0x2', displayBalance: '2' }])
+
+  expect(store.getState().main.balances[address]).toContainEqual({
+    address: NATIVE_CURRENCY,
+    balance: '0x2',
+    chainId: 10,
+    decimals: 18,
+    displayBalance: '2',
+    name: 'Ether',
+    symbol: 'ETH'
+  })
+})
+
+it('ignores a late worker update after its network has been removed', () => {
+  store.setState((state) => {
+    const main = state.main as any
+    main.accounts[address] = { id: address, address, requests: {} }
+    delete main.networks.ethereum[10]
+    delete main.networksMeta.ethereum[10]
+  })
+
+  expect(() => {
+    balancesController.emit('chainBalances', address, [
+      { chainId: 10, balance: '0x1', decimals: 18, name: 'Ether' }
+    ])
+    balancesController.emit('tokenBalances', address, [
+      { ...knownTokens[0], balance: '0x1', decimals: 18, name: 'Optimism' }
+    ])
+  }).not.toThrow()
+
+  expect(store.getState().main.balances[address]).toHaveLength(1)
 })

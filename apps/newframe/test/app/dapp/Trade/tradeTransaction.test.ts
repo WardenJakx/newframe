@@ -1,10 +1,9 @@
-import { internalDappOriginId } from '../../../../app/dapp/dappOrigin'
 import {
   buildTradeQuoteRequest,
   buildMarketTradeQuoteRequest,
-  buildTradeActionPayload,
-  buildTradePermitSignaturePayload,
-  buildTradeSignaturePayload,
+  buildTradeActionRequest,
+  buildTradePermitSignatureRequest,
+  buildTradeSignatureRequest,
   buildTradeSubmitRequest,
   cleanTradeAmount,
   getEstimatedTradePriceImpact,
@@ -292,9 +291,9 @@ describe('tradeTransaction', () => {
     expect(marketTradeQuoteRequestKey(first)).not.toBe(marketTradeQuoteRequestKey(second))
   })
 
-  it('builds provider transaction payloads with the shared internal origin', () => {
+  it('builds a transaction request without renderer-controlled provider metadata', () => {
     expect(
-      buildTradeActionPayload({
+      buildTradeActionRequest({
         accountAddress: '0xsender',
         action: {
           id: 'approval',
@@ -308,26 +307,14 @@ describe('tradeTransaction', () => {
             to: '0xspender',
             data: '0x095ea7b3'
           }
-        },
-        id: 123
+        }
       })
     ).toEqual({
-      chainIdNumber: FLASH_ANVIL_CHAIN_ID,
-      payload: {
-        id: 123,
-        jsonrpc: '2.0',
-        method: 'eth_sendTransaction',
-        chainId: '0x7a69',
-        params: [
-          {
-            chainId: '0x7a69',
-            to: '0xspender',
-            data: '0x095ea7b3',
-            from: '0xsender',
-            value: '0x0'
-          }
-        ],
-        _origin: internalDappOriginId
+      chainId: FLASH_ANVIL_CHAIN_ID,
+      transaction: {
+        to: '0xspender',
+        data: '0x095ea7b3',
+        value: '0x0'
       }
     })
   })
@@ -353,22 +340,14 @@ describe('tradeTransaction', () => {
     }
 
     expect(
-      buildTradeSignaturePayload({
+      buildTradeSignatureRequest({
         accountAddress: '0xsender',
         flashPayload: { actions: { evm: { orderTypedData: typedData } } },
-        id: 456,
         quote
       })
     ).toEqual({
-      chainIdNumber: FLASH_ANVIL_CHAIN_ID,
-      payload: {
-        id: 456,
-        jsonrpc: '2.0',
-        method: 'eth_signTypedData_v4',
-        chainId: '0x7a69',
-        params: ['0xsender', JSON.stringify(typedData)],
-        _origin: internalDappOriginId
-      }
+      chainId: FLASH_ANVIL_CHAIN_ID,
+      typedData
     })
 
     const permitTypedData = {
@@ -389,19 +368,14 @@ describe('tradeTransaction', () => {
     }
 
     expect(
-      buildTradePermitSignaturePayload({
+      buildTradePermitSignatureRequest({
         accountAddress: '0xsender',
         flashPayload,
-        id: 789,
         quote
       })
-    ).toMatchObject({
-      chainIdNumber: FLASH_ANVIL_CHAIN_ID,
-      payload: {
-        id: 789,
-        method: 'eth_signTypedData_v4',
-        params: ['0xsender', JSON.stringify(permitTypedData)]
-      }
+    ).toEqual({
+      chainId: FLASH_ANVIL_CHAIN_ID,
+      typedData: permitTypedData
     })
 
     expect(() =>

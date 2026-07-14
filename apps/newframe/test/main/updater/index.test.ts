@@ -1,7 +1,7 @@
 import { EventEmitter } from 'events'
 import { afterEach, beforeAll, beforeEach, expect, it, jest, mock, spyOn } from 'bun:test'
 
-import { storeMock } from '../../bun.mocks'
+import { resetStoreState, storeMock } from '../../bun.mocks'
 
 const STARTUP_CHECK_DELAY = 10_000
 const DAY_MS = 24 * 60 * 60_000
@@ -10,7 +10,6 @@ const autoCheckForUpdates = jest.fn()
 const autoClose = jest.fn()
 const manualCheck = jest.fn(async () => undefined)
 let now = 0
-const testStore = storeMock as typeof storeMock & { __resetState: () => void }
 
 class AutoUpdaterMock extends EventEmitter {
   checkForUpdates = autoCheckForUpdates
@@ -30,7 +29,7 @@ function checkCount() {
 
 function resetUpdaterTest() {
   updater.stop()
-  testStore.__resetState()
+  resetStoreState()
   autoCheckForUpdates.mockClear()
   autoClose.mockClear()
   manualCheck.mockClear()
@@ -63,13 +62,15 @@ it('runs the first update check after the startup delay when no daily check has 
   jest.advanceTimersByTime(1)
 
   expect(checkCount()).toBe(1)
-  expect(storeMock('main.updater.lastChecked')).toBe(Date.now())
+  expect(storeMock.getState().main.updater.lastChecked).toBe(Date.now())
 })
 
 it('waits until the next daily window when an update check already ran today', () => {
   const checkedAt = Date.now()
 
-  storeMock.set('main.updater.lastChecked', checkedAt)
+  storeMock.setState((state: any) => {
+    state.main.updater.lastChecked = checkedAt
+  })
 
   updater.start()
 
@@ -86,5 +87,5 @@ it('waits until the next daily window when an update check already ran today', (
   jest.advanceTimersByTime(1)
 
   expect(checkCount()).toBe(1)
-  expect(storeMock('main.updater.lastChecked')).toBe(checkedAt + DAY_MS)
+  expect(storeMock.getState().main.updater.lastChecked).toBe(checkedAt + DAY_MS)
 })

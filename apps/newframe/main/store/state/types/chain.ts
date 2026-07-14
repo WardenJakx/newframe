@@ -11,26 +11,31 @@ export const ChainIdSchema = z.object({
   type: z.literal('ethereum')
 })
 
-export const ChainSchema = z.object({
-  id: z.coerce.number(),
-  name: z.string(),
-  on: z.boolean(),
-  connection: z.object({
-    primary: ConnectionSchema,
-    secondary: ConnectionSchema
-  }),
-  layer: z.enum(layerValues).optional(),
-  isTestnet: z.boolean().default(false),
-  explorer: z.string().default('')
-})
+export const ChainSchema = z
+  .object({
+    id: z.coerce.number(),
+    type: z.literal('ethereum').default('ethereum'),
+    name: z.string(),
+    symbol: z.string().optional(),
+    on: z.boolean(),
+    connection: z.object({
+      primary: ConnectionSchema,
+      secondary: ConnectionSchema
+    }),
+    layer: z.enum(layerValues).optional(),
+    isTestnet: z.boolean().default(false),
+    explorer: z.string().default('')
+  })
+  .passthrough()
 
-export const ChainMetadataSchema = z.object({
-  blockHeight: z.number().optional(),
-  gas: GasSchema,
-  icon: z.string().optional(),
-  primaryColor: ColorwayPaletteSchema.keyof(),
-  nativeCurrency: NativeCurrencySchema
-})
+export const ChainMetadataSchema = z
+  .object({
+    gas: GasSchema,
+    icon: z.string().optional(),
+    primaryColor: ColorwayPaletteSchema.keyof(),
+    nativeCurrency: NativeCurrencySchema
+  })
+  .passthrough()
 
 export type ChainId = z.infer<typeof ChainIdSchema>
 export type Chain = z.infer<typeof ChainSchema>

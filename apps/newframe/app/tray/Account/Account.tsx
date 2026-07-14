@@ -1,12 +1,10 @@
-import React from 'react'
-import Restore from 'react-restore'
+import type { ReactNode } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 
 import svg from '../../../resources/svg'
 import link from '../../../resources/link'
 
 import Requests from './Requests'
-
-// move
 import ProviderRequest from './Requests/ProviderRequest'
 import TransactionRequest from './Requests/TransactionRequest'
 import SignatureRequest from './Requests/SignatureRequest'
@@ -16,8 +14,11 @@ import SignTypedDataRequest from './Requests/SignTypedDataRequest'
 import SignPermitRequest from './Requests/SignPermitRequest'
 import { isHardwareSigner } from '../../../resources/domain/signer'
 import { accountViewTitles } from '../../../resources/domain/request'
+import { useWalletSelector } from '../../state/useAppSelector'
+import type { TrayRendererState } from '../state'
+import { useRequestView } from '../requestView'
 
-const requests: Record<string, any> = {
+const requestComponents: Record<string, any> = {
   sign: SignatureRequest,
   signTypedData: SignTypedDataRequest,
   signErc20Permit: SignPermitRequest,
@@ -27,147 +28,121 @@ const requests: Record<string, any> = {
   addToken: AddTokenRequest
 }
 
-// AccountView is a reusable template that provides the option to nav back to main
-class _AccountView extends React.Component<any, any> {
-  declare store: Store
-
-  override render() {
-    const accountOpen = this.store('selected.open')
-    const footerHeight = this.store('windows.panel.footer.height')
-    return (
-      <div
-        className='accountView'
-        style={{ top: accountOpen ? '140px' : '80px', bottom: footerHeight + 'px' }}
-      >
-        <div className='accountViewMenu cardShow'>
-          <div className='accountViewBack' onClick={() => this.props.back()}>
-            {svg.chevronLeft(16)}
-          </div>
-          <div className='accountViewTitle'>
-            <div className='accountViewIcon'>{this.props.accountViewIcon}</div>
-            <div className='accountViewText'>{this.props.accountViewTitle}</div>
-          </div>
-        </div>
-        <div className='accountViewMain cardShow'>{this.props.children}</div>
-      </div>
-    )
-  }
+interface AccountViewProps {
+  accountViewIcon?: ReactNode
+  accountViewTitle?: string
+  back(): void
+  children: ReactNode
 }
 
-const AccountView = Restore.connect(_AccountView)
+function AccountView({ accountViewIcon, accountViewTitle, back, children }: AccountViewProps) {
+  const accountOpen = useWalletSelector((state: TrayRendererState) => state.selected.open)
 
-class _AccountBody extends React.Component<any, any> {
-  declare store: Store
+  return (
+    <div className='accountView' style={{ top: accountOpen ? '140px' : '80px' }}>
+      <div className='accountViewMenu cardShow'>
+        <div className='accountViewBack' onClick={back}>
+          {svg.chevronLeft(16)}
+        </div>
+        <div className='accountViewTitle'>
+          <div className='accountViewIcon'>{accountViewIcon}</div>
+          <div className='accountViewText'>{accountViewTitle}</div>
+        </div>
+      </div>
+      <div className='accountViewMain cardShow'>{children}</div>
+    </div>
+  )
+}
 
-  getRequestComponent({ type }: any) {
-    return requests[type]
+interface AccountBodyProps {
+  accountViewIcon?: ReactNode
+  addresses?: unknown[]
+  id: string
+  minimized?: boolean
+  signer?: string
+  status?: string
+}
+
+function AccountBody(props: AccountBodyProps) {
+  const requestView = useRequestView()
+  const { accounts, crumb, networks, networksMeta, origins } = useWalletSelector(
+    useShallow((state: TrayRendererState) => ({
+      accounts: state.accounts,
+      crumb: state.windows.panel.nav[0],
+      networks: state.networks.ethereum,
+      networksMeta: state.networksMeta.ethereum,
+      origins: state.origins
+    }))
+  )
+  const back = () => {
+    if (!requestView.back()) void link.executeCommand({ type: 'panel.back', steps: 1 })
   }
 
-  getChainData(req: any) {
-    if (req.type !== 'signErc20Permit') return {}
-    const chainId = req.typedMessage.data.domain.chainId
-    const chainName = this.store('main.networks.ethereum', chainId, 'name')
-    const { primaryColor: chainColor, icon } = this.store('main.networksMeta.ethereum', chainId)
-
-    return { chainId, chainName, chainColor, icon }
-  }
-
-  renderRequest(req: any, data: any = {}) {
-    const Request = this.getRequestComponent(req)
+  const renderRequest = (request: any) => {
+    const Request = requestComponents[request.type]
     if (!Request) return null
 
-    const { handlerId } = req
-    const { step } = data
-
-    const activeAccount = this.store('main.accounts', this.props.id)
-    const originName = this.store('main.origins', req.origin, 'name')
-    const chainData = this.getChainData(req)
-
-    const signingDelay = isHardwareSigner(activeAccount.lastSignerType) ? 200 : 1500
+    const account = accounts[props.id]
+    const chainId = request.type === 'signErc20Permit' ? request.typedMessage.data.domain.chainId : undefined
+    const metadata = chainId === undefined ? undefined : networksMeta[chainId]
+    const chainData =
+      chainId === undefined
+        ? {}
+        : {
+            chainId,
+            chainName: networks[chainId]?.name,
+            chainColor: metadata?.primaryColor,
+            icon: metadata?.icon
+          }
+    const signingDelay = isHardwareSigner(account?.lastSignerType) ? 200 : 1500
 
     return (
       <Request
-        key={handlerId}
-        req={req}
-        step={step}
+        key={request.handlerId}
+        req={request}
+        step={requestView.step}
+        stepData={requestView}
         signingDelay={signingDelay}
         chainId={chainData.chainId}
-        originName={originName}
+        originName={origins[request.origin]?.name || ''}
         chainData={chainData}
       />
     )
   }
 
-  getAccountViewTitle({ type }: any) {
-    return (accountViewTitles as any)[type]
-  }
-
-  override render() {
-    const crumb = this.store('windows.panel.nav')[0] || {}
-
-    if (crumb.view === 'requestView') {
-      const { accountId, requestId } = crumb.data
-      const req = this.store('main.accounts', accountId, 'requests', requestId)
-      const accountViewTitle = (req && this.getAccountViewTitle(req)) || ''
-
-      return (
-        <AccountView
-          back={() => {
-            link.send('nav:back', 'panel')
-          }}
-          {...this.props}
-          accountViewTitle={accountViewTitle}
-        >
-          {req && this.renderRequest(req, crumb.data)}
-        </AccountView>
-      )
-    } else if (crumb.view === 'expandedModule') {
-      if (crumb.data?.id !== 'requests') return null
-
-      return (
-        <AccountView
-          back={() => {
-            link.send('nav:back', 'panel')
-          }}
-          {...this.props}
-          accountViewTitle={crumb.data.id}
-        >
-          <div className='accountsModuleExpand cardShow'>
-            <div
-              className='moduleExpanded'
-              onMouseDown={(e) => {
-                e.stopPropagation()
-              }}
-            >
-              <Requests expanded={true} account={crumb.data.account} moduleId='requests' />
-            </div>
-          </div>
-        </AccountView>
-      )
-    } else {
-      return null
-    }
-  }
-}
-
-const AccountBody = Restore.connect(_AccountBody)
-
-class Account extends React.Component<any, any> {
-  declare store: Store
-
-  override render() {
-    const minimized = this.store('selected.minimized')
+  if (crumb?.view === 'requestView') {
+    const { accountId, requestId } = crumb.data
+    const request = accountId && requestId ? accounts[accountId]?.requests[requestId] : undefined
+    const accountViewTitle = request ? (accountViewTitles as any)[request.type] || '' : ''
 
     return (
-      <AccountBody
-        id={this.props.id}
-        addresses={this.props.addresses}
-        minimized={minimized}
-        status={this.props.status}
-        signer={this.props.signer}
-      />
+      <AccountView back={back} accountViewIcon={props.accountViewIcon} accountViewTitle={accountViewTitle}>
+        {request && renderRequest(request)}
+      </AccountView>
     )
   }
+
+  if (crumb?.view === 'expandedModule' && crumb.data?.id === 'requests') {
+    return (
+      <AccountView back={back} accountViewIcon={props.accountViewIcon} accountViewTitle={crumb.data.id}>
+        <div className='accountsModuleExpand cardShow'>
+          <div className='moduleExpanded' onMouseDown={(event) => event.stopPropagation()}>
+            <Requests expanded={true} account={crumb.data.account} moduleId='requests' />
+          </div>
+        </div>
+      </AccountView>
+    )
+  }
+
+  return null
 }
 
-export default Restore.connect(Account)
+interface AccountProps extends Omit<AccountBodyProps, 'minimized'> {
+  [key: string]: unknown
+}
+
+export default function Account(props: AccountProps) {
+  const minimized = useWalletSelector((state: TrayRendererState) => state.selected.minimized)
+
+  return <AccountBody {...props} minimized={minimized} />
+}

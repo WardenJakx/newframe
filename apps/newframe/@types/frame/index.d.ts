@@ -2,7 +2,6 @@
 /// <reference path="./environment.d.ts" />
 /// <reference path="./host.d.ts" />
 /// <reference path="./rpc.d.ts" />
-/// <reference path="./restore.d.ts" />
 /// <reference path="./state.d.ts" />
 /// <reference path="./ethProvider.d.ts" />
 

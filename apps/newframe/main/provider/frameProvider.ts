@@ -210,7 +210,7 @@ abstract class EventedRequestProvider extends EventEmitter implements Eip1193Pro
 }
 
 class FrameProxyProvider extends EventedRequestProvider {
-  private promises: Record<number, { resolve: (value: unknown) => void; reject: (err: Error) => void }> = {}
+  private promises: Record<string, { resolve: (value: unknown) => void; reject: (err: Error) => void }> = {}
 
   constructor(private connection: ProxyConnection) {
     super()

@@ -220,9 +220,9 @@ function findTokenInStore(address: string, chainId: number, account: string) {
   const matchesToken = (token: Partial<Token | Balance>) =>
     normalizeAddress(token.address) === address && Number(token.chainId) === chainId
 
-  const knownTokens = (store('main.tokens.known', account) || []) as Token[]
-  const customTokens = (store('main.tokens.custom') || []) as Token[]
-  const balances = (store('main.balances', account) || []) as Balance[]
+  const knownTokens = (store.getState().main.tokens.known[account] || []) as Token[]
+  const customTokens = (store.getState().main.tokens.custom || []) as Token[]
+  const balances = (store.getState().main.balances[account] || []) as Balance[]
 
   return [...customTokens, ...knownTokens, ...balances].find(matchesToken)
 }
@@ -424,7 +424,7 @@ export async function effectsFromTrace(
 
 export async function simulateTransactionEffects(req: TransactionRequest): Promise<TransactionSimulation> {
   const chainId = parseInt(req.data.chainId, 16)
-  const nativeCurrency = (store('main.networksMeta.ethereum', chainId, 'nativeCurrency') ||
+  const nativeCurrency = (store.getState().main.networksMeta.ethereum[chainId].nativeCurrency ||
     {}) as NativeCurrencyLike
 
   if (!req.data.to) {

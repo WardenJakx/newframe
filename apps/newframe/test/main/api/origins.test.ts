@@ -16,6 +16,38 @@ let isTrusted: any
 let parseFrameExtension: any
 let isKnownExtension: any
 
+const actions = () => store.getState() as any
+const setOrigins = (origins: Record<string, any>) => {
+  store.setState((state: any) => {
+    state.main.origins = origins
+  })
+}
+const setOrigin = (id: string, origin: any) => {
+  store.setState((state: any) => {
+    state.main.origins[id] = origin
+  })
+}
+const setPermissions = (permissions: Record<string, any>) => {
+  store.setState((state: any) => {
+    state.main.permissions = permissions
+  })
+}
+const setAccountPermissions = (address: string, permissions: Record<string, any>) => {
+  store.setState((state: any) => {
+    state.main.permissions[address] = permissions
+  })
+}
+const setKnownExtensions = (extensions: Record<string, boolean>) => {
+  store.setState((state: any) => {
+    state.main.knownExtensions = extensions
+  })
+}
+const setEthereumNetwork = (id: number, network: any) => {
+  store.setState((state: any) => {
+    state.main.networks.ethereum[id] = network
+  })
+}
+
 beforeAll(async () => {
   log.transports.console.level = false
 
@@ -35,12 +67,12 @@ afterAll(() => {
 })
 
 beforeEach(() => {
-  store.initOrigin = jest.fn()
-  store.addOriginRequest = jest.fn()
-  store.switchOriginChain = jest.fn()
+  actions().initOrigin.mockImplementation(() => {})
+  actions().addOriginRequest.mockImplementation(() => {})
+  actions().switchOriginChain.mockImplementation(() => {})
 
-  store.set('main.origins', {})
-  store.set('main.permissions', {})
+  setOrigins({})
+  setPermissions({})
 })
 
 describe('#updateOrigin', () => {
@@ -48,7 +80,7 @@ describe('#updateOrigin', () => {
     it('adds a new origin to the store', () => {
       updateOrigin({}, 'frame.test')
 
-      expect(store.initOrigin).toHaveBeenCalledWith(uuidv5('frame.test', uuidv5.DNS), {
+      expect(actions().initOrigin).toHaveBeenCalledWith(uuidv5('frame.test', uuidv5.DNS), {
         name: 'frame.test',
         chain: {
           type: 'ethereum',
@@ -58,17 +90,17 @@ describe('#updateOrigin', () => {
     })
 
     it('does not overwrite an existing origin', () => {
-      store.set('main.origins', uuidv5('frame.test', uuidv5.DNS), { chain: { id: 1 } })
+      setOrigin(uuidv5('frame.test', uuidv5.DNS), { chain: { id: 1 } })
 
       updateOrigin({}, 'frame.test')
 
-      expect(store.initOrigin).not.toHaveBeenCalled()
+      expect(actions().initOrigin).not.toHaveBeenCalled()
     })
 
     it('does not initialize a new origin on a connection message', () => {
       updateOrigin({}, 'frame.test', true)
 
-      expect(store.initOrigin).not.toHaveBeenCalled()
+      expect(actions().initOrigin).not.toHaveBeenCalled()
     })
     it('sets the payload chain id to mainnet for connection messages with no known origin', () => {
       const originalPayload = {}
@@ -99,7 +131,7 @@ describe('#updateOrigin', () => {
     })
 
     it('sets the chain id for an existing origin', () => {
-      store.set('main.origins', uuidv5('frame.test', uuidv5.DNS), { chain: { id: 137 } })
+      setOrigin(uuidv5('frame.test', uuidv5.DNS), { chain: { id: 137 } })
 
       const { chainId } = updateOrigin({}, 'frame.test')
 
@@ -107,7 +139,7 @@ describe('#updateOrigin', () => {
     })
 
     it('does not override the chain id in the payload with one from a configured origin', () => {
-      store.set('main.origins', uuidv5('frame.test', uuidv5.DNS), { chain: { id: 137 } })
+      setOrigin(uuidv5('frame.test', uuidv5.DNS), { chain: { id: 137 } })
 
       const { chainId } = updateOrigin({ chainId: '0x1' }, 'frame.test')
 
@@ -122,11 +154,11 @@ describe('#updateOrigin', () => {
     })
 
     it('initializes a new origin on a known requested chain', () => {
-      store.set('main.networks.ethereum', 137, { id: 137, type: 'ethereum', on: true })
+      setEthereumNetwork(137, { id: 137, type: 'ethereum', on: true })
 
       updateOrigin({ chainId: '0x89' }, 'frame.test')
 
-      expect(store.initOrigin).toHaveBeenCalledWith(uuidv5('frame.test', uuidv5.DNS), {
+      expect(actions().initOrigin).toHaveBeenCalledWith(uuidv5('frame.test', uuidv5.DNS), {
         name: 'frame.test',
         chain: {
           type: 'ethereum',
@@ -137,22 +169,22 @@ describe('#updateOrigin', () => {
 
     it('switches an existing origin to a known requested chain', () => {
       const originId = uuidv5('frame.test', uuidv5.DNS)
-      store.set('main.networks.ethereum', 137, { id: 137, type: 'ethereum', on: true })
-      store.set('main.origins', originId, { chain: { id: 1, type: 'ethereum' } })
+      setEthereumNetwork(137, { id: 137, type: 'ethereum', on: true })
+      setOrigin(originId, { chain: { id: 1, type: 'ethereum' } })
 
       updateOrigin({ chainId: '0x89' }, 'frame.test')
 
-      expect(store.switchOriginChain).toHaveBeenCalledWith(originId, 137, 'ethereum')
+      expect(actions().switchOriginChain).toHaveBeenCalledWith(originId, 137, 'ethereum')
     })
 
     it('does not switch an existing origin to an unknown requested chain', () => {
       const originId = uuidv5('frame.test', uuidv5.DNS)
-      store.set('main.origins', originId, { chain: { id: 1, type: 'ethereum' } })
+      setOrigin(originId, { chain: { id: 1, type: 'ethereum' } })
 
       const { chainId } = updateOrigin({ chainId: '0x270f' }, 'frame.test')
 
       expect(chainId).toBe('0x270f')
-      expect(store.switchOriginChain).not.toHaveBeenCalled()
+      expect(actions().switchOriginChain).not.toHaveBeenCalled()
     })
   })
 
@@ -326,8 +358,8 @@ describe('#parseFrameExtension', () => {
 
 describe('#isKnownExtension', () => {
   beforeEach(() => {
-    store.set('main.knownExtensions', {})
-    store.notify = jest.fn()
+    setKnownExtensions({})
+    actions().notify.mockImplementation(() => {})
   })
 
   it('always knows a recognized Chrome extension', async () => {
@@ -343,7 +375,7 @@ describe('#isKnownExtension', () => {
   it('knows a previously trusted Firefox extension', async () => {
     const extension = { browser: 'firefox', id: '4be0643f-1d98-573b-97cd-ca98a65347dd' }
 
-    store.set('main.knownExtensions', { [extension.id]: true })
+    setKnownExtensions({ [extension.id]: true })
 
     return expect(isKnownExtension(extension)).resolves.toBe(true)
   })
@@ -351,7 +383,7 @@ describe('#isKnownExtension', () => {
   it('rejects a previously rejected Firefox extension', async () => {
     const extension = { browser: 'firefox', id: '4be0643f-1d98-573b-97cd-ca98a65347dd' }
 
-    store.set('main.knownExtensions', { [extension.id]: false })
+    setKnownExtensions({ [extension.id]: false })
 
     return expect(isKnownExtension(extension)).resolves.toBe(false)
   })
@@ -361,16 +393,15 @@ describe('#isKnownExtension', () => {
 
     isKnownExtension(extension)
 
-    expect(store.notify).toHaveBeenCalledWith('extensionConnect', extension)
+    expect(actions().notify).toHaveBeenCalledWith('extensionConnect', extension)
   })
 
   it('allows a user to trust a Firefox extension', async () => {
     const extension = { browser: 'firefox', id: '4ae0643f-1d98-573b-97cd-ca98a65347dd' }
 
-    ;(store.notify as any).mockImplementationOnce(() => {
+    actions().notify.mockImplementationOnce(() => {
       // simulate user accepting the request
-      store.set('main.knownExtensions', { [extension.id]: true })
-      ;(store.getObserver('origins:requestExtension') as any).fire()
+      setKnownExtensions({ [extension.id]: true })
     })
 
     return expect(isKnownExtension(extension)).resolves.toBe(true)
@@ -379,10 +410,9 @@ describe('#isKnownExtension', () => {
   it('allows a user to reject a connection from a Firefox extension', async () => {
     const extension = { browser: 'firefox', id: '4ce0643f-1d98-573b-97cd-ca98a65347dd' }
 
-    ;(store.notify as any).mockImplementationOnce(() => {
+    actions().notify.mockImplementationOnce(() => {
       // simulate user accepting the request
-      store.set('main.knownExtensions', { [extension.id]: false })
-      ;(store.getObserver('origins:requestExtension') as any).fire()
+      setKnownExtensions({ [extension.id]: false })
     })
 
     return expect(isKnownExtension(extension)).resolves.toBe(false)
@@ -393,8 +423,8 @@ describe('#isTrusted', () => {
   const frameTestOriginId = 'bf93061b-3575-40c5-b526-4932b02e1f3f'
 
   beforeEach(() => {
-    store.set('main.origins', frameTestOriginId, { name: 'test.frame.eth' })
-    store.set('main.permissions', {})
+    setOrigin(frameTestOriginId, { name: 'test.frame.eth' })
+    setPermissions({})
   })
 
   describe('extension requests', () => {
@@ -405,7 +435,7 @@ describe('#isTrusted', () => {
     trustedOrigins.forEach((origin) => {
       it(`does not trust requests from the ${origin} origin by default`, async () => {
         const payload = { method: 'eth_accounts', _origin: 'ac93061b-3575-40c5-b526-4932b02e1f3f' }
-        store.set('main.origins', payload._origin, { name: origin })
+        setOrigin(payload._origin, { name: origin })
 
         return expect(isTrusted(payload)).resolves.toBe(false)
       })
@@ -413,7 +443,7 @@ describe('#isTrusted', () => {
       trustedExtensionMethods.forEach((method) => {
         it(`trusts all requests for ${method} from the ${origin} origin`, async () => {
           const payload = { method, _origin: 'ac93061b-3575-40c5-b526-4932b02e1f3f' }
-          store.set('main.origins', payload._origin, { name: origin })
+          setOrigin(payload._origin, { name: origin })
 
           return expect(isTrusted(payload)).resolves.toBe(true)
         })
@@ -423,7 +453,7 @@ describe('#isTrusted', () => {
 
   it('does not trust any request with an invalid origin', async () => {
     const payload = { _origin: 'ac93061b-3575-40c5-b526-4932b02e1f3f' }
-    store.set('main.origins', payload._origin, { name: '!nvalid origin' })
+    setOrigin(payload._origin, { name: '!nvalid origin' })
 
     return expect(isTrusted(payload)).resolves.toBe(false)
   })
@@ -442,7 +472,7 @@ describe('#isTrusted', () => {
 
     ;(accounts.current as any).mockReturnValueOnce({ address })
 
-    store.set('main.permissions', address, {
+    setAccountPermissions(address, {
       'c004cc87-bfa3-50f5-812f-3d70dd8f82c6': {
         origin: 'test.frame.eth',
         provider: true
@@ -487,7 +517,7 @@ describe('#isTrusted', () => {
     ;(accounts.addRequest as any).mockImplementationOnce((request: any, cb: any) => {
       setTimeout(() => {
         // simulate user accepting the request after both RPC requests are received
-        store.set('main.permissions', address, {
+        setAccountPermissions(address, {
           [frameTestOriginId]: {
             origin: 'test.frame.eth',
             provider: true
@@ -527,7 +557,7 @@ describe('#isTrusted', () => {
       // simulate user acting on request
       ;(accounts.addRequest as any).mockImplementationOnce((request: any, cb: any) => {
         setTimeout(() => {
-          store.set('main.permissions', address, {
+          setAccountPermissions(address, {
             'c004cc87-bfa3-50f5-812f-3d70dd8f82c6': {
               origin: 'test.frame.eth',
               provider: permissionGranted

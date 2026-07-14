@@ -5,6 +5,7 @@ const revealMock = {
 }
 const fetchContractMock = jest.fn()
 const simulateTransactionEffectsMock = jest.fn()
+const providerMock = { on: jest.fn(), off: jest.fn(), send: jest.fn() }
 
 jest.mock('../../../../main/reveal', () => ({ default: revealMock, ...revealMock }))
 jest.mock('../../../../main/contracts', () => ({ fetchContract: fetchContractMock }))
@@ -12,7 +13,7 @@ jest.mock('../../../../main/transaction/simulation', () => ({
   simulateTransactionEffects: simulateTransactionEffectsMock
 }))
 
-jest.mock('../../../../main/provider', () => ({ default: { on: jest.fn() }, on: jest.fn() }))
+jest.mock('../../../../main/provider', () => ({ default: providerMock, ...providerMock }))
 jest.mock('../../../../main/accounts', () => ({
   default: {},
   RequestMode: { Normal: 'normal', Monitor: 'monitor' }
@@ -22,6 +23,7 @@ jest.mock('../../../../main/windows', () => ({ default: {} }))
 jest.mock('../../../../main/nameResolution', () => ({
   __esModule: true,
   default: {
+    off: jest.fn(),
     ready: jest.fn(() => true),
     once: jest.fn(),
     reverseLookup: async () => 'frame.eth'
@@ -37,16 +39,6 @@ jest.mock('../../../../main/windows/nav', () => ({
   back: jest.fn()
 }))
 
-jest.mock('../../../../main/store', () => {
-  const store = jest.fn()
-  ;(store as any).setPermission = jest.fn()
-  ;(store as any).setSignerView = jest.fn()
-  ;(store as any).setPanelView = jest.fn()
-  ;(store as any).navClearReq = jest.fn()
-  ;(store as any).observer = jest.fn()
-  return { default: store, ...store }
-})
-
 let account: any
 let Account: any
 let reveal: any
@@ -54,7 +46,7 @@ let fetchContract: any
 let nav: any
 let store: any
 
-const accounts = { update: jest.fn() }
+const accounts = { syncTransactionActivity: jest.fn() }
 
 const accountState = {
   address: '0x690B9A9E9aa1C9dB991C7721a92d351Db4FaC990',
@@ -71,14 +63,55 @@ beforeAll(async () => {
 
 beforeEach(() => {
   jest.clearAllMocks()
+  account?.close()
+  store.getState().removeAccount(accountState.address.toLowerCase())
   account = new Account(accountState as any, accounts as any)
   ;(fetchContract as any).mockResolvedValueOnce(undefined)
   simulateTransactionEffectsMock.mockResolvedValue({ status: 'success', effects: [] })
 })
 
 describe('#addRequest', () => {
+  it('stores request data canonically while keeping request capabilities in runtime sidecars', () => {
+    const respond = jest.fn()
+    const actionData = { amount: '0x1' }
+    let updateCalls = 0
+    const update = (request: any, data: any) => {
+      updateCalls += 1
+      actionData.amount = data.amount
+      request.data.data = `encoded:${data.amount}`
+    }
+    const request = {
+      handlerId: 'runtime-capabilities',
+      type: 'transaction',
+      account: account.id,
+      origin: 'test',
+      payload: { id: 1, jsonrpc: '2.0', method: 'eth_sendTransaction', params: [] },
+      data: { data: 'encoded:0x1' },
+      approvals: [{ type: 'approveGasLimit', approved: false, data: {} }],
+      recognizedActions: [{ id: 'erc20:approve', data: actionData, update }]
+    }
+
+    account.addRequest(request, respond)
+
+    const canonical = store.getState().main.accounts[account.id].requests[request.handlerId]
+    expect(canonical.recognizedActions[0].update).toBeUndefined()
+    expect(() => structuredClone(canonical)).not.toThrow()
+
+    expect(account.approveRequest(request.handlerId, 'approveGasLimit', {})).toBe(true)
+    expect(account.requests[request.handlerId].approvals[0].approved).toBe(true)
+    expect(account.updateRecognizedAction(request.handlerId, 'erc20:approve', { amount: '0x2' })).toBe(true)
+    expect(updateCalls).toBe(1)
+    expect(account.requests[request.handlerId].data.data).toBe('encoded:0x2')
+    expect(account.requests[request.handlerId].recognizedActions[0].data.amount).toBe('0x2')
+
+    account.resolveRequest(request, 'ok')
+    expect(respond).toHaveBeenCalledWith({ id: 1, jsonrpc: '2.0', result: 'ok' })
+    expect(account.requests[request.handlerId]).toBeUndefined()
+  })
+
   describe('recognizing requests', () => {
-    it('recognizes an ERC-20 approval', (done) => {
+    it('recognizes an ERC-20 approval', async () => {
+      const actionData = { amount: '0x1' }
       const request = {
         handlerId: '123456',
         type: 'transaction',
@@ -91,21 +124,57 @@ describe('#addRequest', () => {
 
       ;(reveal.recog as any).mockResolvedValue([
         {
-          id: 'erc20:approve'
+          id: 'erc20:approve',
+          data: actionData,
+          update: (request: any, { amount }: { amount: string }) => {
+            actionData.amount = amount
+            request.data.data = `encoded:${amount}`
+          }
         }
       ])
 
-      let asserted = false
-      accounts.update.mockImplementation(() => {
-        if (!asserted && (request as any).recognizedActions?.length) {
-          asserted = true
-          expect((request as any).recognizedActions).toHaveLength(1)
-          done()
-        }
-      })
-
       account.addRequest(request)
+      await Promise.resolve()
+      await Promise.resolve()
+
+      expect(account.requests[request.handlerId].recognizedActions).toEqual([
+        { id: 'erc20:approve', data: { amount: '0x1' } }
+      ])
+      expect(() =>
+        account.updateRecognizedAction(request.handlerId, 'erc20:approve', { amount: '0x2' })
+      ).not.toThrow()
+      expect(account.requests[request.handlerId].data.data).toBe('encoded:0x2')
+      expect(account.requests[request.handlerId].recognizedActions[0].data.amount).toBe('0x2')
     })
+  })
+})
+
+describe('creation-block listener lifecycle', () => {
+  it('removes the provider listener after resolving the creation block', () => {
+    const listener = providerMock.on.mock.calls.find(([event]) => event === 'connect')?.[1]
+    providerMock.send.mockImplementationOnce((_payload, respond) => respond({ result: '0x64' }))
+
+    listener()
+
+    expect(account.created).toMatch(/^100:/)
+    expect(providerMock.off).toHaveBeenCalledWith('connect', listener)
+  })
+
+  it('removes the provider listener when the account handle closes', () => {
+    const listener = providerMock.on.mock.calls.find(([event]) => event === 'connect')?.[1]
+
+    account.close()
+
+    expect(providerMock.off).toHaveBeenCalledWith('connect', listener)
+  })
+
+  it('ignores a late creation-block response after canonical removal', () => {
+    const listener = providerMock.on.mock.calls.find(([event]) => event === 'connect')?.[1]
+    providerMock.send.mockImplementationOnce((_payload, respond) => respond({ result: '0x64' }))
+    store.getState().removeAccount(account.id)
+
+    expect(() => listener()).not.toThrow()
+    expect(providerMock.off).toHaveBeenCalledWith('connect', listener)
   })
 })
 
@@ -140,19 +209,19 @@ describe('#clearRequest', () => {
       created: 0
     }
 
-    account.requests = { first, second, newest, confirmed, monitoring }
-    store.mockImplementation((path: string) =>
-      path === 'windows.panel.nav'
-        ? [
-            { view: 'requestView', data: { requestId: 'first' } },
-            { view: 'expandedModule', data: { id: 'requests', account: account.id } }
-          ]
-        : undefined
-    )
+    ;[first, second, newest, confirmed, monitoring].forEach((request) => {
+      store.getState().upsertAccountRequest(account.id, request)
+    })
+    store.setState((state: any) => {
+      state.windows.panel.nav = [
+        { view: 'requestView', data: { requestId: 'first' } },
+        { view: 'expandedModule', data: { id: 'requests', account: account.id } }
+      ]
+    })
 
     account.clearRequest('first')
 
-    expect(store.navClearReq).toHaveBeenCalledWith('first', true)
+    expect(store.getState().navClearReq).toHaveBeenCalledWith('first', true)
     expect(nav.forward).toHaveBeenCalledWith('panel', {
       view: 'requestView',
       data: {
@@ -175,16 +244,13 @@ describe('#clearRequest', () => {
       }
     }
 
-    store.mockImplementation((path: string) => {
-      if (path === 'selected.current') return account.id
-      if (path === 'tray.open') return true
-      if (path === 'windows.panel.nav') {
-        return [
-          { view: 'requestView', data: { requestId: 'first' } },
-          { view: 'expandedModule', data: { id: 'requests', account: account.id } }
-        ]
-      }
-      return undefined
+    store.setState((state: any) => {
+      state.main.currentAccount = account.id
+      state.tray.open = true
+      state.windows.panel.nav = [
+        { view: 'requestView', data: { requestId: 'first' } },
+        { view: 'expandedModule', data: { id: 'requests', account: account.id } }
+      ]
     })
 
     account.addRequest(request)

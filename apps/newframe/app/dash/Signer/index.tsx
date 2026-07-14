@@ -1,23 +1,42 @@
-import React from 'react'
-import Restore from 'react-restore'
+import React, { useCallback } from 'react'
 
 import link from '../../../resources/link'
 import svg from '../../../resources/svg'
-import { capitalize, getAddress } from '../../../resources/utils'
-import { isHardwareSigner, getSignerDisplayType } from '../../../resources/domain/signer'
+import { getAddress } from '../../../resources/utils'
+import { isHardwareSigner } from '../../../resources/domain/signer'
 
 import ReloadSignerButton from './ReloadSignerButton'
+import { useWalletSelector } from '../../state/useAppSelector'
+import type { DashRendererState, DashSigner } from '../state'
 
 function isLoading(status = '') {
   const statusToCheck = status.toLowerCase()
   return ['loading', 'connecting', 'addresses', 'input', 'pairing'].some((s) => statusToCheck.includes(s))
 }
 
-class Signer extends React.Component<any, any> {
-  declare store: Store
+interface SignerOwnProps {
+  expanded?: boolean
+  id: string
+  index?: number
+}
 
-  constructor(props: any, context?: any) {
-    super(props, context)
+interface SignerViewProps extends DashSigner, SignerOwnProps {
+  accounts: Record<string, unknown>
+  liveAccountLimit: number
+  signer: DashSigner
+}
+
+interface SignerViewState {
+  addressLimit: number
+  latticePairCode: string
+  page: number
+  tPhrase: string
+  tPin: string
+}
+
+class SignerView extends React.Component<SignerViewProps, SignerViewState> {
+  constructor(props: SignerViewProps) {
+    super(props)
 
     this.state = {
       page: 0,
@@ -38,18 +57,29 @@ class Signer extends React.Component<any, any> {
   }
 
   submitPin() {
-    link.rpc('trezorPin', this.props.id, this.state.tPin, () => {})
+    void link.executeCommand({
+      type: 'signer.trezor-input',
+      signerId: this.props.id,
+      input: 'pin',
+      value: this.state.tPin
+    })
     this.setState({ tPin: '' })
   }
 
   submitPhrase() {
+    const phrase = this.state.tPhrase || ''
     this.setState({ tPhrase: '' })
-    link.rpc('trezorPhrase', this.props.id, this.state.tPhrase || '', () => {})
+    void link.executeCommand({
+      type: 'signer.trezor-input',
+      signerId: this.props.id,
+      input: 'passphrase',
+      value: phrase
+    })
   }
 
   renderLoadingLive() {
     if (this.props.type === 'ledger' && this.getStatus() === 'deriving live addresses') {
-      const liveAccountLimit = this.store('main.ledger.liveAccountLimit')
+      const { liveAccountLimit } = this.props
       const styleWidth = liveAccountLimit === 20 ? 120 : liveAccountLimit === 40 ? 120 : 60
       const marginTop = liveAccountLimit === 40 ? -8 : 0
       return (
@@ -64,7 +94,7 @@ class Signer extends React.Component<any, any> {
                 <div
                   key={'loadingLiveAddress' + i}
                   className='loadingLiveAddress'
-                  style={{ opacity: i <= this.props.liveAddressesFound ? '1' : '0.3' }}
+                  style={{ opacity: i <= (this.props.liveAddressesFound || 0) ? '1' : '0.3' }}
                 />
               )
             })}
@@ -156,7 +186,11 @@ class Signer extends React.Component<any, any> {
                   onMouseDown={(evt) => {
                     if (evt.button === 0) {
                       // left click only
-                      link.rpc('trezorEnterPhrase', this.props.id, () => {})
+                      void link.executeCommand({
+                        type: 'signer.trezor-input',
+                        signerId: this.props.id,
+                        input: 'device-passphrase'
+                      })
                     }
                   }}
                 >
@@ -220,7 +254,7 @@ class Signer extends React.Component<any, any> {
 
   nextPage(backwards?: any) {
     let page = backwards ? this.state.page - 1 : this.state.page + 1
-    const signer = this.store('main.signers', this.props.id)
+    const { signer } = this.props
     const maxPage = Math.ceil(signer.addresses.length / this.state.addressLimit) - 1
     if (page > maxPage) page = maxPage
     if (page < 0) page = 0
@@ -228,21 +262,25 @@ class Signer extends React.Component<any, any> {
   }
 
   pairToLattice() {
-    link.rpc('latticePair', this.props.id, this.state.latticePairCode, () => {})
+    void link.executeCommand({
+      type: 'signer.lattice-pair',
+      signerId: this.props.id,
+      pairCode: this.state.latticePairCode
+    })
 
     this.setState({ latticePairCode: '' })
   }
 
   expand(id: any) {
-    const crumb = {
+    void link.executeCommand({
+      type: 'dash.navigate',
       view: 'expandedSigner',
       data: { signer: id }
-    }
-    link.send('tray:action', 'navDash', crumb)
+    })
   }
 
   renderPreview() {
-    const signer = this.store('main.signers', this.props.id)
+    const { accounts, signer } = this.props
     const status = this.getStatus()
 
     const hwSigner = isHardwareSigner(this.props.type)
@@ -260,10 +298,10 @@ class Signer extends React.Component<any, any> {
     if (isLocked) signerClass += ' signerLocked'
 
     const addedAccounts = signer.addresses.filter((address: any) => {
-      return Boolean(this.store('main.accounts', address.toLowerCase()))
+      return Boolean(accounts[address.toLowerCase()])
     })
 
-    const zIndex = 1000 - this.props.index
+    const zIndex = 1000 - (this.props.index || 0)
 
     return (
       <div className={signerClass + ' cardShow'} style={{ zIndex }}>
@@ -312,13 +350,7 @@ class Signer extends React.Component<any, any> {
                       key={address}
                       className={'signerAccount signerAccountAdded signerAccountDisabled'}
                       onClick={() => {
-                        // if (this.store('main.accounts', address.toLowerCase())) {
-                        //   link.rpc('removeAccount', address, {}, () => { })
-                        // } else {
-                        //   link.rpc('createAccount', address, { type: signer.type }, (e) => {
-                        //     if (e) console.error(e)
-                        //   })
-                        // }
+                        // Account changes are intentionally disabled in the preview.
                       }}
                     >
                       <div className='signerAccountIndex'>{index}</div>
@@ -350,7 +382,7 @@ class Signer extends React.Component<any, any> {
 
   renderExpanded() {
     const { id, type, tag, index = 0 } = this.props
-    const signer = this.store('main.signers', id)
+    const { accounts, signer } = this.props
     const { page, addressLimit } = this.state
     const startIndex = page * addressLimit
 
@@ -398,26 +430,21 @@ class Signer extends React.Component<any, any> {
               {signer.addresses
                 .slice(startIndex, startIndex + addressLimit)
                 .map((address: any, index: any) => {
-                  const added = this.store('main.accounts', address.toLowerCase())
+                  const added = accounts[address.toLowerCase()]
                   const checkSummedAddress = getAddress(address)
                   return (
                     <div
                       key={address}
                       className={!added ? 'signerAccount' : 'signerAccount signerAccountAdded'}
                       onClick={() => {
-                        if (this.store('main.accounts', address.toLowerCase())) {
-                          link.rpc('removeAccount', address, {}, () => {})
+                        if (accounts[address.toLowerCase()]) {
+                          void link.executeCommand({ type: 'account.remove', address })
                         } else {
-                          const type = getSignerDisplayType(signer)
-                          link.rpc(
-                            'createAccount',
-                            address,
-                            `${capitalize(type)} Account`,
-                            { type: signer.type },
-                            (e: any) => {
-                              if (e) console.error(e)
-                            }
-                          )
+                          void link.executeCommand({
+                            type: 'signer.account-add',
+                            signerId: signer.id,
+                            address
+                          })
                         }
                       }}
                     >
@@ -466,8 +493,7 @@ class Signer extends React.Component<any, any> {
           <div
             className='signerControlOption signerControlOptionImportant'
             onClick={() => {
-              link.send('dash:removeSigner', id)
-              link.send('tray:action', 'backDash')
+              void link.executeCommand({ type: 'signer.remove', signerId: id })
             }}
           >
             Remove Signer
@@ -487,4 +513,26 @@ class Signer extends React.Component<any, any> {
   }
 }
 
-export default Restore.connect(Signer)
+const EMPTY_ACCOUNTS: Record<string, unknown> = {}
+
+const selectAccounts = (state: DashRendererState) => state.accounts || EMPTY_ACCOUNTS
+const selectLiveAccountLimit = (state: DashRendererState) => state.ledger.liveAccountLimit || 5
+
+export default function Signer(props: SignerOwnProps) {
+  const selectSigner = useCallback((state: DashRendererState) => state.signers[props.id], [props.id])
+  const signer = useWalletSelector(selectSigner)
+  const accounts = useWalletSelector(selectAccounts)
+  const liveAccountLimit = useWalletSelector(selectLiveAccountLimit)
+
+  if (!signer) return null
+
+  return (
+    <SignerView
+      {...signer}
+      {...props}
+      signer={signer}
+      accounts={accounts}
+      liveAccountLimit={liveAccountLimit}
+    />
+  )
+}

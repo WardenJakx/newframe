@@ -1,10 +1,8 @@
 import React from 'react'
-import Restore from 'react-restore'
 import svg from '../../../../../resources/svg'
+import { useOriginName } from '../state'
 
-class AddTokenRequest extends React.Component<any, any> {
-  declare store: Store
-
+export class AddTokenRequest extends React.Component<any, any> {
   constructor(props: any, context?: any) {
     super(props, context)
     this.state = { allowInput: false }
@@ -23,7 +21,7 @@ class AddTokenRequest extends React.Component<any, any> {
     if (status === 'pending') requestClass += ' signerRequestPending'
     if (status === 'error') requestClass += ' signerRequestError'
 
-    const originName = this.store('main.origins', this.props.req.origin, 'name')
+    const originName = this.props.originName
     let originClass = 'requestTokenOrigin'
     if (originName.length > 28) originClass = 'requestTokenOrigin requestTokenOrigin18'
     if (originName.length > 36) originClass = 'requestTokenOrigin requestTokenOrigin12'
@@ -72,9 +70,7 @@ class AddTokenRequest extends React.Component<any, any> {
               }
               <div className='requestToken scaleIn'>
                 <div className='requestTokenInner'>
-                  <div className={originClass}>
-                    {this.store('main.origins', this.props.req.origin, 'name')}
-                  </div>
+                  <div className={originClass}>{originName}</div>
                   <div className={'requestTokenOriginSub'}>{'wants to add a token'}</div>
                   <div className='requestTokenInfo'>
                     <div className='requestTokenSymbol'>{token.symbol.toUpperCase()}</div>
@@ -91,4 +87,7 @@ class AddTokenRequest extends React.Component<any, any> {
   }
 }
 
-export default Restore.connect(AddTokenRequest)
+export default function AddTokenRequestWithState(props: any) {
+  const originName = useOriginName(props.req.origin)
+  return <AddTokenRequest {...props} originName={originName} />
+}

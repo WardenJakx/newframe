@@ -1,48 +1,69 @@
 import log from 'electron-log'
 import { addHexPrefix } from '@ethereumjs/util'
+import { createStore } from 'zustand/vanilla'
+import { immer } from 'zustand/middleware/immer'
 
 import {
-  addNetwork as addNetworkAction,
-  removeBalance as removeBalanceAction,
-  setBalances as setBalancesAction,
-  setPortfolioBalances as setPortfolioBalancesAction,
-  removeBalances as removeBalancesAction,
-  addCustomTokens as addCustomTokensAction,
-  removeCustomTokens as removeTokensAction,
-  addKnownTokens as addKnownTokensAction,
-  removeKnownTokens as removeKnownTokensAction,
-  resetSavedData as resetSavedDataAction,
-  setScanning as setScanningAction,
-  initOrigin as initOriginAction,
-  clearOrigins as clearOriginsAction,
-  removeOrigin as removeOriginAction,
-  addOriginRequest as addOriginRequestAction,
-  switchOriginChain as switchOriginChainAction,
-  removeNetwork as removeNetworkAction,
-  updateNetwork as updateNetworkAction,
-  activateNetwork as activateNetworkAction,
-  setBlockHeight as setBlockHeightAction,
-  setNetworkIcon as setNetworkIconAction,
-  updateAccount as updateAccountAction,
-  setAutoDiscoverTokens as setAutoDiscoverTokensAction,
-  setPortfolioApiKey as setPortfolioApiKeyAction,
-  revokePermission as revokePermissionAction,
-  upsertSubmittedActivity as upsertSubmittedActivityAction,
-  updateActivity as updateActivityAction,
-  finalizeActivity as finalizeActivityAction,
-  pruneActivity as pruneActivityAction,
-  navClearReq as clearNavRequestAction,
-  navClearSigner as clearNavSignerAction,
-  updateTypedDataRequest as updateTypedDataAction
+  createCanonicalActions,
+  type CanonicalActions,
+  type CanonicalStore
 } from '../../../../main/store/actions'
-import {
-  dismissNotification as dismissNotificationAction,
-  expireNotification as expireNotificationAction,
-  resolveNotification as resolveNotificationAction,
-  upsertPendingNotification as upsertPendingNotificationAction
-} from '../../../../resources/store/actions.panel'
 import { NATIVE_CURRENCY } from '../../../../resources/constants'
 import { toTokenId } from '../../../../resources/domain/balance'
+
+function createActionHarness(
+  initial: any,
+  onChange?: (state: CanonicalStore) => void
+): { actions: CanonicalActions; getState: () => CanonicalStore } {
+  const defaults: any = {
+    windows: {
+      panel: { nav: [], footer: { height: 40 } },
+      dash: { nav: [], footer: { height: 40 } }
+    },
+    panel: {},
+    selected: {},
+    tray: {},
+    view: { notifications: {} },
+    main: {
+      networks: { ethereum: {} },
+      networksMeta: { ethereum: {} },
+      origins: {},
+      permissions: {},
+      accounts: {},
+      accountOrder: [],
+      accountsMeta: {},
+      balances: {},
+      activity: {},
+      orders: {},
+      tokens: { custom: [], known: {} },
+      scanning: {}
+    }
+  }
+  const data = {
+    ...defaults,
+    ...initial,
+    windows: {
+      ...defaults.windows,
+      ...initial.windows,
+      panel: { ...defaults.windows.panel, ...initial.windows?.panel },
+      dash: { ...defaults.windows.dash, ...initial.windows?.dash }
+    },
+    view: { ...defaults.view, ...initial.view },
+    main: { ...defaults.main, ...initial.main }
+  }
+
+  const store = createStore<CanonicalStore>()(
+    immer((set, get) => ({
+      ...data,
+      ...createCanonicalActions(set, get)
+    }))
+  )
+
+  onChange?.(store.getState())
+  if (onChange) store.subscribe(onChange)
+
+  return { actions: store.getState(), getState: store.getState }
+}
 
 beforeAll(() => {
   log.transports.console.level = false
@@ -79,18 +100,18 @@ describe('#addNetwork', () => {
     symbol: 'MATIC'
   }
 
+  let actions: CanonicalActions
   let networks: any, networksMeta: any
 
-  const updaterFn = (node: any, update: any) => {
-    if (node !== 'main') throw new Error(`attempted to update wrong node: ${node}`)
-    update({ networks, networksMeta })
-  }
-
-  const addNetwork = (network: any) => addNetworkAction(updaterFn, network)
+  const addNetwork = (network: any) => actions.addNetwork(network)
 
   beforeEach(() => {
     networks = { ethereum: {} }
     networksMeta = { ethereum: {} }
+    actions = createActionHarness({ main: { networks, networksMeta } }, (state) => {
+      networks = state.main.networks
+      networksMeta = state.main.networksMeta
+    }).actions
   })
 
   it('adds a network with the correct id', () => {
@@ -130,18 +151,14 @@ describe('#addNetwork', () => {
   })
 
   it('adds a network with the correct primary RPC', () => {
-    ;(polygonNetwork as any).primaryRpc = 'https://polygon-rpc.com'
-
-    addNetwork(polygonNetwork)
+    addNetwork({ ...polygonNetwork, primaryRpc: 'https://polygon-rpc.com' })
 
     expect(networks.ethereum['137'].primaryRpc).toBeUndefined()
     expect(networks.ethereum['137'].connection.primary.custom).toBe('https://polygon-rpc.com')
   })
 
   it('adds a network with the correct secondary RPC', () => {
-    ;(polygonNetwork as any).secondaryRpc = 'https://rpc-mainnet.matic.network'
-
-    addNetwork(polygonNetwork)
+    addNetwork({ ...polygonNetwork, secondaryRpc: 'https://rpc-mainnet.matic.network' })
 
     expect(networks.ethereum['137'].secondaryRpc).toBeUndefined()
     expect(networks.ethereum['137'].connection.secondary.custom).toBe('https://rpc-mainnet.matic.network')
@@ -196,14 +213,15 @@ describe('#addNetwork', () => {
     addNetwork(polygonNetwork)
 
     expect(networksMeta.ethereum['137']).toEqual({
-      blockHeight: 0,
       name: 'Polygon',
+      primaryColor: 'accent1',
       icon: '',
       nativeCurrency: {
         symbol: 'MATIC',
         name: '',
         icon: '',
-        decimals: 18
+        decimals: 18,
+        usd: { price: 0, change24hr: 0 }
       },
       gas: {
         price: {
@@ -273,16 +291,9 @@ describe('#addNetwork', () => {
 })
 
 describe('#setBalances', () => {
-  const updaterFn = (node: any, address: any, update: any) => {
-    expect(node).toBe('main.balances')
-    expect(address).toBe(owner)
-
-    balances = update(balances)
-  }
-
-  const setBalances = (updatedBalances: any) => setBalancesAction(updaterFn, owner, updatedBalances)
-
+  let actions: CanonicalActions
   let balances: any
+  const setBalances = (updatedBalances: any) => actions.setBalances(owner, updatedBalances)
 
   beforeEach(() => {
     balances = [
@@ -291,6 +302,9 @@ describe('#setBalances', () => {
         balance: addHexPrefix(BigInt(305).toString(16))
       }
     ]
+    actions = createActionHarness({ main: { balances: { [owner]: balances } } }, (state) => {
+      balances = state.main.balances[owner]
+    }).actions
   })
 
   it('adds a new balance', () => {
@@ -370,13 +384,12 @@ describe('#removeBalance', () => {
     ]
   }
 
-  const updaterFn = (node: any, update: any) => {
-    expect(node).toBe('main.balances')
-
-    balances = update(balances)
+  const removeBalance = (key: any) => {
+    const { actions } = createActionHarness({ main: { balances } }, (state) => {
+      balances = state.main.balances
+    })
+    actions.removeBalance(1, key)
   }
-
-  const removeBalance = (key: any) => removeBalanceAction(updaterFn, 1, key)
 
   it('removes a balance from all accounts', () => {
     removeBalance(testTokens.zrx.address)
@@ -394,17 +407,16 @@ describe('#addCustomTokens', () => {
   let tokens: any = [],
     balances: any = {}
 
-  const updaterFn = (node: any, update: any) => {
-    if (node === 'main.tokens.custom') {
-      tokens = update(tokens)
-    }
-
-    if (node === 'main.balances') {
-      balances = update(balances)
-    }
+  const addTokens = (tokensToAdd: any) => {
+    const { actions } = createActionHarness(
+      { main: { tokens: { custom: tokens, known: {} }, balances } },
+      (state) => {
+        tokens = state.main.tokens.custom
+        balances = state.main.balances
+      }
+    )
+    actions.addCustomTokens(tokensToAdd)
   }
-
-  const addTokens = (tokensToAdd: any) => addCustomTokensAction(updaterFn, tokensToAdd)
 
   it('adds a token', () => {
     tokens = [testTokens.zrx]
@@ -468,15 +480,16 @@ describe('#removeCustomTokens', () => {
   let customTokens: any = [],
     knownTokens = {}
 
-  const updaterFn = (node: any, update: any) => {
-    if (node === 'main.tokens.custom') {
-      customTokens = update(customTokens)
-    } else if (node === 'main.tokens.known') {
-      knownTokens = update(knownTokens)
-    }
+  const removeTokens = (tokensToRemove: any) => {
+    const { actions } = createActionHarness(
+      { main: { tokens: { custom: customTokens, known: knownTokens } } },
+      (state) => {
+        customTokens = state.main.tokens.custom
+        knownTokens = state.main.tokens.known
+      }
+    )
+    actions.removeCustomTokens(tokensToRemove)
   }
-
-  const removeTokens = (tokensToRemove: any) => removeTokensAction(updaterFn, tokensToRemove)
 
   it('removes a token', () => {
     customTokens = [testTokens.zrx, testTokens.badger]
@@ -545,14 +558,15 @@ describe('#addKnownTokens', () => {
   let tokens: any = []
   const account = '0xfaff9f426e8071e03eebbfefe9e7bf4b37565ab9'
 
-  const updaterFn = (node: any, address: any, update: any) => {
-    expect(node).toBe('main.tokens.known')
-    expect(address).toBe(account)
-
-    tokens = update(tokens)
+  const addTokens = (tokensToAdd: any) => {
+    const { actions } = createActionHarness(
+      { main: { tokens: { custom: [], known: { [account]: tokens } } } },
+      (state) => {
+        tokens = state.main.tokens.known[account]
+      }
+    )
+    actions.addKnownTokens(account, tokensToAdd)
   }
-
-  const addTokens = (tokensToAdd: any) => addKnownTokensAction(updaterFn, account, tokensToAdd)
 
   it('adds a token', () => {
     tokens = [testTokens.zrx]
@@ -578,53 +592,19 @@ describe('#addKnownTokens', () => {
   })
 })
 
-describe('#setScanning', () => {
-  let isScanning: any
-
-  beforeAll(() => {
-    isScanning = false
-  })
-
-  const updaterFn = (node: any, address: any, update: any) => {
-    expect(node).toBe('main.scanning')
-    expect(address).toBe(owner)
-
-    isScanning = update()
-  }
-
-  const setScanning = (scanning: any) => setScanningAction(updaterFn, owner, scanning)
-
-  it('immediately sets the state to scanning', () => {
-    setScanning(true)
-
-    expect(isScanning).toBe(true)
-  })
-
-  it('sets the state back to not scanning after 1 second', () => {
-    setScanning(false)
-
-    expect(isScanning).toBe(true)
-
-    jest.advanceTimersByTime(1000)
-
-    expect(isScanning).toBe(false)
-  })
-})
-
 describe('#initOrigin', () => {
+  let actions: CanonicalActions
   let origins: any
   const creationDate = new Date('2022-05-24')
 
-  const updaterFn = (node: any, update: any) => {
-    expect(node).toBe('main.origins')
-    origins = update()
-  }
-
-  const initOrigin = (id: any, origin: any) => initOriginAction(updaterFn, id, origin)
+  const initOrigin = (id: any, origin: any) => actions.initOrigin(id, origin)
 
   beforeEach(() => {
     origins = {}
     jest.setSystemTime(creationDate)
+    actions = createActionHarness({ main: { origins } }, (state) => {
+      origins = state.main.origins
+    }).actions
   })
 
   it('creates a new origin', () => {
@@ -648,15 +628,11 @@ describe('#initOrigin', () => {
 })
 
 describe('#clearOrigins', () => {
+  let actions: CanonicalActions
   let origins: any
   let permissions: any
 
-  const updaterFn = (node: any, update: any) => {
-    if (node === 'main.origins') origins = update()
-    if (node === 'main.permissions') permissions = update(permissions)
-  }
-
-  const clearOrigins = () => clearOriginsAction(updaterFn)
+  const clearOrigins = () => actions.clearOrigins()
 
   beforeEach(() => {
     origins = {
@@ -672,10 +648,14 @@ describe('#clearOrigins', () => {
         }
       }
     }
+    actions = createActionHarness({ main: { origins, permissions } }, (state) => {
+      origins = state.main.origins
+      permissions = state.main.permissions
+    }).actions
   })
 
   it('should clear all existing origins and attached permissions', () => {
-    ;(clearOrigins as any)(origins)
+    clearOrigins()
 
     expect(origins).toEqual({})
     expect(permissions).toEqual({})
@@ -683,15 +663,10 @@ describe('#clearOrigins', () => {
 })
 
 describe('#revokePermission', () => {
+  let actions: CanonicalActions
   let permissions: any
 
-  const updaterFn = (node: any, address: any, update: any) => {
-    expect(node).toBe('main.permissions')
-    permissions[address] = update(permissions[address])
-  }
-
-  const revokePermission = (address: string, originId: string) =>
-    revokePermissionAction(updaterFn, address, originId)
+  const revokePermission = (address: string, originId: string) => actions.revokePermission(address, originId)
 
   beforeEach(() => {
     permissions = {
@@ -706,6 +681,9 @@ describe('#revokePermission', () => {
         }
       }
     }
+    actions = createActionHarness({ main: { permissions } }, (state) => {
+      permissions = state.main.permissions
+    }).actions
   })
 
   it('removes the permission entry instead of disabling it', () => {
@@ -723,15 +701,11 @@ describe('#revokePermission', () => {
 })
 
 describe('#removeOrigin', () => {
+  let actions: CanonicalActions
   let origins: any
   let permissions: any
 
-  const updaterFn = (node: any, update: any) => {
-    if (node === 'main.origins') origins = update(origins)
-    if (node === 'main.permissions') permissions = update(permissions)
-  }
-
-  const removeOrigin = (originId: any) => removeOriginAction(updaterFn, originId)
+  const removeOrigin = (originId: any) => actions.removeOrigin(originId)
 
   beforeEach(() => {
     origins = {
@@ -751,6 +725,10 @@ describe('#removeOrigin', () => {
         }
       }
     }
+    actions = createActionHarness({ main: { origins, permissions } }, (state) => {
+      origins = state.main.origins
+      permissions = state.main.permissions
+    }).actions
   })
 
   it('should remove the specified origin and attached permissions', () => {
@@ -772,18 +750,14 @@ describe('#removeOrigin', () => {
 })
 
 describe('#addOriginRequest', () => {
+  let actions: CanonicalActions
   let origins: any
 
   const creationTime = new Date('2022-05-24').getTime()
   const updateTime = creationTime + 1000 * 60 * 60 * 24 * 2 // 2 days
   const endTime = creationTime + 1000 * 60 * 60 * 24 * 1 // 1 day
 
-  const updaterFn = (node: any, id: any, update: any) => {
-    expect(node).toBe('main.origins')
-    origins[id] = update(origins[id])
-  }
-
-  const addOriginRequest = (id: any) => addOriginRequestAction(updaterFn, id)
+  const addOriginRequest = (id: any) => actions.addOriginRequest(id)
 
   beforeEach(() => {
     jest.setSystemTime(updateTime)
@@ -807,6 +781,9 @@ describe('#addOriginRequest', () => {
         }
       }
     }
+    actions = createActionHarness({ main: { origins } }, (state) => {
+      origins = state.main.origins
+    }).actions
   })
 
   it('updates the timestamp for an existing session', () => {
@@ -840,14 +817,8 @@ describe('#addOriginRequest', () => {
 })
 
 describe('#switchOriginChain', () => {
+  let actions: CanonicalActions
   let origins: any = {}
-
-  const updaterFn = (node: any, origin: any, update: any) => {
-    const nodePath = [node, origin].join('.')
-    expect(nodePath).toBe('main.origins.91f6971d-ba85-52d7-a27e-6af206eb2433')
-
-    origins[origin] = update()
-  }
 
   beforeEach(() => {
     origins = {
@@ -855,10 +826,13 @@ describe('#switchOriginChain', () => {
         chain: { id: 1, type: 'ethereum' }
       }
     }
+    actions = createActionHarness({ main: { origins } }, (state) => {
+      origins = state.main.origins
+    }).actions
   })
 
   const switchChain = (chainId: any, type: any) =>
-    switchOriginChainAction(updaterFn, '91f6971d-ba85-52d7-a27e-6af206eb2433', chainId, type)
+    actions.switchOriginChain('91f6971d-ba85-52d7-a27e-6af206eb2433', chainId, type)
 
   it('should switch the chain for an origin', () => {
     switchChain(50, 'ethereum')
@@ -868,12 +842,8 @@ describe('#switchOriginChain', () => {
 })
 
 describe('#removeNetwork', () => {
+  let actions: CanonicalActions
   let main: any
-
-  const updaterFn = (node: any, update: any) => {
-    expect(node).toBe('main')
-    main = update(main)
-  }
 
   beforeEach(() => {
     main = {
@@ -912,10 +882,13 @@ describe('#removeNetwork', () => {
         }
       }
     }
+    actions = createActionHarness({ main }, (state) => {
+      main = state.main
+    }).actions
   })
 
   const removeNetwork = (networkId: any, networkType = 'ethereum') =>
-    removeNetworkAction(updaterFn, { id: networkId, type: networkType })
+    actions.removeNetwork({ id: networkId, type: networkType })
 
   it('should delete the network and meta', () => {
     removeNetwork(4)
@@ -972,163 +945,34 @@ describe('#removeNetwork', () => {
   })
 })
 
-describe('#updateNetwork', () => {
+describe('#activateNetwork', () => {
+  let actions: CanonicalActions
   let main: any
-
-  const updaterFn = (node: any, update: any) => {
-    expect(node).toBe('main')
-    main = update(main)
-  }
 
   beforeEach(() => {
     main = {
-      origins: {
-        '91f6971d-ba85-52d7-a27e-6af206eb2433': {
-          chain: { id: 1, type: 'ethereum' }
-        },
-        '8073729a-5e59-53b7-9e69-5d9bcff94087': {
-          chain: { id: 4, type: 'ethereum' }
-        },
-        'd7acc008-6411-5486-bb2d-0c0cfcddbb92': {
-          chain: { id: 50, type: 'ethereum' }
-        },
-        '695112ec-43e2-52a8-8f69-5c36837d6d13': {
-          chain: { id: 4, type: 'ethereum' }
-        }
-      },
       networks: {
         ethereum: {
-          1: {},
-          4: {},
-          137: {}
-        },
-        cosmos: {
-          50: {}
+          137: {
+            on: false
+          }
         }
       },
-      networksMeta: {
-        ethereum: {
-          1: {},
-          4: {},
-          137: {}
-        },
-        cosmos: {
-          50: {}
+      origins: {
+        'frame.test': {
+          chain: {
+            id: 137
+          }
         }
       }
     }
+    actions = createActionHarness({ main }, (state) => {
+      main = state.main
+    }).actions
   })
-
-  const updateNetwork = (existingNetwork: any, newNetwork: any) =>
-    updateNetworkAction(updaterFn, existingNetwork, newNetwork)
-
-  it('should update the network', () => {
-    updateNetwork(
-      { id: '0x4', type: 'ethereum', name: '', explorer: '', symbol: '' },
-      { id: '0x42', type: 'ethereum', name: 'test', explorer: 'explorer.test', symbol: 'TEST' }
-    )
-
-    expect(main.networks.ethereum).toStrictEqual({
-      1: {},
-      66: { id: 66, type: 'ethereum', name: 'test', explorer: 'explorer.test', symbol: 'TEST' },
-      137: {}
-    })
-  })
-
-  it('should trim string properties', () => {
-    updateNetwork(
-      { id: '0x4', type: 'ethereum', name: '', explorer: '', symbol: '' },
-      { id: '0x42', type: 'ethereum', name: 'test     ', explorer: '   explorer.test    ', symbol: 'TEST  ' }
-    )
-
-    expect(main.networks.ethereum).toStrictEqual({
-      1: {},
-      66: { id: 66, type: 'ethereum', name: 'test', explorer: 'explorer.test', symbol: 'TEST' },
-      137: {}
-    })
-  })
-
-  it('should update the chainId for origins using the updated network', () => {
-    updateNetwork(
-      { id: '0x4', type: 'ethereum', name: '', explorer: '', symbol: '' },
-      { id: '0x42', type: 'ethereum', name: 'test', explorer: 'explorer.test', symbol: 'TEST' }
-    )
-
-    expect(main.origins).toStrictEqual({
-      '91f6971d-ba85-52d7-a27e-6af206eb2433': {
-        chain: expect.objectContaining({ id: 1, type: 'ethereum' })
-      },
-      '8073729a-5e59-53b7-9e69-5d9bcff94087': {
-        chain: expect.objectContaining({ id: 66, type: 'ethereum' })
-      },
-      'd7acc008-6411-5486-bb2d-0c0cfcddbb92': {
-        chain: expect.objectContaining({ id: 50, type: 'ethereum' })
-      },
-      '695112ec-43e2-52a8-8f69-5c36837d6d13': {
-        chain: expect.objectContaining({ id: 66, type: 'ethereum' })
-      }
-    })
-  })
-
-  it('should correctly update the networksMeta', () => {
-    const icon = 'http://icon.com'
-    const nativeCurrencyIcon = 'http://icon2.com'
-    const nativeCurrencyName = 'TEST_NAME'
-    const symbol = 'TEST'
-    updateNetwork(
-      { id: '0x4', type: 'ethereum', name: '', explorer: '', symbol: '' },
-      {
-        id: '0x4',
-        type: 'ethereum',
-        name: 'test',
-        explorer: 'explorer.test',
-        symbol,
-        nativeCurrencyName,
-        nativeCurrencyIcon,
-        icon
-      }
-    )
-
-    expect(main.networksMeta.ethereum[4]).toStrictEqual({
-      icon,
-      nativeCurrency: { symbol, name: nativeCurrencyName, icon: nativeCurrencyIcon },
-      symbol
-    })
-  })
-})
-
-describe('#activateNetwork', () => {
-  const main = {
-    networks: {
-      ethereum: {
-        137: {
-          on: false
-        }
-      }
-    },
-    origins: {
-      'frame.test': {
-        chain: {
-          id: 137
-        }
-      }
-    }
-  }
-
-  const updaterFn = (node: any, ...args: any[]) => {
-    if (node === 'main') {
-      const update = args[0]
-      update(main)
-    }
-
-    if (node === 'main.networks') {
-      const [type, chainId, on, update] = args
-      ;(main.networks as any)[type][chainId][on] = update()
-    }
-  }
 
   const activateNetwork = (type: any, chainId: any, active: any) =>
-    activateNetworkAction(updaterFn, type, chainId, active)
+    actions.activateNetwork(type, chainId, active)
 
   it('activates the given chain', () => {
     main.networks.ethereum[137].on = false
@@ -1147,53 +991,9 @@ describe('#activateNetwork', () => {
   })
 })
 
-describe('#setBlockHeight', () => {
-  let main: any
-
-  const updaterFn = (node: any, update: any) => {
-    expect(node).toBe('main.networksMeta.ethereum')
-    main.networksMeta.ethereum = update(main.networksMeta.ethereum)
-  }
-
-  beforeEach(() => {
-    main = {
-      networksMeta: {
-        ethereum: {
-          1: {
-            blockHeight: 0
-          },
-          4: {
-            blockHeight: 0
-          },
-          137: {
-            blockHeight: 0
-          }
-        }
-      }
-    }
-  })
-
-  const setBlockHeight = (chainId: any, blockHeight: any) =>
-    setBlockHeightAction(updaterFn, chainId, blockHeight)
-
-  it('should update the block height for the expected chain', () => {
-    setBlockHeight(4, 500)
-
-    expect(main.networksMeta.ethereum).toStrictEqual({
-      1: { blockHeight: 0 },
-      4: { blockHeight: 500 },
-      137: { blockHeight: 0 }
-    })
-  })
-})
-
 describe('#setNetworkIcon', () => {
+  let actions: CanonicalActions
   let main: any
-
-  const updaterFn = (node: any, type: any, update: any) => {
-    expect(node).toBe('main.networksMeta')
-    main.networksMeta[type] = update(main.networksMeta[type])
-  }
 
   beforeEach(() => {
     main = {
@@ -1208,10 +1008,12 @@ describe('#setNetworkIcon', () => {
         }
       }
     }
+    actions = createActionHarness({ main }, (state) => {
+      main = state.main
+    }).actions
   })
 
-  const setNetworkIcon = (chainId: number, icon: string) =>
-    setNetworkIconAction(updaterFn, 'ethereum', chainId, icon)
+  const setNetworkIcon = (chainId: number, icon: string) => actions.setNetworkIcon('ethereum', chainId, icon)
 
   it('should update the network icon for the expected chain', () => {
     setNetworkIcon(8453, 'frame-cache:icon:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')
@@ -1225,18 +1027,9 @@ describe('#setNetworkIcon', () => {
   })
 })
 
-describe('#updateAccount', () => {
+describe('#upsertAccount', () => {
+  let actions: CanonicalActions
   let main: any
-
-  const updaterFn = (node: any, id: any, update: any) => {
-    if (node === 'main.accounts') {
-      main.accounts[id] = update(main.accounts[id])
-    }
-
-    if (node === 'main.accountsMeta') {
-      main.accountsMeta[id] = update(main.accountsMeta[id])
-    }
-  }
 
   beforeEach(() => {
     jest.setSystemTime(new Date('2022-11-17T11:01:58.135Z'))
@@ -1257,10 +1050,12 @@ describe('#updateAccount', () => {
         }
       }
     }
+    actions = createActionHarness({ main }, (state) => {
+      main = state.main
+    }).actions
   })
 
-  const setAccount = (id: any, updatedAccount: any) =>
-    updateAccountAction(updaterFn, { ...updatedAccount, id })
+  const setAccount = (id: any, updatedAccount: any) => actions.upsertAccount({ ...updatedAccount, id })
 
   it('should update the account', () => {
     setAccount('1', { name: 'cool account', lastSignerType: 'seed', status: 'ok' })
@@ -1321,48 +1116,10 @@ describe('#updateAccount', () => {
   })
 })
 
-describe('#removeBalances', () => {
-  let balances: any
-
-  const updaterFn = (node: any, address: any, update: any) => {
-    expect(node).toBe('main.balances')
-    expect(address).toBe(owner)
-
-    balances = update(balances)
-  }
-
-  const removeBalances = (setToRemove: any) => removeBalancesAction(updaterFn, owner, setToRemove)
-
-  beforeEach(() => {
-    balances = Object.values(testTokens).map((token) => ({
-      ...token,
-      balance: addHexPrefix(BigInt(120).toString(16))
-    }))
-  })
-
-  it('should remove all tokens from the removal set from an accounts balance', () => {
-    const removalSet = new Set(Object.values(testTokens).map(toTokenId))
-    removeBalances(removalSet)
-    expect(balances.length).toBe(0)
-  })
-
-  it('should only remove tokens from the removal set from an accounts balance', () => {
-    const removalSet = new Set()
-    removalSet.add(toTokenId(testTokens.badger))
-    removeBalances(removalSet)
-    expect(balances.length).toBe(1)
-  })
-})
-
 describe('#setPortfolioBalances', () => {
+  let actions: CanonicalActions
   let main: any
-
-  const updaterFn = (node: any, update: any) => {
-    expect(node).toBe('main')
-    main = update(main)
-  }
-
-  const setPortfolioBalances = (balances: any[]) => setPortfolioBalancesAction(updaterFn, owner, balances)
+  const setPortfolioBalances = (balances: any[]) => actions.setPortfolioBalances(owner, balances)
 
   beforeEach(() => {
     const staleKnownToken = {
@@ -1388,6 +1145,9 @@ describe('#setPortfolioBalances', () => {
         ]
       }
     }
+    actions = createActionHarness({ main }, (state) => {
+      main = state.main
+    }).actions
   })
 
   it('replaces cached portfolio balances without removing custom token balances', () => {
@@ -1407,15 +1167,17 @@ describe('#setPortfolioBalances', () => {
 describe('#setAutoDiscoverTokens', () => {
   let autoDiscoverTokens: boolean
 
-  const updaterFn = (node: string, update: (value: boolean, state: any) => boolean) => {
-    expect(node).toBe('main.autoDiscoverTokens')
-    autoDiscoverTokens = update(autoDiscoverTokens, { main: { portfolioApiKey: 'zk_test' } })
+  const setAutoDiscoverTokens = (value: boolean, portfolioApiKey = 'zk_test') => {
+    const { actions } = createActionHarness({ main: { autoDiscoverTokens, portfolioApiKey } }, (state) => {
+      autoDiscoverTokens = state.main.autoDiscoverTokens
+    })
+    actions.setAutoDiscoverTokens(value)
   }
 
   it('sets the persisted auto-discovery preference', () => {
     autoDiscoverTokens = true
 
-    setAutoDiscoverTokensAction(updaterFn, false)
+    setAutoDiscoverTokens(false)
 
     expect(autoDiscoverTokens).toBe(false)
   })
@@ -1423,7 +1185,7 @@ describe('#setAutoDiscoverTokens', () => {
   it('enables auto-discovery when a portfolio API key is set', () => {
     autoDiscoverTokens = false
 
-    setAutoDiscoverTokensAction(updaterFn, true)
+    setAutoDiscoverTokens(true)
 
     expect(autoDiscoverTokens).toBe(true)
   })
@@ -1431,57 +1193,51 @@ describe('#setAutoDiscoverTokens', () => {
   it('does not enable auto-discovery without a portfolio API key', () => {
     autoDiscoverTokens = false
 
-    const updaterWithoutKey = (node: string, update: (value: boolean, state: any) => boolean) => {
-      expect(node).toBe('main.autoDiscoverTokens')
-      autoDiscoverTokens = update(autoDiscoverTokens, { main: { portfolioApiKey: '' } })
-    }
-
-    setAutoDiscoverTokensAction(updaterWithoutKey, true)
+    setAutoDiscoverTokens(true, '')
 
     expect(autoDiscoverTokens).toBe(false)
   })
 })
 
 describe('#setPortfolioApiKey', () => {
-  const updates: Record<string, unknown> = {}
-
-  const updaterFn = (node: string, update: (value?: unknown) => unknown) => {
-    updates[node] = update(updates[node])
-  }
+  let actions: CanonicalActions
+  let main: any
 
   beforeEach(() => {
-    Object.keys(updates).forEach((key) => delete updates[key])
+    main = { portfolioApiKey: '', autoDiscoverTokens: true }
+    actions = createActionHarness({ main }, (state) => {
+      main = state.main
+    }).actions
   })
 
   it('sets the persisted portfolio API key without whitespace', () => {
-    setPortfolioApiKeyAction(updaterFn, ' zk_test \n')
+    actions.setPortfolioApiKey(' zk_test \n')
 
-    expect(updates['main.portfolioApiKey']).toBe('zk_test')
-    expect(updates['main.autoDiscoverTokens']).toBeUndefined()
+    expect(main.portfolioApiKey).toBe('zk_test')
+    expect(main.autoDiscoverTokens).toBe(true)
   })
 
   it('disables auto-discovery when the portfolio API key is cleared', () => {
-    setPortfolioApiKeyAction(updaterFn, '')
+    actions.setPortfolioApiKey('')
 
-    expect(updates['main.portfolioApiKey']).toBe('')
-    expect(updates['main.autoDiscoverTokens']).toBe(false)
+    expect(main.portfolioApiKey).toBe('')
+    expect(main.autoDiscoverTokens).toBe(false)
   })
 })
 
 describe('#removeKnownTokens', () => {
+  let actions: CanonicalActions
   let knownTokens: any
-
-  const updaterFn = (node: any, address: any, update: any) => {
-    expect(node).toBe('main.tokens.known')
-    expect(address).toBe(owner)
-
-    knownTokens = update(knownTokens)
-  }
-
-  const removeKnownTokens = (setToRemove: any) => removeKnownTokensAction(updaterFn, owner, setToRemove)
+  const removeKnownTokens = (setToRemove: any) => actions.removeKnownTokens(owner, setToRemove)
 
   beforeEach(() => {
     knownTokens = Object.values(testTokens)
+    actions = createActionHarness(
+      { main: { tokens: { custom: [], known: { [owner]: knownTokens } } } },
+      (state) => {
+        knownTokens = state.main.tokens.known[owner]
+      }
+    ).actions
   })
 
   it('should remove all tokens from the removal set from an accounts known tokens', () => {
@@ -1498,12 +1254,8 @@ describe('#removeKnownTokens', () => {
 })
 
 describe('#resetSavedData', () => {
+  let actions: CanonicalActions
   let main: any
-
-  const updaterFn = (node: any, update: any) => {
-    expect(node).toBe('main')
-    main = update(main)
-  }
 
   beforeEach(() => {
     main = {
@@ -1535,10 +1287,13 @@ describe('#resetSavedData', () => {
         }
       }
     }
+    actions = createActionHarness({ main }, (state) => {
+      main = state.main
+    }).actions
   })
 
   it('clears cached known tokens, their balances, activity, and orders without removing custom tokens', () => {
-    resetSavedDataAction(updaterFn)
+    actions.resetSavedData()
 
     expect(main.tokens.custom).toStrictEqual([testTokens.zrx])
     expect(main.tokens.known).toStrictEqual({})
@@ -1552,13 +1307,12 @@ describe('#resetSavedData', () => {
 describe('#navClearSigner', () => {
   let nav: any
 
-  const updaterFn = (node: any, update: any) => {
-    expect(node).toBe('windows.dash.nav')
-
-    nav = update(nav)
+  const clearSigner = (signerId: string) => {
+    const { actions } = createActionHarness({ windows: { dash: { nav } } }, (state) => {
+      nav = (state.windows.dash as any).nav
+    })
+    actions.navClearSigner(signerId)
   }
-
-  const clearSigner = clearNavSignerAction.bind(null, updaterFn)
 
   beforeEach(() => {
     nav = []
@@ -1591,13 +1345,12 @@ describe('#navClearSigner', () => {
 describe('#navClearReq', () => {
   let nav: any
 
-  const updaterFn = (node: any, update: any) => {
-    expect(node).toBe('windows.panel.nav')
-
-    nav = update(nav)
+  const clearRequest = (requestId: string, showRequestInbox = true) => {
+    const { actions } = createActionHarness({ windows: { panel: { nav } } }, (state) => {
+      nav = state.windows.panel.nav
+    })
+    actions.navClearReq(requestId, showRequestInbox)
   }
-
-  const clearRequest = clearNavRequestAction.bind(null, updaterFn)
 
   beforeEach(() => {
     nav = []
@@ -1654,79 +1407,21 @@ describe('#navClearReq', () => {
   })
 })
 
-describe('#updateTypedDataRequest', () => {
-  let requests: any
-  const request = '79928538-c971-4cf0-8498-fa4e8017398b'
-
-  const updaterFn = (node: any, account: any, leaf: any, update: any) => {
-    expect(node).toBe('main.accounts')
-    expect(account).toBe(owner)
-    expect(leaf).toBe('requests')
-
-    requests = update(requests)
-  }
-
-  const updateSignatureMessage = (reqId: any, newData: any) =>
-    updateTypedDataAction(updaterFn, owner, reqId, newData)
-
-  beforeEach(() => {
-    requests = {
-      [request]: {
-        handlerId: '79928538-c971-4cf0-8498-fa4e8017398b',
-        type: 'signTypedData',
-        typedMessage: {
-          data: {
-            oldAttribute: true
-          }
-        }
-      },
-      some_other_id: {
-        handlerId: 'wow_such_valid_handerId'
-      }
-    }
-  })
-
-  it('should add a new property to a request ', () => {
-    expect(requests[request].doesNotExistYet).toBeUndefined()
-    updateSignatureMessage(request, {
-      doesNotExistYet: true
-    })
-
-    expect(requests[request].doesNotExistYet).toBeTruthy()
-  })
-
-  it('should not change any properties which are not altered in an update', () => {
-    updateSignatureMessage(request, {
-      doesNotExistYet: true
-    })
-
-    expect(requests[request].typedMessage.data.oldAttribute).toBeTruthy()
-  })
-})
-
 describe('#activity actions', () => {
+  let actions: CanonicalActions
   let activity: any
 
-  const updaterFn = (node: any, ...args: any[]) => {
-    expect(node).toBe('main.activity')
-
-    if (typeof args[0] === 'string') {
-      const [id, update] = args
-      activity[id] = update(activity[id])
-    } else {
-      const [update] = args
-      activity = update(activity)
-    }
-  }
-
-  const upsertSubmittedActivity = (transaction: any) => upsertSubmittedActivityAction(updaterFn, transaction)
-  const updateActivity = (id: string, update: any) => updateActivityAction(updaterFn, id, update)
+  const upsertSubmittedActivity = (transaction: any) => actions.upsertSubmittedActivity(transaction)
+  const updateActivity = (id: string, update: any) => actions.updateActivity(id, update)
   const finalizeActivity = (id: string, status: string, update: any) =>
-    finalizeActivityAction(updaterFn, id, status, update)
-  const pruneActivity = (id: string) => pruneActivityAction(updaterFn, id)
+    actions.finalizeActivity(id, status, update)
+  const pruneActivity = (id: string) => actions.pruneActivity(id)
 
   beforeEach(() => {
     activity = {}
+    actions = createActionHarness({ main: { activity } }, (state) => {
+      activity = state.main.activity
+    }).actions
   })
 
   it('tracks a transaction activity lifecycle', () => {
@@ -1793,29 +1488,20 @@ describe('#activity actions', () => {
 })
 
 describe('#status notification actions', () => {
+  let actions: CanonicalActions
   let notifications: any
 
-  const updaterFn = (node: any, ...args: any[]) => {
-    expect(node).toBe('view.notifications')
-
-    if (typeof args[0] === 'string') {
-      const [id, update] = args
-      notifications[id] = update(notifications[id])
-    } else {
-      const [update] = args
-      notifications = update(notifications)
-    }
-  }
-
-  const upsertPendingNotification = (notification: any) =>
-    upsertPendingNotificationAction(updaterFn, notification)
+  const upsertPendingNotification = (notification: any) => actions.upsertPendingNotification(notification)
   const resolveNotification = (id: string, state: 'completed' | 'failed', update: any) =>
-    resolveNotificationAction(updaterFn, id, state, update)
-  const dismissNotification = (id: string) => dismissNotificationAction(updaterFn, id)
-  const expireNotification = (id: string) => expireNotificationAction(updaterFn, id)
+    actions.resolveNotification(id, state, update)
+  const dismissNotification = (id: string) => actions.dismissNotification(id)
+  const expireNotification = (id: string) => actions.expireNotification(id)
 
   beforeEach(() => {
     notifications = {}
+    actions = createActionHarness({ view: { notifications } }, (state) => {
+      notifications = state.view.notifications
+    }).actions
   })
 
   it('tracks a transient status notification lifecycle', () => {
@@ -1872,5 +1558,91 @@ describe('#status notification actions', () => {
     expireNotification('notification-1')
 
     expect(notifications).toEqual({})
+  })
+})
+
+describe('#canonical action boundaries', () => {
+  it('owns account and request mutations as atomic Immer actions', () => {
+    const accountId = '0xaccount'
+    let publishedStates = 0
+    const harness = createActionHarness(
+      {
+        main: {
+          accounts: {
+            [accountId]: { id: accountId, address: accountId, name: 'Before', requests: {} }
+          }
+        }
+      },
+      () => {
+        publishedStates += 1
+      }
+    )
+
+    harness.actions.patchAccount(accountId, {
+      id: 'replacement-id',
+      address: 'replacement-address',
+      name: 'After'
+    } as any)
+    harness.actions.upsertAccountRequest(accountId, {
+      handlerId: 'request-1',
+      type: 'access',
+      origin: 'test',
+      account: accountId,
+      payload: { id: 1, jsonrpc: '2.0', method: 'eth_requestAccounts', params: [] }
+    })
+    harness.actions.patchAccountRequest(accountId, 'request-1', (request) => {
+      request.status = 'pending' as any
+      request.notice = 'Waiting'
+    })
+
+    expect(harness.getState().main.accounts[accountId]).toEqual(
+      expect.objectContaining({
+        name: 'After',
+        id: accountId,
+        address: accountId,
+        requests: {
+          'request-1': expect.objectContaining({ status: 'pending', notice: 'Waiting' })
+        }
+      })
+    )
+
+    harness.actions.removeAccountRequest(accountId, 'request-1')
+    expect(harness.getState().main.accounts[accountId].requests).toEqual({})
+    expect(publishedStates).toBe(5) // initial observation plus four atomic publications
+  })
+
+  it('commits account selection atomically without creating a second selected-account fact', () => {
+    let publishedStates = 0
+    const harness = createActionHarness(
+      {
+        selected: { minimized: true, open: false },
+        main: { currentAccount: 'old-account' }
+      },
+      () => {
+        publishedStates += 1
+      }
+    )
+
+    harness.actions.setAccount({ id: 'new-account' })
+
+    const state = harness.getState()
+    expect(state.main.currentAccount).toBe('new-account')
+    expect('current' in state.selected).toBe(false)
+    expect(state.selected.minimized).toBe(false)
+    expect(state.selected.open).toBe(true)
+    expect(publishedStates).toBe(2) // initial observation plus one atomic Zustand publication
+  })
+
+  it('commits panel notification fields in one publication', () => {
+    let publishedStates = 0
+    const harness = createActionHarness({}, () => {
+      publishedStates += 1
+    })
+
+    harness.actions.notify('success', { id: 'notification-1' })
+
+    expect(harness.getState().view.notify).toBe('success')
+    expect(harness.getState().view.notifyData).toEqual({ id: 'notification-1' })
+    expect(publishedStates).toBe(2) // initial observation plus one atomic Zustand publication
   })
 })

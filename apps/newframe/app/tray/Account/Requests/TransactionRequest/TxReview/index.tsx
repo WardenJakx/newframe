@@ -1,5 +1,4 @@
 import React from 'react'
-import Restore from 'react-restore'
 
 import link from '../../../../../../resources/link'
 import { DisplayCoinBalance } from '../../../../../../resources/Components/DisplayValue'
@@ -16,15 +15,17 @@ import { getAddress } from '../../../../../../resources/utils'
 import { toBigInt } from '../../../../../../resources/utils/numbers'
 import TransactionInformation, { shortAddress } from '../TransactionInformation'
 import type { TransactionInformationDetailRow } from '../TransactionInformation'
+import { useNetwork, useNetworkMetadata, useOriginName } from '../../state'
+import { useRequestView } from '../../../../requestView'
 
 const FEE_WARNING_THRESHOLD_USD = 50
 const FEE_RATE_OPTIONS = [
-  { id: 'asap', label: 'Ape', multiplier: 150n },
-  { id: 'fast', label: 'Fast', multiplier: 125n },
-  { id: 'standard', label: 'Medium', multiplier: 100n },
-  { id: 'slow', label: 'Slow', multiplier: 85n },
+  { id: 'asap', label: 'Ape' },
+  { id: 'fast', label: 'Fast' },
+  { id: 'standard', label: 'Medium' },
+  { id: 'slow', label: 'Slow' },
   { id: 'custom', label: 'Custom' }
-]
+] as const
 
 const displayStatus = (req: any) => {
   const notice = (req.notice || '').toLowerCase()
@@ -35,13 +36,7 @@ const displayStatus = (req: any) => {
   return status
 }
 
-class TxFeeSummary extends React.Component<any, any> {
-  declare store: Store
-
-  toHex = (value: bigint) => `0x${value.toString(16)}`
-
-  scaleFee = (value: bigint, multiplier = 100n) => (value * multiplier) / 100n
-
+export class TxFeeSummary extends React.Component<any, any> {
   getOptimismFee = (l2Price: bigint, l2Limit: bigint, chainData: any) => {
     const l1DataFee = toBigInt(chainData?.l1Fees ?? '')
     if (l1DataFee === undefined) return undefined
@@ -50,44 +45,17 @@ class TxFeeSummary extends React.Component<any, any> {
   }
 
   applyFeeRate(option: (typeof FEE_RATE_OPTIONS)[number]) {
-    const { req, chain } = this.props
+    const { req } = this.props
 
     if (option.id === 'custom') {
-      link.send('nav:update', 'panel', { data: { step: 'adjustFee' } })
+      this.props.openRequestView({ step: 'adjustFee' })
       return
     }
 
-    const gasPrice = this.store('main.networksMeta', chain.type, chain.id, 'gas.price') || {}
-    const levels = gasPrice.levels || {}
-    const fees = gasPrice.fees || {}
-    const multiplier = option.multiplier || 100n
-
-    link.send('tray:action', 'setGasDefault', chain.type, chain.id, option.id, levels[option.id])
-
-    if (usesBaseFee(req.data)) {
-      const currentPriority = toBigInt(req.data.maxPriorityFeePerGas) ?? 0n
-      const currentMax = toBigInt(req.data.maxFeePerGas) ?? 0n
-      const currentBase = currentMax > currentPriority ? currentMax - currentPriority : 0n
-      const sampledBase = toBigInt(fees.maxBaseFeePerGas) ?? currentBase
-      const sampledPriority = toBigInt(fees.maxPriorityFeePerGas) ?? currentPriority
-      const nextBase = this.scaleFee(sampledBase, multiplier)
-      const nextPriority = this.scaleFee(sampledPriority, multiplier)
-
-      link.rpc('setPriorityFee', this.toHex(nextPriority), req.handlerId, (e: any) => {
-        if (e) console.error(e)
-      })
-      link.rpc('setBaseFee', this.toHex(nextBase), req.handlerId, (e: any) => {
-        if (e) console.error(e)
-      })
-      return
-    }
-
-    const currentGasPrice = toBigInt(req.data.gasPrice) ?? 0n
-    const levelGasPrice = toBigInt(levels[option.id])
-    const nextGasPrice = levelGasPrice ?? this.scaleFee(currentGasPrice, multiplier)
-
-    link.rpc('setGasPrice', this.toHex(nextGasPrice), req.handlerId, (e: any) => {
-      if (e) console.error(e)
+    void link.executeCommand({
+      type: 'transaction.fee-default-set',
+      requestId: req.handlerId,
+      level: option.id
     })
   }
 
@@ -110,9 +78,7 @@ class TxFeeSummary extends React.Component<any, any> {
     const feeUSD = fee.fiat()
     const gasDisplay = displayValueData(maxFeePerGas).gwei()
     const shouldWarn = feeUSD.value > FEE_WARNING_THRESHOLD_USD
-    const selectedRate = req.feesUpdatedByUser
-      ? 'custom'
-      : this.store('main.networksMeta', chain.type, chain.id, 'gas.price.selected') || 'fast'
+    const selectedRate = req.feesUpdatedByUser ? 'custom' : this.props.gasPrice?.selected || 'fast'
     const canAdjustFee = !paidFee && !req.status
 
     return (
@@ -154,25 +120,20 @@ class TxFeeSummary extends React.Component<any, any> {
   }
 }
 
-const ConnectedTxFeeSummary = Restore.connect(TxFeeSummary)
-
-class TxReview extends React.Component<any, any> {
-  declare store: Store
-
+export class TxReview extends React.Component<any, any> {
   copyAddress(data: string) {
-    link.send('tray:clipboardData', data)
+    void link.executeCommand({ type: 'clipboard.write', text: data })
   }
 
   override render() {
     const { req } = this.props
     const chainId = parseInt(req.data.chainId, 16)
     const chain = { type: 'ethereum', id: chainId }
-    const network = this.store('main.networks.ethereum', chainId) || {}
-    const meta = this.store('main.networksMeta.ethereum', chainId) || {}
+    const { network, networkMetadata: meta } = this.props
     const nativeCurrency = meta.nativeCurrency || { symbol: '?' }
     const symbol = nativeCurrency.symbol || '?'
     const chainName = network.name || `Chain ${chainId}`
-    const originName = this.store('main.origins', req.origin, 'name') || this.props.originName || req.origin
+    const originName = this.props.originName || req.origin
     const intent = getTransactionIntent(req, symbol)
     const to = req.data.to ? getAddress(req.data.to) : ''
     const from = req.data.from || req.account
@@ -213,7 +174,7 @@ class TxReview extends React.Component<any, any> {
         label: 'Calldata digest',
         value: req.data.calldataDigest || 'View data',
         onClick: () => {
-          link.send('nav:update', 'panel', { data: { step: 'viewData' } })
+          this.props.openRequestView({ step: 'viewData' })
         }
       })
     }
@@ -239,10 +200,12 @@ class TxReview extends React.Component<any, any> {
         details={details}
         nativeCurrency={nativeCurrency}
       >
-        <ConnectedTxFeeSummary
+        <TxFeeSummary
           chain={chain}
+          gasPrice={meta.gas?.price}
           isTestnet={Boolean(network.isTestnet)}
           nativeCurrency={nativeCurrency}
+          openRequestView={this.props.openRequestView}
           req={req}
         />
       </TransactionInformation>
@@ -250,4 +213,19 @@ class TxReview extends React.Component<any, any> {
   }
 }
 
-export default Restore.connect(TxReview)
+export default function TxReviewWithState(props: any) {
+  const chainId = parseInt(props.req.data.chainId, 16)
+  const network = useNetwork('ethereum', chainId)
+  const networkMetadata = useNetworkMetadata('ethereum', chainId)
+  const originName = useOriginName(props.req.origin)
+  const { open } = useRequestView()
+  return (
+    <TxReview
+      {...props}
+      network={network}
+      networkMetadata={networkMetadata}
+      originName={originName}
+      openRequestView={open}
+    />
+  )
+}

@@ -94,7 +94,7 @@ export const usdcIntegrationStage: VisualStage = {
     const { anvil, driver, runtime, services, tray } = context
     const { harness } = await requireAccounts(context)
     await driver.waitForState(
-      (state) => String(state.selected?.current || '').toLowerCase() === harness.id,
+      (state) => String(state.main?.currentAccount || '').toLowerCase() === harness.id,
       5_000,
       'Harness account was not selected before USDC integration'
     )

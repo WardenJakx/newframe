@@ -1,54 +1,26 @@
 import path from 'path'
-import electron from 'electron'
-import Conf, { Options } from 'conf'
 
-import migrations from '../migrate'
+import { app } from 'electron'
+import Conf from 'conf'
 
-type PersistOpts<T extends Record<string, any>> = Options<T>
+import { ValidatedConfStorage } from './validatedConfStorage'
+import { CANONICAL_STATE_STORAGE_NAME } from './schema'
 
-class PersistStore extends Conf {
-  private blockUpdates = false
-  private updates: Record<string, any> | null = {}
+export type { PersistedCanonicalState } from './schema'
+export { PERSISTENCE_VERSION } from './schema'
+export { ValidatedConfStorage } from './validatedConfStorage'
 
-  constructor(options?: PersistOpts<any>) {
-    options = { projectName: 'newframe', configFileMode: 0o600, configName: 'config', ...options }
-    let defaultCwd = __dirname
-    if (electron && electron.app) defaultCwd = electron.app.getPath('userData')
-    if (options.cwd) {
-      options.cwd = path.isAbsolute(options.cwd) ? options.cwd : path.join(defaultCwd, options.cwd)
-    } else {
-      options.cwd = defaultCwd
-    }
-    electron.app.on('quit', () => this.writeUpdates())
-    super(options)
-    setInterval(() => this.writeUpdates(), 30 * 1000)
-  }
+export { CANONICAL_STATE_STORAGE_NAME }
+const cwd = app?.getPath('userData') || __dirname
+const conf = new Conf<Record<string, unknown>>({
+  projectName: 'newframe',
+  configFileMode: 0o600,
+  configName: 'config',
+  cwd: path.isAbsolute(cwd) ? cwd : path.resolve(__dirname, cwd)
+})
+const storage = new ValidatedConfStorage(conf)
 
-  writeUpdates() {
-    if (this.blockUpdates) return
+app?.on('before-quit', () => storage.flush())
+setInterval(() => storage.flush(), 30_000).unref()
 
-    const updates = { ...this.updates }
-    this.updates = null
-    if (Object.keys(updates || {}).length > 0) super.set(updates)
-  }
-
-  queue(path: string, value: any) {
-    path = `main.__.${migrations.latest}.${path}`
-    this.updates = this.updates || {}
-    delete this.updates[path] // maintain entry order
-    this.updates[path] = JSON.parse(JSON.stringify(value))
-  }
-
-  override set(path: any, value?: unknown) {
-    if (this.blockUpdates) return
-    path = `main.__.${migrations.latest}.${path}`
-    super.set(path, value)
-  }
-
-  override clear() {
-    this.blockUpdates = true
-    super.clear()
-  }
-}
-
-export default new PersistStore()
+export default storage

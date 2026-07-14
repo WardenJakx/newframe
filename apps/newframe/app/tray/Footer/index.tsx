@@ -1,63 +1,84 @@
 import React from 'react'
-import Restore from 'react-restore'
+import { useShallow } from 'zustand/react/shallow'
 
 import link from '../../../resources/link'
 import { isHardwareSigner } from '../../../resources/domain/signer'
 import { isSignatureRequest } from '../../../resources/domain/request'
+import { useWalletSelector } from '../../state/useAppSelector'
+import type { WalletRendererState } from '../../../resources/state/projections'
+import { useRequestView, type RequestViewStep } from '../requestView'
 
 import RequestCommand from './RequestCommand'
 
-const measure = (ref: any) => {
-  if (!ref || !ref.current) return { height: 0, width: 0 }
-  const { clientHeight, clientWidth } = ref.current
-  return { height: clientHeight, width: clientWidth }
+const FOOTER_HEIGHT_PROPERTY = '--tray-footer-height'
+const MINIMUM_FOOTER_HEIGHT = 40
+
+interface FooterSharedState {
+  account?: WalletRendererState['accounts'][string]
+  crumb: any
+  req?: any
 }
 
-class Footer extends React.Component<any, any> {
-  declare store: Store
+interface FooterProps {
+  shared: FooterSharedState
+  step: RequestViewStep
+}
 
-  footerRef: any
-  observer: any
+const EMPTY_CRUMB = {}
 
-  constructor(props: any, context?: any) {
+const selectFooterState = (state: WalletRendererState): FooterSharedState => {
+  const crumb = state.windows.panel.nav[0] || EMPTY_CRUMB
+  const accountId = crumb.data?.accountId
+  const requestId = crumb.data?.requestId
+  const account = accountId ? state.accounts[accountId] : undefined
+
+  return {
+    account,
+    crumb,
+    req: requestId ? account?.requests[requestId] : undefined
+  }
+}
+
+export class Footer extends React.Component<FooterProps, any> {
+  footerRef = React.createRef<HTMLDivElement>()
+  observer?: ResizeObserver
+
+  constructor(props: FooterProps, context?: any) {
     super(props, context)
     this.state = {
       allowInput: true
     }
-    this.footerRef = React.createRef()
-  }
-  override componentDidMount() {
-    this.observer = new ResizeObserver(() => {
-      const size = measure(this.footerRef)
-      link.send('tray:action', 'setFooterHeight', 'panel', size.height)
-    })
-    if (this.observer) this.observer.observe(this.footerRef.current)
-  }
-  override componentWillUnmount() {
-    if (this.footerRef && this.footerRef.current && this.observer)
-      this.observer.unobserve(this.footerRef.current)
-  }
-  approve(reqId: any, req: any) {
-    link.rpc('approveRequest', req, () => {}) // Move to link.send
-  }
-  decline(reqId: any, req: any) {
-    link.rpc('declineRequest', req, () => {}) // Move to link.send
   }
 
-  rejectRequest(req: any) {
+  updateFooterHeight = () => {
+    const height = Math.max(MINIMUM_FOOTER_HEIGHT, this.footerRef.current?.clientHeight || 0)
+    document.documentElement.style.setProperty(FOOTER_HEIGHT_PROPERTY, `${height}px`)
+  }
+
+  override componentDidMount() {
+    this.updateFooterHeight()
+    if (typeof ResizeObserver === 'undefined' || !this.footerRef.current) return
+
+    this.observer = new ResizeObserver(this.updateFooterHeight)
+    this.observer.observe(this.footerRef.current)
+  }
+
+  override componentWillUnmount() {
+    this.observer?.disconnect()
+    document.documentElement.style.removeProperty(FOOTER_HEIGHT_PROPERTY)
+  }
+
+  rejectRequest(req: { handlerId: string }) {
     if (this.state.allowInput) {
-      link.send('tray:rejectRequest', req)
+      void link.executeCommand({ type: 'request.reject', requestId: req.handlerId })
     }
   }
   renderFooter() {
-    const crumb = this.store('windows.panel.nav')[0] || {}
+    const { account, crumb, req } = this.props.shared
 
     if (crumb.view === 'requestView') {
-      const { accountId, requestId } = crumb.data
-      const account = this.store('main.accounts', accountId)
-      const req = this.store('main.accounts', accountId, 'requests', requestId)
-      if (req) {
-        if (req.type === 'transaction' && crumb.data.step === 'confirm') {
+      if (req && account) {
+        if (req.type === 'transaction' && this.props.step === 'confirm') {
           return (
             <RequestCommand req={req} signingDelay={isHardwareSigner(account.lastSignerType) ? 0 : 1500} />
           )
@@ -68,7 +89,13 @@ class Footer extends React.Component<any, any> {
                 className='requestDecline'
                 style={{ pointerEvents: this.state.allowInput ? 'auto' : 'none' }}
                 onClick={() => {
-                  if (this.state.allowInput) link.send('tray:giveAccess', req, false)
+                  if (this.state.allowInput) {
+                    void link.executeCommand({
+                      type: 'request.access-resolve',
+                      requestId: req.handlerId,
+                      approved: false
+                    })
+                  }
                 }}
               >
                 <div className='requestDeclineButton _txButton _txButtonBad'>
@@ -79,7 +106,13 @@ class Footer extends React.Component<any, any> {
                 className='requestSign'
                 style={{ pointerEvents: this.state.allowInput ? 'auto' : 'none' }}
                 onClick={() => {
-                  if (this.state.allowInput) link.send('tray:giveAccess', req, true)
+                  if (this.state.allowInput) {
+                    void link.executeCommand({
+                      type: 'request.access-resolve',
+                      requestId: req.handlerId,
+                      approved: true
+                    })
+                  }
                 }}
               >
                 <div className='requestSignButton _txButton'>
@@ -88,7 +121,7 @@ class Footer extends React.Component<any, any> {
               </div>
             </div>
           )
-        } else if (isSignatureRequest(req) && crumb.data.step === 'confirm') {
+        } else if (isSignatureRequest(req) && this.props.step === 'confirm') {
           return (
             <RequestCommand req={req} signingDelay={isHardwareSigner(account.lastSignerType) ? 0 : 1500} />
           )
@@ -99,7 +132,13 @@ class Footer extends React.Component<any, any> {
                 className='requestDecline'
                 style={{ pointerEvents: this.state.allowInput ? 'auto' : 'none' }}
                 onClick={() => {
-                  if (this.state.allowInput) link.send('tray:switchChain', false, false, req)
+                  if (this.state.allowInput) {
+                    void link.executeCommand({
+                      type: 'request.switch-chain-resolve',
+                      requestId: req.handlerId,
+                      approved: false
+                    })
+                  }
                 }}
               >
                 <div className='requestDeclineButton _txButton _txButtonBad'>
@@ -110,8 +149,13 @@ class Footer extends React.Component<any, any> {
                 className='requestSign'
                 style={{ pointerEvents: this.state.allowInput ? 'auto' : 'none' }}
                 onClick={() => {
-                  if (this.state.allowInput)
-                    link.send('tray:switchChain', req.chain.type, parseInt(req.chain.id), req)
+                  if (this.state.allowInput) {
+                    void link.executeCommand({
+                      type: 'request.switch-chain-resolve',
+                      requestId: req.handlerId,
+                      approved: true
+                    })
+                  }
                 }}
               >
                 <div className='requestSignButton _txButton'>
@@ -137,9 +181,9 @@ class Footer extends React.Component<any, any> {
                 style={{ pointerEvents: this.state.allowInput ? 'auto' : 'none' }}
                 onClick={() => {
                   if (this.state.allowInput) {
-                    link.send('tray:action', 'navHome', {
-                      view: 'addChain',
-                      data: { chain: req.chain, request: req }
+                    void link.executeCommand({
+                      type: 'request.add-chain-review',
+                      requestId: req.handlerId
                     })
                   }
                 }}
@@ -157,15 +201,10 @@ class Footer extends React.Component<any, any> {
                 className='requestDecline'
                 style={{ pointerEvents: this.state.allowInput ? 'auto' : 'none' }}
                 onClick={() => {
-                  if (this.state.allowInput) link.send('tray:addToken', false, this.props.req)
+                  this.rejectRequest(req)
                 }}
               >
-                <div
-                  className='requestDeclineButton _txButton _txButtonBad'
-                  onClick={() => {
-                    this.rejectRequest(req)
-                  }}
-                >
+                <div className='requestDeclineButton _txButton _txButtonBad'>
                   <span>Decline</span>
                 </div>
               </div>
@@ -174,18 +213,9 @@ class Footer extends React.Component<any, any> {
                 style={{ pointerEvents: this.state.allowInput ? 'auto' : 'none' }}
                 onClick={() => {
                   if (this.state.allowInput) {
-                    const { address, symbol, decimals, logoURI, name, chainId } = req.token
-                    link.send('tray:resolveRequest', req, null)
-                    link.send('tray:action', 'navDash', {
-                      view: 'tokens',
-                      data: {
-                        notify: 'addToken',
-                        notifyData: {
-                          tokenData: { symbol, decimals, logoURI, name },
-                          chain: { id: chainId },
-                          address
-                        }
-                      }
+                    void link.executeCommand({
+                      type: 'request.add-token-review',
+                      requestId: req.handlerId
                     })
                   }
                 }}
@@ -203,15 +233,16 @@ class Footer extends React.Component<any, any> {
     }
   }
   override render() {
-    const footerHeight = this.store('windows.panel.footer.height')
     return (
-      <div className='footerModule' style={{ height: footerHeight + 'px' }}>
-        <div ref={this.footerRef} className='footerWrap'>
-          {this.renderFooter()}
-        </div>
+      <div ref={this.footerRef} className='footerModule'>
+        <div className='footerWrap'>{this.renderFooter()}</div>
       </div>
     )
   }
 }
 
-export default Restore.connect(Footer)
+export default function FooterContainer() {
+  const shared = useWalletSelector(useShallow(selectFooterState))
+  const { step } = useRequestView()
+  return <Footer shared={shared} step={step} />
+}

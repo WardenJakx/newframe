@@ -4,6 +4,7 @@ import path from 'path'
 
 import store from '../store'
 import { resolveSemanticColor } from '../../resources/style/tokens/colors'
+import { registerRenderer } from '../ipc/authorization'
 
 import type { ChainId } from '../store/state'
 
@@ -36,6 +37,12 @@ export function createWindow(
       disableBlinkFeatures: 'Auxclick'
     }
   })
+
+  if (name === 'tray' || name === 'dash') {
+    registerRenderer(browserWindow.webContents, 'wallet-ui', name)
+  } else if (name === 'frameInstance') {
+    registerRenderer(browserWindow.webContents, 'dapp', 'dapp')
+  }
 
   browserWindow.webContents.once('did-finish-load', () => {
     log.info(`Created ${name} renderer process, pid:`, browserWindow.webContents.getOSProcessId())
@@ -74,7 +81,13 @@ export function openExternal(url = '') {
 
 export function openBlockExplorer({ id, type }: ChainId, hash?: string, account?: string) {
   // remove trailing slashes from the base url
-  const explorer = (store('main.networks', type, id, 'explorer') || '').replace(/\/+$/, '')
+  const explorer = (store.getState().main.networks[type][id]?.explorer || '').replace(/\/+$/, '')
+
+  try {
+    if (!['http:', 'https:'].includes(new URL(explorer).protocol)) return
+  } catch {
+    return
+  }
 
   if (explorer) {
     if (hash) {

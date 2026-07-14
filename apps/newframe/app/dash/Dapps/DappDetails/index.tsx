@@ -1,78 +1,71 @@
-import React from 'react'
-import Restore from 'react-restore'
+import { useCallback } from 'react'
 import link from '../../../../resources/link'
 import RingIcon from '../../../../resources/Components/RingIcon'
 import svg from '../../../../resources/svg'
+import { useWalletSelector } from '../../../state/useAppSelector'
+import type { DashChain, DashChainMetadata, DashRendererState } from '../../state'
 
-class DappDetails extends React.Component<any, any> {
-  declare store: Store
+const EMPTY_CHAINS: Record<string | number, DashChain> = {}
+const EMPTY_CHAIN_METADATA: Record<string | number, DashChainMetadata> = {}
 
-  updateOriginChain() {
-    const origin = this.store('main.origins', this.props.originId)
-    return (
-      <div className='originSwapChainList'>
-        {Object.keys(this.store('main.networks.ethereum'))
-          .filter((id) => {
-            return this.store('main.networks.ethereum', id, 'on')
-          })
-          .map((id) => {
-            const chain = this.store('main.networks.ethereum', id)
-            const selected = origin.chain.id === parseInt(id)
-            const { primaryColor, icon } = this.store('main.networksMeta.ethereum', id)
-            return (
-              <div
-                key={id}
-                className={'originChainItem'}
-                onClick={() => {
-                  link.send('tray:action', 'switchOriginChain', this.props.originId, parseInt(id), 'ethereum')
-                }}
-              >
-                <div className='originChainItemIcon'>
-                  <RingIcon color={`var(--${primaryColor})`} img={icon} />
-                </div>
-
-                {chain.name}
-
-                <div className='originChainItemCheck'>{selected ? svg.check(28) : null}</div>
-              </div>
-            )
-          })}
-      </div>
-    )
-  }
-
-  override render() {
-    const origin = this.store('main.origins', this.props.originId)
-    if (!origin) return null
-
-    return (
-      <div className='cardShow'>
-        <div className='originSwapOrigin'>
-          {svg.window(20)}
-          <div className='originSwapOriginText'>{origin.name}</div>
-        </div>
-        <div className='originSwapTitle'>default chain</div>
-        <div>{this.updateOriginChain()}</div>
-        {/* <div 
-          className='clearOriginsButton'
-          style={{ color: 'var(--color-action-primary)' }}
-          onClick={() => {
-            link.send('tray:openExternal', `https://${origin.name}/`)
-          }
-        }>{'launch dapp'}</div> */}
-        <div
-          className='clearOriginsButton'
-          style={{ color: 'var(--color-status-danger)' }}
-          onClick={() => {
-            link.send('tray:removeOrigin', this.props.originId)
-            link.send('tray:action', 'navDash', { view: 'dapps', data: {} })
-          }}
-        >
-          Clear Website
-        </div>
-      </div>
-    )
-  }
+interface DappDetailsProps {
+  originId: string
 }
 
-export default Restore.connect(DappDetails)
+export default function DappDetails({ originId }: DappDetailsProps) {
+  const selectOrigin = useCallback((state: DashRendererState) => state.origins[originId], [originId])
+  const origin = useWalletSelector(selectOrigin)
+  const chains = useWalletSelector((state: DashRendererState) => state.networks.ethereum || EMPTY_CHAINS)
+  const chainMetadata = useWalletSelector(
+    (state: DashRendererState) => state.networksMeta.ethereum || EMPTY_CHAIN_METADATA
+  )
+
+  if (!origin) return null
+
+  const chainOptions = Object.values(chains).filter((chain) => chain.on)
+
+  return (
+    <div className='cardShow'>
+      <div className='originSwapOrigin'>
+        {svg.window(20)}
+        <div className='originSwapOriginText'>{origin.name}</div>
+      </div>
+      <div className='originSwapTitle'>default chain</div>
+      <div className='originSwapChainList'>
+        {chainOptions.map((chain) => {
+          const selected = origin.chain.id === chain.id
+          const { primaryColor, icon } = chainMetadata[chain.id] || {}
+
+          return (
+            <div
+              key={chain.id}
+              className='originChainItem'
+              onClick={() => {
+                void link.executeCommand({
+                  type: 'origin.switch-chain',
+                  originId,
+                  chainId: Number(chain.id)
+                })
+              }}
+            >
+              <div className='originChainItemIcon'>
+                <RingIcon color={`var(--${primaryColor})`} img={icon} />
+              </div>
+              {chain.name}
+              <div className='originChainItemCheck'>{selected ? svg.check(28) : null}</div>
+            </div>
+          )
+        })}
+      </div>
+      <div
+        className='clearOriginsButton'
+        style={{ color: 'var(--color-status-danger)' }}
+        onClick={() => {
+          void link.executeCommand({ type: 'origin.remove', originId })
+        }}
+      >
+        Clear Website
+      </div>
+    </div>
+  )
+}

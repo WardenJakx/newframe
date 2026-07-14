@@ -1,5 +1,4 @@
 import React, { Component, useState } from 'react'
-import Restore from 'react-restore'
 
 import link from '../../../../../../resources/link'
 import { usesBaseFee } from '../../../../../../resources/domain/transaction'
@@ -52,6 +51,7 @@ const totalFee = ({ gasPrice, baseFee, priorityFee, gasLimit }: any) =>
   gasPrice !== undefined ? gasPrice * gasLimit : (baseFee + priorityFee) * gasLimit
 
 const limitGasUnits = (bn: any) => limitRange(bn, 0n, 12500000n)
+type FeeField = 'baseFee' | 'priorityFee' | 'gasPrice' | 'gasLimit'
 
 let submitTimeout: any = null
 
@@ -180,8 +180,7 @@ const PriorityFeeInput = ({ initialValue, onReceiveValue, tabIndex, limiter }: a
   </div>
 )
 
-class TxFeeOverlay extends Component<any, any> {
-  declare store: Store
+export default class TxFeeOverlay extends Component<any, any> {
   moduleRef: React.RefObject<HTMLDivElement | null>
 
   constructor(props: any, context?: any) {
@@ -255,13 +254,16 @@ class TxFeeOverlay extends Component<any, any> {
       return limitGasUnits(rawGasLimit)
     }
 
-    const receiveValueHandler = (value: any, name: any) => {
+    const receiveValueHandler = (value: bigint, name: FeeField) => {
       this.setState({
         [name]: value
       })
 
-      link.rpc(`set${name.charAt(0).toUpperCase() + name.slice(1)}`, bnToHex(value), handlerId, (e: any) => {
-        if (e) console.error(e)
+      void link.executeCommand({
+        type: 'transaction.fee-update',
+        requestId: handlerId,
+        field: name,
+        value: bnToHex(value)
       })
     }
 
@@ -300,5 +302,3 @@ class TxFeeOverlay extends Component<any, any> {
     )
   }
 }
-
-export default Restore.connect(TxFeeOverlay)

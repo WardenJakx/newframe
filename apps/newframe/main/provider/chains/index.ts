@@ -8,13 +8,13 @@ import type { Chain, ChainMetadata, Origin } from '../../store/state'
 // typed access to state
 const storeApi = {
   getCurrentOrigins: (): Record<string, Origin> => {
-    return store('main.origins')
+    return store.getState().main.origins
   },
   getChains: (): Record<string, Chain> => {
-    return store('main.networks.ethereum') || {}
+    return store.getState().main.networks.ethereum || {}
   },
   getChainsMeta: (): Record<string, ChainMetadata> => {
-    return store('main.networksMeta.ethereum') || {}
+    return store.getState().main.networksMeta.ethereum || {}
   }
 }
 
@@ -40,7 +40,7 @@ function createChainsObserver(handler: ChainsChangedHandler) {
       availableChains = currentChains
 
       setTimeout(() => {
-        const currentAccount = store('selected.current') as string
+        const currentAccount = store.getState().main.currentAccount as string
         handler.chainsChanged(currentAccount, availableChains)
       }, 0)
     }

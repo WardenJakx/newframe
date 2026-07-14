@@ -24,8 +24,8 @@ import {
 import svg from '../../../resources/svg'
 import { formatUnits, toBigInt } from '../../../resources/utils/numbers'
 import { createDappWalletSelector } from '../../state/selectors/dappWallet'
-import { useAppSelector } from '../../state/useAppSelector'
-import { closeTrade, flashQuote, flashSubmitOrder, initTradeOrigin, providerSend } from './tradeService'
+import { useDappSelector } from '../../state/useAppSelector'
+import { closeTrade, flashQuote, flashSubmitOrder, signTypedData, submitTransaction } from './tradeService'
 import {
   createInitialTradeState,
   getTradeOrderFields,
@@ -37,9 +37,9 @@ import {
 import {
   buildTradeAssetOptions,
   buildTradeQuoteRequest,
-  buildTradeActionPayload,
-  buildTradePermitSignaturePayload,
-  buildTradeSignaturePayload,
+  buildTradeActionRequest,
+  buildTradePermitSignatureRequest,
+  buildTradeSignatureRequest,
   buildTradeSubmitRequest,
   buildVisualTradeSteps,
   canReviewTrade,
@@ -54,8 +54,6 @@ import {
   getTradeValidationError,
   isSameFlashAsset,
   marketTradeQuoteRequestKey,
-  objectRecord,
-  providerResponseError,
   tradeErrorMessage
 } from './tradeTransaction'
 
@@ -87,7 +85,7 @@ function buildQuoteEffectRequest(requestInput: Parameters<typeof buildTradeQuote
 export default function Trade({ assetId, chainId }: TradeProps) {
   const selectDappWallet = React.useMemo(() => createDappWalletSelector(), [])
   const { balanceSummaries, currentAccount, networks, networksMeta, runtime } =
-    useAppSelector(selectDappWallet)
+    useDappSelector(selectDappWallet)
   const tradeAssets = React.useMemo(
     () => buildTradeAssetOptions({ balances: balanceSummaries, networks, runtime }),
     [balanceSummaries, networks, runtime]
@@ -134,7 +132,7 @@ export default function Trade({ assetId, chainId }: TradeProps) {
   }, [
     accountAddress,
     inputAmount,
-    state.contraAsset,
+    state.contraAsset.id,
     state.durationDays,
     state.durationHours,
     state.durationMinutes,
@@ -145,7 +143,7 @@ export default function Trade({ assetId, chainId }: TradeProps) {
     state.quickTrade,
     state.side,
     state.slippage,
-    state.targetAsset,
+    state.targetAsset.id,
     state.timeInForce,
     state.triggerNotionalPrice,
     state.twapBucketCount
@@ -355,7 +353,9 @@ export default function Trade({ assetId, chainId }: TradeProps) {
 
       try {
         const result = await flashSubmitOrder(submitRequest)
-        if (!mountedRef.current || latestStateRef.current.actionQuoteId !== actionQuoteId) return
+        if (!mountedRef.current || (latestStateRef.current.quote?.id || '') !== actionQuoteId) {
+          return
+        }
 
         if (!result?.orderId) {
           dispatch({
@@ -369,7 +369,9 @@ export default function Trade({ assetId, chainId }: TradeProps) {
         dispatch({ type: 'submitSucceeded', actionQuoteId })
         closeTrade()
       } catch (e) {
-        if (!mountedRef.current || latestStateRef.current.actionQuoteId !== actionQuoteId) return
+        if (!mountedRef.current || (latestStateRef.current.quote?.id || '') !== actionQuoteId) {
+          return
+        }
 
         dispatch({
           type: 'submitFailed',
@@ -388,12 +390,11 @@ export default function Trade({ assetId, chainId }: TradeProps) {
       const actionQuoteId = quote?.id || ''
 
       try {
-        const { chainIdNumber, payload } = buildTradeActionPayload({
+        const { chainId, transaction } = buildTradeActionRequest({
           accountAddress,
           action: action as any
         })
 
-        initTradeOrigin(chainIdNumber)
         dispatch({
           type: 'actionStarted',
           actionQuoteId,
@@ -401,13 +402,16 @@ export default function Trade({ assetId, chainId }: TradeProps) {
           status: 'Confirm in Newframe'
         })
 
-        const response = await providerSend(payload)
+        const response = await submitTransaction(chainId, transaction, crypto.randomUUID())
         if (!mountedRef.current) return
 
-        const error = providerResponseError(response)
-
-        if (error) {
-          dispatch({ type: 'actionFailed', actionQuoteId, stepKind, error })
+        if (!response.ok) {
+          dispatch({
+            type: 'actionFailed',
+            actionQuoteId,
+            stepKind,
+            error: response.message || 'Transaction failed.'
+          })
           return
         }
 
@@ -415,7 +419,7 @@ export default function Trade({ assetId, chainId }: TradeProps) {
           type: 'actionSucceeded',
           actionQuoteId,
           stepKind,
-          txHash: objectRecord(response).result
+          txHash: response.transactionHash
         })
       } catch (e) {
         dispatch({
@@ -435,14 +439,13 @@ export default function Trade({ assetId, chainId }: TradeProps) {
 
     try {
       let permitSignature = ''
-      const permitRequest = buildTradePermitSignaturePayload({
+      const permitRequest = buildTradePermitSignatureRequest({
         accountAddress,
         flashPayload: workflow.flashPayload,
         quote
       })
 
       if (permitRequest) {
-        initTradeOrigin(permitRequest.chainIdNumber)
         dispatch({
           type: 'actionStarted',
           actionQuoteId,
@@ -450,32 +453,32 @@ export default function Trade({ assetId, chainId }: TradeProps) {
           status: 'Review permit in Newframe'
         })
 
-        const permitResponse = await providerSend(permitRequest.payload)
+        const permitResponse = await signTypedData(permitRequest.chainId, permitRequest.typedData)
         if (!mountedRef.current) return
 
-        const permitError = providerResponseError(permitResponse)
-        permitSignature = objectRecord(permitResponse).result
+        permitSignature = permitResponse.ok ? permitResponse.signature : ''
 
-        if (permitError || !permitSignature) {
+        if (!permitResponse.ok || !permitSignature) {
           dispatch({
             type: 'actionFailed',
             actionQuoteId,
             stepKind: 'sign',
-            error: permitError || 'Permit signature was not returned.'
+            error: !permitResponse.ok
+              ? permitResponse.message || 'Permit signature was not returned.'
+              : 'Permit signature was not returned.'
           })
           return
         }
 
-        if (latestStateRef.current.actionQuoteId !== actionQuoteId) return
+        if ((latestStateRef.current.quote?.id || '') !== actionQuoteId) return
       }
 
-      const { chainIdNumber, payload } = buildTradeSignaturePayload({
+      const { chainId, typedData } = buildTradeSignatureRequest({
         accountAddress,
         flashPayload: workflow.flashPayload,
         quote
       })
 
-      initTradeOrigin(chainIdNumber)
       dispatch({
         type: 'actionStarted',
         actionQuoteId,
@@ -483,23 +486,24 @@ export default function Trade({ assetId, chainId }: TradeProps) {
         status: 'Review order in Newframe'
       })
 
-      const response = await providerSend(payload)
+      const response = await signTypedData(chainId, typedData)
       if (!mountedRef.current) return
 
-      const error = providerResponseError(response)
-      const signature = objectRecord(response).result
+      const signature = response.ok ? response.signature : ''
 
-      if (error || !signature) {
+      if (!response.ok || !signature) {
         dispatch({
           type: 'actionFailed',
           actionQuoteId,
           stepKind: 'sign',
-          error: error || 'Order signature was not returned.'
+          error: !response.ok
+            ? response.message || 'Order signature was not returned.'
+            : 'Order signature was not returned.'
         })
         return
       }
 
-      if (latestStateRef.current.actionQuoteId !== actionQuoteId) return
+      if ((latestStateRef.current.quote?.id || '') !== actionQuoteId) return
 
       dispatch({ type: 'signatureSucceeded', actionQuoteId, signature })
       await submitSignedTrade(

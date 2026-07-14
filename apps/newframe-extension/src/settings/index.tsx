@@ -1,43 +1,15 @@
 /* globals chrome */
 
-import React from 'react'
-import Restore from 'react-restore'
+import React, { useEffect } from 'react'
 import { createRoot } from 'react-dom/client'
 import styled from 'styled-components'
+import { useStore } from 'zustand'
 
+import { frameStateStore, type AvailableChain, type FrameState } from '../frameState'
 import { Cluster, ClusterValue, ClusterRow, ClusterBoxMain } from './Cluster'
 
 const APPEAR_AS_MM = '__newframeAppearAsMM__'
 const LEGACY_APPEAR_AS_MM = '__frameAppearAsMM__'
-
-const initialState = {
-  frameConnected: false,
-  appearAsMM: false,
-  availableChains: [],
-  currentChain: '',
-  activeOrigin: '',
-  siteConnected: false,
-  currentAddress: ''
-}
-
-const actions = {
-  setChains: (u: any, chains: any) => {
-    u('availableChains', () => chains)
-  },
-  setCurrentChain: (u: any, chain: any) => {
-    u('currentChain', () => chain)
-  },
-  setFrameConnected: (u: any, connected: any) => {
-    u('frameConnected', () => connected)
-  },
-  setOriginStatus: (u: any, state: any) => {
-    u('activeOrigin', () => state.activeOrigin || '')
-    u('siteConnected', () => Boolean(state.siteConnected))
-    u('currentAddress', () => state.currentAddress || '')
-  }
-}
-
-const store = Restore.create(initialState, actions)
 
 const getScrollBarWidth = () => {
   if (typeof document === 'undefined') return 0
@@ -67,7 +39,11 @@ async function getActiveTab() {
   return tabs[0]
 }
 
-async function executeScript(tabId: number, func: (...args: any[]) => any, args: any[]) {
+async function executeScript<Args extends unknown[], Result>(
+  tabId: number,
+  func: (...args: Args) => Result,
+  args: Args
+) {
   try {
     const result = await chrome.scripting.executeScript({
       target: { tabId },
@@ -93,7 +69,7 @@ async function getLocalSetting(tabId: number, key: string) {
 
   if (results && results.length > 0) {
     try {
-      return JSON.parse((results[0]!.result || false) as any)
+      return JSON.parse(results[0]!.result || 'false')
     } catch (e) {
       return false
     }
@@ -102,14 +78,14 @@ async function getLocalSetting(tabId: number, key: string) {
   return false
 }
 
-async function setLocalSetting(tabId: number, setting: string, val: any) {
+async function setLocalSetting(tabId: number, setting: string, val: boolean) {
   return executeScript(
     tabId,
-    (key: string, val: any) => {
-      localStorage.setItem(key, val)
+    (key: string, value: boolean) => {
+      localStorage.setItem(key, String(value))
       window.location.reload()
     },
-    [setting, val]
+    [setting, val] as [string, boolean]
   )
 }
 
@@ -403,15 +379,18 @@ const Overlay = styled.div`
 
 const originDomainRegex = /^(?<protocol>.+:(?:\/\/)?)(?<origin>[^#/]*)/
 
-function parseOrigin(url = ''): any {
+function parseOrigin(url = ''): { protocol: string; origin: string } {
   const m = url.match(originDomainRegex)
 
   if (!m) {
     console.warn(`could not parse origin: ${url}`)
-    return url
+    return { protocol: '', origin: url }
   }
 
-  return m.groups || { origin: url, protocol: '' }
+  return {
+    protocol: m.groups?.protocol || '',
+    origin: m.groups?.origin || url
+  }
 }
 
 function shortAddress(address = '') {
@@ -432,7 +411,7 @@ const ChainButton = ({
   selected
 }: {
   index: number
-  chain: any
+  chain: AvailableChain
   tab: chrome.tabs.Tab
   selected: boolean
 }) => {
@@ -466,8 +445,21 @@ const ChainButton = ({
 
 // const isFirefox = Boolean(window?.browser && browser?.runtime)
 
-class _Settings extends React.Component<any, any> {
-  declare store: any
+interface SettingsProps {
+  tab?: chrome.tabs.Tab
+  isSupportedTab: boolean
+  mmAppear: boolean
+}
+
+interface SettingsViewProps extends SettingsProps {
+  settings: FrameState
+}
+
+interface SettingsViewState {
+  connectionDetailsOpen: boolean
+}
+
+class SettingsView extends React.Component<SettingsViewProps, SettingsViewState> {
   override state = {
     connectionDetailsOpen: false
   }
@@ -515,7 +507,7 @@ class _Settings extends React.Component<any, any> {
   }
 
   frameConnected() {
-    const isConnected = this.store('frameConnected')
+    const isConnected = this.props.settings.connected
 
     return (
       <Cluster>
@@ -612,8 +604,7 @@ class _Settings extends React.Component<any, any> {
   }
 
   siteConnection() {
-    const connected = this.store('siteConnected')
-    const address = this.store('currentAddress')
+    const { siteConnected: connected, currentAddress: address } = this.props.settings
     const hasSelectedWallet = Boolean(address)
 
     return (
@@ -665,7 +656,7 @@ class _Settings extends React.Component<any, any> {
   }
 
   disconnectButton() {
-    if (!this.store('siteConnected')) return null
+    if (!this.props.settings.siteConnected) return null
 
     return (
       <ClusterRow>
@@ -684,22 +675,24 @@ class _Settings extends React.Component<any, any> {
   }
 
   chainSelect() {
-    const chains = this.store('availableChains') || []
-    const currentChain = this.store('currentChain')
+    const { availableChains: chains, currentChain } = this.props.settings
+    const { tab } = this.props
 
-    const rows = chains.reduce((result: any[], value: any, index: number, array: any[]) => {
+    if (!tab) return null
+
+    const rows = chains.reduce((result: AvailableChain[][], value, index, array) => {
       if (index % 2 === 0) result.push(array.slice(index, index + 2))
       return result
     }, [])
 
-    return rows.map((row: any[], rowIndex: number) => (
+    return rows.map((row, rowIndex) => (
       <ClusterRow key={`chain-row-${rowIndex}`} style={{ justifyContent: 'flex-start' }}>
-        {row.map((chain: any, i: number) => (
+        {row.map((chain, i) => (
           <ChainButton
             key={chain.chainId}
             index={i}
             chain={chain}
-            tab={this.props.tab}
+            tab={tab}
             selected={chain.chainId === parseInt(currentChain, 16)}
           />
         ))}
@@ -709,8 +702,7 @@ class _Settings extends React.Component<any, any> {
 
   currentChain() {
     try {
-      const availableChains = this.store('availableChains') || []
-      const currentChain = this.store('currentChain')
+      const { availableChains, currentChain } = this.props.settings
       const currentChainId = parseInt(currentChain, 16)
       const currentChainDetails = availableChains.find(
         ({ chainId }: { chainId: unknown }) => Number(chainId) === currentChainId
@@ -731,11 +723,9 @@ class _Settings extends React.Component<any, any> {
   }
 
   renderMainPanel() {
-    const isConnected = this.store('frameConnected')
-    const {
-      tab: { url },
-      isSupportedTab
-    } = this.props
+    const isConnected = this.props.settings.connected
+    const { tab, isSupportedTab } = this.props
+    const url = tab?.url
     const { protocol, origin } = parseOrigin(url)
 
     if (!isConnected) {
@@ -765,7 +755,7 @@ class _Settings extends React.Component<any, any> {
           <Cluster>
             {this.siteConnection()}
             {this.connectionDisclosure()}
-            {this.state.connectionDetailsOpen && (this.store('availableChains') || []).length ? (
+            {this.state.connectionDetailsOpen && this.props.settings.availableChains.length ? (
               <>
                 {this.chainSelect()}
                 <div style={{ height: '9px' }} />
@@ -792,16 +782,25 @@ class _Settings extends React.Component<any, any> {
   }
 }
 
-const Settings = Restore.connect(_Settings, store)
+const Settings = (props: SettingsProps) => {
+  const settings = useStore(frameStateStore)
 
-const frameConnect = chrome.runtime.connect({ name: 'frame_connect' })
+  useEffect(() => {
+    const frameConnect = chrome.runtime.connect({ name: 'frame_connect' })
+    const updateSettings = (state: FrameState) => {
+      frameStateStore.setState(state, true)
+    }
 
-frameConnect.onMessage.addListener((state) => {
-  store.setFrameConnected(state.connected)
-  store.setChains(state.availableChains)
-  store.setCurrentChain(state.currentChain)
-  store.setOriginStatus(state)
-})
+    frameConnect.onMessage.addListener(updateSettings)
+
+    return () => {
+      frameConnect.onMessage.removeListener(updateSettings)
+      frameConnect.disconnect()
+    }
+  }, [])
+
+  return <SettingsView {...props} settings={settings} />
+}
 
 const updateCurrentChain = (tab: chrome.tabs.Tab) => {
   chrome.tabs.sendMessage(tab.id!, {

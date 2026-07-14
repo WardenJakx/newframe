@@ -1,6 +1,3 @@
-import React from 'react'
-import Restore from 'react-restore'
-
 import Command from './Command'
 import Main from './Main'
 import Signer from './Signer'
@@ -10,21 +7,34 @@ import Tokens from './Tokens'
 import svg from '../../resources/svg'
 import link from '../../resources/link'
 import { capitalize } from '../../resources/utils'
+import { useWalletSelector } from '../state/useAppSelector'
+import type { DashNavigationData, DashNavigationEntry, DashRendererState } from './state'
 
-function itemName(view: any) {
+const EMPTY_DASH_NAV: DashNavigationEntry[] = []
+
+const selectDashNavigation = (state: DashRendererState) => state.windows?.dash?.nav || EMPTY_DASH_NAV
+
+function itemName(view: string) {
   return capitalize(view.slice(0, -1))
 }
 
-const AddNewItemButton = ({ view, req }: any) => {
+interface AddNewItemButtonProps {
+  view: string
+  req?: unknown
+}
+
+const AddNewItemButton = ({ view, req }: AddNewItemButtonProps) => {
   const dataMap: Record<string, any> = {
-    tokens: { notify: 'addToken', notifyData: req }
+    tokens: req === undefined ? { notify: 'addToken' } : { notify: 'addToken', notifyData: req }
   }
 
   return (
     <div className='dashFooter'>
       <div
         className='dashFooterButton'
-        onClick={() => link.send('tray:action', 'navDash', { view, data: dataMap[view] })}
+        onClick={() =>
+          void link.executeCommand({ type: 'dash.navigate', view: 'tokens', data: dataMap[view] })
+        }
       >
         <div className='newAccountIcon'>{svg.plus(16)}</div>
         Add New {itemName(view)}
@@ -33,47 +43,33 @@ const AddNewItemButton = ({ view, req }: any) => {
   )
 }
 
-class Dash extends React.Component<any, any> {
-  declare store: Store
-  input: any
-
-  constructor(props: any, context?: any) {
-    super(props, context)
-    this.input = React.createRef()
-    this.state = {
-      showAddAccounts: false,
-      selected: 'home'
-    }
-  }
-
-  renderPanel(view: any, data: any) {
-    if (view === 'expandedSigner' && data.signer) {
-      const signerId = data.signer
-      const signer = this.store('main.signers', signerId)
-
-      return <Signer key={signerId} expanded={true} {...signer} />
-    }
-    if (view === 'dapps') return <Dapps data={data} />
-    if (view === 'tokens') return <Tokens data={data} />
-    if (view === 'notify') return <Notify data={data} />
-    return <Main />
-  }
-
-  override render() {
-    const { view, data } = this.store('windows.dash.nav')[0] || { view: 'default', data: {} }
-    const showAddButton = view === 'tokens' && (!data || Object.keys(data).length === 0)
-
-    return (
-      <div className='dash'>
-        <Command />
-        <div className='dashMain' style={{ bottom: showAddButton ? '120px' : '40px' }}>
-          <div className='dashMainOverlay' />
-          <div className='dashMainScroll'>{this.renderPanel(view, data)}</div>
-        </div>
-        {showAddButton && <AddNewItemButton view={view} req={this.props.req} />}
-      </div>
-    )
-  }
+interface DashProps {
+  req?: unknown
 }
 
-export default Restore.connect(Dash)
+function renderPanel(view: string, data: DashNavigationData) {
+  if (view === 'expandedSigner' && data.signer) {
+    return <Signer key={data.signer} id={data.signer} expanded={true} />
+  }
+  if (view === 'dapps') return <Dapps data={data} />
+  if (view === 'tokens') return <Tokens data={data} />
+  if (view === 'notify') return <Notify data={data} />
+  return <Main />
+}
+
+export default function Dash({ req }: DashProps) {
+  const navigation = useWalletSelector(selectDashNavigation)
+  const { view = 'default', data = {} } = navigation[0] || {}
+  const showAddButton = view === 'tokens' && Object.keys(data).length === 0
+
+  return (
+    <div className='dash'>
+      <Command />
+      <div className='dashMain' style={{ bottom: showAddButton ? '120px' : '40px' }}>
+        <div className='dashMainOverlay' />
+        <div className='dashMainScroll'>{renderPanel(view, data)}</div>
+      </div>
+      {showAddButton && <AddNewItemButton view={view} req={req} />}
+    </div>
+  )
+}

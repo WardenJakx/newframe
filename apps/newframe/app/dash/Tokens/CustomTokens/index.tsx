@@ -1,19 +1,32 @@
 import React from 'react'
-import Restore from 'react-restore'
 import svg from '../../../../resources/svg'
 import link from '../../../../resources/link'
 import { cachedImageUrl } from '../../../../resources/domain/imageCache'
+import type { Token } from '../../../../main/store/state'
+import { useWalletSelector } from '../../../state/useAppSelector'
+import type { DashRendererState } from '../../state'
 
-class CustomTokens extends React.Component<any, any> {
-  declare store: Store
+const EMPTY_TOKENS: Token[] = []
 
-  constructor(props: any, context?: any) {
-    super(props, context)
+const selectCustomTokens = (state: DashRendererState) => state.tokens.custom || EMPTY_TOKENS
+
+interface CustomTokensProps {
+  tokens: Token[]
+}
+
+interface CustomTokensState {
+  copied?: boolean
+  tokenExpanded?: number | false
+}
+
+class CustomTokensView extends React.Component<CustomTokensProps, CustomTokensState> {
+  constructor(props: CustomTokensProps) {
+    super(props)
     this.state = {}
   }
 
   override render() {
-    const tokens = this.store('main.tokens.custom')
+    const { tokens } = this.props
 
     return (
       <div className='cardShow' onMouseDown={(e) => e.stopPropagation()}>
@@ -69,7 +82,7 @@ class CustomTokens extends React.Component<any, any> {
                       <div
                         className='customTokensListItemAddress'
                         onClick={() => {
-                          link.send('tray:clipboardData', token.address)
+                          void link.executeCommand({ type: 'clipboard.write', text: token.address })
                           this.setState({ copied: true })
                           setTimeout((_) => this.setState({ copied: false }), 1000)
                         }}
@@ -80,7 +93,8 @@ class CustomTokens extends React.Component<any, any> {
                         <div
                           className='customTokensListItemButton editButton'
                           onClick={() => {
-                            link.send('nav:forward', 'dash', {
+                            void link.executeCommand({
+                              type: 'dash.navigate',
                               view: 'tokens',
                               data: {
                                 notify: 'addToken',
@@ -102,7 +116,11 @@ class CustomTokens extends React.Component<any, any> {
                           onClick={() => {
                             this.setState({ tokenExpanded: false })
                             setTimeout(() => {
-                              link.send('tray:removeToken', token)
+                              void link.executeCommand({
+                                type: 'token.remove',
+                                address: token.address,
+                                chainId: token.chainId
+                              })
                             }, 100)
                           }}
                         >
@@ -122,4 +140,8 @@ class CustomTokens extends React.Component<any, any> {
   }
 }
 
-export default Restore.connect(CustomTokens)
+export default function CustomTokens() {
+  const tokens = useWalletSelector(selectCustomTokens)
+
+  return <CustomTokensView tokens={tokens} />
+}

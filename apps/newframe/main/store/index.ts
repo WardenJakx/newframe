@@ -1,37 +1,27 @@
-import Restore from 'react-restore'
-import state from './state'
-import actions from './actions'
-import persist from './persist'
+import log from 'electron-log'
 
-// TODO: Layer persisted op top of initial state
+import createCanonicalStore from './createCanonicalStore'
+import validatedConfStorage from './persist'
 
-// const get = (path, obj = persist.get('main')) => {
-//   path.split('.').some((key, i) => {
-//     if (typeof obj !== 'object') { obj = undefined } else { obj = obj[key] }
-//     return obj === undefined // Stop navigating the path if we get to undefined value
-//   })
-//   return obj
-// }
+const canonical = createCanonicalStore(validatedConfStorage)
+const store = canonical.store
 
-// const persistedPaths = []
-
-// persistedPaths.forEach(path => {
-//   const value = get(path)
-//   if (value !== undefined) store.__overwrite(path, value)
-// })
-
-const store = Restore.create(state(), actions)
-
-// Persist initial full state
-persist.set('main', store('main'))
-
-// Apply updates to persisted state
-store.api.feed((state, actionBatch) => {
-  actionBatch.forEach((action) => {
-    action.updates.forEach((update) => {
-      persist.queue(update.path, update.value)
-    })
+if (process.env.NEWFRAME_VISUAL_HARNESS === 'true' && process.env.FRAME_PROFILE === 'dev') {
+  Object.defineProperty(globalThis, '__NEWFRAME_VISUAL_HARNESS_GET_STATE__', {
+    configurable: false,
+    value: () => {
+      const { main, windows } = store.getState()
+      return JSON.parse(JSON.stringify({ main, windows }))
+    },
+    writable: false
   })
+}
+
+export const canonicalStoreHydration = canonical.hydration.catch((error) => {
+  log.error('Canonical state hydration failed', error)
+  throw error
 })
 
+export type { CanonicalActions, CanonicalStore } from './actions'
+export { default as createCanonicalStore } from './createCanonicalStore'
 export default store

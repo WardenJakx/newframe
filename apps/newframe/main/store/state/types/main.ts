@@ -16,10 +16,15 @@ const UpdaterPreferencesSchema = z.object({
   lastChecked: z.number().default(0)
 })
 
-const RuntimeSchema = z.object({
+export const RuntimeSchema = z.object({
   environment: z.string().nullable().optional(),
   isDev: z.boolean().optional(),
   profile: z.string().nullable().optional()
+})
+
+export const AppLockSchema = z.object({
+  locked: z.boolean(),
+  vaultExists: z.boolean()
 })
 
 // these are individual keys on the main state object
@@ -35,17 +40,12 @@ const PreferencesSchema = {
   portfolioApiKey: z.string().default('').describe('Zerion API key for portfolio providers'),
   showTestnets: z.boolean().default(false).describe('Show testnet networks in the wallet UI'),
   menubarGasPrice: z.boolean().default(false).describe('Show gas price in menu bar'),
-  biometricUnlock: z.boolean().default(false).describe('Unlock Newframe with biometrics on this device'),
-  hardwareDerivation: z.string()
+  biometricUnlock: z.boolean().default(false).describe('Unlock Newframe with biometrics on this device')
 }
 
 const notificationTypes = z.enum([
-  'alphaWarning',
-  'welcomeWarning',
-  'externalLinkWarning',
   'explorerWarning',
   'gasFeeWarning',
-  'betaDisclosure',
   'onboardingWindow',
   'signerCompatibilityWarning'
 ])
@@ -127,35 +127,36 @@ export const OrderRecordSchema = z
 
 export const OrdersSchema = z.record(z.string().describe('Flash Order Id'), OrderRecordSchema).default({})
 
-export const MainSchema = z.object({
-  _version: z.coerce.number(),
-  instanceId: z.string(), // TODO: uuid
-  runtime: RuntimeSchema,
-  networks: z.object({
-    ethereum: z.record(z.coerce.number(), ChainSchema)
-  }),
-  networksMeta: z.object({
-    ethereum: z.record(z.coerce.number(), ChainMetadataSchema)
-  }),
-  origins: z.record(z.string().describe('Origin Id'), OriginSchema),
-  knownExtensions: z.record(z.string(), z.boolean()),
-  permissions: z.record(
-    z.string().describe('Address'),
-    z.record(z.string().describe('Origin Id'), PermissionSchema)
-  ),
-  accounts: z.record(z.string(), AccountSchema),
-  currentAccount: z.string().default(''),
-  accountOrder: z.array(z.string()).default([]),
-  accountsMeta: z.record(z.string(), AccountMetadataSchema),
-  balances: z.record(z.string().describe('Address'), z.array(BalanceSchema)),
-  activity: ActivitySchema,
-  orders: OrdersSchema,
-  mute: z.record(notificationTypes, z.boolean()),
-  colorway: z.literal('dark'),
-  shortcuts: ShortcutsSchema,
-  updater: UpdaterPreferencesSchema,
-  ...PreferencesSchema
-})
+export const MainSchema = z
+  .object({
+    instanceId: z.string(), // TODO: uuid
+    runtime: RuntimeSchema,
+    networks: z.object({
+      ethereum: z.record(z.coerce.number(), ChainSchema)
+    }),
+    networksMeta: z.object({
+      ethereum: z.record(z.coerce.number(), ChainMetadataSchema)
+    }),
+    origins: z.record(z.string().describe('Origin Id'), OriginSchema),
+    knownExtensions: z.record(z.string(), z.boolean()),
+    permissions: z.record(
+      z.string().describe('Address'),
+      z.record(z.string().describe('Origin Id'), PermissionSchema)
+    ),
+    accounts: z.record(z.string(), AccountSchema),
+    currentAccount: z.string().default(''),
+    appLock: AppLockSchema,
+    accountOrder: z.array(z.string()).default([]),
+    accountsMeta: z.record(z.string(), AccountMetadataSchema),
+    balances: z.record(z.string().describe('Address'), z.array(BalanceSchema)),
+    activity: ActivitySchema,
+    orders: OrdersSchema,
+    mute: z.record(notificationTypes, z.boolean()),
+    shortcuts: ShortcutsSchema,
+    updater: UpdaterPreferencesSchema,
+    ...PreferencesSchema
+  })
+  .passthrough()
 
 export type Main = z.infer<typeof MainSchema>
 export type Activity = z.infer<typeof ActivitySchema>

@@ -26,7 +26,14 @@ import Erc20Contract from '../../contracts/erc20'
 import { getErc7730TypedDataDisplay } from '../../signatures/erc7730'
 import { simulateTransactionEffects } from '../../transaction/simulation'
 
-import type { PermitSignatureRequest, TypedMessage } from '../types'
+import type { CanonicalAccountRequest, PermitSignatureRequest, TypedMessage } from '../types'
+import type { Action } from '../../transaction/actions'
+
+function cloneSerializable<T>(value: T): T {
+  return JSON.parse(
+    JSON.stringify(value, (_key, nextValue) => (typeof nextValue === 'function' ? undefined : nextValue))
+  )
+}
 
 interface SignerOptions {
   type?: string
@@ -38,76 +45,74 @@ interface AccountOptions {
   ensName?: string
   created?: string
   lastSignerType?: SignerType
-  active: boolean
-  options: SignerOptions
+  options?: SignerOptions
 }
 
 class FrameAccount {
-  id: Address
-  address: Address
-  name: string
-  ensName?: string
-  created: string
+  readonly id: Address
+  readonly address: Address
+  readonly accounts: Accounts
 
-  lastSignerType: SignerType
-  signer: string
-  signerStatus: string
+  private readonly responseHandlers = new Map<string, RPCCallback<any>>()
+  private readonly actionUpdateHandlers = new Map<string, Map<string, Action<unknown>>>()
+  private providerConnectListener?: () => void
+  private nameResolutionReadyListener?: () => void
 
-  accounts: Accounts
-  requests: Record<string, AccountRequest> = {}
-
-  accountObserver: Observer
-
-  status = 'ok'
-  active = false
+  accountObserver: () => void
 
   constructor(params: AccountOptions, accounts: Accounts) {
-    const { lastSignerType, name, ensName, created, address, active, options = {} } = params
-    this.accounts = accounts // Parent Accounts Module
-
+    const { lastSignerType, name, ensName, created, address, options = {} } = params
     const formattedAddress = (address && address.toLowerCase()) || '0x'
+    this.accounts = accounts // Parent Accounts Module
     this.id = formattedAddress // Account ID
     this.address = formattedAddress
-    this.lastSignerType = lastSignerType || (options.type as SignerType)
 
-    this.active = active
-    this.name = name
-    this.ensName = ensName
+    if (!store.getState().main.accounts[this.id]) {
+      store.getState().upsertAccount({
+        id: this.id,
+        address: this.address,
+        name,
+        ensName,
+        created: created || `new:${Date.now()}`,
+        lastSignerType: lastSignerType || (options.type as SignerType) || '',
+        signer: '',
+        signerStatus: '',
+        status: 'ok',
+        requests: {}
+      })
+    }
 
-    this.created = created || `new:${Date.now()}`
-
-    this.signer = '' // Matched Signer ID
-    this.signerStatus = ''
-
-    this.update()
-
-    this.accountObserver = store.observer(() => {
+    const synchronizeSigner = () => {
       // When signer data changes in any way this will rerun to make sure we're matched correctly
       const updatedSigner = this.findSigner(this.address)
 
       if (updatedSigner) {
         if (this.signer !== updatedSigner.id || this.signerStatus !== updatedSigner.status) {
-          this.signer = updatedSigner.id
+          const signer = updatedSigner.id
           const signerType = getSignerType(updatedSigner.type)
 
-          this.lastSignerType = signerType || this.lastSignerType
-          this.signerStatus = updatedSigner.status
+          this.patch({
+            signer,
+            lastSignerType: signerType || this.lastSignerType,
+            signerStatus: updatedSigner.status
+          })
 
-          if (updatedSigner.status === 'ok' && this.id === this.accounts._current) {
+          if (updatedSigner.status === 'ok' && this.id === store.getState().main.currentAccount) {
             this.verifyAddress(false, (err, verified) => {
-              if (!err && !verified) this.signer = ''
+              if (!err && !verified) this.patch({ signer: '' })
             })
           }
         }
       } else {
-        this.signer = ''
+        this.patch({ signer: '', signerStatus: '' })
       }
-
-      this.update()
-    }, `account:${this.address}`)
+    }
+    synchronizeSigner()
+    this.accountObserver = store.subscribe((state) => state.main.signers, synchronizeSigner)
 
     if (this.created.split(':')[0] === 'new') {
-      provider.on('connect', () => {
+      const createdSuffix = this.created.split(':')[1]
+      this.providerConnectListener = () => {
         provider.send(
           {
             jsonrpc: '2.0',
@@ -118,36 +123,87 @@ class FrameAccount {
             params: []
           },
           (response: any) => {
-            if (response.result)
-              this.created = parseInt(response.result, 16) + ':' + this.created.split(':')[1]
-            this.update()
+            if (response.result) {
+              if (store.getState().main.accounts[this.id]) {
+                this.patch({ created: `${parseInt(response.result, 16)}:${createdSuffix}` })
+              }
+              this.stopCreationBlockLookup()
+            }
           }
         )
-      })
+      }
+      provider.on('connect', this.providerConnectListener)
     }
 
     if (nameResolution.ready()) {
       this.lookupAddress() // We need to recheck this on every network change...
     } else {
-      nameResolution.once('ready', this.lookupAddress.bind(this))
+      this.nameResolutionReadyListener = () => {
+        this.nameResolutionReadyListener = undefined
+        if (store.getState().main.accounts[this.id]) void this.lookupAddress()
+      }
+      nameResolution.once('ready', this.nameResolutionReadyListener)
     }
+  }
 
-    this.update()
+  private get state() {
+    const account = store.getState().main.accounts[this.id]
+    if (!account) throw new Error(`Account ${this.id} is not in canonical state`)
+    return account as unknown as Account
+  }
+
+  get name() {
+    return this.state.name
+  }
+
+  get ensName() {
+    return this.state.ensName
+  }
+
+  get created() {
+    return this.state.created
+  }
+
+  get lastSignerType() {
+    return this.state.lastSignerType
+  }
+
+  get signer() {
+    return this.state.signer
+  }
+
+  get signerStatus() {
+    return this.state.signerStatus || ''
+  }
+
+  get status() {
+    return this.state.status
+  }
+
+  get requests() {
+    return this.state.requests as Record<string, AccountRequest>
+  }
+
+  patch(update: Partial<Omit<Account, 'id' | 'address' | 'requests'>>) {
+    store.getState().patchAccount(this.id, update)
+  }
+
+  patchRequest<T extends AccountRequest>(id: string, update: (request: T) => void) {
+    store.getState().patchAccountRequest(this.id, id, update as (request: CanonicalAccountRequest) => void)
+    return this.getRequest<T>(id)
   }
 
   async lookupAddress() {
     try {
-      this.ensName = await nameResolution.reverseLookup(this.address)
-      this.update()
+      this.patch({ ensName: await nameResolution.reverseLookup(this.address) })
     } catch (e) {
       log.error('lookupAddress Error:', e)
-      this.ensName = ''
-      this.update()
+      this.patch({ ensName: '' })
     }
   }
 
   findSigner(address: Address) {
-    const signers = store('main.signers') as Record<string, Signer>
+    const signers = store.getState().main.signers as Record<string, Signer>
 
     const signerOrdinal = (signer: Signer) => {
       const isOk = signer.status === 'ok' ? 2 : 1
@@ -169,10 +225,10 @@ class FrameAccount {
     if (account.toLowerCase() === this.address) {
       // Permissions do not live inside the account summary
       if (access) {
-        const { name } = store('main.origins', origin)
-        store.setPermission(this.address, { handlerId, origin: name, provider: true })
+        const { name } = store.getState().main.origins[origin]
+        store.getState().setPermission(this.address, { handlerId, origin: name, provider: true })
       } else {
-        store.revokePermission(this.address, handlerId)
+        store.getState().revokePermission(this.address, handlerId)
       }
     }
 
@@ -187,9 +243,10 @@ class FrameAccount {
     const knownRequest = this.requests[handlerId]
 
     if (knownRequest) {
-      if (knownRequest.res && payload) {
+      const respond = this.responseHandlers.get(handlerId)
+      if (respond && payload) {
         const { id, jsonrpc } = payload
-        knownRequest.res({ id, jsonrpc, result })
+        respond({ id, jsonrpc, result })
       }
 
       this.clearRequest(knownRequest.handlerId)
@@ -200,9 +257,10 @@ class FrameAccount {
     const knownRequest = this.requests[handlerId]
 
     if (knownRequest) {
-      if (knownRequest.res && payload) {
+      const respond = this.responseHandlers.get(handlerId)
+      if (respond && payload) {
         const { id, jsonrpc } = payload
-        knownRequest.res({ id, jsonrpc, error })
+        respond({ id, jsonrpc, error })
       }
 
       this.clearRequest(knownRequest.handlerId)
@@ -212,12 +270,14 @@ class FrameAccount {
   clearRequest(handlerId: string) {
     log.info(`clearRequest(${handlerId}) for account ${this.id}`)
 
-    const panelNav = store('windows.panel.nav') || []
+    const panelNav = (store.getState().windows.panel.nav || []) as any[]
     const wasCurrentRequest =
       panelNav[0]?.view === 'requestView' && panelNav[0]?.data?.requestId === handlerId
 
-    delete this.requests[handlerId]
-    store.navClearReq(handlerId, Object.keys(this.requests).length > 0)
+    store.getState().removeAccountRequest(this.id, handlerId)
+    this.responseHandlers.delete(handlerId)
+    this.actionUpdateHandlers.delete(handlerId)
+    store.getState().navClearReq(handlerId, Object.keys(this.requests).length > 0)
 
     const nextRequest = Object.values(this.requests)
       .filter(
@@ -241,8 +301,6 @@ class FrameAccount {
         }
       })
     }
-
-    this.update()
   }
 
   clearRequestsByOrigin(origin: string) {
@@ -254,33 +312,28 @@ class FrameAccount {
     })
   }
 
-  addRequiredApproval(
-    req: TransactionRequest,
-    type: ApprovalType,
-    data: any = {},
-    onApprove: (data: any) => void = () => {}
-  ) {
-    // TODO: turn TransactionRequest into its own class
-    const approve = (data: any) => {
-      const confirmedApproval = req.approvals.find((a) => a.type === type)
+  approveRequest(reqId: string, type: ApprovalType, _data: any) {
+    const request = this.getRequest<TransactionRequest>(reqId)
+    const approval = request?.approvals?.find((candidate) => candidate.type === type)
+    if (!approval) return false
 
-      if (confirmedApproval) {
-        onApprove(data)
+    this.patchRequest<TransactionRequest>(reqId, (draft) => {
+      const confirmed = draft.approvals.find((candidate) => candidate.type === type)
+      if (confirmed) confirmed.approved = true
+    })
+    return true
+  }
 
-        confirmedApproval.approved = true
-        this.update()
-      }
-    }
+  updateRecognizedAction(reqId: string, actionId: string, data: any) {
+    const runtimeAction = this.actionUpdateHandlers.get(reqId)?.get(actionId)
+    if (!runtimeAction?.update) return false
 
-    req.approvals = [
-      ...(req.approvals || []),
-      {
-        type,
-        data,
-        approved: false,
-        approve
-      }
-    ]
+    this.patchRequest<TransactionRequest>(reqId, (request) => {
+      runtimeAction.update?.(request, data)
+      const canonicalAction = request.recognizedActions.find((action) => action.id === actionId)
+      if (canonicalAction) canonicalAction.data = cloneSerializable(runtimeAction.data)
+    })
+    return true
   }
 
   resError(err: string | Error, payload: RPCResponsePayload, res: RPCErrorCallback) {
@@ -301,9 +354,10 @@ class FrameAccount {
         const knownTxRequest = this.requests[req.handlerId] as TransactionRequest
 
         if (recipient && knownTxRequest) {
-          knownTxRequest.recipient = recipient.ens
-          this.update()
-          this.accounts.syncTransactionActivity?.(this, knownTxRequest)
+          const updated = this.patchRequest<TransactionRequest>(req.handlerId, (request) => {
+            request.recipient = recipient.ens
+          })
+          if (updated) this.accounts.syncTransactionActivity?.(this, updated)
         }
       } catch (e) {
         log.warn(e)
@@ -322,10 +376,13 @@ class FrameAccount {
         const knownTxRequest = this.requests[req.handlerId] as TransactionRequest
 
         if (knownTxRequest && decodedData) {
-          knownTxRequest.decodedData = decodedData
-          this.update()
-          this.accounts.syncTransactionActivity?.(this, knownTxRequest)
-          void this.enrichErc20TokenData(knownTxRequest)
+          const updated = this.patchRequest<TransactionRequest>(req.handlerId, (request) => {
+            request.decodedData = decodedData
+          })
+          if (updated) {
+            this.accounts.syncTransactionActivity?.(this, updated)
+            void this.enrichErc20TokenData(updated)
+          }
         }
       } catch (e) {
         log.warn(e)
@@ -351,9 +408,10 @@ class FrameAccount {
       const knownTxRequest = this.requests[req.handlerId] as TransactionRequest
 
       if (knownTxRequest) {
-        knownTxRequest.tokenData = tokenData
-        this.update()
-        this.accounts.syncTransactionActivity?.(this, knownTxRequest)
+        const updated = this.patchRequest<TransactionRequest>(req.handlerId, (request) => {
+          request.tokenData = tokenData
+        })
+        if (updated) this.accounts.syncTransactionActivity?.(this, updated)
       }
     } catch (e) {
       log.warn('unable to fetch erc20 token metadata', { handlerId: req.handlerId, to, chainId, error: e })
@@ -366,20 +424,22 @@ class FrameAccount {
     if (!knownTxRequest.data?.chainId) return
     if (!force && knownTxRequest.simulation?.status === 'loading') return
 
-    knownTxRequest.simulation = {
-      status: 'loading',
-      effects: knownTxRequest.simulation?.effects,
-      updatedAt: Date.now()
-    }
-    this.update()
+    this.patchRequest<TransactionRequest>(req.handlerId, (request) => {
+      request.simulation = {
+        status: 'loading',
+        effects: request.simulation?.effects,
+        updatedAt: Date.now()
+      }
+    })
 
-    const simulation = await simulateTransactionEffects(knownTxRequest)
+    const simulation = await simulateTransactionEffects(this.getRequest<TransactionRequest>(req.handlerId))
     const currentTxRequest = this.requests[req.handlerId] as TransactionRequest | undefined
 
     if (currentTxRequest) {
-      currentTxRequest.simulation = simulation
-      this.update()
-      this.accounts.syncTransactionActivity?.(this, currentTxRequest)
+      const updated = this.patchRequest<TransactionRequest>(req.handlerId, (request) => {
+        request.simulation = simulation
+      })
+      if (updated) this.accounts.syncTransactionActivity?.(this, updated)
     }
   }
 
@@ -398,9 +458,16 @@ class FrameAccount {
         const knownTxRequest = this.requests[req.handlerId] as TransactionRequest
 
         if (knownTxRequest && actions) {
-          knownTxRequest.recognizedActions = actions
-          this.update()
-          this.accounts.syncTransactionActivity?.(this, knownTxRequest)
+          const handlers = new Map<string, Action<unknown>>()
+          const recognizedActions = actions.map(({ update, ...action }) => {
+            if (update) handlers.set(action.id, { ...action, update })
+            return cloneSerializable(action)
+          })
+          this.actionUpdateHandlers.set(req.handlerId, handlers)
+          const updated = this.patchRequest<TransactionRequest>(req.handlerId, (request) => {
+            request.recognizedActions = recognizedActions
+          })
+          if (updated) this.accounts.syncTransactionActivity?.(this, updated)
         }
       } catch (e) {
         log.warn(e)
@@ -417,8 +484,9 @@ class FrameAccount {
       const updatedRequest = this.requests[req.handlerId] as SignTypedDataRequest | undefined
       if (!erc7730 || !updatedRequest) return
 
-      updatedRequest.erc7730 = erc7730
-      this.update()
+      this.patchRequest<SignTypedDataRequest>(req.handlerId, (request) => {
+        request.erc7730 = erc7730
+      })
     } catch (error) {
       log.warn('unable to decode ERC-7730 typed message', { error, handlerId: req.handlerId })
     }
@@ -443,16 +511,16 @@ class FrameAccount {
         reveal.identity(permit.spender.address)
       ])
 
-      Object.assign(permitRequest, {
-        tokenData,
-        permit: {
-          ...permit,
-          verifyingContract: { ...permit.verifyingContract, ...contractIdentity },
-          spender: { ...permit.spender, ...spenderIdentity }
-        }
+      this.patchRequest<PermitSignatureRequest>(req.handlerId, (request) => {
+        Object.assign(request, {
+          tokenData,
+          permit: {
+            ...permit,
+            verifyingContract: { ...permit.verifyingContract, ...contractIdentity },
+            spender: { ...permit.spender, ...spenderIdentity }
+          }
+        })
       })
-
-      this.update()
     } catch (error) {
       log.warn('unable to decode typed message', { error, handlerId: req.handlerId })
     }
@@ -475,32 +543,38 @@ class FrameAccount {
   }
 
   addRequest(req: any, res: RPCCallback<any> = () => {}) {
-    const add = async (r: AccountRequest) => {
-      this.requests[r.handlerId] = req
-      this.requests[r.handlerId].mode = RequestMode.Normal
-      this.requests[r.handlerId].created = Date.now()
-      this.requests[r.handlerId].res = res
+    const add = (r: AccountRequest) => {
+      this.responseHandlers.set(r.handlerId, res)
 
-      this.revealDetails(req)
+      const actionHandlers = new Map<string, Action<unknown>>()
+      ;((req as any).recognizedActions || []).forEach((action: any) => {
+        if (typeof action.update === 'function') actionHandlers.set(action.id, action)
+      })
+      if (actionHandlers.size) this.actionUpdateHandlers.set(r.handlerId, actionHandlers)
 
-      this.update()
-      store.setSignerView('default')
-      store.setPanelView('default')
+      const request = cloneSerializable({
+        ...req,
+        mode: RequestMode.Normal,
+        created: Date.now()
+      }) as CanonicalAccountRequest
+      store.getState().upsertAccountRequest(this.id, request)
+
+      this.revealDetails(request)
 
       // Display request
       const { account } = req
 
       // Check if this account is open
-      const accountOpen = store('selected.current') === account
+      const accountOpen = store.getState().main.currentAccount === account
 
       // Does the current panel nav include a 'requestView'
-      const panelNav = store('windows.panel.nav') || []
+      const panelNav = (store.getState().windows.panel.nav || []) as any[]
       const inExpandedRequestsView =
         panelNav[0]?.view === 'expandedModule' && panelNav[0]?.data?.id === 'requests'
       const inRequestView = panelNav.map((crumb: any) => crumb.view).includes('requestView')
 
       if (!accountOpen) {
-        store.setAccount(this.summary())
+        store.getState().setAccount({ id: this.id })
       }
 
       if (!inRequestView) {
@@ -564,32 +638,8 @@ class FrameAccount {
     return this.address
   }
 
-  summary() {
-    const update = JSON.parse(
-      JSON.stringify({
-        id: this.id,
-        name: this.name,
-        lastSignerType: this.lastSignerType,
-        address: this.address,
-        status: this.status,
-        active: this.active,
-        signer: this.signer,
-        requests: this.requests,
-        ensName: this.ensName,
-        created: this.created
-      })
-    ) as Account
-
-    return update
-  }
-
-  update() {
-    this.accounts.update(this.summary())
-  }
-
   rename(name: string) {
-    this.name = name
-    this.update()
+    this.patch({ name })
   }
 
   getCoinbase(cb: Callback<Array<Address>>) {
@@ -602,8 +652,21 @@ class FrameAccount {
     return account ? [account] : []
   }
 
+  private stopCreationBlockLookup() {
+    if (!this.providerConnectListener) return
+    provider.off('connect', this.providerConnectListener)
+    this.providerConnectListener = undefined
+  }
+
   close() {
-    this.accountObserver.remove()
+    this.stopCreationBlockLookup()
+    if (this.nameResolutionReadyListener) {
+      nameResolution.off('ready', this.nameResolutionReadyListener)
+      this.nameResolutionReadyListener = undefined
+    }
+    this.responseHandlers.clear()
+    this.actionUpdateHandlers.clear()
+    this.accountObserver()
   }
 
   signMessage(message: string, cb: Callback<string>) {

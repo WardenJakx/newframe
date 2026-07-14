@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import hotkeys from 'hotkeys-js'
 
-import link from '../../../resources/link'
+import type { Shortcut } from '../../../main/store/state/types/shortcuts'
 import { getShortcutFromKeyEvent, getDisplayShortcut, isShortcutKey } from '../../keyboard'
 
 interface KeyboardShortcutConfiguratorProps {
@@ -9,10 +9,12 @@ interface KeyboardShortcutConfiguratorProps {
   platform: any
   shortcut: any
   shortcutName: string
+  onChange?: (shortcut: Shortcut) => void
 }
 
 const KeyboardShortcutConfigurator = ({
   actionText = '',
+  onChange,
   platform,
   shortcut,
   shortcutName
@@ -31,18 +33,18 @@ const KeyboardShortcutConfigurator = ({
         if (!isModifierKey && isShortcutKey(event)) {
           const newShortcut = getShortcutFromKeyEvent(event, hotkeys.getPressedKeyCodes(), platform)
           // enable the new shortcut
-          link.send('tray:action', 'setShortcut', shortcutName, {
+          onChange?.({
             ...newShortcut,
             configuring: false,
             enabled: true
-          })
+          } as Shortcut)
         }
 
         return false
       })
 
       return () => hotkeys.unbind()
-    })
+    }, [onChange, platform])
 
     const labelId = `shortcut-${shortcutName.toLowerCase()}-configure`
     return (

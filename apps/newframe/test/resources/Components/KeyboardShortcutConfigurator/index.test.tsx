@@ -1,11 +1,12 @@
 import type { Mock } from 'bun:test'
 import { render, screen } from '../../../componentSetup'
-import { linkMock as link } from '../../../bun.mocks'
 
 let KeyboardShortcutConfigurator: any
 let mockLayoutGetKey: Mock<any>
+const setShortcut = jest.fn()
 
 beforeEach(async () => {
+  setShortcut.mockReset()
   mockLayoutGetKey = jest.fn()
   ;(global.navigator as any).keyboard = {}
   global.navigator.keyboard.getLayoutMap = jest.fn().mockResolvedValue({
@@ -122,6 +123,7 @@ describe('when configuring', () => {
       const { user } = render(
         <KeyboardShortcutConfigurator
           actionText='Test this component'
+          onChange={setShortcut}
           platform='linux'
           shortcutName='Test'
           shortcut={{
@@ -137,7 +139,7 @@ describe('when configuring', () => {
       expect(enterShortcutPrompt).toBeDefined()
       await user.keyboard('{Alt>}T{/Alt}')
 
-      expect(link.send).toHaveBeenLastCalledWith('tray:action', 'setShortcut', 'Test', {
+      expect(setShortcut).toHaveBeenLastCalledWith({
         enabled: true,
         configuring: false,
         modifierKeys: ['Alt'],
@@ -149,6 +151,7 @@ describe('when configuring', () => {
       const { user } = render(
         <KeyboardShortcutConfigurator
           actionText='Test this component'
+          onChange={setShortcut}
           platform='linux'
           shortcutName='Test'
           shortcut={{
@@ -164,7 +167,7 @@ describe('when configuring', () => {
       expect(enterShortcutPrompt).toBeDefined()
       await user.keyboard('{Alt>}T{/Alt}')
 
-      expect(link.send).toHaveBeenLastCalledWith('tray:action', 'setShortcut', 'Test', {
+      expect(setShortcut).toHaveBeenLastCalledWith({
         enabled: true,
         configuring: false,
         modifierKeys: ['Alt'],
@@ -178,6 +181,7 @@ describe('when configuring', () => {
       const { user } = render(
         <KeyboardShortcutConfigurator
           actionText='Test this component'
+          onChange={setShortcut}
           platform='linux'
           shortcutName='Test'
           shortcut={{
@@ -193,7 +197,7 @@ describe('when configuring', () => {
       expect(enterShortcutPrompt).toBeDefined()
       await user.keyboard('{Shift>};{/Shift}')
 
-      expect(link.send).not.toHaveBeenCalled()
+      expect(setShortcut).not.toHaveBeenCalled()
     })
   })
 })

@@ -16,6 +16,91 @@ let accounts: any
 let connection: any
 let store: any
 let hasSubscriptionPermission: any
+let accountRequestHook: ((request: any, respond?: (response: any) => void) => void) | undefined
+
+const storeState = () => store.getState()
+const setOrigin = (id: string, origin: any) => {
+  store.setState((state: any) => {
+    state.main.origins[id] = origin
+  })
+}
+const setOrigins = (origins: Record<string, any>) => {
+  store.setState((state: any) => {
+    state.main.origins = origins
+  })
+}
+const setPermissions = (account: string, permissions: Record<string, any>) => {
+  store.setState((state: any) => {
+    state.main.permissions[account] = permissions
+  })
+}
+const setNetwork = (id: number, network: any) => {
+  store.setState((state: any) => {
+    if (network === undefined) delete state.main.networks.ethereum[id]
+    else {
+      state.main.networks.ethereum[id] = {
+        name: `chain-${id}`,
+        explorer: '',
+        ...network,
+        connection: {
+          primary: { connected: false, ...(network.connection?.primary || {}) },
+          secondary: { connected: false, ...(network.connection?.secondary || {}) }
+        }
+      }
+      state.main.networksMeta.ethereum[id] ||= {
+        primaryColor: 'accent1',
+        nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18, icon: '' }
+      }
+    }
+  })
+}
+const setNetworks = (networks: Record<number, any>) => {
+  store.setState((state: any) => {
+    state.main.networks.ethereum = networks
+  })
+}
+const setNetworkGas = (id: number, gas: any) => {
+  store.setState((state: any) => {
+    state.main.networksMeta.ethereum[id] ||= {}
+    state.main.networksMeta.ethereum[id].gas = gas
+  })
+}
+const markRequestMonitoring = (request: any) => {
+  store.setState((state: any) => {
+    state.main.accounts[request.account].requests[request.handlerId].mode = 'monitor'
+  })
+}
+
+const expectQueuedRequestRejection = (
+  sendRequest: (callback: (response: any) => void) => void,
+  done: (error?: unknown) => void
+) => {
+  const callback = jest.fn()
+
+  accountRequestHook = (request, respond) => {
+    try {
+      expect(respond).toEqual(expect.any(Function))
+      expect(provider.handlers[request.handlerId]).toEqual(expect.any(Function))
+
+      const rejection = {
+        id: request.payload.id,
+        jsonrpc: request.payload.jsonrpc,
+        error: { code: 4001, message: 'User rejected the request' }
+      }
+      respond?.(rejection)
+      respond?.(rejection)
+
+      expect(callback).toHaveBeenCalledTimes(1)
+      expect(callback).toHaveBeenCalledWith(rejection)
+      expect(provider.handlers[request.handlerId]).toBeUndefined()
+      done()
+    } catch (error) {
+      done(error)
+    }
+  }
+
+  sendRequest(callback)
+}
 
 jest.mock('../../../main/chains', () => {
   const chains = { send: jest.fn(), syncDataEmit: jest.fn(), on: jest.fn(), refreshGasFees: jest.fn() }
@@ -54,9 +139,18 @@ beforeAll(async () => {
 
   accounts.getAccounts = () => [address]
   accounts.addRequest = (req: any, res: any) => {
-    store.set('main.accounts', req.account, 'requests', { [req.handlerId]: req })
+    store.setState((state: any) => {
+      state.main.accounts[req.account] ||= {}
+      state.main.accounts[req.account].requests = { [req.handlerId]: req }
+    })
     accountRequests.push(req)
-    if (res) res()
+    if (accountRequestHook) {
+      const hook = accountRequestHook
+      accountRequestHook = undefined
+      hook(req, res)
+    } else if (res) {
+      res()
+    }
   }
 })
 
@@ -65,9 +159,14 @@ afterAll(() => {
 })
 
 beforeEach(() => {
-  store.set('main.colorway', 'dark')
-  store.set('main.accounts', {})
-  store.set('main.origins', {})
+  store.setState((state: any) => {
+    state.main.accounts = {}
+    state.main.balances = {}
+    state.main.currentAccount = ''
+    state.main.networks.ethereum = {}
+    state.main.origins = {}
+    state.main.rates = {}
+  })
 
   provider.handlers = {}
 
@@ -75,6 +174,7 @@ beforeEach(() => {
   eventTypes.forEach((eventType) => (provider.subscriptions[eventType] = []))
 
   accountRequests = []
+  accountRequestHook = undefined
 
   connection.send = jest.fn()
   connection.refreshGasFees = jest.fn().mockResolvedValue(undefined)
@@ -95,7 +195,7 @@ beforeEach(() => {
 
 describe('#send', () => {
   beforeEach(() => {
-    store.set('main.origins', '8073729a-5e59-53b7-9e69-5d9bcff94087', {
+    setOrigin('8073729a-5e59-53b7-9e69-5d9bcff94087', {
       chain: { id: 1, type: 'ethereum', on: true }
     })
   })
@@ -152,7 +252,7 @@ describe('#send', () => {
 
   describe('#eth_chainId', () => {
     it('returns the current chain id from the store', () => {
-      store.set('main.networks.ethereum', 1, { id: 1, on: true })
+      setNetwork(1, { id: 1, on: true })
 
       send({ method: 'eth_chainId', chainId: '0x1' }, (response: any) => {
         expect(response.result).toBe('0x1')
@@ -160,7 +260,7 @@ describe('#send', () => {
     })
 
     it('returns a chain id from the target chain', () => {
-      store.set('main.networks.ethereum', 5, { id: 5, on: true })
+      setNetwork(5, { id: 5, on: true })
 
       send({ method: 'eth_chainId', chainId: '0x5' }, (response: any) => {
         expect(response.result).toBe('0x5')
@@ -168,7 +268,7 @@ describe('#send', () => {
     })
 
     it('returns an error for a disabled chain', () => {
-      store.set('main.networks.ethereum', 5, { id: 5, on: false })
+      setNetwork(5, { id: 5, on: false })
 
       send({ method: 'eth_chainId', chainId: '0x5' }, (response: any) => {
         expect(response.error.message).toBe('not connected')
@@ -181,11 +281,11 @@ describe('#send', () => {
     it('returns connected origin status with the selected address when permission is granted', (done) => {
       const originId = '8073729a-5e59-53b7-9e69-5d9bcff94087'
 
-      store.set('main.origins', originId, {
+      setOrigin(originId, {
         name: 'frame.test',
         chain: { id: 42161, type: 'ethereum' }
       })
-      store.set('main.permissions', address, {
+      setPermissions(address, {
         [originId]: {
           origin: 'frame.test',
           provider: true
@@ -209,11 +309,11 @@ describe('#send', () => {
     it('returns the selected address to internal status requests when no permission is attached', (done) => {
       const originId = '8073729a-5e59-53b7-9e69-5d9bcff94087'
 
-      store.set('main.origins', originId, {
+      setOrigin(originId, {
         name: 'frame.test',
         chain: { id: 1, type: 'ethereum' }
       })
-      store.set('main.permissions', address, {})
+      setPermissions(address, {})
 
       send({ method: 'frame_getOriginStatus', __frameInternal: true }, (response: any) => {
         expect(response.error).toBeUndefined()
@@ -232,11 +332,11 @@ describe('#send', () => {
     it('does not expose the selected address to non-internal status requests when no permission is attached', (done) => {
       const originId = '8073729a-5e59-53b7-9e69-5d9bcff94087'
 
-      store.set('main.origins', originId, {
+      setOrigin(originId, {
         name: 'frame.test',
         chain: { id: 1, type: 'ethereum' }
       })
-      store.set('main.permissions', address, {})
+      setPermissions(address, {})
 
       send({ method: 'frame_getOriginStatus' }, (response: any) => {
         expect(response.error).toBeUndefined()
@@ -260,12 +360,12 @@ describe('#send', () => {
 
       accounts.clearRequestsByOrigin = jest.fn()
       provider.subscriptions.accountsChanged = [subscription]
-      store.set('main.origins', originId, {
+      setOrigin(originId, {
         name: 'frame.test',
         chain: { id: 1, type: 'ethereum' },
         session: { requests: 3, startedAt: 1, lastUpdatedAt: 2 }
       })
-      store.set('main.permissions', address, {
+      setPermissions(address, {
         [originId]: {
           origin: 'frame.test',
           provider: true
@@ -281,8 +381,8 @@ describe('#send', () => {
         expect(response.error).toBeUndefined()
         expect(response.result.connected).toBe(false)
         expect(response.result.address).toBe('')
-        expect(store('main.permissions', address, originId)).toBeUndefined()
-        expect(store('main.origins', originId, 'session', 'endedAt')).toEqual(expect.any(Number))
+        expect(storeState().main.permissions[address][originId]).toBeUndefined()
+        expect(storeState().main.origins[originId].session.endedAt).toEqual(expect.any(Number))
         expect(accounts.clearRequestsByOrigin).toHaveBeenCalledWith(address, originId)
         expect(subscriptionEvent.params.subscription).toBe(subscription.id)
         expect(subscriptionEvent.params.result).toEqual([])
@@ -327,7 +427,7 @@ describe('#send', () => {
 
     it('rejects a request with no native currency', (done) => {
       const cb = (response: any) => {
-        expect(response.error.message).toMatch(/missing nativecurrency/i)
+        expect(response.error.message).toMatch(/invalid nativecurrency/i)
         expect(response.result).toBeUndefined()
         done()
       }
@@ -374,22 +474,70 @@ describe('#send', () => {
       )
     })
 
+    it('releases its response handler when an add-chain request is rejected', (done) => {
+      expectQueuedRequestRejection(
+        (callback) =>
+          sendRequest(
+            {
+              chainId: '0x1234',
+              chainName: 'Bizarro Polygon',
+              nativeCurrency: { name: 'New', symbol: 'NEW', decimals: 18 },
+              rpcUrls: ['https://rpc.example.com'],
+              blockExplorerUrls: ['https://explorer.example.com']
+            },
+            callback
+          ),
+        done
+      )
+    })
+
+    it('rejects unsafe RPC and block explorer URLs', () => {
+      const request = {
+        chainId: '0x1234',
+        chainName: 'Unsafe chain',
+        nativeCurrency: { name: 'Unsafe', symbol: 'BAD', decimals: 18 }
+      }
+      const rpcResponse = jest.fn()
+      const explorerResponse = jest.fn()
+
+      sendRequest({ ...request, rpcUrls: ['file:///tmp/rpc'] }, rpcResponse)
+      sendRequest(
+        {
+          ...request,
+          rpcUrls: ['https://rpc.example.com'],
+          blockExplorerUrls: ['javascript:alert(1)']
+        },
+        explorerResponse
+      )
+
+      expect(rpcResponse.mock.calls[0][0].error.message).toMatch(/invalid rpc url/i)
+      expect(explorerResponse.mock.calls[0][0].error.message).toMatch(/invalid block explorer url/i)
+      expect(accountRequests).toHaveLength(0)
+    })
+
     it('should switch the chain for the requesting origin if the chain already exists', (done) => {
-      store.set('main.networks.ethereum', 1, { id: 1 })
-      store.set('main.origins', '8073729a-5e59-53b7-9e69-5d9bcff94087', {
+      setNetwork(1, {
+        id: 1,
+        on: true,
+        connection: { primary: { custom: 'https://trusted.example.com' } }
+      })
+      setOrigin('8073729a-5e59-53b7-9e69-5d9bcff94087', {
         chain: { id: 137, type: 'ethereum' }
       })
-      store.switchOriginChain = jest.fn()
+      storeState().switchOriginChain.mockImplementation(() => undefined)
 
       const cb = (response: any) => {
         expect(response.error).toBeFalsy()
         expect(response.result).toBeNull()
 
         expect(accountRequests).toHaveLength(0)
-        expect(store.switchOriginChain).toHaveBeenCalledWith(
+        expect(storeState().switchOriginChain).toHaveBeenCalledWith(
           '8073729a-5e59-53b7-9e69-5d9bcff94087',
           1,
           'ethereum'
+        )
+        expect(storeState().main.networks.ethereum[1].connection.primary.custom).toBe(
+          'https://trusted.example.com'
         )
         done()
       }
@@ -400,14 +548,15 @@ describe('#send', () => {
           chainName: 'Mainnet',
           nativeCurrency: {
             symbol: 'ETH'
-          }
+          },
+          rpcUrls: ['https://attacker.example.com']
         },
         cb
       )
     })
 
-    it('reactivates an existing disabled chain with the requested primary RPC', (done) => {
-      store.set('main.networks.ethereum', 31337, {
+    it('requires approval to reactivate a chain and ignores requested RPC replacements', () => {
+      setNetwork(31337, {
         id: 31337,
         on: false,
         connection: {
@@ -418,22 +567,11 @@ describe('#send', () => {
           }
         }
       })
-      store.set('main.origins', '8073729a-5e59-53b7-9e69-5d9bcff94087', {
+      setOrigin('8073729a-5e59-53b7-9e69-5d9bcff94087', {
         chain: { id: 1, type: 'ethereum' }
       })
 
-      const cb = (response: any) => {
-        expect(response.error).toBeFalsy()
-        expect(response.result).toBeNull()
-
-        expect(store('main.networks.ethereum', 31337, 'on')).toBe(true)
-        expect(store('main.networks.ethereum', 31337, 'connection.primary.on')).toBe(true)
-        expect(store('main.networks.ethereum', 31337, 'connection.primary.current')).toBe('custom')
-        expect(store('main.networks.ethereum', 31337, 'connection.primary.custom')).toBe(
-          'http://127.0.0.1:8545'
-        )
-        done()
-      }
+      const cb = jest.fn()
 
       sendRequest(
         {
@@ -444,20 +582,27 @@ describe('#send', () => {
             symbol: 'ETH',
             decimals: 18
           },
-          rpcUrls: ['http://127.0.0.1:8545']
+          rpcUrls: ['https://attacker.example.com']
         },
         cb
       )
+
+      expect(accountRequests).toHaveLength(1)
+      const network = storeState().main.networks.ethereum[31337]
+      expect(network.on).toBe(false)
+      expect(network.connection.primary.on).toBe(false)
+      expect(network.connection.primary.custom).toBe('')
+      expect(accountRequests[0].chain).not.toHaveProperty('primaryRpc')
     })
   })
 
   describe('#wallet_switchEthereumChain', () => {
     it('should switch to a chain and notify listeners if it exists in the store', (done) => {
-      store.set('main.networks.ethereum', 1, { id: 1 })
-      store.set('main.origins', {
+      setNetwork(1, { id: 1, on: true })
+      setOrigins({
         '8073729a-5e59-53b7-9e69-5d9bcff94087': { chain: { id: 42161, type: 'ethereum' } }
       })
-      store.switchOriginChain = jest.fn()
+      storeState().switchOriginChain.mockImplementation(() => undefined)
 
       send(
         {
@@ -470,7 +615,7 @@ describe('#send', () => {
           _origin: '8073729a-5e59-53b7-9e69-5d9bcff94087'
         },
         () => {
-          expect(store.switchOriginChain).toHaveBeenCalledWith(
+          expect(storeState().switchOriginChain).toHaveBeenCalledWith(
             '8073729a-5e59-53b7-9e69-5d9bcff94087',
             1,
             'ethereum'
@@ -576,8 +721,10 @@ describe('#send', () => {
     let request: any
 
     beforeEach(() => {
-      store.set('main.networks.ethereum.1', { id: 1, on: true })
-      store.set('main.tokens.custom', [])
+      setNetwork(1, { id: 1, on: true })
+      store.setState((state: any) => {
+        state.main.tokens.custom = []
+      })
 
       request = {
         id: 10,
@@ -618,8 +765,14 @@ describe('#send', () => {
       })
     })
 
+    it('releases its response handler when an add-token request is rejected', (done) => {
+      expectQueuedRequestRejection((callback) => send(request, callback), done)
+    })
+
     it('does not add a request for a token that is already added', () => {
-      store.set('main.tokens.custom', [{ address: '0xbfa641051ba0a0ad1b0acf549a89536a0d76472e', chainId: 1 }])
+      store.setState((state: any) => {
+        state.main.tokens.custom = [{ address: '0xbfa641051ba0a0ad1b0acf549a89536a0d76472e', chainId: 1 }]
+      })
 
       send(request, ({ result }: any) => {
         expect(result).toBe(true)
@@ -628,7 +781,7 @@ describe('#send', () => {
     })
 
     it('rejects a request when the chain does not exist', () => {
-      store.set('main.networks.ethereum.1', undefined)
+      setNetwork(1, undefined)
 
       send(request, ({ error }: any) => {
         expect(error.code).toBe(-1)
@@ -638,7 +791,7 @@ describe('#send', () => {
     })
 
     it('rejects a request when the chain is disabled', () => {
-      store.set('main.networks.ethereum.1', { id: 1, on: false })
+      setNetwork(1, { id: 1, on: false })
 
       send(request, ({ error }: any) => {
         expect(error.code).toBe(-1)
@@ -680,30 +833,32 @@ describe('#send', () => {
 
   describe('#wallet_getEthereumChains', () => {
     beforeEach(() => {
-      store.set('main.networksMeta.ethereum', {
-        1: {
-          primaryColor: 'accent3',
-          nativeCurrency: {
-            name: 'Ether',
-            symbol: 'ETH',
-            decimals: 18,
-            icon: 'ethereum'
-          }
-        },
-        137: {
-          primaryColor: 'accent7',
-          nativeCurrency: {
-            name: 'Matic',
-            symbol: 'MATIC',
-            decimals: 18,
-            icon: 'matic'
+      store.setState((state: any) => {
+        state.main.networksMeta.ethereum = {
+          1: {
+            primaryColor: 'accent3',
+            nativeCurrency: {
+              name: 'Ether',
+              symbol: 'ETH',
+              decimals: 18,
+              icon: 'ethereum'
+            }
+          },
+          137: {
+            primaryColor: 'accent7',
+            nativeCurrency: {
+              name: 'Matic',
+              symbol: 'MATIC',
+              decimals: 18,
+              icon: 'matic'
+            }
           }
         }
       })
     })
 
     it('returns a list of enabled chains', () => {
-      store.set('main.networks.ethereum', {
+      setNetworks({
         137: {
           name: 'polygon',
           id: 137,
@@ -766,7 +921,7 @@ describe('#send', () => {
     })
 
     it('does not return disabled chains', () => {
-      store.set('main.networks.ethereum', {
+      setNetworks({
         137: {
           name: 'polygon',
           id: 137,
@@ -838,8 +993,13 @@ describe('#send', () => {
     ]
 
     beforeEach(() => {
-      store.set('main.accounts', address, { balances: { lastUpdated: new Date() } })
-      store.set('main.balances', address, balances)
+      store.setState((state: any) => {
+        state.main.accounts[address] = { balances: { lastUpdated: new Date() } }
+        state.main.balances[address] = balances
+        state.main.networksMeta.ethereum[42161] = {
+          nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18, icon: '' }
+        }
+      })
     })
 
     it('returns an error if no account is selected', (done) => {
@@ -881,7 +1041,9 @@ describe('#send', () => {
       const yesterday = new Date()
       yesterday.setDate(yesterday.getDate() - 1)
 
-      store.set('main.accounts', address, 'balances.lastUpdated', yesterday)
+      store.setState((state: any) => {
+        state.main.accounts[address].balances.lastUpdated = yesterday
+      })
 
       send({ method: 'wallet_getAssets', id: 51, jsonrpc: '2.0' }, (response: any) => {
         expect(response.id).toBe(51)
@@ -997,7 +1159,7 @@ describe('#send', () => {
       const chainIds = [1, 137]
 
       chainIds.forEach((chainId) => {
-        store.set('main.networksMeta.ethereum', chainId, 'gas', {
+        setNetworkGas(chainId, {
           price: {
             selected: 'standard',
             levels: { slow: '', standard: '', fast: gweiToHex(30), asap: '', custom: '' },
@@ -1015,6 +1177,10 @@ describe('#send', () => {
           chainConfig: chainConfig(chainId, chainId === 1 ? 'london' : 'istanbul')
         }
       })
+    })
+
+    it('releases its response handler when a transaction request is rejected', (done) => {
+      expectQueuedRequestRejection((callback) => sendTransaction(callback), done)
     })
 
     it('rejects a transaction with a mismatched chain id', (done) => {
@@ -1103,6 +1269,28 @@ describe('#send', () => {
       })
     })
 
+    it('publishes required approvals with the initial transaction request', (done) => {
+      ;(connection.send as any).mockImplementationOnce((_payload: any, cb: any) => {
+        cb({ error: { message: 'Unable to estimate gas' } })
+      })
+      delete tx.gasLimit
+
+      sendTransaction(() => {
+        try {
+          expect(accountRequests[0].approvals).toEqual([
+            {
+              type: 'approveGasLimit',
+              data: { message: 'Unable to estimate gas', gasLimit: '0x00' },
+              approved: false
+            }
+          ])
+          done()
+        } catch (error) {
+          done(error)
+        }
+      })
+    })
+
     it('uses gasPrice from input params for legacy transactions', (done) => {
       tx.gasPrice = '0x00'
 
@@ -1130,7 +1318,7 @@ describe('#send', () => {
             expect(initialPrice).toBe(gweiToHex(30))
             expect(initialRequest.feesUpdatedByUser).toBeFalsy()
 
-            initialRequest.mode = 'monitor'
+            markRequestMonitoring(initialRequest)
 
             sendTransaction(() => {
               const replacementRequest = accountRequests[1]
@@ -1157,9 +1345,9 @@ describe('#send', () => {
             expect(initialPrice).toBe(gweiToHex(30))
             expect(initialRequest.feesUpdatedByUser).toBeFalsy()
 
-            initialRequest.mode = 'monitor'
+            markRequestMonitoring(initialRequest)
 
-            store.set('main.networksMeta.ethereum', 137, 'gas', {
+            setNetworkGas(137, {
               price: {
                 selected: 'standard',
                 levels: { slow: '', standard: '', fast: gweiToHex(40), asap: '', custom: '' },
@@ -1196,7 +1384,7 @@ describe('#send', () => {
             expect(initialMax).toBe(gweiToHex(9))
             expect(initialRequest.feesUpdatedByUser).toBeFalsy()
 
-            initialRequest.mode = 'monitor'
+            markRequestMonitoring(initialRequest)
 
             sendTransaction(() => {
               const replacementRequest = accountRequests[1]
@@ -1229,9 +1417,9 @@ describe('#send', () => {
             expect(initialMax).toBe(gweiToHex(9))
             expect(initialRequest.feesUpdatedByUser).toBeFalsy()
 
-            initialRequest.mode = 'monitor'
+            markRequestMonitoring(initialRequest)
 
-            store.set('main.networksMeta.ethereum', 1, 'gas', {
+            setNetworkGas(1, {
               price: {
                 selected: 'standard',
                 levels: { slow: '', standard: '', fast: gweiToHex(40), asap: '', custom: '' },
@@ -1270,8 +1458,8 @@ describe('#send', () => {
             expect(initialMax).toBe(gweiToHex(9))
             expect(initialRequest.feesUpdatedByUser).toBeFalsy()
 
-            initialRequest.mode = 'monitor'
-            store.set('main.networksMeta.ethereum', 1, 'gas', {
+            markRequestMonitoring(initialRequest)
+            setNetworkGas(1, {
               price: {
                 selected: 'standard',
                 levels: { slow: '', standard: '', fast: gweiToHex(40), asap: '', custom: '' },
@@ -1309,6 +1497,13 @@ describe('#send', () => {
       expect(accountRequests[0].handlerId).toBeTruthy()
       expect(accountRequests[0].payload.params[0]).toBe(address)
       expect(accountRequests[0].payload.params[1]).toEqual(hexMessage)
+    })
+
+    it('releases its response handler when a sign request is rejected', (done) => {
+      expectQueuedRequestRejection(
+        (callback) => send({ method: 'eth_sign', params: [address, hexMessage] }, callback),
+        done
+      )
     })
 
     it('does not submit a request from an account other than the current one', (done) => {
@@ -1506,6 +1701,13 @@ describe('#send', () => {
         const expectedPayload = params[dataFirst ? 0 : 1]
         verifyRequest(version, expectedPayload)
       })
+    })
+
+    it('returns typed-data rejection and releases its response handler', (done) => {
+      expectQueuedRequestRejection(
+        (callback) => send({ method: 'eth_signTypedData_v4', params: [address, typedData] }, callback),
+        done
+      )
     })
 
     beforeEach(() => {
@@ -1757,7 +1959,7 @@ describe('#signAndSend', () => {
         cb({ result: addHexPrefix((150000).toString(16)) })
       })
 
-      store.set('main.networksMeta.ethereum.1.gas', {
+      setNetworkGas(1, {
         price: {
           selected: 'standard',
           levels: { slow: '', standard: '', fast: gweiToHex(30), asap: '', custom: '' },
@@ -1924,8 +2126,7 @@ describe('state change events', () => {
 
   it('fires a chainChanged event to subscribers', (done) => {
     // set the known state to compare the test event to
-    store.set('main.origins', subscription.originId, { chain: { id: 1, type: 'ethereum' } })
-    ;(store.getObserver('provider:origins') as any).fire()
+    setOrigin(subscription.originId, { chain: { id: 1, type: 'ethereum' } })
 
     provider.subscriptions.chainChanged = [subscription]
     provider.once('data:subscription', (event: any) => {
@@ -1936,10 +2137,9 @@ describe('state change events', () => {
       done()
     })
 
-    store.set('main.origins', '8073729a-5e59-53b7-9e69-5d9bcff94087', {
+    setOrigin('8073729a-5e59-53b7-9e69-5d9bcff94087', {
       chain: { id: 137, type: 'ethereum' }
     })
-    ;(store.getObserver('provider:origins') as any).fire()
   })
 
   it('fires a chainsChanged event to subscribers', (done) => {
@@ -1966,9 +2166,11 @@ describe('state change events', () => {
     }
 
     // set the known state to compare the test event to
-    store.set('main.networks.ethereum', networks)
-    store.set('main.networksMeta.ethereum', networksMeta)
-    ;(store.getObserver('provider:chains') as any).fire()
+    store.setState((state: any) => {
+      state.main.networks.ethereum = networks
+      state.main.networksMeta.ethereum = networksMeta
+    })
+    jest.runAllTimers()
 
     provider.subscriptions.chainsChanged = [subscription]
     provider.once('data:subscription', (event: any) => {
@@ -2025,24 +2227,21 @@ describe('state change events', () => {
       on: true
     }
 
-    store.set('main.networks.ethereum', { ...networks, 137: polygon })
-    store.set('main.networksMeta.ethereum', {
-      ...networksMeta,
-      137: { primaryColor: 'accent8', nativeCurrency: { symbol: 'MATIC', name: 'Matic', decimals: 18 } }
-    })
     ;(hasSubscriptionPermission as any).mockReturnValueOnce(true)
-    ;(store.getObserver('provider:chains') as any).fire()
+    store.setState((state: any) => {
+      state.main.networks.ethereum = { ...networks, 137: polygon }
+      state.main.networksMeta.ethereum = {
+        ...networksMeta,
+        137: {
+          primaryColor: 'accent8',
+          nativeCurrency: { symbol: 'MATIC', name: 'Matic', decimals: 18 }
+        }
+      }
+    })
     jest.runAllTimers()
   })
 
   it('fires an assetsChanged event to subscribers', (done) => {
-    const fireEvent = () => {
-      ;(store.getObserver('provider:assets') as any).fire()
-
-      // event debounce time
-      jest.advanceTimersByTime(800)
-    }
-
     const ethPriceData = { usd: { price: 3815.91 } }
     const ethBalance = {
       symbol: 'ETH',
@@ -2058,12 +2257,6 @@ describe('state change events', () => {
       address: '0x383518188c0c6d7730d91b2c03a03c837814a899'
     }
 
-    store.set('main.accounts', address, 'balances.lastUpdated', new Date())
-    store.set('main.permissions', address, { 'test.frame': { origin: 'test.frame', provider: true } })
-    store.set('main.networksMeta.ethereum.1.nativeCurrency', ethPriceData)
-    store.set('main.rates', tokenBalance.address, tokenPriceData)
-    store.set('main.balances', address, [ethBalance, tokenBalance])
-    store.set('selected.current', address)
     ;(hasSubscriptionPermission as any).mockReturnValueOnce(true)
     accounts.current = () => ({ id: address })
     provider.subscriptions.assetsChanged = [subscription]
@@ -2081,7 +2274,19 @@ describe('state change events', () => {
       done()
     })
 
-    fireEvent()
+    store.setState((state: any) => {
+      state.main.accounts[address] ||= {}
+      state.main.accounts[address].balances = { lastUpdated: new Date() }
+      state.main.permissions[address] = { 'test.frame': { origin: 'test.frame', provider: true } }
+      state.main.networksMeta.ethereum[1] ||= {}
+      state.main.networksMeta.ethereum[1].nativeCurrency = ethPriceData
+      state.main.rates[tokenBalance.address] = tokenPriceData
+      state.main.balances[address] = [ethBalance, tokenBalance]
+      state.main.currentAccount = address
+    })
+
+    // assets notifications are intentionally coalesced
+    jest.advanceTimersByTime(800)
   })
 })
 

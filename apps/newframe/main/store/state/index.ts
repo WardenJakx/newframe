@@ -2,8 +2,6 @@ import { v4 as generateUuid, v5 as uuidv5 } from 'uuid'
 import { z } from 'zod'
 import log from 'electron-log'
 
-import persist from '../persist'
-import migrations from '../migrate'
 import { getMainRuntime } from '../../runtime'
 
 import { MAINNET_ETH_ICON } from '../../../resources/domain/balance'
@@ -45,7 +43,7 @@ const ViewSchema = z
   })
   .passthrough()
 
-const StateSchema = z
+export const CanonicalStateSchema = z
   .object({
     main: MainSchema,
     view: ViewSchema
@@ -54,48 +52,6 @@ const StateSchema = z
 
 export type StatusNotification = z.infer<typeof StatusNotificationSchema>
 
-const latestStateVersion = () => {
-  // TODO: validate state and type it here?
-  // TODO: what does this top-level state object look like?
-  const state = persist.get('main') as any
-  if (!state || !state.__) {
-    // log.info('Persisted state: returning base state')
-    return state
-  }
-
-  // valid states are less than or equal to the latest migration we know about
-  const versions = Object.keys(state.__)
-    .filter((v) => parseInt(v) <= migrations.latest)
-    .sort((a, b) => parseInt(a) - parseInt(b))
-
-  if (versions.length === 0) {
-    // log.info('Persisted state: returning base state')
-    return state
-  }
-
-  const latest = versions[versions.length - 1]
-  // log.info('Persisted state: returning latest state version: ', latest)
-  return state.__[latest].main
-}
-
-const get = (path: string, obj = latestStateVersion()) => {
-  path.split('.').some((key) => {
-    if (typeof obj !== 'object') {
-      obj = undefined
-    } else {
-      obj = obj[key]
-    }
-    return obj === undefined // Stop navigating the path if we get to undefined value
-  })
-  return obj
-}
-
-const main = (path: string, def: any) => {
-  const found = get(path)
-  if (found === undefined) return def
-  return found
-}
-
 // TODO: remove pieces of this as they're added to the main state definition
 type M = Main & {
   shortcuts: any
@@ -103,13 +59,10 @@ type M = Main & {
   latticeSettings: any
   ledger: any
   trezor: any
-  addresses: any
   tokens: any
   rates: any
   signers: any
-  savedSigners: any
   frames: any
-  dapp: any
 }
 
 const defaultEnabledEthereumChainIds = new Set([1, 10, 56, 137, 999, 8453, 9745, 81457, 42161, 43114, 143])
@@ -122,7 +75,7 @@ const networkGas = () => ({
 })
 
 const networkMetaGas = () => ({
-  fees: {},
+  samples: [],
   price: {
     selected: 'standard',
     levels: { slow: '', standard: '', fast: '', asap: '', custom: '' }
@@ -221,7 +174,6 @@ const requiredDefaultEthereumNetworks: Record<number, any> = {
 
 const requiredDefaultEthereumNetworksMeta: Record<number, any> = {
   56: {
-    blockHeight: 0,
     gas: networkMetaGas(),
     nativeCurrency: {
       symbol: 'BNB',
@@ -237,7 +189,6 @@ const requiredDefaultEthereumNetworksMeta: Record<number, any> = {
     primaryColor: 'accent8'
   },
   999: {
-    blockHeight: 0,
     gas: networkMetaGas(),
     nativeCurrency: {
       symbol: 'HYPE',
@@ -253,7 +204,6 @@ const requiredDefaultEthereumNetworksMeta: Record<number, any> = {
     primaryColor: 'accent3'
   },
   9745: {
-    blockHeight: 0,
     gas: networkMetaGas(),
     nativeCurrency: {
       symbol: 'XPL',
@@ -269,7 +219,6 @@ const requiredDefaultEthereumNetworksMeta: Record<number, any> = {
     primaryColor: 'accent5'
   },
   81457: {
-    blockHeight: 0,
     gas: networkMetaGas(),
     nativeCurrency: {
       symbol: 'ETH',
@@ -285,7 +234,6 @@ const requiredDefaultEthereumNetworksMeta: Record<number, any> = {
     primaryColor: 'accent4'
   },
   43114: {
-    blockHeight: 0,
     gas: networkMetaGas(),
     nativeCurrency: {
       symbol: 'AVAX',
@@ -301,7 +249,6 @@ const requiredDefaultEthereumNetworksMeta: Record<number, any> = {
     primaryColor: 'accent8'
   },
   143: {
-    blockHeight: 0,
     gas: networkMetaGas(),
     nativeCurrency: {
       symbol: 'MON',
@@ -319,77 +266,65 @@ const requiredDefaultEthereumNetworksMeta: Record<number, any> = {
 }
 
 const clone = (value: any) => JSON.parse(JSON.stringify(value))
-const persistedPortfolioApiKey = main('portfolioApiKey', '')
-const portfolioApiKey =
-  typeof persistedPortfolioApiKey === 'string' ? persistedPortfolioApiKey.replace(/\s+/g, '') : ''
 const mainState: M = {
-  _version: main('_version', 1),
-  instanceId: main('instanceId', generateUuid()),
+  instanceId: generateUuid(),
   runtime: getMainRuntime(),
-  colorway: 'dark',
   mute: {
-    alphaWarning: main('mute.alphaWarning', false),
-    welcomeWarning: main('mute.welcomeWarning', false),
-    externalLinkWarning: main('mute.externalLinkWarning', false),
-    explorerWarning: main('mute.explorerWarning', false),
-    gasFeeWarning: main('mute.gasFeeWarning', false),
-    betaDisclosure: main('mute.betaDisclosure', false),
-    onboardingWindow: main('mute.onboardingWindow', false),
-    signerCompatibilityWarning: main('mute.signerCompatibilityWarning', false)
+    explorerWarning: false,
+    gasFeeWarning: false,
+    onboardingWindow: false,
+    signerCompatibilityWarning: false
   },
   shortcuts: {
-    summon: main('shortcuts.summon', {
+    summon: {
       modifierKeys: ['Alt'],
       shortcutKey: 'Slash',
       enabled: true,
       configuring: false
-    })
+    }
   },
-  // showUSDValue: main('showUSDValue', true),
-  launch: main('launch', false),
-  reveal: main('reveal', false),
-  showLocalNameWithENS: main('showLocalNameWithENS', false),
-  autoDiscoverTokens: Boolean(portfolioApiKey) && main('autoDiscoverTokens', false),
-  portfolioApiKey,
-  showTestnets: main('showTestnets', false),
-  autohide: main('autohide', false),
-  hardwareDerivation: main('hardwareDerivation', 'mainnet'),
-  menubarGasPrice: main('menubarGasPrice', false),
-  biometricUnlock: main('biometricUnlock', false),
-  lattice: main('lattice', {}),
+  launch: false,
+  reveal: false,
+  showLocalNameWithENS: false,
+  autoDiscoverTokens: false,
+  portfolioApiKey: '',
+  showTestnets: false,
+  autohide: false,
+  menubarGasPrice: false,
+  biometricUnlock: false,
+  lattice: {},
   latticeSettings: {
-    accountLimit: main('latticeSettings.accountLimit', 5),
-    derivation: main('latticeSettings.derivation', 'standard'),
-    endpointMode: main('latticeSettings.endpointMode', 'default'),
-    endpointCustom: main('latticeSettings.endpointCustom', '')
+    accountLimit: 5,
+    derivation: 'standard',
+    endpointMode: 'default',
+    endpointCustom: ''
   },
   ledger: {
-    derivation: main('ledger.derivation', 'live'),
-    liveAccountLimit: main('ledger.liveAccountLimit', 5)
+    derivation: 'live',
+    liveAccountLimit: 5
   },
   trezor: {
-    derivation: main('trezor.derivation', 'standard')
+    derivation: 'standard'
   },
-  origins: main('origins', {}),
-  knownExtensions: main('knownExtensions', {}),
-  accounts: main('accounts', {}),
-  currentAccount: main('currentAccount', ''),
-  accountsMeta: main('accountsMeta', {}),
-  addresses: main('addresses', {}), // Should be removed after 0.5 release
-  permissions: main('permissions', {}),
-  balances: main('balances', {}),
-  activity: main('activity', {}),
-  orders: main('orders', {}),
-  accountOrder: main('accountOrder', []),
-  tokens: main('tokens', { custom: [], known: {} }),
-  rates: main('rates', {}),
+  origins: {},
+  knownExtensions: {},
+  accounts: {},
+  currentAccount: '',
+  appLock: { locked: false, vaultExists: false },
+  accountsMeta: {},
+  permissions: {},
+  balances: {},
+  activity: {},
+  orders: {},
+  accountOrder: [],
+  tokens: { custom: [], known: {} },
+  rates: {},
   signers: {},
-  savedSigners: {},
   updater: {
-    dontRemind: main('updater.dontRemind', []),
-    lastChecked: main('updater.lastChecked', 0)
+    dontRemind: [],
+    lastChecked: 0
   },
-  networks: main('networks', {
+  networks: {
     ethereum: {
       1: {
         id: 1,
@@ -812,13 +747,12 @@ const mainState: M = {
         on: false
       }
     }
-  }),
-  networksMeta: main('networksMeta', {
+  },
+  networksMeta: {
     ethereum: {
       1: {
-        blockHeight: 0,
         gas: {
-          fees: {},
+          samples: [],
           price: {
             selected: 'standard',
             levels: { slow: '', standard: '', fast: '', asap: '', custom: '' }
@@ -838,9 +772,8 @@ const mainState: M = {
         primaryColor: 'accent1' // Mainnet
       },
       10: {
-        blockHeight: 0,
         gas: {
-          fees: {},
+          samples: [],
           price: {
             selected: 'standard',
             levels: { slow: '', standard: '', fast: '', asap: '', custom: '' }
@@ -860,9 +793,8 @@ const mainState: M = {
         primaryColor: 'accent4' // Optimism
       },
       56: {
-        blockHeight: 0,
         gas: {
-          fees: {},
+          samples: [],
           price: {
             selected: 'standard',
             levels: { slow: '', standard: '', fast: '', asap: '', custom: '' }
@@ -882,9 +814,8 @@ const mainState: M = {
         primaryColor: 'accent8' // BNB Smart Chain
       },
       100: {
-        blockHeight: 0,
         gas: {
-          fees: {},
+          samples: [],
           price: {
             selected: 'standard',
             levels: { slow: '', standard: '', fast: '', asap: '', custom: '' }
@@ -904,9 +835,8 @@ const mainState: M = {
         primaryColor: 'accent5' // Gnosis
       },
       137: {
-        blockHeight: 0,
         gas: {
-          fees: {},
+          samples: [],
           price: {
             selected: 'standard',
             levels: { slow: '', standard: '', fast: '', asap: '', custom: '' }
@@ -926,9 +856,8 @@ const mainState: M = {
         primaryColor: 'accent6' // Polygon
       },
       999: {
-        blockHeight: 0,
         gas: {
-          fees: {},
+          samples: [],
           price: {
             selected: 'standard',
             levels: { slow: '', standard: '', fast: '', asap: '', custom: '' }
@@ -948,9 +877,8 @@ const mainState: M = {
         primaryColor: 'accent3' // HyperEVM
       },
       8453: {
-        blockHeight: 0,
         gas: {
-          fees: {},
+          samples: [],
           price: {
             selected: 'standard',
             levels: { slow: '', standard: '', fast: '', asap: '', custom: '' }
@@ -970,9 +898,8 @@ const mainState: M = {
         primaryColor: 'accent8' // Base
       },
       42161: {
-        blockHeight: 0,
         gas: {
-          fees: {},
+          samples: [],
           price: {
             selected: 'standard',
             levels: { slow: '', standard: '', fast: '', asap: '', custom: '' }
@@ -992,9 +919,8 @@ const mainState: M = {
         primaryColor: 'accent7' // Arbitrum
       },
       43114: {
-        blockHeight: 0,
         gas: {
-          fees: {},
+          samples: [],
           price: {
             selected: 'standard',
             levels: { slow: '', standard: '', fast: '', asap: '', custom: '' }
@@ -1014,9 +940,8 @@ const mainState: M = {
         primaryColor: 'accent8' // Avalanche
       },
       84532: {
-        blockHeight: 0,
         gas: {
-          fees: {},
+          samples: [],
           price: {
             selected: 'standard',
             levels: { slow: '', standard: '', fast: '', asap: '', custom: '' }
@@ -1036,9 +961,8 @@ const mainState: M = {
         primaryColor: 'accent2' // Testnet
       },
       11155111: {
-        blockHeight: 0,
         gas: {
-          fees: {},
+          samples: [],
           price: {
             selected: 'standard',
             levels: { slow: '', standard: '', fast: '', asap: '', custom: '' }
@@ -1058,9 +982,8 @@ const mainState: M = {
         primaryColor: 'accent2' // Testnet
       },
       11155420: {
-        blockHeight: 0,
         gas: {
-          fees: {},
+          samples: [],
           price: {
             selected: 'standard',
             levels: { slow: '', standard: '', fast: '', asap: '', custom: '' }
@@ -1080,17 +1003,8 @@ const mainState: M = {
         primaryColor: 'accent2' // Testnet
       }
     }
-  }),
-  frames: {},
-  dapp: {
-    details: {},
-    map: {
-      added: [],
-      docked: []
-    },
-    storage: {},
-    removed: []
-  }
+  },
+  frames: {}
 }
 
 function normalizeDefaultEthereumNetworks() {
@@ -1122,107 +1036,52 @@ function normalizeDefaultEthereumNetworks() {
 
 normalizeDefaultEthereumNetworks()
 
-function currentAccountFromMainState() {
-  const accounts = mainState.accounts || {}
-  const persistedCurrent = mainState.currentAccount
-  if (persistedCurrent && accounts[persistedCurrent]) return persistedCurrent
-
-  const active = Object.keys(accounts).find((id) => accounts[id]?.active)
-  if (active) return active
-
-  const ordered = (mainState.accountOrder || []).find((id: string) => accounts[id])
-  if (ordered) return ordered
-
-  return Object.keys(accounts)[0] || ''
-}
-
 const initial = {
   windows: {
     panel: {
       show: false,
-      nav: [],
-      footer: {
-        height: 40
-      }
+      nav: []
     },
     dash: {
       show: false,
-      nav: [],
-      footer: {
-        height: 40
-      }
-    },
-    frames: []
+      nav: []
+    }
   },
-  panel: {
-    // Panel view
-    showing: false,
-    nav: [],
-    show: false,
-    view: 'default',
-    viewData: '',
-    account: {}
-  },
-  flow: {},
-  dapps: {},
   view: {
-    current: '',
-    list: [],
-    data: {},
     notify: '',
     notifyData: {},
     notifications: {},
-    badge: '',
-    addAccount: '', // Add view (needs to be merged into Phase)
-    addNetwork: false, // Phase view (needs to be merged with Add)
-    clickGuard: false
+    badge: ''
   },
-  signers: {},
   tray: {
     open: false,
     initial: true,
     homeCommand: null
   },
-  balances: {},
   selected: {
     minimized: true,
-    open: false,
-    current: currentAccountFromMainState(),
-    view: 'default',
-    settings: {
-      viewIndex: 0,
-      views: ['permissions', 'verify', 'control'],
-      subIndex: 0
-    },
-    addresses: [],
-    showAccounts: false,
-    accountPage: 0,
-    position: {
-      scrollTop: 0,
-      initial: {
-        top: 5,
-        left: 5,
-        right: 5,
-        bottom: 5,
-        height: 5,
-        index: 0
-      }
-    }
-  },
-  frame: {
-    type: 'tray'
-  },
-  node: {
-    provider: false
-  },
-  provider: {
-    events: []
-  },
-  external: {
-    rates: {}
+    open: false
   },
   platform: process.platform,
   main: mainState
+}
+
+type NavigationEntry = { view: string; data: Record<string, any> }
+type WindowState = {
+  show: boolean
+  nav: NavigationEntry[]
+  [key: string]: any
+}
+
+export type CanonicalState = Omit<typeof initial, 'main' | 'view' | 'windows'> & {
+  main: M
+  view: Omit<typeof initial.view, 'notifications'> & {
+    notifications: Record<string, StatusNotification>
+  }
+  windows: {
+    panel: WindowState
+    dash: WindowState
+  }
 }
 
 // --- remove state that should not persist from session to session
@@ -1239,8 +1098,6 @@ Object.keys(initial.main.accounts).forEach((id) => {
   }
 
   // remote lastUpdated timestamp from balances
-  // TODO: define account schema more accurately
-  // @ts-expect-error -- account schema doesn't include balances
   initial.main.accounts[id].balances = { lastUpdated: undefined }
 })
 
@@ -1273,14 +1130,14 @@ initial.main.knownExtensions = Object.fromEntries(
 
 // ---
 
-export default function () {
-  const migratedState = migrations.apply(initial)
-  const result = StateSchema.safeParse(migratedState)
+export default function createInitialState(): CanonicalState {
+  const state = structuredClone(initial)
+  const result = CanonicalStateSchema.safeParse(state)
 
   if (!result.success) {
     const issues = result.error.issues
     log.warn(`Found ${issues.length} issues while parsing saved state`, issues)
   }
 
-  return migratedState
+  return state as CanonicalState
 }

@@ -1,10 +1,8 @@
 import React from 'react'
-import Restore from 'react-restore'
 import svg from '../../../../../resources/svg'
+import { useOriginName } from '../state'
 
-class ProviderRequest extends React.Component<any, any> {
-  declare store: Store
-
+export class ProviderRequest extends React.Component<any, any> {
   constructor(props: any, context?: any) {
     super(props, context)
 
@@ -23,10 +21,10 @@ class ProviderRequest extends React.Component<any, any> {
     if (status === 'declined') requestClass += ' signerRequestDeclined'
     if (status === 'pending') requestClass += ' signerRequestPending'
     if (status === 'error') requestClass += ' signerRequestError'
-    const originName = this.store('main.origins', this.props.req.origin, 'name')
+    const originName = this.props.originName
     let originClass = 'requestProviderOrigin'
-    if (origin.length > 28) originClass = 'requestProviderOrigin requestProviderOrigin18'
-    if (origin.length > 36) originClass = 'requestProviderOrigin requestProviderOrigin12'
+    if (originName.length > 28) originClass = 'requestProviderOrigin requestProviderOrigin18'
+    if (originName.length > 36) originClass = 'requestProviderOrigin requestProviderOrigin12'
     return (
       <div key={this.props.req.id || this.props.req.handlerId} className={requestClass}>
         <div className='approveRequest'>
@@ -58,4 +56,7 @@ class ProviderRequest extends React.Component<any, any> {
   }
 }
 
-export default Restore.connect(ProviderRequest)
+export default function ProviderRequestWithState(props: any) {
+  const originName = useOriginName(props.req.origin)
+  return <ProviderRequest {...props} originName={originName} />
+}

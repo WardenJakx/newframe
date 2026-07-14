@@ -1,13 +1,15 @@
 import type { Mock } from 'bun:test'
-import Restore from 'react-restore'
 
 import { fireEvent, render, screen } from '../../../componentSetup'
 import Send from '../../../../app/dapp/Send'
-import { frameOriginId } from '../../../../app/dapp/Send/sendTransaction'
-import { initializeRendererStateStore } from '../../../../app/state/rendererStore'
-import store from '../../../../main/store'
+import {
+  applyStateMessage,
+  beginStateConnection,
+  resetStateMirrorForTests
+} from '../../../../app/state/rendererStore'
 import { NATIVE_CURRENCY } from '../../../../resources/constants'
 import link from '../../../../resources/link'
+import { STATE_STREAM_SCHEMA_VERSION } from '../../../../resources/state/protocol'
 
 const sender = {
   id: 'sender',
@@ -26,11 +28,14 @@ const tokenAddress = '0x00000000000000000000000000000000000000bb'
 const nativeAssetId = `${chainId}:${NATIVE_CURRENCY}`
 
 function initializeSendState(balances: any[] = [nativeBalance()]) {
-  initializeRendererStateStore({
-    selected: {
-      current: sender.id
-    },
-    main: {
+  resetStateMirrorForTests()
+  beginStateConnection('dapp')
+  applyStateMessage({
+    schemaVersion: STATE_STREAM_SCHEMA_VERSION,
+    streamId: 'send-test',
+    revision: 0,
+    state: {
+      currentAccount: sender.id,
       accounts: {
         [sender.id]: sender,
         [recipient.id]: recipient
@@ -43,6 +48,8 @@ function initializeSendState(balances: any[] = [nativeBalance()]) {
         ethereum: {
           [chainId]: {
             id: chainId,
+            explorer: '',
+            isTestnet: true,
             name: 'Local',
             on: true
           }
@@ -65,17 +72,13 @@ function initializeSendState(balances: any[] = [nativeBalance()]) {
         [tokenAddress]: {
           usd: { price: 2, change24hr: 0 }
         }
+      },
+      runtime: {
+        profile: 'dev',
+        isDev: true,
+        environment: 'test'
       }
     }
-  })
-}
-
-function initializeNativeChromeState() {
-  ;(window as any).frameId = 'dappLauncher'
-  store.set('platform', 'darwin')
-  store.set('main.frames', (window as any).frameId, {
-    fullscreen: false,
-    maximized: false
   })
 }
 
@@ -104,13 +107,8 @@ function tokenBalance() {
 }
 
 describe('Send', () => {
-  beforeAll(() => {
-    Restore.connect(() => null, store)
-  })
-
   beforeEach(() => {
     initializeSendState()
-    initializeNativeChromeState()
   })
 
   it('renders an empty state when there are no sendable assets', () => {
@@ -144,8 +142,12 @@ describe('Send', () => {
   })
 
   it('submits a native transfer through the Send service flow', async () => {
-    ;(link.rpc as Mock<any>).mockImplementation((method: string, _payload: any, callback: any) => {
-      if (method === 'providerSend') callback({})
+    ;(link.executeCommand as Mock<any>).mockImplementation(async (command: any) => {
+      if (command.type === 'transaction.submit') {
+        return { ok: true, transactionHash: `0x${'1'.repeat(64)}` }
+      }
+
+      return { ok: true }
     })
 
     const { user } = render(<Send assetId={nativeAssetId} />)
@@ -158,33 +160,20 @@ describe('Send', () => {
 
     await user.click(proceedButton)
 
-    expect(link.send).toHaveBeenCalledWith('tray:action', 'initOrigin', frameOriginId, {
-      name: 'newframe-internal',
-      chain: { id: chainId, type: 'ethereum' }
-    })
-
-    const providerCall = (link.rpc as Mock<any>).mock.calls.find((call) => call[0] === 'providerSend')
-    expect(providerCall?.[1]).toMatchObject({
-      jsonrpc: '2.0',
-      method: 'eth_sendTransaction',
-      chainId: '0x7a69',
-      _origin: frameOriginId,
-      params: [
-        {
-          from: sender.address,
-          to: recipient.address,
-          value: '0xde0b6b3a7640000',
-          chainId: '0x7a69'
-        }
-      ]
+    expect(link.executeCommand).toHaveBeenCalledWith({
+      type: 'transaction.submit',
+      idempotencyKey: expect.any(String),
+      chainId,
+      transaction: {
+        to: recipient.address,
+        value: '0xde0b6b3a7640000'
+      }
     })
     expect(await screen.findByText('Transaction submitted')).toBeTruthy()
   })
 
   it('keeps recipient resolution errors visible without sending a provider request', async () => {
-    ;(link.rpc as Mock<any>).mockImplementation((method: string, _name: string, callback: any) => {
-      if (method === 'resolveName') callback(new Error('not found'))
-    })
+    ;(link.executeQuery as Mock<any>).mockResolvedValueOnce({ ok: false, error: 'not_found' })
 
     render(<Send assetId={nativeAssetId} />)
 
@@ -194,6 +183,11 @@ describe('Send', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Proceed' }))
 
     expect(await screen.findByText('Could not resolve recipient.')).toBeTruthy()
-    expect((link.rpc as Mock<any>).mock.calls.some((call) => call[0] === 'providerSend')).toBe(false)
+    expect(link.executeQuery).toHaveBeenCalledWith({ type: 'name.resolve', name: 'unknown.eth' })
+    expect(
+      (link.executeCommand as Mock<any>).mock.calls.some(
+        ([command]) => (command as { type?: string }).type === 'transaction.submit'
+      )
+    ).toBe(false)
   })
 })

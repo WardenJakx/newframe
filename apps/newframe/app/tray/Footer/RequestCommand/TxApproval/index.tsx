@@ -3,7 +3,15 @@ import link from '../../../../../resources/link'
 
 import { Cluster, ClusterValue, ClusterRow } from '../../../../../resources/Components/Cluster'
 
-const TxApproval = ({ req, approval }: { req: any; approval: any }) => (
+interface TxApprovalProps {
+  req: { handlerId: string }
+  approval: {
+    type: 'approveOtherChain' | 'approveGasLimit'
+    data?: { message?: string }
+  }
+}
+
+const TxApproval = ({ req, approval }: TxApprovalProps) => (
   <div className='approveTransactionWarning'>
     <div className='approveTransactionWarningBody'>
       <Cluster>
@@ -23,14 +31,18 @@ const TxApproval = ({ req, approval }: { req: any; approval: any }) => (
         <ClusterRow>
           <ClusterValue
             onClick={() => {
-              link.rpc('declineRequest', req, () => {})
+              void link.executeCommand({ type: 'request.reject', requestId: req.handlerId })
             }}
           >
             <div className='_txActionButton _txActionButtonBad'>{'Reject'}</div>
           </ClusterValue>
           <ClusterValue
             onClick={() => {
-              link.rpc('confirmRequestApproval', req, approval.type, {}, () => {})
+              void link.executeCommand({
+                type: 'request.approval-confirm',
+                requestId: req.handlerId,
+                approvalType: approval.type
+              })
             }}
           >
             <div className='_txActionButton _txActionButtonGood'>{'Proceed'}</div>

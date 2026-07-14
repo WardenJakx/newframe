@@ -20,7 +20,6 @@ import {
   type FlashStep,
   type FlashTradeSide
 } from '../../../resources/domain/flash'
-import { internalDappOriginId } from '../dappOrigin'
 
 export const TRADE_DEFAULT_SLIPPAGE = ''
 export const TRADE_DEFAULT_MAX_PRICE_IMPACT = ''
@@ -70,15 +69,6 @@ export interface TradeQuoteRequest {
 }
 
 export type MarketTradeQuoteRequest = TradeQuoteRequest
-
-export interface ProviderSendPayload {
-  _origin: string
-  chainId: string
-  id: number
-  jsonrpc: '2.0'
-  method: 'eth_sendTransaction' | 'eth_signTypedData_v4'
-  params: unknown[]
-}
 
 export function isSameFlashAsset(a?: FlashAsset | null, b?: FlashAsset | null) {
   if (!a || !b) return false
@@ -194,13 +184,7 @@ export function tradeErrorMessage(error: unknown, fallback: string) {
   return fallback
 }
 
-export function providerResponseError(response: unknown) {
-  const error = objectRecord(response).error
-
-  return error ? tradeErrorMessage(error, 'Transaction failed.') : ''
-}
-
-export function normalizeTradeChainId(chainId: unknown) {
+function normalizeTradeChainId(chainId: unknown) {
   const value =
     typeof chainId === 'string'
       ? Number.parseInt(chainId, chainId.toLowerCase().startsWith('0x') ? 16 : 10)
@@ -209,10 +193,6 @@ export function normalizeTradeChainId(chainId: unknown) {
   if (!Number.isInteger(value) || value <= 0) throw new Error('Invalid Flash chain id')
 
   return value
-}
-
-export function tradeChainIdHex(chainId: unknown) {
-  return `0x${normalizeTradeChainId(chainId).toString(16)}`
 }
 
 export function withTradeStepStatus(
@@ -694,15 +674,11 @@ export function getFlashBalanceEntries(
   })
 }
 
-export function buildTradeTransactionPayload({
+export function buildTradeTransactionRequest({
   accountAddress,
-  id = Date.now(),
-  originId = internalDappOriginId,
   tx
 }: {
   accountAddress: string
-  id?: number
-  originId?: string
   tx?: FlashQuoteTransactionRequest | null
 }) {
   if (!accountAddress || !tx?.to) {
@@ -710,56 +686,35 @@ export function buildTradeTransactionPayload({
   }
 
   const chainIdNumber = normalizeTradeChainId(tx.chainId)
-  const chainId = tradeChainIdHex(tx.chainId)
-  const payload: ProviderSendPayload = {
-    id,
-    jsonrpc: '2.0',
-    method: 'eth_sendTransaction',
-    chainId,
-    params: [
-      {
-        ...tx,
-        chainId,
-        from: tx.from || accountAddress,
-        value: tx.value || '0x0'
-      }
-    ],
-    _origin: originId
+  const transaction = {
+    to: tx.to,
+    data: tx.data,
+    value: tx.value || '0x0'
   }
 
-  return { chainIdNumber, payload }
+  return { chainId: chainIdNumber, transaction }
 }
 
-export function buildTradeActionPayload({
+export function buildTradeActionRequest({
   accountAddress,
-  action,
-  id,
-  originId
+  action
 }: {
   accountAddress: string
   action?: FlashQuoteAction | null
-  id?: number
-  originId?: string
 }) {
-  return buildTradeTransactionPayload({
+  return buildTradeTransactionRequest({
     accountAddress,
-    id,
-    originId,
     tx: action?.tx
   })
 }
 
-export function buildTradeSignaturePayload({
+export function buildTradeSignatureRequest({
   accountAddress,
   flashPayload,
-  id = Date.now(),
-  originId = internalDappOriginId,
   quote
 }: {
   accountAddress: string
   flashPayload: unknown
-  id?: number
-  originId?: string
   quote: FlashQuote | null
 }) {
   const typedData = getFlashOrderTypedData(quote, flashPayload)
@@ -770,30 +725,17 @@ export function buildTradeSignaturePayload({
 
   const typedDataDomain = objectRecord(objectRecord(typedData).domain)
   const chainIdNumber = normalizeTradeChainId(typedDataDomain.chainId || quote.targetAsset.chainId)
-  const chainId = tradeChainIdHex(chainIdNumber)
-  const payload: ProviderSendPayload = {
-    id,
-    jsonrpc: '2.0',
-    method: 'eth_signTypedData_v4',
-    chainId,
-    params: [accountAddress, JSON.stringify(typedData)],
-    _origin: originId
-  }
 
-  return { chainIdNumber, payload }
+  return { chainId: chainIdNumber, typedData }
 }
 
-export function buildTradePermitSignaturePayload({
+export function buildTradePermitSignatureRequest({
   accountAddress,
   flashPayload,
-  id = Date.now(),
-  originId = internalDappOriginId,
   quote
 }: {
   accountAddress: string
   flashPayload: unknown
-  id?: number
-  originId?: string
   quote: FlashQuote | null
 }) {
   const typedData = getFlashPermitTypedData(quote, flashPayload)
@@ -802,17 +744,8 @@ export function buildTradePermitSignaturePayload({
 
   const typedDataDomain = objectRecord(objectRecord(typedData).domain)
   const chainIdNumber = normalizeTradeChainId(typedDataDomain.chainId || quote.targetAsset.chainId)
-  const chainId = tradeChainIdHex(chainIdNumber)
-  const payload: ProviderSendPayload = {
-    id,
-    jsonrpc: '2.0',
-    method: 'eth_signTypedData_v4',
-    chainId,
-    params: [accountAddress, JSON.stringify(typedData)],
-    _origin: originId
-  }
 
-  return { chainIdNumber, payload }
+  return { chainId: chainIdNumber, typedData }
 }
 
 export function buildTradeSubmitRequest({
@@ -865,3 +798,5 @@ export function buildTradeSubmitRequest({
     ...getOrderFields(quote.orderType, orderFields)
   }
 }
+
+export type TradeSubmitRequest = ReturnType<typeof buildTradeSubmitRequest>

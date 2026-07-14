@@ -33,6 +33,9 @@ apps/newframe/build/icons
 apps/newframe-extension/dist
 apps/newframe-extension/.cache
 
+newframe-contracts/out
+newframe-contracts/dependencies
+
 package-lock.json
 .cache
 cache

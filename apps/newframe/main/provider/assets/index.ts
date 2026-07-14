@@ -13,20 +13,20 @@ interface AssetsChangedHandler {
 // typed access to state
 const storeApi = {
   getBalances: (account: Address): Balance[] => {
-    return store('main.balances', account) || []
+    return store.getState().main.balances[account] || []
   },
-  getNativeCurrency: (chainId: number): NativeCurrency => {
-    const currency = store('main.networksMeta.ethereum', chainId, 'nativeCurrency')
-
-    return currency || { usd: { price: 0 } }
-  },
+  getNativeCurrency: (chainId: number): NativeCurrency | undefined =>
+    store.getState().main.networksMeta.ethereum[chainId]?.nativeCurrency,
   getUsdRate: (address: Address): UsdRate | undefined => {
-    const rate = store('main.rates', address.toLowerCase())
+    const rate = store.getState().main.rates[address.toLowerCase()]
 
     return rate
   },
   getLastUpdated: (account: Address): number => {
-    return store('main.accounts', account, 'balances.lastUpdated')
+    const accountState = store.getState().main.accounts[account] as unknown as {
+      balances?: { lastUpdated?: number }
+    }
+    return accountState?.balances?.lastUpdated || 0
   }
 }
 
@@ -34,7 +34,7 @@ function createObserver(handler: AssetsChangedHandler) {
   let debouncedAssets: RPC.GetAssets.Assets | null = null
 
   return function () {
-    const currentAccountId = store('selected.current') as string
+    const currentAccountId = store.getState().main.currentAccount as string
 
     if (currentAccountId) {
       const assets = fetchAssets(currentAccountId)
@@ -72,6 +72,7 @@ function fetchAssets(accountId: string) {
   return balances.reduce((assets, balance) => {
     if (balance.address === NATIVE_CURRENCY) {
       const currency = storeApi.getNativeCurrency(balance.chainId)
+      if (!currency) return assets
 
       assets.nativeCurrency.push({
         ...balance,

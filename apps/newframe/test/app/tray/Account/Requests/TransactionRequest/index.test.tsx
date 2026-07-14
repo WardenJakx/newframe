@@ -1,36 +1,41 @@
-import Restore from 'react-restore'
-
-import store from '../../../../../../main/store'
-import { screen, render } from '../../../../../componentSetup'
-import TxRequestComponent from '../../../../../../app/tray/Account/Requests/TransactionRequest'
+import { fireEvent, screen, render } from '../../../../../componentSetup'
+import TxRequest, { TransactionRequest } from '../../../../../../app/tray/Account/Requests/TransactionRequest'
+import { resetStateMirrorForTests } from '../../../../../../app/state/rendererStore'
+import { RequestViewProvider } from '../../../../../../app/tray/requestView'
 import { TxClassification } from '../../../../../../main/accounts/types'
+import { erc20Interface } from '../../../../../../resources/contracts'
 import { TRANSACTION_CONFIRMATION_TARGET } from '../../../../../../resources/domain/transaction'
+import link from '../../../../../../resources/link'
 
-const TxRequest = Restore.connect(TxRequestComponent, store)
-
-const account = '0xDAFEA492D9c6733ae3d56b7Ed1ADB60692c98Bc5'
+const renderRequest = (req: any) =>
+  render(
+    <RequestViewProvider>
+      <TxRequest req={req} />
+    </RequestViewProvider>
+  )
 
 beforeEach(() => {
-  store.__resetState()
-  store.addNetwork({
-    id: 137,
-    type: 'ethereum',
-    explorer: '',
-    symbol: 'MATIC',
-    name: 'Polygon'
-  })
-  store.initOrigin('test-origin', { name: 'Test Dapp' })
-})
-
-function addRequest(req: any) {
-  store.updateAccount({
-    id: account,
-    name: 'Test Account',
-    requests: {
-      [req.handlerId]: req
+  resetStateMirrorForTests({
+    networks: {
+      ethereum: {
+        137: { name: 'Polygon', isTestnet: false }
+      }
+    },
+    networksMeta: {
+      ethereum: {
+        137: {
+          nativeCurrency: { symbol: 'MATIC' }
+        }
+      }
+    },
+    origins: {
+      'test-origin': { name: 'Test Dapp' }
+    },
+    windows: {
+      panel: { nav: [] }
     }
   })
-}
+})
 
 describe('confirm', () => {
   it('renders a confirming transaction', () => {
@@ -45,9 +50,7 @@ describe('confirm', () => {
       classification: TxClassification.NATIVE_TRANSFER
     }
 
-    addRequest(req)
-
-    render(<TxRequest req={req} step='confirm' />)
+    renderRequest(req)
 
     const notice = screen.getByRole('status')
     expect(notice.textContent).toBe('confirming')
@@ -67,9 +70,7 @@ describe('confirm', () => {
       classification: TxClassification.NATIVE_TRANSFER
     }
 
-    addRequest(req)
-
-    render(<TxRequest req={req} step='confirm' />)
+    renderRequest(req)
 
     const notice = screen.getByRole('alert')
     expect(notice.textContent).toMatch(/insufficient funds for gas/i)
@@ -90,9 +91,7 @@ describe('confirm', () => {
       classification: TxClassification.NATIVE_TRANSFER
     }
 
-    addRequest(req)
-
-    render(<TxRequest req={req} step='confirm' />)
+    renderRequest(req)
 
     const effects = screen.getByLabelText('Transaction effects')
     expect(effects.textContent).toMatch(/asset out/i)
@@ -118,9 +117,7 @@ describe('confirm', () => {
       classification: TxClassification.CONTRACT_CALL
     }
 
-    addRequest(req)
-
-    render(<TxRequest req={req} step='confirm' />)
+    renderRequest(req)
 
     expect(screen.getByLabelText('Transaction progress').textContent).toMatch(/submitted/i)
     expect(screen.getByLabelText('Transaction progress').textContent).toMatch(
@@ -159,9 +156,7 @@ describe('confirm', () => {
       classification: TxClassification.CONTRACT_CALL
     }
 
-    addRequest(req)
-
-    render(<TxRequest req={req} step='confirm' />)
+    renderRequest(req)
 
     const effects = screen.getByLabelText('Transaction effects')
     expect(effects.querySelector('.txReviewEffectIcon')?.textContent).toBe('USDC')
@@ -181,9 +176,7 @@ describe('confirm', () => {
       classification: TxClassification.CONTRACT_CALL
     }
 
-    addRequest(req)
-
-    render(<TxRequest req={req} step='confirm' />)
+    renderRequest(req)
 
     const feeRate = screen.getByLabelText('Fee rate')
     expect(feeRate.textContent).toMatch(/ape/i)
@@ -191,5 +184,95 @@ describe('confirm', () => {
     expect(feeRate.textContent).toMatch(/medium/i)
     expect(feeRate.textContent).toMatch(/slow/i)
     expect(feeRate.textContent).toMatch(/custom/i)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Fast' }))
+    expect(link.executeCommand).toHaveBeenCalledWith({
+      type: 'transaction.fee-default-set',
+      requestId: 'test-req',
+      level: 'fast'
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Custom' }))
+    expect(screen.getByLabelText('Gas Price (GWEI)')).toBeTruthy()
+  })
+
+  it('opens raw transaction data and sends typed nonce commands', () => {
+    const req = {
+      handlerId: 'test-req',
+      type: 'transaction',
+      origin: 'test-origin',
+      payload: { nonce: '0x1' },
+      data: {
+        chainId: '0x89',
+        nonce: '0x2',
+        data: '0x1234',
+        gasLimit: '0x5208',
+        gasPrice: '0x3b9aca00',
+        type: '0x0'
+      },
+      classification: TxClassification.CONTRACT_CALL
+    }
+    renderRequest(req)
+
+    fireEvent.click(screen.getByText('View data'))
+    fireEvent.mouseDown(document.querySelector('.txNonceButtonLower')!)
+    fireEvent.mouseDown(document.querySelector('.txNonceButtonRaise')!)
+    fireEvent.mouseDown(document.querySelector('.txNonceButtonReset')!)
+
+    expect(link.executeCommand).toHaveBeenCalledWith({
+      type: 'transaction.nonce-adjust',
+      requestId: 'test-req',
+      direction: -1
+    })
+    expect(link.executeCommand).toHaveBeenCalledWith({
+      type: 'transaction.nonce-adjust',
+      requestId: 'test-req',
+      direction: 1
+    })
+    expect(link.executeCommand).toHaveBeenCalledWith({
+      type: 'transaction.nonce-reset',
+      requestId: 'test-req'
+    })
+  })
+
+  it('updates recognized token approvals through the typed command', () => {
+    const spender = '0x9bc5baf874d2da8d216ae9f137804184ee5afef4'
+    const contract = '0x1eba19f260421142AD9Bf5ba193f6d4A0825e698'
+    const requestedAmount = 70_000n
+    const req = {
+      handlerId: 'test-req',
+      type: 'transaction',
+      payload: {
+        params: [
+          {
+            data: erc20Interface.encodeFunctionData('approve', [spender, requestedAmount])
+          }
+        ]
+      },
+      recognizedActions: [
+        {
+          id: 'erc20:approve',
+          data: {
+            amount: requestedAmount.toString(),
+            decimals: 4,
+            name: 'Test Token',
+            symbol: 'TST',
+            spender: { address: spender },
+            contract: { address: contract }
+          }
+        }
+      ]
+    }
+
+    render(<TransactionRequest req={req} step='adjustApproval' actionId='erc20:approve' />)
+    fireEvent.click(screen.getByRole('button', { name: 'Unlimited' }))
+
+    expect(link.executeCommand).toHaveBeenCalledWith({
+      type: 'request.token-approval-update',
+      requestKind: 'transaction',
+      requestId: 'test-req',
+      actionId: 'erc20:approve',
+      amount: expect.any(String)
+    })
   })
 })

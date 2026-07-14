@@ -58,7 +58,10 @@ const ConfirmButton = styled.div`
 `
 
 const ExtensionConnectNotification = ({ id, browser, onClose }) => {
-  const respond = (accepted) => link.rpc('respondToExtensionRequest', id, accepted, onClose)
+  const respond = async (accepted) => {
+    const result = await link.executeCommand({ type: 'extension.respond', extensionId: id, approved: accepted })
+    if (result.ok) onClose()
+  }
   const browserName = capitalize(browser)
   const [copyId, setCopyId] = useState(false)
 
@@ -84,7 +87,7 @@ const ExtensionConnectNotification = ({ id, browser, onClose }) => {
               <ClusterRow>
                 <ClusterValue
                   onClick={() => {
-                    link.send('tray:clipboardData', id)
+                    void link.executeCommand({ type: 'clipboard.write', text: id })
                     setCopyId(true)
                     setTimeout(() => setCopyId(false), 2000)
                   }}
@@ -98,10 +101,10 @@ const ExtensionConnectNotification = ({ id, browser, onClose }) => {
                 </ClusterValue>
               </ClusterRow>
               <ClusterRow>
-                <ClusterValue onClick={() => respond(false)}>
+                <ClusterValue onClick={() => void respond(false)}>
                   <ConfirmButton style={{ color: 'var(--bad)' }}>Decline</ConfirmButton>
                 </ClusterValue>
-                <ClusterValue onClick={() => respond(true)}>
+                <ClusterValue onClick={() => void respond(true)}>
                   <ConfirmButton style={{ color: 'var(--good)' }}>Accept</ConfirmButton>
                 </ClusterValue>
               </ClusterRow>

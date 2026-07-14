@@ -66,7 +66,7 @@ export default function (eth: Eip1193Provider) {
       return { ...createBalance(rawBalance, 18), chainId }
     } catch (e) {
       log.error(`error loading native currency balance for chain id: ${chainId}`, e)
-      return { balance: '0x0', displayValue: '0.0', chainId }
+      return { ...createBalance('0x0', 18), chainId }
     }
   }
 

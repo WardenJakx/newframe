@@ -1,5 +1,4 @@
 import React from 'react'
-import Restore from 'react-restore'
 import svg from '../../../../../../resources/svg'
 import link from '../../../../../../resources/link'
 
@@ -28,21 +27,36 @@ const NonceValue = ({ req, nonce }: any) => {
         <div
           className='txNonceButton txNonceButtonLower'
           onMouseDown={() => {
-            link.send('tray:adjustNonce', req.handlerId, -1)
+            void link.executeCommand({
+              type: 'transaction.nonce-adjust',
+              requestId: req.handlerId,
+              direction: -1
+            })
           }}
         >
           {svg.octicon('chevron-down', { height: 14 })}
         </div>
         <div
           className='txNonceButton txNonceButtonRaise'
-          onMouseDown={() => link.send('tray:adjustNonce', req.handlerId, 1)}
+          onMouseDown={() => {
+            void link.executeCommand({
+              type: 'transaction.nonce-adjust',
+              requestId: req.handlerId,
+              direction: 1
+            })
+          }}
         >
           {svg.octicon('chevron-up', { height: 14 })}
         </div>
         {nonceHasBeenChanged(req) && (
           <div
             className='txNonceButton txNonceButtonReset'
-            onMouseDown={() => link.send('tray:resetNonce', req.handlerId)}
+            onMouseDown={() => {
+              void link.executeCommand({
+                type: 'transaction.nonce-reset',
+                requestId: req.handlerId
+              })
+            }}
           >
             {svg.octicon('sync', { height: 14 })}
           </div>
@@ -81,9 +95,7 @@ const SimpleTxJSON = ({ json, req }: any) => {
   )
 }
 
-class ViewData extends React.Component<any, any> {
-  declare store: Store
-
+export default class ViewData extends React.Component<any, any> {
   constructor(props: any, context?: any) {
     super(props, context)
     this.state = {
@@ -91,9 +103,9 @@ class ViewData extends React.Component<any, any> {
     }
   }
 
-  copyData(data: any) {
+  copyData(data: string) {
     if (data) {
-      link.send('tray:clipboardData', data)
+      void link.executeCommand({ type: 'clipboard.write', text: data })
       this.setState({ copiedData: true })
       setTimeout((_?: any) => this.setState({ copiedData: false }), 1000)
     }
@@ -183,5 +195,3 @@ class ViewData extends React.Component<any, any> {
     )
   }
 }
-
-export default Restore.connect(ViewData)

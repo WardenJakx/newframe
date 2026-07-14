@@ -1,5 +1,6 @@
 /* globals chrome */
 import FrameBackgroundProvider from './frameConnection'
+import { frameStateStore, type AvailableChain } from './frameState'
 
 type Provider = FrameBackgroundProvider
 
@@ -32,24 +33,6 @@ interface Subscription {
 
 const subs: Record<string, Subscription> = {}
 const pending: Record<string, PendingRequest> = {}
-
-interface FrameState {
-  connected: boolean
-  availableChains: any[]
-  currentChain: string
-  activeOrigin: string
-  siteConnected: boolean
-  currentAddress: string
-}
-
-const frameState: FrameState = {
-  connected: false,
-  availableChains: [],
-  currentChain: '',
-  activeOrigin: '',
-  siteConnected: false,
-  currentAddress: ''
-}
 
 interface OriginStatus {
   originId: string
@@ -91,39 +74,40 @@ const unsubscribeTab = (tabId: number) => {
 }
 
 function updateSettingsPanel() {
-  if (settingsPanel) {
-    settingsPanel.postMessage(frameState)
+  const panel = settingsPanel
+  if (!panel) return
+
+  try {
+    panel.postMessage(frameStateStore.getState())
+  } catch {
+    if (settingsPanel === panel) settingsPanel = null
   }
 }
+
+frameStateStore.subscribe(updateSettingsPanel)
 
 function setConnected(connected: boolean) {
   console.debug(`Setting connected to ${connected}`)
 
-  frameState.connected = connected
-  updateSettingsPanel()
+  frameStateStore.setState({ connected })
 }
 
-function setChains(chains: any[]) {
+function setChains(chains: AvailableChain[]) {
   console.debug('Setting available chains', { chains })
 
-  frameState.availableChains = chains
-  updateSettingsPanel()
+  frameStateStore.setState({ availableChains: chains })
 }
 
 function setCurrentChain(chain: string) {
   console.debug(`Setting current chain to ${chain}`)
 
-  frameState.currentChain = chain
-  updateSettingsPanel()
+  frameStateStore.setState({ currentChain: chain })
 }
 
 function setOriginStatus(origin: string, siteConnected: boolean, currentAddress = '') {
   console.debug('Setting origin status', { origin, siteConnected, currentAddress })
 
-  frameState.activeOrigin = origin
-  frameState.siteConnected = siteConnected
-  frameState.currentAddress = currentAddress
-  updateSettingsPanel()
+  frameStateStore.setState({ activeOrigin: origin, siteConnected, currentAddress })
 }
 
 function setIcon(path: string) {
@@ -136,7 +120,7 @@ function setPopup(popup: string) {
 
 async function fetchAvailableChains() {
   try {
-    const chains = await provider!.request<any[]>({ method: 'wallet_getEthereumChains' })
+    const chains = await provider!.request<AvailableChain[]>({ method: 'wallet_getEthereumChains' })
     setChains(chains)
   } catch (e) {
     console.error('Error fetching chains', e)
@@ -244,7 +228,7 @@ function initProvider() {
 
   provider.on('disconnect', () => {
     setConnected(false)
-    setOriginStatus(frameState.activeOrigin, false, '')
+    setOriginStatus(frameStateStore.getState().activeOrigin, false, '')
 
     setIcon('icons/icon96moon.png')
     sendEvent('close')
@@ -314,11 +298,6 @@ function destroyProvider() {
 }
 
 function addStateListeners() {
-  function onPortDisconnected(port: chrome.runtime.Port) {
-    settingsPanel = null
-    port.onDisconnect.removeListener(onPortDisconnected)
-  }
-
   function setMediaBlob(blobUrl: string, location: any, message?: string) {
     ;(window as any).__setMediaBlob__(blobUrl, location, message)
   }
@@ -395,13 +374,17 @@ function addStateListeners() {
   })
 
   chrome.runtime.onConnect.addListener((port) => {
-    port.onDisconnect.addListener(onPortDisconnected)
+    if (port.name !== 'frame_connect') return
 
-    if (port.name === 'frame_connect') {
-      settingsPanel = port
-      updateSettingsPanel()
-      refreshActiveOriginStatus()
+    const onPortDisconnected = () => {
+      if (settingsPanel === port) settingsPanel = null
+      port.onDisconnect.removeListener(onPortDisconnected)
     }
+
+    settingsPanel = port
+    port.onDisconnect.addListener(onPortDisconnected)
+    updateSettingsPanel()
+    refreshActiveOriginStatus()
   })
 
   chrome.idle.onStateChanged.addListener((state) => {

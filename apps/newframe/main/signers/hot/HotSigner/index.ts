@@ -6,7 +6,6 @@ import log from 'electron-log'
 import { v4 as uuid } from 'uuid'
 
 import Signer from '../../Signer'
-import store from '../../../store'
 
 type WorkerCallback = (err: Error | null, result?: any) => void
 
@@ -78,7 +77,7 @@ class HotSigner extends Signer {
 
   unlock(password: string, data: any, cb: WorkerCallback) {
     const params = { password, ...data }
-    this._callWorker({ method: 'unlock', params }, (err, result) => {
+    this._callWorker({ method: 'unlock', params }, (err) => {
       if (err) return cb(err)
       this.status = 'ok'
       this.update()
@@ -94,7 +93,6 @@ class HotSigner extends Signer {
     } catch (e) {
       // Worker may already be closed by the time close is called.
     }
-    store.removeSigner(this.id)
     log.info('Signer closed')
   }
 
@@ -112,15 +110,13 @@ class HotSigner extends Signer {
       // On changed ID
       // Erase from disk
       this.delete()
-      // Remove from store
-      store.removeSigner(this.id)
       // Update id
       this.id = derivedId
       // Write to disk
       this.save({ encryptedKeys: this.encryptedKeys, encryptedSeed: this.encryptedSeed })
     }
 
-    store.updateSigner(this.summary())
+    this.emit('update')
     log.info('Signer updated')
   }
 

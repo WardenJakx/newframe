@@ -1,15 +1,15 @@
 import type { ElectronApplication, Page } from 'playwright-core'
 
 import type {
-  LinkInvokeChannel,
-  LinkRpcMethod,
-  LinkSendChannel,
-  NewframeHost
-} from '../../../apps/newframe/resources/bridge/contracts.ts'
+  AppCommand,
+  AppQuery,
+  ResultForCommand,
+  ResultForQuery
+} from '../../../apps/newframe/resources/bridge/operations.ts'
 import { anvilChainId } from '../core/config.ts'
 import { sleep, withTimeout } from '../core/utils.ts'
 import type { AnvilClient } from './anvil-client.ts'
-import type { AccountInfo, AddChain, AppState, CurrentRequest, FlashOrder, HarnessAccounts } from './types.ts'
+import type { AccountInfo, AppState, CurrentRequest, FlashOrder, HarnessAccounts } from './types.ts'
 import type { VisualHarnessRuntime } from './runtime.ts'
 
 export const harnessOrigin = 'newframe-contracts.local'
@@ -18,13 +18,14 @@ export const nativeCurrencyAddress = '0x0000000000000000000000000000000000000000
 export const wethAddress = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2'
 export const oneEthWei = 1_000_000_000_000_000_000n
 
-const dappLauncherFrameId = 'dappLauncher'
 const finalRequestStatuses = new Set(['confirmed', 'declined', 'error', 'success'])
 
-type HostOperation =
-  | { kind: 'invoke'; channel: LinkInvokeChannel; args: unknown[] }
-  | { kind: 'rpc'; method: LinkRpcMethod; args: unknown[]; wait: boolean }
-  | { kind: 'send'; channel: LinkSendChannel; args: unknown[] }
+type OperationResult = { ok: true; [key: string]: unknown } | { ok: false; error: string; message?: string }
+
+type HarnessHost = {
+  executeCommand(command: AppCommand): Promise<OperationResult>
+  executeQuery(query: AppQuery): Promise<OperationResult>
+}
 
 export async function waitForElectronPage(
   app: ElectronApplication,
@@ -139,62 +140,87 @@ export class NewframeDriver {
     await page.waitForURL((url) => url.hash.startsWith(`#/${route}`), { timeout: this.runtime.uiTimeoutMs })
   }
 
-  private async evaluateHost(page: Page, operation: HostOperation) {
-    return page.evaluate(async (operation) => {
-      const host = (window as typeof window & { __NEWFRAME_HOST__?: NewframeHost }).__NEWFRAME_HOST__
+  async executeCommand<TCommand extends AppCommand>(page: Page, command: TCommand) {
+    const result = await page.evaluate<OperationResult, unknown>(async (command) => {
+      const host = (window as typeof window & { __NEWFRAME_HOST__?: HarnessHost }).__NEWFRAME_HOST__
 
       if (!host) throw new Error('Newframe host bridge is not available')
+      return host.executeCommand(command as AppCommand)
+    }, command)
 
-      if (operation.kind === 'invoke') return host.invoke(operation.channel, operation.args)
-      if (operation.kind === 'send') {
-        host.send(operation.channel, operation.args)
-        return undefined
-      }
-
-      const response = host.rpc(operation.method, operation.args)
-      if (operation.wait) return response
-      void response.catch(() => undefined)
-      return undefined
-    }, operation)
-  }
-
-  async linkRpc<T>(page: Page, method: LinkRpcMethod, ...args: unknown[]): Promise<T> {
-    const response = await this.evaluateHost(page, { kind: 'rpc', method, args, wait: true })
-
-    if (Array.isArray(response)) {
-      const [err, value] = response as [unknown, T]
-      if (err) throw new Error(typeof err === 'string' ? err : JSON.stringify(err))
-      return value
+    if (!result.ok) {
+      const failure = result as { error: string; message?: string }
+      throw new Error(
+        `${command.type} failed: ${failure.error}${failure.message ? ` (${failure.message})` : ''}`
+      )
     }
 
-    return response as T
+    return result as ResultForCommand<TCommand>
   }
 
-  async linkRpcNoWait(page: Page, method: LinkRpcMethod, ...args: unknown[]) {
-    await this.evaluateHost(page, { kind: 'rpc', method, args, wait: false })
+  async executeQuery<TQuery extends AppQuery>(page: Page, query: TQuery) {
+    const result = await page.evaluate<OperationResult, unknown>(async (query) => {
+      const host = (window as typeof window & { __NEWFRAME_HOST__?: HarnessHost }).__NEWFRAME_HOST__
+
+      if (!host) throw new Error('Newframe host bridge is not available')
+      return host.executeQuery(query as AppQuery)
+    }, query)
+
+    if (!result.ok) {
+      const failure = result as { error: string; message?: string }
+      throw new Error(
+        `${query.type} failed: ${failure.error}${failure.message ? ` (${failure.message})` : ''}`
+      )
+    }
+
+    return result as ResultForQuery<TQuery>
   }
 
-  async linkSend(page: Page, channel: LinkSendChannel, ...args: unknown[]) {
-    await this.evaluateHost(page, { kind: 'send', channel, args })
+  approveAccessRequest(request: CurrentRequest) {
+    return this.executeCommand(this.tray, {
+      type: 'request.access-resolve',
+      requestId: request.handlerId,
+      approved: true
+    })
   }
 
-  async linkInvoke<T>(page: Page, channel: LinkInvokeChannel, ...args: unknown[]): Promise<T> {
-    const response = await this.evaluateHost(page, { kind: 'invoke', channel, args })
-    return Array.isArray(response) ? (response as [T])[0] : (response as T)
+  openAddChainReview(request: CurrentRequest) {
+    return this.executeCommand(this.tray, {
+      type: 'request.add-chain-review',
+      requestId: request.handlerId
+    })
   }
 
-  async trayAction(action: string, ...args: unknown[]) {
-    await this.linkSend(this.tray, 'tray:action', action, ...args)
-    await sleep(100)
+  approveAddChainRequest(request: CurrentRequest) {
+    return this.executeCommand(this.tray, {
+      type: 'network.request-resolve',
+      requestId: request.handlerId,
+      approved: true
+    })
   }
 
   async openDappLauncherRoute(route: string) {
-    await this.linkSend(this.tray, '*:addFrame', { id: dappLauncherFrameId, route })
-    await this.trayAction('setDash', { showing: false })
+    const parsed = new URL(route, 'https://newframe.invalid')
+    const feature = parsed.pathname.slice(1)
+    if (feature !== 'send' && feature !== 'trade') this.fail(`Unsupported dapp route: ${route}`)
+
+    const assetId = parsed.searchParams.get('assetId') || undefined
+    const chainIdValue = parsed.searchParams.get('chainId')
+    const chainId = chainIdValue ? Number(chainIdValue) : undefined
+    await this.executeCommand(this.tray, { type: 'dapp.open', feature, assetId, chainId })
   }
 
-  getAppState() {
-    return this.linkRpc<AppState>(this.tray, 'getState')
+  getAppState(): Promise<AppState> {
+    return this.app.evaluate(() => {
+      const getState = (
+        globalThis as typeof globalThis & {
+          __NEWFRAME_VISUAL_HARNESS_GET_STATE__?: () => AppState
+        }
+      ).__NEWFRAME_VISUAL_HARNESS_GET_STATE__
+
+      if (!getState) throw new Error('Visual harness canonical-state getter is unavailable')
+      return getState()
+    })
   }
 
   async waitForState(
@@ -327,15 +353,17 @@ export class NewframeDriver {
 
   async waitForSelectedAccount(account: AccountInfo, timeoutMs = 5_000) {
     await this.waitForState(
-      (state) => String(state.selected?.current || '').toLowerCase() === account.id.toLowerCase(),
+      (state) => String(state.main?.currentAccount || '').toLowerCase() === account.id.toLowerCase(),
       timeoutMs,
       `Expected selected account to be ${account.id}`
     )
   }
 
   async setSelectedAccount(account: AccountInfo) {
-    const selected = String((await this.getAppState()).selected?.current || '').toLowerCase()
-    if (selected !== account.id.toLowerCase()) await this.linkRpc(this.tray, 'setSigner', account.id)
+    const selected = String((await this.getAppState()).main?.currentAccount || '').toLowerCase()
+    if (selected !== account.id.toLowerCase()) {
+      await this.executeCommand(this.tray, { type: 'account.select', accountId: account.id })
+    }
     await this.waitForSelectedAccount(account)
   }
 
@@ -350,22 +378,17 @@ export class NewframeDriver {
   }
 
   async setNativeAnvilBalance(account: AccountInfo) {
-    const balance = await this.anvil.balance(account.address)
-    await this.trayAction('setBalance', account.address, {
-      address: nativeCurrencyAddress,
-      balance: `0x${balance.toString(16)}`,
-      chainId: anvilChainId,
-      displayBalance: this.formatUnits(balance, 18n),
-      symbol: 'ETH'
-    })
+    await this.setSelectedAccount(account)
+    await this.refreshBalances()
+    await this.waitForState(
+      (state) => Boolean(this.nativeAnvilBalance(state, account.address)),
+      10_000,
+      'Anvil ETH did not synchronize after the portfolio refresh command'
+    )
   }
 
-  normalizeAddChain(chain: AddChain | undefined) {
-    return { ...chain, explorer: typeof chain?.explorer === 'string' ? chain.explorer : '' }
-  }
-
-  async refreshBalances(account: AccountInfo) {
-    await this.linkInvoke(this.tray, 'tray:refreshPortfolioBalances', account.id).catch(() => undefined)
+  async refreshBalances() {
+    await this.executeCommand(this.tray, { type: 'portfolio.refresh' })
   }
 
   async maybeProceedWarning(filename: string) {
@@ -385,8 +408,8 @@ export class NewframeDriver {
   ) {
     if (warningScreenshots[0]) await this.maybeProceedWarning(warningScreenshots[0])
 
-    // TODO: the visible Sign button has an intentional UI delay; approve via the same app RPC after review.
-    await this.linkRpcNoWait(this.tray, 'approveRequest', request)
+    // The visible Sign button has an intentional UI delay; approve after the harness captures the review.
+    await this.executeCommand(this.tray, { type: 'request.approve', requestId: request.handlerId })
     void this.anvil.mineBlocksOver(10, 150).catch(() => undefined)
 
     if (warningScreenshots[1]) await this.maybeProceedWarning(warningScreenshots[1])
@@ -395,19 +418,32 @@ export class NewframeDriver {
   }
 
   async signCurrentSignature(request: CurrentRequest, submittedScreenshot: string) {
-    await this.linkRpcNoWait(this.tray, 'approveRequest', request)
+    await this.executeCommand(this.tray, { type: 'request.approve', requestId: request.handlerId })
     await this.waitForRequestStatus(request.handlerId)
     await this.screenshot(this.tray, submittedScreenshot)
   }
 
   async clearPanelAndOverlays() {
-    await this.trayAction('navBack', 'panel', 99)
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      const accountBack = this.tray.locator('.accountViewBack').first()
+      if (!(await accountBack.isVisible({ timeout: 250 }).catch(() => false))) break
+      await accountBack.click()
+      await sleep(150)
+    }
 
     for (let attempt = 0; attempt < 3; attempt += 1) {
       const backToPositions = this.tray.getByRole('button', { name: 'Back to positions' })
       if (!(await backToPositions.isVisible({ timeout: 500 }).catch(() => false))) break
       await backToPositions.click()
       await sleep(300)
+    }
+
+    const positionsTab = this.tray.getByRole('tab', { name: 'Positions', exact: true })
+    if (
+      (await positionsTab.isVisible({ timeout: 500 }).catch(() => false)) &&
+      (await positionsTab.getAttribute('aria-selected')) !== 'true'
+    ) {
+      await positionsTab.click()
     }
   }
 
@@ -498,17 +534,16 @@ export class NewframeDriver {
     return Object.values(state.main?.orders || {}).find(predicate) as FlashOrder
   }
 
+  async assertFlashOrderVisible(orderId: string) {
+    const ordersTab = this.tray.getByRole('tab', { name: 'Orders', exact: true })
+    await ordersTab.waitFor({ state: 'visible', timeout: 10_000 })
+    await ordersTab.click()
+    await this.tray.locator(`[data-order-id="${orderId}"]`).waitFor({ state: 'visible', timeout: 10_000 })
+  }
+
   async ensureTradeSellSide(tradePage: Page) {
     const switchToSell = tradePage.getByRole('button', { name: /Switch to SELL/i })
     if (await switchToSell.isVisible({ timeout: 1_000 }).catch(() => false)) await switchToSell.click()
     await tradePage.getByLabel('WETH amount', { exact: true }).waitFor({ state: 'visible', timeout: 5_000 })
-  }
-
-  private formatUnits(value: bigint, decimals: bigint) {
-    const scale = 10n ** decimals
-    const whole = value / scale
-    const fraction = value % scale
-    if (fraction === 0n) return `${whole}.0`
-    return `${whole}.${fraction.toString().padStart(Number(decimals), '0').replace(/0+$/, '')}`
   }
 }
