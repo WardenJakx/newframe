@@ -1056,13 +1056,13 @@ class Home extends React.Component<any, any> {
   }
 
   openTrade(asset?: any, balances: any[] = []) {
-    const selectedAsset = asset || this.firstTradeAsset(balances)
-    if (!this.canOpenTrade(selectedAsset, balances)) return
-    const chainId = this.tradeChainId(selectedAsset, balances)
+    const contextAsset = asset || this.firstTradeAsset(balances)
+    if (!this.canOpenTrade(contextAsset, balances)) return
+    const chainId = this.tradeChainId(contextAsset, balances)
 
     link.send('*:addFrame', {
       id: DAPP_LAUNCHER_FRAME_ID,
-      route: buildDappLauncherRoute('trade', toCanonicalAssetId(selectedAsset), chainId)
+      route: buildDappLauncherRoute('trade', asset ? toCanonicalAssetId(asset) : '', chainId)
     })
   }
 

@@ -7,6 +7,7 @@ import {
   FLASH_WETH_ASSET,
   balanceSummaryToFlashAsset,
   getDefaultContraAsset,
+  getDefaultContraAssetForChain,
   getFlashChainSlug,
   getFlashDefaultChainId,
   getFlashSupportedChainIds,
@@ -147,5 +148,31 @@ describe('flash domain helpers', () => {
       FLASH_NATIVE_ETH_ASSET,
       FLASH_USDC_ASSET
     ])
+  })
+
+  it('selects the initial contra asset before a target is known', () => {
+    const assets = [FLASH_WETH_ASSET, FLASH_NATIVE_ETH_ASSET, FLASH_USDC_ASSET]
+
+    expect(
+      getDefaultContraAssetForChain({
+        assets,
+        balances: [
+          { assetId: FLASH_USDC_ASSET.id, balance: '1' },
+          { assetId: FLASH_WETH_ASSET.id, balance: '1' },
+          { assetId: FLASH_NATIVE_ETH_ASSET.id, balance: '1' }
+        ],
+        chainId: FLASH_ANVIL_CHAIN_ID
+      })
+    ).toBe(FLASH_USDC_ASSET)
+    expect(
+      getDefaultContraAssetForChain({
+        assets,
+        balances: [
+          { assetId: FLASH_WETH_ASSET.id, balance: '1' },
+          { assetId: FLASH_NATIVE_ETH_ASSET.id, balance: '1' }
+        ],
+        chainId: FLASH_ANVIL_CHAIN_ID
+      })
+    ).toBe(FLASH_WETH_ASSET)
   })
 })

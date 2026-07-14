@@ -725,20 +725,25 @@ body
 
 .tradeTabsWrap
   margin 0 0 12px 0
-  min-height 34px
+  min-height 38px
 
 .tradeTabs
-  width fit-content
-  height 34px
-  display inline-flex
+  width 100%
+  min-height 38px
+  display flex
   align-items center
-  gap 8px
+  gap 4px
+  padding 4px
+  border-radius 9px
+  background var(--color-border-subtle)
 
 .tradeTab
+  min-width 0
+  flex 1
   border none
   outline none
   height 30px
-  border-radius 999px
+  border-radius 7px
   background transparent
   color var(--color-text-secondary)
   cursor pointer
@@ -747,7 +752,7 @@ body
   display flex
   align-items center
   justify-content center
-  padding 0 14px
+  padding 0 5px
 
   &:hover
     color var(--color-text-primary)
@@ -761,33 +766,41 @@ body
     color var(--color-action-primary-hover)
     background var(--color-action-primary-subtle)
 
-.tradeLimitSelectRow
-  margin-top 10px
-  display flex
-  justify-content flex-start
-  width 100%
-
-.tradeLimitSelect
-  width 100%
-  height 46px
-  border 1px solid var(--color-border-subtle)
-  outline none
-  border-radius 8px
-  background var(--color-bg-raised)
-  color var(--color-text-primary)
-  padding 0 14px
-  font-family 'MainFont'
-  font-size 15px
-  font-weight 800
-
 .tradeOrderFields
   display grid
   grid-template-columns 1fr
   gap 8px
-  margin -2px 0 10px 0
+  margin 0
 
 .tradeOrderFieldsTwo
   grid-template-columns repeat(2, minmax(0, 1fr))
+
+.tradeOrderFieldsThree
+  grid-template-columns repeat(3, minmax(0, 1fr))
+
+.tradeOrderSection
+  margin 10px 0 0 0
+  padding 12px
+  border 1px solid var(--color-border-subtle)
+  border-radius 8px
+  background var(--color-bg-card)
+
+.tradeOrderSectionTitle
+  margin-bottom 8px
+  color var(--color-text-primary)
+  font-size 12px
+  font-weight 800
+
+.tradeRequiredMark
+  margin-left 3px
+  color var(--color-status-danger)
+  font-weight 800
+
+.tradeOrderHint
+  margin-top 8px
+  color var(--color-text-secondary)
+  font-size 11px
+  line-height 15px
 
 .tradeOrderField
   min-width 0
@@ -800,11 +813,23 @@ body
   gap 8px
   padding 0 10px
 
-  span
-    color var(--color-text-secondary)
-    font-size 12px
-    font-weight 800
-    white-space nowrap
+.tradeOrderFieldInvalid
+  border-color var(--color-status-danger)
+  box-shadow 0 0 0 1px var(--color-status-danger-subtle)
+
+.tradeOrderFieldLabel
+  color var(--color-text-secondary)
+  font-size 12px
+  font-weight 800
+  white-space nowrap
+
+.tradeOrderFieldControl
+  min-width 0
+  width 100%
+  display flex
+  align-items center
+  justify-content flex-end
+  gap 6px
 
   input
     min-width 0
@@ -816,6 +841,57 @@ body
     font-family 'FiraCode'
     font-size 14px
     text-align right
+
+.tradeOrderFieldsTrigger
+  .tradeOrderField
+    height 64px
+    flex-direction column
+    align-items stretch
+    justify-content center
+    gap 5px
+
+  .tradeOrderFieldControl
+    justify-content flex-start
+
+  input
+    text-align left
+
+.tradeOrderFieldSuffix
+  color var(--color-text-disabled) !important
+  font-family 'FiraCode'
+  font-size 10px !important
+
+.tradeOrderOutput
+  min-width 0
+  width 100%
+  color var(--color-text-primary)
+  font-family 'FiraCode'
+  font-size 14px
+  text-align right
+
+.tradeTriggerKind
+  height 34px
+  margin-bottom 8px
+  padding 3px
+  border-radius 7px
+  background var(--color-border-subtle)
+  display flex
+  gap 3px
+
+  button
+    flex 1
+    border none
+    outline none
+    border-radius 5px
+    background transparent
+    color var(--color-text-secondary)
+    cursor pointer
+    font-size 12px
+    font-weight 800
+
+  .tradeTriggerKindActive
+    background var(--color-bg-raised)
+    color var(--color-action-primary)
 
 .tradeTicket
   position relative
@@ -831,8 +907,17 @@ body
   margin-bottom 8px
 
 .tradeAssetCardEditable
-  border-color var(--color-action-primary-border)
   background var(--color-bg-raised)
+
+.tradeAssetCardEditableBuy
+  border-color var(--color-status-special)
+
+.tradeAssetCardEditableSell
+  border-color var(--color-status-danger)
+
+.tradeAssetCardInvalid
+  border-color var(--color-status-danger)
+  box-shadow 0 0 0 1px var(--color-status-danger-subtle)
 
 .tradeAssetCardHeader
   min-height 30px
@@ -916,44 +1001,70 @@ body
   &[readonly]
     color var(--color-text-secondary)
 
-.tradeBalanceControls
+.tradeBalanceSlider
+  margin-top 7px
+
+.tradeBalanceSliderHeader
   min-height 28px
-  max-width calc(100% - 110px)
-  margin-left auto
   display flex
   align-items center
-  justify-content flex-end
-  gap 8px
+  justify-content space-between
+  gap 10px
   color var(--color-text-secondary)
+  font-size 11px
 
-.tradeBalanceText
-  min-width 0
-  overflow hidden
-  text-overflow ellipsis
-  white-space nowrap
-  font-size 12px
+  > span
+    min-width 0
+    overflow hidden
+    text-overflow ellipsis
+    white-space nowrap
 
-.tradeBalanceButtons
-  display flex
-  align-items center
-  gap 5px
-  flex-shrink 0
+  label
+    width 64px
+    height 28px
+    flex-shrink 0
+    border-radius 6px
+    background var(--color-border-subtle)
+    display flex
+    align-items center
+    color var(--color-text-secondary)
+    padding 0 7px
 
-  button
-    height 24px
-    min-width 46px
+  input
+    width 100%
+    min-width 0
     border none
     outline none
-    border-radius 6px
-    background var(--color-action-primary-subtle)
-    color var(--color-action-primary)
-    cursor pointer
-    font-size 11px
-    font-weight 800
+    background transparent
+    color var(--color-text-primary)
+    font-family 'FiraCode'
+    font-size 12px
+    text-align right
 
-    &:hover
-      background var(--color-action-primary-border)
-      color var(--color-action-primary-hover)
+    &::-webkit-inner-spin-button
+      display none
+
+.tradeBalanceRange
+  width 100%
+  height 18px
+  margin 3px 0 0 0
+  padding 0
+  cursor pointer
+
+.tradeBalanceSliderBuy
+  .tradeBalanceRange
+    accent-color var(--color-status-special)
+
+.tradeBalanceSliderSell
+  .tradeBalanceRange
+    accent-color var(--color-status-danger)
+
+.tradeBalanceTicks
+  display flex
+  justify-content space-between
+  color var(--color-text-disabled)
+  font-size 9px
+  line-height 12px
 
 .tradeOutputNote
   min-height 30px
@@ -961,28 +1072,75 @@ body
   display flex
   align-items center
   justify-content flex-end
+  gap 8px
   color var(--color-text-secondary)
   font-size 12px
 
-.tradeQuoteMeta
-  min-height 36px
-  margin 8px 0
-  border 1px solid var(--color-border-subtle)
-  border-radius 8px
-  color var(--color-text-secondary)
-  background var(--color-border-subtle)
-  padding 8px 10px
+  strong
+    color var(--color-text-primary)
+    font-family 'FiraCode'
+    font-size 11px
+    font-weight 500
+
+.tradeQuoteSummary
+  margin 10px 0 0 0
+  border-top 1px solid var(--color-border-subtle)
+  border-bottom 1px solid var(--color-border-subtle)
+  padding 14px 2px
+
+.tradeQuoteOutput
   display flex
-  align-items center
+  align-items flex-start
   justify-content space-between
-  gap 8px
-  font-size 12px
+  gap 12px
+
+  > div
+    min-width 0
+    display flex
+    flex-direction column
+    gap 3px
+
+    &:last-child
+      align-items flex-end
+      text-align right
 
   span
-    min-width 0
-    overflow hidden
-    text-overflow ellipsis
-    white-space nowrap
+    color var(--color-text-secondary)
+    font-size 14px
+    font-weight 700
+
+  strong
+    color var(--color-text-primary)
+    font-family 'FiraCode'
+    font-size 16px
+    font-weight 700
+
+  small
+    color var(--color-text-secondary)
+    font-size 10px
+
+.tradeQuoteRows
+  margin-top 12px
+  display flex
+  flex-direction column
+  gap 6px
+
+  > div
+    min-height 18px
+    display flex
+    align-items center
+    justify-content space-between
+    gap 12px
+    color var(--color-text-secondary)
+    font-size 11px
+
+  strong
+    color var(--color-text-primary)
+    font-family 'FiraCode'
+    font-weight 500
+
+  .tradeQuoteWarning
+    color var(--color-status-danger)
 
 .tradeStepTracker
   display flex
@@ -1033,24 +1191,24 @@ body
     color var(--color-action-primary)
 
 .tradeAdvanced
-  position absolute
-  top 0
-  right 0
-  z-index 22
-  margin-top 0
+  position relative
+  z-index 3
+  margin-top 10px
 
 .tradeAdvancedToggle
-  width auto
-  height 32px
-  border 1px solid var(--color-border-subtle)
+  width 100%
+  height 36px
+  border none
+  border-top 1px solid var(--color-border-subtle)
+  border-bottom 1px solid var(--color-border-subtle)
   outline none
-  border-radius 999px
-  background var(--color-border-subtle)
+  border-radius 0
+  background transparent
   color var(--color-text-secondary)
   display flex
   align-items center
   gap 6px
-  padding 0 10px
+  padding 0 4px
   cursor pointer
   font-size 12px
   font-weight 700
@@ -1072,15 +1230,18 @@ body
   transform rotate(0deg)
 
 .tradeAdvancedPanel
-  position absolute
-  top 40px
-  right 0
-  width 280px
+  position relative
+  width 100%
   border 1px solid var(--color-border-subtle)
   border-radius 8px
-  background var(--color-bg-control)
-  box-shadow 0 16px 32px var(--color-shadow-default)
-  padding 10px
+  background var(--color-bg-card)
+  margin-top 8px
+  padding 10px 12px
+
+.tradeSettingStack
+  display flex
+  flex-direction column
+  gap 8px
 
 .tradeSettingRow
   min-height 38px
@@ -1092,9 +1253,23 @@ body
   font-size 13px
   font-weight 700
 
+  > input,
+  > select
+    min-width 160px
+    height 32px
+    border 1px solid var(--color-border-subtle)
+    outline none
+    border-radius 7px
+    background var(--color-bg-raised)
+    color var(--color-text-primary)
+    font-family 'MainFont'
+    font-size 12px
+    padding 0 8px
+
 .tradeSlippageInput
-  width 96px
+  width 128px
   height 32px
+  border 1px solid transparent
   border-radius 7px
   background var(--color-bg-raised)
   display flex
@@ -1114,11 +1289,10 @@ body
     text-align right
     padding 0 4px 0 0
 
-.tradeCheckRow
-  input
-    width 16px
-    height 16px
-    accent-color var(--color-action-primary)
+.tradeSlippageInputInvalid,
+.tradeSettingRow > .tradeSettingInputInvalid
+  border-color var(--color-status-danger)
+  box-shadow 0 0 0 1px var(--color-status-danger-subtle)
 
 .tradeFooter
   position absolute
@@ -1161,6 +1335,13 @@ body
 @media (max-width: 390px)
   .tradeAmountInput
     font-size 24px
+
+  .tradeTab
+    font-size 11px
+
+  .tradeOrderFieldsTwo,
+  .tradeOrderFieldsThree
+    grid-template-columns 1fr
 
   .tradeStep
     padding 0 6px

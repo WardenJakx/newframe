@@ -66,6 +66,17 @@ export interface FlashQuoteFee {
   asset?: FlashAsset
 }
 
+export interface FlashQuoteLeg {
+  asset: 'target' | 'contra'
+  amount: string
+  notional: string
+}
+
+export interface FlashPriceTrigger {
+  notionalPrice: string
+  triggerType: 'upper' | 'lower'
+}
+
 export type FlashQuoteActionKind = 'wrap' | 'approve'
 
 export interface FlashQuoteTransactionRequest {
@@ -102,6 +113,12 @@ export interface FlashQuote {
   receiveAsset: FlashAsset
   inputAmount: string
   outputAmount: string
+  inputNotional?: string
+  outputNotional?: string
+  estimatedFeeNotional?: string
+  targetNotionalPrice?: string
+  from?: FlashQuoteLeg
+  to?: FlashQuoteLeg
   rate?: string
   fees?: FlashQuoteFee[]
   steps: FlashStep[]
@@ -434,6 +451,31 @@ export function getDefaultContraAsset({
       : sameChainOptions.length
         ? sameChainOptions
         : defaultCandidates
+
+  return (
+    candidates.find((asset) => hasAssetBalance(asset, balances)) ||
+    candidates[0] ||
+    getFlashDefaultContraAssetPriority(FLASH_ANVIL_CHAIN_ID)[0]
+  )
+}
+
+export function getDefaultContraAssetForChain({
+  assets,
+  balances,
+  chainId
+}: {
+  assets?: readonly FlashAsset[]
+  balances?: FlashAssetBalances | null
+  chainId: number
+}) {
+  const candidates = uniqueFlashAssets(
+    sortContraCandidates(
+      [
+        ...(assets || []).filter((asset) => asset.chainId === chainId && isPreferredSellContraAsset(asset)),
+        ...getFlashDefaultContraAssetPriority(chainId)
+      ].filter((asset) => asset.chainId === chainId && isPreferredSellContraAsset(asset))
+    )
+  )
 
   return (
     candidates.find((asset) => hasAssetBalance(asset, balances)) ||
