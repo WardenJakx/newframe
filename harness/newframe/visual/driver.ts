@@ -421,6 +421,17 @@ export class NewframeDriver {
     return tradePage
   }
 
+  async openDefaultTradeTicket() {
+    await this.clearPanelAndOverlays()
+    const tradeButton = this.tray.getByRole('button', { name: 'Trade', exact: true })
+    await tradeButton.waitFor({ state: 'visible', timeout: 5_000 })
+    await tradeButton.click()
+    const tradePage = await this.waitForElectronPage('bundle/dapp.html')
+    await this.waitForDappRoute(tradePage, 'trade')
+    await tradePage.getByRole('tab', { name: 'Market' }).waitFor({ state: 'visible', timeout: 15_000 })
+    return tradePage
+  }
+
   async assertTradeTicketVisualControls(page: Page) {
     if ((await page.getByRole('group', { name: 'Trade direction' }).count()) > 0) {
       this.fail('Trade ticket still exposes the old explicit BUY/SELL segmented control')
@@ -438,6 +449,44 @@ export class NewframeDriver {
       state: 'visible',
       timeout: 5_000
     })
+    await page.getByLabel(/amount percentage$/).waitFor({
+      state: 'visible',
+      timeout: 5_000
+    })
+
+    for (const tab of ['Market', 'Limit', 'TWAP', 'TP/SL', 'Stop']) {
+      await page.getByRole('tab', { name: tab, exact: true }).waitFor({
+        state: 'visible',
+        timeout: 5_000
+      })
+    }
+  }
+
+  async assertTradeBalanceDirectionColor(page: Page) {
+    const colors = await page.evaluate(() => {
+      const slider = document.querySelector<HTMLInputElement>('.tradeBalanceRange')
+      const sliderWrap = slider?.closest('.tradeBalanceSlider')
+      const intent = document.querySelector(
+        sliderWrap?.classList.contains('tradeBalanceSliderBuy') ? '.tradeIntentBuy' : '.tradeIntentSell'
+      )
+
+      return {
+        accent: slider ? getComputedStyle(slider).getPropertyValue('accent-color') : '',
+        intent: intent ? getComputedStyle(intent).color : '',
+        side: sliderWrap?.classList.contains('tradeBalanceSliderBuy')
+          ? 'buy'
+          : sliderWrap?.classList.contains('tradeBalanceSliderSell')
+            ? 'sell'
+            : ''
+      }
+    })
+
+    if (!colors.side) this.fail('Trade balance slider is missing a BUY/SELL direction class')
+    if (!colors.accent || colors.accent !== colors.intent) {
+      this.fail(
+        `Trade ${colors.side} balance slider color (${colors.accent || 'missing'}) does not match its intent (${colors.intent || 'missing'})`
+      )
+    }
   }
 
   async waitForFlashOrder(predicate: (order: FlashOrder) => boolean, timeoutMs: number, message: string) {
@@ -452,7 +501,7 @@ export class NewframeDriver {
   async ensureTradeSellSide(tradePage: Page) {
     const switchToSell = tradePage.getByRole('button', { name: /Switch to SELL/i })
     if (await switchToSell.isVisible({ timeout: 1_000 }).catch(() => false)) await switchToSell.click()
-    await tradePage.getByLabel('WETH amount').waitFor({ state: 'visible', timeout: 5_000 })
+    await tradePage.getByLabel('WETH amount', { exact: true }).waitFor({ state: 'visible', timeout: 5_000 })
   }
 
   private formatUnits(value: bigint, decimals: bigint) {

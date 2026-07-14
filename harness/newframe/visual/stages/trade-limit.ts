@@ -9,7 +9,7 @@ export const tradeLimitStage: VisualStage = {
     await driver.ensureTradeSellSide(tradePage)
     await tradePage.getByRole('tab', { name: 'Limit' }).click()
     await tradePage.getByLabel('Limit price').fill('2500')
-    await tradePage.getByLabel('WETH amount').fill('0.01')
+    await tradePage.getByLabel('WETH amount', { exact: true }).fill('0.01')
     await tradePage
       .getByRole('button', { name: /Review\/sign/i })
       .waitFor({ state: 'visible', timeout: 20_000 })

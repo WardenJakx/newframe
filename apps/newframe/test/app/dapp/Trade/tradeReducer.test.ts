@@ -7,6 +7,9 @@ import {
   FLASH_LIMIT_ORDER_TYPE,
   FLASH_MARKET_ORDER_TYPE,
   FLASH_NATIVE_ETH_ASSET,
+  FLASH_STOP_LOSS_ORDER_TYPE,
+  FLASH_STOP_ORDER_TYPE,
+  FLASH_TAKE_PROFIT_ORDER_TYPE,
   FLASH_USDC_ASSET,
   FLASH_WETH_ASSET,
   type FlashAsset,
@@ -27,8 +30,8 @@ function marketQuote(id = 'quote-1'): FlashQuote {
     outputAmount: '2400',
     steps: [
       { id: 'approve', kind: 'approve', label: 'Approve WETH', status: 'required' },
-      { id: 'sign', kind: 'sign', label: 'Sign quote', status: 'required' },
-      { id: 'submit', kind: 'submit', label: 'Submit trade', status: 'required' }
+      { id: 'sign', kind: 'sign', label: 'Sign order', status: 'required' },
+      { id: 'submit', kind: 'submit', label: 'Submit order', status: 'required' }
     ],
     actions: {
       approval: {
@@ -51,9 +54,11 @@ function marketQuote(id = 'quote-1'): FlashQuote {
 describe('tradeReducer', () => {
   it('initializes side and contra asset from available balances', () => {
     const withTargetBalance = createInitialTradeState({
+      assetId: FLASH_WETH_ASSET.id,
       balances: [{ assetId: FLASH_WETH_ASSET.id, symbol: FLASH_WETH_ASSET.symbol, balance: '1' }]
     })
     const withoutTargetBalance = createInitialTradeState({
+      assetId: FLASH_WETH_ASSET.id,
       balances: [{ assetId: FLASH_USDC_ASSET.id, symbol: FLASH_USDC_ASSET.symbol, balance: '1' }]
     })
 
@@ -62,7 +67,40 @@ describe('tradeReducer', () => {
       chainId: FLASH_USDC_ASSET.chainId,
       symbol: FLASH_USDC_ASSET.symbol
     })
+    expect(withTargetBalance.slippage).toBe('')
+    expect(withTargetBalance.maxPriceImpact).toBe('')
+    expect(withTargetBalance.timeInForce).toBe('gtc')
     expect(withoutTargetBalance.side).toBe('buy')
+  })
+
+  it('selects the preferred contra before the target for generic entry', () => {
+    const assets = [FLASH_USDC_ASSET, FLASH_WETH_ASSET, FLASH_NATIVE_ETH_ASSET]
+    const balances = [
+      { assetId: FLASH_USDC_ASSET.id, balance: '1000000000000' },
+      { assetId: FLASH_WETH_ASSET.id, balance: '10000000000000000000' }
+    ]
+    const generic = createInitialTradeState({ assets, balances, chainId: FLASH_WETH_ASSET.chainId })
+    const explicitUsdc = createInitialTradeState({
+      assetId: FLASH_USDC_ASSET.id,
+      assets,
+      balances,
+      chainId: FLASH_WETH_ASSET.chainId
+    })
+    const onlyUsdc = createInitialTradeState({
+      assets,
+      balances: [{ assetId: FLASH_USDC_ASSET.id, balance: '1000000000000' }],
+      chainId: FLASH_WETH_ASSET.chainId
+    })
+
+    expect(generic.targetAsset).toBe(FLASH_WETH_ASSET)
+    expect(generic.contraAsset).toBe(FLASH_USDC_ASSET)
+    expect(generic.side).toBe('sell')
+    expect(explicitUsdc.targetAsset).toBe(FLASH_USDC_ASSET)
+    expect(explicitUsdc.contraAsset).toBe(FLASH_WETH_ASSET)
+    expect(explicitUsdc.side).toBe('sell')
+    expect(onlyUsdc.targetAsset).toBe(FLASH_WETH_ASSET)
+    expect(onlyUsdc.contraAsset).toBe(FLASH_USDC_ASSET)
+    expect(onlyUsdc.side).toBe('buy')
   })
 
   it('uses the sell-specific contra priority during initialization', () => {
@@ -182,5 +220,35 @@ describe('tradeReducer', () => {
     expect(quoted.quote).toBe(null)
     expect(quoted.pendingAction).toBe('quote')
     expect(quoted.quoteLoading).toBe(true)
+  })
+
+  it('locks Stop to buys and TP/SL to sells', () => {
+    const withAmount = tradeReducer(createInitialTradeState(), {
+      type: 'setInputAmount',
+      inputAmount: '1'
+    })
+    const stop = tradeReducer(withAmount, {
+      type: 'setOrderType',
+      orderType: FLASH_STOP_ORDER_TYPE
+    })
+    const takeProfit = tradeReducer(stop, {
+      type: 'setOrderType',
+      orderType: FLASH_TAKE_PROFIT_ORDER_TYPE
+    })
+    const stopLoss = tradeReducer(takeProfit, {
+      type: 'setOrderType',
+      orderType: FLASH_STOP_LOSS_ORDER_TYPE
+    })
+
+    expect(tradeReducer(withAmount, { type: 'setOrderType', orderType: withAmount.orderType })).toBe(
+      withAmount
+    )
+    expect(stop.side).toBe('buy')
+    expect(stop.orderType).toBe(FLASH_STOP_ORDER_TYPE)
+    expect(takeProfit.side).toBe('sell')
+    expect(takeProfit.orderType).toBe(FLASH_TAKE_PROFIT_ORDER_TYPE)
+    expect(stopLoss.side).toBe('sell')
+    expect(stopLoss.orderType).toBe(FLASH_STOP_LOSS_ORDER_TYPE)
+    expect(tradeReducer(stopLoss, { type: 'toggleSide' })).toBe(stopLoss)
   })
 })

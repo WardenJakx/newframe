@@ -6,7 +6,7 @@ export const tradeMarketStage: VisualStage = {
     const tradePage = await driver.openTradeTicket()
 
     await driver.ensureTradeSellSide(tradePage)
-    await tradePage.getByLabel('WETH amount').fill('0.01')
+    await tradePage.getByLabel('WETH amount', { exact: true }).fill('0.01')
     await tradePage
       .getByRole('button', { name: /Approve WETH/i })
       .waitFor({ state: 'visible', timeout: 20_000 })

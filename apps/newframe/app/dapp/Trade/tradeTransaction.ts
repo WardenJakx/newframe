@@ -1,6 +1,5 @@
 import { type BalanceSummary } from '../../../resources/domain/balance'
 import {
-  FLASH_BRACKET_ORDER_TYPE,
   FLASH_LIMIT_ORDER_TYPE,
   FLASH_MARKET_ORDER_TYPE,
   FLASH_STOP_LOSS_ORDER_TYPE,
@@ -13,6 +12,7 @@ import {
   toFlashApiAssetAddress,
   type FlashAsset,
   type FlashOrderType,
+  type FlashPriceTrigger,
   type FlashQuote,
   type FlashQuoteAction,
   type FlashQuoteTransactionRequest,
@@ -22,49 +22,42 @@ import {
 } from '../../../resources/domain/flash'
 import { internalDappOriginId } from '../dappOrigin'
 
-export const TRADE_DEFAULT_SLIPPAGE = '0.50'
-export const TRADE_DEFAULT_DURATION_SECONDS = '3600'
-export const TRADE_DEFAULT_TWAP_BUCKETS = '6'
-export const TRADE_MIN_DURATION_SECONDS = 600
+export const TRADE_DEFAULT_SLIPPAGE = ''
+export const TRADE_DEFAULT_MAX_PRICE_IMPACT = ''
+export const TRADE_DEFAULT_DURATION_DAYS = '0'
+export const TRADE_DEFAULT_DURATION_HOURS = '1'
+export const TRADE_DEFAULT_DURATION_MINUTES = '0'
+export const TRADE_MIN_DURATION_SECONDS = 300
 export const TRADE_MAX_DURATION_SECONDS = 2_592_000
 export const TRADE_MIN_TWAP_BUCKETS = 2
 export const TRADE_MAX_TWAP_BUCKETS = 2_560
 
-export const TRADE_LIMIT_ORDER_TYPES: FlashOrderType[] = [
-  FLASH_LIMIT_ORDER_TYPE,
-  FLASH_STOP_ORDER_TYPE,
-  FLASH_STOP_LOSS_ORDER_TYPE,
-  FLASH_TAKE_PROFIT_ORDER_TYPE,
-  FLASH_BRACKET_ORDER_TYPE
-]
-export const TRADE_ORDER_LABELS: Record<FlashOrderType, string> = {
-  [FLASH_MARKET_ORDER_TYPE]: 'Market',
-  [FLASH_LIMIT_ORDER_TYPE]: 'Limit',
-  [FLASH_TWAP_ORDER_TYPE]: 'TWAP',
-  [FLASH_STOP_ORDER_TYPE]: 'Stop',
-  [FLASH_STOP_LOSS_ORDER_TYPE]: 'Stop Loss',
-  [FLASH_TAKE_PROFIT_ORDER_TYPE]: 'Take Profit',
-  [FLASH_BRACKET_ORDER_TYPE]: 'Bracket'
-}
-
 export type TradePendingAction = '' | 'quote' | FlashStep['kind']
 export type TradeReviewAction = '' | 'wrap' | 'approve' | 'sign'
+export type TradeTimeInForce = 'gtc' | 'gtt'
 
 export interface TradeOrderFields {
-  durationSeconds?: string
+  durationDays?: string
+  durationHours?: string
+  durationMinutes?: string
+  expireTime?: string
   limitNotionalPrice?: string
-  stopLossNotionalPrice?: string
-  takeProfitNotionalPrice?: string
+  maxPriceImpact?: string
+  timeInForce?: TradeTimeInForce
   triggerNotionalPrice?: string
   twapBucketCount?: string
 }
 
-export interface TradeQuoteRequest extends TradeOrderFields {
+export interface TradeQuoteRequest {
   accountAddress: string
   chainId: number
   contraAsset: FlashAsset
   contraChain: number
+  durationSeconds?: number
+  expireTime?: string
   inputAmount: string
+  limitNotionalPrice?: string
+  maxPriceImpact?: string
   orderType: FlashOrderType
   qty: string
   quickTrade?: true
@@ -72,6 +65,8 @@ export interface TradeQuoteRequest extends TradeOrderFields {
   slippage?: string
   targetAsset: FlashAsset
   targetChain: number
+  triggers?: FlashPriceTrigger[]
+  twapBucketCount?: number
 }
 
 export type MarketTradeQuoteRequest = TradeQuoteRequest
@@ -109,7 +104,7 @@ export function tradeAmountNumber(amount = '') {
 export function tradeIntegerNumber(amount = '') {
   const parsed = Number(cleanTradeAmount(amount))
 
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : 0
+  return Number.isInteger(parsed) && parsed >= 0 ? parsed : -1
 }
 
 export function formatTradeAmount(amount: number, asset: FlashAsset) {
@@ -123,9 +118,35 @@ export function formatTradeAmount(amount: number, asset: FlashAsset) {
     .replace(/^\./, '0.')
 }
 
-export function buildVisualTradeSteps(spentAsset: FlashAsset, orderType: FlashOrderType, hasQuote: boolean) {
+export function formatTradeNotional(value?: string | number | null) {
+  const amount = Number(value)
+  if (!Number.isFinite(amount)) return '$0.00'
+
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: Math.abs(amount) < 1 ? 4 : 2
+  }).format(amount)
+}
+
+export function getEstimatedTradePriceImpact(quote?: FlashQuote | null) {
+  const inputNotional = Number(quote?.inputNotional || quote?.from?.notional)
+  const outputNotional = Number(quote?.outputNotional || quote?.to?.notional)
+  if (!Number.isFinite(inputNotional) || inputNotional <= 0 || !Number.isFinite(outputNotional)) return null
+
+  return ((inputNotional - outputNotional) / inputNotional) * 100
+}
+
+export function getTradeTriggerDeltaPercent(triggerPrice?: string, currentPrice?: string) {
+  const trigger = Number(triggerPrice)
+  const current = Number(currentPrice)
+  if (!Number.isFinite(trigger) || !Number.isFinite(current) || current <= 0) return null
+
+  return ((trigger - current) / current) * 100
+}
+
+export function buildVisualTradeSteps(spentAsset: FlashAsset, _orderType: FlashOrderType, hasQuote: boolean) {
   const status = hasQuote ? 'required' : 'idle'
-  const orderNoun = orderType === FLASH_MARKET_ORDER_TYPE ? 'trade' : 'order'
   const steps: FlashStep[] = []
 
   if (spentAsset.isNative) {
@@ -147,18 +168,8 @@ export function buildVisualTradeSteps(spentAsset: FlashAsset, orderType: FlashOr
   }
 
   steps.push(
-    {
-      id: 'sign',
-      kind: 'sign',
-      label: orderType === FLASH_MARKET_ORDER_TYPE ? 'Sign quote' : 'Sign order',
-      status
-    },
-    {
-      id: 'submit',
-      kind: 'submit',
-      label: `Submit ${orderNoun}`,
-      status
-    }
+    { id: 'sign', kind: 'sign', label: 'Sign order', status },
+    { id: 'submit', kind: 'submit', label: 'Submit order', status }
   )
 
   return steps
@@ -259,28 +270,73 @@ export function canReviewTrade({
   pendingAction,
   quote,
   quoteLoading,
-  submitting
+  submitting,
+  validationError = ''
 }: {
   orderType: FlashOrderType
   pendingAction: TradePendingAction
   quote: FlashQuote | null
   quoteLoading: boolean
   submitting: boolean
+  validationError?: string
 }) {
-  return !!quote && !!getNextTradeAction({ quote }) && !pendingAction && !quoteLoading && !submitting
+  return (
+    !!quote &&
+    !!getNextTradeAction({ quote }) &&
+    !pendingAction &&
+    !quoteLoading &&
+    !submitting &&
+    !validationError
+  )
 }
 
-export function getFlashOrderTypedData(quote: FlashQuote | null, flashPayload: unknown) {
+type FlashTypedDataField = 'orderTypedData' | 'orderTypedDataRaw' | 'permitTypedData' | 'permitTypedDataRaw'
+
+function findFlashTypedData(quote: FlashQuote | null, flashPayload: unknown, field: FlashTypedDataField) {
   const quoteRaw = objectRecord(quote?.raw)
 
   return (
-    nestedRecord(flashPayload, ['actions', 'evm', 'orderTypedData']) ||
-    nestedRecord(flashPayload, ['evm', 'orderTypedData']) ||
-    nestedRecord(flashPayload, ['orderTypedData']) ||
-    nestedRecord(quoteRaw, ['actions', 'evm', 'orderTypedData']) ||
-    nestedRecord(quoteRaw, ['evm', 'orderTypedData']) ||
-    nestedRecord(quoteRaw, ['orderTypedData'])
+    nestedRecord(flashPayload, ['actions', 'evm', field]) ||
+    nestedRecord(flashPayload, ['evm', field]) ||
+    nestedRecord(flashPayload, [field]) ||
+    nestedRecord(quoteRaw, ['actions', 'evm', field]) ||
+    nestedRecord(quoteRaw, ['evm', field]) ||
+    nestedRecord(quoteRaw, [field])
   )
+}
+
+function parseFlashTypedData(typedData: unknown) {
+  if (typeof typedData !== 'string') return typedData
+
+  try {
+    return JSON.parse(typedData)
+  } catch {
+    return null
+  }
+}
+
+export function getFlashOrderTypedData(quote: FlashQuote | null, flashPayload: unknown) {
+  return parseFlashTypedData(findFlashTypedData(quote, flashPayload, 'orderTypedData'))
+}
+
+export function getFlashPermitTypedData(quote: FlashQuote | null, flashPayload: unknown) {
+  return parseFlashTypedData(findFlashTypedData(quote, flashPayload, 'permitTypedData'))
+}
+
+export function getFlashOrderTypedDataForSubmit(quote: FlashQuote | null, flashPayload: unknown) {
+  const typedData =
+    findFlashTypedData(quote, flashPayload, 'orderTypedDataRaw') ||
+    findFlashTypedData(quote, flashPayload, 'orderTypedData')
+
+  return typeof typedData === 'string' ? typedData : typedData ? JSON.stringify(typedData) : ''
+}
+
+export function getFlashPermitTypedDataForSubmit(quote: FlashQuote | null, flashPayload: unknown) {
+  const typedData =
+    findFlashTypedData(quote, flashPayload, 'permitTypedDataRaw') ||
+    findFlashTypedData(quote, flashPayload, 'permitTypedData')
+
+  return typeof typedData === 'string' ? typedData : typedData ? JSON.stringify(typedData) : ''
 }
 
 export function getMarketTradeOptionalFields({
@@ -294,7 +350,7 @@ export function getMarketTradeOptionalFields({
   const cleanSlippage = String(slippage || '').trim()
 
   if (quickTrade) optionalFields.quickTrade = true
-  if (cleanSlippage && cleanSlippage !== TRADE_DEFAULT_SLIPPAGE) optionalFields.slippage = cleanSlippage
+  if (cleanSlippage) optionalFields.slippage = cleanSlippage
 
   return optionalFields
 }
@@ -305,97 +361,202 @@ function cleanOptionalAmount(value?: string) {
   return tradeAmountNumber(clean) ? clean : ''
 }
 
-function cleanDurationSeconds(value?: string) {
-  const clean = cleanTradeAmount(value || '')
-  const parsed = tradeIntegerNumber(clean)
+export function getTradeDurationSeconds(fields: TradeOrderFields) {
+  const days = tradeIntegerNumber(fields.durationDays || '')
+  const hours = tradeIntegerNumber(fields.durationHours || '')
+  const minutes = tradeIntegerNumber(fields.durationMinutes || '')
 
-  return parsed >= TRADE_MIN_DURATION_SECONDS && parsed <= TRADE_MAX_DURATION_SECONDS ? String(parsed) : ''
+  if (days < 0 || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return 0
+
+  return days * 86_400 + hours * 3_600 + minutes * 60
 }
 
 function cleanTwapBucketCount(value?: string) {
   const clean = cleanTradeAmount(value || '')
-  const parsed = tradeIntegerNumber(clean)
+  if (!clean) return undefined
 
-  return parsed >= TRADE_MIN_TWAP_BUCKETS && parsed <= TRADE_MAX_TWAP_BUCKETS ? String(parsed) : ''
+  const parsed = tradeIntegerNumber(clean)
+  return parsed >= TRADE_MIN_TWAP_BUCKETS && parsed <= TRADE_MAX_TWAP_BUCKETS ? parsed : undefined
+}
+
+function cleanExpireTime(value?: string) {
+  const timestamp = Date.parse(String(value || ''))
+
+  return Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : ''
+}
+
+function triggerTypeForOrder(orderType: FlashOrderType): FlashPriceTrigger['triggerType'] | '' {
+  if (orderType === FLASH_STOP_LOSS_ORDER_TYPE) return 'lower'
+  if (orderType === FLASH_STOP_ORDER_TYPE || orderType === FLASH_TAKE_PROFIT_ORDER_TYPE) return 'upper'
+  return ''
+}
+
+function orderSupportsTimeInForce(orderType: FlashOrderType) {
+  return [
+    FLASH_LIMIT_ORDER_TYPE,
+    FLASH_STOP_ORDER_TYPE,
+    FLASH_STOP_LOSS_ORDER_TYPE,
+    FLASH_TAKE_PROFIT_ORDER_TYPE
+  ].includes(orderType)
 }
 
 export function getTradeValidationError({
-  durationSeconds,
+  durationDays,
+  durationHours,
+  durationMinutes,
+  expireTime,
   inputAmount,
   limitNotionalPrice,
+  maxPriceImpact,
   orderType,
-  stopLossNotionalPrice,
-  takeProfitNotionalPrice,
+  side,
+  slippage,
+  timeInForce,
   triggerNotionalPrice,
   twapBucketCount
-}: TradeOrderFields & { inputAmount: string; orderType: FlashOrderType }) {
+}: TradeOrderFields & {
+  inputAmount: string
+  orderType: FlashOrderType
+  side?: FlashTradeSide
+  slippage?: string
+}) {
   if (!tradeAmountNumber(inputAmount)) return 'Enter an amount to trade.'
+
+  if (orderType === FLASH_MARKET_ORDER_TYPE) {
+    const cleanSlippage = cleanTradeAmount(slippage || '')
+    const maxSlippage = Number(cleanSlippage)
+    if (cleanSlippage && (!Number.isFinite(maxSlippage) || maxSlippage < 0 || maxSlippage > 100)) {
+      return 'Max slippage must be between 0% and 100%.'
+    }
+  }
 
   if (orderType === FLASH_LIMIT_ORDER_TYPE && !cleanOptionalAmount(limitNotionalPrice)) {
     return 'Enter a limit price.'
   }
 
-  if (
-    [FLASH_STOP_ORDER_TYPE, FLASH_STOP_LOSS_ORDER_TYPE, FLASH_TAKE_PROFIT_ORDER_TYPE].includes(orderType) &&
-    !cleanOptionalAmount(triggerNotionalPrice)
-  ) {
-    return 'Enter a trigger price.'
-  }
-
-  if (orderType === FLASH_BRACKET_ORDER_TYPE) {
-    if (!cleanOptionalAmount(takeProfitNotionalPrice)) return 'Enter a take-profit price.'
-    if (!cleanOptionalAmount(stopLossNotionalPrice)) return 'Enter a stop-loss price.'
+  if ([FLASH_STOP_ORDER_TYPE, FLASH_STOP_LOSS_ORDER_TYPE, FLASH_TAKE_PROFIT_ORDER_TYPE].includes(orderType)) {
+    if (!cleanOptionalAmount(triggerNotionalPrice)) return 'Enter a trigger price.'
+    if (cleanTradeAmount(limitNotionalPrice || '') && !cleanOptionalAmount(limitNotionalPrice)) {
+      return 'Enter a valid limit price or leave it blank for a market order.'
+    }
+    if (orderType === FLASH_STOP_ORDER_TYPE && side !== 'buy') return 'Stop orders must buy the target asset.'
+    if ([FLASH_STOP_LOSS_ORDER_TYPE, FLASH_TAKE_PROFIT_ORDER_TYPE].includes(orderType) && side !== 'sell') {
+      return 'TP/SL orders must sell the target asset.'
+    }
   }
 
   if (orderType === FLASH_TWAP_ORDER_TYPE) {
-    if (!cleanDurationSeconds(durationSeconds)) return 'Duration must be 600 to 2592000 seconds.'
-    if (!cleanTwapBucketCount(twapBucketCount)) return 'Buckets must be 2 to 2560.'
+    const durationSeconds = getTradeDurationSeconds({ durationDays, durationHours, durationMinutes })
+    if (durationSeconds < TRADE_MIN_DURATION_SECONDS || durationSeconds > TRADE_MAX_DURATION_SECONDS) {
+      return 'TWAP duration must be between 5 minutes and 30 days.'
+    }
+
+    const cleanBuckets = cleanTradeAmount(twapBucketCount || '')
+    if (cleanBuckets && cleanTwapBucketCount(cleanBuckets) === undefined) {
+      return 'Segments must be 2 to 2560, or left automatic.'
+    }
+
+    const cleanMaxImpact = cleanTradeAmount(maxPriceImpact || '')
+    const maxImpact = Number(cleanMaxImpact)
+    if (cleanMaxImpact && (!Number.isFinite(maxImpact) || maxImpact < 0 || maxImpact > 100)) {
+      return 'Max price impact must be between 0% and 100%.'
+    }
+  }
+
+  if (orderSupportsTimeInForce(orderType) && timeInForce === 'gtt') {
+    const timestamp = Date.parse(String(expireTime || ''))
+    if (!Number.isFinite(timestamp) || timestamp <= Date.now()) return 'Choose a future expiry time.'
   }
 
   return ''
 }
 
-function getOrderFields(orderType: FlashOrderType, fields: TradeOrderFields): TradeOrderFields {
+export function getTradeQuoteValidationError({
+  orderType,
+  quote,
+  triggerNotionalPrice
+}: {
+  orderType: FlashOrderType
+  quote: FlashQuote | null
+  triggerNotionalPrice?: string
+}) {
+  if (!quote || !triggerTypeForOrder(orderType)) return ''
+
+  const triggerPrice = Number(triggerNotionalPrice)
+  const currentPrice = Number(quote.targetNotionalPrice)
+  if (!Number.isFinite(triggerPrice) || !Number.isFinite(currentPrice) || currentPrice <= 0) return ''
+
+  if (orderType === FLASH_STOP_LOSS_ORDER_TYPE && triggerPrice >= currentPrice) {
+    return `Stop loss must be below the current ${quote.targetAsset.symbol}/USD price.`
+  }
+  if (orderType === FLASH_TAKE_PROFIT_ORDER_TYPE && triggerPrice <= currentPrice) {
+    return `Take profit must be above the current ${quote.targetAsset.symbol}/USD price.`
+  }
+  if (orderType === FLASH_STOP_ORDER_TYPE && triggerPrice <= currentPrice) {
+    return `Stop trigger must be above the current ${quote.targetAsset.symbol}/USD price.`
+  }
+
+  return ''
+}
+
+function getOrderFields(
+  orderType: FlashOrderType,
+  fields: TradeOrderFields
+): Pick<
+  TradeQuoteRequest,
+  'durationSeconds' | 'expireTime' | 'limitNotionalPrice' | 'maxPriceImpact' | 'triggers' | 'twapBucketCount'
+> {
+  const result: Pick<
+    TradeQuoteRequest,
+    | 'durationSeconds'
+    | 'expireTime'
+    | 'limitNotionalPrice'
+    | 'maxPriceImpact'
+    | 'triggers'
+    | 'twapBucketCount'
+  > = {}
+
   if (orderType === FLASH_LIMIT_ORDER_TYPE) {
-    return { limitNotionalPrice: cleanOptionalAmount(fields.limitNotionalPrice) }
+    result.limitNotionalPrice = cleanOptionalAmount(fields.limitNotionalPrice)
   }
 
-  if ([FLASH_STOP_ORDER_TYPE, FLASH_STOP_LOSS_ORDER_TYPE, FLASH_TAKE_PROFIT_ORDER_TYPE].includes(orderType)) {
-    return { triggerNotionalPrice: cleanOptionalAmount(fields.triggerNotionalPrice) }
-  }
-
-  if (orderType === FLASH_BRACKET_ORDER_TYPE) {
-    return {
-      stopLossNotionalPrice: cleanOptionalAmount(fields.stopLossNotionalPrice),
-      takeProfitNotionalPrice: cleanOptionalAmount(fields.takeProfitNotionalPrice)
-    }
+  const triggerType = triggerTypeForOrder(orderType)
+  if (triggerType) {
+    result.triggers = [
+      {
+        notionalPrice: cleanOptionalAmount(fields.triggerNotionalPrice),
+        triggerType
+      }
+    ]
+    const limitPrice = cleanOptionalAmount(fields.limitNotionalPrice)
+    if (limitPrice) result.limitNotionalPrice = limitPrice
   }
 
   if (orderType === FLASH_TWAP_ORDER_TYPE) {
-    return {
-      durationSeconds: cleanDurationSeconds(fields.durationSeconds),
-      twapBucketCount: cleanTwapBucketCount(fields.twapBucketCount)
-    }
+    result.durationSeconds = getTradeDurationSeconds(fields)
+    const buckets = cleanTwapBucketCount(fields.twapBucketCount)
+    if (buckets !== undefined) result.twapBucketCount = buckets
+    const maxPriceImpact = cleanTradeAmount(fields.maxPriceImpact || '')
+    if (maxPriceImpact) result.maxPriceImpact = maxPriceImpact
   }
 
-  return {}
+  if (orderSupportsTimeInForce(orderType) && fields.timeInForce === 'gtt') {
+    result.expireTime = cleanExpireTime(fields.expireTime)
+  }
+
+  return result
 }
 
 export function buildTradeQuoteRequest({
   accountAddress,
   contraAsset,
-  durationSeconds,
   inputAmount,
-  limitNotionalPrice,
   orderType,
   quickTrade,
   side,
   slippage,
-  stopLossNotionalPrice,
-  takeProfitNotionalPrice,
   targetAsset,
-  triggerNotionalPrice,
-  twapBucketCount
+  ...orderFields
 }: {
   accountAddress?: string
   contraAsset: FlashAsset
@@ -408,14 +569,11 @@ export function buildTradeQuoteRequest({
 } & TradeOrderFields): TradeQuoteRequest | null {
   const qty = cleanTradeAmount(inputAmount)
   const validationError = getTradeValidationError({
-    durationSeconds,
+    ...orderFields,
     inputAmount: qty,
-    limitNotionalPrice,
     orderType,
-    stopLossNotionalPrice,
-    takeProfitNotionalPrice,
-    triggerNotionalPrice,
-    twapBucketCount
+    side,
+    slippage
   })
 
   if (validationError) return null
@@ -434,15 +592,8 @@ export function buildTradeQuoteRequest({
     side,
     targetAsset,
     targetChain: chainId,
-    ...getMarketTradeOptionalFields({ quickTrade, slippage }),
-    ...getOrderFields(orderType, {
-      durationSeconds,
-      limitNotionalPrice,
-      stopLossNotionalPrice,
-      takeProfitNotionalPrice,
-      triggerNotionalPrice,
-      twapBucketCount
-    })
+    ...(orderType === FLASH_MARKET_ORDER_TYPE ? getMarketTradeOptionalFields({ quickTrade, slippage }) : {}),
+    ...getOrderFields(orderType, orderFields)
   }
 }
 
@@ -462,11 +613,11 @@ export function marketTradeQuoteRequestKey(request: TradeQuoteRequest) {
     request.slippage,
     request.quickTrade,
     request.limitNotionalPrice,
-    request.triggerNotionalPrice,
-    request.takeProfitNotionalPrice,
-    request.stopLossNotionalPrice,
+    request.triggers,
     request.durationSeconds,
-    request.twapBucketCount
+    request.twapBucketCount,
+    request.maxPriceImpact,
+    request.expireTime
   ])
 }
 
@@ -632,22 +783,51 @@ export function buildTradeSignaturePayload({
   return { chainIdNumber, payload }
 }
 
+export function buildTradePermitSignaturePayload({
+  accountAddress,
+  flashPayload,
+  id = Date.now(),
+  originId = internalDappOriginId,
+  quote
+}: {
+  accountAddress: string
+  flashPayload: unknown
+  id?: number
+  originId?: string
+  quote: FlashQuote | null
+}) {
+  const typedData = getFlashPermitTypedData(quote, flashPayload)
+  if (!typedData) return null
+  if (!accountAddress || !quote) throw new Error('Flash quote is missing permit typed data.')
+
+  const typedDataDomain = objectRecord(objectRecord(typedData).domain)
+  const chainIdNumber = normalizeTradeChainId(typedDataDomain.chainId || quote.targetAsset.chainId)
+  const chainId = tradeChainIdHex(chainIdNumber)
+  const payload: ProviderSendPayload = {
+    id,
+    jsonrpc: '2.0',
+    method: 'eth_signTypedData_v4',
+    chainId,
+    params: [accountAddress, JSON.stringify(typedData)],
+    _origin: originId
+  }
+
+  return { chainIdNumber, payload }
+}
+
 export function buildTradeSubmitRequest({
   accountAddress,
-  durationSeconds,
   flashPayload,
+  permitSignature,
   quickTrade,
   quote,
   signature,
   slippage,
-  stopLossNotionalPrice,
-  takeProfitNotionalPrice,
-  triggerNotionalPrice,
-  twapBucketCount,
-  limitNotionalPrice
+  ...orderFields
 }: {
   accountAddress: string
   flashPayload: unknown
+  permitSignature?: string
   quickTrade: boolean
   quote: FlashQuote
   signature: string
@@ -655,16 +835,20 @@ export function buildTradeSubmitRequest({
 } & TradeOrderFields) {
   const chainId = quote.targetAsset.chainId || quote.contraAsset.chainId
   const rawPayload = flashPayload || quote.raw || null
+  const evmPermitTypedData = getFlashPermitTypedDataForSubmit(quote, flashPayload)
+
+  if (evmPermitTypedData && !permitSignature) {
+    throw new Error('Flash quote requires a permit signature.')
+  }
 
   return {
     accountAddress,
     chainId,
     contraAsset: quote.contraAsset,
     contraChain: chainId,
-    durationSeconds,
-    evmOrderTypedData: getFlashOrderTypedData(quote, flashPayload),
+    evmOrderTypedData: getFlashOrderTypedDataForSubmit(quote, flashPayload),
+    ...(evmPermitTypedData ? { evmPermitSignature: permitSignature, evmPermitTypedData } : {}),
     inputAmount: quote.inputAmount,
-    limitNotionalPrice,
     orderSignature: signature,
     orderType: quote.orderType,
     qty: quote.inputAmount,
@@ -673,12 +857,11 @@ export function buildTradeSubmitRequest({
     rawPayload,
     side: quote.side,
     signature,
-    stopLossNotionalPrice,
-    takeProfitNotionalPrice,
     targetAsset: quote.targetAsset,
     targetChain: chainId,
-    triggerNotionalPrice,
-    twapBucketCount,
-    ...getMarketTradeOptionalFields({ quickTrade, slippage })
+    ...(quote.orderType === FLASH_MARKET_ORDER_TYPE
+      ? getMarketTradeOptionalFields({ quickTrade, slippage })
+      : {}),
+    ...getOrderFields(quote.orderType, orderFields)
   }
 }

@@ -4,7 +4,11 @@ import {
 } from '../../../resources/domain/dappLauncher'
 import {
   FLASH_MARKET_ORDER_TYPE,
+  FLASH_STOP_LOSS_ORDER_TYPE,
+  FLASH_STOP_ORDER_TYPE,
+  FLASH_TAKE_PROFIT_ORDER_TYPE,
   getDefaultContraAsset,
+  getDefaultContraAssetForChain,
   getDefaultSide,
   getFlashAssetsForChain,
   getFlashDefaultTargetAsset,
@@ -18,9 +22,11 @@ import {
   type FlashTradeSide
 } from '../../../resources/domain/flash'
 import {
-  TRADE_DEFAULT_DURATION_SECONDS,
+  TRADE_DEFAULT_DURATION_DAYS,
+  TRADE_DEFAULT_DURATION_HOURS,
+  TRADE_DEFAULT_DURATION_MINUTES,
+  TRADE_DEFAULT_MAX_PRICE_IMPACT,
   TRADE_DEFAULT_SLIPPAGE,
-  TRADE_DEFAULT_TWAP_BUCKETS,
   getTradeValidationError,
   isSameFlashAsset,
   tradeAmountNumber,
@@ -36,10 +42,14 @@ export interface TradeWorkflowState {
   contraAsset: FlashAsset
   contraAmount: string
   contraOpen: boolean
-  durationSeconds: string
+  durationDays: string
+  durationHours: string
+  durationMinutes: string
   error: string
+  expireTime: string
   flashPayload: unknown
   limitNotionalPrice: string
+  maxPriceImpact: string
   orderType: FlashOrderType
   pendingAction: TradePendingAction
   quickTrade: boolean
@@ -50,12 +60,11 @@ export interface TradeWorkflowState {
   signature: string
   slippage: string
   status: string
-  stopLossNotionalPrice: string
   submitting: boolean
-  takeProfitNotionalPrice: string
   targetAsset: FlashAsset
   targetAmount: string
   targetOpen: boolean
+  timeInForce: 'gtc' | 'gtt'
   triggerNotionalPrice: string
   twapBucketCount: string
 }
@@ -187,26 +196,87 @@ function resolveContraAsset(
   )
 }
 
+function resolveTargetAfterContra(
+  preferredTarget: FlashAsset,
+  contraAsset: FlashAsset,
+  assets: readonly FlashAsset[]
+) {
+  const sameChainOptions = sameChainAssetOptions(contraAsset, assets)
+  const candidates = [
+    preferredTarget,
+    defaultAssetForChain(contraAsset.chainId, sameChainOptions),
+    ...sameChainOptions.filter((asset) => !asset.isNative),
+    ...sameChainOptions
+  ]
+
+  return (
+    candidates.find(
+      (asset) => asset.chainId === contraAsset.chainId && !isSameFlashAsset(asset, contraAsset)
+    ) || preferredTarget
+  )
+}
+
+function resolveInitialTradePair({
+  assetId,
+  assets,
+  balances,
+  chainId
+}: CreateInitialTradeStateOptions & { assets: FlashAsset[] }) {
+  const preferredTarget = resolveTargetAsset({ assetId, assets, chainId })
+  const explicitTarget = Boolean(parseCanonicalAssetId(assetId))
+
+  if (explicitTarget) {
+    const side = getDefaultSide({ targetAsset: preferredTarget, balances })
+
+    return {
+      contraAsset: resolveContraAsset(preferredTarget, balances, assets, side),
+      side,
+      targetAsset: preferredTarget
+    }
+  }
+
+  const contraAsset = getDefaultContraAssetForChain({
+    assets: sameChainAssetOptions(preferredTarget, assets),
+    balances,
+    chainId: preferredTarget.chainId
+  })
+  const targetAsset = resolveTargetAfterContra(preferredTarget, contraAsset, assets)
+
+  return {
+    contraAsset,
+    side: getDefaultSide({ targetAsset, balances }),
+    targetAsset
+  }
+}
+
 export function createInitialTradeState({
   assetId,
   assets = [],
   balances,
   chainId
 }: CreateInitialTradeStateOptions = {}): TradeWorkflowState {
-  const targetAsset = resolveTargetAsset({ assetId, assets, chainId })
-  const side = getDefaultSide({ targetAsset, balances })
+  const { contraAsset, side, targetAsset } = resolveInitialTradePair({
+    assetId,
+    assets,
+    balances,
+    chainId
+  })
 
   return {
     actionQuoteId: '',
     advancedOpen: false,
     assetOptions: assets,
-    contraAsset: resolveContraAsset(targetAsset, balances, assets, side),
+    contraAsset,
     contraAmount: '',
     contraOpen: false,
-    durationSeconds: TRADE_DEFAULT_DURATION_SECONDS,
+    durationDays: TRADE_DEFAULT_DURATION_DAYS,
+    durationHours: TRADE_DEFAULT_DURATION_HOURS,
+    durationMinutes: TRADE_DEFAULT_DURATION_MINUTES,
     error: '',
+    expireTime: '',
     flashPayload: null,
     limitNotionalPrice: '',
+    maxPriceImpact: TRADE_DEFAULT_MAX_PRICE_IMPACT,
     orderType: FLASH_MARKET_ORDER_TYPE,
     pendingAction: '',
     quickTrade: false,
@@ -217,14 +287,13 @@ export function createInitialTradeState({
     signature: '',
     slippage: TRADE_DEFAULT_SLIPPAGE,
     status: '',
-    stopLossNotionalPrice: '',
     submitting: false,
-    takeProfitNotionalPrice: '',
     targetAsset,
     targetAmount: '',
     targetOpen: false,
+    timeInForce: 'gtc',
     triggerNotionalPrice: '',
-    twapBucketCount: TRADE_DEFAULT_TWAP_BUCKETS
+    twapBucketCount: ''
   }
 }
 
@@ -242,10 +311,13 @@ export function getTradeSpentAsset(state: TradeWorkflowState) {
 
 export function getTradeOrderFields(state: TradeWorkflowState): TradeOrderFields {
   return {
-    durationSeconds: state.durationSeconds,
+    durationDays: state.durationDays,
+    durationHours: state.durationHours,
+    durationMinutes: state.durationMinutes,
+    expireTime: state.expireTime,
     limitNotionalPrice: state.limitNotionalPrice,
-    stopLossNotionalPrice: state.stopLossNotionalPrice,
-    takeProfitNotionalPrice: state.takeProfitNotionalPrice,
+    maxPriceImpact: state.maxPriceImpact,
+    timeInForce: state.timeInForce,
     triggerNotionalPrice: state.triggerNotionalPrice,
     twapBucketCount: state.twapBucketCount
   }
@@ -257,7 +329,9 @@ function tradeHasValidInput(state: TradeWorkflowState) {
     !getTradeValidationError({
       ...getTradeOrderFields(state),
       inputAmount: getTradeInputAmount(state),
-      orderType: state.orderType
+      orderType: state.orderType,
+      side: state.side,
+      slippage: state.slippage
     })
   )
 }
@@ -519,10 +593,23 @@ export function tradeReducer(state: TradeWorkflowState, action: TradeWorkflowAct
       return refreshForSettings(state, {
         [action.field]: action.value
       } as Partial<TradeWorkflowState>)
-    case 'setOrderType':
-      return applyTradeInputAmount(state, getTradeInputAmount(state), {
-        orderType: action.orderType
+    case 'setOrderType': {
+      if (action.orderType === state.orderType) return state
+
+      const side =
+        action.orderType === FLASH_STOP_ORDER_TYPE
+          ? 'buy'
+          : [FLASH_STOP_LOSS_ORDER_TYPE, FLASH_TAKE_PROFIT_ORDER_TYPE].includes(action.orderType)
+            ? 'sell'
+            : state.side
+      const inputAmount = side === state.side ? getTradeInputAmount(state) : state.quote?.outputAmount || ''
+
+      return applyTradeInputAmount(state, inputAmount, {
+        advancedOpen: false,
+        orderType: action.orderType,
+        side
       })
+    }
     case 'settingsChanged':
       return refreshForSettings(state, {
         ...(typeof action.quickTrade === 'boolean' ? { quickTrade: action.quickTrade } : {}),
@@ -594,6 +681,14 @@ export function tradeReducer(state: TradeWorkflowState, action: TradeWorkflowAct
         advancedOpen: !state.advancedOpen
       }
     case 'toggleSide':
+      if (
+        [FLASH_STOP_ORDER_TYPE, FLASH_STOP_LOSS_ORDER_TYPE, FLASH_TAKE_PROFIT_ORDER_TYPE].includes(
+          state.orderType
+        )
+      ) {
+        return state
+      }
+
       return applyTradeInputAmount(state, state.quote?.outputAmount || '', {
         side: state.side === 'buy' ? 'sell' : 'buy'
       })
