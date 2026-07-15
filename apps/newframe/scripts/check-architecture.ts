@@ -51,10 +51,12 @@ async function sourceFiles() {
 }
 
 const under = (directory: string) => (file: string) => file.startsWith(directory + path.sep)
+const isTestFile = (file: string) => /(?:^|\/)[^/]+\.(?:test|spec)\.[cm]?[jt]sx?$/.test(file)
 const productionRenderer = (file: string) =>
-  under(path.join('apps', 'newframe', 'app'))(file) ||
-  (under(path.join('apps', 'newframe', 'resources'))(file) &&
-    file !== path.join('apps', 'newframe', 'resources', 'bridge', 'index.ts'))
+  !isTestFile(file) &&
+  (under(path.join('apps', 'newframe', 'app'))(file) ||
+    (under(path.join('apps', 'newframe', 'resources'))(file) &&
+      file !== path.join('apps', 'newframe', 'resources', 'bridge', 'index.ts')))
 const productionMain = under(path.join('apps', 'newframe', 'main'))
 const anyFile = () => true
 
