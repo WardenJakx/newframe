@@ -83,6 +83,11 @@ const rules: Rule[] = [
     message: 'renderer mirrors must use Zustand store mechanics'
   },
   {
+    files: productionRenderer,
+    pattern: /\bclass\s+\w+\s+extends\s+(?:React\.)?(?:Pure)?Component\b/,
+    message: 'React components must be functions'
+  },
+  {
     files: productionMain,
     pattern: /\bipcMain\.on\b/,
     message: 'application IPC must use typed asynchronous handlers'

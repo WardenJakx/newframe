@@ -4,30 +4,15 @@ import { SimpleTypedData as TypedSignatureOverview } from '../../../../../resour
 import { getSignatureRequestClass } from '../../../../../resources/domain/request'
 import { useOriginName } from '../state'
 
-export class TransactionRequest extends React.Component<any, any> {
-  constructor(props: any, context?: any) {
-    super(props, context)
-    this.state = { allowInput: false, dataView: false }
+export function TransactionRequest(props: any) {
+  const { req, originName } = props
+  const requestClass = getSignatureRequestClass(req)
 
-    setTimeout(
-      () => {
-        this.setState({ allowInput: true })
-      },
-      (props || {}).signingDelay || 1500
-    )
-  }
-
-  override render() {
-    const { req } = this.props
-    const { originName } = this.props
-    const requestClass = getSignatureRequestClass(req)
-
-    return (
-      <div key={req.id || req.handlerId} className={requestClass}>
-        <TypedSignatureOverview {...{ originName, req }} />
-      </div>
-    )
-  }
+  return (
+    <div key={req.id || req.handlerId} className={requestClass}>
+      <TypedSignatureOverview {...{ originName, req }} />
+    </div>
+  )
 }
 
 export default function TransactionRequestWithState(props: any) {

@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 
 import Account from './Account'
@@ -55,28 +55,18 @@ const selectPanelState = (state: TrayRendererState): PanelProps => ({
   initial: state.tray.initial
 })
 
-class Panel extends React.Component<PanelProps, PanelState> {
-  constructor(props: PanelProps) {
-    super(props)
-    this.state = {
-      password: '',
-      unlockError: '',
-      unlocking: false,
-      biometrics: null,
-      biometricAvailable: false,
-      biometricUnlocking: false
-    }
-  }
+function Panel(props: PanelProps) {
+  const [state, setPanelState] = useState<PanelState>({
+    password: '',
+    unlockError: '',
+    unlocking: false,
+    biometrics: null,
+    biometricAvailable: false,
+    biometricUnlocking: false
+  })
+  const setState = (update: Partial<PanelState>) => setPanelState((current) => ({ ...current, ...update }))
 
-  override componentDidMount() {
-    void this.refreshBiometricsState()
-  }
-
-  override componentDidUpdate(previous: PanelProps) {
-    if (previous.biometricUnlock !== this.props.biometricUnlock) void this.refreshBiometricsState()
-  }
-
-  async refreshBiometricsState() {
+  async function refreshBiometricsState() {
     try {
       const status = await link.executeQuery({ type: 'security.status' })
       if (!status.ok) throw new Error(status.message || 'Could not read biometric configuration')
@@ -90,34 +80,34 @@ class Panel extends React.Component<PanelProps, PanelState> {
             !!biometrics.credential &&
             (await isWebAuthnBiometricsSupported()))
 
-      this.setState({ biometrics, biometricAvailable })
+      setState({ biometrics, biometricAvailable })
     } catch {
-      this.setState({ biometrics: null, biometricAvailable: false })
+      setState({ biometrics: null, biometricAvailable: false })
     }
   }
 
-  async unlockApp() {
-    if (this.state.unlocking) return
+  async function unlockApp() {
+    if (state.unlocking) return
 
-    const password = this.state.password
-    this.setState({ unlocking: true, unlockError: '' })
+    const password = state.password
+    setState({ unlocking: true, unlockError: '' })
 
     try {
       const result = await link.executeCommand({ type: 'security.unlock', method: 'password', password })
       if (!result.ok) throw new Error(result.message || 'Could not unlock Newframe')
-      this.setState({ unlocking: false, unlockError: '', password: '' })
+      setState({ unlocking: false, unlockError: '', password: '' })
     } catch (error) {
-      this.setState({ unlocking: false, unlockError: errorMessage(error) })
+      setState({ unlocking: false, unlockError: errorMessage(error) })
     }
   }
 
-  async unlockWithBiometrics() {
-    if (this.state.biometricUnlocking || !this.state.biometricAvailable) return
+  async function unlockWithBiometrics() {
+    if (state.biometricUnlocking || !state.biometricAvailable) return
 
-    const biometrics = this.state.biometrics
+    const biometrics = state.biometrics
     if (!biometrics?.enabled) return
 
-    this.setState({ biometricUnlocking: true, unlockError: '' })
+    setState({ biometricUnlocking: true, unlockError: '' })
 
     try {
       if (biometrics.method === 'webauthn') {
@@ -132,108 +122,104 @@ class Panel extends React.Component<PanelProps, PanelState> {
         throw new Error('Biometric unlock is not configured')
       }
 
-      this.setState({ biometricUnlocking: false, unlockError: '', password: '' })
+      setState({ biometricUnlocking: false, unlockError: '', password: '' })
     } catch (err) {
-      this.setState({
+      setState({
         biometricUnlocking: false,
         unlockError: isBiometricUserCanceledError(err) ? '' : errorMessage(err)
       })
     }
   }
 
-  renderBiometricUnlockButton() {
-    if (!this.state.biometricAvailable) return null
+  useEffect(() => {
+    void refreshBiometricsState()
+  }, [props.biometricUnlock])
 
-    return (
-      <div
-        aria-label='Unlock with biometrics'
-        className='t2LockSubmit t2LockBiometricSubmit'
-        onClick={() => this.unlockWithBiometrics()}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault()
-            this.unlockWithBiometrics()
-          }
-        }}
-        role='button'
-        tabIndex={0}
-      >
-        {svg.fingerprint(15)}
-        <span>{this.state.biometricUnlocking ? 'Authenticating' : 'Unlock with Biometrics'}</span>
-      </div>
-    )
-  }
+  const biometricUnlockButton = state.biometricAvailable ? (
+    <div
+      aria-label='Unlock with biometrics'
+      className='t2LockSubmit t2LockBiometricSubmit'
+      onClick={() => unlockWithBiometrics()}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          unlockWithBiometrics()
+        }
+      }}
+      role='button'
+      tabIndex={0}
+    >
+      {svg.fingerprint(15)}
+      <span>{state.biometricUnlocking ? 'Authenticating' : 'Unlock with Biometrics'}</span>
+    </div>
+  ) : null
 
-  renderLockBlocker() {
-    return (
-      <div aria-label='Unlock Newframe' className='t2LockBlocker' role='dialog'>
-        <div className='t2LockPanel cardShow'>
-          <div className='t2LockIcon'>{svg.lock(22)}</div>
-          <div className='t2LockTitle'>Newframe Locked</div>
-          <div className='t2LockInput'>
-            <input
-              aria-label='Newframe password'
-              autoFocus
-              placeholder='Newframe password'
-              type='password'
-              value={this.state.password}
-              onChange={(e) => this.setState({ password: e.target.value })}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') this.unlockApp()
-              }}
-            />
-          </div>
-          {this.state.unlockError ? <div className='t2LockError'>{this.state.unlockError}</div> : null}
-          <div
-            aria-label='Unlock'
-            className='t2LockSubmit'
-            onClick={() => this.unlockApp()}
+  const lockBlocker = (
+    <div aria-label='Unlock Newframe' className='t2LockBlocker' role='dialog'>
+      <div className='t2LockPanel cardShow'>
+        <div className='t2LockIcon'>{svg.lock(22)}</div>
+        <div className='t2LockTitle'>Newframe Locked</div>
+        <div className='t2LockInput'>
+          <input
+            aria-label='Newframe password'
+            autoFocus
+            placeholder='Newframe password'
+            type='password'
+            value={state.password}
+            onChange={(e) => setState({ password: e.target.value })}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault()
-                this.unlockApp()
-              }
+              if (e.key === 'Enter') unlockApp()
             }}
-            role='button'
-            tabIndex={0}
-          >
-            {this.state.unlocking ? 'Unlocking' : 'Unlock'}
-          </div>
-          {this.renderBiometricUnlockButton()}
+          />
         </div>
+        {state.unlockError ? <div className='t2LockError'>{state.unlockError}</div> : null}
+        <div
+          aria-label='Unlock'
+          className='t2LockSubmit'
+          onClick={() => unlockApp()}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              unlockApp()
+            }
+          }}
+          role='button'
+          tabIndex={0}
+        >
+          {state.unlocking ? 'Unlocking' : 'Unlock'}
+        </div>
+        {biometricUnlockButton}
       </div>
-    )
-  }
+    </div>
+  )
 
-  override render() {
-    const { crumb } = this.props
-    const requestViewOpen = crumb.view === 'requestView' || crumb.view === 'expandedModule'
-    const opacity = !this.props.appLocked && this.props.initial ? 0 : 1
+  const { crumb } = props
+  const requestViewOpen = crumb.view === 'requestView' || crumb.view === 'expandedModule'
+  const opacity = !props.appLocked && props.initial ? 0 : 1
 
-    if (this.props.appLocked) {
-      return (
-        <div id='panel' style={{ opacity }}>
-          {this.renderLockBlocker()}
-        </div>
-      )
-    }
-
+  if (props.appLocked) {
     return (
       <div id='panel' style={{ opacity }}>
-        <Badge />
-        <Notify />
-        <Home />
-        {requestViewOpen ? (
-          <RequestViewProvider key={crumb.data?.requestId || crumb.view}>
-            <div className='t2RequestOverlay'>
-              <Account />
-            </div>
-            <Footer />
-          </RequestViewProvider>
-        ) : null}
+        {lockBlocker}
       </div>
     )
   }
+
+  return (
+    <div id='panel' style={{ opacity }}>
+      <Badge />
+      <Notify />
+      <Home />
+      {requestViewOpen ? (
+        <RequestViewProvider key={crumb.data?.requestId || crumb.view}>
+          <div className='t2RequestOverlay'>
+            <Account />
+          </div>
+          <Footer />
+        </RequestViewProvider>
+      ) : null}
+    </div>
+  )
 }
 
 export default function App() {

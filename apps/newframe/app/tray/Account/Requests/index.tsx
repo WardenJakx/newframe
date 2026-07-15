@@ -10,9 +10,9 @@ import link from '../../../../resources/link'
 import svg from '../../../../resources/svg'
 import { useAccountRequests, useEthereumNetworkMetadata, useEthereumNetworks, useOrigins } from './state'
 
-export class Requests extends React.Component<any, any> {
-  renderRequestGroup(origin: any, requests: any) {
-    const groupName = this.props.origins[origin]?.name || origin
+export function Requests(props: any) {
+  const renderRequestGroup = (origin: any, requests: any) => {
+    const groupName = props.origins[origin]?.name || origin
     // const favicon = `https://s2.googleusercontent.com/s2/favicons?sz=256&domain_url=https://` + groupName
 
     return (
@@ -29,7 +29,7 @@ export class Requests extends React.Component<any, any> {
             onClick={() => {
               void link.executeCommand({
                 type: 'request.clear-origin',
-                accountId: this.props.account,
+                accountId: props.account,
                 originId: origin
               })
             }}
@@ -50,7 +50,7 @@ export class Requests extends React.Component<any, any> {
                 <RequestItem
                   key={req.type + i}
                   req={req}
-                  account={this.props.account}
+                  account={props.account}
                   handlerId={req.handlerId}
                   i={i}
                   title={'Account Access'}
@@ -65,7 +65,7 @@ export class Requests extends React.Component<any, any> {
                 <RequestItem
                   key={req.type + i}
                   req={req}
-                  account={this.props.account}
+                  account={props.account}
                   handlerId={req.handlerId}
                   i={i}
                   title={'Sign Message'}
@@ -80,7 +80,7 @@ export class Requests extends React.Component<any, any> {
                 <RequestItem
                   key={req.type + i}
                   req={req}
-                  account={this.props.account}
+                  account={props.account}
                   handlerId={req.handlerId}
                   i={i}
                   title={'Sign Data'}
@@ -92,14 +92,14 @@ export class Requests extends React.Component<any, any> {
               )
             } else if (req.type === 'signErc20Permit') {
               const chainId = req.typedMessage.data.domain.chainId
-              const chainName = this.props.networks[chainId]?.name
-              const { primaryColor, icon } = this.props.networkMetadata[chainId] || {}
+              const chainName = props.networks[chainId]?.name
+              const { primaryColor, icon } = props.networkMetadata[chainId] || {}
 
               return (
                 <RequestItem
                   key={req.type + i}
                   req={req}
-                  account={this.props.account}
+                  account={props.account}
                   handlerId={req.handlerId}
                   i={i}
                   title={`${chainName} Token Permit`}
@@ -114,7 +114,7 @@ export class Requests extends React.Component<any, any> {
                 <RequestItem
                   key={req.type + i}
                   req={req}
-                  account={this.props.account}
+                  account={props.account}
                   handlerId={req.handlerId}
                   i={i}
                   title={'Add Chain'}
@@ -129,7 +129,7 @@ export class Requests extends React.Component<any, any> {
                 <RequestItem
                   key={req.type + i}
                   req={req}
-                  account={this.props.account}
+                  account={props.account}
                   handlerId={req.handlerId}
                   i={i}
                   title={'Switch Chain'}
@@ -144,7 +144,7 @@ export class Requests extends React.Component<any, any> {
                 <RequestItem
                   key={req.type + i}
                   req={req}
-                  account={this.props.account}
+                  account={props.account}
                   handlerId={req.handlerId}
                   i={i}
                   title={'Add Tokens'}
@@ -156,18 +156,18 @@ export class Requests extends React.Component<any, any> {
               )
             } else if (req.type === 'transaction') {
               const chainId = parseInt(req.data.chainId, 16)
-              const chainName = this.props.networks[chainId]?.name
+              const chainName = props.networks[chainId]?.name
               const {
                 primaryColor,
                 icon,
                 nativeCurrency: { symbol: currentSymbol = '?' } = {}
-              } = this.props.networkMetadata[chainId] || {}
-              const originName = this.props.origins[req.origin]?.name || req.origin
+              } = props.networkMetadata[chainId] || {}
+              const originName = props.origins[req.origin]?.name || req.origin
               return (
                 <RequestItem
                   key={req.type + i}
                   req={req}
-                  account={this.props.account}
+                  account={props.account}
                   handlerId={req.handlerId}
                   i={i}
                   title={`${chainName} Transaction`}
@@ -191,38 +191,33 @@ export class Requests extends React.Component<any, any> {
     )
   }
 
-  renderExpanded() {
-    const requests = Object.values(this.props.accountRequests).sort((a: any, b: any) => {
-      if (a.created > b.created) return -1
-      if (a.created < b.created) return 1
-      return 0
-    })
+  const requests = Object.values(props.accountRequests).sort((a: any, b: any) => {
+    if (a.created > b.created) return -1
+    if (a.created < b.created) return 1
+    return 0
+  })
 
-    const originSortedRequests: any = {}
-    requests.forEach((req: any) => {
-      const origin = req.origin
-      originSortedRequests[origin] = originSortedRequests[origin] || []
-      originSortedRequests[origin].push(req)
-    })
-    const groups = Object.keys(originSortedRequests)
+  const originSortedRequests: any = {}
+  requests.forEach((req: any) => {
+    const origin = req.origin
+    originSortedRequests[origin] = originSortedRequests[origin] || []
+    originSortedRequests[origin].push(req)
+  })
+  const groups = Object.keys(originSortedRequests)
 
-    return (
-      <div className='accountViewScroll' style={{ paddingTop: '40px' }}>
-        {groups.length === 0 ? (
-          <div className='requestContainerWrap'>
-            <div className='requestContainerEmpty'>{'NO PENDING REQUESTS'}</div>
-          </div>
-        ) : (
-          groups.map((origin) => {
-            return this.renderRequestGroup(origin, originSortedRequests[origin])
-          })
-        )}
-      </div>
-    )
-  }
-  override render() {
-    return this.renderExpanded()
-  }
+  return (
+    <div className='accountViewScroll' style={{ paddingTop: '40px' }}>
+      {groups.length === 0 ? (
+        <div className='requestContainerWrap'>
+          <div className='requestContainerEmpty'>{'NO PENDING REQUESTS'}</div>
+        </div>
+      ) : (
+        groups.map((origin) => {
+          return renderRequestGroup(origin, originSortedRequests[origin])
+        })
+      )}
+    </div>
+  )
 }
 
 export default function RequestsWithState(props: any) {

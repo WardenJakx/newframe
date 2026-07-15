@@ -36,19 +36,19 @@ const displayStatus = (req: any) => {
   return status
 }
 
-export class TxFeeSummary extends React.Component<any, any> {
-  getOptimismFee = (l2Price: bigint, l2Limit: bigint, chainData: any) => {
+export function TxFeeSummary(props: any) {
+  const getOptimismFee = (l2Price: bigint, l2Limit: bigint, chainData: any) => {
     const l1DataFee = toBigInt(chainData?.l1Fees ?? '')
     if (l1DataFee === undefined) return undefined
 
     return l2Price * l2Limit + l1DataFee
   }
 
-  applyFeeRate(option: (typeof FEE_RATE_OPTIONS)[number]) {
-    const { req } = this.props
+  const applyFeeRate = (option: (typeof FEE_RATE_OPTIONS)[number]) => {
+    const { req } = props
 
     if (option.id === 'custom') {
-      this.props.openRequestView({ step: 'adjustFee' })
+      props.openRequestView({ step: 'adjustFee' })
       return
     }
 
@@ -59,158 +59,154 @@ export class TxFeeSummary extends React.Component<any, any> {
     })
   }
 
-  override render() {
-    const { req, chain, nativeCurrency, isTestnet } = this.props
-    const paidFee = getPaidTransactionFee(req)
-    const nativeCurrencyRate = !isTestnet ? nativeCurrency.usd : undefined
+  const { req, chain, nativeCurrency, isTestnet } = props
+  const paidFee = getPaidTransactionFee(req)
+  const nativeCurrencyRate = !isTestnet ? nativeCurrency.usd : undefined
 
-    const maxGas = toBigInt(req.data.gasLimit) ?? 0n
-    const maxFeePerGas = toBigInt(req.data[usesBaseFee(req.data) ? 'maxFeePerGas' : 'gasPrice']) ?? 0n
-    const executionFee = maxFeePerGas * maxGas
-    const maxFeeSourceValue = chainUsesOptimismFees(chain.id)
-      ? this.getOptimismFee(maxFeePerGas, maxGas, req.chainData?.optimism)
-      : executionFee
-    const displayedFee = paidFee || maxFeeSourceValue || executionFee
-    const fee = displayValueData(displayedFee, {
-      currencyRate: nativeCurrencyRate,
-      isTestnet
-    } as any)
-    const feeUSD = fee.fiat()
-    const gasDisplay = displayValueData(maxFeePerGas).gwei()
-    const shouldWarn = feeUSD.value > FEE_WARNING_THRESHOLD_USD
-    const selectedRate = req.feesUpdatedByUser ? 'custom' : this.props.gasPrice?.selected || 'fast'
-    const canAdjustFee = !paidFee && !req.status
+  const maxGas = toBigInt(req.data.gasLimit) ?? 0n
+  const maxFeePerGas = toBigInt(req.data[usesBaseFee(req.data) ? 'maxFeePerGas' : 'gasPrice']) ?? 0n
+  const executionFee = maxFeePerGas * maxGas
+  const maxFeeSourceValue = chainUsesOptimismFees(chain.id)
+    ? getOptimismFee(maxFeePerGas, maxGas, req.chainData?.optimism)
+    : executionFee
+  const displayedFee = paidFee || maxFeeSourceValue || executionFee
+  const fee = displayValueData(displayedFee, {
+    currencyRate: nativeCurrencyRate,
+    isTestnet
+  } as any)
+  const feeUSD = fee.fiat()
+  const gasDisplay = displayValueData(maxFeePerGas).gwei()
+  const shouldWarn = feeUSD.value > FEE_WARNING_THRESHOLD_USD
+  const selectedRate = req.feesUpdatedByUser ? 'custom' : props.gasPrice?.selected || 'fast'
+  const canAdjustFee = !paidFee && !req.status
 
-    return (
-      <section aria-label='Network fee' className='txReviewFee'>
-        <div className='txReviewFeeSummary'>
-          <div className='txReviewFeeMain'>
-            <div className='txReviewFeeLabel'>{paidFee ? 'Paid fee' : 'Max fee'}</div>
-            <div className={shouldWarn ? 'txReviewFeeValue txReviewFeeValueWarn' : 'txReviewFeeValue'}>
-              {fee.bn === undefined ? (
-                `? ${nativeCurrency.symbol}`
-              ) : (
-                <DisplayCoinBalance amount={fee} symbol={nativeCurrency.symbol} />
-              )}
-            </div>
-          </div>
-          <div className='txReviewFeeMeta'>
-            <span>{gasDisplay.displayValue} Gwei</span>
+  return (
+    <section aria-label='Network fee' className='txReviewFee'>
+      <div className='txReviewFeeSummary'>
+        <div className='txReviewFeeMain'>
+          <div className='txReviewFeeLabel'>{paidFee ? 'Paid fee' : 'Max fee'}</div>
+          <div className={shouldWarn ? 'txReviewFeeValue txReviewFeeValueWarn' : 'txReviewFeeValue'}>
+            {fee.bn === undefined ? (
+              `? ${nativeCurrency.symbol}`
+            ) : (
+              <DisplayCoinBalance amount={fee} symbol={nativeCurrency.symbol} />
+            )}
           </div>
         </div>
-        {canAdjustFee ? (
-          <div className='txReviewFeeRates' role='group' aria-label='Fee rate'>
-            {FEE_RATE_OPTIONS.map((option) => (
-              <button
-                key={option.id}
-                aria-pressed={selectedRate === option.id}
-                className={
-                  selectedRate === option.id ? 'txReviewFeeRate txReviewFeeRateActive' : 'txReviewFeeRate'
-                }
-                onClick={() => this.applyFeeRate(option)}
-                type='button'
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-        ) : null}
-      </section>
-    )
-  }
+        <div className='txReviewFeeMeta'>
+          <span>{gasDisplay.displayValue} Gwei</span>
+        </div>
+      </div>
+      {canAdjustFee ? (
+        <div className='txReviewFeeRates' role='group' aria-label='Fee rate'>
+          {FEE_RATE_OPTIONS.map((option) => (
+            <button
+              key={option.id}
+              aria-pressed={selectedRate === option.id}
+              className={
+                selectedRate === option.id ? 'txReviewFeeRate txReviewFeeRateActive' : 'txReviewFeeRate'
+              }
+              onClick={() => applyFeeRate(option)}
+              type='button'
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </section>
+  )
 }
 
-export class TxReview extends React.Component<any, any> {
-  copyAddress(data: string) {
+export function TxReview(props: any) {
+  const copyAddress = (data: string) => {
     void link.executeCommand({ type: 'clipboard.write', text: data })
   }
 
-  override render() {
-    const { req } = this.props
-    const chainId = parseInt(req.data.chainId, 16)
-    const chain = { type: 'ethereum', id: chainId }
-    const { network, networkMetadata: meta } = this.props
-    const nativeCurrency = meta.nativeCurrency || { symbol: '?' }
-    const symbol = nativeCurrency.symbol || '?'
-    const chainName = network.name || `Chain ${chainId}`
-    const originName = this.props.originName || req.origin
-    const intent = getTransactionIntent(req, symbol)
-    const to = req.data.to ? getAddress(req.data.to) : ''
-    const from = req.data.from || req.account
-    const calldata = req.data.data
-    const method = req.decodedData?.method
-    const contractName = req.decodedData?.contractName
-    const source = req.decodedData?.source
-    const block = req.tx?.receipt?.blockNumber ? parseInt(req.tx.receipt.blockNumber, 16) : undefined
-    const effects = getTransactionEffects(req, symbol)
-    const simulationStatus = req.simulation?.status
-    const effectsEmptyText =
-      simulationStatus === 'loading'
-        ? 'Checking asset changes'
-        : simulationStatus === 'error' || simulationStatus === 'unavailable'
-          ? 'Simulation unavailable'
-          : 'No direct asset changes detected'
-    const notice =
-      req.notice && req.notice.toLowerCase() !== (req.status || '').toLowerCase() ? req.notice : undefined
-    const details: TransactionInformationDetailRow[] = [
-      { label: 'Origin', value: originName },
-      {
-        label: 'From',
-        value: shortAddress(from),
-        onClick: () => from && this.copyAddress(from)
-      },
-      {
-        label: 'To',
-        value: req.recipient || shortAddress(to),
-        onClick: () => to && this.copyAddress(to)
-      },
-      { label: 'Contract', value: contractName },
-      { label: 'Method', value: method },
-      { label: 'Decode source', value: source }
-    ]
+  const { req } = props
+  const chainId = parseInt(req.data.chainId, 16)
+  const chain = { type: 'ethereum', id: chainId }
+  const { network, networkMetadata: meta } = props
+  const nativeCurrency = meta.nativeCurrency || { symbol: '?' }
+  const symbol = nativeCurrency.symbol || '?'
+  const chainName = network.name || `Chain ${chainId}`
+  const originName = props.originName || req.origin
+  const intent = getTransactionIntent(req, symbol)
+  const to = req.data.to ? getAddress(req.data.to) : ''
+  const from = req.data.from || req.account
+  const calldata = req.data.data
+  const method = req.decodedData?.method
+  const contractName = req.decodedData?.contractName
+  const source = req.decodedData?.source
+  const block = req.tx?.receipt?.blockNumber ? parseInt(req.tx.receipt.blockNumber, 16) : undefined
+  const effects = getTransactionEffects(req, symbol)
+  const simulationStatus = req.simulation?.status
+  const effectsEmptyText =
+    simulationStatus === 'loading'
+      ? 'Checking asset changes'
+      : simulationStatus === 'error' || simulationStatus === 'unavailable'
+        ? 'Simulation unavailable'
+        : 'No direct asset changes detected'
+  const notice =
+    req.notice && req.notice.toLowerCase() !== (req.status || '').toLowerCase() ? req.notice : undefined
+  const details: TransactionInformationDetailRow[] = [
+    { label: 'Origin', value: originName },
+    {
+      label: 'From',
+      value: shortAddress(from),
+      onClick: () => from && copyAddress(from)
+    },
+    {
+      label: 'To',
+      value: req.recipient || shortAddress(to),
+      onClick: () => to && copyAddress(to)
+    },
+    { label: 'Contract', value: contractName },
+    { label: 'Method', value: method },
+    { label: 'Decode source', value: source }
+  ]
 
-    if (calldata && calldata !== '0x') {
-      details.push({
-        label: 'Calldata digest',
-        value: req.data.calldataDigest || 'View data',
-        onClick: () => {
-          this.props.openRequestView({ step: 'viewData' })
-        }
-      })
-    }
-
-    return (
-      <TransactionInformation
-        networkName={chainName}
-        networkColor={meta.primaryColor ? `var(--${meta.primaryColor})` : undefined}
-        title={intent.title}
-        subtitle={intent.subtitle}
-        statusLabel={displayStatus(req)}
-        notice={notice}
-        progress={{
-          status: req.status,
-          notice: req.notice,
-          txHash: req.tx?.hash,
-          confirmations: req.tx?.confirmations,
-          confirmationTarget: TRANSACTION_CONFIRMATION_TARGET,
-          blockNumber: block
-        }}
-        effects={effects}
-        effectsEmptyText={effectsEmptyText}
-        details={details}
-        nativeCurrency={nativeCurrency}
-      >
-        <TxFeeSummary
-          chain={chain}
-          gasPrice={meta.gas?.price}
-          isTestnet={Boolean(network.isTestnet)}
-          nativeCurrency={nativeCurrency}
-          openRequestView={this.props.openRequestView}
-          req={req}
-        />
-      </TransactionInformation>
-    )
+  if (calldata && calldata !== '0x') {
+    details.push({
+      label: 'Calldata digest',
+      value: req.data.calldataDigest || 'View data',
+      onClick: () => {
+        props.openRequestView({ step: 'viewData' })
+      }
+    })
   }
+
+  return (
+    <TransactionInformation
+      networkName={chainName}
+      networkColor={meta.primaryColor ? `var(--${meta.primaryColor})` : undefined}
+      title={intent.title}
+      subtitle={intent.subtitle}
+      statusLabel={displayStatus(req)}
+      notice={notice}
+      progress={{
+        status: req.status,
+        notice: req.notice,
+        txHash: req.tx?.hash,
+        confirmations: req.tx?.confirmations,
+        confirmationTarget: TRANSACTION_CONFIRMATION_TARGET,
+        blockNumber: block
+      }}
+      effects={effects}
+      effectsEmptyText={effectsEmptyText}
+      details={details}
+      nativeCurrency={nativeCurrency}
+    >
+      <TxFeeSummary
+        chain={chain}
+        gasPrice={meta.gas?.price}
+        isTestnet={Boolean(network.isTestnet)}
+        nativeCurrency={nativeCurrency}
+        openRequestView={props.openRequestView}
+        req={req}
+      />
+    </TransactionInformation>
+  )
 }
 
 export default function TxReviewWithState(props: any) {
