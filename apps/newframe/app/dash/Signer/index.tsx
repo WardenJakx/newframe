@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react'
+import React, { useCallback, useState } from 'react'
 
 import link from '../../../resources/link'
 import svg from '../../../resources/svg'
@@ -34,86 +34,56 @@ interface SignerViewState {
   tPin: string
 }
 
-class SignerView extends React.Component<SignerViewProps, SignerViewState> {
-  constructor(props: SignerViewProps) {
-    super(props)
+function SignerView(props: SignerViewProps) {
+  const [state, setSignerState] = useState<SignerViewState>({
+    page: 0,
+    addressLimit: 5,
+    latticePairCode: '',
+    tPin: '',
+    tPhrase: ''
+  })
+  const setState = (update: Partial<SignerViewState>) =>
+    setSignerState((current) => ({ ...current, ...update }))
 
-    this.state = {
-      page: 0,
-      addressLimit: 5,
-      latticePairCode: '',
-      tPin: '',
-      tPhrase: ''
-    }
-  }
-
-  backspacePin(e: any) {
+  function backspacePin(e: any) {
     e.stopPropagation()
-    this.setState({ tPin: this.state.tPin ? this.state.tPin.slice(0, -1) : '' })
+    setState({ tPin: state.tPin ? state.tPin.slice(0, -1) : '' })
   }
 
-  trezorPin(num: any) {
-    this.setState({ tPin: this.state.tPin + num.toString() })
+  function trezorPin(num: any) {
+    setState({ tPin: state.tPin + num.toString() })
   }
 
-  submitPin() {
+  function submitPin() {
     void link.executeCommand({
       type: 'signer.trezor-input',
-      signerId: this.props.id,
+      signerId: props.id,
       input: 'pin',
-      value: this.state.tPin
+      value: state.tPin
     })
-    this.setState({ tPin: '' })
+    setState({ tPin: '' })
   }
 
-  submitPhrase() {
-    const phrase = this.state.tPhrase || ''
-    this.setState({ tPhrase: '' })
+  function submitPhrase() {
+    const phrase = state.tPhrase || ''
+    setState({ tPhrase: '' })
     void link.executeCommand({
       type: 'signer.trezor-input',
-      signerId: this.props.id,
+      signerId: props.id,
       input: 'passphrase',
       value: phrase
     })
   }
 
-  renderLoadingLive() {
-    if (this.props.type === 'ledger' && this.getStatus() === 'deriving live addresses') {
-      const { liveAccountLimit } = this.props
-      const styleWidth = liveAccountLimit === 20 ? 120 : liveAccountLimit === 40 ? 120 : 60
-      const marginTop = liveAccountLimit === 40 ? -8 : 0
-      return (
-        <div
-          className='loadingLiveAddresses'
-          style={{ top: `${marginTop}px`, padding: '20px', width: `${styleWidth}px` }}
-        >
-          {[...Array(liveAccountLimit).keys()]
-            .map((i) => i + 1)
-            .map((i) => {
-              return (
-                <div
-                  key={'loadingLiveAddress' + i}
-                  className='loadingLiveAddress'
-                  style={{ opacity: i <= (this.props.liveAddressesFound || 0) ? '1' : '0.3' }}
-                />
-              )
-            })}
-        </div>
-      )
-    } else {
-      return null
-    }
-  }
-
-  renderTrezorPin(active: any) {
+  function renderTrezorPin(active: any) {
     return (
       <div className='trezorPinWrap' style={active ? {} : { height: '0px', padding: '0px 0px 0px 0px' }}>
         {active ? (
           <>
             <div className='trezorPhraseInput'>
-              {this.state.tPin.split('').map((n: any, i: any) => {
+              {state.tPin.split('').map((n: any, i: any) => {
                 return (
-                  <div key={i} className='trezorPinInputButton' onMouseDown={this.trezorPin.bind(this, i)}>
+                  <div key={i} className='trezorPinInputButton' onMouseDown={() => trezorPin(i)}>
                     {svg.octicon('primitive-dot', { height: 14 })}
                   </div>
                 )
@@ -121,11 +91,11 @@ class SignerView extends React.Component<SignerViewProps, SignerViewState> {
             </div>
             <div
               className='signerPinMessage signerPinSubmit'
-              onMouseDown={(this.state.tPin ? () => this.submitPin() : null) as any}
+              onMouseDown={(state.tPin ? () => submitPin() : null) as any}
             >
               Submit Pin
-              {this.state.tPin ? (
-                <div className='signerPinDelete' onMouseDown={this.backspacePin.bind(this)}>
+              {state.tPin ? (
+                <div className='signerPinDelete' onMouseDown={backspacePin}>
                   {svg.octicon('chevron-left', { height: 18 })}
                 </div>
               ) : null}
@@ -133,7 +103,7 @@ class SignerView extends React.Component<SignerViewProps, SignerViewState> {
             <div className='trezorPinInputWrap'>
               <div className='trezorPinInput'>
                 {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((i) => (
-                  <div key={i} className='trezorPinInputButton' onMouseDown={this.trezorPin.bind(this, i)}>
+                  <div key={i} className='trezorPinInputButton' onMouseDown={() => trezorPin(i)}>
                     {svg.octicon('primitive-dot', { height: 20 })}
                   </div>
                 ))}
@@ -145,15 +115,15 @@ class SignerView extends React.Component<SignerViewProps, SignerViewState> {
     )
   }
 
-  phraseKeyPress(e: any) {
+  function phraseKeyPress(e: any) {
     if (e.key === 'Enter') {
       e.preventDefault()
-      this.submitPhrase()
+      submitPhrase()
     }
   }
 
-  renderTrezorPhrase(active: any) {
-    const allowsDeviceEntry = (this.props.capabilities || []).includes('Capability_PassphraseEntry')
+  function renderTrezorPhrase(active: any) {
+    const allowsDeviceEntry = (props.capabilities || []).includes('Capability_PassphraseEntry')
 
     return (
       <div className='trezorPinWrap' style={active ? {} : { height: '0px', padding: '0px 0px 0px 0px' }}>
@@ -162,8 +132,8 @@ class SignerView extends React.Component<SignerViewProps, SignerViewState> {
             <div className='trezorPhraseInput'>
               <input
                 type='password'
-                onChange={(e) => this.setState({ tPhrase: e.target.value })}
-                onKeyPress={(e) => this.phraseKeyPress(e)}
+                onChange={(e) => setState({ tPhrase: e.target.value })}
+                onKeyPress={(e) => phraseKeyPress(e)}
                 autoFocus
               />
             </div>
@@ -172,7 +142,7 @@ class SignerView extends React.Component<SignerViewProps, SignerViewState> {
               onMouseDown={(evt) => {
                 if (evt.button === 0) {
                   // left click only
-                  this.submitPhrase()
+                  submitPhrase()
                 }
               }}
             >
@@ -188,7 +158,7 @@ class SignerView extends React.Component<SignerViewProps, SignerViewState> {
                       // left click only
                       void link.executeCommand({
                         type: 'signer.trezor-input',
-                        signerId: this.props.id,
+                        signerId: props.id,
                         input: 'device-passphrase'
                       })
                     }
@@ -206,72 +176,48 @@ class SignerView extends React.Component<SignerViewProps, SignerViewState> {
     )
   }
 
-  getStatus() {
-    return (this.props.status || '').toLowerCase()
+  function getStatus() {
+    return (props.status || '').toLowerCase()
   }
 
-  status() {
-    const status = this.getStatus()
-
-    if (status === 'ok') {
-      return (
-        <div className='signerStatus'>
-          <div className='signerStatusIndicator signerStatusIndicatorReady'></div>
-        </div>
-      )
-    } else if (status === 'locked') {
-      return (
-        <div className='signerStatus'>
-          <div className='signerStatusIndicator signerStatusIndicatorLocked'></div>
-        </div>
-      )
-    } else {
-      return (
-        <div className='signerStatus'>
-          <div className='signerStatusIndicator'></div>
-        </div>
-      )
-    }
-  }
-
-  statusText() {
-    const status = this.getStatus()
+  function statusText() {
+    const status = getStatus()
 
     if (status === 'ok') {
       return <div className='signerStatusText signerStatusReady'>{'ready to sign'}</div>
     } else if (status === 'locked') {
-      const hwSigner = isHardwareSigner(this.props.type)
-      const lockText = hwSigner ? 'Please unlock your ' + this.props.type : 'locked'
+      const hwSigner = isHardwareSigner(props.type)
+      const lockText = hwSigner ? 'Please unlock your ' + props.type : 'locked'
 
       const classes = hwSigner ? 'signerStatusText' : 'signerStatusText signerStatusIssue'
       return <div className={classes}>{lockText}</div>
     } else if (status === 'addresses') {
       return <div className='signerStatusText'>{'deriving addresses'}</div>
     } else {
-      return <div className='signerStatusText'>{this.props.status}</div>
+      return <div className='signerStatusText'>{props.status}</div>
     }
   }
 
-  nextPage(backwards?: any) {
-    let page = backwards ? this.state.page - 1 : this.state.page + 1
-    const { signer } = this.props
-    const maxPage = Math.ceil(signer.addresses.length / this.state.addressLimit) - 1
+  function nextPage(backwards?: any) {
+    let page = backwards ? state.page - 1 : state.page + 1
+    const { signer } = props
+    const maxPage = Math.ceil(signer.addresses.length / state.addressLimit) - 1
     if (page > maxPage) page = maxPage
     if (page < 0) page = 0
-    this.setState({ page })
+    setState({ page })
   }
 
-  pairToLattice() {
+  function pairToLattice() {
     void link.executeCommand({
       type: 'signer.lattice-pair',
-      signerId: this.props.id,
-      pairCode: this.state.latticePairCode
+      signerId: props.id,
+      pairCode: state.latticePairCode
     })
 
-    this.setState({ latticePairCode: '' })
+    setState({ latticePairCode: '' })
   }
 
-  expand(id: any) {
+  function expand(id: any) {
     void link.executeCommand({
       type: 'dash.navigate',
       view: 'expandedSigner',
@@ -279,16 +225,16 @@ class SignerView extends React.Component<SignerViewProps, SignerViewState> {
     })
   }
 
-  renderPreview() {
-    const { accounts, signer } = this.props
-    const status = this.getStatus()
+  function renderPreview() {
+    const { accounts, signer } = props
+    const status = getStatus()
 
-    const hwSigner = isHardwareSigner(this.props.type)
+    const hwSigner = isHardwareSigner(props.type)
     const loading = isLoading(status)
 
     // TODO: create well-defined signer states that drive these UI features
     // const canReconnect =
-    //   this.props.type !== 'trezor' || status === 'disconnected' || status.includes('reconnect')
+    //   props.type !== 'trezor' || status === 'disconnected' || status.includes('reconnect')
 
     // UI changes for this status only apply to hot signers
     const isLocked = !hwSigner && status === 'locked'
@@ -301,7 +247,7 @@ class SignerView extends React.Component<SignerViewProps, SignerViewState> {
       return Boolean(accounts[address.toLowerCase()])
     })
 
-    const zIndex = 1000 - (this.props.index || 0)
+    const zIndex = 1000 - (props.index || 0)
 
     return (
       <div className={signerClass + ' cardShow'} style={{ zIndex }}>
@@ -309,7 +255,7 @@ class SignerView extends React.Component<SignerViewProps, SignerViewState> {
           <div className='signerDetails'>
             <div className='signerIcon'>
               {((_) => {
-                const type = this.props.type
+                const type = props.type
                 if (type === 'ledger')
                   return <div className='signerIconWrap signerIconHardware'>{svg.ledger(20)}</div>
                 if (type === 'trezor')
@@ -321,20 +267,20 @@ class SignerView extends React.Component<SignerViewProps, SignerViewState> {
                 return <div className='signerIconWrap'>{svg.logo(20)}</div>
               })()}
             </div>
-            {/* <div className='signerType' style={this.props.inSetup ? {top: '21px'} : {top: '24px'}}>{this.props.model}</div> */}
+            {/* <div className='signerType' style={props.inSetup ? {top: '21px'} : {top: '24px'}}>{props.model}</div> */}
             <div className='signerName'>
-              {this.props.name}
+              {props.name}
               {/* <div className='signerNameUpdate'>
                 {svg.save(14)}
               </div> */}
             </div>
           </div>
-          <div className='signerExpand' onClick={() => this.expand(signer.id)}>
+          <div className='signerExpand' onClick={() => expand(signer.id)}>
             {svg.bars(14)}
           </div>
           {/* {this.status()} */}
         </div>
-        {this.statusText()}
+        {statusText()}
         {status === 'ok' || isLocked ? (
           <>
             <div className='signerAddedAccountTitle'>
@@ -363,7 +309,7 @@ class SignerView extends React.Component<SignerViewProps, SignerViewState> {
                   )
                 })
               ) : (
-                <div className='signerAccountsAdd' onClick={() => this.expand(signer.id)}>
+                <div className='signerAccountsAdd' onClick={() => expand(signer.id)}>
                   {'View available accounts'}
                 </div>
               )}
@@ -380,13 +326,13 @@ class SignerView extends React.Component<SignerViewProps, SignerViewState> {
     )
   }
 
-  renderExpanded() {
-    const { id, type, tag, index = 0 } = this.props
-    const { accounts, signer } = this.props
-    const { page, addressLimit } = this.state
+  function renderExpanded() {
+    const { id, type, tag, index = 0 } = props
+    const { accounts, signer } = props
+    const { page, addressLimit } = state
     const startIndex = page * addressLimit
 
-    const status = this.getStatus()
+    const status = getStatus()
 
     const hwSigner = isHardwareSigner(type)
     const loading = isLoading(status)
@@ -404,7 +350,7 @@ class SignerView extends React.Component<SignerViewProps, SignerViewState> {
     return (
       <div className={'expandedSigner cardShow'} style={{ zIndex }}>
         {<div style={{ height: '22px' }} />}
-        {this.statusText()}
+        {statusText()}
         {type === 'lattice' && status === 'pair' ? (
           <div className='signerLatticePair'>
             <div className='signerLatticePairTitle'>Please input your Lattice&apos;s pairing code</div>
@@ -412,14 +358,14 @@ class SignerView extends React.Component<SignerViewProps, SignerViewState> {
               <input
                 autoFocus
                 tabIndex={1}
-                value={this.state.latticePairCode}
-                onChange={(e) => this.setState({ latticePairCode: (e.target.value || '').toUpperCase() })}
+                value={state.latticePairCode}
+                onChange={(e) => setState({ latticePairCode: (e.target.value || '').toUpperCase() })}
                 onKeyPress={(e) => {
-                  if (e.key === 'Enter') this.pairToLattice()
+                  if (e.key === 'Enter') pairToLattice()
                 }}
               />
             </div>
-            <div onMouseDown={() => this.pairToLattice()} className='signerLatticePairSubmit'>
+            <div onMouseDown={() => pairToLattice()} className='signerLatticePairSubmit'>
               Pair
             </div>
           </div>
@@ -459,21 +405,21 @@ class SignerView extends React.Component<SignerViewProps, SignerViewState> {
                 })}
             </div>
             <div className='signerBottom'>
-              <div className='signerBottomPageBack' onMouseDown={() => this.nextPage(true)}>
+              <div className='signerBottomPageBack' onMouseDown={() => nextPage(true)}>
                 {svg.triangleLeft(20)}
               </div>
               <div className='signerBottomPages'>
                 {page + 1 + ' / ' + Math.ceil(signer.addresses.length / addressLimit)}
               </div>
-              <div className='signerBottomPageNext' onMouseDown={() => this.nextPage()}>
+              <div className='signerBottomPageNext' onMouseDown={() => nextPage()}>
                 {svg.triangleLeft(20)}
               </div>
             </div>
           </>
         ) : type === 'trezor' && (status === 'need pin' || status === 'enter passphrase') ? (
           <div className='signerInterface'>
-            {this.renderTrezorPin(this.props.type === 'trezor' && status === 'need pin')}
-            {this.renderTrezorPhrase(this.props.type === 'trezor' && status === 'enter passphrase')}
+            {renderTrezorPin(props.type === 'trezor' && status === 'need pin')}
+            {renderTrezorPhrase(props.type === 'trezor' && status === 'enter passphrase')}
           </div>
         ) : loading ? (
           <div className='signerLoading'>
@@ -503,13 +449,11 @@ class SignerView extends React.Component<SignerViewProps, SignerViewState> {
     )
   }
 
-  override render() {
-    const { expanded } = this.props
-    if (expanded) {
-      return this.renderExpanded()
-    } else {
-      return this.renderPreview()
-    }
+  const { expanded } = props
+  if (expanded) {
+    return renderExpanded()
+  } else {
+    return renderPreview()
   }
 }
 

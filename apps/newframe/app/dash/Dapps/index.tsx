@@ -1,4 +1,4 @@
-import React, { createRef } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import link from '../../../resources/link'
 import { isNetworkConnected, isNetworkEnabled } from '../../../resources/utils/chains'
@@ -34,99 +34,64 @@ function getOriginsForChain(chain: any, origins: any) {
   }
 }
 
-class Indicator extends React.Component<any, any> {
-  constructor(props: any) {
-    super(props)
+function Indicator({ connected }: any) {
+  const [active, setActive] = useState(false)
 
-    this.state = {
-      active: false
+  useEffect(() => {
+    const activate = setTimeout(() => setActive(true), 20)
+    const deactivate = setTimeout(() => setActive(false), 200)
+    return () => {
+      clearTimeout(activate)
+      clearTimeout(deactivate)
     }
+  }, [])
 
-    setTimeout(() => {
-      this.setState({ active: true })
-    }, 20)
-
-    setTimeout(() => {
-      this.setState({ active: false })
-    }, 200)
-  }
-
-  override render() {
-    if (this.props.connected) {
-      return (
-        <div
-          className={
-            this.state.active ? 'sliceOriginIndicator sliceOriginIndicatorActive' : 'sliceOriginIndicator'
-          }
-        />
-      )
-    }
-
-    return null
-  }
-}
-
-class OriginModule extends React.Component<any, any> {
-  ref: any
-  requestUpdates: any
-
-  constructor(props: any, context?: any) {
-    super(props, context)
-
-    this.state = {
-      expanded: false,
-      averageRequests: '0.0'
-    }
-
-    this.ref = createRef()
-  }
-
-  override componentDidMount() {
-    this.requestUpdates = setInterval(() => {
-      if (this.props.connected) {
-        this.updateRequestRate()
-      }
-    }, 1000)
-  }
-
-  override componentWillUnmount() {
-    clearInterval(this.requestUpdates)
-  }
-
-  updateRequestRate() {
-    const { origin } = this.props
-    const now = new Date().getTime()
-    const sessionLength = now - origin.session.startedAt
-    const sessionLengthSeconds = sessionLength / Math.min(sessionLength, 1000)
-    this.setState({ averageRequests: (origin.session.requests / sessionLengthSeconds).toFixed(2) })
-  }
-
-  override render() {
-    const { origin, connected } = this.props
-
+  if (connected) {
     return (
-      <div>
-        <div
-          className='sliceOrigin'
-          onClick={() => {
-            void link.executeCommand({
-              type: 'dash.navigate',
-              view: 'dapps',
-              data: { dappDetails: origin.id }
-            })
-          }}
-        >
-          <Indicator key={origin.session.lastUpdatedAt} connected={connected} />
-          <div className='sliceOriginTitle'>{origin.name}</div>
-          <div className='sliceOriginReqs'>
-            <div className='sliceOriginReqsNumber'>{this.state.averageRequests}</div>
-            <div className='sliceOriginReqsLabel'>{'reqs/min'}</div>
-          </div>
-        </div>
-        {this.state.expanded ? <div>{'origin quick menu'}</div> : null}
-      </div>
+      <div className={active ? 'sliceOriginIndicator sliceOriginIndicatorActive' : 'sliceOriginIndicator'} />
     )
   }
+
+  return null
+}
+
+function OriginModule({ origin, connected }: any) {
+  const [averageRequests, setAverageRequests] = useState('0.0')
+
+  useEffect(() => {
+    const updateRequestRate = () => {
+      if (connected) {
+        const now = new Date().getTime()
+        const sessionLength = now - origin.session.startedAt
+        const sessionLengthSeconds = sessionLength / Math.min(sessionLength, 1000)
+        setAverageRequests((origin.session.requests / sessionLengthSeconds).toFixed(2))
+      }
+    }
+    const requestUpdates = setInterval(updateRequestRate, 1000)
+    return () => clearInterval(requestUpdates)
+  }, [connected, origin])
+
+  return (
+    <div>
+      <div
+        className='sliceOrigin'
+        onClick={() => {
+          void link.executeCommand({
+            type: 'dash.navigate',
+            view: 'dapps',
+            data: { dappDetails: origin.id }
+          })
+        }}
+      >
+        <Indicator key={origin.session.lastUpdatedAt} connected={connected} />
+        <div className='sliceOriginTitle'>{origin.name}</div>
+        <div className='sliceOriginReqs'>
+          <div className='sliceOriginReqsNumber'>{averageRequests}</div>
+          <div className='sliceOriginReqsLabel'>{'reqs/min'}</div>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 const ChainOrigins = ({ chain: { name }, origins, primaryColor, icon }: any) => {

@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect, useRef } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 
 import link from '../../../resources/link'
@@ -39,46 +39,39 @@ const selectFooterState = (state: WalletRendererState): FooterSharedState => {
   }
 }
 
-export class Footer extends React.Component<FooterProps, any> {
-  footerRef = React.createRef<HTMLDivElement>()
-  observer?: ResizeObserver
+export function Footer({ shared, step }: FooterProps) {
+  const footerRef = useRef<HTMLDivElement>(null)
+  const allowInput = true
 
-  constructor(props: FooterProps, context?: any) {
-    super(props, context)
-    this.state = {
-      allowInput: true
-    }
-  }
-
-  updateFooterHeight = () => {
-    const height = Math.max(MINIMUM_FOOTER_HEIGHT, this.footerRef.current?.clientHeight || 0)
+  const updateFooterHeight = () => {
+    const height = Math.max(MINIMUM_FOOTER_HEIGHT, footerRef.current?.clientHeight || 0)
     document.documentElement.style.setProperty(FOOTER_HEIGHT_PROPERTY, `${height}px`)
   }
 
-  override componentDidMount() {
-    this.updateFooterHeight()
-    if (typeof ResizeObserver === 'undefined' || !this.footerRef.current) return
+  useEffect(() => {
+    updateFooterHeight()
+    const observer =
+      typeof ResizeObserver !== 'undefined' && footerRef.current
+        ? new ResizeObserver(updateFooterHeight)
+        : undefined
+    if (footerRef.current) observer?.observe(footerRef.current)
+    return () => {
+      observer?.disconnect()
+      document.documentElement.style.removeProperty(FOOTER_HEIGHT_PROPERTY)
+    }
+  }, [])
 
-    this.observer = new ResizeObserver(this.updateFooterHeight)
-    this.observer.observe(this.footerRef.current)
-  }
-
-  override componentWillUnmount() {
-    this.observer?.disconnect()
-    document.documentElement.style.removeProperty(FOOTER_HEIGHT_PROPERTY)
-  }
-
-  rejectRequest(req: { handlerId: string }) {
-    if (this.state.allowInput) {
+  const rejectRequest = (req: { handlerId: string }) => {
+    if (allowInput) {
       void link.executeCommand({ type: 'request.reject', requestId: req.handlerId })
     }
   }
-  renderFooter() {
-    const { account, crumb, req } = this.props.shared
+  const footer = (() => {
+    const { account, crumb, req } = shared
 
     if (crumb.view === 'requestView') {
       if (req && account) {
-        if (req.type === 'transaction' && this.props.step === 'confirm') {
+        if (req.type === 'transaction' && step === 'confirm') {
           return (
             <RequestCommand req={req} signingDelay={isHardwareSigner(account.lastSignerType) ? 0 : 1500} />
           )
@@ -87,9 +80,9 @@ export class Footer extends React.Component<FooterProps, any> {
             <div className='requestApprove'>
               <div
                 className='requestDecline'
-                style={{ pointerEvents: this.state.allowInput ? 'auto' : 'none' }}
+                style={{ pointerEvents: allowInput ? 'auto' : 'none' }}
                 onClick={() => {
-                  if (this.state.allowInput) {
+                  if (allowInput) {
                     void link.executeCommand({
                       type: 'request.access-resolve',
                       requestId: req.handlerId,
@@ -104,9 +97,9 @@ export class Footer extends React.Component<FooterProps, any> {
               </div>
               <div
                 className='requestSign'
-                style={{ pointerEvents: this.state.allowInput ? 'auto' : 'none' }}
+                style={{ pointerEvents: allowInput ? 'auto' : 'none' }}
                 onClick={() => {
-                  if (this.state.allowInput) {
+                  if (allowInput) {
                     void link.executeCommand({
                       type: 'request.access-resolve',
                       requestId: req.handlerId,
@@ -121,7 +114,7 @@ export class Footer extends React.Component<FooterProps, any> {
               </div>
             </div>
           )
-        } else if (isSignatureRequest(req) && this.props.step === 'confirm') {
+        } else if (isSignatureRequest(req) && step === 'confirm') {
           return (
             <RequestCommand req={req} signingDelay={isHardwareSigner(account.lastSignerType) ? 0 : 1500} />
           )
@@ -130,9 +123,9 @@ export class Footer extends React.Component<FooterProps, any> {
             <div className='requestApprove'>
               <div
                 className='requestDecline'
-                style={{ pointerEvents: this.state.allowInput ? 'auto' : 'none' }}
+                style={{ pointerEvents: allowInput ? 'auto' : 'none' }}
                 onClick={() => {
-                  if (this.state.allowInput) {
+                  if (allowInput) {
                     void link.executeCommand({
                       type: 'request.switch-chain-resolve',
                       requestId: req.handlerId,
@@ -147,9 +140,9 @@ export class Footer extends React.Component<FooterProps, any> {
               </div>
               <div
                 className='requestSign'
-                style={{ pointerEvents: this.state.allowInput ? 'auto' : 'none' }}
+                style={{ pointerEvents: allowInput ? 'auto' : 'none' }}
                 onClick={() => {
-                  if (this.state.allowInput) {
+                  if (allowInput) {
                     void link.executeCommand({
                       type: 'request.switch-chain-resolve',
                       requestId: req.handlerId,
@@ -167,9 +160,9 @@ export class Footer extends React.Component<FooterProps, any> {
             <div className='requestApprove'>
               <div
                 className='requestDecline'
-                style={{ pointerEvents: this.state.allowInput ? 'auto' : 'none' }}
+                style={{ pointerEvents: allowInput ? 'auto' : 'none' }}
                 onClick={() => {
-                  this.rejectRequest(req)
+                  rejectRequest(req)
                 }}
               >
                 <div className='requestDeclineButton _txButton _txButtonBad'>
@@ -178,9 +171,9 @@ export class Footer extends React.Component<FooterProps, any> {
               </div>
               <div
                 className='requestSign'
-                style={{ pointerEvents: this.state.allowInput ? 'auto' : 'none' }}
+                style={{ pointerEvents: allowInput ? 'auto' : 'none' }}
                 onClick={() => {
-                  if (this.state.allowInput) {
+                  if (allowInput) {
                     void link.executeCommand({
                       type: 'request.add-chain-review',
                       requestId: req.handlerId
@@ -199,9 +192,9 @@ export class Footer extends React.Component<FooterProps, any> {
             <div className='requestApprove'>
               <div
                 className='requestDecline'
-                style={{ pointerEvents: this.state.allowInput ? 'auto' : 'none' }}
+                style={{ pointerEvents: allowInput ? 'auto' : 'none' }}
                 onClick={() => {
-                  this.rejectRequest(req)
+                  rejectRequest(req)
                 }}
               >
                 <div className='requestDeclineButton _txButton _txButtonBad'>
@@ -210,9 +203,9 @@ export class Footer extends React.Component<FooterProps, any> {
               </div>
               <div
                 className='requestSign'
-                style={{ pointerEvents: this.state.allowInput ? 'auto' : 'none' }}
+                style={{ pointerEvents: allowInput ? 'auto' : 'none' }}
                 onClick={() => {
-                  if (this.state.allowInput) {
+                  if (allowInput) {
                     void link.executeCommand({
                       type: 'request.add-token-review',
                       requestId: req.handlerId
@@ -231,14 +224,13 @@ export class Footer extends React.Component<FooterProps, any> {
         }
       }
     }
-  }
-  override render() {
-    return (
-      <div ref={this.footerRef} className='footerModule'>
-        <div className='footerWrap'>{this.renderFooter()}</div>
-      </div>
-    )
-  }
+  })()
+
+  return (
+    <div ref={footerRef} className='footerModule'>
+      <div className='footerWrap'>{footer}</div>
+    </div>
+  )
 }
 
 export default function FooterContainer() {

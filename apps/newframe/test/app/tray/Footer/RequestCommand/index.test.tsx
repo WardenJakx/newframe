@@ -2,41 +2,44 @@ import { expect, it, jest } from 'bun:test'
 
 import { fireEvent, render, screen } from '../../../../componentSetup'
 import { linkMock as link } from '../../../../bun.mocks'
-import { RequestCommand } from '../../../../../app/tray/Footer/RequestCommand'
+import {
+  RequestCommand,
+  approveRequest,
+  checkSignerCompatibility,
+  declineRequest,
+  runWhenAppUnlocked
+} from '../../../../../app/tray/Footer/RequestCommand'
 import TxApproval from '../../../../../app/tray/Footer/RequestCommand/TxApproval'
 
-const createCommand = (appLocked: boolean, req: Record<string, unknown> = {}) => {
-  const command = new RequestCommand({
+const createProps = (appLocked: boolean, req: Record<string, unknown> = {}) => {
+  return {
     notify: jest.fn(),
     req,
     shared: {
       appLocked,
       chain: {},
-      chainMeta: {},
+      chainMeta: { nativeCurrency: {} },
       explorerWarningMuted: false,
       gasFeeWarningMuted: false,
       signerCompatibilityWarningMuted: false,
-      step: 'confirm'
+      step: 'confirm' as const
     }
-  })
-  return command
+  }
 }
 
 it('uses synchronized lock state instead of querying Electron before signing', () => {
   const next = jest.fn()
 
-  createCommand(true).ensureAppUnlocked(next)
+  runWhenAppUnlocked(true, next)
   expect(next).not.toHaveBeenCalled()
 
-  createCommand(false).ensureAppUnlocked(next)
+  runWhenAppUnlocked(false, next)
   expect(next).toHaveBeenCalledTimes(1)
 })
 
 it('approves and rejects requests using canonical IDs', () => {
-  const command = createCommand(false)
-
-  command.approve('request-1')
-  command.decline({ handlerId: 'request-2' })
+  approveRequest('request-1')
+  declineRequest({ handlerId: 'request-2' })
 
   expect(link.executeCommand).toHaveBeenNthCalledWith(1, {
     type: 'request.approve',
@@ -50,12 +53,12 @@ it('approves and rejects requests using canonical IDs', () => {
 
 it('preserves signer warnings around the typed compatibility query', async () => {
   const req = { handlerId: 'request-1' }
-  const command = createCommand(false, req)
+  const props = createProps(false, req)
   const next = jest.fn()
 
   link.executeQuery.mockResolvedValueOnce({ ok: false, error: 'no_signer', message: 'No signer' })
-  await command.withSignerCompatibility(req, next)
-  expect(command.props.notify).toHaveBeenCalledWith('noSignerWarning', { req })
+  await checkSignerCompatibility(req, props.notify, jest.fn(), next)
+  expect(props.notify).toHaveBeenCalledWith('noSignerWarning', { req })
   expect(next).not.toHaveBeenCalled()
 
   link.executeQuery.mockResolvedValueOnce({
@@ -64,7 +67,7 @@ it('preserves signer warnings around the typed compatibility query', async () =>
     message: 'Reconnect signer'
   })
   link.executeCommand.mockResolvedValueOnce({ ok: true })
-  await command.withSignerCompatibility(req, next)
+  await checkSignerCompatibility(req, props.notify, jest.fn(), next)
   expect(link.executeCommand).toHaveBeenCalledWith({
     type: 'request.signer-recovery-open',
     requestId: req.handlerId
@@ -72,7 +75,7 @@ it('preserves signer warnings around the typed compatibility query', async () =>
 
   const compatibility = { signer: 'ledger', tx: 'london', compatible: false }
   link.executeQuery.mockResolvedValueOnce({ ok: true, compatibility })
-  await command.withSignerCompatibility(req, next)
+  await checkSignerCompatibility(req, props.notify, jest.fn(), next)
   expect(next).toHaveBeenCalledWith(compatibility)
   expect(link.executeQuery).toHaveBeenLastCalledWith({
     type: 'request.signer-compatibility',
@@ -82,14 +85,14 @@ it('preserves signer warnings around the typed compatibility query', async () =>
 
 it('uses renderer-generated idempotency keys for transaction replacement', () => {
   const req = {
+    type: 'transaction',
     handlerId: 'request-1',
     status: 'sent',
     notice: 'Submitted',
     data: { chainId: '0x1' },
     tx: { hash: `0x${'1'.repeat(64)}` }
   }
-  const command = createCommand(false, req)
-  render(<>{command.sentStatus()}</>)
+  render(<RequestCommand {...createProps(false, req)} />)
 
   fireEvent.click(screen.getByLabelText('Cancel transaction'))
   fireEvent.click(screen.getByLabelText('Speed up transaction'))
@@ -109,9 +112,14 @@ it('uses renderer-generated idempotency keys for transaction replacement', () =>
 })
 
 it('dismisses fee notices through the typed transaction command', () => {
-  const req = { handlerId: 'request-1', automaticFeeUpdateNotice: {} }
-  const command = createCommand(false, req)
-  render(<>{command.renderPopBar()}</>)
+  const req = {
+    type: 'transaction',
+    handlerId: 'request-1',
+    automaticFeeUpdateNotice: {},
+    approvals: [],
+    data: { chainId: '0x1', gasLimit: '0x0', gasPrice: '0x0' }
+  }
+  render(<RequestCommand {...createProps(false, req)} />)
 
   fireEvent.click(screen.getByText('Ok'))
 

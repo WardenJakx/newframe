@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 
 import TxApproval from './TxApproval'
@@ -38,82 +38,98 @@ interface RequestCommandProps {
 const EMPTY_CHAIN = {}
 const EMPTY_CHAIN_META = { nativeCurrency: {} }
 
-export class RequestCommand extends React.Component<RequestCommandProps, any> {
-  private allowInputTimer?: ReturnType<typeof setTimeout>
+export const approveRequest = (requestId: string) =>
+  void link.executeCommand({ type: 'request.approve', requestId })
 
-  constructor(props: RequestCommandProps, context?: any) {
-    super(props, context)
-    this.state = {
-      allowInput: false,
-      dataView: false,
-      signerLocked: false
+export const declineRequest = (req: RequestReference) =>
+  void link.executeCommand({ type: 'request.reject', requestId: req.handlerId })
+
+export const runWhenAppUnlocked = (appLocked: boolean, next: () => void) => {
+  if (!appLocked) next()
+}
+
+export async function checkSignerCompatibility(
+  req: RequestReference,
+  notify: TrayNotifier,
+  onSignerUnavailable: () => void,
+  next: (compatibility: SignerCompatibility) => void
+) {
+  const result = await link.executeQuery({
+    type: 'request.signer-compatibility',
+    requestId: req.handlerId
+  })
+
+  if (!result.ok) {
+    if (result.error === 'no_signer') notify('noSignerWarning', { req })
+    else if (result.error === 'signer_unavailable') {
+      const recovery = await link.executeCommand({
+        type: 'request.signer-recovery-open',
+        requestId: req.handlerId
+      })
+      if (!recovery.ok) onSignerUnavailable()
     }
+    return
   }
 
-  override componentDidMount() {
-    this.allowInputTimer = setTimeout(() => {
-      this.setState({ allowInput: true })
-    }, this.props.signingDelay || 0)
+  next(result.compatibility)
+}
+
+export function RequestCommand(props: RequestCommandProps) {
+  const [state, setCommandState] = useState({
+    allowInput: false,
+    dataView: false,
+    signerLocked: false,
+    showHashDetails: false,
+    txHashCopied: false
+  })
+  const setState = (update: Record<string, unknown>) =>
+    setCommandState((current) => ({ ...current, ...update }))
+
+  useEffect(() => {
+    const allowInputTimer = setTimeout(() => setState({ allowInput: true }), props.signingDelay || 0)
+    return () => clearTimeout(allowInputTimer)
+  }, [props.signingDelay])
+
+  function approve(requestId: string) {
+    approveRequest(requestId)
   }
 
-  override componentWillUnmount() {
-    if (this.allowInputTimer !== undefined) clearTimeout(this.allowInputTimer)
+  function decline(req: RequestReference) {
+    declineRequest(req)
   }
 
-  approve(requestId: string) {
-    void link.executeCommand({ type: 'request.approve', requestId })
+  function ensureAppUnlocked(next: () => void) {
+    runWhenAppUnlocked(props.shared.appLocked, next)
   }
 
-  decline(req: RequestReference) {
-    void link.executeCommand({ type: 'request.reject', requestId: req.handlerId })
-  }
-
-  ensureAppUnlocked(next: () => void) {
-    if (!this.props.shared.appLocked) next()
-  }
-
-  shakeSignerUnavailable() {
-    this.setState({ signerLocked: true })
+  function shakeSignerUnavailable() {
+    setState({ signerLocked: true })
     setTimeout(() => {
-      this.setState({ signerLocked: false })
+      setState({ signerLocked: false })
     }, 3000)
   }
 
-  async withSignerCompatibility(req: RequestReference, next: (compatibility: SignerCompatibility) => void) {
-    const result = await link.executeQuery({
-      type: 'request.signer-compatibility',
-      requestId: req.handlerId
-    })
-
-    if (!result.ok) {
-      if (result.error === 'no_signer') this.props.notify('noSignerWarning', { req })
-      else if (result.error === 'signer_unavailable') {
-        const recovery = await link.executeCommand({
-          type: 'request.signer-recovery-open',
-          requestId: req.handlerId
-        })
-        if (!recovery.ok) this.shakeSignerUnavailable()
-      }
-      return
-    }
-
-    next(result.compatibility)
+  async function withSignerCompatibility(
+    req: RequestReference,
+    next: (compatibility: SignerCompatibility) => void
+  ) {
+    await checkSignerCompatibility(req, props.notify, shakeSignerUnavailable, next)
   }
 
-  toDisplayUSD(usd: any) {
+  function toDisplayUSD(usd: any) {
     // round up to 2 decimal places
     return (Math.ceil(usd * 100) / 100).toFixed(2)
   }
 
-  sentStatus() {
-    const { req } = this.props
+  function sentStatus() {
+    const { req } = props
     const { notice, status } = req
     const chain = {
       type: 'ethereum',
       id: parseInt(req.data.chainId, 'hex' as any)
     }
 
-    const { explorer } = this.props.shared.chain
+    const { explorer } = props.shared.chain
 
     const displayNotice = (notice || '').toLowerCase()
     let displayStatus = (req.status || 'pending').toLowerCase()
@@ -131,29 +147,29 @@ export class RequestCommand extends React.Component<RequestCommandProps, any> {
           <div
             className='txActionButtons'
             onMouseLeave={() => {
-              this.setState({ showHashDetails: false })
+              setState({ showHashDetails: false })
             }}
           >
             {req && req.tx && req.tx.hash ? (
-              this.state.txHashCopied ? (
+              state.txHashCopied ? (
                 <div className='txActionButtonsRow'>
                   <div className={'txActionText'}>Transaction Hash Copied</div>
                 </div>
-              ) : this.state.showHashDetails || status === 'confirming' || status === 'confirmed' ? (
+              ) : state.showHashDetails || status === 'confirming' || status === 'confirmed' ? (
                 <div className='txActionButtonsRow'>
                   <div
                     className={`txActionButton${explorer ? '' : ' txActionButtonDisabled'}`}
                     aria-label='Open transaction explorer'
                     onClick={() => {
                       if (explorer && req && req.tx && req.tx.hash) {
-                        if (this.props.shared.explorerWarningMuted) {
+                        if (props.shared.explorerWarningMuted) {
                           void link.executeCommand({
                             type: 'explorer.open',
                             chainId: chain.id,
                             transactionHash: req.tx.hash
                           })
                         } else {
-                          this.props.notify('openExplorer', { hash: req.tx.hash, chain })
+                          props.notify('openExplorer', { hash: req.tx.hash, chain })
                         }
                       }
                     }}
@@ -166,9 +182,9 @@ export class RequestCommand extends React.Component<RequestCommandProps, any> {
                     onClick={() => {
                       if (req && req.tx && req.tx.hash) {
                         void link.executeCommand({ type: 'clipboard.write', text: req.tx.hash })
-                        this.setState({ txHashCopied: true, showHashDetails: false })
+                        setState({ txHashCopied: true, showHashDetails: false })
                         setTimeout(() => {
-                          this.setState({ txHashCopied: false })
+                          setState({ txHashCopied: false })
                         }, 3000)
                       }
                     }}
@@ -196,7 +212,7 @@ export class RequestCommand extends React.Component<RequestCommandProps, any> {
                     className={'txActionButton'}
                     aria-label='View transaction details'
                     onClick={() => {
-                      this.setState({ showHashDetails: true })
+                      setState({ showHashDetails: true })
                     }}
                   >
                     View Details
@@ -221,7 +237,7 @@ export class RequestCommand extends React.Component<RequestCommandProps, any> {
           </div>
         </div>
         {isCancelableRequest(status) && (
-          <div className='cancelRequest' onClick={() => this.decline(req)}>
+          <div className='cancelRequest' onClick={() => decline(req)}>
             Cancel
           </div>
         )}
@@ -229,17 +245,17 @@ export class RequestCommand extends React.Component<RequestCommandProps, any> {
     )
   }
 
-  signOrDecline() {
-    const { req } = this.props
+  function signOrDecline() {
+    const { req } = props
     const chain = {
       type: 'ethereum',
       id: parseInt(req.data.chainId, 'hex' as any)
     }
-    const isTestnet = this.props.shared.chain.isTestnet
+    const isTestnet = props.shared.chain.isTestnet
     const {
       nativeCurrency,
       nativeCurrency: { symbol: currentSymbol = '?' }
-    } = this.props.shared.chainMeta
+    } = props.shared.chainMeta
     const nativeUSD =
       nativeCurrency && nativeCurrency.usd && !isTestnet ? nativeCurrency.usd.price : undefined
     const hasNativeUSD = typeof nativeUSD === 'number'
@@ -265,7 +281,7 @@ export class RequestCommand extends React.Component<RequestCommandProps, any> {
             aria-label='Decline transaction'
             role='button'
             onClick={() => {
-              if (this.state.allowInput) this.decline(req)
+              if (state.allowInput) decline(req)
             }}
           >
             <div className='requestDeclineButton _txButton _txButtonBad'>
@@ -273,28 +289,28 @@ export class RequestCommand extends React.Component<RequestCommandProps, any> {
             </div>
           </div>
           <div
-            className={this.state.signerLocked ? 'requestSign headShake' : 'requestSign'}
+            className={state.signerLocked ? 'requestSign headShake' : 'requestSign'}
             aria-label='Sign transaction'
             role='button'
             onClick={() => {
-              if (this.state.allowInput) {
-                this.ensureAppUnlocked(
+              if (state.allowInput) {
+                ensureAppUnlocked(
                   () =>
-                    void this.withSignerCompatibility(req, (compatibility) => {
-                      if (!compatibility.compatible && !this.props.shared.signerCompatibilityWarningMuted) {
-                        this.props.notify('signerCompatibilityWarning', { req, compatibility, chain })
+                    void withSignerCompatibility(req, (compatibility) => {
+                      if (!compatibility.compatible && !props.shared.signerCompatibilityWarningMuted) {
+                        props.notify('signerCompatibilityWarning', { req, compatibility, chain })
                       } else if (
                         hasNativeUSD &&
-                        (maxFeeUSD > FEE_WARNING_THRESHOLD_USD || this.toDisplayUSD(maxFeeUSD) === '0.00') &&
-                        !this.props.shared.gasFeeWarningMuted
+                        (maxFeeUSD > FEE_WARNING_THRESHOLD_USD || toDisplayUSD(maxFeeUSD) === '0.00') &&
+                        !props.shared.gasFeeWarningMuted
                       ) {
-                        this.props.notify('gasFeeWarning', {
+                        props.notify('gasFeeWarning', {
                           req,
-                          feeUSD: this.toDisplayUSD(maxFeeUSD),
+                          feeUSD: toDisplayUSD(maxFeeUSD),
                           currentSymbol
                         })
                       } else {
-                        this.approve(req.handlerId)
+                        approve(req.handlerId)
                       }
                     })
                 )
@@ -302,7 +318,7 @@ export class RequestCommand extends React.Component<RequestCommandProps, any> {
             }}
           >
             <div className='requestSignButton _txButton'>
-              {this.state.signerLocked ? (
+              {state.signerLocked ? (
                 <span style={{ display: 'flex' }}>
                   <span>{svg.sign(19)}</span>
                   <span>{svg.lock(13)}</span>
@@ -317,8 +333,8 @@ export class RequestCommand extends React.Component<RequestCommandProps, any> {
     )
   }
 
-  renderPopBar() {
-    const { req } = this.props
+  function renderPopBar() {
+    const { req } = props
     return (
       <div
         className={
@@ -345,8 +361,8 @@ export class RequestCommand extends React.Component<RequestCommandProps, any> {
     )
   }
 
-  renderTxCommand() {
-    const { req } = this.props
+  function renderTxCommand() {
+    const { req } = props
     const { notice, status, mode } = req
 
     const showWarning = !status && mode !== 'monitor'
@@ -356,7 +372,7 @@ export class RequestCommand extends React.Component<RequestCommandProps, any> {
       return (
         <div className='requestNotice requestNoticeApproval'>
           <div className='requestNoticeInner requestNoticeInnerApproval'>
-            <TxApproval req={this.props.req} approval={requiredApproval} />
+            <TxApproval req={props.req} approval={requiredApproval} />
           </div>
         </div>
       )
@@ -366,16 +382,16 @@ export class RequestCommand extends React.Component<RequestCommandProps, any> {
           className={notice ? 'requestNotice requestNoticeSubmitted' : 'requestNotice requestNoticeSigning'}
         >
           <div className='requestNoticeInner'>
-            {!notice && this.renderPopBar()}
-            {notice ? this.sentStatus() : this.signOrDecline()}
+            {!notice && renderPopBar()}
+            {notice ? sentStatus() : signOrDecline()}
           </div>
         </div>
       )
     }
   }
 
-  renderSignDataCommand() {
-    const { req } = this.props
+  function renderSignDataCommand() {
+    const { req } = props
     const { status, notice } = req
 
     return (
@@ -390,7 +406,7 @@ export class RequestCommand extends React.Component<RequestCommandProps, any> {
                       <div className='loader' />
                     </div>
                     <div className='requestNoticeInnerText'>See Signer</div>
-                    <div className='cancelRequest' onClick={() => this.decline(req)}>
+                    <div className='cancelRequest' onClick={() => decline(req)}>
                       Cancel
                     </div>
                   </div>
@@ -424,9 +440,9 @@ export class RequestCommand extends React.Component<RequestCommandProps, any> {
           <div className='requestApprove'>
             <div
               className='requestDecline'
-              style={{ pointerEvents: this.state.allowInput ? 'auto' : 'none' }}
+              style={{ pointerEvents: state.allowInput ? 'auto' : 'none' }}
               onClick={() => {
-                if (this.state.allowInput) this.decline(req)
+                if (state.allowInput) decline(req)
               }}
             >
               <div className='requestDeclineButton _txButton _txButtonBad'>
@@ -435,13 +451,13 @@ export class RequestCommand extends React.Component<RequestCommandProps, any> {
             </div>
             <div
               className='requestSign'
-              style={{ pointerEvents: this.state.allowInput ? 'auto' : 'none' }}
+              style={{ pointerEvents: state.allowInput ? 'auto' : 'none' }}
               onClick={() => {
-                if (this.state.allowInput) {
-                  this.ensureAppUnlocked(
+                if (state.allowInput) {
+                  ensureAppUnlocked(
                     () =>
-                      void this.withSignerCompatibility(req, () => {
-                        this.approve(req.handlerId)
+                      void withSignerCompatibility(req, () => {
+                        approve(req.handlerId)
                       })
                   )
                 }
@@ -457,16 +473,14 @@ export class RequestCommand extends React.Component<RequestCommandProps, any> {
     )
   }
 
-  override render() {
-    const { req } = this.props
-    if (!req) return null
-    if (req.type === 'transaction' && this.props.shared.step === 'confirm') {
-      return this.renderTxCommand()
-    } else if (isSignatureRequest(req)) {
-      return this.renderSignDataCommand()
-    } else {
-      return null
-    }
+  const { req } = props
+  if (!req) return null
+  if (req.type === 'transaction' && props.shared.step === 'confirm') {
+    return renderTxCommand()
+  } else if (isSignatureRequest(req)) {
+    return renderSignDataCommand()
+  } else {
+    return null
   }
 }
 

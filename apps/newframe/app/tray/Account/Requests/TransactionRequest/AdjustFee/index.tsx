@@ -1,4 +1,4 @@
-import React, { Component, useState } from 'react'
+import React, { useRef, useState } from 'react'
 
 import link from '../../../../../../resources/link'
 import { usesBaseFee } from '../../../../../../resources/domain/transaction'
@@ -180,125 +180,116 @@ const PriorityFeeInput = ({ initialValue, onReceiveValue, tabIndex, limiter }: a
   </div>
 )
 
-export default class TxFeeOverlay extends Component<any, any> {
-  moduleRef: React.RefObject<HTMLDivElement | null>
-
-  constructor(props: any, context?: any) {
-    super(props, context)
-    const {
-      req: {
-        data: { gasLimit, maxPriorityFeePerGas, maxFeePerGas, gasPrice }
-      }
-    } = props
-    this.moduleRef = React.createRef()
-    const maxFee = toBigInt(maxFeePerGas) ?? 0n
-    const priorityFee = toBigInt(maxPriorityFeePerGas) ?? 0n
-    this.state = {
-      gasLimit: toBigInt(gasLimit) ?? 0n,
-      gasPrice: toBigInt(gasPrice) ?? 0n,
-      baseFee: maxFee - priorityFee,
-      priorityFee
+export default function TxFeeOverlay(props: any) {
+  const {
+    req: {
+      data: { gasLimit: initialGasLimit, maxPriorityFeePerGas, maxFeePerGas, gasPrice: initialGasPrice }
     }
+  } = props
+  const moduleRef = useRef<HTMLDivElement>(null)
+  const maxFee = toBigInt(maxFeePerGas) ?? 0n
+  const initialPriorityFee = toBigInt(maxPriorityFeePerGas) ?? 0n
+  const [state, setState] = useState({
+    gasLimit: toBigInt(initialGasLimit) ?? 0n,
+    gasPrice: toBigInt(initialGasPrice) ?? 0n,
+    baseFee: maxFee - initialPriorityFee,
+    priorityFee: initialPriorityFee
+  })
+
+  const {
+    req: { data, handlerId }
+  } = props
+  const { baseFee, gasLimit, priorityFee, gasPrice } = state
+  const maxTotalFee = BigInt(getMaxTotalFee(data))
+
+  const displayBaseFee = toDisplayFromWei(baseFee)
+  const baseFeeLimiter = (rawBaseFee: any) => {
+    const { priorityFee, gasLimit } = state
+    // if total fee > maximum allowed fee we recalculate the base fee based on the maximum allowed
+    if (totalFee({ baseFee: rawBaseFee, priorityFee, gasLimit }) > maxTotalFee) {
+      rawBaseFee = maxTotalFee / gasLimit - priorityFee
+    }
+
+    return limitRange(rawBaseFee)
   }
 
-  override render() {
-    const {
-      req: { data, handlerId }
-    } = this.props
-    const { baseFee, gasLimit, priorityFee, gasPrice } = this.state
-    const maxTotalFee = BigInt(getMaxTotalFee(data))
-
-    const displayBaseFee = toDisplayFromWei(baseFee)
-    const baseFeeLimiter = (rawBaseFee: any) => {
-      const { priorityFee, gasLimit } = this.state
-      // if total fee > maximum allowed fee we recalculate the base fee based on the maximum allowed
-      if (totalFee({ baseFee: rawBaseFee, priorityFee, gasLimit }) > maxTotalFee) {
-        rawBaseFee = maxTotalFee / gasLimit - priorityFee
-      }
-
-      return limitRange(rawBaseFee)
+  const displayPriorityFee = toDisplayFromWei(priorityFee)
+  const priorityFeeLimiter = (rawPriorityFee: any) => {
+    const { baseFee, gasLimit } = state
+    // if total fee > maximum allowed fee we recalculate the priority fee based on the maximum allowed
+    if (totalFee({ baseFee, priorityFee: rawPriorityFee, gasLimit }) > maxTotalFee) {
+      rawPriorityFee = maxTotalFee / gasLimit - baseFee
     }
 
-    const displayPriorityFee = toDisplayFromWei(priorityFee)
-    const priorityFeeLimiter = (rawPriorityFee: any) => {
-      const { baseFee, gasLimit } = this.state
-      // if total fee > maximum allowed fee we recalculate the priority fee based on the maximum allowed
-      if (totalFee({ baseFee, priorityFee: rawPriorityFee, gasLimit }) > maxTotalFee) {
-        rawPriorityFee = maxTotalFee / gasLimit - baseFee
-      }
+    return limitRange(rawPriorityFee)
+  }
 
-      return limitRange(rawPriorityFee)
+  const displayGasPrice = toDisplayFromWei(gasPrice)
+  const gasPriceLimiter = (rawGasPrice: any) => {
+    const { gasLimit } = state
+    // if total fee > maximum allowed fee we recalculate the gas price based on the maximum allowed
+    if (totalFee({ gasPrice: rawGasPrice, gasLimit }) > maxTotalFee) {
+      rawGasPrice = maxTotalFee / gasLimit
     }
 
-    const displayGasPrice = toDisplayFromWei(gasPrice)
-    const gasPriceLimiter = (rawGasPrice: any) => {
-      const { gasLimit } = this.state
-      // if total fee > maximum allowed fee we recalculate the gas price based on the maximum allowed
-      if (totalFee({ gasPrice: rawGasPrice, gasLimit }) > maxTotalFee) {
-        rawGasPrice = maxTotalFee / gasLimit
-      }
+    return limitRange(rawGasPrice)
+  }
 
-      return limitRange(rawGasPrice)
+  const displayGasLimit = gasLimit.toString()
+  const gasLimitLimiter = (rawGasLimit: any) => {
+    const { baseFee, priorityFee, gasPrice } = state
+    // if total fee > maximum allowed fee we recalculate the gas limit based on the maximum allowed
+    if (gasPrice && totalFee({ gasPrice, gasLimit: rawGasLimit }) > maxTotalFee) {
+      rawGasLimit = maxTotalFee / gasPrice
+    } else if (totalFee({ baseFee, priorityFee, gasLimit: rawGasLimit }) > maxTotalFee) {
+      rawGasLimit = maxTotalFee / (baseFee + priorityFee)
     }
 
-    const displayGasLimit = gasLimit.toString()
-    const gasLimitLimiter = (rawGasLimit: any) => {
-      const { baseFee, priorityFee, gasPrice } = this.state
-      // if total fee > maximum allowed fee we recalculate the gas limit based on the maximum allowed
-      if (gasPrice && totalFee({ gasPrice, gasLimit: rawGasLimit }) > maxTotalFee) {
-        rawGasLimit = maxTotalFee / gasPrice
-      } else if (totalFee({ baseFee, priorityFee, gasLimit: rawGasLimit }) > maxTotalFee) {
-        rawGasLimit = maxTotalFee / (baseFee + priorityFee)
-      }
+    return limitGasUnits(rawGasLimit)
+  }
 
-      return limitGasUnits(rawGasLimit)
-    }
+  const receiveValueHandler = (value: bigint, name: FeeField) => {
+    setState((current) => ({ ...current, [name]: value }))
 
-    const receiveValueHandler = (value: bigint, name: FeeField) => {
-      this.setState({
-        [name]: value
-      })
+    void link.executeCommand({
+      type: 'transaction.fee-update',
+      requestId: handlerId,
+      field: name,
+      value: bnToHex(value)
+    })
+  }
 
-      void link.executeCommand({
-        type: 'transaction.fee-update',
-        requestId: handlerId,
-        field: name,
-        value: bnToHex(value)
-      })
-    }
-
-    return (
-      <div className='txAdjustFee cardShow' ref={this.moduleRef}>
-        {usesBaseFee(data) ? (
-          <>
-            <BaseFeeInput
-              initialValue={displayBaseFee}
-              onReceiveValue={(value: any) => receiveValueHandler(value, 'baseFee')}
-              limiter={baseFeeLimiter}
-              tabIndex={0}
-            />
-            <PriorityFeeInput
-              initialValue={displayPriorityFee}
-              onReceiveValue={(value: any) => receiveValueHandler(value, 'priorityFee')}
-              limiter={priorityFeeLimiter}
-              tabIndex={1}
-            />
-          </>
-        ) : (
-          <GasPriceInput
-            initialValue={displayGasPrice}
-            onReceiveValue={(value: any) => receiveValueHandler(value, 'gasPrice')}
-            limiter={gasPriceLimiter}
+  return (
+    <div className='txAdjustFee cardShow' ref={moduleRef}>
+      {usesBaseFee(data) ? (
+        <>
+          <BaseFeeInput
+            initialValue={displayBaseFee}
+            onReceiveValue={(value: any) => receiveValueHandler(value, 'baseFee')}
+            limiter={baseFeeLimiter}
             tabIndex={0}
           />
-        )}
-        <GasLimitInput
-          initialValue={displayGasLimit}
-          onReceiveValue={(value: any) => receiveValueHandler(value, 'gasLimit')}
-          limiter={gasLimitLimiter}
-          tabIndex={2}
+          <PriorityFeeInput
+            initialValue={displayPriorityFee}
+            onReceiveValue={(value: any) => receiveValueHandler(value, 'priorityFee')}
+            limiter={priorityFeeLimiter}
+            tabIndex={1}
+          />
+        </>
+      ) : (
+        <GasPriceInput
+          initialValue={displayGasPrice}
+          onReceiveValue={(value: any) => receiveValueHandler(value, 'gasPrice')}
+          limiter={gasPriceLimiter}
+          tabIndex={0}
         />
-      </div>
-    )
-  }
+      )}
+      <GasLimitInput
+        initialValue={displayGasLimit}
+        onReceiveValue={(value: any) => receiveValueHandler(value, 'gasLimit')}
+        limiter={gasLimitLimiter}
+        tabIndex={2}
+      />
+    </div>
+  )
 }

@@ -95,103 +95,43 @@ const SimpleTxJSON = ({ json, req }: any) => {
   )
 }
 
-export default class ViewData extends React.Component<any, any> {
-  constructor(props: any, context?: any) {
-    super(props, context)
-    this.state = {
-      copiedData: false
-    }
-  }
-
-  copyData(data: string) {
-    if (data) {
-      void link.executeCommand({ type: 'clipboard.write', text: data })
-      this.setState({ copiedData: true })
-      setTimeout((_?: any) => this.setState({ copiedData: false }), 1000)
-    }
-  }
-
-  renderDecodedData() {
-    const { req } = this.props
-    return req.decodedData ? (
-      <div className='decodedDataContract'>
-        <div className='decodedDataContractArgHeader'>Contract Method</div>
-        <div className='dataUnverified'>decoded calldata</div>
-        <div className='dataSource'>{'decode source: ' + req.decodedData.source}</div>
-        <div className='decodedDataContractTarget'>
-          <div className='decodedDataSync decodedDataSyncLeft'>{svg.sync(16)}</div>
-          <div className='decodedDataSync decodedDataSyncRight'>{svg.sync(16)}</div>
-          <div className='decodedDataContractName'>{req.decodedData.contractName}</div>
-          <div className='decodedDataContractMethod'>
-            <div>{req.decodedData.signature || req.decodedData.method}</div>
-          </div>
-        </div>
-        <div className='decodedDataContractArgHeader'>Inputs</div>
-        {req.decodedData.args.map((a: any) => {
-          return (
-            <div key={a.name} className='decodedDataContractArg'>
-              <div className='overflowBox'>
-                {a.type.includes('[]') ? (
-                  a.value.split(',').map((i: any) => <div key={i}>{i}</div>)
-                ) : (
-                  <div>{a.value}</div>
-                )}
-              </div>
-              <div className='decodedDataSubtitle'>{a.name + ' (' + a.type + ')'}</div>
-            </div>
-          )
-        })}
-      </div>
-    ) : (
-      'Could not decode data..'
-    )
-  }
-
-  decodeRawTx(tx: any) {
-    const decodeTx: any = {}
-    Object.keys(tx).forEach((key) => {
-      if (tx[key] && !tx[key].startsWith('0x')) {
-        decodeTx[key] = tx[key]
-      } else if (
-        [
-          'chainId',
-          'value',
-          'nonce',
-          'gasLimit',
-          'gasPrice',
-          'maxFeePerGas',
-          'maxPriorityFeePerGas'
-        ].includes(key)
-      ) {
-        try {
-          // convert these keys to ints
-          decodeTx[key] = parseInt(tx[key], 16)
-        } catch (e) {
-          decodeTx[key] = tx[key]
-        }
-      } else {
+const decodeRawTx = (tx: any) => {
+  const decodeTx: any = {}
+  Object.keys(tx).forEach((key) => {
+    if (tx[key] && !tx[key].startsWith('0x')) {
+      decodeTx[key] = tx[key]
+    } else if (
+      ['chainId', 'value', 'nonce', 'gasLimit', 'gasPrice', 'maxFeePerGas', 'maxPriorityFeePerGas'].includes(
+        key
+      )
+    ) {
+      try {
+        // convert these keys to ints
+        decodeTx[key] = parseInt(tx[key], 16)
+      } catch (e) {
         decodeTx[key] = tx[key]
       }
-    })
-    return decodeTx
-  }
+    } else {
+      decodeTx[key] = tx[key]
+    }
+  })
+  return decodeTx
+}
 
-  override render() {
-    const { req } = this.props
-    const { data } = req
-    const tx = { nonce: 'TBD', ...data }
+export default function ViewData({ req }: any) {
+  const { data } = req
+  const tx = { nonce: 'TBD', ...data }
 
-    return (
-      <div className='accountViewScroll cardShow'>
-        {/* <div className='txViewData'>
+  return (
+    <div className='accountViewScroll cardShow'>
+      {/* <div className='txViewData'>
           <div className='txViewDataHeader'>{'Decoded Data'}</div>
-          {this.renderDecodedData()}
+          <DecodedData req={req} />
         </div> */}
-        <div className='txViewData'>
-          <div className='txViewDataHeader'>{'Raw Transaction'}</div>
-          <SimpleTxJSON json={this.decodeRawTx(tx)} req={req} />
-        </div>
+      <div className='txViewData'>
+        <div className='txViewDataHeader'>{'Raw Transaction'}</div>
+        <SimpleTxJSON json={decodeRawTx(tx)} req={req} />
       </div>
-    )
-  }
+    </div>
+  )
 }
