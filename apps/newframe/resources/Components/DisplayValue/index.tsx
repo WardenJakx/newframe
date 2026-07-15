@@ -1,8 +1,15 @@
-import { displayValueData } from '../../utils/displayValue'
+import {
+  displayValueData,
+  type DisplayValueData,
+  type DisplayValueDataParams,
+  type SourceValue
+} from '../../utils/displayValue'
 import { MAX_HEX } from '../../constants'
 
-function isDisplayValueData(obj: any) {
-  return Boolean(obj?.fiat && obj?.ether && obj?.gwei && obj?.wei) && typeof obj === 'object' && 'bn' in obj
+function isDisplayValueData(obj: unknown): obj is DisplayValueData {
+  if (!obj || typeof obj !== 'object') return false
+  const candidate = obj as Partial<DisplayValueData>
+  return Boolean(candidate.fiat && candidate.ether && candidate.gwei && candidate.wei && 'bn' in candidate)
 }
 
 const ApproximateValue = ({ approximationSymbol }: { approximationSymbol: string }) => (
@@ -25,15 +32,13 @@ const Unit = ({ displayUnit }: { displayUnit: { shortName: string } }) => (
   <span className='displayValueUnit'>{displayUnit.shortName}</span>
 )
 
-export const DisplayCoinBalance = ({
-  amount,
-  symbol,
-  decimals
-}: {
-  amount: any
+type DisplayCoinBalanceProps = {
+  amount: SourceValue | DisplayValueData
   symbol: string
   decimals?: number
-}) => (
+}
+
+export const DisplayCoinBalance = ({ amount, symbol, decimals }: DisplayCoinBalanceProps) => (
   <DisplayValue
     type='ether'
     value={amount}
@@ -44,12 +49,18 @@ export const DisplayCoinBalance = ({
 )
 
 interface DisplayValueProps {
-  value: any
-  valueDataParams?: any
+  value: SourceValue | DisplayValueData
+  valueDataParams?: Partial<DisplayValueDataParams>
   currencySymbol?: string
-  type?: string
+  type?: 'fiat' | 'ether' | 'gwei' | 'wei'
   displayDecimals?: boolean
   currencySymbolPosition?: 'first' | 'last'
+}
+
+type RenderedValue = {
+  displayValue: string
+  approximationSymbol?: string
+  displayUnit?: { shortName: string }
 }
 
 export const DisplayValue = (props: DisplayValueProps) => {
@@ -62,13 +73,13 @@ export const DisplayValue = (props: DisplayValueProps) => {
     currencySymbolPosition = 'first'
   } = props
 
-  const data: any = isDisplayValueData(value) ? value : displayValueData(value, valueDataParams)
+  const data = isDisplayValueData(value) ? value : displayValueData(value, valueDataParams)
 
-  const {
-    approximationSymbol = '',
-    displayValue,
-    displayUnit = ''
-  } = value === MAX_HEX ? { displayValue: 'Unlimited' } : data[type]({ displayDecimals })
+  const rendered: RenderedValue =
+    value === MAX_HEX ? { displayValue: 'Unlimited' } : data[type]({ displayDecimals })
+  const approximationSymbol = rendered.approximationSymbol || ''
+  const displayUnit = rendered.displayUnit
+  const { displayValue } = rendered
 
   return (
     <div className='displayValue' data-testid='display-value'>

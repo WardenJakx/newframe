@@ -1,8 +1,17 @@
 import React from 'react'
 import svg from '../../../../../resources/svg'
 import { useOriginName } from '../state'
+import type { AddTokenRequest as AddTokenAccountRequest } from '../../../../../main/accounts/types'
 
-export function AddTokenRequest(props: any) {
+type AddTokenRequestProps = {
+  req: AddTokenAccountRequest & { id?: string }
+  originName: string
+  pos?: number
+}
+
+type AddTokenRequestWithStateProps = Omit<AddTokenRequestProps, 'originName'>
+
+export function AddTokenRequest(props: AddTokenRequestProps) {
   const status = props.req.status
   const notice = props.req.notice
 
@@ -24,12 +33,12 @@ export function AddTokenRequest(props: any) {
     <div
       key={props.req.id || props.req.handlerId}
       className={requestClass}
-      style={{ transform: `translateY(${props.pos}px)`, height }}
+      style={{ transform: `translateY(${props.pos || 0}px)`, height }}
     >
       <div className='approveRequest'>
         {notice ? (
           <div className='requestNotice'>
-            {((_?: any) => {
+            {(() => {
               if (status === 'pending') {
                 return (
                   <div className='requestNoticeInner scaleIn'>
@@ -77,7 +86,7 @@ export function AddTokenRequest(props: any) {
   )
 }
 
-export default function AddTokenRequestWithState(props: any) {
+export default function AddTokenRequestWithState(props: AddTokenRequestWithStateProps) {
   const originName = useOriginName(props.req.origin)
   return <AddTokenRequest {...props} originName={originName} />
 }

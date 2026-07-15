@@ -11,7 +11,7 @@ import {
 } from '../../../../../app/tray/Footer/RequestCommand'
 import TxApproval from '../../../../../app/tray/Footer/RequestCommand/TxApproval'
 
-const createProps = (appLocked: boolean, req: Record<string, unknown> = {}) => {
+const createProps = <const Request extends object>(appLocked: boolean, req: Request) => {
   return {
     notify: jest.fn(),
     req,

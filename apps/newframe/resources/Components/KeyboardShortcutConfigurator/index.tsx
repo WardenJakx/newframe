@@ -3,11 +3,12 @@ import hotkeys from 'hotkeys-js'
 
 import type { Shortcut } from '../../../main/store/state/types/shortcuts'
 import { getShortcutFromKeyEvent, getDisplayShortcut, isShortcutKey } from '../../keyboard'
+import type { Platform } from '../../keyboard/mappings'
 
 interface KeyboardShortcutConfiguratorProps {
   actionText?: string
-  platform: any
-  shortcut: any
+  platform: Platform | string
+  shortcut: Shortcut
   shortcutName: string
   onChange?: (shortcut: Shortcut) => void
 }
@@ -19,7 +20,9 @@ const KeyboardShortcutConfigurator = ({
   shortcut,
   shortcutName
 }: KeyboardShortcutConfiguratorProps) => {
-  const { modifierKeys, shortcutKey } = getDisplayShortcut(platform, shortcut)
+  const normalizedPlatform: Platform =
+    platform === 'darwin' || platform === 'win32' || platform === 'linux' ? platform : 'linux'
+  const { modifierKeys, shortcutKey } = getDisplayShortcut(normalizedPlatform, shortcut)
 
   const EnterShortcut = () => {
     useEffect(() => {
@@ -31,7 +34,7 @@ const KeyboardShortcutConfigurator = ({
 
         // ignore modifier key solo keypresses and disabled keys
         if (!isModifierKey && isShortcutKey(event)) {
-          const newShortcut = getShortcutFromKeyEvent(event, hotkeys.getPressedKeyCodes(), platform)
+          const newShortcut = getShortcutFromKeyEvent(event, hotkeys.getPressedKeyCodes(), normalizedPlatform)
           // enable the new shortcut
           onChange?.({
             ...newShortcut,
@@ -44,7 +47,7 @@ const KeyboardShortcutConfigurator = ({
       })
 
       return () => hotkeys.unbind()
-    }, [onChange, platform])
+    }, [normalizedPlatform, onChange])
 
     const labelId = `shortcut-${shortcutName.toLowerCase()}-configure`
     return (

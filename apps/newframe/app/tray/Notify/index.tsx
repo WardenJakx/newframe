@@ -10,17 +10,34 @@ import ExtensionConnectNotification from './ExtensionConnect'
 import { useWalletSelector } from '../../state/useAppSelector'
 import type { TrayRendererState } from '../state'
 import { useTrayNotification, type TrayNotifier } from '../notification'
+import type { TransactionRequest } from '../../../main/accounts/types'
 
 const FEE_WARNING_THRESHOLD_USD = 50
 const isNotificationData = (value: unknown): value is Record<string, unknown> =>
   !!value && typeof value === 'object' && !Array.isArray(value)
 
+type NotificationData = {
+  req?: TransactionRequest
+  feeUSD?: string
+  currentSymbol?: string
+  compatibility?: {
+    signer?: string
+    tx?: string
+    compatible?: boolean
+  }
+  chain?: {
+    type: 'ethereum'
+    id: string | number
+  }
+  hash?: string
+}
+
 type NotificationProps = {
-  data: Record<string, any>
+  data: NotificationData
   dismiss: TrayNotifier
-  mute: Record<string, any>
-  networks: Record<string, Record<string | number, any>>
-  networksMeta: Record<string, Record<string | number, any>>
+  mute: TrayRendererState['mute']
+  networks: TrayRendererState['networks']
+  networksMeta: TrayRendererState['networksMeta']
 }
 
 function Shell({ children, dismiss }: { children: ReactNode; dismiss: TrayNotifier }) {
@@ -33,14 +50,14 @@ function Shell({ children, dismiss }: { children: ReactNode; dismiss: TrayNotifi
   )
 }
 
-function approveRequest(req: any) {
+function approveRequest(req?: { handlerId?: string }) {
   if (req?.handlerId) {
     void link.executeCommand({ type: 'request.approve', requestId: req.handlerId })
   }
 }
 
 function GasFeeWarning({ data, dismiss, mute }: NotificationProps) {
-  const { req = {}, feeUSD = '0.00', currentSymbol = 'ETH' } = data
+  const { req, feeUSD = '0.00', currentSymbol = 'ETH' } = data
 
   return (
     <Shell dismiss={dismiss}>
@@ -105,12 +122,14 @@ function NoSignerWarning({ dismiss }: NotificationProps) {
 const displayUSD = (usd: number) => (Math.ceil(usd * 100) / 100).toFixed(2)
 
 function SignerCompatibilityWarning({ data, dismiss, mute, networks, networksMeta }: NotificationProps) {
-  const { req = {}, compatibility = {}, chain = {} } = data
+  const { req, compatibility = {}, chain = { type: 'ethereum', id: 0 } } = data
   const { signer = '', tx = '' } = compatibility
 
   const proceed = () => {
-    const isTestnet = networks[chain.type]?.[chain.id]?.isTestnet
-    const nativeCurrency = networksMeta[chain.type]?.[chain.id]?.nativeCurrency
+    if (!req) return
+    const chainId = Number(chain.id)
+    const isTestnet = networks[chain.type]?.[chainId]?.isTestnet
+    const nativeCurrency = networksMeta[chain.type]?.[chainId]?.nativeCurrency
     const currentSymbol = nativeCurrency?.symbol || '?'
     const nativeUSD = nativeCurrency?.usd && !isTestnet ? nativeCurrency.usd.price : undefined
     const hasNativeUSD = typeof nativeUSD === 'number'
@@ -170,8 +189,8 @@ function SignerCompatibilityWarning({ data, dismiss, mute, networks, networksMet
 }
 
 function OpenExplorer({ data, dismiss, mute, networks }: NotificationProps) {
-  const { hash, chain = {} } = data
-  const { name: chainName, explorer: explorerUrl } = networks[chain.type]?.[chain.id] || {}
+  const { hash, chain = { type: 'ethereum', id: 0 } } = data
+  const { name: chainName, explorer: explorerUrl } = networks[chain.type]?.[Number(chain.id)] || {}
 
   return (
     <Shell dismiss={dismiss}>
@@ -244,7 +263,7 @@ export default function Notification() {
   }
 
   const props: NotificationProps = {
-    data: local.data,
+    data: local.data as NotificationData,
     dismiss: local.notify,
     mute: state.mute,
     networks: state.networks,

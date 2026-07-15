@@ -75,26 +75,26 @@ function getDisplay(value: bigint, scale: number, type: string, dp: number, disp
   }
 }
 
-type DisplayValueDataParams = {
-  currencyRate?: Rate
+export type DisplayValueDataParams = {
+  currencyRate?: Pick<Rate, 'price'>
   displayFullValue?: boolean
-  decimals: number
-  isTestnet: boolean
+  decimals?: number
+  isTestnet?: boolean
 }
 
-type SourceValue = string | number | bigint
+export type SourceValue = string | number | bigint
 type DisplayUnit = {
   fullName: string
   shortName: string
 }
 export type DisplayValueData = {
-  fiat: () => {
+  fiat: (options?: { displayDecimals: boolean }) => {
     value: number
     displayValue: string
     approximationSymbol?: string
     displayUnit?: DisplayUnit
   }
-  ether: () => {
+  ether: (options?: { displayDecimals: boolean }) => {
     value: number
     displayValue: string
     approximationSymbol?: string

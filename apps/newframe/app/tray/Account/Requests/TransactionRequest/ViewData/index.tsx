@@ -1,6 +1,31 @@
 import React from 'react'
 import svg from '../../../../../../resources/svg'
 import link from '../../../../../../resources/link'
+import type { TransactionRequest } from '../../../../../../main/accounts/types'
+
+type TxJsonValue = string | number
+type TxJson = Record<string, TxJsonValue>
+type TxViewRequest = TransactionRequest & {
+  payload: TransactionRequest['payload'] & { nonce?: string }
+}
+
+type NonceValueProps = {
+  req: TxViewRequest
+  nonce: TxJsonValue
+}
+
+type TextValueProps = {
+  value: TxJsonValue
+}
+
+type SimpleTxJSONProps = {
+  json: TxJson
+  req: TxViewRequest
+}
+
+type ViewDataProps = {
+  req: TxViewRequest
+}
 
 const txFieldPriority = [
   'chainId',
@@ -15,11 +40,11 @@ const txFieldPriority = [
   'maxPriorityFeePerGas'
 ]
 
-const nonceHasBeenChanged = (req: any) => {
+const nonceHasBeenChanged = (req: TxViewRequest) => {
   return req.data.nonce && req.payload.nonce !== req.data.nonce
 }
 
-const NonceValue = ({ req, nonce }: any) => {
+const NonceValue = ({ req, nonce }: NonceValueProps) => {
   return (
     <>
       <div style={{ width: '24px' }}>{nonce}</div>
@@ -66,9 +91,9 @@ const NonceValue = ({ req, nonce }: any) => {
   )
 }
 
-const TextValue = ({ value }: any) => <span>{value}</span>
+const TextValue = ({ value }: TextValueProps) => <span>{value}</span>
 
-const SimpleTxJSON = ({ json, req }: any) => {
+const SimpleTxJSON = ({ json, req }: SimpleTxJSONProps) => {
   return (
     <div className='simpleJson'>
       {Object.keys(json)
@@ -95,11 +120,12 @@ const SimpleTxJSON = ({ json, req }: any) => {
   )
 }
 
-const decodeRawTx = (tx: any) => {
-  const decodeTx: any = {}
+const decodeRawTx = (tx: Record<string, unknown>): TxJson => {
+  const decodeTx: TxJson = {}
   Object.keys(tx).forEach((key) => {
-    if (tx[key] && !tx[key].startsWith('0x')) {
-      decodeTx[key] = tx[key]
+    const value = tx[key]
+    if (typeof value === 'string' && value && !value.startsWith('0x')) {
+      decodeTx[key] = value
     } else if (
       ['chainId', 'value', 'nonce', 'gasLimit', 'gasPrice', 'maxFeePerGas', 'maxPriorityFeePerGas'].includes(
         key
@@ -107,18 +133,18 @@ const decodeRawTx = (tx: any) => {
     ) {
       try {
         // convert these keys to ints
-        decodeTx[key] = parseInt(tx[key], 16)
+        decodeTx[key] = typeof value === 'string' ? parseInt(value, 16) : Number(value)
       } catch (e) {
-        decodeTx[key] = tx[key]
+        decodeTx[key] = String(value ?? '')
       }
     } else {
-      decodeTx[key] = tx[key]
+      decodeTx[key] = typeof value === 'number' ? value : String(value ?? '')
     }
   })
   return decodeTx
 }
 
-export default function ViewData({ req }: any) {
+export default function ViewData({ req }: ViewDataProps) {
   const { data } = req
   const tx = { nonce: 'TBD', ...data }
 
@@ -130,7 +156,7 @@ export default function ViewData({ req }: any) {
         </div> */}
       <div className='txViewData'>
         <div className='txViewDataHeader'>{'Raw Transaction'}</div>
-        <SimpleTxJSON json={decodeRawTx(tx)} req={req} />
+        <SimpleTxJSON json={decodeRawTx(tx as unknown as Record<string, unknown>)} req={req} />
       </div>
     </div>
   )

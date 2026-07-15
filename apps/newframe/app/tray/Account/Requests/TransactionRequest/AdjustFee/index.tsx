@@ -3,34 +3,35 @@ import React, { useRef, useState } from 'react'
 import link from '../../../../../../resources/link'
 import { usesBaseFee } from '../../../../../../resources/domain/transaction'
 import { formatUnits, parseUnits, toBigInt } from '../../../../../../resources/utils/numbers'
+import type { TransactionRequest } from '../../../../../../main/accounts/types'
 
 // display a wei value as a decimal amount of gwei
-function toDisplayFromWei(wei: any) {
+function toDisplayFromWei(wei: bigint) {
   return formatUnits(wei, 9)
 }
 
-function bnToHex(bn: any) {
+function bnToHex(bn: bigint) {
   return `0x${bn.toString(16)}`
 }
 
-function limitRange(bn: any, min = 0n, max = 9999000000000n) {
+function limitRange(bn: bigint, min = 0n, max = 9999000000000n) {
   if (bn > max) return max
   if (bn < min) return min
   return bn
 }
 
 // value is wei for gwei-denominated inputs, integer units otherwise
-function formatForInput(value: any, decimals: any) {
+function formatForInput(value: bigint, decimals: boolean) {
   return decimals ? toDisplayFromWei(value) : value.toString()
 }
 
 // parse user input into wei for gwei-denominated inputs, integer units
 // otherwise, truncating anything beyond 9 decimal places
-function parseInput(value: any, decimals: any) {
+function parseInput(value: string, decimals: boolean) {
   return decimals ? parseUnits(value, 9) : toBigInt(value)
 }
 
-function getMaxTotalFee(tx: any = { chainId: '' }) {
+function getMaxTotalFee(tx: { chainId: string } = { chainId: '' }) {
   const chainId = parseInt(tx.chainId)
 
   // for ETH-based chains, the max fee should be 2 ETH
@@ -47,20 +48,49 @@ function getMaxTotalFee(tx: any = { chainId: '' }) {
   return 50 * 1e18
 }
 
-const totalFee = ({ gasPrice, baseFee, priorityFee, gasLimit }: any) =>
+type FeeValues = {
+  gasPrice?: bigint
+  baseFee?: bigint
+  priorityFee?: bigint
+  gasLimit: bigint
+}
+
+type FeeOverlayInputProps = {
+  initialValue: string
+  labelText: string
+  tabIndex: number
+  decimals: boolean
+  onReceiveValue(value: bigint): void
+  limiter(value: bigint): bigint
+}
+
+type FeeInputProps = Omit<FeeOverlayInputProps, 'labelText' | 'decimals'>
+
+type TxFeeOverlayProps = {
+  req: TransactionRequest
+}
+
+const totalFee = ({ gasPrice, baseFee = 0n, priorityFee = 0n, gasLimit }: FeeValues) =>
   gasPrice !== undefined ? gasPrice * gasLimit : (baseFee + priorityFee) * gasLimit
 
-const limitGasUnits = (bn: any) => limitRange(bn, 0n, 12500000n)
+const limitGasUnits = (bn: bigint) => limitRange(bn, 0n, 12500000n)
 type FeeField = 'baseFee' | 'priorityFee' | 'gasPrice' | 'gasLimit'
 
-let submitTimeout: any = null
+let submitTimeout: ReturnType<typeof setTimeout> | undefined
 
-const FeeOverlayInput = ({ initialValue, labelText, tabIndex, decimals, onReceiveValue, limiter }: any) => {
+const FeeOverlayInput = ({
+  initialValue,
+  labelText,
+  tabIndex,
+  decimals,
+  onReceiveValue,
+  limiter
+}: FeeOverlayInputProps) => {
   const [value, setValue] = useState(initialValue)
   const labelId = `txFeeOverlayLabel_${tabIndex}`
 
   // newValue is wei for gwei-denominated inputs, integer units otherwise
-  const submitValue = (newValueStr: any, newValue: any) => {
+  const submitValue = (newValueStr: string, newValue: bigint) => {
     setValue(newValueStr)
 
     clearTimeout(submitTimeout)
@@ -81,8 +111,8 @@ const FeeOverlayInput = ({ initialValue, labelText, tabIndex, decimals, onReceiv
           className='txFeeOverlayInput'
           aria-labelledby={labelId}
           onChange={(e) => {
-            const parsedInput: any = (decimals ? /[0-9.]*/ : /[0-9]*/).exec(e.target.value)
-            const enteredValue = parsedInput[0] || ''
+            const parsedInput = (decimals ? /[0-9.]*/ : /[0-9]*/).exec(e.target.value)
+            const enteredValue = parsedInput?.[0] || ''
 
             if (enteredValue === '.' || enteredValue === '') return setValue(enteredValue)
 
@@ -93,17 +123,20 @@ const FeeOverlayInput = ({ initialValue, labelText, tabIndex, decimals, onReceiv
 
             // prevent decimal point being overwritten as user is typing a float
             if (enteredValue.endsWith('.')) {
-              const formattedNum = formatForInput(parseInput(enteredValue.slice(0, -1), decimals), decimals)
+              const formattedNum = formatForInput(
+                parseInput(enteredValue.slice(0, -1), decimals) ?? 0n,
+                decimals
+              )
 
               return setValue(`${formattedNum}.`)
             }
 
             submitValue(enteredValue, numericValue)
           }}
-          onKeyDown={(e: any) => {
+          onKeyDown={(e) => {
             if (e.key === 'Enter') {
               e.preventDefault()
-              e.target.blur()
+              e.currentTarget.blur()
             } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
               e.preventDefault()
               const parsedValue = parseInput(value, decimals)
@@ -128,7 +161,7 @@ const FeeOverlayInput = ({ initialValue, labelText, tabIndex, decimals, onReceiv
   )
 }
 
-const GasLimitInput = ({ initialValue, onReceiveValue, tabIndex, limiter }: any) => (
+const GasLimitInput = ({ initialValue, onReceiveValue, tabIndex, limiter }: FeeInputProps) => (
   <div className='txFeeOverlayLimit'>
     <FeeOverlayInput
       initialValue={initialValue}
@@ -141,7 +174,7 @@ const GasLimitInput = ({ initialValue, onReceiveValue, tabIndex, limiter }: any)
   </div>
 )
 
-const GasPriceInput = ({ initialValue, onReceiveValue, tabIndex, limiter }: any) => (
+const GasPriceInput = ({ initialValue, onReceiveValue, tabIndex, limiter }: FeeInputProps) => (
   <div className='txFeeOverlayGasPrice'>
     <FeeOverlayInput
       initialValue={initialValue}
@@ -154,7 +187,7 @@ const GasPriceInput = ({ initialValue, onReceiveValue, tabIndex, limiter }: any)
   </div>
 )
 
-const BaseFeeInput = ({ initialValue, onReceiveValue, tabIndex, limiter }: any) => (
+const BaseFeeInput = ({ initialValue, onReceiveValue, tabIndex, limiter }: FeeInputProps) => (
   <div className='txFeeOverlayBaseFee'>
     <FeeOverlayInput
       initialValue={initialValue}
@@ -167,7 +200,7 @@ const BaseFeeInput = ({ initialValue, onReceiveValue, tabIndex, limiter }: any) 
   </div>
 )
 
-const PriorityFeeInput = ({ initialValue, onReceiveValue, tabIndex, limiter }: any) => (
+const PriorityFeeInput = ({ initialValue, onReceiveValue, tabIndex, limiter }: FeeInputProps) => (
   <div className='txFeeOverlayPriorityFee'>
     <FeeOverlayInput
       initialValue={initialValue}
@@ -180,7 +213,7 @@ const PriorityFeeInput = ({ initialValue, onReceiveValue, tabIndex, limiter }: a
   </div>
 )
 
-export default function TxFeeOverlay(props: any) {
+export default function TxFeeOverlay(props: TxFeeOverlayProps) {
   const {
     req: {
       data: { gasLimit: initialGasLimit, maxPriorityFeePerGas, maxFeePerGas, gasPrice: initialGasPrice }
@@ -203,7 +236,7 @@ export default function TxFeeOverlay(props: any) {
   const maxTotalFee = BigInt(getMaxTotalFee(data))
 
   const displayBaseFee = toDisplayFromWei(baseFee)
-  const baseFeeLimiter = (rawBaseFee: any) => {
+  const baseFeeLimiter = (rawBaseFee: bigint) => {
     const { priorityFee, gasLimit } = state
     // if total fee > maximum allowed fee we recalculate the base fee based on the maximum allowed
     if (totalFee({ baseFee: rawBaseFee, priorityFee, gasLimit }) > maxTotalFee) {
@@ -214,7 +247,7 @@ export default function TxFeeOverlay(props: any) {
   }
 
   const displayPriorityFee = toDisplayFromWei(priorityFee)
-  const priorityFeeLimiter = (rawPriorityFee: any) => {
+  const priorityFeeLimiter = (rawPriorityFee: bigint) => {
     const { baseFee, gasLimit } = state
     // if total fee > maximum allowed fee we recalculate the priority fee based on the maximum allowed
     if (totalFee({ baseFee, priorityFee: rawPriorityFee, gasLimit }) > maxTotalFee) {
@@ -225,7 +258,7 @@ export default function TxFeeOverlay(props: any) {
   }
 
   const displayGasPrice = toDisplayFromWei(gasPrice)
-  const gasPriceLimiter = (rawGasPrice: any) => {
+  const gasPriceLimiter = (rawGasPrice: bigint) => {
     const { gasLimit } = state
     // if total fee > maximum allowed fee we recalculate the gas price based on the maximum allowed
     if (totalFee({ gasPrice: rawGasPrice, gasLimit }) > maxTotalFee) {
@@ -236,7 +269,7 @@ export default function TxFeeOverlay(props: any) {
   }
 
   const displayGasLimit = gasLimit.toString()
-  const gasLimitLimiter = (rawGasLimit: any) => {
+  const gasLimitLimiter = (rawGasLimit: bigint) => {
     const { baseFee, priorityFee, gasPrice } = state
     // if total fee > maximum allowed fee we recalculate the gas limit based on the maximum allowed
     if (gasPrice && totalFee({ gasPrice, gasLimit: rawGasLimit }) > maxTotalFee) {
@@ -265,13 +298,13 @@ export default function TxFeeOverlay(props: any) {
         <>
           <BaseFeeInput
             initialValue={displayBaseFee}
-            onReceiveValue={(value: any) => receiveValueHandler(value, 'baseFee')}
+            onReceiveValue={(value) => receiveValueHandler(value, 'baseFee')}
             limiter={baseFeeLimiter}
             tabIndex={0}
           />
           <PriorityFeeInput
             initialValue={displayPriorityFee}
-            onReceiveValue={(value: any) => receiveValueHandler(value, 'priorityFee')}
+            onReceiveValue={(value) => receiveValueHandler(value, 'priorityFee')}
             limiter={priorityFeeLimiter}
             tabIndex={1}
           />
@@ -279,14 +312,14 @@ export default function TxFeeOverlay(props: any) {
       ) : (
         <GasPriceInput
           initialValue={displayGasPrice}
-          onReceiveValue={(value: any) => receiveValueHandler(value, 'gasPrice')}
+          onReceiveValue={(value) => receiveValueHandler(value, 'gasPrice')}
           limiter={gasPriceLimiter}
           tabIndex={0}
         />
       )}
       <GasLimitInput
         initialValue={displayGasLimit}
-        onReceiveValue={(value: any) => receiveValueHandler(value, 'gasLimit')}
+        onReceiveValue={(value) => receiveValueHandler(value, 'gasLimit')}
         limiter={gasLimitLimiter}
         tabIndex={2}
       />

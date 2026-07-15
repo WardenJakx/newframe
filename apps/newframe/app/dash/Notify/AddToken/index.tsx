@@ -8,9 +8,20 @@ const decimalsDefault = '?'
 const addressDefault = 'Contract Address'
 const logoURIDefault = 'Logo URI'
 
-function AddToken({ token = {} }: any) {
-  const chainId = parseInt(token.chainId)
-  const decimals = parseInt(token.decimals)
+type AddTokenProps = {
+  token?: Partial<{
+    name: string
+    symbol: string
+    chainId: string | number
+    address: string
+    decimals: string | number
+    logoURI: string
+  }>
+}
+
+function AddToken({ token = {} }: AddTokenProps) {
+  const chainId = parseInt(String(token.chainId ?? ''))
+  const decimals = parseInt(String(token.decimals ?? ''))
   const [state, setTokenState] = useState({
     name: token.name || nameDefault,
     symbol: (token.symbol || '').toUpperCase() || symbolDefault,

@@ -6,8 +6,23 @@ import { ClusterRow, ClusterValue } from '../../../resources/Components/Cluster'
 
 import link from '../../../resources/link'
 import svg from '../../../resources/svg'
+import type { ReactNode } from 'react'
+import type { AccountRequest } from '../../../main/accounts/types'
 
-const getElapsedTime = (req: any) => {
+type RequestItemProps = {
+  req: AccountRequest
+  title: string
+  svgName?: string
+  img?: string
+  color: string
+  headerMode?: boolean
+  children?: ReactNode
+  account?: string
+  handlerId?: string
+  i?: number
+}
+
+const getElapsedTime = (req: AccountRequest) => {
   const elapsed = Date.now() - ((req && req.created) || 0)
   const secs = Math.floor(elapsed / 1000)
   const mins = Math.floor(secs / 60)
@@ -20,7 +35,7 @@ const getElapsedTime = (req: any) => {
   return 'NEW'
 }
 
-function RequestItem(props: any) {
+function RequestItem(props: RequestItemProps) {
   const [ago, setAgo] = useState(() => getElapsedTime(props.req))
 
   useEffect(() => {
@@ -35,10 +50,10 @@ function RequestItem(props: any) {
   let requestItemDetailsClass = 'requestItemDetails'
   let requestItemNoticeClass = 'requestItemNotice'
 
-  if (['sent', 'sending', 'verifying', 'confirming', 'confirmed'].includes(req.status)) {
+  if (['sent', 'sending', 'verifying', 'confirming', 'confirmed'].includes(req.status || '')) {
     requestItemDetailsClass += ' requestItemDetailsGood'
     requestItemNoticeClass += ' requestItemNoticeGood'
-  } else if (['error', 'declined'].includes(req.status)) {
+  } else if (['error', 'declined'].includes(req.status || '')) {
     requestItemDetailsClass += ' requestItemDetailsBad'
     requestItemNoticeClass += ' requestItemNoticeBad'
   }
@@ -46,7 +61,7 @@ function RequestItem(props: any) {
   const status = (req.status || 'pending').toLowerCase()
   const notice = (req.notice || '').toLowerCase()
 
-  const inactive = ['error', 'declined', 'confirmed'].includes(req.status)
+  const inactive = ['error', 'declined', 'confirmed'].includes(req.status || '')
 
   return (
     <ClusterRow>

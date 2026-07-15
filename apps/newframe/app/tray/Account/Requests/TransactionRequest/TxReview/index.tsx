@@ -17,6 +17,33 @@ import TransactionInformation, { shortAddress } from '../TransactionInformation'
 import type { TransactionInformationDetailRow } from '../TransactionInformation'
 import { useNetwork, useNetworkMetadata, useOriginName } from '../../state'
 import { useRequestView } from '../../../../requestView'
+import type { RequestViewState } from '../../../../requestView'
+import type { TransactionRequest } from '../../../../../../main/accounts/types'
+
+type NativeCurrency = {
+  symbol: string
+  icon?: string
+  usd?: { price: number }
+}
+
+type TxFeeSummaryProps = {
+  req: TransactionRequest
+  chain: { type: 'ethereum'; id: number }
+  nativeCurrency: NativeCurrency
+  isTestnet: boolean
+  gasPrice?: { selected?: string }
+  openRequestView(next: RequestViewState): void
+}
+
+type TxReviewProps = {
+  req: TransactionRequest
+  network: ReturnType<typeof useNetwork>
+  networkMetadata: ReturnType<typeof useNetworkMetadata>
+  originName: string
+  openRequestView(next: RequestViewState): void
+}
+
+type TxReviewWithStateProps = Pick<TxReviewProps, 'req'>
 
 const FEE_WARNING_THRESHOLD_USD = 50
 const FEE_RATE_OPTIONS = [
@@ -27,7 +54,7 @@ const FEE_RATE_OPTIONS = [
   { id: 'custom', label: 'Custom' }
 ] as const
 
-const displayStatus = (req: any) => {
+const displayStatus = (req: TransactionRequest) => {
   const notice = (req.notice || '').toLowerCase()
   const status = (req.status || 'ready to sign').toLowerCase()
 
@@ -36,8 +63,8 @@ const displayStatus = (req: any) => {
   return status
 }
 
-export function TxFeeSummary(props: any) {
-  const getOptimismFee = (l2Price: bigint, l2Limit: bigint, chainData: any) => {
+export function TxFeeSummary(props: TxFeeSummaryProps) {
+  const getOptimismFee = (l2Price: bigint, l2Limit: bigint, chainData?: { l1Fees?: string }) => {
     const l1DataFee = toBigInt(chainData?.l1Fees ?? '')
     if (l1DataFee === undefined) return undefined
 
@@ -73,7 +100,7 @@ export function TxFeeSummary(props: any) {
   const fee = displayValueData(displayedFee, {
     currencyRate: nativeCurrencyRate,
     isTestnet
-  } as any)
+  })
   const feeUSD = fee.fiat()
   const gasDisplay = displayValueData(maxFeePerGas).gwei()
   const shouldWarn = feeUSD.value > FEE_WARNING_THRESHOLD_USD
@@ -118,16 +145,16 @@ export function TxFeeSummary(props: any) {
   )
 }
 
-export function TxReview(props: any) {
+export function TxReview(props: TxReviewProps) {
   const copyAddress = (data: string) => {
     void link.executeCommand({ type: 'clipboard.write', text: data })
   }
 
   const { req } = props
   const chainId = parseInt(req.data.chainId, 16)
-  const chain = { type: 'ethereum', id: chainId }
+  const chain = { type: 'ethereum' as const, id: chainId }
   const { network, networkMetadata: meta } = props
-  const nativeCurrency = meta.nativeCurrency || { symbol: '?' }
+  const nativeCurrency = meta.nativeCurrency || { symbol: '?', icon: undefined }
   const symbol = nativeCurrency.symbol || '?'
   const chainName = network.name || `Chain ${chainId}`
   const originName = props.originName || req.origin
@@ -209,7 +236,7 @@ export function TxReview(props: any) {
   )
 }
 
-export default function TxReviewWithState(props: any) {
+export default function TxReviewWithState(props: TxReviewWithStateProps) {
   const chainId = parseInt(props.req.data.chainId, 16)
   const network = useNetwork('ethereum', chainId)
   const networkMetadata = useNetworkMetadata('ethereum', chainId)

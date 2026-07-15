@@ -1,8 +1,16 @@
 import React from 'react'
 import svg from '../../../../../resources/svg'
 import { useOriginName } from '../state'
+import type { AccessRequest } from '../../../../../main/accounts/types'
 
-export function ProviderRequest(props: any) {
+type ProviderRequestProps = {
+  req: AccessRequest & { id?: string }
+  originName: string
+}
+
+type ProviderRequestWithStateProps = Omit<ProviderRequestProps, 'originName'>
+
+export function ProviderRequest(props: ProviderRequestProps) {
   const status = props.req.status
   const notice = props.req.notice
   let requestClass = 'signerRequest'
@@ -44,7 +52,7 @@ export function ProviderRequest(props: any) {
   )
 }
 
-export default function ProviderRequestWithState(props: any) {
+export default function ProviderRequestWithState(props: ProviderRequestWithStateProps) {
   const originName = useOriginName(props.req.origin)
   return <ProviderRequest {...props} originName={originName} />
 }
