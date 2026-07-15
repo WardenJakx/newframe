@@ -1,7 +1,7 @@
 import { v5 as uuidv5 } from 'uuid'
 
 import accounts from '../accounts'
-import flash from '../flash'
+import { flashService } from '../flash/instance'
 import provider from '../provider'
 import store from '../store'
 import windows from '../windows'
@@ -135,7 +135,7 @@ export async function quoteFlashForCurrentAccount(request: FlashQuoteRequest) {
   }
 
   try {
-    const result = await flash.quote({
+    const result = await flashService.quote({
       ...request,
       accountAddress,
       contraChain: request.chainId,
@@ -156,7 +156,7 @@ export async function submitFlashForCurrentAccount(order: FlashSubmitOrder) {
   }
 
   try {
-    const result = await flash.submitOrder({
+    const result = await flashService.submitOrder({
       ...order,
       accountAddress,
       contraChain: order.chainId,

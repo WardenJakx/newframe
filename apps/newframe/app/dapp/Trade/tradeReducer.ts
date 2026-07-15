@@ -6,20 +6,27 @@ import {
   FLASH_MARKET_ORDER_TYPE,
   FLASH_STOP_LOSS_ORDER_TYPE,
   FLASH_STOP_ORDER_TYPE,
-  FLASH_TAKE_PROFIT_ORDER_TYPE,
-  getDefaultContraAsset,
-  getDefaultSide,
+  FLASH_TAKE_PROFIT_ORDER_TYPE
+} from '../../../resources/domain/flash/constants'
+import {
   getFlashAssetsForChain,
   getFlashDefaultTargetAsset,
+  toFlashApiAssetAddress
+} from '../../../resources/domain/flash/assets'
+import {
+  getDefaultContraAsset,
+  getDefaultSide,
   getSpentAsset,
-  toFlashApiAssetAddress,
+  isSameFlashAsset,
+  type FlashAssetBalances
+} from '../../../resources/domain/flash/pair'
+import {
   type FlashAsset,
-  type FlashAssetBalances,
   type FlashOrderType,
   type FlashQuote,
   type FlashStep,
   type FlashTradeSide
-} from '../../../resources/domain/flash'
+} from '../../../resources/domain/flash/schemas'
 import {
   TRADE_DEFAULT_DURATION_DAYS,
   TRADE_DEFAULT_DURATION_HOURS,
@@ -27,7 +34,6 @@ import {
   TRADE_DEFAULT_MAX_PRICE_IMPACT,
   TRADE_DEFAULT_SLIPPAGE,
   getTradeValidationError,
-  isSameFlashAsset,
   tradeAmountNumber,
   type TradeOrderFields,
   type TradePendingAction,

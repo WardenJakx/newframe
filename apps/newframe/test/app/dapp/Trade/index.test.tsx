@@ -14,11 +14,10 @@ import {
   FLASH_ANVIL_CHAIN_ID,
   FLASH_MARKET_ORDER_TYPE,
   FLASH_USDC_ADDRESS,
-  FLASH_USDC_ASSET,
-  FLASH_WETH_ADDRESS,
-  FLASH_WETH_ASSET,
-  type FlashQuote
-} from '../../../../resources/domain/flash'
+  FLASH_WETH_ADDRESS
+} from '../../../../resources/domain/flash/constants'
+import { FLASH_USDC_ASSET, FLASH_WETH_ASSET } from '../../../../resources/domain/flash/assets'
+import { type FlashQuote } from '../../../../resources/domain/flash/schemas'
 import { STATE_STREAM_SCHEMA_VERSION } from '../../../../resources/state/protocol'
 
 const sender = {

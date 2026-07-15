@@ -8,8 +8,8 @@ const closeWindow = jest.fn()
 
 jest.mock('../../../main/accounts', () => ({ default: { current: currentAccount } }))
 jest.mock('../../../main/provider', () => ({ default: { send: providerSend } }))
-jest.mock('../../../main/flash', () => ({
-  default: { quote: flashQuote, submitOrder: flashSubmitOrder }
+jest.mock('../../../main/flash/instance', () => ({
+  flashService: { quote: flashQuote, submitOrder: flashSubmitOrder }
 }))
 jest.mock('../../../main/store', () => ({ default: { getState } }))
 jest.mock('../../../main/windows', () => ({ default: { close: closeWindow } }))

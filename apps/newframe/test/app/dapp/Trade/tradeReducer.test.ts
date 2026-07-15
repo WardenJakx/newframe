@@ -6,15 +6,16 @@ import {
 import {
   FLASH_LIMIT_ORDER_TYPE,
   FLASH_MARKET_ORDER_TYPE,
-  FLASH_NATIVE_ETH_ASSET,
   FLASH_STOP_LOSS_ORDER_TYPE,
   FLASH_STOP_ORDER_TYPE,
-  FLASH_TAKE_PROFIT_ORDER_TYPE,
+  FLASH_TAKE_PROFIT_ORDER_TYPE
+} from '../../../../resources/domain/flash/constants'
+import {
+  FLASH_NATIVE_ETH_ASSET,
   FLASH_USDC_ASSET,
-  FLASH_WETH_ASSET,
-  type FlashAsset,
-  type FlashQuote
-} from '../../../../resources/domain/flash'
+  FLASH_WETH_ASSET
+} from '../../../../resources/domain/flash/assets'
+import { type FlashAsset, type FlashQuote } from '../../../../resources/domain/flash/schemas'
 import { NATIVE_CURRENCY } from '../../../../resources/constants'
 
 function marketQuote(id = 'quote-1'): FlashQuote {

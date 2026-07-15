@@ -3,25 +3,22 @@ import { afterEach, beforeEach, describe, expect, it, jest } from 'bun:test'
 import {
   buildFlashQuoteBody,
   buildFlashSubmitBody,
-  cancelOrder,
+  createFlashService,
   flashBaseUrl,
   flashHeaders,
-  getOrder,
-  listOrders,
-  normalizeFlashQuoteResponse,
-  setFlashPositionSync,
-  stopOpenOrderPolling,
-  submitOrder
+  normalizeFlashQuoteResponse
 } from '../../../main/flash'
-import type { FlashQuoteRequest } from '../../../main/flash'
+import type { FlashQuoteRequest } from '../../../main/flash/contracts'
 import {
   FLASH_BASE_USDC_ADDRESS,
   FLASH_BASE_WETH_ADDRESS,
-  FLASH_MARKET_ORDER_TYPE,
+  FLASH_MARKET_ORDER_TYPE
+} from '../../../resources/domain/flash/constants'
+import {
   FLASH_NATIVE_ETH_ASSET,
   FLASH_USDC_ASSET,
   FLASH_WETH_ASSET
-} from '../../../resources/domain/flash'
+} from '../../../resources/domain/flash/assets'
 
 const originalEnv = { ...process.env }
 
@@ -366,6 +363,7 @@ describe('main Flash facade helpers', () => {
   })
 
   it('normalizes official root order assets, qty, fills, and timestamps from list responses', async () => {
+    const flash = createFlashService()
     const originalFetch = globalThis.fetch
     const fetchMock = jest.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
       return new Response(JSON.stringify({ orders: [officialOrder()] }), {
@@ -376,7 +374,7 @@ describe('main Flash facade helpers', () => {
     globalThis.fetch = fetchMock as unknown as typeof fetch
 
     try {
-      const result = await listOrders({
+      const result = await flash.listOrders({
         accountAddress: '0x0000000000000000000000000000000000000001',
         pageSize: 250,
         status: ['partially-filled', 'ORDER_STATUS_CANCELLED']
@@ -415,12 +413,13 @@ describe('main Flash facade helpers', () => {
         receiveAsset: { symbol: 'USDC' }
       })
     } finally {
-      stopOpenOrderPolling()
+      flash.dispose()
       globalThis.fetch = originalFetch
     }
   })
 
   it('uses official get and cancel request shapes with root order responses', async () => {
+    const flash = createFlashService()
     const originalFetch = globalThis.fetch
     const orderId = '00000000-0000-4000-8000-000000000002'
     const accountAddress = '0x0000000000000000000000000000000000000002'
@@ -454,7 +453,7 @@ describe('main Flash facade helpers', () => {
     globalThis.fetch = fetchMock as unknown as typeof fetch
 
     try {
-      const detail = await getOrder({ accountAddress, orderId })
+      const detail = await flash.getOrder({ accountAddress, orderId })
       const getUrl = new URL(String(fetchMock.mock.calls[0]?.[0]))
 
       expect(getUrl.pathname).toBe(`/v1/orders/${orderId}`)
@@ -469,7 +468,7 @@ describe('main Flash facade helpers', () => {
         receiveAsset: { symbol: 'WETH' }
       })
 
-      const cancelled = await cancelOrder({ orderId, signature: '0xcancel-signature' })
+      const cancelled = await flash.cancelOrder({ orderId, signature: '0xcancel-signature' })
       const cancelUrl = new URL(String(fetchMock.mock.calls[1]?.[0]))
       const cancelInit = fetchMock.mock.calls[1]?.[1] as RequestInit
 
@@ -480,7 +479,7 @@ describe('main Flash facade helpers', () => {
       })
       expect(cancelled.order.status).toBe('cancelled')
     } finally {
-      stopOpenOrderPolling()
+      flash.dispose()
       globalThis.fetch = originalFetch
     }
   })
@@ -531,10 +530,10 @@ describe('main Flash facade helpers', () => {
         headers: { 'content-type': 'application/json' }
       })
     }) as unknown as typeof fetch
-    setFlashPositionSync({ track, refresh })
+    const flash = createFlashService({ positionSync: { track, refresh } })
 
     try {
-      await submitOrder({
+      await flash.submitOrder({
         ...request,
         accountAddress: request.accountAddress,
         quote,
@@ -574,16 +573,16 @@ describe('main Flash facade helpers', () => {
       })
       expect(refresh).not.toHaveBeenCalled()
 
-      await getOrder({ orderId })
+      await flash.getOrder({ orderId })
       expect(refresh).toHaveBeenCalledTimes(1)
 
-      await getOrder({ orderId })
+      await flash.getOrder({ orderId })
       expect(refresh).toHaveBeenCalledTimes(1)
 
-      await getOrder({ orderId })
+      await flash.getOrder({ orderId })
       expect(refresh).toHaveBeenCalledTimes(2)
 
-      await getOrder({ orderId })
+      await flash.getOrder({ orderId })
       expect(refresh).toHaveBeenCalledTimes(3)
       expect(refresh).toHaveBeenLastCalledWith(
         expect.objectContaining({
@@ -592,8 +591,7 @@ describe('main Flash facade helpers', () => {
         })
       )
     } finally {
-      stopOpenOrderPolling()
-      setFlashPositionSync()
+      flash.dispose()
       globalThis.fetch = originalFetch
     }
   })

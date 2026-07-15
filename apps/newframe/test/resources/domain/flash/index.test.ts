@@ -1,19 +1,22 @@
 import {
   FLASH_ANVIL_CHAIN_ID,
   FLASH_BASE_CHAIN_ID,
+  FLASH_NATIVE_ETH_TOKEN_ADDRESS
+} from '../../../../resources/domain/flash/constants'
+import {
   FLASH_NATIVE_ETH_ASSET,
-  FLASH_NATIVE_ETH_TOKEN_ADDRESS,
   FLASH_USDC_ASSET,
   FLASH_WETH_ASSET,
   balanceSummaryToFlashAsset,
-  getDefaultContraAsset,
-  getDefaultContraAssetForChain,
+  toFlashApiAssetAddress
+} from '../../../../resources/domain/flash/assets'
+import {
   getFlashChainSlug,
   getFlashDefaultChainId,
   getFlashSupportedChainIds,
-  isFlashChainSupported,
-  toFlashApiAssetAddress
-} from '../../../../resources/domain/flash'
+  isFlashChainSupported
+} from '../../../../resources/domain/flash/chains'
+import { getDefaultContraAsset, getDefaultContraAssetForChain } from '../../../../resources/domain/flash/pair'
 
 describe('flash domain helpers', () => {
   it('selects dev and production supported chain sets by runtime', () => {

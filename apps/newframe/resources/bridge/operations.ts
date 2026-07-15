@@ -1,5 +1,12 @@
 import { z } from 'zod'
 
+import {
+  FlashAssetSchema,
+  FlashOrderTypeSchema,
+  FlashQuoteSchema as DomainFlashQuoteSchema,
+  FlashTradeSideSchema
+} from '../domain/flash/schemas'
+
 const AddressSchema = z.string().regex(/^0x[0-9a-fA-F]{40}$/)
 const ChainIdSchema = z.number().int().positive()
 const HexDataSchema = z
@@ -35,46 +42,11 @@ export const TypedDataV4Schema = z
   })
   .refine((value) => JSON.stringify(value).length <= 1_000_000, 'Typed data is too large')
 
-const FlashOrderTypeSchema = z.enum([
-  'market',
-  'limit',
-  'twap',
-  'stop',
-  'stop-loss',
-  'take-profit',
-  'bracket'
-])
-const FlashSideSchema = z.enum(['buy', 'sell'])
-const FlashAssetSchema = z.strictObject({
-  id: z.string().min(1).max(256),
-  symbol: z.string().min(1).max(32),
-  name: z.string().min(1).max(128),
-  decimals: z.number().int().min(0).max(255),
-  chainId: ChainIdSchema,
-  isNative: z.boolean(),
-  address: AddressSchema.optional()
-})
 const FlashTriggerSchema = z.strictObject({
   notionalPrice: z.string().min(1).max(128),
   triggerType: z.enum(['lower', 'upper'])
 })
-const FlashStepSchema = z.looseObject({
-  id: z.string().min(1).max(256),
-  kind: z.enum(['wrap', 'approve', 'sign', 'submit']),
-  label: z.string().min(1).max(256),
-  status: z.enum(['idle', 'required', 'pending', 'complete', 'error', 'skipped'])
-})
-const FlashQuoteSchema = z.looseObject({
-  id: z.string().max(256).optional(),
-  side: FlashSideSchema,
-  orderType: FlashOrderTypeSchema,
-  targetAsset: FlashAssetSchema,
-  contraAsset: FlashAssetSchema,
-  spentAsset: FlashAssetSchema,
-  receiveAsset: FlashAssetSchema,
-  inputAmount: z.string().min(1).max(128),
-  outputAmount: z.string().min(1).max(128),
-  steps: z.array(FlashStepSchema).max(16),
+const FlashQuoteSchema = DomainFlashQuoteSchema.extend({
   raw: JsonPayloadSchema.optional()
 })
 
@@ -96,7 +68,7 @@ export const FlashQuoteRequestSchema = z
     inputAmount: z.string().min(1).max(128),
     orderType: FlashOrderTypeSchema,
     qty: z.string().min(1).max(128),
-    side: FlashSideSchema,
+    side: FlashTradeSideSchema,
     targetAsset: FlashAssetSchema,
     ...FlashOptionalOrderFields
   })
@@ -122,7 +94,7 @@ export const FlashSubmitOrderSchema = z
     quote: FlashQuoteSchema,
     quoteId: z.string().max(256).optional(),
     rawPayload: JsonPayloadSchema.nullable().optional(),
-    side: FlashSideSchema,
+    side: FlashTradeSideSchema,
     signature: SignatureSchema,
     targetAsset: FlashAssetSchema,
     ...FlashOptionalOrderFields
