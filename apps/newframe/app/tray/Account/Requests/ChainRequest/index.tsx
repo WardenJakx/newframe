@@ -1,8 +1,26 @@
 import React from 'react'
 import svg from '../../../../../resources/svg'
 import { useNetwork, useOriginName } from '../state'
+import type { AccountRequest } from '../../../../../main/accounts/types'
 
-export function ChainRequest(props: any) {
+type ChainRequestData = AccountRequest<'addChain' | 'switchChain'> & {
+  id?: string
+  chain: {
+    id: string | number
+    type: string
+    name?: string
+  }
+}
+
+type ChainRequestProps = {
+  req: ChainRequestData
+  originName: string
+  networkName?: string
+}
+
+type ChainRequestWithStateProps = Omit<ChainRequestProps, 'originName' | 'networkName'>
+
+export function ChainRequest(props: ChainRequestProps) {
   const { status, notice, type, chain } = props.req
 
   let requestClass = 'signerRequest'
@@ -39,7 +57,9 @@ export function ChainRequest(props: any) {
               <div className={'requestChainOriginSub'}>
                 {type === 'switchChain' ? 'wants to switch to chain' : 'wants to add chain'}
               </div>
-              <div className='requestChainName'>{type === 'switchChain' ? networkName : chain.name}</div>
+              <div className='requestChainName'>
+                {type === 'switchChain' ? networkName : chain.name || ''}
+              </div>
             </div>
           </div>
         )}
@@ -48,9 +68,9 @@ export function ChainRequest(props: any) {
   )
 }
 
-export default function ChainRequestWithState(props: any) {
+export default function ChainRequestWithState(props: ChainRequestWithStateProps) {
   const { req } = props
   const originName = useOriginName(req.origin)
-  const network = useNetwork(req.chain.type, parseInt(req.chain.id))
-  return <ChainRequest {...props} originName={originName} networkName={network.name} />
+  const network = useNetwork(req.chain.type, Number(req.chain.id))
+  return <ChainRequest {...props} originName={originName} networkName={network.name || ''} />
 }

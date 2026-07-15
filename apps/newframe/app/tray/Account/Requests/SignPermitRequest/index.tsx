@@ -10,14 +10,36 @@ import { SimpleTypedData as TypedSignatureOverview } from '../../../../../resour
 import { getSignatureRequestClass } from '../../../../../resources/domain/request'
 import useCopiedMessage from '../../../../../resources/Hooks/useCopiedMessage'
 import { useRequestView, type RequestViewState } from '../../../requestView'
+import type { RequestViewStep } from '../../../requestView'
+import type { PermitSignatureRequest } from '../../../../../main/accounts/types'
+import type { SourceValue } from '../../../../../resources/utils/displayValue'
 
-const PermitOverview = ({
-  req,
-  chainData,
-  originName,
-  open
-}: any & { open(next: RequestViewState): void }) => {
-  const { chainColor, chainName, icon } = chainData
+type PermitChainData = {
+  chainColor?: string
+  chainName?: string
+  icon?: string
+}
+
+type PermitOverviewProps = {
+  req: PermitSignatureRequest
+  chainData: PermitChainData
+  originName: string
+  open(next: RequestViewState): void
+}
+
+type EditPermitProps = {
+  req: PermitSignatureRequest
+}
+
+type PermitRequestProps = {
+  req: PermitSignatureRequest & { id?: string }
+  originName: string
+  step: RequestViewStep
+  chainData: PermitChainData
+}
+
+const PermitOverview = ({ req, chainData, originName, open }: PermitOverviewProps) => {
+  const { chainColor = '', chainName = '', icon } = chainData
   const {
     permit: { spender, value, deadline },
     tokenData,
@@ -26,7 +48,7 @@ const PermitOverview = ({
 
   const [showCopiedMessage, copySpender] = useCopiedMessage(spender.address)
 
-  const amountDisplay = isUnlimited(value)
+  const amountDisplay = isUnlimited(String(value))
     ? '~UNLIMITED'
     : tokenData.decimals
       ? formatUnits(toBigInt(value) ?? 0n, tokenData.decimals)
@@ -108,10 +130,11 @@ const PermitOverview = ({
                   <ClusterRow>
                     <ClusterValue
                       onClick={
-                        tokenData.decimals &&
-                        (() => {
-                          open({ step: 'adjustPermit' })
-                        })
+                        tokenData.decimals
+                          ? () => {
+                              open({ step: 'adjustPermit' })
+                            }
+                          : undefined
                       }
                     >
                       <div className='clusterFocus'>
@@ -129,7 +152,7 @@ const PermitOverview = ({
                   <ClusterRow>
                     <ClusterValue>
                       <Countdown
-                        end={deadline * 1000}
+                        end={Number(deadline) * 1000}
                         innerClass='clusterFocusHighlight'
                         titleClass='clusterFocus'
                       />
@@ -145,12 +168,12 @@ const PermitOverview = ({
   )
 }
 
-const EditPermit = ({ req }: any) => {
+const EditPermit = ({ req }: EditPermitProps) => {
   const { permit, tokenData } = req
 
   const { verifyingContract: contract, spender, value: amount, deadline: deadlineInSeconds } = permit
 
-  const updateRequest = (newAmt: any) => {
+  const updateRequest = (newAmt: SourceValue) => {
     void link.executeCommand({
       type: 'request.token-approval-update',
       requestKind: 'permit',
@@ -158,7 +181,7 @@ const EditPermit = ({ req }: any) => {
       amount: String(newAmt)
     })
   }
-  const deadline = deadlineInSeconds * 1000
+  const deadline = Number(deadlineInSeconds) * 1000
 
   const requestedAmount = toBigInt(req.payload.params[1].message.value) ?? 0n
 
@@ -181,7 +204,7 @@ const EditPermit = ({ req }: any) => {
   )
 }
 
-const PermitRequest = ({ req, originName, step, chainData }: any) => {
+const PermitRequest = ({ req, originName, step, chainData }: PermitRequestProps) => {
   const requestView = useRequestView()
   const requestClass = getSignatureRequestClass(req)
 
@@ -190,7 +213,7 @@ const PermitRequest = ({ req, originName, step, chainData }: any) => {
       case 'adjustPermit':
         return <EditPermit req={req} />
       case 'viewRaw':
-        return <TypedSignatureOverview {...({ originName, req } as any)} />
+        return <TypedSignatureOverview req={req} />
       default:
         return (
           <PermitOverview originName={originName} req={req} chainData={chainData} open={requestView.open} />

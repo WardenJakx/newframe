@@ -6,6 +6,20 @@ import svg from '../../../resources/svg'
 const PENDING_NOTIFICATION_MS = 60 * 1000
 const RESOLVED_NOTIFICATION_MS = 3000
 
+type StatusNotification = {
+  id: string
+  state?: string
+  title?: string
+  detail?: string
+  hidden?: boolean
+  createdAt?: unknown
+  updatedAt?: unknown
+  expiresAt?: unknown
+  leadingIcon?: { chainId?: string | number }
+  target?: { chainId?: string | number; hash?: string; [key: string]: unknown }
+  metadata?: { hash?: string }
+}
+
 export const timestamp = (value: any, fallback = 0) => {
   if (typeof value === 'number') return value
   if (value instanceof Date) return value.getTime()
@@ -18,7 +32,7 @@ export const timestamp = (value: any, fallback = 0) => {
   return fallback
 }
 
-const notificationExpiresAt = (notification: any) => {
+const notificationExpiresAt = (notification: StatusNotification) => {
   const fallbackBase = timestamp(notification.updatedAt, timestamp(notification.createdAt, Date.now()))
   const fallbackDuration =
     notification.state === 'pending' ? PENDING_NOTIFICATION_MS : RESOLVED_NOTIFICATION_MS
@@ -36,13 +50,13 @@ const shortHash = (hash?: string) => {
   return `${hash.substring(0, 6)}...${hash.substring(hash.length - 4)}`
 }
 
-const notificationMetadata = (notification: any, label: string) => {
+const notificationMetadata = (notification: StatusNotification, label: string) => {
   const detail = String(notification.detail || '').trim()
   if (detail && detail.toLowerCase() !== label.toLowerCase()) return detail
   return shortHash(notification.target?.hash || notification.metadata?.hash)
 }
 
-const notificationTimestamp = (notification: any) => {
+const notificationTimestamp = (notification: StatusNotification) => {
   const shownAt = timestamp(notification.createdAt, timestamp(notification.updatedAt, 0))
   if (!shownAt) return ''
 
@@ -55,11 +69,11 @@ const notificationTimestamp = (notification: any) => {
 }
 
 interface StatusNotificationsProps {
-  notifications: Record<string, any>
-  renderChainIcon: (notification: any) => React.ReactNode
+  notifications: Record<string, StatusNotification>
+  renderChainIcon: (notification: StatusNotification) => React.ReactNode
   onDismiss: (id: string) => void
   onExpire: (id: string) => void
-  onOpen: (notification: any) => void
+  onOpen: (notification: StatusNotification) => void
 }
 
 export default function StatusNotifications({
@@ -72,7 +86,7 @@ export default function StatusNotifications({
   const entries = Object.values(notifications || {})
 
   useEffect(() => {
-    const timers = entries.map((notification: any) => {
+    const timers = entries.map((notification) => {
       const wait = Math.max(0, notificationExpiresAt(notification) - Date.now())
       return setTimeout(() => onExpire(notification.id), wait)
     })
@@ -81,10 +95,10 @@ export default function StatusNotifications({
 
   const now = Date.now()
   const visible = entries
-    .filter((notification: any) => notification?.id && !notification.hidden)
-    .filter((notification: any) => notificationExpiresAt(notification) > now)
+    .filter((notification) => notification?.id && !notification.hidden)
+    .filter((notification) => notificationExpiresAt(notification) > now)
     .sort(
-      (a: any, b: any) =>
+      (a, b) =>
         timestamp(b.createdAt, timestamp(b.updatedAt, 0)) - timestamp(a.createdAt, timestamp(a.updatedAt, 0))
     )
     .slice(0, 3)
@@ -93,7 +107,7 @@ export default function StatusNotifications({
 
   return (
     <div aria-label='Status notifications' className='t2StatusNotifications'>
-      {visible.map((notification: any) => {
+      {visible.map((notification) => {
         const state = notification.state || 'pending'
         const label = notificationLabel(state)
         const metadata = notificationMetadata(notification, label)

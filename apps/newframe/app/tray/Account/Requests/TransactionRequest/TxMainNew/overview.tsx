@@ -8,14 +8,65 @@ import { DisplayValue } from '../../../../../../resources/Components/DisplayValu
 import RequestHeader from '../../../../../../resources/Components/RequestHeader'
 import { toBigInt } from '../../../../../../resources/utils/numbers'
 import { useRequestView } from '../../../../requestView'
+import type { ReactNode } from 'react'
+import type { SourceValue } from '../../../../../../resources/utils/displayValue'
 
-const SimpleContractCallOverview = ({ method }: { method?: any }) => {
+type TxOverviewRequest = {
+  data: {
+    value?: string
+    data?: string
+    calldataDigest?: string
+  }
+  classification: string
+  decodedData?: { method?: string }
+  recognizedActions?: Array<{ id: string; data?: unknown }>
+}
+
+type SimpleContractCallOverviewProps = {
+  method?: string
+}
+
+type ApproveOverviewProps = {
+  amount?: SourceValue
+  decimals?: number
+  symbol?: string
+}
+
+type SendOverviewProps = ApproveOverviewProps & {
+  req?: TxOverviewRequest
+}
+
+type ContractCallOverviewProps = {
+  req: TxOverviewRequest
+}
+
+type DataClusterValueProps = {
+  children?: ReactNode
+  valueColor?: string
+}
+
+type TxOverviewProps = {
+  req: TxOverviewRequest
+  chainName?: string
+  chainColor?: string
+  symbol: string
+  originName?: string
+  replacementStatus?: {
+    replacement?: boolean
+    possible?: boolean
+    notice?: string
+  }
+  simple?: boolean
+  valueColor?: string
+}
+
+const SimpleContractCallOverview = ({ method }: SimpleContractCallOverviewProps) => {
   const body = method ? `Calling Contract Method ${method}` : 'Calling Contract'
 
   return <div className='_txDescriptionSummaryLine'>{body}</div>
 }
 
-const ApproveOverview = ({ amount, decimals, symbol }: any) => {
+const ApproveOverview = ({ amount = 0, decimals, symbol = '?' }: ApproveOverviewProps) => {
   const isRevoke = toBigInt(amount) === 0n
   return (
     <div>
@@ -37,8 +88,8 @@ const ApproveOverview = ({ amount, decimals, symbol }: any) => {
   )
 }
 
-const SendOverview = ({ req, symbol, decimals, amount: ammt }: any) => {
-  const amount = ammt || req.data.value
+const SendOverview = ({ req, symbol = '?', decimals, amount: ammt }: SendOverviewProps) => {
+  const amount = ammt || req?.data.value || 0
   return (
     <div>
       <span>{'Send'}</span>
@@ -56,27 +107,27 @@ const SendOverview = ({ req, symbol, decimals, amount: ammt }: any) => {
 const DeployContractOverview = () => <div>Deploying Contract</div>
 const DataOverview = () => <div>Sending data</div>
 
-const ContractCallOverview = ({ req }: any) => {
+const ContractCallOverview = ({ req }: ContractCallOverviewProps) => {
   const { decodedData: { method } = {} } = req
   return renderRecognizedActions(req) || <SimpleContractCallOverview method={method} />
 }
 
-const actionOverviews: Record<string, any> = {
-  'erc20:transfer': SendOverview,
-  'erc20:approve': ApproveOverview,
-  ens: EnsOverview
-}
-
-const renderActionOverview = (action: any, index: number) => {
+const renderActionOverview = (action: { id: string; data?: unknown }, index: number) => {
   const { id = '', data } = action
   const key = id + index
   const [_actionClass, actionType] = id.split(':')
-  const ActionOverview = actionOverviews[id] || SimpleContractCallOverview
+  const props = data && typeof data === 'object' ? data : {}
 
-  return <ActionOverview key={key} type={actionType} {...{ ...data }} />
+  if (id === 'erc20:transfer') return <SendOverview key={key} {...(props as SendOverviewProps)} />
+  if (id === 'erc20:approve') return <ApproveOverview key={key} {...(props as ApproveOverviewProps)} />
+  if (id.startsWith('ens:')) {
+    return <EnsOverview key={key} type={actionType} data={props} />
+  }
+
+  return <SimpleContractCallOverview key={key} />
 }
 
-function renderRecognizedActions(req: any) {
+function renderRecognizedActions(req: TxOverviewRequest) {
   const { recognizedActions: actions = [] } = req
 
   return !actions.length ? (
@@ -86,14 +137,7 @@ function renderRecognizedActions(req: any) {
   )
 }
 
-const BaseOverviews: Record<string, any> = {
-  CONTRACT_DEPLOY: DeployContractOverview,
-  CONTRACT_CALL: ContractCallOverview,
-  SEND_DATA: DataOverview,
-  NATIVE_TRANSFER: SendOverview
-}
-
-const DataClusterValue = ({ children, valueColor }: any) => {
+const DataClusterValue = ({ children, valueColor }: DataClusterValueProps) => {
   const requestView = useRequestView()
   return (
     <ClusterValue onClick={() => requestView.open({ step: 'viewData' })} style={{ background: valueColor }}>
@@ -104,25 +148,28 @@ const DataClusterValue = ({ children, valueColor }: any) => {
 
 const TxOverview = ({
   req,
-  chainName,
-  chainColor,
+  chainName = '',
+  chainColor = '',
   symbol,
-  originName,
+  originName = '',
   replacementStatus,
   simple,
   valueColor
-}: any) => {
-  const { data: tx = {}, classification } = req
+}: TxOverviewProps) => {
+  const { data: tx, classification } = req
   const { data: calldata, calldataDigest } = tx
 
-  const Description = BaseOverviews[classification]
+  const description = (() => {
+    if (classification === 'CONTRACT_DEPLOY') return <DeployContractOverview />
+    if (classification === 'CONTRACT_CALL') return <ContractCallOverview req={req} />
+    if (classification === 'SEND_DATA') return <DataOverview />
+    return <SendOverview req={req} decimals={18} symbol={symbol} />
+  })()
 
   if (simple) {
     return (
       <div className='txDescriptionSummaryStandalone'>
-        <span className='txDescriptionSummaryStandaloneWrap'>
-          <Description req={req} decimals={18} symbol={symbol} />
-        </span>
+        <span className='txDescriptionSummaryStandaloneWrap'>{description}</span>
       </div>
     )
   } else {
@@ -136,14 +183,12 @@ const TxOverview = ({
                   <div className='requestItemTitleSubIcon'>{svg.window(10)}</div>
                   <div className='requestItemTitleSubText'>{originName}</div>
                 </div>
-                <div className='_txDescriptionSummaryMain'>
-                  <Description req={req} decimals={18} symbol={symbol} />
-                </div>
+                <div className='_txDescriptionSummaryMain'>{description}</div>
               </RequestHeader>
             </div>
           </DataClusterValue>
         </ClusterRow>
-        {replacementStatus.replacement &&
+        {replacementStatus?.replacement &&
           (replacementStatus.possible ? (
             <ClusterRow>
               <ClusterValue>
@@ -159,14 +204,14 @@ const TxOverview = ({
               </ClusterValue>
             </ClusterRow>
           ))}
-        {isNonZeroHex(calldata) && (
+        {isNonZeroHex(calldata || '') && (
           <ClusterRow>
             <ClusterValue>
               <div className='_txMainTag _txMainTagWarning'>{'Transaction includes data'}</div>
             </ClusterValue>
           </ClusterRow>
         )}
-        {isNonZeroHex(calldata) && calldataDigest && (
+        {isNonZeroHex(calldata || '') && calldataDigest && (
           <ClusterRow>
             <ClusterValue>
               <div className='calldataDigestRow'>

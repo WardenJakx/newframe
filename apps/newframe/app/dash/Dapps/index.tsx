@@ -10,14 +10,35 @@ import { useWalletSelector } from '../../state/useAppSelector'
 import type { DashChain, DashChainMetadata, DashRendererState } from '../state'
 import type { Origin } from '../../../main/store/state'
 
-function bySessionStartTime(a: any, b: any) {
+type ConnectedOrigin = Origin & { id: string }
+
+type IndicatorProps = {
+  connected: boolean
+}
+
+type OriginModuleProps = IndicatorProps & {
+  origin: ConnectedOrigin
+}
+
+type ChainOriginsProps = {
+  chain: DashChain
+  origins: { connected: ConnectedOrigin[] }
+  primaryColor?: string
+  icon?: string
+}
+
+type DappsProps = {
+  data?: { dappDetails?: string }
+}
+
+function bySessionStartTime(a: ConnectedOrigin, b: ConnectedOrigin) {
   return b.session.startedAt - a.session.startedAt
 }
 
 const originFilter = ['newframe-internal', 'newframe-extension', 'frame-internal', 'frame-extension']
 
-function getOriginsForChain(chain: any, origins: any) {
-  const connectedOrigins = Object.entries(origins).reduce((acc: any, [id, origin]: [string, any]) => {
+function getOriginsForChain(chain: DashChain, origins: Record<string, Origin>) {
+  const connectedOrigins = Object.entries(origins).reduce<ConnectedOrigin[]>((acc, [id, origin]) => {
     if (origin.chain.id === chain.id && !originFilter.includes(origin.name)) {
       const connected =
         isNetworkConnected(chain) &&
@@ -27,14 +48,14 @@ function getOriginsForChain(chain: any, origins: any) {
     }
 
     return acc
-  }, [] as any[])
+  }, [])
 
   return {
     connected: connectedOrigins.sort(bySessionStartTime)
   }
 }
 
-function Indicator({ connected }: any) {
+function Indicator({ connected }: IndicatorProps) {
   const [active, setActive] = useState(false)
 
   useEffect(() => {
@@ -55,7 +76,7 @@ function Indicator({ connected }: any) {
   return null
 }
 
-function OriginModule({ origin, connected }: any) {
+function OriginModule({ origin, connected }: OriginModuleProps) {
   const [averageRequests, setAverageRequests] = useState('0.0')
 
   useEffect(() => {
@@ -94,7 +115,7 @@ function OriginModule({ origin, connected }: any) {
   )
 }
 
-const ChainOrigins = ({ chain: { name }, origins, primaryColor, icon }: any) => {
+const ChainOrigins = ({ chain: { name }, origins, primaryColor, icon }: ChainOriginsProps) => {
   return (
     <>
       <div className='originTitle'>
@@ -103,8 +124,8 @@ const ChainOrigins = ({ chain: { name }, origins, primaryColor, icon }: any) => 
         </div>
         <div className='originTitleText'>{name}</div>
       </div>
-      {origins.connected.map((origin: any) => (
-        <OriginModule key={origin} origin={origin} connected={true} />
+      {origins.connected.map((origin) => (
+        <OriginModule key={origin.id} origin={origin} connected={true} />
       ))}
       {origins.connected.length === 0 ? (
         <div className='sliceOriginNoDapp'>{'No Websites Connected'}</div>
@@ -123,7 +144,7 @@ const selectDappsState = (state: DashRendererState) => ({
   origins: state.origins || EMPTY_ORIGINS
 })
 
-export default function Dapps({ data }: any) {
+export default function Dapps({ data = {} }: DappsProps) {
   const { chains, chainMetadata, origins } = useWalletSelector(useShallow(selectDappsState))
   const enabledChains = Object.values(chains).filter(isNetworkEnabled)
   const { dappDetails } = data

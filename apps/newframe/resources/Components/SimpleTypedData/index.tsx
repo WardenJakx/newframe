@@ -1,4 +1,5 @@
 import type { Erc7730Display } from '../../../main/signatures/erc7730'
+import type { Eip712Digests } from '../../../main/signatures/digests'
 
 type SimpleJsonRow = {
   label: string
@@ -86,8 +87,21 @@ const SimpleJsonSection = ({ title, rows }: { title?: string; rows: SimpleJsonRo
     </>
   ) : null
 
-const SimpleTypedDataInner = ({ typedData }: { typedData: any }) => {
-  if (typedData.domain) {
+type SimpleTypedDataInnerProps = {
+  typedData: unknown
+}
+
+type SimpleTypedDataProps = {
+  req: {
+    type: string
+    typedMessage: { data: unknown }
+    erc7730?: Erc7730Display
+    digests?: Partial<Eip712Digests>
+  }
+}
+
+const SimpleTypedDataInner = ({ typedData }: SimpleTypedDataInnerProps) => {
+  if (isRecord(typedData) && 'domain' in typedData) {
     const domainRows = flattenJsonRows(typedData.domain)
     const messageRows = flattenJsonRows(typedData.message)
 
@@ -101,8 +115,8 @@ const SimpleTypedDataInner = ({ typedData }: { typedData: any }) => {
 
   const legacyRows = Array.isArray(typedData)
     ? flattenJsonRows(
-        typedData.reduce((data: Record<string, unknown>, elem: { name: string; value: unknown }) => {
-          data[elem.name] = elem.value
+        typedData.reduce((data: Record<string, unknown>, elem) => {
+          if (isRecord(elem) && typeof elem.name === 'string') data[elem.name] = elem.value
           return data
         }, {})
       )
@@ -115,7 +129,7 @@ const SimpleTypedDataInner = ({ typedData }: { typedData: any }) => {
   )
 }
 
-const DigestRows = ({ digests }: { digests?: Record<string, string> }) => {
+const DigestRows = ({ digests }: { digests?: Partial<Eip712Digests> }) => {
   const rows = [
     ['EIP-712 Digest', digests?.eip712Digest],
     ['Domain Hash', digests?.domainHash],
@@ -158,7 +172,7 @@ const Erc7730ClearSigning = ({ display }: { display?: Erc7730Display }) => {
   )
 }
 
-export const SimpleTypedData = ({ req }: { req: any }) => {
+export const SimpleTypedData = ({ req }: SimpleTypedDataProps) => {
   const type = req.type
   const typedData = req.typedMessage.data || {}
 

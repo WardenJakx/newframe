@@ -7,6 +7,43 @@ import svg from '../../../../resources/svg'
 import { chainColorCssVariable } from '../../../../resources/style/tokens/colors'
 import { useWalletSelector } from '../../../state/useAppSelector'
 import type { DashChain, DashChainMetadata, DashRendererState } from '../../state'
+import type { Token } from '../../../../main/store/state'
+import type { DashNavigationData } from '../../state'
+
+type SelectedChain = {
+  id: number
+  color?: string
+  name?: string
+}
+
+type TokenErrorProps = {
+  text: string
+  onContinue(): void
+}
+
+type EnterAddressProps = {
+  chain: SelectedChain
+}
+
+type TokenDetailsFormProps = {
+  req?: { handlerId?: string }
+  chain: SelectedChain
+  tokenData: Partial<Token> & Pick<Token, 'address'> & { totalSupply?: string }
+  isEdit?: boolean
+}
+
+type AddTokenProps = {
+  data?: DashNavigationData
+  req?: unknown
+}
+
+type AddTokenNotifyData = {
+  address?: string
+  chain?: SelectedChain
+  error?: string | null
+  tokenData?: Partial<Token> & { totalSupply?: string }
+  isEdit?: boolean
+}
 
 const invalidFormatError = 'INVALID CONTRACT ADDRESS'
 const unableToVerifyError = `COULD NOT FIND TOKEN WITH ADDRESS`
@@ -23,7 +60,7 @@ const navForward = (notifyData: any) =>
 
 const navBack = (steps = 1) => link.executeCommand({ type: 'dash.back', steps })
 
-const TokenError = ({ text, onContinue }: any) => {
+const TokenError = ({ text, onContinue }: TokenErrorProps) => {
   return (
     <div className='newTokenView cardShow'>
       <div className='newTokenErrorTitle'>{text}</div>
@@ -111,7 +148,7 @@ function SelectChain() {
   )
 }
 
-const EnterAddress = ({ chain }: any) => {
+const EnterAddress = ({ chain }: EnterAddressProps) => {
   const [isFetching, setFetching] = useState(false)
   const [contractAddress, setAddress] = useState('')
 
@@ -206,13 +243,13 @@ const tokenDetailsDefaults = {
   logoURI: 'Logo URI'
 }
 
-const TokenDetailsForm = ({ req, chain, tokenData, isEdit }: any) => {
+const TokenDetailsForm = ({ req, chain, tokenData, isEdit }: TokenDetailsFormProps) => {
   const [name, setName] = useState(tokenData.name || tokenDetailsDefaults.name)
   const [symbol, setSymbol] = useState(tokenData.symbol || tokenDetailsDefaults.symbol)
   const [decimals, setDecimals] = useState(tokenData.decimals || tokenDetailsDefaults.decimals)
   const [logoUri, setLogoUri] = useState(tokenData.logoURI || tokenDetailsDefaults.logoURI)
 
-  const submitRef = useRef<any>(null)
+  const submitRef = useRef<HTMLDivElement>(null)
 
   const { address } = tokenData
   const { name: chainName, color } = chain
@@ -231,7 +268,7 @@ const TokenDetailsForm = ({ req, chain, tokenData, isEdit }: any) => {
       symbol,
       chainId: chain.id,
       address,
-      decimals,
+      decimals: Number(decimals),
       logoURI: logoUri === tokenDetailsDefaults.logoURI ? '' : logoUri
     }
 
@@ -250,7 +287,7 @@ const TokenDetailsForm = ({ req, chain, tokenData, isEdit }: any) => {
     }
   }
 
-  const handleKeyPress = (e: any) => {
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement | HTMLDivElement>) => {
     if (e.key === 'Enter' && newTokenReady) {
       e.stopPropagation()
       saveAndClose()
@@ -427,14 +464,20 @@ const TokenDetailsForm = ({ req, chain, tokenData, isEdit }: any) => {
   )
 }
 
-const AddToken = ({ data, req }: any) => {
-  const { address, chain, error, tokenData, isEdit } = data?.notifyData || {}
+const AddToken = ({ data, req }: AddTokenProps) => {
+  const { address, chain, error, tokenData, isEdit } = (data?.notifyData || {}) as AddTokenNotifyData
+  const request =
+    req && typeof req === 'object' && 'handlerId' in req && typeof req.handlerId === 'string'
+      ? { handlerId: req.handlerId }
+      : undefined
 
   if (!chain) return <SelectChain />
   if (!address) return <EnterAddress chain={chain} />
   if (error) return <TokenError text={error} onContinue={() => navForward({ address, chain })} />
 
-  return <TokenDetailsForm chain={chain} req={req} tokenData={{ ...tokenData, address }} isEdit={isEdit} />
+  return (
+    <TokenDetailsForm chain={chain} req={request} tokenData={{ ...tokenData, address }} isEdit={isEdit} />
+  )
 }
 
 export default AddToken

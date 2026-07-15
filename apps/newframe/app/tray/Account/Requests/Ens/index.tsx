@@ -1,5 +1,17 @@
 const timeFormat = new Intl.DateTimeFormat('en', { dateStyle: 'medium' })
 
+type EnsOverviewProps = {
+  type: string
+  data: {
+    name?: string
+    duration?: number
+    tokenId?: string
+    from?: string
+    to?: string
+    operator?: string
+  }
+}
+
 function formatTime(amount: number, unit: string) {
   return `for ${amount} ${unit}${amount > 1 ? 's' : ''}`
 }
@@ -15,7 +27,7 @@ function formatDuration(duration: number) {
   return `until ${timeFormat.format(endDate)}`
 }
 
-const EnsOverview = ({ type, data }: { type: string; data: any }) => {
+const EnsOverview = ({ type, data }: EnsOverviewProps) => {
   if (type === 'commit') {
     return (
       <>
@@ -29,7 +41,7 @@ const EnsOverview = ({ type, data }: { type: string; data: any }) => {
       <>
         <div className='_txDescriptionSummaryLine'>Registering ENS Name</div>
         <div className='_txDescriptionSummaryLine _txDescriptionSummaryHeadline'>{data.name}</div>
-        <div className='_txDescriptionSummaryLine'>{`${formatDuration(data.duration)}`}</div>
+        <div className='_txDescriptionSummaryLine'>{`${formatDuration(data.duration || 0)}`}</div>
       </>
     )
   }
@@ -39,7 +51,7 @@ const EnsOverview = ({ type, data }: { type: string; data: any }) => {
       <>
         <div className='_txDescriptionSummaryLine'>Renewing ENS Name</div>
         <div className='_txDescriptionSummaryLine _txDescriptionSummaryHeadline'>{data.name}</div>
-        <div className='_txDescriptionSummaryLine'>{`for ${formatDuration(data.duration)}`}</div>
+        <div className='_txDescriptionSummaryLine'>{`for ${formatDuration(data.duration || 0)}`}</div>
       </>
     )
   }

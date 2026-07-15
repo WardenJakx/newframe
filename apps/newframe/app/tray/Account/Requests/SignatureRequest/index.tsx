@@ -1,4 +1,5 @@
 import { useRef } from 'react'
+import type { SignatureRequest } from '../../../../../main/accounts/types'
 
 function getRequestClass(status: string) {
   let requestClass = 'signerRequest'
@@ -32,11 +33,15 @@ const Message = ({ text }: { text: string }) => {
   )
 }
 
-const MessageToSign = ({ req }: { req: any }) => {
+type MessageToSignProps = {
+  req: Extract<SignatureRequest, { type: 'sign' }> & { id?: string }
+}
+
+const MessageToSign = ({ req }: MessageToSignProps) => {
   const { id, handlerId, type, status } = req
 
   const message = req.data.decodedMessage
-  const requestClass = getRequestClass(status)
+  const requestClass = getRequestClass(status || '')
 
   return (
     <div key={id || handlerId} className={requestClass}>

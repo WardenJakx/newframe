@@ -6,17 +6,23 @@ import { ClusterBox, Cluster, ClusterRow, ClusterValue } from '../Cluster'
 import Countdown from '../Countdown'
 
 import useCopiedMessage from '../../Hooks/useCopiedMessage'
+import type { Identity } from '../../../main/accounts/types'
+import type { SourceValue } from '../../utils/displayValue'
 
-const isMax = (value: any) => toBigInt(value) === max
+const isMax = (value: SourceValue) => toBigInt(value) === max
 
-const getMode = (requestedAmount: any, amount: any) => {
+const getMode = (requestedAmount: SourceValue, amount: SourceValue) => {
   if (requestedAmount === toBigInt(amount)) return 'requested'
   return isMax(amount) ? 'unlimited' : 'custom'
 }
 
-const isValidInput = (value: any, decimals: number) => {
+const isValidInput = (value: string, decimals: number) => {
   const strValue = value.toString()
-  return !isNaN(value) && value > 0 && (!strValue.includes('.') || strValue.split('.')[1].length <= decimals)
+  return (
+    !Number.isNaN(Number(value)) &&
+    Number(value) > 0 &&
+    (!strValue.includes('.') || strValue.split('.')[1].length <= decimals)
+  )
 }
 
 const Details = ({ address, name }: { address: string; name?: string }) => {
@@ -67,10 +73,19 @@ const Description = ({ isRevoke }: { isRevoke: boolean }) => (
   </ClusterRow>
 )
 
+export interface TokenSpendData {
+  decimals?: number
+  symbol?: string
+  name?: string
+  spender: Identity
+  contract: Identity
+  amount: SourceValue
+}
+
 interface EditTokenSpendProps {
-  data: any
+  data: TokenSpendData
   updateRequest: (amount: string) => void
-  requestedAmount: any
+  requestedAmount: SourceValue
   deadline?: number
   canRevoke?: boolean
 }
@@ -84,7 +99,7 @@ const EditTokenSpend = ({
 }: EditTokenSpendProps) => {
   const { decimals = 0, symbol = '???', name = 'Unknown Token', spender, contract, amount } = data
 
-  const toDecimal = (baseAmount: any) => formatUnits(toBigInt(baseAmount) ?? 0n, decimals)
+  const toDecimal = (baseAmount: SourceValue) => formatUnits(toBigInt(baseAmount) ?? 0n, decimals)
   const fromDecimal = (decimalAmount: string) => (parseUnits(decimalAmount, decimals) ?? 0n).toString()
 
   const [mode, setMode] = useState(getMode(requestedAmount, amount))

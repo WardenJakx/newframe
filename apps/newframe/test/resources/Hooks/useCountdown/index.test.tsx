@@ -4,7 +4,11 @@ import useCountdown from '../../../../resources/Hooks/useCountdown'
 const startDate = new Date('2023-01-01')
 const nextDay = new Date('2023-01-02')
 
-const TestComponent = ({ end }: any) => {
+type TestComponentProps = {
+  end: number
+}
+
+const TestComponent = ({ end }: TestComponentProps) => {
   const ttl = useCountdown(end)
 
   return <div role='timer'>{ttl}</div>

@@ -13,6 +13,7 @@ import { useWalletSelector } from '../../../state/useAppSelector'
 import type { WalletRendererState } from '../../../../resources/state/projections'
 import { useTrayNotification, type TrayNotifier } from '../../notification'
 import { useRequestView, type RequestViewStep } from '../../requestView'
+import type { SignatureRequest, TransactionRequest } from '../../../../main/accounts/types'
 
 const FEE_WARNING_THRESHOLD_USD = 50
 type RequestReference = { handlerId: string }
@@ -20,17 +21,34 @@ type SignerCompatibility = { signer: string; tx: string; compatible: boolean }
 
 interface RequestCommandSharedState {
   appLocked: boolean
-  chain: any
-  chainMeta: any
+  chain: { explorer?: string; isTestnet?: boolean }
+  chainMeta: {
+    nativeCurrency?: {
+      symbol?: string
+      usd?: { price: number }
+    }
+  }
   explorerWarningMuted: boolean
   gasFeeWarningMuted: boolean
   signerCompatibilityWarningMuted: boolean
   step: RequestViewStep
 }
 
+type RequestCommandRequest = {
+  handlerId: string
+  type: string
+  status?: string
+  notice?: string
+  mode?: string
+  data?: object
+  tx?: { hash?: string }
+  automaticFeeUpdateNotice?: object
+  approvals?: Array<{ type: string; data: unknown; approved: boolean }>
+}
+
 interface RequestCommandProps {
   notify: TrayNotifier
-  req: any
+  req: RequestCommandRequest
   shared: RequestCommandSharedState
   signingDelay?: number
 }
@@ -75,6 +93,7 @@ export async function checkSignerCompatibility(
 }
 
 export function RequestCommand(props: RequestCommandProps) {
+  const request = props.req as TransactionRequest | SignatureRequest
   const [state, setCommandState] = useState({
     allowInput: false,
     dataView: false,
@@ -116,17 +135,17 @@ export function RequestCommand(props: RequestCommandProps) {
     await checkSignerCompatibility(req, props.notify, shakeSignerUnavailable, next)
   }
 
-  function toDisplayUSD(usd: any) {
+  function toDisplayUSD(usd: number) {
     // round up to 2 decimal places
     return (Math.ceil(usd * 100) / 100).toFixed(2)
   }
 
   function sentStatus() {
-    const { req } = props
+    const req = request as TransactionRequest
     const { notice, status } = req
     const chain = {
       type: 'ethereum',
-      id: parseInt(req.data.chainId, 'hex' as any)
+      id: parseInt(req.data.chainId, 16)
     }
 
     const { explorer } = props.shared.chain
@@ -236,7 +255,7 @@ export function RequestCommand(props: RequestCommandProps) {
             ) : null}
           </div>
         </div>
-        {isCancelableRequest(status) && (
+        {isCancelableRequest(status || '') && (
           <div className='cancelRequest' onClick={() => decline(req)}>
             Cancel
           </div>
@@ -246,16 +265,14 @@ export function RequestCommand(props: RequestCommandProps) {
   }
 
   function signOrDecline() {
-    const { req } = props
+    const req = request as TransactionRequest
     const chain = {
       type: 'ethereum',
-      id: parseInt(req.data.chainId, 'hex' as any)
+      id: parseInt(req.data.chainId, 16)
     }
     const isTestnet = props.shared.chain.isTestnet
-    const {
-      nativeCurrency,
-      nativeCurrency: { symbol: currentSymbol = '?' }
-    } = props.shared.chainMeta
+    const nativeCurrency = props.shared.chainMeta.nativeCurrency
+    const currentSymbol = nativeCurrency?.symbol || '?'
     const nativeUSD =
       nativeCurrency && nativeCurrency.usd && !isTestnet ? nativeCurrency.usd.price : undefined
     const hasNativeUSD = typeof nativeUSD === 'number'
@@ -334,7 +351,7 @@ export function RequestCommand(props: RequestCommandProps) {
   }
 
   function renderPopBar() {
-    const { req } = props
+    const req = request as TransactionRequest
     return (
       <div
         className={
@@ -362,17 +379,25 @@ export function RequestCommand(props: RequestCommandProps) {
   }
 
   function renderTxCommand() {
-    const { req } = props
+    const req = request as TransactionRequest
     const { notice, status, mode } = req
 
     const showWarning = !status && mode !== 'monitor'
-    const requiredApproval = showWarning && (req.approvals || []).filter((a: any) => !a.approved)[0]
+    const requiredApproval = showWarning && (req.approvals || []).find((approval) => !approval.approved)
 
     if (requiredApproval) {
       return (
         <div className='requestNotice requestNoticeApproval'>
           <div className='requestNoticeInner requestNoticeInnerApproval'>
-            <TxApproval req={props.req} approval={requiredApproval} />
+            <TxApproval
+              req={req}
+              approval={
+                requiredApproval as {
+                  type: 'approveOtherChain' | 'approveGasLimit'
+                  data?: { message?: string }
+                }
+              }
+            />
           </div>
         </div>
       )
@@ -391,7 +416,7 @@ export function RequestCommand(props: RequestCommandProps) {
   }
 
   function renderSignDataCommand() {
-    const { req } = props
+    const req = request
     const { status, notice } = req
 
     return (
@@ -473,7 +498,7 @@ export function RequestCommand(props: RequestCommandProps) {
     )
   }
 
-  const { req } = props
+  const req = request
   if (!req) return null
   if (req.type === 'transaction' && props.shared.step === 'confirm') {
     return renderTxCommand()
@@ -485,7 +510,8 @@ export function RequestCommand(props: RequestCommandProps) {
 }
 
 export default function RequestCommandContainer(props: Omit<RequestCommandProps, 'notify' | 'shared'>) {
-  const chainId = parseInt(props.req?.data?.chainId || '0', 16)
+  const request = props.req as TransactionRequest | SignatureRequest
+  const chainId = request.type === 'transaction' ? parseInt(request.data.chainId || '0', 16) : 0
   const { notify } = useTrayNotification()
   const { step } = useRequestView()
   const selector = React.useMemo(
