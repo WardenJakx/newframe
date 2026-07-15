@@ -13,14 +13,19 @@ import {
   FLASH_STOP_LOSS_ORDER_TYPE,
   FLASH_STOP_ORDER_TYPE,
   FLASH_TAKE_PROFIT_ORDER_TYPE,
-  FLASH_TWAP_ORDER_TYPE,
+  FLASH_TWAP_ORDER_TYPE
+} from '../../../resources/domain/flash/constants'
+import {
   getContraPreposition,
   getDirectionLabel,
+  isSameFlashAsset
+} from '../../../resources/domain/flash/pair'
+import {
   type FlashAsset,
   type FlashOrderType,
   type FlashQuote,
   type FlashStep
-} from '../../../resources/domain/flash'
+} from '../../../resources/domain/flash/schemas'
 import svg from '../../../resources/svg'
 import { formatUnits, toBigInt } from '../../../resources/utils/numbers'
 import { createDappWalletSelector } from '../../state/selectors/dappWallet'
@@ -52,7 +57,6 @@ import {
   getTradeQuoteValidationError,
   getTradeTriggerDeltaPercent,
   getTradeValidationError,
-  isSameFlashAsset,
   marketTradeQuoteRequestKey,
   tradeErrorMessage
 } from './tradeTransaction'

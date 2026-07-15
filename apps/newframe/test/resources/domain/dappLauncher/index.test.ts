@@ -9,12 +9,14 @@ import {
 import {
   FLASH_BASE_CHAIN_ID,
   FLASH_BASE_USDC_ADDRESS,
-  FLASH_BASE_WETH_ADDRESS,
+  FLASH_BASE_WETH_ADDRESS
+} from '../../../../resources/domain/flash/constants'
+import {
   FLASH_DEFAULT_TARGET_ASSET,
   FLASH_NATIVE_ETH_ASSET,
   FLASH_USDC_ASSET,
   FLASH_WETH_ASSET
-} from '../../../../resources/domain/flash'
+} from '../../../../resources/domain/flash/assets'
 
 describe('#parseDappLauncherHashRoute', () => {
   it('parses send routes', () => {

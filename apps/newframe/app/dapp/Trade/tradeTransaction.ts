@@ -5,11 +5,15 @@ import {
   FLASH_STOP_LOSS_ORDER_TYPE,
   FLASH_STOP_ORDER_TYPE,
   FLASH_TAKE_PROFIT_ORDER_TYPE,
-  FLASH_TWAP_ORDER_TYPE,
+  FLASH_TWAP_ORDER_TYPE
+} from '../../../resources/domain/flash/constants'
+import {
   balanceSummaryToFlashAsset,
   getFlashAssetsForChain,
-  isFlashChainSupported,
-  toFlashApiAssetAddress,
+  toFlashApiAssetAddress
+} from '../../../resources/domain/flash/assets'
+import { isFlashChainSupported } from '../../../resources/domain/flash/chains'
+import {
   type FlashAsset,
   type FlashOrderType,
   type FlashPriceTrigger,
@@ -19,7 +23,7 @@ import {
   type FlashRuntime,
   type FlashStep,
   type FlashTradeSide
-} from '../../../resources/domain/flash'
+} from '../../../resources/domain/flash/schemas'
 
 export const TRADE_DEFAULT_SLIPPAGE = ''
 export const TRADE_DEFAULT_MAX_PRICE_IMPACT = ''
@@ -69,17 +73,6 @@ export interface TradeQuoteRequest {
 }
 
 export type MarketTradeQuoteRequest = TradeQuoteRequest
-
-export function isSameFlashAsset(a?: FlashAsset | null, b?: FlashAsset | null) {
-  if (!a || !b) return false
-  if (a.id === b.id) return true
-  if (a.chainId !== b.chainId) return false
-
-  const aAddress = toFlashApiAssetAddress(a).toLowerCase()
-  const bAddress = toFlashApiAssetAddress(b).toLowerCase()
-
-  return aAddress === bAddress || a.symbol.toUpperCase() === b.symbol.toUpperCase()
-}
 
 export function cleanTradeAmount(amount = '') {
   return amount.trim().replace(/,/g, '')

@@ -21,7 +21,6 @@ import menu from './menu'
 import store, { canonicalStoreHydration } from './store'
 import './localServer'
 import accounts from './accounts'
-import flash from './flash'
 import * as launch from './launch'
 import updater from './updater'
 import signers from './signers'
@@ -31,6 +30,7 @@ import { showUnhandledExceptionDialog } from './windows/dialog'
 import { getErrorCode } from '../resources/utils'
 import { registerOperationHandlers } from './ipc/operations'
 import { registerStateStreamHandlers } from './ipc/stateStream'
+import { flashService } from './flash/instance'
 
 app.commandLine.appendSwitch('enable-accelerated-2d-canvas', 'true')
 app.commandLine.appendSwitch('enable-gpu-rasterization', 'true')
@@ -58,11 +58,6 @@ if (!hasInstanceLock) {
 
 registerOperationHandlers()
 registerStateStreamHandlers()
-
-flash.setPositionSync({
-  track: ({ address, tokens }) => accounts.trackPositionTokens(address as Address, tokens),
-  refresh: ({ address, chainId, tokens }) => accounts.refreshPositions(address as Address, chainId, tokens)
-})
 
 log.info(`Chrome: v${process.versions.chrome}`)
 log.info(`Electron: v${process.versions.electron}`)
@@ -235,6 +230,7 @@ app.on('quit', () => {
   log.info('Application closing')
 
   // await clients.stop()
+  flashService.dispose()
   accounts.close()
   signers.close()
 })

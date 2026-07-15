@@ -19,11 +19,10 @@ import {
   FLASH_STOP_LOSS_ORDER_TYPE,
   FLASH_STOP_ORDER_TYPE,
   FLASH_TAKE_PROFIT_ORDER_TYPE,
-  FLASH_TWAP_ORDER_TYPE,
-  FLASH_USDC_ASSET,
-  FLASH_WETH_ASSET,
-  type FlashQuote
-} from '../../../../resources/domain/flash'
+  FLASH_TWAP_ORDER_TYPE
+} from '../../../../resources/domain/flash/constants'
+import { FLASH_USDC_ASSET, FLASH_WETH_ASSET } from '../../../../resources/domain/flash/assets'
+import { type FlashQuote } from '../../../../resources/domain/flash/schemas'
 
 describe('tradeTransaction', () => {
   const quoteRequestBase = {

@@ -39,12 +39,11 @@ import {
 } from '../../../resources/domain/transaction'
 import {
   formatPairIntent,
-  getFlashDefaultChainId,
   getContraPreposition,
-  getDirectionLabel,
-  isFlashChainSupported,
-  type FlashTradeSide
-} from '../../../resources/domain/flash'
+  getDirectionLabel
+} from '../../../resources/domain/flash/pair'
+import { getFlashDefaultChainId, isFlashChainSupported } from '../../../resources/domain/flash/chains'
+import { type FlashTradeSide } from '../../../resources/domain/flash/schemas'
 import AccountRenameInput from './AccountRenameInput'
 import AddressQRCode from './AddressQRCode'
 import StatusNotifications, { timestamp } from './StatusNotifications'

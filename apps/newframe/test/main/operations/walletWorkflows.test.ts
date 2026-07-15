@@ -106,7 +106,7 @@ jest.mock('../../../main/biometrics', () => ({
     summary: biometricSummary
   }
 }))
-jest.mock('../../../main/flash', () => ({ default: { cancelOrder: flashCancelOrder } }))
+jest.mock('../../../main/flash/instance', () => ({ flashService: { cancelOrder: flashCancelOrder } }))
 jest.mock('../../../main/transaction', () => ({ signerCompatibility }))
 jest.mock('../../../main/updater', () => ({
   default: {

@@ -1,4 +1,4 @@
-import type { FlashRuntime } from '../resources/domain/flash'
+import type { FlashRuntime } from '../resources/domain/flash/schemas'
 
 type RuntimeProcess = {
   env: {

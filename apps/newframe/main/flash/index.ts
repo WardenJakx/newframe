@@ -2,14 +2,22 @@ import store from '../store'
 import { getMainRuntime } from '../runtime'
 import {
   FLASH_NATIVE_ETH_TOKEN_ADDRESS,
-  FLASH_MARKET_ORDER_TYPE,
-  flashAssetId,
+  FLASH_MARKET_ORDER_TYPE
+} from '../../resources/domain/flash/constants'
+import {
+  getFlashChainIdFromSlug,
   getFlashChainSlug,
+  isFlashChainSupported
+} from '../../resources/domain/flash/chains'
+import {
+  flashAssetId,
   getFlashAssetsForChain,
-  getReceiveAsset,
-  getSpentAsset,
-  isFlashChainSupported,
-  toFlashApiAssetAddress,
+  toFlashApiAssetAddress
+} from '../../resources/domain/flash/assets'
+import { getReceiveAsset, getSpentAsset } from '../../resources/domain/flash/pair'
+import {
+  FlashAssetSchema,
+  FlashQuoteSchema,
   type FlashAsset,
   type FlashOrderType,
   type FlashQuote,
@@ -19,126 +27,28 @@ import {
   type FlashRuntime,
   type FlashStep,
   type FlashTradeSide
-} from '../../resources/domain/flash'
+} from '../../resources/domain/flash/schemas'
+import {
+  FlashOrderRecordSchema,
+  type FlashOrderRecord,
+  type FlashOrderStatus
+} from '../../resources/domain/flash/orders'
+import {
+  FlashCancelOrderRequestSchema,
+  FlashGetOrderRequestSchema,
+  FlashListOrdersRequestSchema,
+  FlashQuoteRequestSchema,
+  FlashSubmitOrderRequestSchema,
+  type FlashCancelOrderRequest,
+  type FlashChainInput,
+  type FlashGetOrderRequest,
+  type FlashListOrdersRequest,
+  type FlashPriceTriggerInput,
+  type FlashQuoteRequest,
+  type FlashSubmitOrderRequest
+} from './contracts'
 
 import type { Token } from '../store/state'
-
-type FlashOrderStatus =
-  | 'pending'
-  | 'accepted'
-  | 'partially-filled'
-  | 'filled'
-  | 'cancelled'
-  | 'rejected'
-  | 'terminated'
-  | 'expired'
-
-type FlashChainInput =
-  | number
-  | string
-  | {
-      id?: number | string
-      chainId?: number | string
-    }
-  | null
-  | undefined
-
-type FlashAssetInput = FlashAsset | string | null | undefined
-
-interface FlashPriceTriggerInput {
-  notionalPrice?: string | number
-  triggerType?: 'lower' | 'upper'
-}
-
-export interface FlashQuoteRequest {
-  accountAddress?: string
-  targetChain?: FlashChainInput
-  contraChain?: FlashChainInput
-  chainId?: number | string
-  targetAsset?: FlashAssetInput
-  contraAsset?: FlashAssetInput
-  side?: FlashTradeSide
-  qty?: string
-  inputAmount?: string
-  orderType?: FlashOrderType
-  slippage?: string | number
-  maxPriceImpact?: string | number
-  quickTrade?: boolean
-  durationSeconds?: string | number
-  expireTime?: string
-  limitNotionalPrice?: string | number
-  stopLossNotionalPrice?: string | number
-  takeProfitNotionalPrice?: string | number
-  triggerNotionalPrice?: string | number
-  triggers?: FlashPriceTriggerInput[]
-  twapBucketCount?: string | number
-}
-
-export interface FlashSubmitOrderRequest extends FlashQuoteRequest {
-  evmOrderTypedData?: unknown
-  evmPermitSignature?: string
-  evmPermitTypedData?: unknown
-  quote?: FlashQuote
-  quoteId?: string
-  signature?: string
-  orderSignature?: string
-  rawPayload?: unknown
-  idempotencyKey?: string
-}
-
-export interface FlashListOrdersRequest {
-  accountAddress?: string
-  chainId?: number | string
-  pageSize?: number
-  status?: FlashOrderStatus | FlashOrderStatus[] | string | string[]
-}
-
-export interface FlashGetOrderRequest {
-  accountAddress?: string
-  orderId: string
-}
-
-export interface FlashCancelOrderRequest {
-  cancelMessage?: unknown
-  orderId: string
-  signature?: string
-  userSignature?: string
-}
-
-interface FlashOrderRecord {
-  orderId: string
-  accountAddress: string
-  chainId: number
-  provider: 'flash'
-  source: 'flash'
-  environment: string
-  profile: string | null
-  status: FlashOrderStatus
-  rawStatus: string
-  orderType: string
-  side: string
-  targetAsset: FlashAsset
-  contraAsset: FlashAsset
-  qty: string
-  spentAsset: FlashAsset
-  spentAmount: string
-  outputAmount: string
-  estimatedOutputAmount: string
-  filledOutputAmount?: string | null
-  averageFillPrice?: string | null
-  createdAt: number
-  updatedAt: number
-  terminalAt?: number | null
-  open: boolean
-  cancellable: boolean
-  quoteId?: string
-  receiveAsset: FlashAsset
-  rate?: string
-  rawPayload?: unknown
-  rawStatusPayload?: unknown
-  fillHash?: string | null
-  fillTransactionHash?: string | null
-}
 
 export interface FlashOrderPositionUpdate {
   address: string
@@ -173,24 +83,20 @@ interface FlashMarketOrderPoller {
   timer?: ReturnType<typeof setTimeout>
 }
 
-const marketOrderPollers = new Map<string, FlashMarketOrderPoller>()
-let openOrderPoller: ReturnType<typeof setInterval> | null = null
-let openOrderRefresh: Promise<FlashOrderRecord[]> | null = null
-let positionSync: FlashPositionSync | null = null
+interface FlashServiceState {
+  marketOrderPollers: Map<string, FlashMarketOrderPoller>
+  openOrderPoller: ReturnType<typeof setInterval> | null
+  openOrderRefresh: Promise<FlashOrderRecord[]> | null
+  positionSync: FlashPositionSync | null
+}
 
-const FLASH_CHAIN_IDS_BY_SLUG: Record<string, number> = {
-  ethereum: 1,
-  optimism: 10,
-  bsc: 56,
-  polygon: 137,
-  hyperevm: 999,
-  base: 8453,
-  plasma: 9745,
-  blast: 81457,
-  arbitrum: 42161,
-  avalanche: 43114,
-  monad: 143,
-  anvil: 31337
+function createFlashServiceState(positionSync?: FlashPositionSync): FlashServiceState {
+  return {
+    marketOrderPollers: new Map(),
+    openOrderPoller: null,
+    openOrderRefresh: null,
+    positionSync: positionSync || null
+  }
 }
 
 function runtime(): FlashRuntime & { environment: string; profile: string | null } {
@@ -275,7 +181,8 @@ function chainIdFromSlug(input: unknown) {
   if (typeof input !== 'string') return undefined
 
   const normalized = input.trim().toLowerCase()
-  if (FLASH_CHAIN_IDS_BY_SLUG[normalized]) return FLASH_CHAIN_IDS_BY_SLUG[normalized]
+  const registeredChainId = getFlashChainIdFromSlug(normalized)
+  if (registeredChainId) return registeredChainId
 
   const parsed = Number(normalized)
   if (Number.isInteger(parsed) && parsed > 0) return parsed
@@ -300,8 +207,9 @@ function requireSide(side?: FlashTradeSide) {
   return side
 }
 
-function resolveAsset(input: FlashAssetInput, label: string): FlashAsset {
-  if (input && typeof input === 'object') return input
+function resolveAsset(input: unknown, label: string): FlashAsset {
+  const parsed = FlashAssetSchema.safeParse(input)
+  if (parsed.success) return parsed.data
 
   throw new Error(`Unsupported Flash ${label} asset`)
 }
@@ -355,10 +263,6 @@ function isTerminalStatus(status: FlashOrderStatus) {
   return terminalStatuses.has(status)
 }
 
-export function setFlashPositionSync(sync?: FlashPositionSync) {
-  positionSync = sync || null
-}
-
 function orderPositionTokens(record: FlashOrderRecord) {
   const tokens = new Map<string, Token>()
   const affectedAssets = [record.spentAsset, record.receiveAsset]
@@ -408,8 +312,12 @@ function shouldRefreshOrderPositions(previous: FlashOrderRecord | undefined, rec
   )
 }
 
-function syncOrderPositions(previous: FlashOrderRecord | undefined, record: FlashOrderRecord) {
-  if (!positionSync) return
+function syncOrderPositions(
+  state: FlashServiceState,
+  previous: FlashOrderRecord | undefined,
+  record: FlashOrderRecord
+) {
+  if (!state.positionSync) return
 
   const update = {
     address: record.accountAddress,
@@ -418,8 +326,8 @@ function syncOrderPositions(previous: FlashOrderRecord | undefined, record: Flas
   }
 
   try {
-    if (shouldTrackOrderPositions(previous, record)) positionSync.track(update)
-    if (shouldRefreshOrderPositions(previous, record)) positionSync.refresh(update)
+    if (shouldTrackOrderPositions(previous, record)) state.positionSync.track(update)
+    if (shouldRefreshOrderPositions(previous, record)) state.positionSync.refresh(update)
   } catch (error) {
     console.warn('could not sync positions for Flash order', { orderId: record.orderId }, error)
   }
@@ -508,6 +416,7 @@ function normalizeTriggers(request: FlashQuoteRequest, orderType: FlashOrderType
 }
 
 export function buildFlashQuoteBody(request: FlashQuoteRequest) {
+  request = FlashQuoteRequestSchema.parse(request)
   const chainId = requireSupportedChainId(resolveChainId(request))
   const targetAsset = resolveAsset(request.targetAsset, 'target')
   const contraAsset = resolveAsset(request.contraAsset, 'contra')
@@ -648,6 +557,7 @@ function serializeTypedData(value: unknown) {
 }
 
 export function normalizeFlashQuoteResponse(raw: unknown, request: FlashQuoteRequest) {
+  request = FlashQuoteRequestSchema.parse(request)
   const chainId = requireSupportedChainId(resolveChainId(request))
   const payload = objectPayload(raw)
   const quotePayload = objectPayload(payload.quote || payload)
@@ -809,7 +719,7 @@ export function normalizeFlashQuoteResponse(raw: unknown, request: FlashQuoteReq
     }
   }
 
-  return quote
+  return FlashQuoteSchema.parse(quote)
 }
 
 async function flashRequest(path: string, init: RequestInit = {}) {
@@ -836,7 +746,14 @@ async function flashRequest(path: string, init: RequestInit = {}) {
 }
 
 function storeOrders() {
-  return (store.getState().main.orders || {}) as unknown as Record<string, FlashOrderRecord>
+  return Object.entries(store.getState().main.orders || {}).reduce<Record<string, FlashOrderRecord>>(
+    (records, [orderId, order]) => {
+      const parsed = FlashOrderRecordSchema.safeParse(order)
+      if (parsed.success) records[orderId] = parsed.data
+      return records
+    },
+    {}
+  )
 }
 
 function titleize(value: string) {
@@ -954,7 +871,8 @@ function orderAssetFromReference(value: unknown, fallback?: FlashAsset | null): 
     Number.isInteger(Number(asset.chainId)) &&
     Number.isInteger(Number(asset.decimals))
   ) {
-    return asset as FlashAsset
+    const parsed = FlashAssetSchema.safeParse(asset)
+    if (parsed.success) return parsed.data
   }
 
   const chain = objectPayload(asset.chain)
@@ -981,7 +899,7 @@ function orderAssetFromReference(value: unknown, fallback?: FlashAsset | null): 
   const decimals = Number(asset.decimals)
   const isNative = normalizedAddress === normalizeAddress(FLASH_NATIVE_ETH_TOKEN_ADDRESS)
 
-  return {
+  return FlashAssetSchema.parse({
     id: metadata?.id || flashAssetId(chainId, address),
     symbol: stringValue(asset.ticker || asset.symbol || metadata?.symbol, 'ASSET'),
     name: stringValue(asset.name || metadata?.name || asset.ticker || asset.symbol, 'Unknown asset'),
@@ -989,7 +907,7 @@ function orderAssetFromReference(value: unknown, fallback?: FlashAsset | null): 
     chainId,
     isNative,
     address
-  }
+  })
 }
 
 function rawOrderQuote(raw: Record<string, any>) {
@@ -999,7 +917,7 @@ function rawOrderQuote(raw: Record<string, any>) {
 function fallbackQuoteFromRecord(record?: FlashOrderRecord | null): FlashQuote | null {
   if (!record) return null
 
-  return {
+  return FlashQuoteSchema.parse({
     id: record.quoteId,
     side: record.side as FlashTradeSide,
     orderType: record.orderType as FlashOrderType,
@@ -1013,7 +931,7 @@ function fallbackQuoteFromRecord(record?: FlashOrderRecord | null): FlashQuote |
     fees: [],
     steps: [],
     raw: record.rawPayload
-  }
+  })
 }
 
 function recordFromQuote({
@@ -1033,7 +951,7 @@ function recordFromQuote({
   const run = runtime()
   const open = isOpenStatus(status)
 
-  return {
+  return FlashOrderRecordSchema.parse({
     orderId,
     accountAddress: normalizeAddress(request.accountAddress),
     chainId: quote.targetAsset.chainId || quote.contraAsset.chainId,
@@ -1071,7 +989,7 @@ function recordFromQuote({
     rawStatusPayload: statusPayload(orderId, status, raw),
     fillHash: null,
     fillTransactionHash: null
-  }
+  })
 }
 
 function normalizeOrderRecord(rawOrder: unknown, fallback?: FlashOrderRecord | null) {
@@ -1169,7 +1087,7 @@ function normalizeOrderRecord(rawOrder: unknown, fallback?: FlashOrderRecord | n
   )
   const closedAt = raw.closedAt ? numberTimestamp(raw.closedAt, updatedAt) : null
 
-  return {
+  return FlashOrderRecordSchema.parse({
     ...(fallback || {}),
     orderId,
     accountAddress: normalizeAddress(
@@ -1215,23 +1133,25 @@ function normalizeOrderRecord(rawOrder: unknown, fallback?: FlashOrderRecord | n
     rawStatusPayload: statusPayload(orderId, status, raw),
     fillHash: fillHash || null,
     fillTransactionHash: fillHash || null
-  } satisfies FlashOrderRecord
+  })
 }
 
-function upsertRecord(record: FlashOrderRecord) {
+function upsertRecord(state: FlashServiceState, record: FlashOrderRecord) {
+  record = FlashOrderRecordSchema.parse(record)
   const previous = getRecord(record.orderId)
   store.getState().upsertOrder(record)
-  syncOrderPositions(previous, record)
+  syncOrderPositions(state, previous, record)
   return record
 }
 
-function updateRecord(orderId: string, record: FlashOrderRecord) {
+function updateRecord(state: FlashServiceState, orderId: string, record: FlashOrderRecord) {
+  record = FlashOrderRecordSchema.parse(record)
   const existing = storeOrders()[orderId]
 
   if (existing) store.getState().updateOrder(orderId, record)
   else store.getState().upsertOrder(record)
 
-  syncOrderPositions(existing, record)
+  syncOrderPositions(state, existing, record)
 
   return record
 }
@@ -1244,33 +1164,33 @@ function hasOpenOrders() {
   return Object.values(storeOrders()).some((order) => isOpenStatus(order.status))
 }
 
-function stopMarketOrderPolling(orderId: string) {
-  const poller = marketOrderPollers.get(orderId)
+function stopMarketOrderPolling(state: FlashServiceState, orderId: string) {
+  const poller = state.marketOrderPollers.get(orderId)
   if (poller?.timer) clearTimeout(poller.timer)
-  marketOrderPollers.delete(orderId)
+  state.marketOrderPollers.delete(orderId)
 }
 
-function scheduleMarketOrderPoll(orderId: string, poller: FlashMarketOrderPoller) {
-  if (!marketOrderPollers.has(orderId)) return
+function scheduleMarketOrderPoll(state: FlashServiceState, orderId: string, poller: FlashMarketOrderPoller) {
+  if (!state.marketOrderPollers.has(orderId)) return
 
   poller.timer = setTimeout(() => {
-    void pollMarketOrder(orderId, poller)
+    void pollMarketOrder(state, orderId, poller)
   }, FLASH_MARKET_ORDER_POLL_MS)
 }
 
-async function pollMarketOrder(orderId: string, poller: FlashMarketOrderPoller) {
+async function pollMarketOrder(state: FlashServiceState, orderId: string, poller: FlashMarketOrderPoller) {
   const current = getRecord(orderId)
 
   if (!current) {
     dropOrderNotification(orderId)
-    stopMarketOrderPolling(orderId)
-    ensureOpenOrderPolling()
+    stopMarketOrderPolling(state, orderId)
+    ensureOpenOrderPolling(state)
     return
   }
 
   if (current.orderType !== FLASH_MARKET_ORDER_TYPE) {
-    stopMarketOrderPolling(orderId)
-    ensureOpenOrderPolling()
+    stopMarketOrderPolling(state, orderId)
+    ensureOpenOrderPolling(state)
     return
   }
 
@@ -1278,22 +1198,22 @@ async function pollMarketOrder(orderId: string, poller: FlashMarketOrderPoller) 
     if (terminalWithinNotificationWindow(current, poller.deadline)) resolveOrderNotification(current)
     else dropOrderNotification(orderId)
 
-    stopMarketOrderPolling(orderId)
-    ensureOpenOrderPolling()
+    stopMarketOrderPolling(state, orderId)
+    ensureOpenOrderPolling(state)
     return
   }
 
   if (Date.now() >= poller.deadline) {
     dropOrderNotification(orderId)
-    stopMarketOrderPolling(orderId)
-    ensureOpenOrderPolling()
+    stopMarketOrderPolling(state, orderId)
+    ensureOpenOrderPolling(state)
     return
   }
 
   let latest = current
 
   try {
-    latest = await fetchOrderRecord(current)
+    latest = await fetchOrderRecord(state, current)
   } catch (error) {
     console.error('error polling Flash market order', error)
   }
@@ -1302,16 +1222,16 @@ async function pollMarketOrder(orderId: string, poller: FlashMarketOrderPoller) 
     if (terminalWithinNotificationWindow(latest, poller.deadline)) resolveOrderNotification(latest)
     else dropOrderNotification(orderId)
 
-    stopMarketOrderPolling(orderId)
-    ensureOpenOrderPolling()
+    stopMarketOrderPolling(state, orderId)
+    ensureOpenOrderPolling(state)
     return
   }
 
   upsertPendingOrderNotification(latest)
-  scheduleMarketOrderPoll(orderId, poller)
+  scheduleMarketOrderPoll(state, orderId, poller)
 }
 
-function startMarketOrderPolling(record: FlashOrderRecord) {
+function startMarketOrderPolling(state: FlashServiceState, record: FlashOrderRecord) {
   if (record.orderType !== FLASH_MARKET_ORDER_TYPE) return
 
   const now = Date.now()
@@ -1322,44 +1242,40 @@ function startMarketOrderPolling(record: FlashOrderRecord) {
     return
   }
 
-  if (marketOrderPollers.has(record.orderId)) return
+  if (state.marketOrderPollers.has(record.orderId)) return
 
   const poller = {
     deadline: (record.createdAt || now) + FLASH_MARKET_ORDER_NOTIFICATION_MS
   }
 
-  marketOrderPollers.set(record.orderId, poller)
-  void pollMarketOrder(record.orderId, poller)
+  state.marketOrderPollers.set(record.orderId, poller)
+  void pollMarketOrder(state, record.orderId, poller)
 }
 
-export function stopOpenOrderPolling() {
-  if (!openOrderPoller) return
+function stopOpenOrderPolling(state: FlashServiceState) {
+  if (!state.openOrderPoller) return
 
-  clearInterval(openOrderPoller)
-  openOrderPoller = null
+  clearInterval(state.openOrderPoller)
+  state.openOrderPoller = null
 }
 
-function ensureOpenOrderPolling() {
+function ensureOpenOrderPolling(state: FlashServiceState) {
   if (!hasOpenOrders()) {
-    stopOpenOrderPolling()
+    stopOpenOrderPolling(state)
     return
   }
 
-  if (openOrderPoller) return
+  if (state.openOrderPoller) return
 
-  openOrderPoller = setInterval(() => {
-    void refreshOpenOrders()
+  state.openOrderPoller = setInterval(() => {
+    void refreshOpenOrders(state)
       .catch((error) => {
         console.error('error refreshing Flash open orders', error)
       })
       .finally(() => {
-        ensureOpenOrderPolling()
+        ensureOpenOrderPolling(state)
       })
   }, FLASH_OPEN_ORDER_POLL_MS)
-}
-
-export function startOpenOrderPolling() {
-  ensureOpenOrderPolling()
 }
 
 function sortOrders(a: FlashOrderRecord, b: FlashOrderRecord) {
@@ -1368,39 +1284,40 @@ function sortOrders(a: FlashOrderRecord, b: FlashOrderRecord) {
   return Number(b.createdAt || 0) - Number(a.createdAt || 0)
 }
 
-async function fetchOrderRecord(fallback: FlashOrderRecord) {
+async function fetchOrderRecord(state: FlashServiceState, fallback: FlashOrderRecord) {
   const params = new URLSearchParams({ funderAddress: fallback.accountAddress })
   const raw = await flashRequest(`/orders/${encodeURIComponent(fallback.orderId)}?${params}`)
   const record = normalizeOrderRecord(objectPayload(raw).order || raw, fallback)
 
-  updateRecord(record.orderId, record)
+  updateRecord(state, record.orderId, record)
   if (isTerminalStatus(record.status)) resolveOrderNotification(record)
 
   return record
 }
 
-export function refreshOpenOrders() {
-  if (openOrderRefresh) return openOrderRefresh
+function refreshOpenOrders(state: FlashServiceState) {
+  if (state.openOrderRefresh) return state.openOrderRefresh
 
   const openOrders = Object.values(storeOrders()).filter((order) => isOpenStatus(order.status))
 
-  openOrderRefresh = Promise.all(
+  state.openOrderRefresh = Promise.all(
     openOrders.map(async (order) => {
       try {
-        return await fetchOrderRecord(order)
+        return await fetchOrderRecord(state, order)
       } catch (error) {
         console.error('error refreshing Flash open order', error)
         return order
       }
     })
   ).finally(() => {
-    openOrderRefresh = null
+    state.openOrderRefresh = null
   })
 
-  return openOrderRefresh
+  return state.openOrderRefresh
 }
 
 export async function quote(request: FlashQuoteRequest) {
+  request = FlashQuoteRequestSchema.parse(request)
   const body = buildFlashQuoteBody(request)
   const raw = await flashRequest('/quote', {
     method: 'POST',
@@ -1422,6 +1339,7 @@ function quoteTypedData(quote: FlashQuote, field: 'orderTypedData' | 'permitType
 }
 
 export function buildFlashSubmitBody(request: FlashSubmitOrderRequest) {
+  request = FlashSubmitOrderRequestSchema.parse(request)
   if (!request.quote) throw new Error('Flash order submit requires a quote')
 
   const quote = request.quote
@@ -1471,7 +1389,8 @@ export function buildFlashSubmitBody(request: FlashSubmitOrderRequest) {
   }
 }
 
-export async function submitOrder(request: FlashSubmitOrderRequest) {
+async function submitOrder(state: FlashServiceState, request: FlashSubmitOrderRequest) {
+  request = FlashSubmitOrderRequestSchema.parse(request)
   if (!request.quote) throw new Error('Flash order submit requires a quote')
 
   const body = buildFlashSubmitBody(request)
@@ -1493,10 +1412,10 @@ export async function submitOrder(request: FlashSubmitOrderRequest) {
     status: normalizeStatus(payload.status || objectPayload(payload.order).status)
   })
   const record = normalizeOrderRecord(payload.order || raw, fallback)
-  const storedRecord = upsertRecord(record)
+  const storedRecord = upsertRecord(state, record)
 
-  if (storedRecord.orderType === FLASH_MARKET_ORDER_TYPE) startMarketOrderPolling(storedRecord)
-  ensureOpenOrderPolling()
+  if (storedRecord.orderType === FLASH_MARKET_ORDER_TYPE) startMarketOrderPolling(state, storedRecord)
+  ensureOpenOrderPolling(state)
 
   return {
     ...runtime(),
@@ -1506,7 +1425,8 @@ export async function submitOrder(request: FlashSubmitOrderRequest) {
   }
 }
 
-export async function listOrders(request: FlashListOrdersRequest = {}) {
+async function listOrders(state: FlashServiceState, request: FlashListOrdersRequest = {}) {
+  request = FlashListOrdersRequestSchema.parse(request)
   const params = new URLSearchParams()
   const accountAddress = request.accountAddress?.trim()
 
@@ -1540,13 +1460,13 @@ export async function listOrders(request: FlashListOrdersRequest = {}) {
       const orderId = stringValue(objectPayload(order).orderId || objectPayload(order).id)
       const fallback = orderId ? getRecord(orderId) : null
       const record = normalizeOrderRecord(order, fallback)
-      upsertRecord(record)
+      upsertRecord(state, record)
       if (isTerminalStatus(record.status)) resolveOrderNotification(record)
       return record
     })
     .sort(sortOrders)
 
-  ensureOpenOrderPolling()
+  ensureOpenOrderPolling(state)
 
   return {
     ...runtime(),
@@ -1555,7 +1475,8 @@ export async function listOrders(request: FlashListOrdersRequest = {}) {
   }
 }
 
-export async function getOrder(request: FlashGetOrderRequest) {
+async function getOrder(state: FlashServiceState, request: FlashGetOrderRequest) {
+  request = FlashGetOrderRequestSchema.parse(request)
   const fallback = getRecord(request.orderId)
   const accountAddress = request.accountAddress?.trim() || fallback?.accountAddress
 
@@ -1565,9 +1486,9 @@ export async function getOrder(request: FlashGetOrderRequest) {
   const raw = await flashRequest(`/orders/${encodeURIComponent(request.orderId)}?${params}`)
   const record = normalizeOrderRecord(objectPayload(raw).order || raw, fallback)
 
-  updateRecord(record.orderId, record)
+  updateRecord(state, record.orderId, record)
   if (isTerminalStatus(record.status)) resolveOrderNotification(record)
-  ensureOpenOrderPolling()
+  ensureOpenOrderPolling(state)
 
   return {
     ...runtime(),
@@ -1577,7 +1498,8 @@ export async function getOrder(request: FlashGetOrderRequest) {
   }
 }
 
-export async function cancelOrder(request: FlashCancelOrderRequest) {
+async function cancelOrder(state: FlashServiceState, request: FlashCancelOrderRequest) {
+  request = FlashCancelOrderRequestSchema.parse(request)
   const defaultCancelMessage = `Definitive Flash v1 — Cancel Order\nOrder: ${request.orderId}`
   const body = {
     cancelMessage:
@@ -1596,10 +1518,10 @@ export async function cancelOrder(request: FlashCancelOrderRequest) {
     fallback
   )
 
-  updateRecord(record.orderId, record)
+  updateRecord(state, record.orderId, record)
   resolveOrderNotification(record)
-  stopMarketOrderPolling(request.orderId)
-  ensureOpenOrderPolling()
+  stopMarketOrderPolling(state, request.orderId)
+  ensureOpenOrderPolling(state)
 
   return {
     ...runtime(),
@@ -1610,14 +1532,22 @@ export async function cancelOrder(request: FlashCancelOrderRequest) {
   }
 }
 
-export default {
-  quote,
-  submitOrder,
-  listOrders,
-  getOrder,
-  cancelOrder,
-  refreshOpenOrders,
-  setPositionSync: setFlashPositionSync,
-  startOpenOrderPolling,
-  stopOpenOrderPolling
+export function createFlashService({ positionSync }: { positionSync?: FlashPositionSync } = {}) {
+  const state = createFlashServiceState(positionSync)
+
+  return {
+    quote,
+    submitOrder: (request: FlashSubmitOrderRequest) => submitOrder(state, request),
+    listOrders: (request: FlashListOrdersRequest = {}) => listOrders(state, request),
+    getOrder: (request: FlashGetOrderRequest) => getOrder(state, request),
+    cancelOrder: (request: FlashCancelOrderRequest) => cancelOrder(state, request),
+    refreshOpenOrders: () => refreshOpenOrders(state),
+    startOpenOrderPolling: () => ensureOpenOrderPolling(state),
+    dispose: () => {
+      stopOpenOrderPolling(state)
+      for (const orderId of state.marketOrderPollers.keys()) stopMarketOrderPolling(state, orderId)
+    }
+  }
 }
+
+export type FlashService = ReturnType<typeof createFlashService>

@@ -8,7 +8,7 @@ import { v5 as uuidv5 } from 'uuid'
 import accounts from '../accounts'
 import biometrics from '../biometrics'
 import Erc20Contract from '../contracts/erc20'
-import flash from '../flash'
+import { flashService } from '../flash/instance'
 import imageCache from '../imageCache'
 import { getTokenDiscoveryProvider } from '../portfolio'
 import provider from '../provider'
@@ -620,7 +620,7 @@ export async function cancelFlashOrder(orderId: string) {
     throw new Error('Cancel signature was not returned.')
   }
 
-  await flash.cancelOrder({ orderId, signature: response.result })
+  await flashService.cancelOrder({ orderId, signature: response.result })
   return true
 }
 

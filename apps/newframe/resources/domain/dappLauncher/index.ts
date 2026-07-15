@@ -3,9 +3,9 @@ import { hasPositiveBalance } from '../balance'
 import {
   FLASH_DEFAULT_TARGET_ASSET,
   getFlashAssetsForChain,
-  getFlashDefaultTargetAsset,
-  type FlashAsset
-} from '../flash'
+  getFlashDefaultTargetAsset
+} from '../flash/assets'
+import type { FlashAsset } from '../flash/schemas'
 
 export const DAPP_LAUNCHER_FRAME_ID = 'dappLauncher'
 export const DAPP_LAUNCHER_FRAME_PRESENTATION = 'secondaryPanel'
