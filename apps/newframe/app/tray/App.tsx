@@ -5,7 +5,7 @@ import Account from './Account'
 import Notify from './Notify'
 import Badge from './Badge'
 import Footer from './Footer'
-import Home from './Home'
+import Home from './Home/Home'
 import link from '../../resources/link'
 import svg from '../../resources/svg'
 import {
