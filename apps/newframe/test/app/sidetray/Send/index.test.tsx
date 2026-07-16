@@ -29,7 +29,7 @@ const nativeAssetId = `${chainId}:${NATIVE_CURRENCY}`
 
 function initializeSendState(balances: any[] = [nativeBalance()]) {
   resetStateMirrorForTests()
-  beginStateConnection('dapp')
+  beginStateConnection('sidetray')
   applyStateMessage({
     schemaVersion: STATE_STREAM_SCHEMA_VERSION,
     streamId: 'send-test',

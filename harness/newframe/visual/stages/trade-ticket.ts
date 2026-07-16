@@ -6,7 +6,7 @@ export const tradeTicketStage: VisualStage = {
   name: 'trade ticket visuals',
   async run({ driver }) {
     const tradePage = await driver.openDefaultTradeTicket()
-    await driver.assertColorTokens(tradePage, 'Dapp')
+    await driver.assertColorTokens(tradePage, 'Side tray')
     await driver.assertTradeTicketVisualControls(tradePage)
     const targetAsset = await tradePage.getByRole('button', { name: /Select target asset/i }).textContent()
     const contraAsset = await tradePage.getByRole('button', { name: /Select contra asset/i }).textContent()
@@ -116,17 +116,17 @@ export const tradeTicketStage: VisualStage = {
     }
     await driver.screenshot(tradePage, '10h-trade-twap-advanced.png')
 
-    await driver.openDappLauncherRoute(driver.launcherRoute('send'))
-    await driver.waitForDappRoute(tradePage, 'send')
+    await driver.openSideTrayRoute(driver.sideTrayRoute('send'))
+    await driver.waitForSideTrayRoute(tradePage, 'send')
     await tradePage.getByRole('textbox', { name: 'Recipient' }).waitFor({ state: 'visible', timeout: 15_000 })
     const resetSendAmount = await tradePage.getByRole('textbox', { name: 'Amount' }).inputValue()
     if (resetSendAmount !== '1') driver.fail(`Send relaunch did not reset amount; found "${resetSendAmount}"`)
     await driver.screenshot(tradePage, '10i-relaunch-send-reset.png')
 
-    await driver.openDappLauncherRoute(
-      driver.launcherRoute('trade', driver.canonicalAssetId(anvilChainId, wethAddress))
+    await driver.openSideTrayRoute(
+      driver.sideTrayRoute('trade', driver.canonicalAssetId(anvilChainId, wethAddress))
     )
-    await driver.waitForDappRoute(tradePage, 'trade')
+    await driver.waitForSideTrayRoute(tradePage, 'trade')
     await tradePage.getByRole('tab', { name: 'Market' }).waitFor({ state: 'visible', timeout: 15_000 })
     await driver.assertTradeTicketVisualControls(tradePage)
     await driver.screenshot(tradePage, '10j-relaunch-trade-reset.png')

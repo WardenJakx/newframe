@@ -15,7 +15,7 @@ import { hexToInt, roundGwei } from '../../resources/utils'
 import store from '../store'
 import SideTrayManager from './sidetray'
 import { createWindow } from './window'
-import { constrainPanelSize, mainPanelPosition, PANEL_WIDTH } from './panelGeometry'
+import { constrainTraySize, TRAY_WIDTH, trayPosition } from './trayGeometry'
 import { SystemTray, SystemTrayEventHandlers } from './systemTray'
 import { registerShortcut } from '../keyboardShortcuts'
 import { Shortcut } from '../store/state/types/shortcuts'
@@ -126,7 +126,7 @@ function initWindow(id: string, opts: Electron.BrowserWindowConstructorOptions, 
 
 function initTrayWindow(rendererReady: () => void) {
   const trayOpts: Electron.BrowserWindowConstructorOptions = {
-    width: PANEL_WIDTH,
+    width: TRAY_WIDTH,
     icon: path.join(__dirname, './AppIcon.png')
   }
   if (isMacOS) {
@@ -304,8 +304,8 @@ class Tray {
       skipTransformProcessType: true
     })
     const area = screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).workArea
-    constrainPanelSize(windows.tray, area.height)
-    const pos = mainPanelPosition(area)
+    constrainTraySize(windows.tray, area.height)
+    const pos = trayPosition(area)
     windows.tray.setPosition(pos.x, pos.y)
     store.getState().trayOpen(true)
     windows.tray.emit('show')

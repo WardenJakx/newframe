@@ -205,7 +205,7 @@ export const SideTrayContextMenuCommandSchema = z.strictObject({
 })
 export type SideTrayContextMenuCommand = z.infer<typeof SideTrayContextMenuCommandSchema>
 
-export const SideTrayWindowResultSchema = z.discriminatedUnion('ok', [
+export const SideTrayResultSchema = z.discriminatedUnion('ok', [
   z.strictObject({ ok: z.literal(true) }),
   z.strictObject({
     ok: z.literal(false),
@@ -213,7 +213,7 @@ export const SideTrayWindowResultSchema = z.discriminatedUnion('ok', [
   })
 ])
 
-export type SideTrayWindowResult = z.infer<typeof SideTrayWindowResultSchema>
+export type SideTrayResult = z.infer<typeof SideTrayResultSchema>
 
 export const NameResolveQuerySchema = z.strictObject({
   type: z.literal('name.resolve'),
@@ -504,13 +504,13 @@ export const NetworkIconHydrateCommandSchema = z.strictObject({
 })
 export type NetworkIconHydrateCommand = z.infer<typeof NetworkIconHydrateCommandSchema>
 
-export const DappOpenCommandSchema = z.strictObject({
-  type: z.literal('dapp.open'),
+export const SideTrayOpenCommandSchema = z.strictObject({
+  type: z.literal('sidetray.open'),
   feature: z.enum(['send', 'trade']),
   assetId: z.string().max(256).optional(),
   chainId: ChainIdSchema.optional()
 })
-export type DappOpenCommand = z.infer<typeof DappOpenCommandSchema>
+export type SideTrayOpenCommand = z.infer<typeof SideTrayOpenCommandSchema>
 
 export const FlashOrderCancelCommandSchema = z.strictObject({
   type: z.literal('flash.order-cancel'),
@@ -975,7 +975,7 @@ export interface CommandMap {
   'account.watch-add': AccountWatchAddCommand
   'app.quit': AppQuitCommand
   'clipboard.write': ClipboardWriteCommand
-  'dapp.open': DappOpenCommand
+  'sidetray.open': SideTrayOpenCommand
   'sidetray.close': SideTrayCloseCommand
   'sidetray.context-menu': SideTrayContextMenuCommand
   'explorer.open': ExplorerOpenCommand
@@ -1041,9 +1041,9 @@ export interface CommandResultMap {
   'account.watch-add': AccountCreatedResult
   'app.quit': WalletCommandResult
   'clipboard.write': WalletCommandResult
-  'dapp.open': WalletCommandResult
-  'sidetray.close': SideTrayWindowResult
-  'sidetray.context-menu': SideTrayWindowResult
+  'sidetray.open': WalletCommandResult
+  'sidetray.close': SideTrayResult
+  'sidetray.context-menu': SideTrayResult
   'explorer.open': WalletCommandResult
   'external.open': WalletCommandResult
   'extension.respond': WalletCommandResult

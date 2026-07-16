@@ -7,43 +7,43 @@ import {
 } from '../flash/assets'
 import type { FlashAsset } from '../flash/schemas'
 
-export const DAPP_LAUNCHER_FRAME_ID = 'dappLauncher'
-export const DAPP_LAUNCHER_NATIVE_ASSET_ADDRESS = NATIVE_CURRENCY
+export const SIDE_TRAY_FRAME_ID = 'sideTray'
+export const SIDE_TRAY_NATIVE_ASSET_ADDRESS = NATIVE_CURRENCY
 
-export type DappLauncherRouteName = 'send' | 'trade'
+export type SideTrayRouteName = 'send' | 'trade'
 
-export interface DappLauncherRoute {
-  name: DappLauncherRouteName
+export interface SideTrayRoute {
+  name: SideTrayRouteName
   searchParams: URLSearchParams
 }
 
-export interface DappLauncherFrame {
-  id: typeof DAPP_LAUNCHER_FRAME_ID
+export interface SideTrayFrame {
+  id: typeof SIDE_TRAY_FRAME_ID
   route?: string
 }
 
-export interface DappLauncherFrameRequestObject {
+export interface SideTrayFrameRequestObject {
   id: string
   route?: string
 }
 
 /** @deprecated Use request objects with { id, route }. */
-export type LegacyDappLauncherFrameRequest = string
-export type DappLauncherFrameRequest = DappLauncherFrameRequestObject | LegacyDappLauncherFrameRequest
+export type LegacySideTrayFrameRequest = string
+export type SideTrayFrameRequest = SideTrayFrameRequestObject | LegacySideTrayFrameRequest
 
-export function normalizeDappLauncherFrameRequest(frame: DappLauncherFrameRequest): DappLauncherFrame | null {
+export function normalizeSideTrayFrameRequest(frame: SideTrayFrameRequest): SideTrayFrame | null {
   if (typeof frame === 'string') {
-    return frame ? { id: DAPP_LAUNCHER_FRAME_ID } : null
+    return frame ? { id: SIDE_TRAY_FRAME_ID } : null
   }
   if (!frame || typeof frame !== 'object' || typeof frame.id !== 'string' || !frame.id) return null
 
   return {
-    id: DAPP_LAUNCHER_FRAME_ID,
+    id: SIDE_TRAY_FRAME_ID,
     ...(typeof frame.route === 'string' && frame.route ? { route: frame.route } : {})
   }
 }
 
-export function parseDappLauncherHashRoute(hash = ''): DappLauncherRoute {
+export function parseSideTrayHashRoute(hash = ''): SideTrayRoute {
   const routeHash = hash.startsWith('#') ? hash.slice(1) : hash
   const routePath = routeHash.startsWith('/') ? routeHash : ''
   const [pathname = '', search = ''] = routePath.split('?')
@@ -71,7 +71,7 @@ export function canonicalAssetAddress(address: unknown) {
   return /^0x[0-9a-f]{40}$/.test(value) ? value : ''
 }
 
-export function buildDappLauncherRoute(route: DappLauncherRouteName, assetId = '', chainId?: number) {
+export function buildSideTrayRoute(route: SideTrayRouteName, assetId = '', chainId?: number) {
   const searchParams = new URLSearchParams()
 
   if (assetId) searchParams.set('assetId', assetId)
@@ -113,7 +113,7 @@ export function resolveFlashAssetFromRouteAssetId(
     getFlashAssetsForChain(routeAsset.chainId).find((asset) => {
       return (
         Number(asset.chainId) === routeAsset.chainId &&
-        canonicalAssetAddress(asset.isNative ? DAPP_LAUNCHER_NATIVE_ASSET_ADDRESS : asset.address) ===
+        canonicalAssetAddress(asset.isNative ? SIDE_TRAY_NATIVE_ASSET_ADDRESS : asset.address) ===
           routeAsset.address
       )
     }) || FLASH_DEFAULT_TARGET_ASSET
@@ -136,4 +136,4 @@ export function isNativeRouteAssetId(assetId?: string | null) {
   return parseCanonicalAssetId(assetId)?.address === FLASH_NATIVE_ETH_ASSET_ADDRESS
 }
 
-const FLASH_NATIVE_ETH_ASSET_ADDRESS = DAPP_LAUNCHER_NATIVE_ASSET_ADDRESS
+const FLASH_NATIVE_ETH_ASSET_ADDRESS = SIDE_TRAY_NATIVE_ASSET_ADDRESS

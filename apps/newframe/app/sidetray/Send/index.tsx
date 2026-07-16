@@ -7,11 +7,14 @@ import {
   createDisplayBalance,
   formatUsdRate
 } from '../../../resources/domain/balance'
-import { resolveSendAssetFromRouteAssetId, toCanonicalAssetId } from '../../../resources/domain/dappLauncher'
+import { resolveSendAssetFromRouteAssetId, toCanonicalAssetId } from '../../../resources/domain/sideTray'
 import svg from '../../../resources/svg'
 import { formatUnits, toBigInt } from '../../../resources/utils/numbers'
-import { createDappWalletSelector, type DappWalletAccount } from '../../state/selectors/dappWallet'
-import { useDappSelector } from '../../state/useAppSelector'
+import {
+  createSideTrayWalletSelector,
+  type SideTrayWalletAccount
+} from '../../state/selectors/sideTrayWallet'
+import { useSideTraySelector } from '../../state/useAppSelector'
 import AccountIcon from './AccountIcon'
 import { createInitialSendState, sendReducer, SEND_TOKEN_ROWS_INCREMENT } from './sendReducer'
 import { buildSendTransaction, cleanAddress, shouldResolveName } from './sendTransaction'
@@ -22,14 +25,14 @@ interface SendProps {
   assetId?: string | null
 }
 
-function recipientName(account: DappWalletAccount) {
+function recipientName(account: SideTrayWalletAccount) {
   return account.ensName || account.name
 }
 
 export default function Send({ assetId }: SendProps) {
-  const selectSendView = React.useMemo(() => createDappWalletSelector(), [])
+  const selectSendView = React.useMemo(() => createSideTrayWalletSelector(), [])
   const { accounts, balanceSummaries, currentAccount, networks, networksMeta } =
-    useDappSelector(selectSendView)
+    useSideTraySelector(selectSendView)
   const [state, dispatch] = React.useReducer(sendReducer, assetId, createInitialSendState)
 
   const selectedAssetSummary = React.useMemo(() => {
@@ -62,7 +65,7 @@ export default function Send({ assetId }: SendProps) {
     dispatch({ type: 'toggleRecipientOpen' })
   }, [])
 
-  const handleSelectRecipient = React.useCallback((recipient: DappWalletAccount) => {
+  const handleSelectRecipient = React.useCallback((recipient: SideTrayWalletAccount) => {
     dispatch({ type: 'selectRecipient', recipient })
   }, [])
 

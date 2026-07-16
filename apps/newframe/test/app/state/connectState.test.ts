@@ -2,14 +2,14 @@ import { beforeEach, describe, expect, it, jest } from 'bun:test'
 
 import { connectRendererState as connectState } from '../../../app/state/connectState'
 import { resetStateMirrorForTests } from '../../../app/state/rendererStore'
-import { projectDappState } from '../../../main/state/projections'
+import { projectSideTrayState } from '../../../main/state/projections'
 import createInitialState from '../../../main/store/state'
 import link from '../../../resources/link'
 import { STATE_STREAM_SCHEMA_VERSION, type StateMessage } from '../../../resources/state/protocol'
 
 const connection = link.connectState as ReturnType<typeof jest.fn>
 const disconnect = link.disconnectState as ReturnType<typeof jest.fn>
-const dappState = () => projectDappState(createInitialState())
+const sideTrayState = () => projectSideTrayState(createInitialState())
 
 describe('connectRendererState', () => {
   let handler: (message: StateMessage) => void
@@ -26,7 +26,7 @@ describe('connectRendererState', () => {
   })
 
   it('does not resolve startup until the authorized stream snapshot arrives', async () => {
-    const connected = connectState('dapp')
+    const connected = connectState('sidetray')
     await Promise.resolve()
 
     expect(connection).toHaveBeenCalledTimes(1)
@@ -35,7 +35,7 @@ describe('connectRendererState', () => {
       schemaVersion: STATE_STREAM_SCHEMA_VERSION,
       streamId: 'initial',
       revision: 0,
-      state: dappState()
+      state: sideTrayState()
     })
 
     const stop = await connected
@@ -44,13 +44,13 @@ describe('connectRendererState', () => {
   })
 
   it('reconnects with a replacement snapshot after detecting a revision gap', async () => {
-    const connected = connectState('dapp')
+    const connected = connectState('sidetray')
     await Promise.resolve()
     handler({
       schemaVersion: STATE_STREAM_SCHEMA_VERSION,
       streamId: 'initial',
       revision: 0,
-      state: dappState()
+      state: sideTrayState()
     })
     const stop = await connected
 
@@ -71,19 +71,19 @@ describe('connectRendererState', () => {
       schemaVersion: STATE_STREAM_SCHEMA_VERSION,
       streamId: 'replacement',
       revision: 0,
-      state: dappState()
+      state: sideTrayState()
     })
     await stop()
   })
 
   it('reconnects when Electron invalidates the active stream', async () => {
-    const connected = connectState('dapp')
+    const connected = connectState('sidetray')
     await Promise.resolve()
     handler({
       schemaVersion: STATE_STREAM_SCHEMA_VERSION,
       streamId: 'initial',
       revision: 0,
-      state: dappState()
+      state: sideTrayState()
     })
     const stop = await connected
 
@@ -109,13 +109,13 @@ describe('connectRendererState', () => {
         })
     )
 
-    const connected = connectState('dapp')
+    const connected = connectState('sidetray')
     await Promise.resolve()
     handler({
       schemaVersion: STATE_STREAM_SCHEMA_VERSION,
       streamId: 'initial',
       revision: 0,
-      state: dappState()
+      state: sideTrayState()
     })
     const stop = await connected
 

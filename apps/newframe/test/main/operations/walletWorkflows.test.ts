@@ -144,7 +144,7 @@ let configureSecurity: typeof import('../../../main/operations/walletWorkflows')
 let consumeHomeCommand: typeof import('../../../main/operations/walletWorkflows').consumeHomeCommand
 let lockWallet: typeof import('../../../main/operations/walletWorkflows').lockWallet
 let lookupToken: typeof import('../../../main/operations/walletWorkflows').lookupToken
-let openDapp: typeof import('../../../main/operations/walletWorkflows').openDapp
+let openSideTray: typeof import('../../../main/operations/walletWorkflows').openSideTray
 let openTransactionExplorer: typeof import('../../../main/operations/walletWorkflows').openTransactionExplorer
 let removeAccount: typeof import('../../../main/operations/walletWorkflows').removeAccount
 let removeNetwork: typeof import('../../../main/operations/walletWorkflows').removeNetwork
@@ -170,7 +170,7 @@ const actions = {
   removeNetwork: jest.fn(),
   selectPrimary: jest.fn(),
   setBiometricUnlock: jest.fn(),
-  setFramePanel: jest.fn(),
+  setSideTray: jest.fn(),
   setPrimaryCustom: jest.fn(),
   setGasDefault: jest.fn(),
   switchOriginChain: jest.fn(),
@@ -187,7 +187,7 @@ beforeAll(async () => {
   consumeHomeCommand = workflows.consumeHomeCommand
   lockWallet = workflows.lockWallet
   lookupToken = workflows.lookupToken
-  openDapp = workflows.openDapp
+  openSideTray = workflows.openSideTray
   openTransactionExplorer = workflows.openTransactionExplorer
   removeAccount = workflows.removeAccount
   removeNetwork = workflows.removeNetwork
@@ -292,14 +292,14 @@ describe('wallet UI workflows', () => {
       }
     })
 
-    expect(openDapp({ type: 'dapp.open', feature: 'trade', chainId: 31337 })).toBe(true)
-    expect(actions.setFramePanel).toHaveBeenCalledWith({
-      id: 'dappLauncher',
+    expect(openSideTray({ type: 'sidetray.open', feature: 'trade', chainId: 31337 })).toBe(true)
+    expect(actions.setSideTray).toHaveBeenCalledWith({
+      id: 'sideTray',
       route: '/trade?chainId=31337'
     })
-    expect(openDapp({ type: 'dapp.open', feature: 'send' })).toBe(true)
-    expect(actions.setFramePanel).toHaveBeenLastCalledWith({
-      id: 'dappLauncher',
+    expect(openSideTray({ type: 'sidetray.open', feature: 'send' })).toBe(true)
+    expect(actions.setSideTray).toHaveBeenLastCalledWith({
+      id: 'sideTray',
       route: '/send'
     })
   })

@@ -6,7 +6,7 @@ import Trade from '../../../../app/sidetray/Trade'
 import {
   applyStateMessage,
   beginStateConnection,
-  dappRendererStateStoreReadApi,
+  sideTrayRendererStateStoreReadApi,
   resetStateMirrorForTests
 } from '../../../../app/state/rendererStore'
 import link from '../../../../resources/link'
@@ -57,7 +57,7 @@ function updateTradeState(changes: Record<string, unknown>) {
 function initializeTradeState(balances = [wethBalance()]) {
   stateRevision = 0
   resetStateMirrorForTests()
-  beginStateConnection('dapp')
+  beginStateConnection('sidetray')
   applyStateMessage({
     schemaVersion: STATE_STREAM_SCHEMA_VERSION,
     streamId: 'trade-test',
@@ -281,7 +281,7 @@ describe('Trade', () => {
       expect(link.executeCommand).toHaveBeenCalledWith(expect.objectContaining({ type: 'typedData.signV4' }))
     )
     await act(async () => {
-      const mirrored = dappRendererStateStoreReadApi.getState()
+      const mirrored = sideTrayRendererStateStoreReadApi.getState()
       updateTradeState({
         balances: {
           ...mirrored.balances,
@@ -492,7 +492,7 @@ describe('Trade', () => {
     render(<Trade assetId={`${FLASH_ANVIL_CHAIN_ID}:${FLASH_WETH_ADDRESS}`} />)
 
     await act(async () => {
-      const state = dappRendererStateStoreReadApi.getState()
+      const state = sideTrayRendererStateStoreReadApi.getState()
       updateTradeState({
         accounts: {
           ...state.accounts,

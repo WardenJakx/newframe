@@ -2,23 +2,23 @@ import electron, { BrowserWindow } from 'electron'
 import path from 'path'
 
 import { createWindow } from '../window'
-import { constrainPanelSize, sidePanelPosition } from '../panelGeometry'
+import { constrainTraySize, sideTrayPosition } from '../trayGeometry'
 
 const isDev = process.env.NODE_ENV === 'development'
 
-export interface SideTrayWindow extends BrowserWindow {
+export interface SideTray extends BrowserWindow {
   contentRoute?: string
 }
 
-const placeSideTray = (sideTray: SideTrayWindow) => {
+const placeSideTray = (sideTray: SideTray) => {
   const area = electron.screen.getDisplayNearestPoint(electron.screen.getCursorScreenPoint()).workArea
 
   if (process.platform !== 'darwin') {
     sideTray.setAlwaysOnTop(true)
   }
   sideTray.setMovable(false)
-  constrainPanelSize(sideTray, area.height)
-  const { x, y } = sidePanelPosition(area)
+  constrainTraySize(sideTray, area.height)
+  const { x, y } = sideTrayPosition(area)
   sideTray.setPosition(x, y)
 }
 
@@ -34,13 +34,13 @@ const frameUrl = (frame: Frame) => {
   return `${baseUrl}${routeHash(frame.route)}`
 }
 
-const load = (sideTray: SideTrayWindow, frame: Frame) => {
+const load = (sideTray: SideTray, frame: Frame) => {
   sideTray.contentRoute = frame.route || ''
   placeSideTray(sideTray)
   sideTray.loadURL(frameUrl(frame))
 }
 
-const show = (sideTray: SideTrayWindow) => {
+const show = (sideTray: SideTray) => {
   placeSideTray(sideTray)
   sideTray.show()
   sideTray.focus()
@@ -62,7 +62,7 @@ export default {
       windowOptions.type = 'panel'
     }
 
-    const sideTray: SideTrayWindow = createWindow('sidetray', {
+    const sideTray: SideTray = createWindow('sidetray', {
       ...windowOptions
     })
 

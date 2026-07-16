@@ -7,8 +7,8 @@ const submitCurrentAccountTransaction = jest.fn()
 const signCurrentAccountTypedData = jest.fn()
 const quoteFlashForCurrentAccount = jest.fn()
 const submitFlashForCurrentAccount = jest.fn()
-const closeOwnSideTrayWindow = jest.fn()
-const inspectOwnSideTrayWindow = jest.fn()
+const closeOwnSideTray = jest.fn()
+const inspectOwnSideTray = jest.fn()
 const walletWorkflows = {
   acceptBetaWarning: jest.fn(),
   adjustTransactionNonce: jest.fn(),
@@ -33,7 +33,7 @@ const walletWorkflows = {
   lockWallet: jest.fn(),
   lookupToken: jest.fn(),
   navigatePanelBack: jest.fn(),
-  openDapp: jest.fn(),
+  openSideTray: jest.fn(),
   openExternalUrl: jest.fn(),
   openTransactionExplorer: jest.fn(),
   openRequestPanel: jest.fn(),
@@ -80,15 +80,15 @@ jest.mock('../../../main/accounts', () => ({
   default: { current: getCurrentAccount, get: getAccount }
 }))
 jest.mock('../../../main/operations/workflows', () => ({ resolveName, selectAccount }))
-jest.mock('../../../main/operations/dappWorkflows', () => ({
+jest.mock('../../../main/operations/sideTrayTransactions', () => ({
   submitCurrentAccountTransaction,
   signCurrentAccountTypedData,
   quoteFlashForCurrentAccount,
   submitFlashForCurrentAccount
 }))
 jest.mock('../../../main/operations/sideTrayWorkflows', () => ({
-  closeOwnSideTrayWindow,
-  inspectOwnSideTrayWindow
+  closeOwnSideTray,
+  inspectOwnSideTray
 }))
 jest.mock('../../../main/operations/walletWorkflows', () => walletWorkflows)
 
@@ -96,7 +96,11 @@ let dispatchCommand: typeof import('../../../main/ipc/operations').dispatchComma
 let dispatchQuery: typeof import('../../../main/ipc/operations').dispatchQuery
 const event = {} as Electron.IpcMainInvokeEvent
 const trayContext = { clientType: 'wallet-ui' as const, entrypoint: 'tray' as const, webContentsId: 1 }
-const sideTrayContext = { clientType: 'dapp' as const, entrypoint: 'sidetray' as const, webContentsId: 2 }
+const sideTrayContext = {
+  clientType: 'sidetray' as const,
+  entrypoint: 'sidetray' as const,
+  webContentsId: 2
+}
 const transactionIdempotencyKey = '00000000-0000-4000-8000-000000000001'
 const flashTargetAsset = {
   id: '1:0x1111111111111111111111111111111111111111',
@@ -157,8 +161,8 @@ beforeEach(() => {
   signCurrentAccountTypedData.mockReset()
   quoteFlashForCurrentAccount.mockReset()
   submitFlashForCurrentAccount.mockReset()
-  closeOwnSideTrayWindow.mockReset()
-  inspectOwnSideTrayWindow.mockReset()
+  closeOwnSideTray.mockReset()
+  inspectOwnSideTray.mockReset()
   Object.values(walletWorkflows).forEach((mock) => mock.mockReset())
 })
 
@@ -173,7 +177,7 @@ describe('typed operation dispatcher', () => {
     expect(resolveName).not.toHaveBeenCalled()
   })
 
-  it('does not authorize dapps to select the wallet account', async () => {
+  it('does not authorize the side tray to select the wallet account', async () => {
     authorizeRenderer.mockReturnValue(sideTrayContext)
 
     await expect(dispatchCommand(event, { type: 'account.select', accountId: '0xabc' })).resolves.toEqual({
@@ -215,7 +219,7 @@ describe('typed operation dispatcher', () => {
     expect(selectAccount).not.toHaveBeenCalled()
   })
 
-  it('allows dapps to resolve names without granting state-changing privileges', async () => {
+  it('allows the side tray to resolve names without granting unrelated state-changing privileges', async () => {
     authorizeRenderer.mockReturnValue(sideTrayContext)
     resolveName.mockResolvedValue('0x1111111111111111111111111111111111111111')
 
@@ -260,8 +264,22 @@ describe('typed operation dispatcher', () => {
     authorizeRenderer.mockReturnValue(sideTrayContext)
 
     await expect(
-      dispatchCommand(event, { type: 'dapp.initialize', feature: 'send', chainId: 1 })
+      dispatchCommand(event, { type: 'sidetray.initialize', feature: 'send', chainId: 1 })
     ).resolves.toEqual({ ok: false, error: 'invalid_command' })
+  })
+
+  it('opens the side tray from the tray renderer', async () => {
+    authorizeRenderer.mockReturnValue(trayContext)
+    walletWorkflows.openSideTray.mockReturnValue(true)
+
+    await expect(
+      dispatchCommand(event, { type: 'sidetray.open', feature: 'trade', chainId: 1 })
+    ).resolves.toEqual({ ok: true })
+    expect(walletWorkflows.openSideTray).toHaveBeenCalledWith({
+      type: 'sidetray.open',
+      feature: 'trade',
+      chainId: 1
+    })
   })
 
   it('rejects renderer-controlled provider methods, origins, and sender addresses', async () => {
@@ -395,14 +413,14 @@ describe('typed operation dispatcher', () => {
     expect(submitCurrentAccountTransaction).toHaveBeenCalledTimes(258)
   })
 
-  it('does not allow wallet renderers to use internal dapp commands', async () => {
+  it('does not allow wallet renderers to use side tray commands', async () => {
     authorizeRenderer.mockReturnValue(trayContext)
 
     await expect(dispatchCommand(event, { type: 'sidetray.close' })).resolves.toEqual({
       ok: false,
       error: 'unauthorized'
     })
-    expect(closeOwnSideTrayWindow).not.toHaveBeenCalled()
+    expect(closeOwnSideTray).not.toHaveBeenCalled()
   })
 
   it('allows the tray to use validated security capabilities', async () => {
@@ -481,11 +499,11 @@ describe('typed operation dispatcher', () => {
     expect(walletWorkflows.lookupToken).toHaveBeenCalledWith(query.address, query.chainId)
   })
 
-  it('closes the invoking side tray without accepting a target window', async () => {
+  it('closes the invoking side tray without accepting another target', async () => {
     authorizeRenderer.mockReturnValue(sideTrayContext)
 
     await expect(dispatchCommand(event, { type: 'sidetray.close' })).resolves.toEqual({ ok: true })
-    expect(closeOwnSideTrayWindow).toHaveBeenCalledWith(event)
+    expect(closeOwnSideTray).toHaveBeenCalledWith(event)
 
     await expect(
       dispatchCommand(event, { type: 'sidetray.close', windowId: 'some-other-window' })
@@ -498,7 +516,7 @@ describe('typed operation dispatcher', () => {
     await expect(dispatchCommand(event, { type: 'sidetray.context-menu', x: 12, y: 34 })).resolves.toEqual({
       ok: true
     })
-    expect(inspectOwnSideTrayWindow).toHaveBeenCalledWith(event, 12, 34)
+    expect(inspectOwnSideTray).toHaveBeenCalledWith(event, 12, 34)
 
     await expect(dispatchCommand(event, { type: 'sidetray.context-menu', x: -1, y: 34 })).resolves.toEqual({
       ok: false,

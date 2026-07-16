@@ -33,7 +33,7 @@ function sendProviderRequest(payload: RPCRequestPayload) {
   return new Promise<RPCResponsePayload>((resolve) => provider.send(payload, resolve))
 }
 
-function initializeInternalDappOrigin(chainId: number) {
+function initializeSideTrayOrigin(chainId: number) {
   const currentStore = store.getState()
   const chain = currentStore.main.networks.ethereum[chainId]
   if (!chain?.on) return false
@@ -50,7 +50,7 @@ export async function submitCurrentAccountTransaction(
 ) {
   const from = currentAccountAddress()
   if (!from) return { ok: false, error: 'no_current_account' } as const
-  if (!initializeInternalDappOrigin(command.chainId)) {
+  if (!initializeSideTrayOrigin(command.chainId)) {
     return { ok: false, error: 'provider_error', message: 'Chain is unavailable.' } as const
   }
 
@@ -103,7 +103,7 @@ export async function signCurrentAccountTypedData(
   if (domainChainId !== undefined && domainChainId !== command.chainId) {
     return { ok: false, error: 'chain_mismatch' } as const
   }
-  if (!initializeInternalDappOrigin(command.chainId)) {
+  if (!initializeSideTrayOrigin(command.chainId)) {
     return { ok: false, error: 'provider_error', message: 'Chain is unavailable.' } as const
   }
 

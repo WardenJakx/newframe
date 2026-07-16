@@ -35,10 +35,10 @@ import type { Chain, Token } from '../store/state'
 import { toTokenId } from '../../resources/domain/balance'
 import { ApprovalType } from '../../resources/constants'
 import {
-  buildDappLauncherRoute,
-  DAPP_LAUNCHER_FRAME_ID,
-  normalizeDappLauncherFrameRequest
-} from '../../resources/domain/dappLauncher'
+  buildSideTrayRoute,
+  normalizeSideTrayFrameRequest,
+  SIDE_TRAY_FRAME_ID
+} from '../../resources/domain/sideTray'
 import { cachedImageReference, isCachedImageReference } from '../../resources/domain/imageCache'
 import {
   isSignatureRequest,
@@ -58,13 +58,13 @@ import { resolveName, selectAccount } from './workflows'
 import { signerCompatibility as transactionCompatibility } from '../transaction'
 import type {
   AccountAddFromSignerCommand,
-  DappOpenCommand,
   NetworkRequestResolveCommand,
   RequestTokenApprovalUpdateCommand,
   SecurityConfigureCommand,
   SecurityUnlockCommand,
   SettingsUpdateCommand,
   SignerImportCommand,
+  SideTrayOpenCommand,
   TokenAddCommand,
   TrezorInputCommand,
   WalletToken,
@@ -491,20 +491,20 @@ export async function hydrateNetworkIcon(chainId: number) {
   return true
 }
 
-export function openDapp(command: DappOpenCommand) {
+export function openSideTray(command: SideTrayOpenCommand) {
   const state = store.getState()
   if (command.chainId && !state.main.networks.ethereum[command.chainId]) return false
 
-  const frame = normalizeDappLauncherFrameRequest({
-    id: DAPP_LAUNCHER_FRAME_ID,
-    route: buildDappLauncherRoute(
+  const frame = normalizeSideTrayFrameRequest({
+    id: SIDE_TRAY_FRAME_ID,
+    route: buildSideTrayRoute(
       command.feature,
       command.assetId || '',
       command.feature === 'trade' ? command.chainId : undefined
     )
   })!
   const exists = state.main.frames[frame.id]
-  state.setFramePanel(frame)
+  state.setSideTray(frame)
   if (exists) windows.refocusSideTray(frame.id)
   return true
 }
