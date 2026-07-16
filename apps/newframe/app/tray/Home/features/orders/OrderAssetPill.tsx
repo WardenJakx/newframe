@@ -1,5 +1,3 @@
-import React from 'react'
-
 import svg from '../../../../../resources/svg'
 import { cachedImageUrl } from '../../../../../resources/domain/imageCache'
 import { ChainIcon } from '../../components/ChainIcon'

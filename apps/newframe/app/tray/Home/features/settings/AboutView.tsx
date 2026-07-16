@@ -1,5 +1,3 @@
-import React from 'react'
-
 import svg from '../../../../../resources/svg'
 import { SettingsActionRow } from '../../ui/SettingsRow'
 import { activateOnKeyboard } from '../../ui/keyboard'

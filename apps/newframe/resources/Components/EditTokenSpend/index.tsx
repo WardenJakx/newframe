@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 
 import { formatUnits, parseUnits, toBigInt, max } from '../../utils/numbers'
 import svg from '../../svg'

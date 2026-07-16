@@ -1,5 +1,3 @@
-import React from 'react'
-
 import svg from '../../svg'
 
 export type StatusGlyphState = 'pending' | 'completed' | 'failed' | 'idle'

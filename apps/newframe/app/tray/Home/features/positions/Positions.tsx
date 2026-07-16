@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 
 import { useAccountBalances } from '../../hooks/useAccountBalances'
 import { useHomeUiStore } from '../../state/HomeUiProvider'

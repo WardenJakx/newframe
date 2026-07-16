@@ -1,5 +1,3 @@
-import React from 'react'
-
 import { SimpleTypedData as TypedSignatureOverview } from '../../../../../resources/Components/SimpleTypedData'
 import { getSignatureRequestClass } from '../../../../../resources/domain/request'
 import { useOriginName } from '../state'

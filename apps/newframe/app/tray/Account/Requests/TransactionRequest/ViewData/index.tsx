@@ -1,4 +1,3 @@
-import React from 'react'
 import svg from '../../../../../../resources/svg'
 import link from '../../../../../../resources/link'
 import type { TransactionRequest } from '../../../../../../main/accounts/types'

@@ -1,5 +1,3 @@
-import React from 'react'
-
 import svg from '../../../../../resources/svg'
 import { activateOnKeyboard } from '../../ui/keyboard'
 import { TRADE_DISABLED_CHAIN_LABEL } from './usePortfolioActions'

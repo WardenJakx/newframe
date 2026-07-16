@@ -1,5 +1,3 @@
-import React from 'react'
-
 import ChainTokenIcon from './ChainTokenIcon'
 import type { NetworkLike, NetworkMetaLike, TokenSelectorItem } from './tokenSelectorTypes'
 

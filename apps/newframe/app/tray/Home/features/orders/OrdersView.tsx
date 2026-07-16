@@ -1,5 +1,3 @@
-import React from 'react'
-
 import svg from '../../../../../resources/svg'
 import { getContraPreposition } from '../../../../../resources/domain/flash/pair'
 import { activateOnKeyboard } from '../../ui/keyboard'

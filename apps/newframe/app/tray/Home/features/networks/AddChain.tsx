@@ -1,5 +1,3 @@
-import React from 'react'
-
 import link from '../../../../../resources/link'
 import { useHomeUiStore } from '../../state/HomeUiProvider'
 import { AddChainView } from './AddChainView'

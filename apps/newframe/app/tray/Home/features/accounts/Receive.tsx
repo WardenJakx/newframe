@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import link from '../../../../../resources/link'
 import svg from '../../../../../resources/svg'
 import { useWalletSelector } from '../../../../state/useAppSelector'

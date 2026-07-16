@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import svg from '../../../../../../resources/svg'
 import link from '../../../../../../resources/link'
 import { cachedImageUrl } from '../../../../../../resources/domain/imageCache'

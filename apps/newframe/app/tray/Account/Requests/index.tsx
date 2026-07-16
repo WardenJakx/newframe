@@ -1,5 +1,3 @@
-import React from 'react'
-
 import TxOverview from './TransactionRequest/TxMainNew/overview'
 
 import RequestItem from '../../../../resources/Components/RequestItem'
