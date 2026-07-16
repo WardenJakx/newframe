@@ -92,9 +92,9 @@ export function OrdersView({
             <div className='t2OrderCopy'>
               <div className='t2OrderIntent'>{orderPairIntent(order)}</div>
               <div className='t2OrderSubline'>
-                <span>{orderSideLabel(order)}</span>
-                <span>{orderTypeLabel(order)}</span>
-                {error ? <span className='t2OrderCancelInlineError'>{error}</span> : null}
+                <span className='traySpan'>{orderSideLabel(order)}</span>
+                <span className='traySpan'>{orderTypeLabel(order)}</span>
+                {error ? <span className='traySpan t2OrderCancelInlineError'>{error}</span> : null}
               </div>
             </div>
             <div className='t2OrderSize'>{orderSize(order)}</div>

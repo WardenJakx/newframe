@@ -302,7 +302,7 @@ export function RequestCommand(props: RequestCommandProps) {
             }}
           >
             <div className='requestDeclineButton _txButton _txButtonBad'>
-              <span>Decline</span>
+              <span className='traySpan'>Decline</span>
             </div>
           </div>
           <div
@@ -336,12 +336,12 @@ export function RequestCommand(props: RequestCommandProps) {
           >
             <div className='requestSignButton _txButton'>
               {state.signerLocked ? (
-                <span style={{ display: 'flex' }}>
-                  <span>{svg.sign(19)}</span>
-                  <span>{svg.lock(13)}</span>
+                <span className='traySpan' style={{ display: 'flex' }}>
+                  <span className='traySpan'>{svg.sign(19)}</span>
+                  <span className='traySpan'>{svg.lock(13)}</span>
                 </span>
               ) : (
-                <span>Sign</span>
+                <span className='traySpan'>Sign</span>
               )}
             </div>
           </div>
@@ -471,7 +471,7 @@ export function RequestCommand(props: RequestCommandProps) {
               }}
             >
               <div className='requestDeclineButton _txButton _txButtonBad'>
-                <span>Decline</span>
+                <span className='traySpan'>Decline</span>
               </div>
             </div>
             <div
@@ -489,7 +489,7 @@ export function RequestCommand(props: RequestCommandProps) {
               }}
             >
               <div className='requestSignButton _txButton'>
-                <span>Sign</span>
+                <span className='traySpan'>Sign</span>
               </div>
             </div>
           </div>

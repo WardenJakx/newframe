@@ -49,7 +49,7 @@ export function ReceiveView({
           role='button'
           tabIndex={0}
         >
-          <span>{copied ? 'Address copied' : account.address}</span>
+          <span className='traySpan'>{copied ? 'Address copied' : account.address}</span>
           {svg.copy(13)}
         </div>
       </div>

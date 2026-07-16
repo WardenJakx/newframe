@@ -150,7 +150,9 @@ function Panel(props: PanelProps) {
       tabIndex={0}
     >
       {svg.fingerprint(15)}
-      <span>{state.biometricUnlocking ? 'Authenticating' : 'Unlock with Biometrics'}</span>
+      <span className='traySpan'>
+        {state.biometricUnlocking ? 'Authenticating' : 'Unlock with Biometrics'}
+      </span>
     </div>
   ) : null
 

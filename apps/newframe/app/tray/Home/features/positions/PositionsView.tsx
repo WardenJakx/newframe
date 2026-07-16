@@ -88,7 +88,7 @@ function MoreRows({
       role='button'
       tabIndex={0}
     >
-      <span>{label}</span>
+      <span className='traySpan'>{label}</span>
       {svg.chevron(12)}
     </div>
   )

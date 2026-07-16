@@ -91,7 +91,7 @@ const NonceValue = ({ req, nonce }: NonceValueProps) => {
   )
 }
 
-const TextValue = ({ value }: TextValueProps) => <span>{value}</span>
+const TextValue = ({ value }: TextValueProps) => <span className='traySpan'>{value}</span>
 
 const SimpleTxJSON = ({ json, req }: SimpleTxJSONProps) => {
   return (

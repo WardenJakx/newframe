@@ -134,8 +134,8 @@ export default function StatusNotifications({
             <div className='t2StatusNotificationChain'>{renderChainIcon(notification)}</div>
             <div className='t2StatusNotificationCopy'>
               <div className='t2StatusNotificationTopline'>
-                <span>{label}</span>
-                <span>{notification.title}</span>
+                <span className='traySpan'>{label}</span>
+                <span className='traySpan'>{notification.title}</span>
               </div>
               {metadata ? <div className='t2StatusNotificationDetail'>{metadata}</div> : null}
             </div>

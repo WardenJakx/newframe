@@ -71,10 +71,10 @@ const ApproveOverview = ({ amount = 0, decimals, symbol = '?' }: ApproveOverview
   return (
     <div>
       {isRevoke ? (
-        <span>{`Revoke Approval for ${symbol}`}</span>
+        <span className='traySpan'>{`Revoke Approval for ${symbol}`}</span>
       ) : (
         <>
-          <span>{'Approve Spending'}</span>
+          <span className='traySpan'>{'Approve Spending'}</span>
           <DisplayValue
             type='ether'
             value={amount}
@@ -92,7 +92,7 @@ const SendOverview = ({ req, symbol = '?', decimals, amount: ammt }: SendOvervie
   const amount = ammt || req?.data.value || 0
   return (
     <div>
-      <span>{'Send'}</span>
+      <span className='traySpan'>{'Send'}</span>
       <DisplayValue
         type='ether'
         value={amount}
@@ -169,7 +169,7 @@ const TxOverview = ({
   if (simple) {
     return (
       <div className='txDescriptionSummaryStandalone'>
-        <span className='txDescriptionSummaryStandaloneWrap'>{description}</span>
+        <span className='traySpan txDescriptionSummaryStandaloneWrap'>{description}</span>
       </div>
     )
   } else {

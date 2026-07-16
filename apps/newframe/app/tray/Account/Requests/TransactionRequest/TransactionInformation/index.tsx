@@ -232,7 +232,7 @@ const FittedAssetSymbol = ({ symbol }: { symbol: string }) => {
 
   return (
     <div ref={frameRef} className='txReviewEffectIconSymbolFrame'>
-      <span ref={textRef} className='txReviewEffectIconSymbol' title={symbol}>
+      <span ref={textRef} className='traySpan txReviewEffectIconSymbol' title={symbol}>
         {symbol}
       </span>
     </div>
@@ -284,8 +284,8 @@ const TransactionEffects = ({
                 {effect.detail ? <div className='txReviewEffectDetail'>{effect.detail}</div> : null}
               </div>
               <div className='txReviewEffectAmount'>
-                {effect.direction === 'out' ? <span className='txReviewEffectPrefix'>-</span> : null}
-                {effect.direction === 'in' ? <span className='txReviewEffectPrefix'>+</span> : null}
+                {effect.direction === 'out' ? <span className='traySpan txReviewEffectPrefix'>-</span> : null}
+                {effect.direction === 'in' ? <span className='traySpan txReviewEffectPrefix'>+</span> : null}
                 <DisplayCoinBalance
                   amount={effect.amount || '0x0'}
                   decimals={effect.decimals}
@@ -320,11 +320,11 @@ const TransactionInformation = ({
     <div className='txReview'>
       <section className='txReviewHero'>
         <div className='txReviewHeroNetwork' style={{ color: networkColor }}>
-          <span>{networkName}</span>
+          <span className='traySpan'>{networkName}</span>
         </div>
         <div className='txReviewHeroTitle'>{title}</div>
         <div className='txReviewHeroSubtitle'>{subtitle}</div>
-        <span className='txReviewStatus' role='status'>
+        <span className='traySpan txReviewStatus' role='status'>
           {statusLabel}
         </span>
         {notice ? (

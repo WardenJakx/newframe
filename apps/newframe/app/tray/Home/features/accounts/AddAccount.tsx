@@ -718,7 +718,7 @@ export function AddAccount({
         tabIndex={0}
       >
         <div className='t2InlineAddTypeIcon'>{renderInlineAddIcon(icon)}</div>
-        <span>{label}</span>
+        <span className='traySpan'>{label}</span>
       </div>
     )
   }
@@ -777,7 +777,7 @@ export function AddAccount({
               role='button'
               tabIndex={0}
             >
-              <span>More wallets</span>
+              <span className='traySpan'>More wallets</span>
               {svg.chevron(12)}
             </div>
           ) : null}
@@ -790,7 +790,7 @@ export function AddAccount({
             tabIndex={0}
           >
             {svg.plus(12)}
-            <span>Add address</span>
+            <span className='traySpan'>Add address</span>
           </div>
         </div>
       </div>
@@ -817,7 +817,7 @@ export function AddAccount({
             tabIndex={0}
           >
             {svg.plus(12)}
-            <span>Create recovery phrase</span>
+            <span className='traySpan'>Create recovery phrase</span>
           </div>
           <div
             aria-label='Import recovery phrase'
@@ -846,7 +846,7 @@ export function AddAccount({
             tabIndex={0}
           >
             {svg.seedling(12)}
-            <span>Import recovery phrase</span>
+            <span className='traySpan'>Import recovery phrase</span>
           </div>
         </div>
       )
@@ -904,13 +904,13 @@ export function AddAccount({
       <div className='t2InlineAddForm'>
         <div className='t2SeedCreateNotice'>
           <div className='t2SeedCreateNoticeIcon'>{svg.alert(14)}</div>
-          <span>Save these words in order. Newframe cannot recover them later.</span>
+          <span className='traySpan'>Save these words in order. Newframe cannot recover them later.</span>
         </div>
         {words.length ? (
           <div className='t2SeedPhraseGrid' aria-label='Generated recovery phrase'>
             {words.map((word: string, index: number) => (
               <div className='t2SeedPhraseWord' key={`${word}-${index}`}>
-                <span>{index + 1}</span>
+                <span className='traySpan'>{index + 1}</span>
                 <strong>{word}</strong>
               </div>
             ))}
@@ -958,7 +958,7 @@ export function AddAccount({
           tabIndex={0}
         >
           <div className='t2SeedBackupBox'>{state.addGeneratedPhraseBackedUp ? svg.check(9) : null}</div>
-          <span>I saved this recovery phrase</span>
+          <span className='traySpan'>I saved this recovery phrase</span>
         </div>
         <div className='t2InlineInput'>
           <label>Account name</label>
@@ -997,7 +997,7 @@ export function AddAccount({
           tabIndex={0}
         >
           {svg.plus(12)}
-          <span>Create account</span>
+          <span className='traySpan'>Create account</span>
         </div>
       </div>
     )
@@ -1130,7 +1130,7 @@ export function AddAccount({
           tabIndex={0}
         >
           {svg.plus(12)}
-          <span>Create signer</span>
+          <span className='traySpan'>Create signer</span>
         </div>
       </div>
     )
@@ -1222,7 +1222,7 @@ export function AddAccount({
         <div className='t2HardwareChallenge'>
           <div className='t2HardwarePinDots'>
             {(state.addHardwarePin || '').split('').map((_: string, index: number) => (
-              <span key={index} />
+              <span className='traySpan' key={index} />
             ))}
           </div>
           <div className='t2HardwarePinPad'>
@@ -1336,7 +1336,7 @@ export function AddAccount({
             tabIndex={0}
           >
             {svg.check(12)}
-            <span>Pair</span>
+            <span className='traySpan'>Pair</span>
           </div>
         </div>
       )
@@ -1388,7 +1388,9 @@ export function AddAccount({
             tabIndex={0}
           >
             <div className='t2InlineAddFileIcon'>{svg.file(14)}</div>
-            <span>{state.addAccountKeystore ? 'JSON backup file selected' : 'Choose JSON backup file'}</span>
+            <span className='traySpan'>
+              {state.addAccountKeystore ? 'JSON backup file selected' : 'Choose JSON backup file'}
+            </span>
           </div>
         )}
         {state.addAccountType === 'keystore' ? (
@@ -1438,7 +1440,7 @@ export function AddAccount({
           tabIndex={0}
         >
           {svg.plus(12)}
-          <span>Create account</span>
+          <span className='traySpan'>Create account</span>
         </div>
       </div>
     )

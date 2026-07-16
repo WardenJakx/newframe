@@ -121,7 +121,7 @@ export function TxFeeSummary(props: TxFeeSummaryProps) {
           </div>
         </div>
         <div className='txReviewFeeMeta'>
-          <span>{gasDisplay.displayValue} Gwei</span>
+          <span className='traySpan'>{gasDisplay.displayValue} Gwei</span>
         </div>
       </div>
       {canAdjustFee ? (

@@ -80,8 +80,8 @@ export function NetworksView(props: NetworksViewProps) {
                 onKeyDown={(event) => event.stopPropagation()}
               >
                 <div className='t2NetworkRpcLabel'>
-                  <span>Primary RPC</span>
-                  <span>
+                  <span className='traySpan'>Primary RPC</span>
+                  <span className='traySpan'>
                     {primary.current === 'custom'
                       ? 'Custom'
                       : primary.current === 'chainlist'
