@@ -6,7 +6,7 @@ import { MainSchema, RuntimeSchema } from '../../main/store/state/types/main'
 import { NativeCurrencySchema } from '../../main/store/state/types/nativeCurrency'
 import { RateSchema } from '../../main/store/state/types/rate'
 
-export const RendererProjectionSchema = z.enum(['wallet-ui', 'dapp'])
+export const RendererProjectionSchema = z.enum(['wallet-ui', 'sidetray'])
 export type RendererProjection = z.infer<typeof RendererProjectionSchema>
 
 const NavigationDataSchema = z.strictObject({
@@ -185,7 +185,7 @@ export const WalletRendererStateSchema = z.strictObject({
   platform: z.string()
 })
 
-const DappAccountSchema = z.strictObject({
+const SideTrayAccountSchema = z.strictObject({
   id: z.string(),
   address: z.string(),
   name: z.string(),
@@ -193,11 +193,11 @@ const DappAccountSchema = z.strictObject({
   ensName: z.string().optional()
 })
 
-const DappRateSchema = z.strictObject({
+const SideTrayRateSchema = z.strictObject({
   usd: RateSchema.optional()
 })
 
-const DappNetworkSchema = z.strictObject({
+const SideTrayNetworkSchema = z.strictObject({
   id: z.coerce.number(),
   name: z.string(),
   on: z.boolean(),
@@ -206,37 +206,37 @@ const DappNetworkSchema = z.strictObject({
   explorer: z.string()
 })
 
-const DappNetworkMetadataSchema = z.strictObject({
+const SideTrayNetworkMetadataSchema = z.strictObject({
   icon: z.string().optional(),
   primaryColor: z.string(),
   nativeCurrency: NativeCurrencySchema
 })
 
-// `dapp` is the restricted capability projection used by the bundled
-// sidetray.html Send/Trade renderer.
+// `sidetray` is the restricted capability projection used by the bundled
+// Send/Trade renderer.
 // Origin-controlled web content must never be registered for this projection.
-export const DappRendererStateSchema = z.strictObject({
-  accounts: z.record(z.string(), DappAccountSchema),
+export const SideTrayRendererStateSchema = z.strictObject({
+  accounts: z.record(z.string(), SideTrayAccountSchema),
   accountOrder: z.array(z.string()),
   balances: z.record(z.string(), z.array(BalanceSchema)),
   currentAccount: z.string(),
   networks: z.strictObject({
-    ethereum: z.record(z.coerce.number(), DappNetworkSchema)
+    ethereum: z.record(z.coerce.number(), SideTrayNetworkSchema)
   }),
   networksMeta: z.strictObject({
-    ethereum: z.record(z.coerce.number(), DappNetworkMetadataSchema)
+    ethereum: z.record(z.coerce.number(), SideTrayNetworkMetadataSchema)
   }),
-  rates: z.record(z.string(), DappRateSchema),
+  rates: z.record(z.string(), SideTrayRateSchema),
   runtime: RuntimeSchema
 })
 
 export type WalletRendererState = z.infer<typeof WalletRendererStateSchema>
-export type DappRendererState = z.infer<typeof DappRendererStateSchema>
+export type SideTrayRendererState = z.infer<typeof SideTrayRendererStateSchema>
 export type WalletAccount = WalletRendererState['accounts'][string]
 
 export const projectionStateSchemas = {
   'wallet-ui': WalletRendererStateSchema,
-  dapp: DappRendererStateSchema
+  sidetray: SideTrayRendererStateSchema
 } as const
 
 function createProjectionChangesSchema<TSchema extends z.ZodObject>(schema: TSchema) {
@@ -276,5 +276,5 @@ function createProjectionChangesSchema<TSchema extends z.ZodObject>(schema: TSch
 // only keys that are actually present so a one-slice update stays one slice.
 export const projectionStateChangeSchemas = {
   'wallet-ui': createProjectionChangesSchema(WalletRendererStateSchema),
-  dapp: createProjectionChangesSchema(DappRendererStateSchema)
+  sidetray: createProjectionChangesSchema(SideTrayRendererStateSchema)
 } as const

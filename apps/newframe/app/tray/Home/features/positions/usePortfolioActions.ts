@@ -2,7 +2,7 @@ import { useShallow } from 'zustand/react/shallow'
 
 import link from '../../../../../resources/link'
 import { hasPositiveBalance } from '../../../../../resources/domain/balance'
-import { toCanonicalAssetId } from '../../../../../resources/domain/dappLauncher'
+import { toCanonicalAssetId } from '../../../../../resources/domain/sideTray'
 import { getFlashDefaultChainId, isFlashChainSupported } from '../../../../../resources/domain/flash/chains'
 import { useWalletSelector } from '../../../../state/useAppSelector'
 import { useHomeUiStore } from '../../state/HomeUiProvider'
@@ -47,13 +47,13 @@ export function usePortfolioActions(balances: any[]) {
     canTrade,
     openSend: (asset?: any) => {
       if (asset ? !hasPositiveBalance(asset) : !balances.some(hasPositiveBalance)) return
-      void link.executeCommand({ type: 'dapp.open', feature: 'send', assetId: toCanonicalAssetId(asset) })
+      void link.executeCommand({ type: 'sidetray.open', feature: 'send', assetId: toCanonicalAssetId(asset) })
     },
     openTrade: (asset?: any) => {
       const contextAsset = asset || firstTradeAsset
       if (!contextAsset || !canTrade(contextAsset)) return
       void link.executeCommand({
-        type: 'dapp.open',
+        type: 'sidetray.open',
         feature: 'trade',
         assetId: asset ? toCanonicalAssetId(asset) : '',
         chainId: tradeChainId(contextAsset)

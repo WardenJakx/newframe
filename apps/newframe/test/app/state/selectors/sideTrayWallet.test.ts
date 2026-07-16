@@ -1,8 +1,8 @@
-import { createDappWalletSelector } from '../../../../app/state/selectors/dappWallet'
+import { createSideTrayWalletSelector } from '../../../../app/state/selectors/sideTrayWallet'
 import { NATIVE_CURRENCY } from '../../../../resources/constants'
-import type { DappRendererState } from '../../../../resources/state/projections'
+import type { SideTrayRendererState } from '../../../../resources/state/projections'
 
-describe('createDappWalletSelector', () => {
+describe('createSideTrayWalletSelector', () => {
   it('returns ordered accounts and current-account balance summaries', () => {
     const sender = { id: 'sender', address: '0xsender', name: 'Sender', lastSignerType: 'address' }
     const recipient = {
@@ -11,7 +11,7 @@ describe('createDappWalletSelector', () => {
       name: 'Recipient',
       lastSignerType: 'address'
     }
-    const selectDappWallet = createDappWalletSelector()
+    const selectSideTrayWallet = createSideTrayWalletSelector()
     const state = {
       accounts: {
         [sender.id]: sender,
@@ -60,20 +60,20 @@ describe('createDappWalletSelector', () => {
       },
       rates: {},
       runtime: {}
-    } satisfies DappRendererState
+    } satisfies SideTrayRendererState
 
-    const result = selectDappWallet(state)
+    const result = selectSideTrayWallet(state)
 
     expect(result.accounts.map((account) => account.id)).toEqual(['recipient', 'sender'])
     expect(result.currentAccount).toBe(sender)
     expect(result.balanceSummaries).toHaveLength(1)
     expect(result.balanceSummaries[0].symbol).toBe('ETH')
-    expect(selectDappWallet(state)).toBe(result)
+    expect(selectSideTrayWallet(state)).toBe(result)
   })
 
   it('keeps the snapshot stable for an account whose balances have not loaded yet', () => {
     const account = { id: 'new', address: '0xnew', name: 'New Account', lastSignerType: 'address' }
-    const selectDappWallet = createDappWalletSelector()
+    const selectSideTrayWallet = createSideTrayWalletSelector()
     const state = {
       accounts: { [account.id]: account },
       accountOrder: [account.id],
@@ -83,11 +83,11 @@ describe('createDappWalletSelector', () => {
       networksMeta: { ethereum: {} },
       rates: {},
       runtime: {}
-    } satisfies DappRendererState
+    } satisfies SideTrayRendererState
 
-    const result = selectDappWallet(state)
+    const result = selectSideTrayWallet(state)
 
     expect(result.balanceSummaries).toEqual([])
-    expect(selectDappWallet(state)).toBe(result)
+    expect(selectSideTrayWallet(state)).toBe(result)
   })
 })

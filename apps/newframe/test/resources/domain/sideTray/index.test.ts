@@ -1,11 +1,11 @@
 import {
-  buildDappLauncherRoute,
-  normalizeDappLauncherFrameRequest,
-  parseDappLauncherHashRoute,
+  buildSideTrayRoute,
+  normalizeSideTrayFrameRequest,
+  parseSideTrayHashRoute,
   resolveFlashAssetFromRouteAssetId,
   resolveSendAssetFromRouteAssetId,
   toCanonicalAssetId
-} from '../../../../resources/domain/dappLauncher'
+} from '../../../../resources/domain/sideTray'
 import {
   FLASH_BASE_CHAIN_ID,
   FLASH_BASE_USDC_ADDRESS,
@@ -18,66 +18,62 @@ import {
   FLASH_WETH_ASSET
 } from '../../../../resources/domain/flash/assets'
 
-describe('#parseDappLauncherHashRoute', () => {
+describe('#parseSideTrayHashRoute', () => {
   it('parses send routes', () => {
-    const route = parseDappLauncherHashRoute(
-      '#/send?assetId=31337:0x0000000000000000000000000000000000000000'
-    )
+    const route = parseSideTrayHashRoute('#/send?assetId=31337:0x0000000000000000000000000000000000000000')
 
     expect(route.name).toBe('send')
     expect(route.searchParams.get('assetId')).toBe('31337:0x0000000000000000000000000000000000000000')
   })
 
   it('parses trade routes', () => {
-    const route = parseDappLauncherHashRoute(
-      '#/trade?assetId=31337:0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'
-    )
+    const route = parseSideTrayHashRoute('#/trade?assetId=31337:0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2')
 
     expect(route.name).toBe('trade')
     expect(route.searchParams.get('assetId')).toBe('31337:0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2')
   })
 
   it('defaults unknown and malformed routes to send', () => {
-    expect(parseDappLauncherHashRoute('').name).toBe('send')
-    expect(parseDappLauncherHashRoute('#/unknown').name).toBe('send')
-    expect(parseDappLauncherHashRoute('trade').name).toBe('send')
+    expect(parseSideTrayHashRoute('').name).toBe('send')
+    expect(parseSideTrayHashRoute('#/unknown').name).toBe('send')
+    expect(parseSideTrayHashRoute('trade').name).toBe('send')
   })
 })
 
-describe('#normalizeDappLauncherFrameRequest', () => {
+describe('#normalizeSideTrayFrameRequest', () => {
   it('accepts preferred frame objects with routes', () => {
     expect(
-      normalizeDappLauncherFrameRequest({
-        id: 'dappLauncher',
+      normalizeSideTrayFrameRequest({
+        id: 'sideTray',
         route: '/trade?assetId=31337%3A0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'
       })
     ).toStrictEqual({
-      id: 'dappLauncher',
+      id: 'sideTray',
       route: '/trade?assetId=31337%3A0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'
     })
   })
 
-  it('normalizes arbitrary frame ids into the single dapp panel', () => {
+  it('normalizes arbitrary frame ids into the single side tray', () => {
     expect(
-      normalizeDappLauncherFrameRequest({
-        id: 'legacyTradeWindow',
+      normalizeSideTrayFrameRequest({
+        id: 'legacyTradeSurface',
         route: '/trade'
       })
     ).toStrictEqual({
-      id: 'dappLauncher',
+      id: 'sideTray',
       route: '/trade'
     })
   })
 
   it('keeps deprecated string frame requests working', () => {
-    expect(normalizeDappLauncherFrameRequest('dappLauncher')).toStrictEqual({
-      id: 'dappLauncher'
+    expect(normalizeSideTrayFrameRequest('sideTray')).toStrictEqual({
+      id: 'sideTray'
     })
   })
 
   it('rejects invalid frame requests', () => {
-    expect(normalizeDappLauncherFrameRequest('')).toBeNull()
-    expect(normalizeDappLauncherFrameRequest({ id: '' })).toBeNull()
+    expect(normalizeSideTrayFrameRequest('')).toBeNull()
+    expect(normalizeSideTrayFrameRequest({ id: '' })).toBeNull()
   })
 })
 
@@ -107,17 +103,17 @@ describe('#toCanonicalAssetId', () => {
   })
 })
 
-describe('#buildDappLauncherRoute', () => {
+describe('#buildSideTrayRoute', () => {
   it('encodes the asset id query param', () => {
-    expect(buildDappLauncherRoute('send', '31337:0x0000000000000000000000000000000000000000')).toBe(
+    expect(buildSideTrayRoute('send', '31337:0x0000000000000000000000000000000000000000')).toBe(
       '/send?assetId=31337%3A0x0000000000000000000000000000000000000000'
     )
   })
 
   it('encodes the optional chain id query param', () => {
-    expect(buildDappLauncherRoute('trade', '', FLASH_BASE_CHAIN_ID)).toBe('/trade?chainId=8453')
+    expect(buildSideTrayRoute('trade', '', FLASH_BASE_CHAIN_ID)).toBe('/trade?chainId=8453')
     expect(
-      buildDappLauncherRoute(
+      buildSideTrayRoute(
         'trade',
         `${FLASH_BASE_CHAIN_ID}:${FLASH_BASE_WETH_ADDRESS.toLowerCase()}`,
         FLASH_BASE_CHAIN_ID

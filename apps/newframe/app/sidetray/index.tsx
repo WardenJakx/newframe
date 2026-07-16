@@ -13,7 +13,7 @@ function AppComponent() {
 }
 
 async function start() {
-  const disconnect = await connectRendererState('dapp')
+  const disconnect = await connectRendererState('sidetray')
   window.addEventListener('beforeunload', () => void disconnect(), { once: true })
   document.body.classList.add('dark')
   const root = createRoot(document.getElementById('sidetray') as HTMLElement)

@@ -3,7 +3,7 @@ import { fileURLToPath } from 'url'
 
 import type { IpcMainInvokeEvent, WebContents } from 'electron'
 
-export type RendererRole = 'wallet-ui' | 'dapp'
+export type RendererRole = 'wallet-ui' | 'sidetray'
 export type RendererEntrypoint = 'tray' | 'sidetray'
 
 type RendererRegistration = {

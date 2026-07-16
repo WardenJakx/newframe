@@ -1,16 +1,16 @@
-// The side tray owns windows for internal tools. `main.frames` describes the
-// content loaded into those windows; it does not own their Electron lifecycle.
+// The side tray hosts internal tools. `main.frames` describes the content it loads;
+// it does not own the Electron lifecycle.
 import { shallow } from 'zustand/vanilla/shallow'
 import store from '../../store'
 
-import sideTrayWindow, { SideTrayWindow } from './window.js'
+import sideTrayHost, { SideTray } from './window.js'
 
 function getFrames(): Record<string, Frame> {
   return store.getState().main.frames
 }
 
 export default class SideTrayManager {
-  private windows: Record<string, SideTrayWindow> = {}
+  private sideTrays: Record<string, SideTray> = {}
 
   start() {
     const manageCurrentFrames = ([frames, inFocus]: [Record<string, Frame>, string]) => {
@@ -29,18 +29,18 @@ export default class SideTrayManager {
 
   manageFrames(frames: Record<string, Frame>, inFocus: string) {
     const frameIds = Object.keys(frames)
-    const instanceIds = Object.keys(this.windows)
+    const instanceIds = Object.keys(this.sideTrays)
 
     // create an instance for each new frame in the store
     frameIds
       .filter((frameId) => !instanceIds.includes(frameId))
       .forEach((frameId) => {
-        const sideTray = sideTrayWindow.create(frames[frameId])
+        const sideTray = sideTrayHost.create(frames[frameId])
 
-        this.windows[frameId] = sideTray
+        this.sideTrays[frameId] = sideTray
 
         sideTray.on('closed', () => {
-          this.removeSideTrayWindow(frameId)
+          this.removeSideTray(frameId)
           store.getState().removeFrame(frameId)
         })
 
@@ -50,11 +50,11 @@ export default class SideTrayManager {
     frameIds
       .filter((frameId) => instanceIds.includes(frameId))
       .forEach((frameId) => {
-        const sideTray = this.windows[frameId]
+        const sideTray = this.sideTrays[frameId]
         const route = frames[frameId].route || ''
 
         if (sideTray && !sideTray.isDestroyed() && sideTray.contentRoute !== route) {
-          sideTrayWindow.load(sideTray, frames[frameId])
+          sideTrayHost.load(sideTray, frames[frameId])
         }
       })
 
@@ -62,7 +62,7 @@ export default class SideTrayManager {
     instanceIds
       .filter((instanceId) => !frameIds.includes(instanceId))
       .forEach((instanceId) => {
-        const sideTray = this.removeSideTrayWindow(instanceId)
+        const sideTray = this.removeSideTray(instanceId)
 
         if (sideTray) {
           sideTray.destroy()
@@ -70,19 +70,19 @@ export default class SideTrayManager {
       })
 
     if (inFocus) {
-      const focusedFrame = this.windows[inFocus] || { isFocused: () => true }
+      const focusedSideTray = this.sideTrays[inFocus] || { isFocused: () => true }
 
-      if (!focusedFrame.isFocused()) {
-        focusedFrame.show()
-        focusedFrame.focus()
+      if (!focusedSideTray.isFocused()) {
+        focusedSideTray.show()
+        focusedSideTray.focus()
       }
     }
   }
 
-  removeSideTrayWindow(frameId: string) {
-    const sideTray = this.windows[frameId]
+  removeSideTray(frameId: string) {
+    const sideTray = this.sideTrays[frameId]
 
-    delete this.windows[frameId]
+    delete this.sideTrays[frameId]
 
     if (sideTray) {
       sideTray.removeAllListeners('closed')
@@ -92,7 +92,7 @@ export default class SideTrayManager {
   }
 
   refocus(id: string) {
-    const sideTray = this.windows[id]
+    const sideTray = this.sideTrays[id]
     if (sideTray) {
       const frame = getFrames()[id]
       sideTray.setVisibleOnAllWorkspaces(true, {
@@ -104,7 +104,7 @@ export default class SideTrayManager {
         skipTransformProcessType: true
       })
       if (frame) {
-        sideTrayWindow.show(sideTray)
+        sideTrayHost.show(sideTray)
       } else {
         sideTray.show()
         sideTray.focus()
@@ -115,19 +115,19 @@ export default class SideTrayManager {
   showAll() {
     const frames = getFrames()
 
-    Object.keys(this.windows).forEach((frameId) => {
-      const sideTray = this.windows[frameId]
+    Object.keys(this.sideTrays).forEach((frameId) => {
+      const sideTray = this.sideTrays[frameId]
       const frame = frames[frameId]
 
       if (sideTray && frame && !sideTray.isDestroyed()) {
-        sideTrayWindow.show(sideTray)
+        sideTrayHost.show(sideTray)
       }
     })
   }
 
   hideAll() {
-    Object.keys(this.windows).forEach((frameId) => {
-      const sideTray = this.windows[frameId]
+    Object.keys(this.sideTrays).forEach((frameId) => {
+      const sideTray = this.sideTrays[frameId]
 
       if (sideTray && !sideTray.isDestroyed() && sideTray.isVisible()) {
         sideTray.hide()
@@ -136,6 +136,6 @@ export default class SideTrayManager {
   }
 
   isShowing() {
-    return Object.keys(this.windows).some((win) => this.windows[win].isVisible())
+    return Object.keys(this.sideTrays).some((id) => this.sideTrays[id].isVisible())
   }
 }

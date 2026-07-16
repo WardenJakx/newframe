@@ -1099,7 +1099,7 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
       })
     },
 
-    setFramePanel: (frame: any) => {
+    setSideTray: (frame: any) => {
       set((draft) => {
         const main = mutableMain(draft)
         main.frames = { [frame.id]: frame }

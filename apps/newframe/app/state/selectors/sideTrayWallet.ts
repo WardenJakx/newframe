@@ -1,33 +1,33 @@
 import { createBalanceSummarySelector, type BalanceSummary } from '../../../resources/domain/balance'
 
 import type { Balance } from '../../../main/store/state'
-import type { DappRendererState } from '../../../resources/state/projections'
+import type { SideTrayRendererState } from '../../../resources/state/projections'
 
-export type DappWalletAccount = DappRendererState['accounts'][string]
-export type DappWalletEthereumNetwork = DappRendererState['networks']['ethereum'][number]
-export type DappWalletEthereumNetworkMeta = DappRendererState['networksMeta']['ethereum'][number]
+export type SideTrayWalletAccount = SideTrayRendererState['accounts'][string]
+export type SideTrayWalletEthereumNetwork = SideTrayRendererState['networks']['ethereum'][number]
+export type SideTrayWalletEthereumNetworkMeta = SideTrayRendererState['networksMeta']['ethereum'][number]
 
-export interface DappWalletSelectorValue {
-  accounts: DappWalletAccount[]
+export interface SideTrayWalletSelectorValue {
+  accounts: SideTrayWalletAccount[]
   balanceSummaries: BalanceSummary[]
-  currentAccount: DappWalletAccount | null
-  networks: Record<string | number, DappWalletEthereumNetwork>
-  networksMeta: Record<string | number, DappWalletEthereumNetworkMeta>
-  runtime: DappRendererState['runtime']
+  currentAccount: SideTrayWalletAccount | null
+  networks: Record<string | number, SideTrayWalletEthereumNetwork>
+  networksMeta: Record<string | number, SideTrayWalletEthereumNetworkMeta>
+  runtime: SideTrayRendererState['runtime']
 }
 
-const EMPTY_ACCOUNTS: Record<string, DappWalletAccount> = {}
+const EMPTY_ACCOUNTS: Record<string, SideTrayWalletAccount> = {}
 const EMPTY_BALANCES: Balance[] = []
-const EMPTY_NETWORKS: Record<string | number, DappWalletEthereumNetwork> = {}
-const EMPTY_NETWORKS_META: Record<string | number, DappWalletEthereumNetworkMeta> = {}
-const EMPTY_RATES: DappRendererState['rates'] = {}
+const EMPTY_NETWORKS: Record<string | number, SideTrayWalletEthereumNetwork> = {}
+const EMPTY_NETWORKS_META: Record<string | number, SideTrayWalletEthereumNetworkMeta> = {}
+const EMPTY_RATES: SideTrayRendererState['rates'] = {}
 
 function createOrderedAccountsSelector() {
-  let previousAccountsById: Record<string, DappWalletAccount> | undefined
+  let previousAccountsById: Record<string, SideTrayWalletAccount> | undefined
   let previousAccountOrder: string[] | undefined
-  let previousOrderedAccounts: DappWalletAccount[] = []
+  let previousOrderedAccounts: SideTrayWalletAccount[] = []
 
-  return (accountsById: Record<string, DappWalletAccount>, accountOrder?: string[]) => {
+  return (accountsById: Record<string, SideTrayWalletAccount>, accountOrder?: string[]) => {
     if (accountsById === previousAccountsById && accountOrder === previousAccountOrder) {
       return previousOrderedAccounts
     }
@@ -46,12 +46,12 @@ function createOrderedAccountsSelector() {
   }
 }
 
-export function createDappWalletSelector() {
+export function createSideTrayWalletSelector() {
   const selectBalanceSummaries = createBalanceSummarySelector()
   const selectOrderedAccounts = createOrderedAccountsSelector()
-  let previousResult: DappWalletSelectorValue | null = null
+  let previousResult: SideTrayWalletSelectorValue | null = null
 
-  return (state: DappRendererState): DappWalletSelectorValue => {
+  return (state: SideTrayRendererState): SideTrayWalletSelectorValue => {
     const selectedAccountId = state.currentAccount
     const accountsById = state.accounts || EMPTY_ACCOUNTS
     const currentAccount = accountsById[selectedAccountId] || null

@@ -50,7 +50,7 @@ describe('Send commands', () => {
     })
   })
 
-  it('closes only its own side tray window', () => {
+  it('closes only its own side tray', () => {
     closeSend()
     expect(link.executeCommand).toHaveBeenCalledWith({ type: 'sidetray.close' })
   })

@@ -9,7 +9,7 @@ import {
 import {
   projectionStateChangeSchemas,
   projectionStateSchemas,
-  type DappRendererState,
+  type SideTrayRendererState,
   type WalletRendererState,
   type RendererProjection
 } from '../../resources/state/projections'
@@ -48,8 +48,8 @@ const rendererStateStoreReadApi: RendererStateReadApi<RendererState> = {
 
 export const walletRendererStateStoreReadApi =
   rendererStateStoreReadApi as unknown as RendererStateReadApi<WalletRendererState>
-export const dappRendererStateStoreReadApi =
-  rendererStateStoreReadApi as unknown as RendererStateReadApi<DappRendererState>
+export const sideTrayRendererStateStoreReadApi =
+  rendererStateStoreReadApi as unknown as RendererStateReadApi<SideTrayRendererState>
 
 let activeStream: ActiveStream | null = null
 let awaitingSnapshot = true

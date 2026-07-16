@@ -8,8 +8,8 @@ import {
   signCurrentAccountTypedData,
   submitCurrentAccountTransaction,
   submitFlashForCurrentAccount
-} from '../operations/dappWorkflows'
-import { closeOwnSideTrayWindow, inspectOwnSideTrayWindow } from '../operations/sideTrayWorkflows'
+} from '../operations/sideTrayTransactions'
+import { closeOwnSideTray, inspectOwnSideTray } from '../operations/sideTrayWorkflows'
 import { resolveName, selectAccount } from '../operations/workflows'
 import * as walletWorkflows from '../operations/walletWorkflows'
 import {
@@ -35,10 +35,10 @@ import {
   AppQuitCommandSchema,
   CommandBoundaryFailureSchema,
   ClipboardWriteCommandSchema,
-  DappOpenCommandSchema,
   SideTrayCloseCommandSchema,
   SideTrayContextMenuCommandSchema,
-  SideTrayWindowResultSchema,
+  SideTrayOpenCommandSchema,
+  SideTrayResultSchema,
   FlashQuoteQuerySchema,
   FlashQuoteResultSchema,
   FlashOrderCancelCommandSchema,
@@ -244,7 +244,7 @@ const commandRegistry = {
   'transaction.submit': defineOperation({
     schema: TransactionSubmitCommandSchema,
     resultSchema: TransactionSubmitResultSchema,
-    roles: ['dapp'],
+    roles: ['sidetray'],
     entrypoints: ['sidetray'],
     async handle(command: TransactionSubmitCommand) {
       const accountId = accounts.current()?.id || 'no-account'
@@ -263,7 +263,7 @@ const commandRegistry = {
   'typedData.signV4': defineOperation({
     schema: TypedDataSignCommandSchema,
     resultSchema: TypedDataSignResultSchema,
-    roles: ['dapp'],
+    roles: ['sidetray'],
     entrypoints: ['sidetray'],
     handle(command: TypedDataSignCommand) {
       return signCurrentAccountTypedData(command)
@@ -273,7 +273,7 @@ const commandRegistry = {
   'flash.submit': defineOperation({
     schema: FlashSubmitCommandSchema,
     resultSchema: FlashSubmitResultSchema,
-    roles: ['dapp'],
+    roles: ['sidetray'],
     entrypoints: ['sidetray'],
     async handle(command: FlashSubmitCommand) {
       const accountId = accounts.current()?.id || 'no-account'
@@ -289,22 +289,22 @@ const commandRegistry = {
   }),
   'sidetray.close': defineOperation({
     schema: SideTrayCloseCommandSchema,
-    resultSchema: SideTrayWindowResultSchema,
-    roles: ['dapp'],
+    resultSchema: SideTrayResultSchema,
+    roles: ['sidetray'],
     entrypoints: ['sidetray'],
     handle(_command, event) {
-      closeOwnSideTrayWindow(event)
+      closeOwnSideTray(event)
       return { ok: true } as const
     },
     failure: { ok: false, error: 'operation_failed' }
   }),
   'sidetray.context-menu': defineOperation({
     schema: SideTrayContextMenuCommandSchema,
-    resultSchema: SideTrayWindowResultSchema,
-    roles: ['dapp'],
+    resultSchema: SideTrayResultSchema,
+    roles: ['sidetray'],
     entrypoints: ['sidetray'],
     handle({ x, y }: SideTrayContextMenuCommand, event) {
-      inspectOwnSideTrayWindow(event, x, y)
+      inspectOwnSideTray(event, x, y)
       return { ok: true } as const
     },
     failure: { ok: false, error: 'operation_failed' }
@@ -366,9 +366,9 @@ const commandRegistry = {
     'not_found',
     ['tray']
   ),
-  'dapp.open': defineWalletCommand(
-    DappOpenCommandSchema,
-    (command) => walletWorkflows.openDapp(command),
+  'sidetray.open': defineWalletCommand(
+    SideTrayOpenCommandSchema,
+    (command) => walletWorkflows.openSideTray(command),
     'not_found',
     ['tray']
   ),
@@ -700,7 +700,7 @@ const queryRegistry = {
   'flash.quote': defineOperation({
     schema: FlashQuoteQuerySchema,
     resultSchema: FlashQuoteResultSchema,
-    roles: ['dapp'],
+    roles: ['sidetray'],
     entrypoints: ['sidetray'],
     async handle({ request }: FlashQuoteQuery) {
       return FlashQuoteResultSchema.parse(await quoteFlashForCurrentAccount(request))
@@ -710,7 +710,7 @@ const queryRegistry = {
   'name.resolve': defineOperation({
     schema: NameResolveQuerySchema,
     resultSchema: NameResolveResultSchema,
-    roles: ['wallet-ui', 'dapp'],
+    roles: ['wallet-ui', 'sidetray'],
     entrypoints: ['tray', 'sidetray'],
     async handle({ name }: NameResolveQuery) {
       const address = await resolveName(name)

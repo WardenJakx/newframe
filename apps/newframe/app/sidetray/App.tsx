@@ -1,6 +1,6 @@
 import React from 'react'
 
-import { parseDappLauncherHashRoute } from '../../resources/domain/dappLauncher'
+import { parseSideTrayHashRoute } from '../../resources/domain/sideTray'
 import Send from './Send'
 import Trade from './Trade'
 
@@ -15,7 +15,7 @@ function useHashRoute() {
     return () => window.removeEventListener('hashchange', updateHash)
   }, [])
 
-  return parseDappLauncherHashRoute(hash)
+  return parseSideTrayHashRoute(hash)
 }
 
 function App() {

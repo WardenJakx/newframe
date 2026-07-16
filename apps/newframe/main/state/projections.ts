@@ -1,6 +1,6 @@
 import type { CanonicalState } from '../store/state'
 import type {
-  DappRendererState,
+  SideTrayRendererState,
   RendererProjection,
   WalletRendererState
 } from '../../resources/state/projections'
@@ -170,14 +170,16 @@ export function projectWalletState(state: CanonicalState): WalletRendererState {
   return projection
 }
 
-let previousDappAccountsInput: CanonicalMain['accounts'] | undefined
-let previousDappAccounts: DappRendererState['accounts'] | undefined
+let previousSideTrayAccountsInput: CanonicalMain['accounts'] | undefined
+let previousSideTrayAccounts: SideTrayRendererState['accounts'] | undefined
 
-function projectDappAccounts(accounts: CanonicalMain['accounts']): DappRendererState['accounts'] {
-  if (accounts === previousDappAccountsInput && previousDappAccounts) return previousDappAccounts
+function projectSideTrayAccounts(accounts: CanonicalMain['accounts']): SideTrayRendererState['accounts'] {
+  if (accounts === previousSideTrayAccountsInput && previousSideTrayAccounts) {
+    return previousSideTrayAccounts
+  }
 
-  previousDappAccountsInput = accounts
-  previousDappAccounts = Object.fromEntries(
+  previousSideTrayAccountsInput = accounts
+  previousSideTrayAccounts = Object.fromEntries(
     Object.entries(accounts).map(([id, account]) => [
       id,
       {
@@ -189,14 +191,16 @@ function projectDappAccounts(accounts: CanonicalMain['accounts']): DappRendererS
       }
     ])
   )
-  return previousDappAccounts
+  return previousSideTrayAccounts
 }
 
-let previousDappNetworksInput: CanonicalMain['networks'] | undefined
-let previousDappNetworks: DappRendererState['networks'] | undefined
+let previousSideTrayNetworksInput: CanonicalMain['networks'] | undefined
+let previousSideTrayNetworks: SideTrayRendererState['networks'] | undefined
 
-function projectDappNetworks(networks: CanonicalMain['networks']): DappRendererState['networks'] {
-  if (networks === previousDappNetworksInput && previousDappNetworks) return previousDappNetworks
+function projectSideTrayNetworks(networks: CanonicalMain['networks']): SideTrayRendererState['networks'] {
+  if (networks === previousSideTrayNetworksInput && previousSideTrayNetworks) {
+    return previousSideTrayNetworks
+  }
 
   const ethereum = Object.fromEntries(
     Object.entries(networks.ethereum)
@@ -214,25 +218,25 @@ function projectDappNetworks(networks: CanonicalMain['networks']): DappRendererS
       ])
   )
 
-  previousDappNetworksInput = networks
-  previousDappNetworks = { ethereum }
-  return previousDappNetworks
+  previousSideTrayNetworksInput = networks
+  previousSideTrayNetworks = { ethereum }
+  return previousSideTrayNetworks
 }
 
-let previousDappNetworkMetadataInput: CanonicalMain['networksMeta'] | undefined
-let previousDappNetworkMetadataNetworks: DappRendererState['networks'] | undefined
-let previousDappNetworkMetadata: DappRendererState['networksMeta'] | undefined
+let previousSideTrayNetworkMetadataInput: CanonicalMain['networksMeta'] | undefined
+let previousSideTrayNetworkMetadataNetworks: SideTrayRendererState['networks'] | undefined
+let previousSideTrayNetworkMetadata: SideTrayRendererState['networksMeta'] | undefined
 
-function projectDappNetworkMetadata(
+function projectSideTrayNetworkMetadata(
   metadata: CanonicalMain['networksMeta'],
-  networks: DappRendererState['networks']
-): DappRendererState['networksMeta'] {
+  networks: SideTrayRendererState['networks']
+): SideTrayRendererState['networksMeta'] {
   if (
-    metadata === previousDappNetworkMetadataInput &&
-    networks === previousDappNetworkMetadataNetworks &&
-    previousDappNetworkMetadata
+    metadata === previousSideTrayNetworkMetadataInput &&
+    networks === previousSideTrayNetworkMetadataNetworks &&
+    previousSideTrayNetworkMetadata
   ) {
-    return previousDappNetworkMetadata
+    return previousSideTrayNetworkMetadata
   }
 
   const ethereum = Object.fromEntries(
@@ -256,47 +260,47 @@ function projectDappNetworkMetadata(
     })
   )
 
-  previousDappNetworkMetadataInput = metadata
-  previousDappNetworkMetadataNetworks = networks
-  previousDappNetworkMetadata = { ethereum }
-  return previousDappNetworkMetadata
+  previousSideTrayNetworkMetadataInput = metadata
+  previousSideTrayNetworkMetadataNetworks = networks
+  previousSideTrayNetworkMetadata = { ethereum }
+  return previousSideTrayNetworkMetadata
 }
 
-let previousDappBalancesInput: CanonicalMain['balances'] | undefined
-let previousDappBalancesAccount = ''
-let previousDappBalancesAccounts: DappRendererState['accounts'] | undefined
-let previousDappBalances: DappRendererState['balances'] | undefined
+let previousSideTrayBalancesInput: CanonicalMain['balances'] | undefined
+let previousSideTrayBalancesAccount = ''
+let previousSideTrayBalancesAccounts: SideTrayRendererState['accounts'] | undefined
+let previousSideTrayBalances: SideTrayRendererState['balances'] | undefined
 
-function projectDappBalances(
+function projectSideTrayBalances(
   balances: CanonicalMain['balances'],
   currentAccount: string,
-  accounts: DappRendererState['accounts']
-): DappRendererState['balances'] {
+  accounts: SideTrayRendererState['accounts']
+): SideTrayRendererState['balances'] {
   if (
-    balances === previousDappBalancesInput &&
-    currentAccount === previousDappBalancesAccount &&
-    accounts === previousDappBalancesAccounts &&
-    previousDappBalances
+    balances === previousSideTrayBalancesInput &&
+    currentAccount === previousSideTrayBalancesAccount &&
+    accounts === previousSideTrayBalancesAccounts &&
+    previousSideTrayBalances
   ) {
-    return previousDappBalances
+    return previousSideTrayBalances
   }
 
   const currentAddress = accounts[currentAccount]?.address || ''
-  previousDappBalancesInput = balances
-  previousDappBalancesAccount = currentAccount
-  previousDappBalancesAccounts = accounts
-  previousDappBalances = currentAddress ? { [currentAddress]: balances[currentAddress] || [] } : {}
-  return previousDappBalances
+  previousSideTrayBalancesInput = balances
+  previousSideTrayBalancesAccount = currentAccount
+  previousSideTrayBalancesAccounts = accounts
+  previousSideTrayBalances = currentAddress ? { [currentAddress]: balances[currentAddress] || [] } : {}
+  return previousSideTrayBalances
 }
 
-let previousDappRatesInput: CanonicalMain['rates'] | undefined
-let previousDappRates: DappRendererState['rates'] | undefined
+let previousSideTrayRatesInput: CanonicalMain['rates'] | undefined
+let previousSideTrayRates: SideTrayRendererState['rates'] | undefined
 
-function projectDappRates(rates: CanonicalMain['rates']): DappRendererState['rates'] {
-  if (rates === previousDappRatesInput && previousDappRates) return previousDappRates
+function projectSideTrayRates(rates: CanonicalMain['rates']): SideTrayRendererState['rates'] {
+  if (rates === previousSideTrayRatesInput && previousSideTrayRates) return previousSideTrayRates
 
-  previousDappRatesInput = rates
-  previousDappRates = Object.fromEntries(
+  previousSideTrayRatesInput = rates
+  previousSideTrayRates = Object.fromEntries(
     Object.entries(rates).map(([assetId, rate]) => {
       if (!rate || typeof rate !== 'object' || !('usd' in rate)) return [assetId, {}]
       const usd = rate.usd
@@ -314,31 +318,31 @@ function projectDappRates(rates: CanonicalMain['rates']): DappRendererState['rat
       return [assetId, { usd: { price: usd.price, change24hr: usd.change24hr } }]
     })
   )
-  return previousDappRates
+  return previousSideTrayRates
 }
 
-let previousDappProjection: DappRendererState | undefined
+let previousSideTrayProjection: SideTrayRendererState | undefined
 
-export function projectDappState(state: CanonicalState): DappRendererState {
+export function projectSideTrayState(state: CanonicalState): SideTrayRendererState {
   const { main } = state
-  const accounts = projectDappAccounts(main.accounts)
-  const networks = projectDappNetworks(main.networks)
-  const projection: DappRendererState = {
+  const accounts = projectSideTrayAccounts(main.accounts)
+  const networks = projectSideTrayNetworks(main.networks)
+  const projection: SideTrayRendererState = {
     accounts,
     accountOrder: main.accountOrder,
-    balances: projectDappBalances(main.balances, main.currentAccount, accounts),
+    balances: projectSideTrayBalances(main.balances, main.currentAccount, accounts),
     currentAccount: main.currentAccount,
     networks,
-    networksMeta: projectDappNetworkMetadata(main.networksMeta, networks),
-    rates: projectDappRates(main.rates),
+    networksMeta: projectSideTrayNetworkMetadata(main.networksMeta, networks),
+    rates: projectSideTrayRates(main.rates),
     runtime: main.runtime
   }
 
-  if (sameTopLevelReferences(previousDappProjection, projection)) return previousDappProjection!
-  previousDappProjection = projection
+  if (sameTopLevelReferences(previousSideTrayProjection, projection)) return previousSideTrayProjection!
+  previousSideTrayProjection = projection
   return projection
 }
 
 export function projectRendererState(state: CanonicalState, projection: RendererProjection) {
-  return projection === 'dapp' ? projectDappState(state) : projectWalletState(state)
+  return projection === 'sidetray' ? projectSideTrayState(state) : projectWalletState(state)
 }

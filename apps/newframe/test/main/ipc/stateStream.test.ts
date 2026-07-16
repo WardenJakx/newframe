@@ -175,13 +175,13 @@ describe('renderer state stream', () => {
     expect(sender.send).toHaveBeenCalledTimes(2)
   })
 
-  it('gives the bundled Send/Trade dapp renderer a least-privilege projection', () => {
+  it('gives the bundled Send/Trade side tray a least-privilege projection', () => {
     const state = createInitialState()
     const id = '0x1111111111111111111111111111111111111111'
     state.main.accounts[id] = {
       id,
       address: id,
-      name: 'Dapp Account',
+      name: 'Side Tray Account',
       lastSignerType: 'address',
       status: 'ok',
       signer: 'secret-signer-id',
@@ -196,7 +196,7 @@ describe('renderer state stream', () => {
     storeMock.setState({ ...state, ...actions() }, true)
 
     const { event, sender } = renderer(2)
-    authorizeRenderer.mockReturnValue({ clientType: 'dapp', webContentsId: sender.id })
+    authorizeRenderer.mockReturnValue({ clientType: 'sidetray', webContentsId: sender.id })
     expect(connectState(event)).toEqual({ ok: true })
 
     const snapshot = sender.send.mock.calls[0][1]
@@ -213,7 +213,7 @@ describe('renderer state stream', () => {
     expect(snapshot.state.accounts[id]).toEqual({
       id,
       address: id,
-      name: 'Dapp Account',
+      name: 'Side Tray Account',
       lastSignerType: 'address'
     })
     expect(snapshot.state).not.toHaveProperty('permissions')

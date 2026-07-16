@@ -41,7 +41,7 @@ export function createWindow(
   if (name === 'tray') {
     registerRenderer(browserWindow.webContents, 'wallet-ui', 'tray')
   } else if (name === 'sidetray') {
-    registerRenderer(browserWindow.webContents, 'dapp', 'sidetray')
+    registerRenderer(browserWindow.webContents, 'sidetray', 'sidetray')
   }
 
   browserWindow.webContents.once('did-finish-load', () => {

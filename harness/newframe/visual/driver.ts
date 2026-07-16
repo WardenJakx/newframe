@@ -132,11 +132,11 @@ export class NewframeDriver {
     return `${chainId}:${address.toLowerCase()}`
   }
 
-  launcherRoute(route: 'send' | 'trade', assetId = '') {
+  sideTrayRoute(route: 'send' | 'trade', assetId = '') {
     return assetId ? `/${route}?assetId=${encodeURIComponent(assetId)}` : `/${route}`
   }
 
-  async waitForDappRoute(page: Page, route: 'send' | 'trade') {
+  async waitForSideTrayRoute(page: Page, route: 'send' | 'trade') {
     await page.waitForURL((url) => url.hash.startsWith(`#/${route}`), { timeout: this.runtime.uiTimeoutMs })
   }
 
@@ -197,15 +197,15 @@ export class NewframeDriver {
     await review.waitFor({ state: 'hidden', timeout: 10_000 })
   }
 
-  async openDappLauncherRoute(route: string) {
+  async openSideTrayRoute(route: string) {
     const parsed = new URL(route, 'https://newframe.invalid')
     const feature = parsed.pathname.slice(1)
-    if (feature !== 'send' && feature !== 'trade') this.fail(`Unsupported dapp route: ${route}`)
+    if (feature !== 'send' && feature !== 'trade') this.fail(`Unsupported side tray route: ${route}`)
 
     const assetId = parsed.searchParams.get('assetId') || undefined
     const chainIdValue = parsed.searchParams.get('chainId')
     const chainId = chainIdValue ? Number(chainIdValue) : undefined
-    await this.executeCommand(this.tray, { type: 'dapp.open', feature, assetId, chainId })
+    await this.executeCommand(this.tray, { type: 'sidetray.open', feature, assetId, chainId })
   }
 
   async getAppState(): Promise<AppState> {
@@ -459,11 +459,11 @@ export class NewframeDriver {
   }
 
   async openTradeTicket() {
-    await this.openDappLauncherRoute(
-      this.launcherRoute('trade', this.canonicalAssetId(anvilChainId, wethAddress))
+    await this.openSideTrayRoute(
+      this.sideTrayRoute('trade', this.canonicalAssetId(anvilChainId, wethAddress))
     )
     const tradePage = await this.waitForElectronPage('bundle/sidetray.html')
-    await this.waitForDappRoute(tradePage, 'trade')
+    await this.waitForSideTrayRoute(tradePage, 'trade')
     await tradePage.getByRole('tab', { name: 'Market' }).waitFor({ state: 'visible', timeout: 15_000 })
     return tradePage
   }
@@ -474,7 +474,7 @@ export class NewframeDriver {
     await tradeButton.waitFor({ state: 'visible', timeout: 5_000 })
     await tradeButton.click()
     const tradePage = await this.waitForElectronPage('bundle/sidetray.html')
-    await this.waitForDappRoute(tradePage, 'trade')
+    await this.waitForSideTrayRoute(tradePage, 'trade')
     await tradePage.getByRole('tab', { name: 'Market' }).waitFor({ state: 'visible', timeout: 15_000 })
     return tradePage
   }

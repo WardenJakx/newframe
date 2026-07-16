@@ -1,7 +1,4 @@
-import {
-  parseCanonicalAssetId,
-  resolveFlashAssetFromRouteAssetId
-} from '../../../resources/domain/dappLauncher'
+import { parseCanonicalAssetId, resolveFlashAssetFromRouteAssetId } from '../../../resources/domain/sideTray'
 import {
   FLASH_MARKET_ORDER_TYPE,
   FLASH_STOP_LOSS_ORDER_TYPE,

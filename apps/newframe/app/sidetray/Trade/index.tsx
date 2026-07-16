@@ -28,8 +28,8 @@ import {
 } from '../../../resources/domain/flash/schemas'
 import svg from '../../../resources/svg'
 import { formatUnits, toBigInt } from '../../../resources/utils/numbers'
-import { createDappWalletSelector } from '../../state/selectors/dappWallet'
-import { useDappSelector } from '../../state/useAppSelector'
+import { createSideTrayWalletSelector } from '../../state/selectors/sideTrayWallet'
+import { useSideTraySelector } from '../../state/useAppSelector'
 import { closeTrade, flashQuote, flashSubmitOrder, signTypedData, submitTransaction } from './tradeService'
 import {
   createInitialTradeState,
@@ -87,9 +87,9 @@ function buildQuoteEffectRequest(requestInput: Parameters<typeof buildTradeQuote
 }
 
 export default function Trade({ assetId, chainId }: TradeProps) {
-  const selectDappWallet = React.useMemo(() => createDappWalletSelector(), [])
+  const selectSideTrayWallet = React.useMemo(() => createSideTrayWalletSelector(), [])
   const { balanceSummaries, currentAccount, networks, networksMeta, runtime } =
-    useDappSelector(selectDappWallet)
+    useSideTraySelector(selectSideTrayWallet)
   const tradeAssets = React.useMemo(
     () => buildTradeAssetOptions({ balances: balanceSummaries, networks, runtime }),
     [balanceSummaries, networks, runtime]

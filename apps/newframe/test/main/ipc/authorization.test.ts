@@ -4,7 +4,7 @@ import { authorizeRenderer, registerRenderer } from '../../../main/ipc/authoriza
 
 let nextId = 1
 
-function renderer(entrypoint: 'tray' | 'sidetray', clientType: 'wallet-ui' | 'dapp') {
+function renderer(entrypoint: 'tray' | 'sidetray', clientType: 'wallet-ui' | 'sidetray') {
   const frame: any = {
     parent: null,
     url: pathToFileURL(`/app/bundle/${entrypoint}.html`).toString()
@@ -56,23 +56,23 @@ describe('renderer authorization', () => {
   })
 
   it('removes a registration when its WebContents is destroyed', () => {
-    const dapp = renderer('sidetray', 'dapp')
-    dapp.destroy()
+    const sideTray = renderer('sidetray', 'sidetray')
+    sideTray.destroy()
 
-    expect(authorizeRenderer(dapp.event)).toBeUndefined()
+    expect(authorizeRenderer(sideTray.event)).toBeUndefined()
   })
 
   it('only accepts the exact development entrypoint on the local app server', () => {
     process.env.NODE_ENV = 'development'
-    const dapp = renderer('sidetray', 'dapp')
-    dapp.frame.url = 'http://localhost:1234/sidetray/index.dev.html#/send'
+    const sideTray = renderer('sidetray', 'sidetray')
+    sideTray.frame.url = 'http://localhost:1234/sidetray/index.dev.html#/send'
 
-    expect(authorizeRenderer(dapp.event)).toMatchObject({
-      clientType: 'dapp',
+    expect(authorizeRenderer(sideTray.event)).toMatchObject({
+      clientType: 'sidetray',
       entrypoint: 'sidetray'
     })
 
-    dapp.frame.url = 'http://localhost:1234/tray/index.dev.html'
-    expect(authorizeRenderer(dapp.event)).toBeUndefined()
+    sideTray.frame.url = 'http://localhost:1234/tray/index.dev.html'
+    expect(authorizeRenderer(sideTray.event)).toBeUndefined()
   })
 })
