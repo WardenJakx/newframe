@@ -4,7 +4,7 @@ import { useShallow } from 'zustand/react/shallow'
 import link from '../../../../resources/link'
 import { useWalletSelector } from '../../../state/useAppSelector'
 import { useHomeUiStore } from '../state/HomeUiProvider'
-import type { PendingAddChain, ProposedChain } from '../state/homeUiTypes'
+import type { PendingAddChain, PendingCustomToken, ProposedChain } from '../state/homeUiTypes'
 
 interface HomeCommandData extends PendingAddChain {
   newChain?: ProposedChain
@@ -12,6 +12,7 @@ interface HomeCommandData extends PendingAddChain {
   showAddAccounts?: boolean
   newAccountType?: string
   selectedSigner?: string
+  token?: PendingCustomToken
 }
 
 interface HomeCommand {
@@ -73,6 +74,7 @@ export function useHomeCommand() {
         pending: { ...data, ...(!data.request ? { homeCommandId: command.id } : {}) }
       })
     }
+    if (view === 'tokens') openOverlay({ type: 'tokens', initialToken: data.token })
 
     const waitsForApproval =
       (view === 'networks' && data.newChain && !data.request) || (view === 'addChain' && !data.request)

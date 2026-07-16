@@ -44,8 +44,10 @@ export function HomeMenuView({
   onOpenDapps,
   onOpenRequests,
   onOpenSettings,
+  onOpenTokens,
   onQuit,
-  requestCount
+  requestCount,
+  tokenCount
 }: {
   instanceId: string
   onClose: () => void
@@ -53,8 +55,10 @@ export function HomeMenuView({
   onOpenDapps: () => void
   onOpenRequests: () => void
   onOpenSettings: () => void
+  onOpenTokens: () => void
   onQuit: () => void
   requestCount: number
+  tokenCount: number
 }) {
   return (
     <div aria-label='Main menu' className='t2Overlay t2MenuPanel cardShow' role='dialog'>
@@ -86,6 +90,12 @@ export function HomeMenuView({
             }
           />
           <MenuRow detail='Connected permissions' icon={svg.window(16)} label='Dapps' onClick={onOpenDapps} />
+          <MenuRow
+            detail={tokenCount ? `${tokenCount} custom` : 'No custom tokens'}
+            icon={svg.tokens(16)}
+            label='Custom Tokens'
+            onClick={onOpenTokens}
+          />
           <MenuRow
             detail='App, shortcuts, signer defaults'
             icon={svg.settings(16)}

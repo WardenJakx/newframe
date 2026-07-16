@@ -80,11 +80,8 @@ export async function checkSignerCompatibility(
   if (!result.ok) {
     if (result.error === 'no_signer') notify('noSignerWarning', { req })
     else if (result.error === 'signer_unavailable') {
-      const recovery = await link.executeCommand({
-        type: 'request.signer-recovery-open',
-        requestId: req.handlerId
-      })
-      if (!recovery.ok) onSignerUnavailable()
+      if (result.signerIds?.length) notify('signerRecovery', { req, signerIds: result.signerIds })
+      else onSignerUnavailable()
     }
     return
   }

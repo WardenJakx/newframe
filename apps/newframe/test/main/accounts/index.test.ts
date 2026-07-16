@@ -1273,8 +1273,6 @@ describe('#signerCompatibility', () => {
   }
 
   beforeEach(() => {
-    storeState().navDash.mockImplementation(() => {})
-
     activeSigner = {
       id: '12',
       type: 'seed',
@@ -1302,7 +1300,7 @@ describe('#signerCompatibility', () => {
   const signerTypes = ['trezor', 'ledger', 'lattice']
 
   signerTypes.forEach((signerType) => {
-    it(`should open the signer menu when a ${signerType} signer is not available`, () => {
+    it(`should return a recovery error when a ${signerType} signer is not available`, () => {
       const cb = jest.fn()
 
       activeSigner.status = 'disconnected'
@@ -1314,16 +1312,10 @@ describe('#signerCompatibility', () => {
       Accounts.signerCompatibility(request.handlerId, cb)
 
       expect(cb).toHaveBeenCalledWith(new Error('Signer unavailable'))
-      expect(storeState().navDash).toHaveBeenCalledWith({
-        data: {
-          signer: activeSigner.id
-        },
-        view: 'expandedSigner'
-      })
     })
   })
 
-  it('should not open the signer menu if the current signer is ready', () => {
+  it('returns compatibility if the current signer is ready', () => {
     const cb = jest.fn()
     const compatibility = { signer: activeSigner.id, tx: 'sometx', compatible: true }
 
@@ -1332,18 +1324,7 @@ describe('#signerCompatibility', () => {
 
     Accounts.signerCompatibility(request.handlerId, cb)
 
-    expect(storeState().navDash).not.toHaveBeenCalled()
     expect(cb).toHaveBeenCalledWith(null, compatibility)
-  })
-
-  it('should not open the signer panel for a hot signer that is not ready', () => {
-    const cb = jest.fn()
-
-    activeSigner.status = 'locked'
-
-    Accounts.signerCompatibility(request.handlerId, cb)
-
-    expect(storeState().navDash).not.toHaveBeenCalled()
   })
 
   it('should return an app lock error when a hot signer is not ready', () => {
@@ -1363,7 +1344,6 @@ describe('#signerCompatibility', () => {
 
     Accounts.signerCompatibility(request.handlerId, cb)
 
-    expect(storeState().navDash).not.toHaveBeenCalled()
     expect(cb).toHaveBeenCalledWith(new Error('No signer'))
   })
 })

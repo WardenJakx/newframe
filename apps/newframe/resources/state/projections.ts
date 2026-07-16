@@ -35,8 +35,7 @@ const WindowStateSchema = z.strictObject({
 })
 
 const WindowsSchema = z.strictObject({
-  panel: WindowStateSchema,
-  dash: WindowStateSchema
+  panel: WindowStateSchema
 })
 
 const StatusNotificationSchema = z
@@ -213,7 +212,8 @@ const DappNetworkMetadataSchema = z.strictObject({
   nativeCurrency: NativeCurrencySchema
 })
 
-// `dapp` is reserved for Newframe's bundled dapp.html Send/Trade renderer.
+// `dapp` is the restricted capability projection used by the bundled
+// sidetray.html Send/Trade renderer.
 // Origin-controlled web content must never be registered for this projection.
 export const DappRendererStateSchema = z.strictObject({
   accounts: z.record(z.string(), DappAccountSchema),

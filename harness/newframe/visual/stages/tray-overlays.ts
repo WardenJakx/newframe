@@ -14,7 +14,8 @@ export const trayOverlaysStage: VisualStage = {
     for (const [label, filename] of [
       ['Requests', '02b-requests-overlay.png'],
       ['Dapps', '02c-dapps-overlay.png'],
-      ['Settings', '02d-settings-overlay.png']
+      ['Custom Tokens', '02d-custom-tokens-overlay.png'],
+      ['Settings', '02e-settings-overlay.png']
     ] as const) {
       await menu.getByRole('button', { name: label }).click()
       const overlay = tray.getByRole('dialog', { name: label })
@@ -44,12 +45,12 @@ export const trayOverlaysStage: VisualStage = {
 
         await resetAllSettings.scrollIntoViewIfNeeded()
         await sleep(500)
-        await runtime.screenshot(tray, '02e-app-reset-settings.png')
+        await runtime.screenshot(tray, '02f-app-reset-settings.png')
 
         await resetAllSettings.click()
         await appSettings.getByText('Reset All Settings & Data?', { exact: true }).waitFor()
         await sleep(500)
-        await runtime.screenshot(tray, '02f-app-reset-confirmation.png')
+        await runtime.screenshot(tray, '02g-app-reset-confirmation.png')
         await appSettings.getByRole('button', { name: 'No', exact: true }).click()
       }
 
@@ -65,7 +66,7 @@ export const trayOverlaysStage: VisualStage = {
     const networks = tray.getByRole('dialog', { name: 'Networks' })
     await networks.waitFor({ state: 'visible' })
     await sleep(500)
-    await runtime.screenshot(tray, '02g-networks-overlay.png')
+    await runtime.screenshot(tray, '02h-networks-overlay.png')
     await networks.getByRole('button', { name: 'Back' }).click()
     await networks.waitFor({ state: 'hidden' })
   }

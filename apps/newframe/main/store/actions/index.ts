@@ -24,7 +24,6 @@ type MutableCanonicalState = Draft<CanonicalState> & MutableRecord
 
 const supportedNetworkTypes = ['ethereum']
 const completedActivityStatuses = new Set(['succeeded', 'reverted'])
-const homeDashViews = new Set(['accounts', 'chains', 'settings'])
 let homeCommandId = 0
 
 const mutable = (state: Draft<CanonicalState>) => state as MutableCanonicalState
@@ -826,7 +825,6 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
     removeOrigin: (originId: string) => {
       set((draft) => {
         const main = mutableMain(draft)
-        windowState(draft, 'dash').nav = []
         delete record(main.origins)[originId]
 
         Object.values(record(main.permissions)).forEach((value) => {
@@ -1021,37 +1019,11 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
       })
     },
 
-    toggleDash: (force?: string) => {
-      set((draft) => {
-        const dash = windowState(draft, 'dash')
-        dash.show = force === 'hide' ? false : force === 'show' ? true : !dash.show
-      })
-    },
-
-    closeDash: () => {
-      set((draft) => {
-        const dash = windowState(draft, 'dash')
-        dash.show = false
-        dash.nav = []
-      })
-    },
-
-    setDash: (update: any) => {
-      set((draft) => {
-        const dash = windowState(draft, 'dash')
-        if (update.show === false) dash.nav = []
-        Object.assign(dash, update)
-      })
-    },
-
     navHome: (command: any) => {
       const homeCommand = toHomeCommand(command)
       set((draft) => {
         record(draft.tray).homeCommand = homeCommand
         windowState(draft, 'panel').nav = []
-        const dash = windowState(draft, 'dash')
-        dash.show = false
-        dash.nav = []
       })
     },
 
@@ -1098,13 +1070,6 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
       })
     },
 
-    navClearSigner: (signerId: string) => {
-      set((draft) => {
-        const dash = windowState(draft, 'dash')
-        dash.nav = (dash.nav as any[]).filter((item) => item?.data?.signer !== signerId)
-      })
-    },
-
     navClearReq: (handlerId: string, showRequestInbox = true) => {
       set((draft) => {
         const panel = windowState(draft, 'panel')
@@ -1124,33 +1089,6 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
 
       set((draft) => {
         const nav = windowState(draft, windowId).nav as any[]
-        nav.splice(0, Math.min(numSteps, nav.length))
-      })
-    },
-
-    navDash: (navItem: any) => {
-      const navigateHome = homeDashViews.has(navItem?.view)
-      const homeCommand = navigateHome ? toHomeCommand(navItem) : undefined
-
-      set((draft) => {
-        const dash = windowState(draft, 'dash')
-        if (navigateHome) {
-          record(draft.tray).homeCommand = homeCommand
-          windowState(draft, 'panel').nav = []
-          dash.show = false
-          dash.nav = []
-          return
-        }
-
-        const nav = dash.nav as any[]
-        if (JSON.stringify(nav[0]) !== JSON.stringify(navItem)) nav.unshift(navItem)
-        dash.show = true
-      })
-    },
-
-    backDash: (numSteps = 1) => {
-      set((draft) => {
-        const nav = windowState(draft, 'dash').nav as any[]
         nav.splice(0, Math.min(numSteps, nav.length))
       })
     },

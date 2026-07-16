@@ -17,8 +17,7 @@ function createActionHarness(
 ): { actions: CanonicalActions; getState: () => CanonicalStore } {
   const defaults: any = {
     windows: {
-      panel: { nav: [], footer: { height: 40 } },
-      dash: { nav: [], footer: { height: 40 } }
+      panel: { nav: [], footer: { height: 40 } }
     },
     panel: {},
     selected: {},
@@ -45,8 +44,7 @@ function createActionHarness(
     windows: {
       ...defaults.windows,
       ...initial.windows,
-      panel: { ...defaults.windows.panel, ...initial.windows?.panel },
-      dash: { ...defaults.windows.dash, ...initial.windows?.dash }
+      panel: { ...defaults.windows.panel, ...initial.windows?.panel }
     },
     view: { ...defaults.view, ...initial.view },
     main: { ...defaults.main, ...initial.main }
@@ -1301,44 +1299,6 @@ describe('#resetSavedData', () => {
     expect(main.balances['0xd0e3872f5fa8ecb49f1911f605c0da90689a484e']).toStrictEqual([])
     expect(main.activity).toStrictEqual({})
     expect(main.orders).toStrictEqual({})
-  })
-})
-
-describe('#navClearSigner', () => {
-  let nav: any
-
-  const clearSigner = (signerId: string) => {
-    const { actions } = createActionHarness({ windows: { dash: { nav } } }, (state) => {
-      nav = (state.windows.dash as any).nav
-    })
-    actions.navClearSigner(signerId)
-  }
-
-  beforeEach(() => {
-    nav = []
-  })
-
-  it('should remove a specific signer from the nav', () => {
-    nav = [
-      {
-        view: 'expandedSigner',
-        data: {
-          signer: '1a'
-        }
-      },
-      {
-        view: 'expandedSigner',
-        data: {
-          signer: '2b'
-        }
-      }
-    ]
-
-    const [req1, _req2] = nav
-
-    clearSigner('2b')
-
-    expect(nav).toStrictEqual([req1])
   })
 })
 

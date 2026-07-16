@@ -5,7 +5,6 @@ import type { VisualStage } from '../types.ts'
 export const resetStateStage: VisualStage = {
   name: 'reset harness-owned state',
   async run({ driver }) {
-    const dash = await driver.waitForElectronPage('bundle/dash.html')
     await driver.executeCommand(driver.tray, { type: 'wallet.reset', scope: 'saved-data' })
     const state = await driver.getAppState()
     const originIds = new Set<string>()
@@ -25,12 +24,12 @@ export const resetStateStage: VisualStage = {
 
     for (const originId of originIds) {
       if (state.main?.origins?.[originId]) {
-        await driver.executeCommand(dash, { type: 'origin.remove', originId })
+        await driver.executeCommand(driver.tray, { type: 'origin.remove', originId })
       }
     }
 
     if (state.main?.networks?.ethereum?.[String(anvilChainId)]) {
-      await driver.executeCommand(dash, { type: 'network.remove', chainId: anvilChainId })
+      await driver.executeCommand(driver.tray, { type: 'network.remove', chainId: anvilChainId })
     }
     await driver.executeCommand(driver.tray, {
       type: 'settings.update',

@@ -48,7 +48,7 @@ const biometricEnableWebAuthn = jest.fn()
 const flashCancelOrder = jest.fn()
 const signerCompatibility = jest.fn()
 const handleTrayMouseoutRecord = jest.fn()
-const refocusFrame = jest.fn()
+const refocusSideTray = jest.fn()
 const updaterFetchUpdate = jest.fn()
 const updaterQuitAndInstall = jest.fn()
 const updaterDismissUpdate = jest.fn()
@@ -134,16 +134,14 @@ jest.mock('../../../main/vault', () => ({
   default: { exists: vaultExists, getKey: vaultGetKey, isUnlocked: vaultIsUnlocked }
 }))
 jest.mock('../../../main/windows', () => ({
-  default: { handleTrayMouseout: handleTrayMouseoutRecord, refocusFrame }
+  default: { handleTrayMouseout: handleTrayMouseoutRecord, refocusSideTray }
 }))
 jest.mock('../../../main/windows/window', () => ({ openBlockExplorer, openExternal }))
 
-let addSignerAccount: typeof import('../../../main/operations/walletWorkflows').addSignerAccount
 let approveRequest: typeof import('../../../main/operations/walletWorkflows').approveRequest
 let cancelFlashOrder: typeof import('../../../main/operations/walletWorkflows').cancelFlashOrder
 let configureSecurity: typeof import('../../../main/operations/walletWorkflows').configureSecurity
 let consumeHomeCommand: typeof import('../../../main/operations/walletWorkflows').consumeHomeCommand
-let inspectOwnDashWindow: typeof import('../../../main/operations/walletWorkflows').inspectOwnDashWindow
 let lockWallet: typeof import('../../../main/operations/walletWorkflows').lockWallet
 let lookupToken: typeof import('../../../main/operations/walletWorkflows').lookupToken
 let openDapp: typeof import('../../../main/operations/walletWorkflows').openDapp
@@ -160,12 +158,10 @@ const address = '0x1111111111111111111111111111111111111111'
 const actions = {
   addNetwork: jest.fn(),
   activateNetwork: jest.fn(),
-  backDash: jest.fn(),
   clearHomeCommand: jest.fn(),
   dontRemind: jest.fn(),
   initOrigin: jest.fn(),
   navBack: jest.fn(),
-  navDash: jest.fn(),
   navForward: jest.fn(),
   navHome: jest.fn(),
   notify: jest.fn(),
@@ -173,7 +169,6 @@ const actions = {
   removeCustomTokens: jest.fn(),
   removeNetwork: jest.fn(),
   selectPrimary: jest.fn(),
-  setDash: jest.fn(),
   setBiometricUnlock: jest.fn(),
   setFramePanel: jest.fn(),
   setPrimaryCustom: jest.fn(),
@@ -186,12 +181,10 @@ const actions = {
 
 beforeAll(async () => {
   workflows = await import('../../../main/operations/walletWorkflows')
-  addSignerAccount = workflows.addSignerAccount
   approveRequest = workflows.approveRequest
   cancelFlashOrder = workflows.cancelFlashOrder
   configureSecurity = workflows.configureSecurity
   consumeHomeCommand = workflows.consumeHomeCommand
-  inspectOwnDashWindow = workflows.inspectOwnDashWindow
   lockWallet = workflows.lockWallet
   lookupToken = workflows.lookupToken
   openDapp = workflows.openDapp
@@ -256,7 +249,7 @@ beforeEach(() => {
     flashCancelOrder,
     signerCompatibility,
     handleTrayMouseoutRecord,
-    refocusFrame,
+    refocusSideTray,
     updaterFetchUpdate,
     updaterQuitAndInstall,
     updaterDismissUpdate,
@@ -290,7 +283,7 @@ beforeEach(() => {
 })
 
 describe('wallet UI workflows', () => {
-  it('opens Trade and Send in the dapp panel', () => {
+  it('opens Trade and Send in the side tray', () => {
     getState.mockReturnValue({
       ...actions,
       main: {
@@ -309,7 +302,6 @@ describe('wallet UI workflows', () => {
       id: 'dappLauncher',
       route: '/send'
     })
-    expect(actions.setDash).toHaveBeenCalledWith({ show: false })
   })
 
   it('resolves a token from canonical state before removing it', () => {
@@ -324,16 +316,6 @@ describe('wallet UI workflows', () => {
     expect(actions.removeCustomTokens).toHaveBeenCalledWith([token])
 
     expect(removeToken({ address: '0x2222222222222222222222222222222222222222', chainId: 1 })).toBe(false)
-  })
-
-  it('derives signer account metadata from the canonical signer', () => {
-    getSigner.mockReturnValue({ id: 'ledger-1', type: 'ledger', addresses: [address] })
-
-    expect(addSignerAccount('ledger-1', address)).toBe(true)
-    expect(addAccount).toHaveBeenCalledWith(address, 'Ledger Account', { type: 'ledger' })
-
-    expect(addSignerAccount('ledger-1', '0x2222222222222222222222222222222222222222')).toBe(false)
-    expect(addAccount).toHaveBeenCalledTimes(1)
   })
 
   it('looks up ERC-20 metadata through the main-process provider', async () => {
@@ -360,7 +342,6 @@ describe('wallet UI workflows', () => {
     expect(openBlockExplorer).toHaveBeenCalledWith({ id: 10, type: 'ethereum' }, hash)
     expect(removeNetwork(10)).toBe(true)
     expect(actions.removeNetwork).toHaveBeenCalledWith(network)
-    expect(actions.backDash).toHaveBeenLastCalledWith(2)
   })
 
   it('verifies and applies a primary RPC change as one main-owned workflow', async () => {
@@ -707,7 +688,6 @@ describe('wallet UI workflows', () => {
       compatibility: { signer: 'ledger', tx: 'london', compatible: false }
     })
     expect(signerCompatibility).toHaveBeenCalledWith(request.data, signerSummary)
-    expect(actions.navDash).not.toHaveBeenCalled()
 
     currentAccount.mockReturnValue({
       getRequest: () => request,
@@ -717,7 +697,6 @@ describe('wallet UI workflows', () => {
     expect(workflows.requestSignerCompatibility(request.handlerId)).toEqual(
       expect.objectContaining({ ok: false, error: 'no_signer' })
     )
-    expect(actions.navDash).not.toHaveBeenCalled()
 
     getState.mockReturnValue({
       ...actions,
@@ -727,15 +706,11 @@ describe('wallet UI workflows', () => {
         }
       }
     })
-    expect(workflows.requestSignerCompatibility(request.handlerId)).toEqual(
-      expect.objectContaining({ ok: false, error: 'signer_unavailable' })
-    )
-    expect(actions.navDash).not.toHaveBeenCalled()
-
-    expect(workflows.openRequestSignerRecovery(request.handlerId)).toBe(true)
-    expect(actions.navDash).toHaveBeenCalledWith({
-      view: 'expandedSigner',
-      data: { signer: 'ledger-1' }
+    expect(workflows.requestSignerCompatibility(request.handlerId)).toEqual({
+      ok: false,
+      error: 'signer_unavailable',
+      message: 'The hardware signer is unavailable.',
+      signerIds: ['ledger-1']
     })
   })
 
@@ -856,21 +831,18 @@ describe('wallet UI workflows', () => {
     )
     expect(workflows.reviewAddTokenRequest(addToken.handlerId)).toBe(true)
     expect(resolveRequest).toHaveBeenCalledWith(addToken, null)
-    expect(actions.navDash).toHaveBeenCalledWith(expect.objectContaining({ view: 'tokens' }))
-  })
-
-  it('inspects only the invoking dashboard sender', () => {
-    const inspectElement = jest.fn()
-    const originalEnvironment = process.env.NODE_ENV
-    process.env.NODE_ENV = 'development'
-
-    inspectOwnDashWindow(
-      { sender: { inspectElement } } as unknown as Pick<Electron.IpcMainInvokeEvent, 'sender'>,
-      12,
-      34
-    )
-    expect(inspectElement).toHaveBeenCalledWith(12, 34)
-
-    process.env.NODE_ENV = originalEnvironment
+    expect(actions.navHome).toHaveBeenCalledWith({
+      view: 'tokens',
+      data: {
+        token: {
+          address,
+          chainId: 1,
+          decimals: 18,
+          logoURI: '',
+          name: 'Token',
+          symbol: 'TKN'
+        }
+      }
+    })
   })
 })

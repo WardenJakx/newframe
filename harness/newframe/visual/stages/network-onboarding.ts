@@ -4,6 +4,7 @@ import { anvilChainId, anvilRpcUrl, newframeRpcUrl } from '../../core/config.ts'
 import { TaskService } from '../../core/task-service.ts'
 import { sleep } from '../../core/utils.ts'
 import { waitForAnvil } from '../../services/anvil.ts'
+import { harnessOrigin } from '../driver.ts'
 import type { VisualStage } from '../types.ts'
 import { requireAccounts } from './helpers.ts'
 
@@ -94,14 +95,25 @@ export const networkOnboardingStage: VisualStage = {
     await driver.openAddChainReview(addChainRequest)
     await tray.getByRole('dialog', { name: 'Add Chain' }).waitFor({ state: 'visible', timeout: 10_000 })
     await runtime.screenshot(tray, '08-add-chain-review.png')
-    await driver.approveAddChainRequest(addChainRequest)
-    await driver.executeCommand(tray, { type: 'wallet.navigate-home', view: 'networks' })
+    await driver.approveAddChainRequest()
     await driver.waitForState(
       (state) => Boolean(state.main?.networks?.ethereum?.[String(anvilChainId)]),
       10_000,
       'Newframe did not add the local Anvil network'
     )
     await driver.setNativeAnvilBalance(harness)
+
+    const networks = tray.getByRole('dialog', { name: 'Networks' })
+    await networks.waitFor({ state: 'visible' })
+    await networks.getByRole('button', { name: 'Back' }).click()
+    await tray.getByRole('button', { name: 'Main menu' }).click()
+    const menu = tray.getByRole('dialog', { name: 'Main menu' })
+    await menu.getByRole('button', { name: 'Dapps' }).click()
+    const dapps = tray.getByRole('dialog', { name: 'Dapps' })
+    await dapps.getByText(harnessOrigin, { exact: false }).waitFor({ state: 'visible' })
+    await runtime.screenshot(tray, '08a-current-account-dapp-permissions.png')
+    await dapps.getByRole('button', { name: 'Back' }).click()
+    await menu.getByRole('button', { name: 'Close menu' }).click()
 
     await services.watch(ensureChain.completed)
   }

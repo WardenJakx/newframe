@@ -191,12 +191,10 @@ export class NewframeDriver {
     })
   }
 
-  approveAddChainRequest(request: CurrentRequest) {
-    return this.executeCommand(this.tray, {
-      type: 'network.request-resolve',
-      requestId: request.handlerId,
-      approved: true
-    })
+  async approveAddChainRequest() {
+    const review = this.tray.getByRole('dialog', { name: 'Add Chain' })
+    await review.getByRole('button', { name: 'Add chain' }).click()
+    await review.waitFor({ state: 'hidden', timeout: 10_000 })
   }
 
   async openDappLauncherRoute(route: string) {
@@ -210,17 +208,30 @@ export class NewframeDriver {
     await this.executeCommand(this.tray, { type: 'dapp.open', feature, assetId, chainId })
   }
 
-  getAppState(): Promise<AppState> {
-    return this.app.evaluate(() => {
-      const getState = (
-        globalThis as typeof globalThis & {
-          __NEWFRAME_VISUAL_HARNESS_GET_STATE__?: () => AppState
-        }
-      ).__NEWFRAME_VISUAL_HARNESS_GET_STATE__
+  async getAppState(): Promise<AppState> {
+    let lastError: unknown
 
-      if (!getState) throw new Error('Visual harness canonical-state getter is unavailable')
-      return getState()
-    })
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      try {
+        return await this.app.evaluate(() => {
+          const getState = (
+            globalThis as typeof globalThis & {
+              __NEWFRAME_VISUAL_HARNESS_GET_STATE__?: () => AppState
+            }
+          ).__NEWFRAME_VISUAL_HARNESS_GET_STATE__
+
+          if (!getState) throw new Error('Visual harness canonical-state getter is unavailable')
+          return getState()
+        })
+      } catch (error) {
+        lastError = error
+        const message = error instanceof Error ? error.message : String(error)
+        if (!message.includes('Execution context was destroyed')) throw error
+        await sleep(100)
+      }
+    }
+
+    throw lastError
   }
 
   async waitForState(
@@ -451,7 +462,7 @@ export class NewframeDriver {
     await this.openDappLauncherRoute(
       this.launcherRoute('trade', this.canonicalAssetId(anvilChainId, wethAddress))
     )
-    const tradePage = await this.waitForElectronPage('bundle/dapp.html')
+    const tradePage = await this.waitForElectronPage('bundle/sidetray.html')
     await this.waitForDappRoute(tradePage, 'trade')
     await tradePage.getByRole('tab', { name: 'Market' }).waitFor({ state: 'visible', timeout: 15_000 })
     return tradePage
@@ -462,7 +473,7 @@ export class NewframeDriver {
     const tradeButton = this.tray.getByRole('button', { name: 'Trade', exact: true })
     await tradeButton.waitFor({ state: 'visible', timeout: 5_000 })
     await tradeButton.click()
-    const tradePage = await this.waitForElectronPage('bundle/dapp.html')
+    const tradePage = await this.waitForElectronPage('bundle/sidetray.html')
     await this.waitForDappRoute(tradePage, 'trade')
     await tradePage.getByRole('tab', { name: 'Market' }).waitFor({ state: 'visible', timeout: 15_000 })
     return tradePage

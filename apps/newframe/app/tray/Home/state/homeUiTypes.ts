@@ -18,6 +18,15 @@ export interface PendingAddChain {
   homeCommandId?: number
 }
 
+export interface PendingCustomToken {
+  address: string
+  chainId: number
+  decimals?: number
+  logoURI?: string
+  name?: string
+  symbol?: string
+}
+
 export type HomeOverlay =
   | { type: 'none' }
   | { type: 'menu' }
@@ -27,6 +36,7 @@ export type HomeOverlay =
   | { type: 'about' }
   | { type: 'requests' }
   | { type: 'dapps' }
+  | { type: 'tokens'; initialToken?: PendingCustomToken }
   | { type: 'addChain'; pending: PendingAddChain }
   | { type: 'asset'; asset: DisplayedBalance }
   | { type: 'activity'; activityId: string }

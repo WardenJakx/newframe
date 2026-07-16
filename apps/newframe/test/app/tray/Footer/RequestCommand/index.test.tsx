@@ -64,13 +64,13 @@ it('preserves signer warnings around the typed compatibility query', async () =>
   link.executeQuery.mockResolvedValueOnce({
     ok: false,
     error: 'signer_unavailable',
-    message: 'Reconnect signer'
+    message: 'Reconnect signer',
+    signerIds: ['ledger-1']
   })
-  link.executeCommand.mockResolvedValueOnce({ ok: true })
   await checkSignerCompatibility(req, props.notify, jest.fn(), next)
-  expect(link.executeCommand).toHaveBeenCalledWith({
-    type: 'request.signer-recovery-open',
-    requestId: req.handlerId
+  expect(props.notify).toHaveBeenCalledWith('signerRecovery', {
+    req,
+    signerIds: ['ledger-1']
   })
 
   const compatibility = { signer: 'ledger', tx: 'london', compatible: false }

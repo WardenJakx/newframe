@@ -61,7 +61,8 @@ playwright-cli --s=newframe screenshot --filename=/tmp/newframe-harness-shots/tr
 Notes:
 
 - Follow-up commands must use `--s=newframe`.
-- Attach currently exposes both `Tray` and `Dash`; verify the current tab is `Tray`.
+- Attach exposes `Tray` and on-demand `sidetray` Send/Trade windows; hardware recovery stays in Tray notifications;
+  verify the current tab is `Tray`.
 - Snapshot refs such as `e5` are temporary. Use them only within the current interactive session.
 - `playwright-cli screenshot` requires `--filename=/path/file.png`; a positional argument is treated as an element selector or snapshot ref.
 - Read live values from a fresh snapshot immediately before reporting them. Balances can change while RPC and balance refresh work is running.
@@ -81,6 +82,7 @@ Stable V1 controls:
 - `tab[name="Activity"]`
 - `dialog[name="Networks"]`
 - `dialog[name="Dapps"]`
+- `dialog[name="Custom Tokens"]`
 - `dialog[name="Requests"]`
 - `dialog[name="Accounts"]`
 - `textbox[name="Search networks"]`
@@ -98,6 +100,7 @@ Good default checks:
 - Home screen is visible and screenshots are nonblank.
 - Main menu opens.
 - Dapps overlay opens from the menu.
+- Custom Tokens opens from the menu.
 - Networks overlay opens.
 - Network search accepts text.
 - Accounts panel opens.

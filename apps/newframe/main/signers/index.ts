@@ -177,8 +177,6 @@ export class Signers {
     const signer = this.detach(id)
 
     if (signer) {
-      store.getState().navClearSigner(id)
-
       const type = signer.type === 'ring' || signer.type === 'seed' ? 'hot' : signer.type
 
       if (type in this.adapters) {

@@ -1,7 +1,9 @@
 import { app, dialog } from 'electron'
 import { showUnhandledExceptionDialog } from '../../../../main/windows/dialog'
 
-jest.mock('../../../../main/windows', () => ({ browserWindows: () => ({ dash: 'mock dash browserwindow' }) }))
+jest.mock('../../../../main/windows', () => ({
+  browserWindows: () => ({ panel: 'mock tray browserwindow' })
+}))
 
 describe('#showUnhandledExceptionDialog', () => {
   it('displays the error message to the user', () => {
