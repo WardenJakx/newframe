@@ -1,8 +1,8 @@
 import React from 'react'
+import { AssetSelectorImage, AssetSelectorPanel, AssetSelectorText } from '@newframe/ui/asset-selector'
+import { Icon } from '@newframe/ui/icon'
 
-import { chainColorValue } from '../colors'
 import { cachedImageUrl } from '../domain/imageCache'
-import svg from '../svg'
 import type { ChainTokenIconSize, NetworkLike, NetworkMetaLike } from './tokenSelectorTypes'
 
 interface ChainTokenIconProps {
@@ -51,7 +51,7 @@ export default function ChainTokenIcon({
   const renderChainBadge = () => {
     if (chainImageVisible) {
       return (
-        <img
+        <AssetSelectorImage
           alt=''
           src={cachedImageUrl(chainIconUrl)}
           onError={() => {
@@ -62,21 +62,25 @@ export default function ChainTokenIcon({
       )
     }
 
-    if (ethChains.includes(chainName)) return <div className='chainTokenIconChainGlyph'>{svg.eth(11)}</div>
+    if (ethChains.includes(chainName)) {
+      return (
+        <AssetSelectorPanel variants='chainTokenIconChainGlyph'>
+          <Icon name='ethereum' size='small' />
+        </AssetSelectorPanel>
+      )
+    }
 
-    return (
-      <div
-        className='chainTokenIconChainDot'
-        style={{ background: chainColorValue(networksMeta[chainId]?.primaryColor) }}
-      />
-    )
+    return <AssetSelectorPanel variants='chainTokenIconChainDot' />
   }
 
   return (
-    <div aria-hidden='true' className={`chainTokenIcon chainTokenIcon${size === 'sm' ? 'Sm' : 'Md'}`}>
-      <div className='chainTokenIconInner'>
+    <AssetSelectorPanel
+      aria-hidden='true'
+      variants={['chainTokenIcon', size === 'sm' ? 'chainTokenIconSm' : 'chainTokenIconMd']}
+    >
+      <AssetSelectorPanel variants='chainTokenIconInner'>
         {tokenImageVisible ? (
-          <img
+          <AssetSelectorImage
             alt=''
             src={cachedImageUrl(logoURI)}
             onError={() => {
@@ -85,10 +89,10 @@ export default function ChainTokenIcon({
             }}
           />
         ) : (
-          <span className='chainTokenIconSymbol'>{symbolFallback(symbol)}</span>
+          <AssetSelectorText variants='chainTokenIconSymbol'>{symbolFallback(symbol)}</AssetSelectorText>
         )}
-      </div>
-      <div className='chainTokenIconChainBadge'>{renderChainBadge()}</div>
-    </div>
+      </AssetSelectorPanel>
+      <AssetSelectorPanel variants='chainTokenIconChainBadge'>{renderChainBadge()}</AssetSelectorPanel>
+    </AssetSelectorPanel>
   )
 }

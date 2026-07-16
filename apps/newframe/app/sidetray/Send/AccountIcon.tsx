@@ -1,16 +1,21 @@
-import svg from '../../../resources/svg'
+import { Icon, type IconName } from '@newframe/ui/icon'
+import { Panel } from '@newframe/ui/side-panel'
 
-export function signerIcon(type: string, size = 16) {
+export function signerIcon(type: string): IconName {
   const signerType = (type || '').toLowerCase()
 
-  if (signerType === 'address') return svg.eye(size)
-  if (signerType === 'ledger') return svg.ledger(size)
-  if (signerType === 'trezor') return svg.trezor(size)
-  if (signerType === 'lattice') return svg.lattice(size)
+  if (signerType === 'address') return 'eye'
+  if (signerType === 'ledger') return 'ledger'
+  if (signerType === 'trezor') return 'trezor'
+  if (signerType === 'lattice') return 'lattice'
 
-  return svg.flame(size + 2)
+  return 'flame'
 }
 
 export default function AccountIcon({ account }: { account?: { lastSignerType?: string } | null }) {
-  return <div className='sendAccountIcon'>{signerIcon(account?.lastSignerType || '')}</div>
+  return (
+    <Panel variants='sendAccountIcon'>
+      <Icon name={signerIcon(account?.lastSignerType || '')} size='medium' />
+    </Panel>
+  )
 }

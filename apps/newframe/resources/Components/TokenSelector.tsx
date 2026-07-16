@@ -1,6 +1,12 @@
 import React from 'react'
+import {
+  AssetSelectorButton,
+  AssetSelectorPanel,
+  AssetSelectorText,
+  type AssetSelectorVariant
+} from '@newframe/ui/asset-selector'
+import { Icon } from '@newframe/ui/icon'
 
-import svg from '../svg'
 import ChainTokenIcon from './ChainTokenIcon'
 import TokenOptionRow from './TokenOptionRow'
 import type { NetworkLike, NetworkMetaLike, TokenSelectorItem } from './tokenSelectorTypes'
@@ -130,26 +136,23 @@ export default function TokenSelector({
 
   const activeOptionId =
     open && items[highlightedIndex] ? `${listboxId}-${items[highlightedIndex].id}` : undefined
-  const triggerClassName = [
+  const triggerVariants: AssetSelectorVariant[] = [
     'tokenSelectorTrigger',
-    selectedItem ? '' : 'tokenSelectorTriggerPlaceholder',
-    canOpen ? '' : 'tokenSelectorTriggerDisabled'
+    ...(selectedItem ? [] : (['tokenSelectorTriggerPlaceholder'] as const)),
+    ...(canOpen ? [] : (['tokenSelectorTriggerDisabled'] as const))
   ]
-    .filter(Boolean)
-    .join(' ')
 
   return (
-    <div className='tokenSelector' ref={rootRef} onKeyDown={handleKeyDown}>
-      <button
+    <AssetSelectorPanel variants='tokenSelector' ref={rootRef} onKeyDown={handleKeyDown}>
+      <AssetSelectorButton
         aria-activedescendant={activeOptionId}
         aria-controls={open ? listboxId : undefined}
         aria-expanded={open}
         aria-haspopup='listbox'
         aria-label={ariaLabel}
-        className={triggerClassName}
+        variants={triggerVariants}
         disabled={!canOpen}
         onClick={() => setOpen(!open)}
-        type='button'
       >
         {selectedItem ? (
           <ChainTokenIcon
@@ -161,18 +164,27 @@ export default function TokenSelector({
             symbol={selectedItem.symbol}
           />
         ) : null}
-        <span className='tokenSelectorTriggerSymbol'>{selectedItem?.symbol || 'Select token'}</span>
-        <span className='tokenSelectorChevron'>{svg.chevron(12)}</span>
-      </button>
+        <AssetSelectorText variants='tokenSelectorTriggerSymbol'>
+          {selectedItem?.symbol || 'Select token'}
+        </AssetSelectorText>
+        <AssetSelectorText variants='tokenSelectorChevron'>
+          <Icon name='chevronUp' size='small' />
+        </AssetSelectorText>
+      </AssetSelectorButton>
       {open && canOpen ? (
-        <div className='tokenSelectorMenu'>
-          <div aria-label={ariaLabel} className='tokenSelectorListbox' id={listboxId} role='listbox'>
+        <AssetSelectorPanel variants='tokenSelectorMenu'>
+          <AssetSelectorPanel
+            aria-label={ariaLabel}
+            variants='tokenSelectorListbox'
+            id={listboxId}
+            role='listbox'
+          >
             {items.map((item, index) => (
-              <button
+              <AssetSelectorButton
                 aria-selected={item.id === selectedId}
-                className={
+                variants={
                   index === highlightedIndex
-                    ? 'tokenSelectorOption tokenSelectorOptionHighlighted'
+                    ? ['tokenSelectorOption', 'tokenSelectorOptionHighlighted']
                     : 'tokenSelectorOption'
                 }
                 id={`${listboxId}-${item.id}`}
@@ -181,15 +193,14 @@ export default function TokenSelector({
                 onMouseEnter={() => setHighlightedIndex(index)}
                 role='option'
                 tabIndex={-1}
-                type='button'
               >
                 <TokenOptionRow item={item} networks={networks} networksMeta={networksMeta} />
-              </button>
+              </AssetSelectorButton>
             ))}
-          </div>
-          {footer ? <div className='tokenSelectorFooter'>{footer}</div> : null}
-        </div>
+          </AssetSelectorPanel>
+          {footer ? <AssetSelectorPanel variants='tokenSelectorFooter'>{footer}</AssetSelectorPanel> : null}
+        </AssetSelectorPanel>
       ) : null}
-    </div>
+    </AssetSelectorPanel>
   )
 }

@@ -1,4 +1,6 @@
 import React from 'react'
+import { Icon } from '@newframe/ui/icon'
+import { Panel, PanelButton, PanelInput, PanelText } from '@newframe/ui/side-panel'
 
 import TokenSelector from '../../../resources/Components/TokenSelector'
 import { getTokenSelectorPage } from '../../../resources/Components/tokenSelectorModel'
@@ -8,7 +10,6 @@ import {
   formatUsdRate
 } from '../../../resources/domain/balance'
 import { resolveSendAssetFromRouteAssetId, toCanonicalAssetId } from '../../../resources/domain/sideTray'
-import svg from '../../../resources/svg'
 import { formatUnits, toBigInt } from '../../../resources/utils/numbers'
 import {
   createSideTrayWalletSelector,
@@ -192,87 +193,92 @@ export default function Send({ assetId }: SendProps) {
     }) && !state.submitting
 
   return (
-    <div className='sendApp'>
-      <div className='sendHeader'>
-        <button aria-label='Close Send' className='sendBackButton' onClick={handleClose}>
-          {svg.chevronLeft(18)}
-        </button>
-        <div className='sendTitle'>Send</div>
-        <div className='sendHeaderSpacer' />
-      </div>
+    <Panel variants='sendApp'>
+      <Panel variants='sendHeader'>
+        <PanelButton aria-label='Close Send' variants='sendBackButton' onClick={handleClose}>
+          <Icon name='chevronLeft' size='large' />
+        </PanelButton>
+        <Panel variants='sendTitle'>Send</Panel>
+        <Panel variants='sendHeaderSpacer' />
+      </Panel>
       {asset ? (
-        <div className='sendBody'>
+        <Panel variants='sendBody'>
           {state.recipient ? (
-            <div className='sendCard sendRecipientCard sendRecipientCardSelected'>
-              <div className='sendSectionTitle'>Add recipient</div>
-              <div className='sendRecipientPill'>
+            <Panel variants={['sendCard', 'sendRecipientCard', 'sendRecipientCardSelected']}>
+              <Panel variants='sendSectionTitle'>Add recipient</Panel>
+              <Panel variants='sendRecipientPill'>
                 <AccountIcon account={state.recipient} />
-                <div className='sendRecipientText'>
-                  <div className='sendRecipientName'>{recipientName(state.recipient)}</div>
-                  <div className='sendRecipientAddress'>{state.recipient.address}</div>
-                </div>
-                <div className='sendRecipientCopy'>{svg.copy(14)}</div>
-                <button
+                <Panel variants='sendRecipientText'>
+                  <Panel variants='sendRecipientName'>{recipientName(state.recipient)}</Panel>
+                  <Panel variants='sendRecipientAddress'>{state.recipient.address}</Panel>
+                </Panel>
+                <Panel variants='sendRecipientCopy'>
+                  <Icon name='copy' size='small' />
+                </Panel>
+                <PanelButton
                   aria-label='Clear recipient'
-                  className='sendRecipientClear'
+                  variants='sendRecipientClear'
                   onClick={handleClearRecipient}
                 >
-                  {svg.x(14)}
-                </button>
-              </div>
-              <div className='sendRecipientNotice'>First time sending to this address.</div>
-            </div>
+                  <Icon name='close' size='small' />
+                </PanelButton>
+              </Panel>
+              <Panel variants='sendRecipientNotice'>First time sending to this address.</Panel>
+            </Panel>
           ) : (
-            <div className='sendCard sendRecipientCard'>
-              <div className='sendSectionTitle'>Add recipient</div>
-              <div className='sendInputRow'>
-                <input
+            <Panel variants={['sendCard', 'sendRecipientCard']}>
+              <Panel variants='sendSectionTitle'>Add recipient</Panel>
+              <Panel variants='sendInputRow'>
+                <PanelInput
                   aria-label='Recipient'
                   placeholder='Address / gns/ens name / Namoshi'
                   spellCheck={false}
                   value={state.recipientInput}
                   onChange={handleRecipientInputChange}
                 />
-                <button
+                <PanelButton
                   aria-label='Toggle recipients'
-                  className='sendInputToggle'
+                  variants='sendInputToggle'
                   onClick={handleToggleRecipients}
                 >
-                  {svg.chevron(14)}
-                </button>
-              </div>
+                  <Icon name='chevronUp' size='small' />
+                </PanelButton>
+              </Panel>
               {state.recipientOpen ? (
-                <div className='sendRecipientMenu'>
-                  <div className='sendRecipientMenuTitle'>{svg.wallet(14)} My wallets</div>
+                <Panel variants='sendRecipientMenu'>
+                  <Panel variants='sendRecipientMenuTitle'>
+                    <Icon name='wallet' size='small' /> My wallets
+                  </Panel>
                   {recipientAccounts.map((account) => (
-                    <button
-                      className='sendWalletRow'
+                    <PanelButton
+                      variants='sendWalletRow'
                       key={account.id}
                       onClick={() => handleSelectRecipient(account)}
-                      type='button'
                     >
                       <AccountIcon account={account} />
-                      <div className='sendWalletInfo'>
-                        <div className='sendWalletName'>{recipientName(account)}</div>
-                        <div className='sendWalletAddress'>{account.address}</div>
-                      </div>
-                      <div className='sendWalletCopy'>{svg.copy(14)}</div>
-                    </button>
+                      <Panel variants='sendWalletInfo'>
+                        <Panel variants='sendWalletName'>{recipientName(account)}</Panel>
+                        <Panel variants='sendWalletAddress'>{account.address}</Panel>
+                      </Panel>
+                      <Panel variants='sendWalletCopy'>
+                        <Icon name='copy' size='small' />
+                      </Panel>
+                    </PanelButton>
                   ))}
-                </div>
+                </Panel>
               ) : null}
-            </div>
+            </Panel>
           )}
-          <div className='sendCard sendTokenCard'>
-            <div className='sendSectionTitle'>Send token</div>
-            <div className='sendTokenMain'>
+          <Panel variants={['sendCard', 'sendTokenCard']}>
+            <Panel variants='sendSectionTitle'>Send token</Panel>
+            <Panel variants='sendTokenMain'>
               <TokenSelector
                 ariaLabel='Select send token'
                 footer={
                   rowsHidden > 0 ? (
-                    <button className='tokenSelectorMore' onClick={handleShowMoreTokens} type='button'>
+                    <PanelButton variants='tokenSelectorMore' onClick={handleShowMoreTokens}>
                       {`Show ${Math.min(SEND_TOKEN_ROWS_INCREMENT, rowsHidden)} more assets`}
-                    </button>
+                    </PanelButton>
                   ) : null
                 }
                 items={tokenItems}
@@ -283,43 +289,45 @@ export default function Send({ assetId }: SendProps) {
                 open={state.tokenOpen}
                 selectedId={selectedKey}
               />
-              <input
+              <PanelInput
                 aria-label='Amount'
-                className='sendAmountInput'
+                variants='sendAmountInput'
                 inputMode='decimal'
                 spellCheck={false}
                 value={state.amount}
                 onChange={handleAmountChange}
               />
-            </div>
-            <div className='sendTokenMeta'>
-              <div className='sendBalance'>
-                {svg.wallet(13)}
-                <span>
+            </Panel>
+            <Panel variants='sendTokenMeta'>
+              <Panel variants='sendBalance'>
+                <Icon name='wallet' size='small' />
+                <PanelText>
                   {asset.displayBalance || '0'} {asset.symbol || ''}
-                </span>
-                <button onClick={handleSetMax}>Max</button>
-              </div>
-              <div className='sendFiatValue'>{fiatValue}</div>
-            </div>
-          </div>
-          {state.error ? <div className='sendMessage sendMessageError'>{state.error}</div> : null}
-          {state.status ? <div className='sendMessage'>{state.status}</div> : null}
-        </div>
+                </PanelText>
+                <PanelButton onClick={handleSetMax}>Max</PanelButton>
+              </Panel>
+              <Panel variants='sendFiatValue'>{fiatValue}</Panel>
+            </Panel>
+          </Panel>
+          {state.error ? <Panel variants={['sendMessage', 'sendMessageError']}>{state.error}</Panel> : null}
+          {state.status ? <Panel variants='sendMessage'>{state.status}</Panel> : null}
+        </Panel>
       ) : (
-        <div className='sendEmpty'>No assets available to send.</div>
+        <Panel variants='sendEmpty'>No assets available to send.</Panel>
       )}
       {asset ? (
-        <div className='sendFooter'>
-          <button
-            className={proceedEnabled ? 'sendProceedButton' : 'sendProceedButton sendProceedButtonDisabled'}
+        <Panel variants='sendFooter'>
+          <PanelButton
+            variants={
+              proceedEnabled ? 'sendProceedButton' : ['sendProceedButton', 'sendProceedButtonDisabled']
+            }
             disabled={!proceedEnabled}
             onClick={handleSubmit}
           >
             Proceed
-          </button>
-        </div>
+          </PanelButton>
+        </Panel>
       ) : null}
-    </div>
+    </Panel>
   )
 }

@@ -7,6 +7,11 @@
     "dist"
   ],
   "exports": {
+    "./asset-selector": {
+      "types": "./dist/asset-selector/AssetSelector.d.ts",
+      "import": "./dist/asset-selector/AssetSelector.js",
+      "default": "./dist/asset-selector/AssetSelector.js"
+    },
     "./header": {
       "types": "./dist/header/HeaderBar.d.ts",
       "import": "./dist/header/HeaderBar.js",
@@ -41,6 +46,11 @@
       "types": "./dist/settings-panel/SettingsPanel.d.ts",
       "import": "./dist/settings-panel/SettingsPanel.js",
       "default": "./dist/settings-panel/SettingsPanel.js"
+    },
+    "./side-panel": {
+      "types": "./dist/side-panel/SidePanel.d.ts",
+      "import": "./dist/side-panel/SidePanel.js",
+      "default": "./dist/side-panel/SidePanel.js"
     },
     "./stack": {
       "types": "./dist/layout/Stack.d.ts",

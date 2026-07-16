@@ -1,4 +1,5 @@
 import { createRoot } from 'react-dom/client'
+import { UIRoot } from '@newframe/ui/root'
 
 import App from './App'
 
@@ -8,16 +9,15 @@ import { connectRendererState } from '../state/connectState'
 document.addEventListener('dragover', (e) => e.preventDefault())
 document.addEventListener('drop', (e) => e.preventDefault())
 
-function AppComponent() {
-  return <App />
-}
-
 async function start() {
   const disconnect = await connectRendererState('sidetray')
   window.addEventListener('beforeunload', () => void disconnect(), { once: true })
-  document.body.classList.add('dark')
   const root = createRoot(document.getElementById('sidetray') as HTMLElement)
-  root.render(<AppComponent />)
+  root.render(
+    <UIRoot>
+      <App />
+    </UIRoot>
+  )
 }
 
 void start().catch((error) => console.error('Could not connect side tray state', error))

@@ -63,6 +63,13 @@ const migratedPilotFiles = new Set([
   path.join('apps', 'newframe', 'app', 'tray', 'Home', 'components', 'HomeHeaderView.tsx'),
   path.join('apps', 'newframe', 'app', 'tray', 'Home', 'components', 'HomeMenuView.tsx')
 ])
+const migratedSharedSideTrayFiles = new Set([
+  path.join('apps', 'newframe', 'resources', 'Components', 'ChainTokenIcon.tsx'),
+  path.join('apps', 'newframe', 'resources', 'Components', 'TokenOptionRow.tsx'),
+  path.join('apps', 'newframe', 'resources', 'Components', 'TokenSelector.tsx')
+])
+const migratedSideTrayFiles = (file: string) =>
+  under(path.join('apps', 'newframe', 'app', 'sidetray'))(file) || migratedSharedSideTrayFiles.has(file)
 const uiSource = under(path.join('packages', 'ui', 'src'))
 
 const restorePackage = ['react', 'restore'].join('-')
@@ -136,8 +143,10 @@ async function main() {
       }
     }
 
-    if (migratedPilotFiles.has(file)) {
-      const rawElement = source.match(/<(?:a|button|div|header|img|input|label|select|span|svg|textarea)\b/)
+    if (migratedPilotFiles.has(file) || migratedSideTrayFiles(file)) {
+      const rawElement = source.match(
+        /<(?:a|button|div|header|img|input|label|option|output|select|small|span|strong|svg|textarea)\b/
+      )
       if (rawElement?.index !== undefined) {
         violations.push(
           `${file}:${lineNumber(source, rawElement.index)} migrated UI must render through packages/ui`
@@ -164,11 +173,19 @@ async function main() {
   }
 
   const migratedSelectors = /\.(?:t2TopBar|t2AccountPill\w*|t2MenuButton|t2MenuBadge\w*|t2MenuPanel\w*)\b/
+  const migratedSideTraySelectors =
+    /\.(?:chainTokenIcon\w*|send(?:Account|Amount|App|Back|Balance|Body|Card|Empty|Fiat|Footer|Header|Input|Message|Proceed|Recipient|Section|Title|Token|Wallet)\w*|token(?:OptionRow|Selector)\w*|trade\w*)\b/
   for (const { file, source } of files) {
     if (!file.endsWith('.styl')) continue
     const match = source.match(migratedSelectors)
     if (match?.index !== undefined) {
       violations.push(`${file}:${lineNumber(source, match.index)} migrated Tray header/menu selector remains`)
+    }
+    const sideTrayMatch = source.match(migratedSideTraySelectors)
+    if (sideTrayMatch?.index !== undefined) {
+      violations.push(
+        `${file}:${lineNumber(source, sideTrayMatch.index)} migrated Side Tray selector remains`
+      )
     }
   }
 

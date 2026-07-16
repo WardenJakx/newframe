@@ -1,3 +1,5 @@
+import { AssetSelectorPanel, type AssetSelectorVariant } from '@newframe/ui/asset-selector'
+
 import ChainTokenIcon from './ChainTokenIcon'
 import type { NetworkLike, NetworkMetaLike, TokenSelectorItem } from './tokenSelectorTypes'
 
@@ -8,10 +10,12 @@ interface TokenOptionRowProps {
   showRightSubLabel?: boolean
 }
 
-function rightSubLabelClass(label = '') {
-  if (label.trim().startsWith('-')) return 'tokenOptionRowRightSubLabel tokenOptionRowRightSubLabelDown'
+function rightSubLabelVariants(label = ''): AssetSelectorVariant[] {
+  if (label.trim().startsWith('-')) {
+    return ['tokenOptionRowRightSubLabel', 'tokenOptionRowRightSubLabelDown']
+  }
 
-  return 'tokenOptionRowRightSubLabel tokenOptionRowRightSubLabelUp'
+  return ['tokenOptionRowRightSubLabel', 'tokenOptionRowRightSubLabelUp']
 }
 
 export default function TokenOptionRow({
@@ -23,7 +27,7 @@ export default function TokenOptionRow({
   const symbol = item.symbol || '?'
 
   return (
-    <div className='tokenOptionRow'>
+    <AssetSelectorPanel variants='tokenOptionRow'>
       <ChainTokenIcon
         chainId={item.chainId}
         logoURI={item.logoURI}
@@ -32,16 +36,18 @@ export default function TokenOptionRow({
         size='md'
         symbol={symbol}
       />
-      <div className='tokenOptionRowText'>
-        <div className='tokenOptionRowSymbol'>{symbol}</div>
-        <div className='tokenOptionRowAmount'>{item.amountLabel}</div>
-      </div>
-      <div className='tokenOptionRowRight'>
-        <div className='tokenOptionRowNotional'>{item.notionalLabel}</div>
+      <AssetSelectorPanel variants='tokenOptionRowText'>
+        <AssetSelectorPanel variants='tokenOptionRowSymbol'>{symbol}</AssetSelectorPanel>
+        <AssetSelectorPanel variants='tokenOptionRowAmount'>{item.amountLabel}</AssetSelectorPanel>
+      </AssetSelectorPanel>
+      <AssetSelectorPanel variants='tokenOptionRowRight'>
+        <AssetSelectorPanel variants='tokenOptionRowNotional'>{item.notionalLabel}</AssetSelectorPanel>
         {showRightSubLabel && item.rightSubLabel ? (
-          <div className={rightSubLabelClass(item.rightSubLabel)}>{item.rightSubLabel}</div>
+          <AssetSelectorPanel variants={rightSubLabelVariants(item.rightSubLabel)}>
+            {item.rightSubLabel}
+          </AssetSelectorPanel>
         ) : null}
-      </div>
-    </div>
+      </AssetSelectorPanel>
+    </AssetSelectorPanel>
   )
 }
