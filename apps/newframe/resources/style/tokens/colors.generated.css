@@ -88,6 +88,4 @@
   --color-shadow-default: color-mix(in srgb, var(--color-black) 28.000000000000004%, transparent);
   --color-shadow-strong: color-mix(in srgb, var(--color-black) 55.00000000000001%, transparent);
   --color-scrim: color-mix(in srgb, var(--color-black) 50%, transparent);
-  --color-overlay-start: color-mix(in srgb, var(--color-pink-500) 3%, transparent);
-  --color-overlay-end: color-mix(in srgb, var(--color-teal-500) 3%, transparent);
 }
