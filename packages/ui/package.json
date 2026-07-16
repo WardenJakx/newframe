@@ -37,6 +37,11 @@
       "import": "./dist/root/UIRoot.js",
       "default": "./dist/root/UIRoot.js"
     },
+    "./settings-panel": {
+      "types": "./dist/settings-panel/SettingsPanel.d.ts",
+      "import": "./dist/settings-panel/SettingsPanel.js",
+      "default": "./dist/settings-panel/SettingsPanel.js"
+    },
     "./stack": {
       "types": "./dist/layout/Stack.d.ts",
       "import": "./dist/layout/Stack.js",
