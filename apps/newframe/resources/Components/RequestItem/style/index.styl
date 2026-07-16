@@ -84,16 +84,6 @@
   border-radius 18px
   display none
 
-.requestItemCorner
-  position absolute
-  top -420px
-  left -120px
-  width 460px
-  height 460px
-  transform rotate(65deg)
-  border-radius 6px
-  opacity 0
-
 .requestItemNotice
   position relative
   display flex
@@ -134,23 +124,6 @@
   .requestItemDetailsIndicatorMarker
     animation none
 
-.requestItemDetailsView
-  display flex
-  justify-content center
-  align-items center
-  margin-right 2px
-  .requestItemDetailsViewText
-    font-weight 400
-    margin-right 0px
-  .requestItemDetailsViewArrow
-    display flex
-    justify-content center
-    align-items center
-    div 
-      width 8px
-    svg
-      transform rotate(90deg)
-
 .requestItemDetailsGood
   .requestItemLine
     color var(--color-action-primary)
@@ -168,57 +141,6 @@
   .requestItemDetailsIndicator
     .requestItemDetailsIndicatorMarker
       background var(--color-status-danger)
-
-.requestItemRow
-  position relative
-  z-index 3
-  width 100%
-  display flex
-  align-items center
-  margin-bottom 10px
-  box-sizing border-box
-
-  .requestItemRowIcon
-    width 40px
-    height 20px
-    display flex
-    justify-content center
-    align-items center
-    position relative
-    // color var(--color-action-primary)
-    
-  .requestItemRowIconLarge
-    width 40px
-    height 20px
-    display flex
-    justify-content center
-    align-items center
-    //color var(--color-status-danger)
-
-  .requestItemRowChainIcon
-    position absolute
-    top 0px  
-    right 20px
-    bottom 0px
-    display flex
-    justify-content center
-    align-items center
-    width 20px
-    border-radius 10px
-
-  .requestItemRowTitle
-    position relative
-    margin-left 9px
-    font-size 12px
-    font-weight 400
-
-  .requestItemRowTitleLarge
-    position relative
-    font-weight 300
-    display flex
-    justify-content center
-    align-items center
-
 
 @keyframes wave
   0%
@@ -345,60 +267,6 @@
     margin 0px 0px 0px 0px
 
 
-.requestItemSource
-  position absolute
-  top 0px  
-  right 20px
-  bottom 0px
-  font-size 12px
-  font-weight 400
-  display flex
-  justify-content center
-  align-items center
-  //color var(--color-status-danger)
-  margin-top -2px
-
-  div
-    margin-right 5px
-  svg
-    position relative
-    top 1px
-
-.requestItemOrigin
-  top 16px
-  right 16px
-  position absolute
-  font-weight 300
-  margin-left 2px
-  display flex
-  align-items center
-  font-size 10px
-  margin-top 3px
-
-  .requestItemOriginIcon
-    position relative
-    top -1px
-    display flex
-    justify-content center
-    align-items center
-
-.requestItemStatus
-  font-size 10px
-  bottom 16px
-  left 64px
-  position absolute
-  font-weight 300
-  margin-left 2px
-
-.requestItemRight
-  width 64px
-  display flex
-  justify-content center
-  align-items center
-  transform scaleX(-1)
-  position relative
-  left 1px
-
 .requestItemDetailsSlide
   display flex
   align-items center
@@ -441,14 +309,6 @@
     top 0px
     animation lit infinite ease-in-out alternate 1s
     will-change opacity
-
-.requestItemSummary
-  display flex
-  justify-content center
-  align-items center
-  padding 8px 16px 18px 16px
-  font-size 12px
-  font-weight 500
 
 .requestItemHeader, .requestItemHeader:hover, .requestItemHeader:active
   background none
