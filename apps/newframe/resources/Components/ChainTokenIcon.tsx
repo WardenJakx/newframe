@@ -1,5 +1,6 @@
 import React from 'react'
 
+import { chainColorValue } from '../colors'
 import { cachedImageUrl } from '../domain/imageCache'
 import svg from '../svg'
 import type { ChainTokenIconSize, NetworkLike, NetworkMetaLike } from './tokenSelectorTypes'
@@ -14,31 +15,9 @@ interface ChainTokenIconProps {
 }
 
 const ethChains = ['ethereum', 'mainnet', 'görli', 'goerli', 'sepolia', 'ropsten', 'rinkeby', 'kovan']
-const accentChainMap: Record<string, string> = {
-  accent1: 'mainnet',
-  accent2: 'testnet',
-  accent3: 'default',
-  accent4: 'optimism',
-  accent5: 'gnosis',
-  accent6: 'polygon',
-  accent7: 'arbitrum',
-  accent8: 'other'
-}
 
 function symbolFallback(symbol: string) {
   return symbol ? symbol.slice(0, 5) : '?'
-}
-
-function chainColor(chainId: number, networksMeta: ChainTokenIconProps['networksMeta']) {
-  const primaryColor = networksMeta[chainId]?.primaryColor || ''
-
-  if (!primaryColor) return 'var(--color-status-danger)'
-  if (primaryColor.startsWith('var(') || primaryColor.startsWith('#') || primaryColor.startsWith('rgb')) {
-    return primaryColor
-  }
-
-  const chainColor = accentChainMap[primaryColor]
-  return chainColor ? `var(--color-chain-${chainColor})` : 'var(--color-chain-other)'
 }
 
 function warnImageFailure(message: string, details: Record<string, unknown>) {
@@ -86,7 +65,10 @@ export default function ChainTokenIcon({
     if (ethChains.includes(chainName)) return <div className='chainTokenIconChainGlyph'>{svg.eth(11)}</div>
 
     return (
-      <div className='chainTokenIconChainDot' style={{ background: chainColor(chainId, networksMeta) }} />
+      <div
+        className='chainTokenIconChainDot'
+        style={{ background: chainColorValue(networksMeta[chainId]?.primaryColor) }}
+      />
     )
   }
 

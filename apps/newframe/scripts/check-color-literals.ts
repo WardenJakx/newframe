@@ -4,10 +4,7 @@ import path from 'node:path'
 const appRoot = path.resolve(__dirname, '..')
 const sourceRoots = ['app', 'main', 'resources']
 const sourceExtensions = new Set(['.css', '.js', '.jsx', '.styl', '.ts', '.tsx'])
-const allowedFiles = new Set([
-  path.join('resources', 'style', 'tokens', 'colors.ts'),
-  path.join('resources', 'style', 'tokens', 'colors.generated.css')
-])
+const allowedFiles = new Set([path.join('resources', 'colors', 'index.ts')])
 
 export type ColorLiteralViolation = {
   column: number
@@ -73,7 +70,7 @@ async function main() {
   const violations = await findApplicationColorLiterals()
   if (violations.length === 0) return
 
-  console.error('Color literals must be defined in resources/style/tokens/colors.ts:')
+  console.error('Color literals must be defined in @newframe/ui tokens or application-owned color metadata:')
   violations.forEach(({ file, line, column, literal }) => {
     console.error(`- ${file}:${line}:${column} ${literal}`)
   })

@@ -1,4 +1,5 @@
 import link from '../../../../../../resources/link'
+import { chainColorValue } from '../../../../../../resources/colors'
 import { DisplayCoinBalance } from '../../../../../../resources/Components/DisplayValue'
 import {
   getPaidTransactionFee,
@@ -204,7 +205,7 @@ export function TxReview(props: TxReviewProps) {
   return (
     <TransactionInformation
       networkName={chainName}
-      networkColor={meta.primaryColor ? `var(--${meta.primaryColor})` : undefined}
+      networkColor={meta.primaryColor ? chainColorValue(meta.primaryColor) : undefined}
       title={intent.title}
       subtitle={intent.subtitle}
       statusLabel={displayStatus(req)}

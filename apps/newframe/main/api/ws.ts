@@ -26,6 +26,7 @@ const logTraffic = (origin: string) =>
 
 const subs: Record<string, Subscription> = {}
 const connectionMonitors: Record<string, NodeJS.Timeout> = {}
+const WebSocketServer = (WebSocket as unknown as { Server: typeof import('ws').WebSocketServer }).Server
 
 interface Subscription {
   originId: string
@@ -173,7 +174,7 @@ const handler = (socket: FrameWebSocket, req: IncomingMessage) => {
 }
 
 export default function (server: Server) {
-  const ws = new WebSocket.Server({ server })
+  const ws = new WebSocketServer({ server })
   ws.on('connection', handler)
 
   provider.on('data:subscription', (payload: RPC.Susbcription.Response) => {

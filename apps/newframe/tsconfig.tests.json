@@ -1,0 +1,24 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "Preserve",
+    "moduleResolution": "Bundler",
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "types": ["node", "bun", "bun-test-globals", "react", "react-dom"],
+    "esModuleInterop": true,
+    "allowJs": true,
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "typeRoots": ["./node_modules/@types", "./@types"]
+  },
+  "include": [
+    "./@types/**/*.d.ts",
+    "./app/**/*.ts",
+    "./app/**/*.tsx",
+    "./resources/**/*.ts",
+    "./resources/**/*.tsx",
+    "./test/**/*.ts",
+    "./test/**/*.tsx"
+  ]
+}

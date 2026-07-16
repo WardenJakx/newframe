@@ -48,6 +48,7 @@ export type TransactionInformationProps = {
   effectsEmptyText: React.ReactNode
   details: TransactionInformationDetailRow[]
   nativeCurrency: TransactionInformationNativeCurrency
+  heroVariant?: 'default' | 'elevated'
   children?: React.ReactNode
 }
 
@@ -314,11 +315,12 @@ const TransactionInformation = ({
   effectsEmptyText,
   details,
   nativeCurrency,
+  heroVariant = 'default',
   children
 }: TransactionInformationProps) => {
   return (
     <div className='txReview'>
-      <section className='txReviewHero'>
+      <section className={heroVariant === 'elevated' ? 'txReviewHero txReviewHeroElevated' : 'txReviewHero'}>
         <div className='txReviewHeroNetwork' style={{ color: networkColor }}>
           <span className='traySpan'>{networkName}</span>
         </div>

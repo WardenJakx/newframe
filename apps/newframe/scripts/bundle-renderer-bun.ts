@@ -49,7 +49,7 @@ async function renderStylus(source: string, filename: string) {
       {
         filename,
         paths: [dirname(filename)],
-        'include css': true
+        'include css': false
       },
       (err, css) => {
         if (err) {

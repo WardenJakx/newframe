@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import link from '../../../../../resources/link'
 import svg from '../../../../../resources/svg'
 import { cachedImageUrl, isCachedImageReference } from '../../../../../resources/domain/imageCache'
-import { chainColorCssVariable } from '../../../../../resources/style/tokens/colors'
+import { chainColorValue } from '../../../../../resources/colors'
 import { useAccountBalances } from '../../hooks/useAccountBalances'
 import { useHomeUiStore } from '../../state/HomeUiProvider'
 import { createNetworkRows } from './networkModel'
@@ -54,7 +54,7 @@ export function Networks() {
       <div
         className='t2ChainIconDot'
         style={{
-          background: chainColorCssVariable(metadata.primaryColor),
+          background: chainColorValue(metadata.primaryColor),
           height: 12,
           width: 12
         }}
@@ -74,7 +74,7 @@ export function Networks() {
             key={chain.chainId}
             className='t2NetworkDotSmall'
             style={{
-              background: chainColorCssVariable(shared.networksMeta[chain.chainId]?.primaryColor)
+              background: chainColorValue(shared.networksMeta[chain.chainId]?.primaryColor)
             }}
           />
         ))}

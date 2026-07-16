@@ -7,5 +7,10 @@ export const activityStage: VisualStage = {
     await driver.selectNetwork('Newframe Local Anvil')
     await tray.getByRole('tab', { name: 'Activity' }).click()
     await runtime.screenshot(tray, '20-final-activity.png')
+
+    await tray.locator('.t2ActivityRow').first().click()
+    await tray.getByRole('dialog', { name: 'Transaction activity details' }).waitFor()
+    await tray.waitForTimeout(700)
+    await runtime.screenshot(tray, '20a-activity-details.png')
   }
 }

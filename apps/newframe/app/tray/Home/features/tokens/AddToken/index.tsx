@@ -4,7 +4,7 @@ import { useShallow } from 'zustand/react/shallow'
 import RingIcon from '../../../../../../resources/Components/RingIcon'
 import link from '../../../../../../resources/link'
 import svg from '../../../../../../resources/svg'
-import { chainColorCssVariable } from '../../../../../../resources/style/tokens/colors'
+import { chainColorValue } from '../../../../../../resources/colors'
 import { useWalletSelector } from '../../../../../state/useAppSelector'
 import type { Token } from '../../../../../../main/store/state'
 import type { WalletRendererState } from '../../../../../../resources/state/projections'
@@ -109,7 +109,7 @@ function SelectChain({
                 }
               >
                 <div className='originChainItemIcon'>
-                  <RingIcon color={chainColorCssVariable(primaryColor)} img={icon} small={true} />
+                  <RingIcon color={chainColorValue(primaryColor)} img={icon} small={true} />
                 </div>
                 {chain.name}
               </div>
@@ -175,7 +175,7 @@ const EnterAddress = ({ chain, onNavigate }: EnterAddressProps) => {
               <div
                 className='newTokenChainSelectSubtitle'
                 style={{
-                  color: chainColorCssVariable(color)
+                  color: chainColorValue(color)
                 }}
               >
                 {`on ${chainName}`}
@@ -298,7 +298,7 @@ const TokenDetailsForm = ({ chain, tokenData, isEdit, onDone }: TokenDetailsForm
               <div
                 className='newTokenChainSelectSubtitle'
                 style={{
-                  color: chainColorCssVariable(color)
+                  color: chainColorValue(color)
                 }}
               >
                 {`on ${chainName}`}

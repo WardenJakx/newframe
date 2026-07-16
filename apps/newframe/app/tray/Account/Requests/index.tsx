@@ -6,6 +6,7 @@ import { ClusterBox, Cluster } from '../../../../resources/Components/Cluster'
 
 import link from '../../../../resources/link'
 import svg from '../../../../resources/svg'
+import { chainColorValue } from '../../../../resources/colors'
 import { useAccountRequests, useEthereumNetworkMetadata, useEthereumNetworks, useOrigins } from './state'
 import type {
   AccessRequest,
@@ -130,7 +131,7 @@ export function Requests(props: RequestsProps) {
                   handlerId={req.handlerId}
                   i={i}
                   title={`${chainName} Token Permit`}
-                  color={primaryColor ? `var(--${primaryColor})` : ''}
+                  color={primaryColor ? chainColorValue(primaryColor) : ''}
                   img={icon}
                 >
                   <div style={{ height: '10px' }} />
@@ -198,7 +199,7 @@ export function Requests(props: RequestsProps) {
                   handlerId={req.handlerId}
                   i={i}
                   title={`${chainName} Transaction`}
-                  color={primaryColor ? `var(--${primaryColor})` : ''}
+                  color={primaryColor ? chainColorValue(primaryColor) : ''}
                   img={icon}
                 >
                   <TxOverview

@@ -1,4 +1,5 @@
 import { createRoot } from 'react-dom/client'
+import { UIRoot } from '@newframe/ui/root'
 
 import App from './App'
 
@@ -35,7 +36,11 @@ async function start() {
   document.body.classList.add('dark')
   updateTrayVisibility(selectTrayOpen(walletRendererStateStoreReadApi.getState()))
   const root = createRoot(document.getElementById('tray') as HTMLElement)
-  root.render(<App />)
+  root.render(
+    <UIRoot>
+      <App />
+    </UIRoot>
+  )
 }
 
 void start().catch((error) => console.error('Could not connect tray state', error))

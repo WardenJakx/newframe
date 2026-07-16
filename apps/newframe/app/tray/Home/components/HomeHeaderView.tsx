@@ -1,7 +1,7 @@
-import React from 'react'
-
-import svg from '../../../../resources/svg'
-import { activateOnKeyboard } from '../ui/keyboard'
+import { HeaderBar } from '@newframe/ui/header'
+import { IconButton } from '@newframe/ui/icon-button'
+import type { IconName } from '@newframe/ui/icon'
+import { IdentityControl } from '@newframe/ui/identity-control'
 
 export function HomeHeaderView({
   account,
@@ -18,7 +18,7 @@ export function HomeHeaderView({
   account?: { address: string }
   accountsOpen: boolean
   copied: boolean
-  icon: React.ReactNode
+  icon: IconName
   menuOpen: boolean
   name: string
   onCopy: () => void
@@ -31,70 +31,34 @@ export function HomeHeaderView({
     : ''
 
   return (
-    <div className='t2TopBar'>
-      <div className='t2AccountPill'>
-        <div
-          aria-expanded={accountsOpen}
-          aria-haspopup='dialog'
-          aria-label='Accounts'
-          className='t2AccountPillIdentity'
-          onClick={onOpenAccounts}
-          onKeyDown={(event) => activateOnKeyboard(event, onOpenAccounts)}
-          role='button'
-          tabIndex={0}
-        >
-          <div className='t2AccountPillIcon'>{icon}</div>
-          <div className='t2AccountPillText'>
-            <div className='t2AccountPillName'>{name}</div>
-            {address ? <div className='t2AccountPillAddress'>{address}</div> : null}
-          </div>
-          <div className='t2AccountPillChevron'>{svg.chevron(16)}</div>
-        </div>
-        {account ? (
-          <div className='t2AccountPillActions'>
-            <div
-              aria-label='Copy account address'
-              className='t2AccountPillAction'
-              onClick={(event) => {
-                event.stopPropagation()
-                onCopy()
-              }}
-              onKeyDown={(event) => activateOnKeyboard(event, onCopy)}
-              role='button'
-              tabIndex={0}
-              title='Copy address'
-            >
-              {copied ? svg.check(13) : svg.copy(13)}
-            </div>
-            <div
-              aria-label='Show account QR code'
-              className='t2AccountPillAction'
-              onClick={(event) => {
-                event.stopPropagation()
-                onReceive()
-              }}
-              onKeyDown={(event) => activateOnKeyboard(event, onReceive)}
-              role='button'
-              tabIndex={0}
-              title='Show QR code'
-            >
-              {svg.qr(13)}
-            </div>
-          </div>
-        ) : null}
-      </div>
-      <div
-        aria-expanded={menuOpen}
-        aria-haspopup='dialog'
-        aria-label='Main menu'
-        className='t2MenuButton'
-        onClick={onOpenMenu}
-        onKeyDown={(event) => activateOnKeyboard(event, onOpenMenu)}
-        role='button'
-        tabIndex={0}
-      >
-        {svg.bars(16)}
-      </div>
-    </div>
+    <HeaderBar>
+      <IdentityControl
+        actions={
+          account
+            ? [
+                {
+                  icon: copied ? 'check' : 'copy',
+                  label: 'Copy account address',
+                  onPress: onCopy,
+                  title: 'Copy address'
+                },
+                {
+                  icon: 'qr',
+                  label: 'Show account QR code',
+                  onPress: onReceive,
+                  title: 'Show QR code'
+                }
+              ]
+            : []
+        }
+        detail={address}
+        expanded={accountsOpen}
+        icon={icon}
+        label='Accounts'
+        name={name}
+        onPress={onOpenAccounts}
+      />
+      <IconButton appearance='menu' expanded={menuOpen} icon='menu' label='Main menu' onPress={onOpenMenu} />
+    </HeaderBar>
   )
 }

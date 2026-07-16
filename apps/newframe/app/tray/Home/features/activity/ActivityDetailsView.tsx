@@ -1,5 +1,6 @@
 import link from '../../../../../resources/link'
 import svg from '../../../../../resources/svg'
+import { chainColorValue } from '../../../../../resources/colors'
 import TransactionInformation from '../../../Account/Requests/TransactionRequest/TransactionInformation'
 import {
   getTransactionEffects,
@@ -74,8 +75,9 @@ export function ActivityDetailsView({
           details={details}
           effects={effects}
           effectsEmptyText='No direct asset changes detected'
+          heroVariant='elevated'
           nativeCurrency={nativeCurrency}
-          networkColor={networkMeta.primaryColor ? `var(--${networkMeta.primaryColor})` : undefined}
+          networkColor={networkMeta.primaryColor ? chainColorValue(networkMeta.primaryColor) : undefined}
           networkName={network.name || `Chain ${chainId}`}
           notice={activity.status === 'reverted' ? 'Transaction reverted on-chain' : undefined}
           progress={{
