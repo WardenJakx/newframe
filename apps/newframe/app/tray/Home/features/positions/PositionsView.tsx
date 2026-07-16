@@ -1,5 +1,3 @@
-import React from 'react'
-
 import svg from '../../../../../resources/svg'
 import TokenOptionRow from '../../../../../resources/Components/TokenOptionRow'
 import {

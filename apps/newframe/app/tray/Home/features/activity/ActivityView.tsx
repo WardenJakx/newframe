@@ -1,5 +1,3 @@
-import React from 'react'
-
 import StatusGlyph from '../../../../../resources/Components/StatusGlyph'
 import { timestamp } from '../../StatusNotifications'
 import { ChainIcon } from '../../components/ChainIcon'

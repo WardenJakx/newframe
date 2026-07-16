@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 
 import svg from '../../../../../resources/svg'
 import KeyboardShortcutConfigurator from '../../../../../resources/Components/KeyboardShortcutConfigurator'

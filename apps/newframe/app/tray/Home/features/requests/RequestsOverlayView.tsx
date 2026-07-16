@@ -1,5 +1,3 @@
-import React from 'react'
-
 import svg from '../../../../../resources/svg'
 import Requests from '../../../Account/Requests'
 import { activateOnKeyboard } from '../../ui/keyboard'

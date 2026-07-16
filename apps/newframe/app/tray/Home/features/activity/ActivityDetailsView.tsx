@@ -1,5 +1,3 @@
-import React from 'react'
-
 import link from '../../../../../resources/link'
 import svg from '../../../../../resources/svg'
 import TransactionInformation from '../../../Account/Requests/TransactionRequest/TransactionInformation'

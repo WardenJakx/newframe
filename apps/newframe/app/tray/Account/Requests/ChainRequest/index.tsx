@@ -1,4 +1,3 @@
-import React from 'react'
 import svg from '../../../../../resources/svg'
 import { useNetwork, useOriginName } from '../state'
 import type { AccountRequest } from '../../../../../main/accounts/types'

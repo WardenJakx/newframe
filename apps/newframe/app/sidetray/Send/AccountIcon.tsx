@@ -1,5 +1,3 @@
-import React from 'react'
-
 import svg from '../../../resources/svg'
 
 export function signerIcon(type: string, size = 16) {

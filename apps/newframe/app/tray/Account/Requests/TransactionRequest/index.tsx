@@ -1,5 +1,3 @@
-import React from 'react'
-
 // New Tx
 import TxReview from './TxReview'
 import AdjustFee from './AdjustFee'

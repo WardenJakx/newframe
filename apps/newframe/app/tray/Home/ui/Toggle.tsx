@@ -1,5 +1,3 @@
-import React from 'react'
-
 import { activateOnKeyboard } from './keyboard'
 
 export interface ToggleProps {

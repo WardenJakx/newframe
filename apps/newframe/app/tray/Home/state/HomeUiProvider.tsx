@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useRef, type PropsWithChildren } from 'react'
+import { createContext, useContext, useRef, type PropsWithChildren } from 'react'
 import { useStore } from 'zustand'
 
 import { createHomeUiStore, type HomeUiStore } from './homeUiStore'

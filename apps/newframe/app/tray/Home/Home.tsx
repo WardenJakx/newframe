@@ -1,5 +1,3 @@
-import React from 'react'
-
 import { HomeHeader } from './components/HomeHeader'
 import { HomeNavigation } from './components/HomeNavigation'
 import { HomeNotifications } from './components/HomeNotifications'

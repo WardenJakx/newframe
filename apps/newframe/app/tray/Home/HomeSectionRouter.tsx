@@ -1,5 +1,3 @@
-import React from 'react'
-
 import { useHomeUiStore } from './state/HomeUiProvider'
 import { Positions } from './features/positions/Positions'
 import { Activity } from './features/activity/Activity'

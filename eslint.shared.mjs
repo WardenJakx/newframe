@@ -123,7 +123,8 @@ export const reactConfigs = ({ basePath = '', files, version }) => [
       parserOptions: {
         ecmaFeatures: {
           jsx: true
-        }
+        },
+        jsxPragma: null
       }
     },
     settings: {

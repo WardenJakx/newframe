@@ -1,5 +1,3 @@
-import React from 'react'
-
 import type { DisplayedBalance } from '../../../../../resources/domain/balance'
 import { useAccountBalances } from '../../hooks/useAccountBalances'
 import { useHomeUiStore } from '../../state/HomeUiProvider'
