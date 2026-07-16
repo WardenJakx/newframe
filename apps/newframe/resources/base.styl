@@ -55,6 +55,50 @@
   font-weight 500
   src url('./fonts/Ubuntu/Ubuntu-Bold.ttf')
 
+html,
+body,
+.appRoot
+  width 100%
+  height 100%
+  margin 0
+  padding 0
+  border 0
+  overflow hidden
+
+.appRoot
+  position relative
+
+html,
+body
+  background var(--color-bg-primary)
+  color var(--color-text-primary)
+  font-family 'MainFont'
+  font-weight 300
+
+*,
+*::before,
+*::after
+  box-sizing border-box
+
+body
+  user-select none
+
+button,
+input,
+select,
+textarea
+  font-family inherit
+  font-weight inherit
+
+input,
+textarea
+  user-select text
+
+::-webkit-scrollbar
+  width 0
+  height 0
+  background transparent
+
 body
   // Transistions
   --standardFaster .08s cubic-bezier(.82,0,.12,1) all
@@ -69,16 +113,6 @@ body
   --cubic cubic-bezier(.82,0,.12,1)
 
   font-feature-settings 'ss04', 'zero'
-
-.frameOverlay
-  position absolute
-  top 0 
-  right 0
-  bottom 0 
-  left 0
-  background linear-gradient(-35deg, var(--color-overlay-start) 0%, var(--color-overlay-end) 100%)
-  z-index 9999999999999999
-  pointer-events none
 
 .suspend
   *

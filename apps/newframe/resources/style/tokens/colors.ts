@@ -91,10 +91,7 @@ export const darkColorSemantics = {
   'shadow-subtle': { color: 'black', alpha: 0.18 },
   'shadow-default': { color: 'black', alpha: 0.28 },
   'shadow-strong': { color: 'black', alpha: 0.55 },
-  scrim: { color: 'black', alpha: 0.5 },
-
-  'overlay-start': { color: 'pink-500', alpha: 0.03 },
-  'overlay-end': { color: 'teal-500', alpha: 0.03 }
+  scrim: { color: 'black', alpha: 0.5 }
 } as const satisfies Record<string, ColorReference>
 
 export type SemanticColorName = keyof typeof darkColorSemantics
