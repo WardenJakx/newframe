@@ -1,6 +1,6 @@
 import type { BunPlugin } from 'bun'
 import { Buffer } from 'node:buffer'
-import { cpSync, mkdirSync, rmSync, watch } from 'node:fs'
+import { mkdirSync, rmSync, watch } from 'node:fs'
 import path from 'node:path'
 
 const root = import.meta.dir
@@ -134,8 +134,6 @@ async function build(): Promise<boolean> {
   for (const [file, source] of Object.entries(statusIconCopies)) {
     await Bun.write(path.join(iconsDist, file), Bun.file(path.join(statusAssets, source)))
   }
-
-  cpSync(path.join(root, 'src/style'), path.join(dist, 'style'), { recursive: true })
 
   return ok
 }
