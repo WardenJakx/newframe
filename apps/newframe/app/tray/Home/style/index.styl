@@ -302,56 +302,6 @@
     background var(--color-bg-hover)
     color var(--color-text-primary)
 
-.t2MenuBackdrop
-  position absolute
-  top 0
-  right 0
-  bottom 0
-  left 0
-  z-index 90
-
-.t2Menu
-  position absolute
-  top 58px
-  right 14px
-  width 264px
-  max-height calc(100% - 78px)
-  overflow-y scroll
-  border-radius 20px
-  background var(--color-bg-control)
-  box-shadow 0px 12px 40px var(--color-shadow-strong)
-  z-index 95
-  padding 6px
-  animation t2RiseIn 180ms ease-out both
-
-.t2MenuRow
-  display flex
-  align-items center
-  justify-content space-between
-  gap 10px
-  padding 9px 12px
-  border-radius 14px
-
-  &:hover
-    background var(--color-bg-hover)
-
-.t2MenuNavRow
-  gap 11px
-  padding 11px 12px
-  cursor pointer
-
-  *
-    pointer-events none
-
-.t2MenuRowIcon
-  color var(--color-text-muted)
-  display flex
-
-.t2MenuRowTitle
-  font-size 13px
-  font-weight 400
-  flex-grow 1
-
 .t2MenuBadge
   min-width 20px
   height 20px
@@ -367,59 +317,6 @@
 
 .t2MenuBadgeActive
   color var(--color-action-primary)
-
-.t2MenuDivider
-  height 1px
-  background var(--color-border-subtle)
-  margin 4px 10px
-
-.t2MenuSectionHeader
-  display flex
-  align-items center
-  gap 8px
-  padding 9px 12px 5px 12px
-  font-size 10px
-  font-weight 500
-  text-transform uppercase
-  letter-spacing 1.5px
-  color var(--color-text-muted)
-
-.t2MenuRowLabel
-  font-size 12px
-  font-weight 400
-
-.t2MenuShortcut
-  font-size 11px
-  font-family 'FiraCode'
-  color var(--color-text-secondary)
-  background var(--color-bg-primary)
-  padding 4px 8px
-  border-radius 8px
-  white-space nowrap
-
-.t2MenuValueRow
-  cursor pointer
-
-  *
-    pointer-events none
-
-.t2MenuRowValue
-  display flex
-  align-items center
-  gap 6px
-  font-size 11px
-  font-family 'FiraCode'
-  color var(--color-text-secondary)
-
-.t2MenuActionValue
-  color var(--color-action-primary)
-
-.t2MenuRowValueChevron
-  color var(--color-text-disabled)
-  display flex
-  transform rotate(90deg)
-
-// ==================== full-screen menu ====================
 
 .t2MenuPanel
   z-index 90
@@ -439,14 +336,6 @@
   flex-direction column
   gap 8px
   margin-bottom 18px
-
-.t2MenuPanelSectionTitle
-  padding 0 4px
-  color var(--color-text-muted)
-  font-size 11px
-  font-weight 500
-  letter-spacing 0
-  text-transform uppercase
 
 .t2MenuPanelRow
   min-height 64px
@@ -508,35 +397,6 @@
   display flex
   align-items center
   flex-shrink 0
-
-.t2BrowserButtons
-  display grid
-  grid-template-columns 1fr 1fr
-  gap 8px
-
-.t2BrowserButton
-  min-height 58px
-  border-radius 20px
-  background var(--color-bg-card)
-  color var(--color-text-primary)
-  display flex
-  justify-content center
-  align-items center
-  gap 10px
-  cursor pointer
-  font-size 13px
-  font-weight 500
-
-  &:hover
-    background var(--color-bg-hover)
-
-  > div
-    color var(--color-action-primary)
-
-  *
-    pointer-events none
-
-// ==================== settings pages ====================
 
 .t2SettingsScroll
   padding 0 14px 28px 14px
@@ -983,11 +843,6 @@
   .t2NetworkDotSmall
     width 8px
     height 8px
-
-.t2NetworkDot
-  width 9px
-  height 9px
-  border-radius 50%
 
 .t2PillChainIcon
   display flex
@@ -1505,11 +1360,6 @@
     background var(--color-border-subtle)
     padding 4px 7px
 
-.t2OrderCancelError
-  color var(--color-status-danger)
-  font-size 11px
-  line-height 16px
-
 .t2OrderDetailList
   display flex
   flex-direction column
@@ -1833,38 +1683,6 @@
   &:hover
     background var(--color-bg-control)
 
-.t2FloatingAction
-  position absolute
-  bottom 18px
-  left 0
-  right 0
-  display flex
-  justify-content center
-  pointer-events none
-
-.t2FloatingActionButton
-  height 46px
-  padding 0 24px
-  border-radius 23px
-  background var(--color-action-primary)
-  color var(--color-bg-primary)
-  display flex
-  align-items center
-  gap 9px
-  cursor pointer
-  pointer-events auto
-  box-shadow 0px 10px 30px var(--color-shadow-strong)
-  font-size 14px
-  font-weight 500
-
-  &:hover
-    background var(--color-action-primary-hover)
-
-  *
-    pointer-events none
-
-// ==================== requests overlay ====================
-
 .t2RequestsScroll
   padding 0 6px 24px 6px
 
@@ -2054,26 +1872,6 @@
   color var(--color-action-primary)
   display flex
 
-.t2AddAccountButton
-  height 46px
-  border-radius 23px
-  background var(--color-bg-control)
-  display flex
-  justify-content center
-  align-items center
-  gap 9px
-  cursor pointer
-  flex-shrink 0
-  font-size 13px
-  font-weight 400
-  margin-top 8px
-
-  &:hover
-    background var(--color-bg-hover)
-
-  *
-    pointer-events none
-
 .t2AccountsTools
   display flex
   align-items center
@@ -2150,17 +1948,6 @@
 
   *
     pointer-events none
-
-.t2AccountsNotice
-  margin 0 4px 8px 4px
-  padding 8px 10px
-  border-radius 12px
-  font-size 11px
-  line-height 16px
-  background var(--color-bg-card)
-
-.t2AccountsNoticeBad
-  color var(--color-status-danger)
 
 .t2AccountsScroll
   padding 0 0 24px 0
@@ -3299,23 +3086,6 @@
   display flex
   align-items center
   justify-content center
-
-.t2LockChecking
-  height 48px
-  width 48px
-  border-radius 24px
-  background var(--color-bg-card)
-  display flex
-  align-items center
-  justify-content center
-
-.t2LockSpinner
-  height 18px
-  width 18px
-  border-radius 50%
-  border 2px solid var(--color-border-strong)
-  border-top-color var(--color-action-primary)
-  animation t2Spin 0.8s infinite linear
 
 .t2LockTitle
   font-size 18px

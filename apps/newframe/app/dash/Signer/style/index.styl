@@ -24,11 +24,6 @@
   box-shadow 0px 4px 8px var(--color-bg-primary), 0px 2px 8px var(--color-bg-primary)
   border-bottom 2px solid var(--color-bg-primary)
 
-.signerMenuItems
-  display flex
-  justify-content center
-  align-items center
-
 .signerTop
   position relative
   display flex
@@ -58,20 +53,6 @@
     text-overflow ellipsis
     width 190px
 
-    .signerNameUpdate
-      position absolute
-      width 28px
-      height 28px
-      right -34px
-      color var(--color-action-primary)
-      display flex
-      align-items center
-      cursor pointer
-      pointer-events none
-      opacity 0
-      *
-        pointer-events none
-
 .signerExpand
   height 26px
   width 54px
@@ -90,39 +71,6 @@
 .signerExpand:hover
   background var(--color-bg-control)
 
-.signerNameFocused
-  background var(--color-bg-primary)
-  .signerNameUpdate
-    opacity 1
-    
-.signerType
-  position absolute
-  top 20px
-  right 44px
-  font-size 11px
-  text-transform uppercase
-  font-weight 400
-  letter-spacing 0px
-
-
-.signerStatusIndicator
-  position absolute
-  top 26px
-  right 18px
-  font-size 12px
-  text-transform uppercase
-  font-weight 400
-  background var(--color-bg-primary)
-  width 10px
-  height 10px
-  border-radius 5px
-
-.signerStatusIndicatorLocked
-  background var(--color-status-danger)
-
-.signerStatusIndicatorReady
-  background var(--color-action-primary)
-
 .signerStatusText
   padding 0px 32px 16px 32px
   margin 0px 6px 6px 6px
@@ -133,9 +81,6 @@
   font-weight 500
   letter-spacing 1px
   color var(--color-text-primary)
-
-.signerStatusError
-  color var(--color-status-danger)
 
 .signerStatusIssue
   color var(--color-status-danger)
@@ -199,47 +144,6 @@
   .signerBottomPageBack:hover, .signerBottomPageNext:hover
     background var(--color-bg-control)
 
-.signerDrawer
-  position relative
-  height 60px
-
-  .showControls
-    position absolute
-    height 20px
-    border-radius 13px
-    border 3px solid var(--color-bg-primary)
-    background var(--color-bg-raised)
-    z-index 2
-    top 14px
-    left 50%
-    width 100px
-    margin-left -53px
-    padding-bottom 2px
-    letter-spacing 1px
-    font-size 11px
-    display flex
-    justify-content center
-    align-items center
-    text-transform uppercase
-    cursor pointer
-    color var(--color-text-primary)
-    transition var(--standardFast)
-    font-weight 400
-
-  .showControls:hover
-    background var(--color-bg-control)
-    color var(--color-text-primary)
-
-  .showControlsLine
-    height 3px
-    position absolute 
-    top 50%
-    left 0
-    right 0
-    background var(--color-bg-primary)
-    z-index 1
-    margin-top -3px
-
 .signerControls
   padding-top 16px
 
@@ -289,12 +193,6 @@
 
   .signerControlOptionImportant
     color var(--color-status-danger)
-
-  .signerControlOptionEffect
-    color var(--color-status-danger)
-
-  .signerControlOptionSuccess
-    color var(--color-action-primary)
 
 .signerLatticePair
   height 200px
@@ -348,41 +246,6 @@
 
     *
       pointer-events none
-
-.signerAccountsTitle
-  // background pink
-  font-size 12px
-  font-weight 300
-  display flex
-  justify-content center
-  align-items center
-  // height 40px
-  padding 0px 12px 0px 12px
-
-.signerAccountsTitleActive
-  text-transform uppercase
-  font-size 10px
-  font-weight 300
-  letter-spacing 1px
-  display flex
-  justify-content center
-  align-items center
-  color var(--color-text-primary)
-
-  .signerAccountsTitleActiveCount
-    font-size 13px
-    margin-left 5px
-    font-weight 400
-    margin-top -1px
-    height 24px
-    width 24px
-    border-radius 12px
-    box-sizing border-box
-    display flex
-    justify-content center
-    align-items center
-    padding-left 1px
-    background var(--color-bg-control)
 
 .signerAccounts
   //position absolute
