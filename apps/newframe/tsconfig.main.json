@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ESNext"],
+    "types": ["node"],
+    "allowJs": true,
+    "isolatedModules": true,
+    "rewriteRelativeImportExtensions": true,
+    "esModuleInterop": true,
+    "rootDir": ".",
+    "noEmit": true,
+    "typeRoots": ["./node_modules/@types", "./@types"]
+  },
+  "include": ["package.json", "./@types/**/*.d.ts", "./main/**/*.ts"]
+}

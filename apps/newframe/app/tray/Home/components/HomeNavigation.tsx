@@ -1,6 +1,6 @@
 import { useShallow } from 'zustand/react/shallow'
 
-import { chainColorCssVariable } from '../../../../resources/style/tokens/colors'
+import { chainColorValue } from '../../../../resources/colors'
 import { useWalletSelector } from '../../../state/useAppSelector'
 import { useChainIconHydration } from '../hooks/useChainIconHydration'
 import { useHomeUiStore } from '../state/HomeUiProvider'
@@ -40,7 +40,7 @@ export function HomeNavigation() {
             key={chain.chainId}
             className='t2NetworkDotSmall'
             style={{
-              background: chainColorCssVariable(shared.networksMeta[chain.chainId]?.primaryColor)
+              background: chainColorValue(shared.networksMeta[chain.chainId]?.primaryColor)
             }}
           />
         ))}

@@ -2,6 +2,7 @@ node_modules
 .DS_Store
 
 # Newframe app outputs
+packages/ui/dist
 apps/newframe/bundle
 apps/newframe/compiled
 apps/newframe/dist

@@ -56,6 +56,21 @@ function ControlledSelector({ initialSelectedId = 'eth' }: { initialSelectedId?:
 }
 
 describe('ChainTokenIcon', () => {
+  it('uses the app-owned chain color for a fallback chain badge', () => {
+    render(
+      <ChainTokenIcon
+        chainId={1}
+        networks={{ 1: { name: 'Newframe Local Anvil' } }}
+        networksMeta={{ 1: { primaryColor: 'accent1' } }}
+        size='md'
+        symbol='USDC'
+      />
+    )
+
+    const dot = document.querySelector('.chainTokenIconChainDot') as HTMLElement
+    expect(dot.getAttribute('style')).toMatch(/#00d2be|rgb\(0, 210, 190\)/)
+  })
+
   it('uses the first 5 symbol characters as the token image fallback', () => {
     render(
       <ChainTokenIcon

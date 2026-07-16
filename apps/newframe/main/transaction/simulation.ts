@@ -276,7 +276,10 @@ async function resolveTokenMetadata(req: TransactionRequest, address: string, ch
   if (requestToken) return requestToken
 
   try {
-    const Erc20Contract = (await import('../contracts/erc20')).default
+    const loaded = (await import('../contracts/erc20.js')).default as unknown
+    const Erc20Contract = (
+      loaded && typeof loaded === 'object' && 'default' in loaded ? loaded.default : loaded
+    ) as typeof import('../contracts/erc20').default
     const tokenData = await new Erc20Contract(address, chainId).getTokenData()
     return {
       ...tokenData,
@@ -361,7 +364,10 @@ function createTraceCall(req: TransactionRequest) {
 }
 
 async function traceCall(req: TransactionRequest, chainId: number) {
-  const provider = (await import('../provider')).default
+  const loaded = (await import('../provider/index.js')).default as unknown
+  const provider = (
+    loaded && typeof loaded === 'object' && 'default' in loaded ? loaded.default : loaded
+  ) as typeof import('../provider').default
   const payload = {
     id: Date.now(),
     jsonrpc: '2.0',

@@ -1,6 +1,8 @@
 {
-  "extends": "./tsconfig.json",
-  // compile emits only the electron main process (and what it imports);
-  // app/ is handled by Bun's HTML bundler, tests and scripts run under bun directly
-  "exclude": ["**/__mocks__/*", "./test/**/*", "./app/**/*", "./scripts/**/*"]
+  "extends": "./tsconfig.main.json",
+  "compilerOptions": {
+    "outDir": "./compiled",
+    "noEmit": false
+  },
+  "exclude": ["**/__mocks__/*"]
 }

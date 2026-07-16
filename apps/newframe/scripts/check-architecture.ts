@@ -4,7 +4,7 @@ import path from 'node:path'
 
 const appRoot = path.resolve(__dirname, '..')
 const repositoryRoot = path.resolve(appRoot, '../..')
-const sourceExtensions = new Set(['.js', '.jsx', '.mjs', '.ts', '.tsx'])
+const sourceExtensions = new Set(['.js', '.jsx', '.mjs', '.styl', '.ts', '.tsx'])
 
 type SourceFile = { file: string; source: string }
 type Rule = { files: (file: string) => boolean; pattern: RegExp; message: string }
@@ -59,6 +59,11 @@ const productionRenderer = (file: string) =>
       file !== path.join('apps', 'newframe', 'resources', 'bridge', 'index.ts')))
 const productionMain = under(path.join('apps', 'newframe', 'main'))
 const anyFile = () => true
+const migratedPilotFiles = new Set([
+  path.join('apps', 'newframe', 'app', 'tray', 'Home', 'components', 'HomeHeaderView.tsx'),
+  path.join('apps', 'newframe', 'app', 'tray', 'Home', 'components', 'HomeMenuView.tsx')
+])
+const uiSource = under(path.join('packages', 'ui', 'src'))
 
 const restorePackage = ['react', 'restore'].join('-')
 const genericActionChannel = ['tray', 'action'].join(':')
@@ -129,6 +134,41 @@ async function main() {
       if (file !== stateStream) {
         violations.push(`${file}: webContents.send is restricted to the typed state stream`)
       }
+    }
+
+    if (migratedPilotFiles.has(file)) {
+      const rawElement = source.match(/<(?:a|button|div|header|img|input|label|select|span|svg|textarea)\b/)
+      if (rawElement?.index !== undefined) {
+        violations.push(
+          `${file}:${lineNumber(source, rawElement.index)} migrated UI must render through packages/ui`
+        )
+      }
+      const stylingEscape = source.match(/\b(?:className|style)=/)
+      if (stylingEscape?.index !== undefined) {
+        violations.push(
+          `${file}:${lineNumber(source, stylingEscape.index)} migrated UI cannot pass styling escape hatches`
+        )
+      }
+    }
+
+    if (uiSource(file)) {
+      const applicationImport = source.match(
+        /from\s+['"][^'"]*(?:apps\/newframe|apps\/newframe-extension)['"]|from\s+['"][.]{2}\/[^'"]*apps\//
+      )
+      if (applicationImport?.index !== undefined) {
+        violations.push(
+          `${file}:${lineNumber(source, applicationImport.index)} packages/ui cannot import an application`
+        )
+      }
+    }
+  }
+
+  const migratedSelectors = /\.(?:t2TopBar|t2AccountPill\w*|t2MenuButton|t2MenuBadge\w*|t2MenuPanel\w*)\b/
+  for (const { file, source } of files) {
+    if (!file.endsWith('.styl')) continue
+    const match = source.match(migratedSelectors)
+    if (match?.index !== undefined) {
+      violations.push(`${file}:${lineNumber(source, match.index)} migrated Tray header/menu selector remains`)
     }
   }
 

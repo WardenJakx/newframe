@@ -1,4 +1,5 @@
 import { formatUnits, isUnlimited, toBigInt } from '../../../../../resources/utils/numbers'
+import { chainColorValue } from '../../../../../resources/colors'
 import svg from '../../../../../resources/svg'
 import link from '../../../../../resources/link'
 import { ClusterBox, Cluster, ClusterRow, ClusterValue } from '../../../../../resources/Components/Cluster'
@@ -66,7 +67,7 @@ const PermitOverview = ({ req, chainData, originName, open }: PermitOverviewProp
               req={req}
               i={0}
               title={`${chainName} Token Permit`}
-              color={chainColor ? `var(--${chainColor})` : ''}
+              color={chainColor ? chainColorValue(chainColor) : ''}
               img={icon}
               headerMode={true}
             >

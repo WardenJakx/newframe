@@ -1,6 +1,6 @@
 import svg from '../../../../resources/svg'
 import { cachedImageUrl } from '../../../../resources/domain/imageCache'
-import { chainColorCssVariable } from '../../../../resources/style/tokens/colors'
+import { chainColorValue } from '../../../../resources/colors'
 
 export function ChainIcon({
   chainId,
@@ -31,7 +31,7 @@ export function ChainIcon({
     <div
       className='t2ChainIconDot'
       style={{
-        background: chainColorCssVariable(metadata.primaryColor),
+        background: chainColorValue(metadata.primaryColor),
         height: dotSize,
         width: dotSize
       }}

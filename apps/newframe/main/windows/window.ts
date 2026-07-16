@@ -3,7 +3,7 @@ import log from 'electron-log'
 import path from 'path'
 
 import store from '../store'
-import { resolveSemanticColor } from '../../resources/style/tokens/colors'
+import { resolveSemanticColor } from '@newframe/ui/tokens/colors'
 import { registerRenderer } from '../ipc/authorization'
 
 import type { ChainId } from '../store/state'

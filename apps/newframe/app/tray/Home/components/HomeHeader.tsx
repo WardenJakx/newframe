@@ -1,18 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
+import type { IconName } from '@newframe/ui/icon'
 import { useShallow } from 'zustand/react/shallow'
 
 import link from '../../../../resources/link'
-import svg from '../../../../resources/svg'
 import { useWalletSelector } from '../../../state/useAppSelector'
 import { useHomeUiStore } from '../state/HomeUiProvider'
 import { HomeHeaderView } from './HomeHeaderView'
 
-function signerIcon(type: string, size = 16) {
-  if ((type || '').toLowerCase() === 'address') return svg.eye(size)
-  if (type === 'ledger') return svg.ledger(size)
-  if (type === 'trezor') return svg.trezor(size)
-  if (type === 'lattice') return svg.lattice(size)
-  return svg.flame(size + 2)
+function signerIcon(type: string): IconName {
+  if ((type || '').toLowerCase() === 'address') return 'eye'
+  if (type === 'ledger' || type === 'trezor' || type === 'lattice') return 'device'
+  return 'flame'
 }
 
 export function HomeHeader() {
@@ -40,7 +38,7 @@ export function HomeHeader() {
       account={account}
       accountsOpen={overlay.type === 'accounts'}
       copied={copied}
-      icon={account ? (type.toLowerCase() === 'address' ? svg.eye(16) : signerIcon(type)) : svg.accounts(16)}
+      icon={account ? signerIcon(type) : 'accounts'}
       menuOpen={overlay.type === 'menu'}
       name={name}
       onCopy={() => {

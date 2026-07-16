@@ -1,0 +1,71 @@
+html,
+body,
+.appRoot,
+.nf-root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+}
+
+.appRoot,
+.nf-root {
+  position: relative;
+}
+
+html,
+body,
+.nf-root {
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  font-family: var(--nf-font-family-body);
+  font-weight: var(--nf-font-weight-body);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body,
+.nf-root {
+  user-select: none;
+  font-feature-settings: 'ss04', 'zero';
+}
+
+.nf-root button,
+.nf-root input,
+.nf-root select,
+.nf-root textarea {
+  font-family: inherit;
+  font-weight: inherit;
+}
+
+.nf-root input,
+.nf-root textarea {
+  user-select: text;
+}
+
+::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  background: transparent;
+}
+
+.nf-root ::selection {
+  background-color: var(--color-border-default);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nf-root *,
+  .nf-root *::before,
+  .nf-root *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

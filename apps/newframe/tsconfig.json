@@ -1,33 +1,4 @@
 {
   "extends": "../../tsconfig.base.json",
-  "compilerOptions": {
-    // Electron main is loaded as CommonJS from ./compiled. Renderer code is bundled
-    // separately by Bun, so this project config keeps the main-process emit settings.
-    "module": "commonjs",
-    "isolatedModules": true,
-    // lets the forked signer workers use .ts relative imports that emit as .js
-    "rewriteRelativeImportExtensions": true,
-
-    "esModuleInterop": true,
-
-    "outDir": "./compiled",
-    "typeRoots": ["./node_modules/@types", "./@types"],
-    // tsgo doesn't auto-include typeRoots packages; bun-test-globals/bun/node provide test + process globals
-    "types": ["node", "bun", "bun-test-globals"]
-  },
-  "include": [
-    "package.json",
-    "./@types/**/*.d.ts",
-    "./main/**/*.ts",
-    "./resources/**/*.ts",
-    "./resources/**/*.tsx",
-    "./app/**/*.ts",
-    "./app/**/*.tsx",
-    "./test/**/*.ts",
-    "./test/**/*.tsx",
-    "./scripts/**/*.ts"
-  ],
-  "watchOptions": {
-    "excludeFiles": ["./node_modules/**/*", "./package.json"]
-  }
+  "files": []
 }

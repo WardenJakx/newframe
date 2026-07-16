@@ -1,8 +1,15 @@
 import type { Shortcut, ShortcutKey, ModifierKey } from '../../main/store/state/types/shortcuts'
-import { Platform, metaKeyMap, shortcutKeyMap } from './mappings'
+import { metaKeyMap, shortcutKeyMap, type Platform } from './mappings'
 
 export type KeyboardLayout = {
   get: (key: string) => string
+}
+
+type KeyboardEventLike = {
+  altKey: boolean
+  code: string
+  ctrlKey: boolean
+  metaKey: boolean
 }
 
 let keyboardLayout: KeyboardLayout | undefined
@@ -16,7 +23,7 @@ if (global?.navigator) {
   // navigator.keyboard.addEventListener('layoutchange', () => { keyboardLayout = layout })
 }
 
-export const isShortcutKey = (keyEvent: KeyboardEvent) => keyEvent.code in shortcutKeyMap
+export const isShortcutKey = (keyEvent: KeyboardEventLike) => keyEvent.code in shortcutKeyMap
 
 function getModifierKey(key: ModifierKey, platform: Platform) {
   const isMacOS = platform === 'darwin'
@@ -48,7 +55,11 @@ export const getDisplayShortcut = (platform: Platform, shortcut: Shortcut) => {
   return { modifierKeys, shortcutKey }
 }
 
-export const getShortcutFromKeyEvent = (e: KeyboardEvent, pressedKeyCodes: number[], platform: Platform) => {
+export const getShortcutFromKeyEvent = (
+  e: KeyboardEventLike,
+  pressedKeyCodes: number[],
+  platform: Platform
+) => {
   const isWindows = platform === 'win32'
   const altGrPressed = !e.altKey && pressedKeyCodes.includes(17) && pressedKeyCodes.includes(18)
   const modifierKeys = []

@@ -192,7 +192,7 @@ app.on('ready', async () => {
   if (app.dock) app.dock.hide()
   if (isDev) {
     const loadDev = async () => {
-      const { installDevTools, startCpuMonitoring } = await import('./dev')
+      const { installDevTools, startCpuMonitoring } = await import('./dev/index.js')
       installDevTools()
       startCpuMonitoring()
     }

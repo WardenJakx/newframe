@@ -1,0 +1,55 @@
+.nf-text {
+  display: block;
+  min-width: 0;
+}
+
+.nf-text--body {
+  font-size: var(--nf-font-size-body);
+  font-weight: var(--nf-font-weight-regular);
+}
+
+.nf-text--label {
+  overflow: hidden;
+  font-size: var(--nf-font-size-label);
+  font-weight: var(--nf-font-weight-medium);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nf-text--detail {
+  overflow: hidden;
+  font-family: var(--nf-font-family-mono);
+  font-size: var(--nf-font-size-detail);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nf-text--code {
+  font-family: var(--nf-font-family-mono);
+  font-size: var(--nf-font-size-caption);
+}
+
+.nf-text--title {
+  font-size: var(--nf-font-size-label);
+  font-weight: var(--nf-font-weight-medium);
+  letter-spacing: var(--nf-letter-spacing-title);
+  text-transform: uppercase;
+}
+
+.nf-text--primary {
+  color: var(--color-text-primary);
+}
+
+.nf-text--muted {
+  color: var(--color-text-muted);
+}
+
+.nf-text--danger {
+  color: var(--color-status-danger);
+}
+
+.nf-text--truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

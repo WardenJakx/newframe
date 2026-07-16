@@ -1,0 +1,65 @@
+.nf-identity-control {
+  display: flex;
+  align-items: center;
+  max-width: 330px;
+  gap: var(--nf-space-2);
+  padding: var(--nf-space-3);
+  border-radius: var(--nf-radius-pill);
+  background: var(--color-bg-raised);
+}
+
+.nf-identity-control:hover {
+  background: var(--color-bg-hover);
+}
+
+.nf-identity-control__identity {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: var(--nf-space-5);
+  padding: 0;
+  border: 0;
+  color: inherit;
+  text-align: left;
+  background: transparent;
+  cursor: pointer;
+}
+
+.nf-identity-control__identity:focus-visible {
+  border-radius: var(--nf-radius-pill);
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 2px;
+}
+
+.nf-identity-control__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--nf-size-identity-icon);
+  height: var(--nf-size-identity-icon);
+  flex: none;
+  border-radius: var(--nf-radius-pill);
+  color: var(--color-action-primary);
+  background: var(--color-bg-control);
+}
+
+.nf-identity-control__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: var(--nf-space-1);
+}
+
+.nf-identity-control__chevron {
+  display: flex;
+  flex: none;
+  color: var(--color-text-muted);
+}
+
+.nf-identity-control__actions {
+  display: flex;
+  align-items: center;
+  flex: none;
+  gap: var(--nf-space-1);
+  margin-inline-start: var(--nf-space-1);
+}

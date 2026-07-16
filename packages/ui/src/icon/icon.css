@@ -1,0 +1,28 @@
+.nf-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  line-height: 0;
+}
+
+.nf-icon--small {
+  width: 13px;
+  height: 13px;
+}
+
+.nf-icon--medium {
+  width: 16px;
+  height: 16px;
+}
+
+.nf-icon--large {
+  width: 18px;
+  height: 18px;
+}
+
+.nf-icon > svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}

@@ -1,5 +1,7 @@
 import React from 'react'
 
+import { chainColorValue } from '../../colors'
+
 const RequestHeader = ({
   chain,
   children,
@@ -11,7 +13,7 @@ const RequestHeader = ({
 }) => (
   <div className='_txDescriptionSummary'>
     {children}
-    <div className='_txDescriptionSummaryTag' style={{ color: `var(--${chainColor})` }}>
+    <div className='_txDescriptionSummaryTag' style={{ color: chainColorValue(chainColor) }}>
       {`on ${chain}`}
     </div>
   </div>

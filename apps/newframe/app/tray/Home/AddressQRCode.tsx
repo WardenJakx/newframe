@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import QRCode from 'qrcode'
 
-import { resolveSystemColor } from '../../../resources/style/tokens/colors'
+import { resolveSystemColor } from '@newframe/ui/tokens/colors'
 
 export default function AddressQRCode({ address }: { address: string }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)

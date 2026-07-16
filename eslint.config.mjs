@@ -16,6 +16,7 @@ const workspacePath = (path) => fileURLToPath(new URL(path, import.meta.url))
 
 const newframe = 'apps/newframe'
 const extension = 'apps/newframe-extension'
+const ui = 'packages/ui'
 
 const newframeMainFiles = [
   '*.{js,mjs,ts}',
@@ -73,7 +74,8 @@ export default [
     'apps/newframe/test/e2e/**/*',
     'apps/newframe/main/signers/**/*',
     'apps/newframe-extension/dist/**/*',
-    'apps/newframe-extension/.cache/**/*'
+    'apps/newframe-extension/.cache/**/*',
+    'packages/ui/dist/**/*'
   ]),
   ...baseJavaScriptConfigs(),
 
@@ -81,6 +83,12 @@ export default [
   ...typescriptConfigs({ basePath: 'scripts', tsconfigRootDir: workspacePath('./') }),
   nodeGlobalsConfig({ files: ['harness/**/*.ts'] }),
   ...typescriptConfigs({ basePath: 'harness', tsconfigRootDir: workspacePath('./') }),
+
+  nodeGlobalsConfig({ basePath: ui, files: ['scripts/**/*.ts', 'test/**/*.{ts,tsx}'] }),
+  browserGlobalsConfig({ basePath: ui, files: ['src/**/*.{ts,tsx}'] }),
+  ...typescriptConfigs({ basePath: ui, tsconfigRootDir: workspacePath('./packages/ui') }),
+  ...reactConfigs({ basePath: ui, files: ['src/**/*.tsx', 'test/**/*.tsx'], version: '19.2' }),
+  testGlobalsConfig({ basePath: ui, files: ['test/**/*.{ts,tsx}'] }),
 
   nodeGlobalsConfig({
     basePath: newframe,
@@ -103,8 +111,7 @@ export default [
   }),
   ...typescriptConfigs({
     basePath: newframe,
-    tsconfigRootDir: workspacePath('./apps/newframe'),
-    project: './tsconfig.json'
+    tsconfigRootDir: workspacePath('./apps/newframe')
   }),
   ...reactConfigs({ basePath: newframe, files: newframeReactFiles, version: '18.2' }),
   testGlobalsConfig({ basePath: newframe, files: ['test/**/*.{ts,tsx}', '**/__mocks__/**/*.ts'] }),
@@ -129,8 +136,7 @@ export default [
   }),
   ...typescriptConfigs({
     basePath: extension,
-    tsconfigRootDir: workspacePath('./apps/newframe-extension'),
-    project: './tsconfig.json'
+    tsconfigRootDir: workspacePath('./apps/newframe-extension')
   }),
   ...reactConfigs({ basePath: extension, files: ['src/**/*.{tsx}'], version: '19.2' }),
 
