@@ -1169,13 +1169,6 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
       })
     },
 
-    updateFrame: (frameId: string, update: any) => {
-      set((draft) => {
-        const frames = record(mutableMain(draft).frames)
-        frames[frameId] = { ...record(frames[frameId]), ...update }
-      })
-    },
-
     removeFrame: (frameId: string) => {
       set((draft) => {
         delete record(mutableMain(draft).frames)[frameId]

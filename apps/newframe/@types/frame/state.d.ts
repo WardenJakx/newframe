@@ -2,7 +2,6 @@ type HexAmount = string
 
 interface Frame {
   id: string
-  presentation?: 'secondaryPanel'
   route?: string
 }
 

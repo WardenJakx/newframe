@@ -15,6 +15,7 @@ import { hexToInt, roundGwei } from '../../resources/utils'
 import store from '../store'
 import FrameManager from './frames'
 import { createWindow } from './window'
+import { constrainPanelSize, mainPanelPosition, PANEL_WIDTH, sidePanelPosition } from './panelGeometry'
 import { SystemTray, SystemTrayEventHandlers } from './systemTray'
 import { registerShortcut } from '../keyboardShortcuts'
 import { Shortcut } from '../store/state/types/shortcuts'
@@ -37,13 +38,10 @@ const events = new EventEmitter()
 const frameManager = new FrameManager()
 const isDev = process.env.NODE_ENV === 'development'
 const devToolsEnabled = isDev || process.env.ENABLE_DEV_TOOLS === 'true'
-const fullheight = !!process.env.FULL_HEIGHT
 const openedAtLogin =
   electronApp?.getLoginItemSettings() && electronApp.getLoginItemSettings().wasOpenedAtLogin
 const windows: Windows = {}
 const showOnReady = true
-const trayWidth = 400
-const devHeight = 800
 const isWindows = process.platform === 'win32'
 const isMacOS = process.platform === 'darwin'
 
@@ -83,16 +81,6 @@ const systemTrayEventHandlers: SystemTrayEventHandlers = {
 }
 const systemTray = new SystemTray(systemTrayEventHandlers)
 const getDisplaySummonShortcut = () => store.getState().main.shortcuts.altSlash
-
-const topRight = (window: BrowserWindow) => {
-  const area = screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).workArea
-  const screenSize = area
-  const windowSize = window.getSize()
-  return {
-    x: Math.floor(screenSize.x + screenSize.width - windowSize[0]),
-    y: screenSize.y
-  }
-}
 
 const detectMouse = () => {
   const m1 = screen.getCursorScreenPoint()
@@ -145,7 +133,7 @@ function initWindow(id: string, opts: Electron.BrowserWindowConstructorOptions, 
 
 function initTrayWindow(rendererReady: () => void) {
   const trayOpts: Electron.BrowserWindowConstructorOptions = {
-    width: trayWidth,
+    width: PANEL_WIDTH,
     icon: path.join(__dirname, './AppIcon.png')
   }
   if (isMacOS) {
@@ -330,13 +318,9 @@ class Tray {
       visibleOnFullScreen: true,
       skipTransformProcessType: true
     })
-    windows.tray.setResizable(false) // Keeps height consistent
     const area = screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).workArea
-    const height = isDev && !fullheight ? devHeight : area.height
-    windows.tray.setMinimumSize(trayWidth, height)
-    windows.tray.setSize(trayWidth, height)
-    windows.tray.setMaximumSize(trayWidth, height)
-    const pos = topRight(windows.tray)
+    constrainPanelSize(windows.tray, area.height)
+    const pos = mainPanelPosition(area)
     windows.tray.setPosition(pos.x, pos.y)
     store.getState().trayOpen(true)
     windows.tray.emit('show')
@@ -378,7 +362,7 @@ class Dash {
 
   constructor() {
     const dashOpts: Electron.BrowserWindowConstructorOptions = {
-      width: trayWidth
+      width: PANEL_WIDTH
     }
     if (isMacOS) {
       dashOpts.type = 'panel'
@@ -423,14 +407,10 @@ class Dash {
         visibleOnFullScreen: true,
         skipTransformProcessType: true
       })
-      windows.dash.setResizable(false) // Keeps height consistent
       const area = screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).workArea
-      const height = isDev && !fullheight ? devHeight : area.height
-      windows.dash.setMinimumSize(trayWidth, height)
-      windows.dash.setSize(trayWidth, height)
-      windows.dash.setMaximumSize(trayWidth, height)
-      const { x, y } = topRight(windows.dash)
-      windows.dash.setPosition(x - trayWidth - 5, y)
+      constrainPanelSize(windows.dash, area.height)
+      const { x, y } = sidePanelPosition(area)
+      windows.dash.setPosition(x, y)
       windows.dash.show()
       if (!windows.tray.isVisible()) windows.tray.show()
       windows.dash.focus()

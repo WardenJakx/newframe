@@ -44,32 +44,6 @@ export default class FrameManager {
           store.getState().removeFrame(frameId)
         })
 
-        frameInstance.on('maximize', () => {
-          store.getState().updateFrame(frameId, { maximized: true })
-        })
-
-        frameInstance.on('unmaximize', () => {
-          store.getState().updateFrame(frameId, { maximized: false })
-        })
-
-        frameInstance.on('enter-full-screen', () => {
-          store.getState().updateFrame(frameId, { fullscreen: true })
-        })
-
-        frameInstance.on('leave-full-screen', () => {
-          const platform = store.getState().platform
-          // Handle broken linux window events
-          if (platform !== 'win32' && platform !== 'darwin' && !frameInstance.isFullScreen()) {
-            if (frameInstance.isMaximized()) {
-              store.getState().updateFrame(frameId, { maximized: true })
-            } else {
-              store.getState().updateFrame(frameId, { maximized: false })
-            }
-          } else {
-            store.getState().updateFrame(frameId, { fullscreen: false })
-          }
-        })
-
         frameInstance.on('focus', () => frameInstance.webContents.focus())
       })
 
@@ -130,7 +104,7 @@ export default class FrameManager {
         skipTransformProcessType: true
       })
       if (frame) {
-        frameInstances.show(frameInstance, frame)
+        frameInstances.show(frameInstance)
       } else {
         frameInstance.show()
         frameInstance.focus()
@@ -146,7 +120,7 @@ export default class FrameManager {
       const frame = frames[frameId]
 
       if (frameInstance && frame && !frameInstance.isDestroyed()) {
-        frameInstances.show(frameInstance, frame)
+        frameInstances.show(frameInstance)
       }
     })
   }
