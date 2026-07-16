@@ -8,7 +8,6 @@ import {
 import type { FlashAsset } from '../flash/schemas'
 
 export const DAPP_LAUNCHER_FRAME_ID = 'dappLauncher'
-export const DAPP_LAUNCHER_FRAME_PRESENTATION = 'secondaryPanel'
 export const DAPP_LAUNCHER_NATIVE_ASSET_ADDRESS = NATIVE_CURRENCY
 
 export type DappLauncherRouteName = 'send' | 'trade'
@@ -20,7 +19,6 @@ export interface DappLauncherRoute {
 
 export interface DappLauncherFrame {
   id: typeof DAPP_LAUNCHER_FRAME_ID
-  presentation: typeof DAPP_LAUNCHER_FRAME_PRESENTATION
   route?: string
 }
 
@@ -35,13 +33,12 @@ export type DappLauncherFrameRequest = DappLauncherFrameRequestObject | LegacyDa
 
 export function normalizeDappLauncherFrameRequest(frame: DappLauncherFrameRequest): DappLauncherFrame | null {
   if (typeof frame === 'string') {
-    return frame ? { id: DAPP_LAUNCHER_FRAME_ID, presentation: DAPP_LAUNCHER_FRAME_PRESENTATION } : null
+    return frame ? { id: DAPP_LAUNCHER_FRAME_ID } : null
   }
   if (!frame || typeof frame !== 'object' || typeof frame.id !== 'string' || !frame.id) return null
 
   return {
     id: DAPP_LAUNCHER_FRAME_ID,
-    presentation: DAPP_LAUNCHER_FRAME_PRESENTATION,
     ...(typeof frame.route === 'string' && frame.route ? { route: frame.route } : {})
   }
 }

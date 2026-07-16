@@ -53,12 +53,11 @@ describe('#normalizeDappLauncherFrameRequest', () => {
       })
     ).toStrictEqual({
       id: 'dappLauncher',
-      presentation: 'secondaryPanel',
       route: '/trade?assetId=31337%3A0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'
     })
   })
 
-  it('normalizes arbitrary frame ids into the single secondary panel', () => {
+  it('normalizes arbitrary frame ids into the single dapp panel', () => {
     expect(
       normalizeDappLauncherFrameRequest({
         id: 'legacyTradeWindow',
@@ -66,15 +65,13 @@ describe('#normalizeDappLauncherFrameRequest', () => {
       })
     ).toStrictEqual({
       id: 'dappLauncher',
-      presentation: 'secondaryPanel',
       route: '/trade'
     })
   })
 
   it('keeps deprecated string frame requests working', () => {
     expect(normalizeDappLauncherFrameRequest('dappLauncher')).toStrictEqual({
-      id: 'dappLauncher',
-      presentation: 'secondaryPanel'
+      id: 'dappLauncher'
     })
   })
 

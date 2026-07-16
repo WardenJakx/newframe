@@ -290,7 +290,7 @@ beforeEach(() => {
 })
 
 describe('wallet UI workflows', () => {
-  it('opens Trade and Send in the fixed secondary panel', () => {
+  it('opens Trade and Send in the dapp panel', () => {
     getState.mockReturnValue({
       ...actions,
       main: {
@@ -302,13 +302,11 @@ describe('wallet UI workflows', () => {
     expect(openDapp({ type: 'dapp.open', feature: 'trade', chainId: 31337 })).toBe(true)
     expect(actions.setFramePanel).toHaveBeenCalledWith({
       id: 'dappLauncher',
-      presentation: 'secondaryPanel',
       route: '/trade?chainId=31337'
     })
     expect(openDapp({ type: 'dapp.open', feature: 'send' })).toBe(true)
     expect(actions.setFramePanel).toHaveBeenLastCalledWith({
       id: 'dappLauncher',
-      presentation: 'secondaryPanel',
       route: '/send'
     })
     expect(actions.setDash).toHaveBeenCalledWith({ show: false })
