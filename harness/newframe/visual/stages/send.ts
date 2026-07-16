@@ -16,7 +16,7 @@ export const sendStage: VisualStage = {
     }
 
     await sendEthButton.click()
-    const sendPage = await driver.waitForElectronPage('bundle/dapp.html')
+    const sendPage = await driver.waitForElectronPage('bundle/sidetray.html')
     await sendPage.getByRole('textbox', { name: 'Recipient' }).waitFor({ state: 'visible', timeout: 15_000 })
     await runtime.screenshot(sendPage, '11-send-open.png')
     await sendPage

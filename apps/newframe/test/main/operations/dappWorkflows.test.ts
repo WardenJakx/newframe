@@ -14,7 +14,7 @@ jest.mock('../../../main/flash/instance', () => ({
 jest.mock('../../../main/store', () => ({ default: { getState } }))
 jest.mock('../../../main/windows', () => ({ default: { close: closeWindow } }))
 
-let closeOwnDappWindow: typeof import('../../../main/operations/dappWorkflows').closeOwnDappWindow
+let closeOwnSideTrayWindow: typeof import('../../../main/operations/sideTrayWorkflows').closeOwnSideTrayWindow
 let quoteFlashForCurrentAccount: typeof import('../../../main/operations/dappWorkflows').quoteFlashForCurrentAccount
 let signCurrentAccountTypedData: typeof import('../../../main/operations/dappWorkflows').signCurrentAccountTypedData
 let submitCurrentAccountTransaction: typeof import('../../../main/operations/dappWorkflows').submitCurrentAccountTransaction
@@ -25,7 +25,8 @@ const target = '0x2222222222222222222222222222222222222222'
 
 beforeAll(async () => {
   const workflows = await import('../../../main/operations/dappWorkflows')
-  closeOwnDappWindow = workflows.closeOwnDappWindow
+  const sideTrayWorkflows = await import('../../../main/operations/sideTrayWorkflows')
+  closeOwnSideTrayWindow = sideTrayWorkflows.closeOwnSideTrayWindow
   quoteFlashForCurrentAccount = workflows.quoteFlashForCurrentAccount
   signCurrentAccountTypedData = workflows.signCurrentAccountTypedData
   submitCurrentAccountTransaction = workflows.submitCurrentAccountTransaction
@@ -200,7 +201,7 @@ describe('internal dapp workflows', () => {
   it('closes the invoking renderer only', () => {
     const event = { sender: { id: 7 } } as any
 
-    closeOwnDappWindow(event)
+    closeOwnSideTrayWindow(event)
     expect(closeWindow).not.toHaveBeenCalled()
 
     jest.runOnlyPendingTimers()

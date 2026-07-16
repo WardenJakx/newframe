@@ -40,7 +40,6 @@ import {
   normalizeDappLauncherFrameRequest
 } from '../../resources/domain/dappLauncher'
 import { cachedImageReference, isCachedImageReference } from '../../resources/domain/imageCache'
-import { accountPanelCrumb, signerPanelCrumb } from '../../resources/domain/nav'
 import {
   isSignatureRequest,
   isTransactionRequest,
@@ -60,7 +59,6 @@ import { signerCompatibility as transactionCompatibility } from '../transaction'
 import type {
   AccountAddFromSignerCommand,
   DappOpenCommand,
-  DashNavigateCommand,
   NetworkRequestResolveCommand,
   RequestTokenApprovalUpdateCommand,
   SecurityConfigureCommand,
@@ -73,37 +71,12 @@ import type {
   WarningToggleCommand
 } from '../../resources/bridge/operations'
 
-export function navigateDash(view: DashNavigateCommand['view'], data: DashNavigateCommand['data']) {
-  store.getState().navDash({ view, data })
-}
-
-export function navigateWalletHome(view: 'accounts' | 'networks') {
-  store.getState().navHome({ view, data: {} })
-}
-
-export function navigateDashBack(steps = 1) {
-  store.getState().backDash(steps)
-}
-
-export function closeDash() {
-  store.getState().closeDash()
-}
-
-export function inspectOwnDashWindow(
-  event: Pick<Electron.IpcMainInvokeEvent, 'sender'>,
-  x: number,
-  y: number
-) {
-  if (process.env.NODE_ENV === 'development') event.sender.inspectElement(x, y)
-}
-
 export function writeClipboard(text: string) {
   clipboard.writeText(text)
 }
 
-export function openExternalFromDash(url: string) {
+export function openExternalUrl(url: string) {
   openExternal(url)
-  store.getState().setDash({ show: false })
 }
 
 export function openTransactionExplorer(chainId: number, transactionHash?: string) {
@@ -111,7 +84,6 @@ export function openTransactionExplorer(chainId: number, transactionHash?: strin
   if (!chain) return false
 
   openBlockExplorer({ id: chainId, type: 'ethereum' }, transactionHash)
-  store.getState().backDash()
   return true
 }
 
@@ -314,21 +286,7 @@ export function quitApp() {
 }
 
 export function addToken(command: TokenAddCommand) {
-  const request = command.requestId ? currentRequest(command.requestId) : undefined
-  if (command.requestId && request?.type !== 'addToken') return false
-
   store.getState().addCustomTokens([command.token])
-  if (request) accounts.resolveRequest(request)
-
-  if (command.completion === 'return-to-tokens') {
-    setTimeout(() => {
-      store.getState().navBack('dash', command.edit ? 2 : 4)
-      store.getState().navForward('dash', { view: 'tokens', data: {} })
-    }, 250)
-  } else if (command.completion === 'dismiss-notification') {
-    setTimeout(() => store.getState().notify('', {}), 400)
-  }
-
   return true
 }
 
@@ -346,26 +304,12 @@ export function removeToken(token: Pick<WalletToken, 'address' | 'chainId'>) {
   return true
 }
 
-export function switchOriginChain(originId: string, chainId: number) {
-  const state = store.getState()
-  if (!state.main.origins[originId] || !state.main.networks.ethereum[chainId]) return false
-
-  state.switchOriginChain(originId, chainId, 'ethereum')
-  return true
-}
-
 export function removeOrigin(originId: string) {
   if (!store.getState().main.origins[originId]) return false
 
   accounts.removeRequests(originId)
   store.getState().removeOrigin(originId)
-  store.getState().navDash({ view: 'dapps', data: {} })
   return true
-}
-
-export function clearOrigins() {
-  Object.keys(store.getState().main.origins).forEach((originId) => accounts.removeRequests(originId))
-  store.getState().clearOrigins()
 }
 
 export function toggleWarning(warning: WarningToggleCommand['warning']) {
@@ -383,7 +327,6 @@ export function removeNetwork(chainId: number) {
   if (!network || chainId === 1) return false
 
   store.getState().removeNetwork(network)
-  store.getState().backDash(2)
   return true
 }
 
@@ -406,17 +349,6 @@ export async function pairLattice(signerId: string, pairCode: string) {
   }
 
   await signer.pair(pairCode)
-  return true
-}
-
-export function addSignerAccount(signerId: string, address: string) {
-  const signer = signers.get(signerId)
-  if (!signer || !signer.addresses.some((candidate) => candidate.toLowerCase() === address.toLowerCase())) {
-    return false
-  }
-
-  const signerType = getSignerDisplayType(signer.type)
-  accounts.add(address, `${capitalize(signerType)} Account`, { type: signer.type })
   return true
 }
 
@@ -573,8 +505,7 @@ export function openDapp(command: DappOpenCommand) {
   })!
   const exists = state.main.frames[frame.id]
   state.setFramePanel(frame)
-  state.setDash({ show: false })
-  if (exists) windows.refocusFrame(frame.id)
+  if (exists) windows.refocusSideTray(frame.id)
   return true
 }
 
@@ -719,14 +650,6 @@ export async function refreshPortfolio() {
   return true
 }
 
-export function removeSigner(signerId: string) {
-  if (!signers.get(signerId)) return false
-
-  signers.remove(signerId)
-  store.getState().backDash()
-  return true
-}
-
 export function reloadSigner(signerId: string) {
   if (!signers.get(signerId)) return false
 
@@ -795,12 +718,16 @@ export function requestSignerCompatibility(requestId: string) {
   const signerSummaries = store.getState().main.signers || {}
   const signer = account.signer ? signerSummaries[account.signer] : undefined
   if (!signer) {
-    const hardwareUnavailable =
-      findUnavailableSigners(account.lastSignerType, Object.values(signerSummaries) as Signer[]).length > 0
+    const unavailableSigners = findUnavailableSigners(
+      account.lastSignerType,
+      Object.values(signerSummaries) as Signer[]
+    )
+    const hardwareUnavailable = unavailableSigners.length > 0
     return {
       ok: false as const,
       error: hardwareUnavailable ? ('signer_unavailable' as const) : ('no_signer' as const),
-      message: hardwareUnavailable ? 'The hardware signer is unavailable.' : 'No signer is available.'
+      message: hardwareUnavailable ? 'The hardware signer is unavailable.' : 'No signer is available.',
+      ...(hardwareUnavailable ? { signerIds: unavailableSigners.map(({ id }) => id) } : {})
     }
   }
 
@@ -809,7 +736,8 @@ export function requestSignerCompatibility(requestId: string) {
     return {
       ok: false as const,
       error: hardwareUnavailable ? ('signer_unavailable' as const) : ('locked' as const),
-      message: hardwareUnavailable ? 'The hardware signer is unavailable.' : 'Newframe is locked.'
+      message: hardwareUnavailable ? 'The hardware signer is unavailable.' : 'Newframe is locked.',
+      ...(hardwareUnavailable ? { signerIds: [signer.id] } : {})
     }
   }
 
@@ -818,31 +746,6 @@ export function requestSignerCompatibility(requestId: string) {
       ? transactionCompatibility((request as TransactionRequest).data, signer)
       : { signer: signer.type, tx: '', compatible: true }
   return { ok: true as const, compatibility }
-}
-
-export function openRequestSignerRecovery(requestId: string) {
-  const account = accounts.current()
-  const request = account?.getRequest(requestId)
-  if (!account || !request) return false
-
-  const signerSummaries = store.getState().main.signers || {}
-  const signer = account.signer ? signerSummaries[account.signer] : undefined
-  if (signer) {
-    if (!isHardwareSigner(signer) || isSignerReady(signer)) return false
-    store.getState().navDash(signerPanelCrumb(signer as Signer))
-    return true
-  }
-
-  const unavailableSigners = findUnavailableSigners(
-    account.lastSignerType,
-    Object.values(signerSummaries) as Signer[]
-  )
-  if (unavailableSigners.length === 0) return false
-
-  store
-    .getState()
-    .navDash(unavailableSigners.length === 1 ? signerPanelCrumb(unavailableSigners[0]) : accountPanelCrumb())
-  return true
 }
 
 export function confirmRequestApproval(
@@ -1001,16 +904,9 @@ export function reviewAddTokenRequest(requestId: string) {
 
   const { address, symbol, decimals, logoURI, name, chainId } = request.token
   accounts.resolveRequest(request, null)
-  store.getState().navDash({
+  store.getState().navHome({
     view: 'tokens',
-    data: {
-      notify: 'addToken',
-      notifyData: {
-        tokenData: { symbol, decimals, logoURI, name },
-        chain: { id: chainId },
-        address
-      }
-    }
+    data: { token: { address, chainId, decimals, logoURI, name, symbol } }
   })
   return true
 }
@@ -1071,7 +967,6 @@ export function approveRequest(requestId: string) {
 
   if (vault.exists() && !vault.isUnlocked()) {
     accounts.setRequestError(request.handlerId, new Error('Newframe locked'))
-    store.getState().backDash()
     return true
   }
 
@@ -1093,6 +988,5 @@ export function approveRequest(requestId: string) {
     })
   }
 
-  store.getState().backDash()
   return true
 }

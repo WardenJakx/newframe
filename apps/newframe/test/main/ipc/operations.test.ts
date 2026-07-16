@@ -7,21 +7,18 @@ const submitCurrentAccountTransaction = jest.fn()
 const signCurrentAccountTypedData = jest.fn()
 const quoteFlashForCurrentAccount = jest.fn()
 const submitFlashForCurrentAccount = jest.fn()
-const closeOwnDappWindow = jest.fn()
-const inspectOwnDappWindow = jest.fn()
+const closeOwnSideTrayWindow = jest.fn()
+const inspectOwnSideTrayWindow = jest.fn()
 const walletWorkflows = {
   acceptBetaWarning: jest.fn(),
   adjustTransactionNonce: jest.fn(),
   addAccountFromSigner: jest.fn(),
-  addSignerAccount: jest.fn(),
   addToken: jest.fn(),
   addWatchAccount: jest.fn(),
   approveRequest: jest.fn(),
   cancelFlashOrder: jest.fn(),
-  clearOrigins: jest.fn(),
   clearOriginRequests: jest.fn(),
   clearPermission: jest.fn(),
-  closeDash: jest.fn(),
   configureSecurity: jest.fn(),
   confirmRequestApproval: jest.fn(),
   consumeHomeCommand: jest.fn(),
@@ -31,20 +28,15 @@ const walletWorkflows = {
   generateSeedPhrase: jest.fn(),
   hydrateNetworkIcon: jest.fn(),
   importSigner: jest.fn(),
-  inspectOwnDashWindow: jest.fn(),
   inspectOwnTrayWindow: jest.fn(),
   locateKeystore: jest.fn(),
   lockWallet: jest.fn(),
   lookupToken: jest.fn(),
-  navigateDash: jest.fn(),
-  navigateDashBack: jest.fn(),
-  navigateWalletHome: jest.fn(),
   navigatePanelBack: jest.fn(),
   openDapp: jest.fn(),
-  openExternalFromDash: jest.fn(),
+  openExternalUrl: jest.fn(),
   openTransactionExplorer: jest.fn(),
   openRequestPanel: jest.fn(),
-  openRequestSignerRecovery: jest.fn(),
   pairLattice: jest.fn(),
   quitApp: jest.fn(),
   refreshPortfolio: jest.fn(),
@@ -52,7 +44,6 @@ const walletWorkflows = {
   removeAccount: jest.fn(),
   removeNetwork: jest.fn(),
   removeOrigin: jest.fn(),
-  removeSigner: jest.fn(),
   removeToken: jest.fn(),
   rejectRequest: jest.fn(),
   renameAccount: jest.fn(),
@@ -72,7 +63,6 @@ const walletWorkflows = {
   setNetworkPrimaryRpc: jest.fn(),
   setTransactionFeeDefault: jest.fn(),
   submitTrezorInput: jest.fn(),
-  switchOriginChain: jest.fn(),
   toggleWarning: jest.fn(),
   unlockSecurity: jest.fn(),
   updateTokenApproval: jest.fn(),
@@ -94,18 +84,19 @@ jest.mock('../../../main/operations/dappWorkflows', () => ({
   submitCurrentAccountTransaction,
   signCurrentAccountTypedData,
   quoteFlashForCurrentAccount,
-  submitFlashForCurrentAccount,
-  closeOwnDappWindow,
-  inspectOwnDappWindow
+  submitFlashForCurrentAccount
+}))
+jest.mock('../../../main/operations/sideTrayWorkflows', () => ({
+  closeOwnSideTrayWindow,
+  inspectOwnSideTrayWindow
 }))
 jest.mock('../../../main/operations/walletWorkflows', () => walletWorkflows)
 
 let dispatchCommand: typeof import('../../../main/ipc/operations').dispatchCommand
 let dispatchQuery: typeof import('../../../main/ipc/operations').dispatchQuery
 const event = {} as Electron.IpcMainInvokeEvent
-const dashContext = { clientType: 'wallet-ui' as const, entrypoint: 'dash' as const, webContentsId: 1 }
 const trayContext = { clientType: 'wallet-ui' as const, entrypoint: 'tray' as const, webContentsId: 1 }
-const dappContext = { clientType: 'dapp' as const, entrypoint: 'dapp' as const, webContentsId: 2 }
+const sideTrayContext = { clientType: 'dapp' as const, entrypoint: 'sidetray' as const, webContentsId: 2 }
 const transactionIdempotencyKey = '00000000-0000-4000-8000-000000000001'
 const flashTargetAsset = {
   id: '1:0x1111111111111111111111111111111111111111',
@@ -166,8 +157,8 @@ beforeEach(() => {
   signCurrentAccountTypedData.mockReset()
   quoteFlashForCurrentAccount.mockReset()
   submitFlashForCurrentAccount.mockReset()
-  closeOwnDappWindow.mockReset()
-  inspectOwnDappWindow.mockReset()
+  closeOwnSideTrayWindow.mockReset()
+  inspectOwnSideTrayWindow.mockReset()
   Object.values(walletWorkflows).forEach((mock) => mock.mockReset())
 })
 
@@ -183,7 +174,7 @@ describe('typed operation dispatcher', () => {
   })
 
   it('does not authorize dapps to select the wallet account', async () => {
-    authorizeRenderer.mockReturnValue(dappContext)
+    authorizeRenderer.mockReturnValue(sideTrayContext)
 
     await expect(dispatchCommand(event, { type: 'account.select', accountId: '0xabc' })).resolves.toEqual({
       ok: false,
@@ -225,7 +216,7 @@ describe('typed operation dispatcher', () => {
   })
 
   it('allows dapps to resolve names without granting state-changing privileges', async () => {
-    authorizeRenderer.mockReturnValue(dappContext)
+    authorizeRenderer.mockReturnValue(sideTrayContext)
     resolveName.mockResolvedValue('0x1111111111111111111111111111111111111111')
 
     await expect(dispatchQuery(event, { type: 'name.resolve', name: 'alice.eth' })).resolves.toEqual({
@@ -235,7 +226,7 @@ describe('typed operation dispatcher', () => {
   })
 
   it('maps unresolved names and lookup failures to typed results', async () => {
-    authorizeRenderer.mockReturnValue(dappContext)
+    authorizeRenderer.mockReturnValue(sideTrayContext)
     resolveName.mockResolvedValueOnce('')
 
     await expect(dispatchQuery(event, { type: 'name.resolve', name: 'nobody.eth' })).resolves.toEqual({
@@ -266,7 +257,7 @@ describe('typed operation dispatcher', () => {
   })
 
   it('does not expose renderer-controlled provider initialization', async () => {
-    authorizeRenderer.mockReturnValue(dappContext)
+    authorizeRenderer.mockReturnValue(sideTrayContext)
 
     await expect(
       dispatchCommand(event, { type: 'dapp.initialize', feature: 'send', chainId: 1 })
@@ -274,7 +265,7 @@ describe('typed operation dispatcher', () => {
   })
 
   it('rejects renderer-controlled provider methods, origins, and sender addresses', async () => {
-    authorizeRenderer.mockReturnValue(dappContext)
+    authorizeRenderer.mockReturnValue(sideTrayContext)
 
     await expect(
       dispatchCommand(event, {
@@ -294,7 +285,7 @@ describe('typed operation dispatcher', () => {
   })
 
   it('submits a validated transaction without exposing generic provider RPC', async () => {
-    authorizeRenderer.mockReturnValue(dappContext)
+    authorizeRenderer.mockReturnValue(sideTrayContext)
     submitCurrentAccountTransaction.mockResolvedValue({
       ok: true,
       transactionHash: `0x${'1'.repeat(64)}`
@@ -317,7 +308,7 @@ describe('typed operation dispatcher', () => {
   })
 
   it('deduplicates retry-sensitive transaction submissions by renderer-generated key', async () => {
-    authorizeRenderer.mockReturnValue(dappContext)
+    authorizeRenderer.mockReturnValue(sideTrayContext)
     submitCurrentAccountTransaction.mockResolvedValue({
       ok: true,
       transactionHash: `0x${'2'.repeat(64)}`
@@ -354,7 +345,7 @@ describe('typed operation dispatcher', () => {
   })
 
   it('deduplicates Flash submission by its stable quote ID', async () => {
-    authorizeRenderer.mockReturnValue(dappContext)
+    authorizeRenderer.mockReturnValue(sideTrayContext)
     submitFlashForCurrentAccount.mockResolvedValue({ ok: true, orderId: 'order-1' })
     const command = {
       type: 'flash.submit' as const,
@@ -380,7 +371,7 @@ describe('typed operation dispatcher', () => {
   })
 
   it('bounds the idempotency cache and eventually evicts the oldest result', async () => {
-    authorizeRenderer.mockReturnValue(dappContext)
+    authorizeRenderer.mockReturnValue(sideTrayContext)
     submitCurrentAccountTransaction.mockResolvedValue({
       ok: true,
       transactionHash: `0x${'3'.repeat(64)}`
@@ -407,46 +398,11 @@ describe('typed operation dispatcher', () => {
   it('does not allow wallet renderers to use internal dapp commands', async () => {
     authorizeRenderer.mockReturnValue(trayContext)
 
-    await expect(dispatchCommand(event, { type: 'dapp.close' })).resolves.toEqual({
+    await expect(dispatchCommand(event, { type: 'sidetray.close' })).resolves.toEqual({
       ok: false,
       error: 'unauthorized'
     })
-    expect(closeOwnDappWindow).not.toHaveBeenCalled()
-  })
-
-  it('does not allow dapps to invoke wallet dashboard commands', async () => {
-    authorizeRenderer.mockReturnValue(dappContext)
-
-    await expect(dispatchCommand(event, { type: 'dash.close' })).resolves.toEqual({
-      ok: false,
-      error: 'unauthorized'
-    })
-    expect(walletWorkflows.closeDash).not.toHaveBeenCalled()
-  })
-
-  it('keeps tray-only security capabilities out of the dashboard renderer', async () => {
-    authorizeRenderer.mockReturnValue(dashContext)
-
-    await expect(dispatchCommand(event, { type: 'security.configure', mode: 'disabled' })).resolves.toEqual({
-      ok: false,
-      error: 'unauthorized'
-    })
-    await expect(dispatchQuery(event, { type: 'security.status' })).resolves.toEqual({
-      ok: false,
-      error: 'unauthorized'
-    })
-    expect(walletWorkflows.configureSecurity).not.toHaveBeenCalled()
-    expect(walletWorkflows.securityStatus).not.toHaveBeenCalled()
-  })
-
-  it('keeps dashboard navigation out of the tray renderer', async () => {
-    authorizeRenderer.mockReturnValue(trayContext)
-
-    await expect(dispatchCommand(event, { type: 'dash.close' })).resolves.toEqual({
-      ok: false,
-      error: 'unauthorized'
-    })
-    expect(walletWorkflows.closeDash).not.toHaveBeenCalled()
+    expect(closeOwnSideTrayWindow).not.toHaveBeenCalled()
   })
 
   it('allows the tray to use validated security capabilities', async () => {
@@ -484,21 +440,8 @@ describe('typed operation dispatcher', () => {
     })
   })
 
-  it('validates wallet commands and derives the target window from the sender', async () => {
-    authorizeRenderer.mockReturnValue(dashContext)
-
-    await expect(dispatchCommand(event, { type: 'dash.context-menu', x: 12, y: 34 })).resolves.toEqual({
-      ok: true
-    })
-    expect(walletWorkflows.inspectOwnDashWindow).toHaveBeenCalledWith(event, 12, 34)
-
-    await expect(
-      dispatchCommand(event, { type: 'dash.context-menu', x: 12, y: 34, windowId: 'target' })
-    ).resolves.toEqual({ ok: false, error: 'invalid_command' })
-  })
-
   it('passes only validated identifiers to wallet workflows', async () => {
-    authorizeRenderer.mockReturnValue(dashContext)
+    authorizeRenderer.mockReturnValue(trayContext)
     walletWorkflows.removeToken.mockReturnValue(true)
 
     await expect(
@@ -527,10 +470,10 @@ describe('typed operation dispatcher', () => {
       chainId: 1
     }
 
-    authorizeRenderer.mockReturnValue(dappContext)
+    authorizeRenderer.mockReturnValue(sideTrayContext)
     await expect(dispatchQuery(event, query)).resolves.toEqual({ ok: false, error: 'unauthorized' })
 
-    authorizeRenderer.mockReturnValue(dashContext)
+    authorizeRenderer.mockReturnValue(trayContext)
     await expect(dispatchQuery(event, query)).resolves.toEqual({
       ok: true,
       token: { decimals: 18, name: 'Token', symbol: 'TKN', totalSupply: '100' }
@@ -538,33 +481,33 @@ describe('typed operation dispatcher', () => {
     expect(walletWorkflows.lookupToken).toHaveBeenCalledWith(query.address, query.chainId)
   })
 
-  it('closes the invoking dapp without accepting a target window', async () => {
-    authorizeRenderer.mockReturnValue(dappContext)
+  it('closes the invoking side tray without accepting a target window', async () => {
+    authorizeRenderer.mockReturnValue(sideTrayContext)
 
-    await expect(dispatchCommand(event, { type: 'dapp.close' })).resolves.toEqual({ ok: true })
-    expect(closeOwnDappWindow).toHaveBeenCalledWith(event)
+    await expect(dispatchCommand(event, { type: 'sidetray.close' })).resolves.toEqual({ ok: true })
+    expect(closeOwnSideTrayWindow).toHaveBeenCalledWith(event)
 
     await expect(
-      dispatchCommand(event, { type: 'dapp.close', windowId: 'some-other-window' })
+      dispatchCommand(event, { type: 'sidetray.close', windowId: 'some-other-window' })
     ).resolves.toEqual({ ok: false, error: 'invalid_command' })
   })
 
-  it('inspects only the invoking dapp at validated coordinates', async () => {
-    authorizeRenderer.mockReturnValue(dappContext)
+  it('inspects only the invoking side tray at validated coordinates', async () => {
+    authorizeRenderer.mockReturnValue(sideTrayContext)
 
-    await expect(dispatchCommand(event, { type: 'dapp.context-menu', x: 12, y: 34 })).resolves.toEqual({
+    await expect(dispatchCommand(event, { type: 'sidetray.context-menu', x: 12, y: 34 })).resolves.toEqual({
       ok: true
     })
-    expect(inspectOwnDappWindow).toHaveBeenCalledWith(event, 12, 34)
+    expect(inspectOwnSideTrayWindow).toHaveBeenCalledWith(event, 12, 34)
 
-    await expect(dispatchCommand(event, { type: 'dapp.context-menu', x: -1, y: 34 })).resolves.toEqual({
+    await expect(dispatchCommand(event, { type: 'sidetray.context-menu', x: -1, y: 34 })).resolves.toEqual({
       ok: false,
       error: 'invalid_command'
     })
   })
 
   it('keeps request and unlock capabilities inside the tray entrypoint', async () => {
-    authorizeRenderer.mockReturnValue(dashContext)
+    authorizeRenderer.mockReturnValue(sideTrayContext)
 
     await expect(
       dispatchCommand(event, { type: 'security.unlock', method: 'password', password: 'secret' })

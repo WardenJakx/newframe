@@ -24,8 +24,7 @@ const tempRoot = resolve(bundleDir, '.bun-renderer')
 
 const renderers: Record<string, Renderer> = {
   tray: { name: 'tray', entrypoint: 'app/tray/index.html' },
-  dash: { name: 'dash', entrypoint: 'app/dash/index.html' },
-  dapp: { name: 'dapp', entrypoint: 'app/dapp/index.html' }
+  sidetray: { name: 'sidetray', entrypoint: 'app/sidetray/index.html' }
 }
 
 const stylusPlugin: Bun.BunPlugin = {

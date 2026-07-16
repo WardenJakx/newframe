@@ -23,7 +23,7 @@ export const linkMock = {
 
 export const windowsMock = {
   broadcast: jest.fn(),
-  browserWindows: jest.fn(() => ({ dash: undefined, panel: undefined })),
+  browserWindows: jest.fn(() => ({ panel: undefined })),
   showTray: jest.fn()
 }
 
@@ -173,10 +173,6 @@ const defaultState = () => ({
     notifyData: {}
   },
   windows: {
-    dash: {
-      nav: [],
-      show: false
-    },
     panel: {
       nav: [],
       show: false

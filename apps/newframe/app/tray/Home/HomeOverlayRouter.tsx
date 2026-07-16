@@ -9,6 +9,7 @@ import { Accounts } from './features/accounts/Accounts'
 import { Receive } from './features/accounts/Receive'
 import { RequestsOverlay } from './features/requests/RequestsOverlay'
 import { ConnectedDapps } from './features/dapps/ConnectedDapps'
+import Tokens from './features/tokens'
 import { Settings } from './features/settings/Settings'
 import { About } from './features/settings/About'
 
@@ -30,6 +31,8 @@ export function HomeOverlayRouter() {
       return <RequestsOverlay />
     case 'dapps':
       return <ConnectedDapps />
+    case 'tokens':
+      return <Tokens initialToken={overlay.initialToken} />
     case 'addChain':
       return <AddChain />
     case 'asset':

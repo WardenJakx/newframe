@@ -13,7 +13,6 @@ import Signer from '../signers/Signer'
 import { signerCompatibility as transactionCompatibility, maxFee, SignerCompatibility } from '../transaction'
 
 import { weiIntToEthInt, hexToInt } from '../../resources/utils'
-import { accountPanelCrumb, signerPanelCrumb } from '../../resources/domain/nav'
 import {
   usesBaseFee,
   TransactionData,
@@ -1367,22 +1366,17 @@ export class Accounts extends EventEmitter {
 
     const signer = currentAccount.getSigner()
 
-    const signerUnavailable = (knownSigner?: Signer) => {
-      const crumb = knownSigner ? signerPanelCrumb(knownSigner) : accountPanelCrumb()
-
-      store.getState().navDash(crumb)
-      return cb(new Error('Signer unavailable'))
-    }
+    const signerUnavailable = () => cb(new Error('Signer unavailable'))
 
     if (!signer) {
       // if no signer is active, check if this account was previously relying on a
       // hardware signer that is currently disconnected
       const unavailableSigners = findUnavailableSigners(currentAccount.lastSignerType, storeApi.getSigners())
 
-      // if there is only one matching disconnected signer, open the signer panel so it can be unlocked
-      if (unavailableSigners.length === 1) return signerUnavailable(unavailableSigners[0])
+      // surface hardware signer recovery to the caller
+      if (unavailableSigners.length === 1) return signerUnavailable()
 
-      // if there is more than one matching signer, open the account panel so the user can choose
+      // let the caller offer a choice when multiple matching signers exist
       if (unavailableSigners.length > 1) return signerUnavailable()
 
       // otherwise there are no signers that can be found
@@ -1390,13 +1384,10 @@ export class Accounts extends EventEmitter {
     }
 
     if (!isSignerReady(signer)) {
-      // Hot signer availability is app-lock state. Only hardware signers
-      // should use signer-specific unavailable navigation.
+      // Hot signer availability is app-lock state. Only hardware signers use recovery.
       if (!isHardwareSigner(signer)) return cb(new Error('Newframe locked'))
 
-      // if the hardware signer is not ready to sign, open the signer panel so
-      // that the user can reconnect or complete the device-specific flow
-      return signerUnavailable(signer)
+      return signerUnavailable()
     }
 
     const getCompatibility = () => {

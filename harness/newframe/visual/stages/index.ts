@@ -1,7 +1,6 @@
 import type { VisualStage } from '../types.ts'
 import { activityStage } from './activity.ts'
 import { anvilPositionsStage } from './anvil-positions.ts'
-import { dashboardStage } from './dashboard.ts'
 import { harnessAccountStage } from './harness-account.ts'
 import { lockScreenStage } from './lock-screen.ts'
 import { networkOnboardingStage } from './network-onboarding.ts'
@@ -22,7 +21,6 @@ export const visualStages: VisualStage[] = [
   lockScreenStage,
   unlockStage,
   trayReadinessStage,
-  dashboardStage,
   resetStateStage,
   unlockedHomeStage,
   trayOverlaysStage,

@@ -13,7 +13,8 @@ export function HomeMenu() {
       const requests = account?.requests || {}
       return {
         instanceId: state.instanceId || '',
-        requestCount: Object.keys(requests).filter((id) => requests[id].mode === 'normal').length
+        requestCount: Object.keys(requests).filter((id) => requests[id].mode === 'normal').length,
+        tokenCount: state.tokens?.custom?.length || 0
       }
     })
   )
@@ -28,6 +29,7 @@ export function HomeMenu() {
       onOpenDapps={() => openOverlay({ type: 'dapps' })}
       onOpenRequests={() => openOverlay({ type: 'requests' })}
       onOpenSettings={() => openOverlay({ type: 'settings' })}
+      onOpenTokens={() => openOverlay({ type: 'tokens' })}
       onQuit={() => void link.executeCommand({ type: 'app.quit' })}
     />
   )

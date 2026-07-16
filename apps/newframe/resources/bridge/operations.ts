@@ -195,17 +195,17 @@ export const FlashSubmitResultSchema = z.discriminatedUnion('ok', [
 
 export type FlashSubmitResult = z.infer<typeof FlashSubmitResultSchema>
 
-export const DappCloseCommandSchema = z.strictObject({ type: z.literal('dapp.close') })
-export type DappCloseCommand = z.infer<typeof DappCloseCommandSchema>
+export const SideTrayCloseCommandSchema = z.strictObject({ type: z.literal('sidetray.close') })
+export type SideTrayCloseCommand = z.infer<typeof SideTrayCloseCommandSchema>
 
-export const DappContextMenuCommandSchema = z.strictObject({
-  type: z.literal('dapp.context-menu'),
+export const SideTrayContextMenuCommandSchema = z.strictObject({
+  type: z.literal('sidetray.context-menu'),
   x: z.number().finite().nonnegative().max(100_000),
   y: z.number().finite().nonnegative().max(100_000)
 })
-export type DappContextMenuCommand = z.infer<typeof DappContextMenuCommandSchema>
+export type SideTrayContextMenuCommand = z.infer<typeof SideTrayContextMenuCommandSchema>
 
-export const DappWindowResultSchema = z.discriminatedUnion('ok', [
+export const SideTrayWindowResultSchema = z.discriminatedUnion('ok', [
   z.strictObject({ ok: z.literal(true) }),
   z.strictObject({
     ok: z.literal(false),
@@ -213,7 +213,7 @@ export const DappWindowResultSchema = z.discriminatedUnion('ok', [
   })
 ])
 
-export type DappWindowResult = z.infer<typeof DappWindowResultSchema>
+export type SideTrayWindowResult = z.infer<typeof SideTrayWindowResultSchema>
 
 export const NameResolveQuerySchema = z.strictObject({
   type: z.literal('name.resolve'),
@@ -251,14 +251,6 @@ export const FlashQuoteResultSchema = z.discriminatedUnion('ok', [
 export type FlashQuoteResult = z.infer<typeof FlashQuoteResultSchema>
 
 const OperationIdSchema = z.string().min(1).max(256)
-const DashNavigationDataSchema = z
-  .record(z.string().max(128), z.json())
-  .refine(
-    (value) => Object.keys(value).length <= 64 && JSON.stringify(value).length <= 1_000_000,
-    'Navigation data is too large'
-  )
-const DashViewSchema = z.enum(['dapps', 'expandedSigner', 'notify', 'tokens'])
-
 export const CommandBoundaryFailureSchema = z.strictObject({
   ok: z.literal(false),
   error: z.enum(['invalid_command', 'unauthorized']),
@@ -282,35 +274,6 @@ export const WalletCommandResultSchema = z.discriminatedUnion('ok', [
   })
 ])
 export type WalletCommandResult = z.infer<typeof WalletCommandResultSchema>
-
-export const DashNavigateCommandSchema = z.strictObject({
-  type: z.literal('dash.navigate'),
-  view: DashViewSchema,
-  data: DashNavigationDataSchema.default({})
-})
-export type DashNavigateCommand = z.infer<typeof DashNavigateCommandSchema>
-
-export const WalletNavigateHomeCommandSchema = z.strictObject({
-  type: z.literal('wallet.navigate-home'),
-  view: z.enum(['accounts', 'networks'])
-})
-export type WalletNavigateHomeCommand = z.infer<typeof WalletNavigateHomeCommandSchema>
-
-export const DashBackCommandSchema = z.strictObject({
-  type: z.literal('dash.back'),
-  steps: z.number().int().min(1).max(100).default(1)
-})
-export type DashBackCommand = z.infer<typeof DashBackCommandSchema>
-
-export const DashCloseCommandSchema = z.strictObject({ type: z.literal('dash.close') })
-export type DashCloseCommand = z.infer<typeof DashCloseCommandSchema>
-
-export const DashContextMenuCommandSchema = z.strictObject({
-  type: z.literal('dash.context-menu'),
-  x: z.number().finite().nonnegative().max(100_000),
-  y: z.number().finite().nonnegative().max(100_000)
-})
-export type DashContextMenuCommand = z.infer<typeof DashContextMenuCommandSchema>
 
 export const ClipboardWriteCommandSchema = z.strictObject({
   type: z.literal('clipboard.write'),
@@ -346,10 +309,7 @@ export type WalletToken = z.infer<typeof TokenSchema>
 
 export const TokenAddCommandSchema = z.strictObject({
   type: z.literal('token.add'),
-  token: TokenSchema,
-  requestId: OperationIdSchema.optional(),
-  completion: z.enum(['dismiss-notification', 'return-to-tokens', 'none']).default('none'),
-  edit: z.boolean().default(false)
+  token: TokenSchema
 })
 export type TokenAddCommand = z.infer<typeof TokenAddCommandSchema>
 
@@ -360,21 +320,11 @@ export const TokenRemoveCommandSchema = z.strictObject({
 })
 export type TokenRemoveCommand = z.infer<typeof TokenRemoveCommandSchema>
 
-export const OriginSwitchChainCommandSchema = z.strictObject({
-  type: z.literal('origin.switch-chain'),
-  originId: OperationIdSchema,
-  chainId: ChainIdSchema
-})
-export type OriginSwitchChainCommand = z.infer<typeof OriginSwitchChainCommandSchema>
-
 export const OriginRemoveCommandSchema = z.strictObject({
   type: z.literal('origin.remove'),
   originId: OperationIdSchema
 })
 export type OriginRemoveCommand = z.infer<typeof OriginRemoveCommandSchema>
-
-export const OriginClearCommandSchema = z.strictObject({ type: z.literal('origin.clear') })
-export type OriginClearCommand = z.infer<typeof OriginClearCommandSchema>
 
 export const WarningToggleCommandSchema = z.strictObject({
   type: z.literal('warning.toggle'),
@@ -422,25 +372,12 @@ export const LatticePairCommandSchema = z.strictObject({
 })
 export type LatticePairCommand = z.infer<typeof LatticePairCommandSchema>
 
-export const SignerAccountAddCommandSchema = z.strictObject({
-  type: z.literal('signer.account-add'),
-  signerId: OperationIdSchema,
-  address: AddressSchema
-})
-export type SignerAccountAddCommand = z.infer<typeof SignerAccountAddCommandSchema>
-
 export const AccountRemoveCommandSchema = z.strictObject({
   type: z.literal('account.remove'),
   address: AddressSchema,
   removeSeedSigner: z.boolean().optional()
 })
 export type AccountRemoveCommand = z.infer<typeof AccountRemoveCommandSchema>
-
-export const SignerRemoveCommandSchema = z.strictObject({
-  type: z.literal('signer.remove'),
-  signerId: OperationIdSchema
-})
-export type SignerRemoveCommand = z.infer<typeof SignerRemoveCommandSchema>
 
 export const SignerReloadCommandSchema = z.strictObject({
   type: z.literal('signer.reload'),
@@ -880,12 +817,6 @@ export const RequestClearOriginCommandSchema = z.strictObject({
 })
 export type RequestClearOriginCommand = z.infer<typeof RequestClearOriginCommandSchema>
 
-export const RequestSignerRecoveryOpenCommandSchema = z.strictObject({
-  type: z.literal('request.signer-recovery-open'),
-  requestId: OperationIdSchema
-})
-export type RequestSignerRecoveryOpenCommand = z.infer<typeof RequestSignerRecoveryOpenCommandSchema>
-
 export const SignerCompatibilityQuerySchema = z.strictObject({
   type: z.literal('request.signer-compatibility'),
   requestId: OperationIdSchema
@@ -911,7 +842,8 @@ export const SignerCompatibilityResultSchema = z.discriminatedUnion('ok', [
       'signer_unavailable',
       'operation_failed'
     ]),
-    message: ErrorMessageSchema
+    message: ErrorMessageSchema,
+    signerIds: z.array(OperationIdSchema).max(16).optional()
   })
 ])
 export type SignerCompatibilityResult = z.infer<typeof SignerCompatibilityResultSchema>
@@ -1043,13 +975,9 @@ export interface CommandMap {
   'account.watch-add': AccountWatchAddCommand
   'app.quit': AppQuitCommand
   'clipboard.write': ClipboardWriteCommand
-  'dash.back': DashBackCommand
-  'dash.close': DashCloseCommand
-  'dash.context-menu': DashContextMenuCommand
-  'dash.navigate': DashNavigateCommand
   'dapp.open': DappOpenCommand
-  'dapp.close': DappCloseCommand
-  'dapp.context-menu': DappContextMenuCommand
+  'sidetray.close': SideTrayCloseCommand
+  'sidetray.context-menu': SideTrayContextMenuCommand
   'explorer.open': ExplorerOpenCommand
   'external.open': ExternalOpenCommand
   'extension.respond': ExtensionRespondCommand
@@ -1063,9 +991,7 @@ export interface CommandMap {
   'network.remove': NetworkRemoveCommand
   'network.request-resolve': NetworkRequestResolveCommand
   'notification.update': NotificationUpdateCommand
-  'origin.clear': OriginClearCommand
   'origin.remove': OriginRemoveCommand
-  'origin.switch-chain': OriginSwitchChainCommand
   'panel.back': PanelBackCommand
   'panel.request-open': PanelRequestOpenCommand
   'permission.clear': PermissionClearCommand
@@ -1077,19 +1003,16 @@ export interface CommandMap {
   'request.approval-confirm': RequestApprovalConfirmCommand
   'request.clear-origin': RequestClearOriginCommand
   'request.reject': RequestRejectCommand
-  'request.signer-recovery-open': RequestSignerRecoveryOpenCommand
   'request.switch-chain-resolve': SwitchChainRequestResolveCommand
   'request.token-approval-update': RequestTokenApprovalUpdateCommand
   'security.configure': SecurityConfigureCommand
   'security.unlock': SecurityUnlockCommand
   'settings.update': SettingsUpdateCommand
-  'signer.account-add': SignerAccountAddCommand
   'signer.disconnect': SignerDisconnectCommand
   'signer.import': SignerImportCommand
   'signer.lattice-pair': LatticePairCommand
   'signer.lattice-create': SignerLatticeCreateCommand
   'signer.reload': SignerReloadCommand
-  'signer.remove': SignerRemoveCommand
   'signer.trezor-input': TrezorInputCommand
   'token.add': TokenAddCommand
   'token.remove': TokenRemoveCommand
@@ -1103,7 +1026,6 @@ export interface CommandMap {
   'tray.context-menu': TrayContextMenuCommand
   'tray.mouseout': TrayMouseoutCommand
   'typedData.signV4': TypedDataSignCommand
-  'wallet.navigate-home': WalletNavigateHomeCommand
   'wallet.lock': WalletLockCommand
   'wallet.reset': WalletResetCommand
   'updater.respond': UpdaterRespondCommand
@@ -1119,13 +1041,9 @@ export interface CommandResultMap {
   'account.watch-add': AccountCreatedResult
   'app.quit': WalletCommandResult
   'clipboard.write': WalletCommandResult
-  'dash.back': WalletCommandResult
-  'dash.close': WalletCommandResult
-  'dash.context-menu': WalletCommandResult
-  'dash.navigate': WalletCommandResult
   'dapp.open': WalletCommandResult
-  'dapp.close': DappWindowResult
-  'dapp.context-menu': DappWindowResult
+  'sidetray.close': SideTrayWindowResult
+  'sidetray.context-menu': SideTrayWindowResult
   'explorer.open': WalletCommandResult
   'external.open': WalletCommandResult
   'extension.respond': WalletCommandResult
@@ -1139,9 +1057,7 @@ export interface CommandResultMap {
   'network.remove': WalletCommandResult
   'network.request-resolve': WalletCommandResult
   'notification.update': WalletCommandResult
-  'origin.clear': WalletCommandResult
   'origin.remove': WalletCommandResult
-  'origin.switch-chain': WalletCommandResult
   'panel.back': WalletCommandResult
   'panel.request-open': WalletCommandResult
   'permission.clear': WalletCommandResult
@@ -1153,19 +1069,16 @@ export interface CommandResultMap {
   'request.approval-confirm': WalletCommandResult
   'request.clear-origin': WalletCommandResult
   'request.reject': WalletCommandResult
-  'request.signer-recovery-open': WalletCommandResult
   'request.switch-chain-resolve': WalletCommandResult
   'request.token-approval-update': WalletCommandResult
   'security.configure': WalletCommandResult
   'security.unlock': WalletCommandResult
   'settings.update': WalletCommandResult
-  'signer.account-add': WalletCommandResult
   'signer.disconnect': WalletCommandResult
   'signer.import': AccountCreatedResult
   'signer.lattice-pair': WalletCommandResult
   'signer.lattice-create': SignerCreatedResult
   'signer.reload': WalletCommandResult
-  'signer.remove': WalletCommandResult
   'signer.trezor-input': WalletCommandResult
   'token.add': WalletCommandResult
   'token.remove': WalletCommandResult
@@ -1179,7 +1092,6 @@ export interface CommandResultMap {
   'tray.context-menu': WalletCommandResult
   'tray.mouseout': WalletCommandResult
   'typedData.signV4': TypedDataSignResult
-  'wallet.navigate-home': WalletCommandResult
   'wallet.lock': WalletCommandResult
   'wallet.reset': WalletCommandResult
   'updater.respond': WalletCommandResult

@@ -4,7 +4,6 @@ import accounts from '../accounts'
 import { flashService } from '../flash/instance'
 import provider from '../provider'
 import store from '../store'
-import windows from '../windows'
 import type {
   FlashQuoteRequest,
   FlashSubmitOrder,
@@ -168,16 +167,4 @@ export async function submitFlashForCurrentAccount(order: FlashSubmitOrder) {
   } catch (error) {
     return { ok: false, error: 'submit_failed', message: errorMessage(error) } as const
   }
-}
-
-export function closeOwnDappWindow(event: Pick<Electron.IpcMainInvokeEvent, 'sender'>) {
-  setTimeout(() => windows.close(event), 0)
-}
-
-export function inspectOwnDappWindow(
-  event: Pick<Electron.IpcMainInvokeEvent, 'sender'>,
-  x: number,
-  y: number
-) {
-  if (process.env.NODE_ENV === 'development') event.sender.inspectElement(x, y)
 }

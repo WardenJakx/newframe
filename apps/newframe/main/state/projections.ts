@@ -16,8 +16,6 @@ let previousWalletWindowsInputs:
   | {
       panelShow: boolean
       panelNav: CanonicalState['windows']['panel']['nav']
-      dashShow: boolean
-      dashNav: CanonicalState['windows']['dash']['nav']
     }
   | undefined
 let previousWalletWindows: WalletRendererState['windows'] | undefined
@@ -25,9 +23,7 @@ let previousWalletWindows: WalletRendererState['windows'] | undefined
 function projectWalletWindows(windows: CanonicalState['windows']): WalletRendererState['windows'] {
   const inputs = {
     panelShow: windows.panel.show,
-    panelNav: windows.panel.nav,
-    dashShow: windows.dash.show,
-    dashNav: windows.dash.nav
+    panelNav: windows.panel.nav
   }
   if (
     previousWalletWindowsInputs &&
@@ -58,8 +54,7 @@ function projectWalletWindows(windows: CanonicalState['windows']): WalletRendere
 
   previousWalletWindowsInputs = inputs
   previousWalletWindows = {
-    panel: { show: inputs.panelShow, nav: navigation(inputs.panelNav) },
-    dash: { show: inputs.dashShow, nav: navigation(inputs.dashNav) }
+    panel: { show: inputs.panelShow, nav: navigation(inputs.panelNav) }
   }
   return previousWalletWindows
 }

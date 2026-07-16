@@ -27,7 +27,7 @@ describe('panel geometry', () => {
     expect(window.setMaximumSize).toHaveBeenCalledWith(PANEL_WIDTH, height)
   })
 
-  it('places dashboard and dapp windows in the same side-panel slot', () => {
+  it('places the side tray in the side-panel slot', () => {
     const area = { x: 100, y: 20, width: 1440 }
     const main = mainPanelPosition(area)
     const side = sidePanelPosition(area)

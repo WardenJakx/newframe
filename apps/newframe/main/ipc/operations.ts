@@ -4,13 +4,12 @@ import { z } from 'zod'
 
 import accounts from '../accounts'
 import {
-  closeOwnDappWindow,
-  inspectOwnDappWindow,
   quoteFlashForCurrentAccount,
   signCurrentAccountTypedData,
   submitCurrentAccountTransaction,
   submitFlashForCurrentAccount
 } from '../operations/dappWorkflows'
+import { closeOwnSideTrayWindow, inspectOwnSideTrayWindow } from '../operations/sideTrayWorkflows'
 import { resolveName, selectAccount } from '../operations/workflows'
 import * as walletWorkflows from '../operations/walletWorkflows'
 import {
@@ -36,14 +35,10 @@ import {
   AppQuitCommandSchema,
   CommandBoundaryFailureSchema,
   ClipboardWriteCommandSchema,
-  DashBackCommandSchema,
-  DashCloseCommandSchema,
-  DashContextMenuCommandSchema,
-  DashNavigateCommandSchema,
-  DappCloseCommandSchema,
-  DappContextMenuCommandSchema,
   DappOpenCommandSchema,
-  DappWindowResultSchema,
+  SideTrayCloseCommandSchema,
+  SideTrayContextMenuCommandSchema,
+  SideTrayWindowResultSchema,
   FlashQuoteQuerySchema,
   FlashQuoteResultSchema,
   FlashOrderCancelCommandSchema,
@@ -64,16 +59,13 @@ import {
   NetworkPrimaryRpcSetCommandSchema,
   NetworkRequestResolveCommandSchema,
   NotificationUpdateCommandSchema,
-  OriginClearCommandSchema,
   OriginRemoveCommandSchema,
-  OriginSwitchChainCommandSchema,
   PanelBackCommandSchema,
   PanelRequestOpenCommandSchema,
   RequestApproveCommandSchema,
   RequestApprovalConfirmCommandSchema,
   RequestClearOriginCommandSchema,
   RequestRejectCommandSchema,
-  RequestSignerRecoveryOpenCommandSchema,
   RequestTokenApprovalUpdateCommandSchema,
   PermissionClearCommandSchema,
   PortfolioRefreshCommandSchema,
@@ -85,13 +77,11 @@ import {
   SeedGenerateQuerySchema,
   SeedGenerateResultSchema,
   SettingsUpdateCommandSchema,
-  SignerAccountAddCommandSchema,
   SignerCreatedResultSchema,
   SignerDisconnectCommandSchema,
   SignerImportCommandSchema,
   SignerLatticeCreateCommandSchema,
   SignerReloadCommandSchema,
-  SignerRemoveCommandSchema,
   SignerCompatibilityQuerySchema,
   SignerCompatibilityResultSchema,
   SwitchChainRequestResolveCommandSchema,
@@ -115,12 +105,11 @@ import {
   UpdaterRespondCommandSchema,
   WalletCommandResultSchema,
   WalletLockCommandSchema,
-  WalletNavigateHomeCommandSchema,
   WalletResetCommandSchema,
   WarningToggleCommandSchema,
   type AccountSelectCommand,
   type AccountPrivateKeyExportQuery,
-  type DappContextMenuCommand,
+  type SideTrayContextMenuCommand,
   type FlashQuoteQuery,
   type FlashSubmitCommand,
   type CommandMap,
@@ -243,7 +232,7 @@ const commandRegistry = {
     schema: AccountSelectCommandSchema,
     resultSchema: AccountSelectResultSchema,
     roles: ['wallet-ui'],
-    entrypoints: ['tray', 'dash'],
+    entrypoints: ['tray'],
     async handle({ accountId }: AccountSelectCommand) {
       if (!accounts.get(accountId)) return { ok: false, error: 'account_not_found' } as const
 
@@ -256,7 +245,7 @@ const commandRegistry = {
     schema: TransactionSubmitCommandSchema,
     resultSchema: TransactionSubmitResultSchema,
     roles: ['dapp'],
-    entrypoints: ['dapp'],
+    entrypoints: ['sidetray'],
     async handle(command: TransactionSubmitCommand) {
       const accountId = accounts.current()?.id || 'no-account'
       const result = await executeIdempotent(
@@ -275,7 +264,7 @@ const commandRegistry = {
     schema: TypedDataSignCommandSchema,
     resultSchema: TypedDataSignResultSchema,
     roles: ['dapp'],
-    entrypoints: ['dapp'],
+    entrypoints: ['sidetray'],
     handle(command: TypedDataSignCommand) {
       return signCurrentAccountTypedData(command)
     },
@@ -285,7 +274,7 @@ const commandRegistry = {
     schema: FlashSubmitCommandSchema,
     resultSchema: FlashSubmitResultSchema,
     roles: ['dapp'],
-    entrypoints: ['dapp'],
+    entrypoints: ['sidetray'],
     async handle(command: FlashSubmitCommand) {
       const accountId = accounts.current()?.id || 'no-account'
       const quoteId = command.order.quoteId || command.order.quote.id || 'no-quote'
@@ -298,24 +287,24 @@ const commandRegistry = {
     },
     failure: { ok: false, error: 'submit_failed', message: 'Flash order submission failed.' }
   }),
-  'dapp.close': defineOperation({
-    schema: DappCloseCommandSchema,
-    resultSchema: DappWindowResultSchema,
+  'sidetray.close': defineOperation({
+    schema: SideTrayCloseCommandSchema,
+    resultSchema: SideTrayWindowResultSchema,
     roles: ['dapp'],
-    entrypoints: ['dapp'],
+    entrypoints: ['sidetray'],
     handle(_command, event) {
-      closeOwnDappWindow(event)
+      closeOwnSideTrayWindow(event)
       return { ok: true } as const
     },
     failure: { ok: false, error: 'operation_failed' }
   }),
-  'dapp.context-menu': defineOperation({
-    schema: DappContextMenuCommandSchema,
-    resultSchema: DappWindowResultSchema,
+  'sidetray.context-menu': defineOperation({
+    schema: SideTrayContextMenuCommandSchema,
+    resultSchema: SideTrayWindowResultSchema,
     roles: ['dapp'],
-    entrypoints: ['dapp'],
-    handle({ x, y }: DappContextMenuCommand, event) {
-      inspectOwnDappWindow(event, x, y)
+    entrypoints: ['sidetray'],
+    handle({ x, y }: SideTrayContextMenuCommand, event) {
+      inspectOwnSideTrayWindow(event, x, y)
       return { ok: true } as const
     },
     failure: { ok: false, error: 'operation_failed' }
@@ -516,12 +505,6 @@ const commandRegistry = {
     'not_found',
     ['tray']
   ),
-  'request.signer-recovery-open': defineWalletCommand(
-    RequestSignerRecoveryOpenCommandSchema,
-    ({ requestId }) => walletWorkflows.openRequestSignerRecovery(requestId),
-    'request_not_found',
-    ['tray']
-  ),
   'request.approval-confirm': defineWalletCommand(
     RequestApprovalConfirmCommandSchema,
     ({ requestId, approvalType }) => walletWorkflows.confirmRequestApproval(requestId, approvalType),
@@ -627,86 +610,47 @@ const commandRegistry = {
     'not_found',
     ['tray']
   ),
-  'dash.navigate': defineWalletCommand(
-    DashNavigateCommandSchema,
-    ({ view, data }) => walletWorkflows.navigateDash(view, data),
-    'not_found',
-    ['dash']
-  ),
-  'wallet.navigate-home': defineWalletCommand(
-    WalletNavigateHomeCommandSchema,
-    ({ view }) => walletWorkflows.navigateWalletHome(view),
-    'not_found',
-    ['tray', 'dash']
-  ),
-  'dash.back': defineWalletCommand(
-    DashBackCommandSchema,
-    ({ steps }) => walletWorkflows.navigateDashBack(steps),
-    'not_found',
-    ['dash']
-  ),
-  'dash.close': defineWalletCommand(DashCloseCommandSchema, () => walletWorkflows.closeDash(), 'not_found', [
-    'dash'
-  ]),
-  'dash.context-menu': defineWalletCommand(
-    DashContextMenuCommandSchema,
-    ({ x, y }, event) => walletWorkflows.inspectOwnDashWindow(event, x, y),
-    'not_found',
-    ['dash']
-  ),
   'clipboard.write': defineWalletCommand(
     ClipboardWriteCommandSchema,
     ({ text }) => walletWorkflows.writeClipboard(text),
     'not_found',
-    ['tray', 'dash']
+    ['tray']
   ),
   'external.open': defineWalletCommand(
     ExternalOpenCommandSchema,
-    ({ url }) => walletWorkflows.openExternalFromDash(url),
+    ({ url }) => walletWorkflows.openExternalUrl(url),
     'not_found',
-    ['tray', 'dash']
+    ['tray']
   ),
   'explorer.open': defineWalletCommand(
     ExplorerOpenCommandSchema,
     ({ chainId, transactionHash }) => walletWorkflows.openTransactionExplorer(chainId, transactionHash),
     'not_found',
-    ['tray', 'dash']
+    ['tray']
   ),
   'token.add': defineWalletCommand(
     TokenAddCommandSchema,
     (command) => walletWorkflows.addToken(command),
     'request_not_found',
-    ['dash']
+    ['tray']
   ),
   'token.remove': defineWalletCommand(
     TokenRemoveCommandSchema,
     ({ address, chainId }) => walletWorkflows.removeToken({ address, chainId }),
     'not_found',
-    ['dash']
-  ),
-  'origin.switch-chain': defineWalletCommand(
-    OriginSwitchChainCommandSchema,
-    ({ originId, chainId }) => walletWorkflows.switchOriginChain(originId, chainId),
-    'not_found',
-    ['dash']
+    ['tray']
   ),
   'origin.remove': defineWalletCommand(
     OriginRemoveCommandSchema,
     ({ originId }) => walletWorkflows.removeOrigin(originId),
     'not_found',
-    ['dash']
-  ),
-  'origin.clear': defineWalletCommand(
-    OriginClearCommandSchema,
-    () => walletWorkflows.clearOrigins(),
-    'not_found',
-    ['dash']
+    ['tray']
   ),
   'warning.toggle': defineWalletCommand(
     WarningToggleCommandSchema,
     ({ warning }) => walletWorkflows.toggleWarning(warning),
     'not_found',
-    ['tray', 'dash']
+    ['tray']
   ),
   'request.approve': defineWalletCommand(
     RequestApproveCommandSchema,
@@ -724,43 +668,31 @@ const commandRegistry = {
     NetworkRemoveCommandSchema,
     ({ chainId }) => walletWorkflows.removeNetwork(chainId),
     'not_found',
-    ['dash']
+    ['tray']
   ),
   'signer.trezor-input': defineWalletCommand(
     TrezorInputCommandSchema,
     (command) => walletWorkflows.submitTrezorInput(command),
     'not_found',
-    ['tray', 'dash']
+    ['tray']
   ),
   'signer.lattice-pair': defineWalletCommand(
     LatticePairCommandSchema,
     ({ signerId, pairCode }) => walletWorkflows.pairLattice(signerId, pairCode),
     'not_found',
-    ['tray', 'dash']
-  ),
-  'signer.account-add': defineWalletCommand(
-    SignerAccountAddCommandSchema,
-    ({ signerId, address }) => walletWorkflows.addSignerAccount(signerId, address),
-    'not_found',
-    ['dash']
+    ['tray']
   ),
   'account.remove': defineWalletCommand(
     AccountRemoveCommandSchema,
     ({ address, removeSeedSigner }) => walletWorkflows.removeAccount(address, removeSeedSigner),
     'not_found',
-    ['tray', 'dash']
-  ),
-  'signer.remove': defineWalletCommand(
-    SignerRemoveCommandSchema,
-    ({ signerId }) => walletWorkflows.removeSigner(signerId),
-    'not_found',
-    ['dash']
+    ['tray']
   ),
   'signer.reload': defineWalletCommand(
     SignerReloadCommandSchema,
     ({ signerId }) => walletWorkflows.reloadSigner(signerId),
     'not_found',
-    ['tray', 'dash']
+    ['tray']
   )
 } satisfies Record<keyof CommandMap, OperationDefinition>
 
@@ -769,7 +701,7 @@ const queryRegistry = {
     schema: FlashQuoteQuerySchema,
     resultSchema: FlashQuoteResultSchema,
     roles: ['dapp'],
-    entrypoints: ['dapp'],
+    entrypoints: ['sidetray'],
     async handle({ request }: FlashQuoteQuery) {
       return FlashQuoteResultSchema.parse(await quoteFlashForCurrentAccount(request))
     },
@@ -779,7 +711,7 @@ const queryRegistry = {
     schema: NameResolveQuerySchema,
     resultSchema: NameResolveResultSchema,
     roles: ['wallet-ui', 'dapp'],
-    entrypoints: ['tray', 'dash', 'dapp'],
+    entrypoints: ['tray', 'sidetray'],
     async handle({ name }: NameResolveQuery) {
       const address = await resolveName(name)
       return address ? ({ ok: true, address } as const) : ({ ok: false, error: 'not_found' } as const)
@@ -790,7 +722,7 @@ const queryRegistry = {
     schema: TokenLookupQuerySchema,
     resultSchema: TokenLookupResultSchema,
     roles: ['wallet-ui'],
-    entrypoints: ['dash'],
+    entrypoints: ['tray'],
     async handle({ address, chainId }: TokenLookupQuery) {
       const token = await walletWorkflows.lookupToken(address, chainId)
       return token ? ({ ok: true, token } as const) : ({ ok: false, error: 'not_found' } as const)

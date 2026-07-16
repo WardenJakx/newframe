@@ -13,9 +13,9 @@ import { shallow } from 'zustand/vanilla/shallow'
 import { hexToInt, roundGwei } from '../../resources/utils'
 
 import store from '../store'
-import FrameManager from './frames'
+import SideTrayManager from './sidetray'
 import { createWindow } from './window'
-import { constrainPanelSize, mainPanelPosition, PANEL_WIDTH, sidePanelPosition } from './panelGeometry'
+import { constrainPanelSize, mainPanelPosition, PANEL_WIDTH } from './panelGeometry'
 import { SystemTray, SystemTrayEventHandlers } from './systemTray'
 import { registerShortcut } from '../keyboardShortcuts'
 import { Shortcut } from '../store/state/types/shortcuts'
@@ -35,7 +35,7 @@ export function onTrayRendererReady(webContents: Pick<WebContents, 'off' | 'once
 }
 
 const events = new EventEmitter()
-const frameManager = new FrameManager()
+const sideTrayManager = new SideTrayManager()
 const isDev = process.env.NODE_ENV === 'development'
 const devToolsEnabled = isDev || process.env.ENABLE_DEV_TOOLS === 'true'
 const openedAtLogin =
@@ -46,24 +46,17 @@ const isWindows = process.platform === 'win32'
 const isMacOS = process.platform === 'darwin'
 
 let tray: Tray
-let dash: Dash
 let mouseTimeout: NodeJS.Timeout
 let glide = false
 
 const app = {
   hide: () => {
-    frameManager.hideAll()
+    sideTrayManager.hideAll()
     tray.hide()
-    if (dash.isVisible()) {
-      dash.hide('app')
-    }
   },
   show: () => {
     tray.show()
-    if (dash.hiddenByAppHide || dash.isVisible()) {
-      store.getState().setDash({ show: true })
-    }
-    frameManager.showAll()
+    sideTrayManager.showAll()
   },
   toggle: () => {
     const eventName = tray.isVisible() ? 'hide' : 'show'
@@ -241,12 +234,6 @@ class Tray {
 
       const showOnboardingWindow = !store.getState().main.mute.onboardingWindow
 
-      if (store.getState().windows.dash.show) {
-        setTimeout(() => {
-          store.getState().setDash({ show: true })
-        }, 300)
-      }
-
       if (showOnboardingWindow) {
         setTimeout(() => {
           store.getState().navHome({ view: 'accounts', data: { showAddAccounts: true } })
@@ -267,12 +254,11 @@ class Tray {
 
   canAutoHide() {
     const autoHideOn = !!store.getState().main.autohide
-    const dashShowing = !!store.getState().windows.dash.show
-    const isFrameShowing = frameManager.isFrameShowing()
+    const sideTrayShowing = sideTrayManager.isShowing()
 
-    log.debug(`%ccanAutoHide ${JSON.stringify({ autoHideOn, dashShowing, isFrameShowing })}`, 'color: blue')
+    log.debug(`%ccanAutoHide ${JSON.stringify({ autoHideOn, sideTrayShowing })}`, 'color: blue')
 
-    return autoHideOn && !dashShowing && !isFrameShowing
+    return autoHideOn && !sideTrayShowing
   }
 
   hide() {
@@ -285,7 +271,6 @@ class Tray {
       this.recentDisplayEvent = false
     }, 150)
 
-    store.getState().toggleDash('hide')
     store.getState().trayOpen(false)
     if (store.getState().main.reveal) {
       detectMouse()
@@ -355,82 +340,8 @@ class Tray {
   }
 }
 
-class Dash {
-  private recentDisplayEvent = false
-  private recentDisplayEventTimeout?: NodeJS.Timeout
-  public hiddenByAppHide = false
-
-  constructor() {
-    const dashOpts: Electron.BrowserWindowConstructorOptions = {
-      width: PANEL_WIDTH
-    }
-    if (isMacOS) {
-      dashOpts.type = 'panel'
-    }
-    initWindow('dash', dashOpts)
-  }
-
-  public hide(context?: string) {
-    if (this.recentDisplayEvent || !windows.dash?.isVisible()) {
-      return
-    }
-    if (context === 'app') {
-      this.hiddenByAppHide = true
-    }
-    clearTimeout(this.recentDisplayEventTimeout)
-    this.recentDisplayEvent = true
-    this.recentDisplayEventTimeout = setTimeout(() => {
-      this.recentDisplayEvent = false
-    }, 150)
-    windows.dash.hide()
-  }
-
-  public show() {
-    if (!tray.isReady() || this.recentDisplayEvent) {
-      return
-    }
-    if (this.hiddenByAppHide) {
-      this.hiddenByAppHide = false
-    }
-    clearTimeout(this.recentDisplayEventTimeout)
-    this.recentDisplayEvent = true
-    this.recentDisplayEventTimeout = setTimeout(() => {
-      this.recentDisplayEvent = false
-    }, 150)
-    setTimeout(() => {
-      if (isMacOS) {
-        windows.dash.setPosition(0, 0)
-      } else {
-        windows.dash.setAlwaysOnTop(true)
-      }
-      windows.dash.setVisibleOnAllWorkspaces(true, {
-        visibleOnFullScreen: true,
-        skipTransformProcessType: true
-      })
-      const area = screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).workArea
-      constrainPanelSize(windows.dash, area.height)
-      const { x, y } = sidePanelPosition(area)
-      windows.dash.setPosition(x, y)
-      windows.dash.show()
-      if (!windows.tray.isVisible()) windows.tray.show()
-      windows.dash.focus()
-      windows.dash.setVisibleOnAllWorkspaces(false, {
-        visibleOnFullScreen: true,
-        skipTransformProcessType: true
-      })
-      if (devToolsEnabled) {
-        windows.dash.webContents.openDevTools()
-      }
-    }, 10)
-  }
-
-  isVisible() {
-    return (windows.dash as BrowserWindow).isVisible()
-  }
-}
-
 const handleTrayMouseout = () => {
-  if (glide && !(windows.dash && windows.dash.isVisible())) {
+  if (glide) {
     glide = false
     app.hide()
   }
@@ -457,35 +368,23 @@ if (isDev) {
 }
 
 let stateUnsubscribers: Array<() => void> = []
-let frameManagerStarted = false
+let sideTrayManagerStarted = false
 
 const init = () => {
   if (tray && windows.tray && !windows.tray.isDestroyed()) return
 
-  if (!frameManagerStarted) {
-    frameManager.start()
-    frameManagerStarted = true
+  if (!sideTrayManagerStarted) {
+    sideTrayManager.start()
+    sideTrayManagerStarted = true
   }
 
-  const activeDash = dash && windows.dash && !windows.dash.isDestroyed() ? dash : undefined
   if (tray) {
     tray.destroy()
   }
 
   tray = new Tray()
-  dash = activeDash || new Dash()
 
   stateUnsubscribers.forEach((unsubscribe) => unsubscribe())
-
-  const updateDashVisibility = (show: boolean) => {
-    if (show) {
-      dash.show()
-    } else {
-      dash.hide()
-      const trayWindow = windows.tray
-      if (trayWindow && !trayWindow.isDestroyed()) trayWindow.focus()
-    }
-  }
 
   const updateHomeCommand = (homeCommand: unknown) => {
     if (homeCommand) tray.show()
@@ -506,12 +405,10 @@ const init = () => {
   }
 
   const state = store.getState()
-  updateDashVisibility(Boolean(state.windows.dash.show))
   updateHomeCommand(state.tray.homeCommand)
   updateSummonShortcut(state.main.shortcuts.summon)
 
   stateUnsubscribers = [
-    store.subscribe((next) => Boolean(next.windows.dash.show), updateDashVisibility),
     store.subscribe((next) => next.tray.homeCommand, updateHomeCommand),
     store.subscribe((next) => next.main.shortcuts.summon, updateSummonShortcut)
   ]
@@ -525,8 +422,8 @@ export default {
   showTray() {
     tray.show()
   },
-  refocusFrame(frameId: string) {
-    frameManager.refocus(frameId)
+  refocusSideTray(contentId: string) {
+    sideTrayManager.refocus(contentId)
   },
   close(e: Pick<IpcMainEvent, 'sender'>) {
     BrowserWindow.fromWebContents(e.sender)?.close()

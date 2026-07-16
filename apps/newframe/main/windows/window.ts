@@ -38,10 +38,10 @@ export function createWindow(
     }
   })
 
-  if (name === 'tray' || name === 'dash') {
-    registerRenderer(browserWindow.webContents, 'wallet-ui', name)
-  } else if (name === 'frameInstance') {
-    registerRenderer(browserWindow.webContents, 'dapp', 'dapp')
+  if (name === 'tray') {
+    registerRenderer(browserWindow.webContents, 'wallet-ui', 'tray')
+  } else if (name === 'sidetray') {
+    registerRenderer(browserWindow.webContents, 'dapp', 'sidetray')
   }
 
   browserWindow.webContents.once('did-finish-load', () => {

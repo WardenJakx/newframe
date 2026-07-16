@@ -1041,10 +1041,6 @@ const initial = {
     panel: {
       show: false,
       nav: []
-    },
-    dash: {
-      show: false,
-      nav: []
     }
   },
   view: {
@@ -1080,7 +1076,6 @@ export type CanonicalState = Omit<typeof initial, 'main' | 'view' | 'windows'> &
   }
   windows: {
     panel: WindowState
-    dash: WindowState
   }
 }
 

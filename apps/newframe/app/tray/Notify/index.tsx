@@ -7,6 +7,7 @@ import link from '../../../resources/link'
 import { usesBaseFee } from '../../../resources/domain/transaction'
 import { capitalize } from '../../../resources/utils'
 import ExtensionConnectNotification from './ExtensionConnect'
+import SignerRecovery from './SignerRecovery'
 import { useWalletSelector } from '../../state/useAppSelector'
 import type { TrayRendererState } from '../state'
 import { useTrayNotification, type TrayNotifier } from '../notification'
@@ -30,6 +31,7 @@ type NotificationData = {
     id: string | number
   }
   hash?: string
+  signerIds?: string[]
 }
 
 type NotificationProps = {
@@ -273,6 +275,19 @@ export default function Notification() {
   if (local.type === 'gasFeeWarning') return <GasFeeWarning {...props} />
   if (local.type === 'noSignerWarning') return <NoSignerWarning {...props} />
   if (local.type === 'signerCompatibilityWarning') return <SignerCompatibilityWarning {...props} />
+  if (local.type === 'signerRecovery') {
+    return (
+      <Shell dismiss={local.notify}>
+        <SignerRecovery dismiss={local.notify} signerIds={dataSignerIds(local.data)} />
+      </Shell>
+    )
+  }
   if (local.type === 'openExplorer') return <OpenExplorer {...props} />
   return null
+}
+
+function dataSignerIds(data: Record<string, unknown>) {
+  return Array.isArray(data.signerIds)
+    ? data.signerIds.filter((value): value is string => typeof value === 'string')
+    : []
 }

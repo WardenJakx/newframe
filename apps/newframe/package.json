@@ -124,14 +124,10 @@
   ],
   "bridge": "./bundle/bridge.js",
   "tray": "./bundle/tray.html",
-  "dash": "./bundle/dash.html",
-  "dapp": "./bundle/dapp.html",
+  "sidetray": "./bundle/sidetray.html",
   "targets": {
     "main": false,
-    "dash": {
-      "context": "browser"
-    },
-    "dapp": {
+    "sidetray": {
       "context": "browser"
     },
     "tray": {

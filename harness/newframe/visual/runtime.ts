@@ -41,6 +41,7 @@ export class VisualHarnessRuntime {
   }
 
   async prepareOutput() {
+    await fsp.rm(this.screenshotDir, { recursive: true, force: true })
     await fsp.mkdir(this.screenshotDir, { recursive: true })
     await this.writeSummary()
   }

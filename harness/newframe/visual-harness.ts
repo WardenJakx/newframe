@@ -107,7 +107,7 @@ export async function runVisualHarness() {
 
     if (context.consoleErrors.length > 0) {
       visual.log(
-        `renderer console errors were observed but did not fail the run: ${context.consoleErrors.length}`
+        `renderer console errors were observed but did not fail the run: ${JSON.stringify(context.consoleErrors)}`
       )
     }
 
