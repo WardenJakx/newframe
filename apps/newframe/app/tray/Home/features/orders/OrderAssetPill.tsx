@@ -24,7 +24,7 @@ export function OrderAssetPill({
 
   return (
     <div className='t2OrderAssetPill' title={orderAssetName(asset)}>
-      {prefix ? <span className='t2OrderAssetPrefix'>{prefix}</span> : null}
+      {prefix ? <span className='traySpan t2OrderAssetPrefix'>{prefix}</span> : null}
       <div className='t2OrderAssetIcon'>
         <div className='t2OrderAssetIconInner'>
           {logo ? (
@@ -34,7 +34,7 @@ export function OrderAssetPill({
           ) : symbol === 'ETH' || symbol === 'WETH' ? (
             svg.eth(14)
           ) : (
-            <span>{symbol.substring(0, 1)}</span>
+            <span className='traySpan'>{symbol.substring(0, 1)}</span>
           )}
         </div>
         {chainId ? (
@@ -50,7 +50,7 @@ export function OrderAssetPill({
           </div>
         ) : null}
       </div>
-      <span>{symbol}</span>
+      <span className='traySpan'>{symbol}</span>
     </div>
   )
 }

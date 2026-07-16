@@ -84,9 +84,9 @@ export function OrderDetailsView({
             />
           </div>
           <div className='t2OrderDetailMeta'>
-            <span>{orderStatusLabel(order)}</span>
-            <span>{orderTypeLabel(order)}</span>
-            <span>{orderSize(order)}</span>
+            <span className='traySpan'>{orderStatusLabel(order)}</span>
+            <span className='traySpan'>{orderTypeLabel(order)}</span>
+            <span className='traySpan'>{orderSize(order)}</span>
           </div>
         </div>
         <div className='t2OrderDetailList'>
@@ -101,7 +101,7 @@ export function OrderDetailsView({
               <div className='t2OrderChainIcon'>
                 <ChainIcon chainId={chainId} imageSize={18} networks={networks} networksMeta={networksMeta} />
               </div>
-              <span>{chain.name || `Chain ${chainId}`}</span>
+              <span className='traySpan'>{chain.name || `Chain ${chainId}`}</span>
             </div>
           )}
           {detailRow('Status', orderStatusLabel(order))}

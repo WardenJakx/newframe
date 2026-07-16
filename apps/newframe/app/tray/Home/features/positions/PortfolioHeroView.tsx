@@ -25,8 +25,8 @@ export function PortfolioHeroView({
   return (
     <div className='t2Hero'>
       <div className='t2HeroValue'>
-        <span className='t2HeroDollars'>{`$${dollars}`}</span>
-        <span className='t2HeroCents'>{`.${cents || '00'}`}</span>
+        <span className='traySpan t2HeroDollars'>{`$${dollars}`}</span>
+        <span className='traySpan t2HeroCents'>{`.${cents || '00'}`}</span>
         <div
           aria-label='Refresh balances'
           className={refreshing ? 't2HeroRefresh t2HeroRefreshActive' : 't2HeroRefresh'}
@@ -55,7 +55,7 @@ export function PortfolioHeroView({
           title={canSend ? 'Send' : 'No assets available'}
         >
           <div className='t2HeroButtonIcon'>{svg.send(14)}</div>
-          <span>Send</span>
+          <span className='traySpan'>Send</span>
         </div>
         <div
           aria-disabled={!canTrade}
@@ -68,7 +68,7 @@ export function PortfolioHeroView({
           title={canTrade ? 'Trade' : TRADE_DISABLED_CHAIN_LABEL}
         >
           <div className='t2HeroButtonIcon'>{svg.sync(14)}</div>
-          <span>Trade</span>
+          <span className='traySpan'>Trade</span>
         </div>
       </div>
     </div>

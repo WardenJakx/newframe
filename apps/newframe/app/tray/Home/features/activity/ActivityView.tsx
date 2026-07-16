@@ -60,8 +60,8 @@ export function ActivityView({
             <div className='t2ActivityCopy'>
               <div className='t2ActivityTitle'>{title}</div>
               <div className='t2ActivitySubtitle'>
-                <span>{subtitle}</span>
-                {record.hash ? <span>{shortAddress(record.hash)}</span> : null}
+                <span className='traySpan'>{subtitle}</span>
+                {record.hash ? <span className='traySpan'>{shortAddress(record.hash)}</span> : null}
               </div>
             </div>
             <div className='t2ActivityMeta'>

@@ -53,7 +53,7 @@ export function HomeNavigationView({
         ) : (
           <div className='t2NetworkDots'>{enabledChainDots}</div>
         )}
-        <span>{selectedChain?.name || 'All Networks'}</span>
+        <span className='traySpan'>{selectedChain?.name || 'All Networks'}</span>
         <div className='t2NetworkPillChevron'>{svg.chevron(13)}</div>
       </div>
     </div>

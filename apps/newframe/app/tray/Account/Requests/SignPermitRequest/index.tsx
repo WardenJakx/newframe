@@ -100,7 +100,7 @@ const PermitOverview = ({ req, chainData, originName, open }: PermitOverviewProp
                   <ClusterRow>
                     <ClusterValue pointerEvents={true} onClick={() => copySpender()}>
                       <div className='clusterAddress'>
-                        <span className='clusterAddressRecipient'>
+                        <span className='traySpan clusterAddressRecipient'>
                           {spender.ens || (
                             <>
                               {spender.address.substring(0, 8)}
@@ -111,9 +111,9 @@ const PermitOverview = ({ req, chainData, originName, open }: PermitOverviewProp
                         </span>
                         <div className='clusterAddressRecipientFull'>
                           {showCopiedMessage ? (
-                            <span>{'Address Copied'}</span>
+                            <span className='traySpan'>{'Address Copied'}</span>
                           ) : (
-                            <span className='clusterFira'>{spender.address}</span>
+                            <span className='traySpan clusterFira'>{spender.address}</span>
                           )}
                         </div>
                       </div>

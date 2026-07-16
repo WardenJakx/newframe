@@ -54,7 +54,7 @@ export function SettingsSelectRow<T>({
         <div className='t2SettingsRowTitle'>{label}</div>
       </div>
       <div className='t2SettingsRowValue'>
-        <span>{current.text}</span>
+        <span className='traySpan'>{current.text}</span>
         {svg.arrowRight(10)}
       </div>
     </div>

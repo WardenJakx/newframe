@@ -463,7 +463,7 @@ export function Accounts() {
                 tabIndex={0}
               >
                 {state.accountExportCopied ? svg.check(13) : svg.copy(13)}
-                <span>{state.accountExportCopied ? 'Copied' : 'Copy key'}</span>
+                <span className='traySpan'>{state.accountExportCopied ? 'Copied' : 'Copy key'}</span>
               </div>
             ) : (
               <div
@@ -475,7 +475,7 @@ export function Accounts() {
                 tabIndex={0}
               >
                 {svg.key(13)}
-                <span>{state.accountExportLoading ? 'Unlocking' : 'Unlock export'}</span>
+                <span className='traySpan'>{state.accountExportLoading ? 'Unlocking' : 'Unlock export'}</span>
               </div>
             )}
             {hasSecret ? (
@@ -492,7 +492,7 @@ export function Accounts() {
                 tabIndex={0}
               >
                 {svg.eye(13)}
-                <span>{state.accountExportRevealed ? 'Hide key' : 'Reveal key'}</span>
+                <span className='traySpan'>{state.accountExportRevealed ? 'Hide key' : 'Reveal key'}</span>
               </div>
             ) : null}
           </div>
@@ -578,7 +578,7 @@ export function Accounts() {
                 tabIndex={0}
               >
                 {svg.plus(12)}
-                <span>Add account</span>
+                <span className='traySpan'>Add account</span>
               </div>
             </div>
             <div className='t2OverlayScroll t2AccountsScroll'>
@@ -629,12 +629,12 @@ export function Accounts() {
                       onDragStart={(e) => startAccountDrag(e, id)}
                       title='Drag to reorder'
                     >
-                      <span />
-                      <span />
-                      <span />
-                      <span />
-                      <span />
-                      <span />
+                      <span className='traySpan' />
+                      <span className='traySpan' />
+                      <span className='traySpan' />
+                      <span className='traySpan' />
+                      <span className='traySpan' />
+                      <span className='traySpan' />
                     </div>
                     <div className='t2AccountRowIcon'>{accountIcon(account, 18)}</div>
                     <div className='t2AccountRowInfo'>

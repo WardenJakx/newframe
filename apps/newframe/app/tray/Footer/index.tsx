@@ -92,7 +92,7 @@ export function Footer({ shared, step }: FooterProps) {
                 }}
               >
                 <div className='requestDeclineButton _txButton _txButtonBad'>
-                  <span>Decline</span>
+                  <span className='traySpan'>Decline</span>
                 </div>
               </div>
               <div
@@ -109,7 +109,7 @@ export function Footer({ shared, step }: FooterProps) {
                 }}
               >
                 <div className='requestSignButton _txButton'>
-                  <span>Approve</span>
+                  <span className='traySpan'>Approve</span>
                 </div>
               </div>
             </div>
@@ -135,7 +135,7 @@ export function Footer({ shared, step }: FooterProps) {
                 }}
               >
                 <div className='requestDeclineButton _txButton _txButtonBad'>
-                  <span>Decline</span>
+                  <span className='traySpan'>Decline</span>
                 </div>
               </div>
               <div
@@ -152,7 +152,7 @@ export function Footer({ shared, step }: FooterProps) {
                 }}
               >
                 <div className='requestSignButton _txButton'>
-                  <span>Switch</span>
+                  <span className='traySpan'>Switch</span>
                 </div>
               </div>
             </div>
@@ -166,7 +166,7 @@ export function Footer({ shared, step }: FooterProps) {
                 }}
               >
                 <div className='requestDeclineButton _txButton _txButtonBad'>
-                  <span>Decline</span>
+                  <span className='traySpan'>Decline</span>
                 </div>
               </div>
               <div
@@ -182,7 +182,7 @@ export function Footer({ shared, step }: FooterProps) {
                 }}
               >
                 <div className='requestSignButton _txButton'>
-                  <span>Review</span>
+                  <span className='traySpan'>Review</span>
                 </div>
               </div>
             </div>
@@ -198,7 +198,7 @@ export function Footer({ shared, step }: FooterProps) {
                 }}
               >
                 <div className='requestDeclineButton _txButton _txButtonBad'>
-                  <span>Decline</span>
+                  <span className='traySpan'>Decline</span>
                 </div>
               </div>
               <div
@@ -214,7 +214,7 @@ export function Footer({ shared, step }: FooterProps) {
                 }}
               >
                 <div className='requestSignButton _txButton'>
-                  <span>Review</span>
+                  <span className='traySpan'>Review</span>
                 </div>
               </div>
             </div>

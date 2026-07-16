@@ -72,8 +72,8 @@ export function AssetDetailsView({
           <div className='t2AssetHeroText'>
             <div className='t2AssetHeroName'>{asset.name || asset.symbol}</div>
             <div className='t2AssetHeroSub'>
-              <span>{asset.symbol}</span>
-              <span>{chain.name || `Chain ${asset.chainId}`}</span>
+              <span className='traySpan'>{asset.symbol}</span>
+              <span className='traySpan'>{chain.name || `Chain ${asset.chainId}`}</span>
             </div>
           </div>
         </div>
@@ -91,7 +91,7 @@ export function AssetDetailsView({
                   networksMeta={networksMeta}
                 />
               </div>
-              <span>{chain.name || `Chain ${asset.chainId}`}</span>
+              <span className='traySpan'>{chain.name || `Chain ${asset.chainId}`}</span>
             </div>
           )}
           {detailRow(
@@ -111,7 +111,7 @@ export function AssetDetailsView({
           tabIndex={canSend ? 0 : -1}
         >
           {svg.send(14)}
-          <span>Send</span>
+          <span className='traySpan'>Send</span>
         </div>
         <div
           aria-disabled={!canTrade}
@@ -124,7 +124,7 @@ export function AssetDetailsView({
           title={canTrade ? `Trade ${asset.symbol}` : TRADE_DISABLED_CHAIN_LABEL}
         >
           {svg.sync(14)}
-          <span>Trade</span>
+          <span className='traySpan'>Trade</span>
         </div>
       </div>
     </div>
