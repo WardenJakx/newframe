@@ -1,0 +1,49 @@
+.nf-input {
+  min-width: 0;
+  width: 100%;
+  height: var(--nf-size-input);
+  border: var(--nf-border-width-thin) solid transparent;
+  outline: 0;
+  border-radius: var(--nf-radius-default);
+  background: var(--color-bg-raised);
+  color: var(--color-text-primary);
+  padding: 0 var(--nf-space-4);
+}
+
+.nf-input::placeholder {
+  color: var(--color-text-disabled);
+}
+
+.nf-input:focus-visible {
+  border-color: var(--color-border-focus);
+}
+
+.nf-input--plain {
+  height: auto;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+}
+
+.nf-input--amount {
+  height: auto;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  line-height: var(--nf-line-height-amount);
+  padding: var(--nf-space-2) 0;
+}
+
+.nf-input--start {
+  text-align: left;
+}
+
+.nf-input--end {
+  text-align: right;
+}
+
+.nf-input--invalid {
+  border-color: var(--color-status-danger);
+  box-shadow: var(--nf-focus-danger);
+}

@@ -7,10 +7,20 @@
     "dist"
   ],
   "exports": {
-    "./asset-selector": {
-      "types": "./dist/asset-selector/AssetSelector.d.ts",
-      "import": "./dist/asset-selector/AssetSelector.js",
-      "default": "./dist/asset-selector/AssetSelector.js"
+    "./button": {
+      "types": "./dist/control/Button.d.ts",
+      "import": "./dist/control/Button.js",
+      "default": "./dist/control/Button.js"
+    },
+    "./choice-grid": {
+      "types": "./dist/control/ChoiceGrid.d.ts",
+      "import": "./dist/control/ChoiceGrid.js",
+      "default": "./dist/control/ChoiceGrid.js"
+    },
+    "./link": {
+      "types": "./dist/control/Link.d.ts",
+      "import": "./dist/control/Link.js",
+      "default": "./dist/control/Link.js"
     },
     "./header": {
       "types": "./dist/header/HeaderBar.d.ts",
@@ -27,40 +37,185 @@
       "import": "./dist/icon-button/IconButton.js",
       "default": "./dist/icon-button/IconButton.js"
     },
+    "./grid": {
+      "types": "./dist/layout/Grid.d.ts",
+      "import": "./dist/layout/Grid.js",
+      "default": "./dist/layout/Grid.js"
+    },
+    "./group": {
+      "types": "./dist/layout/Group.d.ts",
+      "import": "./dist/layout/Group.js",
+      "default": "./dist/layout/Group.js"
+    },
+    "./input": {
+      "types": "./dist/control/Input.d.ts",
+      "import": "./dist/control/Input.js",
+      "default": "./dist/control/Input.js"
+    },
+    "./select": {
+      "types": "./dist/control/Select.d.ts",
+      "import": "./dist/control/Select.js",
+      "default": "./dist/control/Select.js"
+    },
+    "./range": {
+      "types": "./dist/control/Range.d.ts",
+      "import": "./dist/control/Range.js",
+      "default": "./dist/control/Range.js"
+    },
     "./identity-control": {
       "types": "./dist/identity-control/IdentityControl.d.ts",
       "import": "./dist/identity-control/IdentityControl.js",
       "default": "./dist/identity-control/IdentityControl.js"
     },
-    "./menu": {
-      "types": "./dist/menu/Menu.d.ts",
-      "import": "./dist/menu/Menu.js",
-      "default": "./dist/menu/Menu.js"
+    "./menu-item": {
+      "types": "./dist/menu/MenuItem.d.ts",
+      "import": "./dist/menu/MenuItem.js",
+      "default": "./dist/menu/MenuItem.js"
+    },
+    "./menu-overlay": {
+      "types": "./dist/menu/MenuOverlay.d.ts",
+      "import": "./dist/menu/MenuOverlay.js",
+      "default": "./dist/menu/MenuOverlay.js"
     },
     "./root": {
       "types": "./dist/root/UIRoot.d.ts",
       "import": "./dist/root/UIRoot.js",
       "default": "./dist/root/UIRoot.js"
     },
-    "./settings-panel": {
-      "types": "./dist/settings-panel/SettingsPanel.d.ts",
-      "import": "./dist/settings-panel/SettingsPanel.js",
-      "default": "./dist/settings-panel/SettingsPanel.js"
+    "./scroll-area": {
+      "types": "./dist/layout/ScrollArea.d.ts",
+      "import": "./dist/layout/ScrollArea.js",
+      "default": "./dist/layout/ScrollArea.js"
+    },
+    "./page": {
+      "types": "./dist/layout/Page.d.ts",
+      "import": "./dist/layout/Page.js",
+      "default": "./dist/layout/Page.js"
     },
     "./side-panel": {
       "types": "./dist/side-panel/SidePanel.d.ts",
       "import": "./dist/side-panel/SidePanel.js",
       "default": "./dist/side-panel/SidePanel.js"
     },
+    "./side-panel-body": {
+      "types": "./dist/side-panel/SidePanelBody.d.ts",
+      "import": "./dist/side-panel/SidePanelBody.js",
+      "default": "./dist/side-panel/SidePanelBody.js"
+    },
+    "./side-panel-footer": {
+      "types": "./dist/side-panel/SidePanelFooter.d.ts",
+      "import": "./dist/side-panel/SidePanelFooter.js",
+      "default": "./dist/side-panel/SidePanelFooter.js"
+    },
+    "./side-panel-header": {
+      "types": "./dist/side-panel/SidePanelHeader.d.ts",
+      "import": "./dist/side-panel/SidePanelHeader.js",
+      "default": "./dist/side-panel/SidePanelHeader.js"
+    },
+    "./tabs": {
+      "types": "./dist/side-panel/Tabs.d.ts",
+      "import": "./dist/side-panel/Tabs.js",
+      "default": "./dist/side-panel/Tabs.js"
+    },
+    "./field": {
+      "types": "./dist/side-panel/Field.d.ts",
+      "import": "./dist/side-panel/Field.js",
+      "default": "./dist/side-panel/Field.js"
+    },
+    "./disclosure": {
+      "types": "./dist/side-panel/Disclosure.d.ts",
+      "import": "./dist/side-panel/Disclosure.js",
+      "default": "./dist/side-panel/Disclosure.js"
+    },
+    "./progress-steps": {
+      "types": "./dist/side-panel/ProgressSteps.d.ts",
+      "import": "./dist/side-panel/ProgressSteps.js",
+      "default": "./dist/side-panel/ProgressSteps.js"
+    },
     "./stack": {
       "types": "./dist/layout/Stack.d.ts",
       "import": "./dist/layout/Stack.js",
       "default": "./dist/layout/Stack.js"
     },
+    "./spacer": {
+      "types": "./dist/layout/Spacer.d.ts",
+      "import": "./dist/layout/Spacer.js",
+      "default": "./dist/layout/Spacer.js"
+    },
+    "./surface": {
+      "types": "./dist/surface/Surface.d.ts",
+      "import": "./dist/surface/Surface.js",
+      "default": "./dist/surface/Surface.js"
+    },
     "./text": {
       "types": "./dist/typography/Text.d.ts",
       "import": "./dist/typography/Text.js",
       "default": "./dist/typography/Text.js"
+    },
+    "./strong-text": {
+      "types": "./dist/typography/StrongText.d.ts",
+      "import": "./dist/typography/StrongText.js",
+      "default": "./dist/typography/StrongText.js"
+    },
+    "./small-text": {
+      "types": "./dist/typography/SmallText.d.ts",
+      "import": "./dist/typography/SmallText.js",
+      "default": "./dist/typography/SmallText.js"
+    },
+    "./output-text": {
+      "types": "./dist/typography/OutputText.d.ts",
+      "import": "./dist/typography/OutputText.js",
+      "default": "./dist/typography/OutputText.js"
+    },
+    "./image": {
+      "types": "./dist/media/Image.d.ts",
+      "import": "./dist/media/Image.js",
+      "default": "./dist/media/Image.js"
+    },
+    "./media-badge": {
+      "types": "./dist/media/MediaBadge.d.ts",
+      "import": "./dist/media/MediaBadge.js",
+      "default": "./dist/media/MediaBadge.js"
+    },
+    "./status-dot": {
+      "types": "./dist/media/StatusDot.d.ts",
+      "import": "./dist/media/StatusDot.js",
+      "default": "./dist/media/StatusDot.js"
+    },
+    "./selection": {
+      "types": "./dist/selection/Selection.d.ts",
+      "import": "./dist/selection/Selection.js",
+      "default": "./dist/selection/Selection.js"
+    },
+    "./selection-trigger": {
+      "types": "./dist/selection/SelectionTrigger.d.ts",
+      "import": "./dist/selection/SelectionTrigger.js",
+      "default": "./dist/selection/SelectionTrigger.js"
+    },
+    "./selection-chevron": {
+      "types": "./dist/selection/SelectionChevron.d.ts",
+      "import": "./dist/selection/SelectionChevron.js",
+      "default": "./dist/selection/SelectionChevron.js"
+    },
+    "./selection-menu": {
+      "types": "./dist/selection/SelectionMenu.d.ts",
+      "import": "./dist/selection/SelectionMenu.js",
+      "default": "./dist/selection/SelectionMenu.js"
+    },
+    "./selection-list": {
+      "types": "./dist/selection/SelectionList.d.ts",
+      "import": "./dist/selection/SelectionList.js",
+      "default": "./dist/selection/SelectionList.js"
+    },
+    "./selection-option": {
+      "types": "./dist/selection/SelectionOption.d.ts",
+      "import": "./dist/selection/SelectionOption.js",
+      "default": "./dist/selection/SelectionOption.js"
+    },
+    "./selection-footer": {
+      "types": "./dist/selection/SelectionFooter.d.ts",
+      "import": "./dist/selection/SelectionFooter.js",
+      "default": "./dist/selection/SelectionFooter.js"
     },
     "./tokens/colors": {
       "types": "./dist/tokens/colors.d.ts",

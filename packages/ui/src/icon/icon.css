@@ -7,18 +7,18 @@
 }
 
 .nf-icon--small {
-  width: 13px;
-  height: 13px;
+  width: var(--nf-size-icon-small);
+  height: var(--nf-size-icon-small);
 }
 
 .nf-icon--medium {
-  width: 16px;
-  height: 16px;
+  width: var(--nf-size-icon-medium);
+  height: var(--nf-size-icon-medium);
 }
 
 .nf-icon--large {
-  width: 18px;
-  height: 18px;
+  width: var(--nf-size-icon-large);
+  height: var(--nf-size-icon-large);
 }
 
 .nf-icon > svg {

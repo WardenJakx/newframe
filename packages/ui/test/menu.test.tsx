@@ -3,7 +3,8 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 
-import { MenuItem, MenuOverlay } from '../src/menu/Menu'
+import { MenuItem } from '../src/menu/MenuItem'
+import { MenuOverlay } from '../src/menu/MenuOverlay'
 
 function MenuHarness() {
   const [open, setOpen] = useState(false)

@@ -1,6 +1,8 @@
 import React from 'react'
-import { AssetSelectorImage, AssetSelectorPanel, AssetSelectorText } from '@newframe/ui/asset-selector'
-import { Icon } from '@newframe/ui/icon'
+import { Image } from '@newframe/ui/image'
+import { MediaBadge } from '@newframe/ui/media-badge'
+import { StatusDot } from '@newframe/ui/status-dot'
+import { Text } from '@newframe/ui/text'
 
 import { cachedImageUrl } from '../domain/imageCache'
 import type { ChainTokenIconSize, NetworkLike, NetworkMetaLike } from './tokenSelectorTypes'
@@ -51,9 +53,9 @@ export default function ChainTokenIcon({
   const renderChainBadge = () => {
     if (chainImageVisible) {
       return (
-        <AssetSelectorImage
+        <Image
           alt=''
-          src={cachedImageUrl(chainIconUrl)}
+          source={cachedImageUrl(chainIconUrl)}
           onError={() => {
             setFailedChainUrl(chainIconUrl)
             warnImageFailure('failed to load chain image', { chainId, symbol, url: chainIconUrl })
@@ -64,35 +66,31 @@ export default function ChainTokenIcon({
 
     if (ethChains.includes(chainName)) {
       return (
-        <AssetSelectorPanel variants='chainTokenIconChainGlyph'>
-          <Icon name='ethereum' size='small' />
-        </AssetSelectorPanel>
+        <Text decorative display='inline' role='caption'>
+          Ξ
+        </Text>
       )
     }
 
-    return <AssetSelectorPanel variants='chainTokenIconChainDot' />
+    return <StatusDot size={size === 'sm' ? 'small' : 'medium'} />
   }
 
   return (
-    <AssetSelectorPanel
-      aria-hidden='true'
-      variants={['chainTokenIcon', size === 'sm' ? 'chainTokenIconSm' : 'chainTokenIconMd']}
-    >
-      <AssetSelectorPanel variants='chainTokenIconInner'>
-        {tokenImageVisible ? (
-          <AssetSelectorImage
-            alt=''
-            src={cachedImageUrl(logoURI)}
-            onError={() => {
-              setFailedTokenUrl(logoURI)
-              warnImageFailure('failed to load token image', { chainId, symbol, url: logoURI })
-            }}
-          />
-        ) : (
-          <AssetSelectorText variants='chainTokenIconSymbol'>{symbolFallback(symbol)}</AssetSelectorText>
-        )}
-      </AssetSelectorPanel>
-      <AssetSelectorPanel variants='chainTokenIconChainBadge'>{renderChainBadge()}</AssetSelectorPanel>
-    </AssetSelectorPanel>
+    <MediaBadge badge={renderChainBadge()} decorative size={size === 'sm' ? 'small' : 'medium'}>
+      {tokenImageVisible ? (
+        <Image
+          alt=''
+          source={cachedImageUrl(logoURI)}
+          onError={() => {
+            setFailedTokenUrl(logoURI)
+            warnImageFailure('failed to load token image', { chainId, symbol, url: logoURI })
+          }}
+        />
+      ) : (
+        <Text align='center' display='inline' role={size === 'sm' ? 'micro' : 'detail'} truncate>
+          {symbolFallback(symbol)}
+        </Text>
+      )}
+    </MediaBadge>
   )
 }

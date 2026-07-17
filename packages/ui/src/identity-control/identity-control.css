@@ -1,7 +1,7 @@
 .nf-identity-control {
   display: flex;
   align-items: center;
-  max-width: 330px;
+  max-width: var(--nf-size-selection-menu);
   gap: var(--nf-space-2);
   padding: var(--nf-space-3);
   border-radius: var(--nf-radius-pill);
@@ -27,8 +27,8 @@
 
 .nf-identity-control__identity:focus-visible {
   border-radius: var(--nf-radius-pill);
-  outline: 2px solid var(--color-border-focus);
-  outline-offset: 2px;
+  outline: var(--nf-focus-outline-width) solid var(--color-border-focus);
+  outline-offset: var(--nf-focus-outline-offset);
 }
 
 .nf-identity-control__icon {

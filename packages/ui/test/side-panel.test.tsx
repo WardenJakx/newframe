@@ -2,7 +2,12 @@ import { describe, expect, it, mock } from 'bun:test'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
-import { PanelButton, PanelInput, PanelLabel, PanelSelect, PanelText } from '../src/side-panel/SidePanel'
+import { Button } from '../src/control/Button'
+import { Input } from '../src/control/Input'
+import { Select } from '../src/control/Select'
+import { Field } from '../src/side-panel/Field'
+import { Tabs } from '../src/side-panel/Tabs'
+import { Text } from '../src/typography/Text'
 
 describe('Side Panel controls', () => {
   it('keeps actions keyboard operable and honors native disabled behavior', async () => {
@@ -10,9 +15,9 @@ describe('Side Panel controls', () => {
     const user = userEvent.setup()
 
     render(
-      <PanelButton disabled onClick={onPress} variants='tradePrimaryButton'>
-        Review
-      </PanelButton>
+      <Button appearance='primary' disabled onPress={onPress}>
+        <Text>Review</Text>
+      </Button>
     )
 
     const button = screen.getByRole('button', { name: 'Review' })
@@ -28,12 +33,11 @@ describe('Side Panel controls', () => {
 
     render(
       <>
-        <PanelLabel>
-          <PanelText>Limit price</PanelText>
-          <PanelInput aria-invalid='true' required />
-        </PanelLabel>
-        <PanelSelect
-          aria-label='Time in force'
+        <Field invalid label='Limit price'>
+          <Input invalid required />
+        </Field>
+        <Select
+          label='Time in force'
           defaultValue='gtc'
           options={[
             { label: 'Good till cancelled', value: 'gtc' },
@@ -46,9 +50,29 @@ describe('Side Panel controls', () => {
     const input = screen.getByRole('textbox', { name: 'Limit price' })
     const select = screen.getByRole('combobox', { name: 'Time in force' })
     expect(input.getAttribute('aria-invalid')).toBe('true')
+    expect(input.getAttribute('aria-required')).toBe('true')
     expect((input as HTMLInputElement).required).toBe(true)
 
     await user.selectOptions(select, 'gtt')
     expect((select as HTMLSelectElement).value).toBe('gtt')
+  })
+
+  it('exposes tabs as a reusable accessible selection control', async () => {
+    const onSelect = mock(() => undefined)
+    const user = userEvent.setup()
+
+    render(
+      <Tabs
+        label='Order type'
+        items={[
+          { active: true, id: 'market', label: 'Market' },
+          { active: false, id: 'limit', label: 'Limit' }
+        ]}
+        onSelect={onSelect}
+      />
+    )
+
+    await user.click(screen.getByRole('tab', { name: 'Limit' }))
+    expect(onSelect).toHaveBeenCalledWith('limit')
   })
 })

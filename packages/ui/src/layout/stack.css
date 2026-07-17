@@ -1,12 +1,77 @@
 .nf-stack {
   display: flex;
+  min-width: 0;
+}
+
+.nf-stack--column {
   flex-direction: column;
+}
+
+.nf-stack--row {
+  flex-direction: row;
+}
+
+.nf-stack--gap-none {
+  gap: 0;
+}
+
+.nf-stack--gap-xsmall {
+  gap: var(--nf-space-2);
 }
 
 .nf-stack--gap-small {
   gap: var(--nf-space-4);
 }
 
+.nf-stack--gap-medium {
+  gap: var(--nf-space-6);
+}
+
 .nf-stack--gap-large {
   gap: var(--nf-space-9);
+}
+
+.nf-stack--align-start {
+  align-items: flex-start;
+}
+
+.nf-stack--align-center {
+  align-items: center;
+}
+
+.nf-stack--align-end {
+  align-items: flex-end;
+}
+
+.nf-stack--align-stretch {
+  align-items: stretch;
+}
+
+.nf-stack--justify-start {
+  justify-content: flex-start;
+}
+
+.nf-stack--justify-center {
+  justify-content: center;
+}
+
+.nf-stack--justify-end {
+  justify-content: flex-end;
+}
+
+.nf-stack--justify-between {
+  justify-content: space-between;
+}
+
+.nf-stack--grow {
+  flex: 1;
+}
+
+.nf-stack--wrap {
+  flex-wrap: wrap;
+}
+
+.nf-stack--equal > * {
+  min-width: 0;
+  flex: 1 1 0;
 }

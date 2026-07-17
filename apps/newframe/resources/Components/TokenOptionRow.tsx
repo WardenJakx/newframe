@@ -1,4 +1,5 @@
-import { AssetSelectorPanel, type AssetSelectorVariant } from '@newframe/ui/asset-selector'
+import { Stack } from '@newframe/ui/stack'
+import { Text } from '@newframe/ui/text'
 
 import ChainTokenIcon from './ChainTokenIcon'
 import type { NetworkLike, NetworkMetaLike, TokenSelectorItem } from './tokenSelectorTypes'
@@ -10,14 +11,6 @@ interface TokenOptionRowProps {
   showRightSubLabel?: boolean
 }
 
-function rightSubLabelVariants(label = ''): AssetSelectorVariant[] {
-  if (label.trim().startsWith('-')) {
-    return ['tokenOptionRowRightSubLabel', 'tokenOptionRowRightSubLabelDown']
-  }
-
-  return ['tokenOptionRowRightSubLabel', 'tokenOptionRowRightSubLabelUp']
-}
-
 export default function TokenOptionRow({
   item,
   networks,
@@ -27,7 +20,7 @@ export default function TokenOptionRow({
   const symbol = item.symbol || '?'
 
   return (
-    <AssetSelectorPanel variants='tokenOptionRow'>
+    <Stack align='center' direction='row' gap='large' grow>
       <ChainTokenIcon
         chainId={item.chainId}
         logoURI={item.logoURI}
@@ -36,18 +29,29 @@ export default function TokenOptionRow({
         size='md'
         symbol={symbol}
       />
-      <AssetSelectorPanel variants='tokenOptionRowText'>
-        <AssetSelectorPanel variants='tokenOptionRowSymbol'>{symbol}</AssetSelectorPanel>
-        <AssetSelectorPanel variants='tokenOptionRowAmount'>{item.amountLabel}</AssetSelectorPanel>
-      </AssetSelectorPanel>
-      <AssetSelectorPanel variants='tokenOptionRowRight'>
-        <AssetSelectorPanel variants='tokenOptionRowNotional'>{item.notionalLabel}</AssetSelectorPanel>
+      <Stack gap='xsmall' grow>
+        <Text role='control' truncate>
+          {symbol}
+        </Text>
+        <Text role='detail' tone='muted' truncate>
+          {item.amountLabel}
+        </Text>
+      </Stack>
+      <Stack align='end' gap='xsmall'>
+        <Text align='end' role='control' truncate>
+          {item.notionalLabel}
+        </Text>
         {showRightSubLabel && item.rightSubLabel ? (
-          <AssetSelectorPanel variants={rightSubLabelVariants(item.rightSubLabel)}>
+          <Text
+            align='end'
+            role='detail'
+            tone={item.rightSubLabel.trim().startsWith('-') ? 'danger' : 'accent'}
+            truncate
+          >
             {item.rightSubLabel}
-          </AssetSelectorPanel>
+          </Text>
         ) : null}
-      </AssetSelectorPanel>
-    </AssetSelectorPanel>
+      </Stack>
+    </Stack>
   )
 }

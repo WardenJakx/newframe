@@ -1,12 +1,20 @@
 export const typographyTokens = {
   'nf-font-family-body': "'MainFont', sans-serif",
   'nf-font-family-mono': "'FiraCode', monospace",
+  'nf-font-size-micro': '9px',
   'nf-font-size-caption': '10px',
   'nf-font-size-detail': '11px',
+  'nf-font-size-supporting': '12px',
   'nf-font-size-body': '13px',
   'nf-font-size-label': '14px',
+  'nf-font-size-control': '15px',
+  'nf-font-size-heading': '16px',
+  'nf-font-size-page-title': '20px',
+  'nf-font-size-amount': '28px',
   'nf-font-weight-body': '300',
-  'nf-font-weight-regular': '400',
-  'nf-font-weight-medium': '500',
-  'nf-letter-spacing-title': '1.5px'
+  'nf-font-weight-regular': '300',
+  'nf-font-weight-medium': '400',
+  'nf-font-weight-bold': '500',
+  'nf-letter-spacing-title': '1.5px',
+  'nf-line-height-amount': '34px'
 } as const

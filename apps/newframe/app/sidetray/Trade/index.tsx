@@ -1,18 +1,27 @@
 import React from 'react'
+import { Button } from '@newframe/ui/button'
+import { Disclosure } from '@newframe/ui/disclosure'
+import { Field } from '@newframe/ui/field'
+import { Grid } from '@newframe/ui/grid'
+import { Group } from '@newframe/ui/group'
 import { Icon } from '@newframe/ui/icon'
-import {
-  Panel,
-  PanelButton,
-  PanelInput,
-  PanelLabel,
-  PanelOutput,
-  PanelSelect,
-  PanelSmall,
-  PanelStrong,
-  PanelText,
-  type PanelVariant
-} from '@newframe/ui/side-panel'
+import { Input } from '@newframe/ui/input'
+import { OutputText } from '@newframe/ui/output-text'
+import { ProgressSteps } from '@newframe/ui/progress-steps'
+import { Select } from '@newframe/ui/select'
+import { SidePanel } from '@newframe/ui/side-panel'
+import { SidePanelBody } from '@newframe/ui/side-panel-body'
+import { SidePanelFooter } from '@newframe/ui/side-panel-footer'
+import { SidePanelHeader } from '@newframe/ui/side-panel-header'
+import { SmallText } from '@newframe/ui/small-text'
+import { Stack } from '@newframe/ui/stack'
+import { Spacer } from '@newframe/ui/spacer'
+import { StrongText } from '@newframe/ui/strong-text'
+import { Surface } from '@newframe/ui/surface'
+import { Tabs } from '@newframe/ui/tabs'
+import { Text } from '@newframe/ui/text'
 
+import { BalanceRange } from '../../../resources/Components/BalanceRange'
 import TokenSelector from '../../../resources/Components/TokenSelector'
 import {
   getTokenSelectorPage,
@@ -36,8 +45,7 @@ import {
 import {
   type FlashAsset,
   type FlashOrderType,
-  type FlashQuote,
-  type FlashStep
+  type FlashQuote
 } from '../../../resources/domain/flash/schemas'
 import { formatUnits, toBigInt } from '../../../resources/utils/numbers'
 import { createSideTrayWalletSelector } from '../../state/selectors/sideTrayWallet'
@@ -567,21 +575,11 @@ export default function Trade({ assetId, chainId }: TradeProps) {
     ]
 
     return (
-      <Panel variants='tradeTabsWrap'>
-        <Panel aria-label='Order type' variants='tradeTabs' role='tablist'>
-          {tabs.map((tab) => (
-            <PanelButton
-              aria-selected={tab.active}
-              variants={tab.active ? ['tradeTab', 'tradeTabActive'] : 'tradeTab'}
-              key={tab.label}
-              onClick={() => dispatch({ type: 'setOrderType', orderType: tab.orderType })}
-              role='tab'
-            >
-              {tab.label}
-            </PanelButton>
-          ))}
-        </Panel>
-      </Panel>
+      <Tabs
+        label='Order type'
+        items={tabs.map((tab) => ({ active: tab.active, id: tab.orderType, label: tab.label }))}
+        onSelect={(orderType) => dispatch({ type: 'setOrderType', orderType })}
+      />
     )
   }
 
@@ -593,7 +591,8 @@ export default function Trade({ assetId, chainId }: TradeProps) {
     label,
     placeholder,
     required = false,
-    suffix
+    suffix,
+    vertical = false
   }: {
     ariaLabel: string
     field:
@@ -610,31 +609,22 @@ export default function Trade({ assetId, chainId }: TradeProps) {
     placeholder: string
     required?: boolean
     suffix?: string
+    vertical?: boolean
   }) => {
     return (
-      <PanelLabel variants={invalid ? ['tradeOrderField', 'tradeOrderFieldInvalid'] : 'tradeOrderField'}>
-        <PanelText variants='tradeOrderFieldLabel'>
-          {label}
-          {required ? (
-            <PanelText aria-hidden='true' variants='tradeRequiredMark'>
-              *
-            </PanelText>
-          ) : null}
-        </PanelText>
-        <PanelText variants='tradeOrderFieldControl'>
-          <PanelInput
-            aria-invalid={invalid || undefined}
-            aria-label={ariaLabel}
-            aria-required={required || undefined}
-            inputMode={inputMode}
-            onChange={(e) => dispatch({ type: 'setOrderField', field, value: e.target.value })}
-            placeholder={placeholder}
-            required={required}
-            value={state[field]}
-          />
-          {suffix ? <PanelText variants='tradeOrderFieldSuffix'>{suffix}</PanelText> : null}
-        </PanelText>
-      </PanelLabel>
+      <Field invalid={invalid} label={label} required={required} suffix={suffix} vertical={vertical}>
+        <Input
+          align='end'
+          appearance='plain'
+          invalid={invalid}
+          label={ariaLabel}
+          inputMode={inputMode}
+          onChange={(e) => dispatch({ type: 'setOrderField', field, value: e.target.value })}
+          placeholder={placeholder}
+          required={required}
+          value={state[field]}
+        />
+      </Field>
     )
   }
 
@@ -643,7 +633,7 @@ export default function Trade({ assetId, chainId }: TradeProps) {
 
     if (state.orderType === FLASH_LIMIT_ORDER_TYPE) {
       return (
-        <Panel variants='tradeOrderFields'>
+        <Grid columns='one' gap='medium'>
           {renderOrderInput({
             ariaLabel: 'Limit price',
             field: 'limitNotionalPrice',
@@ -653,47 +643,51 @@ export default function Trade({ assetId, chainId }: TradeProps) {
             required: true,
             suffix: 'USD'
           })}
-        </Panel>
+        </Grid>
       )
     }
 
     if (state.orderType === FLASH_TWAP_ORDER_TYPE) {
       return (
-        <Panel variants='tradeOrderSection'>
-          <Panel variants='tradeOrderSectionTitle'>
-            Duration
-            <PanelText aria-hidden='true' variants='tradeRequiredMark'>
-              *
-            </PanelText>
-          </Panel>
-          <Panel variants={['tradeOrderFields', 'tradeOrderFieldsThree']}>
-            {renderOrderInput({
-              ariaLabel: 'TWAP duration days',
-              field: 'durationDays',
-              inputMode: 'numeric',
-              invalid: invalidTradeFields.duration,
-              label: 'Days',
-              placeholder: '0'
-            })}
-            {renderOrderInput({
-              ariaLabel: 'TWAP duration hours',
-              field: 'durationHours',
-              inputMode: 'numeric',
-              invalid: invalidTradeFields.duration,
-              label: 'Hours',
-              placeholder: '1'
-            })}
-            {renderOrderInput({
-              ariaLabel: 'TWAP duration minutes',
-              field: 'durationMinutes',
-              inputMode: 'numeric',
-              invalid: invalidTradeFields.duration,
-              label: 'Minutes',
-              placeholder: '0'
-            })}
-          </Panel>
-          <Panel variants='tradeOrderHint'>Minimum 5 minutes · Maximum 30 days</Panel>
-        </Panel>
+        <Surface border='subtle' padding='medium' radius='small' tone='card'>
+          <Stack gap='medium'>
+            <Text role='supporting'>
+              Duration{' '}
+              <Text decorative display='inline' role='supporting' tone='danger'>
+                *
+              </Text>
+            </Text>
+            <Grid columns='three' gap='medium' responsive>
+              {renderOrderInput({
+                ariaLabel: 'TWAP duration days',
+                field: 'durationDays',
+                inputMode: 'numeric',
+                invalid: invalidTradeFields.duration,
+                label: 'Days',
+                placeholder: '0'
+              })}
+              {renderOrderInput({
+                ariaLabel: 'TWAP duration hours',
+                field: 'durationHours',
+                inputMode: 'numeric',
+                invalid: invalidTradeFields.duration,
+                label: 'Hours',
+                placeholder: '1'
+              })}
+              {renderOrderInput({
+                ariaLabel: 'TWAP duration minutes',
+                field: 'durationMinutes',
+                inputMode: 'numeric',
+                invalid: invalidTradeFields.duration,
+                label: 'Minutes',
+                placeholder: '0'
+              })}
+            </Grid>
+            <Text role='detail' tone='secondary'>
+              Minimum 5 minutes · Maximum 30 days
+            </Text>
+          </Stack>
+        </Surface>
       )
     }
 
@@ -702,52 +696,71 @@ export default function Trade({ assetId, chainId }: TradeProps) {
       const delta = getTradeTriggerDeltaPercent(state.triggerNotionalPrice, state.quote?.targetNotionalPrice)
 
       return (
-        <Panel variants='tradeOrderSection'>
-          <Panel aria-label='TP or SL' variants='tradeTriggerKind' role='group'>
-            <PanelButton
-              variants={takeProfit ? 'tradeTriggerKindActive' : undefined}
-              onClick={() => dispatch({ type: 'setOrderType', orderType: FLASH_TAKE_PROFIT_ORDER_TYPE })}
-            >
-              Take profit
-            </PanelButton>
-            <PanelButton
-              variants={!takeProfit ? 'tradeTriggerKindActive' : undefined}
-              onClick={() => dispatch({ type: 'setOrderType', orderType: FLASH_STOP_LOSS_ORDER_TYPE })}
-            >
-              Stop loss
-            </PanelButton>
-          </Panel>
-          <Panel variants={['tradeOrderFields', 'tradeOrderFieldsThree', 'tradeOrderFieldsTrigger']}>
-            {renderOrderInput({
-              ariaLabel: takeProfit ? 'Take-profit trigger price' : 'Stop-loss trigger price',
-              field: 'triggerNotionalPrice',
-              invalid: invalidTradeFields.triggerPrice,
-              label: `${takeProfit ? 'TP' : 'SL'} trigger`,
-              placeholder: '0.00',
-              required: true,
-              suffix: 'USD'
-            })}
-            {renderOrderInput({
-              ariaLabel: takeProfit ? 'Take-profit limit price' : 'Stop-loss limit price',
-              field: 'limitNotionalPrice',
-              invalid: invalidTradeFields.limitPrice,
-              label: `${takeProfit ? 'TP' : 'SL'} limit`,
-              placeholder: 'Market',
-              suffix: 'USD'
-            })}
-            <PanelLabel variants='tradeOrderField'>
-              <PanelText variants='tradeOrderFieldLabel'>{takeProfit ? 'Gain' : 'Loss'}</PanelText>
-              <PanelOutput variants='tradeOrderOutput'>
-                {delta === null ? '—' : `${delta >= 0 ? '+' : ''}${delta.toFixed(2)}%`}
-              </PanelOutput>
-            </PanelLabel>
-          </Panel>
-          <Panel variants='tradeOrderHint'>
-            {delta === null
-              ? `Quoted against ${state.targetAsset.symbol}/USD`
-              : `${delta >= 0 ? '+' : ''}${delta.toFixed(2)}% from current price`}
-          </Panel>
-        </Panel>
+        <Surface border='subtle' padding='medium' radius='small' tone='card'>
+          <Stack gap='medium'>
+            <Group label='TP or SL'>
+              <Surface padding='small' radius='small' tone='subtle'>
+                <Stack direction='row' equal gap='xsmall'>
+                  <Button
+                    active={takeProfit}
+                    appearance='tab'
+                    onPress={() =>
+                      dispatch({ type: 'setOrderType', orderType: FLASH_TAKE_PROFIT_ORDER_TYPE })
+                    }
+                    pressed={takeProfit}
+                    size='small'
+                  >
+                    <Text align='center' role='supporting'>
+                      Take profit
+                    </Text>
+                  </Button>
+                  <Button
+                    active={!takeProfit}
+                    appearance='tab'
+                    onPress={() => dispatch({ type: 'setOrderType', orderType: FLASH_STOP_LOSS_ORDER_TYPE })}
+                    pressed={!takeProfit}
+                    size='small'
+                  >
+                    <Text align='center' role='supporting'>
+                      Stop loss
+                    </Text>
+                  </Button>
+                </Stack>
+              </Surface>
+            </Group>
+            <Grid columns='three' gap='medium' responsive>
+              {renderOrderInput({
+                ariaLabel: takeProfit ? 'Take-profit trigger price' : 'Stop-loss trigger price',
+                field: 'triggerNotionalPrice',
+                invalid: invalidTradeFields.triggerPrice,
+                label: `${takeProfit ? 'TP' : 'SL'} trigger`,
+                placeholder: '0.00',
+                required: true,
+                suffix: 'USD',
+                vertical: true
+              })}
+              {renderOrderInput({
+                ariaLabel: takeProfit ? 'Take-profit limit price' : 'Stop-loss limit price',
+                field: 'limitNotionalPrice',
+                invalid: invalidTradeFields.limitPrice,
+                label: `${takeProfit ? 'TP' : 'SL'} limit`,
+                placeholder: 'Market',
+                suffix: 'USD',
+                vertical: true
+              })}
+              <Field label={takeProfit ? 'Gain' : 'Loss'} vertical>
+                <OutputText align='end' role='numeric'>
+                  {delta === null ? '—' : `${delta >= 0 ? '+' : ''}${delta.toFixed(2)}%`}
+                </OutputText>
+              </Field>
+            </Grid>
+            <Text role='detail' tone='secondary'>
+              {delta === null
+                ? `Quoted against ${state.targetAsset.symbol}/USD`
+                : `${delta >= 0 ? '+' : ''}${delta.toFixed(2)}% from current price`}
+            </Text>
+          </Stack>
+        </Surface>
       )
     }
 
@@ -755,32 +768,36 @@ export default function Trade({ assetId, chainId }: TradeProps) {
       const delta = getTradeTriggerDeltaPercent(state.triggerNotionalPrice, state.quote?.targetNotionalPrice)
 
       return (
-        <Panel variants='tradeOrderSection'>
-          <Panel variants={['tradeOrderFields', 'tradeOrderFieldsTwo', 'tradeOrderFieldsTrigger']}>
-            {renderOrderInput({
-              ariaLabel: 'Stop trigger price',
-              field: 'triggerNotionalPrice',
-              invalid: invalidTradeFields.triggerPrice,
-              label: `${state.targetAsset.symbol}/USD trigger`,
-              placeholder: '0.00',
-              required: true,
-              suffix: 'USD'
-            })}
-            {renderOrderInput({
-              ariaLabel: 'Stop limit price',
-              field: 'limitNotionalPrice',
-              invalid: invalidTradeFields.limitPrice,
-              label: 'Limit price',
-              placeholder: 'Market',
-              suffix: 'USD'
-            })}
-          </Panel>
-          <Panel variants='tradeOrderHint'>
-            {delta === null
-              ? 'Leave limit blank for a stop-market order'
-              : `${delta >= 0 ? '+' : ''}${delta.toFixed(2)}% from current price`}
-          </Panel>
-        </Panel>
+        <Surface border='subtle' padding='medium' radius='small' tone='card'>
+          <Stack gap='medium'>
+            <Grid columns='two' gap='medium' responsive>
+              {renderOrderInput({
+                ariaLabel: 'Stop trigger price',
+                field: 'triggerNotionalPrice',
+                invalid: invalidTradeFields.triggerPrice,
+                label: `${state.targetAsset.symbol}/USD trigger`,
+                placeholder: '0.00',
+                required: true,
+                suffix: 'USD',
+                vertical: true
+              })}
+              {renderOrderInput({
+                ariaLabel: 'Stop limit price',
+                field: 'limitNotionalPrice',
+                invalid: invalidTradeFields.limitPrice,
+                label: 'Limit price',
+                placeholder: 'Market',
+                suffix: 'USD',
+                vertical: true
+              })}
+            </Grid>
+            <Text role='detail' tone='secondary'>
+              {delta === null
+                ? 'Leave limit blank for a stop-market order'
+                : `${delta >= 0 ? '+' : ''}${delta.toFixed(2)}% from current price`}
+            </Text>
+          </Stack>
+        </Surface>
       )
     }
 
@@ -801,16 +818,10 @@ export default function Trade({ assetId, chainId }: TradeProps) {
     }
 
     return (
-      <Panel variants='tradeSettingStack'>
-        <PanelLabel variants='tradeSettingRow'>
-          <PanelText>
-            Time in force
-            <PanelText aria-hidden='true' variants='tradeRequiredMark'>
-              *
-            </PanelText>
-          </PanelText>
-          <PanelSelect
-            aria-label='Time in force'
+      <Stack gap='medium'>
+        <Field label='Time in force' required>
+          <Select
+            label='Time in force'
             onChange={(e) => handleTimeInForceChange(e.target.value as 'gtc' | 'gtt')}
             options={[
               { label: 'Good till cancelled', value: 'gtc' },
@@ -818,20 +829,12 @@ export default function Trade({ assetId, chainId }: TradeProps) {
             ]}
             value={state.timeInForce}
           />
-        </PanelLabel>
+        </Field>
         {state.timeInForce === 'gtt' ? (
-          <PanelLabel variants='tradeSettingRow'>
-            <PanelText>
-              Expires
-              <PanelText aria-hidden='true' variants='tradeRequiredMark'>
-                *
-              </PanelText>
-            </PanelText>
-            <PanelInput
-              aria-invalid={invalidTradeFields.expireTime || undefined}
-              aria-label='Order expiry'
-              aria-required='true'
-              variants={invalidTradeFields.expireTime ? 'tradeSettingInputInvalid' : undefined}
+          <Field invalid={invalidTradeFields.expireTime} label='Expires' required>
+            <Input
+              label='Order expiry'
+              invalid={invalidTradeFields.expireTime}
               min={new Date().toISOString().slice(0, 16)}
               onChange={(e) =>
                 dispatch({ type: 'setOrderField', field: 'expireTime', value: e.target.value })
@@ -840,41 +843,33 @@ export default function Trade({ assetId, chainId }: TradeProps) {
               type='datetime-local'
               value={state.expireTime}
             />
-          </PanelLabel>
+          </Field>
         ) : null}
-      </Panel>
+      </Stack>
     )
   }
 
   const renderTradeAdvancedFields = () => {
     if (state.orderType === FLASH_MARKET_ORDER_TYPE) {
       return (
-        <PanelLabel variants='tradeSettingRow'>
-          <PanelText>Max slippage</PanelText>
-          <Panel
-            variants={
-              invalidTradeFields.slippage
-                ? ['tradeSlippageInput', 'tradeSlippageInputInvalid']
-                : 'tradeSlippageInput'
-            }
-          >
-            <PanelInput
-              aria-invalid={invalidTradeFields.slippage || undefined}
-              aria-label='Slippage'
-              inputMode='decimal'
-              onChange={(e) => dispatch({ type: 'settingsChanged', slippage: e.target.value })}
-              placeholder='Automatic'
-              value={state.slippage}
-            />
-            <PanelText>%</PanelText>
-          </Panel>
-        </PanelLabel>
+        <Field invalid={invalidTradeFields.slippage} label='Max slippage' suffix='%'>
+          <Input
+            align='end'
+            appearance='plain'
+            invalid={invalidTradeFields.slippage}
+            label='Slippage'
+            inputMode='decimal'
+            onChange={(e) => dispatch({ type: 'settingsChanged', slippage: e.target.value })}
+            placeholder='Automatic'
+            value={state.slippage}
+          />
+        </Field>
       )
     }
 
     if (state.orderType === FLASH_TWAP_ORDER_TYPE) {
       return (
-        <Panel variants='tradeSettingStack'>
+        <Stack gap='medium'>
           {renderOrderInput({
             ariaLabel: 'TWAP segments',
             field: 'twapBucketCount',
@@ -891,7 +886,7 @@ export default function Trade({ assetId, chainId }: TradeProps) {
             placeholder: 'Automatic',
             suffix: '%'
           })}
-        </Panel>
+        </Stack>
       )
     }
 
@@ -915,17 +910,20 @@ export default function Trade({ assetId, chainId }: TradeProps) {
         ariaLabel={`Select ${field} asset`}
         footer={
           rowsHidden > 0 ? (
-            <PanelButton
-              variants='tokenSelectorMore'
-              onClick={() =>
-                setAssetRowsVisible((rows) => ({
-                  ...rows,
-                  [field]: rows[field] + TOKEN_SELECTOR_ROWS_INCREMENT
-                }))
-              }
-            >
-              {`Show ${Math.min(TOKEN_SELECTOR_ROWS_INCREMENT, rowsHidden)} more assets`}
-            </PanelButton>
+            <Stack>
+              <Button
+                onPress={() =>
+                  setAssetRowsVisible((rows) => ({
+                    ...rows,
+                    [field]: rows[field] + TOKEN_SELECTOR_ROWS_INCREMENT
+                  }))
+                }
+              >
+                <Text align='center' role='supporting' tone='secondary'>
+                  {`Show ${Math.min(TOKEN_SELECTOR_ROWS_INCREMENT, rowsHidden)} more assets`}
+                </Text>
+              </Button>
+            </Stack>
           ) : null
         }
         items={items}
@@ -946,14 +944,16 @@ export default function Trade({ assetId, chainId }: TradeProps) {
     const nextSide = state.side === 'buy' ? 'SELL' : 'BUY'
 
     return (
-      <PanelButton
-        aria-label={`Switch to ${nextSide}`}
-        variants='tradeDirectionSwitch'
-        onClick={() => dispatch({ type: 'toggleSide' })}
+      <Button
+        label={`Switch to ${nextSide}`}
+        appearance='subtle'
+        onPress={() => dispatch({ type: 'toggleSide' })}
+        shape='circle'
+        size='compact'
         title={`Switch to ${nextSide}`}
       >
         <Icon name='swap' size='medium' />
-      </PanelButton>
+      </Button>
     )
   }
 
@@ -961,49 +961,13 @@ export default function Trade({ assetId, chainId }: TradeProps) {
     const percent = getTradeBalancePercent(asset, amount)
 
     return (
-      <Panel
-        variants={
-          state.side === 'buy'
-            ? ['tradeBalanceSlider', 'tradeBalanceSliderBuy']
-            : ['tradeBalanceSlider', 'tradeBalanceSliderSell']
-        }
-      >
-        <Panel variants='tradeBalanceSliderHeader'>
-          <PanelText>
-            Balance {getTradeDisplayBalance(asset)} {asset.symbol}
-          </PanelText>
-          <PanelLabel>
-            <PanelInput
-              aria-label={`${asset.symbol} balance percentage`}
-              inputMode='decimal'
-              max='100'
-              min='0'
-              onChange={(e) => handleSetTradeBalancePercent(asset, Number(e.target.value))}
-              type='number'
-              value={Number(percent.toFixed(2))}
-            />
-            <PanelText>%</PanelText>
-          </PanelLabel>
-        </Panel>
-        <PanelInput
-          aria-label={`${asset.symbol} amount percentage`}
-          variants='tradeBalanceRange'
-          data-direction={state.side}
-          max='100'
-          min='0'
-          onChange={(e) => handleSetTradeBalancePercent(asset, Number(e.target.value))}
-          step='0.1'
-          type='range'
-          value={percent}
-        />
-        <Panel aria-hidden='true' variants='tradeBalanceTicks'>
-          <PanelText>0%</PanelText>
-          <PanelText>25%</PanelText>
-          <PanelText>50%</PanelText>
-          <PanelText>75%</PanelText>
-          <PanelText>100%</PanelText>
-        </Panel>
-      </Panel>
+      <BalanceRange
+        label={asset.symbol}
+        balanceLabel={`Balance ${getTradeDisplayBalance(asset)} ${asset.symbol}`}
+        direction={state.side}
+        onChange={(value) => handleSetTradeBalancePercent(asset, value)}
+        value={percent}
+      />
     )
   }
 
@@ -1014,59 +978,65 @@ export default function Trade({ assetId, chainId }: TradeProps) {
     const isTarget = field === 'target'
     const editable = state.side === 'buy' ? field === 'contra' : field === 'target'
     const intent = isTarget ? getDirectionLabel(state.side) : getContraPreposition(state.side).toUpperCase()
-    const intentVariants: PanelVariant[] = isTarget
-      ? state.side === 'buy'
-        ? ['tradeIntentLine', 'tradeIntentBuy']
-        : ['tradeIntentLine', 'tradeIntentSell']
-      : ['tradeIntentLine']
+    const intentTone = isTarget ? (state.side === 'buy' ? 'special' : 'danger') : 'primary'
     const sideLocked = [
       FLASH_STOP_ORDER_TYPE,
       FLASH_STOP_LOSS_ORDER_TYPE,
       FLASH_TAKE_PROFIT_ORDER_TYPE
     ].includes(state.orderType)
 
-    const assetCardVariants: PanelVariant[] = [
-      'tradeAssetCard',
-      ...(editable ? (['tradeAssetCardEditable'] as const) : []),
-      ...(editable && state.side === 'buy' ? (['tradeAssetCardEditableBuy'] as const) : []),
-      ...(editable && state.side === 'sell' ? (['tradeAssetCardEditableSell'] as const) : []),
-      ...(editable && invalidTradeFields.amount ? (['tradeAssetCardInvalid'] as const) : [])
-    ]
+    const assetCardBorder =
+      editable && invalidTradeFields.amount
+        ? 'danger'
+        : editable && state.side === 'buy'
+          ? 'special'
+          : editable && state.side === 'sell'
+            ? 'danger'
+            : 'subtle'
 
     return (
-      <Panel variants={assetCardVariants}>
-        <Panel variants='tradeAssetCardHeader'>
-          <Panel variants={intentVariants}>
-            <PanelText>{intent}</PanelText>
+      <Surface border={assetCardBorder} padding='medium' radius='small' tone={editable ? 'raised' : 'card'}>
+        <Stack gap='medium'>
+          <Stack align='center' direction='row' gap='small'>
+            <Text role='label' tone={intentTone}>
+              {intent}
+            </Text>
             {isTarget && !sideLocked ? renderTradeDirectionSwitch() : null}
-          </Panel>
-        </Panel>
-        <Panel variants='tradeAssetAmountRow'>
-          {renderTradeAssetSelector(field, asset, oppositeAsset)}
-          <PanelInput
-            aria-label={editable ? `${asset.symbol} amount` : `Estimated ${asset.symbol} received`}
-            variants='tradeAmountInput'
-            inputMode='decimal'
-            onChange={
-              editable ? (e) => dispatch({ type: 'setInputAmount', inputAmount: e.target.value }) : undefined
-            }
-            placeholder='0'
-            readOnly={!editable}
-            spellCheck='false'
-            value={amount}
-          />
-        </Panel>
-        {editable ? (
-          renderTradeBalanceSlider(asset, amount)
-        ) : (
-          <Panel variants='tradeOutputNote'>
-            <PanelText>Est. received</PanelText>
-            {state.quote?.outputNotional ? (
-              <PanelStrong>~{formatTradeNotional(state.quote.outputNotional)}</PanelStrong>
-            ) : null}
-          </Panel>
-        )}
-      </Panel>
+          </Stack>
+          <Stack align='center' direction='row' gap='medium' justify='between'>
+            {renderTradeAssetSelector(field, asset, oppositeAsset)}
+            <Stack grow>
+              <Input
+                align='end'
+                appearance='amount'
+                label={editable ? `${asset.symbol} amount` : `Estimated ${asset.symbol} received`}
+                inputMode='decimal'
+                onChange={
+                  editable
+                    ? (e) => dispatch({ type: 'setInputAmount', inputAmount: e.target.value })
+                    : undefined
+                }
+                placeholder='0'
+                readOnly={!editable}
+                spellCheck={false}
+                value={amount}
+              />
+            </Stack>
+          </Stack>
+          {editable ? (
+            renderTradeBalanceSlider(asset, amount)
+          ) : (
+            <Stack align='center' direction='row' gap='medium' justify='end'>
+              <Text role='supporting' tone='secondary'>
+                Est. received
+              </Text>
+              {state.quote?.outputNotional ? (
+                <StrongText role='detail'>~{formatTradeNotional(state.quote.outputNotional)}</StrongText>
+              ) : null}
+            </Stack>
+          )}
+        </Stack>
+      </Surface>
     )
   }
 
@@ -1078,40 +1048,53 @@ export default function Trade({ assetId, chainId }: TradeProps) {
     const feeNotional = quote.estimatedFeeNotional
 
     return (
-      <Panel variants='tradeQuoteSummary'>
-        <Panel variants='tradeQuoteOutput'>
-          <Panel>
-            <PanelText>Est. output</PanelText>
-            <PanelSmall>Including estimated fees</PanelSmall>
-          </Panel>
-          <Panel>
-            <PanelStrong>
+      <Stack gap='large'>
+        <Stack align='start' direction='row' gap='large' justify='between'>
+          <Stack gap='xsmall'>
+            <Text role='label' tone='secondary'>
+              Est. output
+            </Text>
+            <SmallText role='caption' tone='secondary'>
+              Including estimated fees
+            </SmallText>
+          </Stack>
+          <Stack align='end' gap='xsmall'>
+            <StrongText align='end' role='output'>
               {quote.outputAmount} {quote.receiveAsset.symbol}
-            </PanelStrong>
-            <PanelSmall>~{formatTradeNotional(quote.outputNotional)}</PanelSmall>
-          </Panel>
-        </Panel>
-        <Panel variants='tradeQuoteRows'>
-          <Panel>
-            <PanelText>Est. price impact</PanelText>
-            <PanelStrong
-              variants={estimatedImpact !== null && estimatedImpact > 1 ? 'tradeQuoteWarning' : undefined}
+            </StrongText>
+            <SmallText align='end' role='caption' tone='secondary'>
+              ~{formatTradeNotional(quote.outputNotional)}
+            </SmallText>
+          </Stack>
+        </Stack>
+        <Stack gap='small'>
+          <Stack align='center' direction='row' gap='large' justify='between'>
+            <Text role='detail' tone='secondary'>
+              Est. price impact
+            </Text>
+            <StrongText
+              role='detail'
+              tone={estimatedImpact !== null && estimatedImpact > 1 ? 'danger' : 'primary'}
             >
               {estimatedImpact === null ? '—' : `${estimatedImpact.toFixed(2)}%`}
-            </PanelStrong>
-          </Panel>
-          <Panel>
-            <PanelText>Estimated fees</PanelText>
-            <PanelStrong>{feeNotional ? formatTradeNotional(feeNotional) : '—'}</PanelStrong>
-          </Panel>
+            </StrongText>
+          </Stack>
+          <Stack align='center' direction='row' gap='large' justify='between'>
+            <Text role='detail' tone='secondary'>
+              Estimated fees
+            </Text>
+            <StrongText role='detail'>{feeNotional ? formatTradeNotional(feeNotional) : '—'}</StrongText>
+          </Stack>
           {quote.targetNotionalPrice ? (
-            <Panel>
-              <PanelText>{quote.targetAsset.symbol}/USD</PanelText>
-              <PanelStrong>{formatTradeNotional(quote.targetNotionalPrice)}</PanelStrong>
-            </Panel>
+            <Stack align='center' direction='row' gap='large' justify='between'>
+              <Text role='detail' tone='secondary'>
+                {quote.targetAsset.symbol}/USD
+              </Text>
+              <StrongText role='detail'>{formatTradeNotional(quote.targetNotionalPrice)}</StrongText>
+            </Stack>
           ) : null}
-        </Panel>
-      </Panel>
+        </Stack>
+      </Stack>
     )
   }
 
@@ -1119,40 +1102,19 @@ export default function Trade({ assetId, chainId }: TradeProps) {
     const spentAsset = getTradeSpentAsset(state)
     const steps = state.quote?.steps || buildVisualTradeSteps(spentAsset, state.orderType, false)
 
-    return (
-      <Panel variants='tradeStepTracker'>
-        {steps.map((step: FlashStep, index: number) => (
-          <Panel variants={['tradeStep', `tradeStep${step.status}` as PanelVariant]} key={step.id}>
-            <Panel variants='tradeStepDot'>{index + 1}</Panel>
-            <PanelText>{step.label}</PanelText>
-          </Panel>
-        ))}
-      </Panel>
-    )
+    return <ProgressSteps steps={steps} />
   }
 
   const renderTradeAdvanced = () => {
     return (
-      <Panel variants='tradeAdvanced'>
-        <PanelButton variants='tradeAdvancedToggle' onClick={() => dispatch({ type: 'toggleAdvancedOpen' })}>
-          <PanelText>
-            <Icon name='settings' size='small' />
-          </PanelText>
-          <PanelText>Advanced</PanelText>
-          <Panel
-            variants={
-              state.advancedOpen
-                ? ['tradeAdvancedChevron', 'tradeAdvancedChevronOpen']
-                : 'tradeAdvancedChevron'
-            }
-          >
-            <Icon name='chevronUp' size='small' />
-          </Panel>
-        </PanelButton>
-        {state.advancedOpen ? (
-          <Panel variants='tradeAdvancedPanel'>{renderTradeAdvancedFields()}</Panel>
-        ) : null}
-      </Panel>
+      <Disclosure
+        icon='settings'
+        label='Advanced'
+        onToggle={() => dispatch({ type: 'toggleAdvancedOpen' })}
+        open={state.advancedOpen}
+      >
+        {renderTradeAdvancedFields()}
+      </Disclosure>
     )
   }
 
@@ -1167,51 +1129,56 @@ export default function Trade({ assetId, chainId }: TradeProps) {
     })
 
     return (
-      <Panel variants='tradeFooter'>
-        <PanelButton
-          variants={enabled ? 'tradePrimaryButton' : ['tradePrimaryButton', 'tradePrimaryButtonDisabled']}
-          disabled={!enabled}
-          onClick={reviewTrade}
-        >
-          {tradeValidationError && state.quote
-            ? 'Adjust order'
-            : getTradePrimaryLabel({
-                orderType: state.orderType,
-                pendingAction: state.pendingAction,
-                quote: state.quote,
-                quoteLoading: state.quoteLoading,
-                submitting: state.submitting
-              })}
-        </PanelButton>
-      </Panel>
+      <SidePanelFooter>
+        <Stack grow>
+          <Button appearance='primary' disabled={!enabled} onPress={reviewTrade} size='large'>
+            <Text align='center' role='action' tone='inverse'>
+              {tradeValidationError && state.quote
+                ? 'Adjust order'
+                : getTradePrimaryLabel({
+                    orderType: state.orderType,
+                    pendingAction: state.pendingAction,
+                    quote: state.quote,
+                    quoteLoading: state.quoteLoading,
+                    submitting: state.submitting
+                  })}
+            </Text>
+          </Button>
+        </Stack>
+      </SidePanelFooter>
     )
   }
 
   return (
-    <Panel variants='tradeApp'>
-      <Panel variants='sendHeader'>
-        <PanelButton aria-label='Close Trade' variants='sendBackButton' onClick={closeTrade}>
-          <Icon name='chevronLeft' size='large' />
-        </PanelButton>
-        <Panel variants='sendTitle'>Trade</Panel>
-        <Panel variants='sendHeaderSpacer' />
-      </Panel>
-      <Panel variants='tradeBody'>
-        <Panel variants='tradeTicket'>
+    <SidePanel>
+      <SidePanelHeader closeLabel='Close Trade' onClose={closeTrade} title='Trade' />
+      <SidePanelBody footerSpace='compact'>
+        <Stack gap='large' grow>
           {renderTradeTabs()}
           {renderTradeAssetCard('target')}
           {renderTradeAssetCard('contra')}
           {renderTradeOrderFields()}
           {renderTradeAdvanced()}
-        </Panel>
-        {renderTradeQuoteMeta()}
-        {state.error || tradeValidationError ? (
-          <Panel variants={['sendMessage', 'sendMessageError']}>{state.error || tradeValidationError}</Panel>
-        ) : null}
-        {state.status ? <Panel variants='sendMessage'>{state.status}</Panel> : null}
-        {renderTradeSteps()}
-      </Panel>
+          {state.quote ? (
+            <Surface border='subtle' padding='medium' radius='small' tone='transparent'>
+              {renderTradeQuoteMeta()}
+            </Surface>
+          ) : null}
+          {state.error || tradeValidationError ? (
+            <Text align='center' role='body' tone='danger'>
+              {state.error || tradeValidationError}
+            </Text>
+          ) : null}
+          {state.status ? (
+            <Text align='center' role='body' tone='secondary'>
+              {state.status}
+            </Text>
+          ) : null}
+          <Spacer />
+          {renderTradeSteps()}
+        </Stack>
+      </SidePanelBody>
       {renderTradeFooter()}
-    </Panel>
+    </SidePanel>
   )
 }

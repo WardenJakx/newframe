@@ -65,12 +65,19 @@ const migratedPilotFiles = new Set([
 ])
 const migratedSharedSideTrayFiles = new Set([
   path.join('apps', 'newframe', 'resources', 'Components', 'ChainTokenIcon.tsx'),
+  path.join('apps', 'newframe', 'resources', 'Components', 'BalanceRange.tsx'),
   path.join('apps', 'newframe', 'resources', 'Components', 'TokenOptionRow.tsx'),
   path.join('apps', 'newframe', 'resources', 'Components', 'TokenSelector.tsx')
 ])
 const migratedSideTrayFiles = (file: string) =>
   under(path.join('apps', 'newframe', 'app', 'sidetray'))(file) || migratedSharedSideTrayFiles.has(file)
+const migratedExtensionSettingsFiles = under(path.join('apps', 'newframe-extension', 'src', 'settings'))
 const uiSource = under(path.join('packages', 'ui', 'src'))
+const typographyCss = new Set([
+  path.join('packages', 'ui', 'src', 'typography', 'text.css'),
+  path.join('packages', 'ui', 'src', 'root', 'fonts.css'),
+  path.join('packages', 'ui', 'src', 'root', 'foundations.css')
+])
 
 const restorePackage = ['react', 'restore'].join('-')
 const genericActionChannel = ['tray', 'action'].join(':')
@@ -143,9 +150,9 @@ async function main() {
       }
     }
 
-    if (migratedPilotFiles.has(file) || migratedSideTrayFiles(file)) {
+    if (migratedPilotFiles.has(file) || migratedSideTrayFiles(file) || migratedExtensionSettingsFiles(file)) {
       const rawElement = source.match(
-        /<(?:a|button|div|header|img|input|label|option|output|select|small|span|strong|svg|textarea)\b/
+        /<(?:a|button|canvas|div|footer|form|h[1-6]|header|img|input|label|main|option|output|p|section|select|small|span|strong|svg|table|textarea)\b/
       )
       if (rawElement?.index !== undefined) {
         violations.push(
@@ -168,6 +175,40 @@ async function main() {
         violations.push(
           `${file}:${lineNumber(source, applicationImport.index)} packages/ui cannot import an application`
         )
+      }
+
+      const legacyVariantRegistry = source.match(/\b(?:AssetSelectorVariant|PanelVariant)\b/)
+      if (legacyVariantRegistry?.index !== undefined) {
+        violations.push(
+          `${file}:${lineNumber(source, legacyVariantRegistry.index)} UI primitives cannot expose application-shaped variant registries`
+        )
+      }
+
+      const inheritedNativeProps = source.match(
+        /\b(?:HTMLAttributes|ButtonHTMLAttributes|InputHTMLAttributes|SelectHTMLAttributes|ImgHTMLAttributes|AnchorHTMLAttributes)\s*</
+      )
+      if (inheritedNativeProps?.index !== undefined) {
+        violations.push(
+          `${file}:${lineNumber(source, inheritedNativeProps.index)} UI props must opt into supported behavior instead of inheriting native element props`
+        )
+      }
+
+      if (file.endsWith('.css') && !file.endsWith('tokens.generated.css')) {
+        const rawUnit = source.match(/(?<![A-Za-z0-9_-])-?\d+(?:\.\d+)?(?:px|rem|em|ms|s|deg)\b/)
+        if (rawUnit?.index !== undefined) {
+          violations.push(
+            `${file}:${lineNumber(source, rawUnit.index)} UI recipes must reference typed design tokens instead of raw unit values`
+          )
+        }
+      }
+
+      const componentTypography = source.match(/\bfont-(?:family|size|weight)\s*:/)
+      if (componentTypography?.index !== undefined) {
+        if (file.endsWith('.css') && !typographyCss.has(file)) {
+          violations.push(
+            `${file}:${lineNumber(source, componentTypography.index)} component CSS must use the shared typography primitives`
+          )
+        }
       }
     }
   }

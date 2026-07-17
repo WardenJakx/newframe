@@ -1,24 +1,23 @@
 /* globals chrome */
 
+import { Button } from '@newframe/ui/button'
+import { ChoiceGrid } from '@newframe/ui/choice-grid'
+import { Icon } from '@newframe/ui/icon'
 import { UIRoot } from '@newframe/ui/root'
-import {
-  SettingsAction,
-  SettingsConnectionAction,
-  SettingsDisclosure,
-  SettingsGroup,
-  SettingsHeading,
-  SettingsMessage,
-  SettingsMode,
-  SettingsSelectionGrid,
-  SettingsStatus,
-  SettingsSurface,
-  SettingsViewport
-} from '@newframe/ui/settings-panel'
+import { Stack } from '@newframe/ui/stack'
+import { Surface } from '@newframe/ui/surface'
+import { Text } from '@newframe/ui/text'
 import React, { useEffect } from 'react'
 import { createRoot } from 'react-dom/client'
 import { useStore } from 'zustand'
 
 import { frameStateStore, type FrameState } from '../frameState'
+import { SettingsConnectionAction } from './SettingsConnectionAction'
+import { SettingsDisclosure } from './SettingsDisclosure'
+import { SettingsMessage } from './SettingsMessage'
+import { SettingsMode } from './SettingsMode'
+import { SettingsPanel } from './SettingsPanel'
+import { SettingsStatus } from './SettingsStatus'
 
 const APPEAR_AS_MM = '__newframeAppearAsMM__'
 const LEGACY_APPEAR_AS_MM = '__frameAppearAsMM__'
@@ -157,7 +156,7 @@ export class SettingsView extends React.Component<SettingsViewProps, SettingsVie
     const isConnected = this.props.settings.connected
 
     return (
-      <SettingsGroup>
+      <Surface padding='small' radius='card' tone='card'>
         <SettingsConnectionAction
           disabled={!isConnected}
           imageSource={isConnected ? 'icons/icon96good.png' : 'icons/icon96moon.png'}
@@ -165,7 +164,7 @@ export class SettingsView extends React.Component<SettingsViewProps, SettingsVie
           onPress={() => chrome.runtime.sendMessage({ method: 'frame_summon', params: [] })}
           tone={isConnected ? 'success' : 'danger'}
         />
-      </SettingsGroup>
+      </Surface>
     )
   }
 
@@ -218,16 +217,20 @@ export class SettingsView extends React.Component<SettingsViewProps, SettingsVie
     if (!this.props.settings.siteConnected) return null
 
     return (
-      <SettingsAction
-        label='Disconnect this site'
+      <Button
+        appearance='danger'
         onPress={() =>
           chrome.runtime.sendMessage({
             tab: this.props.tab,
             method: 'frame_disconnect_current_site'
           })
         }
-        tone='danger'
-      />
+        size='large'
+      >
+        <Text align='center' role='action' tone='danger'>
+          Disconnect this site
+        </Text>
+      </Button>
     )
   }
 
@@ -238,7 +241,7 @@ export class SettingsView extends React.Component<SettingsViewProps, SettingsVie
     if (!tab) return null
 
     return (
-      <SettingsSelectionGrid
+      <ChoiceGrid
         label='Network'
         onSelect={(chainId) => {
           const chain = availableChains.find((candidate) => String(candidate.chainId) === chainId)
@@ -282,35 +285,40 @@ export class SettingsView extends React.Component<SettingsViewProps, SettingsVie
     const { protocol, origin } = parseOrigin(tab?.url)
 
     if (!isConnected) {
-      return <SettingsSurface spacing='separated'>{this.notConnected()}</SettingsSurface>
+      return this.notConnected()
     }
 
     if (!isSupportedTab) {
-      return <SettingsSurface spacing='separated'>{this.unsupportedTab(protocol + origin)}</SettingsSurface>
+      return this.unsupportedTab(protocol + origin)
     }
 
     const detailsOpen = this.state.connectionDetailsOpen
 
     return (
-      <SettingsSurface spacing='separated'>
-        <SettingsHeading>{origin}</SettingsHeading>
-        <SettingsGroup>
-          {this.siteConnection()}
-          {this.connectionDisclosure()}
-          {detailsOpen && this.props.settings.availableChains.length > 0 ? this.chainSelect() : null}
-          {detailsOpen ? this.disconnectButton() : null}
-          {this.appearAsMetamaskToggle()}
-        </SettingsGroup>
-      </SettingsSurface>
+      <Surface border='subtle' elevation='default' padding='medium' radius='card' tone='secondary'>
+        <Stack gap='medium'>
+          <Stack align='center' direction='row' gap='small' justify='center'>
+            <Icon name='window' size='small' />
+            <Text role='heading'>{origin}</Text>
+          </Stack>
+          <Stack gap='xsmall'>
+            {this.siteConnection()}
+            {this.connectionDisclosure()}
+            {detailsOpen && this.props.settings.availableChains.length > 0 ? this.chainSelect() : null}
+            {detailsOpen ? this.disconnectButton() : null}
+            {this.appearAsMetamaskToggle()}
+          </Stack>
+        </Stack>
+      </Surface>
     )
   }
 
   override render() {
     return (
-      <SettingsViewport>
-        <SettingsSurface>{this.frameConnected()}</SettingsSurface>
+      <SettingsPanel>
+        {this.frameConnected()}
         {this.renderMainPanel()}
-      </SettingsViewport>
+      </SettingsPanel>
     )
   }
 }

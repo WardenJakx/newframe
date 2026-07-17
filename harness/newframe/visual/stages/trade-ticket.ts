@@ -84,11 +84,7 @@ export const tradeTicketStage: VisualStage = {
     if ((await takeProfitTrigger.getAttribute('aria-invalid')) !== 'true') {
       driver.fail('Missing take-profit trigger is not marked invalid')
     }
-    if (
-      !(await takeProfitTrigger.evaluate((input) =>
-        input.closest('label')?.classList.contains('tradeOrderFieldInvalid')
-      ))
-    ) {
+    if (!(await takeProfitTrigger.evaluate((input) => input.closest('label')?.dataset.invalid === 'true'))) {
       driver.fail('Missing take-profit trigger does not have an error outline')
     }
     await driver.screenshot(tradePage, '10f-trade-tp-sl.png')

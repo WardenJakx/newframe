@@ -1,26 +1,11 @@
 @keyframes nf-menu-overlay-show {
   0% {
     opacity: 0;
-  }
-  15.82% {
-    opacity: 0;
-    transform: matrix3d(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, -9.026, 0, 0, 1);
-  }
-  21.02% {
-    transform: matrix3d(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, -19.292, 0, 0, 1);
-  }
-  35.34% {
-    transform: matrix3d(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, -3.681, 0, 0, 1);
-  }
-  49.55% {
-    opacity: 1;
-    transform: matrix3d(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 2.594, 0, 0, 1);
-  }
-  78.18% {
-    transform: matrix3d(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, -0.018, 0, 0, 1);
+    transform: translateX(calc(-1 * var(--nf-motion-distance-overlay)));
   }
   100% {
-    transform: matrix3d(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
+    opacity: 1;
+    transform: translateX(0);
   }
 }
 
@@ -80,8 +65,8 @@
 }
 
 .nf-menu-item:focus-visible {
-  outline: 2px solid var(--color-border-focus);
-  outline-offset: 2px;
+  outline: var(--nf-focus-outline-width) solid var(--color-border-focus);
+  outline-offset: var(--nf-focus-outline-offset);
 }
 
 .nf-menu-item--danger {
@@ -123,16 +108,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 20px;
-  height: 20px;
+  min-width: var(--nf-space-10);
+  height: var(--nf-space-10);
   padding: 0 var(--nf-space-3);
   border-radius: var(--nf-radius-pill);
-  color: var(--color-text-muted);
-  font-family: var(--nf-font-family-mono);
-  font-size: var(--nf-font-size-detail);
   background: var(--color-bg-primary);
-}
-
-.nf-menu-item__badge--active {
-  color: var(--color-action-primary);
 }

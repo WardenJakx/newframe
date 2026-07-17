@@ -511,24 +511,24 @@ export class NewframeDriver {
 
   async assertTradeBalanceDirectionColor(page: Page) {
     const colors = await page.evaluate(() => {
-      const slider = document.querySelector<HTMLInputElement>('.tradeBalanceRange')
-      const sliderWrap = slider?.closest('.tradeBalanceSlider')
-      const intent = document.querySelector(
-        sliderWrap?.classList.contains('tradeBalanceSliderBuy') ? '.tradeIntentBuy' : '.tradeIntentSell'
+      const slider = document.querySelector<HTMLInputElement>(
+        'input[type="range"][aria-label$=" amount percentage"]'
+      )
+      const tone = slider?.dataset.tone || ''
+      const side = tone === 'special' ? 'buy' : tone === 'danger' ? 'sell' : ''
+      const intentLabel = side === 'buy' ? 'BUY' : side === 'sell' ? 'SELL' : ''
+      const intent = Array.from(document.querySelectorAll<HTMLElement>('[data-tone]')).find(
+        (element) => element.textContent?.trim() === intentLabel
       )
 
       return {
         accent: slider ? getComputedStyle(slider).getPropertyValue('accent-color') : '',
         intent: intent ? getComputedStyle(intent).color : '',
-        side: sliderWrap?.classList.contains('tradeBalanceSliderBuy')
-          ? 'buy'
-          : sliderWrap?.classList.contains('tradeBalanceSliderSell')
-            ? 'sell'
-            : ''
+        side
       }
     })
 
-    if (!colors.side) this.fail('Trade balance slider is missing a BUY/SELL direction class')
+    if (!colors.side) this.fail('Trade balance slider is missing its direction state')
     if (!colors.accent || colors.accent !== colors.intent) {
       this.fail(
         `Trade ${colors.side} balance slider color (${colors.accent || 'missing'}) does not match its intent (${colors.intent || 'missing'})`

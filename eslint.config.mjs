@@ -88,6 +88,12 @@ export default [
   browserGlobalsConfig({ basePath: ui, files: ['src/**/*.{ts,tsx}'] }),
   ...typescriptConfigs({ basePath: ui, tsconfigRootDir: workspacePath('./packages/ui') }),
   ...reactConfigs({ basePath: ui, files: ['src/**/*.tsx', 'test/**/*.tsx'], version: '19.2' }),
+  {
+    files: [`${ui}/src/**/*.tsx`],
+    rules: {
+      'react/no-multi-comp': ['error', { ignoreStateless: false }]
+    }
+  },
   testGlobalsConfig({ basePath: ui, files: ['test/**/*.{ts,tsx}'] }),
 
   nodeGlobalsConfig({

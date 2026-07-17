@@ -325,7 +325,7 @@ describe('Trade', () => {
 
     expect(slider.min).toBe('0')
     expect(slider.max).toBe('100')
-    expect(slider.getAttribute('data-direction')).toBe('sell')
+    expect(slider.getAttribute('data-tone')).toBe('danger')
     fireEvent.change(slider, { target: { value: '50' } })
 
     expect(amount.value).toBe('0.5')
@@ -337,7 +337,7 @@ describe('Trade', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Switch to BUY' }))
     const buySlider = screen.getByLabelText('USDC amount percentage')
-    expect(buySlider.getAttribute('data-direction')).toBe('buy')
+    expect(buySlider.getAttribute('data-tone')).toBe('special')
   })
 
   it('signs a quoted permit before the order and echoes both typed-data payloads', async () => {
@@ -441,7 +441,7 @@ describe('Trade', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'Limit' }))
     const limitPrice = screen.getByLabelText('Limit price') as HTMLInputElement
     expect(limitPrice.required).toBe(true)
-    expect(screen.getByText('*', { selector: '.tradeRequiredMark' })).toBeTruthy()
+    expect(limitPrice.labels?.[0]?.textContent).toContain('*')
     expect(screen.queryByLabelText('Limit order type')).toBe(null)
     fireEvent.click(screen.getByRole('button', { name: 'Advanced' }))
     expect((screen.getByLabelText('Time in force') as HTMLSelectElement).value).toBe('gtc')
@@ -485,7 +485,8 @@ describe('Trade', () => {
     expect(screen.getByText('Enter a trigger price.')).toBeTruthy()
     expect(trigger.getAttribute('aria-invalid')).toBe('true')
     expect(limit.getAttribute('aria-invalid')).toBe(null)
-    expect(screen.getAllByText('*', { selector: '.tradeRequiredMark' })).toHaveLength(1)
+    expect(trigger.labels?.[0]?.textContent).toContain('*')
+    expect(limit.labels?.[0]?.textContent).not.toContain('*')
   })
 
   it('stays mounted when a newly created account is selected before balances exist', async () => {

@@ -1,11 +1,12 @@
 import React from 'react'
-import {
-  AssetSelectorButton,
-  AssetSelectorPanel,
-  AssetSelectorText,
-  type AssetSelectorVariant
-} from '@newframe/ui/asset-selector'
-import { Icon } from '@newframe/ui/icon'
+import { Selection } from '@newframe/ui/selection'
+import { SelectionChevron } from '@newframe/ui/selection-chevron'
+import { SelectionFooter } from '@newframe/ui/selection-footer'
+import { SelectionList } from '@newframe/ui/selection-list'
+import { SelectionMenu } from '@newframe/ui/selection-menu'
+import { SelectionOption } from '@newframe/ui/selection-option'
+import { SelectionTrigger } from '@newframe/ui/selection-trigger'
+import { Text } from '@newframe/ui/text'
 
 import ChainTokenIcon from './ChainTokenIcon'
 import TokenOptionRow from './TokenOptionRow'
@@ -136,23 +137,16 @@ export default function TokenSelector({
 
   const activeOptionId =
     open && items[highlightedIndex] ? `${listboxId}-${items[highlightedIndex].id}` : undefined
-  const triggerVariants: AssetSelectorVariant[] = [
-    'tokenSelectorTrigger',
-    ...(selectedItem ? [] : (['tokenSelectorTriggerPlaceholder'] as const)),
-    ...(canOpen ? [] : (['tokenSelectorTriggerDisabled'] as const))
-  ]
-
   return (
-    <AssetSelectorPanel variants='tokenSelector' ref={rootRef} onKeyDown={handleKeyDown}>
-      <AssetSelectorButton
-        aria-activedescendant={activeOptionId}
-        aria-controls={open ? listboxId : undefined}
-        aria-expanded={open}
-        aria-haspopup='listbox'
-        aria-label={ariaLabel}
-        variants={triggerVariants}
+    <Selection ref={rootRef} onKeyDown={handleKeyDown}>
+      <SelectionTrigger
+        activeDescendant={activeOptionId}
+        controls={open ? listboxId : undefined}
+        expanded={open}
+        label={ariaLabel}
+        placeholder={!selectedItem}
         disabled={!canOpen}
-        onClick={() => setOpen(!open)}
+        onPress={() => setOpen(!open)}
       >
         {selectedItem ? (
           <ChainTokenIcon
@@ -164,43 +158,30 @@ export default function TokenSelector({
             symbol={selectedItem.symbol}
           />
         ) : null}
-        <AssetSelectorText variants='tokenSelectorTriggerSymbol'>
+        <Text display='inline' role='control' truncate>
           {selectedItem?.symbol || 'Select token'}
-        </AssetSelectorText>
-        <AssetSelectorText variants='tokenSelectorChevron'>
-          <Icon name='chevronUp' size='small' />
-        </AssetSelectorText>
-      </AssetSelectorButton>
+        </Text>
+        <SelectionChevron />
+      </SelectionTrigger>
       {open && canOpen ? (
-        <AssetSelectorPanel variants='tokenSelectorMenu'>
-          <AssetSelectorPanel
-            aria-label={ariaLabel}
-            variants='tokenSelectorListbox'
-            id={listboxId}
-            role='listbox'
-          >
+        <SelectionMenu>
+          <SelectionList id={listboxId} label={ariaLabel}>
             {items.map((item, index) => (
-              <AssetSelectorButton
-                aria-selected={item.id === selectedId}
-                variants={
-                  index === highlightedIndex
-                    ? ['tokenSelectorOption', 'tokenSelectorOptionHighlighted']
-                    : 'tokenSelectorOption'
-                }
+              <SelectionOption
+                highlighted={index === highlightedIndex}
                 id={`${listboxId}-${item.id}`}
                 key={item.id}
-                onClick={() => selectItem(item.id)}
-                onMouseEnter={() => setHighlightedIndex(index)}
-                role='option'
-                tabIndex={-1}
+                onHighlight={() => setHighlightedIndex(index)}
+                onSelect={() => selectItem(item.id)}
+                selected={item.id === selectedId}
               >
                 <TokenOptionRow item={item} networks={networks} networksMeta={networksMeta} />
-              </AssetSelectorButton>
+              </SelectionOption>
             ))}
-          </AssetSelectorPanel>
-          {footer ? <AssetSelectorPanel variants='tokenSelectorFooter'>{footer}</AssetSelectorPanel> : null}
-        </AssetSelectorPanel>
+          </SelectionList>
+          {footer ? <SelectionFooter>{footer}</SelectionFooter> : null}
+        </SelectionMenu>
       ) : null}
-    </AssetSelectorPanel>
+    </Selection>
   )
 }

@@ -67,7 +67,7 @@ describe('ChainTokenIcon', () => {
       />
     )
 
-    const dot = document.querySelector('.chainTokenIconChainDot') as HTMLElement
+    const dot = document.querySelector('[data-tone="accent"]') as HTMLElement
     expect(dot).not.toBeNull()
     expect(dot.getAttribute('style')).toBeNull()
   })

@@ -1,34 +1,16 @@
-import { cva, type VariantProps } from 'class-variance-authority'
-import type { ReactNode } from 'react'
-
 import './text.css'
+import { textClasses, type TypographyProps } from './textRecipe.js'
 
-const textRecipe = cva('nf-text', {
-  variants: {
-    role: {
-      body: 'nf-text--body',
-      label: 'nf-text--label',
-      detail: 'nf-text--detail',
-      code: 'nf-text--code',
-      title: 'nf-text--title'
-    },
-    tone: {
-      primary: 'nf-text--primary',
-      muted: 'nf-text--muted',
-      danger: 'nf-text--danger'
-    },
-    truncate: {
-      true: 'nf-text--truncate',
-      false: null
-    }
-  },
-  defaultVariants: { role: 'body', tone: 'primary', truncate: false }
-})
+export type TextProps = TypographyProps
 
-export type TextProps = VariantProps<typeof textRecipe> & {
-  children: ReactNode
-}
-
-export function Text({ children, role, tone, truncate }: TextProps) {
-  return <span className={textRecipe({ role, tone, truncate })}>{children}</span>
+export function Text({ align, children, decorative = false, display, role, tone, truncate }: TextProps) {
+  return (
+    <span
+      aria-hidden={decorative || undefined}
+      className={textClasses({ align, display, role, tone, truncate })}
+      data-tone={tone ?? undefined}
+    >
+      {children}
+    </span>
+  )
 }

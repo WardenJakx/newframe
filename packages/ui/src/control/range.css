@@ -1,0 +1,19 @@
+.nf-range {
+  width: 100%;
+  height: var(--nf-size-range);
+  margin: var(--nf-space-1) 0 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+.nf-range[data-tone='accent'] {
+  accent-color: var(--color-action-primary);
+}
+
+.nf-range[data-tone='danger'] {
+  accent-color: var(--color-status-danger);
+}
+
+.nf-range[data-tone='special'] {
+  accent-color: var(--color-status-special);
+}

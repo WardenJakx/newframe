@@ -7,8 +7,11 @@ import {
   systemColors,
   type ColorReference
 } from '../src/tokens/colors.ts'
+import { borderTokens } from '../src/tokens/borders.ts'
+import { elevationTokens } from '../src/tokens/elevation.ts'
 import { layerTokens } from '../src/tokens/layers.ts'
 import { motionTokens } from '../src/tokens/motion.ts'
+import { opacityTokens } from '../src/tokens/opacity.ts'
 import { radiusTokens } from '../src/tokens/radius.ts'
 import { sizingTokens } from '../src/tokens/sizing.ts'
 import { spacingTokens } from '../src/tokens/spacing.ts'
@@ -42,7 +45,10 @@ export function generateTokensCss() {
     ...variables(spacingTokens),
     ...variables(typographyTokens),
     ...variables(radiusTokens),
+    ...variables(borderTokens),
+    ...variables(elevationTokens),
     ...variables(motionTokens),
+    ...variables(opacityTokens),
     ...variables(sizingTokens),
     ...variables(layerTokens),
     '}',

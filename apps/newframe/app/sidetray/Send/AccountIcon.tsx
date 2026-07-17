@@ -1,5 +1,7 @@
 import { Icon, type IconName } from '@newframe/ui/icon'
-import { Panel } from '@newframe/ui/side-panel'
+import { Stack } from '@newframe/ui/stack'
+import { Surface } from '@newframe/ui/surface'
+import { Text } from '@newframe/ui/text'
 
 export function signerIcon(type: string): IconName {
   const signerType = (type || '').toLowerCase()
@@ -14,8 +16,12 @@ export function signerIcon(type: string): IconName {
 
 export default function AccountIcon({ account }: { account?: { lastSignerType?: string } | null }) {
   return (
-    <Panel variants='sendAccountIcon'>
-      <Icon name={signerIcon(account?.lastSignerType || '')} size='medium' />
-    </Panel>
+    <Surface padding='small' radius='pill' tone='control'>
+      <Stack align='center' direction='row' gap='none' justify='center'>
+        <Text display='inline' tone='accent'>
+          <Icon name={signerIcon(account?.lastSignerType || '')} size='medium' />
+        </Text>
+      </Stack>
+    </Surface>
   )
 }

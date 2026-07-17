@@ -46,6 +46,6 @@
 }
 
 .nf-icon-button:focus-visible {
-  outline: 2px solid var(--color-border-focus);
-  outline-offset: 2px;
+  outline: var(--nf-focus-outline-width) solid var(--color-border-focus);
+  outline-offset: var(--nf-focus-outline-offset);
 }
