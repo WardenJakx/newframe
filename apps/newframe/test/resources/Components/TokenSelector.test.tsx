@@ -28,6 +28,7 @@ const items: TokenSelectorItem[] = [
   {
     id: 'long',
     symbol: 'abcDEFG',
+    searchText: 'Long Token 0x1234',
     amountLabel: '2.00',
     notionalLabel: '$2.00',
     chainId: 1
@@ -133,6 +134,23 @@ describe('TokenSelector', () => {
     fireEvent.mouseDown(screen.getByRole('button', { name: 'outside' }))
 
     expect(screen.queryByRole('listbox')).toBeNull()
+  })
+
+  it('filters tokens by metadata and keeps the menu open when there are no matches', async () => {
+    const { user } = render(<ControlledSelector />)
+
+    await user.click(screen.getByRole('button', { name: 'Choose token' }))
+    await user.type(screen.getByLabelText('Search tokens'), 'long token')
+
+    expect(screen.getAllByRole('option')).toHaveLength(1)
+    expect(screen.getByRole('option').textContent).toContain('abcDEFG')
+
+    await user.clear(screen.getByLabelText('Search tokens'))
+    await user.type(screen.getByLabelText('Search tokens'), 'missing')
+
+    expect(screen.getByRole('listbox')).toBeTruthy()
+    expect(screen.queryAllByRole('option')).toHaveLength(0)
+    expect(screen.getByText('No tokens found')).toBeTruthy()
   })
 
   it('warns and renders the placeholder when selectedId is not in items', () => {

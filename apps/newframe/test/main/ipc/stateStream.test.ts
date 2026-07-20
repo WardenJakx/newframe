@@ -193,6 +193,16 @@ describe('renderer state stream', () => {
     state.main.currentAccount = id
     state.main.balances[id] = []
     state.main.portfolioApiKey = 'secret-api-key'
+    state.main.tokens.custom = [
+      {
+        address: '0x00000000000000000000000000000000000000aa',
+        chainId: 1,
+        decimals: 6,
+        name: 'Custom Dollar',
+        symbol: 'CUSD'
+      }
+    ]
+    state.main.tokens.known[id] = [{ address: 'known-token-must-not-cross-ipc', chainId: 1 }]
     storeMock.setState({ ...state, ...actions() }, true)
 
     const { event, sender } = renderer(2)
@@ -208,7 +218,8 @@ describe('renderer state stream', () => {
       'networks',
       'networksMeta',
       'rates',
-      'runtime'
+      'runtime',
+      'tokens'
     ])
     expect(snapshot.state.accounts[id]).toEqual({
       id,
@@ -222,6 +233,8 @@ describe('renderer state stream', () => {
     expect(snapshot.state.accounts[id]).not.toHaveProperty('requests')
     expect(snapshot.state.accounts[id]).not.toHaveProperty('signer')
     expect(snapshot.state.accounts[id]).not.toHaveProperty('privateKey')
+    expect(snapshot.state.tokens).toEqual({ custom: state.main.tokens.custom })
+    expect(snapshot.state.tokens).not.toHaveProperty('known')
 
     storeMock.getState().updateLattice('device', { privKey: 'another-secret' })
     expect(sender.send).toHaveBeenCalledTimes(1)

@@ -66,6 +66,7 @@ interface BalanceSummaryOptions {
   networks?: NetworkMap
   networksMeta?: NetworkMetaMap
   includeChain?: (chain: ChainLike, balance: BalanceInput) => boolean
+  includeBalance?: (balance: BalanceInput) => boolean
 }
 
 interface BalanceSummarySelectorOptions extends BalanceSummaryOptions {
@@ -167,14 +168,15 @@ export function createBalanceSummaries({
   rates = {},
   networks = {},
   networksMeta = {},
-  includeChain = includeAllChains
+  includeChain = includeAllChains,
+  includeBalance = hasPositiveBalance
 }: BalanceSummaryOptions) {
   return rawBalances
     .filter((rawBalance) => {
       const chain = networks[rawBalance.chainId]
       return !!chain && !!networksMeta[rawBalance.chainId] && includeChain(chain, rawBalance)
     })
-    .filter(hasPositiveBalance)
+    .filter(includeBalance)
     .map((rawBalance) => createBalanceSummary({ rawBalance, rates, networks, networksMeta }))
     .sort(sortBalanceSummariesByTotalValue)
 }
@@ -195,6 +197,7 @@ export function createBalanceSummarySelector() {
     networks = {},
     networksMeta = {},
     includeChain = includeAllChains,
+    includeBalance = hasPositiveBalance,
     cacheKey = includeChain
   }: BalanceSummarySelectorOptions) => {
     if (
@@ -208,7 +211,14 @@ export function createBalanceSummarySelector() {
       return cache.balances
     }
 
-    const balances = createBalanceSummaries({ rawBalances, rates, networks, networksMeta, includeChain })
+    const balances = createBalanceSummaries({
+      rawBalances,
+      rates,
+      networks,
+      networksMeta,
+      includeChain,
+      includeBalance
+    })
 
     cache = {
       cacheKey,
@@ -235,6 +245,7 @@ export function createBalanceTokenSelectorItem(balance: BalanceSummary) {
   return {
     id: toTokenId(balance),
     symbol: displayBalance.symbol,
+    searchText: [displayBalance.name, displayBalance.address].filter(Boolean).join(' '),
     amountLabel: displayBalance.displayBalance,
     notionalLabel: formatBalanceNotionalValue(displayBalance),
     chainId: displayBalance.chainId,

@@ -1,4 +1,5 @@
 import React from 'react'
+import { SearchField } from '@newframe/ui/search-field'
 import { Selection, type SelectionItem } from '@newframe/ui/selection'
 import { Text } from '@newframe/ui/text'
 
@@ -10,6 +11,7 @@ interface TokenSelectorProps {
   ariaLabel: string
   footer?: React.ReactNode
   items: TokenSelectorItem[]
+  searchableItems?: TokenSelectorItem[]
   networks: Record<string | number, NetworkLike>
   networksMeta: Record<string | number, NetworkMetaLike>
   onOpenChange: (open: boolean) => void
@@ -22,6 +24,7 @@ export default function TokenSelector({
   ariaLabel,
   footer,
   items,
+  searchableItems = items,
   networks,
   networksMeta,
   onOpenChange,
@@ -29,17 +32,36 @@ export default function TokenSelector({
   open,
   selectedId
 }: TokenSelectorProps) {
-  const selectedItem = items.find((item) => item.id === selectedId)
+  const [query, setQuery] = React.useState('')
+  const searchInputRef = React.useRef<HTMLInputElement>(null)
+  const selectedItem = searchableItems.find((item) => item.id === selectedId)
   const invalidSelection = !!selectedId && !selectedItem
-  const itemIds = React.useMemo(() => items.map((item) => item.id), [items])
+  const itemIds = React.useMemo(() => searchableItems.map((item) => item.id), [searchableItems])
   const itemIdsKey = itemIds.join('|')
+
+  React.useEffect(() => {
+    if (!open) {
+      setQuery('')
+      return
+    }
+
+    searchInputRef.current?.focus()
+  }, [open])
 
   React.useEffect(() => {
     if (!invalidSelection) return
     console.warn('[TokenSelector] selectedId was not found in items', { selectedId, itemIds })
   }, [invalidSelection, itemIds, itemIdsKey, selectedId])
 
-  const selectionItems: SelectionItem[] = items.map((item) => ({
+  const normalizedQuery = query.trim().toLowerCase()
+  const visibleItems = normalizedQuery
+    ? searchableItems.filter((item) =>
+        [item.symbol, item.searchText, item.id, networks[item.chainId]?.name]
+          .filter(Boolean)
+          .some((value) => String(value).toLowerCase().includes(normalizedQuery))
+      )
+    : items
+  const selectionItems: SelectionItem[] = visibleItems.map((item) => ({
     id: item.id,
     content: <TokenOptionRow item={item} networks={networks} networksMeta={networksMeta} />
   }))
@@ -66,7 +88,22 @@ export default function TokenSelector({
 
   return (
     <Selection
-      footer={footer}
+      emptyContent={
+        <Text align='center' tone='secondary' variant='supporting'>
+          No tokens found
+        </Text>
+      }
+      footer={normalizedQuery ? undefined : footer}
+      header={
+        <SearchField
+          inputRef={searchInputRef}
+          label='Search tokens'
+          onChange={setQuery}
+          onClear={() => setQuery('')}
+          placeholder='Search tokens'
+          value={query}
+        />
+      }
       items={selectionItems}
       label={ariaLabel}
       onOpenChange={onOpenChange}

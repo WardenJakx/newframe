@@ -9,6 +9,7 @@ import {
 } from '../../../../app/state/rendererStore'
 import { NATIVE_CURRENCY } from '../../../../resources/constants'
 import link from '../../../../resources/link'
+import type { SideTrayRendererState } from '../../../../resources/state/projections'
 import { STATE_STREAM_SCHEMA_VERSION } from '../../../../resources/state/protocol'
 
 const sender = {
@@ -27,7 +28,10 @@ const chainId = 31337
 const tokenAddress = '0x00000000000000000000000000000000000000bb'
 const nativeAssetId = `${chainId}:${NATIVE_CURRENCY}`
 
-function initializeSendState(balances: any[] = [nativeBalance()]) {
+function initializeSendState(
+  balances: any[] = [nativeBalance()],
+  customTokens: SideTrayRendererState['tokens']['custom'] = []
+) {
   resetStateMirrorForTests()
   beginStateConnection('sidetray')
   applyStateMessage({
@@ -77,7 +81,8 @@ function initializeSendState(balances: any[] = [nativeBalance()]) {
         profile: 'dev',
         isDev: true,
         environment: 'test'
-      }
+      },
+      tokens: { custom: customTokens }
     }
   })
 }
@@ -131,6 +136,26 @@ describe('Send', () => {
     render(<Send assetId={`${chainId}:${tokenAddress}`} />)
 
     expect(screen.getByRole('button', { name: 'Select send token' }).textContent).toContain('USDC')
+  })
+
+  it('searches and selects a custom token with no balance', async () => {
+    const customToken = {
+      address: '0x00000000000000000000000000000000000000cc',
+      chainId,
+      decimals: 6,
+      name: 'Custom Dollar',
+      symbol: 'CUSD'
+    }
+    initializeSendState([nativeBalance()], [customToken])
+
+    const { user } = render(<Send assetId={nativeAssetId} />)
+    await user.click(screen.getByRole('button', { name: 'Select send token' }))
+    await user.type(screen.getByLabelText('Search tokens'), 'Custom Dollar')
+
+    expect(screen.getAllByRole('option')).toHaveLength(1)
+    await user.click(screen.getByRole('option'))
+
+    expect(screen.getByRole('button', { name: 'Select send token' }).textContent).toContain('CUSD')
   })
 
   it('does not show the sending wallet as a recipient option', () => {
