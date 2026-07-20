@@ -48,7 +48,7 @@ const newframeReactFiles = [
   'resources/Components/**/*.{ts,tsx}',
   'resources/Hooks/**/*.{ts,tsx}',
   'resources/Native/**/*.{ts,tsx}',
-  'resources/svg/index.tsx',
+  'resources/svg.tsx',
   'test/app/**/*.{ts,tsx}',
   'test/resources/Components/**/*.{ts,tsx}',
   'test/resources/Hooks/**/*.{ts,tsx}',
