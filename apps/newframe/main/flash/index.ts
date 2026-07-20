@@ -144,6 +144,16 @@ function stringValue(value: unknown, fallback = '') {
   return String(value)
 }
 
+function formatFlashErrorPayload(payload: unknown, fallback: string) {
+  if (typeof payload === 'string') return payload || fallback
+
+  try {
+    return JSON.stringify(payload) || fallback
+  } catch {
+    return String(payload) || fallback
+  }
+}
+
 function numberTimestamp(value: unknown, fallback = Date.now()) {
   if (typeof value === 'number' && Number.isFinite(value)) return value
   if (typeof value === 'string') {
@@ -735,10 +745,7 @@ async function flashRequest(path: string, init: RequestInit = {}) {
   const payload = contentType.includes('application/json') ? await response.json() : await response.text()
 
   if (!response.ok) {
-    const message =
-      typeof payload === 'string'
-        ? payload
-        : stringValue(objectPayload(payload).message || objectPayload(payload).error, response.statusText)
+    const message = formatFlashErrorPayload(payload, response.statusText)
     throw new Error(`Flash API ${response.status} ${response.statusText}: ${message}`)
   }
 
