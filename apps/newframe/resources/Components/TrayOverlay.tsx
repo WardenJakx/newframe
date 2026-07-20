@@ -47,6 +47,7 @@ export type TrayOverlayProps = {
   children: ReactNode
   closeLabel: string
   footer?: ReactNode
+  footerAppearance?: 'plain' | 'raised'
   label: string
   onClose: () => void
   padding?: 'medium' | 'none' | 'small'
@@ -59,6 +60,7 @@ export function TrayOverlay({
   children,
   closeLabel,
   footer,
+  footerAppearance = 'raised',
   label,
   onClose,
   padding = 'medium',
@@ -69,7 +71,7 @@ export function TrayOverlay({
     <section aria-label={label} className={overlayRecipe()} role='dialog'>
       <SidePanelHeader action={action} closeLabel={closeLabel} onClose={onClose} title={title} />
       <main className={bodyRecipe({ padding, placement })}>{children}</main>
-      {footer ? <SidePanelFooter>{footer}</SidePanelFooter> : null}
+      {footer ? <SidePanelFooter appearance={footerAppearance}>{footer}</SidePanelFooter> : null}
     </section>
   )
 }

@@ -6,6 +6,7 @@ import { cva } from '../styled-system/css/cva.js'
 
 const rowRecipe = cva({
   base: {
+    width: '100%',
     minHeight: 'list-row',
     display: 'grid',
     gridTemplateColumns: 'minmax(token(sizes.grid-column-min), 3fr) minmax(0, 7fr)',
@@ -13,16 +14,36 @@ const rowRecipe = cva({
     gap: '4',
     paddingInline: '5',
     paddingBlock: '3',
+    borderBlockStartWidth: 0,
+    borderInlineWidth: 0,
     borderBlockEndWidth: 'thin',
     borderBlockEndStyle: 'solid',
-    borderBlockEndColor: 'border.subtle'
+    borderBlockEndColor: 'border.subtle',
+    background: 'transparent',
+    color: 'inherit',
+    fontFamily: 'inherit',
+    textAlign: 'inherit'
   },
   variants: {
     code: {
       true: { alignItems: 'start' },
       false: {}
+    },
+    interactive: {
+      true: {
+        cursor: 'pointer',
+        _hover: { background: 'bg.hover' },
+        _focusVisible: {
+          outlineWidth: 'focus',
+          outlineStyle: 'solid',
+          outlineColor: 'border.focus',
+          outlineOffset: 'focus-outline-offset'
+        }
+      },
+      false: {}
     }
-  }
+  },
+  defaultVariants: { interactive: false }
 })
 
 const valueRecipe = cva({
@@ -39,6 +60,8 @@ const valueRecipe = cva({
 export type DetailRowProps = {
   code?: boolean
   label: string
+  onPress?: () => void
+  pressLabel?: string
   labelVariant?: 'label' | 'overline'
   value: ReactNode
   valueVariant?: 'label' | 'supporting'
@@ -48,11 +71,13 @@ export function DetailRow({
   code = false,
   label,
   labelVariant = 'label',
+  onPress,
+  pressLabel,
   value,
   valueVariant = 'label'
 }: DetailRowProps) {
-  return (
-    <div className={rowRecipe({ code })}>
+  const content = (
+    <>
       <Text tone='muted' variant={labelVariant}>
         {label}
       </Text>
@@ -65,6 +90,19 @@ export function DetailRow({
           value
         )}
       </div>
-    </div>
+    </>
+  )
+
+  return onPress ? (
+    <button
+      aria-label={pressLabel || label}
+      className={rowRecipe({ code, interactive: true })}
+      onClick={onPress}
+      type='button'
+    >
+      {content}
+    </button>
+  ) : (
+    <div className={rowRecipe({ code })}>{content}</div>
   )
 }
