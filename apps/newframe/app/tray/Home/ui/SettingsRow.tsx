@@ -18,7 +18,7 @@ export function SettingsToggleRow({
   onToggle: () => void
 }) {
   return (
-    <Surface padding='small' radius='card'>
+    <Surface padding='small' radius='control' tone='control'>
       <Stack align='center' direction='row' gap='small' justify='between'>
         <Stack gap='xsmall' grow>
           <Text truncate variant='label'>
@@ -56,6 +56,7 @@ export function SettingsSelectRow<T>({
       appearance='row'
       label={`${label}: ${current.text}`}
       onPress={() => onChange(next.value)}
+      shape='control'
       size='list'
       width='full'
     >
@@ -87,6 +88,7 @@ export function SettingsActionRow({
       appearance='row'
       label={label}
       onPress={onAction}
+      shape='control'
       size='list'
       tone={danger ? 'danger' : 'neutral'}
       width='full'

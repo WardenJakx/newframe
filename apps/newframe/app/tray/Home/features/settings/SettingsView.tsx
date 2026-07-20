@@ -200,7 +200,7 @@ export function SettingsView({
               onAction={() => onReset('saved-data')}
             />
             {resetConfirm ? (
-              <Surface padding='small' radius='card'>
+              <Surface padding='small' radius='control' tone='control'>
                 <Stack align='center' direction='row' gap='small' justify='between'>
                   <Text truncate variant='label'>
                     Reset All Settings & Data?
