@@ -59,7 +59,8 @@ describe('createSideTrayWalletSelector', () => {
         }
       },
       rates: {},
-      runtime: {}
+      runtime: {},
+      tokens: { custom: [] }
     } satisfies SideTrayRendererState
 
     const result = selectSideTrayWallet(state)
@@ -82,12 +83,62 @@ describe('createSideTrayWalletSelector', () => {
       networks: { ethereum: {} },
       networksMeta: { ethereum: {} },
       rates: {},
-      runtime: {}
+      runtime: {},
+      tokens: { custom: [] }
     } satisfies SideTrayRendererState
 
     const result = selectSideTrayWallet(state)
 
     expect(result.balanceSummaries).toEqual([])
     expect(selectSideTrayWallet(state)).toBe(result)
+  })
+
+  it('includes custom tokens with no balance on enabled chains', () => {
+    const account = { id: 'sender', address: '0xsender', name: 'Sender', lastSignerType: 'address' }
+    const customToken = {
+      address: '0x00000000000000000000000000000000000000aa',
+      chainId: 1,
+      decimals: 6,
+      name: 'Custom Dollar',
+      symbol: 'CUSD'
+    }
+    const selectSideTrayWallet = createSideTrayWalletSelector()
+    const state = {
+      accounts: { [account.id]: account },
+      accountOrder: [account.id],
+      balances: { [account.address]: [] },
+      currentAccount: account.id,
+      networks: {
+        ethereum: {
+          1: { id: 1, name: 'Mainnet', on: true, isTestnet: false, explorer: '' }
+        }
+      },
+      networksMeta: {
+        ethereum: {
+          1: {
+            primaryColor: 'accent1',
+            nativeCurrency: {
+              symbol: 'ETH',
+              icon: '',
+              name: 'Ether',
+              decimals: 18,
+              usd: { price: 1000, change24hr: 0 }
+            }
+          }
+        }
+      },
+      rates: {},
+      runtime: {},
+      tokens: { custom: [customToken] }
+    } satisfies SideTrayRendererState
+
+    const result = selectSideTrayWallet(state)
+
+    expect(result.balanceSummaries).toHaveLength(1)
+    expect(result.balanceSummaries[0]).toMatchObject({
+      address: customToken.address,
+      balance: '0x0',
+      symbol: 'CUSD'
+    })
   })
 })

@@ -227,7 +227,10 @@ export const SideTrayRendererStateSchema = z.strictObject({
     ethereum: z.record(z.coerce.number(), SideTrayNetworkMetadataSchema)
   }),
   rates: z.record(z.string(), SideTrayRateSchema),
-  runtime: RuntimeSchema
+  runtime: RuntimeSchema,
+  tokens: z.strictObject({
+    custom: z.array(WalletTokenSchema)
+  })
 })
 
 export type WalletRendererState = z.infer<typeof WalletRendererStateSchema>

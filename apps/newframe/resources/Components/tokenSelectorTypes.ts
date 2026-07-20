@@ -19,6 +19,7 @@ export type ChainTokenIconSize = 'sm' | 'md'
 export interface TokenSelectorItem {
   id: string
   symbol: string
+  searchText?: string
   amountLabel: string
   notionalLabel: string
   chainId: number

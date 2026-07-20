@@ -304,6 +304,7 @@ export default function Trade({ assetId, chainId }: TradeProps) {
       return {
         id: asset.id,
         symbol: asset.symbol,
+        searchText: [asset.name, asset.address].filter(Boolean).join(' '),
         amountLabel: '0',
         notionalLabel: '$0.00',
         chainId: asset.chainId,
@@ -896,6 +897,7 @@ export default function Trade({ assetId, chainId }: TradeProps) {
       selectedId: asset.id
     })
     const items = selectorOptions.map(createTradeSelectorItem)
+    const searchableItems = options.map(createTradeSelectorItem)
 
     return (
       <TokenSelector
@@ -919,6 +921,7 @@ export default function Trade({ assetId, chainId }: TradeProps) {
           ) : null
         }
         items={items}
+        searchableItems={searchableItems}
         networks={networks}
         networksMeta={networksMeta}
         onOpenChange={(nextOpen) => dispatch({ type: 'setAssetOpen', field, open: nextOpen })}

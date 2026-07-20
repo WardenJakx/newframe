@@ -322,6 +322,16 @@ function projectSideTrayRates(rates: CanonicalMain['rates']): SideTrayRendererSt
 }
 
 let previousSideTrayProjection: SideTrayRendererState | undefined
+let previousSideTrayTokensInput: CanonicalMain['tokens'] | undefined
+let previousSideTrayTokens: SideTrayRendererState['tokens'] | undefined
+
+function projectSideTrayTokens(tokens: CanonicalMain['tokens']): SideTrayRendererState['tokens'] {
+  if (tokens === previousSideTrayTokensInput && previousSideTrayTokens) return previousSideTrayTokens
+
+  previousSideTrayTokensInput = tokens
+  previousSideTrayTokens = { custom: tokens.custom }
+  return previousSideTrayTokens
+}
 
 export function projectSideTrayState(state: CanonicalState): SideTrayRendererState {
   const { main } = state
@@ -335,7 +345,8 @@ export function projectSideTrayState(state: CanonicalState): SideTrayRendererSta
     networks,
     networksMeta: projectSideTrayNetworkMetadata(main.networksMeta, networks),
     rates: projectSideTrayRates(main.rates),
-    runtime: main.runtime
+    runtime: main.runtime,
+    tokens: projectSideTrayTokens(main.tokens)
   }
 
   if (sameTopLevelReferences(previousSideTrayProjection, projection)) return previousSideTrayProjection!

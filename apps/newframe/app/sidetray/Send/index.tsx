@@ -44,7 +44,16 @@ export default function Send({ assetId }: SendProps) {
   const [state, dispatch] = React.useReducer(sendReducer, assetId, createInitialSendState)
 
   const selectedAssetSummary = React.useMemo(() => {
-    return resolveSendAssetFromRouteAssetId(state.selectedAssetKey, balanceSummaries)
+    const explicitlySelectedAsset = balanceSummaries.find(
+      (balance) => toCanonicalAssetId(balance) === state.selectedAssetKey
+    )
+
+    return (
+      explicitlySelectedAsset ||
+      resolveSendAssetFromRouteAssetId(state.selectedAssetKey, balanceSummaries) ||
+      balanceSummaries[0] ||
+      null
+    )
   }, [balanceSummaries, state.selectedAssetKey])
 
   const asset = React.useMemo(() => {
@@ -188,6 +197,7 @@ export default function Send({ assetId }: SendProps) {
     selectedId: selectedKey
   })
   const tokenItems = selectorBalances.map(createBalanceTokenSelectorItem)
+  const searchableTokenItems = balanceSummaries.map(createBalanceTokenSelectorItem)
   const amount = Number(state.amount || 0)
   const price = Number(asset?.usdRate?.price || 0)
   const fiatValue = amount > 0 && price > 0 ? `$${formatUsdRate(amount * price, 2)}` : '$0.00'
@@ -342,6 +352,7 @@ export default function Send({ assetId }: SendProps) {
                     ) : null
                   }
                   items={tokenItems}
+                  searchableItems={searchableTokenItems}
                   networks={networks}
                   networksMeta={networksMeta}
                   onOpenChange={handleTokenPickerOpenChange}

@@ -18,6 +18,7 @@ import {
 } from '../../../../resources/domain/flash/constants'
 import { FLASH_USDC_ASSET, FLASH_WETH_ASSET } from '../../../../resources/domain/flash/assets'
 import { type FlashQuote } from '../../../../resources/domain/flash/schemas'
+import type { SideTrayRendererState } from '../../../../resources/state/projections'
 import { STATE_STREAM_SCHEMA_VERSION } from '../../../../resources/state/protocol'
 
 const sender = {
@@ -54,7 +55,10 @@ function updateTradeState(changes: Record<string, unknown>) {
   })
 }
 
-function initializeTradeState(balances = [wethBalance()]) {
+function initializeTradeState(
+  balances = [wethBalance()],
+  customTokens: SideTrayRendererState['tokens']['custom'] = []
+) {
   stateRevision = 0
   resetStateMirrorForTests()
   beginStateConnection('sidetray')
@@ -106,7 +110,8 @@ function initializeTradeState(balances = [wethBalance()]) {
         profile: 'dev',
         isDev: true,
         environment: 'test'
-      }
+      },
+      tokens: { custom: customTokens }
     }
   })
 }
@@ -516,7 +521,29 @@ describe('Trade', () => {
     fireEvent.click(screen.getByLabelText('Select target asset'))
 
     expect(screen.getAllByRole('option')).toHaveLength(50)
+    fireEvent.change(screen.getByLabelText('Search tokens'), { target: { value: 'Token 119' } })
+    expect(screen.getAllByRole('option')).toHaveLength(1)
+    expect(screen.getByRole('option').textContent).toContain('T119')
+    fireEvent.change(screen.getByLabelText('Search tokens'), { target: { value: '' } })
     fireEvent.click(screen.getByText('Show 50 more assets'))
     expect(screen.getAllByRole('option')).toHaveLength(100)
+  })
+
+  it('selects a custom token with no balance', () => {
+    const customToken = {
+      address: '0x00000000000000000000000000000000000000cc',
+      chainId: FLASH_ANVIL_CHAIN_ID,
+      decimals: 6,
+      name: 'Custom Dollar',
+      symbol: 'CUSD'
+    }
+    initializeTradeState([wethBalance()], [customToken])
+
+    render(<Trade assetId={`${FLASH_ANVIL_CHAIN_ID}:${FLASH_WETH_ADDRESS}`} />)
+    fireEvent.click(screen.getByLabelText('Select contra asset'))
+    fireEvent.change(screen.getByLabelText('Search tokens'), { target: { value: 'Custom Dollar' } })
+    fireEvent.click(screen.getByRole('option'))
+
+    expect(screen.getByLabelText('Select contra asset').textContent).toContain('CUSD')
   })
 })
