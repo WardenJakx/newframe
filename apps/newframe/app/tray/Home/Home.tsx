@@ -6,19 +6,24 @@ import { HomeOverlayRouter } from './HomeOverlayRouter'
 import { HomeSectionRouter } from './HomeSectionRouter'
 import { useHomeCommand } from './hooks/useHomeCommand'
 import { HomeUiProvider } from './state/HomeUiProvider'
+import { cva } from '../../../resources/styled-system/css/cva.js'
+
+const homeRecipe = cva({
+  base: { position: 'absolute', inset: 0, display: 'flex', minHeight: 0, flexDirection: 'column' }
+})
 
 function HomeContent() {
   useHomeCommand()
 
   return (
-    <div className='t2Home'>
+    <main className={homeRecipe()}>
       <HomeHeader />
       <HomeNotifications />
       <PortfolioHero />
       <HomeNavigation />
       <HomeSectionRouter />
       <HomeOverlayRouter />
-    </div>
+    </main>
   )
 }
 

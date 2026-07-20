@@ -62,11 +62,34 @@ export const trayOverlaysStage: VisualStage = {
     await menu.getByRole('button', { name: 'Close menu' }).click()
     await menu.waitFor({ state: 'hidden' })
 
+    await tray.getByRole('button', { name: 'Show account QR code' }).click()
+    const receive = tray.getByRole('dialog', { name: 'Receive assets' })
+    await receive.waitFor({ state: 'visible' })
+    const qrCode = receive.getByLabel('Account address QR code')
+    await qrCode.waitFor({ state: 'visible' })
+    const qrIsContained = await qrCode.evaluate((canvas) => {
+      const frame = canvas.parentElement
+      if (!frame) return false
+      const canvasBounds = canvas.getBoundingClientRect()
+      const frameBounds = frame.getBoundingClientRect()
+      return (
+        canvasBounds.left >= frameBounds.left &&
+        canvasBounds.top >= frameBounds.top &&
+        canvasBounds.right <= frameBounds.right &&
+        canvasBounds.bottom <= frameBounds.bottom
+      )
+    })
+    if (!qrIsContained) runtime.fail('Receive QR code must remain inside its frame')
+    await sleep(500)
+    await runtime.screenshot(tray, '02h-receive-overlay.png')
+    await receive.getByRole('button', { name: 'Back' }).click()
+    await receive.waitFor({ state: 'hidden' })
+
     await tray.getByRole('button', { name: 'Network filter' }).click()
     const networks = tray.getByRole('dialog', { name: 'Networks' })
     await networks.waitFor({ state: 'visible' })
     await sleep(500)
-    await runtime.screenshot(tray, '02h-networks-overlay.png')
+    await runtime.screenshot(tray, '02i-networks-overlay.png')
     await networks.getByRole('button', { name: 'Back' }).click()
     await networks.waitFor({ state: 'hidden' })
   }

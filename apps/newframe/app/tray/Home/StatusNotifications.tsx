@@ -1,7 +1,61 @@
 import React, { useEffect } from 'react'
 
+import { IconButton } from '@newframe/ui/icon-button'
+import { Stack } from '@newframe/ui/stack'
+import { Text } from '@newframe/ui/text'
+
 import StatusGlyph from '../../../resources/Components/StatusGlyph'
-import svg from '../../../resources/svg'
+import { cva } from '../../../resources/styled-system/css/cva.js'
+
+const notificationListRecipe = cva({
+  base: {
+    position: 'relative',
+    zIndex: 'content',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '3',
+    paddingBlockStart: '4',
+    paddingInline: '6',
+    pointerEvents: 'none'
+  }
+})
+
+const notificationRecipe = cva({
+  base: {
+    display: 'grid',
+    minHeight: 'list-row',
+    gridTemplateColumns: '28px 22px minmax(0, 1fr) auto 24px',
+    alignItems: 'center',
+    gap: '4',
+    padding: '4',
+    borderWidth: 'thin',
+    borderStyle: 'solid',
+    borderRadius: 'small',
+    background: 'bg.primary',
+    boxShadow: 'elevation-raised',
+    pointerEvents: 'auto',
+    cursor: 'pointer',
+    _hover: { background: 'bg.card' }
+  },
+  variants: {
+    state: {
+      completed: { borderColor: 'action.primary.border' },
+      failed: { borderColor: 'action.danger.border' },
+      pending: { borderColor: 'border' }
+    }
+  },
+  defaultVariants: { state: 'pending' }
+})
+
+const chainRecipe = cva({
+  base: {
+    display: 'grid',
+    width: 'icon-large',
+    height: 'icon-large',
+    placeItems: 'center',
+    color: 'text.secondary'
+  }
+})
 
 const PENDING_NOTIFICATION_MS = 60 * 1000
 const RESOLVED_NOTIFICATION_MS = 3000
@@ -106,7 +160,7 @@ export default function StatusNotifications({
   if (!visible.length) return null
 
   return (
-    <div aria-label='Status notifications' className='t2StatusNotifications'>
+    <section aria-label='Status notifications' className={notificationListRecipe()}>
       {visible.map((notification) => {
         const state = notification.state || 'pending'
         const label = notificationLabel(state)
@@ -117,7 +171,7 @@ export default function StatusNotifications({
           <div
             key={notification.id}
             aria-label={`${label} ${notification.title || ''}`}
-            className={`t2StatusNotification t2StatusNotification-${state}`}
+            className={notificationRecipe({ state: state as 'completed' | 'failed' | 'pending' })}
             onClick={() => onOpen(notification)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
@@ -131,37 +185,39 @@ export default function StatusNotifications({
             <StatusGlyph
               state={state === 'completed' ? 'completed' : state === 'failed' ? 'failed' : 'pending'}
             />
-            <div className='t2StatusNotificationChain'>{renderChainIcon(notification)}</div>
-            <div className='t2StatusNotificationCopy'>
-              <div className='t2StatusNotificationTopline'>
-                <span className='traySpan'>{label}</span>
-                <span className='traySpan'>{notification.title}</span>
-              </div>
-              {metadata ? <div className='t2StatusNotificationDetail'>{metadata}</div> : null}
-            </div>
-            {shownAt ? <div className='t2StatusNotificationTimestamp'>{shownAt}</div> : null}
-            <div
-              aria-label='Dismiss notification'
-              className='t2StatusNotificationDismiss'
-              onClick={(e) => {
-                e.stopPropagation()
+            <span className={chainRecipe()}>{renderChainIcon(notification)}</span>
+            <Stack gap='xsmall' grow>
+              <Stack direction='row' gap='xsmall'>
+                <Text shrink={false} tone='secondary' variant='label'>
+                  {label}
+                </Text>
+                <Text tone='secondary' truncate variant='supporting'>
+                  {notification.title}
+                </Text>
+              </Stack>
+              {metadata ? (
+                <Text tone='muted' truncate variant='code'>
+                  {metadata}
+                </Text>
+              ) : null}
+            </Stack>
+            {shownAt ? (
+              <Text shrink={false} tone='muted' variant='microCode'>
+                {shownAt}
+              </Text>
+            ) : null}
+            <IconButton
+              icon='close'
+              label='Dismiss notification'
+              onPress={(event) => {
+                event.stopPropagation()
                 onDismiss(notification.id)
               }}
-              onKeyDown={(e) => {
-                e.stopPropagation()
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault()
-                  onDismiss(notification.id)
-                }
-              }}
-              role='button'
-              tabIndex={0}
-            >
-              {svg.x(9)}
-            </div>
+              size='small'
+            />
           </div>
         )
       })}
-    </div>
+    </section>
   )
 }

@@ -1,5 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
+import { Button } from '@newframe/ui/button'
+import { Dialog } from '@newframe/ui/dialog'
+import { Input } from '@newframe/ui/input'
+import { Stack } from '@newframe/ui/stack'
+import { Text } from '@newframe/ui/text'
+
+import { cva } from '../../resources/styled-system/css/cva.js'
 
 import Account from './Account'
 import Notify from './Notify'
@@ -53,6 +60,44 @@ const selectPanelState = (state: TrayRendererState): PanelProps => ({
   biometricUnlock: !!state.biometricUnlock,
   crumb: state.windows.panel.nav[0] || EMPTY_CRUMB,
   initial: state.tray.initial
+})
+
+const panelRecipe = cva({
+  base: {
+    position: 'absolute',
+    inset: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    transitionDuration: 'fast',
+    transitionProperty: 'opacity',
+    transitionTimingFunction: 'standard'
+  },
+  variants: {
+    visible: {
+      true: { opacity: 'full' },
+      false: { opacity: 0 }
+    }
+  },
+  defaultVariants: { visible: true }
+})
+
+const lockIconRecipe = cva({
+  base: {
+    width: 'field',
+    height: 'field',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 'pill',
+    background: 'bg.control',
+    color: 'action.primary'
+  }
+})
+
+const requestOverlayRecipe = cva({
+  base: { position: 'absolute', inset: 0, zIndex: 'overlay', background: 'bg.primary' }
 })
 
 function Panel(props: PanelProps) {
@@ -136,85 +181,66 @@ function Panel(props: PanelProps) {
   }, [props.biometricUnlock])
 
   const biometricUnlockButton = state.biometricAvailable ? (
-    <div
-      aria-label='Unlock with biometrics'
-      className='t2LockSubmit t2LockBiometricSubmit'
-      onClick={() => unlockWithBiometrics()}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault()
-          unlockWithBiometrics()
-        }
-      }}
-      role='button'
-      tabIndex={0}
+    <Button
+      appearance='control'
+      label='Unlock with biometrics'
+      onPress={() => unlockWithBiometrics()}
+      shape='pill'
+      width='full'
     >
       {svg.fingerprint(15)}
-      <span className='traySpan'>
-        {state.biometricUnlocking ? 'Authenticating' : 'Unlock with Biometrics'}
-      </span>
-    </div>
+      <Text variant='action'>{state.biometricUnlocking ? 'Authenticating' : 'Unlock with Biometrics'}</Text>
+    </Button>
   ) : null
 
   const lockBlocker = (
-    <div aria-label='Unlock Newframe' className='t2LockBlocker' role='dialog'>
-      <div className='t2LockPanel cardShow'>
-        <div className='t2LockIcon'>{svg.lock(22)}</div>
-        <div className='t2LockTitle'>Newframe Locked</div>
-        <div className='t2LockInput'>
-          <input
-            aria-label='Newframe password'
-            autoFocus
-            placeholder='Newframe password'
-            type='password'
-            value={state.password}
-            onChange={(e) => setState({ password: e.target.value })}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') unlockApp()
-            }}
-          />
-        </div>
-        {state.unlockError ? <div className='t2LockError'>{state.unlockError}</div> : null}
-        <div
-          aria-label='Unlock'
-          className='t2LockSubmit'
-          onClick={() => unlockApp()}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault()
-              unlockApp()
-            }
-          }}
-          role='button'
-          tabIndex={0}
-        >
-          {state.unlocking ? 'Unlocking' : 'Unlock'}
-        </div>
+    <Dialog label='Unlock Newframe' padding='medium' tone='opaque' width='compact'>
+      <Stack align='center' gap='medium'>
+        <span className={lockIconRecipe()}>{svg.lock(22)}</span>
+        <Text variant='heading'>Newframe Locked</Text>
+        <Input
+          align='start'
+          autoFocus
+          label='Newframe password'
+          onSubmit={unlockApp}
+          onValueChange={(password) => setState({ password })}
+          placeholder='Newframe password'
+          type='password'
+          value={state.password}
+        />
+        {state.unlockError ? (
+          <Text align='center' tone='danger' variant='supporting'>
+            {state.unlockError}
+          </Text>
+        ) : null}
+        <Button appearance='primary' label='Unlock' onPress={unlockApp} shape='pill' width='full'>
+          <Text variant='action'>{state.unlocking ? 'Unlocking' : 'Unlock'}</Text>
+        </Button>
         {biometricUnlockButton}
-      </div>
-    </div>
+      </Stack>
+    </Dialog>
   )
 
   const { crumb } = props
   const requestViewOpen = crumb.view === 'requestView' || crumb.view === 'expandedModule'
-  const opacity = !props.appLocked && props.initial ? 0 : 1
+  const visible = props.appLocked || !props.initial
 
   if (props.appLocked) {
     return (
-      <div id='panel' style={{ opacity }}>
+      <div className={panelRecipe({ visible })} id='panel'>
         {lockBlocker}
       </div>
     )
   }
 
   return (
-    <div id='panel' style={{ opacity }}>
+    <div className={panelRecipe({ visible })} id='panel'>
       <Badge />
       <Notify />
       <Home />
       {requestViewOpen ? (
         <RequestViewProvider key={crumb.data?.requestId || crumb.view}>
-          <div className='t2RequestOverlay'>
+          <div className={requestOverlayRecipe()}>
             <Account />
           </div>
           <Footer />

@@ -1,7 +1,12 @@
 import type { ReactNode } from 'react'
 import { useShallow } from 'zustand/react/shallow'
+import { Button } from '@newframe/ui/button'
+import { Dialog } from '@newframe/ui/dialog'
+import { Stack } from '@newframe/ui/stack'
+import { Surface } from '@newframe/ui/surface'
+import { Text } from '@newframe/ui/text'
+import { ToggleButton } from '@newframe/ui/toggle-button'
 
-import svg from '../../../resources/svg'
 import { toBigInt } from '../../../resources/utils/numbers'
 import link from '../../../resources/link'
 import { usesBaseFee } from '../../../resources/domain/transaction'
@@ -21,15 +26,8 @@ type NotificationData = {
   req?: TransactionRequest
   feeUSD?: string
   currentSymbol?: string
-  compatibility?: {
-    signer?: string
-    tx?: string
-    compatible?: boolean
-  }
-  chain?: {
-    type: 'ethereum'
-    id: string | number
-  }
+  compatibility?: { signer?: string; tx?: string; compatible?: boolean }
+  chain?: { type: 'ethereum'; id: string | number }
   hash?: string
   signerIds?: string[]
 }
@@ -44,62 +42,107 @@ type NotificationProps = {
 
 function Shell({ children, dismiss }: { children: ReactNode; dismiss: TrayNotifier }) {
   return (
-    <div className='notify cardShow' onMouseDown={() => dismiss()}>
-      <div className='notifyBoxWrap' onMouseDown={(event) => event.stopPropagation()}>
-        <div className='notifyBox'>{children}</div>
-      </div>
-    </div>
+    <Dialog label='Newframe notification' onDismiss={() => dismiss()} padding='large' width='compact'>
+      <Stack gap='large'>{children}</Stack>
+    </Dialog>
+  )
+}
+
+function NotificationTitle({ children }: { children: ReactNode }) {
+  return (
+    <Text align='center' variant='heading'>
+      {children}
+    </Text>
+  )
+}
+
+function NotificationBody({ children }: { children: ReactNode }) {
+  return (
+    <Surface padding='medium' radius='card' tone='raised'>
+      <Stack align='center' gap='small'>
+        {children}
+      </Stack>
+    </Surface>
+  )
+}
+
+function NotificationActions({
+  dismiss,
+  onProceed,
+  proceedLabel = 'Proceed'
+}: {
+  dismiss: TrayNotifier
+  onProceed?: () => void
+  proceedLabel?: string
+}) {
+  if (!onProceed) {
+    return (
+      <Button appearance='primary' onPress={() => dismiss()} shape='pill' width='full'>
+        <Text variant='action'>{proceedLabel}</Text>
+      </Button>
+    )
+  }
+
+  return (
+    <Stack direction='row' equal gap='small'>
+      <Button appearance='control' onPress={() => dismiss()} shape='pill'>
+        <Text variant='action'>Cancel</Text>
+      </Button>
+      <Button appearance='primary' onPress={onProceed} shape='pill'>
+        <Text variant='action'>{proceedLabel}</Text>
+      </Button>
+    </Stack>
+  )
+}
+
+function WarningMute({ checked, onToggle }: { checked: boolean; onToggle: () => void }) {
+  return (
+    <Stack align='center' direction='row' justify='between'>
+      <Text tone='secondary' variant='supporting'>
+        Don&apos;t show this warning again
+      </Text>
+      <ToggleButton
+        appearance='switch'
+        label="Don't show this warning again"
+        onPress={onToggle}
+        pressed={checked}
+      />
+    </Stack>
   )
 }
 
 function approveRequest(req?: { handlerId?: string }) {
-  if (req?.handlerId) {
-    void link.executeCommand({ type: 'request.approve', requestId: req.handlerId })
-  }
+  if (req?.handlerId) void link.executeCommand({ type: 'request.approve', requestId: req.handlerId })
 }
 
 function GasFeeWarning({ data, dismiss, mute }: NotificationProps) {
   const { req, feeUSD = '0.00', currentSymbol = 'ETH' } = data
+  const proceed = () => {
+    approveRequest(req)
+    dismiss()
+  }
 
   return (
     <Shell dismiss={dismiss}>
-      <div className='notifyTitle'>Gas Fee Warning</div>
-      <div className='notifyBody'>
+      <NotificationTitle>Gas Fee Warning</NotificationTitle>
+      <NotificationBody>
+        <Text align='center' tone='secondary'>
+          {feeUSD !== '0.00'
+            ? 'The max fee for this transaction is:'
+            : "We were unable to determine this transaction's fee in USD."}
+        </Text>
         {feeUSD !== '0.00' ? (
-          <>
-            <div className='notifyBodyLine'>The max fee for this transaction is:</div>
-            <div className='notifyBodyLine notifyBodyPrice'>{`≈ $${feeUSD} in ${currentSymbol}`}</div>
-          </>
-        ) : (
-          <div className='notifyBodyLine'>
-            We were unable to determine this transaction&apos;s fee in USD.
-          </div>
-        )}
-        <div className='notifyBodyQuestion'>Are you sure you want to proceed?</div>
-      </div>
-      <div className='notifyInput'>
-        <div className='notifyInputOption notifyInputDeny' onMouseDown={() => dismiss()}>
-          <div className='notifyInputOptionText'>Cancel</div>
-        </div>
-        <div
-          className='notifyInputOption notifyInputProceed'
-          onMouseDown={() => {
-            approveRequest(req)
-            dismiss()
-          }}
-        >
-          <div className='notifyInputOptionText'>Proceed</div>
-        </div>
-      </div>
-      <div
-        className='notifyCheck'
-        onMouseDown={() => void link.executeCommand({ type: 'warning.toggle', warning: 'gas-fee' })}
-      >
-        <div className='notifyCheckBox'>
-          {mute.gasFeeWarning ? svg.octicon('check', { height: 26 }) : null}
-        </div>
-        <div className='notifyCheckText'>{"Don't show this warning again"}</div>
-      </div>
+          <Text align='center' variant='output'>{`≈ $${feeUSD} in ${currentSymbol}`}</Text>
+        ) : null}
+        <Text align='center' variant='label'>
+          Are you sure you want to proceed?
+        </Text>
+      </NotificationBody>
+      <NotificationActions dismiss={dismiss} onProceed={proceed} />
+      <WarningMute
+        checked={mute.gasFeeWarning}
+        onToggle={() => void link.executeCommand({ type: 'warning.toggle', warning: 'gas-fee' })}
+      />
     </Shell>
   )
 }
@@ -107,16 +150,14 @@ function GasFeeWarning({ data, dismiss, mute }: NotificationProps) {
 function NoSignerWarning({ dismiss }: NotificationProps) {
   return (
     <Shell dismiss={dismiss}>
-      <div className='notifyTitle'>No Signer Attached!</div>
-      <div className='notifyBody'>
-        <div className='notifyBodyLine'>No signer attached for this account</div>
-        <div className='notifyBodyQuestion'>Please attach a signer that can sign for this account</div>
-      </div>
-      <div className='notifyInput'>
-        <div className='notifyInputOption notifyInputSingleButton' onMouseDown={() => dismiss()}>
-          <div className='notifyInputOptionText'>OK</div>
-        </div>
-      </div>
+      <NotificationTitle>No Signer Attached</NotificationTitle>
+      <NotificationBody>
+        <Text align='center'>No signer is attached to this account.</Text>
+        <Text align='center' tone='secondary'>
+          Attach a signer that can sign for this account.
+        </Text>
+      </NotificationBody>
+      <NotificationActions dismiss={dismiss} proceedLabel='OK' />
     </Shell>
   )
 }
@@ -153,39 +194,27 @@ function SignerCompatibilityWarning({ data, dismiss, mute, networks, networksMet
 
   return (
     <Shell dismiss={dismiss}>
-      <div className='notifyTitle'>Signer Compatibility</div>
-      <div className='notifyBody'>
-        <div className='notifyBodyLine'>
+      <NotificationTitle>Signer Compatibility</NotificationTitle>
+      <NotificationBody>
+        <Text align='center' tone='secondary'>
           {`Your ${capitalize(signer)} is not compatible with ${capitalize(tx)} ${
             tx === 'london' ? '(EIP-1559) ' : ''
-          }transactions. Your transaction will be converted to a legacy transaction before signing.`}
-        </div>
+          }transactions. The transaction will be converted to a legacy transaction before signing.`}
+        </Text>
         {['lattice', 'ledger'].includes(signer) ? (
-          <div className='notifyBodyUpdate'>
-            {`Update your ${capitalize(signer)} to enable compatibility`}
-          </div>
+          <Text align='center' tone='warning' variant='supporting'>
+            {`Update your ${capitalize(signer)} to enable compatibility.`}
+          </Text>
         ) : null}
-        <div className='notifyBodyQuestion'>Do you want to proceed?</div>
-      </div>
-      <div className='notifyInput'>
-        <div className='notifyInputOption notifyInputDeny' onMouseDown={() => dismiss()}>
-          <div className='notifyInputOptionText'>Cancel</div>
-        </div>
-        <div className='notifyInputOption notifyInputProceed' onMouseDown={proceed}>
-          <div className='notifyInputOptionText'>Proceed</div>
-        </div>
-      </div>
-      <div
-        className='notifyCheck'
-        onMouseDown={() =>
-          void link.executeCommand({ type: 'warning.toggle', warning: 'signer-compatibility' })
-        }
-      >
-        <div className='notifyCheckBox'>
-          {mute.signerCompatibilityWarning ? svg.octicon('check', { height: 26 }) : null}
-        </div>
-        <div className='notifyCheckText'>{"Don't show this warning again"}</div>
-      </div>
+        <Text align='center' variant='label'>
+          Do you want to proceed?
+        </Text>
+      </NotificationBody>
+      <NotificationActions dismiss={dismiss} onProceed={proceed} />
+      <WarningMute
+        checked={mute.signerCompatibilityWarning}
+        onToggle={() => void link.executeCommand({ type: 'warning.toggle', warning: 'signer-compatibility' })}
+      />
     </Shell>
   )
 }
@@ -193,53 +222,33 @@ function SignerCompatibilityWarning({ data, dismiss, mute, networks, networksMet
 function OpenExplorer({ data, dismiss, mute, networks }: NotificationProps) {
   const { hash, chain = { type: 'ethereum', id: 0 } } = data
   const { name: chainName, explorer: explorerUrl } = networks[chain.type]?.[Number(chain.id)] || {}
+  const proceed = () => {
+    void link.executeCommand({
+      type: 'explorer.open',
+      chainId: Number(chain.id),
+      ...(hash ? { transactionHash: hash } : {})
+    })
+    dismiss()
+  }
 
   return (
     <Shell dismiss={dismiss}>
-      <div className='notifyTitle'>Open Block Explorer</div>
-      <div className='notifyBody'>
-        {hash ? (
-          <>
-            <div className='notifyBodyLine'>
-              Newframe will open a block explorer in your browser for transaction:
-            </div>
-            <div className='notifyBodyHash'>{hash}</div>
-          </>
-        ) : (
-          <>
-            <div className='notifyBodyLine'>{`Newframe will open the ${chainName}`}</div>
-            <div className='notifyBodyLine'>block explorer in your browser:</div>
-            <div className='notifyBodyHash'>{explorerUrl}</div>
-          </>
-        )}
-      </div>
-      <div className='notifyInput'>
-        <div className='notifyInputOption notifyInputDeny' onMouseDown={() => dismiss()}>
-          <div className='notifyInputOptionText'>Cancel</div>
-        </div>
-        <div
-          className='notifyInputOption notifyInputProceed'
-          onMouseDown={() => {
-            void link.executeCommand({
-              type: 'explorer.open',
-              chainId: Number(chain.id),
-              ...(hash ? { transactionHash: hash } : {})
-            })
-            dismiss()
-          }}
-        >
-          <div className='notifyInputOptionText'>Proceed</div>
-        </div>
-      </div>
-      <div
-        className='notifyCheck'
-        onMouseDown={() => void link.executeCommand({ type: 'warning.toggle', warning: 'explorer' })}
-      >
-        <div className='notifyCheckBox'>
-          {mute.explorerWarning ? svg.octicon('check', { height: 26 }) : null}
-        </div>
-        <div className='notifyCheckText'>{"Don't show this warning again"}</div>
-      </div>
+      <NotificationTitle>Open Block Explorer</NotificationTitle>
+      <NotificationBody>
+        <Text align='center' tone='secondary'>
+          {hash
+            ? 'Newframe will open a block explorer for this transaction:'
+            : `Newframe will open the ${chainName || 'network'} block explorer:`}
+        </Text>
+        <Text align='center' variant='code'>
+          {hash || explorerUrl || 'Unknown explorer'}
+        </Text>
+      </NotificationBody>
+      <NotificationActions dismiss={dismiss} onProceed={proceed} />
+      <WarningMute
+        checked={mute.explorerWarning}
+        onToggle={() => void link.executeCommand({ type: 'warning.toggle', warning: 'explorer' })}
+      />
     </Shell>
   )
 }

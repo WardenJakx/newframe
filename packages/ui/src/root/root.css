@@ -1,7 +1,0 @@
-@import '../tokens/tokens.generated.css';
-@import './fonts.css';
-@import './foundations.css';
-
-.nf-root {
-  isolation: isolate;
-}

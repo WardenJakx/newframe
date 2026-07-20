@@ -1,7 +1,11 @@
-import svg from '../../../../../resources/svg'
-import link from '../../../../../resources/link'
+import { Icon } from '@newframe/ui/icon'
+import { Inline } from '@newframe/ui/inline'
+import { Stack } from '@newframe/ui/stack'
+import { Surface } from '@newframe/ui/surface'
+import { Text } from '@newframe/ui/text'
 
-import { Cluster, ClusterValue, ClusterRow } from '../../../../../resources/Components/Cluster'
+import { RequestActions } from '../../../../../resources/Components/RequestActions'
+import link from '../../../../../resources/link'
 
 interface TxApprovalProps {
   req: { handlerId: string }
@@ -11,53 +15,37 @@ interface TxApprovalProps {
   }
 }
 
-const TxApproval = ({ req, approval }: TxApprovalProps) => (
-  <div className='approveTransactionWarning'>
-    <div className='approveTransactionWarningBody'>
-      <Cluster>
-        <ClusterRow>
-          <ClusterValue>
-            <div className='approveTransactionWarningTitle'>
-              <div className='approveTransactionWarningIcon approveTransactionWarningIconLeft'>
-                {svg.alert(32)}
-              </div>
-              {'estimated to fail'}
-              <div className='approveTransactionWarningIcon approveTransactionWarningIconRight'>
-                {svg.alert(32)}
-              </div>
-            </div>
-          </ClusterValue>
-        </ClusterRow>
-        <ClusterRow>
-          <ClusterValue
-            onClick={() => {
-              void link.executeCommand({ type: 'request.reject', requestId: req.handlerId })
-            }}
-          >
-            <div className='_txActionButton _txActionButtonBad'>{'Reject'}</div>
-          </ClusterValue>
-          <ClusterValue
-            onClick={() => {
+export default function TxApproval({ req, approval }: TxApprovalProps) {
+  return (
+    <Surface border='danger' padding='medium' radius='card' tone='card'>
+      <Stack gap='medium'>
+        <Inline align='center' gap='small' justify='center'>
+          <Icon name='warning' size='large' tone='danger' />
+          <Text align='center' tone='danger' variant='title'>
+            Estimated to fail
+          </Text>
+        </Inline>
+        {approval.data?.message ? (
+          <Text align='center' tone='secondary' variant='supporting'>
+            {approval.data.message}
+          </Text>
+        ) : null}
+        <RequestActions
+          primary={{
+            label: 'Proceed',
+            onPress: () =>
               void link.executeCommand({
                 type: 'request.approval-confirm',
                 requestId: req.handlerId,
                 approvalType: approval.type
               })
-            }}
-          >
-            <div className='_txActionButton _txActionButtonGood'>{'Proceed'}</div>
-          </ClusterValue>
-        </ClusterRow>
-        <ClusterRow>
-          <ClusterValue>
-            <div className='approveTransactionWarningMessage'>
-              {approval && approval.data && approval.data.message}
-            </div>
-          </ClusterValue>
-        </ClusterRow>
-      </Cluster>
-    </div>
-  </div>
-)
-
-export default TxApproval
+          }}
+          secondary={{
+            label: 'Reject',
+            onPress: () => void link.executeCommand({ type: 'request.reject', requestId: req.handlerId })
+          }}
+        />
+      </Stack>
+    </Surface>
+  )
+}

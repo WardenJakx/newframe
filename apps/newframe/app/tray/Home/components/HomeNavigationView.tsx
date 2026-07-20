@@ -1,8 +1,36 @@
-import React from 'react'
+import type { ReactNode } from 'react'
 
-import svg from '../../../../resources/svg'
-import { activateOnKeyboard } from '../ui/keyboard'
+import { Button } from '@newframe/ui/button'
+import { Icon } from '@newframe/ui/icon'
+import { Tabs } from '@newframe/ui/tabs'
+import { Text } from '@newframe/ui/text'
+import { cva } from '../../../../resources/styled-system/css/cva.js'
 import type { HomeSection } from '../state/homeUiTypes'
+
+const navigationRecipe = cva({
+  base: {
+    position: 'relative',
+    zIndex: 'content',
+    display: 'flex',
+    flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingInline: '6',
+    paddingBlockEnd: '4'
+  }
+})
+
+const chainIconRecipe = cva({
+  base: {
+    display: 'grid',
+    placeItems: 'center',
+    '& img': { borderRadius: '50%', objectFit: 'cover' }
+  }
+})
+
+const networkDotsRecipe = cva({
+  base: { display: 'grid', gridTemplateColumns: 'repeat(2, 5px)', gap: '1' }
+})
 
 export function HomeNavigationView({
   enabledChainDots,
@@ -11,51 +39,42 @@ export function HomeNavigationView({
   section,
   selectedChain
 }: {
-  enabledChainDots: React.ReactNode
+  enabledChainDots: ReactNode
   onOpenNetworks: () => void
   onSelectSection: (section: HomeSection) => void
   section: HomeSection
-  selectedChain?: { icon: React.ReactNode; name: string }
+  selectedChain?: { icon: ReactNode; name: string }
 }) {
   return (
-    <div className='t2TabRow'>
-      <div aria-label='Home sections' className='t2Tabs' role='tablist'>
-        {(['positions', 'activity', 'orders'] as HomeSection[]).map((value) => {
-          const label = value[0].toUpperCase() + value.slice(1)
-          const selected = section === value
-          return (
-            <div
-              key={value}
-              aria-selected={selected}
-              className='t2Tab'
-              onClick={() => onSelectSection(value)}
-              onKeyDown={(event) => activateOnKeyboard(event, () => onSelectSection(value))}
-              role='tab'
-              tabIndex={selected ? 0 : -1}
-            >
-              <div className={selected ? 't2TabLabel t2TabLabelActive' : 't2TabLabel'}>{label}</div>
-              <div className={selected ? 't2TabBar t2TabBarActive' : 't2TabBar'} />
-            </div>
-          )
-        })}
-      </div>
-      <div
-        aria-label='Network filter'
-        aria-haspopup='dialog'
-        className='t2NetworkPill'
-        onClick={onOpenNetworks}
-        onKeyDown={(event) => activateOnKeyboard(event, onOpenNetworks)}
-        role='button'
-        tabIndex={0}
+    <nav className={navigationRecipe()}>
+      <Tabs
+        appearance='underline'
+        items={(['positions', 'activity', 'orders'] as HomeSection[]).map((value) => ({
+          active: section === value,
+          id: value,
+          label: value[0].toUpperCase() + value.slice(1)
+        }))}
+        label='Home sections'
+        onSelect={onSelectSection}
+      />
+      <Button
+        appearance='control'
+        hasPopup='dialog'
+        label='Network filter'
+        onPress={onOpenNetworks}
+        shape='pill'
+        size='small'
       >
         {selectedChain ? (
-          <div className='t2PillChainIcon'>{selectedChain.icon}</div>
+          <span className={chainIconRecipe()}>{selectedChain.icon}</span>
         ) : (
-          <div className='t2NetworkDots'>{enabledChainDots}</div>
+          <span className={networkDotsRecipe()}>{enabledChainDots}</span>
         )}
-        <span className='traySpan'>{selectedChain?.name || 'All Networks'}</span>
-        <div className='t2NetworkPillChevron'>{svg.chevron(13)}</div>
-      </div>
-    </div>
+        <Text display='inline' variant='supporting'>
+          {selectedChain?.name || 'All Networks'}
+        </Text>
+        <Icon name='chevronDown' size='small' tone='muted' />
+      </Button>
+    </nav>
   )
 }

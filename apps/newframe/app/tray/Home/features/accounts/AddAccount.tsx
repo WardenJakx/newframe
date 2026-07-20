@@ -1,9 +1,24 @@
-import React, { useEffect, useReducer, useRef } from 'react'
+import { useEffect, useReducer, useRef } from 'react'
 import { useShallow } from 'zustand/react/shallow'
+
+import { Button } from '@newframe/ui/button'
+import { Field } from '@newframe/ui/field'
+import { Grid } from '@newframe/ui/grid'
+import { Icon } from '@newframe/ui/icon'
+import { Inline } from '@newframe/ui/inline'
+import { Input } from '@newframe/ui/input'
+import { ScrollArea } from '@newframe/ui/scroll-area'
+import { Spinner } from '@newframe/ui/spinner'
+import { Stack } from '@newframe/ui/stack'
+import { Surface } from '@newframe/ui/surface'
+import { Text } from '@newframe/ui/text'
+import { TextArea } from '@newframe/ui/text-area'
+import { ToggleButton } from '@newframe/ui/toggle-button'
 
 import link from '../../../../../resources/link'
 import svg from '../../../../../resources/svg'
 import { createBalanceSummarySelector, formatUsdRate } from '../../../../../resources/domain/balance'
+import { SidePanelHeader } from '../../../../../resources/Components/SidePanel/SidePanelHeader'
 import { useWalletSelector } from '../../../../state/useAppSelector'
 
 const signerTypeLabels: Record<string, string> = {
@@ -125,13 +140,6 @@ export function AddAccount({
     openInlineAdd(initialType, initialSelectedSigner)
     return () => clearTimeout(instance.seedPhraseCopiedTimeout)
   }, [])
-
-  function onKeyboardActivate(event: React.KeyboardEvent, action: () => void) {
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault()
-      action()
-    }
-  }
 
   function accountDisplayName(account: any) {
     if (!account) return ''
@@ -707,25 +715,24 @@ export function AddAccount({
     optionKey?: string
   }) {
     return (
-      <div
-        aria-pressed={active}
-        aria-label={label}
-        className={active ? 't2InlineAddType t2InlineAddTypeSelected' : 't2InlineAddType'}
+      <Button
+        appearance='outlinedSelection'
         key={optionKey}
-        onClick={onClick}
-        onKeyDown={(e) => onKeyboardActivate(e, onClick)}
-        role='button'
-        tabIndex={0}
+        label={label}
+        onPress={onClick}
+        selected={active}
+        size='list'
+        width='full'
       >
-        <div className='t2InlineAddTypeIcon'>{renderInlineAddIcon(icon)}</div>
-        <span className='traySpan'>{label}</span>
-      </div>
+        {renderInlineAddIcon(icon)}
+        <Text variant='label'>{label}</Text>
+      </Button>
     )
   }
 
   function renderInlineAddRoot() {
     return (
-      <div className='t2InlineAddTypes'>
+      <Stack gap='small'>
         {inlineAddSections.map((option) =>
           renderInlineAddOption({
             active: state.addAccountCategory === option.section,
@@ -735,7 +742,71 @@ export function AddAccount({
             optionKey: option.section
           })
         )}
-      </div>
+      </Stack>
+    )
+  }
+
+  function renderFeedback() {
+    return (
+      <>
+        {state.addAccountError ? (
+          <Text tone='danger' variant='supporting'>
+            {state.addAccountError}
+          </Text>
+        ) : null}
+        {state.addAccountStatus ? (
+          <Text tone='accent' variant='supporting'>
+            {state.addAccountStatus}
+          </Text>
+        ) : null}
+      </>
+    )
+  }
+
+  function renderAccountRow({
+    address,
+    imported,
+    index,
+    label,
+    onPress,
+    value
+  }: {
+    address: string
+    imported: boolean
+    index: number
+    label: string
+    onPress: () => void
+    value: string
+  }) {
+    return (
+      <Button
+        appearance='row'
+        label={`${imported ? 'Select' : 'Add'} ${label}`}
+        onPress={onPress}
+        size='list'
+        width='full'
+      >
+        <Text tone='muted' variant='caption' shrink={false}>
+          {index + 1}.
+        </Text>
+        <Stack gap='none' grow>
+          <Text variant='label' truncate>
+            {label}
+          </Text>
+          <Text tone='muted' variant='code'>
+            {shortAddress(address)}
+          </Text>
+        </Stack>
+        <Stack align='end' gap='none'>
+          <Text variant='numeric'>{value}</Text>
+          {imported ? (
+            <Text tone='accent' variant='micro'>
+              Imported
+            </Text>
+          ) : null}
+        </Stack>
+        {imported ? <Icon name='check' size='small' tone='accent' /> : null}
+      </Button>
     )
   }
 
@@ -744,56 +815,42 @@ export function AddAccount({
     const importedWallets = wallets.filter((wallet: any) => wallet.account)
     const expanded = !!state.storedSeedExpanded?.[signer.id]
     const visibleWallets = expanded ? importedWallets : importedWallets.slice(0, 3)
-    const importedCount = importedWallets.length
     const label = seedPhraseLabel(seedIndex)
-    const hasMoreWallets = importedWallets.length > 3
 
     return (
-      <div aria-label={`View ${label} wallets`} className='t2StoredSeedCard' key={signer.id}>
-        <div className='t2StoredSeedHeader'>
-          <div className='t2StoredSeedIcon'>{renderInlineAddIcon('seedling')}</div>
-          <div className='t2StoredSeedTitle'>{label}</div>
-          <div className='t2StoredSeedCount'>{`${importedCount}/${wallets.length}`}</div>
-        </div>
-        <div className='t2StoredSeedWallets'>
+      <Surface border='subtle' key={signer.id} padding='small' radius='card' tone='card'>
+        <Stack gap='small'>
+          <Inline align='center' gap='small' justify='between'>
+            <Inline align='center' gap='small'>
+              {renderInlineAddIcon('seedling')}
+              <Text variant='label'>{label}</Text>
+            </Inline>
+            <Text tone='secondary' variant='caption'>{`${importedWallets.length}/${wallets.length}`}</Text>
+          </Inline>
           {visibleWallets.map((wallet: any) => (
-            <div className='t2StoredSeedWallet' key={wallet.address}>
-              <div className='t2StoredSeedWalletName'>{walletDisplayName(wallet)}</div>
-              <div className='t2StoredSeedWalletAddress'>{shortAddress(wallet.address)}</div>
-            </div>
+            <Inline align='center' gap='small' justify='between' key={wallet.address}>
+              <Text variant='supporting'>{walletDisplayName(wallet)}</Text>
+              <Text tone='muted' variant='code'>
+                {shortAddress(wallet.address)}
+              </Text>
+            </Inline>
           ))}
-          {hasMoreWallets && !expanded ? (
-            <div
-              aria-label={`Show all ${label} wallets`}
-              className='t2StoredSeedMore'
-              onClick={(e) => {
-                e.stopPropagation()
-                expandStoredSeed(signer.id)
-              }}
-              onKeyDown={(e) => {
-                e.stopPropagation()
-                onKeyboardActivate(e, () => expandStoredSeed(signer.id))
-              }}
-              role='button'
-              tabIndex={0}
-            >
-              <span className='traySpan'>More wallets</span>
-              {svg.chevron(12)}
-            </div>
+          {importedWallets.length > 3 && !expanded ? (
+            <Button appearance='ghost' onPress={() => expandStoredSeed(signer.id)} size='compact'>
+              <Text variant='caption'>More wallets</Text>
+            </Button>
           ) : null}
-          <div
-            aria-label={`Add address from ${label}`}
-            className='t2StoredSeedAddAddress'
-            onClick={() => setState({ addAccountSelectedSigner: signer.id })}
-            onKeyDown={(e) => onKeyboardActivate(e, () => setState({ addAccountSelectedSigner: signer.id }))}
-            role='button'
-            tabIndex={0}
+          <Button
+            appearance='subtle'
+            onPress={() => setState({ addAccountSelectedSigner: signer.id })}
+            size='small'
+            width='full'
           >
-            {svg.plus(12)}
-            <span className='traySpan'>Add address</span>
-          </div>
-        </div>
-      </div>
+            <Icon name='plus' size='small' />
+            <Text variant='compactAction'>Add address</Text>
+          </Button>
+        </Stack>
+      </Surface>
     )
   }
 
@@ -806,93 +863,47 @@ export function AddAccount({
 
     if (!signers.length) {
       return (
-        <div className='t2InlineAddEmpty'>
-          <div>No stored recovery phrases</div>
-          <div
-            aria-label='Create recovery phrase'
-            className='t2InlineAddSubmit'
-            onClick={() => chooseInlineAddCategory('createSeed')}
-            onKeyDown={(e) => onKeyboardActivate(e, () => chooseInlineAddCategory('createSeed'))}
-            role='button'
-            tabIndex={0}
-          >
-            {svg.plus(12)}
-            <span className='traySpan'>Create recovery phrase</span>
-          </div>
-          <div
-            aria-label='Import recovery phrase'
-            className='t2InlineAddSubmit t2InlineAddSubmitSubtle'
-            onClick={() =>
-              setState({
-                addAccountCategory: 'import',
-                addAccountType: 'seed',
-                addGeneratedPhrase: '',
-                addGeneratedPhraseBackedUp: false,
-                addGeneratedPhraseCopied: false
-              })
-            }
-            onKeyDown={(e) =>
-              onKeyboardActivate(e, () =>
-                setState({
-                  addAccountCategory: 'import',
-                  addAccountType: 'seed',
-                  addGeneratedPhrase: '',
-                  addGeneratedPhraseBackedUp: false,
-                  addGeneratedPhraseCopied: false
-                })
-              )
-            }
-            role='button'
-            tabIndex={0}
-          >
-            {svg.seedling(12)}
-            <span className='traySpan'>Import recovery phrase</span>
-          </div>
-        </div>
+        <Surface padding='large' radius='card' tone='card'>
+          <Stack align='center' gap='small'>
+            <Text tone='secondary'>No stored recovery phrases</Text>
+            <Button appearance='primary' onPress={() => chooseInlineAddCategory('createSeed')} size='small'>
+              <Icon name='plus' size='small' />
+              <Text variant='compactAction'>Create recovery phrase</Text>
+            </Button>
+            <Button
+              appearance='control'
+              onPress={() => setState({ addAccountCategory: 'import', addAccountType: 'seed' })}
+              size='small'
+            >
+              <Text variant='compactAction'>Import recovery phrase</Text>
+            </Button>
+          </Stack>
+        </Surface>
       )
     }
 
     if (!selectedSigner) {
       return (
-        <div className='t2StoredSeedCards'>
-          {signers.map((signer: any, seedIndex: number) =>
-            renderStoredSeedOption(signer, seedIndex, accounts)
-          )}
-        </div>
+        <Stack gap='small'>
+          {signers.map((signer: any, index: number) => renderStoredSeedOption(signer, index, accounts))}
+        </Stack>
       )
     }
 
     return (
-      <div className='t2DerivedAccounts'>
+      <Stack gap='xsmall'>
         {selectedSigner.addresses.map((address: string, index: number) => {
-          const id = address.toLowerCase()
-          const account = accounts[id]
-          const imported = !!account
-          const wallet = { account, address, id, index }
-          return (
-            <div
-              aria-label={`${imported ? 'Select' : 'Add'} ${walletDisplayName(wallet)}`}
-              className={imported ? 't2DerivedAccountRow t2DerivedAccountImported' : 't2DerivedAccountRow'}
-              key={address}
-              onClick={() => createStoredSeedAccount(selectedSigner, address)}
-              onKeyDown={(e) => onKeyboardActivate(e, () => createStoredSeedAccount(selectedSigner, address))}
-              role='button'
-              tabIndex={0}
-            >
-              <div className='t2DerivedAccountIndex'>{index + 1}.</div>
-              <div className='t2DerivedAccountIdentity'>
-                <div className='t2DerivedAccountName'>{walletDisplayName(wallet)}</div>
-                <div className='t2DerivedAccountAddress'>{shortAddress(address)}</div>
-              </div>
-              <div className='t2DerivedAccountValue'>
-                {imported ? accountNavValue(accounts[id]) : '$0.00'}
-              </div>
-              {imported ? <div className='t2DerivedAccountBadge'>Imported</div> : null}
-              <div className='t2DerivedAccountCheck'>{imported ? svg.check(11) : null}</div>
-            </div>
-          )
+          const account = accounts[address.toLowerCase()]
+          return renderAccountRow({
+            address,
+            imported: !!account,
+            index,
+            label: walletDisplayName({ account, index }),
+            onPress: () => createStoredSeedAccount(selectedSigner, address),
+            value: account ? accountNavValue(account) : '$0.00'
+          })
         })}
-      </div>
+      </Stack>
     )
   }
 
@@ -901,105 +912,100 @@ export function AddAccount({
     const words = phrase ? phrase.split(/\s+/) : []
 
     return (
-      <div className='t2InlineAddForm'>
-        <div className='t2SeedCreateNotice'>
-          <div className='t2SeedCreateNoticeIcon'>{svg.alert(14)}</div>
-          <span className='traySpan'>Save these words in order. Newframe cannot recover them later.</span>
-        </div>
+      <Stack gap='small'>
+        <Surface border='danger' padding='small' radius='small' tone='card'>
+          <Inline align='center' gap='small'>
+            <Icon name='warning' size='small' tone='danger' />
+            <Text tone='danger' variant='supporting'>
+              Save these words in order. Newframe cannot recover them later.
+            </Text>
+          </Inline>
+        </Surface>
         {words.length ? (
-          <div className='t2SeedPhraseGrid' aria-label='Generated recovery phrase'>
+          <Grid columns='three' gap='small'>
             {words.map((word: string, index: number) => (
-              <div className='t2SeedPhraseWord' key={`${word}-${index}`}>
-                <span className='traySpan'>{index + 1}</span>
-                <strong>{word}</strong>
-              </div>
+              <Surface key={`${word}-${index}`} padding='small' radius='small' tone='raised'>
+                <Inline align='center' gap='xsmall'>
+                  <Text tone='muted' variant='caption'>
+                    {index + 1}
+                  </Text>
+                  <Text as='strong' variant='supporting'>
+                    {word}
+                  </Text>
+                </Inline>
+              </Surface>
             ))}
-          </div>
+          </Grid>
         ) : (
-          <div className='t2InlineAddEmpty'>
-            <div>{state.addAccountStatus || 'Preparing recovery phrase'}</div>
-          </div>
+          <Surface padding='large' radius='card' tone='card'>
+            {state.addAccountStatus ? (
+              <Spinner label={state.addAccountStatus} />
+            ) : (
+              <Text align='center'>Preparing recovery phrase</Text>
+            )}
+          </Surface>
         )}
-        <div className='t2SeedPhraseActions'>
-          <div
-            aria-label='Copy recovery phrase'
-            className='t2SettingsSmallButton'
-            onClick={() => copyGeneratedSeedPhrase()}
-            onKeyDown={(e) => onKeyboardActivate(e, () => copyGeneratedSeedPhrase())}
-            role='button'
-            tabIndex={0}
+        <Inline align='center' gap='small'>
+          <Button
+            appearance='control'
+            label='Copy recovery phrase'
+            onPress={() => copyGeneratedSeedPhrase()}
+            shape='pill'
+            size='small'
           >
-            {state.addGeneratedPhraseCopied ? 'Copied' : 'Copy'}
-          </div>
-          <div
-            aria-label='Generate new recovery phrase'
-            className='t2SettingsSmallButton'
-            onClick={() => generateInlineSeedPhrase()}
-            onKeyDown={(e) => onKeyboardActivate(e, () => generateInlineSeedPhrase())}
-            role='button'
-            tabIndex={0}
+            <Text variant='compactAction'>{state.addGeneratedPhraseCopied ? 'Copied' : 'Copy'}</Text>
+          </Button>
+          <Button
+            appearance='control'
+            label='Generate new recovery phrase'
+            onPress={() => generateInlineSeedPhrase()}
+            shape='pill'
+            size='small'
           >
-            New phrase
-          </div>
-        </div>
-        <div
-          aria-checked={state.addGeneratedPhraseBackedUp}
-          aria-label='Recovery phrase saved'
-          className={
-            state.addGeneratedPhraseBackedUp ? 't2SeedBackupCheck t2SeedBackupCheckOn' : 't2SeedBackupCheck'
-          }
-          onClick={() => setState({ addGeneratedPhraseBackedUp: !state.addGeneratedPhraseBackedUp })}
-          onKeyDown={(e) =>
-            onKeyboardActivate(e, () =>
-              setState({ addGeneratedPhraseBackedUp: !state.addGeneratedPhraseBackedUp })
-            )
-          }
-          role='checkbox'
-          tabIndex={0}
+            <Text variant='compactAction'>New phrase</Text>
+          </Button>
+        </Inline>
+        <ToggleButton
+          appearance='row'
+          label='Recovery phrase saved'
+          onPress={() => setState({ addGeneratedPhraseBackedUp: !state.addGeneratedPhraseBackedUp })}
+          pressed={state.addGeneratedPhraseBackedUp}
+          size='medium'
         >
-          <div className='t2SeedBackupBox'>{state.addGeneratedPhraseBackedUp ? svg.check(9) : null}</div>
-          <span className='traySpan'>I saved this recovery phrase</span>
-        </div>
-        <div className='t2InlineInput'>
-          <label>Account name</label>
-          <input
-            aria-label='Account name'
-            spellCheck='false'
+          {state.addGeneratedPhraseBackedUp ? <Icon name='check' size='small' tone='accent' /> : null}
+          <Text variant='supporting'>I saved this recovery phrase</Text>
+        </ToggleButton>
+        <Field label='Account name' vertical>
+          <Input
+            label='Account name'
+            spellCheck={false}
             value={state.addAccountName}
-            onChange={(e) => setState({ addAccountName: e.target.value })}
+            onValueChange={(value) => setState({ addAccountName: value })}
           />
-        </div>
+        </Field>
         {needsFramePassword() ? (
-          <div className='t2InlineInput'>
-            <label>{framePasswordLabel()}</label>
-            <input
-              aria-label={framePasswordLabel()}
-              spellCheck='false'
+          <Field label={framePasswordLabel()} vertical>
+            <Input
+              label={framePasswordLabel()}
+              spellCheck={false}
               type='password'
               value={state.addAccountPassword}
-              onChange={(e) => setState({ addAccountPassword: e.target.value })}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') createGeneratedSeedAccount()
-              }}
+              onValueChange={(value) => setState({ addAccountPassword: value })}
+              onSubmit={() => void createGeneratedSeedAccount()}
             />
-          </div>
+          </Field>
         ) : null}
-        {state.addAccountError ? <div className='t2InlineAddError'>{state.addAccountError}</div> : null}
-        {state.addAccountStatus && words.length ? (
-          <div className='t2InlineAddStatus'>{state.addAccountStatus}</div>
-        ) : null}
-        <div
-          aria-label='Create account'
-          className='t2InlineAddSubmit'
-          onClick={() => createGeneratedSeedAccount()}
-          onKeyDown={(e) => onKeyboardActivate(e, () => createGeneratedSeedAccount())}
-          role='button'
-          tabIndex={0}
+        {renderFeedback()}
+        <Button
+          appearance='primary'
+          onPress={() => void createGeneratedSeedAccount()}
+          size='large'
+          width='full'
         >
-          {svg.plus(12)}
-          <span className='traySpan'>Create account</span>
-        </div>
-      </div>
+          <Icon name='plus' size='small' />
+          <Text variant='action'>Create account</Text>
+        </Button>
+      </Stack>
     )
   }
 
@@ -1007,7 +1013,7 @@ export function AddAccount({
     if (state.addAccountType) return renderInlineAddForm()
 
     return (
-      <div className='t2InlineAddTypes'>
+      <Stack gap='small'>
         {inlineImportTypes.map((option) =>
           renderInlineAddOption({
             active: state.addAccountType === option.type,
@@ -1017,7 +1023,7 @@ export function AddAccount({
             optionKey: option.type
           })
         )}
-      </div>
+      </Stack>
     )
   }
 
@@ -1025,7 +1031,7 @@ export function AddAccount({
     if (state.addAccountType) return renderHardwareAdd()
 
     return (
-      <div className='t2InlineAddTypes'>
+      <Stack gap='small'>
         {inlineHardwareTypes.map((option) =>
           renderInlineAddOption({
             icon: option.icon,
@@ -1034,7 +1040,7 @@ export function AddAccount({
             optionKey: option.type
           })
         )}
-      </div>
+      </Stack>
     )
   }
 
@@ -1051,88 +1057,79 @@ export function AddAccount({
     }
 
     return (
-      <div className='t2InlineAddForm'>
+      <Stack gap='small'>
         {signers.length === 0 ? (
-          <div className='t2InlineAddEmpty'>
-            <div>{`Unlock your ${title} to get started`}</div>
-            {type === 'lattice' ? null : (
-              <div className='t2InlineAddStatus'>{`${title} will appear here when detected`}</div>
-            )}
-          </div>
+          <Surface padding='large' radius='card' tone='card'>
+            <Stack align='center' gap='small'>
+              <Text>{`Unlock your ${title} to get started`}</Text>
+              {type === 'lattice' ? null : (
+                <Text tone='secondary' variant='supporting'>{`${title} will appear here when detected`}</Text>
+              )}
+            </Stack>
+          </Surface>
         ) : (
-          <div className='t2DerivedAccounts'>
+          <Stack gap='xsmall'>
             {signers.map((signer: any) => {
               const addressCount = Array.isArray(signer.addresses) ? signer.addresses.length : 0
               return (
-                <div
-                  aria-label={`View ${signer.name || title} accounts`}
-                  className='t2DerivedAccountRow'
+                <Button
+                  appearance='row'
                   key={signer.id}
-                  onClick={() => selectHardwareSigner(signer.id)}
-                  onKeyDown={(e) => onKeyboardActivate(e, () => selectHardwareSigner(signer.id))}
-                  role='button'
-                  tabIndex={0}
+                  label={`View ${signer.name || title} accounts`}
+                  onPress={() => selectHardwareSigner(signer.id)}
+                  size='list'
+                  width='full'
                 >
-                  <div className='t2DerivedAccountIndex'>
-                    {renderInlineAddIcon(
-                      type === 'ledger' ? 'ledger' : type === 'trezor' ? 'trezor' : 'lattice',
-                      14
-                    )}
-                  </div>
-                  <div className='t2DerivedAccountAddress'>{signer.name || title}</div>
-                  <div className='t2DerivedAccountValue'>{signer.status || 'Detected'}</div>
-                  <div className='t2DerivedAccountBadge'>{`${addressCount} accounts`}</div>
-                  <div className='t2DerivedAccountCheck'>{svg.arrowRight(11)}</div>
-                </div>
+                  {renderInlineAddIcon(
+                    type === 'ledger' ? 'ledger' : type === 'trezor' ? 'trezor' : 'lattice',
+                    14
+                  )}
+                  <Stack gap='none' grow>
+                    <Text variant='label'>{signer.name || title}</Text>
+                    <Text tone='secondary' variant='caption'>
+                      {signer.status || 'Detected'}
+                    </Text>
+                  </Stack>
+                  <Text tone='accent' variant='caption'>{`${addressCount} accounts`}</Text>
+                  <Icon name='arrowRight' size='small' tone='muted' />
+                </Button>
               )
             })}
-          </div>
+          </Stack>
         )}
         {type === 'lattice' ? renderLatticeAdd() : null}
-      </div>
+      </Stack>
     )
   }
 
   function renderLatticeAdd() {
     return (
-      <div className='t2LatticeCreateForm'>
-        <div className='t2InlineInput'>
-          <label>Device name</label>
-          <input
-            aria-label='Lattice device name'
-            spellCheck='false'
+      <Stack gap='small'>
+        <Field label='Device name' vertical>
+          <Input
+            label='Lattice device name'
+            spellCheck={false}
             value={state.addAccountName}
-            onChange={(e) =>
-              setState({ addAccountName: e.target.value.replace(/\s+/g, '-').substring(0, 14) })
+            onValueChange={(value) =>
+              setState({ addAccountName: value.replace(/\s+/g, '-').substring(0, 14) })
             }
           />
-        </div>
-        <div className='t2InlineInput'>
-          <label>Device ID</label>
-          <input
-            aria-label='Lattice device ID'
-            spellCheck='false'
+        </Field>
+        <Field label='Device ID' vertical>
+          <Input
+            label='Lattice device ID'
+            spellCheck={false}
             value={state.addAccountInput}
-            onChange={(e) => setState({ addAccountInput: e.target.value })}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') createLatticeSigner()
-            }}
+            onValueChange={(value) => setState({ addAccountInput: value })}
+            onSubmit={() => void createLatticeSigner()}
           />
-        </div>
-        {state.addAccountError ? <div className='t2InlineAddError'>{state.addAccountError}</div> : null}
-        {state.addAccountStatus ? <div className='t2InlineAddStatus'>{state.addAccountStatus}</div> : null}
-        <div
-          aria-label='Create Lattice signer'
-          className='t2InlineAddSubmit'
-          onClick={() => createLatticeSigner()}
-          onKeyDown={(e) => onKeyboardActivate(e, () => createLatticeSigner())}
-          role='button'
-          tabIndex={0}
-        >
-          {svg.plus(12)}
-          <span className='traySpan'>Create signer</span>
-        </div>
-      </div>
+        </Field>
+        {renderFeedback()}
+        <Button appearance='primary' onPress={() => void createLatticeSigner()} size='large' width='full'>
+          <Icon name='plus' size='small' />
+          <Text variant='action'>Create signer</Text>
+        </Button>
+      </Stack>
     )
   }
 
@@ -1144,125 +1141,111 @@ export function AddAccount({
     )
 
     return (
-      <div className='t2InlineAddForm'>
-        <div className='t2HardwareSignerHeader'>
-          <div className='t2HardwareSignerIcon'>{renderInlineAddIcon(signer.type, 16)}</div>
-          <div className='t2HardwareSignerText'>
-            <div className='t2HardwareSignerName'>{signer.name || title}</div>
-            <div className='t2HardwareSignerStatus'>{signer.status || 'Detected'}</div>
-          </div>
-          {loading ? <div className='loader' /> : null}
-        </div>
+      <Stack gap='small'>
+        <Surface border='subtle' padding='small' radius='card' tone='card'>
+          <Inline align='center' gap='small'>
+            {renderInlineAddIcon(signer.type, 16)}
+            <Stack gap='none' grow>
+              <Text variant='label'>{signer.name || title}</Text>
+              <Text tone='secondary' variant='caption'>
+                {signer.status || 'Detected'}
+              </Text>
+            </Stack>
+            {loading ? <Spinner label='Connecting hardware wallet' /> : null}
+          </Inline>
+        </Surface>
         {renderHardwareSignerAction(signer, status)}
         {addresses.length ? (
-          <div className='t2DerivedAccounts'>
+          <Stack gap='xsmall'>
             {addresses.map((address: string, index: number) => {
               const id = address.toLowerCase()
               const accounts = props.shared.accounts
               const imported = !!accounts[id]
-              return (
-                <div
-                  aria-label={`${imported ? 'Select' : 'Add'} ${shortAddress(address)}`}
-                  className={
-                    imported ? 't2DerivedAccountRow t2DerivedAccountImported' : 't2DerivedAccountRow'
-                  }
-                  key={address}
-                  onClick={() => addHardwareAccount(signer, address)}
-                  onKeyDown={(e) => onKeyboardActivate(e, () => addHardwareAccount(signer, address))}
-                  role='button'
-                  tabIndex={0}
-                >
-                  <div className='t2DerivedAccountIndex'>{index + 1}.</div>
-                  <div className='t2DerivedAccountAddress'>{shortAddress(address)}</div>
-                  <div className='t2DerivedAccountValue'>
-                    {imported ? accountNavValue(accounts[id]) : '$0.00'}
-                  </div>
-                  {imported ? <div className='t2DerivedAccountBadge'>Imported</div> : null}
-                  <div className='t2DerivedAccountCheck'>{imported ? svg.check(11) : null}</div>
-                </div>
-              )
+              return renderAccountRow({
+                address,
+                imported,
+                index,
+                label: shortAddress(address),
+                onPress: () => addHardwareAccount(signer, address),
+                value: imported ? accountNavValue(accounts[id]) : '$0.00'
+              })
             })}
-          </div>
+          </Stack>
         ) : (
-          <div className='t2InlineAddEmpty'>
-            <div>{loading ? 'Loading accounts' : 'No accounts loaded yet'}</div>
-          </div>
+          <Surface padding='large' radius='card' tone='card'>
+            <Text align='center' tone='secondary'>
+              {loading ? 'Loading accounts' : 'No accounts loaded yet'}
+            </Text>
+          </Surface>
         )}
-        {state.addAccountError ? <div className='t2InlineAddError'>{state.addAccountError}</div> : null}
-        {state.addAccountStatus ? <div className='t2InlineAddStatus'>{state.addAccountStatus}</div> : null}
-        <div className='t2HardwareActions'>
-          <div
-            aria-label={`Reconnect ${title}`}
-            className='t2SettingsSmallButton'
-            onClick={() => reloadHardwareSigner(signer)}
-            onKeyDown={(e) => onKeyboardActivate(e, () => reloadHardwareSigner(signer))}
-            role='button'
-            tabIndex={0}
+        {renderFeedback()}
+        <Inline align='center' gap='small'>
+          <Button
+            appearance='control'
+            label={`Reconnect ${title}`}
+            onPress={() => reloadHardwareSigner(signer)}
+            shape='pill'
+            size='small'
           >
-            Reconnect
-          </div>
-          <div
-            aria-label={`Remove ${title}`}
-            className='t2SettingsSmallButton t2SettingsDangerButton'
-            onClick={() => removeHardwareSigner(signer)}
-            onKeyDown={(e) => onKeyboardActivate(e, () => removeHardwareSigner(signer))}
-            role='button'
-            tabIndex={0}
+            <Text variant='compactAction'>Reconnect</Text>
+          </Button>
+          <Button
+            appearance='danger'
+            label={`Remove ${title}`}
+            onPress={() => removeHardwareSigner(signer)}
+            shape='pill'
+            size='small'
           >
-            Remove
-          </div>
-        </div>
-      </div>
+            <Text variant='compactAction'>Remove</Text>
+          </Button>
+        </Inline>
+      </Stack>
     )
   }
 
   function renderHardwareSignerAction(signer: any, status: string) {
     if (signer.type === 'trezor' && status === 'need pin') {
       return (
-        <div className='t2HardwareChallenge'>
-          <div className='t2HardwarePinDots'>
-            {(state.addHardwarePin || '').split('').map((_: string, index: number) => (
-              <span className='traySpan' key={index} />
-            ))}
-          </div>
-          <div className='t2HardwarePinPad'>
-            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
-              <div
-                aria-label={`PIN position ${num}`}
-                className='t2HardwarePinButton'
-                key={num}
-                onClick={() => addHardwarePinDigit(num)}
-                onKeyDown={(e) => onKeyboardActivate(e, () => addHardwarePinDigit(num))}
-                role='button'
-                tabIndex={0}
+        <Surface padding='medium' radius='card' tone='card'>
+          <Stack gap='small'>
+            <Text align='center' variant='code'>
+              {'•'.repeat(state.addHardwarePin.length) || 'Enter PIN positions'}
+            </Text>
+            <Grid columns='three' gap='small'>
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+                <Button
+                  appearance='control'
+                  key={num}
+                  label={`PIN position ${num}`}
+                  onPress={() => addHardwarePinDigit(num)}
+                  size='medium'
+                >
+                  <Text variant='numeric'>{num}</Text>
+                </Button>
+              ))}
+            </Grid>
+            <Inline align='center' gap='small'>
+              <Button
+                appearance='control'
+                label='Submit Trezor PIN'
+                onPress={() => submitHardwarePin(signer)}
+                shape='pill'
+                size='small'
               >
-                {svg.octicon('primitive-dot', { height: 18 })}
-              </div>
-            ))}
-          </div>
-          <div className='t2HardwareActions'>
-            <div
-              aria-label='Submit Trezor PIN'
-              className='t2SettingsSmallButton'
-              onClick={() => submitHardwarePin(signer)}
-              onKeyDown={(e) => onKeyboardActivate(e, () => submitHardwarePin(signer))}
-              role='button'
-              tabIndex={0}
-            >
-              Submit PIN
-            </div>
-            <div
-              aria-label='Delete PIN digit'
-              className='t2SettingsSmallButton'
-              onClick={() => backspaceHardwarePin()}
-              onKeyDown={(e) => onKeyboardActivate(e, () => backspaceHardwarePin())}
-              role='button'
-              tabIndex={0}
-            >
-              Delete
-            </div>
-          </div>
-        </div>
+                <Text variant='compactAction'>Submit PIN</Text>
+              </Button>
+              <Button
+                appearance='control'
+                label='Delete PIN digit'
+                onPress={() => backspaceHardwarePin()}
+                shape='pill'
+                size='small'
+              >
+                <Text variant='compactAction'>Delete</Text>
+              </Button>
+            </Inline>
+          </Stack>
+        </Surface>
       )
     }
 
@@ -1270,75 +1253,69 @@ export function AddAccount({
       const allowsDeviceEntry = (signer.capabilities || []).includes('Capability_PassphraseEntry')
 
       return (
-        <div className='t2HardwareChallenge'>
-          <div className='t2InlineInput'>
-            <label>Passphrase</label>
-            <input
-              aria-label='Trezor passphrase'
-              spellCheck='false'
-              type='password'
-              value={state.addHardwarePhrase}
-              onChange={(e) => setState({ addHardwarePhrase: e.target.value })}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') submitHardwarePhrase(signer)
-              }}
-            />
-          </div>
-          <div className='t2HardwareActions'>
-            <div
-              aria-label='Submit Trezor passphrase'
-              className='t2SettingsSmallButton'
-              onClick={() => submitHardwarePhrase(signer)}
-              onKeyDown={(e) => onKeyboardActivate(e, () => submitHardwarePhrase(signer))}
-              role='button'
-              tabIndex={0}
-            >
-              Submit
-            </div>
-            {allowsDeviceEntry ? (
-              <div
-                aria-label='Enter passphrase on Trezor'
-                className='t2SettingsSmallButton'
-                onClick={() => submitHardwarePhraseOnDevice(signer)}
-                onKeyDown={(e) => onKeyboardActivate(e, () => submitHardwarePhraseOnDevice(signer))}
-                role='button'
-                tabIndex={0}
+        <Surface padding='medium' radius='card' tone='card'>
+          <Stack gap='small'>
+            <Field label='Passphrase' vertical>
+              <Input
+                label='Trezor passphrase'
+                spellCheck={false}
+                type='password'
+                value={state.addHardwarePhrase}
+                onValueChange={(value) => setState({ addHardwarePhrase: value })}
+                onSubmit={() => submitHardwarePhrase(signer)}
+              />
+            </Field>
+            <Inline align='center' gap='small'>
+              <Button
+                appearance='control'
+                label='Submit Trezor passphrase'
+                onPress={() => submitHardwarePhrase(signer)}
+                shape='pill'
+                size='small'
               >
-                On device
-              </div>
-            ) : null}
-          </div>
-        </div>
+                <Text variant='compactAction'>Submit</Text>
+              </Button>
+              {allowsDeviceEntry ? (
+                <Button
+                  appearance='control'
+                  label='Enter passphrase on Trezor'
+                  onPress={() => submitHardwarePhraseOnDevice(signer)}
+                  shape='pill'
+                  size='small'
+                >
+                  <Text variant='compactAction'>On device</Text>
+                </Button>
+              ) : null}
+            </Inline>
+          </Stack>
+        </Surface>
       )
     }
 
     if (signer.type === 'lattice' && status === 'pair') {
       return (
-        <div className='t2HardwareChallenge'>
-          <div className='t2InlineInput'>
-            <label>Pairing code</label>
-            <input
-              aria-label='GridPlus pairing code'
-              spellCheck='false'
-              value={state.addHardwarePairCode}
-              onChange={(e) => setState({ addHardwarePairCode: (e.target.value || '').toUpperCase() })}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') pairHardwareLattice(signer)
-              }}
-            />
-          </div>
-          <div
-            aria-label='Pair GridPlus'
-            className='t2InlineAddSubmit'
-            onClick={() => pairHardwareLattice(signer)}
-            onKeyDown={(e) => onKeyboardActivate(e, () => pairHardwareLattice(signer))}
-            role='button'
-            tabIndex={0}
-          >
-            {svg.check(12)}
-            <span className='traySpan'>Pair</span>
-          </div>
-        </div>
+        <Surface padding='medium' radius='card' tone='card'>
+          <Stack gap='small'>
+            <Field label='Pairing code' vertical>
+              <Input
+                label='GridPlus pairing code'
+                spellCheck={false}
+                value={state.addHardwarePairCode}
+                onValueChange={(value) => setState({ addHardwarePairCode: value.toUpperCase() })}
+                onSubmit={() => void pairHardwareLattice(signer)}
+              />
+            </Field>
+            <Button
+              appearance='primary'
+              onPress={() => void pairHardwareLattice(signer)}
+              size='large'
+              width='full'
+            >
+              <Icon name='check' size='small' />
+              <Text variant='action'>Pair</Text>
+            </Button>
+          </Stack>
+        </Surface>
       )
     }
 
@@ -1355,94 +1332,78 @@ export function AddAccount({
     const showAccountInput = state.addAccountType !== 'keystore'
 
     return (
-      <div className='t2InlineAddForm'>
+      <Stack gap='small'>
         {showAccountInput ? (
-          <div className='t2InlineInput'>
-            <label>{inputLabel}</label>
+          <Field label={inputLabel} vertical>
             {state.addAccountType === 'seed' ? (
-              <textarea
-                aria-label={inputLabel}
-                spellCheck='false'
+              <TextArea
+                label={inputLabel}
+                spellCheck={false}
                 value={state.addAccountInput}
-                onChange={(e) => setState({ addAccountInput: e.target.value })}
+                onValueChange={(value) => setState({ addAccountInput: value })}
               />
             ) : (
-              <input
-                aria-label={inputLabel}
-                spellCheck='false'
+              <Input
+                label={inputLabel}
+                spellCheck={false}
                 value={state.addAccountInput}
-                onChange={(e) => setState({ addAccountInput: e.target.value })}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') createInlineAccount()
-                }}
+                onValueChange={(value) => setState({ addAccountInput: value })}
+                onSubmit={() => void createInlineAccount()}
               />
             )}
-          </div>
+          </Field>
         ) : (
-          <div
-            aria-label='Choose JSON backup file'
-            className='t2InlineAddFile'
-            onClick={() => locateInlineKeystore()}
-            onKeyDown={(e) => onKeyboardActivate(e, () => locateInlineKeystore())}
-            role='button'
-            tabIndex={0}
+          <Button
+            appearance='outlinedSelection'
+            label='Choose JSON backup file'
+            onPress={() => void locateInlineKeystore()}
+            selected={!!state.addAccountKeystore}
+            size='list'
+            width='full'
           >
-            <div className='t2InlineAddFileIcon'>{svg.file(14)}</div>
-            <span className='traySpan'>
+            {svg.file(14)}
+            <Text variant='label'>
               {state.addAccountKeystore ? 'JSON backup file selected' : 'Choose JSON backup file'}
-            </span>
-          </div>
+            </Text>
+          </Button>
         )}
         {state.addAccountType === 'keystore' ? (
-          <div className='t2InlineInput'>
-            <label>JSON backup file password</label>
-            <input
-              aria-label='JSON backup file password'
-              spellCheck='false'
+          <Field label='JSON backup file password' vertical>
+            <Input
+              label='JSON backup file password'
+              spellCheck={false}
               type='password'
               value={state.addAccountKeystorePassword}
-              onChange={(e) => setState({ addAccountKeystorePassword: e.target.value })}
+              onValueChange={(value) => setState({ addAccountKeystorePassword: value })}
             />
-          </div>
+          </Field>
         ) : null}
-        <div className='t2InlineInput'>
-          <label>Account name</label>
-          <input
-            aria-label='Account name'
-            spellCheck='false'
+        <Field label='Account name' vertical>
+          <Input
+            label='Account name'
+            spellCheck={false}
             value={state.addAccountName}
-            onChange={(e) => setState({ addAccountName: e.target.value })}
+            onValueChange={(value) => setState({ addAccountName: value })}
           />
-        </div>
+        </Field>
         {needsFramePassword() ? (
-          <div className='t2InlineInput'>
-            <label>{framePasswordLabel()}</label>
-            <input
-              aria-label={framePasswordLabel()}
-              spellCheck='false'
+          <Field label={framePasswordLabel()} vertical>
+            <Input
+              label={framePasswordLabel()}
+              spellCheck={false}
               type='password'
               value={state.addAccountPassword}
-              onChange={(e) => setState({ addAccountPassword: e.target.value })}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') createInlineAccount()
-              }}
+              onValueChange={(value) => setState({ addAccountPassword: value })}
+              onSubmit={() => void createInlineAccount()}
             />
-          </div>
+          </Field>
         ) : null}
-        {state.addAccountError ? <div className='t2InlineAddError'>{state.addAccountError}</div> : null}
-        {state.addAccountStatus ? <div className='t2InlineAddStatus'>{state.addAccountStatus}</div> : null}
-        <div
-          aria-label='Create account'
-          className='t2InlineAddSubmit'
-          onClick={() => createInlineAccount()}
-          onKeyDown={(e) => onKeyboardActivate(e, () => createInlineAccount())}
-          role='button'
-          tabIndex={0}
-        >
-          {svg.plus(12)}
-          <span className='traySpan'>Create account</span>
-        </div>
-      </div>
+        {renderFeedback()}
+        <Button appearance='primary' onPress={() => void createInlineAccount()} size='large' width='full'>
+          <Icon name='plus' size='small' />
+          <Text variant='action'>Create account</Text>
+        </Button>
+      </Stack>
     )
   }
 
@@ -1457,22 +1418,14 @@ export function AddAccount({
 
   function renderInlineAddAccount() {
     return (
-      <div className='t2InlineAdd'>
-        <div className='t2InlineAddHeader'>
-          <div
-            aria-label='Back'
-            className='t2InlineAddBack'
-            onClick={() => backInlineAdd()}
-            onKeyDown={(e) => onKeyboardActivate(e, () => backInlineAdd())}
-            role='button'
-            tabIndex={0}
-          >
-            {svg.chevronLeft(14)}
-          </div>
-          <div className='t2InlineAddTitle'>Add account</div>
-        </div>
-        {renderInlineAddBody()}
-      </div>
+      <Stack grow gap='none'>
+        <SidePanelHeader closeLabel='Back' onClose={backInlineAdd} title='Add account' />
+        <ScrollArea height='page'>
+          <Surface padding='medium' radius='none' tone='transparent'>
+            {renderInlineAddBody()}
+          </Surface>
+        </ScrollArea>
+      </Stack>
     )
   }
 

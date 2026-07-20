@@ -1,4 +1,5 @@
 import { fireEvent, screen, render } from '../../../../../componentSetup'
+import { within } from '@testing-library/react'
 import TxRequest, { TransactionRequest } from '../../../../../../app/tray/Account/Requests/TransactionRequest'
 import { resetStateMirrorForTests } from '../../../../../../app/state/rendererStore'
 import { RequestViewProvider } from '../../../../../../app/tray/requestView'
@@ -159,7 +160,54 @@ describe('confirm', () => {
     renderRequest(req)
 
     const effects = screen.getByLabelText('Transaction effects')
-    expect(effects.querySelector('.txReviewEffectIcon')?.textContent).toBe('USDC')
+    expect(within(effects).getAllByText('USDC')[0]?.textContent).toBe('USDC')
+  })
+
+  it('styles transaction effect icons by asset direction', () => {
+    const req = {
+      handlerId: 'test-req',
+      type: 'transaction',
+      origin: 'test-origin',
+      data: {
+        chainId: '0x89',
+        gasLimit: '0x5208',
+        gasPrice: '0x3b9aca00',
+        type: '0x0'
+      },
+      simulation: {
+        status: 'success',
+        effects: [
+          {
+            id: 'sim-usdc-out',
+            kind: 'erc20',
+            direction: 'out',
+            label: 'Asset out',
+            amount: '0x1',
+            decimals: 6,
+            symbol: 'USDC'
+          },
+          {
+            id: 'sim-weth-in',
+            kind: 'erc20',
+            direction: 'in',
+            label: 'Asset in',
+            amount: '0x1',
+            decimals: 18,
+            symbol: 'WETH'
+          }
+        ]
+      },
+      classification: TxClassification.CONTRACT_CALL
+    }
+
+    renderRequest(req)
+    const outgoing = screen.getByRole('group', { name: 'Outgoing asset effect' })
+    const incoming = screen.getByRole('group', { name: 'Incoming asset effect' })
+
+    expect(outgoing).toBeTruthy()
+    expect(incoming).toBeTruthy()
+    expect(outgoing.getAttribute('data-effect-direction')).toBe('out')
+    expect(incoming.getAttribute('data-effect-direction')).toBe('in')
   })
 
   it('renders fee rate presets for unsigned transactions', () => {
@@ -215,9 +263,9 @@ describe('confirm', () => {
     renderRequest(req)
 
     fireEvent.click(screen.getByText('View data'))
-    fireEvent.mouseDown(document.querySelector('.txNonceButtonLower')!)
-    fireEvent.mouseDown(document.querySelector('.txNonceButtonRaise')!)
-    fireEvent.mouseDown(document.querySelector('.txNonceButtonReset')!)
+    fireEvent.click(screen.getByRole('button', { name: 'Lower nonce' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Raise nonce' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Reset nonce' }))
 
     expect(link.executeCommand).toHaveBeenCalledWith({
       type: 'transaction.nonce-adjust',
@@ -265,7 +313,7 @@ describe('confirm', () => {
     }
 
     render(<TransactionRequest req={req} step='adjustApproval' actionId='erc20:approve' />)
-    fireEvent.click(screen.getByRole('button', { name: 'Unlimited' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Unlimited' }))
 
     expect(link.executeCommand).toHaveBeenCalledWith({
       type: 'request.token-approval-update',

@@ -1,22 +1,10 @@
-import { createRequire } from 'module'
 import { dirname, join, relative, resolve } from 'path'
 import { copyFile, mkdir, readdir, readFile, rm, stat, writeFile } from 'fs/promises'
-
-type Stylus = {
-  render: (
-    source: string,
-    options: Record<string, unknown>,
-    callback: (err: Error | null, css?: string) => void
-  ) => void
-}
 
 type Renderer = {
   entrypoint: string
   name: string
 }
-
-const require = createRequire(__filename)
-const stylus = require('stylus') as Stylus
 
 const cwd = process.cwd()
 const bundleDir = resolve(cwd, 'bundle')
@@ -25,41 +13,6 @@ const tempRoot = resolve(bundleDir, '.bun-renderer')
 const renderers: Record<string, Renderer> = {
   tray: { name: 'tray', entrypoint: 'app/tray/index.html' },
   sidetray: { name: 'sidetray', entrypoint: 'app/sidetray/index.html' }
-}
-
-const stylusPlugin: Bun.BunPlugin = {
-  name: 'stylus-loader',
-  setup(build) {
-    build.onLoad({ filter: /\.styl$/ }, async ({ path }) => {
-      const source = await Bun.file(path).text()
-      const contents = await renderStylus(source, path)
-
-      return {
-        contents,
-        loader: 'css'
-      }
-    })
-  }
-}
-
-async function renderStylus(source: string, filename: string) {
-  return new Promise<string>((resolve, reject) => {
-    stylus.render(
-      source,
-      {
-        filename,
-        paths: [dirname(filename)],
-        'include css': false
-      },
-      (err, css) => {
-        if (err) {
-          reject(err)
-        } else {
-          resolve(css || '')
-        }
-      }
-    )
-  })
 }
 
 function extractScriptNonce(html: string, entrypoint: string) {
@@ -135,7 +88,6 @@ async function buildRenderer(renderer: Renderer) {
     outdir: tempDir,
     target: 'browser',
     minify: true,
-    plugins: [stylusPlugin],
     define: {
       global: 'globalThis',
       'process.env.NODE_ENV': JSON.stringify('production')

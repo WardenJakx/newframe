@@ -1,5 +1,22 @@
 import React from 'react'
+import { Button } from '@newframe/ui/button'
+import { Disclosure } from '@newframe/ui/disclosure'
+import { Field } from '@newframe/ui/field'
+import { Grid } from '@newframe/ui/grid'
+import { Group } from '@newframe/ui/group'
+import { IconButton } from '@newframe/ui/icon-button'
+import { Input } from '@newframe/ui/input'
+import { Select } from '@newframe/ui/select'
+import { Stack } from '@newframe/ui/stack'
+import { Spacer } from '@newframe/ui/spacer'
+import { Surface } from '@newframe/ui/surface'
+import { Tabs } from '@newframe/ui/tabs'
+import { Text } from '@newframe/ui/text'
+import { ToggleButton } from '@newframe/ui/toggle-button'
 
+import { BalanceRange } from '../../../resources/Components/BalanceRange'
+import { ProgressSteps } from '../../../resources/Components/ProgressSteps'
+import { SidePanel } from '../../../resources/Components/SidePanel/SidePanel'
 import TokenSelector from '../../../resources/Components/TokenSelector'
 import {
   getTokenSelectorPage,
@@ -23,10 +40,8 @@ import {
 import {
   type FlashAsset,
   type FlashOrderType,
-  type FlashQuote,
-  type FlashStep
+  type FlashQuote
 } from '../../../resources/domain/flash/schemas'
-import svg from '../../../resources/svg'
 import { formatUnits, toBigInt } from '../../../resources/utils/numbers'
 import { createSideTrayWalletSelector } from '../../state/selectors/sideTrayWallet'
 import { useSideTraySelector } from '../../state/useAppSelector'
@@ -555,22 +570,11 @@ export default function Trade({ assetId, chainId }: TradeProps) {
     ]
 
     return (
-      <div className='tradeTabsWrap'>
-        <div aria-label='Order type' className='tradeTabs' role='tablist'>
-          {tabs.map((tab) => (
-            <button
-              aria-selected={tab.active}
-              className={tab.active ? 'tradeTab tradeTabActive' : 'tradeTab'}
-              key={tab.label}
-              onClick={() => dispatch({ type: 'setOrderType', orderType: tab.orderType })}
-              role='tab'
-              type='button'
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-      </div>
+      <Tabs
+        label='Order type'
+        items={tabs.map((tab) => ({ active: tab.active, id: tab.orderType, label: tab.label }))}
+        onSelect={(orderType) => dispatch({ type: 'setOrderType', orderType })}
+      />
     )
   }
 
@@ -582,7 +586,8 @@ export default function Trade({ assetId, chainId }: TradeProps) {
     label,
     placeholder,
     required = false,
-    suffix
+    suffix,
+    vertical = false
   }: {
     ariaLabel: string
     field:
@@ -599,31 +604,22 @@ export default function Trade({ assetId, chainId }: TradeProps) {
     placeholder: string
     required?: boolean
     suffix?: string
+    vertical?: boolean
   }) => {
     return (
-      <label className={invalid ? 'tradeOrderField tradeOrderFieldInvalid' : 'tradeOrderField'}>
-        <span className='tradeOrderFieldLabel'>
-          {label}
-          {required ? (
-            <span aria-hidden='true' className='tradeRequiredMark'>
-              *
-            </span>
-          ) : null}
-        </span>
-        <span className='tradeOrderFieldControl'>
-          <input
-            aria-invalid={invalid || undefined}
-            aria-label={ariaLabel}
-            aria-required={required || undefined}
-            inputMode={inputMode}
-            onChange={(e) => dispatch({ type: 'setOrderField', field, value: e.target.value })}
-            placeholder={placeholder}
-            required={required}
-            value={state[field]}
-          />
-          {suffix ? <span className='tradeOrderFieldSuffix'>{suffix}</span> : null}
-        </span>
-      </label>
+      <Field invalid={invalid} label={label} required={required} suffix={suffix} vertical={vertical}>
+        <Input
+          align='end'
+          appearance='plain'
+          invalid={invalid}
+          label={ariaLabel}
+          inputMode={inputMode}
+          onValueChange={(value) => dispatch({ type: 'setOrderField', field, value })}
+          placeholder={placeholder}
+          required={required}
+          value={state[field]}
+        />
+      </Field>
     )
   }
 
@@ -632,7 +628,7 @@ export default function Trade({ assetId, chainId }: TradeProps) {
 
     if (state.orderType === FLASH_LIMIT_ORDER_TYPE) {
       return (
-        <div className='tradeOrderFields'>
+        <Grid columns='one' gap='medium'>
           {renderOrderInput({
             ariaLabel: 'Limit price',
             field: 'limitNotionalPrice',
@@ -642,47 +638,54 @@ export default function Trade({ assetId, chainId }: TradeProps) {
             required: true,
             suffix: 'USD'
           })}
-        </div>
+        </Grid>
       )
     }
 
     if (state.orderType === FLASH_TWAP_ORDER_TYPE) {
       return (
-        <div className='tradeOrderSection'>
-          <div className='tradeOrderSectionTitle'>
-            Duration
-            <span aria-hidden='true' className='tradeRequiredMark'>
-              *
-            </span>
-          </div>
-          <div className='tradeOrderFields tradeOrderFieldsThree'>
-            {renderOrderInput({
-              ariaLabel: 'TWAP duration days',
-              field: 'durationDays',
-              inputMode: 'numeric',
-              invalid: invalidTradeFields.duration,
-              label: 'Days',
-              placeholder: '0'
-            })}
-            {renderOrderInput({
-              ariaLabel: 'TWAP duration hours',
-              field: 'durationHours',
-              inputMode: 'numeric',
-              invalid: invalidTradeFields.duration,
-              label: 'Hours',
-              placeholder: '1'
-            })}
-            {renderOrderInput({
-              ariaLabel: 'TWAP duration minutes',
-              field: 'durationMinutes',
-              inputMode: 'numeric',
-              invalid: invalidTradeFields.duration,
-              label: 'Minutes',
-              placeholder: '0'
-            })}
-          </div>
-          <div className='tradeOrderHint'>Minimum 5 minutes · Maximum 30 days</div>
-        </div>
+        <Surface border='subtle' padding='medium' radius='small' tone='card'>
+          <Stack gap='medium'>
+            <Text variant='supporting'>
+              Duration{' '}
+              <Text decorative display='inline' variant='supporting' tone='danger'>
+                *
+              </Text>
+            </Text>
+            <Grid columns='three' gap='medium' responsive>
+              {renderOrderInput({
+                ariaLabel: 'TWAP duration days',
+                field: 'durationDays',
+                inputMode: 'numeric',
+                invalid: invalidTradeFields.duration,
+                label: 'Days',
+                placeholder: '0',
+                vertical: true
+              })}
+              {renderOrderInput({
+                ariaLabel: 'TWAP duration hours',
+                field: 'durationHours',
+                inputMode: 'numeric',
+                invalid: invalidTradeFields.duration,
+                label: 'Hours',
+                placeholder: '1',
+                vertical: true
+              })}
+              {renderOrderInput({
+                ariaLabel: 'TWAP duration minutes',
+                field: 'durationMinutes',
+                inputMode: 'numeric',
+                invalid: invalidTradeFields.duration,
+                label: 'Minutes',
+                placeholder: '0',
+                vertical: true
+              })}
+            </Grid>
+            <Text variant='detail' tone='secondary'>
+              Minimum 5 minutes · Maximum 30 days
+            </Text>
+          </Stack>
+        </Surface>
       )
     }
 
@@ -691,54 +694,67 @@ export default function Trade({ assetId, chainId }: TradeProps) {
       const delta = getTradeTriggerDeltaPercent(state.triggerNotionalPrice, state.quote?.targetNotionalPrice)
 
       return (
-        <div className='tradeOrderSection'>
-          <div aria-label='TP or SL' className='tradeTriggerKind' role='group'>
-            <button
-              className={takeProfit ? 'tradeTriggerKindActive' : ''}
-              onClick={() => dispatch({ type: 'setOrderType', orderType: FLASH_TAKE_PROFIT_ORDER_TYPE })}
-              type='button'
-            >
-              Take profit
-            </button>
-            <button
-              className={!takeProfit ? 'tradeTriggerKindActive' : ''}
-              onClick={() => dispatch({ type: 'setOrderType', orderType: FLASH_STOP_LOSS_ORDER_TYPE })}
-              type='button'
-            >
-              Stop loss
-            </button>
-          </div>
-          <div className='tradeOrderFields tradeOrderFieldsThree tradeOrderFieldsTrigger'>
-            {renderOrderInput({
-              ariaLabel: takeProfit ? 'Take-profit trigger price' : 'Stop-loss trigger price',
-              field: 'triggerNotionalPrice',
-              invalid: invalidTradeFields.triggerPrice,
-              label: `${takeProfit ? 'TP' : 'SL'} trigger`,
-              placeholder: '0.00',
-              required: true,
-              suffix: 'USD'
-            })}
-            {renderOrderInput({
-              ariaLabel: takeProfit ? 'Take-profit limit price' : 'Stop-loss limit price',
-              field: 'limitNotionalPrice',
-              invalid: invalidTradeFields.limitPrice,
-              label: `${takeProfit ? 'TP' : 'SL'} limit`,
-              placeholder: 'Market',
-              suffix: 'USD'
-            })}
-            <label className='tradeOrderField'>
-              <span className='tradeOrderFieldLabel'>{takeProfit ? 'Gain' : 'Loss'}</span>
-              <output className='tradeOrderOutput'>
-                {delta === null ? '—' : `${delta >= 0 ? '+' : ''}${delta.toFixed(2)}%`}
-              </output>
-            </label>
-          </div>
-          <div className='tradeOrderHint'>
-            {delta === null
-              ? `Quoted against ${state.targetAsset.symbol}/USD`
-              : `${delta >= 0 ? '+' : ''}${delta.toFixed(2)}% from current price`}
-          </div>
-        </div>
+        <Surface border='subtle' padding='medium' radius='small' tone='card'>
+          <Stack gap='medium'>
+            <Group label='TP or SL'>
+              <Surface padding='small' radius='small' tone='subtle'>
+                <Grid columns='two' gap='small'>
+                  <ToggleButton
+                    onPress={() =>
+                      dispatch({ type: 'setOrderType', orderType: FLASH_TAKE_PROFIT_ORDER_TYPE })
+                    }
+                    pressed={takeProfit}
+                    size='small'
+                  >
+                    <Text align='center' variant='supporting'>
+                      Take profit
+                    </Text>
+                  </ToggleButton>
+                  <ToggleButton
+                    onPress={() => dispatch({ type: 'setOrderType', orderType: FLASH_STOP_LOSS_ORDER_TYPE })}
+                    pressed={!takeProfit}
+                    size='small'
+                  >
+                    <Text align='center' variant='supporting'>
+                      Stop loss
+                    </Text>
+                  </ToggleButton>
+                </Grid>
+              </Surface>
+            </Group>
+            <Grid columns='three' gap='medium' responsive>
+              {renderOrderInput({
+                ariaLabel: takeProfit ? 'Take-profit trigger price' : 'Stop-loss trigger price',
+                field: 'triggerNotionalPrice',
+                invalid: invalidTradeFields.triggerPrice,
+                label: `${takeProfit ? 'TP' : 'SL'} trigger`,
+                placeholder: '0.00',
+                required: true,
+                suffix: 'USD',
+                vertical: true
+              })}
+              {renderOrderInput({
+                ariaLabel: takeProfit ? 'Take-profit limit price' : 'Stop-loss limit price',
+                field: 'limitNotionalPrice',
+                invalid: invalidTradeFields.limitPrice,
+                label: `${takeProfit ? 'TP' : 'SL'} limit`,
+                placeholder: 'Market',
+                suffix: 'USD',
+                vertical: true
+              })}
+              <Field label={takeProfit ? 'Gain' : 'Loss'} vertical>
+                <Text as='output' align='end' variant='numeric'>
+                  {delta === null ? '—' : `${delta >= 0 ? '+' : ''}${delta.toFixed(2)}%`}
+                </Text>
+              </Field>
+            </Grid>
+            <Text variant='detail' tone='secondary'>
+              {delta === null
+                ? `Quoted against ${state.targetAsset.symbol}/USD`
+                : `${delta >= 0 ? '+' : ''}${delta.toFixed(2)}% from current price`}
+            </Text>
+          </Stack>
+        </Surface>
       )
     }
 
@@ -746,32 +762,36 @@ export default function Trade({ assetId, chainId }: TradeProps) {
       const delta = getTradeTriggerDeltaPercent(state.triggerNotionalPrice, state.quote?.targetNotionalPrice)
 
       return (
-        <div className='tradeOrderSection'>
-          <div className='tradeOrderFields tradeOrderFieldsTwo tradeOrderFieldsTrigger'>
-            {renderOrderInput({
-              ariaLabel: 'Stop trigger price',
-              field: 'triggerNotionalPrice',
-              invalid: invalidTradeFields.triggerPrice,
-              label: `${state.targetAsset.symbol}/USD trigger`,
-              placeholder: '0.00',
-              required: true,
-              suffix: 'USD'
-            })}
-            {renderOrderInput({
-              ariaLabel: 'Stop limit price',
-              field: 'limitNotionalPrice',
-              invalid: invalidTradeFields.limitPrice,
-              label: 'Limit price',
-              placeholder: 'Market',
-              suffix: 'USD'
-            })}
-          </div>
-          <div className='tradeOrderHint'>
-            {delta === null
-              ? 'Leave limit blank for a stop-market order'
-              : `${delta >= 0 ? '+' : ''}${delta.toFixed(2)}% from current price`}
-          </div>
-        </div>
+        <Surface border='subtle' padding='medium' radius='small' tone='card'>
+          <Stack gap='medium'>
+            <Grid columns='two' gap='medium' responsive>
+              {renderOrderInput({
+                ariaLabel: 'Stop trigger price',
+                field: 'triggerNotionalPrice',
+                invalid: invalidTradeFields.triggerPrice,
+                label: `${state.targetAsset.symbol}/USD trigger`,
+                placeholder: '0.00',
+                required: true,
+                suffix: 'USD',
+                vertical: true
+              })}
+              {renderOrderInput({
+                ariaLabel: 'Stop limit price',
+                field: 'limitNotionalPrice',
+                invalid: invalidTradeFields.limitPrice,
+                label: 'Limit price',
+                placeholder: 'Market',
+                suffix: 'USD',
+                vertical: true
+              })}
+            </Grid>
+            <Text variant='detail' tone='secondary'>
+              {delta === null
+                ? 'Leave limit blank for a stop-market order'
+                : `${delta >= 0 ? '+' : ''}${delta.toFixed(2)}% from current price`}
+            </Text>
+          </Stack>
+        </Surface>
       )
     }
 
@@ -792,79 +812,56 @@ export default function Trade({ assetId, chainId }: TradeProps) {
     }
 
     return (
-      <div className='tradeSettingStack'>
-        <label className='tradeSettingRow'>
-          <span>
-            Time in force
-            <span aria-hidden='true' className='tradeRequiredMark'>
-              *
-            </span>
-          </span>
-          <select
-            aria-label='Time in force'
-            onChange={(e) => handleTimeInForceChange(e.target.value as 'gtc' | 'gtt')}
+      <Stack gap='medium'>
+        <Field label='Time in force' required>
+          <Select
+            label='Time in force'
+            onValueChange={(value) => handleTimeInForceChange(value as 'gtc' | 'gtt')}
+            options={[
+              { label: 'Good till cancelled', value: 'gtc' },
+              { label: 'Good till time', value: 'gtt' }
+            ]}
             value={state.timeInForce}
-          >
-            <option value='gtc'>Good till cancelled</option>
-            <option value='gtt'>Good till time</option>
-          </select>
-        </label>
+          />
+        </Field>
         {state.timeInForce === 'gtt' ? (
-          <label className='tradeSettingRow'>
-            <span>
-              Expires
-              <span aria-hidden='true' className='tradeRequiredMark'>
-                *
-              </span>
-            </span>
-            <input
-              aria-invalid={invalidTradeFields.expireTime || undefined}
-              aria-label='Order expiry'
-              aria-required='true'
-              className={invalidTradeFields.expireTime ? 'tradeSettingInputInvalid' : undefined}
+          <Field invalid={invalidTradeFields.expireTime} label='Expires' required>
+            <Input
+              label='Order expiry'
+              invalid={invalidTradeFields.expireTime}
               min={new Date().toISOString().slice(0, 16)}
-              onChange={(e) =>
-                dispatch({ type: 'setOrderField', field: 'expireTime', value: e.target.value })
-              }
+              onValueChange={(value) => dispatch({ type: 'setOrderField', field: 'expireTime', value })}
               required
               type='datetime-local'
               value={state.expireTime}
             />
-          </label>
+          </Field>
         ) : null}
-      </div>
+      </Stack>
     )
   }
 
   const renderTradeAdvancedFields = () => {
     if (state.orderType === FLASH_MARKET_ORDER_TYPE) {
       return (
-        <label className='tradeSettingRow'>
-          <span>Max slippage</span>
-          <div
-            className={
-              invalidTradeFields.slippage
-                ? 'tradeSlippageInput tradeSlippageInputInvalid'
-                : 'tradeSlippageInput'
-            }
-          >
-            <input
-              aria-invalid={invalidTradeFields.slippage || undefined}
-              aria-label='Slippage'
-              inputMode='decimal'
-              onChange={(e) => dispatch({ type: 'settingsChanged', slippage: e.target.value })}
-              placeholder='Automatic'
-              value={state.slippage}
-            />
-            <span>%</span>
-          </div>
-        </label>
+        <Field invalid={invalidTradeFields.slippage} label='Max slippage' suffix='%'>
+          <Input
+            align='end'
+            appearance='plain'
+            invalid={invalidTradeFields.slippage}
+            label='Slippage'
+            inputMode='decimal'
+            onValueChange={(slippage) => dispatch({ type: 'settingsChanged', slippage })}
+            placeholder='Automatic'
+            value={state.slippage}
+          />
+        </Field>
       )
     }
 
     if (state.orderType === FLASH_TWAP_ORDER_TYPE) {
       return (
-        <div className='tradeSettingStack'>
+        <Stack gap='medium'>
           {renderOrderInput({
             ariaLabel: 'TWAP segments',
             field: 'twapBucketCount',
@@ -881,7 +878,7 @@ export default function Trade({ assetId, chainId }: TradeProps) {
             placeholder: 'Automatic',
             suffix: '%'
           })}
-        </div>
+        </Stack>
       )
     }
 
@@ -905,18 +902,20 @@ export default function Trade({ assetId, chainId }: TradeProps) {
         ariaLabel={`Select ${field} asset`}
         footer={
           rowsHidden > 0 ? (
-            <button
-              className='tokenSelectorMore'
-              onClick={() =>
-                setAssetRowsVisible((rows) => ({
-                  ...rows,
-                  [field]: rows[field] + TOKEN_SELECTOR_ROWS_INCREMENT
-                }))
-              }
-              type='button'
-            >
-              {`Show ${Math.min(TOKEN_SELECTOR_ROWS_INCREMENT, rowsHidden)} more assets`}
-            </button>
+            <Stack>
+              <Button
+                onPress={() =>
+                  setAssetRowsVisible((rows) => ({
+                    ...rows,
+                    [field]: rows[field] + TOKEN_SELECTOR_ROWS_INCREMENT
+                  }))
+                }
+              >
+                <Text align='center' variant='supporting' tone='secondary'>
+                  {`Show ${Math.min(TOKEN_SELECTOR_ROWS_INCREMENT, rowsHidden)} more assets`}
+                </Text>
+              </Button>
+            </Stack>
           ) : null
         }
         items={items}
@@ -937,18 +936,14 @@ export default function Trade({ assetId, chainId }: TradeProps) {
     const nextSide = state.side === 'buy' ? 'SELL' : 'BUY'
 
     return (
-      <button
-        aria-label={`Switch to ${nextSide}`}
-        className='tradeDirectionSwitch'
-        onClick={() => dispatch({ type: 'toggleSide' })}
+      <IconButton
+        label={`Switch to ${nextSide}`}
+        appearance='subtle'
+        icon='swap'
+        onPress={() => dispatch({ type: 'toggleSide' })}
+        size='compact'
         title={`Switch to ${nextSide}`}
-        type='button'
-      >
-        <svg aria-hidden='true' viewBox='0 0 20 20'>
-          <path d='M4 5.5h10.2l-2-2L13.7 2 18 6.25l-4.3 4.25-1.5-1.5 2-2H4z' />
-          <path d='M16 14.5H5.8l2 2L6.3 18 2 13.75 6.3 9.5 7.8 11l-2 2H16z' />
-        </svg>
-      </button>
+      />
     )
   }
 
@@ -956,49 +951,13 @@ export default function Trade({ assetId, chainId }: TradeProps) {
     const percent = getTradeBalancePercent(asset, amount)
 
     return (
-      <div
-        className={
-          state.side === 'buy'
-            ? 'tradeBalanceSlider tradeBalanceSliderBuy'
-            : 'tradeBalanceSlider tradeBalanceSliderSell'
-        }
-      >
-        <div className='tradeBalanceSliderHeader'>
-          <span>
-            Balance {getTradeDisplayBalance(asset)} {asset.symbol}
-          </span>
-          <label>
-            <input
-              aria-label={`${asset.symbol} balance percentage`}
-              inputMode='decimal'
-              max='100'
-              min='0'
-              onChange={(e) => handleSetTradeBalancePercent(asset, Number(e.target.value))}
-              type='number'
-              value={Number(percent.toFixed(2))}
-            />
-            <span>%</span>
-          </label>
-        </div>
-        <input
-          aria-label={`${asset.symbol} amount percentage`}
-          className='tradeBalanceRange'
-          data-direction={state.side}
-          max='100'
-          min='0'
-          onChange={(e) => handleSetTradeBalancePercent(asset, Number(e.target.value))}
-          step='0.1'
-          type='range'
-          value={percent}
-        />
-        <div aria-hidden='true' className='tradeBalanceTicks'>
-          <span>0%</span>
-          <span>25%</span>
-          <span>50%</span>
-          <span>75%</span>
-          <span>100%</span>
-        </div>
-      </div>
+      <BalanceRange
+        label={asset.symbol}
+        balanceLabel={`Balance ${getTradeDisplayBalance(asset)} ${asset.symbol}`}
+        direction={state.side}
+        onChange={(value) => handleSetTradeBalancePercent(asset, value)}
+        value={percent}
+      />
     )
   }
 
@@ -1009,61 +968,65 @@ export default function Trade({ assetId, chainId }: TradeProps) {
     const isTarget = field === 'target'
     const editable = state.side === 'buy' ? field === 'contra' : field === 'target'
     const intent = isTarget ? getDirectionLabel(state.side) : getContraPreposition(state.side).toUpperCase()
-    const intentClass = isTarget
-      ? state.side === 'buy'
-        ? 'tradeIntentLine tradeIntentBuy'
-        : 'tradeIntentLine tradeIntentSell'
-      : 'tradeIntentLine'
+    const intentTone = isTarget ? (state.side === 'buy' ? 'special' : 'danger') : 'primary'
     const sideLocked = [
       FLASH_STOP_ORDER_TYPE,
       FLASH_STOP_LOSS_ORDER_TYPE,
       FLASH_TAKE_PROFIT_ORDER_TYPE
     ].includes(state.orderType)
 
-    const assetCardClassName = [
-      'tradeAssetCard',
-      editable ? 'tradeAssetCardEditable' : '',
-      editable && state.side === 'buy' ? 'tradeAssetCardEditableBuy' : '',
-      editable && state.side === 'sell' ? 'tradeAssetCardEditableSell' : '',
-      editable && invalidTradeFields.amount ? 'tradeAssetCardInvalid' : ''
-    ]
-      .filter(Boolean)
-      .join(' ')
+    const assetCardBorder =
+      editable && invalidTradeFields.amount
+        ? 'danger'
+        : editable && state.side === 'buy'
+          ? 'special'
+          : editable && state.side === 'sell'
+            ? 'danger'
+            : 'subtle'
 
     return (
-      <div className={assetCardClassName}>
-        <div className='tradeAssetCardHeader'>
-          <div className={intentClass}>
-            <span>{intent}</span>
+      <Surface border={assetCardBorder} padding='medium' radius='small' tone={editable ? 'raised' : 'card'}>
+        <Stack gap='medium'>
+          <Stack align='center' direction='row' gap='small'>
+            <Text variant='label' tone={intentTone}>
+              {intent}
+            </Text>
             {isTarget && !sideLocked ? renderTradeDirectionSwitch() : null}
-          </div>
-        </div>
-        <div className='tradeAssetAmountRow'>
-          {renderTradeAssetSelector(field, asset, oppositeAsset)}
-          <input
-            aria-label={editable ? `${asset.symbol} amount` : `Estimated ${asset.symbol} received`}
-            className='tradeAmountInput'
-            inputMode='decimal'
-            onChange={
-              editable ? (e) => dispatch({ type: 'setInputAmount', inputAmount: e.target.value }) : undefined
-            }
-            placeholder='0'
-            readOnly={!editable}
-            spellCheck='false'
-            value={amount}
-          />
-        </div>
-        {editable ? (
-          renderTradeBalanceSlider(asset, amount)
-        ) : (
-          <div className='tradeOutputNote'>
-            <span>Est. received</span>
-            {state.quote?.outputNotional ? (
-              <strong>~{formatTradeNotional(state.quote.outputNotional)}</strong>
-            ) : null}
-          </div>
-        )}
-      </div>
+          </Stack>
+          <Stack align='center' direction='row' gap='medium' justify='between'>
+            {renderTradeAssetSelector(field, asset, oppositeAsset)}
+            <Stack grow>
+              <Input
+                align='end'
+                appearance='amount'
+                label={editable ? `${asset.symbol} amount` : `Estimated ${asset.symbol} received`}
+                inputMode='decimal'
+                onValueChange={
+                  editable ? (inputAmount) => dispatch({ type: 'setInputAmount', inputAmount }) : undefined
+                }
+                placeholder='0'
+                readOnly={!editable}
+                spellCheck={false}
+                value={amount}
+              />
+            </Stack>
+          </Stack>
+          {editable ? (
+            renderTradeBalanceSlider(asset, amount)
+          ) : (
+            <Stack align='center' direction='row' gap='medium' justify='end'>
+              <Text variant='supporting' tone='secondary'>
+                Est. received
+              </Text>
+              {state.quote?.outputNotional ? (
+                <Text as='strong' variant='detail'>
+                  ~{formatTradeNotional(state.quote.outputNotional)}
+                </Text>
+              ) : null}
+            </Stack>
+          )}
+        </Stack>
+      </Surface>
     )
   }
 
@@ -1075,38 +1038,58 @@ export default function Trade({ assetId, chainId }: TradeProps) {
     const feeNotional = quote.estimatedFeeNotional
 
     return (
-      <div className='tradeQuoteSummary'>
-        <div className='tradeQuoteOutput'>
-          <div>
-            <span>Est. output</span>
-            <small>Including estimated fees</small>
-          </div>
-          <div>
-            <strong>
+      <Stack gap='large'>
+        <Stack align='start' direction='row' gap='large' justify='between'>
+          <Stack gap='xsmall'>
+            <Text variant='label' tone='secondary'>
+              Est. output
+            </Text>
+            <Text as='small' variant='caption' tone='secondary'>
+              Including estimated fees
+            </Text>
+          </Stack>
+          <Stack align='end' gap='xsmall'>
+            <Text as='strong' align='end' variant='output'>
               {quote.outputAmount} {quote.receiveAsset.symbol}
-            </strong>
-            <small>~{formatTradeNotional(quote.outputNotional)}</small>
-          </div>
-        </div>
-        <div className='tradeQuoteRows'>
-          <div>
-            <span>Est. price impact</span>
-            <strong className={estimatedImpact !== null && estimatedImpact > 1 ? 'tradeQuoteWarning' : ''}>
+            </Text>
+            <Text as='small' align='end' variant='caption' tone='secondary'>
+              ~{formatTradeNotional(quote.outputNotional)}
+            </Text>
+          </Stack>
+        </Stack>
+        <Stack gap='small'>
+          <Stack align='center' direction='row' gap='large' justify='between'>
+            <Text variant='detail' tone='secondary'>
+              Est. price impact
+            </Text>
+            <Text
+              as='strong'
+              tone={estimatedImpact !== null && estimatedImpact > 1 ? 'danger' : 'primary'}
+              variant='detail'
+            >
               {estimatedImpact === null ? '—' : `${estimatedImpact.toFixed(2)}%`}
-            </strong>
-          </div>
-          <div>
-            <span>Estimated fees</span>
-            <strong>{feeNotional ? formatTradeNotional(feeNotional) : '—'}</strong>
-          </div>
+            </Text>
+          </Stack>
+          <Stack align='center' direction='row' gap='large' justify='between'>
+            <Text variant='detail' tone='secondary'>
+              Estimated fees
+            </Text>
+            <Text as='strong' variant='detail'>
+              {feeNotional ? formatTradeNotional(feeNotional) : '—'}
+            </Text>
+          </Stack>
           {quote.targetNotionalPrice ? (
-            <div>
-              <span>{quote.targetAsset.symbol}/USD</span>
-              <strong>{formatTradeNotional(quote.targetNotionalPrice)}</strong>
-            </div>
+            <Stack align='center' direction='row' gap='large' justify='between'>
+              <Text variant='detail' tone='secondary'>
+                {quote.targetAsset.symbol}/USD
+              </Text>
+              <Text as='strong' variant='detail'>
+                {formatTradeNotional(quote.targetNotionalPrice)}
+              </Text>
+            </Stack>
           ) : null}
-        </div>
-      </div>
+        </Stack>
+      </Stack>
     )
   }
 
@@ -1114,38 +1097,19 @@ export default function Trade({ assetId, chainId }: TradeProps) {
     const spentAsset = getTradeSpentAsset(state)
     const steps = state.quote?.steps || buildVisualTradeSteps(spentAsset, state.orderType, false)
 
-    return (
-      <div className='tradeStepTracker'>
-        {steps.map((step: FlashStep, index: number) => (
-          <div className={`tradeStep tradeStep${step.status}`} key={step.id}>
-            <div className='tradeStepDot'>{index + 1}</div>
-            <span>{step.label}</span>
-          </div>
-        ))}
-      </div>
-    )
+    return <ProgressSteps steps={steps} />
   }
 
   const renderTradeAdvanced = () => {
     return (
-      <div className='tradeAdvanced'>
-        <button
-          className='tradeAdvancedToggle'
-          onClick={() => dispatch({ type: 'toggleAdvancedOpen' })}
-          type='button'
-        >
-          <span>{svg.settings(13)}</span>
-          <span>Advanced</span>
-          <div
-            className={
-              state.advancedOpen ? 'tradeAdvancedChevron tradeAdvancedChevronOpen' : 'tradeAdvancedChevron'
-            }
-          >
-            {svg.chevron(11)}
-          </div>
-        </button>
-        {state.advancedOpen ? <div className='tradeAdvancedPanel'>{renderTradeAdvancedFields()}</div> : null}
-      </div>
+      <Disclosure
+        icon='settings'
+        label='Advanced'
+        onToggle={() => dispatch({ type: 'toggleAdvancedOpen' })}
+        open={state.advancedOpen}
+      >
+        {renderTradeAdvancedFields()}
+      </Disclosure>
     )
   }
 
@@ -1160,52 +1124,56 @@ export default function Trade({ assetId, chainId }: TradeProps) {
     })
 
     return (
-      <div className='tradeFooter'>
-        <button
-          className={enabled ? 'tradePrimaryButton' : 'tradePrimaryButton tradePrimaryButtonDisabled'}
-          disabled={!enabled}
-          onClick={reviewTrade}
-          type='button'
-        >
-          {tradeValidationError && state.quote
-            ? 'Adjust order'
-            : getTradePrimaryLabel({
-                orderType: state.orderType,
-                pendingAction: state.pendingAction,
-                quote: state.quote,
-                quoteLoading: state.quoteLoading,
-                submitting: state.submitting
-              })}
-        </button>
-      </div>
+      <Stack grow>
+        <Button appearance='primary' disabled={!enabled} onPress={reviewTrade} size='large'>
+          <Text align='center' variant='action' tone='inverse'>
+            {tradeValidationError && state.quote
+              ? 'Adjust order'
+              : getTradePrimaryLabel({
+                  orderType: state.orderType,
+                  pendingAction: state.pendingAction,
+                  quote: state.quote,
+                  quoteLoading: state.quoteLoading,
+                  submitting: state.submitting
+                })}
+          </Text>
+        </Button>
+      </Stack>
     )
   }
 
   return (
-    <div className='tradeApp'>
-      <div className='sendHeader'>
-        <button aria-label='Close Trade' className='sendBackButton' onClick={closeTrade}>
-          {svg.chevronLeft(18)}
-        </button>
-        <div className='sendTitle'>Trade</div>
-        <div className='sendHeaderSpacer' />
-      </div>
-      <div className='tradeBody'>
-        <div className='tradeTicket'>
-          {renderTradeTabs()}
-          {renderTradeAssetCard('target')}
-          {renderTradeAssetCard('contra')}
-          {renderTradeOrderFields()}
-          {renderTradeAdvanced()}
-        </div>
-        {renderTradeQuoteMeta()}
-        {state.error || tradeValidationError ? (
-          <div className='sendMessage sendMessageError'>{state.error || tradeValidationError}</div>
+    <SidePanel
+      closeLabel='Close Trade'
+      footer={renderTradeFooter()}
+      footerSpace='compact'
+      onClose={closeTrade}
+      title='Trade'
+    >
+      <Stack gap='large' grow>
+        {renderTradeTabs()}
+        {renderTradeAssetCard('target')}
+        {renderTradeAssetCard('contra')}
+        {renderTradeOrderFields()}
+        {renderTradeAdvanced()}
+        {state.quote ? (
+          <Surface border='subtle' padding='medium' radius='small' tone='transparent'>
+            {renderTradeQuoteMeta()}
+          </Surface>
         ) : null}
-        {state.status ? <div className='sendMessage'>{state.status}</div> : null}
+        {state.error || tradeValidationError ? (
+          <Text align='center' variant='body' tone='danger'>
+            {state.error || tradeValidationError}
+          </Text>
+        ) : null}
+        {state.status ? (
+          <Text align='center' variant='body' tone='secondary'>
+            {state.status}
+          </Text>
+        ) : null}
+        <Spacer />
         {renderTradeSteps()}
-      </div>
-      {renderTradeFooter()}
-    </div>
+      </Stack>
+    </SidePanel>
   )
 }

@@ -8,6 +8,8 @@ import { connectRendererState } from '../state/connectState'
 import { walletRendererStateStoreReadApi } from '../state/rendererStore'
 import type { TrayRendererState } from './state'
 
+import '../../resources/styled-system/styles.css'
+
 document.addEventListener('dragover', (e) => e.preventDefault())
 document.addEventListener('drop', (e) => e.preventDefault())
 

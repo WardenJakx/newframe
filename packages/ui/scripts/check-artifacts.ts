@@ -29,7 +29,11 @@ for (const source of sourceFiles) {
       if ((await stat(artifact).catch(() => undefined)) === undefined)
         problems.push(path.relative(packageRoot, artifact))
     }
-  } else if (source.endsWith('.css') || source.includes(`${path.sep}assets${path.sep}`)) {
+  } else if (
+    source.endsWith('.css') ||
+    source.includes(`${path.sep}assets${path.sep}`) ||
+    source.includes(`${path.sep}styled-system${path.sep}`)
+  ) {
     const artifact = path.join(outputRoot, relative)
     const [sourceBytes, artifactBytes] = await Promise.all([
       readFile(source),

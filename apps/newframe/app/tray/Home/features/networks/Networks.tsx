@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 
 import link from '../../../../../resources/link'
-import svg from '../../../../../resources/svg'
-import { cachedImageUrl, isCachedImageReference } from '../../../../../resources/domain/imageCache'
+import { isCachedImageReference } from '../../../../../resources/domain/imageCache'
 import { chainColorValue } from '../../../../../resources/colors'
+import { ChainDot } from '../../../../../resources/Components/ChainDot'
 import { useAccountBalances } from '../../hooks/useAccountBalances'
 import { useHomeUiStore } from '../../state/HomeUiProvider'
+import { ChainIcon } from '../../components/ChainIcon'
 import { createNetworkRows } from './networkModel'
 import { NetworksView } from './NetworksView'
 
@@ -38,30 +39,17 @@ export function Networks() {
     })
   }, [rows, shared.networksMeta])
 
-  const icon = (chain: any, size = 30) => {
-    const metadata = shared.networksMeta[chain.chainId] || {}
-    if (metadata.icon) {
-      return <img alt='' src={cachedImageUrl(metadata.icon)} style={{ height: size, width: size }} />
-    }
-    if (
-      ['mainnet', 'görli', 'goerli', 'sepolia', 'ropsten', 'rinkeby', 'kovan'].includes(
-        String(chain.name).toLowerCase()
-      )
-    ) {
-      return svg.eth(14)
-    }
-    return (
-      <div
-        className='t2ChainIconDot'
-        style={{
-          background: chainColorValue(metadata.primaryColor),
-          height: 12,
-          width: 12
-        }}
+  const viewRows = rows.map((chain) => ({
+    ...chain,
+    icon: (
+      <ChainIcon
+        chainId={chain.chainId}
+        networks={shared.networks}
+        networksMeta={shared.networksMeta}
+        size='large'
       />
     )
-  }
-  const viewRows = rows.map((chain) => ({ ...chain, icon: icon(chain) }))
+  }))
 
   return (
     <NetworksView
@@ -70,12 +58,9 @@ export function Networks() {
         .filter((chain) => chain.on)
         .slice(0, 4)
         .map((chain) => (
-          <div
+          <ChainDot
             key={chain.chainId}
-            className='t2NetworkDotSmall'
-            style={{
-              background: chainColorValue(shared.networksMeta[chain.chainId]?.primaryColor)
-            }}
+            color={chainColorValue(shared.networksMeta[chain.chainId]?.primaryColor)}
           />
         ))}
       getRpcDraft={(chainId) =>

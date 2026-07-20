@@ -1,5 +1,7 @@
 import { Stack } from '@newframe/ui/stack'
-import { MenuItem, MenuOverlay } from '@newframe/ui/menu'
+
+import { MenuItem } from '../../../../resources/Components/Menu/MenuItem'
+import { MenuOverlay } from '../../../../resources/Components/Menu/MenuOverlay'
 
 export function HomeMenuView({
   instanceId,

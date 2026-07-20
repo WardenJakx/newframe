@@ -39,7 +39,7 @@ it('should render an existing shortcut', () => {
   )
 
   const displayedShortcut = screen.getByLabelText('To Test this component press')
-  expect(displayedShortcut.textContent).toBe('Alt+/')
+  expect(displayedShortcut.textContent).toBe('Alt + /')
 })
 
 it('should render an existing Meta key shortcut on MacOS', () => {
@@ -58,7 +58,7 @@ it('should render an existing Meta key shortcut on MacOS', () => {
   )
 
   const displayedShortcut = screen.getByLabelText('To Test this component press')
-  expect(displayedShortcut.textContent).toBe('Command+/')
+  expect(displayedShortcut.textContent).toBe('Command + /')
 })
 
 it('should render an existing Alt key shortcut on MacOS', () => {
@@ -76,7 +76,7 @@ it('should render an existing Alt key shortcut on MacOS', () => {
   )
 
   const displayedShortcut = screen.getByLabelText('To Test this component press')
-  expect(displayedShortcut.textContent).toBe('Option+/')
+  expect(displayedShortcut.textContent).toBe('Option + /')
 })
 
 it('should render an existing Meta key shortcut on Windows', () => {
@@ -95,7 +95,7 @@ it('should render an existing Meta key shortcut on Windows', () => {
   )
 
   const displayedShortcut = screen.getByLabelText('To Test this component press')
-  expect(displayedShortcut.textContent).toBe('Win+/')
+  expect(displayedShortcut.textContent).toBe('Win + /')
 })
 
 describe('when configuring', () => {

@@ -1,14 +1,19 @@
 import React from 'react'
 
-import svg from '../../../../../resources/svg'
+import { Button } from '@newframe/ui/button'
+import { Icon } from '@newframe/ui/icon'
+import { Stack } from '@newframe/ui/stack'
+import { Text } from '@newframe/ui/text'
+
 import ChainTokenIcon from '../../../../../resources/Components/ChainTokenIcon'
+import { DetailRow } from '../../../../../resources/Components/DetailRow'
+import { TrayOverlay } from '../../../../../resources/Components/TrayOverlay'
 import {
   formatUsdRate,
   isNativeCurrency,
   type DisplayedBalance
 } from '../../../../../resources/domain/balance'
 import { ChainIcon } from '../../components/ChainIcon'
-import { activateOnKeyboard } from '../../ui/keyboard'
 import { TRADE_DISABLED_CHAIN_LABEL } from './usePortfolioActions'
 
 export function AssetDetailsView({
@@ -33,100 +38,94 @@ export function AssetDetailsView({
   const chain = networks[asset.chainId] || {}
   const price = Number(asset?.usdRate?.price || 0)
   const detailRow = (label: string, value: React.ReactNode, monospace = false) => (
-    <div className='t2AssetDetailRow'>
-      <div className='t2AssetDetailLabel'>{label}</div>
-      <div className={monospace ? 't2AssetDetailValue t2AssetDetailValueCode' : 't2AssetDetailValue'}>
-        {value}
-      </div>
-    </div>
+    <DetailRow code={monospace} label={label} value={value} />
+  )
+  const footer = (
+    <Stack direction='row' gap='small'>
+      <Button
+        appearance='primary'
+        disabled={!canSend}
+        label={`Send ${asset.symbol}`}
+        onPress={onSend}
+        shape='pill'
+        size='large'
+        width='wide'
+      >
+        <Icon name='send' size='small' />
+        <Text variant='action'>Send</Text>
+      </Button>
+      <Button
+        appearance='primary'
+        disabled={!canTrade}
+        label={`Trade ${asset.symbol}`}
+        onPress={onTrade}
+        shape='pill'
+        size='large'
+        title={canTrade ? `Trade ${asset.symbol}` : TRADE_DISABLED_CHAIN_LABEL}
+        width='wide'
+      >
+        <Icon name='sync' size='small' />
+        <Text variant='action'>Trade</Text>
+      </Button>
+    </Stack>
   )
 
   return (
-    <div aria-label='Asset details' className='t2Overlay t2AssetOverlay cardShow' role='dialog'>
-      <div className='t2OverlayHeader'>
-        <div
-          aria-label='Back to positions'
-          className='t2OverlayBack'
-          onClick={onBack}
-          onKeyDown={(event) => activateOnKeyboard(event, onBack)}
-          role='button'
-          tabIndex={0}
-        >
-          {svg.chevronLeft(13)}
-        </div>
-        <div className='t2OverlayTitle'>{asset.symbol}</div>
-        <div className='t2OverlaySpacer' />
-      </div>
-      <div className='t2AssetBody'>
-        <div className='t2AssetHero'>
-          <div className='t2AssetHeroIcon'>
-            <ChainTokenIcon
-              chainId={asset.chainId}
-              logoURI={asset.logoURI}
-              networks={networks}
-              networksMeta={networksMeta}
-              size='md'
-              symbol={asset.symbol}
-            />
-          </div>
-          <div className='t2AssetHeroText'>
-            <div className='t2AssetHeroName'>{asset.name || asset.symbol}</div>
-            <div className='t2AssetHeroSub'>
-              <span className='traySpan'>{asset.symbol}</span>
-              <span className='traySpan'>{chain.name || `Chain ${asset.chainId}`}</span>
-            </div>
-          </div>
-        </div>
-        <div className='t2AssetDetailList'>
+    <TrayOverlay
+      closeLabel='Back to positions'
+      footer={footer}
+      label='Asset details'
+      onClose={onBack}
+      title={asset.symbol}
+    >
+      <Stack gap='small'>
+        <Stack align='center' direction='row' gap='small'>
+          <ChainTokenIcon
+            chainId={asset.chainId}
+            logoURI={asset.logoURI}
+            networks={networks}
+            networksMeta={networksMeta}
+            size='md'
+            symbol={asset.symbol}
+          />
+          <Stack gap='xsmall' grow>
+            <Text truncate variant='heading'>
+              {asset.name || asset.symbol}
+            </Text>
+            <Stack direction='row' gap='xsmall'>
+              <Text tone='secondary' variant='supporting'>
+                {asset.symbol}
+              </Text>
+              <Text tone='secondary' truncate variant='supporting'>
+                {chain.name || `Chain ${asset.chainId}`}
+              </Text>
+            </Stack>
+          </Stack>
+        </Stack>
+        <Stack gap='none'>
           {detailRow('Price', price > 0 ? `$${formatUsdRate(price, 2)}` : '$0.00')}
           {detailRow('Balance', `${asset.displayBalance} ${asset.symbol}`)}
           {detailRow(
             'Chain',
-            <div className='t2AssetChainValue'>
-              <div className='t2AssetChainIcon'>
-                <ChainIcon
-                  chainId={asset.chainId}
-                  imageSize={18}
-                  networks={networks}
-                  networksMeta={networksMeta}
-                />
-              </div>
-              <span className='traySpan'>{chain.name || `Chain ${asset.chainId}`}</span>
-            </div>
+            <Stack align='center' direction='row' gap='xsmall' justify='end'>
+              <ChainIcon
+                chainId={asset.chainId}
+                networks={networks}
+                networksMeta={networksMeta}
+                size='large'
+              />
+              <Text truncate variant='label'>
+                {chain.name || `Chain ${asset.chainId}`}
+              </Text>
+            </Stack>
           )}
           {detailRow(
             'Contract Address',
             isNativeCurrency(asset.address) ? 'Native asset' : asset.address,
             !isNativeCurrency(asset.address)
           )}
-        </div>
-      </div>
-      <div className='t2AssetFooter'>
-        <div
-          aria-disabled={!canSend}
-          aria-label={`Send ${asset.symbol}`}
-          className={canSend ? 't2AssetSendButton' : 't2AssetSendButton t2AssetSendButtonDisabled'}
-          onClick={canSend ? onSend : undefined}
-          role='button'
-          tabIndex={canSend ? 0 : -1}
-        >
-          {svg.send(14)}
-          <span className='traySpan'>Send</span>
-        </div>
-        <div
-          aria-disabled={!canTrade}
-          aria-label={`Trade ${asset.symbol}`}
-          className={canTrade ? 't2AssetSendButton' : 't2AssetSendButton t2AssetSendButtonDisabled'}
-          onClick={canTrade ? onTrade : undefined}
-          role='button'
-          style={{ marginLeft: 10 }}
-          tabIndex={canTrade ? 0 : -1}
-          title={canTrade ? `Trade ${asset.symbol}` : TRADE_DISABLED_CHAIN_LABEL}
-        >
-          {svg.sync(14)}
-          <span className='traySpan'>Trade</span>
-        </div>
-      </div>
-    </div>
+        </Stack>
+      </Stack>
+    </TrayOverlay>
   )
 }

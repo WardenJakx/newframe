@@ -48,7 +48,7 @@ const newframeReactFiles = [
   'resources/Components/**/*.{ts,tsx}',
   'resources/Hooks/**/*.{ts,tsx}',
   'resources/Native/**/*.{ts,tsx}',
-  'resources/svg/index.tsx',
+  'resources/svg.tsx',
   'test/app/**/*.{ts,tsx}',
   'test/resources/Components/**/*.{ts,tsx}',
   'test/resources/Hooks/**/*.{ts,tsx}',
@@ -75,7 +75,8 @@ export default [
     'apps/newframe/main/signers/**/*',
     'apps/newframe-extension/dist/**/*',
     'apps/newframe-extension/.cache/**/*',
-    'packages/ui/dist/**/*'
+    'packages/ui/dist/**/*',
+    'packages/ui/src/styled-system/**/*'
   ]),
   ...baseJavaScriptConfigs(),
 
@@ -88,6 +89,12 @@ export default [
   browserGlobalsConfig({ basePath: ui, files: ['src/**/*.{ts,tsx}'] }),
   ...typescriptConfigs({ basePath: ui, tsconfigRootDir: workspacePath('./packages/ui') }),
   ...reactConfigs({ basePath: ui, files: ['src/**/*.tsx', 'test/**/*.tsx'], version: '19.2' }),
+  {
+    files: [`${ui}/src/**/*.tsx`],
+    rules: {
+      'react/no-multi-comp': ['error', { ignoreStateless: false }]
+    }
+  },
   testGlobalsConfig({ basePath: ui, files: ['test/**/*.{ts,tsx}'] }),
 
   nodeGlobalsConfig({

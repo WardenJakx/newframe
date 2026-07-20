@@ -1,6 +1,10 @@
-import svg from '../../../../resources/svg'
-import { activateOnKeyboard } from './keyboard'
-import { Toggle } from './Toggle'
+import { Button } from '@newframe/ui/button'
+import { Icon } from '@newframe/ui/icon'
+import { Spacer } from '@newframe/ui/spacer'
+import { Stack } from '@newframe/ui/stack'
+import { Surface } from '@newframe/ui/surface'
+import { Text } from '@newframe/ui/text'
+import { ToggleButton } from '@newframe/ui/toggle-button'
 
 export function SettingsToggleRow({
   detail,
@@ -14,13 +18,21 @@ export function SettingsToggleRow({
   onToggle: () => void
 }) {
   return (
-    <div className='t2SettingsRow'>
-      <div className='t2SettingsRowText'>
-        <div className='t2SettingsRowTitle'>{label}</div>
-        {detail ? <div className='t2SettingsRowDetail'>{detail}</div> : null}
-      </div>
-      <Toggle label={label} on={on} onToggle={onToggle} />
-    </div>
+    <Surface padding='small' radius='card'>
+      <Stack align='center' direction='row' gap='small' justify='between'>
+        <Stack gap='xsmall' grow>
+          <Text truncate variant='label'>
+            {label}
+          </Text>
+          {detail ? (
+            <Text tone='muted' variant='caption'>
+              {detail}
+            </Text>
+          ) : null}
+        </Stack>
+        <ToggleButton appearance='switch' label={label} onPress={onToggle} pressed={on} />
+      </Stack>
+    </Surface>
   )
 }
 
@@ -40,22 +52,22 @@ export function SettingsSelectRow<T>({
   const next = options[(index + 1 + options.length) % options.length]
 
   return (
-    <div
-      aria-label={`${label}: ${current.text}`}
-      className='t2SettingsRow t2SettingsSelectRow'
-      onClick={() => onChange(next.value)}
-      onKeyDown={(event) => activateOnKeyboard(event, () => onChange(next.value))}
-      role='button'
-      tabIndex={0}
+    <Button
+      appearance='row'
+      label={`${label}: ${current.text}`}
+      onPress={() => onChange(next.value)}
+      size='list'
+      width='full'
     >
-      <div className='t2SettingsRowText'>
-        <div className='t2SettingsRowTitle'>{label}</div>
-      </div>
-      <div className='t2SettingsRowValue'>
-        <span className='traySpan'>{current.text}</span>
-        {svg.arrowRight(10)}
-      </div>
-    </div>
+      <Text truncate variant='label'>
+        {label}
+      </Text>
+      <Spacer />
+      <Text tone='secondary' variant='code'>
+        {current.text}
+      </Text>
+      <Icon name='arrowRight' size='small' />
+    </Button>
   )
 }
 
@@ -71,20 +83,21 @@ export function SettingsActionRow({
   onAction: () => void
 }) {
   return (
-    <div
-      aria-label={label}
-      className={
-        danger ? 't2SettingsRow t2SettingsActionRow t2SettingsDangerRow' : 't2SettingsRow t2SettingsActionRow'
-      }
-      onClick={onAction}
-      onKeyDown={(event) => activateOnKeyboard(event, onAction)}
-      role='button'
-      tabIndex={0}
+    <Button
+      appearance='row'
+      label={label}
+      onPress={onAction}
+      size='list'
+      tone={danger ? 'danger' : 'neutral'}
+      width='full'
     >
-      <div className='t2SettingsRowText'>
-        <div className='t2SettingsRowTitle'>{label}</div>
-      </div>
-      <div className='t2SettingsActionValue'>{action}</div>
-    </div>
+      <Text truncate variant='label'>
+        {label}
+      </Text>
+      <Spacer />
+      <Text tone={danger ? 'danger' : 'accent'} variant='code'>
+        {action}
+      </Text>
+    </Button>
   )
 }

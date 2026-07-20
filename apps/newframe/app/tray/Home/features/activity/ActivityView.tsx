@@ -1,7 +1,12 @@
+import { Button } from '@newframe/ui/button'
+import { Group } from '@newframe/ui/group'
+import { MediaBadge } from '@newframe/ui/media-badge'
+import { Stack } from '@newframe/ui/stack'
+import { Text } from '@newframe/ui/text'
+
 import StatusGlyph from '../../../../../resources/Components/StatusGlyph'
 import { timestamp } from '../../StatusNotifications'
 import { ChainIcon } from '../../components/ChainIcon'
-import { activateOnKeyboard } from '../../ui/keyboard'
 import { activityGlyphState, transactionStatusLabel } from './activityModel'
 
 const shortAddress = (address = '') =>
@@ -18,57 +23,83 @@ export function ActivityView({
   networksMeta: Record<string | number, any>
   onOpen: (activityId: string) => void
 }) {
-  if (!activity.length) return <div className='t2EmptyState'>No Activity Yet</div>
+  if (!activity.length)
+    return (
+      <Text align='center' tone='disabled' variant='overline'>
+        No Activity Yet
+      </Text>
+    )
 
   return (
-    <div className='t2ActivityList'>
-      {activity.map((record) => {
-        const chainId = Number(record.chainId)
-        const chain = networks[chainId] || {}
-        const status = transactionStatusLabel(record.status)
-        const submittedAt = timestamp(record.submittedAt, timestamp(record.updatedAt, 0))
-        const submitted = submittedAt
-          ? new Date(submittedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
-          : ''
-        const title = record.display?.title || 'Transaction'
-        const subtitle = record.display?.subtitle || chain.name || `Chain ${chainId}`
+    <Group label='Activity list'>
+      <Stack gap='xsmall'>
+        {activity.map((record) => {
+          const chainId = Number(record.chainId)
+          const chain = networks[chainId] || {}
+          const status = transactionStatusLabel(record.status)
+          const submittedAt = timestamp(record.submittedAt, timestamp(record.updatedAt, 0))
+          const submitted = submittedAt
+            ? new Date(submittedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+            : ''
+          const title = record.display?.title || 'Transaction'
+          const subtitle = record.display?.subtitle || chain.name || `Chain ${chainId}`
 
-        return (
-          <div
-            key={record.id}
-            aria-label={`${title} ${status}`}
-            className='t2ActivityRow cardShow'
-            onClick={() => onOpen(record.id)}
-            onKeyDown={(event) => activateOnKeyboard(event, () => onOpen(record.id))}
-            role='button'
-            tabIndex={0}
-          >
-            <div className='t2ActivityIconWrap'>
-              <StatusGlyph state={activityGlyphState(record.status) as any} />
-              <div className='t2ActivityChainBadge'>
-                <ChainIcon
-                  chainId={chainId}
-                  glyphSize={10}
-                  imageSize={16}
-                  networks={networks}
-                  networksMeta={networksMeta}
-                />
-              </div>
-            </div>
-            <div className='t2ActivityCopy'>
-              <div className='t2ActivityTitle'>{title}</div>
-              <div className='t2ActivitySubtitle'>
-                <span className='traySpan'>{subtitle}</span>
-                {record.hash ? <span className='traySpan'>{shortAddress(record.hash)}</span> : null}
-              </div>
-            </div>
-            <div className='t2ActivityMeta'>
-              <div className={`t2ActivityStatus t2ActivityStatus-${record.status}`}>{status}</div>
-              <div className='t2ActivityTime'>{submitted}</div>
-            </div>
-          </div>
-        )
-      })}
-    </div>
+          return (
+            <Button
+              key={record.id}
+              appearance='selectionOption'
+              label={`${title} ${status}`}
+              onPress={() => onOpen(record.id)}
+              width='full'
+            >
+              <MediaBadge
+                badge={
+                  <ChainIcon
+                    chainId={chainId}
+                    networks={networks}
+                    networksMeta={networksMeta}
+                    size='medium'
+                  />
+                }
+              >
+                <StatusGlyph state={activityGlyphState(record.status) as any} />
+              </MediaBadge>
+              <Stack gap='xsmall' grow>
+                <Text truncate variant='label'>
+                  {title}
+                </Text>
+                <Stack direction='row' gap='xsmall'>
+                  <Text tone='secondary' truncate variant='supporting'>
+                    {subtitle}
+                  </Text>
+                  {record.hash ? (
+                    <Text tone='muted' variant='code'>
+                      {shortAddress(record.hash)}
+                    </Text>
+                  ) : null}
+                </Stack>
+              </Stack>
+              <Stack align='end' gap='xsmall'>
+                <Text
+                  tone={
+                    record.status === 'succeeded'
+                      ? 'success'
+                      : record.status === 'reverted'
+                        ? 'danger'
+                        : 'warning'
+                  }
+                  variant='supporting'
+                >
+                  {status}
+                </Text>
+                <Text tone='muted' variant='caption'>
+                  {submitted}
+                </Text>
+              </Stack>
+            </Button>
+          )
+        })}
+      </Stack>
+    </Group>
   )
 }

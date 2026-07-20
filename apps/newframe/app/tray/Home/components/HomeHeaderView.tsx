@@ -1,7 +1,8 @@
-import { HeaderBar } from '@newframe/ui/header'
 import { IconButton } from '@newframe/ui/icon-button'
 import type { IconName } from '@newframe/ui/icon'
-import { IdentityControl } from '@newframe/ui/identity-control'
+
+import { HeaderBar } from '../../../../resources/Components/HeaderBar'
+import { IdentityControl } from '../../../../resources/Components/IdentityControl'
 
 export function HomeHeaderView({
   account,

@@ -1,13 +1,19 @@
 import { useState } from 'react'
-import svg from '../../../../../../resources/svg'
+
+import { Button } from '@newframe/ui/button'
+import { IconButton } from '@newframe/ui/icon-button'
+import { Image } from '@newframe/ui/image'
+import { Stack } from '@newframe/ui/stack'
+import { Surface } from '@newframe/ui/surface'
+import { Text } from '@newframe/ui/text'
+
+import type { Token } from '../../../../../../main/store/state'
 import link from '../../../../../../resources/link'
 import { cachedImageUrl } from '../../../../../../resources/domain/imageCache'
-import type { Token } from '../../../../../../main/store/state'
-import { useWalletSelector } from '../../../../../state/useAppSelector'
 import type { WalletRendererState } from '../../../../../../resources/state/projections'
+import { useWalletSelector } from '../../../../../state/useAppSelector'
 
 const EMPTY_TOKENS: Token[] = []
-
 const selectCustomTokens = (state: WalletRendererState) => state.tokens.custom || EMPTY_TOKENS
 
 interface CustomTokensProps {
@@ -16,102 +22,100 @@ interface CustomTokensProps {
 }
 
 function CustomTokensView({ onEdit, tokens }: CustomTokensProps) {
-  const [copied, setCopied] = useState(false)
-  const [tokenExpanded, setTokenExpanded] = useState<number | false>()
+  const [copiedAddress, setCopiedAddress] = useState('')
+  const [expandedAddress, setExpandedAddress] = useState('')
+  const sortedTokens = [...tokens].sort((a, b) => a.chainId - b.chainId)
+
+  if (!tokens.length) {
+    return (
+      <Text align='center' tone='disabled' variant='overline'>
+        No Custom Tokens
+      </Text>
+    )
+  }
 
   return (
-    <div className='cardShow' onMouseDown={(e) => e.stopPropagation()}>
-      <div className='customTokens'>
-        <div className='customTokensList'>
-          {tokens.length > 0 ? (
-            ([] as any[])
-              .concat(tokens)
-              // NOTE: preserved pre-existing behavior — comparator returns a
-              // boolean rather than a number
-              .sort(((a: any, b: any) => {
-                return a.chainId <= b.chainId
-              }) as any)
-              .map((token: any, i: any) => {
-                return (
-                  <div
-                    key={i}
-                    className={
-                      tokenExpanded === i
-                        ? 'customTokensListItem customTokensListItemExpanded'
-                        : 'customTokensListItem'
-                    }
+    <Stack gap='small'>
+      {sortedTokens.map((token) => {
+        const expanded = expandedAddress === token.address
+        return (
+          <Surface key={`${token.chainId}:${token.address}`} padding='small' radius='card'>
+            <Stack gap='small'>
+              <Stack align='center' direction='row' gap='small'>
+                {token.logoURI ? (
+                  <Image
+                    alt={token.symbol.toUpperCase()}
+                    size='medium'
+                    source={cachedImageUrl(token.logoURI)}
+                  />
+                ) : null}
+                <Stack gap='xsmall' grow>
+                  <Text truncate variant='label'>
+                    {token.symbol}
+                  </Text>
+                  <Text tone='muted' truncate variant='caption'>
+                    {token.name}
+                  </Text>
+                </Stack>
+                <Text tone='secondary' variant='microCode'>{`Chain ${token.chainId}`}</Text>
+                <IconButton
+                  expanded={expanded}
+                  icon={expanded ? 'chevronUp' : 'chevronDown'}
+                  label={`${expanded ? 'Collapse' : 'Expand'} ${token.symbol}`}
+                  onPress={() => setExpandedAddress(expanded ? '' : token.address)}
+                  size='small'
+                />
+              </Stack>
+              <Button
+                appearance='ghost'
+                label={`Copy ${token.symbol} address`}
+                onPress={() => {
+                  void link.executeCommand({ type: 'clipboard.write', text: token.address })
+                  setCopiedAddress(token.address)
+                  setTimeout(() => setCopiedAddress(''), 1000)
+                }}
+                width='full'
+              >
+                <Text tone={copiedAddress === token.address ? 'accent' : 'secondary'} truncate variant='code'>
+                  {copiedAddress === token.address ? 'Address Copied' : token.address}
+                </Text>
+              </Button>
+              {expanded ? (
+                <Stack direction='row' gap='small'>
+                  <Button
+                    appearance='control'
+                    label={`Edit ${token.symbol}`}
+                    onPress={() => onEdit(token)}
+                    width='full'
                   >
-                    <div className='customTokensListItemTitle'>
-                      <div className='customTokensListItemName'>
-                        <img
-                          src={cachedImageUrl(token.logoURI)}
-                          {...({ value: token.symbol.toUpperCase() } as any)}
-                          alt={token.symbol.toUpperCase()}
-                        />
-                        <div className='customTokensListItemText'>
-                          <div className='customTokensListItemSymbol'>{token.symbol}</div>
-                          <div className='customTokensListItemSub'>{token.name}</div>
-                        </div>
-                      </div>
-                      <div className='customTokensListItemChain'>
-                        <div className='customTokensListItemChainLabel'>{'Chain ID:'}</div>
-                        <div>{token.chainId}</div>
-                        <div
-                          className={
-                            tokenExpanded === i
-                              ? 'customTokensListItemExpand'
-                              : 'customTokensListItemExpand customTokensListItemExpandActive'
-                          }
-                          onClick={() => setTokenExpanded(tokenExpanded === i ? -1 : i)}
-                        >
-                          {svg.octicon('chevron-down', { height: 16 })}
-                        </div>
-                      </div>
-                    </div>
-                    <div
-                      className='customTokensListItemAddress'
-                      onClick={() => {
-                        void link.executeCommand({ type: 'clipboard.write', text: token.address })
-                        setCopied(true)
-                        setTimeout(() => setCopied(false), 1000)
-                      }}
-                    >
-                      {copied ? 'Address Copied' : token.address}
-                    </div>
-                    <div className='customTokensListItemBottom'>
-                      <div className='customTokensListItemButton editButton' onClick={() => onEdit(token)}>
-                        {'Edit Token'}
-                      </div>
-                      <div
-                        className='customTokensListItemButton removeButton'
-                        onClick={() => {
-                          setTokenExpanded(false)
-                          setTimeout(() => {
-                            void link.executeCommand({
-                              type: 'token.remove',
-                              address: token.address,
-                              chainId: token.chainId
-                            })
-                          }, 100)
-                        }}
-                      >
-                        {'Remove Token'}
-                      </div>
-                    </div>
-                  </div>
-                )
-              })
-          ) : (
-            <div className='customTokensListNoTokens'>{'No Custom Tokens'}</div>
-          )}
-        </div>
-      </div>
-    </div>
+                    <Text variant='compactAction'>Edit Token</Text>
+                  </Button>
+                  <Button
+                    appearance='danger'
+                    label={`Remove ${token.symbol}`}
+                    onPress={() => {
+                      setExpandedAddress('')
+                      void link.executeCommand({
+                        type: 'token.remove',
+                        address: token.address,
+                        chainId: token.chainId
+                      })
+                    }}
+                    width='full'
+                  >
+                    <Text variant='compactAction'>Remove Token</Text>
+                  </Button>
+                </Stack>
+              ) : null}
+            </Stack>
+          </Surface>
+        )
+      })}
+    </Stack>
   )
 }
 
 export default function CustomTokens({ onEdit }: { onEdit: (token: Token) => void }) {
   const tokens = useWalletSelector(selectCustomTokens)
-
   return <CustomTokensView onEdit={onEdit} tokens={tokens} />
 }

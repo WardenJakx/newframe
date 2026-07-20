@@ -1,8 +1,10 @@
 import React from 'react'
+import { Image } from '@newframe/ui/image'
+import { MediaBadge } from '@newframe/ui/media-badge'
+import { StatusDot } from '@newframe/ui/status-dot'
+import { Text } from '@newframe/ui/text'
 
-import { chainColorValue } from '../colors'
 import { cachedImageUrl } from '../domain/imageCache'
-import svg from '../svg'
 import type { ChainTokenIconSize, NetworkLike, NetworkMetaLike } from './tokenSelectorTypes'
 
 interface ChainTokenIconProps {
@@ -51,10 +53,10 @@ export default function ChainTokenIcon({
   const renderChainBadge = () => {
     if (chainImageVisible) {
       return (
-        <img
+        <Image
           alt=''
-          src={cachedImageUrl(chainIconUrl)}
-          onError={() => {
+          source={cachedImageUrl(chainIconUrl)}
+          onLoadError={() => {
             setFailedChainUrl(chainIconUrl)
             warnImageFailure('failed to load chain image', { chainId, symbol, url: chainIconUrl })
           }}
@@ -62,33 +64,33 @@ export default function ChainTokenIcon({
       )
     }
 
-    if (ethChains.includes(chainName)) return <div className='chainTokenIconChainGlyph'>{svg.eth(11)}</div>
+    if (ethChains.includes(chainName)) {
+      return (
+        <Text decorative display='inline' variant='caption'>
+          Ξ
+        </Text>
+      )
+    }
 
-    return (
-      <div
-        className='chainTokenIconChainDot'
-        style={{ background: chainColorValue(networksMeta[chainId]?.primaryColor) }}
-      />
-    )
+    return <StatusDot size={size === 'sm' ? 'small' : 'medium'} />
   }
 
   return (
-    <div aria-hidden='true' className={`chainTokenIcon chainTokenIcon${size === 'sm' ? 'Sm' : 'Md'}`}>
-      <div className='chainTokenIconInner'>
-        {tokenImageVisible ? (
-          <img
-            alt=''
-            src={cachedImageUrl(logoURI)}
-            onError={() => {
-              setFailedTokenUrl(logoURI)
-              warnImageFailure('failed to load token image', { chainId, symbol, url: logoURI })
-            }}
-          />
-        ) : (
-          <span className='chainTokenIconSymbol'>{symbolFallback(symbol)}</span>
-        )}
-      </div>
-      <div className='chainTokenIconChainBadge'>{renderChainBadge()}</div>
-    </div>
+    <MediaBadge badge={renderChainBadge()} decorative size={size === 'sm' ? 'small' : 'medium'}>
+      {tokenImageVisible ? (
+        <Image
+          alt=''
+          source={cachedImageUrl(logoURI)}
+          onLoadError={() => {
+            setFailedTokenUrl(logoURI)
+            warnImageFailure('failed to load token image', { chainId, symbol, url: logoURI })
+          }}
+        />
+      ) : (
+        <Text align='center' display='inline' variant={size === 'sm' ? 'micro' : 'detail'} truncate>
+          {symbolFallback(symbol)}
+        </Text>
+      )}
+    </MediaBadge>
   )
 }

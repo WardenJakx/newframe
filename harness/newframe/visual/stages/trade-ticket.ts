@@ -1,6 +1,24 @@
 import { anvilChainId } from '../../core/config.ts'
 import { wethAddress } from '../driver.ts'
 import type { VisualStage } from '../types.ts'
+import type { Locator } from 'playwright-core'
+
+async function fieldPartsOverlap(input: Locator) {
+  return input.evaluate((element) => {
+    const field = element.closest('label')
+    const label = field?.firstElementChild
+    if (!field || !label) return true
+
+    const inputBounds = element.getBoundingClientRect()
+    const labelBounds = label.getBoundingClientRect()
+    return !(
+      inputBounds.right <= labelBounds.left ||
+      inputBounds.left >= labelBounds.right ||
+      inputBounds.bottom <= labelBounds.top ||
+      inputBounds.top >= labelBounds.bottom
+    )
+  })
+}
 
 export const tradeTicketStage: VisualStage = {
   name: 'trade ticket visuals',
@@ -26,6 +44,7 @@ export const tradeTicketStage: VisualStage = {
     if ((await slippage.getAttribute('placeholder')) !== 'Automatic') {
       driver.fail('Automatic market slippage placeholder is missing')
     }
+    if (await fieldPartsOverlap(slippage)) driver.fail('Max slippage label overlaps its input')
     await driver.screenshot(tradePage, '10a1-trade-market-advanced-automatic.png')
     await tradePage.getByRole('button', { name: /Advanced/ }).click()
 
@@ -59,6 +78,7 @@ export const tradeTicketStage: VisualStage = {
     if ((await limitPrice.getAttribute('aria-required')) !== 'true') {
       driver.fail('Standalone limit price is not marked required')
     }
+    if (await fieldPartsOverlap(limitPrice)) driver.fail('Limit price label overlaps its input')
 
     if ((await tradePage.getByLabel('Limit order type').count()) > 0) {
       driver.fail('Trade ticket still exposes the removed limit subtype selector')
@@ -84,22 +104,45 @@ export const tradeTicketStage: VisualStage = {
     if ((await takeProfitTrigger.getAttribute('aria-invalid')) !== 'true') {
       driver.fail('Missing take-profit trigger is not marked invalid')
     }
-    if (
-      !(await takeProfitTrigger.evaluate((input) =>
-        input.closest('label')?.classList.contains('tradeOrderFieldInvalid')
-      ))
-    ) {
+    if (!(await takeProfitTrigger.evaluate((input) => input.closest('label')?.dataset.invalid === 'true'))) {
       driver.fail('Missing take-profit trigger does not have an error outline')
     }
+    for (const [name, input] of [
+      ['Take-profit trigger', takeProfitTrigger],
+      ['Take-profit limit', takeProfitLimit]
+    ] as const) {
+      if (await fieldPartsOverlap(input)) driver.fail(`${name} label overlaps its input`)
+    }
+    const triggerHasInnerOutline = await takeProfitTrigger.evaluate((input) => {
+      const style = getComputedStyle(input)
+      return Number.parseFloat(style.borderTopWidth) > 0 || style.boxShadow !== 'none'
+    })
+    if (triggerHasInnerOutline) driver.fail('Invalid trigger input duplicates the Field error outline')
     await driver.screenshot(tradePage, '10f-trade-tp-sl.png')
 
     await tradePage.getByRole('tab', { name: 'Stop' }).click()
-    await tradePage.getByLabel('Stop trigger price').waitFor({ state: 'visible', timeout: 5_000 })
-    await tradePage.getByLabel('Stop limit price').waitFor({ state: 'visible', timeout: 5_000 })
+    const stopTrigger = tradePage.getByLabel('Stop trigger price')
+    const stopLimit = tradePage.getByLabel('Stop limit price')
+    await stopTrigger.waitFor({ state: 'visible', timeout: 5_000 })
+    await stopLimit.waitFor({ state: 'visible', timeout: 5_000 })
+    if (await fieldPartsOverlap(stopTrigger)) driver.fail('Stop trigger label overlaps its input')
+    if (await fieldPartsOverlap(stopLimit)) driver.fail('Stop limit label overlaps its input')
     await driver.screenshot(tradePage, '10g-trade-stop.png')
 
     await tradePage.getByRole('tab', { name: 'TWAP' }).click()
-    await tradePage.getByLabel('TWAP duration days').waitFor({ state: 'visible', timeout: 5_000 })
+    const durationDays = tradePage.getByLabel('TWAP duration days')
+    const durationHours = tradePage.getByLabel('TWAP duration hours')
+    const durationMinutes = tradePage.getByLabel('TWAP duration minutes')
+    await durationDays.waitFor({ state: 'visible', timeout: 5_000 })
+    await durationHours.waitFor({ state: 'visible', timeout: 5_000 })
+    await durationMinutes.waitFor({ state: 'visible', timeout: 5_000 })
+    for (const [name, input] of [
+      ['TWAP days', durationDays],
+      ['TWAP hours', durationHours],
+      ['TWAP minutes', durationMinutes]
+    ] as const) {
+      if (await fieldPartsOverlap(input)) driver.fail(`${name} label overlaps its input`)
+    }
     await tradePage.getByRole('button', { name: /Advanced/ }).click()
     const segments = tradePage.getByLabel('TWAP segments')
     const maxPriceImpact = tradePage.getByLabel('Maximum price impact')

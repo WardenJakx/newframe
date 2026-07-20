@@ -8,5 +8,8 @@ export const spacingTokens = {
   'nf-space-7': '14px',
   'nf-space-8': '16px',
   'nf-space-9': '18px',
-  'nf-space-10': '20px'
+  'nf-space-10': '20px',
+  'nf-space-11': '24px',
+  'nf-space-12': '28px',
+  'nf-space-13': '32px'
 } as const

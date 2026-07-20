@@ -1,9 +1,19 @@
 import { isValidAddress } from '@ethereumjs/util'
 import { useEffect, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
+
+import { Button } from '@newframe/ui/button'
+import { Field } from '@newframe/ui/field'
+import { Input } from '@newframe/ui/input'
+import { Link } from '@newframe/ui/link'
+import { ScrollArea } from '@newframe/ui/scroll-area'
+import { Spinner } from '@newframe/ui/spinner'
+import { Stack } from '@newframe/ui/stack'
+import { Surface } from '@newframe/ui/surface'
+import { Text } from '@newframe/ui/text'
+
 import RingIcon from '../../../../../../resources/Components/RingIcon'
 import link from '../../../../../../resources/link'
-import svg from '../../../../../../resources/svg'
 import { chainColorValue } from '../../../../../../resources/colors'
 import { useWalletSelector } from '../../../../../state/useAppSelector'
 import type { Token } from '../../../../../../main/store/state'
@@ -57,18 +67,20 @@ const unableToVerifyError = `COULD NOT FIND TOKEN WITH ADDRESS`
 
 const TokenError = ({ text, onBack, onContinue }: TokenErrorProps) => {
   return (
-    <div className='newTokenView cardShow'>
-      <div className='newTokenErrorTitle'>{text}</div>
+    <Stack gap='medium'>
+      <Text align='center' tone='danger' variant='title'>
+        {text}
+      </Text>
 
-      <div className='tokenSetAddress' role='button' onClick={onBack}>
-        {'BACK'}
-      </div>
+      <Button appearance='control' onPress={onBack} width='full'>
+        <Text variant='action'>BACK</Text>
+      </Button>
       {text.includes(unableToVerifyError) && (
-        <div className='tokenSetAddress' role='button' onClick={onContinue}>
-          {'ADD ANYWAY'}
-        </div>
+        <Button appearance='primary' onPress={onContinue} width='full'>
+          <Text variant='action'>ADD ANYWAY</Text>
+        </Button>
       )}
-    </div>
+    </Stack>
   )
 }
 
@@ -91,39 +103,41 @@ function SelectChain({
   const activeChains = Object.values(chains).filter((chain) => chain.on)
 
   return (
-    <div className='newTokenView cardShow'>
-      <div className='newTokenChainSelectTitle'>{`Select token's chain`}</div>
-      <div className='newTokenChainSelectChain'>
-        <div className='originSwapChainList'>
+    <Stack gap='medium'>
+      <Text align='center' variant='title'>{`Select token's chain`}</Text>
+      <ScrollArea height='list'>
+        <Stack gap='xsmall'>
           {activeChains.map((chain) => {
             const chainId = chain.id
             const { primaryColor, icon } = chainMetadata[chainId] || {}
 
             return (
-              <div
-                className='originChainItem'
+              <Button
+                appearance='selectionOption'
                 key={chainId}
-                role='button'
-                onClick={() =>
+                onPress={() =>
                   onNavigate({ chain: { id: chainId, color: primaryColor || '', name: chain.name } })
                 }
+                width='full'
               >
-                <div className='originChainItemIcon'>
-                  <RingIcon color={chainColorValue(primaryColor)} img={icon} small={true} />
-                </div>
-                {chain.name}
-              </div>
+                <RingIcon color={chainColorValue(primaryColor)} img={icon} small />
+                <Text variant='label'>{chain.name}</Text>
+              </Button>
             )
           })}
-        </div>
-      </div>
-      <div className='newTokenChainSelectFooter'>
-        {'Chain not listed?'}
-        <div className='newTokenEnableChainLink' role='link' onClick={onOpenNetworks}>
-          {'Enable it in Chains'}
-        </div>
-      </div>
-    </div>
+        </Stack>
+      </ScrollArea>
+      <Stack align='center' gap='xsmall'>
+        <Text tone='muted' variant='supporting'>
+          Chain not listed?
+        </Text>
+        <Link href='#networks' label='Enable it in Chains' onPress={onOpenNetworks}>
+          <Text tone='accent' variant='compactAction'>
+            Enable it in Chains
+          </Text>
+        </Link>
+      </Stack>
+    </Stack>
   )
 }
 
@@ -131,7 +145,7 @@ const EnterAddress = ({ chain, onNavigate }: EnterAddressProps) => {
   const [isFetching, setFetching] = useState(false)
   const [contractAddress, setAddress] = useState('')
 
-  const { name: chainName, color } = chain
+  const { name: chainName } = chain
 
   const resolveTokenData = async () => {
     setFetching(true)
@@ -158,60 +172,39 @@ const EnterAddress = ({ chain, onNavigate }: EnterAddressProps) => {
   }
 
   return (
-    <div className='newTokenView cardShow'>
+    <Stack gap='medium'>
       {isFetching ? (
-        <>
-          <div className='signerLoading'>
-            <div className='signerLoadingLoader' />
-          </div>
-          {'FETCHING TOKEN DATA'}
-        </>
+        <Stack align='center' gap='small'>
+          <Spinner label='Fetching token data' />
+          <Text tone='secondary' variant='overline'>
+            Fetching Token Data
+          </Text>
+        </Stack>
       ) : (
         <>
-          <div className='newTokenChainSelectTitle'>
-            <label id='newTokenAddressLabel'>{`Enter token's address`}</label>
+          <Stack align='center' gap='xsmall'>
+            <Text variant='sectionTitle'>{`Enter token's address`}</Text>
+            {chainName && <Text tone='accent' variant='overline'>{`on ${chainName}`}</Text>}
+          </Stack>
 
-            {chainName && (
-              <div
-                className='newTokenChainSelectSubtitle'
-                style={{
-                  color: chainColorValue(color)
-                }}
-              >
-                {`on ${chainName}`}
-              </div>
-            )}
-          </div>
-
-          <div className='tokenRow'>
-            <div className='tokenAddress'>
-              <input
-                aria-labelledby='newTokenAddressLabel'
-                className='tokenInput tokenInputAddress'
-                value={contractAddress}
-                spellCheck={false}
-                autoFocus={true}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    submit()
-                  }
-                }}
-                onChange={(e) => {
-                  if (e.target.value.length > 42) {
-                    e.preventDefault()
-                  } else {
-                    setAddress(e.target.value)
-                  }
-                }}
-              />
-            </div>
-          </div>
-          <div className='tokenSetAddress' role='button' onClick={submit}>
-            {'Set Address'}
-          </div>
+          <Field label={`Enter token's address`}>
+            <Input
+              appearance='code'
+              autoFocus
+              label={`Enter token's address`}
+              maxLength={42}
+              onSubmit={submit}
+              onValueChange={setAddress}
+              spellCheck={false}
+              value={contractAddress}
+            />
+          </Field>
+          <Button appearance='primary' onPress={submit} width='full'>
+            <Text variant='action'>Set Address</Text>
+          </Button>
         </>
       )}
-    </div>
+    </Stack>
   )
 }
 
@@ -228,10 +221,10 @@ const TokenDetailsForm = ({ chain, tokenData, isEdit, onDone }: TokenDetailsForm
   const [decimals, setDecimals] = useState(tokenData.decimals || tokenDetailsDefaults.decimals)
   const [logoUri, setLogoUri] = useState(tokenData.logoURI || tokenDetailsDefaults.logoURI)
 
-  const submitRef = useRef<HTMLDivElement>(null)
+  const submitRef = useRef<HTMLButtonElement>(null)
 
   const { address } = tokenData
-  const { name: chainName, color } = chain
+  const { name: chainName } = chain
 
   const newTokenReady =
     name &&
@@ -260,13 +253,6 @@ const TokenDetailsForm = ({ chain, tokenData, isEdit, onDone }: TokenDetailsForm
     }
   }
 
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement | HTMLDivElement>) => {
-    if (e.key === 'Enter' && newTokenReady) {
-      e.stopPropagation()
-      saveAndClose()
-    }
-  }
-
   // handle asynchronous loading of token data
   useEffect(() => {
     const { name, symbol, decimals, logoURI } = tokenData
@@ -282,158 +268,112 @@ const TokenDetailsForm = ({ chain, tokenData, isEdit, onDone }: TokenDetailsForm
   }, [])
 
   return (
-    <div className='notifyBoxWrap cardShow' onMouseDown={(e) => e.stopPropagation()}>
-      <div className='notifyBoxSlide'>
-        <div className='addTokenTop'>
-          <div className='addTokenTitle' data-testid='addTokenFormTitle'>
-            {isEdit ? 'Edit Token' : 'Add New Token'}
-          </div>
-          <div className='newTokenChainSelectTitle'>
-            <div className='newTokenChainAddress' role='heading' aria-level={2}>
-              {address.substring(0, 10)}
-              {svg.octicon('kebab-horizontal', { height: 14 })}
-              {address.substring(address.length - 8)}
-            </div>
-            {chainName ? (
-              <div
-                className='newTokenChainSelectSubtitle'
-                style={{
-                  color: chainColorValue(color)
+    <ScrollArea height='page'>
+      <Stack gap='medium'>
+        <Stack align='center' gap='xsmall'>
+          <Text align='center' variant='heading'>
+            <span data-testid='addTokenFormTitle'>{isEdit ? 'Edit Token' : 'Add New Token'}</span>
+          </Text>
+          <Text align='center' as='h2' variant='code'>
+            {`${address.substring(0, 10)}${address.substring(address.length - 8)}`}
+          </Text>
+          {chainName ? <Text tone='accent' variant='overline'>{`on ${chainName}`}</Text> : null}
+        </Stack>
+        <Surface padding='small' radius='card'>
+          <Stack gap='small'>
+            <Field label='Token Name'>
+              <Input
+                appearance='plain'
+                onBlur={(value) => {
+                  if (value === '') setName(tokenDetailsDefaults.name)
+                  focusSubmitButton()
                 }}
-              >
-                {`on ${chainName}`}
-              </div>
-            ) : null}
-          </div>
-        </div>
-        <div className='addToken'>
-          <div className='tokenRow'>
-            <div className='tokenName'>
-              <label className='tokenInputLabel'>
-                <input
-                  className={`tokenInput ${name === tokenDetailsDefaults.name ? 'tokenInputDim' : ''}`}
-                  value={name}
-                  spellCheck={false}
-                  onChange={(e) => {
-                    setName(e.target.value)
-                  }}
-                  onFocus={(e) => {
-                    if (e.target.value === tokenDetailsDefaults.name) setName('')
-                  }}
-                  onBlur={(e) => {
-                    if (e.target.value === '') setName(tokenDetailsDefaults.name)
+                onFocus={(value) => {
+                  if (value === tokenDetailsDefaults.name) setName('')
+                }}
+                onSubmit={newTokenReady ? saveAndClose : undefined}
+                onValueChange={setName}
+                placeholder={tokenDetailsDefaults.name}
+                spellCheck={false}
+                value={name}
+              />
+            </Field>
+
+            <Stack direction='row' gap='small'>
+              <Field label='Symbol'>
+                <Input
+                  appearance='plain'
+                  maxLength={10}
+                  onBlur={(value) => {
+                    if (value === '') setSymbol(tokenDetailsDefaults.symbol)
                     focusSubmitButton()
                   }}
-                  onKeyDown={handleKeyPress}
-                />
-                Token Name
-              </label>
-            </div>
-          </div>
-
-          <div className='tokenRow'>
-            <div className='tokenSymbol'>
-              <label className='tokenInputLabel'>
-                <input
-                  className={`tokenInput ${symbol === tokenDetailsDefaults.symbol ? 'tokenInputDim' : ''}`}
+                  onFocus={(value) => {
+                    if (value === tokenDetailsDefaults.symbol) setSymbol('')
+                  }}
+                  onSubmit={newTokenReady ? saveAndClose : undefined}
+                  onValueChange={setSymbol}
+                  placeholder={tokenDetailsDefaults.symbol}
+                  spellCheck={false}
                   value={symbol}
-                  spellCheck={false}
-                  onChange={(e) => {
-                    if (e.target.value.length > 10) return e.preventDefault()
-                    setSymbol(e.target.value)
-                  }}
-                  onFocus={(e) => {
-                    if (e.target.value === tokenDetailsDefaults.symbol) setSymbol('')
-                  }}
-                  onBlur={(e) => {
-                    if (e.target.value === '') setSymbol(tokenDetailsDefaults.symbol)
+                />
+              </Field>
+
+              <Field label='Decimals'>
+                <Input
+                  appearance='plain'
+                  inputMode='numeric'
+                  maxLength={2}
+                  onBlur={(value) => {
+                    if (value === '') setDecimals(tokenDetailsDefaults.decimals)
                     focusSubmitButton()
                   }}
-                  onKeyDown={handleKeyPress}
-                />
-                Symbol
-              </label>
-            </div>
-
-            <div className='tokenDecimals'>
-              <label className='tokenInputLabel'>
-                <input
-                  className={`tokenInput ${
-                    decimals === tokenDetailsDefaults.decimals ? 'tokenInputDim' : ''
-                  }`}
+                  onFocus={(value) => {
+                    if (value === tokenDetailsDefaults.decimals) setDecimals('')
+                  }}
+                  onSubmit={newTokenReady ? saveAndClose : undefined}
+                  onValueChange={(value) => {
+                    if (!value) return setDecimals('')
+                    const parsed = Number.parseInt(value)
+                    if (Number.isInteger(parsed)) setDecimals(parsed)
+                  }}
+                  placeholder={tokenDetailsDefaults.decimals}
+                  spellCheck={false}
                   value={decimals}
-                  spellCheck={false}
-                  onChange={(e) => {
-                    if (!e.target.value) return setDecimals('')
-                    if (e.target.value.length > 2) return e.preventDefault()
-
-                    const decimals = parseInt(e.target.value)
-                    if (!Number.isInteger(decimals)) return e.preventDefault()
-
-                    setDecimals(decimals)
-                  }}
-                  onFocus={(e) => {
-                    if (e.target.value === tokenDetailsDefaults.decimals) setDecimals('')
-                  }}
-                  onBlur={(e) => {
-                    if (e.target.value === '') setDecimals(tokenDetailsDefaults.decimals)
-                    focusSubmitButton()
-                  }}
-                  onKeyDown={handleKeyPress}
                 />
-                Decimals
-              </label>
-            </div>
-          </div>
+              </Field>
+            </Stack>
 
-          <div className='tokenRow'>
-            <div className='tokenLogoUri'>
-              <label className='tokenInputLabel'>
-                <input
-                  className={`tokenInput ${logoUri === tokenDetailsDefaults.logoURI ? 'tokenInputDim' : ''}`}
-                  value={logoUri}
-                  spellCheck={false}
-                  onChange={(e) => {
-                    setLogoUri(e.target.value)
-                  }}
-                  onFocus={(e) => {
-                    if (e.target.value === tokenDetailsDefaults.logoURI) setLogoUri('')
-                  }}
-                  onBlur={(e) => {
-                    if (e.target.value === '') setLogoUri(tokenDetailsDefaults.logoURI)
-                    focusSubmitButton()
-                  }}
-                  onKeyDown={handleKeyPress}
-                />
-                Logo URI
-              </label>
-            </div>
-          </div>
-          <div className='tokenRow'>
-            {newTokenReady ? (
-              <div
-                role='button'
-                tabIndex={0}
-                ref={submitRef}
-                className='addTokenSubmit addTokenSubmitEnabled'
-                onMouseDown={(e) => {
-                  if (e.button === 0) {
-                    saveAndClose()
-                  }
+            <Field label='Logo URI'>
+              <Input
+                appearance='plain'
+                onBlur={(value) => {
+                  if (value === '') setLogoUri(tokenDetailsDefaults.logoURI)
+                  focusSubmitButton()
                 }}
-                onKeyDown={handleKeyPress}
-              >
-                {isEdit ? 'Save' : 'Add Token'}
-              </div>
+                onFocus={(value) => {
+                  if (value === tokenDetailsDefaults.logoURI) setLogoUri('')
+                }}
+                onSubmit={newTokenReady ? saveAndClose : undefined}
+                onValueChange={setLogoUri}
+                placeholder={tokenDetailsDefaults.logoURI}
+                spellCheck={false}
+                value={logoUri}
+              />
+            </Field>
+            {newTokenReady ? (
+              <Button appearance='primary' ref={submitRef} onPress={saveAndClose} width='full'>
+                <Text variant='action'>{isEdit ? 'Save' : 'Add Token'}</Text>
+              </Button>
             ) : (
-              <div role='button' className='addTokenSubmit'>
-                Fill in Token Details
-              </div>
+              <Button disabled appearance='primary' width='full'>
+                <Text variant='action'>Fill in Token Details</Text>
+              </Button>
             )}
-          </div>
-        </div>
-      </div>
-    </div>
+          </Stack>
+        </Surface>
+      </Stack>
+    </ScrollArea>
   )
 }
 

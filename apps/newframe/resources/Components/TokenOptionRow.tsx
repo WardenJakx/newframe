@@ -1,3 +1,6 @@
+import { Stack } from '@newframe/ui/stack'
+import { Text } from '@newframe/ui/text'
+
 import ChainTokenIcon from './ChainTokenIcon'
 import type { NetworkLike, NetworkMetaLike, TokenSelectorItem } from './tokenSelectorTypes'
 
@@ -6,12 +9,6 @@ interface TokenOptionRowProps {
   networks: Record<string | number, NetworkLike>
   networksMeta: Record<string | number, NetworkMetaLike>
   showRightSubLabel?: boolean
-}
-
-function rightSubLabelClass(label = '') {
-  if (label.trim().startsWith('-')) return 'tokenOptionRowRightSubLabel tokenOptionRowRightSubLabelDown'
-
-  return 'tokenOptionRowRightSubLabel tokenOptionRowRightSubLabelUp'
 }
 
 export default function TokenOptionRow({
@@ -23,7 +20,7 @@ export default function TokenOptionRow({
   const symbol = item.symbol || '?'
 
   return (
-    <div className='tokenOptionRow'>
+    <Stack align='center' direction='row' gap='large' grow>
       <ChainTokenIcon
         chainId={item.chainId}
         logoURI={item.logoURI}
@@ -32,16 +29,29 @@ export default function TokenOptionRow({
         size='md'
         symbol={symbol}
       />
-      <div className='tokenOptionRowText'>
-        <div className='tokenOptionRowSymbol'>{symbol}</div>
-        <div className='tokenOptionRowAmount'>{item.amountLabel}</div>
-      </div>
-      <div className='tokenOptionRowRight'>
-        <div className='tokenOptionRowNotional'>{item.notionalLabel}</div>
+      <Stack gap='xsmall' grow>
+        <Text variant='control' truncate>
+          {symbol}
+        </Text>
+        <Text variant='detail' tone='muted' truncate>
+          {item.amountLabel}
+        </Text>
+      </Stack>
+      <Stack align='end' gap='xsmall'>
+        <Text align='end' variant='control' truncate>
+          {item.notionalLabel}
+        </Text>
         {showRightSubLabel && item.rightSubLabel ? (
-          <div className={rightSubLabelClass(item.rightSubLabel)}>{item.rightSubLabel}</div>
+          <Text
+            align='end'
+            variant='detail'
+            tone={item.rightSubLabel.trim().startsWith('-') ? 'danger' : 'accent'}
+            truncate
+          >
+            {item.rightSubLabel}
+          </Text>
         ) : null}
-      </div>
-    </div>
+      </Stack>
+    </Stack>
   )
 }

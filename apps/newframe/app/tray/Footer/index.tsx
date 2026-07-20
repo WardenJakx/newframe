@@ -1,17 +1,15 @@
 import { useEffect, useRef } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 
-import link from '../../../resources/link'
+import type { WalletRendererState } from '../../../resources/state/projections'
+import { RequestActions } from '../../../resources/Components/RequestActions'
+import { cva } from '../../../resources/styled-system/css/cva.js'
 import { isHardwareSigner } from '../../../resources/domain/signer'
 import { isSignatureRequest } from '../../../resources/domain/request'
+import link from '../../../resources/link'
 import { useWalletSelector } from '../../state/useAppSelector'
-import type { WalletRendererState } from '../../../resources/state/projections'
 import { useRequestView, type RequestViewStep } from '../requestView'
-
 import RequestCommand from './RequestCommand'
-
-const FOOTER_HEIGHT_PROPERTY = '--tray-footer-height'
-const MINIMUM_FOOTER_HEIGHT = 40
 
 interface FooterSharedState {
   account?: WalletRendererState['accounts'][string]
@@ -24,6 +22,24 @@ interface FooterProps {
   step: RequestViewStep
 }
 
+const footerRecipe = cva({
+  base: {
+    position: 'absolute',
+    insetInline: 0,
+    insetBlockEnd: 0,
+    zIndex: 'overlay',
+    background: 'bg.primary'
+  },
+  variants: {
+    active: {
+      true: { padding: '4' },
+      false: { padding: '0' }
+    }
+  }
+})
+
+const FOOTER_HEIGHT_PROPERTY = '--tray-footer-height'
+
 const EMPTY_CRUMB = {}
 
 const selectFooterState = (state: WalletRendererState): FooterSharedState => {
@@ -31,205 +47,107 @@ const selectFooterState = (state: WalletRendererState): FooterSharedState => {
   const accountId = crumb.data?.accountId
   const requestId = crumb.data?.requestId
   const account = accountId ? state.accounts[accountId] : undefined
-
-  return {
-    account,
-    crumb,
-    req: requestId ? account?.requests[requestId] : undefined
-  }
+  return { account, crumb, req: requestId ? account?.requests[requestId] : undefined }
 }
 
 export function Footer({ shared, step }: FooterProps) {
-  const footerRef = useRef<HTMLDivElement>(null)
-  const allowInput = true
-
-  const updateFooterHeight = () => {
-    const height = Math.max(MINIMUM_FOOTER_HEIGHT, footerRef.current?.clientHeight || 0)
-    document.documentElement.style.setProperty(FOOTER_HEIGHT_PROPERTY, `${height}px`)
-  }
+  const footerRef = useRef<HTMLElement>(null)
+  const { account, crumb, req } = shared
 
   useEffect(() => {
+    const updateFooterHeight = () => {
+      document.documentElement.style.setProperty(
+        FOOTER_HEIGHT_PROPERTY,
+        `${footerRef.current?.clientHeight ?? 0}px`
+      )
+    }
+
     updateFooterHeight()
     const observer =
       typeof ResizeObserver !== 'undefined' && footerRef.current
         ? new ResizeObserver(updateFooterHeight)
         : undefined
     if (footerRef.current) observer?.observe(footerRef.current)
+
     return () => {
       observer?.disconnect()
       document.documentElement.style.removeProperty(FOOTER_HEIGHT_PROPERTY)
     }
   }, [])
 
-  const rejectRequest = (req: { handlerId: string }) => {
-    if (allowInput) {
-      void link.executeCommand({ type: 'request.reject', requestId: req.handlerId })
+  let content = null
+
+  if (
+    crumb.view === 'requestView' &&
+    req &&
+    account &&
+    (req.type === 'transaction' || isSignatureRequest(req)) &&
+    step === 'confirm'
+  ) {
+    content = <RequestCommand req={req} signingDelay={isHardwareSigner(account.lastSignerType) ? 0 : 1500} />
+  }
+
+  const reject = () => void link.executeCommand({ type: 'request.reject', requestId: req.handlerId })
+  let primary: { label: string; onPress: () => void } | undefined
+
+  if (!content && req?.type === 'access') {
+    primary = {
+      label: 'Approve',
+      onPress: () =>
+        void link.executeCommand({ type: 'request.access-resolve', requestId: req.handlerId, approved: true })
+    }
+  } else if (!content && req?.type === 'switchChain') {
+    primary = {
+      label: 'Switch',
+      onPress: () =>
+        void link.executeCommand({
+          type: 'request.switch-chain-resolve',
+          requestId: req.handlerId,
+          approved: true
+        })
+    }
+  } else if (!content && req?.type === 'addChain') {
+    primary = {
+      label: 'Review',
+      onPress: () => void link.executeCommand({ type: 'request.add-chain-review', requestId: req.handlerId })
+    }
+  } else if (!content && req?.type === 'addToken') {
+    primary = {
+      label: 'Review',
+      onPress: () => void link.executeCommand({ type: 'request.add-token-review', requestId: req.handlerId })
     }
   }
-  const footer = (() => {
-    const { account, crumb, req } = shared
 
-    if (crumb.view === 'requestView') {
-      if (req && account) {
-        if (req.type === 'transaction' && step === 'confirm') {
-          return (
-            <RequestCommand req={req} signingDelay={isHardwareSigner(account.lastSignerType) ? 0 : 1500} />
-          )
-        } else if (req.type === 'access') {
-          return (
-            <div className='requestApprove'>
-              <div
-                className='requestDecline'
-                style={{ pointerEvents: allowInput ? 'auto' : 'none' }}
-                onClick={() => {
-                  if (allowInput) {
-                    void link.executeCommand({
-                      type: 'request.access-resolve',
-                      requestId: req.handlerId,
-                      approved: false
-                    })
-                  }
-                }}
-              >
-                <div className='requestDeclineButton _txButton _txButtonBad'>
-                  <span className='traySpan'>Decline</span>
-                </div>
-              </div>
-              <div
-                className='requestSign'
-                style={{ pointerEvents: allowInput ? 'auto' : 'none' }}
-                onClick={() => {
-                  if (allowInput) {
-                    void link.executeCommand({
-                      type: 'request.access-resolve',
-                      requestId: req.handlerId,
-                      approved: true
-                    })
-                  }
-                }}
-              >
-                <div className='requestSignButton _txButton'>
-                  <span className='traySpan'>Approve</span>
-                </div>
-              </div>
-            </div>
-          )
-        } else if (isSignatureRequest(req) && step === 'confirm') {
-          return (
-            <RequestCommand req={req} signingDelay={isHardwareSigner(account.lastSignerType) ? 0 : 1500} />
-          )
-        } else if (req.type === 'addChain' || req.type === 'switchChain') {
-          return req.type === 'switchChain' ? (
-            <div className='requestApprove'>
-              <div
-                className='requestDecline'
-                style={{ pointerEvents: allowInput ? 'auto' : 'none' }}
-                onClick={() => {
-                  if (allowInput) {
-                    void link.executeCommand({
-                      type: 'request.switch-chain-resolve',
-                      requestId: req.handlerId,
-                      approved: false
-                    })
-                  }
-                }}
-              >
-                <div className='requestDeclineButton _txButton _txButtonBad'>
-                  <span className='traySpan'>Decline</span>
-                </div>
-              </div>
-              <div
-                className='requestSign'
-                style={{ pointerEvents: allowInput ? 'auto' : 'none' }}
-                onClick={() => {
-                  if (allowInput) {
-                    void link.executeCommand({
-                      type: 'request.switch-chain-resolve',
-                      requestId: req.handlerId,
-                      approved: true
-                    })
-                  }
-                }}
-              >
-                <div className='requestSignButton _txButton'>
-                  <span className='traySpan'>Switch</span>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className='requestApprove'>
-              <div
-                className='requestDecline'
-                style={{ pointerEvents: allowInput ? 'auto' : 'none' }}
-                onClick={() => {
-                  rejectRequest(req)
-                }}
-              >
-                <div className='requestDeclineButton _txButton _txButtonBad'>
-                  <span className='traySpan'>Decline</span>
-                </div>
-              </div>
-              <div
-                className='requestSign'
-                style={{ pointerEvents: allowInput ? 'auto' : 'none' }}
-                onClick={() => {
-                  if (allowInput) {
-                    void link.executeCommand({
-                      type: 'request.add-chain-review',
-                      requestId: req.handlerId
-                    })
-                  }
-                }}
-              >
-                <div className='requestSignButton _txButton'>
-                  <span className='traySpan'>Review</span>
-                </div>
-              </div>
-            </div>
-          )
-        } else if (req.type === 'addToken') {
-          return (
-            <div className='requestApprove'>
-              <div
-                className='requestDecline'
-                style={{ pointerEvents: allowInput ? 'auto' : 'none' }}
-                onClick={() => {
-                  rejectRequest(req)
-                }}
-              >
-                <div className='requestDeclineButton _txButton _txButtonBad'>
-                  <span className='traySpan'>Decline</span>
-                </div>
-              </div>
-              <div
-                className='requestSign'
-                style={{ pointerEvents: allowInput ? 'auto' : 'none' }}
-                onClick={() => {
-                  if (allowInput) {
-                    void link.executeCommand({
-                      type: 'request.add-token-review',
-                      requestId: req.handlerId
-                    })
-                  }
-                }}
-              >
-                <div className='requestSignButton _txButton'>
-                  <span className='traySpan'>Review</span>
-                </div>
-              </div>
-            </div>
-          )
-        } else {
-          return null
+  const secondary = primary
+    ? req.type === 'access'
+      ? {
+          label: 'Decline',
+          onPress: () =>
+            void link.executeCommand({
+              type: 'request.access-resolve',
+              requestId: req.handlerId,
+              approved: false
+            })
         }
-      }
-    }
-  })()
+      : req.type === 'switchChain'
+        ? {
+            label: 'Decline',
+            onPress: () =>
+              void link.executeCommand({
+                type: 'request.switch-chain-resolve',
+                requestId: req.handlerId,
+                approved: false
+              })
+          }
+        : { label: 'Decline', onPress: reject }
+    : undefined
+
+  if (primary && secondary) content = <RequestActions primary={primary} secondary={secondary} />
 
   return (
-    <div ref={footerRef} className='footerModule'>
-      <div className='footerWrap'>{footer}</div>
-    </div>
+    <footer className={footerRecipe({ active: Boolean(content) })} ref={footerRef}>
+      {content}
+    </footer>
   )
 }
 

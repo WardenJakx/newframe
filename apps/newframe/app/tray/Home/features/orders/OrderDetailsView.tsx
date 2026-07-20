@@ -1,9 +1,14 @@
 import React from 'react'
 
-import svg from '../../../../../resources/svg'
+import { Stack } from '@newframe/ui/stack'
+import { Surface } from '@newframe/ui/surface'
+import { Text } from '@newframe/ui/text'
+
+import { DetailRow } from '../../../../../resources/Components/DetailRow'
+import { TrayOverlay } from '../../../../../resources/Components/TrayOverlay'
 import { getContraPreposition } from '../../../../../resources/domain/flash/pair'
+import { cva } from '../../../../../resources/styled-system/css/cva.js'
 import { ChainIcon } from '../../components/ChainIcon'
-import { activateOnKeyboard } from '../../ui/keyboard'
 import { OrderAssetPill } from './OrderAssetPill'
 import {
   formatOrderAmount,
@@ -16,6 +21,16 @@ import {
   orderStatusLabel,
   orderTypeLabel
 } from './orderModel'
+
+const payloadRecipe = cva({
+  base: {
+    margin: 0,
+    maxHeight: 'scroll-menu',
+    overflow: 'auto',
+    whiteSpace: 'pre-wrap',
+    wordBreak: 'break-word'
+  }
+})
 
 export function OrderDetailsView({
   networks,
@@ -36,12 +51,13 @@ export function OrderDetailsView({
   const detailRow = (label: string, value: React.ReactNode, monospace = false) => {
     if (value === undefined || value === null || value === '') return null
     return (
-      <div className='t2OrderDetailRow'>
-        <div className='t2OrderDetailLabel'>{label}</div>
-        <div className={monospace ? 't2OrderDetailValue t2OrderDetailValueCode' : 't2OrderDetailValue'}>
-          {value}
-        </div>
-      </div>
+      <DetailRow
+        code={monospace}
+        label={label}
+        labelVariant='overline'
+        value={value}
+        valueVariant='supporting'
+      />
     )
   }
   const rawPayload = orderJson(order.rawPayload)
@@ -50,31 +66,19 @@ export function OrderDetailsView({
     address ? `${address.substring(0, 5)}…${address.substring(address.length - 4)}` : ''
 
   return (
-    <div aria-label='Order details' className='t2Overlay t2OrderOverlay cardShow' role='dialog'>
-      <div className='t2OverlayHeader'>
-        <div
-          aria-label='Back to orders'
-          className='t2OverlayBack'
-          onClick={onBack}
-          onKeyDown={(event) => activateOnKeyboard(event, onBack)}
-          role='button'
-          tabIndex={0}
-        >
-          {svg.chevronLeft(13)}
-        </div>
-        <div className='t2OverlayTitle'>Order</div>
-        <div className='t2OverlaySpacer' />
-      </div>
-      <div className='t2OverlayScroll t2OrderDetailScroll'>
-        <div className='t2OrderDetailHero'>
-          <div className='t2OrderDetailPair'>
+    <TrayOverlay closeLabel='Back to orders' label='Order details' onClose={onBack} title='Order'>
+      <Stack gap='medium'>
+        <Stack align='center' gap='small'>
+          <Stack align='center' direction='row' gap='small' justify='center'>
             <OrderAssetPill
               asset={order.targetAsset}
               fallbackChainId={chainId}
               networks={networks}
               networksMeta={networksMeta}
             />
-            <div className='t2OrderDetailIntent'>{orderPairIntent(order)}</div>
+            <Text align='center' truncate variant='label'>
+              {orderPairIntent(order)}
+            </Text>
             <OrderAssetPill
               asset={order.contraAsset}
               fallbackChainId={chainId}
@@ -82,14 +86,20 @@ export function OrderDetailsView({
               networksMeta={networksMeta}
               prefix={side ? getContraPreposition(side) : 'with'}
             />
-          </div>
-          <div className='t2OrderDetailMeta'>
-            <span className='traySpan'>{orderStatusLabel(order)}</span>
-            <span className='traySpan'>{orderTypeLabel(order)}</span>
-            <span className='traySpan'>{orderSize(order)}</span>
-          </div>
-        </div>
-        <div className='t2OrderDetailList'>
+          </Stack>
+          <Stack direction='row' gap='xsmall' wrap>
+            <Text tone='muted' variant='code'>
+              {orderStatusLabel(order)}
+            </Text>
+            <Text tone='muted' variant='code'>
+              {orderTypeLabel(order)}
+            </Text>
+            <Text tone='muted' variant='code'>
+              {orderSize(order)}
+            </Text>
+          </Stack>
+        </Stack>
+        <Stack gap='none'>
           {detailRow('Order ID', order.orderId || orderId, true)}
           {detailRow('Provider', order.provider || order.source)}
           {detailRow('Environment', order.environment)}
@@ -97,12 +107,12 @@ export function OrderDetailsView({
           {detailRow('Account', shortAddress(order.accountAddress), true)}
           {detailRow(
             'Chain',
-            <div className='t2OrderChainValue'>
-              <div className='t2OrderChainIcon'>
-                <ChainIcon chainId={chainId} imageSize={18} networks={networks} networksMeta={networksMeta} />
-              </div>
-              <span className='traySpan'>{chain.name || `Chain ${chainId}`}</span>
-            </div>
+            <Stack align='center' direction='row' gap='xsmall' justify='end'>
+              <ChainIcon chainId={chainId} networks={networks} networksMeta={networksMeta} size='large' />
+              <Text truncate variant='supporting'>
+                {chain.name || `Chain ${chainId}`}
+              </Text>
+            </Stack>
           )}
           {detailRow('Status', orderStatusLabel(order))}
           {detailRow('Raw status', order.rawStatus)}
@@ -118,20 +128,32 @@ export function OrderDetailsView({
           {detailRow('Updated', orderDateTime(order.updatedAt))}
           {detailRow('Terminal', orderDateTime(order.terminalAt))}
           {detailRow('Fill hash', order.fillHash || order.fillTransactionHash, true)}
-        </div>
+        </Stack>
         {rawStatusPayload ? (
-          <div className='t2OrderJsonSection'>
-            <div className='t2OrderJsonTitle'>Status Payload</div>
-            <pre>{rawStatusPayload}</pre>
-          </div>
+          <Surface padding='small' radius='small' tone='subtle'>
+            <Stack gap='xsmall'>
+              <Text tone='muted' variant='overline'>
+                Status Payload
+              </Text>
+              <pre className={payloadRecipe()}>
+                <Text variant='microCode'>{rawStatusPayload}</Text>
+              </pre>
+            </Stack>
+          </Surface>
         ) : null}
         {rawPayload ? (
-          <div className='t2OrderJsonSection'>
-            <div className='t2OrderJsonTitle'>Raw Payload</div>
-            <pre>{rawPayload}</pre>
-          </div>
+          <Surface padding='small' radius='small' tone='subtle'>
+            <Stack gap='xsmall'>
+              <Text tone='muted' variant='overline'>
+                Raw Payload
+              </Text>
+              <pre className={payloadRecipe()}>
+                <Text variant='microCode'>{rawPayload}</Text>
+              </pre>
+            </Stack>
+          </Surface>
         ) : null}
-      </div>
-    </div>
+      </Stack>
+    </TrayOverlay>
   )
 }

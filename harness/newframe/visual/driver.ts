@@ -82,16 +82,16 @@ export class NewframeDriver {
     await withTimeout(page.waitForLoadState('load', { timeout }), `${renderer} load state`, timeout)
     const evaluation = page.evaluate(() => {
       const rootStyle = getComputedStyle(document.documentElement)
-      const semanticValue = rootStyle.getPropertyValue('--color-bg-primary').trim()
-      const primitiveValue = rootStyle.getPropertyValue('--color-plum-950').trim()
-      const actionValue = rootStyle.getPropertyValue('--color-action-primary').trim()
+      const semanticValue = rootStyle.getPropertyValue('--colors-bg-primary').trim()
+      const primitiveValue = rootStyle.getPropertyValue('--colors-plum-950').trim()
+      const actionValue = rootStyle.getPropertyValue('--colors-action-primary').trim()
       const semanticProbe = document.createElement('div')
       const primitiveProbe = document.createElement('div')
       const alphaProbe = document.createElement('div')
 
-      semanticProbe.style.backgroundColor = 'var(--color-bg-primary)'
-      primitiveProbe.style.backgroundColor = 'var(--color-plum-950)'
-      alphaProbe.style.backgroundColor = 'color-mix(in srgb, var(--color-action-primary) 12%, transparent)'
+      semanticProbe.style.backgroundColor = 'var(--colors-bg-primary)'
+      primitiveProbe.style.backgroundColor = 'var(--colors-plum-950)'
+      alphaProbe.style.backgroundColor = 'color-mix(in srgb, var(--colors-action-primary) 12%, transparent)'
       semanticProbe.style.display = primitiveProbe.style.display = alphaProbe.style.display = 'none'
       document.body.append(semanticProbe, primitiveProbe, alphaProbe)
 
@@ -329,21 +329,16 @@ export class NewframeDriver {
     const dialog = this.tray.getByRole('dialog', { name: 'Accounts' })
     await dialog.waitFor({ state: 'visible' })
     await dialog.getByRole('textbox', { name: 'Search accounts' }).fill(searchValue)
-    await dialog.locator('.t2AccountRow').first().waitFor({ state: 'visible', timeout: 10_000 })
-
-    if (screenshotName) await this.screenshot(this.tray, screenshotName)
 
     const displayName = account.ensName || account.name || ''
     const shortAddress = `${account.address.slice(0, 5)}…${account.address.slice(-4)}`
     const escapedName = (displayName || shortAddress).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
     const row = dialog.getByRole('button', { name: new RegExp(escapedName, 'i') }).first()
+    await row.waitFor({ state: 'visible', timeout: 10_000 })
 
-    if ((await row.count()) > 0) {
-      await row.click()
-    } else {
-      // TODO: replace this with a stronger app-level accessible label if account rows stop exposing row text.
-      await dialog.locator('.t2AccountRow').first().click()
-    }
+    if (screenshotName) await this.screenshot(this.tray, screenshotName)
+
+    await row.click()
 
     await dialog.waitFor({ state: 'hidden', timeout: 10_000 })
     await this.waitForSelectedAccount(account)
@@ -511,24 +506,24 @@ export class NewframeDriver {
 
   async assertTradeBalanceDirectionColor(page: Page) {
     const colors = await page.evaluate(() => {
-      const slider = document.querySelector<HTMLInputElement>('.tradeBalanceRange')
-      const sliderWrap = slider?.closest('.tradeBalanceSlider')
-      const intent = document.querySelector(
-        sliderWrap?.classList.contains('tradeBalanceSliderBuy') ? '.tradeIntentBuy' : '.tradeIntentSell'
+      const slider = document.querySelector<HTMLInputElement>(
+        'input[type="range"][aria-label$=" amount percentage"]'
+      )
+      const tone = slider?.dataset.tone || ''
+      const side = tone === 'special' ? 'buy' : tone === 'danger' ? 'sell' : ''
+      const intentLabel = side === 'buy' ? 'BUY' : side === 'sell' ? 'SELL' : ''
+      const intent = Array.from(document.querySelectorAll<HTMLElement>('[data-tone]')).find(
+        (element) => element.textContent?.trim() === intentLabel
       )
 
       return {
         accent: slider ? getComputedStyle(slider).getPropertyValue('accent-color') : '',
         intent: intent ? getComputedStyle(intent).color : '',
-        side: sliderWrap?.classList.contains('tradeBalanceSliderBuy')
-          ? 'buy'
-          : sliderWrap?.classList.contains('tradeBalanceSliderSell')
-            ? 'sell'
-            : ''
+        side
       }
     })
 
-    if (!colors.side) this.fail('Trade balance slider is missing a BUY/SELL direction class')
+    if (!colors.side) this.fail('Trade balance slider is missing its direction state')
     if (!colors.accent || colors.accent !== colors.intent) {
       this.fail(
         `Trade ${colors.side} balance slider color (${colors.accent || 'missing'}) does not match its intent (${colors.intent || 'missing'})`

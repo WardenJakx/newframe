@@ -1,7 +1,11 @@
 import React from 'react'
 
-import svg from '../../../../../resources/svg'
-import { activateOnKeyboard } from '../../ui/keyboard'
+import { Button } from '@newframe/ui/button'
+import { Stack } from '@newframe/ui/stack'
+import { Surface } from '@newframe/ui/surface'
+import { Text } from '@newframe/ui/text'
+
+import { TrayOverlay } from '../../../../../resources/Components/TrayOverlay'
 
 export function AddChainView({
   onApprove,
@@ -13,53 +17,29 @@ export function AddChainView({
   rows: Array<[string, React.ReactNode]>
 }) {
   return (
-    <div aria-label='Add Chain' className='t2Overlay cardShow' role='dialog'>
-      <div className='t2OverlayHeader'>
-        <div
-          aria-label='Back'
-          className='t2OverlayBack'
-          onClick={onReject}
-          onKeyDown={(event) => activateOnKeyboard(event, onReject)}
-          role='button'
-          tabIndex={0}
-        >
-          {svg.chevronLeft(16)}
-        </div>
-        <div className='t2OverlayTitle'>Add Chain</div>
-        <div className='t2OverlaySpacer' />
-      </div>
-      <div className='t2OverlayScroll t2SettingsScroll'>
-        <div className='t2SettingsSection'>
-          {rows.map(([label, value]) => (
-            <div className='t2InfoRow' key={label}>
-              <div className='t2InfoLabel'>{label}</div>
-              <div className='t2InfoValue'>{value}</div>
-            </div>
-          ))}
-          <div className='t2SettingsConfirmActions'>
-            <div
-              aria-label='Reject chain'
-              className='t2SettingsSmallButton'
-              onClick={onReject}
-              onKeyDown={(event) => activateOnKeyboard(event, onReject)}
-              role='button'
-              tabIndex={0}
-            >
-              Reject
-            </div>
-            <div
-              aria-label='Add chain'
-              className='t2SettingsSmallButton'
-              onClick={onApprove}
-              onKeyDown={(event) => activateOnKeyboard(event, onApprove)}
-              role='button'
-              tabIndex={0}
-            >
-              Add
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    <TrayOverlay closeLabel='Back' label='Add Chain' onClose={onReject} title='Add Chain'>
+      <Stack gap='small'>
+        {rows.map(([label, value]) => (
+          <Surface key={label} padding='small' radius='card'>
+            <Stack gap='xsmall'>
+              <Text tone='muted' variant='supporting'>
+                {label}
+              </Text>
+              <Text align='end' variant='supporting'>
+                {value}
+              </Text>
+            </Stack>
+          </Surface>
+        ))}
+        <Stack direction='row' gap='xsmall' justify='end'>
+          <Button appearance='ghost' label='Reject chain' onPress={onReject} shape='pill' size='small'>
+            <Text variant='compactAction'>Reject</Text>
+          </Button>
+          <Button appearance='primary' label='Add chain' onPress={onApprove} shape='pill' size='small'>
+            <Text variant='compactAction'>Add</Text>
+          </Button>
+        </Stack>
+      </Stack>
+    </TrayOverlay>
   )
 }

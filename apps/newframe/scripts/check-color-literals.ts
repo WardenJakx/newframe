@@ -3,7 +3,7 @@ import path from 'node:path'
 
 const appRoot = path.resolve(__dirname, '..')
 const sourceRoots = ['app', 'main', 'resources']
-const sourceExtensions = new Set(['.css', '.js', '.jsx', '.styl', '.ts', '.tsx'])
+const sourceExtensions = new Set(['.css', '.js', '.jsx', '.ts', '.tsx'])
 const allowedFiles = new Set([path.join('resources', 'colors', 'index.ts')])
 
 export type ColorLiteralViolation = {
@@ -57,7 +57,12 @@ export async function findApplicationColorLiterals() {
 
   for (const file of files) {
     const relativePath = path.relative(appRoot, file)
-    if (!sourceExtensions.has(path.extname(file)) || allowedFiles.has(relativePath)) continue
+    if (
+      !sourceExtensions.has(path.extname(file)) ||
+      allowedFiles.has(relativePath) ||
+      relativePath.startsWith(`resources${path.sep}styled-system${path.sep}`)
+    )
+      continue
 
     const violations = findColorLiteralViolations(await readFile(file, 'utf8'))
     results.push(...violations.map((violation) => ({ file: relativePath, ...violation })))

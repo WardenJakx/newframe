@@ -1,8 +1,21 @@
 import React from 'react'
 
-import svg from '../../../../../resources/svg'
+import { Button } from '@newframe/ui/button'
+import { Icon } from '@newframe/ui/icon'
+import { Stack } from '@newframe/ui/stack'
+import { Text } from '@newframe/ui/text'
+
+import { TrayOverlay } from '../../../../../resources/Components/TrayOverlay'
+import { cva } from '../../../../../resources/styled-system/css/cva.js'
 import AddressQRCode from '../../AddressQRCode'
-import { activateOnKeyboard } from '../../ui/keyboard'
+
+const receiveRecipe = cva({
+  base: {
+    width: '100%',
+    marginInline: 'auto',
+    paddingBlockEnd: '9'
+  }
+})
 
 export function ReceiveView({
   account,
@@ -20,39 +33,34 @@ export function ReceiveView({
   onCopy: () => void
 }) {
   return (
-    <div aria-label='Receive assets' className='t2Overlay t2ReceiveOverlay cardShow' role='dialog'>
-      <div className='t2OverlayHeader'>
-        <div
-          aria-label='Back'
-          className='t2OverlayBack'
-          onClick={onBack}
-          onKeyDown={(event) => activateOnKeyboard(event, onBack)}
-          role='button'
-          tabIndex={0}
-        >
-          {svg.chevronLeft(16)}
-        </div>
-        <div className='t2OverlayTitle'>Receive Assets</div>
-        <div className='t2OverlaySpacer' />
-      </div>
-      <div className='t2ReceiveBody'>
-        <div className='t2ReceiveIcon'>{icon}</div>
-        <div className='t2ReceiveName'>{name}</div>
-        <div className='t2ReceiveQr'>
+    <TrayOverlay
+      closeLabel='Back'
+      label='Receive assets'
+      onClose={onBack}
+      placement='center'
+      title='Receive Assets'
+    >
+      <div className={receiveRecipe()}>
+        <Stack align='center' gap='medium'>
+          {icon}
+          <Text align='center' variant='heading'>
+            {name}
+          </Text>
           <AddressQRCode address={account.address} />
-        </div>
-        <div
-          aria-label='Copy receive address'
-          className='t2ReceiveAddress'
-          onClick={onCopy}
-          onKeyDown={(event) => activateOnKeyboard(event, onCopy)}
-          role='button'
-          tabIndex={0}
-        >
-          <span className='traySpan'>{copied ? 'Address copied' : account.address}</span>
-          {svg.copy(13)}
-        </div>
+          <Button
+            appearance='control'
+            label='Copy receive address'
+            onPress={onCopy}
+            shape='pill'
+            width='full'
+          >
+            <Text truncate variant='code'>
+              {copied ? 'Address copied' : account.address}
+            </Text>
+            <Icon name='copy' size='small' />
+          </Button>
+        </Stack>
       </div>
-    </div>
+    </TrayOverlay>
   )
 }

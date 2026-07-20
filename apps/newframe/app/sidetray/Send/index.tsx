@@ -1,6 +1,15 @@
 import React from 'react'
+import { Button } from '@newframe/ui/button'
+import { Icon } from '@newframe/ui/icon'
+import { IconButton } from '@newframe/ui/icon-button'
+import { Input } from '@newframe/ui/input'
+import { ScrollArea } from '@newframe/ui/scroll-area'
+import { Stack } from '@newframe/ui/stack'
+import { Surface } from '@newframe/ui/surface'
+import { Text } from '@newframe/ui/text'
 
 import TokenSelector from '../../../resources/Components/TokenSelector'
+import { SidePanel } from '../../../resources/Components/SidePanel/SidePanel'
 import { getTokenSelectorPage } from '../../../resources/Components/tokenSelectorModel'
 import {
   createBalanceTokenSelectorItem,
@@ -8,7 +17,6 @@ import {
   formatUsdRate
 } from '../../../resources/domain/balance'
 import { resolveSendAssetFromRouteAssetId, toCanonicalAssetId } from '../../../resources/domain/sideTray'
-import svg from '../../../resources/svg'
 import { formatUnits, toBigInt } from '../../../resources/utils/numbers'
 import {
   createSideTrayWalletSelector,
@@ -57,8 +65,8 @@ export default function Send({ assetId }: SendProps) {
     closeSend()
   }, [])
 
-  const handleRecipientInputChange = React.useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    dispatch({ type: 'setRecipientInput', recipientInput: event.target.value })
+  const handleRecipientInputChange = React.useCallback((recipientInput: string) => {
+    dispatch({ type: 'setRecipientInput', recipientInput })
   }, [])
 
   const handleToggleRecipients = React.useCallback(() => {
@@ -85,8 +93,8 @@ export default function Send({ assetId }: SendProps) {
     dispatch({ type: 'showMoreTokens' })
   }, [])
 
-  const handleAmountChange = React.useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    dispatch({ type: 'setAmount', amount: event.target.value })
+  const handleAmountChange = React.useCallback((amount: string) => {
+    dispatch({ type: 'setAmount', amount })
   }, [])
 
   const handleSetMax = React.useCallback(() => {
@@ -192,134 +200,201 @@ export default function Send({ assetId }: SendProps) {
     }) && !state.submitting
 
   return (
-    <div className='sendApp'>
-      <div className='sendHeader'>
-        <button aria-label='Close Send' className='sendBackButton' onClick={handleClose}>
-          {svg.chevronLeft(18)}
-        </button>
-        <div className='sendTitle'>Send</div>
-        <div className='sendHeaderSpacer' />
-      </div>
+    <SidePanel
+      closeLabel='Close Send'
+      footer={
+        asset ? (
+          <Stack grow>
+            <Button
+              appearance='primary'
+              disabled={!proceedEnabled}
+              onPress={handleSubmit}
+              shape='pill'
+              size='large'
+            >
+              <Text align='center' variant='action' tone='inverse'>
+                Proceed
+              </Text>
+            </Button>
+          </Stack>
+        ) : undefined
+      }
+      footerCompact
+      onClose={handleClose}
+      title='Send'
+    >
       {asset ? (
-        <div className='sendBody'>
-          {state.recipient ? (
-            <div className='sendCard sendRecipientCard sendRecipientCardSelected'>
-              <div className='sendSectionTitle'>Add recipient</div>
-              <div className='sendRecipientPill'>
-                <AccountIcon account={state.recipient} />
-                <div className='sendRecipientText'>
-                  <div className='sendRecipientName'>{recipientName(state.recipient)}</div>
-                  <div className='sendRecipientAddress'>{state.recipient.address}</div>
-                </div>
-                <div className='sendRecipientCopy'>{svg.copy(14)}</div>
-                <button
-                  aria-label='Clear recipient'
-                  className='sendRecipientClear'
-                  onClick={handleClearRecipient}
-                >
-                  {svg.x(14)}
-                </button>
-              </div>
-              <div className='sendRecipientNotice'>First time sending to this address.</div>
-            </div>
-          ) : (
-            <div className='sendCard sendRecipientCard'>
-              <div className='sendSectionTitle'>Add recipient</div>
-              <div className='sendInputRow'>
-                <input
-                  aria-label='Recipient'
-                  placeholder='Address / gns/ens name / Namoshi'
-                  spellCheck={false}
-                  value={state.recipientInput}
-                  onChange={handleRecipientInputChange}
+        <Stack gap='medium'>
+          <Surface padding='large' radius='control' tone='card'>
+            <Stack gap='medium'>
+              <Text variant='sectionTitle' tone='secondary'>
+                Add recipient
+              </Text>
+              {state.recipient ? (
+                <Stack gap='small'>
+                  <Surface border='accent' padding='small' radius='control' tone='raised'>
+                    <Stack align='center' direction='row' gap='medium'>
+                      <AccountIcon account={state.recipient} />
+                      <Stack gap='xsmall' grow>
+                        <Text variant='heading' truncate>
+                          {recipientName(state.recipient)}
+                        </Text>
+                        <Text variant='detail' tone='secondary' truncate>
+                          {state.recipient.address}
+                        </Text>
+                      </Stack>
+                      <Text display='inline' tone='secondary'>
+                        <Icon name='copy' size='small' />
+                      </Text>
+                      <IconButton
+                        icon='close'
+                        label='Clear recipient'
+                        onPress={handleClearRecipient}
+                        size='small'
+                      />
+                    </Stack>
+                  </Surface>
+                  <Text variant='body' tone='warning'>
+                    First time sending to this address.
+                  </Text>
+                </Stack>
+              ) : (
+                <Stack gap='medium'>
+                  <Surface padding='small' radius='control' tone='raised'>
+                    <Stack align='center' direction='row' gap='small'>
+                      <Stack grow>
+                        <Input
+                          appearance='plain'
+                          label='Recipient'
+                          onValueChange={handleRecipientInputChange}
+                          placeholder='Address / gns/ens name / Namoshi'
+                          spellCheck={false}
+                          value={state.recipientInput}
+                        />
+                      </Stack>
+                      <IconButton
+                        expanded={state.recipientOpen}
+                        icon='chevronUp'
+                        label='Toggle recipients'
+                        onPress={handleToggleRecipients}
+                        size='small'
+                      />
+                    </Stack>
+                  </Surface>
+                  {state.recipientOpen ? (
+                    <Surface elevation='default' padding='none' radius='control' tone='control'>
+                      <ScrollArea height='menu'>
+                        <Stack gap='none'>
+                          <Surface padding='small' radius='none' tone='transparent'>
+                            <Stack align='center' direction='row' gap='small'>
+                              <Icon name='wallet' size='small' />
+                              <Text variant='label' tone='secondary'>
+                                My wallets
+                              </Text>
+                            </Stack>
+                          </Surface>
+                          {recipientAccounts.map((account) => (
+                            <Button
+                              appearance='row'
+                              key={account.id}
+                              onPress={() => handleSelectRecipient(account)}
+                              size='large'
+                            >
+                              <AccountIcon account={account} />
+                              <Stack gap='xsmall' grow>
+                                <Text variant='heading' truncate>
+                                  {recipientName(account)}
+                                </Text>
+                                <Text variant='detail' tone='secondary' truncate>
+                                  {account.address}
+                                </Text>
+                              </Stack>
+                              <Icon name='copy' size='small' />
+                            </Button>
+                          ))}
+                        </Stack>
+                      </ScrollArea>
+                    </Surface>
+                  ) : null}
+                </Stack>
+              )}
+            </Stack>
+          </Surface>
+          <Surface padding='large' radius='control' tone='card'>
+            <Stack gap='large'>
+              <Text variant='sectionTitle' tone='secondary'>
+                Send token
+              </Text>
+              <Stack align='center' direction='row' gap='large' justify='between'>
+                <TokenSelector
+                  ariaLabel='Select send token'
+                  footer={
+                    rowsHidden > 0 ? (
+                      <Stack>
+                        <Button onPress={handleShowMoreTokens}>
+                          <Text
+                            align='center'
+                            variant='supporting'
+                            tone='secondary'
+                          >{`Show ${Math.min(SEND_TOKEN_ROWS_INCREMENT, rowsHidden)} more assets`}</Text>
+                        </Button>
+                      </Stack>
+                    ) : null
+                  }
+                  items={tokenItems}
+                  networks={networks}
+                  networksMeta={networksMeta}
+                  onOpenChange={handleTokenPickerOpenChange}
+                  onSelect={handleSelectAsset}
+                  open={state.tokenOpen}
+                  selectedId={selectedKey}
                 />
-                <button
-                  aria-label='Toggle recipients'
-                  className='sendInputToggle'
-                  onClick={handleToggleRecipients}
-                >
-                  {svg.chevron(14)}
-                </button>
-              </div>
-              {state.recipientOpen ? (
-                <div className='sendRecipientMenu'>
-                  <div className='sendRecipientMenuTitle'>{svg.wallet(14)} My wallets</div>
-                  {recipientAccounts.map((account) => (
-                    <button
-                      className='sendWalletRow'
-                      key={account.id}
-                      onClick={() => handleSelectRecipient(account)}
-                      type='button'
-                    >
-                      <AccountIcon account={account} />
-                      <div className='sendWalletInfo'>
-                        <div className='sendWalletName'>{recipientName(account)}</div>
-                        <div className='sendWalletAddress'>{account.address}</div>
-                      </div>
-                      <div className='sendWalletCopy'>{svg.copy(14)}</div>
-                    </button>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-          )}
-          <div className='sendCard sendTokenCard'>
-            <div className='sendSectionTitle'>Send token</div>
-            <div className='sendTokenMain'>
-              <TokenSelector
-                ariaLabel='Select send token'
-                footer={
-                  rowsHidden > 0 ? (
-                    <button className='tokenSelectorMore' onClick={handleShowMoreTokens} type='button'>
-                      {`Show ${Math.min(SEND_TOKEN_ROWS_INCREMENT, rowsHidden)} more assets`}
-                    </button>
-                  ) : null
-                }
-                items={tokenItems}
-                networks={networks}
-                networksMeta={networksMeta}
-                onOpenChange={handleTokenPickerOpenChange}
-                onSelect={handleSelectAsset}
-                open={state.tokenOpen}
-                selectedId={selectedKey}
-              />
-              <input
-                aria-label='Amount'
-                className='sendAmountInput'
-                inputMode='decimal'
-                spellCheck={false}
-                value={state.amount}
-                onChange={handleAmountChange}
-              />
-            </div>
-            <div className='sendTokenMeta'>
-              <div className='sendBalance'>
-                {svg.wallet(13)}
-                <span>
-                  {asset.displayBalance || '0'} {asset.symbol || ''}
-                </span>
-                <button onClick={handleSetMax}>Max</button>
-              </div>
-              <div className='sendFiatValue'>{fiatValue}</div>
-            </div>
-          </div>
-          {state.error ? <div className='sendMessage sendMessageError'>{state.error}</div> : null}
-          {state.status ? <div className='sendMessage'>{state.status}</div> : null}
-        </div>
+                <Stack grow>
+                  <Input
+                    align='end'
+                    appearance='amount'
+                    label='Amount'
+                    inputMode='decimal'
+                    onValueChange={handleAmountChange}
+                    spellCheck={false}
+                    value={state.amount}
+                  />
+                </Stack>
+              </Stack>
+              <Stack align='center' direction='row' gap='small' justify='between'>
+                <Stack align='center' direction='row' gap='small' grow>
+                  <Icon name='wallet' size='small' />
+                  <Text variant='body' tone='secondary' truncate>
+                    {asset.displayBalance || '0'} {asset.symbol || ''}
+                  </Text>
+                  <Button appearance='subtle' onPress={handleSetMax} shape='pill' size='compact'>
+                    <Text display='inline' variant='caption' tone='accent'>
+                      Max
+                    </Text>
+                  </Button>
+                </Stack>
+                <Text variant='numeric' tone='secondary'>
+                  {fiatValue}
+                </Text>
+              </Stack>
+            </Stack>
+          </Surface>
+          {state.error ? (
+            <Text align='center' variant='body' tone='danger'>
+              {state.error}
+            </Text>
+          ) : null}
+          {state.status ? (
+            <Text align='center' variant='body' tone='secondary'>
+              {state.status}
+            </Text>
+          ) : null}
+        </Stack>
       ) : (
-        <div className='sendEmpty'>No assets available to send.</div>
+        <Stack align='center' grow justify='center'>
+          <Text tone='secondary'>No assets available to send.</Text>
+        </Stack>
       )}
-      {asset ? (
-        <div className='sendFooter'>
-          <button
-            className={proceedEnabled ? 'sendProceedButton' : 'sendProceedButton sendProceedButtonDisabled'}
-            disabled={!proceedEnabled}
-            onClick={handleSubmit}
-          >
-            Proceed
-          </button>
-        </div>
-      ) : null}
-    </div>
+    </SidePanel>
   )
 }
