@@ -1,0 +1,13 @@
+.nf-progress-step__number {
+  width: var(--nf-size-progress-marker);
+  height: var(--nf-size-progress-marker);
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--color-border-default);
+}
+
+.nf-progress-step__number[data-status='required'] {
+  background: var(--color-action-primary-subtle);
+}

@@ -1,6 +1,5 @@
 import { Button } from '@newframe/ui/button'
 import { Stack } from '@newframe/ui/stack'
-import { StrongText } from '@newframe/ui/strong-text'
 import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
 
@@ -29,20 +28,20 @@ export function SettingsMode({
     <Surface padding='small' radius='small' tone='card'>
       <Stack gap='small'>
         <Stack align='center' direction='row' gap='xsmall' justify='center'>
-          <Text display='inline' role='supporting'>
+          <Text display='inline' variant='supporting'>
             {currentLabel}
           </Text>
-          <StrongText display='inline' role='supporting' tone={currentTone}>
+          <Text as='strong' display='inline' variant='supporting' tone={currentTone}>
             {currentValue}
-          </StrongText>
+          </Text>
         </Stack>
         <Button appearance='row' onPress={onToggle} size='small'>
-          <Text display='inline' role='supporting'>
+          <Text display='inline' variant='supporting'>
             {toggleLabel}
           </Text>
-          <StrongText display='inline' role='supporting' tone={toggleTone}>
+          <Text as='strong' display='inline' variant='supporting' tone={toggleTone}>
             {toggleValue}
-          </StrongText>
+          </Text>
         </Button>
       </Stack>
     </Surface>

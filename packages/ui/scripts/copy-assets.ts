@@ -19,7 +19,10 @@ async function walk(directory: string): Promise<string[]> {
 
 export async function copyAssets() {
   const assets = (await walk(sourceRoot)).filter(
-    (file) => file.endsWith('.css') || file.includes(`${path.sep}assets${path.sep}`)
+    (file) =>
+      file.endsWith('.css') ||
+      file.includes(`${path.sep}assets${path.sep}`) ||
+      file.includes(`${path.sep}styled-system${path.sep}`)
   )
   await Promise.all(
     assets.map(async (source) => {

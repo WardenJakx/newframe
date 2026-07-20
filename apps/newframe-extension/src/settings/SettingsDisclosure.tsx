@@ -14,10 +14,10 @@ export function SettingsDisclosure({ description, expanded, onPress, title }: Se
   return (
     <Button appearance='row' expanded={expanded} onPress={onPress} size='large'>
       <Stack gap='xsmall' grow>
-        <Text role='heading' truncate>
+        <Text variant='heading' truncate>
           {title}
         </Text>
-        <Text role='supporting' tone='secondary'>
+        <Text variant='supporting' tone='secondary'>
           {description}
         </Text>
       </Stack>

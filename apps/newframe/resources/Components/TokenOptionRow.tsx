@@ -30,21 +30,21 @@ export default function TokenOptionRow({
         symbol={symbol}
       />
       <Stack gap='xsmall' grow>
-        <Text role='control' truncate>
+        <Text variant='control' truncate>
           {symbol}
         </Text>
-        <Text role='detail' tone='muted' truncate>
+        <Text variant='detail' tone='muted' truncate>
           {item.amountLabel}
         </Text>
       </Stack>
       <Stack align='end' gap='xsmall'>
-        <Text align='end' role='control' truncate>
+        <Text align='end' variant='control' truncate>
           {item.notionalLabel}
         </Text>
         {showRightSubLabel && item.rightSubLabel ? (
           <Text
             align='end'
-            role='detail'
+            variant='detail'
             tone={item.rightSubLabel.trim().startsWith('-') ? 'danger' : 'accent'}
             truncate
           >

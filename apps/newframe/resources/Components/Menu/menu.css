@@ -1,0 +1,92 @@
+@keyframes nf-menu-overlay-show {
+  0% {
+    opacity: 0;
+    transform: translateX(calc(-1 * var(--nf-motion-distance-overlay)));
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.nf-menu-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: var(--nf-layer-overlay);
+  display: flex;
+  flex-direction: column;
+  padding: var(--nf-space-8);
+  background: var(--color-bg-primary);
+  animation: nf-menu-overlay-show var(--nf-motion-fast) linear both;
+}
+
+.nf-menu-overlay__header {
+  display: flex;
+  align-items: center;
+  flex: none;
+  padding: var(--nf-space-7);
+}
+
+.nf-menu-overlay__title {
+  flex: 1;
+  text-align: center;
+  pointer-events: none;
+}
+
+.nf-menu-overlay__spacer {
+  width: var(--nf-size-icon-button-medium);
+}
+
+.nf-menu-overlay__scroll {
+  flex: 1;
+  overflow-x: hidden;
+  overflow-y: scroll;
+  padding: var(--nf-space-1) 0 var(--nf-space-10);
+}
+
+.nf-menu-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: var(--nf-size-menu-row-min);
+  gap: var(--nf-space-6);
+  padding: var(--nf-space-6);
+  border: 0;
+  border-radius: var(--nf-radius-card);
+  color: var(--color-text-primary);
+  text-align: left;
+  background: var(--color-bg-card);
+  cursor: pointer;
+}
+
+.nf-menu-item:hover,
+.nf-menu-item:focus-visible {
+  background: var(--color-bg-hover);
+}
+
+.nf-menu-item:focus-visible {
+  outline: var(--nf-focus-outline-width) solid var(--color-border-focus);
+  outline-offset: var(--nf-focus-outline-offset);
+}
+
+.nf-menu-item__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--nf-size-menu-row-icon);
+  height: var(--nf-size-menu-row-icon);
+  flex: none;
+  border-radius: var(--nf-radius-pill);
+  background: var(--color-bg-control);
+}
+
+.nf-menu-item__badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--nf-space-10);
+  height: var(--nf-space-10);
+  padding: 0 var(--nf-space-3);
+  border-radius: var(--nf-radius-pill);
+  background: var(--color-bg-primary);
+}

@@ -56,7 +56,7 @@ export default function ChainTokenIcon({
         <Image
           alt=''
           source={cachedImageUrl(chainIconUrl)}
-          onError={() => {
+          onLoadError={() => {
             setFailedChainUrl(chainIconUrl)
             warnImageFailure('failed to load chain image', { chainId, symbol, url: chainIconUrl })
           }}
@@ -66,7 +66,7 @@ export default function ChainTokenIcon({
 
     if (ethChains.includes(chainName)) {
       return (
-        <Text decorative display='inline' role='caption'>
+        <Text decorative display='inline' variant='caption'>
           Ξ
         </Text>
       )
@@ -81,13 +81,13 @@ export default function ChainTokenIcon({
         <Image
           alt=''
           source={cachedImageUrl(logoURI)}
-          onError={() => {
+          onLoadError={() => {
             setFailedTokenUrl(logoURI)
             warnImageFailure('failed to load token image', { chainId, symbol, url: logoURI })
           }}
         />
       ) : (
-        <Text align='center' display='inline' role={size === 'sm' ? 'micro' : 'detail'} truncate>
+        <Text align='center' display='inline' variant={size === 'sm' ? 'micro' : 'detail'} truncate>
           {symbolFallback(symbol)}
         </Text>
       )}

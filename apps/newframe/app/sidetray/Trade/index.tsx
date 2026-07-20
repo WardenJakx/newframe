@@ -4,24 +4,19 @@ import { Disclosure } from '@newframe/ui/disclosure'
 import { Field } from '@newframe/ui/field'
 import { Grid } from '@newframe/ui/grid'
 import { Group } from '@newframe/ui/group'
-import { Icon } from '@newframe/ui/icon'
+import { IconButton } from '@newframe/ui/icon-button'
 import { Input } from '@newframe/ui/input'
-import { OutputText } from '@newframe/ui/output-text'
-import { ProgressSteps } from '@newframe/ui/progress-steps'
 import { Select } from '@newframe/ui/select'
-import { SidePanel } from '@newframe/ui/side-panel'
-import { SidePanelBody } from '@newframe/ui/side-panel-body'
-import { SidePanelFooter } from '@newframe/ui/side-panel-footer'
-import { SidePanelHeader } from '@newframe/ui/side-panel-header'
-import { SmallText } from '@newframe/ui/small-text'
 import { Stack } from '@newframe/ui/stack'
 import { Spacer } from '@newframe/ui/spacer'
-import { StrongText } from '@newframe/ui/strong-text'
 import { Surface } from '@newframe/ui/surface'
 import { Tabs } from '@newframe/ui/tabs'
 import { Text } from '@newframe/ui/text'
+import { ToggleButton } from '@newframe/ui/toggle-button'
 
 import { BalanceRange } from '../../../resources/Components/BalanceRange'
+import { ProgressSteps } from '../../../resources/Components/ProgressSteps'
+import { SidePanel } from '../../../resources/Components/SidePanel/SidePanel'
 import TokenSelector from '../../../resources/Components/TokenSelector'
 import {
   getTokenSelectorPage,
@@ -619,7 +614,7 @@ export default function Trade({ assetId, chainId }: TradeProps) {
           invalid={invalid}
           label={ariaLabel}
           inputMode={inputMode}
-          onChange={(e) => dispatch({ type: 'setOrderField', field, value: e.target.value })}
+          onValueChange={(value) => dispatch({ type: 'setOrderField', field, value })}
           placeholder={placeholder}
           required={required}
           value={state[field]}
@@ -651,9 +646,9 @@ export default function Trade({ assetId, chainId }: TradeProps) {
       return (
         <Surface border='subtle' padding='medium' radius='small' tone='card'>
           <Stack gap='medium'>
-            <Text role='supporting'>
+            <Text variant='supporting'>
               Duration{' '}
-              <Text decorative display='inline' role='supporting' tone='danger'>
+              <Text decorative display='inline' variant='supporting' tone='danger'>
                 *
               </Text>
             </Text>
@@ -683,7 +678,7 @@ export default function Trade({ assetId, chainId }: TradeProps) {
                 placeholder: '0'
               })}
             </Grid>
-            <Text role='detail' tone='secondary'>
+            <Text variant='detail' tone='secondary'>
               Minimum 5 minutes · Maximum 30 days
             </Text>
           </Stack>
@@ -700,32 +695,28 @@ export default function Trade({ assetId, chainId }: TradeProps) {
           <Stack gap='medium'>
             <Group label='TP or SL'>
               <Surface padding='small' radius='small' tone='subtle'>
-                <Stack direction='row' equal gap='xsmall'>
-                  <Button
-                    active={takeProfit}
-                    appearance='tab'
+                <Grid columns='two' gap='small'>
+                  <ToggleButton
                     onPress={() =>
                       dispatch({ type: 'setOrderType', orderType: FLASH_TAKE_PROFIT_ORDER_TYPE })
                     }
                     pressed={takeProfit}
                     size='small'
                   >
-                    <Text align='center' role='supporting'>
+                    <Text align='center' variant='supporting'>
                       Take profit
                     </Text>
-                  </Button>
-                  <Button
-                    active={!takeProfit}
-                    appearance='tab'
+                  </ToggleButton>
+                  <ToggleButton
                     onPress={() => dispatch({ type: 'setOrderType', orderType: FLASH_STOP_LOSS_ORDER_TYPE })}
                     pressed={!takeProfit}
                     size='small'
                   >
-                    <Text align='center' role='supporting'>
+                    <Text align='center' variant='supporting'>
                       Stop loss
                     </Text>
-                  </Button>
-                </Stack>
+                  </ToggleButton>
+                </Grid>
               </Surface>
             </Group>
             <Grid columns='three' gap='medium' responsive>
@@ -749,12 +740,12 @@ export default function Trade({ assetId, chainId }: TradeProps) {
                 vertical: true
               })}
               <Field label={takeProfit ? 'Gain' : 'Loss'} vertical>
-                <OutputText align='end' role='numeric'>
+                <Text as='output' align='end' variant='numeric'>
                   {delta === null ? '—' : `${delta >= 0 ? '+' : ''}${delta.toFixed(2)}%`}
-                </OutputText>
+                </Text>
               </Field>
             </Grid>
-            <Text role='detail' tone='secondary'>
+            <Text variant='detail' tone='secondary'>
               {delta === null
                 ? `Quoted against ${state.targetAsset.symbol}/USD`
                 : `${delta >= 0 ? '+' : ''}${delta.toFixed(2)}% from current price`}
@@ -791,7 +782,7 @@ export default function Trade({ assetId, chainId }: TradeProps) {
                 vertical: true
               })}
             </Grid>
-            <Text role='detail' tone='secondary'>
+            <Text variant='detail' tone='secondary'>
               {delta === null
                 ? 'Leave limit blank for a stop-market order'
                 : `${delta >= 0 ? '+' : ''}${delta.toFixed(2)}% from current price`}
@@ -822,7 +813,7 @@ export default function Trade({ assetId, chainId }: TradeProps) {
         <Field label='Time in force' required>
           <Select
             label='Time in force'
-            onChange={(e) => handleTimeInForceChange(e.target.value as 'gtc' | 'gtt')}
+            onValueChange={(value) => handleTimeInForceChange(value as 'gtc' | 'gtt')}
             options={[
               { label: 'Good till cancelled', value: 'gtc' },
               { label: 'Good till time', value: 'gtt' }
@@ -836,9 +827,7 @@ export default function Trade({ assetId, chainId }: TradeProps) {
               label='Order expiry'
               invalid={invalidTradeFields.expireTime}
               min={new Date().toISOString().slice(0, 16)}
-              onChange={(e) =>
-                dispatch({ type: 'setOrderField', field: 'expireTime', value: e.target.value })
-              }
+              onValueChange={(value) => dispatch({ type: 'setOrderField', field: 'expireTime', value })}
               required
               type='datetime-local'
               value={state.expireTime}
@@ -859,7 +848,7 @@ export default function Trade({ assetId, chainId }: TradeProps) {
             invalid={invalidTradeFields.slippage}
             label='Slippage'
             inputMode='decimal'
-            onChange={(e) => dispatch({ type: 'settingsChanged', slippage: e.target.value })}
+            onValueChange={(slippage) => dispatch({ type: 'settingsChanged', slippage })}
             placeholder='Automatic'
             value={state.slippage}
           />
@@ -919,7 +908,7 @@ export default function Trade({ assetId, chainId }: TradeProps) {
                   }))
                 }
               >
-                <Text align='center' role='supporting' tone='secondary'>
+                <Text align='center' variant='supporting' tone='secondary'>
                   {`Show ${Math.min(TOKEN_SELECTOR_ROWS_INCREMENT, rowsHidden)} more assets`}
                 </Text>
               </Button>
@@ -944,16 +933,14 @@ export default function Trade({ assetId, chainId }: TradeProps) {
     const nextSide = state.side === 'buy' ? 'SELL' : 'BUY'
 
     return (
-      <Button
+      <IconButton
         label={`Switch to ${nextSide}`}
         appearance='subtle'
+        icon='swap'
         onPress={() => dispatch({ type: 'toggleSide' })}
-        shape='circle'
         size='compact'
         title={`Switch to ${nextSide}`}
-      >
-        <Icon name='swap' size='medium' />
-      </Button>
+      />
     )
   }
 
@@ -998,7 +985,7 @@ export default function Trade({ assetId, chainId }: TradeProps) {
       <Surface border={assetCardBorder} padding='medium' radius='small' tone={editable ? 'raised' : 'card'}>
         <Stack gap='medium'>
           <Stack align='center' direction='row' gap='small'>
-            <Text role='label' tone={intentTone}>
+            <Text variant='label' tone={intentTone}>
               {intent}
             </Text>
             {isTarget && !sideLocked ? renderTradeDirectionSwitch() : null}
@@ -1011,10 +998,8 @@ export default function Trade({ assetId, chainId }: TradeProps) {
                 appearance='amount'
                 label={editable ? `${asset.symbol} amount` : `Estimated ${asset.symbol} received`}
                 inputMode='decimal'
-                onChange={
-                  editable
-                    ? (e) => dispatch({ type: 'setInputAmount', inputAmount: e.target.value })
-                    : undefined
+                onValueChange={
+                  editable ? (inputAmount) => dispatch({ type: 'setInputAmount', inputAmount }) : undefined
                 }
                 placeholder='0'
                 readOnly={!editable}
@@ -1027,11 +1012,11 @@ export default function Trade({ assetId, chainId }: TradeProps) {
             renderTradeBalanceSlider(asset, amount)
           ) : (
             <Stack align='center' direction='row' gap='medium' justify='end'>
-              <Text role='supporting' tone='secondary'>
+              <Text variant='supporting' tone='secondary'>
                 Est. received
               </Text>
               {state.quote?.outputNotional ? (
-                <StrongText role='detail'>~{formatTradeNotional(state.quote.outputNotional)}</StrongText>
+                <Text as='strong' variant='detail'>~{formatTradeNotional(state.quote.outputNotional)}</Text>
               ) : null}
             </Stack>
           )}
@@ -1051,46 +1036,47 @@ export default function Trade({ assetId, chainId }: TradeProps) {
       <Stack gap='large'>
         <Stack align='start' direction='row' gap='large' justify='between'>
           <Stack gap='xsmall'>
-            <Text role='label' tone='secondary'>
+            <Text variant='label' tone='secondary'>
               Est. output
             </Text>
-            <SmallText role='caption' tone='secondary'>
+            <Text as='small' variant='caption' tone='secondary'>
               Including estimated fees
-            </SmallText>
+            </Text>
           </Stack>
           <Stack align='end' gap='xsmall'>
-            <StrongText align='end' role='output'>
+            <Text as='strong' align='end' variant='output'>
               {quote.outputAmount} {quote.receiveAsset.symbol}
-            </StrongText>
-            <SmallText align='end' role='caption' tone='secondary'>
+            </Text>
+            <Text as='small' align='end' variant='caption' tone='secondary'>
               ~{formatTradeNotional(quote.outputNotional)}
-            </SmallText>
+            </Text>
           </Stack>
         </Stack>
         <Stack gap='small'>
           <Stack align='center' direction='row' gap='large' justify='between'>
-            <Text role='detail' tone='secondary'>
+            <Text variant='detail' tone='secondary'>
               Est. price impact
             </Text>
-            <StrongText
-              role='detail'
+            <Text
+              as='strong'
               tone={estimatedImpact !== null && estimatedImpact > 1 ? 'danger' : 'primary'}
+              variant='detail'
             >
               {estimatedImpact === null ? '—' : `${estimatedImpact.toFixed(2)}%`}
-            </StrongText>
+            </Text>
           </Stack>
           <Stack align='center' direction='row' gap='large' justify='between'>
-            <Text role='detail' tone='secondary'>
+            <Text variant='detail' tone='secondary'>
               Estimated fees
             </Text>
-            <StrongText role='detail'>{feeNotional ? formatTradeNotional(feeNotional) : '—'}</StrongText>
+            <Text as='strong' variant='detail'>{feeNotional ? formatTradeNotional(feeNotional) : '—'}</Text>
           </Stack>
           {quote.targetNotionalPrice ? (
             <Stack align='center' direction='row' gap='large' justify='between'>
-              <Text role='detail' tone='secondary'>
+              <Text variant='detail' tone='secondary'>
                 {quote.targetAsset.symbol}/USD
               </Text>
-              <StrongText role='detail'>{formatTradeNotional(quote.targetNotionalPrice)}</StrongText>
+              <Text as='strong' variant='detail'>{formatTradeNotional(quote.targetNotionalPrice)}</Text>
             </Stack>
           ) : null}
         </Stack>
@@ -1129,56 +1115,56 @@ export default function Trade({ assetId, chainId }: TradeProps) {
     })
 
     return (
-      <SidePanelFooter>
-        <Stack grow>
-          <Button appearance='primary' disabled={!enabled} onPress={reviewTrade} size='large'>
-            <Text align='center' role='action' tone='inverse'>
-              {tradeValidationError && state.quote
-                ? 'Adjust order'
-                : getTradePrimaryLabel({
-                    orderType: state.orderType,
-                    pendingAction: state.pendingAction,
-                    quote: state.quote,
-                    quoteLoading: state.quoteLoading,
-                    submitting: state.submitting
-                  })}
-            </Text>
-          </Button>
-        </Stack>
-      </SidePanelFooter>
+      <Stack grow>
+        <Button appearance='primary' disabled={!enabled} onPress={reviewTrade} size='large'>
+          <Text align='center' variant='action' tone='inverse'>
+            {tradeValidationError && state.quote
+              ? 'Adjust order'
+              : getTradePrimaryLabel({
+                  orderType: state.orderType,
+                  pendingAction: state.pendingAction,
+                  quote: state.quote,
+                  quoteLoading: state.quoteLoading,
+                  submitting: state.submitting
+                })}
+          </Text>
+        </Button>
+      </Stack>
     )
   }
 
   return (
-    <SidePanel>
-      <SidePanelHeader closeLabel='Close Trade' onClose={closeTrade} title='Trade' />
-      <SidePanelBody footerSpace='compact'>
-        <Stack gap='large' grow>
-          {renderTradeTabs()}
-          {renderTradeAssetCard('target')}
-          {renderTradeAssetCard('contra')}
-          {renderTradeOrderFields()}
-          {renderTradeAdvanced()}
-          {state.quote ? (
-            <Surface border='subtle' padding='medium' radius='small' tone='transparent'>
-              {renderTradeQuoteMeta()}
-            </Surface>
-          ) : null}
-          {state.error || tradeValidationError ? (
-            <Text align='center' role='body' tone='danger'>
-              {state.error || tradeValidationError}
-            </Text>
-          ) : null}
-          {state.status ? (
-            <Text align='center' role='body' tone='secondary'>
-              {state.status}
-            </Text>
-          ) : null}
-          <Spacer />
-          {renderTradeSteps()}
-        </Stack>
-      </SidePanelBody>
-      {renderTradeFooter()}
+    <SidePanel
+      closeLabel='Close Trade'
+      footer={renderTradeFooter()}
+      footerSpace='compact'
+      onClose={closeTrade}
+      title='Trade'
+    >
+      <Stack gap='large' grow>
+        {renderTradeTabs()}
+        {renderTradeAssetCard('target')}
+        {renderTradeAssetCard('contra')}
+        {renderTradeOrderFields()}
+        {renderTradeAdvanced()}
+        {state.quote ? (
+          <Surface border='subtle' padding='medium' radius='small' tone='transparent'>
+            {renderTradeQuoteMeta()}
+          </Surface>
+        ) : null}
+        {state.error || tradeValidationError ? (
+          <Text align='center' variant='body' tone='danger'>
+            {state.error || tradeValidationError}
+          </Text>
+        ) : null}
+        {state.status ? (
+          <Text align='center' variant='body' tone='secondary'>
+            {state.status}
+          </Text>
+        ) : null}
+        <Spacer />
+        {renderTradeSteps()}
+      </Stack>
     </SidePanel>
   )
 }

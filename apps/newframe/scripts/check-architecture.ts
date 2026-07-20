@@ -4,7 +4,7 @@ import path from 'node:path'
 
 const appRoot = path.resolve(__dirname, '..')
 const repositoryRoot = path.resolve(appRoot, '../..')
-const sourceExtensions = new Set(['.js', '.jsx', '.mjs', '.styl', '.ts', '.tsx'])
+const sourceExtensions = new Set(['.css', '.js', '.jsx', '.mjs', '.styl', '.ts', '.tsx'])
 
 type SourceFile = { file: string; source: string }
 type Rule = { files: (file: string) => boolean; pattern: RegExp; message: string }
@@ -32,7 +32,11 @@ async function sourceFiles() {
   const optionalRoots = [path.join(repositoryRoot, 'packages')].filter(existsSync)
   const files = (await Promise.all([...roots, ...optionalRoots].map(walk)))
     .flat()
-    .filter((file) => sourceExtensions.has(path.extname(file)))
+    .filter(
+      (file) =>
+        sourceExtensions.has(path.extname(file)) &&
+        !file.includes(path.join('packages', 'ui', 'src', 'styled-system'))
+    )
   const manifests = [
     path.join(repositoryRoot, 'package.json'),
     path.join(repositoryRoot, 'bun.lock'),
@@ -71,13 +75,15 @@ const migratedSharedSideTrayFiles = new Set([
 ])
 const migratedSideTrayFiles = (file: string) =>
   under(path.join('apps', 'newframe', 'app', 'sidetray'))(file) || migratedSharedSideTrayFiles.has(file)
-const migratedExtensionSettingsFiles = under(path.join('apps', 'newframe-extension', 'src', 'settings'))
-const uiSource = under(path.join('packages', 'ui', 'src'))
-const typographyCss = new Set([
-  path.join('packages', 'ui', 'src', 'typography', 'text.css'),
-  path.join('packages', 'ui', 'src', 'root', 'fonts.css'),
-  path.join('packages', 'ui', 'src', 'root', 'foundations.css')
+const extensionCompositionFiles = new Set([
+  path.join('apps', 'newframe-extension', 'src', 'settings', 'ChoiceGrid.tsx'),
+  path.join('apps', 'newframe-extension', 'src', 'settings', 'SettingsPanel.tsx')
 ])
+const migratedExtensionSettingsFiles = (file: string) =>
+  under(path.join('apps', 'newframe-extension', 'src', 'settings'))(file) &&
+  !extensionCompositionFiles.has(file)
+const uiSource = under(path.join('packages', 'ui', 'src'))
+const primitiveRoot = path.join('packages', 'ui', 'src', 'primitives')
 
 const restorePackage = ['react', 'restore'].join('-')
 const genericActionChannel = ['tray', 'action'].join(':')
@@ -168,6 +174,12 @@ async function main() {
     }
 
     if (uiSource(file)) {
+      if (under(path.join('packages', 'ui', 'src', 'components'))(file)) {
+        violations.push(
+          `${file}: packages/ui is reserved for primitives; application compositions belong to their owning app`
+        )
+      }
+
       const applicationImport = source.match(
         /from\s+['"][^'"]*(?:apps\/newframe|apps\/newframe-extension)['"]|from\s+['"][.]{2}\/[^'"]*apps\//
       )
@@ -175,6 +187,23 @@ async function main() {
         violations.push(
           `${file}:${lineNumber(source, applicationImport.index)} packages/ui cannot import an application`
         )
+      }
+
+      if (under(path.join('packages', 'ui', 'src', 'primitives'))(file)) {
+        if (path.dirname(file) !== primitiveRoot) {
+          violations.push(`${file}: UI primitives must be directly discoverable in src/primitives`)
+        }
+
+        if (file.endsWith('.css')) {
+          violations.push(`${file}: primitive styles must be colocated in the component TypeScript file`)
+        }
+
+        const componentImport = source.match(/from\s+['"][^'"]*components\//)
+        if (componentImport?.index !== undefined) {
+          violations.push(
+            `${file}:${lineNumber(source, componentImport.index)} UI primitives cannot depend on composed components`
+          )
+        }
       }
 
       const legacyVariantRegistry = source.match(/\b(?:AssetSelectorVariant|PanelVariant)\b/)
@@ -193,7 +222,17 @@ async function main() {
         )
       }
 
-      if (file.endsWith('.css') && !file.endsWith('tokens.generated.css')) {
+      const legacyRecipe = source.match(/from\s+['"]class-variance-authority['"]/)
+      if (legacyRecipe?.index !== undefined) {
+        violations.push(
+          `${file}:${lineNumber(source, legacyRecipe.index)} UI recipes must use the token-aware Panda runtime`
+        )
+      }
+
+      if (
+        (file.endsWith('.css') && !file.endsWith('tokens.generated.css')) ||
+        (under(primitiveRoot)(file) && file.endsWith('.tsx') && file !== path.join(primitiveRoot, 'Icon.tsx'))
+      ) {
         const rawUnit = source.match(/(?<![A-Za-z0-9_-])-?\d+(?:\.\d+)?(?:px|rem|em|ms|s|deg)\b/)
         if (rawUnit?.index !== undefined) {
           violations.push(
@@ -202,13 +241,15 @@ async function main() {
         }
       }
 
-      const componentTypography = source.match(/\bfont-(?:family|size|weight)\s*:/)
-      if (componentTypography?.index !== undefined) {
-        if (file.endsWith('.css') && !typographyCss.has(file)) {
-          violations.push(
-            `${file}:${lineNumber(source, componentTypography.index)} component CSS must use the shared typography primitives`
-          )
-        }
+      const componentTypography = source.match(/\bfont(?:Family|Size|Weight)\s*:/)
+      if (
+        componentTypography?.index !== undefined &&
+        under(primitiveRoot)(file) &&
+        file !== path.join(primitiveRoot, 'Text.tsx')
+      ) {
+        violations.push(
+          `${file}:${lineNumber(source, componentTypography.index)} primitives must compose the shared Text recipe`
+        )
       }
     }
   }

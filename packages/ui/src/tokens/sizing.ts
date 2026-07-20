@@ -32,6 +32,7 @@ export const sizingTokens = {
   'nf-size-media-art-medium': '18px',
   'nf-size-status-dot-small': '7px',
   'nf-size-status-dot-medium': '9px',
+  'nf-size-grid-column-min': '126px',
   'nf-size-selection-trigger': '126px',
   'nf-size-selection-offset': '54px',
   'nf-size-selection-menu': '336px',

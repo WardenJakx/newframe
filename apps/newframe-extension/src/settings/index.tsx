@@ -1,7 +1,6 @@
 /* globals chrome */
 
 import { Button } from '@newframe/ui/button'
-import { ChoiceGrid } from '@newframe/ui/choice-grid'
 import { Icon } from '@newframe/ui/icon'
 import { UIRoot } from '@newframe/ui/root'
 import { Stack } from '@newframe/ui/stack'
@@ -12,6 +11,7 @@ import { createRoot } from 'react-dom/client'
 import { useStore } from 'zustand'
 
 import { frameStateStore, type FrameState } from '../frameState'
+import { ChoiceGrid } from './ChoiceGrid'
 import { SettingsConnectionAction } from './SettingsConnectionAction'
 import { SettingsDisclosure } from './SettingsDisclosure'
 import { SettingsMessage } from './SettingsMessage'
@@ -227,7 +227,7 @@ export class SettingsView extends React.Component<SettingsViewProps, SettingsVie
         }
         size='large'
       >
-        <Text align='center' role='action' tone='danger'>
+        <Text align='center' variant='action' tone='danger'>
           Disconnect this site
         </Text>
       </Button>
@@ -299,7 +299,7 @@ export class SettingsView extends React.Component<SettingsViewProps, SettingsVie
         <Stack gap='medium'>
           <Stack align='center' direction='row' gap='small' justify='center'>
             <Icon name='window' size='small' />
-            <Text role='heading'>{origin}</Text>
+            <Text variant='heading'>{origin}</Text>
           </Stack>
           <Stack gap='xsmall'>
             {this.siteConnection()}

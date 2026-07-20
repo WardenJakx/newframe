@@ -1,17 +1,15 @@
 import React from 'react'
 import { Button } from '@newframe/ui/button'
 import { Icon } from '@newframe/ui/icon'
+import { IconButton } from '@newframe/ui/icon-button'
 import { Input } from '@newframe/ui/input'
 import { ScrollArea } from '@newframe/ui/scroll-area'
-import { SidePanel } from '@newframe/ui/side-panel'
-import { SidePanelBody } from '@newframe/ui/side-panel-body'
-import { SidePanelFooter } from '@newframe/ui/side-panel-footer'
-import { SidePanelHeader } from '@newframe/ui/side-panel-header'
 import { Stack } from '@newframe/ui/stack'
 import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
 
 import TokenSelector from '../../../resources/Components/TokenSelector'
+import { SidePanel } from '../../../resources/Components/SidePanel/SidePanel'
 import { getTokenSelectorPage } from '../../../resources/Components/tokenSelectorModel'
 import {
   createBalanceTokenSelectorItem,
@@ -67,8 +65,8 @@ export default function Send({ assetId }: SendProps) {
     closeSend()
   }, [])
 
-  const handleRecipientInputChange = React.useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    dispatch({ type: 'setRecipientInput', recipientInput: event.target.value })
+  const handleRecipientInputChange = React.useCallback((recipientInput: string) => {
+    dispatch({ type: 'setRecipientInput', recipientInput })
   }, [])
 
   const handleToggleRecipients = React.useCallback(() => {
@@ -95,8 +93,8 @@ export default function Send({ assetId }: SendProps) {
     dispatch({ type: 'showMoreTokens' })
   }, [])
 
-  const handleAmountChange = React.useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    dispatch({ type: 'setAmount', amount: event.target.value })
+  const handleAmountChange = React.useCallback((amount: string) => {
+    dispatch({ type: 'setAmount', amount })
   }, [])
 
   const handleSetMax = React.useCallback(() => {
@@ -202,189 +200,10 @@ export default function Send({ assetId }: SendProps) {
     }) && !state.submitting
 
   return (
-    <SidePanel>
-      <SidePanelHeader closeLabel='Close Send' onClose={handleClose} title='Send' />
-      {asset ? (
-        <SidePanelBody>
-          <Stack gap='medium'>
-            <Surface padding='large' radius='control' tone='card'>
-              <Stack gap='medium'>
-                <Text role='sectionTitle' tone='secondary'>
-                  Add recipient
-                </Text>
-                {state.recipient ? (
-                  <Stack gap='small'>
-                    <Surface border='accent' padding='small' radius='control' tone='raised'>
-                      <Stack align='center' direction='row' gap='medium'>
-                        <AccountIcon account={state.recipient} />
-                        <Stack gap='xsmall' grow>
-                          <Text role='heading' truncate>
-                            {recipientName(state.recipient)}
-                          </Text>
-                          <Text role='detail' tone='secondary' truncate>
-                            {state.recipient.address}
-                          </Text>
-                        </Stack>
-                        <Text display='inline' tone='secondary'>
-                          <Icon name='copy' size='small' />
-                        </Text>
-                        <Button
-                          label='Clear recipient'
-                          onPress={handleClearRecipient}
-                          shape='circle'
-                          size='small'
-                        >
-                          <Icon name='close' size='small' />
-                        </Button>
-                      </Stack>
-                    </Surface>
-                    <Text role='body' tone='warning'>
-                      First time sending to this address.
-                    </Text>
-                  </Stack>
-                ) : (
-                  <Stack gap='medium'>
-                    <Surface padding='small' radius='control' tone='raised'>
-                      <Stack align='center' direction='row' gap='small'>
-                        <Stack grow>
-                          <Input
-                            appearance='plain'
-                            label='Recipient'
-                            onChange={handleRecipientInputChange}
-                            placeholder='Address / gns/ens name / Namoshi'
-                            spellCheck={false}
-                            value={state.recipientInput}
-                          />
-                        </Stack>
-                        <Button
-                          label='Toggle recipients'
-                          onPress={handleToggleRecipients}
-                          shape='circle'
-                          size='small'
-                        >
-                          <Icon name='chevronUp' size='small' />
-                        </Button>
-                      </Stack>
-                    </Surface>
-                    {state.recipientOpen ? (
-                      <Surface elevation='default' padding='none' radius='control' tone='control'>
-                        <ScrollArea height='menu'>
-                          <Stack gap='none'>
-                            <Surface padding='small' radius='none' tone='transparent'>
-                              <Stack align='center' direction='row' gap='small'>
-                                <Icon name='wallet' size='small' />
-                                <Text role='label' tone='secondary'>
-                                  My wallets
-                                </Text>
-                              </Stack>
-                            </Surface>
-                            {recipientAccounts.map((account) => (
-                              <Button
-                                appearance='row'
-                                key={account.id}
-                                onPress={() => handleSelectRecipient(account)}
-                                size='large'
-                              >
-                                <AccountIcon account={account} />
-                                <Stack gap='xsmall' grow>
-                                  <Text role='heading' truncate>
-                                    {recipientName(account)}
-                                  </Text>
-                                  <Text role='detail' tone='secondary' truncate>
-                                    {account.address}
-                                  </Text>
-                                </Stack>
-                                <Icon name='copy' size='small' />
-                              </Button>
-                            ))}
-                          </Stack>
-                        </ScrollArea>
-                      </Surface>
-                    ) : null}
-                  </Stack>
-                )}
-              </Stack>
-            </Surface>
-            <Surface padding='large' radius='control' tone='card'>
-              <Stack gap='large'>
-                <Text role='sectionTitle' tone='secondary'>
-                  Send token
-                </Text>
-                <Stack align='center' direction='row' gap='large' justify='between'>
-                  <TokenSelector
-                    ariaLabel='Select send token'
-                    footer={
-                      rowsHidden > 0 ? (
-                        <Stack>
-                          <Button onPress={handleShowMoreTokens}>
-                            <Text
-                              align='center'
-                              role='supporting'
-                              tone='secondary'
-                            >{`Show ${Math.min(SEND_TOKEN_ROWS_INCREMENT, rowsHidden)} more assets`}</Text>
-                          </Button>
-                        </Stack>
-                      ) : null
-                    }
-                    items={tokenItems}
-                    networks={networks}
-                    networksMeta={networksMeta}
-                    onOpenChange={handleTokenPickerOpenChange}
-                    onSelect={handleSelectAsset}
-                    open={state.tokenOpen}
-                    selectedId={selectedKey}
-                  />
-                  <Stack grow>
-                    <Input
-                      align='end'
-                      appearance='amount'
-                      label='Amount'
-                      inputMode='decimal'
-                      onChange={handleAmountChange}
-                      spellCheck={false}
-                      value={state.amount}
-                    />
-                  </Stack>
-                </Stack>
-                <Stack align='center' direction='row' gap='small' justify='between'>
-                  <Stack align='center' direction='row' gap='small' grow>
-                    <Icon name='wallet' size='small' />
-                    <Text role='body' tone='secondary' truncate>
-                      {asset.displayBalance || '0'} {asset.symbol || ''}
-                    </Text>
-                    <Button appearance='subtle' onPress={handleSetMax} shape='pill' size='compact'>
-                      <Text display='inline' role='caption' tone='accent'>
-                        Max
-                      </Text>
-                    </Button>
-                  </Stack>
-                  <Text role='numeric' tone='secondary'>
-                    {fiatValue}
-                  </Text>
-                </Stack>
-              </Stack>
-            </Surface>
-            {state.error ? (
-              <Text align='center' role='body' tone='danger'>
-                {state.error}
-              </Text>
-            ) : null}
-            {state.status ? (
-              <Text align='center' role='body' tone='secondary'>
-                {state.status}
-              </Text>
-            ) : null}
-          </Stack>
-        </SidePanelBody>
-      ) : (
-        <SidePanelBody>
-          <Stack align='center' grow justify='center'>
-            <Text tone='secondary'>No assets available to send.</Text>
-          </Stack>
-        </SidePanelBody>
-      )}
-      {asset ? (
-        <SidePanelFooter compact>
+    <SidePanel
+      closeLabel='Close Send'
+      footer={
+        asset ? (
           <Stack grow>
             <Button
               appearance='primary'
@@ -393,13 +212,189 @@ export default function Send({ assetId }: SendProps) {
               shape='pill'
               size='large'
             >
-              <Text align='center' role='action' tone='inverse'>
+              <Text align='center' variant='action' tone='inverse'>
                 Proceed
               </Text>
             </Button>
           </Stack>
-        </SidePanelFooter>
-      ) : null}
+        ) : undefined
+      }
+      footerCompact
+      onClose={handleClose}
+      title='Send'
+    >
+      {asset ? (
+        <Stack gap='medium'>
+          <Surface padding='large' radius='control' tone='card'>
+            <Stack gap='medium'>
+              <Text variant='sectionTitle' tone='secondary'>
+                Add recipient
+              </Text>
+              {state.recipient ? (
+                <Stack gap='small'>
+                  <Surface border='accent' padding='small' radius='control' tone='raised'>
+                    <Stack align='center' direction='row' gap='medium'>
+                      <AccountIcon account={state.recipient} />
+                      <Stack gap='xsmall' grow>
+                        <Text variant='heading' truncate>
+                          {recipientName(state.recipient)}
+                        </Text>
+                        <Text variant='detail' tone='secondary' truncate>
+                          {state.recipient.address}
+                        </Text>
+                      </Stack>
+                      <Text display='inline' tone='secondary'>
+                        <Icon name='copy' size='small' />
+                      </Text>
+                      <IconButton
+                        icon='close'
+                        label='Clear recipient'
+                        onPress={handleClearRecipient}
+                        size='small'
+                      />
+                    </Stack>
+                  </Surface>
+                  <Text variant='body' tone='warning'>
+                    First time sending to this address.
+                  </Text>
+                </Stack>
+              ) : (
+                <Stack gap='medium'>
+                  <Surface padding='small' radius='control' tone='raised'>
+                    <Stack align='center' direction='row' gap='small'>
+                      <Stack grow>
+                        <Input
+                          appearance='plain'
+                          label='Recipient'
+                          onValueChange={handleRecipientInputChange}
+                          placeholder='Address / gns/ens name / Namoshi'
+                          spellCheck={false}
+                          value={state.recipientInput}
+                        />
+                      </Stack>
+                      <IconButton
+                        expanded={state.recipientOpen}
+                        icon='chevronUp'
+                        label='Toggle recipients'
+                        onPress={handleToggleRecipients}
+                        size='small'
+                      />
+                    </Stack>
+                  </Surface>
+                  {state.recipientOpen ? (
+                    <Surface elevation='default' padding='none' radius='control' tone='control'>
+                      <ScrollArea height='menu'>
+                        <Stack gap='none'>
+                          <Surface padding='small' radius='none' tone='transparent'>
+                            <Stack align='center' direction='row' gap='small'>
+                              <Icon name='wallet' size='small' />
+                              <Text variant='label' tone='secondary'>
+                                My wallets
+                              </Text>
+                            </Stack>
+                          </Surface>
+                          {recipientAccounts.map((account) => (
+                            <Button
+                              appearance='row'
+                              key={account.id}
+                              onPress={() => handleSelectRecipient(account)}
+                              size='large'
+                            >
+                              <AccountIcon account={account} />
+                              <Stack gap='xsmall' grow>
+                                <Text variant='heading' truncate>
+                                  {recipientName(account)}
+                                </Text>
+                                <Text variant='detail' tone='secondary' truncate>
+                                  {account.address}
+                                </Text>
+                              </Stack>
+                              <Icon name='copy' size='small' />
+                            </Button>
+                          ))}
+                        </Stack>
+                      </ScrollArea>
+                    </Surface>
+                  ) : null}
+                </Stack>
+              )}
+            </Stack>
+          </Surface>
+          <Surface padding='large' radius='control' tone='card'>
+            <Stack gap='large'>
+              <Text variant='sectionTitle' tone='secondary'>
+                Send token
+              </Text>
+              <Stack align='center' direction='row' gap='large' justify='between'>
+                <TokenSelector
+                  ariaLabel='Select send token'
+                  footer={
+                    rowsHidden > 0 ? (
+                      <Stack>
+                        <Button onPress={handleShowMoreTokens}>
+                          <Text
+                            align='center'
+                            variant='supporting'
+                            tone='secondary'
+                          >{`Show ${Math.min(SEND_TOKEN_ROWS_INCREMENT, rowsHidden)} more assets`}</Text>
+                        </Button>
+                      </Stack>
+                    ) : null
+                  }
+                  items={tokenItems}
+                  networks={networks}
+                  networksMeta={networksMeta}
+                  onOpenChange={handleTokenPickerOpenChange}
+                  onSelect={handleSelectAsset}
+                  open={state.tokenOpen}
+                  selectedId={selectedKey}
+                />
+                <Stack grow>
+                  <Input
+                    align='end'
+                    appearance='amount'
+                    label='Amount'
+                    inputMode='decimal'
+                    onValueChange={handleAmountChange}
+                    spellCheck={false}
+                    value={state.amount}
+                  />
+                </Stack>
+              </Stack>
+              <Stack align='center' direction='row' gap='small' justify='between'>
+                <Stack align='center' direction='row' gap='small' grow>
+                  <Icon name='wallet' size='small' />
+                  <Text variant='body' tone='secondary' truncate>
+                    {asset.displayBalance || '0'} {asset.symbol || ''}
+                  </Text>
+                  <Button appearance='subtle' onPress={handleSetMax} shape='pill' size='compact'>
+                    <Text display='inline' variant='caption' tone='accent'>
+                      Max
+                    </Text>
+                  </Button>
+                </Stack>
+                <Text variant='numeric' tone='secondary'>
+                  {fiatValue}
+                </Text>
+              </Stack>
+            </Stack>
+          </Surface>
+          {state.error ? (
+            <Text align='center' variant='body' tone='danger'>
+              {state.error}
+            </Text>
+          ) : null}
+          {state.status ? (
+            <Text align='center' variant='body' tone='secondary'>
+              {state.status}
+            </Text>
+          ) : null}
+        </Stack>
+      ) : (
+        <Stack align='center' grow justify='center'>
+          <Text tone='secondary'>No assets available to send.</Text>
+        </Stack>
+      )}
     </SidePanel>
   )
 }

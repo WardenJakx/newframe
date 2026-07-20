@@ -12,10 +12,10 @@ export function SettingsStatus({ label, tone, value }: SettingsStatusProps) {
   return (
     <Surface padding='medium' radius='small' tone='card'>
       <Stack gap='xsmall'>
-        <Text role='title' tone={tone}>
+        <Text variant='title' tone={tone}>
           {label}
         </Text>
-        <Text role='heading' tone='secondary' truncate>
+        <Text variant='heading' tone='secondary' truncate>
           {value}
         </Text>
       </Stack>

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 
 import './root.css'
+import '../styled-system/styles.css'
 
 export type UIRootProps = {
   children: ReactNode

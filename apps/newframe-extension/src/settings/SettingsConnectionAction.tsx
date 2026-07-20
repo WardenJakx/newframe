@@ -21,7 +21,7 @@ export function SettingsConnectionAction({
   return (
     <Button appearance='row' disabled={disabled} label={label} onPress={onPress} size='large'>
       <Image alt='' size='medium' source={imageSource} />
-      <Text role='action' tone={tone} truncate>
+      <Text variant='action' tone={tone} truncate>
         {label}
       </Text>
       <Icon name='arrowRight' size='medium' />

@@ -16,7 +16,7 @@ export function BalanceRange({ label, balanceLabel, direction, onChange, value }
   return (
     <Stack gap='xsmall'>
       <Stack align='center' direction='row' gap='small' justify='between'>
-        <Text role='detail' tone='secondary' truncate>
+        <Text variant='detail' tone='secondary' truncate>
           {balanceLabel}
         </Text>
         <Surface padding='small' radius='small' tone='subtle'>
@@ -28,11 +28,11 @@ export function BalanceRange({ label, balanceLabel, direction, onChange, value }
               label={`${label} balance percentage`}
               max={100}
               min={0}
-              onChange={(event) => onChange(Number(event.target.value))}
+              onValueChange={(nextValue) => onChange(Number(nextValue))}
               type='number'
               value={Number(value.toFixed(2))}
             />
-            <Text display='inline' role='supporting' tone='secondary'>
+            <Text display='inline' variant='supporting' tone='secondary'>
               %
             </Text>
           </Stack>
@@ -42,14 +42,14 @@ export function BalanceRange({ label, balanceLabel, direction, onChange, value }
         label={`${label} amount percentage`}
         max={100}
         min={0}
-        onChange={(event) => onChange(Number(event.target.value))}
+        onValueChange={onChange}
         step={0.1}
         tone={direction === 'buy' ? 'special' : 'danger'}
         value={value}
       />
       <Stack decorative direction='row' gap='none' justify='between'>
         {['0%', '25%', '50%', '75%', '100%'].map((tick) => (
-          <Text key={tick} role='micro' tone='disabled'>
+          <Text key={tick} variant='micro' tone='disabled'>
             {tick}
           </Text>
         ))}

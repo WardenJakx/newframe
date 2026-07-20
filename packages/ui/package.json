@@ -8,74 +8,59 @@
   ],
   "exports": {
     "./button": {
-      "types": "./dist/control/Button.d.ts",
-      "import": "./dist/control/Button.js",
-      "default": "./dist/control/Button.js"
+      "types": "./dist/primitives/Button.d.ts",
+      "import": "./dist/primitives/Button.js",
+      "default": "./dist/primitives/Button.js"
     },
-    "./choice-grid": {
-      "types": "./dist/control/ChoiceGrid.d.ts",
-      "import": "./dist/control/ChoiceGrid.js",
-      "default": "./dist/control/ChoiceGrid.js"
+    "./toggle-button": {
+      "types": "./dist/primitives/ToggleButton.d.ts",
+      "import": "./dist/primitives/ToggleButton.js",
+      "default": "./dist/primitives/ToggleButton.js"
     },
     "./link": {
-      "types": "./dist/control/Link.d.ts",
-      "import": "./dist/control/Link.js",
-      "default": "./dist/control/Link.js"
-    },
-    "./header": {
-      "types": "./dist/header/HeaderBar.d.ts",
-      "import": "./dist/header/HeaderBar.js",
-      "default": "./dist/header/HeaderBar.js"
+      "types": "./dist/primitives/Link.d.ts",
+      "import": "./dist/primitives/Link.js",
+      "default": "./dist/primitives/Link.js"
     },
     "./icon": {
-      "types": "./dist/icon/Icon.d.ts",
-      "import": "./dist/icon/Icon.js",
-      "default": "./dist/icon/Icon.js"
+      "types": "./dist/primitives/Icon.d.ts",
+      "import": "./dist/primitives/Icon.js",
+      "default": "./dist/primitives/Icon.js"
     },
     "./icon-button": {
-      "types": "./dist/icon-button/IconButton.d.ts",
-      "import": "./dist/icon-button/IconButton.js",
-      "default": "./dist/icon-button/IconButton.js"
+      "types": "./dist/primitives/IconButton.d.ts",
+      "import": "./dist/primitives/IconButton.js",
+      "default": "./dist/primitives/IconButton.js"
     },
     "./grid": {
-      "types": "./dist/layout/Grid.d.ts",
-      "import": "./dist/layout/Grid.js",
-      "default": "./dist/layout/Grid.js"
+      "types": "./dist/primitives/Grid.d.ts",
+      "import": "./dist/primitives/Grid.js",
+      "default": "./dist/primitives/Grid.js"
+    },
+    "./inline": {
+      "types": "./dist/primitives/Inline.d.ts",
+      "import": "./dist/primitives/Inline.js",
+      "default": "./dist/primitives/Inline.js"
     },
     "./group": {
-      "types": "./dist/layout/Group.d.ts",
-      "import": "./dist/layout/Group.js",
-      "default": "./dist/layout/Group.js"
+      "types": "./dist/primitives/Group.d.ts",
+      "import": "./dist/primitives/Group.js",
+      "default": "./dist/primitives/Group.js"
     },
     "./input": {
-      "types": "./dist/control/Input.d.ts",
-      "import": "./dist/control/Input.js",
-      "default": "./dist/control/Input.js"
+      "types": "./dist/primitives/Input.d.ts",
+      "import": "./dist/primitives/Input.js",
+      "default": "./dist/primitives/Input.js"
     },
     "./select": {
-      "types": "./dist/control/Select.d.ts",
-      "import": "./dist/control/Select.js",
-      "default": "./dist/control/Select.js"
+      "types": "./dist/primitives/Select.d.ts",
+      "import": "./dist/primitives/Select.js",
+      "default": "./dist/primitives/Select.js"
     },
     "./range": {
-      "types": "./dist/control/Range.d.ts",
-      "import": "./dist/control/Range.js",
-      "default": "./dist/control/Range.js"
-    },
-    "./identity-control": {
-      "types": "./dist/identity-control/IdentityControl.d.ts",
-      "import": "./dist/identity-control/IdentityControl.js",
-      "default": "./dist/identity-control/IdentityControl.js"
-    },
-    "./menu-item": {
-      "types": "./dist/menu/MenuItem.d.ts",
-      "import": "./dist/menu/MenuItem.js",
-      "default": "./dist/menu/MenuItem.js"
-    },
-    "./menu-overlay": {
-      "types": "./dist/menu/MenuOverlay.d.ts",
-      "import": "./dist/menu/MenuOverlay.js",
-      "default": "./dist/menu/MenuOverlay.js"
+      "types": "./dist/primitives/Range.d.ts",
+      "import": "./dist/primitives/Range.js",
+      "default": "./dist/primitives/Range.js"
     },
     "./root": {
       "types": "./dist/root/UIRoot.d.ts",
@@ -83,139 +68,69 @@
       "default": "./dist/root/UIRoot.js"
     },
     "./scroll-area": {
-      "types": "./dist/layout/ScrollArea.d.ts",
-      "import": "./dist/layout/ScrollArea.js",
-      "default": "./dist/layout/ScrollArea.js"
-    },
-    "./page": {
-      "types": "./dist/layout/Page.d.ts",
-      "import": "./dist/layout/Page.js",
-      "default": "./dist/layout/Page.js"
-    },
-    "./side-panel": {
-      "types": "./dist/side-panel/SidePanel.d.ts",
-      "import": "./dist/side-panel/SidePanel.js",
-      "default": "./dist/side-panel/SidePanel.js"
-    },
-    "./side-panel-body": {
-      "types": "./dist/side-panel/SidePanelBody.d.ts",
-      "import": "./dist/side-panel/SidePanelBody.js",
-      "default": "./dist/side-panel/SidePanelBody.js"
-    },
-    "./side-panel-footer": {
-      "types": "./dist/side-panel/SidePanelFooter.d.ts",
-      "import": "./dist/side-panel/SidePanelFooter.js",
-      "default": "./dist/side-panel/SidePanelFooter.js"
-    },
-    "./side-panel-header": {
-      "types": "./dist/side-panel/SidePanelHeader.d.ts",
-      "import": "./dist/side-panel/SidePanelHeader.js",
-      "default": "./dist/side-panel/SidePanelHeader.js"
+      "types": "./dist/primitives/ScrollArea.d.ts",
+      "import": "./dist/primitives/ScrollArea.js",
+      "default": "./dist/primitives/ScrollArea.js"
     },
     "./tabs": {
-      "types": "./dist/side-panel/Tabs.d.ts",
-      "import": "./dist/side-panel/Tabs.js",
-      "default": "./dist/side-panel/Tabs.js"
+      "types": "./dist/primitives/Tabs.d.ts",
+      "import": "./dist/primitives/Tabs.js",
+      "default": "./dist/primitives/Tabs.js"
     },
     "./field": {
-      "types": "./dist/side-panel/Field.d.ts",
-      "import": "./dist/side-panel/Field.js",
-      "default": "./dist/side-panel/Field.js"
+      "types": "./dist/primitives/Field.d.ts",
+      "import": "./dist/primitives/Field.js",
+      "default": "./dist/primitives/Field.js"
     },
     "./disclosure": {
-      "types": "./dist/side-panel/Disclosure.d.ts",
-      "import": "./dist/side-panel/Disclosure.js",
-      "default": "./dist/side-panel/Disclosure.js"
-    },
-    "./progress-steps": {
-      "types": "./dist/side-panel/ProgressSteps.d.ts",
-      "import": "./dist/side-panel/ProgressSteps.js",
-      "default": "./dist/side-panel/ProgressSteps.js"
+      "types": "./dist/primitives/Disclosure.d.ts",
+      "import": "./dist/primitives/Disclosure.js",
+      "default": "./dist/primitives/Disclosure.js"
     },
     "./stack": {
-      "types": "./dist/layout/Stack.d.ts",
-      "import": "./dist/layout/Stack.js",
-      "default": "./dist/layout/Stack.js"
+      "types": "./dist/primitives/Stack.d.ts",
+      "import": "./dist/primitives/Stack.js",
+      "default": "./dist/primitives/Stack.js"
     },
     "./spacer": {
-      "types": "./dist/layout/Spacer.d.ts",
-      "import": "./dist/layout/Spacer.js",
-      "default": "./dist/layout/Spacer.js"
+      "types": "./dist/primitives/Spacer.d.ts",
+      "import": "./dist/primitives/Spacer.js",
+      "default": "./dist/primitives/Spacer.js"
     },
     "./surface": {
-      "types": "./dist/surface/Surface.d.ts",
-      "import": "./dist/surface/Surface.js",
-      "default": "./dist/surface/Surface.js"
+      "types": "./dist/primitives/Surface.d.ts",
+      "import": "./dist/primitives/Surface.js",
+      "default": "./dist/primitives/Surface.js"
     },
     "./text": {
-      "types": "./dist/typography/Text.d.ts",
-      "import": "./dist/typography/Text.js",
-      "default": "./dist/typography/Text.js"
+      "types": "./dist/primitives/Text.d.ts",
+      "import": "./dist/primitives/Text.js",
+      "default": "./dist/primitives/Text.js"
     },
-    "./strong-text": {
-      "types": "./dist/typography/StrongText.d.ts",
-      "import": "./dist/typography/StrongText.js",
-      "default": "./dist/typography/StrongText.js"
-    },
-    "./small-text": {
-      "types": "./dist/typography/SmallText.d.ts",
-      "import": "./dist/typography/SmallText.js",
-      "default": "./dist/typography/SmallText.js"
-    },
-    "./output-text": {
-      "types": "./dist/typography/OutputText.d.ts",
-      "import": "./dist/typography/OutputText.js",
-      "default": "./dist/typography/OutputText.js"
+    "./heading": {
+      "types": "./dist/primitives/Heading.d.ts",
+      "import": "./dist/primitives/Heading.js",
+      "default": "./dist/primitives/Heading.js"
     },
     "./image": {
-      "types": "./dist/media/Image.d.ts",
-      "import": "./dist/media/Image.js",
-      "default": "./dist/media/Image.js"
+      "types": "./dist/primitives/Image.d.ts",
+      "import": "./dist/primitives/Image.js",
+      "default": "./dist/primitives/Image.js"
     },
     "./media-badge": {
-      "types": "./dist/media/MediaBadge.d.ts",
-      "import": "./dist/media/MediaBadge.js",
-      "default": "./dist/media/MediaBadge.js"
+      "types": "./dist/primitives/MediaBadge.d.ts",
+      "import": "./dist/primitives/MediaBadge.js",
+      "default": "./dist/primitives/MediaBadge.js"
     },
     "./status-dot": {
-      "types": "./dist/media/StatusDot.d.ts",
-      "import": "./dist/media/StatusDot.js",
-      "default": "./dist/media/StatusDot.js"
+      "types": "./dist/primitives/StatusDot.d.ts",
+      "import": "./dist/primitives/StatusDot.js",
+      "default": "./dist/primitives/StatusDot.js"
     },
     "./selection": {
-      "types": "./dist/selection/Selection.d.ts",
-      "import": "./dist/selection/Selection.js",
-      "default": "./dist/selection/Selection.js"
-    },
-    "./selection-trigger": {
-      "types": "./dist/selection/SelectionTrigger.d.ts",
-      "import": "./dist/selection/SelectionTrigger.js",
-      "default": "./dist/selection/SelectionTrigger.js"
-    },
-    "./selection-chevron": {
-      "types": "./dist/selection/SelectionChevron.d.ts",
-      "import": "./dist/selection/SelectionChevron.js",
-      "default": "./dist/selection/SelectionChevron.js"
-    },
-    "./selection-menu": {
-      "types": "./dist/selection/SelectionMenu.d.ts",
-      "import": "./dist/selection/SelectionMenu.js",
-      "default": "./dist/selection/SelectionMenu.js"
-    },
-    "./selection-list": {
-      "types": "./dist/selection/SelectionList.d.ts",
-      "import": "./dist/selection/SelectionList.js",
-      "default": "./dist/selection/SelectionList.js"
-    },
-    "./selection-option": {
-      "types": "./dist/selection/SelectionOption.d.ts",
-      "import": "./dist/selection/SelectionOption.js",
-      "default": "./dist/selection/SelectionOption.js"
-    },
-    "./selection-footer": {
-      "types": "./dist/selection/SelectionFooter.d.ts",
-      "import": "./dist/selection/SelectionFooter.js",
-      "default": "./dist/selection/SelectionFooter.js"
+      "types": "./dist/primitives/Selection.d.ts",
+      "import": "./dist/primitives/Selection.js",
+      "default": "./dist/primitives/Selection.js"
     },
     "./tokens/colors": {
       "types": "./dist/tokens/colors.d.ts",
@@ -228,24 +143,25 @@
     "tokens:generate": "bun ./scripts/generate-tokens.ts",
     "tokens:check": "bun ./scripts/generate-tokens.ts --check",
     "assets:copy": "bun ./scripts/copy-assets.ts",
-    "build": "bun run clean && bun run tokens:generate && tsc --project tsconfig.json && bun run assets:copy",
+    "styles:generate": "panda codegen --clean && panda",
+    "styles:watch": "panda --watch",
+    "build": "bun run clean && bun run tokens:generate && bun run styles:generate && tsc --project tsconfig.json && bun run assets:copy",
     "artifacts:check": "bun ./scripts/check-artifacts.ts",
     "check": "bun run tokens:check && bun run artifacts:check",
-    "typecheck": "tsc --project tsconfig.json --noEmit",
+    "typecheck": "bun run styles:generate && tsc --project tsconfig.json --noEmit",
     "test": "bun test --preload ./test/setup.ts",
     "watch:types": "tsc --project tsconfig.json --watch --preserveWatchOutput",
     "watch:assets": "bun ./scripts/watch-assets.ts",
-    "watch": "bun run tokens:generate && bun run assets:copy && bun run --parallel watch:types watch:assets"
+    "watch": "bun run tokens:generate && bun run styles:generate && bun run assets:copy && bun run --parallel watch:types watch:assets styles:watch"
   },
-  "dependencies": {
-    "class-variance-authority": "^0.7.1"
-  },
+  "dependencies": {},
   "peerDependencies": {
     "react": "^19.2.7",
     "react-dom": "^19.2.7"
   },
   "devDependencies": {
     "@happy-dom/global-registrator": "^20.10.5",
+    "@pandacss/dev": "^1.11.4",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
     "@types/bun": "^1.3.14",

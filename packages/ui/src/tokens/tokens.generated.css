@@ -120,6 +120,7 @@
   --nf-motion-distance-hover: 1px;
   --nf-motion-rotation-half: 180deg;
   --nf-easing-standard: cubic-bezier(0.82, 0, 0.12, 1);
+  --nf-opacity-full: 1;
   --nf-opacity-disabled: 0.44;
   --nf-opacity-muted: 0.5;
   --nf-size-icon-small: 13px;
@@ -155,6 +156,7 @@
   --nf-size-media-art-medium: 18px;
   --nf-size-status-dot-small: 7px;
   --nf-size-status-dot-medium: 9px;
+  --nf-size-grid-column-min: 126px;
   --nf-size-selection-trigger: 126px;
   --nf-size-selection-offset: 54px;
   --nf-size-selection-menu: 336px;

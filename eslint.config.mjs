@@ -75,7 +75,8 @@ export default [
     'apps/newframe/main/signers/**/*',
     'apps/newframe-extension/dist/**/*',
     'apps/newframe-extension/.cache/**/*',
-    'packages/ui/dist/**/*'
+    'packages/ui/dist/**/*',
+    'packages/ui/src/styled-system/**/*'
   ]),
   ...baseJavaScriptConfigs(),
 
