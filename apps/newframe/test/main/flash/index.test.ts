@@ -362,6 +362,36 @@ describe('main Flash facade helpers', () => {
     expect(quote.actions?.approval?.label).toBe('Approve WETH')
   })
 
+  it('includes the complete structured Flash error response in request errors', async () => {
+    const flash = createFlashService()
+    const originalFetch = globalThis.fetch
+    const payload = {
+      error: {
+        code: 'invalid_quote',
+        details: [{ field: 'qty', issue: 'must be greater than zero' }],
+        message: 'Quote validation failed'
+      },
+      requestId: 'request-123'
+    }
+
+    globalThis.fetch = jest.fn(async () => {
+      return new Response(JSON.stringify(payload), {
+        status: 400,
+        statusText: 'Bad Request',
+        headers: { 'content-type': 'application/json' }
+      })
+    }) as unknown as typeof fetch
+
+    try {
+      expect(flash.quote(quoteRequest())).rejects.toThrow(
+        `Flash API 400 Bad Request: ${JSON.stringify(payload)}`
+      )
+    } finally {
+      flash.dispose()
+      globalThis.fetch = originalFetch
+    }
+  })
+
   it('normalizes official root order assets, qty, fills, and timestamps from list responses', async () => {
     const flash = createFlashService()
     const originalFetch = globalThis.fetch
