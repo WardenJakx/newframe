@@ -33,14 +33,23 @@ export type LinkProps = RecipeVariantProps<typeof linkRecipe> & {
   external?: boolean
   href: string
   label?: string
+  onPress?: () => void
 }
 
-export function Link({ appearance, children, external = false, href, label }: LinkProps) {
+export function Link({ appearance, children, external = false, href, label, onPress }: LinkProps) {
   return (
     <a
       aria-label={label}
       className={linkRecipe({ appearance })}
       href={href}
+      onClick={
+        onPress
+          ? (event) => {
+              event.preventDefault()
+              onPress()
+            }
+          : undefined
+      }
       rel={external ? 'noreferrer' : undefined}
       target={external ? '_blank' : undefined}
     >

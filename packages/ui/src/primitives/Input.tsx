@@ -34,7 +34,8 @@ export const inputRecipe = cva({
         paddingBlock: '2',
         paddingInline: 0
       },
-      numeric: {}
+      numeric: {},
+      code: {}
     },
     align: {
       start: { textAlign: 'left' },
@@ -52,21 +53,34 @@ export type InputRecipeProps = RecipeVariantProps<typeof inputRecipe>
 
 export function inputClasses(props: InputRecipeProps) {
   const appearance = props?.appearance
-  const variant = appearance === 'amount' ? 'amount' : appearance === 'numeric' ? 'numeric' : 'supporting'
+  const variant =
+    appearance === 'amount'
+      ? 'amount'
+      : appearance === 'numeric'
+        ? 'numeric'
+        : appearance === 'code'
+          ? 'code'
+          : 'supporting'
   return cx(inputRecipe(props), textRecipe({ variant }))
 }
 
 export type InputProps = InputRecipeProps & {
   autoComplete?: HTMLInputAutoCompleteAttribute
+  autoFocus?: boolean
   defaultValue?: string | number
   describedBy?: string
   disabled?: boolean
   id?: string
   inputMode?: 'decimal' | 'email' | 'none' | 'numeric' | 'search' | 'tel' | 'text' | 'url'
   label?: string
+  labeledBy?: string
   max?: string | number
+  maxLength?: number
   min?: string | number
   name?: string
+  onBlur?: (value: string) => void
+  onFocus?: (value: string) => void
+  onSubmit?: () => void
   onValueChange?: (value: string) => void
   placeholder?: string
   readOnly?: boolean
@@ -82,6 +96,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
     align,
     appearance,
     autoComplete,
+    autoFocus,
     defaultValue,
     describedBy,
     disabled,
@@ -89,9 +104,14 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
     inputMode,
     invalid = false,
     label,
+    labeledBy,
     max,
+    maxLength,
     min,
     name,
+    onBlur,
+    onFocus,
+    onSubmit,
     onValueChange,
     placeholder,
     readOnly,
@@ -108,17 +128,31 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
       aria-describedby={describedBy}
       aria-invalid={invalid || undefined}
       aria-label={label}
+      aria-labelledby={labeledBy}
       aria-required={required || undefined}
       autoComplete={autoComplete}
+      autoFocus={autoFocus}
       className={inputClasses({ align, appearance, invalid })}
       defaultValue={defaultValue}
       disabled={disabled}
       id={id}
       inputMode={inputMode}
       max={max}
+      maxLength={maxLength}
       min={min}
       name={name}
       onChange={onValueChange ? (event) => onValueChange(event.currentTarget.value) : undefined}
+      onBlur={onBlur ? (event) => onBlur(event.currentTarget.value) : undefined}
+      onFocus={onFocus ? (event) => onFocus(event.currentTarget.value) : undefined}
+      onKeyDown={
+        onSubmit
+          ? (event) => {
+              if (event.key !== 'Enter') return
+              event.preventDefault()
+              onSubmit()
+            }
+          : undefined
+      }
       placeholder={placeholder}
       readOnly={readOnly}
       ref={ref}

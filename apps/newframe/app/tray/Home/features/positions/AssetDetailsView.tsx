@@ -1,14 +1,18 @@
 import React from 'react'
 
-import svg from '../../../../../resources/svg'
+import { Button } from '@newframe/ui/button'
+import { Icon } from '@newframe/ui/icon'
+import { Stack } from '@newframe/ui/stack'
+import { Text } from '@newframe/ui/text'
+
 import ChainTokenIcon from '../../../../../resources/Components/ChainTokenIcon'
+import { SidePanelHeader } from '../../../../../resources/Components/SidePanel/SidePanelHeader'
 import {
   formatUsdRate,
   isNativeCurrency,
   type DisplayedBalance
 } from '../../../../../resources/domain/balance'
 import { ChainIcon } from '../../components/ChainIcon'
-import { activateOnKeyboard } from '../../ui/keyboard'
 import { TRADE_DISABLED_CHAIN_LABEL } from './usePortfolioActions'
 
 export function AssetDetailsView({
@@ -34,29 +38,20 @@ export function AssetDetailsView({
   const price = Number(asset?.usdRate?.price || 0)
   const detailRow = (label: string, value: React.ReactNode, monospace = false) => (
     <div className='t2AssetDetailRow'>
-      <div className='t2AssetDetailLabel'>{label}</div>
-      <div className={monospace ? 't2AssetDetailValue t2AssetDetailValueCode' : 't2AssetDetailValue'}>
-        {value}
+      <Text tone='muted' variant='label'>
+        {label}
+      </Text>
+      <div className={monospace ? 't2AssetDetailValueCode' : undefined}>
+        <Text align='end' truncate={!monospace} variant={monospace ? 'code' : 'label'}>
+          {value}
+        </Text>
       </div>
     </div>
   )
 
   return (
     <div aria-label='Asset details' className='t2Overlay t2AssetOverlay cardShow' role='dialog'>
-      <div className='t2OverlayHeader'>
-        <div
-          aria-label='Back to positions'
-          className='t2OverlayBack'
-          onClick={onBack}
-          onKeyDown={(event) => activateOnKeyboard(event, onBack)}
-          role='button'
-          tabIndex={0}
-        >
-          {svg.chevronLeft(13)}
-        </div>
-        <div className='t2OverlayTitle'>{asset.symbol}</div>
-        <div className='t2OverlaySpacer' />
-      </div>
+      <SidePanelHeader closeLabel='Back to positions' onClose={onBack} title={asset.symbol} />
       <div className='t2AssetBody'>
         <div className='t2AssetHero'>
           <div className='t2AssetHeroIcon'>
@@ -69,13 +64,19 @@ export function AssetDetailsView({
               symbol={asset.symbol}
             />
           </div>
-          <div className='t2AssetHeroText'>
-            <div className='t2AssetHeroName'>{asset.name || asset.symbol}</div>
-            <div className='t2AssetHeroSub'>
-              <span className='traySpan'>{asset.symbol}</span>
-              <span className='traySpan'>{chain.name || `Chain ${asset.chainId}`}</span>
-            </div>
-          </div>
+          <Stack gap='xsmall' grow>
+            <Text truncate variant='heading'>
+              {asset.name || asset.symbol}
+            </Text>
+            <Stack direction='row' gap='xsmall'>
+              <Text tone='secondary' variant='supporting'>
+                {asset.symbol}
+              </Text>
+              <Text tone='secondary' truncate variant='supporting'>
+                {chain.name || `Chain ${asset.chainId}`}
+              </Text>
+            </Stack>
+          </Stack>
         </div>
         <div className='t2AssetDetailList'>
           {detailRow('Price', price > 0 ? `$${formatUsdRate(price, 2)}` : '$0.00')}
@@ -91,7 +92,9 @@ export function AssetDetailsView({
                   networksMeta={networksMeta}
                 />
               </div>
-              <span className='traySpan'>{chain.name || `Chain ${asset.chainId}`}</span>
+              <Text truncate variant='label'>
+                {chain.name || `Chain ${asset.chainId}`}
+              </Text>
             </div>
           )}
           {detailRow(
@@ -102,30 +105,33 @@ export function AssetDetailsView({
         </div>
       </div>
       <div className='t2AssetFooter'>
-        <div
-          aria-disabled={!canSend}
-          aria-label={`Send ${asset.symbol}`}
-          className={canSend ? 't2AssetSendButton' : 't2AssetSendButton t2AssetSendButtonDisabled'}
-          onClick={canSend ? onSend : undefined}
-          role='button'
-          tabIndex={canSend ? 0 : -1}
-        >
-          {svg.send(14)}
-          <span className='traySpan'>Send</span>
-        </div>
-        <div
-          aria-disabled={!canTrade}
-          aria-label={`Trade ${asset.symbol}`}
-          className={canTrade ? 't2AssetSendButton' : 't2AssetSendButton t2AssetSendButtonDisabled'}
-          onClick={canTrade ? onTrade : undefined}
-          role='button'
-          style={{ marginLeft: 10 }}
-          tabIndex={canTrade ? 0 : -1}
-          title={canTrade ? `Trade ${asset.symbol}` : TRADE_DISABLED_CHAIN_LABEL}
-        >
-          {svg.sync(14)}
-          <span className='traySpan'>Trade</span>
-        </div>
+        <Stack direction='row' gap='small'>
+          <Button
+            appearance='primary'
+            disabled={!canSend}
+            label={`Send ${asset.symbol}`}
+            onPress={onSend}
+            shape='pill'
+            size='large'
+            width='wide'
+          >
+            <Icon name='send' size='small' />
+            <Text variant='action'>Send</Text>
+          </Button>
+          <Button
+            appearance='primary'
+            disabled={!canTrade}
+            label={`Trade ${asset.symbol}`}
+            onPress={onTrade}
+            shape='pill'
+            size='large'
+            title={canTrade ? `Trade ${asset.symbol}` : TRADE_DISABLED_CHAIN_LABEL}
+            width='wide'
+          >
+            <Icon name='sync' size='small' />
+            <Text variant='action'>Trade</Text>
+          </Button>
+        </Stack>
       </div>
     </div>
   )

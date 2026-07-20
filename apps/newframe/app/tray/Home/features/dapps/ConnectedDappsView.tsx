@@ -1,5 +1,7 @@
-import svg from '../../../../../resources/svg'
-import { activateOnKeyboard } from '../../ui/keyboard'
+import { IconButton } from '@newframe/ui/icon-button'
+import { Text } from '@newframe/ui/text'
+
+import { SidePanelHeader } from '../../../../../resources/Components/SidePanel/SidePanelHeader'
 
 export interface ConnectedDappRow {
   id: string
@@ -19,52 +21,43 @@ export function ConnectedDappsView({
 }) {
   return (
     <div aria-label='Dapps' className='t2Overlay cardShow' role='dialog'>
-      <div className='t2OverlayHeader'>
-        <div
-          aria-label='Back'
-          className='t2OverlayBack'
-          onClick={onBack}
-          onKeyDown={(event) => activateOnKeyboard(event, onBack)}
-          role='button'
-          tabIndex={0}
-        >
-          {svg.chevronLeft(16)}
-        </div>
-        <div className='t2OverlayTitle'>Dapps</div>
-        {dapps.length ? (
-          <div
-            aria-label='Clear all connected websites'
-            className='t2DappsClearAll'
-            onClick={onClearAll}
-            onKeyDown={(event) => activateOnKeyboard(event, onClearAll)}
-            role='button'
-            tabIndex={0}
-            title='Clear all connected websites'
-          >
-            {svg.trash(13)}
-          </div>
-        ) : (
-          <div className='t2OverlaySpacer' />
-        )}
-      </div>
+      <SidePanelHeader
+        action={
+          dapps.length ? (
+            <IconButton
+              appearance='control'
+              icon='trash'
+              label='Clear all connected websites'
+              onPress={onClearAll}
+              title='Clear all connected websites'
+              tone='danger'
+            />
+          ) : undefined
+        }
+        closeLabel='Back'
+        onClose={onBack}
+        title='Dapps'
+      />
       <div className='t2OverlayScroll t2DappsScroll'>
         {dapps.length === 0 ? (
-          <div className='t2EmptyState'>No Connected Websites</div>
+          <Text align='center' tone='disabled' variant='label'>
+            No Connected Websites
+          </Text>
         ) : (
           dapps.map((dapp) => (
             <div key={dapp.id} className='t2DappRow'>
-              <div className='t2DappOrigin'>{dapp.origin}</div>
-              <div
-                aria-label={`Clear ${dapp.origin}`}
-                className='t2DappClear'
-                onClick={() => onClear(dapp.id)}
-                onKeyDown={(event) => activateOnKeyboard(event, () => onClear(dapp.id))}
-                role='button'
-                tabIndex={0}
+              <Text truncate variant='body'>
+                {dapp.origin}
+              </Text>
+              <IconButton
+                appearance='control'
+                icon='trash'
+                label={`Clear ${dapp.origin}`}
+                onPress={() => onClear(dapp.id)}
+                size='small'
                 title={`Clear ${dapp.origin}`}
-              >
-                {svg.trash(13)}
-              </div>
+                tone='danger'
+              />
             </div>
           ))
         )}

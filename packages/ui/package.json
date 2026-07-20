@@ -132,6 +132,11 @@
       "import": "./dist/primitives/Selection.js",
       "default": "./dist/primitives/Selection.js"
     },
+    "./search-field": {
+      "types": "./dist/primitives/SearchField.d.ts",
+      "import": "./dist/primitives/SearchField.js",
+      "default": "./dist/primitives/SearchField.js"
+    },
     "./tokens/colors": {
       "types": "./dist/tokens/colors.d.ts",
       "import": "./dist/tokens/colors.js",

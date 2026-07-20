@@ -3,7 +3,7 @@ import path from 'node:path'
 
 const appRoot = path.resolve(__dirname, '..')
 const sourceRoots = ['app', 'main', 'resources']
-const sourceExtensions = new Set(['.css', '.js', '.jsx', '.styl', '.ts', '.tsx'])
+const sourceExtensions = new Set(['.css', '.js', '.jsx', '.ts', '.tsx'])
 const allowedFiles = new Set([path.join('resources', 'colors', 'index.ts')])
 
 export type ColorLiteralViolation = {

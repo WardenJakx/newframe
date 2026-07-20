@@ -11,6 +11,8 @@ export const typographyTokens = {
   'nf-font-size-heading': '16px',
   'nf-font-size-page-title': '20px',
   'nf-font-size-amount': '28px',
+  'nf-font-size-display-fraction': '24px',
+  'nf-font-size-display': '46px',
   'nf-font-weight-body': '300',
   'nf-font-weight-regular': '300',
   'nf-font-weight-medium': '400',

@@ -1,4 +1,4 @@
-import { forwardRef, type ReactNode } from 'react'
+import { forwardRef, type MouseEvent, type ReactNode } from 'react'
 
 import { cva } from '../styled-system/css/cva.js'
 import type { RecipeVariantProps } from '../styled-system/types/recipe.js'
@@ -51,12 +51,34 @@ export const buttonRecipe = cva({
         '&:hover:not(:disabled)': { background: 'bg.hover' },
         _focusVisible: { background: 'bg.hover' }
       },
+      raised: {
+        background: 'bg.control',
+        color: 'text.primary',
+        borderBlockEndWidth: 'strong',
+        borderBlockEndStyle: 'solid',
+        borderBlockEndColor: 'bg.primary',
+        '&:hover:not(:disabled)': {
+          background: 'bg.hover',
+          transform: 'translateY(calc(-1 * token(sizes.motion-distance-hover)))'
+        },
+        '&:active:not(:disabled)': { transform: 'none' }
+      },
       row: {
         width: '100%',
         justifyContent: 'flex-start',
         background: 'bg.control',
         textAlign: 'left',
         '&:hover:not(:disabled)': { background: 'bg.hover', color: 'text.primary' }
+      },
+      outlinedSelection: {
+        width: '100%',
+        justifyContent: 'flex-start',
+        borderWidth: 'thin',
+        borderStyle: 'solid',
+        borderColor: 'transparent',
+        background: 'bg.raised',
+        textAlign: 'left',
+        '&:hover:not(:disabled)': { background: 'bg.hover' }
       },
       segment: {
         background: 'transparent',
@@ -68,6 +90,47 @@ export const buttonRecipe = cva({
         background: 'transparent',
         color: 'text.secondary',
         _hover: { background: 'border.subtle', color: 'text.primary' }
+      },
+      underlineTab: {
+        flexDirection: 'column',
+        gap: '3',
+        minHeight: 'button-medium',
+        paddingInline: 0,
+        background: 'transparent',
+        color: 'text.muted',
+        _after: {
+          content: '""',
+          width: '100%',
+          height: 'tab-indicator',
+          borderRadius: 'compact',
+          background: 'transparent'
+        }
+      },
+      switch: {
+        position: 'relative',
+        width: 'switch',
+        minHeight: 'switch-height',
+        height: 'switch-height',
+        flex: 'none',
+        padding: 0,
+        borderRadius: 'pill',
+        background: 'status.danger',
+        transitionDuration: 'fast',
+        transitionProperty: 'background',
+        transitionTimingFunction: 'standard',
+        _after: {
+          content: '""',
+          position: 'absolute',
+          insetBlockStart: '1',
+          insetInlineStart: '1',
+          width: 'switch-knob',
+          height: 'switch-knob',
+          borderRadius: 'pill',
+          background: 'bg.hover',
+          transitionDuration: 'fast',
+          transitionProperty: 'transform',
+          transitionTimingFunction: 'standard'
+        }
       },
       disclosure: {
         width: '100%',
@@ -107,7 +170,8 @@ export const buttonRecipe = cva({
       compact: { minHeight: 'button-compact' },
       small: { minHeight: 'button-small' },
       medium: { minHeight: 'button-medium' },
-      large: { minHeight: 'button-large' }
+      large: { minHeight: 'button-large' },
+      list: { minHeight: 'list-row' }
     },
     shape: {
       rounded: { borderRadius: 'default' },
@@ -118,12 +182,18 @@ export const buttonRecipe = cva({
       label: {},
       icon: { flex: 'none', gap: 0, padding: 0 }
     },
+    width: {
+      auto: {},
+      full: { width: '100%' },
+      wide: { width: 'action-wide' }
+    },
     tone: {
       neutral: {},
       accent: {
         '&:hover:not(:disabled)': { color: 'action.primary' },
         _focusVisible: { color: 'action.primary' }
-      }
+      },
+      danger: { color: 'status.danger' }
     },
     highlighted: {
       true: { background: 'border.subtle' },
@@ -157,6 +227,33 @@ export const buttonRecipe = cva({
       content: 'icon',
       size: 'medium',
       css: { width: 'icon-button-medium', height: 'icon-button-medium', minHeight: 'icon-button-medium' }
+    },
+    {
+      appearance: 'underlineTab',
+      selected: true,
+      css: {
+        background: 'transparent',
+        color: 'text.primary',
+        _after: { background: 'action.primary' }
+      }
+    },
+    {
+      appearance: 'switch',
+      pressed: true,
+      css: {
+        background: 'action.primary',
+        color: 'text.primary',
+        _after: { transform: 'translateX(token(sizes.switch-travel))' }
+      }
+    },
+    {
+      appearance: 'switch',
+      css: { width: 'switch', minHeight: 'switch-height', height: 'switch-height' }
+    },
+    {
+      appearance: 'outlinedSelection',
+      selected: true,
+      css: { borderColor: 'border.focus', background: 'bg.raised', color: 'text.primary' }
     }
   ],
   defaultVariants: {
@@ -168,7 +265,8 @@ export const buttonRecipe = cva({
     selected: false,
     shape: 'rounded',
     size: 'medium',
-    tone: 'neutral'
+    tone: 'neutral',
+    width: 'auto'
   }
 })
 
@@ -176,15 +274,16 @@ export type ButtonProps = RecipeVariantProps<typeof buttonRecipe> & {
   activeDescendant?: string
   ariaSelected?: boolean
   children: ReactNode
+  checked?: boolean
   controls?: string
   disabled?: boolean
-  elementRole?: 'option' | 'tab'
+  elementRole?: 'option' | 'switch' | 'tab'
   expanded?: boolean
   hasPopup?: 'dialog' | 'listbox' | 'menu'
   id?: string
   label?: string
   onPointerEnter?: () => void
-  onPress?: () => void
+  onPress?: (event: MouseEvent<HTMLButtonElement>) => void
   tabIndex?: -1 | 0
   title?: string
   type?: 'button' | 'reset' | 'submit'
@@ -196,6 +295,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
     activeDescendant,
     ariaSelected,
     children,
+    checked,
     controls,
     content,
     disabled,
@@ -215,20 +315,33 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
     tabIndex,
     title,
     tone,
-    type = 'button'
+    type = 'button',
+    width
   },
   ref
 ) {
   return (
     <button
       aria-controls={controls}
+      aria-checked={checked}
       aria-activedescendant={activeDescendant}
       aria-expanded={expanded}
       aria-haspopup={hasPopup}
       aria-label={label}
       aria-pressed={pressed === null ? undefined : pressed}
       aria-selected={ariaSelected ?? (selected === null ? undefined : selected)}
-      className={buttonRecipe({ appearance, content, highlighted, placeholder, pressed, selected, shape, size, tone })}
+      className={buttonRecipe({
+        appearance,
+        content,
+        highlighted,
+        placeholder,
+        pressed,
+        selected,
+        shape,
+        size,
+        tone,
+        width
+      })}
       disabled={disabled}
       id={id}
       onClick={onPress}

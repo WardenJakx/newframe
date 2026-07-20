@@ -1,8 +1,11 @@
 import React from 'react'
 
-import svg from '../../../../../resources/svg'
+import { Button } from '@newframe/ui/button'
+import { Icon } from '@newframe/ui/icon'
+import { Text } from '@newframe/ui/text'
+
+import { SidePanelHeader } from '../../../../../resources/Components/SidePanel/SidePanelHeader'
 import AddressQRCode from '../../AddressQRCode'
-import { activateOnKeyboard } from '../../ui/keyboard'
 
 export function ReceiveView({
   account,
@@ -21,37 +24,23 @@ export function ReceiveView({
 }) {
   return (
     <div aria-label='Receive assets' className='t2Overlay t2ReceiveOverlay cardShow' role='dialog'>
-      <div className='t2OverlayHeader'>
-        <div
-          aria-label='Back'
-          className='t2OverlayBack'
-          onClick={onBack}
-          onKeyDown={(event) => activateOnKeyboard(event, onBack)}
-          role='button'
-          tabIndex={0}
-        >
-          {svg.chevronLeft(16)}
-        </div>
-        <div className='t2OverlayTitle'>Receive Assets</div>
-        <div className='t2OverlaySpacer' />
-      </div>
+      <SidePanelHeader closeLabel='Back' onClose={onBack} title='Receive Assets' />
       <div className='t2ReceiveBody'>
         <div className='t2ReceiveIcon'>{icon}</div>
-        <div className='t2ReceiveName'>{name}</div>
+        <div className='t2ReceiveName'>
+          <Text align='center' variant='heading'>
+            {name}
+          </Text>
+        </div>
         <div className='t2ReceiveQr'>
           <AddressQRCode address={account.address} />
         </div>
-        <div
-          aria-label='Copy receive address'
-          className='t2ReceiveAddress'
-          onClick={onCopy}
-          onKeyDown={(event) => activateOnKeyboard(event, onCopy)}
-          role='button'
-          tabIndex={0}
-        >
-          <span className='traySpan'>{copied ? 'Address copied' : account.address}</span>
-          {svg.copy(13)}
-        </div>
+        <Button appearance='control' label='Copy receive address' onPress={onCopy} shape='pill' width='full'>
+          <Text truncate variant='code'>
+            {copied ? 'Address copied' : account.address}
+          </Text>
+          <Icon name='copy' size='small' />
+        </Button>
       </div>
     </div>
   )

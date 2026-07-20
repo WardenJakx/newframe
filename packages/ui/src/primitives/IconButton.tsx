@@ -1,16 +1,17 @@
 import { Button, type ButtonProps } from './Button.js'
 import { Icon, type IconName } from './Icon.js'
 
-export type IconButtonProps = Pick<ButtonProps, 'expanded' | 'size' | 'title'> & {
+export type IconButtonProps = Pick<ButtonProps, 'disabled' | 'expanded' | 'size' | 'title'> & {
   appearance?: 'control' | 'ghost' | 'menu' | 'subtle'
   icon: IconName
   label: string
-  onPress: () => void
-  tone?: 'accent' | 'neutral'
+  onPress: NonNullable<ButtonProps['onPress']>
+  tone?: 'accent' | 'danger' | 'neutral'
 }
 
 export function IconButton({
   appearance,
+  disabled,
   expanded,
   icon,
   label,
@@ -25,6 +26,7 @@ export function IconButton({
     <Button
       appearance={appearance}
       content='icon'
+      disabled={disabled}
       expanded={expanded}
       hasPopup={expanded === undefined ? undefined : 'dialog'}
       label={label}

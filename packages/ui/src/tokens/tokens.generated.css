@@ -89,6 +89,8 @@
   --nf-font-size-heading: 16px;
   --nf-font-size-page-title: 20px;
   --nf-font-size-amount: 28px;
+  --nf-font-size-display-fraction: 24px;
+  --nf-font-size-display: 46px;
   --nf-font-weight-body: 300;
   --nf-font-weight-regular: 300;
   --nf-font-weight-medium: 400;
@@ -132,10 +134,18 @@
   --nf-size-button-small: 30px;
   --nf-size-button-medium: 36px;
   --nf-size-button-large: 46px;
+  --nf-size-action-wide: 134px;
+  --nf-size-tab-indicator: 3px;
+  --nf-size-search-field: 38px;
+  --nf-size-switch: 40px;
+  --nf-size-switch-height: 20px;
+  --nf-size-switch-knob: 16px;
+  --nf-size-switch-travel: 20px;
   --nf-size-input: 36px;
   --nf-size-identity-icon: 32px;
   --nf-size-menu-row-icon: 36px;
   --nf-size-menu-row-min: 64px;
+  --nf-size-list-row: 58px;
   --nf-size-scroll-menu: 190px;
   --nf-size-scroll-list: 238px;
   --nf-size-panel-header: 64px;

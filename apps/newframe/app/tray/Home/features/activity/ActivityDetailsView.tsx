@@ -1,13 +1,12 @@
 import link from '../../../../../resources/link'
-import svg from '../../../../../resources/svg'
 import { chainColorValue } from '../../../../../resources/colors'
+import { SidePanelHeader } from '../../../../../resources/Components/SidePanel/SidePanelHeader'
 import TransactionInformation from '../../../Account/Requests/TransactionRequest/TransactionInformation'
 import {
   getTransactionEffects,
   getTransactionIntent,
   TRANSACTION_CONFIRMATION_TARGET
 } from '../../../../../resources/domain/transaction'
-import { activateOnKeyboard } from '../../ui/keyboard'
 import { activityRequestLike, requestStatusFromActivity, transactionStatusLabel } from './activityModel'
 
 const shortAddress = (address = '') =>
@@ -56,20 +55,7 @@ export function ActivityDetailsView({
       className='t2Overlay t2ActivityOverlay cardShow'
       role='dialog'
     >
-      <div className='t2OverlayHeader'>
-        <div
-          aria-label='Back to activity'
-          className='t2OverlayBack'
-          onClick={onBack}
-          onKeyDown={(event) => activateOnKeyboard(event, onBack)}
-          role='button'
-          tabIndex={0}
-        >
-          {svg.chevronLeft(13)}
-        </div>
-        <div className='t2OverlayTitle'>Activity</div>
-        <div className='t2OverlaySpacer' />
-      </div>
+      <SidePanelHeader closeLabel='Back to activity' onClose={onBack} title='Activity' />
       <div className='t2OverlayScroll t2ActivityDetailScroll'>
         <TransactionInformation
           details={details}

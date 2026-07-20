@@ -1016,7 +1016,9 @@ export default function Trade({ assetId, chainId }: TradeProps) {
                 Est. received
               </Text>
               {state.quote?.outputNotional ? (
-                <Text as='strong' variant='detail'>~{formatTradeNotional(state.quote.outputNotional)}</Text>
+                <Text as='strong' variant='detail'>
+                  ~{formatTradeNotional(state.quote.outputNotional)}
+                </Text>
               ) : null}
             </Stack>
           )}
@@ -1069,14 +1071,18 @@ export default function Trade({ assetId, chainId }: TradeProps) {
             <Text variant='detail' tone='secondary'>
               Estimated fees
             </Text>
-            <Text as='strong' variant='detail'>{feeNotional ? formatTradeNotional(feeNotional) : '—'}</Text>
+            <Text as='strong' variant='detail'>
+              {feeNotional ? formatTradeNotional(feeNotional) : '—'}
+            </Text>
           </Stack>
           {quote.targetNotionalPrice ? (
             <Stack align='center' direction='row' gap='large' justify='between'>
               <Text variant='detail' tone='secondary'>
                 {quote.targetAsset.symbol}/USD
               </Text>
-              <Text as='strong' variant='detail'>{formatTradeNotional(quote.targetNotionalPrice)}</Text>
+              <Text as='strong' variant='detail'>
+                {formatTradeNotional(quote.targetNotionalPrice)}
+              </Text>
             </Stack>
           ) : null}
         </Stack>

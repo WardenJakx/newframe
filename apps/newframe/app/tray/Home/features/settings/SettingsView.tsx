@@ -1,10 +1,14 @@
 import { useState } from 'react'
 
-import svg from '../../../../../resources/svg'
+import { Button } from '@newframe/ui/button'
+import { Input } from '@newframe/ui/input'
+import { Stack } from '@newframe/ui/stack'
+import { Text } from '@newframe/ui/text'
+import { ToggleButton } from '@newframe/ui/toggle-button'
+
+import { SidePanelHeader } from '../../../../../resources/Components/SidePanel/SidePanelHeader'
 import KeyboardShortcutConfigurator from '../../../../../resources/Components/KeyboardShortcutConfigurator'
 import { SettingsActionRow, SettingsSelectRow, SettingsToggleRow } from '../../ui/SettingsRow'
-import { Toggle } from '../../ui/Toggle'
-import { activateOnKeyboard } from '../../ui/keyboard'
 
 const shortcutKeyDisplay: Record<string, string> = {
   Slash: '/',
@@ -108,50 +112,39 @@ export function SettingsView({
 
   return (
     <div aria-label='Settings' className='t2Overlay cardShow' role='dialog'>
-      <div className='t2OverlayHeader'>
-        <div
-          aria-label='Back'
-          className='t2OverlayBack'
-          onClick={onBack}
-          onKeyDown={(event) => activateOnKeyboard(event, onBack)}
-          role='button'
-          tabIndex={0}
-        >
-          {svg.chevronLeft(16)}
-        </div>
-        <div className='t2OverlayTitle'>Settings</div>
-        <div className='t2OverlaySpacer' />
-      </div>
+      <SidePanelHeader closeLabel='Back' onClose={onBack} title='Settings' />
       <div className='t2OverlayScroll t2SettingsScroll'>
         <div className='t2SettingsSection'>
-          <div className='t2SettingsSectionTitle'>Shortcut</div>
+          <Text tone='muted' variant='overline'>
+            Shortcut
+          </Text>
           <div className='t2SettingsRow t2SettingsShortcutRow'>
             <div className='t2SettingsShortcutTop'>
-              <div className='t2SettingsRowText'>
-                <div className='t2SettingsRowTitle'>Summon Shortcut</div>
-                <div className='t2SettingsRowDetail'>
+              <Stack gap='xsmall' grow>
+                <Text truncate variant='label'>
+                  Summon Shortcut
+                </Text>
+                <Text tone='muted' variant='caption'>
                   {shortcutLabel(settings.platform, settings.summonShortcut)}
-                </div>
-              </div>
+                </Text>
+              </Stack>
               <div className='t2SettingsShortcutControls'>
-                <div
-                  aria-label={settings.summonShortcut.configuring ? 'Cancel shortcut edit' : 'Edit shortcut'}
-                  className='t2SettingsSmallButton'
-                  onClick={() => onUpdate('shortcut-configuring', !settings.summonShortcut.configuring)}
-                  onKeyDown={(event) =>
-                    activateOnKeyboard(event, () =>
-                      onUpdate('shortcut-configuring', !settings.summonShortcut.configuring)
-                    )
-                  }
-                  role='button'
-                  tabIndex={0}
+                <Button
+                  appearance='control'
+                  label={settings.summonShortcut.configuring ? 'Cancel shortcut edit' : 'Edit shortcut'}
+                  onPress={() => onUpdate('shortcut-configuring', !settings.summonShortcut.configuring)}
+                  shape='pill'
+                  size='small'
                 >
-                  {settings.summonShortcut.configuring ? 'Cancel' : 'Edit'}
-                </div>
-                <Toggle
+                  <Text variant='compactAction'>
+                    {settings.summonShortcut.configuring ? 'Cancel' : 'Edit'}
+                  </Text>
+                </Button>
+                <ToggleButton
+                  appearance='switch'
                   label='Summon Shortcut'
-                  on={settings.summonShortcut.enabled}
-                  onToggle={() => onUpdate('shortcut-enabled', !settings.summonShortcut.enabled)}
+                  onPress={() => onUpdate('shortcut-enabled', !settings.summonShortcut.enabled)}
+                  pressed={settings.summonShortcut.enabled}
                 />
               </div>
             </div>
@@ -168,7 +161,9 @@ export function SettingsView({
         </div>
 
         <div aria-label='App' className='t2SettingsSection' role='group'>
-          <div className='t2SettingsSectionTitle'>App</div>
+          <Text tone='muted' variant='overline'>
+            App
+          </Text>
           {toggleRows.map(([label, on, detail, setting]) => (
             <SettingsToggleRow
               key={setting}
@@ -198,27 +193,22 @@ export function SettingsView({
           <SettingsActionRow action='Reset' label='Reset Saved Data' onAction={() => onReset('saved-data')} />
           {resetConfirm ? (
             <div className='t2SettingsRow t2SettingsResetConfirm'>
-              <div className='t2SettingsRowText'>
-                <div className='t2SettingsRowTitle'>Reset All Settings & Data?</div>
-              </div>
-              <div className='t2SettingsConfirmActions'>
-                <div
-                  className='t2SettingsSmallButton t2SettingsDangerButton'
-                  onClick={() => onReset('all-settings-data')}
-                  role='button'
-                  tabIndex={0}
+              <Text truncate variant='label'>
+                Reset All Settings & Data?
+              </Text>
+              <Stack direction='row' gap='xsmall'>
+                <Button
+                  appearance='danger'
+                  onPress={() => onReset('all-settings-data')}
+                  shape='pill'
+                  size='small'
                 >
-                  Yes
-                </div>
-                <div
-                  className='t2SettingsSmallButton'
-                  onClick={() => setResetConfirm(false)}
-                  role='button'
-                  tabIndex={0}
-                >
-                  No
-                </div>
-              </div>
+                  <Text variant='compactAction'>Yes</Text>
+                </Button>
+                <Button appearance='control' onPress={() => setResetConfirm(false)} shape='pill' size='small'>
+                  <Text variant='compactAction'>No</Text>
+                </Button>
+              </Stack>
             </div>
           ) : (
             <SettingsActionRow
@@ -231,7 +221,9 @@ export function SettingsView({
         </div>
 
         <div className='t2SettingsSection'>
-          <div className='t2SettingsSectionTitle'>Signer Defaults</div>
+          <Text tone='muted' variant='overline'>
+            Signer Defaults
+          </Text>
           <SettingsSelectRow
             currentValue={settings.trezorDerivation}
             label='Trezor Derivation'
@@ -274,37 +266,37 @@ export function SettingsView({
             ]}
           />
           {drafts.latticeEndpointMode === 'custom' ? (
-            <div className='t2SettingsInputRow'>
-              <input
-                aria-label='Custom Lattice Relay'
-                onChange={(event) => drafts.changeLatticeEndpoint(event.target.value)}
-                placeholder='Custom Relay'
-                spellCheck={false}
-                value={drafts.latticeEndpoint}
-              />
-            </div>
+            <Input
+              appearance='code'
+              label='Custom Lattice Relay'
+              onValueChange={drafts.changeLatticeEndpoint}
+              placeholder='Custom Relay'
+              spellCheck={false}
+              value={drafts.latticeEndpoint}
+            />
           ) : null}
         </div>
 
         <div className='t2SettingsSection'>
-          <div className='t2SettingsSectionTitle'>Tokens</div>
+          <Text tone='muted' variant='overline'>
+            Tokens
+          </Text>
           <SettingsToggleRow
             detail={portfolioApiKeyDetail}
             label='Auto-Discover Tokens'
             on={settings.autoDiscoverTokens}
             onToggle={() => drafts.toggleAutoDiscoverTokens(settings.autoDiscoverTokens)}
           />
-          <div className='t2SettingsInputRow'>
-            <input
-              aria-label='Zerion API Key'
-              autoComplete='off'
-              onChange={(event) => drafts.changePortfolioApiKey(event.target.value)}
-              placeholder='Zerion API Key'
-              spellCheck={false}
-              type='password'
-              value={drafts.portfolioApiKey}
-            />
-          </div>
+          <Input
+            appearance='code'
+            autoComplete='off'
+            label='Zerion API Key'
+            onValueChange={drafts.changePortfolioApiKey}
+            placeholder='Zerion API Key'
+            spellCheck={false}
+            type='password'
+            value={drafts.portfolioApiKey}
+          />
         </div>
       </div>
     </div>

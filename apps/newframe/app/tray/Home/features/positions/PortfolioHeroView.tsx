@@ -1,3 +1,7 @@
+import { Button } from '@newframe/ui/button'
+import { Icon } from '@newframe/ui/icon'
+import { Text } from '@newframe/ui/text'
+
 import svg from '../../../../../resources/svg'
 import { activateOnKeyboard } from '../../ui/keyboard'
 import { TRADE_DISABLED_CHAIN_LABEL } from './usePortfolioActions'
@@ -23,8 +27,8 @@ export function PortfolioHeroView({
   return (
     <div className='t2Hero'>
       <div className='t2HeroValue'>
-        <span className='traySpan t2HeroDollars'>{`$${dollars}`}</span>
-        <span className='traySpan t2HeroCents'>{`.${cents || '00'}`}</span>
+        <Text display='inline' variant='displayAmount'>{`$${dollars}`}</Text>
+        <Text display='inline' tone='muted' variant='displayFraction'>{`.${cents || '00'}`}</Text>
         <div
           aria-label='Refresh balances'
           className={refreshing ? 't2HeroRefresh t2HeroRefreshActive' : 't2HeroRefresh'}
@@ -42,32 +46,36 @@ export function PortfolioHeroView({
         </div>
       </div>
       <div className='t2HeroActions'>
-        <div
-          aria-disabled={!canSend}
-          aria-label='Send'
-          className={canSend ? 't2HeroButton' : 't2HeroButton t2HeroButtonDisabled'}
-          onClick={canSend ? onSend : undefined}
-          onKeyDown={canSend ? (event) => activateOnKeyboard(event, onSend) : undefined}
-          role='button'
-          tabIndex={canSend ? 0 : -1}
+        <Button
+          appearance='raised'
+          disabled={!canSend}
+          label='Send'
+          onPress={onSend}
+          shape='pill'
+          size='large'
           title={canSend ? 'Send' : 'No assets available'}
+          width='wide'
         >
-          <div className='t2HeroButtonIcon'>{svg.send(14)}</div>
-          <span className='traySpan'>Send</span>
-        </div>
-        <div
-          aria-disabled={!canTrade}
-          aria-label='Trade'
-          className={canTrade ? 't2HeroButton' : 't2HeroButton t2HeroButtonDisabled'}
-          onClick={canTrade ? onTrade : undefined}
-          onKeyDown={canTrade ? (event) => activateOnKeyboard(event, onTrade) : undefined}
-          role='button'
-          tabIndex={canTrade ? 0 : -1}
+          <Icon name='send' size='small' tone='accent' />
+          <Text display='inline' variant='label'>
+            Send
+          </Text>
+        </Button>
+        <Button
+          appearance='raised'
+          disabled={!canTrade}
+          label='Trade'
+          onPress={onTrade}
+          shape='pill'
+          size='large'
           title={canTrade ? 'Trade' : TRADE_DISABLED_CHAIN_LABEL}
+          width='wide'
         >
-          <div className='t2HeroButtonIcon'>{svg.sync(14)}</div>
-          <span className='traySpan'>Trade</span>
-        </div>
+          <Icon name='sync' size='small' tone='accent' />
+          <Text display='inline' variant='label'>
+            Trade
+          </Text>
+        </Button>
       </div>
     </div>
   )

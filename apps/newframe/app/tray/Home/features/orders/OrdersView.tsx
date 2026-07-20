@@ -1,4 +1,7 @@
-import svg from '../../../../../resources/svg'
+import { IconButton } from '@newframe/ui/icon-button'
+import { Stack } from '@newframe/ui/stack'
+import { Text } from '@newframe/ui/text'
+
 import { getContraPreposition } from '../../../../../resources/domain/flash/pair'
 import { activateOnKeyboard } from '../../ui/keyboard'
 import { OrderAssetPill } from './OrderAssetPill'
@@ -31,7 +34,12 @@ export function OrdersView({
   onOpen: (orderId: string) => void
   orders: any[]
 }) {
-  if (!orders.length) return <div className='t2EmptyState'>No Orders Yet</div>
+  if (!orders.length)
+    return (
+      <Text align='center' tone='disabled' variant='overline'>
+        No Orders Yet
+      </Text>
+    )
 
   return (
     <div className='t2OrderList'>
@@ -55,29 +63,29 @@ export function OrdersView({
           >
             <div className='t2OrderCancelSlot'>
               {open ? (
-                <div
-                  aria-disabled={cancellingOrderId === order.orderId}
-                  aria-label='Cancel order'
-                  className='t2OrderCancel'
-                  onClick={(event) => {
+                <IconButton
+                  disabled={cancellingOrderId === order.orderId}
+                  icon='close'
+                  label='Cancel order'
+                  onPress={(event) => {
                     event.stopPropagation()
                     onCancel(order)
                   }}
-                  onKeyDown={(event) => {
-                    event.stopPropagation()
-                    activateOnKeyboard(event, () => onCancel(order))
-                  }}
-                  role='button'
-                  tabIndex={0}
+                  size='small'
                   title='Cancel order'
-                >
-                  {svg.x(9)}
-                </div>
+                />
               ) : null}
             </div>
             <div className='t2OrderStatusBlock'>
-              <div className={`t2OrderStatus t2OrderStatus-${statusKey}`}>{orderStatusLabel(order)}</div>
-              <div className='t2OrderCreated'>{orderDate(order.createdAt)}</div>
+              <Text
+                tone={statusKey === 'filled' ? 'success' : statusKey === 'failed' ? 'danger' : 'secondary'}
+                variant='supporting'
+              >
+                {orderStatusLabel(order)}
+              </Text>
+              <Text tone='muted' variant='caption'>
+                {orderDate(order.createdAt)}
+              </Text>
             </div>
             <div className='t2OrderAssetColumn'>
               <OrderAssetPill
@@ -88,14 +96,28 @@ export function OrdersView({
               />
             </div>
             <div className='t2OrderCopy'>
-              <div className='t2OrderIntent'>{orderPairIntent(order)}</div>
-              <div className='t2OrderSubline'>
-                <span className='traySpan'>{orderSideLabel(order)}</span>
-                <span className='traySpan'>{orderTypeLabel(order)}</span>
-                {error ? <span className='traySpan t2OrderCancelInlineError'>{error}</span> : null}
-              </div>
+              <Stack gap='xsmall' grow>
+                <Text truncate variant='label'>
+                  {orderPairIntent(order)}
+                </Text>
+                <Stack direction='row' gap='xsmall'>
+                  <Text tone='muted' variant='caption'>
+                    {orderSideLabel(order)}
+                  </Text>
+                  <Text tone='muted' variant='caption'>
+                    {orderTypeLabel(order)}
+                  </Text>
+                  {error ? (
+                    <Text tone='danger' truncate variant='caption'>
+                      {error}
+                    </Text>
+                  ) : null}
+                </Stack>
+              </Stack>
             </div>
-            <div className='t2OrderSize'>{orderSize(order)}</div>
+            <div className='t2OrderSize'>
+              <Text variant='numeric'>{orderSize(order)}</Text>
+            </div>
             <div className='t2OrderContra'>
               <OrderAssetPill
                 asset={order.contraAsset}

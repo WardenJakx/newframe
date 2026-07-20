@@ -6,6 +6,7 @@ import { Button } from '../src/primitives/Button'
 import { Field } from '../src/primitives/Field'
 import { IconButton } from '../src/primitives/IconButton'
 import { Input } from '../src/primitives/Input'
+import { SearchField } from '../src/primitives/SearchField'
 import { Select } from '../src/primitives/Select'
 import { Tabs } from '../src/primitives/Tabs'
 import { Text } from '../src/primitives/Text'
@@ -55,6 +56,52 @@ describe('Side Panel controls', () => {
     await user.click(toggleButton)
     expect(onIconPress).toHaveBeenCalledTimes(1)
     expect(onTogglePress).toHaveBeenCalledTimes(1)
+  })
+
+  it('exposes the switch builder with native button behavior and switch semantics', async () => {
+    const onPress = mock(() => undefined)
+    const user = userEvent.setup()
+
+    render(<ToggleButton appearance='switch' label='Auto-hide' onPress={onPress} pressed />)
+
+    const toggle = screen.getByRole('switch', { name: 'Auto-hide' })
+    expect(toggle.getAttribute('aria-checked')).toBe('true')
+    expect(toggle.getAttribute('aria-pressed')).toBe('true')
+    await user.click(toggle)
+    expect(onPress).toHaveBeenCalledTimes(1)
+  })
+
+  it('composes searchable controls without exposing unrestricted element props', async () => {
+    const onChange = mock(() => undefined)
+    const onClear = mock(() => undefined)
+    const user = userEvent.setup()
+
+    render(
+      <SearchField
+        label='Search networks'
+        onChange={onChange}
+        onClear={onClear}
+        placeholder='Search networks'
+        value='mainnet'
+      />
+    )
+
+    const search = screen.getByRole('textbox', { name: 'Search networks' })
+    await user.clear(search)
+    expect(onChange).toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'Clear Search networks' }))
+    expect(onClear).toHaveBeenCalledTimes(1)
+  })
+
+  it('submits an input through its explicit Enter-key callback', async () => {
+    const onSubmit = mock(() => undefined)
+    const user = userEvent.setup()
+
+    render(<Input label='RPC URL' onSubmit={onSubmit} readOnly value='https://rpc.example' />)
+    await user.click(screen.getByRole('textbox', { name: 'RPC URL' }))
+    await user.keyboard('{Enter}')
+
+    expect(onSubmit).toHaveBeenCalledTimes(1)
   })
 
   it('renders constrained semantic text elements from one typography primitive', () => {

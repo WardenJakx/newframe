@@ -6,25 +6,38 @@ import { Tab } from './Tab.js'
 export type TabsItem<T extends string> = { active: boolean; id: T; label: string }
 
 export type TabsProps<T extends string> = {
+  appearance?: 'segmented' | 'underline'
   label: string
   items: readonly TabsItem<T>[]
   onSelect: (id: T) => void
 }
 
-export function Tabs<T extends string>({ label, items, onSelect }: TabsProps<T>) {
+export function Tabs<T extends string>({ appearance = 'segmented', label, items, onSelect }: TabsProps<T>) {
+  const tabs = (
+    <Inline gap={appearance === 'underline' ? 'large' : 'xsmall'}>
+      {items.map((item) => (
+        <Tab appearance={appearance} key={item.id} onSelect={() => onSelect(item.id)} selected={item.active}>
+          <Text
+            align='center'
+            variant={appearance === 'underline' ? 'label' : 'action'}
+            tone={item.active ? (appearance === 'underline' ? 'primary' : 'accent') : 'secondary'}
+          >
+            {item.label}
+          </Text>
+        </Tab>
+      ))}
+    </Inline>
+  )
+
   return (
     <div aria-label={label} role='tablist'>
-      <Surface padding='xsmall' radius='small' tone='subtle'>
-        <Inline gap='xsmall'>
-          {items.map((item) => (
-            <Tab key={item.id} onSelect={() => onSelect(item.id)} selected={item.active}>
-              <Text align='center' variant='action' tone={item.active ? 'accent' : 'secondary'}>
-                {item.label}
-              </Text>
-            </Tab>
-          ))}
-        </Inline>
-      </Surface>
+      {appearance === 'segmented' ? (
+        <Surface padding='xsmall' radius='small' tone='subtle'>
+          {tabs}
+        </Surface>
+      ) : (
+        tabs
+      )}
     </div>
   )
 }

@@ -254,21 +254,9 @@ async function main() {
     }
   }
 
-  const migratedSelectors = /\.(?:t2TopBar|t2AccountPill\w*|t2MenuButton|t2MenuBadge\w*|t2MenuPanel\w*)\b/
-  const migratedSideTraySelectors =
-    /\.(?:chainTokenIcon\w*|send(?:Account|Amount|App|Back|Balance|Body|Card|Empty|Fiat|Footer|Header|Input|Message|Proceed|Recipient|Section|Title|Token|Wallet)\w*|token(?:OptionRow|Selector)\w*|trade\w*)\b/
-  for (const { file, source } of files) {
+  for (const { file } of files) {
     if (!file.endsWith('.styl')) continue
-    const match = source.match(migratedSelectors)
-    if (match?.index !== undefined) {
-      violations.push(`${file}:${lineNumber(source, match.index)} migrated Tray header/menu selector remains`)
-    }
-    const sideTrayMatch = source.match(migratedSideTraySelectors)
-    if (sideTrayMatch?.index !== undefined) {
-      violations.push(
-        `${file}:${lineNumber(source, sideTrayMatch.index)} migrated Side Tray selector remains`
-      )
-    }
+    violations.push(`${file}: Stylus is forbidden; migrate the owning surface to the design system`)
   }
 
   if (violations.length === 0) return

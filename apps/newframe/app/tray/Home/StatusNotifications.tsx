@@ -1,7 +1,10 @@
 import React, { useEffect } from 'react'
 
+import { IconButton } from '@newframe/ui/icon-button'
+import { Stack } from '@newframe/ui/stack'
+import { Text } from '@newframe/ui/text'
+
 import StatusGlyph from '../../../resources/Components/StatusGlyph'
-import svg from '../../../resources/svg'
 
 const PENDING_NOTIFICATION_MS = 60 * 1000
 const RESOLVED_NOTIFICATION_MS = 3000
@@ -132,33 +135,35 @@ export default function StatusNotifications({
               state={state === 'completed' ? 'completed' : state === 'failed' ? 'failed' : 'pending'}
             />
             <div className='t2StatusNotificationChain'>{renderChainIcon(notification)}</div>
-            <div className='t2StatusNotificationCopy'>
-              <div className='t2StatusNotificationTopline'>
-                <span className='traySpan'>{label}</span>
-                <span className='traySpan'>{notification.title}</span>
-              </div>
-              {metadata ? <div className='t2StatusNotificationDetail'>{metadata}</div> : null}
-            </div>
-            {shownAt ? <div className='t2StatusNotificationTimestamp'>{shownAt}</div> : null}
-            <div
-              aria-label='Dismiss notification'
-              className='t2StatusNotificationDismiss'
-              onClick={(e) => {
-                e.stopPropagation()
+            <Stack gap='xsmall' grow>
+              <Stack direction='row' gap='xsmall'>
+                <Text shrink={false} tone='secondary' variant='label'>
+                  {label}
+                </Text>
+                <Text tone='secondary' truncate variant='supporting'>
+                  {notification.title}
+                </Text>
+              </Stack>
+              {metadata ? (
+                <Text tone='muted' truncate variant='code'>
+                  {metadata}
+                </Text>
+              ) : null}
+            </Stack>
+            {shownAt ? (
+              <Text shrink={false} tone='muted' variant='microCode'>
+                {shownAt}
+              </Text>
+            ) : null}
+            <IconButton
+              icon='close'
+              label='Dismiss notification'
+              onPress={(event) => {
+                event.stopPropagation()
                 onDismiss(notification.id)
               }}
-              onKeyDown={(e) => {
-                e.stopPropagation()
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault()
-                  onDismiss(notification.id)
-                }
-              }}
-              role='button'
-              tabIndex={0}
-            >
-              {svg.x(9)}
-            </div>
+              size='small'
+            />
           </div>
         )
       })}

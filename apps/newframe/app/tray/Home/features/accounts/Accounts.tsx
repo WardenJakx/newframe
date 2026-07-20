@@ -1,6 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 
+import { Button } from '@newframe/ui/button'
+import { Heading } from '@newframe/ui/heading'
+import { Icon } from '@newframe/ui/icon'
+import { IconButton } from '@newframe/ui/icon-button'
+import { SearchField } from '@newframe/ui/search-field'
+import { Text } from '@newframe/ui/text'
+
+import { HeaderBar } from '../../../../../resources/Components/HeaderBar'
 import link from '../../../../../resources/link'
 import svg from '../../../../../resources/svg'
 import { createBalanceSummarySelector, formatUsdRate } from '../../../../../resources/domain/balance'
@@ -517,19 +525,12 @@ export function Accounts() {
     return (
       <div aria-label='Accounts' className='t2Overlay t2AccountsPanel cardShow' role='dialog'>
         {!state.accountExporting ? (
-          <div className='t2OverlayHeader t2AccountsHeader'>
-            <div className='t2AccountsTitle'>Accounts</div>
-            <div
-              aria-label='Close accounts'
-              className='t2AccountsClose'
-              onClick={() => closeAccountsPanel()}
-              onKeyDown={(e) => onKeyboardActivate(e, () => closeAccountsPanel())}
-              role='button'
-              tabIndex={0}
-            >
-              {svg.x(13)}
-            </div>
-          </div>
+          <HeaderBar>
+            <Heading level={1} variant='title'>
+              Accounts
+            </Heading>
+            <IconButton icon='close' label='Close accounts' onPress={() => closeAccountsPanel()} />
+          </HeaderBar>
         ) : null}
         {state.accountExporting ? (
           <div className='t2OverlayScroll t2AccountsScroll'>{renderPrivateKeyExport(accounts)}</div>
@@ -544,42 +545,26 @@ export function Accounts() {
         ) : (
           <>
             <div className='t2AccountsTools'>
-              <div className='t2AccountsSearch'>
-                <div className='t2AccountsSearchIcon'>{svg.search(11)}</div>
-                <input
-                  aria-label='Search accounts'
-                  placeholder='Search accounts'
-                  spellCheck='false'
-                  defaultValue={state.accountQuery}
-                  ref={(input) => {
-                    instance.accountSearchInput = input
-                  }}
-                  onChange={(e) => updateAccountSearch(e.target.value)}
-                />
-                {state.accountQuery ? (
-                  <div
-                    aria-label='Clear account search'
-                    className='t2AccountsSearchClear'
-                    onClick={() => clearAccountSearch()}
-                    onKeyDown={(e) => onKeyboardActivate(e, () => clearAccountSearch())}
-                    role='button'
-                    tabIndex={0}
-                  >
-                    {svg.x(10)}
-                  </div>
-                ) : null}
-              </div>
-              <div
-                aria-label='Add account'
-                className='t2AccountsAddSmall'
-                onClick={() => setState({ addingAccount: true })}
-                onKeyDown={(e) => onKeyboardActivate(e, () => setState({ addingAccount: true }))}
-                role='button'
-                tabIndex={0}
+              <SearchField
+                inputRef={(input) => {
+                  instance.accountSearchInput = input
+                }}
+                label='Search accounts'
+                onChange={updateAccountSearch}
+                onClear={clearAccountSearch}
+                placeholder='Search accounts'
+                value={state.accountQuery}
+              />
+              <Button
+                appearance='control'
+                label='Add account'
+                onPress={() => setState({ addingAccount: true })}
+                shape='pill'
+                size='small'
               >
-                {svg.plus(12)}
-                <span className='traySpan'>Add account</span>
-              </div>
+                <Icon name='plus' size='small' />
+                <Text variant='compactAction'>Add account</Text>
+              </Button>
             </div>
             <div className='t2OverlayScroll t2AccountsScroll'>
               {visibleIds.map((id) => {
@@ -794,7 +779,11 @@ export function Accounts() {
                   </div>
                 )
               })}
-              {visibleIds.length === 0 ? <div className='t2EmptyState'>No Accounts Found</div> : null}
+              {visibleIds.length === 0 ? (
+                <Text align='center' tone='disabled' variant='overline'>
+                  No Accounts Found
+                </Text>
+              ) : null}
             </div>
           </>
         )}

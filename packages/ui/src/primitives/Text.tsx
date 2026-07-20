@@ -22,10 +22,16 @@ export const textRecipe = cva({
         whiteSpace: 'nowrap'
       },
       code: { fontFamily: 'mono', fontSize: 'caption' },
+      microCode: { fontFamily: 'mono', fontSize: 'micro' },
       title: {
         fontSize: 'label',
         fontWeight: 'medium',
         letterSpacing: 'title',
+        textTransform: 'uppercase'
+      },
+      overline: {
+        fontSize: 'detail',
+        fontWeight: 'medium',
         textTransform: 'uppercase'
       },
       pageTitle: { fontSize: 'page-title', fontWeight: 'medium' },
@@ -39,6 +45,12 @@ export const textRecipe = cva({
       caption: { fontSize: 'caption', fontWeight: 'regular' },
       micro: { fontSize: 'micro', fontWeight: 'regular' },
       amount: { fontFamily: 'mono', fontSize: 'amount', fontWeight: 'medium' },
+      displayAmount: { fontFamily: 'mono', fontSize: 'display', fontWeight: 'medium' },
+      displayFraction: {
+        fontFamily: 'mono',
+        fontSize: 'display-fraction',
+        fontWeight: 'regular'
+      },
       output: { fontFamily: 'mono', fontSize: 'heading', fontWeight: 'bold' },
       numeric: { fontFamily: 'mono', fontSize: 'label', fontWeight: 'medium' }
     },
@@ -70,6 +82,10 @@ export const textRecipe = cva({
     truncate: {
       true: { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
       false: {}
+    },
+    shrink: {
+      true: {},
+      false: { flexShrink: 0 }
     }
   },
   defaultVariants: {
@@ -78,7 +94,8 @@ export const textRecipe = cva({
     emphasis: 'normal',
     variant: 'body',
     tone: 'primary',
-    truncate: false
+    truncate: false,
+    shrink: true
   }
 })
 
@@ -96,6 +113,7 @@ export function Text({
   decorative = false,
   display,
   emphasis,
+  shrink,
   tone,
   truncate,
   variant
@@ -106,7 +124,7 @@ export function Text({
   return (
     <Component
       aria-hidden={decorative || undefined}
-      className={textRecipe({ align, display, emphasis: resolvedEmphasis, tone, truncate, variant })}
+      className={textRecipe({ align, display, emphasis: resolvedEmphasis, shrink, tone, truncate, variant })}
       data-tone={tone ?? undefined}
     >
       {children}

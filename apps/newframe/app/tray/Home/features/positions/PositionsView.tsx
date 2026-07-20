@@ -1,4 +1,10 @@
-import svg from '../../../../../resources/svg'
+import { Button } from '@newframe/ui/button'
+import { Icon } from '@newframe/ui/icon'
+import { SearchField } from '@newframe/ui/search-field'
+import { Spacer } from '@newframe/ui/spacer'
+import { Stack } from '@newframe/ui/stack'
+import { Text } from '@newframe/ui/text'
+
 import TokenOptionRow from '../../../../../resources/Components/TokenOptionRow'
 import {
   createDisplayBalance,
@@ -7,7 +13,6 @@ import {
   type DisplayedBalance
 } from '../../../../../resources/domain/balance'
 import { formatUsdRate } from '../../../../../resources/domain/balance'
-import { activateOnKeyboard } from '../../ui/keyboard'
 import type { PositionGroups } from './positionModel'
 
 export interface PositionsViewProps {
@@ -29,13 +34,11 @@ export interface PositionsViewProps {
 
 function PositionRow({
   balance,
-  className = 't2TokenRow cardShow',
   networks,
   networksMeta,
   onOpen
 }: {
   balance: BalanceSummary
-  className?: string
   networks: Record<string | number, any>
   networksMeta: Record<string | number, any>
   onOpen: (balance: DisplayedBalance) => void
@@ -53,16 +56,14 @@ function PositionRow({
   }
 
   return (
-    <div
-      aria-label={`${displayed.symbol} asset details`}
-      className={className}
-      onClick={() => onOpen(displayed)}
-      onKeyDown={(event) => activateOnKeyboard(event, () => onOpen(displayed))}
-      role='button'
-      tabIndex={0}
+    <Button
+      appearance='selectionOption'
+      label={`${displayed.symbol} asset details`}
+      onPress={() => onOpen(displayed)}
+      width='full'
     >
       <TokenOptionRow item={item} networks={networks} networksMeta={networksMeta} showRightSubLabel />
-    </div>
+    </Button>
   )
 }
 
@@ -78,17 +79,12 @@ function MoreRows({
   if (hiddenCount <= 0) return null
 
   return (
-    <div
-      aria-label={label}
-      className='t2PositionListMore'
-      onClick={onClick}
-      onKeyDown={(event) => activateOnKeyboard(event, onClick)}
-      role='button'
-      tabIndex={0}
-    >
-      <span className='traySpan'>{label}</span>
-      {svg.chevron(12)}
-    </div>
+    <Button appearance='segment' label={label} onPress={onClick} size='small' width='full'>
+      <Text display='inline' variant='supporting' tone='secondary'>
+        {label}
+      </Text>
+      <Icon name='chevronDown' size='small' tone='muted' />
+    </Button>
   )
 }
 
@@ -118,35 +114,21 @@ export function PositionsView({
   return (
     <>
       <div className='t2SearchWrap'>
-        <div className='t2Search'>
-          <div className='t2SearchIcon'>{svg.search(12)}</div>
-          <input
-            aria-label='Filter assets'
-            onChange={(event) => onChangeQuery(event.target.value)}
-            placeholder='Filter assets'
-            spellCheck={false}
-            type='text'
-            value={query}
-          />
-          {query ? (
-            <div
-              aria-label='Clear asset filter'
-              className='t2SearchClear'
-              onClick={() => onChangeQuery('')}
-              onKeyDown={(event) => activateOnKeyboard(event, () => onChangeQuery(''))}
-              role='button'
-              tabIndex={0}
-            >
-              {svg.x(10)}
-            </div>
-          ) : null}
-        </div>
+        <SearchField
+          label='asset filter'
+          onChange={onChangeQuery}
+          onClear={() => onChangeQuery('')}
+          placeholder='Filter assets'
+          value={query}
+        />
       </div>
       <div className='t2Main'>
         {!groups.important.length && !groups.secondary.length && !groups.dust.length ? (
-          <div className='t2EmptyState'>No Tokens Found</div>
+          <Text align='center' variant='title' tone='disabled'>
+            No Tokens Found
+          </Text>
         ) : (
-          <div className='t2List'>
+          <Stack gap='none'>
             {groups.important.map((balance) => (
               <PositionRow
                 key={`${balance.chainId}:${balance.address}`}
@@ -158,33 +140,29 @@ export function PositionsView({
             ))}
             {groups.secondary.length ? (
               <>
-                <div
-                  aria-expanded={secondaryExpanded}
-                  aria-label={secondaryLabel}
-                  className='t2LowValueHidden'
-                  onClick={onToggleSecondary}
-                  onKeyDown={(event) => activateOnKeyboard(event, onToggleSecondary)}
-                  role='button'
-                  tabIndex={0}
+                <Button
+                  appearance='subtle'
+                  expanded={secondaryExpanded}
+                  label={secondaryLabel}
+                  onPress={onToggleSecondary}
+                  size='small'
+                  width='full'
                 >
-                  <div
-                    className={
-                      secondaryExpanded
-                        ? 't2LowValueHiddenChevron t2LowValueHiddenChevronOpen'
-                        : 't2LowValueHiddenChevron'
-                    }
-                  >
-                    {svg.chevronLeft(10)}
-                  </div>
-                  <div className='t2LowValueHiddenLabel'>{secondaryLabel}</div>
-                  <div className='t2LowValueHiddenValue'>{`$${formatUsdRate(groups.secondaryValue, 2)}`}</div>
-                </div>
+                  <Icon name='chevronDown' size='small' tone='muted' />
+                  <Text display='inline' variant='body' tone='secondary' truncate>
+                    {secondaryLabel}
+                  </Text>
+                  <Spacer />
+                  <Text
+                    display='inline'
+                    variant='numeric'
+                  >{`$${formatUsdRate(groups.secondaryValue, 2)}`}</Text>
+                </Button>
                 {secondaryExpanded
                   ? secondaryRows.map((balance) => (
                       <PositionRow
                         key={`${balance.chainId}:${balance.address}`}
                         balance={balance}
-                        className='t2TokenRow t2SecondaryTokenRow cardShow'
                         networks={networks}
                         networksMeta={networksMeta}
                         onOpen={onOpenAsset}
@@ -202,33 +180,28 @@ export function PositionsView({
             ) : null}
             {groups.dust.length ? (
               <>
-                <div
-                  aria-expanded={dustExpanded}
-                  aria-label={dustLabel}
-                  className='t2LowValueHidden'
-                  onClick={onToggleDust}
-                  onKeyDown={(event) => activateOnKeyboard(event, onToggleDust)}
-                  role='button'
-                  tabIndex={0}
+                <Button
+                  appearance='subtle'
+                  expanded={dustExpanded}
+                  label={dustLabel}
+                  onPress={onToggleDust}
+                  size='small'
+                  width='full'
                 >
-                  <div
-                    className={
-                      dustExpanded
-                        ? 't2LowValueHiddenChevron t2LowValueHiddenChevronOpen'
-                        : 't2LowValueHiddenChevron'
-                    }
-                  >
-                    {svg.chevronLeft(10)}
-                  </div>
-                  <div className='t2LowValueHiddenLabel'>{dustLabel}</div>
-                  <div className='t2LowValueHiddenValue'>{'<$0.01'}</div>
-                </div>
+                  <Icon name='chevronDown' size='small' tone='muted' />
+                  <Text display='inline' variant='body' tone='secondary' truncate>
+                    {dustLabel}
+                  </Text>
+                  <Spacer />
+                  <Text display='inline' variant='numeric'>
+                    {'<$0.01'}
+                  </Text>
+                </Button>
                 {dustExpanded
                   ? dustRows.map((balance) => (
                       <PositionRow
                         key={`${balance.chainId}:${balance.address}`}
                         balance={balance}
-                        className='t2TokenRow t2DustTokenRow cardShow'
                         networks={networks}
                         networksMeta={networksMeta}
                         onOpen={onOpenAsset}
@@ -244,7 +217,7 @@ export function PositionsView({
                 ) : null}
               </>
             ) : null}
-          </div>
+          </Stack>
         )}
       </div>
     </>

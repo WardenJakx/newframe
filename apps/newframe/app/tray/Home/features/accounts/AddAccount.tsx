@@ -1,6 +1,9 @@
 import React, { useEffect, useReducer, useRef } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 
+import { Button } from '@newframe/ui/button'
+import { Text } from '@newframe/ui/text'
+
 import link from '../../../../../resources/link'
 import svg from '../../../../../resources/svg'
 import { createBalanceSummarySelector, formatUsdRate } from '../../../../../resources/domain/balance'
@@ -921,26 +924,24 @@ export function AddAccount({
           </div>
         )}
         <div className='t2SeedPhraseActions'>
-          <div
-            aria-label='Copy recovery phrase'
-            className='t2SettingsSmallButton'
-            onClick={() => copyGeneratedSeedPhrase()}
-            onKeyDown={(e) => onKeyboardActivate(e, () => copyGeneratedSeedPhrase())}
-            role='button'
-            tabIndex={0}
+          <Button
+            appearance='control'
+            label='Copy recovery phrase'
+            onPress={() => copyGeneratedSeedPhrase()}
+            shape='pill'
+            size='small'
           >
-            {state.addGeneratedPhraseCopied ? 'Copied' : 'Copy'}
-          </div>
-          <div
-            aria-label='Generate new recovery phrase'
-            className='t2SettingsSmallButton'
-            onClick={() => generateInlineSeedPhrase()}
-            onKeyDown={(e) => onKeyboardActivate(e, () => generateInlineSeedPhrase())}
-            role='button'
-            tabIndex={0}
+            <Text variant='compactAction'>{state.addGeneratedPhraseCopied ? 'Copied' : 'Copy'}</Text>
+          </Button>
+          <Button
+            appearance='control'
+            label='Generate new recovery phrase'
+            onPress={() => generateInlineSeedPhrase()}
+            shape='pill'
+            size='small'
           >
-            New phrase
-          </div>
+            <Text variant='compactAction'>New phrase</Text>
+          </Button>
         </div>
         <div
           aria-checked={state.addGeneratedPhraseBackedUp}
@@ -1191,26 +1192,24 @@ export function AddAccount({
         {state.addAccountError ? <div className='t2InlineAddError'>{state.addAccountError}</div> : null}
         {state.addAccountStatus ? <div className='t2InlineAddStatus'>{state.addAccountStatus}</div> : null}
         <div className='t2HardwareActions'>
-          <div
-            aria-label={`Reconnect ${title}`}
-            className='t2SettingsSmallButton'
-            onClick={() => reloadHardwareSigner(signer)}
-            onKeyDown={(e) => onKeyboardActivate(e, () => reloadHardwareSigner(signer))}
-            role='button'
-            tabIndex={0}
+          <Button
+            appearance='control'
+            label={`Reconnect ${title}`}
+            onPress={() => reloadHardwareSigner(signer)}
+            shape='pill'
+            size='small'
           >
-            Reconnect
-          </div>
-          <div
-            aria-label={`Remove ${title}`}
-            className='t2SettingsSmallButton t2SettingsDangerButton'
-            onClick={() => removeHardwareSigner(signer)}
-            onKeyDown={(e) => onKeyboardActivate(e, () => removeHardwareSigner(signer))}
-            role='button'
-            tabIndex={0}
+            <Text variant='compactAction'>Reconnect</Text>
+          </Button>
+          <Button
+            appearance='danger'
+            label={`Remove ${title}`}
+            onPress={() => removeHardwareSigner(signer)}
+            shape='pill'
+            size='small'
           >
-            Remove
-          </div>
+            <Text variant='compactAction'>Remove</Text>
+          </Button>
         </div>
       </div>
     )
@@ -1241,26 +1240,24 @@ export function AddAccount({
             ))}
           </div>
           <div className='t2HardwareActions'>
-            <div
-              aria-label='Submit Trezor PIN'
-              className='t2SettingsSmallButton'
-              onClick={() => submitHardwarePin(signer)}
-              onKeyDown={(e) => onKeyboardActivate(e, () => submitHardwarePin(signer))}
-              role='button'
-              tabIndex={0}
+            <Button
+              appearance='control'
+              label='Submit Trezor PIN'
+              onPress={() => submitHardwarePin(signer)}
+              shape='pill'
+              size='small'
             >
-              Submit PIN
-            </div>
-            <div
-              aria-label='Delete PIN digit'
-              className='t2SettingsSmallButton'
-              onClick={() => backspaceHardwarePin()}
-              onKeyDown={(e) => onKeyboardActivate(e, () => backspaceHardwarePin())}
-              role='button'
-              tabIndex={0}
+              <Text variant='compactAction'>Submit PIN</Text>
+            </Button>
+            <Button
+              appearance='control'
+              label='Delete PIN digit'
+              onPress={() => backspaceHardwarePin()}
+              shape='pill'
+              size='small'
             >
-              Delete
-            </div>
+              <Text variant='compactAction'>Delete</Text>
+            </Button>
           </div>
         </div>
       )
@@ -1285,27 +1282,25 @@ export function AddAccount({
             />
           </div>
           <div className='t2HardwareActions'>
-            <div
-              aria-label='Submit Trezor passphrase'
-              className='t2SettingsSmallButton'
-              onClick={() => submitHardwarePhrase(signer)}
-              onKeyDown={(e) => onKeyboardActivate(e, () => submitHardwarePhrase(signer))}
-              role='button'
-              tabIndex={0}
+            <Button
+              appearance='control'
+              label='Submit Trezor passphrase'
+              onPress={() => submitHardwarePhrase(signer)}
+              shape='pill'
+              size='small'
             >
-              Submit
-            </div>
+              <Text variant='compactAction'>Submit</Text>
+            </Button>
             {allowsDeviceEntry ? (
-              <div
-                aria-label='Enter passphrase on Trezor'
-                className='t2SettingsSmallButton'
-                onClick={() => submitHardwarePhraseOnDevice(signer)}
-                onKeyDown={(e) => onKeyboardActivate(e, () => submitHardwarePhraseOnDevice(signer))}
-                role='button'
-                tabIndex={0}
+              <Button
+                appearance='control'
+                label='Enter passphrase on Trezor'
+                onPress={() => submitHardwarePhraseOnDevice(signer)}
+                shape='pill'
+                size='small'
               >
-                On device
-              </div>
+                <Text variant='compactAction'>On device</Text>
+              </Button>
             ) : null}
           </div>
         </div>

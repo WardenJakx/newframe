@@ -1,9 +1,12 @@
 import { useState } from 'react'
 
+import { Button } from '@newframe/ui/button'
+import { Icon } from '@newframe/ui/icon'
+import { Text } from '@newframe/ui/text'
+
 import type { Token } from '../../../../../main/store/state'
-import svg from '../../../../../resources/svg'
+import { SidePanelHeader } from '../../../../../resources/Components/SidePanel/SidePanelHeader'
 import { useHomeUiStore } from '../../state/HomeUiProvider'
-import { activateOnKeyboard } from '../../ui/keyboard'
 import AddToken from './AddToken'
 import type { AddTokenNotifyData } from './AddToken'
 import CustomTokens from './CustomTokens'
@@ -61,20 +64,7 @@ export default function Tokens({ initialToken }: { initialToken?: PendingCustomT
 
   return (
     <div aria-label='Custom Tokens' className='t2Overlay cardShow' role='dialog'>
-      <div className='t2OverlayHeader'>
-        <div
-          aria-label='Back'
-          className='t2OverlayBack'
-          onClick={back}
-          onKeyDown={(event) => activateOnKeyboard(event, back)}
-          role='button'
-          tabIndex={0}
-        >
-          {svg.chevronLeft(16)}
-        </div>
-        <div className='t2OverlayTitle'>Custom Tokens</div>
-        <div className='t2OverlaySpacer' />
-      </div>
+      <SidePanelHeader closeLabel='Back' onClose={back} title='Custom Tokens' />
       <div className='t2OverlayScroll t2LegacyTokens'>
         {current.notify === 'addToken' ? (
           <AddToken
@@ -90,17 +80,17 @@ export default function Tokens({ initialToken }: { initialToken?: PendingCustomT
       </div>
       {current.notify !== 'addToken' ? (
         <div className='t2LegacyTokenFooter'>
-          <div
-            aria-label='Add New Token'
-            className='t2LegacyTokenFooterButton'
-            onClick={() => navigate({})}
-            onKeyDown={(event) => activateOnKeyboard(event, () => navigate({}))}
-            role='button'
-            tabIndex={0}
+          <Button
+            appearance='raised'
+            label='Add New Token'
+            onPress={() => navigate({})}
+            shape='pill'
+            size='large'
+            width='full'
           >
-            <div className='newAccountIcon'>{svg.plus(16)}</div>
-            Add New Token
-          </div>
+            <Icon name='plus' size='medium' />
+            <Text variant='action'>Add New Token</Text>
+          </Button>
         </div>
       ) : null}
     </div>

@@ -1,8 +1,15 @@
 import React from 'react'
 
-import svg from '../../../../../resources/svg'
+import { Button } from '@newframe/ui/button'
+import { IconButton } from '@newframe/ui/icon-button'
+import { Input } from '@newframe/ui/input'
+import { SearchField } from '@newframe/ui/search-field'
+import { Spacer } from '@newframe/ui/spacer'
+import { Stack } from '@newframe/ui/stack'
+import { Text } from '@newframe/ui/text'
+
 import { formatUsdRate } from '../../../../../resources/domain/balance'
-import { activateOnKeyboard } from '../../ui/keyboard'
+import { SidePanelHeader } from '../../../../../resources/Components/SidePanel/SidePanelHeader'
 
 export interface NetworkRowViewModel {
   chainId: number
@@ -42,36 +49,32 @@ export function NetworksView(props: NetworksViewProps) {
 
       return (
         <div key={chain.chainId} className={selected ? 't2NetworkItem t2NetworkSelected' : 't2NetworkItem'}>
-          <div
-            aria-disabled={!chain.on}
-            aria-label={chain.name}
-            className='t2NetworkRow'
-            onClick={() => chain.on && props.onSelect(chain.chainId)}
-            onKeyDown={(event) => activateOnKeyboard(event, () => chain.on && props.onSelect(chain.chainId))}
-            role='button'
-            style={{ opacity: chain.on ? 1 : 0.4 }}
-            tabIndex={chain.on ? 0 : -1}
-          >
-            <div className='t2NetworkIcon'>{chain.icon}</div>
-            <div className='t2NetworkName'>{chain.name}</div>
-            <div className='t2NetworkTotal'>
-              {chain.on ? `$${formatUsdRate(chain.totalValue, 2)}` : 'Disabled'}
-            </div>
-            <div
-              aria-expanded={kebabOpen}
-              aria-label={`${chain.name} actions`}
-              className='t2NetworkKebab'
-              onClick={(event) => {
-                event.stopPropagation()
-                props.onToggleKebab(chain.chainId)
-              }}
-              onKeyDown={(event) => activateOnKeyboard(event, () => props.onToggleKebab(chain.chainId))}
-              role='button'
-              tabIndex={0}
+          <Stack align='center' direction='row' gap='none'>
+            <Button
+              appearance='selectionOption'
+              disabled={!chain.on}
+              label={chain.name}
+              onPress={() => props.onSelect(chain.chainId)}
+              selected={selected}
+              width='full'
             >
-              {svg.ellipsis(13)}
-            </div>
-          </div>
+              <div className='t2NetworkIcon'>{chain.icon}</div>
+              <Text truncate variant='label'>
+                {chain.name}
+              </Text>
+              <Spacer />
+              <Text tone='secondary' variant='numeric'>
+                {chain.on ? `$${formatUsdRate(chain.totalValue, 2)}` : 'Disabled'}
+              </Text>
+            </Button>
+            <IconButton
+              expanded={kebabOpen}
+              icon='ellipsis'
+              label={`${chain.name} actions`}
+              onPress={() => props.onToggleKebab(chain.chainId)}
+              size='small'
+            />
+          </Stack>
           {kebabOpen ? (
             <div className='t2NetworkActions'>
               <div
@@ -79,76 +82,53 @@ export function NetworksView(props: NetworksViewProps) {
                 onClick={(event) => event.stopPropagation()}
                 onKeyDown={(event) => event.stopPropagation()}
               >
-                <div className='t2NetworkRpcLabel'>
-                  <span className='traySpan'>Primary RPC</span>
-                  <span className='traySpan'>
+                <Stack direction='row' justify='between'>
+                  <Text tone='muted' variant='caption'>
+                    Primary RPC
+                  </Text>
+                  <Text tone='muted' variant='caption'>
                     {primary.current === 'custom'
                       ? 'Custom'
                       : primary.current === 'chainlist'
                         ? 'Chainlist'
                         : primary.current || 'Default'}
-                  </span>
-                </div>
-                <div className='t2NetworkRpcInputRow'>
-                  <input
-                    aria-label={`${chain.name} primary RPC`}
-                    onChange={(event) => props.onChangeRpcDraft(chain.chainId, event.target.value)}
-                    onKeyDown={(event) => {
-                      event.stopPropagation()
-                      if (event.key === 'Enter') {
-                        event.preventDefault()
-                        props.onSaveRpc(chain.chainId)
-                      }
-                    }}
+                  </Text>
+                </Stack>
+                <Stack align='center' direction='row' gap='xsmall'>
+                  <Input
+                    appearance='code'
+                    label={`${chain.name} primary RPC`}
+                    onSubmit={() => props.onSaveRpc(chain.chainId)}
+                    onValueChange={(value) => props.onChangeRpcDraft(chain.chainId, value)}
                     placeholder='Custom RPC URL'
                     spellCheck={false}
                     value={rpcValue}
                   />
-                  <div
-                    aria-disabled={!rpcValue.trim()}
-                    aria-label={`Save ${chain.name} RPC`}
-                    className={
-                      rpcValue.trim()
-                        ? 't2NetworkAction t2NetworkActionGood'
-                        : 't2NetworkAction t2NetworkActionDisabled'
-                    }
-                    onClick={(event) => {
-                      event.stopPropagation()
-                      props.onSaveRpc(chain.chainId)
-                    }}
-                    role='button'
-                    tabIndex={rpcValue.trim() ? 0 : -1}
+                  <Button
+                    appearance='subtle'
+                    disabled={!rpcValue.trim()}
+                    label={`Save ${chain.name} RPC`}
+                    onPress={() => props.onSaveRpc(chain.chainId)}
+                    shape='pill'
+                    size='small'
                   >
-                    Save
-                  </div>
-                </div>
+                    <Text variant='compactAction'>Save</Text>
+                  </Button>
+                </Stack>
               </div>
               {chain.chainId !== 1 ? (
-                <div
-                  className={
-                    chain.on ? 't2NetworkAction t2NetworkActionBad' : 't2NetworkAction t2NetworkActionGood'
-                  }
-                  onClick={(event) => {
-                    event.stopPropagation()
-                    props.onToggleChain(chain.chainId, !chain.on)
-                  }}
-                  role='button'
-                  tabIndex={0}
+                <Button
+                  appearance={chain.on ? 'danger' : 'subtle'}
+                  onPress={() => props.onToggleChain(chain.chainId, !chain.on)}
+                  shape='pill'
+                  size='small'
                 >
-                  {chain.on ? 'Disable Chain' : 'Enable Chain'}
-                </div>
+                  <Text variant='compactAction'>{chain.on ? 'Disable Chain' : 'Enable Chain'}</Text>
+                </Button>
               ) : null}
-              <div
-                className='t2NetworkAction t2NetworkActionCancel'
-                onClick={(event) => {
-                  event.stopPropagation()
-                  props.onToggleKebab(0)
-                }}
-                role='button'
-                tabIndex={0}
-              >
-                Cancel
-              </div>
+              <Button appearance='ghost' onPress={() => props.onToggleKebab(0)} shape='pill' size='small'>
+                <Text variant='compactAction'>Cancel</Text>
+              </Button>
             </div>
           ) : null}
         </div>
@@ -160,53 +140,40 @@ export function NetworksView(props: NetworksViewProps) {
   const section = (title: string, rows: NetworkRowViewModel[]) =>
     rows.length ? (
       <React.Fragment key={title}>
-        {props.showTestnets ? <div className='t2NetworkSectionTitle'>{title}</div> : null}
+        {props.showTestnets ? (
+          <Text tone='muted' variant='overline'>
+            {title}
+          </Text>
+        ) : null}
         {renderRows(rows)}
       </React.Fragment>
     ) : null
 
   return (
     <div aria-label='Networks' className='t2Overlay cardShow' role='dialog'>
-      <div className='t2OverlayHeader'>
-        <div
-          aria-label='Back'
-          className='t2OverlayBack'
-          onClick={props.onBack}
-          onKeyDown={(event) => activateOnKeyboard(event, props.onBack)}
-          role='button'
-          tabIndex={0}
-        >
-          {svg.chevronLeft(16)}
-        </div>
-        <div className='t2OverlayTitle'>Networks</div>
-        <div className='t2OverlaySpacer' />
-      </div>
+      <SidePanelHeader closeLabel='Back' onClose={props.onBack} title='Networks' />
       <div className='t2SearchWrap'>
-        <div className='t2Search'>
-          <div className='t2SearchIcon'>{svg.search(11)}</div>
-          <input
-            aria-label='Search networks'
-            onChange={(event) => props.onChangeQuery(event.target.value)}
-            placeholder='Search networks'
-            spellCheck={false}
-            type='text'
-            value={props.query}
-          />
-        </div>
+        <SearchField
+          label='Search networks'
+          onChange={props.onChangeQuery}
+          onClear={() => props.onChangeQuery('')}
+          placeholder='Search networks'
+          value={props.query}
+        />
       </div>
       <div className='t2OverlayScroll t2NetworksScroll'>
-        <div
-          aria-label='All Networks'
-          className={props.selectedChainId === 0 ? 't2NetworkAll t2NetworkSelected' : 't2NetworkAll'}
-          onClick={() => props.onSelect(0)}
-          onKeyDown={(event) => activateOnKeyboard(event, () => props.onSelect(0))}
-          role='button'
-          tabIndex={0}
+        <Button
+          appearance='outlinedSelection'
+          label='All Networks'
+          onPress={() => props.onSelect(0)}
+          selected={props.selectedChainId === 0}
+          width='full'
         >
           <div className='t2NetworkDots t2NetworkDotsLarge'>{props.enabledChainDots}</div>
-          <div className='t2NetworkAllName'>All Networks</div>
-          <div className='t2NetworkAllTotal'>{`$${formatUsdRate(props.allTotal, 2)}`}</div>
-        </div>
+          <Text variant='label'>All Networks</Text>
+          <Spacer />
+          <Text variant='numeric'>{`$${formatUsdRate(props.allTotal, 2)}`}</Text>
+        </Button>
         {section('Mainnets', productionRows)}
         {section('Testnets', testnetRows)}
       </div>

@@ -23,7 +23,11 @@ export function ProgressSteps({ steps }: ProgressStepsProps) {
               className='nf-progress-step__number'
               data-status={step.status === 'required' ? 'required' : 'default'}
             >
-              <Text align='center' variant='caption' tone={step.status === 'required' ? 'accent' : 'secondary'}>
+              <Text
+                align='center'
+                variant='caption'
+                tone={step.status === 'required' ? 'accent' : 'secondary'}
+              >
                 {index + 1}
               </Text>
             </span>
