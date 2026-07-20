@@ -5,7 +5,7 @@ import { Icon } from '@newframe/ui/icon'
 import { Text } from '@newframe/ui/text'
 
 import type { Token } from '../../../../../main/store/state'
-import { SidePanelHeader } from '../../../../../resources/Components/SidePanel/SidePanelHeader'
+import { TrayOverlay } from '../../../../../resources/Components/TrayOverlay'
 import { useHomeUiStore } from '../../state/HomeUiProvider'
 import AddToken from './AddToken'
 import type { AddTokenNotifyData } from './AddToken'
@@ -62,37 +62,41 @@ export default function Tokens({ initialToken }: { initialToken?: PendingCustomT
       tokenData: token
     })
 
+  const footer =
+    current.notify !== 'addToken' ? (
+      <Button
+        appearance='raised'
+        label='Add New Token'
+        onPress={() => navigate({})}
+        shape='pill'
+        size='large'
+        width='full'
+      >
+        <Icon name='plus' size='medium' />
+        <Text variant='action'>Add New Token</Text>
+      </Button>
+    ) : undefined
+
   return (
-    <div aria-label='Custom Tokens' className='t2Overlay cardShow' role='dialog'>
-      <SidePanelHeader closeLabel='Back' onClose={back} title='Custom Tokens' />
-      <div className='t2OverlayScroll t2LegacyTokens'>
-        {current.notify === 'addToken' ? (
-          <AddToken
-            data={current}
-            onBack={back}
-            onDone={done}
-            onNavigate={navigate}
-            onOpenNetworks={() => openOverlay({ type: 'networks' })}
-          />
-        ) : (
-          <CustomTokens onEdit={edit} />
-        )}
-      </div>
-      {current.notify !== 'addToken' ? (
-        <div className='t2LegacyTokenFooter'>
-          <Button
-            appearance='raised'
-            label='Add New Token'
-            onPress={() => navigate({})}
-            shape='pill'
-            size='large'
-            width='full'
-          >
-            <Icon name='plus' size='medium' />
-            <Text variant='action'>Add New Token</Text>
-          </Button>
-        </div>
-      ) : null}
-    </div>
+    <TrayOverlay
+      closeLabel='Back'
+      footer={footer}
+      label='Custom Tokens'
+      onClose={back}
+      padding='none'
+      title='Custom Tokens'
+    >
+      {current.notify === 'addToken' ? (
+        <AddToken
+          data={current}
+          onBack={back}
+          onDone={done}
+          onNavigate={navigate}
+          onOpenNetworks={() => openOverlay({ type: 'networks' })}
+        />
+      ) : (
+        <CustomTokens onEdit={edit} />
+      )}
+    </TrayOverlay>
   )
 }

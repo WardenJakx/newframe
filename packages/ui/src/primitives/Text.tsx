@@ -103,7 +103,8 @@ export type TextRecipeProps = NonNullable<RecipeVariantProps<typeof textRecipe>>
 export type TypographyProps = TextRecipeProps & { children: ReactNode; decorative?: boolean }
 
 export type TextProps = TypographyProps & {
-  as?: 'output' | 'small' | 'span' | 'strong'
+  as?: 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' | 'output' | 'small' | 'span' | 'strong'
+  label?: string
 }
 
 export function Text({
@@ -113,6 +114,7 @@ export function Text({
   decorative = false,
   display,
   emphasis,
+  label,
   shrink,
   tone,
   truncate,
@@ -124,6 +126,7 @@ export function Text({
   return (
     <Component
       aria-hidden={decorative || undefined}
+      aria-label={label}
       className={textRecipe({ align, display, emphasis: resolvedEmphasis, shrink, tone, truncate, variant })}
       data-tone={tone ?? undefined}
     >

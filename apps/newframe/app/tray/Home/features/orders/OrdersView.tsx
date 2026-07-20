@@ -3,6 +3,7 @@ import { Stack } from '@newframe/ui/stack'
 import { Text } from '@newframe/ui/text'
 
 import { getContraPreposition } from '../../../../../resources/domain/flash/pair'
+import { cva } from '../../../../../resources/styled-system/css/cva.js'
 import { activateOnKeyboard } from '../../ui/keyboard'
 import { OrderAssetPill } from './OrderAssetPill'
 import {
@@ -16,6 +17,38 @@ import {
   orderStatusLabel,
   orderTypeLabel
 } from './orderModel'
+
+const orderListRecipe = cva({ base: { display: 'flex', flexDirection: 'column', gap: '2' } })
+
+const orderRowRecipe = cva({
+  base: {
+    minHeight: 'menu-row-min',
+    display: 'grid',
+    gridTemplateColumns: '22px 70px minmax(0, 1fr) minmax(62px, auto)',
+    gridTemplateAreas: '"cancel status copy size" "cancel asset copy contra"',
+    alignItems: 'center',
+    columnGap: '4',
+    rowGap: '2',
+    padding: '4',
+    borderRadius: 'small',
+    cursor: 'pointer',
+    _hover: { background: 'bg.card' }
+  }
+})
+
+const orderAreaRecipe = cva({
+  base: { minWidth: 0 },
+  variants: {
+    area: {
+      asset: { gridArea: 'asset' },
+      cancel: { gridArea: 'cancel', display: 'grid', placeItems: 'center' },
+      contra: { gridArea: 'contra', maxWidth: 'selection-trigger', justifySelf: 'end' },
+      copy: { gridArea: 'copy' },
+      size: { gridArea: 'size', maxWidth: 'selection-trigger', justifySelf: 'end', overflow: 'hidden' },
+      status: { gridArea: 'status' }
+    }
+  }
+})
 
 export function OrdersView({
   cancelError,
@@ -42,7 +75,7 @@ export function OrdersView({
     )
 
   return (
-    <div className='t2OrderList'>
+    <div className={orderListRecipe()}>
       {orders.map((order) => {
         const chainId = Number(order.chainId)
         const open = isOpenOrder(order)
@@ -54,14 +87,14 @@ export function OrdersView({
           <div
             key={order.orderId}
             aria-label={`${orderPairIntent(order)} order details`}
-            className='t2OrderRow cardShow'
+            className={orderRowRecipe()}
             data-order-id={order.orderId}
             onClick={() => onOpen(order.orderId)}
             onKeyDown={(event) => activateOnKeyboard(event, () => onOpen(order.orderId))}
             role='button'
             tabIndex={0}
           >
-            <div className='t2OrderCancelSlot'>
+            <div className={orderAreaRecipe({ area: 'cancel' })}>
               {open ? (
                 <IconButton
                   disabled={cancellingOrderId === order.orderId}
@@ -76,18 +109,20 @@ export function OrdersView({
                 />
               ) : null}
             </div>
-            <div className='t2OrderStatusBlock'>
-              <Text
-                tone={statusKey === 'filled' ? 'success' : statusKey === 'failed' ? 'danger' : 'secondary'}
-                variant='supporting'
-              >
-                {orderStatusLabel(order)}
-              </Text>
-              <Text tone='muted' variant='caption'>
-                {orderDate(order.createdAt)}
-              </Text>
+            <div className={orderAreaRecipe({ area: 'status' })}>
+              <Stack gap='xsmall'>
+                <Text
+                  tone={statusKey === 'filled' ? 'success' : statusKey === 'failed' ? 'danger' : 'secondary'}
+                  variant='supporting'
+                >
+                  {orderStatusLabel(order)}
+                </Text>
+                <Text tone='muted' variant='caption'>
+                  {orderDate(order.createdAt)}
+                </Text>
+              </Stack>
             </div>
-            <div className='t2OrderAssetColumn'>
+            <div className={orderAreaRecipe({ area: 'asset' })}>
               <OrderAssetPill
                 asset={order.targetAsset}
                 fallbackChainId={chainId}
@@ -95,7 +130,7 @@ export function OrdersView({
                 networksMeta={networksMeta}
               />
             </div>
-            <div className='t2OrderCopy'>
+            <div className={orderAreaRecipe({ area: 'copy' })}>
               <Stack gap='xsmall' grow>
                 <Text truncate variant='label'>
                   {orderPairIntent(order)}
@@ -115,10 +150,10 @@ export function OrdersView({
                 </Stack>
               </Stack>
             </div>
-            <div className='t2OrderSize'>
+            <div className={orderAreaRecipe({ area: 'size' })}>
               <Text variant='numeric'>{orderSize(order)}</Text>
             </div>
-            <div className='t2OrderContra'>
+            <div className={orderAreaRecipe({ area: 'contra' })}>
               <OrderAssetPill
                 asset={order.contraAsset}
                 fallbackChainId={chainId}

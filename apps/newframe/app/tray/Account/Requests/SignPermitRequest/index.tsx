@@ -1,14 +1,12 @@
 import { formatUnits, isUnlimited, toBigInt } from '../../../../../resources/utils/numbers'
 import { chainColorValue } from '../../../../../resources/colors'
-import svg from '../../../../../resources/svg'
 import link from '../../../../../resources/link'
-import { ClusterBox, Cluster, ClusterRow, ClusterValue } from '../../../../../resources/Components/Cluster'
+import { Cluster, ClusterRow, ClusterValue } from '../../../../../resources/Components/Cluster'
 import Countdown from '../../../../../resources/Components/Countdown'
 import RequestHeader from '../../../../../resources/Components/RequestHeader'
 import RequestItem from '../../../../../resources/Components/RequestItem'
 import EditTokenSpend from '../../../../../resources/Components/EditTokenSpend'
 import { SimpleTypedData as TypedSignatureOverview } from '../../../../../resources/Components/SimpleTypedData'
-import { getSignatureRequestClass } from '../../../../../resources/domain/request'
 import useCopiedMessage from '../../../../../resources/Hooks/useCopiedMessage'
 import { useRequestView, type RequestViewState } from '../../../requestView'
 import type { RequestViewStep } from '../../../requestView'
@@ -58,114 +56,95 @@ const PermitOverview = ({ req, chainData, originName, open }: PermitOverviewProp
   const amountSuffix = tokenData.symbol || 'UNKNOWN TOKEN'
 
   return (
-    <div className='approveRequest'>
-      <div className='approveTransactionPayload'>
-        <div className='_txBody'>
-          <ClusterBox animationSlot={1}>
-            <RequestItem
-              key={`signErc20Permit:${handlerId}`}
-              req={req}
-              i={0}
-              title={`${chainName} Token Permit`}
-              color={chainColor ? chainColorValue(chainColor) : ''}
-              img={icon}
-              headerMode={true}
+    <Stack gap='medium'>
+      <RequestItem
+        key={`signErc20Permit:${handlerId}`}
+        req={req}
+        i={0}
+        title={`${chainName} Token Permit`}
+        color={chainColor ? chainColorValue(chainColor) : ''}
+        img={icon}
+        headerMode={true}
+      >
+        <Cluster>
+          <ClusterRow>
+            <ClusterValue
+              onClick={() => {
+                open({ step: 'viewRaw' })
+              }}
             >
-              <Cluster>
-                <ClusterRow>
-                  <ClusterValue
-                    onClick={() => {
-                      open({ step: 'viewRaw' })
-                    }}
-                  >
-                    <div className='_txDescription'>
-                      <RequestHeader chain={chainName} chainColor={chainColor}>
-                        <div className='requestItemTitleSub'>
-                          <div className='requestItemTitleSubIcon'>{svg.window(10)}</div>
-                          <div className='requestItemTitleSubText'>{originName}</div>
-                        </div>
-                        <div className='_txDescriptionSummaryMain'>{`Permit to Spend ${
-                          tokenData.symbol || 'Unknown Token'
-                        }`}</div>
-                      </RequestHeader>
-                    </div>
-                  </ClusterValue>
-                </ClusterRow>
-              </Cluster>
-            </RequestItem>
-          </ClusterBox>
-          <ClusterBox title={'Token Permit'} animationSlot={2}>
-            <Cluster>
-              {tokenData && (
-                <>
-                  <ClusterRow>
-                    <ClusterValue pointerEvents={true} onClick={() => copySpender()}>
-                      <div className='clusterAddress'>
-                        <span className='traySpan clusterAddressRecipient'>
-                          {spender.ens || (
-                            <>
-                              {spender.address.substring(0, 8)}
-                              {svg.octicon('kebab-horizontal', { height: 15 })}
-                              {spender.address.substring(spender.address.length - 6)}
-                            </>
-                          )}
-                        </span>
-                        <div className='clusterAddressRecipientFull'>
-                          {showCopiedMessage ? (
-                            <span className='traySpan'>{'Address Copied'}</span>
-                          ) : (
-                            <span className='traySpan clusterFira'>{spender.address}</span>
-                          )}
-                        </div>
-                      </div>
-                    </ClusterValue>
-                  </ClusterRow>
-                  <ClusterRow>
-                    <ClusterValue>
-                      <div
-                        className='clusterTag'
-                        style={{ color: 'var(--color-status-danger)' }}
-                      >{`is requesting permission to spend`}</div>
-                    </ClusterValue>
-                  </ClusterRow>
-                  <ClusterRow>
-                    <ClusterValue
-                      onClick={
-                        tokenData.decimals
-                          ? () => {
-                              open({ step: 'adjustPermit' })
-                            }
-                          : undefined
-                      }
-                    >
-                      <div className='clusterFocus'>
-                        <div className='clusterFocusHighlight'>{`${amountDisplay} ${amountSuffix}`}</div>
-                      </div>
-                    </ClusterValue>
-                  </ClusterRow>
+              <Stack align='center' gap='small'>
+                <RequestHeader chain={chainName} chainColor={chainColor}>
+                  <Stack align='center' direction='row' gap='xsmall'>
+                    <Icon name='window' size='small' tone='muted' />
+                    <Text tone='muted' truncate variant='caption'>
+                      {originName}
+                    </Text>
+                  </Stack>
+                  <Text align='center' variant='sectionTitle'>{`Permit to Spend ${
+                    tokenData.symbol || 'Unknown Token'
+                  }`}</Text>
+                </RequestHeader>
+              </Stack>
+            </ClusterValue>
+          </ClusterRow>
+        </Cluster>
+      </RequestItem>
+      <Stack gap='xsmall'>
+        <Text tone='muted' variant='overline'>
+          Token Permit
+        </Text>
+        <Cluster>
+          {tokenData && (
+            <>
+              <ClusterRow>
+                <ClusterValue interactiveChildren onClick={() => copySpender()}>
+                  <Stack align='center' gap='xsmall'>
+                    <Text align='center' truncate variant={spender.ens ? 'label' : 'code'}>
+                      {spender.ens ||
+                        `${spender.address.substring(0, 8)}…${spender.address.substring(spender.address.length - 6)}`}
+                    </Text>
+                    <Text tone={showCopiedMessage ? 'accent' : 'muted'} truncate variant='code'>
+                      {showCopiedMessage ? 'Address Copied' : spender.address}
+                    </Text>
+                  </Stack>
+                </ClusterValue>
+              </ClusterRow>
+              <ClusterRow>
+                <ClusterValue>
+                  <Text align='center' tone='danger' variant='overline'>
+                    is requesting permission to spend
+                  </Text>
+                </ClusterValue>
+              </ClusterRow>
+              <ClusterRow>
+                <ClusterValue
+                  onClick={
+                    tokenData.decimals
+                      ? () => {
+                          open({ step: 'adjustPermit' })
+                        }
+                      : undefined
+                  }
+                >
+                  <Text
+                    align='center'
+                    tone='accent'
+                    variant='heading'
+                  >{`${amountDisplay} ${amountSuffix}`}</Text>
+                </ClusterValue>
+              </ClusterRow>
 
-                  <ClusterRow>
-                    <ClusterValue>
-                      <div className='clusterTag'>Permit Expires In</div>
-                    </ClusterValue>
-                  </ClusterRow>
-
-                  <ClusterRow>
-                    <ClusterValue>
-                      <Countdown
-                        end={Number(deadline) * 1000}
-                        innerClass='clusterFocusHighlight'
-                        titleClass='clusterFocus'
-                      />
-                    </ClusterValue>
-                  </ClusterRow>
-                </>
-              )}
-            </Cluster>
-          </ClusterBox>
-        </div>
-      </div>
-    </div>
+              <ClusterRow>
+                <ClusterValue>
+                  <Countdown end={Number(deadline) * 1000} title='Permit Expires In' />
+                </ClusterValue>
+              </ClusterRow>
+            </>
+          )}
+        </Cluster>
+      </Stack>
+    </Stack>
   )
 }
 
@@ -207,7 +186,6 @@ const EditPermit = ({ req }: EditPermitProps) => {
 
 const PermitRequest = ({ req, originName, step, chainData }: PermitRequestProps) => {
   const requestView = useRequestView()
-  const requestClass = getSignatureRequestClass(req)
 
   const renderStep = () => {
     switch (step) {
@@ -222,11 +200,10 @@ const PermitRequest = ({ req, originName, step, chainData }: PermitRequestProps)
     }
   }
 
-  return (
-    <div key={req.id || req.handlerId} className={requestClass}>
-      {renderStep()}
-    </div>
-  )
+  return <div key={req.id || req.handlerId}>{renderStep()}</div>
 }
 
 export default PermitRequest
+import { Icon } from '@newframe/ui/icon'
+import { Stack } from '@newframe/ui/stack'
+import { Text } from '@newframe/ui/text'

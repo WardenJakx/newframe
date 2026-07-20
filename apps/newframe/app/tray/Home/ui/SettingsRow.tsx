@@ -2,6 +2,7 @@ import { Button } from '@newframe/ui/button'
 import { Icon } from '@newframe/ui/icon'
 import { Spacer } from '@newframe/ui/spacer'
 import { Stack } from '@newframe/ui/stack'
+import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
 import { ToggleButton } from '@newframe/ui/toggle-button'
 
@@ -17,19 +18,21 @@ export function SettingsToggleRow({
   onToggle: () => void
 }) {
   return (
-    <div className='t2SettingsRow'>
-      <Stack gap='xsmall' grow>
-        <Text truncate variant='label'>
-          {label}
-        </Text>
-        {detail ? (
-          <Text tone='muted' variant='caption'>
-            {detail}
+    <Surface padding='small' radius='card'>
+      <Stack align='center' direction='row' gap='small' justify='between'>
+        <Stack gap='xsmall' grow>
+          <Text truncate variant='label'>
+            {label}
           </Text>
-        ) : null}
+          {detail ? (
+            <Text tone='muted' variant='caption'>
+              {detail}
+            </Text>
+          ) : null}
+        </Stack>
+        <ToggleButton appearance='switch' label={label} onPress={onToggle} pressed={on} />
       </Stack>
-      <ToggleButton appearance='switch' label={label} onPress={onToggle} pressed={on} />
-    </div>
+    </Surface>
   )
 }
 

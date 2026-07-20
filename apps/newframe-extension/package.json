@@ -13,14 +13,18 @@
     "lint": "eslint .",
     "lint:fix": "eslint --fix .",
     "format": "prettier --write '**/*.{yml,json,md,html,ts,tsx,js,mjs}' --config ../../.prettierrc.json --ignore-path ../../.prettierignore",
-    "build": "bun run build.ts",
-    "bundle": "bun run build.ts",
-    "watch": "bun run build.ts --watch",
-    "typecheck": "tsgo --noEmit -p tsconfig.json"
+    "styles:generate": "panda codegen --clean && panda",
+    "styles:watch": "panda --watch",
+    "build": "bun run styles:generate && bun run build.ts",
+    "bundle": "bun run styles:generate && bun run build.ts",
+    "bundle:watch": "bun run build.ts --watch",
+    "watch": "bun run styles:generate && bun run --parallel styles:watch bundle:watch",
+    "typecheck": "bun run styles:generate && tsgo --noEmit -p tsconfig.json"
   },
   "author": "NewFrame Labs, Inc.",
   "license": "",
   "devDependencies": {
+    "@pandacss/dev": "^1.11.4",
     "@types/bun": "latest",
     "@types/chrome": "^0.1.43",
     "@types/react": "^19",

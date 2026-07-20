@@ -10,7 +10,8 @@ const fieldRecipe = sva({
     root: {
       minWidth: 0,
       minHeight: 'field',
-      display: 'flex',
+      display: 'grid',
+      gridTemplateColumns: 'auto minmax(0, 1fr)',
       alignItems: 'center',
       gap: '4',
       paddingInline: '5',
@@ -18,7 +19,8 @@ const fieldRecipe = sva({
       borderStyle: 'solid',
       borderColor: 'border.subtle',
       borderRadius: 'default',
-      background: 'border.subtle'
+      background: 'border.subtle',
+      _focusWithin: { borderColor: 'border.focus' }
     },
     control: {
       minWidth: 0,
@@ -31,14 +33,20 @@ const fieldRecipe = sva({
   },
   variants: {
     invalid: {
-      true: { root: { borderColor: 'status.danger', boxShadow: 'focus-danger' } },
+      true: {
+        root: {
+          borderColor: 'status.danger',
+          boxShadow: 'focus-danger',
+          _focusWithin: { borderColor: 'status.danger' }
+        }
+      },
       false: {}
     },
     vertical: {
       true: {
         root: {
           minHeight: 'field-vertical',
-          flexDirection: 'column',
+          gridTemplateColumns: 'minmax(0, 1fr)',
           alignItems: 'stretch',
           justifyContent: 'center',
           gap: '3'

@@ -1,5 +1,4 @@
 import { SimpleTypedData as TypedSignatureOverview } from '../../../../../resources/Components/SimpleTypedData'
-import { getSignatureRequestClass } from '../../../../../resources/domain/request'
 import { useOriginName } from '../state'
 import type { SignTypedDataRequest } from '../../../../../main/accounts/types'
 
@@ -12,13 +11,7 @@ type TransactionRequestWithStateProps = Omit<TransactionRequestProps, 'originNam
 
 export function TransactionRequest(props: TransactionRequestProps) {
   const { req, originName } = props
-  const requestClass = getSignatureRequestClass(req)
-
-  return (
-    <div key={req.id || req.handlerId} className={requestClass}>
-      <TypedSignatureOverview {...{ originName, req }} />
-    </div>
-  )
+  return <TypedSignatureOverview key={req.id || req.handlerId} {...{ originName, req }} />
 }
 
 export default function TransactionRequestWithState(props: TransactionRequestWithStateProps) {

@@ -1,5 +1,11 @@
+import { ScrollArea } from '@newframe/ui/scroll-area'
+import { Stack } from '@newframe/ui/stack'
+import { Surface } from '@newframe/ui/surface'
+import { Text } from '@newframe/ui/text'
+
 import type { Erc7730Display } from '../../../main/signatures/erc7730'
 import type { Eip712Digests } from '../../../main/signatures/digests'
+import { DetailRow } from '../DetailRow'
 
 type SimpleJsonRow = {
   label: string
@@ -68,23 +74,31 @@ const flattenJsonRows = (json: unknown, prefix = ''): SimpleJsonRow[] => {
 
 const SimpleJSON = ({ rows }: { rows: SimpleJsonRow[] }) => {
   return (
-    <div className='simpleJson'>
+    <Stack gap='none'>
       {rows.map((row, index) => (
-        <div key={`${row.label}:${index}`} className='simpleJsonChild'>
-          <div className='simpleJsonKey simpleJsonKeyTx'>{row.label}</div>
-          <div className='simpleJsonValue'>{row.value}</div>
-        </div>
+        <DetailRow
+          code
+          key={`${row.label}:${index}`}
+          label={row.label}
+          labelVariant='overline'
+          value={row.value}
+          valueVariant='supporting'
+        />
       ))}
-    </div>
+    </Stack>
   )
 }
 
 const SimpleJsonSection = ({ title, rows }: { title?: string; rows: SimpleJsonRow[] }) =>
   rows.length ? (
-    <>
-      {title ? <div className='simpleJsonHeader'>{title}</div> : null}
+    <Stack gap='xsmall'>
+      {title ? (
+        <Text tone='muted' variant='sectionTitle'>
+          {title}
+        </Text>
+      ) : null}
       <SimpleJSON rows={rows} />
-    </>
+    </Stack>
   ) : null
 
 type SimpleTypedDataInnerProps = {
@@ -106,10 +120,10 @@ const SimpleTypedDataInner = ({ typedData }: SimpleTypedDataInnerProps) => {
     const messageRows = flattenJsonRows(typedData.message)
 
     return (
-      <div className='signTypedDataInner'>
+      <Stack gap='medium'>
         <SimpleJsonSection title='Domain' rows={domainRows} />
         <SimpleJsonSection title='Message' rows={messageRows} />
-      </div>
+      </Stack>
     )
   }
 
@@ -123,9 +137,9 @@ const SimpleTypedDataInner = ({ typedData }: SimpleTypedDataInnerProps) => {
     : flattenJsonRows(typedData)
 
   return (
-    <div className='signTypedDataSection'>
+    <Stack gap='small'>
       <SimpleJSON rows={legacyRows} />
-    </div>
+    </Stack>
   )
 }
 
@@ -137,14 +151,13 @@ const DigestRows = ({ digests }: { digests?: Partial<Eip712Digests> }) => {
   ].filter((row): row is [string, string] => Boolean(row[1]))
 
   return rows.length ? (
-    <div className='signatureDigestRows'>
-      {rows.map(([label, value]) => (
-        <div key={label} className='signatureDigestRow'>
-          <div className='signatureDigestLabel'>{label}</div>
-          <div className='signatureDigestValue'>{value}</div>
-        </div>
-      ))}
-    </div>
+    <Surface padding='small' radius='small' tone='subtle'>
+      <Stack gap='none'>
+        {rows.map(([label, value]) => (
+          <DetailRow code key={label} label={label} labelVariant='overline' value={value} />
+        ))}
+      </Stack>
+    </Surface>
   ) : null
 }
 
@@ -152,23 +165,32 @@ const Erc7730ClearSigning = ({ display }: { display?: Erc7730Display }) => {
   if (!display) return null
 
   return (
-    <div className='erc7730ClearSigning'>
-      <div className='txViewDataHeader'>ERC-7730 Clear Signing</div>
-      <div className='erc7730Card'>
-        <div className='erc7730Title'>{display.summary || display.title}</div>
-        {display.summary && display.title !== display.summary ? (
-          <div className='erc7730Intent'>{display.title}</div>
-        ) : null}
-        <div className='erc7730Rows'>
-          {display.rows.map((row) => (
-            <div key={`${row.path || row.label}:${row.value}`} className='erc7730Row'>
-              <div className='erc7730Label'>{row.label}</div>
-              <div className='erc7730Value'>{row.value}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
+    <Stack gap='xsmall'>
+      <Text tone='muted' variant='sectionTitle'>
+        ERC-7730 Clear Signing
+      </Text>
+      <Surface border='accent' padding='small' radius='control'>
+        <Stack gap='small'>
+          <Text variant='label'>{display.summary || display.title}</Text>
+          {display.summary && display.title !== display.summary ? (
+            <Text tone='secondary' variant='supporting'>
+              {display.title}
+            </Text>
+          ) : null}
+          <Stack gap='none'>
+            {display.rows.map((row) => (
+              <DetailRow
+                code
+                key={`${row.path || row.label}:${row.value}`}
+                label={row.label}
+                value={row.value}
+                valueVariant='supporting'
+              />
+            ))}
+          </Stack>
+        </Stack>
+      </Surface>
+    </Stack>
   )
 }
 
@@ -177,16 +199,19 @@ export const SimpleTypedData = ({ req }: SimpleTypedDataProps) => {
   const typedData = req.typedMessage.data || {}
 
   return type === 'signTypedData' || type === 'signErc20Permit' ? (
-    <div className='accountViewScroll typedDataScroll cardShow'>
-      <div className='txViewData'>
+    <ScrollArea height='page'>
+      <Stack gap='medium'>
         <Erc7730ClearSigning display={req.erc7730} />
         <DigestRows digests={req.digests} />
-        <div className='txViewDataHeader'>{'Raw Typed Data'}</div>
+        <Text tone='muted' variant='sectionTitle'>
+          Raw Typed Data
+        </Text>
         <SimpleTypedDataInner {...{ typedData }} />
-        <div className='typedDataActionSpacer' />
-      </div>
-    </div>
+      </Stack>
+    </ScrollArea>
   ) : (
-    <div className='unknownType'>{'Unknown: ' + req.type}</div>
+    <Text align='center' tone='danger' variant='label'>
+      {'Unknown: ' + req.type}
+    </Text>
   )
 }

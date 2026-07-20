@@ -1,9 +1,0 @@
-.settings-panel {
-  position: relative;
-  width: var(--nf-size-page-compact);
-  max-height: var(--nf-size-page-max-block);
-  overflow-x: hidden;
-  overflow-y: auto;
-  padding: var(--nf-space-5);
-  background: var(--color-bg-secondary);
-}

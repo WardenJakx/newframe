@@ -1,4 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Button } from '@newframe/ui/button'
+import { Grid } from '@newframe/ui/grid'
+import { Input } from '@newframe/ui/input'
+import { Spinner } from '@newframe/ui/spinner'
+import { Stack } from '@newframe/ui/stack'
+import { Surface } from '@newframe/ui/surface'
+import { Text } from '@newframe/ui/text'
 
 import link from '../../../../resources/link'
 import svg from '../../../../resources/svg'
@@ -72,102 +79,102 @@ function RecoveryActions({ signer }: { signer: WalletSigner }) {
 
   if (signer.type === 'trezor' && status === 'need pin') {
     return (
-      <div className='signerRecoveryActions'>
-        <div aria-label='Trezor PIN' className='signerRecoveryPinValue'>
-          {'•'.repeat(trezorPin.length) || ' '}
-        </div>
-        <div className='signerRecoveryPinGrid'>
+      <Stack gap='medium'>
+        <Surface border='subtle' padding='medium' radius='pill' tone='raised'>
+          <Text align='center' variant='code'>
+            {'•'.repeat(trezorPin.length) || 'Enter PIN'}
+          </Text>
+        </Surface>
+        <Grid columns='three' gap='medium'>
           {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((position) => (
-            <button
-              aria-label={`PIN position ${position}`}
+            <Button
+              appearance='control'
               key={position}
-              onClick={() => setTrezorPin((value) => value + position)}
-              type='button'
+              label={`PIN position ${position}`}
+              onPress={() => setTrezorPin((value) => value + position)}
+              shape='control'
+              size='large'
             >
-              {svg.octicon('primitive-dot', { height: 18 })}
-            </button>
+              <Text decorative variant='heading'>
+                •
+              </Text>
+            </Button>
           ))}
-        </div>
-        <div className='signerRecoveryButtonRow'>
-          <button
+        </Grid>
+        <Stack direction='row' equal gap='small'>
+          <Button
+            appearance='control'
             disabled={!trezorPin}
-            onClick={() => setTrezorPin((value) => value.slice(0, -1))}
-            type='button'
+            onPress={() => setTrezorPin((value) => value.slice(0, -1))}
           >
-            Delete
-          </button>
-          <button disabled={!trezorPin} onClick={submitPin} type='button'>
-            Submit PIN
-          </button>
-        </div>
-      </div>
+            <Text variant='action'>Delete</Text>
+          </Button>
+          <Button appearance='primary' disabled={!trezorPin} onPress={submitPin}>
+            <Text variant='action'>Submit PIN</Text>
+          </Button>
+        </Stack>
+      </Stack>
     )
   }
 
   if (signer.type === 'trezor' && status === 'enter passphrase') {
     const allowsDeviceEntry = (signer.capabilities || []).includes('Capability_PassphraseEntry')
     return (
-      <div className='signerRecoveryActions'>
-        <input
-          aria-label='Trezor passphrase'
+      <Stack gap='small'>
+        <Input
           autoFocus
-          onChange={(event) => setTrezorPassphrase(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter') submitPassphrase()
-          }}
+          label='Trezor passphrase'
+          onSubmit={submitPassphrase}
+          onValueChange={setTrezorPassphrase}
           type='password'
           value={trezorPassphrase}
         />
-        <button onClick={submitPassphrase} type='button'>
-          Submit Passphrase
-        </button>
+        <Button appearance='primary' onPress={submitPassphrase} width='full'>
+          <Text variant='action'>Submit Passphrase</Text>
+        </Button>
         {allowsDeviceEntry ? (
-          <button
-            onClick={() =>
+          <Button
+            appearance='control'
+            onPress={() =>
               void link.executeCommand({
                 type: 'signer.trezor-input',
                 signerId: signer.id,
                 input: 'device-passphrase'
               })
             }
-            type='button'
+            width='full'
           >
-            Enter on Device
-          </button>
+            <Text variant='action'>Enter on Device</Text>
+          </Button>
         ) : null}
-      </div>
+      </Stack>
     )
   }
 
   if (signer.type === 'lattice' && status === 'pair') {
     return (
-      <div className='signerRecoveryActions'>
-        <input
-          aria-label='Lattice pairing code'
+      <Stack gap='small'>
+        <Input
           autoFocus
-          onChange={(event) => setLatticePairCode(event.target.value.toUpperCase())}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter') pairLattice()
-          }}
+          label='Lattice pairing code'
+          onSubmit={pairLattice}
+          onValueChange={(value) => setLatticePairCode(value.toUpperCase())}
           value={latticePairCode}
         />
-        <button disabled={!latticePairCode} onClick={pairLattice} type='button'>
-          Pair Lattice
-        </button>
-      </div>
+        <Button appearance='primary' disabled={!latticePairCode} onPress={pairLattice} width='full'>
+          <Text variant='action'>Pair Lattice</Text>
+        </Button>
+      </Stack>
     )
   }
 
-  if (isLoading(status))
-    return <div aria-label='Connecting hardware wallet' className='signerRecoveryLoader' />
+  if (isLoading(status)) return <Spinner label='Connecting hardware wallet' size='large' />
 
   const canReload = signer.type !== 'trezor' || status === 'disconnected' || status.includes('reconnect')
   return canReload ? (
-    <div className='signerRecoveryActions'>
-      <button onClick={reload} type='button'>
-        Retry Connection
-      </button>
-    </div>
+    <Button appearance='control' onPress={reload} width='full'>
+      <Text variant='action'>Retry Connection</Text>
+    </Button>
   ) : null
 }
 
@@ -192,48 +199,48 @@ export default function SignerRecovery({
   const signer = candidates.find((candidate) => candidate.id === selectedId) || candidates[0]
 
   return (
-    <div aria-label='Hardware wallet recovery' className='signerRecovery' role='dialog'>
-      <div className='notifyTitle'>Hardware Wallet</div>
+    <Stack gap='large'>
+      <Text align='center' variant='heading'>
+        Hardware Wallet
+      </Text>
       {candidates.length > 1 ? (
-        <div aria-label='Hardware wallets' className='signerRecoveryCandidates' role='group'>
+        <Stack direction='row' equal gap='small'>
           {candidates.map((candidate) => (
-            <button
-              aria-pressed={candidate.id === signer?.id}
+            <Button
+              appearance='segment'
               key={candidate.id}
-              onClick={() => setSelectedId(candidate.id)}
-              type='button'
+              onPress={() => setSelectedId(candidate.id)}
+              pressed={candidate.id === signer?.id}
             >
-              {candidate.name}
-            </button>
+              <Text variant='compactAction'>{candidate.name}</Text>
+            </Button>
           ))}
-        </div>
+        </Stack>
       ) : null}
       {signer ? (
-        <>
-          <div className='signerRecoveryIdentity'>
-            <div className='signerRecoveryIcon'>{signerIcon(signer.type)}</div>
-            <div>{signer.name}</div>
-          </div>
-          <div
-            className={
-              signer.status.toLowerCase() === 'ok' ? 'signerRecoveryStatus ready' : 'signerRecoveryStatus'
-            }
-          >
+        <Stack align='center' gap='medium'>
+          <Surface padding='medium' radius='pill' tone='control'>
+            {signerIcon(signer.type)}
+          </Surface>
+          <Text variant='label'>{signer.name}</Text>
+          <Text align='center' tone={signer.status.toLowerCase() === 'ok' ? 'success' : 'secondary'}>
             {signerStatus(signer)}
-          </div>
+          </Text>
           <RecoveryActions key={signer.id} signer={signer} />
           {signer.status.toLowerCase() === 'ok' ? (
-            <div className='notifyBody'>Return to the request and select Sign again.</div>
+            <Text align='center' tone='secondary'>
+              Return to the request and select Sign again.
+            </Text>
           ) : null}
-        </>
+        </Stack>
       ) : (
-        <div className='notifyBody'>The hardware wallet is no longer available.</div>
+        <Text align='center' tone='secondary'>
+          The hardware wallet is no longer available.
+        </Text>
       )}
-      <div className='signerRecoveryFooter'>
-        <button onClick={() => dismiss()} type='button'>
-          {signer?.status.toLowerCase() === 'ok' ? 'Continue' : 'Cancel'}
-        </button>
-      </div>
-    </div>
+      <Button appearance='control' onPress={() => dismiss()} width='full'>
+        <Text variant='action'>{signer?.status.toLowerCase() === 'ok' ? 'Continue' : 'Cancel'}</Text>
+      </Button>
+    </Stack>
   )
 }

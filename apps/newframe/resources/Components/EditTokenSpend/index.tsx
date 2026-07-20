@@ -1,17 +1,24 @@
 import { useState } from 'react'
 
-import { formatUnits, parseUnits, toBigInt, max } from '../../utils/numbers'
-import svg from '../../svg'
-import { ClusterBox, Cluster, ClusterRow, ClusterValue } from '../Cluster'
+import { Button } from '@newframe/ui/button'
+import { Icon } from '@newframe/ui/icon'
+import { Input } from '@newframe/ui/input'
+import { Stack } from '@newframe/ui/stack'
+import { Surface } from '@newframe/ui/surface'
+import { Tabs } from '@newframe/ui/tabs'
+import { Text } from '@newframe/ui/text'
+
+import type { Identity } from '../../../main/accounts/types'
+import useCopiedMessage from '../../Hooks/useCopiedMessage'
+import type { SourceValue } from '../../utils/displayValue'
+import { formatUnits, max, parseUnits, toBigInt } from '../../utils/numbers'
 import Countdown from '../Countdown'
 
-import useCopiedMessage from '../../Hooks/useCopiedMessage'
-import type { Identity } from '../../../main/accounts/types'
-import type { SourceValue } from '../../utils/displayValue'
+type SpendMode = 'custom' | 'requested' | 'unlimited'
 
 const isMax = (value: SourceValue) => toBigInt(value) === max
 
-const getMode = (requestedAmount: SourceValue, amount: SourceValue) => {
+const getMode = (requestedAmount: SourceValue, amount: SourceValue): SpendMode => {
   if (requestedAmount === toBigInt(amount)) return 'requested'
   return isMax(amount) ? 'unlimited' : 'custom'
 }
@@ -25,53 +32,25 @@ const isValidInput = (value: string, decimals: number) => {
   )
 }
 
-const Details = ({ address, name }: { address: string; name?: string }) => {
+function ApprovalParty({ address, name }: { address: string; name?: string }) {
   const [showCopiedMessage, copyAddress] = useCopiedMessage(address)
 
   return (
-    <ClusterRow>
-      <ClusterValue
-        pointerEvents={'auto'}
-        onClick={() => {
-          copyAddress()
-        }}
-      >
-        <div className='clusterAddress'>
-          <span className='clusterAddressRecipient'>
-            {name ? (
-              <span className='clusterAddressRecipient' style={{ fontFamily: 'MainFont', fontWeight: '400' }}>
-                {name}
-              </span>
-            ) : (
-              <>
-                {address.substring(0, 8)}
-                {svg.octicon('kebab-horizontal', { height: 15 })}
-                {address.substring(address.length - 6)}
-              </>
-            )}
-          </span>
-          <div className='clusterAddressRecipientFull'>
-            {showCopiedMessage ? (
-              <span>{'Address Copied'}</span>
-            ) : (
-              <span className='clusterFira'>{address}</span>
-            )}
-          </div>
-        </div>
-      </ClusterValue>
-    </ClusterRow>
+    <Button appearance='row' label={`Copy ${name || address}`} onPress={copyAddress} width='full'>
+      <Stack gap='xsmall' grow>
+        {name ? (
+          <Text truncate variant='label'>
+            {name}
+          </Text>
+        ) : null}
+        <Text tone={showCopiedMessage ? 'accent' : 'secondary'} truncate variant='code'>
+          {showCopiedMessage ? 'Address Copied' : address}
+        </Text>
+      </Stack>
+      <Icon name='copy' size='small' tone='muted' />
+    </Button>
   )
 }
-
-const Description = ({ isRevoke }: { isRevoke: boolean }) => (
-  <ClusterRow>
-    <ClusterValue>
-      <div className='clusterTag' style={{ color: 'var(--color-status-danger)' }}>
-        {isRevoke ? <span>{'revoke approval to spend'}</span> : <span>{'grant approval to spend'}</span>}
-      </div>
-    </ClusterValue>
-  </ClusterRow>
-)
 
 export interface TokenSpendData {
   decimals?: number
@@ -90,209 +69,123 @@ interface EditTokenSpendProps {
   canRevoke?: boolean
 }
 
-const EditTokenSpend = ({
+export default function EditTokenSpend({
   data,
-  updateRequest: updateHandlerRequest,
+  updateRequest,
   requestedAmount,
   deadline,
   canRevoke = false
-}: EditTokenSpendProps) => {
+}: EditTokenSpendProps) {
   const { decimals = 0, symbol = '???', name = 'Unknown Token', spender, contract, amount } = data
-
   const toDecimal = (baseAmount: SourceValue) => formatUnits(toBigInt(baseAmount) ?? 0n, decimals)
   const fromDecimal = (decimalAmount: string) => (parseUnits(decimalAmount, decimals) ?? 0n).toString()
-
-  const [mode, setMode] = useState(getMode(requestedAmount, amount))
+  const [mode, setMode] = useState<SpendMode>(getMode(requestedAmount, amount))
   const [custom, setCustom] = useState(() => toDecimal(amount))
+  const inputLock = !data.symbol || !data.name || !data.decimals
+  const isRevoke = canRevoke && toBigInt(amount) === 0n
+  const customChanged = mode === 'custom' && toBigInt(amount) !== toBigInt(fromDecimal(custom))
 
-  const value = toBigInt(amount)
-
-  const updateCustomAmount = (value: string, decimals: number) => {
-    if (!value) {
-      setCustom('0')
-      return setMode('custom')
-    }
-
-    if (!isValidInput(value, decimals)) return
-    setMode('custom')
-    setCustom(value)
-  }
-
-  const resetToRequestAmount = () => {
+  const applyRequested = () => {
     setCustom(toDecimal(requestedAmount))
     setMode('requested')
-    updateHandlerRequest(requestedAmount.toString())
+    updateRequest(requestedAmount.toString())
   }
-
-  const setToMax = () => {
+  const applyUnlimited = () => {
     setMode('unlimited')
-    updateHandlerRequest(max.toString())
+    updateRequest(max.toString())
   }
-
-  const isRevoke = canRevoke && value === 0n
-  const isCustom = mode === 'custom'
-
-  const displayAmount = isMax(amount) ? 'unlimited' : toDecimal(amount)
-
-  const inputLock = !data.symbol || !data.name || !data.decimals
+  const applyCustom = () => {
+    setMode('custom')
+    setCustom('')
+  }
+  const submitCustom = () => {
+    if (!custom) applyRequested()
+    else updateRequest(fromDecimal(custom))
+  }
+  const selectMode = (next: SpendMode) => {
+    if (next === 'requested') applyRequested()
+    else if (next === 'unlimited') applyUnlimited()
+    else applyCustom()
+  }
 
   return (
-    <div className='updateTokenApproval'>
-      <ClusterBox title={'token approval details'} style={{ marginTop: '64px' }}>
-        <Cluster>
-          <Details
-            {...{
-              address: spender.address,
-              name: spender.ens
-            }}
-          />
-          <Description
-            {...{
-              isRevoke,
-              mode,
-              custom
-            }}
-          />
-          <Details
-            {...{
-              address: contract.address,
-              name
-            }}
-          />
-          {deadline && (
-            <ClusterRow>
-              <ClusterValue>
-                <Countdown
-                  end={deadline}
-                  title={'Permission Expires in'}
-                  innerClass='clusterFocusHighlight'
-                  titleClass='clusterFocus'
-                />
-              </ClusterValue>
-            </ClusterRow>
-          )}
-        </Cluster>
+    <Stack gap='medium'>
+      <Text tone='muted' variant='overline'>
+        Token approval details
+      </Text>
+      <Surface padding='small' radius='card'>
+        <Stack gap='small'>
+          <ApprovalParty address={spender.address} name={spender.ens} />
+          <Text align='center' tone='danger' variant='overline'>
+            {isRevoke ? 'Revoke approval to spend' : 'Grant approval to spend'}
+          </Text>
+          <ApprovalParty address={contract.address} name={name} />
+          {deadline ? <Countdown end={deadline} title='Permission Expires in' /> : null}
+        </Stack>
+      </Surface>
 
-        <Cluster style={{ marginTop: '16px' }}>
-          <ClusterRow>
-            <ClusterValue>
-              <div className='approveTokenSpendAmountLabel'>{symbol}</div>
-            </ClusterValue>
-          </ClusterRow>
-          <ClusterRow>
-            <ClusterValue transparent={true} pointerEvents={'auto'}>
-              <div className='approveTokenSpendAmount'>
-                {isCustom && amount !== fromDecimal(custom) ? (
-                  <div
-                    className='approveTokenSpendAmountSubmit'
-                    role='button'
-                    onClick={() =>
-                      custom === '' ? resetToRequestAmount() : updateHandlerRequest(fromDecimal(custom))
-                    }
-                  >
-                    {'update'}
-                  </div>
-                ) : (
-                  <div
-                    key={mode + amount}
-                    className='approveTokenSpendAmountSubmit'
-                    style={{ color: 'var(--color-action-primary)' }}
-                  >
-                    {svg.check(20)}
-                  </div>
-                )}
-                {mode === 'custom' ? (
-                  <input
-                    autoFocus
-                    type='text'
-                    aria-label='Custom Amount'
-                    value={custom}
-                    onChange={(e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      updateCustomAmount(e.target.value, decimals)
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        ;(e.target as HTMLInputElement).blur()
-                        if (custom === '') return resetToRequestAmount()
-                        updateHandlerRequest(fromDecimal(custom))
-                      }
-                    }}
-                  />
-                ) : (
-                  <div
-                    className='approveTokenSpendAmountNoInput'
-                    role='textbox'
-                    style={inputLock ? { cursor: 'default' } : undefined}
-                    onClick={
-                      inputLock
-                        ? undefined
-                        : () => {
-                            setCustom('')
-                            setMode('custom')
-                          }
-                    }
-                  >
-                    {displayAmount}
-                  </div>
-                )}
-              </div>
-            </ClusterValue>
-          </ClusterRow>
-          <ClusterRow>
-            <ClusterValue transparent={true}>
-              <div className='approveTokenSpendAmountSubtitle'>Set Token Approval Spend Limit</div>
-            </ClusterValue>
-          </ClusterRow>
-          <ClusterRow>
-            <ClusterValue onClick={() => resetToRequestAmount()}>
-              <div
-                className='clusterTag'
-                style={mode === 'requested' ? { color: 'var(--color-action-primary)' } : {}}
-                role='button'
-              >
-                {'Requested'}
-              </div>
-            </ClusterValue>
-          </ClusterRow>
-          <ClusterRow>
-            <ClusterValue
-              onClick={() => {
-                setToMax()
-              }}
-            >
-              <div
-                className='clusterTag'
-                style={mode === 'unlimited' ? { color: 'var(--color-action-primary)' } : {}}
-                role='button'
-              >
-                {'Unlimited'}
-              </div>
-            </ClusterValue>
-          </ClusterRow>
-          {!inputLock && (
-            <ClusterRow>
-              <ClusterValue
-                onClick={() => {
-                  setMode('custom')
-                  setCustom('')
+      <Surface padding='medium' radius='card'>
+        <Stack gap='small'>
+          <Text align='center' tone='secondary' variant='overline'>
+            {symbol}
+          </Text>
+          {mode === 'custom' ? (
+            <Stack align='center' direction='row' gap='small'>
+              <Input
+                appearance='amount'
+                autoFocus
+                label='Custom Amount'
+                onSubmit={submitCustom}
+                onValueChange={(value) => {
+                  if (!value) setCustom('')
+                  else if (isValidInput(value, decimals)) setCustom(value)
                 }}
+                value={custom}
+              />
+              <Button
+                appearance={customChanged ? 'primary' : 'subtle'}
+                disabled={!customChanged}
+                label='Update approval amount'
+                onPress={submitCustom}
+                shape='pill'
+                size='small'
               >
-                <div
-                  className={'clusterTag'}
-                  style={isCustom ? { color: 'var(--color-action-primary)' } : {}}
-                  role='button'
-                >
-                  Custom
-                </div>
-              </ClusterValue>
-            </ClusterRow>
+                {customChanged ? (
+                  <Text variant='compactAction'>Update</Text>
+                ) : (
+                  <Icon name='check' size='small' />
+                )}
+              </Button>
+            </Stack>
+          ) : (
+            <Button
+              appearance='ghost'
+              disabled={inputLock}
+              label='Enter custom approval amount'
+              onPress={applyCustom}
+              width='full'
+            >
+              <Text align='center' variant='amount'>
+                {isMax(amount) ? 'Unlimited' : toDecimal(amount)}
+              </Text>
+            </Button>
           )}
-        </Cluster>
-      </ClusterBox>
-    </div>
+          <Text align='center' tone='muted' variant='caption'>
+            Set Token Approval Spend Limit
+          </Text>
+          <Tabs
+            items={(
+              [
+                { id: 'requested', label: 'Requested' },
+                { id: 'unlimited', label: 'Unlimited' },
+                ...(!inputLock ? [{ id: 'custom' as const, label: 'Custom' }] : [])
+              ] as Array<{ id: SpendMode; label: string }>
+            ).map((item) => ({ ...item, active: mode === item.id }))}
+            label='Approval amount mode'
+            onSelect={selectMode}
+          />
+        </Stack>
+      </Surface>
+    </Stack>
   )
 }
-
-export default EditTokenSpend

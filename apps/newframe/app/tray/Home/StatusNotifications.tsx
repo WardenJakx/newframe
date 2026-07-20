@@ -5,6 +5,57 @@ import { Stack } from '@newframe/ui/stack'
 import { Text } from '@newframe/ui/text'
 
 import StatusGlyph from '../../../resources/Components/StatusGlyph'
+import { cva } from '../../../resources/styled-system/css/cva.js'
+
+const notificationListRecipe = cva({
+  base: {
+    position: 'relative',
+    zIndex: 'content',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '3',
+    paddingBlockStart: '4',
+    paddingInline: '6',
+    pointerEvents: 'none'
+  }
+})
+
+const notificationRecipe = cva({
+  base: {
+    display: 'grid',
+    minHeight: 'list-row',
+    gridTemplateColumns: '28px 22px minmax(0, 1fr) auto 24px',
+    alignItems: 'center',
+    gap: '4',
+    padding: '4',
+    borderWidth: 'thin',
+    borderStyle: 'solid',
+    borderRadius: 'small',
+    background: 'bg.primary',
+    boxShadow: 'elevation-raised',
+    pointerEvents: 'auto',
+    cursor: 'pointer',
+    _hover: { background: 'bg.card' }
+  },
+  variants: {
+    state: {
+      completed: { borderColor: 'action.primary.border' },
+      failed: { borderColor: 'action.danger.border' },
+      pending: { borderColor: 'border' }
+    }
+  },
+  defaultVariants: { state: 'pending' }
+})
+
+const chainRecipe = cva({
+  base: {
+    display: 'grid',
+    width: 'icon-large',
+    height: 'icon-large',
+    placeItems: 'center',
+    color: 'text.secondary'
+  }
+})
 
 const PENDING_NOTIFICATION_MS = 60 * 1000
 const RESOLVED_NOTIFICATION_MS = 3000
@@ -109,7 +160,7 @@ export default function StatusNotifications({
   if (!visible.length) return null
 
   return (
-    <div aria-label='Status notifications' className='t2StatusNotifications'>
+    <section aria-label='Status notifications' className={notificationListRecipe()}>
       {visible.map((notification) => {
         const state = notification.state || 'pending'
         const label = notificationLabel(state)
@@ -120,7 +171,7 @@ export default function StatusNotifications({
           <div
             key={notification.id}
             aria-label={`${label} ${notification.title || ''}`}
-            className={`t2StatusNotification t2StatusNotification-${state}`}
+            className={notificationRecipe({ state: state as 'completed' | 'failed' | 'pending' })}
             onClick={() => onOpen(notification)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
@@ -134,7 +185,7 @@ export default function StatusNotifications({
             <StatusGlyph
               state={state === 'completed' ? 'completed' : state === 'failed' ? 'failed' : 'pending'}
             />
-            <div className='t2StatusNotificationChain'>{renderChainIcon(notification)}</div>
+            <span className={chainRecipe()}>{renderChainIcon(notification)}</span>
             <Stack gap='xsmall' grow>
               <Stack direction='row' gap='xsmall'>
                 <Text shrink={false} tone='secondary' variant='label'>
@@ -167,6 +218,6 @@ export default function StatusNotifications({
           </div>
         )
       })}
-    </div>
+    </section>
   )
 }

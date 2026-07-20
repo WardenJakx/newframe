@@ -5,6 +5,9 @@ import {
   type SourceValue
 } from '../../utils/displayValue'
 import { MAX_HEX } from '../../constants'
+import { Text } from '@newframe/ui/text'
+
+import { cva } from '../../styled-system/css/cva.js'
 
 function isDisplayValueData(obj: unknown): obj is DisplayValueData {
   if (!obj || typeof obj !== 'object') return false
@@ -12,25 +15,15 @@ function isDisplayValueData(obj: unknown): obj is DisplayValueData {
   return Boolean(candidate.fiat && candidate.ether && candidate.gwei && candidate.wei && 'bn' in candidate)
 }
 
-const ApproximateValue = ({ approximationSymbol }: { approximationSymbol: string }) => (
-  <span className='displayValueApprox'>{approximationSymbol}</span>
-)
-
-const FiatSymbol = ({ fiatSymbol }: { fiatSymbol: string }) => (
-  <span className='displayValueFiat'>{fiatSymbol}</span>
-)
-
-const Symbol = ({ currencySymbol }: { currencySymbol: string }) => (
-  <span className='displayValueSymbol'>{currencySymbol.toUpperCase()}</span>
-)
-
-const Main = ({ displayValue }: { displayValue: string }) => (
-  <span className='displayValueMain'>{displayValue}</span>
-)
-
-const Unit = ({ displayUnit }: { displayUnit: { shortName: string } }) => (
-  <span className='displayValueUnit'>{displayUnit.shortName}</span>
-)
+const displayValueRecipe = cva({
+  base: {
+    display: 'inline-flex',
+    minWidth: 0,
+    alignItems: 'baseline',
+    gap: '2',
+    whiteSpace: 'nowrap'
+  }
+})
 
 type DisplayCoinBalanceProps = {
   amount: SourceValue | DisplayValueData
@@ -82,21 +75,27 @@ export const DisplayValue = (props: DisplayValueProps) => {
   const { displayValue } = rendered
 
   return (
-    <div className='displayValue' data-testid='display-value'>
+    <span className={displayValueRecipe()} data-testid='display-value'>
       {type === 'fiat' ? (
         <>
-          {approximationSymbol && <ApproximateValue approximationSymbol={approximationSymbol} />}
-          {currencySymbol && <FiatSymbol fiatSymbol={currencySymbol} />}
+          {approximationSymbol && <Text variant='caption'>{approximationSymbol}</Text>}
+          {currencySymbol && <Text variant='caption'>{currencySymbol}</Text>}
         </>
       ) : (
         <>
-          {currencySymbol && currencySymbolPosition === 'first' && <Symbol currencySymbol={currencySymbol} />}
-          {approximationSymbol && <ApproximateValue approximationSymbol={approximationSymbol} />}
+          {currencySymbol && currencySymbolPosition === 'first' && (
+            <Text variant='caption'>{currencySymbol.toUpperCase()}</Text>
+          )}
+          {approximationSymbol && <Text variant='caption'>{approximationSymbol}</Text>}
         </>
       )}
-      <Main displayValue={displayValue} />
-      {displayUnit && <Unit displayUnit={displayUnit} />}
-      {currencySymbol && currencySymbolPosition === 'last' && <Symbol currencySymbol={currencySymbol} />}
-    </div>
+      <Text variant='numeric' truncate>
+        {displayValue}
+      </Text>
+      {displayUnit && <Text variant='caption'>{displayUnit.shortName}</Text>}
+      {currencySymbol && currencySymbolPosition === 'last' && (
+        <Text variant='caption'>{currencySymbol.toUpperCase()}</Text>
+      )}
+    </span>
   )
 }

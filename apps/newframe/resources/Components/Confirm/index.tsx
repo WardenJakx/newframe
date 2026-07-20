@@ -1,5 +1,10 @@
 import React, { useState } from 'react'
 
+import { Button } from '@newframe/ui/button'
+import { Dialog } from '@newframe/ui/dialog'
+import { Stack } from '@newframe/ui/stack'
+import { Text } from '@newframe/ui/text'
+
 interface ConfirmDialogProps {
   prompt: React.ReactNode
   acceptText?: string
@@ -17,31 +22,28 @@ export default function ConfirmDialog({
 }: ConfirmDialogProps) {
   const [submitted, setSubmitted] = useState(false)
 
-  const clickHandler = (evt: React.MouseEvent, onClick: () => void) => {
-    if (evt.button === 0 && !submitted) {
+  const submit = (onClick: () => void) => {
+    if (!submitted) {
       setSubmitted(true)
       onClick()
     }
   }
 
-  const ResponseButton = ({ text, onClick }: { text: string; onClick: () => void }) => {
-    return (
-      <div role='button' className='confirmButton' onClick={(evt) => clickHandler(evt, onClick)}>
-        {text}
-      </div>
-    )
-  }
-
   return (
-    <div id='confirmationDialog' className='confirmDialog'>
-      <div role='heading' className='confirmText'>
-        {prompt}
-      </div>
-
-      <div className='confirmButtonOptions'>
-        <ResponseButton text={declineText} onClick={onDecline} />
-        <ResponseButton text={acceptText} onClick={onAccept} />
-      </div>
-    </div>
+    <Dialog label='Confirmation' width='compact'>
+      <Stack gap='medium'>
+        <Text align='center' as='h2' variant='sectionTitle'>
+          {prompt}
+        </Text>
+        <Stack direction='row' gap='small' justify='center'>
+          <Button appearance='control' disabled={submitted} onPress={() => submit(onDecline)} shape='pill'>
+            <Text variant='compactAction'>{declineText}</Text>
+          </Button>
+          <Button appearance='primary' disabled={submitted} onPress={() => submit(onAccept)} shape='pill'>
+            <Text variant='compactAction'>{acceptText}</Text>
+          </Button>
+        </Stack>
+      </Stack>
+    </Dialog>
   )
 }

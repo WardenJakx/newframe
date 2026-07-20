@@ -32,6 +32,7 @@ export const sizingTokens = {
   'nf-size-field-vertical': '64px',
   'nf-size-range': '18px',
   'nf-size-progress-marker': '18px',
+  'nf-size-progress-rail': '2px',
   'nf-size-media-small': '30px',
   'nf-size-media-medium': '38px',
   'nf-size-media-badge-small': '18px',
@@ -45,5 +46,7 @@ export const sizingTokens = {
   'nf-size-selection-offset': '54px',
   'nf-size-selection-menu': '336px',
   'nf-size-page-compact': '480px',
+  'nf-size-dialog-compact': '292px',
+  'nf-size-qr-code': '156px',
   'nf-size-page-max-block': '600px'
 } as const

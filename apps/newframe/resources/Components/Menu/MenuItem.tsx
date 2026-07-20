@@ -1,8 +1,34 @@
+import { Button } from '@newframe/ui/button'
 import { Icon, type IconName } from '@newframe/ui/icon'
 import { Inline } from '@newframe/ui/inline'
 import { Stack } from '@newframe/ui/stack'
 import { Text } from '@newframe/ui/text'
-import './menu.css'
+
+import { cva } from '../../styled-system/css/cva.js'
+
+const iconRecipe = cva({
+  base: {
+    display: 'grid',
+    width: 'menu-row-icon',
+    height: 'menu-row-icon',
+    flex: 'none',
+    placeItems: 'center',
+    borderRadius: 'pill',
+    background: 'bg.control'
+  }
+})
+
+const badgeRecipe = cva({
+  base: {
+    display: 'grid',
+    minWidth: '10',
+    height: '10',
+    placeItems: 'center',
+    paddingInline: '3',
+    borderRadius: 'pill',
+    background: 'bg.primary'
+  }
+})
 
 export type MenuItemProps = {
   badge?: number
@@ -24,9 +50,9 @@ export function MenuItem({
   tone = 'neutral'
 }: MenuItemProps) {
   return (
-    <button aria-label={label} className='nf-menu-item' onClick={onPress} type='button'>
+    <Button appearance='row' label={label} onPress={onPress} shape='control' size='list' width='full'>
       <Inline align='center' gap='medium' grow>
-        <span className='nf-menu-item__icon'>
+        <span className={iconRecipe()}>
           <Icon name={icon} size='medium' tone={tone === 'danger' ? 'danger' : 'accent'} />
         </span>
         <Stack gap='xsmall' grow>
@@ -41,11 +67,7 @@ export function MenuItem({
         </Stack>
         <Inline align='center'>
           {badge !== undefined ? (
-            <span
-              className={
-                badgeActive ? 'nf-menu-item__badge nf-menu-item__badge--active' : 'nf-menu-item__badge'
-              }
-            >
+            <span className={badgeRecipe()}>
               <Text display='inline' variant='detail' tone={badgeActive ? 'accent' : 'muted'}>
                 {badge}
               </Text>
@@ -55,6 +77,6 @@ export function MenuItem({
           )}
         </Inline>
       </Inline>
-    </button>
+    </Button>
   )
 }

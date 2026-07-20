@@ -57,6 +57,7 @@ export type StackProps = RecipeVariantProps<typeof stackRecipe> & {
   children: ReactNode
   decorative?: boolean
   element?: 'div' | 'section'
+  label?: string
 }
 
 export function Stack({
@@ -69,12 +70,14 @@ export function Stack({
   gap,
   grow,
   justify,
+  label,
   wrap
 }: StackProps) {
   const Component = element
   return (
     <Component
       aria-hidden={decorative || undefined}
+      aria-label={label}
       className={stackRecipe({ align, direction, equal, gap, grow, justify, wrap })}
     >
       {children}

@@ -3,6 +3,8 @@ import { UIRoot } from '@newframe/ui/root'
 
 import App from './App'
 
+import '../../resources/styled-system/styles.css'
+
 import link from '../../resources/link'
 import { connectRendererState } from '../state/connectState'
 

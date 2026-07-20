@@ -2,10 +2,20 @@ import React from 'react'
 
 import { Button } from '@newframe/ui/button'
 import { Icon } from '@newframe/ui/icon'
+import { Stack } from '@newframe/ui/stack'
 import { Text } from '@newframe/ui/text'
 
-import { SidePanelHeader } from '../../../../../resources/Components/SidePanel/SidePanelHeader'
+import { TrayOverlay } from '../../../../../resources/Components/TrayOverlay'
+import { cva } from '../../../../../resources/styled-system/css/cva.js'
 import AddressQRCode from '../../AddressQRCode'
+
+const receiveRecipe = cva({
+  base: {
+    width: '100%',
+    marginInline: 'auto',
+    paddingBlockEnd: '9'
+  }
+})
 
 export function ReceiveView({
   account,
@@ -23,25 +33,34 @@ export function ReceiveView({
   onCopy: () => void
 }) {
   return (
-    <div aria-label='Receive assets' className='t2Overlay t2ReceiveOverlay cardShow' role='dialog'>
-      <SidePanelHeader closeLabel='Back' onClose={onBack} title='Receive Assets' />
-      <div className='t2ReceiveBody'>
-        <div className='t2ReceiveIcon'>{icon}</div>
-        <div className='t2ReceiveName'>
+    <TrayOverlay
+      closeLabel='Back'
+      label='Receive assets'
+      onClose={onBack}
+      placement='center'
+      title='Receive Assets'
+    >
+      <div className={receiveRecipe()}>
+        <Stack align='center' gap='medium'>
+          {icon}
           <Text align='center' variant='heading'>
             {name}
           </Text>
-        </div>
-        <div className='t2ReceiveQr'>
           <AddressQRCode address={account.address} />
-        </div>
-        <Button appearance='control' label='Copy receive address' onPress={onCopy} shape='pill' width='full'>
-          <Text truncate variant='code'>
-            {copied ? 'Address copied' : account.address}
-          </Text>
-          <Icon name='copy' size='small' />
-        </Button>
+          <Button
+            appearance='control'
+            label='Copy receive address'
+            onPress={onCopy}
+            shape='pill'
+            width='full'
+          >
+            <Text truncate variant='code'>
+              {copied ? 'Address copied' : account.address}
+            </Text>
+            <Icon name='copy' size='small' />
+          </Button>
+        </Stack>
       </div>
-    </div>
+    </TrayOverlay>
   )
 }

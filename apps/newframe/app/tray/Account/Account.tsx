@@ -1,8 +1,11 @@
 import type { ReactNode } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 
-import svg from '../../../resources/svg'
+import { ScrollArea } from '@newframe/ui/scroll-area'
+import { Stack } from '@newframe/ui/stack'
 import link from '../../../resources/link'
+import { cva } from '../../../resources/styled-system/css/cva.js'
+import { SidePanelHeader } from '../../../resources/Components/SidePanel/SidePanelHeader'
 
 import Requests from './Requests'
 import ProviderRequest from './Requests/ProviderRequest'
@@ -28,6 +31,22 @@ const requestComponents: Record<string, any> = {
   addToken: AddTokenRequest
 }
 
+const accountViewRecipe = cva({
+  base: {
+    position: 'absolute',
+    insetBlockStart: '2',
+    insetInline: '2',
+    insetBlockEnd: 'var(--tray-footer-height, token(sizes.panel-footer))',
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
+    borderRadius: 'card',
+    background: 'bg.primary'
+  }
+})
+
+const accountMainRecipe = cva({ base: { minHeight: 0, flex: 1, overflow: 'hidden' } })
+
 interface AccountViewProps {
   accountViewIcon?: ReactNode
   accountViewTitle?: string
@@ -36,20 +55,17 @@ interface AccountViewProps {
 }
 
 function AccountView({ accountViewIcon, accountViewTitle, back, children }: AccountViewProps) {
-  const accountOpen = useWalletSelector((state: TrayRendererState) => state.selected.open)
-
   return (
-    <div className='accountView' style={{ top: accountOpen ? '140px' : '80px' }}>
-      <div className='accountViewMenu cardShow'>
-        <div className='accountViewBack' onClick={back}>
-          {svg.chevronLeft(16)}
-        </div>
-        <div className='accountViewTitle'>
-          <div className='accountViewIcon'>{accountViewIcon}</div>
-          <div className='accountViewText'>{accountViewTitle}</div>
-        </div>
+    <div className={accountViewRecipe()}>
+      <SidePanelHeader
+        closeLabel='Back'
+        onClose={back}
+        title={accountViewTitle || ''}
+        titleLeading={accountViewIcon}
+      />
+      <div className={accountMainRecipe()}>
+        <ScrollArea height='fill'>{children}</ScrollArea>
       </div>
-      <div className='accountViewMain cardShow'>{children}</div>
     </div>
   )
 }
@@ -125,11 +141,11 @@ function AccountBody(props: AccountBodyProps) {
   if (crumb?.view === 'expandedModule' && crumb.data?.id === 'requests') {
     return (
       <AccountView back={back} accountViewIcon={props.accountViewIcon} accountViewTitle={crumb.data.id}>
-        <div className='accountsModuleExpand cardShow'>
-          <div className='moduleExpanded' onMouseDown={(event) => event.stopPropagation()}>
+        <Stack grow>
+          <div onMouseDown={(event) => event.stopPropagation()}>
             <Requests expanded={true} account={crumb.data.account} moduleId='requests' />
           </div>
-        </div>
+        </Stack>
       </AccountView>
     )
   }

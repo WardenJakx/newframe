@@ -1,6 +1,5 @@
 import link from '../../../../../resources/link'
-import { chainColorValue } from '../../../../../resources/colors'
-import { SidePanelHeader } from '../../../../../resources/Components/SidePanel/SidePanelHeader'
+import { TrayOverlay } from '../../../../../resources/Components/TrayOverlay'
 import TransactionInformation from '../../../Account/Requests/TransactionRequest/TransactionInformation'
 import {
   getTransactionEffects,
@@ -50,35 +49,33 @@ export function ActivityDetailsView({
   ]
 
   return (
-    <div
-      aria-label='Transaction activity details'
-      className='t2Overlay t2ActivityOverlay cardShow'
-      role='dialog'
+    <TrayOverlay
+      closeLabel='Back to activity'
+      label='Transaction activity details'
+      onClose={onBack}
+      padding='none'
+      title='Activity'
     >
-      <SidePanelHeader closeLabel='Back to activity' onClose={onBack} title='Activity' />
-      <div className='t2OverlayScroll t2ActivityDetailScroll'>
-        <TransactionInformation
-          details={details}
-          effects={effects}
-          effectsEmptyText='No direct asset changes detected'
-          heroVariant='elevated'
-          nativeCurrency={nativeCurrency}
-          networkColor={networkMeta.primaryColor ? chainColorValue(networkMeta.primaryColor) : undefined}
-          networkName={network.name || `Chain ${chainId}`}
-          notice={activity.status === 'reverted' ? 'Transaction reverted on-chain' : undefined}
-          progress={{
-            status: requestStatusFromActivity(activity.status),
-            notice: transactionStatusLabel(activity.status),
-            txHash: activity.hash,
-            confirmations: activity.confirmations || 0,
-            confirmationTarget: TRANSACTION_CONFIRMATION_TARGET,
-            blockNumber: receiptBlock
-          }}
-          statusLabel={transactionStatusLabel(activity.status)}
-          subtitle={activity.display?.subtitle || intent.subtitle}
-          title={activity.display?.title || intent.title}
-        />
-      </div>
-    </div>
+      <TransactionInformation
+        details={details}
+        effects={effects}
+        effectsEmptyText='No direct asset changes detected'
+        heroVariant='elevated'
+        nativeCurrency={nativeCurrency}
+        networkName={network.name || `Chain ${chainId}`}
+        notice={activity.status === 'reverted' ? 'Transaction reverted on-chain' : undefined}
+        progress={{
+          status: requestStatusFromActivity(activity.status),
+          notice: transactionStatusLabel(activity.status),
+          txHash: activity.hash,
+          confirmations: activity.confirmations || 0,
+          confirmationTarget: TRANSACTION_CONFIRMATION_TARGET,
+          blockNumber: receiptBlock
+        }}
+        statusLabel={transactionStatusLabel(activity.status)}
+        subtitle={activity.display?.subtitle || intent.subtitle}
+        title={activity.display?.title || intent.title}
+      />
+    </TrayOverlay>
   )
 }

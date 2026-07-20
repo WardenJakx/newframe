@@ -1,6 +1,11 @@
-import svg from '../../../../../../resources/svg'
+import { IconButton } from '@newframe/ui/icon-button'
+import { Stack } from '@newframe/ui/stack'
+import { Text } from '@newframe/ui/text'
+
 import link from '../../../../../../resources/link'
+import { DetailRow } from '../../../../../../resources/Components/DetailRow'
 import type { TransactionRequest } from '../../../../../../main/accounts/types'
+import { cva } from '../../../../../../resources/styled-system/css/cva.js'
 
 type TxJsonValue = string | number
 type TxJson = Record<string, TxJsonValue>
@@ -13,10 +18,6 @@ type NonceValueProps = {
   nonce: TxJsonValue
 }
 
-type TextValueProps = {
-  value: TxJsonValue
-}
-
 type SimpleTxJSONProps = {
   json: TxJson
   req: TxViewRequest
@@ -25,6 +26,16 @@ type SimpleTxJSONProps = {
 type ViewDataProps = {
   req: TxViewRequest
 }
+
+const viewDataRecipe = cva({
+  base: {
+    width: '100%',
+    maxWidth: 'page-compact',
+    marginInline: 'auto',
+    paddingInline: '5',
+    paddingBlockEnd: '9'
+  }
+})
 
 const txFieldPriority = [
   'chainId',
@@ -45,56 +56,52 @@ const nonceHasBeenChanged = (req: TxViewRequest) => {
 
 const NonceValue = ({ req, nonce }: NonceValueProps) => {
   return (
-    <>
-      <div style={{ width: '24px' }}>{nonce}</div>
-      <div className='txNonceControl'>
-        <div
-          className='txNonceButton txNonceButtonLower'
-          onMouseDown={() => {
+    <Stack align='center' direction='row' gap='xsmall' justify='end'>
+      <Text variant='numeric'>{nonce}</Text>
+      <IconButton
+        icon='chevronDown'
+        label='Lower nonce'
+        onPress={() => {
+          void link.executeCommand({
+            type: 'transaction.nonce-adjust',
+            requestId: req.handlerId,
+            direction: -1
+          })
+        }}
+        size='small'
+      />
+      <IconButton
+        icon='chevronUp'
+        label='Raise nonce'
+        onPress={() => {
+          void link.executeCommand({
+            type: 'transaction.nonce-adjust',
+            requestId: req.handlerId,
+            direction: 1
+          })
+        }}
+        size='small'
+      />
+      {nonceHasBeenChanged(req) && (
+        <IconButton
+          icon='sync'
+          label='Reset nonce'
+          onPress={() => {
             void link.executeCommand({
-              type: 'transaction.nonce-adjust',
-              requestId: req.handlerId,
-              direction: -1
+              type: 'transaction.nonce-reset',
+              requestId: req.handlerId
             })
           }}
-        >
-          {svg.octicon('chevron-down', { height: 14 })}
-        </div>
-        <div
-          className='txNonceButton txNonceButtonRaise'
-          onMouseDown={() => {
-            void link.executeCommand({
-              type: 'transaction.nonce-adjust',
-              requestId: req.handlerId,
-              direction: 1
-            })
-          }}
-        >
-          {svg.octicon('chevron-up', { height: 14 })}
-        </div>
-        {nonceHasBeenChanged(req) && (
-          <div
-            className='txNonceButton txNonceButtonReset'
-            onMouseDown={() => {
-              void link.executeCommand({
-                type: 'transaction.nonce-reset',
-                requestId: req.handlerId
-              })
-            }}
-          >
-            {svg.octicon('sync', { height: 14 })}
-          </div>
-        )}
-      </div>
-    </>
+          size='small'
+        />
+      )}
+    </Stack>
   )
 }
 
-const TextValue = ({ value }: TextValueProps) => <span className='traySpan'>{value}</span>
-
 const SimpleTxJSON = ({ json, req }: SimpleTxJSONProps) => {
   return (
-    <div className='simpleJson'>
+    <Stack gap='none'>
       {Object.keys(json)
         .filter((f) => {
           return txFieldPriority.indexOf(f) !== -1
@@ -106,16 +113,25 @@ const SimpleTxJSON = ({ json, req }: SimpleTxJSONProps) => {
         })
         .map((key, o) => {
           const value =
-            key === 'nonce' ? <NonceValue nonce={json[key]} req={req} /> : <TextValue value={json[key]} />
+            key === 'nonce' ? (
+              <NonceValue nonce={json[key]} req={req} />
+            ) : (
+              <Text align='end' variant='code'>
+                {json[key]}
+              </Text>
+            )
 
           return (
-            <div key={key + o} className='simpleJsonChild'>
-              <div className=' simpleJsonKey simpleJsonKeyTx'>{key.replace(/([A-Z])/g, ' $1').trim()}</div>
-              <div className='simpleJsonValue'>{value}</div>
-            </div>
+            <DetailRow
+              code
+              key={key + o}
+              label={key.replace(/([A-Z])/g, ' $1').trim()}
+              labelVariant='overline'
+              value={value}
+            />
           )
         })}
-    </div>
+    </Stack>
   )
 }
 
@@ -148,15 +164,13 @@ export default function ViewData({ req }: ViewDataProps) {
   const tx = { nonce: 'TBD', ...data }
 
   return (
-    <div className='accountViewScroll cardShow'>
-      {/* <div className='txViewData'>
-          <div className='txViewDataHeader'>{'Decoded Data'}</div>
-          <DecodedData req={req} />
-        </div> */}
-      <div className='txViewData'>
-        <div className='txViewDataHeader'>{'Raw Transaction'}</div>
+    <div className={viewDataRecipe()}>
+      <Stack gap='small'>
+        <Text tone='muted' variant='sectionTitle'>
+          Raw Transaction
+        </Text>
         <SimpleTxJSON json={decodeRawTx(tx as unknown as Record<string, unknown>)} req={req} />
-      </div>
+      </Stack>
     </div>
   )
 }

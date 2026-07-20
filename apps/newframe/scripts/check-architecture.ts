@@ -35,7 +35,10 @@ async function sourceFiles() {
     .filter(
       (file) =>
         sourceExtensions.has(path.extname(file)) &&
-        !file.includes(path.join('packages', 'ui', 'src', 'styled-system'))
+        !file.includes(`${path.sep}dist${path.sep}`) &&
+        !file.includes(path.join('packages', 'ui', 'src', 'styled-system')) &&
+        !file.includes(path.join('apps', 'newframe', 'resources', 'styled-system')) &&
+        !file.includes(path.join('apps', 'newframe-extension', 'src', 'styled-system'))
     )
   const manifests = [
     path.join(repositoryRoot, 'package.json'),
@@ -141,6 +144,16 @@ async function main() {
       violations.push(`${file}: raw ipcRenderer is restricted to the preload bridge`)
     }
 
+    if (
+      file.endsWith('.css') &&
+      (uiSource(file) ||
+        under(path.join('apps', 'newframe', 'app', 'tray'))(file) ||
+        under(path.join('apps', 'newframe', 'resources', 'Components'))(file) ||
+        under(path.join('apps', 'newframe-extension', 'src', 'settings'))(file))
+    ) {
+      violations.push(`${file}: component styles must be authored with Panda in the owning TypeScript file`)
+    }
+
     if (/\bipcMain\.handle\b/.test(source)) {
       const allowed = new Set([
         path.join('apps', 'newframe', 'main', 'ipc', 'operations.ts'),
@@ -230,7 +243,7 @@ async function main() {
       }
 
       if (
-        (file.endsWith('.css') && !file.endsWith('tokens.generated.css')) ||
+        file.endsWith('.css') ||
         (under(primitiveRoot)(file) && file.endsWith('.tsx') && file !== path.join(primitiveRoot, 'Icon.tsx'))
       ) {
         const rawUnit = source.match(/(?<![A-Za-z0-9_-])-?\d+(?:\.\d+)?(?:px|rem|em|ms|s|deg)\b/)

@@ -32,13 +32,13 @@ describe('changing approval amounts', () => {
       <EditTokenSpend data={approval.data} requestedAmount={requestedAmount} updateRequest={onUpdate} />
     )
 
-    const custom = screen.queryByRole('button', { name: 'Custom' })
+    const custom = screen.queryByRole('tab', { name: 'Custom' })
     await user.click(custom!)
 
-    const enterAmount = screen.queryByRole('textbox', { label: 'Custom Amount' } as any)
+    const enterAmount = screen.queryByRole('textbox', { name: 'Custom Amount' })
     await user.type(enterAmount!, '50')
 
-    const updateCustom = screen.getByText('update')
+    const updateCustom = screen.getByRole('button', { name: 'Update approval amount' })
     await user.click(updateCustom!)
 
     expect(onUpdate).toHaveBeenCalledWith('500000')
@@ -71,13 +71,13 @@ describe('changing approval amounts', () => {
       <EditTokenSpend data={approval.data} requestedAmount={requestedAmount} updateRequest={onUpdate} />
     )
 
-    const custom = screen.queryByRole('button', { name: 'Custom' })
+    const custom = screen.queryByRole('tab', { name: 'Custom' })
     await user.click(custom!)
 
-    const enterAmount = screen.queryByRole('textbox', { label: 'Custom Amount' } as any)
+    const enterAmount = screen.queryByRole('textbox', { name: 'Custom Amount' })
     await user.type(enterAmount!, '50.1')
 
-    const updateCustom = screen.getByText('update')
+    const updateCustom = screen.getByRole('button', { name: 'Update approval amount' })
     await user.click(updateCustom!)
 
     expect(onUpdate).toHaveBeenCalledWith('501000')
@@ -110,13 +110,13 @@ describe('changing approval amounts', () => {
       <EditTokenSpend data={approval.data} requestedAmount={requestedAmount} updateRequest={onUpdate} />
     )
 
-    const custom = screen.queryByRole('button', { name: 'Custom' })
+    const custom = screen.queryByRole('tab', { name: 'Custom' })
     await user.click(custom!)
 
-    const enterAmount = screen.queryByRole('textbox', { label: 'Custom Amount' } as any)
+    const enterAmount = screen.queryByRole('textbox', { name: 'Custom Amount' })
     await user.type(enterAmount!, '50.00001')
 
-    const updateCustom = screen.getByText('update')
+    const updateCustom = screen.getByRole('button', { name: 'Update approval amount' })
     await user.click(updateCustom!)
 
     expect(onUpdate).toHaveBeenCalledWith('500000')
@@ -145,7 +145,7 @@ describe('changing approval amounts', () => {
 
     render(<EditTokenSpend data={approval.data} requestedAmount={requestedAmount} updateRequest={() => {}} />)
 
-    const custom = screen.queryByRole('button', { name: 'Custom' })
+    const custom = screen.queryByRole('tab', { name: 'Custom' })
     expect(custom).toBe(null)
   })
 
@@ -169,10 +169,10 @@ describe('changing approval amounts', () => {
       <EditTokenSpend data={approval.data} requestedAmount={requestedAmount} updateRequest={onUpdate} />
     )
 
-    const custom = screen.queryByRole('button', { name: 'Custom' })
+    const custom = screen.queryByRole('tab', { name: 'Custom' })
     await user.click(custom!)
 
-    const setUnlimited = screen.queryByRole('button', { name: 'Unlimited' })
+    const setUnlimited = screen.queryByRole('tab', { name: 'Unlimited' })
     await user.click(setUnlimited!)
 
     expect(onUpdate).toHaveBeenCalledWith(maxIntStr)
@@ -202,10 +202,10 @@ describe('changing approval amounts', () => {
       <EditTokenSpend data={approval.data} requestedAmount={requestedAmount} updateRequest={onUpdate} />
     )
 
-    const setUnlimited = screen.queryByRole('button', { name: 'Unlimited' })
+    const setUnlimited = screen.queryByRole('tab', { name: 'Unlimited' })
     await user.click(setUnlimited!)
 
-    const setRequested = screen.queryByRole('button', { name: 'Requested' })
+    const setRequested = screen.queryByRole('tab', { name: 'Requested' })
     await user.click(setRequested!)
 
     expect(onUpdate).toHaveBeenNthCalledWith(1, maxIntStr)
@@ -239,10 +239,10 @@ describe('changing approval amounts', () => {
       <EditTokenSpend data={approval.data} requestedAmount={requestedAmount} updateRequest={onUpdate} />
     )
 
-    const setUnlimited = screen.queryByRole('button', { name: 'Unlimited' })
+    const setUnlimited = screen.queryByRole('tab', { name: 'Unlimited' })
     await user.click(setUnlimited!)
 
-    const setRequested = screen.queryByRole('button', { name: 'Requested' })
+    const setRequested = screen.queryByRole('tab', { name: 'Requested' })
     await user.click(setRequested!)
 
     expect(onUpdate).toHaveBeenNthCalledWith(1, maxIntStr)
@@ -284,10 +284,10 @@ describe('changing approval amounts', () => {
         />
       )
 
-      const custom = screen.queryByRole('button', { name: 'Custom' })
+      const custom = screen.queryByRole('tab', { name: 'Custom' })
       expect(custom).toBeNull()
 
-      const requestedAmount = screen.queryByRole('textbox')
+      const requestedAmount = screen.queryByRole('button', { name: 'Enter custom approval amount' })
       const displayedContent = requestedAmount!.textContent!.trim()
       expect(displayedContent).toBe(approval.data.decimals ? '100' : '100000000')
 

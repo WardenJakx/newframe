@@ -28,31 +28,37 @@ function formatDuration(duration: number) {
 }
 
 const EnsOverview = ({ type, data }: EnsOverviewProps) => {
+  const line = (value: string | undefined, emphasis = false) => (
+    <Text
+      align='center'
+      tone={emphasis ? 'primary' : 'secondary'}
+      variant={emphasis ? 'heading' : 'supporting'}
+    >
+      {value}
+    </Text>
+  )
+
   if (type === 'commit') {
-    return (
-      <>
-        <div className='_txDescriptionSummaryLine'>Submitting ENS Commitment</div>
-      </>
-    )
+    return line('Submitting ENS Commitment')
   }
 
   if (type === 'register') {
     return (
-      <>
-        <div className='_txDescriptionSummaryLine'>Registering ENS Name</div>
-        <div className='_txDescriptionSummaryLine _txDescriptionSummaryHeadline'>{data.name}</div>
-        <div className='_txDescriptionSummaryLine'>{`${formatDuration(data.duration || 0)}`}</div>
-      </>
+      <Stack align='center' gap='xsmall'>
+        {line('Registering ENS Name')}
+        {line(data.name, true)}
+        {line(formatDuration(data.duration || 0))}
+      </Stack>
     )
   }
 
   if (type === 'renew') {
     return (
-      <>
-        <div className='_txDescriptionSummaryLine'>Renewing ENS Name</div>
-        <div className='_txDescriptionSummaryLine _txDescriptionSummaryHeadline'>{data.name}</div>
-        <div className='_txDescriptionSummaryLine'>{`for ${formatDuration(data.duration || 0)}`}</div>
-      </>
+      <Stack align='center' gap='xsmall'>
+        {line('Renewing ENS Name')}
+        {line(data.name, true)}
+        {line(formatDuration(data.duration || 0))}
+      </Stack>
     )
   }
 
@@ -61,16 +67,14 @@ const EnsOverview = ({ type, data }: EnsOverviewProps) => {
     const display = name || tokenId
 
     return (
-      <>
-        <div className='_txDescriptionSummaryLine'>{`Transferring ENS Name${
-          name ? '' : ' with token id'
-        }`}</div>
-        <div className='_txDescriptionSummaryLine _txDescriptionSummaryHeadline'>{display}</div>
-        <div className='_txDescriptionSummaryLine'>from</div>
-        <div className='_txDescriptionSummaryLine _txDescriptionSummaryMidline'>{from}</div>
-        <div className='_txDescriptionSummaryLine'>to</div>
-        <div className='_txDescriptionSummaryLine _txDescriptionSummaryMidline'>{to}</div>
-      </>
+      <Stack align='center' gap='xsmall'>
+        {line(`Transferring ENS Name${name ? '' : ' with token id'}`)}
+        {line(display, true)}
+        {line('from')}
+        {line(from)}
+        {line('to')}
+        {line(to)}
+      </Stack>
     )
   }
 
@@ -78,14 +82,16 @@ const EnsOverview = ({ type, data }: EnsOverviewProps) => {
     const { operator, name } = data
 
     return (
-      <>
-        <div className='_txDescriptionSummaryLine'>Granting approval to</div>
-        <div className='_txDescriptionSummaryLine _txDescriptionSummaryMidline'>{operator}</div>
-        <div className='_txDescriptionSummaryLine'>as an approved operator for</div>
-        <div className='_txDescriptionSummaryLine _txDescriptionSummaryHeadline'>{name}</div>
-      </>
+      <Stack align='center' gap='xsmall'>
+        {line('Granting approval to')}
+        {line(operator)}
+        {line('as an approved operator for')}
+        {line(name, true)}
+      </Stack>
     )
   }
 }
 
 export default EnsOverview
+import { Stack } from '@newframe/ui/stack'
+import { Text } from '@newframe/ui/text'

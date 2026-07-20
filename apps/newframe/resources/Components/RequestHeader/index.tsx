@@ -1,6 +1,12 @@
-import React from 'react'
+import type { CSSProperties, ReactNode } from 'react'
+
+import { Stack } from '@newframe/ui/stack'
+import { Text } from '@newframe/ui/text'
 
 import { chainColorValue } from '../../colors'
+import { cva } from '../../styled-system/css/cva.js'
+
+const chainRecipe = cva({ base: { color: 'var(--request-chain-color)' } })
 
 const RequestHeader = ({
   chain,
@@ -8,15 +14,18 @@ const RequestHeader = ({
   chainColor
 }: {
   chain: string
-  children?: React.ReactNode
+  children?: ReactNode
   chainColor: string
 }) => (
-  <div className='_txDescriptionSummary'>
+  <Stack align='center' gap='xsmall'>
     {children}
-    <div className='_txDescriptionSummaryTag' style={{ color: chainColorValue(chainColor) }}>
-      {`on ${chain}`}
-    </div>
-  </div>
+    <span
+      className={chainRecipe()}
+      style={{ '--request-chain-color': chainColorValue(chainColor) } as CSSProperties}
+    >
+      <Text as='span' variant='overline'>{`on ${chain}`}</Text>
+    </span>
+  </Stack>
 )
 
 export default RequestHeader

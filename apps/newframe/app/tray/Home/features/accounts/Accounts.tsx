@@ -5,10 +5,18 @@ import { Button } from '@newframe/ui/button'
 import { Heading } from '@newframe/ui/heading'
 import { Icon } from '@newframe/ui/icon'
 import { IconButton } from '@newframe/ui/icon-button'
+import { Field } from '@newframe/ui/field'
+import { Inline } from '@newframe/ui/inline'
+import { Input } from '@newframe/ui/input'
+import { ScrollArea } from '@newframe/ui/scroll-area'
 import { SearchField } from '@newframe/ui/search-field'
+import { Spinner } from '@newframe/ui/spinner'
+import { Stack } from '@newframe/ui/stack'
+import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
 
 import { HeaderBar } from '../../../../../resources/Components/HeaderBar'
+import { SidePanelHeader } from '../../../../../resources/Components/SidePanel/SidePanelHeader'
 import link from '../../../../../resources/link'
 import svg from '../../../../../resources/svg'
 import { createBalanceSummarySelector, formatUsdRate } from '../../../../../resources/domain/balance'
@@ -17,6 +25,7 @@ import type { WalletRendererState } from '../../../../../resources/state/project
 import AccountRenameInput from '../../AccountRenameInput'
 import { useHomeUiStore } from '../../state/HomeUiProvider'
 import { AddAccount } from './AddAccount'
+import { cva } from '../../../../../resources/styled-system/css/cva.js'
 
 type HomeAccount = WalletRendererState['accounts'][string]
 type HomeSigner = WalletRendererState['signers'][string]
@@ -52,6 +61,86 @@ const signerTypeLabels: Record<string, string> = {
 
 const EMPTY_ARRAY: any[] = []
 const EMPTY_RECORD: Record<string, any> = {}
+
+const overlayRecipe = cva({
+  base: {
+    position: 'absolute',
+    inset: 0,
+    zIndex: 'overlay',
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
+    background: 'bg.primary'
+  }
+})
+
+const toolsRecipe = cva({
+  base: { display: 'flex', flex: 'none', alignItems: 'center', gap: '4', padding: '4' }
+})
+
+const accountRowRecipe = cva({
+  base: {
+    position: 'relative',
+    display: 'flex',
+    minHeight: 'menu-row-min',
+    alignItems: 'center',
+    gap: '4',
+    padding: '5 6',
+    borderWidth: 'thin',
+    borderStyle: 'solid',
+    borderColor: 'transparent',
+    borderRadius: 'control',
+    background: 'bg.card',
+    cursor: 'pointer',
+    _hover: { background: 'bg.hover' }
+  },
+  variants: {
+    selected: { true: { borderColor: 'border.focus' }, false: {} },
+    dragging: { true: { opacity: 'disabled' }, false: {} },
+    dropTarget: { true: { borderColor: 'border.focus', background: 'action.primary.subtle' }, false: {} }
+  },
+  defaultVariants: { dragging: false, dropTarget: false, selected: false }
+})
+
+const accountIconRecipe = cva({
+  base: {
+    display: 'grid',
+    width: 'icon-button-medium',
+    height: 'icon-button-medium',
+    flex: 'none',
+    placeItems: 'center',
+    borderRadius: 'pill',
+    background: 'bg.control',
+    color: 'action.primary'
+  }
+})
+
+const actionsMenuRecipe = cva({
+  base: {
+    position: 'absolute',
+    insetInlineEnd: '4',
+    insetBlockStart: 'token(sizes.list-row)',
+    zIndex: 'header',
+    width: 'selection-trigger',
+    padding: '2',
+    borderRadius: 'default',
+    background: 'bg.hover',
+    boxShadow: 'elevation-overlay'
+  }
+})
+
+const secretRecipe = cva({
+  base: {
+    minHeight: 'field-vertical',
+    padding: '4',
+    borderRadius: 'default',
+    background: 'bg.raised',
+    wordBreak: 'break-all',
+    userSelect: 'text'
+  },
+  variants: { revealed: { true: {}, false: { filter: 'blur(token(spacing.2))' } } },
+  defaultVariants: { revealed: false }
+})
 
 function operationError(result: any, fallback: string) {
   return result && 'message' in result && typeof result.message === 'string' ? result.message : fallback
@@ -119,13 +208,6 @@ export function Accounts() {
       clearTimeout(instance.accountSearchTimeout)
     }
   }, [])
-
-  function onKeyboardActivate(event: React.KeyboardEvent, action: () => void) {
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault()
-      action()
-    }
-  }
 
   function signerIcon(type: string, size = 16) {
     if ((type || '').toLowerCase() === 'address') return svg.eye(size)
@@ -417,102 +499,75 @@ export function Accounts() {
       : '0x0000000000000000000000000000000000000000000000000000000000000000'
 
     return (
-      <div className='t2PrivateKeyExport'>
-        <div className='t2PrivateKeyHeader'>
-          <div
-            aria-label='Back to accounts'
-            className='t2PrivateKeyBack'
-            onClick={() => closePrivateKeyExport()}
-            onKeyDown={(e) => onKeyboardActivate(e, () => closePrivateKeyExport())}
-            role='button'
-            tabIndex={0}
-          >
-            {svg.chevronLeft(14)}
-          </div>
-          <div className='t2PrivateKeyTitle'>Private key export</div>
-        </div>
-        <div className='t2PrivateKeyBody'>
-          {!hasSecret ? (
-            <div className='t2InlineInput t2PrivateKeyPassword'>
-              <label>Newframe password</label>
-              <input
-                aria-label='Private key export password'
-                autoFocus
-                placeholder='Enter password'
-                type='password'
-                value={state.accountExportPassword}
-                onChange={(e) => setState({ accountExportPassword: e.target.value })}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') unlockPrivateKeyExport(account)
-                }}
-              />
-            </div>
-          ) : null}
-          <div
-            className={
-              hasSecret && state.accountExportRevealed
-                ? 't2PrivateKeyBox'
-                : 't2PrivateKeyBox t2PrivateKeyBoxBlurred'
-            }
-          >
-            {keyText}
-          </div>
-          {state.accountExportError ? (
-            <div className='t2PrivateKeyError'>{state.accountExportError}</div>
-          ) : null}
-          <div className='t2PrivateKeyActions'>
-            {hasSecret ? (
-              <div
-                aria-label='Copy private key'
-                className='t2PrivateKeyAction'
-                onClick={() => copyExportedPrivateKey()}
-                onKeyDown={(e) => onKeyboardActivate(e, () => copyExportedPrivateKey())}
-                role='button'
-                tabIndex={0}
-              >
-                {state.accountExportCopied ? svg.check(13) : svg.copy(13)}
-                <span className='traySpan'>{state.accountExportCopied ? 'Copied' : 'Copy key'}</span>
-              </div>
-            ) : (
-              <div
-                aria-label='Unlock private key export'
-                className='t2PrivateKeyAction'
-                onClick={() => unlockPrivateKeyExport(account)}
-                onKeyDown={(e) => onKeyboardActivate(e, () => unlockPrivateKeyExport(account))}
-                role='button'
-                tabIndex={0}
-              >
-                {svg.key(13)}
-                <span className='traySpan'>{state.accountExportLoading ? 'Unlocking' : 'Unlock export'}</span>
-              </div>
-            )}
-            {hasSecret ? (
-              <div
-                aria-label={state.accountExportRevealed ? 'Hide private key' : 'Reveal private key'}
-                className='t2PrivateKeyAction t2PrivateKeyActionSubtle'
-                onClick={() => setState({ accountExportRevealed: !state.accountExportRevealed })}
-                onKeyDown={(e) =>
-                  onKeyboardActivate(e, () =>
-                    setState({ accountExportRevealed: !state.accountExportRevealed })
-                  )
-                }
-                role='button'
-                tabIndex={0}
-              >
-                {svg.eye(13)}
-                <span className='traySpan'>{state.accountExportRevealed ? 'Hide key' : 'Reveal key'}</span>
-              </div>
+      <Stack grow gap='none'>
+        <SidePanelHeader
+          closeLabel='Back to accounts'
+          onClose={closePrivateKeyExport}
+          title='Private key export'
+        />
+        <Surface padding='medium' radius='none' tone='transparent'>
+          <Stack gap='medium'>
+            {!hasSecret ? (
+              <Field label='Newframe password' vertical>
+                <Input
+                  label='Private key export password'
+                  autoFocus
+                  placeholder='Enter password'
+                  type='password'
+                  value={state.accountExportPassword}
+                  onValueChange={(value) => setState({ accountExportPassword: value })}
+                  onSubmit={() => void unlockPrivateKeyExport(account)}
+                />
+              </Field>
             ) : null}
-          </div>
-        </div>
-        <div className='t2PrivateKeyWarning'>
-          <div className='t2PrivateKeyWarningIcon'>{svg.alert(18)}</div>
-          <div>
-            Warning: Never disclose this key. Anyone with your private key can steal any assets held in your
-            account.
-          </div>
-        </div>
-      </div>
+            <div className={secretRecipe({ revealed: hasSecret && state.accountExportRevealed })}>
+              <Text variant='code'>{keyText}</Text>
+            </div>
+            {state.accountExportError ? <Text tone='danger'>{state.accountExportError}</Text> : null}
+            <Inline align='center' gap='small'>
+              {hasSecret ? (
+                <Button appearance='primary' onPress={copyExportedPrivateKey} size='medium'>
+                  <Icon name={state.accountExportCopied ? 'check' : 'copy'} size='small' />
+                  <Text variant='compactAction'>{state.accountExportCopied ? 'Copied' : 'Copy key'}</Text>
+                </Button>
+              ) : (
+                <Button
+                  appearance='primary'
+                  disabled={state.accountExportLoading}
+                  onPress={() => void unlockPrivateKeyExport(account)}
+                  size='medium'
+                >
+                  {state.accountExportLoading ? <Spinner label='Unlocking' size='small' /> : null}
+                  <Text variant='compactAction'>
+                    {state.accountExportLoading ? 'Unlocking' : 'Unlock export'}
+                  </Text>
+                </Button>
+              )}
+              {hasSecret ? (
+                <Button
+                  appearance='control'
+                  onPress={() => setState({ accountExportRevealed: !state.accountExportRevealed })}
+                  size='medium'
+                >
+                  <Icon name='eye' size='small' />
+                  <Text variant='compactAction'>
+                    {state.accountExportRevealed ? 'Hide key' : 'Reveal key'}
+                  </Text>
+                </Button>
+              ) : null}
+            </Inline>
+            <Surface border='danger' padding='small' radius='small' tone='card'>
+              <Inline align='center' gap='small'>
+                <Icon name='warning' size='large' tone='danger' />
+                <Text tone='danger' variant='supporting'>
+                  Warning: Never disclose this key. Anyone with your private key can steal assets held in your
+                  account.
+                </Text>
+              </Inline>
+            </Surface>
+          </Stack>
+        </Surface>
+      </Stack>
     )
   }
 
@@ -523,7 +578,7 @@ export function Accounts() {
     const visibleIds = ids.filter((id) => accountMatchesQuery(accounts[id], accountQuery))
 
     return (
-      <div aria-label='Accounts' className='t2Overlay t2AccountsPanel cardShow' role='dialog'>
+      <div aria-label='Accounts' className={overlayRecipe()} role='dialog'>
         {!state.accountExporting ? (
           <HeaderBar>
             <Heading level={1} variant='title'>
@@ -533,18 +588,18 @@ export function Accounts() {
           </HeaderBar>
         ) : null}
         {state.accountExporting ? (
-          <div className='t2OverlayScroll t2AccountsScroll'>{renderPrivateKeyExport(accounts)}</div>
+          <ScrollArea height='page'>{renderPrivateKeyExport(accounts)}</ScrollArea>
         ) : state.addingAccount ? (
-          <div className='t2OverlayScroll t2AccountsScroll'>
+          <ScrollArea height='page'>
             <AddAccount
               initialSelectedSigner={overlay.type === 'accounts' ? overlay.selectedSigner : ''}
               initialType={overlay.type === 'accounts' ? overlay.newAccountType : ''}
               onClose={() => setState({ addingAccount: false })}
             />
-          </div>
+          </ScrollArea>
         ) : (
           <>
-            <div className='t2AccountsTools'>
+            <div className={toolsRecipe()}>
               <SearchField
                 inputRef={(input) => {
                   instance.accountSearchInput = input
@@ -566,225 +621,183 @@ export function Accounts() {
                 <Text variant='compactAction'>Add account</Text>
               </Button>
             </div>
-            <div className='t2OverlayScroll t2AccountsScroll'>
-              {visibleIds.map((id) => {
-                const account = accounts[id]
-                const selected = id === current
-                const navValue = accountNavValue(account)
-                const renaming = state.accountRenaming === id
-                const menuOpen = state.accountMenu === id
-                const confirmingRemove = state.accountRemoving === id
-                const confirmSeedPhraseRemoval =
-                  confirmingRemove && isLastAccountForSeedPhrase(account, accounts)
-                const rowClass = [
-                  't2AccountRow',
-                  selected ? 't2AccountRowSelected' : '',
-                  state.draggingAccount === id ? 't2AccountRowDragging' : '',
-                  state.dragOverAccount === id ? 't2AccountRowDropTarget' : ''
-                ]
-                  .filter(Boolean)
-                  .join(' ')
-                return (
-                  <div
-                    aria-current={selected ? 'true' : undefined}
-                    aria-label={`${accountDisplayName(account)} ${shortAddress(account.address)}`}
-                    key={id}
-                    className={rowClass}
-                    onDragOver={(e) => dragAccountOver(e, id)}
-                    onDrop={(e) => dropAccount(e, id)}
-                    onClick={() => {
-                      setState({ accountsOpen: false })
-                      if (!selected) void link.executeCommand({ type: 'account.select', accountId: id })
-                    }}
-                    onKeyDown={(e) =>
-                      onKeyboardActivate(e, () => {
-                        setState({ accountsOpen: false })
-                        if (!selected) void link.executeCommand({ type: 'account.select', accountId: id })
-                      })
-                    }
-                    role='button'
-                    tabIndex={0}
-                  >
-                    <div
-                      aria-label={`Drag ${accountDisplayName(account)} to reorder`}
-                      className='t2AccountDragHandle'
-                      draggable
-                      onClick={(e) => e.stopPropagation()}
-                      onDragEnd={() => endAccountDrag()}
-                      onDragStart={(e) => startAccountDrag(e, id)}
-                      title='Drag to reorder'
-                    >
-                      <span className='traySpan' />
-                      <span className='traySpan' />
-                      <span className='traySpan' />
-                      <span className='traySpan' />
-                      <span className='traySpan' />
-                      <span className='traySpan' />
-                    </div>
-                    <div className='t2AccountRowIcon'>{accountIcon(account, 18)}</div>
-                    <div className='t2AccountRowInfo'>
-                      {renaming ? (
-                        <AccountRenameInput
-                          ariaLabel={`Rename ${accountDisplayName(account)}`}
-                          initialName={accountDisplayName(account)}
-                          onCancel={() => setState({ accountRenaming: '' })}
-                          onCommit={(name) => saveRenameAccount(id, name)}
-                        />
-                      ) : (
-                        <div className='t2AccountRowName'>
-                          {accountDisplayName(account)}
-                          <div
-                            aria-label={`Rename ${accountDisplayName(account)}`}
-                            className='t2AccountInlineEdit'
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              startRenameAccount(account)
-                            }}
-                            onKeyDown={(e) => {
-                              e.stopPropagation()
-                              onKeyboardActivate(e, () => startRenameAccount(account))
-                            }}
-                            role='button'
-                            tabIndex={0}
-                          >
-                            {svg.pencil(10)}
-                          </div>
-                        </div>
-                      )}
-                      <div className='t2AccountRowAddress'>{shortAddress(account.address)}</div>
-                      <div className='t2AccountRowType'>{accountTypeLabel(account)}</div>
-                    </div>
-                    <div className='t2AccountRowRight'>
-                      <div className='t2AccountRowValue'>{navValue}</div>
-                      {selected ? <div className='t2AccountRowCheck'>{svg.check(14)}</div> : null}
+            <ScrollArea height='page'>
+              <Surface padding='small' radius='none' tone='transparent'>
+                <Stack gap='small'>
+                  {visibleIds.map((id) => {
+                    const account = accounts[id]
+                    const selected = id === current
+                    const navValue = accountNavValue(account)
+                    const renaming = state.accountRenaming === id
+                    const menuOpen = state.accountMenu === id
+                    const confirmingRemove = state.accountRemoving === id
+                    const confirmSeedPhraseRemoval =
+                      confirmingRemove && isLastAccountForSeedPhrase(account, accounts)
+                    return (
                       <div
-                        aria-label={`Copy address for ${accountDisplayName(account)}`}
-                        className='t2AccountIconButton'
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          copyAccountAddress(account)
+                        aria-current={selected ? 'true' : undefined}
+                        aria-label={`${accountDisplayName(account)} ${shortAddress(account.address)}`}
+                        key={id}
+                        className={accountRowRecipe({
+                          dragging: state.draggingAccount === id,
+                          dropTarget: state.dragOverAccount === id,
+                          selected
+                        })}
+                        onDragOver={(e) => dragAccountOver(e, id)}
+                        onDrop={(e) => dropAccount(e, id)}
+                        onClick={() => {
+                          setState({ accountsOpen: false })
+                          if (!selected) void link.executeCommand({ type: 'account.select', accountId: id })
                         }}
                         onKeyDown={(e) => {
-                          e.stopPropagation()
-                          onKeyboardActivate(e, () => copyAccountAddress(account))
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault()
+                            setState({ accountsOpen: false })
+                            if (!selected) void link.executeCommand({ type: 'account.select', accountId: id })
+                          }
                         }}
                         role='button'
                         tabIndex={0}
                       >
-                        {state.accountCopied === id ? svg.check(12) : svg.copy(12)}
-                      </div>
-                      <div
-                        aria-expanded={menuOpen}
-                        aria-label={`${accountDisplayName(account)} account actions`}
-                        className='t2AccountIconButton'
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setState({ accountMenu: menuOpen ? '' : id, accountRemoving: '' })
-                        }}
-                        onKeyDown={(e) => {
-                          e.stopPropagation()
-                          onKeyboardActivate(e, () =>
-                            setState({ accountMenu: menuOpen ? '' : id, accountRemoving: '' })
-                          )
-                        }}
-                        role='button'
-                        tabIndex={0}
-                      >
-                        {svg.ellipsis(12)}
-                      </div>
-                    </div>
-                    {menuOpen ? (
-                      <div className='t2AccountActionsMenu' onClick={(e) => e.stopPropagation()}>
-                        <div
-                          className='t2AccountAction'
-                          onClick={() => startRenameAccount(account)}
-                          onKeyDown={(e) => onKeyboardActivate(e, () => startRenameAccount(account))}
-                          role='button'
-                          tabIndex={0}
+                        <span
+                          aria-label={`Drag ${accountDisplayName(account)} to reorder`}
+                          draggable
+                          onClick={(e) => e.stopPropagation()}
+                          onDragEnd={() => endAccountDrag()}
+                          onDragStart={(e) => startAccountDrag(e, id)}
+                          title='Drag to reorder'
                         >
-                          Rename account
-                        </div>
-                        {isHotAccount(account) ? (
-                          <div
-                            className='t2AccountAction'
-                            onClick={() => openPrivateKeyExport(account)}
-                            onKeyDown={(e) => onKeyboardActivate(e, () => openPrivateKeyExport(account))}
-                            role='button'
-                            tabIndex={0}
-                          >
-                            Export private key
+                          <Icon name='ellipsis' size='small' tone='muted' />
+                        </span>
+                        <span className={accountIconRecipe()}>{accountIcon(account, 18)}</span>
+                        <Stack gap='none' grow>
+                          {renaming ? (
+                            <AccountRenameInput
+                              ariaLabel={`Rename ${accountDisplayName(account)}`}
+                              initialName={accountDisplayName(account)}
+                              onCancel={() => setState({ accountRenaming: '' })}
+                              onCommit={(name) => saveRenameAccount(id, name)}
+                            />
+                          ) : (
+                            <Inline align='center' gap='xsmall'>
+                              <Text variant='label' truncate>
+                                {accountDisplayName(account)}
+                              </Text>
+                              <IconButton
+                                appearance='ghost'
+                                icon='edit'
+                                label={`Rename ${accountDisplayName(account)}`}
+                                onPress={(event) => {
+                                  event.stopPropagation()
+                                  startRenameAccount(account)
+                                }}
+                                size='small'
+                              />
+                            </Inline>
+                          )}
+                          <Text tone='muted' variant='code'>
+                            {shortAddress(account.address)}
+                          </Text>
+                          <Text tone='accent' variant='micro'>
+                            {accountTypeLabel(account)}
+                          </Text>
+                        </Stack>
+                        <Text align='end' variant='numeric' shrink={false}>
+                          {navValue}
+                        </Text>
+                        {selected ? <Icon name='check' size='small' tone='accent' /> : null}
+                        <IconButton
+                          appearance='ghost'
+                          icon={state.accountCopied === id ? 'check' : 'copy'}
+                          label={`Copy address for ${accountDisplayName(account)}`}
+                          onPress={(event) => {
+                            event.stopPropagation()
+                            copyAccountAddress(account)
+                          }}
+                          size='small'
+                        />
+                        <IconButton
+                          appearance='ghost'
+                          expanded={menuOpen}
+                          icon='ellipsis'
+                          label={`${accountDisplayName(account)} account actions`}
+                          onPress={(event) => {
+                            event.stopPropagation()
+                            setState({ accountMenu: menuOpen ? '' : id, accountRemoving: '' })
+                          }}
+                          size='small'
+                        />
+                        {menuOpen ? (
+                          <div className={actionsMenuRecipe()} onClick={(e) => e.stopPropagation()}>
+                            <Stack gap='xsmall'>
+                              <Button
+                                appearance='row'
+                                onPress={() => startRenameAccount(account)}
+                                size='small'
+                                width='full'
+                              >
+                                <Text variant='caption'>Rename account</Text>
+                              </Button>
+                              {isHotAccount(account) ? (
+                                <Button
+                                  appearance='row'
+                                  onPress={() => openPrivateKeyExport(account)}
+                                  size='small'
+                                  width='full'
+                                >
+                                  <Text variant='caption'>Export private key</Text>
+                                </Button>
+                              ) : null}
+                              {confirmSeedPhraseRemoval ? (
+                                <Stack gap='xsmall'>
+                                  <Text variant='caption'>
+                                    This is the last account using this seed phrase.
+                                  </Text>
+                                  <Button appearance='control' onPress={() => removeAccount(id)} size='small'>
+                                    <Text variant='caption'>Keep seed phrase</Text>
+                                  </Button>
+                                  <Button
+                                    appearance='danger'
+                                    onPress={() => removeAccount(id, { removeSeedPhrase: true })}
+                                    size='small'
+                                  >
+                                    <Text variant='caption'>Delete seed phrase</Text>
+                                  </Button>
+                                  <Button
+                                    appearance='ghost'
+                                    onPress={() => setState({ accountRemoving: '' })}
+                                    size='small'
+                                  >
+                                    <Text variant='caption'>Cancel</Text>
+                                  </Button>
+                                </Stack>
+                              ) : confirmingRemove ? (
+                                <Button appearance='danger' onPress={() => removeAccount(id)} size='small'>
+                                  <Text variant='caption'>Confirm remove</Text>
+                                </Button>
+                              ) : (
+                                <Button
+                                  appearance='danger'
+                                  onPress={() => setState({ accountRemoving: id })}
+                                  size='small'
+                                >
+                                  <Text variant='caption'>Remove account</Text>
+                                </Button>
+                              )}
+                            </Stack>
                           </div>
                         ) : null}
-                        {confirmSeedPhraseRemoval ? (
-                          <div className='t2AccountSeedPrompt'>
-                            <div className='t2AccountSeedPromptTitle'>Delete seed phrase from wallet?</div>
-                            <div className='t2AccountSeedPromptDetail'>
-                              This is the last account using this seed phrase.
-                            </div>
-                            <div
-                              className='t2AccountAction'
-                              onClick={() => removeAccount(id)}
-                              onKeyDown={(e) => onKeyboardActivate(e, () => removeAccount(id))}
-                              role='button'
-                              tabIndex={0}
-                            >
-                              Keep seed phrase
-                            </div>
-                            <div
-                              className='t2AccountAction t2AccountActionDanger'
-                              onClick={() => removeAccount(id, { removeSeedPhrase: true })}
-                              onKeyDown={(e) =>
-                                onKeyboardActivate(e, () => removeAccount(id, { removeSeedPhrase: true }))
-                              }
-                              role='button'
-                              tabIndex={0}
-                            >
-                              Delete seed phrase
-                            </div>
-                            <div
-                              className='t2AccountAction'
-                              onClick={() => setState({ accountRemoving: '' })}
-                              onKeyDown={(e) =>
-                                onKeyboardActivate(e, () => setState({ accountRemoving: '' }))
-                              }
-                              role='button'
-                              tabIndex={0}
-                            >
-                              Cancel
-                            </div>
-                          </div>
-                        ) : confirmingRemove ? (
-                          <div
-                            className='t2AccountAction t2AccountActionDanger'
-                            onClick={() => removeAccount(id)}
-                            onKeyDown={(e) => onKeyboardActivate(e, () => removeAccount(id))}
-                            role='button'
-                            tabIndex={0}
-                          >
-                            Confirm remove
-                          </div>
-                        ) : (
-                          <div
-                            className='t2AccountAction t2AccountActionDanger'
-                            onClick={() => setState({ accountRemoving: id })}
-                            onKeyDown={(e) => onKeyboardActivate(e, () => setState({ accountRemoving: id }))}
-                            role='button'
-                            tabIndex={0}
-                          >
-                            Remove account
-                          </div>
-                        )}
                       </div>
-                    ) : null}
-                  </div>
-                )
-              })}
-              {visibleIds.length === 0 ? (
-                <Text align='center' tone='disabled' variant='overline'>
-                  No Accounts Found
-                </Text>
-              ) : null}
-            </div>
+                    )
+                  })}
+                  {visibleIds.length === 0 ? (
+                    <Text align='center' tone='disabled' variant='overline'>
+                      No Accounts Found
+                    </Text>
+                  ) : null}
+                </Stack>
+              </Surface>
+            </ScrollArea>
           </>
         )}
       </div>

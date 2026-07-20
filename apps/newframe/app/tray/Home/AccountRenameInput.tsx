@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 
-import svg from '../../../resources/svg'
+import { IconButton } from '@newframe/ui/icon-button'
+import { Stack } from '@newframe/ui/stack'
+import { Input } from '@newframe/ui/input'
 
 interface AccountRenameInputProps {
   ariaLabel: string
@@ -30,46 +32,27 @@ export default function AccountRenameInput({
   }
 
   return (
-    <div className='t2AccountRenameInput'>
-      <input
-        aria-label={ariaLabel}
+    <Stack align='center' direction='row' gap='xsmall'>
+      <Input
+        appearance='plain'
+        label={ariaLabel}
+        onCancel={onCancel}
+        onSubmit={commit}
+        onValueChange={setDraft}
         ref={inputRef}
-        spellCheck='false'
+        spellCheck={false}
         value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        onClick={(e) => e.stopPropagation()}
-        onKeyDown={(e) => {
-          e.stopPropagation()
-          if (e.key === 'Enter') {
-            e.preventDefault()
-            commit()
-          }
-          if (e.key === 'Escape') {
-            e.preventDefault()
-            onCancel()
-          }
-        }}
       />
-      <div
-        aria-label='Cancel rename'
-        className='t2AccountRenameCancel'
-        onMouseDown={(e) => e.preventDefault()}
-        onClick={(e) => {
-          e.stopPropagation()
+      <IconButton
+        icon='close'
+        label='Cancel rename'
+        onPress={(event) => {
+          event.preventDefault()
+          event.stopPropagation()
           onCancel()
         }}
-        onKeyDown={(e) => {
-          e.stopPropagation()
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault()
-            onCancel()
-          }
-        }}
-        role='button'
-        tabIndex={0}
-      >
-        {svg.x(12)}
-      </div>
-    </div>
+        size='small'
+      />
+    </Stack>
   )
 }

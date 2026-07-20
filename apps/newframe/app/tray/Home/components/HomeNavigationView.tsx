@@ -4,7 +4,33 @@ import { Button } from '@newframe/ui/button'
 import { Icon } from '@newframe/ui/icon'
 import { Tabs } from '@newframe/ui/tabs'
 import { Text } from '@newframe/ui/text'
+import { cva } from '../../../../resources/styled-system/css/cva.js'
 import type { HomeSection } from '../state/homeUiTypes'
+
+const navigationRecipe = cva({
+  base: {
+    position: 'relative',
+    zIndex: 'content',
+    display: 'flex',
+    flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingInline: '6',
+    paddingBlockEnd: '4'
+  }
+})
+
+const chainIconRecipe = cva({
+  base: {
+    display: 'grid',
+    placeItems: 'center',
+    '& img': { borderRadius: '50%', objectFit: 'cover' }
+  }
+})
+
+const networkDotsRecipe = cva({
+  base: { display: 'grid', gridTemplateColumns: 'repeat(2, 5px)', gap: '1' }
+})
 
 export function HomeNavigationView({
   enabledChainDots,
@@ -20,7 +46,7 @@ export function HomeNavigationView({
   selectedChain?: { icon: ReactNode; name: string }
 }) {
   return (
-    <div className='t2TabRow'>
+    <nav className={navigationRecipe()}>
       <Tabs
         appearance='underline'
         items={(['positions', 'activity', 'orders'] as HomeSection[]).map((value) => ({
@@ -40,15 +66,15 @@ export function HomeNavigationView({
         size='small'
       >
         {selectedChain ? (
-          <div className='t2PillChainIcon'>{selectedChain.icon}</div>
+          <span className={chainIconRecipe()}>{selectedChain.icon}</span>
         ) : (
-          <div className='t2NetworkDots'>{enabledChainDots}</div>
+          <span className={networkDotsRecipe()}>{enabledChainDots}</span>
         )}
         <Text display='inline' variant='supporting'>
           {selectedChain?.name || 'All Networks'}
         </Text>
         <Icon name='chevronDown' size='small' tone='muted' />
       </Button>
-    </div>
+    </nav>
   )
 }

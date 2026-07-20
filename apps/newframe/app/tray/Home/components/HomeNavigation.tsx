@@ -1,6 +1,7 @@
 import { useShallow } from 'zustand/react/shallow'
 
 import { chainColorValue } from '../../../../resources/colors'
+import { ChainDot } from '../../../../resources/Components/ChainDot'
 import { useWalletSelector } from '../../../state/useAppSelector'
 import { useChainIconHydration } from '../hooks/useChainIconHydration'
 import { useHomeUiStore } from '../state/HomeUiProvider'
@@ -36,12 +37,9 @@ export function HomeNavigation() {
         .filter((chain) => chain.on)
         .slice(0, 4)
         .map((chain) => (
-          <div
+          <ChainDot
             key={chain.chainId}
-            className='t2NetworkDotSmall'
-            style={{
-              background: chainColorValue(shared.networksMeta[chain.chainId]?.primaryColor)
-            }}
+            color={chainColorValue(shared.networksMeta[chain.chainId]?.primaryColor)}
           />
         ))}
       onOpenNetworks={() => openOverlay({ type: 'networks' })}

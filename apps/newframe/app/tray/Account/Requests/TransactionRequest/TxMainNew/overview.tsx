@@ -1,6 +1,9 @@
 import EnsOverview from '../../Ens'
 
-import svg from '../../../../../../resources/svg'
+import { Icon } from '@newframe/ui/icon'
+import { Stack } from '@newframe/ui/stack'
+import { Text } from '@newframe/ui/text'
+
 import { isNonZeroHex } from '../../../../../../resources/utils'
 
 import { Cluster, ClusterRow, ClusterValue } from '../../../../../../resources/Components/Cluster'
@@ -42,7 +45,6 @@ type ContractCallOverviewProps = {
 
 type DataClusterValueProps = {
   children?: ReactNode
-  valueColor?: string
 }
 
 type TxOverviewProps = {
@@ -57,24 +59,29 @@ type TxOverviewProps = {
     notice?: string
   }
   simple?: boolean
-  valueColor?: string
 }
 
 const SimpleContractCallOverview = ({ method }: SimpleContractCallOverviewProps) => {
   const body = method ? `Calling Contract Method ${method}` : 'Calling Contract'
 
-  return <div className='_txDescriptionSummaryLine'>{body}</div>
+  return (
+    <Text align='center' tone='secondary' variant='supporting'>
+      {body}
+    </Text>
+  )
 }
 
 const ApproveOverview = ({ amount = 0, decimals, symbol = '?' }: ApproveOverviewProps) => {
   const isRevoke = toBigInt(amount) === 0n
   return (
-    <div>
+    <Stack align='center' gap='xsmall'>
       {isRevoke ? (
-        <span className='traySpan'>{`Revoke Approval for ${symbol}`}</span>
+        <Text align='center' variant='supporting'>{`Revoke Approval for ${symbol}`}</Text>
       ) : (
         <>
-          <span className='traySpan'>{'Approve Spending'}</span>
+          <Text align='center' variant='supporting'>
+            Approve Spending
+          </Text>
           <DisplayValue
             type='ether'
             value={amount}
@@ -84,15 +91,17 @@ const ApproveOverview = ({ amount = 0, decimals, symbol = '?' }: ApproveOverview
           />
         </>
       )}
-    </div>
+    </Stack>
   )
 }
 
 const SendOverview = ({ req, symbol = '?', decimals, amount: ammt }: SendOverviewProps) => {
   const amount = ammt || req?.data.value || 0
   return (
-    <div>
-      <span className='traySpan'>{'Send'}</span>
+    <Stack align='center' gap='xsmall'>
+      <Text align='center' variant='supporting'>
+        Send
+      </Text>
       <DisplayValue
         type='ether'
         value={amount}
@@ -100,12 +109,20 @@ const SendOverview = ({ req, symbol = '?', decimals, amount: ammt }: SendOvervie
         currencySymbol={symbol}
         currencySymbolPosition='last'
       />
-    </div>
+    </Stack>
   )
 }
 
-const DeployContractOverview = () => <div>Deploying Contract</div>
-const DataOverview = () => <div>Sending data</div>
+const DeployContractOverview = () => (
+  <Text align='center' variant='supporting'>
+    Deploying Contract
+  </Text>
+)
+const DataOverview = () => (
+  <Text align='center' variant='supporting'>
+    Sending data
+  </Text>
+)
 
 const ContractCallOverview = ({ req }: ContractCallOverviewProps) => {
   const { decodedData: { method } = {} } = req
@@ -131,19 +148,17 @@ function renderRecognizedActions(req: TxOverviewRequest) {
   const { recognizedActions: actions = [] } = req
 
   return !actions.length ? (
-    <div className='_txDescriptionSummaryLine'>Calling Contract</div>
+    <Text align='center' tone='secondary' variant='supporting'>
+      Calling Contract
+    </Text>
   ) : (
     actions.map(renderActionOverview)
   )
 }
 
-const DataClusterValue = ({ children, valueColor }: DataClusterValueProps) => {
+const DataClusterValue = ({ children }: DataClusterValueProps) => {
   const requestView = useRequestView()
-  return (
-    <ClusterValue onClick={() => requestView.open({ step: 'viewData' })} style={{ background: valueColor }}>
-      {children}
-    </ClusterValue>
-  )
+  return <ClusterValue onClick={() => requestView.open({ step: 'viewData' })}>{children}</ClusterValue>
 }
 
 const TxOverview = ({
@@ -153,8 +168,7 @@ const TxOverview = ({
   symbol,
   originName = '',
   replacementStatus,
-  simple,
-  valueColor
+  simple
 }: TxOverviewProps) => {
   const { data: tx, classification } = req
   const { data: calldata, calldataDigest } = tx
@@ -168,56 +182,68 @@ const TxOverview = ({
 
   if (simple) {
     return (
-      <div className='txDescriptionSummaryStandalone'>
-        <span className='traySpan txDescriptionSummaryStandaloneWrap'>{description}</span>
-      </div>
+      <Stack align='center' gap='xsmall'>
+        {description}
+      </Stack>
     )
   } else {
     return (
       <Cluster>
         <ClusterRow>
-          <DataClusterValue valueColor={valueColor}>
-            <div className='_txDescription'>
+          <DataClusterValue>
+            <Stack align='center' gap='small'>
               <RequestHeader chain={chainName} chainColor={chainColor}>
-                <div className='requestItemTitleSub'>
-                  <div className='requestItemTitleSubIcon'>{svg.window(10)}</div>
-                  <div className='requestItemTitleSubText'>{originName}</div>
-                </div>
-                <div className='_txDescriptionSummaryMain'>{description}</div>
+                <Stack align='center' direction='row' gap='xsmall'>
+                  <Icon name='window' size='small' tone='muted' />
+                  <Text tone='muted' truncate variant='caption'>
+                    {originName}
+                  </Text>
+                </Stack>
+                <Stack align='center' gap='xsmall'>
+                  {description}
+                </Stack>
               </RequestHeader>
-            </div>
+            </Stack>
           </DataClusterValue>
         </ClusterRow>
         {replacementStatus?.replacement &&
           (replacementStatus.possible ? (
             <ClusterRow>
               <ClusterValue>
-                <div className='_txMainTag _txMainTagGood'>valid replacement</div>
+                <Text align='center' tone='success' variant='overline'>
+                  valid replacement
+                </Text>
               </ClusterValue>
             </ClusterRow>
           ) : (
             <ClusterRow>
               <ClusterValue>
-                <div className='_txMainTag _txMainTagBad'>
+                <Text align='center' tone='danger' variant='overline'>
                   {replacementStatus.notice || 'invalid duplicate'}
-                </div>
+                </Text>
               </ClusterValue>
             </ClusterRow>
           ))}
         {isNonZeroHex(calldata || '') && (
           <ClusterRow>
             <ClusterValue>
-              <div className='_txMainTag _txMainTagWarning'>{'Transaction includes data'}</div>
+              <Text align='center' tone='warning' variant='overline'>
+                Transaction includes data
+              </Text>
             </ClusterValue>
           </ClusterRow>
         )}
         {isNonZeroHex(calldata || '') && calldataDigest && (
           <ClusterRow>
             <ClusterValue>
-              <div className='calldataDigestRow'>
-                <div className='calldataDigestLabel'>Calldata Digest</div>
-                <div className='calldataDigestValue'>{calldataDigest}</div>
-              </div>
+              <Stack align='center' gap='xsmall'>
+                <Text tone='muted' variant='overline'>
+                  Calldata Digest
+                </Text>
+                <Text tone='secondary' truncate variant='code'>
+                  {calldataDigest}
+                </Text>
+              </Stack>
             </ClusterValue>
           </ClusterRow>
         )}

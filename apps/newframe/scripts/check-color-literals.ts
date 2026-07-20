@@ -57,7 +57,12 @@ export async function findApplicationColorLiterals() {
 
   for (const file of files) {
     const relativePath = path.relative(appRoot, file)
-    if (!sourceExtensions.has(path.extname(file)) || allowedFiles.has(relativePath)) continue
+    if (
+      !sourceExtensions.has(path.extname(file)) ||
+      allowedFiles.has(relativePath) ||
+      relativePath.startsWith(`resources${path.sep}styled-system${path.sep}`)
+    )
+      continue
 
     const violations = findColorLiteralViolations(await readFile(file, 'utf8'))
     results.push(...violations.map((violation) => ({ file: relativePath, ...violation })))

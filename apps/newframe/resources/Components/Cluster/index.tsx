@@ -1,125 +1,161 @@
-import React from 'react'
+import type { MouseEventHandler, ReactNode } from 'react'
 
-interface ClusterValueProps {
-  children?: React.ReactNode
-  style?: React.CSSProperties
-  onClick?: React.MouseEventHandler<HTMLDivElement> | null
-  grow?: number
-  pointerEvents?: boolean | string
-  transparent?: boolean
+import { Stack } from '@newframe/ui/stack'
+import { Text } from '@newframe/ui/text'
+
+import { cva } from '../../styled-system/css/cva.js'
+
+const clusterRecipe = cva({
+  base: {
+    display: 'flow-root',
+    margin: '3',
+    paddingBlock: '1',
+    borderRadius: 'card',
+    background: 'bg.primary',
+    '& > [data-cluster-row]:first-child > [data-cluster-value]:first-child': {
+      borderStartStartRadius: 'card'
+    },
+    '& > [data-cluster-row]:first-child > [data-cluster-value]:last-child': {
+      borderStartEndRadius: 'card'
+    },
+    '& > [data-cluster-row]:last-child > [data-cluster-value]:first-child': {
+      borderEndStartRadius: 'card'
+    },
+    '& > [data-cluster-row]:last-child > [data-cluster-value]:last-child': {
+      borderEndEndRadius: 'card'
+    }
+  },
+  variants: {
+    spacing: {
+      none: {},
+      top: { marginBlockStart: '6' }
+    }
+  },
+  defaultVariants: { spacing: 'none' }
+})
+
+const valueRecipe = cva({
+  base: {
+    display: 'flex',
+    minWidth: 0,
+    minHeight: 'button-medium',
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    marginBlockStart: '1',
+    marginInlineEnd: '1',
+    borderBlockEndWidth: 'strong',
+    borderBlockEndStyle: 'solid',
+    borderBlockEndColor: 'bg.primary',
+    borderRadius: 'small',
+    background: 'bg.raised',
+    boxShadow: 'elevation-raised'
+  },
+  variants: {
+    interactiveChildren: {
+      true: { '& > *': { pointerEvents: 'auto' } },
+      false: { '& > *': { pointerEvents: 'none' } }
+    },
+    interactive: {
+      true: {
+        cursor: 'pointer',
+        _hover: {
+          zIndex: 'content',
+          background: 'bg.control',
+          transform: 'translateY(calc(-1 * token(sizes.motion-distance-hover)))'
+        },
+        _active: { transform: 'none' }
+      },
+      false: {}
+    },
+    tone: {
+      default: {},
+      transparent: { borderBlockEndColor: 'transparent', background: 'transparent', boxShadow: 'none' }
+    }
+  },
+  defaultVariants: { interactive: false, interactiveChildren: false, tone: 'default' }
+})
+
+const boxRecipe = cva({
+  base: { position: 'relative' },
+  variants: {
+    offset: {
+      none: {},
+      large: { marginBlockStart: '11' }
+    }
+  },
+  defaultVariants: { offset: 'none' }
+})
+
+export type ClusterValueProps = {
+  children?: ReactNode
+  interactiveChildren?: boolean
+  onClick?: MouseEventHandler<HTMLDivElement> | null
   role?: string
+  transparent?: boolean
 }
 
-export const ClusterValue = ({
+export function ClusterValue({
   children,
-  style = {},
+  interactiveChildren = false,
   onClick,
-  grow = 1,
-  pointerEvents = false,
-  transparent = false,
-  role
-}: ClusterValueProps) => {
-  let valueClass = 'clusterValue'
-  if (onClick) valueClass += ' clusterValueClickable'
-  if (pointerEvents) valueClass += ' clusterValueInteractable'
-  if (transparent) valueClass += ' clusterValueTransparent'
-  style.flexGrow = grow
+  role,
+  transparent = false
+}: ClusterValueProps) {
   return (
-    <div className={valueClass} style={style} onClick={onClick ?? undefined} role={role}>
+    <div
+      className={valueRecipe({
+        interactive: Boolean(onClick),
+        interactiveChildren,
+        tone: transparent ? 'transparent' : 'default'
+      })}
+      data-cluster-value=''
+      onClick={onClick ?? undefined}
+      role={role}
+    >
       {children}
     </div>
   )
 }
 
-export const ClusterRow = ({
-  children,
-  style = {}
-}: {
-  children?: React.ReactNode
-  style?: React.CSSProperties
-}) => {
+export function ClusterRow({ children }: { children?: ReactNode }) {
   return (
-    <div className='clusterRow' style={style}>
-      {children}
+    <div data-cluster-row=''>
+      <Stack align='stretch' direction='row' gap='none' justify='center'>
+        {children}
+      </Stack>
     </div>
   )
 }
 
-export const ClusterColumn = ({
-  children,
-  style = {},
-  grow = 1,
-  width
-}: {
-  children?: React.ReactNode
-  style?: React.CSSProperties
-  grow?: number
-  width?: number | string
-}) => {
-  style.flexGrow = grow
-  if (width) {
-    style.width = width
-    style.minWidth = width
-    style.maxWidth = width
-  }
-  return (
-    <div className='clusterColumn' style={style}>
-      {children}
-    </div>
-  )
+export function Cluster({ children, spacing = 'none' }: { children?: ReactNode; spacing?: 'none' | 'top' }) {
+  return <div className={clusterRecipe({ spacing })}>{children}</div>
 }
 
-export const Cluster = ({
-  children,
-  style = {}
-}: {
-  children?: React.ReactNode
-  style?: React.CSSProperties
-}) => {
-  return (
-    <div className='cluster' style={style}>
-      {children}
-    </div>
-  )
-}
-
-export const ClusterBox = ({
+export function ClusterBox({
   title,
   subtitle,
   children,
-  style = {},
-  animationSlot = 0
+  offset = 'none'
 }: {
-  title?: React.ReactNode
-  subtitle?: React.ReactNode
-  children?: React.ReactNode
-  style?: React.CSSProperties
+  title?: ReactNode
+  subtitle?: ReactNode
+  children?: ReactNode
+  offset?: 'large' | 'none'
   animationSlot?: number
-}) => {
-  style.animationDelay = 0.1 * animationSlot + 's'
+}) {
   return (
-    <div className='_txMain' style={style}>
-      <div className='_txMainInner'>
-        {title ? (
-          <div className='_txLabel'>
-            <div>{title}</div>
-            {subtitle && (
-              <span
-                style={{
-                  opacity: 0.9,
-                  fontSize: '9px',
-                  position: 'relative',
-                  top: '0px',
-                  left: '4px'
-                }}
-              >
-                {`(${subtitle})`}
-              </span>
-            )}
-          </div>
-        ) : null}
-        {children}
-      </div>
-    </div>
+    <section className={boxRecipe({ offset })}>
+      {title ? (
+        <Stack align='center' direction='row' gap='xsmall'>
+          <Text tone='muted' variant='overline'>
+            {title}
+          </Text>
+          {subtitle ? <Text tone='muted' variant='micro'>{`(${subtitle})`}</Text> : null}
+        </Stack>
+      ) : null}
+      {children}
+    </section>
   )
 }

@@ -52,6 +52,21 @@
       "import": "./dist/primitives/Input.js",
       "default": "./dist/primitives/Input.js"
     },
+    "./text-area": {
+      "types": "./dist/primitives/TextArea.d.ts",
+      "import": "./dist/primitives/TextArea.js",
+      "default": "./dist/primitives/TextArea.js"
+    },
+    "./spinner": {
+      "types": "./dist/primitives/Spinner.d.ts",
+      "import": "./dist/primitives/Spinner.js",
+      "default": "./dist/primitives/Spinner.js"
+    },
+    "./dialog": {
+      "types": "./dist/primitives/Dialog.d.ts",
+      "import": "./dist/primitives/Dialog.js",
+      "default": "./dist/primitives/Dialog.js"
+    },
     "./select": {
       "types": "./dist/primitives/Select.d.ts",
       "import": "./dist/primitives/Select.js",
@@ -145,19 +160,17 @@
   },
   "scripts": {
     "clean": "bun ./scripts/clean.ts",
-    "tokens:generate": "bun ./scripts/generate-tokens.ts",
-    "tokens:check": "bun ./scripts/generate-tokens.ts --check",
     "assets:copy": "bun ./scripts/copy-assets.ts",
     "styles:generate": "panda codegen --clean && panda",
     "styles:watch": "panda --watch",
-    "build": "bun run clean && bun run tokens:generate && bun run styles:generate && tsc --project tsconfig.json && bun run assets:copy",
+    "build": "bun run clean && bun run styles:generate && tsc --project tsconfig.json && bun run assets:copy",
     "artifacts:check": "bun ./scripts/check-artifacts.ts",
-    "check": "bun run tokens:check && bun run artifacts:check",
+    "check": "bun run artifacts:check",
     "typecheck": "bun run styles:generate && tsc --project tsconfig.json --noEmit",
     "test": "bun test --preload ./test/setup.ts",
     "watch:types": "tsc --project tsconfig.json --watch --preserveWatchOutput",
     "watch:assets": "bun ./scripts/watch-assets.ts",
-    "watch": "bun run tokens:generate && bun run styles:generate && bun run assets:copy && bun run --parallel watch:types watch:assets styles:watch"
+    "watch": "bun run styles:generate && bun run assets:copy && bun run --parallel watch:types watch:assets styles:watch"
   },
   "dependencies": {},
   "peerDependencies": {

@@ -1,6 +1,25 @@
 import type { ReactNode } from 'react'
 
-import './side-panel.css'
+import { cva } from '../../styled-system/css/cva.js'
+
+const bodyRecipe = cva({
+  base: {
+    position: 'relative',
+    minHeight: 0,
+    flex: 1,
+    display: 'flex',
+    overflowX: 'hidden',
+    overflowY: 'auto',
+    paddingInline: '6'
+  },
+  variants: {
+    footerSpace: {
+      compact: { paddingBlockEnd: 'token(sizes.panel-footer-space-compact)' },
+      default: { paddingBlockEnd: 'token(sizes.panel-footer-space)' }
+    }
+  },
+  defaultVariants: { footerSpace: 'default' }
+})
 
 export type SidePanelBodyProps = {
   children: ReactNode
@@ -8,5 +27,5 @@ export type SidePanelBodyProps = {
 }
 
 export function SidePanelBody({ children, footerSpace = 'default' }: SidePanelBodyProps) {
-  return <main className={`nf-side-panel__body nf-side-panel__body--${footerSpace}`}>{children}</main>
+  return <main className={bodyRecipe({ footerSpace })}>{children}</main>
 }

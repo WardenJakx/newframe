@@ -3,7 +3,11 @@ import type { ReactNode } from 'react'
 import { SidePanelBody } from './SidePanelBody.js'
 import { SidePanelFooter } from './SidePanelFooter.js'
 import { SidePanelHeader } from './SidePanelHeader.js'
-import './side-panel.css'
+import { cva } from '../../styled-system/css/cva.js'
+
+const sidePanelRecipe = cva({
+  base: { position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column' }
+})
 
 export type SidePanelProps = {
   children: ReactNode
@@ -25,7 +29,7 @@ export function SidePanel({
   title
 }: SidePanelProps) {
   return (
-    <div className='nf-side-panel'>
+    <div className={sidePanelRecipe()}>
       <SidePanelHeader closeLabel={closeLabel} onClose={onClose} title={title} />
       <SidePanelBody footerSpace={footerSpace}>{children}</SidePanelBody>
       {footer ? <SidePanelFooter compact={footerCompact}>{footer}</SidePanelFooter> : null}

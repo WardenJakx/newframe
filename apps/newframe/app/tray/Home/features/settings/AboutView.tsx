@@ -1,8 +1,10 @@
 import { Button } from '@newframe/ui/button'
 import { Spacer } from '@newframe/ui/spacer'
+import { Stack } from '@newframe/ui/stack'
+import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
 
-import { SidePanelHeader } from '../../../../../resources/Components/SidePanel/SidePanelHeader'
+import { TrayOverlay } from '../../../../../resources/Components/TrayOverlay'
 import { SettingsActionRow } from '../../ui/SettingsRow'
 
 export function AboutView({
@@ -21,33 +23,27 @@ export function AboutView({
   version: string
 }) {
   return (
-    <div aria-label='App Info' className='t2Overlay cardShow' role='dialog'>
-      <SidePanelHeader closeLabel='Back' onClose={onBack} title='App Info' />
-      <div className='t2OverlayScroll t2SettingsScroll'>
-        <div className='t2SettingsSection'>
-          <Button
-            appearance='selectionOption'
-            label='Copy instance ID'
-            onPress={onCopyInstanceId}
-            width='full'
-          >
-            <Text tone='muted' variant='supporting'>
-              Instance ID
-            </Text>
-            <Spacer />
-            <Text truncate variant='code'>
-              {copied ? 'Instance ID Copied' : instanceId}
-            </Text>
-          </Button>
-          <div className='t2InfoRow'>
+    <TrayOverlay closeLabel='Back' label='App Info' onClose={onBack} title='App Info'>
+      <Stack gap='small'>
+        <Button appearance='selectionOption' label='Copy instance ID' onPress={onCopyInstanceId} width='full'>
+          <Text tone='muted' variant='supporting'>
+            Instance ID
+          </Text>
+          <Spacer />
+          <Text truncate variant='code'>
+            {copied ? 'Instance ID Copied' : instanceId}
+          </Text>
+        </Button>
+        <Surface padding='small' radius='card'>
+          <Stack gap='xsmall'>
             <Text tone='muted' variant='supporting'>
               Version
             </Text>
             <Text variant='supporting'>{`v${version}`}</Text>
-          </div>
-          <SettingsActionRow action='Open' label='View License' onAction={onViewLicense} />
-        </div>
-      </div>
-    </div>
+          </Stack>
+        </Surface>
+        <SettingsActionRow action='Open' label='View License' onAction={onViewLicense} />
+      </Stack>
+    </TrayOverlay>
   )
 }

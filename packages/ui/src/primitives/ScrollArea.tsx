@@ -7,6 +7,7 @@ const scrollAreaRecipe = cva({
   base: { minHeight: 0, overflowY: 'auto' },
   variants: {
     height: {
+      fill: { height: '100%' },
       menu: { maxHeight: 'scroll-menu' },
       list: { maxHeight: 'scroll-list' },
       page: { maxHeight: 'page-max-block' }

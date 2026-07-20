@@ -1,3 +1,8 @@
+import { Button } from '@newframe/ui/button'
+import { Dialog } from '@newframe/ui/dialog'
+import { Stack } from '@newframe/ui/stack'
+import { Text } from '@newframe/ui/text'
+
 import link from '../../../resources/link'
 import { useWalletSelector } from '../../state/useAppSelector'
 import type { TrayRendererState } from '../state'
@@ -8,85 +13,57 @@ const selectBadge = (state: TrayRendererState) => state.view.badge || EMPTY_BADG
 export default function Badge() {
   const badge = useWalletSelector(selectBadge) as { type?: string; version?: string }
 
-  if (badge.type === 'updateReady') {
-    return (
-      <div className='badgeWrap'>
-        <div className='badge cardShow' style={{ transform: 'translateY(0px)', height: '196px' }}>
-          <div className='badgeInner'>
-            <div className='badgeMessage'>Your update is ready, restart Newframe to switch?</div>
-            <div className='badgeInput'>
-              <div className='badgeInputButton'>
-                <div
-                  className='badgeInputInner'
-                  onMouseDown={() => void link.executeCommand({ type: 'updater.respond', action: 'restart' })}
-                  style={{ color: 'var(--color-action-primary)' }}
-                >
-                  Restart Now
-                </div>
-              </div>
-            </div>
-            <div className='badgeInput'>
-              <div className='badgeInputButton'>
-                <div
-                  className='badgeInputInner'
-                  onMouseDown={() =>
-                    void link.executeCommand({ type: 'updater.respond', action: 'dismiss-ready' })
-                  }
-                  style={{ color: 'var(--color-status-danger)' }}
-                >
-                  Restart Later
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  } else if (badge.type === 'updateAvailable') {
-    return (
-      <div className='badgeWrap'>
-        <div className='badge cardShow' style={{ transform: 'translateY(0px)', height: '224px' }}>
-          <div className='badgeInner'>
-            <div className='badgeMessage'>
-              Version {badge.version} is available, would you like to install it?
-            </div>
-            <div className='badgeInput'>
-              <div className='badgeInputButton'>
-                <div
-                  className='badgeInputInner'
-                  onMouseDown={() => void link.executeCommand({ type: 'updater.respond', action: 'install' })}
-                  style={{ color: 'var(--color-action-primary)' }}
-                >
-                  Install Update
-                </div>
-              </div>
-            </div>
-            <div className='badgeInput'>
-              <div className='badgeInputButton'>
-                <div
-                  className='badgeInputInner'
-                  onMouseDown={() => void link.executeCommand({ type: 'updater.respond', action: 'later' })}
-                  style={{ color: 'var(--color-status-danger)' }}
-                >
-                  Remind Me Later
-                </div>
-              </div>
-            </div>
-            <div className='badgeInput'>
-              <div className='badgeInputButton'>
-                <div
-                  className='badgeInputInner badgeInputSmall'
-                  onMouseDown={() => void link.executeCommand({ type: 'updater.respond', action: 'skip' })}
-                >
-                  Skip This Version
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  } else {
-    return null
-  }
+  if (badge.type !== 'updateReady' && badge.type !== 'updateAvailable') return null
+
+  const ready = badge.type === 'updateReady'
+  return (
+    <Dialog label='Newframe update' padding='large' placement='top' width='compact'>
+      <Stack gap='large'>
+        <Text align='center' variant='heading'>
+          {ready ? 'Update Ready' : 'Update Available'}
+        </Text>
+        <Text align='center' tone='secondary'>
+          {ready
+            ? 'Restart Newframe to switch to the downloaded update.'
+            : `Version ${badge.version || ''} is available. Would you like to install it?`}
+        </Text>
+        <Button
+          appearance='primary'
+          onPress={() =>
+            void link.executeCommand({
+              type: 'updater.respond',
+              action: ready ? 'restart' : 'install'
+            })
+          }
+          shape='pill'
+          width='full'
+        >
+          <Text variant='action'>{ready ? 'Restart Now' : 'Install Update'}</Text>
+        </Button>
+        <Button
+          appearance='danger'
+          onPress={() =>
+            void link.executeCommand({
+              type: 'updater.respond',
+              action: ready ? 'dismiss-ready' : 'later'
+            })
+          }
+          shape='pill'
+          width='full'
+        >
+          <Text variant='action'>{ready ? 'Restart Later' : 'Remind Me Later'}</Text>
+        </Button>
+        {!ready ? (
+          <Button
+            appearance='ghost'
+            onPress={() => void link.executeCommand({ type: 'updater.respond', action: 'skip' })}
+            shape='pill'
+            width='full'
+          >
+            <Text variant='compactAction'>Skip This Version</Text>
+          </Button>
+        ) : null}
+      </Stack>
+    </Dialog>
+  )
 }

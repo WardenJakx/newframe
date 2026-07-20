@@ -15,6 +15,18 @@ export const tradeMarketStage: VisualStage = {
 
     const approveRequest = await driver.waitForCurrentRequest('transaction', new Set(), 30_000)
     await driver.screenshot(tray, '21b-trade-market-approve-review.png')
+
+    await tray.getByRole('button', { name: /Calldata digest/i }).click()
+    await tray.getByText('Raw Transaction', { exact: true }).waitFor({ state: 'visible' })
+    const rawDataFits = await tray.getByText('Raw Transaction', { exact: true }).evaluate(() => {
+      const root = document.documentElement
+      return root.scrollWidth <= root.clientWidth
+    })
+    if (!rawDataFits) driver.fail('Raw transaction values must not overflow the tray viewport')
+    await driver.screenshot(tray, '21b1-trade-market-raw-data.png')
+    await tray.getByRole('button', { name: 'Back', exact: true }).click()
+    await tray.getByText('Transaction effects', { exact: true }).waitFor({ state: 'visible' })
+
     await driver.signCurrentTransaction(approveRequest, '21c-trade-market-approve-submitted.png', [
       '21b-trade-market-approve-warning.png',
       '21c-trade-market-approve-post-sign-warning.png'

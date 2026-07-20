@@ -1,6 +1,10 @@
 import link from '../../../../../../resources/link'
-import { chainColorValue } from '../../../../../../resources/colors'
 import { DisplayCoinBalance } from '../../../../../../resources/Components/DisplayValue'
+import { Button } from '@newframe/ui/button'
+import { Inline } from '@newframe/ui/inline'
+import { Stack } from '@newframe/ui/stack'
+import { Surface } from '@newframe/ui/surface'
+import { Text } from '@newframe/ui/text'
 import {
   getPaidTransactionFee,
   TRANSACTION_CONFIRMATION_TARGET,
@@ -107,39 +111,45 @@ export function TxFeeSummary(props: TxFeeSummaryProps) {
   const canAdjustFee = !paidFee && !req.status
 
   return (
-    <section aria-label='Network fee' className='txReviewFee'>
-      <div className='txReviewFeeSummary'>
-        <div className='txReviewFeeMain'>
-          <div className='txReviewFeeLabel'>{paidFee ? 'Paid fee' : 'Max fee'}</div>
-          <div className={shouldWarn ? 'txReviewFeeValue txReviewFeeValueWarn' : 'txReviewFeeValue'}>
-            {fee.bn === undefined ? (
-              `? ${nativeCurrency.symbol}`
-            ) : (
-              <DisplayCoinBalance amount={fee} symbol={nativeCurrency.symbol} />
-            )}
-          </div>
-        </div>
-        <div className='txReviewFeeMeta'>
-          <span className='traySpan'>{gasDisplay.displayValue} Gwei</span>
-        </div>
-      </div>
-      {canAdjustFee ? (
-        <div className='txReviewFeeRates' role='group' aria-label='Fee rate'>
-          {FEE_RATE_OPTIONS.map((option) => (
-            <button
-              key={option.id}
-              aria-pressed={selectedRate === option.id}
-              className={
-                selectedRate === option.id ? 'txReviewFeeRate txReviewFeeRateActive' : 'txReviewFeeRate'
-              }
-              onClick={() => applyFeeRate(option)}
-              type='button'
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
-      ) : null}
+    <section aria-label='Network fee'>
+      <Surface padding='small' radius='card' tone='card'>
+        <Stack gap='small'>
+          <Inline align='center' gap='small' justify='between'>
+            <Stack gap='xsmall'>
+              <Text tone='secondary' variant='overline'>
+                {paidFee ? 'Paid fee' : 'Max fee'}
+              </Text>
+              <Text tone={shouldWarn ? 'danger' : 'primary'} variant='control'>
+                {fee.bn === undefined ? (
+                  `? ${nativeCurrency.symbol}`
+                ) : (
+                  <DisplayCoinBalance amount={fee} symbol={nativeCurrency.symbol} />
+                )}
+              </Text>
+            </Stack>
+            <Text tone='secondary' variant='caption' shrink={false}>
+              {gasDisplay.displayValue} Gwei
+            </Text>
+          </Inline>
+          {canAdjustFee ? (
+            <Stack direction='row' equal gap='xsmall' label='Fee rate'>
+              {FEE_RATE_OPTIONS.map((option) => (
+                <Button
+                  appearance='segment'
+                  key={option.id}
+                  onPress={() => applyFeeRate(option)}
+                  pressed={selectedRate === option.id}
+                  size='small'
+                >
+                  <Text variant='caption' truncate>
+                    {option.label}
+                  </Text>
+                </Button>
+              ))}
+            </Stack>
+          ) : null}
+        </Stack>
+      </Surface>
     </section>
   )
 }
@@ -205,7 +215,6 @@ export function TxReview(props: TxReviewProps) {
   return (
     <TransactionInformation
       networkName={chainName}
-      networkColor={meta.primaryColor ? chainColorValue(meta.primaryColor) : undefined}
       title={intent.title}
       subtitle={intent.subtitle}
       statusLabel={displayStatus(req)}

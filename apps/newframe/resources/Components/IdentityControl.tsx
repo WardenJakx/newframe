@@ -1,9 +1,41 @@
+import { Button } from '@newframe/ui/button'
 import { Icon, type IconName } from '@newframe/ui/icon'
 import { IconButton } from '@newframe/ui/icon-button'
 import { Inline } from '@newframe/ui/inline'
 import { Stack } from '@newframe/ui/stack'
 import { Text } from '@newframe/ui/text'
-import './identity-control.css'
+
+import { cva } from '../styled-system/css/cva.js'
+
+const identityControlRecipe = cva({
+  base: {
+    width: '100%',
+    minWidth: 0,
+    display: 'grid',
+    gridTemplateColumns: 'minmax(0, 1fr) auto',
+    alignItems: 'center',
+    maxWidth: 'selection-menu',
+    gap: '2',
+    padding: '3',
+    overflow: 'hidden',
+    borderRadius: 'pill',
+    background: 'bg.raised',
+    _hover: { background: 'bg.hover' }
+  }
+})
+
+const identityIconRecipe = cva({
+  base: {
+    display: 'grid',
+    width: 'identity-icon',
+    height: 'identity-icon',
+    flex: 'none',
+    placeItems: 'center',
+    borderRadius: 'pill',
+    color: 'action.primary',
+    background: 'bg.control'
+  }
+})
 
 export type IdentityControlAction = {
   icon: IconName
@@ -32,17 +64,17 @@ export function IdentityControl({
   onPress
 }: IdentityControlProps) {
   return (
-    <div className='nf-identity-control'>
-      <button
-        aria-expanded={expanded}
-        aria-haspopup='dialog'
-        aria-label={label}
-        className='nf-identity-control__identity'
-        onClick={onPress}
-        type='button'
+    <div className={identityControlRecipe()}>
+      <Button
+        appearance='ghost'
+        expanded={expanded}
+        hasPopup='dialog'
+        label={label}
+        onPress={onPress}
+        width='full'
       >
         <Inline align='center' gap='small' grow>
-          <span className='nf-identity-control__icon'>
+          <span className={identityIconRecipe()}>
             <Icon name={icon} size='medium' />
           </span>
           <Stack gap='none' grow>
@@ -55,13 +87,11 @@ export function IdentityControl({
               </Text>
             ) : null}
           </Stack>
-          <span className='nf-identity-control__chevron'>
-            <Icon name='chevronUp' size='medium' />
-          </span>
+          <Icon name='chevronUp' size='medium' tone='muted' />
         </Inline>
-      </button>
+      </Button>
       {actions.length > 0 ? (
-        <span className='nf-identity-control__actions'>
+        <Inline align='center' gap='none'>
           {actions.map((action) => (
             <IconButton
               appearance='ghost'
@@ -74,7 +104,7 @@ export function IdentityControl({
               tone='accent'
             />
           ))}
-        </span>
+        </Inline>
       ) : null}
     </div>
   )

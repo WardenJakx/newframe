@@ -23,7 +23,17 @@ export const inputRecipe = cva({
   },
   variants: {
     appearance: {
-      plain: { height: 'auto', border: 0, borderRadius: 0, background: 'transparent', padding: 0 },
+      plain: {
+        height: 'auto',
+        borderWidth: 0,
+        borderColor: 'transparent',
+        borderRadius: 0,
+        background: 'transparent',
+        boxShadow: 'none',
+        padding: 0,
+        _focusVisible: { borderColor: 'transparent', boxShadow: 'none' },
+        '&[aria-invalid="true"]': { borderColor: 'transparent', boxShadow: 'none' }
+      },
       control: {},
       amount: {
         height: 'auto',
@@ -67,6 +77,7 @@ export function inputClasses(props: InputRecipeProps) {
 export type InputProps = InputRecipeProps & {
   autoComplete?: HTMLInputAutoCompleteAttribute
   autoFocus?: boolean
+  blurOnEnter?: boolean
   defaultValue?: string | number
   describedBy?: string
   disabled?: boolean
@@ -80,6 +91,8 @@ export type InputProps = InputRecipeProps & {
   name?: string
   onBlur?: (value: string) => void
   onFocus?: (value: string) => void
+  onCancel?: () => void
+  onStep?: (direction: 'decrement' | 'increment') => void
   onSubmit?: () => void
   onValueChange?: (value: string) => void
   placeholder?: string
@@ -87,6 +100,7 @@ export type InputProps = InputRecipeProps & {
   required?: boolean
   spellCheck?: boolean
   step?: string | number
+  tabIndex?: number
   type?: 'datetime-local' | 'email' | 'number' | 'password' | 'search' | 'text'
   value?: string | number
 }
@@ -97,6 +111,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
     appearance,
     autoComplete,
     autoFocus,
+    blurOnEnter = false,
     defaultValue,
     describedBy,
     disabled,
@@ -110,14 +125,17 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
     min,
     name,
     onBlur,
+    onCancel,
     onFocus,
     onSubmit,
+    onStep,
     onValueChange,
     placeholder,
     readOnly,
     required,
     spellCheck,
     step,
+    tabIndex,
     type = 'text',
     value
   },
@@ -145,11 +163,22 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
       onBlur={onBlur ? (event) => onBlur(event.currentTarget.value) : undefined}
       onFocus={onFocus ? (event) => onFocus(event.currentTarget.value) : undefined}
       onKeyDown={
-        onSubmit
+        onSubmit || onCancel || onStep || blurOnEnter
           ? (event) => {
-              if (event.key !== 'Enter') return
-              event.preventDefault()
-              onSubmit()
+              if (event.key === 'Enter' && (onSubmit || blurOnEnter)) {
+                event.preventDefault()
+                onSubmit?.()
+                if (blurOnEnter) event.currentTarget.blur()
+              } else if (event.key === 'Escape' && onCancel) {
+                event.preventDefault()
+                onCancel()
+              } else if (event.key === 'ArrowUp' && onStep) {
+                event.preventDefault()
+                onStep('increment')
+              } else if (event.key === 'ArrowDown' && onStep) {
+                event.preventDefault()
+                onStep('decrement')
+              }
             }
           : undefined
       }
@@ -159,6 +188,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
       required={required}
       spellCheck={spellCheck}
       step={step}
+      tabIndex={tabIndex}
       type={type}
       value={value}
     />

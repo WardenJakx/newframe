@@ -8,7 +8,7 @@ export const activityStage: VisualStage = {
     await tray.getByRole('tab', { name: 'Activity' }).click()
     await runtime.screenshot(tray, '20-final-activity.png')
 
-    await tray.locator('.t2ActivityList button').first().click()
+    await tray.getByRole('group', { name: 'Activity list' }).getByRole('button').first().click()
     await tray.getByRole('dialog', { name: 'Transaction activity details' }).waitFor()
     await tray.waitForTimeout(700)
     await runtime.screenshot(tray, '20a-activity-details.png')

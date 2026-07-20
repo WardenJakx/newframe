@@ -14,6 +14,22 @@ import {
 } from '../../../../../resources/domain/balance'
 import { formatUsdRate } from '../../../../../resources/domain/balance'
 import type { PositionGroups } from './positionModel'
+import { cva } from '../../../../../resources/styled-system/css/cva.js'
+
+const searchRecipe = cva({ base: { flexShrink: 0, paddingInline: '5', paddingBlockEnd: '4' } })
+const listRecipe = cva({
+  base: {
+    position: 'relative',
+    zIndex: 'content',
+    minHeight: 0,
+    flex: 1,
+    overflowX: 'hidden',
+    overflowY: 'auto',
+    paddingInline: '4',
+    paddingBlockStart: '1',
+    paddingBlockEnd: '7'
+  }
+})
 
 export interface PositionsViewProps {
   dustExpanded: boolean
@@ -113,7 +129,7 @@ export function PositionsView({
 
   return (
     <>
-      <div className='t2SearchWrap'>
+      <div className={searchRecipe()}>
         <SearchField
           label='asset filter'
           onChange={onChangeQuery}
@@ -122,7 +138,7 @@ export function PositionsView({
           value={query}
         />
       </div>
-      <div className='t2Main'>
+      <main className={listRecipe()}>
         {!groups.important.length && !groups.secondary.length && !groups.dust.length ? (
           <Text align='center' variant='title' tone='disabled'>
             No Tokens Found
@@ -219,7 +235,7 @@ export function PositionsView({
             ) : null}
           </Stack>
         )}
-      </div>
+      </main>
     </>
   )
 }

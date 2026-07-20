@@ -659,7 +659,8 @@ export default function Trade({ assetId, chainId }: TradeProps) {
                 inputMode: 'numeric',
                 invalid: invalidTradeFields.duration,
                 label: 'Days',
-                placeholder: '0'
+                placeholder: '0',
+                vertical: true
               })}
               {renderOrderInput({
                 ariaLabel: 'TWAP duration hours',
@@ -667,7 +668,8 @@ export default function Trade({ assetId, chainId }: TradeProps) {
                 inputMode: 'numeric',
                 invalid: invalidTradeFields.duration,
                 label: 'Hours',
-                placeholder: '1'
+                placeholder: '1',
+                vertical: true
               })}
               {renderOrderInput({
                 ariaLabel: 'TWAP duration minutes',
@@ -675,7 +677,8 @@ export default function Trade({ assetId, chainId }: TradeProps) {
                 inputMode: 'numeric',
                 invalid: invalidTradeFields.duration,
                 label: 'Minutes',
-                placeholder: '0'
+                placeholder: '0',
+                vertical: true
               })}
             </Grid>
             <Text variant='detail' tone='secondary'>

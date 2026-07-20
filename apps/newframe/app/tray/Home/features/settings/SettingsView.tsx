@@ -1,13 +1,15 @@
 import { useState } from 'react'
 
 import { Button } from '@newframe/ui/button'
+import { Group } from '@newframe/ui/group'
 import { Input } from '@newframe/ui/input'
 import { Stack } from '@newframe/ui/stack'
+import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
 import { ToggleButton } from '@newframe/ui/toggle-button'
 
-import { SidePanelHeader } from '../../../../../resources/Components/SidePanel/SidePanelHeader'
 import KeyboardShortcutConfigurator from '../../../../../resources/Components/KeyboardShortcutConfigurator'
+import { TrayOverlay } from '../../../../../resources/Components/TrayOverlay'
 import { SettingsActionRow, SettingsSelectRow, SettingsToggleRow } from '../../ui/SettingsRow'
 
 const shortcutKeyDisplay: Record<string, string> = {
@@ -111,116 +113,130 @@ export function SettingsView({
   ] as Array<[string, boolean, string, string]>
 
   return (
-    <div aria-label='Settings' className='t2Overlay cardShow' role='dialog'>
-      <SidePanelHeader closeLabel='Back' onClose={onBack} title='Settings' />
-      <div className='t2OverlayScroll t2SettingsScroll'>
-        <div className='t2SettingsSection'>
+    <TrayOverlay closeLabel='Back' label='Settings' onClose={onBack} title='Settings'>
+      <Stack gap='large'>
+        <Stack gap='small'>
           <Text tone='muted' variant='overline'>
             Shortcut
           </Text>
-          <div className='t2SettingsRow t2SettingsShortcutRow'>
-            <div className='t2SettingsShortcutTop'>
-              <Stack gap='xsmall' grow>
-                <Text truncate variant='label'>
-                  Summon Shortcut
-                </Text>
-                <Text tone='muted' variant='caption'>
-                  {shortcutLabel(settings.platform, settings.summonShortcut)}
-                </Text>
-              </Stack>
-              <div className='t2SettingsShortcutControls'>
-                <Button
-                  appearance='control'
-                  label={settings.summonShortcut.configuring ? 'Cancel shortcut edit' : 'Edit shortcut'}
-                  onPress={() => onUpdate('shortcut-configuring', !settings.summonShortcut.configuring)}
-                  shape='pill'
-                  size='small'
-                >
-                  <Text variant='compactAction'>
-                    {settings.summonShortcut.configuring ? 'Cancel' : 'Edit'}
+          <Surface padding='small' radius='card'>
+            <Stack gap='small'>
+              <Stack align='center' direction='row' gap='small' justify='between'>
+                <Stack gap='xsmall' grow>
+                  <Text truncate variant='label'>
+                    Summon Shortcut
                   </Text>
-                </Button>
-                <ToggleButton
-                  appearance='switch'
-                  label='Summon Shortcut'
-                  onPress={() => onUpdate('shortcut-enabled', !settings.summonShortcut.enabled)}
-                  pressed={settings.summonShortcut.enabled}
-                />
-              </div>
-            </div>
-            <div className='t2SettingsShortcutDetails'>
-              <KeyboardShortcutConfigurator
-                actionText='summon Newframe'
-                onChange={(value) => onUpdate('summon-shortcut', value)}
-                platform={settings.platform}
-                shortcut={settings.summonShortcut}
-                shortcutName='summon'
-              />
-            </div>
-          </div>
-        </div>
-
-        <div aria-label='App' className='t2SettingsSection' role='group'>
-          <Text tone='muted' variant='overline'>
-            App
-          </Text>
-          {toggleRows.map(([label, on, detail, setting]) => (
-            <SettingsToggleRow
-              key={setting}
-              detail={detail}
-              label={label}
-              on={on}
-              onToggle={() => onUpdate(setting, !on)}
-            />
-          ))}
-          <SettingsToggleRow
-            detail='Show testnet chains in Networks'
-            label='Show Testnets'
-            on={settings.showTestnets}
-            onToggle={() => onShowTestnetsChange(!settings.showTestnets)}
-          />
-          <SettingsToggleRow
-            detail={
-              settings.biometricsBusy
-                ? 'Waiting for authentication'
-                : settings.biometricsError || 'Unlock Newframe with Touch ID or a platform passkey'
-            }
-            label='Biometric Login'
-            on={settings.biometricUnlock}
-            onToggle={() => onBiometricUnlockChange(!settings.biometricUnlock)}
-          />
-          <SettingsActionRow action='Lock' label='Lock Newframe' onAction={onLock} />
-          <SettingsActionRow action='Reset' label='Reset Saved Data' onAction={() => onReset('saved-data')} />
-          {resetConfirm ? (
-            <div className='t2SettingsRow t2SettingsResetConfirm'>
-              <Text truncate variant='label'>
-                Reset All Settings & Data?
-              </Text>
-              <Stack direction='row' gap='xsmall'>
-                <Button
-                  appearance='danger'
-                  onPress={() => onReset('all-settings-data')}
-                  shape='pill'
-                  size='small'
-                >
-                  <Text variant='compactAction'>Yes</Text>
-                </Button>
-                <Button appearance='control' onPress={() => setResetConfirm(false)} shape='pill' size='small'>
-                  <Text variant='compactAction'>No</Text>
-                </Button>
+                  <Text tone='muted' variant='caption'>
+                    {shortcutLabel(settings.platform, settings.summonShortcut)}
+                  </Text>
+                </Stack>
+                <Stack align='center' direction='row' gap='small'>
+                  <Button
+                    appearance='control'
+                    label={settings.summonShortcut.configuring ? 'Cancel shortcut edit' : 'Edit shortcut'}
+                    onPress={() => onUpdate('shortcut-configuring', !settings.summonShortcut.configuring)}
+                    shape='pill'
+                    size='small'
+                  >
+                    <Text variant='compactAction'>
+                      {settings.summonShortcut.configuring ? 'Cancel' : 'Edit'}
+                    </Text>
+                  </Button>
+                  <ToggleButton
+                    appearance='switch'
+                    label='Summon Shortcut'
+                    onPress={() => onUpdate('shortcut-enabled', !settings.summonShortcut.enabled)}
+                    pressed={settings.summonShortcut.enabled}
+                  />
+                </Stack>
               </Stack>
-            </div>
-          ) : (
+              <Stack gap='xsmall'>
+                <KeyboardShortcutConfigurator
+                  actionText='summon Newframe'
+                  onChange={(value) => onUpdate('summon-shortcut', value)}
+                  platform={settings.platform}
+                  shortcut={settings.summonShortcut}
+                  shortcutName='summon'
+                />
+              </Stack>
+            </Stack>
+          </Surface>
+        </Stack>
+
+        <Group label='App'>
+          <Stack element='section' gap='small'>
+            <Text tone='muted' variant='overline'>
+              App
+            </Text>
+            {toggleRows.map(([label, on, detail, setting]) => (
+              <SettingsToggleRow
+                key={setting}
+                detail={detail}
+                label={label}
+                on={on}
+                onToggle={() => onUpdate(setting, !on)}
+              />
+            ))}
+            <SettingsToggleRow
+              detail='Show testnet chains in Networks'
+              label='Show Testnets'
+              on={settings.showTestnets}
+              onToggle={() => onShowTestnetsChange(!settings.showTestnets)}
+            />
+            <SettingsToggleRow
+              detail={
+                settings.biometricsBusy
+                  ? 'Waiting for authentication'
+                  : settings.biometricsError || 'Unlock Newframe with Touch ID or a platform passkey'
+              }
+              label='Biometric Login'
+              on={settings.biometricUnlock}
+              onToggle={() => onBiometricUnlockChange(!settings.biometricUnlock)}
+            />
+            <SettingsActionRow action='Lock' label='Lock Newframe' onAction={onLock} />
             <SettingsActionRow
               action='Reset'
-              danger
-              label='Reset All Settings & Data'
-              onAction={() => setResetConfirm(true)}
+              label='Reset Saved Data'
+              onAction={() => onReset('saved-data')}
             />
-          )}
-        </div>
+            {resetConfirm ? (
+              <Surface padding='small' radius='card'>
+                <Stack align='center' direction='row' gap='small' justify='between'>
+                  <Text truncate variant='label'>
+                    Reset All Settings & Data?
+                  </Text>
+                  <Stack direction='row' gap='xsmall'>
+                    <Button
+                      appearance='danger'
+                      onPress={() => onReset('all-settings-data')}
+                      shape='pill'
+                      size='small'
+                    >
+                      <Text variant='compactAction'>Yes</Text>
+                    </Button>
+                    <Button
+                      appearance='control'
+                      onPress={() => setResetConfirm(false)}
+                      shape='pill'
+                      size='small'
+                    >
+                      <Text variant='compactAction'>No</Text>
+                    </Button>
+                  </Stack>
+                </Stack>
+              </Surface>
+            ) : (
+              <SettingsActionRow
+                action='Reset'
+                danger
+                label='Reset All Settings & Data'
+                onAction={() => setResetConfirm(true)}
+              />
+            )}
+          </Stack>
+        </Group>
 
-        <div className='t2SettingsSection'>
+        <Stack element='section' gap='small'>
           <Text tone='muted' variant='overline'>
             Signer Defaults
           </Text>
@@ -275,9 +291,9 @@ export function SettingsView({
               value={drafts.latticeEndpoint}
             />
           ) : null}
-        </div>
+        </Stack>
 
-        <div className='t2SettingsSection'>
+        <Stack element='section' gap='small'>
           <Text tone='muted' variant='overline'>
             Tokens
           </Text>
@@ -297,8 +313,8 @@ export function SettingsView({
             type='password'
             value={drafts.portfolioApiKey}
           />
-        </div>
-      </div>
-    </div>
+        </Stack>
+      </Stack>
+    </TrayOverlay>
   )
 }

@@ -1,4 +1,8 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
+
+import { Field } from '@newframe/ui/field'
+import { Input } from '@newframe/ui/input'
+import { Stack } from '@newframe/ui/stack'
 
 import link from '../../../../../../resources/link'
 import { usesBaseFee } from '../../../../../../resources/domain/transaction'
@@ -87,7 +91,6 @@ const FeeOverlayInput = ({
   limiter
 }: FeeOverlayInputProps) => {
   const [value, setValue] = useState(initialValue)
-  const labelId = `txFeeOverlayLabel_${tabIndex}`
 
   // newValue is wei for gwei-denominated inputs, integer units otherwise
   const submitValue = (newValueStr: string, newValue: bigint) => {
@@ -103,114 +106,96 @@ const FeeOverlayInput = ({
   }
 
   return (
-    <>
-      <div className='txFeeOverlayInput'>
-        <input
-          tabIndex={tabIndex}
-          value={value}
-          className='txFeeOverlayInput'
-          aria-labelledby={labelId}
-          onChange={(e) => {
-            const parsedInput = (decimals ? /[0-9.]*/ : /[0-9]*/).exec(e.target.value)
-            const enteredValue = parsedInput?.[0] || ''
+    <Field label={labelText}>
+      <Input
+        align='end'
+        appearance='numeric'
+        blurOnEnter
+        inputMode='decimal'
+        label={labelText}
+        tabIndex={tabIndex}
+        value={value}
+        onValueChange={(nextValue) => {
+          const parsedInput = (decimals ? /[0-9.]*/ : /[0-9]*/).exec(nextValue)
+          const enteredValue = parsedInput?.[0] || ''
 
-            if (enteredValue === '.' || enteredValue === '') return setValue(enteredValue)
+          if (enteredValue === '.' || enteredValue === '') return setValue(enteredValue)
 
-            const numericValue = parseInput(e.target.value, decimals)
-            if (numericValue === undefined) return
+          const numericValue = parseInput(nextValue, decimals)
+          if (numericValue === undefined) return
 
-            clearTimeout(submitTimeout)
+          clearTimeout(submitTimeout)
 
-            // prevent decimal point being overwritten as user is typing a float
-            if (enteredValue.endsWith('.')) {
-              const formattedNum = formatForInput(
-                parseInput(enteredValue.slice(0, -1), decimals) ?? 0n,
-                decimals
-              )
+          // prevent decimal point being overwritten as user is typing a float
+          if (enteredValue.endsWith('.')) {
+            const formattedNum = formatForInput(
+              parseInput(enteredValue.slice(0, -1), decimals) ?? 0n,
+              decimals
+            )
 
-              return setValue(`${formattedNum}.`)
-            }
+            return setValue(`${formattedNum}.`)
+          }
 
-            submitValue(enteredValue, numericValue)
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault()
-              e.currentTarget.blur()
-            } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-              e.preventDefault()
-              const parsedValue = parseInput(value, decimals)
-              if (parsedValue === undefined) {
-                return
-              }
+          submitValue(enteredValue, numericValue)
+        }}
+        onStep={(direction) => {
+          const parsedValue = parseInput(value, decimals)
+          if (parsedValue === undefined) return
 
-              // adjust by 1 gwei for gwei-denominated inputs, 1000 units otherwise
-              const step = decimals ? 1000000000n : 1000n
-              const newValue = e.key === 'ArrowUp' ? parsedValue + step : parsedValue - step
+          // adjust by 1 gwei for gwei-denominated inputs, 1000 units otherwise
+          const step = decimals ? 1000000000n : 1000n
+          const newValue = direction === 'increment' ? parsedValue + step : parsedValue - step
 
-              const limitedValue = limiter(newValue)
-              submitValue(formatForInput(limitedValue, decimals), limitedValue)
-            }
-          }}
-        />
-      </div>
-      <div id={labelId} className='txFeeOverlayLabel'>
-        {labelText}
-      </div>
-    </>
+          const limitedValue = limiter(newValue)
+          submitValue(formatForInput(limitedValue, decimals), limitedValue)
+        }}
+      />
+    </Field>
   )
 }
 
 const GasLimitInput = ({ initialValue, onReceiveValue, tabIndex, limiter }: FeeInputProps) => (
-  <div className='txFeeOverlayLimit'>
-    <FeeOverlayInput
-      initialValue={initialValue}
-      onReceiveValue={onReceiveValue}
-      labelText='Gas Limit (UNITS)'
-      tabIndex={tabIndex}
-      decimals={false}
-      limiter={limiter}
-    />
-  </div>
+  <FeeOverlayInput
+    initialValue={initialValue}
+    onReceiveValue={onReceiveValue}
+    labelText='Gas Limit (UNITS)'
+    tabIndex={tabIndex}
+    decimals={false}
+    limiter={limiter}
+  />
 )
 
 const GasPriceInput = ({ initialValue, onReceiveValue, tabIndex, limiter }: FeeInputProps) => (
-  <div className='txFeeOverlayGasPrice'>
-    <FeeOverlayInput
-      initialValue={initialValue}
-      onReceiveValue={onReceiveValue}
-      labelText='Gas Price (GWEI)'
-      tabIndex={tabIndex}
-      decimals={true}
-      limiter={limiter}
-    />
-  </div>
+  <FeeOverlayInput
+    initialValue={initialValue}
+    onReceiveValue={onReceiveValue}
+    labelText='Gas Price (GWEI)'
+    tabIndex={tabIndex}
+    decimals={true}
+    limiter={limiter}
+  />
 )
 
 const BaseFeeInput = ({ initialValue, onReceiveValue, tabIndex, limiter }: FeeInputProps) => (
-  <div className='txFeeOverlayBaseFee'>
-    <FeeOverlayInput
-      initialValue={initialValue}
-      onReceiveValue={onReceiveValue}
-      labelText='Base Fee (GWEI)'
-      tabIndex={tabIndex}
-      decimals={true}
-      limiter={limiter}
-    />
-  </div>
+  <FeeOverlayInput
+    initialValue={initialValue}
+    onReceiveValue={onReceiveValue}
+    labelText='Base Fee (GWEI)'
+    tabIndex={tabIndex}
+    decimals={true}
+    limiter={limiter}
+  />
 )
 
 const PriorityFeeInput = ({ initialValue, onReceiveValue, tabIndex, limiter }: FeeInputProps) => (
-  <div className='txFeeOverlayPriorityFee'>
-    <FeeOverlayInput
-      initialValue={initialValue}
-      onReceiveValue={onReceiveValue}
-      labelText='Max Priority Fee (GWEI)'
-      tabIndex={tabIndex}
-      decimals={true}
-      limiter={limiter}
-    />
-  </div>
+  <FeeOverlayInput
+    initialValue={initialValue}
+    onReceiveValue={onReceiveValue}
+    labelText='Max Priority Fee (GWEI)'
+    tabIndex={tabIndex}
+    decimals={true}
+    limiter={limiter}
+  />
 )
 
 export default function TxFeeOverlay(props: TxFeeOverlayProps) {
@@ -219,7 +204,6 @@ export default function TxFeeOverlay(props: TxFeeOverlayProps) {
       data: { gasLimit: initialGasLimit, maxPriorityFeePerGas, maxFeePerGas, gasPrice: initialGasPrice }
     }
   } = props
-  const moduleRef = useRef<HTMLDivElement>(null)
   const maxFee = toBigInt(maxFeePerGas) ?? 0n
   const initialPriorityFee = toBigInt(maxPriorityFeePerGas) ?? 0n
   const [state, setState] = useState({
@@ -293,7 +277,7 @@ export default function TxFeeOverlay(props: TxFeeOverlayProps) {
   }
 
   return (
-    <div className='txAdjustFee cardShow' ref={moduleRef}>
+    <Stack gap='small'>
       {usesBaseFee(data) ? (
         <>
           <BaseFeeInput
@@ -323,6 +307,6 @@ export default function TxFeeOverlay(props: TxFeeOverlayProps) {
         limiter={gasLimitLimiter}
         tabIndex={2}
       />
-    </div>
+    </Stack>
   )
 }

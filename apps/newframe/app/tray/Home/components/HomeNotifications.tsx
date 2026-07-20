@@ -44,11 +44,9 @@ export function HomeNotifications() {
         return chainId ? (
           <ChainIcon
             chainId={chainId}
-            dotSize={8}
-            glyphSize={10}
-            imageSize={16}
             networks={shared.networks}
             networksMeta={shared.networksMeta}
+            size='medium'
           />
         ) : null
       }}

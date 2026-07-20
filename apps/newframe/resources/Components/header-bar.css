@@ -1,8 +1,0 @@
-.nf-header-bar {
-  z-index: var(--nf-layer-header);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex: none;
-  padding: var(--nf-space-7) var(--nf-space-7) 0;
-}

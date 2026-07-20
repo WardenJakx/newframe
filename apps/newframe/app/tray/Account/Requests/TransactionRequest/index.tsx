@@ -9,6 +9,7 @@ import { erc20Interface } from '../../../../../resources/contracts'
 import { useRequestView } from '../../../requestView'
 import type { RequestViewStep } from '../../../requestView'
 import type { TransactionRequest as TransactionAccountRequest } from '../../../../../main/accounts/types'
+import { Text } from '@newframe/ui/text'
 
 type TransactionRequestProps = {
   req: TransactionRequestData
@@ -64,27 +65,12 @@ export function TransactionRequest(props: TransactionRequestProps) {
   if (step !== 'confirm') return step
   if (!req) return null
 
-  let requestClass = 'signerRequest cardShow'
-  const success = req.status === 'confirming' || req.status === 'confirmed'
-  const error = req.status === 'error' || req.status === 'declined'
-  if (success) requestClass += ' signerRequestSuccess'
-  if (req.status === 'confirmed') requestClass += ' signerRequestConfirmed'
-  else if (error) requestClass += ' signerRequestError'
-
-  return (
-    <div key={req.handlerId} className={requestClass}>
-      {req.type === 'transaction' ? (
-        <div className='approveTransaction'>
-          <div className='approveTransactionPayload'>
-            <div className='_txBody'>
-              <TxReview req={transactionRequest} />
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className='unknownType'>{'Unknown: ' + req.type}</div>
-      )}
-    </div>
+  return req.type === 'transaction' ? (
+    <TxReview key={req.handlerId} req={transactionRequest} />
+  ) : (
+    <Text align='center' tone='danger' variant='label'>
+      {'Unknown: ' + req.type}
+    </Text>
   )
 }
 
