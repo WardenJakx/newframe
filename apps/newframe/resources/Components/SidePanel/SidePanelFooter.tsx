@@ -20,6 +20,14 @@ const footerRecipe = cva({
     boxShadow: 'elevation-raised'
   },
   variants: {
+    appearance: {
+      plain: {
+        borderColor: 'transparent',
+        background: 'transparent',
+        boxShadow: 'none'
+      },
+      raised: {}
+    },
     compact: {
       true: {
         insetInlineEnd: 'auto',
@@ -32,14 +40,15 @@ const footerRecipe = cva({
       false: {}
     }
   },
-  defaultVariants: { compact: false }
+  defaultVariants: { appearance: 'raised', compact: false }
 })
 
 export type SidePanelFooterProps = {
+  appearance?: 'plain' | 'raised'
   children: ReactNode
   compact?: boolean
 }
 
-export function SidePanelFooter({ children, compact = false }: SidePanelFooterProps) {
-  return <footer className={footerRecipe({ compact })}>{children}</footer>
+export function SidePanelFooter({ appearance = 'raised', children, compact = false }: SidePanelFooterProps) {
+  return <footer className={footerRecipe({ appearance, compact })}>{children}</footer>
 }
