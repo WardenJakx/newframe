@@ -52,6 +52,34 @@ interface Request {
   handlerId: string
 }
 
+export type RequestPrincipal =
+  | {
+      kind: 'renderer'
+      role: 'wallet-ui' | 'sidetray'
+      entrypoint: 'tray' | 'sidetray'
+      webContentsId: number
+      windowInstanceId: string
+    }
+  | {
+      kind: 'rpc'
+      transport: 'http' | 'websocket'
+      connectionId: string
+      origin: string
+    }
+  | { kind: 'main'; component: string }
+
+export type RequestAuthorization = {
+  actionId: string
+  decision: 'prompt' | 'autonomous'
+  decidedAt: number
+  principal: RequestPrincipal
+  intent: {
+    requestType: RequestType
+    account: string
+    method: string
+  }
+}
+
 export type Identity = {
   address: Address
   ens: string
@@ -67,8 +95,8 @@ export interface AccountRequest<T extends RequestType = RequestType> extends Req
   mode?: RequestMode
   notice?: string
   created?: number
-  /** Runtime-only transport capability. FrameAccount removes this before canonical storage. */
-  res?: (response?: RPCResponsePayload) => void
+  /** Serializable record of the central authority decision for production requests. */
+  authorization?: RequestAuthorization
 }
 
 export interface TransactionReceipt {
@@ -82,7 +110,7 @@ export interface Approval {
   approved: boolean
 }
 
-export type CanonicalAccountRequest = Omit<AccountRequest, 'res'> & {
+export type CanonicalAccountRequest = AccountRequest & {
   approvals?: Approval[]
   recognizedActions?: Array<Omit<Action<unknown>, 'update'>>
 }

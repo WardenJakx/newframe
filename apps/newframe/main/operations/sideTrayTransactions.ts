@@ -10,6 +10,7 @@ import type {
   TransactionSubmitCommand,
   TypedDataSignCommand
 } from '../../resources/bridge/operations'
+import type { TrustedPrincipal } from '../authority'
 
 const internalOriginName = 'newframe-internal'
 const internalOriginId = uuidv5(internalOriginName, uuidv5.DNS)
@@ -29,8 +30,8 @@ function errorMessage(error: unknown) {
   return 'The operation failed.'
 }
 
-function sendProviderRequest(payload: RPCRequestPayload) {
-  return new Promise<RPCResponsePayload>((resolve) => provider.send(payload, resolve))
+function sendProviderRequest(payload: RPCRequestPayload, principal: TrustedPrincipal) {
+  return new Promise<RPCResponsePayload>((resolve) => provider.send(payload, resolve, principal))
 }
 
 function initializeSideTrayOrigin(chainId: number) {
@@ -46,7 +47,8 @@ function initializeSideTrayOrigin(chainId: number) {
 }
 
 export async function submitCurrentAccountTransaction(
-  command: Pick<TransactionSubmitCommand, 'chainId' | 'idempotencyKey' | 'transaction'>
+  command: Pick<TransactionSubmitCommand, 'chainId' | 'idempotencyKey' | 'transaction'>,
+  principal: TrustedPrincipal
 ) {
   const from = currentAccountAddress()
   if (!from) return { ok: false, error: 'no_current_account' } as const
@@ -55,21 +57,24 @@ export async function submitCurrentAccountTransaction(
   }
 
   const chainId = chainIdHex(command.chainId)
-  const response = await sendProviderRequest({
-    id: command.idempotencyKey,
-    jsonrpc: '2.0',
-    method: 'eth_sendTransaction',
-    chainId,
-    params: [
-      {
-        ...command.transaction,
-        chainId,
-        from,
-        value: command.transaction.value || '0x0'
-      }
-    ],
-    _origin: internalOriginId
-  })
+  const response = await sendProviderRequest(
+    {
+      id: command.idempotencyKey,
+      jsonrpc: '2.0',
+      method: 'eth_sendTransaction',
+      chainId,
+      params: [
+        {
+          ...command.transaction,
+          chainId,
+          from,
+          value: command.transaction.value || '0x0'
+        }
+      ],
+      _origin: internalOriginId
+    },
+    principal
+  )
 
   if (response.error) {
     return { ok: false, error: 'provider_error', message: errorMessage(response.error) } as const
@@ -94,7 +99,8 @@ function typedDataChainId(typedData: TypedDataSignCommand['typedData']) {
 }
 
 export async function signCurrentAccountTypedData(
-  command: Pick<TypedDataSignCommand, 'chainId' | 'typedData'>
+  command: Pick<TypedDataSignCommand, 'chainId' | 'typedData'>,
+  principal: TrustedPrincipal
 ) {
   const from = currentAccountAddress()
   if (!from) return { ok: false, error: 'no_current_account' } as const
@@ -107,14 +113,17 @@ export async function signCurrentAccountTypedData(
     return { ok: false, error: 'provider_error', message: 'Chain is unavailable.' } as const
   }
 
-  const response = await sendProviderRequest({
-    id: Date.now(),
-    jsonrpc: '2.0',
-    method: 'eth_signTypedData_v4',
-    chainId: chainIdHex(command.chainId),
-    params: [from, command.typedData],
-    _origin: internalOriginId
-  })
+  const response = await sendProviderRequest(
+    {
+      id: Date.now(),
+      jsonrpc: '2.0',
+      method: 'eth_signTypedData_v4',
+      chainId: chainIdHex(command.chainId),
+      params: [from, command.typedData],
+      _origin: internalOriginId
+    },
+    principal
+  )
 
   if (response.error) {
     return { ok: false, error: 'provider_error', message: errorMessage(response.error) } as const

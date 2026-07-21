@@ -96,11 +96,17 @@ jest.mock('../../../main/operations/walletWorkflows', () => walletWorkflows)
 let dispatchCommand: typeof import('../../../main/ipc/operations').dispatchCommand
 let dispatchQuery: typeof import('../../../main/ipc/operations').dispatchQuery
 const event = {} as Electron.IpcMainInvokeEvent
-const trayContext = { clientType: 'wallet-ui' as const, entrypoint: 'tray' as const, webContentsId: 1 }
+const trayContext = {
+  clientType: 'wallet-ui' as const,
+  entrypoint: 'tray' as const,
+  webContentsId: 1,
+  windowInstanceId: 'tray-test'
+}
 const sideTrayContext = {
   clientType: 'sidetray' as const,
   entrypoint: 'sidetray' as const,
-  webContentsId: 2
+  webContentsId: 2,
+  windowInstanceId: 'side-tray-test'
 }
 const transactionIdempotencyKey = '00000000-0000-4000-8000-000000000001'
 const flashTargetAsset = {
@@ -339,7 +345,10 @@ describe('typed operation dispatcher', () => {
       ok: true,
       transactionHash: `0x${'1'.repeat(64)}`
     })
-    expect(submitCurrentAccountTransaction).toHaveBeenCalledWith(command)
+    expect(submitCurrentAccountTransaction).toHaveBeenCalledWith(
+      command,
+      expect.objectContaining({ kind: 'renderer', windowInstanceId: sideTrayContext.windowInstanceId })
+    )
   })
 
   it('deduplicates retry-sensitive transaction submissions by renderer-generated key', async () => {

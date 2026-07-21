@@ -41,7 +41,8 @@ describe('renderer authorization', () => {
     expect(authorizeRenderer(wallet.event)).toEqual({
       clientType: 'wallet-ui',
       entrypoint: 'tray',
-      webContentsId: wallet.webContents.id
+      webContentsId: wallet.webContents.id,
+      windowInstanceId: expect.any(String)
     })
   })
 

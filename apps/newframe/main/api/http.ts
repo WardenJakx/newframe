@@ -1,4 +1,5 @@
 import http, { IncomingMessage, ServerResponse } from 'http'
+import { randomUUID } from 'node:crypto'
 import log from 'electron-log'
 import { isHexString } from '@ethereumjs/util'
 
@@ -9,6 +10,7 @@ import store from '../store'
 import { updateOrigin, isTrusted, parseOrigin, parseRequestChainId } from './origins'
 import validPayload from './validPayload'
 import protectedMethods from './protectedMethods'
+import { createRpcPrincipal } from '../authority'
 
 const logTraffic = process.env.LOG_TRAFFIC
 
@@ -85,6 +87,11 @@ const handler = (req: IncomingMessage, res: ServerResponse) => {
 
         const origin = parseOrigin(req.headers.origin)
         const { payload, chainId } = updateOrigin(rawPayload, origin)
+        const principal = createRpcPrincipal({
+          transport: 'http',
+          connectionId: randomUUID(),
+          origin
+        })
 
         extendSession(payload._origin)
 
@@ -98,7 +105,7 @@ const handler = (req: IncomingMessage, res: ServerResponse) => {
           return res.end(JSON.stringify({ id: payload.id, jsonrpc: payload.jsonrpc, error }))
         }
 
-        if (protectedMethods.indexOf(payload.method) > -1 && !(await isTrusted(payload))) {
+        if (protectedMethods.indexOf(payload.method) > -1 && !(await isTrusted(payload, principal))) {
           let error = { message: `Permission denied, approve ${origin} in Newframe to continue`, code: 4001 }
           // Review
           if (!accounts.getSelectedAddresses()[0])
@@ -142,24 +149,28 @@ const handler = (req: IncomingMessage, res: ServerResponse) => {
             res.end(JSON.stringify({ error: 'Invalid Client ID' }))
           }
 
-          provider.send(payload, (response) => {
-            if (response && response.result) {
-              if (payload.method === 'eth_subscribe') {
-                pollSubs[response.result] = { id: rawPayload.pollId || '', origin: payload._origin } // Refactor this so you don't need to send a pollId and use the existing subscription id
-              } else if (payload.method === 'eth_unsubscribe') {
-                payload.params.forEach((sub) => {
-                  if (pollSubs[sub]) delete pollSubs[sub]
-                })
+          provider.send(
+            payload,
+            (response) => {
+              if (response && response.result) {
+                if (payload.method === 'eth_subscribe') {
+                  pollSubs[response.result] = { id: rawPayload.pollId || '', origin: payload._origin } // Refactor this so you don't need to send a pollId and use the existing subscription id
+                } else if (payload.method === 'eth_unsubscribe') {
+                  payload.params.forEach((sub) => {
+                    if (pollSubs[sub]) delete pollSubs[sub]
+                  })
+                }
               }
-            }
 
-            if (logTraffic)
-              log.info(
-                `<- res | http | ${req.headers.origin} | ${payload.method} | <- | ${JSON.stringify(response)}`
-              )
-            res.writeHead(200, { 'Content-Type': 'application/json' })
-            res.end(JSON.stringify(response))
-          })
+              if (logTraffic)
+                log.info(
+                  `<- res | http | ${req.headers.origin} | ${payload.method} | <- | ${JSON.stringify(response)}`
+                )
+              res.writeHead(200, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify(response))
+            },
+            principal
+          )
         }
       })
       .on('error', (err) => console.error('req err', err))

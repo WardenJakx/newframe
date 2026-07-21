@@ -65,6 +65,8 @@ const productionRenderer = (file: string) =>
     (under(path.join('apps', 'newframe', 'resources'))(file) &&
       file !== path.join('apps', 'newframe', 'resources', 'bridge', 'index.ts')))
 const productionMain = under(path.join('apps', 'newframe', 'main'))
+const productionMainOutsideAccountGate = (file: string) =>
+  productionMain(file) && !under(path.join('apps', 'newframe', 'main', 'accounts'))(file)
 const anyFile = () => true
 const migratedPilotFiles = new Set([
   path.join('apps', 'newframe', 'app', 'tray', 'Home', 'components', 'HomeHeaderView.tsx'),
@@ -103,6 +105,11 @@ const rules: Rule[] = [
     message: 'generic action and RPC channels are forbidden'
   },
   {
+    files: anyFile,
+    pattern: /__frameInternal/,
+    message: 'internal trust must be derived from a branded transport principal'
+  },
+  {
     files: productionRenderer,
     pattern: /\blink\.(?:emit|invoke|on|rpc|send)\b|__NEWFRAME_HOST__\.(?:invoke|rpc|send)\b/,
     message: 'renderer code must use typed commands, queries, and state connections'
@@ -121,6 +128,11 @@ const rules: Rule[] = [
     files: productionMain,
     pattern: /\bipcMain\.on\b/,
     message: 'application IPC must use typed asynchronous handlers'
+  },
+  {
+    files: productionMainOutsideAccountGate,
+    pattern: /\.addRequest\s*\(/,
+    message: 'production account requests must pass through accounts.routeRequest'
   }
 ]
 

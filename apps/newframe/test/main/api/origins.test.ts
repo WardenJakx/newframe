@@ -2,8 +2,9 @@ import { v5 as uuidv5 } from 'uuid'
 import log from 'electron-log'
 
 import store from '../../../main/store'
+import { createRpcPrincipal } from '../../../main/authority'
 
-const accountsMock = { current: jest.fn(), addRequest: jest.fn() }
+const accountsMock = { current: jest.fn(), routeRequest: jest.fn() }
 
 jest.mock('../../../main/accounts', () => ({ default: accountsMock, ...accountsMock }))
 
@@ -17,6 +18,17 @@ let parseFrameExtension: any
 let isKnownExtension: any
 
 const actions = () => store.getState() as any
+const principal = createRpcPrincipal({
+  transport: 'http',
+  connectionId: 'origin-test',
+  origin: 'test.frame.eth'
+})
+const internalPrincipal = createRpcPrincipal({
+  transport: 'websocket',
+  connectionId: 'companion-test',
+  origin: 'newframe-extension',
+  capabilities: ['wallet:internal-state']
+})
 const setOrigins = (origins: Record<string, any>) => {
   store.setState((state: any) => {
     state.main.origins = origins
@@ -428,26 +440,34 @@ describe('#isTrusted', () => {
   })
 
   describe('extension requests', () => {
-    // these origins are "trusted" internally and thus have access to specific methods without approval
-    const trustedOrigins = ['newframe-extension', 'newframe-internal', 'frame-extension', 'frame-internal']
-    const trustedExtensionMethods = ['wallet_getEthereumChains']
+    it('does not grant internal access based on a reserved-looking origin name', async () => {
+      const payload = {
+        method: 'wallet_getEthereumChains',
+        _origin: 'ac93061b-3575-40c5-b526-4932b02e1f3f'
+      }
+      setOrigin(payload._origin, { name: 'newframe-extension' })
 
-    trustedOrigins.forEach((origin) => {
-      it(`does not trust requests from the ${origin} origin by default`, async () => {
-        const payload = { method: 'eth_accounts', _origin: 'ac93061b-3575-40c5-b526-4932b02e1f3f' }
-        setOrigin(payload._origin, { name: origin })
+      return expect(isTrusted(payload, principal)).resolves.toBe(false)
+    })
 
-        return expect(isTrusted(payload)).resolves.toBe(false)
-      })
+    it('trusts the internal chain query only when the transport principal has the capability', async () => {
+      const payload = {
+        method: 'wallet_getEthereumChains',
+        _origin: 'ac93061b-3575-40c5-b526-4932b02e1f3f'
+      }
+      setOrigin(payload._origin, { name: 'arbitrary-display-name' })
 
-      trustedExtensionMethods.forEach((method) => {
-        it(`trusts all requests for ${method} from the ${origin} origin`, async () => {
-          const payload = { method, _origin: 'ac93061b-3575-40c5-b526-4932b02e1f3f' }
-          setOrigin(payload._origin, { name: origin })
+      return expect(isTrusted(payload, internalPrincipal)).resolves.toBe(true)
+    })
 
-          return expect(isTrusted(payload)).resolves.toBe(true)
-        })
-      })
+    it('does not extend the internal capability to other protected methods', async () => {
+      const payload = {
+        method: 'eth_accounts',
+        _origin: 'ac93061b-3575-40c5-b526-4932b02e1f3f'
+      }
+      setOrigin(payload._origin, { name: 'arbitrary-display-name' })
+
+      return expect(isTrusted(payload, internalPrincipal)).resolves.toBe(false)
     })
   })
 
@@ -455,7 +475,7 @@ describe('#isTrusted', () => {
     const payload = { _origin: 'ac93061b-3575-40c5-b526-4932b02e1f3f' }
     setOrigin(payload._origin, { name: '!nvalid origin' })
 
-    return expect(isTrusted(payload)).resolves.toBe(false)
+    return expect(isTrusted(payload, principal)).resolves.toBe(false)
   })
 
   it('does not trust a request if no account is selected', async () => {
@@ -463,7 +483,7 @@ describe('#isTrusted', () => {
 
     ;(accounts.current as any).mockReturnValueOnce(undefined)
 
-    return expect(isTrusted(payload)).resolves.toBe(false)
+    return expect(isTrusted(payload, principal)).resolves.toBe(false)
   })
 
   it('trusts an origin that has been previously granted permission', async () => {
@@ -479,7 +499,7 @@ describe('#isTrusted', () => {
       }
     })
 
-    return expect(isTrusted(payload)).resolves.toBe(true)
+    return expect(isTrusted(payload, principal)).resolves.toBe(true)
   })
 
   it('sends a request to grant permission to the user', async () => {
@@ -487,21 +507,24 @@ describe('#isTrusted', () => {
     const payload = { method: 'eth_accounts', _origin: frameTestOriginId }
 
     ;(accounts.current as any).mockReturnValueOnce({ address })
-    ;(accounts.addRequest as any).mockImplementationOnce((request: any, cb: any) => {
-      expect(request).toStrictEqual({
-        type: 'access',
-        handlerId: frameTestOriginId,
-        origin: frameTestOriginId,
-        account: address,
-        payload: {
-          method: 'eth_accounts'
-        }
-      })
+    ;(accounts.routeRequest as any).mockImplementationOnce(
+      (receivedPrincipal: unknown, request: any, cb: any) => {
+        expect(receivedPrincipal).toBe(principal)
+        expect(request).toStrictEqual({
+          type: 'access',
+          handlerId: frameTestOriginId,
+          origin: frameTestOriginId,
+          account: address,
+          payload: {
+            method: 'eth_accounts'
+          }
+        })
 
-      setTimeout(cb, 1000)
-    })
+        setTimeout(cb, 1000)
+      }
+    )
 
-    const runTest = isTrusted(payload)
+    const runTest = isTrusted(payload, principal)
 
     jest.runAllTimers()
 
@@ -514,7 +537,7 @@ describe('#isTrusted', () => {
     const payload2 = { method: 'eth_accounts', _origin: frameTestOriginId }
 
     ;(accounts.current as any).mockReturnValue({ address })
-    ;(accounts.addRequest as any).mockImplementationOnce((request: any, cb: any) => {
+    ;(accounts.routeRequest as any).mockImplementationOnce((_principal: unknown, request: any, cb: any) => {
       setTimeout(() => {
         // simulate user accepting the request after both RPC requests are received
         setAccountPermissions(address, {
@@ -528,9 +551,9 @@ describe('#isTrusted', () => {
       }, 1000)
     })
 
-    const runTest = Promise.all([isTrusted(payload1), isTrusted(payload2)]).then(
+    const runTest = Promise.all([isTrusted(payload1, principal), isTrusted(payload2, principal)]).then(
       ([isPayload1Trusted, isPayload2Trusted]) => {
-        expect(accounts.addRequest).toHaveBeenCalledTimes(1)
+        expect(accounts.routeRequest).toHaveBeenCalledTimes(1)
         expect(isPayload1Trusted).toBe(true)
         expect(isPayload2Trusted).toBe(true)
       }
@@ -555,7 +578,7 @@ describe('#isTrusted', () => {
       ;(accounts.current as any).mockReturnValueOnce({ address })
 
       // simulate user acting on request
-      ;(accounts.addRequest as any).mockImplementationOnce((request: any, cb: any) => {
+      ;(accounts.routeRequest as any).mockImplementationOnce((_principal: unknown, request: any, cb: any) => {
         setTimeout(() => {
           setAccountPermissions(address, {
             'c004cc87-bfa3-50f5-812f-3d70dd8f82c6': {
@@ -568,7 +591,7 @@ describe('#isTrusted', () => {
         }, 1000)
       })
 
-      const runTest = isTrusted(payload)
+      const runTest = isTrusted(payload, principal)
 
       jest.runAllTimers()
 

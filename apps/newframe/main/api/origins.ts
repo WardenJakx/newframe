@@ -3,6 +3,7 @@ import { IncomingMessage } from 'http'
 
 import accounts, { AccessRequest } from '../accounts'
 import store from '../store'
+import { hasPrincipalCapability, type RpcPrincipal } from '../authority'
 
 import type { Permission } from '../store/state'
 
@@ -33,13 +34,7 @@ export interface FrameExtension {
   id: string
 }
 
-// allows the Newframe extension to request specific methods
-const trustedInternalMethods = ['wallet_getEthereumChains']
-
 const extensionIdentities = ['newframe-extension', 'frame-extension']
-const internalOrigins = ['newframe-extension', 'newframe-internal', 'frame-extension', 'frame-internal']
-const isTrustedOrigin = (origin: string) => internalOrigins.includes(origin)
-const isInternalMethod = (method: string) => trustedInternalMethods.includes(method)
 
 const storeApi = {
   getPermission: (address: Address, origin: string) => {
@@ -111,10 +106,15 @@ function knownEthereumChainId(chainId?: string) {
   return store.getState().main.networks.ethereum[id] ? id : undefined
 }
 
-async function getPermission(address: Address, origin: string, payload: RPCRequestPayload) {
+async function getPermission(
+  address: Address,
+  origin: string,
+  payload: RPCRequestPayload,
+  principal: RpcPrincipal
+) {
   const permission = storeApi.getPermission(address, origin)
 
-  return permission || requestPermission(address, payload)
+  return permission || requestPermission(address, payload, principal)
 }
 
 async function requestExtensionPermission(extension: FrameExtension) {
@@ -144,7 +144,7 @@ async function requestExtensionPermission(extension: FrameExtension) {
   return result
 }
 
-async function requestPermission(address: Address, fullPayload: RPCRequestPayload) {
+async function requestPermission(address: Address, fullPayload: RPCRequestPayload, principal: RpcPrincipal) {
   const { _origin: originId, ...payload } = fullPayload
   const permissionCheckId = `${address}:${originId}`
 
@@ -161,7 +161,7 @@ async function requestPermission(address: Address, fullPayload: RPCRequestPayloa
       account: address
     }
 
-    accounts.addRequest(request, () => {
+    accounts.routeRequest(principal, request, () => {
       const { name: originName } = store.getState().main.origins[originId]
       const permission = storeApi.getPermission(address, originName)
 
@@ -265,12 +265,15 @@ export async function isKnownExtension(extension: FrameExtension) {
   return extensionPermission ?? requestExtensionPermission(extension)
 }
 
-export async function isTrusted(payload: RPCRequestPayload) {
+export async function isTrusted(payload: RPCRequestPayload, principal: RpcPrincipal) {
   // Permission granted to unknown origins only persist until Newframe is closed, they are not permanent
   const { name: originName } = store.getState().main.origins[payload._origin] as { name: string }
   const currentAccount = accounts.current()
 
-  if (isTrustedOrigin(originName) && isInternalMethod(payload.method)) {
+  if (
+    payload.method === 'wallet_getEthereumChains' &&
+    hasPrincipalCapability(principal, 'wallet:internal-state')
+  ) {
     return true
   }
 
@@ -278,7 +281,7 @@ export async function isTrusted(payload: RPCRequestPayload) {
     return false
   }
 
-  const permission = await getPermission(currentAccount.address, originName, payload)
+  const permission = await getPermission(currentAccount.address, originName, payload, principal)
 
   return !!permission?.provider
 }

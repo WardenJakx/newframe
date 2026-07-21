@@ -1,4 +1,5 @@
 import path from 'path'
+import { randomUUID } from 'node:crypto'
 import { fileURLToPath } from 'url'
 
 import type { IpcMainInvokeEvent, WebContents } from 'electron'
@@ -10,10 +11,12 @@ type RendererRegistration = {
   webContents: WebContents
   clientType: RendererRole
   entrypoint: RendererEntrypoint
+  windowInstanceId: string
 }
 
 export type AuthorizationContext = Pick<RendererRegistration, 'clientType' | 'entrypoint'> & {
   webContentsId: number
+  windowInstanceId: string
 }
 
 const renderers = new Map<number, RendererRegistration>()
@@ -49,7 +52,7 @@ export function registerRenderer(
   clientType: RendererRole,
   entrypoint: RendererEntrypoint
 ) {
-  const registration = { webContents, clientType, entrypoint }
+  const registration = { webContents, clientType, entrypoint, windowInstanceId: randomUUID() }
   renderers.set(webContents.id, registration)
 
   webContents.once('destroyed', () => {
@@ -68,6 +71,7 @@ export function authorizeRenderer(event: IpcMainInvokeEvent): AuthorizationConte
   return {
     clientType: registration.clientType,
     entrypoint: registration.entrypoint,
-    webContentsId: event.sender.id
+    webContentsId: event.sender.id,
+    windowInstanceId: registration.windowInstanceId
   }
 }

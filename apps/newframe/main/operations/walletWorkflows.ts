@@ -31,6 +31,7 @@ import {
 } from '../accounts/types'
 import type Signer from '../signers/Signer'
 import type { Chain } from '../store/state'
+import type { TrustedPrincipal } from '../authority'
 import { ApprovalType } from '../../resources/constants'
 import {
   buildSideTrayRoute,
@@ -484,11 +485,11 @@ export function openSideTray(command: SideTrayOpenCommand) {
 const internalOriginName = 'newframe-internal'
 const internalOriginId = uuidv5(internalOriginName, uuidv5.DNS)
 
-function sendProviderRequest(payload: RPCRequestPayload) {
-  return new Promise<RPCResponsePayload>((resolve) => provider.send(payload, resolve))
+function sendProviderRequest(payload: RPCRequestPayload, principal: TrustedPrincipal) {
+  return new Promise<RPCResponsePayload>((resolve) => provider.send(payload, resolve, principal))
 }
 
-export async function cancelFlashOrder(orderId: string) {
+export async function cancelFlashOrder(orderId: string, principal: TrustedPrincipal) {
   const state = store.getState()
   const order = state.main.orders[orderId] as
     | { accountAddress?: string; account?: string; address?: string; chainId?: number | string }
@@ -510,14 +511,17 @@ export async function cancelFlashOrder(orderId: string) {
   })
 
   const message = `Definitive Flash v1 — Cancel Order\nOrder: ${orderId}`
-  const response = await sendProviderRequest({
-    id: Date.now(),
-    jsonrpc: '2.0',
-    method: 'personal_sign',
-    chainId: `0x${chainId.toString(16)}`,
-    params: [message, accountAddress],
-    _origin: internalOriginId
-  })
+  const response = await sendProviderRequest(
+    {
+      id: Date.now(),
+      jsonrpc: '2.0',
+      method: 'personal_sign',
+      chainId: `0x${chainId.toString(16)}`,
+      params: [message, accountAddress],
+      _origin: internalOriginId
+    },
+    principal
+  )
   if (response.error) throw new Error(errorMessage(response.error))
   if (typeof response.result !== 'string' || !/^0x[0-9a-fA-F]+$/.test(response.result)) {
     throw new Error('Cancel signature was not returned.')
@@ -826,14 +830,19 @@ export async function dismissTransactionFeeNotice(requestId: string) {
   return true
 }
 
-export async function replaceTransaction(requestId: string, replacement: 'cancel' | 'speed') {
+export async function replaceTransaction(
+  requestId: string,
+  replacement: 'cancel' | 'speed',
+  principal: TrustedPrincipal
+) {
   if (currentRequest(requestId)?.type !== 'transaction') return false
 
   store.getState().navBack('panel')
   await new Promise<void>((resolve) => setTimeout(resolve, 1_000))
   await accounts.replaceTx(
     requestId,
-    replacement === 'cancel' ? ReplacementType.Cancel : ReplacementType.Speed
+    replacement === 'cancel' ? ReplacementType.Cancel : ReplacementType.Speed,
+    principal
   )
   return true
 }
@@ -929,6 +938,7 @@ export function inspectOwnTrayWindow(
 export function approveRequest(requestId: string) {
   const request = currentRequest(requestId)
   if (!request || (request.type !== 'transaction' && !isSignatureRequest(request))) return false
+  if (request.authorization?.decision !== 'prompt') return false
 
   if (vault.exists() && !vault.isUnlocked()) {
     accounts.setRequestError(request.handlerId, new Error('Newframe locked'))

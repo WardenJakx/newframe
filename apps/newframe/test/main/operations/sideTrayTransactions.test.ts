@@ -6,6 +6,8 @@ const getState = jest.fn()
 const initOrigin = jest.fn()
 const closeWindow = jest.fn()
 
+import { createRendererPrincipal } from '../../../main/authority'
+
 jest.mock('../../../main/accounts', () => ({ default: { current: currentAccount } }))
 jest.mock('../../../main/provider', () => ({ default: { send: providerSend } }))
 jest.mock('../../../main/flash/instance', () => ({
@@ -22,6 +24,12 @@ let submitFlashForCurrentAccount: typeof import('../../../main/operations/sideTr
 
 const address = '0x1111111111111111111111111111111111111111'
 const target = '0x2222222222222222222222222222222222222222'
+const principal = createRendererPrincipal({
+  clientType: 'sidetray',
+  entrypoint: 'sidetray',
+  webContentsId: 1,
+  windowInstanceId: 'side-tray-test'
+})
 
 beforeAll(async () => {
   const workflows = await import('../../../main/operations/sideTrayTransactions')
@@ -56,11 +64,14 @@ describe('side tray transaction workflows', () => {
     })
 
     await expect(
-      submitCurrentAccountTransaction({
-        chainId: 1,
-        idempotencyKey: '00000000-0000-4000-8000-000000000001',
-        transaction: { to: target, data: '0x1234', value: '0x2' }
-      })
+      submitCurrentAccountTransaction(
+        {
+          chainId: 1,
+          idempotencyKey: '00000000-0000-4000-8000-000000000001',
+          transaction: { to: target, data: '0x1234', value: '0x2' }
+        },
+        principal
+      )
     ).resolves.toEqual({ ok: true, transactionHash: `0x${'a'.repeat(64)}` })
 
     expect(initOrigin).toHaveBeenCalledWith(expect.any(String), {
@@ -85,7 +96,8 @@ describe('side tray transaction workflows', () => {
           }
         ]
       }),
-      expect.any(Function)
+      expect.any(Function),
+      principal
     )
   })
 
@@ -96,17 +108,23 @@ describe('side tray transaction workflows', () => {
     })
 
     await expect(
-      submitCurrentAccountTransaction({
-        chainId: 1,
-        idempotencyKey: '00000000-0000-4000-8000-000000000002',
-        transaction: { to: target }
-      })
+      submitCurrentAccountTransaction(
+        {
+          chainId: 1,
+          idempotencyKey: '00000000-0000-4000-8000-000000000002',
+          transaction: { to: target }
+        },
+        principal
+      )
     ).resolves.toEqual({ ok: false, error: 'provider_error', message: 'Chain is unavailable.' })
     await expect(
-      signCurrentAccountTypedData({
-        chainId: 1,
-        typedData: { domain: {}, message: {}, primaryType: 'Order', types: { Order: [] } }
-      })
+      signCurrentAccountTypedData(
+        {
+          chainId: 1,
+          typedData: { domain: {}, message: {}, primaryType: 'Order', types: { Order: [] } }
+        },
+        principal
+      )
     ).resolves.toEqual({ ok: false, error: 'provider_error', message: 'Chain is unavailable.' })
     await expect(quoteFlashForCurrentAccount({ chainId: 1 } as any)).resolves.toEqual({
       ok: false,
@@ -135,7 +153,7 @@ describe('side tray transaction workflows', () => {
       callback({ result: `0x${'b'.repeat(130)}` })
     })
 
-    await expect(signCurrentAccountTypedData({ chainId: 1, typedData })).resolves.toEqual({
+    await expect(signCurrentAccountTypedData({ chainId: 1, typedData }, principal)).resolves.toEqual({
       ok: true,
       signature: `0x${'b'.repeat(130)}`
     })
@@ -146,15 +164,19 @@ describe('side tray transaction workflows', () => {
         params: [address, typedData],
         _origin: expect.any(String)
       }),
-      expect.any(Function)
+      expect.any(Function),
+      principal
     )
 
     providerSend.mockClear()
     await expect(
-      signCurrentAccountTypedData({
-        chainId: 10,
-        typedData: { ...typedData, domain: { chainId: 1 } }
-      })
+      signCurrentAccountTypedData(
+        {
+          chainId: 10,
+          typedData: { ...typedData, domain: { chainId: 1 } }
+        },
+        principal
+      )
     ).resolves.toEqual({ ok: false, error: 'chain_mismatch' })
     expect(providerSend).not.toHaveBeenCalled()
   })

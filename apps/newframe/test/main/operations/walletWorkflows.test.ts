@@ -587,7 +587,15 @@ describe('wallet UI workflows', () => {
     providerSend.mockImplementation((_payload, done) => done({ id: 1, jsonrpc: '2.0', result: '0x1234' }))
     flashCancelOrder.mockResolvedValue(undefined)
 
-    await expect(cancelFlashOrder(orderId)).resolves.toBe(true)
+    const { createRendererPrincipal } = await import('../../../main/authority')
+    const principal = createRendererPrincipal({
+      clientType: 'wallet-ui',
+      entrypoint: 'tray',
+      webContentsId: 1,
+      windowInstanceId: 'tray-test'
+    })
+
+    await expect(cancelFlashOrder(orderId, principal)).resolves.toBe(true)
     expect(actions.initOrigin).toHaveBeenCalledWith(
       expect.any(String),
       expect.objectContaining({ chain: { id: 1, type: 'ethereum' } })
@@ -598,7 +606,8 @@ describe('wallet UI workflows', () => {
         chainId: '0x1',
         params: [expect.stringContaining(orderId), address]
       }),
-      expect.any(Function)
+      expect.any(Function),
+      principal
     )
     expect(flashCancelOrder).toHaveBeenCalledWith({ orderId, signature: '0x1234' })
 
@@ -611,12 +620,16 @@ describe('wallet UI workflows', () => {
         orders: { [orderId]: { accountAddress: address, chainId: 1 } }
       }
     })
-    await expect(cancelFlashOrder(orderId)).resolves.toBe(false)
+    await expect(cancelFlashOrder(orderId, principal)).resolves.toBe(false)
     expect(flashCancelOrder).toHaveBeenCalledTimes(1)
   })
 
   it('resolves request approval by ID instead of trusting a renderer request object', () => {
-    const request = { handlerId: 'request-1', type: 'transaction' }
+    const request = {
+      handlerId: 'request-1',
+      type: 'transaction',
+      authorization: { decision: 'prompt' }
+    }
     currentAccount.mockReturnValue({
       getRequest: (id: string) => (id === request.handlerId ? request : undefined)
     })
@@ -627,6 +640,23 @@ describe('wallet UI workflows', () => {
     expect(approveTransactionRequest).toHaveBeenCalledWith(request, expect.any(Function))
     expect(setTxSent).toHaveBeenCalledWith(request.handlerId, '0xhash')
     expect(approveRequest('missing')).toBe(false)
+  })
+
+  it('fails closed when a canonical request has no prompt authorization', () => {
+    const requests: Record<string, any> = {
+      missing: { handlerId: 'missing', type: 'transaction' },
+      autonomous: {
+        handlerId: 'autonomous',
+        type: 'transaction',
+        authorization: { decision: 'autonomous' }
+      }
+    }
+    currentAccount.mockReturnValue({ getRequest: (id: string) => requests[id] })
+
+    expect(approveRequest('missing')).toBe(false)
+    expect(approveRequest('autonomous')).toBe(false)
+    expect(setRequestPending).not.toHaveBeenCalled()
+    expect(approveTransactionRequest).not.toHaveBeenCalled()
   })
 
   it('routes each validated unlock method to the signer service', async () => {

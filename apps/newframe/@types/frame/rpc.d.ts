@@ -15,7 +15,6 @@ interface RPCId {
 
 interface InternalPayload {
   _origin: string
-  __frameInternal?: boolean
 }
 
 type Caip27JsonRpcRequestPayload = {

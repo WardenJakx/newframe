@@ -4,6 +4,7 @@ import { addHexPrefix, intToHex } from '@ethereumjs/util'
 import store from '../../../main/store'
 import { GasFeesSource, TRANSACTION_CONFIRMATION_TARGET } from '../../../resources/domain/transaction'
 import { gweiToHex } from '../../util'
+import { createRpcPrincipal } from '../../../main/authority'
 
 const providerMock = { send: jest.fn(), emit: jest.fn(), on: jest.fn(), off: jest.fn() }
 const signersMock = { get: jest.fn() }
@@ -138,6 +139,53 @@ afterEach(() => {
 
 it('sets the account signer', () => {
   expect(Accounts.current().address).toBe('0x22dd63c3619818fdbc262c78baee43cb61e9cccf')
+})
+
+describe('#routeRequest', () => {
+  it('attaches a prompt decision from the trusted transport before queueing', () => {
+    const principal = createRpcPrincipal({
+      transport: 'http',
+      connectionId: 'accounts-test',
+      origin: 'app.example'
+    })
+    const routedRequest = { ...request, account: account.address }
+
+    expect(Accounts.routeRequest(principal, routedRequest)).toBe(true)
+    expect(canonicalRequest()).toMatchObject({
+      authorization: {
+        actionId: expect.any(String),
+        decision: 'prompt',
+        decidedAt: expect.any(Number),
+        principal: {
+          kind: 'rpc',
+          transport: 'http',
+          connectionId: 'accounts-test',
+          origin: 'app.example'
+        }
+      }
+    })
+  })
+
+  it('rejects an unminted principal without queueing the request', () => {
+    const respond = jest.fn()
+    const forgedPrincipal = {
+      kind: 'renderer',
+      role: 'wallet-ui',
+      entrypoint: 'tray',
+      webContentsId: 1,
+      windowInstanceId: 'forged'
+    }
+
+    expect(
+      Accounts.routeRequest(forgedPrincipal as any, { ...request, account: account.address }, respond)
+    ).toBe(false)
+    expect(canonicalRequest()).toBeUndefined()
+    expect(respond).toHaveBeenCalledWith({
+      id: request.payload.id,
+      jsonrpc: request.payload.jsonrpc,
+      error: { code: 4100, message: 'Untrusted request source' }
+    })
+  })
 })
 
 it('selects the first remaining account when removing the current account', () => {
@@ -280,7 +328,7 @@ describe('#updatePendingFees', () => {
   })
 
   it('updates the pending fees for a transaction', () => {
-    Accounts.addRequest(request)
+    Accounts.current().addRequest(request)
     Accounts.updatePendingFees(parseInt(request.data.chainId))
 
     expect(canonicalRequest().data.maxFeePerGas).toBe(gweiToHex(11))
@@ -290,7 +338,7 @@ describe('#updatePendingFees', () => {
   it('does not update a transaction with gas fees provided by a dapp', () => {
     request.data.gasFeesSource = GasFeesSource.Dapp
 
-    Accounts.addRequest(request)
+    Accounts.current().addRequest(request)
     Accounts.updatePendingFees(parseInt(request.data.chainId))
 
     expect(request.data.maxFeePerGas).toBe(gweiToHex(9))
@@ -300,7 +348,7 @@ describe('#updatePendingFees', () => {
   it('does not update a transaction if gas fees have been updated by the user', () => {
     request.feesUpdatedByUser = true
 
-    Accounts.addRequest(request)
+    Accounts.current().addRequest(request)
     Accounts.updatePendingFees(parseInt(request.data.chainId))
 
     expect(request.data.maxFeePerGas).toBe(gweiToHex(9))
@@ -310,7 +358,7 @@ describe('#updatePendingFees', () => {
 
 describe('#setBaseFee', () => {
   beforeEach(() => {
-    Accounts.addRequest(request, jest.fn())
+    Accounts.current().addRequest(request, jest.fn())
   })
 
   const setBaseFee = (baseFee: any, requestId = 1, userUpdate = false) =>
@@ -441,7 +489,7 @@ describe('#setBaseFee', () => {
 
 describe('#setPriorityFee', () => {
   beforeEach(() => {
-    Accounts.addRequest(request, jest.fn())
+    Accounts.current().addRequest(request, jest.fn())
   })
 
   const setPriorityFee = (fee: any, requestId = 1, userUpdate = false) =>
@@ -565,7 +613,7 @@ describe('#setPriorityFee', () => {
 
 describe('#setGasPrice', () => {
   beforeEach(() => {
-    Accounts.addRequest(request, jest.fn())
+    Accounts.current().addRequest(request, jest.fn())
     patchRequest((request) => {
       request.data.type = '0x0'
     })
@@ -676,7 +724,7 @@ describe('#setGasPrice', () => {
 
 describe('#setGasLimit', () => {
   beforeEach(() => {
-    Accounts.addRequest(request, jest.fn())
+    Accounts.current().addRequest(request, jest.fn())
   })
 
   const setGasLimit = (limit: any, requestId = 1, userUpdate = false) =>
@@ -804,7 +852,7 @@ describe('#adjustNonce', () => {
     })
 
     onChainNonce = '0x0'
-    Accounts.addRequest(request, jest.fn())
+    Accounts.current().addRequest(request, jest.fn())
   })
 
   const adjustNonce = (nonceAdjust: any, requestId = 1) => Accounts.adjustNonce(requestId, nonceAdjust)
@@ -878,7 +926,7 @@ describe('#resetNonce', () => {
       cb({ result: '0x3' })
     })
     request.data.nonce = '0x5'
-    Accounts.addRequest(request, jest.fn())
+    Accounts.current().addRequest(request, jest.fn())
   })
 
   const resetNonce = (requestId = 1) => Accounts.resetNonce(requestId)
@@ -926,7 +974,7 @@ describe('#setTxSent', () => {
     })
     provider.send = jest.fn()
 
-    Accounts.addRequest(request, jest.fn())
+    Accounts.current().addRequest(request, jest.fn())
     patchRequest((request) => {
       request.simulation = {
         status: 'success',
@@ -991,7 +1039,7 @@ describe('#setTxSent', () => {
     })
 
     Accounts.startDataScanner()
-    Accounts.addRequest(request, jest.fn())
+    Accounts.current().addRequest(request, jest.fn())
     patchRequest((request) => {
       request.simulation = simulation
     })
@@ -1045,7 +1093,7 @@ describe('#setTxSent', () => {
       cb({ result: null })
     })
 
-    Accounts.addRequest(request, jest.fn())
+    Accounts.current().addRequest(request, jest.fn())
     Accounts.setTxSent(request.handlerId, hash)
     jest.advanceTimersByTime(1000)
     await Promise.resolve()
@@ -1103,7 +1151,7 @@ describe('#setTxSent', () => {
       cb({ result: null })
     })
 
-    Accounts.addRequest(request, jest.fn())
+    Accounts.current().addRequest(request, jest.fn())
     storeState().upsertAccountRequest(account.address, otherChainRequest)
     Accounts.setTxSent(request.handlerId, hash)
     jest.advanceTimersByTime(1000)
@@ -1132,7 +1180,7 @@ describe('#setTxSent', () => {
 
     provider.send = jest.fn()
 
-    Accounts.addRequest(request, jest.fn())
+    Accounts.current().addRequest(request, jest.fn())
     store.setState((state: any) => {
       state.windows.panel.nav = [
         {
@@ -1145,7 +1193,7 @@ describe('#setTxSent', () => {
         }
       ]
     })
-    Accounts.addRequest(queuedRequest, jest.fn())
+    Accounts.current().addRequest(queuedRequest, jest.fn())
 
     Accounts.setTxSent(request.handlerId, hash)
 
@@ -1221,7 +1269,7 @@ describe('#setTxSent', () => {
 
 describe('#resolveRequest', () => {
   it('does nothing with an unknown request', () => {
-    Accounts.addRequest(request, () => {
+    Accounts.current().addRequest(request, () => {
       throw new Error('unexpected callback!')
     })
 
@@ -1231,7 +1279,7 @@ describe('#resolveRequest', () => {
   })
 
   it('resolves a request with a callback', (done) => {
-    Accounts.addRequest(request, () => done())
+    Accounts.current().addRequest(request, () => done())
 
     Accounts.resolveRequest(request)
 
@@ -1243,7 +1291,7 @@ describe('#resolveRequest', () => {
   })
 
   it('resolves a request with no callback', () => {
-    Accounts.addRequest(request)
+    Accounts.current().addRequest(request)
 
     Accounts.resolveRequest(request)
 
@@ -1254,7 +1302,7 @@ describe('#resolveRequest', () => {
 describe('#removeRequest', () => {
   beforeEach(() => {
     ;(account as any).clearRequest = jest.fn()
-    Accounts.addRequest(request)
+    Accounts.current().addRequest(request)
   })
 
   it('should remove a request for the provided handlerId from the account', () => {
@@ -1266,9 +1314,9 @@ describe('#removeRequest', () => {
 
 describe('#clearRequestsByOrigin', () => {
   beforeEach(() => {
-    Accounts.addRequest(request)
-    Accounts.addRequest({ ...request, handlerId: '2' })
-    Accounts.addRequest({ ...request, handlerId: '3', origin: '07h3r' })
+    Accounts.current().addRequest(request)
+    Accounts.current().addRequest({ ...request, handlerId: '2' })
+    Accounts.current().addRequest({ ...request, handlerId: '3', origin: '07h3r' })
   })
 
   it('should remove any request from a given origin', () => {
@@ -1302,7 +1350,7 @@ describe('#signerCompatibility', () => {
     })
 
     Accounts.accounts[account.id].patch({ lastSignerType: 'seed', signer: activeSigner.id })
-    Accounts.addRequest(request)
+    Accounts.current().addRequest(request)
   })
 
   afterEach(() => {

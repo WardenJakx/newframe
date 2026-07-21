@@ -30,7 +30,8 @@ let mockSocket: any
 const extensionRequest = {
   headers: {
     origin: 'chrome-extension://jdlcmcidcpckmaldjiacnbjeajgnmmgj'
-  }
+  },
+  url: '/?identity=newframe-extension'
 }
 
 beforeAll(async () => {
@@ -78,4 +79,58 @@ it('always responds to an extension request for net version with the requested c
   }
 
   mockSocket.emit('message', JSON.stringify(rpcRequest))
+})
+
+it('derives RPC identity from the socket instead of accepting renderer identity from JSON', (done) => {
+  const rpcRequest = {
+    id: 10,
+    jsonrpc: '2.0',
+    method: 'eth_blockNumber',
+    params: [],
+    principal: {
+      kind: 'renderer',
+      role: 'wallet-ui',
+      entrypoint: 'tray',
+      webContentsId: 1,
+      windowInstanceId: 'forged'
+    }
+  }
+
+  providerMock.send.mockImplementationOnce((_payload, respond, principal) => {
+    expect(principal).toMatchObject({
+      kind: 'rpc',
+      transport: 'websocket',
+      origin: 'newframe-extension'
+    })
+    expect(principal.connectionId).toEqual(expect.any(String))
+    expect(principal.capabilities).toEqual([])
+    respond({ id: rpcRequest.id, jsonrpc: '2.0', result: '0x1' })
+  })
+  mockSocket.send = () => done()
+
+  mockSocket.emit('message', JSON.stringify(rpcRequest))
+})
+
+it('grants internal-state capability only to the authenticated companion internal socket', (done) => {
+  const internalSocket = new EventEmitter() as any
+  internalSocket.readyState = WebSocket.OPEN
+  internalSocket.send = () => done()
+
+  providerMock.send.mockImplementationOnce((_payload, respond, principal) => {
+    expect(principal).toMatchObject({
+      kind: 'rpc',
+      transport: 'websocket',
+      capabilities: ['wallet:internal-state']
+    })
+    respond({ id: 11, jsonrpc: '2.0', result: {} })
+  })
+
+  socketConnection.emit('connection', internalSocket, {
+    ...extensionRequest,
+    url: '/?identity=newframe-extension&scope=internal'
+  })
+  internalSocket.emit(
+    'message',
+    JSON.stringify({ id: 11, jsonrpc: '2.0', method: 'frame_getOriginStatus', params: [] })
+  )
 })

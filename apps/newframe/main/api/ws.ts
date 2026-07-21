@@ -20,6 +20,7 @@ import {
 } from './origins'
 import validPayload from './validPayload'
 import protectedMethods from './protectedMethods'
+import { createRpcPrincipal } from '../authority'
 
 const logTraffic = (origin: string) =>
   process.env.LOG_TRAFFIC === 'true' || process.env.LOG_TRAFFIC === origin
@@ -37,14 +38,13 @@ interface FrameWebSocket extends WebSocket {
   id: string
   origin?: string
   frameExtension?: FrameExtension
+  companionInternal: boolean
 }
 
 interface ExtensionPayload extends JSONRPCRequestPayload {
   __frameOrigin?: string
   __extensionConnecting?: boolean
 }
-
-const extensionOrigins = ['newframe-extension', 'frame-extension']
 
 function extendSession(originId: string) {
   if (originId) {
@@ -60,6 +60,10 @@ const handler = (socket: FrameWebSocket, req: IncomingMessage) => {
   socket.id = uuid()
   socket.origin = req.headers.origin
   socket.frameExtension = parseFrameExtension(req)
+  socket.companionInternal = Boolean(
+    socket.frameExtension &&
+    new URL(req.url || '/', 'http://127.0.0.1').searchParams.get('scope') === 'internal'
+  )
 
   const res = (payload: RPCResponsePayload) => {
     if (socket.readyState === WebSocket.OPEN) {
@@ -74,6 +78,7 @@ const handler = (socket: FrameWebSocket, req: IncomingMessage) => {
     if (!rawPayload) return console.warn('Invalid Payload', data)
 
     let requestOrigin = socket.origin
+    const proxiedExtensionRequest = Boolean(socket.frameExtension && rawPayload.__frameOrigin)
     if (socket.frameExtension) {
       if (!(await isKnownExtension(socket.frameExtension))) {
         const error = {
@@ -106,6 +111,12 @@ const handler = (socket: FrameWebSocket, req: IncomingMessage) => {
       )
 
     const { payload, chainId } = updateOrigin(rawPayload, origin, rawPayload.__extensionConnecting)
+    const principal = createRpcPrincipal({
+      transport: 'websocket',
+      connectionId: socket.id,
+      origin,
+      capabilities: socket.companionInternal ? ['wallet:internal-state'] : []
+    })
 
     if (!isHexString(chainId)) {
       const error = {
@@ -119,41 +130,45 @@ const handler = (socket: FrameWebSocket, req: IncomingMessage) => {
       extendSession(payload._origin)
     }
 
-    if (extensionOrigins.includes(origin)) {
+    if (socket.frameExtension && !proxiedExtensionRequest) {
       // custom extension action for summoning Newframe
-      if (rawPayload.method === 'frame_summon') return windows.toggleTray()
+      if (rawPayload.method === 'frame_summon' && socket.companionInternal) return windows.toggleTray()
 
       const { id, jsonrpc } = rawPayload
       if (rawPayload.method === 'eth_chainId') return res({ id, jsonrpc, result: chainId })
       if (rawPayload.method === 'net_version') return res({ id, jsonrpc, result: parseInt(chainId, 16) })
     }
 
-    if (protectedMethods.indexOf(payload.method) > -1 && !(await isTrusted(payload))) {
+    if (protectedMethods.indexOf(payload.method) > -1 && !(await isTrusted(payload, principal))) {
       let error = { message: 'Permission denied, approve ' + origin + ' in Newframe to continue', code: 4001 }
       // review
       if (!accounts.getSelectedAddresses()[0]) error = { message: 'No Newframe account selected', code: 4001 }
       res({ id: payload.id, jsonrpc: payload.jsonrpc, error })
     } else {
-      provider.send(payload, (response) => {
-        if (response && response.result) {
-          if (payload.method === 'eth_subscribe') {
-            subs[response.result] = { socket, originId: payload._origin }
-          } else if (payload.method === 'eth_unsubscribe') {
-            payload.params.forEach((sub) => {
-              if (subs[sub]) delete subs[sub]
-            })
+      provider.send(
+        payload,
+        (response) => {
+          if (response && response.result) {
+            if (payload.method === 'eth_subscribe') {
+              subs[response.result] = { socket, originId: payload._origin }
+            } else if (payload.method === 'eth_unsubscribe') {
+              payload.params.forEach((sub) => {
+                if (subs[sub]) delete subs[sub]
+              })
+            }
           }
-        }
 
-        if (logTraffic(origin))
-          log.info(
-            `<- res | ${socket.frameExtension ? 'ext' : 'ws'} | ${origin} | ${
-              payload.method
-            } | <- | ${JSON.stringify(response.result || response.error)}`
-          )
+          if (logTraffic(origin))
+            log.info(
+              `<- res | ${socket.frameExtension ? 'ext' : 'ws'} | ${origin} | ${
+                payload.method
+              } | <- | ${JSON.stringify(response.result || response.error)}`
+            )
 
-        res(response)
-      })
+          res(response)
+        },
+        principal
+      )
     }
   })
   socket.on('error', (err) => log.error(err))

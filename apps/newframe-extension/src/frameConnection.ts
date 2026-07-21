@@ -10,7 +10,6 @@ export interface JsonRpcPayload {
   chainId?: string
   __frameOrigin?: string
   __extensionConnecting?: boolean
-  __frameInternal?: boolean
 }
 
 interface JsonRpcResponse {
@@ -50,7 +49,7 @@ function createPayload(
   params: JsonRpcParams = [],
   id: number,
   targetChain?: string,
-  options: Pick<JsonRpcPayload, '__frameOrigin' | '__extensionConnecting' | '__frameInternal'> = {}
+  options: Pick<JsonRpcPayload, '__frameOrigin' | '__extensionConnecting'> = {}
 ) {
   const payload: JsonRpcPayload = { id, method, params, jsonrpc: '2.0' }
 
@@ -64,10 +63,6 @@ function createPayload(
 
   if (options.__extensionConnecting) {
     payload.__extensionConnecting = options.__extensionConnecting
-  }
-
-  if (options.__frameInternal) {
-    payload.__frameInternal = options.__frameInternal
   }
 
   return payload
@@ -264,7 +259,7 @@ export default class FrameBackgroundProvider extends EventEmitter {
     params: JsonRpcParams = [],
     targetChain?: string,
     waitForConnection = true,
-    options: Pick<JsonRpcPayload, '__frameOrigin' | '__extensionConnecting' | '__frameInternal'> = {}
+    options: Pick<JsonRpcPayload, '__frameOrigin' | '__extensionConnecting'> = {}
   ) {
     const send = () =>
       new Promise<T>((resolve, reject) => {

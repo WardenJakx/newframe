@@ -158,7 +158,6 @@ function upsertTokenRecords(
 }
 
 function stripRequestCapabilities(request: MutableRecord) {
-  delete request.res
   ;(request.recognizedActions || []).forEach((action: MutableRecord) => delete action.update)
 }
 
