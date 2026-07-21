@@ -5,6 +5,7 @@ import { StatusDot } from '@newframe/ui/status-dot'
 import { Text } from '@newframe/ui/text'
 
 import { imageSource, persistedImageSource } from '../domain/image'
+import { useTokenImageHydration } from '../Hooks/useTokenImageHydration'
 import type { ChainTokenIconSize, NetworkLike, NetworkMetaLike } from './tokenSelectorTypes'
 
 interface ChainTokenIconProps {
@@ -14,6 +15,7 @@ interface ChainTokenIconProps {
   networksMeta: Record<string | number, NetworkMetaLike>
   size?: ChainTokenIconSize
   symbol: string
+  tokenId?: string
 }
 
 const ethChains = ['ethereum', 'mainnet', 'görli', 'goerli', 'sepolia', 'ropsten', 'rinkeby', 'kovan']
@@ -32,8 +34,10 @@ export default function ChainTokenIcon({
   networks,
   networksMeta,
   size = 'md',
-  symbol
+  symbol,
+  tokenId
 }: ChainTokenIconProps) {
+  const hydrationTarget = React.useRef<HTMLSpanElement>(null)
   const [failedTokenUrl, setFailedTokenUrl] = React.useState('')
   const [failedChainUrl, setFailedChainUrl] = React.useState('')
   const chainMetadata = networksMeta[chainId]
@@ -44,6 +48,8 @@ export default function ChainTokenIcon({
   const chainImageVisible = !!chainImageSource && failedChainUrl !== chainIconUrl
   const chain = networks[chainId] || {}
   const chainName = (chain.name || '').toLowerCase()
+
+  useTokenImageHydration(tokenId, !!tokenImageSource, hydrationTarget)
 
   React.useEffect(() => {
     setFailedTokenUrl('')
@@ -79,7 +85,12 @@ export default function ChainTokenIcon({
   }
 
   return (
-    <MediaBadge badge={renderChainBadge()} decorative size={size === 'sm' ? 'small' : 'medium'}>
+    <MediaBadge
+      badge={renderChainBadge()}
+      decorative
+      rootRef={hydrationTarget}
+      size={size === 'sm' ? 'small' : 'medium'}
+    >
       {tokenImageVisible ? (
         <Image
           alt=''

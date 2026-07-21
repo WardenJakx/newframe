@@ -320,6 +320,12 @@ export const TokenRemoveCommandSchema = z.strictObject({
 })
 export type TokenRemoveCommand = z.infer<typeof TokenRemoveCommandSchema>
 
+export const TokenImageHydrateCommandSchema = z.strictObject({
+  type: z.literal('token.image-hydrate'),
+  tokenId: z.string().max(128).regex(/^\d+:0x[0-9a-fA-F]{40}$/)
+})
+export type TokenImageHydrateCommand = z.infer<typeof TokenImageHydrateCommandSchema>
+
 export const OriginRemoveCommandSchema = z.strictObject({
   type: z.literal('origin.remove'),
   originId: OperationIdSchema
@@ -1008,6 +1014,7 @@ export interface CommandMap {
   'signer.reload': SignerReloadCommand
   'signer.trezor-input': TrezorInputCommand
   'token.add': TokenAddCommand
+  'token.image-hydrate': TokenImageHydrateCommand
   'token.remove': TokenRemoveCommand
   'transaction.fee-default-set': TransactionFeeDefaultSetCommand
   'transaction.fee-notice-dismiss': TransactionFeeNoticeDismissCommand
@@ -1073,6 +1080,7 @@ export interface CommandResultMap {
   'signer.reload': WalletCommandResult
   'signer.trezor-input': WalletCommandResult
   'token.add': WalletCommandResult
+  'token.image-hydrate': WalletCommandResult
   'token.remove': WalletCommandResult
   'transaction.fee-default-set': WalletCommandResult
   'transaction.fee-notice-dismiss': WalletCommandResult

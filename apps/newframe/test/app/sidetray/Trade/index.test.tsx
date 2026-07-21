@@ -94,6 +94,12 @@ function initializeTradeState(balances = [wethBalance()], customTokens: any[] = 
       networksMeta: {
         ethereum: {
           [FLASH_ANVIL_CHAIN_ID]: {
+            image: {
+              base64: 'Y2hhaW4=',
+              contentHash: 'chain-image',
+              mimeType: 'image/png',
+              sourceUrl: 'https://cdn.example/chain.png'
+            },
             primaryColor: 'accent1',
             nativeCurrency: {
               symbol: 'ETH',
@@ -540,6 +546,21 @@ describe('Trade', () => {
     fireEvent.change(screen.getByLabelText('Search tokens'), { target: { value: '' } })
     fireEvent.click(screen.getByText('Show 50 more assets'))
     expect(screen.getAllByRole('option')).toHaveLength(100)
+  })
+
+  it('renders the projected canonical chain image in the asset selector', () => {
+    initializeTradeState([usdcBalance(), wethBalance()])
+    render(<Trade assetId={`${FLASH_ANVIL_CHAIN_ID}:${FLASH_WETH_ADDRESS}`} />)
+
+    fireEvent.click(screen.getByLabelText('Select target asset'))
+
+    const chainBadges = screen
+      .getAllByRole('option')
+      .map((option) => option.querySelector('img')?.getAttribute('src'))
+    expect(chainBadges).toEqual([
+      'data:image/png;base64,Y2hhaW4=',
+      'data:image/png;base64,Y2hhaW4='
+    ])
   })
 
   it('selects a custom token with no balance', () => {

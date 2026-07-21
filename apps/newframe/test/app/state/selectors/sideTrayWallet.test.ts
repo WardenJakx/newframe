@@ -57,7 +57,6 @@ describe('createSideTrayWalletSelector', () => {
       networksMeta: {
         ethereum: {
           31337: {
-            icon: '',
             primaryColor: 'accent1',
             nativeCurrency: {
               symbol: 'ETH',

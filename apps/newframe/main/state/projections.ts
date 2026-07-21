@@ -248,7 +248,7 @@ function projectSideTrayNetworkMetadata(
         [
           chainId,
           {
-            icon: chainMetadata.icon,
+            image: chainMetadata.image,
             primaryColor: chainMetadata.primaryColor || 'accent1',
             nativeCurrency: {
               ...chainMetadata.nativeCurrency,

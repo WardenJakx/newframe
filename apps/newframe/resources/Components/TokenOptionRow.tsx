@@ -28,6 +28,7 @@ export default function TokenOptionRow({
         networksMeta={networksMeta}
         size='md'
         symbol={symbol}
+        tokenId={item.id}
       />
       <Stack gap='xsmall' grow>
         <Text variant='control' truncate>

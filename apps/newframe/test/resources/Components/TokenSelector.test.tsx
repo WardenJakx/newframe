@@ -5,6 +5,7 @@ import { fireEvent, render, screen } from '../../componentSetup'
 import ChainTokenIcon from '../../../resources/Components/ChainTokenIcon'
 import TokenSelector from '../../../resources/Components/TokenSelector'
 import type { TokenSelectorItem } from '../../../resources/Components/tokenSelectorTypes'
+import link from '../../../resources/link'
 
 const networks = {
   1: { name: 'Mainnet' }
@@ -57,6 +58,53 @@ function ControlledSelector({ initialSelectedId = 'eth' }: { initialSelectedId?:
 }
 
 describe('ChainTokenIcon', () => {
+  it('requests a missing persisted token image when the token UI mounts', () => {
+    const tokenId = '1:0x1111111111111111111111111111111111111111'
+    const originalIntersectionObserver = globalThis.IntersectionObserver
+    Object.defineProperty(globalThis, 'IntersectionObserver', {
+      configurable: true,
+      value: undefined,
+      writable: true
+    })
+
+    try {
+      render(
+        <ChainTokenIcon
+          chainId={1}
+          networks={networks}
+          networksMeta={networksMeta}
+          size='md'
+          symbol='TKN'
+          tokenId={tokenId}
+        />
+      )
+
+      expect(link.executeCommand).toHaveBeenCalledWith({ type: 'token.image-hydrate', tokenId })
+    } finally {
+      Object.defineProperty(globalThis, 'IntersectionObserver', {
+        configurable: true,
+        value: originalIntersectionObserver,
+        writable: true
+      })
+    }
+  })
+
+  it('does not request a token image that is already persisted', () => {
+    render(
+      <ChainTokenIcon
+        chainId={1}
+        logoURI='data:image/png;base64,dG9rZW4='
+        networks={networks}
+        networksMeta={networksMeta}
+        size='md'
+        symbol='TKN'
+        tokenId='1:0x1111111111111111111111111111111111111111'
+      />
+    )
+
+    expect(link.executeCommand).not.toHaveBeenCalled()
+  })
+
   it('renders persisted chain artwork from its base64 image record', () => {
     render(
       <ChainTokenIcon

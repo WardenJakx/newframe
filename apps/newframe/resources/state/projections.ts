@@ -190,7 +190,6 @@ const SideTrayNetworkSchema = z.strictObject({
 })
 
 const SideTrayNetworkMetadataSchema = z.strictObject({
-  icon: z.string().optional(),
   image: TokenImageSchema.optional(),
   primaryColor: z.string(),
   nativeCurrency: NativeCurrencySchema

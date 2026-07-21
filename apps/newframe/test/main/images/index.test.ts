@@ -25,7 +25,7 @@ beforeEach(() => {
   subscribe.mockReset()
 })
 
-it('hydrates token, network, and native-currency images entirely in the main process', async () => {
+it('hydrates networks in the background and tokens only when requested by the renderer', async () => {
   const token = {
     address: '0x1111111111111111111111111111111111111111',
     chainId: 1,
@@ -61,8 +61,12 @@ it('hydrates token, network, and native-currency images entirely in the main pro
     return jest.fn()
   })
 
-  const images = (await import('../../../main/images')).default
-  const stop = images.start()
+  const images = await import('../../../main/images')
+  const stop = images.default.start()
+  await flushHydration()
+
+  expect(state.setTokenImage).not.toHaveBeenCalled()
+  images.requestTokenImage(`1:${token.address}`)
   await flushHydration()
 
   expect(state.setTokenImage).toHaveBeenCalledWith(`1:${token.address}`, imageFor(token.logoURI))
@@ -111,4 +115,61 @@ it('does not download images that already match their configured sources', async
 
   expect(downloadImage).not.toHaveBeenCalled()
   stop()
+})
+
+it('limits concurrent image work even when many visible tokens request hydration together', async () => {
+  const tokens = Object.fromEntries(
+    Array.from({ length: 5 }, (_, index) => {
+      const address = `0x${String(index + 1).padStart(40, '0')}`
+      return [
+        `1:${address}`,
+        {
+          address,
+          chainId: 1,
+          decimals: 18,
+          logoURI: `https://cdn.example/token-${index}.png`,
+          name: `Token ${index}`,
+          symbol: `T${index}`
+        }
+      ]
+    })
+  )
+  const state = {
+    main: { tokens: { byId: tokens }, networksMeta: { ethereum: {} } },
+    setNativeCurrencyImage: jest.fn(),
+    setNetworkImage: jest.fn(),
+    setTokenImage: jest.fn()
+  }
+  getState.mockReturnValue(state)
+
+  let active = 0
+  let maxActive = 0
+  const resolveDownloads: Array<() => void> = []
+  downloadImage.mockImplementation(
+    (sourceUrl: string) =>
+      new Promise((resolve) => {
+        active += 1
+        maxActive = Math.max(maxActive, active)
+        resolveDownloads.push(() => {
+          active -= 1
+          resolve(imageFor(sourceUrl))
+        })
+      })
+  )
+
+  const { requestTokenImage } = await import('../../../main/images')
+  Object.keys(tokens).forEach(requestTokenImage)
+
+  expect(downloadImage).toHaveBeenCalledTimes(2)
+  resolveDownloads.shift()?.()
+  await flushHydration()
+  expect(downloadImage).toHaveBeenCalledTimes(3)
+
+  while (state.setTokenImage.mock.calls.length < Object.keys(tokens).length) {
+    resolveDownloads.splice(0).forEach((resolve) => resolve())
+    await flushHydration()
+  }
+
+  expect(maxActive).toBe(2)
+  expect(downloadImage).toHaveBeenCalledTimes(5)
 })

@@ -11,6 +11,7 @@ import { Text } from '@newframe/ui/text'
 import type { Token } from '../../../../../../main/store/state'
 import link from '../../../../../../resources/link'
 import { customTokens, tokenImageSource } from '../../../../../../resources/domain/token'
+import { useTokenImageHydration } from '../../../../../../resources/Hooks/useTokenImageHydration'
 import type { WalletRendererState } from '../../../../../../resources/state/projections'
 import { useWalletSelector } from '../../../../../state/useAppSelector'
 
@@ -19,6 +20,12 @@ const selectCustomTokens = (state: WalletRendererState) => customTokens(state.to
 interface CustomTokensProps {
   onEdit: (token: Token) => void
   tokens: Token[]
+}
+
+function CustomTokenImage({ token }: { token: Token }) {
+  const source = tokenImageSource(token)
+  useTokenImageHydration(`${token.chainId}:${token.address.toLowerCase()}`, !!source)
+  return source ? <Image alt={token.symbol.toUpperCase()} size='medium' source={source} /> : null
 }
 
 function CustomTokensView({ onEdit, tokens }: CustomTokensProps) {
@@ -42,9 +49,7 @@ function CustomTokensView({ onEdit, tokens }: CustomTokensProps) {
           <Surface key={`${token.chainId}:${token.address}`} padding='small' radius='card'>
             <Stack gap='small'>
               <Stack align='center' direction='row' gap='small'>
-                {tokenImageSource(token) ? (
-                  <Image alt={token.symbol.toUpperCase()} size='medium' source={tokenImageSource(token)} />
-                ) : null}
+                <CustomTokenImage token={token} />
                 <Stack gap='xsmall' grow>
                   <Text truncate variant='label'>
                     {token.symbol}

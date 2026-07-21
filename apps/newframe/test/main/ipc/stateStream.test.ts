@@ -193,6 +193,13 @@ describe('renderer state stream', () => {
     state.main.currentAccount = id
     state.main.balances[id] = []
     state.main.portfolioApiKey = 'secret-api-key'
+    const chainImage = {
+      base64: 'Y2hhaW4=',
+      contentHash: 'chain-image',
+      mimeType: 'image/png',
+      sourceUrl: state.main.networksMeta.ethereum[1].icon
+    }
+    state.main.networksMeta.ethereum[1].image = chainImage
     const customToken = {
       address: '0x00000000000000000000000000000000000000aa',
       chainId: 1,
@@ -256,6 +263,8 @@ describe('renderer state stream', () => {
       byId: { [`1:${customToken.address}`]: customToken },
       accountTokenIds: { [id]: [] }
     })
+    expect(snapshot.state.networksMeta.ethereum[1].image).toEqual(chainImage)
+    expect(snapshot.state.networksMeta.ethereum[1]).not.toHaveProperty('icon')
 
     storeMock.getState().updateLattice('device', { privKey: 'another-secret' })
     expect(sender.send).toHaveBeenCalledTimes(1)

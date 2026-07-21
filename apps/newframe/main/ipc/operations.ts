@@ -3,6 +3,7 @@ import log from 'electron-log'
 import { z } from 'zod'
 
 import accounts from '../accounts'
+import { requestTokenImage } from '../images'
 import {
   quoteFlashForCurrentAccount,
   signCurrentAccountTypedData,
@@ -85,6 +86,7 @@ import {
   SignerCompatibilityResultSchema,
   SwitchChainRequestResolveCommandSchema,
   TokenAddCommandSchema,
+  TokenImageHydrateCommandSchema,
   TokenLookupQuerySchema,
   TokenLookupResultSchema,
   TokenRemoveCommandSchema,
@@ -627,6 +629,17 @@ const commandRegistry = {
     'request_not_found',
     ['tray']
   ),
+  'token.image-hydrate': defineOperation({
+    schema: TokenImageHydrateCommandSchema,
+    resultSchema: WalletCommandResultSchema,
+    roles: ['wallet-ui', 'sidetray'],
+    entrypoints: ['tray', 'sidetray'],
+    handle({ tokenId }) {
+      requestTokenImage(tokenId)
+      return { ok: true } as const
+    },
+    failure: { ok: false, error: 'operation_failed' }
+  }),
   'token.remove': defineWalletCommand(
     TokenRemoveCommandSchema,
     ({ address, chainId }) => walletWorkflows.removeToken({ address, chainId }),
