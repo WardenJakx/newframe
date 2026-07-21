@@ -17,6 +17,7 @@ import {
   isFlashChainSupported
 } from '../../../../resources/domain/flash/chains'
 import { getDefaultContraAsset, getDefaultContraAssetForChain } from '../../../../resources/domain/flash/pair'
+import { NATIVE_CURRENCY } from '../../../../resources/constants'
 
 describe('flash domain helpers', () => {
   it('selects dev and production supported chain sets by runtime', () => {
@@ -51,7 +52,7 @@ describe('flash domain helpers', () => {
 
   it('converts balance summaries into canonical Flash assets', () => {
     const native = balanceSummaryToFlashAsset({
-      address: FLASH_NATIVE_ETH_TOKEN_ADDRESS,
+      address: NATIVE_CURRENCY,
       balance: '1',
       chainId: FLASH_BASE_CHAIN_ID,
       decimals: 18,
@@ -67,6 +68,7 @@ describe('flash domain helpers', () => {
       symbol: 'USDC'
     })
 
+    expect(FLASH_NATIVE_ETH_TOKEN_ADDRESS).toBe('0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee')
     expect(native.id).toBe(`${FLASH_BASE_CHAIN_ID}:${FLASH_NATIVE_ETH_TOKEN_ADDRESS}`)
     expect(native.isNative).toBe(true)
     expect(toFlashApiAssetAddress(native)).toBe(FLASH_NATIVE_ETH_TOKEN_ADDRESS)

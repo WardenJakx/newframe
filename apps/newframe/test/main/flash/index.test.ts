@@ -12,7 +12,8 @@ import type { FlashQuoteRequest } from '../../../main/flash/contracts'
 import {
   FLASH_BASE_USDC_ADDRESS,
   FLASH_BASE_WETH_ADDRESS,
-  FLASH_MARKET_ORDER_TYPE
+  FLASH_MARKET_ORDER_TYPE,
+  FLASH_NATIVE_ETH_TOKEN_ADDRESS
 } from '../../../resources/domain/flash/constants'
 import {
   FLASH_NATIVE_ETH_ASSET,
@@ -199,6 +200,16 @@ describe('main Flash facade helpers', () => {
       targetChain: 'ethereum',
       contraChain: 'ethereum'
     })
+  })
+
+  it('maps native assets to the Flash 0xeeee sentinel', () => {
+    const body = buildFlashQuoteBody({
+      ...quoteRequest(),
+      targetAsset: FLASH_NATIVE_ETH_ASSET
+    })
+
+    expect(body.targetAsset).toBe(FLASH_NATIVE_ETH_TOKEN_ADDRESS)
+    expect(body.targetAsset).toBe('0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee')
   })
 
   it('normalizes Flash REST quote responses into renderer quote shape', () => {
