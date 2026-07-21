@@ -71,7 +71,13 @@ async function createContext(
   const tray = await waitForElectronPage(app, 'bundle/tray.html', runtime)
   const consoleErrors: string[] = []
   tray.on('console', (message) => {
-    if (message.type() === 'error') consoleErrors.push(message.text())
+    if (message.type() !== 'error') return
+
+    const location = message.location()
+    const source = location.url
+      ? ` (${location.url}:${location.lineNumber + 1}:${location.columnNumber + 1})`
+      : ''
+    consoleErrors.push(`${message.text()}${source}`)
   })
 
   const anvil = new AnvilClient()
