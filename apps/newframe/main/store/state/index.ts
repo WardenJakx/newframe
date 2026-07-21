@@ -181,7 +181,7 @@ const requiredDefaultEthereumNetworksMeta: Record<number, any> = {
         price: 0,
         change24hr: 0
       },
-      icon: '',
+      icon: builtInChainIconUrl(56),
       name: 'BNB',
       decimals: 18
     },
@@ -196,7 +196,7 @@ const requiredDefaultEthereumNetworksMeta: Record<number, any> = {
         price: 0,
         change24hr: 0
       },
-      icon: '',
+      icon: builtInChainIconUrl(999),
       name: 'HYPE',
       decimals: 18
     },
@@ -211,7 +211,7 @@ const requiredDefaultEthereumNetworksMeta: Record<number, any> = {
         price: 0,
         change24hr: 0
       },
-      icon: '',
+      icon: builtInChainIconUrl(9745),
       name: 'Plasma',
       decimals: 18
     },
@@ -226,7 +226,7 @@ const requiredDefaultEthereumNetworksMeta: Record<number, any> = {
         price: 0,
         change24hr: 0
       },
-      icon: '',
+      icon: MAINNET_ETH_ICON,
       name: 'Ether',
       decimals: 18
     },
@@ -241,7 +241,7 @@ const requiredDefaultEthereumNetworksMeta: Record<number, any> = {
         price: 0,
         change24hr: 0
       },
-      icon: '',
+      icon: builtInChainIconUrl(43114),
       name: 'Avalanche',
       decimals: 18
     },
@@ -256,7 +256,7 @@ const requiredDefaultEthereumNetworksMeta: Record<number, any> = {
         price: 0,
         change24hr: 0
       },
-      icon: '',
+      icon: builtInChainIconUrl(143),
       name: 'Monad',
       decimals: 18
     },
@@ -784,7 +784,7 @@ const mainState: M = {
             price: 0,
             change24hr: 0
           },
-          icon: '',
+          icon: MAINNET_ETH_ICON,
           name: 'Ether',
           symbol: 'ETH',
           decimals: 18
@@ -806,7 +806,7 @@ const mainState: M = {
             price: 0,
             change24hr: 0
           },
-          icon: '',
+          icon: builtInChainIconUrl(56),
           name: 'BNB',
           decimals: 18
         },
@@ -827,7 +827,7 @@ const mainState: M = {
             price: 0,
             change24hr: 0
           },
-          icon: '',
+          icon: builtInChainIconUrl(100),
           name: 'xDAI',
           decimals: 18
         },
@@ -848,7 +848,7 @@ const mainState: M = {
             price: 0,
             change24hr: 0
           },
-          icon: '',
+          icon: builtInChainIconUrl(137),
           name: 'Matic',
           decimals: 18
         },
@@ -869,7 +869,7 @@ const mainState: M = {
             price: 0,
             change24hr: 0
           },
-          icon: '',
+          icon: builtInChainIconUrl(999),
           name: 'HYPE',
           decimals: 18
         },
@@ -890,7 +890,7 @@ const mainState: M = {
             price: 0,
             change24hr: 0
           },
-          icon: '',
+          icon: MAINNET_ETH_ICON,
           name: 'Ether',
           decimals: 18
         },
@@ -910,7 +910,7 @@ const mainState: M = {
             price: 0,
             change24hr: 0
           },
-          icon: '',
+          icon: MAINNET_ETH_ICON,
           name: 'Ether',
           symbol: 'ETH',
           decimals: 18
@@ -932,7 +932,7 @@ const mainState: M = {
             price: 0,
             change24hr: 0
           },
-          icon: '',
+          icon: builtInChainIconUrl(43114),
           name: 'Avalanche',
           decimals: 18
         },
@@ -953,7 +953,7 @@ const mainState: M = {
             price: 0,
             change24hr: 0
           },
-          icon: '',
+          icon: MAINNET_ETH_ICON,
           name: 'Base Sepolia Ether',
           decimals: 18
         },
@@ -974,7 +974,7 @@ const mainState: M = {
             price: 0,
             change24hr: 0
           },
-          icon: '',
+          icon: MAINNET_ETH_ICON,
           name: 'Sepolia Ether',
           decimals: 18
         },
@@ -995,7 +995,7 @@ const mainState: M = {
             price: 0,
             change24hr: 0
           },
-          icon: '',
+          icon: MAINNET_ETH_ICON,
           name: 'Optimism Sepolia Ether',
           decimals: 18
         },

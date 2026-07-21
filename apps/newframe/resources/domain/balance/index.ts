@@ -1,5 +1,6 @@
 import { NATIVE_CURRENCY } from '../../constants'
 import { formatUnits, toBigInt } from '../../utils/numbers'
+import { persistedImageSource } from '../image'
 import { tokenFromBalance, tokenImageSource, toTokenId } from '../token'
 
 import type { Balance, Rate, TokenCatalog } from '../../../main/store/state'
@@ -174,9 +175,7 @@ function createBalanceSummary({
     hasPrice,
     logoURI:
       tokenImageSource(token) ||
-      (isNative && getNativeCurrencyIcon(nativeCurrencyInfo)) ||
-      token?.logoURI ||
-      rawBalance.logoURI,
+      (isNative ? getNativeCurrencyIcon(nativeCurrencyInfo) : undefined),
     name: token?.name || (isNative ? chain.name || '' : rawBalance.name || ''),
     quote,
     symbol: token?.symbol || rawBalance.symbol || '',
@@ -307,8 +306,11 @@ export function isNativeCurrency(address: string) {
   return address === NATIVE_CURRENCY
 }
 
-function getNativeCurrencyIcon(nativeCurrency: { icon?: string; symbol?: string }) {
-  return nativeCurrency.icon || (nativeCurrency.symbol?.toUpperCase() === 'ETH' ? MAINNET_ETH_ICON : '')
+function getNativeCurrencyIcon(nativeCurrency: {
+  image?: { base64?: string; mimeType?: string }
+  symbol?: string
+}) {
+  return persistedImageSource(nativeCurrency.image)
 }
 
 export function isLowValueTokenBalance(balance: { totalValue: number; hasPrice?: boolean }) {

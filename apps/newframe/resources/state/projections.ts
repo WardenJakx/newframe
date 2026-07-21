@@ -5,7 +5,7 @@ import { BalanceSchema } from '../../main/store/state/types/balance'
 import { MainSchema, RuntimeSchema } from '../../main/store/state/types/main'
 import { NativeCurrencySchema } from '../../main/store/state/types/nativeCurrency'
 import { RateSchema } from '../../main/store/state/types/rate'
-import { TokenCatalogSchema } from '../../main/store/state/types/token'
+import { TokenCatalogSchema, TokenImageSchema } from '../../main/store/state/types/token'
 
 export const RendererProjectionSchema = z.enum(['wallet-ui', 'sidetray'])
 export type RendererProjection = z.infer<typeof RendererProjectionSchema>
@@ -191,6 +191,7 @@ const SideTrayNetworkSchema = z.strictObject({
 
 const SideTrayNetworkMetadataSchema = z.strictObject({
   icon: z.string().optional(),
+  image: TokenImageSchema.optional(),
   primaryColor: z.string(),
   nativeCurrency: NativeCurrencySchema
 })

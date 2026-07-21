@@ -1,6 +1,5 @@
 import log from 'electron-log'
 
-import { imageSource, isEmbeddedImage } from '../../resources/domain/image'
 import type { CanonicalStore } from './actions'
 import {
   PERSISTENCE_VERSION,
@@ -177,6 +176,20 @@ function mergeRecord(current: unknown, persisted: unknown) {
   return { ...(current as UnknownRecord), ...(persisted as UnknownRecord) }
 }
 
+function httpsImageSource(value: unknown) {
+  try {
+    const url = new URL(String(value || '').trim())
+    return url.protocol === 'https:' ? url.toString() : ''
+  } catch {
+    return ''
+  }
+}
+
+function matchingPersistedImage(value: unknown, sourceUrl: string) {
+  const image = (value || {}) as UnknownRecord
+  return sourceUrl && image.sourceUrl === sourceUrl ? value : undefined
+}
+
 function mergeNetworkMetadata(current: unknown, persisted: unknown) {
   const currentEthereum = (current as UnknownRecord)?.ethereum || {}
   const persistedEthereum = (persisted as UnknownRecord)?.ethereum || {}
@@ -189,13 +202,23 @@ function mergeNetworkMetadata(current: unknown, persisted: unknown) {
     const persistedGas = persistedMetadata.gas || {}
     const currentPrice = currentGas.price || {}
     const persistedPrice = persistedGas.price || {}
-    const persistedIcon = String(persistedMetadata.icon || '')
-    const currentIcon = String(currentMetadata.icon || '')
+    const icon = httpsImageSource(currentMetadata.icon) || httpsImageSource(persistedMetadata.icon)
+    const currentNativeCurrency = currentMetadata.nativeCurrency || {}
+    const persistedNativeCurrency = persistedMetadata.nativeCurrency || {}
+    const nativeCurrencyIcon =
+      httpsImageSource(currentNativeCurrency.icon) || httpsImageSource(persistedNativeCurrency.icon)
 
     ethereum[id] = {
       ...currentMetadata,
       ...persistedMetadata,
-      icon: isEmbeddedImage(persistedIcon) ? persistedIcon : currentIcon || imageSource(persistedIcon),
+      icon,
+      image: matchingPersistedImage(persistedMetadata.image, icon),
+      nativeCurrency: {
+        ...currentNativeCurrency,
+        ...persistedNativeCurrency,
+        icon: nativeCurrencyIcon,
+        image: matchingPersistedImage(persistedNativeCurrency.image, nativeCurrencyIcon)
+      },
       gas: {
         ...currentGas,
         ...persistedGas,

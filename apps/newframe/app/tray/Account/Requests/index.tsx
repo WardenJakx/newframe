@@ -16,6 +16,7 @@ import type {
   TransactionRequest
 } from '../../../../main/accounts/types'
 import RequestItem from '../../../../resources/Components/RequestItem'
+import { persistedImageSource } from '../../../../resources/domain/image'
 import link from '../../../../resources/link'
 import { cva } from '../../../../resources/styled-system/css/cva.js'
 import TxOverview from './TransactionRequest/TxMainNew/overview'
@@ -59,7 +60,7 @@ export function Requests(props: RequestsProps) {
     } else if (req.type === 'signErc20Permit') {
       const chainId = req.typedMessage.data.domain.chainId
       title = `${props.networks[chainId]?.name || 'Network'} Token Permit`
-      img = props.networkMetadata[chainId]?.icon
+      img = persistedImageSource(props.networkMetadata[chainId]?.image)
     } else if (req.type === 'addChain') {
       title = 'Add Chain'
       svgName = 'chain'
@@ -75,7 +76,7 @@ export function Requests(props: RequestsProps) {
       const metadata = props.networkMetadata[chainId]
       const currentSymbol = metadata?.nativeCurrency?.symbol || '?'
       title = `${chainName || 'Network'} Transaction`
-      img = metadata?.icon
+      img = persistedImageSource(metadata?.image)
       detail = (
         <TxOverview
           chainColor={metadata?.primaryColor}

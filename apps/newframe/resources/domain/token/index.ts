@@ -1,4 +1,5 @@
 import { NATIVE_CURRENCY } from '../../constants'
+import { persistedImageSource } from '../image'
 
 import type { Token, TokenCatalog, TokenImage, TokenRecord, WithTokenId } from '../../../main/store/state'
 
@@ -7,7 +8,7 @@ export function toTokenId(token: WithTokenId) {
 }
 
 export function tokenImageDataUri(image?: TokenImage) {
-  return image?.base64 && image.mimeType ? `data:${image.mimeType};base64,${image.base64}` : ''
+  return persistedImageSource(image)
 }
 
 export function tokenImageSource(token?: Pick<Token, 'image'>) {

@@ -12,7 +12,7 @@ const MAX_REDIRECTS = 5
 
 const ALLOWED_MIME_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/svg+xml'])
 
-const pending = new Map<string, Promise<TokenImage>>()
+const inFlightDownloads = new Map<string, Promise<TokenImage>>()
 
 function normalizeMimeType(value: string | null) {
   return (value || '').split(';')[0].trim().toLowerCase()
@@ -170,12 +170,10 @@ async function download(target: string): Promise<TokenImage> {
   }
 }
 
-async function downloadImage(target: string) {
-  const existing = pending.get(target)
+export async function downloadImage(target: string) {
+  const existing = inFlightDownloads.get(target)
   if (existing) return existing
-  const request = download(target).finally(() => pending.delete(target))
-  pending.set(target, request)
+  const request = download(target).finally(() => inFlightDownloads.delete(target))
+  inFlightDownloads.set(target, request)
   return request
 }
-
-export default { downloadImage }

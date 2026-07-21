@@ -498,12 +498,6 @@ export const NetworkActivationSetCommandSchema = z.strictObject({
 })
 export type NetworkActivationSetCommand = z.infer<typeof NetworkActivationSetCommandSchema>
 
-export const NetworkIconHydrateCommandSchema = z.strictObject({
-  type: z.literal('network.icon-hydrate'),
-  chainId: ChainIdSchema
-})
-export type NetworkIconHydrateCommand = z.infer<typeof NetworkIconHydrateCommandSchema>
-
 export const SideTrayOpenCommandSchema = z.strictObject({
   type: z.literal('sidetray.open'),
   feature: z.enum(['send', 'trade']),
@@ -986,7 +980,6 @@ export interface CommandMap {
   'home.command-consume': HomeCommandConsumeCommand
   'keystore.locate': KeystoreLocateCommand
   'network.activation-set': NetworkActivationSetCommand
-  'network.icon-hydrate': NetworkIconHydrateCommand
   'network.primary-rpc-set': NetworkPrimaryRpcSetCommand
   'network.remove': NetworkRemoveCommand
   'network.request-resolve': NetworkRequestResolveCommand
@@ -1052,7 +1045,6 @@ export interface CommandResultMap {
   'home.command-consume': WalletCommandResult
   'keystore.locate': KeystoreLocateResult
   'network.activation-set': WalletCommandResult
-  'network.icon-hydrate': WalletCommandResult
   'network.primary-rpc-set': WalletCommandResult
   'network.remove': WalletCommandResult
   'network.request-resolve': WalletCommandResult

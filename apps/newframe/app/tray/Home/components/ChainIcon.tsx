@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react'
 
 import { Icon } from '@newframe/ui/icon'
-import { imageSource } from '../../../../resources/domain/image'
+import { persistedImageSource } from '../../../../resources/domain/image'
 import { chainColorValue } from '../../../../resources/colors'
 import { cva } from '../../../../resources/styled-system/css/cva.js'
 
@@ -44,7 +44,7 @@ export function ChainIcon({
   size?: 'compact' | 'large' | 'medium' | 'small'
 }) {
   const metadata = networksMeta[chainId] || {}
-  const icon = imageSource(metadata.icon)
+  const icon = persistedImageSource(metadata.image)
   if (icon) {
     return (
       <span className={chainIconRecipe({ kind: 'art', size })}>

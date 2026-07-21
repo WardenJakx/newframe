@@ -886,7 +886,7 @@ describe('#activateNetwork', () => {
   })
 })
 
-describe('#setNetworkIcon', () => {
+describe('#setNetworkImage', () => {
   let actions: CanonicalActions
   let main: any
 
@@ -895,10 +895,12 @@ describe('#setNetworkIcon', () => {
       networksMeta: {
         ethereum: {
           1: {
-            icon: ''
+            icon: '',
+            nativeCurrency: {}
           },
           8453: {
-            icon: 'https://frame.nyc3.cdn.digitaloceanspaces.com/baseiconcolor.png'
+            icon: 'https://frame.nyc3.cdn.digitaloceanspaces.com/baseiconcolor.png',
+            nativeCurrency: {}
           }
         }
       }
@@ -908,17 +910,30 @@ describe('#setNetworkIcon', () => {
     }).actions
   })
 
-  const setNetworkIcon = (chainId: number, icon: string) => actions.setNetworkIcon('ethereum', chainId, icon)
+  const image = {
+    base64: 'aWNvbg==',
+    contentHash: 'hash',
+    mimeType: 'image/png',
+    sourceUrl: 'https://cdn.example/base.png'
+  }
 
-  it('should update the network icon for the expected chain', () => {
-    setNetworkIcon(8453, 'frame-cache:icon:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')
+  it('should update the network image and source for the expected chain', () => {
+    actions.setNetworkImage('ethereum', 8453, image.sourceUrl, image)
 
     expect(main.networksMeta.ethereum).toStrictEqual({
-      1: { icon: '' },
+      1: { icon: '', nativeCurrency: {} },
       8453: {
-        icon: 'frame-cache:icon:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+        icon: image.sourceUrl,
+        image,
+        nativeCurrency: {}
       }
     })
+  })
+
+  it('should store a native currency image with its network metadata', () => {
+    actions.setNativeCurrencyImage('ethereum', 1, image)
+
+    expect(main.networksMeta.ethereum[1].nativeCurrency.image).toEqual(image)
   })
 })
 

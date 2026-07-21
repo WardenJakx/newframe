@@ -3,7 +3,6 @@ import { useShallow } from 'zustand/react/shallow'
 import { chainColorValue } from '../../../../resources/colors'
 import { ChainDot } from '../../../../resources/Components/ChainDot'
 import { useWalletSelector } from '../../../state/useAppSelector'
-import { useChainIconHydration } from '../hooks/useChainIconHydration'
 import { useHomeUiStore } from '../state/HomeUiProvider'
 import { ChainIcon } from './ChainIcon'
 import { HomeNavigationView } from './HomeNavigationView'
@@ -26,11 +25,6 @@ export function HomeNavigation() {
     .map((id) => ({ chainId: Number(id), ...shared.networks[Number(id)] }))
     .filter((chain) => !chain.isTestnet || shared.showTestnets)
   const selected = chains.find((chain) => chain.chainId === selectedChainId)
-  useChainIconHydration(
-    selected ? [selected.chainId] : chains.filter((chain) => chain.on).map((chain) => chain.chainId),
-    shared.networksMeta
-  )
-
   return (
     <HomeNavigationView
       enabledChainDots={chains

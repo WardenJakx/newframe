@@ -15,6 +15,7 @@ import { Text } from '@newframe/ui/text'
 import RingIcon from '../../../../../../resources/Components/RingIcon'
 import link from '../../../../../../resources/link'
 import { chainColorValue } from '../../../../../../resources/colors'
+import { persistedImageSource } from '../../../../../../resources/domain/image'
 import { useWalletSelector } from '../../../../../state/useAppSelector'
 import type { Token } from '../../../../../../main/store/state'
 import type { WalletRendererState } from '../../../../../../resources/state/projections'
@@ -109,7 +110,7 @@ function SelectChain({
         <Stack gap='xsmall'>
           {activeChains.map((chain) => {
             const chainId = chain.id
-            const { primaryColor, icon } = chainMetadata[chainId] || {}
+            const { primaryColor, image } = chainMetadata[chainId] || {}
 
             return (
               <Button
@@ -120,7 +121,7 @@ function SelectChain({
                 }
                 width='full'
               >
-                <RingIcon color={chainColorValue(primaryColor)} img={icon} small />
+                <RingIcon color={chainColorValue(primaryColor)} img={persistedImageSource(image)} small />
                 <Text variant='label'>{chain.name}</Text>
               </Button>
             )

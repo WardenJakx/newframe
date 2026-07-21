@@ -4,7 +4,7 @@ import { MediaBadge } from '@newframe/ui/media-badge'
 import { StatusDot } from '@newframe/ui/status-dot'
 import { Text } from '@newframe/ui/text'
 
-import { imageSource } from '../domain/image'
+import { imageSource, persistedImageSource } from '../domain/image'
 import type { ChainTokenIconSize, NetworkLike, NetworkMetaLike } from './tokenSelectorTypes'
 
 interface ChainTokenIconProps {
@@ -36,7 +36,8 @@ export default function ChainTokenIcon({
 }: ChainTokenIconProps) {
   const [failedTokenUrl, setFailedTokenUrl] = React.useState('')
   const [failedChainUrl, setFailedChainUrl] = React.useState('')
-  const chainIconUrl = networksMeta[chainId]?.icon || ''
+  const chainMetadata = networksMeta[chainId]
+  const chainIconUrl = persistedImageSource(chainMetadata?.image)
   const tokenImageSource = imageSource(logoURI)
   const chainImageSource = imageSource(chainIconUrl)
   const tokenImageVisible = !!tokenImageSource && failedTokenUrl !== logoURI

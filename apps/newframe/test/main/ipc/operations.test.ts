@@ -26,7 +26,6 @@ const walletWorkflows = {
   disconnectSigner: jest.fn(),
   exportAccountPrivateKey: jest.fn(),
   generateSeedPhrase: jest.fn(),
-  hydrateNetworkIcon: jest.fn(),
   importSigner: jest.fn(),
   inspectOwnTrayWindow: jest.fn(),
   locateKeystore: jest.fn(),

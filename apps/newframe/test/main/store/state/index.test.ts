@@ -45,6 +45,7 @@ describe('canonical state defaults', () => {
     expect(networks[100].on).toBe(false)
     enabledChainIds.forEach((chainId) => {
       expect(state.main.networksMeta.ethereum[chainId].icon).toBe(builtInChainIconUrl(chainId))
+      expect(state.main.networksMeta.ethereum[chainId].nativeCurrency.icon.startsWith('https://')).toBe(true)
     })
   })
 })

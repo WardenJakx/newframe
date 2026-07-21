@@ -9,7 +9,6 @@ import accounts from '../accounts'
 import biometrics from '../biometrics'
 import Erc20Contract from '../contracts/erc20'
 import { flashService } from '../flash/instance'
-import imageCache from '../imageCache'
 import { getTokenDiscoveryProvider } from '../portfolio'
 import provider from '../provider'
 import signers from '../signers'
@@ -33,14 +32,12 @@ import {
 import type Signer from '../signers/Signer'
 import type { Chain } from '../store/state'
 import { ApprovalType } from '../../resources/constants'
-import { builtInChainIconUrl } from '../../resources/domain/chain'
 import {
   buildSideTrayRoute,
   normalizeSideTrayFrameRequest,
   SIDE_TRAY_FRAME_ID
 } from '../../resources/domain/sideTray'
-import { isEmbeddedImage } from '../../resources/domain/image'
-import { tokenImageDataUri, toTokenId } from '../../resources/domain/token'
+import { toTokenId } from '../../resources/domain/token'
 import {
   isSignatureRequest,
   isTransactionRequest,
@@ -463,36 +460,6 @@ export function createLatticeSigner(deviceId: string, deviceName: string) {
 export function disconnectSigner(signerId: string) {
   if (!signers.get(signerId)) return false
   signers.remove(signerId)
-  return true
-}
-
-function httpsImageUrl(value: string) {
-  try {
-    const url = new URL(value)
-    return url.protocol === 'https:' ? url.toString() : ''
-  } catch {
-    return ''
-  }
-}
-
-export async function hydrateNetworkIcon(chainId: number) {
-  const state = store.getState()
-  const chain = state.main.networks.ethereum[chainId] as Chain | undefined
-  if (!chain) return false
-
-  const existingIcon = String(state.main.networksMeta.ethereum[chainId]?.icon || '')
-  if (isEmbeddedImage(existingIcon)) return true
-
-  let sourceUrl = httpsImageUrl(existingIcon) || httpsImageUrl(builtInChainIconUrl(chainId))
-  if (!sourceUrl) {
-    const discovery = getTokenDiscoveryProvider()
-    if (!discovery.ok) return false
-    sourceUrl = httpsImageUrl((await discovery.provider.getChainImage(chainId))?.url || '')
-  }
-  if (!sourceUrl) return false
-
-  const image = await imageCache.downloadImage(sourceUrl)
-  state.setNetworkIcon('ethereum', chainId, tokenImageDataUri(image))
   return true
 }
 

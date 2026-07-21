@@ -5,6 +5,7 @@ import { getAddress, isAddress, TransactionDescription } from 'ethers'
 import store from '../store'
 import { NATIVE_CURRENCY } from '../../resources/constants'
 import { erc20Interface } from '../../resources/contracts'
+import { persistedImageSource } from '../../resources/domain/image'
 
 import type { TransactionEffect, TransactionSimulation } from '../../resources/domain/transaction'
 import type { TokenData } from '../contracts/erc20'
@@ -22,6 +23,7 @@ interface TokenTransfer {
 interface NativeCurrencyLike {
   decimals?: number
   icon?: string
+  image?: { base64?: string; mimeType?: string }
   symbol?: string
 }
 
@@ -306,7 +308,9 @@ function nativeEffect(delta: bigint, nativeCurrency: NativeCurrencyLike): Transa
     symbol: nativeCurrency.symbol || 'ETH',
     detail: 'Simulated balance change',
     assetAddress: NATIVE_CURRENCY,
-    ...(nativeCurrency.icon ? { logoURI: nativeCurrency.icon } : {})
+    ...(persistedImageSource(nativeCurrency.image)
+      ? { logoURI: persistedImageSource(nativeCurrency.image) }
+      : {})
   }
 }
 

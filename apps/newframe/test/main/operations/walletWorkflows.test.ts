@@ -54,12 +54,9 @@ const updaterQuitAndInstall = jest.fn()
 const updaterDismissUpdate = jest.fn()
 const selectAccount = jest.fn()
 const resolveName = jest.fn()
-const downloadImage = jest.fn()
-const getChainImage = jest.fn()
 const getTokenDiscoveryProvider = jest.fn()
 
 jest.mock('../../../main/store', () => ({ default: { getState } }))
-jest.mock('../../../main/imageCache', () => ({ default: { downloadImage } }))
 jest.mock('../../../main/portfolio', () => ({ getTokenDiscoveryProvider }))
 jest.mock('../../../main/signers', () => ({
   default: {
@@ -147,7 +144,6 @@ let approveRequest: typeof import('../../../main/operations/walletWorkflows').ap
 let cancelFlashOrder: typeof import('../../../main/operations/walletWorkflows').cancelFlashOrder
 let configureSecurity: typeof import('../../../main/operations/walletWorkflows').configureSecurity
 let consumeHomeCommand: typeof import('../../../main/operations/walletWorkflows').consumeHomeCommand
-let hydrateNetworkIcon: typeof import('../../../main/operations/walletWorkflows').hydrateNetworkIcon
 let lockWallet: typeof import('../../../main/operations/walletWorkflows').lockWallet
 let lookupToken: typeof import('../../../main/operations/walletWorkflows').lookupToken
 let openSideTray: typeof import('../../../main/operations/walletWorkflows').openSideTray
@@ -176,7 +172,6 @@ const actions = {
   removeNetwork: jest.fn(),
   selectPrimary: jest.fn(),
   setBiometricUnlock: jest.fn(),
-  setNetworkIcon: jest.fn(),
   setSideTray: jest.fn(),
   setPrimaryCustom: jest.fn(),
   setGasDefault: jest.fn(),
@@ -192,7 +187,6 @@ beforeAll(async () => {
   cancelFlashOrder = workflows.cancelFlashOrder
   configureSecurity = workflows.configureSecurity
   consumeHomeCommand = workflows.consumeHomeCommand
-  hydrateNetworkIcon = workflows.hydrateNetworkIcon
   lockWallet = workflows.lockWallet
   lookupToken = workflows.lookupToken
   openSideTray = workflows.openSideTray
@@ -263,8 +257,6 @@ beforeEach(() => {
     updaterDismissUpdate,
     selectAccount,
     resolveName,
-    downloadImage,
-    getChainImage,
     getTokenDiscoveryProvider,
     ...Object.values(actions)
   ].forEach((mock) => mock.mockReset())
@@ -353,44 +345,6 @@ describe('wallet UI workflows', () => {
       totalSupply: '100'
     })
     expect(tokenConstructor).toHaveBeenCalledWith(address, 1)
-  })
-
-  it('replaces a legacy network icon reference from built-in configuration without discovery access', async () => {
-    getState.mockReturnValue({
-      ...actions,
-      main: {
-        networks: { ethereum: { 1: { id: 1 } } },
-        networksMeta: { ethereum: { 1: { icon: 'frame-cache:icon:legacy' } } }
-      }
-    })
-    getTokenDiscoveryProvider.mockReturnValue({ ok: false, error: 'missing_api_key' })
-    downloadImage.mockResolvedValue({
-      base64: 'aWNvbg==',
-      contentHash: 'hash',
-      mimeType: 'image/png',
-      sourceUrl: 'https://chain-icons.s3.amazonaws.com/ethereum.png'
-    })
-
-    await expect(hydrateNetworkIcon(1)).resolves.toBe(true)
-    expect(downloadImage).toHaveBeenCalledWith('https://chain-icons.s3.amazonaws.com/ethereum.png')
-    expect(getTokenDiscoveryProvider).not.toHaveBeenCalled()
-    expect(actions.setNetworkIcon).toHaveBeenCalledWith('ethereum', 1, 'data:image/png;base64,aWNvbg==')
-  })
-
-  it('does not pass unsupported network icon references to the downloader', async () => {
-    getState.mockReturnValue({
-      ...actions,
-      main: {
-        networks: { ethereum: { 31337: { id: 31337 } } },
-        networksMeta: { ethereum: { 31337: { icon: 'frame-cache:icon:legacy' } } }
-      }
-    })
-    getTokenDiscoveryProvider.mockReturnValue({ ok: true, provider: { getChainImage } })
-    getChainImage.mockResolvedValue({ url: 'ipfs://network-icon' })
-
-    await expect(hydrateNetworkIcon(31337)).resolves.toBe(false)
-    expect(downloadImage).not.toHaveBeenCalled()
-    expect(actions.setNetworkIcon).not.toHaveBeenCalled()
   })
 
   it('uses canonical networks for explorer and removal operations', () => {

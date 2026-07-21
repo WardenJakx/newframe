@@ -142,7 +142,7 @@ describe('Send', () => {
   it('falls back when the route asset is not sendable', () => {
     render(<Send assetId={`${chainId}:${tokenAddress}`} />)
 
-    expect(screen.getByText('ETH')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Select send token' }).textContent).toContain('ETH')
   })
 
   it('prefers the route asset when it is sendable', () => {

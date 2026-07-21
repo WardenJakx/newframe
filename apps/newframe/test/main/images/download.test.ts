@@ -1,4 +1,4 @@
-import imageCache from '../../../main/imageCache'
+import { downloadImage } from '../../../main/images/download'
 import { electronMock } from '../../bun.mocks'
 
 const mockFetch = jest.fn()
@@ -43,7 +43,7 @@ beforeEach(() => {
 it('downloads and returns a persistable base64 image payload', async () => {
   mockFetch.mockResolvedValue(createResponse(png, 'image/png'))
 
-  const image = await imageCache.downloadImage('https://cdn.example/usdc.png')
+  const image = await downloadImage('https://cdn.example/usdc.png')
 
   expect(image).toEqual({
     base64: png.toString('base64'),
@@ -57,16 +57,16 @@ it('deduplicates concurrent downloads for the same URL', async () => {
   mockFetch.mockResolvedValue(createResponse(png, 'image/png'))
   const target = 'https://cdn.example/shared.png'
 
-  await Promise.all([imageCache.downloadImage(target), imageCache.downloadImage(target)])
+  await Promise.all([downloadImage(target), downloadImage(target)])
 
   expect(mockFetch).toHaveBeenCalledTimes(1)
 })
 
 it('rejects non-HTTPS and local image URLs', async () => {
-  await expect(imageCache.downloadImage('ipfs://bafybeihash/icon.png')).rejects.toThrow(
+  await expect(downloadImage('ipfs://bafybeihash/icon.png')).rejects.toThrow(
     'Image URL must use HTTPS'
   )
-  await expect(imageCache.downloadImage('https://localhost/usdc.png')).rejects.toThrow(
+  await expect(downloadImage('https://localhost/usdc.png')).rejects.toThrow(
     'Image URL cannot target local hostnames'
   )
   expect(mockFetch).not.toHaveBeenCalled()
@@ -75,7 +75,7 @@ it('rejects non-HTTPS and local image URLs', async () => {
 it('rejects unsupported image MIME types', async () => {
   mockFetch.mockResolvedValue(createResponse(Buffer.from('<html></html>'), 'text/html'))
 
-  await expect(imageCache.downloadImage('https://cdn.example/not-an-image')).rejects.toThrow(
+  await expect(downloadImage('https://cdn.example/not-an-image')).rejects.toThrow(
     'Unsupported image type'
   )
 })
@@ -83,7 +83,7 @@ it('rejects unsupported image MIME types', async () => {
 it('rejects redirects to private image URLs', async () => {
   mockFetch.mockResolvedValue(createRedirect('https://127.0.0.1/usdc.png'))
 
-  await expect(imageCache.downloadImage('https://cdn.example/usdc.png')).rejects.toThrow(
+  await expect(downloadImage('https://cdn.example/usdc.png')).rejects.toThrow(
     'Image URL cannot target private addresses'
   )
   expect(mockFetch).toHaveBeenCalledTimes(1)

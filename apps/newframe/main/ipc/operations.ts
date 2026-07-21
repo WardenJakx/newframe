@@ -55,7 +55,6 @@ import {
   NameResolveResultSchema,
   NetworkRemoveCommandSchema,
   NetworkActivationSetCommandSchema,
-  NetworkIconHydrateCommandSchema,
   NetworkPrimaryRpcSetCommandSchema,
   NetworkRequestResolveCommandSchema,
   NotificationUpdateCommandSchema,
@@ -357,12 +356,6 @@ const commandRegistry = {
   'network.activation-set': defineWalletCommand(
     NetworkActivationSetCommandSchema,
     ({ chainId, enabled }) => walletWorkflows.setNetworkActivation(chainId, enabled),
-    'not_found',
-    ['tray']
-  ),
-  'network.icon-hydrate': defineWalletCommand(
-    NetworkIconHydrateCommandSchema,
-    ({ chainId }) => walletWorkflows.hydrateNetworkIcon(chainId),
     'not_found',
     ['tray']
   ),

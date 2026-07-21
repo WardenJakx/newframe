@@ -914,13 +914,25 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
       })
     },
 
-    setNetworkIcon: (netType: string, chainId: number, icon: string) => {
+    setNetworkImage: (netType: string, chainId: number, sourceUrl: string, image: TokenImage) => {
       set((draft) => {
         const chainsMeta = record(record(mutableMain(draft).networksMeta)[netType])
         if (chainsMeta[chainId]) {
-          chainsMeta[chainId].icon = icon
+          chainsMeta[chainId].icon = sourceUrl
+          chainsMeta[chainId].image = image
         } else {
-          log.error(`Action Error: setNetworkIcon chainId: ${chainId} not found in chainsMeta`)
+          log.error(`Action Error: setNetworkImage chainId: ${chainId} not found in chainsMeta`)
+        }
+      })
+    },
+
+    setNativeCurrencyImage: (netType: string, chainId: number, image: TokenImage) => {
+      set((draft) => {
+        const chainsMeta = record(record(mutableMain(draft).networksMeta)[netType])
+        if (chainsMeta[chainId]) {
+          chainsMeta[chainId].nativeCurrency.image = image
+        } else {
+          log.error(`Action Error: setNativeCurrencyImage chainId: ${chainId} not found in chainsMeta`)
         }
       })
     },

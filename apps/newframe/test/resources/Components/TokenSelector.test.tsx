@@ -57,6 +57,25 @@ function ControlledSelector({ initialSelectedId = 'eth' }: { initialSelectedId?:
 }
 
 describe('ChainTokenIcon', () => {
+  it('renders persisted chain artwork from its base64 image record', () => {
+    render(
+      <ChainTokenIcon
+        chainId={1}
+        networks={networks}
+        networksMeta={{
+          1: {
+            image: { base64: 'aWNvbg==', mimeType: 'image/png' },
+            primaryColor: 'accent1'
+          }
+        }}
+        size='md'
+        symbol='ETH'
+      />
+    )
+
+    expect(document.querySelector('img')?.getAttribute('src')).toBe('data:image/png;base64,aWNvbg==')
+  })
+
   it('delegates fallback chain-badge color to the design-system recipe', () => {
     render(
       <ChainTokenIcon
@@ -109,7 +128,7 @@ describe('ChainTokenIcon', () => {
     render(
       <ChainTokenIcon
         chainId={1}
-        logoURI='https://example.com/token.png'
+        logoURI='data:image/png;base64,YnJva2Vu'
         networks={networks}
         networksMeta={networksMeta}
         size='md'
@@ -123,7 +142,7 @@ describe('ChainTokenIcon', () => {
     expect(screen.getByText('BROKE')).toBeTruthy()
     expect(warn).toHaveBeenCalledWith(
       '[ChainTokenIcon] failed to load token image',
-      expect.objectContaining({ chainId: 1, symbol: 'BROKEN', url: 'https://example.com/token.png' })
+      expect.objectContaining({ chainId: 1, symbol: 'BROKEN', url: 'data:image/png;base64,YnJva2Vu' })
     )
     warn.mockRestore()
   })

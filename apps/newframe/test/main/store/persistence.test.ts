@@ -239,17 +239,24 @@ describe('canonical state persistence', () => {
     })
   })
 
-  it('replaces retired built-in chain icon references while preserving embedded images', () => {
+  it('replaces retired icon strings and preserves matching structured images', () => {
     const current = canonicalState()
     const persisted = selectPersistedState(current)
     const metadata = (persisted.main as any).networksMeta.ethereum
     metadata[1].icon = 'frame-cache:icon:legacy'
     metadata[10].icon = 'data:image/png;base64,aWNvbg=='
+    metadata[10].image = {
+      base64: 'aWNvbg==',
+      contentHash: 'hash',
+      mimeType: 'image/png',
+      sourceUrl: builtInChainIconUrl(10)
+    }
 
     const merged = mergePersistedState(persisted, current)
 
     expect(merged.main.networksMeta.ethereum[1].icon).toBe(builtInChainIconUrl(1))
-    expect(merged.main.networksMeta.ethereum[10].icon).toBe('data:image/png;base64,aWNvbg==')
+    expect(merged.main.networksMeta.ethereum[10].icon).toBe(builtInChainIconUrl(10))
+    expect(merged.main.networksMeta.ethereum[10].image).toEqual(metadata[10].image)
   })
 
   it('quarantines malformed current persistence and fails closed', () => {
