@@ -311,14 +311,48 @@ describe('Trade', () => {
           ...mirrored.balances,
           [sender.address]: mirrored.balances[sender.address].map((balance) => ({ ...balance }))
         },
-        rates: { ...mirrored.rates }
+        rates: { ...mirrored.rates },
+        tokens: { ...mirrored.tokens, byId: { ...mirrored.tokens.byId } }
       })
-      jest.advanceTimersByTime(500)
     })
+    await act(async () => jest.advanceTimersByTime(500))
 
     expect(quoteCalls).toHaveLength(1)
     resolveSignature({ ok: true, signature: `0x${'1'.repeat(130)}` })
     await waitFor(() => expect(submitCommands).toHaveLength(1))
+  })
+
+  it('surfaces Flash submission failures on the trade form', async () => {
+    const submitMessage = 'Flash API 400 Bad Request: quote expired'
+
+    ;(link.executeQuery as Mock<any>).mockImplementation(async (query: any) => {
+      if (query.type !== 'flash.quote') return { ok: false, error: 'invalid_query' }
+
+      return {
+        ok: true,
+        quote: quote('submit-error-quote', query.request.qty),
+        flash: { quoteId: 'submit-error-quote' }
+      }
+    })
+    ;(link.executeCommand as Mock<any>).mockImplementation(async (command: any) => {
+      if (command.type === 'typedData.signV4') {
+        return { ok: true, signature: `0x${'1'.repeat(130)}` }
+      }
+      if (command.type === 'flash.submit') {
+        return { ok: false, error: 'submit_failed', message: submitMessage }
+      }
+
+      return { ok: true }
+    })
+
+    render(<Trade assetId={`${FLASH_ANVIL_CHAIN_ID}:${FLASH_WETH_ADDRESS}`} />)
+    fireEvent.change(screen.getByLabelText('WETH amount'), { target: { value: '1' } })
+    await act(async () => jest.advanceTimersByTime(250))
+    fireEvent.click(await screen.findByRole('button', { name: 'Review/sign' }))
+
+    expect(await screen.findByText(submitMessage)).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Review/sign' })).toBeTruthy()
+    expect(link.executeCommand).not.toHaveBeenCalledWith({ type: 'sidetray.close' })
   })
 
   it('preserves the entered amount when Flash normalizes the quote input', async () => {
