@@ -1,3 +1,4 @@
+import { NATIVE_CURRENCY } from '../../constants'
 import { getFlashChainConfig } from './chains'
 import {
   FLASH_ANVIL_CHAIN_ID,
@@ -21,6 +22,10 @@ interface FlashBalanceSummaryLike {
 
 export function normalizeFlashAddress(address?: unknown) {
   const value = typeof address === 'string' ? address.trim().toLowerCase() : ''
+
+  // Portfolio balances use the wallet-wide zero-address sentinel, while Flash's
+  // wire format represents native assets with the 0xeeee... sentinel.
+  if (value === NATIVE_CURRENCY) return FLASH_NATIVE_ETH_TOKEN_ADDRESS
 
   return /^0x[0-9a-f]{40}$/.test(value) ? value : FLASH_NATIVE_ETH_TOKEN_ADDRESS
 }
