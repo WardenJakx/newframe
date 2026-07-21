@@ -1,4 +1,5 @@
 import type { Mock } from 'bun:test'
+import { useState } from 'react'
 
 import { screen, render, waitFor } from '../../../../../../componentSetup'
 import link from '../../../../../../../resources/link'
@@ -272,5 +273,31 @@ describe('setting token details', () => {
     await waitFor(() => expect(tokenNameInput.value).toEqual('Frame Test on Polygon'), { timeout: 200 })
     expect(tokenSymbolInput.value).toEqual('mFRT')
     expect(tokenDecimalsInput.value).toEqual('18')
+  })
+
+  it('should preserve a pasted logo URI when the parent rerenders with unchanged token data', async () => {
+    const notifyData = {
+      chain: { id: 1 },
+      address: '0x64aa3364F17a4D01c6f1751Fd97C2BD3D7e7f1D4',
+      tokenData: { name: 'Coinbase Wrapped BTC', symbol: 'cbBTC', decimals: 8 }
+    }
+    const RerenderingAddToken = () => {
+      const [, setRenderCount] = useState(0)
+
+      return (
+        <>
+          <button onClick={() => setRenderCount((count) => count + 1)}>Rerender parent</button>
+          <AddToken data={{ notifyData: { ...notifyData, tokenData: { ...notifyData.tokenData } } }} />
+        </>
+      )
+    }
+    const { user } = render(<RerenderingAddToken />)
+    const logoUriInput = screen.getByLabelText<HTMLInputElement>('Logo URI')
+
+    await user.click(logoUriInput)
+    await user.paste('https://cdn.example/cbbtc.png')
+    await user.click(screen.getByRole('button', { name: 'Rerender parent' }))
+
+    expect(logoUriInput.value).toBe('https://cdn.example/cbbtc.png')
   })
 })

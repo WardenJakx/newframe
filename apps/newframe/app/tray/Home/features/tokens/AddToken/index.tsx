@@ -216,10 +216,14 @@ const tokenDetailsDefaults = {
 }
 
 const TokenDetailsForm = ({ chain, tokenData, isEdit, onDone }: TokenDetailsFormProps) => {
-  const [name, setName] = useState(tokenData.name || tokenDetailsDefaults.name)
-  const [symbol, setSymbol] = useState(tokenData.symbol || tokenDetailsDefaults.symbol)
-  const [decimals, setDecimals] = useState(tokenData.decimals || tokenDetailsDefaults.decimals)
-  const [logoUri, setLogoUri] = useState(tokenData.logoURI || tokenDetailsDefaults.logoURI)
+  const tokenName = tokenData.name
+  const tokenSymbol = tokenData.symbol
+  const tokenDecimals = tokenData.decimals
+  const tokenLogoUri = tokenData.logoURI
+  const [name, setName] = useState(tokenName || tokenDetailsDefaults.name)
+  const [symbol, setSymbol] = useState(tokenSymbol || tokenDetailsDefaults.symbol)
+  const [decimals, setDecimals] = useState(tokenDecimals || tokenDetailsDefaults.decimals)
+  const [logoUri, setLogoUri] = useState(tokenLogoUri || tokenDetailsDefaults.logoURI)
 
   const submitRef = useRef<HTMLButtonElement>(null)
 
@@ -255,13 +259,11 @@ const TokenDetailsForm = ({ chain, tokenData, isEdit, onDone }: TokenDetailsForm
 
   // handle asynchronous loading of token data
   useEffect(() => {
-    const { name, symbol, decimals, logoURI } = tokenData
-
-    setName(name || tokenDetailsDefaults.name)
-    setSymbol(symbol || tokenDetailsDefaults.symbol)
-    setDecimals(decimals || tokenDetailsDefaults.decimals)
-    setLogoUri(logoURI || tokenDetailsDefaults.logoURI)
-  }, [tokenData])
+    setName(tokenName || tokenDetailsDefaults.name)
+    setSymbol(tokenSymbol || tokenDetailsDefaults.symbol)
+    setDecimals(tokenDecimals || tokenDetailsDefaults.decimals)
+    setLogoUri(tokenLogoUri || tokenDetailsDefaults.logoURI)
+  }, [tokenDecimals, tokenLogoUri, tokenName, tokenSymbol])
 
   useEffect(() => {
     focusSubmitButton()

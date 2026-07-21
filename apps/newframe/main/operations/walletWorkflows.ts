@@ -33,6 +33,7 @@ import {
 import type Signer from '../signers/Signer'
 import type { Chain } from '../store/state'
 import { ApprovalType } from '../../resources/constants'
+import { builtInChainIconUrl } from '../../resources/domain/chain'
 import {
   buildSideTrayRoute,
   normalizeSideTrayFrameRequest,
@@ -465,6 +466,15 @@ export function disconnectSigner(signerId: string) {
   return true
 }
 
+function httpsImageUrl(value: string) {
+  try {
+    const url = new URL(value)
+    return url.protocol === 'https:' ? url.toString() : ''
+  } catch {
+    return ''
+  }
+}
+
 export async function hydrateNetworkIcon(chainId: number) {
   const state = store.getState()
   const chain = state.main.networks.ethereum[chainId] as Chain | undefined
@@ -473,11 +483,11 @@ export async function hydrateNetworkIcon(chainId: number) {
   const existingIcon = String(state.main.networksMeta.ethereum[chainId]?.icon || '')
   if (isEmbeddedImage(existingIcon)) return true
 
-  let sourceUrl = existingIcon
+  let sourceUrl = httpsImageUrl(existingIcon) || httpsImageUrl(builtInChainIconUrl(chainId))
   if (!sourceUrl) {
     const discovery = getTokenDiscoveryProvider()
     if (!discovery.ok) return false
-    sourceUrl = (await discovery.provider.getChainImage(chainId))?.url || ''
+    sourceUrl = httpsImageUrl((await discovery.provider.getChainImage(chainId))?.url || '')
   }
   if (!sourceUrl) return false
 

@@ -44,10 +44,11 @@ export function ChainIcon({
   size?: 'compact' | 'large' | 'medium' | 'small'
 }) {
   const metadata = networksMeta[chainId] || {}
-  if (metadata.icon) {
+  const icon = imageSource(metadata.icon)
+  if (icon) {
     return (
       <span className={chainIconRecipe({ kind: 'art', size })}>
-        <img alt='' src={imageSource(metadata.icon)} />
+        <img alt='' src={icon} />
       </span>
     )
   }

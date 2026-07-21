@@ -4,7 +4,7 @@ import { MainSchema } from '../state/types/main'
 import { TokenCatalogSchema } from '../state/types/token'
 
 export const PERSISTENCE_VERSION = 3
-export const CANONICAL_STATE_STORAGE_NAME = 'canonical-wallet-state-v3'
+export const CANONICAL_STATE_STORAGE_NAME = 'canonical-wallet-state'
 
 const DerivationSchema = z.enum(['live', 'legacy', 'standard', 'testnet'])
 const PersistedMainSchema = z.strictObject({

@@ -37,8 +37,9 @@ export function OrderAssetPill({
   const symbol = orderAssetSymbol(asset)
   const chainId = Number(asset?.chainId || fallbackChainId || 0)
   const logo = asset?.logoURI || asset?.logoUrl || asset?.icon
-  const art = logo ? (
-    <Image alt='' size='small' source={imageSource(logo)} />
+  const logoSource = imageSource(logo)
+  const art = logoSource ? (
+    <Image alt='' size='small' source={logoSource} />
   ) : symbol === 'ETH' || symbol === 'WETH' ? (
     <Icon name='ethereum' size='small' />
   ) : (

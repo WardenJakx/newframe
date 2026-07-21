@@ -64,8 +64,9 @@ interface RingIconProps extends IconProps {
 }
 
 const Icon = ({ svgName, alt = '', svgSize = 16, img, small }: IconProps) => {
-  if (img) {
-    return <img src={imageSource(img)} alt={alt} />
+  const source = imageSource(img)
+  if (source) {
+    return <img src={source} alt={alt} />
   }
   if (svgName) {
     const iconName = svgName.toLowerCase()

@@ -1,5 +1,6 @@
 import log from 'electron-log'
 
+import { imageSource, isEmbeddedImage } from '../../resources/domain/image'
 import type { CanonicalStore } from './actions'
 import {
   PERSISTENCE_VERSION,
@@ -147,14 +148,25 @@ export function migratePersistedState(
   value: unknown,
   fromVersion = PERSISTENCE_VERSION
 ): PersistedCanonicalState {
-  if (fromVersion !== PERSISTENCE_VERSION) {
+  if (fromVersion !== 2 && fromVersion !== PERSISTENCE_VERSION) {
     log.error('Cannot migrate unsupported canonical state version', fromVersion)
     throw new CanonicalStatePersistenceError(
       'unsupported_version',
       'Canonical wallet state uses an unsupported persistence version.'
     )
   }
-  const parsed = PersistedCanonicalStateSchema.safeParse(value)
+
+  const candidate =
+    fromVersion === 2
+      ? {
+          ...((value || {}) as UnknownRecord),
+          main: {
+            ...(((value as UnknownRecord | undefined)?.main || {}) as UnknownRecord),
+            tokens: { byId: {}, accountTokenIds: {} }
+          }
+        }
+      : value
+  const parsed = PersistedCanonicalStateSchema.safeParse(candidate)
   if (parsed.success) return parsed.data
 
   log.error('Could not migrate invalid persisted canonical state', parsed.error.issues)
@@ -177,10 +189,13 @@ function mergeNetworkMetadata(current: unknown, persisted: unknown) {
     const persistedGas = persistedMetadata.gas || {}
     const currentPrice = currentGas.price || {}
     const persistedPrice = persistedGas.price || {}
+    const persistedIcon = String(persistedMetadata.icon || '')
+    const currentIcon = String(currentMetadata.icon || '')
 
     ethereum[id] = {
       ...currentMetadata,
       ...persistedMetadata,
+      icon: isEmbeddedImage(persistedIcon) ? persistedIcon : currentIcon || imageSource(persistedIcon),
       gas: {
         ...currentGas,
         ...persistedGas,
@@ -207,6 +222,8 @@ function selectedAccount(main: UnknownRecord) {
 }
 
 export function mergePersistedState(persistedValue: unknown, current: CanonicalStore): CanonicalStore {
+  if (persistedValue === undefined || persistedValue === null) return current
+
   const persisted = migratePersistedState(persistedValue)
   const saved = persisted.main as UnknownRecord
   const currentMain = current.main as UnknownRecord

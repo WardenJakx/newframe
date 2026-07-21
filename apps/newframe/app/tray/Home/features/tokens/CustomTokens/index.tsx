@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 
 import { Button } from '@newframe/ui/button'
 import { IconButton } from '@newframe/ui/icon-button'
@@ -111,6 +112,6 @@ function CustomTokensView({ onEdit, tokens }: CustomTokensProps) {
 }
 
 export default function CustomTokens({ onEdit }: { onEdit: (token: Token) => void }) {
-  const tokens = useWalletSelector(selectCustomTokens)
+  const tokens = useWalletSelector(useShallow(selectCustomTokens))
   return <CustomTokensView onEdit={onEdit} tokens={tokens} />
 }

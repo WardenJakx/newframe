@@ -37,8 +37,10 @@ export default function ChainTokenIcon({
   const [failedTokenUrl, setFailedTokenUrl] = React.useState('')
   const [failedChainUrl, setFailedChainUrl] = React.useState('')
   const chainIconUrl = networksMeta[chainId]?.icon || ''
-  const tokenImageVisible = !!logoURI && failedTokenUrl !== logoURI
-  const chainImageVisible = !!chainIconUrl && failedChainUrl !== chainIconUrl
+  const tokenImageSource = imageSource(logoURI)
+  const chainImageSource = imageSource(chainIconUrl)
+  const tokenImageVisible = !!tokenImageSource && failedTokenUrl !== logoURI
+  const chainImageVisible = !!chainImageSource && failedChainUrl !== chainIconUrl
   const chain = networks[chainId] || {}
   const chainName = (chain.name || '').toLowerCase()
 
@@ -55,7 +57,7 @@ export default function ChainTokenIcon({
       return (
         <Image
           alt=''
-          source={imageSource(chainIconUrl)}
+          source={chainImageSource}
           onLoadError={() => {
             setFailedChainUrl(chainIconUrl)
             warnImageFailure('failed to load chain image', { chainId, symbol, url: chainIconUrl })
@@ -80,7 +82,7 @@ export default function ChainTokenIcon({
       {tokenImageVisible ? (
         <Image
           alt=''
-          source={imageSource(logoURI)}
+          source={tokenImageSource}
           onLoadError={() => {
             setFailedTokenUrl(logoURI)
             warnImageFailure('failed to load token image', { chainId, symbol, url: logoURI })

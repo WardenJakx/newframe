@@ -66,7 +66,8 @@ function requestTone(status?: string) {
 }
 
 function RequestIcon({ img, svgName }: Pick<RequestItemProps, 'img' | 'svgName'>) {
-  if (img) return <Image alt='' source={imageSource(img)} />
+  const source = imageSource(img)
+  if (source) return <Image alt='' source={source} />
   const icon = svgName
     ? (svg as unknown as Record<string, ((size: number) => ReactNode) | undefined>)[svgName.toLowerCase()]
     : undefined

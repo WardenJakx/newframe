@@ -328,13 +328,14 @@ function AssetIcon({
   nativeCurrency: TransactionInformationNativeCurrency
 }) {
   const icon = effect.logoURI || (effect.kind === 'native' ? nativeCurrency.icon : '')
+  const iconSource = imageSource(icon)
   const symbol = (effect.symbol || '?').trim() || '?'
   const styles = effectRecipe({ direction })
 
   return (
     <span className={styles.icon} data-effect-icon-direction={direction}>
-      {icon ? (
-        <Image alt='' source={imageSource(icon)} />
+      {iconSource ? (
+        <Image alt='' source={iconSource} />
       ) : effect.kind === 'native' && symbol.toUpperCase() === 'ETH' ? (
         svg.eth(14)
       ) : (

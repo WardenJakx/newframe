@@ -1,5 +1,6 @@
 export function imageSource(target?: string) {
-  return target || ''
+  const source = target?.trim() || ''
+  return source.startsWith('frame-cache:') ? '' : source
 }
 
 export function isEmbeddedImage(target?: string) {

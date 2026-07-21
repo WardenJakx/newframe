@@ -87,6 +87,22 @@ describe('ChainTokenIcon', () => {
     expect(screen.getByText('abcDE')).toBeTruthy()
   })
 
+  it('falls back without rendering retired image-cache references', () => {
+    render(
+      <ChainTokenIcon
+        chainId={1}
+        logoURI='frame-cache:icon:token'
+        networks={{ 1: { name: 'Newframe Local Anvil' } }}
+        networksMeta={{ 1: { icon: 'frame-cache:icon:chain', primaryColor: 'accent1' } }}
+        size='md'
+        symbol='USDC'
+      />
+    )
+
+    expect(screen.getByText('USDC')).toBeTruthy()
+    expect(document.querySelector('img')).toBeNull()
+  })
+
   it('falls back and warns when a token image fails to load', () => {
     const warn = jest.spyOn(console, 'warn').mockImplementation(() => {})
 

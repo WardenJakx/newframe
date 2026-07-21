@@ -8,12 +8,17 @@ import {
   migratePersistedState,
   selectPersistedState
 } from '../../../main/store/persistence'
-import { PERSISTENCE_VERSION, type PersistedCanonicalState } from '../../../main/store/persist/schema'
+import {
+  CANONICAL_STATE_STORAGE_NAME,
+  PERSISTENCE_VERSION,
+  type PersistedCanonicalState
+} from '../../../main/store/persist/schema'
 import {
   CanonicalStatePersistenceError,
   ValidatedConfStorage
 } from '../../../main/store/persist/validatedConfStorage'
 import createInitialState from '../../../main/store/state'
+import { builtInChainIconUrl } from '../../../resources/domain/chain'
 
 const account = (id: string, active?: boolean) => ({
   id,
@@ -29,8 +34,72 @@ const account = (id: string, active?: boolean) => ({
 })
 
 const canonicalState = () => createInitialState() as unknown as CanonicalStore
+const storageKey = `zustand.${CANONICAL_STATE_STORAGE_NAME}`
 
 describe('canonical state persistence', () => {
+  it('starts with fresh canonical state when persisted state does not exist', async () => {
+    const values = new Map<string, unknown>()
+    const conf = {
+      clear: jest.fn(() => values.clear()),
+      delete: jest.fn((key: string) => values.delete(key)),
+      get: jest.fn((key: string) => values.get(key)),
+      set: jest.fn((key: string, value: unknown) => values.set(key, value))
+    }
+    const storage = new ValidatedConfStorage(conf as any)
+    const { hydration, store } = createCanonicalStore(storage)
+
+    await expect(hydration).resolves.toBeUndefined()
+    expect(store.getState().main.tokens).toEqual({ accountTokenIds: {}, byId: {} })
+  })
+
+  it('migrates v2 by resetting only tokens and writes the preserved state as v3', async () => {
+    const id = '0x2222222222222222222222222222222222222222'
+    const durable = canonicalState()
+    durable.main.accounts[id] = account(id)
+    durable.main.accountOrder = [id]
+    durable.main.currentAccount = id
+    durable.main.autohide = false
+    const v2 = selectPersistedState(durable) as any
+    v2.main.tokens = {
+      custom: [
+        {
+          address: '0x1111111111111111111111111111111111111111',
+          chainId: 1,
+          decimals: 6,
+          name: 'Legacy Token',
+          symbol: 'OLD'
+        }
+      ],
+      known: { [id]: [] }
+    }
+    const values = new Map<string, unknown>([[storageKey, { state: v2, version: 2 }]])
+    const conf = {
+      clear: jest.fn(() => values.clear()),
+      delete: jest.fn((key: string) => values.delete(key)),
+      get: jest.fn((key: string) => values.get(key)),
+      set: jest.fn((key: string, value: unknown) => values.set(key, value))
+    }
+    const storage = new ValidatedConfStorage(conf as any)
+    const { hydration, store } = createCanonicalStore(storage)
+
+    await expect(hydration).resolves.toBeUndefined()
+    expect(store.getState().main.currentAccount).toBe(id)
+    expect(store.getState().main.accounts[id]).toBeDefined()
+    expect(store.getState().main.autohide).toBe(false)
+    expect(store.getState().main.tokens).toEqual({ accountTokenIds: {}, byId: {} })
+    expect(values.get(storageKey)).toEqual(
+      expect.objectContaining({
+        version: PERSISTENCE_VERSION,
+        state: expect.objectContaining({
+          main: expect.objectContaining({
+            currentAccount: id,
+            tokens: { accountTokenIds: {}, byId: {} }
+          })
+        })
+      })
+    )
+  })
+
   it('retains durable state while removing runtime and externally derived data', () => {
     const state = canonicalState()
     const id = '0x1111111111111111111111111111111111111111'
@@ -144,8 +213,8 @@ describe('canonical state persistence', () => {
     )
   })
 
-  it('accepts only the current hard-cutover persistence version', () => {
-    expect(() => migratePersistedState(selectPersistedState(canonicalState()), 2)).toThrow(
+  it('rejects malformed and unsupported persistence versions', () => {
+    expect(() => migratePersistedState(selectPersistedState(canonicalState()), 1)).toThrow(
       'uses an unsupported persistence version'
     )
     expect(() => migratePersistedState({ main: { lattice: 'not-an-object' } })).toThrow(
@@ -170,6 +239,19 @@ describe('canonical state persistence', () => {
     })
   })
 
+  it('replaces retired built-in chain icon references while preserving embedded images', () => {
+    const current = canonicalState()
+    const persisted = selectPersistedState(current)
+    const metadata = (persisted.main as any).networksMeta.ethereum
+    metadata[1].icon = 'frame-cache:icon:legacy'
+    metadata[10].icon = 'data:image/png;base64,aWNvbg=='
+
+    const merged = mergePersistedState(persisted, current)
+
+    expect(merged.main.networksMeta.ethereum[1].icon).toBe(builtInChainIconUrl(1))
+    expect(merged.main.networksMeta.ethereum[10].icon).toBe('data:image/png;base64,aWNvbg==')
+  })
+
   it('quarantines malformed current persistence and fails closed', () => {
     const values = new Map<string, unknown>([
       ['zustand.state', { state: { main: { lattice: 'not-an-object' } }, version: PERSISTENCE_VERSION }]
@@ -190,10 +272,7 @@ describe('canonical state persistence', () => {
 
   it('rejects canonical store hydration when storage is invalid', async () => {
     const values = new Map<string, unknown>([
-      [
-        'zustand.canonical-wallet-state-v3',
-        { state: { main: { lattice: 'not-an-object' } }, version: PERSISTENCE_VERSION }
-      ]
+      [storageKey, { state: { main: { lattice: 'not-an-object' } }, version: PERSISTENCE_VERSION }]
     ])
     const conf = {
       clear: jest.fn(() => values.clear()),
@@ -208,10 +287,8 @@ describe('canonical state persistence', () => {
     await expect(hydration).rejects.toBeInstanceOf(CanonicalStatePersistenceError)
     storage.flush()
 
-    expect(values.has('zustand.canonical-wallet-state-v3')).toBe(false)
-    expect(
-      [...values.keys()].some((key) => key.startsWith('zustand.canonical-wallet-state-v3.invalid.'))
-    ).toBe(true)
+    expect(values.has(storageKey)).toBe(false)
+    expect([...values.keys()].some((key) => key.startsWith(`${storageKey}.invalid.`))).toBe(true)
   })
 
   it('fails closed without overwriting persistence created by a newer application version', () => {
