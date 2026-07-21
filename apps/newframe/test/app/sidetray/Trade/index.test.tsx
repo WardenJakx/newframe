@@ -355,6 +355,53 @@ describe('Trade', () => {
     expect(link.executeCommand).not.toHaveBeenCalledWith({ type: 'sidetray.close' })
   })
 
+  it('refreshes unchanged quotes after fifteen seconds and request changes after the debounce', async () => {
+    const quoteCalls: any[] = []
+
+    ;(link.executeQuery as Mock<any>).mockImplementation(async (query: any) => {
+      if (query.type !== 'flash.quote') return { ok: false, error: 'invalid_query' }
+      quoteCalls.push(query.request)
+      return {
+        ok: true,
+        quote: quote(`quote-${quoteCalls.length}`, query.request.qty),
+        flash: { quoteId: `quote-${quoteCalls.length}` }
+      }
+    })
+
+    render(<Trade assetId={`${FLASH_ANVIL_CHAIN_ID}:${FLASH_WETH_ADDRESS}`} />)
+    fireEvent.change(screen.getByLabelText('WETH amount'), { target: { value: '1' } })
+    await act(async () => jest.advanceTimersByTime(250))
+
+    expect(quoteCalls).toHaveLength(1)
+
+    await act(async () => {
+      const mirrored = sideTrayRendererStateStoreReadApi.getState()
+      updateTradeState({
+        balances: {
+          ...mirrored.balances,
+          [sender.address]: mirrored.balances[sender.address].map((balance) => ({ ...balance }))
+        },
+        rates: { ...mirrored.rates }
+      })
+    })
+    await act(async () => jest.advanceTimersByTime(500))
+    expect(quoteCalls).toHaveLength(1)
+
+    await act(async () => jest.advanceTimersByTime(14_499))
+    expect(quoteCalls).toHaveLength(1)
+
+    await act(async () => jest.advanceTimersByTime(1))
+    expect(quoteCalls).toHaveLength(2)
+
+    fireEvent.change(screen.getByLabelText('WETH amount'), { target: { value: '2' } })
+    await act(async () => jest.advanceTimersByTime(249))
+    expect(quoteCalls).toHaveLength(2)
+
+    await act(async () => jest.advanceTimersByTime(1))
+    expect(quoteCalls).toHaveLength(3)
+    expect(quoteCalls[2].qty).toBe('2')
+  })
+
   it('preserves the entered amount when Flash normalizes the quote input', async () => {
     const quoteCalls: any[] = []
 

@@ -78,6 +78,7 @@ import {
 } from './tradeTransaction'
 
 const MARKET_QUOTE_DEBOUNCE_MS = 250
+const MARKET_QUOTE_REFRESH_MS = 15_000
 
 interface TradeProps {
   assetId?: string | null
@@ -168,6 +169,7 @@ export default function Trade({ assetId, chainId }: TradeProps) {
     state.triggerNotionalPrice,
     state.twapBucketCount
   ])
+  const latestQuoteEffectRequestRef = React.useRef(quoteEffectRequest)
   const ticketValidationError = React.useMemo(() => {
     if (!inputAmount) return ''
 
@@ -215,6 +217,10 @@ export default function Trade({ assetId, chainId }: TradeProps) {
   }, [state])
 
   React.useEffect(() => {
+    latestQuoteEffectRequestRef.current = quoteEffectRequest
+  }, [quoteEffectRequest])
+
+  React.useEffect(() => {
     dispatch({ type: 'setAssetOptions', assets: tradeAssets, balances: flashBalanceEntries })
   }, [flashBalanceEntries, tradeAssets])
 
@@ -226,22 +232,49 @@ export default function Trade({ assetId, chainId }: TradeProps) {
   }, [accountAddress])
 
   React.useEffect(() => {
-    if (quoteEffectRequest.error) {
-      dispatch({ type: 'quoteBuildFailed', error: quoteEffectRequest.error })
+    const initialRequest = latestQuoteEffectRequestRef.current
+
+    if (initialRequest.error) {
+      dispatch({ type: 'quoteBuildFailed', error: initialRequest.error })
       return
     }
 
-    if (!quoteEffectRequest.request || !quoteEffectRequest.requestKey) {
+    if (!initialRequest.request || !initialRequest.requestKey) {
       dispatch({ type: 'quoteCleared' })
       return
     }
 
-    dispatch({ type: 'quoteRequested', requestKey: quoteEffectRequest.requestKey })
+    const requestKey = initialRequest.requestKey
+    let cancelled = false
+    let timer: ReturnType<typeof setTimeout> | undefined
 
-    const timer = setTimeout(() => {
-      void flashQuote(quoteEffectRequest.request!)
+    const scheduleQuote = (delay: number) => {
+      timer = setTimeout(() => void requestQuote(), delay)
+    }
+
+    const requestQuote = () => {
+      if (cancelled) return
+
+      const currentRequest = latestQuoteEffectRequestRef.current
+      if (!currentRequest.request || currentRequest.requestKey !== requestKey) return
+
+      const currentState = latestStateRef.current
+      if (currentState.actionQuoteId || currentState.submitting) {
+        scheduleQuote(MARKET_QUOTE_REFRESH_MS)
+        return
+      }
+
+      dispatch({ type: 'quoteRequested', requestKey })
+
+      void flashQuote(currentRequest.request)
         .then((result) => {
-          if (!mountedRef.current) return
+          if (
+            !mountedRef.current ||
+            cancelled ||
+            latestQuoteEffectRequestRef.current.requestKey !== requestKey
+          ) {
+            return
+          }
 
           const quote = result?.quote as FlashQuote | null
 
@@ -249,7 +282,7 @@ export default function Trade({ assetId, chainId }: TradeProps) {
             dispatch({
               type: 'quoteFailed',
               error: 'Flash quote did not return an order quote.',
-              requestKey: quoteEffectRequest.requestKey
+              requestKey
             })
             return
           }
@@ -258,22 +291,42 @@ export default function Trade({ assetId, chainId }: TradeProps) {
             type: 'quoteSucceeded',
             flashPayload: result?.flash || quote.raw || null,
             quote,
-            requestKey: quoteEffectRequest.requestKey
+            requestKey
           })
         })
         .catch((e) => {
-          if (!mountedRef.current) return
+          if (
+            !mountedRef.current ||
+            cancelled ||
+            latestQuoteEffectRequestRef.current.requestKey !== requestKey
+          ) {
+            return
+          }
 
           dispatch({
             type: 'quoteFailed',
             error: tradeErrorMessage(e, 'Flash quote failed.'),
-            requestKey: quoteEffectRequest.requestKey
+            requestKey
           })
         })
-    }, MARKET_QUOTE_DEBOUNCE_MS)
+        .finally(() => {
+          if (
+            mountedRef.current &&
+            !cancelled &&
+            latestQuoteEffectRequestRef.current.requestKey === requestKey
+          ) {
+            scheduleQuote(MARKET_QUOTE_REFRESH_MS)
+          }
+        })
+    }
 
-    return () => clearTimeout(timer)
-  }, [quoteEffectRequest])
+    scheduleQuote(MARKET_QUOTE_DEBOUNCE_MS)
+
+    return () => {
+      cancelled = true
+      if (timer) clearTimeout(timer)
+    }
+  }, [quoteEffectRequest.error, quoteEffectRequest.requestKey])
 
   const getTradeDisplayBalance = React.useCallback(
     (asset: FlashAsset) => {
