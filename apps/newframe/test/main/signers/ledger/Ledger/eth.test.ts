@@ -1,3 +1,5 @@
+import { afterAll, beforeAll, describe, expect, it } from 'bun:test'
+
 import LedgerEthereumApp from '../../../../../main/signers/ledger/Ledger/eth'
 import { Derivation } from '../../../../../main/signers/Signer/derive'
 import log from 'electron-log'

@@ -1,97 +1,99 @@
-const authorizeRenderer = jest.fn()
-const getAccount = jest.fn()
-const getCurrentAccount = jest.fn()
-const selectAccount = jest.fn()
-const resolveName = jest.fn()
-const submitCurrentAccountTransaction = jest.fn()
-const signCurrentAccountTypedData = jest.fn()
-const quoteFlashForCurrentAccount = jest.fn()
-const submitFlashForCurrentAccount = jest.fn()
-const closeOwnSideTray = jest.fn()
-const inspectOwnSideTray = jest.fn()
-const requestTokenImage = jest.fn()
+import { beforeAll, beforeEach, describe, expect, it, mock } from 'bun:test'
+
+const authorizeRenderer = mock()
+const getAccount = mock()
+const getCurrentAccount = mock()
+const selectAccount = mock()
+const resolveName = mock()
+const submitCurrentAccountTransaction = mock()
+const signCurrentAccountTypedData = mock()
+const quoteFlashForCurrentAccount = mock()
+const submitFlashForCurrentAccount = mock()
+const closeOwnSideTray = mock()
+const inspectOwnSideTray = mock()
+const requestTokenImage = mock()
 const walletWorkflows = {
-  acceptBetaWarning: jest.fn(),
-  adjustTransactionNonce: jest.fn(),
-  addAccountFromSigner: jest.fn(),
-  addToken: jest.fn(),
-  addWatchAccount: jest.fn(),
-  approveRequest: jest.fn(),
-  cancelFlashOrder: jest.fn(),
-  clearOriginRequests: jest.fn(),
-  clearPermission: jest.fn(),
-  configureSecurity: jest.fn(),
-  confirmRequestApproval: jest.fn(),
-  consumeHomeCommand: jest.fn(),
-  createLatticeSigner: jest.fn(),
-  disconnectSigner: jest.fn(),
-  exportAccountPrivateKey: jest.fn(),
-  generateSeedPhrase: jest.fn(),
-  importSigner: jest.fn(),
-  inspectOwnTrayWindow: jest.fn(),
-  locateKeystore: jest.fn(),
-  lockWallet: jest.fn(),
-  lookupToken: jest.fn(),
-  navigatePanelBack: jest.fn(),
-  openSideTray: jest.fn(),
-  openExternalUrl: jest.fn(),
-  openTransactionExplorer: jest.fn(),
-  openRequestPanel: jest.fn(),
-  pairLattice: jest.fn(),
-  quitApp: jest.fn(),
-  refreshPortfolio: jest.fn(),
-  reloadSigner: jest.fn(),
-  removeAccount: jest.fn(),
-  removeNetwork: jest.fn(),
-  removeOrigin: jest.fn(),
-  removeToken: jest.fn(),
-  rejectRequest: jest.fn(),
-  renameAccount: jest.fn(),
-  reorderAccounts: jest.fn(),
-  resetWallet: jest.fn(),
-  resolveNetworkRequest: jest.fn(),
-  resolveAccessRequest: jest.fn(),
-  resolveSwitchChainRequest: jest.fn(),
-  requestSignerCompatibility: jest.fn(),
-  resetTransactionNonce: jest.fn(),
-  respondToExtension: jest.fn(),
-  respondToUpdater: jest.fn(),
-  reviewAddChainRequest: jest.fn(),
-  reviewAddTokenRequest: jest.fn(),
-  securityStatus: jest.fn(),
-  setNetworkActivation: jest.fn(),
-  setNetworkPrimaryRpc: jest.fn(),
-  setTransactionFeeDefault: jest.fn(),
-  submitTrezorInput: jest.fn(),
-  toggleWarning: jest.fn(),
-  unlockSecurity: jest.fn(),
-  updateTokenApproval: jest.fn(),
-  updateTransactionFee: jest.fn(),
-  dismissTransactionFeeNotice: jest.fn(),
-  replaceTransaction: jest.fn(),
-  handleTrayMouseout: jest.fn(),
-  updateNotification: jest.fn(),
-  updateSettings: jest.fn(),
-  writeClipboard: jest.fn()
+  acceptBetaWarning: mock(),
+  adjustTransactionNonce: mock(),
+  addAccountFromSigner: mock(),
+  addToken: mock(),
+  addWatchAccount: mock(),
+  approveRequest: mock(),
+  cancelFlashOrder: mock(),
+  clearOriginRequests: mock(),
+  clearPermission: mock(),
+  configureSecurity: mock(),
+  confirmRequestApproval: mock(),
+  consumeHomeCommand: mock(),
+  createLatticeSigner: mock(),
+  disconnectSigner: mock(),
+  exportAccountPrivateKey: mock(),
+  generateSeedPhrase: mock(),
+  importSigner: mock(),
+  inspectOwnTrayWindow: mock(),
+  locateKeystore: mock(),
+  lockWallet: mock(),
+  lookupToken: mock(),
+  navigatePanelBack: mock(),
+  openSideTray: mock(),
+  openExternalUrl: mock(),
+  openTransactionExplorer: mock(),
+  openRequestPanel: mock(),
+  pairLattice: mock(),
+  quitApp: mock(),
+  refreshPortfolio: mock(),
+  reloadSigner: mock(),
+  removeAccount: mock(),
+  removeNetwork: mock(),
+  removeOrigin: mock(),
+  removeToken: mock(),
+  rejectRequest: mock(),
+  renameAccount: mock(),
+  reorderAccounts: mock(),
+  resetWallet: mock(),
+  resolveNetworkRequest: mock(),
+  resolveAccessRequest: mock(),
+  resolveSwitchChainRequest: mock(),
+  requestSignerCompatibility: mock(),
+  resetTransactionNonce: mock(),
+  respondToExtension: mock(),
+  respondToUpdater: mock(),
+  reviewAddChainRequest: mock(),
+  reviewAddTokenRequest: mock(),
+  securityStatus: mock(),
+  setNetworkActivation: mock(),
+  setNetworkPrimaryRpc: mock(),
+  setTransactionFeeDefault: mock(),
+  submitTrezorInput: mock(),
+  toggleWarning: mock(),
+  unlockSecurity: mock(),
+  updateTokenApproval: mock(),
+  updateTransactionFee: mock(),
+  dismissTransactionFeeNotice: mock(),
+  replaceTransaction: mock(),
+  handleTrayMouseout: mock(),
+  updateNotification: mock(),
+  updateSettings: mock(),
+  writeClipboard: mock()
 }
 
-jest.mock('../../../main/ipc/authorization', () => ({ authorizeRenderer }))
-jest.mock('../../../main/accounts', () => ({
+mock.module('../../../main/ipc/authorization', () => ({ authorizeRenderer }))
+mock.module('../../../main/accounts', () => ({
   default: { current: getCurrentAccount, get: getAccount }
 }))
-jest.mock('../../../main/operations/workflows', () => ({ resolveName, selectAccount }))
-jest.mock('../../../main/operations/sideTrayTransactions', () => ({
+mock.module('../../../main/operations/workflows', () => ({ resolveName, selectAccount }))
+mock.module('../../../main/operations/sideTrayTransactions', () => ({
   submitCurrentAccountTransaction,
   signCurrentAccountTypedData,
   quoteFlashForCurrentAccount,
   submitFlashForCurrentAccount
 }))
-jest.mock('../../../main/operations/sideTrayWorkflows', () => ({
+mock.module('../../../main/operations/sideTrayWorkflows', () => ({
   closeOwnSideTray,
   inspectOwnSideTray
 }))
-jest.mock('../../../main/images', () => ({ requestTokenImage }))
-jest.mock('../../../main/operations/walletWorkflows', () => walletWorkflows)
+mock.module('../../../main/images', () => ({ requestTokenImage }))
+mock.module('../../../main/operations/walletWorkflows', () => walletWorkflows)
 
 let dispatchCommand: typeof import('../../../main/ipc/operations').dispatchCommand
 let dispatchQuery: typeof import('../../../main/ipc/operations').dispatchQuery

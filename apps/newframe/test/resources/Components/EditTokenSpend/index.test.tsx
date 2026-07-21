@@ -1,3 +1,5 @@
+import { describe, expect, it, mock } from 'bun:test'
+
 import { render, screen } from '../../../componentSetup'
 import EditTokenSpend from '../../../../resources/Components/EditTokenSpend'
 import { max } from '../../../../resources/utils/numbers'
@@ -6,7 +8,7 @@ const maxIntStr = max.toString(10)
 
 describe('changing approval amounts', () => {
   it('allows the user to set the token approval to a custom amount', async () => {
-    const onUpdate = jest.fn()
+    const onUpdate = mock()
     const requestedAmount = BigInt('0x011170')
     const approval = {
       id: 'erc20:approve',
@@ -45,7 +47,7 @@ describe('changing approval amounts', () => {
   })
 
   it('allows users to input custom amounts which are decimal', async () => {
-    const onUpdate = jest.fn()
+    const onUpdate = mock()
     const requestedAmount = BigInt('0x011170')
     const approval = {
       id: 'erc20:approve',
@@ -84,7 +86,7 @@ describe('changing approval amounts', () => {
   })
 
   it('does not allow users to input a custom amount with more decimals than allowed by the contract', async () => {
-    const onUpdate = jest.fn()
+    const onUpdate = mock()
     const requestedAmount = BigInt('0x011170')
     const approval = {
       id: 'erc20:approve',
@@ -150,7 +152,7 @@ describe('changing approval amounts', () => {
   })
 
   it('allows the user to set the token approval to unlimited', async () => {
-    const onUpdate = jest.fn()
+    const onUpdate = mock()
     const requestedAmount = BigInt('0x011170')
 
     const approval = {
@@ -179,7 +181,7 @@ describe('changing approval amounts', () => {
   })
 
   it('allows the user to revert the token approval back to the original request', async () => {
-    const onUpdate = jest.fn()
+    const onUpdate = mock()
     const requestedAmountHex = '0x011170'
     const requestedAmount = BigInt(requestedAmountHex)
     const approval = {
@@ -213,7 +215,7 @@ describe('changing approval amounts', () => {
   })
 
   it('allows the user to revert the token approval back to the original amount when no decimal data is present', async () => {
-    const onUpdate = jest.fn()
+    const onUpdate = mock()
     const requestedAmountHex = '0x011170'
     const requestedAmount = BigInt(requestedAmountHex)
     const approval = {

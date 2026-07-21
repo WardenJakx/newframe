@@ -1,12 +1,24 @@
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  jest as timers,
+  mock
+} from 'bun:test'
+
 import { v5 as uuidv5 } from 'uuid'
 import log from 'electron-log'
 
 import store from '../../../main/store'
 import { createRpcPrincipal } from '../../../main/authority'
 
-const accountsMock = { current: jest.fn(), routeRequest: jest.fn() }
+const accountsMock = { current: mock(), routeRequest: mock() }
 
-jest.mock('../../../main/accounts', () => ({ default: accountsMock, ...accountsMock }))
+mock.module('../../../main/accounts', () => ({ default: accountsMock, ...accountsMock }))
 
 let accounts: any
 let parseOrigin: any
@@ -79,12 +91,17 @@ afterAll(() => {
 })
 
 beforeEach(() => {
+  timers.useFakeTimers()
   actions().initOrigin.mockImplementation(() => {})
   actions().addOriginRequest.mockImplementation(() => {})
   actions().switchOriginChain.mockImplementation(() => {})
 
   setOrigins({})
   setPermissions({})
+})
+
+afterEach(() => {
+  timers.useRealTimers()
 })
 
 describe('#updateOrigin', () => {
@@ -526,7 +543,7 @@ describe('#isTrusted', () => {
 
     const runTest = isTrusted(payload, principal)
 
-    jest.runAllTimers()
+    timers.runAllTimers()
 
     return expect(runTest).resolves
   })
@@ -559,7 +576,7 @@ describe('#isTrusted', () => {
       }
     )
 
-    jest.runAllTimers()
+    timers.runAllTimers()
 
     return runTest
   })
@@ -593,7 +610,7 @@ describe('#isTrusted', () => {
 
       const runTest = isTrusted(payload, principal)
 
-      jest.runAllTimers()
+      timers.runAllTimers()
 
       return expect(runTest).resolves.toBe(permissionGranted)
     })

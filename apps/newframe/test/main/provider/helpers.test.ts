@@ -1,3 +1,5 @@
+import { afterAll, beforeAll, describe, expect, it } from 'bun:test'
+
 import log from 'electron-log'
 import { fromUtf8 } from '@ethereumjs/util'
 import * as helpersModule from '../../../main/provider/helpers'

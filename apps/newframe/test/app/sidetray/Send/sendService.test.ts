@@ -1,3 +1,4 @@
+import { describe, expect, it } from 'bun:test'
 import type { Mock } from 'bun:test'
 
 import { closeSend, resolveName, submitTransaction } from '../../../../app/sidetray/Send/sendService'

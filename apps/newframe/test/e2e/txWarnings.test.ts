@@ -1,9 +1,7 @@
+import { test } from 'bun:test'
+
 import provider from '../../main/provider/connection'
 const frame = provider('frame')
-
-beforeEach(() => {
-  jest.useRealTimers()
-})
 
 test('Failing Transaction (Mainnet)', async () => {
   try {

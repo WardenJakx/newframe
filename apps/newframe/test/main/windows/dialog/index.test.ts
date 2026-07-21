@@ -1,7 +1,9 @@
+import { describe, expect, it, mock } from 'bun:test'
+
 import { app, dialog } from 'electron'
 import { showUnhandledExceptionDialog } from '../../../../main/windows/dialog'
 
-jest.mock('../../../../main/windows', () => ({
+mock.module('../../../../main/windows', () => ({
   browserWindows: () => ({ panel: 'mock tray browserwindow' })
 }))
 

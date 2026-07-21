@@ -1,17 +1,19 @@
+import { beforeAll, beforeEach, describe, expect, it, mock } from 'bun:test'
+
 import { GNS_CONTRACT, gnsAbi } from '@donnoh/gns-utils'
 import { Interface, ZeroAddress, getAddress } from 'ethers'
 
 const providerMock = {
-  setChain: jest.fn(),
-  on: jest.fn(),
-  off: jest.fn(),
-  once: jest.fn(),
-  request: jest.fn()
+  setChain: mock(),
+  on: mock(),
+  off: mock(),
+  once: mock(),
+  request: mock()
 }
 
-jest.mock('../../../main/provider/proxy', () => ({ default: {} }))
-jest.mock('../../../main/provider/connection', () => ({
-  createProxyProvider: jest.fn(() => providerMock)
+mock.module('../../../main/provider/proxy', () => ({ default: {} }))
+mock.module('../../../main/provider/connection', () => ({
+  createProxyProvider: mock(() => providerMock)
 }))
 
 const UNIVERSAL_RESOLVER_ADDRESS = '0xeEeEEEeE14D718C2B47D9923Deab1335E144EeEe'

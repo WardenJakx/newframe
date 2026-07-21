@@ -1,42 +1,44 @@
-const revealMock = {
-  recog: jest.fn(),
-  identity: jest.fn(),
-  decode: jest.fn()
-}
-const fetchContractMock = jest.fn()
-const simulateTransactionEffectsMock = jest.fn()
-const providerMock = { on: jest.fn(), off: jest.fn(), send: jest.fn() }
+import { beforeAll, beforeEach, describe, expect, it, mock } from 'bun:test'
 
-jest.mock('../../../../main/reveal', () => ({ default: revealMock, ...revealMock }))
-jest.mock('../../../../main/contracts', () => ({ fetchContract: fetchContractMock }))
-jest.mock('../../../../main/transaction/simulation', () => ({
+const revealMock = {
+  recog: mock(),
+  identity: mock(),
+  decode: mock()
+}
+const fetchContractMock = mock()
+const simulateTransactionEffectsMock = mock()
+const providerMock = { on: mock(), off: mock(), send: mock() }
+
+mock.module('../../../../main/reveal', () => ({ default: revealMock, ...revealMock }))
+mock.module('../../../../main/contracts', () => ({ fetchContract: fetchContractMock }))
+mock.module('../../../../main/transaction/simulation', () => ({
   simulateTransactionEffects: simulateTransactionEffectsMock
 }))
 
-jest.mock('../../../../main/provider', () => ({ default: providerMock, ...providerMock }))
-jest.mock('../../../../main/accounts', () => ({
+mock.module('../../../../main/provider', () => ({ default: providerMock, ...providerMock }))
+mock.module('../../../../main/accounts', () => ({
   default: {},
   RequestMode: { Normal: 'normal', Monitor: 'monitor' }
 }))
-jest.mock('../../../../main/signers', () => ({ default: {} }))
-jest.mock('../../../../main/windows', () => ({ default: {} }))
-jest.mock('../../../../main/nameResolution', () => ({
+mock.module('../../../../main/signers', () => ({ default: {} }))
+mock.module('../../../../main/windows', () => ({ default: {} }))
+mock.module('../../../../main/nameResolution', () => ({
   __esModule: true,
   default: {
-    off: jest.fn(),
-    ready: jest.fn(() => true),
-    once: jest.fn(),
+    off: mock(),
+    ready: mock(() => true),
+    once: mock(),
     reverseLookup: async () => 'frame.eth'
   }
 }))
 
-jest.mock('../../../../main/windows/nav', () => ({
+mock.module('../../../../main/windows/nav', () => ({
   default: {
-    forward: jest.fn(),
-    back: jest.fn()
+    forward: mock(),
+    back: mock()
   },
-  forward: jest.fn(),
-  back: jest.fn()
+  forward: mock(),
+  back: mock()
 }))
 
 let account: any
@@ -46,7 +48,7 @@ let fetchContract: any
 let nav: any
 let store: any
 
-const accounts = { syncTransactionActivity: jest.fn() }
+const accounts = { syncTransactionActivity: mock() }
 
 const accountState = {
   address: '0x690B9A9E9aa1C9dB991C7721a92d351Db4FaC990',
@@ -62,7 +64,7 @@ beforeAll(async () => {
 })
 
 beforeEach(() => {
-  jest.clearAllMocks()
+  mock.clearAllMocks()
   account?.close()
   store.getState().removeAccount(accountState.address.toLowerCase())
   account = new Account(accountState as any, accounts as any)
@@ -72,7 +74,7 @@ beforeEach(() => {
 
 describe('#addRequest', () => {
   it('stores request data canonically while keeping request capabilities in runtime sidecars', () => {
-    const respond = jest.fn()
+    const respond = mock()
     const actionData = { amount: '0x1' }
     let updateCalls = 0
     const update = (request: any, data: any) => {

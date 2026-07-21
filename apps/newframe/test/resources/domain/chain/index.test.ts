@@ -1,3 +1,5 @@
+import { describe, expect, it } from 'bun:test'
+
 import { BUILT_IN_CHAIN_ICON_URLS, builtInChainIconUrl } from '../../../../resources/domain/chain'
 
 describe('built-in chain configuration', () => {

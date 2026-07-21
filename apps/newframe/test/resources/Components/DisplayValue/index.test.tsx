@@ -1,3 +1,5 @@
+import { expect, it } from 'bun:test'
+
 import { render, screen } from '../../../componentSetup'
 import { DisplayValue } from '../../../../resources/Components/DisplayValue'
 import { displayValueData } from '../../../../resources/utils/displayValue'

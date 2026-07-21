@@ -1,3 +1,5 @@
+import { describe, expect, it } from 'bun:test'
+
 import createInitialState, { CanonicalStateSchema } from '../../../../main/store/state'
 import { builtInChainIconUrl } from '../../../../resources/domain/chain'
 

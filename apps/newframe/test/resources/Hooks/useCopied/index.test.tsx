@@ -1,3 +1,5 @@
+import { afterEach, beforeEach, expect, it, jest as timers } from 'bun:test'
+
 import { render, screen } from '../../../componentSetup'
 import { linkMock as link } from '../../../bun.mocks'
 
@@ -15,7 +17,12 @@ const TestComponent = () => {
 }
 
 beforeEach(async () => {
+  timers.useFakeTimers()
   useCopiedMessage = (await import('../../../../resources/Hooks/useCopiedMessage')).default
+})
+
+afterEach(() => {
+  timers.useRealTimers()
 })
 
 it('should not display the copied text by default', () => {
@@ -25,7 +32,7 @@ it('should not display the copied text by default', () => {
 })
 
 it('should let the component know to display the copied text after the copy function is invoked', async () => {
-  const { user } = render(<TestComponent />)
+  const { user } = render(<TestComponent />, { advanceTimersAfterInput: 0 })
 
   const clickToCopyButton = screen.getByRole('button')
   await user.click(clickToCopyButton)
@@ -43,7 +50,7 @@ it('should reset the copied text after one second', async () => {
 })
 
 it('send the copied data to the clipboard', async () => {
-  const { user } = render(<TestComponent />)
+  const { user } = render(<TestComponent />, { advanceTimersAfterInput: 0 })
 
   const clickToCopyButton = screen.getByRole('button')
   await user.click(clickToCopyButton)

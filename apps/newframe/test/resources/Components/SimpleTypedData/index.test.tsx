@@ -1,3 +1,5 @@
+import { describe, expect, test } from 'bun:test'
+
 import { screen, render } from '../../../componentSetup'
 import { SimpleTypedData } from '../../../../resources/Components/SimpleTypedData'
 

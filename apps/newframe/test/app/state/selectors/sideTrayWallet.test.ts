@@ -1,3 +1,5 @@
+import { describe, expect, it } from 'bun:test'
+
 import { createSideTrayWalletSelector } from '../../../../app/state/selectors/sideTrayWallet'
 import { NATIVE_CURRENCY } from '../../../../resources/constants'
 import type { SideTrayRendererState } from '../../../../resources/state/projections'

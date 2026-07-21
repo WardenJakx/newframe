@@ -1,3 +1,5 @@
+import { describe, expect, test } from 'bun:test'
+
 import { SignTypedDataVersion } from '@metamask/eth-sig-util'
 import { TypedDataEncoder } from 'ethers'
 

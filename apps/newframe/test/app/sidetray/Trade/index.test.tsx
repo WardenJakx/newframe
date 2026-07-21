@@ -1,3 +1,5 @@
+import { afterEach, beforeEach, describe, expect, it, jest as timers } from 'bun:test'
+
 import type { Mock } from 'bun:test'
 import { act, within } from '@testing-library/react'
 
@@ -206,7 +208,12 @@ function quote(id: string, inputAmount: string): FlashQuote {
 
 describe('Trade', () => {
   beforeEach(() => {
+    timers.useFakeTimers()
     initializeTradeState()
+  })
+
+  afterEach(() => {
+    timers.useRealTimers()
   })
 
   it('initializes generic Trade with the preferred contra before the target asset', () => {
@@ -243,7 +250,7 @@ describe('Trade', () => {
     })
 
     await act(async () => {
-      jest.advanceTimersByTime(250)
+      timers.advanceTimersByTime(250)
     })
 
     expect(await screen.findByText('Est. output')).toBeTruthy()
@@ -262,7 +269,7 @@ describe('Trade', () => {
       updateTradeState({ currentAccount: other.id })
     })
     await act(async () => {
-      jest.advanceTimersByTime(250)
+      timers.advanceTimersByTime(250)
     })
 
     expect((screen.getByLabelText('WETH amount') as HTMLInputElement).value).toBe('1')
@@ -298,7 +305,7 @@ describe('Trade', () => {
 
     render(<Trade assetId={`${FLASH_ANVIL_CHAIN_ID}:${FLASH_WETH_ADDRESS}`} />)
     fireEvent.change(screen.getByLabelText('WETH amount'), { target: { value: '1' } })
-    await act(async () => jest.advanceTimersByTime(250))
+    await act(async () => timers.advanceTimersByTime(250))
     fireEvent.click(await screen.findByRole('button', { name: 'Review/sign' }))
 
     await waitFor(() =>
@@ -315,7 +322,7 @@ describe('Trade', () => {
         tokens: { ...mirrored.tokens, byId: { ...mirrored.tokens.byId } }
       })
     })
-    await act(async () => jest.advanceTimersByTime(500))
+    await act(async () => timers.advanceTimersByTime(500))
 
     expect(quoteCalls).toHaveLength(1)
     resolveSignature({ ok: true, signature: `0x${'1'.repeat(130)}` })
@@ -347,7 +354,7 @@ describe('Trade', () => {
 
     render(<Trade assetId={`${FLASH_ANVIL_CHAIN_ID}:${FLASH_WETH_ADDRESS}`} />)
     fireEvent.change(screen.getByLabelText('WETH amount'), { target: { value: '1' } })
-    await act(async () => jest.advanceTimersByTime(250))
+    await act(async () => timers.advanceTimersByTime(250))
     fireEvent.click(await screen.findByRole('button', { name: 'Review/sign' }))
 
     expect(await screen.findByText(submitMessage)).toBeTruthy()
@@ -370,7 +377,7 @@ describe('Trade', () => {
 
     render(<Trade assetId={`${FLASH_ANVIL_CHAIN_ID}:${FLASH_WETH_ADDRESS}`} />)
     fireEvent.change(screen.getByLabelText('WETH amount'), { target: { value: '1' } })
-    await act(async () => jest.advanceTimersByTime(250))
+    await act(async () => timers.advanceTimersByTime(250))
 
     expect(quoteCalls).toHaveLength(1)
 
@@ -384,20 +391,20 @@ describe('Trade', () => {
         rates: { ...mirrored.rates }
       })
     })
-    await act(async () => jest.advanceTimersByTime(500))
+    await act(async () => timers.advanceTimersByTime(500))
     expect(quoteCalls).toHaveLength(1)
 
-    await act(async () => jest.advanceTimersByTime(14_499))
+    await act(async () => timers.advanceTimersByTime(14_499))
     expect(quoteCalls).toHaveLength(1)
 
-    await act(async () => jest.advanceTimersByTime(1))
+    await act(async () => timers.advanceTimersByTime(1))
     expect(quoteCalls).toHaveLength(2)
 
     fireEvent.change(screen.getByLabelText('WETH amount'), { target: { value: '2' } })
-    await act(async () => jest.advanceTimersByTime(249))
+    await act(async () => timers.advanceTimersByTime(249))
     expect(quoteCalls).toHaveLength(2)
 
-    await act(async () => jest.advanceTimersByTime(1))
+    await act(async () => timers.advanceTimersByTime(1))
     expect(quoteCalls).toHaveLength(3)
     expect(quoteCalls[2].qty).toBe('2')
   })
@@ -413,9 +420,9 @@ describe('Trade', () => {
 
     render(<Trade assetId={`${FLASH_ANVIL_CHAIN_ID}:${FLASH_WETH_ADDRESS}`} />)
     fireEvent.change(screen.getByLabelText('WETH amount'), { target: { value: '1.0' } })
-    await act(async () => jest.advanceTimersByTime(250))
+    await act(async () => timers.advanceTimersByTime(250))
     await screen.findByRole('button', { name: 'Review/sign' })
-    await act(async () => jest.advanceTimersByTime(500))
+    await act(async () => timers.advanceTimersByTime(500))
 
     expect((screen.getByLabelText('WETH amount') as HTMLInputElement).value).toBe('1.0')
     expect(quoteCalls).toHaveLength(1)
@@ -496,7 +503,7 @@ describe('Trade', () => {
 
     render(<Trade assetId={`${FLASH_ANVIL_CHAIN_ID}:${FLASH_WETH_ADDRESS}`} />)
     fireEvent.change(screen.getByLabelText('WETH amount'), { target: { value: '1' } })
-    await act(async () => jest.advanceTimersByTime(250))
+    await act(async () => timers.advanceTimersByTime(250))
 
     fireEvent.click(await screen.findByRole('button', { name: 'Review/sign' }))
     await act(async () => {

@@ -1,3 +1,5 @@
+import { describe, expect, it } from 'bun:test'
+
 import { mapRequest as mapRequestTyped } from '../../../main/requests'
 
 // real function under test, exercised with loose payload fixtures

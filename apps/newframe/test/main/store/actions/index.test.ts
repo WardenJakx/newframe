@@ -1,3 +1,5 @@
+import { afterAll, beforeAll, beforeEach, describe, expect, it, setSystemTime } from 'bun:test'
+
 import log from 'electron-log'
 import { addHexPrefix } from '@ethereumjs/util'
 import { createStore } from 'zustand/vanilla'
@@ -496,7 +498,7 @@ describe('#initOrigin', () => {
 
   beforeEach(() => {
     origins = {}
-    jest.setSystemTime(creationDate)
+    setSystemTime(creationDate)
     actions = createActionHarness({ main: { origins } }, (state) => {
       origins = state.main.origins
     }).actions
@@ -655,7 +657,7 @@ describe('#addOriginRequest', () => {
   const addOriginRequest = (id: any) => actions.addOriginRequest(id)
 
   beforeEach(() => {
-    jest.setSystemTime(updateTime)
+    setSystemTime(updateTime)
 
     origins = {
       activeOrigin: {
@@ -942,7 +944,7 @@ describe('#upsertAccount', () => {
   let main: any
 
   beforeEach(() => {
-    jest.setSystemTime(new Date('2022-11-17T11:01:58.135Z'))
+    setSystemTime(new Date('2022-11-17T11:01:58.135Z'))
 
     main = {
       accounts: {
@@ -1328,7 +1330,7 @@ describe('#activity actions', () => {
     const confirmingAt = new Date('2024-01-01T00:01:00.000Z')
     const completedAt = new Date('2024-01-01T00:02:00.000Z')
 
-    jest.setSystemTime(submittedAt)
+    setSystemTime(submittedAt)
     upsertSubmittedActivity({
       id: 'tx-1',
       hash: '0x123',
@@ -1357,7 +1359,7 @@ describe('#activity actions', () => {
       confirmations: 0
     })
 
-    jest.setSystemTime(confirmingAt)
+    setSystemTime(confirmingAt)
     updateActivity('tx-1', { status: 'confirming', confirmations: 2 })
 
     expect(activity['tx-1']).toEqual(
@@ -1368,7 +1370,7 @@ describe('#activity actions', () => {
       })
     )
 
-    jest.setSystemTime(completedAt)
+    setSystemTime(completedAt)
     finalizeActivity('tx-1', 'succeeded', { receipt: { status: '0x1' } })
 
     expect(activity['tx-1']).toEqual(
@@ -1409,7 +1411,7 @@ describe('#status notification actions', () => {
     const dismissedAt = new Date('2024-01-01T00:02:00.000Z')
     const expiresAt = resolvedAt.getTime() + 5000
 
-    jest.setSystemTime(createdAt)
+    setSystemTime(createdAt)
     upsertPendingNotification({
       id: 'notification-1',
       title: 'Transaction submitted',
@@ -1428,7 +1430,7 @@ describe('#status notification actions', () => {
       hidden: false
     })
 
-    jest.setSystemTime(resolvedAt)
+    setSystemTime(resolvedAt)
     resolveNotification('notification-1', 'completed', {
       detail: 'Confirmed',
       expiresAt
@@ -1443,7 +1445,7 @@ describe('#status notification actions', () => {
       })
     )
 
-    jest.setSystemTime(dismissedAt)
+    setSystemTime(dismissedAt)
     dismissNotification('notification-1')
 
     expect(notifications['notification-1']).toEqual(

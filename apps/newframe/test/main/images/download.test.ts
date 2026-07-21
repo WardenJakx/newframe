@@ -1,11 +1,13 @@
+import { beforeEach, expect, it, mock } from 'bun:test'
+
 import { downloadImage } from '../../../main/images/download'
 import { electronMock } from '../../bun.mocks'
 
-const mockFetch = jest.fn()
-const mockLookup = jest.fn()
+const mockFetch = mock()
+const mockLookup = mock()
 const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3])
 
-jest.mock('dns/promises', () => ({
+mock.module('dns/promises', () => ({
   lookup: (...args: any[]) => mockLookup(...args)
 }))
 
@@ -63,9 +65,7 @@ it('deduplicates concurrent downloads for the same URL', async () => {
 })
 
 it('rejects non-HTTPS and local image URLs', async () => {
-  await expect(downloadImage('ipfs://bafybeihash/icon.png')).rejects.toThrow(
-    'Image URL must use HTTPS'
-  )
+  await expect(downloadImage('ipfs://bafybeihash/icon.png')).rejects.toThrow('Image URL must use HTTPS')
   await expect(downloadImage('https://localhost/usdc.png')).rejects.toThrow(
     'Image URL cannot target local hostnames'
   )
@@ -75,9 +75,7 @@ it('rejects non-HTTPS and local image URLs', async () => {
 it('rejects unsupported image MIME types', async () => {
   mockFetch.mockResolvedValue(createResponse(Buffer.from('<html></html>'), 'text/html'))
 
-  await expect(downloadImage('https://cdn.example/not-an-image')).rejects.toThrow(
-    'Unsupported image type'
-  )
+  await expect(downloadImage('https://cdn.example/not-an-image')).rejects.toThrow('Unsupported image type')
 })
 
 it('rejects redirects to private image URLs', async () => {

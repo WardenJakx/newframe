@@ -1,3 +1,5 @@
+import { afterAll, beforeAll, beforeEach, describe, expect, it, mock } from 'bun:test'
+
 import HotSignerWorker from '../../../../../main/signers/hot/HotSigner/worker'
 
 let worker: any
@@ -8,7 +10,7 @@ let errorOutput = console.error
 
 beforeAll(() => {
   errorOutput = console.error
-  console.error = jest.fn()
+  console.error = mock()
 })
 
 afterAll(() => {

@@ -1,3 +1,5 @@
+import { describe, expect, it } from 'bun:test'
+
 import chainConfigTyped from '../../../../main/chains/config'
 
 const chainConfig = chainConfigTyped as any

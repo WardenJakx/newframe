@@ -1,3 +1,5 @@
+import { expect, it, mock } from 'bun:test'
+
 import { screen, render } from '../../../componentSetup'
 import ConfirmComponent from '../../../../resources/Components/Confirm'
 
@@ -18,7 +20,7 @@ it('renders the decline button with provided text', () => {
 })
 
 it('handles a declined confirmation', async () => {
-  const onDecline = jest.fn()
+  const onDecline = mock()
   const { user } = render(<Confirm onDecline={onDecline} />)
 
   await user.click(screen.getByRole('button', { name: 'Decline' }))
@@ -34,7 +36,7 @@ it('renders the accept button with provided text', () => {
 })
 
 it('handles an accepted confirmation', async () => {
-  const onAccept = jest.fn()
+  const onAccept = mock()
   const { user } = render(<Confirm onAccept={onAccept} />)
 
   await user.click(screen.getByRole('button', { name: 'OK' }))

@@ -1,10 +1,10 @@
-import { beforeAll, beforeEach, describe, expect, it, jest, mock } from 'bun:test'
+import { beforeAll, beforeEach, describe, expect, it, mock } from 'bun:test'
 
 import createInitialState from '../../../main/store/state'
 import { StateMessageChannel } from '../../../resources/state/protocol'
 import { storeMock } from '../../bun.mocks'
 
-const authorizeRenderer = jest.fn()
+const authorizeRenderer = mock()
 
 mock.module('../../../main/ipc/authorization', () => ({ authorizeRenderer }))
 
@@ -22,9 +22,9 @@ function resetCanonicalState() {
 function renderer(id = 1) {
   const sender = {
     id,
-    isDestroyed: jest.fn(() => false),
-    once: jest.fn(),
-    send: jest.fn()
+    isDestroyed: mock(() => false),
+    once: mock(),
+    send: mock()
   }
 
   return { event: { sender } as unknown as Electron.IpcMainInvokeEvent, sender }

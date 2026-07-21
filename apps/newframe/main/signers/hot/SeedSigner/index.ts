@@ -6,7 +6,7 @@ import { computeAddress, Mnemonic } from 'ethers'
 
 type Callback = (err: Error | null, result?: any) => void
 
-// compiled (electron) forks the emitted worker.js; under jest we run from source,
+// compiled Electron forks the emitted worker.js; under Bun's test runner we run from source,
 // so fork the .ts worker directly — node 24 strips types natively
 const WORKER_EXT = __filename.endsWith('.ts') ? 'worker.ts' : 'worker.js'
 const WORKER_PATH = path.resolve(__dirname, WORKER_EXT)

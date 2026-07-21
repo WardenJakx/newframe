@@ -1,3 +1,16 @@
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  jest as timers,
+  mock,
+  spyOn
+} from 'bun:test'
+
 import log from 'electron-log'
 import { addHexPrefix, intToHex } from '@ethereumjs/util'
 
@@ -6,39 +19,39 @@ import { GasFeesSource, TRANSACTION_CONFIRMATION_TARGET } from '../../../resourc
 import { gweiToHex } from '../../util'
 import { createRpcPrincipal } from '../../../main/authority'
 
-const providerMock = { send: jest.fn(), emit: jest.fn(), on: jest.fn(), off: jest.fn() }
-const signersMock = { get: jest.fn() }
-const windowsMock = { broadcast: jest.fn(), showTray: jest.fn() }
-const navMock = { on: jest.fn(), forward: jest.fn() }
+const providerMock = { send: mock(), emit: mock(), on: mock(), off: mock() }
+const signersMock = { get: mock() }
+const windowsMock = { broadcast: mock(), showTray: mock() }
+const navMock = { on: mock(), forward: mock() }
 const externalDataScannerMock = {
-  refreshBalances: jest.fn(),
-  refreshPositions: jest.fn(),
-  close: jest.fn()
+  refreshBalances: mock(),
+  refreshPositions: mock(),
+  close: mock()
 }
-const externalDataScannerFactoryMock = jest.fn(() => externalDataScannerMock)
+const externalDataScannerFactoryMock = mock(() => externalDataScannerMock)
 const transactionMock = {
-  addTransaction: jest.fn(),
-  maxFee: jest.fn(() => 1e30),
-  signerCompatibility: jest.fn()
+  addTransaction: mock(),
+  maxFee: mock(() => 1e30),
+  signerCompatibility: mock()
 }
 
-jest.mock('../../../main/provider', () => ({ default: providerMock, ...providerMock }))
-jest.mock('../../../main/signers', () => ({ default: signersMock, ...signersMock }))
-jest.mock('../../../main/windows', () => ({ default: windowsMock, ...windowsMock }))
-jest.mock('../../../main/windows/nav', () => ({ default: navMock, ...navMock }))
-jest.mock('../../../main/externalData', () => ({
+mock.module('../../../main/provider', () => ({ default: providerMock, ...providerMock }))
+mock.module('../../../main/signers', () => ({ default: signersMock, ...signersMock }))
+mock.module('../../../main/windows', () => ({ default: windowsMock, ...windowsMock }))
+mock.module('../../../main/windows/nav', () => ({ default: navMock, ...navMock }))
+mock.module('../../../main/externalData', () => ({
   default: externalDataScannerFactoryMock,
-  start: jest.fn(),
-  stop: jest.fn()
+  start: mock(),
+  stop: mock()
 }))
-jest.mock('../../../main/transaction', () => transactionMock)
+mock.module('../../../main/transaction', () => transactionMock)
 
-jest.mock('../../../main/nameResolution', () => ({
+mock.module('../../../main/nameResolution', () => ({
   __esModule: true,
   default: {
     ready: () => true,
-    once: jest.fn(),
-    reverseLookup: jest.fn()
+    once: mock(),
+    reverseLookup: mock()
   }
 }))
 
@@ -99,6 +112,7 @@ afterAll(() => {
 })
 
 beforeEach((done) => {
+  timers.useFakeTimers()
   const from = '0x22dd63c3619818fdbc262c78baee43cb61e9cccf'
   const nonce = '0xa'
   request = {
@@ -135,6 +149,7 @@ afterEach(() => {
       Accounts.removeRequest(account, id)
     })
   })
+  timers.useRealTimers()
 })
 
 it('sets the account signer', () => {
@@ -167,7 +182,7 @@ describe('#routeRequest', () => {
   })
 
   it('rejects an unminted principal without queueing the request', () => {
-    const respond = jest.fn()
+    const respond = mock()
     const forgedPrincipal = {
       kind: 'renderer',
       role: 'wallet-ui',
@@ -201,7 +216,7 @@ it('selects the first remaining account when removing the current account', () =
 })
 
 it('rejects pending requests before removing their account', () => {
-  const respond = jest.fn()
+  const respond = mock()
   const pendingRequest = {
     handlerId: 'pending-signature',
     type: 'sign',
@@ -358,7 +373,7 @@ describe('#updatePendingFees', () => {
 
 describe('#setBaseFee', () => {
   beforeEach(() => {
-    Accounts.current().addRequest(request, jest.fn())
+    Accounts.current().addRequest(request, mock())
   })
 
   const setBaseFee = (baseFee: any, requestId = 1, userUpdate = false) =>
@@ -377,7 +392,7 @@ describe('#setBaseFee', () => {
   })
 
   it('does not set a base fee for an inactive account', () => {
-    Accounts.setSigner(undefined, jest.fn())
+    Accounts.setSigner(undefined, mock())
 
     expect(() => setBaseFee('0x1dcd65000')).toThrow(/no account selected/i)
   })
@@ -489,7 +504,7 @@ describe('#setBaseFee', () => {
 
 describe('#setPriorityFee', () => {
   beforeEach(() => {
-    Accounts.current().addRequest(request, jest.fn())
+    Accounts.current().addRequest(request, mock())
   })
 
   const setPriorityFee = (fee: any, requestId = 1, userUpdate = false) =>
@@ -508,7 +523,7 @@ describe('#setPriorityFee', () => {
   })
 
   it('does not set a priority fee if no account is active', () => {
-    Accounts.setSigner(undefined, jest.fn())
+    Accounts.setSigner(undefined, mock())
 
     expect(() => setPriorityFee('0x12a05f200')).toThrow(/no account selected/i)
   })
@@ -613,7 +628,7 @@ describe('#setPriorityFee', () => {
 
 describe('#setGasPrice', () => {
   beforeEach(() => {
-    Accounts.current().addRequest(request, jest.fn())
+    Accounts.current().addRequest(request, mock())
     patchRequest((request) => {
       request.data.type = '0x0'
     })
@@ -635,7 +650,7 @@ describe('#setGasPrice', () => {
   })
 
   it('does not set a gas price if no account is active', () => {
-    Accounts.setSigner(undefined, jest.fn())
+    Accounts.setSigner(undefined, mock())
 
     expect(() => setGasPrice('0x23')).toThrow(/no account selected/i)
   })
@@ -724,7 +739,7 @@ describe('#setGasPrice', () => {
 
 describe('#setGasLimit', () => {
   beforeEach(() => {
-    Accounts.current().addRequest(request, jest.fn())
+    Accounts.current().addRequest(request, mock())
   })
 
   const setGasLimit = (limit: any, requestId = 1, userUpdate = false) =>
@@ -743,7 +758,7 @@ describe('#setGasLimit', () => {
   })
 
   it('does not set a gas limit if no account is active', () => {
-    Accounts.setSigner(undefined, jest.fn())
+    Accounts.setSigner(undefined, mock())
 
     expect(() => setGasLimit('0x61a8')).toThrow(/no account selected/i)
   })
@@ -838,7 +853,7 @@ describe('#adjustNonce', () => {
   let onChainNonce: any
 
   beforeEach(() => {
-    provider.send = jest.fn((payload: any, cb: any) => {
+    provider.send = mock((payload: any, cb: any) => {
       expect(payload).toEqual(
         expect.objectContaining({
           id: 1,
@@ -852,7 +867,7 @@ describe('#adjustNonce', () => {
     })
 
     onChainNonce = '0x0'
-    Accounts.current().addRequest(request, jest.fn())
+    Accounts.current().addRequest(request, mock())
   })
 
   const adjustNonce = (nonceAdjust: any, requestId = 1) => Accounts.adjustNonce(requestId, nonceAdjust)
@@ -864,7 +879,7 @@ describe('#adjustNonce', () => {
   })
 
   it('does not adjust a request if no account is active', () => {
-    Accounts.setSigner(undefined, jest.fn())
+    Accounts.setSigner(undefined, mock())
     adjustNonce(1)
 
     expect(storeState().main.accounts[account.address].requests[1].data.nonce).toBe(request.data.nonce)
@@ -914,7 +929,7 @@ describe('#adjustNonce', () => {
 
 describe('#resetNonce', () => {
   beforeEach(() => {
-    provider.send = jest.fn((payload: any, cb: any) => {
+    provider.send = mock((payload: any, cb: any) => {
       expect(payload).toEqual(
         expect.objectContaining({
           id: 1,
@@ -926,7 +941,7 @@ describe('#resetNonce', () => {
       cb({ result: '0x3' })
     })
     request.data.nonce = '0x5'
-    Accounts.current().addRequest(request, jest.fn())
+    Accounts.current().addRequest(request, mock())
   })
 
   const resetNonce = (requestId = 1) => Accounts.resetNonce(requestId)
@@ -972,9 +987,9 @@ describe('#setTxSent', () => {
       }
       state.main.tokens.accountTokenIds[account.address] = [tokenId]
     })
-    provider.send = jest.fn()
+    provider.send = mock()
 
-    Accounts.current().addRequest(request, jest.fn())
+    Accounts.current().addRequest(request, mock())
     patchRequest((request) => {
       request.simulation = {
         status: 'success',
@@ -1020,7 +1035,7 @@ describe('#setTxSent', () => {
       delete state.main.tokens.byId[`1:${usdc.toLowerCase()}`]
     })
 
-    provider.send = jest.fn((payload: any, cb: any) => {
+    provider.send = mock((payload: any, cb: any) => {
       if (payload.method === 'eth_subscribe') return cb({ error: { code: -32601, message: 'unsupported' } })
       if (payload.method === 'eth_blockNumber') {
         return cb({ result: intToHex(receiptBlock + TRANSACTION_CONFIRMATION_TARGET) })
@@ -1039,7 +1054,7 @@ describe('#setTxSent', () => {
     })
 
     Accounts.startDataScanner()
-    Accounts.current().addRequest(request, jest.fn())
+    Accounts.current().addRequest(request, mock())
     patchRequest((request) => {
       request.simulation = simulation
     })
@@ -1056,7 +1071,7 @@ describe('#setTxSent', () => {
     expect(storeState().main.tokens.byId[tokenId]).toEqual(expect.objectContaining(expectedToken))
     expect(storeState().main.tokens.accountTokenIds[account.address]).toContain(tokenId)
 
-    jest.advanceTimersByTime(1000)
+    timers.advanceTimersByTime(1000)
     await Promise.resolve()
     await Promise.resolve()
     await Promise.resolve()
@@ -1074,9 +1089,9 @@ describe('#setTxSent', () => {
   it('confirms after the target confirmation count and removes after the close delay', async () => {
     const hash = '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef'
     const receiptBlock = 100
-    const clearRequest = jest.spyOn(Accounts.current(), 'clearRequest')
+    const clearRequest = spyOn(Accounts.current(), 'clearRequest')
 
-    provider.send = jest.fn((payload: any, cb: any) => {
+    provider.send = mock((payload: any, cb: any) => {
       if (payload.method === 'eth_subscribe') return cb({ error: { code: -32601, message: 'unsupported' } })
       if (payload.method === 'eth_blockNumber')
         return cb({ result: intToHex(receiptBlock + TRANSACTION_CONFIRMATION_TARGET) })
@@ -1093,9 +1108,9 @@ describe('#setTxSent', () => {
       cb({ result: null })
     })
 
-    Accounts.current().addRequest(request, jest.fn())
+    Accounts.current().addRequest(request, mock())
     Accounts.setTxSent(request.handlerId, hash)
-    jest.advanceTimersByTime(1000)
+    timers.advanceTimersByTime(1000)
     await Promise.resolve()
     await Promise.resolve()
     await Promise.resolve()
@@ -1106,10 +1121,10 @@ describe('#setTxSent', () => {
       TRANSACTION_CONFIRMATION_TARGET
     )
 
-    jest.advanceTimersByTime(2999)
+    timers.advanceTimersByTime(2999)
     expect(clearRequest).not.toHaveBeenCalledWith(request.handlerId)
 
-    jest.advanceTimersByTime(1)
+    timers.advanceTimersByTime(1)
     expect(clearRequest).toHaveBeenCalledWith(request.handlerId)
   })
 
@@ -1134,7 +1149,7 @@ describe('#setTxSent', () => {
       }
     }
 
-    provider.send = jest.fn((payload: any, cb: any) => {
+    provider.send = mock((payload: any, cb: any) => {
       if (payload.method === 'eth_subscribe') return cb({ error: { code: -32601, message: 'unsupported' } })
       if (payload.method === 'eth_blockNumber')
         return cb({ result: intToHex(receiptBlock + TRANSACTION_CONFIRMATION_TARGET) })
@@ -1151,10 +1166,10 @@ describe('#setTxSent', () => {
       cb({ result: null })
     })
 
-    Accounts.current().addRequest(request, jest.fn())
+    Accounts.current().addRequest(request, mock())
     storeState().upsertAccountRequest(account.address, otherChainRequest)
     Accounts.setTxSent(request.handlerId, hash)
-    jest.advanceTimersByTime(1000)
+    timers.advanceTimersByTime(1000)
     await Promise.resolve()
     await Promise.resolve()
     await Promise.resolve()
@@ -1178,9 +1193,9 @@ describe('#setTxSent', () => {
       }
     }
 
-    provider.send = jest.fn()
+    provider.send = mock()
 
-    Accounts.current().addRequest(request, jest.fn())
+    Accounts.current().addRequest(request, mock())
     store.setState((state: any) => {
       state.windows.panel.nav = [
         {
@@ -1193,7 +1208,7 @@ describe('#setTxSent', () => {
         }
       ]
     })
-    Accounts.current().addRequest(queuedRequest, jest.fn())
+    Accounts.current().addRequest(queuedRequest, mock())
 
     Accounts.setTxSent(request.handlerId, hash)
 
@@ -1211,7 +1226,7 @@ describe('#setTxSent', () => {
     const hash = '0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'
     const receiptBlock = 200
 
-    provider.send = jest.fn((payload: any, cb: any) => {
+    provider.send = mock((payload: any, cb: any) => {
       if (payload.method === 'eth_getTransactionReceipt') {
         return cb({
           result: {
@@ -1301,7 +1316,7 @@ describe('#resolveRequest', () => {
 
 describe('#removeRequest', () => {
   beforeEach(() => {
-    ;(account as any).clearRequest = jest.fn()
+    ;(account as any).clearRequest = mock()
     Accounts.current().addRequest(request)
   })
 
@@ -1340,7 +1355,7 @@ describe('#signerCompatibility', () => {
       id: '12',
       type: 'seed',
       addresses: [account.id],
-      summary: jest.fn()
+      summary: mock()
     }
 
     storeState().newSigner(lockedSeedSigner)
@@ -1364,7 +1379,7 @@ describe('#signerCompatibility', () => {
 
   signerTypes.forEach((signerType) => {
     it(`should return a recovery error when a ${signerType} signer is not available`, () => {
-      const cb = jest.fn()
+      const cb = mock()
 
       activeSigner.status = 'disconnected'
       activeSigner.type = signerType
@@ -1379,7 +1394,7 @@ describe('#signerCompatibility', () => {
   })
 
   it('returns compatibility if the current signer is ready', () => {
-    const cb = jest.fn()
+    const cb = mock()
     const compatibility = { signer: activeSigner.id, tx: 'sometx', compatible: true }
 
     activeSigner.status = 'ok'
@@ -1391,7 +1406,7 @@ describe('#signerCompatibility', () => {
   })
 
   it('should return an app lock error when a hot signer is not ready', () => {
-    const cb = jest.fn()
+    const cb = mock()
 
     activeSigner.status = 'locked'
 
@@ -1401,7 +1416,7 @@ describe('#signerCompatibility', () => {
   })
 
   it('should return an error when there is no signer', () => {
-    const cb = jest.fn()
+    const cb = mock()
 
     Accounts.accounts[account.id].patch({ signer: '' })
 

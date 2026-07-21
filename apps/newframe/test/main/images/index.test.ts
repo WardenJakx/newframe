@@ -1,11 +1,13 @@
-const downloadImage = jest.fn()
-const getTokenDiscoveryProvider = jest.fn()
-const getState = jest.fn()
-const subscribe = jest.fn()
+import { beforeEach, expect, it, mock } from 'bun:test'
 
-jest.mock('../../../main/images/download', () => ({ downloadImage }))
-jest.mock('../../../main/portfolio', () => ({ getTokenDiscoveryProvider }))
-jest.mock('../../../main/store', () => ({ default: { getState, subscribe } }))
+const downloadImage = mock()
+const getTokenDiscoveryProvider = mock()
+const getState = mock()
+const subscribe = mock()
+
+mock.module('../../../main/images/download', () => ({ downloadImage }))
+mock.module('../../../main/portfolio', () => ({ getTokenDiscoveryProvider }))
+mock.module('../../../main/store', () => ({ default: { getState, subscribe } }))
 
 const imageFor = (sourceUrl: string) => ({
   base64: Buffer.from(sourceUrl).toString('base64'),
@@ -51,15 +53,17 @@ it('hydrates networks in the background and tokens only when requested by the re
       tokens: { byId: { [`1:${token.address}`]: token } },
       networksMeta: { ethereum: { 1: metadata } }
     },
-    setNativeCurrencyImage: jest.fn(),
-    setNetworkImage: jest.fn(),
-    setTokenImage: jest.fn()
+    setNativeCurrencyImage: mock(),
+    setNetworkImage: mock(),
+    setTokenImage: mock()
   }
   getState.mockReturnValue(state)
-  subscribe.mockImplementation((selector: (value: typeof state) => unknown, listener: (value: any) => void) => {
-    listener(selector(state))
-    return jest.fn()
-  })
+  subscribe.mockImplementation(
+    (selector: (value: typeof state) => unknown, listener: (value: any) => void) => {
+      listener(selector(state))
+      return mock()
+    }
+  )
 
   const images = await import('../../../main/images')
   const stop = images.default.start()
@@ -70,13 +74,12 @@ it('hydrates networks in the background and tokens only when requested by the re
   await flushHydration()
 
   expect(state.setTokenImage).toHaveBeenCalledWith(`1:${token.address}`, imageFor(token.logoURI))
-  expect(state.setNetworkImage).toHaveBeenCalledWith(
+  expect(state.setNetworkImage).toHaveBeenCalledWith('ethereum', 1, metadata.icon, imageFor(metadata.icon))
+  expect(state.setNativeCurrencyImage).toHaveBeenCalledWith(
     'ethereum',
     1,
-    metadata.icon,
-    imageFor(metadata.icon)
+    imageFor(metadata.nativeCurrency.icon)
   )
-  expect(state.setNativeCurrencyImage).toHaveBeenCalledWith('ethereum', 1, imageFor(metadata.nativeCurrency.icon))
   expect(downloadImage).toHaveBeenCalledTimes(3)
 
   stop()
@@ -99,15 +102,17 @@ it('does not download images that already match their configured sources', async
         }
       }
     },
-    setNativeCurrencyImage: jest.fn(),
-    setNetworkImage: jest.fn(),
-    setTokenImage: jest.fn()
+    setNativeCurrencyImage: mock(),
+    setNetworkImage: mock(),
+    setTokenImage: mock()
   }
   getState.mockReturnValue(state)
-  subscribe.mockImplementation((selector: (value: typeof state) => unknown, listener: (value: any) => void) => {
-    listener(selector(state))
-    return jest.fn()
-  })
+  subscribe.mockImplementation(
+    (selector: (value: typeof state) => unknown, listener: (value: any) => void) => {
+      listener(selector(state))
+      return mock()
+    }
+  )
 
   const images = (await import('../../../main/images')).default
   const stop = images.start()
@@ -136,9 +141,9 @@ it('limits concurrent image work even when many visible tokens request hydration
   )
   const state = {
     main: { tokens: { byId: tokens }, networksMeta: { ethereum: {} } },
-    setNativeCurrencyImage: jest.fn(),
-    setNetworkImage: jest.fn(),
-    setTokenImage: jest.fn()
+    setNativeCurrencyImage: mock(),
+    setNetworkImage: mock(),
+    setTokenImage: mock()
   }
   getState.mockReturnValue(state)
 

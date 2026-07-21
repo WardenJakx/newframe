@@ -1,3 +1,5 @@
+import { afterEach, beforeEach, expect, it, jest as timers } from 'bun:test'
+
 import { render, screen, act } from '../../../componentSetup'
 import useCountdown from '../../../../resources/Hooks/useCountdown'
 
@@ -15,7 +17,11 @@ const TestComponent = ({ end }: TestComponentProps) => {
 }
 
 beforeEach(() => {
-  jest.useFakeTimers({ now: startDate })
+  timers.useFakeTimers({ now: startDate })
+})
+
+afterEach(() => {
+  timers.useRealTimers()
 })
 
 it('correctly sets the initial countdown time', () => {
@@ -27,7 +33,7 @@ it('updates the countdown time after a second', () => {
   render(<TestComponent end={nextDay.getTime()} />)
 
   act(() => {
-    jest.advanceTimersByTime(1_000)
+    timers.advanceTimersByTime(1_000)
   })
 
   expect(screen.getByRole('timer').textContent).toBe('23h 59m 59s')
@@ -52,7 +58,7 @@ it('sets the value correctly when the countdown has been completed', () => {
   render(<TestComponent end={nextDay.getTime()} />)
 
   act(() => {
-    jest.advanceTimersByTime(1_000 * 60 * 60 * 24)
+    timers.advanceTimersByTime(1_000 * 60 * 60 * 24)
   })
 
   expect(screen.getByRole('timer').textContent).toBe('EXPIRED')

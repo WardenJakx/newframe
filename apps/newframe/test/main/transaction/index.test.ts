@@ -1,3 +1,5 @@
+import { beforeEach, describe, expect, it, mock } from 'bun:test'
+
 import { addHexPrefix, stripHexPrefix } from '@ethereumjs/util'
 import { Common, Mainnet } from '@ethereumjs/common'
 
@@ -447,7 +449,7 @@ describe('#sign', () => {
     }
 
     const { type, chainId, ...expectedFields } = rawTx
-    const signedTx = await sign(rawTx, jest.fn().mockResolvedValueOnce(sig))
+    const signedTx = await sign(rawTx, mock().mockResolvedValueOnce(sig))
 
     expect(signedTx.toJSON()).toMatchObject({
       ...expectedFields,
@@ -465,7 +467,7 @@ describe('#sign', () => {
     }
 
     const { type, ...expectedFields } = rawTx
-    const signedTx = await sign(rawTx, jest.fn().mockResolvedValueOnce(signature))
+    const signedTx = await sign(rawTx, mock().mockResolvedValueOnce(signature))
 
     expect(signedTx.toJSON()).toMatchObject({
       ...expectedFields,
@@ -477,7 +479,7 @@ describe('#sign', () => {
   it('adds hex prefixes to the signature', async () => {
     const signedTx = await sign(
       baseTx,
-      jest.fn().mockResolvedValueOnce({
+      mock().mockResolvedValueOnce({
         v: stripHexPrefix('0x1b'),
         r: stripHexPrefix(signature.r),
         s: stripHexPrefix(signature.s)

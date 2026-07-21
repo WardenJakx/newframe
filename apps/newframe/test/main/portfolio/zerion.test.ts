@@ -1,3 +1,5 @@
+import { describe, expect, it, mock } from 'bun:test'
+
 import ZerionPortfolioProvider, {
   supportsPortfolioChain,
   toZerionChainIds
@@ -26,7 +28,7 @@ describe('ZerionPortfolioProvider', () => {
   })
 
   it('normalizes portfolio positions with a statically supported chain', async () => {
-    const fetchMock = jest.fn((url: string) => {
+    const fetchMock = mock((url: string) => {
       if (url.includes('/portfolio')) {
         return Promise.resolve(
           createResponse({
@@ -114,7 +116,7 @@ describe('ZerionPortfolioProvider', () => {
   })
 
   it('returns an empty snapshot when no requested chain is supported', async () => {
-    const fetchMock = jest.fn()
+    const fetchMock = mock()
     const provider = new ZerionPortfolioProvider({
       apiKey: 'test-key',
       fetch: fetchMock as unknown as typeof fetch,
@@ -140,7 +142,7 @@ describe('ZerionPortfolioProvider', () => {
   })
 
   it('fetches the provider chain image for statically supported chains', async () => {
-    const fetchMock = jest.fn((url: string, init?: RequestInit) => {
+    const fetchMock = mock((url: string, init?: RequestInit) => {
       expect(url).toBe('https://api.zerion.io/v1/chains/binance-smart-chain')
       expect(init?.headers).toEqual({
         Authorization: `Basic ${Buffer.from('test-key:').toString('base64')}`
@@ -172,7 +174,7 @@ describe('ZerionPortfolioProvider', () => {
   })
 
   it('does not fetch provider chain images for unsupported chains', async () => {
-    const fetchMock = jest.fn()
+    const fetchMock = mock()
     const provider = new ZerionPortfolioProvider({
       apiKey: 'test-key',
       fetch: fetchMock as unknown as typeof fetch,
@@ -187,7 +189,7 @@ describe('ZerionPortfolioProvider', () => {
   })
 
   it('normalizes portfolio positions into Frame tokens for the held chain only', async () => {
-    const fetchMock = jest.fn((url: string, init?: RequestInit) => {
+    const fetchMock = mock((url: string, init?: RequestInit) => {
       expect(init?.headers).toEqual({
         Authorization: `Basic ${Buffer.from('test-key:').toString('base64')}`
       })

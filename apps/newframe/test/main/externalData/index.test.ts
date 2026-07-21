@@ -1,8 +1,10 @@
+import { afterEach, beforeAll, beforeEach, describe, expect, it, jest as timers, mock } from 'bun:test'
+
 import store from '../../../main/store'
 
-const mockBalancesFactory = jest.fn(() => mockBalances)
+const mockBalancesFactory = mock(() => mockBalances)
 
-jest.mock('../../../main/externalData/balances', () => ({ default: mockBalancesFactory }))
+mock.module('../../../main/externalData/balances', () => ({ default: mockBalancesFactory }))
 
 let dataManager: any, externalData: any, mockBalances: any
 
@@ -11,26 +13,28 @@ beforeAll(async () => {
 })
 
 beforeEach(() => {
+  timers.useFakeTimers()
   store.setState((state) => {
     state.tray.open = true
   })
 
   mockBalances = {
-    addNetworks: jest.fn(),
-    addTokens: jest.fn(),
-    start: jest.fn(),
-    stop: jest.fn(),
-    pause: jest.fn(),
-    resume: jest.fn(),
-    refresh: jest.fn(),
-    refreshPositions: jest.fn(),
-    setAddress: jest.fn()
+    addNetworks: mock(),
+    addTokens: mock(),
+    start: mock(),
+    stop: mock(),
+    pause: mock(),
+    resume: mock(),
+    refresh: mock(),
+    refreshPositions: mock(),
+    setAddress: mock()
   }
   dataManager = externalData()
 })
 
 afterEach(() => {
   dataManager.close()
+  timers.useRealTimers()
 })
 
 describe('address updates', () => {
@@ -42,7 +46,7 @@ describe('address updates', () => {
       state.main.currentAccount = address
     })
 
-    jest.advanceTimersByTime(800)
+    timers.advanceTimersByTime(800)
 
     expect(mockBalances.setAddress).toHaveBeenCalledWith('')
     expect(mockBalances.refresh).toHaveBeenCalledWith(address)
@@ -92,5 +96,5 @@ function setTrayShown(shown: any) {
     state.tray.open = shown
   })
 
-  jest.advanceTimersByTime(1000 * 60)
+  timers.advanceTimersByTime(1000 * 60)
 }

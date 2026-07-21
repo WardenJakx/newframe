@@ -1,3 +1,5 @@
+import { beforeEach, describe, expect, it, mock } from 'bun:test'
+
 import {
   applyStateMessage,
   beginStateConnection,
@@ -60,7 +62,7 @@ describe('rendererStore', () => {
   it('shallow-merges all changed slices atomically and preserves unchanged references', () => {
     applyStateMessage(snapshot({ currentAccount: 'old' }))
     const initialSelected = getStateMirrorForTests().selected
-    const listener = jest.fn()
+    const listener = mock()
     const unsubscribe = walletRendererStateStoreReadApi.subscribe(listener)
     const rates = { token: { usd: { price: 1, change24hr: 0 } } }
 

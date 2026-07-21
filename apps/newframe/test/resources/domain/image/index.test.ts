@@ -1,3 +1,5 @@
+import { describe, expect, it } from 'bun:test'
+
 import { imageSource, isEmbeddedImage } from '../../../../resources/domain/image'
 
 describe('image sources', () => {

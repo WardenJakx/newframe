@@ -1,9 +1,11 @@
+import { beforeEach, describe, expect, it, mock } from 'bun:test'
+
 import { intToHex } from '@ethereumjs/util'
 import GasMonitor from '../../../main/transaction/gasMonitor'
 
 let requestHandlers: any
 const testConnection = {
-  send: jest.fn((method, params) => {
+  send: mock((method, params) => {
     if (method in requestHandlers) {
       return Promise.resolve(requestHandlers[method](params))
     }
@@ -65,7 +67,7 @@ describe('#getFeeHistory', () => {
     blockRewards = []
 
     requestHandlers = {
-      eth_feeHistory: jest.fn((params) => {
+      eth_feeHistory: mock((params) => {
         const numBlocks = parseInt(params[0] || '0x', 16)
 
         return {

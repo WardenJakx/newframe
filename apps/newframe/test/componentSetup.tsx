@@ -1,37 +1,41 @@
+import { jest as timers } from 'bun:test'
+
 import userEvent from '@testing-library/user-event'
 import { render, act } from '@testing-library/react'
 
 const advanceTimersByTime = async (ms = 0) => {
   await act(async () => {
-    jest.advanceTimersByTime(ms)
+    timers.advanceTimersByTime(ms)
   })
 }
 
 const runAllTimers = async () => {
   await act(async () => {
-    jest.runAllTimers()
+    timers.runAllTimers()
   })
 }
 
 async function actAndWait(fn: any, ms = 0) {
   await fn()
-  act(() => jest.advanceTimersByTime(ms))
+  act(() => timers.advanceTimersByTime(ms))
 }
 
 function setupComponent(jsx: any, opts: any = {}) {
-  const { advanceTimersAfterInput = false, ...options } = opts
+  const { advanceTimersAfterInput, ...options } = opts
   const advanceTimers =
     options.advanceTimers ||
     (advanceTimersAfterInput === true
       ? runAllTimers
-      : () => advanceTimersByTime(advanceTimersAfterInput || 0))
+      : advanceTimersAfterInput !== undefined && advanceTimersAfterInput !== false
+        ? () => advanceTimersByTime(advanceTimersAfterInput)
+        : undefined)
 
   render(jsx)
 
   return {
     user: userEvent.setup({
       ...options,
-      advanceTimers
+      ...(advanceTimers ? { advanceTimers } : {})
     })
   }
 }

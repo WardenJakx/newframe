@@ -1,4 +1,4 @@
-import { jest } from 'bun:test'
+import { mock } from 'bun:test'
 import { EventEmitter } from 'events'
 import { createStore } from 'zustand/vanilla'
 import { subscribeWithSelector } from 'zustand/middleware'
@@ -7,92 +7,92 @@ import { immer } from 'zustand/middleware/immer'
 import { createCanonicalActions } from '../main/store/actions'
 
 export const persistMock = {
-  get: jest.fn(),
-  set: jest.fn(),
-  queue: jest.fn(),
-  clear: jest.fn(),
-  writeUpdates: jest.fn()
+  get: mock(),
+  set: mock(),
+  queue: mock(),
+  clear: mock(),
+  writeUpdates: mock()
 }
 
 export const linkMock = {
-  connectState: jest.fn().mockResolvedValue({ ok: true }),
-  disconnectState: jest.fn().mockResolvedValue({ ok: true }),
-  executeCommand: jest.fn().mockResolvedValue({ ok: true }),
-  executeQuery: jest.fn().mockResolvedValue({ ok: false, error: 'not_found' })
+  connectState: mock().mockResolvedValue({ ok: true }),
+  disconnectState: mock().mockResolvedValue({ ok: true }),
+  executeCommand: mock().mockResolvedValue({ ok: true }),
+  executeQuery: mock().mockResolvedValue({ ok: false, error: 'not_found' })
 }
 
 export const windowsMock = {
-  broadcast: jest.fn(),
-  browserWindows: jest.fn(() => ({ panel: undefined })),
-  showTray: jest.fn()
+  broadcast: mock(),
+  browserWindows: mock(() => ({ panel: undefined })),
+  showTray: mock()
 }
 
 export const navMock = {
-  forward: jest.fn(),
-  on: jest.fn()
+  forward: mock(),
+  on: mock()
 }
 
 export const electronMock = {
   app: {
-    getName: jest.fn(() => 'Frame'),
-    getPath: jest.fn(() => __dirname),
-    getVersion: jest.fn(() => '0.0.0-test'),
-    on: jest.fn(),
-    quit: jest.fn(),
-    relaunch: jest.fn()
+    getName: mock(() => 'Frame'),
+    getPath: mock(() => __dirname),
+    getVersion: mock(() => '0.0.0-test'),
+    on: mock(),
+    quit: mock(),
+    relaunch: mock()
   },
-  BrowserWindow: jest.fn(),
+  BrowserWindow: mock(),
   clipboard: {
-    writeText: jest.fn()
+    writeText: mock()
   },
   dialog: {
-    showErrorBox: jest.fn(),
-    showMessageBoxSync: jest.fn()
+    showErrorBox: mock(),
+    showMessageBoxSync: mock()
   },
   globalShortcut: {
-    register: jest.fn(),
-    unregister: jest.fn()
+    register: mock(),
+    unregister: mock()
   },
   ipcMain: {
-    handle: jest.fn(),
-    on: jest.fn()
+    handle: mock(),
+    on: mock()
   },
   ipcRenderer: {
-    invoke: jest.fn(),
-    on: jest.fn(),
-    send: jest.fn()
+    invoke: mock(),
+    on: mock(),
+    send: mock()
   },
   Menu: {
-    buildFromTemplate: jest.fn()
+    buildFromTemplate: mock()
   },
   net: {
-    fetch: jest.fn()
+    fetch: mock()
   },
-  Notification: jest.fn(),
+  Notification: mock(),
   powerMonitor: {
-    on: jest.fn(),
-    off: jest.fn()
+    on: mock(),
+    off: mock()
   },
   protocol: {
-    handle: jest.fn(),
-    registerSchemesAsPrivileged: jest.fn()
+    handle: mock(),
+    registerSchemesAsPrivileged: mock()
   },
   safeStorage: {
-    decryptString: jest.fn(),
-    encryptString: jest.fn(),
-    isEncryptionAvailable: jest.fn(() => false)
+    decryptString: mock(),
+    encryptString: mock(),
+    isEncryptionAvailable: mock(() => false)
   },
   screen: {
-    getPrimaryDisplay: jest.fn()
+    getPrimaryDisplay: mock()
   },
   shell: {
-    openExternal: jest.fn()
+    openExternal: mock()
   },
   systemPreferences: {
-    canPromptTouchID: jest.fn(() => false),
-    promptTouchID: jest.fn()
+    canPromptTouchID: mock(() => false),
+    promptTouchID: mock()
   },
-  Tray: jest.fn()
+  Tray: mock()
 }
 
 const defaultState = () => ({
@@ -181,14 +181,14 @@ const defaultState = () => ({
 })
 
 let actionImplementations: Record<string, (...args: any[]) => any> = {}
-let actionMocks: Record<string, ReturnType<typeof jest.fn>> = {}
+let actionMocks: Record<string, ReturnType<typeof mock>> = {}
 
 const createMockActions = (set: any, get: any) => {
   actionImplementations = createCanonicalActions(set, get) as Record<string, (...args: any[]) => any>
   actionMocks = Object.fromEntries(
     Object.entries(actionImplementations).map(([name, action]) => [
       name,
-      jest.fn((...args: any[]) => action(...args))
+      mock((...args: any[]) => action(...args))
     ])
   )
 
@@ -209,7 +209,7 @@ export const resetStoreState = () => {
 }
 
 export const resetStoreMockImplementation = () => {
-  const restoredActions: Record<string, ReturnType<typeof jest.fn>> = {}
+  const restoredActions: Record<string, ReturnType<typeof mock>> = {}
 
   Object.entries(actionMocks).forEach(([name, mockAction]) => {
     mockAction.mockImplementation(actionImplementations[name])
@@ -236,7 +236,7 @@ class HotSignerWorkerMock extends EventEmitter {
   token = 'test-worker-token'
   locked = true
 
-  kill = jest.fn((_signal?: string) => {
+  kill = mock((_signal?: string) => {
     if (this.killed) return
     this.killed = true
     this.connected = false
@@ -244,7 +244,7 @@ class HotSignerWorkerMock extends EventEmitter {
     this.emit('exit', 0, null)
   })
 
-  send = jest.fn((message: any) => {
+  send = mock((message: any) => {
     if (message?.type === 'getToken') {
       return this.emit('message', { type: 'token', token: this.token })
     }
@@ -305,7 +305,7 @@ class HotSignerWorkerMock extends EventEmitter {
 }
 
 export const createHotSignerChildProcessMock = () => ({
-  fork: jest.fn((_path: string, _args?: any, opts?: any) => {
+  fork: mock((_path: string, _args?: any, opts?: any) => {
     const forkedChildProcess = new HotSignerWorkerMock()
 
     if (opts?.signal) {

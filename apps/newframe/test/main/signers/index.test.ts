@@ -1,3 +1,5 @@
+import { beforeAll, beforeEach, expect, it, mock } from 'bun:test'
+
 import { EventEmitter } from 'events'
 
 import store from '../../../main/store'
@@ -16,9 +18,9 @@ class HotSignerMock extends EventEmitter {
   encryptedSeed = 'must-not-enter-state'
   transport = { secret: 'must-not-enter-state' }
 
-  close = jest.fn()
-  delete = jest.fn()
-  unlock = jest.fn((_key: string, cb: Callback<boolean>) => cb(null, true))
+  close = mock()
+  delete = mock()
+  unlock = mock((_key: string, cb: Callback<boolean>) => cb(null, true))
 
   constructor(id = 'signer-old') {
     super()
@@ -33,24 +35,24 @@ class HotSignerMock extends EventEmitter {
 
 class AdapterMock extends EventEmitter {
   adapterType = 'mock'
-  open = jest.fn()
-  close = jest.fn()
-  remove = jest.fn()
-  reload = jest.fn()
+  open = mock()
+  close = mock()
+  remove = mock()
+  reload = mock()
 }
 
-jest.mock('../../../main/signers/hot/HotSigner', () => ({ default: HotSignerMock }))
-jest.mock('../../../main/signers/hot', () => ({
-  default: { scan: () => jest.fn() },
-  newPhrase: jest.fn(),
-  createFromPhrase: jest.fn(),
-  createFromPrivateKey: jest.fn(),
-  createFromKeystore: jest.fn(),
-  scan: jest.fn()
+mock.module('../../../main/signers/hot/HotSigner', () => ({ default: HotSignerMock }))
+mock.module('../../../main/signers/hot', () => ({
+  default: { scan: () => mock() },
+  newPhrase: mock(),
+  createFromPhrase: mock(),
+  createFromPrivateKey: mock(),
+  createFromKeystore: mock(),
+  scan: mock()
 }))
-jest.mock('../../../main/signers/ledger/adapter', () => ({ default: AdapterMock }))
-jest.mock('../../../main/signers/trezor/adapter', () => ({ default: AdapterMock }))
-jest.mock('../../../main/signers/lattice/adapter', () => ({ default: AdapterMock }))
+mock.module('../../../main/signers/ledger/adapter', () => ({ default: AdapterMock }))
+mock.module('../../../main/signers/trezor/adapter', () => ({ default: AdapterMock }))
+mock.module('../../../main/signers/lattice/adapter', () => ({ default: AdapterMock }))
 
 let Signers: typeof import('../../../main/signers').Signers
 
@@ -65,7 +67,7 @@ beforeEach(() => {
 })
 
 function createSigners() {
-  return new Signers([], () => jest.fn())
+  return new Signers([], () => mock())
 }
 
 it('keeps capability handles private and publishes only their summaries', () => {
@@ -74,7 +76,7 @@ it('keeps capability handles private and publishes only their summaries', () => 
 
   signers.add(handle as unknown as Signer)
 
-  expect(signers.get(handle.id)).toBe(handle)
+  expect(signers.get(handle.id)).toBe(handle as unknown as Signer)
   expect(store.getState().main.signers[handle.id]).toMatchObject(handle.summary())
   expect(store.getState().main.signers[handle.id]).not.toHaveProperty('encryptedSeed')
   expect(store.getState().main.signers[handle.id]).not.toHaveProperty('transport')
@@ -134,7 +136,7 @@ it('atomically re-keys a changing hot signer id', () => {
     createdAt
   })
   expect(signers.get('signer-old')).toBeUndefined()
-  expect(signers.get('signer-new')).toBe(handle)
+  expect(signers.get('signer-new')).toBe(handle as unknown as Signer)
 })
 
 it('detaches hot signer listeners before removing a signer', () => {
@@ -153,7 +155,7 @@ it('detaches hot signer listeners before removing a signer', () => {
 
 it('does not resurrect a detached signer from a delayed adapter update', () => {
   const adapter = new AdapterMock()
-  const signers = new Signers([adapter as unknown as SignerAdapter], () => jest.fn())
+  const signers = new Signers([adapter as unknown as SignerAdapter], () => mock())
   const handle = new HotSignerMock()
   adapter.emit('add', handle)
 
@@ -166,7 +168,7 @@ it('does not resurrect a detached signer from a delayed adapter update', () => {
 
 it('detaches adapter and handle listeners when closing', () => {
   const adapter = new AdapterMock()
-  const signers = new Signers([adapter as unknown as SignerAdapter], () => jest.fn())
+  const signers = new Signers([adapter as unknown as SignerAdapter], () => mock())
   const handle = new HotSignerMock()
   adapter.emit('add', handle)
 

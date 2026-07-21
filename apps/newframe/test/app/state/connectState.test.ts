@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, jest } from 'bun:test'
+import { beforeEach, describe, expect, it, mock } from 'bun:test'
 
 import { connectRendererState as connectState } from '../../../app/state/connectState'
 import { resetStateMirrorForTests } from '../../../app/state/rendererStore'
@@ -7,8 +7,8 @@ import createInitialState from '../../../main/store/state'
 import link from '../../../resources/link'
 import { STATE_STREAM_SCHEMA_VERSION, type StateMessage } from '../../../resources/state/protocol'
 
-const connection = link.connectState as ReturnType<typeof jest.fn>
-const disconnect = link.disconnectState as ReturnType<typeof jest.fn>
+const connection = link.connectState as ReturnType<typeof mock>
+const disconnect = link.disconnectState as ReturnType<typeof mock>
 const sideTrayState = () => projectSideTrayState(createInitialState())
 
 describe('connectRendererState', () => {

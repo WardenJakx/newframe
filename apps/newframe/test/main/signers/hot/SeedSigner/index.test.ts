@@ -1,3 +1,5 @@
+import { afterAll, afterEach, beforeAll, describe, expect, jest as timers, mock, test } from 'bun:test'
+
 import path from 'path'
 import fs from 'fs'
 import { rm } from 'fs/promises'
@@ -5,14 +7,14 @@ import { Mnemonic, randomBytes } from 'ethers'
 import log from 'electron-log'
 import { createHotSignerChildProcessMock, electronMock } from '../../../../bun.mocks'
 
-jest.mock('child_process', () => createHotSignerChildProcessMock())
+mock.module('child_process', () => createHotSignerChildProcessMock())
 
 const PASSWORD = 'fr@///3_password'
 const SIGNER_PATH = path.resolve(__dirname, '../.userData/signers')
 const VAULT_PATH = path.resolve(__dirname, '../.userData/vault.json')
 
 // Stubs
-const signers = { add: jest.fn() }
+const signers = { add: mock() }
 // Util
 const removePath = (target: string) => rm(target, { recursive: true, force: true })
 const clean = () => Promise.all([removePath(SIGNER_PATH), removePath(VAULT_PATH)])
@@ -34,7 +36,7 @@ describe('Seed signer', () => {
   })
 
   afterEach(() => {
-    jest.useRealTimers()
+    timers.useRealTimers()
   })
 
   afterAll(async () => {
@@ -93,7 +95,7 @@ describe('Seed signer', () => {
   }, 2000)
 
   test('Scan for signers', (done) => {
-    jest.useFakeTimers()
+    timers.useFakeTimers()
 
     let count = 0
     const signers = {
@@ -108,7 +110,7 @@ describe('Seed signer', () => {
 
     hot.scan(signers)
 
-    jest.runAllTimers()
+    timers.runAllTimers()
   }, 800)
 
   test('Unlock with wrong password', (done) => {

@@ -1,18 +1,20 @@
+import { afterEach, beforeAll, beforeEach, describe, expect, it, jest as timers, mock } from 'bun:test'
+
 import EventEmitter from 'events'
 
-const createJsonRpcProviderMock = jest.fn()
-const listenForProviderCloseMock = jest.fn()
-const sendRawPayloadMock = jest.fn()
+const createJsonRpcProviderMock = mock()
+const listenForProviderCloseMock = mock()
+const sendRawPayloadMock = mock()
 
 class MockProvider extends EventEmitter {
   constructor(readonly target: string) {
     super()
   }
 
-  destroy = jest.fn(async () => {})
+  destroy = mock(async () => {})
 }
 
-jest.mock('../../../main/provider/rpc', () => ({
+mock.module('../../../main/provider/rpc', () => ({
   createError: (error: unknown) => (error instanceof Error ? error : new Error(String(error))),
   createJsonRpcProvider: createJsonRpcProviderMock,
   FrameWebSocketProvider: class FrameWebSocketProvider {},
@@ -28,7 +30,7 @@ const flushPromises = async () => {
 }
 
 const advanceTimers = async (ms: number) => {
-  jest.advanceTimersByTime(ms)
+  timers.advanceTimersByTime(ms)
   await flushPromises()
 }
 
@@ -41,11 +43,16 @@ describe('FrameProvider reconnect backoff', () => {
   })
 
   beforeEach(() => {
+    timers.useFakeTimers()
     closeCallbacks = []
     createJsonRpcProviderMock.mockImplementation((target: string) => new MockProvider(target))
     listenForProviderCloseMock.mockImplementation((_provider: MockProvider, onClose: () => void) => {
       closeCallbacks.push(onClose)
     })
+  })
+
+  afterEach(() => {
+    timers.useRealTimers()
   })
 
   it('backs off reconnects after each failed target cycle', async () => {

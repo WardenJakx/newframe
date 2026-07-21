@@ -1,5 +1,5 @@
 import React from 'react'
-import { describe, expect, it, jest } from 'bun:test'
+import { describe, expect, it, spyOn } from 'bun:test'
 
 import { fireEvent, render, screen } from '../../componentSetup'
 import ChainTokenIcon from '../../../resources/Components/ChainTokenIcon'
@@ -191,7 +191,7 @@ describe('ChainTokenIcon', () => {
   })
 
   it('falls back and warns when a token image fails to load', () => {
-    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {})
+    const warn = spyOn(console, 'warn').mockImplementation(() => {})
 
     render(
       <ChainTokenIcon
@@ -216,7 +216,7 @@ describe('ChainTokenIcon', () => {
   })
 
   it('retries rendering when a failed token image source changes', () => {
-    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {})
+    const warn = spyOn(console, 'warn').mockImplementation(() => {})
     render(<ChangingTokenIcon />)
 
     fireEvent.error(screen.getAllByRole('presentation', { hidden: true })[0])
@@ -287,7 +287,7 @@ describe('TokenSelector', () => {
   })
 
   it('warns and renders the placeholder when selectedId is not in items', () => {
-    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {})
+    const warn = spyOn(console, 'warn').mockImplementation(() => {})
 
     render(<ControlledSelector initialSelectedId='missing' />)
 

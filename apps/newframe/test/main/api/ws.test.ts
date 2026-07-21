@@ -1,26 +1,28 @@
+import { beforeAll, beforeEach, expect, it, mock } from 'bun:test'
+
 import { EventEmitter } from 'events'
 
 import store from '../../../main/store'
 
 const WebSocketMock = {
   OPEN: 1,
-  Server: jest.fn()
+  Server: mock()
 }
 const providerMock = {
-  on: jest.fn(),
-  send: jest.fn()
+  on: mock(),
+  send: mock()
 }
 const accountsMock = {
-  getSelectedAddresses: jest.fn(() => [])
+  getSelectedAddresses: mock(() => [])
 }
 const windowsMock = {
-  toggleTray: jest.fn()
+  toggleTray: mock()
 }
 
-jest.mock('ws', () => ({ default: WebSocketMock, ...WebSocketMock }))
-jest.mock('../../../main/provider', () => ({ default: providerMock, ...providerMock }))
-jest.mock('../../../main/accounts', () => ({ default: accountsMock, ...accountsMock }))
-jest.mock('../../../main/windows', () => ({ default: windowsMock, ...windowsMock }))
+mock.module('ws', () => ({ default: WebSocketMock, ...WebSocketMock }))
+mock.module('../../../main/provider', () => ({ default: providerMock, ...providerMock }))
+mock.module('../../../main/accounts', () => ({ default: accountsMock, ...accountsMock }))
+mock.module('../../../main/windows', () => ({ default: windowsMock, ...windowsMock }))
 
 let ws: any
 let WebSocket: any
