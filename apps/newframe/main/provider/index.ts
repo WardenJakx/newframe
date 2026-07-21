@@ -63,10 +63,12 @@ import {
 import * as sigParser from '../signatures'
 import { hasAddress } from '../../resources/domain/account'
 import { mapRequest } from '../requests'
+import { createMainPrincipal, hasPrincipalCapability, type TrustedPrincipal } from '../authority'
 
 import type { Origin, Permission } from '../store/state'
 
 const signTypedDataV4OnlySignerTypes: SignerType[] = [SignerType.Ledger, SignerType.Trezor]
+const proxyPrincipal = createMainPrincipal('provider-proxy', ['wallet:internal-state'])
 
 interface RequiredApproval {
   type: ApprovalType
@@ -134,13 +136,17 @@ class Provider extends EventEmitter {
 
     proxyConnection.on('provider:send', (payload: RPCRequestPayload) => {
       const { id, method } = payload
-      this.send(payload, ({ error, result }) => {
-        proxyConnection.emit('payload', { id, method, error, result })
-      })
+      this.send(
+        payload,
+        ({ error, result }) => {
+          proxyConnection.emit('payload', { id, method, error, result })
+        },
+        proxyPrincipal
+      )
     })
 
     proxyConnection.on('provider:subscribe', (payload: RPC.Subscribe.Request) => {
-      const subId = this.createSubscription(payload)
+      const subId = this.createSubscription(payload, proxyPrincipal)
       const { id, jsonrpc } = payload
 
       proxyConnection.emit('payload', { id, jsonrpc, result: subId })
@@ -189,17 +195,13 @@ class Provider extends EventEmitter {
     const address = accounts[0]
 
     this.subscriptions.accountsChanged
-      .filter((subscription) =>
-        hasSubscriptionPermission(SubscriptionType.ACCOUNTS, address, subscription.originId)
-      )
+      .filter((subscription) => hasSubscriptionPermission(SubscriptionType.ACCOUNTS, address, subscription))
       .forEach((subscription) => this.sendSubscriptionData(subscription.id, accounts))
   }
 
   assetsChanged(address: string, assets: RPC.GetAssets.Assets) {
     this.subscriptions.assetsChanged
-      .filter((subscription) =>
-        hasSubscriptionPermission(SubscriptionType.ASSETS, address, subscription.originId)
-      )
+      .filter((subscription) => hasSubscriptionPermission(SubscriptionType.ASSETS, address, subscription))
       .forEach((subscription) => this.sendSubscriptionData(subscription.id, { ...assets, account: address }))
   }
 
@@ -214,7 +216,7 @@ class Provider extends EventEmitter {
   // fires when the list of available chains changes
   chainsChanged(address: string, chains: RPC.GetEthereumChains.Chain[]) {
     this.subscriptions.chainsChanged
-      .filter((subscription) => hasSubscriptionPermission('chainsChanged', address, subscription.originId))
+      .filter((subscription) => hasSubscriptionPermission('chainsChanged', address, subscription))
       .forEach((subscription) => this.sendSubscriptionData(subscription.id, chains))
   }
 
@@ -251,15 +253,6 @@ class Provider extends EventEmitter {
       : { error: { message: 'not connected', code: -1 } }
 
     res({ id: payload.id, jsonrpc: payload.jsonrpc, ...response })
-  }
-
-  declineRequest(req: AccountRequest) {
-    const payload = req.payload
-    resError(
-      { message: 'User declined transaction', code: 4001 },
-      payload,
-      this.requestResponder(req.handlerId)
-    )
   }
 
   verifySignature(signed: string, message: string, address: string, cb: Callback<boolean>) {
@@ -418,9 +411,7 @@ class Provider extends EventEmitter {
 
   approveTransactionRequest(req: TransactionRequest, cb: Callback<string>) {
     const signAndSend = (requestToSign: TransactionRequest) => {
-      // remove callback from logging
-      const { res, ...txToLog } = requestToSign
-      log.info('approveRequest', txToLog)
+      log.info('approveRequest', requestToSign)
 
       this.signAndSend(requestToSign, cb)
     }
@@ -572,7 +563,12 @@ class Provider extends EventEmitter {
     }
   }
 
-  sendTransaction(payload: RPC.SendTransaction.Request, res: RPCRequestCallback, targetChain: Chain) {
+  sendTransaction(
+    payload: RPC.SendTransaction.Request,
+    res: RPCRequestCallback,
+    targetChain: Chain,
+    principal: TrustedPrincipal
+  ) {
     try {
       const txParams = payload.params[0]
       const payloadChain = payload.chainId
@@ -595,7 +591,7 @@ class Provider extends EventEmitter {
         if (accountId && accounts.get(accountId)) {
           return accounts.setSigner(accountId, (err) => {
             if (err) return resError(err, payload, res)
-            this.sendTransaction(payload, res, targetChain)
+            this.sendTransaction(payload, res, targetChain, principal)
           })
         }
 
@@ -639,7 +635,7 @@ class Provider extends EventEmitter {
             classification
           }
 
-          accounts.addRequest(req, this.requestResponder(handlerId))
+          accounts.routeRequest(principal, req, this.requestResponder(handlerId))
         }
       })
     } catch (e) {
@@ -659,21 +655,21 @@ class Provider extends EventEmitter {
     this.connection.send(payload, res, targetChain)
   }
 
-  _personalSign(payload: RPCRequestPayload, res: RPCRequestCallback) {
+  _personalSign(payload: RPCRequestPayload, res: RPCRequestCallback, principal: TrustedPrincipal) {
     const params = payload.params || []
 
     if (isAddress(params[0]) && !isAddress(params[1])) {
       // personal_sign requests expect the first parameter to be the message and the second
       // parameter to be an address. however some clients send these in the opposite order
       // so try to detect that
-      return this.sign(payload, res)
+      return this.sign(payload, res, principal)
     }
 
     // switch the order of params to be consistent with eth_sign
-    return this.sign({ ...payload, params: [params[1], params[0], ...params.slice(2)] }, res)
+    return this.sign({ ...payload, params: [params[1], params[0], ...params.slice(2)] }, res, principal)
   }
 
-  sign(payload: RPCRequestPayload, res: RPCRequestCallback) {
+  sign(payload: RPCRequestPayload, res: RPCRequestCallback, principal: TrustedPrincipal) {
     const [from, message] = payload.params || []
     const currentAccount = accounts.current()
 
@@ -698,13 +694,14 @@ class Provider extends EventEmitter {
       }
     } as SignatureRequest
 
-    accounts.addRequest(req, this.requestResponder(handlerId))
+    accounts.routeRequest(principal, req, this.requestResponder(handlerId))
   }
 
   signTypedData(
     rawPayload: RPC.SignTypedData.Request,
     version: SignTypedDataVersion,
-    res: RPCCallback<RPC.SignTypedData.Response>
+    res: RPCCallback<RPC.SignTypedData.Response>,
+    principal: TrustedPrincipal
   ) {
     // ensure param order is [address, data, ...] regardless of version
     const orderedParams =
@@ -829,26 +826,30 @@ class Provider extends EventEmitter {
         }
       }
 
-      accounts.addRequest(permitRequest, this.requestResponder(handlerId))
+      accounts.routeRequest(principal, permitRequest, this.requestResponder(handlerId))
     } else {
-      accounts.addRequest(req, this.requestResponder(handlerId))
+      accounts.routeRequest(principal, req, this.requestResponder(handlerId))
     }
   }
 
-  subscribe(payload: RPC.Subscribe.Request, res: RPCSuccessCallback) {
+  subscribe(payload: RPC.Subscribe.Request, res: RPCSuccessCallback, principal?: TrustedPrincipal) {
     log.debug('provider subscribe', { payload })
 
-    const subId = this.createSubscription(payload)
+    const subId = this.createSubscription(payload, principal)
 
     res({ id: payload.id, jsonrpc: '2.0', result: subId })
   }
 
-  private createSubscription(payload: RPC.Subscribe.Request) {
+  private createSubscription(payload: RPC.Subscribe.Request, principal?: TrustedPrincipal) {
     const subId = addHexPrefix(crypto.randomBytes(16).toString('hex'))
     const subscriptionType = payload.params[0] as ProviderSubscriptionType
 
     this.subscriptions[subscriptionType] = this.subscriptions[subscriptionType] || []
-    this.subscriptions[subscriptionType].push({ id: subId, originId: payload._origin })
+    this.subscriptions[subscriptionType].push({
+      id: subId,
+      originId: payload._origin,
+      capabilities: principal && principal.kind !== 'renderer' ? principal.capabilities : []
+    })
 
     return subId
   }
@@ -914,9 +915,9 @@ class Provider extends EventEmitter {
       .forEach((subscription) => this.sendSubscriptionData(subscription.id, nextAccounts))
   }
 
-  private getOriginStatus(payload: RPCRequestPayload, res: RPCSuccessCallback) {
+  private getOriginStatus(payload: RPCRequestPayload, res: RPCSuccessCallback, principal?: TrustedPrincipal) {
     const { originId, originName, address, connected, chainId } = this.getOriginConnection(payload)
-    const selectedAddress = payload.__frameInternal ? address : ''
+    const selectedAddress = hasPrincipalCapability(principal, 'wallet:internal-state') ? address : ''
 
     res({
       id: payload.id,
@@ -991,7 +992,7 @@ class Provider extends EventEmitter {
     }
   }
 
-  private addEthereumChain(payload: RPCRequestPayload, res: RPCRequestCallback) {
+  private addEthereumChain(payload: RPCRequestPayload, res: RPCRequestCallback, principal: TrustedPrincipal) {
     if (!payload.params[0]) return resError('addChain request missing params', payload, res)
 
     const type = 'ethereum'
@@ -1056,7 +1057,8 @@ class Provider extends EventEmitter {
           explorer: blockExplorerUrls[0] || '',
           nativeCurrencyName: nativeCurrency.name
         }
-    accounts.addRequest(
+    accounts.routeRequest(
+      principal,
       {
         handlerId,
         type: 'addChain',
@@ -1069,7 +1071,12 @@ class Provider extends EventEmitter {
     )
   }
 
-  private addCustomToken(payload: RPCRequestPayload, cb: RPCRequestCallback, targetChain: Chain) {
+  private addCustomToken(
+    payload: RPCRequestPayload,
+    cb: RPCRequestCallback,
+    targetChain: Chain,
+    principal: TrustedPrincipal
+  ) {
     const { type, options: tokenData } = (payload.params || {}) as any
 
     if ((type || '').toLowerCase() !== 'erc20') {
@@ -1114,7 +1121,8 @@ class Provider extends EventEmitter {
 
         const handlerId = this.addRequestHandler(res)
 
-        accounts.addRequest(
+        accounts.routeRequest(
+          principal,
           {
             handlerId,
             type: 'addToken',
@@ -1173,7 +1181,7 @@ class Provider extends EventEmitter {
     })
   }
 
-  send(requestPayload: RPCRequestPayload, res: RPCRequestCallback = () => {}) {
+  send(requestPayload: RPCRequestPayload, res: RPCRequestCallback = () => {}, principal?: TrustedPrincipal) {
     // TODO: in the future this mapping will happen in the requests module so that the handler only ever
     // has to worry about one shape of request, error handling for each request type will happen
     // in the request handler for each type of request
@@ -1191,7 +1199,7 @@ class Provider extends EventEmitter {
     if (method === 'eth_unsubscribe' && this.ifSubRemove(payload.params[0]))
       return res({ id: payload.id, jsonrpc: '2.0', result: true }) // Subscription was ours
 
-    if (method === 'frame_getOriginStatus') return this.getOriginStatus(payload, res)
+    if (method === 'frame_getOriginStatus') return this.getOriginStatus(payload, res, principal)
     if (method === 'frame_disconnectOrigin') return this.disconnectOrigin(payload, res)
 
     const targetChain = this.parseTargetChain(payload)
@@ -1219,17 +1227,37 @@ class Provider extends EventEmitter {
     if (method === 'eth_coinbase') return getCoinbase(payload, res)
     if (method === 'eth_accounts') return getAccounts(payload, res)
     if (method === 'eth_requestAccounts') return getAccounts(payload, res)
-    if (method === 'eth_sendTransaction')
-      return this.sendTransaction(payload as RPC.SendTransaction.Request, res, targetChain)
+    const requirePrincipal = () => {
+      if (principal) return principal
+      resError({ message: 'Wallet action is missing a trusted request source', code: 4100 }, payload, res)
+    }
+
+    if (method === 'eth_sendTransaction') {
+      const trustedPrincipal = requirePrincipal()
+      if (trustedPrincipal)
+        return this.sendTransaction(
+          payload as RPC.SendTransaction.Request,
+          res,
+          targetChain,
+          trustedPrincipal
+        )
+      return
+    }
     if (method === 'eth_getTransactionByHash') return this.getTransactionByHash(payload, res, targetChain)
     if (method === 'personal_ecRecover') return ecRecover(payload, res)
     if (method === 'web3_clientVersion') return this.clientVersion(payload, res)
     if (method === 'eth_subscribe' && payload.params[0] in this.subscriptions) {
-      return this.subscribe(payload as RPC.Subscribe.Request, res)
+      return this.subscribe(payload as RPC.Subscribe.Request, res, principal)
     }
 
-    if (method === 'personal_sign') return this._personalSign(payload, res)
-    if (method === 'eth_sign') return this.sign(payload, res)
+    if (method === 'personal_sign') {
+      const trustedPrincipal = requirePrincipal()
+      return trustedPrincipal ? this._personalSign(payload, res, trustedPrincipal) : undefined
+    }
+    if (method === 'eth_sign') {
+      const trustedPrincipal = requirePrincipal()
+      return trustedPrincipal ? this.sign(payload, res, trustedPrincipal) : undefined
+    }
 
     if (
       ['eth_signTypedData', 'eth_signTypedData_v1', 'eth_signTypedData_v3', 'eth_signTypedData_v4'].includes(
@@ -1240,18 +1268,28 @@ class Provider extends EventEmitter {
       const version = (
         underscoreIndex > 3 ? method.substring(underscoreIndex + 1).toUpperCase() : undefined
       ) as SignTypedDataVersion
-      return this.signTypedData(
-        payload as RPC.SignTypedData.Request,
-        version,
-        res as RPCCallback<RPC.SignTypedData.Response>
-      )
+      const trustedPrincipal = requirePrincipal()
+      if (trustedPrincipal)
+        return this.signTypedData(
+          payload as RPC.SignTypedData.Request,
+          version,
+          res as RPCCallback<RPC.SignTypedData.Response>,
+          trustedPrincipal
+        )
+      return
     }
 
-    if (method === 'wallet_addEthereumChain') return this.addEthereumChain(payload, res)
+    if (method === 'wallet_addEthereumChain') {
+      const trustedPrincipal = requirePrincipal()
+      return trustedPrincipal ? this.addEthereumChain(payload, res, trustedPrincipal) : undefined
+    }
     if (method === 'wallet_switchEthereumChain') return this.switchEthereumChain(payload, res)
     if (method === 'wallet_getPermissions') return getPermissions(payload, res)
     if (method === 'wallet_requestPermissions') return requestPermissions(payload, res)
-    if (method === 'wallet_watchAsset') return this.addCustomToken(payload, res, targetChain)
+    if (method === 'wallet_watchAsset') {
+      const trustedPrincipal = requirePrincipal()
+      return trustedPrincipal ? this.addCustomToken(payload, res, targetChain, trustedPrincipal) : undefined
+    }
     if (method === 'wallet_getEthereumChains') return this.getChains(payload, res)
     if (method === 'wallet_getAssets')
       return this.getAssets(

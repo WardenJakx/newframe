@@ -8,8 +8,20 @@ import chainConfig from '../../../main/chains/config'
 import { gweiToHex } from '../../../resources/utils'
 import { Type as SignerType } from '../../../resources/domain/signer'
 import { NATIVE_CURRENCY } from '../../../resources/constants'
+import { createRpcPrincipal } from '../../../main/authority'
 
 const address = '0x22dd63c3619818fdbc262c78baee43cb61e9cccf'
+const principal = createRpcPrincipal({
+  transport: 'http',
+  connectionId: 'provider-test',
+  origin: 'frame.test'
+})
+const internalPrincipal = createRpcPrincipal({
+  transport: 'websocket',
+  connectionId: 'companion-test',
+  origin: 'frame.test',
+  capabilities: ['wallet:internal-state']
+})
 
 let accountRequests: any = []
 let provider: any
@@ -139,7 +151,8 @@ beforeAll(async () => {
   ;({ hasSubscriptionPermission } = await import('../../../main/provider/subscriptions'))
 
   accounts.getAccounts = () => [address]
-  accounts.addRequest = (req: any, res: any) => {
+  accounts.routeRequest = (receivedPrincipal: unknown, req: any, res: any) => {
+    expect(receivedPrincipal).toBe(principal)
     store.setState((state: any) => {
       state.main.accounts[req.account] ||= {}
       state.main.accounts[req.account].requests = { [req.handlerId]: req }
@@ -201,8 +214,8 @@ describe('#send', () => {
     })
   })
 
-  const send = (request: any, cb: any = jest.fn()) =>
-    provider.send({ ...request, _origin: '8073729a-5e59-53b7-9e69-5d9bcff94087' }, cb)
+  const send = (request: any, cb: any = jest.fn(), requestPrincipal = principal) =>
+    provider.send({ ...request, _origin: '8073729a-5e59-53b7-9e69-5d9bcff94087' }, cb, requestPrincipal)
 
   it('passes the given target chain to the connection', () => {
     connection.connections.ethereum[10] = {
@@ -238,6 +251,32 @@ describe('#send', () => {
       expect(response.result).toBe(undefined)
       done()
     })
+  })
+
+  it('rejects signing methods that do not carry a trusted transport principal', () => {
+    const callback = jest.fn()
+
+    provider.send(
+      {
+        id: 1,
+        jsonrpc: '2.0',
+        method: 'personal_sign',
+        params: ['hello', address],
+        chainId: '0x1',
+        _origin: '8073729a-5e59-53b7-9e69-5d9bcff94087'
+      },
+      callback
+    )
+
+    expect(callback).toHaveBeenCalledWith(
+      expect.objectContaining({
+        error: expect.objectContaining({
+          code: 4100,
+          message: 'Wallet action is missing a trusted request source'
+        })
+      })
+    )
+    expect(accountRequests).toHaveLength(0)
   })
 
   it('returns an error when an invalid chain is given', (done) => {
@@ -316,18 +355,22 @@ describe('#send', () => {
       })
       setPermissions(address, {})
 
-      send({ method: 'frame_getOriginStatus', __frameInternal: true }, (response: any) => {
-        expect(response.error).toBeUndefined()
-        expect(response.result).toEqual({
-          originId,
-          origin: 'frame.test',
-          connected: false,
-          address: '',
-          selectedAddress: address,
-          chainId: '0x1'
-        })
-        done()
-      })
+      send(
+        { method: 'frame_getOriginStatus' },
+        (response: any) => {
+          expect(response.error).toBeUndefined()
+          expect(response.result).toEqual({
+            originId,
+            origin: 'frame.test',
+            connected: false,
+            address: '',
+            selectedAddress: address,
+            chainId: '0x1'
+          })
+          done()
+        },
+        internalPrincipal
+      )
     })
 
     it('does not expose the selected address to non-internal status requests when no permission is attached', (done) => {
@@ -357,7 +400,11 @@ describe('#send', () => {
   describe('#frame_disconnectOrigin', () => {
     it('removes the selected account permission and notifies origin account subscribers', (done) => {
       const originId = '8073729a-5e59-53b7-9e69-5d9bcff94087'
-      const subscription = { id: '0x9509a964a8d24a17fcfc7b77fc575b71', originId }
+      const subscription = {
+        id: '0x9509a964a8d24a17fcfc7b77fc575b71',
+        originId,
+        capabilities: []
+      }
 
       accounts.clearRequestsByOrigin = jest.fn()
       provider.subscriptions.accountsChanged = [subscription]
@@ -516,7 +563,7 @@ describe('#send', () => {
       expect(accountRequests).toHaveLength(0)
     })
 
-    it('should switch the chain for the requesting origin if the chain already exists', (done) => {
+    it('switches immediately when an add-chain target already exists', () => {
       setNetwork(1, {
         id: 1,
         on: true,
@@ -527,22 +574,6 @@ describe('#send', () => {
       })
       storeState().switchOriginChain.mockImplementation(() => undefined)
 
-      const cb = (response: any) => {
-        expect(response.error).toBeFalsy()
-        expect(response.result).toBeNull()
-
-        expect(accountRequests).toHaveLength(0)
-        expect(storeState().switchOriginChain).toHaveBeenCalledWith(
-          '8073729a-5e59-53b7-9e69-5d9bcff94087',
-          1,
-          'ethereum'
-        )
-        expect(storeState().main.networks.ethereum[1].connection.primary.custom).toBe(
-          'https://trusted.example.com'
-        )
-        done()
-      }
-
       sendRequest(
         {
           chainId: '0x1', // A 0x-prefixed hexadecimal string
@@ -552,7 +583,17 @@ describe('#send', () => {
           },
           rpcUrls: ['https://attacker.example.com']
         },
-        cb
+        jest.fn()
+      )
+
+      expect(accountRequests).toHaveLength(0)
+      expect(storeState().switchOriginChain).toHaveBeenCalledWith(
+        '8073729a-5e59-53b7-9e69-5d9bcff94087',
+        1,
+        'ethereum'
+      )
+      expect(storeState().main.networks.ethereum[1].connection.primary.custom).toBe(
+        'https://trusted.example.com'
       )
     })
 
@@ -598,7 +639,7 @@ describe('#send', () => {
   })
 
   describe('#wallet_switchEthereumChain', () => {
-    it('should switch to a chain and notify listeners if it exists in the store', (done) => {
+    it('switches an origin to an existing chain without prompting', (done) => {
       setNetwork(1, { id: 1, on: true })
       setOrigins({
         '8073729a-5e59-53b7-9e69-5d9bcff94087': { chain: { id: 42161, type: 'ethereum' } }
@@ -616,6 +657,7 @@ describe('#send', () => {
           _origin: '8073729a-5e59-53b7-9e69-5d9bcff94087'
         },
         () => {
+          expect(accountRequests).toHaveLength(0)
           expect(storeState().switchOriginChain).toHaveBeenCalledWith(
             '8073729a-5e59-53b7-9e69-5d9bcff94087',
             1,
@@ -1180,7 +1222,7 @@ describe('#send', () => {
 
       if (chainId) (payload as any).chainId = chainId
 
-      provider.send({ ...payload, _origin: '8073729a-5e59-53b7-9e69-5d9bcff94087' }, cb)
+      provider.send({ ...payload, _origin: '8073729a-5e59-53b7-9e69-5d9bcff94087' }, cb, principal)
     }
 
     beforeEach(() => {
@@ -1870,6 +1912,7 @@ describe('#send', () => {
             expect(response.result).toMatch(/0x\w{32}$/)
 
             expect(provider.subscriptions[eventType]).toHaveLength(1)
+            expect(provider.subscriptions[eventType][0].capabilities).toEqual([])
           })
         })
       })
@@ -2110,7 +2153,8 @@ describe('#signAndSend', () => {
 describe('#assetsChanged', () => {
   const subscription = {
     id: '0x9509a964a8d24a17fcfc7b77fc575b71',
-    originId: '8073729a-5e59-53b7-9e69-5d9bcff94087'
+    originId: '8073729a-5e59-53b7-9e69-5d9bcff94087',
+    capabilities: []
   }
 
   beforeEach(() => {
@@ -2128,7 +2172,7 @@ describe('#assetsChanged', () => {
       expect(payload.params.subscription).toBe(subscription.id)
       expect(payload.params.result).toEqual(assets)
 
-      expect(hasSubscriptionPermission).toHaveBeenCalledWith('assetsChanged', address, subscription.originId)
+      expect(hasSubscriptionPermission).toHaveBeenCalledWith('assetsChanged', address, subscription)
 
       done()
     })
@@ -2154,7 +2198,8 @@ describe('state change events', () => {
   // are all working correctly with each other
   const subscription = {
     id: '0x9509a964a8d24a17fcfc7b77fc575b71',
-    originId: '8073729a-5e59-53b7-9e69-5d9bcff94087'
+    originId: '8073729a-5e59-53b7-9e69-5d9bcff94087',
+    capabilities: []
   }
 
   beforeEach(() => {

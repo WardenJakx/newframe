@@ -19,6 +19,7 @@ import {
   type RendererEntrypoint,
   type RendererRole
 } from './authorization'
+import { createRendererPrincipal } from '../authority'
 import {
   AccountSelectCommandSchema,
   AccountSelectResultSchema,
@@ -247,13 +248,13 @@ const commandRegistry = {
     resultSchema: TransactionSubmitResultSchema,
     roles: ['sidetray'],
     entrypoints: ['sidetray'],
-    async handle(command: TransactionSubmitCommand) {
+    async handle(command: TransactionSubmitCommand, _event, context) {
       const accountId = accounts.current()?.id || 'no-account'
       const result = await executeIdempotent(
         command.type,
         `${accountId}:${command.idempotencyKey}`,
         command,
-        () => submitCurrentAccountTransaction(command)
+        () => submitCurrentAccountTransaction(command, createRendererPrincipal(context))
       )
       return result === IdempotencyConflict
         ? ({ ok: false, error: 'invalid_command', message: 'Idempotency key was reused.' } as const)
@@ -266,8 +267,8 @@ const commandRegistry = {
     resultSchema: TypedDataSignResultSchema,
     roles: ['sidetray'],
     entrypoints: ['sidetray'],
-    handle(command: TypedDataSignCommand) {
-      return signCurrentAccountTypedData(command)
+    handle(command: TypedDataSignCommand, _event, context) {
+      return signCurrentAccountTypedData(command, createRendererPrincipal(context))
     },
     failure: { ok: false, error: 'provider_error', message: 'Typed-data signing failed.' }
   }),
@@ -369,7 +370,8 @@ const commandRegistry = {
   ),
   'flash.order-cancel': defineWalletCommand(
     FlashOrderCancelCommandSchema,
-    ({ orderId }) => walletWorkflows.cancelFlashOrder(orderId),
+    ({ orderId }, _event, context) =>
+      walletWorkflows.cancelFlashOrder(orderId, createRendererPrincipal(context)),
     'not_found',
     ['tray']
   ),
@@ -544,12 +546,17 @@ const commandRegistry = {
   ),
   'transaction.replace': defineWalletCommand(
     TransactionReplaceCommandSchema,
-    async (command) => {
+    async (command, _event, context) => {
       const result = await executeIdempotent(
         command.type,
         `${command.requestId}:${command.idempotencyKey}`,
         command,
-        () => walletWorkflows.replaceTransaction(command.requestId, command.replacement)
+        () =>
+          walletWorkflows.replaceTransaction(
+            command.requestId,
+            command.replacement,
+            createRendererPrincipal(context)
+          )
       )
       if (result === IdempotencyConflict) throw IdempotencyConflict
       return result

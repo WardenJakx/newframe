@@ -1,5 +1,5 @@
 /* globals chrome */
-import FrameBackgroundProvider from './frameConnection'
+import FrameBackgroundProvider, { RawFrameConnection } from './frameConnection'
 import { frameStateStore, type AvailableChain } from './frameState'
 
 type Provider = FrameBackgroundProvider
@@ -15,6 +15,7 @@ const subTypes = [
 
 // extension state
 let provider: Provider | null
+let dappConnection: RawFrameConnection | null
 let settingsPanel: chrome.runtime.Port | null, activeTabId: number
 
 interface PendingRequest {
@@ -67,7 +68,12 @@ const unsubscribeTab = (tabId: number) => {
   })
   Object.keys(subs).forEach((sub) => {
     if (subs[sub]!.tabId === tabId) {
-      provider!.request({ method: 'eth_unsubscribe', params: [sub] }).catch(() => {})
+      dappConnection?.send({
+        id: provider!.nextId++,
+        jsonrpc: '2.0',
+        method: 'eth_unsubscribe',
+        params: [sub]
+      })
       delete subs[sub]
     }
   })
@@ -159,8 +165,7 @@ async function refreshActiveOriginStatus(tab?: chrome.tabs.Tab) {
     const status = await provider.request<OriginStatus>({
       method: 'frame_getOriginStatus',
       __frameOrigin: origin,
-      __extensionConnecting: true,
-      __frameInternal: true
+      __extensionConnecting: true
     })
 
     setOriginStatus(status.origin || origin, status.connected, status.address || status.selectedAddress || '')
@@ -183,8 +188,7 @@ async function disconnectActiveOrigin(tab?: chrome.tabs.Tab) {
     const status = await provider.request<OriginStatus>({
       method: 'frame_disconnectOrigin',
       __frameOrigin: origin,
-      __extensionConnecting: true,
-      __frameInternal: true
+      __extensionConnecting: true
     })
 
     setOriginStatus(status.origin || origin, false, '')
@@ -213,7 +217,9 @@ async function sendEvent(event: string, args: any[] = [], selector: chrome.tabs.
 function initProvider() {
   console.log('Initializing provider connection to Newframe')
 
-  provider = new FrameBackgroundProvider('ws://127.0.0.1:1248?identity=newframe-extension')
+  const companionUrl = 'ws://127.0.0.1:1248?identity=newframe-extension'
+  provider = new FrameBackgroundProvider(`${companionUrl}&scope=internal`)
+  dappConnection = new RawFrameConnection(companionUrl)
 
   provider.on('connect', async () => {
     console.log('Connected to Newframe')
@@ -244,7 +250,7 @@ function initProvider() {
     refreshActiveOriginStatus()
   })
 
-  provider.connection.on('payload', async (payload: any) => {
+  dappConnection.on('payload', async (payload: any) => {
     if (typeof payload.id !== 'undefined') {
       if (pending[payload.id]) {
         const { tabId, payloadId } = pending[payload.id]!
@@ -291,6 +297,9 @@ function initProvider() {
 }
 
 function destroyProvider() {
+  dappConnection?.close()
+  dappConnection = null
+
   if (provider) {
     provider.close!()
     provider = null
@@ -366,11 +375,10 @@ function addStateListeners() {
       jsonrpc: '2.0',
       id,
       __frameOrigin: origin,
-      __extensionConnecting: payload.__extensionConnecting,
-      __frameInternal: undefined
+      __extensionConnecting: undefined
     }
 
-    provider!.connection.send(load)
+    dappConnection!.send(load)
   })
 
   chrome.runtime.onConnect.addListener((port) => {

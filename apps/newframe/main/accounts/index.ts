@@ -22,6 +22,7 @@ import {
   getTransactionPositionTokens
 } from '../../resources/domain/transaction'
 import { findUnavailableSigners, isHardwareSigner, isSignerReady } from '../../resources/domain/signer'
+import { decideWalletAction, type TrustedPrincipal } from '../authority'
 
 import {
   AccountRequest,
@@ -847,7 +848,7 @@ export class Accounts extends EventEmitter {
     return false
   }
 
-  async replaceTx(id: string, type: ReplacementType) {
+  async replaceTx(id: string, type: ReplacementType, principal: TrustedPrincipal) {
     const currentAccount = this.current()
 
     return new Promise<void>((resolve, reject) => {
@@ -888,10 +889,14 @@ export class Accounts extends EventEmitter {
         _origin
       }
 
-      this.sendRequest(tx, (res: RPCResponsePayload) => {
-        if (res.error) return reject(new Error(res.error.message))
-        resolve()
-      })
+      this.sendRequest(
+        tx,
+        (res: RPCResponsePayload) => {
+          if (res.error) return reject(new Error(res.error.message))
+          resolve()
+        },
+        principal
+      )
     })
   }
 
@@ -902,9 +907,10 @@ export class Accounts extends EventEmitter {
       chainId,
       _origin = frameOriginId
     }: { method: string; params: any[]; chainId: string; _origin?: string },
-    cb: RPCRequestCallback
+    cb: RPCRequestCallback,
+    principal?: TrustedPrincipal
   ) {
-    provider.send({ id: 1, jsonrpc: '2.0', method, params, chainId, _origin }, cb)
+    provider.send({ id: 1, jsonrpc: '2.0', method, params, chainId, _origin }, cb, principal)
   }
 
   private async confirmations(account: FrameAccount, id: string, hash: string, targetChain: Chain) {
@@ -1432,13 +1438,43 @@ export class Accounts extends EventEmitter {
     }
   }
 
-  addRequest(req: AccountRequest, res?: RPCCallback<any>) {
-    log.info('addRequest', JSON.stringify(req))
+  routeRequest(principal: TrustedPrincipal, req: AccountRequest, res?: RPCCallback<any>) {
+    const decision = decideWalletAction(principal, req)
+
+    if (decision.outcome === 'reject') {
+      log.warn('Rejected wallet action', {
+        type: req.type,
+        account: req.account,
+        reason: decision.reason
+      })
+      res?.({
+        id: req.payload.id,
+        jsonrpc: req.payload.jsonrpc,
+        error: { code: 4100, message: decision.reason }
+      })
+      return false
+    }
+
+    if (decision.outcome === 'autonomous') {
+      // No autonomous executor exists in the first milestone. Fail closed if policy is ever
+      // changed before that executor and its signer restrictions are implemented.
+      log.error('Autonomous wallet action has no executor', { actionId: decision.authorization.actionId })
+      res?.({
+        id: req.payload.id,
+        jsonrpc: req.payload.jsonrpc,
+        error: { code: 4100, message: 'Autonomous signing is not enabled' }
+      })
+      return false
+    }
+
+    req.authorization = decision.authorization
+    log.info('routeRequest', JSON.stringify(req))
 
     const currentAccount = this.current()
     if (currentAccount && !currentAccount.requests[req.handlerId]) {
       currentAccount.addRequest(req, res)
     }
+    return true
   }
 
   removeRequests(handlerId: string) {
@@ -1454,23 +1490,6 @@ export class Accounts extends EventEmitter {
     log.info(`removeRequest(${account.id}, ${handlerId})`)
 
     account.clearRequest(handlerId)
-  }
-
-  declineRequest(handlerId: string) {
-    const currentAccount = this.current()
-
-    if (currentAccount && currentAccount.requests[handlerId]) {
-      currentAccount.patchRequest<TransactionRequest>(handlerId, (request) => {
-        request.status = RequestStatus.Declined
-        request.notice = 'Signature Declined'
-        request.mode = RequestMode.Monitor
-      })
-
-      setTimeout(
-        () => this.has(currentAccount.address) && this.removeRequest(currentAccount, handlerId),
-        1000
-      )
-    }
   }
 
   setRequestPending(req: AccountRequest) {
