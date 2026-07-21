@@ -1,3 +1,5 @@
+import { beforeEach, describe, expect, it, mock } from 'bun:test'
+
 import type { Mock } from 'bun:test'
 import { useState } from 'react'
 
@@ -45,7 +47,7 @@ describe('selecting token chain', () => {
   })
 
   it('should update add token navigation when a chain is selected', async () => {
-    const onNavigate = jest.fn()
+    const onNavigate = mock()
     const { user } = render(<AddToken onNavigate={onNavigate} />)
 
     const polygonButton = screen.getByRole('button', { name: 'Polygon' })
@@ -70,7 +72,7 @@ describe('setting token address', () => {
   })
 
   it('should update add token navigation with an error when a user submits an invalid contract address', async () => {
-    const onNavigate = jest.fn()
+    const onNavigate = mock()
     const { user } = render(<AddToken data={{ notifyData: { chain: { id: 1 } } }} onNavigate={onNavigate} />)
 
     const contractAddressInput = screen.getByLabelText<HTMLInputElement>(`Enter token's address`)
@@ -95,7 +97,7 @@ describe('setting token address', () => {
       return { ok: false, error: 'not_found' }
     })
 
-    const onNavigate = jest.fn()
+    const onNavigate = mock()
     const { user } = render(<AddToken data={{ notifyData: { chain: { id: 1 } } }} onNavigate={onNavigate} />)
 
     const contractAddressLabel = screen.getByLabelText<HTMLInputElement>(`Enter token's address`)
@@ -128,7 +130,7 @@ describe('setting token address', () => {
       return { ok: true, token: mockTokenData }
     })
 
-    const onNavigate = jest.fn()
+    const onNavigate = mock()
     const { user } = render(<AddToken data={{ notifyData: { chain: { id: 1 } } }} onNavigate={onNavigate} />)
 
     const contractAddressLabel = screen.getByLabelText<HTMLInputElement>(`Enter token's address`)

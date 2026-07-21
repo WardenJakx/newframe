@@ -5,7 +5,7 @@
     "moduleResolution": "Bundler",
     "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "jsx": "react-jsx",
-    "types": ["node", "bun", "bun-test-globals", "react", "react-dom"],
+    "types": ["node", "bun", "react", "react-dom"],
     "esModuleInterop": true,
     "allowJs": true,
     "allowImportingTsExtensions": true,

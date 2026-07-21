@@ -1,7 +1,9 @@
+import { afterAll, afterEach, beforeAll, describe, expect, it, mock } from 'bun:test'
+
 import log from 'electron-log'
 
-jest.mock('../../../main/contracts/sources/sourcify', () => ({ fetchSourcifyContract: jest.fn() }))
-jest.mock('../../../main/contracts/sources/etherscan', () => ({ fetchEtherscanContract: jest.fn() }))
+mock.module('../../../main/contracts/sources/sourcify', () => ({ fetchSourcifyContract: mock() }))
+mock.module('../../../main/contracts/sources/etherscan', () => ({ fetchEtherscanContract: mock() }))
 
 let fetchContract: typeof import('../../../main/contracts').fetchContract
 let decodeCallData: typeof import('../../../main/contracts').decodeCallData
@@ -81,8 +83,6 @@ describe('#fetchContract', () => {
   })
 
   it('waits for a contract from sourcify even if etherscan returns first', async () => {
-    jest.useRealTimers()
-
     const sourcifyResponse = new Promise((resolve) =>
       setTimeout(() => resolve(mockContractSource('sourcify')), 40)
     )
@@ -129,7 +129,7 @@ describe('#decodeCallData', () => {
 
 describe('#decodeCallDataWithSelectorRegistry', () => {
   it('decodes local selector signatures without a network result', async () => {
-    globalThis.fetch = jest.fn(async () => ({
+    globalThis.fetch = mock(async () => ({
       ok: true,
       json: async () => ({ result: { function: {} } })
     })) as unknown as typeof fetch
@@ -157,7 +157,7 @@ describe('#decodeCallDataWithSelectorRegistry', () => {
     const calldata =
       '0x7602886d000000000000000000000000000000000000000000000000000000000000007b0000000000000000000000009bc5baf874d2da8d216ae9f137804184ee5afef4'
 
-    globalThis.fetch = jest.fn(async () => ({
+    globalThis.fetch = mock(async () => ({
       ok: true,
       json: async () => ({
         result: {
@@ -187,7 +187,7 @@ describe('#decodeCallDataWithSelectorRegistry', () => {
     const calldata =
       '0x7602886d000000000000000000000000000000000000000000000000000000000000007b0000000000000000000000009bc5baf874d2da8d216ae9f137804184ee5afef400'
 
-    globalThis.fetch = jest.fn(async () => ({
+    globalThis.fetch = mock(async () => ({
       ok: true,
       json: async () => ({
         result: {

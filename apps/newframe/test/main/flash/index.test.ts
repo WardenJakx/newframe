@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, jest } from 'bun:test'
+import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test'
 
 import {
   buildFlashQuoteBody,
@@ -385,7 +385,7 @@ describe('main Flash facade helpers', () => {
       requestId: 'request-123'
     }
 
-    globalThis.fetch = jest.fn(async () => {
+    globalThis.fetch = mock(async () => {
       return new Response(JSON.stringify(payload), {
         status: 400,
         statusText: 'Bad Request',
@@ -406,7 +406,7 @@ describe('main Flash facade helpers', () => {
   it('normalizes official root order assets, qty, fills, and timestamps from list responses', async () => {
     const flash = createFlashService()
     const originalFetch = globalThis.fetch
-    const fetchMock = jest.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
+    const fetchMock = mock(async (_input: RequestInfo | URL, _init?: RequestInit) => {
       return new Response(JSON.stringify({ orders: [officialOrder()] }), {
         status: 200,
         headers: { 'content-type': 'application/json' }
@@ -482,7 +482,7 @@ describe('main Flash facade helpers', () => {
       },
       { ok: true }
     ]
-    const fetchMock = jest.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
+    const fetchMock = mock(async (_input: RequestInfo | URL, _init?: RequestInit) => {
       const payload = responses.shift()
       if (!payload) throw new Error('Unexpected Flash request')
 
@@ -559,10 +559,10 @@ describe('main Flash facade helpers', () => {
       orderResponse('cancelled', '1500')
     ]
     const originalFetch = globalThis.fetch
-    const track = jest.fn()
-    const refresh = jest.fn()
+    const track = mock()
+    const refresh = mock()
 
-    globalThis.fetch = jest.fn(async () => {
+    globalThis.fetch = mock(async () => {
       const payload = responses.shift()
       if (!payload) throw new Error('Unexpected Flash request')
 

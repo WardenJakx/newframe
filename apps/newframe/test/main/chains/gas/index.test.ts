@@ -1,3 +1,5 @@
+import { describe, expect, it } from 'bun:test'
+
 import { intToHex } from '@ethereumjs/util'
 import { createGasCalculator as createGasCalculatorTyped } from '../../../../main/chains/gas'
 

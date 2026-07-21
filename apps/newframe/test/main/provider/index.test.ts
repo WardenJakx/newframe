@@ -1,3 +1,15 @@
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  jest as timers,
+  mock
+} from 'bun:test'
+
 import log from 'electron-log'
 import { parseUnits, toBeHex } from 'ethers'
 import { validate as validateUUID } from 'uuid'
@@ -88,7 +100,7 @@ const expectQueuedRequestRejection = (
   sendRequest: (callback: (response: any) => void) => void,
   done: (error?: unknown) => void
 ) => {
-  const callback = jest.fn()
+  const callback = mock()
 
   accountRequestHook = (request, respond) => {
     try {
@@ -115,28 +127,28 @@ const expectQueuedRequestRejection = (
   sendRequest(callback)
 }
 
-jest.mock('../../../main/chains', () => {
-  const chains = { send: jest.fn(), syncDataEmit: jest.fn(), on: jest.fn(), refreshGasFees: jest.fn() }
+mock.module('../../../main/chains', () => {
+  const chains = { send: mock(), syncDataEmit: mock(), on: mock(), refreshGasFees: mock() }
   return { default: chains, ...chains }
 })
-jest.mock('../../../main/accounts', () => {
+mock.module('../../../main/accounts', () => {
   const accounts = {}
   return { default: accounts, ...accounts }
 })
-jest.mock('../../../main/reveal', () => {
+mock.module('../../../main/reveal', () => {
   const reveal = {
-    resolveEntityType: jest.fn().mockResolvedValue('external')
+    resolveEntityType: mock().mockResolvedValue('external')
   }
   return { default: reveal, ...reveal }
 })
 
-jest.mock('../../../main/provider/subscriptions', () => ({
+mock.module('../../../main/provider/subscriptions', () => ({
   SubscriptionType: {
     ACCOUNTS: 'accountsChanged',
     ASSETS: 'assetsChanged',
     CHAINS: 'chainsChanged'
   },
-  hasSubscriptionPermission: jest.fn()
+  hasSubscriptionPermission: mock()
 }))
 
 beforeAll(async () => {
@@ -173,6 +185,8 @@ afterAll(() => {
 })
 
 beforeEach(() => {
+  timers.useFakeTimers()
+
   store.setState((state: any) => {
     state.main.accounts = {}
     state.main.balances = {}
@@ -190,8 +204,8 @@ beforeEach(() => {
   accountRequests = []
   accountRequestHook = undefined
 
-  connection.send = jest.fn()
-  connection.refreshGasFees = jest.fn().mockResolvedValue(undefined)
+  connection.send = mock()
+  connection.refreshGasFees = mock().mockResolvedValue(undefined)
   connection.connections = {
     ethereum: {
       1: { chainConfig: chainConfig(1, 'london'), primary: { connected: true } },
@@ -199,12 +213,16 @@ beforeEach(() => {
     }
   }
 
-  accounts.current = jest.fn(() => ({ id: address, getAccounts: () => [address] }))
-  accounts.get = jest.fn((addr) =>
+  accounts.current = mock(() => ({ id: address, getAccounts: () => [address] }))
+  accounts.get = mock((addr) =>
     addr === address ? { id: address, address, lastSignerType: 'ring' } : undefined
   )
-  accounts.signTransaction = jest.fn()
-  accounts.setTxSigned = jest.fn()
+  accounts.signTransaction = mock()
+  accounts.setTxSigned = mock()
+})
+
+afterEach(() => {
+  timers.useRealTimers()
 })
 
 describe('#send', () => {
@@ -214,7 +232,7 @@ describe('#send', () => {
     })
   })
 
-  const send = (request: any, cb: any = jest.fn(), requestPrincipal = principal) =>
+  const send = (request: any, cb: any = mock(), requestPrincipal = principal) =>
     provider.send({ ...request, _origin: '8073729a-5e59-53b7-9e69-5d9bcff94087' }, cb, requestPrincipal)
 
   it('passes the given target chain to the connection', () => {
@@ -254,7 +272,7 @@ describe('#send', () => {
   })
 
   it('rejects signing methods that do not carry a trusted transport principal', () => {
-    const callback = jest.fn()
+    const callback = mock()
 
     provider.send(
       {
@@ -406,7 +424,7 @@ describe('#send', () => {
         capabilities: []
       }
 
-      accounts.clearRequestsByOrigin = jest.fn()
+      accounts.clearRequestsByOrigin = mock()
       provider.subscriptions.accountsChanged = [subscription]
       setOrigin(originId, {
         name: 'frame.test',
@@ -545,8 +563,8 @@ describe('#send', () => {
         chainName: 'Unsafe chain',
         nativeCurrency: { name: 'Unsafe', symbol: 'BAD', decimals: 18 }
       }
-      const rpcResponse = jest.fn()
-      const explorerResponse = jest.fn()
+      const rpcResponse = mock()
+      const explorerResponse = mock()
 
       sendRequest({ ...request, rpcUrls: ['file:///tmp/rpc'] }, rpcResponse)
       sendRequest(
@@ -583,7 +601,7 @@ describe('#send', () => {
           },
           rpcUrls: ['https://attacker.example.com']
         },
-        jest.fn()
+        mock()
       )
 
       expect(accountRequests).toHaveLength(0)
@@ -613,7 +631,7 @@ describe('#send', () => {
         chain: { id: 1, type: 'ethereum' }
       })
 
-      const cb = jest.fn()
+      const cb = mock()
 
       sendRequest(
         {
@@ -1308,11 +1326,11 @@ describe('#send', () => {
 
       tx.from = nextAddress
 
-      accounts.current = jest.fn(() => ({ id: currentAddress, getAccounts: () => [currentAddress] }))
-      accounts.get = jest.fn((addr) =>
+      accounts.current = mock(() => ({ id: currentAddress, getAccounts: () => [currentAddress] }))
+      accounts.get = mock((addr) =>
         addr === nextAddress ? { id: nextAddress, address: nextAddress, lastSignerType: 'ring' } : undefined
       )
-      accounts.setSigner = jest.fn((id, cb) => {
+      accounts.setSigner = mock((id, cb) => {
         currentAddress = id
         cb(null, { id, address: id, lastSignerType: 'ring' })
       })
@@ -1975,7 +1993,7 @@ describe('#signAndSend', () => {
   let tx = {},
     request = {}
 
-  const signAndSend = (cb: any = jest.fn()) => provider.signAndSend(request, cb)
+  const signAndSend = (cb: any = mock()) => provider.signAndSend(request, cb)
 
   beforeEach(() => {
     tx = {}
@@ -2252,7 +2270,7 @@ describe('state change events', () => {
       state.main.networks.ethereum = networks
       state.main.networksMeta.ethereum = networksMeta
     })
-    jest.runAllTimers()
+    timers.runAllTimers()
 
     provider.subscriptions.chainsChanged = [subscription]
     provider.once('data:subscription', (event: any) => {
@@ -2320,7 +2338,7 @@ describe('state change events', () => {
         }
       }
     })
-    jest.runAllTimers()
+    timers.runAllTimers()
   })
 
   it('fires an assetsChanged event to subscribers', (done) => {
@@ -2396,7 +2414,7 @@ describe('state change events', () => {
     })
 
     // assets notifications are intentionally coalesced
-    jest.advanceTimersByTime(800)
+    timers.advanceTimersByTime(800)
   })
 })
 

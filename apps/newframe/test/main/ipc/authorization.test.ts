@@ -1,3 +1,5 @@
+import { beforeEach, describe, expect, it, mock } from 'bun:test'
+
 import { pathToFileURL } from 'url'
 
 import { authorizeRenderer, registerRenderer } from '../../../main/ipc/authorization'
@@ -12,9 +14,9 @@ function renderer(entrypoint: 'tray' | 'sidetray', clientType: 'wallet-ui' | 'si
   let destroyed: (() => void) | undefined
   const webContents: any = {
     id: nextId++,
-    isDestroyed: jest.fn(() => false),
+    isDestroyed: mock(() => false),
     mainFrame: frame,
-    once: jest.fn((event: string, handler: () => void) => {
+    once: mock((event: string, handler: () => void) => {
       if (event === 'destroyed') destroyed = handler
     })
   }

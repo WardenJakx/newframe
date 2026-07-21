@@ -1,28 +1,40 @@
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  jest as timers,
+  mock
+} from 'bun:test'
+
 import { Derivation } from '../../../../../main/signers/Signer/derive'
 import log from 'electron-log'
 import { SignTypedDataVersion } from '@metamask/eth-sig-util'
 
 let ethInstance: any
 
-const EthMock = jest.fn(function (this: any) {
+const EthMock = mock(function (this: any) {
   ethInstance = {
-    close: jest.fn(async () => undefined),
-    deriveAddresses: jest.fn(),
-    getAddress: jest.fn(),
-    getAppConfiguration: jest.fn(),
-    signMessage: jest.fn(),
-    signTransaction: jest.fn(),
-    signTypedData: jest.fn()
+    close: mock(async () => undefined),
+    deriveAddresses: mock(),
+    getAddress: mock(),
+    getAppConfiguration: mock(),
+    signMessage: mock(),
+    signTransaction: mock(),
+    signTypedData: mock()
   }
 
   return ethInstance
 })
 const TransportNodeHidMock = {
-  open: jest.fn(async () => ({ close: jest.fn() }))
+  open: mock(async () => ({ close: mock() }))
 }
 
-jest.mock('../../../../../main/signers/ledger/Ledger/eth', () => ({ default: EthMock }))
-jest.mock('@ledgerhq/hw-transport-node-hid-noevents', () => ({ default: TransportNodeHidMock }))
+mock.module('../../../../../main/signers/ledger/Ledger/eth', () => ({ default: EthMock }))
+mock.module('@ledgerhq/hw-transport-node-hid-noevents', () => ({ default: TransportNodeHidMock }))
 
 let Ledger: any
 let Status: any
@@ -30,7 +42,7 @@ let Eth: any
 
 function runNextRequest() {
   // move forward in time to allow the queue to process one request
-  jest.advanceTimersByTime(200)
+  timers.advanceTimersByTime(200)
 }
 
 async function connectEthApp() {
@@ -73,7 +85,7 @@ const addresses = ['0xf10326c1c6884b094e03d616cc8c7b920e3f73e0', '0xa16002db5438
 let ledger: any
 
 beforeAll(async () => {
-  jest.useFakeTimers()
+  timers.useFakeTimers()
   log.transports.console.level = false
 
   const ledgerModule = await import('../../../../../main/signers/ledger/Ledger')
@@ -99,7 +111,7 @@ afterEach(async () => {
 })
 
 afterAll(() => {
-  jest.useRealTimers()
+  timers.useRealTimers()
   log.transports.console.level = 'debug'
 })
 

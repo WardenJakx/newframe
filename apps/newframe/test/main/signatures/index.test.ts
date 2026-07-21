@@ -1,3 +1,5 @@
+import { beforeEach, describe, expect, it } from 'bun:test'
+
 import * as signatureParser from '../../../main/signatures'
 
 describe('#identify', () => {

@@ -1,20 +1,18 @@
+import { afterEach, beforeEach, expect, it, mock } from 'bun:test'
+
 import provider from '../../main/provider/connection'
 
 const persistMock = {
-  get: jest.fn(),
-  set: jest.fn(),
-  queue: jest.fn(),
-  clear: jest.fn(),
-  writeUpdates: jest.fn()
+  get: mock(),
+  set: mock(),
+  queue: mock(),
+  clear: mock(),
+  writeUpdates: mock()
 }
 
-jest.mock('../../main/store/persist', () => ({ default: persistMock, ...persistMock }))
+mock.module('../../main/store/persist', () => ({ default: persistMock, ...persistMock }))
 
 let frame: any
-
-beforeEach(() => {
-  jest.useRealTimers()
-})
 
 beforeEach((done) => {
   frame = provider('frame', { origin: 'frame.test' })

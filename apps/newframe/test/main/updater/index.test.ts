@@ -1,21 +1,21 @@
 import { EventEmitter } from 'events'
-import { afterEach, beforeAll, beforeEach, expect, it, jest, mock, spyOn } from 'bun:test'
+import { afterEach, beforeAll, beforeEach, expect, it, jest as timers, mock, spyOn } from 'bun:test'
 
 import { resetStoreState, storeMock } from '../../bun.mocks'
 
 const STARTUP_CHECK_DELAY = 10_000
 const DAY_MS = 24 * 60 * 60_000
 
-const autoCheckForUpdates = jest.fn()
-const autoClose = jest.fn()
-const manualCheck = jest.fn(async () => undefined)
+const autoCheckForUpdates = mock()
+const autoClose = mock()
+const manualCheck = mock(async () => undefined)
 let now = 0
 
 class AutoUpdaterMock extends EventEmitter {
   checkForUpdates = autoCheckForUpdates
   close = autoClose
-  downloadUpdate = jest.fn()
-  quitAndInstall = jest.fn()
+  downloadUpdate = mock()
+  quitAndInstall = mock()
 }
 
 mock.module('../../../main/updater/autoUpdater', () => ({ default: AutoUpdaterMock }))
@@ -40,7 +40,7 @@ beforeAll(async () => {
 })
 
 beforeEach(() => {
-  jest.useFakeTimers()
+  timers.useFakeTimers()
   now = Date.parse('2026-01-01T00:00:00.000Z')
   spyOn(Date, 'now').mockImplementation(() => now)
   resetUpdaterTest()
@@ -48,18 +48,19 @@ beforeEach(() => {
 
 afterEach(() => {
   updater.stop()
-  jest.restoreAllMocks()
+  mock.restore()
+  timers.useRealTimers()
 })
 
 it('runs the first update check after the startup delay when no daily check has run', () => {
   updater.start()
 
-  jest.advanceTimersByTime(STARTUP_CHECK_DELAY - 1)
+  timers.advanceTimersByTime(STARTUP_CHECK_DELAY - 1)
 
   expect(checkCount()).toBe(0)
 
   now += STARTUP_CHECK_DELAY
-  jest.advanceTimersByTime(1)
+  timers.advanceTimersByTime(1)
 
   expect(checkCount()).toBe(1)
   expect(storeMock.getState().main.updater.lastChecked).toBe(Date.now())
@@ -74,17 +75,17 @@ it('waits until the next daily window when an update check already ran today', (
 
   updater.start()
 
-  jest.advanceTimersByTime(STARTUP_CHECK_DELAY)
+  timers.advanceTimersByTime(STARTUP_CHECK_DELAY)
 
   expect(checkCount()).toBe(0)
 
   now = checkedAt + DAY_MS - 1
-  jest.advanceTimersByTime(DAY_MS - STARTUP_CHECK_DELAY - 1)
+  timers.advanceTimersByTime(DAY_MS - STARTUP_CHECK_DELAY - 1)
 
   expect(checkCount()).toBe(0)
 
   now = checkedAt + DAY_MS
-  jest.advanceTimersByTime(1)
+  timers.advanceTimersByTime(1)
 
   expect(checkCount()).toBe(1)
   expect(storeMock.getState().main.updater.lastChecked).toBe(checkedAt + DAY_MS)

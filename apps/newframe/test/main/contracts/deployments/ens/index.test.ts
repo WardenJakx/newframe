@@ -1,3 +1,5 @@
+import { describe, expect, it } from 'bun:test'
+
 import { Interface, encodeBytes32String } from 'ethers'
 
 import ensContracts from '../../../../../main/contracts/deployments/ens'

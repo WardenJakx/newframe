@@ -1,3 +1,5 @@
+import { describe, expect, it } from 'bun:test'
+
 import store from '../../../main/store'
 import { effectsFromTrace } from '../../../main/transaction/simulation'
 import { erc20Interface } from '../../../resources/contracts'

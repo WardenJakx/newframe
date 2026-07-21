@@ -1,10 +1,12 @@
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, mock } from 'bun:test'
+
 import log from 'electron-log'
 import { addHexPrefix, padToEven } from '@ethereumjs/util'
 
-const multicallMock = jest.fn()
-const supportsChainMock = jest.fn()
+const multicallMock = mock()
+const supportsChainMock = mock()
 
-jest.mock('../../../../main/multicall', () => ({
+mock.module('../../../../main/multicall', () => ({
   default: multicallMock,
   supportsChain: supportsChainMock
 }))
@@ -62,8 +64,8 @@ afterAll(() => {
 describe('#getTokenBalances', () => {
   beforeEach(() => {
     eth = {
-      request: jest.fn(),
-      setChain: jest.fn()
+      request: mock(),
+      setChain: mock()
     }
     balancesLoader = balanceLoader(eth)
 
@@ -131,7 +133,7 @@ describe('#getTokenBalances', () => {
   })
 
   describe('using direct contract calls', () => {
-    const callHandler = jest.fn(respondToTokenCall)
+    const callHandler = mock(respondToTokenCall)
 
     beforeEach(() => {
       ;(supportsChain as any).mockReturnValue(false)

@@ -1,13 +1,13 @@
-import { afterEach, beforeEach, describe, expect, it, jest } from 'bun:test'
+import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test'
 
 import type { NewframeHost } from '../../../resources/bridge/contracts'
 import link from '../../../resources/link'
 
 const makeHost = (overrides: Partial<NewframeHost> = {}): NewframeHost => ({
-  executeCommand: jest.fn(async () => ({ ok: true })) as NewframeHost['executeCommand'],
-  executeQuery: jest.fn(async () => ({ ok: false, error: 'not_found' })) as NewframeHost['executeQuery'],
-  connectState: jest.fn(async () => ({ ok: true })) as NewframeHost['connectState'],
-  disconnectState: jest.fn(async () => ({ ok: true })) as NewframeHost['disconnectState'],
+  executeCommand: mock(async () => ({ ok: true })) as NewframeHost['executeCommand'],
+  executeQuery: mock(async () => ({ ok: false, error: 'not_found' })) as NewframeHost['executeQuery'],
+  connectState: mock(async () => ({ ok: true })) as NewframeHost['connectState'],
+  disconnectState: mock(async () => ({ ok: true })) as NewframeHost['disconnectState'],
   ...overrides
 })
 
@@ -19,7 +19,7 @@ const setWindow = (host?: NewframeHost) => {
 }
 
 beforeEach(() => {
-  jest.clearAllMocks()
+  mock.clearAllMocks()
 })
 
 afterEach(() => {
@@ -37,8 +37,8 @@ describe('resources/link', () => {
   })
 
   it('delegates typed commands and queries to the hidden host', async () => {
-    const executeCommand = jest.fn(async () => ({ ok: true })) as NewframeHost['executeCommand']
-    const executeQuery = jest.fn(async () => ({
+    const executeCommand = mock(async () => ({ ok: true })) as NewframeHost['executeCommand']
+    const executeQuery = mock(async () => ({
       ok: true,
       address: '0x1111111111111111111111111111111111111111'
     })) as NewframeHost['executeQuery']
@@ -58,10 +58,10 @@ describe('resources/link', () => {
   })
 
   it('delegates state connection lifecycle to the hidden host', async () => {
-    const connectState = jest.fn(async () => ({ ok: true })) as NewframeHost['connectState']
-    const disconnectState = jest.fn(async () => ({ ok: true })) as NewframeHost['disconnectState']
+    const connectState = mock(async () => ({ ok: true })) as NewframeHost['connectState']
+    const disconnectState = mock(async () => ({ ok: true })) as NewframeHost['disconnectState']
     const host = makeHost({ connectState, disconnectState })
-    const handler = jest.fn()
+    const handler = mock()
     setWindow(host)
 
     await expect(link.connectState(handler)).resolves.toEqual({ ok: true })

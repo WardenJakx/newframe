@@ -1,64 +1,66 @@
-const getState = jest.fn()
-const getSigner = jest.fn()
-const removeSignerRecord = jest.fn()
-const reloadSignerRecord = jest.fn()
-const lockApp = jest.fn()
-const unlockApp = jest.fn()
-const unlockAppWithBiometrics = jest.fn()
-const exportAccountPrivateKeyRecord = jest.fn()
-const currentAccount = jest.fn()
-const getAccountRecord = jest.fn()
-const addAccount = jest.fn()
-const removeAccountRecord = jest.fn()
-const renameAccountRecord = jest.fn()
-const rejectRequest = jest.fn()
-const resolveRequest = jest.fn()
-const setAccess = jest.fn()
-const clearRequestsByOrigin = jest.fn()
-const confirmRequestApprovalRecord = jest.fn()
-const updateRequest = jest.fn()
-const setBaseFee = jest.fn()
-const setPriorityFee = jest.fn()
-const setGasPrice = jest.fn()
-const setGasLimit = jest.fn()
-const adjustNonce = jest.fn()
-const resetNonce = jest.fn()
-const removeFeeUpdateNotice = jest.fn()
-const replaceTx = jest.fn()
-const removeRequests = jest.fn()
-const setRequestPending = jest.fn()
-const setRequestError = jest.fn()
-const setRequestSuccess = jest.fn()
-const setTxSent = jest.fn()
-const approveTransactionRequest = jest.fn()
-const approveSign = jest.fn()
-const approveSignTypedData = jest.fn()
-const providerSend = jest.fn()
-const getTokenData = jest.fn()
-const tokenConstructor = jest.fn()
-const openBlockExplorer = jest.fn()
-const openExternal = jest.fn()
-const vaultExists = jest.fn()
-const vaultIsUnlocked = jest.fn()
-const vaultGetKey = jest.fn()
-const biometricSummary = jest.fn()
-const biometricDisable = jest.fn()
-const biometricEnableNative = jest.fn()
-const biometricEnableWebAuthn = jest.fn()
-const flashCancelOrder = jest.fn()
-const signerCompatibility = jest.fn()
-const handleTrayMouseoutRecord = jest.fn()
-const refocusSideTray = jest.fn()
-const updaterFetchUpdate = jest.fn()
-const updaterQuitAndInstall = jest.fn()
-const updaterDismissUpdate = jest.fn()
-const selectAccount = jest.fn()
-const resolveName = jest.fn()
-const getTokenDiscoveryProvider = jest.fn()
+import { beforeAll, beforeEach, describe, expect, it, mock } from 'bun:test'
 
-jest.mock('../../../main/store', () => ({ default: { getState } }))
-jest.mock('../../../main/portfolio', () => ({ getTokenDiscoveryProvider }))
-jest.mock('../../../main/signers', () => ({
+const getState = mock()
+const getSigner = mock()
+const removeSignerRecord = mock()
+const reloadSignerRecord = mock()
+const lockApp = mock()
+const unlockApp = mock()
+const unlockAppWithBiometrics = mock()
+const exportAccountPrivateKeyRecord = mock()
+const currentAccount = mock()
+const getAccountRecord = mock()
+const addAccount = mock()
+const removeAccountRecord = mock()
+const renameAccountRecord = mock()
+const rejectRequest = mock()
+const resolveRequest = mock()
+const setAccess = mock()
+const clearRequestsByOrigin = mock()
+const confirmRequestApprovalRecord = mock()
+const updateRequest = mock()
+const setBaseFee = mock()
+const setPriorityFee = mock()
+const setGasPrice = mock()
+const setGasLimit = mock()
+const adjustNonce = mock()
+const resetNonce = mock()
+const removeFeeUpdateNotice = mock()
+const replaceTx = mock()
+const removeRequests = mock()
+const setRequestPending = mock()
+const setRequestError = mock()
+const setRequestSuccess = mock()
+const setTxSent = mock()
+const approveTransactionRequest = mock()
+const approveSign = mock()
+const approveSignTypedData = mock()
+const providerSend = mock()
+const getTokenData = mock()
+const tokenConstructor = mock()
+const openBlockExplorer = mock()
+const openExternal = mock()
+const vaultExists = mock()
+const vaultIsUnlocked = mock()
+const vaultGetKey = mock()
+const biometricSummary = mock()
+const biometricDisable = mock()
+const biometricEnableNative = mock()
+const biometricEnableWebAuthn = mock()
+const flashCancelOrder = mock()
+const signerCompatibility = mock()
+const handleTrayMouseoutRecord = mock()
+const refocusSideTray = mock()
+const updaterFetchUpdate = mock()
+const updaterQuitAndInstall = mock()
+const updaterDismissUpdate = mock()
+const selectAccount = mock()
+const resolveName = mock()
+const getTokenDiscoveryProvider = mock()
+
+mock.module('../../../main/store', () => ({ default: { getState } }))
+mock.module('../../../main/portfolio', () => ({ getTokenDiscoveryProvider }))
+mock.module('../../../main/signers', () => ({
   default: {
     exportAccountPrivateKey: exportAccountPrivateKeyRecord,
     get: getSigner,
@@ -69,7 +71,7 @@ jest.mock('../../../main/signers', () => ({
     reload: reloadSignerRecord
   }
 }))
-jest.mock('../../../main/accounts', () => ({
+mock.module('../../../main/accounts', () => ({
   default: {
     add: addAccount,
     current: currentAccount,
@@ -97,10 +99,10 @@ jest.mock('../../../main/accounts', () => ({
     setTxSent
   }
 }))
-jest.mock('../../../main/provider', () => ({
+mock.module('../../../main/provider', () => ({
   default: { approveSign, approveSignTypedData, approveTransactionRequest, send: providerSend }
 }))
-jest.mock('../../../main/biometrics', () => ({
+mock.module('../../../main/biometrics', () => ({
   default: {
     disable: biometricDisable,
     enableNative: biometricEnableNative,
@@ -108,9 +110,9 @@ jest.mock('../../../main/biometrics', () => ({
     summary: biometricSummary
   }
 }))
-jest.mock('../../../main/flash/instance', () => ({ flashService: { cancelOrder: flashCancelOrder } }))
-jest.mock('../../../main/transaction', () => ({ signerCompatibility }))
-jest.mock('../../../main/updater', () => ({
+mock.module('../../../main/flash/instance', () => ({ flashService: { cancelOrder: flashCancelOrder } }))
+mock.module('../../../main/transaction', () => ({ signerCompatibility }))
+mock.module('../../../main/updater', () => ({
   default: {
     dismissUpdate: updaterDismissUpdate,
     fetchUpdate: updaterFetchUpdate,
@@ -120,8 +122,8 @@ jest.mock('../../../main/updater', () => ({
     }
   }
 }))
-jest.mock('../../../main/operations/workflows', () => ({ resolveName, selectAccount }))
-jest.mock('../../../main/contracts/erc20', () => ({
+mock.module('../../../main/operations/workflows', () => ({ resolveName, selectAccount }))
+mock.module('../../../main/contracts/erc20', () => ({
   default: class MockErc20Contract {
     constructor(address: string, chainId: number) {
       tokenConstructor(address, chainId)
@@ -132,13 +134,13 @@ jest.mock('../../../main/contracts/erc20', () => ({
     }
   }
 }))
-jest.mock('../../../main/vault', () => ({
+mock.module('../../../main/vault', () => ({
   default: { exists: vaultExists, getKey: vaultGetKey, isUnlocked: vaultIsUnlocked }
 }))
-jest.mock('../../../main/windows', () => ({
+mock.module('../../../main/windows', () => ({
   default: { handleTrayMouseout: handleTrayMouseoutRecord, refocusSideTray }
 }))
-jest.mock('../../../main/windows/window', () => ({ openBlockExplorer, openExternal }))
+mock.module('../../../main/windows/window', () => ({ openBlockExplorer, openExternal }))
 
 let approveRequest: typeof import('../../../main/operations/walletWorkflows').approveRequest
 let cancelFlashOrder: typeof import('../../../main/operations/walletWorkflows').cancelFlashOrder
@@ -158,27 +160,27 @@ let workflows: typeof import('../../../main/operations/walletWorkflows')
 
 const address = '0x1111111111111111111111111111111111111111'
 const actions = {
-  addNetwork: jest.fn(),
-  activateNetwork: jest.fn(),
-  clearHomeCommand: jest.fn(),
-  dontRemind: jest.fn(),
-  initOrigin: jest.fn(),
-  navBack: jest.fn(),
-  navForward: jest.fn(),
-  navHome: jest.fn(),
-  notify: jest.fn(),
-  removeBalance: jest.fn(),
-  removeCustomTokens: jest.fn(),
-  removeNetwork: jest.fn(),
-  selectPrimary: jest.fn(),
-  setBiometricUnlock: jest.fn(),
-  setSideTray: jest.fn(),
-  setPrimaryCustom: jest.fn(),
-  setGasDefault: jest.fn(),
-  switchOriginChain: jest.fn(),
-  trustExtension: jest.fn(),
-  toggleConnection: jest.fn(),
-  updateBadge: jest.fn()
+  addNetwork: mock(),
+  activateNetwork: mock(),
+  clearHomeCommand: mock(),
+  dontRemind: mock(),
+  initOrigin: mock(),
+  navBack: mock(),
+  navForward: mock(),
+  navHome: mock(),
+  notify: mock(),
+  removeBalance: mock(),
+  removeCustomTokens: mock(),
+  removeNetwork: mock(),
+  selectPrimary: mock(),
+  setBiometricUnlock: mock(),
+  setSideTray: mock(),
+  setPrimaryCustom: mock(),
+  setGasDefault: mock(),
+  switchOriginChain: mock(),
+  trustExtension: mock(),
+  toggleConnection: mock(),
+  updateBadge: mock()
 }
 
 beforeAll(async () => {
@@ -372,7 +374,7 @@ describe('wallet UI workflows', () => {
     })
 
     const originalFetch = globalThis.fetch
-    globalThis.fetch = jest.fn(async () =>
+    globalThis.fetch = mock(async () =>
       Response.json({ id: 1, jsonrpc: '2.0', result: '0x1' })
     ) as unknown as typeof fetch
 
@@ -438,7 +440,7 @@ describe('wallet UI workflows', () => {
 
   it('derives security status from canonical app-lock state and owns biometric configuration', async () => {
     const appLock = { locked: true, vaultExists: true }
-    const summary = { enabled: true, method: 'native' as const, nativeAvailable: true }
+    const summary = { enabled: true, method: 'native' as const, credential: undefined, nativeAvailable: true }
     biometricSummary.mockReturnValue(summary)
     getState.mockReturnValue({
       ...actions,
@@ -491,7 +493,7 @@ describe('wallet UI workflows', () => {
     })
 
     const originalFetch = globalThis.fetch
-    globalThis.fetch = jest.fn(async () =>
+    globalThis.fetch = mock(async () =>
       Response.json({ id: 1, jsonrpc: '2.0', result: '0xa' })
     ) as unknown as typeof fetch
 
@@ -556,7 +558,7 @@ describe('wallet UI workflows', () => {
       tray: {}
     })
     const originalFetch = globalThis.fetch
-    globalThis.fetch = jest.fn(async () =>
+    globalThis.fetch = mock(async () =>
       Response.json({ id: 1, jsonrpc: '2.0', result: '0x1' })
     ) as unknown as typeof fetch
 
@@ -687,7 +689,7 @@ describe('wallet UI workflows', () => {
     currentAccount.mockReturnValue({
       address,
       getRequest: (id: string) => requests[id],
-      getSigner: jest.fn()
+      getSigner: mock()
     })
     getAccountRecord.mockReturnValue({ address })
     getState.mockReturnValue({

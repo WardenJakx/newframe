@@ -1,3 +1,5 @@
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, mock } from 'bun:test'
+
 import log from 'electron-log'
 import { EventEmitter } from 'events'
 
@@ -6,7 +8,7 @@ import Lattice from '../../../../main/signers/lattice/Lattice'
 
 import store from '../../../../main/store'
 
-jest.mock('../../../../main/signers/lattice/Lattice', () => ({ __esModule: true, default: jest.fn() }))
+mock.module('../../../../main/signers/lattice/Lattice', () => ({ __esModule: true, default: mock() }))
 
 let adapter: any
 
@@ -93,7 +95,7 @@ describe('#remove', () => {
   const latticeSigner = { deviceId: 'M8jl93' }
 
   beforeEach(() => {
-    ;(latticeSigner as any).close = jest.fn()
+    ;(latticeSigner as any).close = mock()
   })
 
   it('removes a Lattice device from the store', () => {
@@ -122,8 +124,8 @@ describe('#reload', () => {
   const latticeSigner = { deviceId: 'NBaJ8e' }
 
   beforeEach(() => {
-    ;(latticeSigner as any).connect = jest.fn()
-    ;(latticeSigner as any).disconnect = jest.fn()
+    ;(latticeSigner as any).connect = mock()
+    ;(latticeSigner as any).disconnect = mock()
   })
 
   it('disconnects the Lattice signer', () => {
@@ -145,10 +147,10 @@ describe('settings changes', () => {
   }
 
   beforeEach(() => {
-    ;(latticeSigner as any).connect = jest.fn()
-    ;(latticeSigner as any).disconnect = jest.fn()
-    ;(latticeSigner as any).deriveAddresses = jest.fn()
-    ;(latticeSigner as any).update = jest.fn()
+    ;(latticeSigner as any).connect = mock()
+    ;(latticeSigner as any).disconnect = mock()
+    ;(latticeSigner as any).deriveAddresses = mock()
+    ;(latticeSigner as any).update = mock()
     ;(latticeSigner as any).addresses = Array(5).fill('addr')
     ;(latticeSigner as any).connection = {
       baseUrl: 'https://signing.gridpl.us'
@@ -220,7 +222,7 @@ describe('settings changes', () => {
   it('updates if the number of displayed addresses has changed but none need to be derived', () => {
     ;(latticeSigner as any).accountLimit = 10
 
-    const updateHandler = jest.fn()
+    const updateHandler = mock()
     adapter.once('update', updateHandler)
 
     store.setState((state) => {
@@ -259,9 +261,9 @@ describe('signer device changes', () => {
     })
 
     latticeSigner = new EventEmitter()
-    latticeSigner.connect = jest.fn(() => Promise.resolve())
-    latticeSigner.disconnect = jest.fn()
-    latticeSigner.deriveAddresses = jest.fn()
+    latticeSigner.connect = mock(() => Promise.resolve())
+    latticeSigner.disconnect = mock()
+    latticeSigner.deriveAddresses = mock()
     ;(Lattice as any).mockImplementation((deviceId: any, deviceName: any) => {
       latticeSigner.deviceId = deviceId
       latticeSigner.deviceName = deviceName
@@ -345,7 +347,7 @@ describe('signer device changes', () => {
     })
 
     it('handles update events', () => {
-      const updateHandler = jest.fn()
+      const updateHandler = mock()
       adapter.once('update', updateHandler)
 
       latticeSigner.emit('update')
@@ -417,7 +419,7 @@ describe('signer device changes', () => {
     })
 
     it('emits an update after an error', () => {
-      const updateHandler = jest.fn()
+      const updateHandler = mock()
       adapter.once('update', updateHandler)
 
       latticeSigner.emit('error')
@@ -434,7 +436,7 @@ describe('signer device changes', () => {
     })
 
     it('emits a remove event on close', () => {
-      const updateHandler = jest.fn()
+      const updateHandler = mock()
       adapter.once('remove', updateHandler)
 
       latticeSigner.emit('close')

@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, expect, it, jest } from 'bun:test'
+import { afterEach, beforeEach, expect, it, mock } from 'bun:test'
 
 import { render, screen } from '../../../componentSetup'
 import { linkMock as link } from '../../../bun.mocks'
@@ -13,8 +13,8 @@ class ResizeObserverMock {
     this.callback([], this as unknown as ResizeObserver)
   }
 
-  disconnect = jest.fn()
-  unobserve = jest.fn()
+  disconnect = mock()
+  unobserve = mock()
 }
 
 const originalResizeObserver = globalThis.ResizeObserver

@@ -1,3 +1,5 @@
+import { describe, expect, it } from 'bun:test'
+
 import { Derivation, getDerivationPath } from '../../../../main/signers/Signer/derive'
 
 describe('#getDerivationPath', () => {

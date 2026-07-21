@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, jest, mock } from 'bun:test'
+import { beforeEach, describe, expect, it, mock } from 'bun:test'
 
 import {
   ExecuteCommandChannel,
@@ -16,11 +16,11 @@ type Listener = (...args: unknown[]) => void
 
 const listeners = new Map<string, Listener[]>()
 const contextBridge = {
-  exposeInMainWorld: jest.fn()
+  exposeInMainWorld: mock()
 }
 const ipcRenderer = {
-  invoke: jest.fn(),
-  on: jest.fn((channel: string, listener: Listener) => {
+  invoke: mock(),
+  on: mock((channel: string, listener: Listener) => {
     listeners.set(channel, [...(listeners.get(channel) || []), listener])
     return ipcRenderer
   })
@@ -90,7 +90,7 @@ describe('preload bridge host', () => {
 
   it('connects the state stream and strips the Electron event from messages', async () => {
     const host = await loadHost()
-    const handler = jest.fn()
+    const handler = mock()
     const snapshot: StateMessage = {
       schemaVersion: 1,
       streamId: 'stream-1',
@@ -108,7 +108,7 @@ describe('preload bridge host', () => {
 
   it('disconnects the state stream and stops delivering messages', async () => {
     const host = await loadHost()
-    const handler = jest.fn()
+    const handler = mock()
     const snapshot: StateMessage = {
       schemaVersion: 1,
       streamId: 'stream-1',
@@ -130,6 +130,6 @@ describe('preload bridge host', () => {
     const host = await loadHost()
     ipcRenderer.invoke.mockResolvedValueOnce({ ok: true, unexpected: true })
 
-    await expect(host.connectState(jest.fn())).rejects.toThrow()
+    await expect(host.connectState(mock())).rejects.toThrow()
   })
 })

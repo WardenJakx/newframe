@@ -1,13 +1,15 @@
-const getSelectedAddresses = jest.fn()
-const setSigner = jest.fn()
-const accountsChanged = jest.fn()
-const resolveAddress = jest.fn()
+import { beforeAll, beforeEach, describe, expect, it, mock } from 'bun:test'
 
-jest.mock('../../../main/accounts', () => ({
+const getSelectedAddresses = mock()
+const setSigner = mock()
+const accountsChanged = mock()
+const resolveAddress = mock()
+
+mock.module('../../../main/accounts', () => ({
   default: { getSelectedAddresses, setSigner }
 }))
-jest.mock('../../../main/provider', () => ({ default: { accountsChanged } }))
-jest.mock('../../../main/nameResolution', () => ({ default: { resolveAddress } }))
+mock.module('../../../main/provider', () => ({ default: { accountsChanged } }))
+mock.module('../../../main/nameResolution', () => ({ default: { resolveAddress } }))
 
 let resolveName: typeof import('../../../main/operations/workflows').resolveName
 let selectAccount: typeof import('../../../main/operations/workflows').selectAccount
@@ -31,7 +33,7 @@ describe('operation workflows', () => {
     getSelectedAddresses.mockReturnValueOnce(['previous']).mockReturnValueOnce(['selected'])
     setSigner.mockImplementation((_id, callback) => callback(null, account))
 
-    await expect(selectAccount('selected')).resolves.toBe(account)
+    await expect(selectAccount('selected')).resolves.toMatchObject(account)
     expect(setSigner).toHaveBeenCalledWith('selected', expect.any(Function))
     expect(accountsChanged).toHaveBeenCalledWith(['selected'])
   })

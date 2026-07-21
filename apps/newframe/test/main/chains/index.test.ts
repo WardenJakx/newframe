@@ -1,3 +1,5 @@
+import { afterEach, beforeAll, beforeEach, expect, it, mock } from 'bun:test'
+
 import log from 'electron-log'
 import EventEmitter from 'events'
 import { addHexPrefix, intToHex } from '@ethereumjs/util'
@@ -171,13 +173,13 @@ const state = {
   }
 }
 
-jest.mock('../../../main/provider/connection', () => ({
+mock.module('../../../main/provider/connection', () => ({
   createJsonRpcProvider: (target: any) => (mockConnections as any)[target].connection,
-  listenForProviderClose: jest.fn(),
+  listenForProviderClose: mock(),
   sendRpcPayload: (provider: any, payload: any) => provider.send(payload.method, payload.params || [])
 }))
-jest.mock('../../../main/store/state', () => () => state)
-jest.mock('../../../main/accounts', () => ({ updatePendingFees: jest.fn() }))
+mock.module('../../../main/store/state', () => () => state)
+mock.module('../../../main/accounts', () => ({ updatePendingFees: mock() }))
 
 const mockConnections = {
   'https://ethereum-sepolia-rpc.publicnode.com': {
@@ -216,7 +218,6 @@ const connectChain = async (chain: any) => {
 }
 
 beforeAll(async () => {
-  jest.useRealTimers()
   resetChainState()
 
   // need to import this after mocks are set up

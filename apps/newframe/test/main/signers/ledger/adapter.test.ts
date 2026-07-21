@@ -1,3 +1,5 @@
+import { afterAll, afterEach, beforeAll, beforeEach, expect, it, jest as timers, mock } from 'bun:test'
+
 import EventEmitter from 'events'
 import log from 'electron-log'
 import { v5 as uuid } from 'uuid'
@@ -30,40 +32,40 @@ class LedgerMock extends EventEmitter {
     this.id = uuid('Ledger' + this.devicePath, ns)
   }
 
-  open = jest.fn(async () => undefined)
+  open = mock(async () => undefined)
 
-  connect = jest.fn(async () => {
+  connect = mock(async () => {
     this.status = Status.OK
     this.emit('update')
   })
 
-  disconnect = jest.fn(async () => {
+  disconnect = mock(async () => {
     this.status = Status.DISCONNECTED
     this.emit('update')
   })
 
-  close = jest.fn(async () => {
+  close = mock(async () => {
     this.emit('close')
   })
 
-  deriveAddresses = jest.fn()
+  deriveAddresses = mock()
 }
 
 const TransportNodeHidSingletonMock = {
-  listen: jest.fn(() => ({ unsubscribe: jest.fn() }))
+  listen: mock(() => ({ unsubscribe: mock() }))
 }
 
 let connectedHids: any[] = []
 
-jest.mock('@ledgerhq/hw-transport-node-hid-noevents', () => ({
+mock.module('@ledgerhq/hw-transport-node-hid-noevents', () => ({
   getDevices: () => connectedHids
 }))
 
-jest.mock('@ledgerhq/hw-transport-node-hid-singleton', () => ({
+mock.module('@ledgerhq/hw-transport-node-hid-singleton', () => ({
   default: TransportNodeHidSingletonMock
 }))
 
-jest.mock('../../../../main/signers/ledger/Ledger', () => ({
+mock.module('../../../../main/signers/ledger/Ledger', () => ({
   default: LedgerMock,
   Status
 }))
@@ -81,7 +83,7 @@ let LedgerSignerAdapter: any
 let adapter: any
 
 beforeAll(async () => {
-  jest.useFakeTimers()
+  timers.useFakeTimers()
   log.transports.console.level = false
 
   LedgerSignerAdapter = (await import('../../../../main/signers/ledger/adapter')).default
@@ -99,7 +101,7 @@ afterEach(() => {
 })
 
 afterAll(() => {
-  jest.useRealTimers()
+  timers.useRealTimers()
   log.transports.console.level = 'debug'
 })
 
@@ -169,7 +171,7 @@ it('handles a disconnected Ledger', (done) => {
       simulateLedgerDisconnection('nano-x-discon-path')
       adapter.handleDeviceChanges()
 
-      jest.advanceTimersByTime(5000)
+      timers.advanceTimersByTime(5000)
     }
   })
 

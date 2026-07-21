@@ -1,3 +1,5 @@
+import { afterEach, beforeEach, describe, expect, it, jest as timers } from 'bun:test'
+
 import { act, render, screen } from '../../../../../componentSetup'
 import { linkMock } from '../../../../../bun.mocks'
 import { AssetDetailsView } from '../../../../../../app/tray/Home/features/positions/AssetDetailsView'
@@ -7,6 +9,14 @@ import type { DisplayedBalance } from '../../../../../../resources/domain/balanc
 const address = '0xaf88d065e77c8cc2239327c5edb3a432268e5831'
 const networks = { 42161: { name: 'Arbitrum' } }
 const networksMeta = { 42161: {} }
+
+beforeEach(() => {
+  timers.useFakeTimers()
+})
+
+afterEach(() => {
+  timers.useRealTimers()
+})
 
 function assetWithAddress(assetAddress: string): DisplayedBalance {
   return {
@@ -37,7 +47,8 @@ function renderAsset(assetAddress = address) {
       onBack={() => {}}
       onSend={() => {}}
       onTrade={() => {}}
-    />
+    />,
+    { advanceTimersAfterInput: 0 }
   )
 }
 
@@ -53,7 +64,7 @@ describe('AssetDetailsView contract address', () => {
     })
     expect(screen.getByText('Address copied')).toBeTruthy()
 
-    act(() => jest.advanceTimersByTime(1000))
+    act(() => timers.advanceTimersByTime(1000))
 
     expect(screen.getByText(address)).toBeTruthy()
   })

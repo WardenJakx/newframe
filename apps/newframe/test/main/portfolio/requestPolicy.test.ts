@@ -1,3 +1,5 @@
+import { describe, expect, it, mock } from 'bun:test'
+
 import ProviderRequestPolicy from '../../../main/portfolio/requestPolicy'
 
 function createResponse(status = 200, headers: Record<string, string> = {}) {
@@ -17,7 +19,7 @@ describe('ProviderRequestPolicy', () => {
   it('spaces requests by the configured minimum interval', async () => {
     let now = 0
     const sleeps: number[] = []
-    const fetchMock = jest.fn(() => {
+    const fetchMock = mock(() => {
       now += 10
       return Promise.resolve(createResponse())
     })
@@ -41,8 +43,7 @@ describe('ProviderRequestPolicy', () => {
   it('retries throttled requests after Retry-After while preserving the global request interval', async () => {
     let now = 0
     const sleeps: number[] = []
-    const fetchMock = jest
-      .fn()
+    const fetchMock = mock()
       .mockImplementationOnce(() => {
         now += 10
         return Promise.resolve(createResponse(429, { 'retry-after': '2' }))

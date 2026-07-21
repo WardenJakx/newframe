@@ -1,15 +1,17 @@
+import { beforeEach, describe, expect, it, mock } from 'bun:test'
+
 import type { Mock } from 'bun:test'
 import { render, screen } from '../../../componentSetup'
 
 let KeyboardShortcutConfigurator: any
 let mockLayoutGetKey: Mock<any>
-const setShortcut = jest.fn()
+const setShortcut = mock()
 
 beforeEach(async () => {
   setShortcut.mockReset()
-  mockLayoutGetKey = jest.fn()
+  mockLayoutGetKey = mock()
   ;(global.navigator as any).keyboard = {}
-  global.navigator.keyboard.getLayoutMap = jest.fn().mockResolvedValue({
+  global.navigator.keyboard.getLayoutMap = mock().mockResolvedValue({
     get: mockLayoutGetKey
   })
   KeyboardShortcutConfigurator = (

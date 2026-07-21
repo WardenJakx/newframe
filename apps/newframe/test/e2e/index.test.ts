@@ -1,3 +1,5 @@
+import { afterAll, beforeAll, expect, test } from 'bun:test'
+
 import { BrowserProvider, hexlify, toUtf8Bytes } from 'ethers'
 import createFrameProvider from '../../main/provider/connection'
 
@@ -22,7 +24,6 @@ const waitForFrameConnect = () =>
   })
 
 beforeAll(async () => {
-  jest.useRealTimers()
   frame = createFrameProvider('frame', { origin: 'frame.test' })
   await waitForFrameConnect()
 
@@ -32,10 +33,6 @@ beforeAll(async () => {
 
   await provider.send('eth_accounts', [])
 }, 30_000)
-
-beforeEach(() => {
-  jest.useRealTimers()
-})
 
 const getFirstSigner = async () => {
   const [signer] = await provider.listAccounts()

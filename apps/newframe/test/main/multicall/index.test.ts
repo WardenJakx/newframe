@@ -1,3 +1,5 @@
+import { afterAll, beforeAll, beforeEach, expect, it, mock } from 'bun:test'
+
 import { toBeHex } from 'ethers'
 import log from 'electron-log'
 
@@ -14,7 +16,7 @@ afterAll(() => {
 })
 
 beforeEach(() => {
-  eth = { request: jest.fn() }
+  eth = { request: mock() }
 })
 
 it('encodes aggregated calls correctly', async () => {

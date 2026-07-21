@@ -1,3 +1,5 @@
+import { afterEach, beforeEach, describe, expect, it, jest as timers, mock } from 'bun:test'
+
 import { createObserver, loadAssets } from '../../../../main/provider/assets'
 import store from '../../../../main/store'
 
@@ -25,11 +27,17 @@ function setToken(state: any, balance: { address: string; chainId: number }, sym
 }
 
 beforeEach(() => {
+  timers.useFakeTimers()
+
   // ensure that the balances have been updated within the range to not be considered stale
   store.setState((state: any) => {
     state.main.accounts[account] = { balances: { lastUpdated: new Date() } }
     state.main.tokens.byId = {}
   })
+})
+
+afterEach(() => {
+  timers.useRealTimers()
 })
 
 describe('#loadAssets', () => {
@@ -39,7 +47,8 @@ describe('#loadAssets', () => {
       symbol: 'ETH',
       balance: '0xe7',
       address: '0x0000000000000000000000000000000000000000',
-      chainId: 1
+      chainId: 1,
+      displayBalance: '0'
     }
 
     store.setState((state: any) => {
@@ -66,7 +75,8 @@ describe('#loadAssets', () => {
       symbol: 'OHM',
       balance: '0x606401fc9',
       address: '0x383518188c0c6d7730d91b2c03a03c837814a899',
-      chainId: 1
+      chainId: 1,
+      displayBalance: '0'
     }
 
     store.setState((state: any) => {
@@ -93,7 +103,8 @@ describe('#loadAssets', () => {
       symbol: 'UNKNOWN',
       balance: '0x606401fc9',
       address: '0x1111111111111111111111111111111111111111',
-      chainId: 1
+      chainId: 1,
+      displayBalance: '0'
     }
 
     store.setState((state: any) => {
@@ -136,18 +147,18 @@ describe('#loadAssets', () => {
 })
 
 describe('#createObserver', () => {
-  const handler = { assetsChanged: jest.fn() }
+  const handler = { assetsChanged: mock() }
   const observer = createObserver(handler)
 
   const fireObserver = (waitTime = 800) => {
     observer()
 
     // event debounce time is 800 ms
-    jest.advanceTimersByTime(waitTime)
+    timers.advanceTimersByTime(waitTime)
   }
 
   beforeEach(() => {
-    handler.assetsChanged = jest.fn()
+    handler.assetsChanged = mock()
 
     store.setState((state: any) => {
       state.main.currentAccount = account

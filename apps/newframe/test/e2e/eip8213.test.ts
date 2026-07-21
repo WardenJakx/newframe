@@ -1,3 +1,5 @@
+import { afterAll, beforeAll, expect, test } from 'bun:test'
+
 import { BrowserProvider, TypedDataEncoder, verifyTypedData } from 'ethers'
 import createFrameProvider from '../../main/provider/connection'
 
@@ -67,7 +69,6 @@ const waitForFrameConnect = () =>
   })
 
 beforeAll(async () => {
-  jest.useRealTimers()
   frame = createFrameProvider('frame', { origin: 'eip8213.test', interval: 500 })
   await waitForFrameConnect()
 
@@ -75,10 +76,6 @@ beforeAll(async () => {
     request: ({ method, params }: { method: string; params?: any[] }) => frame.request({ method, params })
   })
 }, 30_000)
-
-beforeEach(() => {
-  jest.useRealTimers()
-})
 
 afterAll(() => {
   frame?.close()

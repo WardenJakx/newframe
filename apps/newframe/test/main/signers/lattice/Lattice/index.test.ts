@@ -1,8 +1,10 @@
+import { afterAll, beforeAll, beforeEach, describe, expect, it, jest as timers, mock } from 'bun:test'
+
 import log from 'electron-log'
 import { Derivation } from '../../../../../main/signers/Signer/derive'
 import { SignTypedDataVersion } from '@metamask/eth-sig-util'
 
-const ClientMock = jest.fn()
+const ClientMock = mock()
 const gridplusConstantsMock = {
   SIGNING: {
     CURVES: { SECP256K1: 'secp256k1' },
@@ -11,10 +13,10 @@ const gridplusConstantsMock = {
   }
 }
 const gridplusUtilsMock = {
-  fetchCalldataDecoder: jest.fn()
+  fetchCalldataDecoder: mock()
 }
 
-jest.mock('gridplus-sdk', () => ({
+mock.module('gridplus-sdk', () => ({
   Client: ClientMock,
   Constants: gridplusConstantsMock,
   Utils: gridplusUtilsMock
@@ -26,7 +28,7 @@ let Client: any
 
 beforeAll(async () => {
   log.transports.console.level = false
-  jest.useFakeTimers()
+  timers.useFakeTimers()
 
   Lattice = (await import('../../../../../main/signers/lattice/Lattice')).default
   Client = (await import('gridplus-sdk')).Client
@@ -34,13 +36,13 @@ beforeAll(async () => {
 
 afterAll(() => {
   log.transports.console.level = 'debug'
-  jest.useRealTimers()
+  timers.useRealTimers()
 })
 
 beforeEach(() => {
   lattice = new Lattice('L8geF2', 'Gridplus-test', 'ABCXYZ')
   lattice.derivation = Derivation.standard
-  lattice.on('error', jest.fn())
+  lattice.on('error', mock())
 })
 
 async function waitForNextPromise(fn: any, numPromisesInQueue = 1) {
@@ -51,7 +53,7 @@ async function waitForNextPromise(fn: any, numPromisesInQueue = 1) {
 
   fn()
 
-  jest.runAllTimers()
+  timers.runAllTimers()
 }
 
 describe('#connect', () => {
@@ -62,7 +64,7 @@ describe('#connect', () => {
 
   beforeEach(() => {
     pairingStatus = false
-    connectFn = jest.fn()
+    connectFn = mock()
     ;(Client as any).mockImplementation((opts: any) => {
       expect(opts.name).toBe('Newframe-ABCXYZ')
       expect(opts.baseUrl).toBe('https://gridplus.io')
@@ -209,7 +211,7 @@ describe('#pair', () => {
 
   beforeEach(() => {
     lattice.connection = {
-      pair: jest.fn(async (code) => {
+      pair: mock(async (code) => {
         if (code === pairingCode) return true
         throw new Error('Error from device: Pairing failed')
       })
@@ -282,7 +284,7 @@ describe('#deriveAddresses', () => {
 
     lattice.connection = {
       getAppName: () => 'frame-test',
-      getAddresses: jest.fn(async (opts) => {
+      getAddresses: mock(async (opts) => {
         return Array(opts.n)
           .fill(undefined)
           .map((_, i) => `addr${opts.startPath[4] + i}`)
@@ -415,7 +417,7 @@ describe('#deriveAddresses', () => {
 
     lattice.deriveAddresses()
 
-    waitForNextPromise(() => jest.advanceTimersByTime(3000), 3)
+    waitForNextPromise(() => timers.advanceTimersByTime(3000), 3)
   })
 
   it('emits an error event on failure', (done) => {
@@ -445,7 +447,7 @@ describe('#verifyAddress', () => {
   beforeEach(() => {
     lattice.addresses = ['addr1', 'addr2', 'addr3', 'addr4', 'addr5']
     lattice.accountLimit = 5
-    lattice.connection = { getAddresses: jest.fn(), getAppName: () => 'frame-test' }
+    lattice.connection = { getAddresses: mock(), getAppName: () => 'frame-test' }
   })
 
   it('verifies a matching address', (done) => {
@@ -493,7 +495,7 @@ describe('#verifyAddress', () => {
 describe('#signMessage', () => {
   beforeEach(() => {
     lattice.connection = {
-      sign: jest.fn(async (opts) => {
+      sign: mock(async (opts) => {
         if (
           opts.currency === 'ETH_MSG' &&
           opts.data.protocol === 'signPersonal' &&
@@ -543,7 +545,7 @@ describe('#signMessage', () => {
 describe('#signTypedData', () => {
   beforeEach(() => {
     lattice.connection = {
-      sign: jest.fn(async (opts) => {
+      sign: mock(async (opts) => {
         if (
           opts.currency === 'ETH_MSG' &&
           opts.data.protocol === 'eip712' &&
@@ -613,7 +615,7 @@ describe('#signTransaction', () => {
 
   beforeEach(() => {
     lattice.appVersion = { major: 1, minor: 1, patch: 0 }
-    lattice.connection = { sign: jest.fn(), getFwVersion: async () => ({ major: 1, minor: 3, fix: 5 }) }
+    lattice.connection = { sign: mock(), getFwVersion: async () => ({ major: 1, minor: 3, fix: 5 }) }
   })
 
   it('signs a legacy transaction', (done) => {
@@ -682,7 +684,7 @@ describe('#disconnect', () => {
   it('emits an update if Lattice was connected', () => {
     lattice.status = 'ok'
 
-    const updateHandler = jest.fn()
+    const updateHandler = mock()
     lattice.once('update', updateHandler)
 
     lattice.disconnect()
@@ -694,7 +696,7 @@ describe('#disconnect', () => {
   it('does not change an error status', () => {
     lattice.status = 'some error'
 
-    const updateHandler = jest.fn()
+    const updateHandler = mock()
     lattice.once('update', updateHandler)
 
     lattice.disconnect()
@@ -722,7 +724,7 @@ describe('#disconnect', () => {
 
 describe('#close', () => {
   it('emits a close event', () => {
-    const updateHandler = jest.fn()
+    const updateHandler = mock()
     lattice.once('close', updateHandler)
 
     lattice.close()
@@ -731,7 +733,7 @@ describe('#close', () => {
   })
 
   it('removes all listeners', () => {
-    lattice.on('close', jest.fn())
+    lattice.on('close', mock())
 
     lattice.close()
 

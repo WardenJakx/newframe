@@ -1,3 +1,5 @@
+import { afterEach, beforeEach, describe, expect, it, jest as timers, mock } from 'bun:test'
+
 import {
   createChainsObserver,
   createOriginChainObserver,
@@ -56,7 +58,12 @@ const chainMeta: any = {
 const selectedAddress = '0x2796317b0ff8538f253012862c06787adfb8ceb6'
 
 beforeEach(() => {
+  timers.useFakeTimers()
   setChains(chains, chainMeta)
+})
+
+afterEach(() => {
+  timers.useRealTimers()
 })
 
 describe('#getActiveChains', () => {
@@ -93,7 +100,7 @@ describe('#getActiveChains', () => {
 })
 
 describe('#createChainsObserver', () => {
-  const handler = { chainsChanged: jest.fn() }
+  const handler = { chainsChanged: mock() }
   let fireObserver: any
 
   beforeEach(() => {
@@ -101,10 +108,10 @@ describe('#createChainsObserver', () => {
 
     fireObserver = () => {
       observer()
-      jest.runAllTimers()
+      timers.runAllTimers()
     }
 
-    handler.chainsChanged = jest.fn()
+    handler.chainsChanged = mock()
   })
 
   it('invokes the handler with EVM chain objects', () => {
@@ -270,7 +277,7 @@ describe('#createChainsObserver', () => {
 })
 
 describe('#createOriginChainObserver', () => {
-  const handler = { chainChanged: jest.fn(), networkChanged: jest.fn() }
+  const handler = { chainChanged: mock(), networkChanged: mock() }
   let observer: any
 
   const originId = '8073729a-5e59-53b7-9e69-5d9bcff94087'
@@ -284,8 +291,8 @@ describe('#createOriginChainObserver', () => {
 
     observer = createOriginChainObserver(handler)
 
-    handler.chainChanged = jest.fn()
-    handler.networkChanged = jest.fn()
+    handler.chainChanged = mock()
+    handler.networkChanged = mock()
 
     // invoke the observer once in order to set the known origins
     observer()

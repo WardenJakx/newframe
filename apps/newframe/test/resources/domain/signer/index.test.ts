@@ -1,3 +1,5 @@
+import { describe, expect, it } from 'bun:test'
+
 import { isHardwareSigner } from '../../../../resources/domain/signer'
 
 describe('#isHardwareSigner', () => {

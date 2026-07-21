@@ -1,4 +1,4 @@
-import { describe, expect, it, jest } from 'bun:test'
+import { describe, expect, it, mock } from 'bun:test'
 
 import {
   constrainTraySize,
@@ -12,10 +12,10 @@ import {
 describe('tray geometry', () => {
   it('locks both trays to the shared dimensions', () => {
     const window = {
-      setMaximumSize: jest.fn(),
-      setMinimumSize: jest.fn(),
-      setResizable: jest.fn(),
-      setSize: jest.fn()
+      setMaximumSize: mock(),
+      setMinimumSize: mock(),
+      setResizable: mock(),
+      setSize: mock()
     }
 
     const height = trayHeight(900)

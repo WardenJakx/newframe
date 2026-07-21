@@ -1,3 +1,4 @@
+import { afterEach, beforeEach, describe, expect, it, jest as timers } from 'bun:test'
 import { addHexPrefix, intToHex } from '@ethereumjs/util'
 
 import link from '../../../../../../../resources/link'
@@ -17,6 +18,7 @@ const expectFeeUpdate = (field: 'baseFee' | 'priorityFee' | 'gasPrice' | 'gasLim
 }
 
 beforeEach(() => {
+  timers.useFakeTimers()
   req = {
     data: {
       type: '0x2',
@@ -26,6 +28,10 @@ beforeEach(() => {
     },
     handlerId: '1'
   }
+})
+
+afterEach(() => {
+  timers.useRealTimers()
 })
 
 it('renders the base fee input', () => {
@@ -701,7 +707,7 @@ describe('legacy transactions', () => {
 })
 
 function setupComponent(req: any) {
-  const { user } = render(<AdjustFee req={req} />)
+  const { user } = render(<AdjustFee req={req} />, { advanceTimersAfterInput: 0 })
 
   const getBaseFeeInput = () => screen.getByLabelText<HTMLInputElement>('Base Fee (GWEI)')
   const getPriorityFeeInput = () => screen.getByLabelText<HTMLInputElement>('Max Priority Fee (GWEI)')

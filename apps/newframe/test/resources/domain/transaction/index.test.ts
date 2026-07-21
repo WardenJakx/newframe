@@ -1,3 +1,5 @@
+import { describe, expect, it } from 'bun:test'
+
 import {
   getPaidTransactionFee,
   getTransactionEffects,
@@ -52,7 +54,7 @@ describe('#normalizeChainId', () => {
   it('does not modify a transaction with no chain id', () => {
     const tx = { to: '0xframe' }
 
-    expect(normalizeChainId(tx as any)).toStrictEqual(tx)
+    expect(normalizeChainId(tx as any) as unknown).toStrictEqual(tx)
   })
 
   it('normalizes a hex-prefixed chain id', () => {

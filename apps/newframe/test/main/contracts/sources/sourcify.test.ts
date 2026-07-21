@@ -1,5 +1,5 @@
 import log from 'electron-log'
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, jest, spyOn } from 'bun:test'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, mock, spyOn } from 'bun:test'
 
 import { fetchSourcifyContract } from '../../../../main/contracts/sources/sourcify'
 
@@ -77,13 +77,12 @@ afterAll(() => {
 })
 
 beforeEach(() => {
-  jest.useRealTimers()
   spyOn(globalThis, 'fetch').mockImplementation((() =>
     Promise.reject(new Error('Unexpected fetch'))) as unknown as typeof fetch)
 })
 
 afterEach(() => {
-  jest.restoreAllMocks()
+  mock.restore()
 })
 
 describe('#fetchSourcifyContract', () => {

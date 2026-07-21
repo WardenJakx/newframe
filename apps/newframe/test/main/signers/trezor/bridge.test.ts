@@ -1,3 +1,5 @@
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, mock } from 'bun:test'
+
 import { EventEmitter } from 'events'
 import log from 'electron-log'
 
@@ -17,23 +19,23 @@ const UI = {
   REQUEST_PIN: 'ui-request_pin'
 }
 const TrezorConnectMock = {
-  dispose: jest.fn(),
+  dispose: mock(),
   emit: trezorEvents.emit.bind(trezorEvents),
-  ethereumGetAddress: jest.fn(),
-  ethereumSignMessage: jest.fn(),
-  ethereumSignTransaction: jest.fn(),
-  ethereumSignTypedData: jest.fn(),
-  getAccountInfo: jest.fn(),
-  getFeatures: jest.fn(),
-  getPublicKey: jest.fn(),
-  init: jest.fn(async () => undefined),
+  ethereumGetAddress: mock(),
+  ethereumSignMessage: mock(),
+  ethereumSignTransaction: mock(),
+  ethereumSignTypedData: mock(),
+  getAccountInfo: mock(),
+  getFeatures: mock(),
+  getPublicKey: mock(),
+  init: mock(async () => undefined),
   on: trezorEvents.on.bind(trezorEvents),
   once: trezorEvents.once.bind(trezorEvents),
   removeAllListeners: trezorEvents.removeAllListeners.bind(trezorEvents),
-  uiResponse: jest.fn()
+  uiResponse: mock()
 }
 
-jest.mock('@trezor/connect', () => ({
+mock.module('@trezor/connect', () => ({
   default: TrezorConnectMock,
   DEVICE,
   DEVICE_EVENT,

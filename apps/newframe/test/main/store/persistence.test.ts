@@ -1,4 +1,4 @@
-import { describe, expect, it, jest } from 'bun:test'
+import { describe, expect, it, mock } from 'bun:test'
 
 import type { StorageValue } from 'zustand/middleware'
 import type { CanonicalStore } from '../../../main/store'
@@ -40,10 +40,10 @@ describe('canonical state persistence', () => {
   it('starts with fresh canonical state when persisted state does not exist', async () => {
     const values = new Map<string, unknown>()
     const conf = {
-      clear: jest.fn(() => values.clear()),
-      delete: jest.fn((key: string) => values.delete(key)),
-      get: jest.fn((key: string) => values.get(key)),
-      set: jest.fn((key: string, value: unknown) => values.set(key, value))
+      clear: mock(() => values.clear()),
+      delete: mock((key: string) => values.delete(key)),
+      get: mock((key: string) => values.get(key)),
+      set: mock((key: string, value: unknown) => values.set(key, value))
     }
     const storage = new ValidatedConfStorage(conf as any)
     const { hydration, store } = createCanonicalStore(storage)
@@ -74,10 +74,10 @@ describe('canonical state persistence', () => {
     }
     const values = new Map<string, unknown>([[storageKey, { state: v2, version: 2 }]])
     const conf = {
-      clear: jest.fn(() => values.clear()),
-      delete: jest.fn((key: string) => values.delete(key)),
-      get: jest.fn((key: string) => values.get(key)),
-      set: jest.fn((key: string, value: unknown) => values.set(key, value))
+      clear: mock(() => values.clear()),
+      delete: mock((key: string) => values.delete(key)),
+      get: mock((key: string) => values.get(key)),
+      set: mock((key: string, value: unknown) => values.set(key, value))
     }
     const storage = new ValidatedConfStorage(conf as any)
     const { hydration, store } = createCanonicalStore(storage)
@@ -175,10 +175,10 @@ describe('canonical state persistence', () => {
   it('coalesces writes and flushes only the latest validated snapshot', () => {
     const values = new Map<string, unknown>()
     const conf = {
-      clear: jest.fn(() => values.clear()),
-      delete: jest.fn((key: string) => values.delete(key)),
-      get: jest.fn((key: string) => values.get(key)),
-      set: jest.fn((key: string, value: unknown) => values.set(key, value))
+      clear: mock(() => values.clear()),
+      delete: mock((key: string) => values.delete(key)),
+      get: mock((key: string) => values.get(key)),
+      set: mock((key: string, value: unknown) => values.set(key, value))
     }
     const storage = new ValidatedConfStorage(conf as any)
     const first: StorageValue<PersistedCanonicalState> = {
@@ -264,10 +264,10 @@ describe('canonical state persistence', () => {
       ['zustand.state', { state: { main: { lattice: 'not-an-object' } }, version: PERSISTENCE_VERSION }]
     ])
     const conf = {
-      clear: jest.fn(() => values.clear()),
-      delete: jest.fn((key: string) => values.delete(key)),
-      get: jest.fn((key: string) => values.get(key)),
-      set: jest.fn((key: string, value: unknown) => values.set(key, value))
+      clear: mock(() => values.clear()),
+      delete: mock((key: string) => values.delete(key)),
+      get: mock((key: string) => values.get(key)),
+      set: mock((key: string, value: unknown) => values.set(key, value))
     }
 
     expect(() => new ValidatedConfStorage(conf as any).getItem('state')).toThrow(
@@ -282,10 +282,10 @@ describe('canonical state persistence', () => {
       [storageKey, { state: { main: { lattice: 'not-an-object' } }, version: PERSISTENCE_VERSION }]
     ])
     const conf = {
-      clear: jest.fn(() => values.clear()),
-      delete: jest.fn((key: string) => values.delete(key)),
-      get: jest.fn((key: string) => values.get(key)),
-      set: jest.fn((key: string, value: unknown) => values.set(key, value))
+      clear: mock(() => values.clear()),
+      delete: mock((key: string) => values.delete(key)),
+      get: mock((key: string) => values.get(key)),
+      set: mock((key: string, value: unknown) => values.set(key, value))
     }
 
     const storage = new ValidatedConfStorage(conf as any)
@@ -302,10 +302,10 @@ describe('canonical state persistence', () => {
     const future = { state: { main: {} }, version: PERSISTENCE_VERSION + 1 }
     const values = new Map<string, unknown>([['zustand.state', future]])
     const conf = {
-      clear: jest.fn(() => values.clear()),
-      delete: jest.fn((key: string) => values.delete(key)),
-      get: jest.fn((key: string) => values.get(key)),
-      set: jest.fn((key: string, value: unknown) => values.set(key, value))
+      clear: mock(() => values.clear()),
+      delete: mock((key: string) => values.delete(key)),
+      get: mock((key: string) => values.get(key)),
+      set: mock((key: string, value: unknown) => values.set(key, value))
     }
     const storage = new ValidatedConfStorage(conf as any, PERSISTENCE_VERSION)
 

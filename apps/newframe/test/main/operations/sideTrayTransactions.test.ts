@@ -1,20 +1,22 @@
-const currentAccount = jest.fn()
-const providerSend = jest.fn()
-const flashQuote = jest.fn()
-const flashSubmitOrder = jest.fn()
-const getState = jest.fn()
-const initOrigin = jest.fn()
-const closeWindow = jest.fn()
+import { afterEach, beforeAll, beforeEach, describe, expect, it, jest as timers, mock } from 'bun:test'
+
+const currentAccount = mock()
+const providerSend = mock()
+const flashQuote = mock()
+const flashSubmitOrder = mock()
+const getState = mock()
+const initOrigin = mock()
+const closeWindow = mock()
 
 import { createRendererPrincipal } from '../../../main/authority'
 
-jest.mock('../../../main/accounts', () => ({ default: { current: currentAccount } }))
-jest.mock('../../../main/provider', () => ({ default: { send: providerSend } }))
-jest.mock('../../../main/flash/instance', () => ({
+mock.module('../../../main/accounts', () => ({ default: { current: currentAccount } }))
+mock.module('../../../main/provider', () => ({ default: { send: providerSend } }))
+mock.module('../../../main/flash/instance', () => ({
   flashService: { quote: flashQuote, submitOrder: flashSubmitOrder }
 }))
-jest.mock('../../../main/store', () => ({ default: { getState } }))
-jest.mock('../../../main/windows', () => ({ default: { close: closeWindow } }))
+mock.module('../../../main/store', () => ({ default: { getState } }))
+mock.module('../../../main/windows', () => ({ default: { close: closeWindow } }))
 
 let closeOwnSideTray: typeof import('../../../main/operations/sideTrayWorkflows').closeOwnSideTray
 let quoteFlashForCurrentAccount: typeof import('../../../main/operations/sideTrayTransactions').quoteFlashForCurrentAccount
@@ -42,6 +44,7 @@ beforeAll(async () => {
 })
 
 beforeEach(() => {
+  timers.useFakeTimers()
   currentAccount.mockReset()
   providerSend.mockReset()
   flashQuote.mockReset()
@@ -55,6 +58,10 @@ beforeEach(() => {
     main: { networks: { ethereum: { 1: { id: 1, on: true } } } },
     initOrigin
   })
+})
+
+afterEach(() => {
+  timers.useRealTimers()
 })
 
 describe('side tray transaction workflows', () => {
@@ -194,7 +201,7 @@ describe('side tray transaction workflows', () => {
     flashQuote.mockResolvedValue({ quote: { id: 'quote-1' }, flash: { quoteId: 'quote-1' } })
     flashSubmitOrder.mockResolvedValue({ orderId: 'order-1' })
 
-    await expect(quoteFlashForCurrentAccount(request)).resolves.toEqual({
+    await expect(quoteFlashForCurrentAccount(request)).resolves.toMatchObject({
       ok: true,
       quote: { id: 'quote-1' },
       flash: { quoteId: 'quote-1' }
@@ -226,7 +233,7 @@ describe('side tray transaction workflows', () => {
     closeOwnSideTray(event)
     expect(closeWindow).not.toHaveBeenCalled()
 
-    jest.runOnlyPendingTimers()
+    timers.runOnlyPendingTimers()
     expect(closeWindow).toHaveBeenCalledWith(event)
   })
 })

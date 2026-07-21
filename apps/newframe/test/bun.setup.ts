@@ -1,4 +1,4 @@
-import { beforeEach, jest, mock } from 'bun:test'
+import { beforeEach, mock } from 'bun:test'
 import log from 'electron-log'
 
 import {
@@ -21,7 +21,6 @@ mock.module('../main/windows', () => ({ default: windowsMock, ...windowsMock }))
 mock.module('../main/windows/nav', () => ({ default: navMock, ...navMock }))
 
 beforeEach(() => {
-  jest.clearAllMocks()
+  mock.clearAllMocks()
   resetStoreMockImplementation()
-  jest.useFakeTimers()
 })

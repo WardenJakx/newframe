@@ -1,4 +1,4 @@
-import { expect, it, jest } from 'bun:test'
+import { expect, it, mock } from 'bun:test'
 
 import { fireEvent, render, screen } from '../../../../componentSetup'
 import { linkMock as link } from '../../../../bun.mocks'
@@ -13,7 +13,7 @@ import TxApproval from '../../../../../app/tray/Footer/RequestCommand/TxApproval
 
 const createProps = <const Request extends object>(appLocked: boolean, req: Request) => {
   return {
-    notify: jest.fn(),
+    notify: mock(),
     req,
     shared: {
       appLocked,
@@ -28,7 +28,7 @@ const createProps = <const Request extends object>(appLocked: boolean, req: Requ
 }
 
 it('uses synchronized lock state instead of querying Electron before signing', () => {
-  const next = jest.fn()
+  const next = mock()
 
   runWhenAppUnlocked(true, next)
   expect(next).not.toHaveBeenCalled()
@@ -54,10 +54,10 @@ it('approves and rejects requests using canonical IDs', () => {
 it('preserves signer warnings around the typed compatibility query', async () => {
   const req = { handlerId: 'request-1' }
   const props = createProps(false, req)
-  const next = jest.fn()
+  const next = mock()
 
   link.executeQuery.mockResolvedValueOnce({ ok: false, error: 'no_signer', message: 'No signer' })
-  await checkSignerCompatibility(req, props.notify, jest.fn(), next)
+  await checkSignerCompatibility(req, props.notify, mock(), next)
   expect(props.notify).toHaveBeenCalledWith('noSignerWarning', { req })
   expect(next).not.toHaveBeenCalled()
 
@@ -67,7 +67,7 @@ it('preserves signer warnings around the typed compatibility query', async () =>
     message: 'Reconnect signer',
     signerIds: ['ledger-1']
   })
-  await checkSignerCompatibility(req, props.notify, jest.fn(), next)
+  await checkSignerCompatibility(req, props.notify, mock(), next)
   expect(props.notify).toHaveBeenCalledWith('signerRecovery', {
     req,
     signerIds: ['ledger-1']
@@ -75,7 +75,7 @@ it('preserves signer warnings around the typed compatibility query', async () =>
 
   const compatibility = { signer: 'ledger', tx: 'london', compatible: false }
   link.executeQuery.mockResolvedValueOnce({ ok: true, compatibility })
-  await checkSignerCompatibility(req, props.notify, jest.fn(), next)
+  await checkSignerCompatibility(req, props.notify, mock(), next)
   expect(next).toHaveBeenCalledWith(compatibility)
   expect(link.executeQuery).toHaveBeenLastCalledWith({
     type: 'request.signer-compatibility',

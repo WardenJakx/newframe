@@ -1,4 +1,4 @@
-import { expect, it, jest } from 'bun:test'
+import { expect, it, mock } from 'bun:test'
 
 import { render, screen } from '../../../../componentSetup'
 import { resetStateMirrorForTests } from '../../../../../app/state/rendererStore'
@@ -18,7 +18,7 @@ const signer = (update: Record<string, unknown> = {}) => ({
 
 it('retries a disconnected hardware wallet from the tray notification', async () => {
   resetStateMirrorForTests({ signers: { 'ledger-1': signer() } })
-  const { user } = render(<SignerRecovery dismiss={jest.fn()} signerIds={['ledger-1']} />)
+  const { user } = render(<SignerRecovery dismiss={mock()} signerIds={['ledger-1']} />)
 
   await user.click(screen.getByRole('button', { name: 'Retry Connection' }))
 
@@ -31,7 +31,7 @@ it('submits Trezor PIN positions without exposing the PIN digits', async () => {
       'trezor-1': signer({ id: 'trezor-1', name: 'Trezor', status: 'need pin', type: 'trezor' })
     }
   })
-  const { user } = render(<SignerRecovery dismiss={jest.fn()} signerIds={['trezor-1']} />)
+  const { user } = render(<SignerRecovery dismiss={mock()} signerIds={['trezor-1']} />)
 
   await user.click(screen.getByRole('button', { name: 'PIN position 1' }))
   await user.click(screen.getByRole('button', { name: 'PIN position 2' }))
@@ -47,7 +47,7 @@ it('submits Trezor PIN positions without exposing the PIN digits', async () => {
 
 it('returns to the pending request after the hardware wallet is ready', async () => {
   resetStateMirrorForTests({ signers: { 'ledger-1': signer({ status: 'ok' }) } })
-  const dismiss = jest.fn()
+  const dismiss = mock()
   const { user } = render(<SignerRecovery dismiss={dismiss} signerIds={['ledger-1']} />)
 
   expect(screen.getByText('Connected and ready to sign')).toBeTruthy()
