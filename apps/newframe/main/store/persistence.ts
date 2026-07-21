@@ -143,51 +143,28 @@ export function selectPersistedState(state: CanonicalStore): PersistedCanonicalS
   } as unknown as PersistedCanonicalState
 }
 
-function migrateLegacyDurableState(value: unknown) {
-  if (!value || typeof value !== 'object' || !('main' in value)) return value
-  const main = (value as UnknownRecord).main
-  if (!main || typeof main !== 'object') return value
-
-  const {
-    _version: _restoreVersion,
-    addresses: _addresses,
-    appLock: _appLock,
-    balances: _balances,
-    colorway: _colorway,
-    colorwayPrimary: _colorwayPrimary,
-    dapp: _dapp,
-    focusedFrame: _focusedFrame,
-    frames: _frames,
-    hardwareDerivation: _hardwareDerivation,
-    mute,
-    rates: _rates,
-    runtime: _runtime,
-    savedSigners: _savedSigners,
-    scanning: _scanning,
-    signers: _signers,
-    ...durableMain
-  } = main as UnknownRecord
-
-  const migratedMain: UnknownRecord = {
-    ...durableMain,
-    ...(mute ? { mute: persistedMute(mute) } : {})
-  }
-  if (durableMain.networksMeta) {
-    migratedMain.networksMeta = persistedNetworkMetadata(durableMain.networksMeta)
-  }
-
-  return { main: migratedMain }
-}
-
-export function migratePersistedState(value: unknown, fromVersion = 0): PersistedCanonicalState {
-  if (fromVersion !== 0 && fromVersion !== 1 && fromVersion !== PERSISTENCE_VERSION) {
+export function migratePersistedState(
+  value: unknown,
+  fromVersion = PERSISTENCE_VERSION
+): PersistedCanonicalState {
+  if (fromVersion !== 2 && fromVersion !== PERSISTENCE_VERSION) {
     log.error('Cannot migrate unsupported canonical state version', fromVersion)
     throw new CanonicalStatePersistenceError(
       'unsupported_version',
       'Canonical wallet state uses an unsupported persistence version.'
     )
   }
-  const candidate = fromVersion < PERSISTENCE_VERSION ? migrateLegacyDurableState(value) : value
+
+  const candidate =
+    fromVersion === 2
+      ? {
+          ...((value || {}) as UnknownRecord),
+          main: {
+            ...(((value as UnknownRecord | undefined)?.main || {}) as UnknownRecord),
+            tokens: { byId: {}, accountTokenIds: {} }
+          }
+        }
+      : value
   const parsed = PersistedCanonicalStateSchema.safeParse(candidate)
   if (parsed.success) return parsed.data
 
@@ -197,6 +174,20 @@ export function migratePersistedState(value: unknown, fromVersion = 0): Persiste
 
 function mergeRecord(current: unknown, persisted: unknown) {
   return { ...(current as UnknownRecord), ...(persisted as UnknownRecord) }
+}
+
+function httpsImageSource(value: unknown) {
+  try {
+    const url = new URL(String(value || '').trim())
+    return url.protocol === 'https:' ? url.toString() : ''
+  } catch {
+    return ''
+  }
+}
+
+function matchingPersistedImage(value: unknown, sourceUrl: string) {
+  const image = (value || {}) as UnknownRecord
+  return sourceUrl && image.sourceUrl === sourceUrl ? value : undefined
 }
 
 function mergeNetworkMetadata(current: unknown, persisted: unknown) {
@@ -211,10 +202,23 @@ function mergeNetworkMetadata(current: unknown, persisted: unknown) {
     const persistedGas = persistedMetadata.gas || {}
     const currentPrice = currentGas.price || {}
     const persistedPrice = persistedGas.price || {}
+    const icon = httpsImageSource(currentMetadata.icon) || httpsImageSource(persistedMetadata.icon)
+    const currentNativeCurrency = currentMetadata.nativeCurrency || {}
+    const persistedNativeCurrency = persistedMetadata.nativeCurrency || {}
+    const nativeCurrencyIcon =
+      httpsImageSource(currentNativeCurrency.icon) || httpsImageSource(persistedNativeCurrency.icon)
 
     ethereum[id] = {
       ...currentMetadata,
       ...persistedMetadata,
+      icon,
+      image: matchingPersistedImage(persistedMetadata.image, icon),
+      nativeCurrency: {
+        ...currentNativeCurrency,
+        ...persistedNativeCurrency,
+        icon: nativeCurrencyIcon,
+        image: matchingPersistedImage(persistedNativeCurrency.image, nativeCurrencyIcon)
+      },
       gas: {
         ...currentGas,
         ...persistedGas,
@@ -241,6 +245,8 @@ function selectedAccount(main: UnknownRecord) {
 }
 
 export function mergePersistedState(persistedValue: unknown, current: CanonicalStore): CanonicalStore {
+  if (persistedValue === undefined || persistedValue === null) return current
+
   const persisted = migratePersistedState(persistedValue)
   const saved = persisted.main as UnknownRecord
   const currentMain = current.main as UnknownRecord
@@ -265,8 +271,8 @@ export function mergePersistedState(persistedValue: unknown, current: CanonicalS
     signers: currentMain.signers,
     shortcuts: mergeRecord(currentMain.shortcuts, saved.shortcuts),
     tokens: {
-      ...mergeRecord(currentMain.tokens, saved.tokens),
-      known: mergeRecord(currentMain.tokens?.known, saved.tokens?.known)
+      byId: mergeRecord(currentMain.tokens?.byId, saved.tokens?.byId),
+      accountTokenIds: mergeRecord(currentMain.tokens?.accountTokenIds, saved.tokens?.accountTokenIds)
     },
     trezor: mergeRecord(currentMain.trezor, saved.trezor),
     updater: mergeRecord(currentMain.updater, saved.updater)

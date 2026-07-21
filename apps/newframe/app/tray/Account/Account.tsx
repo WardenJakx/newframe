@@ -16,6 +16,7 @@ import AddTokenRequest from './Requests/AddTokenRequest'
 import SignTypedDataRequest from './Requests/SignTypedDataRequest'
 import SignPermitRequest from './Requests/SignPermitRequest'
 import { isHardwareSigner } from '../../../resources/domain/signer'
+import { persistedImageSource } from '../../../resources/domain/image'
 import { accountViewTitles } from '../../../resources/domain/request'
 import { useWalletSelector } from '../../state/useAppSelector'
 import type { TrayRendererState } from '../state'
@@ -108,7 +109,7 @@ function AccountBody(props: AccountBodyProps) {
             chainId,
             chainName: networks[chainId]?.name,
             chainColor: metadata?.primaryColor,
-            icon: metadata?.icon
+            icon: persistedImageSource(metadata?.image)
           }
     const signingDelay = isHardwareSigner(account?.lastSignerType) ? 200 : 1500
 

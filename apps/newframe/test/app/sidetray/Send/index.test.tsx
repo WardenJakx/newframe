@@ -9,7 +9,6 @@ import {
 } from '../../../../app/state/rendererStore'
 import { NATIVE_CURRENCY } from '../../../../resources/constants'
 import link from '../../../../resources/link'
-import type { SideTrayRendererState } from '../../../../resources/state/projections'
 import { STATE_STREAM_SCHEMA_VERSION } from '../../../../resources/state/protocol'
 
 const sender = {
@@ -28,10 +27,16 @@ const chainId = 31337
 const tokenAddress = '0x00000000000000000000000000000000000000bb'
 const nativeAssetId = `${chainId}:${NATIVE_CURRENCY}`
 
-function initializeSendState(
-  balances: any[] = [nativeBalance()],
-  customTokens: SideTrayRendererState['tokens']['custom'] = []
-) {
+function initializeSendState(balances: any[] = [nativeBalance()], customTokens: any[] = []) {
+  const tokenRecords = [...balances, ...customTokens]
+    .filter((token) => token.address !== NATIVE_CURRENCY && token.name && token.symbol)
+    .map((token) => ({
+      ...token,
+      custom: customTokens.includes(token),
+      curated: false,
+      sources: customTokens.includes(token) ? ['custom'] : ['onchain'],
+      updatedAt: 0
+    }))
   resetStateMirrorForTests()
   beginStateConnection('sidetray')
   applyStateMessage({
@@ -82,7 +87,17 @@ function initializeSendState(
         isDev: true,
         environment: 'test'
       },
-      tokens: { custom: customTokens }
+      tokens: {
+        byId: Object.fromEntries(
+          tokenRecords.map((token) => [
+            `${token.chainId}:${token.address.toLowerCase()}`,
+            { ...token, address: token.address.toLowerCase() }
+          ])
+        ),
+        accountTokenIds: {
+          [sender.address]: tokenRecords.map((token) => `${token.chainId}:${token.address.toLowerCase()}`)
+        }
+      }
     }
   })
 }
@@ -127,7 +142,7 @@ describe('Send', () => {
   it('falls back when the route asset is not sendable', () => {
     render(<Send assetId={`${chainId}:${tokenAddress}`} />)
 
-    expect(screen.getByText('ETH')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Select send token' }).textContent).toContain('ETH')
   })
 
   it('prefers the route asset when it is sendable', () => {

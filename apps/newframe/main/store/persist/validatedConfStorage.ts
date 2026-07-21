@@ -44,19 +44,6 @@ export class ValidatedConfStorage implements PersistStorage<PersistedCanonicalSt
     return `zustand.${name}`
   }
 
-  private readLegacyState(): StorageValue<PersistedCanonicalState> | null {
-    const legacyRoot = this.conf.get('main') as { __?: Record<string, { main?: unknown }> } | undefined
-    const versions = Object.keys(legacyRoot?.__ || {})
-      .map(Number)
-      .filter(Number.isInteger)
-      .sort((left, right) => right - left)
-    const legacyVersions = legacyRoot?.__
-    const legacyMain = versions.length ? legacyVersions?.[String(versions[0])]?.main : undefined
-    if (!legacyMain) return null
-
-    return { state: { main: legacyMain } as PersistedCanonicalState, version: 0 }
-  }
-
   private quarantine(key: string, value: unknown, reason: unknown) {
     const quarantineKey = `${key}.invalid.${Date.now()}`
     log.error('Quarantined invalid canonical state persistence', { key, quarantineKey, reason })
@@ -66,7 +53,7 @@ export class ValidatedConfStorage implements PersistStorage<PersistedCanonicalSt
 
   getItem(name: string): StorageValue<PersistedCanonicalState> | null {
     const stored = this.conf.get(this.storageKey(name))
-    if (stored === undefined) return this.readLegacyState()
+    if (stored === undefined) return null
 
     const parsed = StoredEnvelopeSchema.safeParse(stored)
     if (!parsed.success) {

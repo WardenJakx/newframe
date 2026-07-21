@@ -5,8 +5,16 @@ export interface NetworkLike {
 
 export interface NetworkMetaLike {
   icon?: string
+  image?: {
+    base64?: string
+    mimeType?: string
+  }
   nativeCurrency?: {
     icon?: string
+    image?: {
+      base64?: string
+      mimeType?: string
+    }
     name?: string
     symbol?: string
   }

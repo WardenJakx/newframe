@@ -8,12 +8,17 @@ import {
   migratePersistedState,
   selectPersistedState
 } from '../../../main/store/persistence'
-import type { PersistedCanonicalState } from '../../../main/store/persist/schema'
+import {
+  CANONICAL_STATE_STORAGE_NAME,
+  PERSISTENCE_VERSION,
+  type PersistedCanonicalState
+} from '../../../main/store/persist/schema'
 import {
   CanonicalStatePersistenceError,
   ValidatedConfStorage
 } from '../../../main/store/persist/validatedConfStorage'
 import createInitialState from '../../../main/store/state'
+import { builtInChainIconUrl } from '../../../resources/domain/chain'
 
 const account = (id: string, active?: boolean) => ({
   id,
@@ -29,8 +34,72 @@ const account = (id: string, active?: boolean) => ({
 })
 
 const canonicalState = () => createInitialState() as unknown as CanonicalStore
+const storageKey = `zustand.${CANONICAL_STATE_STORAGE_NAME}`
 
 describe('canonical state persistence', () => {
+  it('starts with fresh canonical state when persisted state does not exist', async () => {
+    const values = new Map<string, unknown>()
+    const conf = {
+      clear: jest.fn(() => values.clear()),
+      delete: jest.fn((key: string) => values.delete(key)),
+      get: jest.fn((key: string) => values.get(key)),
+      set: jest.fn((key: string, value: unknown) => values.set(key, value))
+    }
+    const storage = new ValidatedConfStorage(conf as any)
+    const { hydration, store } = createCanonicalStore(storage)
+
+    await expect(hydration).resolves.toBeUndefined()
+    expect(store.getState().main.tokens).toEqual({ accountTokenIds: {}, byId: {} })
+  })
+
+  it('migrates v2 by resetting only tokens and writes the preserved state as v3', async () => {
+    const id = '0x2222222222222222222222222222222222222222'
+    const durable = canonicalState()
+    durable.main.accounts[id] = account(id)
+    durable.main.accountOrder = [id]
+    durable.main.currentAccount = id
+    durable.main.autohide = false
+    const v2 = selectPersistedState(durable) as any
+    v2.main.tokens = {
+      custom: [
+        {
+          address: '0x1111111111111111111111111111111111111111',
+          chainId: 1,
+          decimals: 6,
+          name: 'Legacy Token',
+          symbol: 'OLD'
+        }
+      ],
+      known: { [id]: [] }
+    }
+    const values = new Map<string, unknown>([[storageKey, { state: v2, version: 2 }]])
+    const conf = {
+      clear: jest.fn(() => values.clear()),
+      delete: jest.fn((key: string) => values.delete(key)),
+      get: jest.fn((key: string) => values.get(key)),
+      set: jest.fn((key: string, value: unknown) => values.set(key, value))
+    }
+    const storage = new ValidatedConfStorage(conf as any)
+    const { hydration, store } = createCanonicalStore(storage)
+
+    await expect(hydration).resolves.toBeUndefined()
+    expect(store.getState().main.currentAccount).toBe(id)
+    expect(store.getState().main.accounts[id]).toBeDefined()
+    expect(store.getState().main.autohide).toBe(false)
+    expect(store.getState().main.tokens).toEqual({ accountTokenIds: {}, byId: {} })
+    expect(values.get(storageKey)).toEqual(
+      expect.objectContaining({
+        version: PERSISTENCE_VERSION,
+        state: expect.objectContaining({
+          main: expect.objectContaining({
+            currentAccount: id,
+            tokens: { accountTokenIds: {}, byId: {} }
+          })
+        })
+      })
+    )
+  })
+
   it('retains durable state while removing runtime and externally derived data', () => {
     const state = canonicalState()
     const id = '0x1111111111111111111111111111111111111111'
@@ -40,6 +109,22 @@ describe('canonical state persistence', () => {
     state.main.balances[id] = [{ balance: '1' } as any]
     state.main.rates[id] = { usd: { price: 123, change24hr: 4 } }
     state.main.signers.runtime = { id: 'runtime' }
+    state.main.tokens.byId['1:0x1111111111111111111111111111111111111111'] = {
+      address: '0x1111111111111111111111111111111111111111',
+      chainId: 1,
+      custom: true,
+      curated: false,
+      decimals: 6,
+      image: {
+        base64: 'aWNvbg==',
+        contentHash: 'token-image',
+        mimeType: 'image/png'
+      },
+      name: 'Persisted Token',
+      sources: ['custom'],
+      symbol: 'PTKN',
+      updatedAt: 1
+    }
     state.main.networks.ethereum[1].connection.primary.connected = true
     ;(state.main.networksMeta.ethereum[1] as any).blockHeight = 123
     state.main.networksMeta.ethereum[1].nativeCurrency.usd = { price: 3_000, change24hr: 2 }
@@ -59,29 +144,27 @@ describe('canonical state persistence', () => {
     expect(main.networks.ethereum[1].connection.primary.connected).toBe(false)
     expect(main.networksMeta.ethereum[1].blockHeight).toBeUndefined()
     expect(main.networksMeta.ethereum[1].nativeCurrency.usd).toEqual({ price: 0, change24hr: 0 })
+    expect(main.tokens.byId['1:0x1111111111111111111111111111111111111111'].image).toEqual({
+      base64: 'aWNvbg==',
+      contentHash: 'token-image',
+      mimeType: 'image/png'
+    })
   })
 
-  it('migrates legacy active selection once and keeps runtime slices fresh', () => {
+  it('merges durable v3 state while keeping runtime slices fresh', () => {
     const current = canonicalState()
     current.main.appLock = { locked: true, vaultExists: true }
     const id = '0x2222222222222222222222222222222222222222'
-    const persisted = {
-      main: {
-        accounts: { [id]: account(id, true) },
-        accountOrder: [id],
-        appLock: { locked: false, vaultExists: false },
-        balances: { [id]: [] },
-        currentAccount: '',
-        rates: { stale: { usd: { price: 99, change24hr: 0 } } },
-        runtime: { profile: 'persisted-runtime' }
-      }
-    }
+    const durable = canonicalState()
+    durable.main.accounts[id] = account(id)
+    durable.main.accountOrder = [id]
+    durable.main.currentAccount = id
+    const persisted = selectPersistedState(durable)
 
     const merged = mergePersistedState(persisted, current)
 
     expect(merged.main.currentAccount).toBe(id)
     expect(merged.main.appLock).toBe(current.main.appLock)
-    expect('current' in merged.selected).toBe(false)
     expect(merged.main.accounts[id].active).toBeUndefined()
     expect(merged.main.accounts[id].requests).toEqual({})
     expect(merged.main.balances).toBe(current.main.balances)
@@ -100,11 +183,11 @@ describe('canonical state persistence', () => {
     const storage = new ValidatedConfStorage(conf as any)
     const first: StorageValue<PersistedCanonicalState> = {
       state: { main: { currentAccount: 'first' } },
-      version: 2
+      version: PERSISTENCE_VERSION
     }
     const latest: StorageValue<PersistedCanonicalState> = {
       state: { main: { currentAccount: 'latest' } },
-      version: 2
+      version: PERSISTENCE_VERSION
     }
 
     storage.setItem('state', first)
@@ -125,62 +208,18 @@ describe('canonical state persistence', () => {
         state: expect.objectContaining({
           main: expect.objectContaining({ currentAccount: 'latest' })
         }),
-        version: 2
+        version: PERSISTENCE_VERSION
       })
     )
   })
 
-  it('migrates obsolete Restore fields and mute keys through native persistence versioning', () => {
-    const migrated = migratePersistedState(
-      {
-        main: {
-          _version: 2,
-          colorway: 'dark',
-          colorwayPrimary: { dark: { background: '#000', text: '#fff' } },
-          hardwareDerivation: 'mainnet',
-          dapp: { storage: { secret: true } },
-          mute: {
-            alphaWarning: true,
-            betaDisclosure: true,
-            explorerWarning: true,
-            externalLinkWarning: true,
-            gasFeeWarning: false,
-            onboardingWindow: false,
-            signerCompatibilityWarning: true,
-            welcomeWarning: true
-          }
-        }
-      },
-      1
+  it('rejects malformed and unsupported persistence versions', () => {
+    expect(() => migratePersistedState(selectPersistedState(canonicalState()), 1)).toThrow(
+      'uses an unsupported persistence version'
     )
-
-    expect(migrated.main).not.toHaveProperty('_version')
-    expect(migrated.main).not.toHaveProperty('colorway')
-    expect(migrated.main).not.toHaveProperty('colorwayPrimary')
-    expect(migrated.main).not.toHaveProperty('hardwareDerivation')
-    expect(migrated.main).not.toHaveProperty('dapp')
-    expect(migrated.main.mute).toEqual({
-      explorerWarning: true,
-      gasFeeWarning: false,
-      onboardingWindow: false,
-      signerCompatibilityWarning: true
-    })
-  })
-
-  it('supplies a valid color for legacy custom-chain metadata that did not have one', () => {
-    const legacy = selectPersistedState(canonicalState()) as any
-    delete legacy.main.networksMeta.ethereum[1].primaryColor
-
-    const migrated = migratePersistedState(legacy, 0)
-
-    expect((migrated.main as any).networksMeta.ethereum[1].primaryColor).toBe('accent1')
-  })
-
-  it('fails closed when legacy persistence cannot be migrated', () => {
-    expect(() => migratePersistedState({ main: { lattice: 'not-an-object' } }, 1)).toThrow(
+    expect(() => migratePersistedState({ main: { lattice: 'not-an-object' } })).toThrow(
       CanonicalStatePersistenceError
     )
-    expect(() => migratePersistedState({ main: {} }, 99)).toThrow('uses an unsupported persistence version')
   })
 
   it('deep-merges sparse persisted gas preferences into default network metadata', () => {
@@ -200,9 +239,29 @@ describe('canonical state persistence', () => {
     })
   })
 
+  it('replaces retired icon strings and preserves matching structured images', () => {
+    const current = canonicalState()
+    const persisted = selectPersistedState(current)
+    const metadata = (persisted.main as any).networksMeta.ethereum
+    metadata[1].icon = 'frame-cache:icon:legacy'
+    metadata[10].icon = 'data:image/png;base64,aWNvbg=='
+    metadata[10].image = {
+      base64: 'aWNvbg==',
+      contentHash: 'hash',
+      mimeType: 'image/png',
+      sourceUrl: builtInChainIconUrl(10)
+    }
+
+    const merged = mergePersistedState(persisted, current)
+
+    expect(merged.main.networksMeta.ethereum[1].icon).toBe(builtInChainIconUrl(1))
+    expect(merged.main.networksMeta.ethereum[10].icon).toBe(builtInChainIconUrl(10))
+    expect(merged.main.networksMeta.ethereum[10].image).toEqual(metadata[10].image)
+  })
+
   it('quarantines malformed current persistence and fails closed', () => {
     const values = new Map<string, unknown>([
-      ['zustand.state', { state: { main: { lattice: 'not-an-object' } }, version: 2 }]
+      ['zustand.state', { state: { main: { lattice: 'not-an-object' } }, version: PERSISTENCE_VERSION }]
     ])
     const conf = {
       clear: jest.fn(() => values.clear()),
@@ -220,7 +279,7 @@ describe('canonical state persistence', () => {
 
   it('rejects canonical store hydration when storage is invalid', async () => {
     const values = new Map<string, unknown>([
-      ['zustand.canonical-wallet-state', { state: { main: { lattice: 'not-an-object' } }, version: 2 }]
+      [storageKey, { state: { main: { lattice: 'not-an-object' } }, version: PERSISTENCE_VERSION }]
     ])
     const conf = {
       clear: jest.fn(() => values.clear()),
@@ -235,14 +294,12 @@ describe('canonical state persistence', () => {
     await expect(hydration).rejects.toBeInstanceOf(CanonicalStatePersistenceError)
     storage.flush()
 
-    expect(values.has('zustand.canonical-wallet-state')).toBe(false)
-    expect([...values.keys()].some((key) => key.startsWith('zustand.canonical-wallet-state.invalid.'))).toBe(
-      true
-    )
+    expect(values.has(storageKey)).toBe(false)
+    expect([...values.keys()].some((key) => key.startsWith(`${storageKey}.invalid.`))).toBe(true)
   })
 
   it('fails closed without overwriting persistence created by a newer application version', () => {
-    const future = { state: { main: {} }, version: 3 }
+    const future = { state: { main: {} }, version: PERSISTENCE_VERSION + 1 }
     const values = new Map<string, unknown>([['zustand.state', future]])
     const conf = {
       clear: jest.fn(() => values.clear()),
@@ -250,11 +307,14 @@ describe('canonical state persistence', () => {
       get: jest.fn((key: string) => values.get(key)),
       set: jest.fn((key: string, value: unknown) => values.set(key, value))
     }
-    const storage = new ValidatedConfStorage(conf as any, 2)
+    const storage = new ValidatedConfStorage(conf as any, PERSISTENCE_VERSION)
 
     expect(() => storage.getItem('state')).toThrow(CanonicalStatePersistenceError)
     expect(() => storage.getItem('state')).toThrow('created by a newer Newframe version')
-    storage.setItem('state', { state: { main: { currentAccount: 'downgrade' } }, version: 2 })
+    storage.setItem('state', {
+      state: { main: { currentAccount: 'downgrade' } },
+      version: PERSISTENCE_VERSION
+    })
     storage.flush()
 
     expect(values.get('zustand.state')).toBe(future)

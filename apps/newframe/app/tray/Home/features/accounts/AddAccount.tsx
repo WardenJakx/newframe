@@ -98,6 +98,7 @@ export function AddAccount({
       networks: state.networks?.ethereum || EMPTY_RECORD,
       networksMeta: state.networksMeta?.ethereum || EMPTY_RECORD,
       rates: state.rates || EMPTY_RECORD,
+      tokens: state.tokens,
       showLocalNameWithENS: !!state.showLocalNameWithENS,
       showTestnets: !!state.showTestnets,
       signers: state.signers || EMPTY_RECORD
@@ -157,6 +158,7 @@ export function AddAccount({
     const balances = balanceSelector.current!({
       rawBalances,
       rates: shared.rates,
+      tokens: shared.tokens,
       networks: shared.networks,
       networksMeta: shared.networksMeta,
       includeChain: (chain) => (!chain.isTestnet || shared.showTestnets) && !!chain.on,

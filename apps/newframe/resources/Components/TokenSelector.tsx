@@ -75,6 +75,7 @@ export default function TokenSelector({
         networksMeta={networksMeta}
         size='sm'
         symbol={selectedItem.symbol}
+        tokenId={selectedItem.id}
       />
       <Text display='inline' variant='control' truncate>
         {selectedItem.symbol}

@@ -1,7 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 
 import link from '../../../../../resources/link'
-import { isCachedImageReference } from '../../../../../resources/domain/imageCache'
 import { chainColorValue } from '../../../../../resources/colors'
 import { ChainDot } from '../../../../../resources/Components/ChainDot'
 import { useAccountBalances } from '../../hooks/useAccountBalances'
@@ -18,26 +17,12 @@ export function Networks() {
   const [query, setQuery] = useState('')
   const [kebabChainId, setKebabChainId] = useState(0)
   const [rpcDrafts, setRpcDrafts] = useState<Record<number, string>>({})
-  const hydrating = useRef(new Set<number>())
   const rows = createNetworkRows({
     balances: shared.balances,
     networks: shared.networks,
     query,
     showTestnets: shared.showTestnets
   })
-
-  useEffect(() => {
-    rows.forEach((chain) => {
-      const icon = shared.networksMeta[chain.chainId]?.icon
-      if (icon && isCachedImageReference(icon)) return
-      if (hydrating.current.has(chain.chainId)) return
-
-      hydrating.current.add(chain.chainId)
-      void link.executeCommand({ type: 'network.icon-hydrate', chainId: chain.chainId }).finally(() => {
-        hydrating.current.delete(chain.chainId)
-      })
-    })
-  }, [rows, shared.networksMeta])
 
   const viewRows = rows.map((chain) => ({
     ...chain,

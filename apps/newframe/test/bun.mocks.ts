@@ -149,8 +149,8 @@ const defaultState = () => ({
     rates: {},
     signers: {},
     tokens: {
-      custom: [],
-      known: {}
+      byId: {},
+      accountTokenIds: {}
     },
     updater: {
       dontRemind: [],

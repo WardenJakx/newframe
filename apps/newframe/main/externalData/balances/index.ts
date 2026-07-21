@@ -3,6 +3,7 @@ import type { StoreApi } from 'zustand/vanilla'
 
 import { NATIVE_CURRENCY } from '../../../resources/constants'
 import { createBalanceSummaries, isLowValueTokenBalance, toTokenId } from '../../../resources/domain/balance'
+import { customTokens, tokensForAccount } from '../../../resources/domain/token'
 import BalancesWorkerController from './controller'
 import { CurrencyBalance, TokenBalance } from './scan'
 
@@ -43,14 +44,9 @@ function uniqueTokens(tokens: Token[]) {
   return Array.from(unique.values())
 }
 
-function balanceToken(balance: Balance): Token {
-  return {
-    address: balance.address,
-    chainId: balance.chainId,
-    decimals: balance.decimals,
-    name: balance.name,
-    symbol: balance.symbol
-  }
+function scanToken(token: Token): Token {
+  const { address, chainId, decimals, name, symbol } = token
+  return { address, chainId, decimals, name, symbol }
 }
 
 function isCuratedToken(token: Token, networksMeta: Record<number, ChainMetadata>) {
@@ -72,6 +68,21 @@ export function selectManualRefreshTokens({
   const nonDustTokenIds = new Set(
     createBalanceSummaries({
       rawBalances: tokenBalances,
+      tokens: {
+        byId: Object.fromEntries(
+          [...customTokens, ...knownTokens].map((token) => [
+            toTokenId(token),
+            {
+              ...token,
+              custom: Boolean(token.custom),
+              curated: Boolean(token.curated),
+              sources: token.sources || [],
+              updatedAt: token.updatedAt || 0
+            }
+          ])
+        ),
+        accountTokenIds: {}
+      },
       rates,
       networks,
       networksMeta
@@ -80,7 +91,7 @@ export function selectManualRefreshTokens({
       .map(toTokenId)
   )
   const customTokenIds = new Set(customTokens.map(toTokenId))
-  const candidates = uniqueTokens([...customTokens, ...knownTokens, ...tokenBalances.map(balanceToken)])
+  const candidates = uniqueTokens([...customTokens, ...knownTokens])
 
   return candidates.filter(
     (token) =>
@@ -100,9 +111,13 @@ export default function (store: Pick<StoreApi<CanonicalStore>, 'getState'>) {
         (n) => (n.connection.primary || {}).connected || (n.connection.secondary || {}).connected
       )
     },
-    getCustomTokens: () => (store.getState().main.tokens.custom || []) as Token[],
+    getCustomTokens: () => customTokens(store.getState().main.tokens).map(scanToken),
     getKnownTokens: (address?: Address): Token[] =>
-      (address && store.getState().main.tokens.known[address]) || [],
+      address
+        ? tokensForAccount(store.getState().main.tokens, address)
+            .filter((token) => !token.custom)
+            .map(scanToken)
+        : [],
     getBalances: (address: Address) => (store.getState().main.balances[address] || []) as Balance[],
     getNetworks: () => (store.getState().main.networks.ethereum || {}) as Record<number, Chain>,
     getNetworksMeta: () =>
@@ -423,7 +438,7 @@ export default function (store: Pick<StoreApi<CanonicalStore>, 'getState'>) {
       const unknownBalances = changedBalances.filter((b) => parseInt(b.balance) > 0 && !isKnown(b))
 
       if (unknownBalances.length > 0) {
-        store.getState().addKnownTokens(address, unknownBalances)
+        store.getState().upsertTokens(unknownBalances, { account: address, source: 'onchain' })
       }
 
       // remove zero balances from the list of known tokens
@@ -436,7 +451,7 @@ export default function (store: Pick<StoreApi<CanonicalStore>, 'getState'>) {
       }, new Set<string>())
 
       if (zeroBalances.size) {
-        store.getState().removeKnownTokens(address, zeroBalances)
+        store.getState().removeAccountTokens(address, zeroBalances)
       }
     }
 

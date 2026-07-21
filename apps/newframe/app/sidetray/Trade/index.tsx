@@ -24,6 +24,7 @@ import {
   TOKEN_SELECTOR_ROWS_INCREMENT
 } from '../../../resources/Components/tokenSelectorModel'
 import { createBalanceTokenSelectorItem, createDisplayBalance } from '../../../resources/domain/balance'
+import { persistedImageSource } from '../../../resources/domain/image'
 import {
   FLASH_LIMIT_ORDER_TYPE,
   FLASH_MARKET_ORDER_TYPE,
@@ -289,7 +290,8 @@ export default function Trade({ assetId, chainId }: TradeProps) {
       const balance = tradeBalanceIndex.get(asset.id)
 
       return (
-        balance?.logoURI || (asset.isNative ? networksMeta[asset.chainId]?.nativeCurrency?.icon || '' : '')
+        balance?.logoURI ||
+        (asset.isNative ? persistedImageSource(networksMeta[asset.chainId]?.nativeCurrency?.image) : '')
       )
     },
     [networksMeta, tradeBalanceIndex]

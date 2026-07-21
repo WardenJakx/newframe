@@ -1,6 +1,7 @@
 import store from '../../store'
 
 import { NATIVE_CURRENCY } from '../../../resources/constants'
+import { toTokenId } from '../../../resources/domain/token'
 
 import type { Balance, NativeCurrency, Rate } from '../../store/state'
 
@@ -17,6 +18,7 @@ const storeApi = {
   },
   getNativeCurrency: (chainId: number): NativeCurrency | undefined =>
     store.getState().main.networksMeta.ethereum[chainId]?.nativeCurrency,
+  getToken: (balance: Balance) => store.getState().main.tokens.byId[toTokenId(balance)],
   getUsdRate: (address: Address): UsdRate | undefined => {
     const rate = store.getState().main.rates[address.toLowerCase()]
 
@@ -76,13 +78,21 @@ function fetchAssets(accountId: string) {
 
       assets.nativeCurrency.push({
         ...balance,
+        decimals: currency.decimals,
+        name: currency.name,
+        symbol: currency.symbol,
         currencyInfo: currency
       })
     } else {
       const usdRate = storeApi.getUsdRate(balance.address)
+      const token = storeApi.getToken(balance)
+      if (!token) return assets
 
       assets.erc20.push({
         ...balance,
+        decimals: token.decimals,
+        name: token.name,
+        symbol: token.symbol,
         tokenInfo: usdRate ? { lastKnownPrice: usdRate } : {}
       })
     }

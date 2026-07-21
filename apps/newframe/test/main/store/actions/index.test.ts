@@ -10,6 +10,7 @@ import {
 } from '../../../../main/store/actions'
 import { NATIVE_CURRENCY } from '../../../../resources/constants'
 import { toTokenId } from '../../../../resources/domain/balance'
+import { customTokens, tokensForAccount } from '../../../../resources/domain/token'
 
 function createActionHarness(
   initial: any,
@@ -34,7 +35,7 @@ function createActionHarness(
       balances: {},
       activity: {},
       orders: {},
-      tokens: { custom: [], known: {} },
+      tokens: { byId: {}, accountTokenIds: {} },
       scanning: {}
     }
   }
@@ -78,13 +79,32 @@ const testTokens = {
     chainId: 1,
     address: '0xe41d2489571d322189246dafa5ebde1f4699f498',
     symbol: 'ZRX',
+    name: '0x',
     decimals: 18
   },
   badger: {
     chainId: 42161,
     address: '0xbfa641051ba0a0ad1b0acf549a89536a0d76472e',
     symbol: 'BADGER',
+    name: 'Badger',
     decimals: 18
+  }
+}
+
+function tokenRecord(token: any, options: { custom?: boolean; curated?: boolean } = {}) {
+  return {
+    ...token,
+    custom: Boolean(options.custom),
+    curated: Boolean(options.curated),
+    sources: [options.custom ? 'custom' : 'onchain'],
+    updatedAt: 0
+  }
+}
+
+function tokenCatalog(tokens: any[], accountTokenIds: Record<string, string[]> = {}) {
+  return {
+    byId: Object.fromEntries(tokens.map((token) => [toTokenId(token), token])),
+    accountTokenIds
   }
 }
 
@@ -315,12 +335,16 @@ describe('#setBalances', () => {
 
     expect(balances).toEqual([
       {
-        ...testTokens.badger,
-        balance: addHexPrefix(BigInt(305).toString(16))
+        address: testTokens.badger.address,
+        chainId: testTokens.badger.chainId,
+        balance: addHexPrefix(BigInt(305).toString(16)),
+        displayBalance: ''
       },
       {
-        ...testTokens.zrx,
-        balance: addHexPrefix(BigInt(79832332).toString(16))
+        address: testTokens.zrx.address,
+        chainId: testTokens.zrx.chainId,
+        balance: addHexPrefix(BigInt(79832332).toString(16)),
+        displayBalance: ''
       }
     ])
   })
@@ -328,15 +352,19 @@ describe('#setBalances', () => {
   it('updates an existing balance to a positive amount', () => {
     setBalances([
       {
-        ...testTokens.badger,
-        balance: addHexPrefix(BigInt(419).toString(16))
+        address: testTokens.badger.address,
+        chainId: testTokens.badger.chainId,
+        balance: addHexPrefix(BigInt(419).toString(16)),
+        displayBalance: ''
       }
     ])
 
     expect(balances).toEqual([
       {
-        ...testTokens.badger,
-        balance: addHexPrefix(BigInt(419).toString(16))
+        address: testTokens.badger.address,
+        chainId: testTokens.badger.chainId,
+        balance: addHexPrefix(BigInt(419).toString(16)),
+        displayBalance: ''
       }
     ])
   })
@@ -344,15 +372,19 @@ describe('#setBalances', () => {
   it('updates an existing balance to zero', () => {
     setBalances([
       {
-        ...testTokens.badger,
-        balance: '0x0'
+        address: testTokens.badger.address,
+        chainId: testTokens.badger.chainId,
+        balance: '0x0',
+        displayBalance: ''
       }
     ])
 
     expect(balances).toEqual([
       {
-        ...testTokens.badger,
-        balance: '0x0'
+        address: testTokens.badger.address,
+        chainId: testTokens.badger.chainId,
+        balance: '0x0',
+        displayBalance: ''
       }
     ])
   })
@@ -401,192 +433,57 @@ describe('#removeBalance', () => {
   })
 })
 
-describe('#addCustomTokens', () => {
-  let tokens: any = [],
-    balances: any = {}
+describe('#upsertTokens', () => {
+  it('stores custom token metadata once in the global catalog', () => {
+    const { actions, getState } = createActionHarness({})
 
-  const addTokens = (tokensToAdd: any) => {
-    const { actions } = createActionHarness(
-      { main: { tokens: { custom: tokens, known: {} }, balances } },
-      (state) => {
-        tokens = state.main.tokens.custom
-        balances = state.main.balances
-      }
-    )
-    actions.addCustomTokens(tokensToAdd)
-  }
+    actions.upsertTokens([testTokens.badger], { custom: true, source: 'custom' })
 
-  it('adds a token', () => {
-    tokens = [testTokens.zrx]
-
-    addTokens([testTokens.badger])
-
-    expect(tokens).toStrictEqual([testTokens.zrx, testTokens.badger])
-  })
-
-  it('overwrites a token', () => {
-    tokens = [testTokens.zrx, testTokens.badger]
-
-    const updatedBadgerToken = {
-      ...testTokens.badger,
-      symbol: 'BAD'
-    }
-
-    addTokens([updatedBadgerToken])
-
-    expect(tokens).toHaveLength(2)
-    expect(tokens[0]).toEqual(testTokens.zrx)
-    expect(tokens[1].symbol).toBe('BAD')
-  })
-
-  it('updates an existing balance for a custom token', () => {
-    const account = '0xd0e3872f5fa8ecb49f1911f605c0da90689a484e'
-
-    balances = {
-      [account]: [
-        {
-          address: testTokens.badger.address,
-          chainId: testTokens.badger.chainId,
-          symbol: 'BDG',
-          name: 'Old Badger',
-          logoURI: 'http://logo.io'
-        }
-      ]
-    }
-
-    const updatedBadgerToken = {
-      ...testTokens.badger,
-      symbol: 'BADGER',
-      name: 'Badger Token'
-    }
-
-    addTokens([updatedBadgerToken])
-
-    expect(balances[account]).toStrictEqual([
-      {
-        address: testTokens.badger.address,
-        chainId: testTokens.badger.chainId,
-        symbol: 'BADGER',
-        name: 'Badger Token',
-        logoURI: 'http://logo.io'
-      }
+    expect(customTokens(getState().main.tokens)).toEqual([
+      expect.objectContaining({ ...testTokens.badger, custom: true, sources: ['custom'] })
     ])
+  })
+
+  it('associates discovered tokens with an account without duplicating metadata', () => {
+    const account = '0xfaff9f426e8071e03eebbfefe9e7bf4b37565ab9'
+    const { actions, getState } = createActionHarness({})
+
+    actions.upsertTokens([testTokens.badger], { account, source: 'onchain' })
+    actions.upsertTokens([{ ...testTokens.badger, symbol: 'BAD' }], {
+      account,
+      source: 'portfolio'
+    })
+
+    expect(Object.keys(getState().main.tokens.byId)).toHaveLength(1)
+    expect(tokensForAccount(getState().main.tokens, account)).toEqual([
+      expect.objectContaining({ symbol: 'BAD', sources: ['onchain', 'portfolio'] })
+    ])
+  })
+
+  it('keeps custom metadata authoritative over later discovery', () => {
+    const { actions, getState } = createActionHarness({})
+    actions.upsertTokens([{ ...testTokens.badger, symbol: 'CUSTOM' }], {
+      custom: true,
+      source: 'custom'
+    })
+
+    actions.upsertTokens([{ ...testTokens.badger, symbol: 'REMOTE' }], { source: 'portfolio' })
+
+    expect(getState().main.tokens.byId[toTokenId(testTokens.badger)].symbol).toBe('CUSTOM')
   })
 })
 
 describe('#removeCustomTokens', () => {
-  let customTokens: any = [],
-    knownTokens = {}
+  it('clears the custom flag without deleting globally known metadata', () => {
+    const stored = tokenRecord(testTokens.zrx, { custom: true })
+    const { actions, getState } = createActionHarness({
+      main: { tokens: tokenCatalog([stored], { [owner]: [toTokenId(stored)] }) }
+    })
 
-  const removeTokens = (tokensToRemove: any) => {
-    const { actions } = createActionHarness(
-      { main: { tokens: { custom: customTokens, known: knownTokens } } },
-      (state) => {
-        customTokens = state.main.tokens.custom
-        knownTokens = state.main.tokens.known
-      }
-    )
-    actions.removeCustomTokens(tokensToRemove)
-  }
+    actions.removeCustomTokens([testTokens.zrx])
 
-  it('removes a token', () => {
-    customTokens = [testTokens.zrx, testTokens.badger]
-
-    const tokenToRemove = { ...testTokens.zrx }
-
-    removeTokens([tokenToRemove])
-
-    expect(customTokens).toStrictEqual([testTokens.badger])
-  })
-
-  it('does not modify tokens if they cannot be found', () => {
-    customTokens = [testTokens.zrx, testTokens.badger]
-
-    const tokenToRemove = {
-      chainId: 1,
-      address: '0x383518188c0c6d7730d91b2c03a03c837814a899',
-      symbol: 'OHM'
-    }
-
-    removeTokens([tokenToRemove])
-
-    expect(customTokens).toStrictEqual([testTokens.zrx, testTokens.badger])
-  })
-
-  it('does not remove a token with the same address but different chain id', () => {
-    const tokenToRemove = {
-      ...testTokens.badger,
-      chainId: 1
-    }
-
-    customTokens = [testTokens.zrx, testTokens.badger, tokenToRemove]
-
-    removeTokens([tokenToRemove])
-
-    expect(customTokens).toStrictEqual([testTokens.zrx, testTokens.badger])
-  })
-
-  it('does not remove a token with the same chain id but different address', () => {
-    const tokenToRemove = {
-      ...testTokens.zrx,
-      address: '0xa7a82dd06901f29ab14af63faf3358ad101724a8'
-    }
-
-    customTokens = [testTokens.zrx, testTokens.badger, tokenToRemove]
-
-    removeTokens([tokenToRemove])
-
-    expect(customTokens).toStrictEqual([testTokens.zrx, testTokens.badger])
-  })
-
-  it('removes the token from the list of known tokens for an address', () => {
-    const address = '0xa7a82dd06901f29ab14af63faf3358ad101724a8'
-
-    knownTokens = {
-      [address]: [{ ...testTokens.zrx }]
-    }
-
-    removeTokens([{ ...testTokens.zrx }])
-
-    expect(knownTokens).toStrictEqual({ [address]: [] })
-  })
-})
-
-describe('#addKnownTokens', () => {
-  let tokens: any = []
-  const account = '0xfaff9f426e8071e03eebbfefe9e7bf4b37565ab9'
-
-  const addTokens = (tokensToAdd: any) => {
-    const { actions } = createActionHarness(
-      { main: { tokens: { custom: [], known: { [account]: tokens } } } },
-      (state) => {
-        tokens = state.main.tokens.known[account]
-      }
-    )
-    actions.addKnownTokens(account, tokensToAdd)
-  }
-
-  it('adds a token', () => {
-    tokens = [testTokens.zrx]
-
-    addTokens([testTokens.badger])
-
-    expect(tokens).toStrictEqual([testTokens.zrx, testTokens.badger])
-  })
-
-  it('overwrites a token', () => {
-    tokens = [testTokens.zrx, testTokens.badger]
-
-    const updatedBadgerToken = {
-      ...testTokens.badger,
-      symbol: 'BAD'
-    }
-
-    addTokens([updatedBadgerToken])
-
-    expect(tokens).toHaveLength(2)
-    expect(tokens[0]).toEqual(testTokens.zrx)
-    expect(tokens[1].symbol).toBe('BAD')
+    expect(getState().main.tokens.byId[toTokenId(stored)].custom).toBe(false)
+    expect(tokensForAccount(getState().main.tokens, owner)).toHaveLength(1)
   })
 })
 
@@ -989,7 +886,7 @@ describe('#activateNetwork', () => {
   })
 })
 
-describe('#setNetworkIcon', () => {
+describe('#setNetworkImage', () => {
   let actions: CanonicalActions
   let main: any
 
@@ -998,10 +895,12 @@ describe('#setNetworkIcon', () => {
       networksMeta: {
         ethereum: {
           1: {
-            icon: ''
+            icon: '',
+            nativeCurrency: {}
           },
           8453: {
-            icon: 'https://frame.nyc3.cdn.digitaloceanspaces.com/baseiconcolor.png'
+            icon: 'https://frame.nyc3.cdn.digitaloceanspaces.com/baseiconcolor.png',
+            nativeCurrency: {}
           }
         }
       }
@@ -1011,17 +910,30 @@ describe('#setNetworkIcon', () => {
     }).actions
   })
 
-  const setNetworkIcon = (chainId: number, icon: string) => actions.setNetworkIcon('ethereum', chainId, icon)
+  const image = {
+    base64: 'aWNvbg==',
+    contentHash: 'hash',
+    mimeType: 'image/png',
+    sourceUrl: 'https://cdn.example/base.png'
+  }
 
-  it('should update the network icon for the expected chain', () => {
-    setNetworkIcon(8453, 'frame-cache:icon:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')
+  it('should update the network image and source for the expected chain', () => {
+    actions.setNetworkImage('ethereum', 8453, image.sourceUrl, image)
 
     expect(main.networksMeta.ethereum).toStrictEqual({
-      1: { icon: '' },
+      1: { icon: '', nativeCurrency: {} },
       8453: {
-        icon: 'frame-cache:icon:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+        icon: image.sourceUrl,
+        image,
+        nativeCurrency: {}
       }
     })
+  })
+
+  it('should store a native currency image with its network metadata', () => {
+    actions.setNativeCurrencyImage('ethereum', 1, image)
+
+    expect(main.networksMeta.ethereum[1].nativeCurrency.image).toEqual(image)
   })
 })
 
@@ -1123,23 +1035,41 @@ describe('#setPortfolioBalances', () => {
     const staleKnownToken = {
       chainId: 42161,
       address: '0x1111111111111111111111111111111111111111',
+      name: 'Old Token',
       symbol: 'OLD',
       decimals: 18
     }
 
     main = {
-      tokens: {
-        custom: [testTokens.zrx],
-        known: {
-          [owner]: [testTokens.badger, staleKnownToken]
-        }
-      },
+      tokens: tokenCatalog(
+        [
+          tokenRecord(testTokens.zrx, { custom: true }),
+          tokenRecord(testTokens.badger),
+          tokenRecord(staleKnownToken)
+        ],
+        { [owner]: [toTokenId(testTokens.badger), toTokenId(staleKnownToken)] }
+      ),
       balances: {
         [owner]: [
-          { address: NATIVE_CURRENCY, chainId: 1, balance: '0x1' },
-          { ...testTokens.zrx, balance: '0x2' },
-          { ...testTokens.badger, balance: '0x3' },
-          { ...staleKnownToken, balance: '0x5' }
+          { address: NATIVE_CURRENCY, chainId: 1, balance: '0x1', displayBalance: '' },
+          {
+            address: testTokens.zrx.address,
+            chainId: testTokens.zrx.chainId,
+            balance: '0x2',
+            displayBalance: ''
+          },
+          {
+            address: testTokens.badger.address,
+            chainId: testTokens.badger.chainId,
+            balance: '0x3',
+            displayBalance: ''
+          },
+          {
+            address: staleKnownToken.address,
+            chainId: staleKnownToken.chainId,
+            balance: '0x5',
+            displayBalance: ''
+          }
         ]
       }
     }
@@ -1149,15 +1079,25 @@ describe('#setPortfolioBalances', () => {
   })
 
   it('replaces cached portfolio balances without removing custom token balances', () => {
-    const nativeBalance = { address: NATIVE_CURRENCY, chainId: 1, balance: '0x6' }
+    const nativeBalance = { address: NATIVE_CURRENCY, chainId: 1, balance: '0x6', displayBalance: '' }
     const zerionBalance = { ...testTokens.badger, balance: '0x4' }
 
     setPortfolioBalances([nativeBalance, zerionBalance])
 
     expect(main.balances[owner]).toStrictEqual([
-      { ...testTokens.zrx, balance: '0x2' },
+      {
+        address: testTokens.zrx.address,
+        chainId: testTokens.zrx.chainId,
+        balance: '0x2',
+        displayBalance: ''
+      },
       nativeBalance,
-      zerionBalance
+      {
+        address: testTokens.badger.address,
+        chainId: testTokens.badger.chainId,
+        balance: '0x4',
+        displayBalance: ''
+      }
     ])
   })
 })
@@ -1223,31 +1163,29 @@ describe('#setPortfolioApiKey', () => {
   })
 })
 
-describe('#removeKnownTokens', () => {
+describe('#removeAccountTokens', () => {
   let actions: CanonicalActions
-  let knownTokens: any
-  const removeKnownTokens = (setToRemove: any) => actions.removeKnownTokens(owner, setToRemove)
+  let catalog: any
+  const removeAccountTokens = (setToRemove: any) => actions.removeAccountTokens(owner, setToRemove)
 
   beforeEach(() => {
-    knownTokens = Object.values(testTokens)
-    actions = createActionHarness(
-      { main: { tokens: { custom: [], known: { [owner]: knownTokens } } } },
-      (state) => {
-        knownTokens = state.main.tokens.known[owner]
-      }
-    ).actions
+    const records = Object.values(testTokens).map((token) => tokenRecord(token))
+    catalog = tokenCatalog(records, { [owner]: records.map(toTokenId) })
+    actions = createActionHarness({ main: { tokens: catalog } }, (state) => {
+      catalog = state.main.tokens
+    }).actions
   })
 
   it('should remove all tokens from the removal set from an accounts known tokens', () => {
     const removalSet = new Set(Object.values(testTokens).map(toTokenId))
-    removeKnownTokens(removalSet)
-    expect(knownTokens.length).toBe(0)
+    removeAccountTokens(removalSet)
+    expect(tokensForAccount(catalog, owner).length).toBe(0)
   })
 
   it('should only remove tokens from the removal set from an accounts known tokens', () => {
     const removalSet = new Set([toTokenId(testTokens.badger)])
-    removeKnownTokens(removalSet)
-    expect(knownTokens.length).toBe(1)
+    removeAccountTokens(removalSet)
+    expect(tokensForAccount(catalog, owner).length).toBe(1)
   })
 })
 
@@ -1257,19 +1195,18 @@ describe('#resetSavedData', () => {
 
   beforeEach(() => {
     main = {
-      tokens: {
-        custom: [testTokens.zrx],
-        known: {
-          [owner]: [testTokens.zrx],
-          '0xd0e3872f5fa8ecb49f1911f605c0da90689a484e': [testTokens.badger]
-        }
-      },
+      tokens: tokenCatalog([tokenRecord(testTokens.zrx, { custom: true }), tokenRecord(testTokens.badger)], {
+        [owner]: [toTokenId(testTokens.zrx)],
+        '0xd0e3872f5fa8ecb49f1911f605c0da90689a484e': [toTokenId(testTokens.badger)]
+      }),
       balances: {
         [owner]: [
-          { ...testTokens.zrx, balance: '0x1' },
-          { ...testTokens.badger, balance: '0x2' }
+          { address: testTokens.zrx.address, chainId: testTokens.zrx.chainId, balance: '0x1' },
+          { address: testTokens.badger.address, chainId: testTokens.badger.chainId, balance: '0x2' }
         ],
-        '0xd0e3872f5fa8ecb49f1911f605c0da90689a484e': [{ ...testTokens.badger, balance: '0x3' }]
+        '0xd0e3872f5fa8ecb49f1911f605c0da90689a484e': [
+          { address: testTokens.badger.address, chainId: testTokens.badger.chainId, balance: '0x3' }
+        ]
       },
       activity: {
         '0xabc': {
@@ -1293,9 +1230,11 @@ describe('#resetSavedData', () => {
   it('clears cached known tokens, their balances, activity, and orders without removing custom tokens', () => {
     actions.resetSavedData()
 
-    expect(main.tokens.custom).toStrictEqual([testTokens.zrx])
-    expect(main.tokens.known).toStrictEqual({})
-    expect(main.balances[owner]).toStrictEqual([{ ...testTokens.zrx, balance: '0x1' }])
+    expect(customTokens(main.tokens)).toEqual([expect.objectContaining(testTokens.zrx)])
+    expect(main.tokens.accountTokenIds).toStrictEqual({})
+    expect(main.balances[owner]).toStrictEqual([
+      { address: testTokens.zrx.address, chainId: testTokens.zrx.chainId, balance: '0x1' }
+    ])
     expect(main.balances['0xd0e3872f5fa8ecb49f1911f605c0da90689a484e']).toStrictEqual([])
     expect(main.activity).toStrictEqual({})
     expect(main.orders).toStrictEqual({})

@@ -40,7 +40,7 @@ import { ActionType } from '../transaction/actions'
 import { openBlockExplorer } from '../windows/window'
 import { ApprovalType } from '../../resources/constants'
 import { accountNS } from '../../resources/domain/account'
-import { toTokenId } from '../../resources/domain/balance'
+import { tokensForAccount, toTokenId } from '../../resources/domain/token'
 import { chainUsesOptimismFees } from '../../resources/utils/chains'
 import type { ActivityRecord, StatusNotification, Token } from '../store/state'
 
@@ -321,10 +321,7 @@ export class Accounts extends EventEmitter {
   }
 
   private savePositionTokens(address: Address, affectedTokens: Token[]) {
-    const savedTokens = [
-      ...((store.getState().main.tokens.custom || []) as Token[]),
-      ...((store.getState().main.tokens.known[address] || []) as Token[])
-    ]
+    const savedTokens = tokensForAccount(store.getState().main.tokens, address)
     const savedTokenIndex = new Map(savedTokens.map((token) => [toTokenId(token), token]))
     const tokens = affectedTokens.map((token) => {
       const savedToken = savedTokenIndex.get(toTokenId(token))
@@ -332,7 +329,9 @@ export class Accounts extends EventEmitter {
       return savedToken ? { ...token, ...savedToken } : token
     })
     const newTokens = tokens.filter((token) => !savedTokenIndex.has(toTokenId(token)))
-    if (newTokens.length > 0) store.getState().addKnownTokens(address, newTokens)
+    if (newTokens.length > 0) {
+      store.getState().upsertTokens(newTokens, { account: address, source: 'transaction' })
+    }
 
     return tokens
   }

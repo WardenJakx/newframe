@@ -24,6 +24,7 @@ import FrameAccount from '../accounts/Account'
 import Chains, { Chain } from '../chains'
 import reveal from '../reveal'
 import { getSignerType, Type as SignerType } from '../../resources/domain/signer'
+import { toTokenId } from '../../resources/domain/token'
 import { normalizeChainId, TransactionData } from '../../resources/domain/transaction'
 import { populate as populateTransaction, maxFee, classifyTransaction } from '../transaction'
 import { capitalize, isNonZeroHex } from '../../resources/utils'
@@ -63,7 +64,7 @@ import * as sigParser from '../signatures'
 import { hasAddress } from '../../resources/domain/account'
 import { mapRequest } from '../requests'
 
-import type { Origin, Permission, Token } from '../store/state'
+import type { Origin, Permission } from '../store/state'
 
 const signTypedDataV4OnlySignerTypes: SignerType[] = [SignerType.Ledger, SignerType.Trezor]
 
@@ -1097,9 +1098,7 @@ class Provider extends EventEmitter {
         }
 
         // don't attempt to add the token if it's already been added
-        const tokenExists = store
-          .getState()
-          .main.tokens.custom.some((token: Token) => token.chainId === chainId && token.address === address)
+        const tokenExists = store.getState().main.tokens.byId[toTokenId({ chainId, address })]?.custom
         if (tokenExists) {
           return res({ id: payload.id, jsonrpc: '2.0', result: true })
         }

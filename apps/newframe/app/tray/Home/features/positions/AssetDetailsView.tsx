@@ -99,6 +99,7 @@ export function AssetDetailsView({
               networksMeta={networksMeta}
               size='md'
               symbol={asset.symbol}
+              tokenId={`${asset.chainId}:${asset.address}`}
             />
             <Stack gap='xsmall' grow>
               <Text truncate variant='heading'>

@@ -3,6 +3,7 @@ import { ColorwayPaletteSchema } from './colors'
 import { ConnectionSchema } from './connection'
 import { GasSchema } from './gas'
 import { NativeCurrencySchema } from './nativeCurrency'
+import { TokenImageSchema } from './token'
 
 const layerValues = ['mainnet', 'rollup', 'sidechain', 'testnet'] as const
 
@@ -32,6 +33,7 @@ export const ChainMetadataSchema = z
   .object({
     gas: GasSchema,
     icon: z.string().optional(),
+    image: TokenImageSchema.optional(),
     primaryColor: ColorwayPaletteSchema.keyof(),
     nativeCurrency: NativeCurrencySchema
   })

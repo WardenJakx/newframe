@@ -10,7 +10,7 @@ import { cva } from '../../../../../resources/styled-system/css/cva.js'
 import { sva } from '../../../../../resources/styled-system/css/sva.js'
 import { DisplayCoinBalance } from '../../../../../resources/Components/DisplayValue'
 import StatusGlyph from '../../../../../resources/Components/StatusGlyph'
-import { cachedImageUrl } from '../../../../../resources/domain/imageCache'
+import { imageSource, persistedImageSource } from '../../../../../resources/domain/image'
 import svg from '../../../../../resources/svg'
 
 export type TransactionProgressData = {
@@ -40,7 +40,10 @@ export type TransactionInformationDetailRow = {
   onClick?: () => void
 }
 
-export type TransactionInformationNativeCurrency = { icon?: string }
+export type TransactionInformationNativeCurrency = {
+  icon?: string
+  image?: { base64?: string; mimeType?: string }
+}
 
 export type TransactionInformationProps = {
   networkName: ReactNode
@@ -327,14 +330,15 @@ function AssetIcon({
   effect: TransactionInformationEffect
   nativeCurrency: TransactionInformationNativeCurrency
 }) {
-  const icon = effect.logoURI || (effect.kind === 'native' ? nativeCurrency.icon : '')
+  const icon = effect.logoURI || (effect.kind === 'native' ? persistedImageSource(nativeCurrency.image) : '')
+  const iconSource = imageSource(icon)
   const symbol = (effect.symbol || '?').trim() || '?'
   const styles = effectRecipe({ direction })
 
   return (
     <span className={styles.icon} data-effect-icon-direction={direction}>
-      {icon ? (
-        <Image alt='' source={cachedImageUrl(icon)} />
+      {iconSource ? (
+        <Image alt='' source={iconSource} />
       ) : effect.kind === 'native' && symbol.toUpperCase() === 'ETH' ? (
         svg.eth(14)
       ) : (

@@ -13,7 +13,7 @@ export function HomeMenu() {
       return {
         instanceId: state.instanceId || '',
         requestCount: Object.keys(requests).filter((id) => requests[id].mode === 'normal').length,
-        tokenCount: state.tokens?.custom?.length || 0
+        tokenCount: Object.values(state.tokens.byId).filter((token) => token.custom).length
       }
     })
   )

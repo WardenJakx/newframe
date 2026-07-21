@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 
 import { Button } from '@newframe/ui/button'
 import { IconButton } from '@newframe/ui/icon-button'
@@ -9,16 +10,22 @@ import { Text } from '@newframe/ui/text'
 
 import type { Token } from '../../../../../../main/store/state'
 import link from '../../../../../../resources/link'
-import { cachedImageUrl } from '../../../../../../resources/domain/imageCache'
+import { customTokens, tokenImageSource } from '../../../../../../resources/domain/token'
+import { useTokenImageHydration } from '../../../../../../resources/Hooks/useTokenImageHydration'
 import type { WalletRendererState } from '../../../../../../resources/state/projections'
 import { useWalletSelector } from '../../../../../state/useAppSelector'
 
-const EMPTY_TOKENS: Token[] = []
-const selectCustomTokens = (state: WalletRendererState) => state.tokens.custom || EMPTY_TOKENS
+const selectCustomTokens = (state: WalletRendererState) => customTokens(state.tokens)
 
 interface CustomTokensProps {
   onEdit: (token: Token) => void
   tokens: Token[]
+}
+
+function CustomTokenImage({ token }: { token: Token }) {
+  const source = tokenImageSource(token)
+  useTokenImageHydration(`${token.chainId}:${token.address.toLowerCase()}`, !!source)
+  return source ? <Image alt={token.symbol.toUpperCase()} size='medium' source={source} /> : null
 }
 
 function CustomTokensView({ onEdit, tokens }: CustomTokensProps) {
@@ -42,13 +49,7 @@ function CustomTokensView({ onEdit, tokens }: CustomTokensProps) {
           <Surface key={`${token.chainId}:${token.address}`} padding='small' radius='card'>
             <Stack gap='small'>
               <Stack align='center' direction='row' gap='small'>
-                {token.logoURI ? (
-                  <Image
-                    alt={token.symbol.toUpperCase()}
-                    size='medium'
-                    source={cachedImageUrl(token.logoURI)}
-                  />
-                ) : null}
+                <CustomTokenImage token={token} />
                 <Stack gap='xsmall' grow>
                   <Text truncate variant='label'>
                     {token.symbol}
@@ -116,6 +117,6 @@ function CustomTokensView({ onEdit, tokens }: CustomTokensProps) {
 }
 
 export default function CustomTokens({ onEdit }: { onEdit: (token: Token) => void }) {
-  const tokens = useWalletSelector(selectCustomTokens)
+  const tokens = useWalletSelector(useShallow(selectCustomTokens))
   return <CustomTokensView onEdit={onEdit} tokens={tokens} />
 }

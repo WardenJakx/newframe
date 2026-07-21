@@ -92,14 +92,20 @@ describe('ZerionPortfolioProvider', () => {
     const portfolio = await provider.getWalletPortfolio('0xabc' as Address, [56], { sync: true })
 
     expect(portfolio.chainValues).toEqual({ 56: 12 })
-    expect(portfolio.balances).toEqual([
+    expect(portfolio.tokens).toEqual([
       {
         address: '0x0000000000000000000000000000000000000056',
         chainId: 56,
         name: 'Dynamic Token',
         symbol: 'DYN',
         decimals: 18,
-        logoURI: '',
+        logoURI: ''
+      }
+    ])
+    expect(portfolio.balances).toEqual([
+      {
+        address: '0x0000000000000000000000000000000000000056',
+        chainId: 56,
         balance: '0xde0b6b3a7640000',
         displayBalance: '1'
       }
@@ -372,19 +378,12 @@ describe('ZerionPortfolioProvider', () => {
       {
         address: '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913',
         chainId: 8453,
-        name: 'USD Coin',
-        symbol: 'USDC',
-        decimals: 6,
-        logoURI: 'https://cdn.example/usdc.png',
         balance: '0xf4240',
         displayBalance: '1'
       },
       {
         address: NATIVE_CURRENCY,
         chainId: 1,
-        name: 'Ethereum',
-        symbol: 'ETH',
-        decimals: 18,
         balance: '0xde0b6b3a7640000',
         displayBalance: '1'
       }

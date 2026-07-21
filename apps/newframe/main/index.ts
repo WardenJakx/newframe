@@ -19,7 +19,8 @@ app.setPath('userData', path.join(app.getPath('appData'), profileAppName))
 import windows from './windows'
 import menu from './menu'
 import store, { canonicalStoreHydration } from './store'
-import './localServer'
+import images from './images'
+import tokens from './tokens'
 import accounts from './accounts'
 import * as launch from './launch'
 import updater from './updater'
@@ -143,6 +144,8 @@ function startDomainServices() {
   )
   // eslint-disable-next-line @typescript-eslint/no-require-imports -- start the API only after hydration
   require('./api')
+  tokens.start()
+  images.start()
   accounts.startDataScanner()
   if (!isDev) startUpdater()
 

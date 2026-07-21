@@ -7,7 +7,7 @@ import { Text } from '@newframe/ui/text'
 import { useEffect, useState, type ReactNode } from 'react'
 
 import type { AccountRequest } from '../../main/accounts/types'
-import { cachedImageUrl } from '../domain/imageCache'
+import { imageSource } from '../domain/image'
 import link from '../link'
 import svg from '../svg'
 import { cva } from '../styled-system/css/cva.js'
@@ -66,7 +66,8 @@ function requestTone(status?: string) {
 }
 
 function RequestIcon({ img, svgName }: Pick<RequestItemProps, 'img' | 'svgName'>) {
-  if (img) return <Image alt='' source={cachedImageUrl(img)} />
+  const source = imageSource(img)
+  if (source) return <Image alt='' source={source} />
   const icon = svgName
     ? (svg as unknown as Record<string, ((size: number) => ReactNode) | undefined>)[svgName.toLowerCase()]
     : undefined

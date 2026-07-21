@@ -5,6 +5,7 @@ import log from 'electron-log'
 import { getMainRuntime } from '../../runtime'
 
 import { MAINNET_ETH_ICON } from '../../../resources/domain/balance'
+import { builtInChainIconUrl } from '../../../resources/domain/chain'
 import { MainSchema, Main } from './types/main'
 
 import type { Origin } from './types/origin'
@@ -14,7 +15,7 @@ export type { ChainId, Chain, ChainMetadata } from './types/chain'
 export type { Origin } from './types/origin'
 export type { Permission } from './types/permission'
 export type { Balance } from './types/balance'
-export type { WithTokenId, Token } from './types/token'
+export type { WithTokenId, Token, TokenCatalog, TokenImage, TokenRecord, TokenSource } from './types/token'
 export type { NativeCurrency } from './types/nativeCurrency'
 export type { Gas, GasFees } from './types/gas'
 export type { Rate } from './types/rate'
@@ -59,7 +60,6 @@ type M = Main & {
   latticeSettings: any
   ledger: any
   trezor: any
-  tokens: any
   rates: any
   signers: any
   frames: any
@@ -181,11 +181,11 @@ const requiredDefaultEthereumNetworksMeta: Record<number, any> = {
         price: 0,
         change24hr: 0
       },
-      icon: '',
+      icon: builtInChainIconUrl(56),
       name: 'BNB',
       decimals: 18
     },
-    icon: '',
+    icon: builtInChainIconUrl(56),
     primaryColor: 'accent8'
   },
   999: {
@@ -196,11 +196,11 @@ const requiredDefaultEthereumNetworksMeta: Record<number, any> = {
         price: 0,
         change24hr: 0
       },
-      icon: '',
+      icon: builtInChainIconUrl(999),
       name: 'HYPE',
       decimals: 18
     },
-    icon: '',
+    icon: builtInChainIconUrl(999),
     primaryColor: 'accent3'
   },
   9745: {
@@ -211,11 +211,11 @@ const requiredDefaultEthereumNetworksMeta: Record<number, any> = {
         price: 0,
         change24hr: 0
       },
-      icon: '',
+      icon: builtInChainIconUrl(9745),
       name: 'Plasma',
       decimals: 18
     },
-    icon: '',
+    icon: builtInChainIconUrl(9745),
     primaryColor: 'accent5'
   },
   81457: {
@@ -226,11 +226,11 @@ const requiredDefaultEthereumNetworksMeta: Record<number, any> = {
         price: 0,
         change24hr: 0
       },
-      icon: '',
+      icon: MAINNET_ETH_ICON,
       name: 'Ether',
       decimals: 18
     },
-    icon: '',
+    icon: builtInChainIconUrl(81457),
     primaryColor: 'accent4'
   },
   43114: {
@@ -241,11 +241,11 @@ const requiredDefaultEthereumNetworksMeta: Record<number, any> = {
         price: 0,
         change24hr: 0
       },
-      icon: '',
+      icon: builtInChainIconUrl(43114),
       name: 'Avalanche',
       decimals: 18
     },
-    icon: '',
+    icon: builtInChainIconUrl(43114),
     primaryColor: 'accent8'
   },
   143: {
@@ -256,11 +256,11 @@ const requiredDefaultEthereumNetworksMeta: Record<number, any> = {
         price: 0,
         change24hr: 0
       },
-      icon: '',
+      icon: builtInChainIconUrl(143),
       name: 'Monad',
       decimals: 18
     },
-    icon: '',
+    icon: builtInChainIconUrl(143),
     primaryColor: 'accent6'
   }
 }
@@ -317,7 +317,7 @@ const mainState: M = {
   activity: {},
   orders: {},
   accountOrder: [],
-  tokens: { custom: [], known: {} },
+  tokens: { byId: {}, accountTokenIds: {} },
   rates: {},
   signers: {},
   updater: {
@@ -768,7 +768,7 @@ const mainState: M = {
           name: 'Ether',
           decimals: 18
         },
-        icon: '',
+        icon: builtInChainIconUrl(1),
         primaryColor: 'accent1' // Mainnet
       },
       10: {
@@ -784,12 +784,12 @@ const mainState: M = {
             price: 0,
             change24hr: 0
           },
-          icon: '',
+          icon: MAINNET_ETH_ICON,
           name: 'Ether',
           symbol: 'ETH',
           decimals: 18
         },
-        icon: 'https://frame.nyc3.cdn.digitaloceanspaces.com/icons/optimism.svg',
+        icon: builtInChainIconUrl(10),
         primaryColor: 'accent4' // Optimism
       },
       56: {
@@ -806,11 +806,11 @@ const mainState: M = {
             price: 0,
             change24hr: 0
           },
-          icon: '',
+          icon: builtInChainIconUrl(56),
           name: 'BNB',
           decimals: 18
         },
-        icon: '',
+        icon: builtInChainIconUrl(56),
         primaryColor: 'accent8' // BNB Smart Chain
       },
       100: {
@@ -827,11 +827,11 @@ const mainState: M = {
             price: 0,
             change24hr: 0
           },
-          icon: '',
+          icon: builtInChainIconUrl(100),
           name: 'xDAI',
           decimals: 18
         },
-        icon: 'https://frame.nyc3.cdn.digitaloceanspaces.com/icons/gnosis.svg',
+        icon: builtInChainIconUrl(100),
         primaryColor: 'accent5' // Gnosis
       },
       137: {
@@ -848,11 +848,11 @@ const mainState: M = {
             price: 0,
             change24hr: 0
           },
-          icon: '',
+          icon: builtInChainIconUrl(137),
           name: 'Matic',
           decimals: 18
         },
-        icon: 'https://frame.nyc3.cdn.digitaloceanspaces.com/icons/polygon.svg',
+        icon: builtInChainIconUrl(137),
         primaryColor: 'accent6' // Polygon
       },
       999: {
@@ -869,11 +869,11 @@ const mainState: M = {
             price: 0,
             change24hr: 0
           },
-          icon: '',
+          icon: builtInChainIconUrl(999),
           name: 'HYPE',
           decimals: 18
         },
-        icon: '',
+        icon: builtInChainIconUrl(999),
         primaryColor: 'accent3' // HyperEVM
       },
       8453: {
@@ -890,11 +890,11 @@ const mainState: M = {
             price: 0,
             change24hr: 0
           },
-          icon: '',
+          icon: MAINNET_ETH_ICON,
           name: 'Ether',
           decimals: 18
         },
-        icon: 'https://frame.nyc3.cdn.digitaloceanspaces.com/baseiconcolor.png',
+        icon: builtInChainIconUrl(8453),
         primaryColor: 'accent8' // Base
       },
       42161: {
@@ -910,12 +910,12 @@ const mainState: M = {
             price: 0,
             change24hr: 0
           },
-          icon: '',
+          icon: MAINNET_ETH_ICON,
           name: 'Ether',
           symbol: 'ETH',
           decimals: 18
         },
-        icon: 'https://frame.nyc3.cdn.digitaloceanspaces.com/icons/arbitrum.svg',
+        icon: builtInChainIconUrl(42161),
         primaryColor: 'accent7' // Arbitrum
       },
       43114: {
@@ -932,11 +932,11 @@ const mainState: M = {
             price: 0,
             change24hr: 0
           },
-          icon: '',
+          icon: builtInChainIconUrl(43114),
           name: 'Avalanche',
           decimals: 18
         },
-        icon: '',
+        icon: builtInChainIconUrl(43114),
         primaryColor: 'accent8' // Avalanche
       },
       84532: {
@@ -953,11 +953,11 @@ const mainState: M = {
             price: 0,
             change24hr: 0
           },
-          icon: '',
+          icon: MAINNET_ETH_ICON,
           name: 'Base Sepolia Ether',
           decimals: 18
         },
-        icon: 'https://frame.nyc3.cdn.digitaloceanspaces.com/baseiconcolor.png',
+        icon: builtInChainIconUrl(84532),
         primaryColor: 'accent2' // Testnet
       },
       11155111: {
@@ -974,11 +974,11 @@ const mainState: M = {
             price: 0,
             change24hr: 0
           },
-          icon: '',
+          icon: MAINNET_ETH_ICON,
           name: 'Sepolia Ether',
           decimals: 18
         },
-        icon: '',
+        icon: builtInChainIconUrl(11155111),
         primaryColor: 'accent2' // Testnet
       },
       11155420: {
@@ -995,11 +995,11 @@ const mainState: M = {
             price: 0,
             change24hr: 0
           },
-          icon: '',
+          icon: MAINNET_ETH_ICON,
           name: 'Optimism Sepolia Ether',
           decimals: 18
         },
-        icon: '',
+        icon: builtInChainIconUrl(11155420),
         primaryColor: 'accent2' // Testnet
       }
     }

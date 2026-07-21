@@ -6,6 +6,7 @@ import { ChainMetadataSchema, ChainSchema } from './chain'
 import { OriginSchema } from './origin'
 import { PermissionSchema } from './permission'
 import { ShortcutSchema } from './shortcuts'
+import { TokenCatalogSchema } from './token'
 
 const ShortcutsSchema = z.object({
   summon: ShortcutSchema
@@ -149,6 +150,7 @@ export const MainSchema = z
     accountOrder: z.array(z.string()).default([]),
     accountsMeta: z.record(z.string(), AccountMetadataSchema),
     balances: z.record(z.string().describe('Address'), z.array(BalanceSchema)),
+    tokens: TokenCatalogSchema,
     activity: ActivitySchema,
     orders: OrdersSchema,
     mute: z.record(notificationTypes, z.boolean()),

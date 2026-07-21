@@ -1,13 +1,18 @@
 import { NATIVE_CURRENCY } from '../../constants'
 import { formatUnits, toBigInt } from '../../utils/numbers'
+import { persistedImageSource } from '../image'
+import { tokenFromBalance, tokenImageSource, toTokenId } from '../token'
 
-import type { WithTokenId, Balance, Rate } from '../../../main/store/state'
+import type { Balance, Rate, TokenCatalog } from '../../../main/store/state'
 
 export interface DisplayedBalance extends Balance {
+  decimals: number
   displayBalance: string
   logoURI?: string
+  name: string
   price: string
   priceChange: string | false
+  symbol: string
   usdRate: Rate
   hasPrice: boolean
   totalValue: number
@@ -15,9 +20,12 @@ export interface DisplayedBalance extends Balance {
 }
 
 export interface BalanceSummary extends Balance {
+  decimals: number
   hasPrice: boolean
   logoURI?: string
+  name: string
   quote?: Rate
+  symbol: string
   totalValue: number
   unformattedBalance: number
 }
@@ -65,6 +73,7 @@ interface BalanceSummaryOptions {
   rates?: RateMap
   networks?: NetworkMap
   networksMeta?: NetworkMetaMap
+  tokens?: TokenCatalog
   includeChain?: (chain: ChainLike, balance: BalanceInput) => boolean
   includeBalance?: (balance: BalanceInput) => boolean
 }
@@ -75,6 +84,10 @@ interface BalanceSummarySelectorOptions extends BalanceSummaryOptions {
 
 const UNKNOWN = '?'
 const includeAllChains = () => true
+const EMPTY_NETWORKS: NetworkMap = {}
+const EMPTY_NETWORKS_META: NetworkMetaMap = {}
+const EMPTY_RATES: RateMap = {}
+const EMPTY_TOKENS: TokenCatalog = { byId: {}, accountTokenIds: {} }
 export const MAINNET_ETH_ICON = 'https://assets.coingecko.com/coins/images/279/large/ethereum.png?1595348880'
 
 function floorTo(value: number, decimals: number) {
@@ -104,7 +117,10 @@ export function formatUsdRate(rate: number, decimals = 2) {
       }).format(floorTo(rate, decimals))
 }
 
-export function createBalance(rawBalance: Balance, quote?: Rate): DisplayedBalance {
+export function createBalance(
+  rawBalance: Balance & { decimals: number; logoURI?: string; name: string; symbol: string },
+  quote?: Rate
+): DisplayedBalance {
   const balance = balanceValue(rawBalance)
   const hasPrice = typeof quote?.price === 'number' && !isNaN(quote.price)
   const usdRate = hasPrice ? quote.price : NaN
@@ -129,18 +145,21 @@ function createBalanceSummary({
   rawBalance,
   rates = {},
   networks = {},
-  networksMeta = {}
+  networksMeta = {},
+  tokens = { byId: {}, accountTokenIds: {} }
 }: {
   rawBalance: BalanceInput
   rates?: RateMap
   networks?: NetworkMap
   networksMeta?: NetworkMetaMap
+  tokens?: TokenCatalog
 }): BalanceSummary {
   const chain = networks[rawBalance.chainId] || {}
   const isNative = isNativeCurrency(rawBalance.address)
   const nativeCurrencyInfo = networksMeta[rawBalance.chainId]?.nativeCurrency || {}
+  const token = tokenFromBalance(tokens, rawBalance, nativeCurrencyInfo)
   const rate = isNative ? nativeCurrencyInfo : rates[rawBalance.address || rawBalance.symbol || ''] || {}
-  const decimals = isNative ? (nativeCurrencyInfo.decimals ?? 18) : (rawBalance.decimals ?? 18)
+  const decimals = token?.decimals ?? rawBalance.decimals ?? 18
   const quote = chain.isTestnet ? { price: 0, change24hr: 0 } : rate.usd
   const hasPrice = typeof quote?.price === 'number' && !isNaN(quote.price)
   const unformattedBalance = balanceValue({ balance: rawBalance.balance, decimals })
@@ -154,10 +173,12 @@ function createBalanceSummary({
     decimals,
     displayBalance: rawBalance.displayBalance || '',
     hasPrice,
-    logoURI: (isNative && getNativeCurrencyIcon(nativeCurrencyInfo)) || rawBalance.logoURI,
-    name: isNative ? nativeCurrencyInfo.name || chain.name || rawBalance.name || '' : rawBalance.name || '',
+    logoURI:
+      tokenImageSource(token) ||
+      (isNative ? getNativeCurrencyIcon(nativeCurrencyInfo) : undefined),
+    name: token?.name || (isNative ? chain.name || '' : rawBalance.name || ''),
     quote,
-    symbol: (isNative && nativeCurrencyInfo.symbol) || rawBalance.symbol || '',
+    symbol: token?.symbol || rawBalance.symbol || '',
     totalValue: isNaN(totalValue) ? 0 : totalValue,
     unformattedBalance
   }
@@ -165,9 +186,10 @@ function createBalanceSummary({
 
 export function createBalanceSummaries({
   rawBalances,
-  rates = {},
-  networks = {},
-  networksMeta = {},
+  rates = EMPTY_RATES,
+  networks = EMPTY_NETWORKS,
+  networksMeta = EMPTY_NETWORKS_META,
+  tokens = EMPTY_TOKENS,
   includeChain = includeAllChains,
   includeBalance = hasPositiveBalance
 }: BalanceSummaryOptions) {
@@ -177,7 +199,7 @@ export function createBalanceSummaries({
       return !!chain && !!networksMeta[rawBalance.chainId] && includeChain(chain, rawBalance)
     })
     .filter(includeBalance)
-    .map((rawBalance) => createBalanceSummary({ rawBalance, rates, networks, networksMeta }))
+    .map((rawBalance) => createBalanceSummary({ rawBalance, rates, networks, networksMeta, tokens }))
     .sort(sortBalanceSummariesByTotalValue)
 }
 
@@ -186,6 +208,7 @@ export function createBalanceSummarySelector() {
     cacheKey: unknown
     rawBalances: unknown
     rates: unknown
+    tokens: unknown
     networks: unknown
     networksMeta: unknown
     balances: BalanceSummary[]
@@ -193,9 +216,10 @@ export function createBalanceSummarySelector() {
 
   return ({
     rawBalances,
-    rates = {},
-    networks = {},
-    networksMeta = {},
+    rates = EMPTY_RATES,
+    networks = EMPTY_NETWORKS,
+    networksMeta = EMPTY_NETWORKS_META,
+    tokens = EMPTY_TOKENS,
     includeChain = includeAllChains,
     includeBalance = hasPositiveBalance,
     cacheKey = includeChain
@@ -205,6 +229,7 @@ export function createBalanceSummarySelector() {
       cache.cacheKey === cacheKey &&
       cache.rawBalances === rawBalances &&
       cache.rates === rates &&
+      cache.tokens === tokens &&
       cache.networks === networks &&
       cache.networksMeta === networksMeta
     ) {
@@ -216,6 +241,7 @@ export function createBalanceSummarySelector() {
       rates,
       networks,
       networksMeta,
+      tokens,
       includeChain,
       includeBalance
     })
@@ -224,6 +250,7 @@ export function createBalanceSummarySelector() {
       cacheKey,
       rawBalances,
       rates,
+      tokens,
       networks,
       networksMeta,
       balances
@@ -279,8 +306,11 @@ export function isNativeCurrency(address: string) {
   return address === NATIVE_CURRENCY
 }
 
-function getNativeCurrencyIcon(nativeCurrency: { icon?: string; symbol?: string }) {
-  return nativeCurrency.icon || (nativeCurrency.symbol?.toUpperCase() === 'ETH' ? MAINNET_ETH_ICON : '')
+function getNativeCurrencyIcon(nativeCurrency: {
+  image?: { base64?: string; mimeType?: string }
+  symbol?: string
+}) {
+  return persistedImageSource(nativeCurrency.image)
 }
 
 export function isLowValueTokenBalance(balance: { totalValue: number; hasPrice?: boolean }) {
@@ -296,7 +326,4 @@ export function formatBalanceNotionalValue(balance: { totalValue: number; hasPri
   return `$${formatUsdRate(balance.totalValue, 2)}`
 }
 
-export function toTokenId(token: WithTokenId) {
-  const { chainId, address } = token
-  return `${chainId}:${address.toLowerCase()}`
-}
+export { toTokenId }

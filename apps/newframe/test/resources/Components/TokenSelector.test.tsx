@@ -5,6 +5,7 @@ import { fireEvent, render, screen } from '../../componentSetup'
 import ChainTokenIcon from '../../../resources/Components/ChainTokenIcon'
 import TokenSelector from '../../../resources/Components/TokenSelector'
 import type { TokenSelectorItem } from '../../../resources/Components/tokenSelectorTypes'
+import link from '../../../resources/link'
 
 const networks = {
   1: { name: 'Mainnet' }
@@ -57,6 +58,72 @@ function ControlledSelector({ initialSelectedId = 'eth' }: { initialSelectedId?:
 }
 
 describe('ChainTokenIcon', () => {
+  it('requests a missing persisted token image when the token UI mounts', () => {
+    const tokenId = '1:0x1111111111111111111111111111111111111111'
+    const originalIntersectionObserver = globalThis.IntersectionObserver
+    Object.defineProperty(globalThis, 'IntersectionObserver', {
+      configurable: true,
+      value: undefined,
+      writable: true
+    })
+
+    try {
+      render(
+        <ChainTokenIcon
+          chainId={1}
+          networks={networks}
+          networksMeta={networksMeta}
+          size='md'
+          symbol='TKN'
+          tokenId={tokenId}
+        />
+      )
+
+      expect(link.executeCommand).toHaveBeenCalledWith({ type: 'token.image-hydrate', tokenId })
+    } finally {
+      Object.defineProperty(globalThis, 'IntersectionObserver', {
+        configurable: true,
+        value: originalIntersectionObserver,
+        writable: true
+      })
+    }
+  })
+
+  it('does not request a token image that is already persisted', () => {
+    render(
+      <ChainTokenIcon
+        chainId={1}
+        logoURI='data:image/png;base64,dG9rZW4='
+        networks={networks}
+        networksMeta={networksMeta}
+        size='md'
+        symbol='TKN'
+        tokenId='1:0x1111111111111111111111111111111111111111'
+      />
+    )
+
+    expect(link.executeCommand).not.toHaveBeenCalled()
+  })
+
+  it('renders persisted chain artwork from its base64 image record', () => {
+    render(
+      <ChainTokenIcon
+        chainId={1}
+        networks={networks}
+        networksMeta={{
+          1: {
+            image: { base64: 'aWNvbg==', mimeType: 'image/png' },
+            primaryColor: 'accent1'
+          }
+        }}
+        size='md'
+        symbol='ETH'
+      />
+    )
+
+    expect(document.querySelector('img')?.getAttribute('src')).toBe('data:image/png;base64,aWNvbg==')
+  })
+
   it('delegates fallback chain-badge color to the design-system recipe', () => {
     render(
       <ChainTokenIcon
@@ -87,13 +154,29 @@ describe('ChainTokenIcon', () => {
     expect(screen.getByText('abcDE')).toBeTruthy()
   })
 
+  it('falls back without rendering retired image-cache references', () => {
+    render(
+      <ChainTokenIcon
+        chainId={1}
+        logoURI='frame-cache:icon:token'
+        networks={{ 1: { name: 'Newframe Local Anvil' } }}
+        networksMeta={{ 1: { icon: 'frame-cache:icon:chain', primaryColor: 'accent1' } }}
+        size='md'
+        symbol='USDC'
+      />
+    )
+
+    expect(screen.getByText('USDC')).toBeTruthy()
+    expect(document.querySelector('img')).toBeNull()
+  })
+
   it('falls back and warns when a token image fails to load', () => {
     const warn = jest.spyOn(console, 'warn').mockImplementation(() => {})
 
     render(
       <ChainTokenIcon
         chainId={1}
-        logoURI='https://example.com/token.png'
+        logoURI='data:image/png;base64,YnJva2Vu'
         networks={networks}
         networksMeta={networksMeta}
         size='md'
@@ -107,7 +190,7 @@ describe('ChainTokenIcon', () => {
     expect(screen.getByText('BROKE')).toBeTruthy()
     expect(warn).toHaveBeenCalledWith(
       '[ChainTokenIcon] failed to load token image',
-      expect.objectContaining({ chainId: 1, symbol: 'BROKEN', url: 'https://example.com/token.png' })
+      expect.objectContaining({ chainId: 1, symbol: 'BROKEN', url: 'data:image/png;base64,YnJva2Vu' })
     )
     warn.mockRestore()
   })

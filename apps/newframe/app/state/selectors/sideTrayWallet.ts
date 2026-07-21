@@ -4,6 +4,7 @@ import {
   toTokenId,
   type BalanceSummary
 } from '../../../resources/domain/balance'
+import { selectableTokens as selectGlobalTokens } from '../../../resources/domain/token'
 
 import type { Balance, Token } from '../../../main/store/state'
 import type { SideTrayRendererState } from '../../../resources/state/projections'
@@ -26,24 +27,23 @@ const EMPTY_BALANCES: Balance[] = []
 const EMPTY_NETWORKS: Record<string | number, SideTrayWalletEthereumNetwork> = {}
 const EMPTY_NETWORKS_META: Record<string | number, SideTrayWalletEthereumNetworkMeta> = {}
 const EMPTY_RATES: SideTrayRendererState['rates'] = {}
-const EMPTY_TOKENS: Token[] = []
 
 function createSelectableBalancesSelector() {
   let previousBalances: Balance[] | undefined
-  let previousCustomTokens: Token[] | undefined
+  let previousGlobalTokens: Token[] | undefined
   let previousResult: Balance[] = []
 
-  return (balances: Balance[], customTokens: Token[]) => {
-    if (balances === previousBalances && customTokens === previousCustomTokens) return previousResult
+  return (balances: Balance[], globalTokens: Token[]) => {
+    if (balances === previousBalances && globalTokens === previousGlobalTokens) return previousResult
 
     const balanceIds = new Set(balances.map(toTokenId))
-    const missingCustomBalances = customTokens
+    const missingGlobalBalances = globalTokens
       .filter((token) => !balanceIds.has(toTokenId(token)))
       .map((token) => ({ ...token, balance: '0x0', displayBalance: '' }))
 
     previousBalances = balances
-    previousCustomTokens = customTokens
-    previousResult = missingCustomBalances.length ? [...balances, ...missingCustomBalances] : balances
+    previousGlobalTokens = globalTokens
+    previousResult = missingGlobalBalances.length ? [...balances, ...missingGlobalBalances] : balances
 
     return previousResult
   }
@@ -77,6 +77,8 @@ export function createSideTrayWalletSelector() {
   const selectBalanceSummaries = createBalanceSummarySelector()
   const selectSelectableBalances = createSelectableBalancesSelector()
   const selectOrderedAccounts = createOrderedAccountsSelector()
+  let previousTokensById: SideTrayRendererState['tokens']['byId'] | undefined
+  let previousGlobalTokens: Token[] = []
   let previousResult: SideTrayWalletSelectorValue | null = null
 
   return (state: SideTrayRendererState): SideTrayWalletSelectorValue => {
@@ -87,20 +89,26 @@ export function createSideTrayWalletSelector() {
     const accountBalances = currentAccount?.address
       ? state.balances[currentAccount.address] || EMPTY_BALANCES
       : EMPTY_BALANCES
-    const customTokens = state.tokens.custom || EMPTY_TOKENS
-    const rawBalances = selectSelectableBalances(accountBalances, customTokens)
-    const customTokenIds = new Set(customTokens.map(toTokenId))
+    if (state.tokens.byId !== previousTokensById) {
+      previousTokensById = state.tokens.byId
+      previousGlobalTokens = selectGlobalTokens(state.tokens)
+    }
+    const globalTokens = previousGlobalTokens
+    const rawBalances = selectSelectableBalances(accountBalances, globalTokens)
+    const globalTokenIds = new Set(globalTokens.map(toTokenId))
     const networks = state.networks.ethereum || EMPTY_NETWORKS
     const networksMeta = state.networksMeta.ethereum || EMPTY_NETWORKS_META
     const rates = state.rates || EMPTY_RATES
+    const tokens = state.tokens
     const runtime = state.runtime
     const balanceSummaries = selectBalanceSummaries({
       rawBalances,
       rates,
+      tokens,
       networks,
       networksMeta,
       includeChain: (chain) => !!chain.on,
-      includeBalance: (balance) => hasPositiveBalance(balance) || customTokenIds.has(toTokenId(balance)),
+      includeBalance: (balance) => hasPositiveBalance(balance) || globalTokenIds.has(toTokenId(balance)),
       cacheKey: currentAccount?.address || ''
     })
 

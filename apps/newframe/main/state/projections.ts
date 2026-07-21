@@ -248,7 +248,7 @@ function projectSideTrayNetworkMetadata(
         [
           chainId,
           {
-            icon: chainMetadata.icon,
+            image: chainMetadata.image,
             primaryColor: chainMetadata.primaryColor || 'accent1',
             nativeCurrency: {
               ...chainMetadata.nativeCurrency,
@@ -323,13 +323,37 @@ function projectSideTrayRates(rates: CanonicalMain['rates']): SideTrayRendererSt
 
 let previousSideTrayProjection: SideTrayRendererState | undefined
 let previousSideTrayTokensInput: CanonicalMain['tokens'] | undefined
+let previousSideTrayTokensAccount = ''
 let previousSideTrayTokens: SideTrayRendererState['tokens'] | undefined
 
-function projectSideTrayTokens(tokens: CanonicalMain['tokens']): SideTrayRendererState['tokens'] {
-  if (tokens === previousSideTrayTokensInput && previousSideTrayTokens) return previousSideTrayTokens
+function projectSideTrayTokens(
+  tokens: CanonicalMain['tokens'],
+  account: string
+): SideTrayRendererState['tokens'] {
+  if (
+    tokens === previousSideTrayTokensInput &&
+    account === previousSideTrayTokensAccount &&
+    previousSideTrayTokens
+  ) {
+    return previousSideTrayTokens
+  }
+
+  const accountIds = tokens.accountTokenIds[account] || []
+  const visibleIds = new Set([
+    ...accountIds,
+    ...Object.entries(tokens.byId)
+      .filter(([, token]) => token.custom || token.curated)
+      .map(([tokenId]) => tokenId)
+  ])
 
   previousSideTrayTokensInput = tokens
-  previousSideTrayTokens = { custom: tokens.custom }
+  previousSideTrayTokensAccount = account
+  previousSideTrayTokens = {
+    byId: Object.fromEntries(
+      [...visibleIds].flatMap((tokenId) => (tokens.byId[tokenId] ? [[tokenId, tokens.byId[tokenId]]] : []))
+    ),
+    accountTokenIds: account ? { [account]: accountIds } : {}
+  }
   return previousSideTrayTokens
 }
 
@@ -337,6 +361,7 @@ export function projectSideTrayState(state: CanonicalState): SideTrayRendererSta
   const { main } = state
   const accounts = projectSideTrayAccounts(main.accounts)
   const networks = projectSideTrayNetworks(main.networks)
+  const currentAddress = accounts[main.currentAccount]?.address || ''
   const projection: SideTrayRendererState = {
     accounts,
     accountOrder: main.accountOrder,
@@ -345,8 +370,8 @@ export function projectSideTrayState(state: CanonicalState): SideTrayRendererSta
     networks,
     networksMeta: projectSideTrayNetworkMetadata(main.networksMeta, networks),
     rates: projectSideTrayRates(main.rates),
-    runtime: main.runtime,
-    tokens: projectSideTrayTokens(main.tokens)
+    tokens: projectSideTrayTokens(main.tokens, currentAddress),
+    runtime: main.runtime
   }
 
   if (sameTopLevelReferences(previousSideTrayProjection, projection)) return previousSideTrayProjection!

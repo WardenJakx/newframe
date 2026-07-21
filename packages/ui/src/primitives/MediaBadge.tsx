@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import type { ReactNode, Ref } from 'react'
 
 import { sva } from '../styled-system/css/sva.js'
 import type { RecipeVariantProps } from '../styled-system/types/recipe.js'
@@ -68,12 +68,13 @@ export type MediaBadgeProps = RecipeVariantProps<typeof mediaBadgeRecipe> & {
   badge: ReactNode
   children: ReactNode
   decorative?: boolean
+  rootRef?: Ref<HTMLSpanElement>
 }
 
-export function MediaBadge({ badge, children, decorative = false, size }: MediaBadgeProps) {
+export function MediaBadge({ badge, children, decorative = false, rootRef, size }: MediaBadgeProps) {
   const styles = mediaBadgeRecipe({ size })
   return (
-    <span aria-hidden={decorative || undefined} className={styles.root}>
+    <span ref={rootRef} aria-hidden={decorative || undefined} className={styles.root}>
       <span className={styles.media}>{children}</span>
       <span className={styles.badge}>
         <span className={styles.badgeContent}>{badge}</span>

@@ -1,4 +1,5 @@
 import createInitialState, { CanonicalStateSchema } from '../../../../main/store/state'
+import { builtInChainIconUrl } from '../../../../resources/domain/chain'
 
 describe('canonical state defaults', () => {
   it('creates state that satisfies the canonical runtime schema', () => {
@@ -24,7 +25,8 @@ describe('canonical state defaults', () => {
   })
 
   it('enables only the supported production networks by default', () => {
-    const networks = createInitialState().main.networks.ethereum
+    const state = createInitialState()
+    const networks = state.main.networks.ethereum
     const enabledChainIds = Object.values(networks)
       .filter((network) => network.on)
       .map((network) => network.id)
@@ -41,5 +43,9 @@ describe('canonical state defaults', () => {
     expect(networks[137].connection.primary.current).toBe('chainlist')
     expect(networks[10].connection.primary.on).toBe(true)
     expect(networks[100].on).toBe(false)
+    enabledChainIds.forEach((chainId) => {
+      expect(state.main.networksMeta.ethereum[chainId].icon).toBe(builtInChainIconUrl(chainId))
+      expect(state.main.networksMeta.ethereum[chainId].nativeCurrency.icon.startsWith('https://')).toBe(true)
+    })
   })
 })

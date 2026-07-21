@@ -260,7 +260,9 @@ describe('#startDataScanner', () => {
     accounts.startDataScanner()
 
     expect(accounts.refreshPositions(account.address, 31337, [token])).toBe(true)
-    expect(storeState().main.tokens.known[account.address]).toContainEqual(token)
+    const tokenId = `${token.chainId}:${token.address}`
+    expect(storeState().main.tokens.byId[tokenId]).toEqual(expect.objectContaining(token))
+    expect(storeState().main.tokens.accountTokenIds[account.address]).toContain(tokenId)
     expect(externalDataScannerMock.refreshPositions).toHaveBeenCalledWith(account.address, 31337, [token])
 
     accounts.close()
@@ -912,7 +914,15 @@ describe('#setTxSent', () => {
       symbol: 'USDC'
     }
     store.setState((state: any) => {
-      state.main.tokens.known[account.address] = [savedToken]
+      const tokenId = `1:${usdc}`
+      state.main.tokens.byId[tokenId] = {
+        ...savedToken,
+        custom: false,
+        curated: false,
+        sources: ['onchain'],
+        updatedAt: 0
+      }
+      state.main.tokens.accountTokenIds[account.address] = [tokenId]
     })
     provider.send = jest.fn()
 
@@ -934,7 +944,7 @@ describe('#setTxSent', () => {
     })
     Accounts.setTxSent(request.handlerId, hash)
 
-    expect(storeState().main.tokens.known[account.address]).toStrictEqual([savedToken])
+    expect(storeState().main.tokens.byId[`1:${usdc}`]).toEqual(expect.objectContaining(savedToken))
   })
 
   it('saves affected tokens and refreshes transaction positions when the receipt lands', async () => {
@@ -958,7 +968,8 @@ describe('#setTxSent', () => {
       ]
     }
     store.setState((state: any) => {
-      state.main.tokens.known[account.address] = []
+      state.main.tokens.accountTokenIds[account.address] = []
+      delete state.main.tokens.byId[`1:${usdc.toLowerCase()}`]
     })
 
     provider.send = jest.fn((payload: any, cb: any) => {
@@ -993,7 +1004,9 @@ describe('#setTxSent', () => {
       name: 'USDC',
       symbol: 'USDC'
     }
-    expect(storeState().main.tokens.known[account.address]).toContainEqual(expectedToken)
+    const tokenId = `1:${expectedToken.address}`
+    expect(storeState().main.tokens.byId[tokenId]).toEqual(expect.objectContaining(expectedToken))
+    expect(storeState().main.tokens.accountTokenIds[account.address]).toContain(tokenId)
 
     jest.advanceTimersByTime(1000)
     await Promise.resolve()
@@ -1002,7 +1015,9 @@ describe('#setTxSent', () => {
     await Promise.resolve()
 
     expect(externalDataScannerMock.refreshPositions).toHaveBeenCalledTimes(1)
-    expect(externalDataScannerMock.refreshPositions).toHaveBeenCalledWith(account.address, 1, [expectedToken])
+    expect(externalDataScannerMock.refreshPositions).toHaveBeenCalledWith(account.address, 1, [
+      expect.objectContaining(expectedToken)
+    ])
     expect(storeState().main.activity[hash].positionsRefreshedAt).toEqual(expect.any(Number))
 
     Accounts.close()

@@ -18,7 +18,6 @@ import {
 } from '../../../../resources/domain/flash/constants'
 import { FLASH_USDC_ASSET, FLASH_WETH_ASSET } from '../../../../resources/domain/flash/assets'
 import { type FlashQuote } from '../../../../resources/domain/flash/schemas'
-import type { SideTrayRendererState } from '../../../../resources/state/projections'
 import { STATE_STREAM_SCHEMA_VERSION } from '../../../../resources/state/protocol'
 
 const sender = {
@@ -55,10 +54,14 @@ function updateTradeState(changes: Record<string, unknown>) {
   })
 }
 
-function initializeTradeState(
-  balances = [wethBalance()],
-  customTokens: SideTrayRendererState['tokens']['custom'] = []
-) {
+function initializeTradeState(balances = [wethBalance()], customTokens: any[] = []) {
+  const tokenRecords = [...balances, ...customTokens].map((token) => ({
+    ...token,
+    custom: customTokens.includes(token),
+    curated: false,
+    sources: customTokens.includes(token) ? ['custom'] : ['onchain'],
+    updatedAt: 0
+  }))
   stateRevision = 0
   resetStateMirrorForTests()
   beginStateConnection('sidetray')
@@ -91,6 +94,12 @@ function initializeTradeState(
       networksMeta: {
         ethereum: {
           [FLASH_ANVIL_CHAIN_ID]: {
+            image: {
+              base64: 'Y2hhaW4=',
+              contentHash: 'chain-image',
+              mimeType: 'image/png',
+              sourceUrl: 'https://cdn.example/chain.png'
+            },
             primaryColor: 'accent1',
             nativeCurrency: {
               symbol: 'ETH',
@@ -111,7 +120,17 @@ function initializeTradeState(
         isDev: true,
         environment: 'test'
       },
-      tokens: { custom: customTokens }
+      tokens: {
+        byId: Object.fromEntries(
+          tokenRecords.map((token) => [
+            `${token.chainId}:${token.address.toLowerCase()}`,
+            { ...token, address: token.address.toLowerCase() }
+          ])
+        ),
+        accountTokenIds: {
+          [sender.address]: tokenRecords.map((token) => `${token.chainId}:${token.address.toLowerCase()}`)
+        }
+      }
     }
   })
 }
@@ -527,6 +546,21 @@ describe('Trade', () => {
     fireEvent.change(screen.getByLabelText('Search tokens'), { target: { value: '' } })
     fireEvent.click(screen.getByText('Show 50 more assets'))
     expect(screen.getAllByRole('option')).toHaveLength(100)
+  })
+
+  it('renders the projected canonical chain image in the asset selector', () => {
+    initializeTradeState([usdcBalance(), wethBalance()])
+    render(<Trade assetId={`${FLASH_ANVIL_CHAIN_ID}:${FLASH_WETH_ADDRESS}`} />)
+
+    fireEvent.click(screen.getByLabelText('Select target asset'))
+
+    const chainBadges = screen
+      .getAllByRole('option')
+      .map((option) => option.querySelector('img')?.getAttribute('src'))
+    expect(chainBadges).toEqual([
+      'data:image/png;base64,Y2hhaW4=',
+      'data:image/png;base64,Y2hhaW4='
+    ])
   })
 
   it('selects a custom token with no balance', () => {

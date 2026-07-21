@@ -298,18 +298,12 @@ function getPositionNativeBalance(
   const quantity = quantityInt(position)
   if (quantity === undefined) return undefined
 
-  const fungible = position.attributes?.fungible_info
   const nativeDecimals = position.attributes?.quantity?.decimals
   const decimals = typeof nativeDecimals === 'number' && nativeDecimals > 0 ? nativeDecimals : 18
-  const symbol = fungible?.symbol || position.attributes?.name || 'Native'
-  const name = fungible?.name || symbol
 
   return {
     address: NATIVE_CURRENCY,
     chainId,
-    name,
-    symbol,
-    decimals,
     balance: quantityHex(quantity),
     displayBalance: position.attributes?.quantity?.numeric || formatUnits(quantity, decimals)
   }
@@ -327,7 +321,8 @@ function getPositionBalance(
   if (quantity === undefined) return undefined
 
   return {
-    ...token,
+    address: token.address,
+    chainId: token.chainId,
     balance: quantityHex(quantity),
     displayBalance: position.attributes?.quantity?.numeric || formatUnits(quantity, token.decimals)
   }

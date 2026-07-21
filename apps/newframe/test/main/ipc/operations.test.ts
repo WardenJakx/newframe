@@ -9,6 +9,7 @@ const quoteFlashForCurrentAccount = jest.fn()
 const submitFlashForCurrentAccount = jest.fn()
 const closeOwnSideTray = jest.fn()
 const inspectOwnSideTray = jest.fn()
+const requestTokenImage = jest.fn()
 const walletWorkflows = {
   acceptBetaWarning: jest.fn(),
   adjustTransactionNonce: jest.fn(),
@@ -26,7 +27,6 @@ const walletWorkflows = {
   disconnectSigner: jest.fn(),
   exportAccountPrivateKey: jest.fn(),
   generateSeedPhrase: jest.fn(),
-  hydrateNetworkIcon: jest.fn(),
   importSigner: jest.fn(),
   inspectOwnTrayWindow: jest.fn(),
   locateKeystore: jest.fn(),
@@ -90,6 +90,7 @@ jest.mock('../../../main/operations/sideTrayWorkflows', () => ({
   closeOwnSideTray,
   inspectOwnSideTray
 }))
+jest.mock('../../../main/images', () => ({ requestTokenImage }))
 jest.mock('../../../main/operations/walletWorkflows', () => walletWorkflows)
 
 let dispatchCommand: typeof import('../../../main/ipc/operations').dispatchCommand
@@ -163,6 +164,7 @@ beforeEach(() => {
   submitFlashForCurrentAccount.mockReset()
   closeOwnSideTray.mockReset()
   inspectOwnSideTray.mockReset()
+  requestTokenImage.mockReset()
   Object.values(walletWorkflows).forEach((mock) => mock.mockReset())
 })
 
@@ -206,6 +208,21 @@ describe('typed operation dispatcher', () => {
       ok: true
     })
     expect(selectAccount).toHaveBeenCalledWith('0xabc')
+  })
+
+  it('lets either trusted renderer request bounded main-process token image hydration', async () => {
+    const command = {
+      type: 'token.image-hydrate' as const,
+      tokenId: '1:0x1111111111111111111111111111111111111111'
+    }
+
+    authorizeRenderer.mockReturnValue(trayContext)
+    await expect(dispatchCommand(event, command)).resolves.toEqual({ ok: true })
+    authorizeRenderer.mockReturnValue(sideTrayContext)
+    await expect(dispatchCommand(event, command)).resolves.toEqual({ ok: true })
+
+    expect(requestTokenImage).toHaveBeenCalledTimes(2)
+    expect(requestTokenImage).toHaveBeenCalledWith(command.tokenId)
   })
 
   it('returns account_not_found without running account-selection orchestration', async () => {

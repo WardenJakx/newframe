@@ -4,7 +4,7 @@ import { v5 as uuidv5 } from 'uuid'
 
 import { NATIVE_CURRENCY } from '../../../resources/constants'
 import { accountNS, isDefaultAccountName } from '../../../resources/domain/account'
-import { toTokenId } from '../../../resources/domain/balance'
+import { toTokenId } from '../../../resources/domain/token'
 import {
   createPanelActions,
   type CanonicalGet,
@@ -12,6 +12,7 @@ import {
 } from '../../../resources/store/actions.panel'
 import type { CanonicalState } from '../state'
 import type { Account } from '../state/types/account'
+import type { Token, TokenImage, TokenSource } from '../state/types/token'
 import type { CanonicalAccountRequest } from '../../accounts/types'
 import type { SignerSummary } from '../../signers/Signer'
 
@@ -80,11 +81,80 @@ function validateNetworkSettings(network: any) {
   return networkId
 }
 
-function includesToken(tokens: any[], token: any) {
-  const existingAddress = token.address.toLowerCase()
-  return tokens.some((item) => {
-    return item.address.toLowerCase() === existingAddress && item.chainId === token.chainId
+function tokenFromValue(value: any): Token | undefined {
+  if (
+    value.address === NATIVE_CURRENCY ||
+    typeof value.address !== 'string' ||
+    !Number.isInteger(Number(value.chainId)) ||
+    typeof value.name !== 'string' ||
+    typeof value.symbol !== 'string' ||
+    !Number.isInteger(Number(value.decimals))
+  ) {
+    return undefined
+  }
+
+  return {
+    address: value.address.toLowerCase(),
+    chainId: Number(value.chainId),
+    decimals: Number(value.decimals),
+    name: value.name,
+    symbol: value.symbol,
+    ...(value.logoURI ? { logoURI: value.logoURI } : {}),
+    ...(value.image ? { image: value.image } : {})
+  }
+}
+
+function balanceFromValue(value: any) {
+  return {
+    address: value.address === NATIVE_CURRENCY ? NATIVE_CURRENCY : value.address.toLowerCase(),
+    balance: value.balance,
+    chainId: Number(value.chainId),
+    displayBalance: value.displayBalance || ''
+  }
+}
+
+function upsertTokenRecords(
+  main: MutableMain,
+  tokens: Token[],
+  options: { account?: string; custom?: boolean; curated?: boolean; source: TokenSource }
+) {
+  const catalog = record(main.tokens)
+  const byId = record(catalog.byId)
+  const account = options.account?.toLowerCase()
+  const accountTokenIds = record(catalog.accountTokenIds)
+  const accountIds = new Set<string>((account && accountTokenIds[account]) || [])
+
+  tokens.forEach((input) => {
+    const token = tokenFromValue(input)
+    if (!token) return
+    const id = toTokenId(token)
+    const existing = record(byId[id] || {})
+    const preserveCustomMetadata = existing.custom && !options.custom
+    const sourceSet = new Set<TokenSource>([...(existing.sources || []), options.source])
+    const preferred = preserveCustomMetadata ? existing : token
+
+    byId[id] = {
+      ...existing,
+      address: token.address,
+      chainId: token.chainId,
+      decimals: preferred.decimals ?? existing.decimals,
+      name: preferred.name || existing.name || token.symbol,
+      symbol: preferred.symbol || existing.symbol,
+      logoURI: preferred.logoURI || existing.logoURI || '',
+      image:
+        preferred.image && (!existing.image || preferred.image.sourceUrl !== existing.image.sourceUrl)
+          ? preferred.image
+          : existing.image,
+      custom: Boolean(existing.custom || options.custom),
+      curated: Boolean(existing.curated || options.curated),
+      sources: [...sourceSet],
+      updatedAt: Date.now()
+    }
+
+    if (account) accountIds.add(id)
   })
+
+  if (account) accountTokenIds[account] = [...accountIds]
 }
 
 function stripRequestCapabilities(request: MutableRecord) {
@@ -844,13 +914,25 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
       })
     },
 
-    setNetworkIcon: (netType: string, chainId: number, icon: string) => {
+    setNetworkImage: (netType: string, chainId: number, sourceUrl: string, image: TokenImage) => {
       set((draft) => {
         const chainsMeta = record(record(mutableMain(draft).networksMeta)[netType])
         if (chainsMeta[chainId]) {
-          chainsMeta[chainId].icon = icon
+          chainsMeta[chainId].icon = sourceUrl
+          chainsMeta[chainId].image = image
         } else {
-          log.error(`Action Error: setNetworkIcon chainId: ${chainId} not found in chainsMeta`)
+          log.error(`Action Error: setNetworkImage chainId: ${chainId} not found in chainsMeta`)
+        }
+      })
+    },
+
+    setNativeCurrencyImage: (netType: string, chainId: number, image: TokenImage) => {
+      set((draft) => {
+        const chainsMeta = record(record(mutableMain(draft).networksMeta)[netType])
+        if (chainsMeta[chainId]) {
+          chainsMeta[chainId].nativeCurrency.image = image
+        } else {
+          log.error(`Action Error: setNativeCurrencyImage chainId: ${chainId} not found in chainsMeta`)
         }
       })
     },
@@ -865,40 +947,60 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
 
     setBalance: (address: string, balance: any) => {
       set((draft) => {
-        const balances = record(mutableMain(draft).balances)
-        const accountBalances = (balances[address] || []) as any[]
+        const main = mutableMain(draft)
+        const token = tokenFromValue(balance)
+        if (token) upsertTokenRecords(main, [token], { account: address, source: 'onchain' })
+        const normalizedBalance = balanceFromValue(balance)
+        const balances = record(main.balances)
+        const accountBalances = ((balances[address] || []) as any[]).map(balanceFromValue)
         balances[address] = [
           ...accountBalances.filter(
-            (item) => item.address !== balance.address || item.chainId !== balance.chainId
+            (item) => item.address !== normalizedBalance.address || item.chainId !== normalizedBalance.chainId
           ),
-          balance
+          normalizedBalance
         ]
       })
     },
 
     setBalances: (address: string, newBalances: any[]) => {
       set((draft) => {
-        const balances = record(mutableMain(draft).balances)
-        const accountBalances = (balances[address] || []) as any[]
+        const main = mutableMain(draft)
+        upsertTokenRecords(main, newBalances.map(tokenFromValue).filter(Boolean) as Token[], {
+          account: address,
+          source: 'onchain'
+        })
+        const normalizedBalances = newBalances.map(balanceFromValue)
+        const balances = record(main.balances)
+        const accountBalances = ((balances[address] || []) as any[]).map(balanceFromValue)
         const existingBalances = accountBalances.filter((balance) => {
-          return newBalances.every(
+          return normalizedBalances.every(
             (newBalance) => newBalance.chainId !== balance.chainId || newBalance.address !== balance.address
           )
         })
 
-        balances[address] = [...existingBalances, ...newBalances]
+        balances[address] = [...existingBalances, ...normalizedBalances]
       })
     },
 
     setPortfolioBalances: (address: string, newBalances: any[]) => {
       set((draft) => {
         const main = mutableMain(draft)
-        const customTokenIds = new Set(((main.tokens?.custom || []) as any[]).map(toTokenId))
-        const portfolioBalances = newBalances.filter((balance) => !customTokenIds.has(toTokenId(balance)))
+        upsertTokenRecords(main, newBalances.map(tokenFromValue).filter(Boolean) as Token[], {
+          account: address,
+          source: 'portfolio'
+        })
+        const customTokenIds = new Set(
+          Object.values(record(main.tokens).byId || {})
+            .filter((token: any) => token.custom)
+            .map((token: any) => toTokenId(token))
+        )
+        const portfolioBalances = newBalances
+          .filter((balance) => !customTokenIds.has(toTokenId(balance)))
+          .map(balanceFromValue)
         const portfolioChains = new Set(portfolioBalances.map((balance) => balance.chainId))
         const portfolioBalanceIds = new Set(portfolioBalances.map(toTokenId))
         const balances = record(main.balances)
-        const existingBalances = (balances[address] || []) as any[]
+        const existingBalances = ((balances[address] || []) as any[]).map(balanceFromValue)
         const preservedBalances = existingBalances.filter((balance) => {
           const balanceId = toTokenId(balance)
           if (customTokenIds.has(balanceId)) return true
@@ -926,69 +1028,43 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
       })
     },
 
-    addCustomTokens: (tokens: any[]) => {
+    upsertTokens: (
+      tokens: Token[],
+      options: { account?: string; custom?: boolean; curated?: boolean; source: TokenSource }
+    ) => {
       set((draft) => {
         const main = mutableMain(draft)
-        const existing = (main.tokens.custom || []) as any[]
-        const existingTokens = existing.filter((token) => !includesToken(tokens, token))
-        const tokensToAdd = tokens.map((token) => ({
-          ...token,
-          address: token.address.toLowerCase()
-        }))
-        main.tokens.custom = [...existingTokens, ...tokensToAdd]
-
-        Object.values(record(main.balances)).forEach((value) => {
-          const accountBalances = value as any[]
-          tokens.forEach((token) => {
-            const tokenAddress = token.address.toLowerCase()
-            const matchingBalance = accountBalances.find((balance) => {
-              return balance.address.toLowerCase() === tokenAddress && balance.chainId === token.chainId
-            })
-
-            if (matchingBalance) {
-              matchingBalance.logoURI = token.logoURI || matchingBalance.logoURI
-              matchingBalance.symbol = token.symbol || matchingBalance.symbol
-              matchingBalance.name = token.name || matchingBalance.symbol
-            }
-          })
-        })
+        upsertTokenRecords(main, tokens, options)
       })
     },
 
-    removeCustomTokens: (tokens: any[]) => {
+    setTokenImage: (tokenId: string, image: TokenImage) => {
+      set((draft) => {
+        const token = record(record(mutableMain(draft).tokens).byId)[tokenId]
+        if (!token) return
+        token.image = image
+        token.updatedAt = Date.now()
+      })
+    },
+
+    removeCustomTokens: (tokens: Token[]) => {
       const tokenIds = new Set(tokens.map(toTokenId))
-      const needsRemoval = (token: any) => tokenIds.has(toTokenId(token))
 
       set((draft) => {
         const main = mutableMain(draft)
-        main.tokens.custom = (main.tokens.custom as any[]).filter((token) => !needsRemoval(token))
-
-        Object.keys(main.tokens.known).forEach((address) => {
-          main.tokens.known[address] = (main.tokens.known[address] as any[]).filter(
-            (token) => !needsRemoval(token)
-          )
+        const byId = record(record(main.tokens).byId)
+        tokenIds.forEach((id) => {
+          if (byId[id]) byId[id].custom = false
         })
       })
     },
 
-    addKnownTokens: (address: string, tokens: any[]) => {
+    removeAccountTokens: (address: string, tokensToRemove: Set<string>) => {
       set((draft) => {
-        const knownTokens = record(mutableMain(draft).tokens.known)
-        const existing = (knownTokens[address] || []) as any[]
-        const existingTokens = existing.filter((token) => !includesToken(tokens, token))
-        const tokensToAdd = tokens.map((token) => ({
-          ...token,
-          address: token.address.toLowerCase()
-        }))
-        knownTokens[address] = [...existingTokens, ...tokensToAdd]
-      })
-    },
-
-    removeKnownTokens: (address: string, tokensToRemove: Set<string>) => {
-      set((draft) => {
-        const knownTokens = record(mutableMain(draft).tokens.known)
-        knownTokens[address] = ((knownTokens[address] || []) as any[]).filter(
-          (token) => !tokensToRemove.has(toTokenId(token))
+        const accountTokenIds = record(record(mutableMain(draft).tokens).accountTokenIds)
+        const key = address.toLowerCase()
+        accountTokenIds[key] = ((accountTokenIds[key] || []) as string[]).filter(
+          (tokenId) => !tokensToRemove.has(tokenId)
         )
       })
     },
@@ -996,16 +1072,16 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
     resetSavedData: () => {
       set((draft) => {
         const main = mutableMain(draft)
-        const knownTokens = main.tokens?.known || {}
-        const customTokenIds = new Set(((main.tokens?.custom || []) as any[]).map(toTokenId))
+        const catalog = record(main.tokens)
+        const byId = record(catalog.byId)
         const tokenIds = new Set(
-          Object.values(knownTokens as Record<string, any[]>)
-            .flat()
-            .filter((token) => !customTokenIds.has(toTokenId(token)))
-            .map(toTokenId)
+          Object.values(byId)
+            .filter((token: any) => !token.custom && !token.curated)
+            .map((token: any) => toTokenId(token))
         )
 
-        main.tokens.known = {}
+        tokenIds.forEach((id) => delete byId[id])
+        catalog.accountTokenIds = {}
         main.activity = {}
         main.orders = {}
 
