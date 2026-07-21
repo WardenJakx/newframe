@@ -153,6 +153,21 @@ describe('tradeReducer', () => {
     expect(next.contraAsset).not.toBe(next.targetAsset)
   })
 
+  it('preserves selected asset identity when synchronized options are equivalent', () => {
+    const state = createInitialTradeState({
+      assets: [FLASH_WETH_ASSET, FLASH_USDC_ASSET]
+    })
+    const nextAssets = [{ ...FLASH_WETH_ASSET }, { ...FLASH_USDC_ASSET }]
+    const next = tradeReducer(state, {
+      type: 'setAssetOptions',
+      assets: nextAssets
+    })
+
+    expect(next.assetOptions).toBe(nextAssets)
+    expect(next.targetAsset).toBe(state.targetAsset)
+    expect(next.contraAsset).toBe(state.contraAsset)
+  })
+
   it('clears market execution state on input changes and ignores stale quote responses', () => {
     const entered = tradeReducer(createInitialTradeState(), {
       type: 'setInputAmount',
@@ -213,6 +228,38 @@ describe('tradeReducer', () => {
     expect(changed.flashPayload).toBe(null)
     expect(changed.actionQuoteId).toBe('')
     expect(changed.pendingAction).toBe('quote')
+  })
+
+  it('surfaces submission failures even if the quote refreshed while submitting', () => {
+    const ready = tradeReducer(
+      tradeReducer(tradeReducer(createInitialTradeState(), { type: 'setInputAmount', inputAmount: '1' }), {
+        type: 'quoteRequested',
+        requestKey: 'quote-request'
+      }),
+      {
+        type: 'quoteSucceeded',
+        requestKey: 'quote-request',
+        quote: marketQuote('submitted-quote'),
+        flashPayload: { quoteId: 'submitted-quote' }
+      }
+    )
+    const submitting = tradeReducer(ready, {
+      type: 'submitStarted',
+      actionQuoteId: 'submitted-quote'
+    })
+    const refreshing = tradeReducer(submitting, {
+      type: 'quoteRequested',
+      requestKey: 'refreshed-quote-request'
+    })
+    const failed = tradeReducer(refreshing, {
+      type: 'submitFailed',
+      actionQuoteId: 'submitted-quote',
+      error: 'Flash API 400 Bad Request: quote expired'
+    })
+
+    expect(failed.error).toBe('Flash API 400 Bad Request: quote expired')
+    expect(failed.submitting).toBe(false)
+    expect(failed.pendingAction).toBe('')
   })
 
   it('does not create renderer-local non-market quotes', () => {

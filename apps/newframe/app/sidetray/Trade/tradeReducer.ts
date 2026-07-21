@@ -422,18 +422,32 @@ function refreshForSettings(
   return withQuoteRefresh(merged)
 }
 
+function preserveEquivalentAsset(current: FlashAsset, candidate: FlashAsset) {
+  return current.id === candidate.id &&
+    current.symbol === candidate.symbol &&
+    current.name === candidate.name &&
+    current.decimals === candidate.decimals &&
+    current.chainId === candidate.chainId &&
+    current.isNative === candidate.isNative &&
+    current.address === candidate.address
+    ? current
+    : candidate
+}
+
 function updateAssetOptions(
   state: TradeWorkflowState,
   assets: FlashAsset[],
   balances?: FlashAssetBalances | null
 ) {
-  const targetAsset =
+  const targetCandidate =
     assets.find((asset) => isSameFlashAsset(asset, state.targetAsset)) ||
     defaultAssetForChain(state.targetAsset.chainId, assets)
-  const contraAsset =
+  const targetAsset = preserveEquivalentAsset(state.targetAsset, targetCandidate)
+  const contraCandidate =
     assets.find(
       (asset) => isSameFlashAsset(asset, state.contraAsset) && asset.chainId === targetAsset.chainId
     ) || resolveContraAsset(targetAsset, balances, assets, state.side)
+  const contraAsset = preserveEquivalentAsset(state.contraAsset, contraCandidate)
 
   if (
     state.assetOptions === assets &&
@@ -614,8 +628,6 @@ export function tradeReducer(state: TradeWorkflowState, action: TradeWorkflowAct
         status: ''
       }
     case 'submitFailed':
-      if (state.actionQuoteId !== action.actionQuoteId) return state
-
       return {
         ...state,
         actionQuoteId: '',

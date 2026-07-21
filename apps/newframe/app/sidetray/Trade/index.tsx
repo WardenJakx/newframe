@@ -413,24 +413,21 @@ export default function Trade({ assetId, chainId }: TradeProps) {
         return
       }
 
-      const submitRequest = buildTradeSubmitRequest({
-        accountAddress,
-        flashPayload,
-        ...getTradeOrderFields(latestStateRef.current),
-        permitSignature,
-        quickTrade: latestStateRef.current.quickTrade,
-        quote,
-        signature,
-        slippage: latestStateRef.current.slippage
-      })
-
       dispatch({ type: 'submitStarted', actionQuoteId })
 
       try {
+        const submitRequest = buildTradeSubmitRequest({
+          accountAddress,
+          flashPayload,
+          ...getTradeOrderFields(latestStateRef.current),
+          permitSignature,
+          quickTrade: latestStateRef.current.quickTrade,
+          quote,
+          signature,
+          slippage: latestStateRef.current.slippage
+        })
         const result = await flashSubmitOrder(submitRequest)
-        if (!mountedRef.current || (latestStateRef.current.quote?.id || '') !== actionQuoteId) {
-          return
-        }
+        if (!mountedRef.current) return
 
         if (!result?.orderId) {
           dispatch({
@@ -444,9 +441,7 @@ export default function Trade({ assetId, chainId }: TradeProps) {
         dispatch({ type: 'submitSucceeded', actionQuoteId })
         closeTrade()
       } catch (e) {
-        if (!mountedRef.current || (latestStateRef.current.quote?.id || '') !== actionQuoteId) {
-          return
-        }
+        if (!mountedRef.current) return
 
         dispatch({
           type: 'submitFailed',
@@ -545,7 +540,14 @@ export default function Trade({ assetId, chainId }: TradeProps) {
           return
         }
 
-        if ((latestStateRef.current.quote?.id || '') !== actionQuoteId) return
+        if ((latestStateRef.current.quote?.id || '') !== actionQuoteId) {
+          dispatch({
+            type: 'stepFailed',
+            stepKind: 'sign',
+            error: 'The quote changed while signing. Review the refreshed quote and try again.'
+          })
+          return
+        }
       }
 
       const { chainId, typedData } = buildTradeSignatureRequest({
@@ -578,7 +580,14 @@ export default function Trade({ assetId, chainId }: TradeProps) {
         return
       }
 
-      if ((latestStateRef.current.quote?.id || '') !== actionQuoteId) return
+      if ((latestStateRef.current.quote?.id || '') !== actionQuoteId) {
+        dispatch({
+          type: 'stepFailed',
+          stepKind: 'sign',
+          error: 'The quote changed while signing. Review the refreshed quote and try again.'
+        })
+        return
+      }
 
       dispatch({ type: 'signatureSucceeded', actionQuoteId, signature })
       await submitSignedTrade(
