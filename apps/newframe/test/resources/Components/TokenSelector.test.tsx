@@ -57,6 +57,26 @@ function ControlledSelector({ initialSelectedId = 'eth' }: { initialSelectedId?:
   )
 }
 
+function ChangingTokenIcon() {
+  const [logoURI, setLogoURI] = React.useState('data:image/png;base64,YnJva2Vu')
+
+  return (
+    <>
+      <button type='button' onClick={() => setLogoURI('data:image/png;base64,cmVjb3ZlcmVk')}>
+        Change token image
+      </button>
+      <ChainTokenIcon
+        chainId={1}
+        logoURI={logoURI}
+        networks={networks}
+        networksMeta={networksMeta}
+        size='md'
+        symbol='BROKEN'
+      />
+    </>
+  )
+}
+
 describe('ChainTokenIcon', () => {
   it('requests a missing persisted token image when the token UI mounts', () => {
     const tokenId = '1:0x1111111111111111111111111111111111111111'
@@ -194,6 +214,22 @@ describe('ChainTokenIcon', () => {
     )
     warn.mockRestore()
   })
+
+  it('retries rendering when a failed token image source changes', () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {})
+    render(<ChangingTokenIcon />)
+
+    fireEvent.error(screen.getAllByRole('presentation', { hidden: true })[0])
+    expect(screen.getByText('BROKE')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Change token image' }))
+    expect(
+      screen
+        .getAllByRole('presentation', { hidden: true })
+        .some((image) => image.getAttribute('src') === 'data:image/png;base64,cmVjb3ZlcmVk')
+    ).toBe(true)
+    warn.mockRestore()
+  })
 })
 
 describe('TokenSelector', () => {
@@ -217,6 +253,20 @@ describe('TokenSelector', () => {
     fireEvent.mouseDown(screen.getByRole('button', { name: 'outside' }))
 
     expect(screen.queryByRole('listbox')).toBeNull()
+  })
+
+  it('clears its query after closing and reopening', async () => {
+    const { user } = render(<ControlledSelector />)
+
+    await user.click(screen.getByRole('button', { name: 'Choose token' }))
+    await user.type(screen.getByLabelText('Search tokens'), 'missing')
+    expect(screen.queryAllByRole('option')).toHaveLength(0)
+
+    fireEvent.mouseDown(screen.getByRole('button', { name: 'outside' }))
+    await user.click(screen.getByRole('button', { name: 'Choose token' }))
+
+    expect((screen.getByLabelText('Search tokens') as HTMLInputElement).value).toBe('')
+    expect(screen.getAllByRole('option')).toHaveLength(2)
   })
 
   it('filters tokens by metadata and keeps the menu open when there are no matches', async () => {

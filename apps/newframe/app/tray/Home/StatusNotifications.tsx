@@ -140,17 +140,15 @@ export default function StatusNotifications({
   const entries = Object.values(notifications || {})
 
   useEffect(() => {
-    const timers = entries.map((notification) => {
+    const timers = Object.values(notifications || {}).map((notification) => {
       const wait = Math.max(0, notificationExpiresAt(notification) - Date.now())
       return setTimeout(() => onExpire(notification.id), wait)
     })
     return () => timers.forEach((timer) => clearTimeout(timer))
   }, [notifications, onExpire])
 
-  const now = Date.now()
   const visible = entries
     .filter((notification) => notification?.id && !notification.hidden)
-    .filter((notification) => notificationExpiresAt(notification) > now)
     .sort(
       (a, b) =>
         timestamp(b.createdAt, timestamp(b.updatedAt, 0)) - timestamp(a.createdAt, timestamp(a.updatedAt, 0))

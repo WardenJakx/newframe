@@ -258,14 +258,6 @@ const TokenDetailsForm = ({ chain, tokenData, isEdit, onDone }: TokenDetailsForm
     }
   }
 
-  // handle asynchronous loading of token data
-  useEffect(() => {
-    setName(tokenName || tokenDetailsDefaults.name)
-    setSymbol(tokenSymbol || tokenDetailsDefaults.symbol)
-    setDecimals(tokenDecimals || tokenDetailsDefaults.decimals)
-    setLogoUri(tokenLogoUri || tokenDetailsDefaults.logoURI)
-  }, [tokenDecimals, tokenLogoUri, tokenName, tokenSymbol])
-
   useEffect(() => {
     focusSubmitButton()
   }, [])
@@ -395,8 +387,23 @@ const AddToken = ({
     return <TokenError text={error} onBack={onBack} onContinue={() => onNavigate({ address, chain })} />
   }
 
+  const tokenDetailsKey = [
+    chain.id,
+    address,
+    tokenData?.name || '',
+    tokenData?.symbol || '',
+    tokenData?.decimals ?? '',
+    tokenData?.logoURI || ''
+  ].join(':')
+
   return (
-    <TokenDetailsForm chain={chain} isEdit={isEdit} onDone={onDone} tokenData={{ ...tokenData, address }} />
+    <TokenDetailsForm
+      key={tokenDetailsKey}
+      chain={chain}
+      isEdit={isEdit}
+      onDone={onDone}
+      tokenData={{ ...tokenData, address }}
+    />
   )
 }
 

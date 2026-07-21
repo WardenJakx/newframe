@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Button } from '@newframe/ui/button'
 import { Grid } from '@newframe/ui/grid'
 import { Input } from '@newframe/ui/input'
@@ -191,10 +191,6 @@ export default function SignerRecovery({
     [signerIds, signers]
   )
   const [selectedId, setSelectedId] = useState(candidates[0]?.id || '')
-
-  useEffect(() => {
-    if (!candidates.some((signer) => signer.id === selectedId)) setSelectedId(candidates[0]?.id || '')
-  }, [candidates, selectedId])
 
   const signer = candidates.find((candidate) => candidate.id === selectedId) || candidates[0]
 

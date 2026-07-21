@@ -165,13 +165,10 @@ export function Accounts() {
   const props = { shared }
   const overlay = useHomeUiStore((ui) => ui.overlay)
   const closeOverlay = useHomeUiStore((ui) => ui.closeOverlay)
-  const instance = useRef({
-    accountFeedbackTimeout: undefined as any,
-    accountSearchTimeout: undefined as any,
-    accountSearchInput: null as HTMLInputElement | null
-  }).current
-  const balanceSelector = useRef<ReturnType<typeof createBalanceSummarySelector> | null>(null)
-  if (!balanceSelector.current) balanceSelector.current = createBalanceSummarySelector()
+  const accountFeedbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const accountSearchTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const accountSearchInputRef = useRef<HTMLInputElement | null>(null)
+  const [selectBalanceSummaries] = useState(() => createBalanceSummarySelector())
   const [state, setHomeState] = useState<AccountsState>({
     accountQuery: '',
     accountMenu: '',
@@ -205,8 +202,8 @@ export function Accounts() {
 
   useEffect(() => {
     return () => {
-      clearTimeout(instance.accountFeedbackTimeout)
-      clearTimeout(instance.accountSearchTimeout)
+      clearTimeout(accountFeedbackTimeoutRef.current)
+      clearTimeout(accountSearchTimeoutRef.current)
     }
   }, [])
 
@@ -223,7 +220,7 @@ export function Accounts() {
     const { networks, networksMeta, rates, tokens } = props.shared
     const showTestnets = props.shared.showTestnets
 
-    return balanceSelector.current!({
+    return selectBalanceSummaries({
       rawBalances,
       rates,
       tokens,
@@ -296,13 +293,13 @@ export function Accounts() {
   }
 
   function updateAccountSearch(value: string) {
-    clearTimeout(instance.accountSearchTimeout)
-    instance.accountSearchTimeout = setTimeout(() => setState({ accountQuery: value }), 80)
+    clearTimeout(accountSearchTimeoutRef.current)
+    accountSearchTimeoutRef.current = setTimeout(() => setState({ accountQuery: value }), 80)
   }
 
   function clearAccountSearch() {
-    clearTimeout(instance.accountSearchTimeout)
-    if (instance.accountSearchInput) instance.accountSearchInput.value = ''
+    clearTimeout(accountSearchTimeoutRef.current)
+    if (accountSearchInputRef.current) accountSearchInputRef.current.value = ''
     setState({ accountQuery: '' })
   }
 
@@ -360,9 +357,9 @@ export function Accounts() {
   }
 
   function flashAccountFeedback(key: 'accountCopied' | 'accountExported', value: string) {
-    clearTimeout(instance.accountFeedbackTimeout)
+    clearTimeout(accountFeedbackTimeoutRef.current)
     setState({ [key]: value })
-    instance.accountFeedbackTimeout = setTimeout(() => setState({ [key]: '' }), 1800)
+    accountFeedbackTimeoutRef.current = setTimeout(() => setState({ [key]: '' }), 1800)
   }
 
   function copyAccountAddress(account: any) {
@@ -603,9 +600,7 @@ export function Accounts() {
           <>
             <div className={toolsRecipe()}>
               <SearchField
-                inputRef={(input) => {
-                  instance.accountSearchInput = input
-                }}
+                inputRef={accountSearchInputRef}
                 label='Search accounts'
                 onChange={updateAccountSearch}
                 onClear={clearAccountSearch}

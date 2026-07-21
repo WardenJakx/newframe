@@ -74,14 +74,17 @@ export function Selection({
   const listboxId = useId()
   const selectedIndex = items.findIndex((item) => item.id === selectedId && !item.disabled)
   const firstEnabledIndex = items.findIndex((item) => !item.disabled)
-  const [highlightedIndex, setHighlightedIndex] = useState(selectedIndex >= 0 ? selectedIndex : 0)
+  const defaultHighlightedId = items[selectedIndex >= 0 ? selectedIndex : firstEnabledIndex]?.id || ''
+  const [highlightedId, setHighlightedId] = useState(defaultHighlightedId)
+  const storedHighlightedIndex = items.findIndex((item) => item.id === highlightedId && !item.disabled)
+  const highlightedIndex =
+    storedHighlightedIndex >= 0
+      ? storedHighlightedIndex
+      : selectedIndex >= 0
+        ? selectedIndex
+        : firstEnabledIndex
   const enabled = firstEnabledIndex >= 0
   const canOpen = enabled || !!header
-
-  useEffect(() => {
-    if (!open) return
-    setHighlightedIndex(selectedIndex >= 0 ? selectedIndex : firstEnabledIndex)
-  }, [firstEnabledIndex, open, selectedIndex])
 
   useEffect(() => {
     if (!open) return
@@ -98,9 +101,10 @@ export function Selection({
   const setOpen = useCallback(
     (nextOpen: boolean) => {
       if (nextOpen && (!canOpen || disabled)) return
+      if (nextOpen) setHighlightedId(defaultHighlightedId)
       onOpenChange(nextOpen)
     },
-    [canOpen, disabled, onOpenChange]
+    [canOpen, defaultHighlightedId, disabled, onOpenChange]
   )
 
   const select = useCallback(
@@ -115,13 +119,14 @@ export function Selection({
     (direction: 1 | -1) => {
       if (!enabled) return
 
-      setHighlightedIndex((current) => {
-        let next = current
+      setHighlightedId((currentId) => {
+        const currentIndex = items.findIndex((item) => item.id === currentId && !item.disabled)
+        let next = currentIndex >= 0 ? currentIndex : direction === 1 ? -1 : 0
         for (let index = 0; index < items.length; index += 1) {
           next = (next + direction + items.length) % items.length
-          if (!items[next]?.disabled) return next
+          if (!items[next]?.disabled) return items[next].id
         }
-        return current
+        return currentId
       })
     },
     [enabled, items]
@@ -143,7 +148,7 @@ export function Selection({
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       event.preventDefault()
       if (!open) {
-        onOpenChange(true)
+        setOpen(true)
         return
       }
       moveHighlight(event.key === 'ArrowDown' ? 1 : -1)
@@ -153,7 +158,7 @@ export function Selection({
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault()
       if (!open) {
-        onOpenChange(true)
+        setOpen(true)
         return
       }
       const highlighted = items[highlightedIndex]
@@ -196,7 +201,7 @@ export function Selection({
                   highlighted={index === highlightedIndex}
                   id={`${listboxId}-${item.id}`}
                   key={item.id}
-                  onPointerEnter={() => setHighlightedIndex(index)}
+                  onPointerEnter={() => setHighlightedId(item.id)}
                   onPress={() => select(item.id)}
                   tabIndex={-1}
                 >

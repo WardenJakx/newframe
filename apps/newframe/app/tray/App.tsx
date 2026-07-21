@@ -111,26 +111,6 @@ function Panel(props: PanelProps) {
   })
   const setState = (update: Partial<PanelState>) => setPanelState((current) => ({ ...current, ...update }))
 
-  async function refreshBiometricsState() {
-    try {
-      const status = await link.executeQuery({ type: 'security.status' })
-      if (!status.ok) throw new Error(status.message || 'Could not read biometric configuration')
-
-      const biometrics: BiometricsState = status.biometrics
-      const biometricAvailable =
-        status.biometricAvailable &&
-        (biometrics.method === 'native'
-          ? biometrics.nativeAvailable
-          : biometrics.method === 'webauthn' &&
-            !!biometrics.credential &&
-            (await isWebAuthnBiometricsSupported()))
-
-      setState({ biometrics, biometricAvailable })
-    } catch {
-      setState({ biometrics: null, biometricAvailable: false })
-    }
-  }
-
   async function unlockApp() {
     if (state.unlocking) return
 
@@ -177,7 +157,36 @@ function Panel(props: PanelProps) {
   }
 
   useEffect(() => {
+    let active = true
+
+    async function refreshBiometricsState() {
+      try {
+        const status = await link.executeQuery({ type: 'security.status' })
+        if (!status.ok) throw new Error(status.message || 'Could not read biometric configuration')
+
+        const biometrics: BiometricsState = status.biometrics
+        const biometricAvailable =
+          status.biometricAvailable &&
+          (biometrics.method === 'native'
+            ? biometrics.nativeAvailable
+            : biometrics.method === 'webauthn' &&
+              !!biometrics.credential &&
+              (await isWebAuthnBiometricsSupported()))
+
+        if (active) {
+          setPanelState((current) => ({ ...current, biometrics, biometricAvailable }))
+        }
+      } catch {
+        if (active) {
+          setPanelState((current) => ({ ...current, biometrics: null, biometricAvailable: false }))
+        }
+      }
+    }
+
     void refreshBiometricsState()
+    return () => {
+      active = false
+    }
   }, [props.biometricUnlock])
 
   const biometricUnlockButton = state.biometricAvailable ? (

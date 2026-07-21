@@ -1,5 +1,5 @@
 import type { Mock } from 'bun:test'
-import { act } from '@testing-library/react'
+import { act, within } from '@testing-library/react'
 
 import { fireEvent, render, screen, waitFor } from '../../../componentSetup'
 import Trade from '../../../../app/sidetray/Trade'
@@ -556,11 +556,8 @@ describe('Trade', () => {
 
     const chainBadges = screen
       .getAllByRole('option')
-      .map((option) => option.querySelector('img')?.getAttribute('src'))
-    expect(chainBadges).toEqual([
-      'data:image/png;base64,Y2hhaW4=',
-      'data:image/png;base64,Y2hhaW4='
-    ])
+      .map((option) => within(option).getByRole('presentation', { hidden: true }).getAttribute('src'))
+    expect(chainBadges).toEqual(['data:image/png;base64,Y2hhaW4=', 'data:image/png;base64,Y2hhaW4='])
   })
 
   it('selects a custom token with no balance', () => {

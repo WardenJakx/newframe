@@ -71,7 +71,7 @@ export default [
   ...typescriptConfigs({
     tsconfigRootDir: import.meta.dirname
   }),
-  ...reactConfigs({ files: reactFiles, version: '18.2' }),
+  ...reactConfigs({ files: reactFiles, version: '19.2' }),
   testGlobalsConfig({ files: ['test/**/*.{ts,tsx}', '**/__mocks__/**/*.ts'] }),
   testingLibraryReactConfig({
     files: ['test/app/**/*.{ts,tsx}', 'test/resources/Components/**/*.{ts,tsx}', 'app/**/__mocks__/**/*.ts']

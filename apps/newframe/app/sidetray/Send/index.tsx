@@ -68,7 +68,7 @@ export default function Send({ assetId }: SendProps) {
 
       return true
     })
-  }, [accounts, currentAccount?.address, currentAccount?.id])
+  }, [accounts, currentAccount])
 
   const handleClose = React.useCallback(() => {
     closeSend()
