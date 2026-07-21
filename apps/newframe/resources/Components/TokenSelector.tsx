@@ -20,7 +20,11 @@ interface TokenSelectorProps {
   selectedId: string
 }
 
-export default function TokenSelector({
+export default function TokenSelector(props: TokenSelectorProps) {
+  return <TokenSelectorContent key={props.open ? 'open' : 'closed'} {...props} />
+}
+
+function TokenSelectorContent({
   ariaLabel,
   footer,
   items,
@@ -40,12 +44,7 @@ export default function TokenSelector({
   const itemIdsKey = itemIds.join('|')
 
   React.useEffect(() => {
-    if (!open) {
-      setQuery('')
-      return
-    }
-
-    searchInputRef.current?.focus()
+    if (open) searchInputRef.current?.focus()
   }, [open])
 
   React.useEffect(() => {

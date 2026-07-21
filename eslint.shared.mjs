@@ -136,9 +136,8 @@ export const reactConfigs = ({ basePath = '', files, version }) => [
     rules: {
       ...reactPlugin.configs.recommended.rules,
       ...reactPlugin.configs['jsx-runtime'].rules,
-      // Keep the classic hooks rule set until React Compiler violations are cleaned up.
-      'react-hooks/rules-of-hooks': 'error',
-      'react-hooks/exhaustive-deps': 'warn',
+      ...reactHooksPlugin.configs.flat['recommended-latest'].rules,
+      'react-hooks/exhaustive-deps': 'error',
       'react/prop-types': 'off'
     }
   }

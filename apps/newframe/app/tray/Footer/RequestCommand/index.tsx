@@ -97,7 +97,10 @@ export function RequestCommand(props: RequestCommandProps) {
     setCommandState((current) => ({ ...current, ...update }))
 
   useEffect(() => {
-    const timer = setTimeout(() => setState({ allowInput: true }), props.signingDelay || 0)
+    const timer = setTimeout(
+      () => setCommandState((current) => ({ ...current, allowInput: true })),
+      props.signingDelay || 0
+    )
     return () => clearTimeout(timer)
   }, [props.signingDelay])
 

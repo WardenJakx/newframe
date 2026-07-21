@@ -51,14 +51,6 @@ export default function ChainTokenIcon({
 
   useTokenImageHydration(tokenId, !!tokenImageSource, hydrationTarget)
 
-  React.useEffect(() => {
-    setFailedTokenUrl('')
-  }, [logoURI])
-
-  React.useEffect(() => {
-    setFailedChainUrl('')
-  }, [chainIconUrl])
-
   const renderChainBadge = () => {
     if (chainImageVisible) {
       return (

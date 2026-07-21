@@ -152,7 +152,7 @@ export default function Trade({ assetId, chainId }: TradeProps) {
   }, [
     accountAddress,
     inputAmount,
-    state.contraAsset.id,
+    state.contraAsset,
     state.durationDays,
     state.durationHours,
     state.durationMinutes,
@@ -163,7 +163,7 @@ export default function Trade({ assetId, chainId }: TradeProps) {
     state.quickTrade,
     state.side,
     state.slippage,
-    state.targetAsset.id,
+    state.targetAsset,
     state.timeInForce,
     state.triggerNotionalPrice,
     state.twapBucketCount

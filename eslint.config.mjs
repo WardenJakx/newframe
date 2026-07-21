@@ -120,7 +120,7 @@ export default [
     basePath: newframe,
     tsconfigRootDir: workspacePath('./apps/newframe')
   }),
-  ...reactConfigs({ basePath: newframe, files: newframeReactFiles, version: '18.2' }),
+  ...reactConfigs({ basePath: newframe, files: newframeReactFiles, version: '19.2' }),
   testGlobalsConfig({ basePath: newframe, files: ['test/**/*.{ts,tsx}', '**/__mocks__/**/*.ts'] }),
   testingLibraryReactConfig({
     basePath: newframe,

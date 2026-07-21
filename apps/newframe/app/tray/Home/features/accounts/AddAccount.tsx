@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useRef } from 'react'
+import { useEffect, useReducer, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 
 import { Button } from '@newframe/ui/button'
@@ -82,6 +82,22 @@ function operationError(result: any, fallback: string) {
   return result && 'message' in result && typeof result.message === 'string' ? result.message : fallback
 }
 
+function normalizeAddAccountType(type = '') {
+  const typeMap: Record<string, string> = {
+    keyring: 'privateKey',
+    nonsigning: 'watch'
+  }
+
+  return typeMap[type] || type
+}
+
+function addAccountCategoryForType(type = '') {
+  if (['seed', 'privateKey', 'keystore'].includes(type)) return 'import'
+  if (['ledger', 'trezor', 'lattice'].includes(type)) return 'hardware'
+  if (type === 'watch') return 'watch'
+  return ''
+}
+
 export function AddAccount({
   initialSelectedSigner = '',
   initialType = '',
@@ -105,18 +121,18 @@ export function AddAccount({
     }))
   )
   const props = { shared }
-  const instance = useRef({ seedPhraseCopiedTimeout: undefined as any }).current
-  const balanceSelector = useRef<ReturnType<typeof createBalanceSummarySelector> | null>(null)
-  if (!balanceSelector.current) balanceSelector.current = createBalanceSummarySelector()
+  const seedPhraseCopiedTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const [selectBalanceSummaries] = useState(() => createBalanceSummarySelector())
+  const initialAddAccountType = normalizeAddAccountType(initialType)
   const [state, dispatch] = useReducer(addAccountReducer, {
-    addAccountCategory: '',
-    addAccountType: '',
+    addAccountCategory: addAccountCategoryForType(initialAddAccountType),
+    addAccountType: initialAddAccountType,
     addAccountInput: '',
-    addAccountName: '',
+    addAccountName: initialAddAccountType === 'lattice' ? 'GridPlus' : '',
     addAccountPassword: '',
     addAccountKeystore: null,
     addAccountKeystorePassword: '',
-    addAccountSelectedSigner: '',
+    addAccountSelectedSigner: initialSelectedSigner,
     storedSeedExpanded: {},
     addAccountError: '',
     addAccountStatus: '',
@@ -138,8 +154,28 @@ export function AddAccount({
   }
 
   useEffect(() => {
-    openInlineAdd(initialType, initialSelectedSigner)
-    return () => clearTimeout(instance.seedPhraseCopiedTimeout)
+    let active = true
+
+    async function refreshAddVaultState() {
+      try {
+        const status = await link.executeQuery({ type: 'security.status' })
+        if (!active) return
+
+        dispatch({
+          addVaultState: status.ok
+            ? { exists: status.vaultExists, unlocked: !status.locked }
+            : { exists: false, unlocked: false }
+        })
+      } catch {
+        if (active) dispatch({ addVaultState: { exists: false, unlocked: false } })
+      }
+    }
+
+    void refreshAddVaultState()
+    return () => {
+      active = false
+      clearTimeout(seedPhraseCopiedTimeoutRef.current)
+    }
   }, [])
 
   function accountDisplayName(account: any) {
@@ -155,7 +191,7 @@ export function AddAccount({
     if (!account?.address) return '---'
     const rawBalances = shared.balances[account.address]
     if (!Array.isArray(rawBalances) || rawBalances.length === 0) return '---'
-    const balances = balanceSelector.current!({
+    const balances = selectBalanceSummaries({
       rawBalances,
       rates: shared.rates,
       tokens: shared.tokens,
@@ -215,65 +251,6 @@ export function AddAccount({
       addHardwarePhrase: '',
       addHardwarePairCode: ''
     })
-  }
-
-  function normalizeAddAccountType(type = '') {
-    const typeMap: Record<string, string> = {
-      keyring: 'privateKey',
-      nonsigning: 'watch'
-    }
-
-    return typeMap[type] || type
-  }
-
-  function addAccountCategoryForType(type = '') {
-    if (['seed', 'privateKey', 'keystore'].includes(type)) return 'import'
-    if (['ledger', 'trezor', 'lattice'].includes(type)) return 'hardware'
-    if (type === 'watch') return 'watch'
-    return ''
-  }
-
-  function openInlineAdd(type = '', selectedSigner = '') {
-    const addAccountType = normalizeAddAccountType(type)
-    const addAccountCategory = addAccountCategoryForType(addAccountType)
-
-    setState(
-      {
-        overlay: null,
-        menuOpen: false,
-        accountsOpen: true,
-        addingAccount: true,
-        accountMenu: '',
-        addAccountCategory,
-        addAccountType,
-        addAccountInput: '',
-        addAccountName: addAccountType === 'lattice' ? 'GridPlus' : '',
-        addAccountPassword: '',
-        addAccountKeystore: null,
-        addAccountKeystorePassword: '',
-        addAccountSelectedSigner: selectedSigner || '',
-        addAccountError: '',
-        addAccountStatus: '',
-        addGeneratedPhrase: '',
-        addGeneratedPhraseBackedUp: false,
-        addGeneratedPhraseCopied: false,
-        addHardwarePin: '',
-        addHardwarePhrase: '',
-        addHardwarePairCode: ''
-      },
-      () => refreshAddVaultState()
-    )
-  }
-
-  async function refreshAddVaultState() {
-    const status = await link.executeQuery({ type: 'security.status' })
-    if (status.ok) {
-      setState({
-        addVaultState: { exists: status.vaultExists, unlocked: !status.locked }
-      })
-    } else {
-      setState({ addVaultState: { exists: false, unlocked: false } })
-    }
   }
 
   function backInlineAdd() {
@@ -661,10 +638,10 @@ export function AddAccount({
     const phrase = state.addGeneratedPhrase
     if (!phrase) return
 
-    clearTimeout(instance.seedPhraseCopiedTimeout)
+    clearTimeout(seedPhraseCopiedTimeoutRef.current)
     void link.executeCommand({ type: 'clipboard.write', text: phrase })
     setState({ addGeneratedPhraseCopied: true })
-    instance.seedPhraseCopiedTimeout = setTimeout(() => setState({ addGeneratedPhraseCopied: false }), 1800)
+    seedPhraseCopiedTimeoutRef.current = setTimeout(() => setState({ addGeneratedPhraseCopied: false }), 1800)
   }
 
   async function createGeneratedSeedAccount() {

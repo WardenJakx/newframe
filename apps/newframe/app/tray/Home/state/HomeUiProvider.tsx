@@ -1,4 +1,4 @@
-import { createContext, useContext, useRef, type PropsWithChildren } from 'react'
+import { createContext, useContext, useState, type PropsWithChildren } from 'react'
 import { useStore } from 'zustand'
 
 import { createHomeUiStore, type HomeUiStore } from './homeUiStore'
@@ -7,10 +7,9 @@ import type { HomeUiState } from './homeUiTypes'
 const HomeUiStoreContext = createContext<HomeUiStore | null>(null)
 
 export function HomeUiProvider({ children }: PropsWithChildren) {
-  const storeRef = useRef<HomeUiStore | null>(null)
-  if (!storeRef.current) storeRef.current = createHomeUiStore()
+  const [store] = useState(() => createHomeUiStore())
 
-  return <HomeUiStoreContext.Provider value={storeRef.current}>{children}</HomeUiStoreContext.Provider>
+  return <HomeUiStoreContext.Provider value={store}>{children}</HomeUiStoreContext.Provider>
 }
 
 export function useHomeUiStore<T>(selector: (state: HomeUiState) => T) {

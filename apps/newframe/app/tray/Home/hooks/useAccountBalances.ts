@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 
 import { createBalanceSummarySelector } from '../../../../resources/domain/balance'
@@ -22,10 +22,9 @@ export function useAccountBalances() {
       }
     })
   )
-  const selectorRef = useRef<ReturnType<typeof createBalanceSummarySelector> | null>(null)
-  if (!selectorRef.current) selectorRef.current = createBalanceSummarySelector()
+  const [selectBalanceSummaries] = useState(() => createBalanceSummarySelector())
 
-  const balances = selectorRef.current({
+  const balances = selectBalanceSummaries({
     rawBalances: shared.rawBalances,
     rates: shared.rates,
     tokens: shared.tokens,
