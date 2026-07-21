@@ -143,52 +143,18 @@ export function selectPersistedState(state: CanonicalStore): PersistedCanonicalS
   } as unknown as PersistedCanonicalState
 }
 
-function migrateLegacyDurableState(value: unknown) {
-  if (!value || typeof value !== 'object' || !('main' in value)) return value
-  const main = (value as UnknownRecord).main
-  if (!main || typeof main !== 'object') return value
-
-  const {
-    _version: _restoreVersion,
-    addresses: _addresses,
-    appLock: _appLock,
-    balances: _balances,
-    colorway: _colorway,
-    colorwayPrimary: _colorwayPrimary,
-    dapp: _dapp,
-    focusedFrame: _focusedFrame,
-    frames: _frames,
-    hardwareDerivation: _hardwareDerivation,
-    mute,
-    rates: _rates,
-    runtime: _runtime,
-    savedSigners: _savedSigners,
-    scanning: _scanning,
-    signers: _signers,
-    ...durableMain
-  } = main as UnknownRecord
-
-  const migratedMain: UnknownRecord = {
-    ...durableMain,
-    ...(mute ? { mute: persistedMute(mute) } : {})
-  }
-  if (durableMain.networksMeta) {
-    migratedMain.networksMeta = persistedNetworkMetadata(durableMain.networksMeta)
-  }
-
-  return { main: migratedMain }
-}
-
-export function migratePersistedState(value: unknown, fromVersion = 0): PersistedCanonicalState {
-  if (fromVersion !== 0 && fromVersion !== 1 && fromVersion !== PERSISTENCE_VERSION) {
+export function migratePersistedState(
+  value: unknown,
+  fromVersion = PERSISTENCE_VERSION
+): PersistedCanonicalState {
+  if (fromVersion !== PERSISTENCE_VERSION) {
     log.error('Cannot migrate unsupported canonical state version', fromVersion)
     throw new CanonicalStatePersistenceError(
       'unsupported_version',
       'Canonical wallet state uses an unsupported persistence version.'
     )
   }
-  const candidate = fromVersion < PERSISTENCE_VERSION ? migrateLegacyDurableState(value) : value
-  const parsed = PersistedCanonicalStateSchema.safeParse(candidate)
+  const parsed = PersistedCanonicalStateSchema.safeParse(value)
   if (parsed.success) return parsed.data
 
   log.error('Could not migrate invalid persisted canonical state', parsed.error.issues)
@@ -265,8 +231,8 @@ export function mergePersistedState(persistedValue: unknown, current: CanonicalS
     signers: currentMain.signers,
     shortcuts: mergeRecord(currentMain.shortcuts, saved.shortcuts),
     tokens: {
-      ...mergeRecord(currentMain.tokens, saved.tokens),
-      known: mergeRecord(currentMain.tokens?.known, saved.tokens?.known)
+      byId: mergeRecord(currentMain.tokens?.byId, saved.tokens?.byId),
+      accountTokenIds: mergeRecord(currentMain.tokens?.accountTokenIds, saved.tokens?.accountTokenIds)
     },
     trezor: mergeRecord(currentMain.trezor, saved.trezor),
     updater: mergeRecord(currentMain.updater, saved.updater)

@@ -18,7 +18,6 @@ import {
 } from '../../../../resources/domain/flash/constants'
 import { FLASH_USDC_ASSET, FLASH_WETH_ASSET } from '../../../../resources/domain/flash/assets'
 import { type FlashQuote } from '../../../../resources/domain/flash/schemas'
-import type { SideTrayRendererState } from '../../../../resources/state/projections'
 import { STATE_STREAM_SCHEMA_VERSION } from '../../../../resources/state/protocol'
 
 const sender = {
@@ -55,10 +54,14 @@ function updateTradeState(changes: Record<string, unknown>) {
   })
 }
 
-function initializeTradeState(
-  balances = [wethBalance()],
-  customTokens: SideTrayRendererState['tokens']['custom'] = []
-) {
+function initializeTradeState(balances = [wethBalance()], customTokens: any[] = []) {
+  const tokenRecords = [...balances, ...customTokens].map((token) => ({
+    ...token,
+    custom: customTokens.includes(token),
+    curated: false,
+    sources: customTokens.includes(token) ? ['custom'] : ['onchain'],
+    updatedAt: 0
+  }))
   stateRevision = 0
   resetStateMirrorForTests()
   beginStateConnection('sidetray')
@@ -111,7 +114,17 @@ function initializeTradeState(
         isDev: true,
         environment: 'test'
       },
-      tokens: { custom: customTokens }
+      tokens: {
+        byId: Object.fromEntries(
+          tokenRecords.map((token) => [
+            `${token.chainId}:${token.address.toLowerCase()}`,
+            { ...token, address: token.address.toLowerCase() }
+          ])
+        ),
+        accountTokenIds: {
+          [sender.address]: tokenRecords.map((token) => `${token.chainId}:${token.address.toLowerCase()}`)
+        }
+      }
     }
   })
 }

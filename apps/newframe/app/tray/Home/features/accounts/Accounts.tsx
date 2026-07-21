@@ -156,6 +156,7 @@ export function Accounts() {
       networks: main.networks?.ethereum || EMPTY_RECORD,
       networksMeta: main.networksMeta?.ethereum || EMPTY_RECORD,
       rates: main.rates || EMPTY_RECORD,
+      tokens: main.tokens,
       showLocalNameWithENS: !!main.showLocalNameWithENS,
       showTestnets: !!main.showTestnets,
       signers: main.signers || EMPTY_RECORD
@@ -219,12 +220,13 @@ export function Accounts() {
 
   function getBalances(address: string) {
     const rawBalances = props.shared.balances[address] || []
-    const { networks, networksMeta, rates } = props.shared
+    const { networks, networksMeta, rates, tokens } = props.shared
     const showTestnets = props.shared.showTestnets
 
     return balanceSelector.current!({
       rawBalances,
       rates,
+      tokens,
       networks,
       networksMeta,
       includeChain: (chain) => {

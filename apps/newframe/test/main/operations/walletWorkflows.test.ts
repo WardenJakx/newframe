@@ -275,7 +275,7 @@ beforeEach(() => {
       networksMeta: { ethereum: {} },
       origins: {},
       orders: {},
-      tokens: { custom: [] }
+      tokens: { accountTokenIds: {}, byId: {} }
     },
     tray: {},
     view: { badge: {}, notifications: {}, notify: '', notifyData: {} }
@@ -306,14 +306,28 @@ describe('wallet UI workflows', () => {
 
   it('resolves a token from canonical state before removing it', () => {
     const token = { address, chainId: 1, decimals: 18, logoURI: '', name: 'Token', symbol: 'TKN' }
+    const tokenId = `${token.chainId}:${token.address}`
     getState.mockReturnValue({
       ...actions,
-      main: { networks: { ethereum: {} }, tokens: { custom: [token] } }
+      main: {
+        networks: { ethereum: {} },
+        tokens: {
+          accountTokenIds: {},
+          byId: {
+            [tokenId]: {
+              ...token,
+              custom: true,
+              curated: false,
+              sources: ['custom'],
+              updatedAt: 0
+            }
+          }
+        }
+      }
     })
 
     expect(removeToken({ address: address.toUpperCase(), chainId: 1 })).toBe(true)
-    expect(actions.removeBalance).toHaveBeenCalledWith(1, token.address)
-    expect(actions.removeCustomTokens).toHaveBeenCalledWith([token])
+    expect(actions.removeCustomTokens).toHaveBeenCalledWith([expect.objectContaining(token)])
 
     expect(removeToken({ address: '0x2222222222222222222222222222222222222222', chainId: 1 })).toBe(false)
   })
@@ -334,7 +348,10 @@ describe('wallet UI workflows', () => {
     const network = { id: 10, type: 'ethereum', name: 'Optimism' }
     getState.mockReturnValue({
       ...actions,
-      main: { networks: { ethereum: { 10: network } }, tokens: { custom: [] } }
+      main: {
+        networks: { ethereum: { 10: network } },
+        tokens: { accountTokenIds: {}, byId: {} }
+      }
     })
     const hash = `0x${'a'.repeat(64)}`
 

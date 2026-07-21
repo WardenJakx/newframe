@@ -9,12 +9,11 @@ import { Text } from '@newframe/ui/text'
 
 import type { Token } from '../../../../../../main/store/state'
 import link from '../../../../../../resources/link'
-import { cachedImageUrl } from '../../../../../../resources/domain/imageCache'
+import { customTokens, tokenImageSource } from '../../../../../../resources/domain/token'
 import type { WalletRendererState } from '../../../../../../resources/state/projections'
 import { useWalletSelector } from '../../../../../state/useAppSelector'
 
-const EMPTY_TOKENS: Token[] = []
-const selectCustomTokens = (state: WalletRendererState) => state.tokens.custom || EMPTY_TOKENS
+const selectCustomTokens = (state: WalletRendererState) => customTokens(state.tokens)
 
 interface CustomTokensProps {
   onEdit: (token: Token) => void
@@ -42,12 +41,8 @@ function CustomTokensView({ onEdit, tokens }: CustomTokensProps) {
           <Surface key={`${token.chainId}:${token.address}`} padding='small' radius='card'>
             <Stack gap='small'>
               <Stack align='center' direction='row' gap='small'>
-                {token.logoURI ? (
-                  <Image
-                    alt={token.symbol.toUpperCase()}
-                    size='medium'
-                    source={cachedImageUrl(token.logoURI)}
-                  />
+                {tokenImageSource(token) ? (
+                  <Image alt={token.symbol.toUpperCase()} size='medium' source={tokenImageSource(token)} />
                 ) : null}
                 <Stack gap='xsmall' grow>
                   <Text truncate variant='label'>

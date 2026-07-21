@@ -31,15 +31,15 @@ import {
   type TransactionRequest
 } from '../accounts/types'
 import type Signer from '../signers/Signer'
-import type { Chain, Token } from '../store/state'
-import { toTokenId } from '../../resources/domain/balance'
+import type { Chain } from '../store/state'
 import { ApprovalType } from '../../resources/constants'
 import {
   buildSideTrayRoute,
   normalizeSideTrayFrameRequest,
   SIDE_TRAY_FRAME_ID
 } from '../../resources/domain/sideTray'
-import { cachedImageReference, isCachedImageReference } from '../../resources/domain/imageCache'
+import { isEmbeddedImage } from '../../resources/domain/image'
+import { tokenImageDataUri, toTokenId } from '../../resources/domain/token'
 import {
   isSignatureRequest,
   isTransactionRequest,
@@ -286,21 +286,16 @@ export function quitApp() {
 }
 
 export function addToken(command: TokenAddCommand) {
-  store.getState().addCustomTokens([command.token])
+  store.getState().upsertTokens([command.token], { custom: true, source: 'custom' })
   return true
 }
 
 export function removeToken(token: Pick<WalletToken, 'address' | 'chainId'>) {
-  const canonicalToken = store
-    .getState()
-    .main.tokens.custom.find(
-      (candidate: WalletToken) =>
-        candidate.chainId === token.chainId && candidate.address.toLowerCase() === token.address.toLowerCase()
-    )
+  const state = store.getState()
+  const canonicalToken = state.main.tokens.byId[toTokenId(token)]
   if (!canonicalToken) return false
 
-  store.getState().removeBalance(token.chainId, canonicalToken.address)
-  store.getState().removeCustomTokens([canonicalToken])
+  state.removeCustomTokens([canonicalToken])
   return true
 }
 
@@ -476,7 +471,7 @@ export async function hydrateNetworkIcon(chainId: number) {
   if (!chain) return false
 
   const existingIcon = String(state.main.networksMeta.ethereum[chainId]?.icon || '')
-  if (isCachedImageReference(existingIcon)) return true
+  if (isEmbeddedImage(existingIcon)) return true
 
   let sourceUrl = existingIcon
   if (!sourceUrl) {
@@ -486,8 +481,8 @@ export async function hydrateNetworkIcon(chainId: number) {
   }
   if (!sourceUrl) return false
 
-  const metadata = await imageCache.getCachedImage('icon', sourceUrl)
-  state.setNetworkIcon('ethereum', chainId, cachedImageReference('icon', metadata.key))
+  const image = await imageCache.downloadImage(sourceUrl)
+  state.setNetworkIcon('ethereum', chainId, tokenImageDataUri(image))
   return true
 }
 
@@ -610,8 +605,6 @@ export async function resolveNetworkRequest(command: NetworkRequestResolveComman
   return true
 }
 
-const MAX_PORTFOLIO_AUTO_DISCOVERY_TOKENS = 250
-
 export async function refreshPortfolio() {
   const state = store.getState()
   const account = state.main.accounts[state.main.currentAccount || '']
@@ -625,14 +618,9 @@ export async function refreshPortfolio() {
   if (discovery.ok) {
     try {
       const portfolio = await discovery.provider.getWalletPortfolio(address, chainIds, { sync: true })
-      const customTokens = (state.main.tokens.custom || []) as Token[]
-      const knownTokens = (state.main.tokens.known[address] || []) as Token[]
-      const trackedTokens = new Set([...customTokens, ...knownTokens].map(toTokenId))
-      const newTokens = portfolio.tokens
-        .filter((token) => !trackedTokens.has(toTokenId(token)))
-        .slice(0, MAX_PORTFOLIO_AUTO_DISCOVERY_TOKENS)
-
-      if (newTokens.length) state.addKnownTokens(address, newTokens)
+      if (portfolio.tokens.length) {
+        state.upsertTokens(portfolio.tokens, { account: address, source: 'portfolio' })
+      }
       if (portfolio.balances.length) {
         state.setPortfolioBalances(address, portfolio.balances)
         state.accountTokensUpdated(address)

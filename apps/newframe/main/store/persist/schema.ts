@@ -1,22 +1,12 @@
 import { z } from 'zod'
 
 import { MainSchema } from '../state/types/main'
+import { TokenCatalogSchema } from '../state/types/token'
 
-export const PERSISTENCE_VERSION = 2
-export const CANONICAL_STATE_STORAGE_NAME = 'canonical-wallet-state'
+export const PERSISTENCE_VERSION = 3
+export const CANONICAL_STATE_STORAGE_NAME = 'canonical-wallet-state-v3'
 
 const DerivationSchema = z.enum(['live', 'legacy', 'standard', 'testnet'])
-const PersistedTokenSchema = z
-  .object({
-    address: z.string(),
-    chainId: z.coerce.number().int().positive(),
-    name: z.string(),
-    symbol: z.string(),
-    decimals: z.number().int().min(0).max(255),
-    logoURI: z.string().optional()
-  })
-  .passthrough()
-
 const PersistedMainSchema = z.strictObject({
   ...MainSchema.omit({ appLock: true, balances: true, runtime: true }).partial().shape,
   lattice: z
@@ -47,12 +37,7 @@ const PersistedMainSchema = z.strictObject({
       liveAccountLimit: z.number().int().min(1).max(100)
     })
     .optional(),
-  tokens: z
-    .strictObject({
-      custom: z.array(PersistedTokenSchema),
-      known: z.record(z.string(), z.array(PersistedTokenSchema))
-    })
-    .optional(),
+  tokens: TokenCatalogSchema.optional(),
   trezor: z.strictObject({ derivation: DerivationSchema }).optional()
 })
 

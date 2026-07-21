@@ -10,7 +10,7 @@ import { cva } from '../../../../../resources/styled-system/css/cva.js'
 import { sva } from '../../../../../resources/styled-system/css/sva.js'
 import { DisplayCoinBalance } from '../../../../../resources/Components/DisplayValue'
 import StatusGlyph from '../../../../../resources/Components/StatusGlyph'
-import { cachedImageUrl } from '../../../../../resources/domain/imageCache'
+import { imageSource } from '../../../../../resources/domain/image'
 import svg from '../../../../../resources/svg'
 
 export type TransactionProgressData = {
@@ -334,7 +334,7 @@ function AssetIcon({
   return (
     <span className={styles.icon} data-effect-icon-direction={direction}>
       {icon ? (
-        <Image alt='' source={cachedImageUrl(icon)} />
+        <Image alt='' source={imageSource(icon)} />
       ) : effect.kind === 'native' && symbol.toUpperCase() === 'ETH' ? (
         svg.eth(14)
       ) : (

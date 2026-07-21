@@ -30,6 +30,8 @@ const knownTokens = [
   {
     chainId: 10,
     address: '0x4200000000000000000000000000000000000042',
+    decimals: 18,
+    name: 'Optimism',
     symbol: 'OP'
   }
 ]
@@ -38,7 +40,32 @@ function token(index: number, chainId = 10) {
   return {
     chainId,
     address: `0x${index.toString(16).padStart(40, '0')}`,
+    decimals: 18,
+    name: `Token ${index}`,
     symbol: `T${index}`
+  }
+}
+
+function storedToken(token: any, custom = false) {
+  return {
+    ...token,
+    custom,
+    curated: false,
+    sources: [custom ? 'custom' : 'onchain'],
+    updatedAt: 0
+  }
+}
+
+function catalogFor(known: any[], custom: any[] = []) {
+  const records = [
+    ...known.map((item) => storedToken(item)),
+    ...custom.map((item) => storedToken(item, true))
+  ]
+  return {
+    byId: Object.fromEntries(records.map((item) => [`${item.chainId}:${item.address.toLowerCase()}`, item])),
+    accountTokenIds: {
+      [address.toLowerCase()]: known.map((item) => `${item.chainId}:${item.address.toLowerCase()}`)
+    }
   }
 }
 
@@ -52,8 +79,7 @@ beforeEach(() => {
   controllerEvents.removeAllListeners()
   store.setState((state) => {
     const main = state.main as any
-    main.tokens.custom = []
-    main.tokens.known[address] = knownTokens
+    main.tokens = catalogFor(knownTokens)
     main.networks.ethereum[10] = {
       id: 10,
       name: 'Optimism',
@@ -143,8 +169,7 @@ it('only manually refreshes non-dust valued tokens and curated blue chips', () =
 
   store.setState((state) => {
     const main = state.main as any
-    main.tokens.known[address] = tokens
-    main.tokens.custom = [custom]
+    main.tokens = catalogFor(tokens, [custom])
     main.balances[address] = [...tokens, custom].map((trackedToken) => ({
       ...trackedToken,
       balance: [weth, usdc].includes(trackedToken) ? '0x0' : oneToken,
@@ -174,8 +199,7 @@ it('manually refreshes every custom token without applying the discovery scan ca
   }))
 
   store.setState((state) => {
-    state.main.tokens.custom = customTokens
-    state.main.tokens.known[address] = []
+    state.main.tokens = catalogFor([], customTokens)
     state.main.balances[address] = []
   })
   ;(balancesController as any).isRunning.mockReturnValue(true)
@@ -202,8 +226,7 @@ it('caps large known token scans while preserving custom tokens', () => {
   const discoveredTokens = Array.from({ length: 300 }, (_, i) => token(i + 1))
 
   store.setState((state) => {
-    state.main.tokens.custom = customTokens
-    state.main.tokens.known[address] = discoveredTokens
+    state.main.tokens = catalogFor(discoveredTokens, customTokens)
   })
   ;(balancesController as any).isRunning.mockReturnValue(true)
 
@@ -231,7 +254,7 @@ it('caps direct token update scans', () => {
   expect(scannedTokens).toEqual(discoveredTokens.slice(0, 250))
 })
 
-it('enriches native worker balances with canonical currency metadata', () => {
+it('stores native worker balances without duplicating currency metadata', () => {
   store.setState((state) => {
     const main = state.main as any
     main.accounts[address] = { id: address, address, requests: {} }
@@ -243,10 +266,7 @@ it('enriches native worker balances with canonical currency metadata', () => {
     address: NATIVE_CURRENCY,
     balance: '0x2',
     chainId: 10,
-    decimals: 18,
-    displayBalance: '2',
-    name: 'Ether',
-    symbol: 'ETH'
+    displayBalance: '2'
   })
 })
 

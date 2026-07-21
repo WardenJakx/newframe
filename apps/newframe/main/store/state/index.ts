@@ -14,7 +14,7 @@ export type { ChainId, Chain, ChainMetadata } from './types/chain'
 export type { Origin } from './types/origin'
 export type { Permission } from './types/permission'
 export type { Balance } from './types/balance'
-export type { WithTokenId, Token } from './types/token'
+export type { WithTokenId, Token, TokenCatalog, TokenImage, TokenRecord, TokenSource } from './types/token'
 export type { NativeCurrency } from './types/nativeCurrency'
 export type { Gas, GasFees } from './types/gas'
 export type { Rate } from './types/rate'
@@ -59,7 +59,6 @@ type M = Main & {
   latticeSettings: any
   ledger: any
   trezor: any
-  tokens: any
   rates: any
   signers: any
   frames: any
@@ -317,7 +316,7 @@ const mainState: M = {
   activity: {},
   orders: {},
   accountOrder: [],
-  tokens: { custom: [], known: {} },
+  tokens: { byId: {}, accountTokenIds: {} },
   rates: {},
   signers: {},
   updater: {

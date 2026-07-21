@@ -105,7 +105,14 @@ export default class BalancesWorkerController extends EventEmitter {
   }
 
   updateKnownTokenBalances(address: Address, tokens: Token[]) {
-    this.sendCommandToWorker('fetchTokenBalances', [address, tokens])
+    const definitions = tokens.map(({ address: tokenAddress, chainId, decimals, name, symbol }) => ({
+      address: tokenAddress,
+      chainId,
+      decimals,
+      name,
+      symbol
+    }))
+    this.sendCommandToWorker('fetchTokenBalances', [address, definitions])
   }
 
   // private

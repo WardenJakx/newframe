@@ -8,7 +8,6 @@ import { erc20Interface } from '../../resources/contracts'
 
 import type { TransactionEffect, TransactionSimulation } from '../../resources/domain/transaction'
 import type { TokenData } from '../contracts/erc20'
-import type { Balance, Token } from '../store/state'
 import type { TransactionRequest } from '../accounts/types'
 
 const TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'
@@ -216,15 +215,8 @@ function tokenDeltasFromTransfers(transfers: TokenTransfer[], account: string) {
   return deltas
 }
 
-function findTokenInStore(address: string, chainId: number, account: string) {
-  const matchesToken = (token: Partial<Token | Balance>) =>
-    normalizeAddress(token.address) === address && Number(token.chainId) === chainId
-
-  const knownTokens = (store.getState().main.tokens.known[account] || []) as Token[]
-  const customTokens = (store.getState().main.tokens.custom || []) as Token[]
-  const balances = (store.getState().main.balances[account] || []) as Balance[]
-
-  return [...customTokens, ...knownTokens, ...balances].find(matchesToken)
+function findTokenInStore(address: string, chainId: number, _account: string) {
+  return store.getState().main.tokens.byId[`${chainId}:${normalizeAddress(address)}`]
 }
 
 function tokenFromRequest(
@@ -260,13 +252,11 @@ function tokenFromRequest(
 async function resolveTokenMetadata(req: TransactionRequest, address: string, chainId: number) {
   const cached = findTokenInStore(address, chainId, req.account)
   if (cached) {
-    const cachedWithLogo = cached as Token | (Balance & { logoURI?: string })
-
     return {
       address,
       chainId,
-      decimals: cached.decimals ?? 18,
-      logoURI: cachedWithLogo.logoURI,
+      decimals: cached.decimals,
+      logoURI: cached.logoURI,
       name: cached.name || cached.symbol || 'Token',
       symbol: cached.symbol || 'Token'
     }

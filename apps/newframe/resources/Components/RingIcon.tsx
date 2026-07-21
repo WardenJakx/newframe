@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react'
 
 import svg from '../../resources/svg'
-import { cachedImageUrl } from '../domain/imageCache'
+import { imageSource } from '../domain/image'
 import { sva } from '../styled-system/css/sva.js'
 
 const ringRecipe = sva({
@@ -65,7 +65,7 @@ interface RingIconProps extends IconProps {
 
 const Icon = ({ svgName, alt = '', svgSize = 16, img, small }: IconProps) => {
   if (img) {
-    return <img src={cachedImageUrl(img)} alt={alt} />
+    return <img src={imageSource(img)} alt={alt} />
   }
   if (svgName) {
     const iconName = svgName.toLowerCase()

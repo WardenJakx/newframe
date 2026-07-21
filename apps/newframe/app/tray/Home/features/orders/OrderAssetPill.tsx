@@ -3,7 +3,7 @@ import { Image } from '@newframe/ui/image'
 import { MediaBadge } from '@newframe/ui/media-badge'
 import { Text } from '@newframe/ui/text'
 
-import { cachedImageUrl } from '../../../../../resources/domain/imageCache'
+import { imageSource } from '../../../../../resources/domain/image'
 import { cva } from '../../../../../resources/styled-system/css/cva.js'
 import { ChainIcon } from '../../components/ChainIcon'
 import { orderAssetName, orderAssetSymbol } from './orderModel'
@@ -38,7 +38,7 @@ export function OrderAssetPill({
   const chainId = Number(asset?.chainId || fallbackChainId || 0)
   const logo = asset?.logoURI || asset?.logoUrl || asset?.icon
   const art = logo ? (
-    <Image alt='' size='small' source={cachedImageUrl(logo)} />
+    <Image alt='' size='small' source={imageSource(logo)} />
   ) : symbol === 'ETH' || symbol === 'WETH' ? (
     <Icon name='ethereum' size='small' />
   ) : (

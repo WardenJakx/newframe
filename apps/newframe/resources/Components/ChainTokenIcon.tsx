@@ -4,7 +4,7 @@ import { MediaBadge } from '@newframe/ui/media-badge'
 import { StatusDot } from '@newframe/ui/status-dot'
 import { Text } from '@newframe/ui/text'
 
-import { cachedImageUrl } from '../domain/imageCache'
+import { imageSource } from '../domain/image'
 import type { ChainTokenIconSize, NetworkLike, NetworkMetaLike } from './tokenSelectorTypes'
 
 interface ChainTokenIconProps {
@@ -55,7 +55,7 @@ export default function ChainTokenIcon({
       return (
         <Image
           alt=''
-          source={cachedImageUrl(chainIconUrl)}
+          source={imageSource(chainIconUrl)}
           onLoadError={() => {
             setFailedChainUrl(chainIconUrl)
             warnImageFailure('failed to load chain image', { chainId, symbol, url: chainIconUrl })
@@ -80,7 +80,7 @@ export default function ChainTokenIcon({
       {tokenImageVisible ? (
         <Image
           alt=''
-          source={cachedImageUrl(logoURI)}
+          source={imageSource(logoURI)}
           onLoadError={() => {
             setFailedTokenUrl(logoURI)
             warnImageFailure('failed to load token image', { chainId, symbol, url: logoURI })

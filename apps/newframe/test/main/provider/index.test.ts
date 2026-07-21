@@ -7,6 +7,7 @@ import { SignTypedDataVersion } from '@metamask/eth-sig-util'
 import chainConfig from '../../../main/chains/config'
 import { gweiToHex } from '../../../resources/utils'
 import { Type as SignerType } from '../../../resources/domain/signer'
+import { NATIVE_CURRENCY } from '../../../resources/constants'
 
 const address = '0x22dd63c3619818fdbc262c78baee43cb61e9cccf'
 
@@ -723,7 +724,7 @@ describe('#send', () => {
     beforeEach(() => {
       setNetwork(1, { id: 1, on: true })
       store.setState((state: any) => {
-        state.main.tokens.custom = []
+        state.main.tokens = { byId: {}, accountTokenIds: {} }
       })
 
       request = {
@@ -771,7 +772,18 @@ describe('#send', () => {
 
     it('does not add a request for a token that is already added', () => {
       store.setState((state: any) => {
-        state.main.tokens.custom = [{ address: '0xbfa641051ba0a0ad1b0acf549a89536a0d76472e', chainId: 1 }]
+        const token = request.params.options
+        state.main.tokens.byId[`1:${token.address}`] = {
+          address: token.address,
+          chainId: 1,
+          decimals: token.decimals,
+          name: token.name,
+          symbol: token.symbol,
+          custom: true,
+          curated: false,
+          sources: ['custom'],
+          updatedAt: 0
+        }
       })
 
       send(request, ({ result }: any) => {
@@ -996,6 +1008,21 @@ describe('#send', () => {
       store.setState((state: any) => {
         state.main.accounts[address] = { balances: { lastUpdated: new Date() } }
         state.main.balances[address] = balances
+        balances
+          .filter((balance) => balance.address !== NATIVE_CURRENCY)
+          .forEach((balance) => {
+            state.main.tokens.byId[`${balance.chainId}:${balance.address}`] = {
+              address: balance.address,
+              chainId: balance.chainId,
+              decimals: balance.decimals,
+              name: balance.name,
+              symbol: balance.symbol,
+              custom: false,
+              curated: false,
+              sources: ['onchain'],
+              updatedAt: 0
+            }
+          })
         state.main.networksMeta.ethereum[42161] = {
           nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18, icon: '' }
         }
@@ -1019,7 +1046,17 @@ describe('#send', () => {
         expect(response.error).toBe(undefined)
         expect(response.result.nativeCurrency).toHaveLength(1)
 
-        expect(response.result.nativeCurrency[0]).toEqual(expect.objectContaining(balances[2]))
+        expect(response.result.nativeCurrency[0]).toEqual(
+          expect.objectContaining({
+            address: balances[2].address,
+            balance: balances[2].balance,
+            chainId: balances[2].chainId,
+            decimals: 18,
+            displayBalance: balances[2].displayBalance,
+            name: 'Ether',
+            symbol: 'ETH'
+          })
+        )
 
         done()
       })
@@ -2246,14 +2283,19 @@ describe('state change events', () => {
     const ethBalance = {
       symbol: 'ETH',
       balance: '0xe7',
-      address: '0x0000000000000000000000000000000000000000',
-      chainId: 1
+      address: NATIVE_CURRENCY,
+      chainId: 1,
+      displayBalance: ''
     }
 
     const tokenPriceData = { usd: { price: 225.35 } }
     const tokenBalance = {
       symbol: 'OHM',
+      name: 'Olympus',
+      decimals: 9,
       balance: '0x606401fc9',
+      displayBalance: '',
+      chainId: 1,
       address: '0x383518188c0c6d7730d91b2c03a03c837814a899'
     }
 
@@ -2267,7 +2309,14 @@ describe('state change events', () => {
       expect(event.params.subscription).toBe(subscription.id)
       expect(event.params.result).toEqual({
         account: address,
-        nativeCurrency: [{ ...ethBalance, currencyInfo: ethPriceData }],
+        nativeCurrency: [
+          {
+            ...ethBalance,
+            name: 'Ether',
+            decimals: 18,
+            currencyInfo: { name: 'Ether', symbol: 'ETH', decimals: 18, ...ethPriceData }
+          }
+        ],
         erc20: [{ ...tokenBalance, tokenInfo: { lastKnownPrice: { ...tokenPriceData } } }]
       })
 
@@ -2279,9 +2328,25 @@ describe('state change events', () => {
       state.main.accounts[address].balances = { lastUpdated: new Date() }
       state.main.permissions[address] = { 'test.frame': { origin: 'test.frame', provider: true } }
       state.main.networksMeta.ethereum[1] ||= {}
-      state.main.networksMeta.ethereum[1].nativeCurrency = ethPriceData
+      state.main.networksMeta.ethereum[1].nativeCurrency = {
+        name: 'Ether',
+        symbol: 'ETH',
+        decimals: 18,
+        ...ethPriceData
+      }
       state.main.rates[tokenBalance.address] = tokenPriceData
       state.main.balances[address] = [ethBalance, tokenBalance]
+      state.main.tokens.byId[`1:${tokenBalance.address}`] = {
+        address: tokenBalance.address,
+        chainId: 1,
+        decimals: tokenBalance.decimals,
+        name: tokenBalance.name,
+        symbol: tokenBalance.symbol,
+        custom: false,
+        curated: false,
+        sources: ['onchain'],
+        updatedAt: 0
+      }
       state.main.currentAccount = address
     })
 

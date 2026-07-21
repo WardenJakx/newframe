@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react'
 
 import { Icon } from '@newframe/ui/icon'
-import { cachedImageUrl } from '../../../../resources/domain/imageCache'
+import { imageSource } from '../../../../resources/domain/image'
 import { chainColorValue } from '../../../../resources/colors'
 import { cva } from '../../../../resources/styled-system/css/cva.js'
 
@@ -47,7 +47,7 @@ export function ChainIcon({
   if (metadata.icon) {
     return (
       <span className={chainIconRecipe({ kind: 'art', size })}>
-        <img alt='' src={cachedImageUrl(metadata.icon)} />
+        <img alt='' src={imageSource(metadata.icon)} />
       </span>
     )
   }

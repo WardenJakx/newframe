@@ -9,7 +9,7 @@ import { groupByChain, TokensByChain } from './reducers'
 
 import type { BytesLike } from 'ethers'
 import type { Eip1193Provider } from '../../provider/connection'
-import type { Balance, Token } from '../../store/state'
+import type { Token } from '../../store/state'
 
 const erc20Interface = new Interface(erc20TokenAbi)
 
@@ -18,9 +18,7 @@ interface ExternalBalance {
   displayBalance: string
 }
 
-export interface TokenDefinition extends Omit<Token, 'logoURI'> {
-  logoUri?: string
-}
+export type TokenDefinition = Pick<Token, 'address' | 'chainId' | 'decimals' | 'name' | 'symbol'>
 
 export interface TokenBalance extends TokenDefinition, ExternalBalance {}
 
@@ -101,7 +99,7 @@ export default function (eth: Eip1193Provider) {
 
     const loadedBalances = await Promise.all(balances)
 
-    return loadedBalances.filter((bal) => bal !== undefined) as Balance[]
+    return loadedBalances.filter((bal) => bal !== undefined) as TokenBalance[]
   }
 
   async function getTokenBalancesFromMulticall(owner: string, tokens: TokenDefinition[], chainId: number) {
@@ -118,7 +116,7 @@ export default function (eth: Eip1193Provider) {
       }
 
       return acc
-    }, [] as Balance[])
+    }, [] as TokenBalance[])
   }
 
   return {

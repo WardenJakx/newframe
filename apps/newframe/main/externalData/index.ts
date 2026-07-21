@@ -4,6 +4,7 @@ import log from 'electron-log'
 import store from '../store'
 import Balances from './balances'
 import { arraysMatch, debounce } from '../../resources/utils'
+import { customTokens, tokensForAccount } from '../../resources/domain/token'
 
 import type { Chain, Token } from '../store/state'
 
@@ -17,9 +18,9 @@ const storeApi = {
   getActiveAddress: () => (store.getState().main.currentAccount || '') as Address,
   getAccount: (address: Address) =>
     store.getState().main.accounts[address] as { lastSignerType?: string } | undefined,
-  getCustomTokens: () => (store.getState().main.tokens.custom || []) as Token[],
+  getCustomTokens: () => customTokens(store.getState().main.tokens),
   getKnownTokens: (address?: Address) =>
-    ((address && store.getState().main.tokens.known[address]) || []) as Token[],
+    address ? tokensForAccount(store.getState().main.tokens, address).filter((token) => !token.custom) : [],
   getConnectedNetworks: () => {
     const networks = Object.values(store.getState().main.networks.ethereum || {}) as Chain[]
     return networks.filter(
@@ -180,11 +181,11 @@ export default function () {
   }
   handleAccountChange()
   const unsubscribeAccount = store.subscribe(
-    (state) => ({ currentAccount: state.main.currentAccount, knownTokens: state.main.tokens.known }),
+    (state) => ({ currentAccount: state.main.currentAccount, tokens: state.main.tokens }),
     handleAccountChange,
     {
       equalityFn: (previous, current) =>
-        previous.currentAccount === current.currentAccount && previous.knownTokens === current.knownTokens
+        previous.currentAccount === current.currentAccount && previous.tokens === current.tokens
     }
   )
 
@@ -193,10 +194,7 @@ export default function () {
     handleTokensUpdate(customTokens)
   }
   handleCustomTokensChange()
-  const unsubscribeCustomTokens = store.subscribe(
-    (state) => state.main.tokens.custom,
-    handleCustomTokensChange
-  )
+  const unsubscribeCustomTokens = store.subscribe((state) => state.main.tokens, handleCustomTokensChange)
 
   const handleTrayChange = () => {
     const open = store.getState().tray.open

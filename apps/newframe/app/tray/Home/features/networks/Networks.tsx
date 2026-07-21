@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 
 import link from '../../../../../resources/link'
-import { isCachedImageReference } from '../../../../../resources/domain/imageCache'
+import { isEmbeddedImage } from '../../../../../resources/domain/image'
 import { chainColorValue } from '../../../../../resources/colors'
 import { ChainDot } from '../../../../../resources/Components/ChainDot'
 import { useAccountBalances } from '../../hooks/useAccountBalances'
@@ -29,7 +29,7 @@ export function Networks() {
   useEffect(() => {
     rows.forEach((chain) => {
       const icon = shared.networksMeta[chain.chainId]?.icon
-      if (icon && isCachedImageReference(icon)) return
+      if (icon && isEmbeddedImage(icon)) return
       if (hydrating.current.has(chain.chainId)) return
 
       hydrating.current.add(chain.chainId)

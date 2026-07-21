@@ -5,6 +5,7 @@ import { BalanceSchema } from '../../main/store/state/types/balance'
 import { MainSchema, RuntimeSchema } from '../../main/store/state/types/main'
 import { NativeCurrencySchema } from '../../main/store/state/types/nativeCurrency'
 import { RateSchema } from '../../main/store/state/types/rate'
+import { TokenCatalogSchema } from '../../main/store/state/types/token'
 
 export const RendererProjectionSchema = z.enum(['wallet-ui', 'sidetray'])
 export type RendererProjection = z.infer<typeof RendererProjectionSchema>
@@ -126,24 +127,6 @@ const WalletSignerSchema = z
   })
   .strip()
 
-const WalletTokenSchema = z
-  .object({
-    address: z.string(),
-    chainId: z.coerce.number(),
-    name: z.string(),
-    symbol: z.string(),
-    decimals: z.number(),
-    logoURI: z.string().optional()
-  })
-  .passthrough()
-
-const WalletTokensSchema = z
-  .object({
-    custom: z.array(WalletTokenSchema),
-    known: z.record(z.string(), z.unknown())
-  })
-  .passthrough()
-
 // Wallet renderers receive explicit domain slices. Keeping canonical `main`
 // out of this schema prevents one setting change from cloning every wallet
 // domain and prevents future Electron-only fields from crossing by default.
@@ -176,7 +159,7 @@ export const WalletRendererStateSchema = z.strictObject({
   showLocalNameWithENS: MainSchema.shape.showLocalNameWithENS,
   showTestnets: MainSchema.shape.showTestnets,
   signers: z.record(z.string(), WalletSignerSchema),
-  tokens: WalletTokensSchema,
+  tokens: TokenCatalogSchema,
   trezor: TrezorSettingsSchema,
   windows: WindowsSchema,
   view: ViewSchema,
@@ -227,10 +210,8 @@ export const SideTrayRendererStateSchema = z.strictObject({
     ethereum: z.record(z.coerce.number(), SideTrayNetworkMetadataSchema)
   }),
   rates: z.record(z.string(), SideTrayRateSchema),
-  runtime: RuntimeSchema,
-  tokens: z.strictObject({
-    custom: z.array(WalletTokenSchema)
-  })
+  tokens: TokenCatalogSchema,
+  runtime: RuntimeSchema
 })
 
 export type WalletRendererState = z.infer<typeof WalletRendererStateSchema>

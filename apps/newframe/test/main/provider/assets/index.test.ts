@@ -2,11 +2,33 @@ import { createObserver, loadAssets } from '../../../../main/provider/assets'
 import store from '../../../../main/store'
 
 const account = '0x3ba7bd5cd1c19f678d9c8edfa043de5a57570e06'
+const nativeCurrency = (usd: { price: number }) => ({
+  decimals: 18,
+  icon: '',
+  name: 'Ether',
+  symbol: 'ETH',
+  usd
+})
+
+function setToken(state: any, balance: { address: string; chainId: number }, symbol: string) {
+  state.main.tokens.byId[`${balance.chainId}:${balance.address}`] = {
+    address: balance.address,
+    chainId: balance.chainId,
+    custom: false,
+    curated: false,
+    decimals: 18,
+    name: symbol,
+    sources: ['onchain'],
+    symbol,
+    updatedAt: 0
+  }
+}
 
 beforeEach(() => {
   // ensure that the balances have been updated within the range to not be considered stale
   store.setState((state: any) => {
     state.main.accounts[account] = { balances: { lastUpdated: new Date() } }
+    state.main.tokens.byId = {}
   })
 })
 
@@ -21,12 +43,19 @@ describe('#loadAssets', () => {
     }
 
     store.setState((state: any) => {
-      state.main.networksMeta.ethereum[1] = { nativeCurrency: priceData }
+      state.main.networksMeta.ethereum[1] = { nativeCurrency: nativeCurrency(priceData.usd) }
       state.main.balances[account] = [balance]
     })
 
     expect(loadAssets(account)).toEqual({
-      nativeCurrency: [{ ...balance, currencyInfo: priceData }],
+      nativeCurrency: [
+        {
+          ...balance,
+          decimals: 18,
+          name: 'Ether',
+          currencyInfo: nativeCurrency(priceData.usd)
+        }
+      ],
       erc20: []
     })
   })
@@ -36,17 +65,26 @@ describe('#loadAssets', () => {
     const balance = {
       symbol: 'OHM',
       balance: '0x606401fc9',
-      address: '0x383518188c0c6d7730d91b2c03a03c837814a899'
+      address: '0x383518188c0c6d7730d91b2c03a03c837814a899',
+      chainId: 1
     }
 
     store.setState((state: any) => {
       state.main.rates[balance.address] = priceData
       state.main.balances[account] = [balance]
+      setToken(state, balance, balance.symbol)
     })
 
     expect(loadAssets(account)).toEqual({
       nativeCurrency: [],
-      erc20: [{ ...balance, tokenInfo: { lastKnownPrice: { ...priceData } } }]
+      erc20: [
+        {
+          ...balance,
+          decimals: 18,
+          name: 'OHM',
+          tokenInfo: { lastKnownPrice: { ...priceData } }
+        }
+      ]
     })
   })
 
@@ -54,16 +92,18 @@ describe('#loadAssets', () => {
     const balance = {
       symbol: 'UNKNOWN',
       balance: '0x606401fc9',
-      address: '0x1111111111111111111111111111111111111111'
+      address: '0x1111111111111111111111111111111111111111',
+      chainId: 1
     }
 
     store.setState((state: any) => {
       state.main.balances[account] = [balance]
+      setToken(state, balance, balance.symbol)
     })
 
     expect(loadAssets(account)).toEqual({
       nativeCurrency: [],
-      erc20: [{ ...balance, tokenInfo: {} }]
+      erc20: [{ ...balance, decimals: 18, name: 'UNKNOWN', tokenInfo: {} }]
     })
   })
 
@@ -111,7 +151,13 @@ describe('#createObserver', () => {
 
     store.setState((state: any) => {
       state.main.currentAccount = account
-      state.main.balances[account] = [{ address: '0xany' }]
+      const balance = {
+        address: '0x1111111111111111111111111111111111111111',
+        balance: '0x1',
+        chainId: 1
+      }
+      state.main.balances[account] = [balance]
+      setToken(state, balance, 'TEST')
     })
   })
 
@@ -125,14 +171,21 @@ describe('#createObserver', () => {
     }
 
     store.setState((state: any) => {
-      state.main.networksMeta.ethereum[1] = { nativeCurrency: priceData }
+      state.main.networksMeta.ethereum[1] = { nativeCurrency: nativeCurrency(priceData.usd) }
       state.main.balances[account] = [balance]
     })
 
     fireObserver()
 
     expect(handler.assetsChanged).toHaveBeenCalledWith(account, {
-      nativeCurrency: [{ ...balance, currencyInfo: priceData }],
+      nativeCurrency: [
+        {
+          ...balance,
+          decimals: 18,
+          name: 'Ether',
+          currencyInfo: nativeCurrency(priceData.usd)
+        }
+      ],
       erc20: []
     })
   })
@@ -142,19 +195,28 @@ describe('#createObserver', () => {
     const balance = {
       symbol: 'OHM',
       balance: '0x606401fc9',
-      address: '0x383518188c0c6d7730d91b2c03a03c837814a899'
+      address: '0x383518188c0c6d7730d91b2c03a03c837814a899',
+      chainId: 1
     }
 
     store.setState((state: any) => {
       state.main.rates[balance.address] = priceData
       state.main.balances[account] = [balance]
+      setToken(state, balance, balance.symbol)
     })
 
     fireObserver()
 
     expect(handler.assetsChanged).toHaveBeenCalledWith(account, {
       nativeCurrency: [],
-      erc20: [{ ...balance, tokenInfo: { lastKnownPrice: { ...priceData } } }]
+      erc20: [
+        {
+          ...balance,
+          decimals: 18,
+          name: 'OHM',
+          tokenInfo: { lastKnownPrice: { ...priceData } }
+        }
+      ]
     })
   })
 
