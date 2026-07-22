@@ -173,9 +173,7 @@ function createBalanceSummary({
     decimals,
     displayBalance: rawBalance.displayBalance || '',
     hasPrice,
-    logoURI:
-      tokenImageSource(token) ||
-      (isNative ? getNativeCurrencyIcon(nativeCurrencyInfo) : undefined),
+    logoURI: tokenImageSource(token) || (isNative ? getNativeCurrencyIcon(nativeCurrencyInfo) : undefined),
     name: token?.name || (isNative ? chain.name || '' : rawBalance.name || ''),
     quote,
     symbol: token?.symbol || rawBalance.symbol || '',

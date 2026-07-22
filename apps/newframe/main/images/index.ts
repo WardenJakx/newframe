@@ -59,18 +59,22 @@ function hydrateToken(token: TokenRecord) {
   const hydrationId = `token:${tokenId}`
   if (!sourceUrl || token.image?.sourceUrl === sourceUrl) return
 
-  enqueueHydration(hydrationId, async () => {
-    try {
-      const current = store.getState().main.tokens.byId[tokenId]
-      if (httpsImageUrl(current?.logoURI) !== sourceUrl || current.image?.sourceUrl === sourceUrl) return
+  enqueueHydration(
+    hydrationId,
+    async () => {
+      try {
+        const current = store.getState().main.tokens.byId[tokenId]
+        if (httpsImageUrl(current?.logoURI) !== sourceUrl || current.image?.sourceUrl === sourceUrl) return
 
-      const image = await downloadImage(sourceUrl)
-      const latest = store.getState().main.tokens.byId[tokenId]
-      if (httpsImageUrl(latest?.logoURI) === sourceUrl) store.getState().setTokenImage(tokenId, image)
-    } catch (error) {
-      log.warn('Could not hydrate token image', { tokenId, sourceUrl, error })
-    }
-  }, 'visible')
+        const image = await downloadImage(sourceUrl)
+        const latest = store.getState().main.tokens.byId[tokenId]
+        if (httpsImageUrl(latest?.logoURI) === sourceUrl) store.getState().setTokenImage(tokenId, image)
+      } catch (error) {
+        log.warn('Could not hydrate token image', { tokenId, sourceUrl, error })
+      }
+    },
+    'visible'
+  )
 }
 
 export function requestTokenImage(tokenId: string) {
@@ -96,22 +100,26 @@ function hydrateNetwork(chainId: number, metadata: ChainMetadata) {
   const hydrationId = `network:${chainId}`
   if (metadata.image?.sourceUrl === configuredNetworkImageSource(chainId, metadata)) return
 
-  enqueueHydration(hydrationId, async () => {
-    try {
-      const sourceUrl = await networkImageSource(chainId, metadata)
-      if (!sourceUrl || metadata.image?.sourceUrl === sourceUrl) return
+  enqueueHydration(
+    hydrationId,
+    async () => {
+      try {
+        const sourceUrl = await networkImageSource(chainId, metadata)
+        if (!sourceUrl || metadata.image?.sourceUrl === sourceUrl) return
 
-      const image = await downloadImage(sourceUrl)
-      const current = store.getState().main.networksMeta.ethereum[chainId]
-      if (!current) return
-      const currentSource = configuredNetworkImageSource(chainId, current)
-      if (!currentSource || currentSource === sourceUrl) {
-        store.getState().setNetworkImage('ethereum', chainId, sourceUrl, image)
+        const image = await downloadImage(sourceUrl)
+        const current = store.getState().main.networksMeta.ethereum[chainId]
+        if (!current) return
+        const currentSource = configuredNetworkImageSource(chainId, current)
+        if (!currentSource || currentSource === sourceUrl) {
+          store.getState().setNetworkImage('ethereum', chainId, sourceUrl, image)
+        }
+      } catch (error) {
+        log.warn('Could not hydrate network image', { chainId, error })
       }
-    } catch (error) {
-      log.warn('Could not hydrate network image', { chainId, error })
-    }
-  }, 'background')
+    },
+    'background'
+  )
 }
 
 function hydrateNativeCurrency(chainId: number, metadata: ChainMetadata) {
@@ -119,20 +127,24 @@ function hydrateNativeCurrency(chainId: number, metadata: ChainMetadata) {
   const hydrationId = `native-currency:${chainId}`
   if (!sourceUrl || metadata.nativeCurrency.image?.sourceUrl === sourceUrl) return
 
-  enqueueHydration(hydrationId, async () => {
-    try {
-      const current = store.getState().main.networksMeta.ethereum[chainId]?.nativeCurrency
-      if (httpsImageUrl(current?.icon) !== sourceUrl || current.image?.sourceUrl === sourceUrl) return
+  enqueueHydration(
+    hydrationId,
+    async () => {
+      try {
+        const current = store.getState().main.networksMeta.ethereum[chainId]?.nativeCurrency
+        if (httpsImageUrl(current?.icon) !== sourceUrl || current.image?.sourceUrl === sourceUrl) return
 
-      const image = await downloadImage(sourceUrl)
-      const latest = store.getState().main.networksMeta.ethereum[chainId]?.nativeCurrency
-      if (httpsImageUrl(latest?.icon) === sourceUrl) {
-        store.getState().setNativeCurrencyImage('ethereum', chainId, image)
+        const image = await downloadImage(sourceUrl)
+        const latest = store.getState().main.networksMeta.ethereum[chainId]?.nativeCurrency
+        if (httpsImageUrl(latest?.icon) === sourceUrl) {
+          store.getState().setNativeCurrencyImage('ethereum', chainId, image)
+        }
+      } catch (error) {
+        log.warn('Could not hydrate native currency image', { chainId, sourceUrl, error })
       }
-    } catch (error) {
-      log.warn('Could not hydrate native currency image', { chainId, sourceUrl, error })
-    }
-  }, 'background')
+    },
+    'background'
+  )
 }
 
 function hydrateNetworks(networks: Record<number, ChainMetadata>) {
@@ -144,11 +156,9 @@ function hydrateNetworks(networks: Record<number, ChainMetadata>) {
 }
 
 function start() {
-  const stopNetworks = store.subscribe(
-    (state) => state.main.networksMeta.ethereum,
-    hydrateNetworks,
-    { fireImmediately: true }
-  )
+  const stopNetworks = store.subscribe((state) => state.main.networksMeta.ethereum, hydrateNetworks, {
+    fireImmediately: true
+  })
 
   return () => {
     stopNetworks()

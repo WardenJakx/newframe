@@ -138,7 +138,11 @@ describe('#getVersionFromTypedData', () => {
     { data: typedDataInvalid, version: SignTypedDataVersion.V4, dataDescription: 'eip-712 invalid' },
     { data: typedDataRecursive, version: SignTypedDataVersion.V4, dataDescription: 'eip-712 with recursion' }, // supported by both v3 and v4
     { data: typedDataArrays, version: SignTypedDataVersion.V4, dataDescription: 'eip-712 with arrays' }, // unsupported by v3
-    { data: typedDataArraysInvalid, version: SignTypedDataVersion.V4, dataDescription: 'eip-712 invalid with arrays' },
+    {
+      data: typedDataArraysInvalid,
+      version: SignTypedDataVersion.V4,
+      dataDescription: 'eip-712 invalid with arrays'
+    },
     {
       data: typedDataNullCustomType,
       version: SignTypedDataVersion.V4,
