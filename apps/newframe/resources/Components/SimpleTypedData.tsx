@@ -1,4 +1,3 @@
-import { ScrollArea } from '@newframe/ui/scroll-area'
 import { Stack } from '@newframe/ui/stack'
 import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
@@ -199,16 +198,14 @@ export const SimpleTypedData = ({ req }: SimpleTypedDataProps) => {
   const typedData = req.typedMessage.data || {}
 
   return type === 'signTypedData' || type === 'signErc20Permit' ? (
-    <ScrollArea height='page'>
-      <Stack gap='medium'>
-        <Erc7730ClearSigning display={req.erc7730} />
-        <DigestRows digests={req.digests} />
-        <Text tone='muted' variant='sectionTitle'>
-          Raw Typed Data
-        </Text>
-        <SimpleTypedDataInner {...{ typedData }} />
-      </Stack>
-    </ScrollArea>
+    <Stack gap='medium'>
+      <Erc7730ClearSigning display={req.erc7730} />
+      <DigestRows digests={req.digests} />
+      <Text tone='muted' variant='sectionTitle'>
+        Raw Typed Data
+      </Text>
+      <SimpleTypedDataInner {...{ typedData }} />
+    </Stack>
   ) : (
     <Text align='center' tone='danger' variant='label'>
       {'Unknown: ' + req.type}

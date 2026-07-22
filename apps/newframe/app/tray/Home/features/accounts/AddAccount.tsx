@@ -1399,7 +1399,7 @@ export function AddAccount({
     return (
       <Stack grow gap='none'>
         <SidePanelHeader closeLabel='Back' onClose={backInlineAdd} title='Add account' />
-        <ScrollArea height='page'>
+        <ScrollArea height='fill'>
           <Surface padding='medium' radius='none' tone='transparent'>
             {renderInlineAddBody()}
           </Surface>
