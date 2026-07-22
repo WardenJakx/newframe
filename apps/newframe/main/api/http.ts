@@ -11,6 +11,7 @@ import { updateOrigin, isTrusted, parseOrigin, parseRequestChainId } from './ori
 import validPayload from './validPayload'
 import protectedMethods from './protectedMethods'
 import { createRpcPrincipal } from '../authority'
+import { handleAgentHttpRequest, isAgentHttpRequest } from '../agent'
 
 const logTraffic = process.env.LOG_TRAFFIC
 
@@ -56,6 +57,11 @@ const cleanup = (id: string) => {
 }
 
 const handler = (req: IncomingMessage, res: ServerResponse) => {
+  if (isAgentHttpRequest(req)) {
+    void handleAgentHttpRequest(req, res)
+    return
+  }
+
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
   res.setHeader(

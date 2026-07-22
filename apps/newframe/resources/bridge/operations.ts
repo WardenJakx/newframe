@@ -322,7 +322,10 @@ export type TokenRemoveCommand = z.infer<typeof TokenRemoveCommandSchema>
 
 export const TokenImageHydrateCommandSchema = z.strictObject({
   type: z.literal('token.image-hydrate'),
-  tokenId: z.string().max(128).regex(/^\d+:0x[0-9a-fA-F]{40}$/)
+  tokenId: z
+    .string()
+    .max(128)
+    .regex(/^\d+:0x[0-9a-fA-F]{40}$/)
 })
 export type TokenImageHydrateCommand = z.infer<typeof TokenImageHydrateCommandSchema>
 
@@ -531,6 +534,19 @@ export const AccountRenameCommandSchema = z.strictObject({
   name: BoundedNameSchema.min(1)
 })
 export type AccountRenameCommand = z.infer<typeof AccountRenameCommandSchema>
+
+export const AccountAgentAccessSetCommandSchema = z.strictObject({
+  type: z.literal('account.agent-access-set'),
+  accountId: AddressSchema,
+  enabled: z.boolean()
+})
+export type AccountAgentAccessSetCommand = z.infer<typeof AccountAgentAccessSetCommandSchema>
+
+export const AccountAgentSessionsRevokeCommandSchema = z.strictObject({
+  type: z.literal('account.agent-sessions-revoke'),
+  accountId: AddressSchema
+})
+export type AccountAgentSessionsRevokeCommand = z.infer<typeof AccountAgentSessionsRevokeCommandSchema>
 
 export const AccountPrivateKeyExportQuerySchema = z.strictObject({
   type: z.literal('account.private-key-export'),
@@ -803,6 +819,13 @@ export const AccessRequestResolveCommandSchema = z.strictObject({
 })
 export type AccessRequestResolveCommand = z.infer<typeof AccessRequestResolveCommandSchema>
 
+export const AgentAccessRequestResolveCommandSchema = z.strictObject({
+  type: z.literal('request.agent-access-resolve'),
+  requestId: OperationIdSchema,
+  approved: z.boolean()
+})
+export type AgentAccessRequestResolveCommand = z.infer<typeof AgentAccessRequestResolveCommandSchema>
+
 export const SwitchChainRequestResolveCommandSchema = z.strictObject({
   type: z.literal('request.switch-chain-resolve'),
   requestId: OperationIdSchema,
@@ -967,6 +990,8 @@ export const TrayContextMenuCommandSchema = z.strictObject({
 export type TrayContextMenuCommand = z.infer<typeof TrayContextMenuCommandSchema>
 
 export interface CommandMap {
+  'account.agent-access-set': AccountAgentAccessSetCommand
+  'account.agent-sessions-revoke': AccountAgentSessionsRevokeCommand
   'account.add-from-signer': AccountAddFromSignerCommand
   'account.select': AccountSelectCommand
   'account.remove': AccountRemoveCommand
@@ -997,6 +1022,7 @@ export interface CommandMap {
   'portfolio.refresh': PortfolioRefreshCommand
   'request.approve': RequestApproveCommand
   'request.access-resolve': AccessRequestResolveCommand
+  'request.agent-access-resolve': AgentAccessRequestResolveCommand
   'request.add-chain-review': AddChainReviewCommand
   'request.add-token-review': AddTokenReviewCommand
   'request.approval-confirm': RequestApprovalConfirmCommand
@@ -1033,6 +1059,8 @@ export interface CommandMap {
 }
 
 export interface CommandResultMap {
+  'account.agent-access-set': WalletCommandResult
+  'account.agent-sessions-revoke': WalletCommandResult
   'account.add-from-signer': AccountCreatedResult
   'account.select': AccountSelectResult
   'account.remove': WalletCommandResult
@@ -1063,6 +1091,7 @@ export interface CommandResultMap {
   'portfolio.refresh': WalletCommandResult
   'request.approve': WalletCommandResult
   'request.access-resolve': WalletCommandResult
+  'request.agent-access-resolve': WalletCommandResult
   'request.add-chain-review': WalletCommandResult
   'request.add-token-review': WalletCommandResult
   'request.approval-confirm': WalletCommandResult

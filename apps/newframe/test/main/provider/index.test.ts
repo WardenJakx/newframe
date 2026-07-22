@@ -20,7 +20,7 @@ import chainConfig from '../../../main/chains/config'
 import { gweiToHex } from '../../../resources/utils'
 import { Type as SignerType } from '../../../resources/domain/signer'
 import { NATIVE_CURRENCY } from '../../../resources/constants'
-import { createRpcPrincipal } from '../../../main/authority'
+import { createAgentPrincipal, createRpcPrincipal } from '../../../main/authority'
 
 const address = '0x22dd63c3619818fdbc262c78baee43cb61e9cccf'
 const principal = createRpcPrincipal({
@@ -1986,6 +1986,49 @@ describe('#send', () => {
         })
       })
     })
+  })
+})
+
+describe('#executeAgentTransaction', () => {
+  it('does not broadcast a transaction when its agent session is revoked during signing', () => {
+    let active = true
+    const agentPrincipal = createAgentPrincipal({
+      sessionId: 'agent-session',
+      accountId: address,
+      expiresAt: Date.now() + 60_000,
+      isActive: () => active
+    })
+    const signTransaction = mock()
+    const account = { id: address, signTransaction }
+    const request = {
+      payload: {
+        id: 1,
+        jsonrpc: '2.0',
+        method: 'eth_sendTransaction',
+        params: []
+      },
+      data: {
+        chainId: '0x1',
+        type: '0x0',
+        gasPrice: '0x1',
+        gasLimit: '0x5208',
+        nonce: '0x0'
+      }
+    }
+    const respond = mock()
+
+    provider.executeAgentTransaction(account, request, agentPrincipal, respond)
+    expect(signTransaction).toHaveBeenCalledTimes(1)
+
+    active = false
+    signTransaction.mock.calls[0][1](null, '0xsigned')
+
+    expect(connection.send).not.toHaveBeenCalled()
+    expect(respond).toHaveBeenCalledWith(
+      expect.objectContaining({
+        error: expect.objectContaining({ message: 'Agent session is revoked or unavailable' })
+      })
+    )
   })
 })
 

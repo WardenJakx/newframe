@@ -26,6 +26,7 @@ interface Account {
   status: AccountStatus
   signer: string
   signerStatus?: string
+  agentEnabled?: boolean
   requests: Record<string, any>
   ensName: string
   created: string

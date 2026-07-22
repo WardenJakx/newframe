@@ -61,6 +61,7 @@ export type CurrentRequest = AppRequest & {
 }
 
 export type AppAccount = AccountInfo & {
+  agentEnabled?: boolean
   requests?: Record<string, AppRequest>
 }
 

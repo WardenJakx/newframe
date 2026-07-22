@@ -77,6 +77,7 @@ class FrameAccount {
         lastSignerType: lastSignerType || (options.type as SignerType) || '',
         signer: '',
         signerStatus: '',
+        agentEnabled: false,
         status: 'ok',
         requests: {}
       })
@@ -174,6 +175,10 @@ class FrameAccount {
 
   get signerStatus() {
     return this.state.signerStatus || ''
+  }
+
+  get agentEnabled() {
+    return this.state.agentEnabled === true
   }
 
   get status() {

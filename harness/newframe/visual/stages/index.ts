@@ -1,5 +1,6 @@
 import type { VisualStage } from '../types.ts'
 import { activityStage } from './activity.ts'
+import { agentSessionStage } from './agent-session.ts'
 import { anvilPositionsStage } from './anvil-positions.ts'
 import { harnessAccountStage } from './harness-account.ts'
 import { lockScreenStage } from './lock-screen.ts'
@@ -28,6 +29,7 @@ export const visualStages: VisualStage[] = [
   harnessAccountStage,
   networkOnboardingStage,
   anvilPositionsStage,
+  agentSessionStage,
   tradeTicketStage,
   tradeMarketStage,
   tradeLimitStage,

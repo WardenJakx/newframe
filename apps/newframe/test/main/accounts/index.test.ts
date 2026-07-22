@@ -17,7 +17,7 @@ import { addHexPrefix, intToHex } from '@ethereumjs/util'
 import store from '../../../main/store'
 import { GasFeesSource, TRANSACTION_CONFIRMATION_TARGET } from '../../../resources/domain/transaction'
 import { gweiToHex } from '../../util'
-import { createRpcPrincipal } from '../../../main/authority'
+import { createAgentPrincipal, createRpcPrincipal } from '../../../main/authority'
 
 const providerMock = { send: mock(), emit: mock(), on: mock(), off: mock() }
 const signersMock = { get: mock() }
@@ -200,6 +200,43 @@ describe('#routeRequest', () => {
       jsonrpc: request.payload.jsonrpc,
       error: { code: 4100, message: 'Untrusted request source' }
     })
+  })
+
+  it('executes an authorized agent action without adding it to the prompt queue', () => {
+    const execute = mock()
+    const principal = createAgentPrincipal({
+      sessionId: 'agent-session',
+      accountId: account.address,
+      expiresAt: Date.now() + 60_000,
+      isActive: () => true
+    })
+    const routedRequest = { ...request, account: account.address }
+
+    expect(Accounts.routeRequest(principal, routedRequest, undefined, execute)).toBe(true)
+    expect(execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        authorization: expect.objectContaining({ decision: 'autonomous' })
+      })
+    )
+    expect(canonicalRequest()).toBeUndefined()
+  })
+
+  it('fails closed when an autonomous action has no executor', () => {
+    const respond = mock()
+    const principal = createAgentPrincipal({
+      sessionId: 'agent-session',
+      accountId: account.address,
+      expiresAt: Date.now() + 60_000,
+      isActive: () => true
+    })
+
+    expect(Accounts.routeRequest(principal, { ...request, account: account.address }, respond)).toBe(false)
+    expect(respond).toHaveBeenCalledWith({
+      id: request.payload.id,
+      jsonrpc: request.payload.jsonrpc,
+      error: { code: 4100, message: 'Autonomous signing is not enabled for this action' }
+    })
+    expect(canonicalRequest()).toBeUndefined()
   })
 })
 

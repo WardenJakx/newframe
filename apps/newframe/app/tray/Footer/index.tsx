@@ -96,6 +96,16 @@ export function Footer({ shared, step }: FooterProps) {
       onPress: () =>
         void link.executeCommand({ type: 'request.access-resolve', requestId: req.handlerId, approved: true })
     }
+  } else if (!content && req?.type === 'agentAccess') {
+    primary = {
+      label: 'Allow autonomous access',
+      onPress: () =>
+        void link.executeCommand({
+          type: 'request.agent-access-resolve',
+          requestId: req.handlerId,
+          approved: true
+        })
+    }
   } else if (!content && req?.type === 'switchChain') {
     primary = {
       label: 'Switch',
@@ -129,17 +139,27 @@ export function Footer({ shared, step }: FooterProps) {
               approved: false
             })
         }
-      : req.type === 'switchChain'
+      : req.type === 'agentAccess'
         ? {
             label: 'Decline',
             onPress: () =>
               void link.executeCommand({
-                type: 'request.switch-chain-resolve',
+                type: 'request.agent-access-resolve',
                 requestId: req.handlerId,
                 approved: false
               })
           }
-        : { label: 'Decline', onPress: reject }
+        : req.type === 'switchChain'
+          ? {
+              label: 'Decline',
+              onPress: () =>
+                void link.executeCommand({
+                  type: 'request.switch-chain-resolve',
+                  requestId: req.handlerId,
+                  approved: false
+                })
+            }
+          : { label: 'Decline', onPress: reject }
     : undefined
 
   if (primary && secondary) content = <RequestActions primary={primary} secondary={secondary} />

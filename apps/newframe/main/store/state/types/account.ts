@@ -16,6 +16,7 @@ export const AccountSchema = z
     status: z.string(),
     signer: z.string(),
     signerStatus: z.string().optional(),
+    agentEnabled: z.boolean().optional(),
     requests: z.record(z.string(), z.unknown()),
     ensName: z.string().optional(),
     created: z.string()
