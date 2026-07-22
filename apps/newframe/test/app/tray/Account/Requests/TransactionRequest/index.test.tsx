@@ -210,6 +210,80 @@ describe('confirm', () => {
     expect(incoming).toBeTruthy()
     expect(outgoing.getAttribute('data-effect-direction')).toBe('out')
     expect(incoming.getAttribute('data-effect-direction')).toBe('in')
+    expect(within(outgoing).getByTestId('asset-icon').getAttribute('data-effect-icon-direction')).toBe(
+      'neutral'
+    )
+    expect(within(incoming).getByTestId('asset-icon').getAttribute('data-effect-icon-direction')).toBe(
+      'neutral'
+    )
+    expect(outgoing.textContent).toMatch(/-/)
+    expect(incoming.textContent).toMatch(/\+/)
+  })
+
+  it('uses the canonical persisted token image for simulated effects', () => {
+    const address = '0x0000000000000000000000000000000000000001'
+    resetStateMirrorForTests({
+      networks: { ethereum: { 137: { name: 'Polygon', isTestnet: false } } },
+      networksMeta: { ethereum: { 137: { nativeCurrency: { symbol: 'MATIC' } } } },
+      origins: { 'test-origin': { name: 'Test Dapp' } },
+      tokens: {
+        byId: {
+          [`137:${address}`]: {
+            address,
+            chainId: 137,
+            decimals: 6,
+            name: 'USD Coin',
+            symbol: 'USDC',
+            custom: false,
+            curated: true,
+            sources: ['bundled'],
+            updatedAt: 0,
+            image: {
+              base64: 'dG9rZW4taWNvbg==',
+              contentHash: 'token-icon',
+              mimeType: 'image/png'
+            }
+          }
+        },
+        accountTokenIds: {}
+      },
+      windows: { panel: { nav: [] } }
+    } as any)
+    const req = {
+      handlerId: 'test-req',
+      type: 'transaction',
+      origin: 'test-origin',
+      data: {
+        chainId: '0x89',
+        gasLimit: '0x5208',
+        gasPrice: '0x3b9aca00',
+        type: '0x0'
+      },
+      simulation: {
+        status: 'success',
+        effects: [
+          {
+            id: 'sim-usdc-out',
+            kind: 'erc20',
+            direction: 'out',
+            label: 'Asset out',
+            amount: '0x1',
+            decimals: 6,
+            symbol: 'USDC',
+            assetAddress: address
+          }
+        ]
+      },
+      classification: TxClassification.CONTRACT_CALL
+    }
+
+    renderRequest(req)
+
+    expect(
+      within(screen.getByLabelText('Transaction effects'))
+        .getByRole('img', { name: 'USDC token' })
+        .getAttribute('src')
+    ).toBe('data:image/png;base64,dG9rZW4taWNvbg==')
   })
 
   it('renders fee rate presets for unsigned transactions', () => {

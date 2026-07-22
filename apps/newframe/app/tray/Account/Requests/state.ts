@@ -9,10 +9,12 @@ type NetworkMetadataRecord = WalletRendererState['networksMeta']['ethereum']
 const EMPTY_ACCOUNT_REQUESTS: AccountRequests = {}
 const EMPTY_NETWORK: Partial<NetworkRecord[number]> = {}
 const EMPTY_NETWORK_METADATA: Partial<NetworkMetadataRecord[number]> = {}
+const EMPTY_TOKENS: WalletRendererState['tokens'] = { byId: {}, accountTokenIds: {} }
 const selectEthereumNetworks = (state: WalletRendererState) => state.networks.ethereum
 const selectEthereumNetworkMetadata = (state: WalletRendererState) => state.networksMeta.ethereum
 const selectOrigins = (state: WalletRendererState) => state.origins
 const selectPanelNavigation = (state: WalletRendererState) => state.windows.panel.nav
+const selectTokens = (state: WalletRendererState) => state.tokens || EMPTY_TOKENS
 
 export function useAccountRequests(accountId: string) {
   const selector = useMemo(
@@ -52,6 +54,10 @@ export function useEthereumNetworkMetadata() {
 
 export function useOrigins() {
   return useWalletSelector(selectOrigins)
+}
+
+export function useTokens() {
+  return useWalletSelector(selectTokens)
 }
 
 export function useOriginName(originId: string) {

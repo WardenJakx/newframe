@@ -807,6 +807,10 @@ export function setTransactionFeeDefault(requestId: string, level: 'asap' | 'fas
     accounts.setGasPrice(toHex(toBigInt(levelValue) ?? scale(currentGasPrice)), requestId, true)
   }
 
+  accounts.current()?.patchRequest<TransactionRequest>(requestId, (updatedRequest) => {
+    updatedRequest.feesUpdatedByUser = false
+  })
+
   return true
 }
 

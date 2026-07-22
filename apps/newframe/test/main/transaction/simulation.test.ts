@@ -17,6 +17,11 @@ describe('#effectsFromTrace', () => {
         decimals: 6,
         name: 'Mock USD Coin',
         symbol: 'USDC',
+        image: {
+          base64: 'dG9rZW4taWNvbg==',
+          contentHash: 'token-icon',
+          mimeType: 'image/png'
+        },
         custom: false,
         curated: false,
         sources: ['transaction' as const],
@@ -76,7 +81,8 @@ describe('#effectsFromTrace', () => {
         decimals: 6,
         symbol: 'USDC',
         detail: 'Simulated balance change',
-        assetAddress: usdc.toLowerCase()
+        assetAddress: usdc.toLowerCase(),
+        logoURI: 'data:image/png;base64,dG9rZW4taWNvbg=='
       }
     ])
   })

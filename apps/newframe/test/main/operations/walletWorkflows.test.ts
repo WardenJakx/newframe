@@ -9,6 +9,7 @@ const unlockApp = mock()
 const unlockAppWithBiometrics = mock()
 const exportAccountPrivateKeyRecord = mock()
 const currentAccount = mock()
+const patchRequest = mock()
 const getAccountRecord = mock()
 const addAccount = mock()
 const removeAccountRecord = mock()
@@ -212,6 +213,7 @@ beforeEach(() => {
     unlockAppWithBiometrics,
     exportAccountPrivateKeyRecord,
     currentAccount,
+    patchRequest,
     getAccountRecord,
     addAccount,
     removeAccountRecord,
@@ -781,7 +783,8 @@ describe('wallet UI workflows', () => {
       }
     }
     currentAccount.mockReturnValue({
-      getRequest: (id: string) => (id === request.handlerId ? request : undefined)
+      getRequest: (id: string) => (id === request.handlerId ? request : undefined),
+      patchRequest
     })
     updateRequest.mockReturnValue(true)
     removeFeeUpdateNotice.mockImplementation((_id, done) => done(null))
@@ -833,6 +836,11 @@ describe('wallet UI workflows', () => {
     expect(actions.setGasDefault).toHaveBeenCalledWith('ethereum', 1, 'fast', '0x2')
     expect(setPriorityFee).toHaveBeenCalledWith('0x5', request.handlerId, true)
     expect(setBaseFee).toHaveBeenLastCalledWith('0x14', request.handlerId, true)
+    expect(patchRequest).toHaveBeenCalledWith(request.handlerId, expect.any(Function))
+    const presetUpdate = patchRequest.mock.calls[0][1]
+    const updatedRequest = { feesUpdatedByUser: true }
+    presetUpdate(updatedRequest)
+    expect(updatedRequest.feesUpdatedByUser).toBe(false)
     expect(workflows.adjustTransactionNonce(request.handlerId, 1)).toBe(true)
     expect(adjustNonce).toHaveBeenCalledWith(request.handlerId, 1)
     expect(workflows.resetTransactionNonce(request.handlerId)).toBe(true)

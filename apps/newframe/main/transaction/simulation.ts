@@ -6,6 +6,7 @@ import store from '../store'
 import { NATIVE_CURRENCY } from '../../resources/constants'
 import { erc20Interface } from '../../resources/contracts'
 import { persistedImageSource } from '../../resources/domain/image'
+import { tokenImageSource } from '../../resources/domain/token'
 
 import type { TransactionEffect, TransactionSimulation } from '../../resources/domain/transaction'
 import type { TokenData } from '../contracts/erc20'
@@ -258,7 +259,7 @@ async function resolveTokenMetadata(req: TransactionRequest, address: string, ch
       address,
       chainId,
       decimals: cached.decimals,
-      logoURI: cached.logoURI,
+      logoURI: tokenImageSource(cached),
       name: cached.name || cached.symbol || 'Token',
       symbol: cached.symbol || 'Token'
     }
