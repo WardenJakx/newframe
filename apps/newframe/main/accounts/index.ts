@@ -181,6 +181,10 @@ export class Accounts extends EventEmitter {
     return storeApi.getAccounts()[id]
   }
 
+  getFrameAccount(id: string) {
+    return this.handle(id.toLowerCase())
+  }
+
   private has(id: string) {
     return Boolean(storeApi.getAccounts()[id])
   }
@@ -1438,7 +1442,12 @@ export class Accounts extends EventEmitter {
     }
   }
 
-  routeRequest(principal: TrustedPrincipal, req: AccountRequest, res?: RPCCallback<any>) {
+  routeRequest(
+    principal: TrustedPrincipal,
+    req: AccountRequest,
+    res?: RPCCallback<any>,
+    executeAutonomously?: (request: AccountRequest) => void
+  ) {
     const decision = decideWalletAction(principal, req)
 
     if (decision.outcome === 'reject') {
@@ -1456,24 +1465,41 @@ export class Accounts extends EventEmitter {
     }
 
     if (decision.outcome === 'autonomous') {
-      // No autonomous executor exists in the first milestone. Fail closed if policy is ever
-      // changed before that executor and its signer restrictions are implemented.
-      log.error('Autonomous wallet action has no executor', { actionId: decision.authorization.actionId })
-      res?.({
-        id: req.payload.id,
-        jsonrpc: req.payload.jsonrpc,
-        error: { code: 4100, message: 'Autonomous signing is not enabled' }
-      })
-      return false
+      if (!executeAutonomously) {
+        log.error('Autonomous wallet action has no executor', {
+          actionId: decision.authorization.actionId
+        })
+        res?.({
+          id: req.payload.id,
+          jsonrpc: req.payload.jsonrpc,
+          error: { code: 4100, message: 'Autonomous signing is not enabled for this action' }
+        })
+        return false
+      }
+
+      req.authorization = decision.authorization
+      executeAutonomously(req)
+      return true
     }
 
     req.authorization = decision.authorization
     log.info('routeRequest', JSON.stringify(req))
 
-    const currentAccount = this.current()
-    if (currentAccount && !currentAccount.requests[req.handlerId]) {
-      currentAccount.addRequest(req, res)
+    const requestAccount = this.getFrameAccount(req.account)
+    if (requestAccount && !requestAccount.requests[req.handlerId]) {
+      requestAccount.addRequest(req, res)
+      return true
     }
+    return false
+  }
+
+  trackAutonomousTransaction(accountId: string, request: TransactionRequest, hash: string) {
+    const account = this.getFrameAccount(accountId)
+    if (!account) return false
+
+    this.recordSubmittedTransaction(account, request.handlerId, request, hash)
+    const activity = store.getState().main.activity[transactionActivityId(hash)] as ActivityRecord | undefined
+    if (activity) this.resumeActivityMonitor(activity)
     return true
   }
 

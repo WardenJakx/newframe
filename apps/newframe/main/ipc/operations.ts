@@ -20,7 +20,10 @@ import {
   type RendererRole
 } from './authorization'
 import { createRendererPrincipal } from '../authority'
+import { resolveAgentAccessRequest, revokeAgentSessions, setAgentAccess } from '../agent'
 import {
+  AccountAgentAccessSetCommandSchema,
+  AccountAgentSessionsRevokeCommandSchema,
   AccountSelectCommandSchema,
   AccountSelectResultSchema,
   AccountAddFromSignerCommandSchema,
@@ -32,6 +35,7 @@ import {
   AccountReorderCommandSchema,
   AccountWatchAddCommandSchema,
   AccessRequestResolveCommandSchema,
+  AgentAccessRequestResolveCommandSchema,
   AddChainReviewCommandSchema,
   AddTokenReviewCommandSchema,
   AppQuitCommandSchema,
@@ -387,6 +391,18 @@ const commandRegistry = {
     'not_found',
     ['tray']
   ),
+  'account.agent-access-set': defineWalletCommand(
+    AccountAgentAccessSetCommandSchema,
+    ({ accountId, enabled }) => setAgentAccess(accountId, enabled),
+    'not_found',
+    ['tray']
+  ),
+  'account.agent-sessions-revoke': defineWalletCommand(
+    AccountAgentSessionsRevokeCommandSchema,
+    ({ accountId }) => revokeAgentSessions(accountId),
+    'not_found',
+    ['tray']
+  ),
   'account.add-from-signer': defineOperation({
     schema: AccountAddFromSignerCommandSchema,
     resultSchema: AccountCreatedResultSchema,
@@ -487,6 +503,12 @@ const commandRegistry = {
   'request.access-resolve': defineWalletCommand(
     AccessRequestResolveCommandSchema,
     ({ requestId, approved }) => walletWorkflows.resolveAccessRequest(requestId, approved),
+    'request_not_found',
+    ['tray']
+  ),
+  'request.agent-access-resolve': defineWalletCommand(
+    AgentAccessRequestResolveCommandSchema,
+    ({ requestId, approved }) => resolveAgentAccessRequest(requestId, approved),
     'request_not_found',
     ['tray']
   ),

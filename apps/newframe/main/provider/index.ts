@@ -63,7 +63,12 @@ import {
 import * as sigParser from '../signatures'
 import { hasAddress } from '../../resources/domain/account'
 import { mapRequest } from '../requests'
-import { createMainPrincipal, hasPrincipalCapability, type TrustedPrincipal } from '../authority'
+import {
+  createMainPrincipal,
+  hasPrincipalCapability,
+  type AgentPrincipal,
+  type TrustedPrincipal
+} from '../authority'
 
 import type { Origin, Permission } from '../store/state'
 
@@ -563,6 +568,232 @@ class Provider extends EventEmitter {
     }
   }
 
+  sendAgentTransaction(
+    payload: RPC.SendTransaction.Request,
+    principal: AgentPrincipal,
+    res: RPCRequestCallback
+  ) {
+    const account = accounts.getFrameAccount(principal.accountId)
+    const txParams = payload.params?.[0]
+    if (!account || !txParams || typeof txParams !== 'object') {
+      return resError('Agent transaction is missing its authorized account or transaction', payload, res)
+    }
+
+    const payloadChainId = payload.chainId ? parseInt(payload.chainId, 16) : undefined
+    const normalized = normalizeChainId(txParams, payloadChainId)
+    const chainId = normalized.chainId || payload.chainId
+    if (!chainId || Number.isNaN(parseInt(chainId, 16))) {
+      return resError('Agent transaction requires a valid chainId', payload, res)
+    }
+
+    const from = (normalized.from || account.id).toLowerCase()
+    if (from !== principal.accountId || from !== account.id) {
+      return resError('Agent session is not authorized for the transaction account', payload, res)
+    }
+
+    this.fillTransaction({ ...normalized, from, chainId }, (error, transactionMetadata) => {
+      if (error || !transactionMetadata)
+        return resError(error || 'Could not prepare transaction', payload, res)
+      if (transactionMetadata.approvals.length > 0) {
+        return resError('Agent transaction requires an explicit user approval', payload, res)
+      }
+
+      const { feesUpdated: _feesUpdated, recipientType, ...data } = transactionMetadata.tx
+      const handlerId = uuid()
+      const unclassifiedRequest = {
+        handlerId,
+        type: 'transaction',
+        data,
+        payload,
+        account: account.id,
+        origin: 'newframe-agent',
+        approvals: [],
+        feesUpdatedByUser: false,
+        recipientType,
+        recognizedActions: []
+      } as Omit<TransactionRequest, 'classification'>
+      const request = {
+        ...unclassifiedRequest,
+        classification: classifyTransaction(unclassifiedRequest)
+      } as TransactionRequest
+
+      accounts.routeRequest(principal, request, res, (authorizedRequest) => {
+        this.executeAgentTransaction(account, authorizedRequest as TransactionRequest, res)
+      })
+    })
+  }
+
+  sendAgentPersonalSign(payload: RPCRequestPayload, principal: AgentPrincipal, res: RPCRequestCallback) {
+    const account = accounts.getFrameAccount(principal.accountId)
+    const params = payload.params || []
+    const orderedParams =
+      isAddress(params[0]) && !isAddress(params[1]) ? [...params] : [params[1], params[0], ...params.slice(2)]
+    const [requestedAddress, rawMessage] = orderedParams
+
+    if (!account || typeof requestedAddress !== 'string' || typeof rawMessage !== 'string' || !rawMessage) {
+      return resError('Agent sign request requires an authorized account and message', payload, res)
+    }
+
+    const address = requestedAddress.toLowerCase()
+    if (address !== principal.accountId || address !== account.id) {
+      return resError('Agent session is not authorized for the sign request account', payload, res)
+    }
+
+    let message = rawMessage
+    if (isHexString(rawMessage)) {
+      if (!rawMessage.startsWith('0x')) message = addHexPrefix(rawMessage)
+    } else {
+      message = fromUtf8(rawMessage)
+    }
+
+    const normalizedPayload = { ...payload, params: [account.id, message, ...orderedParams.slice(2)] }
+    const request: SignatureRequest = {
+      handlerId: uuid(),
+      type: 'sign',
+      payload: normalizedPayload,
+      account: account.id,
+      origin: 'newframe-agent',
+      data: { decodedMessage: decodeMessage(message) }
+    }
+
+    accounts.routeRequest(principal, request, res, () => {
+      account.signMessage(message, (signingError, signed) => {
+        if (signingError || !signed) {
+          return resError(signingError || 'Agent message signing failed', normalizedPayload, res)
+        }
+
+        this.verifySignature(signed, message, account.id, (verificationError) => {
+          if (verificationError) return resError(verificationError, normalizedPayload, res)
+          res({ id: normalizedPayload.id, jsonrpc: normalizedPayload.jsonrpc, result: signed })
+        })
+      })
+    })
+  }
+
+  sendAgentTypedData(
+    rawPayload: RPC.SignTypedData.Request,
+    principal: AgentPrincipal,
+    res: RPCRequestCallback
+  ) {
+    const account = accounts.getFrameAccount(principal.accountId)
+    const orderedParams =
+      isAddress(rawPayload.params[1]) && !isAddress(rawPayload.params[0])
+        ? [rawPayload.params[1], rawPayload.params[0], ...rawPayload.params.slice(2)]
+        : [...rawPayload.params]
+    const [requestedAddress, rawTypedData, ...additionalParams] = orderedParams
+
+    if (!account || typeof requestedAddress !== 'string' || !rawTypedData) {
+      return resError('Agent typed-data request requires an authorized account and data', rawPayload, res)
+    }
+
+    const address = requestedAddress.toLowerCase()
+    if (address !== principal.accountId || address !== account.id) {
+      return resError('Agent session is not authorized for the typed-data account', rawPayload, res)
+    }
+
+    let typedData = rawTypedData
+    if (typeof typedData === 'string') {
+      try {
+        typedData = JSON.parse(typedData) as LegacyTypedData | TypedData
+      } catch {
+        return resError('Malformed typed data', rawPayload, res)
+      }
+    }
+
+    if (!typedData || typeof typedData !== 'object' || Array.isArray(typedData) || !typedData.message) {
+      return resError('Typed data missing message', rawPayload, res)
+    }
+
+    const explicitVersion = rawPayload.method.endsWith('_v3')
+      ? SignTypedDataVersion.V3
+      : rawPayload.method.endsWith('_v4')
+        ? SignTypedDataVersion.V4
+        : undefined
+    const version = explicitVersion || getVersionFromTypedData(typedData)
+    if (![SignTypedDataVersion.V3, SignTypedDataVersion.V4].includes(version)) {
+      return resError('Agent typed-data signing supports only v3 and v4', rawPayload, res)
+    }
+
+    const payload = {
+      ...rawPayload,
+      params: [account.id, typedData, ...additionalParams]
+    } as RPC.SignTypedData.Request
+    const typedMessage: TypedMessage = { data: typedData, version }
+    const digests = getEip712Digests(typedMessage)
+    const request: SignTypedDataRequest = {
+      handlerId: uuid(),
+      type: 'signTypedData',
+      typedMessage,
+      ...(digests ? { digests } : {}),
+      payload,
+      account: account.id,
+      origin: 'newframe-agent'
+    }
+
+    accounts.routeRequest(principal, request, res, () => {
+      account.signTypedData(typedMessage, (signingError, signature = '') => {
+        if (signingError || !signature) {
+          return resError(signingError || 'Agent typed-data signing failed', payload, res)
+        }
+
+        try {
+          const recoveredAddress = recoverTypedSignature({ ...typedMessage, signature })
+          if (recoveredAddress.toLowerCase() !== account.id) {
+            throw new Error('TypedData signature verification failed')
+          }
+          res({ id: payload.id, jsonrpc: payload.jsonrpc, result: signature })
+        } catch (error) {
+          resError(error as Error, payload, res)
+        }
+      })
+    })
+  }
+
+  private executeAgentTransaction(
+    account: FrameAccount,
+    request: TransactionRequest,
+    res: RPCRequestCallback
+  ) {
+    const signAndBroadcast = (data: TransactionData) => {
+      const maxTotalFee = maxFee(data)
+      if (feeTotalOverMax(data, maxTotalFee)) {
+        return resError('Max fee is over hard limit', request.payload, res)
+      }
+
+      account.signTransaction(data, (signingError, signedTransaction) => {
+        if (signingError || !signedTransaction) {
+          return resError(signingError || 'Agent transaction signing failed', request.payload, res)
+        }
+
+        this.connection.send(
+          {
+            id: request.payload.id,
+            jsonrpc: request.payload.jsonrpc,
+            method: 'eth_sendRawTransaction',
+            params: [signedTransaction]
+          },
+          (response) => {
+            if (!response.error && typeof response.result === 'string') {
+              const trackedRequest = { ...request, data }
+              accounts.trackAutonomousTransaction(account.id, trackedRequest, response.result)
+            }
+            res(response)
+          },
+          { type: 'ethereum', id: parseInt(data.chainId, 16) }
+        )
+      })
+    }
+
+    if (request.data.nonce) return signAndBroadcast(request.data)
+
+    this.getNonce(request.data, (response) => {
+      if (response.error || typeof response.result !== 'string') {
+        return resError(response.error || 'Could not determine transaction nonce', request.payload, res)
+      }
+      signAndBroadcast({ ...request.data, nonce: response.result })
+    })
+  }
+
   sendTransaction(
     payload: RPC.SendTransaction.Request,
     res: RPCRequestCallback,
@@ -848,7 +1079,8 @@ class Provider extends EventEmitter {
     this.subscriptions[subscriptionType].push({
       id: subId,
       originId: payload._origin,
-      capabilities: principal && principal.kind !== 'renderer' ? principal.capabilities : []
+      capabilities:
+        principal && (principal.kind === 'rpc' || principal.kind === 'main') ? principal.capabilities : []
     })
 
     return subId

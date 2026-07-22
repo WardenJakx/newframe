@@ -93,6 +93,7 @@ const WalletRequestSchema = z
       'signTypedData',
       'signErc20Permit',
       'transaction',
+      'agentAccess',
       'access',
       'addChain',
       'switchChain',

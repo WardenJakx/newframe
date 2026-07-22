@@ -15,6 +15,7 @@ import ChainRequest from './Requests/ChainRequest'
 import AddTokenRequest from './Requests/AddTokenRequest'
 import SignTypedDataRequest from './Requests/SignTypedDataRequest'
 import SignPermitRequest from './Requests/SignPermitRequest'
+import AgentAccessRequest from './Requests/AgentAccessRequest'
 import { isHardwareSigner } from '../../../resources/domain/signer'
 import { persistedImageSource } from '../../../resources/domain/image'
 import { accountViewTitles } from '../../../resources/domain/request'
@@ -27,6 +28,7 @@ const requestComponents: Record<string, any> = {
   signTypedData: SignTypedDataRequest,
   signErc20Permit: SignPermitRequest,
   transaction: TransactionRequest,
+  agentAccess: AgentAccessRequest,
   access: ProviderRequest,
   addChain: ChainRequest,
   addToken: AddTokenRequest

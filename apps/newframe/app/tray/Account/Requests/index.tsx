@@ -9,6 +9,7 @@ import type { ReactNode } from 'react'
 
 import type {
   AccessRequest,
+  AgentAccessRequest,
   AccountRequest,
   AddChainRequest,
   AddTokenRequest,
@@ -24,6 +25,7 @@ import { useAccountRequests, useEthereumNetworkMetadata, useEthereumNetworks, us
 
 type RenderableRequest =
   | AccessRequest
+  | AgentAccessRequest
   | AddChainRequest
   | AddTokenRequest
   | SignatureRequest
@@ -48,7 +50,10 @@ export function Requests(props: RequestsProps) {
     let img: string | undefined
     let detail: ReactNode
 
-    if (req.type === 'access') {
+    if (req.type === 'agentAccess') {
+      title = 'Agent Access'
+      svgName = 'sign'
+    } else if (req.type === 'access') {
       title = 'Account Access'
       svgName = 'accounts'
     } else if (req.type === 'sign') {

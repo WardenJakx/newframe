@@ -42,6 +42,7 @@ type SignatureRequestType = 'sign' | TypedSignatureRequestType
 export type RequestType =
   | SignatureRequestType
   | 'transaction'
+  | 'agentAccess'
   | 'access'
   | 'addChain'
   | 'switchChain'
@@ -65,6 +66,12 @@ export type RequestPrincipal =
       transport: 'http' | 'websocket'
       connectionId: string
       origin: string
+    }
+  | {
+      kind: 'agent'
+      sessionId: string
+      accountId: string
+      expiresAt: number
     }
   | { kind: 'main'; component: string }
 
@@ -216,6 +223,17 @@ export interface PermitSignatureRequest extends AccountRequest<'signErc20Permit'
 }
 
 export type AccessRequest = AccountRequest<'access'>
+
+export interface AgentAccessRequest extends AccountRequest<'agentAccess'> {
+  data: {
+    descriptor: {
+      name: string
+      description?: string
+      url?: string
+    }
+    durationSeconds: number
+  }
+}
 
 export interface AddChainRequest extends AccountRequest<'addChain'> {
   chain: Chain

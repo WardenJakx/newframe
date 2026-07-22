@@ -368,6 +368,11 @@ export function Accounts() {
     flashAccountFeedback('accountCopied', account.id)
   }
 
+  function setAgentAccess(account: HomeAccount, enabled: boolean) {
+    void link.executeCommand({ type: 'account.agent-access-set', accountId: account.id, enabled })
+    setState({ accountMenu: '' })
+  }
+
   function startRenameAccount(account: any) {
     setState({
       accountRenaming: account.id,
@@ -695,9 +700,21 @@ export function Accounts() {
                           <Text tone='muted' variant='code'>
                             {shortAddress(account.address)}
                           </Text>
-                          <Text tone='accent' variant='micro'>
-                            {accountTypeLabel(account)}
-                          </Text>
+                          <Inline align='center' gap='xsmall'>
+                            <Text tone='accent' variant='micro'>
+                              {accountTypeLabel(account)}
+                            </Text>
+                            {account.agentEnabled ? (
+                              <>
+                                <Text tone='muted' variant='micro'>
+                                  ·
+                                </Text>
+                                <Text tone='accent' variant='micro'>
+                                  AI Wallet
+                                </Text>
+                              </>
+                            ) : null}
+                          </Inline>
                         </Stack>
                         <Text align='end' variant='numeric' shrink={false}>
                           {navValue}
@@ -735,15 +752,45 @@ export function Accounts() {
                               >
                                 <Text variant='caption'>Rename account</Text>
                               </Button>
-                              {isHotAccount(account) ? (
-                                <Button
-                                  appearance='row'
-                                  onPress={() => openPrivateKeyExport(account)}
-                                  size='small'
-                                  width='full'
-                                >
-                                  <Text variant='caption'>Export private key</Text>
-                                </Button>
+                              {isHotAccount(account) || account.agentEnabled ? (
+                                <>
+                                  <Button
+                                    appearance='row'
+                                    onPress={() => setAgentAccess(account, !account.agentEnabled)}
+                                    size='small'
+                                    width='full'
+                                  >
+                                    <Text variant='caption'>
+                                      {account.agentEnabled ? 'Disable AI access' : 'Enable AI access'}
+                                    </Text>
+                                  </Button>
+                                  {account.agentEnabled ? (
+                                    <Button
+                                      appearance='row'
+                                      onPress={() => {
+                                        void link.executeCommand({
+                                          type: 'account.agent-sessions-revoke',
+                                          accountId: account.id
+                                        })
+                                        setState({ accountMenu: '' })
+                                      }}
+                                      size='small'
+                                      width='full'
+                                    >
+                                      <Text variant='caption'>Revoke AI sessions</Text>
+                                    </Button>
+                                  ) : null}
+                                  {isHotAccount(account) ? (
+                                    <Button
+                                      appearance='row'
+                                      onPress={() => openPrivateKeyExport(account)}
+                                      size='small'
+                                      width='full'
+                                    >
+                                      <Text variant='caption'>Export private key</Text>
+                                    </Button>
+                                  ) : null}
+                                </>
                               ) : null}
                               {confirmSeedPhraseRemoval ? (
                                 <Stack gap='xsmall'>

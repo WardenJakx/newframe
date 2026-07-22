@@ -2,6 +2,7 @@ import { describe, expect, it } from 'bun:test'
 
 import {
   createMainPrincipal,
+  createAgentPrincipal,
   createRendererPrincipal,
   createRpcPrincipal,
   decideWalletAction,
@@ -127,7 +128,7 @@ describe('wallet action authority', () => {
     })
   })
 
-  it('has no autonomous policy in the first milestone', () => {
+  it('keeps main and ordinary RPC actions on the prompt path', () => {
     const principals = [
       createMainPrincipal('test'),
       createRpcPrincipal({ transport: 'http', connectionId: 'http-1', origin: 'app.example' })
@@ -136,6 +137,52 @@ describe('wallet action authority', () => {
     for (const principal of principals) {
       expect(decideWalletAction(principal, request()).outcome).toBe('prompt')
     }
+  })
+
+  it('allows a valid agent principal to act autonomously only for its session account', () => {
+    const principal = createAgentPrincipal({
+      sessionId: 'session-1',
+      accountId: '0x1111111111111111111111111111111111111111',
+      expiresAt: Date.now() + 60_000
+    })
+
+    expect(decideWalletAction(principal, request())).toMatchObject({
+      outcome: 'autonomous',
+      authorization: {
+        decision: 'autonomous',
+        principal: {
+          kind: 'agent',
+          sessionId: 'session-1',
+          accountId: '0x1111111111111111111111111111111111111111'
+        }
+      }
+    })
+    expect(decideWalletAction(principal, request('sign')).outcome).toBe('autonomous')
+    expect(decideWalletAction(principal, request('signTypedData')).outcome).toBe('autonomous')
+
+    expect(
+      decideWalletAction(principal, {
+        ...request(),
+        account: '0x2222222222222222222222222222222222222222'
+      })
+    ).toEqual({ outcome: 'reject', reason: 'Agent session is not authorized for this account' })
+  })
+
+  it('rejects expired agent principals and agent connection-management actions', () => {
+    const principal = createAgentPrincipal({
+      sessionId: 'expired',
+      accountId: '0x1111111111111111111111111111111111111111',
+      expiresAt: Date.now() - 1
+    })
+
+    expect(decideWalletAction(principal, request())).toEqual({
+      outcome: 'reject',
+      reason: 'Agent session expired'
+    })
+    expect(decideWalletAction(principal, request('agentAccess'))).toEqual({
+      outcome: 'reject',
+      reason: 'Request source is not allowed to perform this action'
+    })
   })
 
   it('rejects malformed actions before they reach an account queue', () => {

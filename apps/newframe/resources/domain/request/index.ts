@@ -28,6 +28,7 @@ export const accountViewTitles: Record<RequestType, string> = {
   signTypedData: 'Sign Data',
   signErc20Permit: 'Sign Token Permit',
   transaction: 'Sign Transaction',
+  agentAccess: 'Agent Access',
   access: 'Account Access',
   addChain: 'Add Chain',
   switchChain: 'Switch Chain',

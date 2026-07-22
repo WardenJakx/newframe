@@ -25,13 +25,20 @@ export type RpcPrincipal = PrincipalBrand & {
   readonly capabilities: readonly TrustedCapability[]
 }
 
+export type AgentPrincipal = PrincipalBrand & {
+  readonly kind: 'agent'
+  readonly sessionId: string
+  readonly accountId: string
+  readonly expiresAt: number
+}
+
 export type MainPrincipal = PrincipalBrand & {
   readonly kind: 'main'
   readonly component: string
   readonly capabilities: readonly TrustedCapability[]
 }
 
-export type TrustedPrincipal = RendererPrincipal | RpcPrincipal | MainPrincipal
+export type TrustedPrincipal = RendererPrincipal | RpcPrincipal | AgentPrincipal | MainPrincipal
 
 export type WalletAction = {
   readonly id: string
@@ -54,6 +61,7 @@ const requestTypes = new Set<RequestType>([
   'signTypedData',
   'signErc20Permit',
   'transaction',
+  'agentAccess',
   'access',
   'addChain',
   'switchChain',
@@ -88,6 +96,15 @@ function summarizePrincipal(principal: TrustedPrincipal): RequestAuthorization['
     }
   }
 
+  if (principal.kind === 'agent') {
+    return {
+      kind: 'agent',
+      sessionId: principal.sessionId,
+      accountId: principal.accountId,
+      expiresAt: principal.expiresAt
+    }
+  }
+
   return { kind: 'main', component: principal.component }
 }
 
@@ -118,9 +135,25 @@ export function createRpcPrincipal(input: {
   })
 }
 
+export function createAgentPrincipal(input: {
+  sessionId: string
+  accountId: string
+  expiresAt: number
+}): AgentPrincipal {
+  return Object.freeze({
+    [trustedPrincipalBrand]: true as const,
+    kind: 'agent' as const,
+    sessionId: input.sessionId,
+    accountId: input.accountId.toLowerCase(),
+    expiresAt: input.expiresAt
+  })
+}
+
 export function hasPrincipalCapability(principal: unknown, capability: TrustedCapability) {
   return (
-    hasTrustedBrand(principal) && principal.kind !== 'renderer' && principal.capabilities.includes(capability)
+    hasTrustedBrand(principal) &&
+    (principal.kind === 'rpc' || principal.kind === 'main') &&
+    principal.capabilities.includes(capability)
   )
 }
 
@@ -151,6 +184,9 @@ function buildAction(principal: TrustedPrincipal, request: AccountRequest): Wall
 }
 
 function principalMayRequest(principal: TrustedPrincipal, requestType: RequestType) {
+  if (principal.kind === 'agent') {
+    return signingRequestTypes.has(requestType)
+  }
   if (principal.kind !== 'renderer') return true
   if (principal.role === 'sidetray') return sideTrayRequestTypes.has(requestType)
 
@@ -173,6 +209,30 @@ export function decideWalletAction(principal: unknown, request: AccountRequest):
   if (!action) return { outcome: 'reject', reason: 'Malformed wallet action' }
   if (!principalMayRequest(principal, request.type)) {
     return { outcome: 'reject', reason: 'Request source is not allowed to perform this action' }
+  }
+
+  if (principal.kind === 'agent') {
+    if (principal.expiresAt <= Date.now()) {
+      return { outcome: 'reject', reason: 'Agent session expired' }
+    }
+    if (action.account !== principal.accountId) {
+      return { outcome: 'reject', reason: 'Agent session is not authorized for this account' }
+    }
+
+    return {
+      outcome: 'autonomous',
+      authorization: Object.freeze({
+        actionId: action.id,
+        decision: 'autonomous' as const,
+        decidedAt: Date.now(),
+        principal: action.principal,
+        intent: {
+          requestType: action.requestType,
+          account: action.account,
+          method: action.method
+        }
+      })
+    }
   }
 
   return {
