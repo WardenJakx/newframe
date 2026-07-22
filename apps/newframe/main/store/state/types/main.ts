@@ -5,6 +5,7 @@ import { BalanceSchema } from './balance'
 import { ChainMetadataSchema, ChainSchema } from './chain'
 import { OriginSchema } from './origin'
 import { PermissionSchema } from './permission'
+import { RateSchema } from './rate'
 import { ShortcutSchema } from './shortcuts'
 import { TokenCatalogSchema } from './token'
 
@@ -150,6 +151,10 @@ export const MainSchema = z
     accountOrder: z.array(z.string()).default([]),
     accountsMeta: z.record(z.string(), AccountMetadataSchema),
     balances: z.record(z.string().describe('Address'), z.array(BalanceSchema)),
+    rates: z.record(
+      z.string().describe('Token Address'),
+      z.object({ usd: RateSchema }).passthrough()
+    ),
     tokens: TokenCatalogSchema,
     activity: ActivitySchema,
     orders: OrdersSchema,

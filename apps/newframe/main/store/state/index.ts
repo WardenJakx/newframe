@@ -60,7 +60,6 @@ type M = Main & {
   latticeSettings: any
   ledger: any
   trezor: any
-  rates: any
   signers: any
   frames: any
 }
