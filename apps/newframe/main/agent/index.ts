@@ -8,6 +8,7 @@ import provider from '../provider'
 import store from '../store'
 import { createAgentPrincipal, createRpcPrincipal } from '../authority'
 import type { AgentAccessRequest } from '../accounts/types'
+import { observeResponseClose, PendingConnectionLimiter } from './connectionLifecycle'
 import { AgentSessionStore, type AgentDescriptor } from './sessionStore'
 
 const MIN_DURATION_SECONDS = 60
@@ -48,6 +49,10 @@ type PendingConnection = {
 
 const sessionStore = new AgentSessionStore()
 const pendingConnections = new Map<string, PendingConnection>()
+const pendingConnectionLimiter = new PendingConnectionLimiter(
+  MAX_PENDING_CONNECTIONS,
+  () => pendingConnections.size
+)
 
 function sendJson(res: ServerResponse, status: number, body: unknown) {
   if (res.writableEnded || res.destroyed) return
@@ -114,7 +119,9 @@ function authenticate(req: IncomingMessage) {
     principal: createAgentPrincipal({
       sessionId: session.sessionId,
       accountId: session.accountId,
-      expiresAt: session.expiresAt
+      expiresAt: session.expiresAt,
+      isActive: () =>
+        sessionStore.isActive(session.sessionId, session.accountId) && isReadyAgentAccount(session.accountId)
     })
   }
 }
@@ -127,12 +134,21 @@ function clearPending(requestId: string) {
 }
 
 async function connect(req: IncomingMessage, res: ServerResponse) {
-  if (pendingConnections.size >= MAX_PENDING_CONNECTIONS) {
+  if (!pendingConnectionLimiter.tryReserve()) {
     return sendJson(res, 429, { error: 'Too many pending agent connection requests' })
   }
 
-  const parsed = ConnectSchema.safeParse(await readJson(req))
+  let parsed: ReturnType<typeof ConnectSchema.safeParse>
+  try {
+    parsed = ConnectSchema.safeParse(await readJson(req))
+  } finally {
+    pendingConnectionLimiter.release()
+  }
+
   if (!parsed.success) return sendJson(res, 400, { error: 'Invalid agent connection request' })
+  if (!pendingConnectionLimiter.hasCapacity()) {
+    return sendJson(res, 429, { error: 'Too many pending agent connection requests' })
+  }
 
   const account = accounts.current()
   if (!account || !account.agentEnabled || !isHotAccount(account.id)) {
@@ -173,6 +189,20 @@ async function connect(req: IncomingMessage, res: ServerResponse) {
     timer
   })
 
+  observeResponseClose(
+    res,
+    () => pendingConnections.has(handlerId),
+    () => {
+      const pending = pendingConnections.get(handlerId)
+      if (!pending) return
+      accounts.getFrameAccount(pending.accountId)?.rejectRequest(pending.request, {
+        code: 4001,
+        message: 'Agent disconnected before approval'
+      })
+      clearPending(handlerId)
+    }
+  )
+
   const principal = createRpcPrincipal({
     transport: 'http',
     connectionId: handlerId,
@@ -189,16 +219,6 @@ async function connect(req: IncomingMessage, res: ServerResponse) {
     clearPending(handlerId)
     sendJson(res, 403, { error: 'Agent connection request could not be routed' })
   }
-
-  req.once('aborted', () => {
-    const pending = pendingConnections.get(handlerId)
-    if (!pending) return
-    accounts.getFrameAccount(pending.accountId)?.rejectRequest(pending.request, {
-      code: 4001,
-      message: 'Agent disconnected before approval'
-    })
-    clearPending(handlerId)
-  })
 }
 
 async function rpc(req: IncomingMessage, res: ServerResponse) {

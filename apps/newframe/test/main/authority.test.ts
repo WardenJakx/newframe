@@ -140,10 +140,12 @@ describe('wallet action authority', () => {
   })
 
   it('allows a valid agent principal to act autonomously only for its session account', () => {
+    let active = true
     const principal = createAgentPrincipal({
       sessionId: 'session-1',
       accountId: '0x1111111111111111111111111111111111111111',
-      expiresAt: Date.now() + 60_000
+      expiresAt: Date.now() + 60_000,
+      isActive: () => active
     })
 
     expect(decideWalletAction(principal, request())).toMatchObject({
@@ -166,13 +168,20 @@ describe('wallet action authority', () => {
         account: '0x2222222222222222222222222222222222222222'
       })
     ).toEqual({ outcome: 'reject', reason: 'Agent session is not authorized for this account' })
+
+    active = false
+    expect(decideWalletAction(principal, request())).toEqual({
+      outcome: 'reject',
+      reason: 'Agent session is revoked or unavailable'
+    })
   })
 
   it('rejects expired agent principals and agent connection-management actions', () => {
     const principal = createAgentPrincipal({
       sessionId: 'expired',
       accountId: '0x1111111111111111111111111111111111111111',
-      expiresAt: Date.now() - 1
+      expiresAt: Date.now() - 1,
+      isActive: () => true
     })
 
     expect(decideWalletAction(principal, request())).toEqual({

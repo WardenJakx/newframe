@@ -66,6 +66,7 @@ import { mapRequest } from '../requests'
 import {
   createMainPrincipal,
   hasPrincipalCapability,
+  isAgentPrincipalActive,
   type AgentPrincipal,
   type TrustedPrincipal
 } from '../authority'
@@ -568,11 +569,23 @@ class Provider extends EventEmitter {
     }
   }
 
+  private requireActiveAgentSession(
+    principal: AgentPrincipal,
+    payload: RPCRequestPayload,
+    res: RPCRequestCallback
+  ) {
+    if (isAgentPrincipalActive(principal)) return true
+    resError('Agent session is revoked or unavailable', payload, res)
+    return false
+  }
+
   sendAgentTransaction(
     payload: RPC.SendTransaction.Request,
     principal: AgentPrincipal,
     res: RPCRequestCallback
   ) {
+    if (!this.requireActiveAgentSession(principal, payload, res)) return
+
     const account = accounts.getFrameAccount(principal.accountId)
     const txParams = payload.params?.[0]
     if (!account || !txParams || typeof txParams !== 'object') {
@@ -618,12 +631,14 @@ class Provider extends EventEmitter {
       } as TransactionRequest
 
       accounts.routeRequest(principal, request, res, (authorizedRequest) => {
-        this.executeAgentTransaction(account, authorizedRequest as TransactionRequest, res)
+        this.executeAgentTransaction(account, authorizedRequest as TransactionRequest, principal, res)
       })
     })
   }
 
   sendAgentPersonalSign(payload: RPCRequestPayload, principal: AgentPrincipal, res: RPCRequestCallback) {
+    if (!this.requireActiveAgentSession(principal, payload, res)) return
+
     const account = accounts.getFrameAccount(principal.accountId)
     const params = payload.params || []
     const orderedParams =
@@ -657,13 +672,17 @@ class Provider extends EventEmitter {
     }
 
     accounts.routeRequest(principal, request, res, () => {
+      if (!this.requireActiveAgentSession(principal, normalizedPayload, res)) return
+
       account.signMessage(message, (signingError, signed) => {
+        if (!this.requireActiveAgentSession(principal, normalizedPayload, res)) return
         if (signingError || !signed) {
           return resError(signingError || 'Agent message signing failed', normalizedPayload, res)
         }
 
         this.verifySignature(signed, message, account.id, (verificationError) => {
           if (verificationError) return resError(verificationError, normalizedPayload, res)
+          if (!this.requireActiveAgentSession(principal, normalizedPayload, res)) return
           res({ id: normalizedPayload.id, jsonrpc: normalizedPayload.jsonrpc, result: signed })
         })
       })
@@ -675,6 +694,8 @@ class Provider extends EventEmitter {
     principal: AgentPrincipal,
     res: RPCRequestCallback
   ) {
+    if (!this.requireActiveAgentSession(principal, rawPayload, res)) return
+
     const account = accounts.getFrameAccount(principal.accountId)
     const orderedParams =
       isAddress(rawPayload.params[1]) && !isAddress(rawPayload.params[0])
@@ -731,7 +752,10 @@ class Provider extends EventEmitter {
     }
 
     accounts.routeRequest(principal, request, res, () => {
+      if (!this.requireActiveAgentSession(principal, payload, res)) return
+
       account.signTypedData(typedMessage, (signingError, signature = '') => {
+        if (!this.requireActiveAgentSession(principal, payload, res)) return
         if (signingError || !signature) {
           return resError(signingError || 'Agent typed-data signing failed', payload, res)
         }
@@ -752,15 +776,19 @@ class Provider extends EventEmitter {
   private executeAgentTransaction(
     account: FrameAccount,
     request: TransactionRequest,
+    principal: AgentPrincipal,
     res: RPCRequestCallback
   ) {
     const signAndBroadcast = (data: TransactionData) => {
+      if (!this.requireActiveAgentSession(principal, request.payload, res)) return
+
       const maxTotalFee = maxFee(data)
       if (feeTotalOverMax(data, maxTotalFee)) {
         return resError('Max fee is over hard limit', request.payload, res)
       }
 
       account.signTransaction(data, (signingError, signedTransaction) => {
+        if (!this.requireActiveAgentSession(principal, request.payload, res)) return
         if (signingError || !signedTransaction) {
           return resError(signingError || 'Agent transaction signing failed', request.payload, res)
         }

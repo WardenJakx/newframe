@@ -71,6 +71,16 @@ export class AgentSessionStore {
     return session
   }
 
+  isActive(sessionId: string, accountId: string) {
+    const session = this.sessions.get(sessionId)
+    return Boolean(
+      session &&
+      !session.revokedAt &&
+      session.expiresAt > this.now() &&
+      session.accountId === accountId.toLowerCase()
+    )
+  }
+
   revoke(sessionId: string) {
     const session = this.sessions.get(sessionId)
     if (!session || session.revokedAt) return false

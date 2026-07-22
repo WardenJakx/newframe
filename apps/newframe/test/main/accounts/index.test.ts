@@ -207,7 +207,8 @@ describe('#routeRequest', () => {
     const principal = createAgentPrincipal({
       sessionId: 'agent-session',
       accountId: account.address,
-      expiresAt: Date.now() + 60_000
+      expiresAt: Date.now() + 60_000,
+      isActive: () => true
     })
     const routedRequest = { ...request, account: account.address }
 
@@ -225,7 +226,8 @@ describe('#routeRequest', () => {
     const principal = createAgentPrincipal({
       sessionId: 'agent-session',
       accountId: account.address,
-      expiresAt: Date.now() + 60_000
+      expiresAt: Date.now() + 60_000,
+      isActive: () => true
     })
 
     expect(Accounts.routeRequest(principal, { ...request, account: account.address }, respond)).toBe(false)

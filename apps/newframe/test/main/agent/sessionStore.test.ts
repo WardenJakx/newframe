@@ -16,10 +16,13 @@ describe('agent session store', () => {
     const session = store.authenticate(credentials.sessionId, credentials.sessionToken)
     expect(session?.accountId).toBe('0x1111111111111111111111111111111111111111')
     expect(session).not.toHaveProperty('sessionToken')
+    expect(store.isActive(credentials.sessionId, credentials.account)).toBe(true)
+    expect(store.isActive(credentials.sessionId, '0x2222222222222222222222222222222222222222')).toBe(false)
     expect(store.authenticate(credentials.sessionId, 'forged-token')).toBeUndefined()
 
     now = credentials.expiresAt
     expect(store.authenticate(credentials.sessionId, credentials.sessionToken)).toBeUndefined()
+    expect(store.isActive(credentials.sessionId, credentials.account)).toBe(false)
   })
 
   it('invalidates sessions immediately on session or account revocation', () => {
@@ -29,6 +32,7 @@ describe('agent session store', () => {
 
     expect(store.revoke(first.sessionId)).toBe(true)
     expect(store.authenticate(first.sessionId, first.sessionToken)).toBeUndefined()
+    expect(store.isActive(first.sessionId, first.account)).toBe(false)
     expect(store.authenticate(second.sessionId, second.sessionToken)).toBeDefined()
 
     expect(store.revokeAccount(second.account)).toBe(1)
