@@ -10,9 +10,8 @@ import {
   Call,
   CallResult,
   functionSignatureMatcher,
-  multicallAddresses,
-  MulticallConfig,
-  MulticallVersion
+  multicallAddress,
+  MulticallConfig
 } from './constants'
 
 export type { Call }
@@ -22,8 +21,6 @@ const memoizedInterfaces: Record<string, Interface> = {}
 
 function chainConfig(chainId: number, eth: Eip1193Provider): MulticallConfig {
   return {
-    address: multicallAddresses[chainId].address,
-    version: multicallAddresses[chainId].version,
     chainId,
     provider: eth
   }
@@ -34,7 +31,7 @@ async function makeCall(functionName: string, params: any[], config: MulticallCo
 
   const response: BytesLike = await config.provider.request({
     method: 'eth_call',
-    params: [{ to: config.address, data }, 'latest'],
+    params: [{ to: multicallAddress, data }, 'latest'],
     chainId: addHexPrefix(config.chainId.toString(16))
   })
 
@@ -49,7 +46,7 @@ function buildCallData<R, T>(calls: Call<R, T>[]) {
     const callInterface = getInterface(fnSignature)
     const calldata = callInterface.encodeFunctionData(fnName, params)
 
-    return [target, calldata]
+    return [target, true, calldata]
   })
 }
 
@@ -84,44 +81,33 @@ function getInterface(functionSignature: string) {
   return memoizedInterfaces[functionSignature]
 }
 
-async function aggregate<R, T>(calls: Call<R, T>[], config: MulticallConfig): Promise<CallResult<T>[]> {
+async function aggregate3<R, T>(calls: Call<R, T>[], config: MulticallConfig) {
   const aggData = buildCallData(calls)
-  const response = await makeCall('aggregate', [aggData], config)
+  const response = await makeCall('aggregate3', [aggData], config)
 
   return calls.map(({ call, returns, target }, i) => {
-    const resultData = getResultData(response.returndata[i], call, target)
-
-    return { success: true, returnValues: returns.map((handler, j) => handler(resultData[j])) }
-  })
-}
-
-async function tryAggregate<R, T>(calls: Call<R, T>[], config: MulticallConfig) {
-  const aggData = buildCallData(calls)
-  const response = await makeCall('tryAggregate', [false, aggData], config)
-
-  return calls.map(({ call, returns, target }, i) => {
-    const results = response.result[i]
+    const results = response.returnData[i]
 
     if (!results.success) {
       return { success: false, returnValues: [] }
     }
 
-    const resultData = getResultData(results.returndata, call, target)
+    const resultData = getResultData(results.returnData, call, target)
 
     return { success: true, returnValues: returns.map((handler, j) => handler(resultData[j])) }
   })
 }
 
 // public functions
-export function supportsChain(chainId: number) {
-  return chainId in multicallAddresses
+export function supportsChain(_chainId: number) {
+  return true
 }
 
 export default function (chainId: number, eth: Eip1193Provider) {
   const config = chainConfig(chainId, eth)
 
   async function call<R, T>(calls: Call<R, T>[]): Promise<CallResult<T>[]> {
-    return config.version === MulticallVersion.V2 ? tryAggregate(calls, config) : aggregate(calls, config)
+    return aggregate3(calls, config)
   }
 
   return {
