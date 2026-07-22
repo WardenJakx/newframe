@@ -107,10 +107,6 @@ function persistedNetworkMetadata(networksMeta: UnknownRecord) {
                 selected: price.selected || 'standard',
                 levels: { custom: price.levels?.custom || '' }
               }
-            },
-            nativeCurrency: {
-              ...metadata.nativeCurrency,
-              usd: { price: 0, change24hr: 0 }
             }
           }
         ]
@@ -123,10 +119,8 @@ export function selectPersistedState(state: CanonicalStore): PersistedCanonicalS
   const main = state.main as UnknownRecord
   const {
     appLock: _appLock,
-    balances: _balances,
     focusedFrame: _focusedFrame,
     frames: _frames,
-    rates: _rates,
     runtime: _runtime,
     signers: _signers,
     ...durableMain
@@ -147,7 +141,7 @@ export function migratePersistedState(
   value: unknown,
   fromVersion = PERSISTENCE_VERSION
 ): PersistedCanonicalState {
-  if (fromVersion !== 2 && fromVersion !== PERSISTENCE_VERSION) {
+  if (fromVersion !== 2 && fromVersion !== 3 && fromVersion !== PERSISTENCE_VERSION) {
     log.error('Cannot migrate unsupported canonical state version', fromVersion)
     throw new CanonicalStatePersistenceError(
       'unsupported_version',
@@ -263,10 +257,8 @@ export function mergePersistedState(persistedValue: unknown, current: CanonicalS
       ethereum: mergeRecord(currentMain.networks?.ethereum, saved.networks?.ethereum)
     },
     networksMeta: mergeNetworkMetadata(currentMain.networksMeta, saved.networksMeta),
-    balances: currentMain.balances,
     focusedFrame: currentMain.focusedFrame,
     frames: currentMain.frames,
-    rates: currentMain.rates,
     runtime: currentMain.runtime,
     signers: currentMain.signers,
     shortcuts: mergeRecord(currentMain.shortcuts, saved.shortcuts),

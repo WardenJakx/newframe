@@ -52,7 +52,7 @@ describe('canonical state persistence', () => {
     expect(store.getState().main.tokens).toEqual({ accountTokenIds: {}, byId: {} })
   })
 
-  it('migrates v2 by resetting only tokens and writes the preserved state as v3', async () => {
+  it('migrates v2 by resetting only tokens and writes the preserved state at the current version', async () => {
     const id = '0x2222222222222222222222222222222222222222'
     const durable = canonicalState()
     durable.main.accounts[id] = account(id)
@@ -100,13 +100,20 @@ describe('canonical state persistence', () => {
     )
   })
 
-  it('retains durable state while removing runtime and externally derived data', () => {
+  it('retains durable state and cached balances and rates while removing runtime data', () => {
     const state = canonicalState()
     const id = '0x1111111111111111111111111111111111111111'
     state.main.accounts[id] = account(id, true)
     state.main.appLock = { locked: true, vaultExists: true }
     state.main.currentAccount = id
-    state.main.balances[id] = [{ balance: '1' } as any]
+    state.main.balances[id] = [
+      {
+        address: '0x0000000000000000000000000000000000000000',
+        balance: '0x1',
+        chainId: 1,
+        displayBalance: '1'
+      }
+    ]
     state.main.rates[id] = { usd: { price: 123, change24hr: 4 } }
     state.main.signers.runtime = { id: 'runtime' }
     state.main.tokens.byId['1:0x1111111111111111111111111111111111111111'] = {
@@ -134,8 +141,8 @@ describe('canonical state persistence', () => {
 
     expect(main.currentAccount).toBe(id)
     expect(main.appLock).toBeUndefined()
-    expect(main.balances).toBeUndefined()
-    expect(main.rates).toBeUndefined()
+    expect(main.balances).toEqual(state.main.balances)
+    expect(main.rates).toEqual(state.main.rates)
     expect(main.runtime).toBeUndefined()
     expect(main.signers).toBeUndefined()
     expect(main.accounts[id]).toMatchObject({ requests: {}, signer: '', status: 'ok' })
@@ -143,7 +150,7 @@ describe('canonical state persistence', () => {
     expect(main.accounts[id].balances).toBeUndefined()
     expect(main.networks.ethereum[1].connection.primary.connected).toBe(false)
     expect(main.networksMeta.ethereum[1].blockHeight).toBeUndefined()
-    expect(main.networksMeta.ethereum[1].nativeCurrency.usd).toEqual({ price: 0, change24hr: 0 })
+    expect(main.networksMeta.ethereum[1].nativeCurrency.usd).toEqual({ price: 3_000, change24hr: 2 })
     expect(main.tokens.byId['1:0x1111111111111111111111111111111111111111'].image).toEqual({
       base64: 'aWNvbg==',
       contentHash: 'token-image',
@@ -151,7 +158,7 @@ describe('canonical state persistence', () => {
     })
   })
 
-  it('merges durable v3 state while keeping runtime slices fresh', () => {
+  it('merges durable state and cached balances and rates while keeping runtime slices fresh', () => {
     const current = canonicalState()
     current.main.appLock = { locked: true, vaultExists: true }
     const id = '0x2222222222222222222222222222222222222222'
@@ -159,6 +166,15 @@ describe('canonical state persistence', () => {
     durable.main.accounts[id] = account(id)
     durable.main.accountOrder = [id]
     durable.main.currentAccount = id
+    durable.main.balances[id] = [
+      {
+        address: '0x0000000000000000000000000000000000000000',
+        balance: '0x2a',
+        chainId: 1,
+        displayBalance: '42'
+      }
+    ]
+    durable.main.rates[id] = { usd: { price: 123, change24hr: 4 } }
     const persisted = selectPersistedState(durable)
 
     const merged = mergePersistedState(persisted, current)
@@ -167,9 +183,17 @@ describe('canonical state persistence', () => {
     expect(merged.main.appLock).toBe(current.main.appLock)
     expect(merged.main.accounts[id].active).toBeUndefined()
     expect(merged.main.accounts[id].requests).toEqual({})
-    expect(merged.main.balances).toBe(current.main.balances)
-    expect(merged.main.rates).toBe(current.main.rates)
+    expect(merged.main.balances).toEqual(durable.main.balances)
+    expect(merged.main.rates).toEqual(durable.main.rates)
     expect(merged.main.runtime).toBe(current.main.runtime)
+  })
+
+  it('migrates v3 snapshots that do not contain cached balances or rates', () => {
+    const v3 = selectPersistedState(canonicalState()) as any
+    delete v3.main.balances
+    delete v3.main.rates
+
+    expect(migratePersistedState(v3, 3)).toEqual(v3)
   })
 
   it('coalesces writes and flushes only the latest validated snapshot', () => {
