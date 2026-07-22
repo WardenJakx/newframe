@@ -151,10 +151,7 @@ export const MainSchema = z
     accountOrder: z.array(z.string()).default([]),
     accountsMeta: z.record(z.string(), AccountMetadataSchema),
     balances: z.record(z.string().describe('Address'), z.array(BalanceSchema)),
-    rates: z.record(
-      z.string().describe('Token Address'),
-      z.object({ usd: RateSchema }).passthrough()
-    ),
+    rates: z.record(z.string().describe('Token Address'), z.object({ usd: RateSchema }).passthrough()),
     tokens: TokenCatalogSchema,
     activity: ActivitySchema,
     orders: OrdersSchema,
