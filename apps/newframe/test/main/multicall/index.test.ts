@@ -1,9 +1,55 @@
 import { afterAll, beforeAll, beforeEach, expect, it, mock } from 'bun:test'
 
-import { toBeHex } from 'ethers'
+import { Interface, toBeHex } from 'ethers'
 import log from 'electron-log'
 
-import multicall from '../../../main/multicall'
+import multicall, { supportsChain } from '../../../main/multicall'
+
+const multicall3Address = '0xcA11bde05977b3631167028862bE2a173976CA11'
+const multicall3Interface = new Interface([
+  'function aggregate3(tuple(address target, bool allowFailure, bytes callData)[] calls) payable returns (tuple(bool success, bytes returnData)[] returnData)'
+])
+const balanceInterface = new Interface(['function balanceOf(address owner) returns (uint256 value)'])
+const ownerAddress = '0x1ad91ee08f21be3de0ba2ba6918e714da6b45836'
+
+const calls = [
+  {
+    target: '0x0b3F868E0BE5597D5DB7fEB59E1CADBb0fdDa50a',
+    call: ['function balanceOf(address owner) returns (uint256 value)', ownerAddress],
+    returns: [(bn: any) => toBeHex(bn)]
+  },
+  {
+    target: '0xe94D89243a7Aeaf88857461ce555caEB344765Fc',
+    call: ['function balanceOf(address owner) returns (uint256 value)', ownerAddress],
+    returns: [(bn: any) => toBeHex(bn)]
+  }
+]
+
+function encodeResults(results: { success: boolean; value?: bigint }[]) {
+  return multicall3Interface.encodeFunctionResult('aggregate3', [
+    results.map(({ success, value }) => [
+      success,
+      success ? balanceInterface.encodeFunctionResult('balanceOf', [value]) : '0x'
+    ])
+  ])
+}
+
+function expectAggregate3Call(payload: any, chainId: string, expectedCalls = calls) {
+  expect(payload.method).toBe('eth_call')
+  expect(payload.chainId).toBe(chainId)
+  expect(payload.params[0].to).toBe(multicall3Address)
+
+  const [encodedCalls] = multicall3Interface.decodeFunctionData('aggregate3', payload.params[0].data)
+  expect(
+    encodedCalls.map(({ target, allowFailure, callData }: any) => ({ target, allowFailure, callData }))
+  ).toEqual(
+    expectedCalls.map(({ target }) => ({
+      target,
+      allowFailure: true,
+      callData: balanceInterface.encodeFunctionData('balanceOf', [ownerAddress])
+    }))
+  )
+}
 
 let eth: any
 
@@ -19,83 +65,34 @@ beforeEach(() => {
   eth = { request: mock() }
 })
 
-it('encodes aggregated calls correctly', async () => {
+it('uses Multicall3 aggregate3 on every chain', async () => {
   eth.request.mockImplementationOnce(async (payload: any) => {
-    expect(payload.method).toBe('eth_call')
-    expect(payload.chainId).toBe('0x89')
-    expect(payload.params[0].to).toBe('0x11ce4b23bd875d7f5c6a31084f55fde1e9a87507')
-    expect(payload.params[0].data).toBe(
-      '0x252dba4200000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000e00000000000000000000000000b3f868e0be5597d5db7feb59e1cadbb0fdda50a0000000000000000000000000000000000000000000000000000000000000040000000000000000000000000000000000000000000000000000000000000002470a082310000000000000000000000001ad91ee08f21be3de0ba2ba6918e714da6b4583600000000000000000000000000000000000000000000000000000000000000000000000000000000e94d89243a7aeaf88857461ce555caeb344765fc0000000000000000000000000000000000000000000000000000000000000040000000000000000000000000000000000000000000000000000000000000002470a082310000000000000000000000001ad91ee08f21be3de0ba2ba6918e714da6b4583600000000000000000000000000000000000000000000000000000000'
-    )
+    expectAggregate3Call(payload, '0x89')
 
-    return '0x000000000000000000000000000000000000000000000000000000000181013800000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000017c7aa0a3000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000feca4525'
+    return encodeResults([
+      { success: true, value: 6_383_378_595n },
+      { success: true, value: 4_274_668_837n }
+    ])
   })
 
-  // Polygon uses Multicall1 and aggregate
-  const caller = multicall(137, eth)
-
-  const calls = [
-    {
-      target: '0x0b3F868E0BE5597D5DB7fEB59E1CADBb0fdDa50a',
-      call: [
-        'function balanceOf(address owner) returns (uint256 value)',
-        '0x1ad91ee08f21be3de0ba2ba6918e714da6b45836'
-      ],
-      returns: [(bn: any) => toBeHex(bn)]
-    },
-    {
-      target: '0xe94D89243a7Aeaf88857461ce555caEB344765Fc',
-      call: [
-        'function balanceOf(address owner) returns (uint256 value)',
-        '0x1ad91ee08f21be3de0ba2ba6918e714da6b45836'
-      ],
-      returns: [(bn: any) => toBeHex(bn)]
-    }
-  ]
-
-  const result = await caller.batchCall(calls as any)
+  const result = await multicall(137, eth).batchCall(calls as any)
 
   expect(result).toEqual([
     { success: true, returnValues: ['0x017c7aa0a3'] },
     { success: true, returnValues: ['0xfeca4525'] }
   ])
+  expect(supportsChain(31337)).toBe(true)
+  expect(supportsChain(999999999)).toBe(true)
 })
 
-it('handles an error when using tryAggregate', async () => {
+it('handles an error returned by aggregate3', async () => {
   eth.request.mockImplementationOnce(async (payload: any) => {
-    expect(payload.method).toBe('eth_call')
-    expect(payload.chainId).toBe('0x1')
-    expect(payload.params[0].to).toBe('0x5ba1e12693dc8f9c48aad8770482f4739beed696')
-    expect(payload.params[0].data).toBe(
-      '0xbce38bd7000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000e0000000000000000000000000bcca60bb61934080951369a648fb03df4f96263c0000000000000000000000000000000000000000000000000000000000000040000000000000000000000000000000000000000000000000000000000000002470a082310000000000000000000000001ad91ee08f21be3de0ba2ba6918e714da6b4583600000000000000000000000000000000000000000000000000000000000000000000000000000000089a502032166e07ae83eb434c16790ca2fa46610000000000000000000000000000000000000000000000000000000000000040000000000000000000000000000000000000000000000000000000000000002470a082310000000000000000000000001ad91ee08f21be3de0ba2ba6918e714da6b4583600000000000000000000000000000000000000000000000000000000'
-    )
+    expectAggregate3Call(payload, '0x1')
 
-    return '0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000c0000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000017c7aa4bb000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000000'
+    return encodeResults([{ success: true, value: 6_383_379_643n }, { success: false }])
   })
 
-  // mainnet uses Multicall2 and tryAggregate
-  const caller = multicall(1, eth)
-
-  const calls = [
-    {
-      target: '0xBcca60bB61934080951369a648Fb03DF4F96263C',
-      call: [
-        'function balanceOf(address owner) returns (uint256 value)',
-        '0x1aD91ee08f21bE3dE0BA2ba6918E714dA6B45836'
-      ],
-      returns: [(bn: any) => toBeHex(bn)]
-    },
-    {
-      target: '0x089a502032166e07ae83eb434c16790ca2fa4661',
-      call: [
-        'function balanceOf(address owner) returns (uint256 value)',
-        '0x1aD91ee08f21bE3dE0BA2ba6918E714dA6B45836'
-      ],
-      returns: [(bn: any) => toBeHex(bn)]
-    }
-  ]
-
-  const result = await caller.batchCall(calls as any)
+  const result = await multicall(1, eth).batchCall(calls as any)
 
   expect(result).toEqual([
     { success: true, returnValues: ['0x017c7aa4bb'] },
@@ -104,35 +101,12 @@ it('handles an error when using tryAggregate', async () => {
 })
 
 it('returns one batch if another errors', async () => {
-  eth.request
-    .mockRejectedValueOnce('multicall failed!')
-    .mockResolvedValueOnce(
-      '0x00000000000000000000000000000000000000000000000000000000018100e8000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000feca4525'
-    )
+  eth.request.mockRejectedValueOnce('multicall failed!').mockImplementationOnce(async (payload: any) => {
+    expectAggregate3Call(payload, '0x89', [calls[1]])
+    return encodeResults([{ success: true, value: 4_274_668_837n }])
+  })
 
-  // Polygon uses Multicall1 and aggregate
-  const caller = multicall(137, eth)
-
-  const calls = [
-    {
-      target: '0xBcca60bB61934080951369a648Fb03DF4F96263C',
-      call: [
-        'function balanceOf(address owner) returns (uint256 value)',
-        '0x1aD91ee08f21bE3dE0BA2ba6918E714dA6B45836'
-      ],
-      returns: [(bn: any) => toBeHex(bn)]
-    },
-    {
-      target: '0xe94D89243a7Aeaf88857461ce555caEB344765Fc',
-      call: [
-        'function balanceOf(address owner) returns (uint256 value)',
-        '0x1aD91ee08f21bE3dE0BA2ba6918E714dA6B45836'
-      ],
-      returns: [(bn: any) => toBeHex(bn)]
-    }
-  ]
-
-  const result = await caller.batchCall(calls as any, 1)
+  const result = await multicall(137, eth).batchCall(calls as any, 1)
 
   expect(result).toEqual([
     { success: false, returnValues: [] },
