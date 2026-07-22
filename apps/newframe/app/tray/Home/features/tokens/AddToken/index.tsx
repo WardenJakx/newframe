@@ -104,9 +104,9 @@ function SelectChain({
   const activeChains = Object.values(chains).filter((chain) => chain.on)
 
   return (
-    <Stack gap='medium'>
+    <Stack gap='medium' grow>
       <Text align='center' variant='title'>{`Select token's chain`}</Text>
-      <ScrollArea height='list'>
+      <ScrollArea height='fill'>
         <Stack gap='xsmall'>
           {activeChains.map((chain) => {
             const chainId = chain.id
@@ -263,7 +263,7 @@ const TokenDetailsForm = ({ chain, tokenData, isEdit, onDone }: TokenDetailsForm
   }, [])
 
   return (
-    <ScrollArea height='page'>
+    <ScrollArea height='fill'>
       <Stack gap='medium'>
         <Stack align='center' gap='xsmall'>
           <Text align='center' variant='heading'>

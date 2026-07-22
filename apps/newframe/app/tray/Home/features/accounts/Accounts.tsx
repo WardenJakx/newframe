@@ -592,15 +592,13 @@ export function Accounts() {
           </HeaderBar>
         ) : null}
         {state.accountExporting ? (
-          <ScrollArea height='page'>{renderPrivateKeyExport(accounts)}</ScrollArea>
+          <ScrollArea height='fill'>{renderPrivateKeyExport(accounts)}</ScrollArea>
         ) : state.addingAccount ? (
-          <ScrollArea height='page'>
-            <AddAccount
-              initialSelectedSigner={overlay.type === 'accounts' ? overlay.selectedSigner : ''}
-              initialType={overlay.type === 'accounts' ? overlay.newAccountType : ''}
-              onClose={() => setState({ addingAccount: false })}
-            />
-          </ScrollArea>
+          <AddAccount
+            initialSelectedSigner={overlay.type === 'accounts' ? overlay.selectedSigner : ''}
+            initialType={overlay.type === 'accounts' ? overlay.newAccountType : ''}
+            onClose={() => setState({ addingAccount: false })}
+          />
         ) : (
           <>
             <div className={toolsRecipe()}>
@@ -623,7 +621,7 @@ export function Accounts() {
                 <Text variant='compactAction'>Add account</Text>
               </Button>
             </div>
-            <ScrollArea height='page'>
+            <ScrollArea height='fill'>
               <Surface padding='small' radius='none' tone='transparent'>
                 <Stack gap='small'>
                   {visibleIds.map((id) => {

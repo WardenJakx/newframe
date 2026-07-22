@@ -1,7 +1,6 @@
 import { Button } from '@newframe/ui/button'
 import { Icon } from '@newframe/ui/icon'
 import { Inline } from '@newframe/ui/inline'
-import { ScrollArea } from '@newframe/ui/scroll-area'
 import { Stack } from '@newframe/ui/stack'
 import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
@@ -111,48 +110,46 @@ export function Requests(props: RequestsProps) {
 
   return (
     <div className={requestsRecipe()}>
-      <ScrollArea height='page'>
-        {groups.length === 0 ? (
-          <Surface border='subtle' padding='large' radius='card' tone='card'>
-            <Text align='center' tone='secondary' variant='overline'>
-              No pending requests
-            </Text>
-          </Surface>
-        ) : (
-          <Stack gap='medium'>
-            {groups.map(([origin, originRequests]) => (
-              <Surface border='subtle' key={origin} padding='small' radius='card' tone='card'>
-                <Stack gap='small'>
-                  <Inline align='center' gap='small' justify='between'>
-                    <Inline align='center' gap='small'>
-                      <Icon name='window' size='small' tone='accent' />
-                      <Text variant='label' truncate>
-                        {props.origins[origin]?.name || origin}
-                      </Text>
-                    </Inline>
-                    <Button
-                      appearance='ghost'
-                      onPress={() =>
-                        void link.executeCommand({
-                          type: 'request.clear-origin',
-                          accountId: props.account || '',
-                          originId: origin
-                        })
-                      }
-                      size='small'
-                      tone='danger'
-                    >
-                      <Icon name='close' size='small' />
-                      <Text variant='caption'>Clear all</Text>
-                    </Button>
+      {groups.length === 0 ? (
+        <Surface border='subtle' padding='large' radius='card' tone='card'>
+          <Text align='center' tone='secondary' variant='overline'>
+            No pending requests
+          </Text>
+        </Surface>
+      ) : (
+        <Stack gap='medium'>
+          {groups.map(([origin, originRequests]) => (
+            <Surface border='subtle' key={origin} padding='small' radius='card' tone='card'>
+              <Stack gap='small'>
+                <Inline align='center' gap='small' justify='between'>
+                  <Inline align='center' gap='small'>
+                    <Icon name='window' size='small' tone='accent' />
+                    <Text variant='label' truncate>
+                      {props.origins[origin]?.name || origin}
+                    </Text>
                   </Inline>
-                  <Stack gap='small'>{originRequests.map(requestCard)}</Stack>
-                </Stack>
-              </Surface>
-            ))}
-          </Stack>
-        )}
-      </ScrollArea>
+                  <Button
+                    appearance='ghost'
+                    onPress={() =>
+                      void link.executeCommand({
+                        type: 'request.clear-origin',
+                        accountId: props.account || '',
+                        originId: origin
+                      })
+                    }
+                    size='small'
+                    tone='danger'
+                  >
+                    <Icon name='close' size='small' />
+                    <Text variant='caption'>Clear all</Text>
+                  </Button>
+                </Inline>
+                <Stack gap='small'>{originRequests.map(requestCard)}</Stack>
+              </Stack>
+            </Surface>
+          ))}
+        </Stack>
+      )}
     </div>
   )
 }

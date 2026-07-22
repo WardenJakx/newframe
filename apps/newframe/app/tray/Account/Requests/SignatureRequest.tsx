@@ -1,4 +1,3 @@
-import { ScrollArea } from '@newframe/ui/scroll-area'
 import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
 
@@ -7,9 +6,7 @@ import type { SignatureRequest } from '../../../../main/accounts/types'
 const Message = ({ text }: { text: string }) => {
   return (
     <Surface border='subtle' padding='medium' radius='control' tone='raised'>
-      <ScrollArea height='page'>
-        <Text variant='code'>{text}</Text>
-      </ScrollArea>
+      <Text variant='code'>{text}</Text>
     </Surface>
   )
 }
