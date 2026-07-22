@@ -16,9 +16,10 @@ import { chainUsesOptimismFees } from '../../../../../resources/utils/chains'
 import { displayValueData } from '../../../../../resources/utils/displayValue'
 import { getAddress } from '../../../../../resources/utils'
 import { toBigInt } from '../../../../../resources/utils/numbers'
+import { tokenForId, tokenImageSource } from '../../../../../resources/domain/token'
 import TransactionInformation, { shortAddress } from './TransactionInformation'
 import type { TransactionInformationDetailRow } from './TransactionInformation'
-import { useNetwork, useNetworkMetadata, useOriginName } from '../state'
+import { useNetwork, useNetworkMetadata, useOriginName, useTokens } from '../state'
 import { useRequestView } from '../../../requestView'
 import type { RequestViewState } from '../../../requestView'
 import type { TransactionRequest } from '../../../../../main/accounts/types'
@@ -43,6 +44,7 @@ type TxReviewProps = {
   network: ReturnType<typeof useNetwork>
   networkMetadata: ReturnType<typeof useNetworkMetadata>
   originName: string
+  tokens: ReturnType<typeof useTokens>
   openRequestView(next: RequestViewState): void
 }
 
@@ -175,7 +177,17 @@ export function TxReview(props: TxReviewProps) {
   const contractName = req.decodedData?.contractName
   const source = req.decodedData?.source
   const block = req.tx?.receipt?.blockNumber ? parseInt(req.tx.receipt.blockNumber, 16) : undefined
-  const effects = getTransactionEffects(req, symbol)
+  const effects = getTransactionEffects(req, symbol).map((effect) => {
+    if (effect.kind !== 'erc20' || !effect.assetAddress) return effect
+
+    const tokenId = `${chainId}:${effect.assetAddress.toLowerCase()}`
+    const canonicalImage = tokenImageSource(tokenForId(props.tokens, tokenId))
+    return {
+      ...effect,
+      tokenId,
+      ...(canonicalImage ? { logoURI: canonicalImage } : {})
+    }
+  })
   const simulationStatus = req.simulation?.status
   const effectsEmptyText =
     simulationStatus === 'loading'
@@ -249,6 +261,7 @@ export default function TxReviewWithState(props: TxReviewWithStateProps) {
   const network = useNetwork('ethereum', chainId)
   const networkMetadata = useNetworkMetadata('ethereum', chainId)
   const originName = useOriginName(props.req.origin)
+  const tokens = useTokens()
   const { open } = useRequestView()
   return (
     <TxReview
@@ -256,6 +269,7 @@ export default function TxReviewWithState(props: TxReviewWithStateProps) {
       network={network}
       networkMetadata={networkMetadata}
       originName={originName}
+      tokens={tokens}
       openRequestView={open}
     />
   )

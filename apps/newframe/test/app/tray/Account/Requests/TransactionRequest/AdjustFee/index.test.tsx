@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, jest as timers } from 'bun
 import { addHexPrefix, intToHex } from '@ethereumjs/util'
 
 import link from '../../../../../../../resources/link'
-import { screen, render, actAndWait } from '../../../../../../componentSetup'
+import { act, cleanup, fireEvent, screen, render, actAndWait } from '../../../../../../componentSetup'
 import AdjustFee from '../../../../../../../app/tray/Account/Requests/TransactionRequest/AdjustFee'
 import { gweiToHex } from '../../../../../../util'
 
@@ -47,6 +47,27 @@ it('renders the priority fee input', () => {
 it('renders the gas limit input', () => {
   const { getGasLimitInput } = setupComponent(req)
   expect(getGasLimitInput().value).toBe('25000')
+})
+
+it('debounces each gas field independently', () => {
+  render(<AdjustFee req={req} />)
+
+  fireEvent.change(screen.getByLabelText('Base Fee (GWEI)'), { target: { value: '5' } })
+  fireEvent.change(screen.getByLabelText('Max Priority Fee (GWEI)'), { target: { value: '4' } })
+  act(() => timers.advanceTimersByTime(500))
+
+  expectFeeUpdate('baseFee', gweiToHex(5))
+  expectFeeUpdate('priorityFee', gweiToHex(4))
+})
+
+it('cancels pending custom fee updates when the editor closes', () => {
+  render(<AdjustFee req={req} />)
+
+  fireEvent.change(screen.getByLabelText('Base Fee (GWEI)'), { target: { value: '5' } })
+  cleanup()
+  act(() => timers.runAllTimers())
+
+  expect(link.executeCommand).not.toHaveBeenCalled()
 })
 
 describe('base fee input', () => {

@@ -4,13 +4,14 @@ import { Inline } from '@newframe/ui/inline'
 import { Stack } from '@newframe/ui/stack'
 import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
-import type { Key, ReactNode } from 'react'
+import { useRef, type Key, type ReactNode } from 'react'
 
 import { cva } from '../../../../../resources/styled-system/css/cva.js'
 import { sva } from '../../../../../resources/styled-system/css/sva.js'
 import { DisplayCoinBalance } from '../../../../../resources/Components/DisplayValue'
 import StatusGlyph from '../../../../../resources/Components/StatusGlyph'
 import { imageSource, persistedImageSource } from '../../../../../resources/domain/image'
+import { useTokenImageHydration } from '../../../../../resources/Hooks/useTokenImageHydration'
 import svg from '../../../../../resources/svg'
 
 export type TransactionProgressData = {
@@ -32,6 +33,8 @@ export type TransactionInformationEffect = {
   decimals?: number
   label: ReactNode
   detail?: ReactNode
+  assetAddress?: string
+  tokenId?: string
 }
 
 export type TransactionInformationDetailRow = {
@@ -322,23 +325,29 @@ function TransactionProgress({ progress }: { progress: TransactionProgressData }
 }
 
 function AssetIcon({
-  direction,
   effect,
   nativeCurrency
 }: {
-  direction: 'in' | 'out' | 'neutral'
   effect: TransactionInformationEffect
   nativeCurrency: TransactionInformationNativeCurrency
 }) {
+  const hydrationTarget = useRef<HTMLSpanElement>(null)
   const icon = effect.logoURI || (effect.kind === 'native' ? persistedImageSource(nativeCurrency.image) : '')
   const iconSource = imageSource(icon)
   const symbol = (effect.symbol || '?').trim() || '?'
-  const styles = effectRecipe({ direction })
+  const styles = effectRecipe({ direction: 'neutral' })
+
+  useTokenImageHydration(effect.tokenId, !!iconSource, hydrationTarget)
 
   return (
-    <span className={styles.icon} data-effect-icon-direction={direction}>
+    <span
+      className={styles.icon}
+      data-effect-icon-direction='neutral'
+      data-testid='asset-icon'
+      ref={hydrationTarget}
+    >
       {iconSource ? (
-        <Image alt='' source={iconSource} />
+        <Image alt={`${symbol} token`} source={iconSource} />
       ) : effect.kind === 'native' && symbol.toUpperCase() === 'ETH' ? (
         svg.eth(14)
       ) : (
@@ -389,7 +398,7 @@ function TransactionEffects({
                       key={effect.id}
                       role='group'
                     >
-                      <AssetIcon direction={direction} effect={effect} nativeCurrency={nativeCurrency} />
+                      <AssetIcon effect={effect} nativeCurrency={nativeCurrency} />
                       <span className={styles.meta}>
                         <Stack gap='none'>
                           <Text variant='control' truncate>

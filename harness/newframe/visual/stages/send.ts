@@ -58,22 +58,23 @@ export const sendStage: VisualStage = {
       runtime.fail('Send review scroll area must fill the panel down to the action footer')
     }
 
-    const outgoingIcon = tray.locator('[data-effect-icon-direction="out"]').first()
-    await outgoingIcon.waitFor({ state: 'visible', timeout: 5_000 })
-    const outgoingToneApplied = await outgoingIcon.evaluate((icon) => {
-      const root = icon.parentElement
-      const amount = root?.lastElementChild
-      if (!root || !amount) return false
+    const outgoingEffect = tray.locator('[data-effect-direction="out"]').first()
+    await outgoingEffect.waitFor({ state: 'visible', timeout: 5_000 })
+    const outgoingDeltaApplied = await outgoingEffect.evaluate((root) => {
+      const icon = root.querySelector<HTMLElement>('[data-effect-icon-direction="neutral"]')
+      const amount = root.lastElementChild
+      if (!icon || !amount) return false
       const iconStyle = getComputedStyle(icon)
       const amountStyle = getComputedStyle(amount)
-      const rootStyle = getComputedStyle(root)
       return (
-        iconStyle.color === amountStyle.color &&
-        iconStyle.backgroundColor !== rootStyle.backgroundColor &&
-        iconStyle.borderColor !== rootStyle.backgroundColor
+        (amount.textContent || '').trim().startsWith('-') &&
+        icon.dataset.effectIconDirection === 'neutral' &&
+        iconStyle.color !== amountStyle.color
       )
     })
-    if (!outgoingToneApplied) runtime.fail('Outgoing transaction effect icon must use the danger tone')
+    if (!outgoingDeltaApplied) {
+      runtime.fail('Outgoing transaction effect must show direction on the signed delta, not the token icon')
+    }
     await runtime.screenshot(tray, '14-send-review.png')
 
     const reviewBack = tray.getByRole('button', { name: 'Back', exact: true })

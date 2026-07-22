@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import { Field } from '@newframe/ui/field'
 import { Input } from '@newframe/ui/input'
@@ -80,8 +80,6 @@ const totalFee = ({ gasPrice, baseFee = 0n, priorityFee = 0n, gasLimit }: FeeVal
 const limitGasUnits = (bn: bigint) => limitRange(bn, 0n, 12500000n)
 type FeeField = 'baseFee' | 'priorityFee' | 'gasPrice' | 'gasLimit'
 
-let submitTimeout: ReturnType<typeof setTimeout> | undefined
-
 const FeeOverlayInput = ({
   initialValue,
   labelText,
@@ -91,14 +89,22 @@ const FeeOverlayInput = ({
   limiter
 }: FeeOverlayInputProps) => {
   const [value, setValue] = useState(initialValue)
+  const submitTimeout = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+
+  useEffect(
+    () => () => {
+      clearTimeout(submitTimeout.current)
+    },
+    []
+  )
 
   // newValue is wei for gwei-denominated inputs, integer units otherwise
   const submitValue = (newValueStr: string, newValue: bigint) => {
     setValue(newValueStr)
 
-    clearTimeout(submitTimeout)
+    clearTimeout(submitTimeout.current)
 
-    submitTimeout = setTimeout(() => {
+    submitTimeout.current = setTimeout(() => {
       const limitedValue = limiter(newValue)
       onReceiveValue(limitedValue)
       setValue(formatForInput(limitedValue, decimals))
@@ -124,7 +130,7 @@ const FeeOverlayInput = ({
           const numericValue = parseInput(nextValue, decimals)
           if (numericValue === undefined) return
 
-          clearTimeout(submitTimeout)
+          clearTimeout(submitTimeout.current)
 
           // prevent decimal point being overwritten as user is typing a float
           if (enteredValue.endsWith('.')) {
