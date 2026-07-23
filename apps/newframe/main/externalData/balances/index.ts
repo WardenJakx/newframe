@@ -11,6 +11,7 @@ import type { CanonicalStore } from '../../store'
 import type { Balance, Chain, ChainMetadata, Rate, Token } from '../../store/state'
 
 const RESTART_WAIT = 5 // seconds
+const POSITION_REFRESH_RETRY_MS = 5 * 1000
 
 // time to wait in between scans, in seconds
 const scanInterval = {
@@ -139,6 +140,7 @@ export default function (store: Pick<StoreApi<CanonicalStore>, 'getState'>) {
   let workerController: BalancesWorkerController | null
   let onResume: (() => void) | null
   let restartTimer: NodeJS.Timeout | null
+  const positionRefreshRetries = new Set<NodeJS.Timeout>()
 
   function attemptRestart() {
     log.warn(`balances controller stopped, restarting in ${RESTART_WAIT} seconds`)
@@ -152,6 +154,11 @@ export default function (store: Pick<StoreApi<CanonicalStore>, 'getState'>) {
       clearTimeout(restartTimer)
       restartTimer = null
     }
+  }
+
+  function clearPositionRefreshRetries() {
+    positionRefreshRetries.forEach(clearTimeout)
+    positionRefreshRetries.clear()
   }
 
   function handleClose() {
@@ -233,6 +240,7 @@ export default function (store: Pick<StoreApi<CanonicalStore>, 'getState'>) {
 
   function stop() {
     clearRestartTimer()
+    clearPositionRefreshRetries()
 
     log.verbose('stopping balances updates')
 
@@ -337,11 +345,21 @@ export default function (store: Pick<StoreApi<CanonicalStore>, 'getState'>) {
       tokenCount: affectedTokens.length
     })
     runWhenReady(() => {
-      if (affectedTokens.length > 0) {
-        workerController?.updateKnownTokenBalances(address, affectedTokens)
+      const refreshAffectedPositions = () => {
+        if (affectedTokens.length > 0) {
+          workerController?.updateKnownTokenBalances(address, affectedTokens)
+        }
+
+        workerController?.updateChainBalances(address, [chainId])
       }
 
-      workerController?.updateChainBalances(address, [chainId])
+      refreshAffectedPositions()
+
+      const retry = setTimeout(() => {
+        positionRefreshRetries.delete(retry)
+        refreshAffectedPositions()
+      }, POSITION_REFRESH_RETRY_MS)
+      positionRefreshRetries.add(retry)
     })
   }
 
