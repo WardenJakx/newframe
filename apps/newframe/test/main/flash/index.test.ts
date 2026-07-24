@@ -1,4 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test'
+import { EventEmitter } from 'node:events'
+import WebSocket from 'ws'
 
 import {
   buildFlashQuoteBody,
@@ -6,8 +8,10 @@ import {
   createFlashService,
   flashBaseUrl,
   flashHeaders,
+  flashWebSocketUrl,
   normalizeFlashQuoteResponse
 } from '../../../main/flash'
+import store from '../../../main/store'
 import type { FlashQuoteRequest } from '../../../main/flash/contracts'
 import {
   FLASH_BASE_USDC_ADDRESS,
@@ -22,6 +26,30 @@ import {
 } from '../../../resources/domain/flash/assets'
 
 const originalEnv = { ...process.env }
+
+class FakeFlashWebSocket extends EventEmitter {
+  readyState: number = WebSocket.CONNECTING
+  sent: string[] = []
+
+  open() {
+    this.readyState = WebSocket.OPEN
+    this.emit('open')
+  }
+
+  receive(payload: unknown) {
+    this.emit('message', Buffer.from(JSON.stringify(payload)))
+  }
+
+  send(message: string) {
+    this.sent.push(message)
+  }
+
+  close() {
+    if (this.readyState >= WebSocket.CLOSING) return
+    this.readyState = WebSocket.CLOSED
+    this.emit('close')
+  }
+}
 
 function quoteRequest() {
   return {
@@ -102,9 +130,11 @@ describe('main Flash facade helpers', () => {
   it('selects local and production endpoints by FRAME_PROFILE', () => {
     process.env.FRAME_PROFILE = 'dev' as any
     expect(flashBaseUrl()).toBe('http://127.0.0.1:8422/v1')
+    expect(flashWebSocketUrl()).toBe('ws://127.0.0.1:8422/v1/ws')
 
     process.env.FRAME_PROFILE = 'prod' as any
     expect(flashBaseUrl()).toBe('https://flash.definitive.fi/v1')
+    expect(flashWebSocketUrl()).toBe('wss://flash.definitive.fi/v1/ws')
   })
 
   it('adds packaged auth only for non-dev requests', () => {
@@ -459,6 +489,39 @@ describe('main Flash facade helpers', () => {
     }
   })
 
+  it('treats every undocumented non-open Flash status as terminal', async () => {
+    const flash = createFlashService()
+    const originalFetch = globalThis.fetch
+    globalThis.fetch = mock(async () => {
+      return new Response(
+        JSON.stringify({
+          orders: [
+            officialOrder({
+              orderId: 'unknown-terminal-status',
+              status: 'ORDER_STATUS_SETTLED',
+              closedAt: '2026-07-14T08:02:00.000Z'
+            })
+          ]
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } }
+      )
+    }) as unknown as typeof fetch
+
+    try {
+      const result = await flash.listOrders({
+        accountAddress: '0x0000000000000000000000000000000000000001'
+      })
+      expect(result.orders[0]).toMatchObject({
+        status: 'terminated',
+        rawStatus: 'ORDER_STATUS_SETTLED',
+        open: false
+      })
+    } finally {
+      flash.dispose()
+      globalThis.fetch = originalFetch
+    }
+  })
+
   it('uses official get and cancel request shapes with root order responses', async () => {
     const flash = createFlashService()
     const originalFetch = globalThis.fetch
@@ -634,6 +697,144 @@ describe('main Flash facade helpers', () => {
     } finally {
       flash.dispose()
       globalThis.fetch = originalFetch
+    }
+  })
+
+  it('hydrates external WebSocket orders through the canonical order, notification, and position path', async () => {
+    const sockets: FakeFlashWebSocket[] = []
+    const track = mock()
+    const refresh = mock()
+    const accountAddress = '0x00000000000000000000000000000000000000a1'
+    const orderId = 'websocket-agent-order'
+    const flash = createFlashService({
+      createWebSocket: () => {
+        const socket = new FakeFlashWebSocket()
+        sockets.push(socket)
+        return socket as unknown as WebSocket
+      },
+      positionSync: { track, refresh }
+    })
+
+    try {
+      expect(
+        flash.startAgentSession({
+          accountAddress,
+          expiresAt: Date.now() + 60_000,
+          sessionId: 'agent-session-one'
+        })
+      ).toBe(true)
+      expect(sockets).toHaveLength(1)
+      expect(
+        flash.startAgentSession({
+          accountAddress,
+          expiresAt: Date.now() + 60_000,
+          sessionId: 'agent-session-two'
+        })
+      ).toBe(true)
+      expect(sockets).toHaveLength(2)
+
+      sockets[0].open()
+      sockets[0].receive({
+        channel: 'subscriptions',
+        type: 'ack',
+        subscriptions: ['orders', 'heartbeats']
+      })
+      sockets[0].receive({
+        channel: 'orders',
+        type: 'snapshot',
+        orders: [
+          officialOrder({
+            orderId,
+            funderAddress: accountAddress,
+            status: 'ORDER_STATUS_ACCEPTED',
+            filled: null
+          })
+        ]
+      })
+      await Bun.sleep(0)
+
+      expect(store.getState().main.orders[orderId]).toMatchObject({
+        accountAddress,
+        status: 'accepted',
+        open: true
+      })
+      expect(store.getState().view.notifications[`flash-order:${orderId}`]).toMatchObject({
+        state: 'pending',
+        metadata: { orderId, status: 'accepted' }
+      })
+      expect(track).toHaveBeenCalledTimes(1)
+
+      const partial = officialOrder({
+        orderId,
+        funderAddress: accountAddress,
+        status: 'ORDER_STATUS_PARTIALLY_FILLED',
+        filled: {
+          targetAmount: '0.5',
+          contraAmount: '1200',
+          averagePrice: '2400',
+          averageNotionalPrice: '2400'
+        }
+      })
+      sockets[0].receive({ channel: 'orders', type: 'update', orders: [partial] })
+      sockets[0].receive({ channel: 'orders', type: 'update', orders: [partial] })
+      await Bun.sleep(0)
+
+      expect(store.getState().main.orders[orderId]).toMatchObject({
+        status: 'partially-filled',
+        filledOutputAmount: '1200'
+      })
+      expect(refresh).toHaveBeenCalledTimes(1)
+
+      sockets[0].receive({
+        channel: 'orders',
+        type: 'update',
+        orders: [
+          officialOrder({
+            orderId,
+            funderAddress: accountAddress,
+            status: 'ORDER_STATUS_FILLED',
+            closedAt: '2026-07-14T08:02:00.000Z'
+          })
+        ]
+      })
+      await Bun.sleep(0)
+
+      expect(store.getState().main.orders[orderId]).toMatchObject({ status: 'filled', open: false })
+      expect(store.getState().view.notifications[`flash-order:${orderId}`]).toMatchObject({
+        state: 'completed',
+        metadata: { orderId, status: 'filled' }
+      })
+      expect(refresh).toHaveBeenCalledTimes(2)
+      expect(flash.stopAgentSession('agent-session-one')).toBe(true)
+      expect(sockets[0].readyState).toBe(WebSocket.CLOSED)
+      expect(sockets[1].readyState).toBe(WebSocket.CONNECTING)
+      expect(flash.stopAgentSession('agent-session-two')).toBe(true)
+      expect(sockets[1].readyState).toBe(WebSocket.CLOSED)
+    } finally {
+      flash.dispose()
+    }
+  })
+
+  it('closes an agent order stream when its session expires', async () => {
+    const socket = new FakeFlashWebSocket()
+    const flash = createFlashService({
+      createWebSocket: () => socket as unknown as WebSocket
+    })
+
+    try {
+      expect(
+        flash.startAgentSession({
+          accountAddress: '0x00000000000000000000000000000000000000a2',
+          expiresAt: Date.now() + 25,
+          sessionId: 'expiring-agent-session'
+        })
+      ).toBe(true)
+      await Bun.sleep(50)
+
+      expect(socket.readyState).toBe(WebSocket.CLOSED)
+      expect(flash.stopAgentSession('expiring-agent-session')).toBe(false)
+    } finally {
+      flash.dispose()
     }
   })
 })

@@ -40,7 +40,8 @@ export const anvilRpcUrl =
   process.env.ANVIL_RPC_URL ||
   `http://${anvilHost}:${ports.anvil}`
 export const newframeRpcUrl = `http://127.0.0.1:${ports.newframeRpc}`
-export const localTradeServiceHealthUrl = `http://127.0.0.1:${ports.localTrade}/health`
+export const localTradeServiceUrl = `http://127.0.0.1:${ports.localTrade}`
+export const localTradeServiceHealthUrl = `${localTradeServiceUrl}/health`
 export const passwordEnvKeys = ['NEWFRAME_HARNESS_PASSWORD', 'FRAME_HARNESS_PASSWORD'] as const
 
 export function readHarnessPassword() {

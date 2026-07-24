@@ -76,6 +76,35 @@ class LocalTradeValidationError extends Error {}
 
 const quotes = new Map<string, LocalQuoteRecord>()
 const orders = new Map<string, LocalOrderRecord>()
+const orderListeners = new Set<(order: Record<string, any>) => void>()
+
+export function subscribeLocalTradeOrders(listener: (order: Record<string, any>) => void) {
+  orderListeners.add(listener)
+  return () => orderListeners.delete(listener)
+}
+
+export function localOpenOrderSnapshot(funderAddress: string) {
+  const funder = funderAddress.trim().toLowerCase()
+
+  return Array.from(orders.values())
+    .filter((order) => order.open && order.accountAddress.toLowerCase() === funder)
+    .map(orderResponse)
+}
+
+function persistOrder(order: LocalOrderRecord) {
+  orders.set(order.orderId, order)
+  const payload = orderResponse(order)
+
+  for (const listener of orderListeners) {
+    try {
+      listener(payload)
+    } catch (error) {
+      console.warn('[local-trade] order listener failed', error)
+    }
+  }
+
+  return order
+}
 
 const erc20Interface = new Interface([
   'function allowance(address owner,address spender) view returns (uint256)',
@@ -796,7 +825,7 @@ function storeOrder(quoteRecord: LocalQuoteRecord, body: Record<string, any>) {
     updatedAt: now
   }
 
-  orders.set(orderId, order)
+  persistOrder(order)
 
   if (orderType === FLASH_MARKET_ORDER_TYPE) {
     setTimeout(() => {
@@ -836,7 +865,7 @@ async function fillMarketOrder(orderId: string) {
 
     if (receipt?.status !== 1) throw new Error(`Local Flash settlement failed: ${tx.hash}`)
 
-    orders.set(orderId, {
+    persistOrder({
       ...order,
       cancellable: false,
       fillTransactionHash: tx.hash,
@@ -846,7 +875,7 @@ async function fillMarketOrder(orderId: string) {
       updatedAt: nowIso()
     })
   } catch (error) {
-    orders.set(orderId, {
+    persistOrder({
       ...order,
       cancellable: false,
       open: false,
@@ -981,7 +1010,7 @@ export async function handleLocalTradeRequest(req: Request) {
         updatedAt: nowIso()
       }
 
-      orders.set(order.orderId, nextOrder)
+      persistOrder(nextOrder)
 
       return jsonResponse({ orderId: nextOrder.orderId, order: orderResponse(nextOrder) })
     }

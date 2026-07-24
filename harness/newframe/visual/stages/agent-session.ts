@@ -1,6 +1,10 @@
 import { verifyMessage, verifyTypedData } from 'ethers'
 
-import { anvilChainId, newframeRpcUrl } from '../../core/config.ts'
+import {
+  FLASH_USDC_ADDRESS,
+  FLASH_WETH_ADDRESS
+} from '../../../../apps/newframe/resources/domain/flash/constants.ts'
+import { anvilChainId, localTradeServiceUrl, newframeRpcUrl } from '../../core/config.ts'
 import type { VisualStage } from '../types.ts'
 import { requireAccounts } from './helpers.ts'
 
@@ -84,6 +88,68 @@ async function revokeSession(credentials: AgentCredentials) {
     }
   })
   if (response.status !== 204) throw new Error(`Agent session revocation failed with ${response.status}`)
+}
+
+async function flashRequest(path: string, init: RequestInit) {
+  const response = await fetch(`${localTradeServiceUrl}${path}`, {
+    ...init,
+    headers: { 'content-type': 'application/json', ...(init.headers || {}) }
+  })
+  const body = (await response.json()) as Record<string, any>
+  if (!response.ok) throw new Error(body.message || `Local Flash request failed with ${response.status}`)
+  return body
+}
+
+async function submitExternalFlashOrder(credentials: AgentCredentials) {
+  const quoteRequest = {
+    contraAsset: FLASH_USDC_ADDRESS,
+    contraChain: 'anvil',
+    funderAddress: credentials.account,
+    limitNotionalPrice: '2500',
+    maxPriceImpact: '0.05',
+    maxSlippage: '0.005',
+    orderType: 'limit',
+    qty: '0.01',
+    side: 'sell',
+    targetAsset: FLASH_WETH_ADDRESS,
+    targetChain: 'anvil'
+  }
+  const quote = await flashRequest('/v1/quote', {
+    method: 'POST',
+    body: JSON.stringify(quoteRequest)
+  })
+  const evmOrderTypedData = String(quote.evm?.orderTypedData || '')
+  if (!evmOrderTypedData) throw new Error('Local Flash quote omitted its order typed data')
+
+  const userSignature = await agentRpc(credentials, {
+    id: 'visual-agent-flash-order-sign',
+    jsonrpc: '2.0',
+    method: 'eth_signTypedData_v4',
+    params: [credentials.account, JSON.parse(evmOrderTypedData)]
+  })
+  const submitted = await flashRequest('/v1/order', {
+    method: 'POST',
+    body: JSON.stringify({
+      ...quoteRequest,
+      contraAsset: quote.contraAsset,
+      targetAsset: quote.targetAsset,
+      quoteId: quote.quoteId,
+      userSignature,
+      evmOrderTypedData
+    })
+  })
+  const orderId = String(submitted.orderId || '')
+  if (!orderId) throw new Error('Local Flash submit omitted its order id')
+  return orderId
+}
+
+async function cancelExternalFlashOrder(credentials: AgentCredentials, orderId: string) {
+  const cancelMessage = `Definitive Flash v1 — Cancel Order\nOrder: ${orderId}`
+  const userSignature = await autonomousPersonalSign(credentials, cancelMessage)
+  await flashRequest(`/v1/orders/${encodeURIComponent(orderId)}/cancel`, {
+    method: 'POST',
+    body: JSON.stringify({ cancelMessage, userSignature })
+  })
 }
 
 export const agentSessionStage: VisualStage = {
@@ -191,6 +257,21 @@ export const agentSessionStage: VisualStage = {
     )
     if (promptedAutonomousAction) runtime.fail('Autonomous agent action created a signing prompt')
 
+    const externalOrderId = await submitExternalFlashOrder(credentials)
+    await driver.waitForFlashOrder(
+      (order) => order.orderId === externalOrderId && order.status === 'accepted' && order.open === true,
+      15_000,
+      'The agent-created Flash order was not discovered through the WebSocket'
+    )
+    await cancelExternalFlashOrder(credentials, externalOrderId)
+    await driver.waitForFlashOrder(
+      (order) => order.orderId === externalOrderId && order.status === 'cancelled' && order.open === false,
+      15_000,
+      'The external Flash cancellation was not applied through the WebSocket'
+    )
+    await driver.assertFlashOrderVisible(externalOrderId)
+    await runtime.screenshot(tray, '08d-agent-external-flash-order.png')
+
     await revokeSession(credentials)
     const rejectedAfterRevocation = await fetch(`${newframeRpcUrl}/agent/rpc`, {
       method: 'POST',
@@ -213,6 +294,6 @@ export const agentSessionStage: VisualStage = {
 
     await driver.clearPanelAndOverlays()
     await tray.getByRole('tab', { name: 'Activity' }).click()
-    await runtime.screenshot(tray, '08d-agent-autonomous-actions.png')
+    await runtime.screenshot(tray, '08e-agent-autonomous-actions.png')
   }
 }

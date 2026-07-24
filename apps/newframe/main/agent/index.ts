@@ -4,6 +4,7 @@ import log from 'electron-log'
 import { z } from 'zod'
 
 import accounts from '../accounts'
+import { flashService } from '../flash/instance'
 import provider from '../provider'
 import store from '../store'
 import { createAgentPrincipal, createRpcPrincipal } from '../authority'
@@ -273,6 +274,7 @@ async function revoke(req: IncomingMessage, res: ServerResponse, sessionId: stri
   }
 
   sessionStore.revoke(sessionId)
+  flashService.stopAgentSession(sessionId)
   if (!res.writableEnded) res.writeHead(204, { 'Cache-Control': 'no-store' }).end()
 }
 
@@ -321,6 +323,11 @@ export function resolveAgentAccessRequest(requestId: string, approved: boolean) 
   }
 
   const credentials = sessionStore.create(pending.accountId, pending.descriptor, pending.durationSeconds)
+  flashService.startAgentSession({
+    sessionId: credentials.sessionId,
+    accountAddress: credentials.account,
+    expiresAt: credentials.expiresAt
+  })
   account.resolveRequest(request, credentials)
   clearPending(requestId)
   return true
@@ -331,12 +338,16 @@ export function setAgentAccess(accountId: string, enabled: boolean) {
   if (!account || (enabled && !isHotAccount(accountId))) return false
 
   account.patch({ agentEnabled: enabled })
-  if (!enabled) sessionStore.revokeAccount(accountId)
+  if (!enabled) {
+    sessionStore.revokeAccount(accountId)
+    flashService.stopAgentSessionsForAccount(accountId)
+  }
   return true
 }
 
 export function revokeAgentSessions(accountId: string) {
   if (!accounts.get(accountId)) return false
   sessionStore.revokeAccount(accountId)
+  flashService.stopAgentSessionsForAccount(accountId)
   return true
 }
