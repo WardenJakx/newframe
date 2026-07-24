@@ -58,8 +58,10 @@ const updaterDismissUpdate = mock()
 const selectAccount = mock()
 const resolveName = mock()
 const getTokenDiscoveryProvider = mock()
+const chainsSend = mock()
 
 mock.module('../../../main/store', () => ({ default: { getState } }))
+mock.module('../../../main/chains', () => ({ default: { send: chainsSend } }))
 mock.module('../../../main/portfolio', () => ({ getTokenDiscoveryProvider }))
 mock.module('../../../main/signers', () => ({
   default: {
@@ -262,6 +264,7 @@ beforeEach(() => {
     selectAccount,
     resolveName,
     getTokenDiscoveryProvider,
+    chainsSend,
     ...Object.values(actions)
   ].forEach((mock) => mock.mockReset())
 
@@ -290,6 +293,61 @@ beforeEach(() => {
 })
 
 describe('wallet UI workflows', () => {
+  it('checks address nonces only on enabled chains', async () => {
+    const secondAddress = '0x2222222222222222222222222222222222222222'
+    getState.mockReturnValue({
+      ...actions,
+      main: {
+        networks: {
+          ethereum: {
+            1: { id: 1, on: true },
+            10: { id: 10, on: true },
+            137: { id: 137, on: false }
+          }
+        }
+      }
+    })
+    chainsSend.mockImplementation((payload, respond, chain) => {
+      if (chain.id === 10 && payload.params[0] === secondAddress) {
+        return respond({ id: payload.id, jsonrpc: '2.0', result: '0x2' })
+      }
+      if (chain.id === 1 && payload.params[0] === secondAddress) {
+        return respond({ id: payload.id, jsonrpc: '2.0', error: { message: 'offline' } })
+      }
+      respond({ id: payload.id, jsonrpc: '2.0', result: '0x0' })
+    })
+
+    await expect(workflows.getAddressChainUsage([address, secondAddress])).resolves.toEqual([
+      { address, chainIds: [], complete: true },
+      { address: secondAddress, chainIds: [10], complete: false }
+    ])
+    expect(chainsSend).toHaveBeenCalledTimes(4)
+    expect(chainsSend.mock.calls.every((call) => call[0].method === 'eth_getTransactionCount')).toBe(true)
+    expect(chainsSend.mock.calls.every((call) => call[0].params[1] === 'latest')).toBe(true)
+    expect(chainsSend.mock.calls.some((call) => call[2].id === 137)).toBe(false)
+  })
+
+  it('expands only the connected Ledger Live signer for pagination', () => {
+    const deriveAddresses = mock()
+    const ledger = {
+      type: 'ledger',
+      derivation: 'live',
+      accountLimit: 5,
+      deriveAddresses
+    }
+    getSigner.mockReturnValue(ledger)
+
+    expect(workflows.loadLedgerAccounts('ledger-1', 15)).toBe(true)
+    expect(ledger.accountLimit).toBe(15)
+    expect(deriveAddresses).toHaveBeenCalledTimes(1)
+
+    expect(workflows.loadLedgerAccounts('ledger-1', 10)).toBe(true)
+    expect(deriveAddresses).toHaveBeenCalledTimes(1)
+
+    getSigner.mockReturnValue({ ...ledger, type: 'trezor' })
+    expect(workflows.loadLedgerAccounts('trezor-1', 20)).toBe(false)
+  })
+
   it('opens Trade and Send in the side tray', () => {
     getState.mockReturnValue({
       ...actions,

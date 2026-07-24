@@ -7,6 +7,7 @@ import { v5 as uuidv5 } from 'uuid'
 
 import accounts from '../accounts'
 import biometrics from '../biometrics'
+import chains from '../chains'
 import Erc20Contract from '../contracts/erc20'
 import { flashService } from '../flash/instance'
 import { getTokenDiscoveryProvider } from '../portfolio'
@@ -100,6 +101,53 @@ export async function lookupToken(address: string, chainId: number) {
   } catch (error) {
     log.warn('Could not load token data for contract', { address, chainId, error })
   }
+}
+
+function addressHasTransactions(address: string, chainId: number) {
+  return new Promise<boolean | null>((resolve) => {
+    chains.send(
+      {
+        id: `address-usage:${chainId}:${address}`,
+        jsonrpc: '2.0',
+        method: 'eth_getTransactionCount',
+        params: [address, 'latest']
+      },
+      (response) => {
+        if (response.error) return resolve(null)
+
+        try {
+          resolve(BigInt(response.result) > 0n)
+        } catch {
+          resolve(null)
+        }
+      },
+      { type: 'ethereum', id: chainId }
+    )
+  })
+}
+
+export async function getAddressChainUsage(addresses: string[]) {
+  const enabledChainIds = Object.values(store.getState().main.networks.ethereum)
+    .filter((chain) => chain.on)
+    .map((chain) => chain.id)
+    .sort((a, b) => a - b)
+
+  return Promise.all(
+    addresses.map(async (address) => {
+      const checks = await Promise.all(
+        enabledChainIds.map(async (chainId) => ({
+          chainId,
+          used: await addressHasTransactions(address, chainId)
+        }))
+      )
+
+      return {
+        address,
+        chainIds: checks.filter((check) => check.used === true).map((check) => check.chainId),
+        complete: checks.every((check) => check.used !== null)
+      }
+    })
+  )
 }
 
 function currentRequest<T extends AccountRequest = AccountRequest>(requestId: string) {
@@ -623,6 +671,23 @@ export function reloadSigner(signerId: string) {
   if (!signers.get(signerId)) return false
 
   signers.reload(signerId)
+  return true
+}
+
+export function loadLedgerAccounts(signerId: string, accountCount: number) {
+  const signer = signers.get(signerId) as
+    | (Signer & {
+        accountLimit: number
+        derivation?: string
+        deriveAddresses: () => void
+      })
+    | undefined
+
+  if (!signer || signer.type !== 'ledger') return false
+  if (signer.derivation !== 'live' || accountCount <= signer.accountLimit) return true
+
+  signer.accountLimit = accountCount
+  signer.deriveAddresses()
   return true
 }
 

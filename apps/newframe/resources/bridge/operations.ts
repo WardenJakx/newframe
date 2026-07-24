@@ -232,6 +232,32 @@ export const NameResolveResultSchema = z.discriminatedUnion('ok', [
 
 export type NameResolveResult = z.infer<typeof NameResolveResultSchema>
 
+export const AddressChainUsageQuerySchema = z.strictObject({
+  type: z.literal('address.chain-usage'),
+  addresses: z.array(AddressSchema).min(1).max(20)
+})
+
+export type AddressChainUsageQuery = z.infer<typeof AddressChainUsageQuerySchema>
+
+const AddressChainUsageSchema = z.strictObject({
+  address: AddressSchema,
+  chainIds: z.array(ChainIdSchema).max(100),
+  complete: z.boolean()
+})
+
+export const AddressChainUsageResultSchema = z.discriminatedUnion('ok', [
+  z.strictObject({
+    ok: z.literal(true),
+    usage: z.array(AddressChainUsageSchema).max(20)
+  }),
+  z.strictObject({
+    ok: z.literal(false),
+    error: z.enum(['invalid_query', 'unauthorized', 'lookup_failed'])
+  })
+])
+
+export type AddressChainUsageResult = z.infer<typeof AddressChainUsageResultSchema>
+
 export const FlashQuoteQuerySchema = z.strictObject({
   type: z.literal('flash.quote'),
   request: FlashQuoteRequestSchema
@@ -393,6 +419,13 @@ export const SignerReloadCommandSchema = z.strictObject({
   signerId: OperationIdSchema
 })
 export type SignerReloadCommand = z.infer<typeof SignerReloadCommandSchema>
+
+export const SignerLedgerAccountsLoadCommandSchema = z.strictObject({
+  type: z.literal('signer.ledger-accounts-load'),
+  signerId: OperationIdSchema,
+  accountCount: z.number().int().min(5).max(100).multipleOf(5)
+})
+export type SignerLedgerAccountsLoadCommand = z.infer<typeof SignerLedgerAccountsLoadCommandSchema>
 
 export const TokenLookupQuerySchema = z.strictObject({
   type: z.literal('token.lookup'),
@@ -1035,6 +1068,7 @@ export interface CommandMap {
   'settings.update': SettingsUpdateCommand
   'signer.disconnect': SignerDisconnectCommand
   'signer.import': SignerImportCommand
+  'signer.ledger-accounts-load': SignerLedgerAccountsLoadCommand
   'signer.lattice-pair': LatticePairCommand
   'signer.lattice-create': SignerLatticeCreateCommand
   'signer.reload': SignerReloadCommand
@@ -1104,6 +1138,7 @@ export interface CommandResultMap {
   'settings.update': WalletCommandResult
   'signer.disconnect': WalletCommandResult
   'signer.import': AccountCreatedResult
+  'signer.ledger-accounts-load': WalletCommandResult
   'signer.lattice-pair': WalletCommandResult
   'signer.lattice-create': SignerCreatedResult
   'signer.reload': WalletCommandResult
@@ -1129,6 +1164,7 @@ export interface CommandResultMap {
 
 export interface QueryMap {
   'account.private-key-export': AccountPrivateKeyExportQuery
+  'address.chain-usage': AddressChainUsageQuery
   'flash.quote': FlashQuoteQuery
   'name.resolve': NameResolveQuery
   'request.signer-compatibility': SignerCompatibilityQuery
@@ -1139,6 +1175,7 @@ export interface QueryMap {
 
 export interface QueryResultMap {
   'account.private-key-export': AccountPrivateKeyExportResult
+  'address.chain-usage': AddressChainUsageResult
   'flash.quote': FlashQuoteResult
   'name.resolve': NameResolveResult
   'request.signer-compatibility': SignerCompatibilityResult

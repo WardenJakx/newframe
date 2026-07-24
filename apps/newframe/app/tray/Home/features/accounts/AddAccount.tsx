@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useRef, useState } from 'react'
+import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 
 import { Button } from '@newframe/ui/button'
@@ -20,6 +20,11 @@ import svg from '../../../../../resources/svg'
 import { createBalanceSummarySelector, formatUsdRate } from '../../../../../resources/domain/balance'
 import { SidePanelHeader } from '../../../../../resources/Components/SidePanel/SidePanelHeader'
 import { useWalletSelector } from '../../../../state/useAppSelector'
+import { ChainIcon } from '../../components/ChainIcon'
+
+const HARDWARE_ACCOUNT_PAGE_SIZE = 5
+const LEDGER_ACCOUNT_LIMIT = 100
+const EMPTY_ADDRESSES: string[] = []
 
 const signerTypeLabels: Record<string, string> = {
   ring: 'Hot Signer',
@@ -111,6 +116,7 @@ export function AddAccount({
     useShallow((state) => ({
       accounts: state.accounts || EMPTY_RECORD,
       balances: state.balances || EMPTY_RECORD,
+      ledger: state.ledger,
       networks: state.networks?.ethereum || EMPTY_RECORD,
       networksMeta: state.networksMeta?.ethereum || EMPTY_RECORD,
       rates: state.rates || EMPTY_RECORD,
@@ -144,6 +150,13 @@ export function AddAccount({
     addHardwarePhrase: '',
     addHardwarePairCode: ''
   })
+  const [hardwarePage, setHardwarePage] = useState(1)
+  const [hardwarePageInput, setHardwarePageInput] = useState('1')
+  const [addressChainUsageResult, setAddressChainUsageResult] = useState<{
+    key: string
+    usage: Record<string, { chainIds: number[]; complete: boolean }>
+  }>({ key: '', usage: {} })
+  const addressChainUsageRequest = useRef(0)
   const setState = (update: any, callback?: () => void) => {
     const next = typeof update === 'function' ? update(state, props) : update
     if (next.addingAccount === false) onClose()
@@ -152,6 +165,76 @@ export function AddAccount({
     if (Object.keys(local).length) dispatch(local as Partial<AddAccountState>)
     callback?.()
   }
+
+  const selectedHardwareSigner = state.addAccountSelectedSigner
+    ? shared.signers[state.addAccountSelectedSigner]
+    : null
+  const selectedHardwareAddresses = Array.isArray(selectedHardwareSigner?.addresses)
+    ? selectedHardwareSigner.addresses
+    : EMPTY_ADDRESSES
+  const hardwarePageStart = (hardwarePage - 1) * HARDWARE_ACCOUNT_PAGE_SIZE
+  const visibleHardwareAddresses = useMemo(
+    () => selectedHardwareAddresses.slice(hardwarePageStart, hardwarePageStart + HARDWARE_ACCOUNT_PAGE_SIZE),
+    [hardwarePageStart, selectedHardwareAddresses]
+  )
+  const visibleHardwareAddressKey = visibleHardwareAddresses
+    .map((address: string) => address.toLowerCase())
+    .join(',')
+  const enabledChainKey = Object.values(shared.networks)
+    .filter((chain: any) => chain.on)
+    .map((chain: any) => chain.id)
+    .sort((a: number, b: number) => a - b)
+    .join(',')
+  const addressChainUsageKey = [
+    selectedHardwareSigner?.id || '',
+    enabledChainKey,
+    visibleHardwareAddressKey
+  ].join(':')
+  const addressChainUsage =
+    addressChainUsageResult.key === addressChainUsageKey ? addressChainUsageResult.usage : {}
+  const addressChainUsageLoading =
+    visibleHardwareAddresses.length > 0 && addressChainUsageResult.key !== addressChainUsageKey
+
+  useEffect(() => {
+    const isHardwareSigner = ['ledger', 'trezor', 'lattice'].includes(selectedHardwareSigner?.type || '')
+    const addresses = visibleHardwareAddresses
+
+    if (!isHardwareSigner || !addresses.length) return
+
+    const requestId = ++addressChainUsageRequest.current
+
+    void link
+      .executeQuery({ type: 'address.chain-usage', addresses })
+      .then((result) => {
+        if (requestId !== addressChainUsageRequest.current) return
+
+        setAddressChainUsageResult({
+          key: addressChainUsageKey,
+          usage: result.ok
+            ? Object.fromEntries(
+                result.usage.map((entry) => [
+                  entry.address.toLowerCase(),
+                  { chainIds: entry.chainIds, complete: entry.complete }
+                ])
+              )
+            : {}
+        })
+      })
+      .catch(() => {
+        if (requestId === addressChainUsageRequest.current) {
+          setAddressChainUsageResult({ key: addressChainUsageKey, usage: {} })
+        }
+      })
+
+    return () => {
+      if (addressChainUsageRequest.current === requestId) addressChainUsageRequest.current += 1
+    }
+  }, [
+    addressChainUsageKey,
+    selectedHardwareSigner?.id,
+    selectedHardwareSigner?.type,
+    visibleHardwareAddresses
+  ])
 
   useEffect(() => {
     let active = true
@@ -393,6 +476,8 @@ export function AddAccount({
   }
 
   function selectHardwareSigner(signerId: string) {
+    setHardwarePage(1)
+    setHardwarePageInput('1')
     setState({
       addAccountSelectedSigner: signerId,
       addAccountError: '',
@@ -744,19 +829,26 @@ export function AddAccount({
 
   function renderAccountRow({
     address,
+    chainUsage,
     imported,
     index,
     label,
     onPress,
+    usageLoading = false,
     value
   }: {
     address: string
+    chainUsage?: { chainIds: number[]; complete: boolean }
     imported: boolean
     index: number
     label: string
     onPress: () => void
-    value: string
+    usageLoading?: boolean
+    value?: string
   }) {
+    const usageKnown = chainUsage !== undefined
+    const chainIds = chainUsage?.chainIds || []
+
     return (
       <Button
         appearance='row'
@@ -777,7 +869,42 @@ export function AddAccount({
           </Text>
         </Stack>
         <Stack align='end' gap='none'>
-          <Text variant='numeric'>{value}</Text>
+          {usageLoading ? (
+            <Text tone='muted' variant='caption'>
+              Checking chains
+            </Text>
+          ) : usageKnown && chainIds.length ? (
+            <>
+              <Text tone='secondary' variant='micro'>
+                Used on
+              </Text>
+              <Inline align='center' gap='xsmall' justify='end' wrap>
+                {chainIds.map((chainId) => {
+                  const chainName = shared.networks[chainId]?.name || `Chain ${chainId}`
+                  return (
+                    <span aria-label={chainName} key={chainId} title={chainName}>
+                      <ChainIcon
+                        chainId={chainId}
+                        networks={shared.networks}
+                        networksMeta={shared.networksMeta}
+                        size='small'
+                      />
+                    </span>
+                  )
+                })}
+              </Inline>
+            </>
+          ) : usageKnown && chainUsage.complete ? (
+            <Text tone='muted' variant='caption'>
+              Unused
+            </Text>
+          ) : value ? (
+            <Text variant='numeric'>{value}</Text>
+          ) : (
+            <Text tone='muted' variant='caption'>
+              Usage unavailable
+            </Text>
+          )}
           {imported ? (
             <Text tone='accent' variant='micro'>
               Imported
@@ -1114,6 +1241,8 @@ export function AddAccount({
 
   function renderHardwareSignerDetails(signer: any, title: string) {
     const addresses = Array.isArray(signer.addresses) ? signer.addresses : []
+    const pageStart = (hardwarePage - 1) * HARDWARE_ACCOUNT_PAGE_SIZE
+    const pageAddresses = addresses.slice(pageStart, pageStart + HARDWARE_ACCOUNT_PAGE_SIZE)
     const status = (signer.status || '').toLowerCase()
     const loading = ['loading', 'connecting', 'addresses', 'input', 'pairing', 'deriving'].some((part) =>
       status.includes(part)
@@ -1134,29 +1263,34 @@ export function AddAccount({
           </Inline>
         </Surface>
         {renderHardwareSignerAction(signer, status)}
-        {addresses.length ? (
+        {pageAddresses.length ? (
           <Stack gap='xsmall'>
-            {addresses.map((address: string, index: number) => {
+            {pageAddresses.map((address: string, index: number) => {
               const id = address.toLowerCase()
               const accounts = props.shared.accounts
               const imported = !!accounts[id]
               return renderAccountRow({
                 address,
+                chainUsage: addressChainUsage[id],
                 imported,
-                index,
+                index: pageStart + index,
                 label: shortAddress(address),
                 onPress: () => addHardwareAccount(signer, address),
-                value: imported ? accountNavValue(accounts[id]) : '$0.00'
+                usageLoading: addressChainUsageLoading
               })
             })}
           </Stack>
         ) : (
           <Surface padding='large' radius='card' tone='card'>
             <Text align='center' tone='secondary'>
-              {loading ? 'Loading accounts' : 'No accounts loaded yet'}
+              {loading ||
+              (signer.type === 'ledger' && addresses.length < hardwarePage * HARDWARE_ACCOUNT_PAGE_SIZE)
+                ? `Loading page ${hardwarePage}`
+                : 'No accounts loaded for this page'}
             </Text>
           </Surface>
         )}
+        {renderHardwarePagination(signer)}
         {renderFeedback()}
         <Inline align='center' gap='small'>
           <Button
@@ -1176,6 +1310,113 @@ export function AddAccount({
             size='small'
           >
             <Text variant='compactAction'>Remove</Text>
+          </Button>
+        </Inline>
+      </Stack>
+    )
+  }
+
+  function hardwareMaxPages(signer: any) {
+    if (signer.type === 'ledger') return LEDGER_ACCOUNT_LIMIT / HARDWARE_ACCOUNT_PAGE_SIZE
+    return Math.max(1, Math.ceil((signer.addresses?.length || 0) / HARDWARE_ACCOUNT_PAGE_SIZE))
+  }
+
+  async function goToHardwarePage(signer: any, requestedPage: number) {
+    const maxPages = hardwareMaxPages(signer)
+    const page = Math.max(1, Math.min(maxPages, Math.trunc(requestedPage) || 1))
+
+    setHardwarePage(page)
+    setHardwarePageInput(String(page))
+
+    const requiredAddressCount = page * HARDWARE_ACCOUNT_PAGE_SIZE
+    const needsMoreLedgerLiveAddresses =
+      signer.type === 'ledger' &&
+      shared.ledger?.derivation === 'live' &&
+      requiredAddressCount > signer.addresses.length
+
+    if (!needsMoreLedgerLiveAddresses) return
+
+    const result = await link.executeCommand({
+      type: 'signer.ledger-accounts-load',
+      signerId: signer.id,
+      accountCount: requiredAddressCount
+    })
+
+    if (!result.ok) {
+      setState({
+        addAccountError: 'Could not load that Ledger account page.',
+        addAccountStatus: ''
+      })
+    }
+  }
+
+  function renderHardwarePagination(signer: any) {
+    const maxPages = hardwareMaxPages(signer)
+    if (maxPages <= 1) return null
+
+    const jumpToInputPage = () => void goToHardwarePage(signer, Number(hardwarePageInput))
+
+    return (
+      <Stack gap='xsmall'>
+        <Inline align='center' gap='xsmall' justify='between'>
+          <Button
+            appearance='control'
+            disabled={hardwarePage === 1}
+            label='First account page'
+            onPress={() => void goToHardwarePage(signer, 1)}
+            size='compact'
+          >
+            <Text variant='compactAction'>First</Text>
+          </Button>
+          <Button
+            appearance='control'
+            disabled={hardwarePage === 1}
+            label='Previous account page'
+            onPress={() => void goToHardwarePage(signer, hardwarePage - 1)}
+            size='compact'
+          >
+            <Text variant='compactAction'>Previous</Text>
+          </Button>
+          <Text tone='secondary' variant='caption'>
+            {`Page ${hardwarePage} of ${maxPages}`}
+          </Text>
+          <Button
+            appearance='control'
+            disabled={hardwarePage === maxPages}
+            label='Next account page'
+            onPress={() => void goToHardwarePage(signer, hardwarePage + 1)}
+            size='compact'
+          >
+            <Text variant='compactAction'>Next</Text>
+          </Button>
+          <Button
+            appearance='control'
+            disabled={hardwarePage === maxPages}
+            label='Last account page'
+            onPress={() => void goToHardwarePage(signer, maxPages)}
+            size='compact'
+          >
+            <Text variant='compactAction'>Last</Text>
+          </Button>
+        </Inline>
+        <Inline align='center' gap='xsmall'>
+          <Text tone='muted' variant='caption' shrink={false}>
+            Go to page
+          </Text>
+          <Input
+            align='end'
+            appearance='numeric'
+            inputMode='numeric'
+            label='Account page number'
+            max={maxPages}
+            min={1}
+            onSubmit={jumpToInputPage}
+            onValueChange={setHardwarePageInput}
+            type='number'
+            value={hardwarePageInput}
+          />
+          <Button appearance='control' onPress={jumpToInputPage} size='small'>
+            <Text variant='compactAction'>Go</Text>
           </Button>
         </Inline>
       </Stack>
