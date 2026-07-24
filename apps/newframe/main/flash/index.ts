@@ -47,6 +47,7 @@ import {
   type FlashQuoteRequest,
   type FlashSubmitOrderRequest
 } from './contracts'
+import { FlashOrderStream, type FlashOrderFrameType, type FlashWebSocketFactory } from './websocket'
 
 import type { Token } from '../store/state'
 
@@ -68,6 +69,8 @@ const FLASH_MARKET_ORDER_NOTIFICATION_MS = 60 * 1000
 const FLASH_RESOLVED_ORDER_NOTIFICATION_MS = 3 * 1000
 const FLASH_MARKET_ORDER_POLL_MS = 3 * 1000
 const FLASH_OPEN_ORDER_POLL_MS = 5 * 60 * 1000
+const FLASH_STREAM_FALLBACK_POLL_MS = 30 * 1000
+const MAX_SESSION_EXPIRATION_TIMER_MS = 24 * 60 * 60 * 1000
 
 const terminalStatuses = new Set<FlashOrderStatus>([
   'filled',
@@ -83,15 +86,31 @@ interface FlashMarketOrderPoller {
   timer?: ReturnType<typeof setTimeout>
 }
 
+interface FlashAgentSessionStream {
+  accountAddress: string
+  expirationTimer?: ReturnType<typeof setTimeout>
+  expiresAt: number
+  fallbackTimer?: ReturnType<typeof setTimeout>
+  stream: FlashOrderStream
+  streaming: boolean
+}
+
 interface FlashServiceState {
+  agentSessionStreams: Map<string, FlashAgentSessionStream>
+  createWebSocket?: FlashWebSocketFactory
   marketOrderPollers: Map<string, FlashMarketOrderPoller>
   openOrderPoller: ReturnType<typeof setInterval> | null
   openOrderRefresh: Promise<FlashOrderRecord[]> | null
   positionSync: FlashPositionSync | null
 }
 
-function createFlashServiceState(positionSync?: FlashPositionSync): FlashServiceState {
+function createFlashServiceState(
+  positionSync?: FlashPositionSync,
+  createWebSocket?: FlashWebSocketFactory
+): FlashServiceState {
   return {
+    agentSessionStreams: new Map(),
+    createWebSocket,
     marketOrderPollers: new Map(),
     openOrderPoller: null,
     openOrderRefresh: null,
@@ -109,6 +128,13 @@ function isDevRuntime() {
 
 export function flashBaseUrl() {
   return isDevRuntime() ? FLASH_DEV_BASE_URL : FLASH_PROD_BASE_URL
+}
+
+export function flashWebSocketUrl() {
+  const url = new URL(flashBaseUrl())
+  url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:'
+  url.pathname = `${url.pathname.replace(/\/$/, '')}/ws`
+  return url.toString()
 }
 
 export function flashHeaders() {
@@ -236,7 +262,8 @@ function statusPayload(orderId: string, status: FlashOrderStatus, raw?: unknown)
 }
 
 function normalizeStatus(status: unknown): FlashOrderStatus {
-  const normalized = String(status || 'accepted')
+  const rawStatus = String(status || '').trim()
+  const normalized = String(rawStatus || 'accepted')
     .trim()
     .toLowerCase()
     .replace(/^order_status_/, '')
@@ -258,7 +285,7 @@ function normalizeStatus(status: unknown): FlashOrderStatus {
     return normalized as FlashOrderStatus
   }
 
-  return 'accepted'
+  return rawStatus ? 'terminated' : 'accepted'
 }
 
 function toRawStatus(status: FlashOrderStatus) {
@@ -832,7 +859,7 @@ function upsertPendingOrderNotification(record: FlashOrderRecord, now = Date.now
     detail: orderNotificationDetail(record),
     createdAt,
     updatedAt: now,
-    expiresAt: createdAt + FLASH_MARKET_ORDER_NOTIFICATION_MS,
+    expiresAt: now + FLASH_MARKET_ORDER_NOTIFICATION_MS,
     leadingIcon: {
       chainType: 'ethereum',
       chainId: record.chainId
@@ -863,10 +890,6 @@ function resolveOrderNotification(record: FlashOrderRecord, now = Date.now()) {
 
 function dropOrderNotification(orderId: string) {
   store.getState().expireNotification(orderNotificationId(orderId))
-}
-
-function terminalWithinNotificationWindow(record: FlashOrderRecord, deadline: number) {
-  return isTerminalStatus(record.status) && (!record.terminalAt || record.terminalAt <= deadline)
 }
 
 function orderAssetFromReference(value: unknown, fallback?: FlashAsset | null): FlashAsset | null {
@@ -1023,7 +1046,7 @@ function normalizeOrderRecord(rawOrder: unknown, fallback?: FlashOrderRecord | n
       return {
         ...fallback,
         status,
-        rawStatus: toRawStatus(status),
+        rawStatus: stringValue(raw.status, toRawStatus(status)),
         updatedAt: numberTimestamp(raw.updatedAt || raw.updated_at, now),
         terminalAt: isTerminalStatus(status) ? fallback.terminalAt || now : null,
         open: isOpenStatus(status),
@@ -1109,7 +1132,7 @@ function normalizeOrderRecord(rawOrder: unknown, fallback?: FlashOrderRecord | n
     environment: fallback?.environment || runtime().environment,
     profile: fallback?.profile || runtime().profile,
     status,
-    rawStatus: toRawStatus(status),
+    rawStatus: stringValue(raw.status, toRawStatus(status)),
     orderType,
     side,
     targetAsset: quoteLike.targetAsset,
@@ -1151,24 +1174,57 @@ function upsertRecord(state: FlashServiceState, record: FlashOrderRecord) {
   return record
 }
 
-function updateRecord(state: FlashServiceState, orderId: string, record: FlashOrderRecord) {
-  record = FlashOrderRecordSchema.parse(record)
-  const existing = storeOrders()[orderId]
-
-  if (existing) store.getState().updateOrder(orderId, record)
-  else store.getState().upsertOrder(record)
-
-  syncOrderPositions(state, existing, record)
-
-  return record
-}
-
 function getRecord(orderId: string) {
   return storeOrders()[orderId]
 }
 
-function hasOpenOrders() {
-  return Object.values(storeOrders()).some((order) => isOpenStatus(order.status))
+function orderEventChanged(previous: FlashOrderRecord | undefined, record: FlashOrderRecord) {
+  return (
+    !previous ||
+    previous.status !== record.status ||
+    previous.filledOutputAmount !== record.filledOutputAmount ||
+    previous.averageFillPrice !== record.averageFillPrice ||
+    previous.fillHash !== record.fillHash ||
+    previous.fillTransactionHash !== record.fillTransactionHash
+  )
+}
+
+function hydrateOrderNotification(previous: FlashOrderRecord | undefined, record: FlashOrderRecord) {
+  if (!orderEventChanged(previous, record)) return
+
+  const now = Date.now()
+  upsertPendingOrderNotification(record, now)
+  if (isTerminalStatus(record.status)) resolveOrderNotification(record, now)
+}
+
+function hasStreamingSessionForFunder(state: FlashServiceState, accountAddress: string) {
+  const address = normalizeAddress(accountAddress)
+
+  return Array.from(state.agentSessionStreams.values()).some(
+    (session) => session.streaming && session.accountAddress === address
+  )
+}
+
+function applyOrderRecord(state: FlashServiceState, record: FlashOrderRecord) {
+  const previous = getRecord(record.orderId)
+  const storedRecord = upsertRecord(state, record)
+
+  hydrateOrderNotification(previous, storedRecord)
+
+  if (isTerminalStatus(storedRecord.status)) {
+    stopMarketOrderPolling(state, storedRecord.orderId)
+  } else if (storedRecord.orderType === FLASH_MARKET_ORDER_TYPE) {
+    startMarketOrderPolling(state, storedRecord)
+  }
+
+  ensureOpenOrderPolling(state)
+  return storedRecord
+}
+
+function hasOrdersRequiringPolling(state: FlashServiceState) {
+  return Object.values(storeOrders()).some(
+    (order) => isOpenStatus(order.status) && !hasStreamingSessionForFunder(state, order.accountAddress)
+  )
 }
 
 function stopMarketOrderPolling(state: FlashServiceState, orderId: string) {
@@ -1201,10 +1257,13 @@ async function pollMarketOrder(state: FlashServiceState, orderId: string, poller
     return
   }
 
-  if (isTerminalStatus(current.status)) {
-    if (terminalWithinNotificationWindow(current, poller.deadline)) resolveOrderNotification(current)
-    else dropOrderNotification(orderId)
+  if (hasStreamingSessionForFunder(state, current.accountAddress)) {
+    stopMarketOrderPolling(state, orderId)
+    ensureOpenOrderPolling(state)
+    return
+  }
 
+  if (isTerminalStatus(current.status)) {
     stopMarketOrderPolling(state, orderId)
     ensureOpenOrderPolling(state)
     return
@@ -1226,9 +1285,6 @@ async function pollMarketOrder(state: FlashServiceState, orderId: string, poller
   }
 
   if (isTerminalStatus(latest.status)) {
-    if (terminalWithinNotificationWindow(latest, poller.deadline)) resolveOrderNotification(latest)
-    else dropOrderNotification(orderId)
-
     stopMarketOrderPolling(state, orderId)
     ensureOpenOrderPolling(state)
     return
@@ -1240,12 +1296,11 @@ async function pollMarketOrder(state: FlashServiceState, orderId: string, poller
 
 function startMarketOrderPolling(state: FlashServiceState, record: FlashOrderRecord) {
   if (record.orderType !== FLASH_MARKET_ORDER_TYPE) return
+  if (hasStreamingSessionForFunder(state, record.accountAddress)) return
 
   const now = Date.now()
-  upsertPendingOrderNotification(record, now)
 
   if (isTerminalStatus(record.status)) {
-    resolveOrderNotification(record, now)
     return
   }
 
@@ -1267,7 +1322,7 @@ function stopOpenOrderPolling(state: FlashServiceState) {
 }
 
 function ensureOpenOrderPolling(state: FlashServiceState) {
-  if (!hasOpenOrders()) {
+  if (!hasOrdersRequiringPolling(state)) {
     stopOpenOrderPolling(state)
     return
   }
@@ -1296,16 +1351,15 @@ async function fetchOrderRecord(state: FlashServiceState, fallback: FlashOrderRe
   const raw = await flashRequest(`/orders/${encodeURIComponent(fallback.orderId)}?${params}`)
   const record = normalizeOrderRecord(objectPayload(raw).order || raw, fallback)
 
-  updateRecord(state, record.orderId, record)
-  if (isTerminalStatus(record.status)) resolveOrderNotification(record)
-
-  return record
+  return applyOrderRecord(state, record)
 }
 
 function refreshOpenOrders(state: FlashServiceState) {
   if (state.openOrderRefresh) return state.openOrderRefresh
 
-  const openOrders = Object.values(storeOrders()).filter((order) => isOpenStatus(order.status))
+  const openOrders = Object.values(storeOrders()).filter(
+    (order) => isOpenStatus(order.status) && !hasStreamingSessionForFunder(state, order.accountAddress)
+  )
 
   state.openOrderRefresh = Promise.all(
     openOrders.map(async (order) => {
@@ -1321,6 +1375,176 @@ function refreshOpenOrders(state: FlashServiceState) {
   })
 
   return state.openOrderRefresh
+}
+
+async function applyWebSocketOrders(
+  state: FlashServiceState,
+  accountAddress: string,
+  type: FlashOrderFrameType,
+  rawOrders: unknown[]
+) {
+  const address = normalizeAddress(accountAddress)
+  const receivedOrderIds = new Set<string>()
+
+  for (const rawOrder of rawOrders) {
+    try {
+      const raw = objectPayload(rawOrder)
+      const orderId = stringValue(raw.orderId || raw.id)
+      if (orderId) receivedOrderIds.add(orderId)
+
+      const record = normalizeOrderRecord(rawOrder, orderId ? getRecord(orderId) : null)
+      if (record.accountAddress !== address) continue
+      applyOrderRecord(state, record)
+    } catch (error) {
+      console.warn('could not apply Flash WebSocket order update', error)
+    }
+  }
+
+  if (type !== 'snapshot') return
+
+  const missingOpenOrders = Object.values(storeOrders()).filter(
+    (order) =>
+      order.accountAddress === address && isOpenStatus(order.status) && !receivedOrderIds.has(order.orderId)
+  )
+
+  await Promise.all(
+    missingOpenOrders.map(async (order) => {
+      try {
+        await fetchOrderRecord(state, order)
+      } catch (error) {
+        console.warn('could not reconcile Flash order missing from WebSocket snapshot', error)
+      }
+    })
+  )
+}
+
+function stopAgentSessionFallback(session: FlashAgentSessionStream) {
+  if (session.fallbackTimer) clearTimeout(session.fallbackTimer)
+  session.fallbackTimer = undefined
+}
+
+function scheduleAgentSessionFallback(
+  state: FlashServiceState,
+  sessionId: string,
+  delay = FLASH_STREAM_FALLBACK_POLL_MS
+) {
+  const session = state.agentSessionStreams.get(sessionId)
+  if (!session || session.streaming || hasStreamingSessionForFunder(state, session.accountAddress)) return
+
+  stopAgentSessionFallback(session)
+  session.fallbackTimer = setTimeout(() => {
+    session.fallbackTimer = undefined
+    const current = state.agentSessionStreams.get(sessionId)
+    if (!current || current.streaming || hasStreamingSessionForFunder(state, current.accountAddress)) return
+
+    void listOrders(state, {
+      accountAddress: current.accountAddress,
+      pageSize: 200,
+      status: ['pending', 'accepted', 'partially-filled']
+    })
+      .catch((error) => console.warn('could not poll Flash orders while WebSocket was unavailable', error))
+      .finally(() => scheduleAgentSessionFallback(state, sessionId))
+  }, delay)
+}
+
+function setAgentSessionStreaming(state: FlashServiceState, sessionId: string, streaming: boolean) {
+  const session = state.agentSessionStreams.get(sessionId)
+  if (!session || session.streaming === streaming) return
+
+  session.streaming = streaming
+  if (streaming) {
+    stopAgentSessionFallback(session)
+    for (const [orderId] of state.marketOrderPollers) {
+      const order = getRecord(orderId)
+      if (order?.accountAddress === session.accountAddress) stopMarketOrderPolling(state, orderId)
+    }
+  } else {
+    scheduleAgentSessionFallback(state, sessionId, 0)
+    Object.values(storeOrders())
+      .filter((order) => order.accountAddress === session.accountAddress)
+      .forEach((order) => startMarketOrderPolling(state, order))
+  }
+
+  ensureOpenOrderPolling(state)
+}
+
+function stopAgentSessionStream(state: FlashServiceState, sessionId: string) {
+  const session = state.agentSessionStreams.get(sessionId)
+  if (!session) return false
+
+  state.agentSessionStreams.delete(sessionId)
+  if (session.expirationTimer) clearTimeout(session.expirationTimer)
+  stopAgentSessionFallback(session)
+  session.stream.stop()
+
+  Object.values(storeOrders())
+    .filter((order) => order.accountAddress === session.accountAddress)
+    .forEach((order) => startMarketOrderPolling(state, order))
+  ensureOpenOrderPolling(state)
+  return true
+}
+
+function scheduleAgentSessionExpiration(state: FlashServiceState, sessionId: string) {
+  const session = state.agentSessionStreams.get(sessionId)
+  if (!session) return
+
+  if (session.expirationTimer) clearTimeout(session.expirationTimer)
+  const remaining = session.expiresAt - Date.now()
+  if (remaining <= 0) {
+    stopAgentSessionStream(state, sessionId)
+    return
+  }
+
+  session.expirationTimer = setTimeout(
+    () => scheduleAgentSessionExpiration(state, sessionId),
+    Math.min(remaining, MAX_SESSION_EXPIRATION_TIMER_MS)
+  )
+}
+
+function startAgentSessionStream(
+  state: FlashServiceState,
+  { accountAddress, expiresAt, sessionId }: { accountAddress: string; expiresAt: number; sessionId: string }
+) {
+  stopAgentSessionStream(state, sessionId)
+
+  const address = normalizeAddress(accountAddress)
+  if (!sessionId || !/^0x[0-9a-f]{40}$/.test(address) || expiresAt <= Date.now()) return false
+
+  const stream = new FlashOrderStream({
+    apiKey: FLASH_API_KEY,
+    createSocket: state.createWebSocket,
+    funderAddress: address,
+    url: flashWebSocketUrl(),
+    onAvailabilityChange: (available) => setAgentSessionStreaming(state, sessionId, available),
+    onError: (error) => console.warn('Flash WebSocket error', { sessionId, accountAddress: address }, error),
+    onTerminalError: () => {
+      const current = state.agentSessionStreams.get(sessionId)
+      if (current) stopAgentSessionFallback(current)
+    },
+    onOrders: (type, orders) => applyWebSocketOrders(state, address, type, orders)
+  })
+  const session: FlashAgentSessionStream = {
+    accountAddress: address,
+    expiresAt,
+    stream,
+    streaming: false
+  }
+
+  state.agentSessionStreams.set(sessionId, session)
+  scheduleAgentSessionExpiration(state, sessionId)
+  scheduleAgentSessionFallback(state, sessionId)
+  stream.start()
+  return true
+}
+
+function stopAgentSessionStreamsForAccount(state: FlashServiceState, accountAddress: string) {
+  const address = normalizeAddress(accountAddress)
+  const sessionIds = Array.from(state.agentSessionStreams.entries())
+    .filter(([, session]) => session.accountAddress === address)
+    .map(([sessionId]) => sessionId)
+
+  sessionIds.forEach((sessionId) => stopAgentSessionStream(state, sessionId))
+  return sessionIds.length
 }
 
 export async function quote(request: FlashQuoteRequest) {
@@ -1419,10 +1643,7 @@ async function submitOrder(state: FlashServiceState, request: FlashSubmitOrderRe
     status: normalizeStatus(payload.status || objectPayload(payload.order).status)
   })
   const record = normalizeOrderRecord(payload.order || raw, fallback)
-  const storedRecord = upsertRecord(state, record)
-
-  if (storedRecord.orderType === FLASH_MARKET_ORDER_TYPE) startMarketOrderPolling(state, storedRecord)
-  ensureOpenOrderPolling(state)
+  const storedRecord = applyOrderRecord(state, record)
 
   return {
     ...runtime(),
@@ -1467,9 +1688,7 @@ async function listOrders(state: FlashServiceState, request: FlashListOrdersRequ
       const orderId = stringValue(objectPayload(order).orderId || objectPayload(order).id)
       const fallback = orderId ? getRecord(orderId) : null
       const record = normalizeOrderRecord(order, fallback)
-      upsertRecord(state, record)
-      if (isTerminalStatus(record.status)) resolveOrderNotification(record)
-      return record
+      return applyOrderRecord(state, record)
     })
     .sort(sortOrders)
 
@@ -1492,15 +1711,12 @@ async function getOrder(state: FlashServiceState, request: FlashGetOrderRequest)
   const params = new URLSearchParams({ funderAddress: accountAddress })
   const raw = await flashRequest(`/orders/${encodeURIComponent(request.orderId)}?${params}`)
   const record = normalizeOrderRecord(objectPayload(raw).order || raw, fallback)
-
-  updateRecord(state, record.orderId, record)
-  if (isTerminalStatus(record.status)) resolveOrderNotification(record)
-  ensureOpenOrderPolling(state)
+  const storedRecord = applyOrderRecord(state, record)
 
   return {
     ...runtime(),
     orderId: request.orderId,
-    order: record,
+    order: storedRecord,
     raw
   }
 }
@@ -1525,22 +1741,22 @@ async function cancelOrder(state: FlashServiceState, request: FlashCancelOrderRe
     fallback
   )
 
-  updateRecord(state, record.orderId, record)
-  resolveOrderNotification(record)
-  stopMarketOrderPolling(state, request.orderId)
-  ensureOpenOrderPolling(state)
+  const storedRecord = applyOrderRecord(state, record)
 
   return {
     ...runtime(),
     orderId: request.orderId,
     cancelled: true,
-    order: record,
+    order: storedRecord,
     raw
   }
 }
 
-export function createFlashService({ positionSync }: { positionSync?: FlashPositionSync } = {}) {
-  const state = createFlashServiceState(positionSync)
+export function createFlashService({
+  createWebSocket,
+  positionSync
+}: { createWebSocket?: FlashWebSocketFactory; positionSync?: FlashPositionSync } = {}) {
+  const state = createFlashServiceState(positionSync, createWebSocket)
 
   return {
     quote,
@@ -1550,7 +1766,13 @@ export function createFlashService({ positionSync }: { positionSync?: FlashPosit
     cancelOrder: (request: FlashCancelOrderRequest) => cancelOrder(state, request),
     refreshOpenOrders: () => refreshOpenOrders(state),
     startOpenOrderPolling: () => ensureOpenOrderPolling(state),
+    startAgentSession: (session: { accountAddress: string; expiresAt: number; sessionId: string }) =>
+      startAgentSessionStream(state, session),
+    stopAgentSession: (sessionId: string) => stopAgentSessionStream(state, sessionId),
+    stopAgentSessionsForAccount: (accountAddress: string) =>
+      stopAgentSessionStreamsForAccount(state, accountAddress),
     dispose: () => {
+      for (const sessionId of state.agentSessionStreams.keys()) stopAgentSessionStream(state, sessionId)
       stopOpenOrderPolling(state)
       for (const orderId of state.marketOrderPollers.keys()) stopMarketOrderPolling(state, orderId)
     }
