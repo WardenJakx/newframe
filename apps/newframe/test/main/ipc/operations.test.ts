@@ -16,6 +16,7 @@ const walletWorkflows = {
   acceptBetaWarning: mock(),
   adjustTransactionNonce: mock(),
   addAccountFromSigner: mock(),
+  getAddressChainUsage: mock(),
   addToken: mock(),
   addWatchAccount: mock(),
   approveRequest: mock(),
@@ -32,6 +33,7 @@ const walletWorkflows = {
   importSigner: mock(),
   inspectOwnTrayWindow: mock(),
   locateKeystore: mock(),
+  loadLedgerAccounts: mock(),
   lockWallet: mock(),
   lookupToken: mock(),
   navigatePanelBack: mock(),
@@ -489,6 +491,7 @@ describe('typed operation dispatcher', () => {
   it('passes only validated identifiers to wallet workflows', async () => {
     authorizeRenderer.mockReturnValue(trayContext)
     walletWorkflows.removeToken.mockReturnValue(true)
+    walletWorkflows.loadLedgerAccounts.mockReturnValue(true)
 
     await expect(
       dispatchCommand(event, {
@@ -501,6 +504,24 @@ describe('typed operation dispatcher', () => {
       address: '0x1111111111111111111111111111111111111111',
       chainId: 1
     })
+
+    await expect(
+      dispatchCommand(event, {
+        type: 'signer.ledger-accounts-load',
+        signerId: 'ledger-1',
+        accountCount: 25
+      })
+    ).resolves.toEqual({ ok: true })
+    expect(walletWorkflows.loadLedgerAccounts).toHaveBeenCalledWith('ledger-1', 25)
+
+    await expect(
+      dispatchCommand(event, {
+        type: 'signer.ledger-accounts-load',
+        signerId: 'ledger-1',
+        accountCount: 26
+      })
+    ).resolves.toEqual({ ok: false, error: 'invalid_command' })
+    expect(walletWorkflows.loadLedgerAccounts).toHaveBeenCalledTimes(1)
   })
 
   it('restricts token lookup queries to wallet renderers', async () => {
@@ -525,6 +546,31 @@ describe('typed operation dispatcher', () => {
       token: { decimals: 18, name: 'Token', symbol: 'TKN', totalSupply: '100' }
     })
     expect(walletWorkflows.lookupToken).toHaveBeenCalledWith(query.address, query.chainId)
+  })
+
+  it('checks address chain usage only for wallet renderers', async () => {
+    const addresses = [
+      '0x1111111111111111111111111111111111111111',
+      '0x2222222222222222222222222222222222222222'
+    ]
+    walletWorkflows.getAddressChainUsage.mockResolvedValue([
+      { address: addresses[0], chainIds: [1, 10], complete: true },
+      { address: addresses[1], chainIds: [], complete: false }
+    ])
+    const query = { type: 'address.chain-usage', addresses }
+
+    authorizeRenderer.mockReturnValue(sideTrayContext)
+    await expect(dispatchQuery(event, query)).resolves.toEqual({ ok: false, error: 'unauthorized' })
+
+    authorizeRenderer.mockReturnValue(trayContext)
+    await expect(dispatchQuery(event, query)).resolves.toEqual({
+      ok: true,
+      usage: [
+        { address: addresses[0], chainIds: [1, 10], complete: true },
+        { address: addresses[1], chainIds: [], complete: false }
+      ]
+    })
+    expect(walletWorkflows.getAddressChainUsage).toHaveBeenCalledWith(addresses)
   })
 
   it('closes the invoking side tray without accepting another target', async () => {

@@ -27,6 +27,8 @@ import {
   AccountSelectCommandSchema,
   AccountSelectResultSchema,
   AccountAddFromSignerCommandSchema,
+  AddressChainUsageQuerySchema,
+  AddressChainUsageResultSchema,
   AccountCreatedResultSchema,
   AccountPrivateKeyExportQuerySchema,
   AccountPrivateKeyExportResultSchema,
@@ -85,6 +87,7 @@ import {
   SignerCreatedResultSchema,
   SignerDisconnectCommandSchema,
   SignerImportCommandSchema,
+  SignerLedgerAccountsLoadCommandSchema,
   SignerLatticeCreateCommandSchema,
   SignerReloadCommandSchema,
   SignerCompatibilityQuerySchema,
@@ -114,6 +117,7 @@ import {
   WalletResetCommandSchema,
   WarningToggleCommandSchema,
   type AccountSelectCommand,
+  type AddressChainUsageQuery,
   type AccountPrivateKeyExportQuery,
   type SideTrayContextMenuCommand,
   type FlashQuoteQuery,
@@ -455,6 +459,12 @@ const commandRegistry = {
     'not_found',
     ['tray']
   ),
+  'signer.ledger-accounts-load': defineWalletCommand(
+    SignerLedgerAccountsLoadCommandSchema,
+    ({ signerId, accountCount }) => walletWorkflows.loadLedgerAccounts(signerId, accountCount),
+    'not_found',
+    ['tray']
+  ),
   'portfolio.refresh': defineWalletCommand(
     PortfolioRefreshCommandSchema,
     () => walletWorkflows.refreshPortfolio(),
@@ -732,6 +742,19 @@ const commandRegistry = {
 } satisfies Record<keyof CommandMap, OperationDefinition>
 
 const queryRegistry = {
+  'address.chain-usage': defineOperation({
+    schema: AddressChainUsageQuerySchema,
+    resultSchema: AddressChainUsageResultSchema,
+    roles: ['wallet-ui'],
+    entrypoints: ['tray'],
+    async handle({ addresses }: AddressChainUsageQuery) {
+      return {
+        ok: true,
+        usage: await walletWorkflows.getAddressChainUsage(addresses)
+      } as const
+    },
+    failure: { ok: false, error: 'lookup_failed' }
+  }),
   'flash.quote': defineOperation({
     schema: FlashQuoteQuerySchema,
     resultSchema: FlashQuoteResultSchema,
