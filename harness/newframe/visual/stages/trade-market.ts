@@ -52,8 +52,9 @@ export const tradeMarketStage: VisualStage = {
       30_000,
       'A newly submitted market Flash order did not fill'
     )
-    if (!order.orderId) driver.fail('The new market Flash order has no order id')
-    await driver.assertFlashOrderVisible(order.orderId)
+    const orderId = order.orderId
+    if (!orderId) return driver.fail('The new market Flash order has no order id')
+    await driver.assertFlashOrderVisible(orderId)
     await driver.screenshot(tray, '21g-trade-market-filled.png')
     await driver.clearPanelAndOverlays()
   }
