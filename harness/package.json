@@ -3,7 +3,14 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "scripts": {
+    "typecheck": "tsc --project tsconfig.json"
+  },
   "dependencies": {
     "ethers": "6.16.0"
+  },
+  "devDependencies": {
+    "@types/node": "24",
+    "typescript": "6.0.3"
   }
 }

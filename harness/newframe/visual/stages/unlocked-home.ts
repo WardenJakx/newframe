@@ -26,7 +26,7 @@ export const unlockedHomeStage: VisualStage = {
       refreshWrapper.boundingBox()
     ])
     if (!valueHoverBounds || !refreshBounds)
-      runtime.fail('Portfolio refresh hover targets must be measurable')
+      return runtime.fail('Portfolio refresh hover targets must be measurable')
     const valueEdge = valueHoverBounds.x + valueHoverBounds.width
     await tray.mouse.move((valueEdge + refreshBounds.x) / 2, refreshBounds.y + refreshBounds.height / 2)
     await sleep(200)

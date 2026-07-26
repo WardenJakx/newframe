@@ -12,6 +12,7 @@
     "newframe": "bun --cwd apps/newframe",
     "newframe-extension": "bun --cwd apps/newframe-extension",
     "extension": "bun --cwd apps/newframe-extension",
+    "harness": "bun --cwd harness",
     "ui": "bun --cwd packages/ui",
     "ui:build": "bun run ui build",
     "ui:watch": "bun run ui watch",
@@ -27,7 +28,7 @@
     "test:newframe-extension": "bun run newframe-extension test",
     "test:e2e": "bun run newframe test:e2e",
     "test:all": "bun run test:unit && bun run test:e2e",
-    "typecheck": "bun run ui:build && bun run ui typecheck && bun run newframe typecheck && bun run newframe-extension typecheck",
+    "typecheck": "tsc --project tsconfig.json && bun run harness typecheck && bun run ui:build && bun run ui typecheck && bun run newframe typecheck && bun run newframe-extension typecheck",
     "lint": "eslint . --quiet --cache --cache-location node_modules/.cache/eslint/.eslintcache",
     "lint:warn": "eslint .",
     "lint:fix": "eslint --fix .",
@@ -40,6 +41,7 @@
   "packageManager": "bun@1.3.12",
   "devDependencies": {
     "@eslint/js": "10.0.1",
+    "@types/bun": "^1.3.14",
     "eslint": "10.4.1",
     "eslint-config-prettier": "10.1.8",
     "eslint-plugin-react": "7.37.5",
@@ -49,6 +51,7 @@
     "husky": "9.1.7",
     "playwright-core": "^1.61.1",
     "prettier": "^3.8.3",
+    "typescript": "6.0.3",
     "typescript-eslint": "8.61.0"
   },
   "overrides": {
