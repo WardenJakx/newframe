@@ -39,8 +39,9 @@ export const tradeLimitStage: VisualStage = {
     if (!stored?.open || stored.status !== 'accepted')
       driver.fail('Limit Flash order filled or closed unexpectedly')
 
-    if (!order.orderId) driver.fail('The new limit Flash order has no order id')
-    await driver.assertFlashOrderVisible(order.orderId)
+    const orderId = order.orderId
+    if (!orderId) return driver.fail('The new limit Flash order has no order id')
+    await driver.assertFlashOrderVisible(orderId)
     await driver.screenshot(tray, '22d-trade-limit-open.png')
     await driver.clearPanelAndOverlays()
   }

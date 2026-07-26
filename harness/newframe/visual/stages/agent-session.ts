@@ -251,8 +251,9 @@ export const agentSessionStage: VisualStage = {
       runtime.fail('Autonomous agent send changed the wallet selected in the UI')
     }
     const promptedAutonomousAction = Object.values(stateAfter.main?.accounts || {}).some((account) =>
-      Object.values(account.requests || {}).some((candidate) =>
-        ['sign', 'signTypedData', 'transaction'].includes(candidate.type)
+      Object.values(account.requests || {}).some(
+        (candidate) =>
+          candidate.type === 'sign' || candidate.type === 'signTypedData' || candidate.type === 'transaction'
       )
     )
     if (promptedAutonomousAction) runtime.fail('Autonomous agent action created a signing prompt')

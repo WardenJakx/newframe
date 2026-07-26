@@ -10,5 +10,5 @@
     "noEmit": true,
     "typeRoots": ["./node_modules/@types", "./@types"]
   },
-  "include": ["./@types/**/*.d.ts", "./scripts/**/*.ts"]
+  "include": ["./@types/**/*.d.ts", "./panda.config.ts", "./scripts/**/*.ts"]
 }
