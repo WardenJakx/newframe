@@ -1,9 +1,9 @@
 import { isDeepStrictEqual } from 'util'
 
-import { getColor } from '../../../resources/colors'
-import store from '../../store'
+import { getColor } from '../../resources/colors'
+import store from '../store'
 
-import type { Chain, ChainMetadata, Origin } from '../../store/state'
+import type { Chain, ChainMetadata, Origin } from '../store/state'
 
 // typed access to state
 const storeApi = {

@@ -1,8 +1,8 @@
 import { globalShortcut } from 'electron'
 import log from 'electron-log'
 
-import { shortcutKeyMap } from '../../resources/keyboard/mappings'
-import type { Shortcut } from '../store/state/types/shortcuts'
+import { shortcutKeyMap } from '../resources/keyboard/mappings'
+import type { Shortcut } from './store/state/types/shortcuts'
 
 const stringifyShortcut = ({ modifierKeys, shortcutKey }: Shortcut) => ({
   shortcutString: [...modifierKeys, shortcutKey].join('+'),

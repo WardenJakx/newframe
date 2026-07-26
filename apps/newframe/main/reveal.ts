@@ -3,26 +3,26 @@
 import log from 'electron-log'
 import { addHexPrefix } from '@ethereumjs/util'
 
-import proxyConnection from '../provider/proxy'
-import { createProxyProvider } from '../provider/connection'
-import nameResolution from '../nameResolution'
+import proxyConnection from './provider/proxy'
+import { createProxyProvider } from './provider/connection'
+import nameResolution from './nameResolution'
 
-import Erc20Contract from '../contracts/erc20'
+import Erc20Contract from './contracts/erc20'
 import {
   decodeCallData,
   decodeCallDataWithSelectorRegistry,
   fetchContract,
   ContractSource
-} from '../contracts'
-import ensContracts from '../contracts/deployments/ens'
-import { MAX_HEX } from '../../resources/constants'
+} from './contracts'
+import ensContracts from './contracts/deployments/ens'
+import { MAX_HEX } from '../resources/constants'
 
 import type {
   ApproveAction as Erc20Approval,
   TransferAction as Erc20Transfer
-} from '../transaction/actions/erc20'
-import type { Action, DecodableContract, EntityType } from '../transaction/actions'
-import type { TransactionRequest } from '../accounts'
+} from './transaction/actions/erc20'
+import type { Action, DecodableContract, EntityType } from './transaction/actions'
+import type { TransactionRequest } from './accounts'
 
 // TODO: fix generic typing here
 const knownContracts: DecodableContract<unknown>[] = [...ensContracts]

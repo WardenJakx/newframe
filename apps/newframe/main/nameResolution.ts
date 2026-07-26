@@ -2,8 +2,8 @@ import EventEmitter from 'events'
 import { GNS_CONTRACT, gnsAbi, isGwei, normalizeName } from '@donnoh/gns-utils'
 import { Interface, ZeroAddress, dnsEncode, ensNormalize, getAddress, isAddress, namehash } from 'ethers'
 
-import proxyConnection from '../provider/proxy'
-import { createProxyProvider } from '../provider/connection'
+import proxyConnection from './provider/proxy'
+import { createProxyProvider } from './provider/connection'
 
 const MAINNET_CHAIN_ID = '0x1'
 const UNIVERSAL_RESOLVER_ADDRESS = '0xeEeEEEeE14D718C2B47D9923Deab1335E144EeEe'

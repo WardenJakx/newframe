@@ -1,7 +1,7 @@
-import store from '../store'
-import { getFlashAssetsForChain } from '../../resources/domain/flash/assets'
+import store from './store'
+import { getFlashAssetsForChain } from '../resources/domain/flash/assets'
 
-import type { Token } from '../store/state'
+import type { Token } from './store/state'
 
 function bundledTokens(): Token[] {
   const networks = Object.values(store.getState().main.networks.ethereum)

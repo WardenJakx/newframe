@@ -2,19 +2,15 @@ import log from 'electron-log'
 import type { Draft } from 'immer'
 import { v5 as uuidv5 } from 'uuid'
 
-import { NATIVE_CURRENCY } from '../../../resources/constants'
-import { accountNS, isDefaultAccountName } from '../../../resources/domain/account'
-import { toTokenId } from '../../../resources/domain/token'
-import {
-  createPanelActions,
-  type CanonicalGet,
-  type CanonicalSet
-} from '../../../resources/store/actions.panel'
-import type { CanonicalState } from '../state'
-import type { Account } from '../state/types/account'
-import type { Token, TokenImage, TokenSource } from '../state/types/token'
-import type { CanonicalAccountRequest } from '../../accounts/types'
-import type { SignerSummary } from '../../signers/Signer'
+import { NATIVE_CURRENCY } from '../../resources/constants'
+import { accountNS, isDefaultAccountName } from '../../resources/domain/account'
+import { toTokenId } from '../../resources/domain/token'
+import { createPanelActions, type CanonicalGet, type CanonicalSet } from '../../resources/store/actions.panel'
+import type { CanonicalState } from './state'
+import type { Account } from './state/types/account'
+import type { Token, TokenImage, TokenSource } from './state/types/token'
+import type { CanonicalAccountRequest } from '../accounts/types'
+import type { SignerSummary } from '../signers/Signer'
 
 type MutableRecord = Record<string, any>
 type AccountPatch = Partial<Omit<Account, 'id' | 'address' | 'requests'>>
