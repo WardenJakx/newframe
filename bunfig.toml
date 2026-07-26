@@ -1,3 +1,9 @@
 [install]
 # Require newly resolved npm package versions to be at least 7 days old.
 minimumReleaseAge = 604800
+
+[test]
+# Bare `bun test` should use the monorepo's curated unit-test orchestration.
+# Explicit paths (for example, `bun test ./apps/newframe/test/e2e`) bypass
+# this discovery root.
+root = "test/unit"
