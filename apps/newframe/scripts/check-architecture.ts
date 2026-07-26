@@ -59,12 +59,20 @@ async function sourceFiles() {
 
 const under = (directory: string) => (file: string) => file.startsWith(directory + path.sep)
 const isTestFile = (file: string) => /(?:^|\/)[^/]+\.(?:test|spec)\.[cm]?[jt]sx?$/.test(file)
+const isTestSupportFile = (file: string) =>
+  /(?:^|\/)(?:__mocks__|__tests__)(?:\/|$)/.test(file) ||
+  /(?:^|\/)[^/]+\.(?:test-support|test-fixture)\./.test(file)
+const isProductionFile = (file: string) => !isTestFile(file) && !isTestSupportFile(file)
 const productionRenderer = (file: string) =>
-  !isTestFile(file) &&
+  isProductionFile(file) &&
   (under(path.join('apps', 'newframe', 'app'))(file) ||
     (under(path.join('apps', 'newframe', 'resources'))(file) &&
       file !== path.join('apps', 'newframe', 'resources', 'bridge', 'index.ts')))
-const productionMain = under(path.join('apps', 'newframe', 'main'))
+const productionMain = (file: string) =>
+  isProductionFile(file) && under(path.join('apps', 'newframe', 'main'))(file)
+const productionApplication = (file: string) =>
+  isProductionFile(file) &&
+  ['app', 'main', 'resources'].some((root) => under(path.join('apps', 'newframe', root))(file))
 const productionMainOutsideAccountGate = (file: string) =>
   productionMain(file) && !under(path.join('apps', 'newframe', 'main', 'accounts'))(file)
 const anyFile = () => true
@@ -133,6 +141,12 @@ const rules: Rule[] = [
     files: productionMainOutsideAccountGate,
     pattern: /\.addRequest\s*\(/,
     message: 'production account requests must pass through accounts.routeRequest'
+  },
+  {
+    files: productionApplication,
+    pattern:
+      /(?:from\s*|import\s*\(|require\s*\()\s*['"][^'"]*(?:\.(?:test|spec|test-support|test-fixture)(?:\.|\/)|\/test\/)/,
+    message: 'production code cannot import test files, fixtures, or support modules'
   }
 ]
 

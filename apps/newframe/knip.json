@@ -8,7 +8,7 @@
     "main/windows/viewPreload.ts",
     "scripts/*.ts",
     "build/**/*.js",
-    "test/**/*.test.{ts,tsx}",
+    "{main,app,resources,scripts}/**/*.{test,spec}.{ts,tsx}",
     "test/e2e/**/*.ts"
   ],
   "project": ["main/**", "app/**", "resources/**", "scripts/**", "build/**", "test/**"],

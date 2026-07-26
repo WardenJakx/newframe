@@ -13,5 +13,17 @@
     "noEmit": true,
     "typeRoots": ["./node_modules/@types", "./@types"]
   },
-  "include": ["package.json", "./@types/**/*.d.ts", "./main/**/*.ts"]
+  "include": ["package.json", "./@types/**/*.d.ts", "./main/**/*.ts"],
+  "exclude": [
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.spec.ts",
+    "**/*.spec.tsx",
+    "**/*.test-support.ts",
+    "**/*.test-support.tsx",
+    "**/*.test-fixture.ts",
+    "**/*.test-fixture.tsx",
+    "**/__mocks__/**",
+    "**/__tests__/**"
+  ]
 }
