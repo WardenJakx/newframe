@@ -8,26 +8,26 @@ import {
   RequestMode,
   SignTypedDataRequest,
   TransactionRequest
-} from '..'
-import nameResolution from '../../nameResolution'
-import signers from '../../signers'
-import windows from '../../windows'
-import nav from '../../windows/nav'
-import store from '../../store'
-import { TransactionData } from '../../../resources/domain/transaction'
-import { Type as SignerType, getSignerType } from '../../../resources/domain/signer'
+} from '.'
+import nameResolution from '../nameResolution'
+import signers from '../signers'
+import windows from '../windows'
+import nav from '../windows/nav'
+import store from '../store'
+import { TransactionData } from '../../resources/domain/transaction'
+import { Type as SignerType, getSignerType } from '../../resources/domain/signer'
 
-import provider from '../../provider'
-import { ApprovalType } from '../../../resources/constants'
+import provider from '../provider'
+import { ApprovalType } from '../../resources/constants'
 
-import reveal from '../../reveal'
-import { isTransactionRequest, isTypedMessageSignatureRequest } from '../../../resources/domain/request'
-import Erc20Contract from '../../contracts/erc20'
-import { getErc7730TypedDataDisplay } from '../../signatures/erc7730'
-import { simulateTransactionEffects } from '../../transaction/simulation'
+import reveal from '../reveal'
+import { isTransactionRequest, isTypedMessageSignatureRequest } from '../../resources/domain/request'
+import Erc20Contract from '../contracts/erc20'
+import { getErc7730TypedDataDisplay } from '../signatures/erc7730'
+import { simulateTransactionEffects } from '../transaction/simulation'
 
-import type { CanonicalAccountRequest, PermitSignatureRequest, TypedMessage } from '../types'
-import type { Action } from '../../transaction/actions'
+import type { CanonicalAccountRequest, PermitSignatureRequest, TypedMessage } from './types'
+import type { Action } from '../transaction/actions'
 
 function cloneSerializable<T>(value: T): T {
   return JSON.parse(

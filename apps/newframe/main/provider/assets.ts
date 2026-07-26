@@ -1,9 +1,9 @@
-import store from '../../store'
+import store from '../store'
 
-import { NATIVE_CURRENCY } from '../../../resources/constants'
-import { toTokenId } from '../../../resources/domain/token'
+import { NATIVE_CURRENCY } from '../../resources/constants'
+import { toTokenId } from '../../resources/domain/token'
 
-import type { Balance, NativeCurrency, Rate } from '../../store/state'
+import type { Balance, NativeCurrency, Rate } from '../store/state'
 
 type UsdRate = { usd: Rate }
 
