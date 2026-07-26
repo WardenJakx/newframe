@@ -24,9 +24,7 @@ const newframeMainFiles = [
   'main/**/*.{js,ts}',
   'build/**/*.js',
   'resources/**/*.{js,ts}',
-  'test/*.{ts,tsx}',
-  'test/__mocks__/*.ts',
-  'test/main/**/*.{js,ts}'
+  'test/support/**/*.{ts,tsx}'
 ]
 
 const newframeRendererFiles = [
@@ -37,10 +35,7 @@ const newframeRendererFiles = [
   'resources/Native/**/*.{ts,tsx}',
   'resources/bridge/index.ts',
   'resources/link/index.ts',
-  'test/app/**/*.{ts,tsx}',
-  'test/resources/Components/**/*.{ts,tsx}',
-  'test/resources/Hooks/**/*.{ts,tsx}',
-  'test/resources/Native/**/*.{ts,tsx}'
+  'test/support/componentSetup.tsx'
 ]
 
 const newframeReactFiles = [
@@ -49,11 +44,7 @@ const newframeReactFiles = [
   'resources/Hooks/**/*.{ts,tsx}',
   'resources/Native/**/*.{ts,tsx}',
   'resources/svg.tsx',
-  'test/app/**/*.{ts,tsx}',
-  'test/resources/Components/**/*.{ts,tsx}',
-  'test/resources/Hooks/**/*.{ts,tsx}',
-  'test/resources/Native/**/*.{ts,tsx}',
-  'test/svg.tsx'
+  'test/support/componentSetup.tsx'
 ]
 
 export default [
@@ -73,6 +64,8 @@ export default [
     'apps/newframe/build/icons/**/*',
     'apps/newframe/test/e2e/**/*',
     'apps/newframe/main/signers/**/*',
+    '!apps/newframe/main/signers/**/*/',
+    '!apps/newframe/main/signers/**/*.{test,spec}.{ts,tsx}',
     'apps/newframe-extension/dist/**/*',
     'apps/newframe-extension/.cache/**/*',
     'packages/ui/dist/**/*',
@@ -82,6 +75,14 @@ export default [
 
   nodeGlobalsConfig({ files: ['eslint.config.mjs', 'eslint.shared.mjs', 'scripts/**/*.ts'] }),
   ...typescriptConfigs({ basePath: 'scripts', tsconfigRootDir: workspacePath('./') }),
+  nodeGlobalsConfig({
+    files: ['test/unit/**/*.{ts,tsx}'],
+    extraGlobals: {
+      Bun: 'readonly'
+    }
+  }),
+  ...typescriptConfigs({ basePath: 'test/unit', tsconfigRootDir: workspacePath('./') }),
+  testGlobalsConfig({ files: ['test/unit/**/*.{ts,tsx}'] }),
   nodeGlobalsConfig({ files: ['harness/**/*.ts'] }),
   ...typescriptConfigs({ basePath: 'harness', tsconfigRootDir: workspacePath('./') }),
 
@@ -121,10 +122,24 @@ export default [
     tsconfigRootDir: workspacePath('./apps/newframe')
   }),
   ...reactConfigs({ basePath: newframe, files: newframeReactFiles, version: '19.2' }),
-  testGlobalsConfig({ basePath: newframe, files: ['test/**/*.{ts,tsx}', '**/__mocks__/**/*.ts'] }),
+  testGlobalsConfig({
+    basePath: newframe,
+    files: [
+      '**/*.{test,spec}.{ts,tsx}',
+      '**/*.test-support.{ts,tsx}',
+      '**/*.test-fixture.{ts,tsx}',
+      'test/support/**/*.{ts,tsx}',
+      '**/__mocks__/**/*.ts'
+    ]
+  }),
   testingLibraryReactConfig({
     basePath: newframe,
-    files: ['test/app/**/*.{ts,tsx}', 'test/resources/Components/**/*.{ts,tsx}', 'app/**/__mocks__/**/*.ts']
+    files: [
+      'app/**/*.{test,spec}.{ts,tsx}',
+      'resources/Components/**/*.{test,spec}.{ts,tsx}',
+      'resources/Hooks/**/*.{test,spec}.{ts,tsx}',
+      'app/**/__mocks__/**/*.ts'
+    ]
   }),
 
   nodeGlobalsConfig({

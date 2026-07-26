@@ -4,5 +4,16 @@
     "outDir": "./compiled",
     "noEmit": false
   },
-  "exclude": ["**/__mocks__/*"]
+  "exclude": [
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.spec.ts",
+    "**/*.spec.tsx",
+    "**/*.test-support.ts",
+    "**/*.test-support.tsx",
+    "**/*.test-fixture.ts",
+    "**/*.test-fixture.tsx",
+    "**/__mocks__/**",
+    "**/__tests__/**"
+  ]
 }

@@ -2,7 +2,7 @@ import { readdirSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
 
 const appRoot = process.cwd()
-const testRoot = join(appRoot, 'test', 'main')
+const mainRoot = join(appRoot, 'main')
 
 function findTests(dir: string): string[] {
   return readdirSync(dir)
@@ -10,10 +10,10 @@ function findTests(dir: string): string[] {
       const path = join(dir, entry)
       return statSync(path).isDirectory() ? findTests(path) : [path]
     })
-    .filter((path) => path.endsWith('.test.ts'))
+    .filter((path) => /\.(?:test|spec)\.tsx?$/.test(path))
 }
 
-const tests = findTests(testRoot)
+const tests = findTests(mainRoot)
   .map((path) => relative(appRoot, path))
   .sort()
 
@@ -22,7 +22,7 @@ const failed: string[] = []
 async function main() {
   for (const testFile of tests) {
     const proc = Bun.spawn({
-      cmd: ['bun', 'test', '--preload', './test/bun.setup.ts', '--timeout', '1000', testFile],
+      cmd: ['bun', 'test', '--preload', './test/support/bun.setup.ts', '--timeout', '1000', `./${testFile}`],
       stdout: 'inherit',
       stderr: 'inherit'
     })

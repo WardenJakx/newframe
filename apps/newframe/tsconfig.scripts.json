@@ -10,5 +10,17 @@
     "noEmit": true,
     "typeRoots": ["./node_modules/@types", "./@types"]
   },
-  "include": ["./@types/**/*.d.ts", "./panda.config.ts", "./scripts/**/*.ts"]
+  "include": ["./@types/**/*.d.ts", "./panda.config.ts", "./scripts/**/*.ts"],
+  "exclude": [
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.spec.ts",
+    "**/*.spec.tsx",
+    "**/*.test-support.ts",
+    "**/*.test-support.tsx",
+    "**/*.test-fixture.ts",
+    "**/*.test-fixture.tsx",
+    "**/__mocks__/**",
+    "**/__tests__/**"
+  ]
 }

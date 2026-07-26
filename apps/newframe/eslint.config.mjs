@@ -16,9 +16,7 @@ const mainFiles = [
   'main/**/*.{js,ts}',
   'build/**/*.js',
   'resources/**/*.{js,ts}',
-  'test/*.{ts,tsx}',
-  'test/__mocks__/*.ts',
-  'test/main/**/*.{js,ts}'
+  'test/support/**/*.{ts,tsx}'
 ]
 
 const rendererFiles = [
@@ -29,10 +27,7 @@ const rendererFiles = [
   'resources/Native/**/*.{ts,tsx}',
   'resources/bridge/index.ts',
   'resources/link/index.ts',
-  'test/app/**/*.{ts,tsx}',
-  'test/resources/Components/**/*.{ts,tsx}',
-  'test/resources/Hooks/**/*.{ts,tsx}',
-  'test/resources/Native/**/*.{ts,tsx}'
+  'test/support/componentSetup.tsx'
 ]
 
 const reactFiles = [
@@ -41,16 +36,20 @@ const reactFiles = [
   'resources/Hooks/**/*.{ts,tsx}',
   'resources/Native/**/*.{ts,tsx}',
   'resources/svg.tsx',
-  'test/app/**/*.{ts,tsx}',
-  'test/resources/Components/**/*.{ts,tsx}',
-  'test/resources/Hooks/**/*.{ts,tsx}',
-  'test/resources/Native/**/*.{ts,tsx}',
-  'test/svg.tsx'
+  'test/support/componentSetup.tsx'
 ]
 
 export default [
   ...baseJavaScriptConfigs({
-    ignores: ['dist/**/*', 'compiled/**/*', 'bundle/**/*', 'test/e2e/**/*', 'main/signers/**/*']
+    ignores: [
+      'dist/**/*',
+      'compiled/**/*',
+      'bundle/**/*',
+      'test/e2e/**/*',
+      'main/signers/**/*',
+      '!main/signers/**/*/',
+      '!main/signers/**/*.{test,spec}.{ts,tsx}'
+    ]
   }),
   nodeGlobalsConfig({
     files: mainFiles,
@@ -72,9 +71,22 @@ export default [
     tsconfigRootDir: import.meta.dirname
   }),
   ...reactConfigs({ files: reactFiles, version: '19.2' }),
-  testGlobalsConfig({ files: ['test/**/*.{ts,tsx}', '**/__mocks__/**/*.ts'] }),
+  testGlobalsConfig({
+    files: [
+      '**/*.{test,spec}.{ts,tsx}',
+      '**/*.test-support.{ts,tsx}',
+      '**/*.test-fixture.{ts,tsx}',
+      'test/support/**/*.{ts,tsx}',
+      '**/__mocks__/**/*.ts'
+    ]
+  }),
   testingLibraryReactConfig({
-    files: ['test/app/**/*.{ts,tsx}', 'test/resources/Components/**/*.{ts,tsx}', 'app/**/__mocks__/**/*.ts']
+    files: [
+      'app/**/*.{test,spec}.{ts,tsx}',
+      'resources/Components/**/*.{test,spec}.{ts,tsx}',
+      'resources/Hooks/**/*.{test,spec}.{ts,tsx}',
+      'app/**/__mocks__/**/*.ts'
+    ]
   }),
   prettierConfig
 ]
