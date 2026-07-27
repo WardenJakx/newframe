@@ -1,7 +1,7 @@
 import { addHexPrefix } from '@ethereumjs/util'
 import { z } from 'zod'
 
-import { createRequestMatcher, generateError } from '../matchers'
+import { createRequestMatcher, generateError } from '../matchers.js'
 
 export const chainIdMatcher = z
   .string()

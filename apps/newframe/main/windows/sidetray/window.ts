@@ -1,9 +1,9 @@
 import electron, { BrowserWindow } from 'electron'
 import path from 'path'
 
-import { createWindow } from '../window'
-import { constrainTraySize, sideTrayPosition } from '../trayGeometry'
-import type { RendererAuthorizationRegistry } from '../../ipc/authorization'
+import { createWindow } from '../window.js'
+import { constrainTraySize, sideTrayPosition } from '../trayGeometry.js'
+import type { RendererAuthorizationRegistry } from '../../ipc/authorization.js'
 
 const isDev = process.env.NODE_ENV === 'development'
 
@@ -56,7 +56,7 @@ export default {
       y: 0,
       width: 0,
       height: 0,
-      icon: path.join(__dirname, './AppIcon.png')
+      icon: path.join(import.meta.dirname, './AppIcon.png')
     }
 
     if (process.platform === 'darwin') {

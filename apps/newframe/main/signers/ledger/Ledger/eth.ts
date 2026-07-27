@@ -2,20 +2,22 @@ import log from 'electron-log'
 import { encode } from '@ethereumjs/rlp'
 import { addHexPrefix, bytesToHex, stripHexPrefix, padToEven } from '@ethereumjs/util'
 import { SignTypedDataVersion, TypedDataUtils } from '@metamask/eth-sig-util'
-import Transport from '@ledgerhq/hw-transport'
-import Eth from '@ledgerhq/hw-app-eth'
 
-import { Derivation, getDerivationPath, deriveHDAccounts } from '../../Signer/derive'
-import { sign } from '../../../transaction'
-import { DeviceError } from '.'
+import { Derivation, getDerivationPath, deriveHDAccounts } from '../../Signer/derive.js'
+import { sign } from '../../../transaction/index.js'
+import { DeviceError } from './index.js'
+import { LedgerEthereumApp as Eth } from '../dependencies.js'
 
-import type { TypedData } from '../../../../contracts/requests'
-import type { TransactionData } from '../../../../domain/transaction'
+import type { TypedData } from '../../../../contracts/requests.js'
+import type { TransactionData } from '../../../../domain/transaction/index.js'
+
+type EthInstance = InstanceType<(typeof import('@ledgerhq/hw-app-eth'))['default']>
+type TransportInstance = InstanceType<(typeof import('@ledgerhq/hw-transport'))['default']>
 
 export default class LedgerEthereumApp {
-  private eth: Eth
+  private eth: EthInstance
 
-  constructor(transport: Transport) {
+  constructor(transport: TransportInstance) {
     this.eth = new Eth(transport)
   }
 

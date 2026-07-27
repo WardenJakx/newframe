@@ -1,4 +1,4 @@
-import type { Chain } from '../state/chain'
+import type { Chain } from '../state/chain.js'
 
 export function isNetworkConnected(network: Chain) {
   return (

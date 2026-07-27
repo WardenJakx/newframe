@@ -1,7 +1,7 @@
 // Manage navigation states for each window
 
-import type canonicalStore from '../../store'
-import type { Breadcrumb } from './breadcrumb'
+import type canonicalStore from '../../store/index.js'
+import type { Breadcrumb } from './breadcrumb.js'
 
 export const createNavigation = (store: typeof canonicalStore) => ({
   forward: (windowId: string, crumb: Breadcrumb) => {

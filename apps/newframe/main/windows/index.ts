@@ -10,15 +10,15 @@ import path from 'path'
 import log from 'electron-log'
 import EventEmitter from 'events'
 import { shallow } from 'zustand/vanilla/shallow'
-import { hexToInt, roundGwei } from '../../domain/hex'
-import type canonicalStore from '../store'
-import SideTrayManager from './sidetray'
-import { createWindow } from './window'
-import { constrainTraySize, TRAY_WIDTH, trayPosition } from './trayGeometry'
-import { SystemTray, SystemTrayEventHandlers } from './systemTray'
-import { registerShortcut } from '../keyboardShortcuts'
-import { Shortcut } from '../../domain/state/shortcuts'
-import type { RendererAuthorizationRegistry } from '../ipc/authorization'
+import { hexToInt, roundGwei } from '../../domain/hex.js'
+import type canonicalStore from '../store/index.js'
+import SideTrayManager from './sidetray/index.js'
+import { createWindow } from './window.js'
+import { constrainTraySize, TRAY_WIDTH, trayPosition } from './trayGeometry.js'
+import { SystemTray, SystemTrayEventHandlers } from './systemTray.js'
+import { registerShortcut } from '../keyboardShortcuts.js'
+import { Shortcut } from '../../domain/state/shortcuts.js'
+import type { RendererAuthorizationRegistry } from '../ipc/authorization.js'
 
 type Windows = { [key: string]: BrowserWindow }
 type CanonicalStoreApi = typeof canonicalStore
@@ -138,7 +138,7 @@ function initWindow(id: string, opts: Electron.BrowserWindowConstructorOptions, 
 function initTrayWindow(rendererReady: () => void) {
   const trayOpts: Electron.BrowserWindowConstructorOptions = {
     width: TRAY_WIDTH,
-    icon: path.join(__dirname, './AppIcon.png')
+    icon: path.join(import.meta.dirname, './AppIcon.png')
   }
   if (isMacOS) {
     trayOpts.type = 'panel'

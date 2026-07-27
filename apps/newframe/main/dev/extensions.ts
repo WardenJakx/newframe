@@ -1,5 +1,5 @@
 import log from 'electron-log'
-import installExtension, { REACT_DEVELOPER_TOOLS } from 'electron-devtools-installer'
+import { installExtension, REACT_DEVELOPER_TOOLS } from 'electron-devtools-installer'
 
 export default async function installElectronDevToolExtensions() {
   try {

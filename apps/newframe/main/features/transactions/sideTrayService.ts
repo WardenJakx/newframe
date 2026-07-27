@@ -5,8 +5,8 @@ import type {
   FlashSubmitOrder,
   TransactionSubmitCommand,
   TypedDataSignCommand
-} from '../../../contracts/operations'
-import type { TrustedPrincipal } from '../../authority'
+} from '../../../contracts/operations.js'
+import type { TrustedPrincipal } from '../../authority.js'
 
 const internalOriginName = 'newframe-internal'
 const internalOriginId = uuidv5(internalOriginName, uuidv5.DNS)

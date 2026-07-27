@@ -6,7 +6,7 @@ import reactHooksPlugin from 'eslint-plugin-react-hooks'
 import testingLibraryPlugin from 'eslint-plugin-testing-library'
 import globals from 'globals'
 
-const allCodeFiles = ['**/*.{js,mjs,ts,tsx}']
+const allCodeFiles = ['**/*.{cjs,js,mjs,ts,tsx}']
 const tsFiles = ['**/*.{ts,tsx}']
 
 const unusedVarsOptions = {

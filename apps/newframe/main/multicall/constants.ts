@@ -1,4 +1,4 @@
-import type { Eip1193Provider } from '../provider/connection'
+import type { Eip1193Provider } from '../provider/connection.js'
 
 export type CallResult<T> = { success: boolean; returnValues: T[] }
 type PostProcessor<R, T> = (val: R) => T

@@ -1,7 +1,7 @@
-import { NATIVE_CURRENCY } from './constants'
-import { persistedImageSource } from '../image'
+import { NATIVE_CURRENCY } from './constants.js'
+import { persistedImageSource } from '../image/index.js'
 
-import type { Token, TokenCatalog, TokenImage, TokenRecord, WithTokenId } from '../state/token'
+import type { Token, TokenCatalog, TokenImage, TokenRecord, WithTokenId } from '../state/token.js'
 
 export function toTokenId(token: WithTokenId) {
   return `${Number(token.chainId)}:${token.address.toLowerCase()}`

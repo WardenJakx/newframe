@@ -1,5 +1,5 @@
-import type { SettingsUpdateCommand } from '../../../contracts/operations'
-import type { CanonicalStore } from '../../store/actions'
+import type { SettingsUpdateCommand } from '../../../contracts/operations.js'
+import type { CanonicalStore } from '../../store/actions.js'
 
 type SettingsState = Pick<
   CanonicalStore,

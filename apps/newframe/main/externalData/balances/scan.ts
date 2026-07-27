@@ -2,14 +2,14 @@ import { Interface, toBeHex } from 'ethers'
 import { addHexPrefix } from '@ethereumjs/util'
 import log from 'electron-log'
 
-import { formatUnits } from '../../../domain/units'
-import multicall, { Call, supportsChain as multicallSupportsChain } from '../../multicall'
-import erc20TokenAbi from '../../../domain/erc20-abi'
-import { groupByChain, TokensByChain } from './reducers'
+import { formatUnits } from '../../../domain/units.js'
+import multicall, { Call, supportsChain as multicallSupportsChain } from '../../multicall/index.js'
+import erc20TokenAbi from '../../../domain/erc20-abi.js'
+import { groupByChain, TokensByChain } from './reducers.js'
 
 import type { BytesLike } from 'ethers'
-import type { Eip1193Provider } from '../../provider/connection'
-import type { Token } from '../../store/state'
+import type { Eip1193Provider } from '../../provider/connection.js'
+import type { Token } from '../../store/state/index.js'
 
 const erc20Interface = new Interface(erc20TokenAbi)
 

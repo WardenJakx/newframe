@@ -1,8 +1,8 @@
 import log from 'electron-log'
 
-import { fetchWithTimeout } from '../../network/fetchWithTimeout'
+import { fetchWithTimeout } from '../../network/fetchWithTimeout.js'
 
-import type { ContractSource } from '..'
+import type { ContractSource } from '../index.js'
 
 interface EtherscanSourceCodeResponse {
   status: string

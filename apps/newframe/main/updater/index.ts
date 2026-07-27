@@ -1,9 +1,9 @@
 import log from 'electron-log'
 
-import { openExternal } from '../windows/window'
-import AutoUpdater from './autoUpdater'
-import manualCheck from './manualCheck'
-import type { CanonicalStore } from '../store/actions'
+import { openExternal } from '../windows/window.js'
+import AutoUpdater from './autoUpdater.js'
+import manualCheck from './manualCheck.js'
+import type { CanonicalStore } from '../store/actions.js'
 
 export interface VersionUpdate {
   version: string

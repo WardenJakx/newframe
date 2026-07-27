@@ -1,7 +1,7 @@
-import { getFlashAssetsForChain } from '../domain/flash/assets'
+import { getFlashAssetsForChain } from '../domain/flash/assets.js'
 
-import type { CanonicalStoreReader } from './store/actions'
-import type { Token } from './store/state'
+import type { CanonicalStoreReader } from './store/actions.js'
+import type { Token } from './store/state/index.js'
 
 export interface BundledTokenService {
   start(): void

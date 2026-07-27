@@ -1,4 +1,4 @@
-import type { ColorwayPalette } from '../state/colors'
+import type { ColorwayPalette } from '../state/colors.js'
 
 export const chainColors = {
   mainnet: '#00d2be',

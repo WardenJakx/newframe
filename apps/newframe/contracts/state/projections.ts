@@ -1,11 +1,16 @@
 import { z } from 'zod'
 
-import { AccountSchema } from '../../domain/state/account'
-import { BalanceSchema } from '../../domain/state/balance'
-import { ActivityRecordSchema, MainSchema, OrderRecordSchema, RuntimeSchema } from '../../domain/state/main'
-import { NativeCurrencySchema } from '../../domain/state/nativeCurrency'
-import { RateSchema } from '../../domain/state/rate'
-import { TokenCatalogSchema, TokenImageSchema } from '../../domain/state/token'
+import { AccountSchema } from '../../domain/state/account.js'
+import { BalanceSchema } from '../../domain/state/balance.js'
+import {
+  ActivityRecordSchema,
+  MainSchema,
+  OrderRecordSchema,
+  RuntimeSchema
+} from '../../domain/state/main.js'
+import { NativeCurrencySchema } from '../../domain/state/nativeCurrency.js'
+import { RateSchema } from '../../domain/state/rate.js'
+import { TokenCatalogSchema, TokenImageSchema } from '../../domain/state/token.js'
 
 export const RendererProjectionSchema = z.enum(['wallet-ui', 'sidetray'])
 export type RendererProjection = z.infer<typeof RendererProjectionSchema>

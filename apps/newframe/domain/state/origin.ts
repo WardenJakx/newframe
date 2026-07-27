@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { ChainIdSchema } from './chain'
+import { ChainIdSchema } from './chain.js'
 
 const SessionSchema = z.object({
   requests: z.number().gte(0),

@@ -3,13 +3,13 @@ import log from 'electron-log'
 import { addHexPrefix, intToHex } from '@ethereumjs/util'
 import { v5 as uuidv5 } from 'uuid'
 
-import FrameAccount from './Account'
-import type { DataScanner } from '../externalData'
-import type { CanonicalStoreReader } from '../store/actions'
-import Signer from '../signers/Signer'
-import type { SignerCompatibility } from '../transaction'
+import FrameAccount from './Account.js'
+import type { DataScanner } from '../externalData/index.js'
+import type { CanonicalStoreReader } from '../store/actions.js'
+import Signer from '../signers/Signer/index.js'
+import type { SignerCompatibility } from '../transaction/index.js'
 
-import { weiIntToEthInt, hexToInt } from '../../domain/hex'
+import { weiIntToEthInt, hexToInt } from '../../domain/hex.js'
 import {
   usesBaseFee,
   TransactionData,
@@ -17,9 +17,9 @@ import {
   TRANSACTION_CONFIRMATION_TARGET,
   getTransactionIntent,
   getTransactionPositionTokens
-} from '../../domain/transaction'
-import { findUnavailableSigners, isHardwareSigner, isSignerReady } from '../../domain/signer'
-import { decideWalletAction, type TrustedPrincipal } from '../authority'
+} from '../../domain/transaction/index.js'
+import { findUnavailableSigners, isHardwareSigner, isSignerReady } from '../../domain/signer/index.js'
+import { decideWalletAction, type TrustedPrincipal } from '../authority.js'
 
 import {
   AccountRequest,
@@ -31,21 +31,21 @@ import {
   RequestMode,
   TypedMessage,
   PermitSignatureRequest
-} from '../../contracts/requests'
+} from '../../contracts/requests.js'
 
-import type { Chain } from '../chains'
-import { ActionType } from '../transaction/actions'
-import { ApprovalType } from '../../domain/request/approval'
-import { accountNS } from '../../domain/account'
-import { tokensForAccount, toTokenId } from '../../domain/token'
-import { chainUsesOptimismFees } from '../../domain/chain/fees'
-import type { ActivityRecord, StatusNotification, Token } from '../store/state'
-import type { AccountChainRpcPort } from './providerPort'
-import type { AccountTransactionPolicyPort } from '../features/transactions/accountPolicyPort'
-import type { TransactionSimulationPort } from '../features/transactions/simulationPort'
-import type { NameResolutionService } from '../nameResolution'
-import type { RevealService } from '../reveal'
-import type { AccountsRuntime } from './runtime'
+import type { Chain } from '../chains/index.js'
+import { ActionType } from '../transaction/actions/index.js'
+import { ApprovalType } from '../../domain/request/approval.js'
+import { accountNS } from '../../domain/account/index.js'
+import { tokensForAccount, toTokenId } from '../../domain/token/index.js'
+import { chainUsesOptimismFees } from '../../domain/chain/fees.js'
+import type { ActivityRecord, StatusNotification, Token } from '../store/state/index.js'
+import type { AccountChainRpcPort } from './providerPort.js'
+import type { AccountTransactionPolicyPort } from '../features/transactions/accountPolicyPort.js'
+import type { TransactionSimulationPort } from '../features/transactions/simulationPort.js'
+import type { NameResolutionService } from '../nameResolution.js'
+import type { RevealService } from '../reveal.js'
+import type { AccountsRuntime } from './runtime.js'
 
 function shortHash(hash?: string) {
   if (!hash) return ''
@@ -120,7 +120,7 @@ function toTransactionsByLayer(requests: Record<string, AccountRequest>, chainId
 const frameOriginId = uuidv5('newframe-internal', uuidv5.DNS)
 const CONFIRMED_REQUEST_CLOSE_MS = 3000
 
-export { RequestMode } from '../../contracts/requests'
+export { RequestMode } from '../../contracts/requests.js'
 export type {
   AccountRequest,
   AccessRequest,
@@ -128,7 +128,7 @@ export type {
   SignTypedDataRequest,
   AddChainRequest,
   AddTokenRequest
-} from '../../contracts/requests'
+} from '../../contracts/requests.js'
 
 type RequestWithId = [string, TransactionRequest]
 

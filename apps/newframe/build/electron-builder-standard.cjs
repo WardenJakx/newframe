@@ -1,10 +1,10 @@
 // build config for every platform and architecture EXCEPT linux arm64
 
-const baseConfig = require('./electron-builder-base.js')
+const baseConfig = require('./electron-builder-base.cjs')
 
 const config = {
   ...baseConfig,
-  afterSign: './build/notarize.js',
+  afterSign: './build/notarize.cjs',
   linux: {
     target: [
       {

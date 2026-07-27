@@ -1,5 +1,5 @@
-import type { AppCommand, AppQuery, ResultForCommand, ResultForQuery } from './operations'
-import type { StateConnectionResult, StateMessage } from './state/protocol'
+import type { AppCommand, AppQuery, ResultForCommand, ResultForQuery } from './operations.js'
+import type { StateConnectionResult, StateMessage } from './state/protocol.js'
 
 export const ExecuteCommandChannel = 'newframe:execute-command'
 export const ExecuteQueryChannel = 'newframe:execute-query'

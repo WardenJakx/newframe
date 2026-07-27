@@ -1,7 +1,7 @@
 import type { JSONTx } from '@ethereumjs/tx'
 import { addHexPrefix, isHexString } from '@ethereumjs/util'
 
-import { MAX_HEX } from './constants'
+import { MAX_HEX } from './constants.js'
 
 export {
   limitTransactionFee,
@@ -9,7 +9,7 @@ export {
   totalTransactionFee,
   type TransactionFeeField,
   type TransactionFeeValues
-} from './fees'
+} from './fees.js'
 
 export enum GasFeesSource {
   Dapp = 'Dapp',

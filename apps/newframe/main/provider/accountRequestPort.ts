@@ -1,4 +1,4 @@
-import type { Accounts } from '../accounts'
+import type { Accounts } from '../accounts/index.js'
 
 export type AccountRequestPort = Pick<
   Accounts,

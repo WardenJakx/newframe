@@ -3,11 +3,11 @@ import type {
   PortfolioProvider,
   PortfolioRefreshOptions,
   PortfolioSnapshot
-} from '../types'
-import type { Balance, Rate, Token } from '../../store/state'
-import ProviderRequestPolicy, { type ProviderRequestPolicyOptions } from '../requestPolicy'
-import { NATIVE_CURRENCY } from '../../../domain/token/constants'
-import { formatUnits } from '../../../domain/units'
+} from '../types.js'
+import type { Balance, Rate, Token } from '../../store/state/index.js'
+import ProviderRequestPolicy, { type ProviderRequestPolicyOptions } from '../requestPolicy.js'
+import { NATIVE_CURRENCY } from '../../../domain/token/constants.js'
+import { formatUnits } from '../../../domain/units.js'
 
 type Fetch = typeof fetch
 

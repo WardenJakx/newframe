@@ -1,7 +1,7 @@
 import type { RequestListener, Server } from 'http'
 
-import type { HttpRpcTransport } from './http'
-import type { WebSocketRpcTransport } from './ws'
+import type { HttpRpcTransport } from './http.js'
+import type { WebSocketRpcTransport } from './ws.js'
 
 export interface ApiServer {
   readonly started: boolean

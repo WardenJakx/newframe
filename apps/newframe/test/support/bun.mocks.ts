@@ -9,7 +9,7 @@ import { createCanonicalActions } from '../../main/store/actions'
 export const electronMock = {
   app: {
     getName: mock(() => 'Frame'),
-    getPath: mock(() => __dirname),
+    getPath: mock(() => import.meta.dirname),
     getVersion: mock(() => '0.0.0-test'),
     on: mock(),
     quit: mock(),

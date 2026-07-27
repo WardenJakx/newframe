@@ -1,5 +1,5 @@
 import log from 'electron-log'
-import { hexToInt } from '../../../domain/hex'
+import { hexToInt } from '../../../domain/hex.js'
 import { padToEven, stripHexPrefix, addHexPrefix, bytesToHex } from '@ethereumjs/util'
 import { SignTypedDataVersion, TypedDataUtils } from '@metamask/eth-sig-util'
 import type { Device as TrezorDevice } from '@trezor/connect'
@@ -7,12 +7,12 @@ import { TypedTransaction } from '@ethereumjs/tx'
 
 import { v5 as uuid } from 'uuid'
 
-import Signer from '../Signer'
-import { TransactionData } from '../../../domain/transaction'
-import { sign, londonToLegacy, signerCompatibility } from '../../transaction'
-import { Derivation, getDerivationPath } from '../Signer/derive'
-import TrezorBridge, { DeviceError } from './bridge'
-import type { TypedMessage } from '../../../contracts/requests'
+import Signer from '../Signer/index.js'
+import { TransactionData } from '../../../domain/transaction/index.js'
+import { sign, londonToLegacy, signerCompatibility } from '../../transaction/index.js'
+import { Derivation, getDerivationPath } from '../Signer/derive.js'
+import TrezorBridge, { DeviceError } from './bridge.js'
+import type { TypedMessage } from '../../../contracts/requests.js'
 
 const ns = '3bbcee75-cecc-5b56-8031-b6641c1ed1f1'
 

@@ -1,6 +1,6 @@
 // Local preview build: an installable Newframe app built without signing/notarization.
 
-const standardConfig = require('./electron-builder-standard.js')
+const standardConfig = require('./electron-builder-standard.cjs')
 
 const nativeArch = process.arch === 'arm64' ? 'arm64' : 'x64'
 

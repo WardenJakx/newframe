@@ -1,19 +1,19 @@
 import log from 'electron-log'
 
-import Signer from './Signer'
-import { SignerAdapter } from './adapters'
+import Signer from './Signer/index.js'
+import { SignerAdapter } from './adapters.js'
 
-import LedgerAdapter from './ledger/adapter'
-import TrezorAdapter from './trezor/adapter'
-import LatticeAdapter from './lattice/adapter'
+import LedgerAdapter from './ledger/adapter.js'
+import TrezorAdapter from './trezor/adapter.js'
+import LatticeAdapter from './lattice/adapter.js'
 
-import hot from './hot'
-import RingSigner from './hot/RingSigner'
-import SeedSigner from './hot/SeedSigner'
-import HotSigner from './hot/HotSigner'
+import hot from './hot/index.js'
+import RingSigner from './hot/RingSigner/index.js'
+import SeedSigner from './hot/SeedSigner/index.js'
+import HotSigner from './hot/HotSigner/index.js'
 
-import type { BiometricUnlockPayload } from '../biometrics'
-import type canonicalStore from '../store'
+import type { BiometricUnlockPayload } from '../biometrics.js'
+import type canonicalStore from '../store/index.js'
 
 const createDefaultAdapters = (store: typeof canonicalStore) => [
   new LedgerAdapter(store),

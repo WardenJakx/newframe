@@ -1,7 +1,7 @@
 import log from 'electron-log'
 import { z } from 'zod'
 
-import type { AuthorizationContext, RendererEntrypoint, RendererRole } from './authorization'
+import type { AuthorizationContext, RendererEntrypoint, RendererRole } from './authorization.js'
 import {
   AccountAgentAccessSetCommandSchema,
   AccountAgentSessionsRevokeCommandSchema,
@@ -112,8 +112,8 @@ import {
   type QueryMap,
   type TransactionSubmitCommand,
   type TypedDataSignCommand
-} from '../../contracts/operations'
-import { ExecuteCommandChannel, ExecuteQueryChannel } from '../../contracts/ipc'
+} from '../../contracts/operations.js'
+import { ExecuteCommandChannel, ExecuteQueryChannel } from '../../contracts/ipc.js'
 
 export interface OperationServices {
   accounts: {
@@ -121,30 +121,34 @@ export interface OperationServices {
     get(accountId: string): unknown
   }
   authorizeRenderer(event: Electron.IpcMainInvokeEvent): AuthorizationContext | undefined
-  createRendererPrincipal: typeof import('../authority').createRendererPrincipal
-  requestTokenImage: import('../images').ImageService['requestTokenImage']
+  createRendererPrincipal: typeof import('../authority.js').createRendererPrincipal
+  requestTokenImage: import('../images/index.js').ImageService['requestTokenImage']
   resolveAgentAccessRequest: ReturnType<
-    typeof import('../agent').createAgentService
+    typeof import('../agent/index.js').createAgentService
   >['resolveAgentAccessRequest']
-  revokeAgentSessions: ReturnType<typeof import('../agent').createAgentService>['revokeAgentSessions']
-  setAgentAccess: ReturnType<typeof import('../agent').createAgentService>['setAgentAccess']
-  closeOwnSideTray: import('../operations/sideTrayWorkflows').SideTrayWorkflows['closeOwnSideTray']
-  inspectOwnSideTray: import('../operations/sideTrayWorkflows').SideTrayWorkflows['inspectOwnSideTray']
+  revokeAgentSessions: ReturnType<
+    typeof import('../agent/index.js').createAgentService
+  >['revokeAgentSessions']
+  setAgentAccess: ReturnType<typeof import('../agent/index.js').createAgentService>['setAgentAccess']
+  closeOwnSideTray: import('../operations/sideTrayWorkflows.js').SideTrayWorkflows['closeOwnSideTray']
+  inspectOwnSideTray: import('../operations/sideTrayWorkflows.js').SideTrayWorkflows['inspectOwnSideTray']
   quoteFlashForCurrentAccount: ReturnType<
-    typeof import('../operations/sideTrayTransactions').createSideTrayTransactionOperations
+    typeof import('../operations/sideTrayTransactions.js').createSideTrayTransactionOperations
   >['quoteFlashForCurrentAccount']
   signCurrentAccountTypedData: ReturnType<
-    typeof import('../operations/sideTrayTransactions').createSideTrayTransactionOperations
+    typeof import('../operations/sideTrayTransactions.js').createSideTrayTransactionOperations
   >['signCurrentAccountTypedData']
   submitCurrentAccountTransaction: ReturnType<
-    typeof import('../operations/sideTrayTransactions').createSideTrayTransactionOperations
+    typeof import('../operations/sideTrayTransactions.js').createSideTrayTransactionOperations
   >['submitCurrentAccountTransaction']
   submitFlashForCurrentAccount: ReturnType<
-    typeof import('../operations/sideTrayTransactions').createSideTrayTransactionOperations
+    typeof import('../operations/sideTrayTransactions.js').createSideTrayTransactionOperations
   >['submitFlashForCurrentAccount']
   resolveName(name: string): Promise<string>
-  selectAccount: (accountId: string) => ReturnType<typeof import('../operations/workflows').selectAccount>
-  walletWorkflows: ReturnType<typeof import('../operations/walletWorkflows').createWalletWorkflowOperations>
+  selectAccount: (accountId: string) => ReturnType<typeof import('../operations/workflows.js').selectAccount>
+  walletWorkflows: ReturnType<
+    typeof import('../operations/walletWorkflows.js').createWalletWorkflowOperations
+  >
 }
 
 export interface OperationDispatcher {

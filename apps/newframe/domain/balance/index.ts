@@ -1,11 +1,11 @@
-import { NATIVE_CURRENCY } from '../token/constants'
-import { formatUnits, toBigInt } from '../units'
-import { persistedImageSource } from '../image'
-import { tokenFromBalance, tokenImageSource, toTokenId } from '../token'
+import { NATIVE_CURRENCY } from '../token/constants.js'
+import { formatUnits, toBigInt } from '../units.js'
+import { persistedImageSource } from '../image/index.js'
+import { tokenFromBalance, tokenImageSource, toTokenId } from '../token/index.js'
 
-import type { Balance } from '../state/balance'
-import type { Rate } from '../state/rate'
-import type { TokenCatalog } from '../state/token'
+import type { Balance } from '../state/balance.js'
+import type { Rate } from '../state/rate.js'
+import type { TokenCatalog } from '../state/token.js'
 
 export interface DisplayedBalance extends Balance {
   decimals: number

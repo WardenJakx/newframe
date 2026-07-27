@@ -3,10 +3,12 @@ import path from 'path'
 import { ChildProcess, fork } from 'child_process'
 import { EventEmitter } from 'events'
 
-import type { CurrencyBalance, TokenBalance } from './scan'
-import type { Token } from '../../store/state'
+import type { CurrencyBalance, TokenBalance } from './scan.js'
+import type { Token } from '../../store/state/index.js'
 
 const BOOTSTRAP_TIMEOUT_SECONDS = 20
+const WORKER_EXT = import.meta.filename.endsWith('.ts') ? 'worker.ts' : 'worker.js'
+const WORKER_PATH = path.resolve(import.meta.dirname, WORKER_EXT)
 
 interface WorkerMessage {
   type: string
@@ -34,7 +36,7 @@ export default class BalancesWorkerController extends EventEmitter {
     super()
 
     const workerArgs = process.env.NODE_ENV === 'development' ? ['--inspect=127.0.0.1:9230'] : []
-    this.worker = fork(path.resolve(__dirname, 'worker.js'), [], { execArgv: workerArgs })
+    this.worker = fork(WORKER_PATH, [], { execArgv: workerArgs })
 
     log.info('created balances worker, pid:', this.worker.pid)
 

@@ -1,6 +1,6 @@
 // build config for linux arm64
 
-const baseConfig = require('./electron-builder-base.js')
+const baseConfig = require('./electron-builder-base.cjs')
 
 const config = {
   ...baseConfig,

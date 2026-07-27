@@ -33,8 +33,8 @@ const TransportNodeHidMock = {
   open: mock(async () => ({ close: mock() }))
 }
 
-mock.module('./eth', () => ({ default: EthMock }))
-mock.module('@ledgerhq/hw-transport-node-hid-noevents', () => ({ default: TransportNodeHidMock }))
+mock.module('./eth.js', () => ({ default: EthMock }))
+mock.module('../dependencies.js', () => ({ TransportNodeHidNoEvents: TransportNodeHidMock }))
 
 let Ledger: any
 let Status: any

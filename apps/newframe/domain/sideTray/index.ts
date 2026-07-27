@@ -1,11 +1,11 @@
-import { NATIVE_CURRENCY } from '../token/constants'
-import { hasPositiveBalance } from '../balance'
+import { NATIVE_CURRENCY } from '../token/constants.js'
+import { hasPositiveBalance } from '../balance/index.js'
 import {
   FLASH_DEFAULT_TARGET_ASSET,
   getFlashAssetsForChain,
   getFlashDefaultTargetAsset
-} from '../flash/assets'
-import type { FlashAsset } from '../flash/schemas'
+} from '../flash/assets.js'
+import type { FlashAsset } from '../flash/schemas.js'
 
 export const SIDE_TRAY_FRAME_ID = 'sideTray'
 export const SIDE_TRAY_NATIVE_ASSET_ADDRESS = NATIVE_CURRENCY

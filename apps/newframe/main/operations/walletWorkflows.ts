@@ -1,13 +1,13 @@
 import { isAddress } from 'ethers'
 import { v5 as uuidv5 } from 'uuid'
 
-import type { Accounts } from '../accounts'
-import type { Chains } from '../chains'
-import Erc20Contract from '../contracts/erc20'
-import type { FlashService } from '../flash'
-import type { TokenDiscoveryProviderAccess } from '../portfolio'
-import type { Provider } from '../provider'
-import type { ProviderProxyConnection } from '../provider/proxy'
+import type { Accounts } from '../accounts/index.js'
+import type { Chains } from '../chains/index.js'
+import Erc20Contract from '../contracts/erc20.js'
+import type { FlashService } from '../flash/index.js'
+import type { TokenDiscoveryProviderAccess } from '../portfolio/index.js'
+import type { Provider } from '../provider/index.js'
+import type { ProviderProxyConnection } from '../provider/proxy.js'
 import {
   ReplacementType,
   type AccountRequest,
@@ -16,34 +16,38 @@ import {
   type AddTokenRequest,
   type PermitSignatureRequest,
   type TransactionRequest
-} from '../../contracts/requests'
-import type Signer from '../signers/Signer'
-import type { Chain } from '../store/state'
-import type { TrustedPrincipal } from '../authority'
-import { ApprovalType } from '../../domain/request/approval'
-import { buildSideTrayRoute, normalizeSideTrayFrameRequest, SIDE_TRAY_FRAME_ID } from '../../domain/sideTray'
-import { toTokenId } from '../../domain/token'
+} from '../../contracts/requests.js'
+import type Signer from '../signers/Signer/index.js'
+import type { Chain } from '../store/state/index.js'
+import type { TrustedPrincipal } from '../authority.js'
+import { ApprovalType } from '../../domain/request/approval.js'
+import {
+  buildSideTrayRoute,
+  normalizeSideTrayFrameRequest,
+  SIDE_TRAY_FRAME_ID
+} from '../../domain/sideTray/index.js'
+import { toTokenId } from '../../domain/token/index.js'
 import {
   isSignatureRequest,
   isTransactionRequest,
   isTypedMessageSignatureRequest
-} from '../../domain/request'
+} from '../../domain/request/index.js'
 import {
   findUnavailableSigners,
   getSignerDisplayType,
   isHardwareSigner,
   isSignerReady
-} from '../../domain/signer'
-import { usesBaseFee } from '../../domain/transaction'
-import { capitalize, randomLetters } from '../../domain/text'
-import { toBigInt } from '../../domain/units'
-import { resolveName, selectAccount } from './workflows'
-import type { AccountTransactionPolicyPort } from '../features/transactions/accountPolicyPort'
-import type { NameResolutionService } from '../nameResolution'
-import type { RevealService } from '../reveal'
-import { createSecurityService, type SecurityServicePorts } from '../features/security/service'
-import { createSettingsService } from '../features/settings/service'
-import type { CanonicalStore } from '../store/actions'
+} from '../../domain/signer/index.js'
+import { usesBaseFee } from '../../domain/transaction/index.js'
+import { capitalize, randomLetters } from '../../domain/text.js'
+import { toBigInt } from '../../domain/units.js'
+import { resolveName, selectAccount } from './workflows.js'
+import type { AccountTransactionPolicyPort } from '../features/transactions/accountPolicyPort.js'
+import type { NameResolutionService } from '../nameResolution.js'
+import type { RevealService } from '../reveal.js'
+import { createSecurityService, type SecurityServicePorts } from '../features/security/service.js'
+import { createSettingsService } from '../features/settings/service.js'
+import type { CanonicalStore } from '../store/actions.js'
 import type {
   AccountAddFromSignerCommand,
   NetworkRequestResolveCommand,
@@ -54,7 +58,7 @@ import type {
   TrezorInputCommand,
   WalletToken,
   WarningToggleCommand
-} from '../../contracts/operations'
+} from '../../contracts/operations.js'
 
 type WorkflowCallback<T> = (error: unknown, value?: T) => void
 

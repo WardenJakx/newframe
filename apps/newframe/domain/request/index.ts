@@ -4,8 +4,8 @@ import type {
   SignatureRequest,
   SignTypedDataRequest,
   TransactionRequest
-} from '../../contracts/requests'
-import { capitalize } from '../text'
+} from '../../contracts/requests.js'
+import { capitalize } from '../text.js'
 
 export const isCancelableRequest = (status: string): boolean => {
   return !['sent', 'sending', 'verifying', 'confirming', 'confirmed', 'error', 'declined'].includes(status)

@@ -2,38 +2,38 @@ import EventEmitter from 'events'
 import crypto from 'crypto'
 import log from 'electron-log'
 import { v4 as uuid } from 'uuid'
-import { estimateL1GasCost } from '../chains/l1GasFees'
+import { estimateL1GasCost } from '../chains/l1GasFees.js'
 import { recoverTypedSignature, SignTypedDataVersion } from '@metamask/eth-sig-util'
 import { isAddress } from 'ethers'
 import { addHexPrefix, intToHex, isHexString, fromUtf8 } from '@ethereumjs/util'
 import { shallow } from 'zustand/shallow'
 
-import type { CanonicalStoreReader } from '../store/actions'
-import packageFile from '../../package.json'
+import type { CanonicalStoreReader } from '../store/actions.js'
+import packageFile from '../../package.json' with { type: 'json' }
 
-import type { ProviderProxyConnection } from './proxy'
+import type { ProviderProxyConnection } from './proxy.js'
 import type {
   AccountRequest,
   TransactionRequest,
   SignTypedDataRequest,
   AddChainRequest,
   AddTokenRequest
-} from '../../contracts/requests'
-import type { Chains } from '../chains'
-import type { Chain } from '../chains'
-import type { RevealService } from '../reveal'
-import { getSignerType, Type as SignerType } from '../../domain/signer'
-import { toTokenId } from '../../domain/token'
-import { normalizeChainId, TransactionData } from '../../domain/transaction'
-import { populate as populateTransaction, maxFee, classifyTransaction } from '../transaction'
-import { capitalize } from '../../domain/text'
-import { isNonZeroHex } from '../../domain/hex'
-import { ApprovalType } from '../../domain/request/approval'
-import type { ProviderStatePort } from './statePort'
-import { getVersionFromTypedData } from './typedData'
-import { getCalldataDigest, getEip712Digests } from '../signatures/digests'
+} from '../../contracts/requests.js'
+import type { Chains } from '../chains/index.js'
+import type { Chain } from '../chains/index.js'
+import type { RevealService } from '../reveal.js'
+import { getSignerType, Type as SignerType } from '../../domain/signer/index.js'
+import { toTokenId } from '../../domain/token/index.js'
+import { normalizeChainId, TransactionData } from '../../domain/transaction/index.js'
+import { populate as populateTransaction, maxFee, classifyTransaction } from '../transaction/index.js'
+import { capitalize } from '../../domain/text.js'
+import { isNonZeroHex } from '../../domain/hex.js'
+import { ApprovalType } from '../../domain/request/approval.js'
+import type { ProviderStatePort } from './statePort.js'
+import { getVersionFromTypedData } from './typedData.js'
+import { getCalldataDigest, getEip712Digests } from '../signatures/digests.js'
 
-import { Subscription, SubscriptionType, hasSubscriptionPermission } from './subscriptions'
+import { Subscription, SubscriptionType, hasSubscriptionPermission } from './subscriptions.js'
 import {
   checkExistingNonceGas,
   ecRecover,
@@ -45,7 +45,7 @@ import {
   requestPermissions,
   resError,
   decodeMessage
-} from './helpers'
+} from './helpers.js'
 
 import {
   EIP2612TypedData,
@@ -54,20 +54,20 @@ import {
   SignatureRequest,
   TypedData,
   TypedMessage
-} from '../../contracts/requests'
-import * as sigParser from '../signatures'
-import { hasAddress } from '../../domain/account'
-import { mapRequest } from '../requests'
+} from '../../contracts/requests.js'
+import * as sigParser from '../signatures/index.js'
+import { hasAddress } from '../../domain/account/index.js'
+import { mapRequest } from '../requests/index.js'
 import {
   createMainPrincipal,
   hasPrincipalCapability,
   isAgentPrincipalActive,
   type AgentPrincipal,
   type TrustedPrincipal
-} from '../authority'
+} from '../authority.js'
 
-import type { Origin, Permission } from '../store/state'
-import type { AccountRequestPort } from './accountRequestPort'
+import type { Origin, Permission } from '../store/state/index.js'
+import type { AccountRequestPort } from './accountRequestPort.js'
 
 const signTypedDataV4OnlySignerTypes: SignerType[] = [SignerType.Ledger, SignerType.Trezor]
 const proxyPrincipal = createMainPrincipal('provider-proxy', ['wallet:internal-state'])

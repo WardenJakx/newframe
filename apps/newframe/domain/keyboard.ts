@@ -1,4 +1,4 @@
-import type { ShortcutKey } from './state/shortcuts'
+import type { ShortcutKey } from './state/shortcuts.js'
 
 export type Platform = 'darwin' | 'win32' | 'linux'
 

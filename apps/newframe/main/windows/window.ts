@@ -4,9 +4,9 @@ import path from 'path'
 
 import { resolveSemanticColor } from '@newframe/ui/tokens/colors'
 
-import type { CanonicalStore } from '../store/actions'
-import type { ChainId } from '../store/state'
-import type { RendererAuthorizationRegistry } from '../ipc/authorization'
+import type { CanonicalStore } from '../store/actions.js'
+import type { ChainId } from '../store/state/index.js'
+import type { RendererAuthorizationRegistry } from '../ipc/authorization.js'
 
 export function createWindow(
   name: string,
@@ -26,7 +26,7 @@ export function createWindow(
     skipTaskbar: process.platform !== 'linux',
     webPreferences: {
       ...webPreferences,
-      preload: path.resolve(process.env.BUNDLE_LOCATION, 'bridge.js'),
+      preload: path.resolve(process.env.BUNDLE_LOCATION, 'bridge.cjs'),
       backgroundThrottling: false, // Allows repaint when window is hidden
       contextIsolation: true,
       webviewTag: false,

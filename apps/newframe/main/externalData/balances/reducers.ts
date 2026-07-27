@@ -1,4 +1,4 @@
-import type { Token } from '../../store/state'
+import type { Token } from '../../store/state/index.js'
 
 export interface TokensByChain {
   [chainId: number]: Token[]

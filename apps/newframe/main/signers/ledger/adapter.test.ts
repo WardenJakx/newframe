@@ -58,15 +58,12 @@ const TransportNodeHidSingletonMock = {
 
 let connectedHids: any[] = []
 
-mock.module('@ledgerhq/hw-transport-node-hid-noevents', () => ({
-  getDevices: () => connectedHids
+mock.module('./dependencies.js', () => ({
+  getLedgerDevices: () => connectedHids,
+  TransportNodeHidSingleton: TransportNodeHidSingletonMock
 }))
 
-mock.module('@ledgerhq/hw-transport-node-hid-singleton', () => ({
-  default: TransportNodeHidSingletonMock
-}))
-
-mock.module('./Ledger', () => ({
+mock.module('./Ledger/index.js', () => ({
   default: LedgerMock,
   Status
 }))

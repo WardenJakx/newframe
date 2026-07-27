@@ -1,25 +1,21 @@
-import http, { type Server } from 'http'
-import WebSocket from 'ws'
+import http from 'http'
+import WebSocket, { WebSocketServer } from 'ws'
 
-import type { Provider } from '../provider'
-import type { Accounts } from '../accounts'
-import type { FlashService } from '../flash'
-import type { AgentService } from '../agent'
-import type { CanonicalStoreReader } from '../store/actions'
-import { createHttpRpcTransport } from './http'
+import type { Provider } from '../provider/index.js'
+import type { Accounts } from '../accounts/index.js'
+import type { FlashService } from '../flash/index.js'
+import type { AgentService } from '../agent/index.js'
+import type { CanonicalStoreReader } from '../store/actions.js'
+import { createHttpRpcTransport } from './http.js'
 import {
   createWebSocketRpcTransport,
   type WebSocketRpcTransportDependencies,
   type WebSocketServerPort
-} from './ws'
-import { createApiServer } from './server'
-import { createProductionOriginsService } from './origins'
+} from './ws.js'
+import { createApiServer } from './server.js'
+import { createProductionOriginsService } from './origins.js'
 
-export { createApiServer, type ApiServer, type ApiServerDependencies } from './server'
-
-const WebSocketServer = (
-  WebSocket as unknown as { Server: new (options: { server: Server }) => WebSocketServerPort }
-).Server
+export { createApiServer, type ApiServer, type ApiServerDependencies } from './server.js'
 
 export function createProductionApiServer(
   provider: Provider,
@@ -46,7 +42,7 @@ export function createProductionApiServer(
     store: storePort,
     origins,
     windows,
-    createServer: (server) => new WebSocketServer({ server }),
+    createServer: (server) => new WebSocketServer({ server }) as WebSocketServerPort,
     openReadyState: WebSocket.OPEN
   })
 

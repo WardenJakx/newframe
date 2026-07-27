@@ -1,5 +1,5 @@
-import type { TrustedPrincipal } from '../authority'
-import type { TransactionData } from '../../domain/transaction'
+import type { TrustedPrincipal } from '../authority.js'
+import type { TransactionData } from '../../domain/transaction/index.js'
 
 export interface AccountChainRpcPort {
   send(payload: RPCRequestPayload, respond: RPCRequestCallback, principal?: TrustedPrincipal): unknown

@@ -15,8 +15,7 @@ Object.defineProperty(Event.prototype, 'cancelBubble', {
   set: () => {}
 })
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const { cleanup } = require('@testing-library/react') as typeof import('@testing-library/react')
+let cleanup = () => {}
 
 beforeEach(() => {
   mock.clearAllMocks()
@@ -27,3 +26,4 @@ beforeEach(() => {
 afterEach(() => {
   cleanup()
 })
+;({ cleanup } = await import('@testing-library/react'))

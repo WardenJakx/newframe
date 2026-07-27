@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 
-import type { AccountRequest, RequestAuthorization, RequestType } from '../contracts/requests'
-import type { AuthorizationContext, RendererEntrypoint, RendererRole } from './ipc/authorization'
+import type { AccountRequest, RequestAuthorization, RequestType } from '../contracts/requests.js'
+import type { AuthorizationContext, RendererEntrypoint, RendererRole } from './ipc/authorization.js'
 
 const trustedPrincipalBrand = Symbol('newframe.trusted-principal')
 

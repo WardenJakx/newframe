@@ -3,7 +3,7 @@ import { readdir, readFile } from 'node:fs/promises'
 import { builtinModules } from 'node:module'
 import path from 'node:path'
 
-const appRoot = path.resolve(__dirname, '..')
+const appRoot = path.resolve(import.meta.dirname, '..')
 const repositoryRoot = path.resolve(appRoot, '../..')
 const sourceExtensions = new Set(['.css', '.js', '.jsx', '.mjs', '.styl', '.ts', '.tsx'])
 

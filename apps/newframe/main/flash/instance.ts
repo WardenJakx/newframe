@@ -1,6 +1,6 @@
-import type { Accounts } from '../accounts'
-import type { CanonicalStoreReader } from '../store/actions'
-import { createFlashService } from './index'
+import type { Accounts } from '../accounts/index.js'
+import type { CanonicalStoreReader } from '../store/actions.js'
+import { createFlashService } from './index.js'
 
 export function createProductionFlashService(
   canonicalStore: Pick<CanonicalStoreReader, 'getState'>,

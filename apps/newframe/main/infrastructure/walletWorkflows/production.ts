@@ -2,11 +2,11 @@ import { randomBytes } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 import log from 'electron-log'
 
-import type { WalletWorkflowAdapters } from '../../operations/walletWorkflows'
-import { getTokenDiscoveryProvider } from '../../portfolio'
-import type store from '../../store'
-import { openFileDialog } from '../../windows/dialog'
-import { createBlockExplorerOpener, openExternal } from '../../windows/window'
+import type { WalletWorkflowAdapters } from '../../operations/walletWorkflows.js'
+import { getTokenDiscoveryProvider } from '../../portfolio/index.js'
+import type store from '../../store/index.js'
+import { openFileDialog } from '../../windows/dialog.js'
+import { createBlockExplorerOpener, openExternal } from '../../windows/window.js'
 
 async function rpcMatchesChain(url: unknown, chainId: number) {
   if (typeof url !== 'string') return false

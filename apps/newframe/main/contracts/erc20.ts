@@ -1,6 +1,6 @@
 import { BrowserProvider, Contract, TransactionDescription } from 'ethers'
 import { addHexPrefix } from '@ethereumjs/util'
-import { erc20Interface } from '../../domain/evm'
+import { erc20Interface } from '../../domain/evm.js'
 
 export interface Erc20ProviderPort {
   sendAsync(payload: RPCRequestPayload, callback: Callback<RPCResponsePayload>): unknown
