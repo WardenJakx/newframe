@@ -11,10 +11,10 @@ import {
 } from '../../eslint.shared.mjs'
 
 const mainFiles = [
-  '*.{cjs,js,mjs,ts}',
+  '*.{js,mjs,ts}',
   'scripts/**/*.ts',
   'main/**/*.{js,ts}',
-  'build/**/*.{cjs,js}',
+  'build/**/*.{js,ts}',
   'test/support/**/*.{ts,tsx}'
 ]
 

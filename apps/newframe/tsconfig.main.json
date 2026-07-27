@@ -10,7 +10,8 @@
     "rewriteRelativeImportExtensions": true,
     "esModuleInterop": true,
     "rootDir": ".",
-    "noEmit": true,
+    "outDir": "./compiled",
+    "noEmit": false,
     "typeRoots": ["./node_modules/@types", "./@types"]
   },
   "include": [

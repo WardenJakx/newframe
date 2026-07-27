@@ -19,10 +19,10 @@ const extension = 'apps/newframe-extension'
 const ui = 'packages/ui'
 
 const newframeMainFiles = [
-  '*.{cjs,js,mjs,ts}',
+  '*.{js,mjs,ts}',
   'scripts/**/*.ts',
   'main/**/*.{js,ts}',
-  'build/**/*.{cjs,js}',
+  'build/**/*.{js,ts}',
   'test/support/**/*.{ts,tsx}'
 ]
 

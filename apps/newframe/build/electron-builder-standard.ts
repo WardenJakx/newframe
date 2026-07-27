@@ -1,10 +1,13 @@
 // build config for every platform and architecture EXCEPT linux arm64
 
-const baseConfig = require('./electron-builder-base.cjs')
+import type { Configuration } from 'electron-builder'
+
+import baseConfig from './electron-builder-base.ts'
+import notarizeApp from './notarize.ts'
 
 const config = {
   ...baseConfig,
-  afterSign: './build/notarize.cjs',
+  afterSign: notarizeApp,
   linux: {
     target: [
       {
@@ -37,10 +40,12 @@ const config = {
     requirements: 'build/electron-builder-requirements.txt'
   },
   win: {
-    publisherName: 'NewFrame Labs, Inc.',
+    signtoolOptions: {
+      publisherName: 'NewFrame Labs, Inc.'
+    },
     signAndEditExecutable: true,
     icon: 'build/icons/icon.png'
   }
-}
+} satisfies Configuration
 
-module.exports = config
+export default config
