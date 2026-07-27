@@ -3,7 +3,7 @@ import type { VisualStage } from '../types.ts'
 
 export const tradeLimitStage: VisualStage = {
   name: 'trade non-market e2e',
-  async run({ driver, tray }) {
+  async run({ driver, runtime, tray }) {
     const tradePage = await driver.openTradeTicket()
 
     await driver.ensureTradeSellSide(tradePage)
@@ -36,11 +36,14 @@ export const tradeLimitStage: VisualStage = {
 
     const latest = await driver.getAppState()
     const stored = order.orderId ? latest.main?.orders?.[order.orderId] : undefined
-    if (!stored?.open || stored.status !== 'accepted')
+    if (!stored?.open || stored.status !== 'accepted') {
       driver.fail('Limit Flash order filled or closed unexpectedly')
+    }
 
     const orderId = order.orderId
     if (!orderId) return driver.fail('The new limit Flash order has no order id')
+    runtime.evidence('limitOrderId', orderId)
+    runtime.evidence('limitOrderStatus', String(stored?.status))
     await driver.assertFlashOrderVisible(orderId)
     await driver.screenshot(tray, '22d-trade-limit-open.png')
     await driver.clearPanelAndOverlays()

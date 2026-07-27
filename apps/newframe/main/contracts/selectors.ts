@@ -1,7 +1,7 @@
 import log from 'electron-log'
 import { FunctionFragment, Interface } from 'ethers'
 
-import { fetchWithTimeout } from '../../resources/utils/fetch'
+import { fetchWithTimeout } from '../network/fetchWithTimeout'
 
 const OPENCHAIN_LOOKUP_URL = 'https://api.openchain.xyz/signature-database/v1/lookup'
 const SELECTOR_CACHE_TTL = 30 * 24 * 60 * 60 * 1000

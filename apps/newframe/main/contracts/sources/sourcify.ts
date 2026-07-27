@@ -1,6 +1,6 @@
 import log from 'electron-log'
 
-import { fetchWithTimeout } from '../../../resources/utils/fetch'
+import { fetchWithTimeout } from '../../network/fetchWithTimeout'
 
 import type { JsonFragment } from 'ethers'
 import type { ContractSource } from '..'

@@ -1,0 +1,10 @@
+{
+  "maximum": {
+    "tests": 1137,
+    "moduleMocks": 47,
+    "callbackTests": 133,
+    "mockCallAssertions": 314,
+    "noAssertionFiles": 0,
+    "misplacedScenarioFiles": 0
+  }
+}

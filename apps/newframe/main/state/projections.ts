@@ -1,9 +1,13 @@
 import type { CanonicalState } from '../store/state'
-import type {
-  SideTrayRendererState,
-  RendererProjection,
-  WalletRendererState
-} from '../../resources/state/projections'
+import {
+  WalletHomeCommandSchema,
+  WalletPanelNavigationEntrySchema,
+  WalletStatusNotificationSchema,
+  type WalletPanelNavigationEntry,
+  type SideTrayRendererState,
+  type RendererProjection,
+  type WalletRendererState
+} from '../../contracts/state/projections'
 
 type CanonicalMain = CanonicalState['main']
 
@@ -33,24 +37,11 @@ function projectWalletWindows(windows: CanonicalState['windows']): WalletRendere
     return previousWalletWindows
   }
 
-  const navigation = (entries: CanonicalState['windows']['panel']['nav']) =>
-    entries.map(({ view, data = {} }) => ({
-      view,
-      data: {
-        account: data.account,
-        accountId: data.accountId,
-        chain: data.chain,
-        dappDetails: data.dappDetails,
-        id: data.id,
-        notify: data.notify,
-        notifyData: data.notifyData,
-        request: data.request,
-        requestId: data.requestId,
-        showAddAccounts: data.showAddAccounts,
-        signer: data.signer,
-        step: data.step
-      }
-    }))
+  const navigation = (entries: CanonicalState['windows']['panel']['nav']): WalletPanelNavigationEntry[] =>
+    entries.flatMap((entry) => {
+      const result = WalletPanelNavigationEntrySchema.safeParse(entry)
+      return result.success ? [result.data] : []
+    })
 
   previousWalletWindowsInputs = inputs
   previousWalletWindows = {
@@ -74,10 +65,16 @@ function projectWalletView(view: CanonicalState['view']): WalletRendererState['v
   }
 
   previousWalletViewInput = view
+  const notifications = Object.fromEntries(
+    Object.entries(view.notifications).flatMap(([id, notification]) => {
+      const result = WalletStatusNotificationSchema.safeParse(notification)
+      return result.success ? [[id, result.data]] : []
+    })
+  )
   previousWalletView = {
     notify: view.notify,
     notifyData: view.notifyData,
-    notifications: view.notifications,
+    notifications,
     badge: view.badge
   }
   return previousWalletView
@@ -117,10 +114,11 @@ function projectWalletTray(tray: CanonicalState['tray']): WalletRendererState['t
   }
 
   previousWalletTrayInput = tray
+  const homeCommand = WalletHomeCommandSchema.safeParse(tray.homeCommand)
   previousWalletTray = {
     open: tray.open,
     initial: tray.initial,
-    homeCommand: tray.homeCommand
+    homeCommand: homeCommand.success ? homeCommand.data : null
   }
   return previousWalletTray
 }
@@ -148,7 +146,7 @@ export function projectWalletState(state: CanonicalState): WalletRendererState {
     orders: main.orders,
     origins: main.origins,
     permissions: main.permissions,
-    portfolioApiKey: main.portfolioApiKey,
+    portfolioApiKeyConfigured: main.portfolioApiKey.trim().length > 0,
     rates: main.rates,
     reveal: main.reveal,
     runtime: main.runtime,

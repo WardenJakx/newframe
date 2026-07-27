@@ -11,15 +11,16 @@ import {
 } from 'bun:test'
 
 import log from 'electron-log'
+import EventEmitter from 'events'
 import { parseUnits, toBeHex } from 'ethers'
 import { validate as validateUUID } from 'uuid'
 import { addHexPrefix, intToHex } from '@ethereumjs/util'
 import { SignTypedDataVersion } from '@metamask/eth-sig-util'
 
 import chainConfig from '../chains/config'
-import { gweiToHex } from '../../resources/utils'
-import { Type as SignerType } from '../../resources/domain/signer'
-import { NATIVE_CURRENCY } from '../../resources/constants'
+import { gweiToHex } from '../../domain/hex'
+import { Type as SignerType } from '../../domain/signer'
+import { NATIVE_CURRENCY } from '../../domain/token/constants'
 import { createAgentPrincipal, createRpcPrincipal } from '../authority'
 
 const address = '0x22dd63c3619818fdbc262c78baee43cb61e9cccf'
@@ -37,7 +38,7 @@ const internalPrincipal = createRpcPrincipal({
 
 let accountRequests: any = []
 let provider: any
-let accounts: any
+const accounts: any = {}
 let connection: any
 let store: any
 let hasSubscriptionPermission: any
@@ -128,12 +129,8 @@ const expectQueuedRequestRejection = (
 }
 
 mock.module('../chains', () => {
-  const chains = { send: mock(), syncDataEmit: mock(), on: mock(), refreshGasFees: mock() }
+  const chains = { send: mock(), syncDataEmit: mock(), on: mock(), off: mock(), refreshGasFees: mock() }
   return { default: chains, ...chains }
-})
-mock.module('../accounts', () => {
-  const accounts = {}
-  return { default: accounts, ...accounts }
 })
 mock.module('../reveal', () => {
   const reveal = {
@@ -154,15 +151,14 @@ mock.module('./subscriptions', () => ({
 beforeAll(async () => {
   log.transports.console.level = false
 
-  provider = (await import('./index')).default as any
-  const accountsModule = (await import('../accounts')) as any
   const connectionModule = (await import('../chains')) as any
-  accounts = accountsModule.default || accountsModule
   connection = connectionModule.default || connectionModule
   store = (await import('../store')).default as any
   ;({ hasSubscriptionPermission } = await import('./subscriptions'))
 
   accounts.getAccounts = () => [address]
+  accounts.current = () => ({ id: address, getAccounts: () => [address] })
+  accounts.get = () => undefined
   accounts.routeRequest = (receivedPrincipal: unknown, req: any, res: any) => {
     expect(receivedPrincipal).toBe(principal)
     store.setState((state: any) => {
@@ -178,9 +174,22 @@ beforeAll(async () => {
       res()
     }
   }
+
+  const { Provider } = await import('./index')
+  const { createProviderStatePort } = await import('./statePort')
+  provider = new Provider({
+    accounts,
+    chains: connection,
+    proxy: new EventEmitter() as any,
+    state: createProviderStatePort(store),
+    store,
+    reveal: { resolveEntityType: mock(async () => 'unknown' as const) }
+  }) as any
+  provider.start()
 })
 
 afterAll(() => {
+  provider.dispose()
   log.transports.console.level = 'debug'
 })
 
@@ -2233,7 +2242,7 @@ describe('#assetsChanged', () => {
       expect(payload.params.subscription).toBe(subscription.id)
       expect(payload.params.result).toEqual(assets)
 
-      expect(hasSubscriptionPermission).toHaveBeenCalledWith('assetsChanged', address, subscription)
+      expect(hasSubscriptionPermission).toHaveBeenCalledWith('assetsChanged', address, subscription, store)
 
       done()
     })

@@ -1,158 +1,123 @@
+import type { IncomingMessage } from 'http'
 import { v5 as uuidv5 } from 'uuid'
-import { IncomingMessage } from 'http'
 
-import accounts, { AccessRequest } from '../accounts'
-import store from '../store'
+import type { Accounts } from '../accounts'
+import type { CanonicalStoreReader } from '../store/actions'
 import { hasPrincipalCapability, type RpcPrincipal } from '../authority'
+import {
+  chainIdFromRequest,
+  decideOriginAuthorization,
+  normalizeRequestChainId,
+  parseExtensionIdentity,
+  parseOriginName,
+  projectOriginUpdate,
+  type FrameExtension
+} from '../../domain/origin'
 
 import type { Permission } from '../store/state'
+import type { AccessRequest } from '../../contracts/requests'
 
-const isDev = () => process.env.NODE_ENV === 'development'
+export type { FrameExtension } from '../../domain/origin'
 
-const activeExtensionChecks: Record<string, Promise<boolean>> = {}
-const activePermissionChecks: Record<string, Promise<Permission | undefined>> = {}
-const extensionPrefixes = {
-  chrome: 'chrome-extension',
-  firefox: 'moz-extension',
-  safari: 'safari-web-extension'
+interface OriginStorePort {
+  getOrigin(id: string): { name: string; chain?: { id: number } } | undefined
+  getKnownEthereumChainIds(): ReadonlySet<number>
+  initializeOrigin(id: string, origin: { name: string; chain: { id: number; type: 'ethereum' } }): void
+  touchOrigin(id: string): void
+  switchOriginChain(id: string, chainId: number): void
+  getPermission(address: Address, origin: string): Permission | undefined
+  getKnownExtension(id: string): boolean | undefined
+  subscribeKnownExtension(id: string, handler: (allowed: boolean) => void): () => void
+  notifyExtension(extension: FrameExtension): void
 }
 
-const protocolRegex = /^(?:ws|http)s?:\/\//
-const hexChainIdRegex = /^0x[0-9a-f]+$/i
-const decimalChainIdRegex = /^[0-9]+$/
-const caipChainIdRegex = /^eip155:([0-9]+)$/i
-
-interface OriginUpdateResult {
-  payload: RPCRequestPayload
-  chainId: string
+interface AccountAccessPort {
+  current(): { address: Address } | null | undefined
+  routeRequest(principal: RpcPrincipal, request: AccessRequest, callback: () => void): void
 }
 
-type Browser = 'chrome' | 'firefox' | 'safari'
-
-export interface FrameExtension {
-  browser: Browser
-  id: string
+export interface OriginsServiceDependencies {
+  store: OriginStorePort
+  accounts: AccountAccessPort
+  hasInternalStateCapability(principal: RpcPrincipal): boolean
+  development(): boolean
 }
 
-const extensionIdentities = ['newframe-extension', 'frame-extension']
+export function createOriginsService(dependencies: OriginsServiceDependencies) {
+  const activeExtensionChecks = new Map<string, Promise<boolean>>()
+  const activePermissionChecks = new Map<string, Promise<Permission | undefined>>()
 
-const storeApi = {
-  getPermission: (address: Address, origin: string) => {
-    const permissions: Record<string, Permission> = store.getState().main.permissions[address] || {}
-    return Object.values(permissions).find((p) => p.origin === origin)
-  },
-  getKnownExtension: (id: string) => store.getState().main.knownExtensions[id] as boolean
-}
+  const updateOrigin = (requestPayload: JSONRPCRequestPayload, origin: string, connectionMessage = false) => {
+    const originId = uuidv5(origin, uuidv5.DNS)
+    const existingOrigin = dependencies.store.getOrigin(originId)
+    const result = projectOriginUpdate({
+      payload: requestPayload,
+      originId,
+      existingChainId: existingOrigin?.chain?.id,
+      knownEthereumChainIds: dependencies.store.getKnownEthereumChainIds(),
+      connectionMessage
+    })
 
-export function parseOrigin(origin?: string) {
-  if (!origin) return 'Unknown'
-
-  return origin.replace(protocolRegex, '')
-}
-
-function invalidOrigin(origin: string) {
-  return origin !== origin.replace(/[^0-9a-z/:.[\]-]/gi, '')
-}
-
-export function normalizeRequestChainId(chainId: unknown) {
-  const value = Array.isArray(chainId) ? chainId[0] : chainId
-
-  if (typeof value === 'number' && Number.isInteger(value)) {
-    return `0x${value.toString(16)}`
-  }
-
-  if (typeof value !== 'string' || !value) return undefined
-
-  const trimmed = value.trim()
-  const caipMatch = trimmed.match(caipChainIdRegex)
-
-  if (caipMatch) {
-    return `0x${parseInt(caipMatch[1], 10).toString(16)}`
-  }
-
-  if (hexChainIdRegex.test(trimmed)) {
-    return `0x${parseInt(trimmed, 16).toString(16)}`
-  }
-
-  if (decimalChainIdRegex.test(trimmed)) {
-    return `0x${parseInt(trimmed, 10).toString(16)}`
-  }
-
-  return trimmed
-}
-
-export function parseRequestChainId(req: IncomingMessage) {
-  const headerChainId = normalizeRequestChainId(
-    req.headers['x-newframe-chain-id'] || req.headers['x-frame-chain-id']
-  )
-
-  if (headerChainId) return headerChainId
-
-  try {
-    const url = new URL(req.url || '/', 'http://127.0.0.1')
-    return normalizeRequestChainId(url.searchParams.get('chainId') || url.searchParams.get('chain'))
-  } catch {
-    return undefined
-  }
-}
-
-function knownEthereumChainId(chainId?: string) {
-  if (!chainId || !hexChainIdRegex.test(chainId)) return undefined
-
-  const id = parseInt(chainId, 16)
-
-  if (!Number.isInteger(id)) return undefined
-
-  return store.getState().main.networks.ethereum[id] ? id : undefined
-}
-
-async function getPermission(
-  address: Address,
-  origin: string,
-  payload: RPCRequestPayload,
-  principal: RpcPrincipal
-) {
-  const permission = storeApi.getPermission(address, origin)
-
-  return permission || requestPermission(address, payload, principal)
-}
-
-async function requestExtensionPermission(extension: FrameExtension) {
-  if (extension.id in activeExtensionChecks) {
-    return activeExtensionChecks[extension.id]
-  }
-
-  const result = new Promise<boolean>((resolve) => {
-    const unsubscribe = store.subscribe(
-      (state) => state.main.knownExtensions[extension.id],
-      (isAllowed) => {
-        const isActive = extension.id in activeExtensionChecks
-
-        // wait for a response
-        if (isActive && typeof isAllowed !== 'undefined') {
-          delete activeExtensionChecks[extension.id]
-          unsubscribe()
-          resolve(isAllowed)
-        }
+    if (result.mutation?.type === 'initialize') {
+      dependencies.store.initializeOrigin(originId, {
+        name: origin,
+        chain: { id: result.mutation.chainId, type: 'ethereum' }
+      })
+    } else if (result.mutation?.type === 'touch') {
+      dependencies.store.touchOrigin(originId)
+      if (result.mutation.switchToChainId !== undefined) {
+        dependencies.store.switchOriginChain(originId, result.mutation.switchToChainId)
       }
-    )
-  })
+    }
 
-  activeExtensionChecks[extension.id] = result
-  store.getState().notify('extensionConnect', extension)
-
-  return result
-}
-
-async function requestPermission(address: Address, fullPayload: RPCRequestPayload, principal: RpcPrincipal) {
-  const { _origin: originId, ...payload } = fullPayload
-  const permissionCheckId = `${address}:${originId}`
-
-  if (permissionCheckId in activePermissionChecks) {
-    return activePermissionChecks[permissionCheckId]
+    return { payload: result.payload as RPCRequestPayload, chainId: result.chainId }
   }
 
-  const result = new Promise<Permission | undefined>((resolve) => {
+  const parseFrameExtension = (req: IncomingMessage) =>
+    parseExtensionIdentity({
+      origin: req.headers.origin,
+      requestUrl: req.url,
+      development: dependencies.development()
+    })
+
+  const requestExtensionPermission = (extension: FrameExtension) => {
+    const activeCheck = activeExtensionChecks.get(extension.id)
+    if (activeCheck) return activeCheck
+
+    const result = new Promise<boolean>((resolve) => {
+      const unsubscribe = dependencies.store.subscribeKnownExtension(extension.id, (isAllowed) => {
+        if (!activeExtensionChecks.has(extension.id)) return
+        activeExtensionChecks.delete(extension.id)
+        unsubscribe()
+        resolve(isAllowed)
+      })
+    })
+
+    activeExtensionChecks.set(extension.id, result)
+    dependencies.store.notifyExtension(extension)
+    return result
+  }
+
+  const isKnownExtension = async (extension: FrameExtension) => {
+    if (extension.browser === 'chrome' || extension.browser === 'safari') return true
+
+    const extensionPermission = dependencies.store.getKnownExtension(extension.id)
+    return extensionPermission ?? requestExtensionPermission(extension)
+  }
+
+  const requestPermission = (address: Address, fullPayload: RPCRequestPayload, principal: RpcPrincipal) => {
+    const { _origin: originId, ...payload } = fullPayload
+    const permissionCheckId = `${address}:${originId}`
+    const activeCheck = activePermissionChecks.get(permissionCheckId)
+    if (activeCheck) return activeCheck
+
+    let resolveCheck!: (permission: Permission | undefined) => void
+    let rejectCheck!: (error: unknown) => void
+    const result = new Promise<Permission | undefined>((resolve, reject) => {
+      resolveCheck = resolve
+      rejectCheck = reject
+    })
+    activePermissionChecks.set(permissionCheckId, result)
     const request: AccessRequest = {
       payload,
       handlerId: originId,
@@ -161,127 +126,76 @@ async function requestPermission(address: Address, fullPayload: RPCRequestPayloa
       account: address
     }
 
-    accounts.routeRequest(principal, request, () => {
-      const { name: originName } = store.getState().main.origins[originId]
-      const permission = storeApi.getPermission(address, originName)
+    try {
+      dependencies.accounts.routeRequest(principal, request, () => {
+        const originName = dependencies.store.getOrigin(originId)?.name || 'Unknown'
+        const permission = dependencies.store.getPermission(address, originName)
 
-      delete activePermissionChecks[permissionCheckId]
-      resolve(permission)
-    })
-  })
-
-  activePermissionChecks[permissionCheckId] = result
-
-  return result
-}
-
-export function updateOrigin(
-  requestPayload: JSONRPCRequestPayload,
-  origin: string,
-  connectionMessage = false
-): OriginUpdateResult {
-  const originId = uuidv5(origin, uuidv5.DNS)
-  const existingOrigin = store.getState().main.origins[originId]
-
-  const requestedChainId = normalizeRequestChainId(requestPayload.chainId)
-  const requestedKnownChainId = knownEthereumChainId(requestedChainId)
-  const defaultChainId = requestedKnownChainId || existingOrigin?.chain.id || 1
-
-  if (!connectionMessage) {
-    // the extension will attempt to send messages (eth_chainId and net_version) in order
-    // to connect. we don't want to store these origins as they'll come from every site
-    // the user visits in their browser
-
-    if (existingOrigin) {
-      store.getState().addOriginRequest(originId)
-      if (requestedKnownChainId && existingOrigin.chain.id !== requestedKnownChainId) {
-        store.getState().switchOriginChain(originId, requestedKnownChainId, 'ethereum')
-      }
-    } else {
-      store.getState().initOrigin(originId, {
-        name: origin,
-        chain: {
-          id: defaultChainId,
-          type: 'ethereum'
-        }
+        activePermissionChecks.delete(permissionCheckId)
+        resolveCheck(permission)
       })
+    } catch (error) {
+      activePermissionChecks.delete(permissionCheckId)
+      rejectCheck(error)
     }
+    return result
   }
 
-  const chainId = requestedChainId || `0x${defaultChainId.toString(16)}`
+  const isTrusted = async (payload: RPCRequestPayload, principal: RpcPrincipal) => {
+    const originName = dependencies.store.getOrigin(payload._origin)?.name || 'Unknown'
+    const currentAccount = dependencies.accounts.current()
+    const permission = currentAccount
+      ? dependencies.store.getPermission(currentAccount.address, originName)
+      : undefined
+    const decision = decideOriginAuthorization({
+      method: payload.method,
+      originName,
+      accountSelected: Boolean(currentAccount),
+      providerPermission: permission?.provider,
+      hasInternalStateCapability: dependencies.hasInternalStateCapability(principal)
+    })
 
-  const payload = {
-    ...requestPayload,
-    _origin: originId
+    if (decision === 'allow') return true
+    if (decision === 'deny' || !currentAccount) return false
+
+    return Boolean((await requestPermission(currentAccount.address, payload, principal))?.provider)
   }
 
-  if (requestPayload.chainId || connectionMessage) {
-    payload.chainId = chainId
-  }
-
-  return {
-    payload,
-    chainId
-  }
+  return { isKnownExtension, isTrusted, parseFrameExtension, updateOrigin }
 }
 
-export function parseFrameExtension(req: IncomingMessage): FrameExtension | undefined {
-  const origin = req.headers.origin || ''
+export const parseOrigin = parseOriginName
+export { normalizeRequestChainId }
+export const parseRequestChainId = (req: IncomingMessage) => chainIdFromRequest(req.headers, req.url)
 
-  const query = new URLSearchParams((req.url || '').replace('/', ''))
-  const hasExtensionIdentity = extensionIdentities.includes(query.get('identity') || '')
-
-  const trustedChromeExtensionIds = [
-    // Production Chrome Web Store ID hidden until a replacement listing exists:
-    // 'ldcoohedfbjoobcadoglnnmmfbdlmmhf',
-    'jdlcmcidcpckmaldjiacnbjeajgnmmgj' // local unpacked build
-  ]
-
-  const chromeExtensionId = trustedChromeExtensionIds.find(
-    (id) => origin === `${extensionPrefixes.chrome}://${id}`
-  )
-
-  if (chromeExtensionId) {
-    return { browser: 'chrome', id: chromeExtensionId }
-  } else if (origin.startsWith(`${extensionPrefixes.chrome}://`) && isDev() && hasExtensionIdentity) {
-    // Match Chrome in dev
-    const extensionId = origin.substring(extensionPrefixes.chrome.length + 3)
-    return { browser: 'chrome', id: extensionId }
-  } else if (origin.startsWith(`${extensionPrefixes.firefox}://`) && hasExtensionIdentity) {
-    // Match production Firefox
-    const extensionId = origin.substring(extensionPrefixes.firefox.length + 3)
-    return { browser: 'firefox', id: extensionId }
-  } else if (origin.startsWith(`${extensionPrefixes.safari}://`) && isDev() && hasExtensionIdentity) {
-    // Match Safari in dev only
-    return { browser: 'safari', id: 'newframe-dev' }
-  }
-}
-
-export async function isKnownExtension(extension: FrameExtension) {
-  if (extension.browser === 'chrome' || extension.browser === 'safari') return true
-
-  const extensionPermission = storeApi.getKnownExtension(extension.id)
-
-  return extensionPermission ?? requestExtensionPermission(extension)
-}
-
-export async function isTrusted(payload: RPCRequestPayload, principal: RpcPrincipal) {
-  // Permission granted to unknown origins only persist until Newframe is closed, they are not permanent
-  const { name: originName } = store.getState().main.origins[payload._origin] as { name: string }
-  const currentAccount = accounts.current()
-
-  if (
-    payload.method === 'wallet_getEthereumChains' &&
-    hasPrincipalCapability(principal, 'wallet:internal-state')
-  ) {
-    return true
+export function createProductionOriginsService(store: CanonicalStoreReader, accounts: Accounts) {
+  const productionStore: OriginStorePort = {
+    getOrigin: (id) => store.getState().main.origins[id],
+    getKnownEthereumChainIds: () => new Set(Object.keys(store.getState().main.networks.ethereum).map(Number)),
+    initializeOrigin: (id, origin) => store.getState().initOrigin(id, origin),
+    touchOrigin: (id) => store.getState().addOriginRequest(id),
+    switchOriginChain: (id, chainId) => store.getState().switchOriginChain(id, chainId, 'ethereum'),
+    getPermission: (address, origin) => {
+      const permissions: Record<string, Permission> = store.getState().main.permissions[address] || {}
+      return Object.values(permissions).find((permission) => permission.origin === origin)
+    },
+    getKnownExtension: (id) => store.getState().main.knownExtensions[id] as boolean | undefined,
+    subscribeKnownExtension: (id, handler) =>
+      store.subscribe(
+        (state) => state.main.knownExtensions[id],
+        (allowed) => {
+          if (typeof allowed !== 'undefined') handler(allowed)
+        }
+      ),
+    notifyExtension: (extension) => store.getState().notify('extensionConnect', extension)
   }
 
-  if (invalidOrigin(originName) || !currentAccount) {
-    return false
-  }
-
-  const permission = await getPermission(currentAccount.address, originName, payload, principal)
-
-  return !!permission?.provider
+  return createOriginsService({
+    store: productionStore,
+    accounts,
+    hasInternalStateCapability: (principal) => hasPrincipalCapability(principal, 'wallet:internal-state'),
+    development: () => process.env.NODE_ENV === 'development'
+  })
 }
+
+export type OriginsService = ReturnType<typeof createOriginsService>

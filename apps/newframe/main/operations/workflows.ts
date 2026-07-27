@@ -1,11 +1,14 @@
 import log from 'electron-log'
 
-import accounts from '../accounts'
-import nameResolution from '../nameResolution'
-import provider from '../provider'
-import { arraysEqual } from '../../resources/utils'
-
-export function selectAccount(accountId: string) {
+import type { Accounts } from '../accounts'
+import type { NameResolutionService } from '../nameResolution'
+import type { Provider } from '../provider'
+import { arraysEqual } from '../../domain/collections'
+export function selectAccount(
+  accountId: string,
+  accounts: Pick<Accounts, 'getSelectedAddresses' | 'setSigner'>,
+  provider: Pick<Provider, 'accountsChanged'>
+) {
   const previousAddresses = accounts.getSelectedAddresses()
 
   return new Promise<Account>((resolve, reject) => {
@@ -31,7 +34,7 @@ export function selectAccount(accountId: string) {
   })
 }
 
-export async function resolveName(name: string) {
+export async function resolveName(name: string, nameResolution: NameResolutionService) {
   log.debug('Resolving name', { name })
 
   try {

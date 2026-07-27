@@ -4,9 +4,9 @@ import { addHexPrefix } from '@ethereumjs/util'
 
 import { deriveHDAccounts } from './derive'
 import crypt from '../../crypt'
-import { TransactionData } from '../../../resources/domain/transaction'
-import { getSignerDisplayType } from '../../../resources/domain/signer'
-import type { TypedMessage } from '../../accounts/types'
+import { TransactionData } from '../../../domain/transaction'
+import { getSignerDisplayType } from '../../../domain/signer'
+import type { TypedMessage } from '../../../contracts/requests'
 
 export interface SignerSummary {
   id: string

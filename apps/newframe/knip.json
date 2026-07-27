@@ -1,17 +1,26 @@
 {
   "entry": [
     "main/index.ts",
-    "app/*/index.tsx",
-    "resources/bridge/index.ts",
+    "renderer/*/index.tsx",
+    "preload/index.ts",
     "main/externalData/balances/worker.ts",
     "main/signers/hot/*/worker.ts",
     "main/windows/viewPreload.ts",
     "scripts/*.ts",
     "build/**/*.js",
-    "{main,app,resources,scripts}/**/*.{test,spec}.{ts,tsx}",
+    "{main,renderer,domain,contracts,preload,scripts}/**/*.{test,spec}.{ts,tsx}",
     "test/e2e/**/*.ts"
   ],
-  "project": ["main/**", "app/**", "resources/**", "scripts/**", "build/**", "test/**"],
+  "project": [
+    "main/**",
+    "renderer/**",
+    "domain/**",
+    "contracts/**",
+    "preload/**",
+    "scripts/**",
+    "build/**",
+    "test/**"
+  ],
   "ignoreDependencies": ["node-gyp", "buffer", "events"],
   "ignoreBinaries": ["ditto"]
 }

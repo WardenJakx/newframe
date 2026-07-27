@@ -11,8 +11,8 @@ const bundleDir = resolve(cwd, 'bundle')
 const tempRoot = resolve(bundleDir, '.bun-renderer')
 
 const renderers: Record<string, Renderer> = {
-  tray: { name: 'tray', entrypoint: 'app/tray/index.html' },
-  sidetray: { name: 'sidetray', entrypoint: 'app/sidetray/index.html' }
+  tray: { name: 'tray', entrypoint: 'renderer/tray/index.html' },
+  sidetray: { name: 'sidetray', entrypoint: 'renderer/sidetray/index.html' }
 }
 
 function extractScriptNonce(html: string, entrypoint: string) {

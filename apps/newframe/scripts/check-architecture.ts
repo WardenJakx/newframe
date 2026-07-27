@@ -1,5 +1,6 @@
 import { existsSync } from 'node:fs'
 import { readdir, readFile } from 'node:fs/promises'
+import { builtinModules } from 'node:module'
 import path from 'node:path'
 
 const appRoot = path.resolve(__dirname, '..')
@@ -23,9 +24,11 @@ async function walk(directory: string): Promise<string[]> {
 
 async function sourceFiles() {
   const roots = [
-    path.join(appRoot, 'app'),
     path.join(appRoot, 'main'),
-    path.join(appRoot, 'resources'),
+    path.join(appRoot, 'preload'),
+    path.join(appRoot, 'renderer'),
+    path.join(appRoot, 'contracts'),
+    path.join(appRoot, 'domain'),
     path.join(appRoot, 'test'),
     path.join(repositoryRoot, 'apps/newframe-extension/src')
   ]
@@ -37,7 +40,7 @@ async function sourceFiles() {
         sourceExtensions.has(path.extname(file)) &&
         !file.includes(`${path.sep}dist${path.sep}`) &&
         !file.includes(path.join('packages', 'ui', 'src', 'styled-system')) &&
-        !file.includes(path.join('apps', 'newframe', 'resources', 'styled-system')) &&
+        !file.includes(path.join('apps', 'newframe', 'generated', 'styled-system')) &&
         !file.includes(path.join('apps', 'newframe-extension', 'src', 'styled-system'))
     )
   const manifests = [
@@ -64,30 +67,29 @@ const isTestSupportFile = (file: string) =>
   /(?:^|\/)[^/]+\.(?:test-support|test-fixture)\./.test(file)
 const isProductionFile = (file: string) => !isTestFile(file) && !isTestSupportFile(file)
 const productionRenderer = (file: string) =>
-  isProductionFile(file) &&
-  (under(path.join('apps', 'newframe', 'app'))(file) ||
-    (under(path.join('apps', 'newframe', 'resources'))(file) &&
-      file !== path.join('apps', 'newframe', 'resources', 'bridge', 'index.ts')))
+  isProductionFile(file) && under(path.join('apps', 'newframe', 'renderer'))(file)
 const productionMain = (file: string) =>
   isProductionFile(file) && under(path.join('apps', 'newframe', 'main'))(file)
 const productionApplication = (file: string) =>
   isProductionFile(file) &&
-  ['app', 'main', 'resources'].some((root) => under(path.join('apps', 'newframe', root))(file))
+  ['contracts', 'domain', 'main', 'preload', 'renderer'].some((root) =>
+    under(path.join('apps', 'newframe', root))(file)
+  )
 const productionMainOutsideAccountGate = (file: string) =>
   productionMain(file) && !under(path.join('apps', 'newframe', 'main', 'accounts'))(file)
 const anyFile = () => true
 const migratedPilotFiles = new Set([
-  path.join('apps', 'newframe', 'app', 'tray', 'Home', 'components', 'HomeHeaderView.tsx'),
-  path.join('apps', 'newframe', 'app', 'tray', 'Home', 'components', 'HomeMenuView.tsx')
+  path.join('apps', 'newframe', 'renderer', 'tray', 'Home', 'components', 'HomeHeaderView.tsx'),
+  path.join('apps', 'newframe', 'renderer', 'tray', 'Home', 'components', 'HomeMenuView.tsx')
 ])
 const migratedSharedSideTrayFiles = new Set([
-  path.join('apps', 'newframe', 'resources', 'Components', 'ChainTokenIcon.tsx'),
-  path.join('apps', 'newframe', 'resources', 'Components', 'BalanceRange.tsx'),
-  path.join('apps', 'newframe', 'resources', 'Components', 'TokenOptionRow.tsx'),
-  path.join('apps', 'newframe', 'resources', 'Components', 'TokenSelector.tsx')
+  path.join('apps', 'newframe', 'renderer', 'shared', 'ui', 'ChainTokenIcon.tsx'),
+  path.join('apps', 'newframe', 'renderer', 'shared', 'ui', 'BalanceRange.tsx'),
+  path.join('apps', 'newframe', 'renderer', 'shared', 'ui', 'TokenOptionRow.tsx'),
+  path.join('apps', 'newframe', 'renderer', 'shared', 'ui', 'TokenSelector.tsx')
 ])
 const migratedSideTrayFiles = (file: string) =>
-  under(path.join('apps', 'newframe', 'app', 'sidetray'))(file) || migratedSharedSideTrayFiles.has(file)
+  under(path.join('apps', 'newframe', 'renderer', 'sidetray'))(file) || migratedSharedSideTrayFiles.has(file)
 const extensionCompositionFiles = new Set([
   path.join('apps', 'newframe-extension', 'src', 'settings', 'ChoiceGrid.tsx'),
   path.join('apps', 'newframe-extension', 'src', 'settings', 'SettingsPanel.tsx')
@@ -154,11 +156,198 @@ function lineNumber(source: string, index: number) {
   return source.slice(0, index).split('\n').length
 }
 
+const applicationRoot = path.join('apps', 'newframe')
+const applicationLayers = ['contracts', 'domain', 'generated', 'main', 'preload', 'renderer'] as const
+type ApplicationLayer = (typeof applicationLayers)[number]
+const mainRoot = path.join(applicationRoot, 'main')
+const singletonBoundaryExclusions = [
+  'composition',
+  'infrastructure',
+  'signers',
+  'store',
+  'updater',
+  'windows'
+]
+const applicationOwnedMainModule = (file: string) =>
+  productionMain(file) &&
+  file !== path.join(mainRoot, 'index.ts') &&
+  !singletonBoundaryExclusions.some((directory) => under(path.join(mainRoot, directory))(file))
+const broadProductionServiceRoots = ['biometrics', 'signers', 'store', 'updater', 'vault', 'windows'].map(
+  (module) => path.join(mainRoot, module)
+)
+const narrowProductionTypeRoots = [
+  path.join(mainRoot, 'signers', 'Signer'),
+  path.join(mainRoot, 'store', 'actions'),
+  path.join(mainRoot, 'store', 'state')
+]
+
+const isModuleOrDescendant = (target: string, root: string) =>
+  target === root || target.startsWith(`${root}${path.sep}`)
+
+function isBroadProductionService(target: string) {
+  const normalized = normalizedModuleRoot(target)
+  if (narrowProductionTypeRoots.some((root) => isModuleOrDescendant(normalized, root))) return false
+  return broadProductionServiceRoots.some((root) => isModuleOrDescendant(normalized, root))
+}
+
+function layerFor(file: string): ApplicationLayer | undefined {
+  return applicationLayers.find((layer) => under(path.join(applicationRoot, layer))(file))
+}
+
+function importedApplicationPath(file: string, specifier: string): string | undefined {
+  if (specifier.startsWith('.')) {
+    return path.normalize(path.join(path.dirname(file), specifier))
+  }
+
+  const normalized = specifier.replaceAll('\\', '/')
+  const applicationMarker = `${applicationRoot.replaceAll(path.sep, '/')}/`
+  const markerIndex = normalized.indexOf(applicationMarker)
+  if (markerIndex !== -1) {
+    return path.normalize(normalized.slice(markerIndex))
+  }
+
+  const alias = normalized.match(
+    /^(?:@newframe\/app|@newframe-app|@newframe|#newframe|@app)\/(contracts|domain|generated|main|preload|renderer)(?:\/(.*))?$/
+  )
+  if (alias) return path.join(applicationRoot, alias[1], alias[2] || '')
+
+  return undefined
+}
+
+function importedLayer(file: string, specifier: string): ApplicationLayer | undefined {
+  const target = importedApplicationPath(file, specifier)
+  return target ? layerFor(target) : undefined
+}
+
+function normalizedModuleRoot(target: string) {
+  const withoutTrailingSeparator = target.replace(/[\\/]+$/, '')
+  const withoutExtension = withoutTrailingSeparator.replace(/\.(?:css|js|jsx|mjs|styl|ts|tsx)$/, '')
+  return withoutExtension.endsWith(`${path.sep}index`)
+    ? withoutExtension.slice(0, -`${path.sep}index`.length)
+    : withoutExtension
+}
+
+const nodeBuiltinRoots = new Set(
+  builtinModules.map((specifier) => specifier.replace(/^node:/, '').split('/')[0])
+)
+const nodePolyfillPackages = new Set([
+  'browserify-fs',
+  'crypto-browserify',
+  'path-browserify',
+  'process-browser',
+  'stream-browserify'
+])
+
+function isNodeRuntimeSpecifier(specifier: string) {
+  if (specifier.startsWith('node:')) return true
+  const root = specifier.split('/')[0]
+  return nodeBuiltinRoots.has(root) || nodePolyfillPackages.has(root)
+}
+
+function isPortableRuntimeSpecifier(specifier: string) {
+  return (
+    /^(?:electron(?:\/|$)|react(?:-dom)?(?:\/|$)|zustand(?:\/|$))/.test(specifier) ||
+    isNodeRuntimeSpecifier(specifier)
+  )
+}
+
+type ModuleSpecifier = { index: number; specifier: string }
+
+export function extractModuleSpecifiers(source: string): ModuleSpecifier[] {
+  const matches = source.matchAll(
+    /\b(?:import|export)\s+(?:type\s+)?(?:[^'";]*?\bfrom\s*)?(['"])([^'"]+)\1|\b(?:import|require)\s*\(\s*(['"])([^'"]+)\3\s*\)/g
+  )
+
+  return Array.from(matches, (match) => ({
+    index: match.index,
+    specifier: match[2] || match[4]
+  }))
+}
+
+export function checkDependencyDirection(file: string, source: string) {
+  const sourceLayer = layerFor(file)
+  if (!sourceLayer) return []
+  // Renderer tests and fixtures execute in the renderer project and must obey
+  // the same process boundary as production renderer code. Otherwise a
+  // test-only import can normalize or reintroduce coupling to main/preload.
+  if (!isProductionFile(file) && sourceLayer !== 'renderer') return []
+  const production = isProductionFile(file)
+
+  const violations: string[] = []
+
+  for (const moduleSpecifier of extractModuleSpecifiers(source)) {
+    const { specifier } = moduleSpecifier
+    const targetLayer = importedLayer(file, specifier)
+    const target = importedApplicationPath(file, specifier)
+    const line = lineNumber(source, moduleSpecifier.index)
+
+    if (applicationOwnedMainModule(file) && target && isBroadProductionService(target)) {
+      violations.push(
+        `${file}:${line} application-owned main modules must receive canonical store and production services through capability ports`
+      )
+    }
+
+    if (sourceLayer === 'renderer' && (targetLayer === 'main' || targetLayer === 'preload')) {
+      violations.push(`${file}:${line} renderer cannot import ${targetLayer}`)
+    }
+    if (
+      sourceLayer === 'main' &&
+      (targetLayer === 'renderer' || targetLayer === 'preload' || targetLayer === 'generated')
+    ) {
+      violations.push(`${file}:${line} main cannot import ${targetLayer}`)
+    }
+    if (sourceLayer === 'preload' && targetLayer && targetLayer !== 'contracts') {
+      violations.push(`${file}:${line} preload may only import contracts`)
+    }
+    if (
+      production &&
+      (sourceLayer === 'contracts' || sourceLayer === 'domain') &&
+      targetLayer &&
+      ['main', 'preload', 'renderer', 'generated'].includes(targetLayer)
+    ) {
+      violations.push(`${file}:${line} ${sourceLayer} cannot import ${targetLayer}`)
+    }
+    if (
+      production &&
+      (sourceLayer === 'contracts' || sourceLayer === 'domain') &&
+      isPortableRuntimeSpecifier(specifier)
+    ) {
+      violations.push(`${file}:${line} ${sourceLayer} cannot import runtime dependency ${specifier}`)
+    }
+    if (
+      production &&
+      sourceLayer === 'renderer' &&
+      (/^electron(?:\/|$)/.test(specifier) || isNodeRuntimeSpecifier(specifier))
+    ) {
+      violations.push(`${file}:${line} renderer cannot import runtime dependency ${specifier}`)
+    }
+    if (
+      production &&
+      sourceLayer === 'preload' &&
+      !targetLayer &&
+      !specifier.startsWith('.') &&
+      specifier !== 'electron'
+    ) {
+      violations.push(`${file}:${line} preload may only import Electron and contracts`)
+    }
+  }
+
+  return violations
+}
+
 async function main() {
+  for (const removedRoot of ['app', 'resources']) {
+    if (existsSync(path.join(appRoot, removedRoot))) {
+      console.error(`Architecture violation: ambiguous legacy root still exists: ${removedRoot}`)
+      process.exit(1)
+    }
+  }
+
   const files = await sourceFiles()
   const violations: string[] = []
 
   for (const { file, source } of files) {
+    violations.push(...checkDependencyDirection(file, source))
     for (const rule of rules) {
       if (!rule.files(file)) continue
       const match = source.match(rule.pattern)
@@ -173,8 +362,8 @@ async function main() {
     if (
       file.endsWith('.css') &&
       (uiSource(file) ||
-        under(path.join('apps', 'newframe', 'app', 'tray'))(file) ||
-        under(path.join('apps', 'newframe', 'resources', 'Components'))(file) ||
+        under(path.join('apps', 'newframe', 'renderer', 'tray'))(file) ||
+        under(path.join('apps', 'newframe', 'renderer', 'shared', 'ui'))(file) ||
         under(path.join('apps', 'newframe-extension', 'src', 'settings'))(file))
     ) {
       violations.push(`${file}: component styles must be authored with Panda in the owning TypeScript file`)
@@ -303,7 +492,9 @@ async function main() {
   process.exit(1)
 }
 
-void main().catch((error) => {
-  console.error(error)
-  process.exit(1)
-})
+if (import.meta.main) {
+  void main().catch((error) => {
+    console.error(error)
+    process.exit(1)
+  })
+}

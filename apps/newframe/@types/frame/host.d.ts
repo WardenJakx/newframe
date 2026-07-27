@@ -1,4 +1,4 @@
-import type { NewframeHost } from '../../resources/bridge/contracts'
+import type { NewframeHost } from '../../contracts/ipc'
 
 declare global {
   interface Window {

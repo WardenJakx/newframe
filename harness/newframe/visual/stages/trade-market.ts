@@ -2,7 +2,7 @@ import type { VisualStage } from '../types.ts'
 
 export const tradeMarketStage: VisualStage = {
   name: 'trade market e2e',
-  async run({ driver, tray }) {
+  async run({ driver, runtime, tray }) {
     const tradePage = await driver.openTradeTicket()
 
     await driver.ensureTradeSellSide(tradePage)
@@ -54,6 +54,8 @@ export const tradeMarketStage: VisualStage = {
     )
     const orderId = order.orderId
     if (!orderId) return driver.fail('The new market Flash order has no order id')
+    runtime.evidence('marketOrderId', orderId)
+    runtime.evidence('marketOrderStatus', String(order.status))
     await driver.assertFlashOrderVisible(orderId)
     await driver.screenshot(tray, '21g-trade-market-filled.png')
     await driver.clearPanelAndOverlays()

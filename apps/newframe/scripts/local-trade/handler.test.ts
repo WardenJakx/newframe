@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, spyOn } from 'bun:test'
 import { JsonRpcProvider } from 'ethers'
 
 import { handleLocalTradeRequest, resetLocalTradeState } from './handler'
-import { FLASH_USDC_ADDRESS, FLASH_WETH_ADDRESS } from '../../resources/domain/flash/constants'
+import { FLASH_USDC_ADDRESS, FLASH_WETH_ADDRESS } from '../../domain/flash/constants'
 
 const FUNDER_ADDRESS = '0x0000000000000000000000000000000000000001'
 const ZERO_ALLOWANCE = `0x${'0'.repeat(64)}`

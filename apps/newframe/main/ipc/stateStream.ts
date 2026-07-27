@@ -1,12 +1,11 @@
 import { randomUUID } from 'crypto'
 
-import { ipcMain, type IpcMainInvokeEvent, type WebContents } from 'electron'
+import type { IpcMainInvokeEvent, WebContents } from 'electron'
 import log from 'electron-log'
 
-import store from '../store'
-import { projectRendererState } from '../state/projections'
-import { authorizeRenderer, type RendererRole } from './authorization'
-import { projectionStateChangeSchemas, projectionStateSchemas } from '../../resources/state/projections'
+import type { RendererAuthorizationRegistry, RendererRole } from './authorization'
+import type { CanonicalStoreReader } from '../store/actions'
+import { projectionStateChangeSchemas, projectionStateSchemas } from '../../contracts/state/projections'
 import {
   STATE_STREAM_SCHEMA_VERSION,
   StateConnectChannel,
@@ -17,7 +16,30 @@ import {
   type StateMessage,
   type StateSnapshot,
   type StateUpdateBatch
-} from '../../resources/state/protocol'
+} from '../../contracts/state/protocol'
+
+export interface StateStreamDependencies {
+  store: CanonicalStoreReader
+  authorizeRenderer: RendererAuthorizationRegistry['authorizeRenderer']
+  projectRendererState: typeof import('../state/projections').projectRendererState
+  createStreamId?: () => string
+}
+
+export interface StateStreamIpcPort {
+  handle(
+    channel: string,
+    listener: (event: Electron.IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown> | unknown
+  ): void
+  removeHandler(channel: string): void
+}
+
+export interface StateStream {
+  connectState(event: IpcMainInvokeEvent): { ok: boolean; error?: string }
+  disconnectState(event: IpcMainInvokeEvent): { ok: boolean; error?: string }
+  publishState(): void
+  registerHandlers(ipc: StateStreamIpcPort): () => void
+  dispose(): void
+}
 
 type Connection = {
   role: RendererRole
@@ -25,12 +47,6 @@ type Connection = {
   revision: number
   projection: RendererState
   webContents: WebContents
-}
-
-const connections = new Map<number, Connection>()
-
-function rawProjection(role: RendererRole): RendererState {
-  return projectRendererState(store.getState(), role)
 }
 
 function validatedSnapshot(role: RendererRole, projection: RendererState): RendererState | undefined {
@@ -71,123 +87,149 @@ function changedTopLevelSlices(previous: RendererState, current: RendererState) 
   return changes
 }
 
-function send(connection: Connection, message: StateMessage) {
-  const parsed = StateMessageSchema.safeParse(message)
-  if (!parsed.success) {
-    log.error('Refused to send an invalid renderer state message', parsed.error.issues)
-    return false
-  }
+export function createStateStream({
+  store,
+  authorizeRenderer,
+  projectRendererState,
+  createStreamId = randomUUID
+}: StateStreamDependencies): StateStream {
+  const connections = new Map<number, Connection>()
+  let unregisterHandlers: (() => void) | undefined
 
-  if (connection.webContents.isDestroyed()) {
-    connections.delete(connection.webContents.id)
-    return false
-  }
+  const rawProjection = (role: RendererRole): RendererState => projectRendererState(store.getState(), role)
 
-  try {
-    connection.webContents.send(StateMessageChannel, parsed.data)
-    return true
-  } catch (error) {
-    connections.delete(connection.webContents.id)
-    log.error('Failed to publish renderer state message', error)
-    if (!connection.webContents.isDestroyed()) connection.webContents.reload()
-    return false
-  }
-}
-
-export function connectState(event: IpcMainInvokeEvent) {
-  const context = authorizeRenderer(event)
-  if (!context) {
-    log.warn('Rejected state connection from an unregistered or invalid renderer')
-    return { ok: false, error: 'unauthorized' } as const
-  }
-
-  const projection = rawProjection(context.clientType)
-  const snapshotState = validatedSnapshot(context.clientType, projection)
-  if (!snapshotState) return { ok: false, error: 'state_unavailable' } as const
-
-  const connection: Connection = {
-    role: context.clientType,
-    streamId: randomUUID(),
-    revision: 0,
-    projection,
-    webContents: event.sender
-  }
-  connections.set(event.sender.id, connection)
-  event.sender.once('destroyed', () => {
-    if (connections.get(event.sender.id) === connection) connections.delete(event.sender.id)
-  })
-
-  const snapshot: StateSnapshot = {
-    schemaVersion: STATE_STREAM_SCHEMA_VERSION,
-    streamId: connection.streamId,
-    revision: connection.revision,
-    state: snapshotState
-  }
-
-  if (!send(connection, snapshot)) return { ok: false, error: 'state_unavailable' } as const
-
-  return { ok: true } as const
-}
-
-export function disconnectState(event: IpcMainInvokeEvent) {
-  const context = authorizeRenderer(event)
-  if (!context) return { ok: false, error: 'unauthorized' } as const
-
-  connections.delete(context.webContentsId)
-  return { ok: true } as const
-}
-
-function publishState() {
-  const projections = new Map<RendererRole, RendererState | undefined>()
-
-  for (const connection of connections.values()) {
-    if (!projections.has(connection.role)) {
-      projections.set(connection.role, rawProjection(connection.role))
+  const send = (connection: Connection, message: StateMessage) => {
+    const parsed = StateMessageSchema.safeParse(message)
+    if (!parsed.success) {
+      log.error('Refused to send an invalid renderer state message', parsed.error.issues)
+      return false
     }
 
-    const projection = projections.get(connection.role)
-    if (!projection) continue
-
-    const rawChanges = changedTopLevelSlices(connection.projection, projection)
-    if (Object.keys(rawChanges).length === 0) continue
-    const changes = validatedChanges(connection.role, rawChanges)
-    if (!changes) {
-      send(connection, {
-        schemaVersion: STATE_STREAM_SCHEMA_VERSION,
-        streamId: connection.streamId,
-        type: 'stream-invalidated'
-      })
+    if (connection.webContents.isDestroyed()) {
       connections.delete(connection.webContents.id)
-      continue
+      return false
     }
 
-    const revision = connection.revision + 1
-    const update: StateUpdateBatch = {
+    try {
+      connection.webContents.send(StateMessageChannel, parsed.data)
+      return true
+    } catch (error) {
+      connections.delete(connection.webContents.id)
+      log.error('Failed to publish renderer state message', error)
+      if (!connection.webContents.isDestroyed()) connection.webContents.reload()
+      return false
+    }
+  }
+
+  const connectState = (event: IpcMainInvokeEvent) => {
+    const context = authorizeRenderer(event)
+    if (!context) {
+      log.warn('Rejected state connection from an unregistered or invalid renderer')
+      return { ok: false, error: 'unauthorized' } as const
+    }
+
+    const projection = rawProjection(context.clientType)
+    const snapshotState = validatedSnapshot(context.clientType, projection)
+    if (!snapshotState) return { ok: false, error: 'state_unavailable' } as const
+
+    const connection: Connection = {
+      role: context.clientType,
+      streamId: createStreamId(),
+      revision: 0,
+      projection,
+      webContents: event.sender
+    }
+    connections.set(event.sender.id, connection)
+    event.sender.once('destroyed', () => {
+      if (connections.get(event.sender.id) === connection) connections.delete(event.sender.id)
+    })
+
+    const snapshot: StateSnapshot = {
       schemaVersion: STATE_STREAM_SCHEMA_VERSION,
       streamId: connection.streamId,
-      baseRevision: connection.revision,
-      revision,
-      changes
+      revision: connection.revision,
+      state: snapshotState
     }
 
-    if (send(connection, update)) {
-      connection.projection = projection
-      connection.revision = revision
+    if (!send(connection, snapshot)) return { ok: false, error: 'state_unavailable' } as const
+
+    return { ok: true } as const
+  }
+
+  const disconnectState = (event: IpcMainInvokeEvent) => {
+    const context = authorizeRenderer(event)
+    if (!context) return { ok: false, error: 'unauthorized' } as const
+
+    connections.delete(context.webContentsId)
+    return { ok: true } as const
+  }
+
+  const publishState = () => {
+    const projections = new Map<RendererRole, RendererState | undefined>()
+
+    for (const connection of connections.values()) {
+      if (!projections.has(connection.role)) {
+        projections.set(connection.role, rawProjection(connection.role))
+      }
+
+      const projection = projections.get(connection.role)
+      if (!projection) continue
+
+      const rawChanges = changedTopLevelSlices(connection.projection, projection)
+      if (Object.keys(rawChanges).length === 0) continue
+      const changes = validatedChanges(connection.role, rawChanges)
+      if (!changes) {
+        send(connection, {
+          schemaVersion: STATE_STREAM_SCHEMA_VERSION,
+          streamId: connection.streamId,
+          type: 'stream-invalidated'
+        })
+        connections.delete(connection.webContents.id)
+        continue
+      }
+
+      const revision = connection.revision + 1
+      const update: StateUpdateBatch = {
+        schemaVersion: STATE_STREAM_SCHEMA_VERSION,
+        streamId: connection.streamId,
+        baseRevision: connection.revision,
+        revision,
+        changes
+      }
+
+      if (send(connection, update)) {
+        connection.projection = projection
+        connection.revision = revision
+      }
     }
   }
-}
 
-let registered = false
+  const dispose = () => {
+    unregisterHandlers?.()
+    unregisterHandlers = undefined
+    connections.clear()
+  }
 
-export function registerStateStreamHandlers() {
-  if (registered) return
-  registered = true
+  const registerHandlers = (ipc: StateStreamIpcPort) => {
+    unregisterHandlers?.()
 
-  ipcMain.handle(StateConnectChannel, connectState)
-  ipcMain.handle(StateDisconnectChannel, disconnectState)
-  store.subscribe(publishState)
-}
+    ipc.handle(StateConnectChannel, connectState)
+    ipc.handle(StateDisconnectChannel, disconnectState)
+    const unsubscribe = store.subscribe(publishState)
+    let registered = true
 
-export function resetStateStreamsForTests() {
-  connections.clear()
+    unregisterHandlers = () => {
+      if (!registered) return
+      registered = false
+      unsubscribe()
+      ipc.removeHandler(StateConnectChannel)
+      ipc.removeHandler(StateDisconnectChannel)
+      connections.clear()
+      unregisterHandlers = undefined
+    }
+
+    return unregisterHandlers
+  }
+
+  return { connectState, disconnectState, publishState, registerHandlers, dispose }
 }

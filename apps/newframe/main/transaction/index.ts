@@ -3,10 +3,10 @@ import { createTx, TypedTransaction, TypedTxData } from '@ethereumjs/tx'
 import { Common } from '@ethereumjs/common'
 
 import { AppVersion, SignerSummary } from '../signers/Signer'
-import { GasFeesSource, TransactionData, typeSupportsBaseFee } from '../../resources/domain/transaction'
-import { isNonZeroHex } from '../../resources/utils'
+import { GasFeesSource, TransactionData, typeSupportsBaseFee } from '../../domain/transaction'
+import { isNonZeroHex } from '../../domain/hex'
 import chainConfig from '../chains/config'
-import { TransactionRequest, TxClassification } from '../accounts/types'
+import { TransactionRequest, TxClassification } from '../../contracts/requests'
 
 import type { Gas } from '../store/state'
 

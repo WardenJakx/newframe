@@ -2,6 +2,8 @@
   "extends": "../../tsconfig.base.json",
   "files": [],
   "references": [
+    { "path": "./tsconfig.domain.json" },
+    { "path": "./tsconfig.contracts.json" },
     { "path": "./tsconfig.main.json" },
     { "path": "./tsconfig.preload.json" },
     { "path": "./tsconfig.renderer.json" },

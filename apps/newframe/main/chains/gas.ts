@@ -1,5 +1,5 @@
 import { intToHex } from '@ethereumjs/util'
-import { chainUsesOptimismFees } from '../../resources/utils/chains'
+import { chainUsesOptimismFees } from '../../domain/chain/fees'
 
 import type { GasFees } from '../store/state'
 

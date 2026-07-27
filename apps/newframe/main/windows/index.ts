@@ -10,17 +10,18 @@ import path from 'path'
 import log from 'electron-log'
 import EventEmitter from 'events'
 import { shallow } from 'zustand/vanilla/shallow'
-import { hexToInt, roundGwei } from '../../resources/utils'
-
-import store from '../store'
+import { hexToInt, roundGwei } from '../../domain/hex'
+import type canonicalStore from '../store'
 import SideTrayManager from './sidetray'
 import { createWindow } from './window'
 import { constrainTraySize, TRAY_WIDTH, trayPosition } from './trayGeometry'
 import { SystemTray, SystemTrayEventHandlers } from './systemTray'
 import { registerShortcut } from '../keyboardShortcuts'
-import { Shortcut } from '../store/state/types/shortcuts'
+import { Shortcut } from '../../domain/state/shortcuts'
+import type { RendererAuthorizationRegistry } from '../ipc/authorization'
 
 type Windows = { [key: string]: BrowserWindow }
+type CanonicalStoreApi = typeof canonicalStore
 
 export function onTrayRendererReady(webContents: Pick<WebContents, 'off' | 'once'>, ready: () => void) {
   let handled = false
@@ -35,7 +36,7 @@ export function onTrayRendererReady(webContents: Pick<WebContents, 'off' | 'once
 }
 
 const events = new EventEmitter()
-const sideTrayManager = new SideTrayManager()
+let sideTrayManager: SideTrayManager
 const isDev = process.env.NODE_ENV === 'development'
 const devToolsEnabled = isDev || process.env.ENABLE_DEV_TOOLS === 'true'
 const openedAtLogin =
@@ -48,6 +49,13 @@ const isMacOS = process.platform === 'darwin'
 let tray: Tray
 let mouseTimeout: NodeJS.Timeout
 let glide = false
+let rendererAuthorization: RendererAuthorizationRegistry | undefined
+let activeStore: CanonicalStoreApi | undefined
+
+const getStore = () => {
+  if (!activeStore) throw new Error('Canonical store must be configured before using application windows')
+  return activeStore
+}
 
 const app = {
   hide: () => {
@@ -73,7 +81,7 @@ const systemTrayEventHandlers: SystemTrayEventHandlers = {
   clickShow: () => app.show()
 }
 const systemTray = new SystemTray(systemTrayEventHandlers)
-const getDisplaySummonShortcut = () => store.getState().main.shortcuts.altSlash
+const getDisplaySummonShortcut = () => getStore().getState().main.shortcuts.altSlash
 
 const detectMouse = () => {
   const m1 = screen.getCursorScreenPoint()
@@ -109,7 +117,10 @@ function initWindow(id: string, opts: Electron.BrowserWindowConstructorOptions, 
     ? `http://localhost:1234/${id}/index.dev.html`
     : new URL(path.join(process.env.BUNDLE_LOCATION, `${id}.html`), 'file:')
 
-  const window = createWindow(id, opts)
+  if (!rendererAuthorization) {
+    throw new Error('Renderer authorization must be configured before creating application windows')
+  }
+  const window = createWindow(id, rendererAuthorization.registerRenderer, opts)
   windows[id] = window
   const removeRendererReady = rendererReady
     ? onTrayRendererReady(window.webContents, rendererReady)
@@ -204,8 +215,8 @@ class Tray {
   constructor() {
     const updateGasTitle = () => {
       let title = ''
-      if (store.getState().platform === 'darwin' && store.getState().main.menubarGasPrice) {
-        const gasPrice = store.getState().main.networksMeta.ethereum[1].gas.price.levels.fast
+      if (getStore().getState().platform === 'darwin' && getStore().getState().main.menubarGasPrice) {
+        const gasPrice = getStore().getState().main.networksMeta.ethereum[1].gas.price.levels.fast
         if (!gasPrice) return
         const gasDisplay = roundGwei(hexToInt(gasPrice) / 1e9).toString()
         title = gasDisplay // ɢ 🄶 Ⓖ ᴳᵂᴱᴵ
@@ -213,7 +224,7 @@ class Tray {
       systemTray.setTitle(title)
     }
     updateGasTitle()
-    this.gasObserver = store.subscribe(
+    this.gasObserver = getStore().subscribe(
       (state) =>
         [
           state.platform,
@@ -229,15 +240,17 @@ class Tray {
       systemTray.init(windows.tray)
       systemTray.setContextMenu('hide', { displaySummonShortcut: getDisplaySummonShortcut() })
       if (showOnReady) {
-        store.getState().trayOpen(true)
+        getStore().getState().trayOpen(true)
       }
 
-      const showOnboardingWindow = !store.getState().main.mute.onboardingWindow
+      const showOnboardingWindow = !getStore().getState().main.mute.onboardingWindow
 
       if (showOnboardingWindow) {
         setTimeout(() => {
-          store.getState().navHome({ view: 'accounts', data: { showAddAccounts: true } })
-          store.getState().completeOnboarding()
+          getStore()
+            .getState()
+            .navHome({ view: 'accounts', data: { showAddAccounts: true } })
+          getStore().getState().completeOnboarding()
         }, 600)
       }
     }
@@ -253,7 +266,7 @@ class Tray {
   }
 
   canAutoHide() {
-    const autoHideOn = !!store.getState().main.autohide
+    const autoHideOn = !!getStore().getState().main.autohide
     const sideTrayShowing = sideTrayManager.isShowing()
 
     log.debug(`%ccanAutoHide ${JSON.stringify({ autoHideOn, sideTrayShowing })}`, 'color: blue')
@@ -271,8 +284,8 @@ class Tray {
       this.recentDisplayEvent = false
     }, 150)
 
-    store.getState().trayOpen(false)
-    if (store.getState().main.reveal) {
+    getStore().getState().trayOpen(false)
+    if (getStore().getState().main.reveal) {
       detectMouse()
     }
     windows.tray.emit('hide')
@@ -283,7 +296,7 @@ class Tray {
   public show() {
     clearTimeout(mouseTimeout)
     if (!windows.tray) {
-      return init()
+      return initialize()
     }
     if (this.recentDisplayEvent) {
       return
@@ -307,7 +320,7 @@ class Tray {
     constrainTraySize(windows.tray, area.height)
     const pos = trayPosition(area)
     windows.tray.setPosition(pos.x, pos.y)
-    store.getState().trayOpen(true)
+    getStore().getState().trayOpen(true)
     windows.tray.emit('show')
     if (glide && isMacOS) {
       windows.tray.showInactive()
@@ -370,11 +383,14 @@ if (isDev) {
 let stateUnsubscribers: Array<() => void> = []
 let sideTrayManagerStarted = false
 
-const init = () => {
+const initialize = () => {
   if (tray && windows.tray && !windows.tray.isDestroyed()) return
 
   if (!sideTrayManagerStarted) {
-    sideTrayManager.start()
+    if (!rendererAuthorization) {
+      throw new Error('Renderer authorization must be configured before starting application windows')
+    }
+    sideTrayManager.start(rendererAuthorization.registerRenderer)
     sideTrayManagerStarted = true
   }
 
@@ -404,13 +420,13 @@ const init = () => {
     registerShortcut(summonShortcut, summonHandler)
   }
 
-  const state = store.getState()
+  const state = getStore().getState()
   updateHomeCommand(state.tray.homeCommand)
   updateSummonShortcut(state.main.shortcuts.summon)
 
   stateUnsubscribers = [
-    store.subscribe((next) => next.tray.homeCommand, updateHomeCommand),
-    store.subscribe((next) => next.main.shortcuts.summon, updateSummonShortcut)
+    getStore().subscribe((next) => next.tray.homeCommand, updateHomeCommand),
+    getStore().subscribe((next) => next.main.shortcuts.summon, updateSummonShortcut)
   ]
 }
 
@@ -428,5 +444,10 @@ export default {
   close(e: Pick<IpcMainEvent, 'sender'>) {
     BrowserWindow.fromWebContents(e.sender)?.close()
   },
-  init
+  init(authorization: RendererAuthorizationRegistry, canonicalStore: CanonicalStoreApi) {
+    activeStore = canonicalStore
+    sideTrayManager = new SideTrayManager(canonicalStore)
+    rendererAuthorization = authorization
+    initialize()
+  }
 }

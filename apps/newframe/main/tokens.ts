@@ -1,25 +1,33 @@
-import store from './store'
-import { getFlashAssetsForChain } from '../resources/domain/flash/assets'
+import { getFlashAssetsForChain } from '../domain/flash/assets'
 
+import type { CanonicalStoreReader } from './store/actions'
 import type { Token } from './store/state'
 
-function bundledTokens(): Token[] {
-  const networks = Object.values(store.getState().main.networks.ethereum)
-  return networks.flatMap((network) =>
-    getFlashAssetsForChain(network.id)
-      .filter((asset) => !asset.isNative)
-      .map((asset) => ({
-        address: asset.address,
-        chainId: asset.chainId,
-        decimals: asset.decimals,
-        name: asset.name,
-        symbol: asset.symbol
-      }))
-  )
+export interface BundledTokenService {
+  start(): void
 }
 
-function start() {
-  store.getState().upsertTokens(bundledTokens(), { curated: true, source: 'bundled' })
-}
+export function createBundledTokenService(
+  canonicalStore: Pick<CanonicalStoreReader, 'getState'>
+): BundledTokenService {
+  const bundledTokens = (): Token[] => {
+    const networks = Object.values(canonicalStore.getState().main.networks.ethereum)
+    return networks.flatMap((network) =>
+      getFlashAssetsForChain(network.id)
+        .filter((asset) => !asset.isNative)
+        .map((asset) => ({
+          address: asset.address,
+          chainId: asset.chainId,
+          decimals: asset.decimals,
+          name: asset.name,
+          symbol: asset.symbol
+        }))
+    )
+  }
 
-export default { start }
+  return {
+    start() {
+      canonicalStore.getState().upsertTokens(bundledTokens(), { curated: true, source: 'bundled' })
+    }
+  }
+}

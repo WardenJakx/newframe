@@ -4,7 +4,7 @@ import crypto from 'crypto'
 import { app } from 'electron'
 import log from 'electron-log'
 
-import zxcvbn from '../resources/zxcvbn'
+import zxcvbn from '../domain/security/passwordStrength'
 
 // Mock user data dir during tests
 const USER_DATA = app

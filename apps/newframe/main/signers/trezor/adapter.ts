@@ -4,7 +4,7 @@ import type { DeviceUniquePath, Device as TrezorDevice } from '@trezor/connect'
 
 import { SignerAdapter } from '../adapters'
 import Trezor, { Status } from './Trezor'
-import store from '../../store'
+import type canonicalStore from '../../store'
 import TrezorBridge from './bridge'
 
 interface KnownSigners {
@@ -19,14 +19,23 @@ interface KnownSigners {
 export default class TrezorSignerAdapter extends SignerAdapter {
   private knownSigners: KnownSigners = {}
   private unsubscribeDerivation?: () => void
+  private initializationTimeouts = new Map<string, ReturnType<typeof setTimeout>>()
+  private derivationTimeouts = new Set<ReturnType<typeof setTimeout>>()
+  private opened = false
 
-  constructor() {
+  constructor(
+    private readonly store: typeof canonicalStore,
+    private readonly bridge: typeof TrezorBridge = TrezorBridge
+  ) {
     super('trezor')
   }
 
   override open() {
+    if (this.opened) return
+    this.opened = true
+
     this.unsubscribeDerivation?.()
-    this.unsubscribeDerivation = store.subscribe(
+    this.unsubscribeDerivation = this.store.subscribe(
       (state) => state.main.trezor.derivation,
       (trezorDerivation) => {
         Object.values(this.knownSigners).forEach((signerInfo) => {
@@ -43,7 +52,7 @@ export default class TrezorSignerAdapter extends SignerAdapter {
       { fireImmediately: true }
     )
 
-    TrezorBridge.on('trezor:detected', (path: string) => {
+    this.bridge.on('trezor:detected', (path: string) => {
       // create a new signer whenever a Trezor is detected, but it won't be opened
       // until a connect event with an active device is received
       const id = Trezor.generateId(path)
@@ -53,11 +62,11 @@ export default class TrezorSignerAdapter extends SignerAdapter {
       }
     })
 
-    TrezorBridge.on('trezor:connect', async (device: TrezorDevice) => {
+    this.bridge.on('trezor:connect', async (device: TrezorDevice) => {
       const id = Trezor.generateId(device.path)
       const trezor = this.knownSigners[id]?.signer || this.initTrezor(device.path)
 
-      trezor.derivation = store.getState().main.trezor.derivation
+      trezor.derivation = this.store.getState().main.trezor.derivation
 
       try {
         await trezor.open(device)
@@ -66,13 +75,18 @@ export default class TrezorSignerAdapter extends SignerAdapter {
         log.info(`Trezor ${trezor.id} connected: ${trezor.model}, firmware v${version}`)
 
         // arbitrary delay to attempt to minimize message conflicts on first connection
-        setTimeout(() => trezor.deriveAddresses(), 200)
+        if (!this.opened) return
+        const derivationTimeout = setTimeout(() => {
+          this.derivationTimeouts.delete(derivationTimeout)
+          if (this.opened) trezor.deriveAddresses()
+        }, 200)
+        this.derivationTimeouts.add(derivationTimeout)
       } catch (e) {
         log.error('could not open Trezor', e)
       }
     })
 
-    TrezorBridge.on('trezor:disconnect', (device: TrezorDevice) => {
+    this.bridge.on('trezor:disconnect', (device: TrezorDevice) => {
       this.withSigner(device, (signer) => {
         log.info(`Trezor ${signer.id} disconnected`)
 
@@ -80,7 +94,7 @@ export default class TrezorSignerAdapter extends SignerAdapter {
       })
     })
 
-    TrezorBridge.on('trezor:update', (device: TrezorDevice) => {
+    this.bridge.on('trezor:update', (device: TrezorDevice) => {
       this.withSigner(device, (signer) => {
         log.debug(`Trezor ${signer.id} updated`)
 
@@ -88,19 +102,19 @@ export default class TrezorSignerAdapter extends SignerAdapter {
       })
     })
 
-    TrezorBridge.on('trezor:entered:pin', (deviceId: string) => {
+    this.bridge.on('trezor:entered:pin', (deviceId: string) => {
       log.verbose(`Trezor ${deviceId} pin entered`)
 
       this.handleEvent(deviceId, 'trezor:entered:pin')
     })
 
-    TrezorBridge.on('trezor:entered:passphrase', (deviceId: string) => {
+    this.bridge.on('trezor:entered:passphrase', (deviceId: string) => {
       log.verbose(`Trezor ${deviceId} passphrase entered`)
 
       this.handleEvent(deviceId, 'trezor:entered:passphrase')
     })
 
-    TrezorBridge.on('trezor:enteringPhrase', (deviceId: string) => {
+    this.bridge.on('trezor:enteringPhrase', (deviceId: string) => {
       log.verbose(`Trezor ${deviceId} waiting for passphrase entry on device`)
       const signer = this.knownSigners[deviceId].signer
 
@@ -115,7 +129,7 @@ export default class TrezorSignerAdapter extends SignerAdapter {
       this.emit('update', signer)
     })
 
-    TrezorBridge.on('trezor:needPin', (device: TrezorDevice) => {
+    this.bridge.on('trezor:needPin', (device: TrezorDevice) => {
       this.withSigner(device, (signer) => {
         log.verbose(`Trezor ${signer.id} needs pin`)
 
@@ -131,7 +145,7 @@ export default class TrezorSignerAdapter extends SignerAdapter {
       })
     })
 
-    TrezorBridge.on('trezor:needPhrase', (device: TrezorDevice) => {
+    this.bridge.on('trezor:needPhrase', (device: TrezorDevice) => {
       this.withSigner(device, (signer) => {
         log.verbose(`Trezor ${signer.id} needs passphrase`, { status: signer.status })
 
@@ -147,7 +161,7 @@ export default class TrezorSignerAdapter extends SignerAdapter {
       })
     })
 
-    TrezorBridge.open()
+    this.bridge.open()
     super.open()
   }
 
@@ -168,32 +182,46 @@ export default class TrezorSignerAdapter extends SignerAdapter {
 
     this.emit('add', trezor)
 
-    store.getState().navHome({
+    this.store.getState().navHome({
       view: 'accounts',
       data: { showAddAccounts: true, newAccountType: 'trezor', selectedSigner: trezor.id }
     })
 
-    setTimeout(() => {
+    const initializationTimeout = setTimeout(() => {
+      this.initializationTimeouts.delete(trezor.id)
       if (trezor.status === Status.INITIAL && !trezor.device) {
         // if the trezor hasn't connected in a reasonable amount of time, consider it disconnected
         trezor.status = Status.DISCONNECTED
         this.emit('update', trezor)
       }
     }, 10_000)
+    this.initializationTimeouts.set(trezor.id, initializationTimeout)
 
     return trezor
   }
 
   override close() {
+    if (!this.opened) return
+    this.opened = false
+
     this.unsubscribeDerivation?.()
     this.unsubscribeDerivation = undefined
 
-    TrezorBridge.close()
+    this.initializationTimeouts.forEach((timeout) => clearTimeout(timeout))
+    this.initializationTimeouts.clear()
+    this.derivationTimeouts.forEach((timeout) => clearTimeout(timeout))
+    this.derivationTimeouts.clear()
+
+    this.bridge.close()
 
     super.close()
   }
 
   override remove(trezor: Trezor) {
+    const initializationTimeout = this.initializationTimeouts.get(trezor.id)
+    if (initializationTimeout) clearTimeout(initializationTimeout)
+    this.initializationTimeouts.delete(trezor.id)
+
     if (trezor.id in this.knownSigners) {
       log.info(`removing Trezor ${trezor.id}`)
 
@@ -215,7 +243,7 @@ export default class TrezorSignerAdapter extends SignerAdapter {
     } else {
       // this Trezor is not open because it was never connected,
       // attempt to force a reload by calling this method
-      TrezorBridge.getFeatures({ device: { path: trezor.path as DeviceUniquePath } })
+      this.bridge.getFeatures({ device: { path: trezor.path as DeviceUniquePath } })
     }
   }
 

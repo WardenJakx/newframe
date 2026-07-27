@@ -4,10 +4,11 @@ node_modules
 # Newframe app outputs
 packages/ui/dist
 packages/ui/src/styled-system
-apps/newframe/resources/styled-system
+apps/newframe/generated/styled-system
 apps/newframe-extension/src/styled-system
 apps/newframe/bundle
 apps/newframe/compiled
+apps/newframe/coverage
 apps/newframe/dist
 apps/newframe/dist-preview
 apps/newframe/release

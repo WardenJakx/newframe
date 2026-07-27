@@ -1,0 +1,242 @@
+import { useEffect, useRef, useState } from 'react'
+
+import { Field } from '@newframe/ui/field'
+import { Input } from '@newframe/ui/input'
+import { Stack } from '@newframe/ui/stack'
+
+import link from '../../../../shared/link'
+import { limitTransactionFee, type TransactionFeeField, usesBaseFee } from '../../../../../domain/transaction'
+import { formatUnits, parseUnits, toBigInt } from '../../../../../domain/units'
+import type { TransactionRequest } from '../../../../../contracts/requests'
+
+// display a wei value as a decimal amount of gwei
+function toDisplayFromWei(wei: bigint) {
+  return formatUnits(wei, 9)
+}
+
+function bnToHex(bn: bigint) {
+  return `0x${bn.toString(16)}`
+}
+
+// value is wei for gwei-denominated inputs, integer units otherwise
+function formatForInput(value: bigint, decimals: boolean) {
+  return decimals ? toDisplayFromWei(value) : value.toString()
+}
+
+// parse user input into wei for gwei-denominated inputs, integer units
+// otherwise, truncating anything beyond 9 decimal places
+function parseInput(value: string, decimals: boolean) {
+  return decimals ? parseUnits(value, 9) : toBigInt(value)
+}
+
+type FeeOverlayInputProps = {
+  initialValue: string
+  labelText: string
+  tabIndex: number
+  decimals: boolean
+  onReceiveValue(value: bigint): void
+  limiter(value: bigint): bigint
+}
+
+type FeeInputProps = Omit<FeeOverlayInputProps, 'labelText' | 'decimals'>
+
+type TxFeeOverlayProps = {
+  req: TransactionRequest
+}
+
+const FeeOverlayInput = ({
+  initialValue,
+  labelText,
+  tabIndex,
+  decimals,
+  onReceiveValue,
+  limiter
+}: FeeOverlayInputProps) => {
+  const [value, setValue] = useState(initialValue)
+  const submitTimeout = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+
+  useEffect(
+    () => () => {
+      clearTimeout(submitTimeout.current)
+    },
+    []
+  )
+
+  // newValue is wei for gwei-denominated inputs, integer units otherwise
+  const submitValue = (newValueStr: string, newValue: bigint) => {
+    setValue(newValueStr)
+
+    clearTimeout(submitTimeout.current)
+
+    submitTimeout.current = setTimeout(() => {
+      const limitedValue = limiter(newValue)
+      onReceiveValue(limitedValue)
+      setValue(formatForInput(limitedValue, decimals))
+    }, 500)
+  }
+
+  return (
+    <Field label={labelText}>
+      <Input
+        align='end'
+        appearance='numeric'
+        blurOnEnter
+        inputMode='decimal'
+        label={labelText}
+        tabIndex={tabIndex}
+        value={value}
+        onValueChange={(nextValue) => {
+          const parsedInput = (decimals ? /[0-9.]*/ : /[0-9]*/).exec(nextValue)
+          const enteredValue = parsedInput?.[0] || ''
+
+          if (enteredValue === '.' || enteredValue === '') return setValue(enteredValue)
+
+          const numericValue = parseInput(nextValue, decimals)
+          if (numericValue === undefined) return
+
+          clearTimeout(submitTimeout.current)
+
+          // prevent decimal point being overwritten as user is typing a float
+          if (enteredValue.endsWith('.')) {
+            const formattedNum = formatForInput(
+              parseInput(enteredValue.slice(0, -1), decimals) ?? 0n,
+              decimals
+            )
+
+            return setValue(`${formattedNum}.`)
+          }
+
+          submitValue(enteredValue, numericValue)
+        }}
+        onStep={(direction) => {
+          const parsedValue = parseInput(value, decimals)
+          if (parsedValue === undefined) return
+
+          // adjust by 1 gwei for gwei-denominated inputs, 1000 units otherwise
+          const step = decimals ? 1000000000n : 1000n
+          const newValue = direction === 'increment' ? parsedValue + step : parsedValue - step
+
+          const limitedValue = limiter(newValue)
+          submitValue(formatForInput(limitedValue, decimals), limitedValue)
+        }}
+      />
+    </Field>
+  )
+}
+
+const GasLimitInput = ({ initialValue, onReceiveValue, tabIndex, limiter }: FeeInputProps) => (
+  <FeeOverlayInput
+    initialValue={initialValue}
+    onReceiveValue={onReceiveValue}
+    labelText='Gas Limit (UNITS)'
+    tabIndex={tabIndex}
+    decimals={false}
+    limiter={limiter}
+  />
+)
+
+const GasPriceInput = ({ initialValue, onReceiveValue, tabIndex, limiter }: FeeInputProps) => (
+  <FeeOverlayInput
+    initialValue={initialValue}
+    onReceiveValue={onReceiveValue}
+    labelText='Gas Price (GWEI)'
+    tabIndex={tabIndex}
+    decimals={true}
+    limiter={limiter}
+  />
+)
+
+const BaseFeeInput = ({ initialValue, onReceiveValue, tabIndex, limiter }: FeeInputProps) => (
+  <FeeOverlayInput
+    initialValue={initialValue}
+    onReceiveValue={onReceiveValue}
+    labelText='Base Fee (GWEI)'
+    tabIndex={tabIndex}
+    decimals={true}
+    limiter={limiter}
+  />
+)
+
+const PriorityFeeInput = ({ initialValue, onReceiveValue, tabIndex, limiter }: FeeInputProps) => (
+  <FeeOverlayInput
+    initialValue={initialValue}
+    onReceiveValue={onReceiveValue}
+    labelText='Max Priority Fee (GWEI)'
+    tabIndex={tabIndex}
+    decimals={true}
+    limiter={limiter}
+  />
+)
+
+export default function TxFeeOverlay(props: TxFeeOverlayProps) {
+  const {
+    req: {
+      data: { gasLimit: initialGasLimit, maxPriorityFeePerGas, maxFeePerGas, gasPrice: initialGasPrice }
+    }
+  } = props
+  const maxFee = toBigInt(maxFeePerGas) ?? 0n
+  const initialPriorityFee = toBigInt(maxPriorityFeePerGas) ?? 0n
+  const [state, setState] = useState({
+    gasLimit: toBigInt(initialGasLimit) ?? 0n,
+    gasPrice: toBigInt(initialGasPrice) ?? 0n,
+    baseFee: maxFee - initialPriorityFee,
+    priorityFee: initialPriorityFee
+  })
+
+  const {
+    req: { data, handlerId }
+  } = props
+  const { baseFee, gasLimit, priorityFee, gasPrice } = state
+
+  const displayBaseFee = toDisplayFromWei(baseFee)
+  const displayPriorityFee = toDisplayFromWei(priorityFee)
+  const displayGasPrice = toDisplayFromWei(gasPrice)
+  const displayGasLimit = gasLimit.toString()
+  const limiter = (field: TransactionFeeField) => (value: bigint) =>
+    limitTransactionFee(field, value, state, data.chainId)
+
+  const receiveValueHandler = (value: bigint, name: TransactionFeeField) => {
+    setState((current) => ({ ...current, [name]: value }))
+
+    void link.executeCommand({
+      type: 'transaction.fee-update',
+      requestId: handlerId,
+      field: name,
+      value: bnToHex(value)
+    })
+  }
+
+  return (
+    <Stack gap='small'>
+      {usesBaseFee(data) ? (
+        <>
+          <BaseFeeInput
+            initialValue={displayBaseFee}
+            onReceiveValue={(value) => receiveValueHandler(value, 'baseFee')}
+            limiter={limiter('baseFee')}
+            tabIndex={0}
+          />
+          <PriorityFeeInput
+            initialValue={displayPriorityFee}
+            onReceiveValue={(value) => receiveValueHandler(value, 'priorityFee')}
+            limiter={limiter('priorityFee')}
+            tabIndex={1}
+          />
+        </>
+      ) : (
+        <GasPriceInput
+          initialValue={displayGasPrice}
+          onReceiveValue={(value) => receiveValueHandler(value, 'gasPrice')}
+          limiter={limiter('gasPrice')}
+          tabIndex={0}
+        />
+      )}
+      <GasLimitInput
+        initialValue={displayGasLimit}
+        onReceiveValue={(value) => receiveValueHandler(value, 'gasLimit')}
+        limiter={limiter('gasLimit')}
+        tabIndex={2}
+      />
+    </Stack>
+  )
+}

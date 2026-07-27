@@ -1,5 +1,3 @@
-import { KeyboardLayout } from '../../resources/keyboard'
-
 declare global {
   namespace NodeJS {
     interface ProcessEnv {
@@ -11,7 +9,7 @@ declare global {
     }
   }
   interface Navigator {
-    keyboard: { getLayoutMap: () => Promise<KeyboardLayout> }
+    keyboard: { getLayoutMap: () => Promise<{ get: (key: string) => string }> }
   }
 }
 

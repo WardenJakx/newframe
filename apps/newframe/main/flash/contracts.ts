@@ -5,7 +5,7 @@ import {
   FlashOrderTypeSchema,
   FlashQuoteSchema,
   FlashTradeSideSchema
-} from '../../resources/domain/flash/schemas'
+} from '../../domain/flash/schemas'
 
 const NumberOrStringSchema = z.union([z.number(), z.string()])
 const FlashPriceTriggerInputSchema = z.object({

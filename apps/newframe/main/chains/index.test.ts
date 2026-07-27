@@ -1,4 +1,4 @@
-import { afterEach, beforeAll, beforeEach, expect, it, mock } from 'bun:test'
+import { afterAll, afterEach, beforeAll, beforeEach, expect, it, mock } from 'bun:test'
 
 import log from 'electron-log'
 import EventEmitter from 'events'
@@ -221,8 +221,12 @@ beforeAll(async () => {
   resetChainState()
 
   // need to import this after mocks are set up
-  chains = (await import('./index')).default
+  const { Chains } = await import('./index')
+  chains = new Chains(store)
+  chains.start()
 })
+
+afterAll(() => chains.dispose())
 
 beforeEach(() => {
   resetChainState()

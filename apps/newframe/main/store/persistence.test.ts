@@ -1,7 +1,14 @@
-import { describe, expect, it, mock } from 'bun:test'
+import { describe, expect, it } from 'bun:test'
 
-import type { StorageValue } from 'zustand/middleware'
-import type { CanonicalStore } from './index'
+import { builtInChainIconUrl } from '../../domain/chain'
+import {
+  CanonicalStatePersistenceError,
+  createPersistenceAdapter,
+  createPersistenceService,
+  type PersistenceSchedulerPort,
+  type PersistenceStoragePort
+} from '../infrastructure/persistence'
+import type { CanonicalStore } from './actions'
 import createCanonicalStore from './createCanonicalStore'
 import { mergePersistedState, migratePersistedState, selectPersistedState } from './persistence'
 import {
@@ -9,10 +16,58 @@ import {
   PERSISTENCE_VERSION,
   type PersistedCanonicalState
 } from './persist/schema'
-import { CanonicalStatePersistenceError, ValidatedConfStorage } from './persist/validatedConfStorage'
 import createInitialState from './state'
-import { builtInChainIconUrl } from '../../resources/domain/chain'
 
+class MemoryPersistence implements PersistenceStoragePort {
+  readonly values: Map<string, unknown>
+  failWrites = 0
+
+  constructor(entries: Iterable<readonly [string, unknown]> = []) {
+    this.values = new Map(entries)
+  }
+
+  clear() {
+    this.values.clear()
+  }
+
+  delete(key: string) {
+    return this.values.delete(key)
+  }
+
+  get(key: string) {
+    return this.values.get(key)
+  }
+
+  set(key: string, value: unknown) {
+    if (this.failWrites > 0) {
+      this.failWrites -= 1
+      throw new Error('storage unavailable')
+    }
+    this.values.set(key, structuredClone(value))
+  }
+}
+
+class ManualScheduler implements PersistenceSchedulerPort {
+  readonly intervals: number[] = []
+  private readonly tasks = new Set<() => void>()
+
+  scheduleEvery(intervalMs: number, task: () => void) {
+    this.intervals.push(intervalMs)
+    this.tasks.add(task)
+    return () => this.tasks.delete(task)
+  }
+
+  run() {
+    for (const task of this.tasks) task()
+  }
+
+  get activeTasks() {
+    return this.tasks.size
+  }
+}
+
+const storageKey = `zustand.${CANONICAL_STATE_STORAGE_NAME}`
+const canonicalState = () => createInitialState() as unknown as CanonicalStore
 const account = (id: string, active?: boolean) => ({
   id,
   address: id,
@@ -26,29 +81,75 @@ const account = (id: string, active?: boolean) => ({
   balances: { lastUpdated: 123 }
 })
 
-const canonicalState = () => createInitialState() as unknown as CanonicalStore
-const storageKey = `zustand.${CANONICAL_STATE_STORAGE_NAME}`
-
-describe('canonical state persistence', () => {
-  it('starts with fresh canonical state when persisted state does not exist', async () => {
-    const values = new Map<string, unknown>()
-    const conf = {
-      clear: mock(() => values.clear()),
-      delete: mock((key: string) => values.delete(key)),
-      get: mock((key: string) => values.get(key)),
-      set: mock((key: string, value: unknown) => values.set(key, value))
-    }
-    const storage = new ValidatedConfStorage(conf as any)
-    const { hydration, store } = createCanonicalStore(storage)
-
-    await expect(hydration).resolves.toBeUndefined()
-    expect(store.getState().main.tokens).toEqual({ accountTokenIds: {}, byId: {} })
+function createTestRuntime(entries: Iterable<readonly [string, unknown]> = []) {
+  const storage = new MemoryPersistence(entries)
+  const scheduler = new ManualScheduler()
+  const adapter = createPersistenceAdapter({
+    storage,
+    clock: { now: () => 1_234 }
+  })
+  const canonical = createCanonicalStore(adapter)
+  const service = createPersistenceService({
+    adapter,
+    hydrate: canonical.hydrate,
+    scheduler
   })
 
-  it('migrates v2 by resetting only tokens and writes the preserved state at the current version', async () => {
+  return { adapter, scheduler, service, storage, store: canonical.store }
+}
+
+function envelope(state: PersistedCanonicalState, version = PERSISTENCE_VERSION) {
+  return { state, version }
+}
+
+describe('canonical persistence lifecycle', () => {
+  it('hydrates a fresh store, coalesces queued writes, flushes on schedule, and disposes cleanly', async () => {
+    const { scheduler, service, storage, store } = createTestRuntime()
+
+    expect(scheduler.activeTasks).toBe(0)
+    await expect(service.start()).resolves.toBeUndefined()
+    expect({
+      started: service.started,
+      intervals: scheduler.intervals,
+      tokens: store.getState().main.tokens
+    }).toEqual({
+      started: true,
+      intervals: [30_000],
+      tokens: { accountTokenIds: {}, byId: {} }
+    })
+
+    store.getState().setAutohide(true)
+    store.getState().setAutohide(false)
+    expect(storage.values.has(storageKey)).toBe(false)
+
+    scheduler.run()
+    expect(storage.values.get(storageKey)).toMatchObject({
+      state: { main: { autohide: false } },
+      version: PERSISTENCE_VERSION
+    })
+
+    store.getState().setAutohide(true)
+    service.dispose()
+    service.dispose()
+
+    expect({
+      activeTasks: scheduler.activeTasks,
+      persisted: storage.values.get(storageKey),
+      started: service.started
+    }).toMatchObject({
+      activeTasks: 0,
+      persisted: {
+        state: { main: { autohide: true } },
+        version: PERSISTENCE_VERSION
+      },
+      started: false
+    })
+  })
+
+  it('migrates v2 state into a real fresh store and persists the current validated envelope', async () => {
     const id = '0x2222222222222222222222222222222222222222'
     const durable = canonicalState()
-    durable.main.accounts[id] = account(id)
+    durable.main.accounts[id] = account(id) as never
     durable.main.accountOrder = [id]
     durable.main.currentAccount = id
     durable.main.autohide = false
@@ -65,99 +166,40 @@ describe('canonical state persistence', () => {
       ],
       known: { [id]: [] }
     }
-    const values = new Map<string, unknown>([[storageKey, { state: v2, version: 2 }]])
-    const conf = {
-      clear: mock(() => values.clear()),
-      delete: mock((key: string) => values.delete(key)),
-      get: mock((key: string) => values.get(key)),
-      set: mock((key: string, value: unknown) => values.set(key, value))
-    }
-    const storage = new ValidatedConfStorage(conf as any)
-    const { hydration, store } = createCanonicalStore(storage)
+    const runtime = createTestRuntime([[storageKey, envelope(v2, 2)]])
 
-    await expect(hydration).resolves.toBeUndefined()
-    expect(store.getState().main.currentAccount).toBe(id)
-    expect(store.getState().main.accounts[id]).toBeDefined()
-    expect(store.getState().main.autohide).toBe(false)
-    expect(store.getState().main.tokens).toEqual({ accountTokenIds: {}, byId: {} })
-    expect(values.get(storageKey)).toEqual(
-      expect.objectContaining({
-        version: PERSISTENCE_VERSION,
-        state: expect.objectContaining({
-          main: expect.objectContaining({
+    await runtime.service.start()
+
+    expect({
+      account: runtime.store.getState().main.accounts[id],
+      autohide: runtime.store.getState().main.autohide,
+      currentAccount: runtime.store.getState().main.currentAccount,
+      persisted: runtime.storage.values.get(storageKey),
+      tokens: runtime.store.getState().main.tokens
+    }).toMatchObject({
+      account: { id },
+      autohide: false,
+      currentAccount: id,
+      persisted: {
+        state: {
+          main: {
             currentAccount: id,
             tokens: { accountTokenIds: {}, byId: {} }
-          })
-        })
-      })
-    )
-  })
-
-  it('retains durable state and cached balances and rates while removing runtime data', () => {
-    const state = canonicalState()
-    const id = '0x1111111111111111111111111111111111111111'
-    state.main.accounts[id] = account(id, true)
-    state.main.appLock = { locked: true, vaultExists: true }
-    state.main.currentAccount = id
-    state.main.balances[id] = [
-      {
-        address: '0x0000000000000000000000000000000000000000',
-        balance: '0x1',
-        chainId: 1,
-        displayBalance: '1'
-      }
-    ]
-    state.main.rates[id] = { usd: { price: 123, change24hr: 4 } }
-    state.main.signers.runtime = { id: 'runtime' }
-    state.main.tokens.byId['1:0x1111111111111111111111111111111111111111'] = {
-      address: '0x1111111111111111111111111111111111111111',
-      chainId: 1,
-      custom: true,
-      curated: false,
-      decimals: 6,
-      image: {
-        base64: 'aWNvbg==',
-        contentHash: 'token-image',
-        mimeType: 'image/png'
+          }
+        },
+        version: PERSISTENCE_VERSION
       },
-      name: 'Persisted Token',
-      sources: ['custom'],
-      symbol: 'PTKN',
-      updatedAt: 1
-    }
-    state.main.networks.ethereum[1].connection.primary.connected = true
-    ;(state.main.networksMeta.ethereum[1] as any).blockHeight = 123
-    state.main.networksMeta.ethereum[1].nativeCurrency.usd = { price: 3_000, change24hr: 2 }
-
-    const persisted = selectPersistedState(state)
-    const main = persisted.main as any
-
-    expect(main.currentAccount).toBe(id)
-    expect(main.appLock).toBeUndefined()
-    expect(main.balances).toEqual(state.main.balances)
-    expect(main.rates).toEqual(state.main.rates)
-    expect(main.runtime).toBeUndefined()
-    expect(main.signers).toBeUndefined()
-    expect(main.accounts[id]).toMatchObject({ requests: {}, signer: '', status: 'ok' })
-    expect(main.accounts[id].active).toBeUndefined()
-    expect(main.accounts[id].balances).toBeUndefined()
-    expect(main.networks.ethereum[1].connection.primary.connected).toBe(false)
-    expect(main.networksMeta.ethereum[1].blockHeight).toBeUndefined()
-    expect(main.networksMeta.ethereum[1].nativeCurrency.usd).toEqual({ price: 3_000, change24hr: 2 })
-    expect(main.tokens.byId['1:0x1111111111111111111111111111111111111111'].image).toEqual({
-      base64: 'aWNvbg==',
-      contentHash: 'token-image',
-      mimeType: 'image/png'
+      tokens: { accountTokenIds: {}, byId: {} }
     })
   })
+})
 
-  it('merges durable state and cached balances and rates while keeping runtime slices fresh', () => {
-    const current = canonicalState()
-    current.main.appLock = { locked: true, vaultExists: true }
-    const id = '0x2222222222222222222222222222222222222222'
+describe('canonical persisted state contract', () => {
+  it('projects durable state and merges it while keeping runtime-owned fields fresh', () => {
     const durable = canonicalState()
-    durable.main.accounts[id] = account(id)
-    durable.main.accountOrder = [id]
+    const id = '0x1111111111111111111111111111111111111111'
+    durable.main.accounts[id] = account(id, true) as never
+    durable.main.appLock = { locked: false, vaultExists: false }
     durable.main.currentAccount = id
     durable.main.balances[id] = [
       {
@@ -168,69 +210,83 @@ describe('canonical state persistence', () => {
       }
     ]
     durable.main.rates[id] = { usd: { price: 123, change24hr: 4 } }
+    durable.main.signers.runtime = { id: 'runtime' } as never
+    durable.main.networks.ethereum[1].connection.primary.connected = true
+    ;(durable.main.networksMeta.ethereum[1] as any).blockHeight = 123
+
     const persisted = selectPersistedState(durable)
+    const projected = persisted.main as any
+    const fresh = canonicalState()
+    fresh.main.appLock = { locked: true, vaultExists: true }
+    const merged = mergePersistedState(persisted, fresh)
 
-    const merged = mergePersistedState(persisted, current)
-
-    expect(merged.main.currentAccount).toBe(id)
-    expect(merged.main.appLock).toBe(current.main.appLock)
-    expect(merged.main.accounts[id].active).toBeUndefined()
-    expect(merged.main.accounts[id].requests).toEqual({})
-    expect(merged.main.balances).toEqual(durable.main.balances)
-    expect(merged.main.rates).toEqual(durable.main.rates)
-    expect(merged.main.runtime).toBe(current.main.runtime)
+    expect({
+      projected: {
+        account: projected.accounts[id],
+        appLock: projected.appLock,
+        balances: projected.balances,
+        connected: projected.networks.ethereum[1].connection.primary.connected,
+        networkBlockHeight: projected.networksMeta.ethereum[1].blockHeight,
+        rates: projected.rates,
+        runtime: projected.runtime,
+        signers: projected.signers
+      },
+      merged: {
+        account: merged.main.accounts[id],
+        appLock: merged.main.appLock,
+        balances: merged.main.balances,
+        currentAccount: merged.main.currentAccount,
+        rates: merged.main.rates,
+        runtime: merged.main.runtime
+      }
+    }).toEqual({
+      projected: {
+        account: {
+          id,
+          address: id,
+          name: 'Test Account',
+          lastSignerType: 'address',
+          status: 'ok',
+          signer: '',
+          signerStatus: '',
+          requests: {},
+          created: 'test:1'
+        },
+        appLock: undefined,
+        balances: durable.main.balances,
+        connected: false,
+        networkBlockHeight: undefined,
+        rates: durable.main.rates,
+        runtime: undefined,
+        signers: undefined
+      },
+      merged: {
+        account: {
+          id,
+          address: id,
+          name: 'Test Account',
+          lastSignerType: 'address',
+          status: 'ok',
+          signer: '',
+          signerStatus: '',
+          requests: {},
+          created: 'test:1'
+        },
+        appLock: fresh.main.appLock,
+        balances: durable.main.balances,
+        currentAccount: id,
+        rates: durable.main.rates,
+        runtime: fresh.main.runtime
+      }
+    })
   })
 
-  it('migrates v3 snapshots that do not contain cached balances or rates', () => {
+  it('owns supported migration equivalence classes and rejects invalid inputs', () => {
     const v3 = selectPersistedState(canonicalState()) as any
     delete v3.main.balances
     delete v3.main.rates
 
     expect(migratePersistedState(v3, 3)).toEqual(v3)
-  })
-
-  it('coalesces writes and flushes only the latest validated snapshot', () => {
-    const values = new Map<string, unknown>()
-    const conf = {
-      clear: mock(() => values.clear()),
-      delete: mock((key: string) => values.delete(key)),
-      get: mock((key: string) => values.get(key)),
-      set: mock((key: string, value: unknown) => values.set(key, value))
-    }
-    const storage = new ValidatedConfStorage(conf as any)
-    const first: StorageValue<PersistedCanonicalState> = {
-      state: { main: { currentAccount: 'first' } },
-      version: PERSISTENCE_VERSION
-    }
-    const latest: StorageValue<PersistedCanonicalState> = {
-      state: { main: { currentAccount: 'latest' } },
-      version: PERSISTENCE_VERSION
-    }
-
-    storage.setItem('state', first)
-    storage.setItem('state', latest)
-    expect(conf.set).not.toHaveBeenCalled()
-
-    storage.flush()
-    expect(conf.set).not.toHaveBeenCalled()
-
-    storage.finishHydration(true)
-    expect(conf.set).toHaveBeenCalledTimes(1)
-    storage.flush()
-
-    expect(conf.set).toHaveBeenCalledTimes(1)
-    expect(conf.set).toHaveBeenCalledWith(
-      'zustand.state',
-      expect.objectContaining({
-        state: expect.objectContaining({
-          main: expect.objectContaining({ currentAccount: 'latest' })
-        }),
-        version: PERSISTENCE_VERSION
-      })
-    )
-  })
-
-  it('rejects malformed and unsupported persistence versions', () => {
     expect(() => migratePersistedState(selectPersistedState(canonicalState()), 1)).toThrow(
       'uses an unsupported persistence version'
     )
@@ -239,27 +295,11 @@ describe('canonical state persistence', () => {
     )
   })
 
-  it('deep-merges sparse persisted gas preferences into default network metadata', () => {
-    const current = canonicalState()
-    const persisted = selectPersistedState(current)
-    const price = (persisted.main as any).networksMeta.ethereum[1].gas.price
-    price.levels.custom = '0x2a'
-
-    const merged = mergePersistedState(persisted, current)
-
-    expect(merged.main.networksMeta.ethereum[1].gas.price.levels).toEqual({
-      slow: '',
-      standard: '',
-      fast: '',
-      asap: '',
-      custom: '0x2a'
-    })
-  })
-
-  it('replaces retired icon strings and preserves matching structured images', () => {
+  it('deep-merges sparse network preferences while repairing retired image sources', () => {
     const current = canonicalState()
     const persisted = selectPersistedState(current)
     const metadata = (persisted.main as any).networksMeta.ethereum
+    metadata[1].gas.price.levels.custom = '0x2a'
     metadata[1].icon = 'frame-cache:icon:legacy'
     metadata[10].icon = 'data:image/png;base64,aWNvbg=='
     metadata[10].image = {
@@ -271,70 +311,90 @@ describe('canonical state persistence', () => {
 
     const merged = mergePersistedState(persisted, current)
 
-    expect(merged.main.networksMeta.ethereum[1].icon).toBe(builtInChainIconUrl(1))
-    expect(merged.main.networksMeta.ethereum[10].icon).toBe(builtInChainIconUrl(10))
-    expect(merged.main.networksMeta.ethereum[10].image).toEqual(metadata[10].image)
+    expect({
+      mainnet: {
+        icon: merged.main.networksMeta.ethereum[1].icon,
+        levels: merged.main.networksMeta.ethereum[1].gas.price.levels
+      },
+      optimism: {
+        icon: merged.main.networksMeta.ethereum[10].icon,
+        image: merged.main.networksMeta.ethereum[10].image
+      }
+    }).toEqual({
+      mainnet: {
+        icon: builtInChainIconUrl(1),
+        levels: {
+          slow: '',
+          standard: '',
+          fast: '',
+          asap: '',
+          custom: '0x2a'
+        }
+      },
+      optimism: {
+        icon: builtInChainIconUrl(10),
+        image: metadata[10].image
+      }
+    })
+  })
+})
+
+describe('canonical persistence failure boundaries', () => {
+  it('quarantines corrupt state at a clock-owned key and fails real-store hydration closed', async () => {
+    const corrupt = envelope({ main: { lattice: 'not-an-object' } } as unknown as PersistedCanonicalState)
+    const runtime = createTestRuntime([[storageKey, corrupt]])
+
+    await expect(runtime.service.start()).rejects.toBeInstanceOf(CanonicalStatePersistenceError)
+
+    expect([...runtime.storage.values.entries()]).toEqual([[`${storageKey}.invalid.1234`, corrupt]])
+    runtime.adapter.setItem(CANONICAL_STATE_STORAGE_NAME, {
+      state: { main: { currentAccount: 'must-not-write' } },
+      version: PERSISTENCE_VERSION
+    })
+    runtime.adapter.flush()
+    expect(runtime.storage.values.has(storageKey)).toBe(false)
   })
 
-  it('quarantines malformed current persistence and fails closed', () => {
-    const values = new Map<string, unknown>([
-      ['zustand.state', { state: { main: { lattice: 'not-an-object' } }, version: PERSISTENCE_VERSION }]
-    ])
-    const conf = {
-      clear: mock(() => values.clear()),
-      delete: mock((key: string) => values.delete(key)),
-      get: mock((key: string) => values.get(key)),
-      set: mock((key: string, value: unknown) => values.set(key, value))
-    }
+  it('preserves newer-version state and blocks downgrade writes', async () => {
+    const future = envelope({ main: {} }, PERSISTENCE_VERSION + 1)
+    const runtime = createTestRuntime([[storageKey, future]])
 
-    expect(() => new ValidatedConfStorage(conf as any).getItem('state')).toThrow(
-      CanonicalStatePersistenceError
-    )
-    expect(values.has('zustand.state')).toBe(false)
-    expect([...values.keys()].some((key) => key.startsWith('zustand.state.invalid.'))).toBe(true)
-  })
-
-  it('rejects canonical store hydration when storage is invalid', async () => {
-    const values = new Map<string, unknown>([
-      [storageKey, { state: { main: { lattice: 'not-an-object' } }, version: PERSISTENCE_VERSION }]
-    ])
-    const conf = {
-      clear: mock(() => values.clear()),
-      delete: mock((key: string) => values.delete(key)),
-      get: mock((key: string) => values.get(key)),
-      set: mock((key: string, value: unknown) => values.set(key, value))
-    }
-
-    const storage = new ValidatedConfStorage(conf as any)
-    const { hydration } = createCanonicalStore(storage)
-
-    await expect(hydration).rejects.toBeInstanceOf(CanonicalStatePersistenceError)
-    storage.flush()
-
-    expect(values.has(storageKey)).toBe(false)
-    expect([...values.keys()].some((key) => key.startsWith(`${storageKey}.invalid.`))).toBe(true)
-  })
-
-  it('fails closed without overwriting persistence created by a newer application version', () => {
-    const future = { state: { main: {} }, version: PERSISTENCE_VERSION + 1 }
-    const values = new Map<string, unknown>([['zustand.state', future]])
-    const conf = {
-      clear: mock(() => values.clear()),
-      delete: mock((key: string) => values.delete(key)),
-      get: mock((key: string) => values.get(key)),
-      set: mock((key: string, value: unknown) => values.set(key, value))
-    }
-    const storage = new ValidatedConfStorage(conf as any, PERSISTENCE_VERSION)
-
-    expect(() => storage.getItem('state')).toThrow(CanonicalStatePersistenceError)
-    expect(() => storage.getItem('state')).toThrow('created by a newer Newframe version')
-    storage.setItem('state', {
+    await expect(runtime.service.start()).rejects.toThrow('created by a newer Newframe version')
+    runtime.adapter.setItem(CANONICAL_STATE_STORAGE_NAME, {
       state: { main: { currentAccount: 'downgrade' } },
       version: PERSISTENCE_VERSION
     })
-    storage.flush()
+    runtime.adapter.flush()
 
-    expect(values.get('zustand.state')).toBe(future)
-    expect(conf.set).not.toHaveBeenCalled()
+    expect(runtime.storage.values.get(storageKey)).toEqual(future)
+  })
+
+  it('retains a queued snapshot when a durable write fails so a later flush can recover', async () => {
+    const runtime = createTestRuntime()
+    await runtime.service.start()
+    runtime.store.getState().setAutohide(false)
+    runtime.storage.failWrites = 1
+
+    expect(() => runtime.scheduler.run()).toThrow('storage unavailable')
+    expect(runtime.storage.values.has(storageKey)).toBe(false)
+
+    runtime.service.flush()
+    expect(runtime.storage.values.get(storageKey)).toMatchObject({
+      state: { main: { autohide: false } },
+      version: PERSISTENCE_VERSION
+    })
+  })
+
+  it('keeps the original corrupt value when writing its quarantine copy fails', () => {
+    const corrupt = { version: 'invalid' }
+    const storage = new MemoryPersistence([['zustand.state', corrupt]])
+    storage.failWrites = 1
+    const adapter = createPersistenceAdapter({
+      storage,
+      clock: { now: () => 1_234 }
+    })
+
+    expect(() => adapter.getItem('state')).toThrow('storage unavailable')
+    expect([...storage.values.entries()]).toEqual([['zustand.state', corrupt]])
   })
 })

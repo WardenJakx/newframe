@@ -4,23 +4,36 @@ import log from 'electron-log'
 
 import { getMainRuntime } from '../../runtime'
 
-import { MAINNET_ETH_ICON } from '../../../resources/domain/balance'
-import { builtInChainIconUrl } from '../../../resources/domain/chain'
-import { MainSchema, Main } from './types/main'
+import { MAINNET_ETH_ICON } from '../../../domain/balance'
+import { builtInChainIconUrl } from '../../../domain/chain'
+import { MainSchema, Main } from '../../../domain/state/main'
 
-import type { Origin } from './types/origin'
-import type { Chain } from './types/chain'
+import type { Origin } from '../../../domain/state/origin'
+import type { Chain } from '../../../domain/state/chain'
 
-export type { ChainId, Chain, ChainMetadata } from './types/chain'
-export type { Origin } from './types/origin'
-export type { Permission } from './types/permission'
-export type { Balance } from './types/balance'
-export type { WithTokenId, Token, TokenCatalog, TokenImage, TokenRecord, TokenSource } from './types/token'
-export type { NativeCurrency } from './types/nativeCurrency'
-export type { Gas, GasFees } from './types/gas'
-export type { Rate } from './types/rate'
-export type { ColorwayPalette } from './types/colors'
-export type { Activity, ActivityRecord, ActivityStatus, Orders, OrderRecord } from './types/main'
+export type { ChainId, Chain, ChainMetadata } from '../../../domain/state/chain'
+export type { Origin } from '../../../domain/state/origin'
+export type { Permission } from '../../../domain/state/permission'
+export type { Balance } from '../../../domain/state/balance'
+export type {
+  WithTokenId,
+  Token,
+  TokenCatalog,
+  TokenImage,
+  TokenRecord,
+  TokenSource
+} from '../../../domain/state/token'
+export type { NativeCurrency } from '../../../domain/state/nativeCurrency'
+export type { Gas, GasFees } from '../../../domain/state/gas'
+export type { Rate } from '../../../domain/state/rate'
+export type { ColorwayPalette } from '../../../domain/state/colors'
+export type {
+  Activity,
+  ActivityRecord,
+  ActivityStatus,
+  Orders,
+  OrderRecord
+} from '../../../domain/state/main'
 
 const StatusNotificationSchema = z
   .object({

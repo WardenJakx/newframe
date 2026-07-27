@@ -1,8 +1,8 @@
 import { v5 as uuid } from 'uuid'
-import store from '../store'
 
 import type { Permission } from '../store/state'
 import type { TrustedCapability } from '../authority'
+import type { CanonicalStoreReader } from '../store/actions'
 
 export const enum SubscriptionType {
   ACCOUNTS = 'accountsChanged',
@@ -16,7 +16,12 @@ export type Subscription = {
   capabilities: readonly TrustedCapability[]
 }
 
-export function hasSubscriptionPermission(subType: string, address: string, subscription: Subscription) {
+export function hasSubscriptionPermission(
+  subType: string,
+  address: string,
+  subscription: Subscription,
+  canonicalStore: Pick<CanonicalStoreReader, 'getState'>
+) {
   if (
     [SubscriptionType.ACCOUNTS, SubscriptionType.CHAINS].includes(subType as SubscriptionType) &&
     subscription.capabilities.includes('wallet:internal-state')
@@ -29,7 +34,10 @@ export function hasSubscriptionPermission(subType: string, address: string, subs
     return false
   }
 
-  const permissions = (store.getState().main.permissions[address] || {}) as Record<string, Permission>
+  const permissions = (canonicalStore.getState().main.permissions[address] || {}) as Record<
+    string,
+    Permission
+  >
   const permission = Object.values(permissions).find(({ origin }) => {
     return uuid(origin, uuid.DNS) === subscription.originId
   })

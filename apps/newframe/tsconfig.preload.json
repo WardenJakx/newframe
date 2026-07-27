@@ -10,7 +10,7 @@
     "noEmit": true,
     "typeRoots": ["./node_modules/@types", "./@types"]
   },
-  "include": ["./@types/**/*.d.ts", "./resources/bridge/**/*.ts"],
+  "include": ["./@types/**/*.d.ts", "./preload/**/*.ts", "./contracts/**/*.ts", "./domain/**/*.ts"],
   "exclude": [
     "**/*.test.ts",
     "**/*.test.tsx",

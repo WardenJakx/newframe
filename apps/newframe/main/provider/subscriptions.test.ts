@@ -21,9 +21,9 @@ describe('subscription permissions', () => {
       capabilities: ['wallet:internal-state'] as const
     }
 
-    expect(hasSubscriptionPermission(SubscriptionType.ACCOUNTS, '', subscription)).toBe(true)
-    expect(hasSubscriptionPermission(SubscriptionType.CHAINS, '', subscription)).toBe(true)
-    expect(hasSubscriptionPermission(SubscriptionType.ASSETS, '', subscription)).toBe(false)
+    expect(hasSubscriptionPermission(SubscriptionType.ACCOUNTS, '', subscription, store)).toBe(true)
+    expect(hasSubscriptionPermission(SubscriptionType.CHAINS, '', subscription, store)).toBe(true)
+    expect(hasSubscriptionPermission(SubscriptionType.ASSETS, '', subscription, store)).toBe(false)
   })
 
   it('does not infer trust from a reserved-looking origin ID', () => {
@@ -33,7 +33,7 @@ describe('subscription permissions', () => {
       capabilities: []
     }
 
-    expect(hasSubscriptionPermission(SubscriptionType.ACCOUNTS, address, subscription)).toBe(false)
+    expect(hasSubscriptionPermission(SubscriptionType.ACCOUNTS, address, subscription, store)).toBe(false)
   })
 
   it('continues to allow dapp subscriptions backed by account permission', () => {
@@ -49,6 +49,6 @@ describe('subscription permissions', () => {
       }
     })
 
-    expect(hasSubscriptionPermission(SubscriptionType.ASSETS, address, subscription)).toBe(true)
+    expect(hasSubscriptionPermission(SubscriptionType.ASSETS, address, subscription, store)).toBe(true)
   })
 })

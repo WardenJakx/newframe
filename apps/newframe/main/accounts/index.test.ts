@@ -15,14 +15,23 @@ import log from 'electron-log'
 import { addHexPrefix, intToHex } from '@ethereumjs/util'
 
 import store from '../store'
-import { GasFeesSource, TRANSACTION_CONFIRMATION_TARGET } from '../../resources/domain/transaction'
+import { GasFeesSource, TRANSACTION_CONFIRMATION_TARGET } from '../../domain/transaction'
 import { gweiToHex } from '../../test/support/util'
 import { createAgentPrincipal, createRpcPrincipal } from '../authority'
 
-const providerMock = { send: mock(), emit: mock(), on: mock(), off: mock() }
+const providerMock = {
+  send: mock(),
+  getL1GasCost: mock(),
+  emit: mock(),
+  on: mock(),
+  off: mock()
+}
 const signersMock = { get: mock() }
 const windowsMock = { broadcast: mock(), showTray: mock() }
-const navMock = { on: mock(), forward: mock() }
+const navMock = { on: mock(), forward: mock(), back: mock() }
+const persistenceMock = { flush: mock() }
+const notificationMock = mock()
+const openBlockExplorerMock = mock()
 const externalDataScannerMock = {
   refreshBalances: mock(),
   refreshPositions: mock(),
@@ -30,12 +39,10 @@ const externalDataScannerMock = {
 }
 const externalDataScannerFactoryMock = mock(() => externalDataScannerMock)
 const transactionMock = {
-  addTransaction: mock(),
   maxFee: mock(() => 1e30),
   signerCompatibility: mock()
 }
 
-mock.module('../provider', () => ({ default: providerMock, ...providerMock }))
 mock.module('../signers', () => ({ default: signersMock, ...signersMock }))
 mock.module('../windows', () => ({ default: windowsMock, ...windowsMock }))
 mock.module('../windows/nav', () => ({ default: navMock, ...navMock }))
@@ -44,8 +51,6 @@ mock.module('../externalData', () => ({
   start: mock(),
   stop: mock()
 }))
-mock.module('../transaction', () => transactionMock)
-
 mock.module('../nameResolution', () => ({
   __esModule: true,
   default: {
@@ -61,6 +66,42 @@ let AccountsClass: any
 let signers: any
 let signerCompatibility: any
 let maxFee: any
+
+const nameResolutionMock = {
+  ready: () => true,
+  once: mock(),
+  off: mock(),
+  reverseLookup: mock()
+}
+const revealMock = {
+  identity: mock(async () => ({ type: '', ens: '' })),
+  decode: mock(),
+  recog: mock(async () => [])
+}
+const simulationMock = {
+  simulateTransactionEffects: mock(async () => ({ status: 'success' as const, effects: [] }))
+}
+
+function createAccounts(chainRpc = providerMock) {
+  return new AccountsClass(store, {
+    chainRpc,
+    transactionPolicy: transactionMock,
+    simulation: simulationMock,
+    nameResolution: nameResolutionMock,
+    reveal: revealMock,
+    createDataScanner: externalDataScannerFactoryMock,
+    runtime: {
+      navigation: navMock,
+      now: Date.now,
+      notify: notificationMock,
+      openBlockExplorer: openBlockExplorerMock,
+      persistence: persistenceMock,
+      schedule: (callback: () => void, delay: number) => setTimeout(callback, delay),
+      signers: signersMock,
+      windows: windowsMock
+    }
+  })
+}
 
 const storeState = () => store.getState() as any
 const canonicalRequest = (id: string | number = request.handlerId) => Accounts.current().requests[id] as any
@@ -97,17 +138,17 @@ let request: any
 beforeAll(async () => {
   log.transports.console.level = false
 
-  provider = (await import('../provider')).default
-  signers = (await import('../signers')).default
-  const transaction = await import('../transaction')
-  signerCompatibility = transaction.signerCompatibility
-  maxFee = transaction.maxFee
+  provider = providerMock
+  signers = signersMock
+  signerCompatibility = transactionMock.signerCompatibility
+  maxFee = transactionMock.maxFee
   const accountsModule = await import('./index')
-  Accounts = accountsModule.default as any
   AccountsClass = accountsModule.Accounts as any
+  Accounts = createAccounts()
 })
 
 afterAll(() => {
+  Accounts.dispose()
   log.transports.console.level = 'debug'
 })
 
@@ -283,7 +324,7 @@ it('clears the selected account when removing the last account', () => {
 
 describe('#initialize', () => {
   it('does not instantiate persisted accounts or start services during construction', () => {
-    const accounts = new AccountsClass()
+    const accounts = createAccounts()
 
     expect(accounts.accounts).toEqual({})
     expect(externalDataScannerFactoryMock).not.toHaveBeenCalled()
@@ -294,7 +335,7 @@ describe('#initialize', () => {
     store.setState((state: any) => {
       state.main.accounts = {}
     })
-    const accounts = new AccountsClass()
+    const accounts = createAccounts()
 
     expect(accounts.accounts[account.address]).toBeUndefined()
 
@@ -308,22 +349,29 @@ describe('#initialize', () => {
     accounts.close()
   })
 
-  it('initializes persisted accounts only once', () => {
-    const accounts = new AccountsClass()
+  it('owns an idempotent, restartable lifecycle for persisted account handles', () => {
+    const accounts = createAccounts(providerMock)
 
-    accounts.initialize()
+    accounts.start()
     const initializedAccount = accounts.accounts[account.address]
-    accounts.initialize()
+    accounts.start()
 
     expect(accounts.accounts[account.address]).toBe(initializedAccount)
 
-    accounts.close()
+    accounts.dispose()
+    expect(accounts.accounts).toEqual({})
+
+    accounts.start()
+    expect(accounts.accounts[account.address]?.address).toBe(account.address)
+    expect(accounts.accounts[account.address]).not.toBe(initializedAccount)
+
+    accounts.dispose()
   })
 })
 
 describe('#startDataScanner', () => {
   it('starts the external data scanner once', () => {
-    const accounts = new AccountsClass()
+    const accounts = createAccounts()
 
     accounts.startDataScanner()
     accounts.startDataScanner()
@@ -332,7 +380,7 @@ describe('#startDataScanner', () => {
   })
 
   it('ignores balance refreshes before the external data scanner has started', () => {
-    const accounts = new AccountsClass()
+    const accounts = createAccounts()
 
     accounts.refreshBalances(account.address)
 
@@ -341,14 +389,14 @@ describe('#startDataScanner', () => {
   })
 
   it('closes safely before the external data scanner has started', () => {
-    const accounts = new AccountsClass()
+    const accounts = createAccounts()
 
     expect(() => accounts.close()).not.toThrow()
     expect(externalDataScannerMock.close).not.toHaveBeenCalled()
   })
 
   it('tracks and refreshes affected positions from an external order lifecycle', () => {
-    const accounts = new AccountsClass()
+    const accounts = createAccounts()
     const token = {
       address: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48',
       chainId: 31337,
@@ -1302,7 +1350,7 @@ describe('#setTxSent', () => {
       }
     })
 
-    const accounts = new AccountsClass()
+    const accounts = createAccounts()
     accounts.initialize()
     await Promise.resolve()
     await Promise.resolve()

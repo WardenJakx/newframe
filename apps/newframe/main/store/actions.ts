@@ -2,14 +2,14 @@ import log from 'electron-log'
 import type { Draft } from 'immer'
 import { v5 as uuidv5 } from 'uuid'
 
-import { NATIVE_CURRENCY } from '../../resources/constants'
-import { accountNS, isDefaultAccountName } from '../../resources/domain/account'
-import { toTokenId } from '../../resources/domain/token'
-import { createPanelActions, type CanonicalGet, type CanonicalSet } from '../../resources/store/actions.panel'
+import { NATIVE_CURRENCY } from '../../domain/token/constants'
+import { accountNS, isDefaultAccountName } from '../../domain/account'
+import { toTokenId } from '../../domain/token'
+import { createPanelActions, type CanonicalGet, type CanonicalSet } from './actions.panel'
 import type { CanonicalState } from './state'
-import type { Account } from './state/types/account'
-import type { Token, TokenImage, TokenSource } from './state/types/token'
-import type { CanonicalAccountRequest } from '../accounts/types'
+import type { Account } from '../../domain/state/account'
+import type { Token, TokenImage, TokenSource } from '../../domain/state/token'
+import type { CanonicalAccountRequest } from '../../contracts/requests'
 import type { SignerSummary } from '../signers/Signer'
 
 type MutableRecord = Record<string, any>
@@ -21,23 +21,12 @@ type MutableCanonicalState = Draft<CanonicalState> & MutableRecord
 
 const supportedNetworkTypes = ['ethereum']
 const completedActivityStatuses = new Set(['succeeded', 'reverted'])
-let homeCommandId = 0
 
 const mutable = (state: Draft<CanonicalState>) => state as MutableCanonicalState
 const mutableMain = (state: Draft<CanonicalState>) => state.main as MutableMain
 const record = (value: unknown) => value as MutableRecord
 const windowState = (state: Draft<CanonicalState>, windowId: string) =>
   record(record(state.windows)[windowId])
-
-function toHomeCommand(command: any) {
-  const view = command?.view === 'chains' ? 'networks' : command?.view
-
-  return {
-    id: ++homeCommandId,
-    view,
-    data: command?.data || {}
-  }
-}
 
 function switchChainForOrigins(origins: MutableRecord, oldChainId: number, newChainId: number) {
   Object.entries(origins).forEach(([originId, value]) => {
@@ -158,6 +147,14 @@ function stripRequestCapabilities(request: MutableRecord) {
 }
 
 export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
+  let homeCommandId = 0
+
+  const toHomeCommand = (command: any) => ({
+    id: ++homeCommandId,
+    view: command?.view === 'chains' ? 'networks' : command?.view,
+    data: command?.data || {}
+  })
+
   return {
     ...createPanelActions(set, get),
 
@@ -1197,5 +1194,17 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
 
 export type CanonicalActions = ReturnType<typeof createCanonicalActions>
 export type CanonicalStore = CanonicalState & CanonicalActions
+export interface CanonicalStoreReader {
+  getState(): CanonicalStore
+  subscribe(listener: (state: CanonicalStore, previousState: CanonicalStore) => void): () => void
+  subscribe<TSlice>(
+    selector: (state: CanonicalStore) => TSlice,
+    listener: (selectedState: TSlice, previousSelectedState: TSlice) => void,
+    options?: {
+      equalityFn?: (left: TSlice, right: TSlice) => boolean
+      fireImmediately?: boolean
+    }
+  ): () => void
+}
 
 export default createCanonicalActions

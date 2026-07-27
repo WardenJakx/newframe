@@ -1,26 +1,13 @@
-import { app, clipboard } from 'electron'
-import { randomBytes } from 'crypto'
-import { readFile } from 'fs/promises'
-import log from 'electron-log'
 import { isAddress } from 'ethers'
 import { v5 as uuidv5 } from 'uuid'
 
-import accounts from '../accounts'
-import biometrics from '../biometrics'
-import chains from '../chains'
+import type { Accounts } from '../accounts'
+import type { Chains } from '../chains'
 import Erc20Contract from '../contracts/erc20'
-import { flashService } from '../flash/instance'
-import { getTokenDiscoveryProvider } from '../portfolio'
-import provider from '../provider'
-import signers from '../signers'
-import TrezorBridge from '../signers/trezor/bridge'
-import store from '../store'
-import persist from '../store/persist'
-import updater from '../updater'
-import vault from '../vault'
-import windows from '../windows'
-import { openFileDialog } from '../windows/dialog'
-import { openBlockExplorer, openExternal } from '../windows/window'
+import type { FlashService } from '../flash'
+import type { TokenDiscoveryProviderAccess } from '../portfolio'
+import type { Provider } from '../provider'
+import type { ProviderProxyConnection } from '../provider/proxy'
 import {
   ReplacementType,
   type AccountRequest,
@@ -29,67 +16,156 @@ import {
   type AddTokenRequest,
   type PermitSignatureRequest,
   type TransactionRequest
-} from '../accounts/types'
+} from '../../contracts/requests'
 import type Signer from '../signers/Signer'
 import type { Chain } from '../store/state'
 import type { TrustedPrincipal } from '../authority'
-import { ApprovalType } from '../../resources/constants'
-import {
-  buildSideTrayRoute,
-  normalizeSideTrayFrameRequest,
-  SIDE_TRAY_FRAME_ID
-} from '../../resources/domain/sideTray'
-import { toTokenId } from '../../resources/domain/token'
+import { ApprovalType } from '../../domain/request/approval'
+import { buildSideTrayRoute, normalizeSideTrayFrameRequest, SIDE_TRAY_FRAME_ID } from '../../domain/sideTray'
+import { toTokenId } from '../../domain/token'
 import {
   isSignatureRequest,
   isTransactionRequest,
   isTypedMessageSignatureRequest
-} from '../../resources/domain/request'
+} from '../../domain/request'
 import {
   findUnavailableSigners,
   getSignerDisplayType,
   isHardwareSigner,
   isSignerReady
-} from '../../resources/domain/signer'
-import { usesBaseFee } from '../../resources/domain/transaction'
-import { capitalize, randomLetters } from '../../resources/utils'
-import { toBigInt } from '../../resources/utils/numbers'
+} from '../../domain/signer'
+import { usesBaseFee } from '../../domain/transaction'
+import { capitalize, randomLetters } from '../../domain/text'
+import { toBigInt } from '../../domain/units'
 import { resolveName, selectAccount } from './workflows'
-import { signerCompatibility as transactionCompatibility } from '../transaction'
+import type { AccountTransactionPolicyPort } from '../features/transactions/accountPolicyPort'
+import type { NameResolutionService } from '../nameResolution'
+import type { RevealService } from '../reveal'
+import { createSecurityService, type SecurityServicePorts } from '../features/security/service'
+import { createSettingsService } from '../features/settings/service'
+import type { CanonicalStore } from '../store/actions'
 import type {
   AccountAddFromSignerCommand,
   NetworkRequestResolveCommand,
   RequestTokenApprovalUpdateCommand,
-  SecurityConfigureCommand,
-  SecurityUnlockCommand,
-  SettingsUpdateCommand,
   SignerImportCommand,
   SideTrayOpenCommand,
   TokenAddCommand,
   TrezorInputCommand,
   WalletToken,
   WarningToggleCommand
-} from '../../resources/bridge/operations'
+} from '../../contracts/operations'
 
-export function writeClipboard(text: string) {
-  clipboard.writeText(text)
+type WorkflowCallback<T> = (error: unknown, value?: T) => void
+
+export type WalletWorkflowSignerPort = SecurityServicePorts['signers'] & {
+  createFromKeystore(
+    keystore: string | { version: number },
+    keystorePassword: string,
+    password: string,
+    callback: WorkflowCallback<Signer>
+  ): void
+  createFromPhrase(phrase: string, password: string, callback: WorkflowCallback<Signer>): void
+  createFromPrivateKey(privateKey: string, password: string, callback: WorkflowCallback<Signer>): void
+  exportAccountPrivateKey(
+    address: string,
+    password: string,
+    callback: WorkflowCallback<{ type: string; value: string }>
+  ): void
+  get(id: string): Signer | undefined
+  newPhrase(callback: WorkflowCallback<string>): void
+  reload(id: string): void
+  remove(id: string): void
 }
 
-export function openExternalUrl(url: string) {
-  openExternal(url)
+export interface WalletWorkflowPlatformPorts {
+  app: Pick<Electron.App, 'exit' | 'quit' | 'relaunch'>
+  biometrics: SecurityServicePorts['biometrics']
+  clipboard: Pick<Electron.Clipboard, 'writeText'>
+  persistence: { clear(): void }
+  signers: WalletWorkflowSignerPort
+  updater: {
+    dismissUpdate(): void
+    fetchUpdate(): void
+    quitAndInstall(): void
+    updateReady: boolean
+  }
+  vault: SecurityServicePorts['vault'] & { exists(): boolean }
+  windows: {
+    handleTrayMouseout(): void
+    refocusSideTray(frameId: string): void
+  }
 }
 
-export function openTransactionExplorer(chainId: number, transactionHash?: string) {
-  const chain = store.getState().main.networks.ethereum[chainId]
+export interface WalletWorkflowDependencies {
+  accounts: Accounts
+  app: WalletWorkflowPlatformPorts['app']
+  biometrics: WalletWorkflowPlatformPorts['biometrics']
+  chains: Chains
+  clipboard: Pick<Electron.Clipboard, 'writeText'>
+  delay(ms: number): Promise<void>
+  flashService: FlashService
+  getTokenDiscoveryProvider: () => TokenDiscoveryProviderAccess
+  inspectEnabled: boolean
+  log: { warn(message: string, details?: unknown): void }
+  nameResolution: NameResolutionService
+  now(): number
+  openBlockExplorer(chain: { id: number; type: 'ethereum' }, transactionHash?: string): void
+  openExternal(url: string): void
+  openFileDialog(): Promise<{ filePaths?: string[] } | undefined>
+  persistence: WalletWorkflowPlatformPorts['persistence']
+  provider: Provider
+  proxy: ProviderProxyConnection
+  randomBytes(size: number): { toString(encoding: 'hex'): string }
+  readFile(path: string, encoding: 'utf8'): Promise<string>
+  reveal: RevealService
+  rpcMatchesChain(url: unknown, chainId: number): Promise<boolean>
+  signers: WalletWorkflowPlatformPorts['signers']
+  store: { getState(): CanonicalStore }
+  transactionPolicy: AccountTransactionPolicyPort
+  trezorBridge: {
+    pinEntered(signerId: string, value: string): void
+    passphraseEntered(signerId: string, value: string): void
+    enterPassphraseOnDevice(signerId: string): void
+  }
+  updater: WalletWorkflowPlatformPorts['updater']
+  vault: WalletWorkflowPlatformPorts['vault']
+  windows: WalletWorkflowPlatformPorts['windows']
+}
+
+export type WalletWorkflowAdapters = Omit<
+  WalletWorkflowDependencies,
+  | 'accounts'
+  | 'chains'
+  | 'flashService'
+  | 'nameResolution'
+  | 'provider'
+  | 'proxy'
+  | 'reveal'
+  | 'store'
+  | 'transactionPolicy'
+>
+
+function openTransactionExplorer(
+  chainId: number,
+  transactionHash: string | undefined,
+  dependencies: WalletWorkflowDependencies
+) {
+  const chain = dependencies.store.getState().main.networks.ethereum[chainId]
   if (!chain) return false
 
-  openBlockExplorer({ id: chainId, type: 'ethereum' }, transactionHash)
+  dependencies.openBlockExplorer({ id: chainId, type: 'ethereum' }, transactionHash)
   return true
 }
 
-export async function lookupToken(address: string, chainId: number) {
+async function lookupToken(
+  address: string,
+  chainId: number,
+  provider: Provider,
+  dependencies: WalletWorkflowDependencies
+) {
   try {
-    const token = await new Erc20Contract(address as Address, chainId).getTokenData()
+    const token = await new Erc20Contract(address as Address, chainId, provider).getTokenData()
     if (!token.totalSupply || token.decimals === undefined) return
 
     return {
@@ -99,11 +175,11 @@ export async function lookupToken(address: string, chainId: number) {
       totalSupply: token.totalSupply
     }
   } catch (error) {
-    log.warn('Could not load token data for contract', { address, chainId, error })
+    dependencies.log.warn('Could not load token data for contract', { address, chainId, error })
   }
 }
 
-function addressHasTransactions(address: string, chainId: number) {
+function addressHasTransactions(address: string, chainId: number, chains: Chains) {
   return new Promise<boolean | null>((resolve) => {
     chains.send(
       {
@@ -126,8 +202,12 @@ function addressHasTransactions(address: string, chainId: number) {
   })
 }
 
-export async function getAddressChainUsage(addresses: string[]) {
-  const enabledChainIds = Object.values(store.getState().main.networks.ethereum)
+async function getAddressChainUsage(
+  addresses: string[],
+  chains: Chains,
+  dependencies: WalletWorkflowDependencies
+) {
+  const enabledChainIds = Object.values(dependencies.store.getState().main.networks.ethereum)
     .filter((chain) => chain.on)
     .map((chain) => chain.id)
     .sort((a, b) => a - b)
@@ -137,7 +217,7 @@ export async function getAddressChainUsage(addresses: string[]) {
       const checks = await Promise.all(
         enabledChainIds.map(async (chainId) => ({
           chainId,
-          used: await addressHasTransactions(address, chainId)
+          used: await addressHasTransactions(address, chainId, chains)
         }))
       )
 
@@ -150,7 +230,7 @@ export async function getAddressChainUsage(addresses: string[]) {
   )
 }
 
-function currentRequest<T extends AccountRequest = AccountRequest>(requestId: string) {
+function currentRequest<T extends AccountRequest = AccountRequest>(requestId: string, accounts: Accounts) {
   return accounts.current()?.getRequest<T>(requestId)
 }
 
@@ -172,140 +252,53 @@ function callbackResult<T>(run: (done: (error: unknown, value?: T) => void) => v
   })
 }
 
-export function consumeHomeCommand(commandId: number) {
-  const command = store.getState().tray.homeCommand as { id: number } | null
+function consumeHomeCommand(commandId: number, dependencies: WalletWorkflowDependencies) {
+  const command = dependencies.store.getState().tray.homeCommand as { id: number } | null
   if (!command || command.id !== commandId) return false
-  store.getState().clearHomeCommand(commandId)
+  dependencies.store.getState().clearHomeCommand(commandId)
   return true
 }
 
-export function securityStatus() {
-  const appLock = store.getState().main.appLock
-  const summary = biometrics.summary()
-  const biometricAvailable =
-    summary.enabled && (summary.method === 'native' ? summary.nativeAvailable : summary.method === 'webauthn')
-
-  return {
-    ...appLock,
-    biometricUnlockEnabled: summary.enabled,
-    biometricAvailable,
-    biometrics: {
-      enabled: summary.enabled,
-      method: summary.method,
-      credential: summary.credential,
-      nativeAvailable: summary.nativeAvailable
-    }
-  }
-}
-
-export async function configureSecurity(command: SecurityConfigureCommand) {
-  if (command.mode === 'disabled') {
-    biometrics.disable()
-    store.getState().setBiometricUnlock(false)
-    return
-  }
-
-  if (!vault.isUnlocked()) throw new Error('Unlock Newframe before enabling biometric login')
-
-  if (command.mode === 'native') await biometrics.enableNative(vault.getKey() as string)
-  else biometrics.enableWebAuthn(vault.getKey() as string, command.credential, command.secret)
-
-  store.getState().setBiometricUnlock(true)
-}
-
-export async function unlockSecurity(command: SecurityUnlockCommand) {
-  await callbackResult<boolean>((done) => {
-    if (command.method === 'password') return signers.unlockApp(command.password, done)
-    signers.unlockAppWithBiometrics(
-      command.method === 'webauthn' ? { method: 'webauthn', secret: command.secret } : { method: 'native' },
-      done
-    )
-  })
-}
-
-export function lockWallet() {
-  return new Promise<void>((resolve, reject) => {
-    signers.lockApp((error?: Error | null) => (error ? reject(error) : resolve()))
-  })
-}
-
-export async function setNetworkPrimaryRpc(chainId: number, url: string) {
-  if (!store.getState().main.networks.ethereum[chainId]) return false
-  if (!(await rpcMatchesChain(url, chainId))) {
+async function setNetworkPrimaryRpc(chainId: number, url: string, dependencies: WalletWorkflowDependencies) {
+  if (!dependencies.store.getState().main.networks.ethereum[chainId]) return false
+  if (!(await dependencies.rpcMatchesChain(url, chainId))) {
     throw new Error('The RPC endpoint returned a different chain ID.')
   }
 
-  const state = store.getState()
+  const state = dependencies.store.getState()
   state.setPrimaryCustom('ethereum', chainId, url)
   state.selectPrimary('ethereum', chainId, 'custom')
   state.toggleConnection('ethereum', chainId, 'primary', true)
   return true
 }
 
-export function setNetworkActivation(chainId: number, enabled: boolean) {
-  if (!store.getState().main.networks.ethereum[chainId] || (chainId === 1 && !enabled)) return false
-  store.getState().activateNetwork('ethereum', chainId, enabled)
+function setNetworkActivation(chainId: number, enabled: boolean, dependencies: WalletWorkflowDependencies) {
+  if (!dependencies.store.getState().main.networks.ethereum[chainId] || (chainId === 1 && !enabled)) {
+    return false
+  }
+  dependencies.store.getState().activateNetwork('ethereum', chainId, enabled)
   return true
 }
 
-export function updateSettings(command: SettingsUpdateCommand) {
-  const state = store.getState()
-
-  switch (command.setting) {
-    case 'autohide':
-      return state.setAutohide(command.value)
-    case 'launch':
-      if (state.main.launch !== command.value) state.toggleLaunch()
-      return
-    case 'reveal':
-      if (state.main.reveal !== command.value) state.toggleReveal()
-      return
-    case 'menubar-gas-price':
-      return state.setMenubarGasPrice(command.value)
-    case 'show-local-name-with-ens':
-      if (state.main.showLocalNameWithENS !== command.value) state.toggleShowLocalNameWithENS()
-      return
-    case 'show-testnets':
-      return state.setShowTestnets(command.value)
-    case 'shortcut-enabled':
-      return state.setShortcut('summon', { enabled: command.value })
-    case 'shortcut-configuring':
-      return state.setShortcut('summon', { configuring: command.value })
-    case 'auto-discover-tokens':
-      if (command.apiKey !== undefined) state.setPortfolioApiKey(command.apiKey)
-      return state.setAutoDiscoverTokens(command.value)
-    case 'trezor-derivation':
-      return state.setTrezorDerivation(command.value)
-    case 'ledger-derivation':
-      return state.setLedgerDerivation(command.value)
-    case 'lattice-derivation':
-      return state.setLatticeDerivation(command.value)
-    case 'ledger-live-account-limit':
-      return state.setLiveAccountLimit(command.value)
-    case 'lattice-account-limit':
-      return state.setLatticeAccountLimit(command.value)
-    case 'lattice-endpoint-mode':
-      return state.setLatticeEndpointMode(command.value)
-    case 'lattice-endpoint':
-      return state.setLatticeEndpointCustom(command.value)
-    case 'portfolio-api-key':
-      return state.setPortfolioApiKey(command.value)
-    case 'summon-shortcut':
-      return state.setShortcut('summon', command.value)
-  }
-}
-
-export function updateNotification(notificationId: string, action: 'dismiss' | 'expire') {
-  const notification = store.getState().view.notifications[notificationId]
+function updateNotification(
+  notificationId: string,
+  action: 'dismiss' | 'expire',
+  dependencies: WalletWorkflowDependencies
+) {
+  const notification = dependencies.store.getState().view.notifications[notificationId]
   if (!notification) return false
 
-  if (action === 'dismiss') store.getState().dismissNotification(notificationId)
-  else store.getState().expireNotification(notificationId)
+  if (action === 'dismiss') dependencies.store.getState().dismissNotification(notificationId)
+  else dependencies.store.getState().expireNotification(notificationId)
   return true
 }
 
-export function clearPermission(accountId: string, originId?: string) {
-  const state = store.getState()
+function clearPermission(
+  accountId: string,
+  originId: string | undefined,
+  dependencies: WalletWorkflowDependencies
+) {
+  const state = dependencies.store.getState()
   const permissions = state.main.permissions[accountId]
   if (!state.main.accounts[accountId] || !permissions || (originId && !permissions[originId])) return false
 
@@ -314,31 +307,34 @@ export function clearPermission(accountId: string, originId?: string) {
   return true
 }
 
-export function resetWallet(scope: 'saved-data' | 'all-settings-data') {
+function resetWallet(scope: 'saved-data' | 'all-settings-data', dependencies: WalletWorkflowDependencies) {
   if (scope === 'saved-data') {
-    store.getState().resetSavedData()
+    dependencies.store.getState().resetSavedData()
     return
   }
 
-  persist.clear()
-  if (updater.updateReady) updater.quitAndInstall()
+  dependencies.persistence.clear()
+  if (dependencies.updater.updateReady) dependencies.updater.quitAndInstall()
   else {
-    app.relaunch()
-    app.exit(0)
+    dependencies.app.relaunch()
+    dependencies.app.exit(0)
   }
 }
 
-export function quitApp() {
-  app.quit()
+function quitApp(dependencies: WalletWorkflowDependencies) {
+  dependencies.app.quit()
 }
 
-export function addToken(command: TokenAddCommand) {
-  store.getState().upsertTokens([command.token], { custom: true, source: 'custom' })
+function addToken(command: TokenAddCommand, dependencies: WalletWorkflowDependencies) {
+  dependencies.store.getState().upsertTokens([command.token], { custom: true, source: 'custom' })
   return true
 }
 
-export function removeToken(token: Pick<WalletToken, 'address' | 'chainId'>) {
-  const state = store.getState()
+function removeToken(
+  token: Pick<WalletToken, 'address' | 'chainId'>,
+  dependencies: WalletWorkflowDependencies
+) {
+  const state = dependencies.store.getState()
   const canonicalToken = state.main.tokens.byId[toTokenId(token)]
   if (!canonicalToken) return false
 
@@ -346,46 +342,50 @@ export function removeToken(token: Pick<WalletToken, 'address' | 'chainId'>) {
   return true
 }
 
-export function removeOrigin(originId: string) {
-  if (!store.getState().main.origins[originId]) return false
+function removeOrigin(originId: string, accounts: Accounts, dependencies: WalletWorkflowDependencies) {
+  if (!dependencies.store.getState().main.origins[originId]) return false
 
   accounts.removeRequests(originId)
-  store.getState().removeOrigin(originId)
+  dependencies.store.getState().removeOrigin(originId)
   return true
 }
 
-export function toggleWarning(warning: WarningToggleCommand['warning']) {
+function toggleWarning(warning: WarningToggleCommand['warning'], dependencies: WalletWorkflowDependencies) {
   const actions = {
-    explorer: () => store.getState().toggleExplorerWarning(),
-    'gas-fee': () => store.getState().toggleGasFeeWarning(),
-    'signer-compatibility': () => store.getState().toggleSignerCompatibilityWarning()
+    explorer: () => dependencies.store.getState().toggleExplorerWarning(),
+    'gas-fee': () => dependencies.store.getState().toggleGasFeeWarning(),
+    'signer-compatibility': () => dependencies.store.getState().toggleSignerCompatibilityWarning()
   }
 
   actions[warning]()
 }
 
-export function removeNetwork(chainId: number) {
-  const network = store.getState().main.networks.ethereum[chainId]
+function removeNetwork(chainId: number, dependencies: WalletWorkflowDependencies) {
+  const network = dependencies.store.getState().main.networks.ethereum[chainId]
   if (!network || chainId === 1) return false
 
-  store.getState().removeNetwork(network)
+  dependencies.store.getState().removeNetwork(network)
   return true
 }
 
-export function submitTrezorInput(command: TrezorInputCommand) {
-  const signer = signers.get(command.signerId)
+function submitTrezorInput(command: TrezorInputCommand, dependencies: WalletWorkflowDependencies) {
+  const signer = dependencies.signers.get(command.signerId)
   if (!signer || signer.type !== 'trezor') return false
 
-  if (command.input === 'pin') TrezorBridge.pinEntered(command.signerId, command.value)
-  if (command.input === 'passphrase') {
-    TrezorBridge.passphraseEntered(command.signerId, command.value)
+  if (command.input === 'pin') {
+    dependencies.trezorBridge.pinEntered(command.signerId, command.value)
   }
-  if (command.input === 'device-passphrase') TrezorBridge.enterPassphraseOnDevice(command.signerId)
+  if (command.input === 'passphrase') {
+    dependencies.trezorBridge.passphraseEntered(command.signerId, command.value)
+  }
+  if (command.input === 'device-passphrase') {
+    dependencies.trezorBridge.enterPassphraseOnDevice(command.signerId)
+  }
   return true
 }
 
-export async function pairLattice(signerId: string, pairCode: string) {
-  const signer = signers.get(signerId)
+async function pairLattice(signerId: string, pairCode: string, dependencies: WalletWorkflowDependencies) {
+  const signer = dependencies.signers.get(signerId)
   if (!signer || signer.type !== 'lattice' || !('pair' in signer) || typeof signer.pair !== 'function') {
     return false
   }
@@ -394,15 +394,20 @@ export async function pairLattice(signerId: string, pairCode: string) {
   return true
 }
 
-export function removeAccount(address: string, removeSeedSigner = false) {
+function removeAccount(
+  address: string,
+  removeSeedSigner: boolean,
+  accounts: Accounts,
+  dependencies: WalletWorkflowDependencies
+) {
   const accountId = address.toLowerCase()
-  const state = store.getState()
+  const state = dependencies.store.getState()
   const account = state.main.accounts[accountId]
   if (!account) return false
 
   let seedSignerId = ''
   if (removeSeedSigner && account.signer) {
-    const signer = signers.get(account.signer)
+    const signer = dependencies.signers.get(account.signer)
     const hasAnotherAccount = Object.values(state.main.accounts).some(
       (candidate) => candidate.id !== accountId && candidate.signer === account.signer
     )
@@ -410,110 +415,151 @@ export function removeAccount(address: string, removeSeedSigner = false) {
   }
 
   accounts.remove(accountId)
-  if (seedSignerId) signers.remove(seedSignerId)
+  if (seedSignerId) dependencies.signers.remove(seedSignerId)
   return true
 }
 
-export function reorderAccounts(fromAccountId: string, toAccountId: string) {
-  const state = store.getState()
+function reorderAccounts(
+  fromAccountId: string,
+  toAccountId: string,
+  dependencies: WalletWorkflowDependencies
+) {
+  const state = dependencies.store.getState()
   if (!state.main.accounts[fromAccountId] || !state.main.accounts[toAccountId]) return false
   state.reorderAccounts(fromAccountId, toAccountId)
   return true
 }
 
-export function renameAccount(accountId: string, name: string) {
+function renameAccount(accountId: string, name: string, accounts: Accounts) {
   if (!accounts.get(accountId)) return false
   accounts.rename(accountId, name)
   return true
 }
 
-async function addAndSelectAccount(address: string, name: string, signerType: string) {
+async function addAndSelectAccount(
+  address: string,
+  name: string,
+  signerType: string,
+  accounts: Accounts,
+  provider: Provider
+) {
   const accountId = address.toLowerCase()
   if (!accounts.get(accountId)) accounts.add(address, name, { type: signerType })
-  await selectAccount(accountId)
+  await selectAccount(accountId, accounts, provider)
   return accountId
 }
 
-export async function addAccountFromSigner(command: AccountAddFromSignerCommand) {
-  const signer = signers.get(command.signerId)
+async function addAccountFromSigner(
+  command: AccountAddFromSignerCommand,
+  accounts: Accounts,
+  provider: Provider,
+  dependencies: WalletWorkflowDependencies
+) {
+  const signer = dependencies.signers.get(command.signerId)
   const address = signer?.addresses.find(
     (candidate) => candidate.toLowerCase() === command.address.toLowerCase()
   )
   if (!signer || !address) return
 
   const label = getSignerDisplayType(signer.type)
-  return addAndSelectAccount(address, command.name || `${capitalize(label)} Account`, signer.type)
+  return addAndSelectAccount(
+    address,
+    command.name || `${capitalize(label)} Account`,
+    signer.type,
+    accounts,
+    provider
+  )
 }
 
-export async function addWatchAccount(addressOrName: string, name?: string) {
-  const address = isAddress(addressOrName) ? addressOrName : await resolveName(addressOrName)
+async function addWatchAccount(
+  addressOrName: string,
+  name: string | undefined,
+  accounts: Accounts,
+  provider: Provider,
+  nameResolution: NameResolutionService
+) {
+  const address = isAddress(addressOrName) ? addressOrName : await resolveName(addressOrName, nameResolution)
   if (!address || !isAddress(address)) return
-  return addAndSelectAccount(address, name || 'Watch Account', 'Address')
+  return addAndSelectAccount(address, name || 'Watch Account', 'Address', accounts, provider)
 }
 
-function createSigner(command: SignerImportCommand) {
+function createSigner(command: SignerImportCommand, dependencies: WalletWorkflowDependencies) {
   return callbackResult<Signer>((done) => {
     if (command.source === 'phrase') {
-      signers.createFromPhrase(command.phrase, command.framePassword, done)
+      dependencies.signers.createFromPhrase(command.phrase, command.framePassword, done)
     } else if (command.source === 'private-key') {
-      signers.createFromPrivateKey(command.privateKey, command.framePassword, done)
+      dependencies.signers.createFromPrivateKey(command.privateKey, command.framePassword, done)
     } else {
-      signers.createFromKeystore(command.keystore, command.keystorePassword, command.framePassword, done)
+      dependencies.signers.createFromKeystore(
+        command.keystore,
+        command.keystorePassword,
+        command.framePassword,
+        done
+      )
     }
   })
 }
 
-export async function importSigner(command: SignerImportCommand) {
-  const signer = await createSigner(command)
+async function importSigner(
+  command: SignerImportCommand,
+  accounts: Accounts,
+  provider: Provider,
+  dependencies: WalletWorkflowDependencies
+) {
+  const signer = await createSigner(command, dependencies)
   const address = signer.addresses[0]
   if (!address) throw new Error('No account address was created')
-  return addAndSelectAccount(address, command.accountName || 'Hot Account', signer.type)
+  return addAndSelectAccount(address, command.accountName || 'Hot Account', signer.type, accounts, provider)
 }
 
-export function exportAccountPrivateKey(accountId: string, password: string) {
-  const account = store.getState().main.accounts[accountId]
+function exportAccountPrivateKey(
+  accountId: string,
+  password: string,
+  dependencies: WalletWorkflowDependencies
+) {
+  const account = dependencies.store.getState().main.accounts[accountId]
   if (!account) return
 
   return callbackResult<{ type: string; value: string }>((done) =>
-    signers.exportAccountPrivateKey(account.address, password, done)
+    dependencies.signers.exportAccountPrivateKey(account.address, password, done)
   )
 }
 
-export async function locateKeystore() {
-  const selection = await openFileDialog()
+async function locateKeystore(dependencies: WalletWorkflowDependencies) {
+  const selection = await dependencies.openFileDialog()
   const filePath = selection?.filePaths?.[0]
   if (!filePath) return
 
-  const parsed = JSON.parse(await readFile(filePath, 'utf8')) as Record<string, unknown>
+  const parsed = JSON.parse(await dependencies.readFile(filePath, 'utf8')) as Record<string, unknown>
   if (![1, 3].includes(Number(parsed.version))) throw new Error('Invalid keystore version')
   return parsed
 }
 
-export function generateSeedPhrase() {
-  return callbackResult<string>((done) => signers.newPhrase(done))
+function generateSeedPhrase(dependencies: WalletWorkflowDependencies) {
+  return callbackResult<string>((done) => dependencies.signers.newPhrase(done))
 }
 
-export function createLatticeSigner(deviceId: string, deviceName: string) {
-  store.getState().updateLattice(deviceId, {
+function createLatticeSigner(deviceId: string, deviceName: string, dependencies: WalletWorkflowDependencies) {
+  dependencies.store.getState().updateLattice(deviceId, {
     deviceId,
     baseUrl: 'https://signing.gridpl.us',
     endpointMode: 'default',
     paired: true,
     deviceName: (deviceName || 'GridPlus').substring(0, 14),
     tag: randomLetters(6),
-    privKey: randomBytes(32).toString('hex')
+    privKey: dependencies.randomBytes(32).toString('hex')
   })
   return `lattice-${deviceId}`
 }
 
-export function disconnectSigner(signerId: string) {
-  if (!signers.get(signerId)) return false
-  signers.remove(signerId)
+function disconnectSigner(signerId: string, dependencies: WalletWorkflowDependencies) {
+  if (!dependencies.signers.get(signerId)) return false
+  dependencies.signers.remove(signerId)
   return true
 }
 
-export function openSideTray(command: SideTrayOpenCommand) {
-  const state = store.getState()
+function openSideTray(command: SideTrayOpenCommand, dependencies: WalletWorkflowDependencies) {
+  const state = dependencies.store.getState()
   if (command.chainId && !state.main.networks.ethereum[command.chainId]) return false
 
   const frame = normalizeSideTrayFrameRequest({
@@ -526,19 +572,25 @@ export function openSideTray(command: SideTrayOpenCommand) {
   })!
   const exists = state.main.frames[frame.id]
   state.setSideTray(frame)
-  if (exists) windows.refocusSideTray(frame.id)
+  if (exists) dependencies.windows.refocusSideTray(frame.id)
   return true
 }
 
 const internalOriginName = 'newframe-internal'
 const internalOriginId = uuidv5(internalOriginName, uuidv5.DNS)
 
-function sendProviderRequest(payload: RPCRequestPayload, principal: TrustedPrincipal) {
+function sendProviderRequest(payload: RPCRequestPayload, principal: TrustedPrincipal, provider: Provider) {
   return new Promise<RPCResponsePayload>((resolve) => provider.send(payload, resolve, principal))
 }
 
-export async function cancelFlashOrder(orderId: string, principal: TrustedPrincipal) {
-  const state = store.getState()
+async function cancelFlashOrder(
+  orderId: string,
+  principal: TrustedPrincipal,
+  provider: Provider,
+  flashService: FlashService,
+  dependencies: WalletWorkflowDependencies
+) {
+  const state = dependencies.store.getState()
   const order = state.main.orders[orderId] as
     | { accountAddress?: string; account?: string; address?: string; chainId?: number | string }
     | undefined
@@ -561,14 +613,15 @@ export async function cancelFlashOrder(orderId: string, principal: TrustedPrinci
   const message = `Definitive Flash v1 — Cancel Order\nOrder: ${orderId}`
   const response = await sendProviderRequest(
     {
-      id: Date.now(),
+      id: dependencies.now(),
       jsonrpc: '2.0',
       method: 'personal_sign',
       chainId: `0x${chainId.toString(16)}`,
       params: [message, accountAddress],
       _origin: internalOriginId
     },
-    principal
+    principal,
+    provider
   )
   if (response.error) throw new Error(errorMessage(response.error))
   if (typeof response.result !== 'string' || !/^0x[0-9a-fA-F]+$/.test(response.result)) {
@@ -579,32 +632,13 @@ export async function cancelFlashOrder(orderId: string, principal: TrustedPrinci
   return true
 }
 
-async function rpcMatchesChain(url: unknown, chainId: number) {
-  if (typeof url !== 'string') return false
-
-  try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ id: 1, jsonrpc: '2.0', method: 'eth_chainId', params: [] }),
-      signal: AbortSignal.timeout(10_000)
-    })
-    if (!response.ok) return false
-
-    const payload = (await response.json()) as { result?: unknown }
-    return (
-      typeof payload.result === 'string' &&
-      /^0x[0-9a-f]+$/i.test(payload.result) &&
-      Number(BigInt(payload.result)) === chainId
-    )
-  } catch {
-    return false
-  }
-}
-
-export async function resolveNetworkRequest(command: NetworkRequestResolveCommand) {
-  const state = store.getState()
-  const request = command.requestId ? currentRequest<AddChainRequest>(command.requestId) : undefined
+async function resolveNetworkRequest(
+  command: NetworkRequestResolveCommand,
+  accounts: Accounts,
+  dependencies: WalletWorkflowDependencies
+) {
+  const state = dependencies.store.getState()
+  const request = command.requestId ? currentRequest<AddChainRequest>(command.requestId, accounts) : undefined
   const currentHomeCommand = state.tray.homeCommand as {
     id: number
     data?: { chain?: Chain; newChain?: Chain }
@@ -620,7 +654,9 @@ export async function resolveNetworkRequest(command: NetworkRequestResolveComman
     if (existing) {
       state.activateNetwork('ethereum', chainId, true)
     } else {
-      if (!(await rpcMatchesChain((chain as Chain & { primaryRpc?: string }).primaryRpc, chainId))) {
+      if (
+        !(await dependencies.rpcMatchesChain((chain as Chain & { primaryRpc?: string }).primaryRpc, chainId))
+      ) {
         throw new Error('The RPC endpoint returned a different chain ID.')
       }
       state.addNetwork(chain)
@@ -634,15 +670,15 @@ export async function resolveNetworkRequest(command: NetworkRequestResolveComman
   return true
 }
 
-export async function refreshPortfolio() {
-  const state = store.getState()
+async function refreshPortfolio(accounts: Accounts, dependencies: WalletWorkflowDependencies) {
+  const state = dependencies.store.getState()
   const account = state.main.accounts[state.main.currentAccount || '']
   if (!account?.address) return false
   const address = account.address.toLowerCase() as Address
   const chainIds = Object.values(state.main.networks.ethereum)
     .filter((network) => network.on)
     .map((network) => network.id)
-  const discovery = getTokenDiscoveryProvider()
+  const discovery = dependencies.getTokenDiscoveryProvider()
 
   if (discovery.ok) {
     try {
@@ -659,7 +695,7 @@ export async function refreshPortfolio() {
         state.setNativeCurrencyData('ethereum', Number(id), { usd: rate })
       )
     } catch (error) {
-      log.warn(`Could not refresh portfolio provider balances for ${address}`, error)
+      dependencies.log.warn(`Could not refresh portfolio provider balances for ${address}`, error)
     }
   }
 
@@ -667,15 +703,19 @@ export async function refreshPortfolio() {
   return true
 }
 
-export function reloadSigner(signerId: string) {
-  if (!signers.get(signerId)) return false
+function reloadSigner(signerId: string, dependencies: WalletWorkflowDependencies) {
+  if (!dependencies.signers.get(signerId)) return false
 
-  signers.reload(signerId)
+  dependencies.signers.reload(signerId)
   return true
 }
 
-export function loadLedgerAccounts(signerId: string, accountCount: number) {
-  const signer = signers.get(signerId) as
+function loadLedgerAccounts(
+  signerId: string,
+  accountCount: number,
+  dependencies: WalletWorkflowDependencies
+) {
+  const signer = dependencies.signers.get(signerId) as
     | (Signer & {
         accountLimit: number
         derivation?: string
@@ -691,30 +731,35 @@ export function loadLedgerAccounts(signerId: string, accountCount: number) {
   return true
 }
 
-export function rejectRequest(requestId: string) {
-  const request = currentRequest(requestId)
+function rejectRequest(requestId: string, accounts: Accounts) {
+  const request = currentRequest(requestId, accounts)
   if (!request) return false
 
   accounts.rejectRequest(request, { code: 4001, message: 'User rejected the request' })
   return true
 }
 
-export function resolveAccessRequest(requestId: string, approved: boolean) {
-  const request = currentRequest<AccessRequest>(requestId)
+function resolveAccessRequest(requestId: string, approved: boolean, accounts: Accounts) {
+  const request = currentRequest<AccessRequest>(requestId, accounts)
   if (request?.type !== 'access') return false
 
   accounts.setAccess(request, approved)
   return true
 }
 
-export function resolveSwitchChainRequest(requestId: string, approved: boolean) {
-  const request = currentRequest(requestId) as
+function resolveSwitchChainRequest(
+  requestId: string,
+  approved: boolean,
+  accounts: Accounts,
+  dependencies: WalletWorkflowDependencies
+) {
+  const request = currentRequest(requestId, accounts) as
     | (AccountRequest<'switchChain'> & { chain?: { id?: string | number; type?: string } })
     | undefined
   if (request?.type !== 'switchChain') return false
 
   if (approved) {
-    const state = store.getState()
+    const state = dependencies.store.getState()
     const chainId = Number(request.chain?.id)
     if (
       request.chain?.type !== 'ethereum' ||
@@ -731,14 +776,19 @@ export function resolveSwitchChainRequest(requestId: string, approved: boolean) 
   return true
 }
 
-export function clearOriginRequests(accountId: string, originId: string) {
+function clearOriginRequests(accountId: string, originId: string, accounts: Accounts) {
   if (!accounts.get(accountId)) return false
 
   accounts.clearRequestsByOrigin(accountId, originId)
   return true
 }
 
-export function requestSignerCompatibility(requestId: string) {
+function requestSignerCompatibility(
+  requestId: string,
+  accounts: Accounts,
+  transactionPolicy: AccountTransactionPolicyPort,
+  dependencies: WalletWorkflowDependencies
+) {
   const account = accounts.current()
   const request = account?.getRequest(requestId)
   if (!account || !request) {
@@ -749,7 +799,7 @@ export function requestSignerCompatibility(requestId: string) {
     }
   }
 
-  const signerSummaries = store.getState().main.signers || {}
+  const signerSummaries = dependencies.store.getState().main.signers || {}
   const signer = account.signer ? signerSummaries[account.signer] : undefined
   if (!signer) {
     const unavailableSigners = findUnavailableSigners(
@@ -777,16 +827,17 @@ export function requestSignerCompatibility(requestId: string) {
 
   const compatibility =
     request.type === 'transaction'
-      ? transactionCompatibility((request as TransactionRequest).data, signer)
+      ? transactionPolicy.signerCompatibility((request as TransactionRequest).data, signer)
       : { signer: signer.type, tx: '', compatible: true }
   return { ok: true as const, compatibility }
 }
 
-export function confirmRequestApproval(
+function confirmRequestApproval(
   requestId: string,
-  approvalType: 'approveOtherChain' | 'approveGasLimit'
+  approvalType: 'approveOtherChain' | 'approveGasLimit',
+  accounts: Accounts
 ) {
-  const request = currentRequest<TransactionRequest>(requestId)
+  const request = currentRequest<TransactionRequest>(requestId, accounts)
   if (request?.type !== 'transaction') return false
 
   const approval = request.approvals?.find((candidate) => candidate.type === approvalType)
@@ -796,16 +847,16 @@ export function confirmRequestApproval(
   return true
 }
 
-export function updateTokenApproval(command: RequestTokenApprovalUpdateCommand) {
+function updateTokenApproval(command: RequestTokenApprovalUpdateCommand, accounts: Accounts) {
   if (command.requestKind === 'transaction') {
-    const request = currentRequest<TransactionRequest>(command.requestId)
+    const request = currentRequest<TransactionRequest>(command.requestId, accounts)
     const action = request?.recognizedActions?.find((candidate) => candidate.id === command.actionId)
     if (request?.type !== 'transaction' || !action) return false
 
     return accounts.updateRequest(command.requestId, { amount: command.amount }, command.actionId)
   }
 
-  const request = currentRequest<PermitSignatureRequest>(command.requestId)
+  const request = currentRequest<PermitSignatureRequest>(command.requestId, accounts)
   if (request?.type !== 'signErc20Permit') return false
 
   return accounts.updateRequest(
@@ -825,12 +876,13 @@ export function updateTokenApproval(command: RequestTokenApprovalUpdateCommand) 
   )
 }
 
-export function updateTransactionFee(
+function updateTransactionFee(
   requestId: string,
   field: 'baseFee' | 'priorityFee' | 'gasPrice' | 'gasLimit',
-  value: string
+  value: string,
+  accounts: Accounts
 ) {
-  if (currentRequest(requestId)?.type !== 'transaction') return false
+  if (currentRequest(requestId, accounts)?.type !== 'transaction') return false
 
   const setters = {
     baseFee: accounts.setBaseFee.bind(accounts),
@@ -842,11 +894,16 @@ export function updateTransactionFee(
   return true
 }
 
-export function setTransactionFeeDefault(requestId: string, level: 'asap' | 'fast' | 'standard' | 'slow') {
-  const request = currentRequest<TransactionRequest>(requestId)
+function setTransactionFeeDefault(
+  requestId: string,
+  level: 'asap' | 'fast' | 'standard' | 'slow',
+  accounts: Accounts,
+  dependencies: WalletWorkflowDependencies
+) {
+  const request = currentRequest<TransactionRequest>(requestId, accounts)
   if (request?.type !== 'transaction') return false
 
-  const state = store.getState()
+  const state = dependencies.store.getState()
   const chainId = Number(request.data.chainId)
   const network = state.main.networks.ethereum[chainId]
   const gasPrice = state.main.networksMeta.ethereum[chainId]?.gas?.price
@@ -879,35 +936,37 @@ export function setTransactionFeeDefault(requestId: string, level: 'asap' | 'fas
   return true
 }
 
-export function adjustTransactionNonce(requestId: string, direction: -1 | 1) {
-  if (currentRequest(requestId)?.type !== 'transaction') return false
+function adjustTransactionNonce(requestId: string, direction: -1 | 1, accounts: Accounts) {
+  if (currentRequest(requestId, accounts)?.type !== 'transaction') return false
   accounts.adjustNonce(requestId, direction)
   return true
 }
 
-export function resetTransactionNonce(requestId: string) {
-  if (currentRequest(requestId)?.type !== 'transaction') return false
+function resetTransactionNonce(requestId: string, accounts: Accounts) {
+  if (currentRequest(requestId, accounts)?.type !== 'transaction') return false
   accounts.resetNonce(requestId)
   return true
 }
 
-export async function dismissTransactionFeeNotice(requestId: string) {
-  if (currentRequest(requestId)?.type !== 'transaction') return false
+async function dismissTransactionFeeNotice(requestId: string, accounts: Accounts) {
+  if (currentRequest(requestId, accounts)?.type !== 'transaction') return false
   await new Promise<void>((resolve, reject) => {
     accounts.removeFeeUpdateNotice(requestId, (error) => (error ? reject(error) : resolve()))
   })
   return true
 }
 
-export async function replaceTransaction(
+async function replaceTransaction(
   requestId: string,
   replacement: 'cancel' | 'speed',
-  principal: TrustedPrincipal
+  principal: TrustedPrincipal,
+  accounts: Accounts,
+  dependencies: WalletWorkflowDependencies
 ) {
-  if (currentRequest(requestId)?.type !== 'transaction') return false
+  if (currentRequest(requestId, accounts)?.type !== 'transaction') return false
 
-  store.getState().navBack('panel')
-  await new Promise<void>((resolve) => setTimeout(resolve, 1_000))
+  dependencies.store.getState().navBack('panel')
+  await dependencies.delay(1_000)
   await accounts.replaceTx(
     requestId,
     replacement === 'cancel' ? ReplacementType.Cancel : ReplacementType.Speed,
@@ -916,12 +975,12 @@ export async function replaceTransaction(
   return true
 }
 
-export function openRequestPanel(requestId: string) {
+function openRequestPanel(requestId: string, accounts: Accounts, dependencies: WalletWorkflowDependencies) {
   const account = accounts.current()
   const request = account?.getRequest(requestId)
   if (!account || !request) return false
 
-  store.getState().navForward('panel', {
+  dependencies.store.getState().navForward('panel', {
     view: 'requestView',
     data: { step: 'confirm', accountId: account.address, requestId },
     position: { bottom: request.type === 'transaction' ? '200px' : '140px' }
@@ -929,33 +988,48 @@ export function openRequestPanel(requestId: string) {
   return true
 }
 
-export function navigatePanelBack(steps = 1) {
-  store.getState().navBack('panel', steps)
+function navigatePanelBack(steps: number, dependencies: WalletWorkflowDependencies) {
+  dependencies.store.getState().navBack('panel', steps)
 }
 
-export function reviewAddChainRequest(requestId: string) {
-  const request = currentRequest<AddChainRequest>(requestId)
+function reviewAddChainRequest(
+  requestId: string,
+  accounts: Accounts,
+  dependencies: WalletWorkflowDependencies
+) {
+  const request = currentRequest<AddChainRequest>(requestId, accounts)
   if (request?.type !== 'addChain') return false
 
-  store.getState().navHome({ view: 'addChain', data: { chain: request.chain, request } })
+  dependencies.store.getState().navHome({
+    view: 'addChain',
+    data: { chain: request.chain, requestId: request.handlerId }
+  })
   return true
 }
 
-export function reviewAddTokenRequest(requestId: string) {
-  const request = currentRequest<AddTokenRequest>(requestId)
+function reviewAddTokenRequest(
+  requestId: string,
+  accounts: Accounts,
+  dependencies: WalletWorkflowDependencies
+) {
+  const request = currentRequest<AddTokenRequest>(requestId, accounts)
   if (request?.type !== 'addToken') return false
 
   const { address, symbol, decimals, logoURI, name, chainId } = request.token
   accounts.resolveRequest(request, null)
-  store.getState().navHome({
+  dependencies.store.getState().navHome({
     view: 'tokens',
     data: { token: { address, chainId, decimals, logoURI, name, symbol } }
   })
   return true
 }
 
-export function respondToExtension(extensionId: string, approved: boolean) {
-  const state = store.getState()
+function respondToExtension(
+  extensionId: string,
+  approved: boolean,
+  dependencies: WalletWorkflowDependencies
+) {
+  const state = dependencies.store.getState()
   const pending = state.view.notifyData as { id?: string }
   if (state.view.notify !== 'extensionConnect' || pending?.id !== extensionId) return false
 
@@ -964,14 +1038,17 @@ export function respondToExtension(extensionId: string, approved: boolean) {
   return true
 }
 
-export function respondToUpdater(action: 'restart' | 'install' | 'later' | 'skip' | 'dismiss-ready') {
-  const state = store.getState()
+function respondToUpdater(
+  action: 'restart' | 'install' | 'later' | 'skip' | 'dismiss-ready',
+  dependencies: WalletWorkflowDependencies
+) {
+  const state = dependencies.store.getState()
   const badge = state.view.badge as { type?: string; version?: string }
 
   if (action === 'restart') {
-    if (badge.type !== 'updateReady' || !updater.updateReady) return false
+    if (badge.type !== 'updateReady' || !dependencies.updater.updateReady) return false
     state.updateBadge('', undefined)
-    updater.quitAndInstall()
+    dependencies.updater.quitAndInstall()
     return true
   }
 
@@ -984,32 +1061,38 @@ export function respondToUpdater(action: 'restart' | 'install' | 'later' | 'skip
   if (badge.type !== 'updateAvailable') return false
   state.updateBadge('', undefined)
 
-  if (action === 'install') updater.fetchUpdate()
+  if (action === 'install') dependencies.updater.fetchUpdate()
   else {
     if (action === 'skip' && badge.version) state.dontRemind(badge.version)
-    updater.dismissUpdate()
+    dependencies.updater.dismissUpdate()
   }
   return true
 }
 
-export function handleTrayMouseout() {
-  windows.handleTrayMouseout()
+function handleTrayMouseout(dependencies: WalletWorkflowDependencies) {
+  dependencies.windows.handleTrayMouseout()
 }
 
-export function inspectOwnTrayWindow(
+function inspectOwnTrayWindow(
   event: Pick<Electron.IpcMainInvokeEvent, 'sender'>,
   x: number,
-  y: number
+  y: number,
+  dependencies: WalletWorkflowDependencies
 ) {
-  if (process.env.NODE_ENV === 'development') event.sender.inspectElement(x, y)
+  if (dependencies.inspectEnabled) event.sender.inspectElement(x, y)
 }
 
-export function approveRequest(requestId: string) {
-  const request = currentRequest(requestId)
+function approveRequest(
+  requestId: string,
+  accounts: Accounts,
+  provider: Provider,
+  dependencies: WalletWorkflowDependencies
+) {
+  const request = currentRequest(requestId, accounts)
   if (!request || (request.type !== 'transaction' && !isSignatureRequest(request))) return false
   if (request.authorization?.decision !== 'prompt') return false
 
-  if (vault.exists() && !vault.isUnlocked()) {
+  if (dependencies.vault.exists() && !dependencies.vault.isUnlocked()) {
     accounts.setRequestError(request.handlerId, new Error('Newframe locked'))
     return true
   }
@@ -1033,4 +1116,105 @@ export function approveRequest(requestId: string) {
   }
 
   return true
+}
+
+export function createWalletWorkflowOperations(dependencies: WalletWorkflowDependencies) {
+  const { accounts, chains, flashService, nameResolution, provider, transactionPolicy } = dependencies
+  const securityService = createSecurityService(dependencies)
+  const settingsService = createSettingsService(dependencies.store)
+
+  return {
+    addAccountFromSigner: (command: AccountAddFromSignerCommand) =>
+      addAccountFromSigner(command, accounts, provider, dependencies),
+    addWatchAccount: (addressOrName: string, name?: string) =>
+      addWatchAccount(addressOrName, name, accounts, provider, nameResolution),
+    addToken: (command: TokenAddCommand) => addToken(command, dependencies),
+    adjustTransactionNonce: (requestId: string, direction: -1 | 1) =>
+      adjustTransactionNonce(requestId, direction, accounts),
+    approveRequest: (requestId: string) => approveRequest(requestId, accounts, provider, dependencies),
+    cancelFlashOrder: (orderId: string, principal: TrustedPrincipal) =>
+      cancelFlashOrder(orderId, principal, provider, flashService, dependencies),
+    clearPermission: (accountId: string, originId?: string) =>
+      clearPermission(accountId, originId, dependencies),
+    clearOriginRequests: (accountId: string, originId: string) =>
+      clearOriginRequests(accountId, originId, accounts),
+    confirmRequestApproval: (requestId: string, approvalType: 'approveOtherChain' | 'approveGasLimit') =>
+      confirmRequestApproval(requestId, approvalType, accounts),
+    configureSecurity: securityService.configure,
+    consumeHomeCommand: (commandId: number) => consumeHomeCommand(commandId, dependencies),
+    createLatticeSigner: (deviceId: string, deviceName: string) =>
+      createLatticeSigner(deviceId, deviceName, dependencies),
+    dismissTransactionFeeNotice: (requestId: string) => dismissTransactionFeeNotice(requestId, accounts),
+    disconnectSigner: (signerId: string) => disconnectSigner(signerId, dependencies),
+    exportAccountPrivateKey: (accountId: string, password: string) =>
+      exportAccountPrivateKey(accountId, password, dependencies),
+    generateSeedPhrase: () => generateSeedPhrase(dependencies),
+    getAddressChainUsage: (addresses: string[]) => getAddressChainUsage(addresses, chains, dependencies),
+    handleTrayMouseout: () => handleTrayMouseout(dependencies),
+    importSigner: (command: SignerImportCommand) => importSigner(command, accounts, provider, dependencies),
+    inspectOwnTrayWindow: (event: Pick<Electron.IpcMainInvokeEvent, 'sender'>, x: number, y: number) =>
+      inspectOwnTrayWindow(event, x, y, dependencies),
+    loadLedgerAccounts: (signerId: string, accountCount: number) =>
+      loadLedgerAccounts(signerId, accountCount, dependencies),
+    locateKeystore: () => locateKeystore(dependencies),
+    lockWallet: securityService.lock,
+    lookupToken: (address: string, chainId: number) => lookupToken(address, chainId, provider, dependencies),
+    navigatePanelBack: (steps = 1) => navigatePanelBack(steps, dependencies),
+    openExternalUrl: (url: string) => dependencies.openExternal(url),
+    openRequestPanel: (requestId: string) => openRequestPanel(requestId, accounts, dependencies),
+    openSideTray: (command: SideTrayOpenCommand) => openSideTray(command, dependencies),
+    openTransactionExplorer: (chainId: number, transactionHash?: string) =>
+      openTransactionExplorer(chainId, transactionHash, dependencies),
+    pairLattice: (signerId: string, pairCode: string) => pairLattice(signerId, pairCode, dependencies),
+    quitApp: () => quitApp(dependencies),
+    refreshPortfolio: () => refreshPortfolio(accounts, dependencies),
+    rejectRequest: (requestId: string) => rejectRequest(requestId, accounts),
+    removeAccount: (address: string, removeSeedSigner = false) =>
+      removeAccount(address, removeSeedSigner, accounts, dependencies),
+    removeNetwork: (chainId: number) => removeNetwork(chainId, dependencies),
+    removeOrigin: (originId: string) => removeOrigin(originId, accounts, dependencies),
+    removeToken: (token: Pick<WalletToken, 'address' | 'chainId'>) => removeToken(token, dependencies),
+    renameAccount: (accountId: string, name: string) => renameAccount(accountId, name, accounts),
+    reorderAccounts: (fromAccountId: string, toAccountId: string) =>
+      reorderAccounts(fromAccountId, toAccountId, dependencies),
+    reloadSigner: (signerId: string) => reloadSigner(signerId, dependencies),
+    replaceTransaction: (requestId: string, replacement: 'cancel' | 'speed', principal: TrustedPrincipal) =>
+      replaceTransaction(requestId, replacement, principal, accounts, dependencies),
+    resetWallet: (scope: 'saved-data' | 'all-settings-data') => resetWallet(scope, dependencies),
+    respondToExtension: (extensionId: string, approved: boolean) =>
+      respondToExtension(extensionId, approved, dependencies),
+    respondToUpdater: (action: 'restart' | 'install' | 'later' | 'skip' | 'dismiss-ready') =>
+      respondToUpdater(action, dependencies),
+    requestSignerCompatibility: (requestId: string) =>
+      requestSignerCompatibility(requestId, accounts, transactionPolicy, dependencies),
+    resetTransactionNonce: (requestId: string) => resetTransactionNonce(requestId, accounts),
+    resolveAccessRequest: (requestId: string, approved: boolean) =>
+      resolveAccessRequest(requestId, approved, accounts),
+    resolveNetworkRequest: (command: NetworkRequestResolveCommand) =>
+      resolveNetworkRequest(command, accounts, dependencies),
+    resolveSwitchChainRequest: (requestId: string, approved: boolean) =>
+      resolveSwitchChainRequest(requestId, approved, accounts, dependencies),
+    reviewAddChainRequest: (requestId: string) => reviewAddChainRequest(requestId, accounts, dependencies),
+    reviewAddTokenRequest: (requestId: string) => reviewAddTokenRequest(requestId, accounts, dependencies),
+    securityStatus: securityService.status,
+    setNetworkActivation: (chainId: number, enabled: boolean) =>
+      setNetworkActivation(chainId, enabled, dependencies),
+    setNetworkPrimaryRpc: (chainId: number, url: string) => setNetworkPrimaryRpc(chainId, url, dependencies),
+    setTransactionFeeDefault: (requestId: string, level: 'asap' | 'fast' | 'standard' | 'slow') =>
+      setTransactionFeeDefault(requestId, level, accounts, dependencies),
+    submitTrezorInput: (command: TrezorInputCommand) => submitTrezorInput(command, dependencies),
+    toggleWarning: (warning: WarningToggleCommand['warning']) => toggleWarning(warning, dependencies),
+    unlockSecurity: securityService.unlock,
+    updateNotification: (notificationId: string, action: 'dismiss' | 'expire') =>
+      updateNotification(notificationId, action, dependencies),
+    updateSettings: settingsService.update,
+    updateTokenApproval: (command: RequestTokenApprovalUpdateCommand) =>
+      updateTokenApproval(command, accounts),
+    updateTransactionFee: (
+      requestId: string,
+      field: 'baseFee' | 'priorityFee' | 'gasPrice' | 'gasLimit',
+      value: string
+    ) => updateTransactionFee(requestId, field, value, accounts),
+    writeClipboard: (text: string) => dependencies.clipboard.writeText(text)
+  }
 }

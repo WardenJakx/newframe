@@ -1,9 +1,17 @@
-import windows from '../windows'
-
-export function closeOwnSideTray(event: Pick<Electron.IpcMainInvokeEvent, 'sender'>) {
-  setTimeout(() => windows.close(event), 0)
+export interface SideTrayWindowCapability {
+  close(event: Pick<Electron.IpcMainInvokeEvent, 'sender'>): void
+  inspect(event: Pick<Electron.IpcMainInvokeEvent, 'sender'>, x: number, y: number): void
 }
 
-export function inspectOwnSideTray(event: Pick<Electron.IpcMainInvokeEvent, 'sender'>, x: number, y: number) {
-  if (process.env.NODE_ENV === 'development') event.sender.inspectElement(x, y)
+export function createSideTrayWorkflows(windows: SideTrayWindowCapability) {
+  return {
+    closeOwnSideTray(event: Pick<Electron.IpcMainInvokeEvent, 'sender'>) {
+      windows.close(event)
+    },
+    inspectOwnSideTray(event: Pick<Electron.IpcMainInvokeEvent, 'sender'>, x: number, y: number) {
+      windows.inspect(event, x, y)
+    }
+  }
 }
+
+export type SideTrayWorkflows = ReturnType<typeof createSideTrayWorkflows>

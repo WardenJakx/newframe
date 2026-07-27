@@ -6,17 +6,19 @@ import { Hardfork, Common } from '@ethereumjs/common'
 import log from 'electron-log'
 import { shallow } from 'zustand/vanilla/shallow'
 
-import store from '../store'
 import chainConfig from './config'
 import GasMonitor from '../transaction/gasMonitor'
 import { createGasCalculator } from './gas'
-import { NETWORK_PRESETS } from '../../resources/constants'
+import { NETWORK_PRESETS } from '../../domain/chain/presets'
 import {
   createJsonRpcProvider,
   listenForProviderClose,
   sendRpcPayload,
   type EthersRpcProvider
 } from '../provider/connection'
+import type { CanonicalStoreReader } from '../store/actions'
+
+type CanonicalStoreApi = CanonicalStoreReader
 
 export interface Chain {
   id: number
@@ -83,7 +85,11 @@ class ChainConnection extends EventEmitter {
   private reconciling = false
   private reconcilePending = false
 
-  constructor(type: Chain['type'], chainId: string) {
+  constructor(
+    type: Chain['type'],
+    chainId: string,
+    private readonly store: CanonicalStoreApi
+  ) {
     super()
     this.type = type
     this.chainId = chainId
@@ -113,7 +119,7 @@ class ChainConnection extends EventEmitter {
 
   open() {
     this.unsubscribeNetwork?.()
-    this.unsubscribeNetwork = store.subscribe(
+    this.unsubscribeNetwork = this.store.subscribe(
       (state) => selectConnectionSettings(state.main.networks[this.type][Number(this.chainId)]),
       () => this.reconcile(),
       { equalityFn: shallow, fireImmediately: true }
@@ -130,7 +136,7 @@ class ChainConnection extends EventEmitter {
     try {
       do {
         this.reconcilePending = false
-        const chain = store.getState().main.networks[this.type][Number(this.chainId)]
+        const chain = this.store.getState().main.networks[this.type][Number(this.chainId)]
         if (chain) this.connect(chain)
       } while (this.reconcilePending)
     } finally {
@@ -209,7 +215,7 @@ class ChainConnection extends EventEmitter {
   }
 
   update(priority: Priority) {
-    const network = store.getState().main.networks[this.type][Number(this.chainId)]
+    const network = this.store.getState().main.networks[this.type][Number(this.chainId)]
 
     if (!network) {
       // since we poll to re-connect there may be a timing issue where we try
@@ -221,12 +227,12 @@ class ChainConnection extends EventEmitter {
       const { status, connected, type, network } = this.primary
       const details = { status, connected, type, network }
       log.info(`Updating primary connection for chain ${this.chainId}`, details)
-      store.getState().setPrimary(this.type, Number(this.chainId), details)
+      this.store.getState().setPrimary(this.type, Number(this.chainId), details)
     } else if (priority === 'secondary') {
       const { status, connected, type, network } = this.secondary
       const details = { status, connected, type, network }
       log.info(`Updating secondary connection for chain ${this.chainId}`, details)
-      store.getState().setSecondary(this.type, Number(this.chainId), details)
+      this.store.getState().setSecondary(this.type, Number(this.chainId), details)
     }
   }
 
@@ -304,7 +310,8 @@ class ChainConnection extends EventEmitter {
       ...(NETWORK_PRESETS.ethereum as Record<string, any>)[this.chainId]
     }
 
-    const { primary, secondary } = store.getState().main.networks[this.type][Number(this.chainId)].connection
+    const { primary, secondary } =
+      this.store.getState().main.networks[this.type][Number(this.chainId)].connection
     const secondaryTarget =
       secondary.current === 'custom' ? secondary.custom : currentPresets[secondary.current]
 
@@ -418,26 +425,29 @@ class ChainConnection extends EventEmitter {
     if (feeMarket) {
       const gasPrice = parseInt(feeMarket.maxBaseFeePerGas) + parseInt(feeMarket.maxPriorityFeePerGas)
 
-      store.getState().setGasPrices(this.type, chainId, { fast: addHexPrefix(gasPrice.toString(16)) })
-      store.getState().setGasDefault(this.type, chainId, 'fast')
+      this.store.getState().setGasPrices(this.type, chainId, { fast: addHexPrefix(gasPrice.toString(16)) })
+      this.store.getState().setGasDefault(this.type, chainId, 'fast')
     } else {
       const gas = await gasMonitor.getGasPrices()
-      const customLevel = store.getState().main.networksMeta[this.type][chainId].gas.price.levels.custom
+      const customLevel = this.store.getState().main.networksMeta[this.type][chainId].gas.price.levels.custom
 
-      store.getState().setGasPrices(this.type, chainId, {
+      this.store.getState().setGasPrices(this.type, chainId, {
         ...gas,
         custom: customLevel || gas.fast
       })
     }
 
-    store.getState().setGasFees(this.type, chainId, feeMarket)
+    this.store.getState().setGasFees(this.type, chainId, feeMarket)
   }
 }
 
-class Chains extends EventEmitter {
+export class Chains extends EventEmitter {
   connections: Record<string, Record<string, ChainConnection>>
+  private startRuntime: () => void = () => {}
+  private disposeRuntime: () => void = () => {}
+  private started = false
 
-  constructor() {
+  constructor(private readonly store: CanonicalStoreApi) {
     super()
     this.connections = {}
 
@@ -453,17 +463,17 @@ class Chains extends EventEmitter {
 
     const markConnectionInactive = (chainId: string, type: Chain['type'] = 'ethereum') => {
       const numericChainId = Number(chainId)
-      const network = store.getState().main.networks[type][numericChainId]
+      const network = this.store.getState().main.networks[type][numericChainId]
       if (!network) return
 
-      store.getState().setPrimary(type, numericChainId, {
+      this.store.getState().setPrimary(type, numericChainId, {
         status: network.connection.primary.on ? 'disconnected' : 'off',
         connected: false,
         type: '',
         network: ''
       })
 
-      store.getState().setSecondary(type, numericChainId, {
+      this.store.getState().setSecondary(type, numericChainId, {
         status: network.connection.secondary.on ? 'disconnected' : 'off',
         connected: false,
         type: '',
@@ -503,7 +513,7 @@ class Chains extends EventEmitter {
         return
       }
 
-      const networks = store.getState().main.networks
+      const networks = this.store.getState().main.networks
 
       ;(Object.keys(this.connections) as Chain['type'][]).forEach((type) => {
         Object.keys(this.connections[type]).forEach((chainId) => {
@@ -517,7 +527,7 @@ class Chains extends EventEmitter {
         Object.keys(networks[type]).forEach((chainId) => {
           const chainConfig = networks[type][Number(chainId)]
           if (chainConfig.on && !this.connections[type][chainId]) {
-            const connection = new ChainConnection(type, chainId)
+            const connection = new ChainConnection(type, chainId, this.store)
             this.connections[type][chainId] = connection
 
             connection.on('connect', (...args) => {
@@ -560,35 +570,74 @@ class Chains extends EventEmitter {
       updateConnections()
     }
 
-    powerMonitor.on('suspend', () => {
+    const handleSuspend = () => {
       systemSuspended = true
       sleepConnections('suspending')
-    })
+    }
 
-    powerMonitor.on('lock-screen', () => {
+    const handleLockScreen = () => {
       screenLocked = true
       sleepConnections('locked')
-    })
+    }
 
-    powerMonitor.on('resume', () => {
+    const handleResume = () => {
       systemSuspended = false
       wakeConnections('resuming')
-    })
+    }
 
-    powerMonitor.on('unlock-screen', () => {
+    const handleUnlockScreen = () => {
       screenLocked = false
       wakeConnections('unlocked')
-    })
+    }
 
-    updateConnections()
-    store.subscribe(
-      (state) =>
-        Object.values(state.main.networks.ethereum)
-          .map((network) => `${network.id}:${network.on}`)
-          .sort()
-          .join(','),
-      updateConnections
-    )
+    let unsubscribeNetworks: (() => void) | undefined
+    this.startRuntime = () => {
+      powerMonitor.on('suspend', handleSuspend)
+      powerMonitor.on('lock-screen', handleLockScreen)
+      powerMonitor.on('resume', handleResume)
+      powerMonitor.on('unlock-screen', handleUnlockScreen)
+
+      updateConnections()
+      unsubscribeNetworks = this.store.subscribe(
+        (state) =>
+          Object.values(state.main.networks.ethereum)
+            .map((network) => `${network.id}:${network.on}`)
+            .sort()
+            .join(','),
+        updateConnections
+      )
+    }
+    this.disposeRuntime = () => {
+      unsubscribeNetworks?.()
+      unsubscribeNetworks = undefined
+      powerMonitor.off('suspend', handleSuspend)
+      powerMonitor.off('lock-screen', handleLockScreen)
+      powerMonitor.off('resume', handleResume)
+      powerMonitor.off('unlock-screen', handleUnlockScreen)
+      activeConnectionIds().forEach((id) => {
+        const [type, chainId] = id.split(':')
+        removeConnection(chainId, type as Chain['type'])
+      })
+    }
+  }
+
+  start() {
+    if (this.started) return
+    this.started = true
+    try {
+      this.startRuntime()
+    } catch (error) {
+      this.dispose()
+      throw error
+    }
+  }
+
+  dispose() {
+    if (this.started) {
+      this.disposeRuntime()
+      this.started = false
+    }
+    this.removeAllListeners()
   }
 
   send(payload: JSONRPCRequestPayload, res: RPCRequestCallback, targetChain?: Chain) {
@@ -618,5 +667,3 @@ class Chains extends EventEmitter {
     await connection.refreshGasFees()
   }
 }
-
-export default new Chains()

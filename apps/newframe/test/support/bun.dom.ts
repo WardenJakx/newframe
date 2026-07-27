@@ -1,7 +1,9 @@
 import { GlobalRegistrator } from '@happy-dom/global-registrator'
-import { afterEach, mock } from 'bun:test'
+import { afterEach, beforeEach, mock } from 'bun:test'
 
-import { linkMock, persistMock, storeMock } from './bun.mocks.ts'
+import { installRendererClient, resetRendererClient } from './rendererClient'
+import './test.setup.ts'
+import './toMatchPath'
 
 GlobalRegistrator.register()
 
@@ -13,14 +15,14 @@ Object.defineProperty(Event.prototype, 'cancelBubble', {
   set: () => {}
 })
 
-mock.module('../../main/store/persist', () => ({ default: persistMock, ...persistMock }))
-mock.module('../../main/store', () => ({ default: storeMock, ...storeMock }))
-mock.module('../../resources/link', () => ({ default: linkMock, ...linkMock }))
-
-import './bun.setup.ts'
-
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { cleanup } = require('@testing-library/react') as typeof import('@testing-library/react')
+
+beforeEach(() => {
+  mock.clearAllMocks()
+  resetRendererClient()
+  installRendererClient()
+})
 
 afterEach(() => {
   cleanup()

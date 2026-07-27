@@ -64,11 +64,11 @@ afterEach(() => {
 
 describe('#getActiveChains', () => {
   it('returns all chains that are active', () => {
-    expect(getActiveChains().map((chain) => chain.chainId)).toEqual([1, 11155111])
+    expect(getActiveChains(store).map((chain) => chain.chainId)).toEqual([1, 11155111])
   })
 
   it('returns an EVM chain object', () => {
-    const mainnet = getActiveChains().find((chain) => chain.chainId === 1)
+    const mainnet = getActiveChains(store).find((chain) => chain.chainId === 1)
 
     expect(mainnet).toStrictEqual({
       chainId: 1,
@@ -100,7 +100,7 @@ describe('#createChainsObserver', () => {
   let fireObserver: any
 
   beforeEach(() => {
-    const observer = createChainsObserver(handler)
+    const observer = createChainsObserver(store, handler)
 
     fireObserver = () => {
       observer()
@@ -285,7 +285,7 @@ describe('#createOriginChainObserver', () => {
   beforeEach(() => {
     setOrigins({ [originId]: frameTestOrigin })
 
-    observer = createOriginChainObserver(handler)
+    observer = createOriginChainObserver(store, handler)
 
     handler.chainChanged = mock()
     handler.networkChanged = mock()

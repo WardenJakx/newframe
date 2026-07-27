@@ -2,9 +2,9 @@ import { Interface, toBeHex } from 'ethers'
 import { addHexPrefix } from '@ethereumjs/util'
 import log from 'electron-log'
 
-import { formatUnits } from '../../../resources/utils/numbers'
+import { formatUnits } from '../../../domain/units'
 import multicall, { Call, supportsChain as multicallSupportsChain } from '../../multicall'
-import erc20TokenAbi from './erc-20-abi'
+import erc20TokenAbi from '../../../domain/erc20-abi'
 import { groupByChain, TokensByChain } from './reducers'
 
 import type { BytesLike } from 'ethers'

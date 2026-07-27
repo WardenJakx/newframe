@@ -2,6 +2,7 @@ import { EventEmitter } from 'events'
 import { afterEach, beforeAll, beforeEach, expect, it, jest as timers, mock, spyOn } from 'bun:test'
 
 import { resetStoreState, storeMock } from '../../test/support/bun.mocks.ts'
+import createCanonicalStore from '../store/createCanonicalStore'
 
 const STARTUP_CHECK_DELAY = 10_000
 const DAY_MS = 24 * 60 * 60_000
@@ -21,7 +22,7 @@ class AutoUpdaterMock extends EventEmitter {
 mock.module('./autoUpdater', () => ({ default: AutoUpdaterMock }))
 mock.module('./manualCheck', () => ({ default: manualCheck }))
 
-let updater: typeof import('./index').default
+let updater: import('./index').Updater
 
 function checkCount() {
   return autoCheckForUpdates.mock.calls.length + manualCheck.mock.calls.length
@@ -36,7 +37,8 @@ function resetUpdaterTest() {
 }
 
 beforeAll(async () => {
-  updater = (await import('./index')).default
+  const { Updater } = await import('./index')
+  updater = new Updater(storeMock)
 })
 
 beforeEach(() => {
@@ -89,4 +91,36 @@ it('waits until the next daily window when an update check already ran today', (
 
   expect(checkCount()).toBe(1)
   expect(storeMock.getState().main.updater.lastChecked).toBe(checkedAt + DAY_MS)
+})
+
+it('keeps update scheduling state isolated across two canonical graphs', async () => {
+  const memoryStorage = {
+    getItem: () => null,
+    setItem: () => undefined,
+    removeItem: () => undefined
+  }
+  const firstStore = createCanonicalStore(memoryStorage).store
+  const secondStore = createCanonicalStore(memoryStorage).store
+  const { Updater } = await import('./index')
+  const first = new Updater(firstStore)
+  const second = new Updater(secondStore)
+  firstStore.getState().setUpdaterLastChecked(now)
+
+  first.start()
+  second.start()
+  now += STARTUP_CHECK_DELAY
+  timers.advanceTimersByTime(STARTUP_CHECK_DELAY)
+
+  expect({
+    checks: checkCount(),
+    first: firstStore.getState().main.updater.lastChecked,
+    second: secondStore.getState().main.updater.lastChecked
+  }).toEqual({
+    checks: 1,
+    first: now - STARTUP_CHECK_DELAY,
+    second: now
+  })
+
+  first.stop()
+  second.stop()
 })

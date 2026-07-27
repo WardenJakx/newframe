@@ -1,609 +1,303 @@
 import { beforeAll, beforeEach, describe, expect, it, mock } from 'bun:test'
 
-const getState = mock()
-const getSigner = mock()
-const removeSignerRecord = mock()
-const reloadSignerRecord = mock()
-const lockApp = mock()
-const unlockApp = mock()
-const unlockAppWithBiometrics = mock()
-const exportAccountPrivateKeyRecord = mock()
-const currentAccount = mock()
-const patchRequest = mock()
-const getAccountRecord = mock()
-const addAccount = mock()
-const removeAccountRecord = mock()
-const renameAccountRecord = mock()
-const rejectRequest = mock()
-const resolveRequest = mock()
-const setAccess = mock()
-const clearRequestsByOrigin = mock()
-const confirmRequestApprovalRecord = mock()
-const updateRequest = mock()
-const setBaseFee = mock()
-const setPriorityFee = mock()
-const setGasPrice = mock()
-const setGasLimit = mock()
-const adjustNonce = mock()
-const resetNonce = mock()
-const removeFeeUpdateNotice = mock()
-const replaceTx = mock()
-const removeRequests = mock()
-const setRequestPending = mock()
-const setRequestError = mock()
-const setRequestSuccess = mock()
-const setTxSent = mock()
-const approveTransactionRequest = mock()
-const approveSign = mock()
-const approveSignTypedData = mock()
-const providerSend = mock()
-const getTokenData = mock()
-const tokenConstructor = mock()
-const openBlockExplorer = mock()
-const openExternal = mock()
-const vaultExists = mock()
-const vaultIsUnlocked = mock()
-const vaultGetKey = mock()
-const biometricSummary = mock()
-const biometricDisable = mock()
-const biometricEnableNative = mock()
-const biometricEnableWebAuthn = mock()
-const flashCancelOrder = mock()
-const signerCompatibility = mock()
-const handleTrayMouseoutRecord = mock()
-const refocusSideTray = mock()
-const updaterFetchUpdate = mock()
-const updaterQuitAndInstall = mock()
-const updaterDismissUpdate = mock()
-const selectAccount = mock()
-const resolveName = mock()
-const getTokenDiscoveryProvider = mock()
-const chainsSend = mock()
+import { createSecurityService } from '../features/security/service'
+import { createSettingsService } from '../features/settings/service'
+import { createTestStore } from '../../test/support/createTestStore'
 
-mock.module('../store', () => ({ default: { getState } }))
-mock.module('../chains', () => ({ default: { send: chainsSend } }))
-mock.module('../portfolio', () => ({ getTokenDiscoveryProvider }))
-mock.module('../signers', () => ({
-  default: {
-    exportAccountPrivateKey: exportAccountPrivateKeyRecord,
-    get: getSigner,
-    lockApp,
-    unlockApp,
-    unlockAppWithBiometrics,
-    remove: removeSignerRecord,
-    reload: reloadSignerRecord
-  }
-}))
-mock.module('../accounts', () => ({
-  default: {
-    add: addAccount,
-    current: currentAccount,
-    get: getAccountRecord,
-    rejectRequest,
-    setAccess,
-    clearRequestsByOrigin,
-    confirmRequestApproval: confirmRequestApprovalRecord,
-    updateRequest,
-    setBaseFee,
-    setPriorityFee,
-    setGasPrice,
-    setGasLimit,
-    adjustNonce,
-    resetNonce,
-    removeFeeUpdateNotice,
-    replaceTx,
-    remove: removeAccountRecord,
-    rename: renameAccountRecord,
-    removeRequests,
-    resolveRequest,
-    setRequestError,
-    setRequestPending,
-    setRequestSuccess,
-    setTxSent
-  }
-}))
-mock.module('../provider', () => ({
-  default: { approveSign, approveSignTypedData, approveTransactionRequest, send: providerSend }
-}))
-mock.module('../biometrics', () => ({
-  default: {
-    disable: biometricDisable,
-    enableNative: biometricEnableNative,
-    enableWebAuthn: biometricEnableWebAuthn,
-    summary: biometricSummary
-  }
-}))
-mock.module('../flash/instance', () => ({ flashService: { cancelOrder: flashCancelOrder } }))
-mock.module('../transaction', () => ({ signerCompatibility }))
-mock.module('../updater', () => ({
-  default: {
-    dismissUpdate: updaterDismissUpdate,
-    fetchUpdate: updaterFetchUpdate,
-    quitAndInstall: updaterQuitAndInstall,
-    get updateReady() {
-      return true
-    }
-  }
-}))
-mock.module('./workflows', () => ({ resolveName, selectAccount }))
-mock.module('../contracts/erc20', () => ({
-  default: class MockErc20Contract {
-    constructor(address: string, chainId: number) {
-      tokenConstructor(address, chainId)
-    }
+let activeStore = createTestStore()
 
-    getTokenData() {
-      return getTokenData()
-    }
-  }
-}))
-mock.module('../vault', () => ({
-  default: { exists: vaultExists, getKey: vaultGetKey, isUnlocked: vaultIsUnlocked }
-}))
-mock.module('../windows', () => ({
-  default: { handleTrayMouseout: handleTrayMouseoutRecord, refocusSideTray }
-}))
-mock.module('../windows/window', () => ({ openBlockExplorer, openExternal }))
-
-let approveRequest: typeof import('./walletWorkflows').approveRequest
-let cancelFlashOrder: typeof import('./walletWorkflows').cancelFlashOrder
-let configureSecurity: typeof import('./walletWorkflows').configureSecurity
-let consumeHomeCommand: typeof import('./walletWorkflows').consumeHomeCommand
-let lockWallet: typeof import('./walletWorkflows').lockWallet
-let lookupToken: typeof import('./walletWorkflows').lookupToken
-let openSideTray: typeof import('./walletWorkflows').openSideTray
-let openTransactionExplorer: typeof import('./walletWorkflows').openTransactionExplorer
-let removeAccount: typeof import('./walletWorkflows').removeAccount
-let removeNetwork: typeof import('./walletWorkflows').removeNetwork
-let removeToken: typeof import('./walletWorkflows').removeToken
-let resolveNetworkRequest: typeof import('./walletWorkflows').resolveNetworkRequest
-let securityStatus: typeof import('./walletWorkflows').securityStatus
-let setNetworkPrimaryRpc: typeof import('./walletWorkflows').setNetworkPrimaryRpc
 let workflows: typeof import('./walletWorkflows')
-
-const address = '0x1111111111111111111111111111111111111111'
-const actions = {
-  addNetwork: mock(),
-  activateNetwork: mock(),
-  clearHomeCommand: mock(),
-  dontRemind: mock(),
-  initOrigin: mock(),
-  navBack: mock(),
-  navForward: mock(),
-  navHome: mock(),
-  notify: mock(),
-  removeBalance: mock(),
-  removeCustomTokens: mock(),
-  removeNetwork: mock(),
-  selectPrimary: mock(),
-  setBiometricUnlock: mock(),
-  setSideTray: mock(),
-  setPrimaryCustom: mock(),
-  setGasDefault: mock(),
-  switchOriginChain: mock(),
-  trustExtension: mock(),
-  toggleConnection: mock(),
-  updateBadge: mock()
-}
 
 beforeAll(async () => {
   workflows = await import('./walletWorkflows')
-  approveRequest = workflows.approveRequest
-  cancelFlashOrder = workflows.cancelFlashOrder
-  configureSecurity = workflows.configureSecurity
-  consumeHomeCommand = workflows.consumeHomeCommand
-  lockWallet = workflows.lockWallet
-  lookupToken = workflows.lookupToken
-  openSideTray = workflows.openSideTray
-  openTransactionExplorer = workflows.openTransactionExplorer
-  removeAccount = workflows.removeAccount
-  removeNetwork = workflows.removeNetwork
-  removeToken = workflows.removeToken
-  resolveNetworkRequest = workflows.resolveNetworkRequest
-  securityStatus = workflows.securityStatus
-  setNetworkPrimaryRpc = workflows.setNetworkPrimaryRpc
 })
 
 beforeEach(() => {
-  ;[
-    getState,
-    getSigner,
-    removeSignerRecord,
-    reloadSignerRecord,
-    lockApp,
-    unlockApp,
-    unlockAppWithBiometrics,
-    exportAccountPrivateKeyRecord,
-    currentAccount,
-    patchRequest,
-    getAccountRecord,
-    addAccount,
-    removeAccountRecord,
-    renameAccountRecord,
-    rejectRequest,
-    setAccess,
-    clearRequestsByOrigin,
-    confirmRequestApprovalRecord,
-    updateRequest,
-    setBaseFee,
-    setPriorityFee,
-    setGasPrice,
-    setGasLimit,
-    adjustNonce,
-    resetNonce,
-    removeFeeUpdateNotice,
-    replaceTx,
-    resolveRequest,
-    removeRequests,
-    setRequestPending,
-    setRequestError,
-    setRequestSuccess,
-    setTxSent,
-    approveTransactionRequest,
-    approveSign,
-    approveSignTypedData,
-    providerSend,
-    getTokenData,
-    tokenConstructor,
-    openBlockExplorer,
-    openExternal,
-    vaultExists,
-    vaultIsUnlocked,
-    vaultGetKey,
-    biometricSummary,
-    biometricDisable,
-    biometricEnableNative,
-    biometricEnableWebAuthn,
-    flashCancelOrder,
-    signerCompatibility,
-    handleTrayMouseoutRecord,
-    refocusSideTray,
-    updaterFetchUpdate,
-    updaterQuitAndInstall,
-    updaterDismissUpdate,
-    selectAccount,
-    resolveName,
-    getTokenDiscoveryProvider,
-    chainsSend,
-    ...Object.values(actions)
-  ].forEach((mock) => mock.mockReset())
-
-  vaultExists.mockReturnValue(false)
-  vaultIsUnlocked.mockReturnValue(false)
-  biometricSummary.mockReturnValue({
-    enabled: false,
-    method: '',
-    nativeAvailable: false
-  })
-  getState.mockReturnValue({
-    ...actions,
-    main: {
-      accounts: {},
-      appLock: { locked: false, vaultExists: false },
-      currentAccount: '',
-      networks: { ethereum: {} },
-      networksMeta: { ethereum: {} },
-      origins: {},
-      orders: {},
-      tokens: { accountTokenIds: {}, byId: {} }
-    },
-    tray: {},
-    view: { badge: {}, notifications: {}, notify: '', notifyData: {} }
-  })
+  activeStore = createTestStore()
 })
 
-describe('wallet UI workflows', () => {
-  it('checks address nonces only on enabled chains', async () => {
-    const secondAddress = '0x2222222222222222222222222222222222222222'
-    getState.mockReturnValue({
-      ...actions,
-      main: {
-        networks: {
-          ethereum: {
-            1: { id: 1, on: true },
-            10: { id: 10, on: true },
-            137: { id: 137, on: false }
-          }
+const address = '0x1111111111111111111111111111111111111111'
+
+function freshStore(main: Record<string, unknown>, extra: Record<string, unknown> = {}) {
+  activeStore = createTestStore({
+    ...extra,
+    main
+  })
+  return activeStore
+}
+
+function accountPort(overrides: Record<string, unknown> = {}) {
+  return {
+    current: mock(() => undefined),
+    ...overrides
+  } as never
+}
+
+function createOperations(overrides: Partial<import('./walletWorkflows').WalletWorkflowDependencies> = {}) {
+  return workflows.createWalletWorkflowOperations({
+    accounts: accountPort(),
+    app: { exit: mock(), quit: mock(), relaunch: mock() },
+    biometrics: {
+      summary: () => ({
+        enabled: false,
+        method: 'none',
+        credential: '',
+        nativeAvailable: false
+      }),
+      disable: mock(),
+      enableNative: mock(async () => undefined),
+      enableWebAuthn: mock()
+    },
+    chains: {} as never,
+    clipboard: { writeText: mock() },
+    delay: async () => undefined,
+    flashService: {} as never,
+    getTokenDiscoveryProvider: mock(() => ({ ok: false, reason: 'disabled' })) as never,
+    inspectEnabled: false,
+    log: { warn: mock() },
+    nameResolution: {} as never,
+    now: () => 1,
+    openBlockExplorer: mock(),
+    openExternal: mock(),
+    openFileDialog: mock(async () => undefined),
+    persistence: { clear: mock() },
+    provider: {} as never,
+    proxy: {} as never,
+    randomBytes: () => Buffer.alloc(32),
+    readFile: mock(async () => ''),
+    reveal: {} as never,
+    rpcMatchesChain: mock(async () => true),
+    signers: {
+      get: mock(),
+      remove: mock(),
+      reload: mock(),
+      createFromKeystore: mock(),
+      createFromPhrase: mock(),
+      createFromPrivateKey: mock(),
+      exportAccountPrivateKey: mock(),
+      newPhrase: mock(),
+      lockApp: mock((done: (error?: Error) => void) => done()),
+      unlockApp: mock(),
+      unlockAppWithBiometrics: mock()
+    } as never,
+    store: activeStore,
+    transactionPolicy: {
+      maxFee: () => 1e30,
+      signerCompatibility: () => ({ signer: '', tx: '', compatible: true })
+    },
+    trezorBridge: {
+      pinEntered: mock(),
+      passphraseEntered: mock(),
+      enterPassphraseOnDevice: mock()
+    },
+    updater: {
+      updateReady: false,
+      dismissUpdate: mock(),
+      fetchUpdate: mock(),
+      quitAndInstall: mock()
+    },
+    vault: {
+      exists: () => false,
+      getKey: () => undefined,
+      isUnlocked: () => false
+    },
+    windows: {
+      handleTrayMouseout: mock(),
+      refocusSideTray: mock()
+    },
+    ...overrides
+  } as import('./walletWorkflows').WalletWorkflowDependencies)
+}
+
+describe('wallet workflows with fresh canonical state', () => {
+  it('checks address nonces only on enabled chains and reports partial provider failure', async () => {
+    const secondAddress = '0x3333333333333333333333333333333333333333'
+    freshStore({
+      networks: {
+        ethereum: {
+          1: { id: 1, on: true },
+          10: { id: 10, on: true },
+          137: { id: 137, on: false }
         }
       }
     })
-    chainsSend.mockImplementation((payload, respond, chain) => {
-      if (chain.id === 10 && payload.params[0] === secondAddress) {
+    const send = mock((payload: RPCRequestPayload, respond: RPCRequestCallback, chain: { id: number }) => {
+      const requestedAddress = payload.params?.[0]
+      if (chain.id === 10 && requestedAddress === secondAddress) {
         return respond({ id: payload.id, jsonrpc: '2.0', result: '0x2' })
       }
-      if (chain.id === 1 && payload.params[0] === secondAddress) {
+      if (chain.id === 1 && requestedAddress === secondAddress) {
         return respond({ id: payload.id, jsonrpc: '2.0', error: { message: 'offline' } })
       }
-      respond({ id: payload.id, jsonrpc: '2.0', result: '0x0' })
+      return respond({ id: payload.id, jsonrpc: '2.0', result: '0x0' })
     })
 
-    await expect(workflows.getAddressChainUsage([address, secondAddress])).resolves.toEqual([
+    const operations = createOperations({ chains: { send } as never })
+
+    await expect(operations.getAddressChainUsage([address, secondAddress])).resolves.toEqual([
       { address, chainIds: [], complete: true },
       { address: secondAddress, chainIds: [10], complete: false }
     ])
-    expect(chainsSend).toHaveBeenCalledTimes(4)
-    expect(chainsSend.mock.calls.every((call) => call[0].method === 'eth_getTransactionCount')).toBe(true)
-    expect(chainsSend.mock.calls.every((call) => call[0].params[1] === 'latest')).toBe(true)
-    expect(chainsSend.mock.calls.some((call) => call[2].id === 137)).toBe(false)
+    expect(
+      send.mock.calls.map(([payload, , chain]) => ({
+        address: payload.params?.[0],
+        block: payload.params?.[1],
+        chainId: chain.id,
+        method: payload.method
+      }))
+    ).toEqual([
+      { address, block: 'latest', chainId: 1, method: 'eth_getTransactionCount' },
+      { address, block: 'latest', chainId: 10, method: 'eth_getTransactionCount' },
+      { address: secondAddress, block: 'latest', chainId: 1, method: 'eth_getTransactionCount' },
+      { address: secondAddress, block: 'latest', chainId: 10, method: 'eth_getTransactionCount' }
+    ])
   })
 
-  it('expands only the connected Ledger Live signer for pagination', () => {
-    const deriveAddresses = mock()
-    const ledger = {
-      type: 'ledger',
-      derivation: 'live',
-      accountLimit: 5,
-      deriveAddresses
+  it('applies token removal and Home command consumption through real canonical actions', () => {
+    const token = {
+      address,
+      chainId: 1,
+      decimals: 18,
+      logoURI: '',
+      name: 'Token',
+      symbol: 'TKN',
+      custom: true,
+      curated: false,
+      sources: ['custom'] as Array<'custom'>,
+      updatedAt: 0
     }
-    getSigner.mockReturnValue(ledger)
-
-    expect(workflows.loadLedgerAccounts('ledger-1', 15)).toBe(true)
-    expect(ledger.accountLimit).toBe(15)
-    expect(deriveAddresses).toHaveBeenCalledTimes(1)
-
-    expect(workflows.loadLedgerAccounts('ledger-1', 10)).toBe(true)
-    expect(deriveAddresses).toHaveBeenCalledTimes(1)
-
-    getSigner.mockReturnValue({ ...ledger, type: 'trezor' })
-    expect(workflows.loadLedgerAccounts('trezor-1', 20)).toBe(false)
-  })
-
-  it('opens Trade and Send in the side tray', () => {
-    getState.mockReturnValue({
-      ...actions,
-      main: {
-        frames: {},
-        networks: { ethereum: { 31337: { id: 31337, on: true } } }
-      }
-    })
-
-    expect(openSideTray({ type: 'sidetray.open', feature: 'trade', chainId: 31337 })).toBe(true)
-    expect(actions.setSideTray).toHaveBeenCalledWith({
-      id: 'sideTray',
-      route: '/trade?chainId=31337'
-    })
-    expect(openSideTray({ type: 'sidetray.open', feature: 'send' })).toBe(true)
-    expect(actions.setSideTray).toHaveBeenLastCalledWith({
-      id: 'sideTray',
-      route: '/send'
-    })
-  })
-
-  it('resolves a token from canonical state before removing it', () => {
-    const token = { address, chainId: 1, decimals: 18, logoURI: '', name: 'Token', symbol: 'TKN' }
-    const tokenId = `${token.chainId}:${token.address}`
-    getState.mockReturnValue({
-      ...actions,
-      main: {
+    const tokenId = `1:${address}`
+    freshStore(
+      {
         networks: { ethereum: {} },
-        tokens: {
-          accountTokenIds: {},
-          byId: {
-            [tokenId]: {
-              ...token,
-              custom: true,
-              curated: false,
-              sources: ['custom'],
-              updatedAt: 0
+        tokens: { accountTokenIds: {}, byId: { [tokenId]: token } }
+      },
+      { tray: { homeCommand: { id: 7, type: 'view', data: {} } } }
+    )
+
+    const operations = createOperations()
+    expect(operations.removeToken({ address: address.toUpperCase(), chainId: 1 })).toBe(true)
+    expect(operations.consumeHomeCommand(6)).toBe(false)
+    expect(operations.consumeHomeCommand(7)).toBe(true)
+    expect({
+      token: activeStore.getState().main.tokens.byId[tokenId],
+      homeCommand: activeStore.getState().tray.homeCommand
+    }).toEqual({
+      token: { ...token, custom: false },
+      homeCommand: null
+    })
+  })
+
+  it('verifies an RPC before atomically changing the canonical primary connection', async () => {
+    freshStore({
+      networks: {
+        ethereum: {
+          1: {
+            id: 1,
+            type: 'ethereum',
+            connection: {
+              primary: {
+                connected: false,
+                current: 'local',
+                custom: '',
+                network: '',
+                on: false,
+                status: 'off',
+                type: ''
+              },
+              secondary: {
+                connected: false,
+                current: 'local',
+                custom: '',
+                network: '',
+                on: false,
+                status: 'off',
+                type: ''
+              }
             }
           }
         }
       }
     })
-
-    expect(removeToken({ address: address.toUpperCase(), chainId: 1 })).toBe(true)
-    expect(actions.removeCustomTokens).toHaveBeenCalledWith([expect.objectContaining(token)])
-
-    expect(removeToken({ address: '0x2222222222222222222222222222222222222222', chainId: 1 })).toBe(false)
-  })
-
-  it('looks up ERC-20 metadata through the main-process provider', async () => {
-    getTokenData.mockResolvedValue({ decimals: 18, name: 'Token', symbol: 'TKN', totalSupply: '100' })
-
-    await expect(lookupToken(address, 1)).resolves.toEqual({
-      decimals: 18,
-      name: 'Token',
-      symbol: 'TKN',
-      totalSupply: '100'
-    })
-    expect(tokenConstructor).toHaveBeenCalledWith(address, 1)
-  })
-
-  it('uses canonical networks for explorer and removal operations', () => {
-    const network = { id: 10, type: 'ethereum', name: 'Optimism' }
-    getState.mockReturnValue({
-      ...actions,
-      main: {
-        networks: { ethereum: { 10: network } },
-        tokens: { accountTokenIds: {}, byId: {} }
+    const operations = createOperations({ rpcMatchesChain: mock(async () => true) })
+    await expect(operations.setNetworkPrimaryRpc(1, 'https://rpc.example')).resolves.toBe(true)
+    expect(activeStore.getState().main.networks.ethereum[1].connection).toEqual({
+      primary: {
+        connected: false,
+        current: 'custom',
+        custom: 'https://rpc.example',
+        network: '',
+        on: true,
+        status: 'off',
+        type: ''
+      },
+      secondary: {
+        connected: false,
+        current: 'local',
+        custom: '',
+        network: '',
+        on: false,
+        status: 'off',
+        type: ''
       }
     })
-    const hash = `0x${'a'.repeat(64)}`
-
-    expect(openTransactionExplorer(10, hash)).toBe(true)
-    expect(openBlockExplorer).toHaveBeenCalledWith({ id: 10, type: 'ethereum' }, hash)
-    expect(removeNetwork(10)).toBe(true)
-    expect(actions.removeNetwork).toHaveBeenCalledWith(network)
+    await expect(operations.setNetworkPrimaryRpc(10, 'https://attacker.example')).resolves.toBe(false)
   })
 
-  it('verifies and applies a primary RPC change as one main-owned workflow', async () => {
-    const network = { id: 1, type: 'ethereum', name: 'Ethereum' }
-    getState.mockReturnValue({
-      ...actions,
-      main: { networks: { ethereum: { 1: network } } }
-    })
-
-    const originalFetch = globalThis.fetch
-    globalThis.fetch = mock(async () =>
-      Response.json({ id: 1, jsonrpc: '2.0', result: '0x1' })
-    ) as unknown as typeof fetch
-
-    await expect(setNetworkPrimaryRpc(1, 'https://rpc.example')).resolves.toBe(true)
-    expect(actions.setPrimaryCustom).toHaveBeenCalledWith('ethereum', 1, 'https://rpc.example')
-    expect(actions.selectPrimary).toHaveBeenCalledWith('ethereum', 1, 'custom')
-    expect(actions.toggleConnection).toHaveBeenCalledWith('ethereum', 1, 'primary', true)
-
-    await expect(setNetworkPrimaryRpc(10, 'https://attacker.example')).resolves.toBe(false)
-    expect(actions.setPrimaryCustom).toHaveBeenCalledTimes(1)
-
-    globalThis.fetch = originalFetch
-  })
-
-  it('consumes only the canonical pending Home command ID', () => {
-    getState.mockReturnValue({
-      ...actions,
-      main: { networks: { ethereum: {} } },
-      tray: { homeCommand: { id: 7, type: 'view', data: {} } }
-    })
-
-    expect(consumeHomeCommand(6)).toBe(false)
-    expect(actions.clearHomeCommand).not.toHaveBeenCalled()
-    expect(consumeHomeCommand(7)).toBe(true)
-    expect(actions.clearHomeCommand).toHaveBeenCalledWith(7)
-  })
-
-  it('removes a seed signer only when requested and no other account uses it', () => {
-    const seedSigner = { id: 'seed-1', type: 'seed' }
-    getSigner.mockReturnValue(seedSigner)
-    getState.mockReturnValue({
-      ...actions,
-      main: {
-        accounts: {
-          [address]: { id: address, address, signer: seedSigner.id }
-        },
-        networks: { ethereum: {} }
-      }
-    })
-
-    expect(removeAccount(address, true)).toBe(true)
-    expect(removeAccountRecord).toHaveBeenCalledWith(address)
-    expect(removeSignerRecord).toHaveBeenCalledWith(seedSigner.id)
-
-    removeAccountRecord.mockClear()
-    removeSignerRecord.mockClear()
-    const otherAddress = '0x2222222222222222222222222222222222222222'
-    getState.mockReturnValue({
-      ...actions,
-      main: {
-        accounts: {
-          [address]: { id: address, address, signer: seedSigner.id },
-          [otherAddress]: { id: otherAddress, address: otherAddress, signer: seedSigner.id }
-        },
-        networks: { ethereum: {} }
-      }
-    })
-
-    expect(removeAccount(address, true)).toBe(true)
-    expect(removeAccountRecord).toHaveBeenCalledWith(address)
-    expect(removeSignerRecord).not.toHaveBeenCalled()
-  })
-
-  it('derives security status from canonical app-lock state and owns biometric configuration', async () => {
-    const appLock = { locked: true, vaultExists: true }
-    const summary = { enabled: true, method: 'native' as const, credential: undefined, nativeAvailable: true }
-    biometricSummary.mockReturnValue(summary)
-    getState.mockReturnValue({
-      ...actions,
-      main: { appLock, networks: { ethereum: {} } }
-    })
-
-    expect(securityStatus()).toEqual({
-      ...appLock,
-      biometricUnlockEnabled: true,
-      biometricAvailable: true,
-      biometrics: summary
-    })
-    await configureSecurity({ type: 'security.configure', mode: 'disabled' })
-    expect(biometricDisable).toHaveBeenCalledTimes(1)
-    expect(actions.setBiometricUnlock).toHaveBeenCalledWith(false)
-
-    vaultIsUnlocked.mockReturnValue(true)
-    vaultGetKey.mockReturnValue('vault-key')
-    biometricEnableNative.mockResolvedValue(undefined)
-    await configureSecurity({ type: 'security.configure', mode: 'native' })
-    expect(biometricEnableNative).toHaveBeenCalledWith('vault-key')
-    expect(actions.setBiometricUnlock).toHaveBeenLastCalledWith(true)
-  })
-
-  it('converts the signer lock callback to a rejecting Promise', async () => {
-    lockApp.mockImplementationOnce((done) => done())
-    await expect(lockWallet()).resolves.toBeUndefined()
-
-    lockApp.mockImplementationOnce((done) => done(new Error('lock failed')))
-    await expect(lockWallet()).rejects.toThrow('lock failed')
-  })
-
-  it('verifies and resolves add-chain decisions from canonical requests or Home commands', async () => {
+  it('validates and resolves a canonical add-chain request into complete network state', async () => {
     const chain = {
       id: 10,
       name: 'Optimism',
       type: 'ethereum',
       primaryRpc: 'https://rpc.example.com',
       explorer: 'https://explorer.example.com',
-      symbol: 'ETH'
+      symbol: 'ETH',
+      primaryColor: 'accent2'
     }
     const request = { handlerId: 'request-1', type: 'addChain', chain }
-    currentAccount.mockReturnValue({
-      getRequest: (id: string) => (id === request.handlerId ? request : undefined)
+    const resolveRequest = mock()
+    const accounts = accountPort({
+      current: () => ({ getRequest: (id: string) => (id === request.handlerId ? request : undefined) }),
+      resolveRequest
     })
-    getState.mockReturnValue({
-      ...actions,
-      main: { networks: { ethereum: {} } },
-      tray: {}
+    freshStore({
+      networks: { ethereum: {} },
+      networksMeta: { ethereum: {} }
     })
-
-    const originalFetch = globalThis.fetch
-    globalThis.fetch = mock(async () =>
-      Response.json({ id: 1, jsonrpc: '2.0', result: '0xa' })
-    ) as unknown as typeof fetch
-
+    const operations = createOperations({
+      accounts,
+      rpcMatchesChain: mock(async () => true)
+    })
     await expect(
-      resolveNetworkRequest({
+      operations.resolveNetworkRequest({
         type: 'network.request-resolve',
         requestId: request.handlerId,
         approved: true
       })
     ).resolves.toBe(true)
-    expect(actions.addNetwork).toHaveBeenCalledWith(chain)
-    expect(resolveRequest).toHaveBeenCalledWith(request)
 
-    actions.addNetwork.mockClear()
-    const homeCommand = { id: 8, type: 'newChain', data: { newChain: chain } }
-    getState.mockReturnValue({
-      ...actions,
-      main: { networks: { ethereum: {} } },
-      tray: { homeCommand }
+    expect({
+      network: activeStore.getState().main.networks.ethereum[10],
+      metadata: activeStore.getState().main.networksMeta.ethereum[10],
+      resolved: resolveRequest.mock.calls
+    }).toEqual({
+      network: expect.objectContaining({
+        id: 10,
+        name: 'Optimism',
+        on: true,
+        symbol: 'ETH',
+        type: 'ethereum'
+      }),
+      metadata: expect.objectContaining({
+        name: 'Optimism',
+        primaryColor: 'accent2',
+        nativeCurrency: expect.objectContaining({ symbol: 'ETH' })
+      }),
+      resolved: [[request]]
     })
-    await expect(
-      resolveNetworkRequest({
-        type: 'network.request-resolve',
-        homeCommandId: homeCommand.id,
-        approved: true
-      })
-    ).resolves.toBe(true)
-    expect(actions.addNetwork).toHaveBeenCalledWith(chain)
-    expect(actions.clearHomeCommand).toHaveBeenCalledWith(homeCommand.id)
-
-    actions.addNetwork.mockClear()
-    getState.mockReturnValue({
-      ...actions,
-      main: { networks: { ethereum: { 10: { id: 10, on: false } } } },
-      tray: {}
-    })
-    await expect(
-      resolveNetworkRequest({
-        type: 'network.request-resolve',
-        requestId: request.handlerId,
-        approved: true
-      })
-    ).resolves.toBe(true)
-    expect(actions.activateNetwork).toHaveBeenCalledWith('ethereum', 10, true)
-    expect(actions.addNetwork).not.toHaveBeenCalled()
-
-    globalThis.fetch = originalFetch
   })
 
-  it('refuses an add-chain approval when the RPC reports another chain', async () => {
+  it('refuses add-chain approval when the external RPC identifies another chain', async () => {
     const chain = {
       id: 10,
       name: 'Optimism',
@@ -611,44 +305,79 @@ describe('wallet UI workflows', () => {
       primaryRpc: 'https://rpc.example.com'
     }
     const request = { handlerId: 'request-mismatch', type: 'addChain', chain }
-    currentAccount.mockReturnValue({ getRequest: () => request })
-    getState.mockReturnValue({
-      ...actions,
-      main: { networks: { ethereum: {} } },
-      tray: {}
+    const resolveRequest = mock()
+    const accounts = accountPort({
+      current: () => ({ getRequest: () => request }),
+      resolveRequest
     })
-    const originalFetch = globalThis.fetch
-    globalThis.fetch = mock(async () =>
-      Response.json({ id: 1, jsonrpc: '2.0', result: '0x1' })
-    ) as unknown as typeof fetch
-
+    freshStore({ networks: { ethereum: {} }, networksMeta: { ethereum: {} } })
+    const operations = createOperations({
+      accounts,
+      rpcMatchesChain: mock(async () => false)
+    })
     await expect(
-      resolveNetworkRequest({
+      operations.resolveNetworkRequest({
         type: 'network.request-resolve',
         requestId: request.handlerId,
         approved: true
       })
     ).rejects.toThrow('different chain ID')
-    expect(actions.addNetwork).not.toHaveBeenCalled()
-    expect(resolveRequest).not.toHaveBeenCalled()
 
-    globalThis.fetch = originalFetch
+    expect({
+      networks: activeStore.getState().main.networks.ethereum,
+      resolved: resolveRequest.mock.calls
+    }).toEqual({ networks: {}, resolved: [] })
   })
 
-  it('cancels Flash orders using canonical order, account, and network data', async () => {
-    const orderId = 'order-1'
-    getState.mockReturnValue({
-      ...actions,
-      main: {
-        accounts: { [address]: { id: address, address } },
-        currentAccount: address,
-        networks: { ethereum: { 1: { id: 1, type: 'ethereum' } } },
-        orders: { [orderId]: { accountAddress: address, chainId: 1 } }
+  it('projects add-chain review navigation as display data plus a canonical request identifier', () => {
+    const chain = {
+      id: 10,
+      name: 'Optimism',
+      type: 'ethereum',
+      primaryRpc: 'https://rpc.example.com',
+      symbol: 'ETH'
+    }
+    const request = {
+      handlerId: 'request-review',
+      type: 'addChain',
+      chain,
+      origin: 'https://sensitive.example',
+      authorization: {
+        decision: 'autonomous',
+        principal: { type: 'agent', sessionId: 'secret-session' }
       }
+    }
+    const accounts = accountPort({
+      current: () => ({ getRequest: (id: string) => (id === request.handlerId ? request : undefined) })
     })
-    providerSend.mockImplementation((_payload, done) => done({ id: 1, jsonrpc: '2.0', result: '0x1234' }))
-    flashCancelOrder.mockResolvedValue(undefined)
+    freshStore({ networks: { ethereum: {} } })
+    const operations = createOperations({ accounts })
 
+    expect(operations.reviewAddChainRequest(request.handlerId)).toBe(true)
+    expect(activeStore.getState().tray.homeCommand as unknown).toEqual({
+      id: expect.any(Number),
+      view: 'addChain',
+      data: { chain, requestId: request.handlerId }
+    })
+  })
+
+  it('cancels a Flash order using only canonical account, network, and order state', async () => {
+    const orderId = 'order-1'
+    freshStore({
+      accounts: { [address]: { id: address, address } },
+      currentAccount: address,
+      networks: { ethereum: { 1: { id: 1, type: 'ethereum' } } },
+      orders: { [orderId]: { accountAddress: address, chainId: 1 } },
+      origins: {}
+    })
+    const send = mock((payload: RPCRequestPayload, respond: RPCRequestCallback) =>
+      respond({ id: payload.id, jsonrpc: '2.0', result: '0x1234' })
+    )
+    const cancelOrder = mock(async (_input: { orderId: string; signature: string }) => undefined)
+    const operations = createOperations({
+      flashService: { cancelOrder } as never,
+      provider: { send } as never
+    })
     const { createRendererPrincipal } = await import('../authority')
     const principal = createRendererPrincipal({
       clientType: 'wallet-ui',
@@ -657,86 +386,28 @@ describe('wallet UI workflows', () => {
       windowInstanceId: 'tray-test'
     })
 
-    await expect(cancelFlashOrder(orderId, principal)).resolves.toBe(true)
-    expect(actions.initOrigin).toHaveBeenCalledWith(
-      expect.any(String),
-      expect.objectContaining({ chain: { id: 1, type: 'ethereum' } })
-    )
-    expect(providerSend).toHaveBeenCalledWith(
-      expect.objectContaining({
+    await expect(operations.cancelFlashOrder(orderId, principal)).resolves.toBe(true)
+    expect({
+      providerRequest: send.mock.calls[0][0],
+      cancel: cancelOrder.mock.calls,
+      origins: Object.values(activeStore.getState().main.origins)
+    }).toEqual({
+      providerRequest: expect.objectContaining({
         method: 'personal_sign',
         chainId: '0x1',
         params: [expect.stringContaining(orderId), address]
       }),
-      expect.any(Function),
-      principal
-    )
-    expect(flashCancelOrder).toHaveBeenCalledWith({ orderId, signature: '0x1234' })
-
-    getState.mockReturnValue({
-      ...actions,
-      main: {
-        accounts: {},
-        currentAccount: '',
-        networks: { ethereum: { 1: { id: 1, type: 'ethereum' } } },
-        orders: { [orderId]: { accountAddress: address, chainId: 1 } }
-      }
+      cancel: [[{ orderId, signature: '0x1234' }]],
+      origins: [
+        expect.objectContaining({
+          name: 'newframe-internal',
+          chain: { id: 1, type: 'ethereum' }
+        })
+      ]
     })
-    await expect(cancelFlashOrder(orderId, principal)).resolves.toBe(false)
-    expect(flashCancelOrder).toHaveBeenCalledTimes(1)
   })
 
-  it('resolves request approval by ID instead of trusting a renderer request object', () => {
-    const request = {
-      handlerId: 'request-1',
-      type: 'transaction',
-      authorization: { decision: 'prompt' }
-    }
-    currentAccount.mockReturnValue({
-      getRequest: (id: string) => (id === request.handlerId ? request : undefined)
-    })
-    approveTransactionRequest.mockImplementation((_request, callback) => callback(null, '0xhash'))
-
-    expect(approveRequest(request.handlerId)).toBe(true)
-    expect(setRequestPending).toHaveBeenCalledWith(request)
-    expect(approveTransactionRequest).toHaveBeenCalledWith(request, expect.any(Function))
-    expect(setTxSent).toHaveBeenCalledWith(request.handlerId, '0xhash')
-    expect(approveRequest('missing')).toBe(false)
-  })
-
-  it('fails closed when a canonical request has no prompt authorization', () => {
-    const requests: Record<string, any> = {
-      missing: { handlerId: 'missing', type: 'transaction' },
-      autonomous: {
-        handlerId: 'autonomous',
-        type: 'transaction',
-        authorization: { decision: 'autonomous' }
-      }
-    }
-    currentAccount.mockReturnValue({ getRequest: (id: string) => requests[id] })
-
-    expect(approveRequest('missing')).toBe(false)
-    expect(approveRequest('autonomous')).toBe(false)
-    expect(setRequestPending).not.toHaveBeenCalled()
-    expect(approveTransactionRequest).not.toHaveBeenCalled()
-  })
-
-  it('routes each validated unlock method to the signer service', async () => {
-    unlockApp.mockImplementation((_password, done) => done(null, true))
-    unlockAppWithBiometrics.mockImplementation((_payload, done) => done(null, true))
-
-    await expect(
-      workflows.unlockSecurity({ type: 'security.unlock', method: 'password', password: 'secret' })
-    ).resolves.toBeUndefined()
-    expect(unlockApp).toHaveBeenCalledWith('secret', expect.any(Function))
-
-    await expect(
-      workflows.unlockSecurity({ type: 'security.unlock', method: 'native' })
-    ).resolves.toBeUndefined()
-    expect(unlockAppWithBiometrics).toHaveBeenCalledWith({ method: 'native' }, expect.any(Function))
-  })
-
-  it('resolves request decisions from the canonical account request', () => {
+  it('owns access, chain-switch, and rejection decisions from canonical account requests', () => {
     const access = { handlerId: 'access-1', type: 'access', origin: 'origin-1', account: address }
     const switchRequest = {
       handlerId: 'switch-1',
@@ -746,221 +417,110 @@ describe('wallet UI workflows', () => {
       chain: { id: '10', type: 'ethereum' }
     }
     const requests = { [access.handlerId]: access, [switchRequest.handlerId]: switchRequest }
-    currentAccount.mockReturnValue({
-      address,
-      getRequest: (id: string) => requests[id],
-      getSigner: mock()
+    const rejectRequest = mock()
+    const resolveRequest = mock()
+    const setAccess = mock()
+    const accounts = accountPort({
+      current: () => ({ address, getRequest: (id: string) => requests[id as keyof typeof requests] }),
+      rejectRequest,
+      resolveRequest,
+      setAccess
     })
-    getAccountRecord.mockReturnValue({ address })
-    getState.mockReturnValue({
-      ...actions,
+    freshStore({
+      networks: { ethereum: { 10: { id: 10 } } },
+      origins: { 'origin-1': { id: 'origin-1', chain: { id: 1, type: 'ethereum' } } }
+    })
+    const operations = createOperations({ accounts })
+
+    expect(operations.rejectRequest(access.handlerId)).toBe(true)
+    expect(operations.resolveAccessRequest(access.handlerId, true)).toBe(true)
+    expect(operations.resolveSwitchChainRequest(switchRequest.handlerId, true)).toBe(true)
+    expect({
+      rejected: rejectRequest.mock.calls,
+      access: setAccess.mock.calls,
+      resolved: resolveRequest.mock.calls,
+      origin: activeStore.getState().main.origins['origin-1']
+    }).toEqual({
+      rejected: [[access, { code: 4001, message: 'User rejected the request' }]],
+      access: [[access, true]],
+      resolved: [[switchRequest]],
+      origin: expect.objectContaining({ chain: { id: 10, type: 'ethereum' } })
+    })
+  })
+})
+
+describe('feature services with fresh instances and narrow external ports', () => {
+  it('applies security configuration to real canonical state through biometric and vault ports', async () => {
+    const store = createTestStore({
       main: {
-        networks: { ethereum: { 10: { id: 10 } } },
-        origins: { 'origin-1': { id: 'origin-1' } }
-      },
-      view: { badge: {}, notify: '', notifyData: {} }
+        appLock: { locked: true, vaultExists: true },
+        biometricUnlock: false
+      }
+    })
+    const disable = mock()
+    const enableNative = mock(async (_key: string) => undefined)
+    const service = createSecurityService({
+      biometrics: {
+        disable,
+        enableNative,
+        enableWebAuthn: mock(),
+        summary: () => ({ enabled: true, method: 'native', nativeAvailable: true })
+      } as never,
+      signers: {} as never,
+      store,
+      vault: { isUnlocked: () => true, getKey: () => 'vault-key' }
     })
 
-    expect(workflows.rejectRequest(access.handlerId)).toBe(true)
-    expect(rejectRequest).toHaveBeenCalledWith(access, {
-      code: 4001,
-      message: 'User rejected the request'
+    expect(service.status()).toEqual({
+      locked: true,
+      vaultExists: true,
+      biometricUnlockEnabled: true,
+      biometricAvailable: true,
+      biometrics: {
+        enabled: true,
+        method: 'native',
+        credential: undefined,
+        nativeAvailable: true
+      }
     })
-    expect(workflows.resolveAccessRequest(access.handlerId, true)).toBe(true)
-    expect(setAccess).toHaveBeenCalledWith(access, true)
-    expect(workflows.resolveSwitchChainRequest(switchRequest.handlerId, true)).toBe(true)
-    expect(actions.switchOriginChain).toHaveBeenCalledWith('origin-1', 10, 'ethereum')
-    expect(resolveRequest).toHaveBeenCalledWith(switchRequest)
-    expect(workflows.clearOriginRequests(address, 'origin-1')).toBe(true)
-    expect(clearRequestsByOrigin).toHaveBeenCalledWith(address, 'origin-1')
+    await service.configure({ type: 'security.configure', mode: 'native' })
+    expect({
+      enabled: store.getState().main.biometricUnlock,
+      nativeKeys: enableNative.mock.calls,
+      disabled: disable.mock.calls
+    }).toEqual({
+      enabled: true,
+      nativeKeys: [['vault-key']],
+      disabled: []
+    })
   })
 
-  it('keeps compatibility queries pure and opens hardware recovery through a command', () => {
-    const request = { handlerId: 'request-1', type: 'transaction', data: { type: '0x2' } }
-    const signerSummary = {
-      id: 'ledger-1',
-      type: 'ledger',
-      status: 'ok',
-      appVersion: { major: 2, minor: 0, patch: 0 },
-      model: 'Nano'
-    }
-    currentAccount.mockReturnValue({
-      getRequest: (id: string) => (id === request.handlerId ? request : undefined),
-      signer: signerSummary.id,
-      lastSignerType: 'ledger'
-    })
-    getState.mockReturnValue({
-      ...actions,
-      main: { signers: { [signerSummary.id]: signerSummary } }
-    })
-    signerCompatibility.mockReturnValue({ signer: 'ledger', tx: 'london', compatible: false })
-
-    expect(workflows.requestSignerCompatibility(request.handlerId)).toEqual({
-      ok: true,
-      compatibility: { signer: 'ledger', tx: 'london', compatible: false }
-    })
-    expect(signerCompatibility).toHaveBeenCalledWith(request.data, signerSummary)
-
-    currentAccount.mockReturnValue({
-      getRequest: () => request,
-      lastSignerType: 'ledger'
-    })
-    getState.mockReturnValue({ ...actions, main: { signers: {} } })
-    expect(workflows.requestSignerCompatibility(request.handlerId)).toEqual(
-      expect.objectContaining({ ok: false, error: 'no_signer' })
-    )
-
-    getState.mockReturnValue({
-      ...actions,
+  it('owns settings transitions through a fresh service and real canonical actions', () => {
+    const store = createTestStore({
       main: {
-        signers: {
-          'ledger-1': { id: 'ledger-1', type: 'ledger', status: 'disconnected' }
-        }
+        autohide: false,
+        portfolioApiKey: '',
+        autoDiscoverTokens: false
       }
     })
-    expect(workflows.requestSignerCompatibility(request.handlerId)).toEqual({
-      ok: false,
-      error: 'signer_unavailable',
-      message: 'The hardware signer is unavailable.',
-      signerIds: ['ledger-1']
-    })
-  })
+    const service = createSettingsService(store)
 
-  it('updates transaction approvals, fees, and nonce only for the canonical request', async () => {
-    const approval = { type: 'approveGasLimit', approved: false }
-    const request = {
-      handlerId: 'request-1',
-      type: 'transaction',
-      approvals: [approval],
-      recognizedActions: [{ id: 'erc20:approve' }],
-      data: {
-        chainId: '0x1',
-        type: '0x2',
-        maxPriorityFeePerGas: '0x4',
-        maxFeePerGas: '0xc'
-      }
-    }
-    currentAccount.mockReturnValue({
-      getRequest: (id: string) => (id === request.handlerId ? request : undefined),
-      patchRequest
-    })
-    updateRequest.mockReturnValue(true)
-    removeFeeUpdateNotice.mockImplementation((_id, done) => done(null))
-    getState.mockReturnValue({
-      ...actions,
-      main: {
-        networks: { ethereum: { 1: { id: 1 } } },
-        networksMeta: {
-          ethereum: {
-            1: {
-              gas: {
-                price: {
-                  levels: { fast: '0x2' },
-                  fees: { maxBaseFeePerGas: '0x10', maxPriorityFeePerGas: '0x4' }
-                }
-              }
-            }
-          }
-        }
-      },
-      view: { badge: {}, notify: '', notifyData: {} }
+    service.update({ type: 'settings.update', setting: 'autohide', value: true })
+    service.update({
+      type: 'settings.update',
+      setting: 'auto-discover-tokens',
+      value: true,
+      apiKey: ' portfolio-key '
     })
 
-    expect(workflows.confirmRequestApproval(request.handlerId, 'approveGasLimit')).toBe(true)
-    expect(confirmRequestApprovalRecord).toHaveBeenCalledWith(request.handlerId, 'approveGasLimit', {})
-    expect(
-      workflows.updateTokenApproval({
-        type: 'request.token-approval-update',
-        requestKind: 'transaction',
-        requestId: request.handlerId,
-        actionId: 'erc20:approve',
-        amount: '10'
-      })
-    ).toBe(true)
-    expect(updateRequest).toHaveBeenCalledWith(request.handlerId, { amount: '10' }, 'erc20:approve')
-    updateRequest.mockReturnValueOnce(false)
-    expect(
-      workflows.updateTokenApproval({
-        type: 'request.token-approval-update',
-        requestKind: 'transaction',
-        requestId: request.handlerId,
-        actionId: 'erc20:approve',
-        amount: '11'
-      })
-    ).toBe(false)
-    expect(workflows.updateTransactionFee(request.handlerId, 'baseFee', '0x2')).toBe(true)
-    expect(setBaseFee).toHaveBeenCalledWith('0x2', request.handlerId, true)
-    expect(workflows.setTransactionFeeDefault(request.handlerId, 'fast')).toBe(true)
-    expect(actions.setGasDefault).toHaveBeenCalledWith('ethereum', 1, 'fast', '0x2')
-    expect(setPriorityFee).toHaveBeenCalledWith('0x5', request.handlerId, true)
-    expect(setBaseFee).toHaveBeenLastCalledWith('0x14', request.handlerId, true)
-    expect(patchRequest).toHaveBeenCalledWith(request.handlerId, expect.any(Function))
-    const presetUpdate = patchRequest.mock.calls[0][1]
-    const updatedRequest = { feesUpdatedByUser: true }
-    presetUpdate(updatedRequest)
-    expect(updatedRequest.feesUpdatedByUser).toBe(false)
-    expect(workflows.adjustTransactionNonce(request.handlerId, 1)).toBe(true)
-    expect(adjustNonce).toHaveBeenCalledWith(request.handlerId, 1)
-    expect(workflows.resetTransactionNonce(request.handlerId)).toBe(true)
-    expect(resetNonce).toHaveBeenCalledWith(request.handlerId)
-    await expect(workflows.dismissTransactionFeeNotice(request.handlerId)).resolves.toBe(true)
-  })
-
-  it('validates pending extension and updater state before acting', () => {
-    getState.mockReturnValue({
-      ...actions,
-      main: { networks: { ethereum: {} } },
-      view: {
-        badge: { type: 'updateAvailable', version: '9.9.9' },
-        notify: 'extensionConnect',
-        notifyData: { id: 'extension-1' }
-      }
-    })
-
-    expect(workflows.respondToExtension('extension-1', true)).toBe(true)
-    expect(actions.trustExtension).toHaveBeenCalledWith('extension-1', true)
-    expect(actions.notify).toHaveBeenCalledWith('', {})
-    expect(workflows.respondToExtension('extension-2', true)).toBe(false)
-
-    expect(workflows.respondToUpdater('skip')).toBe(true)
-    expect(actions.dontRemind).toHaveBeenCalledWith('9.9.9')
-    expect(actions.updateBadge).toHaveBeenCalledWith('', undefined)
-    expect(updaterDismissUpdate).toHaveBeenCalledTimes(1)
-  })
-
-  it('opens request reviews from canonical request IDs', () => {
-    const addToken = {
-      handlerId: 'token-1',
-      type: 'addToken',
-      token: { address, symbol: 'TKN', decimals: 18, logoURI: '', name: 'Token', chainId: 1 }
-    }
-    currentAccount.mockReturnValue({
-      address,
-      getRequest: (id: string) => (id === addToken.handlerId ? addToken : undefined)
-    })
-    getState.mockReturnValue({ ...actions, main: { networks: { ethereum: {} } } })
-
-    expect(workflows.openRequestPanel(addToken.handlerId)).toBe(true)
-    expect(actions.navForward).toHaveBeenCalledWith(
-      'panel',
-      expect.objectContaining({
-        data: { step: 'confirm', accountId: address, requestId: addToken.handlerId }
-      })
-    )
-    expect(workflows.reviewAddTokenRequest(addToken.handlerId)).toBe(true)
-    expect(resolveRequest).toHaveBeenCalledWith(addToken, null)
-    expect(actions.navHome).toHaveBeenCalledWith({
-      view: 'tokens',
-      data: {
-        token: {
-          address,
-          chainId: 1,
-          decimals: 18,
-          logoURI: '',
-          name: 'Token',
-          symbol: 'TKN'
-        }
-      }
+    expect({
+      autohide: store.getState().main.autohide,
+      autoDiscoverTokens: store.getState().main.autoDiscoverTokens,
+      portfolioApiKey: store.getState().main.portfolioApiKey
+    }).toEqual({
+      autohide: true,
+      autoDiscoverTokens: true,
+      portfolioApiKey: 'portfolio-key'
     })
   })
 })

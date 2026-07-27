@@ -1,4 +1,4 @@
-import { beforeAll, beforeEach, describe, expect, it, mock } from 'bun:test'
+import { afterEach, beforeAll, beforeEach, describe, expect, it, mock } from 'bun:test'
 
 const revealMock = {
   recog: mock(),
@@ -7,21 +7,15 @@ const revealMock = {
 }
 const fetchContractMock = mock()
 const simulateTransactionEffectsMock = mock()
-const providerMock = { on: mock(), off: mock(), send: mock() }
+const providerMock = { on: mock(), off: mock(), send: mock(), getL1GasCost: mock() }
+const signersMock = { get: mock() }
+const windowsMock = { showTray: mock() }
+const navMock = { forward: mock(), back: mock() }
 
-mock.module('../reveal', () => ({ default: revealMock, ...revealMock }))
+mock.module('../reveal', () => ({ ...revealMock }))
 mock.module('../contracts', () => ({ fetchContract: fetchContractMock }))
-mock.module('../transaction/simulation', () => ({
-  simulateTransactionEffects: simulateTransactionEffectsMock
-}))
-
-mock.module('../provider', () => ({ default: providerMock, ...providerMock }))
-mock.module('./', () => ({
-  default: {},
-  RequestMode: { Normal: 'normal', Monitor: 'monitor' }
-}))
-mock.module('../signers', () => ({ default: {} }))
-mock.module('../windows', () => ({ default: {} }))
+mock.module('../signers', () => ({ default: signersMock }))
+mock.module('../windows', () => ({ default: windowsMock }))
 mock.module('../nameResolution', () => ({
   __esModule: true,
   default: {
@@ -32,14 +26,7 @@ mock.module('../nameResolution', () => ({
   }
 }))
 
-mock.module('../windows/nav', () => ({
-  default: {
-    forward: mock(),
-    back: mock()
-  },
-  forward: mock(),
-  back: mock()
-}))
+mock.module('../windows/nav', () => ({ default: navMock, ...navMock }))
 
 let account: any
 let Account: any
@@ -47,6 +34,12 @@ let reveal: any
 let fetchContract: any
 let nav: any
 let store: any
+const nameResolution = {
+  off: mock(),
+  ready: mock(() => true),
+  once: mock(),
+  reverseLookup: async () => 'frame.eth'
+}
 
 const accounts = { syncTransactionActivity: mock() }
 
@@ -57,9 +50,9 @@ const accountState = {
 
 beforeAll(async () => {
   Account = (await import('./Account')).default
-  reveal = (await import('../reveal')).default
+  reveal = revealMock
   fetchContract = (await import('../contracts')).fetchContract
-  nav = (await import('../windows/nav')).default
+  nav = navMock
   store = (await import('../store')).default
 })
 
@@ -67,9 +60,34 @@ beforeEach(() => {
   mock.clearAllMocks()
   account?.close()
   store.getState().removeAccount(accountState.address.toLowerCase())
-  account = new Account(accountState as any, accounts as any)
+  account = new Account(
+    accountState as any,
+    accounts as any,
+    store,
+    providerMock as any,
+    {
+      simulateTransactionEffects: simulateTransactionEffectsMock
+    },
+    nameResolution,
+    revealMock,
+    {
+      navigation: navMock,
+      now: Date.now,
+      notify: mock(),
+      openBlockExplorer: mock(),
+      persistence: { flush: mock() },
+      schedule: (callback: () => void, delay: number) => setTimeout(callback, delay),
+      signers: signersMock,
+      windows: windowsMock
+    }
+  )
   ;(fetchContract as any).mockResolvedValueOnce(undefined)
   simulateTransactionEffectsMock.mockResolvedValue({ status: 'success', effects: [] })
+})
+
+afterEach(() => {
+  account?.close()
+  store.getState().removeAccount(accountState.address.toLowerCase())
 })
 
 describe('#addRequest', () => {

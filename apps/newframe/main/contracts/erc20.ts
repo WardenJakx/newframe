@@ -1,7 +1,10 @@
 import { BrowserProvider, Contract, TransactionDescription } from 'ethers'
 import { addHexPrefix } from '@ethereumjs/util'
-import provider from '../provider'
-import { erc20Interface } from '../../resources/contracts'
+import { erc20Interface } from '../../domain/evm'
+
+export interface Erc20ProviderPort {
+  sendAsync(payload: RPCRequestPayload, callback: Callback<RPCResponsePayload>): unknown
+}
 
 export interface TokenData {
   decimals?: number
@@ -10,7 +13,7 @@ export interface TokenData {
   totalSupply?: string
 }
 
-function createEip1193Wrapper(chainId: number) {
+function createEip1193Wrapper(chainId: number, provider: Erc20ProviderPort) {
   return {
     request: (request: { method: string; params?: any[] }) =>
       new Promise((resolve, reject) => {
@@ -34,8 +37,8 @@ function createEip1193Wrapper(chainId: number) {
 export default class Erc20Contract {
   private contract: Contract
 
-  constructor(address: Address, chainId: number) {
-    const browserProvider = new BrowserProvider(createEip1193Wrapper(chainId))
+  constructor(address: Address, chainId: number, provider: Erc20ProviderPort) {
+    const browserProvider = new BrowserProvider(createEip1193Wrapper(chainId, provider))
     this.contract = new Contract(address, erc20Interface, browserProvider)
   }
 

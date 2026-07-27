@@ -1,7 +1,7 @@
 import signatureTypes from './types'
 import { SignTypedDataVersion, MessageTypeProperty } from '@metamask/eth-sig-util'
 
-import type { TypedMessage, TypedSignatureRequestType } from '../accounts/types'
+import type { TypedMessage, TypedSignatureRequestType } from '../../contracts/requests'
 import type { EIP712MessageDomain } from '@ledgerhq/types-live'
 
 const matchesMsgType = (properties: MessageTypeProperty[], required: MessageTypeProperty[]) =>
@@ -32,4 +32,4 @@ export const identify = ({ data }: TypedMessage<SignTypedDataVersion>): TypedSig
   return identified ? (identified[0] as TypedSignatureRequestType) : 'signTypedData'
 }
 
-export { isSignatureRequest } from '../../resources/domain/request'
+export { isSignatureRequest } from '../../domain/request'

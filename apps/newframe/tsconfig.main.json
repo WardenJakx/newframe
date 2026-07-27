@@ -13,7 +13,13 @@
     "noEmit": true,
     "typeRoots": ["./node_modules/@types", "./@types"]
   },
-  "include": ["package.json", "./@types/**/*.d.ts", "./main/**/*.ts"],
+  "include": [
+    "package.json",
+    "./@types/**/*.d.ts",
+    "./main/**/*.ts",
+    "./contracts/**/*.ts",
+    "./domain/**/*.ts"
+  ],
   "exclude": [
     "**/*.test.ts",
     "**/*.test.tsx",

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, mock } from 'bun:test'
+import { describe, expect, it, mock } from 'bun:test'
 
 import { addHexPrefix, stripHexPrefix } from '@ethereumjs/util'
 import { Common, Mainnet } from '@ethereumjs/common'
@@ -8,187 +8,81 @@ import * as transactionModule from './index'
 // real functions under test, exercised with partial tx fixtures
 const { maxFee, londonToLegacy, signerCompatibility, populate, sign, classifyTransaction } =
   transactionModule as Record<string, any>
-import { GasFeesSource } from '../../resources/domain/transaction'
-import { TxClassification } from '../accounts/types'
+import { GasFeesSource } from '../../domain/transaction'
+import { TxClassification } from '../../contracts/requests'
 
 describe('#signerCompatibility', () => {
-  it('is always compatible with legacy transactions', () => {
-    const tx = {
-      type: '0x0'
-    }
-
-    const compatibility = signerCompatibility(tx, { type: 'anysigner' })
-
-    expect(compatibility.signer).toBe('anysigner')
-    expect(compatibility.tx).toBe('legacy')
-    expect(compatibility.compatible).toBe(true)
+  it('accepts every signer for legacy transactions', () => {
+    expect(signerCompatibility({ type: '0x0' }, { type: 'unrecognized' })).toStrictEqual({
+      signer: 'unrecognized',
+      tx: 'legacy',
+      compatible: true
+    })
   })
 
-  it('is always compatible with eip-1559 transactions for seed signers', () => {
-    const tx = {
-      type: '0x2'
+  it('accepts application-owned seed and ring signers for London transactions', () => {
+    for (const type of ['seed', 'ring']) {
+      expect(signerCompatibility({ type: '0x2' }, { type })).toStrictEqual({
+        signer: type,
+        tx: 'london',
+        compatible: true
+      })
     }
-
-    const compatibility = signerCompatibility(tx, { type: 'seed' })
-
-    expect(compatibility.signer).toBe('seed')
-    expect(compatibility.tx).toBe('london')
-    expect(compatibility.compatible).toBe(true)
   })
 
-  it('is always compatible with eip-1559 transactions for ring signers', () => {
-    const tx = {
-      type: '0x2'
+  it('enforces each hardware signer firmware boundary', () => {
+    const cases = [
+      { type: 'ledger', appVersion: { major: 1, minor: 7, patch: 4 }, compatible: false },
+      { type: 'ledger', appVersion: { major: 1, minor: 9, patch: 0 }, compatible: true },
+      { type: 'ledger', appVersion: { major: 2, minor: 1, patch: 3 }, compatible: true },
+      { type: 'lattice', appVersion: { major: 0, minor: 10, patch: 0 }, compatible: false },
+      { type: 'lattice', appVersion: { major: 0, minor: 11, patch: 2 }, compatible: true },
+      { type: 'lattice', appVersion: { major: 1, minor: 0, patch: 2 }, compatible: true },
+      {
+        type: 'trezor',
+        model: 'Trezor One',
+        appVersion: { major: 1, minor: 10, patch: 0 },
+        compatible: false
+      },
+      {
+        type: 'trezor',
+        model: 'Trezor One',
+        appVersion: { major: 1, minor: 10, patch: 4 },
+        compatible: true
+      },
+      {
+        type: 'trezor',
+        model: 'Trezor T',
+        appVersion: { major: 2, minor: 4, patch: 0 },
+        compatible: false
+      },
+      {
+        type: 'trezor',
+        model: 'Trezor T',
+        appVersion: { major: 2, minor: 4, patch: 2 },
+        compatible: true
+      },
+      {
+        type: 'trezor',
+        model: 'Trezor T',
+        appVersion: { major: 2, minor: 5, patch: 1 },
+        compatible: true
+      },
+      {
+        type: 'trezor',
+        model: 'Trezor T',
+        appVersion: { major: 3, minor: 2, patch: 4 },
+        compatible: true
+      }
+    ]
+
+    for (const { compatible, ...signer } of cases) {
+      expect(signerCompatibility({ type: '0x2' }, signer)).toStrictEqual({
+        signer: signer.type,
+        tx: 'london',
+        compatible
+      })
     }
-
-    const compatibility = signerCompatibility(tx, { type: 'ring' })
-
-    expect(compatibility.signer).toBe('ring')
-    expect(compatibility.tx).toBe('london')
-    expect(compatibility.compatible).toBe(true)
-  })
-
-  it('is not compatible for eip-1559 transactions on Ledger signers using eth app prior to 1.9.x', () => {
-    const appVersion = { major: 1, minor: 7, patch: 4 }
-    const tx = {
-      type: '0x2'
-    }
-
-    const compatibility = signerCompatibility(tx, { type: 'ledger', appVersion })
-
-    expect(compatibility.signer).toBe('ledger')
-    expect(compatibility.tx).toBe('london')
-    expect(compatibility.compatible).toBe(false)
-  })
-
-  it('is compatible for eip-1559 transactions on Ledger signers using eth app 1.9.x', () => {
-    const appVersion = { major: 1, minor: 9, patch: 0 }
-    const tx = {
-      type: '0x2'
-    }
-
-    const compatibility = signerCompatibility(tx, { type: 'ledger', appVersion })
-
-    expect(compatibility.signer).toBe('ledger')
-    expect(compatibility.tx).toBe('london')
-    expect(compatibility.compatible).toBe(true)
-  })
-
-  it('is compatible for eip-1559 transactions on Ledger signers using eth app 2.x', () => {
-    const appVersion = { major: 2, minor: 1, patch: 3 }
-    const tx = {
-      type: '0x2'
-    }
-
-    const compatibility = signerCompatibility(tx, { type: 'ledger', appVersion })
-
-    expect(compatibility.signer).toBe('ledger')
-    expect(compatibility.tx).toBe('london')
-    expect(compatibility.compatible).toBe(true)
-  })
-
-  it('is not compatible for eip-1559 transactions on Lattice signers using firmware prior to 0.11.x', () => {
-    const appVersion = { major: 0, minor: 10, patch: 0 }
-    const tx = {
-      type: '0x2'
-    }
-
-    const compatibility = signerCompatibility(tx, { type: 'lattice', appVersion })
-
-    expect(compatibility.signer).toBe('lattice')
-    expect(compatibility.tx).toBe('london')
-    expect(compatibility.compatible).toBe(false)
-  })
-
-  it('is compatible for eip-1559 transactions on Lattice signers using firmware 0.11.x', () => {
-    const appVersion = { major: 0, minor: 11, patch: 2 }
-    const tx = {
-      type: '0x2'
-    }
-
-    const compatibility = signerCompatibility(tx, { type: 'lattice', appVersion })
-
-    expect(compatibility.signer).toBe('lattice')
-    expect(compatibility.tx).toBe('london')
-    expect(compatibility.compatible).toBe(true)
-  })
-
-  it('is compatible for eip-1559 transactions on Lattice signers using firmware 1.x', () => {
-    const appVersion = { major: 1, minor: 0, patch: 2 }
-    const tx = {
-      type: '0x2'
-    }
-
-    const compatibility = signerCompatibility(tx, { type: 'lattice', appVersion })
-
-    expect(compatibility.signer).toBe('lattice')
-    expect(compatibility.tx).toBe('london')
-    expect(compatibility.compatible).toBe(true)
-  })
-
-  it('is not compatible for eip-1559 transactions on Trezor One signers using firmware prior to 1.10.4', () => {
-    const appVersion = { major: 1, minor: 10, patch: 0 }
-    const tx = {
-      type: '0x2'
-    }
-
-    const compatibility = signerCompatibility(tx, { type: 'trezor', appVersion, model: 'Trezor One' })
-
-    expect(compatibility.signer).toBe('trezor')
-    expect(compatibility.tx).toBe('london')
-    expect(compatibility.compatible).toBe(false)
-  })
-
-  it('is not compatible for eip-1559 transactions on Trezor T signers using firmware prior to 2.4.2', () => {
-    const appVersion = { major: 2, minor: 4, patch: 0 }
-    const tx = {
-      type: '0x2'
-    }
-
-    const compatibility = signerCompatibility(tx, { type: 'trezor', appVersion, model: 'Trezor T' })
-
-    expect(compatibility.signer).toBe('trezor')
-    expect(compatibility.tx).toBe('london')
-    expect(compatibility.compatible).toBe(false)
-  })
-
-  it('is compatible for eip-1559 transactions on Trezor One signers using firmware 1.10.4+', () => {
-    const appVersion = { major: 1, minor: 11, patch: 0 }
-    const tx = {
-      type: '0x2'
-    }
-
-    const compatibility = signerCompatibility(tx, { type: 'trezor', appVersion, model: 'Trezor One' })
-
-    expect(compatibility.signer).toBe('trezor')
-    expect(compatibility.tx).toBe('london')
-    expect(compatibility.compatible).toBe(true)
-  })
-
-  it('is compatible for eip-1559 transactions on Trezor T signers using firmware 2.4.2+', () => {
-    const appVersion = { major: 2, minor: 5, patch: 1 }
-    const tx = {
-      type: '0x2'
-    }
-
-    const compatibility = signerCompatibility(tx, { type: 'trezor', appVersion, model: 'Trezor T' })
-
-    expect(compatibility.signer).toBe('trezor')
-    expect(compatibility.tx).toBe('london')
-    expect(compatibility.compatible).toBe(true)
-  })
-
-  it('is compatible for eip-1559 transactions on Trezor signers using firmware 3.x', () => {
-    const appVersion = { major: 3, minor: 2, patch: 4 }
-    const tx = {
-      type: '0x2'
-    }
-
-    const compatibility = signerCompatibility(tx, { type: 'trezor', appVersion, model: 'Trezor T' })
-
-    expect(compatibility.signer).toBe('trezor')
-    expect(compatibility.tx).toBe('london')
-    expect(compatibility.compatible).toBe(true)
   })
 })
 
@@ -266,156 +160,123 @@ describe('#maxFee', () => {
 })
 
 describe('#populate', () => {
-  let gas: any
-  let rawTx: any
-
-  beforeEach(() => {
-    gas = {
-      price: {
-        levels: {
-          fast: ''
-        }
-      }
-    }
-    rawTx = {
-      gasLimit: '0x61a8',
-      value: '0x6f05b59d3b20000',
-      to: '0x6635f83421bf059cd8111f180f0727128685bae4',
-      data: '0x0000000000000000000006635f83421bf059cd8111f180f0726635f83421bf059cd8111f180f072',
-      gasFeesSource: GasFeesSource.Dapp
-    }
-  })
+  const rawTx = {
+    gasLimit: '0x61a8',
+    value: '0x6f05b59d3b20000',
+    to: '0x6635f83421bf059cd8111f180f0727128685bae4',
+    data: '0x0000000000000000000006635f83421bf059cd8111f180f0726635f83421bf059cd8111f180f072',
+    gasFeesSource: GasFeesSource.Dapp
+  }
 
   describe('legacy transactions', () => {
     const chainConfig = new Common({ chain: Mainnet, hardfork: 'istanbul' })
+    const frameGasPrice = addHexPrefix((7e9).toString(16))
+    const gas = { price: { levels: { fast: frameGasPrice } } }
 
-    it('sets the transaction type', () => {
-      const tx = populate(rawTx, chainConfig, gas)
+    it('uses the Frame gas price for missing and invalid dapp values', () => {
+      for (const gasPrice of [undefined, '']) {
+        const input = { ...rawTx, ...(gasPrice === undefined ? {} : { gasPrice }) }
 
-      expect(tx.type).toBe('0x0')
+        expect(populate(input, chainConfig, gas)).toStrictEqual({
+          ...input,
+          type: '0x0',
+          gasPrice: frameGasPrice,
+          gasFeesSource: GasFeesSource.Frame
+        })
+      }
     })
 
-    it('uses Frame-supplied gasPrice when the dapp did not specify a value', () => {
-      gas.price.levels.fast = addHexPrefix((7e9).toString(16))
-      const tx = populate(rawTx, chainConfig, gas)
+    it('preserves a valid dapp gas price and ownership', () => {
+      const input = { ...rawTx, gasPrice: (6e9).toString(16) }
 
-      expect(tx.gasPrice).toBe(gas.price.levels.fast)
-      expect(tx.gasFeesSource).toBe(GasFeesSource.Frame)
-    })
-
-    it('uses Frame-supplied gasPrice when the dapp specified an invalid value', () => {
-      gas.price.levels.fast = addHexPrefix((7e9).toString(16))
-      rawTx.gasPrice = ''
-      const tx = populate(rawTx, chainConfig, gas)
-
-      expect(tx.gasPrice).toBe(gas.price.levels.fast)
-      expect(tx.gasFeesSource).toBe(GasFeesSource.Frame)
-    })
-
-    it('uses dapp-supplied gasPrice when the dapp specified a valid value', () => {
-      gas.price.levels.fast = addHexPrefix((7e9).toString(16))
-      rawTx.gasPrice = (6e9).toString(16)
-      const tx = populate(rawTx, chainConfig, gas)
-
-      expect(tx.gasPrice).toBe(rawTx.gasPrice)
-      expect(tx.gasFeesSource).toBe(GasFeesSource.Dapp)
+      expect(populate(input, chainConfig, gas)).toStrictEqual({
+        ...input,
+        type: '0x0'
+      })
     })
   })
 
   describe('eip-1559 transactions', () => {
     const chainConfig = new Common({ chain: Mainnet, hardfork: 'london' })
-
-    beforeEach(() => {
-      gas = {
-        price: {
-          fees: {
-            maxPriorityFeePerGas: '',
-            maxBaseFeePerGas: ''
-          }
+    const frameBaseFee = addHexPrefix((7e9).toString(16))
+    const framePriorityFee = addHexPrefix((3e9).toString(16))
+    const gas = {
+      price: {
+        levels: { fast: '' },
+        fees: {
+          maxPriorityFeePerGas: framePriorityFee,
+          maxBaseFeePerGas: frameBaseFee
         }
+      }
+    }
+
+    it('uses complete Frame fees for missing and invalid dapp fee pairs', () => {
+      for (const supplied of [{}, { maxFeePerGas: '', maxPriorityFeePerGas: '' }]) {
+        const input = { ...rawTx, ...supplied }
+
+        expect(populate(input, chainConfig, gas)).toStrictEqual({
+          ...input,
+          type: '0x2',
+          maxFeePerGas: addHexPrefix((10e9).toString(16)),
+          maxPriorityFeePerGas: framePriorityFee,
+          gasFeesSource: GasFeesSource.Frame
+        })
       }
     })
 
-    it('sets the transaction type', () => {
-      const tx = populate(rawTx, chainConfig, gas)
+    it('combines one valid dapp fee with the complementary Frame fee without changing ownership', () => {
+      const dappPriorityFee = addHexPrefix((4e9).toString(16))
+      const dappMaxFee = (6e9).toString(16)
+      const cases = [
+        {
+          input: { ...rawTx, maxPriorityFeePerGas: dappPriorityFee },
+          expected: {
+            ...rawTx,
+            type: '0x2',
+            maxPriorityFeePerGas: dappPriorityFee,
+            maxFeePerGas: addHexPrefix((11e9).toString(16))
+          }
+        },
+        {
+          input: { ...rawTx, maxFeePerGas: dappMaxFee },
+          expected: {
+            ...rawTx,
+            type: '0x2',
+            maxFeePerGas: dappMaxFee,
+            maxPriorityFeePerGas: framePriorityFee
+          }
+        }
+      ]
 
-      expect(tx.type).toBe('0x2')
+      for (const { input, expected } of cases) {
+        expect(populate(input, chainConfig, gas)).toStrictEqual(expected)
+      }
     })
 
-    it('calculates maxFeePerGas when the dapp did not specify a value', () => {
-      gas.price.fees.maxBaseFeePerGas = addHexPrefix((7e9).toString(16))
-      gas.price.fees.maxPriorityFeePerGas = addHexPrefix((3e9).toString(16))
-      const tx = populate(rawTx, chainConfig, gas)
+    it('preserves a complete valid dapp fee pair', () => {
+      const input = {
+        ...rawTx,
+        maxFeePerGas: (6e9).toString(16),
+        maxPriorityFeePerGas: (4e9).toString(16)
+      }
 
-      expect(tx.maxFeePerGas).toBe(addHexPrefix((7e9 + 3e9).toString(16)))
-      expect(tx.gasFeesSource).toBe(GasFeesSource.Frame)
-    })
-
-    it('calculates maxFeePerGas when the dapp specified an invalid value', () => {
-      gas.price.fees.maxBaseFeePerGas = addHexPrefix((7e9).toString(16))
-      gas.price.fees.maxPriorityFeePerGas = addHexPrefix((3e9).toString(16))
-      rawTx.maxFeePerGas = ''
-      const tx = populate(rawTx, chainConfig, gas)
-
-      expect(tx.maxFeePerGas).toBe(addHexPrefix((7e9 + 3e9).toString(16)))
-      expect(tx.gasFeesSource).toBe(GasFeesSource.Frame)
-    })
-
-    it('calculates maxFeePerGas using a dapp-supplied value of maxPriorityFeePerGas', () => {
-      gas.price.fees.maxBaseFeePerGas = addHexPrefix((7e9).toString(16))
-      gas.price.fees.maxPriorityFeePerGas = addHexPrefix((3e9).toString(16))
-      rawTx.maxPriorityFeePerGas = addHexPrefix((4e9).toString(16))
-      const tx = populate(rawTx, chainConfig, gas)
-
-      expect(tx.maxFeePerGas).toBe(addHexPrefix((7e9 + 4e9).toString(16)))
-      expect(tx.gasFeesSource).toBe(GasFeesSource.Dapp)
-    })
-
-    it('uses dapp-supplied maxFeePerGas when the dapp specified a valid value', () => {
-      gas.price.fees.maxBaseFeePerGas = addHexPrefix((7e9).toString(16))
-      gas.price.fees.maxPriorityFeePerGas = addHexPrefix((3e9).toString(16))
-      rawTx.maxFeePerGas = (6e9).toString(16)
-      const tx = populate(rawTx, chainConfig, gas)
-
-      expect(tx.maxFeePerGas).toBe(rawTx.maxFeePerGas)
-      expect(tx.gasFeesSource).toBe(GasFeesSource.Dapp)
-    })
-
-    it('uses Frame-supplied maxPriorityFeePerGas when the dapp did not specify a value', () => {
-      gas.price.fees.maxPriorityFeePerGas = addHexPrefix((3e9).toString(16))
-      const tx = populate(rawTx, chainConfig, gas)
-
-      expect(tx.maxPriorityFeePerGas).toBe(gas.price.fees.maxPriorityFeePerGas)
-      expect(tx.gasFeesSource).toBe(GasFeesSource.Frame)
-    })
-
-    it('uses Frame-supplied maxPriorityFeePerGas when the dapp specified an invalid value', () => {
-      gas.price.fees.maxPriorityFeePerGas = addHexPrefix((3e9).toString(16))
-      rawTx.maxFeePerGas = ''
-      const tx = populate(rawTx, chainConfig, gas)
-
-      expect(tx.maxPriorityFeePerGas).toBe(gas.price.fees.maxPriorityFeePerGas)
-      expect(tx.gasFeesSource).toBe(GasFeesSource.Frame)
-    })
-
-    it('uses dapp-supplied maxPriorityFeePerGas when the dapp specified a valid value', () => {
-      gas.price.fees.maxBaseFeePerGas = addHexPrefix((7e9).toString(16))
-      gas.price.fees.maxPriorityFeePerGas = addHexPrefix((3e9).toString(16))
-      rawTx.maxPriorityFeePerGas = (6e9).toString(16)
-      const tx = populate(rawTx, chainConfig, gas)
-
-      expect(tx.maxPriorityFeePerGas).toBe(rawTx.maxPriorityFeePerGas)
-      expect(tx.gasFeesSource).toBe(GasFeesSource.Dapp)
+      expect(populate(input, chainConfig, gas)).toStrictEqual({
+        ...input,
+        type: '0x2'
+      })
     })
   })
 
   describe('eip-2930 transactions', () => {
     const chainConfig = new Common({ chain: Mainnet, hardfork: 'berlin' })
 
-    it('sets the transaction type', () => {
-      const tx = populate(rawTx, chainConfig, gas)
-
-      expect(tx.type).toBe('0x1')
+    it('projects the complete access-list fee result', () => {
+      expect(populate(rawTx, chainConfig, { price: { levels: { fast: '' } } })).toStrictEqual({
+        ...rawTx,
+        type: '0x1',
+        gasPrice: '0x0',
+        gasFeesSource: GasFeesSource.Frame
+      })
     })
   })
 })

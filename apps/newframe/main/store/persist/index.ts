@@ -1,26 +1,28 @@
-import path from 'path'
-
-import { app } from 'electron'
-import Conf from 'conf'
-
-import { ValidatedConfStorage } from './validatedConfStorage'
 import { CANONICAL_STATE_STORAGE_NAME } from './schema'
+import type { PersistenceAdapter } from '../../infrastructure/persistence'
 
 export type { PersistedCanonicalState } from './schema'
 export { PERSISTENCE_VERSION } from './schema'
-export { ValidatedConfStorage } from './validatedConfStorage'
+export { CanonicalStatePersistenceError, createPersistenceAdapter } from '../../infrastructure/persistence'
 
 export { CANONICAL_STATE_STORAGE_NAME }
-const cwd = app?.getPath('userData') || __dirname
-const conf = new Conf<Record<string, unknown>>({
-  projectName: 'newframe',
-  configFileMode: 0o600,
-  configName: 'config',
-  cwd: path.isAbsolute(cwd) ? cwd : path.resolve(__dirname, cwd)
-})
-const storage = new ValidatedConfStorage(conf)
 
-app?.on('before-quit', () => storage.flush())
-setInterval(() => storage.flush(), 30_000).unref()
+let activeAdapter: Pick<PersistenceAdapter, 'clear' | 'flush'> | undefined
 
-export default storage
+export function connectPersistenceControl(adapter: Pick<PersistenceAdapter, 'clear' | 'flush'>) {
+  activeAdapter = adapter
+  return () => {
+    if (activeAdapter === adapter) activeAdapter = undefined
+  }
+}
+
+const persistenceControl = {
+  clear() {
+    activeAdapter?.clear()
+  },
+  flush() {
+    activeAdapter?.flush()
+  }
+}
+
+export default persistenceControl

@@ -56,7 +56,7 @@ describe('#loadAssets', () => {
       state.main.balances[account] = [balance]
     })
 
-    expect(loadAssets(account)).toEqual({
+    expect(loadAssets(store, account)).toEqual({
       nativeCurrency: [
         {
           ...balance,
@@ -85,7 +85,7 @@ describe('#loadAssets', () => {
       setToken(state, balance, balance.symbol)
     })
 
-    expect(loadAssets(account)).toEqual({
+    expect(loadAssets(store, account)).toEqual({
       nativeCurrency: [],
       erc20: [
         {
@@ -112,7 +112,7 @@ describe('#loadAssets', () => {
       setToken(state, balance, balance.symbol)
     })
 
-    expect(loadAssets(account)).toEqual({
+    expect(loadAssets(store, account)).toEqual({
       nativeCurrency: [],
       erc20: [{ ...balance, decimals: 18, name: 'UNKNOWN', tokenInfo: {} }]
     })
@@ -131,7 +131,7 @@ describe('#loadAssets', () => {
       delete state.main.networksMeta.ethereum[31337]
     })
 
-    expect(loadAssets(account)).toEqual({ nativeCurrency: [], erc20: [] })
+    expect(loadAssets(store, account)).toEqual({ nativeCurrency: [], erc20: [] })
   })
 
   it('throws an error if assets have not been updated in the last 5 minutes', () => {
@@ -142,13 +142,13 @@ describe('#loadAssets', () => {
       state.main.accounts[account].balances.lastUpdated = tooOld
     })
 
-    expect(() => loadAssets(account)).toThrow(/assets not known/)
+    expect(() => loadAssets(store, account)).toThrow(/assets not known/)
   })
 })
 
 describe('#createObserver', () => {
   const handler = { assetsChanged: mock() }
-  const observer = createObserver(handler)
+  const observer = createObserver(store, handler)
 
   const fireObserver = (waitTime = 800) => {
     observer()

@@ -3,12 +3,12 @@ import { randomUUID } from 'node:crypto'
 import log from 'electron-log'
 import { z } from 'zod'
 
-import accounts from '../accounts'
-import { flashService } from '../flash/instance'
-import provider from '../provider'
-import store from '../store'
+import type { Accounts } from '../accounts'
+import type { FlashService } from '../flash'
+import type { Provider } from '../provider'
+import type { CanonicalStoreReader } from '../store/actions'
 import { createAgentPrincipal, createRpcPrincipal } from '../authority'
-import type { AgentAccessRequest } from '../accounts/types'
+import type { AgentAccessRequest } from '../../contracts/requests'
 import { observeResponseClose, PendingConnectionLimiter } from './connectionLifecycle'
 import { AgentSessionStore, type AgentDescriptor } from './sessionStore'
 
@@ -48,12 +48,12 @@ type PendingConnection = {
   timer: NodeJS.Timeout
 }
 
-const sessionStore = new AgentSessionStore()
-const pendingConnections = new Map<string, PendingConnection>()
-const pendingConnectionLimiter = new PendingConnectionLimiter(
-  MAX_PENDING_CONNECTIONS,
-  () => pendingConnections.size
-)
+interface AgentRuntime {
+  store: CanonicalStoreReader
+  sessionStore: AgentSessionStore
+  pendingConnections: Map<string, PendingConnection>
+  pendingConnectionLimiter: PendingConnectionLimiter
+}
 
 function sendJson(res: ServerResponse, status: number, body: unknown) {
   if (res.writableEnded || res.destroyed) return
@@ -78,19 +78,19 @@ async function readJson(req: IncomingMessage) {
   return JSON.parse(Buffer.concat(chunks).toString('utf8')) as unknown
 }
 
-function isHotAccount(accountId: string) {
+function isHotAccount(accountId: string, accounts: Accounts) {
   const account = accounts.get(accountId)
   return Boolean(account && ['ring', 'seed'].includes(account.lastSignerType.toLowerCase()))
 }
 
-function isReadyAgentAccount(accountId: string) {
+function isReadyAgentAccount(accountId: string, accounts: Accounts, runtime: AgentRuntime) {
   const accountState = accounts.get(accountId)
   const account = accounts.getFrameAccount(accountId)
   const signer = account?.getSigner()
   return Boolean(
     accountState?.agentEnabled &&
-    isHotAccount(accountId) &&
-    !store.getState().main.appLock.locked &&
+    isHotAccount(accountId, accounts) &&
+    !runtime.store.getState().main.appLock.locked &&
     signer &&
     ['ring', 'seed'].includes(signer.type.toLowerCase()) &&
     signer.status === 'ok'
@@ -107,13 +107,13 @@ function requestedSessionId(req: IncomingMessage) {
   return typeof value === 'string' ? value : ''
 }
 
-function authenticate(req: IncomingMessage) {
+function authenticate(req: IncomingMessage, accounts: Accounts, runtime: AgentRuntime) {
   const sessionId = requestedSessionId(req)
   const sessionToken = authorization(req)
   if (!sessionId || !sessionToken) return
 
-  const session = sessionStore.authenticate(sessionId, sessionToken)
-  if (!session || !isReadyAgentAccount(session.accountId)) return
+  const session = runtime.sessionStore.authenticate(sessionId, sessionToken)
+  if (!session || !isReadyAgentAccount(session.accountId, accounts, runtime)) return
 
   return {
     session,
@@ -122,20 +122,21 @@ function authenticate(req: IncomingMessage) {
       accountId: session.accountId,
       expiresAt: session.expiresAt,
       isActive: () =>
-        sessionStore.isActive(session.sessionId, session.accountId) && isReadyAgentAccount(session.accountId)
+        runtime.sessionStore.isActive(session.sessionId, session.accountId) &&
+        isReadyAgentAccount(session.accountId, accounts, runtime)
     })
   }
 }
 
-function clearPending(requestId: string) {
-  const pending = pendingConnections.get(requestId)
+function clearPending(requestId: string, runtime: AgentRuntime) {
+  const pending = runtime.pendingConnections.get(requestId)
   if (!pending) return
   clearTimeout(pending.timer)
-  pendingConnections.delete(requestId)
+  runtime.pendingConnections.delete(requestId)
 }
 
-async function connect(req: IncomingMessage, res: ServerResponse) {
-  if (!pendingConnectionLimiter.tryReserve()) {
+async function connect(req: IncomingMessage, res: ServerResponse, accounts: Accounts, runtime: AgentRuntime) {
+  if (!runtime.pendingConnectionLimiter.tryReserve()) {
     return sendJson(res, 429, { error: 'Too many pending agent connection requests' })
   }
 
@@ -143,16 +144,16 @@ async function connect(req: IncomingMessage, res: ServerResponse) {
   try {
     parsed = ConnectSchema.safeParse(await readJson(req))
   } finally {
-    pendingConnectionLimiter.release()
+    runtime.pendingConnectionLimiter.release()
   }
 
   if (!parsed.success) return sendJson(res, 400, { error: 'Invalid agent connection request' })
-  if (!pendingConnectionLimiter.hasCapacity()) {
+  if (!runtime.pendingConnectionLimiter.hasCapacity()) {
     return sendJson(res, 429, { error: 'Too many pending agent connection requests' })
   }
 
   const account = accounts.current()
-  if (!account || !account.agentEnabled || !isHotAccount(account.id)) {
+  if (!account || !account.agentEnabled || !isHotAccount(account.id, accounts)) {
     return sendJson(res, 403, { error: 'Select an AI-enabled hot wallet in Newframe first' })
   }
 
@@ -173,16 +174,16 @@ async function connect(req: IncomingMessage, res: ServerResponse) {
   }
 
   const timer = setTimeout(() => {
-    const pending = pendingConnections.get(handlerId)
+    const pending = runtime.pendingConnections.get(handlerId)
     if (!pending) return
     accounts.getFrameAccount(pending.accountId)?.rejectRequest(pending.request, {
       code: 4001,
       message: 'Agent connection request expired'
     })
-    clearPending(handlerId)
+    clearPending(handlerId, runtime)
   }, CONNECTION_TIMEOUT_MS)
 
-  pendingConnections.set(handlerId, {
+  runtime.pendingConnections.set(handlerId, {
     accountId: account.id,
     descriptor: parsed.data.descriptor,
     durationSeconds: parsed.data.durationSeconds,
@@ -192,15 +193,15 @@ async function connect(req: IncomingMessage, res: ServerResponse) {
 
   observeResponseClose(
     res,
-    () => pendingConnections.has(handlerId),
+    () => runtime.pendingConnections.has(handlerId),
     () => {
-      const pending = pendingConnections.get(handlerId)
+      const pending = runtime.pendingConnections.get(handlerId)
       if (!pending) return
       accounts.getFrameAccount(pending.accountId)?.rejectRequest(pending.request, {
         code: 4001,
         message: 'Agent disconnected before approval'
       })
-      clearPending(handlerId)
+      clearPending(handlerId, runtime)
     }
   )
 
@@ -211,19 +212,30 @@ async function connect(req: IncomingMessage, res: ServerResponse) {
   })
 
   const routed = accounts.routeRequest(principal, request, (response) => {
-    clearPending(handlerId)
+    clearPending(handlerId, runtime)
     if (response.error) return sendJson(res, 403, { error: response.error.message })
     sendJson(res, 200, response.result)
   })
 
   if (!routed) {
-    clearPending(handlerId)
+    clearPending(handlerId, runtime)
     sendJson(res, 403, { error: 'Agent connection request could not be routed' })
   }
 }
 
-async function rpc(req: IncomingMessage, res: ServerResponse) {
-  const authenticated = authenticate(req)
+type AgentProviderPort = Pick<
+  Provider,
+  'sendAgentPersonalSign' | 'sendAgentTransaction' | 'sendAgentTypedData'
+>
+
+async function rpc(
+  req: IncomingMessage,
+  res: ServerResponse,
+  provider: AgentProviderPort,
+  accounts: Accounts,
+  runtime: AgentRuntime
+) {
+  const authenticated = authenticate(req, accounts, runtime)
   if (!authenticated) {
     return sendJson(res, 401, {
       jsonrpc: '2.0',
@@ -267,13 +279,20 @@ async function rpc(req: IncomingMessage, res: ServerResponse) {
   )
 }
 
-async function revoke(req: IncomingMessage, res: ServerResponse, sessionId: string) {
-  const authenticated = authenticate(req)
+async function revoke(
+  req: IncomingMessage,
+  res: ServerResponse,
+  sessionId: string,
+  accounts: Accounts,
+  flashService: FlashService,
+  runtime: AgentRuntime
+) {
+  const authenticated = authenticate(req, accounts, runtime)
   if (!authenticated || authenticated.session.sessionId !== sessionId) {
     return sendJson(res, 401, { error: 'Invalid or expired agent session' })
   }
 
-  sessionStore.revoke(sessionId)
+  runtime.sessionStore.revoke(sessionId)
   flashService.stopAgentSession(sessionId)
   if (!res.writableEnded) res.writeHead(204, { 'Cache-Control': 'no-store' }).end()
 }
@@ -282,27 +301,51 @@ export function isAgentHttpRequest(req: IncomingMessage) {
   return new URL(req.url || '/', 'http://127.0.0.1').pathname.startsWith('/agent/')
 }
 
-export async function handleAgentHttpRequest(req: IncomingMessage, res: ServerResponse) {
-  try {
-    if (req.headers.origin) {
-      return sendJson(res, 403, { error: 'Agent API does not accept browser-originated requests' })
-    }
-    const pathname = new URL(req.url || '/', 'http://127.0.0.1').pathname
-    if (req.method === 'POST' && pathname === '/agent/session') return await connect(req, res)
-    if (req.method === 'POST' && pathname === '/agent/rpc') return await rpc(req, res)
-    if (req.method === 'DELETE' && pathname.startsWith('/agent/session/')) {
-      return await revoke(req, res, decodeURIComponent(pathname.slice('/agent/session/'.length)))
-    }
+function createAgentHttpHandler(
+  provider: AgentProviderPort,
+  accounts: Accounts,
+  flashService: FlashService,
+  runtime: AgentRuntime
+) {
+  return async function handleAgentHttpRequest(req: IncomingMessage, res: ServerResponse) {
+    try {
+      if (req.headers.origin) {
+        return sendJson(res, 403, { error: 'Agent API does not accept browser-originated requests' })
+      }
+      const pathname = new URL(req.url || '/', 'http://127.0.0.1').pathname
+      if (req.method === 'POST' && pathname === '/agent/session') {
+        return await connect(req, res, accounts, runtime)
+      }
+      if (req.method === 'POST' && pathname === '/agent/rpc') {
+        return await rpc(req, res, provider, accounts, runtime)
+      }
+      if (req.method === 'DELETE' && pathname.startsWith('/agent/session/')) {
+        return await revoke(
+          req,
+          res,
+          decodeURIComponent(pathname.slice('/agent/session/'.length)),
+          accounts,
+          flashService,
+          runtime
+        )
+      }
 
-    sendJson(res, 404, { error: 'Unknown agent endpoint' })
-  } catch (error) {
-    log.warn('Agent API request failed', error)
-    sendJson(res, 400, { error: error instanceof Error ? error.message : 'Agent request failed' })
+      sendJson(res, 404, { error: 'Unknown agent endpoint' })
+    } catch (error) {
+      log.warn('Agent API request failed', error)
+      sendJson(res, 400, { error: error instanceof Error ? error.message : 'Agent request failed' })
+    }
   }
 }
 
-export function resolveAgentAccessRequest(requestId: string, approved: boolean) {
-  const pending = pendingConnections.get(requestId)
+function resolveAgentAccessRequest(
+  requestId: string,
+  approved: boolean,
+  accounts: Accounts,
+  flashService: FlashService,
+  runtime: AgentRuntime
+) {
+  const pending = runtime.pendingConnections.get(requestId)
   if (!pending) return false
 
   const account = accounts.getFrameAccount(pending.accountId)
@@ -312,42 +355,93 @@ export function resolveAgentAccessRequest(requestId: string, approved: boolean) 
 
   if (!approved) {
     account.rejectRequest(request, { code: 4001, message: 'User rejected the agent connection' })
-    clearPending(requestId)
+    clearPending(requestId, runtime)
     return true
   }
 
-  if (!isReadyAgentAccount(pending.accountId)) {
+  if (!isReadyAgentAccount(pending.accountId, accounts, runtime)) {
     account.rejectRequest(request, { code: 4100, message: 'AI wallet is locked or unavailable' })
-    clearPending(requestId)
+    clearPending(requestId, runtime)
     return true
   }
 
-  const credentials = sessionStore.create(pending.accountId, pending.descriptor, pending.durationSeconds)
+  const credentials = runtime.sessionStore.create(
+    pending.accountId,
+    pending.descriptor,
+    pending.durationSeconds
+  )
   flashService.startAgentSession({
     sessionId: credentials.sessionId,
     accountAddress: credentials.account,
     expiresAt: credentials.expiresAt
   })
   account.resolveRequest(request, credentials)
-  clearPending(requestId)
+  clearPending(requestId, runtime)
   return true
 }
 
-export function setAgentAccess(accountId: string, enabled: boolean) {
+function setAgentAccess(
+  accountId: string,
+  enabled: boolean,
+  accounts: Accounts,
+  flashService: FlashService,
+  runtime: AgentRuntime
+) {
   const account = accounts.getFrameAccount(accountId)
-  if (!account || (enabled && !isHotAccount(accountId))) return false
+  if (!account || (enabled && !isHotAccount(accountId, accounts))) return false
 
   account.patch({ agentEnabled: enabled })
   if (!enabled) {
-    sessionStore.revokeAccount(accountId)
+    runtime.sessionStore.revokeAccount(accountId)
     flashService.stopAgentSessionsForAccount(accountId)
   }
   return true
 }
 
-export function revokeAgentSessions(accountId: string) {
+function revokeAgentSessions(
+  accountId: string,
+  accounts: Accounts,
+  flashService: FlashService,
+  runtime: AgentRuntime
+) {
   if (!accounts.get(accountId)) return false
-  sessionStore.revokeAccount(accountId)
+  runtime.sessionStore.revokeAccount(accountId)
   flashService.stopAgentSessionsForAccount(accountId)
   return true
 }
+
+export function createAgentService(
+  accounts: Accounts,
+  flashService: FlashService,
+  canonicalStore: CanonicalStoreReader
+) {
+  const pendingConnections = new Map<string, PendingConnection>()
+  const runtime: AgentRuntime = {
+    store: canonicalStore,
+    sessionStore: new AgentSessionStore(),
+    pendingConnections,
+    pendingConnectionLimiter: new PendingConnectionLimiter(
+      MAX_PENDING_CONNECTIONS,
+      () => pendingConnections.size
+    )
+  }
+
+  return {
+    createHttpHandler: (provider: AgentProviderPort) =>
+      createAgentHttpHandler(provider, accounts, flashService, runtime),
+    dispose() {
+      for (const pending of pendingConnections.values()) {
+        clearTimeout(pending.timer)
+      }
+      pendingConnections.clear()
+    },
+    resolveAgentAccessRequest: (requestId: string, approved: boolean) =>
+      resolveAgentAccessRequest(requestId, approved, accounts, flashService, runtime),
+    revokeAgentSessions: (accountId: string) =>
+      revokeAgentSessions(accountId, accounts, flashService, runtime),
+    setAgentAccess: (accountId: string, enabled: boolean) =>
+      setAgentAccess(accountId, enabled, accounts, flashService, runtime)
+  }
+}
+
+export type AgentService = ReturnType<typeof createAgentService>

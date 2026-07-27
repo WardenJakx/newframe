@@ -52,7 +52,7 @@ describe('Ring signer', () => {
     const privateKey = 'invalid key'
 
     try {
-      hot.createFromPrivateKey(signers, privateKey, PASSWORD, (err: any) => {
+      hot.createFromPrivateKey(vault, signers, privateKey, PASSWORD, (err: any) => {
         expect(err).toBeTruthy()
         expect(store.getState().main.signers).toEqual({})
         done()
@@ -66,7 +66,7 @@ describe('Ring signer', () => {
     const keystore = { invalid: 'keystore' }
 
     try {
-      hot.createFromKeystore(signers, keystore, 'test', PASSWORD, (err: any) => {
+      hot.createFromKeystore(vault, signers, keystore, 'test', PASSWORD, (err: any) => {
         expect(err).toBeTruthy()
         expect(store.getState().main.signers).toEqual({})
         done()
@@ -79,7 +79,7 @@ describe('Ring signer', () => {
   test('Create from private key', (done) => {
     try {
       const privateKey = '0x' + crypto.randomBytes(32).toString('hex')
-      hot.createFromPrivateKey(signers, privateKey, PASSWORD, (err: any, result: any) => {
+      hot.createFromPrivateKey(vault, signers, privateKey, PASSWORD, (err: any, result: any) => {
         signer = result
 
         expect(err).toBe(null)
@@ -136,7 +136,7 @@ describe('Ring signer', () => {
     try {
       const file = fs.readFileSync(FILE_PATH, 'utf8')
       const keystore = JSON.parse(file)
-      hot.createFromKeystore(signers, keystore, 'test', PASSWORD, (err: any, result: any) => {
+      hot.createFromKeystore(vault, signers, keystore, 'test', PASSWORD, (err: any, result: any) => {
         signer = result
         expect(err).toBe(null)
         expect(signer.status).toBe('ok')

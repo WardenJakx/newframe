@@ -23,29 +23,12 @@ const newframeMainFiles = [
   'scripts/**/*.ts',
   'main/**/*.{js,ts}',
   'build/**/*.js',
-  'resources/**/*.{js,ts}',
   'test/support/**/*.{ts,tsx}'
 ]
 
-const newframeRendererFiles = [
-  'app/**/*.{ts,tsx}',
-  'resources/keyboard/**/*.{ts,tsx}',
-  'resources/Components/**/*.{ts,tsx}',
-  'resources/Hooks/**/*.{ts,tsx}',
-  'resources/Native/**/*.{ts,tsx}',
-  'resources/bridge/index.ts',
-  'resources/link.ts',
-  'test/support/componentSetup.tsx'
-]
+const newframeRendererFiles = ['renderer/**/*.{ts,tsx}', 'preload/**/*.ts', 'test/support/componentSetup.tsx']
 
-const newframeReactFiles = [
-  'app/**/*.{ts,tsx}',
-  'resources/Components/**/*.{ts,tsx}',
-  'resources/Hooks/**/*.{ts,tsx}',
-  'resources/Native/**/*.{ts,tsx}',
-  'resources/svg.tsx',
-  'test/support/componentSetup.tsx'
-]
+const newframeReactFiles = ['renderer/**/*.{ts,tsx}', 'test/support/componentSetup.tsx']
 
 export default [
   ignoredPaths([
@@ -100,8 +83,7 @@ export default [
 
   nodeGlobalsConfig({
     basePath: newframe,
-    files: newframeMainFiles,
-    ignores: ['resources/Components/**/*', 'resources/Hooks/**/*', 'resources/Native/**/*']
+    files: newframeMainFiles
   }),
   browserGlobalsConfig({
     basePath: newframe,
@@ -112,7 +94,7 @@ export default [
   }),
   globalsConfig({
     basePath: newframe,
-    files: ['app/*/index.tsx'],
+    files: ['renderer/*/index.tsx'],
     globals: {
       process: true
     }
@@ -134,12 +116,7 @@ export default [
   }),
   testingLibraryReactConfig({
     basePath: newframe,
-    files: [
-      'app/**/*.{test,spec}.{ts,tsx}',
-      'resources/Components/**/*.{test,spec}.{ts,tsx}',
-      'resources/Hooks/**/*.{test,spec}.{ts,tsx}',
-      'app/**/__mocks__/**/*.ts'
-    ]
+    files: ['renderer/**/*.{test,spec}.{ts,tsx}', 'renderer/**/__mocks__/**/*.ts']
   }),
 
   nodeGlobalsConfig({

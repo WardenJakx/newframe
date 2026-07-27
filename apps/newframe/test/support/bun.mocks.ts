@@ -6,32 +6,6 @@ import { immer } from 'zustand/middleware/immer'
 
 import { createCanonicalActions } from '../../main/store/actions'
 
-export const persistMock = {
-  get: mock(),
-  set: mock(),
-  queue: mock(),
-  clear: mock(),
-  writeUpdates: mock()
-}
-
-export const linkMock = {
-  connectState: mock().mockResolvedValue({ ok: true }),
-  disconnectState: mock().mockResolvedValue({ ok: true }),
-  executeCommand: mock().mockResolvedValue({ ok: true }),
-  executeQuery: mock().mockResolvedValue({ ok: false, error: 'not_found' })
-}
-
-export const windowsMock = {
-  broadcast: mock(),
-  browserWindows: mock(() => ({ panel: undefined })),
-  showTray: mock()
-}
-
-export const navMock = {
-  forward: mock(),
-  on: mock()
-}
-
 export const electronMock = {
   app: {
     getName: mock(() => 'Frame'),

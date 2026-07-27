@@ -1,7 +1,7 @@
 import { SignTypedDataVersion, TypedDataUtils } from '@metamask/eth-sig-util'
 import { concat, getBytes, hexlify, keccak256, toBeHex, zeroPadValue } from 'ethers'
 
-import type { TypedData, TypedMessage } from '../accounts/types'
+import type { TypedData, TypedMessage } from '../../contracts/requests'
 
 export interface Eip712Digests {
   eip712Digest: string
