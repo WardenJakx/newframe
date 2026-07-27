@@ -4,8 +4,8 @@ import type {
   TypedDataV1,
   TypedMessage as BaseTypedMessage
 } from '@metamask/eth-sig-util'
-import type { Token } from '../domain/state/token'
-import type { TransactionData, TransactionSimulation } from '../domain/transaction'
+import type { Token } from '../domain/state/token.js'
+import type { TransactionData, TransactionSimulation } from '../domain/transaction/index.js'
 
 export interface DecodedCallData {
   contractAddress: string

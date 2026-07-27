@@ -1,7 +1,7 @@
 import { readdir, readFile, stat } from 'node:fs/promises'
 import path from 'node:path'
 
-const appRoot = path.resolve(__dirname, '..')
+const appRoot = path.resolve(import.meta.dirname, '..')
 const sourceRoots = ['contracts', 'domain', 'main', 'preload', 'renderer']
 const sourceExtensions = new Set(['.css', '.js', '.jsx', '.ts', '.tsx'])
 const allowedFiles = new Set([path.join('domain', 'chain', 'colors.ts')])
@@ -85,7 +85,7 @@ async function main() {
   process.exit(1)
 }
 
-if (require.main === module) {
+if (import.meta.main) {
   main().catch((err) => {
     console.error(err)
     process.exit(1)

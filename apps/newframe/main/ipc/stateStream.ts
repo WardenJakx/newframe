@@ -3,9 +3,9 @@ import { randomUUID } from 'crypto'
 import type { IpcMainInvokeEvent, WebContents } from 'electron'
 import log from 'electron-log'
 
-import type { RendererAuthorizationRegistry, RendererRole } from './authorization'
-import type { CanonicalStoreReader } from '../store/actions'
-import { projectionStateChangeSchemas, projectionStateSchemas } from '../../contracts/state/projections'
+import type { RendererAuthorizationRegistry, RendererRole } from './authorization.js'
+import type { CanonicalStoreReader } from '../store/actions.js'
+import { projectionStateChangeSchemas, projectionStateSchemas } from '../../contracts/state/projections.js'
 import {
   STATE_STREAM_SCHEMA_VERSION,
   StateConnectChannel,
@@ -16,12 +16,12 @@ import {
   type StateMessage,
   type StateSnapshot,
   type StateUpdateBatch
-} from '../../contracts/state/protocol'
+} from '../../contracts/state/protocol.js'
 
 export interface StateStreamDependencies {
   store: CanonicalStoreReader
   authorizeRenderer: RendererAuthorizationRegistry['authorizeRenderer']
-  projectRendererState: typeof import('../state/projections').projectRendererState
+  projectRendererState: typeof import('../state/projections.js').projectRendererState
   createStreamId?: () => string
 }
 

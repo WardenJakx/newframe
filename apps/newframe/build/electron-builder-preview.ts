@@ -1,6 +1,8 @@
 // Local preview build: an installable Newframe app built without signing/notarization.
 
-const standardConfig = require('./electron-builder-standard.js')
+import type { Configuration } from 'electron-builder'
+
+import standardConfig from './electron-builder-standard.ts'
 
 const nativeArch = process.arch === 'arm64' ? 'arm64' : 'x64'
 
@@ -8,7 +10,7 @@ const config = {
   ...standardConfig,
   appId: 'sh.newframe.app.preview',
   productName: 'Newframe',
-  afterSign: undefined,
+  afterSign: null,
   directories: {
     output: 'dist-preview'
   },
@@ -29,8 +31,6 @@ const config = {
     entitlements: undefined,
     notarize: false
   }
-}
+} satisfies Configuration
 
-delete config.afterSign
-
-module.exports = config
+export default config

@@ -1,16 +1,16 @@
 import { Fragment, Interface } from 'ethers'
 
-import { registrar as registrarAbi, registrarController as registrarControllerAbi } from './abi'
+import { registrar as registrarAbi, registrarController as registrarControllerAbi } from './abi.js'
 
 import type {
   ApproveAction as EnsApprovalAction,
   TransferAction as EnsTransferAction,
   RegisterAction as EnsRegistrationAction,
   RenewAction as EnsRenewalAction
-} from '../../../transaction/actions/ens'
+} from '../../../transaction/actions/ens.js'
 
 import type { JsonFragment } from 'ethers'
-import type { DecodableContract } from '../../../transaction/actions'
+import type { DecodableContract } from '../../../transaction/actions/index.js'
 
 // TODO: fix typing on contract types
 type EnsContract = DecodableContract<unknown>

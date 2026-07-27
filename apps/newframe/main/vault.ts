@@ -4,12 +4,10 @@ import crypto from 'crypto'
 import { app } from 'electron'
 import log from 'electron-log'
 
-import zxcvbn from '../domain/security/passwordStrength'
+import zxcvbn from '../domain/security/passwordStrength.js'
 
 // Mock user data dir during tests
-const USER_DATA = app
-  ? app.getPath('userData')
-  : path.resolve(path.dirname(require.main!.filename), '../.userData')
+const USER_DATA = app ? app.getPath('userData') : path.resolve(import.meta.dirname, '../.userData')
 const VAULT_PATH = path.resolve(USER_DATA, 'vault.json')
 
 const KDF_PARAMS = { N: 32768, r: 8, p: 1, maxmem: 36000000 }

@@ -1,38 +1,48 @@
-import { Accounts } from '../accounts'
-import createExternalDataScanner from '../externalData'
-import type { AccountsRuntime } from '../accounts/runtime'
-import { createDeferredAccountChainRpcPort, type AccountChainRpcPort } from '../accounts/providerPort'
-import { createAgentService, type AgentService } from '../agent'
-import { createRendererPrincipal } from '../authority'
-import { Chains } from '../chains'
-import { createProductionFlashService } from '../flash/instance'
-import type { FlashService } from '../flash'
-import { createProviderProxyConnection, type ProviderProxyConnection } from '../provider/proxy'
-import { createProductionNameResolutionService, type NameResolutionService } from '../nameResolution'
-import { createRevealService, type RevealService } from '../reveal'
-import { createImageService, type ImageService, type ImageServiceAdapters } from '../images'
-import { createRendererAuthorizationRegistry, type RendererAuthorizationRegistry } from '../ipc/authorization'
-import { createOperationDispatcher, type IpcMainHandlerPort, type OperationServices } from '../ipc/operations'
-import { createStateStream } from '../ipc/stateStream'
-import { createSideTrayTransactionOperations } from '../operations/sideTrayTransactions'
-import type { SideTrayTransactionService } from '../features/transactions/sideTrayService'
+import { Accounts } from '../accounts/index.js'
+import createExternalDataScanner from '../externalData/index.js'
+import type { AccountsRuntime } from '../accounts/runtime.js'
+import { createDeferredAccountChainRpcPort, type AccountChainRpcPort } from '../accounts/providerPort.js'
+import { createAgentService, type AgentService } from '../agent/index.js'
+import { createRendererPrincipal } from '../authority.js'
+import { Chains } from '../chains/index.js'
+import { createProductionFlashService } from '../flash/instance.js'
+import type { FlashService } from '../flash/index.js'
+import { createProviderProxyConnection, type ProviderProxyConnection } from '../provider/proxy.js'
+import { createProductionNameResolutionService, type NameResolutionService } from '../nameResolution.js'
+import { createRevealService, type RevealService } from '../reveal.js'
+import { createImageService, type ImageService, type ImageServiceAdapters } from '../images/index.js'
+import {
+  createRendererAuthorizationRegistry,
+  type RendererAuthorizationRegistry
+} from '../ipc/authorization.js'
+import {
+  createOperationDispatcher,
+  type IpcMainHandlerPort,
+  type OperationServices
+} from '../ipc/operations.js'
+import { createStateStream } from '../ipc/stateStream.js'
+import { createSideTrayTransactionOperations } from '../operations/sideTrayTransactions.js'
+import type { SideTrayTransactionService } from '../features/transactions/sideTrayService.js'
 import {
   createSideTrayWorkflows,
   type SideTrayWindowCapability,
   type SideTrayWorkflows
-} from '../operations/sideTrayWorkflows'
-import { resolveName, selectAccount } from '../operations/workflows'
-import { createWalletWorkflowOperations, type WalletWorkflowAdapters } from '../operations/walletWorkflows'
-import { projectRendererState } from '../state/projections'
-import type store from '../store'
-import { Provider } from '../provider'
-import { createProviderStatePort } from '../provider/statePort'
-import type { PersistenceLifecycle } from '../infrastructure/persistence/ports'
-import { createDeferredAccountTransactionPolicyPort } from '../features/transactions/accountPolicyPort'
-import { createDeferredTransactionSimulationPort } from '../features/transactions/simulationPort'
-import { maxFee, signerCompatibility } from '../transaction'
-import { createTransactionSimulationProjection, simulateTransactionEffects } from '../transaction/simulation'
-import { createMainApp, type MainApp } from './createMainApp'
+} from '../operations/sideTrayWorkflows.js'
+import { resolveName, selectAccount } from '../operations/workflows.js'
+import { createWalletWorkflowOperations, type WalletWorkflowAdapters } from '../operations/walletWorkflows.js'
+import { projectRendererState } from '../state/projections.js'
+import type store from '../store/index.js'
+import { Provider } from '../provider/index.js'
+import { createProviderStatePort } from '../provider/statePort.js'
+import type { PersistenceLifecycle } from '../infrastructure/persistence/ports.js'
+import { createDeferredAccountTransactionPolicyPort } from '../features/transactions/accountPolicyPort.js'
+import { createDeferredTransactionSimulationPort } from '../features/transactions/simulationPort.js'
+import { maxFee, signerCompatibility } from '../transaction/index.js'
+import {
+  createTransactionSimulationProjection,
+  simulateTransactionEffects
+} from '../transaction/simulation.js'
+import { createMainApp, type MainApp } from './createMainApp.js'
 
 export interface ProductionMainAppDependencies {
   ipc: IpcMainHandlerPort
@@ -69,7 +79,7 @@ export interface ProductionCapabilityAdapters {
 }
 
 export function createProductionProvider(
-  store: typeof import('../store').default,
+  store: typeof import('../store/index.js').default,
   accounts: Accounts,
   chains: Chains,
   proxy: ProviderProxyConnection,
@@ -86,7 +96,7 @@ export function createProductionProvider(
 }
 
 export function createProductionCapabilities(
-  store: typeof import('../store').default,
+  store: typeof import('../store/index.js').default,
   adapters: ProductionCapabilityAdapters
 ) {
   const { walletWorkflows: walletAdapters } = adapters

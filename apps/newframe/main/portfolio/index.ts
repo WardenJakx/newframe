@@ -1,7 +1,7 @@
-import ZerionPortfolioProvider from './providers/zerion'
-import type { CanonicalStoreReader } from '../store/actions'
+import ZerionPortfolioProvider from './providers/zerion.js'
+import type { CanonicalStoreReader } from '../store/actions.js'
 
-import type { PortfolioProvider } from './types'
+import type { PortfolioProvider } from './types.js'
 
 export type TokenDiscoveryProviderError = 'token_discovery_disabled' | 'missing_api_key'
 
@@ -26,4 +26,4 @@ export function getTokenDiscoveryProvider(
   return { ok: true, provider: new ZerionPortfolioProvider({ apiKey }) }
 }
 
-export type { PortfolioProvider } from './types'
+export type { PortfolioProvider } from './types.js'

@@ -3,12 +3,12 @@ import { recoverPersonalSignature } from '@metamask/eth-sig-util'
 import log from 'electron-log'
 import { isHexString } from 'ethers'
 
-import type { CanonicalStoreReader } from '../store/actions'
-import protectedMethods from '../api/protectedMethods'
-import type { TransactionRequest } from '../../contracts/requests'
-import { usesBaseFee, TransactionData, GasFeesSource } from '../../domain/transaction'
-import { getAddress } from '../../domain/address'
-import isUtf8 from './isUtf8'
+import type { CanonicalStoreReader } from '../store/actions.js'
+import protectedMethods from '../api/protectedMethods.js'
+import type { TransactionRequest } from '../../contracts/requests.js'
+import { usesBaseFee, TransactionData, GasFeesSource } from '../../domain/transaction/index.js'
+import { getAddress } from '../../domain/address.js'
+import isUtf8 from './isUtf8.js'
 
 const permission = (date: number, method: string) => ({ parentCapability: method, date })
 

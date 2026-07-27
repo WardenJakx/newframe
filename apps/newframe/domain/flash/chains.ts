@@ -5,8 +5,8 @@ import {
   FLASH_BASE_WETH_ADDRESS,
   FLASH_USDC_ADDRESS,
   FLASH_WETH_ADDRESS
-} from './constants'
-import type { FlashRuntime } from './schemas'
+} from './constants.js'
+import type { FlashRuntime } from './schemas.js'
 
 type FlashProfile = 'dev' | 'prod'
 

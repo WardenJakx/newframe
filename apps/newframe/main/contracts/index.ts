@@ -1,8 +1,8 @@
 import log from 'electron-log'
 import { FunctionFragment, Interface, hexlify } from 'ethers'
-import { fetchSourcifyContract } from './sources/sourcify'
-import { fetchEtherscanContract } from './sources/etherscan'
-import { fetchFunctionSelectorSignatures, getLocalFunctionSelectorSignatures } from './selectors'
+import { fetchSourcifyContract } from './sources/sourcify.js'
+import { fetchEtherscanContract } from './sources/etherscan.js'
+import { fetchFunctionSelectorSignatures, getLocalFunctionSelectorSignatures } from './selectors.js'
 
 // this list should be in order of descending priority as each source will
 // be searched in turn

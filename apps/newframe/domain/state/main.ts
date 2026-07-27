@@ -1,13 +1,13 @@
 import { z } from 'zod'
 
-import { AccountMetadataSchema, AccountSchema } from './account'
-import { BalanceSchema } from './balance'
-import { ChainMetadataSchema, ChainSchema } from './chain'
-import { OriginSchema } from './origin'
-import { PermissionSchema } from './permission'
-import { RateSchema } from './rate'
-import { ShortcutSchema } from './shortcuts'
-import { TokenCatalogSchema } from './token'
+import { AccountMetadataSchema, AccountSchema } from './account.js'
+import { BalanceSchema } from './balance.js'
+import { ChainMetadataSchema, ChainSchema } from './chain.js'
+import { OriginSchema } from './origin.js'
+import { PermissionSchema } from './permission.js'
+import { RateSchema } from './rate.js'
+import { ShortcutSchema } from './shortcuts.js'
+import { TokenCatalogSchema } from './token.js'
 
 const ShortcutsSchema = z.object({
   summon: ShortcutSchema

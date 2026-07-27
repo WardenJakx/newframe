@@ -3,7 +3,7 @@ import { lookup } from 'dns/promises'
 import { isIP } from 'net'
 import { net as electronNet } from 'electron'
 
-import type { TokenImage } from '../store/state'
+import type { TokenImage } from '../store/state/index.js'
 
 const MAX_TARGET_LENGTH = 4096
 const MAX_IMAGE_BYTES = 1024 * 1024

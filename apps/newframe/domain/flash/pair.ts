@@ -1,6 +1,6 @@
-import { FLASH_ANVIL_CHAIN_ID, FLASH_USDC_ASSET_SYMBOL, FLASH_WETH_ASSET_SYMBOL } from './constants'
-import { getFlashAssetsForChain, normalizeFlashAddress, toFlashApiAssetAddress } from './assets'
-import type { FlashAsset, FlashTradeSide } from './schemas'
+import { FLASH_ANVIL_CHAIN_ID, FLASH_USDC_ASSET_SYMBOL, FLASH_WETH_ASSET_SYMBOL } from './constants.js'
+import { getFlashAssetsForChain, normalizeFlashAddress, toFlashApiAssetAddress } from './assets.js'
+import type { FlashAsset, FlashTradeSide } from './schemas.js'
 
 export interface FlashAssetBalance {
   id?: string

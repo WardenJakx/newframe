@@ -10,9 +10,9 @@ import { createHotSignerChildProcessMock, electronMock } from '../../../../test/
 mock.module('child_process', () => createHotSignerChildProcessMock())
 
 const PASSWORD = 'fr@///3_password'
-const SIGNER_PATH = path.resolve(__dirname, '../.userData/signers')
-const VAULT_PATH = path.resolve(__dirname, '../.userData/vault.json')
-const FILE_PATH = path.resolve(__dirname, 'keystore.test-fixture.json')
+const SIGNER_PATH = path.resolve(import.meta.dirname, '../.userData/signers')
+const VAULT_PATH = path.resolve(import.meta.dirname, '../.userData/vault.json')
+const FILE_PATH = path.resolve(import.meta.dirname, 'keystore.test-fixture.json')
 
 // Stubs
 const signers = { add: mock() }
@@ -28,7 +28,7 @@ describe('Ring signer', () => {
   beforeAll(async () => {
     log.transports.console.level = false
 
-    electronMock.app.getPath.mockReturnValue(path.resolve(__dirname, '../.userData'))
+    electronMock.app.getPath.mockReturnValue(path.resolve(import.meta.dirname, '../.userData'))
     await clean()
 
     hot = await import('..')

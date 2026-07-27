@@ -1,2 +1,2 @@
-export { default as installDevTools } from './extensions'
-export { default as startCpuMonitoring } from './cpu'
+export { default as installDevTools } from './extensions.js'
+export { default as startCpuMonitoring } from './cpu.js'

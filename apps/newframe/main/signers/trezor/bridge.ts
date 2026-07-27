@@ -1,16 +1,15 @@
 import log from 'electron-log'
 import { EventEmitter } from 'events'
-import TrezorConnect, {
-  CommonParams,
-  Device,
-  DeviceEvent,
-  UiEvent,
-  Response,
-  DEVICE,
-  DEVICE_EVENT,
-  UI,
-  UI_EVENT
-} from '@trezor/connect'
+import * as TrezorConnectModule from '@trezor/connect'
+import type { CommonParams, Device, DeviceEvent, Response, UiEvent } from '@trezor/connect'
+
+const { DEVICE, DEVICE_EVENT, UI, UI_EVENT } = TrezorConnectModule
+const TrezorConnect =
+  (
+    TrezorConnectModule.default as typeof TrezorConnectModule.default & {
+      default?: typeof TrezorConnectModule.default
+    }
+  ).default || TrezorConnectModule.default
 
 export class DeviceError extends Error {
   readonly code

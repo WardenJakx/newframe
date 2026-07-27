@@ -6,7 +6,7 @@ import { electronMock } from '../test/support/bun.mocks.ts'
 
 const PASSWORD = 'fr@///3_password'
 const NEW_PASSWORD = 'an0ther-g00d-p@ssword'
-const VAULT_PATH = path.resolve(__dirname, '../.userData/vault.json')
+const VAULT_PATH = path.resolve(import.meta.dirname, '../.userData/vault.json')
 
 const clean = () => rm(VAULT_PATH, { recursive: true, force: true })
 
@@ -14,7 +14,7 @@ let vault: any
 
 describe('Vault', () => {
   beforeAll(async () => {
-    electronMock.app.getPath.mockReturnValue(path.resolve(__dirname, '../.userData'))
+    electronMock.app.getPath.mockReturnValue(path.resolve(import.meta.dirname, '../.userData'))
     await clean()
     vault = (await import('./vault')).default
   })

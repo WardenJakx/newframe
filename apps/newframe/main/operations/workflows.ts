@@ -1,9 +1,9 @@
 import log from 'electron-log'
 
-import type { Accounts } from '../accounts'
-import type { NameResolutionService } from '../nameResolution'
-import type { Provider } from '../provider'
-import { arraysEqual } from '../../domain/collections'
+import type { Accounts } from '../accounts/index.js'
+import type { NameResolutionService } from '../nameResolution.js'
+import type { Provider } from '../provider/index.js'
+import { arraysEqual } from '../../domain/collections.js'
 export function selectAccount(
   accountId: string,
   accounts: Pick<Accounts, 'getSelectedAddresses' | 'setSigner'>,

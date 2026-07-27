@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-import { FlashAssetSchema, FlashOrderTypeSchema, FlashTradeSideSchema } from './schemas'
+import { FlashAssetSchema, FlashOrderTypeSchema, FlashTradeSideSchema } from './schemas.js'
 
 export const FlashOrderStatusSchema = z.enum([
   'pending',

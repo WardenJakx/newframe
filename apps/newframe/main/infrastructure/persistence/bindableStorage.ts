@@ -1,4 +1,4 @@
-import { assertPersistenceStoragePort, type PersistenceStoragePort } from './ports'
+import { assertPersistenceStoragePort, type PersistenceStoragePort } from './ports.js'
 
 export interface BindablePersistenceStorage extends PersistenceStoragePort {
   bind(storage: PersistenceStoragePort): void

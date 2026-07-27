@@ -1,7 +1,7 @@
 import log from 'electron-log'
 import { isValidAddress } from '@ethereumjs/util'
 
-import { RequestMode } from '../../contracts/requests'
+import { RequestMode } from '../../contracts/requests.js'
 import type {
   AccessRequest,
   AccountRequest,
@@ -10,24 +10,24 @@ import type {
   SignTypedDataRequest,
   TransactionRequest,
   TypedMessage
-} from '../../contracts/requests'
-import type { Accounts } from './index'
-import type { NameResolutionService } from '../nameResolution'
-import { TransactionData } from '../../domain/transaction'
-import { Type as SignerType, getSignerType } from '../../domain/signer'
+} from '../../contracts/requests.js'
+import type { Accounts } from './index.js'
+import type { NameResolutionService } from '../nameResolution.js'
+import { TransactionData } from '../../domain/transaction/index.js'
+import { Type as SignerType, getSignerType } from '../../domain/signer/index.js'
 
-import { ApprovalType } from '../../domain/request/approval'
+import { ApprovalType } from '../../domain/request/approval.js'
 
-import type { RevealService } from '../reveal'
-import { isTransactionRequest, isTypedMessageSignatureRequest } from '../../domain/request'
-import Erc20Contract from '../contracts/erc20'
-import { getErc7730TypedDataDisplay } from '../signatures/erc7730'
-import type { TransactionSimulationPort } from '../features/transactions/simulationPort'
+import type { RevealService } from '../reveal.js'
+import { isTransactionRequest, isTypedMessageSignatureRequest } from '../../domain/request/index.js'
+import Erc20Contract from '../contracts/erc20.js'
+import { getErc7730TypedDataDisplay } from '../signatures/erc7730.js'
+import type { TransactionSimulationPort } from '../features/transactions/simulationPort.js'
 
-import type { Action } from '../transaction/actions'
-import type { AccountChainRpcPort } from './providerPort'
-import type { AccountsRuntime } from './runtime'
-import type { CanonicalStoreReader } from '../store/actions'
+import type { Action } from '../transaction/actions/index.js'
+import type { AccountChainRpcPort } from './providerPort.js'
+import type { AccountsRuntime } from './runtime.js'
+import type { CanonicalStoreReader } from '../store/actions.js'
 
 function cloneSerializable<T>(value: T): T {
   return JSON.parse(

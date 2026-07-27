@@ -2,7 +2,7 @@ import fs from 'fs'
 import path from 'path'
 import { app, screen, BrowserWindow, Menu, KeyboardEvent, Rectangle, Tray as ElectronTray } from 'electron'
 
-import { capitalize } from '../../domain/text'
+import { capitalize } from '../../domain/text.js'
 const isMacOS = process.platform === 'darwin'
 let isUbuntu23OrGreater = false
 
@@ -46,7 +46,9 @@ export class SystemTray {
 
   init(mainWindow: BrowserWindow) {
     // Electron Tray can only be instantiated when the app is ready
-    this.electronTray = new ElectronTray(path.join(__dirname, isMacOS ? './IconTemplate.png' : './Icon.png'))
+    this.electronTray = new ElectronTray(
+      path.join(import.meta.dirname, isMacOS ? './IconTemplate.png' : './Icon.png')
+    )
     this.electronTray.on('click', (_event: KeyboardEvent, bounds: Rectangle) => {
       const mainWindowBounds = mainWindow.getBounds()
       const currentDisplay = screen.getDisplayMatching(bounds)

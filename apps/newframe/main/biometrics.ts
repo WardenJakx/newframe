@@ -3,9 +3,7 @@ import fs from 'fs'
 import crypto from 'crypto'
 import { app, safeStorage, systemPreferences } from 'electron'
 
-const USER_DATA = app
-  ? app.getPath('userData')
-  : path.resolve(path.dirname(require.main!.filename), '../.userData')
+const USER_DATA = app ? app.getPath('userData') : path.resolve(import.meta.dirname, '../.userData')
 const BIOMETRICS_PATH = path.resolve(USER_DATA, 'biometrics.json')
 
 type BiometricMethod = 'webauthn' | 'native'

@@ -1,5 +1,5 @@
-import { NATIVE_CURRENCY } from '../token/constants'
-import { getFlashChainConfig } from './chains'
+import { NATIVE_CURRENCY } from '../token/constants.js'
+import { getFlashChainConfig } from './chains.js'
 import {
   FLASH_ANVIL_CHAIN_ID,
   FLASH_NATIVE_ETH_ASSET_SYMBOL,
@@ -8,8 +8,8 @@ import {
   FLASH_USDC_ASSET_SYMBOL,
   FLASH_WETH_ADDRESS,
   FLASH_WETH_ASSET_SYMBOL
-} from './constants'
-import { FlashAssetSchema, type FlashAsset } from './schemas'
+} from './constants.js'
+import { FlashAssetSchema, type FlashAsset } from './schemas.js'
 
 interface FlashBalanceSummaryLike {
   address?: unknown

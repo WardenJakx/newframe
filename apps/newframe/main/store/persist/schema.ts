@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
-import { MainSchema } from '../../../domain/state/main'
-import { TokenCatalogSchema } from '../../../domain/state/token'
+import { MainSchema } from '../../../domain/state/main.js'
+import { TokenCatalogSchema } from '../../../domain/state/token.js'
 
 export const PERSISTENCE_VERSION = 4
 export const CANONICAL_STATE_STORAGE_NAME = 'canonical-wallet-state'

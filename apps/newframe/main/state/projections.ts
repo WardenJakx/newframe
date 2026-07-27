@@ -1,4 +1,4 @@
-import type { CanonicalState } from '../store/state'
+import type { CanonicalState } from '../store/state/index.js'
 import {
   WalletHomeCommandSchema,
   WalletPanelNavigationEntrySchema,
@@ -7,7 +7,7 @@ import {
   type SideTrayRendererState,
   type RendererProjection,
   type WalletRendererState
-} from '../../contracts/state/projections'
+} from '../../contracts/state/projections.js'
 
 type CanonicalMain = CanonicalState['main']
 

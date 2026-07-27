@@ -1,5 +1,5 @@
 import { EventEmitter } from 'events'
-import Signer from './Signer'
+import Signer from './Signer/index.js'
 
 export class SignerAdapter extends EventEmitter {
   adapterType: string

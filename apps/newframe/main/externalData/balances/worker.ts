@@ -1,5 +1,5 @@
 import log from 'electron-log'
-import createProvider from '../../provider/connection'
+import createProvider from '../../provider/connection.js'
 
 log.transports.console.format = '[scanWorker] {h}:{i}:{s}.{ms} {text}'
 log.transports.console.level = process.env.LOG_WORKER ? 'debug' : 'info'
@@ -7,9 +7,9 @@ log.transports.file.level = ['development', 'test'].includes(process.env.NODE_EN
   ? false
   : 'verbose'
 
-import balancesLoader, { BalanceLoader } from './scan'
+import balancesLoader, { BalanceLoader } from './scan.js'
 
-import type { Token } from '../../store/state'
+import type { Token } from '../../store/state/index.js'
 
 interface ExternalDataWorkerMessage {
   command: string

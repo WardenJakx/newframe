@@ -3,27 +3,27 @@
 import log from 'electron-log'
 import { addHexPrefix } from '@ethereumjs/util'
 
-import { createProxyProvider } from './provider/connection'
-import type { ProviderProxyConnection } from './provider/proxy'
-import type { NameResolutionService } from './nameResolution'
+import { createProxyProvider } from './provider/connection.js'
+import type { ProviderProxyConnection } from './provider/proxy.js'
+import type { NameResolutionService } from './nameResolution.js'
 
-import Erc20Contract, { type Erc20ProviderPort } from './contracts/erc20'
+import Erc20Contract, { type Erc20ProviderPort } from './contracts/erc20.js'
 import {
   decodeCallData,
   decodeCallDataWithSelectorRegistry,
   fetchContract,
   ContractSource,
   type DecodedCallData
-} from './contracts'
-import ensContracts from './contracts/deployments/ens'
-import { MAX_HEX } from '../domain/transaction/constants'
+} from './contracts/index.js'
+import ensContracts from './contracts/deployments/ens/index.js'
+import { MAX_HEX } from '../domain/transaction/constants.js'
 
 import type {
   ApproveAction as Erc20Approval,
   TransferAction as Erc20Transfer
-} from './transaction/actions/erc20'
-import type { Action, DecodableContract, EntityType } from './transaction/actions'
-import type { TransactionRequest } from './accounts'
+} from './transaction/actions/erc20.js'
+import type { Action, DecodableContract, EntityType } from './transaction/actions/index.js'
+import type { TransactionRequest } from './accounts/index.js'
 
 // TODO: fix generic typing here
 const knownContracts: DecodableContract<unknown>[] = [...ensContracts]

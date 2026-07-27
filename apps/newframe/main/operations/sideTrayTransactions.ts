@@ -1,7 +1,7 @@
 import {
   createSideTrayTransactionService,
   type SideTrayTransactionPorts
-} from '../features/transactions/sideTrayService'
+} from '../features/transactions/sideTrayService.js'
 
 export function createSideTrayTransactionOperations(
   provider: SideTrayTransactionPorts['provider'],

@@ -6,17 +6,17 @@ import { Hardfork, Common } from '@ethereumjs/common'
 import log from 'electron-log'
 import { shallow } from 'zustand/vanilla/shallow'
 
-import chainConfig from './config'
-import GasMonitor from '../transaction/gasMonitor'
-import { createGasCalculator } from './gas'
-import { NETWORK_PRESETS } from '../../domain/chain/presets'
+import chainConfig from './config.js'
+import GasMonitor from '../transaction/gasMonitor.js'
+import { createGasCalculator } from './gas.js'
+import { NETWORK_PRESETS } from '../../domain/chain/presets.js'
 import {
   createJsonRpcProvider,
   listenForProviderClose,
   sendRpcPayload,
   type EthersRpcProvider
-} from '../provider/connection'
-import type { CanonicalStoreReader } from '../store/actions'
+} from '../provider/connection.js'
+import type { CanonicalStoreReader } from '../store/actions.js'
 
 type CanonicalStoreApi = CanonicalStoreReader
 

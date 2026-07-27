@@ -1,4 +1,4 @@
-import { MAX_HEX } from './transaction/constants'
+import { MAX_HEX } from './transaction/constants.js'
 
 export const max = BigInt(MAX_HEX)
 

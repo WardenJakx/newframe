@@ -13,7 +13,7 @@ type ElectronLaunchSettings = {
 }
 
 export function electronLaunchSettings(options: ElectronLaunchSettings = {}) {
-  const args = ['./compiled/main']
+  const args = ['./compiled/main/bootstrap.js']
   if (options.remoteDebugging) args.unshift(`--remote-debugging-port=${ports.cdp}`)
 
   return {

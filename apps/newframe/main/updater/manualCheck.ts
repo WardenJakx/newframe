@@ -1,9 +1,9 @@
 import log from 'electron-log'
 import semver from 'semver'
 
-import type { VersionUpdate } from '.'
+import type { VersionUpdate } from './index.js'
 
-import packageInfo from '../../package.json'
+import packageInfo from '../../package.json' with { type: 'json' }
 
 type PackageRepository = string | { url?: string }
 

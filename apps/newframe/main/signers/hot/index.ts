@@ -4,18 +4,16 @@ import { app } from 'electron'
 import log from 'electron-log'
 import { Mnemonic, randomBytes } from 'ethers'
 
-import crypt from '../../crypt'
+import crypt from '../../crypt.js'
 
-import SeedSigner from './SeedSigner'
-import RingSigner from './RingSigner'
+import SeedSigner from './SeedSigner/index.js'
+import RingSigner from './RingSigner/index.js'
 import { stripHexPrefix } from '@ethereumjs/util'
 
 type Callback = (err: Error | null, result?: any) => void
 type VaultPort = { acquireKey(password?: string): string }
 
-const USER_DATA = app
-  ? app.getPath('userData')
-  : path.resolve(path.dirname(require.main!.filename), '../.userData')
+const USER_DATA = app ? app.getPath('userData') : path.resolve(import.meta.dirname, '../.userData')
 const SIGNERS_PATH = path.resolve(USER_DATA, 'signers')
 
 const wait = async (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))

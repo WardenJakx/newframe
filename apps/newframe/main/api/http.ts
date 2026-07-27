@@ -3,11 +3,11 @@ import { randomUUID } from 'node:crypto'
 import log from 'electron-log'
 import { isHexString } from '@ethereumjs/util'
 
-import { parseOrigin, parseRequestChainId, type OriginsService } from './origins'
-import validPayload from './validPayload'
-import protectedMethods from './protectedMethods'
-import { createRpcPrincipal, type TrustedPrincipal } from '../authority'
-import { isAgentHttpRequest } from '../agent'
+import { parseOrigin, parseRequestChainId, type OriginsService } from './origins.js'
+import validPayload from './validPayload.js'
+import protectedMethods from './protectedMethods.js'
+import { createRpcPrincipal, type TrustedPrincipal } from '../authority.js'
+import { isAgentHttpRequest } from '../agent/index.js'
 
 interface PendingRequest {
   send: () => void

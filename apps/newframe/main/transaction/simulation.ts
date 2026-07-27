@@ -2,17 +2,17 @@ import log from 'electron-log'
 import { addHexPrefix } from '@ethereumjs/util'
 import { getAddress, isAddress, TransactionDescription } from 'ethers'
 
-import { NATIVE_CURRENCY } from '../../domain/token/constants'
-import { erc20Interface } from '../../domain/evm'
-import { persistedImageSource } from '../../domain/image'
-import { tokenImageSource } from '../../domain/token'
+import { NATIVE_CURRENCY } from '../../domain/token/constants.js'
+import { erc20Interface } from '../../domain/evm.js'
+import { persistedImageSource } from '../../domain/image/index.js'
+import { tokenImageSource } from '../../domain/token/index.js'
 
-import type { TransactionEffect, TransactionSimulation } from '../../domain/transaction'
-import type { Erc20ProviderPort, TokenData } from '../contracts/erc20'
-import type { Provider } from '../provider'
-import type { TransactionRequest } from '../../contracts/requests'
-import type { CanonicalStoreReader } from '../store/actions'
-import type { Token } from '../store/state'
+import type { TransactionEffect, TransactionSimulation } from '../../domain/transaction/index.js'
+import type { Erc20ProviderPort, TokenData } from '../contracts/erc20.js'
+import type { Provider } from '../provider/index.js'
+import type { TransactionRequest } from '../../contracts/requests.js'
+import type { CanonicalStoreReader } from '../store/actions.js'
+import type { Token } from '../store/state/index.js'
 
 const TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'
 
@@ -307,7 +307,7 @@ async function resolveTokenMetadata(
     const loaded = (await import('../contracts/erc20.js')).default as unknown
     const Erc20Contract = (
       loaded && typeof loaded === 'object' && 'default' in loaded ? loaded.default : loaded
-    ) as typeof import('../contracts/erc20').default
+    ) as typeof import('../contracts/erc20.js').default
     const tokenData = await new Erc20Contract(address, chainId, provider).getTokenData()
     return {
       ...tokenData,

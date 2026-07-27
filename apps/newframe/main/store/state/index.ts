@@ -2,19 +2,19 @@ import { v4 as generateUuid, v5 as uuidv5 } from 'uuid'
 import { z } from 'zod'
 import log from 'electron-log'
 
-import { getMainRuntime } from '../../runtime'
+import { getMainRuntime } from '../../runtime.js'
 
-import { MAINNET_ETH_ICON } from '../../../domain/balance'
-import { builtInChainIconUrl } from '../../../domain/chain'
-import { MainSchema, Main } from '../../../domain/state/main'
+import { MAINNET_ETH_ICON } from '../../../domain/balance/index.js'
+import { builtInChainIconUrl } from '../../../domain/chain/index.js'
+import { MainSchema, Main } from '../../../domain/state/main.js'
 
-import type { Origin } from '../../../domain/state/origin'
-import type { Chain } from '../../../domain/state/chain'
+import type { Origin } from '../../../domain/state/origin.js'
+import type { Chain } from '../../../domain/state/chain.js'
 
-export type { ChainId, Chain, ChainMetadata } from '../../../domain/state/chain'
-export type { Origin } from '../../../domain/state/origin'
-export type { Permission } from '../../../domain/state/permission'
-export type { Balance } from '../../../domain/state/balance'
+export type { ChainId, Chain, ChainMetadata } from '../../../domain/state/chain.js'
+export type { Origin } from '../../../domain/state/origin.js'
+export type { Permission } from '../../../domain/state/permission.js'
+export type { Balance } from '../../../domain/state/balance.js'
 export type {
   WithTokenId,
   Token,
@@ -22,18 +22,18 @@ export type {
   TokenImage,
   TokenRecord,
   TokenSource
-} from '../../../domain/state/token'
-export type { NativeCurrency } from '../../../domain/state/nativeCurrency'
-export type { Gas, GasFees } from '../../../domain/state/gas'
-export type { Rate } from '../../../domain/state/rate'
-export type { ColorwayPalette } from '../../../domain/state/colors'
+} from '../../../domain/state/token.js'
+export type { NativeCurrency } from '../../../domain/state/nativeCurrency.js'
+export type { Gas, GasFees } from '../../../domain/state/gas.js'
+export type { Rate } from '../../../domain/state/rate.js'
+export type { ColorwayPalette } from '../../../domain/state/colors.js'
 export type {
   Activity,
   ActivityRecord,
   ActivityStatus,
   Orders,
   OrderRecord
-} from '../../../domain/state/main'
+} from '../../../domain/state/main.js'
 
 const StatusNotificationSchema = z
   .object({

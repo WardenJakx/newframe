@@ -1,12 +1,12 @@
 import log from 'electron-log'
 
-import type { CanonicalStore } from './actions'
+import type { CanonicalStore } from './actions.js'
 import {
   PERSISTENCE_VERSION,
   PersistedCanonicalStateSchema,
   type PersistedCanonicalState
-} from './persist/schema'
-import { CanonicalStatePersistenceError } from '../infrastructure/persistence'
+} from './persist/schema.js'
+import { CanonicalStatePersistenceError } from '../infrastructure/persistence/index.js'
 
 type UnknownRecord = Record<string, any>
 

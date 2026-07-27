@@ -4,11 +4,11 @@ import { v4 as uuid } from 'uuid'
 import log from 'electron-log'
 import { isHexString } from '@ethereumjs/util'
 
-import { parseOrigin, parseRequestChainId, type FrameExtension, type OriginsService } from './origins'
-import validPayload from './validPayload'
-import protectedMethods from './protectedMethods'
-import { createRpcPrincipal, type TrustedPrincipal } from '../authority'
-import type { ApiTimerPort } from './http'
+import { parseOrigin, parseRequestChainId, type FrameExtension, type OriginsService } from './origins.js'
+import validPayload from './validPayload.js'
+import protectedMethods from './protectedMethods.js'
+import { createRpcPrincipal, type TrustedPrincipal } from '../authority.js'
+import type { ApiTimerPort } from './http.js'
 
 interface Subscription {
   originId: string

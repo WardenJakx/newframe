@@ -1,6 +1,6 @@
 import { z } from 'zod'
-import { RateSchema } from './rate'
-import { TokenImageSchema } from './token'
+import { RateSchema } from './rate.js'
+import { TokenImageSchema } from './token.js'
 
 export const NativeCurrencySchema = z.object({
   symbol: z.string(),

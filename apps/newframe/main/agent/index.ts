@@ -3,14 +3,14 @@ import { randomUUID } from 'node:crypto'
 import log from 'electron-log'
 import { z } from 'zod'
 
-import type { Accounts } from '../accounts'
-import type { FlashService } from '../flash'
-import type { Provider } from '../provider'
-import type { CanonicalStoreReader } from '../store/actions'
-import { createAgentPrincipal, createRpcPrincipal } from '../authority'
-import type { AgentAccessRequest } from '../../contracts/requests'
-import { observeResponseClose, PendingConnectionLimiter } from './connectionLifecycle'
-import { AgentSessionStore, type AgentDescriptor } from './sessionStore'
+import type { Accounts } from '../accounts/index.js'
+import type { FlashService } from '../flash/index.js'
+import type { Provider } from '../provider/index.js'
+import type { CanonicalStoreReader } from '../store/actions.js'
+import { createAgentPrincipal, createRpcPrincipal } from '../authority.js'
+import type { AgentAccessRequest } from '../../contracts/requests.js'
+import { observeResponseClose, PendingConnectionLimiter } from './connectionLifecycle.js'
+import { AgentSessionStore, type AgentDescriptor } from './sessionStore.js'
 
 const MIN_DURATION_SECONDS = 60
 const MAX_DURATION_SECONDS = 180 * 24 * 60 * 60

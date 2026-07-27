@@ -1,7 +1,7 @@
 import { z } from 'zod'
-import { createRequestMatcher } from '../matchers'
+import { createRequestMatcher } from '../matchers.js'
 
-import { chainIdMatcher, sessionMatcher } from './caipRequest'
+import { chainIdMatcher, sessionMatcher } from './caipRequest.js'
 
 const walletRequestParams = z.object({
   chainId: z.optional(chainIdMatcher),

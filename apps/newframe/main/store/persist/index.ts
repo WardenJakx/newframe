@@ -1,9 +1,12 @@
-import { CANONICAL_STATE_STORAGE_NAME } from './schema'
-import type { PersistenceAdapter } from '../../infrastructure/persistence'
+import { CANONICAL_STATE_STORAGE_NAME } from './schema.js'
+import type { PersistenceAdapter } from '../../infrastructure/persistence/index.js'
 
-export type { PersistedCanonicalState } from './schema'
-export { PERSISTENCE_VERSION } from './schema'
-export { CanonicalStatePersistenceError, createPersistenceAdapter } from '../../infrastructure/persistence'
+export type { PersistedCanonicalState } from './schema.js'
+export { PERSISTENCE_VERSION } from './schema.js'
+export {
+  CanonicalStatePersistenceError,
+  createPersistenceAdapter
+} from '../../infrastructure/persistence/index.js'
 
 export { CANONICAL_STATE_STORAGE_NAME }
 

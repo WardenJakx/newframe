@@ -3,7 +3,7 @@ import { addHexPrefix } from '@ethereumjs/util'
 import log from 'electron-log'
 
 import type { BytesLike } from 'ethers'
-import type { Eip1193Provider } from '../provider/connection'
+import type { Eip1193Provider } from '../provider/connection.js'
 
 import {
   abi,
@@ -12,7 +12,7 @@ import {
   functionSignatureMatcher,
   multicallAddress,
   MulticallConfig
-} from './constants'
+} from './constants.js'
 
 export type { Call }
 

@@ -1,8 +1,8 @@
-import { NATIVE_CURRENCY } from '../../domain/token/constants'
-import { toTokenId } from '../../domain/token'
+import { NATIVE_CURRENCY } from '../../domain/token/constants.js'
+import { toTokenId } from '../../domain/token/index.js'
 
-import type { Balance, NativeCurrency, Rate } from '../store/state'
-import type { CanonicalStoreReader } from '../store/actions'
+import type { Balance, NativeCurrency, Rate } from '../store/state/index.js'
+import type { CanonicalStoreReader } from '../store/actions.js'
 
 type UsdRate = { usd: Rate }
 type CanonicalStoreApi = CanonicalStoreReader

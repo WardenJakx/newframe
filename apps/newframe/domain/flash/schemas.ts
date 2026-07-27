@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-import { FLASH_ORDER_TYPES, FLASH_TRADE_SIDES } from './constants'
+import { FLASH_ORDER_TYPES, FLASH_TRADE_SIDES } from './constants.js'
 
 export const FlashAddressSchema = z.string().regex(/^0x[0-9a-fA-F]{40}$/)
 export const FlashChainIdSchema = z.number().int().positive()

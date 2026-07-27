@@ -3,39 +3,26 @@ import path from 'path'
 import log from 'electron-log'
 import url from 'url'
 
-// DO NOT MOVE - env var below is required for app init and must be set before all local imports
-process.env.BUNDLE_LOCATION = process.env.BUNDLE_LOCATION || path.resolve(__dirname, './../..', 'bundle')
-
-const appName = 'Newframe'
-const devAppName = 'Newframe dev'
-const isDevApp =
-  process.env.FRAME_PROFILE === 'dev' ||
-  Boolean((process as NodeJS.Process & { defaultApp?: boolean }).defaultApp)
-const profileAppName = isDevApp ? devAppName : appName
-
-app.setName(profileAppName)
-app.setPath('userData', path.join(app.getPath('appData'), profileAppName))
-
-import windows from './windows'
-import menu from './menu'
-import store, { createCanonicalPersistenceService } from './store'
-import persist from './store/persist'
-import { createBundledTokenService } from './tokens'
-import * as launch from './launch'
-import { Updater } from './updater'
-import { Signers } from './signers'
-import TrezorBridge from './signers/trezor/bridge'
-import biometrics from './biometrics'
-import vault from './vault'
-import { showUnhandledExceptionDialog } from './windows/dialog'
-import { getErrorCode } from './runtime/errors'
-import { createProductionCapabilities, createProductionMainApp } from './composition'
-import { createProductionPersistencePorts } from './infrastructure/persistence'
-import { createProductionAccountsRuntime } from './infrastructure/accounts/production'
-import { createProductionImageServiceAdapters } from './infrastructure/images/production'
-import { createProductionSideTrayWindowCapability } from './infrastructure/sideTrayWorkflows/production'
-import { createProductionWalletWorkflowAdapters } from './infrastructure/walletWorkflows/production'
-import { createProductionApiServer } from './api'
+import windows from './windows/index.js'
+import menu from './menu.js'
+import store, { createCanonicalPersistenceService } from './store/index.js'
+import persist from './store/persist/index.js'
+import { createBundledTokenService } from './tokens.js'
+import * as launch from './launch.js'
+import { Updater } from './updater/index.js'
+import { Signers } from './signers/index.js'
+import TrezorBridge from './signers/trezor/bridge.js'
+import biometrics from './biometrics.js'
+import vault from './vault.js'
+import { showUnhandledExceptionDialog } from './windows/dialog.js'
+import { getErrorCode } from './runtime/errors.js'
+import { createProductionCapabilities, createProductionMainApp } from './composition/index.js'
+import { createProductionPersistencePorts } from './infrastructure/persistence/index.js'
+import { createProductionAccountsRuntime } from './infrastructure/accounts/production.js'
+import { createProductionImageServiceAdapters } from './infrastructure/images/production.js'
+import { createProductionSideTrayWindowCapability } from './infrastructure/sideTrayWorkflows/production.js'
+import { createProductionWalletWorkflowAdapters } from './infrastructure/walletWorkflows/production.js'
+import { createProductionApiServer } from './api/index.js'
 
 const signers = new Signers({ biometrics, store, vault })
 const updater = new Updater(store)
@@ -227,7 +214,7 @@ function configureWebAuthn() {
   }
 }
 
-app.on('ready', async () => {
+void app.whenReady().then(async () => {
   try {
     await persistence.start()
   } catch (error) {
@@ -262,7 +249,7 @@ app.on('ready', async () => {
 
   // only allow file:// access to files within the app's own directory
   protocol.handle('file', (req) => {
-    const appOrigin = path.resolve(__dirname, '../../')
+    const appOrigin = path.resolve(import.meta.dirname, '../../')
     const filePath = url.fileURLToPath(req.url)
 
     if (filePath === appOrigin || filePath.startsWith(`${appOrigin}${path.sep}`)) {

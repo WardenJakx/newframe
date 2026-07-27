@@ -22,7 +22,7 @@ const newframeMainFiles = [
   '*.{js,mjs,ts}',
   'scripts/**/*.ts',
   'main/**/*.{js,ts}',
-  'build/**/*.js',
+  'build/**/*.{js,ts}',
   'test/support/**/*.{ts,tsx}'
 ]
 

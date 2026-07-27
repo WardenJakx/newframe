@@ -5,14 +5,12 @@ import { app } from 'electron'
 import log from 'electron-log'
 import { v4 as uuid } from 'uuid'
 
-import Signer from '../../Signer'
+import Signer from '../../Signer/index.js'
 
 type WorkerCallback = (err: Error | null, result?: any) => void
 
 // Mock user data dir during tests
-const USER_DATA = app
-  ? app.getPath('userData')
-  : path.resolve(path.dirname(require.main!.filename), '../.userData')
+const USER_DATA = app ? app.getPath('userData') : path.resolve(import.meta.dirname, '../.userData')
 const SIGNERS_PATH = path.resolve(USER_DATA, 'signers')
 
 class HotSigner extends Signer {

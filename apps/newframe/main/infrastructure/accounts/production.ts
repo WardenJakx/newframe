@@ -1,8 +1,8 @@
 import { Notification } from 'electron'
 
-import type store from '../../store'
-import { createBlockExplorerOpener } from '../../windows/window'
-import type { AccountsRuntime } from '../../accounts/runtime'
+import type store from '../../store/index.js'
+import { createBlockExplorerOpener } from '../../windows/window.js'
+import type { AccountsRuntime } from '../../accounts/runtime.js'
 
 export type ProductionAccountsExternalAdapters = Pick<AccountsRuntime, 'persistence' | 'signers' | 'windows'>
 

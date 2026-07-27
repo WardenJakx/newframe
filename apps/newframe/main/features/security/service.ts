@@ -2,8 +2,8 @@ import type {
   SecurityConfigureCommand,
   SecurityStatusResult,
   SecurityUnlockCommand
-} from '../../../contracts/operations'
-import type { CanonicalStore } from '../../store/actions'
+} from '../../../contracts/operations.js'
+import type { CanonicalStore } from '../../store/actions.js'
 
 type WebAuthnConfigureCommand = Extract<SecurityConfigureCommand, { mode: 'webauthn' }>
 type BiometricSummary = Extract<SecurityStatusResult, { ok: true }>['biometrics']

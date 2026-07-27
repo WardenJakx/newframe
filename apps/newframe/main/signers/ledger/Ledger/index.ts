@@ -1,15 +1,15 @@
 import log from 'electron-log'
 import { v5 as uuid } from 'uuid'
-import TransportNodeHid from '@ledgerhq/hw-transport-node-hid-noevents'
 import { SignTypedDataVersion } from '@metamask/eth-sig-util'
 
-import { Request, RequestQueue } from './requestQueue'
-import Signer from '../../Signer'
-import LedgerEthereumApp from './eth'
-import { Derivation, getDerivationPath } from '../../Signer/derive'
-import { TransactionData } from '../../../../domain/transaction'
-import { signerCompatibility, londonToLegacy } from '../../../transaction'
-import type { TypedMessage } from '../../../../contracts/requests'
+import { Request, RequestQueue } from './requestQueue.js'
+import Signer from '../../Signer/index.js'
+import LedgerEthereumApp from './eth.js'
+import { TransportNodeHidNoEvents as TransportNodeHid } from '../dependencies.js'
+import { Derivation, getDerivationPath } from '../../Signer/derive.js'
+import { TransactionData } from '../../../../domain/transaction/index.js'
+import { signerCompatibility, londonToLegacy } from '../../../transaction/index.js'
+import type { TypedMessage } from '../../../../contracts/requests.js'
 
 const ns = '3bbcee75-cecc-5b56-8031-b6641c1ed1f1'
 

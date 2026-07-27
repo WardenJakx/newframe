@@ -1,6 +1,8 @@
 // build config for linux arm64
 
-const baseConfig = require('./electron-builder-base.js')
+import type { Configuration } from 'electron-builder'
+
+import baseConfig from './electron-builder-base.ts'
 
 const config = {
   ...baseConfig,
@@ -16,6 +18,6 @@ const config = {
       }
     ]
   }
-}
+} satisfies Configuration
 
-module.exports = config
+export default config

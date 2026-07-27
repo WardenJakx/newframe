@@ -1,9 +1,9 @@
 import type { IncomingMessage } from 'http'
 import { v5 as uuidv5 } from 'uuid'
 
-import type { Accounts } from '../accounts'
-import type { CanonicalStoreReader } from '../store/actions'
-import { hasPrincipalCapability, type RpcPrincipal } from '../authority'
+import type { Accounts } from '../accounts/index.js'
+import type { CanonicalStoreReader } from '../store/actions.js'
+import { hasPrincipalCapability, type RpcPrincipal } from '../authority.js'
 import {
   chainIdFromRequest,
   decideOriginAuthorization,
@@ -12,12 +12,12 @@ import {
   parseOriginName,
   projectOriginUpdate,
   type FrameExtension
-} from '../../domain/origin'
+} from '../../domain/origin/index.js'
 
-import type { Permission } from '../store/state'
-import type { AccessRequest } from '../../contracts/requests'
+import type { Permission } from '../store/state/index.js'
+import type { AccessRequest } from '../../contracts/requests.js'
 
-export type { FrameExtension } from '../../domain/origin'
+export type { FrameExtension } from '../../domain/origin/index.js'
 
 interface OriginStorePort {
   getOrigin(id: string): { name: string; chain?: { id: number } } | undefined

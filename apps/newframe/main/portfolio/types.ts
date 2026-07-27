@@ -1,4 +1,4 @@
-import type { Balance, Rate, Token } from '../store/state'
+import type { Balance, Rate, Token } from '../store/state/index.js'
 
 export interface PortfolioRefreshOptions {
   sync?: boolean

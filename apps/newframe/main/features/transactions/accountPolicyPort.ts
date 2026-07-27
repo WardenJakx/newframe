@@ -1,6 +1,6 @@
-import type { TransactionData } from '../../../domain/transaction'
-import type { SignerSummary } from '../../signers/Signer'
-import type { SignerCompatibility } from '../../transaction'
+import type { TransactionData } from '../../../domain/transaction/index.js'
+import type { SignerSummary } from '../../signers/Signer/index.js'
+import type { SignerCompatibility } from '../../transaction/index.js'
 
 export interface AccountTransactionPolicyPort {
   maxFee(transaction: TransactionData): number

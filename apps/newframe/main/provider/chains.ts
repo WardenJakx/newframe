@@ -1,8 +1,8 @@
 import { isDeepStrictEqual } from 'util'
 
-import { getColor } from '../../domain/chain/colors'
-import type { Chain, ChainMetadata, Origin } from '../store/state'
-import type { CanonicalStoreReader } from '../store/actions'
+import { getColor } from '../../domain/chain/colors.js'
+import type { Chain, ChainMetadata, Origin } from '../store/state/index.js'
+import type { CanonicalStoreReader } from '../store/actions.js'
 type CanonicalStoreApi = CanonicalStoreReader
 
 // typed access to state

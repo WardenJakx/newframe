@@ -3,7 +3,7 @@ import path from 'path'
 import log from 'electron-log'
 import { keccak256, Wallet } from 'ethers'
 
-import HotSigner from '../HotSigner'
+import HotSigner from '../HotSigner/index.js'
 
 type Callback = (err: Error | null, result?: any) => void
 type V1Keystore = {
@@ -63,8 +63,8 @@ async function decryptV1Keystore(keystore: V1Keystore, password: string) {
 
 // compiled (electron) forks the emitted worker.js; under tests we run from source,
 // so fork the .ts worker directly — node 24 strips types natively
-const WORKER_EXT = __filename.endsWith('.ts') ? 'worker.ts' : 'worker.js'
-const WORKER_PATH = path.resolve(__dirname, WORKER_EXT)
+const WORKER_EXT = import.meta.filename.endsWith('.ts') ? 'worker.ts' : 'worker.js'
+const WORKER_PATH = path.resolve(import.meta.dirname, WORKER_EXT)
 
 class RingSigner extends HotSigner {
   constructor(signer?: any) {

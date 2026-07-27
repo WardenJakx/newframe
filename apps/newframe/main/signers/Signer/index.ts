@@ -2,11 +2,11 @@ import log from 'electron-log'
 import EventEmitter from 'events'
 import { addHexPrefix } from '@ethereumjs/util'
 
-import { deriveHDAccounts } from './derive'
-import crypt from '../../crypt'
-import { TransactionData } from '../../../domain/transaction'
-import { getSignerDisplayType } from '../../../domain/signer'
-import type { TypedMessage } from '../../../contracts/requests'
+import { deriveHDAccounts } from './derive.js'
+import crypt from '../../crypt.js'
+import { TransactionData } from '../../../domain/transaction/index.js'
+import { getSignerDisplayType } from '../../../domain/signer/index.js'
+import type { TypedMessage } from '../../../contracts/requests.js'
 
 export interface SignerSummary {
   id: string

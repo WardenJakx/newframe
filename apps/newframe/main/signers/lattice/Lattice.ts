@@ -5,12 +5,12 @@ import { padToEven, addHexPrefix, bytesToHex, stripHexPrefix } from '@ethereumjs
 import { TypedTransaction } from '@ethereumjs/tx'
 import { SignTypedDataVersion } from '@metamask/eth-sig-util'
 
-import Signer from '../Signer'
-import { sign, signerCompatibility, londonToLegacy } from '../../transaction'
-import { Derivation, getDerivationPath } from '../Signer/derive'
-import { hexToInt } from '../../../domain/hex'
-import type { TypedData, TypedMessage } from '../../../contracts/requests'
-import type { TransactionData } from '../../../domain/transaction'
+import Signer from '../Signer/index.js'
+import { sign, signerCompatibility, londonToLegacy } from '../../transaction/index.js'
+import { Derivation, getDerivationPath } from '../Signer/derive.js'
+import { hexToInt } from '../../../domain/hex.js'
+import type { TypedData, TypedMessage } from '../../../contracts/requests.js'
+import type { TransactionData } from '../../../domain/transaction/index.js'
 
 const ADDRESS_LIMIT = 10
 const HARDENED_OFFSET = 0x80000000

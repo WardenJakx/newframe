@@ -1,5 +1,5 @@
-import windows from '../../windows'
-import type { SideTrayWindowCapability } from '../../operations/sideTrayWorkflows'
+import windows from '../../windows/index.js'
+import type { SideTrayWindowCapability } from '../../operations/sideTrayWorkflows.js'
 
 export function createProductionSideTrayWindowCapability(): SideTrayWindowCapability {
   return {

@@ -1,5 +1,5 @@
-import type { TransactionRequest } from '../../../contracts/requests'
-import type { TransactionSimulation } from '../../../domain/transaction'
+import type { TransactionRequest } from '../../../contracts/requests.js'
+import type { TransactionSimulation } from '../../../domain/transaction/index.js'
 
 export interface TransactionSimulationPort {
   simulateTransactionEffects(request: TransactionRequest): Promise<TransactionSimulation>
