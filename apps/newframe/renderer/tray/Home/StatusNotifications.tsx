@@ -4,6 +4,7 @@ import { IconButton } from '@newframe/ui/icon-button'
 import { Stack } from '@newframe/ui/stack'
 import { Text } from '@newframe/ui/text'
 
+import type { WalletStatusNotification } from '../../../contracts/state/projections'
 import StatusGlyph from '../../shared/ui/StatusGlyph'
 import { cva } from '../../../generated/styled-system/css/cva.js'
 
@@ -60,20 +61,6 @@ const chainRecipe = cva({
 const PENDING_NOTIFICATION_MS = 60 * 1000
 const RESOLVED_NOTIFICATION_MS = 3000
 
-type StatusNotification = {
-  id: string
-  state?: string
-  title?: string
-  detail?: string
-  hidden?: boolean
-  createdAt?: unknown
-  updatedAt?: unknown
-  expiresAt?: unknown
-  leadingIcon?: { chainId?: string | number }
-  target?: { chainId?: string | number; hash?: string; [key: string]: unknown }
-  metadata?: { hash?: string }
-}
-
 export const timestamp = (value: any, fallback = 0) => {
   if (typeof value === 'number') return value
   if (value instanceof Date) return value.getTime()
@@ -86,7 +73,7 @@ export const timestamp = (value: any, fallback = 0) => {
   return fallback
 }
 
-const notificationExpiresAt = (notification: StatusNotification) => {
+const notificationExpiresAt = (notification: WalletStatusNotification) => {
   const fallbackBase = timestamp(notification.updatedAt, timestamp(notification.createdAt, Date.now()))
   const fallbackDuration =
     notification.state === 'pending' ? PENDING_NOTIFICATION_MS : RESOLVED_NOTIFICATION_MS
@@ -104,13 +91,13 @@ const shortHash = (hash?: string) => {
   return `${hash.substring(0, 6)}...${hash.substring(hash.length - 4)}`
 }
 
-const notificationMetadata = (notification: StatusNotification, label: string) => {
+const notificationMetadata = (notification: WalletStatusNotification, label: string) => {
   const detail = String(notification.detail || '').trim()
   if (detail && detail.toLowerCase() !== label.toLowerCase()) return detail
   return shortHash(notification.target?.hash || notification.metadata?.hash)
 }
 
-const notificationTimestamp = (notification: StatusNotification) => {
+const notificationTimestamp = (notification: WalletStatusNotification) => {
   const shownAt = timestamp(notification.createdAt, timestamp(notification.updatedAt, 0))
   if (!shownAt) return ''
 
@@ -123,11 +110,11 @@ const notificationTimestamp = (notification: StatusNotification) => {
 }
 
 interface StatusNotificationsProps {
-  notifications: Record<string, StatusNotification>
-  renderChainIcon: (notification: StatusNotification) => React.ReactNode
+  notifications: Record<string, WalletStatusNotification>
+  renderChainIcon: (notification: WalletStatusNotification) => React.ReactNode
   onDismiss: (id: string) => void
   onExpire: (id: string) => void
-  onOpen: (notification: StatusNotification) => void
+  onOpen: (notification: WalletStatusNotification) => void
 }
 
 export default function StatusNotifications({

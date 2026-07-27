@@ -129,17 +129,57 @@ const WindowsSchema = z.strictObject({
   panel: WindowStateSchema
 })
 
-const StatusNotificationSchema = z
+const NotificationTimestampSchema = z.union([z.number(), z.string(), z.date()]).nullable().optional()
+
+const WalletStatusNotificationTargetSchema = z
+  .object({
+    type: z.enum(['transactionActivity', 'flashOrder']).optional(),
+    activityId: z.string().optional(),
+    orderId: z.string().optional(),
+    hash: z.string().optional(),
+    account: z.string().optional(),
+    chainId: z.union([z.string(), z.number()]).optional(),
+    chainType: z.string().optional()
+  })
+  .strip()
+
+const WalletStatusNotificationMetadataSchema = z
+  .object({
+    hash: z.string().optional(),
+    orderId: z.string().optional(),
+    status: z.string().optional(),
+    rawStatus: z.string().optional(),
+    orderType: z.string().optional(),
+    side: z.string().optional()
+  })
+  .strip()
+
+export const WalletStatusNotificationSchema = z
   .object({
     id: z.string(),
-    state: z.enum(['pending', 'completed', 'failed'])
+    state: z.enum(['pending', 'completed', 'failed']),
+    title: z.string().nullable().optional(),
+    detail: z.string().nullable().optional(),
+    createdAt: NotificationTimestampSchema,
+    updatedAt: NotificationTimestampSchema,
+    expiresAt: NotificationTimestampSchema,
+    hidden: z.boolean().optional(),
+    leadingIcon: z
+      .object({
+        chainId: z.union([z.string(), z.number()]).optional(),
+        chainType: z.string().optional()
+      })
+      .strip()
+      .optional(),
+    target: WalletStatusNotificationTargetSchema.optional(),
+    metadata: WalletStatusNotificationMetadataSchema.optional()
   })
   .strip()
 
 const ViewSchema = z.strictObject({
   notify: z.string(),
   notifyData: z.unknown(),
-  notifications: z.record(z.string(), StatusNotificationSchema),
+  notifications: z.record(z.string(), WalletStatusNotificationSchema),
   badge: z.unknown()
 })
 
@@ -391,6 +431,7 @@ export const SideTrayRendererStateSchema = z.strictObject({
 })
 
 export type WalletRendererState = z.infer<typeof WalletRendererStateSchema>
+export type WalletStatusNotification = z.infer<typeof WalletStatusNotificationSchema>
 export type SideTrayRendererState = z.infer<typeof SideTrayRendererStateSchema>
 export type WalletAccount = WalletRendererState['accounts'][string]
 export type WalletPanelNavigationEntry = z.infer<typeof WalletPanelNavigationEntrySchema>

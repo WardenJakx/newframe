@@ -30,14 +30,22 @@ export function HomeNotifications() {
         void link.executeCommand({ type: 'notification.update', notificationId: id, action: 'expire' })
       }
       onOpen={(notification) => {
-        const target = (notification.target || {}) as any
-        const activityId = target?.activityId || target?.hash || ''
-        if (!activityId) return
+        const target = notification.target || {}
         if (typeof target.account === 'string' && target.account !== shared.currentAccount) {
           void link.executeCommand({ type: 'account.select', accountId: target.account })
         }
+
+        const orderId = target.orderId || notification.metadata?.orderId
+        if (orderId) {
+          setSection('orders')
+          openOverlay({ type: 'order', orderId })
+          return
+        }
+
+        const activityId = target.activityId || target.hash || notification.metadata?.hash
+        if (!activityId) return
         setSection('activity')
-        openOverlay({ type: 'activity', activityId: String(activityId) })
+        openOverlay({ type: 'activity', activityId })
       }}
       renderChainIcon={(notification) => {
         const chainId = Number(notification.leadingIcon?.chainId || notification.target?.chainId)

@@ -5,7 +5,8 @@ import {
   WalletHomeCommandSchema,
   WalletOrderRecordSchema,
   WalletPanelNavigationEntrySchema,
-  WalletRequestSchema
+  WalletRequestSchema,
+  WalletStatusNotificationSchema
 } from './projections'
 
 describe('wallet renderer projection records', () => {
@@ -147,6 +148,65 @@ describe('wallet renderer projection records', () => {
       qty: '1',
       createdAt: 1,
       updatedAt: 2
+    })
+  })
+
+  it('keeps notification presentation and navigation data while stripping unowned fields', () => {
+    expect(
+      WalletStatusNotificationSchema.parse({
+        id: 'flash-order:order-1',
+        state: 'pending',
+        title: 'Buy WETH Market Order',
+        detail: '1 USDC -> 0.0003 WETH',
+        createdAt: 100,
+        updatedAt: 200,
+        expiresAt: 300,
+        hidden: false,
+        leadingIcon: {
+          chainId: 1,
+          chainType: 'ethereum',
+          futureCredential: 'must-not-cross-ipc'
+        },
+        target: {
+          type: 'flashOrder',
+          orderId: 'order-1',
+          account: '0x1111111111111111111111111111111111111111',
+          chainId: 1,
+          chainType: 'ethereum',
+          futureCredential: 'must-not-cross-ipc'
+        },
+        metadata: {
+          orderId: 'order-1',
+          status: 'open',
+          orderType: 'market',
+          side: 'buy',
+          futureCredential: 'must-not-cross-ipc'
+        },
+        futureCredential: 'must-not-cross-ipc'
+      })
+    ).toEqual({
+      id: 'flash-order:order-1',
+      state: 'pending',
+      title: 'Buy WETH Market Order',
+      detail: '1 USDC -> 0.0003 WETH',
+      createdAt: 100,
+      updatedAt: 200,
+      expiresAt: 300,
+      hidden: false,
+      leadingIcon: { chainId: 1, chainType: 'ethereum' },
+      target: {
+        type: 'flashOrder',
+        orderId: 'order-1',
+        account: '0x1111111111111111111111111111111111111111',
+        chainId: 1,
+        chainType: 'ethereum'
+      },
+      metadata: {
+        orderId: 'order-1',
+        status: 'open',
+        orderType: 'market',
+        side: 'buy'
+      }
     })
   })
 })

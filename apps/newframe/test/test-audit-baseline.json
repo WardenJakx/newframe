@@ -1,6 +1,6 @@
 {
   "maximum": {
-    "tests": 1133,
+    "tests": 1137,
     "moduleMocks": 47,
     "callbackTests": 133,
     "mockCallAssertions": 314,

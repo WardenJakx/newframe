@@ -2,6 +2,7 @@ import type { CanonicalState } from '../store/state'
 import {
   WalletHomeCommandSchema,
   WalletPanelNavigationEntrySchema,
+  WalletStatusNotificationSchema,
   type WalletPanelNavigationEntry,
   type SideTrayRendererState,
   type RendererProjection,
@@ -64,10 +65,16 @@ function projectWalletView(view: CanonicalState['view']): WalletRendererState['v
   }
 
   previousWalletViewInput = view
+  const notifications = Object.fromEntries(
+    Object.entries(view.notifications).flatMap(([id, notification]) => {
+      const result = WalletStatusNotificationSchema.safeParse(notification)
+      return result.success ? [[id, result.data]] : []
+    })
+  )
   previousWalletView = {
     notify: view.notify,
     notifyData: view.notifyData,
-    notifications: view.notifications,
+    notifications,
     badge: view.badge
   }
   return previousWalletView
