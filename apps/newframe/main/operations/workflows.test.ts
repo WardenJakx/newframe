@@ -8,7 +8,6 @@ const resolveAddress = mock()
 mock.module('../accounts', () => ({
   default: { getSelectedAddresses, setSigner }
 }))
-mock.module('../provider', () => ({ default: { accountsChanged } }))
 mock.module('../nameResolution', () => ({ default: { resolveAddress } }))
 
 let resolveName: typeof import('./workflows').resolveName
@@ -33,7 +32,9 @@ describe('operation workflows', () => {
     getSelectedAddresses.mockReturnValueOnce(['previous']).mockReturnValueOnce(['selected'])
     setSigner.mockImplementation((_id, callback) => callback(null, account))
 
-    await expect(selectAccount('selected')).resolves.toMatchObject(account)
+    await expect(
+      selectAccount('selected', { getSelectedAddresses, setSigner }, { accountsChanged })
+    ).resolves.toMatchObject(account)
     expect(setSigner).toHaveBeenCalledWith('selected', expect.any(Function))
     expect(accountsChanged).toHaveBeenCalledWith(['selected'])
   })
@@ -42,7 +43,7 @@ describe('operation workflows', () => {
     getSelectedAddresses.mockReturnValue(['selected'])
     setSigner.mockImplementation((_id, callback) => callback(null, { id: 'selected' }))
 
-    await selectAccount('selected')
+    await selectAccount('selected', { getSelectedAddresses, setSigner }, { accountsChanged })
 
     expect(accountsChanged).not.toHaveBeenCalled()
   })
@@ -52,14 +53,18 @@ describe('operation workflows', () => {
     getSelectedAddresses.mockReturnValue([])
     setSigner.mockImplementation((_id, callback) => callback(error))
 
-    await expect(selectAccount('missing')).rejects.toBe(error)
+    await expect(
+      selectAccount('missing', { getSelectedAddresses, setSigner }, { accountsChanged })
+    ).rejects.toBe(error)
     expect(accountsChanged).not.toHaveBeenCalled()
   })
 
   it('uses the existing name-resolution service', async () => {
     resolveAddress.mockResolvedValue('0x1111111111111111111111111111111111111111')
 
-    await expect(resolveName('alice.eth')).resolves.toBe('0x1111111111111111111111111111111111111111')
+    await expect(resolveName('alice.eth', { resolveAddress } as never)).resolves.toBe(
+      '0x1111111111111111111111111111111111111111'
+    )
     expect(resolveAddress).toHaveBeenCalledWith('alice.eth')
   })
 })

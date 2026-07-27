@@ -6,7 +6,7 @@ import {
   PersistedCanonicalStateSchema,
   type PersistedCanonicalState
 } from './persist/schema'
-import { CanonicalStatePersistenceError } from './persist/validatedConfStorage'
+import { CanonicalStatePersistenceError } from '../infrastructure/persistence'
 
 type UnknownRecord = Record<string, any>
 

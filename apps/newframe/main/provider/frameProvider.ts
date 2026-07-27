@@ -21,7 +21,7 @@ export interface Eip1193Provider {
 }
 
 interface ProxyConnection extends EventEmitter {
-  send(payload: JSONRPCRequestPayload): void
+  send(payload: RpcPayload): void
   close?: () => void
 }
 
@@ -230,7 +230,7 @@ class FrameProxyProvider extends EventedRequestProvider {
       this.promises[payload.id] = { resolve: resolve as (value: unknown) => void, reject }
 
       try {
-        this.connection.send(payload as JSONRPCRequestPayload)
+        this.connection.send(payload)
       } catch (error) {
         delete this.promises[payload.id]
         reject(createError(error))

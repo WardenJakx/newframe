@@ -10,14 +10,14 @@ import {
   FLASH_STOP_ORDER_TYPE,
   FLASH_TAKE_PROFIT_ORDER_TYPE,
   FLASH_TWAP_ORDER_TYPE
-} from '../../resources/domain/flash/constants'
+} from '../../domain/flash/constants'
 import {
   FLASH_NATIVE_ETH_ASSET,
   FLASH_USDC_ASSET,
   FLASH_WETH_ASSET,
   toFlashApiAssetAddress
-} from '../../resources/domain/flash/assets'
-import { getReceiveAsset, getSpentAsset } from '../../resources/domain/flash/pair'
+} from '../../domain/flash/assets'
+import { getReceiveAsset, getSpentAsset } from '../../domain/flash/pair'
 import {
   type FlashAsset,
   type FlashOrderType,
@@ -25,7 +25,7 @@ import {
   type FlashQuoteAction,
   type FlashStep,
   type FlashTradeSide
-} from '../../resources/domain/flash/schemas'
+} from '../../domain/flash/schemas'
 
 type LocalOrderStatus = 'accepted' | 'filled' | 'cancelled' | 'rejected'
 

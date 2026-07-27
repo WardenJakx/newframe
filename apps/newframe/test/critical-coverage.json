@@ -1,0 +1,69 @@
+{
+  "groups": [
+    {
+      "name": "authorization-and-ipc",
+      "rationale": "Renderer identity, operation authorization, and cross-process validation are security boundaries.",
+      "patterns": [
+        "main/authority.ts",
+        "main/ipc/authorization.ts",
+        "main/ipc/operations.ts",
+        "contracts/**/*.ts"
+      ],
+      "minimum": { "lines": 80, "functions": 55 }
+    },
+    {
+      "name": "signing-and-secrets",
+      "rationale": "Digest construction, clear-signing interpretation, vault access, and agent sessions protect signatures or secret material.",
+      "patterns": [
+        "main/signatures/digests.ts",
+        "main/signatures/erc7730.ts",
+        "main/vault.ts",
+        "main/agent/sessionStore.ts"
+      ],
+      "minimum": { "lines": 80, "functions": 80 }
+    },
+    {
+      "name": "persistence",
+      "rationale": "Persisted canonical state must validate, migrate, and flush without corrupting wallet state.",
+      "patterns": [
+        "main/store/persistence.ts",
+        "main/store/persist/schema.ts",
+        "main/infrastructure/persistence/bindableStorage.ts",
+        "main/infrastructure/persistence/createPersistenceAdapter.ts",
+        "main/infrastructure/persistence/createPersistenceService.ts",
+        "main/infrastructure/persistence/ports.ts",
+        "main/infrastructure/persistence/production.ts"
+      ],
+      "minimum": { "lines": 75, "functions": 75 }
+    },
+    {
+      "name": "transaction-policy-and-simulation",
+      "rationale": "Fee policy, signing transformations, and simulation govern value-moving transaction construction.",
+      "patterns": [
+        "main/transaction/gasMonitor.ts",
+        "main/transaction/index.ts",
+        "main/transaction/simulation.ts",
+        "domain/transaction/constants.ts",
+        "domain/transaction/fees.ts",
+        "domain/transaction/index.ts"
+      ],
+      "minimum": { "lines": 65, "functions": 80 }
+    },
+    {
+      "name": "transaction-submission-and-lifecycle",
+      "rationale": "Side-tray submission, wallet orchestration, and deferred provider/account capabilities own authorization-sensitive transaction lifecycle paths.",
+      "patterns": [
+        "main/features/transactions/sideTrayService.ts",
+        "main/operations/sideTrayTransactions.ts",
+        "main/operations/walletWorkflows.ts",
+        "main/accounts/index.ts",
+        "main/accounts/providerPort.ts",
+        "main/provider/index.ts",
+        "main/provider/accountRequestPort.ts",
+        "main/features/transactions/accountPolicyPort.ts",
+        "main/store/actions.ts"
+      ],
+      "minimum": { "lines": 45, "functions": 50 }
+    }
+  ]
+}

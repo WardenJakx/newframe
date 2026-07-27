@@ -1,9 +1,9 @@
 import log from 'electron-log'
 
-import store from '../store'
 import { openExternal } from '../windows/window'
 import AutoUpdater from './autoUpdater'
 import manualCheck from './manualCheck'
+import type { CanonicalStore } from '../store/actions'
 
 export interface VersionUpdate {
   version: string
@@ -17,7 +17,7 @@ const STARTUP_CHECK_DELAY = 10_000
 const UPDATE_INTERVAL = parseInt(process.env.UPDATE_INTERVAL || '') || 24 * 60 * 60_000
 const useAutoUpdater = isMac || isWindows
 
-class Updater {
+export class Updater {
   private autoUpdater?: AutoUpdater
 
   // this will only be set if an upgrade-eligible version is found
@@ -28,6 +28,8 @@ class Updater {
   private setupCheck?: NodeJS.Timeout
   private pendingCheck?: NodeJS.Timeout
   private notified: Record<string, boolean> = {}
+
+  constructor(private readonly store: { getState(): CanonicalStore }) {}
 
   start() {
     log.verbose('Starting updater', { useAutoUpdater })
@@ -110,7 +112,7 @@ class Updater {
   }
 
   private lastCheckedAt() {
-    return Number(store.getState().main.updater.lastChecked) || 0
+    return Number(this.store.getState().main.updater.lastChecked) || 0
   }
 
   private nextCheckDelay() {
@@ -136,7 +138,7 @@ class Updater {
       return false
     }
 
-    store.getState().setUpdaterLastChecked(now)
+    this.store.getState().setUpdaterLastChecked(now)
     return true
   }
 
@@ -153,10 +155,10 @@ class Updater {
       this.availableVersion = version
       this.availableUpdate = location
 
-      const remindOk = !store.getState().main.updater.dontRemind.includes(version)
+      const remindOk = !this.store.getState().main.updater.dontRemind.includes(version)
 
       if (remindOk) {
-        store.getState().updateBadge('updateAvailable', this.availableVersion)
+        this.store.getState().updateBadge('updateAvailable', this.availableVersion)
       } else {
         log.verbose(`Update to version ${version} is available but user chose to skip`)
       }
@@ -169,7 +171,7 @@ class Updater {
   private readyForInstall() {
     this.installerReady = true
 
-    store.getState().updateBadge('updateReady', this.availableVersion)
+    this.store.getState().updateBadge('updateReady', this.availableVersion)
   }
 
   private checkForAutoUpdate() {
@@ -237,5 +239,3 @@ class Updater {
     }
   }
 }
-
-export default new Updater()

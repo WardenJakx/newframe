@@ -10,9 +10,10 @@ import { shallow } from 'zustand/vanilla/shallow'
 import { Derivation } from '../Signer/derive'
 import { SignerAdapter } from '../adapters'
 import Ledger from './Ledger'
-import store from '../../store'
+import type canonicalStore from '../../store'
 
 function updateDerivation(
+  store: typeof canonicalStore,
   ledger: Ledger,
   derivation = store.getState().main.ledger.derivation,
   accountLimit = 0
@@ -37,8 +38,9 @@ export default class LedgerSignerAdapter extends SignerAdapter {
 
   private unsubscribeDerivation?: () => void
   private usbListener: Subscription | null = null
+  private opened = false
 
-  constructor() {
+  constructor(private readonly store: typeof canonicalStore) {
     super('ledger')
 
     this.knownSigners = {}
@@ -46,8 +48,11 @@ export default class LedgerSignerAdapter extends SignerAdapter {
   }
 
   override open() {
+    if (this.opened) return
+    this.opened = true
+
     this.unsubscribeDerivation?.()
-    this.unsubscribeDerivation = store.subscribe(
+    this.unsubscribeDerivation = this.store.subscribe(
       (state) => [state.main.ledger.derivation, state.main.ledger.liveAccountLimit] as const,
       ([ledgerDerivation, liveAccountLimit]) => {
         Object.values(this.knownSigners).forEach((ledger) => {
@@ -55,7 +60,7 @@ export default class LedgerSignerAdapter extends SignerAdapter {
             ledger.derivation !== ledgerDerivation ||
             (ledger.derivation === 'live' && ledger.accountLimit !== liveAccountLimit)
           ) {
-            updateDerivation(ledger, ledgerDerivation, liveAccountLimit)
+            updateDerivation(this.store, ledger, ledgerDerivation, liveAccountLimit)
             ledger.deriveAddresses()
           }
         })
@@ -86,6 +91,9 @@ export default class LedgerSignerAdapter extends SignerAdapter {
   }
 
   override close() {
+    if (!this.opened) return
+    this.opened = false
+
     this.unsubscribeDerivation?.()
     this.unsubscribeDerivation = undefined
 
@@ -93,6 +101,9 @@ export default class LedgerSignerAdapter extends SignerAdapter {
       this.usbListener.unsubscribe()
       this.usbListener = null
     }
+
+    this.disconnections.forEach(({ timeout }) => clearTimeout(timeout))
+    this.disconnections = []
 
     super.close()
   }
@@ -154,7 +165,7 @@ export default class LedgerSignerAdapter extends SignerAdapter {
 
     this.emit('add', ledger)
 
-    store.getState().navHome({
+    this.store.getState().navHome({
       view: 'accounts',
       data: { showAddAccounts: true, newAccountType: 'ledger', selectedSigner: ledger.id }
     })
@@ -163,7 +174,7 @@ export default class LedgerSignerAdapter extends SignerAdapter {
   }
 
   private async handleConnectedDevice(ledger: Ledger) {
-    updateDerivation(ledger)
+    updateDerivation(this.store, ledger)
 
     await ledger.open()
     await ledger.connect()

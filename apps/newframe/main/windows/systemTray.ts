@@ -2,8 +2,7 @@ import fs from 'fs'
 import path from 'path'
 import { app, screen, BrowserWindow, Menu, KeyboardEvent, Rectangle, Tray as ElectronTray } from 'electron'
 
-import { capitalize } from '../../resources/utils'
-
+import { capitalize } from '../../domain/text'
 const isMacOS = process.platform === 'darwin'
 let isUbuntu23OrGreater = false
 

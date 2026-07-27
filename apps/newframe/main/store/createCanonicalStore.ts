@@ -14,6 +14,7 @@ import createInitialState from './state'
 
 export default function createCanonicalStore(storage: PersistStorage<PersistedCanonicalState, void>) {
   let hydrationError: unknown
+  let hydration: Promise<void> | undefined
   const finishHydration = (success: boolean) => {
     if ('finishHydration' in storage && typeof storage.finishHydration === 'function') {
       storage.finishHydration(success)
@@ -43,14 +44,20 @@ export default function createCanonicalStore(storage: PersistStorage<PersistedCa
     )
   )
 
-  const hydration = Promise.resolve(store.persist.rehydrate()).then(() => {
-    if (hydrationError) {
-      finishHydration(false)
-      throw hydrationError
-    }
+  const hydrate = () => {
+    if (hydration) return hydration
 
-    finishHydration(true)
-  })
+    hydration = Promise.resolve(store.persist.rehydrate()).then(() => {
+      if (hydrationError) {
+        finishHydration(false)
+        throw hydrationError
+      }
 
-  return { hydration, store }
+      finishHydration(true)
+    })
+
+    return hydration
+  }
+
+  return { hydrate, store }
 }

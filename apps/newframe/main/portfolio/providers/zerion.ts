@@ -6,8 +6,8 @@ import type {
 } from '../types'
 import type { Balance, Rate, Token } from '../../store/state'
 import ProviderRequestPolicy, { type ProviderRequestPolicyOptions } from '../requestPolicy'
-import { NATIVE_CURRENCY } from '../../../resources/constants'
-import { formatUnits } from '../../../resources/utils/numbers'
+import { NATIVE_CURRENCY } from '../../../domain/token/constants'
+import { formatUnits } from '../../../domain/units'
 
 type Fetch = typeof fetch
 

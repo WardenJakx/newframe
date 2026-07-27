@@ -3,19 +3,20 @@
 import log from 'electron-log'
 import { addHexPrefix } from '@ethereumjs/util'
 
-import proxyConnection from './provider/proxy'
 import { createProxyProvider } from './provider/connection'
-import nameResolution from './nameResolution'
+import type { ProviderProxyConnection } from './provider/proxy'
+import type { NameResolutionService } from './nameResolution'
 
-import Erc20Contract from './contracts/erc20'
+import Erc20Contract, { type Erc20ProviderPort } from './contracts/erc20'
 import {
   decodeCallData,
   decodeCallDataWithSelectorRegistry,
   fetchContract,
-  ContractSource
+  ContractSource,
+  type DecodedCallData
 } from './contracts'
 import ensContracts from './contracts/deployments/ens'
-import { MAX_HEX } from '../resources/constants'
+import { MAX_HEX } from '../domain/transaction/constants'
 
 import type {
   ApproveAction as Erc20Approval,
@@ -26,11 +27,6 @@ import type { TransactionRequest } from './accounts'
 
 // TODO: fix generic typing here
 const knownContracts: DecodableContract<unknown>[] = [...ensContracts]
-
-const provider = createProxyProvider(proxyConnection)
-
-// TODO: Discuss the need to set chain for the proxy connection
-provider.setChain('0x1')
 
 type RecognitionContext = {
   contractAddress: string
@@ -44,7 +40,11 @@ function toHexAmount(value: any) {
   return addHexPrefix(BigInt(value || 0).toString(16))
 }
 
-async function resolveEntityType(address: string, chainId: number): Promise<EntityType> {
+async function resolveEntityType(
+  provider: ReturnType<typeof createProxyProvider>,
+  address: string,
+  chainId: number
+): Promise<EntityType> {
   if (!address || !chainId) return 'unknown'
   try {
     const payload: JSONRPCRequestPayload = {
@@ -64,7 +64,7 @@ async function resolveEntityType(address: string, chainId: number): Promise<Enti
   }
 }
 
-async function resolveName(address: string): Promise<string> {
+async function resolveName(nameResolution: NameResolutionService, address: string): Promise<string> {
   try {
     return await nameResolution.reverseLookup(address)
   } catch (e) {
@@ -74,6 +74,8 @@ async function resolveName(address: string): Promise<string> {
 }
 
 async function recogErc20(
+  erc20Provider: { sendAsync: Erc20ProviderPort['sendAsync'] },
+  surface: RevealService,
   contractAddress: string,
   chainId: number,
   calldata: string
@@ -81,7 +83,7 @@ async function recogErc20(
   const decoded = Erc20Contract.decodeCallData(calldata)
   if (contractAddress && decoded) {
     try {
-      const contract = new Erc20Contract(contractAddress, chainId)
+      const contract = new Erc20Contract(contractAddress, chainId, erc20Provider)
 
       const { decimals, name, symbol } = await contract.getTokenData()
       if (Erc20Contract.isApproval(decoded)) {
@@ -163,68 +165,89 @@ function identifyKnownContractActions(
   }
 }
 
-const surface = {
-  identity: async (address = '', chainId?: number) => {
-    // Resolve name, type and other data about address entities
-
-    const results = await Promise.allSettled([
-      chainId ? resolveEntityType(address, chainId) : Promise.resolve(''),
-      resolveName(address)
-    ])
-
-    const type = results[0].status === 'fulfilled' ? results[0].value : ''
-    const resolvedName = results[1].status === 'fulfilled' ? results[1].value : ''
-
-    // TODO: Check the address against various scam dbs
-    // TODO: Check the address against user's contact list
-    // TODO: Check the address against previously verified contracts
-    return { type, ens: resolvedName }
-  },
-  resolveEntityType,
-  decode: async (contractAddress = '', chainId: number, calldata: string) => {
-    // Decode calldata
-    const contractSources: ContractSource[] = []
-    const contractSource = await fetchContract(contractAddress, chainId)
-
-    if (contractSource) {
-      contractSources.push(contractSource)
+export function createRevealService(proxy: ProviderProxyConnection, nameResolution: NameResolutionService) {
+  const provider = createProxyProvider(proxy)
+  const erc20Provider = {
+    sendAsync(payload: RPCRequestPayload, callback: Callback<RPCResponsePayload>) {
+      void provider
+        .request(payload)
+        .then((result) => callback(null, { id: payload.id, jsonrpc: payload.jsonrpc, result }))
+        .catch((error) => callback(error as Error))
     }
+  }
 
-    for (const { name, source, abi } of contractSources.reverse()) {
-      const decodedCall = decodeCallData(calldata, abi)
+  provider.setChain('0x1')
 
-      if (decodedCall) {
-        return {
-          contractAddress: contractAddress.toLowerCase(),
-          contractName: name,
-          source,
-          ...decodedCall
+  const surface: RevealService = {
+    identity: async (address = '', chainId?: number) => {
+      // Resolve name, type and other data about address entities
+      const results = await Promise.allSettled([
+        chainId ? resolveEntityType(provider, address, chainId) : Promise.resolve(''),
+        resolveName(nameResolution, address)
+      ])
+
+      const type = results[0].status === 'fulfilled' ? results[0].value : ''
+      const resolvedName = results[1].status === 'fulfilled' ? results[1].value : ''
+
+      // TODO: Check the address against various scam dbs
+      // TODO: Check the address against user's contact list
+      // TODO: Check the address against previously verified contracts
+      return { type, ens: resolvedName }
+    },
+    resolveEntityType: (address: string, chainId: number) => resolveEntityType(provider, address, chainId),
+    decode: async (contractAddress = '', chainId: number, calldata: string) => {
+      // Decode calldata
+      const contractSources: ContractSource[] = []
+      const contractSource = await fetchContract(contractAddress, chainId)
+
+      if (contractSource) {
+        contractSources.push(contractSource)
+      }
+
+      for (const { name, source, abi } of contractSources.reverse()) {
+        const decodedCall = decodeCallData(calldata, abi)
+
+        if (decodedCall) {
+          return {
+            contractAddress: contractAddress.toLowerCase(),
+            contractName: name,
+            source,
+            ...decodedCall
+          }
         }
       }
-    }
 
-    const decodedSelectorCall = await decodeCallDataWithSelectorRegistry(calldata)
-    if (decodedSelectorCall) {
-      return {
-        contractAddress: contractAddress.toLowerCase(),
-        contractName: 'Unknown Contract',
-        source: 'Function selector registry',
-        ...decodedSelectorCall
+      const decodedSelectorCall = await decodeCallDataWithSelectorRegistry(calldata)
+      if (decodedSelectorCall) {
+        return {
+          contractAddress: contractAddress.toLowerCase(),
+          contractName: 'Unknown Contract',
+          source: 'Function selector registry',
+          ...decodedSelectorCall
+        }
       }
-    }
 
-    log.warn(`Unable to decode data for contract ${contractAddress}`)
-  },
-  recog: async (calldata: string, context: RecognitionContext) => {
-    // Recognize actions from standard tx types
-    const actions = ([] as Action<unknown>[]).concat(
-      (await recogErc20(context.contractAddress, context.chainId, calldata)) || [],
-      identifyKnownContractActions(calldata, context) || []
-    )
+      log.warn(`Unable to decode data for contract ${contractAddress}`)
+    },
+    recog: async (calldata: string, context: RecognitionContext) => {
+      // Recognize actions from standard tx types
+      const actions = ([] as Action<unknown>[]).concat(
+        (await recogErc20(erc20Provider, surface, context.contractAddress, context.chainId, calldata)) || [],
+        identifyKnownContractActions(calldata, context) || []
+      )
 
-    return actions
-  },
-  simulate: async () => {}
+      return actions
+    },
+    simulate: async () => {}
+  }
+
+  return surface
 }
 
-export default surface
+export type RevealService = {
+  identity(address?: string, chainId?: number): Promise<{ type: EntityType | string; ens: string }>
+  resolveEntityType(address: string, chainId: number): Promise<EntityType>
+  decode(contractAddress: string, chainId: number, calldata: string): Promise<DecodedCallData | undefined>
+  recog(calldata: string, context: RecognitionContext): Promise<Action<unknown>[]>
+  simulate(): Promise<void>
+}

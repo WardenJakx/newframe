@@ -19,7 +19,11 @@ export type AuthorizationContext = Pick<RendererRegistration, 'clientType' | 'en
   windowInstanceId: string
 }
 
-const renderers = new Map<number, RendererRegistration>()
+export interface RendererAuthorizationRegistry {
+  authorizeRenderer(event: IpcMainInvokeEvent): AuthorizationContext | undefined
+  registerRenderer(webContents: WebContents, clientType: RendererRole, entrypoint: RendererEntrypoint): void
+  dispose(): void
+}
 
 const samePath = (left: string, right: string) => {
   const normalize = (value: string) => {
@@ -47,31 +51,42 @@ export function isAllowedRendererUrl(entrypoint: RendererEntrypoint, value: stri
   }
 }
 
-export function registerRenderer(
-  webContents: WebContents,
-  clientType: RendererRole,
-  entrypoint: RendererEntrypoint
-) {
-  const registration = { webContents, clientType, entrypoint, windowInstanceId: randomUUID() }
-  renderers.set(webContents.id, registration)
-
-  webContents.once('destroyed', () => {
-    if (renderers.get(webContents.id) === registration) renderers.delete(webContents.id)
-  })
-}
-
-export function authorizeRenderer(event: IpcMainInvokeEvent): AuthorizationContext | undefined {
-  const registration = renderers.get(event.sender.id)
-  if (!registration || registration.webContents !== event.sender || event.sender.isDestroyed()) return
-
-  const frame = event.senderFrame
-  if (!frame || frame.parent !== null || event.sender.mainFrame !== frame) return
-  if (!isAllowedRendererUrl(registration.entrypoint, frame.url)) return
+export function createRendererAuthorizationRegistry(
+  createWindowInstanceId: () => string = randomUUID
+): RendererAuthorizationRegistry {
+  const renderers = new Map<number, RendererRegistration>()
 
   return {
-    clientType: registration.clientType,
-    entrypoint: registration.entrypoint,
-    webContentsId: event.sender.id,
-    windowInstanceId: registration.windowInstanceId
+    registerRenderer(webContents, clientType, entrypoint) {
+      const registration = {
+        webContents,
+        clientType,
+        entrypoint,
+        windowInstanceId: createWindowInstanceId()
+      }
+      renderers.set(webContents.id, registration)
+
+      webContents.once('destroyed', () => {
+        if (renderers.get(webContents.id) === registration) renderers.delete(webContents.id)
+      })
+    },
+    authorizeRenderer(event) {
+      const registration = renderers.get(event.sender.id)
+      if (!registration || registration.webContents !== event.sender || event.sender.isDestroyed()) return
+
+      const frame = event.senderFrame
+      if (!frame || frame.parent !== null || event.sender.mainFrame !== frame) return
+      if (!isAllowedRendererUrl(registration.entrypoint, frame.url)) return
+
+      return {
+        clientType: registration.clientType,
+        entrypoint: registration.entrypoint,
+        webContentsId: event.sender.id,
+        windowInstanceId: registration.windowInstanceId
+      }
+    },
+    dispose() {
+      renderers.clear()
+    }
   }
 }

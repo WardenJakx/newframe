@@ -1,5 +1,5 @@
 import type { Action } from '.'
-import { Identity } from '../../accounts/types'
+import { Identity } from '../../../contracts/requests'
 
 export type ActionType = 'erc20:approve' | 'erc20:revoke' | 'erc20:transfer'
 

@@ -2,65 +2,12 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, setSystemTime } 
 
 import log from 'electron-log'
 import { addHexPrefix } from '@ethereumjs/util'
-import { createStore } from 'zustand/vanilla'
-import { immer } from 'zustand/middleware/immer'
 
-import { createCanonicalActions, type CanonicalActions, type CanonicalStore } from './actions'
-import { NATIVE_CURRENCY } from '../../resources/constants'
-import { toTokenId } from '../../resources/domain/balance'
-import { customTokens, tokensForAccount } from '../../resources/domain/token'
-
-function createActionHarness(
-  initial: any,
-  onChange?: (state: CanonicalStore) => void
-): { actions: CanonicalActions; getState: () => CanonicalStore } {
-  const defaults: any = {
-    windows: {
-      panel: { nav: [], footer: { height: 40 } }
-    },
-    panel: {},
-    selected: {},
-    tray: {},
-    view: { notifications: {} },
-    main: {
-      networks: { ethereum: {} },
-      networksMeta: { ethereum: {} },
-      origins: {},
-      permissions: {},
-      accounts: {},
-      accountOrder: [],
-      accountsMeta: {},
-      balances: {},
-      activity: {},
-      orders: {},
-      tokens: { byId: {}, accountTokenIds: {} },
-      scanning: {}
-    }
-  }
-  const data = {
-    ...defaults,
-    ...initial,
-    windows: {
-      ...defaults.windows,
-      ...initial.windows,
-      panel: { ...defaults.windows.panel, ...initial.windows?.panel }
-    },
-    view: { ...defaults.view, ...initial.view },
-    main: { ...defaults.main, ...initial.main }
-  }
-
-  const store = createStore<CanonicalStore>()(
-    immer((set, get) => ({
-      ...data,
-      ...createCanonicalActions(set, get)
-    }))
-  )
-
-  onChange?.(store.getState())
-  if (onChange) store.subscribe(onChange)
-
-  return { actions: store.getState(), getState: store.getState }
-}
+import { type CanonicalActions } from './actions'
+import { NATIVE_CURRENCY } from '../../domain/token/constants'
+import { toTokenId } from '../../domain/balance'
+import { customTokens, tokensForAccount } from '../../domain/token'
+import { createTestStore as createActionHarness } from '../../test/support/createTestStore'
 
 beforeAll(() => {
   log.transports.console.level = false
@@ -116,184 +63,114 @@ describe('#addNetwork', () => {
     symbol: 'MATIC'
   }
 
-  let actions: CanonicalActions
-  let networks: any, networksMeta: any
+  it('creates the complete runtime network and metadata projections atomically', () => {
+    const { actions, getState } = createActionHarness({})
 
-  const addNetwork = (network: any) => actions.addNetwork(network)
-
-  beforeEach(() => {
-    networks = { ethereum: {} }
-    networksMeta = { ethereum: {} }
-    actions = createActionHarness({ main: { networks, networksMeta } }, (state) => {
-      networks = state.main.networks
-      networksMeta = state.main.networksMeta
-    }).actions
-  })
-
-  it('adds a network with the correct id', () => {
-    addNetwork(polygonNetwork)
-
-    expect(networks.ethereum['137'].id).toBe(137)
-  })
-
-  it('adds a network with the correct id if the id is a number represented as a string', () => {
-    addNetwork({ ...polygonNetwork, id: '137' })
-
-    expect(networks.ethereum['137'].id).toBe(137)
-  })
-
-  it('adds a network with the correct name', () => {
-    addNetwork(polygonNetwork)
-
-    expect(networks.ethereum['137'].name).toBe('Polygon')
-  })
-
-  it('adds a network with the correct symbol', () => {
-    addNetwork(polygonNetwork)
-
-    expect(networks.ethereum['137'].symbol).toBe('MATIC')
-  })
-
-  it('adds a network with the correct explorer', () => {
-    addNetwork(polygonNetwork)
-
-    expect(networks.ethereum['137'].explorer).toBe('https://polygonscan.com')
-  })
-
-  it('adds a network that is on by default', () => {
-    addNetwork(polygonNetwork)
-
-    expect(networks.ethereum['137'].on).toBe(true)
-  })
-
-  it('adds a network with the correct primary RPC', () => {
-    addNetwork({ ...polygonNetwork, primaryRpc: 'https://polygon-rpc.com' })
-
-    expect(networks.ethereum['137'].primaryRpc).toBeUndefined()
-    expect(networks.ethereum['137'].connection.primary.custom).toBe('https://polygon-rpc.com')
-  })
-
-  it('adds a network with the correct secondary RPC', () => {
-    addNetwork({ ...polygonNetwork, secondaryRpc: 'https://rpc-mainnet.matic.network' })
-
-    expect(networks.ethereum['137'].secondaryRpc).toBeUndefined()
-    expect(networks.ethereum['137'].connection.secondary.custom).toBe('https://rpc-mainnet.matic.network')
-  })
-
-  it('adds a network with the correct default connection presets', () => {
-    addNetwork(polygonNetwork)
-
-    expect(networks.ethereum['137'].connection.presets).toEqual({ local: 'direct' })
-  })
-
-  it('adds a network with the correct default primary connection settings', () => {
-    addNetwork(polygonNetwork)
-
-    expect(networks.ethereum['137'].connection.primary).toEqual({
-      on: true,
-      current: 'custom',
-      status: 'loading',
-      connected: false,
-      type: '',
-      network: '',
-      custom: ''
+    actions.addNetwork({
+      ...polygonNetwork,
+      id: '137',
+      primaryRpc: 'https://polygon-rpc.com',
+      secondaryRpc: 'https://rpc-mainnet.matic.network'
     })
-  })
 
-  it('adds a network with the correct default secondary connection settings', () => {
-    addNetwork(polygonNetwork)
-
-    expect(networks.ethereum['137'].connection.secondary).toEqual({
-      on: false,
-      current: 'custom',
-      status: 'loading',
-      connected: false,
-      type: '',
-      network: '',
-      custom: ''
-    })
-  })
-
-  it('adds a network with the correct default gas settings', () => {
-    addNetwork(polygonNetwork)
-
-    expect(networks.ethereum['137'].gas).toEqual({
-      price: {
-        selected: 'standard',
-        levels: { slow: '', standard: '', fast: '', asap: '', custom: '' }
-      }
-    })
-  })
-
-  it('adds a network with the correct default metadata', () => {
-    addNetwork(polygonNetwork)
-
-    expect(networksMeta.ethereum['137']).toEqual({
-      name: 'Polygon',
-      primaryColor: 'accent1',
-      icon: '',
-      nativeCurrency: {
+    expect({
+      network: getState().main.networks.ethereum['137'],
+      metadata: getState().main.networksMeta.ethereum['137']
+    } as unknown).toStrictEqual({
+      network: {
+        id: 137,
+        type: 'ethereum',
+        layer: 'sidechain',
+        isTestnet: false,
+        name: 'Polygon',
+        explorer: 'https://polygonscan.com',
         symbol: 'MATIC',
-        name: '',
-        icon: '',
-        decimals: 18,
-        usd: { price: 0, change24hr: 0 }
+        on: true,
+        connection: {
+          presets: { local: 'direct' },
+          primary: {
+            on: true,
+            current: 'custom',
+            status: 'loading',
+            connected: false,
+            type: '',
+            network: '',
+            custom: 'https://polygon-rpc.com'
+          },
+          secondary: {
+            on: false,
+            current: 'custom',
+            status: 'loading',
+            connected: false,
+            type: '',
+            network: '',
+            custom: 'https://rpc-mainnet.matic.network'
+          }
+        },
+        gas: {
+          price: {
+            selected: 'standard',
+            levels: { slow: '', standard: '', fast: '', asap: '', custom: '' }
+          }
+        }
       },
-      gas: {
-        price: {
-          selected: 'standard',
-          levels: { slow: '', standard: '', fast: '', asap: '', custom: '' }
+      metadata: {
+        name: 'Polygon',
+        primaryColor: 'accent1',
+        icon: '',
+        nativeCurrency: {
+          symbol: 'MATIC',
+          name: '',
+          icon: '',
+          decimals: 18,
+          usd: { price: 0, change24hr: 0 }
+        },
+        gas: {
+          price: {
+            selected: 'standard',
+            levels: { slow: '', standard: '', fast: '', asap: '', custom: '' }
+          }
         }
       }
     })
   })
 
-  it('does not add the network if id is not a parseable number', () => {
-    addNetwork({ ...polygonNetwork, id: 'test' })
+  it('rejects every invalid network input class without a partial write', () => {
+    const invalidNetworks = [
+      { ...polygonNetwork, id: 'test' },
+      { ...polygonNetwork, name: undefined },
+      { ...polygonNetwork, explorer: undefined },
+      { ...polygonNetwork, symbol: undefined },
+      { ...polygonNetwork, type: 2 },
+      { ...polygonNetwork, type: 'solana' },
+      { ...polygonNetwork, primaryRpc: 'file:///wallet' },
+      { ...polygonNetwork, secondaryRpc: 'https://user:secret@rpc.test' }
+    ]
 
-    expect(Object.keys(networks.ethereum)).toHaveLength(0)
-    expect(Object.keys(networksMeta.ethereum)).toHaveLength(0)
+    for (const invalidNetwork of invalidNetworks) {
+      const { actions, getState } = createActionHarness({})
+      actions.addNetwork(invalidNetwork)
+
+      expect({
+        networks: getState().main.networks,
+        metadata: getState().main.networksMeta
+      }).toStrictEqual({
+        networks: { ethereum: {} },
+        metadata: { ethereum: {} }
+      })
+    }
   })
 
-  it('does not add the network if name is not defined', () => {
-    addNetwork({ ...polygonNetwork, name: undefined })
+  it('preserves the existing network and metadata when the id already exists', () => {
+    const existingMetadata = { name: 'Polygon metadata' }
+    const { actions, getState } = createActionHarness({
+      main: {
+        networks: { ethereum: { '137': polygonNetwork } },
+        networksMeta: { ethereum: { '137': existingMetadata } }
+      }
+    })
 
-    expect(Object.keys(networks.ethereum)).toHaveLength(0)
-    expect(Object.keys(networksMeta.ethereum)).toHaveLength(0)
-  })
-
-  it('does not add the network if explorer is not defined', () => {
-    addNetwork({ ...polygonNetwork, explorer: undefined })
-
-    expect(Object.keys(networks.ethereum)).toHaveLength(0)
-    expect(Object.keys(networksMeta.ethereum)).toHaveLength(0)
-  })
-
-  it('does not add the network if symbol is not defined', () => {
-    addNetwork({ ...polygonNetwork, symbol: undefined })
-
-    expect(Object.keys(networks.ethereum)).toHaveLength(0)
-    expect(Object.keys(networksMeta.ethereum)).toHaveLength(0)
-  })
-
-  it('does not add the network if type is not a string', () => {
-    addNetwork({ ...polygonNetwork, type: 2 })
-
-    expect(Object.keys(networks.ethereum)).toHaveLength(0)
-    expect(Object.keys(networksMeta.ethereum)).toHaveLength(0)
-  })
-
-  it('does not add the network if type is not "ethereum"', () => {
-    addNetwork({ ...polygonNetwork, type: 'solana' })
-
-    expect(Object.keys(networks.ethereum)).toHaveLength(0)
-    expect(Object.keys(networksMeta.ethereum)).toHaveLength(0)
-  })
-
-  it('does not add the network if the networks already exists', () => {
-    networks.ethereum['137'] = { ...polygonNetwork }
-
-    addNetwork({
+    actions.addNetwork({
       id: 137,
       type: 'ethereum',
       name: 'Matic v1',
@@ -301,54 +178,46 @@ describe('#addNetwork', () => {
       symbol: 'MATIC'
     })
 
-    expect(networks.ethereum['137'].name).toBe('Polygon')
-    expect(networks.ethereum['137'].explorer).toBe('https://polygonscan.com')
+    expect({
+      network: getState().main.networks.ethereum['137'],
+      metadata: getState().main.networksMeta.ethereum['137']
+    } as unknown).toStrictEqual({ network: polygonNetwork, metadata: existingMetadata })
   })
 })
 
 describe('#setBalances', () => {
-  let actions: CanonicalActions
-  let balances: any
-  const setBalances = (updatedBalances: any) => actions.setBalances(owner, updatedBalances)
-
-  beforeEach(() => {
-    balances = [
-      {
-        ...testTokens.badger,
-        balance: addHexPrefix(BigInt(305).toString(16))
+  it('merges new balances and replaces existing positive and zero amounts', () => {
+    const { actions, getState } = createActionHarness({
+      main: {
+        balances: {
+          [owner]: [
+            {
+              ...testTokens.badger,
+              balance: addHexPrefix(BigInt(305).toString(16))
+            }
+          ]
+        }
       }
-    ]
-    actions = createActionHarness({ main: { balances: { [owner]: balances } } }, (state) => {
-      balances = state.main.balances[owner]
-    }).actions
-  })
+    })
 
-  it('adds a new balance', () => {
-    setBalances([
+    actions.setBalances(owner, [
       {
         ...testTokens.zrx,
         balance: addHexPrefix(BigInt(79832332).toString(16))
+      },
+      {
+        ...testTokens.badger,
+        balance: addHexPrefix(BigInt(419).toString(16))
       }
     ])
 
-    expect(balances).toEqual([
-      {
-        address: testTokens.badger.address,
-        chainId: testTokens.badger.chainId,
-        balance: addHexPrefix(BigInt(305).toString(16)),
-        displayBalance: ''
-      },
+    expect(getState().main.balances[owner]).toStrictEqual([
       {
         address: testTokens.zrx.address,
         chainId: testTokens.zrx.chainId,
         balance: addHexPrefix(BigInt(79832332).toString(16)),
         displayBalance: ''
-      }
-    ])
-  })
-
-  it('updates an existing balance to a positive amount', () => {
-    setBalances([
+      },
       {
         address: testTokens.badger.address,
         chainId: testTokens.badger.chainId,
@@ -357,18 +226,7 @@ describe('#setBalances', () => {
       }
     ])
 
-    expect(balances).toEqual([
-      {
-        address: testTokens.badger.address,
-        chainId: testTokens.badger.chainId,
-        balance: addHexPrefix(BigInt(419).toString(16)),
-        displayBalance: ''
-      }
-    ])
-  })
-
-  it('updates an existing balance to zero', () => {
-    setBalances([
+    actions.setBalances(owner, [
       {
         address: testTokens.badger.address,
         chainId: testTokens.badger.chainId,
@@ -377,7 +235,13 @@ describe('#setBalances', () => {
       }
     ])
 
-    expect(balances).toEqual([
+    expect(getState().main.balances[owner]).toStrictEqual([
+      {
+        address: testTokens.zrx.address,
+        chainId: testTokens.zrx.chainId,
+        balance: addHexPrefix(BigInt(79832332).toString(16)),
+        displayBalance: ''
+      },
       {
         address: testTokens.badger.address,
         chainId: testTokens.badger.chainId,
@@ -783,55 +647,57 @@ describe('#removeNetwork', () => {
   const removeNetwork = (networkId: any, networkType = 'ethereum') =>
     actions.removeNetwork({ id: networkId, type: networkType })
 
-  it('should delete the network and meta', () => {
+  it('deletes the network projections and redirects every affected origin to mainnet', () => {
     removeNetwork(4)
 
-    expect(main.networks.ethereum).toStrictEqual({ 1: {}, 137: {} })
-    expect(main.networksMeta.ethereum).toStrictEqual({ 1: {}, 137: {} })
-  })
-
-  it('should switch the chain for origins using the deleted network to mainnet', () => {
-    removeNetwork(4)
-
-    expect(main.origins).toStrictEqual({
-      '91f6971d-ba85-52d7-a27e-6af206eb2433': {
-        chain: { id: 1, type: 'ethereum' }
-      },
-      '8073729a-5e59-53b7-9e69-5d9bcff94087': {
-        chain: { id: 1, type: 'ethereum' }
-      },
-      'd7acc008-6411-5486-bb2d-0c0cfcddbb92': {
-        chain: { id: 50, type: 'cosmos' }
-      },
-      '695112ec-43e2-52a8-8f69-5c36837d6d13': {
-        chain: { id: 1, type: 'ethereum' }
-      }
-    })
-  })
-
-  describe('when passed the last network of a given type', () => {
-    it('should not delete the last network of a given type', () => {
-      removeNetwork(50, 'cosmos')
-
-      expect(main.networks.cosmos[50]).toStrictEqual({})
-      expect(main.networksMeta.cosmos[50]).toStrictEqual({})
-    })
-
-    it('should not update its origins', () => {
-      removeNetwork(50, 'cosmos')
-
-      expect(main.origins).toStrictEqual({
+    expect({
+      networks: main.networks.ethereum,
+      metadata: main.networksMeta.ethereum,
+      origins: main.origins
+    }).toStrictEqual({
+      networks: { 1: {}, 137: {} },
+      metadata: { 1: {}, 137: {} },
+      origins: {
         '91f6971d-ba85-52d7-a27e-6af206eb2433': {
           chain: { id: 1, type: 'ethereum' }
         },
         '8073729a-5e59-53b7-9e69-5d9bcff94087': {
-          chain: { id: 4, type: 'ethereum' }
+          chain: { id: 1, type: 'ethereum' }
         },
         'd7acc008-6411-5486-bb2d-0c0cfcddbb92': {
           chain: { id: 50, type: 'cosmos' }
         },
         '695112ec-43e2-52a8-8f69-5c36837d6d13': {
-          chain: { id: 4, type: 'ethereum' }
+          chain: { id: 1, type: 'ethereum' }
+        }
+      }
+    })
+  })
+
+  describe('when passed the last network of a given type', () => {
+    it('preserves the network projections and all origin assignments', () => {
+      removeNetwork(50, 'cosmos')
+
+      expect({
+        network: main.networks.cosmos[50],
+        metadata: main.networksMeta.cosmos[50],
+        origins: main.origins
+      }).toStrictEqual({
+        network: {},
+        metadata: {},
+        origins: {
+          '91f6971d-ba85-52d7-a27e-6af206eb2433': {
+            chain: { id: 1, type: 'ethereum' }
+          },
+          '8073729a-5e59-53b7-9e69-5d9bcff94087': {
+            chain: { id: 4, type: 'ethereum' }
+          },
+          'd7acc008-6411-5486-bb2d-0c0cfcddbb92': {
+            chain: { id: 50, type: 'cosmos' }
+          },
+          '695112ec-43e2-52a8-8f69-5c36837d6d13': {
+            chain: { id: 4, type: 'ethereum' }
+          }
         }
       })
     })
@@ -965,62 +831,67 @@ describe('#upsertAccount', () => {
 
   const setAccount = (id: any, updatedAccount: any) => actions.upsertAccount({ ...updatedAccount, id })
 
-  it('should update the account', () => {
-    setAccount('1', { name: 'cool account', lastSignerType: 'seed', status: 'ok' })
-
-    expect(main.accounts).toStrictEqual({
-      1: { id: '1', name: 'cool account', lastSignerType: 'seed', status: 'ok', balances: {} }
-    })
-  })
-
-  it('should not update account balances', () => {
+  it('updates account-owned fields and metadata without accepting a balance overwrite', () => {
     setAccount('1', { name: 'cool account', lastSignerType: 'seed', status: 'ok', balances: 'ignored' })
 
-    expect(main.accounts).toStrictEqual({
-      1: { id: '1', name: 'cool account', lastSignerType: 'seed', status: 'ok', balances: {} }
+    expect({ accounts: main.accounts, metadata: main.accountsMeta }).toStrictEqual({
+      accounts: {
+        1: { id: '1', name: 'cool account', lastSignerType: 'seed', status: 'ok', balances: {} }
+      },
+      metadata: {
+        'e42ee170-4601-5428-bac5-d8d92fe049e8': {
+          name: 'cool account',
+          lastUpdated: 1668682918135
+        }
+      }
     })
   })
 
-  it('should create a new account', () => {
-    setAccount('2', { name: 'new cool account', lastSignerType: 'seed', status: 'ok' })
-
-    expect(main.accounts).toStrictEqual({
-      1: { id: '1', name: 'cool account', lastSignerType: 'ledger', balances: {} },
-      2: { id: '2', name: 'new cool account', lastSignerType: 'seed', status: 'ok', balances: {} }
-    })
-  })
-
-  it('should update existing accountMeta with the expected data', () => {
-    setAccount('1', { name: 'not so cool account', lastSignerType: 'seed', status: 'ok' })
-
-    expect(main.accountsMeta).toStrictEqual({
-      'e42ee170-4601-5428-bac5-d8d92fe049e8': { name: 'not so cool account', lastUpdated: 1668682918135 }
-    })
-  })
-
-  it('should create new accountMeta with the expected data', () => {
+  it('creates a new account and its user-defined metadata together', () => {
     setAccount('2', { name: 'not so cool account', lastSignerType: 'seed', status: 'ok' })
 
-    expect(main.accountsMeta).toStrictEqual({
-      'e42ee170-4601-5428-bac5-d8d92fe049e8': { name: 'cool account', lastUpdated: 1568682918135 },
-      '0d6c930e-3495-56cc-993f-8da3a6150003': { name: 'not so cool account', lastUpdated: 1668682918135 }
+    expect({ accounts: main.accounts, metadata: main.accountsMeta }).toStrictEqual({
+      accounts: {
+        1: { id: '1', name: 'cool account', lastSignerType: 'ledger', balances: {} },
+        2: {
+          id: '2',
+          name: 'not so cool account',
+          lastSignerType: 'seed',
+          status: 'ok',
+          balances: {}
+        }
+      },
+      metadata: {
+        'e42ee170-4601-5428-bac5-d8d92fe049e8': {
+          name: 'cool account',
+          lastUpdated: 1568682918135
+        },
+        '0d6c930e-3495-56cc-993f-8da3a6150003': {
+          name: 'not so cool account',
+          lastUpdated: 1668682918135
+        }
+      }
     })
   })
 
-  it(`should not create a new value for a default label`, () => {
-    setAccount('2', { name: 'hot account', lastSignerType: 'seed', status: 'ok' })
+  it('does not persist generated default labels for new or existing accounts', () => {
+    for (const id of ['1', '2']) {
+      const { actions, getState } = createActionHarness({
+        main: {
+          accounts: main.accounts,
+          accountsMeta: main.accountsMeta
+        }
+      })
 
-    expect(main.accountsMeta).toStrictEqual({
-      'e42ee170-4601-5428-bac5-d8d92fe049e8': { name: 'cool account', lastUpdated: 1568682918135 }
-    })
-  })
+      actions.upsertAccount({ id, name: 'hot account', lastSignerType: 'seed', status: 'ok' })
 
-  it(`should not update an existing value with a default label`, () => {
-    setAccount('1', { name: 'hot account', lastSignerType: 'seed', status: 'ok' })
-
-    expect(main.accountsMeta).toStrictEqual({
-      'e42ee170-4601-5428-bac5-d8d92fe049e8': { name: 'cool account', lastUpdated: 1568682918135 }
-    })
+      expect(getState().main.accountsMeta).toStrictEqual({
+        'e42ee170-4601-5428-bac5-d8d92fe049e8': {
+          name: 'cool account',
+          lastUpdated: 1568682918135
+        }
+      })
+    }
   })
 })
 
@@ -1101,37 +972,22 @@ describe('#setPortfolioBalances', () => {
 })
 
 describe('#setAutoDiscoverTokens', () => {
-  let autoDiscoverTokens: boolean
+  it('persists valid enable/disable transitions and rejects enabling without an API key', () => {
+    const cases = [
+      { initial: true, requested: false, apiKey: 'zk_test', expected: false },
+      { initial: false, requested: true, apiKey: 'zk_test', expected: true },
+      { initial: false, requested: true, apiKey: '', expected: false }
+    ]
 
-  const setAutoDiscoverTokens = (value: boolean, portfolioApiKey = 'zk_test') => {
-    const { actions } = createActionHarness({ main: { autoDiscoverTokens, portfolioApiKey } }, (state) => {
-      autoDiscoverTokens = state.main.autoDiscoverTokens
-    })
-    actions.setAutoDiscoverTokens(value)
-  }
+    for (const { initial, requested, apiKey, expected } of cases) {
+      const { actions, getState } = createActionHarness({
+        main: { autoDiscoverTokens: initial, portfolioApiKey: apiKey }
+      })
 
-  it('sets the persisted auto-discovery preference', () => {
-    autoDiscoverTokens = true
+      actions.setAutoDiscoverTokens(requested)
 
-    setAutoDiscoverTokens(false)
-
-    expect(autoDiscoverTokens).toBe(false)
-  })
-
-  it('enables auto-discovery when a portfolio API key is set', () => {
-    autoDiscoverTokens = false
-
-    setAutoDiscoverTokens(true)
-
-    expect(autoDiscoverTokens).toBe(true)
-  })
-
-  it('does not enable auto-discovery without a portfolio API key', () => {
-    autoDiscoverTokens = false
-
-    setAutoDiscoverTokens(true, '')
-
-    expect(autoDiscoverTokens).toBe(false)
+      expect(getState().main.autoDiscoverTokens).toBe(expected)
+    }
   })
 })
 
@@ -1162,28 +1018,23 @@ describe('#setPortfolioApiKey', () => {
 })
 
 describe('#removeAccountTokens', () => {
-  let actions: CanonicalActions
-  let catalog: any
-  const removeAccountTokens = (setToRemove: any) => actions.removeAccountTokens(owner, setToRemove)
-
-  beforeEach(() => {
+  it('removes exactly the requested account-token associations', () => {
     const records = Object.values(testTokens).map((token) => tokenRecord(token))
-    catalog = tokenCatalog(records, { [owner]: records.map(toTokenId) })
-    actions = createActionHarness({ main: { tokens: catalog } }, (state) => {
-      catalog = state.main.tokens
-    }).actions
-  })
+    const cases = [
+      { removed: records.map(toTokenId), remaining: [] },
+      { removed: [toTokenId(testTokens.badger)], remaining: [testTokens.zrx] }
+    ]
 
-  it('should remove all tokens from the removal set from an accounts known tokens', () => {
-    const removalSet = new Set(Object.values(testTokens).map(toTokenId))
-    removeAccountTokens(removalSet)
-    expect(tokensForAccount(catalog, owner).length).toBe(0)
-  })
+    for (const { removed, remaining } of cases) {
+      const catalog = tokenCatalog(records, { [owner]: records.map(toTokenId) })
+      const { actions, getState } = createActionHarness({ main: { tokens: catalog } })
 
-  it('should only remove tokens from the removal set from an accounts known tokens', () => {
-    const removalSet = new Set([toTokenId(testTokens.badger)])
-    removeAccountTokens(removalSet)
-    expect(tokensForAccount(catalog, owner).length).toBe(1)
+      actions.removeAccountTokens(owner, new Set(removed))
+
+      expect(tokensForAccount(getState().main.tokens, owner)).toStrictEqual(
+        remaining.map((token) => expect.objectContaining(token))
+      )
+    }
   })
 })
 
@@ -1459,6 +1310,40 @@ describe('#status notification actions', () => {
 })
 
 describe('#canonical action boundaries', () => {
+  it('allocates home-command identities independently for each fresh store', () => {
+    const first = createActionHarness({})
+    const second = createActionHarness({})
+
+    first.actions.navHome({ view: 'tokens', data: { account: 'first' } })
+    first.actions.navHome({ view: 'chains' })
+    second.actions.navHome({ view: 'tokens', data: { account: 'second' } })
+
+    expect({
+      first: first.getState().tray.homeCommand,
+      second: second.getState().tray.homeCommand
+    } as unknown).toStrictEqual({
+      first: { id: 2, view: 'networks', data: {} },
+      second: { id: 1, view: 'tokens', data: { account: 'second' } }
+    })
+  })
+
+  it('clears initial tray state independently for each fresh store', async () => {
+    const first = createActionHarness({})
+    const second = createActionHarness({})
+
+    first.actions.trayOpen(true)
+    second.actions.trayOpen(true)
+    await new Promise((resolve) => setTimeout(resolve, 40))
+
+    expect([
+      { initial: first.getState().tray.initial, open: first.getState().tray.open },
+      { initial: second.getState().tray.initial, open: second.getState().tray.open }
+    ]).toStrictEqual([
+      { initial: false, open: true },
+      { initial: false, open: true }
+    ])
+  })
+
   it('owns account and request mutations as atomic Immer actions', () => {
     const accountId = '0xaccount'
     let publishedStates = 0

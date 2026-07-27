@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 
 import createInitialState, { CanonicalStateSchema } from './index'
-import { builtInChainIconUrl } from '../../../resources/domain/chain'
+import { builtInChainIconUrl } from '../../../domain/chain'
 
 describe('canonical state defaults', () => {
   it('creates state that satisfies the canonical runtime schema', () => {

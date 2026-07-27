@@ -5,13 +5,13 @@ import log from 'electron-log'
 import { Mnemonic, randomBytes } from 'ethers'
 
 import crypt from '../../crypt'
-import vault from '../../vault'
 
 import SeedSigner from './SeedSigner'
 import RingSigner from './RingSigner'
 import { stripHexPrefix } from '@ethereumjs/util'
 
 type Callback = (err: Error | null, result?: any) => void
+type VaultPort = { acquireKey(password?: string): string }
 
 const USER_DATA = app
   ? app.getPath('userData')
@@ -27,7 +27,7 @@ export const newPhrase = (cb: Callback) => {
 // All new hot signers are encrypted with the vault key. The password argument
 // is the Newframe master password; it creates the vault on first use, unlocks it
 // if it's locked and is ignored when the vault is already unlocked
-const acquireVaultKey = (password: string, cb: Callback): string | undefined => {
+const acquireVaultKey = (vault: VaultPort, password: string, cb: Callback): string | undefined => {
   try {
     return vault.acquireKey(password)
   } catch (e) {
@@ -35,9 +35,15 @@ const acquireVaultKey = (password: string, cb: Callback): string | undefined => 
   }
 }
 
-export const createFromSeed = (signers: any, seed: string, password: string, cb: Callback) => {
+export const createFromSeed = (
+  vault: VaultPort,
+  signers: any,
+  seed: string,
+  password: string,
+  cb: Callback
+) => {
   if (!seed) return cb(new Error('Seed required to create hot signer'))
-  const vaultKey = acquireVaultKey(password, cb)
+  const vaultKey = acquireVaultKey(vault, password, cb)
   if (!vaultKey) return
   const signer = new SeedSigner()
   signer.addSeed(seed, vaultKey, (err: Error | null, result?: any) => {
@@ -50,9 +56,15 @@ export const createFromSeed = (signers: any, seed: string, password: string, cb:
   })
 }
 
-export const createFromPhrase = (signers: any, phrase: string, password: string, cb: Callback) => {
+export const createFromPhrase = (
+  vault: VaultPort,
+  signers: any,
+  phrase: string,
+  password: string,
+  cb: Callback
+) => {
   if (!phrase) return cb(new Error('Phrase required to create hot signer'))
-  const vaultKey = acquireVaultKey(password, cb)
+  const vaultKey = acquireVaultKey(vault, password, cb)
   if (!vaultKey) return
   const signer = new SeedSigner()
   signer.addPhrase(phrase, vaultKey, (err) => {
@@ -65,11 +77,17 @@ export const createFromPhrase = (signers: any, phrase: string, password: string,
   })
 }
 
-export const createFromPrivateKey = (signers: any, privateKey: string, password: string, cb: Callback) => {
+export const createFromPrivateKey = (
+  vault: VaultPort,
+  signers: any,
+  privateKey: string,
+  password: string,
+  cb: Callback
+) => {
   const privateKeyHex = stripHexPrefix(privateKey)
 
   if (!privateKeyHex) return cb(new Error('Private key required to create hot signer'))
-  const vaultKey = acquireVaultKey(password, cb)
+  const vaultKey = acquireVaultKey(vault, password, cb)
   if (!vaultKey) return
   const signer = new RingSigner()
 
@@ -84,6 +102,7 @@ export const createFromPrivateKey = (signers: any, privateKey: string, password:
 }
 
 export const createFromKeystore = (
+  vault: VaultPort,
   signers: any,
   keystore: any,
   keystorePassword: string,
@@ -92,7 +111,7 @@ export const createFromKeystore = (
 ) => {
   if (!keystore) return cb(new Error('Keystore required'))
   if (!keystorePassword) return cb(new Error('Keystore password required'))
-  const vaultKey = acquireVaultKey(password, cb)
+  const vaultKey = acquireVaultKey(vault, password, cb)
   if (!vaultKey) return
   const signer = new RingSigner()
   signer.addKeystore(keystore, keystorePassword, vaultKey, (err) => {
@@ -107,8 +126,12 @@ export const createFromKeystore = (
 
 export const scan = (signers: any) => {
   const storedSigners: Record<string, any> = {}
+  let cancelled = false
+  let initialScanTimer: ReturnType<typeof setTimeout> | undefined
 
-  const scan = async () => {
+  const scanStoredSigners = async () => {
+    if (cancelled) return
+
     // Ensure signer directory exists
     fs.mkdirSync(SIGNERS_PATH, { recursive: true })
 
@@ -125,6 +148,8 @@ export const scan = (signers: any) => {
     // Add stored signers
     for (const id of Object.keys(storedSigners)) {
       await wait(100)
+      if (cancelled) return
+
       const { addresses, encryptedKeys, encryptedSeed, type, network } = storedSigners[id]
       if (addresses && addresses.length) {
         const id = crypt.stringToKey(addresses.join()).toString('hex')
@@ -139,10 +164,22 @@ export const scan = (signers: any) => {
     }
   }
 
-  // Delay creating child process until after initial load
-  setTimeout(scan, 4000)
+  const run = () => {
+    if (!cancelled) void scanStoredSigners()
+  }
+  run.cancel = () => {
+    cancelled = true
+    if (initialScanTimer) clearTimeout(initialScanTimer)
+    initialScanTimer = undefined
+  }
 
-  return scan
+  // Delay creating child process until after initial load
+  initialScanTimer = setTimeout(() => {
+    initialScanTimer = undefined
+    run()
+  }, 4000)
+
+  return run
 }
 
 export default { newPhrase, createFromSeed, createFromPhrase, createFromPrivateKey, createFromKeystore, scan }

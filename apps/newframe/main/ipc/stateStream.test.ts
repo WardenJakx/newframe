@@ -1,22 +1,32 @@
-import { beforeAll, beforeEach, describe, expect, it, mock } from 'bun:test'
+import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test'
 
 import createInitialState from '../store/state'
-import { StateMessageChannel } from '../../resources/state/protocol'
-import { storeMock } from '../../test/support/bun.mocks.ts'
+import createCanonicalStore from '../store/createCanonicalStore'
+import { StateMessageChannel } from '../../contracts/state/protocol'
+import { projectRendererState } from '../state/projections'
+import { createStateStream, type StateStream } from './stateStream'
 
 const authorizeRenderer = mock()
 
-mock.module('./authorization', () => ({ authorizeRenderer }))
-
-let connectState: typeof import('./stateStream').connectState
-let registerStateStreamHandlers: typeof import('./stateStream').registerStateStreamHandlers
-let resetStateStreamsForTests: typeof import('./stateStream').resetStateStreamsForTests
+let stateStream: StateStream
+let connectState: StateStream['connectState']
+let store: ReturnType<typeof createCanonicalStore>['store']
+const ipc = {
+  handle: mock(),
+  removeHandler: mock()
+}
 
 const actions = () =>
-  Object.fromEntries(Object.entries(storeMock.getState()).filter(([, value]) => typeof value === 'function'))
+  Object.fromEntries(Object.entries(store.getState()).filter(([, value]) => typeof value === 'function'))
 
-function resetCanonicalState() {
-  storeMock.setState({ ...createInitialState(), ...actions() }, true)
+function createTestStore() {
+  const storage: Parameters<typeof createCanonicalStore>[0] = {
+    getItem: () => null,
+    setItem: () => {},
+    removeItem: () => {}
+  }
+
+  return createCanonicalStore(storage).store
 }
 
 function renderer(id = 1) {
@@ -30,30 +40,35 @@ function renderer(id = 1) {
   return { event: { sender } as unknown as Electron.IpcMainInvokeEvent, sender }
 }
 
-beforeAll(async () => {
-  const stateStream = await import('./stateStream')
-  connectState = stateStream.connectState
-  registerStateStreamHandlers = stateStream.registerStateStreamHandlers
-  resetStateStreamsForTests = stateStream.resetStateStreamsForTests
-  registerStateStreamHandlers()
-})
-
 beforeEach(() => {
   authorizeRenderer.mockReset()
-  resetStateStreamsForTests()
-  resetCanonicalState()
+  ipc.handle.mockReset()
+  ipc.removeHandler.mockReset()
+  store = createTestStore()
+  stateStream = createStateStream({
+    store,
+    authorizeRenderer,
+    projectRendererState
+  })
+  stateStream.registerHandlers(ipc)
+  connectState = stateStream.connectState
+})
+
+afterEach(() => {
+  stateStream.dispose()
 })
 
 describe('renderer state stream', () => {
   it('sends a strict flat wallet snapshot and excludes Electron-only and nested UI fields', () => {
     const { event, sender } = renderer()
-    storeMock.getState().updateLattice('device', { privKey: 'secret' })
-    const state = storeMock.getState()
+    store.getState().updateLattice('device', { privKey: 'secret' })
+    const state = store.getState()
     const accountId = '0x1111111111111111111111111111111111111111'
-    storeMock.setState({
+    store.setState({
       main: {
         ...state.main,
         futureCredential: 'must-not-cross-ipc',
+        portfolioApiKey: 'secret-api-key',
         accounts: {
           ...state.main.accounts,
           [accountId]: {
@@ -63,7 +78,21 @@ describe('renderer state stream', () => {
             lastSignerType: 'address',
             status: 'ok',
             signer: '',
-            requests: {},
+            requests: {
+              request: {
+                type: 'sign',
+                handlerId: 'request',
+                authorization: {
+                  decision: 'autonomous',
+                  principal: {
+                    type: 'agent',
+                    origin: 'https://sensitive.example',
+                    sessionId: 'secret-session'
+                  }
+                },
+                futureCredential: 'must-not-cross-ipc'
+              }
+            },
             created: 'test:1',
             futureCredential: 'must-not-cross-ipc'
           }
@@ -90,15 +119,45 @@ describe('renderer state stream', () => {
           futureWindowField: 'must-not-cross-ipc',
           nav: [
             {
-              view: 'home',
-              data: { accountId: 'one', futureNavigationField: 'must-not-cross-ipc' }
+              view: 'requestView',
+              data: {
+                accountId,
+                requestId: 'request',
+                request: {
+                  origin: 'https://sensitive.example',
+                  authorization: { principal: { sessionId: 'secret-session' } }
+                },
+                futureNavigationField: 'must-not-cross-ipc'
+              }
             }
           ]
         }
       },
+      tray: {
+        ...state.tray,
+        homeCommand: {
+          id: 1,
+          view: 'addChain',
+          data: {
+            chain: {
+              id: 1,
+              name: 'Ethereum',
+              symbol: 'ETH',
+              primaryRpc: 'https://rpc.example',
+              futureChainField: 'must-not-cross-ipc'
+            },
+            requestId: 'request',
+            request: {
+              origin: 'https://sensitive.example',
+              authorization: { principal: { sessionId: 'secret-session' } }
+            },
+            futureNavigationField: 'must-not-cross-ipc'
+          }
+        }
+      },
       selected: { ...state.selected, futureSelection: 'must-not-cross-ipc' },
       view: { ...state.view, futureViewState: 'must-not-cross-ipc' }
-    })
+    } as unknown as Parameters<typeof store.setState>[0])
     authorizeRenderer.mockReturnValue({ clientType: 'wallet-ui', webContentsId: sender.id })
 
     expect(connectState(event)).toEqual({ ok: true })
@@ -111,12 +170,34 @@ describe('renderer state stream', () => {
     expect(snapshot.state).not.toHaveProperty('main')
     expect(snapshot.state).not.toHaveProperty('lattice')
     expect(snapshot.state).not.toHaveProperty('futureCredential')
+    expect(snapshot.state).not.toHaveProperty('portfolioApiKey')
+    expect(snapshot.state.portfolioApiKeyConfigured).toBe(true)
     expect(snapshot.state.accounts[accountId]).not.toHaveProperty('futureCredential')
+    expect(snapshot.state.accounts[accountId].requests.request).not.toHaveProperty('futureCredential')
+    expect(snapshot.state.accounts[accountId].requests.request).not.toHaveProperty('authorization')
     expect(snapshot.state.signers.signer).not.toHaveProperty('futureCredential')
     expect(snapshot.state.windows).not.toHaveProperty('frames')
     expect(snapshot.state.windows).not.toHaveProperty('futureWindowState')
     expect(snapshot.state.windows.panel).not.toHaveProperty('futureWindowField')
-    expect(snapshot.state.windows.panel.nav[0].data).not.toHaveProperty('futureNavigationField')
+    expect(snapshot.state.windows.panel.nav).toEqual([
+      {
+        view: 'requestView',
+        data: { accountId, requestId: 'request' }
+      }
+    ])
+    expect(snapshot.state.tray.homeCommand).toEqual({
+      id: 1,
+      view: 'addChain',
+      data: {
+        chain: {
+          id: 1,
+          name: 'Ethereum',
+          symbol: 'ETH',
+          primaryRpc: 'https://rpc.example'
+        },
+        requestId: 'request'
+      }
+    })
     expect(Object.keys(snapshot.state.selected).sort()).toEqual(['minimized', 'open'])
     expect(Object.keys(snapshot.state.view).sort()).toEqual([
       'badge',
@@ -132,7 +213,7 @@ describe('renderer state stream', () => {
     authorizeRenderer.mockReturnValue({ clientType: 'wallet-ui', webContentsId: sender.id })
     expect(connectState(event)).toEqual({ ok: true })
 
-    storeMock.getState().setRates({ token: { usd: { price: 1, change24hr: 0 } } })
+    store.getState().setRates({ token: { usd: { price: 1, change24hr: 0 } } })
 
     expect(sender.send).toHaveBeenCalledTimes(2)
     const update = sender.send.mock.calls[1][1]
@@ -148,9 +229,9 @@ describe('renderer state stream', () => {
     authorizeRenderer.mockReturnValue({ clientType: 'wallet-ui', webContentsId: sender.id })
     expect(connectState(event)).toEqual({ ok: true })
 
-    storeMock.getState().updateLattice('device', { privKey: 'another-secret' })
-    const state = storeMock.getState()
-    storeMock.setState({
+    store.getState().updateLattice('device', { privKey: 'another-secret' })
+    const state = store.getState()
+    store.setState({
       main: { ...state.main, futureCredential: 'still-must-not-cross-ipc' }
     })
 
@@ -162,8 +243,8 @@ describe('renderer state stream', () => {
     authorizeRenderer.mockReturnValue({ clientType: 'wallet-ui', webContentsId: sender.id })
     expect(connectState(event)).toEqual({ ok: true })
 
-    const state = storeMock.getState()
-    storeMock.setState({ main: { ...state.main, launch: 'invalid' as unknown as boolean } })
+    const state = store.getState()
+    store.setState({ main: { ...state.main, launch: 'invalid' as unknown as boolean } })
 
     expect(sender.send).toHaveBeenCalledTimes(2)
     expect(sender.send.mock.calls[1][1]).toMatchObject({
@@ -171,7 +252,7 @@ describe('renderer state stream', () => {
       type: 'stream-invalidated'
     })
 
-    storeMock.getState().setRates({ token: { usd: { price: 2, change24hr: 0 } } })
+    store.getState().setRates({ token: { usd: { price: 2, change24hr: 0 } } })
     expect(sender.send).toHaveBeenCalledTimes(2)
   })
 
@@ -229,7 +310,7 @@ describe('renderer state stream', () => {
     state.main.tokens.accountTokenIds = {
       '0x2222222222222222222222222222222222222222': [`1:${hiddenToken.address}`]
     }
-    storeMock.setState({ ...state, ...actions() }, true)
+    store.setState({ ...state, ...actions() } as unknown as Parameters<typeof store.setState>[0], true)
 
     const { event, sender } = renderer(2)
     authorizeRenderer.mockReturnValue({ clientType: 'sidetray', webContentsId: sender.id })
@@ -266,10 +347,10 @@ describe('renderer state stream', () => {
     expect(snapshot.state.networksMeta.ethereum[1].image).toEqual(chainImage)
     expect(snapshot.state.networksMeta.ethereum[1]).not.toHaveProperty('icon')
 
-    storeMock.getState().updateLattice('device', { privKey: 'another-secret' })
+    store.getState().updateLattice('device', { privKey: 'another-secret' })
     expect(sender.send).toHaveBeenCalledTimes(1)
 
-    storeMock.getState().setRates({ token: { usd: { price: 1, change24hr: 0 } } })
+    store.getState().setRates({ token: { usd: { price: 1, change24hr: 0 } } })
     expect(sender.send).toHaveBeenCalledTimes(2)
     expect(sender.send.mock.calls[1][1]).toMatchObject({
       baseRevision: 0,
@@ -293,8 +374,20 @@ describe('renderer state stream', () => {
 
     const destroyed = sender.once.mock.calls[0][1] as () => void
     destroyed()
-    storeMock.getState().setRates({ token: { usd: { price: 2, change24hr: 0 } } })
+    store.getState().setRates({ token: { usd: { price: 2, change24hr: 0 } } })
 
     expect(sender.send).toHaveBeenCalledTimes(1)
+  })
+
+  it('disposes IPC handlers, store subscriptions, and active connections together', () => {
+    const { event, sender } = renderer(4)
+    authorizeRenderer.mockReturnValue({ clientType: 'wallet-ui', webContentsId: sender.id })
+    expect(connectState(event)).toEqual({ ok: true })
+
+    stateStream.dispose()
+    store.getState().setRates({ token: { usd: { price: 3, change24hr: 0 } } })
+
+    expect(sender.send).toHaveBeenCalledTimes(1)
+    expect(ipc.removeHandler).toHaveBeenCalledTimes(2)
   })
 })

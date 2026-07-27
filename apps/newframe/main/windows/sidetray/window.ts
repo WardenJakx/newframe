@@ -3,6 +3,7 @@ import path from 'path'
 
 import { createWindow } from '../window'
 import { constrainTraySize, sideTrayPosition } from '../trayGeometry'
+import type { RendererAuthorizationRegistry } from '../../ipc/authorization'
 
 const isDev = process.env.NODE_ENV === 'development'
 
@@ -49,7 +50,7 @@ const show = (sideTray: SideTray) => {
 export default {
   load,
   show,
-  create: (frame: Frame) => {
+  create: (frame: Frame, registerRenderer: RendererAuthorizationRegistry['registerRenderer']) => {
     const windowOptions: Electron.BrowserWindowConstructorOptions = {
       x: 0,
       y: 0,
@@ -62,7 +63,7 @@ export default {
       windowOptions.type = 'panel'
     }
 
-    const sideTray: SideTray = createWindow('sidetray', {
+    const sideTray: SideTray = createWindow('sidetray', registerRenderer, {
       ...windowOptions
     })
 

@@ -4,7 +4,7 @@ import BalancesScanner from './index'
 import store from '../../store'
 import log from 'electron-log'
 import { EventEmitter } from 'events'
-import { NATIVE_CURRENCY } from '../../../resources/constants'
+import { NATIVE_CURRENCY } from '../../../domain/token/constants'
 
 const controllerEvents = new EventEmitter()
 const balancesControllerMock = {

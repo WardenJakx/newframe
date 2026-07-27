@@ -23,36 +23,17 @@ describe('#getGasPrices', () => {
     }
   })
 
-  it('sets the slow gas price', async () => {
+  it('projects the node gas price into every urgency level', async () => {
     const monitor = new GasMonitor(testConnection)
 
     const gas = await monitor.getGasPrices()
 
-    expect(gas.slow).toBe(gasPrice)
-  })
-
-  it('sets the standard gas price', async () => {
-    const monitor = new GasMonitor(testConnection)
-
-    const gas = await monitor.getGasPrices()
-
-    expect(gas.standard).toBe(gasPrice)
-  })
-
-  it('sets the fast gas price', async () => {
-    const monitor = new GasMonitor(testConnection)
-
-    const gas = await monitor.getGasPrices()
-
-    expect(gas.fast).toBe(gasPrice)
-  })
-
-  it('sets the asap gas price', async () => {
-    const monitor = new GasMonitor(testConnection)
-
-    const gas = await monitor.getGasPrices()
-
-    expect(gas.asap).toBe(gasPrice)
+    expect(gas).toEqual({
+      slow: gasPrice,
+      standard: gasPrice,
+      fast: gasPrice,
+      asap: gasPrice
+    })
   })
 })
 
@@ -81,28 +62,15 @@ describe('#getFeeHistory', () => {
     }
   })
 
-  it('requests the correct percentiles with the eth_feeHistory RPC call', async () => {
+  it('requests the configured sample and returns the complete normalized fee history', async () => {
     const monitor = new GasMonitor(testConnection)
-    await monitor.getFeeHistory(10, [10, 20, 30])
-    expect(requestHandlers['eth_feeHistory']).toHaveBeenCalledWith([intToHex(10), 'pending', [10, 20, 30]])
-  })
+    const feeHistory = await monitor.getFeeHistory(1, [10, 20, 30])
 
-  it('return the correct number of fee history items', async () => {
-    const monitor = new GasMonitor(testConnection)
-    const feeHistory = await monitor.getFeeHistory(1, [10])
-    expect(feeHistory.length).toBe(2)
-  })
-
-  it('return the correct baseFee for the next block', async () => {
-    const monitor = new GasMonitor(testConnection)
-    const feeHistory = await monitor.getFeeHistory(1, [10])
-    expect(feeHistory[1].baseFee).toBe(182)
-  })
-
-  it('return the correct fee data for historical blocks', async () => {
-    const monitor = new GasMonitor(testConnection)
-    const feeHistory = await monitor.getFeeHistory(1, [10])
-    expect(feeHistory[0]).toStrictEqual({ baseFee: 8, gasUsedRatio: 0, rewards: [0] })
+    expect(requestHandlers['eth_feeHistory']).toHaveBeenCalledWith([intToHex(1), 'pending', [10, 20, 30]])
+    expect(feeHistory).toHaveLength(2)
+    expect(feeHistory[0]).toEqual({ baseFee: 8, gasUsedRatio: 0, rewards: [0] })
+    expect(feeHistory[1]).toMatchObject({ baseFee: 182, rewards: [] })
+    expect(feeHistory[1].gasUsedRatio).toBeUndefined()
   })
 })
 

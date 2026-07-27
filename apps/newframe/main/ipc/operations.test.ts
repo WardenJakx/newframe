@@ -1,4 +1,6 @@
-import { beforeAll, beforeEach, describe, expect, it, mock } from 'bun:test'
+import { beforeEach, describe, expect, it, mock } from 'bun:test'
+
+import { createOperationDispatcher, type OperationServices } from './operations'
 
 const authorizeRenderer = mock()
 const getAccount = mock()
@@ -12,6 +14,23 @@ const submitFlashForCurrentAccount = mock()
 const closeOwnSideTray = mock()
 const inspectOwnSideTray = mock()
 const requestTokenImage = mock()
+const resolveAgentAccessRequest = mock()
+const revokeAgentSessions = mock()
+const setAgentAccess = mock()
+const createRendererPrincipal = mock(
+  (context: {
+    clientType: 'wallet-ui' | 'sidetray'
+    entrypoint: 'tray' | 'sidetray'
+    webContentsId: number
+    windowInstanceId: string
+  }) => ({
+    kind: 'renderer' as const,
+    role: context.clientType,
+    entrypoint: context.entrypoint,
+    webContentsId: context.webContentsId,
+    windowInstanceId: context.windowInstanceId
+  })
+)
 const walletWorkflows = {
   acceptBetaWarning: mock(),
   adjustTransactionNonce: mock(),
@@ -79,26 +98,8 @@ const walletWorkflows = {
   writeClipboard: mock()
 }
 
-mock.module('./authorization', () => ({ authorizeRenderer }))
-mock.module('../accounts', () => ({
-  default: { current: getCurrentAccount, get: getAccount }
-}))
-mock.module('../operations/workflows', () => ({ resolveName, selectAccount }))
-mock.module('../operations/sideTrayTransactions', () => ({
-  submitCurrentAccountTransaction,
-  signCurrentAccountTypedData,
-  quoteFlashForCurrentAccount,
-  submitFlashForCurrentAccount
-}))
-mock.module('../operations/sideTrayWorkflows', () => ({
-  closeOwnSideTray,
-  inspectOwnSideTray
-}))
-mock.module('../images', () => ({ requestTokenImage }))
-mock.module('../operations/walletWorkflows', () => walletWorkflows)
-
-let dispatchCommand: typeof import('./operations').dispatchCommand
-let dispatchQuery: typeof import('./operations').dispatchQuery
+let dispatchCommand: ReturnType<typeof createOperationDispatcher>['dispatchCommand']
+let dispatchQuery: ReturnType<typeof createOperationDispatcher>['dispatchQuery']
 const event = {} as Electron.IpcMainInvokeEvent
 const trayContext = {
   clientType: 'wallet-ui' as const,
@@ -155,11 +156,26 @@ const flashOrder = {
   targetAsset: flashTargetAsset
 }
 
-beforeAll(async () => {
-  const operations = await import('./operations')
-  dispatchCommand = operations.dispatchCommand
-  dispatchQuery = operations.dispatchQuery
-})
+function createTestDispatcher() {
+  return createOperationDispatcher({
+    accounts: { current: getCurrentAccount, get: getAccount },
+    authorizeRenderer,
+    createRendererPrincipal,
+    requestTokenImage,
+    resolveAgentAccessRequest,
+    revokeAgentSessions,
+    setAgentAccess,
+    closeOwnSideTray,
+    inspectOwnSideTray,
+    quoteFlashForCurrentAccount,
+    signCurrentAccountTypedData,
+    submitCurrentAccountTransaction,
+    submitFlashForCurrentAccount,
+    resolveName,
+    selectAccount,
+    walletWorkflows
+  } as unknown as OperationServices)
+}
 
 beforeEach(() => {
   authorizeRenderer.mockReset()
@@ -175,7 +191,15 @@ beforeEach(() => {
   closeOwnSideTray.mockReset()
   inspectOwnSideTray.mockReset()
   requestTokenImage.mockReset()
+  resolveAgentAccessRequest.mockReset()
+  revokeAgentSessions.mockReset()
+  setAgentAccess.mockReset()
+  createRendererPrincipal.mockClear()
   Object.values(walletWorkflows).forEach((mock) => mock.mockReset())
+
+  const dispatcher = createTestDispatcher()
+  dispatchCommand = dispatcher.dispatchCommand
+  dispatchQuery = dispatcher.dispatchQuery
 })
 
 describe('typed operation dispatcher', () => {
@@ -390,6 +414,35 @@ describe('typed operation dispatcher', () => {
       message: 'Idempotency key was reused.'
     })
     expect(submitCurrentAccountTransaction).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps idempotency state isolated between fresh dispatcher instances', async () => {
+    authorizeRenderer.mockReturnValue(sideTrayContext)
+    submitCurrentAccountTransaction.mockResolvedValue({
+      ok: true,
+      transactionHash: `0x${'4'.repeat(64)}`
+    })
+    const command = {
+      type: 'transaction.submit' as const,
+      idempotencyKey: '00000000-0000-4000-8000-000000000004',
+      chainId: 1,
+      transaction: {
+        to: '0x1111111111111111111111111111111111111111',
+        value: '0x1'
+      }
+    }
+    const first = createTestDispatcher()
+    const second = createTestDispatcher()
+
+    await expect(first.dispatchCommand(event, command)).resolves.toEqual({
+      ok: true,
+      transactionHash: `0x${'4'.repeat(64)}`
+    })
+    await expect(second.dispatchCommand(event, command)).resolves.toEqual({
+      ok: true,
+      transactionHash: `0x${'4'.repeat(64)}`
+    })
+    expect(submitCurrentAccountTransaction).toHaveBeenCalledTimes(2)
   })
 
   it('deduplicates Flash submission by its stable quote ID', async () => {

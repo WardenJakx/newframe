@@ -1,7 +1,7 @@
 import { describe, expect, it, mock } from 'bun:test'
 
 import ZerionPortfolioProvider, { supportsPortfolioChain, toZerionChainIds } from './providers/zerion'
-import { NATIVE_CURRENCY } from '../../resources/constants'
+import { NATIVE_CURRENCY } from '../../domain/token/constants'
 
 function createResponse(body: unknown) {
   return {

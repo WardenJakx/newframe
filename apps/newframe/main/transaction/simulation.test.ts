@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'bun:test'
 
-import store from '../store'
-import { effectsFromTrace } from './simulation'
-import { erc20Interface } from '../../resources/contracts'
+import createCanonicalStore from '../store/createCanonicalStore'
+import { createTransactionSimulationProjection, effectsFromTrace } from './simulation'
+import { erc20Interface } from '../../domain/evm'
 
 const account = '0x35f9179059A691D8BEECf82Fe112F7277E018588'
 const testContract = '0x0000000000000000000000000000000000001337'
@@ -10,6 +10,11 @@ const usdc = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'
 
 describe('#effectsFromTrace', () => {
   it('detects simulated ERC-20 asset out from an internal transferFrom call', async () => {
+    const store = createCanonicalStore({
+      getItem: () => null,
+      setItem: () => undefined,
+      removeItem: () => undefined
+    }).store
     store.setState((state) => {
       const token = {
         address: usdc.toLowerCase(),
@@ -68,7 +73,8 @@ describe('#effectsFromTrace', () => {
           data: '0x'
         }
       },
-      { symbol: 'ETH', decimals: 18 }
+      { symbol: 'ETH', decimals: 18 },
+      createTransactionSimulationProjection(store)
     )
 
     expect(effects).toStrictEqual([

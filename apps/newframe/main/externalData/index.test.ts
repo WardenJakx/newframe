@@ -1,6 +1,7 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, jest as timers, mock } from 'bun:test'
 
 import store from '../store'
+import createCanonicalStore from '../store/createCanonicalStore'
 
 const mockBalancesFactory = mock(() => mockBalances)
 
@@ -29,7 +30,7 @@ beforeEach(() => {
     refreshPositions: mock(),
     setAddress: mock()
   }
-  dataManager = externalData()
+  dataManager = externalData(store)
 })
 
 afterEach(() => {
@@ -60,6 +61,105 @@ describe('address updates', () => {
     dataManager.refreshBalances(address)
 
     expect(mockBalances.refresh).toHaveBeenCalledWith(address)
+  })
+})
+
+it('keeps refresh state and lifecycle isolated across two production scanner instances', () => {
+  const memoryStorage = {
+    getItem: () => null,
+    setItem: () => undefined,
+    removeItem: () => undefined
+  }
+  const firstStore = createCanonicalStore(memoryStorage).store
+  const secondStore = createCanonicalStore(memoryStorage).store
+  const scannerBalances = () => ({
+    addNetworks: mock(),
+    addTokens: mock(),
+    start: mock(() => true),
+    stop: mock(),
+    pause: mock(),
+    resume: mock(),
+    refresh: mock(),
+    refreshPositions: mock(),
+    setAddress: mock()
+  })
+  const firstBalances = scannerBalances()
+  const secondBalances = scannerBalances()
+  mockBalancesFactory.mockImplementationOnce(() => firstBalances)
+  mockBalancesFactory.mockImplementationOnce(() => secondBalances)
+  const firstScanner = externalData(firstStore)
+  const secondScanner = externalData(secondStore)
+  const firstAddress = '0x0000000000000000000000000000000000001111'
+  const secondAddress = '0x0000000000000000000000000000000000002222'
+
+  firstStore.getState().upsertAccount({
+    id: firstAddress,
+    address: firstAddress,
+    name: 'First',
+    lastSignerType: 'Address',
+    signer: '',
+    signerStatus: '',
+    agentEnabled: false
+  })
+  secondStore.getState().upsertAccount({
+    id: secondAddress,
+    address: secondAddress,
+    name: 'Second',
+    lastSignerType: 'Address',
+    signer: '',
+    signerStatus: '',
+    agentEnabled: false
+  })
+  firstStore.getState().setAccount({ id: firstAddress })
+  secondStore.getState().setAccount({ id: secondAddress })
+  timers.advanceTimersByTime(800)
+  firstScanner.close()
+
+  expect({
+    first: firstBalances.refresh.mock.calls,
+    second: secondBalances.refresh.mock.calls,
+    firstStopped: firstBalances.stop.mock.calls.length,
+    secondStopped: secondBalances.stop.mock.calls.length
+  }).toEqual({
+    first: [[firstAddress]],
+    second: [[secondAddress]],
+    firstStopped: 1,
+    secondStopped: 0
+  })
+
+  secondScanner.close()
+})
+
+it('cancels pending store-driven scans when closed', () => {
+  const address = '0x0000000000000000000000000000000000003333'
+  mockBalances.addNetworks.mockClear()
+  mockBalances.addTokens.mockClear()
+  mockBalances.refresh.mockClear()
+  mockBalances.setAddress.mockClear()
+
+  store.setState((state) => {
+    state.main.accounts[address] = { address, lastSignerType: 'ledger' } as any
+    state.main.currentAccount = address
+    const network = Object.values(state.main.networks.ethereum)[0]
+    if (network) network.connection.primary.connected = true
+    state.main.tokens = { ...state.main.tokens }
+  })
+
+  dataManager.close()
+  timers.advanceTimersByTime(1_000)
+
+  expect({
+    addNetworks: mockBalances.addNetworks.mock.calls,
+    addTokens: mockBalances.addTokens.mock.calls,
+    refresh: mockBalances.refresh.mock.calls,
+    setAddress: mockBalances.setAddress.mock.calls,
+    stopped: mockBalances.stop.mock.calls.length
+  }).toEqual({
+    addNetworks: [],
+    addTokens: [],
+    refresh: [],
+    setAddress: [],
+    stopped: 1
   })
 })
 

@@ -1,12 +1,12 @@
 import { isDeepStrictEqual } from 'util'
 
-import { getColor } from '../../resources/colors'
-import store from '../store'
-
+import { getColor } from '../../domain/chain/colors'
 import type { Chain, ChainMetadata, Origin } from '../store/state'
+import type { CanonicalStoreReader } from '../store/actions'
+type CanonicalStoreApi = CanonicalStoreReader
 
 // typed access to state
-const storeApi = {
+const createStoreApi = (store: CanonicalStoreApi) => ({
   getCurrentOrigins: (): Record<string, Origin> => {
     return store.getState().main.origins
   },
@@ -16,7 +16,7 @@ const storeApi = {
   getChainsMeta: (): Record<string, ChainMetadata> => {
     return store.getState().main.networksMeta.ethereum || {}
   }
-}
+})
 
 interface ChainsChangedHandler {
   chainsChanged: (address: Address, chains: RPC.GetEthereumChains.Chain[]) => void
@@ -30,11 +30,11 @@ interface NetworkChangedHandler {
   networkChanged: (networkId: number, originId: string) => void
 }
 
-function createChainsObserver(handler: ChainsChangedHandler) {
-  let availableChains = getActiveChains()
+function createChainsObserver(store: CanonicalStoreApi, handler: ChainsChangedHandler) {
+  let availableChains = getActiveChains(store)
 
   return function () {
-    const currentChains = getActiveChains()
+    const currentChains = getActiveChains(store)
 
     if (!isDeepStrictEqual(currentChains, availableChains)) {
       availableChains = currentChains
@@ -47,8 +47,12 @@ function createChainsObserver(handler: ChainsChangedHandler) {
   }
 }
 
-function createOriginChainObserver(handler: ChainChangedHandler & NetworkChangedHandler) {
+function createOriginChainObserver(
+  store: CanonicalStoreApi,
+  handler: ChainChangedHandler & NetworkChangedHandler
+) {
   const knownOrigins: Record<string, Origin> = {}
+  const storeApi = createStoreApi(store)
 
   return function () {
     const currentOrigins = storeApi.getCurrentOrigins()
@@ -67,7 +71,8 @@ function createOriginChainObserver(handler: ChainChangedHandler & NetworkChanged
   }
 }
 
-function getActiveChains(): RPC.GetEthereumChains.Chain[] {
+function getActiveChains(store: CanonicalStoreApi): RPC.GetEthereumChains.Chain[] {
+  const storeApi = createStoreApi(store)
   const chains = storeApi.getChains()
   const meta = storeApi.getChainsMeta()
 

@@ -3,6 +3,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, expect, it, jest as timers,
 import EventEmitter from 'events'
 import log from 'electron-log'
 import { v5 as uuid } from 'uuid'
+import store from '../../store'
 
 const ns = '3bbcee75-cecc-5b56-8031-b6641c1ed1f1'
 
@@ -92,7 +93,7 @@ beforeAll(async () => {
 beforeEach(() => {
   connectedHids = []
 
-  adapter = new LedgerSignerAdapter()
+  adapter = new LedgerSignerAdapter(store)
   adapter.open()
 })
 
@@ -178,6 +179,26 @@ it('handles a disconnected Ledger', (done) => {
   simulateLedgerConnection('nano-x-discon-path')
   adapter.handleDeviceChanges()
 }, 200)
+
+it('cancels pending disconnect removal when closed', () => {
+  const ledger = new LedgerMock('closing-ledger-path', 'Nano X')
+  adapter.knownSigners[ledger.devicePath] = ledger
+
+  adapter.handleDisconnectedDevice(ledger)
+  adapter.close()
+  adapter.close()
+  timers.advanceTimersByTime(5_000)
+
+  expect({
+    pending: adapter.disconnections.length,
+    signerStillOwned: adapter.knownSigners[ledger.devicePath] === ledger,
+    signerCloseCalls: ledger.close.mock.calls.length
+  }).toEqual({
+    pending: 0,
+    signerStillOwned: true,
+    signerCloseCalls: 0
+  })
+})
 
 it('recognizes two newly connected Ledgers', (done) => {
   // this can happen on startup

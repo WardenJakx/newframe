@@ -8,28 +8,28 @@ import { isAddress } from 'ethers'
 import { addHexPrefix, intToHex, isHexString, fromUtf8 } from '@ethereumjs/util'
 import { shallow } from 'zustand/shallow'
 
-import store from '../store'
+import type { CanonicalStoreReader } from '../store/actions'
 import packageFile from '../../package.json'
 
-import proxyConnection from './proxy'
-import accounts, {
+import type { ProviderProxyConnection } from './proxy'
+import type {
   AccountRequest,
   TransactionRequest,
   SignTypedDataRequest,
   AddChainRequest,
   AddTokenRequest
-} from '../accounts'
-
-import FrameAccount from '../accounts/Account'
-import Chains, { Chain } from '../chains'
-import reveal from '../reveal'
-import { getSignerType, Type as SignerType } from '../../resources/domain/signer'
-import { toTokenId } from '../../resources/domain/token'
-import { normalizeChainId, TransactionData } from '../../resources/domain/transaction'
+} from '../../contracts/requests'
+import type { Chains } from '../chains'
+import type { Chain } from '../chains'
+import type { RevealService } from '../reveal'
+import { getSignerType, Type as SignerType } from '../../domain/signer'
+import { toTokenId } from '../../domain/token'
+import { normalizeChainId, TransactionData } from '../../domain/transaction'
 import { populate as populateTransaction, maxFee, classifyTransaction } from '../transaction'
-import { capitalize, isNonZeroHex } from '../../resources/utils'
-import { ApprovalType } from '../../resources/constants'
-import { createObserver as AssetsObserver, loadAssets } from './assets'
+import { capitalize } from '../../domain/text'
+import { isNonZeroHex } from '../../domain/hex'
+import { ApprovalType } from '../../domain/request/approval'
+import type { ProviderStatePort } from './statePort'
 import { getVersionFromTypedData } from './typedData'
 import { getCalldataDigest, getEip712Digests } from '../signatures/digests'
 
@@ -48,20 +48,15 @@ import {
 } from './helpers'
 
 import {
-  createChainsObserver as ChainsObserver,
-  createOriginChainObserver as OriginChainObserver,
-  getActiveChains
-} from './chains'
-import {
   EIP2612TypedData,
   LegacyTypedData,
   PermitSignatureRequest,
   SignatureRequest,
   TypedData,
   TypedMessage
-} from '../accounts/types'
+} from '../../contracts/requests'
 import * as sigParser from '../signatures'
-import { hasAddress } from '../../resources/domain/account'
+import { hasAddress } from '../../domain/account'
 import { mapRequest } from '../requests'
 import {
   createMainPrincipal,
@@ -72,6 +67,7 @@ import {
 } from '../authority'
 
 import type { Origin, Permission } from '../store/state'
+import type { AccountRequestPort } from './accountRequestPort'
 
 const signTypedDataV4OnlySignerTypes: SignerType[] = [SignerType.Ledger, SignerType.Trezor]
 const proxyPrincipal = createMainPrincipal('provider-proxy', ['wallet:internal-state'])
@@ -88,18 +84,21 @@ interface TransactionMetadata {
 
 type ProviderSubscriptionType = SubscriptionType | 'chainChanged' | 'networkChanged'
 
-const storeApi = {
-  getOrigin: (id: string) => store.getState().main.origins[id] as Origin,
-  getPermissions: (address: string) =>
-    (store.getState().main.permissions[address] || {}) as Record<string, Permission>
+type AccountHandle = NonNullable<ReturnType<AccountRequestPort['getFrameAccount']>>
+
+export interface ProviderDependencies {
+  accounts: AccountRequestPort
+  chains: Chains
+  proxy: ProviderProxyConnection
+  state: ProviderStatePort
+  store: CanonicalStoreReader
+  reveal: Pick<RevealService, 'resolveEntityType'>
 }
 
-const getPayloadOrigin = ({ _origin }: RPCRequestPayload) => storeApi.getOrigin(_origin)
-
-class Provider extends EventEmitter {
+export class Provider extends EventEmitter {
   connected = false
-  connection = Chains
   private storeUnsubscribes: Array<() => void> = []
+  private started = false
 
   handlers: Record<string, RPCRequestCallback> = {}
   subscriptions: { [key in ProviderSubscriptionType]: Subscription[] } = {
@@ -110,75 +109,120 @@ class Provider extends EventEmitter {
     networkChanged: []
   }
 
-  constructor() {
+  private readonly accounts: AccountRequestPort
+  readonly connection: Chains
+  private readonly proxy: ProviderProxyConnection
+  private readonly state: ProviderStatePort
+  private readonly store: CanonicalStoreReader
+  private readonly reveal: Pick<RevealService, 'resolveEntityType'>
+
+  constructor({ accounts, chains, proxy, state, store, reveal }: ProviderDependencies) {
     super()
-
-    this.connection.on('connect', (...args) => {
-      this.connected = true
-      this.emit('connect', ...args)
-    })
-
-    this.connection.on('close', () => {
-      this.connected = false
-    })
-
-    this.connection.on('data', (chain, ...args) => {
-      if ((args[0] || {}).method === 'eth_subscription') {
-        this.emit('data:subscription', ...args)
-      }
-
-      this.emit(`data:${chain.type}:${chain.id}`, ...args)
-    })
-
-    this.connection.on('error', (chain, err) => {
-      log.error(err)
-    })
-
-    this.connection.on('update', (chain: Chain, event) => {
-      if (event.type === 'status') {
-        this.emit(`status:${chain.type}:${chain.id}`, event.status)
-      }
-    })
-
-    proxyConnection.on('provider:send', (payload: RPCRequestPayload) => {
-      const { id, method } = payload
-      this.send(
-        payload,
-        ({ error, result }) => {
-          proxyConnection.emit('payload', { id, method, error, result })
-        },
-        proxyPrincipal
-      )
-    })
-
-    proxyConnection.on('provider:subscribe', (payload: RPC.Subscribe.Request) => {
-      const subId = this.createSubscription(payload, proxyPrincipal)
-      const { id, jsonrpc } = payload
-
-      proxyConnection.emit('payload', { id, jsonrpc, result: subId })
-    })
-
+    this.accounts = accounts
+    this.connection = chains
+    this.proxy = proxy
+    this.state = state
+    this.store = store
+    this.reveal = reveal
     this.getNonce = this.getNonce.bind(this)
-    this.subscribeToStore()
+  }
+
+  private readonly handleConnectionConnect = (...args: unknown[]) => {
+    this.connected = true
+    this.emit('connect', ...args)
+  }
+
+  private readonly handleConnectionClose = () => {
+    this.connected = false
+  }
+
+  private readonly handleConnectionData = (chain: Chain, ...args: unknown[]) => {
+    if (((args[0] || {}) as { method?: string }).method === 'eth_subscription') {
+      this.emit('data:subscription', ...args)
+    }
+
+    this.emit(`data:${chain.type}:${chain.id}`, ...args)
+  }
+
+  private readonly handleConnectionError = (_chain: Chain, error: unknown) => {
+    log.error(error)
+  }
+
+  private readonly handleConnectionUpdate = (chain: Chain, event: { type: string; status?: string }) => {
+    if (event.type === 'status') {
+      this.emit(`status:${chain.type}:${chain.id}`, event.status)
+    }
+  }
+
+  private readonly handleProxySend = (payload: RPCRequestPayload) => {
+    const { id, method } = payload
+    this.send(
+      payload,
+      ({ error, result }) => {
+        this.proxy.emit('payload', { id, method, error, result })
+      },
+      proxyPrincipal
+    )
+  }
+
+  private readonly handleProxySubscribe = (payload: RPC.Subscribe.Request) => {
+    const subId = this.createSubscription(payload, proxyPrincipal)
+    const { id, jsonrpc } = payload
+
+    this.proxy.emit('payload', { id, jsonrpc, result: subId })
+  }
+
+  start() {
+    if (this.started) return
+
+    this.started = true
+    try {
+      this.connection.on('connect', this.handleConnectionConnect)
+      this.connection.on('close', this.handleConnectionClose)
+      this.connection.on('data', this.handleConnectionData)
+      this.connection.on('error', this.handleConnectionError)
+      this.connection.on('update', this.handleConnectionUpdate)
+      this.proxy.on('provider:send', this.handleProxySend)
+      this.proxy.on('provider:subscribe', this.handleProxySubscribe)
+      this.subscribeToStore()
+    } catch (error) {
+      this.dispose()
+      throw error
+    }
+  }
+
+  dispose() {
+    if (!this.started) return
+
+    this.closeStoreSubscriptions()
+    this.connection.off('connect', this.handleConnectionConnect)
+    this.connection.off('close', this.handleConnectionClose)
+    this.connection.off('data', this.handleConnectionData)
+    this.connection.off('error', this.handleConnectionError)
+    this.connection.off('update', this.handleConnectionUpdate)
+    this.proxy.off('provider:send', this.handleProxySend)
+    this.proxy.off('provider:subscribe', this.handleProxySubscribe)
+    this.connected = false
+    this.started = false
   }
 
   private subscribeToStore() {
-    const chainsObserver = ChainsObserver(this)
-    const originChainObserver = OriginChainObserver(this)
-    const assetsObserver = AssetsObserver(this)
+    const chainsObserver = this.state.createChainsObserver(this)
+    const originChainObserver = this.state.createOriginChainObserver(this)
+    const assetsObserver = this.state.createAssetsObserver(this)
 
     // Establish the origin baseline before listening so the first change is compared
     // against the state that existed when the provider was created.
     originChainObserver()
 
     this.storeUnsubscribes.push(
-      store.subscribe(
+      this.store.subscribe(
         (state) => [state.main.networks.ethereum, state.main.networksMeta.ethereum] as const,
         chainsObserver,
         { equalityFn: shallow }
       ),
-      store.subscribe((state) => state.main.origins, originChainObserver),
-      store.subscribe(
+      this.store.subscribe((state) => state.main.origins, originChainObserver),
+      this.store.subscribe(
         (state) =>
           [
             state.main.currentAccount,
@@ -197,17 +241,25 @@ class Provider extends EventEmitter {
     this.storeUnsubscribes.splice(0).forEach((unsubscribe) => unsubscribe())
   }
 
+  private getPayloadOrigin({ _origin }: RPCRequestPayload) {
+    return this.store.getState().main.origins[_origin] as Origin
+  }
+
   accountsChanged(accounts: string[]) {
     const address = accounts[0]
 
     this.subscriptions.accountsChanged
-      .filter((subscription) => hasSubscriptionPermission(SubscriptionType.ACCOUNTS, address, subscription))
+      .filter((subscription) =>
+        hasSubscriptionPermission(SubscriptionType.ACCOUNTS, address, subscription, this.store)
+      )
       .forEach((subscription) => this.sendSubscriptionData(subscription.id, accounts))
   }
 
   assetsChanged(address: string, assets: RPC.GetAssets.Assets) {
     this.subscriptions.assetsChanged
-      .filter((subscription) => hasSubscriptionPermission(SubscriptionType.ASSETS, address, subscription))
+      .filter((subscription) =>
+        hasSubscriptionPermission(SubscriptionType.ASSETS, address, subscription, this.store)
+      )
       .forEach((subscription) => this.sendSubscriptionData(subscription.id, { ...assets, account: address }))
   }
 
@@ -222,7 +274,7 @@ class Provider extends EventEmitter {
   // fires when the list of available chains changes
   chainsChanged(address: string, chains: RPC.GetEthereumChains.Chain[]) {
     this.subscriptions.chainsChanged
-      .filter((subscription) => hasSubscriptionPermission('chainsChanged', address, subscription))
+      .filter((subscription) => hasSubscriptionPermission('chainsChanged', address, subscription, this.store))
       .forEach((subscription) => this.sendSubscriptionData(subscription.id, chains))
   }
 
@@ -239,12 +291,12 @@ class Provider extends EventEmitter {
       params: { subscription, result }
     }
 
-    proxyConnection.emit('payload', payload)
+    this.proxy.emit('payload', payload)
     this.emit('data:subscription', payload)
   }
 
   getNetVersion(payload: RPCRequestPayload, res: RPCRequestCallback, targetChain: Chain) {
-    const chain = store.getState().main.networks.ethereum[targetChain.id]
+    const chain = this.store.getState().main.networks.ethereum[targetChain.id]
     const response = chain?.on
       ? { result: targetChain.id }
       : { error: { message: 'not connected', code: -1 } }
@@ -253,7 +305,7 @@ class Provider extends EventEmitter {
   }
 
   getChainId(payload: RPCRequestPayload, res: RPCSuccessCallback, targetChain: Chain) {
-    const chain = store.getState().main.networks.ethereum[targetChain.id]
+    const chain = this.store.getState().main.networks.ethereum[targetChain.id]
     const response = chain?.on
       ? { result: intToHex(targetChain.id) }
       : { error: { message: 'not connected', code: -1 } }
@@ -286,7 +338,7 @@ class Provider extends EventEmitter {
       message = fromUtf8(rawMessage)
     }
 
-    accounts.signMessage(address, message, (err, signed) => {
+    this.accounts.signMessage(address, message, (err, signed) => {
       if (err) {
         resError(err.message, payload, res)
         cb(err, undefined)
@@ -311,7 +363,7 @@ class Provider extends EventEmitter {
     const { payload, typedMessage } = req
     const [address] = payload.params
 
-    accounts.signTypedData(address, typedMessage, (err, signature = '') => {
+    this.accounts.signTypedData(address, typedMessage, (err, signature = '') => {
       if (err) {
         resError(err.message, payload, res)
         cb(err)
@@ -364,7 +416,7 @@ class Provider extends EventEmitter {
 
     if (feeTotalOverMax(rawTx, maxTotalFee)) {
       const chainId = parseInt(rawTx.chainId)
-      const symbol = (store.getState().main.networks.ethereum[chainId] as any)?.symbol
+      const symbol = (this.store.getState().main.networks.ethereum[chainId] as any)?.symbol
       const displayAmount = symbol ? ` (${Math.floor(maxTotalFee / 1e18)} ${symbol})` : ''
 
       const err = `Max fee is over hard limit${displayAmount}`
@@ -372,13 +424,13 @@ class Provider extends EventEmitter {
       resError(err, payload, res)
       cb(new Error(err))
     } else {
-      accounts.signTransaction(rawTx, (err, signedTx) => {
+      this.accounts.signTransaction(rawTx, (err, signedTx) => {
         // Sign Transaction
         if (err) {
           resError(err, payload, res)
           cb(err)
         } else {
-          accounts.setTxSigned(req.handlerId, (err) => {
+          this.accounts.setTxSigned(req.handlerId, (err) => {
             if (err) return cb(err)
             let done = false
             const cast = () => {
@@ -422,7 +474,7 @@ class Provider extends EventEmitter {
       this.signAndSend(requestToSign, cb)
     }
 
-    accounts.lockRequest(req.handlerId)
+    this.accounts.lockRequest(req.handlerId)
 
     if (req.data.nonce) return signAndSend(req)
 
@@ -433,7 +485,7 @@ class Provider extends EventEmitter {
         return cb(new Error(response.error.message))
       }
 
-      const updatedReq = accounts.updateNonce(req.handlerId, response.result)
+      const updatedReq = this.accounts.updateNonce(req.handlerId, response.result)
 
       if (updatedReq) {
         signAndSend(updatedReq)
@@ -528,7 +580,7 @@ class Provider extends EventEmitter {
       const approvals: RequiredApproval[] = []
       const rawTx = getRawTx(newTx)
       await this.connection.refreshGasFees({ type: 'ethereum', id: parseInt(rawTx.chainId, 16) })
-      const gas = gasFees(rawTx)
+      const gas = gasFees(rawTx, this.store)
       const { chainConfig } = connection
 
       const estimateGasLimit = async () => {
@@ -548,14 +600,14 @@ class Provider extends EventEmitter {
 
       const [gasLimit, recipientType] = await Promise.all([
         rawTx.gasLimit ?? estimateGasLimit(),
-        rawTx.to ? reveal.resolveEntityType(rawTx.to, parseInt(rawTx.chainId, 16)) : ''
+        rawTx.to ? this.reveal.resolveEntityType(rawTx.to, parseInt(rawTx.chainId, 16)) : ''
       ])
 
       const tx = { ...rawTx, gasLimit, recipientType }
 
       try {
         const populatedTransaction = populateTransaction(tx, chainConfig, gas)
-        const checkedTransaction = checkExistingNonceGas(populatedTransaction)
+        const checkedTransaction = checkExistingNonceGas(populatedTransaction, this.store)
 
         log.verbose('Successfully populated transaction', checkedTransaction)
 
@@ -586,7 +638,7 @@ class Provider extends EventEmitter {
   ) {
     if (!this.requireActiveAgentSession(principal, payload, res)) return
 
-    const account = accounts.getFrameAccount(principal.accountId)
+    const account = this.accounts.getFrameAccount(principal.accountId)
     const txParams = payload.params?.[0]
     if (!account || !txParams || typeof txParams !== 'object') {
       return resError('Agent transaction is missing its authorized account or transaction', payload, res)
@@ -630,7 +682,7 @@ class Provider extends EventEmitter {
         classification: classifyTransaction(unclassifiedRequest)
       } as TransactionRequest
 
-      accounts.routeRequest(principal, request, res, (authorizedRequest) => {
+      this.accounts.routeRequest(principal, request, res, (authorizedRequest) => {
         this.executeAgentTransaction(account, authorizedRequest as TransactionRequest, principal, res)
       })
     })
@@ -639,7 +691,7 @@ class Provider extends EventEmitter {
   sendAgentPersonalSign(payload: RPCRequestPayload, principal: AgentPrincipal, res: RPCRequestCallback) {
     if (!this.requireActiveAgentSession(principal, payload, res)) return
 
-    const account = accounts.getFrameAccount(principal.accountId)
+    const account = this.accounts.getFrameAccount(principal.accountId)
     const params = payload.params || []
     const orderedParams =
       isAddress(params[0]) && !isAddress(params[1]) ? [...params] : [params[1], params[0], ...params.slice(2)]
@@ -671,7 +723,7 @@ class Provider extends EventEmitter {
       data: { decodedMessage: decodeMessage(message) }
     }
 
-    accounts.routeRequest(principal, request, res, () => {
+    this.accounts.routeRequest(principal, request, res, () => {
       if (!this.requireActiveAgentSession(principal, normalizedPayload, res)) return
 
       account.signMessage(message, (signingError, signed) => {
@@ -696,7 +748,7 @@ class Provider extends EventEmitter {
   ) {
     if (!this.requireActiveAgentSession(principal, rawPayload, res)) return
 
-    const account = accounts.getFrameAccount(principal.accountId)
+    const account = this.accounts.getFrameAccount(principal.accountId)
     const orderedParams =
       isAddress(rawPayload.params[1]) && !isAddress(rawPayload.params[0])
         ? [rawPayload.params[1], rawPayload.params[0], ...rawPayload.params.slice(2)]
@@ -751,7 +803,7 @@ class Provider extends EventEmitter {
       origin: 'newframe-agent'
     }
 
-    accounts.routeRequest(principal, request, res, () => {
+    this.accounts.routeRequest(principal, request, res, () => {
       if (!this.requireActiveAgentSession(principal, payload, res)) return
 
       account.signTypedData(typedMessage, (signingError, signature = '') => {
@@ -774,7 +826,7 @@ class Provider extends EventEmitter {
   }
 
   private executeAgentTransaction(
-    account: FrameAccount,
+    account: AccountHandle,
     request: TransactionRequest,
     principal: AgentPrincipal,
     res: RPCRequestCallback
@@ -803,7 +855,7 @@ class Provider extends EventEmitter {
           (response) => {
             if (!response.error && typeof response.result === 'string') {
               const trackedRequest = { ...request, data }
-              accounts.trackAutonomousTransaction(account.id, trackedRequest, response.result)
+              this.accounts.trackAutonomousTransaction(account.id, trackedRequest, response.result)
             }
             res(response)
           },
@@ -838,7 +890,7 @@ class Provider extends EventEmitter {
         chainId: normalizedTx.chainId || payloadChain || addHexPrefix(targetChain.id.toString(16))
       }
 
-      const currentAccount = accounts.current()
+      const currentAccount = this.accounts.current()
 
       log.verbose(`sendTransaction(${JSON.stringify(tx)}`)
 
@@ -847,8 +899,8 @@ class Provider extends EventEmitter {
       if (!currentAccount || !from || !hasAddress(currentAccount, from)) {
         const accountId = (tx.from || '').toLowerCase()
 
-        if (accountId && accounts.get(accountId)) {
-          return accounts.setSigner(accountId, (err) => {
+        if (accountId && this.accounts.get(accountId)) {
+          return this.accounts.setSigner(accountId, (err) => {
             if (err) return resError(err, payload, res)
             this.sendTransaction(payload, res, targetChain, principal)
           })
@@ -875,7 +927,7 @@ class Provider extends EventEmitter {
               ...(calldataDigest ? { calldataDigest } : {})
             },
             payload,
-            account: (currentAccount as FrameAccount).id,
+            account: (currentAccount as AccountHandle).id,
             origin: payload._origin,
             approvals: txMetadata.approvals.map(({ type, data }) => ({
               type,
@@ -894,7 +946,7 @@ class Provider extends EventEmitter {
             classification
           }
 
-          accounts.routeRequest(principal, req, this.requestResponder(handlerId))
+          this.accounts.routeRequest(principal, req, this.requestResponder(handlerId))
         }
       })
     } catch (e) {
@@ -930,7 +982,7 @@ class Provider extends EventEmitter {
 
   sign(payload: RPCRequestPayload, res: RPCRequestCallback, principal: TrustedPrincipal) {
     const [from, message] = payload.params || []
-    const currentAccount = accounts.current()
+    const currentAccount = this.accounts.current()
 
     if (!message) {
       return resError('Sign request requires a message param', payload, res)
@@ -946,14 +998,14 @@ class Provider extends EventEmitter {
       handlerId,
       type: 'sign',
       payload,
-      account: (currentAccount as FrameAccount).getAccounts()[0],
+      account: (currentAccount as AccountHandle).getAccounts()[0],
       origin: payload._origin,
       data: {
         decodedMessage: decodeMessage(message)
       }
     } as SignatureRequest
 
-    accounts.routeRequest(principal, req, this.requestResponder(handlerId))
+    this.accounts.routeRequest(principal, req, this.requestResponder(handlerId))
   }
 
   signTypedData(
@@ -999,13 +1051,13 @@ class Provider extends EventEmitter {
       version = getVersionFromTypedData(typedData)
     }
 
-    const targetAccount = accounts.get(from.toLowerCase())
+    const targetAccount = this.accounts.get(from.toLowerCase())
 
     if (!targetAccount) {
       return resError(`Unknown account: ${from}`, payload, res)
     }
 
-    const currentAccount = accounts.current()
+    const currentAccount = this.accounts.current()
     if (!currentAccount || !hasAddress(currentAccount, targetAccount.id)) {
       return resError('Sign request is not from currently selected account', payload, res)
     }
@@ -1085,9 +1137,9 @@ class Provider extends EventEmitter {
         }
       }
 
-      accounts.routeRequest(principal, permitRequest, this.requestResponder(handlerId))
+      this.accounts.routeRequest(principal, permitRequest, this.requestResponder(handlerId))
     } else {
-      accounts.routeRequest(principal, req, this.requestResponder(handlerId))
+      this.accounts.routeRequest(principal, req, this.requestResponder(handlerId))
     }
   }
 
@@ -1129,8 +1181,8 @@ class Provider extends EventEmitter {
 
   private getOriginConnection(payload: RPCRequestPayload) {
     const originId = payload._origin
-    const origin = storeApi.getOrigin(originId)
-    const currentAccount = accounts.current() as any
+    const origin = this.store.getState().main.origins[originId] as Origin
+    const currentAccount = this.accounts.current() as any
     const rawAddress = currentAccount?.address || currentAccount?.id || ''
     const address = rawAddress ? rawAddress.toLowerCase() : ''
     const permissionAddresses = Array.from(
@@ -1142,7 +1194,10 @@ class Provider extends EventEmitter {
     let permission: Permission | undefined
 
     for (const candidate of permissionAddresses) {
-      const permissions = storeApi.getPermissions(candidate)
+      const permissions = (this.store.getState().main.permissions[candidate] || {}) as Record<
+        string,
+        Permission
+      >
       const permissionEntry = Object.entries(permissions).find(([id, p]) => {
         return id === originId || p.handlerId === originId || p.origin === origin?.name
       })
@@ -1198,14 +1253,14 @@ class Provider extends EventEmitter {
       this.getOriginConnection(payload)
 
     if (permissionAddress && permissionId) {
-      store.getState().revokePermission(permissionAddress, permissionId)
+      this.store.getState().revokePermission(permissionAddress, permissionId)
     }
 
     if (address) {
-      accounts.clearRequestsByOrigin(address, originId)
+      this.accounts.clearRequestsByOrigin(address, originId)
     }
 
-    store.getState().endOriginSession(originId)
+    this.store.getState().endOriginSession(originId)
     this.sendOriginAccountsChanged(originId, [])
 
     res({
@@ -1234,16 +1289,16 @@ class Provider extends EventEmitter {
       if (!Number.isSafeInteger(chainId) || chainId <= 0) throw new Error('Invalid chain id')
 
       // Check if chain exists
-      const exists = Boolean(store.getState().main.networks.ethereum[chainId]?.on)
+      const exists = Boolean(this.store.getState().main.networks.ethereum[chainId]?.on)
       if (!exists) {
         const err: EVMError = { message: 'Chain does not exist', code: 4902 }
         return resError(err, payload, res)
       }
 
       const originId = payload._origin
-      const origin = getPayloadOrigin(payload)
+      const origin = this.getPayloadOrigin(payload)
       if (origin.chain.id !== chainId) {
-        store.getState().switchOriginChain(originId, chainId, origin.chain.type)
+        this.store.getState().switchOriginChain(originId, chainId, origin.chain.type)
       }
 
       return res({ id: payload.id, jsonrpc: '2.0', result: null })
@@ -1266,7 +1321,7 @@ class Provider extends EventEmitter {
     const id = Number(BigInt(chainId))
     if (!Number.isSafeInteger(id) || id <= 0) return resError('Invalid chain id', payload, res)
 
-    const existing = store.getState().main.networks[type][id]
+    const existing = this.store.getState().main.networks[type][id]
     if (existing?.on) return this.switchEthereumChain(payload, res)
 
     const validHttpUrl = (value: unknown) => {
@@ -1298,7 +1353,7 @@ class Provider extends EventEmitter {
     }
 
     const handlerId = this.addRequestHandler(res)
-    const metadata = store.getState().main.networksMeta[type][id]
+    const metadata = this.store.getState().main.networksMeta[type][id]
     const requestChain = existing
       ? {
           id,
@@ -1317,13 +1372,13 @@ class Provider extends EventEmitter {
           explorer: blockExplorerUrls[0] || '',
           nativeCurrencyName: nativeCurrency.name
         }
-    accounts.routeRequest(
+    this.accounts.routeRequest(
       principal,
       {
         handlerId,
         type: 'addChain',
         chain: requestChain,
-        account: (accounts.getAccounts() || [])[0],
+        account: (this.accounts.getAccounts() || [])[0],
         origin: payload._origin,
         payload
       } as AddChainRequest,
@@ -1365,7 +1420,7 @@ class Provider extends EventEmitter {
         }
 
         // don't attempt to add the token if it's already been added
-        const tokenExists = store.getState().main.tokens.byId[toTokenId({ chainId, address })]?.custom
+        const tokenExists = this.store.getState().main.tokens.byId[toTokenId({ chainId, address })]?.custom
         if (tokenExists) {
           return res({ id: payload.id, jsonrpc: '2.0', result: true })
         }
@@ -1381,13 +1436,13 @@ class Provider extends EventEmitter {
 
         const handlerId = this.addRequestHandler(res)
 
-        accounts.routeRequest(
+        this.accounts.routeRequest(
           principal,
           {
             handlerId,
             type: 'addToken',
             token,
-            account: (accounts.current() as FrameAccount).id,
+            account: (this.accounts.current() as AccountHandle).id,
             origin: payload._origin,
             payload
           } as AddTokenRequest,
@@ -1406,22 +1461,22 @@ class Provider extends EventEmitter {
       return chainConnection.chainConfig && { type: 'ethereum', id: chainId }
     }
 
-    return getPayloadOrigin(payload).chain
+    return this.getPayloadOrigin(payload).chain
   }
 
   private getChains(payload: JSONRPCRequestPayload, res: RPCSuccessCallback) {
-    res({ id: payload.id, jsonrpc: payload.jsonrpc, result: getActiveChains() })
+    res({ id: payload.id, jsonrpc: payload.jsonrpc, result: this.state.getActiveChains() })
   }
 
   private getAssets(
     payload: RPC.GetAssets.Request,
-    currentAccount: FrameAccount | null,
+    currentAccount: AccountHandle | null,
     cb: RPCCallback<RPC.GetAssets.Response>
   ) {
     if (!currentAccount) return resError('no account selected', payload, cb)
 
     try {
-      const { nativeCurrency, erc20 } = loadAssets(currentAccount.id)
+      const { nativeCurrency, erc20 } = this.state.loadAssets(currentAccount.id)
       const { id, jsonrpc } = payload
 
       return cb({ id, jsonrpc, result: { nativeCurrency, erc20 } })
@@ -1469,16 +1524,16 @@ class Provider extends EventEmitter {
       return resError({ message: `unknown chain: ${payload.chainId}`, code: 4901 }, payload, res)
     }
 
-    function getAccounts(payload: JSONRPCRequestPayload, res: RPCRequestCallback) {
+    const getAccounts = (payload: JSONRPCRequestPayload, res: RPCRequestCallback) => {
       res({
         id: payload.id,
         jsonrpc: payload.jsonrpc,
-        result: accounts.getSelectedAddresses().map((a) => a.toLowerCase())
+        result: this.accounts.getSelectedAddresses().map((a) => a.toLowerCase())
       })
     }
 
-    function getCoinbase(payload: RPCRequestPayload, res: RPCRequestCallback) {
-      accounts.getAccounts((err, accounts) => {
+    const getCoinbase = (payload: RPCRequestPayload, res: RPCRequestCallback) => {
+      this.accounts.getAccounts((err, accounts) => {
         if (err) return resError(`signTransaction Error: ${JSON.stringify(err)}`, payload, res)
         res({ id: payload.id, jsonrpc: payload.jsonrpc, result: (accounts || [])[0] })
       })
@@ -1554,7 +1609,7 @@ class Provider extends EventEmitter {
     if (method === 'wallet_getAssets')
       return this.getAssets(
         payload as RPC.GetAssets.Request,
-        accounts.current(),
+        this.accounts.current(),
         res as RPCCallback<RPC.GetAssets.Response>
       )
 
@@ -1573,7 +1628,3 @@ class Provider extends EventEmitter {
     return super.emit(type, ...args)
   }
 }
-
-const provider = new Provider()
-
-export default provider

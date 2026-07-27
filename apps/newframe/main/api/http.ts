@@ -1,23 +1,17 @@
-import http, { IncomingMessage, ServerResponse } from 'http'
+import type { IncomingMessage, RequestListener, ServerResponse } from 'http'
 import { randomUUID } from 'node:crypto'
 import log from 'electron-log'
 import { isHexString } from '@ethereumjs/util'
 
-import provider from '../provider'
-import accounts from '../accounts'
-import store from '../store'
-
-import { updateOrigin, isTrusted, parseOrigin, parseRequestChainId } from './origins'
+import { parseOrigin, parseRequestChainId, type OriginsService } from './origins'
 import validPayload from './validPayload'
 import protectedMethods from './protectedMethods'
-import { createRpcPrincipal } from '../authority'
-import { handleAgentHttpRequest, isAgentHttpRequest } from '../agent'
-
-const logTraffic = process.env.LOG_TRAFFIC
+import { createRpcPrincipal, type TrustedPrincipal } from '../authority'
+import { isAgentHttpRequest } from '../agent'
 
 interface PendingRequest {
   send: () => void
-  timer: NodeJS.Timeout
+  timer: ReturnType<typeof setTimeout>
 }
 
 interface Subscription {
@@ -29,76 +23,164 @@ interface HTTPPollingPayload extends JSONRPCRequestPayload {
   pollId?: string
 }
 
-const polls: Record<string, string[]> = {}
-const pollSubs: Record<string, Subscription> = {}
-const pending: Record<string, PendingRequest> = {}
-const cleanupTimers: Record<string, NodeJS.Timeout> = {}
-const connectionMonitors: Record<string, NodeJS.Timeout> = {}
-
-function extendSession(originId: string) {
-  if (originId) {
-    clearTimeout(connectionMonitors[originId])
-
-    connectionMonitors[originId] = setTimeout(() => {
-      store.getState().endOriginSession(originId)
-    }, 60 * 1000)
-  }
+export interface HttpProviderPort {
+  send(
+    payload: RPCRequestPayload,
+    respond?: (response: RPCResponsePayload) => void,
+    principal?: TrustedPrincipal
+  ): void
+  on(event: 'data:subscription', listener: (payload: RPC.Susbcription.Response) => void): unknown
+  off(event: 'data:subscription', listener: (payload: RPC.Susbcription.Response) => void): unknown
 }
 
-const cleanup = (id: string) => {
-  delete polls[id]
-  delete pending[id]
-  Object.keys(pollSubs).forEach((sub) => {
-    if (pollSubs[sub].id === id) {
-      provider.send({ jsonrpc: '2.0', id: 1, method: 'eth_unsubscribe', params: [sub], _origin: '' })
+export interface HttpAccountsPort {
+  getSelectedAddresses(): string[]
+}
+
+export interface HttpStorePort {
+  endOriginSession(originId: string): void
+}
+
+export interface ApiTimerPort {
+  setTimeout(task: () => void, delayMs: number): ReturnType<typeof setTimeout>
+  clearTimeout(timer: ReturnType<typeof setTimeout>): void
+}
+
+export interface HttpRpcTransport {
+  readonly handler: RequestListener
+  readonly started: boolean
+  start(): void
+  dispose(): void
+}
+
+export interface HttpRpcTransportDependencies {
+  provider: HttpProviderPort
+  accounts: HttpAccountsPort
+  store: HttpStorePort
+  origins: OriginsService
+  handleAgentRequest: (req: IncomingMessage, res: ServerResponse) => Promise<unknown>
+  timers?: ApiTimerPort
+  createConnectionId?: () => string
+}
+
+const systemTimers: ApiTimerPort = {
+  setTimeout: (task, delayMs) => setTimeout(task, delayMs),
+  clearTimeout: (timer) => clearTimeout(timer)
+}
+
+export function createHttpRpcTransport({
+  provider,
+  accounts,
+  store,
+  origins,
+  handleAgentRequest,
+  timers = systemTimers,
+  createConnectionId = randomUUID
+}: HttpRpcTransportDependencies): HttpRpcTransport {
+  const polls: Record<string, string[]> = {}
+  const pollSubs: Record<string, Subscription> = {}
+  const pending: Record<string, PendingRequest> = {}
+  const cleanupTimers: Record<string, ReturnType<typeof setTimeout>> = {}
+  const connectionMonitors: Record<string, ReturnType<typeof setTimeout>> = {}
+  const logTraffic = process.env.LOG_TRAFFIC
+  let active = false
+  let disposed = false
+
+  function extendSession(originId: string) {
+    if (!originId) return
+
+    if (connectionMonitors[originId]) timers.clearTimeout(connectionMonitors[originId])
+    connectionMonitors[originId] = timers.setTimeout(() => {
+      delete connectionMonitors[originId]
+      store.endOriginSession(originId)
+    }, 60_000)
+  }
+
+  const cleanup = (id: string) => {
+    delete polls[id]
+    if (pending[id]) timers.clearTimeout(pending[id].timer)
+    delete pending[id]
+    if (cleanupTimers[id]) timers.clearTimeout(cleanupTimers[id])
+    delete cleanupTimers[id]
+
+    Object.keys(pollSubs).forEach((sub) => {
+      if (pollSubs[sub].id !== id) return
+      provider.send({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'eth_unsubscribe',
+        params: [sub],
+        _origin: pollSubs[sub].origin
+      })
       delete pollSubs[sub]
-    }
-  })
-}
-
-const handler = (req: IncomingMessage, res: ServerResponse) => {
-  if (isAgentHttpRequest(req)) {
-    void handleAgentHttpRequest(req, res)
-    return
+    })
   }
 
-  res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'X-Requested-With, X-HTTP-Method-Override, Content-Type, Accept'
-  )
-  if (req.method === 'OPTIONS') {
-    res.writeHead(200)
-    res.end()
-  } else if (req.method === 'POST') {
-    const body: any = []
+  const subscriptionHandler = (payload: RPC.Susbcription.Response) => {
+    const subscription = pollSubs[payload.params.subscription]
+    if (!subscription) return
+
+    const { id } = subscription
+    polls[id] = polls[id] || []
+    polls[id].push(JSON.stringify(payload))
+    pending[id]?.send()
+  }
+
+  const handler = (req: IncomingMessage, res: ServerResponse) => {
+    if (isAgentHttpRequest(req)) {
+      void handleAgentRequest(req, res)
+      return
+    }
+
+    res.setHeader('Access-Control-Allow-Origin', '*')
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
+    res.setHeader(
+      'Access-Control-Allow-Headers',
+      'X-Requested-With, X-HTTP-Method-Override, Content-Type, Accept'
+    )
+    if (req.method === 'OPTIONS') {
+      res.writeHead(200)
+      res.end()
+      return
+    }
+    if (req.method !== 'POST') {
+      res.writeHead(401, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ error: 'Permission Denied' }))
+      return
+    }
+
+    const body: Buffer[] = []
     req
-      .on('data', (chunk) => body.push(chunk))
+      .on('data', (chunk) => body.push(Buffer.from(chunk)))
       .on('end', async () => {
-        res.on('error', (err) => console.error('res err', err))
+        res.on('error', (error) => log.error('HTTP response error', error))
         const data = Buffer.concat(body).toString()
         const rawPayload = validPayload<HTTPPollingPayload>(data)
-        if (!rawPayload) return console.warn('Invalid Payload', data)
+        if (!rawPayload) {
+          log.warn('Invalid HTTP RPC payload')
+          res.writeHead(400, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: 'Invalid Payload' }))
+          return
+        }
 
-        if (logTraffic)
+        if (logTraffic) {
           log.info(
             `req -> | http | ${req.headers.origin} | ${rawPayload.method} | -> | ${JSON.stringify(
               rawPayload.params
             )}`
           )
+        }
 
         const requestChainId = parseRequestChainId(req)
         if (requestChainId && !rawPayload.chainId) rawPayload.chainId = requestChainId
 
         const origin = parseOrigin(req.headers.origin)
-        const { payload, chainId } = updateOrigin(rawPayload, origin)
+        const { payload, chainId } = origins.updateOrigin(rawPayload, origin)
         const principal = createRpcPrincipal({
           transport: 'http',
-          connectionId: randomUUID(),
+          connectionId: createConnectionId(),
           origin
         })
-
         extendSession(payload._origin)
 
         if (!isHexString(chainId)) {
@@ -106,98 +188,114 @@ const handler = (req: IncomingMessage, res: ServerResponse) => {
             message: `Invalid chain id (${rawPayload.chainId}), chain id must be hex-prefixed string`,
             code: -1
           }
-
-          res.writeHead(401, { 'Content-Type': 'application/json' })
-          return res.end(JSON.stringify({ id: payload.id, jsonrpc: payload.jsonrpc, error }))
-        }
-
-        if (protectedMethods.indexOf(payload.method) > -1 && !(await isTrusted(payload, principal))) {
-          let error = { message: `Permission denied, approve ${origin} in Newframe to continue`, code: 4001 }
-          // Review
-          if (!accounts.getSelectedAddresses()[0])
-            error = { message: 'No Newframe account selected', code: 4001 }
           res.writeHead(401, { 'Content-Type': 'application/json' })
           res.end(JSON.stringify({ id: payload.id, jsonrpc: payload.jsonrpc, error }))
-        } else {
-          if (payload.method === 'eth_pollSubscriptions') {
-            const id = payload.params[0]
-            const send = (force: boolean) => {
-              const result = polls[id] || []
-              if (result.length || payload.params[1] === 'immediate' || force) {
-                res.writeHead(200, { 'Content-Type': 'application/json' })
-                const response = { id: payload.id, jsonrpc: payload.jsonrpc, result }
-                if (logTraffic)
-                  log.info(`<- res | http | ${origin} | ${payload.method} | <- | ${JSON.stringify(response)}`)
-                res.end(JSON.stringify(response))
-                delete polls[id]
-                clearTimeout(cleanupTimers[id])
-                cleanupTimers[id] = setTimeout(cleanup.bind(null, id), 20 * 1000)
-              } else {
-                const sendResponse = () => {
-                  const pendingRequest = pending[id]
-                  if (pendingRequest && pendingRequest.timer) {
-                    clearTimeout(pendingRequest.timer)
-                  }
+          return
+        }
 
-                  delete pending[id]
+        if (protectedMethods.includes(payload.method) && !(await origins.isTrusted(payload, principal))) {
+          const error = {
+            message: accounts.getSelectedAddresses()[0]
+              ? `Permission denied, approve ${origin} in Newframe to continue`
+              : 'No Newframe account selected',
+            code: 4001
+          }
+          res.writeHead(401, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ id: payload.id, jsonrpc: payload.jsonrpc, error }))
+          return
+        }
 
-                  send(true)
-                }
-
-                pending[id] = {
-                  send: sendResponse,
-                  timer: setTimeout(sendResponse, 15 * 1000)
-                }
-              }
-            }
-            if (typeof id === 'string') return send(false)
+        if (payload.method === 'eth_pollSubscriptions') {
+          const id = payload.params[0]
+          if (typeof id !== 'string') {
             res.writeHead(401, { 'Content-Type': 'application/json' })
             res.end(JSON.stringify({ error: 'Invalid Client ID' }))
+            return
           }
 
-          provider.send(
-            payload,
-            (response) => {
-              if (response && response.result) {
-                if (payload.method === 'eth_subscribe') {
-                  pollSubs[response.result] = { id: rawPayload.pollId || '', origin: payload._origin } // Refactor this so you don't need to send a pollId and use the existing subscription id
-                } else if (payload.method === 'eth_unsubscribe') {
-                  payload.params.forEach((sub) => {
-                    if (pollSubs[sub]) delete pollSubs[sub]
-                  })
-                }
-              }
-
-              if (logTraffic)
-                log.info(
-                  `<- res | http | ${req.headers.origin} | ${payload.method} | <- | ${JSON.stringify(response)}`
-                )
+          const send = (force: boolean) => {
+            const result = polls[id] || []
+            if (result.length || payload.params[1] === 'immediate' || force) {
               res.writeHead(200, { 'Content-Type': 'application/json' })
+              const response = { id: payload.id, jsonrpc: payload.jsonrpc, result }
+              if (logTraffic) {
+                log.info(`<- res | http | ${origin} | ${payload.method} | <- | ${JSON.stringify(response)}`)
+              }
               res.end(JSON.stringify(response))
-            },
-            principal
-          )
+              delete polls[id]
+              if (cleanupTimers[id]) timers.clearTimeout(cleanupTimers[id])
+              cleanupTimers[id] = timers.setTimeout(() => cleanup(id), 20_000)
+              return
+            }
+
+            const sendResponse = () => {
+              if (pending[id]) timers.clearTimeout(pending[id].timer)
+              delete pending[id]
+              send(true)
+            }
+            pending[id] = {
+              send: sendResponse,
+              timer: timers.setTimeout(sendResponse, 15_000)
+            }
+          }
+
+          send(false)
+          return
         }
+
+        provider.send(
+          payload,
+          (response) => {
+            if (response?.result) {
+              if (payload.method === 'eth_subscribe') {
+                pollSubs[String(response.result)] = {
+                  id: rawPayload.pollId || '',
+                  origin: payload._origin
+                }
+              } else if (payload.method === 'eth_unsubscribe') {
+                payload.params.forEach((sub) => delete pollSubs[sub])
+              }
+            }
+
+            if (logTraffic) {
+              log.info(
+                `<- res | http | ${req.headers.origin} | ${payload.method} | <- | ${JSON.stringify(response)}`
+              )
+            }
+            res.writeHead(200, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify(response))
+          },
+          principal
+        )
       })
-      .on('error', (err) => console.error('req err', err))
-  } else {
-    res.writeHead(401, { 'Content-Type': 'application/json' })
-    res.end(JSON.stringify({ error: 'Permission Denied' }))
+      .on('error', (error) => log.error('HTTP request error', error))
   }
-}
 
-provider.on('data:subscription', (payload: RPC.Susbcription.Response) => {
-  const subscription = pollSubs[payload.params.subscription]
-  if (subscription) {
-    const { id } = subscription
+  return {
+    handler,
+    get started() {
+      return active
+    },
+    start() {
+      if (active || disposed) return
+      active = true
+      provider.on('data:subscription', subscriptionHandler)
+    },
+    dispose() {
+      if (disposed) return
 
-    polls[id] = polls[id] || []
-
-    polls[id].push(JSON.stringify(payload))
-    pending[id]?.send()
+      disposed = true
+      active = false
+      provider.off('data:subscription', subscriptionHandler)
+      const pollIds = new Set([
+        ...Object.keys(polls),
+        ...Object.keys(pending),
+        ...Object.keys(cleanupTimers),
+        ...Object.values(pollSubs).map(({ id }) => id)
+      ])
+      pollIds.forEach(cleanup)
+      Object.values(connectionMonitors).forEach((timer) => timers.clearTimeout(timer))
+      Object.keys(connectionMonitors).forEach((id) => delete connectionMonitors[id])
+    }
   }
-})
-
-export default function () {
-  return http.createServer(handler)
 }

@@ -1,26 +1,31 @@
 // The side tray hosts internal tools. `main.frames` describes the content it loads;
 // it does not own the Electron lifecycle.
 import { shallow } from 'zustand/vanilla/shallow'
-import store from '../../store'
+import type canonicalStore from '../../store'
 
 import sideTrayHost, { SideTray } from './window.js'
-
-function getFrames(): Record<string, Frame> {
-  return store.getState().main.frames
-}
+import type { RendererAuthorizationRegistry } from '../../ipc/authorization'
 
 export default class SideTrayManager {
   private sideTrays: Record<string, SideTray> = {}
+  private registerRenderer?: RendererAuthorizationRegistry['registerRenderer']
 
-  start() {
+  constructor(private readonly store: typeof canonicalStore) {}
+
+  private getFrames(): Record<string, Frame> {
+    return this.store.getState().main.frames
+  }
+
+  start(registerRenderer: RendererAuthorizationRegistry['registerRenderer']) {
+    this.registerRenderer = registerRenderer
     const manageCurrentFrames = ([frames, inFocus]: [Record<string, Frame>, string]) => {
       this.manageFrames(frames, inFocus)
     }
     const selectFrames = () =>
-      [getFrames(), store.getState().main.focusedFrame] as [Record<string, Frame>, string]
+      [this.getFrames(), this.store.getState().main.focusedFrame] as [Record<string, Frame>, string]
 
     manageCurrentFrames(selectFrames())
-    store.subscribe(
+    this.store.subscribe(
       (state) => [state.main.frames, state.main.focusedFrame] as [Record<string, Frame>, string],
       manageCurrentFrames,
       { equalityFn: shallow }
@@ -35,13 +40,16 @@ export default class SideTrayManager {
     frameIds
       .filter((frameId) => !instanceIds.includes(frameId))
       .forEach((frameId) => {
-        const sideTray = sideTrayHost.create(frames[frameId])
+        if (!this.registerRenderer) {
+          throw new Error('Renderer authorization must be configured before creating a side tray')
+        }
+        const sideTray = sideTrayHost.create(frames[frameId], this.registerRenderer)
 
         this.sideTrays[frameId] = sideTray
 
         sideTray.on('closed', () => {
           this.removeSideTray(frameId)
-          store.getState().removeFrame(frameId)
+          this.store.getState().removeFrame(frameId)
         })
 
         sideTray.on('focus', () => sideTray.webContents.focus())
@@ -94,7 +102,7 @@ export default class SideTrayManager {
   refocus(id: string) {
     const sideTray = this.sideTrays[id]
     if (sideTray) {
-      const frame = getFrames()[id]
+      const frame = this.getFrames()[id]
       sideTray.setVisibleOnAllWorkspaces(true, {
         visibleOnFullScreen: true,
         skipTransformProcessType: true
@@ -113,7 +121,7 @@ export default class SideTrayManager {
   }
 
   showAll() {
-    const frames = getFrames()
+    const frames = this.getFrames()
 
     Object.keys(this.sideTrays).forEach((frameId) => {
       const sideTray = this.sideTrays[frameId]

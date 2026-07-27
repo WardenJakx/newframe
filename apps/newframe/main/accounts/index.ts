@@ -1,18 +1,15 @@
 import EventEmitter from 'events'
 import log from 'electron-log'
-import { Notification } from 'electron'
 import { addHexPrefix, intToHex } from '@ethereumjs/util'
 import { v5 as uuidv5 } from 'uuid'
 
-import provider from '../provider'
-import store from '../store'
-import persist from '../store/persist'
 import FrameAccount from './Account'
-import ExternalDataScanner, { DataScanner } from '../externalData'
+import type { DataScanner } from '../externalData'
+import type { CanonicalStoreReader } from '../store/actions'
 import Signer from '../signers/Signer'
-import { signerCompatibility as transactionCompatibility, maxFee, SignerCompatibility } from '../transaction'
+import type { SignerCompatibility } from '../transaction'
 
-import { weiIntToEthInt, hexToInt } from '../../resources/utils'
+import { weiIntToEthInt, hexToInt } from '../../domain/hex'
 import {
   usesBaseFee,
   TransactionData,
@@ -20,8 +17,8 @@ import {
   TRANSACTION_CONFIRMATION_TARGET,
   getTransactionIntent,
   getTransactionPositionTokens
-} from '../../resources/domain/transaction'
-import { findUnavailableSigners, isHardwareSigner, isSignerReady } from '../../resources/domain/signer'
+} from '../../domain/transaction'
+import { findUnavailableSigners, isHardwareSigner, isSignerReady } from '../../domain/signer'
 import { decideWalletAction, type TrustedPrincipal } from '../authority'
 
 import {
@@ -34,24 +31,21 @@ import {
   RequestMode,
   TypedMessage,
   PermitSignatureRequest
-} from './types'
+} from '../../contracts/requests'
 
 import type { Chain } from '../chains'
 import { ActionType } from '../transaction/actions'
-import { openBlockExplorer } from '../windows/window'
-import { ApprovalType } from '../../resources/constants'
-import { accountNS } from '../../resources/domain/account'
-import { tokensForAccount, toTokenId } from '../../resources/domain/token'
-import { chainUsesOptimismFees } from '../../resources/utils/chains'
+import { ApprovalType } from '../../domain/request/approval'
+import { accountNS } from '../../domain/account'
+import { tokensForAccount, toTokenId } from '../../domain/token'
+import { chainUsesOptimismFees } from '../../domain/chain/fees'
 import type { ActivityRecord, StatusNotification, Token } from '../store/state'
-
-function notify(title: string, body: string, action: (event: Electron.Event) => void) {
-  const notification = new Notification({ title, body })
-  if (!notification) return
-  notification.on('click', action)
-
-  setTimeout(() => notification.show(), 1000)
-}
+import type { AccountChainRpcPort } from './providerPort'
+import type { AccountTransactionPolicyPort } from '../features/transactions/accountPolicyPort'
+import type { TransactionSimulationPort } from '../features/transactions/simulationPort'
+import type { NameResolutionService } from '../nameResolution'
+import type { RevealService } from '../reveal'
+import type { AccountsRuntime } from './runtime'
 
 function shortHash(hash?: string) {
   if (!hash) return ''
@@ -126,19 +120,7 @@ function toTransactionsByLayer(requests: Record<string, AccountRequest>, chainId
 const frameOriginId = uuidv5('newframe-internal', uuidv5.DNS)
 const CONFIRMED_REQUEST_CLOSE_MS = 3000
 
-const storeApi = {
-  getAccounts: function () {
-    return (store.getState().main.accounts || {}) as unknown as Record<string, Account>
-  },
-  getAccount: function (id: string) {
-    return (store.getState().main.accounts[id] || {}) as unknown as Account
-  },
-  getSigners: function () {
-    return Object.values((store.getState().main.signers || {}) as Record<string, Signer>)
-  }
-}
-
-export { RequestMode } from './types'
+export { RequestMode } from '../../contracts/requests'
 export type {
   AccountRequest,
   AccessRequest,
@@ -146,9 +128,19 @@ export type {
   SignTypedDataRequest,
   AddChainRequest,
   AddTokenRequest
-} from './types'
+} from '../../contracts/requests'
 
 type RequestWithId = [string, TransactionRequest]
+
+export interface AccountsDependencies {
+  chainRpc: AccountChainRpcPort
+  transactionPolicy: AccountTransactionPolicyPort
+  simulation: TransactionSimulationPort
+  nameResolution: NameResolutionService
+  reveal: RevealService
+  runtime: AccountsRuntime
+  createDataScanner: (store: CanonicalStoreReader) => DataScanner
+}
 
 export class Accounts extends EventEmitter {
   accounts: Record<string, FrameAccount>
@@ -157,8 +149,17 @@ export class Accounts extends EventEmitter {
   private dataScanner?: DataScanner
   private activityMonitors: Record<string, () => void> = {}
   private pendingPositionRefreshes = new Map<string, TransactionRequest>()
+  private transactionPositionTokensByHash = new Map<string, Token[]>()
+  private readonly storeApi = {
+    getAccounts: () => (this.store.getState().main.accounts || {}) as unknown as Record<string, Account>,
+    getAccount: (id: string) => (this.store.getState().main.accounts[id] || {}) as unknown as Account,
+    getSigners: () => Object.values((this.store.getState().main.signers || {}) as Record<string, Signer>)
+  }
 
-  constructor() {
+  constructor(
+    private readonly store: CanonicalStoreReader,
+    private readonly dependencies: AccountsDependencies
+  ) {
     super()
 
     this.accounts = {}
@@ -167,9 +168,18 @@ export class Accounts extends EventEmitter {
   initialize() {
     if (this.initialized) return
 
-    Object.entries(storeApi.getAccounts()).forEach(([id, account]) => {
+    Object.entries(this.storeApi.getAccounts()).forEach(([id, account]) => {
       if (!this.accounts[id]) {
-        this.accounts[id] = new FrameAccount(JSON.parse(JSON.stringify(account)), this)
+        this.accounts[id] = new FrameAccount(
+          JSON.parse(JSON.stringify(account)),
+          this,
+          this.store,
+          this.dependencies.chainRpc,
+          this.dependencies.simulation,
+          this.dependencies.nameResolution,
+          this.dependencies.reveal,
+          this.dependencies.runtime
+        )
       }
     })
 
@@ -177,8 +187,12 @@ export class Accounts extends EventEmitter {
     this.initialized = true
   }
 
+  start() {
+    this.initialize()
+  }
+
   get(id: string) {
-    return storeApi.getAccounts()[id]
+    return this.storeApi.getAccounts()[id]
   }
 
   getFrameAccount(id: string) {
@@ -186,15 +200,24 @@ export class Accounts extends EventEmitter {
   }
 
   private has(id: string) {
-    return Boolean(storeApi.getAccounts()[id])
+    return Boolean(this.storeApi.getAccounts()[id])
   }
 
   private handle(id: string) {
-    const account = storeApi.getAccounts()[id]
+    const account = this.storeApi.getAccounts()[id]
     if (!account) return null
 
     if (!this.accounts[id]) {
-      this.accounts[id] = new FrameAccount(JSON.parse(JSON.stringify(account)), this)
+      this.accounts[id] = new FrameAccount(
+        JSON.parse(JSON.stringify(account)),
+        this,
+        this.store,
+        this.dependencies.chainRpc,
+        this.dependencies.simulation,
+        this.dependencies.nameResolution,
+        this.dependencies.reveal,
+        this.dependencies.runtime
+      )
     }
 
     return this.accounts[id]
@@ -216,10 +239,10 @@ export class Accounts extends EventEmitter {
 
   private getTransactionActivityDisplay(req: TransactionRequest, chain?: Chain) {
     const value = req.data?.value
-    const network = chain ? (store.getState().main.networks.ethereum[chain.id] as any) : undefined
+    const network = chain ? (this.store.getState().main.networks.ethereum[chain.id] as any) : undefined
     const chainSymbol =
       network?.symbol ||
-      (chain ? store.getState().main.networksMeta.ethereum[chain.id].nativeCurrency.symbol : '') ||
+      (chain ? this.store.getState().main.networksMeta.ethereum[chain.id].nativeCurrency.symbol : '') ||
       'ETH'
     const intent = getTransactionIntent(req, chainSymbol)
 
@@ -266,8 +289,8 @@ export class Accounts extends EventEmitter {
       chainType: chain?.type || 'ethereum',
       nonce: req.data?.nonce,
       origin: req.origin,
-      submittedAt: Date.now(),
-      updatedAt: Date.now(),
+      submittedAt: this.dependencies.runtime.now(),
+      updatedAt: this.dependencies.runtime.now(),
       status: 'submitted' as const,
       confirmations: req.tx?.confirmations || 0,
       receipt: cloneForActivity(req.tx?.receipt),
@@ -288,9 +311,9 @@ export class Accounts extends EventEmitter {
   private upsertTransactionNotification(account: FrameAccount, req: TransactionRequest, hash: string) {
     const chain = this.getTransactionChain(req)
     const display = this.getTransactionActivityDisplay(req, chain)
-    const now = Date.now()
+    const now = this.dependencies.runtime.now()
 
-    store.getState().upsertPendingNotification({
+    this.store.getState().upsertPendingNotification({
       id: transactionNotificationId(hash),
       state: 'pending',
       title: display.title,
@@ -316,8 +339,11 @@ export class Accounts extends EventEmitter {
     req: TransactionRequest,
     hash: string
   ) {
-    this.saveTransactionPositionTokens(account.address, req)
-    store.getState().upsertSubmittedActivity(this.transactionActivityRecord(account, handlerId, req, hash))
+    const positionTokens = this.saveTransactionPositionTokens(account.address, req)
+    this.transactionPositionTokensByHash.set(hash, positionTokens)
+    this.store
+      .getState()
+      .upsertSubmittedActivity(this.transactionActivityRecord(account, handlerId, req, hash))
     this.upsertTransactionNotification(account, req, hash)
   }
 
@@ -326,7 +352,7 @@ export class Accounts extends EventEmitter {
   }
 
   private savePositionTokens(address: Address, affectedTokens: Token[]) {
-    const savedTokens = tokensForAccount(store.getState().main.tokens, address)
+    const savedTokens = tokensForAccount(this.store.getState().main.tokens, address)
     const savedTokenIndex = new Map(savedTokens.map((token) => [toTokenId(token), token]))
     const tokens = affectedTokens.map((token) => {
       const savedToken = savedTokenIndex.get(toTokenId(token))
@@ -335,7 +361,7 @@ export class Accounts extends EventEmitter {
     })
     const newTokens = tokens.filter((token) => !savedTokenIndex.has(toTokenId(token)))
     if (newTokens.length > 0) {
-      store.getState().upsertTokens(newTokens, { account: address, source: 'transaction' })
+      this.store.getState().upsertTokens(newTokens, { account: address, source: 'transaction' })
     }
 
     return tokens
@@ -365,17 +391,26 @@ export class Accounts extends EventEmitter {
     const address = (req.account || req.data?.from || '').toLowerCase() as Address
     if (!hash || !chainId || !address || !req.tx?.receipt) return
 
-    const activity = store.getState().main.activity[transactionActivityId(hash)] as ActivityRecord | undefined
+    const activity = this.store.getState().main.activity[transactionActivityId(hash)] as
+      | ActivityRecord
+      | undefined
     if (activity?.positionsRefreshedAt) return
 
-    const tokens = this.transactionPositionTokens(req)
+    const requestTokens = this.transactionPositionTokens(req)
+    const tokens = requestTokens.length
+      ? requestTokens
+      : this.transactionPositionTokensByHash.get(hash) ||
+        (activity ? this.transactionPositionTokens(activity as unknown as TransactionRequest) : [])
     if (!this.refreshPositions(address, chainId, tokens)) {
       this.pendingPositionRefreshes.set(hash, req)
       return
     }
 
-    store.getState().updateActivity(transactionActivityId(hash), { positionsRefreshedAt: Date.now() })
+    this.store
+      .getState()
+      .updateActivity(transactionActivityId(hash), { positionsRefreshedAt: this.dependencies.runtime.now() })
     this.pendingPositionRefreshes.delete(hash)
+    this.transactionPositionTokensByHash.delete(hash)
   }
 
   syncTransactionActivity(account: FrameAccount, req: TransactionRequest) {
@@ -385,12 +420,12 @@ export class Accounts extends EventEmitter {
     this.saveTransactionPositionTokens(account.address, req)
 
     const id = transactionActivityId(hash)
-    const activity = store.getState().main.activity[id]
+    const activity = this.store.getState().main.activity[id]
     if (!activity) return
 
     const display = this.getTransactionActivityDisplay(req, this.getTransactionChain(req))
 
-    store.getState().updateActivity(id, {
+    this.store.getState().updateActivity(id, {
       display,
       data: cloneForActivity(req.data),
       payload: cloneForActivity(req.payload),
@@ -402,11 +437,14 @@ export class Accounts extends EventEmitter {
       classification: req.classification,
       recipient: req.recipient,
       recipientType: req.recipientType,
-      updatedAt: Date.now()
+      updatedAt: this.dependencies.runtime.now()
     })
 
     const notificationId = transactionNotificationId(hash)
-    const notifications = store.getState().view.notifications as unknown as Record<string, StatusNotification>
+    const notifications = this.store.getState().view.notifications as unknown as Record<
+      string,
+      StatusNotification
+    >
     const notification = notifications[notificationId]
     if (!notification) return
 
@@ -419,13 +457,13 @@ export class Accounts extends EventEmitter {
     }
 
     if (notification.state === 'pending') {
-      store.getState().upsertPendingNotification({
+      this.store.getState().upsertPendingNotification({
         ...notification,
         ...update,
         id: notificationId
       })
     } else {
-      store.getState().resolveNotification(notificationId, notification.state, update)
+      this.store.getState().resolveNotification(notificationId, notification.state, update)
     }
   }
 
@@ -443,7 +481,7 @@ export class Accounts extends EventEmitter {
       })
     }
 
-    store.getState().updateActivity(transactionActivityId(hash), {
+    this.store.getState().updateActivity(transactionActivityId(hash), {
       status: 'confirming',
       confirmations,
       receipt,
@@ -456,7 +494,7 @@ export class Accounts extends EventEmitter {
       classification: req.classification,
       recipient: req.recipient,
       recipientType: req.recipientType,
-      updatedAt: Date.now()
+      updatedAt: this.dependencies.runtime.now()
     })
   }
 
@@ -468,11 +506,11 @@ export class Accounts extends EventEmitter {
     const hash = req.tx?.hash
     if (!hash) return
 
-    const now = Date.now()
+    const now = this.dependencies.runtime.now()
     const notificationState = status === 'succeeded' ? 'completed' : 'failed'
     const display = this.getTransactionActivityDisplay(req, this.getTransactionChain(req))
 
-    store.getState().finalizeActivity(transactionActivityId(hash), status, {
+    this.store.getState().finalizeActivity(transactionActivityId(hash), status, {
       ...update,
       display,
       decodedData: cloneForActivity(req.decodedData),
@@ -489,7 +527,7 @@ export class Accounts extends EventEmitter {
       updatedAt: update.updatedAt ?? now
     })
 
-    store.getState().resolveNotification(transactionNotificationId(hash), notificationState, {
+    this.store.getState().resolveNotification(transactionNotificationId(hash), notificationState, {
       title: display.title,
       detail: shortHash(hash),
       expiresAt: now + 3000,
@@ -501,7 +539,7 @@ export class Accounts extends EventEmitter {
     const hash = req.tx?.hash
     if (!hash) return
 
-    store.getState().pruneActivity(transactionActivityId(hash))
+    this.store.getState().pruneActivity(transactionActivityId(hash))
   }
 
   private receiptWasReverted(req: TransactionRequest) {
@@ -635,7 +673,7 @@ export class Accounts extends EventEmitter {
 
     if (!winnerHash || !winnerAccount || !winnerChainId || !winnerNonce) return
 
-    const activity = (store.getState().main.activity || {}) as Record<string, ActivityRecord>
+    const activity = (this.store.getState().main.activity || {}) as Record<string, ActivityRecord>
     Object.values(activity).forEach((candidate) => {
       if (!this.isNonTerminalActivity(candidate)) return
       if ((candidate.hash || '').toLowerCase() === winnerHash) return
@@ -643,7 +681,7 @@ export class Accounts extends EventEmitter {
       if (this.activityChainId(candidate) !== winnerChainId) return
       if (this.activityNonce(candidate) !== winnerNonce) return
 
-      store.getState().pruneActivity(candidate.id)
+      this.store.getState().pruneActivity(candidate.id)
       this.stopActivityMonitor(candidate.id)
     })
   }
@@ -658,7 +696,7 @@ export class Accounts extends EventEmitter {
     if (!this.isNonTerminalActivity(activity)) return
 
     const monitor = async () => {
-      const currentActivity = ((store.getState().main.activity || {}) as Record<string, ActivityRecord>)[
+      const currentActivity = ((this.store.getState().main.activity || {}) as Record<string, ActivityRecord>)[
         activity.id
       ]
       if (!this.isNonTerminalActivity(currentActivity) || !currentActivity.hash) {
@@ -700,11 +738,11 @@ export class Accounts extends EventEmitter {
           return this.stopActivityMonitor(activity.id)
         }
 
-        store.getState().updateActivity(activity.id, {
+        this.store.getState().updateActivity(activity.id, {
           status: 'confirming',
           confirmations,
           receipt,
-          updatedAt: Date.now()
+          updatedAt: this.dependencies.runtime.now()
         })
       } catch (e) {
         log.error('error resuming activity transaction monitor', e)
@@ -717,7 +755,7 @@ export class Accounts extends EventEmitter {
   }
 
   private resumeActivityTracking() {
-    const activity = (store.getState().main.activity || {}) as Record<string, ActivityRecord>
+    const activity = (this.store.getState().main.activity || {}) as Record<string, ActivityRecord>
 
     Object.values(activity).forEach((record) => {
       this.resumeActivityMonitor(record)
@@ -725,7 +763,7 @@ export class Accounts extends EventEmitter {
   }
 
   private openNextActionableRequest(account: FrameAccount) {
-    const panelNav = (store.getState().windows.panel.nav || []) as any[]
+    const panelNav = (this.store.getState().windows.panel.nav || []) as any[]
     if (panelNav[0]?.view === 'requestView') return
 
     const nextRequest = Object.values(account.requests)
@@ -738,7 +776,7 @@ export class Accounts extends EventEmitter {
 
     if (!nextRequest) return
 
-    store.getState().navForward('panel', {
+    this.store.getState().navForward('panel', {
       view: 'requestView',
       data: {
         step: 'confirm',
@@ -756,10 +794,19 @@ export class Accounts extends EventEmitter {
     if (!this.has(address)) {
       log.info(`Account ${address} not found, creating account`)
 
-      const created = 'new:' + Date.now()
+      const created = 'new:' + this.dependencies.runtime.now()
       const accountMetaId = uuidv5(address, accountNS)
-      const accountMeta = store.getState().main.accountsMeta[accountMetaId] || { name }
-      this.accounts[address] = new FrameAccount({ address, name: accountMeta.name, created, options }, this)
+      const accountMeta = this.store.getState().main.accountsMeta[accountMetaId] || { name }
+      this.accounts[address] = new FrameAccount(
+        { address, name: accountMeta.name, created, options },
+        this,
+        this.store,
+        this.dependencies.chainRpc,
+        this.dependencies.simulation,
+        this.dependencies.nameResolution,
+        this.dependencies.reveal,
+        this.dependencies.runtime
+      )
       account = this.accounts[address]
     }
 
@@ -772,28 +819,28 @@ export class Accounts extends EventEmitter {
     if (!account || !nextName || account.name === nextName) return
 
     account.rename(nextName)
-    setTimeout(() => persist.flush(), 0)
+    this.dependencies.runtime.schedule(() => this.dependencies.runtime.persistence.flush(), 0)
   }
 
   current() {
-    const currentAccountId = store.getState().main.currentAccount
+    const currentAccountId = this.store.getState().main.currentAccount
     return currentAccountId ? this.handle(currentAccountId) : null
   }
 
   private defaultAccountAfterRemoving(address: string) {
-    const accountOrder = (store.getState().main.accountOrder || []) as string[]
+    const accountOrder = (this.store.getState().main.accountOrder || []) as string[]
     const orderedAccount = accountOrder
       .filter((id) => id !== address)
       .map((id) => this.handle(id))
       .find(Boolean)
 
-    const fallbackId = Object.keys(storeApi.getAccounts()).find((id) => id !== address)
+    const fallbackId = Object.keys(this.storeApi.getAccounts()).find((id) => id !== address)
     return orderedAccount || (fallbackId ? this.handle(fallbackId) : null)
   }
 
   startDataScanner() {
     if (!this.dataScanner) {
-      this.dataScanner = ExternalDataScanner()
+      this.dataScanner = this.dependencies.createDataScanner(this.store)
       this.pendingPositionRefreshes.forEach((req) => this.refreshTransactionPositions(req))
     }
   }
@@ -864,10 +911,10 @@ export class Accounts extends EventEmitter {
 
       const data = JSON.parse(JSON.stringify(txRequest.data))
       const targetChain = { type: 'ethereum', id: parseInt(data.chainId, 16) }
-      const { levels } = store.getState().main.networksMeta.ethereum[targetChain.id].gas.price
+      const { levels } = this.store.getState().main.networksMeta.ethereum[targetChain.id].gas.price
 
       // Set the gas default to asap
-      store.getState().setGasDefault(targetChain.type, targetChain.id, 'asap', levels.asap)
+      this.store.getState().setGasDefault(targetChain.type, targetChain.id, 'asap', levels.asap)
 
       const params =
         type === ReplacementType.Speed
@@ -914,7 +961,11 @@ export class Accounts extends EventEmitter {
     cb: RPCRequestCallback,
     principal?: TrustedPrincipal
   ) {
-    provider.send({ id: 1, jsonrpc: '2.0', method, params, chainId, _origin }, cb, principal)
+    this.dependencies.chainRpc.send(
+      { id: 1, jsonrpc: '2.0', method, params, chainId, _origin },
+      cb,
+      principal
+    )
   }
 
   private async confirmations(account: FrameAccount, id: string, hash: string, targetChain: Chain) {
@@ -951,7 +1002,8 @@ export class Accounts extends EventEmitter {
                 if (!txRequest.feeAtTime) {
                   const network = targetChain
                   if (network.type === 'ethereum' && network.id === 1) {
-                    const ethPrice = store.getState().main.networksMeta.ethereum['1'].nativeCurrency.usd.price
+                    const ethPrice =
+                      this.store.getState().main.networksMeta.ethereum['1'].nativeCurrency.usd.price
 
                     if (ethPrice && txRequest.tx && txRequest.tx.receipt && this.has(account.address)) {
                       const { gasUsed } = txRequest.tx.receipt
@@ -990,7 +1042,7 @@ export class Accounts extends EventEmitter {
                   txRequest = account.patchRequest<TransactionRequest>(id, (request) => {
                     request.status = RequestStatus.Error
                     request.notice = 'Reverted'
-                    request.completed = Date.now()
+                    request.completed = this.dependencies.runtime.now()
                   }) as TransactionRequest
                 }
 
@@ -1019,7 +1071,10 @@ export class Accounts extends EventEmitter {
                         request.status = RequestStatus.Error
                         request.notice = 'Dropped'
                       })
-                      setTimeout(() => this.has(account.address) && this.removeRequest(account, k), 8000)
+                      this.dependencies.runtime.schedule(
+                        () => this.has(account.address) && this.removeRequest(account, k),
+                        8000
+                      )
                     }
                   })
                 }
@@ -1028,14 +1083,14 @@ export class Accounts extends EventEmitter {
                   txRequest = account.patchRequest<TransactionRequest>(id, (request) => {
                     request.status = RequestStatus.Confirming
                     request.notice = 'Confirming'
-                    request.completed = Date.now()
+                    request.completed = this.dependencies.runtime.now()
                   }) as TransactionRequest
                   const hash = txRequest.tx?.hash || ''
                   const body = `Transaction ${shortHash(hash)} successful! \n Click for details`
 
                   // If Newframe is hidden, trigger native notification
-                  notify('Transaction Successful', body, () => {
-                    openBlockExplorer(targetChain, hash)
+                  this.dependencies.runtime.notify('Transaction Successful', body, () => {
+                    this.dependencies.runtime.openBlockExplorer(targetChain, hash)
                   })
                 }
                 resolve(confirmations)
@@ -1067,7 +1122,10 @@ export class Accounts extends EventEmitter {
 
     if (!rawTx.chainId) {
       log.error('txMonitor had no target chain')
-      setTimeout(() => this.has(account.address) && this.removeRequest(account, requestId), 8 * 1000)
+      this.dependencies.runtime.schedule(
+        () => this.has(account.address) && this.removeRequest(account, requestId),
+        8 * 1000
+      )
     } else {
       const targetChain: Chain = {
         type: 'ethereum',
@@ -1092,7 +1150,7 @@ export class Accounts extends EventEmitter {
                 let txRequest = this.getTransactionRequest(account, requestId)
 
                 if (this.receiptWasReverted(txRequest)) {
-                  setTimeout(
+                  this.dependencies.runtime.schedule(
                     () => this.has(account.address) && this.removeRequest(account, requestId),
                     CONFIRMED_REQUEST_CLOSE_MS
                   )
@@ -1106,7 +1164,7 @@ export class Accounts extends EventEmitter {
                     request.notice = 'Confirmed'
                   }) as TransactionRequest
                   this.finalizeTransactionActivity(txRequest, 'succeeded', { confirmations })
-                  setTimeout(
+                  this.dependencies.runtime.schedule(
                     () => this.has(account.address) && this.removeRequest(account, requestId),
                     CONFIRMED_REQUEST_CLOSE_MS
                   )
@@ -1116,7 +1174,7 @@ export class Accounts extends EventEmitter {
                 log.error('error awaiting confirmations', e)
                 clear()
                 setTxSent()
-                setTimeout(
+                this.dependencies.runtime.schedule(
                   () => this.has(account.address) && this.removeRequest(account, requestId),
                   60 * 1000
                 )
@@ -1124,7 +1182,7 @@ export class Accounts extends EventEmitter {
               }
             }
 
-            setTimeout(() => monitor(), 1000)
+            this.dependencies.runtime.schedule(() => monitor(), 1000)
             const monitorTimer = setInterval(monitor, 1000)
 
             const statusHandler = (status: string) => {
@@ -1136,22 +1194,22 @@ export class Accounts extends EventEmitter {
 
             const { type, id } = targetChain
 
-            provider.on(`status:${type}:${id}`, statusHandler)
+            this.dependencies.chainRpc.on(`status:${type}:${id}`, statusHandler)
 
             const clear = () => {
               clearInterval(monitorTimer)
-              provider.off(`status:${type}:${id}`, statusHandler)
+              this.dependencies.chainRpc.off(`status:${type}:${id}`, statusHandler)
             }
           } else if (newHeadRes.result) {
             const headSub = newHeadRes.result
 
             const removeSubscription = async (requestRemoveTimeout: number) => {
-              setTimeout(
+              this.dependencies.runtime.schedule(
                 () => this.has(account.address) && this.removeRequest(account, requestId),
                 requestRemoveTimeout
               )
-              provider.off(`data:${targetChain.type}:${targetChain.id}`, handler)
-              provider.off(`status:${targetChain.type}:${targetChain.id}`, statusHandler)
+              this.dependencies.chainRpc.off(`data:${targetChain.type}:${targetChain.id}`, handler)
+              this.dependencies.chainRpc.off(`status:${targetChain.type}:${targetChain.id}`, statusHandler)
               this.sendRequest(
                 { method: 'eth_unsubscribe', chainId: targetChainId, params: [headSub] },
                 (res: RPCResponsePayload) => {
@@ -1202,8 +1260,8 @@ export class Accounts extends EventEmitter {
 
             const { type, id } = targetChain
 
-            provider.on(`status:${type}:${id}`, statusHandler)
-            provider.on(`data:${type}:${id}`, handler)
+            this.dependencies.chainRpc.on(`status:${type}:${id}`, statusHandler)
+            this.dependencies.chainRpc.on(`data:${type}:${id}`, handler)
           }
         }
       )
@@ -1213,7 +1271,7 @@ export class Accounts extends EventEmitter {
   // Set Current Account
   setSigner(id: string, cb: Callback<Account>) {
     if (!id) {
-      store.getState().unsetAccount()
+      this.store.getState().unsetAccount()
       return cb(null, { id: '', status: '' } as unknown as Account)
     }
 
@@ -1227,7 +1285,7 @@ export class Accounts extends EventEmitter {
     }
 
     const account = this.get(id) as Account
-    store.getState().setAccount({ id })
+    this.store.getState().setAccount({ id })
     cb(null, account)
 
     if (currentAccount.status === 'ok')
@@ -1252,7 +1310,7 @@ export class Accounts extends EventEmitter {
         try {
           const tx = req.data
           const chain = { type: 'ethereum', id: parseInt(tx.chainId, 16) }
-          const gas = store.getState().main.networksMeta.ethereum[chain.id].gas
+          const gas = this.store.getState().main.networksMeta.ethereum[chain.id].gas
 
           if (usesBaseFee(tx)) {
             const { maxBaseFeePerGas, maxPriorityFeePerGas } = gas.price.fees || {}
@@ -1273,7 +1331,7 @@ export class Accounts extends EventEmitter {
         l2Transactions.forEach(async ([id, req]) => {
           let estimate = ''
           try {
-            estimate = addHexPrefix((await provider.getL1GasCost(req.data)).toString(16))
+            estimate = addHexPrefix((await this.dependencies.chainRpc.getL1GasCost(req.data)).toString(16))
           } catch (e) {
             log.error('Error estimating L1 gas cost', e)
           }
@@ -1293,9 +1351,9 @@ export class Accounts extends EventEmitter {
     const summary = { id: '', status: '' }
     if (cb) cb(null, summary)
 
-    store.getState().unsetAccount()
+    this.store.getState().unsetAccount()
 
-    // setTimeout(() => { // Clear signer requests when unset
+    // this.dependencies.runtime.schedule(() => { // Clear signer requests when unset
     //   if (s) {
     //     s.requests = {}
     //     s.update()
@@ -1380,7 +1438,10 @@ export class Accounts extends EventEmitter {
     if (!signer) {
       // if no signer is active, check if this account was previously relying on a
       // hardware signer that is currently disconnected
-      const unavailableSigners = findUnavailableSigners(currentAccount.lastSignerType, storeApi.getSigners())
+      const unavailableSigners = findUnavailableSigners(
+        currentAccount.lastSignerType,
+        this.storeApi.getSigners()
+      )
 
       // surface hardware signer recovery to the caller
       if (unavailableSigners.length === 1) return signerUnavailable()
@@ -1402,7 +1463,7 @@ export class Accounts extends EventEmitter {
     const getCompatibility = () => {
       if (request.type === 'transaction') {
         const data = this.getTransactionRequest(currentAccount, handlerId).data
-        return transactionCompatibility(data, signer.summary())
+        return this.dependencies.transactionPolicy.signerCompatibility(data, signer.summary())
       }
 
       // all requests besides transactions are always compatible
@@ -1414,11 +1475,19 @@ export class Accounts extends EventEmitter {
 
   close() {
     Object.values(this.accounts).forEach((account) => account.close())
+    this.accounts = {}
     this.dataScanner?.close()
     this.dataScanner = undefined
     this.pendingPositionRefreshes.clear()
+    this.transactionPositionTokensByHash.clear()
     Object.keys(this.activityMonitors).forEach((id) => this.stopActivityMonitor(id))
+    this.initialized = false
     // usbDetect.stopMonitoring()
+  }
+
+  dispose() {
+    this.close()
+    this.removeAllListeners()
   }
 
   setAccess(req: AccessRequest, access: boolean) {
@@ -1498,13 +1567,15 @@ export class Accounts extends EventEmitter {
     if (!account) return false
 
     this.recordSubmittedTransaction(account, request.handlerId, request, hash)
-    const activity = store.getState().main.activity[transactionActivityId(hash)] as ActivityRecord | undefined
+    const activity = this.store.getState().main.activity[transactionActivityId(hash)] as
+      | ActivityRecord
+      | undefined
     if (activity) this.resumeActivityMonitor(activity)
     return true
   }
 
   removeRequests(handlerId: string) {
-    Object.keys(storeApi.getAccounts()).forEach((id) => {
+    Object.keys(this.storeApi.getAccounts()).forEach((id) => {
       const account = this.handle(id)
       if (account?.requests[handlerId]) {
         this.removeRequest(account, handlerId)
@@ -1566,21 +1637,21 @@ export class Accounts extends EventEmitter {
       })
 
       if (currentAccount.requests[handlerId].type === 'transaction') {
-        setTimeout(() => {
+        this.dependencies.runtime.schedule(() => {
           const activeAccount = this.current()
           if (activeAccount && activeAccount.requests[handlerId]) {
             activeAccount.patchRequest(handlerId, (request) => {
               request.mode = RequestMode.Monitor
             })
 
-            setTimeout(
+            this.dependencies.runtime.schedule(
               () => this.has(activeAccount.address) && this.removeRequest(activeAccount, handlerId),
               8000
             )
           }
         }, 1500)
       } else {
-        setTimeout(
+        this.dependencies.runtime.schedule(
           () => this.has(currentAccount.address) && this.removeRequest(currentAccount, handlerId),
           3300
         )
@@ -1624,7 +1695,7 @@ export class Accounts extends EventEmitter {
       }) as TransactionRequest
 
       this.recordSubmittedTransaction(currentAccount, handlerId, txRequest, hash)
-      store.getState().navClearReq(handlerId, false)
+      this.store.getState().navClearReq(handlerId, false)
       this.openNextActionableRequest(currentAccount)
       this.txMonitor(currentAccount, handlerId, hash)
     }
@@ -1642,7 +1713,7 @@ export class Accounts extends EventEmitter {
         if (isTransaction) request.mode = RequestMode.Monitor
       })
       if (!isTransaction) {
-        setTimeout(
+        this.dependencies.runtime.schedule(
           () => this.has(currentAccount.address) && this.removeRequest(currentAccount, handlerId),
           3300
         )
@@ -1661,16 +1732,16 @@ export class Accounts extends EventEmitter {
     address = address.toLowerCase()
 
     const currentAccount = this.current()
-    const selectedAccountId = (store.getState().main.currentAccount || '').toLowerCase().trim()
+    const selectedAccountId = (this.store.getState().main.currentAccount || '').toLowerCase().trim()
     const removingCurrentAccount = currentAccount?.address === address || selectedAccountId === address
 
     if (removingCurrentAccount) {
       const defaultAccount = this.defaultAccountAfterRemoving(address)
 
       if (defaultAccount) {
-        store.getState().setAccount({ id: defaultAccount.id })
+        this.store.getState().setAccount({ id: defaultAccount.id })
       } else {
-        store.getState().unsetAccount()
+        this.store.getState().unsetAccount()
       }
     }
 
@@ -1682,7 +1753,7 @@ export class Accounts extends EventEmitter {
       handle.close()
     }
 
-    store.getState().removeAccount(address)
+    this.store.getState().removeAccount(address)
     delete this.accounts[address]
   }
 
@@ -1780,7 +1851,7 @@ export class Accounts extends EventEmitter {
 
     // New max fee per gas
     const newMaxFeePerGas = newBaseFee + maxPriorityFeePerGas
-    const maxTotalFee = maxFee(tx)
+    const maxTotalFee = this.dependencies.transactionPolicy.maxFee(tx)
 
     // Limit max fee
     if (newMaxFeePerGas * gasLimit > maxTotalFee) {
@@ -1816,7 +1887,7 @@ export class Accounts extends EventEmitter {
 
     // New max fee per gas
     const newMaxFeePerGas = currentBaseFee + newMaxPriorityFeePerGas
-    const maxTotalFee = maxFee(tx)
+    const maxTotalFee = this.dependencies.transactionPolicy.maxFee(tx)
 
     // Limit max fee
     if (newMaxFeePerGas * gasLimit > maxTotalFee) {
@@ -1850,7 +1921,7 @@ export class Accounts extends EventEmitter {
 
     const txRequest = this.getTransactionRequest(currentAccount, handlerId)
     const tx = { ...txRequest.data }
-    const maxTotalFee = maxFee(tx)
+    const maxTotalFee = this.dependencies.transactionPolicy.maxFee(tx)
 
     // Limit max fee
     if (newGasPrice * gasLimit > maxTotalFee) {
@@ -1876,7 +1947,7 @@ export class Accounts extends EventEmitter {
 
     const txRequest = this.getTransactionRequest(currentAccount, handlerId)
     const tx = { ...txRequest.data }
-    const maxTotalFee = maxFee(tx)
+    const maxTotalFee = this.dependencies.transactionPolicy.maxFee(tx)
 
     const fee = txType === '0x2' ? maxFeePerGas : gasPrice
     if (newGasLimit * fee > maxTotalFee) {
@@ -1968,14 +2039,12 @@ export class Accounts extends EventEmitter {
   }
 
   // removeAllAccounts () {
-  //   setTimeout(() => {
+  //   this.dependencies.runtime.schedule(() => {
   //     Object.keys(this.accounts).forEach(id => {
   //       if (this.accounts[id]) this.accounts[id].close()
-  //       store.getState().removeAccount(id)
+  //       this.store.getState().removeAccount(id)
   //       delete this.accounts[id]
   //     })
   //   }, 1000)
   // }
 }
-
-export default new Accounts()

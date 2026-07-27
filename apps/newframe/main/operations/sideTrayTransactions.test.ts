@@ -1,28 +1,16 @@
-import { afterEach, beforeAll, beforeEach, describe, expect, it, jest as timers, mock } from 'bun:test'
+import { beforeEach, describe, expect, it, mock } from 'bun:test'
 
 const currentAccount = mock()
 const providerSend = mock()
 const flashQuote = mock()
 const flashSubmitOrder = mock()
-const getState = mock()
 const initOrigin = mock()
-const closeWindow = mock()
 
 import { createRendererPrincipal } from '../authority'
+import { createSideTrayTransactionOperations } from './sideTrayTransactions'
 
-mock.module('../accounts', () => ({ default: { current: currentAccount } }))
-mock.module('../provider', () => ({ default: { send: providerSend } }))
-mock.module('../flash/instance', () => ({
-  flashService: { quote: flashQuote, submitOrder: flashSubmitOrder }
-}))
-mock.module('../store', () => ({ default: { getState } }))
-mock.module('../windows', () => ({ default: { close: closeWindow } }))
-
-let closeOwnSideTray: typeof import('./sideTrayWorkflows').closeOwnSideTray
-let quoteFlashForCurrentAccount: typeof import('./sideTrayTransactions').quoteFlashForCurrentAccount
-let signCurrentAccountTypedData: typeof import('./sideTrayTransactions').signCurrentAccountTypedData
-let submitCurrentAccountTransaction: typeof import('./sideTrayTransactions').submitCurrentAccountTransaction
-let submitFlashForCurrentAccount: typeof import('./sideTrayTransactions').submitFlashForCurrentAccount
+let service: ReturnType<typeof createSideTrayTransactionOperations>
+let chainAvailable = true
 
 const address = '0x1111111111111111111111111111111111111111'
 const target = '0x2222222222222222222222222222222222222222'
@@ -33,35 +21,27 @@ const principal = createRendererPrincipal({
   windowInstanceId: 'side-tray-test'
 })
 
-beforeAll(async () => {
-  const workflows = await import('./sideTrayTransactions')
-  const sideTrayWorkflows = await import('./sideTrayWorkflows')
-  closeOwnSideTray = sideTrayWorkflows.closeOwnSideTray
-  quoteFlashForCurrentAccount = workflows.quoteFlashForCurrentAccount
-  signCurrentAccountTypedData = workflows.signCurrentAccountTypedData
-  submitCurrentAccountTransaction = workflows.submitCurrentAccountTransaction
-  submitFlashForCurrentAccount = workflows.submitFlashForCurrentAccount
-})
-
 beforeEach(() => {
-  timers.useFakeTimers()
   currentAccount.mockReset()
   providerSend.mockReset()
   flashQuote.mockReset()
   flashSubmitOrder.mockReset()
-  getState.mockReset()
   initOrigin.mockReset()
-  closeWindow.mockReset()
+  chainAvailable = true
 
   currentAccount.mockReturnValue({ getSelectedAddress: () => address })
-  getState.mockReturnValue({
-    main: { networks: { ethereum: { 1: { id: 1, on: true } } } },
-    initOrigin
-  })
-})
-
-afterEach(() => {
-  timers.useRealTimers()
+  service = createSideTrayTransactionOperations(
+    { send: providerSend },
+    { current: currentAccount },
+    { quote: flashQuote, submitOrder: flashSubmitOrder },
+    {
+      getState: () => ({
+        main: { networks: { ethereum: { 1: { id: 1, on: chainAvailable } } } },
+        initOrigin
+      })
+    },
+    () => 42
+  )
 })
 
 describe('side tray transaction workflows', () => {
@@ -71,7 +51,7 @@ describe('side tray transaction workflows', () => {
     })
 
     await expect(
-      submitCurrentAccountTransaction(
+      service.submitCurrentAccountTransaction(
         {
           chainId: 1,
           idempotencyKey: '00000000-0000-4000-8000-000000000001',
@@ -109,13 +89,10 @@ describe('side tray transaction workflows', () => {
   })
 
   it('rejects unavailable chains before invoking a provider or Flash', async () => {
-    getState.mockReturnValue({
-      main: { networks: { ethereum: { 1: { id: 1, on: false } } } },
-      initOrigin
-    })
+    chainAvailable = false
 
     await expect(
-      submitCurrentAccountTransaction(
+      service.submitCurrentAccountTransaction(
         {
           chainId: 1,
           idempotencyKey: '00000000-0000-4000-8000-000000000002',
@@ -125,7 +102,7 @@ describe('side tray transaction workflows', () => {
       )
     ).resolves.toEqual({ ok: false, error: 'provider_error', message: 'Chain is unavailable.' })
     await expect(
-      signCurrentAccountTypedData(
+      service.signCurrentAccountTypedData(
         {
           chainId: 1,
           typedData: { domain: {}, message: {}, primaryType: 'Order', types: { Order: [] } }
@@ -133,12 +110,12 @@ describe('side tray transaction workflows', () => {
         principal
       )
     ).resolves.toEqual({ ok: false, error: 'provider_error', message: 'Chain is unavailable.' })
-    await expect(quoteFlashForCurrentAccount({ chainId: 1 } as any)).resolves.toEqual({
+    await expect(service.quoteFlashForCurrentAccount({ chainId: 1 } as any)).resolves.toEqual({
       ok: false,
       error: 'quote_failed',
       message: 'Chain is unavailable.'
     })
-    await expect(submitFlashForCurrentAccount({ chainId: 1 } as any)).resolves.toEqual({
+    await expect(service.submitFlashForCurrentAccount({ chainId: 1 } as any)).resolves.toEqual({
       ok: false,
       error: 'submit_failed',
       message: 'Chain is unavailable.'
@@ -160,7 +137,7 @@ describe('side tray transaction workflows', () => {
       callback({ result: `0x${'b'.repeat(130)}` })
     })
 
-    await expect(signCurrentAccountTypedData({ chainId: 1, typedData }, principal)).resolves.toEqual({
+    await expect(service.signCurrentAccountTypedData({ chainId: 1, typedData }, principal)).resolves.toEqual({
       ok: true,
       signature: `0x${'b'.repeat(130)}`
     })
@@ -177,7 +154,7 @@ describe('side tray transaction workflows', () => {
 
     providerSend.mockClear()
     await expect(
-      signCurrentAccountTypedData(
+      service.signCurrentAccountTypedData(
         {
           chainId: 10,
           typedData: { ...typedData, domain: { chainId: 1 } }
@@ -201,7 +178,7 @@ describe('side tray transaction workflows', () => {
     flashQuote.mockResolvedValue({ quote: { id: 'quote-1' }, flash: { quoteId: 'quote-1' } })
     flashSubmitOrder.mockResolvedValue({ orderId: 'order-1' })
 
-    await expect(quoteFlashForCurrentAccount(request)).resolves.toMatchObject({
+    await expect(service.quoteFlashForCurrentAccount(request)).resolves.toMatchObject({
       ok: true,
       quote: { id: 'quote-1' },
       flash: { quoteId: 'quote-1' }
@@ -214,7 +191,7 @@ describe('side tray transaction workflows', () => {
     })
 
     const order = { ...request, quote: { id: 'quote-1' } }
-    await expect(submitFlashForCurrentAccount(order)).resolves.toEqual({
+    await expect(service.submitFlashForCurrentAccount(order)).resolves.toEqual({
       ok: true,
       orderId: 'order-1'
     })
@@ -225,15 +202,5 @@ describe('side tray transaction workflows', () => {
       idempotencyKey: 'quote-1',
       targetChain: 1
     })
-  })
-
-  it('closes the invoking renderer only', () => {
-    const event = { sender: { id: 7 } } as any
-
-    closeOwnSideTray(event)
-    expect(closeWindow).not.toHaveBeenCalled()
-
-    timers.runOnlyPendingTimers()
-    expect(closeWindow).toHaveBeenCalledWith(event)
   })
 })

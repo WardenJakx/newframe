@@ -2,15 +2,17 @@ import log from 'electron-log'
 import { addHexPrefix } from '@ethereumjs/util'
 import { getAddress, isAddress, TransactionDescription } from 'ethers'
 
-import store from '../store'
-import { NATIVE_CURRENCY } from '../../resources/constants'
-import { erc20Interface } from '../../resources/contracts'
-import { persistedImageSource } from '../../resources/domain/image'
-import { tokenImageSource } from '../../resources/domain/token'
+import { NATIVE_CURRENCY } from '../../domain/token/constants'
+import { erc20Interface } from '../../domain/evm'
+import { persistedImageSource } from '../../domain/image'
+import { tokenImageSource } from '../../domain/token'
 
-import type { TransactionEffect, TransactionSimulation } from '../../resources/domain/transaction'
-import type { TokenData } from '../contracts/erc20'
-import type { TransactionRequest } from '../accounts/types'
+import type { TransactionEffect, TransactionSimulation } from '../../domain/transaction'
+import type { Erc20ProviderPort, TokenData } from '../contracts/erc20'
+import type { Provider } from '../provider'
+import type { TransactionRequest } from '../../contracts/requests'
+import type { CanonicalStoreReader } from '../store/actions'
+import type { Token } from '../store/state'
 
 const TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'
 
@@ -32,6 +34,27 @@ interface TokenMetadata extends TokenData {
   address: string
   chainId: number
   logoURI?: string
+}
+
+type TransactionSimulationProviderPort = Pick<Provider, 'send'> & Erc20ProviderPort
+
+export interface TransactionSimulationProjection {
+  getNativeCurrency(chainId: number): NativeCurrencyLike
+  getToken(address: string, chainId: number): Token | undefined
+}
+
+export function createTransactionSimulationProjection(
+  canonicalStore: Pick<CanonicalStoreReader, 'getState'>
+): TransactionSimulationProjection {
+  return {
+    getNativeCurrency(chainId) {
+      return (canonicalStore.getState().main.networksMeta.ethereum[chainId]?.nativeCurrency ||
+        {}) as NativeCurrencyLike
+    },
+    getToken(address, chainId) {
+      return canonicalStore.getState().main.tokens.byId[`${chainId}:${normalizeAddress(address)}`]
+    }
+  }
 }
 
 interface TraceCall {
@@ -218,10 +241,6 @@ function tokenDeltasFromTransfers(transfers: TokenTransfer[], account: string) {
   return deltas
 }
 
-function findTokenInStore(address: string, chainId: number, _account: string) {
-  return store.getState().main.tokens.byId[`${chainId}:${normalizeAddress(address)}`]
-}
-
 function tokenFromRequest(
   req: TransactionRequest,
   address: string,
@@ -252,8 +271,14 @@ function tokenFromRequest(
   }
 }
 
-async function resolveTokenMetadata(req: TransactionRequest, address: string, chainId: number) {
-  const cached = findTokenInStore(address, chainId, req.account)
+async function resolveTokenMetadata(
+  req: TransactionRequest,
+  address: string,
+  chainId: number,
+  projection: TransactionSimulationProjection,
+  provider?: Erc20ProviderPort
+) {
+  const cached = projection.getToken(address, chainId)
   if (cached) {
     return {
       address,
@@ -268,12 +293,22 @@ async function resolveTokenMetadata(req: TransactionRequest, address: string, ch
   const requestToken = tokenFromRequest(req, address, chainId)
   if (requestToken) return requestToken
 
+  if (!provider) {
+    return {
+      address,
+      chainId,
+      decimals: 18,
+      name: 'Token',
+      symbol: 'Token'
+    }
+  }
+
   try {
     const loaded = (await import('../contracts/erc20.js')).default as unknown
     const Erc20Contract = (
       loaded && typeof loaded === 'object' && 'default' in loaded ? loaded.default : loaded
     ) as typeof import('../contracts/erc20').default
-    const tokenData = await new Erc20Contract(address, chainId).getTokenData()
+    const tokenData = await new Erc20Contract(address, chainId, provider).getTokenData()
     return {
       ...tokenData,
       address,
@@ -318,13 +353,15 @@ function nativeEffect(delta: bigint, nativeCurrency: NativeCurrencyLike): Transa
 async function tokenEffects(
   deltas: Map<string, bigint>,
   req: TransactionRequest,
-  chainId: number
+  chainId: number,
+  projection: TransactionSimulationProjection,
+  provider?: Erc20ProviderPort
 ): Promise<TransactionEffect[]> {
   const effects = await Promise.all(
     [...deltas.entries()]
       .filter(([, delta]) => delta !== 0n)
       .map(async ([address, delta]) => {
-        const metadata = await resolveTokenMetadata(req, address, chainId)
+        const metadata = await resolveTokenMetadata(req, address, chainId, projection, provider)
         const direction = delta < 0n ? 'out' : 'in'
 
         return {
@@ -358,11 +395,11 @@ function createTraceCall(req: TransactionRequest) {
   return Object.fromEntries(Object.entries(call).filter(([, value]) => value !== undefined && value !== ''))
 }
 
-async function traceCall(req: TransactionRequest, chainId: number) {
-  const loaded = (await import('../provider/index.js')).default as unknown
-  const provider = (
-    loaded && typeof loaded === 'object' && 'default' in loaded ? loaded.default : loaded
-  ) as typeof import('../provider').default
+async function traceCall(
+  req: TransactionRequest,
+  chainId: number,
+  provider: TransactionSimulationProviderPort
+) {
   const payload = {
     id: Date.now(),
     jsonrpc: '2.0',
@@ -408,7 +445,9 @@ function simulationUnavailable(error: unknown): TransactionSimulation {
 export async function effectsFromTrace(
   trace: TraceCall,
   req: TransactionRequest,
-  nativeCurrency: NativeCurrencyLike
+  nativeCurrency: NativeCurrencyLike,
+  projection: TransactionSimulationProjection,
+  provider?: Erc20ProviderPort
 ): Promise<TransactionEffect[]> {
   const chainId = parseInt(req.data.chainId, 16)
   const nativeDelta = nativeDeltaFromTrace(trace, req.account)
@@ -417,16 +456,19 @@ export async function effectsFromTrace(
   const tokenDeltas = tokenDeltasFromTransfers(transfers, req.account)
   const effects = [
     nativeEffect(nativeDelta, nativeCurrency),
-    ...(await tokenEffects(tokenDeltas, req, chainId))
+    ...(await tokenEffects(tokenDeltas, req, chainId, projection, provider))
   ].filter(Boolean) as TransactionEffect[]
 
   return effects
 }
 
-export async function simulateTransactionEffects(req: TransactionRequest): Promise<TransactionSimulation> {
+export async function simulateTransactionEffects(
+  req: TransactionRequest,
+  provider: TransactionSimulationProviderPort,
+  projection: TransactionSimulationProjection
+): Promise<TransactionSimulation> {
   const chainId = parseInt(req.data.chainId, 16)
-  const nativeCurrency = (store.getState().main.networksMeta.ethereum[chainId].nativeCurrency ||
-    {}) as NativeCurrencyLike
+  const nativeCurrency = projection.getNativeCurrency(chainId)
 
   if (!req.data.to) {
     return {
@@ -440,7 +482,7 @@ export async function simulateTransactionEffects(req: TransactionRequest): Promi
   let trace: TraceCall
 
   try {
-    trace = await traceCall(req, chainId)
+    trace = await traceCall(req, chainId, provider)
   } catch (error) {
     log.warn('transaction simulation unavailable', { handlerId: req.handlerId, error })
     return simulationUnavailable(error)
@@ -459,7 +501,7 @@ export async function simulateTransactionEffects(req: TransactionRequest): Promi
     return {
       status: 'success',
       source: 'debug_traceCall',
-      effects: await effectsFromTrace(trace, req, nativeCurrency),
+      effects: await effectsFromTrace(trace, req, nativeCurrency, projection, provider),
       updatedAt: Date.now()
     }
   } catch (error) {

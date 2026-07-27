@@ -1,12 +1,13 @@
 import { powerMonitor } from 'electron'
 import log from 'electron-log'
 
-import store from '../store'
 import Balances from './balances'
-import { arraysMatch, debounce } from '../../resources/utils'
-import { customTokens, tokensForAccount } from '../../resources/domain/token'
+import { arraysMatch } from '../../domain/collections'
+import { debounce } from '../../domain/async'
+import { customTokens, tokensForAccount } from '../../domain/token'
 
 import type { Chain, Token } from '../store/state'
+import type { CanonicalStoreReader } from '../store/actions'
 
 export interface DataScanner {
   close: () => void
@@ -14,28 +15,29 @@ export interface DataScanner {
   refreshPositions: (address: Address, chainId: number, tokens: Token[]) => void
 }
 
-const storeApi = {
-  getActiveAddress: () => (store.getState().main.currentAccount || '') as Address,
-  getAccount: (address: Address) =>
-    store.getState().main.accounts[address] as { lastSignerType?: string } | undefined,
-  getCustomTokens: () => customTokens(store.getState().main.tokens),
-  getKnownTokens: (address?: Address) =>
-    address ? tokensForAccount(store.getState().main.tokens, address).filter((token) => !token.custom) : [],
-  getConnectedNetworks: () => {
-    const networks = Object.values(store.getState().main.networks.ethereum || {}) as Chain[]
-    return networks.filter(
-      (n) => (n.connection.primary || {}).connected || (n.connection.secondary || {}).connected
-    )
+export default function createExternalDataScanner(canonicalStore: CanonicalStoreReader) {
+  const storeApi = {
+    getActiveAddress: () => (canonicalStore.getState().main.currentAccount || '') as Address,
+    getAccount: (address: Address) =>
+      canonicalStore.getState().main.accounts[address] as { lastSignerType?: string } | undefined,
+    getCustomTokens: () => customTokens(canonicalStore.getState().main.tokens),
+    getKnownTokens: (address?: Address) =>
+      address
+        ? tokensForAccount(canonicalStore.getState().main.tokens, address).filter((token) => !token.custom)
+        : [],
+    getConnectedNetworks: () => {
+      const networks = Object.values(canonicalStore.getState().main.networks.ethereum || {}) as Chain[]
+      return networks.filter(
+        (network) =>
+          (network.connection.primary || {}).connected || (network.connection.secondary || {}).connected
+      )
+    }
   }
-}
-
-function shouldScanOnChain(address: Address) {
-  const signerType = storeApi.getAccount(address)?.lastSignerType || ''
-  return signerType.toLowerCase() !== 'address'
-}
-
-export default function () {
-  const balances = Balances(store)
+  const shouldScanOnChain = (address: Address) => {
+    const signerType = storeApi.getAccount(address)?.lastSignerType || ''
+    return signerType.toLowerCase() !== 'address'
+  }
+  const balances = Balances(canonicalStore)
 
   let connectedChains: number[] = [],
     activeAccount: Address = ''
@@ -83,7 +85,7 @@ export default function () {
     log.verbose(`resuming external data after system ${reason}`)
     startBalances()
 
-    if (!store.getState().tray.open && !pauseScanningDelay) {
+    if (!canonicalStore.getState().tray.open && !pauseScanningDelay) {
       pauseScanningDelay = setTimeout(balances.pause, 1000)
     }
   }
@@ -166,7 +168,7 @@ export default function () {
     }
   }
   handleNetworksChange()
-  const unsubscribeNetworks = store.subscribe((state) => state.main.networks, handleNetworksChange)
+  const unsubscribeNetworks = canonicalStore.subscribe((state) => state.main.networks, handleNetworksChange)
 
   const handleAccountChange = () => {
     const activeAddress = storeApi.getActiveAddress()
@@ -180,7 +182,7 @@ export default function () {
     }
   }
   handleAccountChange()
-  const unsubscribeAccount = store.subscribe(
+  const unsubscribeAccount = canonicalStore.subscribe(
     (state) => ({ currentAccount: state.main.currentAccount, tokens: state.main.tokens }),
     handleAccountChange,
     {
@@ -194,10 +196,13 @@ export default function () {
     handleTokensUpdate(customTokens)
   }
   handleCustomTokensChange()
-  const unsubscribeCustomTokens = store.subscribe((state) => state.main.tokens, handleCustomTokensChange)
+  const unsubscribeCustomTokens = canonicalStore.subscribe(
+    (state) => state.main.tokens,
+    handleCustomTokensChange
+  )
 
   const handleTrayChange = () => {
-    const open = store.getState().tray.open
+    const open = canonicalStore.getState().tray.open
 
     if (isSystemInactive()) return
 
@@ -215,7 +220,7 @@ export default function () {
     }
   }
   handleTrayChange()
-  const unsubscribeTray = store.subscribe((state) => state.tray.open, handleTrayChange)
+  const unsubscribeTray = canonicalStore.subscribe((state) => state.tray.open, handleTrayChange)
 
   return {
     refreshBalances: (address = activeAccount) => {
@@ -227,6 +232,10 @@ export default function () {
       }
     },
     close: () => {
+      handleNetworkUpdate.cancel()
+      handleAddressUpdate.cancel()
+      handleTokensUpdate.cancel()
+
       unsubscribeNetworks()
       unsubscribeAccount()
       unsubscribeCustomTokens()

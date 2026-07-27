@@ -8,10 +8,9 @@ import { SignTypedDataVersion } from '@metamask/eth-sig-util'
 import Signer from '../Signer'
 import { sign, signerCompatibility, londonToLegacy } from '../../transaction'
 import { Derivation, getDerivationPath } from '../Signer/derive'
-import { hexToInt } from '../../../resources/utils'
-
-import type { TypedData, TypedMessage } from '../../accounts/types'
-import type { TransactionData } from '../../../resources/domain/transaction'
+import { hexToInt } from '../../../domain/hex'
+import type { TypedData, TypedMessage } from '../../../contracts/requests'
+import type { TransactionData } from '../../../domain/transaction'
 
 const ADDRESS_LIMIT = 10
 const HARDENED_OFFSET = 0x80000000

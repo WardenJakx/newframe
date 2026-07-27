@@ -51,7 +51,7 @@ describe('Seed signer', () => {
     const mnemonic = 'invalid mnemonic'
 
     try {
-      hot.createFromPhrase(signers, mnemonic, PASSWORD, (err: any) => {
+      hot.createFromPhrase(vault, signers, mnemonic, PASSWORD, (err: any) => {
         expect(err).toBeTruthy()
         expect(store.getState().main.signers).toEqual({})
         done()
@@ -64,7 +64,7 @@ describe('Seed signer', () => {
   test('Create from phrase', (done) => {
     try {
       const mnemonic = Mnemonic.fromEntropy(randomBytes(16)).phrase
-      hot.createFromPhrase(signers, mnemonic, PASSWORD, (err: any, result: any) => {
+      hot.createFromPhrase(vault, signers, mnemonic, PASSWORD, (err: any, result: any) => {
         signer = result
         expect(err).toBe(null)
         expect(signer.status).toBe('ok')
@@ -112,6 +112,17 @@ describe('Seed signer', () => {
 
     timers.runAllTimers()
   }, 800)
+
+  test('Cancel delayed scan', () => {
+    timers.useFakeTimers()
+    const delayedSigners = { add: mock(), exists: () => false }
+    const scheduledScan = hot.scan(delayedSigners)
+
+    scheduledScan.cancel()
+    timers.runAllTimers()
+
+    expect(delayedSigners.add).not.toHaveBeenCalled()
+  })
 
   test('Unlock with wrong password', (done) => {
     try {

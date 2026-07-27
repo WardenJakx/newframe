@@ -1,5 +1,5 @@
 import ZerionPortfolioProvider from './providers/zerion'
-import store from '../store'
+import type { CanonicalStoreReader } from '../store/actions'
 
 import type { PortfolioProvider } from './types'
 
@@ -11,12 +11,14 @@ export type TokenDiscoveryProviderAccess =
 
 // Keep provider construction and preference checks behind this boundary so a
 // caller cannot accidentally use token discovery when the user disabled it.
-export function getTokenDiscoveryProvider(): TokenDiscoveryProviderAccess {
-  if (store.getState().main.autoDiscoverTokens !== true) {
+export function getTokenDiscoveryProvider(
+  canonicalStore: Pick<CanonicalStoreReader, 'getState'>
+): TokenDiscoveryProviderAccess {
+  if (canonicalStore.getState().main.autoDiscoverTokens !== true) {
     return { ok: false, error: 'token_discovery_disabled' }
   }
 
-  const configuredApiKey = store.getState().main.portfolioApiKey
+  const configuredApiKey = canonicalStore.getState().main.portfolioApiKey
   const apiKey = typeof configuredApiKey === 'string' ? configuredApiKey.trim() : ''
 
   if (!apiKey) return { ok: false, error: 'missing_api_key' }

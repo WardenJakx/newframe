@@ -1,13 +1,13 @@
 import log from 'electron-log'
 import type { StoreApi } from 'zustand/vanilla'
 
-import { NATIVE_CURRENCY } from '../../../resources/constants'
-import { createBalanceSummaries, isLowValueTokenBalance, toTokenId } from '../../../resources/domain/balance'
-import { customTokens, tokensForAccount } from '../../../resources/domain/token'
+import { NATIVE_CURRENCY } from '../../../domain/token/constants'
+import { createBalanceSummaries, isLowValueTokenBalance, toTokenId } from '../../../domain/balance'
+import { customTokens, tokensForAccount } from '../../../domain/token'
 import BalancesWorkerController from './controller'
 import { CurrencyBalance, TokenBalance } from './scan'
 
-import type { CanonicalStore } from '../../store'
+import type { CanonicalStore } from '../../store/actions'
 import type { Balance, Chain, ChainMetadata, Rate, Token } from '../../store/state'
 
 const RESTART_WAIT = 5 // seconds

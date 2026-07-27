@@ -10,7 +10,7 @@ describe('#getTokenDiscoveryProvider', () => {
       state.main.portfolioApiKey = 'zk_test'
     })
 
-    expect(getTokenDiscoveryProvider()).toEqual({
+    expect(getTokenDiscoveryProvider(store)).toEqual({
       ok: false,
       error: 'token_discovery_disabled'
     })
@@ -22,7 +22,7 @@ describe('#getTokenDiscoveryProvider', () => {
       state.main.portfolioApiKey = ''
     })
 
-    expect(getTokenDiscoveryProvider()).toEqual({ ok: false, error: 'missing_api_key' })
+    expect(getTokenDiscoveryProvider(store)).toEqual({ ok: false, error: 'missing_api_key' })
   })
 
   it('returns the configured provider only when discovery is enabled with a key', () => {
@@ -31,7 +31,7 @@ describe('#getTokenDiscoveryProvider', () => {
       state.main.portfolioApiKey = ' zk_test '
     })
 
-    const access = getTokenDiscoveryProvider()
+    const access = getTokenDiscoveryProvider(store)
 
     expect(access.ok).toBe(true)
     if (access.ok) expect(access.provider).toBeDefined()

@@ -1,4 +1,4 @@
-import { app, net, protocol, powerMonitor } from 'electron'
+import { app, clipboard, ipcMain, net, protocol, powerMonitor } from 'electron'
 import path from 'path'
 import log from 'electron-log'
 import url from 'url'
@@ -18,20 +18,28 @@ app.setPath('userData', path.join(app.getPath('appData'), profileAppName))
 
 import windows from './windows'
 import menu from './menu'
-import store, { canonicalStoreHydration } from './store'
-import images from './images'
-import tokens from './tokens'
-import accounts from './accounts'
+import store, { createCanonicalPersistenceService } from './store'
+import persist from './store/persist'
+import { createBundledTokenService } from './tokens'
 import * as launch from './launch'
-import updater from './updater'
-import signers from './signers'
+import { Updater } from './updater'
+import { Signers } from './signers'
+import TrezorBridge from './signers/trezor/bridge'
 import biometrics from './biometrics'
 import vault from './vault'
 import { showUnhandledExceptionDialog } from './windows/dialog'
-import { getErrorCode } from '../resources/utils'
-import { registerOperationHandlers } from './ipc/operations'
-import { registerStateStreamHandlers } from './ipc/stateStream'
-import { flashService } from './flash/instance'
+import { getErrorCode } from './runtime/errors'
+import { createProductionCapabilities, createProductionMainApp } from './composition'
+import { createProductionPersistencePorts } from './infrastructure/persistence'
+import { createProductionAccountsRuntime } from './infrastructure/accounts/production'
+import { createProductionImageServiceAdapters } from './infrastructure/images/production'
+import { createProductionSideTrayWindowCapability } from './infrastructure/sideTrayWorkflows/production'
+import { createProductionWalletWorkflowAdapters } from './infrastructure/walletWorkflows/production'
+import { createProductionApiServer } from './api'
+
+const signers = new Signers({ biometrics, store, vault })
+const updater = new Updater(store)
+const bundledTokens = createBundledTokenService(store)
 
 app.commandLine.appendSwitch('enable-accelerated-2d-canvas', 'true')
 app.commandLine.appendSwitch('enable-gpu-rasterization', 'true')
@@ -57,8 +65,59 @@ if (!hasInstanceLock) {
   app.exit(1)
 }
 
-registerOperationHandlers()
-registerStateStreamHandlers()
+const persistence = createCanonicalPersistenceService(
+  createProductionPersistencePorts(app.getPath('userData'))
+)
+const {
+  accountCapabilities,
+  accounts,
+  agentService,
+  chains,
+  flashService,
+  imageService,
+  nameResolution,
+  provider,
+  proxy,
+  rendererAuthorization,
+  sideTrayTransactions,
+  sideTrayWorkflows,
+  walletWorkflows
+} = createProductionCapabilities(store, {
+  accounts: createProductionAccountsRuntime(store, { persistence: persist, signers, windows }),
+  images: createProductionImageServiceAdapters(store),
+  sideTrayWindows: createProductionSideTrayWindowCapability(),
+  walletWorkflows: createProductionWalletWorkflowAdapters(store, {
+    app,
+    biometrics,
+    clipboard,
+    persistence: persist,
+    signers,
+    trezorBridge: TrezorBridge,
+    updater,
+    vault,
+    windows
+  })
+})
+const mainApp = createProductionMainApp({
+  accountCapabilities,
+  accounts,
+  agentService,
+  chains,
+  flashService,
+  imageService,
+  ipc: ipcMain,
+  nameResolution,
+  persistence,
+  provider,
+  proxy,
+  rendererAuthorization,
+  sideTrayTransactions,
+  sideTrayWorkflows,
+  store,
+  walletWorkflows
+})
+const apiServer = createProductionApiServer(provider, accounts, flashService, store, agentService, windows)
+mainApp.start()
 
 log.info(`Chrome: v${process.versions.chrome}`)
 log.info(`Electron: v${process.versions.electron}`)
@@ -142,10 +201,8 @@ function startDomainServices() {
     (launchEnabled) => (launchEnabled ? launch.enable() : launch.disable()),
     { fireImmediately: true }
   )
-  // eslint-disable-next-line @typescript-eslint/no-require-imports -- start the API only after hydration
-  require('./api')
-  tokens.start()
-  images.start()
+  apiServer.start()
+  bundledTokens.start()
   accounts.startDataScanner()
   if (!isDev) startUpdater()
 
@@ -172,13 +229,13 @@ function configureWebAuthn() {
 
 app.on('ready', async () => {
   try {
-    await canonicalStoreHydration
+    await persistence.start()
   } catch (error) {
     log.error('Newframe startup aborted because canonical wallet state could not be loaded', error)
     app.quit()
     return
   }
-  accounts.initialize()
+  accounts.start()
   const biometricUnlockEnabled = biometrics.summary().enabled
   if (store.getState().main.biometricUnlock !== biometricUnlockEnabled) {
     store.getState().setBiometricUnlock(biometricUnlockEnabled)
@@ -191,7 +248,7 @@ app.on('ready', async () => {
   configureWebAuthn()
   startDomainServices()
   menu()
-  windows.init()
+  windows.init(rendererAuthorization, store)
   if (app.dock) app.dock.hide()
   if (isDev) {
     const loadDev = async () => {
@@ -232,9 +289,9 @@ app.on('will-quit', () => app.quit())
 app.on('quit', () => {
   log.info('Application closing')
 
+  apiServer.dispose()
+  mainApp.dispose()
   // await clients.stop()
-  flashService.dispose()
-  accounts.close()
   signers.close()
 })
 

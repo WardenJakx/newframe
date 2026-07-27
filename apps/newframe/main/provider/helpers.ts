@@ -3,11 +3,11 @@ import { recoverPersonalSignature } from '@metamask/eth-sig-util'
 import log from 'electron-log'
 import { isHexString } from 'ethers'
 
-import store from '../store'
+import type { CanonicalStoreReader } from '../store/actions'
 import protectedMethods from '../api/protectedMethods'
-import type { TransactionRequest } from '../accounts'
-import { usesBaseFee, TransactionData, GasFeesSource } from '../../resources/domain/transaction'
-import { getAddress } from '../../resources/utils'
+import type { TransactionRequest } from '../../contracts/requests'
+import { usesBaseFee, TransactionData, GasFeesSource } from '../../domain/transaction'
+import { getAddress } from '../../domain/address'
 import isUtf8 from './isUtf8'
 
 const permission = (date: number, method: string) => ({ parentCapability: method, date })
@@ -22,10 +22,13 @@ export function decodeMessage(rawMessage: string) {
   return rawMessage.replaceAll(/[\n\r]+/g, '\n')
 }
 
-export function checkExistingNonceGas(tx: TransactionData) {
+export function checkExistingNonceGas(
+  tx: TransactionData,
+  canonicalStore: Pick<CanonicalStoreReader, 'getState'>
+) {
   const { from, nonce } = tx
 
-  const account = store.getState().main.accounts[(from || '').toLowerCase()]
+  const account = canonicalStore.getState().main.accounts[(from || '').toLowerCase()]
   const reqs = (account?.requests || {}) as Record<string, TransactionRequest>
 
   const requests = Object.keys(reqs || {}).map((key) => reqs[key])
@@ -109,8 +112,8 @@ export function getRawTx(newTx: RPC.SendTransaction.TxParams): TransactionData {
   return tx
 }
 
-export function gasFees(rawTx: TransactionData) {
-  return store.getState().main.networksMeta.ethereum[parseInt(rawTx.chainId, 16)].gas
+export function gasFees(rawTx: TransactionData, canonicalStore: Pick<CanonicalStoreReader, 'getState'>) {
+  return canonicalStore.getState().main.networksMeta.ethereum[parseInt(rawTx.chainId, 16)].gas
 }
 
 export function resError(errorData: string | EVMError, request: RPCId, res: RPCErrorCallback) {

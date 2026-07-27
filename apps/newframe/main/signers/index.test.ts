@@ -3,6 +3,7 @@ import { beforeAll, beforeEach, expect, it, mock } from 'bun:test'
 import { EventEmitter } from 'events'
 
 import store from '../store'
+import createCanonicalStore from '../store/createCanonicalStore'
 import type Signer from './Signer'
 import type { SignerAdapter } from './adapters'
 
@@ -33,12 +34,19 @@ class HotSignerMock extends EventEmitter {
   }
 }
 
+const adapterInstances: AdapterMock[] = []
+
 class AdapterMock extends EventEmitter {
   adapterType = 'mock'
   open = mock()
   close = mock()
   remove = mock()
   reload = mock()
+
+  constructor() {
+    super()
+    adapterInstances.push(this)
+  }
 }
 
 mock.module('./hot/HotSigner', () => ({ default: HotSignerMock }))
@@ -61,14 +69,86 @@ beforeAll(async () => {
 })
 
 beforeEach(() => {
+  adapterInstances.length = 0
   store.setState((state) => {
     state.main.signers = {}
   })
 })
 
 function createSigners() {
-  return new Signers([], () => mock())
+  return new Signers(createDependencies(), [], () => mock())
 }
+
+function createDependencies(canonicalStore = store) {
+  return {
+    biometrics: { unlock: mock(async () => '') },
+    store: canonicalStore,
+    vault: {
+      acquireKey: mock(() => ''),
+      exists: mock(() => false),
+      getKey: mock(() => null),
+      isUnlocked: mock(() => false),
+      lock: mock(),
+      summary: mock(() => ({ exists: false, unlocked: false })),
+      unlock: mock(() => ''),
+      unlockWithKey: mock(() => '')
+    }
+  }
+}
+
+it('creates fresh default hardware adapters for every signer graph', () => {
+  const first = new Signers(createDependencies())
+  const firstAdapters = adapterInstances.slice()
+  const second = new Signers(createDependencies())
+  const secondAdapters = adapterInstances.slice(firstAdapters.length)
+
+  expect({
+    firstCount: firstAdapters.length,
+    secondCount: secondAdapters.length,
+    shared: firstAdapters.some((adapter) => secondAdapters.includes(adapter))
+  }).toEqual({
+    firstCount: 3,
+    secondCount: 3,
+    shared: false
+  })
+
+  first.close()
+  second.close()
+})
+
+it('keeps concrete signer publication isolated across two canonical graphs', () => {
+  const memoryStorage = {
+    getItem: () => null,
+    setItem: () => undefined,
+    removeItem: () => undefined
+  }
+  const firstStore = createCanonicalStore(memoryStorage).store
+  const secondStore = createCanonicalStore(memoryStorage).store
+  const first = new Signers(createDependencies(firstStore), [], () => mock())
+  const second = new Signers(createDependencies(secondStore), [], () => mock())
+  const firstSigner = new HotSignerMock('graph-a-signer')
+  const secondSigner = new HotSignerMock('graph-b-signer')
+
+  first.add(firstSigner as unknown as Signer)
+  second.add(secondSigner as unknown as Signer)
+  firstSigner.status = 'ok'
+  firstSigner.emit('update')
+
+  expect({
+    first: firstStore.getState().main.signers,
+    second: secondStore.getState().main.signers
+  }).toEqual({
+    first: {
+      'graph-a-signer': expect.objectContaining({ id: 'graph-a-signer', status: 'ok' })
+    },
+    second: {
+      'graph-b-signer': expect.objectContaining({ id: 'graph-b-signer', status: 'locked' })
+    }
+  })
+
+  first.close()
+  second.close()
+})
 
 it('keeps capability handles private and publishes only their summaries', () => {
   const signers = createSigners()
@@ -155,7 +235,7 @@ it('detaches hot signer listeners before removing a signer', () => {
 
 it('does not resurrect a detached signer from a delayed adapter update', () => {
   const adapter = new AdapterMock()
-  const signers = new Signers([adapter as unknown as SignerAdapter], () => mock())
+  const signers = new Signers(createDependencies(), [adapter as unknown as SignerAdapter], () => mock())
   const handle = new HotSignerMock()
   adapter.emit('add', handle)
 
@@ -168,7 +248,7 @@ it('does not resurrect a detached signer from a delayed adapter update', () => {
 
 it('detaches adapter and handle listeners when closing', () => {
   const adapter = new AdapterMock()
-  const signers = new Signers([adapter as unknown as SignerAdapter], () => mock())
+  const signers = new Signers(createDependencies(), [adapter as unknown as SignerAdapter], () => mock())
   const handle = new HotSignerMock()
   adapter.emit('add', handle)
 
@@ -179,4 +259,15 @@ it('detaches adapter and handle listeners when closing', () => {
   expect(adapter.close).toHaveBeenCalledTimes(1)
   expect(handle.close).toHaveBeenCalledTimes(1)
   expect(store.getState().main.signers[handle.id]).toBeUndefined()
+})
+
+it('cancels the scheduled hot signer scan once when closing', () => {
+  const cancel = mock()
+  const scan = Object.assign(mock(), { cancel })
+  const signers = new Signers(createDependencies(), [], () => scan)
+
+  signers.close()
+  signers.close()
+
+  expect(cancel).toHaveBeenCalledTimes(1)
 })

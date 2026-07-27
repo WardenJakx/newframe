@@ -1,18 +1,18 @@
-import store from '../store'
-
-import { NATIVE_CURRENCY } from '../../resources/constants'
-import { toTokenId } from '../../resources/domain/token'
+import { NATIVE_CURRENCY } from '../../domain/token/constants'
+import { toTokenId } from '../../domain/token'
 
 import type { Balance, NativeCurrency, Rate } from '../store/state'
+import type { CanonicalStoreReader } from '../store/actions'
 
 type UsdRate = { usd: Rate }
+type CanonicalStoreApi = CanonicalStoreReader
 
 interface AssetsChangedHandler {
   assetsChanged: (address: Address, assets: RPC.GetAssets.Assets) => void
 }
 
 // typed access to state
-const storeApi = {
+const createStoreApi = (store: CanonicalStoreApi) => ({
   getBalances: (account: Address): Balance[] => {
     return store.getState().main.balances[account] || []
   },
@@ -30,18 +30,21 @@ const storeApi = {
     }
     return accountState?.balances?.lastUpdated || 0
   }
-}
+})
 
-function createObserver(handler: AssetsChangedHandler) {
+function createObserver(store: CanonicalStoreApi, handler: AssetsChangedHandler) {
   let debouncedAssets: RPC.GetAssets.Assets | null = null
 
   return function () {
     const currentAccountId = store.getState().main.currentAccount as string
 
     if (currentAccountId) {
-      const assets = fetchAssets(currentAccountId)
+      const assets = fetchAssets(store, currentAccountId)
 
-      if (!isScanning(currentAccountId) && (assets.erc20.length > 0 || assets.nativeCurrency.length > 0)) {
+      if (
+        !isScanning(store, currentAccountId) &&
+        (assets.erc20.length > 0 || assets.nativeCurrency.length > 0)
+      ) {
         if (!debouncedAssets) {
           setTimeout(() => {
             if (debouncedAssets) {
@@ -57,13 +60,14 @@ function createObserver(handler: AssetsChangedHandler) {
   }
 }
 
-function loadAssets(accountId: string) {
-  if (isScanning(accountId)) throw new Error('assets not known for account')
+function loadAssets(store: CanonicalStoreApi, accountId: string) {
+  if (isScanning(store, accountId)) throw new Error('assets not known for account')
 
-  return fetchAssets(accountId)
+  return fetchAssets(store, accountId)
 }
 
-function fetchAssets(accountId: string) {
+function fetchAssets(store: CanonicalStoreApi, accountId: string) {
+  const storeApi = createStoreApi(store)
   const balances = storeApi.getBalances(accountId)
 
   const response = {
@@ -101,8 +105,8 @@ function fetchAssets(accountId: string) {
   }, response)
 }
 
-function isScanning(account: Address) {
-  const lastUpdated = storeApi.getLastUpdated(account)
+function isScanning(store: CanonicalStoreApi, account: Address) {
+  const lastUpdated = createStoreApi(store).getLastUpdated(account)
   return !lastUpdated || new Date().getTime() - lastUpdated > 1000 * 60 * 5
 }
 

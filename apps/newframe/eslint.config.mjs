@@ -15,29 +15,12 @@ const mainFiles = [
   'scripts/**/*.ts',
   'main/**/*.{js,ts}',
   'build/**/*.js',
-  'resources/**/*.{js,ts}',
   'test/support/**/*.{ts,tsx}'
 ]
 
-const rendererFiles = [
-  'app/**/*.{ts,tsx}',
-  'resources/keyboard/**/*.{ts,tsx}',
-  'resources/Components/**/*.{ts,tsx}',
-  'resources/Hooks/**/*.{ts,tsx}',
-  'resources/Native/**/*.{ts,tsx}',
-  'resources/bridge/index.ts',
-  'resources/link.ts',
-  'test/support/componentSetup.tsx'
-]
+const rendererFiles = ['renderer/**/*.{ts,tsx}', 'preload/**/*.ts', 'test/support/componentSetup.tsx']
 
-const reactFiles = [
-  'app/**/*.{ts,tsx}',
-  'resources/Components/**/*.{ts,tsx}',
-  'resources/Hooks/**/*.{ts,tsx}',
-  'resources/Native/**/*.{ts,tsx}',
-  'resources/svg.tsx',
-  'test/support/componentSetup.tsx'
-]
+const reactFiles = ['renderer/**/*.{ts,tsx}', 'test/support/componentSetup.tsx']
 
 export default [
   ...baseJavaScriptConfigs({
@@ -51,10 +34,7 @@ export default [
       '!main/signers/**/*.{test,spec}.{ts,tsx}'
     ]
   }),
-  nodeGlobalsConfig({
-    files: mainFiles,
-    ignores: ['resources/Components/**/*', 'resources/Hooks/**/*', 'resources/Native/**/*']
-  }),
+  nodeGlobalsConfig({ files: mainFiles }),
   browserGlobalsConfig({
     files: rendererFiles,
     extraGlobals: {
@@ -62,7 +42,7 @@ export default [
     }
   }),
   globalsConfig({
-    files: ['app/*/index.tsx'],
+    files: ['renderer/*/index.tsx'],
     globals: {
       process: true
     }
@@ -82,10 +62,10 @@ export default [
   }),
   testingLibraryReactConfig({
     files: [
-      'app/**/*.{test,spec}.{ts,tsx}',
-      'resources/Components/**/*.{test,spec}.{ts,tsx}',
-      'resources/Hooks/**/*.{test,spec}.{ts,tsx}',
-      'app/**/__mocks__/**/*.ts'
+      'renderer/**/*.{test,spec}.{ts,tsx}',
+      'renderer/shared/ui/**/*.{test,spec}.{ts,tsx}',
+      'renderer/shared/hooks/**/*.{test,spec}.{ts,tsx}',
+      'renderer/**/__mocks__/**/*.ts'
     ]
   }),
   prettierConfig

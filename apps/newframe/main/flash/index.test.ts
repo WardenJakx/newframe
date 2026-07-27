@@ -12,18 +12,15 @@ import {
   normalizeFlashQuoteResponse
 } from './index'
 import store from '../store'
+import createCanonicalStore from '../store/createCanonicalStore'
 import type { FlashQuoteRequest } from './contracts'
 import {
   FLASH_BASE_USDC_ADDRESS,
   FLASH_BASE_WETH_ADDRESS,
   FLASH_MARKET_ORDER_TYPE,
   FLASH_NATIVE_ETH_TOKEN_ADDRESS
-} from '../../resources/domain/flash/constants'
-import {
-  FLASH_NATIVE_ETH_ASSET,
-  FLASH_USDC_ASSET,
-  FLASH_WETH_ASSET
-} from '../../resources/domain/flash/assets'
+} from '../../domain/flash/constants'
+import { FLASH_NATIVE_ETH_ASSET, FLASH_USDC_ASSET, FLASH_WETH_ASSET } from '../../domain/flash/assets'
 
 const originalEnv = { ...process.env }
 
@@ -404,7 +401,7 @@ describe('main Flash facade helpers', () => {
   })
 
   it('includes the complete structured Flash error response in request errors', async () => {
-    const flash = createFlashService()
+    const flash = createFlashService({ store })
     const originalFetch = globalThis.fetch
     const payload = {
       error: {
@@ -434,7 +431,7 @@ describe('main Flash facade helpers', () => {
   })
 
   it('normalizes official root order assets, qty, fills, and timestamps from list responses', async () => {
-    const flash = createFlashService()
+    const flash = createFlashService({ store })
     const originalFetch = globalThis.fetch
     const fetchMock = mock(async (_input: RequestInfo | URL, _init?: RequestInit) => {
       return new Response(JSON.stringify({ orders: [officialOrder()] }), {
@@ -489,8 +486,87 @@ describe('main Flash facade helpers', () => {
     }
   })
 
+  it('keeps persisted orders and notifications isolated across real Flash service graphs', async () => {
+    const memoryStorage = {
+      getItem: () => null,
+      setItem: () => undefined,
+      removeItem: () => undefined
+    }
+    const firstStore = createCanonicalStore(memoryStorage).store
+    const secondStore = createCanonicalStore(memoryStorage).store
+    const firstFlash = createFlashService({ store: firstStore })
+    const secondFlash = createFlashService({ store: secondStore })
+    const originalFetch = globalThis.fetch
+    const firstOrderId = '00000000-0000-4000-8000-000000000011'
+    const secondOrderId = '00000000-0000-4000-8000-000000000022'
+    const responses = [
+      officialOrder({
+        orderId: firstOrderId,
+        status: 'ORDER_STATUS_FILLED',
+        closedAt: '2026-07-14T08:02:00.000Z'
+      }),
+      officialOrder({
+        orderId: secondOrderId,
+        funderAddress: '0x0000000000000000000000000000000000000002',
+        status: 'ORDER_STATUS_REJECTED',
+        closedAt: '2026-07-14T08:03:00.000Z'
+      })
+    ]
+    globalThis.fetch = mock(async () => {
+      const order = responses.shift()
+      if (!order) throw new Error('Unexpected Flash request')
+      return new Response(JSON.stringify({ orders: [order] }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' }
+      })
+    }) as unknown as typeof fetch
+
+    try {
+      await firstFlash.listOrders({
+        accountAddress: '0x0000000000000000000000000000000000000001'
+      })
+      await secondFlash.listOrders({
+        accountAddress: '0x0000000000000000000000000000000000000002'
+      })
+
+      expect({
+        first: {
+          orders: Object.keys(firstStore.getState().main.orders),
+          notification: firstStore.getState().view.notifications[`flash-order:${firstOrderId}`],
+          foreignNotification: firstStore.getState().view.notifications[`flash-order:${secondOrderId}`]
+        },
+        second: {
+          orders: Object.keys(secondStore.getState().main.orders),
+          notification: secondStore.getState().view.notifications[`flash-order:${secondOrderId}`],
+          foreignNotification: secondStore.getState().view.notifications[`flash-order:${firstOrderId}`]
+        }
+      }).toMatchObject({
+        first: {
+          orders: [firstOrderId],
+          notification: {
+            state: 'completed',
+            metadata: { orderId: firstOrderId, status: 'filled' }
+          },
+          foreignNotification: undefined
+        },
+        second: {
+          orders: [secondOrderId],
+          notification: {
+            state: 'failed',
+            metadata: { orderId: secondOrderId, status: 'rejected' }
+          },
+          foreignNotification: undefined
+        }
+      })
+    } finally {
+      firstFlash.dispose()
+      secondFlash.dispose()
+      globalThis.fetch = originalFetch
+    }
+  })
+
   it('treats every undocumented non-open Flash status as terminal', async () => {
-    const flash = createFlashService()
+    const flash = createFlashService({ store })
     const originalFetch = globalThis.fetch
     globalThis.fetch = mock(async () => {
       return new Response(
@@ -523,7 +599,7 @@ describe('main Flash facade helpers', () => {
   })
 
   it('uses official get and cancel request shapes with root order responses', async () => {
-    const flash = createFlashService()
+    const flash = createFlashService({ store })
     const originalFetch = globalThis.fetch
     const orderId = '00000000-0000-4000-8000-000000000002'
     const accountAddress = '0x0000000000000000000000000000000000000002'
@@ -634,7 +710,7 @@ describe('main Flash facade helpers', () => {
         headers: { 'content-type': 'application/json' }
       })
     }) as unknown as typeof fetch
-    const flash = createFlashService({ positionSync: { track, refresh } })
+    const flash = createFlashService({ store, positionSync: { track, refresh } })
 
     try {
       await flash.submitOrder({
@@ -707,6 +783,7 @@ describe('main Flash facade helpers', () => {
     const accountAddress = '0x00000000000000000000000000000000000000a1'
     const orderId = 'websocket-agent-order'
     const flash = createFlashService({
+      store,
       createWebSocket: () => {
         const socket = new FakeFlashWebSocket()
         sockets.push(socket)
@@ -818,6 +895,7 @@ describe('main Flash facade helpers', () => {
   it('closes an agent order stream when its session expires', async () => {
     const socket = new FakeFlashWebSocket()
     const flash = createFlashService({
+      store,
       createWebSocket: () => socket as unknown as WebSocket
     })
 

@@ -2,14 +2,15 @@ import { BrowserWindow, BrowserWindowConstructorOptions, shell } from 'electron'
 import log from 'electron-log'
 import path from 'path'
 
-import store from '../store'
 import { resolveSemanticColor } from '@newframe/ui/tokens/colors'
-import { registerRenderer } from '../ipc/authorization'
 
+import type { CanonicalStore } from '../store/actions'
 import type { ChainId } from '../store/state'
+import type { RendererAuthorizationRegistry } from '../ipc/authorization'
 
 export function createWindow(
   name: string,
+  registerRenderer: RendererAuthorizationRegistry['registerRenderer'],
   opts?: BrowserWindowConstructorOptions,
   webPreferences: BrowserWindowConstructorOptions['webPreferences'] = {}
 ) {
@@ -79,25 +80,30 @@ export function openExternal(url = '') {
   }
 }
 
-export function openBlockExplorer({ id, type }: ChainId, hash?: string, account?: string) {
-  // remove trailing slashes from the base url
-  const explorer = (store.getState().main.networks[type][id]?.explorer || '').replace(/\/+$/, '')
+export function createBlockExplorerOpener(
+  canonicalStore: { getState(): CanonicalStore },
+  open: (url: string) => unknown = (url) => shell.openExternal(url)
+) {
+  return ({ id, type }: ChainId, hash?: string, account?: string) => {
+    // remove trailing slashes from the base url
+    const explorer = (canonicalStore.getState().main.networks[type][id]?.explorer || '').replace(/\/+$/, '')
 
-  try {
-    if (!['http:', 'https:'].includes(new URL(explorer).protocol)) return
-  } catch {
-    return
-  }
+    try {
+      if (!['http:', 'https:'].includes(new URL(explorer).protocol)) return
+    } catch {
+      return
+    }
 
-  if (explorer) {
-    if (hash) {
-      const hashPath = hash && `/tx/${hash}`
-      shell.openExternal(`${explorer}${hashPath}`)
-    } else if (account) {
-      const accountPath = account && `/address/${account}`
-      shell.openExternal(`${explorer}${accountPath}`)
-    } else {
-      shell.openExternal(`${explorer}`)
+    if (explorer) {
+      if (hash) {
+        const hashPath = hash && `/tx/${hash}`
+        open(`${explorer}${hashPath}`)
+      } else if (account) {
+        const accountPath = account && `/address/${account}`
+        open(`${explorer}${accountPath}`)
+      } else {
+        open(`${explorer}`)
+      }
     }
   }
 }

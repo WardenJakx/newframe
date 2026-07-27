@@ -1,13 +1,11 @@
 import { beforeEach, expect, it, mock } from 'bun:test'
 
+import { createImageService } from './index'
+
 const downloadImage = mock()
 const getTokenDiscoveryProvider = mock()
 const getState = mock()
 const subscribe = mock()
-
-mock.module('./download', () => ({ downloadImage }))
-mock.module('../portfolio', () => ({ getTokenDiscoveryProvider }))
-mock.module('../store', () => ({ default: { getState, subscribe } }))
 
 const imageFor = (sourceUrl: string) => ({
   base64: Buffer.from(sourceUrl).toString('base64'),
@@ -17,6 +15,15 @@ const imageFor = (sourceUrl: string) => ({
 })
 
 const flushHydration = () => new Promise((resolve) => setImmediate(resolve))
+const startImages = () => {
+  const images = createImageService({ getState, subscribe } as never, {
+    downloadImage,
+    getTokenDiscoveryProvider,
+    log: { warn: mock() }
+  })
+  images.start()
+  return images
+}
 
 beforeEach(() => {
   downloadImage.mockReset()
@@ -25,6 +32,7 @@ beforeEach(() => {
   getTokenDiscoveryProvider.mockReturnValue({ ok: false, error: 'missing_api_key' })
   getState.mockReset()
   subscribe.mockReset()
+  subscribe.mockImplementation(() => mock())
 })
 
 it('hydrates networks in the background and tokens only when requested by the renderer', async () => {
@@ -65,8 +73,7 @@ it('hydrates networks in the background and tokens only when requested by the re
     }
   )
 
-  const images = await import('./index')
-  const stop = images.default.start()
+  const images = startImages()
   await flushHydration()
 
   expect(state.setTokenImage).not.toHaveBeenCalled()
@@ -82,7 +89,7 @@ it('hydrates networks in the background and tokens only when requested by the re
   )
   expect(downloadImage).toHaveBeenCalledTimes(3)
 
-  stop()
+  images.dispose()
 })
 
 it('does not download images that already match their configured sources', async () => {
@@ -114,12 +121,11 @@ it('does not download images that already match their configured sources', async
     }
   )
 
-  const images = (await import('./index')).default
-  const stop = images.start()
+  const images = startImages()
   await flushHydration()
 
   expect(downloadImage).not.toHaveBeenCalled()
-  stop()
+  images.dispose()
 })
 
 it('limits concurrent image work even when many visible tokens request hydration together', async () => {
@@ -162,8 +168,8 @@ it('limits concurrent image work even when many visible tokens request hydration
       })
   )
 
-  const { requestTokenImage } = await import('./index')
-  Object.keys(tokens).forEach(requestTokenImage)
+  const images = startImages()
+  Object.keys(tokens).forEach(images.requestTokenImage)
 
   expect(downloadImage).toHaveBeenCalledTimes(2)
   resolveDownloads.shift()?.()
@@ -177,4 +183,5 @@ it('limits concurrent image work even when many visible tokens request hydration
 
   expect(maxActive).toBe(2)
   expect(downloadImage).toHaveBeenCalledTimes(5)
+  images.dispose()
 })

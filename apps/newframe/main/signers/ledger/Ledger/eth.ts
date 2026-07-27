@@ -9,8 +9,8 @@ import { Derivation, getDerivationPath, deriveHDAccounts } from '../../Signer/de
 import { sign } from '../../../transaction'
 import { DeviceError } from '.'
 
-import type { TypedData } from '../../../accounts/types'
-import type { TransactionData } from '../../../../resources/domain/transaction'
+import type { TypedData } from '../../../../contracts/requests'
+import type { TransactionData } from '../../../../domain/transaction'
 
 export default class LedgerEthereumApp {
   private eth: Eth

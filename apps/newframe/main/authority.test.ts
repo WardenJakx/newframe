@@ -9,7 +9,7 @@ import {
   hasPrincipalCapability
 } from './authority'
 
-import type { AccountRequest, RequestType } from './accounts/types'
+import type { AccountRequest, RequestType } from '../contracts/requests'
 
 function request(type: RequestType = 'transaction'): AccountRequest {
   return {
