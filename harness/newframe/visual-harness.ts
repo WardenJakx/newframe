@@ -69,22 +69,11 @@ async function createContext(
   runtime.currentStage = 'wait for tray renderer'
   runtime.log('wait for tray renderer')
   const tray = await waitForElectronPage(app, 'bundle/tray.html', runtime)
-  const consoleErrors: string[] = []
-  tray.on('console', (message) => {
-    if (message.type() !== 'error') return
-
-    const location = message.location()
-    const source = location.url
-      ? ` (${location.url}:${location.lineNumber + 1}:${location.columnNumber + 1})`
-      : ''
-    consoleErrors.push(`${message.text()}${source}`)
-  })
 
   const anvil = new AnvilClient()
   return {
     anvil,
     app,
-    consoleErrors,
     driver: new NewframeDriver(app, tray, runtime, anvil),
     runtime,
     services,
@@ -107,14 +96,9 @@ export async function runVisualHarness() {
     visual.monitorElectron(app)
 
     const context = await services.watch(createContext(app, services, visual))
+    visual.assertNoUnexpectedRendererErrors()
     for (const stage of visualStages) {
       await services.watch(visual.runStage(context, stage))
-    }
-
-    if (context.consoleErrors.length > 0) {
-      visual.log(
-        `renderer console errors were observed but did not fail the run: ${JSON.stringify(context.consoleErrors)}`
-      )
     }
 
     visual.summary.ok = true

@@ -120,6 +120,9 @@ export const usdcIntegrationStage: VisualStage = {
         '18a-usdc-deposit-warning.png',
         '18b-usdc-deposit-post-sign-warning.png'
       ])
+      runtime.evidence('usdcApprovalRequestId', firstRequest.handlerId)
+      runtime.evidence('usdcDepositRequestId', secondRequest.handlerId)
+      runtime.evidence('usdcFlowAmount', usdcFlowAmount().toString())
     } finally {
       await stopMining()
     }

@@ -1,9 +1,6 @@
 import { verifyMessage, verifyTypedData } from 'ethers'
 
-import {
-  FLASH_USDC_ADDRESS,
-  FLASH_WETH_ADDRESS
-} from '../../../../apps/newframe/resources/domain/flash/constants.ts'
+import { FLASH_USDC_ADDRESS, FLASH_WETH_ADDRESS } from '../../../../apps/newframe/domain/flash/constants.ts'
 import { anvilChainId, localTradeServiceUrl, newframeRpcUrl } from '../../core/config.ts'
 import type { VisualStage } from '../types.ts'
 import { requireAccounts } from './helpers.ts'
@@ -247,6 +244,8 @@ export const agentSessionStage: VisualStage = {
     if (!/^0x[0-9a-fA-F]{64}$/.test(transactionHash)) {
       runtime.fail(`Agent send returned an invalid transaction hash: ${transactionHash}`)
     }
+    runtime.evidence('agentSessionId', credentials.sessionId)
+    runtime.evidence('agentTransactionHash', transactionHash)
     if (selectedAfter !== selectedBefore) {
       runtime.fail('Autonomous agent send changed the wallet selected in the UI')
     }
@@ -271,6 +270,7 @@ export const agentSessionStage: VisualStage = {
       'The external Flash cancellation was not applied through the WebSocket'
     )
     await driver.assertFlashOrderVisible(externalOrderId)
+    runtime.evidence('agentFlashOrderId', externalOrderId)
     await runtime.screenshot(tray, '08d-agent-external-flash-order.png')
 
     await revokeSession(credentials)
@@ -292,6 +292,7 @@ export const agentSessionStage: VisualStage = {
     if (rejectedAfterRevocation.status !== 401) {
       runtime.fail('Revoked agent session remained authorized')
     }
+    runtime.evidence('revokedSessionHttpStatus', rejectedAfterRevocation.status)
 
     await driver.clearPanelAndOverlays()
     await tray.getByRole('tab', { name: 'Activity' }).click()

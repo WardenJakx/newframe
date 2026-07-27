@@ -88,6 +88,9 @@ export const sendStage: VisualStage = {
       '14b-send-post-sign-warning.png'
     ])
     await anvil.waitForBalance(vitalik.address, vitalikBalanceBefore + oneEthWei)
+    runtime.evidence('sendRequestId', sendRequest.handlerId)
+    runtime.evidence('sendRecipient', vitalik.address)
+    runtime.evidence('sendValueWei', oneEthWei.toString())
     await driver.clearPanelAndOverlays()
   }
 }

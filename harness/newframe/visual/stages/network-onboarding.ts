@@ -101,6 +101,8 @@ export const networkOnboardingStage: VisualStage = {
       10_000,
       'Newframe did not add the local Anvil network'
     )
+    runtime.evidence('addedChainId', anvilChainId)
+    runtime.evidence('authorizedOrigin', harnessOrigin)
     await driver.setNativeAnvilBalance(harness)
 
     const networks = tray.getByRole('dialog', { name: 'Networks' })

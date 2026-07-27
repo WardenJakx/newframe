@@ -6,9 +6,37 @@ import type { VisualHarnessRuntime } from './runtime.ts'
 import type { HarnessRuntime } from '../core/service.ts'
 
 export type HarnessSummary = {
+  durationMs: number
+  evidence: HarnessEvidence[]
   ok: boolean
   failedStage: string | null
+  rendererErrors: RendererError[]
   screenshots: string[]
+  stages: StageSummary[]
+  startedAt: string
+}
+
+export type HarnessEvidence = {
+  label: string
+  stage: string
+  value: boolean | number | string | null
+}
+
+export type RendererError = {
+  allowed: boolean
+  allowance?: string
+  kind: 'console' | 'crash' | 'pageerror'
+  message: string
+  pageUrl: string
+  source?: string
+}
+
+export type StageSummary = {
+  durationMs: number
+  evidence: HarnessEvidence[]
+  name: string
+  screenshots: string[]
+  status: 'failed' | 'passed' | 'running'
 }
 
 export type AccountInfo = {
@@ -112,7 +140,6 @@ export type VisualHarnessContext = {
   services: HarnessRuntime
   tray: Page
   accounts?: HarnessAccounts
-  consoleErrors: string[]
 }
 
 export type VisualStage = {
