@@ -26,7 +26,7 @@ const rendererFiles = [
   'resources/Hooks/**/*.{ts,tsx}',
   'resources/Native/**/*.{ts,tsx}',
   'resources/bridge/index.ts',
-  'resources/link/index.ts',
+  'resources/link.ts',
   'test/support/componentSetup.tsx'
 ]
 

@@ -1,5 +1,5 @@
-import type { AppCommand, AppQuery, ResultForCommand, ResultForQuery } from '../bridge/operations'
-import type { StateConnectionResult, StateMessage } from '../state/protocol'
+import type { AppCommand, AppQuery, ResultForCommand, ResultForQuery } from './bridge/operations'
+import type { StateConnectionResult, StateMessage } from './state/protocol'
 
 const getHost = () => {
   if (typeof window === 'undefined' || !window.__NEWFRAME_HOST__) {
