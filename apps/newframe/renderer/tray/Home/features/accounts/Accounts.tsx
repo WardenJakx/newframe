@@ -75,7 +75,14 @@ const overlayRecipe = cva({
 })
 
 const toolsRecipe = cva({
-  base: { display: 'flex', flex: 'none', alignItems: 'center', gap: '4', padding: '4' }
+  base: {
+    display: 'flex',
+    flex: 'none',
+    alignItems: 'center',
+    gap: '4',
+    padding: '4',
+    '& > :first-child': { flex: '1 1 0', minWidth: 0 }
+  }
 })
 
 const accountRowRecipe = cva({
@@ -717,7 +724,6 @@ export function Accounts() {
                         <Text align='end' variant='numeric' shrink={false}>
                           {navValue}
                         </Text>
-                        {selected ? <Icon name='check' size='small' tone='accent' /> : null}
                         <IconButton
                           appearance='ghost'
                           icon={state.accountCopied === id ? 'check' : 'copy'}
