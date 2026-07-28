@@ -25,7 +25,7 @@
     "knip": "knip",
     "format": "prettier --write '**/*.{yml,json,md,html,ts,tsx,js,mjs}' --config ../../.prettierrc.json --ignore-path ../../.prettierignore",
     "compile": "bun run ui:build && bun run compile:app",
-    "compile:app": "bun run styles:generate && bun run sync:assets && tsgo --project tsconfig.main.json && bun ./scripts/check-build-artifacts.ts compiled",
+    "compile:app": "bun run styles:generate && rimraf compiled && bun run sync:assets && tsgo --project tsconfig.main.json && bun ./scripts/check-build-artifacts.ts compiled",
     "compile:watch": "bun run ui:build && bun run sync:assets && tsgo --project tsconfig.main.json -w",
     "build": "bun run compile && sleep 4 && bun run bundle && sleep 4 && electron-builder --config=build/electron-builder-standard.ts",
     "install:preview": "bun run compile && sleep 4 && bun run bundle && sleep 4 && electron-builder --mac --config=build/electron-builder-preview.ts && bun ./scripts/install-preview.ts",
