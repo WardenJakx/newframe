@@ -4,8 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       release_notes:
-        description: Concise one-line summary of this browser-extension release
-        required: true
+        description: Optional introduction to prepend to the generated release notes
+        required: false
+        default: ''
         type: string
 
 concurrency:
@@ -23,8 +24,11 @@ jobs:
       contents: read
     outputs:
       artifact: ${{ steps.metadata.outputs.artifact }}
+      baseline-needed: ${{ steps.previous.outputs.baseline-needed }}
+      baseline-ref: ${{ steps.previous.outputs.baseline-ref }}
       candidate: ${{ steps.candidate.outputs.sha }}
       checksum: ${{ steps.metadata.outputs.checksum }}
+      previous-tag: ${{ steps.previous.outputs.tag }}
       tag: ${{ steps.prep.outputs.tag }}
       transfer-artifact: ${{ steps.transfer.outputs.name }}
       version: ${{ steps.prep.outputs.version }}
@@ -69,6 +73,61 @@ jobs:
       - name: Install frozen dependencies
         run: bun install --frozen-lockfile
 
+      - name: Find the prior extension release tag
+        id: previous
+        shell: bash
+        run: |
+          set -euo pipefail
+          remote_tags="$(git ls-remote --refs --tags origin 'refs/tags/extension-v*')"
+          mapfile -t extension_tags < <(
+            printf '%s' "$remote_tags" |
+              awk '{ sub(/^refs\/tags\//, "", $2); print $2 }'
+          )
+          for tag in "${extension_tags[@]}"; do
+            if [[ ! "$tag" =~ ^extension-v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+              echo "::error::Origin contains malformed extension release tag '$tag'."
+              exit 1
+            fi
+          done
+
+          baseline_tag='extension-v0.0.1'
+          baseline_needed=false
+          baseline_ref=''
+          if ((${#extension_tags[@]} == 0)); then
+            previous_tag="$baseline_tag"
+            baseline_needed=true
+            baseline_ref="$GITHUB_SHA"
+            echo "No prior extension tag exists; $baseline_tag will mark the pre-release baseline."
+          else
+            previous_tag="$(
+              printf '%s\n' "${extension_tags[@]}" |
+                LC_ALL=C sort -V |
+                tail -n 1
+            )"
+            git fetch --no-tags origin \
+              "refs/tags/$previous_tag:refs/tags/$previous_tag"
+            if ! git merge-base --is-ancestor "$previous_tag" "$GITHUB_SHA"; then
+              echo "::error::Prior extension tag $previous_tag is not an ancestor of dispatched main."
+              exit 1
+            fi
+            echo "Generated notes will start after $previous_tag."
+          fi
+
+          if [[ " ${extension_tags[*]} " == *" $baseline_tag "* ]]; then
+            if [[ "$previous_tag" != "$baseline_tag" ]]; then
+              git fetch --no-tags origin \
+                "refs/tags/$baseline_tag:refs/tags/$baseline_tag"
+            fi
+            if ! git merge-base --is-ancestor "$baseline_tag" "$GITHUB_SHA"; then
+              echo "::error::Permanent extension baseline $baseline_tag is not an ancestor of main."
+              exit 1
+            fi
+            baseline_ref="$(git rev-parse "refs/tags/$baseline_tag")"
+          fi
+          echo "baseline-needed=$baseline_needed" >> "$GITHUB_OUTPUT"
+          echo "baseline-ref=$baseline_ref" >> "$GITHUB_OUTPUT"
+          echo "tag=$previous_tag" >> "$GITHUB_OUTPUT"
+
       - name: Prepare extension release metadata
         id: prep
         env:
@@ -76,22 +135,18 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          summary="${RELEASE_SUMMARY//$'\r'/}"
-          if [[ -z "${summary//[$' \t\n']/}" ]]; then
-            echo "::error::release_notes must contain a non-whitespace summary."
-            exit 1
-          fi
-          if [[ "$summary" == *$'\n'* ]]; then
-            echo "::error::release_notes must be a concise one-line summary."
-            exit 1
-          fi
-          if (( ${#summary} > 500 )); then
-            echo "::error::release_notes must be 500 characters or fewer."
-            exit 1
-          fi
-
+          introduction="${RELEASE_SUMMARY//$'\r'/}"
+          introduction_file="$RUNNER_TEMP/extension-release-introduction.md"
           notes_file="$RUNNER_TEMP/extension-release-summary.md"
-          printf '%s\n' "$summary" > "$notes_file"
+          if [[ -n "${introduction//[$' \t\n']/}" ]]; then
+            printf '%s\n' "$introduction" > "$introduction_file"
+            cp "$introduction_file" "$notes_file"
+          else
+            : > "$introduction_file"
+            printf '%s\n' \
+              'See the generated GitHub release notes for the changes in this version.' \
+              > "$notes_file"
+          fi
           bun scripts/release/prepare-release.ts extension \
             --notes-file "$notes_file" \
             --github-output "$GITHUB_OUTPUT"
@@ -185,6 +240,8 @@ jobs:
           git diff --exit-code
           git diff --cached --exit-code
           mkdir -p "$RELEASE_OUTPUT"
+          cp "$RUNNER_TEMP/extension-release-introduction.md" \
+            "$RELEASE_OUTPUT/introduction.md"
           bun run --cwd apps/newframe-extension release:package \
             --output-dir "$RELEASE_OUTPUT"
           bun run --cwd apps/newframe-extension release:verify \
@@ -228,10 +285,13 @@ jobs:
       contents: write
     env:
       CANDIDATE_SHA: ${{ needs.prepare.outputs.candidate }}
+      BASELINE_NEEDED: ${{ needs.prepare.outputs.baseline-needed }}
+      BASELINE_REF: ${{ needs.prepare.outputs.baseline-ref }}
       RELEASE_ARTIFACT: ${{ needs.prepare.outputs.artifact }}
       RELEASE_CHECKSUM: ${{ needs.prepare.outputs.checksum }}
       RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
       RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+      PREVIOUS_TAG: ${{ needs.prepare.outputs.previous-tag }}
     steps:
       - name: Check out the dispatched commit
         uses: actions/checkout@v4
@@ -282,7 +342,7 @@ jobs:
         with:
           bun-version-file: package.json
 
-      - name: Revalidate candidate source, assets, and notes
+      - name: Revalidate candidate source and assets
         env:
           TRANSFER_DIR: ${{ runner.temp }}/extension-candidate
         shell: bash
@@ -296,8 +356,38 @@ jobs:
           bun run --cwd apps/newframe-extension release:verify \
             --artifact "$TRANSFER_DIR/$RELEASE_ARTIFACT" \
             --checksum "$TRANSFER_DIR/$RELEASE_CHECKSUM"
+          test -f "$TRANSFER_DIR/introduction.md"
+
+      - name: Compose notes to prepend to generated notes
+        env:
+          TRANSFER_DIR: ${{ runner.temp }}/extension-candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          helper_notes="$RUNNER_TEMP/extension-helper-notes.md"
+          prepended_notes="$RUNNER_TEMP/extension-prepended-notes.md"
           bun run --cwd apps/newframe-extension release:notes \
-            --output "$RUNNER_TEMP/extension-release-notes.md"
+            --output "$helper_notes"
+
+          if grep -q '[^[:space:]]' "$TRANSFER_DIR/introduction.md"; then
+            cp "$helper_notes" "$prepended_notes"
+          else
+            awk '
+              $0 == "## Install" { capture = 1 }
+              capture { print }
+            ' "$helper_notes" > "$prepended_notes"
+          fi
+
+          if ! grep -Fqx '## Install' "$prepended_notes"; then
+            echo "::error::Required extension installation guidance is missing."
+            exit 1
+          fi
+          if grep -Fq \
+            'See the generated GitHub release notes for the changes in this version.' \
+            "$prepended_notes"; then
+            echo "::error::Internal changelog fallback leaked into published release notes."
+            exit 1
+          fi
 
       - name: Validate remote state
         id: remote
@@ -334,6 +424,43 @@ jobs:
 
           main_sha="$(git ls-remote origin refs/heads/main | awk '{print $1}')"
           tag_sha="$(git ls-remote --refs --tags origin "refs/tags/$RELEASE_TAG" | awk '{print $1}')"
+          baseline_tag='extension-v0.0.1'
+          baseline_sha="$(
+            git ls-remote --refs --tags origin "refs/tags/$baseline_tag" |
+              awk '{print $1}'
+          )"
+          baseline_push_needed=false
+          if [[ "$BASELINE_NEEDED" == "true" ]]; then
+            if [[ -z "$baseline_sha" ]]; then
+              baseline_push_needed=true
+            elif [[ "$baseline_sha" != "$BASELINE_REF" ]]; then
+              echo "::error::Permanent extension baseline $baseline_tag already points elsewhere."
+              echo "Expected $BASELINE_REF; found $baseline_sha."
+              exit 1
+            fi
+          elif [[ -n "$BASELINE_REF" && "$baseline_sha" != "$BASELINE_REF" ]]; then
+            echo "::error::Permanent extension baseline $baseline_tag moved or disappeared."
+            echo "Expected $BASELINE_REF; found ${baseline_sha:-<absent>}."
+            exit 1
+          fi
+
+          remote_previous="$(
+            git ls-remote --refs --tags origin 'refs/tags/extension-v*' |
+              awk -v current="$RELEASE_TAG" '{
+                sub(/^refs\/tags\//, "", $2)
+                if ($2 != current) print $2
+              }' |
+              LC_ALL=C sort -V |
+              tail -n 1
+          )"
+          if [[ "$baseline_push_needed" == "true" && -z "$remote_previous" ]]; then
+            :
+          elif [[ "$remote_previous" != "$PREVIOUS_TAG" ]]; then
+            echo "::error::The prior extension tag changed during release preparation."
+            echo "Expected ${PREVIOUS_TAG:-<none>}; found ${remote_previous:-<none>}."
+            exit 1
+          fi
+          echo "baseline-push-needed=$baseline_push_needed" >> "$GITHUB_OUTPUT"
           if [[ "$main_sha" = "$GITHUB_SHA" && -z "$tag_sha" ]]; then
             echo "push-needed=true" >> "$GITHUB_OUTPUT"
           elif [[ "$main_sha" = "$CANDIDATE_SHA" && "$tag_sha" = "$CANDIDATE_SHA" ]]; then
@@ -346,17 +473,33 @@ jobs:
             exit 1
           fi
 
-      - name: Atomically push candidate commit and tag
-        if: steps.remote.outputs.push-needed == 'true'
+      - name: Atomically push candidate, release tag, and baseline
+        if: >-
+          steps.remote.outputs.push-needed == 'true' ||
+          steps.remote.outputs.baseline-push-needed == 'true'
         shell: bash
         run: |
           set -euo pipefail
-          git tag "$RELEASE_TAG" "$CANDIDATE_SHA"
-          git push --atomic \
-            --force-with-lease="refs/heads/main:$GITHUB_SHA" \
-            origin \
-            "${CANDIDATE_SHA}:refs/heads/main" \
-            "refs/tags/$RELEASE_TAG:refs/tags/$RELEASE_TAG"
+          push_options=(--atomic)
+          refspecs=()
+          if [[ "${{ steps.remote.outputs.push-needed }}" == "true" ]]; then
+            git tag "$RELEASE_TAG" "$CANDIDATE_SHA"
+            push_options+=(--force-with-lease="refs/heads/main:$GITHUB_SHA")
+            refspecs+=(
+              "${CANDIDATE_SHA}:refs/heads/main"
+              "refs/tags/$RELEASE_TAG:refs/tags/$RELEASE_TAG"
+            )
+          fi
+          if [[ "${{ steps.remote.outputs.baseline-push-needed }}" == "true" ]]; then
+            baseline_tag='extension-v0.0.1'
+            if git show-ref --verify --quiet "refs/tags/$baseline_tag"; then
+              test "$(git rev-parse "refs/tags/$baseline_tag")" = "$BASELINE_REF"
+            else
+              git tag "$baseline_tag" "$GITHUB_SHA"
+            fi
+            refspecs+=("refs/tags/$baseline_tag:refs/tags/$baseline_tag")
+          fi
+          git push "${push_options[@]}" origin "${refspecs[@]}"
 
       - name: Verify published refs
         shell: bash
@@ -364,8 +507,13 @@ jobs:
           set -euo pipefail
           main_sha="$(git ls-remote origin refs/heads/main | awk '{print $1}')"
           tag_sha="$(git ls-remote --refs --tags origin "refs/tags/$RELEASE_TAG" | awk '{print $1}')"
+          baseline_sha="$(
+            git ls-remote --refs --tags origin refs/tags/extension-v0.0.1 |
+              awk '{print $1}'
+          )"
           test "$main_sha" = "$CANDIDATE_SHA"
           test "$tag_sha" = "$CANDIDATE_SHA"
+          test "$baseline_sha" = "$BASELINE_REF"
 
       - name: Publish the GitHub release
         env:
@@ -374,11 +522,20 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          gh release create "$RELEASE_TAG" \
-            "$TRANSFER_DIR/$RELEASE_ARTIFACT" \
-            "$TRANSFER_DIR/$RELEASE_CHECKSUM" \
-            --repo "$GITHUB_REPOSITORY" \
-            --verify-tag \
-            --title "Newframe Browser Extension v$RELEASE_VERSION" \
-            --notes-file "$RUNNER_TEMP/extension-release-notes.md" \
+          release_args=(
+            "$RELEASE_TAG"
+            "$TRANSFER_DIR/$RELEASE_ARTIFACT"
+            "$TRANSFER_DIR/$RELEASE_CHECKSUM"
+            --repo "$GITHUB_REPOSITORY"
+            --verify-tag
+            --title "Newframe Browser Extension v$RELEASE_VERSION"
+            --notes-file "$RUNNER_TEMP/extension-prepended-notes.md"
+            --generate-notes
             --latest=false
+          )
+          if [[ ! "$PREVIOUS_TAG" =~ ^extension-v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "::error::Generated-note comparison tag must belong to the extension track."
+            exit 1
+          fi
+          release_args+=(--notes-start-tag "$PREVIOUS_TAG")
+          gh release create "${release_args[@]}"

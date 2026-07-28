@@ -11,14 +11,16 @@ Published artifacts, checksums, and tags are immutable release records. Fix prob
 
 - Merge and verify all intended product changes on `main`.
 - Complete the relevant local, CI, and manual product testing before starting a stable release.
-- Prepare concise, user-facing release notes describing the changes and known limitations.
+- Optionally prepare a concise, user-facing introduction. Leave it blank to publish only the standard installation guidance and generated GitHub notes.
 - Do not start desktop and extension releases at the same time. Each workflow writes its own release commit to `main`; finish one before starting the other.
 
 ## 2. Run one product workflow
 
 1. Open the repository's **Actions** tab.
 2. Select **Release Newframe Desktop** or **Release browser extension**.
-3. Choose **Run workflow**, select `main`, enter the release notes, and start the run.
+3. Choose **Run workflow**, select `main`, optionally enter a custom introduction, and start the run.
+
+Starting the workflow is the publication decision. There is no draft or approval step in the MVP, so verify `main` and complete product testing before starting it.
 
 That one run:
 
@@ -28,10 +30,12 @@ That one run:
 4. Creates a local release commit for those metadata changes.
 5. Installs frozen dependencies and tests, builds, packages, and validates that exact release commit.
 6. Generates and verifies the named artifact and SHA-256 checksum.
-7. Atomically pushes the release commit to `main` and creates the product tag at that commit.
-8. Publishes the stable GitHub Release with the validated files and supplied release notes.
+7. Atomically pushes the release commit to `main` and creates the product tag at that commit. On the first release for a product, it also creates that product's immutable internal `v0.0.1` baseline tag at the dispatched pre-release commit.
+8. Immediately publishes the stable GitHub Release with the validated files, the optional introduction, required installation guidance, and GitHub-generated notes.
 
 Desktop and extension counters remain independent. The desktop workflow marks its release as the repository's **Latest** release; the extension workflow does not replace it.
+
+For the first public release of a product, generated notes start at its internal baseline tag. Later releases start at the previous tag for the same product. A desktop release therefore never uses an extension tag as its starting point and vice versa. GitHub's generated section lists merged pull requests and contributors and links to the full comparison; it is not a literal dump of every raw commit.
 
 The release commit and tag are not pushed until all build gates pass. If `main` changes before publication, the atomic push fails without overwriting `main` or leaving a partial tag. Start a new run from the updated `main`.
 
