@@ -34,14 +34,20 @@ Newframe is a web3 platform that creates a secure system-wide interface to your 
 
 ## Download and get started
 
-### Download the desktop app
+Download artifacts from [GitHub Releases](https://github.com/wardenjakx/newframe/releases). Releases are currently intended for technical preview use:
 
-- Coming soon. Run from source for now
-<!--
-- [Production releases](https://github.com/wardenjakx/newframe/releases)
-- [Canary releases](https://github.com/wardenjakx/newframe/releases)
+- The desktop download is an unsigned macOS arm64 DMG for Apple silicon.
+- The browser extension is an unpacked developer extension for Chrome 121+, Brave, Chromium, and temporary Firefox sessions. It is not distributed through a browser extension store and does not update automatically.
+- The extension requires the Newframe desktop app to be installed, running, and unlocked.
 
-After installing, open Newframe from your applications folder or app launcher. -->
+Each downloadable artifact has a matching `.sha256` file. Download both files into the same directory and verify before installing:
+
+```bash
+shasum -a 256 -c Newframe-Desktop-<version>-macOS-arm64.dmg.sha256
+shasum -a 256 -c Newframe-Browser-Extension-<version>.zip.sha256
+```
+
+For complete installation steps, including macOS Gatekeeper handling and browser-specific loading, see the [desktop app guide](apps/newframe/README.md#install-the-unsigned-macos-arm64-release) and [browser extension guide](apps/newframe-extension/README.md#install-a-release).
 
 ### Run from source
 
@@ -64,8 +70,13 @@ Load `apps/newframe-extension/dist` as an unpacked extension in Chrome, Brave, o
 
 To enable wallet portfolio discovery, add a Zerion API key in Newframe settings and enable token auto-discovery.
 
+### Roll back
+
+Releases are versioned independently: desktop tags use `desktop-v<version>` and extension tags use `extension-v<version>`. To roll back, verify and reinstall an earlier desktop DMG or remove the loaded extension and load an earlier extracted ZIP from [GitHub Releases](https://github.com/wardenjakx/newframe/releases). A withdrawn release is never repaired in place; use the documented prior release or a newer fix-forward release.
+
 ## Project surfaces
 
 - [`apps/newframe`](apps/newframe/README.md) - Electron desktop wallet and system-wide provider app.
 - [`apps/newframe-extension`](apps/newframe-extension/README.md) - browser companion extension that injects a Newframe-connected provider.
+- [`docs/releasing.md`](docs/releasing.md) - maintainer release and withdrawal checklist.
 - `packages` - shared libraries used by the app surfaces.
