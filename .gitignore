@@ -11,6 +11,7 @@ apps/newframe/compiled
 apps/newframe/coverage
 apps/newframe/dist
 apps/newframe/dist-preview
+apps/newframe/dist-release
 apps/newframe/release
 apps/newframe/.parcel-cache
 apps/newframe/*.tsbuildinfo
