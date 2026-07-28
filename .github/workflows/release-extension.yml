@@ -1,0 +1,188 @@
+name: Release browser extension
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: release-extension-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.metadata.outputs.version }}
+      tag: ${{ steps.metadata.outputs.tag }}
+      artifact: ${{ steps.metadata.outputs.artifact }}
+      checksum: ${{ steps.metadata.outputs.checksum }}
+    steps:
+      - name: Check out the dispatched commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      - name: Require the exact current main commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "::error::Browser extension releases must be dispatched from the exact main branch ref."
+            exit 1
+          fi
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          git fetch --no-tags origin main
+          test "$(git rev-parse origin/main)" = "$GITHUB_SHA"
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - name: Install frozen dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Read and validate committed release metadata
+        id: metadata
+        run: bun run --cwd apps/newframe-extension release:validate --github-output "$GITHUB_OUTPUT"
+
+      - name: Test the extension
+        run: bun run test:newframe-extension
+
+      - name: Type-check the extension
+        run: bun run --cwd apps/newframe-extension typecheck
+
+      - name: Build the extension
+        run: bun run build:newframe-extension
+
+      - name: Package and verify the browser extension
+        env:
+          RELEASE_OUTPUT: ${{ runner.temp }}/newframe-extension-release
+        run: |
+          bun run --cwd apps/newframe-extension release:package --output-dir "$RELEASE_OUTPUT"
+          bun run --cwd apps/newframe-extension release:verify \
+            --artifact "$RELEASE_OUTPUT/${{ steps.metadata.outputs.artifact }}" \
+            --checksum "$RELEASE_OUTPUT/${{ steps.metadata.outputs.checksum }}"
+
+      - name: Upload verified release files
+        uses: actions/upload-artifact@v4
+        with:
+          name: newframe-extension-release-${{ steps.metadata.outputs.version }}
+          path: |
+            ${{ runner.temp }}/newframe-extension-release/${{ steps.metadata.outputs.artifact }}
+            ${{ runner.temp }}/newframe-extension-release/${{ steps.metadata.outputs.checksum }}
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Check out the dispatched commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - name: Revalidate committed release metadata
+        run: |
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          bun run --cwd apps/newframe-extension release:validate
+
+      - name: Download verified release files
+        uses: actions/download-artifact@v4
+        with:
+          name: newframe-extension-release-${{ needs.build.outputs.version }}
+          path: ${{ runner.temp }}/newframe-extension-release
+
+      - name: Verify downloaded release files
+        env:
+          RELEASE_OUTPUT: ${{ runner.temp }}/newframe-extension-release
+        run: |
+          bun run --cwd apps/newframe-extension release:verify \
+            --artifact "$RELEASE_OUTPUT/${{ needs.build.outputs.artifact }}" \
+            --checksum "$RELEASE_OUTPUT/${{ needs.build.outputs.checksum }}"
+
+      - name: Validate remote release state
+        id: remote
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.build.outputs.tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin main
+          test "$(git rev-parse origin/main)" = "$GITHUB_SHA"
+
+          release_status="$(
+            curl --silent --show-error \
+              --output "$RUNNER_TEMP/extension-release-response.json" \
+              --write-out "%{http_code}" \
+              --header "Accept: application/vnd.github+json" \
+              --header "Authorization: Bearer $GH_TOKEN" \
+              --header "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/$GITHUB_REPOSITORY/releases/tags/$TAG"
+          )"
+          case "$release_status" in
+            404) ;;
+            200)
+              echo "::error::Release $TAG already exists; refusing to replace a published release."
+              exit 1
+              ;;
+            *)
+              echo "::error::Could not validate release absence (GitHub returned HTTP $release_status)."
+              exit 1
+              ;;
+          esac
+
+          remote_tag="$(git ls-remote --tags origin "refs/tags/$TAG" | awk '{print $1}')"
+          if [ -z "$remote_tag" ]; then
+            echo "tag_exists=false" >> "$GITHUB_OUTPUT"
+          elif [ "$remote_tag" = "$GITHUB_SHA" ]; then
+            echo "tag_exists=true" >> "$GITHUB_OUTPUT"
+            echo "Tag $TAG already targets this exact commit; resuming a previous publish attempt."
+          else
+            echo "::error::Tag $TAG already exists at $remote_tag, not $GITHUB_SHA."
+            exit 1
+          fi
+
+      - name: Create release notes from the committed changelog
+        env:
+          NOTES_FILE: ${{ runner.temp }}/newframe-extension-release-notes.md
+        run: bun run --cwd apps/newframe-extension release:notes --output "$NOTES_FILE"
+
+      - name: Tag the exact dispatched commit
+        if: steps.remote.outputs.tag_exists == 'false'
+        env:
+          TAG: ${{ needs.build.outputs.tag }}
+        run: |
+          git tag "$TAG" "$GITHUB_SHA"
+          git push origin "refs/tags/$TAG"
+
+      - name: Publish the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.build.outputs.tag }}
+          VERSION: ${{ needs.build.outputs.version }}
+          RELEASE_OUTPUT: ${{ runner.temp }}/newframe-extension-release
+          NOTES_FILE: ${{ runner.temp }}/newframe-extension-release-notes.md
+        run: |
+          test "$(git ls-remote --tags origin "refs/tags/$TAG" | awk '{print $1}')" = "$GITHUB_SHA"
+          gh release create "$TAG" \
+            "$RELEASE_OUTPUT/${{ needs.build.outputs.artifact }}" \
+            "$RELEASE_OUTPUT/${{ needs.build.outputs.checksum }}" \
+            --repo "$GITHUB_REPOSITORY" \
+            --verify-tag \
+            --title "Newframe Browser Extension v$VERSION" \
+            --notes-file "$NOTES_FILE" \
+            --latest=false
