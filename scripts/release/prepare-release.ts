@@ -26,17 +26,15 @@ const MAX_COUNTER = 65_535
 
 const productPaths: Record<
   ReleaseProduct,
-  { package: string; manifest?: string; changelog: string; tagPrefix: string }
+  { package: string; manifest?: string; tagPrefix: string }
 > = {
   desktop: {
     package: 'apps/newframe/package.json',
-    changelog: 'apps/newframe/CHANGELOG.md',
     tagPrefix: 'desktop'
   },
   extension: {
     package: 'apps/newframe-extension/package.json',
     manifest: 'apps/newframe-extension/src/manifest.json',
-    changelog: 'apps/newframe-extension/CHANGELOG.md',
     tagPrefix: 'extension'
   }
 }
@@ -116,48 +114,6 @@ function replaceJsonVersion(content: string, version: string, filePath: string):
     fail(`Cannot locate the top-level version in ${filePath}`)
   }
   return content.replace(versionProperty, `$1"${version}"`)
-}
-
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
-
-function normalizedReleaseNotes(notes: string): string {
-  const normalized = notes.replace(/\r\n/g, '\n').trim()
-  if (!normalized) {
-    fail('Release notes file must contain non-whitespace text')
-  }
-  return normalized
-}
-
-export function updateChangelog(content: string, version: string, notes: string): string {
-  const releaseNotes = normalizedReleaseNotes(notes)
-  const heading = `## ${version}`
-  const headingPattern = new RegExp(`^${escapeRegExp(heading)}\\r?$`, 'gm')
-  const releaseHeadingPattern =
-    /^## (?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\r?$/m
-  const matches = [...content.matchAll(headingPattern)]
-
-  if (matches.length > 1) {
-    fail(`Changelog contains more than one exact "${heading}" heading`)
-  }
-
-  if (matches.length === 1) {
-    const match = matches[0]
-    const bodyStart = (match.index ?? 0) + match[0].length
-    const remainder = content.slice(bodyStart).replace(/^\r?\n/, '')
-    const nextHeading = releaseHeadingPattern.exec(remainder)
-    const followingSection = nextHeading ? `\n${remainder.slice(nextHeading.index)}` : ''
-    return `${content.slice(0, bodyStart)}\n\n${releaseNotes}\n${followingSection}`
-  }
-
-  const entry = `${heading}\n\n${releaseNotes}\n`
-  const title = /^# .+\r?\n/.exec(content)
-  if (title?.index === 0) {
-    const rest = content.slice(title[0].length).replace(/^\r?\n/, '')
-    return `${title[0]}\n${entry}${rest ? `\n${rest}` : ''}`
-  }
-  return `${entry}${content ? `\n${content}` : ''}`
 }
 
 function writeTransaction(writes: readonly PendingWrite[]): void {
@@ -248,13 +204,11 @@ export function prepareRelease(
   root: string,
   product: ReleaseProduct,
   date: Date,
-  tags: readonly string[],
-  notes: string
+  tags: readonly string[]
 ): ReleaseMetadata {
   const config = productPaths[product]
   const version = nextCalVer(product, tags, date)
   const packagePath = path.join(root, config.package)
-  const changelogPath = path.join(root, config.changelog)
   const writes: PendingWrite[] = [
     {
       path: packagePath,
@@ -270,8 +224,6 @@ export function prepareRelease(
     })
   }
 
-  const changelog = existsSync(changelogPath) ? readFileSync(changelogPath, 'utf8') : '# Changelog\n'
-  writes.push({ path: changelogPath, content: updateChangelog(changelog, version, notes) })
   writeTransaction(writes)
 
   return { product, version, tag: `${config.tagPrefix}-v${version}` }
@@ -286,7 +238,6 @@ export function writeGithubOutput(outputPath: string, metadata: ReleaseMetadata)
 
 type CliOptions = {
   product: ReleaseProduct
-  notesFile: string
   githubOutput: string
 }
 
@@ -294,11 +245,10 @@ export function parseCliOptions(args: readonly string[]): CliOptions {
   const [product, ...flags] = args
   if (product !== 'desktop' && product !== 'extension') {
     fail(
-      'Usage: bun scripts/release/prepare-release.ts <desktop|extension> --notes-file <path> --github-output <path>'
+      'Usage: bun scripts/release/prepare-release.ts <desktop|extension> --github-output <path>'
     )
   }
 
-  let notesFile: string | undefined
   let githubOutput: string | undefined
   for (let index = 0; index < flags.length; index += 2) {
     const flag = flags[index]
@@ -306,33 +256,24 @@ export function parseCliOptions(args: readonly string[]): CliOptions {
     if (!value) {
       fail(`Missing value for ${flag || 'workflow option'}`)
     }
-    if (flag === '--notes-file' && notesFile === undefined) {
-      notesFile = value
-    } else if (flag === '--github-output' && githubOutput === undefined) {
+    if (flag === '--github-output' && githubOutput === undefined) {
       githubOutput = value
     } else {
       fail(`Unknown or duplicate workflow option: ${flag}`)
     }
   }
 
-  if (!notesFile || !githubOutput) {
-    fail('Workflow preparation requires --notes-file and --github-output')
+  if (!githubOutput) {
+    fail('Workflow preparation requires --github-output')
   }
 
-  return { product, notesFile, githubOutput }
+  return { product, githubOutput }
 }
 
 if (import.meta.main) {
   const options = parseCliOptions(process.argv.slice(2))
   const root = path.resolve(import.meta.dir, '../..')
-  const notes = readFileSync(path.resolve(options.notesFile), 'utf8')
-  const result = prepareRelease(
-    root,
-    options.product,
-    new Date(),
-    listTags(root, options.product),
-    notes
-  )
+  const result = prepareRelease(root, options.product, new Date(), listTags(root, options.product))
   writeGithubOutput(path.resolve(options.githubOutput), result)
   console.log(JSON.stringify(result))
 }

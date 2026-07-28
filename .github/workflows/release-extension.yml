@@ -137,18 +137,12 @@ jobs:
           set -euo pipefail
           introduction="${RELEASE_SUMMARY//$'\r'/}"
           introduction_file="$RUNNER_TEMP/extension-release-introduction.md"
-          notes_file="$RUNNER_TEMP/extension-release-summary.md"
           if [[ -n "${introduction//[$' \t\n']/}" ]]; then
             printf '%s\n' "$introduction" > "$introduction_file"
-            cp "$introduction_file" "$notes_file"
           else
             : > "$introduction_file"
-            printf '%s\n' \
-              'See the generated GitHub release notes for the changes in this version.' \
-              > "$notes_file"
           fi
           bun scripts/release/prepare-release.ts extension \
-            --notes-file "$notes_file" \
             --github-output "$GITHUB_OUTPUT"
 
       - name: Create the exact local release commit
@@ -170,13 +164,12 @@ jobs:
 
           expected="$(
             printf '%s\n' \
-              apps/newframe-extension/CHANGELOG.md \
               apps/newframe-extension/package.json \
               apps/newframe-extension/src/manifest.json
           )"
           changed="$(git diff --name-only | LC_ALL=C sort)"
           if [[ "$changed" != "$expected" ]]; then
-            echo "::error::Release preparation must update exactly the extension package, manifest, and changelog."
+            echo "::error::Release preparation must update exactly the extension package and manifest."
             printf 'Expected:\n%s\nActual:\n%s\n' "$expected" "${changed:-<none>}"
             exit 1
           fi
@@ -187,7 +180,6 @@ jobs:
           fi
 
           git add -- \
-            apps/newframe-extension/CHANGELOG.md \
             apps/newframe-extension/package.json \
             apps/newframe-extension/src/manifest.json
           git -c user.name=github-actions \
@@ -325,7 +317,6 @@ jobs:
 
           expected="$(
             printf '%s\n' \
-              apps/newframe-extension/CHANGELOG.md \
               apps/newframe-extension/package.json \
               apps/newframe-extension/src/manifest.json
           )"
@@ -351,7 +342,6 @@ jobs:
           test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
           test "$(jq -er '.version' apps/newframe-extension/package.json)" = "$RELEASE_VERSION"
           test "$(jq -er '.version' apps/newframe-extension/src/manifest.json)" = "$RELEASE_VERSION"
-          test "$(grep -Fxc "## $RELEASE_VERSION" apps/newframe-extension/CHANGELOG.md)" = "1"
           bun run --cwd apps/newframe-extension release:validate
           bun run --cwd apps/newframe-extension release:verify \
             --artifact "$TRANSFER_DIR/$RELEASE_ARTIFACT" \
@@ -364,28 +354,34 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          helper_notes="$RUNNER_TEMP/extension-helper-notes.md"
           prepended_notes="$RUNNER_TEMP/extension-prepended-notes.md"
-          bun run --cwd apps/newframe-extension release:notes \
-            --output "$helper_notes"
 
           if grep -q '[^[:space:]]' "$TRANSFER_DIR/introduction.md"; then
-            cp "$helper_notes" "$prepended_notes"
+            {
+              printf '%s\n\n' '## Introduction'
+              while IFS= read -r line || [[ -n "$line" ]]; do
+                printf '%s\n' "$line"
+              done < "$TRANSFER_DIR/introduction.md"
+              printf '\n'
+            } > "$prepended_notes"
           else
-            awk '
-              $0 == "## Install" { capture = 1 }
-              capture { print }
-            ' "$helper_notes" > "$prepended_notes"
+            : > "$prepended_notes"
           fi
+
+          {
+            printf '%s\n\n' '## Install'
+            printf '%s\n\n' \
+              'This is an unpacked developer extension and requires the Newframe desktop app to be running.'
+            printf '%s\n' \
+              '- Chrome, Brave, and Chromium: verify the SHA-256 file, extract the ZIP, enable Developer mode on the extensions page, and load the extracted directory with **Load unpacked**.'
+            printf '%s\n\n' \
+              '- Firefox: verify and extract the ZIP, then open `about:debugging#/runtime/this-firefox`, choose **Load Temporary Add-on…**, and select `manifest.json`.'
+            printf '%s\n' \
+              'Firefox installation is temporary only: Firefox removes the extension when the browser restarts. This release is not distributed through a browser extension store.'
+          } >> "$prepended_notes"
 
           if ! grep -Fqx '## Install' "$prepended_notes"; then
             echo "::error::Required extension installation guidance is missing."
-            exit 1
-          fi
-          if grep -Fq \
-            'See the generated GitHub release notes for the changes in this version.' \
-            "$prepended_notes"; then
-            echo "::error::Internal changelog fallback leaked into published release notes."
             exit 1
           fi
 

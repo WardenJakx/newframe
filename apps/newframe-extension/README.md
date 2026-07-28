@@ -84,4 +84,3 @@ bun run typecheck
 
 - [Root project README](../../README.md) - overall Newframe overview and monorepo map.
 - [Newframe Desktop App](../newframe/README.md) - desktop wallet and system-wide provider app.
-- [Maintainer release checklist](../../docs/releasing.md) - workflow-driven release, smoke-test, and fix-forward procedure.

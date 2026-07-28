@@ -20,13 +20,11 @@ type ReleaseMetadata = {
   tag: string
   artifact: string
   checksum: string
-  changelog: string
 }
 
 const extensionRoot = path.resolve(import.meta.dir, '..')
 const packagePath = path.join(extensionRoot, 'package.json')
 const sourceManifestPath = path.join(extensionRoot, 'src/manifest.json')
-const changelogPath = path.join(extensionRoot, 'CHANGELOG.md')
 const distPath = path.join(extensionRoot, 'dist')
 
 function fail(message: string): never {
@@ -66,32 +64,6 @@ function requireStringArray(value: unknown, label: string): string[] {
   return value as string[]
 }
 
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
-
-function changelogEntry(version: string): string {
-  if (!existsSync(changelogPath)) {
-    fail(`Missing committed extension changelog: ${changelogPath}`)
-  }
-
-  const changelog = readFileSync(changelogPath, 'utf8')
-  const heading = new RegExp(`^## ${escapeRegExp(version)}\\r?$`, 'm')
-  const match = heading.exec(changelog)
-  if (!match) {
-    fail(`Extension changelog must contain the exact heading "## ${version}"`)
-  }
-
-  const bodyStart = match.index + match[0].length
-  const remainder = changelog.slice(bodyStart).replace(/^\r?\n/, '')
-  const nextHeading = /^## .+$/m.exec(remainder)
-  const body = (nextHeading ? remainder.slice(0, nextHeading.index) : remainder).trim()
-  if (!body) {
-    fail(`Extension changelog entry "## ${version}" must not be empty`)
-  }
-  return body
-}
-
 function validateSource(): ReleaseMetadata {
   const packageJson = readJson(packagePath)
   const manifest = readJson(sourceManifestPath)
@@ -110,13 +82,11 @@ function validateSource(): ReleaseMetadata {
     )
   }
 
-  const changelog = changelogEntry(packageVersion)
   return {
     version: packageVersion,
     tag: `extension-v${packageVersion}`,
     artifact: `Newframe-Browser-Extension-${packageVersion}.zip`,
-    checksum: `Newframe-Browser-Extension-${packageVersion}.zip.sha256`,
-    changelog
+    checksum: `Newframe-Browser-Extension-${packageVersion}.zip.sha256`
   }
 }
 
@@ -355,26 +325,6 @@ async function verifyPackage(
   console.log(`Verified ${metadata.artifact} (${metadata.version})`)
 }
 
-function writeNotes(): void {
-  const metadata = validateSource()
-  const outputPath = path.resolve(option('--output')!)
-  const notes = `## Changes
-
-${metadata.changelog}
-
-## Install
-
-This is an unpacked developer extension and requires the Newframe desktop app to be running.
-
-- Chrome, Brave, and Chromium: verify the SHA-256 file, extract the ZIP, enable Developer mode on the extensions page, and load the extracted directory with **Load unpacked**.
-- Firefox: verify and extract the ZIP, then open \`about:debugging#/runtime/this-firefox\`, choose **Load Temporary Add-on…**, and select \`manifest.json\`.
-
-Firefox installation is temporary only: Firefox removes the extension when the browser restarts. This release is not distributed through a browser extension store.
-`
-  writeFileSync(outputPath, notes)
-  console.log(`Wrote ${outputPath}`)
-}
-
 async function main(): Promise<void> {
   const command = process.argv[2]
   if (command === 'validate-source') {
@@ -385,10 +335,8 @@ async function main(): Promise<void> {
     await packageExtension()
   } else if (command === 'verify') {
     await verifyPackage()
-  } else if (command === 'notes') {
-    writeNotes()
   } else {
-    fail('Usage: release-extension.ts <validate-source|package|verify|notes> [options]')
+    fail('Usage: release-extension.ts <validate-source|package|verify> [options]')
   }
 }
 

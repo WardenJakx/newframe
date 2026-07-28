@@ -8,7 +8,6 @@ import {
   parseCliOptions,
   prepareRelease,
   releaseTagsFromRemoteOutput,
-  updateChangelog,
   utcCalVerDate,
   writeGithubOutput
 } from './prepare-release'
@@ -28,7 +27,6 @@ function seedProduct(root: string, product: 'desktop' | 'extension'): void {
       : path.join(root, 'apps/newframe-extension')
   mkdirSync(path.join(app, 'src'), { recursive: true })
   writeFileSync(path.join(app, 'package.json'), '{\n  "name": "test",\n  "version": "0.0.1"\n}\n')
-  writeFileSync(path.join(app, 'CHANGELOG.md'), '# Changelog\n\n## 0.0.1\n\n- Baseline.\n')
   if (product === 'extension') {
     writeFileSync(
       path.join(app, 'src/manifest.json'),
@@ -108,18 +106,7 @@ describe('release file preparation', () => {
       path.join(root, 'apps/newframe-extension/src/manifest.json'),
       'utf8'
     )
-    const extensionChangelogBefore = readFileSync(
-      path.join(root, 'apps/newframe-extension/CHANGELOG.md'),
-      'utf8'
-    )
-
-    const result = prepareRelease(
-      root,
-      'desktop',
-      new Date('2026-07-27T12:00:00Z'),
-      [],
-      '- Fixed signing.\n- Improved updates.'
-    )
+    const result = prepareRelease(root, 'desktop', new Date('2026-07-27T12:00:00Z'), [])
 
     expect(result).toEqual({
       product: 'desktop',
@@ -129,18 +116,12 @@ describe('release file preparation', () => {
     expect(JSON.parse(readFileSync(path.join(root, 'apps/newframe/package.json'), 'utf8')).version).toBe(
       '2026.727.1'
     )
-    expect(readFileSync(path.join(root, 'apps/newframe/CHANGELOG.md'), 'utf8')).toContain(
-      '## 2026.727.1\n\n- Fixed signing.\n- Improved updates.'
-    )
     expect(readFileSync(path.join(root, 'apps/newframe-extension/package.json'), 'utf8')).toBe(
       extensionBefore
     )
     expect(
       readFileSync(path.join(root, 'apps/newframe-extension/src/manifest.json'), 'utf8')
     ).toBe(extensionManifestBefore)
-    expect(readFileSync(path.join(root, 'apps/newframe-extension/CHANGELOG.md'), 'utf8')).toBe(
-      extensionChangelogBefore
-    )
   })
 
   test('keeps extension package and manifest versions synchronized', () => {
@@ -148,17 +129,11 @@ describe('release file preparation', () => {
     seedProduct(root, 'desktop')
     seedProduct(root, 'extension')
     const desktopPackageBefore = readFileSync(path.join(root, 'apps/newframe/package.json'), 'utf8')
-    const desktopChangelogBefore = readFileSync(
-      path.join(root, 'apps/newframe/CHANGELOG.md'),
-      'utf8'
-    )
-
     prepareRelease(
       root,
       'extension',
       new Date('2026-07-27T12:00:00Z'),
-      ['extension-v2026.727.4'],
-      'Extension notes.'
+      ['extension-v2026.727.4']
     )
 
     const packageVersion = JSON.parse(
@@ -172,9 +147,6 @@ describe('release file preparation', () => {
     expect(readFileSync(path.join(root, 'apps/newframe/package.json'), 'utf8')).toBe(
       desktopPackageBefore
     )
-    expect(readFileSync(path.join(root, 'apps/newframe/CHANGELOG.md'), 'utf8')).toBe(
-      desktopChangelogBefore
-    )
   })
 
   test('is byte-for-byte safe to rerun when tags have not changed', () => {
@@ -182,74 +154,26 @@ describe('release file preparation', () => {
     seedProduct(root, 'extension')
     const date = new Date('2026-07-27T12:00:00Z')
 
-    prepareRelease(root, 'extension', date, [], 'Handles `$`, quotes, and 100%.\n\nMultiple lines.')
+    prepareRelease(root, 'extension', date, [])
     const paths = [
       path.join(root, 'apps/newframe-extension/package.json'),
-      path.join(root, 'apps/newframe-extension/src/manifest.json'),
-      path.join(root, 'apps/newframe-extension/CHANGELOG.md')
+      path.join(root, 'apps/newframe-extension/src/manifest.json')
     ]
     const firstRun = paths.map((file) => readFileSync(file, 'utf8'))
 
-    prepareRelease(root, 'extension', date, [], 'Handles `$`, quotes, and 100%.\n\nMultiple lines.')
+    prepareRelease(root, 'extension', date, [])
 
     expect(paths.map((file) => readFileSync(file, 'utf8'))).toEqual(firstRun)
-    expect(
-      readFileSync(path.join(root, 'apps/newframe-extension/CHANGELOG.md'), 'utf8').match(
-        /^## 2026\.727\.1$/gm
-      )
-    ).toHaveLength(1)
-  })
-
-  test('replaces an existing entry with explicit notes without duplicating its heading', () => {
-    const changelog = '# Changelog\n\n## 2026.727.1\n\n- Old notes.\n\n## 0.0.1\n\n- Baseline.\n'
-    const updated = updateChangelog(changelog, '2026.727.1', 'Line one.\n\nLine `$` 100%.')
-    expect(updated.match(/^## 2026\.727\.1$/gm)).toHaveLength(1)
-    expect(updated).toContain('## 2026.727.1\n\nLine one.\n\nLine `$` 100%.')
-    expect(updated).not.toContain('Old notes.')
-  })
-
-  test('preserves Markdown headings and shell-significant text deterministically', () => {
-    const notes = 'Cost is `$5` (100%).\r\n\r\n## Details\r\n\r\nUse "quoted" values & symbols.'
-    const first = updateChangelog('# Changelog\n', '2026.727.1', notes)
-    const second = updateChangelog(first, '2026.727.1', notes)
-
-    expect(second).toBe(first)
-    expect(second).toContain(
-      'Cost is `$5` (100%).\n\n## Details\n\nUse "quoted" values & symbols.'
-    )
-  })
-
-  test('rejects empty release notes before changing files', () => {
-    const root = temporaryRoot()
-    seedProduct(root, 'desktop')
-    const packagePath = path.join(root, 'apps/newframe/package.json')
-    const before = readFileSync(packagePath, 'utf8')
-
-    expect(() =>
-      prepareRelease(root, 'desktop', new Date('2026-07-27T12:00:00Z'), [], ' \n ')
-    ).toThrow('must contain non-whitespace text')
-    expect(readFileSync(packagePath, 'utf8')).toBe(before)
   })
 })
 
 describe('workflow interface', () => {
-  test('requires explicit notes and GitHub output paths', () => {
-    expect(
-      parseCliOptions([
-        'desktop',
-        '--notes-file',
-        '/tmp/notes.md',
-        '--github-output',
-        '/tmp/github-output'
-      ])
-    ).toEqual({
+  test('requires the GitHub output path', () => {
+    expect(parseCliOptions(['desktop', '--github-output', '/tmp/github-output'])).toEqual({
       product: 'desktop',
-      notesFile: '/tmp/notes.md',
       githubOutput: '/tmp/github-output'
     })
-    expect(() => parseCliOptions(['desktop', '--notes-file', '/tmp/notes.md'])).toThrow(
-      'requires --notes-file and --github-output'
-    )
+    expect(() => parseCliOptions(['desktop'])).toThrow('requires --github-output')
   })
 
   test('appends stable machine-readable metadata to GITHUB_OUTPUT', () => {

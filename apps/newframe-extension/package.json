@@ -22,8 +22,7 @@
     "typecheck": "bun run styles:generate && tsgo --noEmit -p tsconfig.json",
     "release:validate": "bun run scripts/release-extension.ts validate-source",
     "release:package": "bun run scripts/release-extension.ts package",
-    "release:verify": "bun run scripts/release-extension.ts verify",
-    "release:notes": "bun run scripts/release-extension.ts notes"
+    "release:verify": "bun run scripts/release-extension.ts verify"
   },
   "author": "NewFrame Labs, Inc.",
   "license": "",

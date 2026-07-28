@@ -85,17 +85,7 @@ jobs:
             exit 1
           fi
 
-          notes_file="$RUNNER_TEMP/desktop-changelog-summary.md"
-          if [[ -n "${introduction//[$' \t']/}" ]]; then
-            printf '%s\n' "$introduction" > "$notes_file"
-          else
-            printf '%s\n' \
-              'See the generated GitHub release notes for the changes in this version.' \
-              > "$notes_file"
-          fi
-
           bun scripts/release/prepare-release.ts desktop \
-            --notes-file "$notes_file" \
             --github-output "$GITHUB_OUTPUT"
 
       - name: Create the exact local release commit
@@ -115,14 +105,10 @@ jobs:
             exit 1
           fi
 
-          expected="$(
-            printf '%s\n' \
-              apps/newframe/CHANGELOG.md \
-              apps/newframe/package.json
-          )"
+          expected="apps/newframe/package.json"
           changed="$(git diff --name-only | LC_ALL=C sort)"
           if [[ "$changed" != "$expected" ]]; then
-            echo "::error::Release preparation must update exactly the desktop package and changelog."
+            echo "::error::Release preparation must update exactly the desktop package."
             printf 'Expected:\n%s\nActual:\n%s\n' "$expected" "${changed:-<none>}"
             exit 1
           fi
@@ -132,7 +118,7 @@ jobs:
             exit 1
           fi
 
-          git add -- apps/newframe/CHANGELOG.md apps/newframe/package.json
+          git add -- apps/newframe/package.json
           git -c user.name=github-actions \
             -c user.email=41898282+github-actions[bot]@users.noreply.github.com \
             -c commit.gpgsign=false \
@@ -209,7 +195,7 @@ jobs:
           test "$(git rev-parse FETCH_HEAD)" = "$CANDIDATE_SHA"
           test "$(git rev-parse "$CANDIDATE_SHA^")" = "$GITHUB_SHA"
           changed="$(git diff-tree --no-commit-id --name-only -r "$CANDIDATE_SHA" | LC_ALL=C sort)"
-          expected="$(printf '%s\n' apps/newframe/CHANGELOG.md apps/newframe/package.json)"
+          expected="apps/newframe/package.json"
           if [[ "$changed" != "$expected" ]]; then
             echo "::error::Candidate commit contains files outside desktop release metadata."
             exit 1
@@ -367,7 +353,6 @@ jobs:
         run: |
           set -euo pipefail
           test "$(jq -er '.version' apps/newframe/package.json)" = "$RELEASE_VERSION"
-          test "$(grep -Fxc "## $RELEASE_VERSION" apps/newframe/CHANGELOG.md)" = "1"
           (
             cd "$ASSET_DIR"
             shasum -a 256 -c "$RELEASE_CHECKSUM"

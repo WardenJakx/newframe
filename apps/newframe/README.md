@@ -241,4 +241,3 @@ To enable wallet portfolio discovery, add a Zerion API key in Newframe settings 
 
 - [Root project README](../../README.md) - overall Newframe overview and monorepo map.
 - [Newframe Browser Extension](../newframe-extension/README.md) - browser companion extension.
-- [Maintainer release checklist](../../docs/releasing.md) - workflow-driven release, smoke-test, and fix-forward procedure.
