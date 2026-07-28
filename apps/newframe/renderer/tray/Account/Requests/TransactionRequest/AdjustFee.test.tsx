@@ -2,9 +2,11 @@ import { afterEach, beforeEach, expect, it, jest as timers } from 'bun:test'
 
 import type { TransactionRequest } from '../../../../../contracts/requests'
 import { act, cleanup, fireEvent, render, screen } from '../../../../../test/support/componentSetup'
-import { linkMock } from '../../../../../test/support/rendererClient'
+import { createHostFixture } from '../../../../../test/support/rendererClient'
 import { gweiToHex } from '../../../../../test/support/util'
 import AdjustFee from './AdjustFee'
+
+const linkMock = createHostFixture()
 
 function request(data: Partial<TransactionRequest['data']> = {}): TransactionRequest {
   return {

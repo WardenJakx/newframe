@@ -2,7 +2,13 @@
 
 - Unit and component tests are colocated with their source as `*.test.ts` or `*.test.tsx`.
 - Cross-module integration tests belong in `test/integration`.
-- Shared Bun preloads, mocks, and rendering helpers belong in `test/support`.
+- Shared Bun preloads, boundary fakes, and rendering helpers belong in `test/support`.
+- Preloads provide runtime environments only: `dom.preload.ts` installs the browser test
+  environment and `electron.preload.ts` replaces Electron when main-process tests run under Bun.
+  Application collaborators such as the store, persistence, windows, navigation, and renderer host
+  are opt-in fixtures owned by the tests that use them.
+- `scripts/run-renderer-tests.ts` runs plain TypeScript renderer tests without a preload and limits
+  the DOM preload to TSX component and hook tests.
 
 The scripts under `harness/newframe/scenarios` are operator-driven exercises against a separately
 running Newframe instance. They are deliberately not named as tests and are not part of `test:unit`

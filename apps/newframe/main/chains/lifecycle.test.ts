@@ -1,6 +1,6 @@
 import { expect, it } from 'bun:test'
 
-import { electronMock } from '../../test/support/bun.mocks'
+import { electronMock } from '../../test/support/electron.mock'
 import { Chains } from './index'
 import store from '../store'
 

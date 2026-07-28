@@ -6,69 +6,6 @@ import { immer } from 'zustand/middleware/immer'
 
 import { createCanonicalActions } from '../../main/store/actions'
 
-export const electronMock = {
-  app: {
-    getName: mock(() => 'Frame'),
-    getPath: mock(() => import.meta.dirname),
-    getVersion: mock(() => '0.0.0-test'),
-    on: mock(),
-    quit: mock(),
-    relaunch: mock()
-  },
-  BrowserWindow: mock(),
-  clipboard: {
-    writeText: mock()
-  },
-  dialog: {
-    showErrorBox: mock(),
-    showMessageBoxSync: mock()
-  },
-  globalShortcut: {
-    register: mock(),
-    unregister: mock()
-  },
-  ipcMain: {
-    handle: mock(),
-    on: mock()
-  },
-  ipcRenderer: {
-    invoke: mock(),
-    on: mock(),
-    send: mock()
-  },
-  Menu: {
-    buildFromTemplate: mock()
-  },
-  net: {
-    fetch: mock()
-  },
-  Notification: mock(),
-  powerMonitor: {
-    on: mock(),
-    off: mock()
-  },
-  protocol: {
-    handle: mock(),
-    registerSchemesAsPrivileged: mock()
-  },
-  safeStorage: {
-    decryptString: mock(),
-    encryptString: mock(),
-    isEncryptionAvailable: mock(() => false)
-  },
-  screen: {
-    getPrimaryDisplay: mock()
-  },
-  shell: {
-    openExternal: mock()
-  },
-  systemPreferences: {
-    canPromptTouchID: mock(() => false),
-    promptTouchID: mock()
-  },
-  Tray: mock()
-}
-
 const defaultState = () => ({
   main: {
     accounts: {},
@@ -182,16 +119,6 @@ export const resetStoreState = () => {
   storeMock.setState({ ...defaultState(), ...actionMocks }, true)
 }
 
-export const resetStoreMockImplementation = () => {
-  const restoredActions: Record<string, ReturnType<typeof mock>> = {}
-
-  Object.entries(actionMocks).forEach(([name, mockAction]) => {
-    mockAction.mockImplementation(actionImplementations[name])
-    if (storeMock.getState()[name] !== mockAction) restoredActions[name] = mockAction
-  })
-
-  if (Object.keys(restoredActions).length > 0) storeMock.setState(restoredActions)
-}
 const encodeWorkerData = (data: any) => Buffer.from(JSON.stringify(data)).toString('base64url')
 
 const decodeWorkerData = (value: string | null | undefined, password: string) => {

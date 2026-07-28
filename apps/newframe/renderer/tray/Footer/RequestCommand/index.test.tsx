@@ -1,7 +1,7 @@
 import { expect, it, mock } from 'bun:test'
 
 import { fireEvent, render, screen } from '../../../../test/support/componentSetup'
-import { linkMock as link } from '../../../../test/support/rendererClient'
+import { createHostFixture } from '../../../../test/support/rendererClient'
 import {
   RequestCommand,
   approveRequest,
@@ -10,6 +10,8 @@ import {
   runWhenAppUnlocked
 } from './index'
 import TxApproval from './TxApproval'
+
+const link = createHostFixture()
 
 const createProps = <const Request extends object>(appLocked: boolean, req: Request) => {
   return {

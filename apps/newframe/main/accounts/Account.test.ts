@@ -1,4 +1,4 @@
-import { afterEach, beforeAll, beforeEach, describe, expect, it, mock } from 'bun:test'
+import { afterEach, beforeAll, beforeEach, describe, expect, it, mock, spyOn } from 'bun:test'
 
 const revealMock = {
   recog: mock(),
@@ -239,9 +239,10 @@ describe('#clearRequest', () => {
       ]
     })
 
+    const navClearReq = spyOn(store.getState(), 'navClearReq')
     account.clearRequest('first')
 
-    expect(store.getState().navClearReq).toHaveBeenCalledWith('first', true)
+    expect(navClearReq).toHaveBeenCalledWith('first', true)
     expect(nav.forward).toHaveBeenCalledWith('panel', {
       view: 'requestView',
       data: {

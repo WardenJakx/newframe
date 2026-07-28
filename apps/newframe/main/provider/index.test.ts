@@ -7,7 +7,8 @@ import {
   expect,
   it,
   jest as timers,
-  mock
+  mock,
+  spyOn
 } from 'bun:test'
 
 import log from 'electron-log'
@@ -599,7 +600,7 @@ describe('#send', () => {
       setOrigin('8073729a-5e59-53b7-9e69-5d9bcff94087', {
         chain: { id: 137, type: 'ethereum' }
       })
-      storeState().switchOriginChain.mockImplementation(() => undefined)
+      const switchOriginChain = spyOn(storeState(), 'switchOriginChain').mockImplementation(() => undefined)
 
       sendRequest(
         {
@@ -614,11 +615,7 @@ describe('#send', () => {
       )
 
       expect(accountRequests).toHaveLength(0)
-      expect(storeState().switchOriginChain).toHaveBeenCalledWith(
-        '8073729a-5e59-53b7-9e69-5d9bcff94087',
-        1,
-        'ethereum'
-      )
+      expect(switchOriginChain).toHaveBeenCalledWith('8073729a-5e59-53b7-9e69-5d9bcff94087', 1, 'ethereum')
       expect(storeState().main.networks.ethereum[1].connection.primary.custom).toBe(
         'https://trusted.example.com'
       )
@@ -671,7 +668,7 @@ describe('#send', () => {
       setOrigins({
         '8073729a-5e59-53b7-9e69-5d9bcff94087': { chain: { id: 42161, type: 'ethereum' } }
       })
-      storeState().switchOriginChain.mockImplementation(() => undefined)
+      const switchOriginChain = spyOn(storeState(), 'switchOriginChain').mockImplementation(() => undefined)
 
       send(
         {
@@ -685,7 +682,7 @@ describe('#send', () => {
         },
         () => {
           expect(accountRequests).toHaveLength(0)
-          expect(storeState().switchOriginChain).toHaveBeenCalledWith(
+          expect(switchOriginChain).toHaveBeenCalledWith(
             '8073729a-5e59-53b7-9e69-5d9bcff94087',
             1,
             'ethereum'

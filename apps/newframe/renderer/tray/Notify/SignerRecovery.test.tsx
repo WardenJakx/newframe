@@ -3,8 +3,9 @@ import { expect, it, mock } from 'bun:test'
 import { render, screen } from '../../../test/support/componentSetup'
 import { resetStateMirrorForTests } from '../../state/rendererStore'
 import SignerRecovery from './SignerRecovery'
-import { linkMock as link } from '../../../test/support/rendererClient'
+import { createHostFixture } from '../../../test/support/rendererClient'
 
+const link = createHostFixture()
 const signer = (update: Record<string, unknown> = {}) => ({
   addresses: [],
   appVersion: { major: 1, minor: 0, patch: 0 },

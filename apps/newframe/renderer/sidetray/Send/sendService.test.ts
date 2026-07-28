@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'bun:test'
 
 import { closeSend, resolveName, submitTransaction } from './sendService'
-import { linkMock } from '../../../test/support/rendererClient'
+import { createHostFixture } from '../../../test/support/rendererClient'
+
+const linkMock = createHostFixture()
 
 describe('Send name resolution', () => {
   it('uses the typed query client and normalizes the result', async () => {

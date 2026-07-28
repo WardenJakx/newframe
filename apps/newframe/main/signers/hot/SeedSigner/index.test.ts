@@ -5,7 +5,8 @@ import fs from 'fs'
 import { rm } from 'fs/promises'
 import { Mnemonic, randomBytes } from 'ethers'
 import log from 'electron-log'
-import { createHotSignerChildProcessMock, electronMock } from '../../../../test/support/bun.mocks.ts'
+import { createHotSignerChildProcessMock } from '../../../../test/support/bun.mocks.ts'
+import { electronMock } from '../../../../test/support/electron.mock.ts'
 
 mock.module('child_process', () => createHotSignerChildProcessMock())
 

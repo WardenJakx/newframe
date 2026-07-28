@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, jest as timers } from 'bun:test'
 
 import { act, render, screen } from '../../../../../test/support/componentSetup'
-import { linkMock } from '../../../../../test/support/rendererClient'
+import { createHostFixture } from '../../../../../test/support/rendererClient'
 import { AssetDetailsView } from './AssetDetailsView'
 import { NATIVE_CURRENCY } from '../../../../../domain/token/constants'
 import type { DisplayedBalance } from '../../../../../domain/balance'
@@ -9,6 +9,7 @@ import type { DisplayedBalance } from '../../../../../domain/balance'
 const address = '0xaf88d065e77c8cc2239327c5edb3a432268e5831'
 const networks = { 42161: { name: 'Arbitrum' } }
 const networksMeta = { 42161: {} }
+const linkMock = createHostFixture()
 
 beforeEach(() => {
   timers.useFakeTimers()
