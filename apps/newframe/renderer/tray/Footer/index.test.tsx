@@ -1,9 +1,11 @@
 import { afterEach, beforeEach, expect, it, mock } from 'bun:test'
 
 import { render, screen } from '../../../test/support/componentSetup'
-import { linkMock as link } from '../../../test/support/rendererClient'
+import { createHostFixture } from '../../../test/support/rendererClient'
 import { Footer } from './index'
 import type { WalletRendererState } from '../../../contracts/state/projections'
+
+const link = createHostFixture()
 
 class ResizeObserverMock {
   constructor(private readonly callback: ResizeObserverCallback) {}

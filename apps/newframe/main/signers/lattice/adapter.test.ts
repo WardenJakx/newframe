@@ -1,4 +1,4 @@
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, mock } from 'bun:test'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, mock, spyOn } from 'bun:test'
 import { EventEmitter } from 'events'
 import log from 'electron-log'
 
@@ -97,6 +97,7 @@ beforeEach(() => {
 
 afterEach(() => {
   adapter.close()
+  mock.restore()
 })
 
 it('opens and closes both store subscriptions as one adapter lifecycle', () => {
@@ -174,6 +175,7 @@ it('ignores a pending paired-device connection failure after close and reopen', 
 })
 
 it('removes persisted devices and closes only a known active signer', () => {
+  const removeLattice = spyOn(store.getState(), 'removeLattice')
   const unknown = createFakeSigner('unknown')
   adapter.remove(unknown)
   expect(unknown.close).not.toHaveBeenCalled()
@@ -181,7 +183,7 @@ it('removes persisted devices and closes only a known active signer', () => {
   adapter.knownSigners[signer.deviceId] = signer
   adapter.remove(signer)
 
-  expect(mockCalls<[string]>(store.getState().removeLattice).map(([deviceId]) => deviceId)).toStrictEqual([
+  expect(mockCalls<[string]>(removeLattice).map(([deviceId]) => deviceId)).toStrictEqual([
     'unknown',
     'NBaJ8e'
   ])
@@ -281,6 +283,12 @@ describe('settings transitions', () => {
 })
 
 describe('device lifecycle', () => {
+  let updateLattice: ReturnType<typeof spyOn>
+
+  beforeEach(() => {
+    updateLattice = spyOn(store.getState(), 'updateLattice')
+  })
+
   function addDevice(paired: boolean) {
     setDevices({
       NBaJ8e: {
@@ -328,7 +336,7 @@ describe('device lifecycle', () => {
     await Promise.resolve()
     await Promise.resolve()
 
-    expect(store.getState().updateLattice).toHaveBeenCalledWith('NBaJ8e', {
+    expect(updateLattice).toHaveBeenCalledWith('NBaJ8e', {
       paired: false
     })
   })
@@ -338,7 +346,7 @@ describe('device lifecycle', () => {
     signer.emit('connect', true)
     signer.emit('paired', true)
 
-    expect(mockCalls<[string, { paired: boolean }]>(store.getState().updateLattice)).toStrictEqual([
+    expect(mockCalls<[string, { paired: boolean }]>(updateLattice)).toStrictEqual([
       ['NBaJ8e', { paired: true }],
       ['NBaJ8e', { paired: true }]
     ])
@@ -350,7 +358,7 @@ describe('device lifecycle', () => {
     signer.emit('connect', false)
     signer.emit('paired', false)
 
-    expect(mockCalls<[string, { paired: boolean }]>(store.getState().updateLattice)).toStrictEqual([
+    expect(mockCalls<[string, { paired: boolean }]>(updateLattice)).toStrictEqual([
       ['NBaJ8e', { paired: false }],
       ['NBaJ8e', { paired: true }]
     ])
@@ -365,7 +373,7 @@ describe('device lifecycle', () => {
 
     signer.emit('error')
 
-    expect(store.getState().updateLattice).toHaveBeenCalledWith('NBaJ8e', {
+    expect(updateLattice).toHaveBeenCalledWith('NBaJ8e', {
       paired: false
     })
     expect(signer.disconnect).toHaveBeenCalledTimes(1)

@@ -33,13 +33,15 @@
     "publish:linux:arm64": "bun run sync:assets && electron-builder -c.snap.publish=github --config=build/electron-builder-linux-arm64.ts",
     "rebuild:natives": "electron-builder install-app-deps",
     "test": "bun run test:unit",
-    "test:main": "bun test --isolate --preload ./test/support/bun.setup.ts --timeout 1000 ./main",
-    "test:unit": "bun run ui:build && bun run ui:test && bun run colors:check && bun run architecture:check && bun run test:main && bun test --isolate --preload ./test/support/bun.dom.ts --timeout 500 ./renderer/state ./renderer/shared/ui ./renderer/shared/hooks && bun test --isolate --preload ./test/support/bun.dom.ts --timeout 500 ./renderer/tray && bun test --isolate --preload ./test/support/bun.dom.ts --timeout 500 ./renderer/sidetray && bun test --preload ./test/support/bun.setup.ts --timeout 1000 ./renderer/shared/link.test.ts ./renderer/shared/format ./domain ./contracts ./preload ./scripts",
+    "test:main": "bun test --isolate --preload ./test/support/electron.preload.ts --timeout 1000 ./main",
+    "test:renderer": "bun ./scripts/run-renderer-tests.ts",
+    "test:portable": "bun test --isolate --timeout 1000 ./domain ./contracts ./preload ./scripts",
+    "test:unit": "bun run ui:build && bun run ui:test && bun run colors:check && bun run architecture:check && bun run test:main && bun run test:renderer && bun run test:portable",
     "test:all": "bun run test:unit",
     "test:audit": "bun ./scripts/test-audit.ts --check",
     "test:coverage": "bun ./scripts/collect-critical-coverage.ts",
     "test:coverage:report": "bun ./scripts/check-critical-coverage.ts --report-only ./coverage/critical-parts",
-    "test:usbAdapters": "bun test --preload ./test/support/bun.setup.ts --timeout 1000 ./main/signers/ledger/adapter.test.ts"
+    "test:usbAdapters": "bun test --isolate --preload ./test/support/electron.preload.ts --timeout 1000 ./main/signers/ledger/adapter.test.ts"
   },
   "author": {
     "name": "NewFrame Labs",

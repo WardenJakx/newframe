@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'bun:test'
 
 import { render, screen, waitFor } from '../../../../test/support/componentSetup'
-import { linkMock } from '../../../../test/support/rendererClient'
+import { createHostFixture } from '../../../../test/support/rendererClient'
 import { STATE_STREAM_SCHEMA_VERSION } from '../../../../contracts/state/protocol'
 import { walletState } from '../../../state/fixtures.test-support'
 import {
@@ -11,6 +11,8 @@ import {
 } from '../../../state/rendererStore'
 import { HomeUiProvider, useHomeUiStore } from '../state/HomeUiProvider'
 import { useHomeCommand } from './useHomeCommand'
+
+const linkMock = createHostFixture()
 
 function CommandObserver() {
   useHomeCommand()

@@ -1,4 +1,4 @@
-import { mock } from 'bun:test'
+import { afterEach, beforeEach, mock } from 'bun:test'
 
 import type { NewframeHost } from '../../contracts/ipc'
 import type { AppCommand, AppQuery, ResultForCommand, ResultForQuery } from '../../contracts/operations'
@@ -25,9 +25,7 @@ export function createRendererClient() {
 
 export type TestRendererClient = ReturnType<typeof createRendererClient>
 
-export const linkMock = createRendererClient()
-
-export function resetRendererClient(client: TestRendererClient = linkMock) {
+export function resetRendererClient(client: TestRendererClient) {
   client.connectState.mockReset()
   client.connectState.mockResolvedValue({ ok: true })
   client.disconnectState.mockReset()
@@ -38,7 +36,35 @@ export function resetRendererClient(client: TestRendererClient = linkMock) {
   client.executeQuery.mockResolvedValue({ ok: false, error: 'not_found' } as never)
 }
 
-export function installRendererClient(client: TestRendererClient = linkMock) {
+export function installRendererClient(client: TestRendererClient) {
+  if (typeof window === 'undefined') {
+    Object.defineProperty(globalThis, 'window', {
+      configurable: true,
+      value: {}
+    })
+  }
+
   window.__NEWFRAME_HOST__ = client
+  return client
+}
+
+export function createHostFixture() {
+  const client = createRendererClient()
+  let createdWindow = false
+
+  beforeEach(() => {
+    createdWindow = typeof window === 'undefined'
+    resetRendererClient(client)
+    installRendererClient(client)
+  })
+
+  afterEach(() => {
+    if (createdWindow) {
+      Reflect.deleteProperty(globalThis, 'window')
+    } else if (window.__NEWFRAME_HOST__ === client) {
+      Reflect.deleteProperty(window, '__NEWFRAME_HOST__')
+    }
+  })
+
   return client
 }

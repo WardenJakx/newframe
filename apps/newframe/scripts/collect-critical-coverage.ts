@@ -58,12 +58,11 @@ mkdirSync(outputRoot, { recursive: true })
 const failures: string[] = []
 for (const [index, file] of tests.entries()) {
   const coverageDir = path.join(outputRoot, String(index).padStart(3, '0'))
-  const preload =
-    file.endsWith('.tsx') || file.startsWith('renderer/')
-      ? './test/support/bun.dom.ts'
-      : file.startsWith('main/')
-        ? './test/support/bun.setup.ts'
-        : undefined
+  const preload = file.endsWith('.tsx')
+    ? './test/support/dom.preload.ts'
+    : file.startsWith('main/')
+      ? './test/support/electron.preload.ts'
+      : undefined
   const command = [
     'bun',
     'test',

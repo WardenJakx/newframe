@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, expect, it, jest as timers } from 'bun:test'
 
 import { render, screen } from '../../../../test/support/componentSetup'
-import { linkMock as link } from '../../../../test/support/rendererClient'
+import { createHostFixture } from '../../../../test/support/rendererClient'
 
+const link = createHostFixture()
 let useCopiedMessage: typeof import('../useCopiedMessage').default
 
 const TestComponent = () => {

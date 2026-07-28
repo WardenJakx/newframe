@@ -1,7 +1,7 @@
 import { EventEmitter } from 'events'
 import { beforeAll, expect, it } from 'bun:test'
 
-import { electronMock } from '../../test/support/bun.mocks.ts'
+import { electronMock } from '../../test/support/electron.mock.ts'
 
 type OnTrayRendererReady = (webContents: Pick<EventEmitter, 'off' | 'once'>, ready: () => void) => () => void
 

@@ -5,8 +5,9 @@ import { fireEvent, render, screen } from '../../../test/support/componentSetup'
 import ChainTokenIcon from './ChainTokenIcon'
 import TokenSelector from './TokenSelector'
 import type { TokenSelectorItem } from './tokenSelectorTypes'
-import { linkMock as link } from '../../../test/support/rendererClient'
+import { createHostFixture } from '../../../test/support/rendererClient'
 
+const link = createHostFixture()
 const networks = {
   1: { name: 'Mainnet' }
 }

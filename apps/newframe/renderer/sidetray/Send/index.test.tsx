@@ -5,8 +5,10 @@ import { fireEvent, render, screen } from '../../../test/support/componentSetup'
 import Send from './index'
 import { applyStateMessage, beginStateConnection, resetStateMirrorForTests } from '../../state/rendererStore'
 import { NATIVE_CURRENCY } from '../../../domain/token/constants'
-import { linkMock as link } from '../../../test/support/rendererClient'
+import { createHostFixture } from '../../../test/support/rendererClient'
 import { STATE_STREAM_SCHEMA_VERSION } from '../../../contracts/state/protocol'
+
+const link = createHostFixture()
 
 const sender = {
   id: 'sender',

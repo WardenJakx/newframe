@@ -4,8 +4,9 @@ import { connectRendererState as connectState } from './connectState'
 import { sideTrayState } from './fixtures.test-support'
 import { resetStateMirrorForTests } from './rendererStore'
 import { STATE_STREAM_SCHEMA_VERSION, type StateMessage } from '../../contracts/state/protocol'
-import { linkMock } from '../../test/support/rendererClient'
+import { createHostFixture } from '../../test/support/rendererClient'
 
+const linkMock = createHostFixture()
 const connection = linkMock.connectState
 const disconnect = linkMock.disconnectState
 

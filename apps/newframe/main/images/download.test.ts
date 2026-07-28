@@ -1,7 +1,7 @@
 import { beforeEach, expect, it, mock } from 'bun:test'
 
 import { downloadImage } from './download'
-import { electronMock } from '../../test/support/bun.mocks.ts'
+import { electronMock } from '../../test/support/electron.mock.ts'
 
 const mockFetch = mock()
 const mockLookup = mock()

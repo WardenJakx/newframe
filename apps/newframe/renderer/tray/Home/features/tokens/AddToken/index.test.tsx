@@ -4,9 +4,11 @@ import type { Mock } from 'bun:test'
 import { useState } from 'react'
 
 import { screen, render, waitFor } from '../../../../../../test/support/componentSetup'
-import { linkMock as link } from '../../../../../../test/support/rendererClient'
+import { createHostFixture } from '../../../../../../test/support/rendererClient'
 import AddToken from './index'
 import { resetStateMirrorForTests } from '../../../../../state/rendererStore'
+
+const link = createHostFixture()
 
 const networks = {
   ethereum: {

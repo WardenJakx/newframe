@@ -8,8 +8,9 @@ import { RequestViewProvider } from '../../../requestView'
 import { TxClassification } from '../../../../../contracts/requests'
 import { erc20Interface } from '../../../../../domain/evm'
 import { TRANSACTION_CONFIRMATION_TARGET } from '../../../../../domain/transaction'
-import { linkMock as link } from '../../../../../test/support/rendererClient'
+import { createHostFixture } from '../../../../../test/support/rendererClient'
 
+const link = createHostFixture()
 const renderRequest = (req: any) =>
   render(
     <RequestViewProvider>

@@ -11,7 +11,7 @@ import {
   sideTrayRendererStateStoreReadApi,
   resetStateMirrorForTests
 } from '../../state/rendererStore'
-import { linkMock as link } from '../../../test/support/rendererClient'
+import { createHostFixture } from '../../../test/support/rendererClient'
 import {
   FLASH_ANVIL_CHAIN_ID,
   FLASH_MARKET_ORDER_TYPE,
@@ -21,6 +21,8 @@ import {
 import { FLASH_USDC_ASSET, FLASH_WETH_ASSET } from '../../../domain/flash/assets'
 import { type FlashQuote } from '../../../domain/flash/schemas'
 import { STATE_STREAM_SCHEMA_VERSION } from '../../../contracts/state/protocol'
+
+const link = createHostFixture()
 
 const sender = {
   id: 'sender',
