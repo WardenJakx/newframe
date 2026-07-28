@@ -26,7 +26,7 @@ Do not bypass Gatekeeper for an unverified file. Later launches work normally af
 
 ### Roll back the desktop app
 
-Quit Newframe, replace it in Applications with a previously released DMG, and verify that older DMG with its own matching checksum before opening it. Desktop releases use tags named `desktop-v<version>`. If a release is marked withdrawn, install the named prior safe version or a newer fix-forward release; withdrawn assets are not silently replaced.
+Quit Newframe, replace it in Applications with a previously released DMG, and verify that older DMG with its own matching checksum before opening it. Desktop releases use tags named `desktop-v<version>`. Published assets are not modified in place; fixes are published as a new version.
 
 ### Run from source
 
@@ -241,4 +241,4 @@ To enable wallet portfolio discovery, add a Zerion API key in Newframe settings 
 
 - [Root project README](../../README.md) - overall Newframe overview and monorepo map.
 - [Newframe Browser Extension](../newframe-extension/README.md) - browser companion extension.
-- [Maintainer release checklist](../../docs/releasing.md) - release, smoke-test, withdrawal, and follow-up procedure.
+- [Maintainer release checklist](../../docs/releasing.md) - workflow-driven release, smoke-test, and fix-forward procedure.

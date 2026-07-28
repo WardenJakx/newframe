@@ -1,51 +1,50 @@
 # Releasing Newframe
 
-Newframe Desktop and Newframe Browser Extension have independent versions, tags, changelogs, artifacts, and release workflows. Never infer or recalculate a release version in CI:
+Newframe Desktop and Newframe Browser Extension have independent versions, tags, changelogs, artifacts, and manually dispatched release workflows. The workflow is the release button: do not use GitHub's **Draft a new release** form or create release tags by hand.
 
-- Desktop reads its committed package version and `apps/newframe/CHANGELOG.md`, tags `desktop-v<version>`, and publishes `Newframe-Desktop-<version>-macOS-arm64.dmg` plus its `.sha256`.
-- Browser Extension requires the committed versions in `apps/newframe-extension/package.json` and `apps/newframe-extension/src/manifest.json` to match, reads the exact `## <version>` entry in `apps/newframe-extension/CHANGELOG.md`, tags `extension-v<version>`, and publishes `Newframe-Browser-Extension-<version>.zip` plus its `.sha256`.
+- Desktop creates `desktop-v<version>` and publishes `Newframe-Desktop-<version>-macOS-arm64.dmg` plus its `.sha256`.
+- Browser Extension creates `extension-v<version>` and publishes `Newframe-Browser-Extension-<version>.zip` plus its `.sha256`.
 
-Published artifacts and tags are immutable release records. Do not move a release tag, replace an asset, reuse a version, or edit a checksum to repair a release.
+Published artifacts, checksums, and tags are immutable release records. Fix problems in source and publish a new version; never move a tag, replace an asset, reuse a version, or edit a checksum.
 
-## 1. Prepare
+## 1. Confirm `main` is ready
 
-- Start from a clean, current `main` checkout with current tags, then run exactly one preparation command:
+- Merge and verify all intended product changes on `main`.
+- Complete the relevant local, CI, and manual product testing before starting a stable release.
+- Prepare concise, user-facing release notes describing the changes and known limitations.
+- Do not start desktop and extension releases at the same time. Each workflow writes its own release commit to `main`; finish one before starting the other.
 
-  ```bash
-  bun run prepare-release:desktop
-  # or
-  bun run prepare-release:extension
-  ```
+## 2. Run one product workflow
 
-- The command derives that product's next independent UTC CalVer (`YYYY.MDD.N`) from existing `desktop-v*` or `extension-v*` tags. It updates only the selected product, creates no tag or release, and prints the expected tag.
-- Replace the generated `- Describe changes before release.` placeholder under the exact `## <version>` heading with complete user-facing notes. The workflow rejects an empty entry and uses the section as its release notes source.
-- For an extension release, confirm the package and manifest contain the same generated three-part numeric version.
-- Confirm the artifact names implied by the version and confirm that the intended version tag and GitHub release do not already exist.
-- Run a frozen install, focused tests, type checks, and the production build locally.
+1. Open the repository's **Actions** tab.
+2. Select **Release Newframe Desktop** or **Release browser extension**.
+3. Choose **Run workflow**, select `main`, enter the release notes, and start the run.
 
-## 2. Review
+That one run:
 
-- Merge the release-preparation change through normal review.
-- Confirm the merge commit on `main` contains the intended product version files, changelog entry, workflow, and source changes.
-- Review the changelog for security-sensitive changes, breaking behavior, known limitations, and rollback guidance.
-- Do not dispatch from a release branch, tag, or stale `main` commit.
+1. Verifies it was dispatched from the exact current `main`.
+2. Derives the product's next independent UTC CalVer (`YYYY.MDD.N`) from its existing product-prefixed tags.
+3. Updates only that product's version files and changelog.
+4. Creates a local release commit for those metadata changes.
+5. Installs frozen dependencies and tests, builds, packages, and validates that exact release commit.
+6. Generates and verifies the named artifact and SHA-256 checksum.
+7. Atomically pushes the release commit to `main` and creates the product tag at that commit.
+8. Publishes the stable GitHub Release with the validated files and supplied release notes.
 
-## 3. Dispatch
+Desktop and extension counters remain independent. The desktop workflow marks its release as the repository's **Latest** release; the extension workflow does not replace it.
 
-In GitHub Actions, select the workflow for the surface and choose **Run workflow** against `main`. The workflow rejects every ref except the exact current `main` commit. Do not push another change to `main` while the release run is in progress; the workflow rechecks the remote commit before publishing.
+The release commit and tag are not pushed until all build gates pass. If `main` changes before publication, the atomic push fails without overwriting `main` or leaving a partial tag. Start a new run from the updated `main`.
 
-The extension workflow performs a frozen clean install, tests, type checking, a production build, structural Chromium and Firefox package validation, ZIP-root and version checks, checksum generation and verification, and release-state checks. Only its publish job has `contents: write`.
+## 3. Handle a failed run
 
-A failed extension publish can be rerun safely only when no GitHub release exists and either:
+- Before the release commit and tag are pushed, fix the cause and rerun the workflow.
+- If the commit and tag were pushed but GitHub Release publication failed, rerun the failed publish job from the same Actions run. It may resume only when the tag still points to that exact candidate commit and no GitHub Release exists.
+- If a GitHub Release already exists, the workflow refuses to replace it.
+- A tag at any other commit is a hard stop. Never delete or move it to make a retry pass.
 
-- `extension-v<version>` is absent, or
-- the tag exists at the exact dispatched commit because an earlier attempt pushed the tag but failed before creating the release.
+## 4. Verify and smoke-test
 
-Any existing release or tag at a different commit is a hard stop. Investigate instead of deleting or moving it.
-
-## 4. Smoke-test
-
-After the workflow build checks pass, test the same release shape:
+After the workflow succeeds:
 
 - Verify each artifact with its published `.sha256`.
 - On Apple silicon, install the DMG, complete the documented Gatekeeper approval, launch Newframe, unlock it, and make a basic local provider request.
@@ -56,9 +55,9 @@ After the workflow build checks pass, test the same release shape:
 
 Record who tested, the operating system and browser versions, the release tag, and the smoke-test result.
 
-## 5. Publish and announce
+## 5. Announce
 
-The workflow publishes the GitHub release after all automated gates pass. Before announcing it:
+Before announcing the release:
 
 - Confirm the tag points to the reviewed `main` commit.
 - Re-run checksum verification on files downloaded from the public release page.
@@ -66,19 +65,10 @@ The workflow publishes the GitHub release after all automated gates pass. Before
 - State the unsigned macOS arm64 limitation for desktop releases.
 - State that the extension is manual/unpacked, has no automatic updates, requires the desktop app, and is temporary-only in Firefox.
 
-## 6. Withdraw
+## 6. Fix forward
 
-If a published release is unsafe or unusable:
-
-- Stop announcements and mark the GitHub release title and body clearly as withdrawn, including impact, the last known safe version, and available mitigation.
-- Do not move its tag or silently replace its assets or checksum.
-- If removal is necessary for safety, remove public download access while preserving an incident record. Repository release immutability settings may require an administrator.
-- Tell users to roll back to the named safe version. For an extension, they must remove the loaded directory and load the verified prior ZIP. For desktop, they must quit the app and install the verified prior DMG.
-- Prepare a new version and changelog entry for the fix. Release it through the normal workflow; never reuse the withdrawn version.
-
-## 7. Follow up
-
-- Publish the fix-forward release and update the withdrawn release with a link to it.
-- Document root cause, affected versions, detection, mitigation, and preventive action.
+- Correct the problem in source, repeat the normal review and testing process, and publish a new version through the appropriate workflow.
+- Do not alter the earlier release, tag, asset, or checksum.
+- Document root cause, affected versions, detection, and preventive action when appropriate.
 - Verify public README instructions and artifact names still match the workflows.
 - Track signing/notarization, browser-store distribution, automatic updates, or additional platform artifacts as separate future work. Do not claim those distribution paths before they exist.

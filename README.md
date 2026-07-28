@@ -72,11 +72,11 @@ To enable wallet portfolio discovery, add a Zerion API key in Newframe settings 
 
 ### Roll back
 
-Releases are versioned independently: desktop tags use `desktop-v<version>` and extension tags use `extension-v<version>`. To roll back, verify and reinstall an earlier desktop DMG or remove the loaded extension and load an earlier extracted ZIP from [GitHub Releases](https://github.com/wardenjakx/newframe/releases). A withdrawn release is never repaired in place; use the documented prior release or a newer fix-forward release.
+Releases are versioned independently: desktop tags use `desktop-v<version>` and extension tags use `extension-v<version>`. To roll back locally, verify and reinstall an earlier desktop DMG or remove the loaded extension and load an earlier extracted ZIP from [GitHub Releases](https://github.com/wardenjakx/newframe/releases). Published releases are never repaired in place; fixes are published as a new version.
 
 ## Project surfaces
 
 - [`apps/newframe`](apps/newframe/README.md) - Electron desktop wallet and system-wide provider app.
 - [`apps/newframe-extension`](apps/newframe-extension/README.md) - browser companion extension that injects a Newframe-connected provider.
-- [`docs/releasing.md`](docs/releasing.md) - maintainer release and withdrawal checklist.
+- [`docs/releasing.md`](docs/releasing.md) - maintainer workflow-driven release and fix-forward checklist.
 - `packages` - shared libraries used by the app surfaces.

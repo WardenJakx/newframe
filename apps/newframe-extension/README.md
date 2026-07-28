@@ -50,7 +50,7 @@ Firefox installation is temporary only. Firefox removes the extension when the b
 
 ### Roll back
 
-Extension releases use tags named `extension-v<version>`. Remove the currently loaded extension, download an earlier release ZIP and its checksum, verify and extract it, and load that extracted directory. If a release is marked withdrawn, use the named prior safe release or a newer fix-forward release; withdrawn releases are not modified in place.
+Extension releases use tags named `extension-v<version>`. Remove the currently loaded extension, download an earlier release ZIP and its checksum, verify and extract it, and load that extracted directory. Published assets are not modified in place; fixes are published as a new version.
 
 ### Build from source
 
@@ -84,4 +84,4 @@ bun run typecheck
 
 - [Root project README](../../README.md) - overall Newframe overview and monorepo map.
 - [Newframe Desktop App](../newframe/README.md) - desktop wallet and system-wide provider app.
-- [Maintainer release checklist](../../docs/releasing.md) - release, smoke-test, withdrawal, and follow-up procedure.
+- [Maintainer release checklist](../../docs/releasing.md) - workflow-driven release, smoke-test, and fix-forward procedure.

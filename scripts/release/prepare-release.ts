@@ -1,4 +1,5 @@
 import {
+  appendFileSync,
   existsSync,
   mkdirSync,
   readFileSync,
@@ -10,13 +11,18 @@ import path from 'node:path'
 
 export type ReleaseProduct = 'desktop' | 'extension'
 
+export type ReleaseMetadata = {
+  product: ReleaseProduct
+  version: string
+  tag: string
+}
+
 type PendingWrite = {
   path: string
   content: string
 }
 
 const MAX_COUNTER = 65_535
-const PLACEHOLDER = '- Describe changes before release.'
 
 const productPaths: Record<
   ReleaseProduct,
@@ -116,9 +122,20 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
-export function updateChangelog(content: string, version: string): string {
+function normalizedReleaseNotes(notes: string): string {
+  const normalized = notes.replace(/\r\n/g, '\n').trim()
+  if (!normalized) {
+    fail('Release notes file must contain non-whitespace text')
+  }
+  return normalized
+}
+
+export function updateChangelog(content: string, version: string, notes: string): string {
+  const releaseNotes = normalizedReleaseNotes(notes)
   const heading = `## ${version}`
   const headingPattern = new RegExp(`^${escapeRegExp(heading)}\\r?$`, 'gm')
+  const releaseHeadingPattern =
+    /^## (?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\r?$/m
   const matches = [...content.matchAll(headingPattern)]
 
   if (matches.length > 1) {
@@ -129,17 +146,12 @@ export function updateChangelog(content: string, version: string): string {
     const match = matches[0]
     const bodyStart = (match.index ?? 0) + match[0].length
     const remainder = content.slice(bodyStart).replace(/^\r?\n/, '')
-    const nextHeading = /^## .+$/m.exec(remainder)
-    const body = (nextHeading ? remainder.slice(0, nextHeading.index) : remainder).trim()
-    if (body) {
-      return content
-    }
-
+    const nextHeading = releaseHeadingPattern.exec(remainder)
     const followingSection = nextHeading ? `\n${remainder.slice(nextHeading.index)}` : ''
-    return `${content.slice(0, bodyStart)}\n\n${PLACEHOLDER}\n${followingSection}`
+    return `${content.slice(0, bodyStart)}\n\n${releaseNotes}\n${followingSection}`
   }
 
-  const entry = `${heading}\n\n${PLACEHOLDER}\n`
+  const entry = `${heading}\n\n${releaseNotes}\n`
   const title = /^# .+\r?\n/.exec(content)
   if (title?.index === 0) {
     const rest = content.slice(title[0].length).replace(/^\r?\n/, '')
@@ -193,14 +205,14 @@ function writeTransaction(writes: readonly PendingWrite[]): void {
   }
 }
 
-export function releaseTagsFromGitOutput(
+export function releaseTagsFromRemoteOutput(
   product: ReleaseProduct,
-  localOutput: string,
   remoteOutput: string
 ): string[] {
   const prefix = productPaths[product].tagPrefix
-  const localTags = localOutput.split(/\r?\n/).filter((tag) => tag.length > 0)
-  const remoteTags = remoteOutput
+  return [
+    ...new Set(
+      remoteOutput
     .split(/\r?\n/)
     .filter((line) => line.length > 0)
     .map((line) => {
@@ -211,20 +223,12 @@ export function releaseTagsFromGitOutput(
       }
       return ref.slice('refs/tags/'.length)
     })
-  return [...new Set([...localTags, ...remoteTags])]
+    )
+  ]
 }
 
 function listTags(root: string, product: ReleaseProduct): string[] {
   const prefix = productPaths[product].tagPrefix
-  const localResult = Bun.spawnSync(['git', 'tag', '--list', `${prefix}-v*`], {
-    cwd: root,
-    stdout: 'pipe',
-    stderr: 'pipe'
-  })
-  if (localResult.exitCode !== 0) {
-    fail(`Could not list local ${product} tags: ${localResult.stderr.toString().trim()}`)
-  }
-
   const remoteResult = Bun.spawnSync(
     ['git', 'ls-remote', '--tags', '--refs', 'origin', `refs/tags/${prefix}-v*`],
     {
@@ -237,19 +241,16 @@ function listTags(root: string, product: ReleaseProduct): string[] {
     fail(`Could not list origin ${product} tags: ${remoteResult.stderr.toString().trim()}`)
   }
 
-  return releaseTagsFromGitOutput(
-    product,
-    localResult.stdout.toString(),
-    remoteResult.stdout.toString()
-  )
+  return releaseTagsFromRemoteOutput(product, remoteResult.stdout.toString())
 }
 
 export function prepareRelease(
   root: string,
   product: ReleaseProduct,
   date: Date,
-  tags: readonly string[]
-): { version: string; tag: string } {
+  tags: readonly string[],
+  notes: string
+): ReleaseMetadata {
   const config = productPaths[product]
   const version = nextCalVer(product, tags, date)
   const packagePath = path.join(root, config.package)
@@ -270,20 +271,68 @@ export function prepareRelease(
   }
 
   const changelog = existsSync(changelogPath) ? readFileSync(changelogPath, 'utf8') : '# Changelog\n'
-  writes.push({ path: changelogPath, content: updateChangelog(changelog, version) })
+  writes.push({ path: changelogPath, content: updateChangelog(changelog, version, notes) })
   writeTransaction(writes)
 
-  return { version, tag: `${config.tagPrefix}-v${version}` }
+  return { product, version, tag: `${config.tagPrefix}-v${version}` }
+}
+
+export function writeGithubOutput(outputPath: string, metadata: ReleaseMetadata): void {
+  appendFileSync(
+    outputPath,
+    `product=${metadata.product}\nversion=${metadata.version}\ntag=${metadata.tag}\n`
+  )
+}
+
+type CliOptions = {
+  product: ReleaseProduct
+  notesFile: string
+  githubOutput: string
+}
+
+export function parseCliOptions(args: readonly string[]): CliOptions {
+  const [product, ...flags] = args
+  if (product !== 'desktop' && product !== 'extension') {
+    fail(
+      'Usage: bun scripts/release/prepare-release.ts <desktop|extension> --notes-file <path> --github-output <path>'
+    )
+  }
+
+  let notesFile: string | undefined
+  let githubOutput: string | undefined
+  for (let index = 0; index < flags.length; index += 2) {
+    const flag = flags[index]
+    const value = flags[index + 1]
+    if (!value) {
+      fail(`Missing value for ${flag || 'workflow option'}`)
+    }
+    if (flag === '--notes-file' && notesFile === undefined) {
+      notesFile = value
+    } else if (flag === '--github-output' && githubOutput === undefined) {
+      githubOutput = value
+    } else {
+      fail(`Unknown or duplicate workflow option: ${flag}`)
+    }
+  }
+
+  if (!notesFile || !githubOutput) {
+    fail('Workflow preparation requires --notes-file and --github-output')
+  }
+
+  return { product, notesFile, githubOutput }
 }
 
 if (import.meta.main) {
-  const product = process.argv[2]
-  if (product !== 'desktop' && product !== 'extension') {
-    fail('Usage: bun scripts/release/prepare-release.ts <desktop|extension>')
-  }
-
+  const options = parseCliOptions(process.argv.slice(2))
   const root = path.resolve(import.meta.dir, '../..')
-  const result = prepareRelease(root, product, new Date(), listTags(root, product))
-  console.log(`Prepared ${product} release ${result.version}`)
-  console.log(`Expected tag: ${result.tag}`)
+  const notes = readFileSync(path.resolve(options.notesFile), 'utf8')
+  const result = prepareRelease(
+    root,
+    options.product,
+    new Date(),
+    listTags(root, options.product),
+    notes
+  )
+  writeGithubOutput(path.resolve(options.githubOutput), result)
+  console.log(JSON.stringify(result))
 }

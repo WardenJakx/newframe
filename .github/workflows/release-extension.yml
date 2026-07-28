@@ -2,40 +2,64 @@ name: Release browser extension
 
 on:
   workflow_dispatch:
+    inputs:
+      release_notes:
+        description: Concise one-line summary of this browser-extension release
+        required: true
+        type: string
 
 concurrency:
-  group: release-extension-${{ github.ref }}
+  group: release-browser-extension
   cancel-in-progress: false
 
 permissions:
   contents: read
 
 jobs:
-  build:
+  prepare:
+    name: Prepare, test, and package candidate
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     outputs:
-      version: ${{ steps.metadata.outputs.version }}
-      tag: ${{ steps.metadata.outputs.tag }}
       artifact: ${{ steps.metadata.outputs.artifact }}
+      candidate: ${{ steps.candidate.outputs.sha }}
       checksum: ${{ steps.metadata.outputs.checksum }}
+      tag: ${{ steps.prep.outputs.tag }}
+      transfer-artifact: ${{ steps.transfer.outputs.name }}
+      version: ${{ steps.prep.outputs.version }}
     steps:
+      - name: Require the exact current main commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
+            echo "::error::Browser-extension releases must be dispatched from the main branch."
+            exit 1
+          fi
+
       - name: Check out the dispatched commit
         uses: actions/checkout@v4
         with:
           ref: ${{ github.sha }}
           fetch-depth: 0
 
-      - name: Require the exact current main commit
+      - name: Verify the dispatch still targets current main
         shell: bash
         run: |
           set -euo pipefail
-          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
-            echo "::error::Browser extension releases must be dispatched from the exact main branch ref."
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          git fetch --no-tags origin \
+            +refs/heads/main:refs/remotes/origin/main
+          if [[ "$(git rev-parse origin/main)" != "$GITHUB_SHA" ]]; then
+            echo "::error::Browser-extension releases must target the exact current main commit."
             exit 1
           fi
-          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
-          git fetch --no-tags origin main
-          test "$(git rev-parse origin/main)" = "$GITHUB_SHA"
+          if [[ -n "$(git status --porcelain)" ]]; then
+            echo "::error::The dispatched checkout is not clean."
+            git status --short
+            exit 1
+          fi
 
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
@@ -45,9 +69,101 @@ jobs:
       - name: Install frozen dependencies
         run: bun install --frozen-lockfile
 
-      - name: Read and validate committed release metadata
+      - name: Prepare extension release metadata
+        id: prep
+        env:
+          RELEASE_SUMMARY: ${{ inputs.release_notes }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          summary="${RELEASE_SUMMARY//$'\r'/}"
+          if [[ -z "${summary//[$' \t\n']/}" ]]; then
+            echo "::error::release_notes must contain a non-whitespace summary."
+            exit 1
+          fi
+          if [[ "$summary" == *$'\n'* ]]; then
+            echo "::error::release_notes must be a concise one-line summary."
+            exit 1
+          fi
+          if (( ${#summary} > 500 )); then
+            echo "::error::release_notes must be 500 characters or fewer."
+            exit 1
+          fi
+
+          notes_file="$RUNNER_TEMP/extension-release-summary.md"
+          printf '%s\n' "$summary" > "$notes_file"
+          bun scripts/release/prepare-release.ts extension \
+            --notes-file "$notes_file" \
+            --github-output "$GITHUB_OUTPUT"
+
+      - name: Create the exact local release commit
+        id: candidate
+        env:
+          RELEASE_TAG: ${{ steps.prep.outputs.tag }}
+          RELEASE_VERSION: ${{ steps.prep.outputs.version }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ steps.prep.outputs.product }}" != "extension" ]]; then
+            echo "::error::Release preparation returned the wrong product."
+            exit 1
+          fi
+          if [[ "$RELEASE_TAG" != "extension-v$RELEASE_VERSION" ]]; then
+            echo "::error::Release preparation returned inconsistent version and tag metadata."
+            exit 1
+          fi
+
+          expected="$(
+            printf '%s\n' \
+              apps/newframe-extension/CHANGELOG.md \
+              apps/newframe-extension/package.json \
+              apps/newframe-extension/src/manifest.json
+          )"
+          changed="$(git diff --name-only | LC_ALL=C sort)"
+          if [[ "$changed" != "$expected" ]]; then
+            echo "::error::Release preparation must update exactly the extension package, manifest, and changelog."
+            printf 'Expected:\n%s\nActual:\n%s\n' "$expected" "${changed:-<none>}"
+            exit 1
+          fi
+          if [[ -n "$(git ls-files --others --exclude-standard)" ]]; then
+            echo "::error::Release preparation created unexpected untracked files."
+            git status --short
+            exit 1
+          fi
+
+          git add -- \
+            apps/newframe-extension/CHANGELOG.md \
+            apps/newframe-extension/package.json \
+            apps/newframe-extension/src/manifest.json
+          git -c user.name=github-actions \
+            -c user.email=41898282+github-actions[bot]@users.noreply.github.com \
+            -c commit.gpgsign=false \
+            commit -m "release(extension): $RELEASE_VERSION"
+
+          candidate_sha="$(git rev-parse HEAD)"
+          test "$(git rev-parse HEAD^)" = "$GITHUB_SHA"
+          test -z "$(git status --porcelain --untracked-files=no)"
+          echo "sha=$candidate_sha" >> "$GITHUB_OUTPUT"
+
+      - name: Validate committed release metadata
         id: metadata
-        run: bun run --cwd apps/newframe-extension release:validate --github-output "$GITHUB_OUTPUT"
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${{ steps.candidate.outputs.sha }}"
+          bun run --cwd apps/newframe-extension release:validate \
+            --github-output "$GITHUB_OUTPUT"
+
+      - name: Cross-check release metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${{ steps.metadata.outputs.version }}" = "${{ steps.prep.outputs.version }}"
+          test "${{ steps.metadata.outputs.tag }}" = "${{ steps.prep.outputs.tag }}"
+          test "${{ steps.metadata.outputs.artifact }}" = \
+            "Newframe-Browser-Extension-${{ steps.prep.outputs.version }}.zip"
+          test "${{ steps.metadata.outputs.checksum }}" = \
+            "Newframe-Browser-Extension-${{ steps.prep.outputs.version }}.zip.sha256"
 
       - name: Test the extension
         run: bun run test:newframe-extension
@@ -58,30 +174,64 @@ jobs:
       - name: Build the extension
         run: bun run build:newframe-extension
 
-      - name: Package and verify the browser extension
+      - name: Package and verify the exact candidate
         env:
-          RELEASE_OUTPUT: ${{ runner.temp }}/newframe-extension-release
+          CANDIDATE_SHA: ${{ steps.candidate.outputs.sha }}
+          RELEASE_OUTPUT: ${{ runner.temp }}/extension-candidate
+        shell: bash
         run: |
-          bun run --cwd apps/newframe-extension release:package --output-dir "$RELEASE_OUTPUT"
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
+          git diff --exit-code
+          git diff --cached --exit-code
+          mkdir -p "$RELEASE_OUTPUT"
+          bun run --cwd apps/newframe-extension release:package \
+            --output-dir "$RELEASE_OUTPUT"
           bun run --cwd apps/newframe-extension release:verify \
             --artifact "$RELEASE_OUTPUT/${{ steps.metadata.outputs.artifact }}" \
             --checksum "$RELEASE_OUTPUT/${{ steps.metadata.outputs.checksum }}"
 
-      - name: Upload verified release files
+      - name: Bundle the exact candidate commit
+        env:
+          CANDIDATE_SHA: ${{ steps.candidate.outputs.sha }}
+          RELEASE_OUTPUT: ${{ runner.temp }}/extension-candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          git branch release-extension-candidate "$CANDIDATE_SHA"
+          git bundle create "$RELEASE_OUTPUT/candidate.bundle" \
+            refs/heads/release-extension-candidate \
+            "^$GITHUB_SHA"
+          git bundle verify "$RELEASE_OUTPUT/candidate.bundle"
+          test "$(git rev-parse refs/heads/release-extension-candidate)" = "$CANDIDATE_SHA"
+
+      - name: Name the candidate transfer artifact
+        id: transfer
+        shell: bash
+        run: |
+          echo "name=browser-extension-candidate-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
+            >> "$GITHUB_OUTPUT"
+
+      - name: Upload candidate commit and verified assets
         uses: actions/upload-artifact@v4
         with:
-          name: newframe-extension-release-${{ steps.metadata.outputs.version }}
-          path: |
-            ${{ runner.temp }}/newframe-extension-release/${{ steps.metadata.outputs.artifact }}
-            ${{ runner.temp }}/newframe-extension-release/${{ steps.metadata.outputs.checksum }}
+          name: ${{ steps.transfer.outputs.name }}
+          path: ${{ runner.temp }}/extension-candidate
           if-no-files-found: error
-          retention-days: 7
+          retention-days: 14
 
   publish:
-    needs: build
+    name: Push candidate and publish release
+    needs: prepare
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      CANDIDATE_SHA: ${{ needs.prepare.outputs.candidate }}
+      RELEASE_ARTIFACT: ${{ needs.prepare.outputs.artifact }}
+      RELEASE_CHECKSUM: ${{ needs.prepare.outputs.checksum }}
+      RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+      RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
     steps:
       - name: Check out the dispatched commit
         uses: actions/checkout@v4
@@ -89,40 +239,77 @@ jobs:
           ref: ${{ github.sha }}
           fetch-depth: 0
 
+      - name: Download the exact candidate
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.prepare.outputs.transfer-artifact }}
+          path: ${{ runner.temp }}/extension-candidate
+
+      - name: Restore and validate the candidate commit
+        env:
+          TRANSFER_DIR: ${{ runner.temp }}/extension-candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          git bundle verify "$TRANSFER_DIR/candidate.bundle"
+          git fetch "$TRANSFER_DIR/candidate.bundle" \
+            refs/heads/release-extension-candidate
+          if [[ "$(git rev-parse FETCH_HEAD)" != "$CANDIDATE_SHA" ]]; then
+            echo "::error::Transferred candidate does not match the prepared commit."
+            exit 1
+          fi
+          if [[ "$(git rev-parse "$CANDIDATE_SHA^")" != "$GITHUB_SHA" ]]; then
+            echo "::error::Candidate is not a direct child of the dispatched main commit."
+            exit 1
+          fi
+
+          expected="$(
+            printf '%s\n' \
+              apps/newframe-extension/CHANGELOG.md \
+              apps/newframe-extension/package.json \
+              apps/newframe-extension/src/manifest.json
+          )"
+          changed="$(git diff-tree --no-commit-id --name-only -r "$CANDIDATE_SHA" | LC_ALL=C sort)"
+          if [[ "$changed" != "$expected" ]]; then
+            echo "::error::Candidate commit contains files outside the extension release metadata."
+            printf 'Expected:\n%s\nActual:\n%s\n' "$expected" "${changed:-<none>}"
+            exit 1
+          fi
+          git checkout --detach "$CANDIDATE_SHA"
+
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
         with:
           bun-version-file: package.json
 
-      - name: Revalidate committed release metadata
-        run: |
-          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
-          bun run --cwd apps/newframe-extension release:validate
-
-      - name: Download verified release files
-        uses: actions/download-artifact@v4
-        with:
-          name: newframe-extension-release-${{ needs.build.outputs.version }}
-          path: ${{ runner.temp }}/newframe-extension-release
-
-      - name: Verify downloaded release files
+      - name: Revalidate candidate source, assets, and notes
         env:
-          RELEASE_OUTPUT: ${{ runner.temp }}/newframe-extension-release
-        run: |
-          bun run --cwd apps/newframe-extension release:verify \
-            --artifact "$RELEASE_OUTPUT/${{ needs.build.outputs.artifact }}" \
-            --checksum "$RELEASE_OUTPUT/${{ needs.build.outputs.checksum }}"
-
-      - name: Validate remote release state
-        id: remote
-        env:
-          GH_TOKEN: ${{ github.token }}
-          TAG: ${{ needs.build.outputs.tag }}
+          TRANSFER_DIR: ${{ runner.temp }}/extension-candidate
         shell: bash
         run: |
           set -euo pipefail
-          git fetch --no-tags origin main
-          test "$(git rev-parse origin/main)" = "$GITHUB_SHA"
+          test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
+          test "$(jq -er '.version' apps/newframe-extension/package.json)" = "$RELEASE_VERSION"
+          test "$(jq -er '.version' apps/newframe-extension/src/manifest.json)" = "$RELEASE_VERSION"
+          test "$(grep -Fxc "## $RELEASE_VERSION" apps/newframe-extension/CHANGELOG.md)" = "1"
+          bun run --cwd apps/newframe-extension release:validate
+          bun run --cwd apps/newframe-extension release:verify \
+            --artifact "$TRANSFER_DIR/$RELEASE_ARTIFACT" \
+            --checksum "$TRANSFER_DIR/$RELEASE_CHECKSUM"
+          bun run --cwd apps/newframe-extension release:notes \
+            --output "$RUNNER_TEMP/extension-release-notes.md"
+
+      - name: Validate remote state
+        id: remote
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
+            echo "::error::Browser-extension releases must be dispatched from main."
+            exit 1
+          fi
 
           release_status="$(
             curl --silent --show-error \
@@ -131,58 +318,67 @@ jobs:
               --header "Accept: application/vnd.github+json" \
               --header "Authorization: Bearer $GH_TOKEN" \
               --header "X-GitHub-Api-Version: 2022-11-28" \
-              "https://api.github.com/repos/$GITHUB_REPOSITORY/releases/tags/$TAG"
+              "https://api.github.com/repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG"
           )"
           case "$release_status" in
             404) ;;
             200)
-              echo "::error::Release $TAG already exists; refusing to replace a published release."
+              echo "::error::Release $RELEASE_TAG already exists; refusing to overwrite it."
               exit 1
               ;;
             *)
-              echo "::error::Could not validate release absence (GitHub returned HTTP $release_status)."
+              echo "::error::Could not verify release absence (GitHub returned HTTP $release_status)."
               exit 1
               ;;
           esac
 
-          remote_tag="$(git ls-remote --tags origin "refs/tags/$TAG" | awk '{print $1}')"
-          if [ -z "$remote_tag" ]; then
-            echo "tag_exists=false" >> "$GITHUB_OUTPUT"
-          elif [ "$remote_tag" = "$GITHUB_SHA" ]; then
-            echo "tag_exists=true" >> "$GITHUB_OUTPUT"
-            echo "Tag $TAG already targets this exact commit; resuming a previous publish attempt."
+          main_sha="$(git ls-remote origin refs/heads/main | awk '{print $1}')"
+          tag_sha="$(git ls-remote --refs --tags origin "refs/tags/$RELEASE_TAG" | awk '{print $1}')"
+          if [[ "$main_sha" = "$GITHUB_SHA" && -z "$tag_sha" ]]; then
+            echo "push-needed=true" >> "$GITHUB_OUTPUT"
+          elif [[ "$main_sha" = "$CANDIDATE_SHA" && "$tag_sha" = "$CANDIDATE_SHA" ]]; then
+            echo "push-needed=false" >> "$GITHUB_OUTPUT"
+            echo "Main and $RELEASE_TAG already contain this exact candidate; resuming publication."
           else
-            echo "::error::Tag $TAG already exists at $remote_tag, not $GITHUB_SHA."
+            echo "::error::Remote state changed or contains a partial/conflicting extension release."
+            echo "Expected main/tag: $GITHUB_SHA/<absent> or $CANDIDATE_SHA/$CANDIDATE_SHA"
+            echo "Actual main/tag: ${main_sha:-<absent>}/${tag_sha:-<absent>}"
             exit 1
           fi
 
-      - name: Create release notes from the committed changelog
-        env:
-          NOTES_FILE: ${{ runner.temp }}/newframe-extension-release-notes.md
-        run: bun run --cwd apps/newframe-extension release:notes --output "$NOTES_FILE"
-
-      - name: Tag the exact dispatched commit
-        if: steps.remote.outputs.tag_exists == 'false'
-        env:
-          TAG: ${{ needs.build.outputs.tag }}
+      - name: Atomically push candidate commit and tag
+        if: steps.remote.outputs.push-needed == 'true'
+        shell: bash
         run: |
-          git tag "$TAG" "$GITHUB_SHA"
-          git push origin "refs/tags/$TAG"
+          set -euo pipefail
+          git tag "$RELEASE_TAG" "$CANDIDATE_SHA"
+          git push --atomic \
+            --force-with-lease="refs/heads/main:$GITHUB_SHA" \
+            origin \
+            "${CANDIDATE_SHA}:refs/heads/main" \
+            "refs/tags/$RELEASE_TAG:refs/tags/$RELEASE_TAG"
+
+      - name: Verify published refs
+        shell: bash
+        run: |
+          set -euo pipefail
+          main_sha="$(git ls-remote origin refs/heads/main | awk '{print $1}')"
+          tag_sha="$(git ls-remote --refs --tags origin "refs/tags/$RELEASE_TAG" | awk '{print $1}')"
+          test "$main_sha" = "$CANDIDATE_SHA"
+          test "$tag_sha" = "$CANDIDATE_SHA"
 
       - name: Publish the GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ needs.build.outputs.tag }}
-          VERSION: ${{ needs.build.outputs.version }}
-          RELEASE_OUTPUT: ${{ runner.temp }}/newframe-extension-release
-          NOTES_FILE: ${{ runner.temp }}/newframe-extension-release-notes.md
+          TRANSFER_DIR: ${{ runner.temp }}/extension-candidate
+        shell: bash
         run: |
-          test "$(git ls-remote --tags origin "refs/tags/$TAG" | awk '{print $1}')" = "$GITHUB_SHA"
-          gh release create "$TAG" \
-            "$RELEASE_OUTPUT/${{ needs.build.outputs.artifact }}" \
-            "$RELEASE_OUTPUT/${{ needs.build.outputs.checksum }}" \
+          set -euo pipefail
+          gh release create "$RELEASE_TAG" \
+            "$TRANSFER_DIR/$RELEASE_ARTIFACT" \
+            "$TRANSFER_DIR/$RELEASE_CHECKSUM" \
             --repo "$GITHUB_REPOSITORY" \
             --verify-tag \
-            --title "Newframe Browser Extension v$VERSION" \
-            --notes-file "$NOTES_FILE" \
+            --title "Newframe Browser Extension v$RELEASE_VERSION" \
+            --notes-file "$RUNNER_TEMP/extension-release-notes.md" \
             --latest=false
