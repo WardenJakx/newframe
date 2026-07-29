@@ -470,7 +470,11 @@ export function buildFlashQuoteBody(request: FlashQuoteRequest) {
   const triggers = isTriggerOrder ? normalizeTriggers(request, orderType) : undefined
   const supportsExpiry = orderType === 'limit' || isTriggerOrder
   const supportsLimitPrice =
-    orderType === 'limit' || orderType === 'stop' || orderType === 'stop-loss' || orderType === 'take-profit'
+    orderType === 'limit' ||
+    orderType === 'twap' ||
+    orderType === 'stop' ||
+    orderType === 'stop-loss' ||
+    orderType === 'take-profit'
 
   if (!request.accountAddress) throw new Error('Flash quote requires an account address')
   if (!qty || Number(qty) <= 0) throw new Error('Flash quote requires a positive qty')
@@ -491,6 +495,7 @@ export function buildFlashQuoteBody(request: FlashQuoteRequest) {
       ? { limitNotionalPrice: optionalString(request.limitNotionalPrice) }
       : {}),
     ...(supportsExpiry && request.expireTime?.trim() ? { expireTime: request.expireTime.trim() } : {}),
+    ...(orderType === 'twap' && request.startTime?.trim() ? { startTime: request.startTime.trim() } : {}),
     ...(durationSeconds !== undefined ? { durationSeconds } : {}),
     ...(twapBucketCount !== undefined ? { twapBucketCount } : {}),
     ...(triggers?.length ? { triggers } : {})

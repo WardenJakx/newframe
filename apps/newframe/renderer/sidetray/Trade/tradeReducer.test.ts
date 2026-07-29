@@ -64,6 +64,7 @@ describe('tradeReducer', () => {
     })
     expect(withTargetBalance.slippage).toBe('')
     expect(withTargetBalance.maxPriceImpact).toBe('')
+    expect(withTargetBalance.startTime).toBe('')
     expect(withTargetBalance.timeInForce).toBe('gtc')
     expect(withoutTargetBalance.side).toBe('buy')
   })

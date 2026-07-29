@@ -61,6 +61,7 @@ export interface TradeWorkflowState {
   side: FlashTradeSide
   signature: string
   slippage: string
+  startTime: string
   status: string
   submitting: boolean
   targetAsset: FlashAsset
@@ -264,6 +265,7 @@ export function createInitialTradeState({
     side,
     signature: '',
     slippage: TRADE_DEFAULT_SLIPPAGE,
+    startTime: '',
     status: '',
     submitting: false,
     targetAsset,
@@ -295,6 +297,7 @@ export function getTradeOrderFields(state: TradeWorkflowState): TradeOrderFields
     expireTime: state.expireTime,
     limitNotionalPrice: state.limitNotionalPrice,
     maxPriceImpact: state.maxPriceImpact,
+    startTime: state.startTime,
     timeInForce: state.timeInForce,
     triggerNotionalPrice: state.triggerNotionalPrice,
     twapBucketCount: state.twapBucketCount

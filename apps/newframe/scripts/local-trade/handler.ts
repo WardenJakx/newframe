@@ -207,6 +207,15 @@ function optionalExpireTime(value: unknown) {
   return value.trim()
 }
 
+function optionalStartTime(value: unknown) {
+  if (value === undefined || value === null || value === '') return undefined
+  if (typeof value !== 'string' || !value.trim() || !Number.isFinite(Date.parse(value))) {
+    validationError('Local Flash startTime must be a valid ISO-8601 timestamp')
+  }
+
+  return value.trim()
+}
+
 function integerField(value: unknown, label: string, minimum: number, maximum?: number) {
   if (typeof value !== 'number' || !Number.isInteger(value)) {
     validationError(`Local Flash ${label} must be an integer`)
@@ -252,7 +261,10 @@ function validateOrderParameters(body: Record<string, any>, orderType: FlashOrde
   const maxSlippage = optionalProtection(body.maxSlippage, 'maxSlippage')
   const maxPriceImpact = optionalProtection(body.maxPriceImpact, 'maxPriceImpact')
   const expireTime = optionalExpireTime(body.expireTime)
+  const startTime = optionalStartTime(body.startTime)
   const triggers = localTriggers(body.triggers)
+  let durationSeconds: number | undefined
+  let twapBucketCount: number | undefined
 
   if (orderType === FLASH_BRACKET_ORDER_TYPE) {
     validationError('Local Flash bracket orders are not supported')
@@ -263,26 +275,35 @@ function validateOrderParameters(body: Record<string, any>, orderType: FlashOrde
     ensureNoTwapFields(body, orderType)
     if (limitNotionalPrice) validationError('Local Flash limitNotionalPrice is not allowed for market')
     if (expireTime) validationError('Local Flash expireTime is not allowed for market')
+    if (startTime) validationError('Local Flash startTime is not allowed for market')
   }
 
   if (orderType === FLASH_LIMIT_ORDER_TYPE) {
     ensureNoTriggers(triggers, orderType)
     ensureNoTwapFields(body, orderType)
     if (!limitNotionalPrice) validationError('Local Flash limitNotionalPrice is required for limit')
+    if (startTime) validationError('Local Flash startTime is not allowed for limit')
   }
 
   if (orderType === FLASH_TWAP_ORDER_TYPE) {
     ensureNoTriggers(triggers, orderType)
-    if (limitNotionalPrice) validationError('Local Flash limitNotionalPrice is not supported for TWAP')
     if (expireTime) validationError('Local Flash expireTime is not allowed for TWAP')
-    integerField(
+    if (startTime && Date.parse(startTime) <= Date.now()) {
+      validationError('Local Flash startTime must be in the future')
+    }
+    durationSeconds = integerField(
       body.durationSeconds,
       'durationSeconds',
       MIN_TWAP_DURATION_SECONDS,
       MAX_TWAP_DURATION_SECONDS
     )
     if (body.twapBucketCount !== undefined) {
-      integerField(body.twapBucketCount, 'twapBucketCount', MIN_TWAP_BUCKET_COUNT, MAX_TWAP_BUCKET_COUNT)
+      twapBucketCount = integerField(
+        body.twapBucketCount,
+        'twapBucketCount',
+        MIN_TWAP_BUCKET_COUNT,
+        MAX_TWAP_BUCKET_COUNT
+      )
     }
   }
 
@@ -292,6 +313,7 @@ function validateOrderParameters(body: Record<string, any>, orderType: FlashOrde
     orderType === FLASH_TAKE_PROFIT_ORDER_TYPE
   ) {
     ensureNoTwapFields(body, orderType)
+    if (startTime) validationError(`Local Flash startTime is not allowed for ${orderType}`)
     if (triggers.length !== 1) validationError(`Local Flash ${orderType} requires exactly one trigger`)
 
     const expected =
@@ -309,11 +331,14 @@ function validateOrderParameters(body: Record<string, any>, orderType: FlashOrde
   }
 
   return {
+    durationSeconds,
     expireTime,
     limitNotionalPrice,
     maxPriceImpact,
     maxSlippage,
-    triggers
+    startTime,
+    triggers,
+    twapBucketCount
   }
 }
 
@@ -610,7 +635,10 @@ async function buildQuote(body: Record<string, any>) {
   const expiresAt =
     orderParameters.expireTime ||
     new Date(
-      Date.now() + (orderType === FLASH_TWAP_ORDER_TYPE ? Number(body.durationSeconds) * 1_000 : 30_000)
+      (orderType === FLASH_TWAP_ORDER_TYPE && orderParameters.startTime
+        ? Date.parse(orderParameters.startTime)
+        : Date.now()) +
+        (orderType === FLASH_TWAP_ORDER_TYPE ? Number(orderParameters.durationSeconds) * 1_000 : 30_000)
     ).toISOString()
   const quote: FlashQuote = {
     id: quoteId,
@@ -769,6 +797,7 @@ function validateSubmitBody(quoteRecord: LocalQuoteRecord, body: Record<string, 
     maxSlippage: quoteBody.maxSlippage,
     maxPriceImpact: quoteBody.maxPriceImpact,
     limitNotionalPrice: quoteBody.limitNotionalPrice,
+    startTime: quoteBody.startTime,
     twapBucketCount: quoteBody.twapBucketCount,
     triggers: quoteBody.triggers
   }

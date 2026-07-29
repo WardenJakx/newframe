@@ -133,15 +133,24 @@ export const tradeTicketStage: VisualStage = {
     const durationDays = tradePage.getByLabel('TWAP duration days')
     const durationHours = tradePage.getByLabel('TWAP duration hours')
     const durationMinutes = tradePage.getByLabel('TWAP duration minutes')
+    const twapLimit = tradePage.getByLabel('TWAP limit price')
+    const twapStart = tradePage.getByLabel('TWAP start time')
     await durationDays.waitFor({ state: 'visible', timeout: 5_000 })
     await durationHours.waitFor({ state: 'visible', timeout: 5_000 })
     await durationMinutes.waitFor({ state: 'visible', timeout: 5_000 })
+    await twapLimit.waitFor({ state: 'visible', timeout: 5_000 })
+    await twapStart.waitFor({ state: 'visible', timeout: 5_000 })
     for (const [name, input] of [
       ['TWAP days', durationDays],
       ['TWAP hours', durationHours],
-      ['TWAP minutes', durationMinutes]
+      ['TWAP minutes', durationMinutes],
+      ['TWAP limit', twapLimit],
+      ['TWAP start', twapStart]
     ] as const) {
       if (await fieldPartsOverlap(input)) driver.fail(`${name} label overlaps its input`)
+    }
+    if ((await twapLimit.getAttribute('placeholder')) !== 'Market') {
+      driver.fail('Optional TWAP limit should communicate market execution')
     }
     await tradePage.getByRole('button', { name: /Advanced/ }).click()
     const segments = tradePage.getByLabel('TWAP segments')
