@@ -34,6 +34,7 @@ export const FlashQuoteRequestSchema = z.object({
   quickTrade: z.boolean().optional(),
   durationSeconds: NumberOrStringSchema.optional(),
   expireTime: z.string().optional(),
+  startTime: z.string().optional(),
   limitNotionalPrice: NumberOrStringSchema.optional(),
   stopLossNotionalPrice: NumberOrStringSchema.optional(),
   takeProfitNotionalPrice: NumberOrStringSchema.optional(),

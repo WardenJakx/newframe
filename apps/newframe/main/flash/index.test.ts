@@ -184,15 +184,17 @@ describe('main Flash facade helpers', () => {
       limitNotionalPrice: '1700',
       maxPriceImpact: '2.5',
       orderType: 'twap',
+      startTime: '2099-08-01T00:00:00Z',
       twapBucketCount: '12'
     })
 
     expect(twapBody).toMatchObject({
       durationSeconds: 300,
+      limitNotionalPrice: '1700',
       maxPriceImpact: '0.025',
+      startTime: '2099-08-01T00:00:00Z',
       twapBucketCount: 12
     })
-    expect(twapBody).not.toHaveProperty('limitNotionalPrice')
   })
 
   it('omits unset protections while preserving an explicit zero', () => {
@@ -335,8 +337,10 @@ describe('main Flash facade helpers', () => {
     const twapRequest = {
       ...quoteRequest(),
       durationSeconds: 300,
+      limitNotionalPrice: '2300',
       maxPriceImpact: '5',
       orderType: 'twap' as const,
+      startTime: '2099-08-01T00:00:00Z',
       twapBucketCount: 12
     }
     const response = {
@@ -359,7 +363,12 @@ describe('main Flash facade helpers', () => {
 
     expect(limitBody).not.toHaveProperty('expireTime')
     expect(twapBody).not.toHaveProperty('durationSeconds')
-    expect(twapBody).toMatchObject({ twapBucketCount: 12, maxPriceImpact: '0.05' })
+    expect(twapBody).toMatchObject({
+      limitNotionalPrice: '2300',
+      maxPriceImpact: '0.05',
+      startTime: '2099-08-01T00:00:00Z',
+      twapBucketCount: 12
+    })
   })
 
   it('submits the wrapped asset when the quote spends native ETH', () => {

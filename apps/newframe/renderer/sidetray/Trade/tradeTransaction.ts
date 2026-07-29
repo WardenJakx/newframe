@@ -46,6 +46,7 @@ export interface TradeOrderFields {
   expireTime?: string
   limitNotionalPrice?: string
   maxPriceImpact?: string
+  startTime?: string
   timeInForce?: TradeTimeInForce
   triggerNotionalPrice?: string
   twapBucketCount?: string
@@ -66,6 +67,7 @@ export interface TradeQuoteRequest {
   quickTrade?: true
   side: FlashTradeSide
   slippage?: string
+  startTime?: string
   targetAsset: FlashAsset
   targetChain: number
   triggers?: FlashPriceTrigger[]
@@ -358,6 +360,12 @@ function cleanExpireTime(value?: string) {
   return Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : ''
 }
 
+function cleanStartTime(value?: string) {
+  if (!String(value || '').trim()) return ''
+
+  return cleanExpireTime(value)
+}
+
 function triggerTypeForOrder(orderType: FlashOrderType): FlashPriceTrigger['triggerType'] | '' {
   if (orderType === FLASH_STOP_LOSS_ORDER_TYPE) return 'lower'
   if (orderType === FLASH_STOP_ORDER_TYPE || orderType === FLASH_TAKE_PROFIT_ORDER_TYPE) return 'upper'
@@ -384,6 +392,7 @@ export function getTradeValidationError({
   orderType,
   side,
   slippage,
+  startTime,
   timeInForce,
   triggerNotionalPrice,
   twapBucketCount
@@ -427,6 +436,17 @@ export function getTradeValidationError({
     const cleanBuckets = cleanTradeAmount(twapBucketCount || '')
     if (cleanBuckets && cleanTwapBucketCount(cleanBuckets) === undefined) {
       return 'Segments must be 2 to 2560, or left automatic.'
+    }
+
+    if (cleanTradeAmount(limitNotionalPrice || '') && !cleanOptionalAmount(limitNotionalPrice)) {
+      return 'Enter a valid TWAP limit price or leave it blank for market execution.'
+    }
+
+    if (String(startTime || '').trim()) {
+      const timestamp = Date.parse(String(startTime))
+      if (!Number.isFinite(timestamp) || timestamp <= Date.now()) {
+        return 'Choose a future TWAP start time or leave it blank to start immediately.'
+      }
     }
 
     const cleanMaxImpact = cleanTradeAmount(maxPriceImpact || '')
@@ -477,7 +497,13 @@ function getOrderFields(
   fields: TradeOrderFields
 ): Pick<
   TradeQuoteRequest,
-  'durationSeconds' | 'expireTime' | 'limitNotionalPrice' | 'maxPriceImpact' | 'triggers' | 'twapBucketCount'
+  | 'durationSeconds'
+  | 'expireTime'
+  | 'limitNotionalPrice'
+  | 'maxPriceImpact'
+  | 'startTime'
+  | 'triggers'
+  | 'twapBucketCount'
 > {
   const result: Pick<
     TradeQuoteRequest,
@@ -485,6 +511,7 @@ function getOrderFields(
     | 'expireTime'
     | 'limitNotionalPrice'
     | 'maxPriceImpact'
+    | 'startTime'
     | 'triggers'
     | 'twapBucketCount'
   > = {}
@@ -507,6 +534,10 @@ function getOrderFields(
 
   if (orderType === FLASH_TWAP_ORDER_TYPE) {
     result.durationSeconds = getTradeDurationSeconds(fields)
+    const limitPrice = cleanOptionalAmount(fields.limitNotionalPrice)
+    if (limitPrice) result.limitNotionalPrice = limitPrice
+    const startTime = cleanStartTime(fields.startTime)
+    if (startTime) result.startTime = startTime
     const buckets = cleanTwapBucketCount(fields.twapBucketCount)
     if (buckets !== undefined) result.twapBucketCount = buckets
     const maxPriceImpact = cleanTradeAmount(fields.maxPriceImpact || '')
@@ -588,6 +619,7 @@ export function marketTradeQuoteRequestKey(request: TradeQuoteRequest) {
     request.limitNotionalPrice,
     request.triggers,
     request.durationSeconds,
+    request.startTime,
     request.twapBucketCount,
     request.maxPriceImpact,
     request.expireTime

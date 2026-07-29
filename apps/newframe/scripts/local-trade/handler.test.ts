@@ -122,26 +122,71 @@ describe('local trade service handler', () => {
     })
   })
 
-  it('accepts integer TWAP schedules from 300 seconds and rejects unsupported TWAP fields', async () => {
+  it('accepts scheduled and price-bounded TWAPs from 300 seconds', async () => {
+    const startTime = '2099-01-02T03:04:05.000Z'
     const valid = await requestQuote({
       durationSeconds: 300,
+      limitNotionalPrice: '2200',
       orderType: 'twap',
+      startTime,
       twapBucketCount: 2
     })
 
     expect(valid.response.status).toBe(200)
+    expect(valid.body.local).toMatchObject({
+      limitNotionalPrice: '2200',
+      startTime,
+      twapBucketCount: 2
+    })
+    expect(valid.body.expiresAt).toBe('2099-01-02T03:09:05.000Z')
 
     for (const overrides of [
       { durationSeconds: 299, orderType: 'twap' },
       { durationSeconds: '300', orderType: 'twap' },
       { durationSeconds: 300, orderType: 'twap', twapBucketCount: 1 },
       { durationSeconds: 300, orderType: 'twap', twapBucketCount: 2.5 },
-      { durationSeconds: 300, limitNotionalPrice: '2200', orderType: 'twap' },
+      { durationSeconds: 300, orderType: 'twap', startTime: 'not-a-date' },
+      { durationSeconds: 300, orderType: 'twap', startTime: '2000-01-01T00:00:00.000Z' },
       { durationSeconds: 300, expireTime: '2030-01-02T03:04:05.000Z', orderType: 'twap' }
     ]) {
       const result = await requestQuote(overrides)
       expect(result.response.status).toBe(400)
     }
+  })
+
+  it('requires TWAP schedule and limit fields to echo on submit while omitting duration', async () => {
+    const fields = {
+      durationSeconds: 300,
+      limitNotionalPrice: '2200',
+      orderType: 'twap',
+      startTime: '2099-01-02T03:04:05.000Z',
+      twapBucketCount: 2
+    }
+    const quoted = await requestQuote(fields)
+    const { durationSeconds: _durationSeconds, ...submitFields } = fields
+    const submitBody = {
+      ...quoteRequest(submitFields),
+      targetAsset: quoted.body.targetAsset,
+      contraAsset: quoted.body.contraAsset,
+      quoteId: quoted.body.quoteId,
+      userSignature: '0xorder-signature',
+      evmOrderTypedData: quoted.body.evm.orderTypedData
+    }
+    const accepted = await handleLocalTradeRequest(
+      new Request('http://127.0.0.1:8422/v1/order', {
+        method: 'POST',
+        body: JSON.stringify(submitBody)
+      })
+    )
+    const mismatched = await handleLocalTradeRequest(
+      new Request('http://127.0.0.1:8422/v1/order', {
+        method: 'POST',
+        body: JSON.stringify({ ...submitBody, startTime: '2099-01-02T04:04:05.000Z' })
+      })
+    )
+
+    expect(accepted.status).toBe(200)
+    expect(mismatched.status).toBe(400)
   })
 
   it('enforces supported stop, stop-loss, and take-profit side and trigger combinations', async () => {

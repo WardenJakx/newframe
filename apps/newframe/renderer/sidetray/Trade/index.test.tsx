@@ -564,6 +564,12 @@ describe('Trade', () => {
     expect(screen.getByLabelText('TWAP duration days')).toBeTruthy()
     expect(screen.getByLabelText('TWAP duration hours')).toBeTruthy()
     expect(screen.getByLabelText('TWAP duration minutes')).toBeTruthy()
+    const twapLimit = screen.getByLabelText('TWAP limit price') as HTMLInputElement
+    const twapStart = screen.getByLabelText('TWAP start time') as HTMLInputElement
+    expect(twapLimit.required).toBe(false)
+    expect(twapLimit.placeholder).toBe('Market')
+    expect(twapStart.required).toBe(false)
+    expect(twapStart.type).toBe('datetime-local')
     fireEvent.click(screen.getByRole('button', { name: 'Advanced' }))
     const segments = screen.getByLabelText('TWAP segments') as HTMLInputElement
     const maxPriceImpact = screen.getByLabelText('Maximum price impact') as HTMLInputElement

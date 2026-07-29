@@ -72,6 +72,10 @@ import {
 const MARKET_QUOTE_DEBOUNCE_MS = 250
 const MARKET_QUOTE_REFRESH_MS = 15_000
 
+function localDateTimeValue(date = new Date()) {
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16)
+}
+
 interface TradeProps {
   assetId?: string | null
   chainId?: number
@@ -137,6 +141,7 @@ export default function Trade({ assetId, chainId }: TradeProps) {
       quickTrade: state.quickTrade,
       side: state.side,
       slippage: state.slippage,
+      startTime: state.startTime,
       targetAsset: state.targetAsset,
       timeInForce: state.timeInForce,
       triggerNotionalPrice: state.triggerNotionalPrice,
@@ -156,6 +161,7 @@ export default function Trade({ assetId, chainId }: TradeProps) {
     state.quickTrade,
     state.side,
     state.slippage,
+    state.startTime,
     state.targetAsset,
     state.timeInForce,
     state.triggerNotionalPrice,
@@ -189,9 +195,11 @@ export default function Trade({ assetId, chainId }: TradeProps) {
     expireTime: ticketValidationError.startsWith('Choose a future expiry time'),
     limitPrice:
       ticketValidationError === 'Enter a limit price.' ||
-      ticketValidationError.startsWith('Enter a valid limit price'),
+      ticketValidationError.startsWith('Enter a valid limit price') ||
+      ticketValidationError.startsWith('Enter a valid TWAP limit price'),
     maxPriceImpact: ticketValidationError.startsWith('Max price impact'),
     slippage: ticketValidationError.startsWith('Max slippage'),
+    startTime: ticketValidationError.startsWith('Choose a future TWAP start time'),
     triggerPrice: ticketValidationError === 'Enter a trigger price.' || Boolean(quoteValidationError),
     twapBucketCount: ticketValidationError.startsWith('Segments must')
   }
@@ -741,6 +749,30 @@ export default function Trade({ assetId, chainId }: TradeProps) {
             <Text variant='detail' tone='secondary'>
               Minimum 5 minutes · Maximum 30 days
             </Text>
+            <Grid columns='two' gap='medium' responsive>
+              {renderOrderInput({
+                ariaLabel: 'TWAP limit price',
+                field: 'limitNotionalPrice',
+                invalid: invalidTradeFields.limitPrice,
+                label: `${state.targetAsset.symbol}/USD limit`,
+                placeholder: 'Market',
+                suffix: 'USD',
+                vertical: true
+              })}
+              <Field invalid={invalidTradeFields.startTime} label='Starts' vertical>
+                <Input
+                  invalid={invalidTradeFields.startTime}
+                  label='TWAP start time'
+                  min={localDateTimeValue()}
+                  onValueChange={(value) => dispatch({ type: 'setOrderField', field: 'startTime', value })}
+                  type='datetime-local'
+                  value={state.startTime}
+                />
+              </Field>
+            </Grid>
+            <Text variant='detail' tone='secondary'>
+              Leave start blank to begin immediately · limit is optional
+            </Text>
           </Stack>
         </Surface>
       )
@@ -861,10 +893,7 @@ export default function Trade({ assetId, chainId }: TradeProps) {
 
       if (timeInForce === 'gtt' && !state.expireTime) {
         const expiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-        const localExpiry = new Date(expiry.getTime() - expiry.getTimezoneOffset() * 60_000)
-          .toISOString()
-          .slice(0, 16)
-        dispatch({ type: 'setOrderField', field: 'expireTime', value: localExpiry })
+        dispatch({ type: 'setOrderField', field: 'expireTime', value: localDateTimeValue(expiry) })
       }
     }
 
@@ -886,7 +915,7 @@ export default function Trade({ assetId, chainId }: TradeProps) {
             <Input
               label='Order expiry'
               invalid={invalidTradeFields.expireTime}
-              min={new Date().toISOString().slice(0, 16)}
+              min={localDateTimeValue()}
               onValueChange={(value) => dispatch({ type: 'setOrderField', field: 'expireTime', value })}
               required
               type='datetime-local'

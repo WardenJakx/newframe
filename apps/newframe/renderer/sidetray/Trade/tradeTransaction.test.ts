@@ -104,8 +104,10 @@ describe('tradeTransaction', () => {
       durationDays: '1',
       durationHours: '2',
       durationMinutes: '3',
+      limitNotionalPrice: '2,300',
       maxPriceImpact: '4.5',
       orderType: FLASH_TWAP_ORDER_TYPE,
+      startTime: '2099-01-02T03:04:00.000Z',
       twapBucketCount: '12'
     })
     const automaticTwap = buildTradeQuoteRequest({
@@ -140,11 +142,12 @@ describe('tradeTransaction', () => {
     })
     expect(twap).toMatchObject({
       durationSeconds: 93_780,
+      limitNotionalPrice: '2300',
       maxPriceImpact: '4.5',
       orderType: FLASH_TWAP_ORDER_TYPE,
+      startTime: '2099-01-02T03:04:00.000Z',
       twapBucketCount: 12
     })
-    expect(twap).not.toHaveProperty('limitNotionalPrice')
     expect(twap).not.toHaveProperty('slippage')
     expect(automaticTwap).not.toHaveProperty('maxPriceImpact')
     expect(automaticTwap).not.toHaveProperty('twapBucketCount')
@@ -199,6 +202,28 @@ describe('tradeTransaction', () => {
         side: 'sell'
       })
     ).toBe('Max price impact must be between 0% and 100%.')
+    expect(
+      getTradeValidationError({
+        durationDays: '0',
+        durationHours: '1',
+        durationMinutes: '0',
+        inputAmount: '1',
+        limitNotionalPrice: 'not-a-number',
+        orderType: FLASH_TWAP_ORDER_TYPE,
+        side: 'sell'
+      })
+    ).toBe('Enter a valid TWAP limit price or leave it blank for market execution.')
+    expect(
+      getTradeValidationError({
+        durationDays: '0',
+        durationHours: '1',
+        durationMinutes: '0',
+        inputAmount: '1',
+        orderType: FLASH_TWAP_ORDER_TYPE,
+        side: 'sell',
+        startTime: '2000-01-01T00:00:00.000Z'
+      })
+    ).toBe('Choose a future TWAP start time or leave it blank to start immediately.')
     expect(
       getTradeValidationError({
         inputAmount: '1',
