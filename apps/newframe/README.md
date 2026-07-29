@@ -6,13 +6,27 @@ For the full project overview, features, and surface map, start with the [root R
 
 ## Download and get started
 
-### Download the app
+### Install the unsigned macOS arm64 release
 
-- Coming soon. Run from source for now
-<!-- - [Production releases](https://github.com/wardenjakx/newframe/releases)
-- [Canary releases](https://github.com/wardenjakx/newframe/releases)
+The downloadable desktop build is currently an unsigned macOS arm64 DMG for Apple silicon. Windows, Linux, Intel Mac, signed, and notarized downloads are not currently published.
 
-After installing, open Newframe from your applications folder or app launcher. -->
+1. From [GitHub Releases](https://github.com/wardenjakx/newframe/releases), download both `Newframe-Desktop-<version>-macOS-arm64.dmg` and `Newframe-Desktop-<version>-macOS-arm64.dmg.sha256`.
+2. In Terminal, change to the download directory and verify the checksum:
+
+   ```bash
+   shasum -a 256 -c Newframe-Desktop-<version>-macOS-arm64.dmg.sha256
+   ```
+
+   Continue only when the command reports `OK`.
+
+3. Open the DMG and drag Newframe into the Applications folder.
+4. Because this preview is unsigned, macOS Gatekeeper may block the first launch. After trying to open Newframe, and only after verifying the checksum and confirming that the download came from this repository, go to **System Settings → Privacy & Security**, select **Open Anyway** for Newframe, authenticate, and confirm **Open**. macOS makes this override available for a limited time after the blocked launch.
+
+Do not bypass Gatekeeper for an unverified file. Later launches work normally after macOS records the approval.
+
+### Roll back the desktop app
+
+Quit Newframe, replace it in Applications with a previously released DMG, and verify that older DMG with its own matching checksum before opening it. Desktop releases use tags named `desktop-v<version>`. Published assets are not modified in place; fixes are published as a new version.
 
 ### Run from source
 

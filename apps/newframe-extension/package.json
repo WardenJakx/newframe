@@ -1,6 +1,6 @@
 {
   "name": "newframe-extension",
-  "version": "0.1.0",
+  "version": "0.0.1",
   "repository": {
     "type": "git",
     "url": "git://github.com/wardenjakx/newframe.git",
@@ -19,7 +19,10 @@
     "bundle": "bun run styles:generate && bun run build.ts",
     "bundle:watch": "bun run build.ts --watch",
     "watch": "bun run styles:generate && bun run --parallel styles:watch bundle:watch",
-    "typecheck": "bun run styles:generate && tsgo --noEmit -p tsconfig.json"
+    "typecheck": "bun run styles:generate && tsgo --noEmit -p tsconfig.json",
+    "release:validate": "bun run scripts/release-extension.ts validate-source",
+    "release:package": "bun run scripts/release-extension.ts package",
+    "release:verify": "bun run scripts/release-extension.ts verify"
   },
   "author": "NewFrame Labs, Inc.",
   "license": "",

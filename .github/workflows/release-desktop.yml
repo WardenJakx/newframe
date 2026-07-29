@@ -1,0 +1,576 @@
+name: Release Newframe Desktop
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_notes:
+        description: Optional concise introduction (GitHub generates the full release notes)
+        required: false
+        default: ''
+        type: string
+
+concurrency:
+  group: release-newframe-desktop
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    name: Prepare exact desktop candidate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      candidate: ${{ steps.candidate.outputs.sha }}
+      tag: ${{ steps.prep.outputs.tag }}
+      transfer-artifact: ${{ steps.transfer.outputs.name }}
+      version: ${{ steps.prep.outputs.version }}
+    steps:
+      - name: Require the exact current main commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
+            echo "::error::Desktop releases must be dispatched from the main branch."
+            exit 1
+          fi
+
+      - name: Check out the dispatched commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      - name: Verify the dispatch still targets current main
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          git fetch --no-tags origin \
+            +refs/heads/main:refs/remotes/origin/main
+          if [[ "$(git rev-parse origin/main)" != "$GITHUB_SHA" ]]; then
+            echo "::error::Desktop releases must target the exact current main commit."
+            exit 1
+          fi
+          if [[ -n "$(git status --porcelain)" ]]; then
+            echo "::error::The dispatched checkout is not clean."
+            git status --short
+            exit 1
+          fi
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - name: Install frozen dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Prepare desktop release metadata
+        id: prep
+        env:
+          RELEASE_INTRODUCTION: ${{ inputs.release_notes }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          introduction="${RELEASE_INTRODUCTION//$'\r'/}"
+          if [[ "$introduction" == *$'\n'* ]]; then
+            echo "::error::release_notes must be a concise one-line introduction."
+            exit 1
+          fi
+          if (( ${#introduction} > 500 )); then
+            echo "::error::release_notes must be 500 characters or fewer."
+            exit 1
+          fi
+
+          bun scripts/release/prepare-release.ts desktop \
+            --github-output "$GITHUB_OUTPUT"
+
+      - name: Create the exact local release commit
+        id: candidate
+        env:
+          RELEASE_TAG: ${{ steps.prep.outputs.tag }}
+          RELEASE_VERSION: ${{ steps.prep.outputs.version }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ steps.prep.outputs.product }}" != "desktop" ]]; then
+            echo "::error::Release preparation returned the wrong product."
+            exit 1
+          fi
+          if [[ "$RELEASE_TAG" != "desktop-v$RELEASE_VERSION" ]]; then
+            echo "::error::Release preparation returned inconsistent version and tag metadata."
+            exit 1
+          fi
+
+          expected="apps/newframe/package.json"
+          changed="$(git diff --name-only | LC_ALL=C sort)"
+          if [[ "$changed" != "$expected" ]]; then
+            echo "::error::Release preparation must update exactly the desktop package."
+            printf 'Expected:\n%s\nActual:\n%s\n' "$expected" "${changed:-<none>}"
+            exit 1
+          fi
+          if [[ -n "$(git ls-files --others --exclude-standard)" ]]; then
+            echo "::error::Release preparation created unexpected untracked files."
+            git status --short
+            exit 1
+          fi
+
+          git add -- apps/newframe/package.json
+          git -c user.name=github-actions \
+            -c user.email=41898282+github-actions[bot]@users.noreply.github.com \
+            -c commit.gpgsign=false \
+            commit -m "release(desktop): $RELEASE_VERSION"
+
+          candidate_sha="$(git rev-parse HEAD)"
+          test "$(git rev-parse HEAD^)" = "$GITHUB_SHA"
+          test -z "$(git status --porcelain --untracked-files=no)"
+          echo "sha=$candidate_sha" >> "$GITHUB_OUTPUT"
+
+      - name: Bundle the exact candidate commit
+        env:
+          CANDIDATE_SHA: ${{ steps.candidate.outputs.sha }}
+          RELEASE_OUTPUT: ${{ runner.temp }}/desktop-source
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RELEASE_OUTPUT"
+          git branch release-desktop-candidate "$CANDIDATE_SHA"
+          git bundle create "$RELEASE_OUTPUT/candidate.bundle" \
+            refs/heads/release-desktop-candidate \
+            "^$GITHUB_SHA"
+          git bundle verify "$RELEASE_OUTPUT/candidate.bundle"
+          test "$(git rev-parse refs/heads/release-desktop-candidate)" = "$CANDIDATE_SHA"
+
+      - name: Name the candidate transfer artifact
+        id: transfer
+        shell: bash
+        run: |
+          echo "name=desktop-source-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
+            >> "$GITHUB_OUTPUT"
+
+      - name: Upload exact candidate commit
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.transfer.outputs.name }}
+          path: ${{ runner.temp }}/desktop-source/candidate.bundle
+          if-no-files-found: error
+          retention-days: 14
+
+  build:
+    name: Build unsigned macOS arm64 DMG
+    needs: prepare
+    runs-on: macos-15
+    permissions:
+      contents: read
+    outputs:
+      artifact: ${{ steps.metadata.outputs.artifact }}
+      checksum: ${{ steps.metadata.outputs.checksum }}
+      transfer-artifact: ${{ steps.transfer.outputs.name }}
+    env:
+      CANDIDATE_SHA: ${{ needs.prepare.outputs.candidate }}
+      RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+      SOURCE_DIR: ${{ runner.temp }}/desktop-source
+    steps:
+      - name: Check out the dispatched commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      - name: Download the exact candidate
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.prepare.outputs.transfer-artifact }}
+          path: ${{ runner.temp }}/desktop-source
+
+      - name: Restore and validate the candidate commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git bundle verify "$SOURCE_DIR/candidate.bundle"
+          git fetch "$SOURCE_DIR/candidate.bundle" refs/heads/release-desktop-candidate
+          test "$(git rev-parse FETCH_HEAD)" = "$CANDIDATE_SHA"
+          test "$(git rev-parse "$CANDIDATE_SHA^")" = "$GITHUB_SHA"
+          changed="$(git diff-tree --no-commit-id --name-only -r "$CANDIDATE_SHA" | LC_ALL=C sort)"
+          expected="apps/newframe/package.json"
+          if [[ "$changed" != "$expected" ]]; then
+            echo "::error::Candidate commit contains files outside desktop release metadata."
+            exit 1
+          fi
+          git checkout --detach "$CANDIDATE_SHA"
+
+      - name: Verify Apple Silicon runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$(uname -m)" != "arm64" ]]; then
+            echo "::error::Desktop DMGs must be built natively on Apple Silicon."
+            exit 1
+          fi
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - name: Install frozen dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Generate desktop styles
+        run: bun run --cwd apps/newframe styles:generate
+
+      - name: Test desktop
+        run: bun run test:newframe
+
+      - name: Compile and bundle desktop
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun run --cwd apps/newframe compile
+          bun run --cwd apps/newframe bundle
+
+      - name: Package unsigned arm64 DMG
+        working-directory: apps/newframe
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun x electron-builder \
+            --config build/electron-builder-release.ts \
+            --mac dmg \
+            --arm64 \
+            --publish never
+
+      - name: Validate packaged application and artifact
+        id: metadata
+        working-directory: apps/newframe
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected_artifact="Newframe-Desktop-$RELEASE_VERSION-macOS-arm64.dmg"
+          expected_checksum="$expected_artifact.sha256"
+          dmg_count="$(find dist-release -maxdepth 1 -type f -name '*.dmg' -print | wc -l | tr -d ' ')"
+          dmg_path="$(find dist-release -maxdepth 1 -type f -name '*.dmg' -print)"
+          if [[ "$dmg_count" != "1" || "${dmg_path##*/}" != "$expected_artifact" ]]; then
+            echo "::error::Expected exactly dist-release/$expected_artifact."
+            exit 1
+          fi
+
+          app_count="$(find dist-release -type d -name 'Newframe.app' -prune -print | wc -l | tr -d ' ')"
+          app_path="$(find dist-release -type d -name 'Newframe.app' -prune -print)"
+          if [[ "$app_count" != "1" ]]; then
+            echo "::error::Expected exactly one packaged Newframe.app."
+            exit 1
+          fi
+          packaged_version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' \
+            "$app_path/Contents/Info.plist")"
+          test "$packaged_version" = "$RELEASE_VERSION"
+          test "$(lipo -archs "$app_path/Contents/MacOS/Newframe")" = "arm64"
+
+          (
+            cd dist-release
+            shasum -a 256 "$expected_artifact" > "$expected_checksum"
+            shasum -a 256 -c "$expected_checksum"
+          )
+          echo "artifact=$expected_artifact" >> "$GITHUB_OUTPUT"
+          echo "checksum=$expected_checksum" >> "$GITHUB_OUTPUT"
+
+      - name: Name validated assets artifact
+        id: transfer
+        shell: bash
+        run: |
+          echo "name=desktop-assets-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
+            >> "$GITHUB_OUTPUT"
+
+      - name: Upload validated release assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.transfer.outputs.name }}
+          path: |
+            apps/newframe/dist-release/${{ steps.metadata.outputs.artifact }}
+            apps/newframe/dist-release/${{ steps.metadata.outputs.checksum }}
+          if-no-files-found: error
+          retention-days: 14
+
+  publish:
+    name: Push candidate and publish desktop release
+    needs:
+      - prepare
+      - build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      CANDIDATE_SHA: ${{ needs.prepare.outputs.candidate }}
+      RELEASE_ARTIFACT: ${{ needs.build.outputs.artifact }}
+      RELEASE_CHECKSUM: ${{ needs.build.outputs.checksum }}
+      RELEASE_INTRODUCTION: ${{ inputs.release_notes }}
+      RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+      RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+      SOURCE_DIR: ${{ runner.temp }}/desktop-source
+      ASSET_DIR: ${{ runner.temp }}/desktop-assets
+    steps:
+      - name: Check out the dispatched commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      - name: Download exact candidate and assets
+        uses: actions/download-artifact@v4
+        with:
+          pattern: desktop-*-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/downloads
+
+      - name: Restore candidate and place assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          source_artifact="${{ needs.prepare.outputs.transfer-artifact }}"
+          asset_artifact="${{ needs.build.outputs.transfer-artifact }}"
+          mkdir -p "$SOURCE_DIR" "$ASSET_DIR"
+          cp "$RUNNER_TEMP/downloads/$source_artifact/candidate.bundle" "$SOURCE_DIR/"
+          cp "$RUNNER_TEMP/downloads/$asset_artifact/$RELEASE_ARTIFACT" "$ASSET_DIR/"
+          cp "$RUNNER_TEMP/downloads/$asset_artifact/$RELEASE_CHECKSUM" "$ASSET_DIR/"
+
+          git bundle verify "$SOURCE_DIR/candidate.bundle"
+          git fetch "$SOURCE_DIR/candidate.bundle" refs/heads/release-desktop-candidate
+          test "$(git rev-parse FETCH_HEAD)" = "$CANDIDATE_SHA"
+          test "$(git rev-parse "$CANDIDATE_SHA^")" = "$GITHUB_SHA"
+          git checkout --detach "$CANDIDATE_SHA"
+
+      - name: Revalidate candidate source and assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(jq -er '.version' apps/newframe/package.json)" = "$RELEASE_VERSION"
+          (
+            cd "$ASSET_DIR"
+            shasum -a 256 -c "$RELEASE_CHECKSUM"
+          )
+
+      - name: Validate remote state
+        id: remote
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          release_status="$(
+            curl --silent --show-error \
+              --output "$RUNNER_TEMP/desktop-release-response.json" \
+              --write-out "%{http_code}" \
+              --header "Accept: application/vnd.github+json" \
+              --header "Authorization: Bearer $GH_TOKEN" \
+              --header "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG"
+          )"
+          case "$release_status" in
+            404) ;;
+            200)
+              echo "::error::Release $RELEASE_TAG already exists; refusing to overwrite it."
+              exit 1
+              ;;
+            *)
+              echo "::error::Could not verify release absence (HTTP $release_status)."
+              exit 1
+              ;;
+          esac
+
+          mapfile -t desktop_tags < <(
+            git ls-remote --refs --tags origin 'refs/tags/desktop-v*' |
+              awk '{sub("refs/tags/", "", $2); print $2}' |
+              grep -E '^desktop-v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$' |
+              grep -Fvx "$RELEASE_TAG" |
+              sort -V
+          )
+
+          baseline_tag="desktop-v0.0.1"
+          baseline_ref_sha="$(
+            git ls-remote --refs --tags origin "refs/tags/$baseline_tag" |
+              awk '{print $1}'
+          )"
+          if [[ -n "$baseline_ref_sha" ]]; then
+            git fetch --no-tags --force origin \
+              "refs/tags/$baseline_tag:refs/release-validation/desktop-baseline"
+            if ! baseline_commit="$(
+              git rev-parse --verify 'refs/release-validation/desktop-baseline^{commit}'
+            )"; then
+              echo "::error::Existing baseline tag $baseline_tag does not resolve to a commit."
+              exit 1
+            fi
+            if ! git merge-base --is-ancestor "$baseline_commit" "$CANDIDATE_SHA"; then
+              echo "::error::Existing baseline tag $baseline_tag is not an ancestor of the candidate."
+              exit 1
+            fi
+          fi
+
+          if (( ${#desktop_tags[@]} == 0 )); then
+            if [[ -n "$baseline_ref_sha" ]]; then
+              echo "::error::The existing desktop baseline was not recognized as a valid product tag."
+              exit 1
+            fi
+            previous_tag="$baseline_tag"
+            echo "baseline-needed=true" >> "$GITHUB_OUTPUT"
+          else
+            previous_tag="${desktop_tags[${#desktop_tags[@]}-1]}"
+            echo "baseline-needed=false" >> "$GITHUB_OUTPUT"
+
+            git fetch --no-tags --force origin \
+              "refs/tags/$previous_tag:refs/release-validation/desktop-previous"
+            if ! previous_commit="$(
+              git rev-parse --verify 'refs/release-validation/desktop-previous^{commit}'
+            )"; then
+              echo "::error::Previous desktop tag $previous_tag does not resolve to a commit."
+              exit 1
+            fi
+            if ! git merge-base --is-ancestor "$previous_commit" "$CANDIDATE_SHA"; then
+              echo "::error::Previous desktop tag $previous_tag is not an ancestor of the candidate."
+              exit 1
+            fi
+          fi
+          echo "previous-tag=$previous_tag" >> "$GITHUB_OUTPUT"
+
+          main_sha="$(git ls-remote origin refs/heads/main | awk '{print $1}')"
+          tag_sha="$(git ls-remote --refs --tags origin "refs/tags/$RELEASE_TAG" | awk '{print $1}')"
+          if [[ "$main_sha" = "$GITHUB_SHA" && -z "$tag_sha" ]]; then
+            echo "push-needed=true" >> "$GITHUB_OUTPUT"
+          elif [[ "$main_sha" = "$CANDIDATE_SHA" && "$tag_sha" = "$CANDIDATE_SHA" ]]; then
+            echo "push-needed=false" >> "$GITHUB_OUTPUT"
+            echo "Exact candidate refs already exist; resuming publication."
+          else
+            echo "::error::Remote state changed or contains a partial/conflicting desktop release."
+            echo "Actual main/tag: ${main_sha:-<absent>}/${tag_sha:-<absent>}"
+            exit 1
+          fi
+
+      - name: Atomically push candidate commit and tag
+        if: steps.remote.outputs.push-needed == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git tag "$RELEASE_TAG" "$CANDIDATE_SHA"
+          refs=(
+            "${CANDIDATE_SHA}:refs/heads/main"
+            "refs/tags/$RELEASE_TAG:refs/tags/$RELEASE_TAG"
+          )
+          if [[ "${{ steps.remote.outputs.baseline-needed }}" == "true" ]]; then
+            git tag desktop-v0.0.1 "$GITHUB_SHA"
+            refs+=("refs/tags/desktop-v0.0.1:refs/tags/desktop-v0.0.1")
+          fi
+          git push --atomic \
+            --force-with-lease="refs/heads/main:$GITHUB_SHA" \
+            origin \
+            "${refs[@]}"
+
+      - name: Resume a missing first-product baseline tag
+        if: >-
+          steps.remote.outputs.push-needed == 'false' &&
+          steps.remote.outputs.baseline-needed == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git tag desktop-v0.0.1 "$GITHUB_SHA"
+          git push origin \
+            "refs/tags/desktop-v0.0.1:refs/tags/desktop-v0.0.1"
+
+      - name: Verify release refs and comparison baseline
+        env:
+          PREVIOUS_TAG: ${{ steps.remote.outputs.previous-tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          main_sha="$(git ls-remote origin refs/heads/main | awk '{print $1}')"
+          tag_sha="$(git ls-remote --refs --tags origin "refs/tags/$RELEASE_TAG" | awk '{print $1}')"
+          previous_sha="$(
+            git ls-remote --refs --tags origin "refs/tags/$PREVIOUS_TAG" |
+              awk '{print $1}'
+          )"
+          test "$main_sha" = "$CANDIDATE_SHA"
+          test "$tag_sha" = "$CANDIDATE_SHA"
+          if [[ -z "$previous_sha" ]]; then
+            echo "::error::Required desktop comparison tag $PREVIOUS_TAG is absent."
+            exit 1
+          fi
+          if [[ "${{ steps.remote.outputs.baseline-needed }}" == "true" &&
+                "$previous_sha" != "$GITHUB_SHA" ]]; then
+            echo "::error::New desktop baseline does not point to the dispatched pre-release commit."
+            exit 1
+          fi
+
+      - name: Compose prepended release guidance
+        shell: bash
+        run: |
+          set -euo pipefail
+          notes_file="$RUNNER_TEMP/desktop-release-prefix.md"
+          introduction="${RELEASE_INTRODUCTION//$'\r'/}"
+          if [[ -n "${introduction//[$' \t\n']/}" ]]; then
+            printf '%s\n\n' "$introduction" > "$notes_file"
+          else
+            : > "$notes_file"
+          fi
+          {
+            echo "## Installation"
+            echo
+            echo "This is an unsigned, unnotarized Apple Silicon (arm64) macOS build."
+            echo "macOS Gatekeeper will warn or block the first launch. After attempting to open Newframe, use **System Settings → Privacy & Security → Open Anyway** only if you trust this download and its published SHA-256 checksum."
+            echo
+            echo "Automatic updates are disabled. Download future desktop releases manually from this repository."
+          } >> "$notes_file"
+          echo "RELEASE_PREFIX_FILE=$notes_file" >> "$GITHUB_ENV"
+
+      - name: Publish the stable GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PREVIOUS_TAG: ${{ steps.remote.outputs.previous-tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          args=(
+            "$RELEASE_TAG"
+            "$ASSET_DIR/$RELEASE_ARTIFACT"
+            "$ASSET_DIR/$RELEASE_CHECKSUM"
+            --repo "$GITHUB_REPOSITORY"
+            --verify-tag
+            --title "Newframe Desktop v$RELEASE_VERSION"
+            --notes-file "$RELEASE_PREFIX_FILE"
+            --generate-notes
+            --notes-start-tag "$PREVIOUS_TAG"
+            --latest
+          )
+          gh release create "${args[@]}"
+
+      - name: Verify published release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          main_sha="$(git ls-remote origin refs/heads/main | awk '{print $1}')"
+          tag_sha="$(git ls-remote --refs --tags origin "refs/tags/$RELEASE_TAG" | awk '{print $1}')"
+          test "$main_sha" = "$CANDIDATE_SHA"
+          test "$tag_sha" = "$CANDIDATE_SHA"
+
+          release_json="$(gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
+            --json isDraft,name,tagName)"
+          latest_tag="$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName --jq '.tagName')"
+          test "$(jq -r '.isDraft' <<< "$release_json")" = "false"
+          test "$(jq -r '.name' <<< "$release_json")" = "Newframe Desktop v$RELEASE_VERSION"
+          test "$(jq -r '.tagName' <<< "$release_json")" = "$RELEASE_TAG"
+          test "$latest_tag" = "$RELEASE_TAG"
+
+          actual_assets="$(
+            gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" \
+              --jq '.assets[].name' | LC_ALL=C sort
+          )"
+          expected_assets="$(printf '%s\n' "$RELEASE_ARTIFACT" "$RELEASE_CHECKSUM" | LC_ALL=C sort)"
+          test "$actual_assets" = "$expected_assets"
