@@ -1,6 +1,6 @@
 {
   "name": "Newframe Companion",
-  "version": "0.0.1",
+  "version": "2026.729.1",
   "manifest_version": 3,
   "minimum_chrome_version": "121",
   "description": "Newframe companion creates an injected connection to the Newframe desktop wallet (required) on macOS, Windows or Linux.",
