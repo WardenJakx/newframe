@@ -60,20 +60,6 @@ jobs:
             exit 1
           fi
 
-      - name: Configure release commit signing
-        env:
-          RELEASE_GPG_PRIVATE_KEY: ${{ secrets.RELEASE_GPG_PRIVATE_KEY }}
-        shell: bash
-        run: |
-          export GNUPGHOME="$RUNNER_TEMP/release-gnupg"
-          mkdir -m 700 "$GNUPGHOME"
-          printf '%s' "$RELEASE_GPG_PRIVATE_KEY" | gpg --batch --import
-
-          git config --local user.name "WardenJakx"
-          git config --local user.email \
-            "114708157+WardenJakx@users.noreply.github.com"
-          echo "GNUPGHOME=$GNUPGHOME" >> "$GITHUB_ENV"
-
       - name: Set up Bun
         id: bun
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
@@ -144,7 +130,10 @@ jobs:
           fi
 
           git add -- apps/newframe/package.json
-          git commit -S -m "release(desktop): $RELEASE_VERSION"
+          git -c user.name=github-actions \
+            -c user.email=41898282+github-actions[bot]@users.noreply.github.com \
+            -c commit.gpgsign=false \
+            commit -m "release(desktop): $RELEASE_VERSION"
 
           candidate_sha="$(git rev-parse HEAD)"
           test "$(git rev-parse HEAD^)" = "$GITHUB_SHA"
@@ -348,7 +337,7 @@ jobs:
           retention-days: 14
 
   publish:
-    name: Push candidate and publish desktop release
+    name: Publish GitHub-signed desktop release
     needs:
       - prepare
       - build
@@ -492,45 +481,79 @@ jobs:
           main_sha="$(git ls-remote origin refs/heads/main | awk '{print $1}')"
           tag_sha="$(git ls-remote --refs --tags origin "refs/tags/$RELEASE_TAG" | awk '{print $1}')"
           if [[ "$main_sha" = "$GITHUB_SHA" && -z "$tag_sha" ]]; then
-            echo "push-needed=true" >> "$GITHUB_OUTPUT"
-          elif [[ "$main_sha" = "$CANDIDATE_SHA" && "$tag_sha" = "$CANDIDATE_SHA" ]]; then
-            echo "push-needed=false" >> "$GITHUB_OUTPUT"
-            echo "Exact candidate refs already exist; resuming publication."
+            echo "commit-needed=true" >> "$GITHUB_OUTPUT"
+            echo "tag-needed=true" >> "$GITHUB_OUTPUT"
+          elif [[ "$main_sha" != "$GITHUB_SHA" && -z "$tag_sha" ]]; then
+            echo "commit-needed=false" >> "$GITHUB_OUTPUT"
+            echo "tag-needed=true" >> "$GITHUB_OUTPUT"
+            echo "Recovering the GitHub-signed commit before creating its release tag."
+          elif [[ "$main_sha" != "$GITHUB_SHA" && "$tag_sha" = "$main_sha" ]]; then
+            echo "commit-needed=false" >> "$GITHUB_OUTPUT"
+            echo "tag-needed=false" >> "$GITHUB_OUTPUT"
+            echo "GitHub-signed main and release tag already exist; resuming publication."
           else
             echo "::error::Remote state changed or contains a partial/conflicting desktop release."
             echo "Actual main/tag: ${main_sha:-<absent>}/${tag_sha:-<absent>}"
             exit 1
           fi
+          echo "main-sha=$main_sha" >> "$GITHUB_OUTPUT"
 
-      - name: Atomically push candidate commit and tag
-        if: steps.remote.outputs.push-needed == 'true'
+      - name: Create or recover the GitHub-signed release commit
+        env:
+          GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
-          git tag "$RELEASE_TAG" "$CANDIDATE_SHA"
-          refs=(
-            "${CANDIDATE_SHA}:refs/heads/main"
-            "refs/tags/$RELEASE_TAG:refs/tags/$RELEASE_TAG"
-          )
+          if [[ "${{ steps.remote.outputs.commit-needed }}" == "true" ]]; then
+            release_commit="$(
+              bash scripts/release/create-github-signed-commit.sh \
+                "$GITHUB_REPOSITORY" \
+                main \
+                "$GITHUB_SHA" \
+                "release(desktop): $RELEASE_VERSION" \
+                apps/newframe/package.json
+            )"
+          else
+            release_commit="${{ steps.remote.outputs.main-sha }}"
+          fi
+
+          git fetch --no-tags origin \
+            +refs/heads/main:refs/remotes/origin/main
+          test "$(git rev-parse origin/main)" = "$release_commit"
+          test "$(git rev-parse "$release_commit^")" = "$GITHUB_SHA"
+          test "$(git rev-parse "$release_commit^{tree}")" = \
+            "$(git rev-parse "$CANDIDATE_SHA^{tree}")"
+          test "$(
+            gh api "repos/$GITHUB_REPOSITORY/commits/$release_commit" \
+              --jq '
+                select(.author.login == "github-actions[bot]") |
+                select(.commit.verification.verified == true) |
+                select(.commit.verification.reason == "valid") |
+                .sha
+              '
+          )" = "$release_commit"
+
+          echo "RELEASE_COMMIT_SHA=$release_commit" >> "$GITHUB_ENV"
+
+      - name: Push release tag and comparison baseline
+        if: >-
+          steps.remote.outputs.tag-needed == 'true' ||
+          steps.remote.outputs.baseline-needed == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          refs=()
+          if [[ "${{ steps.remote.outputs.tag-needed }}" == "true" ]]; then
+            git tag "$RELEASE_TAG" "$RELEASE_COMMIT_SHA"
+            refs+=("refs/tags/$RELEASE_TAG:refs/tags/$RELEASE_TAG")
+          fi
           if [[ "${{ steps.remote.outputs.baseline-needed }}" == "true" ]]; then
             git tag desktop-v0.0.1 "$GITHUB_SHA"
             refs+=("refs/tags/desktop-v0.0.1:refs/tags/desktop-v0.0.1")
           fi
           git push --atomic \
-            --force-with-lease="refs/heads/main:$GITHUB_SHA" \
             origin \
             "${refs[@]}"
-
-      - name: Resume a missing first-product baseline tag
-        if: >-
-          steps.remote.outputs.push-needed == 'false' &&
-          steps.remote.outputs.baseline-needed == 'true'
-        shell: bash
-        run: |
-          set -euo pipefail
-          git tag desktop-v0.0.1 "$GITHUB_SHA"
-          git push origin \
-            "refs/tags/desktop-v0.0.1:refs/tags/desktop-v0.0.1"
 
       - name: Verify release refs and comparison baseline
         env:
@@ -544,8 +567,8 @@ jobs:
             git ls-remote --refs --tags origin "refs/tags/$PREVIOUS_TAG" |
               awk '{print $1}'
           )"
-          test "$main_sha" = "$CANDIDATE_SHA"
-          test "$tag_sha" = "$CANDIDATE_SHA"
+          test "$main_sha" = "$RELEASE_COMMIT_SHA"
+          test "$tag_sha" = "$RELEASE_COMMIT_SHA"
           if [[ -z "$previous_sha" ]]; then
             echo "::error::Required desktop comparison tag $PREVIOUS_TAG is absent."
             exit 1
@@ -607,8 +630,8 @@ jobs:
           set -euo pipefail
           main_sha="$(git ls-remote origin refs/heads/main | awk '{print $1}')"
           tag_sha="$(git ls-remote --refs --tags origin "refs/tags/$RELEASE_TAG" | awk '{print $1}')"
-          test "$main_sha" = "$CANDIDATE_SHA"
-          test "$tag_sha" = "$CANDIDATE_SHA"
+          test "$main_sha" = "$RELEASE_COMMIT_SHA"
+          test "$tag_sha" = "$RELEASE_COMMIT_SHA"
 
           release_json="$(gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
             --json isDraft,name,tagName)"
