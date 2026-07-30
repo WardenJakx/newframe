@@ -36,6 +36,7 @@ function accountPort(overrides: Record<string, unknown> = {}) {
 function createOperations(overrides: Partial<import('./walletWorkflows').WalletWorkflowDependencies> = {}) {
   return workflows.createWalletWorkflowOperations({
     accounts: accountPort(),
+    assetRateService: { get: mock(), observe: mock() },
     app: { exit: mock(), quit: mock(), relaunch: mock() },
     biometrics: {
       summary: () => ({
@@ -110,6 +111,63 @@ function createOperations(overrides: Partial<import('./walletWorkflows').WalletW
 }
 
 describe('wallet workflows with fresh canonical state', () => {
+  it.each(['saved-data', 'all-settings-data'] as const)(
+    'clears canonical asset rates for the %s reset path',
+    (scope) => {
+      freshStore({
+        assetRates: {
+          token: { usdRate: 2, source: 'zerion', observedAt: 1 }
+        },
+        tokens: { byId: {}, accountTokenIds: {} },
+        balances: {}
+      })
+
+      createOperations().resetWallet(scope)
+      expect(activeStore.getState().main.assetRates).toEqual({})
+    }
+  )
+
+  it('forwards the complete Zerion observation batch exactly once through the rate service', async () => {
+    const accountId = address
+    freshStore({
+      currentAccount: accountId,
+      accounts: { [accountId]: { id: accountId, address } },
+      networks: { ethereum: { 1: { id: 1, on: true } } }
+    })
+    const assetRates = [
+      {
+        chainId: 1,
+        address: '0x0000000000000000000000000000000000000001',
+        usdRate: 2
+      }
+    ]
+    const observe = mock()
+    const refreshBalances = mock()
+    const operations = createOperations({
+      accounts: accountPort({ refreshBalances }),
+      assetRateService: { get: mock(), observe },
+      getTokenDiscoveryProvider: () => ({
+        ok: true,
+        provider: {
+          getWalletPortfolio: mock(async () => ({
+            totalValue: 0,
+            absoluteChange1d: 0,
+            percentChange1d: 0,
+            chainValues: {},
+            tokens: [],
+            balances: [],
+            assetRates
+          }))
+        }
+      })
+    } as never)
+
+    await expect(operations.refreshPortfolio()).resolves.toBe(true)
+    expect(observe).toHaveBeenCalledTimes(1)
+    expect(observe).toHaveBeenCalledWith('zerion', assetRates)
+    expect(refreshBalances).toHaveBeenCalledWith(address)
+  })
+
   it('checks address nonces only on enabled chains and reports partial provider failure', async () => {
     const secondAddress = '0x3333333333333333333333333333333333333333'
     freshStore({

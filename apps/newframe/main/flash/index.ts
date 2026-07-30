@@ -26,6 +26,7 @@ import {
   type FlashOrderRecord,
   type FlashOrderStatus
 } from '../../domain/flash/orders.js'
+import { NATIVE_CURRENCY } from '../../domain/token/constants.js'
 import {
   FlashCancelOrderRequestSchema,
   FlashGetOrderRequestSchema,
@@ -42,6 +43,8 @@ import {
 } from './contracts.js'
 import { FlashOrderStream, type FlashOrderFrameType, type FlashWebSocketFactory } from './websocket.js'
 
+import type { AssetRateInput } from '../../domain/state/rate.js'
+import type { AssetRateService } from '../features/assetRates/service.js'
 import type { Token } from '../store/state/index.js'
 
 export interface FlashOrderPositionUpdate {
@@ -758,6 +761,41 @@ export function normalizeFlashQuoteResponse(raw: unknown, request: FlashQuoteReq
   }
 
   return FlashQuoteSchema.parse(quote)
+}
+
+function quoteAssetRateInputs(quote: FlashQuote): AssetRateInput[] {
+  const legs = [
+    { amount: quote.inputAmount, asset: quote.spentAsset, notional: quote.inputNotional },
+    { amount: quote.outputAmount, asset: quote.receiveAsset, notional: quote.outputNotional }
+  ]
+
+  return legs.flatMap(({ amount, asset, notional }) => {
+    const amountNumber = Number(amount)
+    const notionalNumber = Number(notional)
+    const usdRate = notionalNumber / amountNumber
+
+    if (
+      !Number.isFinite(amountNumber) ||
+      amountNumber <= 0 ||
+      !Number.isFinite(notionalNumber) ||
+      notionalNumber <= 0 ||
+      !Number.isFinite(usdRate) ||
+      usdRate <= 0
+    ) {
+      return []
+    }
+
+    return [
+      {
+        chainId: asset.chainId,
+        address:
+          normalizeAddress(asset.address) === FLASH_NATIVE_ETH_TOKEN_ADDRESS
+            ? NATIVE_CURRENCY
+            : normalizeAddress(asset.address),
+        usdRate
+      }
+    ]
+  })
 }
 
 async function flashRequest(path: string, init: RequestInit = {}) {
@@ -1762,10 +1800,12 @@ async function cancelOrder(state: FlashServiceState, request: FlashCancelOrderRe
 }
 
 export function createFlashService({
+  assetRateService,
   createWebSocket,
   positionSync,
   store
 }: {
+  assetRateService: Pick<AssetRateService, 'observe'>
   createWebSocket?: FlashWebSocketFactory
   positionSync?: FlashPositionSync
   store: Pick<CanonicalStoreReader, 'getState'>
@@ -1773,7 +1813,20 @@ export function createFlashService({
   const state = createFlashServiceState(store, positionSync, createWebSocket)
 
   return {
-    quote,
+    quote: async (request: FlashQuoteRequest) => {
+      const result = await quote(request)
+      const observations = quoteAssetRateInputs(result.quote)
+
+      if (observations.length) {
+        try {
+          assetRateService.observe('flash', observations)
+        } catch {
+          // Rate observations are best-effort and must never change a successful quote response.
+        }
+      }
+
+      return result
+    },
     submitOrder: (request: FlashSubmitOrderRequest) => submitOrder(state, request),
     listOrders: (request: FlashListOrdersRequest = {}) => listOrders(state, request),
     getOrder: (request: FlashGetOrderRequest) => getOrder(state, request),

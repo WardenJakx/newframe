@@ -108,15 +108,16 @@ function initializeTradeState(balances = [wethBalance()], customTokens: any[] = 
             nativeCurrency: {
               symbol: 'ETH',
               name: 'Ether',
-              decimals: 18,
-              usd: { price: 1000, change24hr: 0 }
+              decimals: 18
             }
           }
         }
       },
-      rates: {
-        [FLASH_USDC_ADDRESS]: {
-          usd: { price: 1, change24hr: 0 }
+      assetRates: {
+        [`${FLASH_ANVIL_CHAIN_ID}:${FLASH_USDC_ADDRESS}`]: {
+          usdRate: 1,
+          source: 'zerion',
+          observedAt: 1
         }
       },
       runtime: {
@@ -320,7 +321,7 @@ describe('Trade', () => {
           ...mirrored.balances,
           [sender.address]: mirrored.balances[sender.address].map((balance) => ({ ...balance }))
         },
-        rates: { ...mirrored.rates },
+        assetRates: { ...mirrored.assetRates },
         tokens: { ...mirrored.tokens, byId: { ...mirrored.tokens.byId } }
       })
     })
@@ -390,7 +391,7 @@ describe('Trade', () => {
           ...mirrored.balances,
           [sender.address]: mirrored.balances[sender.address].map((balance) => ({ ...balance }))
         },
-        rates: { ...mirrored.rates }
+        assetRates: { ...mirrored.assetRates }
       })
     })
     await act(async () => timers.advanceTimersByTime(500))

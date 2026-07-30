@@ -4,12 +4,11 @@ import { createObserver, loadAssets } from './assets'
 import store from '../store'
 
 const account = '0x3ba7bd5cd1c19f678d9c8edfa043de5a57570e06'
-const nativeCurrency = (usd: { price: number }) => ({
+const nativeCurrency = () => ({
   decimals: 18,
   icon: '',
   name: 'Ether',
-  symbol: 'ETH',
-  usd
+  symbol: 'ETH'
 })
 
 function setToken(state: any, balance: { address: string; chainId: number }, symbol: string) {
@@ -42,7 +41,6 @@ afterEach(() => {
 
 describe('#loadAssets', () => {
   it('loads native currency assets', () => {
-    const priceData = { usd: { price: 3815.91 } }
     const balance = {
       symbol: 'ETH',
       balance: '0xe7',
@@ -52,7 +50,7 @@ describe('#loadAssets', () => {
     }
 
     store.setState((state: any) => {
-      state.main.networksMeta.ethereum[1] = { nativeCurrency: nativeCurrency(priceData.usd) }
+      state.main.networksMeta.ethereum[1] = { nativeCurrency: nativeCurrency() }
       state.main.balances[account] = [balance]
     })
 
@@ -62,7 +60,7 @@ describe('#loadAssets', () => {
           ...balance,
           decimals: 18,
           name: 'Ether',
-          currencyInfo: nativeCurrency(priceData.usd)
+          currencyInfo: nativeCurrency()
         }
       ],
       erc20: []
@@ -80,7 +78,11 @@ describe('#loadAssets', () => {
     }
 
     store.setState((state: any) => {
-      state.main.rates[balance.address] = priceData
+      state.main.assetRates[`1:${balance.address}`] = {
+        usdRate: priceData.usd.price,
+        source: 'zerion',
+        observedAt: 1
+      }
       state.main.balances[account] = [balance]
       setToken(state, balance, balance.symbol)
     })
@@ -173,7 +175,6 @@ describe('#createObserver', () => {
   })
 
   it('invokes the handler when the account is holding native currency assets', () => {
-    const priceData = { usd: { price: 3815.91 } }
     const balance = {
       symbol: 'ETH',
       balance: '0xe7',
@@ -182,7 +183,7 @@ describe('#createObserver', () => {
     }
 
     store.setState((state: any) => {
-      state.main.networksMeta.ethereum[1] = { nativeCurrency: nativeCurrency(priceData.usd) }
+      state.main.networksMeta.ethereum[1] = { nativeCurrency: nativeCurrency() }
       state.main.balances[account] = [balance]
     })
 
@@ -194,7 +195,7 @@ describe('#createObserver', () => {
           ...balance,
           decimals: 18,
           name: 'Ether',
-          currencyInfo: nativeCurrency(priceData.usd)
+          currencyInfo: nativeCurrency()
         }
       ],
       erc20: []
@@ -211,7 +212,11 @@ describe('#createObserver', () => {
     }
 
     store.setState((state: any) => {
-      state.main.rates[balance.address] = priceData
+      state.main.assetRates[`1:${balance.address}`] = {
+        usdRate: priceData.usd.price,
+        source: 'zerion',
+        observedAt: 1
+      }
       state.main.balances[account] = [balance]
       setToken(state, balance, balance.symbol)
     })

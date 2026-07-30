@@ -20,6 +20,7 @@ const renderRequest = (req: any) =>
 
 beforeEach(() => {
   resetStateMirrorForTests({
+    assetRates: {},
     networks: {
       ethereum: {
         137: { name: 'Polygon', isTestnet: false }
@@ -224,6 +225,7 @@ describe('confirm', () => {
   it('uses the canonical persisted token image for simulated effects', () => {
     const address = '0x0000000000000000000000000000000000000001'
     resetStateMirrorForTests({
+      assetRates: {},
       networks: { ethereum: { 137: { name: 'Polygon', isTestnet: false } } },
       networksMeta: { ethereum: { 137: { nativeCurrency: { symbol: 'MATIC' } } } },
       origins: { 'test-origin': { name: 'Test Dapp' } },

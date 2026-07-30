@@ -27,7 +27,7 @@ const EMPTY_ACCOUNTS: Record<string, SideTrayWalletAccount> = {}
 const EMPTY_BALANCES: Balance[] = []
 const EMPTY_NETWORKS: Record<string | number, SideTrayWalletEthereumNetwork> = {}
 const EMPTY_NETWORKS_META: Record<string | number, SideTrayWalletEthereumNetworkMeta> = {}
-const EMPTY_RATES: SideTrayRendererState['rates'] = {}
+const EMPTY_ASSET_RATES: SideTrayRendererState['assetRates'] = {}
 
 function createSelectableBalancesSelector() {
   let previousBalances: Balance[] | undefined
@@ -99,12 +99,12 @@ export function createSideTrayWalletSelector() {
     const globalTokenIds = new Set(globalTokens.map(toTokenId))
     const networks = state.networks.ethereum || EMPTY_NETWORKS
     const networksMeta = state.networksMeta.ethereum || EMPTY_NETWORKS_META
-    const rates = state.rates || EMPTY_RATES
+    const assetRates = state.assetRates || EMPTY_ASSET_RATES
     const tokens = state.tokens
     const runtime = state.runtime
     const balanceSummaries = selectBalanceSummaries({
       rawBalances,
-      rates,
+      assetRates,
       tokens,
       networks,
       networksMeta,

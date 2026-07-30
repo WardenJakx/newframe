@@ -17,6 +17,8 @@ import { useWalletSelector } from '../../state/useAppSelector'
 import type { TrayRendererState } from '../state'
 import { useTrayNotification, type TrayNotifier } from '../notification'
 import type { TransactionRequest } from '../../../contracts/requests'
+import { resolveAssetRate } from '../../../domain/asset'
+import { NATIVE_CURRENCY } from '../../../domain/token/constants'
 
 const FEE_WARNING_THRESHOLD_USD = 50
 const isNotificationData = (value: unknown): value is Record<string, unknown> =>
@@ -38,6 +40,7 @@ type NotificationProps = {
   mute: TrayRendererState['mute']
   networks: TrayRendererState['networks']
   networksMeta: TrayRendererState['networksMeta']
+  assetRates: TrayRendererState['assetRates']
 }
 
 function Shell({ children, dismiss }: { children: ReactNode; dismiss: TrayNotifier }) {
@@ -164,7 +167,14 @@ function NoSignerWarning({ dismiss }: NotificationProps) {
 
 const displayUSD = (usd: number) => (Math.ceil(usd * 100) / 100).toFixed(2)
 
-function SignerCompatibilityWarning({ data, dismiss, mute, networks, networksMeta }: NotificationProps) {
+function SignerCompatibilityWarning({
+  data,
+  dismiss,
+  mute,
+  networks,
+  networksMeta,
+  assetRates
+}: NotificationProps) {
   const { req, compatibility = {}, chain = { type: 'ethereum', id: 0 } } = data
   const { signer = '', tx = '' } = compatibility
 
@@ -174,7 +184,12 @@ function SignerCompatibilityWarning({ data, dismiss, mute, networks, networksMet
     const isTestnet = networks[chain.type]?.[chainId]?.isTestnet
     const nativeCurrency = networksMeta[chain.type]?.[chainId]?.nativeCurrency
     const currentSymbol = nativeCurrency?.symbol || '?'
-    const nativeUSD = nativeCurrency?.usd && !isTestnet ? nativeCurrency.usd.price : undefined
+    const nativeUSD = !isTestnet
+      ? resolveAssetRate(
+          { chainId, address: NATIVE_CURRENCY, nativeTicker: nativeCurrency?.symbol },
+          assetRates
+        )?.usdRate
+      : undefined
     const hasNativeUSD = typeof nativeUSD === 'number'
     const gasLimit = toBigInt(req.data?.gasLimit) ?? 0n
     const maxFeePerGas = toBigInt(usesBaseFee(req.data) ? req.data.maxFeePerGas : req.data?.gasPrice) ?? 0n
@@ -260,7 +275,8 @@ const selectNotificationState = (state: TrayRendererState) => ({
       : undefined,
   mute: state.mute,
   networks: state.networks,
-  networksMeta: state.networksMeta
+  networksMeta: state.networksMeta,
+  assetRates: state.assetRates
 })
 
 export default function Notification() {
@@ -278,7 +294,8 @@ export default function Notification() {
     dismiss: local.notify,
     mute: state.mute,
     networks: state.networks,
-    networksMeta: state.networksMeta
+    networksMeta: state.networksMeta,
+    assetRates: state.assetRates
   }
 
   if (local.type === 'gasFeeWarning') return <GasFeeWarning {...props} />

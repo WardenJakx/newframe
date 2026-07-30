@@ -64,15 +64,15 @@ describe('rendererStore', () => {
     const initialSelected = getStateMirrorForTests().selected
     const listener = mock()
     const unsubscribe = walletRendererStateStoreReadApi.subscribe(listener)
-    const rates = { token: { usd: { price: 1, change24hr: 0 } } }
+    const assetRates = { token: { usdRate: 1, source: 'zerion' as const, observedAt: 1 } }
 
-    expect(applyStateMessage(update({ currentAccount: 'new', rates }))).toEqual({
+    expect(applyStateMessage(update({ currentAccount: 'new', assetRates }))).toEqual({
       status: 'applied',
       messageType: 'update',
       revision: 1
     })
 
-    expect(getStateMirrorForTests()).toMatchObject({ currentAccount: 'new', rates })
+    expect(getStateMirrorForTests()).toMatchObject({ currentAccount: 'new', assetRates })
     expect(getStateMirrorForTests().selected).toBe(initialSelected)
     expect(listener).toHaveBeenCalledTimes(1)
 

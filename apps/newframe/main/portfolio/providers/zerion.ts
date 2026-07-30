@@ -4,7 +4,8 @@ import type {
   PortfolioRefreshOptions,
   PortfolioSnapshot
 } from '../types.js'
-import type { Balance, Rate, Token } from '../../store/state/index.js'
+import type { Balance, Token } from '../../store/state/index.js'
+import type { AssetRateInput } from '../../../domain/state/rate.js'
 import ProviderRequestPolicy, { type ProviderRequestPolicyOptions } from '../requestPolicy.js'
 import { NATIVE_CURRENCY } from '../../../domain/token/constants.js'
 import { formatUnits } from '../../../domain/units.js'
@@ -328,16 +329,16 @@ function getPositionBalance(
   }
 }
 
-function getPositionRate(position: ZerionPosition): Rate | undefined {
+function getPositionRate(position: ZerionPosition) {
   const price = position.attributes?.price
   if (typeof price !== 'number') return undefined
+  const change24hr =
+    position.attributes?.changes?.percent_1d ??
+    position.attributes?.fungible_info?.market_data?.changes?.percent_1d
 
   return {
-    price,
-    change24hr:
-      position.attributes?.changes?.percent_1d ??
-      position.attributes?.fungible_info?.market_data?.changes?.percent_1d ??
-      0
+    usdRate: price,
+    ...(typeof change24hr === 'number' ? { change24hr } : {})
   }
 }
 
@@ -377,39 +378,25 @@ function extractBalances(
   return Array.from(balances.values())
 }
 
-function extractRates(
+function extractAssetRates(
   positions: ZerionPosition[],
   zerionChainIds: string[],
   zerionToFrameChainIds: Record<string, number>
-) {
+): AssetRateInput[] {
   const allowedChains = new Set(zerionChainIds)
-  const rates: Record<Address, { usd: Rate }> = {}
+  const rates: AssetRateInput[] = []
 
   positions.forEach((position) => {
-    const token = getPositionToken(position, allowedChains, zerionToFrameChainIds)
+    const chainId = getPositionChainId(position, allowedChains, zerionToFrameChainIds)
     const rate = getPositionRate(position)
-    if (token && rate) {
-      rates[token.address as Address] = { usd: rate }
-    }
-  })
+    if (!chainId || !rate) return
 
-  return rates
-}
-
-function extractNativeRates(
-  positions: ZerionPosition[],
-  zerionChainIds: string[],
-  zerionToFrameChainIds: Record<string, number>
-) {
-  const allowedChains = new Set(zerionChainIds)
-  const rates: Record<number, Rate> = {}
-
-  positions.forEach((position) => {
-    const balance = getPositionNativeBalance(position, allowedChains, zerionToFrameChainIds)
-    const rate = getPositionRate(position)
-    if (balance && rate) {
-      rates[balance.chainId] = rate
-    }
+    const implementationAddress = getPositionImplementation(position)?.address?.toLowerCase()
+    const address =
+      isEvmAddress(implementationAddress) && implementationAddress !== NATIVE_CURRENCY
+        ? implementationAddress
+        : NATIVE_CURRENCY
+    rates.push({ chainId, address, ...rate })
   })
 
   return rates
@@ -442,8 +429,7 @@ function emptyPortfolioSnapshot(): PortfolioSnapshot {
     chainValues: {},
     tokens: [],
     balances: [],
-    rates: {},
-    nativeRates: {}
+    assetRates: []
   }
 }
 
@@ -495,8 +481,7 @@ export default class ZerionPortfolioProvider implements PortfolioProvider {
       ),
       tokens: extractTokens(positions, zerionChainIds, zerionToFrameChainIds),
       balances: extractBalances(positions, zerionChainIds, zerionToFrameChainIds),
-      rates: extractRates(positions, zerionChainIds, zerionToFrameChainIds),
-      nativeRates: extractNativeRates(positions, zerionChainIds, zerionToFrameChainIds)
+      assetRates: extractAssetRates(positions, zerionChainIds, zerionToFrameChainIds)
     }
   }
 

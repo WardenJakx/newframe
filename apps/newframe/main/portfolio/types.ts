@@ -1,4 +1,5 @@
-import type { Balance, Rate, Token } from '../store/state/index.js'
+import type { Balance, Token } from '../store/state/index.js'
+import type { AssetRateInput } from '../../domain/state/rate.js'
 
 export interface PortfolioRefreshOptions {
   sync?: boolean
@@ -11,8 +12,7 @@ export interface PortfolioSnapshot {
   chainValues: Record<number, number>
   tokens: Token[]
   balances: Balance[]
-  rates: Record<Address, { usd: Rate }>
-  nativeRates: Record<number, Rate>
+  assetRates: AssetRateInput[]
 }
 
 export interface PortfolioChainImage {

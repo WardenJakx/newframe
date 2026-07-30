@@ -69,16 +69,17 @@ function initializeSendState(balances: any[] = [nativeBalance()], customTokens: 
             nativeCurrency: {
               symbol: 'ETH',
               name: 'Ether',
-              decimals: 18,
-              usd: { price: 1000, change24hr: 0 }
+              decimals: 18
             },
             primaryColor: 'accent1'
           }
         }
       },
-      rates: {
-        [tokenAddress]: {
-          usd: { price: 2, change24hr: 0 }
+      assetRates: {
+        [`${chainId}:${tokenAddress}`]: {
+          usdRate: 2,
+          source: 'zerion',
+          observedAt: 1
         }
       },
       runtime: {
@@ -150,6 +151,22 @@ describe('Send', () => {
     render(<Send assetId={`${chainId}:${tokenAddress}`} />)
 
     expect(screen.getByRole('button', { name: 'Select send token' }).textContent).toContain('USDC')
+  })
+
+  it('renders an unknown fiat value when the selected asset has no rate', () => {
+    render(<Send assetId={nativeAssetId} />)
+
+    expect(screen.getByText('—')).toBeTruthy()
+    expect(screen.queryByText('$0.00')).toBeNull()
+  })
+
+  it('renders a fiat notional when the selected asset has a resolved rate', () => {
+    initializeSendState([nativeBalance(), tokenBalance()])
+
+    render(<Send assetId={`${chainId}:${tokenAddress}`} />)
+    fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '2' } })
+
+    expect(screen.getByText('$4.00')).toBeTruthy()
   })
 
   it('searches and selects a custom token with no balance', async () => {

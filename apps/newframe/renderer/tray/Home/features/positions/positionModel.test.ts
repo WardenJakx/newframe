@@ -15,7 +15,7 @@ const balance = (symbol: string, totalValue: number, address = symbol) => ({
   tokenBalance: 1,
   totalValue,
   unformattedBalance: 1,
-  usdRate: { price: totalValue }
+  rate: { usdRate: totalValue, source: 'fixed' as const }
 })
 
 describe('createPositionGroups', () => {

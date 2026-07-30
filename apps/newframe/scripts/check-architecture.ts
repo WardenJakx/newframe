@@ -335,6 +335,18 @@ export function checkDependencyDirection(file: string, source: string) {
   return violations
 }
 
+export function checkAssetRateMutationAuthority(file: string, source: string) {
+  if (!productionMain(file) || !/(?:\.\s*|\b)setAssetRates\s*\(/.test(source)) return []
+
+  const allowed =
+    under(path.join('apps', 'newframe', 'main', 'store'))(file) ||
+    file === path.join('apps', 'newframe', 'main', 'features', 'assetRates', 'service.ts')
+
+  return allowed
+    ? []
+    : [`${file}: canonical asset-rate mutation is restricted to the asset-rate service and store`]
+}
+
 async function main() {
   for (const removedRoot of ['app', 'resources']) {
     if (existsSync(path.join(appRoot, removedRoot))) {
@@ -348,6 +360,7 @@ async function main() {
 
   for (const { file, source } of files) {
     violations.push(...checkDependencyDirection(file, source))
+    violations.push(...checkAssetRateMutationAuthority(file, source))
     for (const rule of rules) {
       if (!rule.files(file)) continue
       const match = source.match(rule.pattern)

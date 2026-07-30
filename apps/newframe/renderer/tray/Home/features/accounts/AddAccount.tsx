@@ -119,7 +119,7 @@ export function AddAccount({
       ledger: state.ledger,
       networks: state.networks?.ethereum || EMPTY_RECORD,
       networksMeta: state.networksMeta?.ethereum || EMPTY_RECORD,
-      rates: state.rates || EMPTY_RECORD,
+      assetRates: state.assetRates || EMPTY_RECORD,
       tokens: state.tokens,
       showLocalNameWithENS: !!state.showLocalNameWithENS,
       showTestnets: !!state.showTestnets,
@@ -276,13 +276,14 @@ export function AddAccount({
     if (!Array.isArray(rawBalances) || rawBalances.length === 0) return '---'
     const balances = selectBalanceSummaries({
       rawBalances,
-      rates: shared.rates,
+      assetRates: shared.assetRates,
       tokens: shared.tokens,
       networks: shared.networks,
       networksMeta: shared.networksMeta,
       includeChain: (chain) => (!chain.isTestnet || shared.showTestnets) && !!chain.on,
       cacheKey: account.address
     })
+    if (balances.length > 0 && !balances.some((balance) => balance.hasPrice)) return '—'
     const total = balances.reduce((sum, balance) => sum + balance.totalValue, 0)
     return `$${formatUsdRate(total, 2)}`
   }

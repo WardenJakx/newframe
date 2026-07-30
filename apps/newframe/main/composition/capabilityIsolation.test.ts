@@ -5,6 +5,11 @@ import { v5 as uuidv5 } from 'uuid'
 import type { FlashQuoteRequest } from '../../contracts/operations'
 import type { TransactionRequest } from '../../contracts/requests'
 import { erc20Interface } from '../../domain/evm'
+import {
+  FLASH_BASE_USDC_ADDRESS,
+  FLASH_BASE_WETH_ADDRESS,
+  FLASH_WETH_ADDRESS
+} from '../../domain/flash/constants'
 import { GasFeesSource, type TransactionData } from '../../domain/transaction'
 import { checkExistingNonceGas } from '../provider/helpers'
 import createCanonicalStore from '../store/createCanonicalStore'
@@ -134,6 +139,77 @@ function createStartedProductionGraph() {
   app.start()
   return { app, capabilities, store }
 }
+
+it('routes Flash quote rates through the graph-owned asset rate service', async () => {
+  const store = createCanonicalStore(memoryStorage).store
+  const capabilities = createProductionCapabilities(store, createCapabilityAdapters())
+  const originalFetch = globalThis.fetch
+  const originalEnv = { ...process.env }
+
+  process.env.FRAME_PROFILE = 'prod' as any
+  process.env.NODE_ENV = 'production'
+  globalThis.fetch = mock(async () => {
+    return new Response(
+      JSON.stringify({
+        quoteId: 'production-rate-quote',
+        from: { asset: 'target', amount: '2', notional: '4800' },
+        to: { asset: 'contra', amount: '4800', notional: '4800' }
+      }),
+      { status: 200, headers: { 'content-type': 'application/json' } }
+    )
+  }) as unknown as typeof fetch
+
+  try {
+    const targetAsset = {
+      id: `8453:${FLASH_BASE_WETH_ADDRESS.toLowerCase()}`,
+      address: FLASH_BASE_WETH_ADDRESS,
+      chainId: 8453,
+      decimals: 18,
+      isNative: false,
+      name: 'Wrapped Ether',
+      symbol: 'WETH'
+    }
+    const contraAsset = {
+      id: `8453:${FLASH_BASE_USDC_ADDRESS.toLowerCase()}`,
+      address: FLASH_BASE_USDC_ADDRESS,
+      chainId: 8453,
+      decimals: 6,
+      isNative: false,
+      name: 'USD Coin',
+      symbol: 'USDC'
+    }
+
+    await capabilities.flashService.quote({
+      accountAddress: '0x0000000000000000000000000000000000000001',
+      chainId: 8453,
+      contraAsset,
+      inputAmount: '2',
+      orderType: 'market',
+      qty: '2',
+      side: 'sell',
+      slippage: '0.50',
+      targetAsset
+    } as unknown as FlashQuoteRequest)
+
+    expect(
+      capabilities.assetRateService.get({
+        chainId: 1,
+        address: FLASH_WETH_ADDRESS.toLowerCase()
+      })
+    ).toEqual({
+      observedAt: 42,
+      source: 'flash',
+      usdRate: 2400
+    })
+    expect(store.getState().main.assetRates).toEqual({
+      ETH: { observedAt: 42, source: 'flash', usdRate: 2400 }
+    })
+  } finally {
+    capabilities.flashService.dispose()
+    globalThis.fetch = originalFetch
+    process.env = originalEnv
+  }
+})
 
 it('keeps real production simulation metadata projections isolated by graph', async () => {
   const first = createStartedProductionGraph()

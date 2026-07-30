@@ -122,8 +122,7 @@ describe('#addNetwork', () => {
           symbol: 'MATIC',
           name: '',
           icon: '',
-          decimals: 18,
-          usd: { price: 0, change24hr: 0 }
+          decimals: 18
         },
         gas: {
           price: {

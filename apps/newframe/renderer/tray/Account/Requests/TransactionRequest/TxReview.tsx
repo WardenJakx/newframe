@@ -19,7 +19,8 @@ import { toBigInt } from '../../../../../domain/units'
 import { tokenForId, tokenImageSource } from '../../../../../domain/token'
 import TransactionInformation, { shortAddress } from './TransactionInformation'
 import type { TransactionInformationDetailRow } from './TransactionInformation'
-import { useNetwork, useNetworkMetadata, useOriginName, useTokens } from '../state'
+import { useAssetRate, useNetwork, useNetworkMetadata, useOriginName, useTokens } from '../state'
+import { NATIVE_CURRENCY } from '../../../../../domain/token/constants'
 import { useRequestView } from '../../../requestView'
 import type { RequestViewState } from '../../../requestView'
 import type { TransactionRequest } from '../../../../../contracts/requests'
@@ -93,7 +94,12 @@ export function TxFeeSummary(props: TxFeeSummaryProps) {
 
   const { req, chain, nativeCurrency, isTestnet } = props
   const paidFee = getPaidTransactionFee(req)
-  const nativeCurrencyRate = !isTestnet ? nativeCurrency.usd : undefined
+  const resolvedNativeRate = useAssetRate({
+    chainId: chain.id,
+    address: NATIVE_CURRENCY,
+    nativeTicker: nativeCurrency.symbol
+  })
+  const nativeCurrencyRate = !isTestnet ? resolvedNativeRate : undefined
 
   const maxGas = toBigInt(req.data.gasLimit) ?? 0n
   const maxFeePerGas = toBigInt(req.data[usesBaseFee(req.data) ? 'maxFeePerGas' : 'gasPrice']) ?? 0n

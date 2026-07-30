@@ -75,7 +75,7 @@ describe('useWalletSelector', () => {
     const firstSelection = selections[0]
 
     act(() => {
-      applyStateMessage(update({ rates: { token: { usd: { price: 1, change24hr: 0 } } } }))
+      applyStateMessage(update({ assetRates: { token: { usdRate: 1, source: 'zerion', observedAt: 1 } } }))
     })
     expect(selections).toHaveLength(1)
 

@@ -17,6 +17,7 @@ import {
   type PersistedCanonicalState
 } from './persist/schema'
 import createInitialState from './state'
+import { createTestStore } from '../../test/support/createTestStore'
 
 class MemoryPersistence implements PersistenceStoragePort {
   readonly values: Map<string, unknown>
@@ -195,6 +196,57 @@ describe('canonical persistence lifecycle', () => {
 })
 
 describe('canonical persisted state contract', () => {
+  it('discards legacy rate caches and nested native USD values for versions 2 through 4', () => {
+    for (const version of [2, 3, 4]) {
+      const legacy = selectPersistedState(canonicalState()) as any
+      legacy.main.rates = { legacy: { usd: { price: 2, change24hr: 0 } } }
+      legacy.main.assetRates = {
+        stale: { usdRate: 3, source: 'zerion', observedAt: 1 }
+      }
+      legacy.main.networksMeta.ethereum[1].nativeCurrency.usd = {
+        price: 0,
+        change24hr: 0
+      }
+
+      const migrated = migratePersistedState(legacy, version) as any
+      expect(migrated.main.assetRates).toEqual({})
+      expect(migrated.main).not.toHaveProperty('rates')
+      expect(migrated.main.networksMeta.ethereum[1].nativeCurrency).not.toHaveProperty('usd')
+    }
+  })
+
+  it('persists variable snapshots, excludes fixed keys, and clears rates with saved data', () => {
+    const durable = canonicalState()
+    durable.main.assetRates['1:0x0000000000000000000000000000000000000001'] = {
+      usdRate: 2,
+      source: 'zerion',
+      observedAt: 10
+    }
+    durable.main.assetRates.USDC = {
+      usdRate: 0.9,
+      source: 'zerion',
+      observedAt: 10
+    }
+
+    const persisted = selectPersistedState(durable)
+    expect(persisted.main.assetRates).toEqual({
+      '1:0x0000000000000000000000000000000000000001': {
+        usdRate: 2,
+        source: 'zerion',
+        observedAt: 10
+      }
+    })
+    expect(mergePersistedState(persisted, canonicalState()).main.assetRates).toEqual(
+      persisted.main.assetRates!
+    )
+
+    const store = createTestStore({
+      main: { assetRates: structuredClone(durable.main.assetRates) }
+    })
+    store.getState().resetSavedData()
+    expect(store.getState().main.assetRates).toEqual({})
+  })
+
   it('projects durable state and merges it while keeping runtime-owned fields fresh', () => {
     const durable = canonicalState()
     const id = '0x1111111111111111111111111111111111111111'
@@ -209,7 +261,12 @@ describe('canonical persisted state contract', () => {
         displayBalance: '42'
       }
     ]
-    durable.main.rates[id] = { usd: { price: 123, change24hr: 4 } }
+    durable.main.assetRates[`1:${id}`] = {
+      usdRate: 123,
+      change24hr: 4,
+      source: 'zerion',
+      observedAt: 1
+    }
     durable.main.signers.runtime = { id: 'runtime' } as never
     durable.main.networks.ethereum[1].connection.primary.connected = true
     ;(durable.main.networksMeta.ethereum[1] as any).blockHeight = 123
@@ -227,7 +284,7 @@ describe('canonical persisted state contract', () => {
         balances: projected.balances,
         connected: projected.networks.ethereum[1].connection.primary.connected,
         networkBlockHeight: projected.networksMeta.ethereum[1].blockHeight,
-        rates: projected.rates,
+        assetRates: projected.assetRates,
         runtime: projected.runtime,
         signers: projected.signers
       },
@@ -236,7 +293,7 @@ describe('canonical persisted state contract', () => {
         appLock: merged.main.appLock,
         balances: merged.main.balances,
         currentAccount: merged.main.currentAccount,
-        rates: merged.main.rates,
+        assetRates: merged.main.assetRates,
         runtime: merged.main.runtime
       }
     }).toEqual({
@@ -256,7 +313,7 @@ describe('canonical persisted state contract', () => {
         balances: durable.main.balances,
         connected: false,
         networkBlockHeight: undefined,
-        rates: durable.main.rates,
+        assetRates: durable.main.assetRates,
         runtime: undefined,
         signers: undefined
       },
@@ -275,7 +332,7 @@ describe('canonical persisted state contract', () => {
         appLock: fresh.main.appLock,
         balances: durable.main.balances,
         currentAccount: id,
-        rates: durable.main.rates,
+        assetRates: durable.main.assetRates,
         runtime: fresh.main.runtime
       }
     })
@@ -284,9 +341,12 @@ describe('canonical persisted state contract', () => {
   it('owns supported migration equivalence classes and rejects invalid inputs', () => {
     const v3 = selectPersistedState(canonicalState()) as any
     delete v3.main.balances
-    delete v3.main.rates
+    delete v3.main.assetRates
 
-    expect(migratePersistedState(v3, 3)).toEqual(v3)
+    expect(migratePersistedState(v3, 3)).toEqual({
+      ...v3,
+      main: { ...v3.main, assetRates: {} }
+    })
     expect(() => migratePersistedState(selectPersistedState(canonicalState()), 1)).toThrow(
       'uses an unsupported persistence version'
     )

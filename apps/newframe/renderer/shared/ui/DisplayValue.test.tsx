@@ -38,7 +38,7 @@ it('should render a fiat value', () => {
   render(
     <DisplayValue
       value={356e28}
-      valueDataParams={{ currencyRate: { price: 1.5 } }}
+      valueDataParams={{ currencyRate: { usdRate: 1.5 } }}
       type='fiat'
       currencySymbol='$'
     />
@@ -53,7 +53,7 @@ it('should not display decimals on a small fiat value when displayDecimals is se
     <DisplayValue
       value={356e16}
       displayDecimals={false}
-      valueDataParams={{ currencyRate: { price: 1.5 } }}
+      valueDataParams={{ currencyRate: { usdRate: 1.5 } }}
       type='fiat'
       currencySymbol='$'
     />
@@ -67,7 +67,7 @@ it('should not render a shorthand unit when displayFullValue is specified on a f
   render(
     <DisplayValue
       value={356e28}
-      valueDataParams={{ displayFullValue: true, currencyRate: { price: 1.5 } }}
+      valueDataParams={{ displayFullValue: true, currencyRate: { usdRate: 1.5 } }}
       type='fiat'
       currencySymbol='$'
     />

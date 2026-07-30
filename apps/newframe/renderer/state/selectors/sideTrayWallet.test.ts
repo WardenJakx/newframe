@@ -64,13 +64,12 @@ describe('createSideTrayWalletSelector', () => {
               symbol: 'ETH',
               icon: '',
               name: 'Ether',
-              decimals: 18,
-              usd: { price: 1000, change24hr: 0 }
+              decimals: 18
             }
           }
         }
       },
-      rates: {},
+      assetRates: {},
       runtime: {},
       tokens: emptyCatalog()
     } satisfies SideTrayRendererState
@@ -94,7 +93,7 @@ describe('createSideTrayWalletSelector', () => {
       currentAccount: account.id,
       networks: { ethereum: {} },
       networksMeta: { ethereum: {} },
-      rates: {},
+      assetRates: {},
       runtime: {},
       tokens: emptyCatalog()
     } satisfies SideTrayRendererState
@@ -138,13 +137,12 @@ describe('createSideTrayWalletSelector', () => {
               symbol: 'ETH',
               icon: '',
               name: 'Ether',
-              decimals: 18,
-              usd: { price: 1000, change24hr: 0 }
+              decimals: 18
             }
           }
         }
       },
-      rates: {},
+      assetRates: {},
       runtime: {},
       tokens: globalCatalog(customToken)
     } satisfies SideTrayRendererState
@@ -188,13 +186,12 @@ describe('createSideTrayWalletSelector', () => {
               symbol: 'ETH',
               icon: '',
               name: 'Ether',
-              decimals: 18,
-              usd: { price: 1000, change24hr: 0 }
+              decimals: 18
             }
           }
         }
       },
-      rates: {},
+      assetRates: {},
       runtime: {},
       tokens: globalCatalog(bundledToken, 'bundled')
     } satisfies SideTrayRendererState

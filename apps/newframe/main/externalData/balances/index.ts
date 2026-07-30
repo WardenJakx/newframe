@@ -8,7 +8,8 @@ import BalancesWorkerController from './controller.js'
 import { CurrencyBalance, TokenBalance } from './scan.js'
 
 import type { CanonicalStore } from '../../store/actions.js'
-import type { Balance, Chain, ChainMetadata, Rate, Token } from '../../store/state/index.js'
+import type { AssetRateMap } from '../../../domain/state/rate.js'
+import type { Balance, Chain, ChainMetadata, Token } from '../../store/state/index.js'
 
 const RESTART_WAIT = 5 // seconds
 const POSITION_REFRESH_RETRY_MS = 5 * 1000
@@ -31,7 +32,7 @@ type ManualRefreshTokenOptions = {
   knownTokens: Token[]
   networks: Record<number, Chain>
   networksMeta: Record<number, ChainMetadata>
-  rates: Record<string, { usd?: Rate }>
+  assetRates: AssetRateMap
 }
 
 function uniqueTokens(tokens: Token[]) {
@@ -63,7 +64,7 @@ export function selectManualRefreshTokens({
   knownTokens,
   networks,
   networksMeta,
-  rates
+  assetRates
 }: ManualRefreshTokenOptions) {
   const tokenBalances = balances.filter((balance) => balance.address !== NATIVE_CURRENCY)
   const nonDustTokenIds = new Set(
@@ -84,7 +85,7 @@ export function selectManualRefreshTokens({
         ),
         accountTokenIds: {}
       },
-      rates,
+      assetRates,
       networks,
       networksMeta
     })
@@ -123,7 +124,7 @@ export default function (store: Pick<StoreApi<CanonicalStore>, 'getState'>) {
     getNetworks: () => (store.getState().main.networks.ethereum || {}) as Record<number, Chain>,
     getNetworksMeta: () =>
       (store.getState().main.networksMeta.ethereum || {}) as Record<number, ChainMetadata>,
-    getRates: () => (store.getState().main.rates || {}) as Record<string, { usd?: Rate }>,
+    getAssetRates: () => store.getState().main.assetRates,
     getCurrencyBalances: (address: Address) => {
       return ((store.getState().main.balances[address] || []) as Balance[]).filter(
         (balance) => balance.address === NATIVE_CURRENCY
@@ -316,7 +317,7 @@ export default function (store: Pick<StoreApi<CanonicalStore>, 'getState'>) {
       knownTokens: storeApi.getKnownTokens(address),
       networks: storeApi.getNetworks(),
       networksMeta: storeApi.getNetworksMeta(),
-      rates: storeApi.getRates()
+      assetRates: storeApi.getAssetRates()
     })
 
     runWhenReady(() =>

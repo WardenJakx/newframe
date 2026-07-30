@@ -43,6 +43,7 @@ import {
   simulateTransactionEffects
 } from '../transaction/simulation.js'
 import { createMainApp, type MainApp } from './createMainApp.js'
+import { createAssetRateService } from '../features/assetRates/service.js'
 
 export interface ProductionMainAppDependencies {
   ipc: IpcMainHandlerPort
@@ -119,7 +120,11 @@ export function createProductionCapabilities(
   })
   const chains = new Chains(store)
   const provider = createProductionProvider(store, accounts, chains, proxy, reveal)
-  const flashService = createProductionFlashService(store, accounts)
+  const assetRateService = createAssetRateService({
+    store,
+    clock: { now: walletAdapters.now }
+  })
+  const flashService = createProductionFlashService(store, accounts, assetRateService)
   const agentService = createAgentService(accounts, flashService, store)
   const imageService = createImageService(store, adapters.images)
   const rendererAuthorization = createRendererAuthorizationRegistry()
@@ -134,6 +139,7 @@ export function createProductionCapabilities(
   const walletWorkflows = createWalletWorkflowOperations({
     ...walletAdapters,
     accounts,
+    assetRateService,
     chains,
     flashService,
     nameResolution,
@@ -145,6 +151,7 @@ export function createProductionCapabilities(
   })
   return {
     accounts,
+    assetRateService,
     chains,
     flashService,
     provider,

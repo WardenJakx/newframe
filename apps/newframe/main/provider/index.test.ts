@@ -203,7 +203,7 @@ beforeEach(() => {
     state.main.currentAccount = ''
     state.main.networks.ethereum = {}
     state.main.origins = {}
-    state.main.rates = {}
+    state.main.assetRates = {}
   })
 
   provider.handlers = {}
@@ -2391,7 +2391,6 @@ describe('state change events', () => {
   })
 
   it('fires an assetsChanged event to subscribers', (done) => {
-    const ethPriceData = { usd: { price: 3815.91 } }
     const ethBalance = {
       symbol: 'ETH',
       balance: '0xe7',
@@ -2426,7 +2425,7 @@ describe('state change events', () => {
             ...ethBalance,
             name: 'Ether',
             decimals: 18,
-            currencyInfo: { name: 'Ether', symbol: 'ETH', decimals: 18, ...ethPriceData }
+            currencyInfo: { name: 'Ether', symbol: 'ETH', decimals: 18 }
           }
         ],
         erc20: [{ ...tokenBalance, tokenInfo: { lastKnownPrice: { ...tokenPriceData } } }]
@@ -2443,10 +2442,13 @@ describe('state change events', () => {
       state.main.networksMeta.ethereum[1].nativeCurrency = {
         name: 'Ether',
         symbol: 'ETH',
-        decimals: 18,
-        ...ethPriceData
+        decimals: 18
       }
-      state.main.rates[tokenBalance.address] = tokenPriceData
+      state.main.assetRates[`1:${tokenBalance.address}`] = {
+        usdRate: tokenPriceData.usd.price,
+        source: 'zerion',
+        observedAt: 1
+      }
       state.main.balances[address] = [ethBalance, tokenBalance]
       state.main.tokens.byId[`1:${tokenBalance.address}`] = {
         address: tokenBalance.address,

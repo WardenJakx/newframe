@@ -1,6 +1,6 @@
 import { formatUnits, parseUnits, toBigInt } from '../../../domain/units'
 
-import type { Rate } from '../../../domain/state/rate'
+import type { ResolvedAssetRate } from '../../../domain/state/rate'
 
 const displayUnitMapping = [
   { fullName: 'million', shortName: 'M', magnitude: 6 },
@@ -76,7 +76,7 @@ function getDisplay(value: bigint, scale: number, type: string, dp: number, disp
 }
 
 export type DisplayValueDataParams = {
-  currencyRate?: Pick<Rate, 'price'>
+  currencyRate?: Pick<ResolvedAssetRate, 'usdRate'>
   displayFullValue?: boolean
   decimals?: number
   isTestnet?: boolean
@@ -136,7 +136,7 @@ export function displayValueData(
       }
 
       // scale the rate to an integer to keep the math exact
-      const rate = parseUnits(currencyRate.price, 18)
+      const rate = parseUnits(currencyRate.usdRate, 18)
 
       if (rate === undefined) {
         return {

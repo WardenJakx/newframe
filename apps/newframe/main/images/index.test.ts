@@ -51,8 +51,7 @@ it('hydrates networks in the background and tokens only when requested by the re
       decimals: 18,
       icon: 'https://cdn.example/native.png',
       name: 'Ether',
-      symbol: 'ETH',
-      usd: { change24hr: 0, price: 0 }
+      symbol: 'ETH'
     },
     primaryColor: 'accent1'
   }
@@ -103,7 +102,7 @@ it('does not download images that already match their configured sources', async
             gas: {},
             icon: sourceUrl,
             image: imageFor(sourceUrl),
-            nativeCurrency: { decimals: 18, icon: '', name: 'Ether', symbol: 'ETH', usd: {} },
+            nativeCurrency: { decimals: 18, icon: '', name: 'Ether', symbol: 'ETH' },
             primaryColor: 'accent1'
           }
         }

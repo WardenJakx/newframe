@@ -229,7 +229,7 @@ export class Provider extends EventEmitter {
             state.main.accounts,
             state.main.balances,
             state.main.networksMeta.ethereum,
-            state.main.rates
+            state.main.assetRates
           ] as const,
         assetsObserver,
         { equalityFn: shallow }
