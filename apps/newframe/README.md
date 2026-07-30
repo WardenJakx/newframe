@@ -20,9 +20,15 @@ The downloadable desktop build is currently an unsigned macOS arm64 DMG for Appl
    Continue only when the command reports `OK`.
 
 3. Open the DMG and drag Newframe into the Applications folder.
-4. Because this preview is unsigned, macOS Gatekeeper may block the first launch. After trying to open Newframe, and only after verifying the checksum and confirming that the download came from this repository, go to **System Settings → Privacy & Security**, select **Open Anyway** for Newframe, authenticate, and confirm **Open**. macOS makes this override available for a limited time after the blocked launch.
+4. Because this preview is unsigned, remove the macOS quarantine attribute after installing it:
 
-Do not bypass Gatekeeper for an unverified file. Later launches work normally after macOS records the approval.
+   ```bash
+   xattr -dr com.apple.quarantine "/Applications/Newframe.app"
+   ```
+
+5. Open Newframe from Applications.
+
+Only remove the quarantine attribute after verifying the checksum and confirming that the DMG came from this repository. Do not bypass Gatekeeper for an unverified file.
 
 ### Roll back the desktop app
 

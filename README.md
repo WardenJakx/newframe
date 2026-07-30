@@ -47,6 +47,14 @@ shasum -a 256 -c Newframe-Desktop-<version>-macOS-arm64.dmg.sha256
 shasum -a 256 -c Newframe-Browser-Extension-<version>.zip.sha256
 ```
 
+After dragging Newframe from the DMG into Applications, remove the macOS quarantine attribute so the unsigned app can open:
+
+```bash
+xattr -dr com.apple.quarantine "/Applications/Newframe.app"
+```
+
+Only run this command after verifying the checksum and confirming that the DMG came from this repository.
+
 For complete installation steps, including macOS Gatekeeper handling and browser-specific loading, see the [desktop app guide](apps/newframe/README.md#install-the-unsigned-macos-arm64-release) and [browser extension guide](apps/newframe-extension/README.md#install-a-release).
 
 ### Run from source

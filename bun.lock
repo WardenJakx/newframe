@@ -22,7 +22,7 @@
     },
     "apps/newframe": {
       "name": "newframe",
-      "version": "0.1.0",
+      "version": "2026.730.1",
       "dependencies": {
         "@donnoh/gns-utils": "^0.2.0",
         "@ethereumjs/common": "^10.1.2",
@@ -89,7 +89,7 @@
     },
     "apps/newframe-extension": {
       "name": "newframe-extension",
-      "version": "0.1.0",
+      "version": "2026.729.1",
       "dependencies": {
         "@newframe/ui": "workspace:*",
         "events": "3.3.0",
