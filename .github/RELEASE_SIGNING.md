@@ -42,10 +42,8 @@ keys → New GPG key**. Store or dispose of `release-signing-private.asc`
 carefully after uploading it. The key in this example expires after two years,
 so rotate the public key and repository secret before then.
 
-The workflows fail before dependency installation if the secret is missing, the
-private key cannot be imported, or it does not match the hard-coded release
-email. They also run `git verify-commit` before the signed candidate leaves the
-preparation job.
+The workflows let `gpg --import` and `git commit -S` fail naturally when the
+secret is missing, malformed, or unable to sign.
 
 The product release tags remain lightweight tags that point directly to the
 signed release commit. GitHub Release records continue to be authored by

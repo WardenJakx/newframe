@@ -65,34 +65,14 @@ jobs:
           RELEASE_GPG_PRIVATE_KEY: ${{ secrets.RELEASE_GPG_PRIVATE_KEY }}
         shell: bash
         run: |
-          set -euo pipefail
-          if [[ -z "$RELEASE_GPG_PRIVATE_KEY" ]]; then
-            echo "::error::Missing RELEASE_GPG_PRIVATE_KEY repository secret."
-            exit 1
-          fi
-
-          gnupg_home="$RUNNER_TEMP/release-gnupg"
-          mkdir -p "$gnupg_home"
-          chmod 700 "$gnupg_home"
-          export GNUPGHOME="$gnupg_home"
+          export GNUPGHOME="$RUNNER_TEMP/release-gnupg"
+          mkdir -m 700 "$GNUPGHOME"
           printf '%s' "$RELEASE_GPG_PRIVATE_KEY" | gpg --batch --import
-
-          fingerprint="$(
-            gpg --batch --with-colons \
-              --list-secret-keys "114708157+WardenJakx@users.noreply.github.com" |
-              awk -F: '$1 == "fpr" { print $10; exit }'
-          )"
-          if [[ -z "$fingerprint" ]]; then
-            echo "::error::The signing key does not match the release email."
-            exit 1
-          fi
 
           git config --local user.name "WardenJakx"
           git config --local user.email \
             "114708157+WardenJakx@users.noreply.github.com"
-          git config --local user.signingkey "$fingerprint"
-          git config --local commit.gpgsign true
-          echo "GNUPGHOME=$gnupg_home" >> "$GITHUB_ENV"
+          echo "GNUPGHOME=$GNUPGHOME" >> "$GITHUB_ENV"
 
       - name: Set up Bun
         id: bun
@@ -165,7 +145,6 @@ jobs:
 
           git add -- apps/newframe/package.json
           git commit -S -m "release(desktop): $RELEASE_VERSION"
-          git verify-commit HEAD
 
           candidate_sha="$(git rev-parse HEAD)"
           test "$(git rev-parse HEAD^)" = "$GITHUB_SHA"
