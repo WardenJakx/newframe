@@ -506,7 +506,8 @@ jobs:
                 "$GITHUB_SHA" \
                 "release(extension): $RELEASE_VERSION" \
                 apps/newframe-extension/package.json \
-                apps/newframe-extension/src/manifest.json
+                apps/newframe-extension/src/manifest.json \
+                bun.lock
             )"
           else
             release_commit="${{ steps.remote.outputs.main-sha }}"
