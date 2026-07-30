@@ -524,7 +524,8 @@ jobs:
                 main \
                 "$GITHUB_SHA" \
                 "release(desktop): $RELEASE_VERSION" \
-                apps/newframe/package.json
+                apps/newframe/package.json \
+                bun.lock
             )"
           else
             release_commit="${{ steps.remote.outputs.main-sha }}"
