@@ -156,6 +156,9 @@ jobs:
           bun scripts/release/prepare-release.ts extension \
             --github-output "$GITHUB_OUTPUT"
 
+      - name: Update lockfile for extension release
+        run: bun install --cwd apps/newframe-extension
+
       - name: Create the exact local release commit
         id: candidate
         env:
@@ -176,11 +179,12 @@ jobs:
           expected="$(
             printf '%s\n' \
               apps/newframe-extension/package.json \
-              apps/newframe-extension/src/manifest.json
+              apps/newframe-extension/src/manifest.json \
+              bun.lock
           )"
           changed="$(git diff --name-only | LC_ALL=C sort)"
           if [[ "$changed" != "$expected" ]]; then
-            echo "::error::Release preparation must update exactly the extension package and manifest."
+            echo "::error::Release preparation must update exactly the extension package, manifest, and lockfile."
             printf 'Expected:\n%s\nActual:\n%s\n' "$expected" "${changed:-<none>}"
             exit 1
           fi
@@ -192,7 +196,8 @@ jobs:
 
           git add -- \
             apps/newframe-extension/package.json \
-            apps/newframe-extension/src/manifest.json
+            apps/newframe-extension/src/manifest.json \
+            bun.lock
           git -c user.name=github-actions \
             -c user.email=41898282+github-actions[bot]@users.noreply.github.com \
             -c commit.gpgsign=false \
@@ -329,7 +334,8 @@ jobs:
           expected="$(
             printf '%s\n' \
               apps/newframe-extension/package.json \
-              apps/newframe-extension/src/manifest.json
+              apps/newframe-extension/src/manifest.json \
+              bun.lock
           )"
           changed="$(git diff-tree --no-commit-id --name-only -r "$CANDIDATE_SHA" | LC_ALL=C sort)"
           if [[ "$changed" != "$expected" ]]; then

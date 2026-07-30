@@ -99,6 +99,9 @@ jobs:
           bun scripts/release/prepare-release.ts desktop \
             --github-output "$GITHUB_OUTPUT"
 
+      - name: Update lockfile for desktop release
+        run: bun install --cwd apps/newframe
+
       - name: Create the exact local release commit
         id: candidate
         env:
@@ -116,10 +119,14 @@ jobs:
             exit 1
           fi
 
-          expected="apps/newframe/package.json"
+          expected="$(
+            printf '%s\n' \
+              apps/newframe/package.json \
+              bun.lock
+          )"
           changed="$(git diff --name-only | LC_ALL=C sort)"
           if [[ "$changed" != "$expected" ]]; then
-            echo "::error::Release preparation must update exactly the desktop package."
+            echo "::error::Release preparation must update exactly the desktop package and lockfile."
             printf 'Expected:\n%s\nActual:\n%s\n' "$expected" "${changed:-<none>}"
             exit 1
           fi
@@ -129,7 +136,9 @@ jobs:
             exit 1
           fi
 
-          git add -- apps/newframe/package.json
+          git add -- \
+            apps/newframe/package.json \
+            bun.lock
           git -c user.name=github-actions \
             -c user.email=41898282+github-actions[bot]@users.noreply.github.com \
             -c commit.gpgsign=false \
@@ -207,7 +216,11 @@ jobs:
           test "$(git rev-parse FETCH_HEAD)" = "$CANDIDATE_SHA"
           test "$(git rev-parse "$CANDIDATE_SHA^")" = "$GITHUB_SHA"
           changed="$(git diff-tree --no-commit-id --name-only -r "$CANDIDATE_SHA" | LC_ALL=C sort)"
-          expected="apps/newframe/package.json"
+          expected="$(
+            printf '%s\n' \
+              apps/newframe/package.json \
+              bun.lock
+          )"
           if [[ "$changed" != "$expected" ]]; then
             echo "::error::Candidate commit contains files outside desktop release metadata."
             exit 1
@@ -594,7 +607,13 @@ jobs:
             echo "## Installation"
             echo
             echo "This is an unsigned, unnotarized Apple Silicon (arm64) macOS build."
-            echo "macOS Gatekeeper will warn or block the first launch. After attempting to open Newframe, use **System Settings → Privacy & Security → Open Anyway** only if you trust this download and its published SHA-256 checksum."
+            echo "After verifying the published SHA-256 checksum, open the DMG and drag Newframe into Applications. Then remove the macOS quarantine attribute so the app can open:"
+            echo
+            echo '```bash'
+            echo 'xattr -dr com.apple.quarantine "/Applications/Newframe.app"'
+            echo '```'
+            echo
+            echo "Only run this command if you trust the downloaded DMG and have verified its checksum."
             echo
             echo "Automatic updates are disabled. Download future desktop releases manually from this repository."
           } >> "$notes_file"
