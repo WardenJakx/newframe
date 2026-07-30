@@ -787,8 +787,7 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
             symbol: network.symbol,
             icon: network.nativeCurrencyIcon || '',
             name: network.nativeCurrencyName || '',
-            decimals: 18,
-            usd: { price: 0, change24hr: 0 }
+            decimals: 18
           },
           gas: {
             price: {
@@ -929,11 +928,9 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
       })
     },
 
-    setRates: (rates: any) => {
+    setAssetRates: (assetRates: CanonicalState['main']['assetRates']) => {
       set((draft) => {
-        const main = mutableMain(draft)
-        main.rates ||= {}
-        Object.assign(main.rates, rates)
+        Object.assign(mutableMain(draft).assetRates, assetRates)
       })
     },
 
@@ -1076,6 +1073,7 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
         catalog.accountTokenIds = {}
         main.activity = {}
         main.orders = {}
+        main.assetRates = {}
 
         if (tokenIds.size > 0) {
           Object.entries(record(main.balances)).forEach(([address, value]) => {

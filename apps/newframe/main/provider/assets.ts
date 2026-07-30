@@ -1,10 +1,11 @@
 import { NATIVE_CURRENCY } from '../../domain/token/constants.js'
 import { toTokenId } from '../../domain/token/index.js'
+import { resolveAssetRate } from '../../domain/asset/index.js'
 
-import type { Balance, NativeCurrency, Rate } from '../store/state/index.js'
+import type { Balance, NativeCurrency } from '../store/state/index.js'
 import type { CanonicalStoreReader } from '../store/actions.js'
 
-type UsdRate = { usd: Rate }
+type UsdRate = { usd: { price: number; change24hr?: number } }
 type CanonicalStoreApi = CanonicalStoreReader
 
 interface AssetsChangedHandler {
@@ -19,10 +20,20 @@ const createStoreApi = (store: CanonicalStoreApi) => ({
   getNativeCurrency: (chainId: number): NativeCurrency | undefined =>
     store.getState().main.networksMeta.ethereum[chainId]?.nativeCurrency,
   getToken: (balance: Balance) => store.getState().main.tokens.byId[toTokenId(balance)],
-  getUsdRate: (address: Address): UsdRate | undefined => {
-    const rate = store.getState().main.rates[address.toLowerCase()]
+  getUsdRate: (balance: Balance, nativeTicker?: string): UsdRate | undefined => {
+    const rate = resolveAssetRate(
+      { chainId: balance.chainId, address: balance.address, nativeTicker },
+      store.getState().main.assetRates
+    )
 
     return rate
+      ? {
+          usd: {
+            price: rate.usdRate,
+            ...(rate.change24hr === undefined ? {} : { change24hr: rate.change24hr })
+          }
+        }
+      : undefined
   },
   getLastUpdated: (account: Address): number => {
     const accountState = store.getState().main.accounts[account] as unknown as {
@@ -88,7 +99,7 @@ function fetchAssets(store: CanonicalStoreApi, accountId: string) {
         currencyInfo: currency
       })
     } else {
-      const usdRate = storeApi.getUsdRate(balance.address)
+      const usdRate = storeApi.getUsdRate(balance)
       const token = storeApi.getToken(balance)
       if (!token) return assets
 

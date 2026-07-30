@@ -19,6 +19,7 @@ const createProps = <const Request extends object>(appLocked: boolean, req: Requ
     req,
     shared: {
       appLocked,
+      assetRates: {},
       chain: {},
       chainMeta: { nativeCurrency: {} },
       explorerWarningMuted: false,

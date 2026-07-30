@@ -39,6 +39,8 @@ import { ApprovalType } from '../../domain/request/approval.js'
 import { accountNS } from '../../domain/account/index.js'
 import { tokensForAccount, toTokenId } from '../../domain/token/index.js'
 import { chainUsesOptimismFees } from '../../domain/chain/fees.js'
+import { resolveAssetRate } from '../../domain/asset/index.js'
+import { NATIVE_CURRENCY } from '../../domain/token/constants.js'
 import type { ActivityRecord, StatusNotification, Token } from '../store/state/index.js'
 import type { AccountChainRpcPort } from './providerPort.js'
 import type { AccountTransactionPolicyPort } from '../features/transactions/accountPolicyPort.js'
@@ -1002,8 +1004,15 @@ export class Accounts extends EventEmitter {
                 if (!txRequest.feeAtTime) {
                   const network = targetChain
                   if (network.type === 'ethereum' && network.id === 1) {
-                    const ethPrice =
-                      this.store.getState().main.networksMeta.ethereum['1'].nativeCurrency.usd.price
+                    const currentState = this.store.getState().main
+                    const ethPrice = resolveAssetRate(
+                      {
+                        chainId: 1,
+                        address: NATIVE_CURRENCY,
+                        nativeTicker: currentState.networksMeta.ethereum[1].nativeCurrency.symbol
+                      },
+                      currentState.assetRates
+                    )?.usdRate
 
                     if (ethPrice && txRequest.tx && txRequest.tx.receipt && this.has(account.address)) {
                       const { gasUsed } = txRequest.tx.receipt

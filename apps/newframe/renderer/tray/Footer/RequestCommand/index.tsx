@@ -17,6 +17,9 @@ import type { WalletRendererState } from '../../../../contracts/state/projection
 import link from '../../../shared/link'
 import { toBigInt } from '../../../../domain/units'
 import { useWalletSelector } from '../../../state/useAppSelector'
+import { resolveAssetRate } from '../../../../domain/asset'
+import { NATIVE_CURRENCY } from '../../../../domain/token/constants'
+import type { AssetRateMap } from '../../../../domain/state/rate'
 import { useTrayNotification, type TrayNotifier } from '../../notification'
 import { useRequestView, type RequestViewStep } from '../../requestView'
 import TxApproval from './TxApproval'
@@ -28,7 +31,8 @@ type SignerCompatibility = { signer: string; tx: string; compatible: boolean }
 interface RequestCommandSharedState {
   appLocked: boolean
   chain: { explorer?: string; isTestnet?: boolean }
-  chainMeta: { nativeCurrency?: { symbol?: string; usd?: { price: number } } }
+  chainMeta: { nativeCurrency?: { symbol?: string } }
+  assetRates: AssetRateMap
   explorerWarningMuted: boolean
   gasFeeWarningMuted: boolean
   signerCompatibilityWarningMuted: boolean
@@ -220,8 +224,11 @@ export function RequestCommand(props: RequestCommandProps) {
     const chain = { type: 'ethereum' as const, id: parseInt(req.data.chainId, 16) }
     const nativeCurrency = props.shared.chainMeta.nativeCurrency
     const currentSymbol = nativeCurrency?.symbol || '?'
-    const nativeUSD =
-      nativeCurrency?.usd && !props.shared.chain.isTestnet ? nativeCurrency.usd.price : undefined
+    const nativeRate = resolveAssetRate(
+      { chainId: chain.id, address: NATIVE_CURRENCY, nativeTicker: nativeCurrency?.symbol },
+      props.shared.assetRates
+    )
+    const nativeUSD = !props.shared.chain.isTestnet ? nativeRate?.usdRate : undefined
     const hasNativeUSD = typeof nativeUSD === 'number'
     const gasLimit = toBigInt(req.data.gasLimit) ?? 0n
     const maxFeePerGas = toBigInt(usesBaseFee(req.data) ? req.data.maxFeePerGas : req.data.gasPrice) ?? 0n
@@ -363,6 +370,7 @@ export default function RequestCommandContainer(props: Omit<RequestCommandProps,
     () =>
       (state: WalletRendererState): Omit<RequestCommandSharedState, 'step'> => ({
         appLocked: state.appLock.locked,
+        assetRates: state.assetRates,
         chain: state.networks.ethereum[chainId] || EMPTY_CHAIN,
         chainMeta: state.networksMeta.ethereum[chainId] || EMPTY_CHAIN_META,
         explorerWarningMuted: !!state.mute?.explorerWarning,

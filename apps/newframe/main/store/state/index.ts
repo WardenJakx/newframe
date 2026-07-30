@@ -25,7 +25,6 @@ export type {
 } from '../../../domain/state/token.js'
 export type { NativeCurrency } from '../../../domain/state/nativeCurrency.js'
 export type { Gas, GasFees } from '../../../domain/state/gas.js'
-export type { Rate } from '../../../domain/state/rate.js'
 export type { ColorwayPalette } from '../../../domain/state/colors.js'
 export type {
   Activity,
@@ -189,10 +188,6 @@ const requiredDefaultEthereumNetworksMeta: Record<number, any> = {
     gas: networkMetaGas(),
     nativeCurrency: {
       symbol: 'BNB',
-      usd: {
-        price: 0,
-        change24hr: 0
-      },
       icon: builtInChainIconUrl(56),
       name: 'BNB',
       decimals: 18
@@ -204,10 +199,6 @@ const requiredDefaultEthereumNetworksMeta: Record<number, any> = {
     gas: networkMetaGas(),
     nativeCurrency: {
       symbol: 'HYPE',
-      usd: {
-        price: 0,
-        change24hr: 0
-      },
       icon: builtInChainIconUrl(999),
       name: 'HYPE',
       decimals: 18
@@ -219,10 +210,6 @@ const requiredDefaultEthereumNetworksMeta: Record<number, any> = {
     gas: networkMetaGas(),
     nativeCurrency: {
       symbol: 'XPL',
-      usd: {
-        price: 0,
-        change24hr: 0
-      },
       icon: builtInChainIconUrl(9745),
       name: 'Plasma',
       decimals: 18
@@ -234,10 +221,6 @@ const requiredDefaultEthereumNetworksMeta: Record<number, any> = {
     gas: networkMetaGas(),
     nativeCurrency: {
       symbol: 'ETH',
-      usd: {
-        price: 0,
-        change24hr: 0
-      },
       icon: MAINNET_ETH_ICON,
       name: 'Ether',
       decimals: 18
@@ -249,10 +232,6 @@ const requiredDefaultEthereumNetworksMeta: Record<number, any> = {
     gas: networkMetaGas(),
     nativeCurrency: {
       symbol: 'AVAX',
-      usd: {
-        price: 0,
-        change24hr: 0
-      },
       icon: builtInChainIconUrl(43114),
       name: 'Avalanche',
       decimals: 18
@@ -264,10 +243,6 @@ const requiredDefaultEthereumNetworksMeta: Record<number, any> = {
     gas: networkMetaGas(),
     nativeCurrency: {
       symbol: 'MON',
-      usd: {
-        price: 0,
-        change24hr: 0
-      },
       icon: builtInChainIconUrl(143),
       name: 'Monad',
       decimals: 18
@@ -330,7 +305,7 @@ const mainState: M = {
   orders: {},
   accountOrder: [],
   tokens: { byId: {}, accountTokenIds: {} },
-  rates: {},
+  assetRates: {},
   signers: {},
   updater: {
     dontRemind: [],
@@ -772,10 +747,6 @@ const mainState: M = {
         },
         nativeCurrency: {
           symbol: 'ETH',
-          usd: {
-            price: 0,
-            change24hr: 0
-          },
           icon: MAINNET_ETH_ICON,
           name: 'Ether',
           decimals: 18
@@ -792,10 +763,6 @@ const mainState: M = {
           }
         },
         nativeCurrency: {
-          usd: {
-            price: 0,
-            change24hr: 0
-          },
           icon: MAINNET_ETH_ICON,
           name: 'Ether',
           symbol: 'ETH',
@@ -814,10 +781,6 @@ const mainState: M = {
         },
         nativeCurrency: {
           symbol: 'BNB',
-          usd: {
-            price: 0,
-            change24hr: 0
-          },
           icon: builtInChainIconUrl(56),
           name: 'BNB',
           decimals: 18
@@ -835,10 +798,6 @@ const mainState: M = {
         },
         nativeCurrency: {
           symbol: 'xDAI',
-          usd: {
-            price: 0,
-            change24hr: 0
-          },
           icon: builtInChainIconUrl(100),
           name: 'xDAI',
           decimals: 18
@@ -856,10 +815,6 @@ const mainState: M = {
         },
         nativeCurrency: {
           symbol: 'MATIC',
-          usd: {
-            price: 0,
-            change24hr: 0
-          },
           icon: builtInChainIconUrl(137),
           name: 'Matic',
           decimals: 18
@@ -877,10 +832,6 @@ const mainState: M = {
         },
         nativeCurrency: {
           symbol: 'HYPE',
-          usd: {
-            price: 0,
-            change24hr: 0
-          },
           icon: builtInChainIconUrl(999),
           name: 'HYPE',
           decimals: 18
@@ -898,10 +849,6 @@ const mainState: M = {
         },
         nativeCurrency: {
           symbol: 'ETH',
-          usd: {
-            price: 0,
-            change24hr: 0
-          },
           icon: MAINNET_ETH_ICON,
           name: 'Ether',
           decimals: 18
@@ -918,10 +865,6 @@ const mainState: M = {
           }
         },
         nativeCurrency: {
-          usd: {
-            price: 0,
-            change24hr: 0
-          },
           icon: MAINNET_ETH_ICON,
           name: 'Ether',
           symbol: 'ETH',
@@ -940,10 +883,6 @@ const mainState: M = {
         },
         nativeCurrency: {
           symbol: 'AVAX',
-          usd: {
-            price: 0,
-            change24hr: 0
-          },
           icon: builtInChainIconUrl(43114),
           name: 'Avalanche',
           decimals: 18
@@ -961,10 +900,6 @@ const mainState: M = {
         },
         nativeCurrency: {
           symbol: 'sepETH',
-          usd: {
-            price: 0,
-            change24hr: 0
-          },
           icon: MAINNET_ETH_ICON,
           name: 'Base Sepolia Ether',
           decimals: 18
@@ -982,10 +917,6 @@ const mainState: M = {
         },
         nativeCurrency: {
           symbol: 'sepETH',
-          usd: {
-            price: 0,
-            change24hr: 0
-          },
           icon: MAINNET_ETH_ICON,
           name: 'Sepolia Ether',
           decimals: 18
@@ -1003,10 +934,6 @@ const mainState: M = {
         },
         nativeCurrency: {
           symbol: 'sepETH',
-          usd: {
-            price: 0,
-            change24hr: 0
-          },
           icon: MAINNET_ETH_ICON,
           name: 'Optimism Sepolia Ether',
           decimals: 18

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 
-import { getFlashAssetsForChain } from '../domain/flash/assets'
+import { listCuratedTokenAssets } from '../domain/asset'
 import { createTestStore } from '../test/support/createTestStore'
 import { createBundledTokenService } from './tokens'
 
@@ -18,9 +18,8 @@ function tokenProjection(store: ReturnType<typeof createTestStore>) {
     .sort((left, right) => left.address.localeCompare(right.address))
 }
 
-function expectedTokens(chainId: number) {
-  return getFlashAssetsForChain(chainId)
-    .filter((asset) => !asset.isNative)
+function expectedTokens() {
+  return listCuratedTokenAssets()
     .map((asset) => ({
       address: asset.address,
       chainId: asset.chainId,
@@ -34,34 +33,34 @@ function expectedTokens(chainId: number) {
 }
 
 describe('bundled token startup', () => {
-  it('hydrates only the networks owned by each injected canonical store', () => {
-    const ethereum = createTestStore({
+  it('hydrates every curated ERC-20 into each injected canonical store', () => {
+    const first = createTestStore({
       main: { networks: { ethereum: { 1: { id: 1 } } } }
     })
-    const base = createTestStore({
+    const second = createTestStore({
       main: { networks: { ethereum: { 8453: { id: 8453 } } } }
     })
-    const ethereumTokens = createBundledTokenService(ethereum.store)
-    const baseTokens = createBundledTokenService(base.store)
+    const firstTokens = createBundledTokenService(first.store)
+    const secondTokens = createBundledTokenService(second.store)
 
-    ethereumTokens.start()
+    firstTokens.start()
 
     expect({
-      ethereum: tokenProjection(ethereum),
-      untouchedBase: tokenProjection(base)
+      first: tokenProjection(first),
+      untouchedSecond: tokenProjection(second)
     }).toStrictEqual({
-      ethereum: expectedTokens(1),
-      untouchedBase: []
+      first: expectedTokens(),
+      untouchedSecond: []
     })
 
-    baseTokens.start()
+    secondTokens.start()
 
     expect({
-      base: tokenProjection(base),
-      unchangedEthereum: tokenProjection(ethereum)
+      second: tokenProjection(second),
+      unchangedFirst: tokenProjection(first)
     }).toStrictEqual({
-      base: expectedTokens(8453),
-      unchangedEthereum: expectedTokens(1)
+      second: expectedTokens(),
+      unchangedFirst: expectedTokens()
     })
   })
 })

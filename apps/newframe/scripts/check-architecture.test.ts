@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'bun:test'
 
-import { checkDependencyDirection, extractModuleSpecifiers } from './check-architecture'
+import {
+  checkAssetRateMutationAuthority,
+  checkDependencyDirection,
+  extractModuleSpecifiers
+} from './check-architecture'
 
 const rendererFile = 'apps/newframe/renderer/feature/view.ts'
 const contractsFile = 'apps/newframe/contracts/feature/schema.ts'
@@ -28,6 +32,26 @@ describe('architecture import extraction', () => {
       '../main/require'
     ])
   })
+})
+
+describe('asset-rate mutation authority', () => {
+  it('rejects direct production writers outside the service and store', () => {
+    expect(
+      checkAssetRateMutationAuthority(
+        'apps/newframe/main/provider/rates.ts',
+        'store.getState().setAssetRates(batch)'
+      )
+    ).toEqual([
+      'apps/newframe/main/provider/rates.ts: canonical asset-rate mutation is restricted to the asset-rate service and store'
+    ])
+  })
+
+  it.each(['apps/newframe/main/features/assetRates/service.ts', 'apps/newframe/main/store/actions.ts'])(
+    'allows the canonical writer in %s',
+    (file) => {
+      expect(checkAssetRateMutationAuthority(file, 'state.setAssetRates(batch)')).toEqual([])
+    }
+  )
 })
 
 describe('architecture dependency direction', () => {

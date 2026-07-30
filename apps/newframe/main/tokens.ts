@@ -1,4 +1,4 @@
-import { getFlashAssetsForChain } from '../domain/flash/assets.js'
+import { listCuratedTokenAssets } from '../domain/asset/index.js'
 
 import type { CanonicalStoreReader } from './store/actions.js'
 import type { Token } from './store/state/index.js'
@@ -10,20 +10,14 @@ export interface BundledTokenService {
 export function createBundledTokenService(
   canonicalStore: Pick<CanonicalStoreReader, 'getState'>
 ): BundledTokenService {
-  const bundledTokens = (): Token[] => {
-    const networks = Object.values(canonicalStore.getState().main.networks.ethereum)
-    return networks.flatMap((network) =>
-      getFlashAssetsForChain(network.id)
-        .filter((asset) => !asset.isNative)
-        .map((asset) => ({
-          address: asset.address,
-          chainId: asset.chainId,
-          decimals: asset.decimals,
-          name: asset.name,
-          symbol: asset.symbol
-        }))
-    )
-  }
+  const bundledTokens = (): Token[] =>
+    listCuratedTokenAssets().map((asset) => ({
+      address: asset.address,
+      chainId: asset.chainId,
+      decimals: asset.decimals,
+      name: asset.name,
+      symbol: asset.symbol
+    }))
 
   return {
     start() {

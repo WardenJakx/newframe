@@ -162,7 +162,7 @@ export function Accounts() {
       currentAccount: main.currentAccount || '',
       networks: main.networks?.ethereum || EMPTY_RECORD,
       networksMeta: main.networksMeta?.ethereum || EMPTY_RECORD,
-      rates: main.rates || EMPTY_RECORD,
+      assetRates: main.assetRates || EMPTY_RECORD,
       tokens: main.tokens,
       showLocalNameWithENS: !!main.showLocalNameWithENS,
       showTestnets: !!main.showTestnets,
@@ -224,12 +224,12 @@ export function Accounts() {
 
   function getBalances(address: string) {
     const rawBalances = props.shared.balances[address] || []
-    const { networks, networksMeta, rates, tokens } = props.shared
+    const { networks, networksMeta, assetRates, tokens } = props.shared
     const showTestnets = props.shared.showTestnets
 
     return selectBalanceSummaries({
       rawBalances,
-      rates,
+      assetRates,
       tokens,
       networks,
       networksMeta,
@@ -245,10 +245,9 @@ export function Accounts() {
     const rawBalances = props.shared.balances[account.address]
     if (!Array.isArray(rawBalances) || rawBalances.length === 0) return '---'
 
-    const total = getBalances(account.address).reduce(
-      (sum: number, balance: any) => sum + balance.totalValue,
-      0
-    )
+    const balances = getBalances(account.address)
+    if (balances.length > 0 && !balances.some((balance) => balance.hasPrice)) return '—'
+    const total = balances.reduce((sum: number, balance: any) => sum + balance.totalValue, 0)
     return `$${formatUsdRate(total, 2)}`
   }
 

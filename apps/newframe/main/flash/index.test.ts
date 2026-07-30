@@ -21,8 +21,10 @@ import {
   FLASH_NATIVE_ETH_TOKEN_ADDRESS
 } from '../../domain/flash/constants'
 import { FLASH_NATIVE_ETH_ASSET, FLASH_USDC_ASSET, FLASH_WETH_ASSET } from '../../domain/flash/assets'
+import { NATIVE_CURRENCY } from '../../domain/token/constants'
 
 const originalEnv = { ...process.env }
+const assetRateService = { observe: mock() }
 
 class FakeFlashWebSocket extends EventEmitter {
   readyState: number = WebSocket.CONNECTING
@@ -117,6 +119,7 @@ function officialOrder(overrides: Record<string, unknown> = {}) {
 
 describe('main Flash facade helpers', () => {
   beforeEach(() => {
+    assetRateService.observe.mockClear()
     process.env.FRAME_PROFILE = 'dev' as any
   })
 
@@ -410,7 +413,7 @@ describe('main Flash facade helpers', () => {
   })
 
   it('includes the complete structured Flash error response in request errors', async () => {
-    const flash = createFlashService({ store })
+    const flash = createFlashService({ assetRateService, store })
     const originalFetch = globalThis.fetch
     const payload = {
       error: {
@@ -439,8 +442,93 @@ describe('main Flash facade helpers', () => {
     }
   })
 
+  it('forwards every available normalized quote-leg rate in one canonical batch', async () => {
+    const observe = mock()
+    const flash = createFlashService({ assetRateService: { observe }, store })
+    const originalFetch = globalThis.fetch
+    const responses = [
+      {
+        from: { asset: 'target', amount: '2', notional: '4800' },
+        to: { asset: 'contra', amount: '1200', notional: '1200' }
+      },
+      {
+        from: { asset: 'target', amount: '2', notional: '4800' },
+        to: { asset: 'contra', amount: '1200', notional: '' }
+      },
+      {
+        from: { asset: 'target', amount: '0', notional: '4800' },
+        to: { asset: 'contra', amount: '1200', notional: '1200' }
+      },
+      {
+        from: { asset: 'target', amount: 'NaN', notional: '4800' },
+        to: { asset: 'contra', amount: '1200', notional: '-1' }
+      }
+    ]
+
+    globalThis.fetch = mock(async () => {
+      return new Response(JSON.stringify(responses.shift()), {
+        status: 200,
+        headers: { 'content-type': 'application/json' }
+      })
+    }) as unknown as typeof fetch
+
+    try {
+      const request = { ...quoteRequest(), targetAsset: FLASH_NATIVE_ETH_ASSET }
+
+      await flash.quote(request)
+      await flash.quote(request)
+      await flash.quote(request)
+      const invalidQuote = await flash.quote(request)
+
+      expect(observe).toHaveBeenNthCalledWith(1, 'flash', [
+        { chainId: 31337, address: NATIVE_CURRENCY, usdRate: 2400 },
+        { chainId: 31337, address: FLASH_USDC_ASSET.address.toLowerCase(), usdRate: 1 }
+      ])
+      expect(observe).toHaveBeenNthCalledWith(2, 'flash', [
+        { chainId: 31337, address: NATIVE_CURRENCY, usdRate: 2400 }
+      ])
+      expect(observe).toHaveBeenNthCalledWith(3, 'flash', [
+        { chainId: 31337, address: FLASH_USDC_ASSET.address.toLowerCase(), usdRate: 1 }
+      ])
+      expect(observe).toHaveBeenCalledTimes(3)
+      expect(invalidQuote.quote.inputAmount).toBe('NaN')
+    } finally {
+      flash.dispose()
+      globalThis.fetch = originalFetch
+    }
+  })
+
+  it('does not fail a successful quote when rate observation is discarded', async () => {
+    const observe = mock(() => {
+      throw new Error('discarded observation')
+    })
+    const flash = createFlashService({ assetRateService: { observe }, store })
+    const originalFetch = globalThis.fetch
+
+    globalThis.fetch = mock(async () => {
+      return new Response(
+        JSON.stringify({
+          quoteId: 'best-effort-rate',
+          from: { asset: 'target', amount: '1', notional: '2400' },
+          to: { asset: 'contra', amount: '2398.08', notional: '2398.08' }
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } }
+      )
+    }) as unknown as typeof fetch
+
+    try {
+      const result = await flash.quote(quoteRequest())
+
+      expect(result.quote.id).toBe('best-effort-rate')
+      expect(observe).toHaveBeenCalledTimes(1)
+    } finally {
+      flash.dispose()
+      globalThis.fetch = originalFetch
+    }
+  })
+
   it('normalizes official root order assets, qty, fills, and timestamps from list responses', async () => {
-    const flash = createFlashService({ store })
+    const flash = createFlashService({ assetRateService, store })
     const originalFetch = globalThis.fetch
     const fetchMock = mock(async (_input: RequestInfo | URL, _init?: RequestInit) => {
       return new Response(JSON.stringify({ orders: [officialOrder()] }), {
@@ -503,8 +591,8 @@ describe('main Flash facade helpers', () => {
     }
     const firstStore = createCanonicalStore(memoryStorage).store
     const secondStore = createCanonicalStore(memoryStorage).store
-    const firstFlash = createFlashService({ store: firstStore })
-    const secondFlash = createFlashService({ store: secondStore })
+    const firstFlash = createFlashService({ assetRateService, store: firstStore })
+    const secondFlash = createFlashService({ assetRateService, store: secondStore })
     const originalFetch = globalThis.fetch
     const firstOrderId = '00000000-0000-4000-8000-000000000011'
     const secondOrderId = '00000000-0000-4000-8000-000000000022'
@@ -575,7 +663,7 @@ describe('main Flash facade helpers', () => {
   })
 
   it('treats every undocumented non-open Flash status as terminal', async () => {
-    const flash = createFlashService({ store })
+    const flash = createFlashService({ assetRateService, store })
     const originalFetch = globalThis.fetch
     globalThis.fetch = mock(async () => {
       return new Response(
@@ -608,7 +696,7 @@ describe('main Flash facade helpers', () => {
   })
 
   it('uses official get and cancel request shapes with root order responses', async () => {
-    const flash = createFlashService({ store })
+    const flash = createFlashService({ assetRateService, store })
     const originalFetch = globalThis.fetch
     const orderId = '00000000-0000-4000-8000-000000000002'
     const accountAddress = '0x0000000000000000000000000000000000000002'
@@ -719,7 +807,7 @@ describe('main Flash facade helpers', () => {
         headers: { 'content-type': 'application/json' }
       })
     }) as unknown as typeof fetch
-    const flash = createFlashService({ store, positionSync: { track, refresh } })
+    const flash = createFlashService({ assetRateService, store, positionSync: { track, refresh } })
 
     try {
       await flash.submitOrder({
@@ -792,6 +880,7 @@ describe('main Flash facade helpers', () => {
     const accountAddress = '0x00000000000000000000000000000000000000a1'
     const orderId = 'websocket-agent-order'
     const flash = createFlashService({
+      assetRateService,
       store,
       createWebSocket: () => {
         const socket = new FakeFlashWebSocket()
@@ -904,6 +993,7 @@ describe('main Flash facade helpers', () => {
   it('closes an agent order stream when its session expires', async () => {
     const socket = new FakeFlashWebSocket()
     const flash = createFlashService({
+      assetRateService,
       store,
       createWebSocket: () => socket as unknown as WebSocket
     })

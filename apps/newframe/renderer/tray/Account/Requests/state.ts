@@ -1,6 +1,8 @@
 import { useMemo } from 'react'
 
 import type { WalletRendererState } from '../../../../contracts/state/projections'
+import { resolveAssetRate } from '../../../../domain/asset'
+import type { AssetRateReference } from '../../../../domain/state/rate'
 import { useWalletSelector } from '../../../state/useAppSelector'
 
 type AccountRequests = WalletRendererState['accounts'][string]['requests']
@@ -68,8 +70,13 @@ export function useOriginName(originId: string) {
   return useWalletSelector(selector)
 }
 
-export function useRate(address: string) {
-  const selector = useMemo(() => (state: WalletRendererState) => state.rates[address], [address])
+export function useAssetRate(asset: AssetRateReference) {
+  const { address, chainId, nativeTicker } = asset
+  const selector = useMemo(
+    () => (state: WalletRendererState) =>
+      resolveAssetRate({ address, chainId, nativeTicker }, state.assetRates),
+    [address, chainId, nativeTicker]
+  )
   return useWalletSelector(selector)
 }
 

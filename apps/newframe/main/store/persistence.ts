@@ -7,6 +7,7 @@ import {
   type PersistedCanonicalState
 } from './persist/schema.js'
 import { CanonicalStatePersistenceError } from '../infrastructure/persistence/index.js'
+import { listCuratedAssets } from '../../domain/asset/index.js'
 
 type UnknownRecord = Record<string, any>
 
@@ -20,6 +21,11 @@ const persistedChainColors = new Set([
   'accent7',
   'accent8'
 ])
+const fixedAssetRateKeys = new Set(
+  listCuratedAssets()
+    .filter((asset) => asset.fixedUsdRate !== undefined)
+    .flatMap((asset) => [asset.assetId, asset.commonAsset])
+)
 
 function persistedMute(value: unknown) {
   const mute = (value || {}) as UnknownRecord
@@ -94,12 +100,14 @@ function persistedNetworkMetadata(networksMeta: UnknownRecord) {
       Object.entries(networksMeta.ethereum || {}).map(([id, value]) => {
         const metadata = value as UnknownRecord
         const { blockHeight: _legacyBlockHeight, ...durableMetadata } = metadata
+        const { usd: _legacyUsd, ...nativeCurrency } = metadata.nativeCurrency || {}
         const price = metadata.gas?.price || {}
 
         return [
           id,
           {
             ...durableMetadata,
+            nativeCurrency,
             primaryColor: persistedChainColors.has(metadata.primaryColor) ? metadata.primaryColor : 'accent1',
             gas: {
               samples: [],
@@ -123,12 +131,16 @@ export function selectPersistedState(state: CanonicalStore): PersistedCanonicalS
     frames: _frames,
     runtime: _runtime,
     signers: _signers,
+    rates: _legacyRates,
     ...durableMain
   } = main
 
   return {
     main: {
       ...durableMain,
+      assetRates: Object.fromEntries(
+        Object.entries(main.assetRates || {}).filter(([key]) => !fixedAssetRateKeys.has(key))
+      ),
       accounts: persistedAccounts(main.accounts || {}),
       mute: persistedMute(main.mute),
       networks: persistedNetworks(main.networks || {}),
@@ -141,7 +153,7 @@ export function migratePersistedState(
   value: unknown,
   fromVersion = PERSISTENCE_VERSION
 ): PersistedCanonicalState {
-  if (fromVersion !== 2 && fromVersion !== 3 && fromVersion !== PERSISTENCE_VERSION) {
+  if (fromVersion !== 2 && fromVersion !== 3 && fromVersion !== 4 && fromVersion !== PERSISTENCE_VERSION) {
     log.error('Cannot migrate unsupported canonical state version', fromVersion)
     throw new CanonicalStatePersistenceError(
       'unsupported_version',
@@ -149,16 +161,24 @@ export function migratePersistedState(
     )
   }
 
-  const candidate =
-    fromVersion === 2
-      ? {
-          ...((value || {}) as UnknownRecord),
-          main: {
-            ...(((value as UnknownRecord | undefined)?.main || {}) as UnknownRecord),
-            tokens: { byId: {}, accountTokenIds: {} }
-          }
+  const raw = (value || {}) as UnknownRecord
+  const rawMain = (raw.main || {}) as UnknownRecord
+  const legacyMain =
+    fromVersion === PERSISTENCE_VERSION
+      ? rawMain
+      : {
+          ...rawMain,
+          assetRates: {}
         }
-      : value
+  const { rates: _legacyRates, ...mainWithoutLegacyRates } = legacyMain
+  const candidate = {
+    ...raw,
+    main: {
+      ...mainWithoutLegacyRates,
+      ...(fromVersion === 2 ? { tokens: { byId: {}, accountTokenIds: {} } } : {}),
+      networksMeta: persistedNetworkMetadata(mainWithoutLegacyRates.networksMeta || {})
+    }
+  }
   const parsed = PersistedCanonicalStateSchema.safeParse(candidate)
   if (parsed.success) return parsed.data
 

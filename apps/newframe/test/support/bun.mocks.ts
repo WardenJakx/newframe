@@ -42,7 +42,6 @@ const defaultState = () => ({
           },
           nativeCurrency: {
             symbol: 'ETH',
-            usd: { price: 0, change24hr: 0 },
             icon: '',
             name: 'Ether',
             decimals: 18
@@ -57,7 +56,7 @@ const defaultState = () => ({
     permissions: {},
     portfolioApiKey: '',
     autoDiscoverTokens: false,
-    rates: {},
+    assetRates: {},
     signers: {},
     tokens: {
       byId: {},

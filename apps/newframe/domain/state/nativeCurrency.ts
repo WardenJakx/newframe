@@ -1,5 +1,4 @@
 import { z } from 'zod'
-import { RateSchema } from './rate.js'
 import { TokenImageSchema } from './token.js'
 
 export const NativeCurrencySchema = z.object({
@@ -7,8 +6,7 @@ export const NativeCurrencySchema = z.object({
   icon: z.string().default(''),
   image: TokenImageSchema.optional(),
   name: z.string(),
-  decimals: z.number(),
-  usd: RateSchema
+  decimals: z.number()
 })
 
 export type NativeCurrency = z.infer<typeof NativeCurrencySchema>

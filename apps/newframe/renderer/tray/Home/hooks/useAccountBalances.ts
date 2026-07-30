@@ -15,7 +15,7 @@ export function useAccountBalances() {
         accountAddress: account?.address || '',
         networks: state.networks?.ethereum || EMPTY_RECORD,
         networksMeta: state.networksMeta?.ethereum || EMPTY_RECORD,
-        rates: state.rates || EMPTY_RECORD,
+        assetRates: state.assetRates || EMPTY_RECORD,
         tokens: state.tokens,
         rawBalances: account?.address ? state.balances?.[account.address] || EMPTY_ARRAY : EMPTY_ARRAY,
         showTestnets: !!state.showTestnets
@@ -26,7 +26,7 @@ export function useAccountBalances() {
 
   const balances = selectBalanceSummaries({
     rawBalances: shared.rawBalances,
-    rates: shared.rates,
+    assetRates: shared.assetRates,
     tokens: shared.tokens,
     networks: shared.networks,
     networksMeta: shared.networksMeta,

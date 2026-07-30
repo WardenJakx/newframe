@@ -18,7 +18,7 @@ describe('displayValueData', () => {
   it('does not expose a fiat amount without a usable production rate', () => {
     const cases = [
       displayValueData(356e24).fiat(),
-      displayValueData(356e24, { currencyRate: { price: 1.3 }, isTestnet: true }).fiat()
+      displayValueData(356e24, { currencyRate: { usdRate: 1.3 }, isTestnet: true }).fiat()
     ]
 
     for (const actual of cases) expect(actual).toStrictEqual({ displayValue: '?', value: 0 })
@@ -27,14 +27,14 @@ describe('displayValueData', () => {
   it('formats fiat values with fixed cents and lower-bound approximation', () => {
     const cases = [
       [
-        displayValueData(356e12, { currencyRate: { price: 1 } }).fiat(),
+        displayValueData(356e12, { currencyRate: { usdRate: 1 } }).fiat(),
         { approximationSymbol: '<', displayValue: '0.01', value: 0.000356 }
       ],
       [
-        displayValueData(999999e15, { currencyRate: { price: 1 } }).fiat(),
+        displayValueData(999999e15, { currencyRate: { usdRate: 1 } }).fiat(),
         { displayValue: '999.99', value: 999.999 }
       ],
-      [displayValueData(0, { currencyRate: { price: 1.3 } }).fiat(), { displayValue: '0.00', value: 0 }]
+      [displayValueData(0, { currencyRate: { usdRate: 1.3 } }).fiat(), { displayValue: '0.00', value: 0 }]
     ]
 
     for (const [actual, expected] of cases) expect(actual).toStrictEqual(expected)
@@ -43,13 +43,13 @@ describe('displayValueData', () => {
   it('formats fiat and ether values without decimals when requested', () => {
     const cases = [
       [
-        displayValueData(356e12, { currencyRate: { price: 1 } }).fiat({
+        displayValueData(356e12, { currencyRate: { usdRate: 1 } }).fiat({
           displayDecimals: false
         }),
         { approximationSymbol: '<', displayValue: '1', value: 0.000356 }
       ],
       [
-        displayValueData(999999e15, { currencyRate: { price: 1 } }).fiat({
+        displayValueData(999999e15, { currencyRate: { usdRate: 1 } }).fiat({
           displayDecimals: false
         }),
         { displayValue: '999', value: 999.999 }
@@ -109,7 +109,7 @@ describe('displayValueData', () => {
       }
 
       expect(displayValueData(source).ether()).toStrictEqual(expected)
-      expect(displayValueData(source, { currencyRate: { price: 1 } }).fiat()).toStrictEqual(expected)
+      expect(displayValueData(source, { currencyRate: { usdRate: 1 } }).fiat()).toStrictEqual(expected)
     }
   })
 
@@ -127,7 +127,7 @@ describe('displayValueData', () => {
       }
 
       expect(displayValueData(source).ether()).toStrictEqual(expected)
-      expect(displayValueData(source, { currencyRate: { price: 1 } }).fiat()).toStrictEqual(expected)
+      expect(displayValueData(source, { currencyRate: { usdRate: 1 } }).fiat()).toStrictEqual(expected)
     }
   })
 
@@ -140,6 +140,6 @@ describe('displayValueData', () => {
     }
 
     expect(displayValueData(356e50).ether()).toStrictEqual(expected)
-    expect(displayValueData(356e50, { currencyRate: { price: 1 } }).fiat()).toStrictEqual(expected)
+    expect(displayValueData(356e50, { currencyRate: { usdRate: 1 } }).fiat()).toStrictEqual(expected)
   })
 })

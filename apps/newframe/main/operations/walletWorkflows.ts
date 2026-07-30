@@ -48,6 +48,7 @@ import type { RevealService } from '../reveal.js'
 import { createSecurityService, type SecurityServicePorts } from '../features/security/service.js'
 import { createSettingsService } from '../features/settings/service.js'
 import type { CanonicalStore } from '../store/actions.js'
+import type { AssetRateService } from '../features/assetRates/service.js'
 import type {
   AccountAddFromSignerCommand,
   NetworkRequestResolveCommand,
@@ -103,6 +104,7 @@ export interface WalletWorkflowPlatformPorts {
 
 export interface WalletWorkflowDependencies {
   accounts: Accounts
+  assetRateService: AssetRateService
   app: WalletWorkflowPlatformPorts['app']
   biometrics: WalletWorkflowPlatformPorts['biometrics']
   chains: Chains
@@ -140,6 +142,7 @@ export interface WalletWorkflowDependencies {
 export type WalletWorkflowAdapters = Omit<
   WalletWorkflowDependencies,
   | 'accounts'
+  | 'assetRateService'
   | 'chains'
   | 'flashService'
   | 'nameResolution'
@@ -312,10 +315,8 @@ function clearPermission(
 }
 
 function resetWallet(scope: 'saved-data' | 'all-settings-data', dependencies: WalletWorkflowDependencies) {
-  if (scope === 'saved-data') {
-    dependencies.store.getState().resetSavedData()
-    return
-  }
+  dependencies.store.getState().resetSavedData()
+  if (scope === 'saved-data') return
 
   dependencies.persistence.clear()
   if (dependencies.updater.updateReady) dependencies.updater.quitAndInstall()
@@ -694,10 +695,7 @@ async function refreshPortfolio(accounts: Accounts, dependencies: WalletWorkflow
         state.setPortfolioBalances(address, portfolio.balances)
         state.accountTokensUpdated(address)
       }
-      if (Object.keys(portfolio.rates).length) state.setRates(portfolio.rates)
-      Object.entries(portfolio.nativeRates).forEach(([id, rate]) =>
-        state.setNativeCurrencyData('ethereum', Number(id), { usd: rate })
-      )
+      dependencies.assetRateService.observe('zerion', portfolio.assetRates)
     } catch (error) {
       dependencies.log.warn(`Could not refresh portfolio provider balances for ${address}`, error)
     }

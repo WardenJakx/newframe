@@ -132,8 +132,7 @@ describe('ZerionPortfolioProvider', () => {
       chainValues: {},
       tokens: [],
       balances: [],
-      rates: {},
-      nativeRates: {}
+      assetRates: []
     })
     expect(fetchMock).not.toHaveBeenCalled()
   })
@@ -387,20 +386,25 @@ describe('ZerionPortfolioProvider', () => {
         displayBalance: '1'
       }
     ])
-    expect(portfolio.rates).toEqual({
-      '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913': {
-        usd: {
-          price: 1.01,
-          change24hr: 0.25
-        }
-      }
-    })
-    expect(portfolio.nativeRates).toEqual({
-      1: {
-        price: 2000,
+    expect(portfolio.assetRates).toEqual([
+      {
+        address: '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913',
+        chainId: 8453,
+        usdRate: 1.01,
+        change24hr: 0.25
+      },
+      {
+        address: NATIVE_CURRENCY,
+        chainId: 1,
+        usdRate: 2000,
         change24hr: 1.5
+      },
+      {
+        address: NATIVE_CURRENCY,
+        chainId: 8453,
+        usdRate: 1
       }
-    })
+    ])
 
     expect(fetchMock).toHaveBeenCalledTimes(2)
     expect(fetchMock.mock.calls[1][0]).toContain('filter%5Bchain_ids%5D=ethereum%2Cbase')

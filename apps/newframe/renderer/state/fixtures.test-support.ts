@@ -32,7 +32,7 @@ const baseWalletState: WalletRendererState = {
   origins: {},
   permissions: {},
   portfolioApiKeyConfigured: false,
-  rates: {},
+  assetRates: {},
   reveal: false,
   runtime: { environment: 'test', isDev: false, profile: null },
   shortcuts: {
@@ -62,7 +62,7 @@ const baseSideTrayState: SideTrayRendererState = {
   currentAccount: '',
   networks: { ethereum: {} },
   networksMeta: { ethereum: {} },
-  rates: {},
+  assetRates: {},
   tokens: { byId: {}, accountTokenIds: {} },
   runtime: { environment: 'test', isDev: false, profile: null }
 }

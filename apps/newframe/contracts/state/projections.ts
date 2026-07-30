@@ -9,7 +9,7 @@ import {
   RuntimeSchema
 } from '../../domain/state/main.js'
 import { NativeCurrencySchema } from '../../domain/state/nativeCurrency.js'
-import { RateSchema } from '../../domain/state/rate.js'
+import { AssetRateMapSchema } from '../../domain/state/rate.js'
 import { TokenCatalogSchema, TokenImageSchema } from '../../domain/state/token.js'
 
 export const RendererProjectionSchema = z.enum(['wallet-ui', 'sidetray'])
@@ -213,14 +213,6 @@ const LedgerSettingsSchema = z.strictObject({
 
 const TrezorSettingsSchema = z.strictObject({ derivation: z.string() })
 
-const WalletRateSchema = z
-  .object({
-    usd: RateSchema.optional()
-  })
-  .strip()
-
-const WalletRatesSchema = z.record(z.string(), WalletRateSchema)
-
 const WalletApprovalSchema = z
   .object({
     type: z.string(),
@@ -373,7 +365,7 @@ export const WalletRendererStateSchema = z.strictObject({
   origins: MainSchema.shape.origins,
   permissions: MainSchema.shape.permissions,
   portfolioApiKeyConfigured: z.boolean(),
-  rates: WalletRatesSchema,
+  assetRates: AssetRateMapSchema,
   reveal: MainSchema.shape.reveal,
   runtime: MainSchema.shape.runtime,
   shortcuts: MainSchema.shape.shortcuts,
@@ -395,10 +387,6 @@ const SideTrayAccountSchema = z.strictObject({
   name: z.string(),
   lastSignerType: z.string(),
   ensName: z.string().optional()
-})
-
-const SideTrayRateSchema = z.strictObject({
-  usd: RateSchema.optional()
 })
 
 const SideTrayNetworkSchema = z.strictObject({
@@ -430,7 +418,7 @@ export const SideTrayRendererStateSchema = z.strictObject({
   networksMeta: z.strictObject({
     ethereum: z.record(z.coerce.number(), SideTrayNetworkMetadataSchema)
   }),
-  rates: z.record(z.string(), SideTrayRateSchema),
+  assetRates: AssetRateMapSchema,
   tokens: TokenCatalogSchema,
   runtime: RuntimeSchema
 })

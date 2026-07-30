@@ -147,7 +147,7 @@ export function projectWalletState(state: CanonicalState): WalletRendererState {
     origins: main.origins,
     permissions: main.permissions,
     portfolioApiKeyConfigured: main.portfolioApiKey.trim().length > 0,
-    rates: main.rates,
+    assetRates: main.assetRates,
     reveal: main.reveal,
     runtime: main.runtime,
     shortcuts: main.shortcuts,
@@ -248,10 +248,7 @@ function projectSideTrayNetworkMetadata(
           {
             image: chainMetadata.image,
             primaryColor: chainMetadata.primaryColor || 'accent1',
-            nativeCurrency: {
-              ...chainMetadata.nativeCurrency,
-              usd: chainMetadata.nativeCurrency.usd || { price: 0, change24hr: 0 }
-            }
+            nativeCurrency: chainMetadata.nativeCurrency
           }
         ]
       ]
@@ -289,34 +286,6 @@ function projectSideTrayBalances(
   previousSideTrayBalancesAccounts = accounts
   previousSideTrayBalances = currentAddress ? { [currentAddress]: balances[currentAddress] || [] } : {}
   return previousSideTrayBalances
-}
-
-let previousSideTrayRatesInput: CanonicalMain['rates'] | undefined
-let previousSideTrayRates: SideTrayRendererState['rates'] | undefined
-
-function projectSideTrayRates(rates: CanonicalMain['rates']): SideTrayRendererState['rates'] {
-  if (rates === previousSideTrayRatesInput && previousSideTrayRates) return previousSideTrayRates
-
-  previousSideTrayRatesInput = rates
-  previousSideTrayRates = Object.fromEntries(
-    Object.entries(rates).map(([assetId, rate]) => {
-      if (!rate || typeof rate !== 'object' || !('usd' in rate)) return [assetId, {}]
-      const usd = rate.usd
-      if (
-        !usd ||
-        typeof usd !== 'object' ||
-        !('price' in usd) ||
-        !('change24hr' in usd) ||
-        typeof usd.price !== 'number' ||
-        typeof usd.change24hr !== 'number'
-      ) {
-        return [assetId, {}]
-      }
-
-      return [assetId, { usd: { price: usd.price, change24hr: usd.change24hr } }]
-    })
-  )
-  return previousSideTrayRates
 }
 
 let previousSideTrayProjection: SideTrayRendererState | undefined
@@ -367,7 +336,7 @@ export function projectSideTrayState(state: CanonicalState): SideTrayRendererSta
     currentAccount: main.currentAccount,
     networks,
     networksMeta: projectSideTrayNetworkMetadata(main.networksMeta, networks),
-    rates: projectSideTrayRates(main.rates),
+    assetRates: main.assetRates,
     tokens: projectSideTrayTokens(main.tokens, currentAddress),
     runtime: main.runtime
   }

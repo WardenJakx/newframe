@@ -55,6 +55,7 @@ export function PortfolioHeroView({
   onTrade: () => void
   refreshing: boolean
 }) {
+  const rateUnavailable = displayValue === '—'
   const [dollars, cents] = displayValue.split('.')
   return (
     <section aria-label='Portfolio summary' className={heroRecipe()}>
@@ -62,8 +63,16 @@ export function PortfolioHeroView({
         <div aria-label='Portfolio value' className={valueRecipe()} role='group'>
           <span aria-hidden='true' className={valueSpacerRecipe()} />
           <span>
-            <Text display='inline' variant='displayAmount'>{`$${dollars}`}</Text>
-            <Text display='inline' tone='muted' variant='displayFraction'>{`.${cents || '00'}`}</Text>
+            {rateUnavailable ? (
+              <Text display='inline' variant='displayAmount'>
+                —
+              </Text>
+            ) : (
+              <>
+                <Text display='inline' variant='displayAmount'>{`$${dollars}`}</Text>
+                <Text display='inline' tone='muted' variant='displayFraction'>{`.${cents || '00'}`}</Text>
+              </>
+            )}
           </span>
           <span className={refreshRecipe()} data-portfolio-refresh>
             <IconButton

@@ -36,7 +36,7 @@ export function AssetDetailsView({
   onTrade: () => void
 }) {
   const chain = networks[asset.chainId] || {}
-  const price = Number(asset?.usdRate?.price || 0)
+  const price = Number(asset?.rate?.usdRate || 0)
   const nativeAsset = isNativeCurrency(asset.address)
   const [addressCopied, copyAddress] = useCopiedMessage(asset.address)
   const detailRow = (label: string, value: React.ReactNode, monospace = false) => (
@@ -112,7 +112,7 @@ export function AssetDetailsView({
             </Stack>
           </Stack>
           <Stack gap='none'>
-            {detailRow('Price', price > 0 ? `$${formatUsdRate(price, 2)}` : '$0.00')}
+            {detailRow('Price', asset.hasPrice ? (price > 0 ? `$${formatUsdRate(price, 2)}` : '$0.00') : '—')}
             {detailRow('Balance', `${asset.displayBalance} ${asset.symbol}`)}
             {detailRow(
               'Chain',

@@ -28,6 +28,7 @@ export function createTestStore(
       accountOrder: [],
       accountsMeta: {},
       balances: {},
+      assetRates: {},
       activity: {},
       orders: {},
       tokens: { byId: {}, accountTokenIds: {} },

@@ -195,8 +195,9 @@ export default function Send({ assetId }: SendProps) {
   const tokenItems = selectorBalances.map(createBalanceTokenSelectorItem)
   const searchableTokenItems = balanceSummaries.map(createBalanceTokenSelectorItem)
   const amount = Number(state.amount || 0)
-  const price = Number(asset?.usdRate?.price || 0)
-  const fiatValue = amount > 0 && price > 0 ? `$${formatUsdRate(amount * price, 2)}` : '$0.00'
+  const price = asset?.rate?.usdRate
+  const fiatValue =
+    typeof price !== 'number' ? '—' : amount > 0 ? `$${formatUsdRate(amount * price, 2)}` : '$0.00'
   const proceedEnabled =
     canProceed({
       amount: state.amount,

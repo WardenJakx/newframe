@@ -208,19 +208,21 @@ describe('renderer state stream', () => {
     expect(sender.once).toHaveBeenCalledWith('destroyed', expect.any(Function))
   })
 
-  it('publishes a wallet rates-only mutation as only the rates slice', () => {
+  it('publishes a wallet asset-rates-only mutation as only the assetRates slice', () => {
     const { event, sender } = renderer()
     authorizeRenderer.mockReturnValue({ clientType: 'wallet-ui', webContentsId: sender.id })
     expect(connectState(event)).toEqual({ ok: true })
 
-    store.getState().setRates({ token: { usd: { price: 1, change24hr: 0 } } })
+    store.getState().setAssetRates({
+      token: { usdRate: 1, source: 'zerion', observedAt: 1 }
+    })
 
     expect(sender.send).toHaveBeenCalledTimes(2)
     const update = sender.send.mock.calls[1][1]
     expect(update).toMatchObject({ baseRevision: 0, revision: 1 })
-    expect(Object.keys(update.changes)).toEqual(['rates'])
-    expect(update.changes.rates).toEqual({
-      token: { usd: { price: 1, change24hr: 0 } }
+    expect(Object.keys(update.changes)).toEqual(['assetRates'])
+    expect(update.changes.assetRates).toEqual({
+      token: { usdRate: 1, source: 'zerion', observedAt: 1 }
     })
   })
 
@@ -252,7 +254,9 @@ describe('renderer state stream', () => {
       type: 'stream-invalidated'
     })
 
-    store.getState().setRates({ token: { usd: { price: 2, change24hr: 0 } } })
+    store.getState().setAssetRates({
+      token: { usdRate: 2, source: 'zerion', observedAt: 2 }
+    })
     expect(sender.send).toHaveBeenCalledTimes(2)
   })
 
@@ -320,11 +324,11 @@ describe('renderer state stream', () => {
     expect(Object.keys(snapshot.state).sort()).toEqual([
       'accountOrder',
       'accounts',
+      'assetRates',
       'balances',
       'currentAccount',
       'networks',
       'networksMeta',
-      'rates',
       'runtime',
       'tokens'
     ])
@@ -350,12 +354,14 @@ describe('renderer state stream', () => {
     store.getState().updateLattice('device', { privKey: 'another-secret' })
     expect(sender.send).toHaveBeenCalledTimes(1)
 
-    store.getState().setRates({ token: { usd: { price: 1, change24hr: 0 } } })
+    store.getState().setAssetRates({
+      token: { usdRate: 1, source: 'zerion', observedAt: 1 }
+    })
     expect(sender.send).toHaveBeenCalledTimes(2)
     expect(sender.send.mock.calls[1][1]).toMatchObject({
       baseRevision: 0,
       revision: 1,
-      changes: { rates: { token: { usd: { price: 1, change24hr: 0 } } } }
+      changes: { assetRates: { token: { usdRate: 1, source: 'zerion', observedAt: 1 } } }
     })
   })
 
@@ -374,7 +380,9 @@ describe('renderer state stream', () => {
 
     const destroyed = sender.once.mock.calls[0][1] as () => void
     destroyed()
-    store.getState().setRates({ token: { usd: { price: 2, change24hr: 0 } } })
+    store.getState().setAssetRates({
+      token: { usdRate: 2, source: 'zerion', observedAt: 2 }
+    })
 
     expect(sender.send).toHaveBeenCalledTimes(1)
   })
@@ -385,7 +393,9 @@ describe('renderer state stream', () => {
     expect(connectState(event)).toEqual({ ok: true })
 
     stateStream.dispose()
-    store.getState().setRates({ token: { usd: { price: 3, change24hr: 0 } } })
+    store.getState().setAssetRates({
+      token: { usdRate: 3, source: 'zerion', observedAt: 3 }
+    })
 
     expect(sender.send).toHaveBeenCalledTimes(1)
     expect(ipc.removeHandler).toHaveBeenCalledTimes(2)

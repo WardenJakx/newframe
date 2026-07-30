@@ -33,7 +33,7 @@ function assetWithAddress(assetAddress: string): DisplayedBalance {
     priceChange: false,
     symbol: 'USDC',
     totalValue: 0,
-    usdRate: { change24hr: 0, price: 0 }
+    rate: { change24hr: 0, source: 'fixed', usdRate: 0 }
   }
 }
 
@@ -54,6 +54,27 @@ function renderAsset(assetAddress = address) {
 }
 
 describe('AssetDetailsView contract address', () => {
+  it('renders a missing individual asset rate as unknown', () => {
+    const asset = assetWithAddress(address)
+    asset.hasPrice = false
+    asset.rate = undefined
+
+    render(
+      <AssetDetailsView
+        asset={asset}
+        canSend
+        canTrade
+        networks={networks}
+        networksMeta={networksMeta}
+        onBack={() => {}}
+        onSend={() => {}}
+        onTrade={() => {}}
+      />
+    )
+
+    expect(screen.getByText('—')).toBeTruthy()
+  })
+
   it('copies a token contract from the row and briefly confirms the copy', async () => {
     const { user } = renderAsset()
 

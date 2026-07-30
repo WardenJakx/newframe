@@ -101,8 +101,10 @@ beforeEach(() => {
         name: 'Optimism'
       }
     ]
-    main.rates[knownTokens[0].address] = {
-      usd: { price: 2, change24hr: 0 }
+    main.assetRates[`10:${knownTokens[0].address}`] = {
+      usdRate: 2,
+      source: 'zerion',
+      observedAt: 1
     }
   })
 
@@ -179,8 +181,16 @@ it('only manually refreshes non-dust valued tokens and curated blue chips', () =
       balance: [weth, usdc].includes(trackedToken) ? '0x0' : oneToken,
       displayBalance: [weth, usdc].includes(trackedToken) ? '0' : '1'
     }))
-    main.rates[valuable.address] = { usd: { price: 2, change24hr: 0 } }
-    main.rates[dust.address] = { usd: { price: 0.001, change24hr: 0 } }
+    main.assetRates[`10:${valuable.address}`] = {
+      usdRate: 2,
+      source: 'zerion',
+      observedAt: 1
+    }
+    main.assetRates[`10:${dust.address}`] = {
+      usdRate: 0.001,
+      source: 'zerion',
+      observedAt: 1
+    }
   })
   ;(balancesController as any).isRunning.mockReturnValue(true)
 
