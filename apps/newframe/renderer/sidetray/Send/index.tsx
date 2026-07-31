@@ -20,6 +20,7 @@ import {
 } from '../../state/selectors/sideTrayWallet'
 import { useSideTraySelector } from '../../state/useAppSelector'
 import AccountIcon from './AccountIcon'
+import { hasSentToAddress } from './sendHistory'
 import { createInitialSendState, sendReducer, SEND_TOKEN_ROWS_INCREMENT } from './sendReducer'
 import { buildSendTransaction, cleanAddress, shouldResolveName } from './sendTransaction'
 import { closeSend, resolveName, submitTransaction } from './sendService'
@@ -35,7 +36,7 @@ function recipientName(account: SideTrayWalletAccount) {
 
 export default function Send({ assetId }: SendProps) {
   const selectSendView = React.useMemo(() => createSideTrayWalletSelector(), [])
-  const { accounts, balanceSummaries, currentAccount, networks, networksMeta } =
+  const { accounts, activity, balanceSummaries, currentAccount, networks, networksMeta } =
     useSideTraySelector(selectSendView)
   const [state, dispatch] = React.useReducer(sendReducer, assetId, createInitialSendState)
   const previousAccountIdRef = React.useRef(currentAccount?.id || '')
@@ -231,6 +232,13 @@ export default function Send({ assetId }: SendProps) {
       recipient: state.recipient,
       recipientInput: state.recipientInput
     }) && !state.submitting
+  const showFirstTimeWarning =
+    !!state.recipient &&
+    !hasSentToAddress({
+      activity,
+      recipientAddress: state.recipient.address,
+      senderAddress: currentAccount?.address
+    })
 
   return (
     <SidePanel
@@ -287,9 +295,11 @@ export default function Send({ assetId }: SendProps) {
                       />
                     </Stack>
                   </Surface>
-                  <Text variant='body' tone='warning'>
-                    First time sending to this address.
-                  </Text>
+                  {showFirstTimeWarning ? (
+                    <Text variant='body' tone='warning'>
+                      First time sending to this address.
+                    </Text>
+                  ) : null}
                 </Stack>
               ) : (
                 <Stack gap='medium'>

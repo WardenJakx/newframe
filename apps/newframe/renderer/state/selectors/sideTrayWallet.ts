@@ -16,6 +16,7 @@ export type SideTrayWalletEthereumNetworkMeta = SideTrayRendererState['networksM
 
 export interface SideTrayWalletSelectorValue {
   accounts: SideTrayWalletAccount[]
+  activity: SideTrayRendererState['activity']
   balanceSummaries: BalanceSummary[]
   currentAccount: SideTrayWalletAccount | null
   networks: Record<string | number, SideTrayWalletEthereumNetwork>
@@ -100,6 +101,7 @@ export function createSideTrayWalletSelector() {
     const networks = state.networks.ethereum || EMPTY_NETWORKS
     const networksMeta = state.networksMeta.ethereum || EMPTY_NETWORKS_META
     const assetRates = state.assetRates || EMPTY_ASSET_RATES
+    const activity = state.activity
     const tokens = state.tokens
     const runtime = state.runtime
     const balanceSummaries = selectBalanceSummaries({
@@ -116,6 +118,7 @@ export function createSideTrayWalletSelector() {
     if (
       previousResult &&
       previousResult.accounts === accounts &&
+      previousResult.activity === activity &&
       previousResult.balanceSummaries === balanceSummaries &&
       previousResult.currentAccount === currentAccount &&
       previousResult.networks === networks &&
@@ -127,6 +130,7 @@ export function createSideTrayWalletSelector() {
 
     previousResult = {
       accounts,
+      activity,
       balanceSummaries,
       currentAccount,
       networks,

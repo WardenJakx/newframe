@@ -63,6 +63,7 @@ function initializeSendState(balances: any[] = [nativeBalance()], customTokens: 
         [recipient.id]: recipient
       },
       accountOrder: [recipient.id, sender.id],
+      activity: {},
       balances: {
         [sender.address]: balances,
         [recipient.address]: balances
@@ -210,6 +211,32 @@ describe('Send', () => {
     expect(screen.getByText('Recipient')).toBeTruthy()
     expect(screen.queryByText('Sender')).toBeNull()
     expect(screen.queryByText(sender.address)).toBeNull()
+  })
+
+  it('shows the first-time warning when the sender has no activity with the recipient', async () => {
+    const { user } = render(<Send assetId={nativeAssetId} />)
+
+    await user.click(screen.getByText('Recipient').closest('button') as HTMLButtonElement)
+
+    expect(screen.getByText('First time sending to this address.')).toBeTruthy()
+  })
+
+  it('hides the first-time warning when activity contains a prior send to the recipient', async () => {
+    updateSendState({
+      activity: {
+        prior: {
+          id: 'prior',
+          account: sender.address.toUpperCase(),
+          status: 'succeeded',
+          data: { to: recipient.address.toUpperCase() }
+        }
+      }
+    })
+    const { user } = render(<Send assetId={nativeAssetId} />)
+
+    await user.click(screen.getByText('Recipient').closest('button') as HTMLButtonElement)
+
+    expect(screen.queryByText('First time sending to this address.')).toBeNull()
   })
 
   it('clears recipient, amount, and open menus when the current account changes', async () => {

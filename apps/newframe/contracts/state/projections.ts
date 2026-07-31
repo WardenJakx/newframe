@@ -4,6 +4,7 @@ import { AccountSchema } from '../../domain/state/account.js'
 import { BalanceSchema } from '../../domain/state/balance.js'
 import {
   ActivityRecordSchema,
+  ActivityStatusSchema,
   MainSchema,
   OrderRecordSchema,
   RuntimeSchema
@@ -331,6 +332,47 @@ export const WalletActivityRecordSchema = z
 
 const WalletActivitySchema = z.record(z.string(), WalletActivityRecordSchema).default({})
 
+const SideTrayActivitySchema = z
+  .record(
+    z.string(),
+    z
+      .object({
+        id: z.string(),
+        account: z.string().nullable().optional(),
+        address: z.string().nullable().optional(),
+        status: ActivityStatusSchema,
+        data: z
+          .object({
+            to: z.string().optional(),
+            data: z.string().optional()
+          })
+          .strip()
+          .optional(),
+        recognizedActions: z
+          .array(
+            z
+              .object({
+                id: z.string(),
+                data: z
+                  .object({
+                    recipient: z
+                      .object({
+                        address: z.string().optional()
+                      })
+                      .strip()
+                      .optional()
+                  })
+                  .strip()
+                  .optional()
+              })
+              .strip()
+          )
+          .optional()
+      })
+      .strip()
+  )
+  .default({})
+
 export const WalletOrderRecordSchema = z
   .object({ ...OrderRecordSchema.shape })
   .strip()
@@ -423,6 +465,7 @@ const SideTrayNetworkMetadataSchema = z.strictObject({
 export const SideTrayRendererStateSchema = z.strictObject({
   accounts: z.record(z.string(), SideTrayAccountSchema),
   accountOrder: z.array(z.string()),
+  activity: SideTrayActivitySchema,
   balances: z.record(z.string(), z.array(BalanceSchema)),
   currentAccount: z.string(),
   networks: z.strictObject({

@@ -67,6 +67,7 @@ const baseWalletState: WalletRendererState = {
 const baseSideTrayState: SideTrayRendererState = {
   accounts: {},
   accountOrder: [],
+  activity: {},
   balances: {},
   currentAccount: '',
   networks: { ethereum: {} },
