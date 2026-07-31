@@ -4,6 +4,7 @@ import createInitialState from '../store/state'
 import createCanonicalStore from '../store/createCanonicalStore'
 import { StateMessageChannel } from '../../contracts/state/protocol'
 import { projectRendererState } from '../state/projections'
+import { DEFAULT_PROFILE_ID } from '../../domain/state/main'
 import { createStateStream, type StateStream } from './stateStream'
 
 const authorizeRenderer = mock()
@@ -73,6 +74,7 @@ describe('renderer state stream', () => {
           ...state.main.accounts,
           [accountId]: {
             id: accountId,
+            profileId: DEFAULT_PROFILE_ID,
             address: accountId,
             name: 'Wallet Account',
             lastSignerType: 'address',
@@ -226,6 +228,75 @@ describe('renderer state stream', () => {
     })
   })
 
+  it('publishes active-profile Account deltas independently to wallet and side-tray streams', () => {
+    const activeId = '0x1111111111111111111111111111111111111111'
+    const workId = '0x2222222222222222222222222222222222222222'
+    const state = store.getState()
+    store.setState({
+      main: {
+        ...state.main,
+        profiles: {
+          [DEFAULT_PROFILE_ID]: { id: DEFAULT_PROFILE_ID, name: 'Profile 1' },
+          work: { id: 'work', name: 'Work' }
+        },
+        profileOrder: [DEFAULT_PROFILE_ID, 'work'],
+        currentProfile: DEFAULT_PROFILE_ID,
+        currentAccount: activeId,
+        accounts: {
+          [activeId]: {
+            id: activeId,
+            profileId: DEFAULT_PROFILE_ID,
+            address: activeId,
+            name: 'Active',
+            lastSignerType: 'address',
+            status: 'ok',
+            signer: '',
+            requests: {},
+            created: 'test:1'
+          },
+          [workId]: {
+            id: workId,
+            profileId: 'work',
+            address: workId,
+            name: 'Work',
+            lastSignerType: 'address',
+            status: 'ok',
+            signer: '',
+            requests: {},
+            created: 'test:1'
+          }
+        },
+        accountOrder: [activeId, workId]
+      }
+    })
+    const wallet = renderer(1)
+    const sideTray = renderer(2)
+    authorizeRenderer.mockImplementation((event) => ({
+      clientType: event.sender.id === 1 ? 'wallet-ui' : 'sidetray',
+      webContentsId: event.sender.id
+    }))
+    expect(connectState(wallet.event)).toEqual({ ok: true })
+    expect(connectState(sideTray.event)).toEqual({ ok: true })
+
+    store.getState().selectProfile('work')
+
+    const walletChanges = wallet.sender.send.mock.calls[1][1].changes
+    const sideTrayChanges = sideTray.sender.send.mock.calls[1][1].changes
+    expect(walletChanges).toMatchObject({
+      accounts: { [workId]: expect.objectContaining({ id: workId, profileId: 'work' }) },
+      accountOrder: [workId],
+      currentAccount: workId,
+      currentProfile: 'work'
+    })
+    expect(walletChanges.accounts).not.toHaveProperty(activeId)
+    expect(sideTrayChanges).toMatchObject({
+      accounts: { [workId]: expect.objectContaining({ id: workId }) },
+      accountOrder: [workId],
+      currentAccount: workId
+    })
+    expect(sideTrayChanges.accounts).not.toHaveProperty(activeId)
+  })
+
   it('does not publish a batch when only excluded Electron secrets change', () => {
     const { event, sender } = renderer()
     authorizeRenderer.mockReturnValue({ clientType: 'wallet-ui', webContentsId: sender.id })
@@ -263,8 +334,12 @@ describe('renderer state stream', () => {
   it('gives the bundled Send/Trade side tray a least-privilege projection', () => {
     const state = createInitialState()
     const id = '0x1111111111111111111111111111111111111111'
+    const dormantId = '0x2222222222222222222222222222222222222222'
+    state.main.profiles.dormant = { id: 'dormant', name: 'Dormant' }
+    state.main.profileOrder.push('dormant')
     state.main.accounts[id] = {
       id,
+      profileId: DEFAULT_PROFILE_ID,
       address: id,
       name: 'Side Tray Account',
       lastSignerType: 'address',
@@ -274,7 +349,15 @@ describe('renderer state stream', () => {
       created: 'test:1',
       privateKey: 'must-not-cross-ipc'
     }
-    state.main.accountOrder = [id]
+    state.main.accounts[dormantId] = {
+      ...state.main.accounts[id],
+      id: dormantId,
+      profileId: 'dormant',
+      address: dormantId,
+      name: 'Dormant Account',
+      privateKey: 'dormant-secret'
+    }
+    state.main.accountOrder = [dormantId, id]
     state.main.currentAccount = id
     state.main.balances[id] = []
     state.main.portfolioApiKey = 'secret-api-key'
@@ -338,6 +421,8 @@ describe('renderer state stream', () => {
       name: 'Side Tray Account',
       lastSignerType: 'address'
     })
+    expect(snapshot.state.accounts).not.toHaveProperty(dormantId)
+    expect(snapshot.state.accountOrder).toEqual([id])
     expect(snapshot.state).not.toHaveProperty('permissions')
     expect(snapshot.state).not.toHaveProperty('portfolioApiKey')
     expect(snapshot.state).not.toHaveProperty('windows')

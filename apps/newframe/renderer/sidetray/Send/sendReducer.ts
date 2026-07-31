@@ -20,6 +20,7 @@ export interface SendWorkflowState {
 }
 
 export type SendWorkflowAction =
+  | { type: 'accountChanged'; selectedAssetKey: string }
   | { type: 'clearRecipient' }
   | { type: 'selectAsset'; selectedAssetKey: string }
   | { type: 'selectRecipient'; recipient: any }
@@ -51,6 +52,20 @@ export function createInitialSendState(assetId?: string | null): SendWorkflowSta
 
 export function sendReducer(state: SendWorkflowState, action: SendWorkflowAction): SendWorkflowState {
   switch (action.type) {
+    case 'accountChanged':
+      return {
+        ...state,
+        amount: '',
+        error: '',
+        recipient: null,
+        recipientInput: '',
+        recipientOpen: true,
+        selectedAssetKey: action.selectedAssetKey,
+        status: '',
+        submitting: false,
+        tokenOpen: false,
+        tokenRowsVisible: INITIAL_SEND_TOKEN_ROWS
+      }
     case 'clearRecipient':
       return {
         ...state,

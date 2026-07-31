@@ -1,4 +1,7 @@
+import { useEffect } from 'react'
+
 import { useHomeUiStore } from './state/HomeUiProvider'
+import { useWalletSelector } from '../../state/useAppSelector'
 import { HomeMenu } from './components/HomeMenu'
 import { AssetDetails } from './features/positions/AssetDetails'
 import { ActivityDetails } from './features/activity/ActivityDetails'
@@ -15,6 +18,21 @@ import { About } from './features/settings/About'
 
 export function HomeOverlayRouter() {
   const overlay = useHomeUiStore((state) => state.overlay)
+  const closeOverlay = useHomeUiStore((state) => state.closeOverlay)
+  const currentAccount = useWalletSelector((state) => state.currentAccount || '')
+  const originatingAccountExists = useWalletSelector((state) =>
+    overlay.type === 'asset' ? !!state.accounts?.[overlay.accountId] : true
+  )
+
+  const staleAssetOverlay =
+    overlay.type === 'asset' &&
+    (!currentAccount || !originatingAccountExists || overlay.accountId !== currentAccount)
+
+  useEffect(() => {
+    if (staleAssetOverlay) closeOverlay()
+  }, [closeOverlay, staleAssetOverlay])
+
+  if (staleAssetOverlay) return null
 
   switch (overlay.type) {
     case 'menu':

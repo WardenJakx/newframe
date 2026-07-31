@@ -40,6 +40,7 @@ import { accountNS } from '../../domain/account/index.js'
 import { tokensForAccount, toTokenId } from '../../domain/token/index.js'
 import { chainUsesOptimismFees } from '../../domain/chain/fees.js'
 import { resolveAssetRate } from '../../domain/asset/index.js'
+import { getProfileAccountIds } from '../../domain/state/main.js'
 import { NATIVE_CURRENCY } from '../../domain/token/constants.js'
 import type { ActivityRecord, StatusNotification, Token } from '../store/state/index.js'
 import type { AccountChainRpcPort } from './providerPort.js'
@@ -149,7 +150,10 @@ export class Accounts extends EventEmitter {
 
   private initialized = false
   private dataScanner?: DataScanner
-  private activityMonitors: Record<string, () => void> = {}
+  private activityMonitors: Record<string, { accountId: string; stop: () => void; token: symbol }> = {}
+  private requestActivityMonitors: Record<string, { accountId: string; stop: () => void; token: symbol }> = {}
+  private activeProfileAccountIds = new Set<string>()
+  private profileObserver?: () => void
   private pendingPositionRefreshes = new Map<string, TransactionRequest>()
   private transactionPositionTokensByHash = new Map<string, Token[]>()
   private readonly storeApi = {
@@ -170,6 +174,8 @@ export class Accounts extends EventEmitter {
   initialize() {
     if (this.initialized) return
 
+    this.activeProfileAccountIds = this.readActiveProfileAccountIds()
+
     Object.entries(this.storeApi.getAccounts()).forEach(([id, account]) => {
       if (!this.accounts[id]) {
         this.accounts[id] = new FrameAccount(
@@ -180,12 +186,21 @@ export class Accounts extends EventEmitter {
           this.dependencies.simulation,
           this.dependencies.nameResolution,
           this.dependencies.reveal,
-          this.dependencies.runtime
+          this.dependencies.runtime,
+          this.isActiveProfileAccount(id)
         )
       }
     })
 
     this.resumeActivityTracking()
+    this.profileObserver = this.store.subscribe(
+      (state) => [state.main.currentProfile, state.main.accounts, state.main.accountOrder] as const,
+      () => this.reconcileProfileNetworkOwners(),
+      {
+        equalityFn: (previous, current) =>
+          previous[0] === current[0] && previous[1] === current[1] && previous[2] === current[2]
+      }
+    )
     this.initialized = true
   }
 
@@ -218,11 +233,40 @@ export class Accounts extends EventEmitter {
         this.dependencies.simulation,
         this.dependencies.nameResolution,
         this.dependencies.reveal,
-        this.dependencies.runtime
+        this.dependencies.runtime,
+        this.isActiveProfileAccount(id)
       )
     }
 
     return this.accounts[id]
+  }
+
+  private readActiveProfileAccountIds() {
+    const main = this.store.getState().main
+    return new Set(getProfileAccountIds(main, main.currentProfile).map((id) => id.toLowerCase()))
+  }
+
+  private isActiveProfileAccount(id: string) {
+    const activeIds = this.initialized ? this.activeProfileAccountIds : this.readActiveProfileAccountIds()
+    return activeIds.has(id.toLowerCase())
+  }
+
+  private reconcileProfileNetworkOwners() {
+    const nextActiveIds = this.readActiveProfileAccountIds()
+    this.activeProfileAccountIds = nextActiveIds
+
+    Object.entries(this.accounts).forEach(([id, account]) => {
+      account.setProfileActive(nextActiveIds.has(id.toLowerCase()))
+    })
+
+    Object.entries(this.activityMonitors).forEach(([id, monitor]) => {
+      if (!nextActiveIds.has(monitor.accountId)) this.stopActivityMonitor(id)
+    })
+    Object.entries(this.requestActivityMonitors).forEach(([id, monitor]) => {
+      if (!nextActiveIds.has(monitor.accountId)) this.stopRequestActivityMonitor(id)
+    })
+
+    this.resumeActivityTracking()
   }
 
   private getTransactionRequest(account: FrameAccount, id: string): TransactionRequest {
@@ -535,13 +579,18 @@ export class Accounts extends EventEmitter {
       expiresAt: now + 3000,
       updatedAt: now
     })
+    this.stopActivityMonitor(transactionActivityId(hash))
+    this.stopRequestActivityMonitor(transactionActivityId(hash))
   }
 
   private pruneTransactionActivity(req: TransactionRequest) {
     const hash = req.tx?.hash
     if (!hash) return
 
-    this.store.getState().pruneActivity(transactionActivityId(hash))
+    const activityId = transactionActivityId(hash)
+    this.store.getState().pruneActivity(activityId)
+    this.stopActivityMonitor(activityId)
+    this.stopRequestActivityMonitor(activityId)
   }
 
   private receiptWasReverted(req: TransactionRequest) {
@@ -634,37 +683,47 @@ export class Accounts extends EventEmitter {
     } as unknown as TransactionRequest
   }
 
-  private async getActivityReceiptConfirmations(activity: ActivityRecord, targetChain: Chain) {
-    return new Promise<{ confirmations: number; receipt?: TransactionReceipt }>((resolve, reject) => {
-      const targetChainId = addHexPrefix(targetChain.id.toString(16))
+  private async getActivityReceiptConfirmations(
+    activity: ActivityRecord,
+    targetChain: Chain,
+    isCurrentMonitor: () => boolean
+  ) {
+    return new Promise<{ confirmations: number; receipt?: TransactionReceipt; paused?: boolean }>(
+      (resolve, reject) => {
+        const targetChainId = addHexPrefix(targetChain.id.toString(16))
 
-      this.sendRequest(
-        { method: 'eth_getTransactionReceipt', params: [activity.hash], chainId: targetChainId },
-        (receiptRes: RPCResponsePayload) => {
-          if (receiptRes.error) return reject(receiptRes.error)
+        if (!isCurrentMonitor()) return resolve({ confirmations: 0, paused: true })
 
-          const receipt = receiptRes.result as TransactionReceipt | undefined
-          if (!receipt) {
-            return resolve({ confirmations: Number(activity.confirmations || 0) })
-          }
+        this.sendRequest(
+          { method: 'eth_getTransactionReceipt', params: [activity.hash], chainId: targetChainId },
+          (receiptRes: RPCResponsePayload) => {
+            if (!isCurrentMonitor()) return resolve({ confirmations: 0, paused: true })
+            if (receiptRes.error) return reject(receiptRes.error)
 
-          this.sendRequest(
-            { method: 'eth_blockNumber', params: [], chainId: targetChainId },
-            (blockRes: RPCResponsePayload) => {
-              if (blockRes.error) return reject(new Error(JSON.stringify(blockRes.error)))
-
-              const blockHeight = parseInt(blockRes.result, 16)
-              const receiptBlock = parseInt(receipt.blockNumber, 16)
-
-              resolve({
-                confirmations: Math.max(blockHeight - receiptBlock, 0),
-                receipt
-              })
+            const receipt = receiptRes.result as TransactionReceipt | undefined
+            if (!receipt) {
+              return resolve({ confirmations: Number(activity.confirmations || 0) })
             }
-          )
-        }
-      )
-    })
+
+            this.sendRequest(
+              { method: 'eth_blockNumber', params: [], chainId: targetChainId },
+              (blockRes: RPCResponsePayload) => {
+                if (!isCurrentMonitor()) return resolve({ confirmations: 0, paused: true })
+                if (blockRes.error) return reject(new Error(JSON.stringify(blockRes.error)))
+
+                const blockHeight = parseInt(blockRes.result, 16)
+                const receiptBlock = parseInt(receipt.blockNumber, 16)
+
+                resolve({
+                  confirmations: Math.max(blockHeight - receiptBlock, 0),
+                  receipt
+                })
+              }
+            )
+          }
+        )
+      }
+    )
   }
 
   private pruneSameNonceActivityLosers(winningActivity: ActivityRecord) {
@@ -685,19 +744,43 @@ export class Accounts extends EventEmitter {
 
       this.store.getState().pruneActivity(candidate.id)
       this.stopActivityMonitor(candidate.id)
+      this.stopRequestActivityMonitor(candidate.id)
     })
   }
 
   private stopActivityMonitor(id: string) {
-    this.activityMonitors[id]?.()
+    this.activityMonitors[id]?.stop()
     delete this.activityMonitors[id]
   }
 
+  private isCurrentActivityMonitor(id: string, token: symbol, accountId: string) {
+    return (
+      this.activityMonitors[id]?.token === token &&
+      this.isActiveProfileAccount(accountId) &&
+      this.isNonTerminalActivity(this.store.getState().main.activity[id])
+    )
+  }
+
   private resumeActivityMonitor(activity: ActivityRecord) {
-    if (!activity.id || this.activityMonitors[activity.id] || !activity.hash) return
+    if (
+      !activity.id ||
+      this.activityMonitors[activity.id] ||
+      this.requestActivityMonitors[activity.id] ||
+      !activity.hash
+    ) {
+      return
+    }
     if (!this.isNonTerminalActivity(activity)) return
 
+    const accountId = this.activityAccount(activity)
+    if (!accountId || !this.isActiveProfileAccount(accountId)) return
+
+    const token = Symbol(activity.id)
+    let inFlight = false
+
     const monitor = async () => {
+      if (inFlight || !this.isCurrentActivityMonitor(activity.id, token, accountId)) return
+
       const currentActivity = ((this.store.getState().main.activity || {}) as Record<string, ActivityRecord>)[
         activity.id
       ]
@@ -708,11 +791,14 @@ export class Accounts extends EventEmitter {
       const targetChain = this.getActivityChain(currentActivity)
       if (!targetChain) return this.stopActivityMonitor(activity.id)
 
+      inFlight = true
       try {
-        const { confirmations, receipt } = await this.getActivityReceiptConfirmations(
+        const { confirmations, receipt, paused } = await this.getActivityReceiptConfirmations(
           currentActivity,
-          targetChain
+          targetChain,
+          () => this.isCurrentActivityMonitor(activity.id, token, accountId)
         )
+        if (paused || !this.isCurrentActivityMonitor(activity.id, token, accountId)) return
         if (!receipt) return
 
         const txRequest = this.toActivityRequest({
@@ -747,12 +833,20 @@ export class Accounts extends EventEmitter {
           updatedAt: this.dependencies.runtime.now()
         })
       } catch (e) {
-        log.error('error resuming activity transaction monitor', e)
+        if (this.isCurrentActivityMonitor(activity.id, token, accountId)) {
+          log.error('error resuming activity transaction monitor', e)
+        }
+      } finally {
+        inFlight = false
       }
     }
 
     const timer = setInterval(monitor, 15 * 1000)
-    this.activityMonitors[activity.id] = () => clearInterval(timer)
+    this.activityMonitors[activity.id] = {
+      accountId,
+      token,
+      stop: () => clearInterval(timer)
+    }
     void monitor()
   }
 
@@ -970,7 +1064,13 @@ export class Accounts extends EventEmitter {
     )
   }
 
-  private async confirmations(account: FrameAccount, id: string, hash: string, targetChain: Chain) {
+  private async confirmations(
+    account: FrameAccount,
+    id: string,
+    hash: string,
+    targetChain: Chain,
+    isCurrentMonitor: () => boolean = () => true
+  ) {
     return new Promise<number>((resolve, reject) => {
       // TODO: Route to account even if it's not current
       if (!account) return reject(new Error('Unable to determine target account'))
@@ -978,14 +1078,18 @@ export class Accounts extends EventEmitter {
         return reject(new Error('Unable to determine target chain'))
       const targetChainId = addHexPrefix(targetChain.id.toString(16))
 
+      if (!isCurrentMonitor()) return resolve(-1)
+
       this.sendRequest(
         { method: 'eth_blockNumber', params: [], chainId: targetChainId },
         (res: RPCResponsePayload) => {
+          if (!isCurrentMonitor()) return resolve(-1)
           if (res.error) return reject(new Error(JSON.stringify(res.error)))
 
           this.sendRequest(
             { method: 'eth_getTransactionReceipt', params: [hash], chainId: targetChainId },
             (receiptRes: RPCResponsePayload) => {
+              if (!isCurrentMonitor()) return resolve(-1)
               if (receiptRes.error) return reject(receiptRes.error)
               if (!this.has(account.address)) return reject(new Error('account closed'))
 
@@ -1111,8 +1215,38 @@ export class Accounts extends EventEmitter {
     })
   }
 
+  private stopRequestActivityMonitor(id: string) {
+    this.requestActivityMonitors[id]?.stop()
+    delete this.requestActivityMonitors[id]
+  }
+
+  private isCurrentRequestActivityMonitor(id: string, token: symbol, accountId: string) {
+    return this.requestActivityMonitors[id]?.token === token && this.isActiveProfileAccount(accountId)
+  }
+
+  private canApplyRequestMonitorResult(id: string, confirmations: number, isCurrent: () => boolean) {
+    if (confirmations < 0) return false
+    if (isCurrent()) return true
+
+    const status = this.store.getState().main.activity[id]?.status
+    return status === 'succeeded' || status === 'reverted'
+  }
+
   private async txMonitor(account: FrameAccount, requestId: string, hash: string) {
     if (!account) return log.error('txMonitor had no target account')
+
+    const activityId = transactionActivityId(hash)
+    const accountId = account.address.toLowerCase()
+    if (!this.isActiveProfileAccount(accountId) || this.requestActivityMonitors[activityId]) return
+
+    const token = Symbol(activityId)
+    this.requestActivityMonitors[activityId] = { accountId, token, stop: () => {} }
+    const isCurrentMonitor = () => this.isCurrentRequestActivityMonitor(activityId, token, accountId)
+    const installStop = (stop: () => void) => {
+      const current = this.requestActivityMonitors[activityId]
+      if (current?.token === token) current.stop = stop
+      else stop()
+    }
 
     const rawTx = this.getTransactionRequest(account, requestId).data
     account.patchRequest<TransactionRequest>(requestId, (request) => {
@@ -1135,6 +1269,7 @@ export class Accounts extends EventEmitter {
         () => this.has(account.address) && this.removeRequest(account, requestId),
         8 * 1000
       )
+      this.stopRequestActivityMonitor(activityId)
     } else {
       const targetChain: Chain = {
         type: 'ethereum',
@@ -1145,17 +1280,34 @@ export class Accounts extends EventEmitter {
       this.sendRequest(
         { method: 'eth_subscribe', params: ['newHeads'], chainId: targetChainId },
         (newHeadRes: RPCResponsePayload) => {
+          if (!isCurrentMonitor()) {
+            if (newHeadRes.result) {
+              this.sendRequest(
+                { method: 'eth_unsubscribe', chainId: targetChainId, params: [newHeadRes.result] },
+                () => {}
+              )
+            }
+            return
+          }
+
           if (newHeadRes.error) {
             log.warn(newHeadRes.error)
             const monitor = async () => {
-              if (!this.has(account.address)) {
-                clearTimeout(monitorTimer)
-                return log.error('txMonitor internal monitor had no target account')
+              if (!isCurrentMonitor() || !this.has(account.address)) {
+                this.stopRequestActivityMonitor(activityId)
+                return
               }
 
               let confirmations
               try {
-                confirmations = await this.confirmations(account, requestId, hash, targetChain)
+                confirmations = await this.confirmations(
+                  account,
+                  requestId,
+                  hash,
+                  targetChain,
+                  isCurrentMonitor
+                )
+                if (!this.canApplyRequestMonitorResult(activityId, confirmations, isCurrentMonitor)) return
                 let txRequest = this.getTransactionRequest(account, requestId)
 
                 if (this.receiptWasReverted(txRequest)) {
@@ -1163,7 +1315,7 @@ export class Accounts extends EventEmitter {
                     () => this.has(account.address) && this.removeRequest(account, requestId),
                     CONFIRMED_REQUEST_CLOSE_MS
                   )
-                  clear()
+                  this.stopRequestActivityMonitor(activityId)
                   return
                 }
 
@@ -1177,11 +1329,12 @@ export class Accounts extends EventEmitter {
                     () => this.has(account.address) && this.removeRequest(account, requestId),
                     CONFIRMED_REQUEST_CLOSE_MS
                   )
-                  clear()
+                  this.stopRequestActivityMonitor(activityId)
                 }
               } catch (e) {
+                if (!isCurrentMonitor()) return
                 log.error('error awaiting confirmations', e)
-                clear()
+                this.stopRequestActivityMonitor(activityId)
                 setTxSent()
                 this.dependencies.runtime.schedule(
                   () => this.has(account.address) && this.removeRequest(account, requestId),
@@ -1197,7 +1350,7 @@ export class Accounts extends EventEmitter {
             const statusHandler = (status: string) => {
               if (!isChainAvailable(status)) {
                 setTxSent()
-                clear()
+                this.stopRequestActivityMonitor(activityId)
               }
             }
 
@@ -1209,24 +1362,17 @@ export class Accounts extends EventEmitter {
               clearInterval(monitorTimer)
               this.dependencies.chainRpc.off(`status:${type}:${id}`, statusHandler)
             }
+            installStop(clear)
           } else if (newHeadRes.result) {
             const headSub = newHeadRes.result
+            let stopped = false
 
             const removeSubscription = async (requestRemoveTimeout: number) => {
               this.dependencies.runtime.schedule(
                 () => this.has(account.address) && this.removeRequest(account, requestId),
                 requestRemoveTimeout
               )
-              this.dependencies.chainRpc.off(`data:${targetChain.type}:${targetChain.id}`, handler)
-              this.dependencies.chainRpc.off(`status:${targetChain.type}:${targetChain.id}`, statusHandler)
-              this.sendRequest(
-                { method: 'eth_unsubscribe', chainId: targetChainId, params: [headSub] },
-                (res: RPCResponsePayload) => {
-                  if (res.error) {
-                    log.error('error sending message eth_unsubscribe', res)
-                  }
-                }
-              )
+              this.stopRequestActivityMonitor(activityId)
             }
 
             const statusHandler = (status: string) => {
@@ -1237,12 +1383,21 @@ export class Accounts extends EventEmitter {
             }
 
             const handler = async (payload: RPCRequestPayload) => {
+              if (!isCurrentMonitor()) return
               if (payload.method === 'eth_subscription' && (payload.params as any).subscription === headSub) {
                 // const newHead = payload.params.result
                 let confirmations
                 try {
-                  confirmations = await this.confirmations(account, requestId, hash, targetChain)
+                  confirmations = await this.confirmations(
+                    account,
+                    requestId,
+                    hash,
+                    targetChain,
+                    isCurrentMonitor
+                  )
+                  if (!this.canApplyRequestMonitorResult(activityId, confirmations, isCurrentMonitor)) return
                 } catch (e) {
+                  if (!isCurrentMonitor()) return
                   log.error(e)
 
                   setTxSent()
@@ -1271,6 +1426,18 @@ export class Accounts extends EventEmitter {
 
             this.dependencies.chainRpc.on(`status:${type}:${id}`, statusHandler)
             this.dependencies.chainRpc.on(`data:${type}:${id}`, handler)
+            installStop(() => {
+              if (stopped) return
+              stopped = true
+              this.dependencies.chainRpc.off(`data:${targetChain.type}:${targetChain.id}`, handler)
+              this.dependencies.chainRpc.off(`status:${targetChain.type}:${targetChain.id}`, statusHandler)
+              this.sendRequest(
+                { method: 'eth_unsubscribe', chainId: targetChainId, params: [headSub] },
+                (res: RPCResponsePayload) => {
+                  if (res.error) log.error('error sending message eth_unsubscribe', res)
+                }
+              )
+            })
           }
         }
       )
@@ -1483,6 +1650,8 @@ export class Accounts extends EventEmitter {
   }
 
   close() {
+    this.profileObserver?.()
+    this.profileObserver = undefined
     Object.values(this.accounts).forEach((account) => account.close())
     this.accounts = {}
     this.dataScanner?.close()
@@ -1490,6 +1659,8 @@ export class Accounts extends EventEmitter {
     this.pendingPositionRefreshes.clear()
     this.transactionPositionTokensByHash.clear()
     Object.keys(this.activityMonitors).forEach((id) => this.stopActivityMonitor(id))
+    Object.keys(this.requestActivityMonitors).forEach((id) => this.stopRequestActivityMonitor(id))
+    this.activeProfileAccountIds.clear()
     this.initialized = false
     // usbDetect.stopMonitoring()
   }
@@ -1737,8 +1908,19 @@ export class Accounts extends EventEmitter {
     }
   }
 
+  private stopNetworkMonitorsForAccount(address: string) {
+    const normalizedAddress = address.toLowerCase()
+    Object.entries(this.activityMonitors).forEach(([id, monitor]) => {
+      if (monitor.accountId === normalizedAddress) this.stopActivityMonitor(id)
+    })
+    Object.entries(this.requestActivityMonitors).forEach(([id, monitor]) => {
+      if (monitor.accountId === normalizedAddress) this.stopRequestActivityMonitor(id)
+    })
+  }
+
   remove(address = '') {
     address = address.toLowerCase()
+    this.stopNetworkMonitorsForAccount(address)
 
     const currentAccount = this.current()
     const selectedAccountId = (this.store.getState().main.currentAccount || '').toLowerCase().trim()

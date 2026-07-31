@@ -2,6 +2,7 @@ import { describe, expect, it } from 'bun:test'
 
 import createInitialState, { CanonicalStateSchema } from './index'
 import { builtInChainIconUrl } from '../../../domain/chain'
+import { DEFAULT_PROFILE_ID, DEFAULT_PROFILE_NAME, getProfileAccountIds } from '../../../domain/state/main'
 
 describe('canonical state defaults', () => {
   it('creates state that satisfies the canonical runtime schema', () => {
@@ -16,6 +17,19 @@ describe('canonical state defaults', () => {
     expect(state.main.showTestnets).toBe(false)
     expect(state.main.appLock).toEqual({ locked: false, vaultExists: false })
     expect(state.main.currentAccount).toBe('')
+    expect({
+      profiles: state.main.profiles,
+      profileOrder: state.main.profileOrder,
+      currentProfile: state.main.currentProfile,
+      profileAccounts: getProfileAccountIds(state.main, DEFAULT_PROFILE_ID)
+    }).toEqual({
+      profiles: {
+        [DEFAULT_PROFILE_ID]: { id: DEFAULT_PROFILE_ID, name: DEFAULT_PROFILE_NAME }
+      },
+      profileOrder: [DEFAULT_PROFILE_ID],
+      currentProfile: DEFAULT_PROFILE_ID,
+      profileAccounts: []
+    })
     expect('current' in state.selected).toBe(false)
     expect(Object.keys(state.selected).sort()).toEqual(['minimized', 'open'])
     expect(state).not.toHaveProperty('panel')

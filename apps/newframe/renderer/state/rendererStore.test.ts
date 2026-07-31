@@ -79,6 +79,26 @@ describe('rendererStore', () => {
     unsubscribe()
   })
 
+  it('mirrors active profile selection and ordered summaries in one update', () => {
+    applyStateMessage(snapshot({ currentProfile: 'default-profile' }))
+    const profiles: WalletRendererState['profiles'] = [
+      {
+        id: 'default-profile',
+        name: 'Profile 1',
+        accountCount: 1,
+        cachedValue: { state: 'priced', value: 12.34 }
+      },
+      { id: 'work', name: 'Work', accountCount: 0, cachedValue: { state: 'missing' } }
+    ]
+
+    expect(applyStateMessage(update({ currentProfile: 'work', profiles }))).toEqual({
+      status: 'applied',
+      messageType: 'update',
+      revision: 1
+    })
+    expect(getStateMirrorForTests()).toMatchObject({ currentProfile: 'work', profiles })
+  })
+
   it('requires a snapshot before accepting updates', () => {
     expect(applyStateMessage(update({ currentAccount: 'two' }))).toEqual({
       status: 'reconnect-needed',

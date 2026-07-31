@@ -1,5 +1,5 @@
 import { isAddress } from 'ethers'
-import { v5 as uuidv5 } from 'uuid'
+import { v4 as generateUuid, v5 as uuidv5 } from 'uuid'
 
 import type { Accounts } from '../accounts/index.js'
 import type { Chains } from '../chains/index.js'
@@ -27,6 +27,7 @@ import {
   SIDE_TRAY_FRAME_ID
 } from '../../domain/sideTray/index.js'
 import { toTokenId } from '../../domain/token/index.js'
+import { getProfileAccountIds } from '../../domain/state/main.js'
 import {
   isSignatureRequest,
   isTransactionRequest,
@@ -62,6 +63,131 @@ import type {
 } from '../../contracts/operations.js'
 
 type WorkflowCallback<T> = (error: unknown, value?: T) => void
+
+const normalizedProfileName = (name: string) => name.trim()
+const profileNameKey = (name: string) => normalizedProfileName(name).toLowerCase()
+
+function profileNameError(
+  name: string,
+  profiles: CanonicalStore['main']['profiles'],
+  excludedProfileId = ''
+) {
+  const normalized = normalizedProfileName(name)
+  if (!normalized || normalized.length > 50) return 'invalid_name' as const
+  if (
+    Object.values(profiles).some(
+      (profile) =>
+        profile.id !== excludedProfileId && profileNameKey(profile.name) === profileNameKey(normalized)
+    )
+  ) {
+    return 'duplicate_name' as const
+  }
+}
+
+function selectedAddress(state: CanonicalStore) {
+  return state.main.accounts[state.main.currentAccount]?.address || ''
+}
+
+function publishSelectedAddressChange(previousAddress: string, dependencies: WalletWorkflowDependencies) {
+  const nextAddress = selectedAddress(dependencies.store.getState())
+  if (nextAddress !== previousAddress) dependencies.provider.accountsChanged(nextAddress ? [nextAddress] : [])
+}
+
+function selectProfile(profileId: string, dependencies: WalletWorkflowDependencies) {
+  const state = dependencies.store.getState()
+  const profile = state.main.profiles[profileId]
+  if (!profile) return { ok: false, error: 'profile_not_found' } as const
+  if (profile.id !== profileId) return { ok: false, error: 'invalid_profile' } as const
+
+  const previousAddress = selectedAddress(state)
+  state.selectProfile(profileId)
+  publishSelectedAddressChange(previousAddress, dependencies)
+  return { ok: true } as const
+}
+
+function createProfile(
+  name: string,
+  accountIds: string[] | undefined,
+  dependencies: WalletWorkflowDependencies
+) {
+  const state = dependencies.store.getState()
+  const normalizedName = normalizedProfileName(name)
+  const nameError = profileNameError(normalizedName, state.main.profiles)
+  if (nameError) return { ok: false, error: nameError } as const
+
+  const movedAccountIds = accountIds || []
+  if (movedAccountIds.some((accountId) => !state.main.accounts[accountId])) {
+    return { ok: false, error: 'account_not_found' } as const
+  }
+
+  let profileId = generateUuid()
+  while (state.main.profiles[profileId]) profileId = generateUuid()
+  const previousAddress = selectedAddress(state)
+  state.createProfile(profileId, normalizedName, movedAccountIds)
+  publishSelectedAddressChange(previousAddress, dependencies)
+  return { ok: true, profileId } as const
+}
+
+function renameProfile(profileId: string, name: string, dependencies: WalletWorkflowDependencies) {
+  const state = dependencies.store.getState()
+  const profile = state.main.profiles[profileId]
+  if (!profile) return { ok: false, error: 'profile_not_found' } as const
+  if (profile.id !== profileId) return { ok: false, error: 'invalid_profile' } as const
+
+  const normalizedName = normalizedProfileName(name)
+  const nameError = profileNameError(normalizedName, state.main.profiles, profileId)
+  if (nameError) return { ok: false, error: nameError } as const
+
+  state.renameProfile(profileId, normalizedName)
+  return { ok: true } as const
+}
+
+function deleteProfile(profileId: string, dependencies: WalletWorkflowDependencies) {
+  const state = dependencies.store.getState()
+  const profile = state.main.profiles[profileId]
+  if (!profile) return { ok: false, error: 'profile_not_found' } as const
+  if (profile.id !== profileId) return { ok: false, error: 'invalid_profile' } as const
+  if (state.main.profileOrder.length === 1) return { ok: false, error: 'final_profile' } as const
+  if (getProfileAccountIds(state.main, profileId).length > 0) {
+    return { ok: false, error: 'profile_not_empty' } as const
+  }
+
+  const previousAddress = selectedAddress(state)
+  state.deleteProfile(profileId)
+  publishSelectedAddressChange(previousAddress, dependencies)
+  return { ok: true } as const
+}
+
+function moveAccountToProfile(
+  accountId: string,
+  profileId: string,
+  dependencies: WalletWorkflowDependencies
+) {
+  const state = dependencies.store.getState()
+  const account = state.main.accounts[accountId]
+  if (!account) return { ok: false, error: 'account_not_found' } as const
+  const profile = state.main.profiles[profileId]
+  if (!profile) return { ok: false, error: 'profile_not_found' } as const
+  if (profile.id !== profileId) return { ok: false, error: 'invalid_profile' } as const
+  if (account.profileId === profileId) return { ok: false, error: 'same_profile' } as const
+
+  const previousAddress = selectedAddress(state)
+  state.moveAccountToProfile(accountId, profileId)
+  publishSelectedAddressChange(previousAddress, dependencies)
+  return { ok: true } as const
+}
+
+function movableProfileAccounts(dependencies: WalletWorkflowDependencies) {
+  const { main } = dependencies.store.getState()
+  const seen = new Set<string>()
+  const accounts = [...main.accountOrder, ...Object.keys(main.accounts)].flatMap((id) => {
+    const account = main.accounts[id]
+    if (!account || seen.has(id)) return []
+    seen.add(id)
+    return [{ id: account.id, address: account.address, name: account.name, profileId: account.profileId }]
+  })
+  return { ok: true, accounts } as const
+}
 
 export type WalletWorkflowSignerPort = SecurityServicePorts['signers'] & {
   createFromKeystore(
@@ -1144,8 +1270,10 @@ export function createWalletWorkflowOperations(dependencies: WalletWorkflowDepen
       confirmRequestApproval(requestId, approvalType, accounts),
     configureSecurity: securityService.configure,
     consumeHomeCommand: (commandId: number) => consumeHomeCommand(commandId, dependencies),
+    createProfile: (name: string, accountIds?: string[]) => createProfile(name, accountIds, dependencies),
     createLatticeSigner: (deviceId: string, deviceName: string) =>
       createLatticeSigner(deviceId, deviceName, dependencies),
+    deleteProfile: (profileId: string) => deleteProfile(profileId, dependencies),
     dismissTransactionFeeNotice: (requestId: string) => dismissTransactionFeeNotice(requestId, accounts),
     disconnectSigner: (signerId: string) => disconnectSigner(signerId, dependencies),
     exportAccountPrivateKey: (accountId: string, password: string) =>
@@ -1161,6 +1289,9 @@ export function createWalletWorkflowOperations(dependencies: WalletWorkflowDepen
     locateKeystore: () => locateKeystore(dependencies),
     lockWallet: securityService.lock,
     lookupToken: (address: string, chainId: number) => lookupToken(address, chainId, provider, dependencies),
+    movableProfileAccounts: () => movableProfileAccounts(dependencies),
+    moveAccountToProfile: (accountId: string, profileId: string) =>
+      moveAccountToProfile(accountId, profileId, dependencies),
     navigatePanelBack: (steps = 1) => navigatePanelBack(steps, dependencies),
     openExternalUrl: (url: string) => dependencies.openExternal(url),
     openRequestPanel: (requestId: string) => openRequestPanel(requestId, accounts, dependencies),
@@ -1177,6 +1308,7 @@ export function createWalletWorkflowOperations(dependencies: WalletWorkflowDepen
     removeOrigin: (originId: string) => removeOrigin(originId, accounts, dependencies),
     removeToken: (token: Pick<WalletToken, 'address' | 'chainId'>) => removeToken(token, dependencies),
     renameAccount: (accountId: string, name: string) => renameAccount(accountId, name, accounts),
+    renameProfile: (profileId: string, name: string) => renameProfile(profileId, name, dependencies),
     reorderAccounts: (fromAccountId: string, toAccountId: string) =>
       reorderAccounts(fromAccountId, toAccountId, dependencies),
     reloadSigner: (signerId: string) => reloadSigner(signerId, dependencies),
@@ -1199,6 +1331,7 @@ export function createWalletWorkflowOperations(dependencies: WalletWorkflowDepen
     reviewAddChainRequest: (requestId: string) => reviewAddChainRequest(requestId, accounts, dependencies),
     reviewAddTokenRequest: (requestId: string) => reviewAddTokenRequest(requestId, accounts, dependencies),
     securityStatus: securityService.status,
+    selectProfile: (profileId: string) => selectProfile(profileId, dependencies),
     setNetworkActivation: (chainId: number, enabled: boolean) =>
       setNetworkActivation(chainId, enabled, dependencies),
     setNetworkPrimaryRpc: (chainId: number, url: string) => setNetworkPrimaryRpc(chainId, url, dependencies),

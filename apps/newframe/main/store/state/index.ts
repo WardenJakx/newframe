@@ -6,7 +6,7 @@ import { getMainRuntime } from '../../runtime.js'
 
 import { MAINNET_ETH_ICON } from '../../../domain/balance/index.js'
 import { builtInChainIconUrl } from '../../../domain/chain/index.js'
-import { MainSchema, Main } from '../../../domain/state/main.js'
+import { DEFAULT_PROFILE_ID, DEFAULT_PROFILE_NAME, MainSchema, Main } from '../../../domain/state/main.js'
 
 import type { Origin } from '../../../domain/state/origin.js'
 import type { Chain } from '../../../domain/state/chain.js'
@@ -296,6 +296,11 @@ const mainState: M = {
   origins: {},
   knownExtensions: {},
   accounts: {},
+  profiles: {
+    [DEFAULT_PROFILE_ID]: { id: DEFAULT_PROFILE_ID, name: DEFAULT_PROFILE_NAME }
+  },
+  profileOrder: [DEFAULT_PROFILE_ID],
+  currentProfile: DEFAULT_PROFILE_ID,
   currentAccount: '',
   appLock: { locked: false, vaultExists: false },
   accountsMeta: {},

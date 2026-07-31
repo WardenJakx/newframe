@@ -12,6 +12,7 @@ export function useAccountBalances() {
     useShallow((state) => {
       const account = state.accounts?.[state.currentAccount]
       return {
+        currentAccount: state.currentAccount || '',
         accountAddress: account?.address || '',
         networks: state.networks?.ethereum || EMPTY_RECORD,
         networksMeta: state.networksMeta?.ethereum || EMPTY_RECORD,

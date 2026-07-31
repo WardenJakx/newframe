@@ -38,7 +38,7 @@ export type HomeOverlay =
   | { type: 'dapps' }
   | { type: 'tokens'; initialToken?: PendingCustomToken }
   | { type: 'addChain'; pending: PendingAddChain }
-  | { type: 'asset'; asset: DisplayedBalance }
+  | { type: 'asset'; accountId: string; asset: DisplayedBalance }
   | { type: 'activity'; activityId: string }
   | { type: 'order'; orderId: string }
   | { type: 'receive'; accountId: string }

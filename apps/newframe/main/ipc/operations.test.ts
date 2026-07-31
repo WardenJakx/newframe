@@ -45,7 +45,9 @@ const walletWorkflows = {
   configureSecurity: mock(),
   confirmRequestApproval: mock(),
   consumeHomeCommand: mock(),
+  createProfile: mock(),
   createLatticeSigner: mock(),
+  deleteProfile: mock(),
   disconnectSigner: mock(),
   exportAccountPrivateKey: mock(),
   generateSeedPhrase: mock(),
@@ -55,6 +57,8 @@ const walletWorkflows = {
   loadLedgerAccounts: mock(),
   lockWallet: mock(),
   lookupToken: mock(),
+  movableProfileAccounts: mock(),
+  moveAccountToProfile: mock(),
   navigatePanelBack: mock(),
   openSideTray: mock(),
   openExternalUrl: mock(),
@@ -70,6 +74,7 @@ const walletWorkflows = {
   removeToken: mock(),
   rejectRequest: mock(),
   renameAccount: mock(),
+  renameProfile: mock(),
   reorderAccounts: mock(),
   resetWallet: mock(),
   resolveNetworkRequest: mock(),
@@ -82,6 +87,7 @@ const walletWorkflows = {
   reviewAddChainRequest: mock(),
   reviewAddTokenRequest: mock(),
   securityStatus: mock(),
+  selectProfile: mock(),
   setNetworkActivation: mock(),
   setNetworkPrimaryRpc: mock(),
   setTransactionFeeDefault: mock(),
@@ -203,6 +209,118 @@ beforeEach(() => {
 })
 
 describe('typed operation dispatcher', () => {
+  it('authorizes profile operations only for the registered wallet tray', async () => {
+    walletWorkflows.selectProfile.mockReturnValue({ ok: true })
+    walletWorkflows.movableProfileAccounts.mockReturnValue({ ok: true, accounts: [] })
+
+    authorizeRenderer.mockReturnValue(sideTrayContext)
+    await expect(dispatchCommand(event, { type: 'profile.select', profileId: 'profile-1' })).resolves.toEqual(
+      { ok: false, error: 'unauthorized' }
+    )
+    await expect(dispatchQuery(event, { type: 'profile.movable-accounts' })).resolves.toEqual({
+      ok: false,
+      error: 'unauthorized'
+    })
+
+    authorizeRenderer.mockReturnValue(trayContext)
+    await expect(dispatchCommand(event, { type: 'profile.select', profileId: 'profile-1' })).resolves.toEqual(
+      { ok: true }
+    )
+    await expect(dispatchQuery(event, { type: 'profile.movable-accounts' })).resolves.toEqual({
+      ok: true,
+      accounts: []
+    })
+  })
+
+  it('validates and trims bounded profile commands before invoking workflows', async () => {
+    authorizeRenderer.mockReturnValue(trayContext)
+    walletWorkflows.createProfile.mockReturnValue({ ok: true, profileId: 'created' })
+    walletWorkflows.renameProfile.mockReturnValue({ ok: true })
+
+    await expect(
+      dispatchCommand(event, { type: 'profile.create', name: '  Work  ', accountIds: ['account-1'] })
+    ).resolves.toEqual({ ok: true, profileId: 'created' })
+    expect(walletWorkflows.createProfile).toHaveBeenCalledWith('Work', ['account-1'])
+
+    await expect(
+      dispatchCommand(event, { type: 'profile.rename', profileId: 'created', name: 'x'.repeat(51) })
+    ).resolves.toEqual({ ok: false, error: 'invalid_command' })
+    await expect(
+      dispatchCommand(event, {
+        type: 'profile.create',
+        name: 'Duplicate IDs',
+        accountIds: ['account-1', 'account-1']
+      })
+    ).resolves.toEqual({ ok: false, error: 'invalid_command' })
+    expect(walletWorkflows.renameProfile).not.toHaveBeenCalled()
+  })
+
+  it('returns strict typed profile workflow results and minimum movable Account records', async () => {
+    authorizeRenderer.mockReturnValue(trayContext)
+    walletWorkflows.moveAccountToProfile.mockReturnValue({ ok: false, error: 'same_profile' })
+    walletWorkflows.deleteProfile.mockReturnValue({ ok: false, error: 'profile_not_empty' })
+    walletWorkflows.movableProfileAccounts.mockReturnValue({
+      ok: true,
+      accounts: [
+        {
+          id: 'account-1',
+          address: '0x1111111111111111111111111111111111111111',
+          name: 'Account 1',
+          profileId: 'profile-1'
+        }
+      ]
+    })
+
+    await expect(
+      dispatchCommand(event, {
+        type: 'account.profile-move',
+        accountId: 'account-1',
+        profileId: 'profile-1'
+      })
+    ).resolves.toEqual({ ok: false, error: 'same_profile' })
+    await expect(dispatchCommand(event, { type: 'profile.delete', profileId: 'profile-1' })).resolves.toEqual(
+      { ok: false, error: 'profile_not_empty' }
+    )
+    await expect(dispatchQuery(event, { type: 'profile.movable-accounts' })).resolves.toEqual({
+      ok: true,
+      accounts: [
+        {
+          id: 'account-1',
+          address: '0x1111111111111111111111111111111111111111',
+          name: 'Account 1',
+          profileId: 'profile-1'
+        }
+      ]
+    })
+
+    walletWorkflows.movableProfileAccounts.mockReturnValue({
+      ok: true,
+      accounts: [
+        {
+          id: 'account-1',
+          address: '0x1111111111111111111111111111111111111111',
+          name: 'Account 1',
+          profileId: 'profile-1',
+          signer: 'must-not-cross-the-boundary'
+        }
+      ]
+    })
+    await expect(dispatchQuery(event, { type: 'profile.movable-accounts' })).resolves.toEqual({
+      ok: false,
+      error: 'operation_failed'
+    })
+  })
+
+  it('maps unexpected profile workflow failures to a typed operation failure', async () => {
+    authorizeRenderer.mockReturnValue(trayContext)
+    walletWorkflows.createProfile.mockRejectedValueOnce(new Error('failed'))
+
+    await expect(dispatchCommand(event, { type: 'profile.create', name: 'Work' })).resolves.toEqual({
+      ok: false,
+      error: 'operation_failed'
+    })
+  })
+
   it('rejects calls that do not have a validated renderer registration', async () => {
     authorizeRenderer.mockReturnValue(undefined)
 

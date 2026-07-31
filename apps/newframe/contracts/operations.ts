@@ -128,6 +128,95 @@ export const AccountSelectResultSchema = z.discriminatedUnion('ok', [
 
 export type AccountSelectResult = z.infer<typeof AccountSelectResultSchema>
 
+const ProfileIdSchema = z.string().min(1).max(256)
+const ProfileNameSchema = z.string().trim().min(1).max(50)
+const ProfileOperationFailureSchema = z.enum([
+  'invalid_command',
+  'unauthorized',
+  'profile_not_found',
+  'invalid_profile',
+  'invalid_name',
+  'duplicate_name',
+  'account_not_found',
+  'same_profile',
+  'profile_not_empty',
+  'final_profile',
+  'operation_failed'
+])
+
+export const ProfileSelectCommandSchema = z.strictObject({
+  type: z.literal('profile.select'),
+  profileId: ProfileIdSchema
+})
+export type ProfileSelectCommand = z.infer<typeof ProfileSelectCommandSchema>
+
+export const ProfileCreateCommandSchema = z.strictObject({
+  type: z.literal('profile.create'),
+  name: ProfileNameSchema,
+  accountIds: z
+    .array(z.string().min(1).max(256))
+    .max(1_000)
+    .refine((ids) => new Set(ids).size === ids.length, 'Account IDs must be unique')
+    .optional()
+})
+export type ProfileCreateCommand = z.infer<typeof ProfileCreateCommandSchema>
+
+export const ProfileRenameCommandSchema = z.strictObject({
+  type: z.literal('profile.rename'),
+  profileId: ProfileIdSchema,
+  name: ProfileNameSchema
+})
+export type ProfileRenameCommand = z.infer<typeof ProfileRenameCommandSchema>
+
+export const ProfileDeleteCommandSchema = z.strictObject({
+  type: z.literal('profile.delete'),
+  profileId: ProfileIdSchema
+})
+export type ProfileDeleteCommand = z.infer<typeof ProfileDeleteCommandSchema>
+
+export const AccountProfileMoveCommandSchema = z.strictObject({
+  type: z.literal('account.profile-move'),
+  accountId: z.string().min(1).max(256),
+  profileId: ProfileIdSchema
+})
+export type AccountProfileMoveCommand = z.infer<typeof AccountProfileMoveCommandSchema>
+
+export const ProfileCommandResultSchema = z.discriminatedUnion('ok', [
+  z.strictObject({ ok: z.literal(true) }),
+  z.strictObject({ ok: z.literal(false), error: ProfileOperationFailureSchema })
+])
+export type ProfileCommandResult = z.infer<typeof ProfileCommandResultSchema>
+
+export const ProfileCreateResultSchema = z.discriminatedUnion('ok', [
+  z.strictObject({ ok: z.literal(true), profileId: ProfileIdSchema }),
+  z.strictObject({ ok: z.literal(false), error: ProfileOperationFailureSchema })
+])
+export type ProfileCreateResult = z.infer<typeof ProfileCreateResultSchema>
+
+export const ProfileMovableAccountsQuerySchema = z.strictObject({
+  type: z.literal('profile.movable-accounts')
+})
+export type ProfileMovableAccountsQuery = z.infer<typeof ProfileMovableAccountsQuerySchema>
+
+const ProfileMovableAccountSchema = z.strictObject({
+  id: z.string().min(1).max(256),
+  address: z.string().min(1).max(256),
+  name: z.string().max(256),
+  profileId: ProfileIdSchema
+})
+
+export const ProfileMovableAccountsResultSchema = z.discriminatedUnion('ok', [
+  z.strictObject({
+    ok: z.literal(true),
+    accounts: z.array(ProfileMovableAccountSchema).max(1_000)
+  }),
+  z.strictObject({
+    ok: z.literal(false),
+    error: z.enum(['invalid_query', 'unauthorized', 'operation_failed'])
+  })
+])
+export type ProfileMovableAccountsResult = z.infer<typeof ProfileMovableAccountsResultSchema>
+
 export const TransactionSubmitCommandSchema = z.strictObject({
   type: z.literal('transaction.submit'),
   idempotencyKey: IdempotencyKeySchema,
@@ -1026,6 +1115,7 @@ export interface CommandMap {
   'account.agent-access-set': AccountAgentAccessSetCommand
   'account.agent-sessions-revoke': AccountAgentSessionsRevokeCommand
   'account.add-from-signer': AccountAddFromSignerCommand
+  'account.profile-move': AccountProfileMoveCommand
   'account.select': AccountSelectCommand
   'account.remove': AccountRemoveCommand
   'account.rename': AccountRenameCommand
@@ -1053,6 +1143,10 @@ export interface CommandMap {
   'panel.request-open': PanelRequestOpenCommand
   'permission.clear': PermissionClearCommand
   'portfolio.refresh': PortfolioRefreshCommand
+  'profile.create': ProfileCreateCommand
+  'profile.delete': ProfileDeleteCommand
+  'profile.rename': ProfileRenameCommand
+  'profile.select': ProfileSelectCommand
   'request.approve': RequestApproveCommand
   'request.access-resolve': AccessRequestResolveCommand
   'request.agent-access-resolve': AgentAccessRequestResolveCommand
@@ -1096,6 +1190,7 @@ export interface CommandResultMap {
   'account.agent-access-set': WalletCommandResult
   'account.agent-sessions-revoke': WalletCommandResult
   'account.add-from-signer': AccountCreatedResult
+  'account.profile-move': ProfileCommandResult
   'account.select': AccountSelectResult
   'account.remove': WalletCommandResult
   'account.rename': WalletCommandResult
@@ -1123,6 +1218,10 @@ export interface CommandResultMap {
   'panel.request-open': WalletCommandResult
   'permission.clear': WalletCommandResult
   'portfolio.refresh': WalletCommandResult
+  'profile.create': ProfileCreateResult
+  'profile.delete': ProfileCommandResult
+  'profile.rename': ProfileCommandResult
+  'profile.select': ProfileCommandResult
   'request.approve': WalletCommandResult
   'request.access-resolve': WalletCommandResult
   'request.agent-access-resolve': WalletCommandResult
@@ -1167,6 +1266,7 @@ export interface QueryMap {
   'address.chain-usage': AddressChainUsageQuery
   'flash.quote': FlashQuoteQuery
   'name.resolve': NameResolveQuery
+  'profile.movable-accounts': ProfileMovableAccountsQuery
   'request.signer-compatibility': SignerCompatibilityQuery
   'security.status': SecurityStatusQuery
   'seed.generate': SeedGenerateQuery
@@ -1178,6 +1278,7 @@ export interface QueryResultMap {
   'address.chain-usage': AddressChainUsageResult
   'flash.quote': FlashQuoteResult
   'name.resolve': NameResolveResult
+  'profile.movable-accounts': ProfileMovableAccountsResult
   'request.signer-compatibility': SignerCompatibilityResult
   'security.status': SecurityStatusResult
   'seed.generate': SeedGenerateResult

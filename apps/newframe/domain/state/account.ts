@@ -10,6 +10,7 @@ export const AccountMetadataSchema = z
 export const AccountSchema = z
   .object({
     id: z.string().min(1),
+    profileId: z.string().min(1),
     address: z.string().min(1),
     name: z.string(),
     lastSignerType: z.string(),

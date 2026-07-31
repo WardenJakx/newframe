@@ -38,7 +38,7 @@ const nameResolution = {
   off: mock(),
   ready: mock(() => true),
   once: mock(),
-  reverseLookup: async () => 'frame.eth'
+  reverseLookup: mock(async () => 'frame.eth')
 }
 
 const accounts = { syncTransactionActivity: mock() }
@@ -195,6 +195,83 @@ describe('creation-block listener lifecycle', () => {
 
     expect(() => listener()).not.toThrow()
     expect(providerMock.off).toHaveBeenCalledWith('connect', listener)
+  })
+
+  it('starts profile-owned network callbacks only while the Account is active', async () => {
+    account.close()
+    store.getState().removeAccount(account.id)
+    mock.clearAllMocks()
+
+    account = new Account(
+      accountState as any,
+      accounts as any,
+      store,
+      providerMock as any,
+      { simulateTransactionEffects: simulateTransactionEffectsMock },
+      nameResolution,
+      revealMock,
+      {
+        navigation: navMock,
+        now: Date.now,
+        notify: mock(),
+        openBlockExplorer: mock(),
+        persistence: { flush: mock() },
+        schedule: (callback: () => void, delay: number) => setTimeout(callback, delay),
+        signers: signersMock,
+        windows: windowsMock
+      },
+      false
+    )
+
+    expect(providerMock.on).not.toHaveBeenCalledWith('connect', expect.any(Function))
+    expect(nameResolution.reverseLookup).not.toHaveBeenCalled()
+
+    account.setProfileActive(true)
+    await Promise.resolve()
+
+    expect(providerMock.on).toHaveBeenCalledWith('connect', expect.any(Function))
+    expect(nameResolution.reverseLookup).toHaveBeenCalledTimes(1)
+
+    const listener = providerMock.on.mock.calls.find(([event]) => event === 'connect')?.[1]
+    account.setProfileActive(false)
+    expect(providerMock.off).toHaveBeenCalledWith('connect', listener)
+  })
+
+  it('keeps a started reverse-name write but schedules no inactive follow-up', async () => {
+    let resolveLookup: (name: string) => void = () => {}
+    account.close()
+    store.getState().removeAccount(account.id)
+    mock.clearAllMocks()
+    nameResolution.reverseLookup.mockImplementationOnce(
+      () => new Promise<string>((resolve) => (resolveLookup = resolve))
+    )
+    account = new Account(
+      accountState as any,
+      accounts as any,
+      store,
+      providerMock as any,
+      { simulateTransactionEffects: simulateTransactionEffectsMock },
+      nameResolution,
+      revealMock,
+      {
+        navigation: navMock,
+        now: Date.now,
+        notify: mock(),
+        openBlockExplorer: mock(),
+        persistence: { flush: mock() },
+        schedule: (callback: () => void, delay: number) => setTimeout(callback, delay),
+        signers: signersMock,
+        windows: windowsMock
+      }
+    )
+
+    account.setProfileActive(false)
+    resolveLookup('late.frame.eth')
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(account.ensName).toBe('late.frame.eth')
+    expect(nameResolution.reverseLookup).toHaveBeenCalledTimes(1)
   })
 })
 

@@ -13,6 +13,7 @@ import {
   AccountCreatedResultSchema,
   AccountPrivateKeyExportQuerySchema,
   AccountPrivateKeyExportResultSchema,
+  AccountProfileMoveCommandSchema,
   AccountRenameCommandSchema,
   AccountRemoveCommandSchema,
   AccountReorderCommandSchema,
@@ -57,6 +58,14 @@ import {
   RequestTokenApprovalUpdateCommandSchema,
   PermissionClearCommandSchema,
   PortfolioRefreshCommandSchema,
+  ProfileCommandResultSchema,
+  ProfileCreateCommandSchema,
+  ProfileCreateResultSchema,
+  ProfileDeleteCommandSchema,
+  ProfileMovableAccountsQuerySchema,
+  ProfileMovableAccountsResultSchema,
+  ProfileRenameCommandSchema,
+  ProfileSelectCommandSchema,
   QueryBoundaryFailureSchema,
   SecurityConfigureCommandSchema,
   SecurityUnlockCommandSchema,
@@ -99,6 +108,7 @@ import {
   WarningToggleCommandSchema,
   type AccountSelectCommand,
   type AddressChainUsageQuery,
+  type ProfileMovableAccountsQuery,
   type AccountPrivateKeyExportQuery,
   type SideTrayContextMenuCommand,
   type FlashQuoteQuery,
@@ -287,6 +297,16 @@ export function createOperationRegistry(services: OperationServices) {
   }
 
   const commandRegistry = {
+    'account.profile-move': defineOperation({
+      schema: AccountProfileMoveCommandSchema,
+      resultSchema: ProfileCommandResultSchema,
+      roles: ['wallet-ui'],
+      entrypoints: ['tray'],
+      handle({ accountId, profileId }) {
+        return walletWorkflows.moveAccountToProfile(accountId, profileId)
+      },
+      failure: { ok: false, error: 'operation_failed' }
+    }),
     'account.select': defineOperation({
       schema: AccountSelectCommandSchema,
       resultSchema: AccountSelectResultSchema,
@@ -374,6 +394,46 @@ export function createOperationRegistry(services: OperationServices) {
       'not_found',
       ['tray']
     ),
+    'profile.select': defineOperation({
+      schema: ProfileSelectCommandSchema,
+      resultSchema: ProfileCommandResultSchema,
+      roles: ['wallet-ui'],
+      entrypoints: ['tray'],
+      handle({ profileId }) {
+        return walletWorkflows.selectProfile(profileId)
+      },
+      failure: { ok: false, error: 'operation_failed' }
+    }),
+    'profile.create': defineOperation({
+      schema: ProfileCreateCommandSchema,
+      resultSchema: ProfileCreateResultSchema,
+      roles: ['wallet-ui'],
+      entrypoints: ['tray'],
+      handle({ name, accountIds }) {
+        return walletWorkflows.createProfile(name, accountIds)
+      },
+      failure: { ok: false, error: 'operation_failed' }
+    }),
+    'profile.rename': defineOperation({
+      schema: ProfileRenameCommandSchema,
+      resultSchema: ProfileCommandResultSchema,
+      roles: ['wallet-ui'],
+      entrypoints: ['tray'],
+      handle({ profileId, name }) {
+        return walletWorkflows.renameProfile(profileId, name)
+      },
+      failure: { ok: false, error: 'operation_failed' }
+    }),
+    'profile.delete': defineOperation({
+      schema: ProfileDeleteCommandSchema,
+      resultSchema: ProfileCommandResultSchema,
+      roles: ['wallet-ui'],
+      entrypoints: ['tray'],
+      handle({ profileId }) {
+        return walletWorkflows.deleteProfile(profileId)
+      },
+      failure: { ok: false, error: 'operation_failed' }
+    }),
     'keystore.locate': defineOperation({
       schema: KeystoreLocateCommandSchema,
       resultSchema: KeystoreLocateResultSchema,
@@ -791,6 +851,16 @@ export function createOperationRegistry(services: OperationServices) {
   } satisfies Record<keyof CommandMap, OperationDefinition>
 
   const queryRegistry = {
+    'profile.movable-accounts': defineOperation({
+      schema: ProfileMovableAccountsQuerySchema,
+      resultSchema: ProfileMovableAccountsResultSchema,
+      roles: ['wallet-ui'],
+      entrypoints: ['tray'],
+      handle(_query: ProfileMovableAccountsQuery) {
+        return walletWorkflows.movableProfileAccounts()
+      },
+      failure: { ok: false, error: 'operation_failed' }
+    }),
     'address.chain-usage': defineOperation({
       schema: AddressChainUsageQuerySchema,
       resultSchema: AddressChainUsageResultSchema,

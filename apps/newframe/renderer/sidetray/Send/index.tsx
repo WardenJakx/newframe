@@ -38,6 +38,8 @@ export default function Send({ assetId }: SendProps) {
   const { accounts, balanceSummaries, currentAccount, networks, networksMeta } =
     useSideTraySelector(selectSendView)
   const [state, dispatch] = React.useReducer(sendReducer, assetId, createInitialSendState)
+  const previousAccountIdRef = React.useRef(currentAccount?.id || '')
+  const currentAccountIdRef = React.useRef(currentAccount?.id || '')
 
   const selectedAssetSummary = React.useMemo(() => {
     const explicitlySelectedAsset = balanceSummaries.find(
@@ -55,6 +57,23 @@ export default function Send({ assetId }: SendProps) {
   const asset = React.useMemo(() => {
     return selectedAssetSummary ? createDisplayBalance(selectedAssetSummary) : null
   }, [selectedAssetSummary])
+
+  React.useEffect(() => {
+    const accountId = currentAccount?.id || ''
+    currentAccountIdRef.current = accountId
+    if (previousAccountIdRef.current === accountId) return
+
+    previousAccountIdRef.current = accountId
+    const retainedAsset =
+      balanceSummaries.find((balance) => toCanonicalAssetId(balance) === state.selectedAssetKey) ||
+      resolveSendAssetFromRouteAssetId(assetId, balanceSummaries) ||
+      balanceSummaries[0] ||
+      null
+    dispatch({
+      type: 'accountChanged',
+      selectedAssetKey: retainedAsset ? toCanonicalAssetId(retainedAsset) : ''
+    })
+  }, [assetId, balanceSummaries, currentAccount?.id, state.selectedAssetKey])
   const recipientAccounts = React.useMemo(() => {
     const senderAddress = cleanAddress(currentAccount?.address)
 
@@ -124,6 +143,7 @@ export default function Send({ assetId }: SendProps) {
   }, [state.recipient, state.recipientInput])
 
   const handleSubmit = React.useCallback(async () => {
+    const submittingAccountId = currentAccount?.id || ''
     const amount = getAmountBaseUnits(state.amount, asset)
     const balance = asset ? toBigInt(asset.balance) || 0n : 0n
 
@@ -142,9 +162,12 @@ export default function Send({ assetId }: SendProps) {
     try {
       recipientAddress = await resolveRecipientAddress()
     } catch (e) {
+      if (currentAccountIdRef.current !== submittingAccountId) return
       dispatch({ type: 'validationFailed', error: 'Could not resolve recipient.' })
       return
     }
+
+    if (currentAccountIdRef.current !== submittingAccountId) return
 
     const validationError = validateSendRequest({
       account: currentAccount,
@@ -170,9 +193,12 @@ export default function Send({ assetId }: SendProps) {
     try {
       response = await submitTransaction(asset.chainId, transaction, crypto.randomUUID())
     } catch {
+      if (currentAccountIdRef.current !== submittingAccountId) return
       dispatch({ type: 'submitFailed', error: 'Transaction failed.' })
       return
     }
+
+    if (currentAccountIdRef.current !== submittingAccountId) return
 
     if (!response.ok) {
       dispatch({

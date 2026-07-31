@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'bun:test'
 import type { Mock } from 'bun:test'
 
-import { fireEvent, render, screen } from '../../../test/support/componentSetup'
+import { act, fireEvent, render, screen, waitFor } from '../../../test/support/componentSetup'
 import Send from './index'
 import { applyStateMessage, beginStateConnection, resetStateMirrorForTests } from '../../state/rendererStore'
 import { NATIVE_CURRENCY } from '../../../domain/token/constants'
@@ -25,6 +25,19 @@ const recipient = {
 const chainId = 31337
 const tokenAddress = '0x00000000000000000000000000000000000000bb'
 const nativeAssetId = `${chainId}:${NATIVE_CURRENCY}`
+let stateRevision = 0
+
+function updateSendState(changes: Record<string, unknown>) {
+  const baseRevision = stateRevision
+  stateRevision += 1
+  return applyStateMessage({
+    schemaVersion: STATE_STREAM_SCHEMA_VERSION,
+    streamId: 'send-test',
+    baseRevision,
+    revision: stateRevision,
+    changes
+  })
+}
 
 function initializeSendState(balances: any[] = [nativeBalance()], customTokens: any[] = []) {
   const tokenRecords = [...balances, ...customTokens]
@@ -37,6 +50,7 @@ function initializeSendState(balances: any[] = [nativeBalance()], customTokens: 
       updatedAt: 0
     }))
   resetStateMirrorForTests()
+  stateRevision = 0
   beginStateConnection('sidetray')
   applyStateMessage({
     schemaVersion: STATE_STREAM_SCHEMA_VERSION,
@@ -50,7 +64,8 @@ function initializeSendState(balances: any[] = [nativeBalance()], customTokens: 
       },
       accountOrder: [recipient.id, sender.id],
       balances: {
-        [sender.address]: balances
+        [sender.address]: balances,
+        [recipient.address]: balances
       },
       networks: {
         ethereum: {
@@ -195,6 +210,59 @@ describe('Send', () => {
     expect(screen.getByText('Recipient')).toBeTruthy()
     expect(screen.queryByText('Sender')).toBeNull()
     expect(screen.queryByText(sender.address)).toBeNull()
+  })
+
+  it('clears recipient, amount, and open menus when the current account changes', async () => {
+    const { user } = render(<Send assetId={nativeAssetId} />)
+    await user.click(screen.getByText('Recipient').closest('button') as HTMLButtonElement)
+    fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '4' } })
+    await user.click(screen.getByRole('button', { name: 'Select send token' }))
+    expect(screen.getByRole('listbox', { name: 'Select send token' })).toBeTruthy()
+
+    act(() => {
+      updateSendState({ currentAccount: recipient.id })
+    })
+
+    await waitFor(() => {
+      expect((screen.getByLabelText('Amount') as HTMLInputElement).value).toBe('')
+    })
+    expect(screen.queryByRole('listbox', { name: 'Select send token' })).toBeNull()
+    expect(screen.queryByText(recipient.address)).toBeNull()
+    expect((screen.getByLabelText('Recipient') as HTMLInputElement).value).toBe('')
+  })
+
+  it('also resets when the current account is lost', async () => {
+    render(<Send assetId={nativeAssetId} />)
+    fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '4' } })
+
+    act(() => {
+      updateSendState({ currentAccount: '' })
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('No assets available to send.')).toBeTruthy()
+    })
+  })
+
+  it('ignores a submission result from the previously selected account', async () => {
+    let resolveSubmission: (result: any) => void = () => undefined
+    ;(link.executeCommand as Mock<any>).mockImplementation((command: any) => {
+      if (command.type !== 'transaction.submit') return Promise.resolve({ ok: true })
+      return new Promise((resolve) => {
+        resolveSubmission = resolve
+      })
+    })
+
+    const { user } = render(<Send assetId={nativeAssetId} />)
+    await user.click(screen.getByText('Recipient').closest('button') as HTMLButtonElement)
+    await user.click(screen.getByRole('button', { name: 'Proceed' }))
+    expect(screen.getByText('Confirm in Newframe')).toBeTruthy()
+
+    act(() => updateSendState({ currentAccount: recipient.id }))
+    act(() => resolveSubmission({ ok: true, transactionHash: `0x${'1'.repeat(64)}` }))
+
+    await waitFor(() => expect(screen.queryByText('Confirm in Newframe')).toBeNull())
+    expect(screen.queryByText('Transaction submitted')).toBeNull()
   })
 
   it('submits a native transfer through the Send service flow', async () => {

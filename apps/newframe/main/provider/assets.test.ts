@@ -275,4 +275,38 @@ describe('#createObserver', () => {
 
     expect(handler.assetsChanged).toHaveBeenCalledTimes(1)
   })
+
+  it('publishes only the latest still-current account from a shared debounce', () => {
+    const nextAccount = '0x2222222222222222222222222222222222222222'
+    const nextBalance = {
+      address: '0x3333333333333333333333333333333333333333',
+      balance: '0x2',
+      chainId: 1
+    }
+
+    observer()
+    timers.advanceTimersByTime(400)
+    store.setState((state: any) => {
+      state.main.currentAccount = nextAccount
+      state.main.accounts[nextAccount] = { balances: { lastUpdated: new Date() } }
+      state.main.balances[nextAccount] = [nextBalance]
+      setToken(state, nextBalance, 'NEXT')
+    })
+    observer()
+    timers.advanceTimersByTime(400)
+
+    expect(handler.assetsChanged).toHaveBeenCalledTimes(1)
+    expect(handler.assetsChanged).toHaveBeenCalledWith(nextAccount, {
+      nativeCurrency: [],
+      erc20: [
+        {
+          ...nextBalance,
+          decimals: 18,
+          name: 'NEXT',
+          symbol: 'NEXT',
+          tokenInfo: {}
+        }
+      ]
+    })
+  })
 })
