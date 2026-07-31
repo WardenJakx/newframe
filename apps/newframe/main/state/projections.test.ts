@@ -121,6 +121,27 @@ it('projects only active-profile Accounts and derives ordered cached profile val
   state.main.assetRates = {
     [`1:${pricedToken}`]: { usdRate: 5, source: 'zerion', observedAt: 1 }
   }
+  state.main.activity = {
+    prior: {
+      id: 'prior',
+      account: activeAccount,
+      status: 'succeeded',
+      data: { to: unpricedAccount, data: '0x1234', privateTransactionData: true },
+      payload: { privateRequestData: true },
+      recognizedActions: [
+        {
+          id: 'erc20:transfer',
+          data: { recipient: { address: unpricedAccount, ens: 'private.eth' }, amount: '0x1' }
+        }
+      ]
+    },
+    other: {
+      id: 'other',
+      account: unpricedAccount,
+      status: 'succeeded',
+      data: { to: activeAccount }
+    }
+  }
 
   const wallet = projectWalletState(state)
   expect({
@@ -155,5 +176,14 @@ it('projects only active-profile Accounts and derives ordered cached profile val
   })
   expect(sideTray.accountOrder).toEqual([activeAccount])
   expect(sideTray.balances).toEqual({ [activeAccount]: state.main.balances[activeAccount] })
+  expect(sideTray.activity).toEqual({
+    prior: {
+      id: 'prior',
+      account: activeAccount,
+      status: 'succeeded',
+      data: { to: unpricedAccount, data: '0x1234' },
+      recognizedActions: [{ id: 'erc20:transfer', data: { recipient: { address: unpricedAccount } } }]
+    }
+  })
   expect(sideTray).not.toHaveProperty('profiles')
 })

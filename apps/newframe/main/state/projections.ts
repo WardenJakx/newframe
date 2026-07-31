@@ -440,6 +440,75 @@ function projectSideTrayBalances(
   return previousSideTrayBalances
 }
 
+let previousSideTrayActivityInput: CanonicalMain['activity'] | undefined
+let previousSideTrayActivityAccount = ''
+let previousSideTrayActivity: SideTrayRendererState['activity'] | undefined
+
+function objectValue(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' ? (value as Record<string, unknown>) : {}
+}
+
+function projectSideTrayActivity(
+  activity: CanonicalMain['activity'],
+  account: string
+): SideTrayRendererState['activity'] {
+  if (
+    activity === previousSideTrayActivityInput &&
+    account === previousSideTrayActivityAccount &&
+    previousSideTrayActivity
+  ) {
+    return previousSideTrayActivity
+  }
+
+  const normalizedAccount = account.toLowerCase()
+  previousSideTrayActivityInput = activity
+  previousSideTrayActivityAccount = account
+  previousSideTrayActivity = Object.fromEntries(
+    Object.entries(activity).flatMap(([activityId, record]) => {
+      const sender = String(record.account || record.address || '').toLowerCase()
+      if (!normalizedAccount || sender !== normalizedAccount) return []
+
+      const rawData = objectValue(record.data)
+      const data = {
+        ...(typeof rawData.to === 'string' ? { to: rawData.to } : {}),
+        ...(typeof rawData.data === 'string' ? { data: rawData.data } : {})
+      }
+      const rawActions = Array.isArray(record.recognizedActions) ? record.recognizedActions : []
+      const recognizedActions = rawActions.flatMap((value) => {
+        const action = objectValue(value)
+        if (action.id !== 'erc20:transfer') return []
+
+        const actionData = objectValue(action.data)
+        const recipient = objectValue(actionData.recipient)
+        if (typeof recipient.address !== 'string') return []
+
+        return [
+          {
+            id: 'erc20:transfer',
+            data: { recipient: { address: recipient.address } }
+          }
+        ]
+      })
+
+      return [
+        [
+          activityId,
+          {
+            id: record.id,
+            account: record.account,
+            address: record.address,
+            status: record.status,
+            ...(Object.keys(data).length ? { data } : {}),
+            ...(recognizedActions.length ? { recognizedActions } : {})
+          }
+        ]
+      ]
+    })
+  )
+
+  return previousSideTrayActivity
+}
+
 let previousSideTrayProjection: SideTrayRendererState | undefined
 let previousSideTrayTokensInput: CanonicalMain['tokens'] | undefined
 let previousSideTrayTokensAccount = ''
@@ -484,6 +553,7 @@ export function projectSideTrayState(state: CanonicalState): SideTrayRendererSta
   const projection: SideTrayRendererState = {
     accounts,
     accountOrder,
+    activity: projectSideTrayActivity(main.activity, currentAddress),
     balances: projectSideTrayBalances(main.balances, main.currentAccount, accounts),
     currentAccount: main.currentAccount,
     networks,

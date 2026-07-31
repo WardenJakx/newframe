@@ -407,6 +407,7 @@ describe('renderer state stream', () => {
     expect(Object.keys(snapshot.state).sort()).toEqual([
       'accountOrder',
       'accounts',
+      'activity',
       'assetRates',
       'balances',
       'currentAccount',
