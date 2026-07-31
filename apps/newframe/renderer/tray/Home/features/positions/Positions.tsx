@@ -36,7 +36,9 @@ export function Positions() {
       networks={shared.networks}
       networksMeta={shared.networksMeta}
       onChangeQuery={setQuery}
-      onOpenAsset={(asset) => openOverlay({ type: 'asset', asset })}
+      onOpenAsset={(asset) =>
+        shared.currentAccount && openOverlay({ type: 'asset', accountId: shared.currentAccount, asset })
+      }
       onShowMoreDust={() => setDustRowsVisible((rows) => rows + ROW_INCREMENT)}
       onShowMoreSecondary={() => setSecondaryRowsVisible((rows) => rows + ROW_INCREMENT)}
       onToggleDust={() => setDustExpanded((expanded) => !expanded)}

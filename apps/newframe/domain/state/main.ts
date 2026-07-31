@@ -9,6 +9,16 @@ import { AssetRateMapSchema } from './rate.js'
 import { ShortcutSchema } from './shortcuts.js'
 import { TokenCatalogSchema } from './token.js'
 
+export const DEFAULT_PROFILE_ID = 'default-profile'
+export const DEFAULT_PROFILE_NAME = 'Profile 1'
+
+export const ProfileSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1)
+})
+
+export type Profile = z.infer<typeof ProfileSchema>
+
 const ShortcutsSchema = z.object({
   summon: ShortcutSchema
 })
@@ -146,6 +156,9 @@ export const MainSchema = z
       z.record(z.string().describe('Origin Id'), PermissionSchema)
     ),
     accounts: z.record(z.string(), AccountSchema),
+    profiles: z.record(z.string(), ProfileSchema),
+    profileOrder: z.array(z.string()),
+    currentProfile: z.string().min(1),
     currentAccount: z.string().default(''),
     appLock: AppLockSchema,
     accountOrder: z.array(z.string()).default([]),
@@ -168,3 +181,20 @@ export type ActivityRecord = z.infer<typeof ActivityRecordSchema>
 export type ActivityStatus = z.infer<typeof ActivityStatusSchema>
 export type Orders = z.infer<typeof OrdersSchema>
 export type OrderRecord = z.infer<typeof OrderRecordSchema>
+
+export function getProfileAccountIds(
+  main: Pick<Main, 'accounts' | 'accountOrder'>,
+  profileId: string
+): string[] {
+  const ordered: string[] = []
+  const seen = new Set<string>()
+
+  for (const id of [...main.accountOrder, ...Object.keys(main.accounts)]) {
+    if (!seen.has(id) && main.accounts[id]?.profileId === profileId) {
+      seen.add(id)
+      ordered.push(id)
+    }
+  }
+
+  return ordered
+}

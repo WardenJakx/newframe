@@ -10,6 +10,7 @@ import { Inline } from '@newframe/ui/inline'
 import { Input } from '@newframe/ui/input'
 import { ScrollArea } from '@newframe/ui/scroll-area'
 import { SearchField } from '@newframe/ui/search-field'
+import { Selection, type SelectionItem } from '@newframe/ui/selection'
 import { Spinner } from '@newframe/ui/spinner'
 import { Stack } from '@newframe/ui/stack'
 import { Surface } from '@newframe/ui/surface'
@@ -25,6 +26,7 @@ import type { WalletRendererState } from '../../../../../contracts/state/project
 import AccountRenameInput from '../../AccountRenameInput'
 import { useHomeUiStore } from '../../state/HomeUiProvider'
 import { AddAccount } from './AddAccount'
+import { ProfileSelector } from './ProfileSelector'
 import { cva } from '../../../../../generated/styled-system/css/cva.js'
 
 type HomeAccount = WalletRendererState['accounts'][string]
@@ -41,6 +43,8 @@ interface AccountsState {
   accountExported: string
   accountExporting: string
   accountMenu: string
+  accountMove: string
+  accountMoveError: string
   accountQuery: string
   accountRemoving: string
   accountRenaming: string
@@ -160,13 +164,15 @@ export function Accounts() {
       accounts: main.accounts || EMPTY_RECORD,
       balances: main.balances || EMPTY_RECORD,
       currentAccount: main.currentAccount || '',
+      currentProfile: main.currentProfile || '',
       networks: main.networks?.ethereum || EMPTY_RECORD,
       networksMeta: main.networksMeta?.ethereum || EMPTY_RECORD,
       assetRates: main.assetRates || EMPTY_RECORD,
       tokens: main.tokens,
       showLocalNameWithENS: !!main.showLocalNameWithENS,
       showTestnets: !!main.showTestnets,
-      signers: main.signers || EMPTY_RECORD
+      signers: main.signers || EMPTY_RECORD,
+      profiles: main.profiles || EMPTY_ARRAY
     }))
   )
   const props = { shared }
@@ -179,6 +185,8 @@ export function Accounts() {
   const [state, setHomeState] = useState<AccountsState>({
     accountQuery: '',
     accountMenu: '',
+    accountMove: '',
+    accountMoveError: '',
     accountRenaming: '',
     accountRemoving: '',
     accountCopied: '',
@@ -379,10 +387,31 @@ export function Accounts() {
     setState({ accountMenu: '' })
   }
 
+  function profileOperationError(error: string) {
+    const messages: Record<string, string> = {
+      account_not_found: 'That account is no longer available.',
+      profile_not_found: 'That profile is no longer available.',
+      same_profile: 'The account is already in that profile.'
+    }
+    return messages[error] || 'Could not move the account. Try again.'
+  }
+
+  async function moveAccountToProfile(accountId: string, profileId: string) {
+    setState({ accountMoveError: '' })
+    const result = await link.executeCommand({ type: 'account.profile-move', accountId, profileId })
+    if (!result.ok) {
+      setState({ accountMove: accountId, accountMoveError: profileOperationError(result.error) })
+      return
+    }
+    setState({ accountMenu: '', accountMove: '', accountMoveError: '' })
+  }
+
   function startRenameAccount(account: any) {
     setState({
       accountRenaming: account.id,
       accountMenu: '',
+      accountMove: '',
+      accountMoveError: '',
       accountRemoving: ''
     })
   }
@@ -594,6 +623,7 @@ export function Accounts() {
             <Heading level={1} variant='title'>
               Accounts
             </Heading>
+            <ProfileSelector currentProfile={props.shared.currentProfile} profiles={props.shared.profiles} />
             <IconButton icon='close' label='Close accounts' onPress={() => closeAccountsPanel()} />
           </HeaderBar>
         ) : null}
@@ -636,6 +666,7 @@ export function Accounts() {
                     const navValue = accountNavValue(account)
                     const renaming = state.accountRenaming === id
                     const menuOpen = state.accountMenu === id
+                    const moveOpen = state.accountMove === id
                     const confirmingRemove = state.accountRemoving === id
                     const confirmSeedPhraseRemoval =
                       confirmingRemove && isLastAccountForSeedPhrase(account, accounts)
@@ -740,7 +771,12 @@ export function Accounts() {
                           label={`${accountDisplayName(account)} account actions`}
                           onPress={(event) => {
                             event.stopPropagation()
-                            setState({ accountMenu: menuOpen ? '' : id, accountRemoving: '' })
+                            setState({
+                              accountMenu: menuOpen ? '' : id,
+                              accountRemoving: '',
+                              accountMove: '',
+                              accountMoveError: ''
+                            })
                           }}
                           size='small'
                         />
@@ -755,6 +791,49 @@ export function Accounts() {
                               >
                                 <Text variant='caption'>Rename account</Text>
                               </Button>
+                              {props.shared.profiles.some(
+                                (profile: WalletRendererState['profiles'][number]) =>
+                                  profile.id !== props.shared.currentProfile
+                              ) ? (
+                                <Selection
+                                  items={props.shared.profiles
+                                    .filter(
+                                      (profile: WalletRendererState['profiles'][number]) =>
+                                        profile.id !== props.shared.currentProfile
+                                    )
+                                    .map(
+                                      (profile: WalletRendererState['profiles'][number]): SelectionItem => ({
+                                        id: profile.id,
+                                        content: (
+                                          <Stack gap='none' grow>
+                                            <Text variant='caption' truncate>
+                                              {profile.name}
+                                            </Text>
+                                            <Text tone='muted' variant='micro'>
+                                              {profile.accountCount}{' '}
+                                              {profile.accountCount === 1 ? 'Account' : 'Accounts'}
+                                            </Text>
+                                          </Stack>
+                                        )
+                                      })
+                                    )}
+                                  label={`Move ${accountDisplayName(account)} to profile`}
+                                  onOpenChange={(open) =>
+                                    setState({
+                                      accountMove: open ? id : '',
+                                      accountMoveError: open ? state.accountMoveError : ''
+                                    })
+                                  }
+                                  onSelect={(profileId) => void moveAccountToProfile(id, profileId)}
+                                  open={moveOpen}
+                                  trigger={<Text variant='caption'>Move to profile</Text>}
+                                />
+                              ) : null}
+                              {moveOpen && state.accountMoveError ? (
+                                <Text tone='danger' variant='caption'>
+                                  {state.accountMoveError}
+                                </Text>
+                              ) : null}
                               {isHotAccount(account) || account.agentEnabled ? (
                                 <>
                                   <Button

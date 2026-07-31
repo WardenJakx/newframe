@@ -16,6 +16,7 @@ import { addHexPrefix, intToHex } from '@ethereumjs/util'
 
 import store from '../store'
 import { GasFeesSource, TRANSACTION_CONFIRMATION_TARGET } from '../../domain/transaction'
+import { DEFAULT_PROFILE_ID } from '../../domain/state/main'
 import { gweiToHex } from '../../test/support/util'
 import { createAgentPrincipal, createRpcPrincipal } from '../authority'
 
@@ -1364,6 +1365,119 @@ describe('#setTxSent', () => {
     )
 
     accounts.close()
+  })
+
+  it('pauses persisted activity immediately and resumes it once without overlapping RPC', async () => {
+    const profileId = 'dormant-activity-profile'
+    const hash = '0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc'
+    const receiptCallbacks: Array<(response: any) => void> = []
+    const accounts = createAccounts()
+
+    storeState().createProfile(profileId, 'Dormant activity')
+    storeState().moveAccountToProfile(account2.address, profileId)
+    storeState().selectProfile(DEFAULT_PROFILE_ID)
+    store.setState((state: any) => {
+      state.main.activity = {
+        [hash]: {
+          id: hash,
+          hash,
+          account: account.address,
+          address: account.address,
+          chainId: 1,
+          nonce: request.data.nonce,
+          status: 'submitted',
+          confirmations: 0,
+          data: { ...request.data, from: account.address }
+        }
+      }
+    })
+    provider.send = mock((payload: any, cb: any) => {
+      if (payload.method === 'eth_getTransactionReceipt') {
+        receiptCallbacks.push(cb)
+        return
+      }
+      if (payload.method === 'eth_blockNumber') {
+        cb({ result: intToHex(100 + TRANSACTION_CONFIRMATION_TARGET) })
+      }
+    })
+
+    try {
+      accounts.initialize()
+      expect(receiptCallbacks).toHaveLength(1)
+
+      storeState().selectProfile(profileId)
+      receiptCallbacks[0]({ result: { status: '0x1', blockNumber: intToHex(100), gasUsed: '0x5208' } })
+      expect(provider.send.mock.calls.map(([payload]: any[]) => payload.method)).toEqual([
+        'eth_getTransactionReceipt'
+      ])
+      expect(storeState().main.activity[hash].status).toBe('submitted')
+
+      storeState().selectProfile(DEFAULT_PROFILE_ID)
+      expect(receiptCallbacks).toHaveLength(2)
+      timers.advanceTimersByTime(30_000)
+      expect(receiptCallbacks).toHaveLength(2)
+
+      receiptCallbacks[1]({ result: { status: '0x1', blockNumber: intToHex(100), gasUsed: '0x5208' } })
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+      expect(storeState().main.activity[hash].status).toBe('succeeded')
+    } finally {
+      accounts.close()
+      store.setState((state: any) => {
+        state.main.activity = {}
+      })
+      storeState().selectProfile(DEFAULT_PROFILE_ID)
+      storeState().moveAccountToProfile(account2.address, DEFAULT_PROFILE_ID)
+      storeState().deleteProfile(profileId)
+    }
+  })
+
+  it('retires a live request monitor on dormancy and resumes from durable activity', () => {
+    const profileId = 'dormant-live-profile'
+    const hash = '0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd'
+    const accounts = createAccounts()
+    const methods: string[] = []
+
+    store.setState((state: any) => {
+      state.main.activity = {}
+    })
+    storeState().createProfile(profileId, 'Dormant live request')
+    storeState().moveAccountToProfile(account2.address, profileId)
+    storeState().selectProfile(DEFAULT_PROFILE_ID)
+    provider.send = mock((payload: any, cb: any) => {
+      methods.push(payload.method)
+      if (payload.method === 'eth_subscribe') cb({ result: 'head-subscription' })
+      else if (payload.method === 'eth_unsubscribe') cb({ result: true })
+    })
+
+    try {
+      accounts.initialize()
+      const frameAccount = accounts.getFrameAccount(account.address)
+      frameAccount.addRequest(request, mock())
+      accounts.setTxSent(request.handlerId, hash)
+      expect(methods).toEqual(['eth_subscribe'])
+
+      storeState().selectProfile(profileId)
+      expect(methods).toEqual(['eth_subscribe', 'eth_unsubscribe'])
+      timers.advanceTimersByTime(30_000)
+      expect(methods).toEqual(['eth_subscribe', 'eth_unsubscribe'])
+      expect(storeState().main.activity[hash].status).toBe('submitted')
+
+      storeState().selectProfile(DEFAULT_PROFILE_ID)
+      expect(methods).toEqual(['eth_subscribe', 'eth_unsubscribe', 'eth_getTransactionReceipt'])
+      timers.advanceTimersByTime(30_000)
+      expect(methods).toEqual(['eth_subscribe', 'eth_unsubscribe', 'eth_getTransactionReceipt'])
+    } finally {
+      accounts.close()
+      store.setState((state: any) => {
+        state.main.activity = {}
+      })
+      storeState().selectProfile(DEFAULT_PROFILE_ID)
+      storeState().moveAccountToProfile(account2.address, DEFAULT_PROFILE_ID)
+      storeState().deleteProfile(profileId)
+    }
   })
 })
 

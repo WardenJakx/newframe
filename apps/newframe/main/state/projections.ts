@@ -1,4 +1,6 @@
 import type { CanonicalState } from '../store/state/index.js'
+import { createBalanceSummarySelector } from '../../domain/balance/index.js'
+import { getProfileAccountIds } from '../../domain/state/main.js'
 import {
   WalletHomeCommandSchema,
   WalletPanelNavigationEntrySchema,
@@ -123,11 +125,143 @@ function projectWalletTray(tray: CanonicalState['tray']): WalletRendererState['t
   return previousWalletTray
 }
 
+let previousWalletProfileInputs:
+  | Pick<
+      CanonicalMain,
+      | 'profiles'
+      | 'profileOrder'
+      | 'accounts'
+      | 'accountOrder'
+      | 'balances'
+      | 'assetRates'
+      | 'networks'
+      | 'networksMeta'
+      | 'tokens'
+    >
+  | undefined
+let previousWalletProfiles: WalletRendererState['profiles'] | undefined
+const walletProfileBalanceSelectors = new Map<string, ReturnType<typeof createBalanceSummarySelector>>()
+
+function projectWalletProfiles(main: CanonicalMain): WalletRendererState['profiles'] {
+  const inputs = {
+    profiles: main.profiles,
+    profileOrder: main.profileOrder,
+    accounts: main.accounts,
+    accountOrder: main.accountOrder,
+    balances: main.balances,
+    assetRates: main.assetRates,
+    networks: main.networks,
+    networksMeta: main.networksMeta,
+    tokens: main.tokens
+  }
+  if (
+    previousWalletProfileInputs &&
+    sameTopLevelReferences(previousWalletProfileInputs, inputs) &&
+    previousWalletProfiles
+  ) {
+    return previousWalletProfiles
+  }
+
+  previousWalletProfileInputs = inputs
+  const profiles: WalletRendererState['profiles'] = []
+  main.profileOrder.forEach((profileId) => {
+    const profile = main.profiles[profileId]
+    if (!profile) return
+
+    const accountIds = getProfileAccountIds(main, profileId)
+    const accountAddresses = accountIds.flatMap((id) => {
+      const address = main.accounts[id]?.address
+      return address ? [address] : []
+    })
+    const cachedAddresses = accountAddresses.filter((address) =>
+      Object.prototype.hasOwnProperty.call(main.balances, address)
+    )
+    if (cachedAddresses.length === 0) {
+      profiles.push({
+        id: profile.id,
+        name: profile.name,
+        accountCount: accountIds.length,
+        cachedValue: { state: 'missing' }
+      })
+      return
+    }
+
+    let selectBalanceSummaries = walletProfileBalanceSelectors.get(profileId)
+    if (!selectBalanceSummaries) {
+      selectBalanceSummaries = createBalanceSummarySelector()
+      walletProfileBalanceSelectors.set(profileId, selectBalanceSummaries)
+    }
+    const summaries = selectBalanceSummaries({
+      rawBalances: cachedAddresses.flatMap((address) => main.balances[address] || []),
+      assetRates: main.assetRates,
+      networks: main.networks.ethereum,
+      networksMeta: main.networksMeta.ethereum,
+      tokens: main.tokens,
+      cacheKey: profileId
+    })
+    const priced = summaries.filter((balance) => balance.hasPrice)
+    const cachedValue =
+      summaries.length > 0 && priced.length === 0
+        ? ({ state: 'unpriced' } as const)
+        : ({
+            state: 'priced',
+            value: priced.reduce((total, balance) => total + balance.totalValue, 0)
+          } as const)
+
+    profiles.push({ id: profile.id, name: profile.name, accountCount: accountIds.length, cachedValue })
+  })
+  const unchanged =
+    previousWalletProfiles?.length === profiles.length &&
+    profiles.every((profile, index) => {
+      const previous = previousWalletProfiles?.[index]
+      return (
+        previous?.id === profile.id &&
+        previous.name === profile.name &&
+        previous.accountCount === profile.accountCount &&
+        previous.cachedValue.state === profile.cachedValue.state &&
+        (profile.cachedValue.state !== 'priced' ||
+          (previous.cachedValue.state === 'priced' &&
+            previous.cachedValue.value === profile.cachedValue.value))
+      )
+    })
+  if (!unchanged) previousWalletProfiles = profiles
+  return previousWalletProfiles!
+}
+
+let previousWalletAccountsInput: CanonicalMain['accounts'] | undefined
+let previousWalletAccountOrderInput: CanonicalMain['accountOrder'] | undefined
+let previousWalletCurrentProfile = ''
+let previousWalletAccounts: WalletRendererState['accounts'] | undefined
+let previousWalletAccountOrder: WalletRendererState['accountOrder'] | undefined
+
+function projectWalletAccounts(main: CanonicalMain) {
+  if (
+    main.accounts === previousWalletAccountsInput &&
+    main.accountOrder === previousWalletAccountOrderInput &&
+    main.currentProfile === previousWalletCurrentProfile &&
+    previousWalletAccounts &&
+    previousWalletAccountOrder
+  ) {
+    return { accounts: previousWalletAccounts, accountOrder: previousWalletAccountOrder }
+  }
+
+  const accountOrder = getProfileAccountIds(main, main.currentProfile)
+  previousWalletAccountsInput = main.accounts
+  previousWalletAccountOrderInput = main.accountOrder
+  previousWalletCurrentProfile = main.currentProfile
+  previousWalletAccountOrder = accountOrder
+  previousWalletAccounts = Object.fromEntries(
+    accountOrder.map((id) => [id, main.accounts[id]])
+  ) as WalletRendererState['accounts']
+  return { accounts: previousWalletAccounts!, accountOrder }
+}
+
 export function projectWalletState(state: CanonicalState): WalletRendererState {
   const { main } = state
+  const { accounts, accountOrder } = projectWalletAccounts(main)
   const projection: WalletRendererState = {
-    accounts: main.accounts as unknown as WalletRendererState['accounts'],
-    accountOrder: main.accountOrder,
+    accounts,
+    accountOrder,
     activity: main.activity,
     appLock: main.appLock,
     autoDiscoverTokens: main.autoDiscoverTokens,
@@ -135,6 +269,7 @@ export function projectWalletState(state: CanonicalState): WalletRendererState {
     balances: main.balances,
     biometricUnlock: main.biometricUnlock,
     currentAccount: main.currentAccount,
+    currentProfile: main.currentProfile,
     instanceId: main.instanceId,
     latticeSettings: main.latticeSettings,
     launch: main.launch,
@@ -147,6 +282,7 @@ export function projectWalletState(state: CanonicalState): WalletRendererState {
     origins: main.origins,
     permissions: main.permissions,
     portfolioApiKeyConfigured: main.portfolioApiKey.trim().length > 0,
+    profiles: projectWalletProfiles(main),
     assetRates: main.assetRates,
     reveal: main.reveal,
     runtime: main.runtime,
@@ -169,27 +305,43 @@ export function projectWalletState(state: CanonicalState): WalletRendererState {
 }
 
 let previousSideTrayAccountsInput: CanonicalMain['accounts'] | undefined
+let previousSideTrayAccountOrderInput: CanonicalMain['accountOrder'] | undefined
+let previousSideTrayCurrentProfile = ''
 let previousSideTrayAccounts: SideTrayRendererState['accounts'] | undefined
+let previousSideTrayAccountOrder: SideTrayRendererState['accountOrder'] | undefined
 
-function projectSideTrayAccounts(accounts: CanonicalMain['accounts']): SideTrayRendererState['accounts'] {
-  if (accounts === previousSideTrayAccountsInput && previousSideTrayAccounts) {
-    return previousSideTrayAccounts
+function projectSideTrayAccounts(main: CanonicalMain) {
+  if (
+    main.accounts === previousSideTrayAccountsInput &&
+    main.accountOrder === previousSideTrayAccountOrderInput &&
+    main.currentProfile === previousSideTrayCurrentProfile &&
+    previousSideTrayAccounts &&
+    previousSideTrayAccountOrder
+  ) {
+    return { accounts: previousSideTrayAccounts, accountOrder: previousSideTrayAccountOrder }
   }
 
-  previousSideTrayAccountsInput = accounts
+  const accountOrder = getProfileAccountIds(main, main.currentProfile)
+  previousSideTrayAccountsInput = main.accounts
+  previousSideTrayAccountOrderInput = main.accountOrder
+  previousSideTrayCurrentProfile = main.currentProfile
+  previousSideTrayAccountOrder = accountOrder
   previousSideTrayAccounts = Object.fromEntries(
-    Object.entries(accounts).map(([id, account]) => [
-      id,
-      {
-        id: account.id,
-        address: account.address,
-        name: account.name,
-        lastSignerType: account.lastSignerType,
-        ...(account.ensName ? { ensName: account.ensName } : {})
-      }
-    ])
+    accountOrder.map((id) => {
+      const account = main.accounts[id]
+      return [
+        id,
+        {
+          id: account.id,
+          address: account.address,
+          name: account.name,
+          lastSignerType: account.lastSignerType,
+          ...(account.ensName ? { ensName: account.ensName } : {})
+        }
+      ]
+    })
   )
-  return previousSideTrayAccounts
+  return { accounts: previousSideTrayAccounts, accountOrder }
 }
 
 let previousSideTrayNetworksInput: CanonicalMain['networks'] | undefined
@@ -326,12 +478,12 @@ function projectSideTrayTokens(
 
 export function projectSideTrayState(state: CanonicalState): SideTrayRendererState {
   const { main } = state
-  const accounts = projectSideTrayAccounts(main.accounts)
+  const { accounts, accountOrder } = projectSideTrayAccounts(main)
   const networks = projectSideTrayNetworks(main.networks)
   const currentAddress = accounts[main.currentAccount]?.address || ''
   const projection: SideTrayRendererState = {
     accounts,
-    accountOrder: main.accountOrder,
+    accountOrder,
     balances: projectSideTrayBalances(main.balances, main.currentAccount, accounts),
     currentAccount: main.currentAccount,
     networks,

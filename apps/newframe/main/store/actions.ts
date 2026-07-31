@@ -5,6 +5,7 @@ import { v5 as uuidv5 } from 'uuid'
 import { NATIVE_CURRENCY } from '../../domain/token/constants.js'
 import { accountNS, isDefaultAccountName } from '../../domain/account/index.js'
 import { toTokenId } from '../../domain/token/index.js'
+import { DEFAULT_PROFILE_ID, DEFAULT_PROFILE_NAME, getProfileAccountIds } from '../../domain/state/main.js'
 import { createPanelActions, type CanonicalGet, type CanonicalSet } from './actions.panel.js'
 import type { CanonicalState } from './state/index.js'
 import type { Account } from '../../domain/state/account.js'
@@ -13,9 +14,12 @@ import type { CanonicalAccountRequest } from '../../contracts/requests.js'
 import type { SignerSummary } from '../signers/Signer/index.js'
 
 type MutableRecord = Record<string, any>
-type AccountPatch = Partial<Omit<Account, 'id' | 'address' | 'requests'>>
-type AccountUpsert = Partial<Omit<Account, 'id' | 'requests'>> &
-  Pick<Account, 'id'> & { requests?: Record<string, CanonicalAccountRequest> }
+type AccountPatch = Partial<Omit<Account, 'id' | 'address' | 'profileId' | 'requests'>>
+type AccountUpsert = Partial<Omit<Account, 'id' | 'profileId' | 'requests'>> &
+  Pick<Account, 'id'> & {
+    profileId?: string
+    requests?: Record<string, CanonicalAccountRequest>
+  }
 type MutableMain = Draft<CanonicalState['main']> & MutableRecord
 type MutableCanonicalState = Draft<CanonicalState> & MutableRecord
 
@@ -27,6 +31,51 @@ const mutableMain = (state: Draft<CanonicalState>) => state.main as MutableMain
 const record = (value: unknown) => value as MutableRecord
 const windowState = (state: Draft<CanonicalState>, windowId: string) =>
   record(record(state.windows)[windowId])
+
+function ensureProfileState(main: MutableMain) {
+  const profiles = record(main.profiles || {})
+  main.profiles = profiles
+
+  if (Object.keys(profiles).length === 0) {
+    profiles[DEFAULT_PROFILE_ID] = { id: DEFAULT_PROFILE_ID, name: DEFAULT_PROFILE_NAME }
+  }
+
+  const profileOrder: string[] = []
+  const seen = new Set<string>()
+  ;[...(main.profileOrder || []), ...Object.keys(profiles)].forEach((id) => {
+    if (profiles[id] && !seen.has(id)) {
+      seen.add(id)
+      profileOrder.push(id)
+    }
+  })
+  main.profileOrder = profileOrder
+
+  if (!profiles[main.currentProfile]) main.currentProfile = profileOrder[0]
+
+  const accounts = record(main.accounts || {})
+  Object.values(accounts).forEach((candidate) => {
+    const account = record(candidate)
+    if (account.id && !profiles[account.profileId]) account.profileId = main.currentProfile
+  })
+  main.accountOrder = [
+    ...new Set([...(main.accountOrder || []).filter((id) => accounts[id]), ...Object.keys(accounts)])
+  ]
+
+  if (
+    main.currentAccount &&
+    (!accounts[main.currentAccount] || accounts[main.currentAccount].profileId !== main.currentProfile)
+  ) {
+    selectProfileFallback(main)
+  }
+}
+
+function profileAccountIds(main: MutableMain, profileId: string) {
+  return getProfileAccountIds(main as unknown as CanonicalState['main'], profileId)
+}
+
+function selectProfileFallback(main: MutableMain, profileId = main.currentProfile) {
+  main.currentAccount = profileAccountIds(main, profileId)[0] || ''
+}
 
 function switchChainForOrigins(origins: MutableRecord, oldChainId: number, newChainId: number) {
   Object.entries(origins).forEach(([originId, value]) => {
@@ -419,10 +468,103 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
       })
     },
 
+    createProfile: (id: string, name: string, accountIds?: string[]) => {
+      if (!id || typeof name !== 'string' || !name.trim()) return
+
+      set((draft) => {
+        const main = mutableMain(draft)
+        ensureProfileState(main)
+        const profiles = record(main.profiles)
+        if (profiles[id]) return
+
+        profiles[id] = { id, name }
+        main.profileOrder.push(id)
+
+        if (accountIds) {
+          accountIds.forEach((accountId) => {
+            const account = record(record(main.accounts)[accountId] || {})
+            if (account.id) account.profileId = id
+          })
+          main.currentProfile = id
+          selectProfileFallback(main, id)
+        }
+      })
+    },
+
+    selectProfile: (id: string) => {
+      if (!id) return
+
+      set((draft) => {
+        const main = mutableMain(draft)
+        ensureProfileState(main)
+        if (!record(main.profiles)[id]) return
+
+        if (main.currentProfile !== id) {
+          main.currentProfile = id
+          selectProfileFallback(main, id)
+        }
+      })
+    },
+
+    renameProfile: (id: string, name: string) => {
+      if (!id || typeof name !== 'string' || !name.trim()) return
+
+      set((draft) => {
+        const main = mutableMain(draft)
+        ensureProfileState(main)
+        const profile = record(record(main.profiles)[id] || {})
+        if (!profile.id) return
+        profile.name = name
+      })
+    },
+
+    deleteProfile: (id: string) => {
+      if (!id) return
+
+      set((draft) => {
+        const main = mutableMain(draft)
+        ensureProfileState(main)
+        const profiles = record(main.profiles)
+        if (!profiles[id] || main.profileOrder.length === 1) return
+        if (profileAccountIds(main, id).length > 0) return
+
+        const deletedIndex = main.profileOrder.indexOf(id)
+        const nextProfile = main.profileOrder[deletedIndex + 1] || main.profileOrder[deletedIndex - 1]
+        delete profiles[id]
+        main.profileOrder = main.profileOrder.filter((profileId) => profileId !== id)
+
+        if (main.currentProfile === id) {
+          main.currentProfile = nextProfile
+          selectProfileFallback(main, nextProfile)
+        }
+      })
+    },
+
+    moveAccountToProfile: (accountId: string, profileId: string) => {
+      if (!accountId || !profileId) return
+
+      set((draft) => {
+        const main = mutableMain(draft)
+        ensureProfileState(main)
+        const account = record(record(main.accounts)[accountId] || {})
+        if (!account.id || !record(main.profiles)[profileId] || account.profileId === profileId) return
+
+        account.profileId = profileId
+        if (main.currentAccount === accountId && main.currentProfile !== profileId) {
+          selectProfileFallback(main)
+        }
+      })
+    },
+
     setAccount: (account: any) => {
       set((draft) => {
         const state = mutable(draft)
-        mutableMain(draft).currentAccount = account.id
+        const main = mutableMain(draft)
+        ensureProfileState(main)
+        const selectedAccount = record(record(main.accounts)[account?.id] || {})
+        if (!selectedAccount.id || !record(main.profiles)[selectedAccount.profileId]) return
+        main.currentProfile = selectedAccount.profileId
+        main.currentAccount = selectedAccount.id
         state.selected.minimized = false
         state.selected.open = true
       })
@@ -440,12 +582,16 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
 
       set((draft) => {
         const main = mutableMain(draft)
+        ensureProfileState(main)
         const accounts = record(main.accounts)
         const account = record(accounts[id] || {})
         const accountUpdate = record({ ...updatedAccount })
+        const profileId = account.profileId || accountUpdate.profileId || main.currentProfile
+        if (!record(main.profiles)[profileId]) return
         Object.values(record(accountUpdate.requests || {})).forEach(stripRequestCapabilities)
-        accounts[id] = { ...accountUpdate, balances: account.balances || {} }
+        accounts[id] = { ...accountUpdate, profileId, balances: account.balances || {} }
 
+        main.accountOrder = [...new Set(main.accountOrder.filter((accountId) => accounts[accountId]))]
         if (!main.accountOrder.includes(id)) main.accountOrder.push(id)
 
         if (name && !isDefaultAccountName({ ...updatedAccount, name } as any)) {
@@ -467,7 +613,13 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
         const main = mutableMain(draft)
         const account = record(record(main.accounts)[id])
         if (!account.id) return
-        const { id: _id, address: _address, requests: _requests, ...safeUpdate } = update as any
+        const {
+          id: _id,
+          address: _address,
+          profileId: _profileId,
+          requests: _requests,
+          ...safeUpdate
+        } = update as any
         Object.assign(account, safeUpdate)
 
         if (safeUpdate.name && !isDefaultAccountName(account as any)) {
@@ -523,9 +675,10 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
     removeAccount: (id: string) => {
       set((draft) => {
         const main = mutableMain(draft)
+        ensureProfileState(main)
         delete record(main.accounts)[id]
-        if (main.currentAccount === id) main.currentAccount = ''
         main.accountOrder = main.accountOrder.filter((accountId) => accountId !== id)
+        if (main.currentAccount === id) selectProfileFallback(main)
       })
     },
 
@@ -534,8 +687,9 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
 
       set((draft) => {
         const main = mutableMain(draft)
+        ensureProfileState(main)
         const accounts = record(main.accounts)
-        const ordered = main.accountOrder.filter((id) => accounts[id])
+        const ordered = [...new Set(main.accountOrder.filter((id) => accounts[id]))]
 
         Object.keys(accounts).forEach((id) => {
           if (!ordered.includes(id)) ordered.push(id)

@@ -340,6 +340,17 @@ export const WalletOrderRecordSchema = z
   })
 const WalletOrdersSchema = z.record(z.string(), WalletOrderRecordSchema).default({})
 
+export const WalletProfileSummarySchema = z.strictObject({
+  id: z.string(),
+  name: z.string(),
+  accountCount: z.number().int().nonnegative(),
+  cachedValue: z.discriminatedUnion('state', [
+    z.strictObject({ state: z.literal('missing') }),
+    z.strictObject({ state: z.literal('unpriced') }),
+    z.strictObject({ state: z.literal('priced'), value: z.number().finite().nonnegative() })
+  ])
+})
+
 // Wallet renderers receive explicit domain slices. Keeping canonical `main`
 // out of this schema prevents one setting change from cloning every wallet
 // domain and prevents future Electron-only fields from crossing by default.
@@ -353,6 +364,7 @@ export const WalletRendererStateSchema = z.strictObject({
   balances: MainSchema.shape.balances,
   biometricUnlock: MainSchema.shape.biometricUnlock,
   currentAccount: MainSchema.shape.currentAccount,
+  currentProfile: MainSchema.shape.currentProfile,
   instanceId: MainSchema.shape.instanceId,
   latticeSettings: LatticeSettingsSchema,
   launch: MainSchema.shape.launch,
@@ -365,6 +377,7 @@ export const WalletRendererStateSchema = z.strictObject({
   origins: MainSchema.shape.origins,
   permissions: MainSchema.shape.permissions,
   portfolioApiKeyConfigured: z.boolean(),
+  profiles: z.array(WalletProfileSummarySchema).max(1_000),
   assetRates: AssetRateMapSchema,
   reveal: MainSchema.shape.reveal,
   runtime: MainSchema.shape.runtime,

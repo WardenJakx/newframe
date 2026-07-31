@@ -57,6 +57,9 @@ class FrameAccount {
   private readonly actionUpdateHandlers = new Map<string, Map<string, Action<unknown>>>()
   private providerConnectListener?: () => void
   private nameResolutionReadyListener?: () => void
+  private creationBlockLookupPending = false
+  private addressLookupPending = false
+  private profileActive: boolean
 
   accountObserver: () => void
 
@@ -68,13 +71,15 @@ class FrameAccount {
     private readonly simulation: TransactionSimulationPort,
     private readonly nameResolution: NameResolutionService,
     private readonly reveal: RevealService,
-    private readonly runtime: AccountsRuntime
+    private readonly runtime: AccountsRuntime,
+    profileActive = true
   ) {
     const { lastSignerType, name, ensName, created, address, options = {} } = params
     const formattedAddress = (address && address.toLowerCase()) || '0x'
     this.accounts = accounts // Parent Accounts Module
     this.id = formattedAddress // Account ID
     this.address = formattedAddress
+    this.profileActive = profileActive
 
     if (!this.store.getState().main.accounts[this.id]) {
       this.store.getState().upsertAccount({
@@ -120,40 +125,7 @@ class FrameAccount {
     synchronizeSigner()
     this.accountObserver = this.store.subscribe((state) => state.main.signers, synchronizeSigner)
 
-    if (this.created.split(':')[0] === 'new') {
-      const createdSuffix = this.created.split(':')[1]
-      this.providerConnectListener = () => {
-        this.chainRpc.send(
-          {
-            jsonrpc: '2.0',
-            id: 1,
-            chainId: '0x1',
-            method: 'eth_blockNumber',
-            _origin: 'newframe-internal',
-            params: []
-          },
-          (response: any) => {
-            if (response.result) {
-              if (this.store.getState().main.accounts[this.id]) {
-                this.patch({ created: `${parseInt(response.result, 16)}:${createdSuffix}` })
-              }
-              this.stopCreationBlockLookup()
-            }
-          }
-        )
-      }
-      this.chainRpc.on('connect', this.providerConnectListener)
-    }
-
-    if (this.nameResolution.ready()) {
-      this.lookupAddress() // We need to recheck this on every network change...
-    } else {
-      this.nameResolutionReadyListener = () => {
-        this.nameResolutionReadyListener = undefined
-        if (this.store.getState().main.accounts[this.id]) void this.lookupAddress()
-      }
-      this.nameResolution.once('ready', this.nameResolutionReadyListener)
-    }
+    this.startProfileNetworkActivity()
   }
 
   private get state() {
@@ -210,11 +182,17 @@ class FrameAccount {
   }
 
   async lookupAddress() {
+    if (!this.profileActive || this.addressLookupPending) return
+
+    this.addressLookupPending = true
     try {
-      this.patch({ ensName: await this.nameResolution.reverseLookup(this.address) })
+      const ensName = await this.nameResolution.reverseLookup(this.address)
+      if (this.store.getState().main.accounts[this.id]) this.patch({ ensName })
     } catch (e) {
       log.error('lookupAddress Error:', e)
-      this.patch({ ensName: '' })
+      if (this.store.getState().main.accounts[this.id]) this.patch({ ensName: '' })
+    } finally {
+      this.addressLookupPending = false
     }
   }
 
@@ -674,18 +652,97 @@ class FrameAccount {
     return account ? [account] : []
   }
 
+  private startProfileNetworkActivity() {
+    if (!this.profileActive) return
+
+    this.startCreationBlockLookup()
+    this.startNameResolutionLookup()
+  }
+
+  private startCreationBlockLookup() {
+    if (
+      !this.profileActive ||
+      this.creationBlockLookupPending ||
+      this.providerConnectListener ||
+      this.created.split(':')[0] !== 'new'
+    ) {
+      return
+    }
+
+    const createdSuffix = this.created.split(':')[1]
+    this.providerConnectListener = () => {
+      if (!this.profileActive || this.creationBlockLookupPending) return
+
+      this.creationBlockLookupPending = true
+      this.chainRpc.send(
+        {
+          jsonrpc: '2.0',
+          id: 1,
+          chainId: '0x1',
+          method: 'eth_blockNumber',
+          _origin: 'newframe-internal',
+          params: []
+        },
+        (response: any) => {
+          this.creationBlockLookupPending = false
+          if (response.result) {
+            if (this.store.getState().main.accounts[this.id]) {
+              this.patch({ created: `${parseInt(response.result, 16)}:${createdSuffix}` })
+            }
+            this.stopCreationBlockLookup()
+          } else if (this.profileActive && !this.providerConnectListener) {
+            this.startCreationBlockLookup()
+          }
+        }
+      )
+    }
+    this.chainRpc.on('connect', this.providerConnectListener)
+  }
+
+  private startNameResolutionLookup() {
+    if (!this.profileActive || this.addressLookupPending || this.nameResolutionReadyListener) return
+
+    if (this.nameResolution.ready()) {
+      void this.lookupAddress()
+      return
+    }
+
+    this.nameResolutionReadyListener = () => {
+      this.nameResolutionReadyListener = undefined
+      if (this.profileActive && this.store.getState().main.accounts[this.id]) void this.lookupAddress()
+    }
+    this.nameResolution.once('ready', this.nameResolutionReadyListener)
+  }
+
+  setProfileActive(active: boolean) {
+    if (this.profileActive === active) return
+
+    this.profileActive = active
+    if (active) {
+      this.startProfileNetworkActivity()
+    } else {
+      this.stopCreationBlockLookup()
+      this.stopNameResolutionReadyLookup()
+    }
+  }
+
   private stopCreationBlockLookup() {
     if (!this.providerConnectListener) return
     this.chainRpc.off('connect', this.providerConnectListener)
     this.providerConnectListener = undefined
   }
 
+  private stopNameResolutionReadyLookup() {
+    if (!this.nameResolutionReadyListener) return
+
+    this.nameResolution.off('ready', this.nameResolutionReadyListener)
+    this.nameResolutionReadyListener = undefined
+  }
+
   close() {
+    this.profileActive = false
     this.stopCreationBlockLookup()
-    if (this.nameResolutionReadyListener) {
-      this.nameResolution.off('ready', this.nameResolutionReadyListener)
-      this.nameResolutionReadyListener = undefined
-    }
+    this.stopNameResolutionReadyLookup()
     this.responseHandlers.clear()
     this.actionUpdateHandlers.clear()
     this.accountObserver()

@@ -44,7 +44,7 @@ const createStoreApi = (store: CanonicalStoreApi) => ({
 })
 
 function createObserver(store: CanonicalStoreApi, handler: AssetsChangedHandler) {
-  let debouncedAssets: RPC.GetAssets.Assets | null = null
+  let debouncedAssets: { accountId: string; assets: RPC.GetAssets.Assets } | null = null
 
   return function () {
     const currentAccountId = store.getState().main.currentAccount as string
@@ -58,14 +58,15 @@ function createObserver(store: CanonicalStoreApi, handler: AssetsChangedHandler)
       ) {
         if (!debouncedAssets) {
           setTimeout(() => {
-            if (debouncedAssets) {
-              handler.assetsChanged(currentAccountId, debouncedAssets)
-              debouncedAssets = null
-            }
+            const pending = debouncedAssets
+            debouncedAssets = null
+            if (!pending || store.getState().main.currentAccount !== pending.accountId) return
+
+            handler.assetsChanged(pending.accountId, pending.assets)
           }, 800)
         }
 
-        debouncedAssets = assets
+        debouncedAssets = { accountId: currentAccountId, assets }
       }
     }
   }

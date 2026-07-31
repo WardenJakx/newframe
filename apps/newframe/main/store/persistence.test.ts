@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 
 import { builtInChainIconUrl } from '../../domain/chain'
+import { DEFAULT_PROFILE_ID, DEFAULT_PROFILE_NAME } from '../../domain/state/main'
 import {
   CanonicalStatePersistenceError,
   createPersistenceAdapter,
@@ -71,6 +72,7 @@ const storageKey = `zustand.${CANONICAL_STATE_STORAGE_NAME}`
 const canonicalState = () => createInitialState() as unknown as CanonicalStore
 const account = (id: string, active?: boolean) => ({
   id,
+  profileId: DEFAULT_PROFILE_ID,
   address: id,
   name: 'Test Account',
   lastSignerType: 'address',
@@ -300,6 +302,7 @@ describe('canonical persisted state contract', () => {
       projected: {
         account: {
           id,
+          profileId: DEFAULT_PROFILE_ID,
           address: id,
           name: 'Test Account',
           lastSignerType: 'address',
@@ -320,6 +323,7 @@ describe('canonical persisted state contract', () => {
       merged: {
         account: {
           id,
+          profileId: DEFAULT_PROFILE_ID,
           address: id,
           name: 'Test Account',
           lastSignerType: 'address',
@@ -353,6 +357,114 @@ describe('canonical persisted state contract', () => {
     expect(() => migratePersistedState({ main: { lattice: 'not-an-object' } })).toThrow(
       CanonicalStatePersistenceError
     )
+  })
+
+  it('migrates every supported profile-less state into the stable default profile', () => {
+    const id = '0x1111111111111111111111111111111111111111'
+
+    for (const version of [2, 3, 4, 5, 6]) {
+      const legacy = selectPersistedState(canonicalState()) as any
+      legacy.main.accounts[id] = account(id)
+      delete legacy.main.accounts[id].profileId
+      delete legacy.main.profiles
+      delete legacy.main.profileOrder
+      delete legacy.main.currentProfile
+      legacy.main.accountOrder = [id]
+      legacy.main.currentAccount = id
+
+      const migrated = migratePersistedState(legacy, version)
+      expect({
+        profiles: migrated.main.profiles,
+        profileOrder: migrated.main.profileOrder,
+        currentProfile: migrated.main.currentProfile,
+        currentAccount: migrated.main.currentAccount,
+        account: migrated.main.accounts?.[id]
+      }).toMatchObject({
+        profiles: {
+          [DEFAULT_PROFILE_ID]: { id: DEFAULT_PROFILE_ID, name: DEFAULT_PROFILE_NAME }
+        },
+        profileOrder: [DEFAULT_PROFILE_ID],
+        currentProfile: DEFAULT_PROFILE_ID,
+        currentAccount: id,
+        account: { id, profileId: DEFAULT_PROFILE_ID }
+      })
+    }
+
+    const empty = migratePersistedState({ main: {} }, 5)
+    expect(empty.main).toMatchObject({
+      accounts: {},
+      profiles: {
+        [DEFAULT_PROFILE_ID]: { id: DEFAULT_PROFILE_ID, name: DEFAULT_PROFILE_NAME }
+      },
+      profileOrder: [DEFAULT_PROFILE_ID],
+      currentProfile: DEFAULT_PROFILE_ID,
+      currentAccount: ''
+    })
+  })
+
+  it('normalizes malformed v6 profile state without losing accounts and hydrates idempotently', () => {
+    const malformed = {
+      main: {
+        accounts: {
+          first: account('first'),
+          second: { ...account('second'), profileId: 'missing' },
+          third: { ...account('third'), profileId: 'alpha' }
+        },
+        accountOrder: ['missing', 'third', 'third'],
+        profiles: {
+          alpha: { id: 'alpha', name: 'Alpha' },
+          beta: { id: 'beta', name: 'Beta' }
+        },
+        profileOrder: ['missing', 'alpha', 'alpha'],
+        currentProfile: 'missing',
+        currentAccount: 'first'
+      }
+    }
+    malformed.main.accounts.first.profileId = 'beta'
+
+    const migrated = migratePersistedState(malformed, 6)
+    expect(migrated.main).toMatchObject({
+      accountOrder: ['third', 'first', 'second'],
+      profileOrder: ['alpha', 'beta'],
+      currentProfile: 'beta',
+      currentAccount: 'first',
+      accounts: {
+        first: { id: 'first', profileId: 'beta' },
+        second: { id: 'second', profileId: 'beta' },
+        third: { id: 'third', profileId: 'alpha' }
+      }
+    })
+    expect(Object.keys(migrated.main.accounts || {}).sort()).toEqual(['first', 'second', 'third'])
+    expect(migratePersistedState(migrated, 6)).toEqual(migrated)
+  })
+
+  it('preserves a valid current Account when its profile conflicts with currentProfile', () => {
+    const conflicting = {
+      main: {
+        accounts: {
+          alphaAccount: { ...account('alphaAccount'), profileId: 'alpha' },
+          betaAccount: { ...account('betaAccount'), profileId: 'beta' }
+        },
+        accountOrder: ['betaAccount', 'alphaAccount'],
+        profiles: {
+          alpha: { id: 'alpha', name: 'Alpha' },
+          beta: { id: 'beta', name: 'Beta' }
+        },
+        profileOrder: ['alpha', 'beta'],
+        currentProfile: 'beta',
+        currentAccount: 'alphaAccount'
+      }
+    }
+
+    const migrated = migratePersistedState(conflicting, 6)
+    expect(migrated.main).toMatchObject({
+      currentProfile: 'alpha',
+      currentAccount: 'alphaAccount',
+      accounts: {
+        alphaAccount: { profileId: 'alpha' },
+        betaAccount: { profileId: 'beta' }
+      }
+    })
   })
 
   it('deep-merges sparse network preferences while repairing retired image sources', () => {

@@ -10,6 +10,7 @@ const baseWalletState: WalletRendererState = {
   balances: {},
   biometricUnlock: false,
   currentAccount: '',
+  currentProfile: 'default-profile',
   instanceId: 'renderer-fixture',
   latticeSettings: {
     accountLimit: 5,
@@ -32,6 +33,14 @@ const baseWalletState: WalletRendererState = {
   origins: {},
   permissions: {},
   portfolioApiKeyConfigured: false,
+  profiles: [
+    {
+      id: 'default-profile',
+      name: 'Profile 1',
+      accountCount: 0,
+      cachedValue: { state: 'missing' }
+    }
+  ],
   assetRates: {},
   reveal: false,
   runtime: { environment: 'test', isDev: false, profile: null },

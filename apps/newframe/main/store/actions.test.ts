@@ -7,6 +7,7 @@ import { type CanonicalActions } from './actions'
 import { NATIVE_CURRENCY } from '../../domain/token/constants'
 import { toTokenId } from '../../domain/balance'
 import { customTokens, tokensForAccount } from '../../domain/token'
+import { DEFAULT_PROFILE_ID } from '../../domain/state/main'
 import { createTestStore as createActionHarness } from '../../test/support/createTestStore'
 
 beforeAll(() => {
@@ -835,7 +836,14 @@ describe('#upsertAccount', () => {
 
     expect({ accounts: main.accounts, metadata: main.accountsMeta }).toStrictEqual({
       accounts: {
-        1: { id: '1', name: 'cool account', lastSignerType: 'seed', status: 'ok', balances: {} }
+        1: {
+          id: '1',
+          profileId: DEFAULT_PROFILE_ID,
+          name: 'cool account',
+          lastSignerType: 'seed',
+          status: 'ok',
+          balances: {}
+        }
       },
       metadata: {
         'e42ee170-4601-5428-bac5-d8d92fe049e8': {
@@ -851,9 +859,16 @@ describe('#upsertAccount', () => {
 
     expect({ accounts: main.accounts, metadata: main.accountsMeta }).toStrictEqual({
       accounts: {
-        1: { id: '1', name: 'cool account', lastSignerType: 'ledger', balances: {} },
+        1: {
+          id: '1',
+          profileId: DEFAULT_PROFILE_ID,
+          name: 'cool account',
+          lastSignerType: 'ledger',
+          balances: {}
+        },
         2: {
           id: '2',
+          profileId: DEFAULT_PROFILE_ID,
           name: 'not so cool account',
           lastSignerType: 'seed',
           status: 'ok',
@@ -891,6 +906,133 @@ describe('#upsertAccount', () => {
         }
       })
     }
+  })
+})
+
+describe('profile actions', () => {
+  const profileAccount = (id: string, profileId = DEFAULT_PROFILE_ID) => ({
+    id,
+    profileId,
+    address: id,
+    name: id,
+    lastSignerType: 'address',
+    status: 'ok',
+    signer: '',
+    requests: {},
+    created: 'test:1'
+  })
+
+  it('creates, renames, selects, and deletes profiles while keeping deterministic selection', () => {
+    const harness = createActionHarness({
+      main: {
+        profiles: { [DEFAULT_PROFILE_ID]: { id: DEFAULT_PROFILE_ID, name: 'Profile 1' } },
+        profileOrder: [DEFAULT_PROFILE_ID],
+        currentProfile: DEFAULT_PROFILE_ID,
+        currentAccount: 'one',
+        accounts: {
+          one: profileAccount('one')
+        },
+        accountOrder: ['one']
+      }
+    })
+
+    harness.actions.createProfile('work', 'Work')
+    harness.actions.upsertAccount(profileAccount('two', 'work'))
+    harness.actions.createProfile('spare', 'Spare')
+    harness.actions.renameProfile('work', 'Work Wallet')
+    harness.actions.selectProfile('work')
+
+    expect(harness.getState().main).toMatchObject({
+      profiles: {
+        [DEFAULT_PROFILE_ID]: { id: DEFAULT_PROFILE_ID, name: 'Profile 1' },
+        work: { id: 'work', name: 'Work Wallet' },
+        spare: { id: 'spare', name: 'Spare' }
+      },
+      profileOrder: [DEFAULT_PROFILE_ID, 'work', 'spare'],
+      currentProfile: 'work',
+      currentAccount: 'two'
+    })
+
+    harness.actions.deleteProfile('work')
+    expect(harness.getState().main.profileOrder).toEqual([DEFAULT_PROFILE_ID, 'work', 'spare'])
+
+    harness.actions.moveAccountToProfile('two', DEFAULT_PROFILE_ID)
+    expect(harness.getState().main.currentProfile).toBe('work')
+    expect(harness.getState().main.currentAccount).toBe('')
+
+    harness.actions.deleteProfile('work')
+    expect(harness.getState().main).toMatchObject({
+      profileOrder: [DEFAULT_PROFILE_ID, 'spare'],
+      currentProfile: 'spare',
+      currentAccount: ''
+    })
+
+    harness.actions.deleteProfile('spare')
+    expect(harness.getState().main.currentProfile).toBe(DEFAULT_PROFILE_ID)
+    expect(harness.getState().main.currentAccount).toBe('one')
+    harness.actions.deleteProfile(DEFAULT_PROFILE_ID)
+    expect(harness.getState().main.profileOrder).toEqual([DEFAULT_PROFILE_ID])
+  })
+
+  it('assigns new accounts to the selected profile and rejects invalid profile operations', () => {
+    const harness = createActionHarness({
+      main: {
+        profiles: {
+          [DEFAULT_PROFILE_ID]: { id: DEFAULT_PROFILE_ID, name: 'Profile 1' },
+          work: { id: 'work', name: 'Work' }
+        },
+        profileOrder: [DEFAULT_PROFILE_ID, 'work'],
+        currentProfile: 'work',
+        currentAccount: ''
+      }
+    })
+
+    const { profileId: _profileId, ...newAccount } = profileAccount('new')
+    harness.actions.upsertAccount(newAccount)
+    harness.actions.createProfile('', 'Invalid')
+    harness.actions.createProfile('work', 'Duplicate')
+    harness.actions.renameProfile('work', '')
+    harness.actions.selectProfile('missing')
+    harness.actions.moveAccountToProfile('new', 'missing')
+
+    expect(harness.getState().main).toMatchObject({
+      profiles: {
+        [DEFAULT_PROFILE_ID]: { id: DEFAULT_PROFILE_ID, name: 'Profile 1' },
+        work: { id: 'work', name: 'Work' }
+      },
+      profileOrder: [DEFAULT_PROFILE_ID, 'work'],
+      currentProfile: 'work',
+      currentAccount: '',
+      accounts: { new: { id: 'new', profileId: 'work' } }
+    })
+  })
+
+  it('falls back by account order and then insertion order when membership changes or is removed', () => {
+    const harness = createActionHarness({
+      main: {
+        profiles: {
+          [DEFAULT_PROFILE_ID]: { id: DEFAULT_PROFILE_ID, name: 'Profile 1' },
+          work: { id: 'work', name: 'Work' }
+        },
+        profileOrder: [DEFAULT_PROFILE_ID, 'work'],
+        currentProfile: DEFAULT_PROFILE_ID,
+        currentAccount: 'one',
+        accounts: {
+          one: profileAccount('one'),
+          two: profileAccount('two'),
+          three: profileAccount('three')
+        },
+        accountOrder: ['missing', 'three']
+      }
+    })
+
+    harness.actions.moveAccountToProfile('one', 'work')
+    expect(harness.getState().main.currentAccount).toBe('three')
+    harness.actions.reorderAccounts('two', 'three')
+    harness.actions.removeAccount('three')
+    expect(harness.getState().main.currentAccount).toBe('two')
+    harness.actions.removeAccount('two')
+    expect(harness.getState().main.currentAccount).toBe('')
   })
 })
 
@@ -1397,7 +1539,16 @@ describe('#canonical action boundaries', () => {
     const harness = createActionHarness(
       {
         selected: { minimized: true, open: false },
-        main: { currentAccount: 'old-account' }
+        main: {
+          profiles: { [DEFAULT_PROFILE_ID]: { id: DEFAULT_PROFILE_ID, name: 'Profile 1' } },
+          profileOrder: [DEFAULT_PROFILE_ID],
+          currentProfile: DEFAULT_PROFILE_ID,
+          currentAccount: '',
+          accounts: {
+            'new-account': { id: 'new-account', profileId: DEFAULT_PROFILE_ID }
+          },
+          accountOrder: ['new-account']
+        }
       },
       () => {
         publishedStates += 1

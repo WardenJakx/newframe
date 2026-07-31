@@ -8,6 +8,7 @@ import {
 } from './persist/schema.js'
 import { CanonicalStatePersistenceError } from '../infrastructure/persistence/index.js'
 import { listCuratedAssets } from '../../domain/asset/index.js'
+import { DEFAULT_PROFILE_ID, DEFAULT_PROFILE_NAME, getProfileAccountIds } from '../../domain/state/main.js'
 
 type UnknownRecord = Record<string, any>
 
@@ -123,6 +124,86 @@ function persistedNetworkMetadata(networksMeta: UnknownRecord) {
   }
 }
 
+function unknownRecord(value: unknown): UnknownRecord {
+  return value && typeof value === 'object' && !Array.isArray(value) ? (value as UnknownRecord) : {}
+}
+
+function normalizeProfileState(main: UnknownRecord) {
+  const sourceAccounts = unknownRecord(main.accounts)
+  const sourceProfiles = unknownRecord(main.profiles)
+  const profiles: UnknownRecord = {}
+  const profileAliases: Record<string, string> = {}
+
+  Object.entries(sourceProfiles).forEach(([key, candidate]) => {
+    const profile = unknownRecord(candidate)
+    const id = typeof profile.id === 'string' && profile.id ? profile.id : key
+    if (!id || typeof profile.name !== 'string' || !profile.name) return
+    if (!profiles[id]) profiles[id] = { id, name: profile.name }
+    profileAliases[key] = id
+    profileAliases[id] = id
+  })
+
+  if (Object.keys(profiles).length === 0) {
+    profiles[DEFAULT_PROFILE_ID] = { id: DEFAULT_PROFILE_ID, name: DEFAULT_PROFILE_NAME }
+    profileAliases[DEFAULT_PROFILE_ID] = DEFAULT_PROFILE_ID
+  }
+
+  const profileOrder: string[] = []
+  const seenProfiles = new Set<string>()
+  ;[...(Array.isArray(main.profileOrder) ? main.profileOrder : []), ...Object.keys(profiles)].forEach(
+    (candidate) => {
+      const id = typeof candidate === 'string' ? profileAliases[candidate] || candidate : ''
+      if (profiles[id] && !seenProfiles.has(id)) {
+        seenProfiles.add(id)
+        profileOrder.push(id)
+      }
+    }
+  )
+
+  const requestedAccount =
+    (typeof main.currentAccount === 'string' && sourceAccounts[main.currentAccount]
+      ? main.currentAccount
+      : Object.keys(sourceAccounts).find((id) => unknownRecord(sourceAccounts[id]).active) ||
+        (Array.isArray(main.accountOrder)
+          ? main.accountOrder.find((id) => typeof id === 'string' && sourceAccounts[id])
+          : undefined) ||
+        Object.keys(sourceAccounts)[0]) || ''
+  const requestedAccountProfile = profileAliases[unknownRecord(sourceAccounts[requestedAccount]).profileId]
+  const requestedProfile =
+    typeof main.currentProfile === 'string' ? profileAliases[main.currentProfile] || main.currentProfile : ''
+  const currentProfile = profiles[requestedAccountProfile]
+    ? requestedAccountProfile
+    : profiles[requestedProfile]
+      ? requestedProfile
+      : profileOrder[0]
+
+  const accounts = Object.fromEntries(
+    Object.entries(sourceAccounts).map(([id, candidate]) => {
+      const account = unknownRecord(candidate)
+      const profileId = profileAliases[account.profileId] || account.profileId
+      return [id, { ...account, profileId: profiles[profileId] ? profileId : currentProfile }]
+    })
+  )
+  const accountOrder: string[] = []
+  const seenAccounts = new Set<string>()
+  ;[...(Array.isArray(main.accountOrder) ? main.accountOrder : []), ...Object.keys(accounts)].forEach(
+    (id) => {
+      if (typeof id === 'string' && accounts[id] && !seenAccounts.has(id)) {
+        seenAccounts.add(id)
+        accountOrder.push(id)
+      }
+    }
+  )
+
+  const normalized = { ...main, accounts, accountOrder, profiles, profileOrder, currentProfile }
+  const currentAccount =
+    requestedAccount && accounts[requestedAccount]?.profileId === currentProfile
+      ? requestedAccount
+      : getProfileAccountIds(normalized as any, currentProfile)[0] || ''
+
+  return { ...normalized, currentAccount }
+}
+
 export function selectPersistedState(state: CanonicalStore): PersistedCanonicalState {
   const main = state.main as UnknownRecord
   const {
@@ -153,7 +234,13 @@ export function migratePersistedState(
   value: unknown,
   fromVersion = PERSISTENCE_VERSION
 ): PersistedCanonicalState {
-  if (fromVersion !== 2 && fromVersion !== 3 && fromVersion !== 4 && fromVersion !== PERSISTENCE_VERSION) {
+  if (
+    fromVersion !== 2 &&
+    fromVersion !== 3 &&
+    fromVersion !== 4 &&
+    fromVersion !== 5 &&
+    fromVersion !== PERSISTENCE_VERSION
+  ) {
     log.error('Cannot migrate unsupported canonical state version', fromVersion)
     throw new CanonicalStatePersistenceError(
       'unsupported_version',
@@ -164,7 +251,7 @@ export function migratePersistedState(
   const raw = (value || {}) as UnknownRecord
   const rawMain = (raw.main || {}) as UnknownRecord
   const legacyMain =
-    fromVersion === PERSISTENCE_VERSION
+    fromVersion >= 5
       ? rawMain
       : {
           ...rawMain,
@@ -173,11 +260,11 @@ export function migratePersistedState(
   const { rates: _legacyRates, ...mainWithoutLegacyRates } = legacyMain
   const candidate = {
     ...raw,
-    main: {
+    main: normalizeProfileState({
       ...mainWithoutLegacyRates,
       ...(fromVersion === 2 ? { tokens: { byId: {}, accountTokenIds: {} } } : {}),
       networksMeta: persistedNetworkMetadata(mainWithoutLegacyRates.networksMeta || {})
-    }
+    })
   }
   const parsed = PersistedCanonicalStateSchema.safeParse(candidate)
   if (parsed.success) return parsed.data
@@ -248,16 +335,6 @@ function mergeNetworkMetadata(current: unknown, persisted: unknown) {
   return { ethereum }
 }
 
-function selectedAccount(main: UnknownRecord) {
-  const accounts = main.accounts || {}
-  if (main.currentAccount && accounts[main.currentAccount]) return main.currentAccount as string
-
-  const legacyActive = Object.keys(accounts).find((id) => accounts[id]?.active)
-  if (legacyActive) return legacyActive
-
-  return (main.accountOrder || []).find((id: string) => accounts[id]) || Object.keys(accounts)[0] || ''
-}
-
 export function mergePersistedState(persistedValue: unknown, current: CanonicalStore): CanonicalStore {
   if (persistedValue === undefined || persistedValue === null) return current
 
@@ -290,8 +367,11 @@ export function mergePersistedState(persistedValue: unknown, current: CanonicalS
     updater: mergeRecord(currentMain.updater, saved.updater)
   }
 
-  main.currentAccount = selectedAccount(main)
   main.accounts = persistedAccounts(main.accounts)
+  main.currentAccount =
+    main.accounts[main.currentAccount]?.profileId === main.currentProfile
+      ? main.currentAccount
+      : getProfileAccountIds(main as any, main.currentProfile)[0] || ''
 
   return {
     ...current,

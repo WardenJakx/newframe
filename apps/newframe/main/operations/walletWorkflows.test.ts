@@ -3,6 +3,7 @@ import { beforeAll, beforeEach, describe, expect, it, mock } from 'bun:test'
 import { createSecurityService } from '../features/security/service'
 import { createSettingsService } from '../features/settings/service'
 import { createTestStore } from '../../test/support/createTestStore'
+import { DEFAULT_PROFILE_ID } from '../../domain/state/main'
 
 let activeStore = createTestStore()
 
@@ -17,6 +18,19 @@ beforeEach(() => {
 })
 
 const address = '0x1111111111111111111111111111111111111111'
+const secondAddress = '0x2222222222222222222222222222222222222222'
+
+const profileAccount = (id: string, profileId: string, name = 'Account') => ({
+  id,
+  profileId,
+  address: id,
+  name,
+  lastSignerType: 'address',
+  status: 'ok',
+  signer: 'secret-signer',
+  requests: { secret: { type: 'sign' } },
+  created: 'test:1'
+})
 
 function freshStore(main: Record<string, unknown>, extra: Record<string, unknown> = {}) {
   activeStore = createTestStore({
@@ -111,6 +125,112 @@ function createOperations(overrides: Partial<import('./walletWorkflows').WalletW
 }
 
 describe('wallet workflows with fresh canonical state', () => {
+  it('validates profile creation completely before one atomic canonical publication', () => {
+    freshStore({
+      profiles: { [DEFAULT_PROFILE_ID]: { id: DEFAULT_PROFILE_ID, name: 'Profile 1' } },
+      profileOrder: [DEFAULT_PROFILE_ID],
+      currentProfile: DEFAULT_PROFILE_ID,
+      currentAccount: address,
+      accounts: {
+        [address]: profileAccount(address, DEFAULT_PROFILE_ID),
+        [secondAddress]: profileAccount(secondAddress, DEFAULT_PROFILE_ID)
+      },
+      accountOrder: [address, secondAddress]
+    })
+    const accountsChanged = mock()
+    const operations = createOperations({ provider: { accountsChanged } as never })
+    let publications = 0
+    const unsubscribe = activeStore.store.subscribe(() => {
+      publications += 1
+    })
+
+    expect(operations.createProfile('Profile 1', [])).toEqual({
+      ok: false,
+      error: 'duplicate_name'
+    })
+    expect(operations.createProfile('Work', ['missing'])).toEqual({
+      ok: false,
+      error: 'account_not_found'
+    })
+    expect(publications).toBe(0)
+
+    const created = operations.createProfile('  Work  ', [secondAddress])
+    expect(created).toEqual({ ok: true, profileId: expect.any(String) })
+    if (!created.ok) throw new Error('Profile was not created')
+    expect(activeStore.getState().main).toMatchObject({
+      currentProfile: created.profileId,
+      currentAccount: secondAddress,
+      profiles: { [created.profileId]: { id: created.profileId, name: 'Work' } },
+      accounts: { [secondAddress]: { profileId: created.profileId } }
+    })
+    expect(publications).toBe(1)
+    expect(accountsChanged).toHaveBeenCalledWith([secondAddress])
+    unsubscribe()
+  })
+
+  it('enforces profile transition failures and publishes only selected-address changes', () => {
+    freshStore({
+      profiles: {
+        [DEFAULT_PROFILE_ID]: { id: DEFAULT_PROFILE_ID, name: 'Profile 1' },
+        work: { id: 'work', name: 'Work' }
+      },
+      profileOrder: [DEFAULT_PROFILE_ID, 'work'],
+      currentProfile: DEFAULT_PROFILE_ID,
+      currentAccount: address,
+      accounts: {
+        [address]: profileAccount(address, DEFAULT_PROFILE_ID),
+        [secondAddress]: profileAccount(secondAddress, 'work')
+      },
+      accountOrder: [address, secondAddress]
+    })
+    const accountsChanged = mock()
+    const operations = createOperations({ provider: { accountsChanged } as never })
+
+    expect(operations.renameProfile('work', ' profile 1 ')).toEqual({
+      ok: false,
+      error: 'duplicate_name'
+    })
+    expect(operations.moveAccountToProfile(secondAddress, 'work')).toEqual({
+      ok: false,
+      error: 'same_profile'
+    })
+    expect(operations.deleteProfile('work')).toEqual({ ok: false, error: 'profile_not_empty' })
+    expect(accountsChanged).not.toHaveBeenCalled()
+
+    expect(operations.selectProfile('work')).toEqual({ ok: true })
+    expect(accountsChanged).toHaveBeenLastCalledWith([secondAddress])
+    expect(operations.moveAccountToProfile(secondAddress, DEFAULT_PROFILE_ID)).toEqual({ ok: true })
+    expect(accountsChanged).toHaveBeenLastCalledWith([])
+    expect(operations.deleteProfile('work')).toEqual({ ok: true })
+    expect(accountsChanged).toHaveBeenLastCalledWith([address])
+    expect(operations.deleteProfile(DEFAULT_PROFILE_ID)).toEqual({ ok: false, error: 'final_profile' })
+  })
+
+  it('returns ordered minimum Account records only from the movable-accounts query', () => {
+    freshStore({
+      profiles: {
+        [DEFAULT_PROFILE_ID]: { id: DEFAULT_PROFILE_ID, name: 'Profile 1' },
+        work: { id: 'work', name: 'Work' }
+      },
+      profileOrder: [DEFAULT_PROFILE_ID, 'work'],
+      currentProfile: DEFAULT_PROFILE_ID,
+      currentAccount: '',
+      accounts: {
+        [address]: profileAccount(address, DEFAULT_PROFILE_ID, 'First'),
+        [secondAddress]: profileAccount(secondAddress, 'work', 'Second')
+      },
+      accountOrder: [secondAddress]
+    })
+
+    expect(createOperations().movableProfileAccounts()).toEqual({
+      ok: true,
+      accounts: [
+        { id: secondAddress, address: secondAddress, name: 'Second', profileId: 'work' },
+        { id: address, address, name: 'First', profileId: DEFAULT_PROFILE_ID }
+      ]
+    })
+  })
+
   it.each(['saved-data', 'all-settings-data'] as const)(
     'clears canonical asset rates for the %s reset path',
     (scope) => {
