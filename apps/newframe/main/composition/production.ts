@@ -21,15 +21,10 @@ import {
   type OperationServices
 } from '../ipc/operations.js'
 import { createStateStream } from '../ipc/stateStream.js'
-import { createSideTrayTransactionOperations } from '../operations/sideTrayTransactions.js'
-import type { SideTrayTransactionService } from '../features/transactions/sideTrayService.js'
 import {
-  createSideTrayWorkflows,
-  type SideTrayWindowCapability,
-  type SideTrayWorkflows
-} from '../operations/sideTrayWorkflows.js'
-import { resolveName, selectAccount } from '../operations/workflows.js'
-import { createWalletWorkflowOperations, type WalletWorkflowAdapters } from '../operations/walletWorkflows.js'
+  createSideTrayTransactionService,
+  type SideTrayTransactionService
+} from '../features/transactions/sideTrayService.js'
 import { projectRendererState } from '../state/projections.js'
 import type store from '../store/index.js'
 import { Provider } from '../provider/index.js'
@@ -44,6 +39,47 @@ import {
 } from '../transaction/simulation.js'
 import { createMainApp, type MainApp } from './createMainApp.js'
 import { createAssetRateService } from '../features/assetRates/service.js'
+import { createOperationService } from '../features/operations/service.js'
+import { createSendService, type SendIdempotencyEntry, type SendService } from '../features/send/service.js'
+import { createTradeService, type TradeService } from '../features/trade/service.js'
+import {
+  createAccountOnboardingService,
+  type AccountOnboardingPorts,
+  type AccountOnboardingService
+} from '../features/accountOnboarding/service.js'
+import {
+  createSecurityService,
+  type SecurityService,
+  type SecurityServicePorts
+} from '../features/security/service.js'
+import { createProfileService, type ProfileService } from '../features/profiles/service.js'
+import {
+  createPlatformService,
+  type PlatformService,
+  type PlatformServicePorts
+} from '../features/platform/service.js'
+import { createSettingsService } from '../features/settings/service.js'
+import { createAccountService, type AccountService } from '../features/accounts/service.js'
+import {
+  createNetworkService,
+  type NetworkService,
+  type NetworkServicePorts
+} from '../features/networks/service.js'
+import { createTokenService, type TokenService } from '../features/tokens/service.js'
+import { createRequestEditService, type RequestEditService } from '../features/requestEdits/service.js'
+import {
+  createPortfolioService,
+  type PortfolioService,
+  type PortfolioServiceAdapters
+} from '../features/portfolio/service.js'
+import { createRequestService, type RequestService } from '../features/requests/service.js'
+import {
+  createAccountSelectionAdapter,
+  createAddressChainUsageAdapter,
+  createFeeNoticeRemovalAdapter
+} from '../infrastructure/accounts/production.js'
+import { createTokenLookupAdapter } from '../infrastructure/tokens/production.js'
+import { createProviderRequestAdapter } from '../infrastructure/provider/production.js'
 
 export interface ProductionMainAppDependencies {
   ipc: IpcMainHandlerPort
@@ -56,12 +92,24 @@ export interface ProductionMainAppDependencies {
   proxy: ProviderProxyConnection
   nameResolution: NameResolutionService
   accountCapabilities: ProductionAccountCapabilities
+  infrastructureCallbacks: { dispose(): void }
   agentService: AgentService
   imageService: ImageService
   rendererAuthorization: RendererAuthorizationRegistry
   sideTrayTransactions: SideTrayTransactionService
-  sideTrayWorkflows: SideTrayWorkflows
-  walletWorkflows: WalletWorkflowOperations
+  profileService: ProfileService
+  platformService: PlatformService
+  settingsService: ReturnType<typeof createSettingsService>
+  accountService: AccountService
+  networkService: NetworkService
+  tokenService: TokenService
+  requestEditService: RequestEditService
+  requestService: RequestService
+  portfolioService: PortfolioService
+  securityService: SecurityService
+  accountOnboardingService: AccountOnboardingService
+  sendService: SendService
+  tradeService: TradeService
 }
 
 export interface ProductionAccountCapabilities {
@@ -70,13 +118,16 @@ export interface ProductionAccountCapabilities {
   simulation: ReturnType<typeof createDeferredTransactionSimulationPort>
 }
 
-export type WalletWorkflowOperations = ReturnType<typeof createWalletWorkflowOperations>
-export type ProductionWalletWorkflowAdapters = WalletWorkflowAdapters
 export interface ProductionCapabilityAdapters {
   accounts: AccountsRuntime
   images: ImageServiceAdapters
-  sideTrayWindows: SideTrayWindowCapability
-  walletWorkflows: ProductionWalletWorkflowAdapters
+  platform: Omit<PlatformServicePorts, 'accounts' | 'store'>
+  portfolio: PortfolioServiceAdapters
+  security: Omit<SecurityServicePorts, 'operations' | 'store'> & { dispose?(): void }
+  accountOnboarding: Pick<AccountOnboardingPorts, 'hardware' | 'keystore' | 'secrets' | 'signers'> & {
+    dispose(): void
+  }
+  network: Pick<NetworkServicePorts, 'rpcMatchesChain'>
 }
 
 export function createProductionProvider(
@@ -84,7 +135,8 @@ export function createProductionProvider(
   accounts: Accounts,
   chains: Chains,
   proxy: ProviderProxyConnection,
-  reveal: RevealService
+  reveal: RevealService,
+  requests: RequestService
 ) {
   return new Provider({
     accounts,
@@ -92,7 +144,8 @@ export function createProductionProvider(
     proxy,
     state: createProviderStatePort(store),
     store,
-    reveal
+    reveal,
+    requests
   })
 }
 
@@ -100,7 +153,6 @@ export function createProductionCapabilities(
   store: typeof import('../store/index.js').default,
   adapters: ProductionCapabilityAdapters
 ) {
-  const { walletWorkflows: walletAdapters } = adapters
   const proxy = createProviderProxyConnection()
   const nameResolution = createProductionNameResolutionService(proxy)
   const reveal = createRevealService(proxy, nameResolution)
@@ -109,6 +161,31 @@ export function createProductionCapabilities(
     transactionPolicy: createDeferredAccountTransactionPolicyPort(),
     simulation: createDeferredTransactionSimulationPort()
   }
+  const requestService = createRequestService({
+    accounts: {
+      clearRequestsByOrigin: (accountId, originId) => accounts.clearRequestsByOrigin(accountId, originId),
+      get: (accountId) => accounts.get(accountId),
+      getFrameAccount: (accountId) => accounts.getFrameAccount(accountId),
+      replaceTx: (requestId, replacement, principal) => accounts.replaceTx(requestId, replacement, principal),
+      setRequestError: (requestId, error) => accounts.setRequestError(requestId, error),
+      setRequestPending: (request) => accounts.setRequestPending(request),
+      setRequestSuccess: (requestId) => accounts.setRequestSuccess(requestId),
+      setTxSent: (requestId, hash) => accounts.setTxSent(requestId, hash)
+    },
+    agent: {
+      resolveAccess: (requestId, approved) => agentService.resolveAgentAccessRequest(requestId, approved)
+    },
+    clock: { delay: (ms) => new Promise((resolve) => setTimeout(resolve, ms)) },
+    network: adapters.network,
+    provider: {
+      approveSign: (request, callback) => provider.approveSign(request, callback),
+      approveSignTypedData: (request, callback) => provider.approveSignTypedData(request, callback),
+      approveTransactionRequest: (request, callback) => provider.approveTransactionRequest(request, callback)
+    },
+    store,
+    transactionPolicy: accountCapabilities.transactionPolicy.port,
+    vault: adapters.security.vault
+  })
   const accounts = new Accounts(store, {
     chainRpc: accountCapabilities.chainRpc.port,
     transactionPolicy: accountCapabilities.transactionPolicy.port,
@@ -116,38 +193,123 @@ export function createProductionCapabilities(
     nameResolution,
     reveal,
     runtime: adapters.accounts,
-    createDataScanner: createExternalDataScanner
+    createDataScanner: createExternalDataScanner,
+    requests: requestService
   })
   const chains = new Chains(store)
-  const provider = createProductionProvider(store, accounts, chains, proxy, reveal)
+  const provider = createProductionProvider(store, accounts, chains, proxy, reveal, requestService)
+  const resolveName = (name: string) => nameResolution.resolveAddress(name)
+  const accountSelection = createAccountSelectionAdapter(accounts, provider)
   const assetRateService = createAssetRateService({
     store,
-    clock: { now: walletAdapters.now }
+    clock: { now: adapters.accounts.now }
+  })
+  const operationService = createOperationService({
+    store,
+    clock: { now: adapters.accounts.now }
+  })
+  const profileService = createProfileService({
+    accounts,
+    operations: operationService,
+    provider,
+    store
+  })
+  const securityService = createSecurityService({
+    ...adapters.security,
+    operations: operationService,
+    store
+  })
+  const accountOnboardingService = createAccountOnboardingService({
+    ...adapters.accountOnboarding,
+    accounts: {
+      add: (address, name, signer) => accounts.add(address, name, signer),
+      get: (accountId) => accounts.get(accountId),
+      select: async (accountId) => {
+        await accountSelection(accountId)
+      }
+    },
+    nameResolution: { resolve: resolveName },
+    operations: operationService
+  })
+  const platformService = createPlatformService({ ...adapters.platform, accounts, store })
+  const settingsService = createSettingsService(store)
+  const addressChainUsage = createAddressChainUsageAdapter(chains, store)
+  const feeNotices = createFeeNoticeRemovalAdapter(accounts)
+  const accountService = createAccountService({
+    accounts,
+    addressChainUsage,
+    selectAccount: accountSelection,
+    signers: adapters.accountOnboarding.signers,
+    store
+  })
+  const networkService = createNetworkService({ ...adapters.network, store })
+  const tokenService = createTokenService({
+    lookup: createTokenLookupAdapter(provider),
+    operations: operationService,
+    store
+  })
+  const requestEditService = createRequestEditService({ accounts, feeNotices, store })
+  const portfolioService = createPortfolioService({
+    accounts,
+    assetRates: assetRateService,
+    ...adapters.portfolio,
+    operations: operationService,
+    store
   })
   const flashService = createProductionFlashService(store, accounts, assetRateService)
-  const agentService = createAgentService(accounts, flashService, store)
+  const agentService = createAgentService(accounts, flashService, store, requestService)
   const imageService = createImageService(store, adapters.images)
   const rendererAuthorization = createRendererAuthorizationRegistry()
-  const sideTrayTransactions = createSideTrayTransactionOperations(
-    provider,
+  const providerRequests = createProviderRequestAdapter(provider)
+  const sideTrayTransactions = createSideTrayTransactionService({
     accounts,
-    flashService,
+    provider: providerRequests,
     store,
-    walletAdapters.now
-  )
-  const sideTrayWorkflows = createSideTrayWorkflows(adapters.sideTrayWindows)
-  const walletWorkflows = createWalletWorkflowOperations({
-    ...walletAdapters,
-    accounts,
-    assetRateService,
-    chains,
-    flashService,
-    nameResolution,
-    provider,
-    proxy,
-    reveal,
-    store,
-    transactionPolicy: accountCapabilities.transactionPolicy.port
+    now: adapters.accounts.now
+  })
+  const sendService = createSendService({
+    canonical: {
+      snapshot: () => {
+        const main = store.getState().main
+        return {
+          currentAccount: main.currentAccount,
+          accounts: main.accounts,
+          balances: main.balances,
+          networks: main.networks.ethereum,
+          tokens: main.tokens.byId
+        }
+      }
+    },
+    clock: { now: adapters.accounts.now },
+    idempotency: new Map<string, SendIdempotencyEntry>(),
+    names: { resolve: resolveName },
+    operations: operationService,
+    transactions: { submit: sideTrayTransactions.submitCurrentAccountTransaction }
+  })
+  const tradeService = createTradeService({
+    canonical: {
+      snapshot: () => {
+        const main = store.getState().main
+        return {
+          currentAccount: main.currentAccount,
+          accounts: main.accounts,
+          networks: main.networks.ethereum,
+          orders: main.orders
+        }
+      }
+    },
+    clock: { now: adapters.accounts.now },
+    flash: {
+      quote: (request) => flashService.quote(request),
+      submitOrder: (request) => flashService.submitOrder(request),
+      cancelOrder: (request) => flashService.cancelOrder(request)
+    },
+    operations: operationService,
+    signatures: {
+      signMessage: sideTrayTransactions.signCurrentAccountMessage,
+      signTypedData: sideTrayTransactions.signCurrentAccountTypedData
+    },
+    transactions: { submit: sideTrayTransactions.submitCurrentAccountTransaction }
   })
   return {
     accounts,
@@ -159,12 +321,34 @@ export function createProductionCapabilities(
     nameResolution,
     reveal,
     accountCapabilities,
+    infrastructureCallbacks: {
+      dispose() {
+        accountSelection.dispose()
+        addressChainUsage.dispose()
+        adapters.accountOnboarding.dispose()
+        feeNotices.dispose()
+        providerRequests.dispose()
+        adapters.security.dispose?.()
+      }
+    },
     agentService,
     imageService,
+    operationService,
+    platformService,
+    profileService,
     rendererAuthorization,
     sideTrayTransactions,
-    sideTrayWorkflows,
-    walletWorkflows
+    sendService,
+    tradeService,
+    settingsService,
+    accountService,
+    networkService,
+    tokenService,
+    requestEditService,
+    requestService,
+    portfolioService,
+    securityService,
+    accountOnboardingService
   }
 }
 
@@ -176,26 +360,40 @@ export function createProductionOperationServices(
   imageService: ImageService,
   rendererAuthorization: RendererAuthorizationRegistry,
   sideTrayTransactions: SideTrayTransactionService,
-  sideTrayWorkflows: SideTrayWorkflows,
-  walletWorkflows: WalletWorkflowOperations
+  profileService: ProfileService,
+  platformService: PlatformService,
+  settingsService: ReturnType<typeof createSettingsService>,
+  accountService: AccountService,
+  networkService: NetworkService,
+  tokenService: TokenService,
+  requestEditService: RequestEditService,
+  requestService: RequestService,
+  portfolioService: PortfolioService,
+  securityService: SecurityService,
+  accountOnboardingService: AccountOnboardingService,
+  sendService: SendService,
+  tradeService: TradeService
 ): OperationServices {
   return {
     accounts,
+    accountMutations: accountService,
+    agent: agentService,
+    networks: networkService,
+    portfolio: portfolioService,
+    platform: platformService,
+    profiles: profileService,
+    requestEdits: requestEditService,
+    requests: requestService,
+    security: securityService,
+    accountOnboarding: accountOnboardingService,
+    send: sendService,
+    trade: tradeService,
+    settings: settingsService,
+    tokens: tokenService,
     authorizeRenderer: rendererAuthorization.authorizeRenderer,
     createRendererPrincipal,
     requestTokenImage: imageService.requestTokenImage,
-    resolveAgentAccessRequest: agentService.resolveAgentAccessRequest,
-    revokeAgentSessions: agentService.revokeAgentSessions,
-    setAgentAccess: agentService.setAgentAccess,
-    closeOwnSideTray: sideTrayWorkflows.closeOwnSideTray,
-    inspectOwnSideTray: sideTrayWorkflows.inspectOwnSideTray,
-    quoteFlashForCurrentAccount: sideTrayTransactions.quoteFlashForCurrentAccount,
-    signCurrentAccountTypedData: sideTrayTransactions.signCurrentAccountTypedData,
-    submitCurrentAccountTransaction: sideTrayTransactions.submitCurrentAccountTransaction,
-    submitFlashForCurrentAccount: sideTrayTransactions.submitFlashForCurrentAccount,
-    resolveName: (name) => resolveName(name, nameResolution),
-    selectAccount: (accountId) => selectAccount(accountId, accounts, provider),
-    walletWorkflows
+    resolveName: (name) => nameResolution.resolveAddress(name)
   }
 }
 
@@ -210,12 +408,24 @@ export function createProductionMainApp({
   proxy,
   nameResolution,
   accountCapabilities,
+  infrastructureCallbacks,
   agentService,
   imageService,
   rendererAuthorization,
   sideTrayTransactions,
-  sideTrayWorkflows,
-  walletWorkflows
+  profileService,
+  platformService,
+  settingsService,
+  accountService,
+  networkService,
+  tokenService,
+  requestEditService,
+  requestService,
+  portfolioService,
+  securityService,
+  accountOnboardingService,
+  sendService,
+  tradeService
 }: ProductionMainAppDependencies): MainApp {
   const operationDispatcher = createOperationDispatcher(
     createProductionOperationServices(
@@ -226,8 +436,19 @@ export function createProductionMainApp({
       imageService,
       rendererAuthorization,
       sideTrayTransactions,
-      sideTrayWorkflows,
-      walletWorkflows
+      profileService,
+      platformService,
+      settingsService,
+      accountService,
+      networkService,
+      tokenService,
+      requestEditService,
+      requestService,
+      portfolioService,
+      securityService,
+      accountOnboardingService,
+      sendService,
+      tradeService
     )
   )
   const stateStream = createStateStream({
@@ -276,8 +497,12 @@ export function createProductionMainApp({
         app.start()
       } catch (error) {
         rendererAuthorization.dispose()
+        tradeService.dispose()
+        sendService.dispose()
         imageService.dispose()
         agentService.dispose()
+        requestService.dispose()
+        infrastructureCallbacks.dispose()
         flashService.dispose()
         accounts.dispose()
         proxy.dispose()
@@ -293,8 +518,12 @@ export function createProductionMainApp({
     dispose() {
       app.dispose()
       rendererAuthorization.dispose()
+      tradeService.dispose()
+      sendService.dispose()
       imageService.dispose()
       agentService.dispose()
+      requestService.dispose()
+      infrastructureCallbacks.dispose()
       flashService.dispose()
       accounts.dispose()
       proxy.dispose()

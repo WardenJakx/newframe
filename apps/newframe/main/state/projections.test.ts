@@ -4,6 +4,14 @@ import createInitialState from '../store/state'
 import { projectSideTrayState, projectWalletState } from './projections'
 import { DEFAULT_PROFILE_ID } from '../../domain/state/main'
 
+const operation = (id: string) => ({
+  id,
+  type: 'transaction.submit',
+  status: 'pending' as const,
+  startedAt: 1,
+  updatedAt: 1
+})
+
 const account = (id: string, profileId: string) => ({
   id,
   profileId,
@@ -16,7 +24,35 @@ const account = (id: string, profileId: string) => ({
   created: 'test:1'
 })
 
-it('projects notification presentation and navigation fields without canonical-only data', () => {
+it('projects safe principal-owned operations and notification presentation', () => {
+  const operationState = createInitialState()
+  operationState.operations = {
+    own: {
+      owner: { clientType: 'wallet-ui', windowInstanceId: 'wallet-one' },
+      operation: operation('own')
+    },
+    otherWindow: {
+      owner: { clientType: 'wallet-ui', windowInstanceId: 'wallet-two' },
+      operation: operation('otherWindow')
+    },
+    otherRole: {
+      owner: { clientType: 'sidetray', windowInstanceId: 'wallet-one' },
+      operation: operation('otherRole')
+    }
+  }
+
+  const audience = { clientType: 'wallet-ui', windowInstanceId: 'wallet-one' } as const
+  const first = projectWalletState(operationState, audience)
+  expect(first.operations).toEqual({ own: operation('own') })
+  expect(first.operations.own).not.toHaveProperty('owner')
+  expect(projectWalletState(operationState, audience).operations).toBe(first.operations)
+  expect(
+    projectSideTrayState(operationState, {
+      clientType: 'sidetray',
+      windowInstanceId: 'wallet-one'
+    }).operations
+  ).toEqual({ otherRole: operation('otherRole') })
+
   const state = createInitialState()
   state.view.notifications = {
     'flash-order:order-1': {
@@ -63,6 +99,58 @@ it('projects notification presentation and navigation fields without canonical-o
       metadata: { orderId: 'order-1', status: 'open' }
     }
   })
+
+  state.main.orders = {
+    'order-private': {
+      orderId: 'order-private',
+      accountAddress: '0x1111111111111111111111111111111111111111',
+      chainId: 1,
+      provider: 'flash',
+      status: 'open',
+      rawStatus: 'OPEN',
+      orderType: 'market',
+      side: 'buy',
+      targetAsset: { symbol: 'WETH', chainId: 1, typedData: 'must-not-cross' },
+      contraAsset: { symbol: 'USDC', chainId: 1, calldata: 'must-not-cross' },
+      qty: '1',
+      spentAmount: '1',
+      outputAmount: '2',
+      estimatedOutputAmount: '2',
+      filledOutputAmount: '0',
+      averageFillPrice: null,
+      createdAt: 1,
+      updatedAt: 2,
+      terminalAt: null,
+      rawPayload: {
+        signature: '0xprivate',
+        typedData: { domain: { chainId: 1 } },
+        actions: { approval: { tx: { data: '0x095ea7b3' } } },
+        submission: { quote: 'full-private-payload' }
+      },
+      rawStatusPayload: { signature: '0xprivate-status', response: { private: true } }
+    }
+  }
+  const projectedOrderState = projectWalletState(state)
+  const projectedOrder = projectedOrderState.orders['order-private']
+  expect(projectedOrder.rawPayload).toEqual({
+    orderId: 'order-private',
+    provider: 'flash',
+    chainId: 1,
+    orderType: 'market',
+    side: 'buy',
+    qty: '1'
+  })
+  expect(projectedOrder.rawStatusPayload).toMatchObject({
+    orderId: 'order-private',
+    status: 'open',
+    rawStatus: 'OPEN',
+    updatedAt: 2
+  })
+  expect(JSON.stringify(projectedOrder)).not.toMatch(/signature|typedData|calldata|095ea7b3|full-private/i)
+  expect(projectWalletState(state).orders).toBe(projectedOrderState.orders)
+  expect(
+    projectSideTrayState(state, { clientType: 'sidetray', windowInstanceId: 'no-account' }).orders
+  ).toEqual({})
 })
 
 it('projects only active-profile Accounts and derives ordered cached profile values locally', () => {

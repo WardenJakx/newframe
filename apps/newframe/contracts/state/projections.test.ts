@@ -18,6 +18,13 @@ describe('wallet renderer projection records', () => {
         origin: 'https://example.test',
         data: { to: '0x1' },
         approvals: [{ type: 'spend', data: { amount: '1' }, approved: false }],
+        approvalGate: {
+          type: 'signer-compatibility',
+          reason: 'incompatible',
+          signer: 'ledger',
+          tx: 'london',
+          chain: { type: 'ethereum', id: 1 }
+        },
         authorization: {
           decision: 'autonomous',
           principal: {
@@ -33,8 +40,28 @@ describe('wallet renderer projection records', () => {
       handlerId: 'request-1',
       origin: 'https://example.test',
       data: { to: '0x1' },
-      approvals: [{ type: 'spend', data: { amount: '1' }, approved: false }]
+      approvals: [{ type: 'spend', data: { amount: '1' }, approved: false }],
+      approvalGate: {
+        type: 'signer-compatibility',
+        reason: 'incompatible',
+        signer: 'ledger',
+        tx: 'london',
+        chain: { type: 'ethereum', id: 1 }
+      }
     })
+
+    expect(
+      WalletRequestSchema.safeParse({
+        type: 'transaction',
+        handlerId: 'request-1',
+        approvalGate: {
+          type: 'gas-fee',
+          feeUSD: '51.00',
+          currentSymbol: 'ETH',
+          privatePolicyState: 'must-not-cross-ipc'
+        }
+      }).success
+    ).toBeFalse()
   })
 
   it('projects navigation as explicit identifiers and display data', () => {

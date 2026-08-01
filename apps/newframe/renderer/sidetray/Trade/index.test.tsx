@@ -19,7 +19,7 @@ import {
   FLASH_WETH_ADDRESS
 } from '../../../domain/flash/constants'
 import { FLASH_USDC_ASSET, FLASH_WETH_ASSET } from '../../../domain/flash/assets'
-import { type FlashQuote } from '../../../domain/flash/schemas'
+import type { FlashQuoteDisplay } from '../../../contracts/operations'
 import { STATE_STREAM_SCHEMA_VERSION } from '../../../contracts/state/protocol'
 
 const link = createHostFixture()
@@ -80,6 +80,7 @@ function initializeTradeState(balances = [wethBalance()], customTokens: any[] = 
         [other.id]: other
       },
       accountOrder: [sender.id, other.id],
+      operations: {},
       balances: {
         [sender.address]: balances,
         [other.address]: [wethBalance()]
@@ -176,7 +177,7 @@ function tokenBalance(index: number) {
   }
 }
 
-function quote(id: string, inputAmount: string): FlashQuote {
+function quote(id: string, inputAmount: string): FlashQuoteDisplay {
   return {
     id,
     side: 'sell',
@@ -187,6 +188,8 @@ function quote(id: string, inputAmount: string): FlashQuote {
     receiveAsset: FLASH_USDC_ASSET,
     inputAmount,
     outputAmount: '2400',
+    nextAction: 'sign',
+    requiresPermit: false,
     inputNotional: '2400',
     outputNotional: '2390',
     estimatedFeeNotional: '1.25',
@@ -197,15 +200,7 @@ function quote(id: string, inputAmount: string): FlashQuote {
       { id: 'approve', kind: 'approve', label: 'Approve WETH', status: 'required' },
       { id: 'sign', kind: 'sign', label: 'Sign order', status: 'required' },
       { id: 'submit', kind: 'submit', label: 'Submit order', status: 'required' }
-    ],
-    raw: {
-      orderTypedData: {
-        domain: { chainId: FLASH_ANVIL_CHAIN_ID },
-        message: { id },
-        primaryType: 'Order',
-        types: { Order: [] }
-      }
-    }
+    ]
   }
 }
 
@@ -238,8 +233,8 @@ describe('Trade', () => {
         quoteCalls.push(query.request)
         return {
           ok: true,
-          quote: quote(`quote-${quoteCalls.length}`, query.request.qty),
-          flash: { quoteId: `quote-${quoteCalls.length}` }
+          quoteId: `quote-${quoteCalls.length}`,
+          quote: quote(`quote-${quoteCalls.length}`, query.request.qty)
         }
       }
 
@@ -280,40 +275,65 @@ describe('Trade', () => {
     expect(quoteCalls[1]).not.toHaveProperty('accountAddress')
   })
 
-  it('does not re-quote when synchronized balances are semantically unchanged during signing', async () => {
+  it('pauses quote refresh for projected signing and releases a pending workflow when the ticket changes', async () => {
     const quoteCalls: any[] = []
-    const submitCommands: any[] = []
-    let resolveSignature!: (value: any) => void
-    const signatureResult = new Promise((resolve) => {
-      resolveSignature = resolve
-    })
 
     ;(link.executeQuery as Mock<any>).mockImplementation(async (query: any) => {
       if (query.type !== 'flash.quote') return { ok: false, error: 'invalid_query' }
       quoteCalls.push(query.request)
+      const result = quote(`quote-${quoteCalls.length}`, query.request.qty)
+      result.nextAction = 'approve'
+      result.actions = {
+        approval: {
+          id: 'approval',
+          kind: 'approve',
+          label: 'Approve WETH',
+          asset: FLASH_WETH_ASSET,
+          amount: query.request.qty,
+          amountRaw: '1000000000000000000'
+        }
+      }
       return {
         ok: true,
-        quote: quote(`quote-${quoteCalls.length}`, query.request.qty),
-        flash: { quoteId: `quote-${quoteCalls.length}` }
+        quoteId: `quote-${quoteCalls.length}`,
+        quote: result
       }
     })
-    ;(link.executeCommand as Mock<any>).mockImplementation(async (command: any) => {
-      if (command.type === 'typedData.signV4') return signatureResult
-      if (command.type === 'flash.submit') {
-        submitCommands.push(command)
-        return { ok: true, orderId: 'order-1' }
-      }
-      return { ok: true }
-    })
+    ;(link.executeCommand as Mock<any>).mockResolvedValue({ ok: true })
 
     render(<Trade assetId={`${FLASH_ANVIL_CHAIN_ID}:${FLASH_WETH_ADDRESS}`} />)
     fireEvent.change(screen.getByLabelText('WETH amount'), { target: { value: '1' } })
     await act(async () => timers.advanceTimersByTime(250))
-    fireEvent.click(await screen.findByRole('button', { name: 'Review/sign' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Approve WETH' }))
 
-    await waitFor(() =>
-      expect(link.executeCommand).toHaveBeenCalledWith(expect.objectContaining({ type: 'typedData.signV4' }))
-    )
+    const prepareCommand: any = (link.executeCommand as Mock<any>).mock.calls.find(
+      ([command]: any[]) => command.type === 'trade.prepare'
+    )?.[0]
+    expect(prepareCommand).toEqual({
+      type: 'trade.prepare',
+      operationId: expect.any(String),
+      quoteId: 'quote-1',
+      action: 'approve'
+    })
+    await act(async () => {
+      updateTradeState({
+        operations: {
+          [prepareCommand.operationId]: {
+            id: prepareCommand.operationId,
+            type: 'trade.execute',
+            status: 'pending',
+            phase: 'awaiting_submit',
+            startedAt: 1,
+            updatedAt: 2
+          }
+        }
+      })
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Review/sign' }))
+    const submitCommand: any = (link.executeCommand as Mock<any>).mock.calls.find(
+      ([command]: any[]) => command.type === 'trade.submit'
+    )?.[0]
+    expect(submitCommand.operationId).toBe(prepareCommand.operationId)
     await act(async () => {
       const mirrored = sideTrayRendererStateStoreReadApi.getState()
       updateTradeState({
@@ -322,34 +342,46 @@ describe('Trade', () => {
           [sender.address]: mirrored.balances[sender.address].map((balance) => ({ ...balance }))
         },
         assetRates: { ...mirrored.assetRates },
-        tokens: { ...mirrored.tokens, byId: { ...mirrored.tokens.byId } }
+        tokens: { ...mirrored.tokens, byId: { ...mirrored.tokens.byId } },
+        operations: {
+          [submitCommand.operationId]: {
+            id: submitCommand.operationId,
+            type: 'trade.execute',
+            status: 'pending',
+            phase: 'signing_order',
+            startedAt: 1,
+            updatedAt: 2
+          }
+        }
       })
     })
     await act(async () => timers.advanceTimersByTime(500))
 
     expect(quoteCalls).toHaveLength(1)
-    resolveSignature({ ok: true, signature: `0x${'1'.repeat(130)}` })
-    await waitFor(() => expect(submitCommands).toHaveLength(1))
+    fireEvent.change(screen.getByLabelText('WETH amount'), { target: { value: '2' } })
+    await act(async () => timers.advanceTimersByTime(250))
+    expect(link.executeCommand).toHaveBeenCalledWith({ type: 'trade.release' })
+    expect(quoteCalls).toHaveLength(2)
+    expect(quoteCalls[1].qty).toBe('2')
   })
 
-  it('surfaces Flash submission failures on the trade form', async () => {
-    const submitMessage = 'Flash API 400 Bad Request: quote expired'
+  it('ignores a stale delayed acknowledgement and unlocks retry after a current rejection', async () => {
+    const staleMessage = 'Stale command failed.'
+    const currentMessage = 'Trade request was rejected.'
+    let resolveFirst!: (value: unknown) => void
+    let submitCount = 0
 
     ;(link.executeQuery as Mock<any>).mockImplementation(async (query: any) => {
       if (query.type !== 'flash.quote') return { ok: false, error: 'invalid_query' }
 
-      return {
-        ok: true,
-        quote: quote('submit-error-quote', query.request.qty),
-        flash: { quoteId: 'submit-error-quote' }
-      }
+      const quoteId = `submit-error-${query.request.qty}`
+      return { ok: true, quoteId, quote: quote(quoteId, query.request.qty) }
     })
     ;(link.executeCommand as Mock<any>).mockImplementation(async (command: any) => {
-      if (command.type === 'typedData.signV4') {
-        return { ok: true, signature: `0x${'1'.repeat(130)}` }
-      }
-      if (command.type === 'flash.submit') {
-        return { ok: false, error: 'submit_failed', message: submitMessage }
+      if (command.type === 'trade.submit') {
+        submitCount += 1
+        if (submitCount === 1) return await new Promise((resolve) => (resolveFirst = resolve))
+        return { ok: false, error: 'invalid_command', message: currentMessage }
       }
 
       return { ok: true }
@@ -359,10 +391,65 @@ describe('Trade', () => {
     fireEvent.change(screen.getByLabelText('WETH amount'), { target: { value: '1' } })
     await act(async () => timers.advanceTimersByTime(250))
     fireEvent.click(await screen.findByRole('button', { name: 'Review/sign' }))
+    fireEvent.change(screen.getByLabelText('WETH amount'), { target: { value: '2' } })
+    await act(async () => timers.advanceTimersByTime(250))
+    resolveFirst({ ok: false, error: 'invalid_command', message: staleMessage })
+    await act(async () => await Promise.resolve())
+    expect(screen.queryByText(staleMessage)).toBe(null)
 
-    expect(await screen.findByText(submitMessage)).toBeTruthy()
+    fireEvent.click(await screen.findByRole('button', { name: 'Review/sign' }))
+    expect(await screen.findByText(currentMessage)).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Review/sign' })).toBeTruthy()
     expect(link.executeCommand).not.toHaveBeenCalledWith({ type: 'sidetray.close' })
+  })
+
+  it('keeps a projected failure visible and allows retry with a new operation', async () => {
+    ;(link.executeQuery as Mock<any>).mockImplementation(async (query: any) => {
+      if (query.type !== 'flash.quote') return { ok: false, error: 'invalid_query' }
+
+      return {
+        ok: true,
+        quoteId: 'failed-trade-quote',
+        quote: quote('failed-trade-quote', query.request.qty)
+      }
+    })
+    ;(link.executeCommand as Mock<any>).mockResolvedValue({ ok: true })
+
+    render(<Trade assetId={`${FLASH_ANVIL_CHAIN_ID}:${FLASH_WETH_ADDRESS}`} />)
+    fireEvent.change(screen.getByLabelText('WETH amount'), { target: { value: '1' } })
+    await act(async () => timers.advanceTimersByTime(250))
+    fireEvent.click(await screen.findByRole('button', { name: 'Review/sign' }))
+    const firstCommand: any = (link.executeCommand as Mock<any>).mock.calls.find(
+      ([command]: any[]) => command.type === 'trade.submit'
+    )?.[0]
+
+    await act(async () => {
+      updateTradeState({
+        operations: {
+          [firstCommand.operationId]: {
+            id: firstCommand.operationId,
+            type: 'trade.execute',
+            status: 'failed',
+            phase: 'signing_order_failed',
+            error: { code: 'sign_failed', message: 'Order signature was rejected.' },
+            startedAt: 1,
+            updatedAt: 2,
+            finishedAt: 2
+          }
+        }
+      })
+    })
+
+    expect(await screen.findByText('Order signature was rejected.')).toBeTruthy()
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Review/sign' }).disabled).toBe(false)
+    expect(link.executeCommand).not.toHaveBeenCalledWith({ type: 'sidetray.close' })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Review/sign' }))
+    const submitCommands = (link.executeCommand as Mock<any>).mock.calls
+      .map(([command]: any[]) => command)
+      .filter((command: any) => command.type === 'trade.submit')
+    expect(submitCommands).toHaveLength(2)
+    expect(submitCommands[1].operationId).not.toBe(firstCommand.operationId)
   })
 
   it('refreshes unchanged quotes after fifteen seconds and request changes after the debounce', async () => {
@@ -373,8 +460,8 @@ describe('Trade', () => {
       quoteCalls.push(query.request)
       return {
         ok: true,
-        quote: quote(`quote-${quoteCalls.length}`, query.request.qty),
-        flash: { quoteId: `quote-${quoteCalls.length}` }
+        quoteId: `quote-${quoteCalls.length}`,
+        quote: quote(`quote-${quoteCalls.length}`, query.request.qty)
       }
     })
 
@@ -418,7 +505,7 @@ describe('Trade', () => {
     ;(link.executeQuery as Mock<any>).mockImplementation(async (query: any) => {
       if (query.type !== 'flash.quote') return { ok: false, error: 'invalid_query' }
       quoteCalls.push(query.request)
-      return { ok: true, quote: quote('normalized-quote', '1'), flash: {} }
+      return { ok: true, quoteId: 'normalized-quote', quote: quote('normalized-quote', '1') }
     })
 
     render(<Trade assetId={`${FLASH_ANVIL_CHAIN_ID}:${FLASH_WETH_ADDRESS}`} />)
@@ -455,86 +542,90 @@ describe('Trade', () => {
     expect(buySlider.getAttribute('data-tone')).toBe('special')
   })
 
-  it('signs a quoted permit before the order and echoes both typed-data payloads', async () => {
-    const signCommands: any[] = []
-    let submitPayload: any = null
-    const orderTypedData = {
-      domain: { chainId: FLASH_ANVIL_CHAIN_ID },
-      message: { quoteId: 'permit-quote' },
-      primaryType: 'Order',
-      types: { Order: [] }
-    }
-    const permitTypedData = {
-      domain: { chainId: FLASH_ANVIL_CHAIN_ID },
-      message: { permitted: true },
-      primaryType: 'Permit',
-      types: { Permit: [] }
-    }
-    const orderTypedDataRaw = ` ${JSON.stringify(orderTypedData)} `
-    const permitTypedDataRaw = `\n${JSON.stringify(permitTypedData)}\n`
+  it('derives permit, order, submit, and close progress only from projected canonical state', async () => {
     const permitQuote = quote('permit-quote', '1')
-    permitQuote.raw = {
-      evm: {
-        orderTypedData,
-        orderTypedDataRaw,
-        permitTypedData,
-        permitTypedDataRaw
-      }
-    }
+    permitQuote.requiresPermit = true
     ;(link.executeQuery as Mock<any>).mockImplementation(async (query: any) => {
       if (query.type === 'flash.quote') {
-        return { ok: true, quote: permitQuote, flash: permitQuote.raw }
+        return { ok: true, quoteId: permitQuote.id, quote: permitQuote }
       }
 
       return { ok: false, error: 'invalid_query' }
     })
-    ;(link.executeCommand as Mock<any>).mockImplementation(async (command: any) => {
-      if (command.type === 'typedData.signV4') {
-        signCommands.push(command)
-        return {
-          ok: true,
-          signature: signCommands.length === 1 ? `0x${'1'.repeat(130)}` : `0x${'2'.repeat(130)}`
-        }
-      }
-      if (command.type === 'flash.submit') {
-        submitPayload = command.order
-        return { ok: true, orderId: 'permit-order' }
-      }
-
-      return { ok: true }
-    })
+    ;(link.executeCommand as Mock<any>).mockResolvedValue({ ok: true })
 
     render(<Trade assetId={`${FLASH_ANVIL_CHAIN_ID}:${FLASH_WETH_ADDRESS}`} />)
     fireEvent.change(screen.getByLabelText('WETH amount'), { target: { value: '1' } })
     await act(async () => timers.advanceTimersByTime(250))
 
     fireEvent.click(await screen.findByRole('button', { name: 'Review/sign' }))
-    await act(async () => {
-      for (let index = 0; index < 20; index += 1) await Promise.resolve()
+    const command: any = (link.executeCommand as Mock<any>).mock.calls.find(
+      ([input]: any[]) => input.type === 'trade.submit'
+    )?.[0]
+    expect(command).toEqual({
+      type: 'trade.submit',
+      operationId: expect.any(String),
+      quoteId: 'permit-quote'
     })
+    expect(JSON.stringify(command)).not.toMatch(/signature|typedData|payload|transaction|calldata/i)
 
-    expect(signCommands).toHaveLength(2)
-    await waitFor(() => expect(submitPayload).toBeTruthy())
-    expect(signCommands[0]).toMatchObject({
-      type: 'typedData.signV4',
-      chainId: FLASH_ANVIL_CHAIN_ID,
-      typedData: { primaryType: 'Permit' }
+    const projectOperation = async (phase: string, status: 'pending' | 'succeeded' = 'pending') => {
+      await act(async () => {
+        updateTradeState({
+          operations: {
+            [command.operationId]: {
+              id: command.operationId,
+              type: 'trade.execute',
+              status,
+              phase,
+              entityRefs: status === 'succeeded' ? [{ type: 'order', id: 'permit-order' }] : [],
+              startedAt: 1,
+              updatedAt: 2,
+              ...(status === 'succeeded' ? { finishedAt: 2 } : {})
+            }
+          }
+        })
+      })
+    }
+
+    await projectOperation('signing_permit')
+    expect(screen.getByText('Review permit in Newframe')).toBeTruthy()
+    await projectOperation('signing_order')
+    expect(screen.getByText('Review order in Newframe')).toBeTruthy()
+    await projectOperation('submitting')
+    expect(screen.getByText('Submitting order')).toBeTruthy()
+    await projectOperation('submitted', 'succeeded')
+    expect(link.executeCommand).not.toHaveBeenCalledWith({ type: 'sidetray.close' })
+
+    await act(async () => {
+      updateTradeState({
+        orders: {
+          'permit-order': {
+            orderId: 'permit-order',
+            accountAddress: sender.address,
+            chainId: FLASH_ANVIL_CHAIN_ID,
+            provider: 'flash',
+            status: 'open',
+            orderType: 'market',
+            side: 'sell',
+            targetAsset: FLASH_WETH_ASSET,
+            contraAsset: FLASH_USDC_ASSET,
+            qty: '1',
+            spentAmount: '1',
+            outputAmount: '2400',
+            estimatedOutputAmount: '2400',
+            filledOutputAmount: '0',
+            averageFillPrice: null,
+            createdAt: 1,
+            updatedAt: 2,
+            terminalAt: null,
+            open: true,
+            cancellable: true
+          }
+        }
+      })
     })
-    expect(signCommands[1]).toMatchObject({
-      type: 'typedData.signV4',
-      chainId: FLASH_ANVIL_CHAIN_ID,
-      typedData: { primaryType: 'Order' }
-    })
-    expect(submitPayload).toMatchObject({
-      evmOrderTypedData: orderTypedDataRaw,
-      evmPermitSignature: `0x${'1'.repeat(130)}`,
-      evmPermitTypedData: permitTypedDataRaw,
-      signature: `0x${'2'.repeat(130)}`
-    })
-    expect(submitPayload).not.toHaveProperty('accountAddress')
-    expect(submitPayload).not.toHaveProperty('targetChain')
-    expect(submitPayload).not.toHaveProperty('contraChain')
-    expect(submitPayload.quote.id).toBe('permit-quote')
+    await waitFor(() => expect(link.executeCommand).toHaveBeenCalledWith({ type: 'sidetray.close' }))
   })
 
   it('exposes the new order tabs and progressive advanced fields', () => {

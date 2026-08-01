@@ -14,8 +14,30 @@ export const tradeLimitStage: VisualStage = {
       .getByRole('button', { name: /Review\/sign/i })
       .waitFor({ state: 'visible', timeout: 20_000 })
     await driver.screenshot(tradePage, '22a-trade-limit-quoted.png')
-    const existingOrderIds = new Set(Object.keys((await driver.getAppState()).main?.orders || {}))
+    const beforeSubmit = await driver.getAppState()
+    const existingOrderIds = new Set(Object.keys(beforeSubmit.main?.orders || {}))
+    const priorOperationIds = new Set(Object.keys(beforeSubmit.operations || {}))
     await tradePage.getByRole('button', { name: /Review\/sign/i }).click()
+
+    const pendingState = await driver.waitForState(
+      (state) =>
+        Object.entries(state.operations || {}).some(
+          ([operationId, entry]) =>
+            !priorOperationIds.has(operationId) &&
+            entry.operation?.type === 'trade.execute' &&
+            entry.operation.status === 'pending'
+        ),
+      5_000,
+      'Limit trade did not publish a pending canonical operation'
+    )
+    const limitOperationEntry = Object.entries(pendingState.operations || {}).find(
+      ([operationId, entry]) =>
+        !priorOperationIds.has(operationId) &&
+        entry.operation?.type === 'trade.execute' &&
+        entry.operation.status === 'pending'
+    )
+    const limitOperationId =
+      limitOperationEntry?.[0] || driver.fail('Pending limit trade operation disappeared')
 
     const signRequest = await driver.waitForCurrentRequest('signTypedData', new Set(), 30_000)
     await driver.screenshot(tray, '22b-trade-limit-sign-review.png')
@@ -42,6 +64,22 @@ export const tradeLimitStage: VisualStage = {
 
     const orderId = order.orderId
     if (!orderId) return driver.fail('The new limit Flash order has no order id')
+    const terminalState = await driver.waitForState(
+      (state) => {
+        const status = state.operations?.[limitOperationId]?.operation?.status
+        return status === 'succeeded' || status === 'failed'
+      },
+      15_000,
+      'Limit trade operation did not reach a terminal canonical state'
+    )
+    const operation = terminalState.operations?.[limitOperationId]?.operation
+    if (operation?.status === 'failed') {
+      return driver.fail(operation.error?.message || 'Canonical limit trade operation failed')
+    }
+    if (!operation?.entityRefs?.some((reference) => reference.type === 'order' && reference.id === orderId)) {
+      return driver.fail('Successful limit trade operation did not reference its order')
+    }
+    runtime.evidence('limitOperationId', limitOperationId)
     runtime.evidence('limitOrderId', orderId)
     runtime.evidence('limitOrderStatus', String(stored?.status))
     await driver.assertFlashOrderVisible(orderId)

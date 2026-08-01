@@ -1,4 +1,8 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, mock, spyOn } from 'bun:test'
+import { EventEmitter } from 'events'
+
+import { createRendererAuthorizationRegistry } from '../ipc/authorization'
+import { createRendererPrincipal, decideWalletAction } from '../authority'
 
 const revealMock = {
   recog: mock(),
@@ -42,6 +46,35 @@ const nameResolution = {
 }
 
 const accounts = { syncTransactionActivity: mock() }
+const requestLifecycle = {
+  pending: new Map<string, RPCRequestCallback>(),
+  bind: mock(),
+  create(respond: RPCRequestCallback, requestId = crypto.randomUUID()) {
+    this.pending.set(requestId, respond)
+    return requestId
+  },
+  respond(requestId: string, response: RPCResponsePayload) {
+    const callback = this.pending.get(requestId)
+    if (!callback) return false
+    this.pending.delete(requestId)
+    callback(response)
+    return true
+  },
+  resolve(request: any, result?: unknown) {
+    return this.respond(request.handlerId, {
+      id: request.payload.id,
+      jsonrpc: request.payload.jsonrpc,
+      result
+    })
+  },
+  reject(request: any, error: EVMError) {
+    return this.respond(request.handlerId, {
+      id: request.payload.id,
+      jsonrpc: request.payload.jsonrpc,
+      error
+    })
+  }
+}
 
 const accountState = {
   address: '0x690B9A9E9aa1C9dB991C7721a92d351Db4FaC990',
@@ -59,6 +92,7 @@ beforeAll(async () => {
 beforeEach(() => {
   mock.clearAllMocks()
   account?.close()
+  requestLifecycle.pending.clear()
   store.getState().removeAccount(accountState.address.toLowerCase())
   account = new Account(
     accountState as any,
@@ -79,7 +113,8 @@ beforeEach(() => {
       schedule: (callback: () => void, delay: number) => setTimeout(callback, delay),
       signers: signersMock,
       windows: windowsMock
-    }
+    },
+    requestLifecycle
   )
   ;(fetchContract as any).mockResolvedValueOnce(undefined)
   simulateTransactionEffectsMock.mockResolvedValue({ status: 'success', effects: [] })
@@ -91,8 +126,9 @@ afterEach(() => {
 })
 
 describe('#addRequest', () => {
-  it('stores request data canonically while keeping request capabilities in runtime sidecars', () => {
-    const respond = mock()
+  it('stores request data canonically, keeps capabilities in sidecars, and settles exactly once', () => {
+    const externalResponse = mock()
+    const handlerId = requestLifecycle.create(externalResponse)
     const actionData = { amount: '0x1' }
     let updateCalls = 0
     const update = (request: any, data: any) => {
@@ -101,7 +137,7 @@ describe('#addRequest', () => {
       request.data.data = `encoded:${data.amount}`
     }
     const request = {
-      handlerId: 'runtime-capabilities',
+      handlerId,
       type: 'transaction',
       account: account.id,
       origin: 'test',
@@ -110,8 +146,32 @@ describe('#addRequest', () => {
       approvals: [{ type: 'approveGasLimit', approved: false, data: {} }],
       recognizedActions: [{ id: 'erc20:approve', data: actionData, update }]
     }
+    const rendererPrincipal = createRendererPrincipal({
+      clientType: 'wallet-ui',
+      entrypoint: 'tray',
+      webContentsId: 7,
+      windowInstanceId: 'wallet-window'
+    })
+    const decision = decideWalletAction(rendererPrincipal, request as any)
+    if (decision.outcome !== 'prompt') throw new Error('renderer request was not prompt-authorized')
+    ;(request as any).authorization = decision.authorization
 
-    account.addRequest(request, respond)
+    requestLifecycle.bind(request as any)
+    account.addRequest(request)
+
+    const renderer = Object.assign(new EventEmitter(), { id: 7 })
+    const renderers = createRendererAuthorizationRegistry(() => 'wallet-window')
+    renderers.registerRenderer(renderer as never, 'wallet-ui', 'tray')
+    renderer.emit('destroyed')
+
+    expect(account.requests[request.handlerId]).toMatchObject({
+      authorization: {
+        decision: 'prompt',
+        principal: { kind: 'renderer', webContentsId: 7, windowInstanceId: 'wallet-window' }
+      }
+    })
+    expect(requestLifecycle.pending.has(request.handlerId)).toBe(true)
+    expect('responseHandlers' in account).toBe(false)
 
     const canonical = store.getState().main.accounts[account.id].requests[request.handlerId]
     expect(canonical.recognizedActions[0].update).toBeUndefined()
@@ -125,8 +185,13 @@ describe('#addRequest', () => {
     expect(account.requests[request.handlerId].recognizedActions[0].data.amount).toBe('0x2')
 
     account.resolveRequest(request, 'ok')
-    expect(respond).toHaveBeenCalledWith({ id: 1, jsonrpc: '2.0', result: 'ok' })
+    account.resolveRequest(request, 'late')
+    account.rejectRequest(request, { code: 4001, message: 'late rejection' })
+    expect(externalResponse.mock.calls).toEqual([[{ id: 1, jsonrpc: '2.0', result: 'ok' }]])
     expect(account.requests[request.handlerId]).toBeUndefined()
+    expect((account as any).actionUpdateHandlers.size).toBe(0)
+    expect(requestLifecycle.pending.has(handlerId)).toBe(false)
+    renderers.dispose()
   })
 
   describe('recognizing requests', () => {
@@ -220,6 +285,7 @@ describe('creation-block listener lifecycle', () => {
         signers: signersMock,
         windows: windowsMock
       },
+      requestLifecycle,
       false
     )
 
@@ -262,7 +328,8 @@ describe('creation-block listener lifecycle', () => {
         schedule: (callback: () => void, delay: number) => setTimeout(callback, delay),
         signers: signersMock,
         windows: windowsMock
-      }
+      },
+      requestLifecycle
     )
 
     account.setProfileActive(false)

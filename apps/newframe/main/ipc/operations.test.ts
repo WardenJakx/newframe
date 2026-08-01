@@ -1,22 +1,114 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test'
 
-import { createOperationDispatcher, type OperationServices } from './operations'
+import { commandContracts, queryContracts } from '../../contracts/operations'
+import { createOperationDispatcher, createOperationRegistry, type OperationServices } from './operations'
 
 const authorizeRenderer = mock()
 const getAccount = mock()
 const getCurrentAccount = mock()
-const selectAccount = mock()
 const resolveName = mock()
 const submitCurrentAccountTransaction = mock()
 const signCurrentAccountTypedData = mock()
 const quoteFlashForCurrentAccount = mock()
 const submitFlashForCurrentAccount = mock()
-const closeOwnSideTray = mock()
-const inspectOwnSideTray = mock()
 const requestTokenImage = mock()
-const resolveAgentAccessRequest = mock()
-const revokeAgentSessions = mock()
-const setAgentAccess = mock()
+const accountMutations = {
+  addressChainUsage: mock(),
+  clearPermission: mock(),
+  remove: mock(),
+  removeOrigin: mock(),
+  rename: mock(),
+  reorder: mock(),
+  select: mock()
+}
+const agent = {
+  resolveAgentAccessRequest: mock(),
+  revokeAgentSessions: mock(),
+  setAgentAccess: mock()
+}
+const networks = { remove: mock(), setActivation: mock(), setPrimaryRpc: mock() }
+const portfolio = { refresh: mock() }
+const requestEdits = {
+  adjustTransactionNonce: mock(),
+  dismissTransactionFeeNotice: mock(),
+  resetTransactionNonce: mock(),
+  setTransactionFeeDefault: mock(),
+  updateTokenApproval: mock(),
+  updateTransactionFee: mock()
+}
+const requests = {
+  approve: mock(),
+  clearOrigin: mock(),
+  confirmRequestApproval: mock(),
+  confirmWarning: mock(),
+  rejectRequest: mock(),
+  replaceTransaction: mock(),
+  resolveAccess: mock(),
+  resolveAgentAccess: mock(),
+  resolveNetwork: mock(),
+  resolveSwitchChain: mock(),
+  reviewAddChain: mock(),
+  reviewAddToken: mock()
+}
+const tokens = { add: mock(), lookup: mock(), remove: mock() }
+const platform = {
+  closeSideTray: mock(),
+  consumeHomeCommand: mock(),
+  handleTrayMouseout: mock(),
+  inspectRenderer: mock(),
+  navigatePanelBack: mock(),
+  openExternal: mock(),
+  openRequestPanel: mock(),
+  openSideTray: mock(),
+  openTransactionExplorer: mock(),
+  quitApp: mock(),
+  respondToExtension: mock(),
+  respondToUpdater: mock(),
+  toggleWarning: mock(),
+  updateNotification: mock(),
+  writeClipboard: mock()
+}
+const settings = { update: mock() }
+const profiles = {
+  create: mock(),
+  delete: mock(),
+  moveAccount: mock(),
+  movableAccounts: mock(),
+  rename: mock(),
+  select: mock()
+}
+const security = {
+  configure: mock(),
+  lock: mock(),
+  reset: mock(),
+  status: mock(),
+  unlock: mock()
+}
+const accountOnboarding = {
+  addFromSigner: mock(),
+  addWatch: mock(),
+  createLattice: mock(),
+  disconnect: mock(),
+  exportPrivateKey: mock(),
+  finishHardwareSession: mock(),
+  importSigner: mock(),
+  generateSeedPhrase: mock(),
+  loadLedgerAccounts: mock(),
+  locateKeystore: mock(),
+  pairLattice: mock(),
+  reload: mock(),
+  startHardwareSession: mock(),
+  submitTrezorInput: mock()
+}
+const send = { dispose: mock(), submit: mock() }
+const trade = {
+  cancel: mock(),
+  dispose: mock(),
+  prepare: mock(),
+  quote: mock(),
+  release: mock(),
+  submit: mock()
+}
 const createRendererPrincipal = mock(
   (context: {
     clientType: 'wallet-ui' | 'sidetray'
@@ -31,78 +123,6 @@ const createRendererPrincipal = mock(
     windowInstanceId: context.windowInstanceId
   })
 )
-const walletWorkflows = {
-  acceptBetaWarning: mock(),
-  adjustTransactionNonce: mock(),
-  addAccountFromSigner: mock(),
-  getAddressChainUsage: mock(),
-  addToken: mock(),
-  addWatchAccount: mock(),
-  approveRequest: mock(),
-  cancelFlashOrder: mock(),
-  clearOriginRequests: mock(),
-  clearPermission: mock(),
-  configureSecurity: mock(),
-  confirmRequestApproval: mock(),
-  consumeHomeCommand: mock(),
-  createProfile: mock(),
-  createLatticeSigner: mock(),
-  deleteProfile: mock(),
-  disconnectSigner: mock(),
-  exportAccountPrivateKey: mock(),
-  generateSeedPhrase: mock(),
-  importSigner: mock(),
-  inspectOwnTrayWindow: mock(),
-  locateKeystore: mock(),
-  loadLedgerAccounts: mock(),
-  lockWallet: mock(),
-  lookupToken: mock(),
-  movableProfileAccounts: mock(),
-  moveAccountToProfile: mock(),
-  navigatePanelBack: mock(),
-  openSideTray: mock(),
-  openExternalUrl: mock(),
-  openTransactionExplorer: mock(),
-  openRequestPanel: mock(),
-  pairLattice: mock(),
-  quitApp: mock(),
-  refreshPortfolio: mock(),
-  reloadSigner: mock(),
-  removeAccount: mock(),
-  removeNetwork: mock(),
-  removeOrigin: mock(),
-  removeToken: mock(),
-  rejectRequest: mock(),
-  renameAccount: mock(),
-  renameProfile: mock(),
-  reorderAccounts: mock(),
-  resetWallet: mock(),
-  resolveNetworkRequest: mock(),
-  resolveAccessRequest: mock(),
-  resolveSwitchChainRequest: mock(),
-  requestSignerCompatibility: mock(),
-  resetTransactionNonce: mock(),
-  respondToExtension: mock(),
-  respondToUpdater: mock(),
-  reviewAddChainRequest: mock(),
-  reviewAddTokenRequest: mock(),
-  securityStatus: mock(),
-  selectProfile: mock(),
-  setNetworkActivation: mock(),
-  setNetworkPrimaryRpc: mock(),
-  setTransactionFeeDefault: mock(),
-  submitTrezorInput: mock(),
-  toggleWarning: mock(),
-  unlockSecurity: mock(),
-  updateTokenApproval: mock(),
-  updateTransactionFee: mock(),
-  dismissTransactionFeeNotice: mock(),
-  replaceTransaction: mock(),
-  handleTrayMouseout: mock(),
-  updateNotification: mock(),
-  updateSettings: mock(),
-  writeClipboard: mock()
-}
 
 let dispatchCommand: ReturnType<typeof createOperationDispatcher>['dispatchCommand']
 let dispatchQuery: ReturnType<typeof createOperationDispatcher>['dispatchQuery']
@@ -120,67 +140,37 @@ const sideTrayContext = {
   windowInstanceId: 'side-tray-test'
 }
 const transactionIdempotencyKey = '00000000-0000-4000-8000-000000000001'
-const flashTargetAsset = {
-  id: '1:0x1111111111111111111111111111111111111111',
-  symbol: 'TOK',
-  name: 'Token',
-  decimals: 18,
-  chainId: 1,
-  isNative: false,
-  address: '0x1111111111111111111111111111111111111111'
-}
-const flashContraAsset = {
-  id: '1:0x2222222222222222222222222222222222222222',
-  symbol: 'USDC',
-  name: 'USD Coin',
-  decimals: 6,
-  chainId: 1,
-  isNative: false,
-  address: '0x2222222222222222222222222222222222222222'
-}
-const flashOrder = {
-  chainId: 1,
-  contraAsset: flashContraAsset,
-  inputAmount: '1',
-  orderSignature: '0x12',
-  orderType: 'market' as const,
-  qty: '1',
-  quote: {
-    id: 'quote-1',
-    side: 'buy' as const,
-    orderType: 'market' as const,
-    targetAsset: flashTargetAsset,
-    contraAsset: flashContraAsset,
-    spentAsset: flashContraAsset,
-    receiveAsset: flashTargetAsset,
-    inputAmount: '1',
-    outputAmount: '1',
-    steps: []
-  },
-  side: 'buy' as const,
-  signature: '0x12',
-  targetAsset: flashTargetAsset
-}
 
-function createTestDispatcher() {
-  return createOperationDispatcher({
+function createTestServices() {
+  return {
     accounts: { current: getCurrentAccount, get: getAccount },
+    accountOnboarding,
+    accountMutations,
+    agent,
+    networks,
+    portfolio,
+    platform,
+    profiles,
+    requestEdits,
+    requests,
+    send,
+    trade,
+    security,
+    settings,
+    tokens,
     authorizeRenderer,
     createRendererPrincipal,
     requestTokenImage,
-    resolveAgentAccessRequest,
-    revokeAgentSessions,
-    setAgentAccess,
-    closeOwnSideTray,
-    inspectOwnSideTray,
     quoteFlashForCurrentAccount,
     signCurrentAccountTypedData,
     submitCurrentAccountTransaction,
     submitFlashForCurrentAccount,
-    resolveName,
-    selectAccount,
-    walletWorkflows
-  } as unknown as OperationServices)
+    resolveName
+  } as unknown as OperationServices
+}
+
+function createTestDispatcher() {
+  return createOperationDispatcher(createTestServices())
 }
 
 beforeEach(() => {
@@ -188,20 +178,26 @@ beforeEach(() => {
   getAccount.mockReset()
   getCurrentAccount.mockReset()
   getCurrentAccount.mockReturnValue({ id: 'account-1' })
-  selectAccount.mockReset()
   resolveName.mockReset()
   submitCurrentAccountTransaction.mockReset()
   signCurrentAccountTypedData.mockReset()
   quoteFlashForCurrentAccount.mockReset()
   submitFlashForCurrentAccount.mockReset()
-  closeOwnSideTray.mockReset()
-  inspectOwnSideTray.mockReset()
+  Object.values(platform).forEach((operation) => operation.mockReset())
+  settings.update.mockReset()
   requestTokenImage.mockReset()
-  resolveAgentAccessRequest.mockReset()
-  revokeAgentSessions.mockReset()
-  setAgentAccess.mockReset()
+  Object.values(accountMutations).forEach((operation) => operation.mockReset())
+  Object.values(accountOnboarding).forEach((operation) => operation.mockReset())
+  Object.values(send).forEach((operation) => operation.mockReset())
+  Object.values(trade).forEach((operation) => operation.mockReset())
+  Object.values(agent).forEach((operation) => operation.mockReset())
+  Object.values(networks).forEach((operation) => operation.mockReset())
+  Object.values(portfolio).forEach((operation) => operation.mockReset())
+  Object.values(requestEdits).forEach((operation) => operation.mockReset())
+  Object.values(security).forEach((operation) => operation.mockReset())
+  Object.values(tokens).forEach((operation) => operation.mockReset())
   createRendererPrincipal.mockClear()
-  Object.values(walletWorkflows).forEach((mock) => mock.mockReset())
+  Object.values(profiles).forEach((profileOperation) => profileOperation.mockReset())
 
   const dispatcher = createTestDispatcher()
   dispatchCommand = dispatcher.dispatchCommand
@@ -209,57 +205,95 @@ beforeEach(() => {
 })
 
 describe('typed operation dispatcher', () => {
-  it('authorizes profile operations only for the registered wallet tray', async () => {
-    walletWorkflows.selectProfile.mockReturnValue({ ok: true })
-    walletWorkflows.movableProfileAccounts.mockReturnValue({ ok: true, accounts: [] })
+  it('registers the canonical operation keys and authorizes profiles only for the wallet tray', async () => {
+    const { commandRegistry, queryRegistry } = createOperationRegistry(createTestServices())
+
+    expect(Object.keys(commandRegistry).sort()).toEqual(Object.keys(commandContracts).sort())
+    expect(Object.keys(queryRegistry).sort()).toEqual(Object.keys(queryContracts).sort())
+
+    profiles.movableAccounts.mockReturnValue({ ok: true, accounts: [] })
 
     authorizeRenderer.mockReturnValue(sideTrayContext)
-    await expect(dispatchCommand(event, { type: 'profile.select', profileId: 'profile-1' })).resolves.toEqual(
-      { ok: false, error: 'unauthorized' }
-    )
+    await expect(
+      dispatchCommand(event, {
+        type: 'profile.select',
+        operationId: 'select-profile',
+        profileId: 'profile-1'
+      })
+    ).resolves.toEqual({ ok: false, error: 'unauthorized' })
     await expect(dispatchQuery(event, { type: 'profile.movable-accounts' })).resolves.toEqual({
       ok: false,
       error: 'unauthorized'
     })
 
     authorizeRenderer.mockReturnValue(trayContext)
-    await expect(dispatchCommand(event, { type: 'profile.select', profileId: 'profile-1' })).resolves.toEqual(
-      { ok: true }
-    )
+    await expect(
+      dispatchCommand(event, {
+        type: 'profile.select',
+        operationId: 'select-profile',
+        profileId: 'profile-1'
+      })
+    ).resolves.toEqual({ ok: true })
+    expect(profiles.select.mock.calls.at(-1)).toEqual([
+      { type: 'profile.select', operationId: 'select-profile', profileId: 'profile-1' },
+      { clientType: 'wallet-ui', windowInstanceId: 'tray-test' }
+    ])
+    profiles.select.mockReturnValueOnce(false)
+    await expect(
+      dispatchCommand(event, {
+        type: 'profile.select',
+        operationId: 'colliding-profile-operation',
+        profileId: 'profile-1'
+      })
+    ).resolves.toEqual({ ok: false, error: 'invalid_command' })
     await expect(dispatchQuery(event, { type: 'profile.movable-accounts' })).resolves.toEqual({
       ok: true,
       accounts: []
     })
   })
 
-  it('validates and trims bounded profile commands before invoking workflows', async () => {
+  it('validates and trims bounded profile commands before invoking the profile service', async () => {
     authorizeRenderer.mockReturnValue(trayContext)
-    walletWorkflows.createProfile.mockReturnValue({ ok: true, profileId: 'created' })
-    walletWorkflows.renameProfile.mockReturnValue({ ok: true })
+    await expect(
+      dispatchCommand(event, {
+        type: 'profile.create',
+        operationId: 'create-profile',
+        name: '  Work  ',
+        accountIds: ['account-1']
+      })
+    ).resolves.toEqual({ ok: true })
+    expect(profiles.create).toHaveBeenCalledWith(
+      {
+        type: 'profile.create',
+        operationId: 'create-profile',
+        name: 'Work',
+        accountIds: ['account-1']
+      },
+      { clientType: 'wallet-ui', windowInstanceId: 'tray-test' }
+    )
 
     await expect(
-      dispatchCommand(event, { type: 'profile.create', name: '  Work  ', accountIds: ['account-1'] })
-    ).resolves.toEqual({ ok: true, profileId: 'created' })
-    expect(walletWorkflows.createProfile).toHaveBeenCalledWith('Work', ['account-1'])
-
-    await expect(
-      dispatchCommand(event, { type: 'profile.rename', profileId: 'created', name: 'x'.repeat(51) })
+      dispatchCommand(event, {
+        type: 'profile.rename',
+        operationId: 'rename-profile',
+        profileId: 'created',
+        name: 'x'.repeat(51)
+      })
     ).resolves.toEqual({ ok: false, error: 'invalid_command' })
     await expect(
       dispatchCommand(event, {
         type: 'profile.create',
+        operationId: 'duplicate-accounts',
         name: 'Duplicate IDs',
         accountIds: ['account-1', 'account-1']
       })
     ).resolves.toEqual({ ok: false, error: 'invalid_command' })
-    expect(walletWorkflows.renameProfile).not.toHaveBeenCalled()
+    expect(profiles.rename).not.toHaveBeenCalled()
   })
 
-  it('returns strict typed profile workflow results and minimum movable Account records', async () => {
+  it('returns generic acknowledgements and minimum movable Account records', async () => {
     authorizeRenderer.mockReturnValue(trayContext)
-    walletWorkflows.moveAccountToProfile.mockReturnValue({ ok: false, error: 'same_profile' })
-    walletWorkflows.deleteProfile.mockReturnValue({ ok: false, error: 'profile_not_empty' })
-    walletWorkflows.movableProfileAccounts.mockReturnValue({
+    profiles.movableAccounts.mockReturnValue({
       ok: true,
       accounts: [
         {
@@ -274,13 +308,18 @@ describe('typed operation dispatcher', () => {
     await expect(
       dispatchCommand(event, {
         type: 'account.profile-move',
+        operationId: 'move-account',
         accountId: 'account-1',
         profileId: 'profile-1'
       })
-    ).resolves.toEqual({ ok: false, error: 'same_profile' })
-    await expect(dispatchCommand(event, { type: 'profile.delete', profileId: 'profile-1' })).resolves.toEqual(
-      { ok: false, error: 'profile_not_empty' }
-    )
+    ).resolves.toEqual({ ok: true })
+    await expect(
+      dispatchCommand(event, {
+        type: 'profile.delete',
+        operationId: 'delete-profile',
+        profileId: 'profile-1'
+      })
+    ).resolves.toEqual({ ok: true })
     await expect(dispatchQuery(event, { type: 'profile.movable-accounts' })).resolves.toEqual({
       ok: true,
       accounts: [
@@ -293,7 +332,7 @@ describe('typed operation dispatcher', () => {
       ]
     })
 
-    walletWorkflows.movableProfileAccounts.mockReturnValue({
+    profiles.movableAccounts.mockReturnValue({
       ok: true,
       accounts: [
         {
@@ -311,14 +350,15 @@ describe('typed operation dispatcher', () => {
     })
   })
 
-  it('maps unexpected profile workflow failures to a typed operation failure', async () => {
+  it('maps unexpected profile service failures to a typed boundary failure', async () => {
     authorizeRenderer.mockReturnValue(trayContext)
-    walletWorkflows.createProfile.mockRejectedValueOnce(new Error('failed'))
-
-    await expect(dispatchCommand(event, { type: 'profile.create', name: 'Work' })).resolves.toEqual({
-      ok: false,
-      error: 'operation_failed'
+    profiles.create.mockImplementationOnce(() => {
+      throw new Error('failed')
     })
+
+    await expect(
+      dispatchCommand(event, { type: 'profile.create', operationId: 'create-profile', name: 'Work' })
+    ).resolves.toEqual({ ok: false, error: 'operation_failed' })
   })
 
   it('rejects calls that do not have a validated renderer registration', async () => {
@@ -339,7 +379,7 @@ describe('typed operation dispatcher', () => {
       error: 'unauthorized'
     })
     expect(getAccount).not.toHaveBeenCalled()
-    expect(selectAccount).not.toHaveBeenCalled()
+    expect(accountMutations.select).not.toHaveBeenCalled()
   })
 
   it('validates command payloads before invoking a handler', async () => {
@@ -348,18 +388,17 @@ describe('typed operation dispatcher', () => {
     await expect(
       dispatchCommand(event, { type: 'account.select', accountId: '', injected: true })
     ).resolves.toEqual({ ok: false, error: 'invalid_command' })
-    expect(selectAccount).not.toHaveBeenCalled()
+    expect(accountMutations.select).not.toHaveBeenCalled()
   })
 
   it('selects an existing account for wallet renderers', async () => {
     authorizeRenderer.mockReturnValue(trayContext)
-    getAccount.mockReturnValue({ id: '0xabc' })
-    selectAccount.mockResolvedValue({ id: '0xabc' })
+    accountMutations.select.mockResolvedValue(true)
 
     await expect(dispatchCommand(event, { type: 'account.select', accountId: '0xabc' })).resolves.toEqual({
       ok: true
     })
-    expect(selectAccount).toHaveBeenCalledWith('0xabc')
+    expect(accountMutations.select).toHaveBeenCalledWith('0xabc')
   })
 
   it('lets either trusted renderer request bounded main-process token image hydration', async () => {
@@ -377,15 +416,15 @@ describe('typed operation dispatcher', () => {
     expect(requestTokenImage).toHaveBeenCalledWith(command.tokenId)
   })
 
-  it('returns account_not_found without running account-selection orchestration', async () => {
+  it('returns a generic missing acknowledgement without exposing account selection domain data', async () => {
     authorizeRenderer.mockReturnValue(trayContext)
-    getAccount.mockReturnValue(undefined)
+    accountMutations.select.mockResolvedValue(false)
 
     await expect(dispatchCommand(event, { type: 'account.select', accountId: 'missing' })).resolves.toEqual({
       ok: false,
-      error: 'account_not_found'
+      error: 'not_found'
     })
-    expect(selectAccount).not.toHaveBeenCalled()
+    expect(accountMutations.select).toHaveBeenCalledWith('missing')
   })
 
   it('allows the side tray to resolve names without granting unrelated state-changing privileges', async () => {
@@ -414,19 +453,19 @@ describe('typed operation dispatcher', () => {
     })
   })
 
-  it('treats the native keystore picker as a command side effect', async () => {
+  it('treats the native keystore picker as a typed query', async () => {
     authorizeRenderer.mockReturnValue(trayContext)
-    walletWorkflows.locateKeystore.mockResolvedValue({ version: 3 })
+    accountOnboarding.locateKeystore.mockResolvedValue({ version: 3 })
 
     await expect(dispatchQuery(event, { type: 'keystore.locate' })).resolves.toEqual({
-      ok: false,
-      error: 'invalid_query'
-    })
-    await expect(dispatchCommand(event, { type: 'keystore.locate' })).resolves.toEqual({
       ok: true,
       keystore: { version: 3 }
     })
-    expect(walletWorkflows.locateKeystore).toHaveBeenCalledTimes(1)
+    await expect(dispatchCommand(event, { type: 'keystore.locate' })).resolves.toEqual({
+      ok: false,
+      error: 'invalid_command'
+    })
+    expect(accountOnboarding.locateKeystore).toHaveBeenCalledTimes(1)
   })
 
   it('does not expose renderer-controlled provider initialization', async () => {
@@ -439,12 +478,12 @@ describe('typed operation dispatcher', () => {
 
   it('opens the side tray from the tray renderer', async () => {
     authorizeRenderer.mockReturnValue(trayContext)
-    walletWorkflows.openSideTray.mockReturnValue(true)
+    platform.openSideTray.mockReturnValue(true)
 
     await expect(
       dispatchCommand(event, { type: 'sidetray.open', feature: 'trade', chainId: 1 })
     ).resolves.toEqual({ ok: true })
-    expect(walletWorkflows.openSideTray).toHaveBeenCalledWith({
+    expect(platform.openSideTray).toHaveBeenCalledWith({
       type: 'sidetray.open',
       feature: 'trade',
       chainId: 1
@@ -471,162 +510,61 @@ describe('typed operation dispatcher', () => {
     expect(submitCurrentAccountTransaction).not.toHaveBeenCalled()
   })
 
-  it('submits a validated transaction without exposing generic provider RPC', async () => {
+  it('routes send through the main-owned operation service', async () => {
     authorizeRenderer.mockReturnValue(sideTrayContext)
-    submitCurrentAccountTransaction.mockResolvedValue({
-      ok: true,
-      transactionHash: `0x${'1'.repeat(64)}`
-    })
-    const command = {
-      type: 'transaction.submit' as const,
-      idempotencyKey: transactionIdempotencyKey,
-      chainId: 1,
-      transaction: {
-        to: '0x1111111111111111111111111111111111111111',
-        value: '0x1'
-      }
+    send.submit.mockReturnValue(true)
+    const sendCommand = {
+      type: 'send.submit' as const,
+      operationId: 'send-operation',
+      asset: { address: '0x0000000000000000000000000000000000000000', chainId: 1 },
+      amount: '1',
+      recipient: 'alice.eth'
     }
-
-    await expect(dispatchCommand(event, command)).resolves.toEqual({
-      ok: true,
-      transactionHash: `0x${'1'.repeat(64)}`
-    })
-    expect(submitCurrentAccountTransaction).toHaveBeenCalledWith(
-      command,
-      expect.objectContaining({ kind: 'renderer', windowInstanceId: sideTrayContext.windowInstanceId })
-    )
-  })
-
-  it('deduplicates retry-sensitive transaction submissions by renderer-generated key', async () => {
-    authorizeRenderer.mockReturnValue(sideTrayContext)
-    submitCurrentAccountTransaction.mockResolvedValue({
-      ok: true,
-      transactionHash: `0x${'2'.repeat(64)}`
-    })
-    const command = {
-      type: 'transaction.submit' as const,
-      idempotencyKey: '00000000-0000-4000-8000-000000000002',
-      chainId: 1,
-      transaction: {
-        to: '0x1111111111111111111111111111111111111111',
-        value: '0x1'
-      }
-    }
-
-    await expect(
-      Promise.all([dispatchCommand(event, command), dispatchCommand(event, command)])
-    ).resolves.toEqual([
-      { ok: true, transactionHash: `0x${'2'.repeat(64)}` },
-      { ok: true, transactionHash: `0x${'2'.repeat(64)}` }
+    await expect(dispatchCommand(event, sendCommand)).resolves.toEqual({ ok: true })
+    expect(send.submit.mock.calls.at(-1)).toEqual([
+      sendCommand,
+      expect.objectContaining({ kind: 'renderer', windowInstanceId: sideTrayContext.windowInstanceId }),
+      { clientType: 'sidetray', windowInstanceId: sideTrayContext.windowInstanceId }
     ])
-    expect(submitCurrentAccountTransaction).toHaveBeenCalledTimes(1)
 
-    await expect(
-      dispatchCommand(event, {
-        ...command,
-        transaction: { ...command.transaction, value: '0x2' }
-      })
-    ).resolves.toEqual({
-      ok: false,
-      error: 'invalid_command',
-      message: 'Idempotency key was reused.'
-    })
-    expect(submitCurrentAccountTransaction).toHaveBeenCalledTimes(1)
-  })
-
-  it('keeps idempotency state isolated between fresh dispatcher instances', async () => {
-    authorizeRenderer.mockReturnValue(sideTrayContext)
-    submitCurrentAccountTransaction.mockResolvedValue({
-      ok: true,
-      transactionHash: `0x${'4'.repeat(64)}`
-    })
-    const command = {
-      type: 'transaction.submit' as const,
-      idempotencyKey: '00000000-0000-4000-8000-000000000004',
-      chainId: 1,
-      transaction: {
-        to: '0x1111111111111111111111111111111111111111',
-        value: '0x1'
-      }
+    trade.prepare.mockReturnValue(true)
+    const prepareCommand = {
+      type: 'trade.prepare' as const,
+      operationId: 'trade-operation',
+      quoteId: 'quote-1',
+      action: 'approve' as const
     }
-    const first = createTestDispatcher()
-    const second = createTestDispatcher()
-
-    await expect(first.dispatchCommand(event, command)).resolves.toEqual({
-      ok: true,
-      transactionHash: `0x${'4'.repeat(64)}`
-    })
-    await expect(second.dispatchCommand(event, command)).resolves.toEqual({
-      ok: true,
-      transactionHash: `0x${'4'.repeat(64)}`
-    })
-    expect(submitCurrentAccountTransaction).toHaveBeenCalledTimes(2)
-  })
-
-  it('deduplicates Flash submission by its stable quote ID', async () => {
-    authorizeRenderer.mockReturnValue(sideTrayContext)
-    submitFlashForCurrentAccount.mockResolvedValue({ ok: true, orderId: 'order-1' })
-    const command = {
-      type: 'flash.submit' as const,
-      order: flashOrder
-    }
-
-    await expect(
-      Promise.all([dispatchCommand(event, command), dispatchCommand(event, command)])
-    ).resolves.toEqual([
-      { ok: true, orderId: 'order-1' },
-      { ok: true, orderId: 'order-1' }
+    await expect(dispatchCommand(event, prepareCommand)).resolves.toEqual({ ok: true })
+    expect(trade.prepare.mock.calls.at(-1)).toEqual([
+      prepareCommand,
+      expect.objectContaining({ kind: 'renderer', windowInstanceId: sideTrayContext.windowInstanceId }),
+      { clientType: 'sidetray', windowInstanceId: sideTrayContext.windowInstanceId }
     ])
-    expect(submitFlashForCurrentAccount).toHaveBeenCalledTimes(1)
 
-    await expect(dispatchCommand(event, { ...command, order: { ...flashOrder, qty: '2' } })).resolves.toEqual(
-      {
-        ok: false,
-        error: 'invalid_command',
-        message: 'Idempotency key was reused.'
-      }
-    )
-    expect(submitFlashForCurrentAccount).toHaveBeenCalledTimes(1)
-  })
-
-  it('bounds the idempotency cache and eventually evicts the oldest result', async () => {
-    authorizeRenderer.mockReturnValue(sideTrayContext)
-    submitCurrentAccountTransaction.mockResolvedValue({
-      ok: true,
-      transactionHash: `0x${'3'.repeat(64)}`
+    await expect(dispatchCommand(event, { type: 'trade.release' })).resolves.toEqual({ ok: true })
+    expect(trade.release).toHaveBeenCalledWith({
+      clientType: 'sidetray',
+      windowInstanceId: sideTrayContext.windowInstanceId
     })
-    const command = {
-      type: 'transaction.submit' as const,
-      idempotencyKey: '10000000-0000-4000-8000-000000000000',
-      chainId: 1,
-      transaction: { to: '0x1111111111111111111111111111111111111111' }
-    }
 
-    await dispatchCommand(event, command)
-    for (let index = 1; index <= 256; index += 1) {
-      await dispatchCommand(event, {
-        ...command,
-        idempotencyKey: `10000000-0000-4000-8000-${index.toString(16).padStart(12, '0')}`
-      })
+    authorizeRenderer.mockReturnValue(trayContext)
+    trade.cancel.mockReturnValue(true)
+    const cancelCommand = {
+      type: 'flash.order-cancel' as const,
+      operationId: 'cancel-operation',
+      orderId: 'order-1'
     }
-    await dispatchCommand(event, command)
-
-    expect(submitCurrentAccountTransaction).toHaveBeenCalledTimes(258)
+    await expect(dispatchCommand(event, cancelCommand)).resolves.toEqual({ ok: true })
+    expect(trade.cancel.mock.calls.at(-1)).toEqual([
+      cancelCommand,
+      expect.objectContaining({ kind: 'renderer', windowInstanceId: trayContext.windowInstanceId }),
+      { clientType: 'wallet-ui', windowInstanceId: trayContext.windowInstanceId }
+    ])
   })
 
-  it('does not allow wallet renderers to use side tray commands', async () => {
+  it('routes validated tray security capabilities', async () => {
     authorizeRenderer.mockReturnValue(trayContext)
-
-    await expect(dispatchCommand(event, { type: 'sidetray.close' })).resolves.toEqual({
-      ok: false,
-      error: 'unauthorized'
-    })
-    expect(closeOwnSideTray).not.toHaveBeenCalled()
-  })
-
-  it('allows the tray to use validated security capabilities', async () => {
-    authorizeRenderer.mockReturnValue(trayContext)
-    walletWorkflows.securityStatus.mockReturnValue({
+    security.status.mockReturnValue({
       locked: false,
       vaultExists: true,
       biometricUnlockEnabled: true,
@@ -638,9 +576,13 @@ describe('typed operation dispatcher', () => {
       }
     })
 
-    await expect(dispatchCommand(event, { type: 'security.configure', mode: 'disabled' })).resolves.toEqual({
-      ok: true
-    })
+    await expect(
+      dispatchCommand(event, {
+        type: 'security.configure',
+        operationId: 'disable-biometrics',
+        mode: 'disabled'
+      })
+    ).resolves.toEqual({ ok: true })
     await expect(dispatchQuery(event, { type: 'security.status' })).resolves.toEqual({
       ok: true,
       locked: false,
@@ -653,16 +595,18 @@ describe('typed operation dispatcher', () => {
         nativeAvailable: true
       }
     })
-    expect(walletWorkflows.configureSecurity).toHaveBeenCalledWith({
-      type: 'security.configure',
-      mode: 'disabled'
-    })
+    expect(security.configure.mock.calls.at(-1)).toEqual([
+      { type: 'security.configure', operationId: 'disable-biometrics', mode: 'disabled' },
+      { clientType: 'wallet-ui', windowInstanceId: 'tray-test' }
+    ])
   })
 
-  it('passes only validated identifiers to wallet workflows', async () => {
+  it('passes only validated identifiers to focused services', async () => {
     authorizeRenderer.mockReturnValue(trayContext)
-    walletWorkflows.removeToken.mockReturnValue(true)
-    walletWorkflows.loadLedgerAccounts.mockReturnValue(true)
+    portfolio.refresh.mockResolvedValue(true)
+    tokens.add.mockReturnValue(true)
+    tokens.remove.mockReturnValue(true)
+    accountOnboarding.loadLedgerAccounts.mockReturnValue(true)
 
     await expect(
       dispatchCommand(event, {
@@ -671,32 +615,68 @@ describe('typed operation dispatcher', () => {
         chainId: 1
       })
     ).resolves.toEqual({ ok: true })
-    expect(walletWorkflows.removeToken).toHaveBeenCalledWith({
+    expect(tokens.remove).toHaveBeenCalledWith({
       address: '0x1111111111111111111111111111111111111111',
       chainId: 1
     })
 
+    const tokenAddCommand = {
+      type: 'token.add' as const,
+      operationId: 'add-token',
+      token: {
+        address: '0x2222222222222222222222222222222222222222',
+        chainId: 99,
+        decimals: 18,
+        logoURI: '',
+        name: 'Token',
+        symbol: 'TKN'
+      }
+    }
+    await expect(dispatchCommand(event, tokenAddCommand)).resolves.toEqual({ ok: true })
+    expect(tokens.add.mock.calls.at(-1)).toEqual([
+      tokenAddCommand,
+      { clientType: 'wallet-ui', windowInstanceId: 'tray-test' }
+    ])
+
+    await expect(
+      dispatchCommand(event, { type: 'portfolio.refresh', operationId: 'refresh-portfolio' })
+    ).resolves.toEqual({ ok: true })
+    expect(portfolio.refresh.mock.calls.at(-1)).toEqual([
+      'refresh-portfolio',
+      { clientType: 'wallet-ui', windowInstanceId: 'tray-test' }
+    ])
+
     await expect(
       dispatchCommand(event, {
         type: 'signer.ledger-accounts-load',
+        operationId: 'load-ledger-page',
         signerId: 'ledger-1',
         accountCount: 25
       })
     ).resolves.toEqual({ ok: true })
-    expect(walletWorkflows.loadLedgerAccounts).toHaveBeenCalledWith('ledger-1', 25)
+    expect(accountOnboarding.loadLedgerAccounts.mock.calls.at(-1)).toEqual([
+      {
+        type: 'signer.ledger-accounts-load',
+        operationId: 'load-ledger-page',
+        signerId: 'ledger-1',
+        accountCount: 25
+      },
+      { clientType: 'wallet-ui', windowInstanceId: 'tray-test' }
+    ])
 
     await expect(
       dispatchCommand(event, {
         type: 'signer.ledger-accounts-load',
+        operationId: 'invalid-ledger-page',
         signerId: 'ledger-1',
         accountCount: 26
       })
     ).resolves.toEqual({ ok: false, error: 'invalid_command' })
-    expect(walletWorkflows.loadLedgerAccounts).toHaveBeenCalledTimes(1)
+    expect(accountOnboarding.loadLedgerAccounts).toHaveBeenCalledTimes(1)
   })
 
   it('restricts token lookup queries to wallet renderers', async () => {
-    walletWorkflows.lookupToken.mockResolvedValue({
+    tokens.lookup.mockResolvedValue({
       decimals: 18,
       name: 'Token',
       symbol: 'TKN',
@@ -716,7 +696,7 @@ describe('typed operation dispatcher', () => {
       ok: true,
       token: { decimals: 18, name: 'Token', symbol: 'TKN', totalSupply: '100' }
     })
-    expect(walletWorkflows.lookupToken).toHaveBeenCalledWith(query.address, query.chainId)
+    expect(tokens.lookup).toHaveBeenCalledWith(query.address, query.chainId)
   })
 
   it('checks address chain usage only for wallet renderers', async () => {
@@ -724,7 +704,7 @@ describe('typed operation dispatcher', () => {
       '0x1111111111111111111111111111111111111111',
       '0x2222222222222222222222222222222222222222'
     ]
-    walletWorkflows.getAddressChainUsage.mockResolvedValue([
+    accountMutations.addressChainUsage.mockResolvedValue([
       { address: addresses[0], chainIds: [1, 10], complete: true },
       { address: addresses[1], chainIds: [], complete: false }
     ])
@@ -741,29 +721,39 @@ describe('typed operation dispatcher', () => {
         { address: addresses[1], chainIds: [], complete: false }
       ]
     })
-    expect(walletWorkflows.getAddressChainUsage).toHaveBeenCalledWith(addresses)
+    expect(accountMutations.addressChainUsage).toHaveBeenCalledWith(addresses)
   })
 
-  it('closes the invoking side tray without accepting another target', async () => {
-    authorizeRenderer.mockReturnValue(sideTrayContext)
+  it('enforces sender authority for close and shared renderer inspection', async () => {
+    authorizeRenderer.mockReturnValue(trayContext)
+    await expect(dispatchCommand(event, { type: 'sidetray.close' })).resolves.toEqual({
+      ok: false,
+      error: 'unauthorized'
+    })
+    expect(platform.closeSideTray.mock.calls).toEqual([])
 
+    authorizeRenderer.mockReturnValue(sideTrayContext)
     await expect(dispatchCommand(event, { type: 'sidetray.close' })).resolves.toEqual({ ok: true })
-    expect(closeOwnSideTray).toHaveBeenCalledWith(event)
+    expect(platform.closeSideTray.mock.calls).toEqual([[event]])
 
     await expect(
       dispatchCommand(event, { type: 'sidetray.close', windowId: 'some-other-window' })
     ).resolves.toEqual({ ok: false, error: 'invalid_command' })
-  })
 
-  it('inspects only the invoking side tray at validated coordinates', async () => {
-    authorizeRenderer.mockReturnValue(sideTrayContext)
-
-    await expect(dispatchCommand(event, { type: 'sidetray.context-menu', x: 12, y: 34 })).resolves.toEqual({
+    await expect(dispatchCommand(event, { type: 'renderer.context-menu', x: 12, y: 34 })).resolves.toEqual({
       ok: true
     })
-    expect(inspectOwnSideTray).toHaveBeenCalledWith(event, 12, 34)
 
-    await expect(dispatchCommand(event, { type: 'sidetray.context-menu', x: -1, y: 34 })).resolves.toEqual({
+    authorizeRenderer.mockReturnValue(trayContext)
+    await expect(dispatchCommand(event, { type: 'renderer.context-menu', x: 56, y: 78 })).resolves.toEqual({
+      ok: true
+    })
+    expect(platform.inspectRenderer.mock.calls).toEqual([
+      [event, 12, 34],
+      [event, 56, 78]
+    ])
+
+    await expect(dispatchCommand(event, { type: 'renderer.context-menu', x: -1, y: 34 })).resolves.toEqual({
       ok: false,
       error: 'invalid_command'
     })
@@ -773,7 +763,12 @@ describe('typed operation dispatcher', () => {
     authorizeRenderer.mockReturnValue(sideTrayContext)
 
     await expect(
-      dispatchCommand(event, { type: 'security.unlock', method: 'password', password: 'secret' })
+      dispatchCommand(event, {
+        type: 'security.unlock',
+        operationId: 'side-unlock',
+        method: 'password',
+        password: 'secret'
+      })
     ).resolves.toEqual({ ok: false, error: 'unauthorized' })
     await expect(dispatchCommand(event, { type: 'request.reject', requestId: 'request-1' })).resolves.toEqual(
       {
@@ -782,22 +777,26 @@ describe('typed operation dispatcher', () => {
       }
     )
     await expect(
-      dispatchQuery(event, { type: 'request.signer-compatibility', requestId: 'request-1' })
+      dispatchCommand(event, {
+        type: 'request.warning-confirm',
+        requestId: 'request-1',
+        gate: 'gas-fee'
+      })
     ).resolves.toEqual({ ok: false, error: 'unauthorized' })
-    expect(walletWorkflows.unlockSecurity).not.toHaveBeenCalled()
-    expect(walletWorkflows.rejectRequest).not.toHaveBeenCalled()
+    expect(security.unlock).not.toHaveBeenCalled()
+    expect(requests.rejectRequest).not.toHaveBeenCalled()
   })
 
   it('accepts canonical request IDs but rejects renderer request objects', async () => {
     authorizeRenderer.mockReturnValue(trayContext)
-    walletWorkflows.rejectRequest.mockReturnValue(true)
+    requests.rejectRequest.mockReturnValue(true)
 
     await expect(dispatchCommand(event, { type: 'request.reject', requestId: 'request-1' })).resolves.toEqual(
       {
         ok: true
       }
     )
-    expect(walletWorkflows.rejectRequest).toHaveBeenCalledWith('request-1')
+    expect(requests.rejectRequest).toHaveBeenCalledWith('request-1')
 
     await expect(
       dispatchCommand(event, {
@@ -806,55 +805,62 @@ describe('typed operation dispatcher', () => {
         request: { handlerId: 'request-1', type: 'transaction' }
       })
     ).resolves.toEqual({ ok: false, error: 'invalid_command' })
-    expect(walletWorkflows.rejectRequest).toHaveBeenCalledTimes(1)
+    expect(requests.rejectRequest).toHaveBeenCalledTimes(1)
   })
 
   it('validates each unlock method before invoking the signer workflow', async () => {
     authorizeRenderer.mockReturnValue(trayContext)
 
     await expect(
-      dispatchCommand(event, { type: 'security.unlock', method: 'webauthn', secret: 'not-hex' })
+      dispatchCommand(event, {
+        type: 'security.unlock',
+        operationId: 'invalid-webauthn',
+        method: 'webauthn',
+        secret: 'not-hex'
+      })
     ).resolves.toEqual({ ok: false, error: 'invalid_command' })
-    expect(walletWorkflows.unlockSecurity).not.toHaveBeenCalled()
-
-    await expect(dispatchCommand(event, { type: 'security.unlock', method: 'native' })).resolves.toEqual({
-      ok: true
-    })
-    expect(walletWorkflows.unlockSecurity).toHaveBeenCalledWith({
-      type: 'security.unlock',
-      method: 'native'
-    })
-  })
-
-  it('returns signer compatibility without allowing the query to navigate', async () => {
-    authorizeRenderer.mockReturnValue(trayContext)
-    walletWorkflows.requestSignerCompatibility.mockReturnValue({
-      ok: true,
-      compatibility: { signer: 'ledger', tx: 'london', compatible: false }
-    })
+    expect(security.unlock).not.toHaveBeenCalled()
 
     await expect(
-      dispatchQuery(event, { type: 'request.signer-compatibility', requestId: 'request-1' })
-    ).resolves.toEqual({
-      ok: true,
-      compatibility: { signer: 'ledger', tx: 'london', compatible: false }
-    })
-    expect(walletWorkflows.requestSignerCompatibility).toHaveBeenCalledWith('request-1')
+      dispatchCommand(event, {
+        type: 'security.unlock',
+        operationId: 'native-unlock',
+        method: 'native'
+      })
+    ).resolves.toEqual({ ok: true })
+    expect(security.unlock.mock.calls.at(-1)).toEqual([
+      { type: 'security.unlock', operationId: 'native-unlock', method: 'native' },
+      { clientType: 'wallet-ui', windowInstanceId: 'tray-test' }
+    ])
   })
 
-  it('deduplicates request approval by its canonical request ID', async () => {
+  it('dispatches only the validated projected warning gate', async () => {
     authorizeRenderer.mockReturnValue(trayContext)
-    walletWorkflows.approveRequest.mockReturnValue(true)
+    requests.confirmWarning.mockReturnValue(true)
+
+    await expect(
+      dispatchCommand(event, {
+        type: 'request.warning-confirm',
+        requestId: 'request-1',
+        gate: 'signer-compatibility'
+      })
+    ).resolves.toEqual({ ok: true })
+    expect(requests.confirmWarning).toHaveBeenCalledWith('request-1', 'signer-compatibility')
+  })
+
+  it('keeps request approval handlers thin while the request service owns idempotency', async () => {
+    authorizeRenderer.mockReturnValue(trayContext)
+    requests.approve.mockReturnValue(true)
     const command = { type: 'request.approve' as const, requestId: 'approval-idempotency-1' }
 
     await expect(
       Promise.all([dispatchCommand(event, command), dispatchCommand(event, command)])
     ).resolves.toEqual([{ ok: true }, { ok: true }])
-    expect(walletWorkflows.approveRequest).toHaveBeenCalledTimes(1)
+    expect(requests.approve).toHaveBeenCalledTimes(2)
 
     authorizeRenderer.mockReturnValue({ ...trayContext, webContentsId: 3 })
     await expect(dispatchCommand(event, command)).resolves.toEqual({ ok: true })
-    expect(walletWorkflows.approveRequest).toHaveBeenCalledTimes(1)
+    expect(requests.approve).toHaveBeenCalledTimes(3)
   })
 
   it('bounds operation type values before logging unknown operations', async () => {
@@ -868,7 +874,7 @@ describe('typed operation dispatcher', () => {
 
   it('deduplicates replacement requests and rejects idempotency-key reuse', async () => {
     authorizeRenderer.mockReturnValue(trayContext)
-    walletWorkflows.replaceTransaction.mockReturnValue(true)
+    requests.replaceTransaction.mockReturnValue(true)
     const command = {
       type: 'transaction.replace' as const,
       requestId: 'request-1',
@@ -879,31 +885,37 @@ describe('typed operation dispatcher', () => {
     await expect(
       Promise.all([dispatchCommand(event, command), dispatchCommand(event, command)])
     ).resolves.toEqual([{ ok: true }, { ok: true }])
-    expect(walletWorkflows.replaceTransaction).toHaveBeenCalledTimes(1)
+    expect(requests.replaceTransaction).toHaveBeenCalledTimes(1)
 
     await expect(dispatchCommand(event, { ...command, replacement: 'cancel' as const })).resolves.toEqual({
       ok: false,
       error: 'invalid_command',
       message: 'Idempotency key was reused.'
     })
-    expect(walletWorkflows.replaceTransaction).toHaveBeenCalledTimes(1)
+    expect(requests.replaceTransaction).toHaveBeenCalledTimes(1)
   })
 
   it('derives extension and explorer targets only from validated scalar fields', async () => {
-    authorizeRenderer.mockReturnValue(trayContext)
-    walletWorkflows.respondToExtension.mockReturnValue(true)
-    walletWorkflows.openTransactionExplorer.mockReturnValue(true)
+    platform.respondToExtension.mockReturnValue(true)
+    platform.openTransactionExplorer.mockReturnValue(true)
+    const extensionCommand = {
+      type: 'extension.respond',
+      extensionId: 'moz-extension://trusted',
+      approved: true
+    } as const
 
-    await expect(
-      dispatchCommand(event, {
-        type: 'extension.respond',
-        extensionId: 'moz-extension://trusted',
-        approved: true
-      })
-    ).resolves.toEqual({ ok: true })
-    expect(walletWorkflows.respondToExtension).toHaveBeenCalledWith('moz-extension://trusted', true)
+    authorizeRenderer.mockReturnValue(sideTrayContext)
+    await expect(dispatchCommand(event, extensionCommand)).resolves.toEqual({
+      ok: false,
+      error: 'unauthorized'
+    })
+    expect(platform.respondToExtension).not.toHaveBeenCalled()
+
+    authorizeRenderer.mockReturnValue(trayContext)
+    await expect(dispatchCommand(event, extensionCommand)).resolves.toEqual({ ok: true })
+    expect(platform.respondToExtension).toHaveBeenCalledWith('moz-extension://trusted', true)
 
     await expect(dispatchCommand(event, { type: 'explorer.open', chainId: 1 })).resolves.toEqual({ ok: true })
-    expect(walletWorkflows.openTransactionExplorer).toHaveBeenCalledWith(1, undefined)
+    expect(platform.openTransactionExplorer).toHaveBeenCalledWith(1, undefined)
   })
 })

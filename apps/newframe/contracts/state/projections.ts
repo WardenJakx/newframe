@@ -10,6 +10,7 @@ import {
   RuntimeSchema
 } from '../../domain/state/main.js'
 import { NativeCurrencySchema } from '../../domain/state/nativeCurrency.js'
+import { OperationCollectionSchema } from '../../domain/state/operation.js'
 import { AssetRateMapSchema } from '../../domain/state/rate.js'
 import { TokenCatalogSchema, TokenImageSchema } from '../../domain/state/token.js'
 
@@ -265,6 +266,33 @@ export const WalletRequestSchema = z
     mode: z.enum(['normal', 'monitor']).optional(),
     notice: z.string().optional(),
     created: z.number().optional(),
+    approvalGate: z
+      .discriminatedUnion('type', [
+        z.discriminatedUnion('reason', [
+          z.strictObject({
+            type: z.literal('signer-compatibility'),
+            reason: z.literal('incompatible'),
+            signer: z.string(),
+            tx: z.string(),
+            chain: z.strictObject({ type: z.literal('ethereum'), id: z.number().int().positive() })
+          }),
+          z.strictObject({
+            type: z.literal('signer-compatibility'),
+            reason: z.literal('no-signer')
+          }),
+          z.strictObject({
+            type: z.literal('signer-compatibility'),
+            reason: z.literal('signer-unavailable'),
+            signerIds: z.array(z.string()).max(16)
+          })
+        ]),
+        z.strictObject({
+          type: z.literal('gas-fee'),
+          feeUSD: z.string(),
+          currentSymbol: z.string()
+        })
+      ])
+      .optional(),
     data: z.unknown().optional(),
     approvals: z.array(WalletApprovalSchema).optional(),
     recognizedActions: z.array(WalletRecognizedActionSchema).optional(),
@@ -373,8 +401,61 @@ const SideTrayActivitySchema = z
   )
   .default({})
 
+const {
+  rawPayload: _rawPayload,
+  rawStatusPayload: _rawStatusPayload,
+  targetAsset: _targetAsset,
+  contraAsset: _contraAsset,
+  spentAsset: _spentAsset,
+  ...WalletOrderRecordShape
+} = OrderRecordSchema.shape
+
+const WalletOrderAssetSchema = z
+  .object({
+    id: z.string().optional(),
+    address: z.string().optional(),
+    chainId: z.union([z.number(), z.string()]).optional(),
+    decimals: z.number().int().nonnegative().optional(),
+    isNative: z.boolean().optional(),
+    name: z.string().optional(),
+    symbol: z.string().optional()
+  })
+  .strip()
+
+const WalletOrderDiagnosticPayloadSchema = z.strictObject({
+  orderId: z.string(),
+  provider: z.string().optional(),
+  source: z.string().optional(),
+  environment: z.string().nullable().optional(),
+  chainId: z.union([z.number(), z.string()]),
+  orderType: z.string(),
+  side: z.string(),
+  qty: z.union([z.number(), z.string()])
+})
+
+const WalletOrderDiagnosticStatusSchema = z.strictObject({
+  orderId: z.string(),
+  status: z.string(),
+  rawStatus: z.string().nullable().optional(),
+  spentAmount: z.union([z.number(), z.string()]).nullable().optional(),
+  outputAmount: z.union([z.number(), z.string()]).nullable().optional(),
+  filledOutputAmount: z.union([z.number(), z.string()]).nullable().optional(),
+  averageFillPrice: z.union([z.number(), z.string()]).nullable().optional(),
+  updatedAt: z.union([z.number(), z.string(), z.date()]),
+  terminalAt: z.union([z.number(), z.string(), z.date()]).nullable().optional(),
+  fillHash: z.string().nullable().optional(),
+  fillTransactionHash: z.string().nullable().optional()
+})
+
 export const WalletOrderRecordSchema = z
-  .object({ ...OrderRecordSchema.shape })
+  .object({
+    ...WalletOrderRecordShape,
+    targetAsset: WalletOrderAssetSchema,
+    contraAsset: WalletOrderAssetSchema,
+    spentAsset: WalletOrderAssetSchema.optional(),
+    rawPayload: WalletOrderDiagnosticPayloadSchema.optional(),
+    rawStatusPayload: WalletOrderDiagnosticStatusSchema.optional()
+  })
   .strip()
   .refine((order) => Boolean(order.provider || order.source), {
     message: 'Order record requires provider or source',
@@ -416,6 +497,7 @@ export const WalletRendererStateSchema = z.strictObject({
   networks: MainSchema.shape.networks,
   networksMeta: MainSchema.shape.networksMeta,
   orders: WalletOrdersSchema,
+  operations: OperationCollectionSchema,
   origins: MainSchema.shape.origins,
   permissions: MainSchema.shape.permissions,
   portfolioApiKeyConfigured: z.boolean(),
@@ -468,6 +550,8 @@ export const SideTrayRendererStateSchema = z.strictObject({
   activity: SideTrayActivitySchema,
   balances: z.record(z.string(), z.array(BalanceSchema)),
   currentAccount: z.string(),
+  operations: OperationCollectionSchema,
+  orders: WalletOrdersSchema.optional(),
   networks: z.strictObject({
     ethereum: z.record(z.coerce.number(), SideTrayNetworkSchema)
   }),

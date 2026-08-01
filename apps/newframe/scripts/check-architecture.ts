@@ -347,6 +347,170 @@ export function checkAssetRateMutationAuthority(file: string, source: string) {
     : [`${file}: canonical asset-rate mutation is restricted to the asset-rate service and store`]
 }
 
+export function checkOperationContractAuthority(file: string, source: string) {
+  if (!productionApplication(file)) return []
+
+  const violations: string[] = []
+  const canonicalCatalog = path.join('apps', 'newframe', 'contracts', 'operations.ts')
+  const duplicateCatalog = source.match(
+    /\b(?:command|query)(?:Contracts|Schemas|SchemaMap)\b\s*(?::[^=\n]+)?=/i
+  )
+
+  if (file !== canonicalCatalog && duplicateCatalog?.index !== undefined) {
+    violations.push(
+      `${file}:${lineNumber(source, duplicateCatalog.index)} command and query schema catalogs must be defined in contracts/operations.ts`
+    )
+  }
+
+  const genericRendererRpc = source.match(
+    /\b(?:execute|invoke|renderer)?RpcChannel\b\s*=|['"]newframe:(?:renderer-)?rpc['"]/i
+  )
+  if (genericRendererRpc?.index !== undefined) {
+    violations.push(
+      `${file}:${lineNumber(source, genericRendererRpc.index)} generic renderer RPC channels are forbidden; use typed commands and queries`
+    )
+  }
+
+  const legacyCommandResult = source.match(
+    /\b(?:CommandResultMap|ResultForCommand|WalletCommandResult(?:Schema)?)\b/
+  )
+  if (legacyCommandResult?.index !== undefined) {
+    violations.push(
+      `${file}:${lineNumber(source, legacyCommandResult.index)} commands must use the single generic CommandResult acknowledgement; command-specific result maps are forbidden`
+    )
+  }
+
+  const legacyFacadePath = source.match(
+    /['"][^'"]*(?:operations|infrastructure)\/walletWorkflows(?:\/production)?(?:\.[cm]?[jt]s)?['"]/
+  )
+  const legacyFacadeFile =
+    /(?:^|\/)(?:operations|infrastructure)\/walletWorkflows(?:\/production)?\.ts$/.test(file)
+  if (legacyFacadeFile || legacyFacadePath?.index !== undefined) {
+    violations.push(
+      `${file}:${lineNumber(source, legacyFacadePath?.index || 0)} walletWorkflows facade imports and definitions are forbidden; route through focused feature services and infrastructure ports`
+    )
+  }
+
+  const genericWorkflowPath = source.match(
+    /['"][^'"]*operations\/(?:workflows|sideTrayTransactions)(?:\.[cm]?[jt]s)?['"]/
+  )
+  const genericWorkflowFile = /(?:^|\/)operations\/(?:workflows|sideTrayTransactions)\.ts$/.test(file)
+  if (genericWorkflowFile || genericWorkflowPath?.index !== undefined) {
+    violations.push(
+      `${file}:${lineNumber(source, genericWorkflowPath?.index || 0)} generic operation workflow helpers are forbidden; move orchestration to a focused feature service or infrastructure adapter`
+    )
+  }
+
+  if (productionRenderer(file)) {
+    const erasedOperationType = source.match(/\bexecute(?:Command|Query)\s*\([^;\n]*?\bas\s+any\b/)
+    if (erasedOperationType?.index !== undefined) {
+      violations.push(
+        `${file}:${lineNumber(source, erasedOperationType.index)} renderer operations must retain their catalog-derived input type; casting command or query payloads to any is forbidden`
+      )
+    }
+  }
+
+  return violations
+}
+
+export function checkRawIpcAuthority(file: string, source: string) {
+  const violations: string[] = []
+  if (productionRenderer(file) && /\bipcRenderer\b/.test(source)) {
+    violations.push(`${file}: raw ipcRenderer is restricted to the preload bridge`)
+  }
+
+  if (productionMain(file)) {
+    const rawMainIpc = source.match(/\bipcMain\.(?:addListener|emit|handle|invoke|on|once|send)\b/)
+    if (rawMainIpc?.index !== undefined) {
+      const allowed = new Set([
+        path.join('apps', 'newframe', 'main', 'ipc', 'operations.ts'),
+        path.join('apps', 'newframe', 'main', 'ipc', 'stateStream.ts')
+      ])
+      if (!allowed.has(file)) {
+        violations.push(`${file}: raw ipcMain access is restricted to typed IPC modules`)
+      }
+    }
+
+    if (/\bwebContents\.send\b/.test(source)) {
+      const stateStream = path.join('apps', 'newframe', 'main', 'ipc', 'stateStream.ts')
+      if (file !== stateStream) {
+        violations.push(`${file}: webContents.send is restricted to the typed state stream`)
+      }
+    }
+  }
+  return violations
+}
+
+export function checkPlatformCommandAuthority(file: string, source: string) {
+  if (!productionApplication(file)) return []
+
+  const violations: string[] = []
+  const tradeRenderer = path.join('apps', 'newframe', 'renderer', 'sidetray', 'Trade')
+  const sendRenderer = path.join('apps', 'newframe', 'renderer', 'sidetray', 'Send')
+  if (productionRenderer(file)) {
+    const rendererExecutionCapability = source.match(
+      /type\s*:\s*['"](?:transaction\.submit|typedData\.signV4|flash\.submit)['"]|['"](?:transaction\.submit|typedData\.signV4|flash\.submit)['"]\s*:/
+    )
+    if (rendererExecutionCapability?.index !== undefined) {
+      violations.push(
+        `${file}:${lineNumber(source, rendererExecutionCapability.index)} renderer execution capabilities are forbidden; use a main-owned feature workflow`
+      )
+    }
+  }
+  if (productionRenderer(file) && under(tradeRenderer)(file)) {
+    const privateTradeExecution = source.match(
+      /\b(?:buildTradeActionRequest|buildTradeSignatureRequest|buildTradePermitSignatureRequest|buildTradeSubmitRequest|flashPayload|orderSignature|permitSignature)\b/
+    )
+    if (privateTradeExecution?.index !== undefined) {
+      violations.push(
+        `${file}:${lineNumber(source, privateTradeExecution.index)} Trade renderer may retain only ticket, safe quote, review correlation, and projected operation state`
+      )
+    }
+  }
+  if (productionRenderer(file) && under(sendRenderer)(file)) {
+    const legacySendChain = source.match(
+      /type\s*:\s*['"]name\.resolve['"]|\b(?:resolveName|submitTransaction)\s*\(/
+    )
+    if (legacySendChain?.index !== undefined) {
+      violations.push(
+        `${file}:${lineNumber(source, legacySendChain.index)} Send must issue one send.submit intent and observe projected operation/activity state`
+      )
+    }
+  }
+  const legacyContextMenu = source.match(
+    /['"](?:tray|sidetray)\.context-menu['"]|\b(?:Tray|SideTray)ContextMenu/
+  )
+  if (legacyContextMenu?.index !== undefined) {
+    violations.push(
+      `${file}:${lineNumber(source, legacyContextMenu.index)} renderer context menus must use renderer.context-menu`
+    )
+  }
+
+  const walletWorkflow = path.join('apps', 'newframe', 'main', 'operations', 'walletWorkflows.ts')
+  if (file === walletWorkflow) {
+    const migratedForwarder = source.match(
+      /\b(?:addAccountFromSigner|addToken|addWatchAccount|adjustTransactionNonce|clearPermission|configureSecurity|consumeHomeCommand|createLatticeSigner|disconnectSigner|dismissTransactionFeeNotice|handleTrayMouseout|importSigner|inspectOwnTrayWindow|loadLedgerAccounts|locateKeystore|lockWallet|navigatePanelBack|openExternalUrl|openRequestPanel|openSideTray|openTransactionExplorer|pairLattice|quitApp|refreshPortfolio|reloadSigner|removeAccount|removeToken|renameAccount|reorderAccounts|resetTransactionNonce|resetWallet|respondToExtension|respondToUpdater|securityStatus|setNetworkActivation|setNetworkPrimaryRpc|setTransactionFeeDefault|submitTrezorInput|toggleWarning|unlockSecurity|updateNotification|updateSettings|updateTokenApproval|updateTransactionFee|writeClipboard)\s*(?=[:,=(])/
+    )
+    if (migratedForwarder?.index !== undefined) {
+      violations.push(
+        `${file}:${lineNumber(source, migratedForwarder.index)} migrated passive and platform commands cannot return to walletWorkflows`
+      )
+    }
+  }
+
+  const operationsIpc = path.join('apps', 'newframe', 'main', 'ipc', 'operations.ts')
+  if (file === operationsIpc) {
+    const legacySelectionPort = source.match(/\bselectAccount\s*:/)
+    if (legacySelectionPort?.index !== undefined) {
+      violations.push(
+        `${file}:${lineNumber(source, legacySelectionPort.index)} account selection must be owned by the account service`
+      )
+    }
+  }
+
+  return violations
+}
+
 async function main() {
   for (const removedRoot of ['app', 'resources']) {
     if (existsSync(path.join(appRoot, removedRoot))) {
@@ -361,15 +525,14 @@ async function main() {
   for (const { file, source } of files) {
     violations.push(...checkDependencyDirection(file, source))
     violations.push(...checkAssetRateMutationAuthority(file, source))
+    violations.push(...checkOperationContractAuthority(file, source))
+    violations.push(...checkPlatformCommandAuthority(file, source))
+    violations.push(...checkRawIpcAuthority(file, source))
     for (const rule of rules) {
       if (!rule.files(file)) continue
       const match = source.match(rule.pattern)
       if (match?.index !== undefined)
         violations.push(`${file}:${lineNumber(source, match.index)} ${rule.message}`)
-    }
-
-    if (productionRenderer(file) && /\bipcRenderer\b/.test(source)) {
-      violations.push(`${file}: raw ipcRenderer is restricted to the preload bridge`)
     }
 
     if (
@@ -380,21 +543,6 @@ async function main() {
         under(path.join('apps', 'newframe-extension', 'src', 'settings'))(file))
     ) {
       violations.push(`${file}: component styles must be authored with Panda in the owning TypeScript file`)
-    }
-
-    if (/\bipcMain\.handle\b/.test(source)) {
-      const allowed = new Set([
-        path.join('apps', 'newframe', 'main', 'ipc', 'operations.ts'),
-        path.join('apps', 'newframe', 'main', 'ipc', 'stateStream.ts')
-      ])
-      if (!allowed.has(file)) violations.push(`${file}: ipcMain.handle is restricted to typed IPC modules`)
-    }
-
-    if (productionMain(file) && /\bwebContents\.send\b/.test(source)) {
-      const stateStream = path.join('apps', 'newframe', 'main', 'ipc', 'stateStream.ts')
-      if (file !== stateStream) {
-        violations.push(`${file}: webContents.send is restricted to the typed state stream`)
-      }
     }
 
     if (migratedPilotFiles.has(file) || migratedSideTrayFiles(file) || migratedExtensionSettingsFiles(file)) {

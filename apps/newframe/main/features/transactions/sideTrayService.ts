@@ -1,11 +1,6 @@
 import { v5 as uuidv5 } from 'uuid'
 
-import type {
-  FlashQuoteRequest,
-  FlashSubmitOrder,
-  TransactionSubmitCommand,
-  TypedDataSignCommand
-} from '../../../contracts/operations.js'
+import type { TypedDataV4 } from '../../../contracts/operations.js'
 import type { TrustedPrincipal } from '../../authority.js'
 
 const internalOriginName = 'newframe-internal'
@@ -20,20 +15,7 @@ export interface SideTrayTransactionPorts {
     current(): SelectedAccount | null | undefined
   }
   provider: {
-    send(payload: RPCRequestPayload, respond: RPCRequestCallback, principal: TrustedPrincipal): unknown
-  }
-  flash: {
-    quote(
-      request: FlashQuoteRequest & { accountAddress: string; contraChain: number; targetChain: number }
-    ): Promise<{ quote: unknown; flash: unknown }> | { quote: unknown; flash: unknown }
-    submitOrder(
-      order: FlashSubmitOrder & {
-        accountAddress: string
-        contraChain: number
-        idempotencyKey?: string
-        targetChain: number
-      }
-    ): Promise<{ orderId: string }> | { orderId: string }
+    request(payload: RPCRequestPayload, principal: TrustedPrincipal): Promise<RPCResponsePayload>
   }
   store: {
     getState(): {
@@ -54,7 +36,7 @@ function errorMessage(error: unknown) {
   return 'The operation failed.'
 }
 
-function typedDataChainId(typedData: TypedDataSignCommand['typedData']) {
+function typedDataChainId(typedData: TypedDataV4) {
   const value = typedData.domain.chainId
   if (value === undefined || value === null || value === '') return undefined
 
@@ -68,8 +50,6 @@ function typedDataChainId(typedData: TypedDataSignCommand['typedData']) {
 
 export function createSideTrayTransactionService(ports: SideTrayTransactionPorts) {
   const currentAccountAddress = () => ports.accounts.current()?.getSelectedAddress() || ''
-  const sendProviderRequest = (payload: RPCRequestPayload, principal: TrustedPrincipal) =>
-    new Promise<RPCResponsePayload>((resolve) => ports.provider.send(payload, resolve, principal))
   const initializeOrigin = (chainId: number) => {
     const state = ports.store.getState()
     if (!state.main.networks.ethereum[chainId]?.on) return false
@@ -82,7 +62,11 @@ export function createSideTrayTransactionService(ports: SideTrayTransactionPorts
 
   return {
     async submitCurrentAccountTransaction(
-      command: Pick<TransactionSubmitCommand, 'chainId' | 'idempotencyKey' | 'transaction'>,
+      command: {
+        chainId: number
+        idempotencyKey: string
+        transaction: { to: string; data?: string; value?: string }
+      },
       principal: TrustedPrincipal
     ) {
       const from = currentAccountAddress()
@@ -92,7 +76,7 @@ export function createSideTrayTransactionService(ports: SideTrayTransactionPorts
       }
 
       const chainId = chainIdHex(command.chainId)
-      const response = await sendProviderRequest(
+      const response = await ports.provider.request(
         {
           id: command.idempotencyKey,
           jsonrpc: '2.0',
@@ -121,7 +105,7 @@ export function createSideTrayTransactionService(ports: SideTrayTransactionPorts
     },
 
     async signCurrentAccountTypedData(
-      command: Pick<TypedDataSignCommand, 'chainId' | 'typedData'>,
+      command: { chainId: number; typedData: TypedDataV4 },
       principal: TrustedPrincipal
     ) {
       const from = currentAccountAddress()
@@ -135,7 +119,7 @@ export function createSideTrayTransactionService(ports: SideTrayTransactionPorts
         return { ok: false, error: 'provider_error', message: 'Chain is unavailable.' } as const
       }
 
-      const response = await sendProviderRequest(
+      const response = await ports.provider.request(
         {
           id: ports.now(),
           jsonrpc: '2.0',
@@ -155,45 +139,34 @@ export function createSideTrayTransactionService(ports: SideTrayTransactionPorts
       return { ok: true, signature: response.result } as const
     },
 
-    async quoteFlashForCurrentAccount(request: FlashQuoteRequest) {
-      const accountAddress = currentAccountAddress()
-      if (!accountAddress) return { ok: false, error: 'no_current_account' } as const
-      if (!ports.store.getState().main.networks.ethereum[request.chainId]?.on) {
-        return { ok: false, error: 'quote_failed', message: 'Chain is unavailable.' } as const
+    async signCurrentAccountMessage(
+      command: { chainId: number; message: string },
+      principal: TrustedPrincipal
+    ) {
+      const from = currentAccountAddress()
+      if (!from) return { ok: false, error: 'no_current_account' } as const
+      if (!initializeOrigin(command.chainId)) {
+        return { ok: false, error: 'provider_error', message: 'Chain is unavailable.' } as const
       }
 
-      try {
-        const result = await ports.flash.quote({
-          ...request,
-          accountAddress,
-          contraChain: request.chainId,
-          targetChain: request.chainId
-        })
-        return { ok: true, quote: result.quote, flash: result.flash } as const
-      } catch (error) {
-        return { ok: false, error: 'quote_failed', message: errorMessage(error) } as const
+      const response = await ports.provider.request(
+        {
+          id: ports.now(),
+          jsonrpc: '2.0',
+          method: 'personal_sign',
+          chainId: chainIdHex(command.chainId),
+          params: [command.message, from],
+          _origin: internalOriginId
+        },
+        principal
+      )
+      if (response.error) {
+        return { ok: false, error: 'provider_error', message: errorMessage(response.error) } as const
       }
-    },
-
-    async submitFlashForCurrentAccount(order: FlashSubmitOrder) {
-      const accountAddress = currentAccountAddress()
-      if (!accountAddress) return { ok: false, error: 'no_current_account' } as const
-      if (!ports.store.getState().main.networks.ethereum[order.chainId]?.on) {
-        return { ok: false, error: 'submit_failed', message: 'Chain is unavailable.' } as const
+      if (typeof response.result !== 'string' || !/^0x[0-9a-fA-F]+$/.test(response.result)) {
+        return { ok: false, error: 'provider_error', message: 'Signature was not returned.' } as const
       }
-
-      try {
-        const result = await ports.flash.submitOrder({
-          ...order,
-          accountAddress,
-          contraChain: order.chainId,
-          idempotencyKey: order.quoteId || order.quote.id,
-          targetChain: order.chainId
-        })
-        return { ok: true, orderId: result.orderId } as const
-      } catch (error) {
-        return { ok: false, error: 'submit_failed', message: errorMessage(error) } as const
-      }
+      return { ok: true, signature: response.result } as const
     }
   }
 }

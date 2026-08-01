@@ -35,6 +35,7 @@ describe('createSideTrayWalletSelector', () => {
       },
       accountOrder: [recipient.id, sender.id],
       activity: {},
+      operations: {},
       balances: {
         [sender.address]: [
           {
@@ -91,6 +92,7 @@ describe('createSideTrayWalletSelector', () => {
       accounts: { [account.id]: account },
       accountOrder: [account.id],
       activity: {},
+      operations: {},
       balances: {},
       currentAccount: account.id,
       networks: { ethereum: {} },
@@ -125,6 +127,7 @@ describe('createSideTrayWalletSelector', () => {
       accounts: { [account.id]: account },
       accountOrder: [account.id],
       activity: {},
+      operations: {},
       balances: { [account.address]: [] },
       currentAccount: account.id,
       networks: {
@@ -175,6 +178,7 @@ describe('createSideTrayWalletSelector', () => {
       accounts: { [account.id]: account },
       accountOrder: [account.id],
       activity: {},
+      operations: {},
       balances: { [account.address]: [] },
       currentAccount: account.id,
       networks: {

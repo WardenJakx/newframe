@@ -2,13 +2,7 @@ import { expect, it, mock } from 'bun:test'
 
 import { fireEvent, render, screen } from '../../../../test/support/componentSetup'
 import { createHostFixture } from '../../../../test/support/rendererClient'
-import {
-  RequestCommand,
-  approveRequest,
-  checkSignerCompatibility,
-  declineRequest,
-  runWhenAppUnlocked
-} from './index'
+import { RequestCommand, approveRequest, declineRequest, runWhenAppUnlocked } from './index'
 import TxApproval from './TxApproval'
 
 const link = createHostFixture()
@@ -19,12 +13,8 @@ const createProps = <const Request extends object>(appLocked: boolean, req: Requ
     req,
     shared: {
       appLocked,
-      assetRates: {},
       chain: {},
-      chainMeta: { nativeCurrency: {} },
       explorerWarningMuted: false,
-      gasFeeWarningMuted: false,
-      signerCompatibilityWarningMuted: false,
       step: 'confirm' as const
     }
   }
@@ -54,36 +44,29 @@ it('approves and rejects requests using canonical IDs', () => {
   })
 })
 
-it('preserves signer warnings around the typed compatibility query', async () => {
-  const req = { handlerId: 'request-1' }
+it('displays the main-projected signer compatibility gate without querying Electron', () => {
+  const req = {
+    handlerId: 'request-1',
+    type: 'transaction',
+    approvals: [],
+    data: { chainId: '0x1', gasLimit: '0x5208', gasPrice: '0x1' },
+    approvalGate: {
+      type: 'signer-compatibility',
+      reason: 'incompatible',
+      signer: 'ledger',
+      tx: 'london',
+      chain: { type: 'ethereum', id: 1 }
+    }
+  } as const
   const props = createProps(false, req)
-  const next = mock()
+  render(<RequestCommand {...props} />)
 
-  link.executeQuery.mockResolvedValueOnce({ ok: false, error: 'no_signer', message: 'No signer' })
-  await checkSignerCompatibility(req, props.notify, mock(), next)
-  expect(props.notify).toHaveBeenCalledWith('noSignerWarning', { req })
-  expect(next).not.toHaveBeenCalled()
-
-  link.executeQuery.mockResolvedValueOnce({
-    ok: false,
-    error: 'signer_unavailable',
-    message: 'Reconnect signer',
-    signerIds: ['ledger-1']
-  })
-  await checkSignerCompatibility(req, props.notify, mock(), next)
-  expect(props.notify).toHaveBeenCalledWith('signerRecovery', {
+  expect(props.notify).toHaveBeenCalledWith('signerCompatibilityWarning', {
     req,
-    signerIds: ['ledger-1']
+    compatibility: { signer: 'ledger', tx: 'london', compatible: false },
+    chain: { type: 'ethereum', id: 1 }
   })
-
-  const compatibility = { signer: 'ledger', tx: 'london', compatible: false }
-  link.executeQuery.mockResolvedValueOnce({ ok: true, compatibility })
-  await checkSignerCompatibility(req, props.notify, mock(), next)
-  expect(next).toHaveBeenCalledWith(compatibility)
-  expect(link.executeQuery).toHaveBeenLastCalledWith({
-    type: 'request.signer-compatibility',
-    requestId: req.handlerId
-  })
+  expect(link.executeQuery.mock.calls).toEqual([])
 })
 
 it('uses renderer-generated idempotency keys for transaction replacement', () => {

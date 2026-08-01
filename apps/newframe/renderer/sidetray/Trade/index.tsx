@@ -34,11 +34,11 @@ import {
   FLASH_TWAP_ORDER_TYPE
 } from '../../../domain/flash/constants'
 import { getContraPreposition, getDirectionLabel, isSameFlashAsset } from '../../../domain/flash/pair'
-import { type FlashAsset, type FlashOrderType, type FlashQuote } from '../../../domain/flash/schemas'
+import { type FlashAsset, type FlashOrderType } from '../../../domain/flash/schemas'
 import { formatUnits, toBigInt } from '../../../domain/units'
 import { createSideTrayWalletSelector } from '../../state/selectors/sideTrayWallet'
 import { useSideTraySelector } from '../../state/useAppSelector'
-import { closeTrade, flashQuote, flashSubmitOrder, signTypedData, submitTransaction } from './tradeService'
+import { closeTrade, flashQuote, prepareTrade, releaseTrade, submitTrade } from './tradeService'
 import {
   createInitialTradeState,
   getTradeOrderFields,
@@ -50,18 +50,11 @@ import {
 import {
   buildTradeAssetOptions,
   buildTradeQuoteRequest,
-  buildTradeActionRequest,
-  buildTradePermitSignatureRequest,
-  buildTradeSignatureRequest,
-  buildTradeSubmitRequest,
   buildVisualTradeSteps,
-  canReviewTrade,
   createTradeBalanceIndex,
   formatTradeNotional,
   getFlashBalanceEntries,
   getEstimatedTradePriceImpact,
-  getNextTradeAction,
-  getTradePrimaryLabel,
   getTradeQuoteValidationError,
   getTradeTriggerDeltaPercent,
   getTradeValidationError,
@@ -101,7 +94,7 @@ function buildQuoteEffectRequest(requestInput: Parameters<typeof buildTradeQuote
 
 export default function Trade({ assetId, chainId }: TradeProps) {
   const selectSideTrayWallet = React.useMemo(() => createSideTrayWalletSelector(), [])
-  const { balanceSummaries, currentAccount, networks, networksMeta, runtime } =
+  const { balanceSummaries, currentAccount, networks, networksMeta, operations, orders, runtime } =
     useSideTraySelector(selectSideTrayWallet)
   const tradeAssets = React.useMemo(
     () => buildTradeAssetOptions({ balances: balanceSummaries, networks, runtime }),
@@ -123,6 +116,19 @@ export default function Trade({ assetId, chainId }: TradeProps) {
   })
   const mountedRef = React.useRef(false)
   const latestStateRef = React.useRef(state)
+  const [execution, setExecution] = React.useState<{
+    operationId: string
+    quoteId: string
+    requestKey: string
+  } | null>(null)
+  const executionRef = React.useRef<{
+    operationId: string
+    quoteId: string
+    requestKey: string
+  } | null>(null)
+  const [boundaryError, setBoundaryError] = React.useState('')
+  const operation = execution ? operations[execution.operationId] : undefined
+  const operationRef = React.useRef(operation)
   const accountAddress = currentAccount?.address || ''
   const previousAccountAddressRef = React.useRef(accountAddress)
   const inputAmount = getTradeInputAmount(state)
@@ -189,6 +195,19 @@ export default function Trade({ assetId, chainId }: TradeProps) {
     [state.orderType, state.quote, state.triggerNotionalPrice]
   )
   const tradeValidationError = ticketValidationError || quoteValidationError
+  const operationError = operation?.status === 'failed' ? operation.error?.message || 'Trade failed.' : ''
+  const operationStatus =
+    operation?.phase === 'wrapping' || operation?.phase === 'approving'
+      ? 'Confirm in Newframe'
+      : operation?.phase === 'signing_permit'
+        ? 'Review permit in Newframe'
+        : operation?.phase === 'signing_order'
+          ? 'Review order in Newframe'
+          : operation?.phase === 'submitting'
+            ? 'Submitting order'
+            : state.quoteLoading
+              ? 'Getting quote'
+              : ''
   const invalidTradeFields = {
     amount: ticketValidationError === 'Enter an amount to trade.',
     duration: ticketValidationError.startsWith('TWAP duration'),
@@ -209,8 +228,14 @@ export default function Trade({ assetId, chainId }: TradeProps) {
 
     return () => {
       mountedRef.current = false
+      executionRef.current = null
+      void releaseTrade()
     }
   }, [])
+
+  React.useEffect(() => {
+    operationRef.current = operation
+  }, [operation])
 
   React.useEffect(() => {
     latestStateRef.current = state
@@ -228,11 +253,24 @@ export default function Trade({ assetId, chainId }: TradeProps) {
     if (previousAccountAddressRef.current === accountAddress) return
 
     previousAccountAddressRef.current = accountAddress
+    void releaseTrade()
+    executionRef.current = null
+    setExecution(null)
+    setBoundaryError('')
     dispatch({ type: 'accountChanged' })
   }, [accountAddress])
 
   React.useEffect(() => {
     const initialRequest = latestQuoteEffectRequestRef.current
+    const activeExecution = executionRef.current
+
+    if (activeExecution && activeExecution.requestKey !== initialRequest.requestKey) {
+      executionRef.current = null
+      operationRef.current = undefined
+      setExecution(null)
+      setBoundaryError('')
+      void releaseTrade()
+    }
 
     if (initialRequest.error) {
       dispatch({ type: 'quoteBuildFailed', error: initialRequest.error })
@@ -240,6 +278,11 @@ export default function Trade({ assetId, chainId }: TradeProps) {
     }
 
     if (!initialRequest.request || !initialRequest.requestKey) {
+      if (!executionRef.current || operationRef.current?.status !== 'pending') {
+        executionRef.current = null
+        setExecution(null)
+        void releaseTrade()
+      }
       dispatch({ type: 'quoteCleared' })
       return
     }
@@ -258,8 +301,7 @@ export default function Trade({ assetId, chainId }: TradeProps) {
       const currentRequest = latestQuoteEffectRequestRef.current
       if (!currentRequest.request || currentRequest.requestKey !== requestKey) return
 
-      const currentState = latestStateRef.current
-      if (currentState.actionQuoteId || currentState.submitting) {
+      if (executionRef.current) {
         scheduleQuote(MARKET_QUOTE_REFRESH_MS)
         return
       }
@@ -276,7 +318,7 @@ export default function Trade({ assetId, chainId }: TradeProps) {
             return
           }
 
-          const quote = result?.quote as FlashQuote | null
+          const quote = result?.quote || null
 
           if (!quote) {
             dispatch({
@@ -289,10 +331,12 @@ export default function Trade({ assetId, chainId }: TradeProps) {
 
           dispatch({
             type: 'quoteSucceeded',
-            flashPayload: result?.flash || quote.raw || null,
+            quoteId: result.quoteId,
             quote,
             requestKey
           })
+          executionRef.current = null
+          setExecution(null)
         })
         .catch((e) => {
           if (
@@ -400,224 +444,60 @@ export default function Trade({ assetId, chainId }: TradeProps) {
     [tradeBalanceIndex]
   )
 
-  const submitSignedTrade = React.useCallback(
-    async (
-      signature: string,
-      quote: FlashQuote,
-      flashPayload: unknown,
-      actionQuoteId: string,
-      permitSignature = ''
-    ) => {
-      if (!accountAddress || !quote) {
-        dispatch({ type: 'stepFailed', stepKind: 'submit', error: 'Flash quote is no longer available.' })
-        return
-      }
-
-      dispatch({ type: 'submitStarted', actionQuoteId })
-
-      try {
-        const submitRequest = buildTradeSubmitRequest({
-          accountAddress,
-          flashPayload,
-          ...getTradeOrderFields(latestStateRef.current),
-          permitSignature,
-          quickTrade: latestStateRef.current.quickTrade,
-          quote,
-          signature,
-          slippage: latestStateRef.current.slippage
-        })
-        const result = await flashSubmitOrder(submitRequest)
-        if (!mountedRef.current) return
-
-        if (!result?.orderId) {
-          dispatch({
-            type: 'submitFailed',
-            actionQuoteId,
-            error: 'Flash order submit did not return an order id.'
-          })
-          return
-        }
-
-        dispatch({ type: 'submitSucceeded', actionQuoteId })
-        closeTrade()
-      } catch (e) {
-        if (!mountedRef.current) return
-
-        dispatch({
-          type: 'submitFailed',
-          actionQuoteId,
-          error: tradeErrorMessage(e, 'Flash order submit failed.')
-        })
-      }
-    },
-    [accountAddress]
-  )
-
-  const sendTradeTransaction = React.useCallback(
-    async (action: unknown, stepKind: 'wrap' | 'approve') => {
-      const workflow = latestStateRef.current
-      const quote = workflow.quote
-      const actionQuoteId = quote?.id || ''
-
-      try {
-        const { chainId, transaction } = buildTradeActionRequest({
-          accountAddress,
-          action: action as any
-        })
-
-        dispatch({
-          type: 'actionStarted',
-          actionQuoteId,
-          stepKind,
-          status: 'Confirm in Newframe'
-        })
-
-        const response = await submitTransaction(chainId, transaction, crypto.randomUUID())
-        if (!mountedRef.current) return
-
-        if (!response.ok) {
-          dispatch({
-            type: 'actionFailed',
-            actionQuoteId,
-            stepKind,
-            error: response.message || 'Transaction failed.'
-          })
-          return
-        }
-
-        dispatch({
-          type: 'actionSucceeded',
-          actionQuoteId,
-          stepKind,
-          txHash: response.transactionHash
-        })
-      } catch (e) {
-        dispatch({
-          type: 'stepFailed',
-          stepKind,
-          error: tradeErrorMessage(e, 'Invalid Flash transaction chain.')
-        })
-      }
-    },
-    [accountAddress]
-  )
-
-  const signAndSubmitTrade = React.useCallback(async () => {
-    const workflow = latestStateRef.current
-    const quote = workflow.quote
-    const actionQuoteId = quote?.id || ''
-
-    try {
-      let permitSignature = ''
-      const permitRequest = buildTradePermitSignatureRequest({
-        accountAddress,
-        flashPayload: workflow.flashPayload,
-        quote
-      })
-
-      if (permitRequest) {
-        dispatch({
-          type: 'actionStarted',
-          actionQuoteId,
-          stepKind: 'sign',
-          status: 'Review permit in Newframe'
-        })
-
-        const permitResponse = await signTypedData(permitRequest.chainId, permitRequest.typedData)
-        if (!mountedRef.current) return
-
-        permitSignature = permitResponse.ok ? permitResponse.signature : ''
-
-        if (!permitResponse.ok || !permitSignature) {
-          dispatch({
-            type: 'actionFailed',
-            actionQuoteId,
-            stepKind: 'sign',
-            error: !permitResponse.ok
-              ? permitResponse.message || 'Permit signature was not returned.'
-              : 'Permit signature was not returned.'
-          })
-          return
-        }
-
-        if ((latestStateRef.current.quote?.id || '') !== actionQuoteId) {
-          dispatch({
-            type: 'stepFailed',
-            stepKind: 'sign',
-            error: 'The quote changed while signing. Review the refreshed quote and try again.'
-          })
-          return
-        }
-      }
-
-      const { chainId, typedData } = buildTradeSignatureRequest({
-        accountAddress,
-        flashPayload: workflow.flashPayload,
-        quote
-      })
-
-      dispatch({
-        type: 'actionStarted',
-        actionQuoteId,
-        stepKind: 'sign',
-        status: 'Review order in Newframe'
-      })
-
-      const response = await signTypedData(chainId, typedData)
-      if (!mountedRef.current) return
-
-      const signature = response.ok ? response.signature : ''
-
-      if (!response.ok || !signature) {
-        dispatch({
-          type: 'actionFailed',
-          actionQuoteId,
-          stepKind: 'sign',
-          error: !response.ok
-            ? response.message || 'Order signature was not returned.'
-            : 'Order signature was not returned.'
-        })
-        return
-      }
-
-      if ((latestStateRef.current.quote?.id || '') !== actionQuoteId) {
-        dispatch({
-          type: 'stepFailed',
-          stepKind: 'sign',
-          error: 'The quote changed while signing. Review the refreshed quote and try again.'
-        })
-        return
-      }
-
-      dispatch({ type: 'signatureSucceeded', actionQuoteId, signature })
-      await submitSignedTrade(
-        signature,
-        quote as FlashQuote,
-        workflow.flashPayload,
-        actionQuoteId,
-        permitSignature
-      )
-    } catch (e) {
-      dispatch({
-        type: 'stepFailed',
-        stepKind: 'sign',
-        error: tradeErrorMessage(e, 'Invalid Flash signature chain.')
-      })
-    }
-  }, [accountAddress, submitSignedTrade])
+  React.useEffect(() => {
+    if (operation?.status !== 'succeeded' || !execution) return
+    const orderId = operation.entityRefs?.find((reference) => reference.type === 'order')?.id
+    if (orderId && orders[orderId]) closeTrade()
+  }, [execution, operation, orders])
 
   const reviewTrade = React.useCallback(() => {
     const quote = latestStateRef.current.quote
-    const nextAction = getNextTradeAction({
-      orderType: latestStateRef.current.orderType,
-      quote
-    })
+    const quoteId = latestStateRef.current.quoteId
+    if (!quote || !quoteId || operation?.status === 'succeeded') return
 
-    if (!quote) return
-    if (nextAction === 'wrap') void sendTradeTransaction(quote.actions?.wrap, 'wrap')
-    if (nextAction === 'approve') void sendTradeTransaction(quote.actions?.approval, 'approve')
-    if (nextAction === 'sign') void signAndSubmitTrade()
-  }, [sendTradeTransaction, signAndSubmitTrade])
+    const retrying = operation?.status === 'failed'
+    const operationId = retrying ? crypto.randomUUID() : execution?.operationId || crypto.randomUUID()
+    const nextAction =
+      operation?.phase === 'awaiting_approval'
+        ? 'approve'
+        : operation?.phase === 'awaiting_submit'
+          ? 'sign'
+          : quote.nextAction
+    const nextExecution =
+      !retrying && execution
+        ? execution
+        : { operationId, quoteId, requestKey: latestStateRef.current.quoteRequestKey }
+    executionRef.current = nextExecution
+    setExecution(nextExecution)
+    setBoundaryError('')
+
+    const request =
+      nextAction === 'sign'
+        ? submitTrade(operationId, quoteId)
+        : prepareTrade(operationId, quoteId, nextAction)
+    void request
+      .then((result) => {
+        const current = executionRef.current
+        if (
+          mountedRef.current &&
+          current?.operationId === operationId &&
+          current.quoteId === quoteId &&
+          !result.ok
+        ) {
+          setBoundaryError(result.message || 'Trade request was not accepted.')
+          executionRef.current = null
+          setExecution(null)
+        }
+      })
+      .catch((error) => {
+        const current = executionRef.current
+        if (mountedRef.current && current?.operationId === operationId && current.quoteId === quoteId) {
+          setBoundaryError(tradeErrorMessage(error, 'Trade request failed.'))
+          executionRef.current = null
+          setExecution(null)
+        }
+      })
+  }, [execution, operation])
 
   const renderTradeTabs = () => {
     const orderType = state.orderType
@@ -1183,7 +1063,46 @@ export default function Trade({ assetId, chainId }: TradeProps) {
 
   const renderTradeSteps = () => {
     const spentAsset = getTradeSpentAsset(state)
-    const steps = state.quote?.steps || buildVisualTradeSteps(spentAsset, state.orderType, false)
+    const baseSteps = state.quote?.steps || buildVisualTradeSteps(spentAsset, state.orderType, false)
+    const phase = operation?.phase || ''
+    const completed = new Set<string>()
+    if (
+      [
+        'awaiting_approval',
+        'approving',
+        'awaiting_submit',
+        'signing_permit',
+        'signing_order',
+        'submitting',
+        'submitted'
+      ].includes(phase)
+    ) {
+      completed.add('wrap')
+    }
+    if (['awaiting_submit', 'signing_permit', 'signing_order', 'submitting', 'submitted'].includes(phase)) {
+      completed.add('approve')
+    }
+    if (['submitting', 'submitted'].includes(phase)) completed.add('sign')
+    if (phase === 'submitted' || operation?.status === 'succeeded') completed.add('submit')
+    const pendingKind =
+      phase === 'wrapping'
+        ? 'wrap'
+        : phase === 'approving'
+          ? 'approve'
+          : phase === 'signing_permit' || phase === 'signing_order'
+            ? 'sign'
+            : phase === 'submitting'
+              ? 'submit'
+              : ''
+    const failedKind = phase.endsWith('_failed') ? phase.slice(0, -'_failed'.length) : ''
+    const steps = baseSteps.map((step) => ({
+      ...step,
+      ...(completed.has(step.kind) ? { status: 'complete' as const, error: undefined } : {}),
+      ...(pendingKind === step.kind ? { status: 'pending' as const, error: undefined } : {}),
+      ...(failedKind === step.kind
+        ? { status: 'error' as const, error: operationError || 'Trade failed.' }
+        : {})
+    }))
 
     return <ProgressSteps steps={steps} />
   }
@@ -1202,28 +1121,37 @@ export default function Trade({ assetId, chainId }: TradeProps) {
   }
 
   const renderTradeFooter = () => {
-    const enabled = canReviewTrade({
-      orderType: state.orderType,
-      pendingAction: state.pendingAction,
-      quote: state.quote,
-      quoteLoading: state.quoteLoading,
-      submitting: state.submitting,
-      validationError: tradeValidationError
-    })
+    const nextAction =
+      operation?.phase === 'awaiting_approval'
+        ? 'approve'
+        : operation?.phase === 'awaiting_submit'
+          ? 'sign'
+          : state.quote?.nextAction
+    const operationReady =
+      !execution ||
+      operation?.status === 'failed' ||
+      operation?.phase === 'awaiting_approval' ||
+      operation?.phase === 'awaiting_submit'
+    const enabled = Boolean(
+      state.quote && state.quoteId && operationReady && !state.quoteLoading && !tradeValidationError
+    )
+    const primaryLabel = state.quoteLoading
+      ? 'Getting quote'
+      : operation?.phase === 'submitting'
+        ? 'Submitting'
+        : nextAction === 'wrap'
+          ? state.quote?.actions?.wrap?.label || 'Wrap'
+          : nextAction === 'approve'
+            ? state.quote?.actions?.approval?.label || 'Approve'
+            : state.quote
+              ? 'Review/sign'
+              : 'Enter details'
 
     return (
       <Stack grow>
         <Button appearance='primary' disabled={!enabled} onPress={reviewTrade} size='large'>
           <Text align='center' variant='action' tone='inverse'>
-            {tradeValidationError && state.quote
-              ? 'Adjust order'
-              : getTradePrimaryLabel({
-                  orderType: state.orderType,
-                  pendingAction: state.pendingAction,
-                  quote: state.quote,
-                  quoteLoading: state.quoteLoading,
-                  submitting: state.submitting
-                })}
+            {tradeValidationError && state.quote ? 'Adjust order' : primaryLabel}
           </Text>
         </Button>
       </Stack>
@@ -1235,7 +1163,11 @@ export default function Trade({ assetId, chainId }: TradeProps) {
       closeLabel='Close Trade'
       footer={renderTradeFooter()}
       footerSpace='compact'
-      onClose={closeTrade}
+      onClose={() => {
+        executionRef.current = null
+        void releaseTrade()
+        closeTrade()
+      }}
       title='Trade'
     >
       <Stack gap='large' grow>
@@ -1249,14 +1181,14 @@ export default function Trade({ assetId, chainId }: TradeProps) {
             {renderTradeQuoteMeta()}
           </Surface>
         ) : null}
-        {state.error || tradeValidationError ? (
+        {state.error || boundaryError || operationError || tradeValidationError ? (
           <Text align='center' variant='body' tone='danger'>
-            {state.error || tradeValidationError}
+            {state.error || boundaryError || operationError || tradeValidationError}
           </Text>
         ) : null}
-        {state.status ? (
+        {operationStatus ? (
           <Text align='center' variant='body' tone='secondary'>
-            {state.status}
+            {operationStatus}
           </Text>
         ) : null}
         <Spacer />

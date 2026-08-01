@@ -1,4 +1,4 @@
-import type { AppCommand, AppQuery, ResultForCommand, ResultForQuery } from '../../contracts/operations'
+import type { AppCommand, AppQuery, CommandResult, ResultForQuery } from '../../contracts/operations'
 import type { StateConnectionResult, StateMessage } from '../../contracts/state/protocol'
 
 const getHost = () => {
@@ -10,7 +10,7 @@ const getHost = () => {
 }
 
 type Link = {
-  executeCommand<TCommand extends AppCommand>(command: TCommand): Promise<ResultForCommand<TCommand>>
+  executeCommand<TCommand extends AppCommand>(command: TCommand): Promise<CommandResult>
   executeQuery<TQuery extends AppQuery>(query: TQuery): Promise<ResultForQuery<TQuery>>
   connectState(handler: (message: StateMessage) => void): Promise<StateConnectionResult>
   disconnectState(): Promise<StateConnectionResult>

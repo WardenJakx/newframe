@@ -17,6 +17,7 @@ import { parseUnits, toBeHex } from 'ethers'
 import { validate as validateUUID } from 'uuid'
 import { addHexPrefix, intToHex } from '@ethereumjs/util'
 import { SignTypedDataVersion } from '@metamask/eth-sig-util'
+import { randomUUID } from 'node:crypto'
 
 import chainConfig from '../chains/config'
 import { gweiToHex } from '../../domain/hex'
@@ -44,6 +45,22 @@ let connection: any
 let store: any
 let hasSubscriptionPermission: any
 let accountRequestHook: ((request: any, respond?: (response: any) => void) => void) | undefined
+const requestContinuations = {
+  callbacks: new Map<string, RPCRequestCallback>(),
+  bind: mock(),
+  create(respond: RPCRequestCallback) {
+    const requestId = randomUUID()
+    this.callbacks.set(requestId, respond)
+    return requestId
+  },
+  respond(requestId: string, response: RPCResponsePayload) {
+    const callback = this.callbacks.get(requestId)
+    if (!callback) return false
+    this.callbacks.delete(requestId)
+    callback(response)
+    return true
+  }
+}
 
 const storeState = () => store.getState()
 const setOrigin = (id: string, origin: any) => {
@@ -107,7 +124,7 @@ const expectQueuedRequestRejection = (
   accountRequestHook = (request, respond) => {
     try {
       expect(respond).toEqual(expect.any(Function))
-      expect(provider.handlers[request.handlerId]).toEqual(expect.any(Function))
+      expect(requestContinuations.callbacks.has(request.handlerId)).toBe(true)
 
       const rejection = {
         id: request.payload.id,
@@ -119,7 +136,7 @@ const expectQueuedRequestRejection = (
 
       expect(callback).toHaveBeenCalledTimes(1)
       expect(callback).toHaveBeenCalledWith(rejection)
-      expect(provider.handlers[request.handlerId]).toBeUndefined()
+      expect(requestContinuations.callbacks.has(request.handlerId)).toBe(false)
       done()
     } catch (error) {
       done(error)
@@ -160,7 +177,7 @@ beforeAll(async () => {
   accounts.getAccounts = () => [address]
   accounts.current = () => ({ id: address, getAccounts: () => [address] })
   accounts.get = () => undefined
-  accounts.routeRequest = (receivedPrincipal: unknown, req: any, res: any) => {
+  accounts.routeRequest = (receivedPrincipal: unknown, req: any, executeAutonomously: any) => {
     expect(receivedPrincipal).toBe(principal)
     store.setState((state: any) => {
       state.main.accounts[req.account] ||= {}
@@ -170,9 +187,15 @@ beforeAll(async () => {
     if (accountRequestHook) {
       const hook = accountRequestHook
       accountRequestHook = undefined
-      hook(req, res)
-    } else if (res) {
-      res()
+      hook(req, (response) => requestContinuations.respond(req.handlerId, response))
+    } else if (executeAutonomously) {
+      executeAutonomously(req)
+    } else {
+      requestContinuations.respond(req.handlerId, {
+        id: req.payload.id,
+        jsonrpc: req.payload.jsonrpc,
+        result: undefined
+      })
     }
   }
 
@@ -184,7 +207,8 @@ beforeAll(async () => {
     proxy: new EventEmitter() as any,
     state: createProviderStatePort(store),
     store,
-    reveal: { resolveEntityType: mock(async () => 'unknown' as const) }
+    reveal: { resolveEntityType: mock(async () => 'unknown' as const) },
+    requests: requestContinuations
   }) as any
   provider.start()
 })
@@ -206,7 +230,7 @@ beforeEach(() => {
     state.main.assetRates = {}
   })
 
-  provider.handlers = {}
+  requestContinuations.callbacks.clear()
 
   const eventTypes = ['accountsChanged', 'chainChanged', 'chainsChanged', 'assetsChanged', 'networkChanged']
   eventTypes.forEach((eventType) => (provider.subscriptions[eventType] = []))
@@ -511,28 +535,8 @@ describe('#send', () => {
       sendRequest({ chainId: '0xaa36a7', chainName: 'Sepolia' }, cb)
     })
 
-    it('should create a request to add the chain', (done) => {
-      const cb = () => {
-        expect(accountRequests).toHaveLength(1)
-        expect(accountRequests[0]).toEqual(
-          expect.objectContaining({
-            handlerId: expect.any(String),
-            type: 'addChain',
-            chain: {
-              type: 'ethereum',
-              id: 4660,
-              name: 'Bizarro Polygon',
-              symbol: 'NEW',
-              nativeCurrencyName: 'New',
-              primaryRpc: 'https://rpc.example.com',
-              secondaryRpc: undefined,
-              explorer: 'https://explorer.example.com'
-            }
-          })
-        )
-
-        done()
-      }
+    it('should create a request to add the chain', () => {
+      const cb = mock()
 
       sendRequest(
         {
@@ -547,6 +551,24 @@ describe('#send', () => {
           blockExplorerUrls: ['https://explorer.example.com']
         },
         cb
+      )
+
+      expect(accountRequests).toHaveLength(1)
+      expect(accountRequests[0]).toEqual(
+        expect.objectContaining({
+          handlerId: expect.any(String),
+          type: 'addChain',
+          chain: {
+            type: 'ethereum',
+            id: 4660,
+            name: 'Bizarro Polygon',
+            symbol: 'NEW',
+            nativeCurrencyName: 'New',
+            primaryRpc: 'https://rpc.example.com',
+            secondaryRpc: undefined,
+            explorer: 'https://explorer.example.com'
+          }
+        })
       )
     })
 
@@ -2163,29 +2185,23 @@ describe('#signAndSend', () => {
         })
       })
 
-      it('sends a successfully signed transaction', (done) => {
-        signAndSend((err: any, result: any) => {
-          try {
-            expect(err).toBe(null)
-            expect(result).toBe(txHash)
-            done()
-          } catch (e) {
-            done(e)
-          }
+      it('returns a successful broadcast through its lifecycle callback', () => {
+        Object.assign(tx, {
+          chainId: '0x1',
+          gasLimit: '0x5208',
+          gasPrice: '0x1',
+          nonce: '0x0',
+          type: '0x0'
         })
-      })
+        accounts.lockRequest = mock()
+        const completed = mock()
 
-      it('responds to a successful transaction request with the transaction hash result', (done) => {
-        provider.handlers[(request as any).handlerId] = (response: any) => {
-          try {
-            expect(response.result).toBe(txHash)
-            done()
-          } catch (e) {
-            done(e)
-          }
-        }
+        provider.approveTransactionRequest(request, completed)
 
-        signAndSend()
+        expect(accounts.lockRequest.mock.calls.length).toBe(1)
+        expect(accounts.signTransaction.mock.calls.length).toBe(1)
+        expect(connection.send.mock.calls.length).toBe(1)
+        expect(completed.mock.calls).toEqual([[null, txHash]])
       })
     })
 
@@ -2201,17 +2217,6 @@ describe('#signAndSend', () => {
           expect(err.message).toBe(errorMessage)
           done()
         })
-      })
-
-      it('responds to a failed transaction request with the payload', (done) => {
-        provider.handlers[(request as any).handlerId] = (err: any) => {
-          expect(err.id).toBe((request as any).payload.id)
-          expect(err.jsonrpc).toBe((request as any).payload.jsonrpc)
-          expect(err.error.message).toBe(errorMessage)
-          done()
-        }
-
-        signAndSend()
       })
     })
   })

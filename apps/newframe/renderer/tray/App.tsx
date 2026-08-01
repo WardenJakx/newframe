@@ -22,6 +22,7 @@ import {
   type StoredWebAuthnCredential
 } from '../shared/biometrics'
 import { useWalletSelector } from '../state/useAppSelector'
+import { selectOperationById } from '../state/selectors/operation'
 import type { TrayRendererState } from './state'
 import { TrayNotificationProvider } from './notification'
 import { RequestViewProvider } from './requestView'
@@ -39,6 +40,11 @@ type PanelCrumb =
 
 type PanelProps = {
   appLocked: boolean
+  biometricRuntime?: {
+    getSecret(credential: StoredWebAuthnCredential): Promise<string>
+    isCanceled(error: unknown): boolean
+    isSupported(): Promise<boolean>
+  }
   biometricUnlock: boolean
   crumb: PanelCrumb
   initial: boolean
@@ -46,10 +52,16 @@ type PanelProps = {
 type PanelState = {
   biometricAvailable: boolean
   biometrics: BiometricsState | null
-  biometricUnlocking: boolean
+  biometricPrompting: boolean
   password: string
+  submission: { operationId: string; method: 'password' | 'native' | 'webauthn' } | null
   unlockError: string
-  unlocking: boolean
+}
+
+const DEFAULT_BIOMETRIC_RUNTIME = {
+  getSecret: getWebAuthnBiometricSecret,
+  isCanceled: isBiometricUserCanceledError,
+  isSupported: isWebAuthnBiometricsSupported
 }
 
 const EMPTY_CRUMB = {}
@@ -59,6 +71,12 @@ const errorMessage = (error: unknown) => {
   if (error && typeof error === 'object' && 'message' in error) return String(error.message)
   return String(error)
 }
+const operationError = (code: string | undefined) =>
+  code === 'incorrect_password'
+    ? 'Incorrect password'
+    : code === 'biometric_authentication_failed'
+      ? 'Biometric authentication failed'
+      : 'Could not unlock Newframe'
 const selectPanelState = (state: TrayRendererState): PanelProps => ({
   appLocked: isAppLocked(state.appLock),
   biometricUnlock: !!state.biometricUnlock,
@@ -104,58 +122,101 @@ const requestOverlayRecipe = cva({
   base: { position: 'absolute', inset: 0, zIndex: 'overlay', background: 'bg.primary' }
 })
 
-function Panel(props: PanelProps) {
+export function Panel(props: PanelProps) {
+  const biometricRuntime = props.biometricRuntime || DEFAULT_BIOMETRIC_RUNTIME
   const [state, setPanelState] = useState<PanelState>({
     password: '',
     unlockError: '',
-    unlocking: false,
+    submission: null,
     biometrics: null,
     biometricAvailable: false,
-    biometricUnlocking: false
+    biometricPrompting: false
   })
   const setState = (update: Partial<PanelState>) => setPanelState((current) => ({ ...current, ...update }))
+  const unlockOperation = useWalletSelector((walletState) =>
+    state.submission ? selectOperationById(walletState, state.submission.operationId) : undefined
+  )
+  const operationInFlight =
+    !!state.submission &&
+    (!unlockOperation ||
+      unlockOperation.status === 'pending' ||
+      (unlockOperation.status === 'succeeded' && props.appLocked))
+  const passwordUnlocking = operationInFlight && state.submission?.method === 'password'
+  const biometricUnlocking =
+    state.biometricPrompting || (operationInFlight && state.submission?.method !== 'password')
+  const projectedUnlockError =
+    unlockOperation?.status === 'failed' ? operationError(unlockOperation.error?.code) : ''
+
+  useEffect(() => {
+    if (state.submission && unlockOperation?.status === 'succeeded' && !props.appLocked) {
+      const completedOperationId = state.submission.operationId
+      queueMicrotask(() => {
+        setPanelState((current) =>
+          current.submission?.operationId === completedOperationId
+            ? { ...current, submission: null, unlockError: '', password: '' }
+            : current
+        )
+      })
+    }
+  }, [props.appLocked, state.submission, unlockOperation?.status])
 
   async function unlockApp() {
-    if (state.unlocking) return
+    if (passwordUnlocking) return
 
     const password = state.password
-    setState({ unlocking: true, unlockError: '' })
+    const operationId = crypto.randomUUID()
+    setState({ submission: { operationId, method: 'password' }, unlockError: '' })
 
     try {
-      const result = await link.executeCommand({ type: 'security.unlock', method: 'password', password })
+      const result = await link.executeCommand({
+        type: 'security.unlock',
+        operationId,
+        method: 'password',
+        password
+      })
       if (!result.ok) throw new Error(result.message || 'Could not unlock Newframe')
-      setState({ unlocking: false, unlockError: '', password: '' })
     } catch (error) {
-      setState({ unlocking: false, unlockError: errorMessage(error) })
+      setState({ submission: null, unlockError: errorMessage(error) })
     }
   }
 
   async function unlockWithBiometrics() {
-    if (state.biometricUnlocking || !state.biometricAvailable) return
+    if (biometricUnlocking || !state.biometricAvailable) return
 
     const biometrics = state.biometrics
     if (!biometrics?.enabled) return
 
-    setState({ biometricUnlocking: true, unlockError: '' })
+    setState({ biometricPrompting: biometrics.method === 'webauthn', unlockError: '' })
 
     try {
       if (biometrics.method === 'webauthn') {
         if (!biometrics.credential) throw new Error('Biometric credential is unavailable')
-        const secret = await getWebAuthnBiometricSecret(biometrics.credential)
-        const result = await link.executeCommand({ type: 'security.unlock', method: 'webauthn', secret })
+        const secret = await biometricRuntime.getSecret(biometrics.credential)
+        const operationId = crypto.randomUUID()
+        setState({
+          biometricPrompting: false,
+          submission: { operationId, method: 'webauthn' }
+        })
+        const result = await link.executeCommand({
+          type: 'security.unlock',
+          operationId,
+          method: 'webauthn',
+          secret
+        })
         if (!result.ok) throw new Error(result.message || 'Could not unlock Newframe')
       } else if (biometrics.method === 'native') {
-        const result = await link.executeCommand({ type: 'security.unlock', method: 'native' })
+        const operationId = crypto.randomUUID()
+        setState({ submission: { operationId, method: 'native' } })
+        const result = await link.executeCommand({ type: 'security.unlock', operationId, method: 'native' })
         if (!result.ok) throw new Error(result.message || 'Could not unlock Newframe')
       } else {
         throw new Error('Biometric unlock is not configured')
       }
-
-      setState({ biometricUnlocking: false, unlockError: '', password: '' })
     } catch (err) {
       setState({
-        biometricUnlocking: false,
-        unlockError: isBiometricUserCanceledError(err) ? '' : errorMessage(err)
+        biometricPrompting: false,
+        submission: null,
+        unlockError: biometricRuntime.isCanceled(err) ? '' : errorMessage(err)
       })
     }
   }
@@ -175,7 +236,7 @@ function Panel(props: PanelProps) {
             ? biometrics.nativeAvailable
             : biometrics.method === 'webauthn' &&
               !!biometrics.credential &&
-              (await isWebAuthnBiometricsSupported()))
+              (await biometricRuntime.isSupported()))
 
         if (active) {
           setPanelState((current) => ({ ...current, biometrics, biometricAvailable }))
@@ -191,7 +252,7 @@ function Panel(props: PanelProps) {
     return () => {
       active = false
     }
-  }, [props.biometricUnlock])
+  }, [biometricRuntime, props.biometricUnlock])
 
   const biometricUnlockButton = state.biometricAvailable ? (
     <Button
@@ -202,7 +263,7 @@ function Panel(props: PanelProps) {
       width='full'
     >
       {svg.fingerprint(15)}
-      <Text variant='action'>{state.biometricUnlocking ? 'Authenticating' : 'Unlock with Biometrics'}</Text>
+      <Text variant='action'>{biometricUnlocking ? 'Authenticating' : 'Unlock with Biometrics'}</Text>
     </Button>
   ) : null
 
@@ -221,13 +282,13 @@ function Panel(props: PanelProps) {
           type='password'
           value={state.password}
         />
-        {state.unlockError ? (
+        {projectedUnlockError || state.unlockError ? (
           <Text align='center' tone='danger' variant='supporting'>
-            {state.unlockError}
+            {projectedUnlockError || state.unlockError}
           </Text>
         ) : null}
         <Button appearance='primary' label='Unlock' onPress={unlockApp} shape='pill' width='full'>
-          <Text variant='action'>{state.unlocking ? 'Unlocking' : 'Unlock'}</Text>
+          <Text variant='action'>{passwordUnlocking ? 'Unlocking' : 'Unlock'}</Text>
         </Button>
         {biometricUnlockButton}
       </Stack>

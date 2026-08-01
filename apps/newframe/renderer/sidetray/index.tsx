@@ -26,7 +26,7 @@ void start().catch((error) => console.error('Could not connect side tray state',
 
 document.addEventListener('contextmenu', (event) => {
   void link.executeCommand({
-    type: 'sidetray.context-menu',
+    type: 'renderer.context-menu',
     x: event.clientX,
     y: event.clientY
   })

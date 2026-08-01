@@ -43,6 +43,35 @@ const transactionMock = {
   maxFee: mock(() => 1e30),
   signerCompatibility: mock()
 }
+const requestLifecycle = {
+  pending: new Map<string, RPCRequestCallback>(),
+  bind: mock(),
+  create(respond: RPCRequestCallback, requestId: string = crypto.randomUUID()) {
+    this.pending.set(requestId, respond)
+    return requestId
+  },
+  respond(requestId: string, response: RPCResponsePayload) {
+    const callback = this.pending.get(requestId)
+    if (!callback) return false
+    this.pending.delete(requestId)
+    callback(response)
+    return true
+  },
+  resolve(request: any, result?: unknown) {
+    return this.respond(request.handlerId, {
+      id: request.payload.id,
+      jsonrpc: request.payload.jsonrpc,
+      result
+    })
+  },
+  reject(request: any, error: EVMError) {
+    return this.respond(request.handlerId, {
+      id: request.payload.id,
+      jsonrpc: request.payload.jsonrpc,
+      error
+    })
+  }
+}
 
 mock.module('../signers', () => ({ default: signersMock, ...signersMock }))
 mock.module('../windows', () => ({ default: windowsMock, ...windowsMock }))
@@ -64,8 +93,6 @@ mock.module('../nameResolution', () => ({
 let provider: any
 let Accounts: any
 let AccountsClass: any
-let signers: any
-let signerCompatibility: any
 let maxFee: any
 
 const nameResolutionMock = {
@@ -91,6 +118,7 @@ function createAccounts(chainRpc = providerMock) {
     nameResolution: nameResolutionMock,
     reveal: revealMock,
     createDataScanner: externalDataScannerFactoryMock,
+    requests: requestLifecycle,
     runtime: {
       navigation: navMock,
       now: Date.now,
@@ -140,8 +168,6 @@ beforeAll(async () => {
   log.transports.console.level = false
 
   provider = providerMock
-  signers = signersMock
-  signerCompatibility = transactionMock.signerCompatibility
   maxFee = transactionMock.maxFee
   const accountsModule = await import('./index')
   AccountsClass = accountsModule.Accounts as any
@@ -155,6 +181,7 @@ afterAll(() => {
 
 beforeEach((done) => {
   timers.useFakeTimers()
+  requestLifecycle.pending.clear()
   const from = '0x22dd63c3619818fdbc262c78baee43cb61e9cccf'
   const nonce = '0xa'
   request = {
@@ -225,6 +252,7 @@ describe('#routeRequest', () => {
 
   it('rejects an unminted principal without queueing the request', () => {
     const respond = mock()
+    requestLifecycle.create(respond, request.handlerId)
     const forgedPrincipal = {
       kind: 'renderer',
       role: 'wallet-ui',
@@ -233,9 +261,9 @@ describe('#routeRequest', () => {
       windowInstanceId: 'forged'
     }
 
-    expect(
-      Accounts.routeRequest(forgedPrincipal as any, { ...request, account: account.address }, respond)
-    ).toBe(false)
+    expect(Accounts.routeRequest(forgedPrincipal as any, { ...request, account: account.address })).toBe(
+      false
+    )
     expect(canonicalRequest()).toBeUndefined()
     expect(respond).toHaveBeenCalledWith({
       id: request.payload.id,
@@ -253,8 +281,9 @@ describe('#routeRequest', () => {
       isActive: () => true
     })
     const routedRequest = { ...request, account: account.address }
+    requestLifecycle.create(mock(), request.handlerId)
 
-    expect(Accounts.routeRequest(principal, routedRequest, undefined, execute)).toBe(true)
+    expect(Accounts.routeRequest(principal, routedRequest, execute)).toBe(true)
     expect(execute).toHaveBeenCalledWith(
       expect.objectContaining({
         authorization: expect.objectContaining({ decision: 'autonomous' })
@@ -265,6 +294,7 @@ describe('#routeRequest', () => {
 
   it('fails closed when an autonomous action has no executor', () => {
     const respond = mock()
+    requestLifecycle.create(respond, request.handlerId)
     const principal = createAgentPrincipal({
       sessionId: 'agent-session',
       accountId: account.address,
@@ -272,7 +302,7 @@ describe('#routeRequest', () => {
       isActive: () => true
     })
 
-    expect(Accounts.routeRequest(principal, { ...request, account: account.address }, respond)).toBe(false)
+    expect(Accounts.routeRequest(principal, { ...request, account: account.address })).toBe(false)
     expect(respond).toHaveBeenCalledWith({
       id: request.payload.id,
       jsonrpc: request.payload.jsonrpc,
@@ -304,15 +334,97 @@ it('rejects pending requests before removing their account', () => {
     payload: { id: 42, jsonrpc: '2.0', method: 'eth_sign', params: [account.address, '0x01'] }
   }
 
-  Accounts.current().addRequest(pendingRequest, respond)
+  const removedAccount = Accounts.current()
+  requestLifecycle.create(respond, pendingRequest.handlerId)
+  removedAccount.addRequest(pendingRequest)
+  Accounts.remove(account.address)
   Accounts.remove(account.address)
 
-  expect(respond).toHaveBeenCalledWith({
-    id: 42,
-    jsonrpc: '2.0',
-    error: { code: 4001, message: 'User rejected the request' }
-  })
+  expect(respond.mock.calls).toEqual([
+    [
+      {
+        id: 42,
+        jsonrpc: '2.0',
+        error: { code: 4001, message: 'User rejected the request' }
+      }
+    ]
+  ])
+  expect(requestLifecycle.pending.has(pendingRequest.handlerId)).toBe(false)
   expect(storeState().main.accounts[account.address]).toBeUndefined()
+})
+
+it('retains and can settle a pending request after its account moves and the old profile is removed', () => {
+  const profileId = 'request-profile'
+  const respond = mock()
+  const pendingRequest = {
+    ...request,
+    handlerId: 'profile-request',
+    account: account.address
+  }
+
+  storeState().createProfile(profileId, 'Request Profile')
+  storeState().moveAccountToProfile(account.address, profileId)
+  storeState().selectProfile(profileId)
+  requestLifecycle.create(respond, pendingRequest.handlerId)
+  Accounts.getFrameAccount(account.address).addRequest(pendingRequest)
+  storeState().moveAccountToProfile(account.address, DEFAULT_PROFILE_ID)
+  storeState().deleteProfile(profileId)
+
+  expect(storeState().main.profiles[profileId]).toBeUndefined()
+  expect(Accounts.getFrameAccount(account.address).requests[pendingRequest.handlerId]).toBeTruthy()
+  Accounts.getFrameAccount(account.address).resolveRequest(pendingRequest, 'profile result')
+  expect(respond.mock.calls).toEqual([[{ id: 7, jsonrpc: '2.0', result: 'profile result' }]])
+})
+
+it('uses canonical request state for signing success and transaction failure without activity', () => {
+  const frameAccount = Accounts.getFrameAccount(account.address)
+  const signature = {
+    handlerId: 'signature-transition',
+    type: 'sign',
+    origin: 'test-origin',
+    account: account.address,
+    payload: {
+      id: 20,
+      jsonrpc: '2.0',
+      method: 'personal_sign',
+      params: ['0x01', account.address]
+    }
+  }
+  frameAccount.addRequest(signature, mock())
+  Accounts.setRequestPending(signature)
+  expect(frameAccount.requests[signature.handlerId]).toMatchObject({
+    status: 'pending',
+    notice: 'See Signer'
+  })
+  Accounts.setRequestSuccess(signature.handlerId)
+  expect(frameAccount.requests[signature.handlerId]).toMatchObject({
+    status: 'success',
+    notice: 'Successful',
+    mode: 'normal'
+  })
+  timers.advanceTimersByTime(3_300)
+  expect(frameAccount.requests[signature.handlerId]).toBeUndefined()
+
+  const transaction = { ...request, handlerId: 'failed-transaction', account: account.address }
+  frameAccount.addRequest(transaction, mock())
+  Accounts.setRequestPending(transaction)
+  Accounts.setTxSigned(transaction.handlerId, (error: Error | null) => expect(error).toBe(null))
+  expect(frameAccount.requests[transaction.handlerId]).toMatchObject({
+    status: 'sending',
+    notice: 'Sending'
+  })
+  Accounts.setRequestError(transaction.handlerId, new Error('broadcast failed'))
+  expect(frameAccount.requests[transaction.handlerId]).toMatchObject({
+    status: 'error',
+    notice: 'broadcast failed',
+    mode: 'normal'
+  })
+  expect(storeState().main.activity).toEqual({})
+  expect(notificationMock.mock.calls.length).toBe(0)
+  timers.advanceTimersByTime(1_500)
+  expect(frameAccount.requests[transaction.handlerId].mode).toBe('monitor')
+  timers.advanceTimersByTime(8_000)
+  expect(frameAccount.requests[transaction.handlerId]).toBeUndefined()
 })
 
 it('clears the selected account when removing the last account', () => {
@@ -1051,6 +1163,40 @@ describe('#resetNonce', () => {
 })
 
 describe('#setTxSent', () => {
+  it('keeps activity submitted when asynchronous confirmation monitoring fails', async () => {
+    const hash = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee'
+    notificationMock.mockClear()
+    provider.send = mock((payload: any, cb: any) => {
+      if (payload.method === 'eth_subscribe') {
+        cb({ error: { code: -32601, message: 'subscriptions unavailable' } })
+      } else if (payload.method === 'eth_blockNumber') {
+        cb({ error: { code: -32000, message: 'block lookup failed' } })
+      } else if (payload.method === 'eth_getTransactionReceipt') {
+        cb({ error: { code: -32000, message: 'receipt lookup failed' } })
+      }
+    })
+
+    Accounts.current().addRequest(request, mock())
+    Accounts.setTxSent(request.handlerId, hash)
+    expect(canonicalRequest()).toMatchObject({
+      status: 'verifying',
+      notice: 'Verifying',
+      mode: 'monitor',
+      tx: { hash, confirmations: 0 }
+    })
+    expect(storeState().main.activity[hash]).toMatchObject({ status: 'submitted', hash })
+
+    timers.advanceTimersByTime(1_000)
+    for (let index = 0; index < 6; index += 1) await Promise.resolve()
+
+    expect(canonicalRequest()).toMatchObject({ status: 'sent', notice: 'Sent' })
+    expect(storeState().main.activity[hash].status).toBe('submitted')
+    expect(notificationMock.mock.calls.length).toBe(0)
+    timers.advanceTimersByTime(60_000)
+    expect(Accounts.current().requests[request.handlerId]).toBeUndefined()
+    expect(storeState().main.activity[hash].status).toBe('submitted')
+  })
+
   it('does not replace metadata for an affected token that is already saved', () => {
     const hash = '0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'
     const usdc = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'
@@ -1483,9 +1629,7 @@ describe('#setTxSent', () => {
 
 describe('#resolveRequest', () => {
   it('does nothing with an unknown request', () => {
-    Accounts.current().addRequest(request, () => {
-      throw new Error('unexpected callback!')
-    })
+    Accounts.current().addRequest(request)
 
     Accounts.resolveRequest({ payload: {}, handlerId: '-1' })
 
@@ -1493,7 +1637,8 @@ describe('#resolveRequest', () => {
   })
 
   it('resolves a request with a callback', (done) => {
-    Accounts.current().addRequest(request, () => done())
+    requestLifecycle.create(() => done(), request.handlerId)
+    Accounts.current().addRequest(request)
 
     Accounts.resolveRequest(request)
 
@@ -1536,91 +1681,5 @@ describe('#clearRequestsByOrigin', () => {
   it('should remove any request from a given origin', () => {
     Accounts.clearRequestsByOrigin(account.id, request.origin)
     expect(Object.keys(Accounts.accounts[account.id].requests)).toHaveLength(1)
-  })
-})
-
-describe('#signerCompatibility', () => {
-  let activeSigner: any
-
-  const lockedSeedSigner = {
-    id: '13',
-    type: 'seed',
-    addresses: [account.id],
-    status: 'locked'
-  }
-
-  beforeEach(() => {
-    activeSigner = {
-      id: '12',
-      type: 'seed',
-      addresses: [account.id],
-      summary: mock()
-    }
-
-    storeState().newSigner(lockedSeedSigner)
-    ;(signers.get as any).mockImplementation((id: any) => {
-      if (id === activeSigner.id) return activeSigner
-      if (id === lockedSeedSigner.id) return lockedSeedSigner
-    })
-
-    Accounts.accounts[account.id].patch({ lastSignerType: 'seed', signer: activeSigner.id })
-    Accounts.current().addRequest(request)
-  })
-
-  afterEach(() => {
-    storeState().removeSigner(activeSigner.id)
-    storeState().removeSigner(lockedSeedSigner.id)
-
-    Accounts.removeRequests([request.handlerId])
-  })
-
-  const signerTypes = ['trezor', 'ledger', 'lattice']
-
-  signerTypes.forEach((signerType) => {
-    it(`should return a recovery error when a ${signerType} signer is not available`, () => {
-      const cb = mock()
-
-      activeSigner.status = 'disconnected'
-      activeSigner.type = signerType
-      storeState().newSigner(activeSigner)
-
-      Accounts.accounts[account.id].patch({ signer: '', lastSignerType: signerType })
-
-      Accounts.signerCompatibility(request.handlerId, cb)
-
-      expect(cb).toHaveBeenCalledWith(new Error('Signer unavailable'))
-    })
-  })
-
-  it('returns compatibility if the current signer is ready', () => {
-    const cb = mock()
-    const compatibility = { signer: activeSigner.id, tx: 'sometx', compatible: true }
-
-    activeSigner.status = 'ok'
-    ;(signerCompatibility as any).mockReturnValue(compatibility)
-
-    Accounts.signerCompatibility(request.handlerId, cb)
-
-    expect(cb).toHaveBeenCalledWith(null, compatibility)
-  })
-
-  it('should return an app lock error when a hot signer is not ready', () => {
-    const cb = mock()
-
-    activeSigner.status = 'locked'
-
-    Accounts.signerCompatibility(request.handlerId, cb)
-
-    expect(cb).toHaveBeenCalledWith(new Error('Newframe locked'))
-  })
-
-  it('should return an error when there is no signer', () => {
-    const cb = mock()
-
-    Accounts.accounts[account.id].patch({ signer: '' })
-
-    Accounts.signerCompatibility(request.handlerId, cb)
-
-    expect(cb).toHaveBeenCalledWith(new Error('No signer'))
   })
 })

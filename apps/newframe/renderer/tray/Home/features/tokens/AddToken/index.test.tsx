@@ -3,10 +3,14 @@ import { beforeEach, describe, expect, it, mock } from 'bun:test'
 import type { Mock } from 'bun:test'
 import { useState } from 'react'
 
-import { screen, render, waitFor } from '../../../../../../test/support/componentSetup'
+import { act, screen, render, waitFor } from '../../../../../../test/support/componentSetup'
 import { createHostFixture } from '../../../../../../test/support/rendererClient'
 import AddToken from './index'
 import { resetStateMirrorForTests } from '../../../../../state/rendererStore'
+import { walletState } from '../../../../../state/fixtures.test-support'
+import { toTokenId } from '../../../../../../domain/token'
+import type { OperationRecord } from '../../../../../../domain/state/operation'
+import type { TokenAddCommand } from '../../../../../../contracts/operations'
 
 const link = createHostFixture()
 
@@ -41,16 +45,11 @@ beforeEach(() => {
 })
 
 describe('selecting token chain', () => {
-  it('should display the expected chain IDs', () => {
-    render(<AddToken />)
-
-    const tokenChainNames = screen.getAllByRole('button').map((el) => el.textContent)
-    expect(tokenChainNames).toEqual(['Mainnet', 'Polygon'])
-  })
-
-  it('should update add token navigation when a chain is selected', async () => {
+  it('should display the expected chains and update navigation when one is selected', async () => {
     const onNavigate = mock()
     const { user } = render(<AddToken onNavigate={onNavigate} />)
+    const tokenChainNames = screen.getAllByRole('button').map((el) => el.textContent)
+    expect(tokenChainNames).toEqual(['Mainnet', 'Polygon'])
 
     const polygonButton = screen.getByRole('button', { name: 'Polygon' })
     await user.click(polygonButton)
@@ -150,8 +149,8 @@ describe('setting token address', () => {
 })
 
 describe('displaying errors', () => {
-  it('should allow the user to navigate back when displaying an error', () => {
-    render(
+  it('allows back navigation and permits unverified token data to continue', () => {
+    const view = render(
       <AddToken
         data={{ notifyData: { chain: { id: 137 }, error: 'INVALID CONTRACT ADDRESS', address: '0xabc' } }}
       />
@@ -160,9 +159,8 @@ describe('displaying errors', () => {
     const buttons = screen.getAllByRole('button')
     expect(buttons.length).toBe(1)
     expect(buttons[0].textContent).toBe('BACK')
-  })
+    view.unmount()
 
-  it(`should allow the user to proceed if we are unable to verify the token data`, () => {
     render(
       <AddToken
         data={{
@@ -175,16 +173,105 @@ describe('displaying errors', () => {
       />
     )
 
-    const buttons = screen.getAllByRole('button')
-    expect(buttons.length).toBe(2)
-    expect(buttons[0].textContent).toBe('BACK')
-    expect(buttons[1].textContent).toBe('ADD ANYWAY')
+    const continueButtons = screen.getAllByRole('button')
+    expect(continueButtons.length).toBe(2)
+    expect(continueButtons[0].textContent).toBe('BACK')
+    expect(continueButtons[1].textContent).toBe('ADD ANYWAY')
   })
 })
 
 describe('setting token details', () => {
-  it('should show the user that they are editing a token', () => {
-    render(
+  it('waits for projected completion, surfaces safe failure, and permits a retry with a new operation', async () => {
+    const address = '0x64aa3364F17a4D01c6f1751Fd97C2BD3D7e7f1D4'
+    const tokenData = { name: 'Frame Test', symbol: 'FRT', decimals: 18 }
+    const onDone = mock()
+    ;(link.executeCommand as Mock<any>)
+      .mockResolvedValueOnce({ ok: false, error: 'internal', message: 'Could not submit this token.' })
+      .mockResolvedValue({ ok: true })
+    const { user } = render(
+      <AddToken data={{ notifyData: { chain: { id: 1 }, address, tokenData } }} onDone={onDone} />
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Add Token' }))
+    const firstCommand = (link.executeCommand as Mock<any>).mock.calls.at(-1)![0] as TokenAddCommand
+    expect(firstCommand).toEqual({
+      type: 'token.add',
+      operationId: expect.any(String),
+      token: { ...tokenData, address, chainId: 1, logoURI: '' }
+    })
+    expect(onDone.mock.calls.length).toBe(0)
+    expect(await screen.findByText('Could not submit this token.')).toBeTruthy()
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Add Token' }).disabled).toBe(false)
+    act(() => {
+      resetStateMirrorForTests(
+        walletState({
+          operations: {
+            [firstCommand.operationId]: {
+              id: firstCommand.operationId,
+              type: firstCommand.type,
+              status: 'succeeded',
+              startedAt: 1,
+              updatedAt: 2,
+              finishedAt: 2
+            } satisfies OperationRecord
+          }
+        })
+      )
+    })
+    expect(onDone.mock.calls.length).toBe(0)
+
+    await user.click(screen.getByRole('button', { name: 'Add Token' }))
+    const secondCommand = (link.executeCommand as Mock<any>).mock.calls.at(-1)![0] as TokenAddCommand
+    expect(secondCommand.operationId).not.toBe(firstCommand.operationId)
+
+    act(() => {
+      resetStateMirrorForTests(
+        walletState({
+          operations: {
+            [secondCommand.operationId]: {
+              id: secondCommand.operationId,
+              type: secondCommand.type,
+              status: 'failed',
+              error: { code: 'token_add_failed', message: 'Could not save this token.' },
+              startedAt: 1,
+              updatedAt: 2,
+              finishedAt: 2
+            } satisfies OperationRecord
+          }
+        })
+      )
+    })
+    expect(await screen.findByText('Could not save this token.')).toBeTruthy()
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Add Token' }).disabled).toBe(false)
+
+    await user.click(screen.getByRole('button', { name: 'Add Token' }))
+    const thirdCommand = (link.executeCommand as Mock<any>).mock.calls.at(-1)![0] as TokenAddCommand
+    expect(thirdCommand.operationId).not.toBe(secondCommand.operationId)
+    expect(onDone.mock.calls.length).toBe(0)
+
+    act(() => {
+      resetStateMirrorForTests(
+        walletState({
+          tokens: {
+            byId: {
+              [toTokenId(thirdCommand.token)]: {
+                ...thirdCommand.token,
+                custom: true,
+                curated: false,
+                sources: ['custom'],
+                updatedAt: 3
+              }
+            },
+            accountTokenIds: {}
+          }
+        })
+      )
+    })
+    await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1))
+  })
+
+  it('distinguishes editing from adding a token', () => {
+    const view = render(
       <AddToken
         data={{
           notifyData: {
@@ -207,9 +294,8 @@ describe('setting token details', () => {
     const button = screen.getByRole('button')
     expect(heading.textContent).toBe('Edit Token')
     expect(button.textContent).toBe('Save')
-  })
+    view.unmount()
 
-  it('should show the user that they are adding a token', () => {
     render(
       <AddToken
         data={{
@@ -218,24 +304,11 @@ describe('setting token details', () => {
       />
     )
 
-    const heading = screen.getByTestId('addTokenFormTitle')
-    expect(heading.textContent).toBe('Add New Token')
+    const addHeading = screen.getByTestId('addTokenFormTitle')
+    expect(addHeading.textContent).toBe('Add New Token')
   })
 
-  it('should prompt to fill in missing token data', () => {
-    render(
-      <AddToken
-        data={{
-          notifyData: { chain: { id: 1 }, address: '0x64aa3364F17a4D01c6f1751Fd97C2BD3D7e7f1D4' }
-        }}
-      />
-    )
-
-    const button = screen.getByRole('button')
-    expect(button.textContent).toBe('Fill in Token Details')
-  })
-
-  it('should show defaults in fields where token data is missing', () => {
+  it('should show defaults and prompt to fill in missing token data', () => {
     render(
       <AddToken
         data={{ notifyData: { chain: { id: 137 }, address: '0x64aa3364F17a4D01c6f1751Fd97C2BD3D7e7f1D4' } }}
@@ -246,11 +319,13 @@ describe('setting token details', () => {
     const tokenNameInput = screen.getByLabelText<HTMLInputElement>('Token Name')
     const tokenSymbolInput = screen.getByLabelText<HTMLInputElement>('Symbol')
     const tokenDecimalsInput = screen.getByLabelText<HTMLInputElement>('Decimals')
+    const button = screen.getByRole('button')
 
     expect(contractAddressInput.textContent).toEqual('0x64aa3364D7e7f1D4')
     expect(tokenNameInput.value).toEqual('Token Name')
     expect(tokenSymbolInput.value).toEqual('Symbol')
     expect(tokenDecimalsInput.value).toEqual('?')
+    expect(button.textContent).toBe('Fill in Token Details')
   })
 
   it('should populate fields with token data', async () => {

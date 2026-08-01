@@ -12,6 +12,7 @@ export function createTestStore(
   store: StoreApi<CanonicalStore>
 } {
   const defaults: any = {
+    operations: {},
     windows: {
       panel: { nav: [], footer: { height: 40 } }
     },

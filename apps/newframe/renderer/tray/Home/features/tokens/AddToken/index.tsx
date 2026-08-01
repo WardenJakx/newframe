@@ -16,7 +16,9 @@ import RingIcon from '../../../../../shared/ui/RingIcon'
 import link from '../../../../../shared/link'
 import { chainColorValue } from '../../../../../../domain/chain/colors'
 import { persistedImageSource } from '../../../../../../domain/image'
+import { toTokenId } from '../../../../../../domain/token'
 import { useWalletSelector } from '../../../../../state/useAppSelector'
+import { selectOperationById } from '../../../../../state/selectors/operation'
 import type { Token } from '../../../../../../domain/state/token'
 import type { WalletRendererState } from '../../../../../../contracts/state/projections'
 
@@ -45,6 +47,16 @@ type TokenDetailsFormProps = {
   tokenData: Partial<Token> & Pick<Token, 'address'> & { totalSupply?: string }
   isEdit?: boolean
   onDone(): void
+}
+
+type TokenSubmission = {
+  operationId: string
+  token: Token
+}
+
+type TokenBoundaryFailure = {
+  operationId: string
+  message: string
 }
 
 type AddTokenProps = {
@@ -225,11 +237,29 @@ const TokenDetailsForm = ({ chain, tokenData, isEdit, onDone }: TokenDetailsForm
   const [symbol, setSymbol] = useState(tokenSymbol || tokenDetailsDefaults.symbol)
   const [decimals, setDecimals] = useState(tokenDecimals || tokenDetailsDefaults.decimals)
   const [logoUri, setLogoUri] = useState(tokenLogoUri || tokenDetailsDefaults.logoURI)
+  const [submission, setSubmission] = useState<TokenSubmission | null>(null)
+  const [boundaryFailure, setBoundaryFailure] = useState<TokenBoundaryFailure | null>(null)
 
   const submitRef = useRef<HTMLButtonElement>(null)
+  const completionNotifiedRef = useRef('')
 
   const { address } = tokenData
   const { name: chainName } = chain
+  const submittedToken = submission?.token
+  const projectedToken = useWalletSelector((state) =>
+    submittedToken ? state.tokens?.byId?.[toTokenId(submittedToken)] : undefined
+  )
+  const operation = useWalletSelector((state) =>
+    submission ? selectOperationById(state, submission.operationId) : undefined
+  )
+  const tokenReflected = Boolean(
+    submittedToken &&
+    projectedToken &&
+    projectedToken.name === submittedToken.name &&
+    projectedToken.symbol === submittedToken.symbol &&
+    projectedToken.decimals === submittedToken.decimals &&
+    (projectedToken.logoURI || '') === (submittedToken.logoURI || '')
+  )
 
   const newTokenReady =
     name &&
@@ -238,6 +268,9 @@ const TokenDetailsForm = ({ chain, tokenData, isEdit, onDone }: TokenDetailsForm
     symbol !== tokenDetailsDefaults.symbol &&
     Number.isInteger(chain.id) &&
     Number.isInteger(decimals)
+  const activeBoundaryFailure =
+    submission && boundaryFailure?.operationId === submission.operationId ? boundaryFailure : null
+  const savingToken = Boolean(submission && operation?.status !== 'failed' && !activeBoundaryFailure)
 
   const saveAndClose = () => {
     const token = {
@@ -249,7 +282,22 @@ const TokenDetailsForm = ({ chain, tokenData, isEdit, onDone }: TokenDetailsForm
       logoURI: logoUri === tokenDetailsDefaults.logoURI ? '' : logoUri
     }
 
-    void link.executeCommand({ type: 'token.add', token }).then((result) => result.ok && onDone())
+    const operationId = crypto.randomUUID()
+    setBoundaryFailure(null)
+    setSubmission({ operationId, token })
+    void link
+      .executeCommand({ type: 'token.add', operationId, token })
+      .then((result) => {
+        if (!result.ok) {
+          setBoundaryFailure({
+            operationId,
+            message: result.message || 'Could not submit the token update.'
+          })
+        }
+      })
+      .catch(() => {
+        setBoundaryFailure({ operationId, message: 'Could not submit the token update.' })
+      })
   }
 
   const focusSubmitButton = () => {
@@ -261,6 +309,14 @@ const TokenDetailsForm = ({ chain, tokenData, isEdit, onDone }: TokenDetailsForm
   useEffect(() => {
     focusSubmitButton()
   }, [])
+
+  useEffect(() => {
+    if (!submission || completionNotifiedRef.current === submission.operationId || !tokenReflected) {
+      return
+    }
+    completionNotifiedRef.current = submission.operationId
+    onDone()
+  }, [onDone, submission, tokenReflected])
 
   return (
     <ScrollArea height='fill'>
@@ -286,7 +342,7 @@ const TokenDetailsForm = ({ chain, tokenData, isEdit, onDone }: TokenDetailsForm
                 onFocus={(value) => {
                   if (value === tokenDetailsDefaults.name) setName('')
                 }}
-                onSubmit={newTokenReady ? saveAndClose : undefined}
+                onSubmit={newTokenReady && !savingToken ? saveAndClose : undefined}
                 onValueChange={setName}
                 placeholder={tokenDetailsDefaults.name}
                 spellCheck={false}
@@ -306,7 +362,7 @@ const TokenDetailsForm = ({ chain, tokenData, isEdit, onDone }: TokenDetailsForm
                   onFocus={(value) => {
                     if (value === tokenDetailsDefaults.symbol) setSymbol('')
                   }}
-                  onSubmit={newTokenReady ? saveAndClose : undefined}
+                  onSubmit={newTokenReady && !savingToken ? saveAndClose : undefined}
                   onValueChange={setSymbol}
                   placeholder={tokenDetailsDefaults.symbol}
                   spellCheck={false}
@@ -326,7 +382,7 @@ const TokenDetailsForm = ({ chain, tokenData, isEdit, onDone }: TokenDetailsForm
                   onFocus={(value) => {
                     if (value === tokenDetailsDefaults.decimals) setDecimals('')
                   }}
-                  onSubmit={newTokenReady ? saveAndClose : undefined}
+                  onSubmit={newTokenReady && !savingToken ? saveAndClose : undefined}
                   onValueChange={(value) => {
                     if (!value) return setDecimals('')
                     const parsed = Number.parseInt(value)
@@ -349,7 +405,7 @@ const TokenDetailsForm = ({ chain, tokenData, isEdit, onDone }: TokenDetailsForm
                 onFocus={(value) => {
                   if (value === tokenDetailsDefaults.logoURI) setLogoUri('')
                 }}
-                onSubmit={newTokenReady ? saveAndClose : undefined}
+                onSubmit={newTokenReady && !savingToken ? saveAndClose : undefined}
                 onValueChange={setLogoUri}
                 placeholder={tokenDetailsDefaults.logoURI}
                 spellCheck={false}
@@ -357,14 +413,29 @@ const TokenDetailsForm = ({ chain, tokenData, isEdit, onDone }: TokenDetailsForm
               />
             </Field>
             {newTokenReady ? (
-              <Button appearance='primary' ref={submitRef} onPress={saveAndClose} width='full'>
-                <Text variant='action'>{isEdit ? 'Save' : 'Add Token'}</Text>
+              <Button
+                appearance='primary'
+                disabled={savingToken}
+                ref={submitRef}
+                onPress={saveAndClose}
+                width='full'
+              >
+                <Text variant='action'>{savingToken ? 'Saving Token' : isEdit ? 'Save' : 'Add Token'}</Text>
               </Button>
             ) : (
               <Button disabled appearance='primary' width='full'>
                 <Text variant='action'>Fill in Token Details</Text>
               </Button>
             )}
+            {operation?.status === 'failed' ? (
+              <Text tone='danger' variant='caption'>
+                {operation.error?.message || 'Could not update the custom token.'}
+              </Text>
+            ) : activeBoundaryFailure ? (
+              <Text tone='danger' variant='caption'>
+                {activeBoundaryFailure.message}
+              </Text>
+            ) : null}
           </Stack>
         </Surface>
       </Stack>

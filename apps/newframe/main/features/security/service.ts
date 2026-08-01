@@ -1,48 +1,145 @@
 import type {
   SecurityConfigureCommand,
   SecurityStatusResult,
-  SecurityUnlockCommand
+  SecurityUnlockCommand,
+  WalletLockCommand,
+  WalletResetCommand
 } from '../../../contracts/operations.js'
 import type { CanonicalStore } from '../../store/actions.js'
+import type { OperationService } from '../operations/service.js'
+import type { OperationOwner, OperationReference } from '../operations/types.js'
 
-type WebAuthnConfigureCommand = Extract<SecurityConfigureCommand, { mode: 'webauthn' }>
+type BestAvailableConfigureCommand = Extract<SecurityConfigureCommand, { mode: 'best-available' }>
+type WebAuthnEnrollment = Extract<BestAvailableConfigureCommand['browser'], { status: 'enrolled' }>
 type BiometricSummary = Extract<SecurityStatusResult, { ok: true }>['biometrics']
-type SecurityStoreState = Pick<CanonicalStore, 'main' | 'setBiometricUnlock'>
-type SecurityCallback = (error: Error | null, value?: boolean) => void
+type SecurityStoreState = Pick<CanonicalStore, 'main' | 'resetSavedData' | 'setBiometricUnlock'>
 
 export interface SecurityServicePorts {
+  authentication: {
+    lock(): Promise<void>
+    unlockWithBiometrics(
+      payload: { method: 'native' } | { method: 'webauthn'; secret: string }
+    ): Promise<void>
+    unlockWithPassword(password: string): Promise<void>
+  }
   biometrics: {
     summary(): BiometricSummary
     disable(): void
     enableNative(vaultKey: string): Promise<void>
-    enableWebAuthn(vaultKey: string, credential: WebAuthnConfigureCommand['credential'], secret: string): void
+    enableWebAuthn(vaultKey: string, credential: WebAuthnEnrollment['credential'], secret: string): void
   }
-  signers: {
-    unlockApp(password: string, callback: SecurityCallback): void
-    unlockAppWithBiometrics(
-      payload: { method: 'native' } | { method: 'webauthn'; secret: string },
-      callback: SecurityCallback
-    ): void
-    lockApp(callback: SecurityCallback): void
+  lifecycle: {
+    clearPersistence(): void
+    exit(code: number): void
+    quitAndInstall(): void
+    relaunch(): void
+    updateReady(): boolean
   }
+  operations: OperationService
   store: { getState(): SecurityStoreState }
   vault: {
+    exists(): boolean
     isUnlocked(): boolean
     getKey(): string | null
   }
 }
 
-function callbackResult<T>(run: (done: (error: unknown, value?: T) => void) => void) {
-  return new Promise<T>((resolve, reject) => {
-    run((error, value) => {
-      if (error) return reject(error)
-      if (value === undefined) return reject(new Error('Operation returned no result'))
-      resolve(value)
-    })
-  })
+type SecurityOperationCommand =
+  | SecurityConfigureCommand
+  | SecurityUnlockCommand
+  | WalletLockCommand
+  | WalletResetCommand
+
+const referenceFor = (command: SecurityOperationCommand, owner: OperationOwner): OperationReference => ({
+  owner,
+  id: command.operationId,
+  type: command.type
+})
+
+const knownErrorMessage = (error: unknown) =>
+  error && typeof error === 'object' && 'message' in error ? String(error.message) : ''
+
+function safeFailure(command: SecurityOperationCommand, error: unknown) {
+  const message = knownErrorMessage(error)
+  if (command.type === 'security.unlock') {
+    if (command.method === 'password' && message === 'Incorrect password') {
+      return { code: 'incorrect_password', message: 'Authentication failed.' }
+    }
+    if (command.method !== 'password') {
+      return { code: 'biometric_authentication_failed', message: 'Biometric authentication failed' }
+    }
+    return { code: 'unlock_failed', message: 'Could not unlock Newframe' }
+  }
+  if (command.type === 'wallet.lock') {
+    return { code: 'lock_failed', message: 'Could not lock Newframe.' }
+  }
+  if (command.type === 'wallet.reset') {
+    return { code: 'reset_failed', message: 'Could not reset Newframe.' }
+  }
+  if (message === 'Unlock Newframe before enabling biometric login') {
+    return { code: 'wallet_locked', message }
+  }
+  if (message === 'Biometrics are not available on this device') {
+    return { code: 'biometrics_unavailable', message }
+  }
+  return { code: 'biometric_configuration_failed', message: 'Could not enable biometrics.' }
 }
 
 export function createSecurityService(ports: SecurityServicePorts) {
+  function run(
+    command: SecurityOperationCommand,
+    owner: OperationOwner,
+    phase: string,
+    execute: (reference: OperationReference) => Promise<void> | void
+  ) {
+    const reference = referenceFor(command, owner)
+    if (ports.operations.lookup(reference)) return true
+
+    try {
+      ports.operations.start({ id: reference.id, type: reference.type, owner, phase })
+    } catch {
+      return false
+    }
+
+    void Promise.resolve()
+      .then(() => execute(reference))
+      .catch((error) => ports.operations.fail(reference, safeFailure(command, error)))
+    return true
+  }
+
+  function configureBestAvailable(command: BestAvailableConfigureCommand) {
+    if (!ports.vault.isUnlocked()) {
+      throw new Error('Unlock Newframe before enabling biometric login')
+    }
+
+    const key = ports.vault.getKey()
+    if (!key) throw new Error('Unlocked vault did not provide an encryption key')
+
+    if (command.browser.status === 'enrolled') {
+      try {
+        ports.biometrics.enableWebAuthn(key, command.browser.credential, command.browser.secret)
+        return
+      } catch {
+        // The previous renderer-owned sequence fell back after either browser
+        // enrollment or main-side WebAuthn configuration failed. Keep that
+        // behavior, but make the capability decision from fresh trusted main state.
+        if (!ports.biometrics.summary().nativeAvailable) {
+          throw new Error('Could not enable biometrics.')
+        }
+        return ports.biometrics.enableNative(key)
+      }
+    }
+
+    if (!ports.biometrics.summary().nativeAvailable) {
+      throw new Error(
+        command.browser.status === 'unavailable'
+          ? 'Biometrics are not available on this device'
+          : 'Could not enable biometrics.'
+      )
+    }
+    return ports.biometrics.enableNative(key)
+  }
+
   return {
     status() {
       const appLock = ports.store.getState().main.appLock
@@ -64,39 +161,61 @@ export function createSecurityService(ports: SecurityServicePorts) {
       }
     },
 
-    async configure(command: SecurityConfigureCommand) {
-      if (command.mode === 'disabled') {
-        ports.biometrics.disable()
-        ports.store.getState().setBiometricUnlock(false)
-        return
-      }
-      if (!ports.vault.isUnlocked()) {
-        throw new Error('Unlock Newframe before enabling biometric login')
-      }
-
-      const key = ports.vault.getKey()
-      if (!key) throw new Error('Unlocked vault did not provide an encryption key')
-      if (command.mode === 'native') await ports.biometrics.enableNative(key)
-      else ports.biometrics.enableWebAuthn(key, command.credential, command.secret)
-      ports.store.getState().setBiometricUnlock(true)
-    },
-
-    async unlock(command: SecurityUnlockCommand) {
-      await callbackResult<boolean>((done) => {
-        if (command.method === 'password') return ports.signers.unlockApp(command.password, done)
-        ports.signers.unlockAppWithBiometrics(
-          command.method === 'webauthn'
-            ? { method: 'webauthn', secret: command.secret }
-            : { method: 'native' },
-          done
-        )
+    configure(command: SecurityConfigureCommand, owner: OperationOwner) {
+      return run(command, owner, 'configuring', async (reference) => {
+        if (command.mode === 'disabled') {
+          ports.biometrics.disable()
+          ports.store.getState().setBiometricUnlock(false)
+        } else {
+          await configureBestAvailable(command)
+          ports.store.getState().setBiometricUnlock(true)
+        }
+        ports.operations.complete(reference, 'completed')
       })
     },
 
-    lock() {
-      return new Promise<void>((resolve, reject) => {
-        ports.signers.lockApp((error) => (error ? reject(error) : resolve()))
+    unlock(command: SecurityUnlockCommand, owner: OperationOwner) {
+      return run(command, owner, 'authenticating', async (reference) => {
+        if (command.method === 'password') {
+          await ports.authentication.unlockWithPassword(command.password)
+        } else {
+          await ports.authentication.unlockWithBiometrics(
+            command.method === 'webauthn'
+              ? { method: 'webauthn', secret: command.secret }
+              : { method: 'native' }
+          )
+        }
+        ports.operations.complete(reference, 'completed')
+      })
+    },
+
+    lock(command: WalletLockCommand, owner: OperationOwner) {
+      return run(command, owner, 'locking', async (reference) => {
+        await ports.authentication.lock()
+        ports.operations.complete(reference, 'completed')
+      })
+    },
+
+    reset(command: WalletResetCommand, owner: OperationOwner) {
+      return run(command, owner, 'resetting', (reference) => {
+        ports.store.getState().resetSavedData()
+        if (command.scope === 'saved-data') {
+          ports.operations.complete(reference, 'completed')
+          return
+        }
+
+        ports.lifecycle.clearPersistence()
+        if (ports.lifecycle.updateReady()) {
+          ports.lifecycle.quitAndInstall()
+        } else {
+          ports.lifecycle.relaunch()
+          ports.lifecycle.exit(0)
+        }
+        // A full reset deliberately remains pending: the process is restarting,
+        // so the acknowledgement cannot be mistaken for durable completion.
       })
     }
   }
 }
+
+export type SecurityService = ReturnType<typeof createSecurityService>

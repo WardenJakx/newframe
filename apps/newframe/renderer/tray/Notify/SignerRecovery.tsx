@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button } from '@newframe/ui/button'
 import { Grid } from '@newframe/ui/grid'
 import { Input } from '@newframe/ui/input'
@@ -39,17 +39,26 @@ function isLoading(status: string) {
   )
 }
 
-function RecoveryActions({ signer }: { signer: WalletSigner }) {
+function RecoveryActions({
+  operationId,
+  reload,
+  signer
+}: {
+  operationId: string
+  reload: () => void
+  signer: WalletSigner
+}) {
   const [latticePairCode, setLatticePairCode] = useState('')
   const [trezorPassphrase, setTrezorPassphrase] = useState('')
   const [trezorPin, setTrezorPin] = useState('')
   const status = signer.status.toLowerCase()
 
-  const reload = () => void link.executeCommand({ type: 'signer.reload', signerId: signer.id })
   const submitPin = () => {
     if (!trezorPin) return
     void link.executeCommand({
       type: 'signer.trezor-input',
+      operationId,
+      actionId: crypto.randomUUID(),
       signerId: signer.id,
       input: 'pin',
       value: trezorPin
@@ -59,6 +68,8 @@ function RecoveryActions({ signer }: { signer: WalletSigner }) {
   const submitPassphrase = () => {
     void link.executeCommand({
       type: 'signer.trezor-input',
+      operationId,
+      actionId: crypto.randomUUID(),
       signerId: signer.id,
       input: 'passphrase',
       value: trezorPassphrase
@@ -69,6 +80,8 @@ function RecoveryActions({ signer }: { signer: WalletSigner }) {
     if (!latticePairCode) return
     void link.executeCommand({
       type: 'signer.lattice-pair',
+      operationId,
+      actionId: crypto.randomUUID(),
       signerId: signer.id,
       pairCode: latticePairCode
     })
@@ -138,6 +151,8 @@ function RecoveryActions({ signer }: { signer: WalletSigner }) {
             onPress={() =>
               void link.executeCommand({
                 type: 'signer.trezor-input',
+                operationId,
+                actionId: crypto.randomUUID(),
                 signerId: signer.id,
                 input: 'device-passphrase'
               })
@@ -191,8 +206,74 @@ export default function SignerRecovery({
     [signerIds, signers]
   )
   const [selectedId, setSelectedId] = useState(candidates[0]?.id || '')
+  const [session, setSession] = useState<{ operationId: string; signerId: string } | null>(null)
+  const sessionRef = useRef(session)
 
   const signer = candidates.find((candidate) => candidate.id === selectedId) || candidates[0]
+
+  function setActiveSession(next: { operationId: string; signerId: string } | null) {
+    sessionRef.current = next
+    setSession(next)
+  }
+
+  function finishSession(outcome: 'ready' | 'cancelled') {
+    const current = sessionRef.current
+    if (!current) return
+    setActiveSession(null)
+    void link.executeCommand({
+      type: 'signer.hardware-session-finish',
+      operationId: current.operationId,
+      signerId: current.signerId,
+      outcome
+    })
+  }
+
+  function startSession(signerId: string, reload = false) {
+    finishSession('cancelled')
+    const operationId = crypto.randomUUID()
+    setActiveSession({ operationId, signerId })
+    void link.executeCommand(
+      reload
+        ? { type: 'signer.reload', operationId, signerId }
+        : { type: 'signer.hardware-session-start', operationId, signerId }
+    )
+  }
+
+  useEffect(() => {
+    if (!signer || sessionRef.current?.signerId === signer.id) return
+    const signerId = signer.id
+    queueMicrotask(() => {
+      if (sessionRef.current?.signerId !== signerId) startSession(signerId)
+    })
+    // The signer ID is the session bootstrap key; startSession uses the current session ref.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [signer?.id])
+
+  useEffect(
+    () => () => {
+      const current = sessionRef.current
+      if (!current) return
+      sessionRef.current = null
+      void link.executeCommand({
+        type: 'signer.hardware-session-finish',
+        operationId: current.operationId,
+        signerId: current.signerId,
+        outcome: 'cancelled'
+      })
+    },
+    []
+  )
+
+  function selectSigner(signerId: string) {
+    if (signerId === signer?.id) return
+    startSession(signerId)
+    setSelectedId(signerId)
+  }
+
+  function close() {
+    finishSession(signer?.status.toLowerCase() === 'ok' ? 'ready' : 'cancelled')
+    dismiss()
+  }
 
   return (
     <Stack gap='large'>
@@ -205,7 +286,7 @@ export default function SignerRecovery({
             <Button
               appearance='segment'
               key={candidate.id}
-              onPress={() => setSelectedId(candidate.id)}
+              onPress={() => selectSigner(candidate.id)}
               pressed={candidate.id === signer?.id}
             >
               <Text variant='compactAction'>{candidate.name}</Text>
@@ -222,7 +303,14 @@ export default function SignerRecovery({
           <Text align='center' tone={signer.status.toLowerCase() === 'ok' ? 'success' : 'secondary'}>
             {signerStatus(signer)}
           </Text>
-          <RecoveryActions key={signer.id} signer={signer} />
+          {session?.signerId === signer.id ? (
+            <RecoveryActions
+              key={signer.id}
+              operationId={session.operationId}
+              reload={() => startSession(signer.id, true)}
+              signer={signer}
+            />
+          ) : null}
           {signer.status.toLowerCase() === 'ok' ? (
             <Text align='center' tone='secondary'>
               Return to the request and select Sign again.
@@ -234,7 +322,7 @@ export default function SignerRecovery({
           The hardware wallet is no longer available.
         </Text>
       )}
-      <Button appearance='control' onPress={() => dismiss()} width='full'>
+      <Button appearance='control' onPress={close} width='full'>
         <Text variant='action'>{signer?.status.toLowerCase() === 'ok' ? 'Continue' : 'Cancel'}</Text>
       </Button>
     </Stack>

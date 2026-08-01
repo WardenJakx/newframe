@@ -28,6 +28,7 @@ import type { Action } from '../transaction/actions/index.js'
 import type { AccountChainRpcPort } from './providerPort.js'
 import type { AccountsRuntime } from './runtime.js'
 import type { CanonicalStoreReader } from '../store/actions.js'
+import type { PromptedRequestLifecyclePort } from '../features/requests/service.js'
 
 function cloneSerializable<T>(value: T): T {
   return JSON.parse(
@@ -53,7 +54,6 @@ class FrameAccount {
   readonly address: Address
   readonly accounts: Accounts
 
-  private readonly responseHandlers = new Map<string, RPCCallback<any>>()
   private readonly actionUpdateHandlers = new Map<string, Map<string, Action<unknown>>>()
   private providerConnectListener?: () => void
   private nameResolutionReadyListener?: () => void
@@ -72,6 +72,7 @@ class FrameAccount {
     private readonly nameResolution: NameResolutionService,
     private readonly reveal: RevealService,
     private readonly runtime: AccountsRuntime,
+    private readonly requestLifecycle: PromptedRequestLifecyclePort,
     profileActive = true
   ) {
     const { lastSignerType, name, ensName, created, address, options = {} } = params
@@ -237,11 +238,7 @@ class FrameAccount {
     const knownRequest = this.requests[handlerId]
 
     if (knownRequest) {
-      const respond = this.responseHandlers.get(handlerId)
-      if (respond && payload) {
-        const { id, jsonrpc } = payload
-        respond({ id, jsonrpc, result })
-      }
+      if (payload) this.requestLifecycle.resolve(knownRequest, result)
 
       this.clearRequest(knownRequest.handlerId)
     }
@@ -251,11 +248,7 @@ class FrameAccount {
     const knownRequest = this.requests[handlerId]
 
     if (knownRequest) {
-      const respond = this.responseHandlers.get(handlerId)
-      if (respond && payload) {
-        const { id, jsonrpc } = payload
-        respond({ id, jsonrpc, error })
-      }
+      if (payload) this.requestLifecycle.reject(knownRequest, error)
 
       this.clearRequest(knownRequest.handlerId)
     }
@@ -269,7 +262,6 @@ class FrameAccount {
       panelNav[0]?.view === 'requestView' && panelNav[0]?.data?.requestId === handlerId
 
     this.store.getState().removeAccountRequest(this.id, handlerId)
-    this.responseHandlers.delete(handlerId)
     this.actionUpdateHandlers.delete(handlerId)
     this.store.getState().navClearReq(handlerId, Object.keys(this.requests).length > 0)
 
@@ -542,10 +534,8 @@ class FrameAccount {
     }
   }
 
-  addRequest(req: any, res: RPCCallback<any> = () => {}) {
+  addRequest(req: any) {
     const add = (r: AccountRequest) => {
-      this.responseHandlers.set(r.handlerId, res)
-
       const actionHandlers = new Map<string, Action<unknown>>()
       ;((req as any).recognizedActions || []).forEach((action: any) => {
         if (typeof action.update === 'function') actionHandlers.set(action.id, action)
@@ -743,7 +733,6 @@ class FrameAccount {
     this.profileActive = false
     this.stopCreationBlockLookup()
     this.stopNameResolutionReadyLookup()
-    this.responseHandlers.clear()
     this.actionUpdateHandlers.clear()
     this.accountObserver()
   }

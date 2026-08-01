@@ -64,6 +64,7 @@ function initializeSendState(balances: any[] = [nativeBalance()], customTokens: 
       },
       accountOrder: [recipient.id, sender.id],
       activity: {},
+      operations: {},
       balances: {
         [sender.address]: balances,
         [recipient.address]: balances
@@ -274,7 +275,7 @@ describe('Send', () => {
   it('ignores a submission result from the previously selected account', async () => {
     let resolveSubmission: (result: any) => void = () => undefined
     ;(link.executeCommand as Mock<any>).mockImplementation((command: any) => {
-      if (command.type !== 'transaction.submit') return Promise.resolve({ ok: true })
+      if (command.type !== 'send.submit') return Promise.resolve({ ok: true })
       return new Promise((resolve) => {
         resolveSubmission = resolve
       })
@@ -282,25 +283,20 @@ describe('Send', () => {
 
     const { user } = render(<Send assetId={nativeAssetId} />)
     await user.click(screen.getByText('Recipient').closest('button') as HTMLButtonElement)
-    await user.click(screen.getByRole('button', { name: 'Proceed' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Proceed' }))
     expect(screen.getByText('Confirm in Newframe')).toBeTruthy()
 
-    act(() => updateSendState({ currentAccount: recipient.id }))
-    act(() => resolveSubmission({ ok: true, transactionHash: `0x${'1'.repeat(64)}` }))
+    await act(async () => {
+      updateSendState({ currentAccount: recipient.id })
+      resolveSubmission({ ok: false, error: 'operation_failed' })
+      await Promise.resolve()
+    })
 
-    await waitFor(() => expect(screen.queryByText('Confirm in Newframe')).toBeNull())
+    expect(screen.queryByText('Confirm in Newframe')).toBeNull()
     expect(screen.queryByText('Transaction submitted')).toBeNull()
   })
 
   it('submits a native transfer through the Send service flow', async () => {
-    ;(link.executeCommand as Mock<any>).mockImplementation(async (command: any) => {
-      if (command.type === 'transaction.submit') {
-        return { ok: true, transactionHash: `0x${'1'.repeat(64)}` }
-      }
-
-      return { ok: true }
-    })
-
     const { user } = render(<Send assetId={nativeAssetId} />)
     const recipientButton = screen.getByText('Recipient').closest('button') as HTMLButtonElement
 
@@ -311,21 +307,62 @@ describe('Send', () => {
 
     await user.click(proceedButton)
 
-    expect(link.executeCommand).toHaveBeenCalledWith({
-      type: 'transaction.submit',
-      idempotencyKey: expect.any(String),
-      chainId,
-      transaction: {
-        to: recipient.address,
-        value: '0xde0b6b3a7640000'
-      }
+    const command = (link.executeCommand as Mock<any>).mock.calls.find(
+      ([candidate]) => (candidate as { type?: string }).type === 'send.submit'
+    )?.[0] as {
+      type: 'send.submit'
+      operationId: string
+      asset: { address: string; chainId: number }
+      amount: string
+      recipient: string
+    }
+    expect(command).toEqual({
+      type: 'send.submit',
+      operationId: expect.any(String),
+      asset: { address: NATIVE_CURRENCY, chainId },
+      amount: '1000000000000000000',
+      recipient: recipient.address
+    })
+    expect(screen.getByText('Confirm in Newframe')).toBeTruthy()
+
+    const transactionHash = `0x${'1'.repeat(64)}`
+    act(() => {
+      updateSendState({
+        operations: {
+          [command.operationId]: {
+            id: command.operationId,
+            type: 'send.submit',
+            status: 'succeeded',
+            phase: 'submitted',
+            entityRefs: [
+              { type: 'account', id: sender.id },
+              { type: 'transaction', id: transactionHash }
+            ],
+            startedAt: 1,
+            updatedAt: 2,
+            finishedAt: 2
+          }
+        }
+      })
+    })
+    expect(screen.getByText('Confirm in Newframe')).toBeTruthy()
+    act(() => {
+      updateSendState({
+        activity: {
+          [transactionHash]: {
+            id: transactionHash,
+            hash: transactionHash,
+            account: sender.address,
+            status: 'submitted',
+            data: { to: recipient.address }
+          }
+        }
+      })
     })
     expect(await screen.findByText('Transaction submitted')).toBeTruthy()
   })
 
   it('keeps recipient resolution errors visible without sending a provider request', async () => {
-    ;(link.executeQuery as Mock<any>).mockResolvedValueOnce({ ok: false, error: 'not_found' })
-
     render(<Send assetId={nativeAssetId} />)
 
     fireEvent.change(screen.getByLabelText('Recipient'), {
@@ -333,8 +370,27 @@ describe('Send', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: 'Proceed' }))
 
+    const command = (link.executeCommand as Mock<any>).mock.calls.find(
+      ([candidate]) => (candidate as { type?: string }).type === 'send.submit'
+    )?.[0] as { operationId: string }
+    act(() => {
+      updateSendState({
+        operations: {
+          [command.operationId]: {
+            id: command.operationId,
+            type: 'send.submit',
+            status: 'failed',
+            phase: 'failed',
+            error: { code: 'recipient_not_found', message: 'Could not resolve recipient.' },
+            startedAt: 1,
+            updatedAt: 2,
+            finishedAt: 2
+          }
+        }
+      })
+    })
     expect(await screen.findByText('Could not resolve recipient.')).toBeTruthy()
-    expect(link.executeQuery).toHaveBeenCalledWith({ type: 'name.resolve', name: 'unknown.eth' })
+    expect((link.executeQuery as Mock<any>).mock.calls).toEqual([])
     expect(
       (link.executeCommand as Mock<any>).mock.calls.some(
         ([command]) => (command as { type?: string }).type === 'transaction.submit'

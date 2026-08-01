@@ -1,10 +1,12 @@
 import type { CanonicalState } from '../store/state/index.js'
 import { createBalanceSummarySelector } from '../../domain/balance/index.js'
 import { getProfileAccountIds } from '../../domain/state/main.js'
+import { OperationRecordSchema, type OperationCollection } from '../../domain/state/operation.js'
 import {
   WalletHomeCommandSchema,
   WalletPanelNavigationEntrySchema,
   WalletStatusNotificationSchema,
+  WalletOrderRecordSchema,
   type WalletPanelNavigationEntry,
   type SideTrayRendererState,
   type RendererProjection,
@@ -13,10 +15,116 @@ import {
 
 type CanonicalMain = CanonicalState['main']
 
+export interface RendererProjectionAudience {
+  clientType: RendererProjection
+  windowInstanceId: string
+}
+
 const sameTopLevelReferences = <T extends object>(previous: T | undefined, current: T) =>
   !!previous && Object.keys(current).every((key) => previous[key as keyof T] === current[key as keyof T])
 
 let previousWalletProjection: WalletRendererState | undefined
+let previousProjectedOrdersInput: CanonicalMain['orders'] | undefined
+const projectedOrdersByAccount = new Map<string, WalletRendererState['orders']>()
+
+function projectOrders(
+  orders: CanonicalMain['orders'],
+  accountAddress?: string
+): WalletRendererState['orders'] {
+  const filterProvided = accountAddress !== undefined
+  const normalizedAccount = accountAddress?.toLowerCase() || ''
+  const cacheKey = filterProvided ? `account:${normalizedAccount}` : '*'
+  if (orders !== previousProjectedOrdersInput) {
+    previousProjectedOrdersInput = orders
+    projectedOrdersByAccount.clear()
+  }
+  const cached = projectedOrdersByAccount.get(cacheKey)
+  if (cached) return cached
+  if (filterProvided && !normalizedAccount) {
+    const empty = {}
+    projectedOrdersByAccount.set(cacheKey, empty)
+    return empty
+  }
+
+  const projected = Object.fromEntries(
+    Object.entries(orders).flatMap(([orderId, order]) => {
+      if (filterProvided && order.accountAddress.toLowerCase() !== normalizedAccount) return []
+      const parsed = WalletOrderRecordSchema.safeParse({
+        ...order,
+        rawPayload:
+          order.rawPayload === undefined
+            ? undefined
+            : {
+                orderId: order.orderId,
+                provider: order.provider,
+                source: order.source,
+                environment: order.environment,
+                chainId: order.chainId,
+                orderType: order.orderType,
+                side: order.side,
+                qty: order.qty
+              },
+        rawStatusPayload:
+          order.rawStatusPayload === undefined
+            ? undefined
+            : {
+                orderId: order.orderId,
+                status: order.status,
+                rawStatus: order.rawStatus,
+                spentAmount: order.spentAmount,
+                outputAmount: order.outputAmount,
+                filledOutputAmount: order.filledOutputAmount,
+                averageFillPrice: order.averageFillPrice,
+                updatedAt: order.updatedAt,
+                terminalAt: order.terminalAt,
+                fillHash: order.fillHash,
+                fillTransactionHash: order.fillTransactionHash
+              }
+      })
+      return parsed.success ? [[orderId, parsed.data]] : []
+    })
+  )
+  projectedOrdersByAccount.set(cacheKey, projected)
+  return projected
+}
+
+const operationProjectionCache = new Map<
+  string,
+  { input: CanonicalState['operations']; result: OperationCollection }
+>()
+const EMPTY_OPERATIONS: OperationCollection = {}
+
+function projectOperations(
+  operations: CanonicalState['operations'],
+  audience?: RendererProjectionAudience
+): OperationCollection {
+  if (!audience?.windowInstanceId) return EMPTY_OPERATIONS
+  const key = `${audience.clientType}:${audience.windowInstanceId}`
+  const cached = operationProjectionCache.get(key)
+  if (cached?.input === operations) return cached.result
+
+  const result = Object.fromEntries(
+    Object.entries(operations).flatMap(([id, entry]) => {
+      if (
+        entry.owner.clientType !== audience.clientType ||
+        entry.owner.windowInstanceId !== audience.windowInstanceId
+      ) {
+        return []
+      }
+      const parsed = OperationRecordSchema.safeParse(entry.operation)
+      return parsed.success && parsed.data.id === id ? [[id, entry.operation]] : []
+    })
+  )
+  const resultKeys = Object.keys(result)
+  const stableResult =
+    cached &&
+    Object.keys(cached.result).length === resultKeys.length &&
+    resultKeys.every((id) => cached.result[id] === result[id])
+      ? cached.result
+      : result
+  operationProjectionCache.set(key, { input: operations, result: stableResult })
+  return stableResult
+}
 
 let previousWalletWindowsInputs:
   | {
@@ -256,7 +364,10 @@ function projectWalletAccounts(main: CanonicalMain) {
   return { accounts: previousWalletAccounts!, accountOrder }
 }
 
-export function projectWalletState(state: CanonicalState): WalletRendererState {
+export function projectWalletState(
+  state: CanonicalState,
+  audience?: RendererProjectionAudience
+): WalletRendererState {
   const { main } = state
   const { accounts, accountOrder } = projectWalletAccounts(main)
   const projection: WalletRendererState = {
@@ -278,7 +389,8 @@ export function projectWalletState(state: CanonicalState): WalletRendererState {
     mute: main.mute,
     networks: main.networks,
     networksMeta: main.networksMeta,
-    orders: main.orders,
+    operations: projectOperations(state.operations, audience),
+    orders: projectOrders(main.orders),
     origins: main.origins,
     permissions: main.permissions,
     portfolioApiKeyConfigured: main.portfolioApiKey.trim().length > 0,
@@ -545,7 +657,10 @@ function projectSideTrayTokens(
   return previousSideTrayTokens
 }
 
-export function projectSideTrayState(state: CanonicalState): SideTrayRendererState {
+export function projectSideTrayState(
+  state: CanonicalState,
+  audience?: RendererProjectionAudience
+): SideTrayRendererState {
   const { main } = state
   const { accounts, accountOrder } = projectSideTrayAccounts(main)
   const networks = projectSideTrayNetworks(main.networks)
@@ -556,6 +671,8 @@ export function projectSideTrayState(state: CanonicalState): SideTrayRendererSta
     activity: projectSideTrayActivity(main.activity, currentAddress),
     balances: projectSideTrayBalances(main.balances, main.currentAccount, accounts),
     currentAccount: main.currentAccount,
+    operations: projectOperations(state.operations, audience),
+    orders: projectOrders(main.orders, currentAddress),
     networks,
     networksMeta: projectSideTrayNetworkMetadata(main.networksMeta, networks),
     assetRates: main.assetRates,
@@ -568,6 +685,8 @@ export function projectSideTrayState(state: CanonicalState): SideTrayRendererSta
   return projection
 }
 
-export function projectRendererState(state: CanonicalState, projection: RendererProjection) {
-  return projection === 'sidetray' ? projectSideTrayState(state) : projectWalletState(state)
+export function projectRendererState(state: CanonicalState, audience: RendererProjectionAudience) {
+  return audience.clientType === 'sidetray'
+    ? projectSideTrayState(state, audience)
+    : projectWalletState(state, audience)
 }

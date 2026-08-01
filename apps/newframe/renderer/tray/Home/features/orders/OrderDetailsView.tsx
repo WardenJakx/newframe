@@ -48,6 +48,8 @@ export function OrderDetailsView({
   const chainId = Number(order.chainId)
   const chain = networks[chainId] || {}
   const side = normalizeOrderSide(order.side)
+  const rawPayload = orderJson(order.rawPayload)
+  const rawStatusPayload = orderJson(order.rawStatusPayload)
   const detailRow = (label: string, value: React.ReactNode, monospace = false) => {
     if (value === undefined || value === null || value === '') return null
     return (
@@ -60,8 +62,6 @@ export function OrderDetailsView({
       />
     )
   }
-  const rawPayload = orderJson(order.rawPayload)
-  const rawStatusPayload = orderJson(order.rawStatusPayload)
   const shortAddress = (address = '') =>
     address ? `${address.substring(0, 5)}…${address.substring(address.length - 4)}` : ''
 

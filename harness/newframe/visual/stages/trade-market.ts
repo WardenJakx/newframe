@@ -11,7 +11,28 @@ export const tradeMarketStage: VisualStage = {
       .getByRole('button', { name: /Approve WETH/i })
       .waitFor({ state: 'visible', timeout: 20_000 })
     await driver.screenshot(tradePage, '21a-trade-market-quoted.png')
+    const priorOperationIds = new Set(Object.keys((await driver.getAppState()).operations || {}))
     await tradePage.getByRole('button', { name: /Approve WETH/i }).click()
+
+    const pendingState = await driver.waitForState(
+      (state) =>
+        Object.entries(state.operations || {}).some(
+          ([operationId, entry]) =>
+            !priorOperationIds.has(operationId) &&
+            entry.operation?.type === 'trade.execute' &&
+            entry.operation.status === 'pending'
+        ),
+      5_000,
+      'Market trade did not publish a pending canonical operation'
+    )
+    const marketOperationEntry = Object.entries(pendingState.operations || {}).find(
+      ([operationId, entry]) =>
+        !priorOperationIds.has(operationId) &&
+        entry.operation?.type === 'trade.execute' &&
+        entry.operation.status === 'pending'
+    )
+    const marketOperationId =
+      marketOperationEntry?.[0] || driver.fail('Pending market trade operation disappeared')
 
     const approveRequest = await driver.waitForCurrentRequest('transaction', new Set(), 30_000)
     await driver.screenshot(tray, '21b-trade-market-approve-review.png')
@@ -54,8 +75,37 @@ export const tradeMarketStage: VisualStage = {
     )
     const orderId = order.orderId
     if (!orderId) return driver.fail('The new market Flash order has no order id')
+    const terminalState = await driver.waitForState(
+      (state) => {
+        const status = state.operations?.[marketOperationId]?.operation?.status
+        return status === 'succeeded' || status === 'failed'
+      },
+      15_000,
+      'Market trade operation did not reach a terminal canonical state'
+    )
+    const operation = terminalState.operations?.[marketOperationId]?.operation
+    if (operation?.status === 'failed') {
+      return driver.fail(operation.error?.message || 'Canonical market trade operation failed')
+    }
+    if (!operation?.entityRefs?.some((reference) => reference.type === 'order' && reference.id === orderId)) {
+      return driver.fail('Successful market trade operation did not reference its order')
+    }
+    const transactionHash = operation.entityRefs.find((reference) => reference.type === 'transaction')?.id
+    if (!transactionHash) return driver.fail('Market trade operation did not retain its approval transaction')
+    const activityState = await driver.waitForState(
+      (state) => Boolean(state.main?.activity?.[transactionHash]),
+      15_000,
+      'Market approval transaction did not appear in canonical activity'
+    )
+    const activity = activityState.main?.activity?.[transactionHash]
+    if (!activity || activity.status === 'reverted') {
+      return driver.fail('Market approval transaction is missing or reverted in canonical activity')
+    }
+    runtime.evidence('marketOperationId', marketOperationId)
     runtime.evidence('marketOrderId', orderId)
     runtime.evidence('marketOrderStatus', String(order.status))
+    runtime.evidence('marketApprovalTransactionHash', transactionHash)
+    runtime.evidence('marketApprovalActivityStatus', activity.status || null)
     await driver.assertFlashOrderVisible(orderId)
     await driver.screenshot(tray, '21g-trade-market-filled.png')
     await driver.clearPanelAndOverlays()

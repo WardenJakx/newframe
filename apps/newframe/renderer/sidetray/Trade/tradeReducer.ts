@@ -17,13 +17,8 @@ import {
   isSameFlashAsset,
   type FlashAssetBalances
 } from '../../../domain/flash/pair'
-import {
-  type FlashAsset,
-  type FlashOrderType,
-  type FlashQuote,
-  type FlashStep,
-  type FlashTradeSide
-} from '../../../domain/flash/schemas'
+import { type FlashAsset, type FlashOrderType, type FlashTradeSide } from '../../../domain/flash/schemas'
+import type { FlashQuoteDisplay } from '../../../contracts/operations'
 import {
   TRADE_DEFAULT_DURATION_DAYS,
   TRADE_DEFAULT_DURATION_HOURS,
@@ -32,13 +27,10 @@ import {
   TRADE_DEFAULT_SLIPPAGE,
   getTradeValidationError,
   tradeAmountNumber,
-  type TradeOrderFields,
-  type TradePendingAction,
-  withTradeStepStatus
+  type TradeOrderFields
 } from './tradeTransaction'
 
 export interface TradeWorkflowState {
-  actionQuoteId: string
   advancedOpen: boolean
   assetOptions: FlashAsset[]
   contraAsset: FlashAsset
@@ -49,21 +41,17 @@ export interface TradeWorkflowState {
   durationMinutes: string
   error: string
   expireTime: string
-  flashPayload: unknown
   limitNotionalPrice: string
   maxPriceImpact: string
   orderType: FlashOrderType
-  pendingAction: TradePendingAction
   quickTrade: boolean
-  quote: FlashQuote | null
+  quote: FlashQuoteDisplay | null
+  quoteId: string
   quoteLoading: boolean
   quoteRequestKey: string
   side: FlashTradeSide
-  signature: string
   slippage: string
   startTime: string
-  status: string
-  submitting: boolean
   targetAsset: FlashAsset
   targetAmount: string
   targetOpen: boolean
@@ -76,26 +64,13 @@ export type TradeAssetField = 'target' | 'contra'
 
 export type TradeWorkflowAction =
   | { type: 'accountChanged' }
-  | { type: 'actionFailed'; actionQuoteId: string; error: string; stepKind: FlashStep['kind'] }
-  | {
-      type: 'actionStarted'
-      actionQuoteId: string
-      stepKind: FlashStep['kind']
-      status: string
-    }
-  | {
-      type: 'actionSucceeded'
-      actionQuoteId: string
-      stepKind: FlashStep['kind']
-      txHash?: string
-    }
   | { type: 'quoteBuildFailed'; error: string }
   | { type: 'quoteCleared' }
   | { type: 'quoteFailed'; error: string; requestKey: string }
   | {
       type: 'quoteSucceeded'
-      flashPayload: unknown
-      quote: FlashQuote
+      quoteId: string
+      quote: FlashQuoteDisplay
       requestKey: string
     }
   | { type: 'quoteRequested'; requestKey: string }
@@ -106,11 +81,6 @@ export type TradeWorkflowAction =
   | { type: 'setOrderField'; field: keyof TradeOrderFields; value: string }
   | { type: 'setOrderType'; orderType: FlashOrderType }
   | { type: 'settingsChanged'; quickTrade?: boolean; slippage?: string }
-  | { type: 'signatureSucceeded'; actionQuoteId: string; signature: string }
-  | { type: 'stepFailed'; error: string; stepKind: FlashStep['kind'] }
-  | { type: 'submitFailed'; actionQuoteId: string; error: string }
-  | { type: 'submitStarted'; actionQuoteId: string }
-  | { type: 'submitSucceeded'; actionQuoteId: string }
   | { type: 'toggleAdvancedOpen' }
   | { type: 'toggleSide' }
 
@@ -242,7 +212,6 @@ export function createInitialTradeState({
   })
 
   return {
-    actionQuoteId: '',
     advancedOpen: false,
     assetOptions: assets,
     contraAsset,
@@ -253,21 +222,17 @@ export function createInitialTradeState({
     durationMinutes: TRADE_DEFAULT_DURATION_MINUTES,
     error: '',
     expireTime: '',
-    flashPayload: null,
     limitNotionalPrice: '',
     maxPriceImpact: TRADE_DEFAULT_MAX_PRICE_IMPACT,
     orderType: FLASH_MARKET_ORDER_TYPE,
-    pendingAction: '',
     quickTrade: false,
     quote: null,
+    quoteId: '',
     quoteLoading: false,
     quoteRequestKey: '',
     side,
-    signature: '',
     slippage: TRADE_DEFAULT_SLIPPAGE,
     startTime: '',
-    status: '',
-    submitting: false,
     targetAsset,
     targetAmount: '',
     targetOpen: false,
@@ -319,16 +284,11 @@ function tradeHasValidInput(state: TradeWorkflowState) {
 
 function clearedExecutionState(quoteLoading = false) {
   return {
-    actionQuoteId: '',
     error: '',
-    flashPayload: null,
-    pendingAction: '' as TradePendingAction,
     quote: null,
+    quoteId: '',
     quoteLoading,
-    quoteRequestKey: '',
-    signature: '',
-    status: '',
-    submitting: false
+    quoteRequestKey: ''
   }
 }
 
@@ -349,17 +309,7 @@ function applyTradeInputAmount(
 }
 
 function clearQuoteIfNeeded(state: TradeWorkflowState): TradeWorkflowState {
-  if (
-    !state.actionQuoteId &&
-    !state.error &&
-    !state.flashPayload &&
-    !state.pendingAction &&
-    !state.quote &&
-    !state.quoteLoading &&
-    !state.quoteRequestKey &&
-    !state.signature &&
-    !state.status
-  ) {
+  if (!state.error && !state.quote && !state.quoteId && !state.quoteLoading && !state.quoteRequestKey) {
     return state
   }
 
@@ -374,16 +324,11 @@ function withQuoteRefresh(state: TradeWorkflowState): TradeWorkflowState {
 
   return {
     ...state,
-    actionQuoteId: '',
     error: '',
-    flashPayload: null,
-    pendingAction: 'quote' as TradePendingAction,
     quote: null,
+    quoteId: '',
     quoteLoading: true,
-    quoteRequestKey: '',
-    signature: '',
-    status: 'Getting quote',
-    submitting: false
+    quoteRequestKey: ''
   }
 }
 
@@ -418,8 +363,7 @@ function refreshForSettings(
   const merged: TradeWorkflowState = {
     ...state,
     ...nextState,
-    error: '',
-    status: ''
+    error: ''
   }
 
   return withQuoteRefresh(merged)
@@ -473,55 +417,12 @@ export function tradeReducer(state: TradeWorkflowState, action: TradeWorkflowAct
     case 'accountChanged':
       return withQuoteRefresh({
         ...state,
-        actionQuoteId: '',
         error: '',
-        flashPayload: null,
-        pendingAction: '' as TradePendingAction,
         quote: null,
+        quoteId: '',
         quoteLoading: false,
-        quoteRequestKey: '',
-        signature: '',
-        status: '',
-        submitting: false
+        quoteRequestKey: ''
       })
-    case 'actionFailed':
-      if (state.actionQuoteId !== action.actionQuoteId) return state
-
-      return {
-        ...state,
-        actionQuoteId: '',
-        error: action.error,
-        pendingAction: '',
-        quote: withTradeStepStatus(state.quote, action.stepKind, 'error', { error: action.error }),
-        status: ''
-      }
-    case 'actionStarted':
-      return {
-        ...state,
-        actionQuoteId: action.actionQuoteId,
-        error: '',
-        pendingAction: action.stepKind,
-        quote: withTradeStepStatus(state.quote, action.stepKind, 'pending', { error: undefined }),
-        status: action.status
-      }
-    case 'actionSucceeded':
-      if (
-        state.actionQuoteId !== action.actionQuoteId &&
-        !state.quote?.steps.some((step) => step.kind === action.stepKind)
-      ) {
-        return state
-      }
-
-      return {
-        ...state,
-        error: '',
-        pendingAction: '',
-        quote: withTradeStepStatus(state.quote, action.stepKind, 'complete', {
-          error: undefined,
-          txHash: action.txHash
-        }),
-        status: ''
-      }
     case 'quoteBuildFailed':
       return {
         ...state,
@@ -541,29 +442,21 @@ export function tradeReducer(state: TradeWorkflowState, action: TradeWorkflowAct
     case 'quoteRequested':
       return {
         ...state,
-        actionQuoteId: '',
         error: '',
-        flashPayload: null,
-        pendingAction: 'quote',
+        quoteId: '',
         quoteLoading: true,
-        quoteRequestKey: action.requestKey,
-        signature: '',
-        status: 'Getting quote'
+        quoteRequestKey: action.requestKey
       }
     case 'quoteSucceeded':
       if (state.quoteRequestKey !== action.requestKey) return state
 
       return {
         ...state,
-        actionQuoteId: '',
         contraAmount: action.quote.side === 'buy' ? state.contraAmount : action.quote.outputAmount,
         error: '',
-        flashPayload: action.flashPayload,
-        pendingAction: '',
         quote: action.quote,
+        quoteId: action.quoteId,
         quoteLoading: false,
-        signature: '',
-        status: '',
         targetAmount: action.quote.side === 'sell' ? state.targetAmount : action.quote.outputAmount
       }
     case 'selectAsset':
@@ -610,64 +503,6 @@ export function tradeReducer(state: TradeWorkflowState, action: TradeWorkflowAct
         ...(typeof action.quickTrade === 'boolean' ? { quickTrade: action.quickTrade } : {}),
         ...(typeof action.slippage === 'string' ? { slippage: action.slippage } : {})
       })
-    case 'signatureSucceeded':
-      if (state.actionQuoteId !== action.actionQuoteId) return state
-
-      return {
-        ...state,
-        error: '',
-        pendingAction: '',
-        quote: withTradeStepStatus(state.quote, 'sign', 'complete', { error: undefined }),
-        signature: action.signature,
-        status: ''
-      }
-    case 'stepFailed':
-      return {
-        ...state,
-        actionQuoteId: '',
-        error: action.error,
-        pendingAction: '',
-        quote: withTradeStepStatus(state.quote, action.stepKind, 'error', { error: action.error }),
-        status: ''
-      }
-    case 'submitFailed':
-      return {
-        ...state,
-        actionQuoteId: '',
-        error: action.error,
-        pendingAction: '',
-        quote: withTradeStepStatus(
-          withTradeStepStatus(state.quote, 'submit', 'error', { error: action.error }),
-          'sign',
-          'required',
-          { error: undefined }
-        ),
-        signature: '',
-        status: '',
-        submitting: false
-      }
-    case 'submitStarted':
-      return {
-        ...state,
-        actionQuoteId: action.actionQuoteId,
-        error: '',
-        pendingAction: 'submit',
-        quote: withTradeStepStatus(state.quote, 'submit', 'pending', { error: undefined }),
-        status: 'Submitting order',
-        submitting: true
-      }
-    case 'submitSucceeded':
-      if (state.actionQuoteId !== action.actionQuoteId) return state
-
-      return {
-        ...state,
-        actionQuoteId: '',
-        error: '',
-        pendingAction: '',
-        quote: withTradeStepStatus(state.quote, 'submit', 'complete', { error: undefined }),
-        status: '',
-        submitting: false
-      }
     case 'toggleAdvancedOpen':
       return {
         ...state,

@@ -30,9 +30,10 @@ function setupComponent(jsx: any, opts: any = {}) {
         ? () => advanceTimersByTime(advanceTimersAfterInput)
         : undefined)
 
-  render(jsx)
+  const rendered = render(jsx)
 
   return {
+    ...rendered,
     user: userEvent.setup({
       ...options,
       ...(advanceTimers ? { advanceTimers } : {})

@@ -1,17 +1,11 @@
-import {
-  app as electronApp,
-  BrowserWindow,
-  screen,
-  globalShortcut,
-  type IpcMainEvent,
-  type WebContents
-} from 'electron'
+import { app as electronApp, BrowserWindow, screen, globalShortcut, type WebContents } from 'electron'
 import path from 'path'
 import log from 'electron-log'
 import EventEmitter from 'events'
 import { shallow } from 'zustand/vanilla/shallow'
 import { hexToInt, roundGwei } from '../../domain/hex.js'
 import type canonicalStore from '../store/index.js'
+import { closeRendererWindow } from './close.js'
 import SideTrayManager from './sidetray/index.js'
 import { createWindow } from './window.js'
 import { constrainTraySize, TRAY_WIDTH, trayPosition } from './trayGeometry.js'
@@ -441,9 +435,7 @@ export default {
   refocusSideTray(contentId: string) {
     sideTrayManager.refocus(contentId)
   },
-  close(e: Pick<IpcMainEvent, 'sender'>) {
-    BrowserWindow.fromWebContents(e.sender)?.close()
-  },
+  close: closeRendererWindow,
   init(authorization: RendererAuthorizationRegistry, canonicalStore: CanonicalStoreApi) {
     activeStore = canonicalStore
     sideTrayManager = new SideTrayManager(canonicalStore)

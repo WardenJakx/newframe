@@ -22,6 +22,7 @@ import link from '../../../../shared/link'
 import svg from '../../../../shared/svg'
 import { createBalanceSummarySelector, formatUsdRate } from '../../../../../domain/balance'
 import { useWalletSelector } from '../../../../state/useAppSelector'
+import { selectOperationById } from '../../../../state/selectors/operation'
 import type { WalletRendererState } from '../../../../../contracts/state/projections'
 import AccountRenameInput from '../../AccountRenameInput'
 import { useHomeUiStore } from '../../state/HomeUiProvider'
@@ -45,6 +46,8 @@ interface AccountsState {
   accountMenu: string
   accountMove: string
   accountMoveError: string
+  accountMoveOperationId: string
+  accountMoveProfileId: string
   accountQuery: string
   accountRemoving: string
   accountRenaming: string
@@ -167,6 +170,7 @@ export function Accounts() {
       currentProfile: main.currentProfile || '',
       networks: main.networks?.ethereum || EMPTY_RECORD,
       networksMeta: main.networksMeta?.ethereum || EMPTY_RECORD,
+      operations: main.operations || EMPTY_RECORD,
       assetRates: main.assetRates || EMPTY_RECORD,
       tokens: main.tokens,
       showLocalNameWithENS: !!main.showLocalNameWithENS,
@@ -187,6 +191,8 @@ export function Accounts() {
     accountMenu: '',
     accountMove: '',
     accountMoveError: '',
+    accountMoveOperationId: '',
+    accountMoveProfileId: '',
     accountRenaming: '',
     accountRemoving: '',
     accountCopied: '',
@@ -222,6 +228,14 @@ export function Accounts() {
     }
   }, [])
 
+  const accountMoveOperation = state.accountMoveOperationId
+    ? selectOperationById({ operations: props.shared.operations }, state.accountMoveOperationId)
+    : undefined
+  const movedAccount = props.shared.accounts[state.accountMove]
+  const accountMoveReflected =
+    accountMoveOperation?.status === 'succeeded' &&
+    !!state.accountMoveProfileId &&
+    (!movedAccount || movedAccount.profileId === state.accountMoveProfileId)
   function signerIcon(type: string, size = 16) {
     if ((type || '').toLowerCase() === 'address') return svg.eye(size)
     if (type === 'ledger') return svg.ledger(size)
@@ -397,13 +411,26 @@ export function Accounts() {
   }
 
   async function moveAccountToProfile(accountId: string, profileId: string) {
-    setState({ accountMoveError: '' })
-    const result = await link.executeCommand({ type: 'account.profile-move', accountId, profileId })
+    const operationId = crypto.randomUUID()
+    setState({
+      accountMoveError: '',
+      accountMoveOperationId: operationId,
+      accountMoveProfileId: profileId
+    })
+    const result = await link.executeCommand({
+      type: 'account.profile-move',
+      operationId,
+      accountId,
+      profileId
+    })
     if (!result.ok) {
-      setState({ accountMove: accountId, accountMoveError: profileOperationError(result.error) })
-      return
+      setState({
+        accountMove: accountId,
+        accountMoveError: profileOperationError(result.error),
+        accountMoveOperationId: '',
+        accountMoveProfileId: ''
+      })
     }
-    setState({ accountMenu: '', accountMove: '', accountMoveError: '' })
   }
 
   function startRenameAccount(account: any) {
@@ -412,6 +439,8 @@ export function Accounts() {
       accountMenu: '',
       accountMove: '',
       accountMoveError: '',
+      accountMoveOperationId: '',
+      accountMoveProfileId: '',
       accountRemoving: ''
     })
   }
@@ -665,8 +694,8 @@ export function Accounts() {
                     const selected = id === current
                     const navValue = accountNavValue(account)
                     const renaming = state.accountRenaming === id
-                    const menuOpen = state.accountMenu === id
-                    const moveOpen = state.accountMove === id
+                    const menuOpen = state.accountMenu === id && !accountMoveReflected
+                    const moveOpen = state.accountMove === id && !accountMoveReflected
                     const confirmingRemove = state.accountRemoving === id
                     const confirmSeedPhraseRemoval =
                       confirmingRemove && isLastAccountForSeedPhrase(account, accounts)
@@ -775,7 +804,9 @@ export function Accounts() {
                               accountMenu: menuOpen ? '' : id,
                               accountRemoving: '',
                               accountMove: '',
-                              accountMoveError: ''
+                              accountMoveError: '',
+                              accountMoveOperationId: '',
+                              accountMoveProfileId: ''
                             })
                           }}
                           size='small'
@@ -818,20 +849,53 @@ export function Accounts() {
                                       })
                                     )}
                                   label={`Move ${accountDisplayName(account)} to profile`}
-                                  onOpenChange={(open) =>
-                                    setState({
-                                      accountMove: open ? id : '',
-                                      accountMoveError: open ? state.accountMoveError : ''
+                                  onOpenChange={(open) => {
+                                    setHomeState((current) => {
+                                      const operation = current.accountMoveOperationId
+                                        ? selectOperationById(
+                                            { operations: props.shared.operations },
+                                            current.accountMoveOperationId
+                                          )
+                                        : undefined
+                                      const targetAccount = props.shared.accounts[current.accountMove]
+                                      const reflected =
+                                        operation?.status === 'succeeded' &&
+                                        !!current.accountMoveProfileId &&
+                                        (!targetAccount ||
+                                          targetAccount.profileId === current.accountMoveProfileId)
+
+                                      // Selection requests to close synchronously after onSelect. Its functional
+                                      // update runs after moveAccountToProfile records the operation, so retain the
+                                      // menu until main projects either failure or the completed account move.
+                                      if (
+                                        !open &&
+                                        current.accountMoveOperationId &&
+                                        !reflected &&
+                                        operation?.status !== 'failed'
+                                      ) {
+                                        return current
+                                      }
+
+                                      return {
+                                        ...current,
+                                        accountMove: open ? id : '',
+                                        accountMoveError: open ? current.accountMoveError : '',
+                                        accountMoveOperationId: open ? current.accountMoveOperationId : '',
+                                        accountMoveProfileId: open ? current.accountMoveProfileId : ''
+                                      }
                                     })
-                                  }
+                                  }}
                                   onSelect={(profileId) => void moveAccountToProfile(id, profileId)}
                                   open={moveOpen}
                                   trigger={<Text variant='caption'>Move to profile</Text>}
                                 />
                               ) : null}
-                              {moveOpen && state.accountMoveError ? (
+                              {moveOpen &&
+                              (state.accountMoveError || accountMoveOperation?.status === 'failed') ? (
                                 <Text tone='danger' variant='caption'>
-                                  {state.accountMoveError}
+                                  {accountMoveOperation?.status === 'failed'
+                                    ? profileOperationError(accountMoveOperation.error?.code || '')
+                                    : state.accountMoveError}
                                 </Text>
                               ) : null}
                               {isHotAccount(account) || account.agentEnabled ? (

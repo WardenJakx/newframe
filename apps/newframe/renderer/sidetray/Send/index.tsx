@@ -9,6 +9,7 @@ import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
 
 import TokenSelector from '../../shared/ui/TokenSelector'
+import link from '../../shared/link'
 import { SidePanel } from '../../shared/ui/SidePanel/SidePanel'
 import { getTokenSelectorPage } from '../../shared/ui/tokenSelectorModel'
 import { createBalanceTokenSelectorItem, createDisplayBalance, formatUsdRate } from '../../../domain/balance'
@@ -22,9 +23,9 @@ import { useSideTraySelector } from '../../state/useAppSelector'
 import AccountIcon from './AccountIcon'
 import { hasSentToAddress } from './sendHistory'
 import { createInitialSendState, sendReducer, SEND_TOKEN_ROWS_INCREMENT } from './sendReducer'
-import { buildSendTransaction, cleanAddress, shouldResolveName } from './sendTransaction'
-import { closeSend, resolveName, submitTransaction } from './sendService'
-import { canProceed, getAmountBaseUnits, getRecipientAddress, validateSendRequest } from './sendValidation'
+import { cleanAddress } from './sendTransaction'
+import { closeSend } from './sendService'
+import { canProceed, getAmountBaseUnits } from './sendValidation'
 
 interface SendProps {
   assetId?: string | null
@@ -36,11 +37,19 @@ function recipientName(account: SideTrayWalletAccount) {
 
 export default function Send({ assetId }: SendProps) {
   const selectSendView = React.useMemo(() => createSideTrayWalletSelector(), [])
-  const { accounts, activity, balanceSummaries, currentAccount, networks, networksMeta } =
+  const { accounts, activity, balanceSummaries, currentAccount, networks, networksMeta, operations } =
     useSideTraySelector(selectSendView)
   const [state, dispatch] = React.useReducer(sendReducer, assetId, createInitialSendState)
   const previousAccountIdRef = React.useRef(currentAccount?.id || '')
-  const currentAccountIdRef = React.useRef(currentAccount?.id || '')
+  const [submission, setSubmission] = React.useState<{
+    accountId: string
+    operationId: string
+  } | null>(null)
+  const submissionRef = React.useRef(submission)
+  const setActiveSubmission = React.useCallback((next: { accountId: string; operationId: string } | null) => {
+    submissionRef.current = next
+    setSubmission(next)
+  }, [])
 
   const selectedAssetSummary = React.useMemo(() => {
     const explicitlySelectedAsset = balanceSummaries.find(
@@ -61,7 +70,6 @@ export default function Send({ assetId }: SendProps) {
 
   React.useEffect(() => {
     const accountId = currentAccount?.id || ''
-    currentAccountIdRef.current = accountId
     if (previousAccountIdRef.current === accountId) return
 
     previousAccountIdRef.current = accountId
@@ -70,11 +78,15 @@ export default function Send({ assetId }: SendProps) {
       resolveSendAssetFromRouteAssetId(assetId, balanceSummaries) ||
       balanceSummaries[0] ||
       null
-    dispatch({
-      type: 'accountChanged',
-      selectedAssetKey: retainedAsset ? toCanonicalAssetId(retainedAsset) : ''
+    queueMicrotask(() => {
+      if ((currentAccount?.id || '') !== accountId) return
+      setActiveSubmission(null)
+      dispatch({
+        type: 'accountChanged',
+        selectedAssetKey: retainedAsset ? toCanonicalAssetId(retainedAsset) : ''
+      })
     })
-  }, [assetId, balanceSummaries, currentAccount?.id, state.selectedAssetKey])
+  }, [assetId, balanceSummaries, currentAccount?.id, setActiveSubmission, state.selectedAssetKey])
   const recipientAccounts = React.useMemo(() => {
     const senderAddress = cleanAddress(currentAccount?.address)
 
@@ -129,20 +141,6 @@ export default function Send({ assetId }: SendProps) {
     dispatch({ type: 'setMaxAmount', amount: formatUnits(rawBalance, asset.decimals) })
   }, [asset])
 
-  const resolveRecipientAddress = React.useCallback(async () => {
-    const address = getRecipientAddress({
-      recipient: state.recipient,
-      recipientInput: state.recipientInput
-    })
-
-    if (address) return address
-
-    const input = state.recipientInput.trim()
-    if (shouldResolveName(input)) return resolveName(input)
-
-    return ''
-  }, [state.recipient, state.recipientInput])
-
   const handleSubmit = React.useCallback(async () => {
     const submittingAccountId = currentAccount?.id || ''
     const amount = getAmountBaseUnits(state.amount, asset)
@@ -158,58 +156,31 @@ export default function Send({ assetId }: SendProps) {
       return
     }
 
-    let recipientAddress: string
+    const recipient = state.recipient?.address || state.recipientInput.trim()
+    if (!recipient) {
+      dispatch({ type: 'validationFailed', error: 'Enter a valid recipient.' })
+      return
+    }
 
+    const operationId = crypto.randomUUID()
+    setActiveSubmission({ accountId: submittingAccountId, operationId })
     try {
-      recipientAddress = await resolveRecipientAddress()
-    } catch (e) {
-      if (currentAccountIdRef.current !== submittingAccountId) return
-      dispatch({ type: 'validationFailed', error: 'Could not resolve recipient.' })
-      return
-    }
-
-    if (currentAccountIdRef.current !== submittingAccountId) return
-
-    const validationError = validateSendRequest({
-      account: currentAccount,
-      amount,
-      asset,
-      balance,
-      recipientAddress
-    })
-
-    if (validationError) {
-      dispatch({ type: 'validationFailed', error: validationError })
-      return
-    }
-
-    const transaction = buildSendTransaction({
-      amount,
-      asset,
-      recipientAddress
-    })
-    dispatch({ type: 'submitStarted' })
-
-    let response
-    try {
-      response = await submitTransaction(asset.chainId, transaction, crypto.randomUUID())
-    } catch {
-      if (currentAccountIdRef.current !== submittingAccountId) return
-      dispatch({ type: 'submitFailed', error: 'Transaction failed.' })
-      return
-    }
-
-    if (currentAccountIdRef.current !== submittingAccountId) return
-
-    if (!response.ok) {
-      dispatch({
-        type: 'submitFailed',
-        error: response.message || 'Transaction failed.'
+      const response = await link.executeCommand({
+        type: 'send.submit',
+        operationId,
+        asset: { address: asset.address, chainId: asset.chainId },
+        amount: amount.toString(),
+        recipient
       })
-    } else {
-      dispatch({ type: 'submitSucceeded' })
+      if (submissionRef.current?.operationId !== operationId || response.ok) return
+      setActiveSubmission(null)
+      dispatch({ type: 'validationFailed', error: response.message || 'Transaction failed.' })
+    } catch {
+      if (submissionRef.current?.operationId !== operationId) return
+      setActiveSubmission(null)
+      dispatch({ type: 'validationFailed', error: 'Transaction failed.' })
     }
-  }, [asset, currentAccount, resolveRecipientAddress, state.amount])
+  }, [asset, currentAccount, setActiveSubmission, state.amount, state.recipient, state.recipientInput])
 
   const selectedKey = toCanonicalAssetId(asset)
   const { items: selectorBalances, rowsHidden } = getTokenSelectorPage({
@@ -225,13 +196,30 @@ export default function Send({ assetId }: SendProps) {
   const price = asset?.rate?.usdRate
   const fiatValue =
     typeof price !== 'number' ? '—' : amount > 0 ? `$${formatUsdRate(amount * price, 2)}` : '$0.00'
+  const submissionOperation = submission ? operations[submission.operationId] : undefined
+  const transactionId = submissionOperation?.entityRefs?.find(
+    (reference) => reference.type === 'transaction'
+  )?.id
+  const submittedActivity = transactionId ? activity[transactionId] : undefined
+  const submitting =
+    !!submission &&
+    (!submissionOperation ||
+      submissionOperation.status === 'pending' ||
+      (submissionOperation.status === 'succeeded' && !submittedActivity))
+  const operationError = submissionOperation?.status === 'failed' ? submissionOperation.error?.message : ''
+  const submissionStatus =
+    submissionOperation?.status === 'succeeded' && submittedActivity
+      ? 'Transaction submitted'
+      : submitting
+        ? 'Confirm in Newframe'
+        : ''
   const proceedEnabled =
     canProceed({
       amount: state.amount,
       asset,
       recipient: state.recipient,
       recipientInput: state.recipientInput
-    }) && !state.submitting
+    }) && !submitting
   const showFirstTimeWarning =
     !!state.recipient &&
     !hasSentToAddress({
@@ -423,14 +411,14 @@ export default function Send({ assetId }: SendProps) {
               </Stack>
             </Stack>
           </Surface>
-          {state.error ? (
+          {state.error || operationError ? (
             <Text align='center' variant='body' tone='danger'>
-              {state.error}
+              {state.error || operationError}
             </Text>
           ) : null}
-          {state.status ? (
+          {submissionStatus ? (
             <Text align='center' variant='body' tone='secondary'>
-              {state.status}
+              {submissionStatus}
             </Text>
           ) : null}
         </Stack>

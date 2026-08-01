@@ -21,6 +21,8 @@ export interface SideTrayWalletSelectorValue {
   currentAccount: SideTrayWalletAccount | null
   networks: Record<string | number, SideTrayWalletEthereumNetwork>
   networksMeta: Record<string | number, SideTrayWalletEthereumNetworkMeta>
+  operations: SideTrayRendererState['operations']
+  orders: NonNullable<SideTrayRendererState['orders']>
   runtime: SideTrayRendererState['runtime']
 }
 
@@ -29,6 +31,7 @@ const EMPTY_BALANCES: Balance[] = []
 const EMPTY_NETWORKS: Record<string | number, SideTrayWalletEthereumNetwork> = {}
 const EMPTY_NETWORKS_META: Record<string | number, SideTrayWalletEthereumNetworkMeta> = {}
 const EMPTY_ASSET_RATES: SideTrayRendererState['assetRates'] = {}
+const EMPTY_ORDERS: NonNullable<SideTrayRendererState['orders']> = {}
 
 function createSelectableBalancesSelector() {
   let previousBalances: Balance[] | undefined
@@ -100,6 +103,8 @@ export function createSideTrayWalletSelector() {
     const globalTokenIds = new Set(globalTokens.map(toTokenId))
     const networks = state.networks.ethereum || EMPTY_NETWORKS
     const networksMeta = state.networksMeta.ethereum || EMPTY_NETWORKS_META
+    const operations = state.operations
+    const orders = state.orders || EMPTY_ORDERS
     const assetRates = state.assetRates || EMPTY_ASSET_RATES
     const activity = state.activity
     const tokens = state.tokens
@@ -123,6 +128,8 @@ export function createSideTrayWalletSelector() {
       previousResult.currentAccount === currentAccount &&
       previousResult.networks === networks &&
       previousResult.networksMeta === networksMeta &&
+      previousResult.operations === operations &&
+      previousResult.orders === orders &&
       previousResult.runtime === runtime
     ) {
       return previousResult
@@ -135,6 +142,8 @@ export function createSideTrayWalletSelector() {
       currentAccount,
       networks,
       networksMeta,
+      operations,
+      orders,
       runtime
     }
 

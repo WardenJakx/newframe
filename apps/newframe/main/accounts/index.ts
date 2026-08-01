@@ -7,7 +7,6 @@ import FrameAccount from './Account.js'
 import type { DataScanner } from '../externalData/index.js'
 import type { CanonicalStoreReader } from '../store/actions.js'
 import Signer from '../signers/Signer/index.js'
-import type { SignerCompatibility } from '../transaction/index.js'
 
 import { weiIntToEthInt, hexToInt } from '../../domain/hex.js'
 import {
@@ -18,7 +17,6 @@ import {
   getTransactionIntent,
   getTransactionPositionTokens
 } from '../../domain/transaction/index.js'
-import { findUnavailableSigners, isHardwareSigner, isSignerReady } from '../../domain/signer/index.js'
 import { decideWalletAction, type TrustedPrincipal } from '../authority.js'
 
 import {
@@ -49,6 +47,7 @@ import type { TransactionSimulationPort } from '../features/transactions/simulat
 import type { NameResolutionService } from '../nameResolution.js'
 import type { RevealService } from '../reveal.js'
 import type { AccountsRuntime } from './runtime.js'
+import type { PromptedRequestLifecyclePort } from '../features/requests/service.js'
 
 function shortHash(hash?: string) {
   if (!hash) return ''
@@ -143,6 +142,7 @@ export interface AccountsDependencies {
   reveal: RevealService
   runtime: AccountsRuntime
   createDataScanner: (store: CanonicalStoreReader) => DataScanner
+  requests: PromptedRequestLifecyclePort
 }
 
 export class Accounts extends EventEmitter {
@@ -187,6 +187,7 @@ export class Accounts extends EventEmitter {
           this.dependencies.nameResolution,
           this.dependencies.reveal,
           this.dependencies.runtime,
+          this.dependencies.requests,
           this.isActiveProfileAccount(id)
         )
       }
@@ -234,6 +235,7 @@ export class Accounts extends EventEmitter {
         this.dependencies.nameResolution,
         this.dependencies.reveal,
         this.dependencies.runtime,
+        this.dependencies.requests,
         this.isActiveProfileAccount(id)
       )
     }
@@ -901,7 +903,8 @@ export class Accounts extends EventEmitter {
         this.dependencies.simulation,
         this.dependencies.nameResolution,
         this.dependencies.reveal,
-        this.dependencies.runtime
+        this.dependencies.runtime,
+        this.dependencies.requests
       )
       account = this.accounts[address]
     }
@@ -921,6 +924,10 @@ export class Accounts extends EventEmitter {
   current() {
     const currentAccountId = this.store.getState().main.currentAccount
     return currentAccountId ? this.handle(currentAccountId) : null
+  }
+
+  private accountForRequest(handlerId: string) {
+    return Object.values(this.accounts).find((account) => Boolean(account.requests[handlerId]))
   }
 
   private defaultAccountAfterRemoving(address: string) {
@@ -1600,55 +1607,6 @@ export class Accounts extends EventEmitter {
     }
   }
 
-  signerCompatibility(handlerId: string, cb: Callback<SignerCompatibility>) {
-    const currentAccount = this.current()
-    if (!currentAccount) return cb(new Error('Could not locate account'))
-
-    const request = currentAccount.requests[handlerId]
-    if (!request) return cb(new Error(`Could not locate request ${handlerId}`))
-
-    const signer = currentAccount.getSigner()
-
-    const signerUnavailable = () => cb(new Error('Signer unavailable'))
-
-    if (!signer) {
-      // if no signer is active, check if this account was previously relying on a
-      // hardware signer that is currently disconnected
-      const unavailableSigners = findUnavailableSigners(
-        currentAccount.lastSignerType,
-        this.storeApi.getSigners()
-      )
-
-      // surface hardware signer recovery to the caller
-      if (unavailableSigners.length === 1) return signerUnavailable()
-
-      // let the caller offer a choice when multiple matching signers exist
-      if (unavailableSigners.length > 1) return signerUnavailable()
-
-      // otherwise there are no signers that can be found
-      return cb(new Error('No signer'))
-    }
-
-    if (!isSignerReady(signer)) {
-      // Hot signer availability is app-lock state. Only hardware signers use recovery.
-      if (!isHardwareSigner(signer)) return cb(new Error('Newframe locked'))
-
-      return signerUnavailable()
-    }
-
-    const getCompatibility = () => {
-      if (request.type === 'transaction') {
-        const data = this.getTransactionRequest(currentAccount, handlerId).data
-        return this.dependencies.transactionPolicy.signerCompatibility(data, signer.summary())
-      }
-
-      // all requests besides transactions are always compatible
-      return { signer: signer.type, tx: '', compatible: true }
-    }
-
-    cb(null, getCompatibility())
-  }
-
   close() {
     this.profileObserver?.()
     this.profileObserver = undefined
@@ -1694,9 +1652,9 @@ export class Accounts extends EventEmitter {
   routeRequest(
     principal: TrustedPrincipal,
     req: AccountRequest,
-    res?: RPCCallback<any>,
     executeAutonomously?: (request: AccountRequest) => void
   ) {
+    this.dependencies.requests.bind(req)
     const decision = decideWalletAction(principal, req)
 
     if (decision.outcome === 'reject') {
@@ -1705,7 +1663,7 @@ export class Accounts extends EventEmitter {
         account: req.account,
         reason: decision.reason
       })
-      res?.({
+      this.dependencies.requests.respond(req.handlerId, {
         id: req.payload.id,
         jsonrpc: req.payload.jsonrpc,
         error: { code: 4100, message: decision.reason }
@@ -1718,7 +1676,7 @@ export class Accounts extends EventEmitter {
         log.error('Autonomous wallet action has no executor', {
           actionId: decision.authorization.actionId
         })
-        res?.({
+        this.dependencies.requests.respond(req.handlerId, {
           id: req.payload.id,
           jsonrpc: req.payload.jsonrpc,
           error: { code: 4100, message: 'Autonomous signing is not enabled for this action' }
@@ -1736,9 +1694,14 @@ export class Accounts extends EventEmitter {
 
     const requestAccount = this.getFrameAccount(req.account)
     if (requestAccount && !requestAccount.requests[req.handlerId]) {
-      requestAccount.addRequest(req, res)
+      requestAccount.addRequest(req)
       return true
     }
+    this.dependencies.requests.respond(req.handlerId, {
+      id: req.payload.id,
+      jsonrpc: req.payload.jsonrpc,
+      error: { code: 4100, message: 'Request account is unavailable' }
+    })
     return false
   }
 
@@ -1771,14 +1734,14 @@ export class Accounts extends EventEmitter {
 
   setRequestPending(req: AccountRequest) {
     const handlerId = req.handlerId
-    const currentAccount = this.current()
+    const requestAccount = this.accountForRequest(handlerId)
 
     log.info('setRequestPending', handlerId)
 
-    if (currentAccount && currentAccount.requests[handlerId]) {
-      const signerType = currentAccount.lastSignerType
+    if (requestAccount) {
+      const signerType = requestAccount.lastSignerType
       const hwSigner = signerType !== 'seed' && signerType !== 'ring'
-      currentAccount.patchRequest(handlerId, (request) => {
+      requestAccount.patchRequest(handlerId, (request) => {
         request.status = RequestStatus.Pending
         request.notice = hwSigner ? 'See Signer' : ''
       })
@@ -1788,9 +1751,9 @@ export class Accounts extends EventEmitter {
   setRequestError(handlerId: string, err: Error) {
     log.info('setRequestError', handlerId)
 
-    const currentAccount = this.current()
+    const requestAccount = this.accountForRequest(handlerId)
 
-    if (currentAccount && currentAccount.requests[handlerId]) {
+    if (requestAccount) {
       const errorMessage = (err.message || '').toLowerCase()
       let notice: string
 
@@ -1811,28 +1774,27 @@ export class Accounts extends EventEmitter {
               : 'Unknown Error' // TODO: Update to normalize input type
       }
 
-      currentAccount.patchRequest(handlerId, (request) => {
+      requestAccount.patchRequest(handlerId, (request) => {
         request.status = RequestStatus.Error
         request.notice = notice
       })
 
-      if (currentAccount.requests[handlerId].type === 'transaction') {
+      if (requestAccount.requests[handlerId].type === 'transaction') {
         this.dependencies.runtime.schedule(() => {
-          const activeAccount = this.current()
-          if (activeAccount && activeAccount.requests[handlerId]) {
-            activeAccount.patchRequest(handlerId, (request) => {
+          if (requestAccount.requests[handlerId]) {
+            requestAccount.patchRequest(handlerId, (request) => {
               request.mode = RequestMode.Monitor
             })
 
             this.dependencies.runtime.schedule(
-              () => this.has(activeAccount.address) && this.removeRequest(activeAccount, handlerId),
+              () => this.has(requestAccount.address) && this.removeRequest(requestAccount, handlerId),
               8000
             )
           }
         }, 1500)
       } else {
         this.dependencies.runtime.schedule(
-          () => this.has(currentAccount.address) && this.removeRequest(currentAccount, handlerId),
+          () => this.has(requestAccount.address) && this.removeRequest(requestAccount, handlerId),
           3300
         )
       }
@@ -1842,17 +1804,17 @@ export class Accounts extends EventEmitter {
   setTxSigned(handlerId: string, cb: Callback<void>) {
     log.info('setTxSigned', handlerId)
 
-    const currentAccount = this.current()
-    if (!currentAccount) return cb(new Error('No account selected'))
+    const requestAccount = this.accountForRequest(handlerId)
+    if (!requestAccount) return cb(new Error('No valid request for ' + handlerId))
 
-    if (currentAccount.requests[handlerId]) {
+    if (requestAccount.requests[handlerId]) {
       if (
-        currentAccount.requests[handlerId].status === RequestStatus.Declined ||
-        currentAccount.requests[handlerId].status === RequestStatus.Error
+        requestAccount.requests[handlerId].status === RequestStatus.Declined ||
+        requestAccount.requests[handlerId].status === RequestStatus.Error
       ) {
         cb(new Error('Request already declined'))
       } else {
-        currentAccount.patchRequest(handlerId, (request) => {
+        requestAccount.patchRequest(handlerId, (request) => {
           request.status = RequestStatus.Sending
           request.notice = 'Sending'
         })
@@ -1866,35 +1828,35 @@ export class Accounts extends EventEmitter {
   setTxSent(handlerId: string, hash: string) {
     log.info('setTxSent', handlerId, 'Hash', hash)
 
-    const currentAccount = this.current()
-    if (currentAccount && currentAccount.requests[handlerId]) {
-      const txRequest = currentAccount.patchRequest<TransactionRequest>(handlerId, (request) => {
+    const requestAccount = this.accountForRequest(handlerId)
+    if (requestAccount) {
+      const txRequest = requestAccount.patchRequest<TransactionRequest>(handlerId, (request) => {
         request.status = RequestStatus.Verifying
         request.notice = 'Verifying'
         request.mode = RequestMode.Monitor
       }) as TransactionRequest
 
-      this.recordSubmittedTransaction(currentAccount, handlerId, txRequest, hash)
+      this.recordSubmittedTransaction(requestAccount, handlerId, txRequest, hash)
       this.store.getState().navClearReq(handlerId, false)
-      this.openNextActionableRequest(currentAccount)
-      this.txMonitor(currentAccount, handlerId, hash)
+      this.openNextActionableRequest(requestAccount)
+      this.txMonitor(requestAccount, handlerId, hash)
     }
   }
 
   setRequestSuccess(handlerId: string) {
     log.info('setRequestSuccess', handlerId)
 
-    const currentAccount = this.current()
-    if (currentAccount && currentAccount.requests[handlerId]) {
-      const isTransaction = currentAccount.requests[handlerId].type === 'transaction'
-      currentAccount.patchRequest(handlerId, (request) => {
+    const requestAccount = this.accountForRequest(handlerId)
+    if (requestAccount) {
+      const isTransaction = requestAccount.requests[handlerId].type === 'transaction'
+      requestAccount.patchRequest(handlerId, (request) => {
         request.status = RequestStatus.Success
         request.notice = 'Successful'
         if (isTransaction) request.mode = RequestMode.Monitor
       })
       if (!isTransaction) {
         this.dependencies.runtime.schedule(
-          () => this.has(currentAccount.address) && this.removeRequest(currentAccount, handlerId),
+          () => this.has(requestAccount.address) && this.removeRequest(requestAccount, handlerId),
           3300
         )
       }

@@ -1,21 +1,9 @@
 import link from '../../shared/link'
-import type { FlashQuoteRequest, FlashSubmitOrder, TypedDataSignCommand } from '../../../contracts/operations'
-import type { MarketTradeQuoteRequest, TradeSubmitRequest } from './tradeTransaction'
+import type { FlashQuoteRequest } from '../../../contracts/operations'
+import type { MarketTradeQuoteRequest } from './tradeTransaction'
 
 export function closeTrade() {
   void link.executeCommand({ type: 'sidetray.close' })
-}
-
-export function submitTransaction(
-  chainId: number,
-  transaction: { to: string; data?: string; value?: string },
-  idempotencyKey: string
-) {
-  return link.executeCommand({ type: 'transaction.submit', idempotencyKey, chainId, transaction })
-}
-
-export function signTypedData(chainId: number, typedData: TypedDataSignCommand['typedData']) {
-  return link.executeCommand({ type: 'typedData.signV4', chainId, typedData })
 }
 
 export async function flashQuote(request: MarketTradeQuoteRequest) {
@@ -30,22 +18,21 @@ export async function flashQuote(request: MarketTradeQuoteRequest) {
     request: wireRequest as FlashQuoteRequest
   })
   if (!result.ok) throw new Error(result.message || 'Flash quote failed.')
-
-  return { quote: result.quote, flash: result.flash }
+  return result
 }
 
-export async function flashSubmitOrder(request: TradeSubmitRequest) {
-  const {
-    accountAddress: _accountAddress,
-    contraChain: _contraChain,
-    targetChain: _targetChain,
-    ...wireOrder
-  } = request
-  const result = await link.executeCommand({
-    type: 'flash.submit',
-    order: wireOrder as FlashSubmitOrder
-  })
-  if (!result.ok) throw new Error(result.message || 'Flash order submission failed.')
+export function prepareTrade(operationId: string, quoteId: string, action: 'wrap' | 'approve') {
+  return link.executeCommand({ type: 'trade.prepare', operationId, quoteId, action })
+}
 
-  return { orderId: result.orderId }
+export function submitTrade(operationId: string, quoteId: string) {
+  return link.executeCommand({ type: 'trade.submit', operationId, quoteId })
+}
+
+export async function releaseTrade() {
+  try {
+    await link.executeCommand({ type: 'trade.release' })
+  } catch {
+    // Owner-scoped quote cleanup is best-effort during renderer teardown.
+  }
 }

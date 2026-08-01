@@ -5,8 +5,24 @@ import type { VisualStage } from '../types.ts'
 export const resetStateStage: VisualStage = {
   name: 'reset harness-owned state',
   async run({ driver }) {
-    await driver.executeCommand(driver.tray, { type: 'wallet.reset', scope: 'saved-data' })
-    const state = await driver.getAppState()
+    const operationId = crypto.randomUUID()
+    await driver.executeCommand(driver.tray, {
+      type: 'wallet.reset',
+      operationId,
+      scope: 'saved-data'
+    })
+    const state = await driver.waitForState(
+      (candidate) => {
+        const status = candidate.operations?.[operationId]?.operation?.status
+        return status === 'succeeded' || status === 'failed'
+      },
+      5_000,
+      'Saved-data reset operation did not complete'
+    )
+    const resetOperation = state.operations?.[operationId]?.operation
+    if (resetOperation?.status === 'failed') {
+      driver.fail(resetOperation.error?.message || 'Saved-data reset failed')
+    }
     const originIds = new Set<string>()
 
     Object.entries(state.main?.origins || {}).forEach(([originId, origin]) => {
@@ -31,20 +47,12 @@ export const resetStateStage: VisualStage = {
     if (state.main?.networks?.ethereum?.[String(anvilChainId)]) {
       await driver.executeCommand(driver.tray, { type: 'network.remove', chainId: anvilChainId })
     }
-    await driver.executeCommand(driver.tray, {
-      type: 'settings.update',
-      setting: 'show-testnets',
-      value: true
-    })
+    await driver.setShowTestnets(true)
     await driver.waitForState(
       (candidate) => {
         const networks = candidate.main?.networks?.ethereum || {}
         const orders = candidate.main?.orders || {}
-        return (
-          candidate.main?.showTestnets === true &&
-          !networks[String(anvilChainId)] &&
-          Object.keys(orders).length === 0
-        )
+        return !networks[String(anvilChainId)] && Object.keys(orders).length === 0
       },
       5_000,
       'Harness-owned state did not reset'

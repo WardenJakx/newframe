@@ -14,6 +14,7 @@ import {
 } from './ws.js'
 import { createApiServer } from './server.js'
 import { createProductionOriginsService } from './origins.js'
+import type { RequestService } from '../features/requests/service.js'
 
 export { createApiServer, type ApiServer, type ApiServerDependencies } from './server.js'
 
@@ -23,9 +24,10 @@ export function createProductionApiServer(
   flashService: FlashService,
   canonicalStore: CanonicalStoreReader,
   agentService: AgentService,
+  requestService: RequestService,
   windows: WebSocketRpcTransportDependencies['windows']
 ) {
-  const origins = createProductionOriginsService(canonicalStore, accounts)
+  const origins = createProductionOriginsService(canonicalStore, accounts, requestService)
   const storePort = {
     endOriginSession: (originId: string) => canonicalStore.getState().endOriginSession(originId)
   }

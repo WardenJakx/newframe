@@ -1,8 +1,16 @@
 import { beforeEach, describe, expect, it } from 'bun:test'
 import type { Mock } from 'bun:test'
 
-import { cleanup, render, screen, waitFor } from '../../../../../test/support/componentSetup'
+import { act, cleanup, render, screen, waitFor } from '../../../../../test/support/componentSetup'
 import { createHostFixture } from '../../../../../test/support/rendererClient'
+import { STATE_STREAM_SCHEMA_VERSION } from '../../../../../contracts/state/protocol'
+import type { OperationRecord } from '../../../../../domain/state/operation'
+import { walletState } from '../../../../state/fixtures.test-support'
+import {
+  applyStateMessage,
+  beginStateConnection,
+  resetStateMirrorForTests
+} from '../../../../state/rendererStore'
 import { ProfileSelector } from './ProfileSelector'
 
 const link = createHostFixture()
@@ -11,14 +19,49 @@ const profiles = [
   { id: 'work', name: 'Work', accountCount: 1, cachedValue: { state: 'unpriced' as const } },
   { id: 'empty', name: 'Empty', accountCount: 0, cachedValue: { state: 'priced' as const, value: 12.5 } }
 ]
+let revision = 0
+
+function publishOperation(operation: OperationRecord) {
+  const baseRevision = revision
+  revision += 1
+  act(() => {
+    applyStateMessage({
+      schemaVersion: STATE_STREAM_SCHEMA_VERSION,
+      streamId: 'profiles-test',
+      baseRevision,
+      revision,
+      changes: { operations: { [operation.id]: operation } }
+    })
+  })
+}
+
+function operation(id: string, type: string, status: 'pending' | 'succeeded' | 'failed') {
+  return {
+    id,
+    type,
+    status,
+    startedAt: 1,
+    updatedAt: status === 'pending' ? 1 : 2,
+    ...(status === 'pending' ? {} : { finishedAt: 2 })
+  } satisfies OperationRecord
+}
 
 describe('ProfileSelector', () => {
   beforeEach(() => {
     ;(link.executeCommand as Mock<any>).mockResolvedValue({ ok: true })
+    revision = 0
+    resetStateMirrorForTests()
+    beginStateConnection('wallet-ui')
+    applyStateMessage({
+      schemaVersion: STATE_STREAM_SCHEMA_VERSION,
+      streamId: 'profiles-test',
+      revision: 0,
+      state: walletState({ currentProfile: 'personal', profiles, operations: {} })
+    })
   })
 
   it('shows every ordered summary and supports listbox keyboard selection without a dormant query', async () => {
-    const { user } = render(<ProfileSelector currentProfile='personal' profiles={profiles} />)
+    const { rerender, user } = render(<ProfileSelector currentProfile='personal' profiles={profiles} />)
 
     expect(link.executeQuery).not.toHaveBeenCalled()
     const trigger = screen.getByRole('button', { name: 'Select active profile' })
@@ -33,7 +76,21 @@ describe('ProfileSelector', () => {
 
     trigger.focus()
     await user.keyboard('{ArrowDown}{Enter}')
-    expect(link.executeCommand).toHaveBeenCalledWith({ type: 'profile.select', profileId: 'work' })
+    expect(link.executeCommand).toHaveBeenCalledWith({
+      type: 'profile.select',
+      operationId: expect.any(String),
+      profileId: 'work'
+    })
+    const command = (link.executeCommand as Mock<any>).mock.calls.at(-1)![0] as {
+      operationId: string
+      type: string
+    }
+    expect(screen.getAllByRole('option')).toHaveLength(3)
+
+    publishOperation(operation(command.operationId, command.type, 'succeeded'))
+    expect(screen.getAllByRole('option')).toHaveLength(3)
+    rerender(<ProfileSelector currentProfile='work' profiles={profiles} />)
+    await waitFor(() => expect(screen.queryAllByRole('option')).toHaveLength(0))
   })
 
   it('queries movable accounts only after create opens and creates with selected moves', async () => {
@@ -41,9 +98,7 @@ describe('ProfileSelector', () => {
       ok: true,
       accounts: [{ id: 'account-1', address: '0x1', name: 'Primary', profileId: 'personal' }]
     })
-    ;(link.executeCommand as Mock<any>).mockResolvedValueOnce({ ok: true, profileId: 'new-profile' })
-
-    const { user } = render(<ProfileSelector currentProfile='personal' profiles={profiles} />)
+    const { rerender, user } = render(<ProfileSelector currentProfile='personal' profiles={profiles} />)
     expect(link.executeQuery).not.toHaveBeenCalled()
     await user.click(screen.getByRole('button', { name: 'Select active profile' }))
     await user.click(screen.getByRole('button', { name: 'Create' }))
@@ -55,15 +110,39 @@ describe('ProfileSelector', () => {
 
     expect(link.executeCommand).toHaveBeenCalledWith({
       type: 'profile.create',
+      operationId: expect.any(String),
       name: 'Travel',
       accountIds: ['account-1']
     })
+    const command = (link.executeCommand as Mock<any>).mock.calls.at(-1)![0] as {
+      operationId: string
+      type: string
+    }
+    expect(screen.getByLabelText('New profile name')).toBeTruthy()
+    publishOperation({
+      ...operation(command.operationId, command.type, 'succeeded'),
+      entityRefs: [{ type: 'profile', id: 'new-profile' }]
+    })
+    expect(screen.getByLabelText('New profile name')).toBeTruthy()
+    rerender(
+      <ProfileSelector
+        currentProfile='new-profile'
+        profiles={[
+          ...profiles,
+          {
+            id: 'new-profile',
+            name: 'Travel',
+            accountCount: 1,
+            cachedValue: { state: 'missing' }
+          }
+        ]}
+      />
+    )
+    await waitFor(() => expect(screen.queryByLabelText('New profile name')).toBeNull())
   })
 
   it('creates without moves, validates names, and keeps command failures visible', async () => {
     ;(link.executeQuery as Mock<any>).mockResolvedValueOnce({ ok: true, accounts: [] })
-    ;(link.executeCommand as Mock<any>).mockResolvedValueOnce({ ok: false, error: 'duplicate_name' })
-
     const { user } = render(<ProfileSelector currentProfile='personal' profiles={profiles} />)
     await user.click(screen.getByRole('button', { name: 'Select active profile' }))
     await user.click(screen.getByRole('button', { name: 'Create' }))
@@ -73,7 +152,19 @@ describe('ProfileSelector', () => {
 
     await user.type(screen.getByLabelText('New profile name'), 'Travel')
     await user.click(screen.getByRole('button', { name: 'Create profile' }))
-    expect(link.executeCommand).toHaveBeenCalledWith({ type: 'profile.create', name: 'Travel' })
+    expect(link.executeCommand).toHaveBeenCalledWith({
+      type: 'profile.create',
+      operationId: expect.any(String),
+      name: 'Travel'
+    })
+    const command = (link.executeCommand as Mock<any>).mock.calls.at(-1)![0] as {
+      operationId: string
+      type: string
+    }
+    publishOperation({
+      ...operation(command.operationId, command.type, 'failed'),
+      error: { code: 'duplicate_name', message: 'A profile with that name already exists.' }
+    })
     expect(await screen.findByText('A profile with that name already exists.')).toBeTruthy()
   })
 
@@ -86,6 +177,7 @@ describe('ProfileSelector', () => {
     await user.type(input, 'Archive{Enter}')
     expect(link.executeCommand).toHaveBeenCalledWith({
       type: 'profile.rename',
+      operationId: expect.any(String),
       profileId: 'empty',
       name: 'Archive'
     })
@@ -111,7 +203,11 @@ describe('ProfileSelector', () => {
     await user.click(screen.getByRole('button', { name: 'Confirm delete' }))
 
     await waitFor(() => {
-      expect(link.executeCommand).toHaveBeenCalledWith({ type: 'profile.delete', profileId: 'empty' })
+      expect(link.executeCommand).toHaveBeenCalledWith({
+        type: 'profile.delete',
+        operationId: expect.any(String),
+        profileId: 'empty'
+      })
     })
   })
 })

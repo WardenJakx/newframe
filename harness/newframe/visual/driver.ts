@@ -3,7 +3,7 @@ import type { ElectronApplication, Page } from 'playwright-core'
 import type {
   AppCommand,
   AppQuery,
-  ResultForCommand,
+  CommandResult,
   ResultForQuery
 } from '../../../apps/newframe/contracts/operations.ts'
 import { anvilChainId } from '../core/config.ts'
@@ -141,12 +141,16 @@ export class NewframeDriver {
   }
 
   async executeCommand<TCommand extends AppCommand>(page: Page, command: TCommand) {
-    const result = await page.evaluate<OperationResult, unknown>(async (command) => {
-      const host = (window as typeof window & { __NEWFRAME_HOST__?: HarnessHost }).__NEWFRAME_HOST__
+    const result = await withTimeout(
+      page.evaluate<OperationResult, unknown>(async (command) => {
+        const host = (window as typeof window & { __NEWFRAME_HOST__?: HarnessHost }).__NEWFRAME_HOST__
 
-      if (!host) throw new Error('Newframe host bridge is not available')
-      return host.executeCommand(command as AppCommand)
-    }, command)
+        if (!host) throw new Error('Newframe host bridge is not available')
+        return host.executeCommand(command as AppCommand)
+      }, command),
+      `${command.type} command acknowledgement`,
+      this.runtime.uiTimeoutMs
+    )
 
     if (!result.ok) {
       const failure = result as { error: string; message?: string }
@@ -155,7 +159,7 @@ export class NewframeDriver {
       )
     }
 
-    return result as ResultForCommand<TCommand>
+    return result as CommandResult
   }
 
   async executeQuery<TQuery extends AppQuery>(page: Page, query: TQuery) {
@@ -206,6 +210,22 @@ export class NewframeDriver {
     const chainIdValue = parsed.searchParams.get('chainId')
     const chainId = chainIdValue ? Number(chainIdValue) : undefined
     await this.executeCommand(this.tray, { type: 'sidetray.open', feature, assetId, chainId })
+    const sideTray = await this.waitForElectronPage('bundle/sidetray.html')
+    await this.waitForSideTrayRoute(sideTray, feature)
+    return sideTray
+  }
+
+  async setShowTestnets(value: boolean) {
+    await this.executeCommand(this.tray, {
+      type: 'settings.update',
+      setting: 'show-testnets',
+      value
+    })
+    await this.waitForState(
+      (state) => state.main?.showTestnets === value,
+      5_000,
+      `Show-testnets projection did not become ${String(value)}`
+    )
   }
 
   async getAppState(): Promise<AppState> {
@@ -373,6 +393,19 @@ export class NewframeDriver {
     await this.waitForSelectedAccount(account)
   }
 
+  async setAgentAccess(account: AccountInfo, enabled: boolean) {
+    await this.executeCommand(this.tray, {
+      type: 'account.agent-access-set',
+      accountId: account.id,
+      enabled
+    })
+    await this.waitForState(
+      (state) => state.main?.accounts?.[account.id]?.agentEnabled === enabled,
+      5_000,
+      `Agent access projection did not become ${String(enabled)} for ${account.id}`
+    )
+  }
+
   nativeAnvilBalance(state: AppState, address: string) {
     const balances = state.main?.balances?.[address.toLowerCase()] || []
     return balances.find((balance) => {
@@ -394,7 +427,20 @@ export class NewframeDriver {
   }
 
   async refreshBalances() {
-    await this.executeCommand(this.tray, { type: 'portfolio.refresh' })
+    const operationId = crypto.randomUUID()
+    await this.executeCommand(this.tray, { type: 'portfolio.refresh', operationId })
+    const state = await this.waitForState(
+      (candidate) => {
+        const status = candidate.operations?.[operationId]?.operation?.status
+        return status === 'succeeded' || status === 'failed'
+      },
+      15_000,
+      'Portfolio refresh operation did not complete'
+    )
+    const operation = state.operations?.[operationId]?.operation
+    if (operation?.status === 'failed') {
+      this.fail(operation.error?.message || 'Portfolio refresh failed')
+    }
   }
 
   async maybeProceedWarning(filename: string) {
@@ -412,13 +458,14 @@ export class NewframeDriver {
     submittedScreenshot: string,
     warningScreenshots: string[]
   ) {
-    if (warningScreenshots[0]) await this.maybeProceedWarning(warningScreenshots[0])
-
     // The visible Sign button has an intentional UI delay; approve after the harness captures the review.
     await this.executeCommand(this.tray, { type: 'request.approve', requestId: request.handlerId })
     void this.anvil.mineBlocksOver(10, 150).catch(() => undefined)
 
-    if (warningScreenshots[1]) await this.maybeProceedWarning(warningScreenshots[1])
+    // Warning policy now advances in main and projects one exact canonical gate at a time.
+    for (const filename of warningScreenshots) {
+      if (!(await this.maybeProceedWarning(filename))) break
+    }
     await this.waitForRequestStatus(request.handlerId)
     await this.screenshot(this.tray, submittedScreenshot)
   }
@@ -454,11 +501,9 @@ export class NewframeDriver {
   }
 
   async openTradeTicket() {
-    await this.openSideTrayRoute(
+    const tradePage = await this.openSideTrayRoute(
       this.sideTrayRoute('trade', this.canonicalAssetId(anvilChainId, wethAddress))
     )
-    const tradePage = await this.waitForElectronPage('bundle/sidetray.html')
-    await this.waitForSideTrayRoute(tradePage, 'trade')
     await tradePage.getByRole('tab', { name: 'Market' }).waitFor({ state: 'visible', timeout: 15_000 })
     return tradePage
   }

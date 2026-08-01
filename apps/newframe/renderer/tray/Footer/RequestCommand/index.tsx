@@ -1,5 +1,4 @@
 import { Button } from '@newframe/ui/button'
-import { Icon } from '@newframe/ui/icon'
 import { Inline } from '@newframe/ui/inline'
 import { Spinner } from '@newframe/ui/spinner'
 import { Stack } from '@newframe/ui/stack'
@@ -12,30 +11,19 @@ import type { SignatureRequest, TransactionRequest } from '../../../../contracts
 import { RequestActions } from '../../../shared/ui/RequestActions'
 import StatusGlyph from '../../../shared/ui/StatusGlyph'
 import { isCancelableRequest, isSignatureRequest } from '../../../../domain/request'
-import { usesBaseFee } from '../../../../domain/transaction'
 import type { WalletRendererState } from '../../../../contracts/state/projections'
 import link from '../../../shared/link'
-import { toBigInt } from '../../../../domain/units'
 import { useWalletSelector } from '../../../state/useAppSelector'
-import { resolveAssetRate } from '../../../../domain/asset'
-import { NATIVE_CURRENCY } from '../../../../domain/token/constants'
-import type { AssetRateMap } from '../../../../domain/state/rate'
 import { useTrayNotification, type TrayNotifier } from '../../notification'
 import { useRequestView, type RequestViewStep } from '../../requestView'
 import TxApproval from './TxApproval'
 
-const FEE_WARNING_THRESHOLD_USD = 50
 type RequestReference = { handlerId: string }
-type SignerCompatibility = { signer: string; tx: string; compatible: boolean }
 
 interface RequestCommandSharedState {
   appLocked: boolean
   chain: { explorer?: string; isTestnet?: boolean }
-  chainMeta: { nativeCurrency?: { symbol?: string } }
-  assetRates: AssetRateMap
   explorerWarningMuted: boolean
-  gasFeeWarningMuted: boolean
-  signerCompatibilityWarningMuted: boolean
   step: RequestViewStep
 }
 
@@ -55,7 +43,6 @@ interface RequestCommandProps {
 }
 
 const EMPTY_CHAIN = {}
-const EMPTY_CHAIN_META = { nativeCurrency: {} }
 
 export const approveRequest = (requestId: string) =>
   void link.executeCommand({ type: 'request.approve', requestId })
@@ -67,29 +54,11 @@ export const runWhenAppUnlocked = (appLocked: boolean, next: () => void) => {
   if (!appLocked) next()
 }
 
-export async function checkSignerCompatibility(
-  req: RequestReference,
-  notify: TrayNotifier,
-  onSignerUnavailable: () => void,
-  next: (compatibility: SignerCompatibility) => void
-) {
-  const result = await link.executeQuery({ type: 'request.signer-compatibility', requestId: req.handlerId })
-  if (!result.ok) {
-    if (result.error === 'no_signer') notify('noSignerWarning', { req })
-    else if (result.error === 'signer_unavailable') {
-      if (result.signerIds?.length) notify('signerRecovery', { req, signerIds: result.signerIds })
-      else onSignerUnavailable()
-    }
-    return
-  }
-  next(result.compatibility)
-}
-
 export function RequestCommand(props: RequestCommandProps) {
   const request = props.req as TransactionRequest | SignatureRequest
+  const { notify } = props
   const [state, setCommandState] = useState({
     allowInput: false,
-    signerLocked: false,
     showHashDetails: false,
     txHashCopied: false
   })
@@ -104,17 +73,27 @@ export function RequestCommand(props: RequestCommandProps) {
     return () => clearTimeout(timer)
   }, [props.signingDelay])
 
-  const signerUnavailable = () => {
-    setState({ signerLocked: true })
-    setTimeout(() => setState({ signerLocked: false }), 3000)
-  }
-
-  const withSignerCompatibility = (
-    req: RequestReference,
-    next: (compatibility: SignerCompatibility) => void
-  ) => checkSignerCompatibility(req, props.notify, signerUnavailable, next)
-
-  const toDisplayUSD = (usd: number) => (Math.ceil(usd * 100) / 100).toFixed(2)
+  useEffect(() => {
+    const gate = request.approvalGate
+    if (!gate) return
+    if (gate.type === 'gas-fee') {
+      notify('gasFeeWarning', {
+        req: request,
+        feeUSD: gate.feeUSD,
+        currentSymbol: gate.currentSymbol
+      })
+    } else if (gate.reason === 'incompatible') {
+      notify('signerCompatibilityWarning', {
+        req: request,
+        compatibility: { signer: gate.signer, tx: gate.tx, compatible: false },
+        chain: gate.chain
+      })
+    } else if (gate.reason === 'signer-unavailable') {
+      notify('signerRecovery', { req: request, signerIds: gate.signerIds })
+    } else {
+      notify('noSignerWarning', { req: request })
+    }
+  }, [notify, request, request.approvalGate])
 
   function submittedCommand(req: TransactionRequest) {
     const chain = { type: 'ethereum' as const, id: parseInt(req.data.chainId, 16) }
@@ -221,36 +200,9 @@ export function RequestCommand(props: RequestCommandProps) {
   }
 
   function transactionActions(req: TransactionRequest) {
-    const chain = { type: 'ethereum' as const, id: parseInt(req.data.chainId, 16) }
-    const nativeCurrency = props.shared.chainMeta.nativeCurrency
-    const currentSymbol = nativeCurrency?.symbol || '?'
-    const nativeRate = resolveAssetRate(
-      { chainId: chain.id, address: NATIVE_CURRENCY, nativeTicker: nativeCurrency?.symbol },
-      props.shared.assetRates
-    )
-    const nativeUSD = !props.shared.chain.isTestnet ? nativeRate?.usdRate : undefined
-    const hasNativeUSD = typeof nativeUSD === 'number'
-    const gasLimit = toBigInt(req.data.gasLimit) ?? 0n
-    const maxFeePerGas = toBigInt(usesBaseFee(req.data) ? req.data.maxFeePerGas : req.data.gasPrice) ?? 0n
-    const maxFeeUSD = hasNativeUSD ? (Number(maxFeePerGas * gasLimit) / 1e18) * nativeUSD : 0
-
     const sign = () => {
       if (!state.allowInput) return
-      runWhenAppUnlocked(
-        props.shared.appLocked,
-        () =>
-          void withSignerCompatibility(req, (compatibility) => {
-            if (!compatibility.compatible && !props.shared.signerCompatibilityWarningMuted) {
-              props.notify('signerCompatibilityWarning', { req, compatibility, chain })
-            } else if (
-              hasNativeUSD &&
-              (maxFeeUSD > FEE_WARNING_THRESHOLD_USD || toDisplayUSD(maxFeeUSD) === '0.00') &&
-              !props.shared.gasFeeWarningMuted
-            ) {
-              props.notify('gasFeeWarning', { req, feeUSD: toDisplayUSD(maxFeeUSD), currentSymbol })
-            } else approveRequest(req.handlerId)
-          })
-      )
+      runWhenAppUnlocked(props.shared.appLocked, () => approveRequest(req.handlerId))
     }
 
     return (
@@ -278,14 +230,6 @@ export function RequestCommand(props: RequestCommandProps) {
         ) : null}
         <RequestActions
           primary={{ disabled: !state.allowInput, label: 'Sign', onPress: sign }}
-          primaryContent={
-            state.signerLocked ? (
-              <Inline align='center' gap='xsmall'>
-                <Icon name='device' size='small' />
-                <Text variant='action'>Retry signer</Text>
-              </Inline>
-            ) : undefined
-          }
           secondary={{ disabled: !state.allowInput, label: 'Decline', onPress: () => declineRequest(req) }}
         />
       </Stack>
@@ -344,10 +288,7 @@ export function RequestCommand(props: RequestCommandProps) {
           label: 'Sign',
           onPress: () => {
             if (!state.allowInput) return
-            runWhenAppUnlocked(
-              props.shared.appLocked,
-              () => void withSignerCompatibility(req, () => approveRequest(req.handlerId))
-            )
+            runWhenAppUnlocked(props.shared.appLocked, () => approveRequest(req.handlerId))
           }
         }}
         secondary={{ disabled: !state.allowInput, label: 'Decline', onPress: () => declineRequest(req) }}
@@ -370,12 +311,8 @@ export default function RequestCommandContainer(props: Omit<RequestCommandProps,
     () =>
       (state: WalletRendererState): Omit<RequestCommandSharedState, 'step'> => ({
         appLocked: state.appLock.locked,
-        assetRates: state.assetRates,
         chain: state.networks.ethereum[chainId] || EMPTY_CHAIN,
-        chainMeta: state.networksMeta.ethereum[chainId] || EMPTY_CHAIN_META,
-        explorerWarningMuted: !!state.mute?.explorerWarning,
-        gasFeeWarningMuted: !!state.mute?.gasFeeWarning,
-        signerCompatibilityWarningMuted: !!state.mute?.signerCompatibilityWarning
+        explorerWarningMuted: !!state.mute?.explorerWarning
       }),
     [chainId]
   )
