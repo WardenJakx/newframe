@@ -65,10 +65,17 @@ beforeEach(() => {
     provider,
     accounts: { getSelectedAddresses: () => [] },
     store: { endOriginSession: (originId) => store.getState().endOriginSession(originId) },
-    origins: createProductionOriginsService(store, {
-      current: () => undefined,
-      routeRequest: () => undefined
-    } as never),
+    origins: createProductionOriginsService(
+      store,
+      {
+        current: () => undefined,
+        routeRequest: () => undefined
+      } as never,
+      {
+        cancel: () => true,
+        create: (_respond, requestId = 'origin-request') => requestId
+      }
+    ),
     windows: { toggleTray: () => undefined },
     createServer: () => server,
     createConnectionId: () => 'connection-1',
@@ -137,6 +144,39 @@ it('grants internal-state capability only to the authenticated companion interna
     transport: 'websocket',
     capabilities: ['wallet:internal-state']
   })
+})
+
+it('drops a late extension response after socket close without cancelling the Provider callback', async () => {
+  let lateResponse: ((response: RPCResponsePayload) => void) | undefined
+  const sent: string[] = []
+  provider.send = (payload, callback, principal) => {
+    provider.requests.push({ payload, principal })
+    lateResponse = callback
+  }
+  socket.send = (response) => {
+    sent.push(response)
+  }
+
+  socket.emit(
+    'message',
+    Buffer.from(JSON.stringify({ id: 12, jsonrpc: '2.0', method: 'eth_blockNumber', params: [] }))
+  )
+  await Promise.resolve()
+  await Promise.resolve()
+
+  expect(lateResponse).toEqual(expect.any(Function))
+  expect(provider.requests[0].principal).toMatchObject({
+    kind: 'rpc',
+    transport: 'websocket',
+    origin: 'newframe-extension',
+    connectionId: 'connection-1'
+  })
+  socket.readyState = 3
+  socket.emit('close')
+  lateResponse?.({ id: 12, jsonrpc: '2.0', result: '0xsigned' })
+
+  expect(sent).toEqual([])
+  expect(socket.listenerCount('message')).toBe(0)
 })
 
 it('removes provider and socket listeners and closes its server on dispose', () => {

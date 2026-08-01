@@ -115,10 +115,12 @@ export function AddAccount({
   const shared = useWalletSelector(
     useShallow((state) => ({
       accounts: state.accounts || EMPTY_RECORD,
+      currentAccount: state.currentAccount || '',
       balances: state.balances || EMPTY_RECORD,
       ledger: state.ledger,
       networks: state.networks?.ethereum || EMPTY_RECORD,
       networksMeta: state.networksMeta?.ethereum || EMPTY_RECORD,
+      operations: state.operations || EMPTY_RECORD,
       assetRates: state.assetRates || EMPTY_RECORD,
       tokens: state.tokens,
       showLocalNameWithENS: !!state.showLocalNameWithENS,
@@ -128,6 +130,7 @@ export function AddAccount({
   )
   const props = { shared }
   const seedPhraseCopiedTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const initialHardwareSessionStarted = useRef(false)
   const [selectBalanceSummaries] = useState(() => createBalanceSummarySelector())
   const initialAddAccountType = normalizeAddAccountType(initialType)
   const [state, dispatch] = useReducer(addAccountReducer, {
@@ -157,6 +160,14 @@ export function AddAccount({
     usage: Record<string, { chainIds: number[]; complete: boolean }>
   }>({ key: '', usage: {} })
   const addressChainUsageRequest = useRef(0)
+  const [pendingExistingAccount, setPendingExistingAccount] = useState('')
+  const [submission, setSubmission] = useState<{ operationId: string; type: string } | null>(null)
+  const submissionRef = useRef(submission)
+  const [hardwareSession, setHardwareSession] = useState<{
+    operationId: string
+    signerId: string
+  } | null>(null)
+  const hardwareSessionRef = useRef(hardwareSession)
   const setState = (update: any, callback?: () => void) => {
     const next = typeof update === 'function' ? update(state, props) : update
     if (next.addingAccount === false) onClose()
@@ -165,7 +176,14 @@ export function AddAccount({
     if (Object.keys(local).length) dispatch(local as Partial<AddAccountState>)
     callback?.()
   }
-
+  const setActiveHardwareSession = (session: { operationId: string; signerId: string } | null) => {
+    hardwareSessionRef.current = session
+    setHardwareSession(session)
+  }
+  const setActiveSubmission = (next: { operationId: string; type: string } | null) => {
+    submissionRef.current = next
+    setSubmission(next)
+  }
   const selectedHardwareSigner = state.addAccountSelectedSigner
     ? shared.signers[state.addAccountSelectedSigner]
     : null
@@ -194,6 +212,18 @@ export function AddAccount({
     addressChainUsageResult.key === addressChainUsageKey ? addressChainUsageResult.usage : {}
   const addressChainUsageLoading =
     visibleHardwareAddresses.length > 0 && addressChainUsageResult.key !== addressChainUsageKey
+  const onboardingOperation = submission ? shared.operations[submission.operationId] : undefined
+  const operationStatus = onboardingOperation?.status === 'pending' ? onboardingOperation.phase || '' : ''
+  const displayedStatus =
+    operationStatus === 'adding_account' || operationStatus === 'importing'
+      ? 'Adding account'
+      : operationStatus === 'resolving_address'
+        ? 'Resolving address'
+        : operationStatus === 'connecting'
+          ? 'Connecting hardware wallet'
+          : operationStatus === 'deriving'
+            ? 'Loading accounts'
+            : state.addAccountStatus
 
   useEffect(() => {
     const isHardwareSigner = ['ledger', 'trezor', 'lattice'].includes(selectedHardwareSigner?.type || '')
@@ -261,6 +291,114 @@ export function AddAccount({
     }
   }, [])
 
+  useEffect(() => {
+    if (!pendingExistingAccount || shared.currentAccount.toLowerCase() !== pendingExistingAccount) return
+    onClose()
+  }, [onClose, pendingExistingAccount, shared.currentAccount])
+
+  useEffect(() => {
+    if (!submission || !onboardingOperation) return
+    const operationId = submission.operationId
+    if (onboardingOperation.status === 'failed') {
+      queueMicrotask(() => {
+        if (submissionRef.current?.operationId !== operationId) return
+        dispatch({
+          addAccountError: onboardingOperation.error?.message || 'Could not complete the account operation.',
+          addAccountStatus: ''
+        })
+        setActiveSubmission(null)
+      })
+      return
+    }
+
+    const signerId = onboardingOperation.entityRefs?.find((ref: any) => ref.type === 'signer')?.id
+    if (submission.type === 'signer.lattice-create' && signerId && hardwareSession?.signerId !== signerId) {
+      queueMicrotask(() => {
+        if (submissionRef.current?.operationId !== operationId) return
+        dispatch({
+          addAccountSelectedSigner: signerId,
+          addAccountInput: '',
+          addAccountName: 'GridPlus',
+          addAccountError: ''
+        })
+        setActiveHardwareSession({ operationId, signerId })
+      })
+    }
+
+    if (onboardingOperation.status !== 'succeeded') return
+    if (['account.add-from-signer', 'account.watch-add', 'signer.import'].includes(submission.type)) {
+      queueMicrotask(() => {
+        if (submissionRef.current?.operationId === operationId) resetInlineAdd()
+      })
+    } else if (submission.type === 'signer.lattice-pair') {
+      queueMicrotask(() => {
+        if (submissionRef.current?.operationId !== operationId) return
+        dispatch({ addHardwarePairCode: '', addAccountError: '', addAccountStatus: 'GridPlus paired' })
+        setActiveSubmission(null)
+      })
+    } else {
+      queueMicrotask(() => {
+        if (submissionRef.current?.operationId === operationId) setActiveSubmission(null)
+      })
+    }
+    // resetInlineAdd intentionally reads the latest local draft through the render closure.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hardwareSession?.signerId, onboardingOperation, submission])
+
+  useEffect(() => {
+    if (!hardwareSession) return
+    const signer = shared.signers[hardwareSession.signerId]
+    const session = shared.operations[hardwareSession.operationId]
+    const operationId = hardwareSession.operationId
+    if (session?.status === 'failed') {
+      queueMicrotask(() => {
+        if (hardwareSessionRef.current?.operationId !== operationId) return
+        dispatch({
+          addAccountError: session.error?.message || 'Could not complete the hardware operation.',
+          addAccountStatus: ''
+        })
+        setActiveHardwareSession(null)
+      })
+      return
+    }
+    if (signer?.status?.toLowerCase() !== 'ok') return
+
+    if (hardwareSessionRef.current?.operationId !== hardwareSession.operationId) return
+    queueMicrotask(() => {
+      if (hardwareSessionRef.current?.operationId === operationId) finishHardwareSession('ready')
+    })
+    // finishHardwareSession is intentionally guarded by the mutable active-session reference.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hardwareSession, shared.operations, shared.signers])
+
+  useEffect(() => {
+    if (!initialSelectedSigner || initialHardwareSessionStarted.current) return
+    initialHardwareSessionStarted.current = true
+    queueMicrotask(() => beginHardwareSession(initialSelectedSigner, false))
+    // This mount-only bootstrap is keyed solely by the requested initial signer.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialSelectedSigner])
+
+  async function selectExistingAccount(id: string) {
+    if (pendingExistingAccount) return
+    setPendingExistingAccount(id)
+    setState({ addAccountError: '', addAccountStatus: 'Selecting account' })
+
+    try {
+      const result = await link.executeCommand({ type: 'account.select', accountId: id })
+      if (result.ok) return
+
+      setPendingExistingAccount('')
+      setState({
+        addAccountError: operationError(result, 'Could not select account'),
+        addAccountStatus: ''
+      })
+    } catch {
+      setPendingExistingAccount('')
+      setState({ addAccountError: 'Could not select account', addAccountStatus: '' })
+    }
+  }
+
   function accountDisplayName(account: any) {
     if (!account) return ''
     return account.ensName && !shared.showLocalNameWithENS ? account.ensName : account.name
@@ -315,6 +453,7 @@ export function AddAccount({
   }
 
   function resetInlineAdd() {
+    finishHardwareSession('cancelled')
     setState({
       addingAccount: false,
       addAccountCategory: '',
@@ -339,6 +478,7 @@ export function AddAccount({
 
   function backInlineAdd() {
     if (state.addAccountSelectedSigner) {
+      finishHardwareSession('cancelled')
       return setState({ addAccountSelectedSigner: '', addAccountError: '', addAccountStatus: '' })
     }
 
@@ -435,21 +575,25 @@ export function AddAccount({
     const id = address.toLowerCase()
 
     if (accounts[id]) {
-      await link.executeCommand({ type: 'account.select', accountId: id })
-      return resetInlineAdd()
+      if (shared.currentAccount.toLowerCase() === id) return resetInlineAdd()
+      void selectExistingAccount(id)
+      return
     }
 
-    setState({ addAccountError: '', addAccountStatus: 'Adding account' })
+    const operationId = crypto.randomUUID()
+    setActiveSubmission({ operationId, type: 'account.add-from-signer' })
+    setState({ addAccountError: '', addAccountStatus: '' })
 
     const result = await link.executeCommand({
       type: 'account.add-from-signer',
+      operationId,
       signerId: signer.id,
       address,
       name: 'Hot Account'
     })
-    if (result.ok) {
-      resetInlineAdd()
-    } else {
+    if (!result.ok) {
+      if (submissionRef.current?.operationId !== operationId) return
+      setActiveSubmission(null)
       setState({
         addAccountError: operationError(result, 'Could not add the account.'),
         addAccountStatus: ''
@@ -460,7 +604,7 @@ export function AddAccount({
   async function locateInlineKeystore() {
     setState({ addAccountError: '', addAccountStatus: 'Selecting JSON backup file' })
 
-    const result = await link.executeCommand({ type: 'keystore.locate' })
+    const result = await link.executeQuery({ type: 'keystore.locate' })
     if (result.ok) {
       setState({
         addAccountKeystore: result.keystore,
@@ -476,6 +620,30 @@ export function AddAccount({
     }
   }
 
+  function finishHardwareSession(outcome: 'ready' | 'cancelled') {
+    const session = hardwareSessionRef.current
+    if (!session) return
+    setActiveHardwareSession(null)
+    void link.executeCommand({
+      type: 'signer.hardware-session-finish',
+      operationId: session.operationId,
+      signerId: session.signerId,
+      outcome
+    })
+  }
+
+  function beginHardwareSession(signerId: string, reload: boolean) {
+    if (hardwareSessionRef.current?.signerId !== signerId) finishHardwareSession('cancelled')
+    const operationId = crypto.randomUUID()
+    setActiveHardwareSession({ operationId, signerId })
+    setActiveSubmission({ operationId, type: reload ? 'signer.reload' : 'signer.hardware-session-start' })
+    void link.executeCommand(
+      reload
+        ? { type: 'signer.reload', operationId, signerId }
+        : { type: 'signer.hardware-session-start', operationId, signerId }
+    )
+  }
+
   function selectHardwareSigner(signerId: string) {
     setHardwarePage(1)
     setHardwarePageInput('1')
@@ -487,6 +655,7 @@ export function AddAccount({
       addHardwarePhrase: '',
       addHardwarePairCode: ''
     })
+    beginHardwareSession(signerId, false)
   }
 
   async function createLatticeSigner() {
@@ -495,21 +664,19 @@ export function AddAccount({
 
     if (!deviceId) return setState({ addAccountError: 'Device ID required' })
 
-    setState({ addAccountError: '', addAccountStatus: 'Creating Lattice signer' })
+    const operationId = crypto.randomUUID()
+    setActiveSubmission({ operationId, type: 'signer.lattice-create' })
+    setState({ addAccountError: '', addAccountStatus: '' })
 
     const result = await link.executeCommand({
       type: 'signer.lattice-create',
+      operationId,
       deviceId,
       deviceName
     })
-    if (result.ok) {
-      setState({
-        addAccountStatus: 'Connecting to GridPlus',
-        addAccountInput: '',
-        addAccountName: 'GridPlus',
-        addAccountSelectedSigner: result.signerId
-      })
-    } else {
+    if (!result.ok) {
+      if (submissionRef.current?.operationId !== operationId) return
+      setActiveSubmission(null)
       setState({
         addAccountError: operationError(result, 'Could not create the GridPlus signer.'),
         addAccountStatus: ''
@@ -529,20 +696,25 @@ export function AddAccount({
     const accounts = props.shared.accounts
 
     if (accounts[id]) {
-      await link.executeCommand({ type: 'account.select', accountId: id })
-      return resetInlineAdd()
+      if (shared.currentAccount.toLowerCase() === id) return resetInlineAdd()
+      void selectExistingAccount(id)
+      return
     }
 
-    setState({ addAccountError: '', addAccountStatus: 'Adding account' })
+    const operationId = crypto.randomUUID()
+    setActiveSubmission({ operationId, type: 'account.add-from-signer' })
+    setState({ addAccountError: '', addAccountStatus: '' })
 
     const result = await link.executeCommand({
       type: 'account.add-from-signer',
+      operationId,
       signerId: signer.id,
       address,
       name: hardwareAccountName(signer)
     })
-    if (result.ok) resetInlineAdd()
-    else {
+    if (!result.ok) {
+      if (submissionRef.current?.operationId !== operationId) return
+      setActiveSubmission(null)
       setState({
         addAccountError: operationError(result, 'Could not add the hardware account.'),
         addAccountStatus: ''
@@ -552,13 +724,15 @@ export function AddAccount({
 
   function reloadHardwareSigner(signer: any) {
     if (!signer?.id) return
-    void link.executeCommand({ type: 'signer.reload', signerId: signer.id })
-    setState({ addAccountError: '', addAccountStatus: 'Connecting hardware wallet' })
+    beginHardwareSession(signer.id, true)
+    setState({ addAccountError: '', addAccountStatus: '' })
   }
 
   function removeHardwareSigner(signer: any) {
     if (!signer?.id) return
-    void link.executeCommand({ type: 'signer.disconnect', signerId: signer.id })
+    const operationId = crypto.randomUUID()
+    setActiveSubmission({ operationId, type: 'signer.disconnect' })
+    void link.executeCommand({ type: 'signer.disconnect', operationId, signerId: signer.id })
     setState({ addAccountSelectedSigner: '', addAccountError: '', addAccountStatus: '' })
   }
 
@@ -573,9 +747,16 @@ export function AddAccount({
   function submitHardwarePin(signer: any) {
     if (!signer?.id) return
     if (!state.addHardwarePin) return setState({ addAccountError: 'PIN required' })
+    if (!hardwareSession || hardwareSession.signerId !== signer.id) {
+      return setState({ addAccountError: 'Reconnect the hardware wallet first' })
+    }
+    const actionId = crypto.randomUUID()
+    setActiveSubmission({ operationId: actionId, type: 'signer.trezor-input' })
 
     void link.executeCommand({
       type: 'signer.trezor-input',
+      operationId: hardwareSession.operationId,
+      actionId,
       signerId: signer.id,
       input: 'pin',
       value: state.addHardwarePin
@@ -585,8 +766,15 @@ export function AddAccount({
 
   function submitHardwarePhrase(signer: any) {
     if (!signer?.id) return
+    if (!hardwareSession || hardwareSession.signerId !== signer.id) {
+      return setState({ addAccountError: 'Reconnect the hardware wallet first' })
+    }
+    const actionId = crypto.randomUUID()
+    setActiveSubmission({ operationId: actionId, type: 'signer.trezor-input' })
     void link.executeCommand({
       type: 'signer.trezor-input',
+      operationId: hardwareSession.operationId,
+      actionId,
       signerId: signer.id,
       input: 'passphrase',
       value: state.addHardwarePhrase || ''
@@ -596,8 +784,15 @@ export function AddAccount({
 
   function submitHardwarePhraseOnDevice(signer: any) {
     if (!signer?.id) return
+    if (!hardwareSession || hardwareSession.signerId !== signer.id) {
+      return setState({ addAccountError: 'Reconnect the hardware wallet first' })
+    }
+    const actionId = crypto.randomUUID()
+    setActiveSubmission({ operationId: actionId, type: 'signer.trezor-input' })
     void link.executeCommand({
       type: 'signer.trezor-input',
+      operationId: hardwareSession.operationId,
+      actionId,
       signerId: signer.id,
       input: 'device-passphrase'
     })
@@ -607,15 +802,22 @@ export function AddAccount({
   async function pairHardwareLattice(signer: any) {
     if (!signer?.id) return
     if (!state.addHardwarePairCode) return setState({ addAccountError: 'Pairing code required' })
+    if (!hardwareSession || hardwareSession.signerId !== signer.id) {
+      return setState({ addAccountError: 'Reconnect the hardware wallet first' })
+    }
+    const actionId = crypto.randomUUID()
+    setActiveSubmission({ operationId: actionId, type: 'signer.lattice-pair' })
 
     const result = await link.executeCommand({
       type: 'signer.lattice-pair',
+      operationId: hardwareSession.operationId,
+      actionId,
       signerId: signer.id,
       pairCode: state.addHardwarePairCode
     })
-    if (result.ok) {
-      setState({ addHardwarePairCode: '', addAccountError: '', addAccountStatus: 'GridPlus paired' })
-    } else {
+    if (submissionRef.current?.operationId !== actionId) return
+    if (!result.ok) {
+      setActiveSubmission(null)
       setState({
         addAccountError: operationError(result, 'Could not pair GridPlus.'),
         addAccountStatus: ''
@@ -643,13 +845,17 @@ export function AddAccount({
       return setState({ addAccountError: `${framePasswordLabel()} required` })
     }
 
-    setState({ addAccountError: '', addAccountStatus: 'Adding account' })
+    const operationId = crypto.randomUUID()
+    const operationType = addAccountType === 'watch' ? 'account.watch-add' : 'signer.import'
+    setActiveSubmission({ operationId, type: operationType })
+    setState({ addAccountError: '', addAccountStatus: '' })
 
     try {
       const result =
         addAccountType === 'watch'
           ? await link.executeCommand({
               type: 'account.watch-add',
+              operationId,
               addressOrName: input,
               name: name || 'Watch Account'
             })
@@ -657,6 +863,7 @@ export function AddAccount({
             ? addAccountKeystore && addAccountKeystorePassword
               ? await link.executeCommand({
                   type: 'signer.import',
+                  operationId,
                   source: 'keystore',
                   keystore: addAccountKeystore,
                   keystorePassword: addAccountKeystorePassword,
@@ -668,6 +875,7 @@ export function AddAccount({
                 addAccountType === 'seed'
                   ? {
                       type: 'signer.import',
+                      operationId,
                       source: 'phrase',
                       phrase: input,
                       framePassword: addAccountPassword,
@@ -675,6 +883,7 @@ export function AddAccount({
                     }
                   : {
                       type: 'signer.import',
+                      operationId,
                       source: 'private-key',
                       privateKey: input,
                       framePassword: addAccountPassword,
@@ -683,14 +892,17 @@ export function AddAccount({
               )
 
       if (!result) {
+        if (submissionRef.current?.operationId !== operationId) return
         const message = addAccountKeystore
           ? 'JSON backup file password required'
           : 'Choose a JSON backup file'
+        setActiveSubmission(null)
         return setState({ addAccountError: message, addAccountStatus: '' })
       }
       if (!result.ok) throw new Error(operationError(result, 'Could not add the account.'))
-      resetInlineAdd()
     } catch (err: any) {
+      if (submissionRef.current?.operationId !== operationId) return
+      setActiveSubmission(null)
       setState({ addAccountError: addErrorMessage(err), addAccountStatus: '' })
     }
   }
@@ -743,17 +955,21 @@ export function AddAccount({
       return setState({ addAccountError: `${framePasswordLabel()} required` })
     }
 
-    setState({ addAccountError: '', addAccountStatus: 'Creating account' })
+    const operationId = crypto.randomUUID()
+    setActiveSubmission({ operationId, type: 'signer.import' })
+    setState({ addAccountError: '', addAccountStatus: '' })
 
     const result = await link.executeCommand({
       type: 'signer.import',
+      operationId,
       source: 'phrase',
       phrase,
       framePassword: password,
       accountName: name || 'Hot Account'
     })
-    if (result.ok) resetInlineAdd()
-    else {
+    if (!result.ok) {
+      if (submissionRef.current?.operationId !== operationId) return
+      setActiveSubmission(null)
       setState({
         addAccountError: operationError(result, 'Could not create the account.'),
         addAccountStatus: ''
@@ -819,9 +1035,9 @@ export function AddAccount({
             {state.addAccountError}
           </Text>
         ) : null}
-        {state.addAccountStatus ? (
+        {displayedStatus ? (
           <Text tone='accent' variant='supporting'>
-            {state.addAccountStatus}
+            {displayedStatus}
           </Text>
         ) : null}
       </>
@@ -853,6 +1069,7 @@ export function AddAccount({
     return (
       <Button
         appearance='row'
+        key={address}
         label={`${imported ? 'Select' : 'Add'} ${label}`}
         onPress={onPress}
         size='list'
@@ -1010,6 +1227,7 @@ export function AddAccount({
             value: account ? accountNavValue(account) : '$0.00'
           })
         })}
+        {renderFeedback()}
       </Stack>
     )
   }
@@ -1045,8 +1263,8 @@ export function AddAccount({
           </Grid>
         ) : (
           <Surface padding='large' radius='card' tone='card'>
-            {state.addAccountStatus ? (
-              <Spinner label={state.addAccountStatus} />
+            {displayedStatus ? (
+              <Spinner label={displayedStatus} />
             ) : (
               <Text align='center'>Preparing recovery phrase</Text>
             )}
@@ -1337,13 +1555,18 @@ export function AddAccount({
 
     if (!needsMoreLedgerLiveAddresses) return
 
+    const operationId = crypto.randomUUID()
+    setActiveSubmission({ operationId, type: 'signer.ledger-accounts-load' })
     const result = await link.executeCommand({
       type: 'signer.ledger-accounts-load',
+      operationId,
       signerId: signer.id,
       accountCount: requiredAddressCount
     })
 
     if (!result.ok) {
+      if (submissionRef.current?.operationId !== operationId) return
+      setActiveSubmission(null)
       setState({
         addAccountError: 'Could not load that Ledger account page.',
         addAccountStatus: ''

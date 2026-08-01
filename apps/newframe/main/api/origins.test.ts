@@ -42,8 +42,8 @@ function createOriginHarness() {
   const routedRequests: Array<{
     principal: typeof principal
     request: AccessRequest
-    complete: () => void
   }> = []
+  const continuations = new Map<string, RPCRequestCallback>()
   const knownEthereumChainIds = new Set([1])
   let currentAccount: { address: Address } | undefined = { address }
   let development = false
@@ -77,13 +77,28 @@ function createOriginHarness() {
     },
     accounts: {
       current: () => currentAccount,
-      routeRequest: (receivedPrincipal, request, complete) => {
+      routeRequest: (receivedPrincipal, request) => {
         routedRequests.push({
           principal: receivedPrincipal as typeof principal,
-          request,
-          complete
+          request
         })
+        const complete = () => {
+          const continuation = continuations.get(request.handlerId)
+          continuations.delete(request.handlerId)
+          continuation?.({
+            id: request.payload.id,
+            jsonrpc: request.payload.jsonrpc,
+            result: undefined
+          })
+        }
         routeHandler?.(request, complete)
+      }
+    },
+    requests: {
+      cancel: (requestId) => continuations.delete(requestId),
+      create: (respond, requestId = 'generated-request') => {
+        continuations.set(requestId, respond)
+        return requestId
       }
     },
     hasInternalStateCapability: (receivedPrincipal) => receivedPrincipal === internalPrincipal,

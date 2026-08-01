@@ -413,6 +413,8 @@ describe('renderer state stream', () => {
       'currentAccount',
       'networks',
       'networksMeta',
+      'operations',
+      'orders',
       'runtime',
       'tokens'
     ])
@@ -424,6 +426,7 @@ describe('renderer state stream', () => {
     })
     expect(snapshot.state.accounts).not.toHaveProperty(dormantId)
     expect(snapshot.state.accountOrder).toEqual([id])
+    expect(snapshot.state.orders).toEqual({})
     expect(snapshot.state).not.toHaveProperty('permissions')
     expect(snapshot.state).not.toHaveProperty('portfolioApiKey')
     expect(snapshot.state).not.toHaveProperty('windows')
@@ -451,12 +454,54 @@ describe('renderer state stream', () => {
     })
   })
 
-  it('rejects an unregistered or invalid sender without publishing state', () => {
+  it('rejects invalid senders and isolates operation streams between same-role windows', () => {
     const { event, sender } = renderer()
     authorizeRenderer.mockReturnValue(undefined)
 
     expect(connectState(event)).toEqual({ ok: false, error: 'unauthorized' })
     expect(sender.send).not.toHaveBeenCalled()
+    const first = renderer(11)
+    const second = renderer(12)
+    const firstOwner = { clientType: 'wallet-ui', windowInstanceId: 'wallet-one' } as const
+    const secondOwner = { clientType: 'wallet-ui', windowInstanceId: 'wallet-two' } as const
+    const pending = (id: string) => ({
+      id,
+      type: 'transaction.submit',
+      status: 'pending' as const,
+      startedAt: 1,
+      updatedAt: 1
+    })
+    store.getState().operationStarted(firstOwner, pending('first-operation'))
+    store.getState().operationStarted(secondOwner, pending('second-operation'))
+    authorizeRenderer.mockImplementation((event) => ({
+      clientType: 'wallet-ui',
+      webContentsId: event.sender.id,
+      windowInstanceId: event.sender.id === 11 ? 'wallet-one' : 'wallet-two'
+    }))
+
+    expect(connectState(first.event)).toEqual({ ok: true })
+    expect(connectState(second.event)).toEqual({ ok: true })
+    expect(first.sender.send.mock.calls[0][1].state.operations).toEqual({
+      'first-operation': pending('first-operation')
+    })
+    expect(second.sender.send.mock.calls[0][1].state.operations).toEqual({
+      'second-operation': pending('second-operation')
+    })
+
+    store.getState().operationCompleted('first-operation', {
+      ...pending('first-operation'),
+      status: 'succeeded',
+      updatedAt: 2,
+      finishedAt: 2
+    })
+
+    expect(first.sender.send.mock.calls).toHaveLength(2)
+    expect(first.sender.send.mock.calls[1][1]).toMatchObject({
+      baseRevision: 0,
+      revision: 1,
+      changes: { operations: { 'first-operation': { status: 'succeeded' } } }
+    })
+    expect(second.sender.send.mock.calls).toHaveLength(1)
   })
 
   it('removes a stream as soon as its WebContents is destroyed', () => {

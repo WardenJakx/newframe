@@ -50,5 +50,5 @@ document.addEventListener('mouseout', (e) => {
   if (e.clientX < 0) void link.executeCommand({ type: 'tray.mouseout' })
 })
 document.addEventListener('contextmenu', (e) => {
-  void link.executeCommand({ type: 'tray.context-menu', x: e.clientX, y: e.clientY })
+  void link.executeCommand({ type: 'renderer.context-menu', x: e.clientX, y: e.clientY })
 })

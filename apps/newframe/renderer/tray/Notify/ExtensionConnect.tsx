@@ -12,21 +12,15 @@ import svg from '../../shared/svg'
 export type ExtensionConnectNotificationProps = {
   browser: string
   id: string
-  onClose: () => void
 }
 
-export default function ExtensionConnectNotification({
-  id,
-  browser,
-  onClose
-}: ExtensionConnectNotificationProps) {
-  const respond = async (accepted: boolean) => {
-    const result = await link.executeCommand({
+export default function ExtensionConnectNotification({ id, browser }: ExtensionConnectNotificationProps) {
+  const respond = (accepted: boolean) => {
+    void link.executeCommand({
       type: 'extension.respond',
       extensionId: id,
       approved: accepted
     })
-    if (result.ok) onClose()
   }
   const browserName = capitalize(browser)
   const [copyId, setCopyId] = useState(false)

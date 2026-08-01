@@ -51,15 +51,17 @@
     },
     {
       "name": "transaction-submission-and-lifecycle",
-      "rationale": "Side-tray submission, wallet orchestration, and deferred provider/account capabilities own authorization-sensitive transaction lifecycle paths.",
+      "rationale": "Focused transaction/request services and explicit provider/account capabilities own authorization-sensitive lifecycle paths.",
       "patterns": [
         "main/features/transactions/sideTrayService.ts",
-        "main/operations/sideTrayTransactions.ts",
-        "main/operations/walletWorkflows.ts",
+        "main/features/requests/service.ts",
+        "main/features/accounts/service.ts",
+        "main/features/networks/service.ts",
+        "main/features/tokens/service.ts",
+        "main/features/accountOnboarding/service.ts",
         "main/accounts/index.ts",
         "main/accounts/providerPort.ts",
         "main/provider/index.ts",
-        "main/provider/accountRequestPort.ts",
         "main/features/transactions/accountPolicyPort.ts",
         "main/store/actions.ts"
       ],

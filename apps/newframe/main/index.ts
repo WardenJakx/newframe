@@ -20,8 +20,11 @@ import { createProductionCapabilities, createProductionMainApp } from './composi
 import { createProductionPersistencePorts } from './infrastructure/persistence/index.js'
 import { createProductionAccountsRuntime } from './infrastructure/accounts/production.js'
 import { createProductionImageServiceAdapters } from './infrastructure/images/production.js'
-import { createProductionSideTrayWindowCapability } from './infrastructure/sideTrayWorkflows/production.js'
-import { createProductionWalletWorkflowAdapters } from './infrastructure/walletWorkflows/production.js'
+import { createProductionPlatformAdapters } from './infrastructure/platform/production.js'
+import { createProductionPortfolioAdapters } from './infrastructure/portfolio/production.js'
+import { rpcMatchesChain } from './infrastructure/networks/production.js'
+import { createProductionAccountOnboardingAdapters } from './infrastructure/accountOnboarding/production.js'
+import { createProductionSecurityAdapters } from './infrastructure/security/production.js'
 import { createProductionApiServer } from './api/index.js'
 
 const signers = new Signers({ biometrics, store, vault })
@@ -57,36 +60,59 @@ const persistence = createCanonicalPersistenceService(
 )
 const {
   accountCapabilities,
+  infrastructureCallbacks,
+  accountService,
   accounts,
   agentService,
   chains,
   flashService,
   imageService,
   nameResolution,
+  platformService,
+  portfolioService,
   provider,
+  profileService,
   proxy,
   rendererAuthorization,
+  requestEditService,
+  requestService,
+  securityService,
+  accountOnboardingService,
+  sendService,
+  tradeService,
   sideTrayTransactions,
-  sideTrayWorkflows,
-  walletWorkflows
+  settingsService,
+  networkService,
+  tokenService
 } = createProductionCapabilities(store, {
   accounts: createProductionAccountsRuntime(store, { persistence: persist, signers, windows }),
   images: createProductionImageServiceAdapters(store),
-  sideTrayWindows: createProductionSideTrayWindowCapability(),
-  walletWorkflows: createProductionWalletWorkflowAdapters(store, {
+  platform: createProductionPlatformAdapters(store, {
+    app,
+    clipboard,
+    updater,
+    windows
+  }),
+  portfolio: createProductionPortfolioAdapters(store),
+  security: createProductionSecurityAdapters({
     app,
     biometrics,
-    clipboard,
     persistence: persist,
     signers,
-    trezorBridge: TrezorBridge,
     updater,
-    vault,
-    windows
-  })
+    vault
+  }),
+  accountOnboarding: createProductionAccountOnboardingAdapters({
+    signers,
+    store,
+    trezorBridge: TrezorBridge
+  }),
+  network: { rpcMatchesChain }
 })
 const mainApp = createProductionMainApp({
   accountCapabilities,
+  infrastructureCallbacks,
+  accountService,
   accounts,
   agentService,
   chains,
@@ -96,14 +122,32 @@ const mainApp = createProductionMainApp({
   nameResolution,
   persistence,
   provider,
+  platformService,
+  portfolioService,
+  profileService,
   proxy,
   rendererAuthorization,
+  requestEditService,
+  requestService,
+  securityService,
+  accountOnboardingService,
+  sendService,
+  tradeService,
   sideTrayTransactions,
-  sideTrayWorkflows,
+  settingsService,
   store,
-  walletWorkflows
+  networkService,
+  tokenService
 })
-const apiServer = createProductionApiServer(provider, accounts, flashService, store, agentService, windows)
+const apiServer = createProductionApiServer(
+  provider,
+  accounts,
+  flashService,
+  store,
+  agentService,
+  requestService,
+  windows
+)
 mainApp.start()
 
 log.info(`Chrome: v${process.versions.chrome}`)

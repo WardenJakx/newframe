@@ -79,24 +79,75 @@ describe('rendererStore', () => {
     unsubscribe()
   })
 
-  it('mirrors active profile selection and ordered summaries in one update', () => {
-    applyStateMessage(snapshot({ currentProfile: 'default-profile' }))
-    const profiles: WalletRendererState['profiles'] = [
-      {
-        id: 'default-profile',
-        name: 'Profile 1',
-        accountCount: 1,
-        cachedValue: { state: 'priced', value: 12.34 }
-      },
-      { id: 'work', name: 'Work', accountCount: 0, cachedValue: { state: 'missing' } }
-    ]
+  it('mirrors profile and operation slices atomically and rejects unsafe operation data', () => {
+    {
+      applyStateMessage(snapshot({ currentProfile: 'default-profile' }))
+      const profiles: WalletRendererState['profiles'] = [
+        {
+          id: 'default-profile',
+          name: 'Profile 1',
+          accountCount: 1,
+          cachedValue: { state: 'priced', value: 12.34 }
+        },
+        { id: 'work', name: 'Work', accountCount: 0, cachedValue: { state: 'missing' } }
+      ]
 
-    expect(applyStateMessage(update({ currentProfile: 'work', profiles }))).toEqual({
-      status: 'applied',
-      messageType: 'update',
-      revision: 1
-    })
-    expect(getStateMirrorForTests()).toMatchObject({ currentProfile: 'work', profiles })
+      expect(applyStateMessage(update({ currentProfile: 'work', profiles }))).toEqual({
+        status: 'applied',
+        messageType: 'update',
+        revision: 1
+      })
+      expect(getStateMirrorForTests()).toMatchObject({ currentProfile: 'work', profiles })
+    }
+
+    {
+      resetStateMirrorForTests()
+      beginStateConnection('wallet-ui')
+      applyStateMessage(snapshot({}))
+      const operations: WalletRendererState['operations'] = {
+        operation: {
+          id: 'operation',
+          type: 'transaction.submit',
+          status: 'pending',
+          startedAt: 1,
+          updatedAt: 1
+        }
+      }
+
+      expect(applyStateMessage(update({ operations }))).toEqual({
+        status: 'applied',
+        messageType: 'update',
+        revision: 1
+      })
+      expect(getStateMirrorForTests().operations).toEqual(operations)
+      const appliedOperations = getStateMirrorForTests().operations
+      applyStateMessage(update({ currentAccount: 'next' }, { baseRevision: 1 }))
+      expect(getStateMirrorForTests().operations).toBe(appliedOperations)
+    }
+
+    {
+      resetStateMirrorForTests()
+      beginStateConnection('wallet-ui')
+      applyStateMessage(snapshot({}))
+
+      expect(
+        applyStateMessage(
+          update({
+            operations: {
+              leaked: {
+                id: 'leaked',
+                type: 'transaction.submit',
+                status: 'pending',
+                startedAt: 1,
+                updatedAt: 1,
+                password: 'must-not-cross'
+              }
+            } as unknown as WalletRendererState['operations']
+          })
+        )
+      ).toEqual({ status: 'reconnect-needed', reason: 'invalid_message' })
+      expect(getStateMirrorForTests().operations).toEqual({})
+    }
   })
 
   it('requires a snapshot before accepting updates', () => {

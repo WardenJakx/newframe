@@ -7,9 +7,7 @@ import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
 import { ToggleButton } from '@newframe/ui/toggle-button'
 
-import { toBigInt } from '../../../domain/units'
 import link from '../../shared/link'
-import { usesBaseFee } from '../../../domain/transaction'
 import { capitalize } from '../../../domain/text'
 import ExtensionConnectNotification from './ExtensionConnect'
 import SignerRecovery from './SignerRecovery'
@@ -17,10 +15,6 @@ import { useWalletSelector } from '../../state/useAppSelector'
 import type { TrayRendererState } from '../state'
 import { useTrayNotification, type TrayNotifier } from '../notification'
 import type { TransactionRequest } from '../../../contracts/requests'
-import { resolveAssetRate } from '../../../domain/asset'
-import { NATIVE_CURRENCY } from '../../../domain/token/constants'
-
-const FEE_WARNING_THRESHOLD_USD = 50
 const isNotificationData = (value: unknown): value is Record<string, unknown> =>
   !!value && typeof value === 'object' && !Array.isArray(value)
 
@@ -114,14 +108,16 @@ function WarningMute({ checked, onToggle }: { checked: boolean; onToggle: () => 
   )
 }
 
-function approveRequest(req?: { handlerId?: string }) {
-  if (req?.handlerId) void link.executeCommand({ type: 'request.approve', requestId: req.handlerId })
+function confirmWarning(req: { handlerId?: string } | undefined, gate: 'signer-compatibility' | 'gas-fee') {
+  if (req?.handlerId) {
+    void link.executeCommand({ type: 'request.warning-confirm', requestId: req.handlerId, gate })
+  }
 }
 
 function GasFeeWarning({ data, dismiss, mute }: NotificationProps) {
   const { req, feeUSD = '0.00', currentSymbol = 'ETH' } = data
   const proceed = () => {
-    approveRequest(req)
+    confirmWarning(req, 'gas-fee')
     dismiss()
   }
 
@@ -165,46 +161,14 @@ function NoSignerWarning({ dismiss }: NotificationProps) {
   )
 }
 
-const displayUSD = (usd: number) => (Math.ceil(usd * 100) / 100).toFixed(2)
-
-function SignerCompatibilityWarning({
-  data,
-  dismiss,
-  mute,
-  networks,
-  networksMeta,
-  assetRates
-}: NotificationProps) {
-  const { req, compatibility = {}, chain = { type: 'ethereum', id: 0 } } = data
+function SignerCompatibilityWarning({ data, dismiss, mute }: NotificationProps) {
+  const { req, compatibility = {} } = data
   const { signer = '', tx = '' } = compatibility
 
   const proceed = () => {
     if (!req) return
-    const chainId = Number(chain.id)
-    const isTestnet = networks[chain.type]?.[chainId]?.isTestnet
-    const nativeCurrency = networksMeta[chain.type]?.[chainId]?.nativeCurrency
-    const currentSymbol = nativeCurrency?.symbol || '?'
-    const nativeUSD = !isTestnet
-      ? resolveAssetRate(
-          { chainId, address: NATIVE_CURRENCY, nativeTicker: nativeCurrency?.symbol },
-          assetRates
-        )?.usdRate
-      : undefined
-    const hasNativeUSD = typeof nativeUSD === 'number'
-    const gasLimit = toBigInt(req.data?.gasLimit) ?? 0n
-    const maxFeePerGas = toBigInt(usesBaseFee(req.data) ? req.data.maxFeePerGas : req.data?.gasPrice) ?? 0n
-    const maxFeeUSD = hasNativeUSD ? (Number(maxFeePerGas * gasLimit) / 1e18) * nativeUSD : 0
-
-    if (
-      hasNativeUSD &&
-      (maxFeeUSD > FEE_WARNING_THRESHOLD_USD || displayUSD(maxFeeUSD) === '0.00') &&
-      !mute.gasFeeWarning
-    ) {
-      dismiss('gasFeeWarning', { req, feeUSD: displayUSD(maxFeeUSD), currentSymbol })
-    } else {
-      approveRequest(req)
-      dismiss()
-    }
+    confirmWarning(req, 'signer-compatibility')
+    dismiss()
   }
 
   return (
@@ -286,7 +250,7 @@ export default function Notification() {
   if (state.extensionRequestData) {
     const { browser, id } = state.extensionRequestData
     if (typeof browser !== 'string' || typeof id !== 'string') return null
-    return <ExtensionConnectNotification browser={browser} id={id} onClose={() => local.notify()} />
+    return <ExtensionConnectNotification browser={browser} id={id} />
   }
 
   const props: NotificationProps = {

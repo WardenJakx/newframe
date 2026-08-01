@@ -137,6 +137,29 @@ export type RequestAuthorization = {
   }
 }
 
+export type RequestApprovalGate =
+  | {
+      type: 'signer-compatibility'
+      reason: 'incompatible'
+      signer: string
+      tx: string
+      chain: { type: 'ethereum'; id: number }
+    }
+  | {
+      type: 'signer-compatibility'
+      reason: 'no-signer'
+    }
+  | {
+      type: 'signer-compatibility'
+      reason: 'signer-unavailable'
+      signerIds: string[]
+    }
+  | {
+      type: 'gas-fee'
+      feeUSD: string
+      currentSymbol: string
+    }
+
 export type Identity = {
   address: Address
   ens: string
@@ -154,6 +177,8 @@ export interface AccountRequest<T extends RequestType = RequestType> extends Req
   created?: number
   /** Serializable record of the central authority decision for production requests. */
   authorization?: RequestAuthorization
+  /** Safe, projected main-owned confirmation gate for the next approval step. */
+  approvalGate?: RequestApprovalGate
 }
 
 export interface TransactionReceipt {

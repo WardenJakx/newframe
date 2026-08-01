@@ -1,5 +1,4 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { randomUUID } from 'node:crypto'
 import log from 'electron-log'
 import { z } from 'zod'
 
@@ -11,6 +10,7 @@ import { createAgentPrincipal, createRpcPrincipal } from '../authority.js'
 import type { AgentAccessRequest } from '../../contracts/requests.js'
 import { observeResponseClose, PendingConnectionLimiter } from './connectionLifecycle.js'
 import { AgentSessionStore, type AgentDescriptor } from './sessionStore.js'
+import type { PromptedRequestContinuationPort } from '../features/requests/service.js'
 
 const MIN_DURATION_SECONDS = 60
 const MAX_DURATION_SECONDS = 180 * 24 * 60 * 60
@@ -135,7 +135,13 @@ function clearPending(requestId: string, runtime: AgentRuntime) {
   runtime.pendingConnections.delete(requestId)
 }
 
-async function connect(req: IncomingMessage, res: ServerResponse, accounts: Accounts, runtime: AgentRuntime) {
+async function connect(
+  req: IncomingMessage,
+  res: ServerResponse,
+  accounts: Accounts,
+  requests: PromptedRequestContinuationPort,
+  runtime: AgentRuntime
+) {
   if (!runtime.pendingConnectionLimiter.tryReserve()) {
     return sendJson(res, 429, { error: 'Too many pending agent connection requests' })
   }
@@ -157,7 +163,12 @@ async function connect(req: IncomingMessage, res: ServerResponse, accounts: Acco
     return sendJson(res, 403, { error: 'Select an AI-enabled hot wallet in Newframe first' })
   }
 
-  const handlerId = randomUUID()
+  let handlerId = ''
+  handlerId = requests.create((response) => {
+    clearPending(handlerId, runtime)
+    if (response.error) return sendJson(res, 403, { error: response.error.message })
+    sendJson(res, 200, response.result)
+  })
   const request: AgentAccessRequest = {
     type: 'agentAccess',
     handlerId,
@@ -211,15 +222,10 @@ async function connect(req: IncomingMessage, res: ServerResponse, accounts: Acco
     origin: AGENT_ORIGIN
   })
 
-  const routed = accounts.routeRequest(principal, request, (response) => {
-    clearPending(handlerId, runtime)
-    if (response.error) return sendJson(res, 403, { error: response.error.message })
-    sendJson(res, 200, response.result)
-  })
+  const routed = accounts.routeRequest(principal, request)
 
   if (!routed) {
     clearPending(handlerId, runtime)
-    sendJson(res, 403, { error: 'Agent connection request could not be routed' })
   }
 }
 
@@ -305,6 +311,7 @@ function createAgentHttpHandler(
   provider: AgentProviderPort,
   accounts: Accounts,
   flashService: FlashService,
+  requests: PromptedRequestContinuationPort,
   runtime: AgentRuntime
 ) {
   return async function handleAgentHttpRequest(req: IncomingMessage, res: ServerResponse) {
@@ -314,7 +321,7 @@ function createAgentHttpHandler(
       }
       const pathname = new URL(req.url || '/', 'http://127.0.0.1').pathname
       if (req.method === 'POST' && pathname === '/agent/session') {
-        return await connect(req, res, accounts, runtime)
+        return await connect(req, res, accounts, requests, runtime)
       }
       if (req.method === 'POST' && pathname === '/agent/rpc') {
         return await rpc(req, res, provider, accounts, runtime)
@@ -413,7 +420,8 @@ function revokeAgentSessions(
 export function createAgentService(
   accounts: Accounts,
   flashService: FlashService,
-  canonicalStore: CanonicalStoreReader
+  canonicalStore: CanonicalStoreReader,
+  requests: PromptedRequestContinuationPort
 ) {
   const pendingConnections = new Map<string, PendingConnection>()
   const runtime: AgentRuntime = {
@@ -428,12 +436,14 @@ export function createAgentService(
 
   return {
     createHttpHandler: (provider: AgentProviderPort) =>
-      createAgentHttpHandler(provider, accounts, flashService, runtime),
+      createAgentHttpHandler(provider, accounts, flashService, requests, runtime),
     dispose() {
-      for (const pending of pendingConnections.values()) {
-        clearTimeout(pending.timer)
+      for (const pending of [...pendingConnections.values()]) {
+        accounts.getFrameAccount(pending.accountId)?.rejectRequest(pending.request, {
+          code: 4001,
+          message: 'Agent service stopped before approval'
+        })
       }
-      pendingConnections.clear()
     },
     resolveAgentAccessRequest: (requestId: string, approved: boolean) =>
       resolveAgentAccessRequest(requestId, approved, accounts, flashService, runtime),

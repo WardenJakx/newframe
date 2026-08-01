@@ -13,8 +13,6 @@ export interface SendWorkflowState {
   recipientInput: string
   recipientOpen: boolean
   selectedAssetKey: string
-  status: string
-  submitting: boolean
   tokenOpen: boolean
   tokenRowsVisible: number
 }
@@ -29,9 +27,6 @@ export type SendWorkflowAction =
   | { type: 'setRecipientInput'; recipientInput: string }
   | { type: 'setTokenOpen'; tokenOpen: boolean }
   | { type: 'showMoreTokens' }
-  | { type: 'submitFailed'; error: string }
-  | { type: 'submitStarted' }
-  | { type: 'submitSucceeded' }
   | { type: 'toggleRecipientOpen' }
   | { type: 'validationFailed'; error: string }
 
@@ -43,8 +38,6 @@ export function createInitialSendState(assetId?: string | null): SendWorkflowSta
     recipientInput: '',
     recipientOpen: true,
     selectedAssetKey: assetId || '',
-    status: '',
-    submitting: false,
     tokenOpen: false,
     tokenRowsVisible: INITIAL_SEND_TOKEN_ROWS
   }
@@ -61,8 +54,6 @@ export function sendReducer(state: SendWorkflowState, action: SendWorkflowAction
         recipientInput: '',
         recipientOpen: true,
         selectedAssetKey: action.selectedAssetKey,
-        status: '',
-        submitting: false,
         tokenOpen: false,
         tokenRowsVisible: INITIAL_SEND_TOKEN_ROWS
       }
@@ -92,8 +83,7 @@ export function sendReducer(state: SendWorkflowState, action: SendWorkflowAction
       return {
         ...state,
         amount: action.amount,
-        error: '',
-        status: ''
+        error: ''
       }
     case 'setMaxAmount':
       return {
@@ -118,26 +108,6 @@ export function sendReducer(state: SendWorkflowState, action: SendWorkflowAction
       return {
         ...state,
         tokenRowsVisible: state.tokenRowsVisible + SEND_TOKEN_ROWS_INCREMENT
-      }
-    case 'submitFailed':
-      return {
-        ...state,
-        error: action.error,
-        status: '',
-        submitting: false
-      }
-    case 'submitStarted':
-      return {
-        ...state,
-        error: '',
-        status: 'Confirm in Newframe',
-        submitting: true
-      }
-    case 'submitSucceeded':
-      return {
-        ...state,
-        status: 'Transaction submitted',
-        submitting: false
       }
     case 'toggleRecipientOpen':
       return {

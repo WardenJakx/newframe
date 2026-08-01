@@ -16,8 +16,13 @@ import {
 
 import type { Permission } from '../store/state/index.js'
 import type { AccessRequest } from '../../contracts/requests.js'
+import type { PromptedRequestContinuationPort } from '../features/requests/service.js'
 
 export type { FrameExtension } from '../../domain/origin/index.js'
+
+type OriginRequestContinuationPort = Pick<PromptedRequestContinuationPort, 'create'> & {
+  cancel(requestId: string): boolean
+}
 
 interface OriginStorePort {
   getOrigin(id: string): { name: string; chain?: { id: number } } | undefined
@@ -33,12 +38,13 @@ interface OriginStorePort {
 
 interface AccountAccessPort {
   current(): { address: Address } | null | undefined
-  routeRequest(principal: RpcPrincipal, request: AccessRequest, callback: () => void): void
+  routeRequest(principal: RpcPrincipal, request: AccessRequest): void
 }
 
 export interface OriginsServiceDependencies {
   store: OriginStorePort
   accounts: AccountAccessPort
+  requests: OriginRequestContinuationPort
   hasInternalStateCapability(principal: RpcPrincipal): boolean
   development(): boolean
 }
@@ -127,14 +133,16 @@ export function createOriginsService(dependencies: OriginsServiceDependencies) {
     }
 
     try {
-      dependencies.accounts.routeRequest(principal, request, () => {
+      dependencies.requests.create(() => {
         const originName = dependencies.store.getOrigin(originId)?.name || 'Unknown'
         const permission = dependencies.store.getPermission(address, originName)
 
         activePermissionChecks.delete(permissionCheckId)
         resolveCheck(permission)
-      })
+      }, request.handlerId)
+      dependencies.accounts.routeRequest(principal, request)
     } catch (error) {
+      dependencies.requests.cancel(request.handlerId)
       activePermissionChecks.delete(permissionCheckId)
       rejectCheck(error)
     }
@@ -168,7 +176,11 @@ export const parseOrigin = parseOriginName
 export { normalizeRequestChainId }
 export const parseRequestChainId = (req: IncomingMessage) => chainIdFromRequest(req.headers, req.url)
 
-export function createProductionOriginsService(store: CanonicalStoreReader, accounts: Accounts) {
+export function createProductionOriginsService(
+  store: CanonicalStoreReader,
+  accounts: Accounts,
+  requests: OriginRequestContinuationPort
+) {
   const productionStore: OriginStorePort = {
     getOrigin: (id) => store.getState().main.origins[id],
     getKnownEthereumChainIds: () => new Set(Object.keys(store.getState().main.networks.ethereum).map(Number)),
@@ -193,6 +205,7 @@ export function createProductionOriginsService(store: CanonicalStoreReader, acco
   return createOriginsService({
     store: productionStore,
     accounts,
+    requests,
     hasInternalStateCapability: (principal) => hasPrincipalCapability(principal, 'wallet:internal-state'),
     development: () => process.env.NODE_ENV === 'development'
   })

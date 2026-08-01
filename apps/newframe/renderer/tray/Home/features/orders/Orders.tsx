@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 
 import link from '../../../../shared/link'
@@ -17,6 +18,7 @@ export function Orders() {
         accountAddress: account?.address || '',
         networks: state.networks?.ethereum || EMPTY_RECORD,
         networksMeta: state.networksMeta?.ethereum || EMPTY_RECORD,
+        operations: state.operations || EMPTY_RECORD,
         orders: state.orders || EMPTY_RECORD,
         showTestnets: !!state.showTestnets
       }
@@ -24,31 +26,65 @@ export function Orders() {
   )
   const selectedChainId = useHomeUiStore((state) => state.selectedChainId)
   const openOverlay = useHomeUiStore((state) => state.openOverlay)
-  const [cancellingOrderId, setCancellingOrderId] = useState('')
+  const [cancellation, setCancellation] = useState<{ operationId: string; orderId: string } | null>(null)
+  const cancellationRef = useRef(cancellation)
   const [cancelError, setCancelError] = useState<{ message: string; orderId: string } | null>(null)
   const orders = createOrderRows({ ...shared, selectedChainId })
+  const cancellationOperation = cancellation ? shared.operations[cancellation.operationId] : undefined
+  const projectedCancelError =
+    cancellation && cancellationOperation?.status === 'failed'
+      ? {
+          orderId: cancellation.orderId,
+          message: cancellationOperation.error?.message || 'Cancel failed.'
+        }
+      : null
+  const cancellingOrderId =
+    cancellation &&
+    (!cancellationOperation ||
+      cancellationOperation.status === 'pending' ||
+      (cancellationOperation.status === 'succeeded' && shared.orders[cancellation.orderId]?.cancellable))
+      ? cancellation.orderId
+      : ''
 
-  const cancel = async (order: any) => {
-    if (!order.orderId || cancellingOrderId) return
-    setCancellingOrderId(order.orderId)
+  useEffect(() => {
+    cancellationRef.current = cancellation
+  }, [cancellation])
+
+  const cancel = (order: any) => {
+    const current = cancellationRef.current
+    const currentOperation = current ? shared.operations[current.operationId] : undefined
+    const currentCompleted =
+      currentOperation?.status === 'failed' ||
+      (currentOperation?.status === 'succeeded' && !shared.orders[current?.orderId || '']?.cancellable)
+    if (!order.orderId || (current && !currentCompleted)) return
+    const operationId = crypto.randomUUID()
+    const next = { operationId, orderId: order.orderId }
+    cancellationRef.current = next
+    setCancellation(next)
     setCancelError(null)
-    try {
-      const result = await link.executeCommand({ type: 'flash.order-cancel', orderId: order.orderId })
-      if (!result.ok) throw new Error(result.message || 'Cancel failed.')
-    } catch (error) {
-      setCancelError({ orderId: order.orderId, message: orderErrorMessage(error, 'Cancel failed.') })
-    } finally {
-      setCancellingOrderId('')
-    }
+    void link
+      .executeCommand({ type: 'flash.order-cancel', operationId, orderId: order.orderId })
+      .then((result) => {
+        if (cancellationRef.current?.operationId !== operationId || result.ok) return
+        setCancelError({ orderId: order.orderId, message: result.message || 'Cancel failed.' })
+        cancellationRef.current = null
+        setCancellation(null)
+      })
+      .catch((error) => {
+        if (cancellationRef.current?.operationId !== operationId) return
+        setCancelError({ orderId: order.orderId, message: orderErrorMessage(error, 'Cancel failed.') })
+        cancellationRef.current = null
+        setCancellation(null)
+      })
   }
 
   return (
     <OrdersView
-      cancelError={cancelError}
+      cancelError={projectedCancelError || cancelError}
       cancellingOrderId={cancellingOrderId}
       networks={shared.networks}
       networksMeta={shared.networksMeta}
-      onCancel={(order) => void cancel(order)}
+      onCancel={cancel}
       onOpen={(orderId) => openOverlay({ type: 'order', orderId })}
       orders={orders}
     />

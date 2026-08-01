@@ -43,6 +43,7 @@ export interface StateStream {
 
 type Connection = {
   role: RendererRole
+  windowInstanceId: string
   streamId: string
   revision: number
   projection: RendererState
@@ -96,7 +97,11 @@ export function createStateStream({
   const connections = new Map<number, Connection>()
   let unregisterHandlers: (() => void) | undefined
 
-  const rawProjection = (role: RendererRole): RendererState => projectRendererState(store.getState(), role)
+  const rawProjection = (connection: Pick<Connection, 'role' | 'windowInstanceId'>): RendererState =>
+    projectRendererState(store.getState(), {
+      clientType: connection.role,
+      windowInstanceId: connection.windowInstanceId
+    })
 
   const send = (connection: Connection, message: StateMessage) => {
     const parsed = StateMessageSchema.safeParse(message)
@@ -128,12 +133,16 @@ export function createStateStream({
       return { ok: false, error: 'unauthorized' } as const
     }
 
-    const projection = rawProjection(context.clientType)
+    const projection = rawProjection({
+      role: context.clientType,
+      windowInstanceId: context.windowInstanceId
+    })
     const snapshotState = validatedSnapshot(context.clientType, projection)
     if (!snapshotState) return { ok: false, error: 'state_unavailable' } as const
 
     const connection: Connection = {
       role: context.clientType,
+      windowInstanceId: context.windowInstanceId,
       streamId: createStreamId(),
       revision: 0,
       projection,
@@ -165,15 +174,8 @@ export function createStateStream({
   }
 
   const publishState = () => {
-    const projections = new Map<RendererRole, RendererState | undefined>()
-
     for (const connection of connections.values()) {
-      if (!projections.has(connection.role)) {
-        projections.set(connection.role, rawProjection(connection.role))
-      }
-
-      const projection = projections.get(connection.role)
-      if (!projection) continue
+      const projection = rawProjection(connection)
 
       const rawChanges = changedTopLevelSlices(connection.projection, projection)
       if (Object.keys(rawChanges).length === 0) continue

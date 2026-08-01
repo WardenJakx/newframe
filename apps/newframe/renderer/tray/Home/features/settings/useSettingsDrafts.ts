@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 
+import type { PersistSetting } from './types'
+
 export function useSettingsDrafts({
   initialLatticeEndpoint,
   initialLatticeEndpointMode,
@@ -7,9 +9,9 @@ export function useSettingsDrafts({
   persist
 }: {
   initialLatticeEndpoint: string
-  initialLatticeEndpointMode: string
+  initialLatticeEndpointMode: 'default' | 'custom'
   initialPortfolioApiKeyConfigured: boolean
-  persist: (setting: string, value: any) => void
+  persist: PersistSetting
 }) {
   const latticeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const portfolioTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
@@ -30,7 +32,7 @@ export function useSettingsDrafts({
     const value = input.replace(/\s+/g, '')
     clearTimeout(latticeTimer.current)
     setLatticeEndpoint(value)
-    latticeTimer.current = setTimeout(() => persist('lattice-endpoint', value), 1000)
+    latticeTimer.current = setTimeout(() => persist({ setting: 'lattice-endpoint', value }), 1000)
   }
 
   const changePortfolioApiKey = (input: string) => {
@@ -38,23 +40,24 @@ export function useSettingsDrafts({
     clearTimeout(portfolioTimer.current)
     setPortfolioApiKey(value)
     setPortfolioApiKeyRequired(false)
-    portfolioTimer.current = setTimeout(() => persist('portfolio-api-key', value), 1000)
+    portfolioTimer.current = setTimeout(() => persist({ setting: 'portfolio-api-key', value }), 1000)
   }
 
-  const changeLatticeEndpointMode = (value: string) => {
+  const changeLatticeEndpointMode = (value: 'default' | 'custom') => {
     setLatticeEndpointMode(value)
-    persist('lattice-endpoint-mode', value)
+    persist({ setting: 'lattice-endpoint-mode', value })
   }
 
   const toggleAutoDiscoverTokens = (enabled: boolean) => {
-    if (enabled) return persist('auto-discover-tokens', false)
+    if (enabled) return persist({ setting: 'auto-discover-tokens', value: false })
 
     const apiKey = portfolioApiKey.trim()
     if (!apiKey && !initialPortfolioApiKeyConfigured) return setPortfolioApiKeyRequired(true)
 
     clearTimeout(portfolioTimer.current)
-    persist('auto-discover-tokens', {
-      enabled: true,
+    persist({
+      setting: 'auto-discover-tokens',
+      value: true,
       ...(apiKey ? { apiKey } : {})
     })
     if (apiKey) setPortfolioApiKey(apiKey)

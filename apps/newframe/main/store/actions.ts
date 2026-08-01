@@ -7,6 +7,7 @@ import { accountNS, isDefaultAccountName } from '../../domain/account/index.js'
 import { toTokenId } from '../../domain/token/index.js'
 import { DEFAULT_PROFILE_ID, DEFAULT_PROFILE_NAME, getProfileAccountIds } from '../../domain/state/main.js'
 import { createPanelActions, type CanonicalGet, type CanonicalSet } from './actions.panel.js'
+import { createOperationActions } from './actions.operation.js'
 import type { CanonicalState } from './state/index.js'
 import type { Account } from '../../domain/state/account.js'
 import type { Token, TokenImage, TokenSource } from '../../domain/state/token.js'
@@ -206,6 +207,7 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
 
   return {
     ...createPanelActions(set, get),
+    ...createOperationActions(set, get),
 
     activateNetwork: (type: string, chainId: number, active: boolean) => {
       set((draft) => {

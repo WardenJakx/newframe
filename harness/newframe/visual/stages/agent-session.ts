@@ -156,11 +156,7 @@ export const agentSessionStage: VisualStage = {
     const { harness } = await requireAccounts(context)
     await driver.clearPanelAndOverlays()
     await driver.setSelectedAccount(harness)
-    await driver.executeCommand(tray, {
-      type: 'account.agent-access-set',
-      accountId: harness.id,
-      enabled: true
-    })
+    await driver.setAgentAccess(harness, true)
 
     await tray.getByRole('button', { name: 'Accounts' }).click()
     const accountsDialog = tray.getByRole('dialog', { name: 'Accounts' })

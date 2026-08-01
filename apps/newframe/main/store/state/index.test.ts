@@ -17,6 +17,7 @@ describe('canonical state defaults', () => {
     expect(state.main.showTestnets).toBe(false)
     expect(state.main.appLock).toEqual({ locked: false, vaultExists: false })
     expect(state.main.currentAccount).toBe('')
+    expect(state.operations).toEqual({})
     expect({
       profiles: state.main.profiles,
       profileOrder: state.main.profileOrder,

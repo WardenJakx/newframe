@@ -7,9 +7,11 @@ import { getMainRuntime } from '../../runtime.js'
 import { MAINNET_ETH_ICON } from '../../../domain/balance/index.js'
 import { builtInChainIconUrl } from '../../../domain/chain/index.js'
 import { DEFAULT_PROFILE_ID, DEFAULT_PROFILE_NAME, MainSchema, Main } from '../../../domain/state/main.js'
+import { OperationRecordSchema } from '../../../domain/state/operation.js'
 
 import type { Origin } from '../../../domain/state/origin.js'
 import type { Chain } from '../../../domain/state/chain.js'
+import type { OwnedOperation } from '../actions.operation.js'
 
 export type { ChainId, Chain, ChainMetadata } from '../../../domain/state/chain.js'
 export type { Origin } from '../../../domain/state/origin.js'
@@ -59,6 +61,16 @@ const ViewSchema = z
 export const CanonicalStateSchema = z
   .object({
     main: MainSchema,
+    operations: z.record(
+      z.string(),
+      z.strictObject({
+        owner: z.strictObject({
+          clientType: z.enum(['wallet-ui', 'sidetray']),
+          windowInstanceId: z.string().min(1)
+        }),
+        operation: OperationRecordSchema
+      })
+    ),
     view: ViewSchema
   })
   .passthrough()
@@ -981,6 +993,7 @@ function normalizeDefaultEthereumNetworks() {
 normalizeDefaultEthereumNetworks()
 
 const initial = {
+  operations: {},
   windows: {
     panel: {
       show: false,
@@ -1013,8 +1026,9 @@ type WindowState = {
   [key: string]: any
 }
 
-export type CanonicalState = Omit<typeof initial, 'main' | 'view' | 'windows'> & {
+export type CanonicalState = Omit<typeof initial, 'main' | 'operations' | 'view' | 'windows'> & {
   main: M
+  operations: Record<string, OwnedOperation>
   view: Omit<typeof initial.view, 'notifications'> & {
     notifications: Record<string, StatusNotification>
   }

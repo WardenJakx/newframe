@@ -13,12 +13,14 @@ import {
 import { GasFeesSource, type TransactionData } from '../../domain/transaction'
 import { checkExistingNonceGas } from '../provider/helpers'
 import createCanonicalStore from '../store/createCanonicalStore'
-import { createProductionWalletWorkflowAdapters } from '../infrastructure/walletWorkflows/production'
+import { createProductionSecurityAdapters } from '../infrastructure/security/production'
+import { createProductionAccountOnboardingAdapters } from '../infrastructure/accountOnboarding/production'
+import { createProductionPlatformAdapters } from '../infrastructure/platform/production'
+import { createProductionPortfolioAdapters } from '../infrastructure/portfolio/production'
 import {
   createProductionCapabilities,
   createProductionMainApp,
-  type ProductionCapabilityAdapters,
-  type ProductionWalletWorkflowAdapters
+  type ProductionCapabilityAdapters
 } from './production'
 
 const memoryStorage = {
@@ -27,75 +29,49 @@ const memoryStorage = {
   removeItem: () => undefined
 }
 
-function createWalletAdapters(
-  overrides: Partial<ProductionWalletWorkflowAdapters> = {}
-): ProductionWalletWorkflowAdapters {
+type LegacyRuntimeOverrides = {
+  now?: () => number
+  rpcMatchesChain?: (url: unknown, chainId: number) => Promise<boolean>
+  signers?: ProductionCapabilityAdapters['accountOnboarding']['signers']
+  vault?: { exists(): boolean; isUnlocked(): boolean }
+}
+
+function createWalletAdapters(overrides: LegacyRuntimeOverrides = {}) {
   return {
-    app: {
-      exit: mock(),
-      quit: mock(),
-      relaunch: mock()
-    },
-    biometrics: {
-      summary: () => ({
-        enabled: false,
-        method: 'none',
-        credential: undefined,
-        nativeAvailable: false
-      }),
-      disable: mock(),
-      enableNative: mock(),
-      enableWebAuthn: mock()
-    } as never,
-    clipboard: { writeText: mock() },
     delay: async () => undefined,
-    getTokenDiscoveryProvider: mock(() => undefined) as never,
-    inspectEnabled: false,
     log: { warn: mock() },
     now: () => 42,
-    openBlockExplorer: mock(),
-    openExternal: mock(),
-    openFileDialog: mock(async () => undefined),
-    persistence: { clear: mock() },
-    randomBytes: () => Buffer.alloc(32),
-    readFile: mock(async () => ''),
     rpcMatchesChain: mock(async () => true),
     signers: {} as never,
-    trezorBridge: {
-      pinEntered: mock(),
-      passphraseEntered: mock(),
-      enterPassphraseOnDevice: mock()
-    },
-    updater: {
-      dismissUpdate: mock(),
-      fetchUpdate: mock(),
-      quitAndInstall: mock(),
-      updateReady: false
-    },
     vault: {
       exists: () => false,
-      getKey: () => null,
       isUnlocked: () => false
-    },
-    windows: {
-      handleTrayMouseout: mock(),
-      refocusSideTray: mock()
     },
     ...overrides
   }
 }
 
 function createCapabilityAdapters(
-  walletOverrides: Partial<ProductionWalletWorkflowAdapters> = {},
-  overrides: Partial<Omit<ProductionCapabilityAdapters, 'walletWorkflows'>> = {}
+  walletOverrides: LegacyRuntimeOverrides = {},
+  overrides: Partial<ProductionCapabilityAdapters> = {}
 ): ProductionCapabilityAdapters {
   return {
+    accountOnboarding: {
+      dispose: mock(),
+      hardware: {} as never,
+      keystore: { locate: mock(async () => undefined) },
+      secrets: {
+        exportPrivateKey: mock(async () => ({ type: 'privateKey', value: '0xsecret' })),
+        generateSeedPhrase: mock(async () => 'seed phrase')
+      },
+      signers: walletOverrides.signers || ({} as never)
+    },
     accounts: {
       navigation: {
         back: mock(),
         forward: mock()
       },
-      now: () => 42,
+      now: walletOverrides.now || (() => 42),
       notify: mock(),
       openBlockExplorer: mock(),
       persistence: { flush: mock() },
@@ -113,11 +89,54 @@ function createCapabilityAdapters(
       getTokenDiscoveryProvider: mock(() => ({ ok: false, reason: 'disabled' })) as never,
       log: { warn: mock() }
     },
-    sideTrayWindows: {
-      close: mock(),
-      inspect: mock()
+    platform: {
+      app: { quit: mock() },
+      clipboard: { writeText: mock() },
+      openBlockExplorer: mock(),
+      openExternal: mock(),
+      updater: {
+        dismissUpdate: mock(),
+        fetchUpdate: mock(),
+        quitAndInstall: mock(),
+        updateReady: false
+      },
+      windows: {
+        close: mock(),
+        handleTrayMouseout: mock(),
+        inspect: mock(),
+        refocusSideTray: mock()
+      }
     },
-    walletWorkflows: createWalletAdapters(walletOverrides),
+    portfolio: {
+      getTokenDiscoveryProvider: mock(() => ({ ok: false, error: 'token_discovery_disabled' }) as const),
+      log: { warn: mock() }
+    },
+    security: {
+      authentication: {
+        lock: mock(async () => undefined),
+        unlockWithBiometrics: mock(async () => undefined),
+        unlockWithPassword: mock(async () => undefined)
+      },
+      biometrics: {
+        summary: () => ({ enabled: false, method: '', credential: undefined, nativeAvailable: false }),
+        disable: mock(),
+        enableNative: mock(async () => undefined),
+        enableWebAuthn: mock()
+      },
+      lifecycle: {
+        clearPersistence: mock(),
+        exit: mock(),
+        quitAndInstall: mock(),
+        relaunch: mock(),
+        updateReady: () => false
+      },
+      vault: {
+        exists: walletOverrides.vault?.exists || (() => false),
+        getKey: () => null,
+        isUnlocked: walletOverrides.vault?.isUnlocked || (() => false)
+      }
+    },
+    network: { rpcMatchesChain: walletOverrides.rpcMatchesChain || mock(async () => true) },
     ...overrides
   }
 }
@@ -375,25 +394,34 @@ it('keeps account state and account/chain listeners isolated across fresh capabi
   })
 })
 
-it('keeps concrete wallet workflow adapters and dispatcher operations graph-local', async () => {
+it('keeps concrete capability adapters and dispatcher operations graph-local', async () => {
   const createExternal = (label: string) => ({
     app: { exit: mock(), quit: mock(), relaunch: mock() },
-    biometrics: createWalletAdapters().biometrics,
+    biometrics: {
+      summary: () => ({ enabled: false, method: '', credential: undefined, nativeAvailable: false }),
+      disable: mock(),
+      enableNative: mock(async () => undefined),
+      enableWebAuthn: mock()
+    },
     clipboard: { writeText: mock() },
     persistence: { clear: mock() },
     signers: {
       get: mock((id: string) => (id === `${label}-signer` ? { id } : undefined)),
       reload: mock()
     },
-    trezorBridge: createWalletAdapters().trezorBridge,
+    trezorBridge: {
+      pinEntered: mock(),
+      passphraseEntered: mock(),
+      enterPassphraseOnDevice: mock()
+    },
     updater: {
       dismissUpdate: mock(),
       fetchUpdate: mock(),
       quitAndInstall: mock(),
       updateReady: true
     },
-    vault: createWalletAdapters().vault,
-    windows: { handleTrayMouseout: mock(), refocusSideTray: mock() }
+    vault: { exists: () => false, getKey: () => null, isUnlocked: () => false },
+    windows: { close: mock(), handleTrayMouseout: mock(), refocusSideTray: mock() }
   })
   const firstStore = createCanonicalStore(memoryStorage).store
   const secondStore = createCanonicalStore(memoryStorage).store
@@ -408,22 +436,67 @@ it('keeps concrete wallet workflow adapters and dispatcher operations graph-loca
   })
   const firstExternal = createExternal('graph-a')
   const secondExternal = createExternal('graph-b')
-  const firstAdapters = createProductionWalletWorkflowAdapters(firstStore, firstExternal as never)
-  const secondAdapters = createProductionWalletWorkflowAdapters(secondStore, secondExternal as never)
-  const first = createProductionCapabilities(firstStore, createCapabilityAdapters(firstAdapters))
-  const second = createProductionCapabilities(secondStore, createCapabilityAdapters(secondAdapters))
+  const firstAdapters = createWalletAdapters({
+    signers: firstExternal.signers as never,
+    vault: firstExternal.vault
+  })
+  const secondAdapters = createWalletAdapters({
+    signers: secondExternal.signers as never,
+    vault: secondExternal.vault
+  })
+  const firstPlatform = createProductionPlatformAdapters(firstStore, firstExternal)
+  const secondPlatform = createProductionPlatformAdapters(secondStore, secondExternal)
+  const firstPortfolio = createProductionPortfolioAdapters(firstStore)
+  const secondPortfolio = createProductionPortfolioAdapters(secondStore)
+  const first = createProductionCapabilities(
+    firstStore,
+    createCapabilityAdapters(firstAdapters, {
+      platform: firstPlatform,
+      portfolio: firstPortfolio,
+      accountOnboarding: createProductionAccountOnboardingAdapters({
+        signers: firstExternal.signers,
+        store: firstStore,
+        trezorBridge: firstExternal.trezorBridge
+      } as never),
+      security: createProductionSecurityAdapters(firstExternal as never)
+    })
+  )
+  const second = createProductionCapabilities(
+    secondStore,
+    createCapabilityAdapters(secondAdapters, {
+      platform: secondPlatform,
+      portfolio: secondPortfolio,
+      accountOnboarding: createProductionAccountOnboardingAdapters({
+        signers: secondExternal.signers,
+        store: secondStore,
+        trezorBridge: secondExternal.trezorBridge
+      } as never),
+      security: createProductionSecurityAdapters(secondExternal as never)
+    })
+  )
   const openExternal = shell.openExternal as ReturnType<typeof mock>
   openExternal.mockClear()
 
-  first.walletWorkflows.reloadSigner('graph-a-signer')
-  second.walletWorkflows.reloadSigner('graph-b-signer')
-  first.walletWorkflows.openTransactionExplorer(1, '0xaaa')
-  second.walletWorkflows.openTransactionExplorer(1, '0xbbb')
-  first.walletWorkflows.resetWallet('all-settings-data')
-  second.walletWorkflows.handleTrayMouseout()
+  first.accountOnboardingService.reload(
+    { type: 'signer.reload', operationId: 'reload-a', signerId: 'graph-a-signer' },
+    { clientType: 'wallet-ui', windowInstanceId: 'graph-a' }
+  )
+  second.accountOnboardingService.reload(
+    { type: 'signer.reload', operationId: 'reload-b', signerId: 'graph-b-signer' },
+    { clientType: 'wallet-ui', windowInstanceId: 'graph-b' }
+  )
+  first.platformService.openTransactionExplorer(1, '0xaaa')
+  second.platformService.openTransactionExplorer(1, '0xbbb')
+  first.securityService.reset(
+    { type: 'wallet.reset', operationId: 'reset-graph-a', scope: 'all-settings-data' },
+    { clientType: 'wallet-ui', windowInstanceId: 'graph-a' }
+  )
+  second.platformService.handleTrayMouseout()
+
+  await new Promise((resolve) => setImmediate(resolve))
 
   expect({
-    discovery: [firstAdapters.getTokenDiscoveryProvider(), secondAdapters.getTokenDiscoveryProvider()],
+    discovery: [firstPortfolio.getTokenDiscoveryProvider(), secondPortfolio.getTokenDiscoveryProvider()],
     signerReloads: [firstExternal.signers.reload.mock.calls, secondExternal.signers.reload.mock.calls],
     explorer: openExternal.mock.calls,
     updater: firstExternal.updater.quitAndInstall.mock.calls,
@@ -469,21 +542,8 @@ it('keeps chain RPC, policy, and simulation routing local to two concurrently st
       store,
       createCapabilityAdapters(
         {
-          biometrics: {
-            summary: () => ({
-              enabled: true,
-              method: 'native',
-              credential: undefined,
-              nativeAvailable: true
-            }),
-            disable: mock(),
-            enableNative,
-            enableWebAuthn: mock()
-          },
-          clipboard,
           vault: {
             exists: () => true,
-            getKey: () => `${label}-vault-key`,
             isUnlocked: () => true
           }
         },
@@ -509,9 +569,49 @@ it('keeps chain RPC, policy, and simulation routing local to two concurrently st
             getTokenDiscoveryProvider: mock(() => ({ ok: false, reason: 'disabled' })) as never,
             log: { warn: mock() }
           },
-          sideTrayWindows: {
-            close: closeSideTray,
-            inspect: inspectSideTray
+          platform: {
+            app: { quit: mock() },
+            clipboard,
+            openBlockExplorer: mock(),
+            openExternal: mock(),
+            updater: {
+              dismissUpdate: mock(),
+              fetchUpdate: mock(),
+              quitAndInstall: mock(),
+              updateReady: false
+            },
+            windows: {
+              close: closeSideTray,
+              handleTrayMouseout: mock(),
+              inspect: inspectSideTray,
+              refocusSideTray: mock()
+            }
+          },
+          security: {
+            authentication: {
+              lock: mock(async () => undefined),
+              unlockWithBiometrics: mock(async () => undefined),
+              unlockWithPassword: mock(async () => undefined)
+            },
+            biometrics: {
+              summary: () => ({
+                enabled: true,
+                method: 'native',
+                credential: undefined,
+                nativeAvailable: true
+              }),
+              disable: mock(),
+              enableNative,
+              enableWebAuthn: mock()
+            },
+            lifecycle: {
+              clearPersistence: mock(),
+              exit: mock(),
+              quitAndInstall: mock(),
+              relaunch: mock(),
+              updateReady: () => false
+            },
+            vault: { exists: () => true, getKey: () => `${label}-vault-key`, isUnlocked: () => true }
           }
         }
       )
@@ -604,26 +704,36 @@ it('keeps chain RPC, policy, and simulation routing local to two concurrently st
   const signer = {} as never
   const request = {} as never
 
-  first.capabilities.walletWorkflows.updateSettings({
+  first.capabilities.settingsService.update({
     type: 'settings.update',
     setting: 'autohide',
     value: true
   })
-  second.capabilities.walletWorkflows.updateSettings({
+  second.capabilities.settingsService.update({
     type: 'settings.update',
     setting: 'reveal',
     value: true
   })
-  await first.capabilities.walletWorkflows.configureSecurity({
-    type: 'security.configure',
-    mode: 'native'
-  })
-  await second.capabilities.walletWorkflows.configureSecurity({
-    type: 'security.configure',
-    mode: 'native'
-  })
-  first.capabilities.walletWorkflows.writeClipboard('graph-a')
-  second.capabilities.walletWorkflows.writeClipboard('graph-b')
+  first.capabilities.securityService.configure(
+    {
+      type: 'security.configure',
+      operationId: 'configure-a',
+      mode: 'best-available',
+      browser: { status: 'unavailable' }
+    },
+    { clientType: 'wallet-ui', windowInstanceId: 'graph-a' }
+  )
+  second.capabilities.securityService.configure(
+    {
+      type: 'security.configure',
+      operationId: 'configure-b',
+      mode: 'best-available',
+      browser: { status: 'unavailable' }
+    },
+    { clientType: 'wallet-ui', windowInstanceId: 'graph-b' }
+  )
+  first.capabilities.platformService.writeClipboard('graph-a')
+  second.capabilities.platformService.writeClipboard('graph-b')
 
   await new Promise((resolve) => setImmediate(resolve))
   first.downloadImage.mockClear()
@@ -650,8 +760,8 @@ it('keeps chain RPC, policy, and simulation routing local to two concurrently st
   await new Promise((resolve) => setImmediate(resolve))
 
   const sideTrayEvent = { sender: { id: 91 } } as never
-  first.capabilities.sideTrayWorkflows.closeOwnSideTray(sideTrayEvent)
-  second.capabilities.sideTrayWorkflows.inspectOwnSideTray(sideTrayEvent, 12, 34)
+  first.capabilities.platformService.closeSideTray(sideTrayEvent)
+  second.capabilities.platformService.inspectRenderer(sideTrayEvent, 12, 34)
 
   process.env.NODE_ENV = 'test'
   process.env.BUNDLE_LOCATION = '/app/bundle'
@@ -764,31 +874,6 @@ it('keeps chain RPC, policy, and simulation routing local to two concurrently st
   } as unknown as TransactionData
   const firstNonceResult = checkExistingNonceGas({ ...nonceCandidate }, first.store)
   const secondNonceResult = checkExistingNonceGas({ ...nonceCandidate }, second.store)
-  type RoutedFlashQuoteRequest = FlashQuoteRequest & {
-    accountAddress: string
-    contraChain: number
-    targetChain: number
-  }
-  const firstFlashQuote = mock(async (_request: RoutedFlashQuoteRequest) => ({
-    quote: { id: 'graph-a-quote' },
-    flash: { graph: 'a' }
-  }))
-  const secondFlashQuote = mock(async (_request: RoutedFlashQuoteRequest) => ({
-    quote: { id: 'graph-b-quote' },
-    flash: { graph: 'b' }
-  }))
-  first.capabilities.flashService.quote = firstFlashQuote as never
-  second.capabilities.flashService.quote = secondFlashQuote as never
-  const flashRequest = {
-    chainId: 1,
-    targetAsset: { chainId: 1 },
-    contraAsset: { chainId: 1 },
-    inputAmount: '1',
-    orderType: 'market',
-    qty: '1',
-    side: 'sell'
-  } as unknown as FlashQuoteRequest
-
   expect({
     chainRpc: await Promise.all([
       rpcResult(first.capabilities.accountCapabilities.chainRpc.port),
@@ -806,14 +891,6 @@ it('keeps chain RPC, policy, and simulation routing local to two concurrently st
       first.capabilities.accountCapabilities.simulation.port.simulateTransactionEffects(request),
       second.capabilities.accountCapabilities.simulation.port.simulateTransactionEffects(request)
     ]),
-    sideTrayFlash: await Promise.all([
-      first.capabilities.sideTrayTransactions.quoteFlashForCurrentAccount(flashRequest),
-      second.capabilities.sideTrayTransactions.quoteFlashForCurrentAccount(flashRequest)
-    ]),
-    sideTrayFlashCalls: {
-      first: firstFlashQuote.mock.calls,
-      second: secondFlashQuote.mock.calls
-    },
     graphCapabilities: {
       providerState: {
         firstNonceResult,
@@ -848,7 +925,7 @@ it('keeps chain RPC, policy, and simulation routing local to two concurrently st
         secondInspect: second.inspectSideTray.mock.calls
       }
     },
-    walletWorkflows: {
+    featureServices: {
       firstState: {
         autohide: first.store.getState().main.autohide,
         reveal: first.store.getState().main.reveal
@@ -873,23 +950,6 @@ it('keeps chain RPC, policy, and simulation routing local to two concurrently st
       { status: 'success', effects: [], source: 'graph-a' },
       { status: 'success', effects: [], source: 'graph-b' }
     ],
-    sideTrayFlash: [
-      { ok: true, quote: { id: 'graph-a-quote' }, flash: { graph: 'a' } },
-      { ok: false, error: 'quote_failed', message: 'Chain is unavailable.' }
-    ],
-    sideTrayFlashCalls: {
-      first: [
-        [
-          {
-            ...flashRequest,
-            accountAddress: firstAddress,
-            contraChain: 1,
-            targetChain: 1
-          }
-        ]
-      ],
-      second: []
-    },
     graphCapabilities: {
       providerState: {
         firstNonceResult: expect.objectContaining({
@@ -949,7 +1009,7 @@ it('keeps chain RPC, policy, and simulation routing local to two concurrently st
         secondInspect: [[sideTrayEvent, 12, 34]]
       }
     },
-    walletWorkflows: {
+    featureServices: {
       firstState: { autohide: true, reveal: false },
       secondState: { autohide: false, reveal: true },
       firstSecurity: [['graph-a-vault-key']],

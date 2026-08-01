@@ -11,8 +11,6 @@ describe('sendReducer account changes', () => {
       recipient: { id: 'recipient' },
       recipientInput: 'recipient.eth',
       recipientOpen: false,
-      status: 'Confirm in Newframe',
-      submitting: true,
       tokenOpen: true,
       tokenRowsVisible: 500
     }

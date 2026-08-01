@@ -972,6 +972,29 @@ describe('profile actions', () => {
     expect(harness.getState().main.currentAccount).toBe('one')
     harness.actions.deleteProfile(DEFAULT_PROFILE_ID)
     expect(harness.getState().main.profileOrder).toEqual([DEFAULT_PROFILE_ID])
+
+    const operationOwner = { clientType: 'wallet-ui', windowInstanceId: 'window-1' } as const
+    const pendingOperation = {
+      id: 'operation-1',
+      type: 'transaction.submit',
+      status: 'pending' as const,
+      startedAt: 10,
+      updatedAt: 10
+    }
+    harness.actions.operationStarted(operationOwner, pendingOperation)
+    const succeededOperation = {
+      ...pendingOperation,
+      status: 'succeeded' as const,
+      updatedAt: 20,
+      finishedAt: 20
+    }
+    harness.actions.operationCompleted(pendingOperation.id, succeededOperation)
+    expect(harness.getState().operations[pendingOperation.id]).toEqual({
+      owner: operationOwner,
+      operation: succeededOperation
+    })
+    harness.actions.operationsEvicted([pendingOperation.id])
+    expect(harness.getState().operations).toEqual({})
   })
 
   it('assigns new accounts to the selected profile and rejects invalid profile operations', () => {

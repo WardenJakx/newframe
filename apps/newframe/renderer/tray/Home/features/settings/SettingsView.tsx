@@ -11,6 +11,7 @@ import { ToggleButton } from '@newframe/ui/toggle-button'
 import KeyboardShortcutConfigurator from '../../../../shared/ui/KeyboardShortcutConfigurator'
 import { TrayOverlay } from '../../../../shared/ui/TrayOverlay'
 import { SettingsActionRow, SettingsSelectRow, SettingsToggleRow } from '../../ui/SettingsRow'
+import type { PersistSetting, SettingsUpdateInput } from './types'
 
 const shortcutKeyDisplay: Record<string, string> = {
   Slash: '/',
@@ -29,10 +30,10 @@ const shortcutKeyDisplay: Record<string, string> = {
 export interface SettingsViewProps {
   drafts: {
     changeLatticeEndpoint: (value: string) => void
-    changeLatticeEndpointMode: (value: string) => void
+    changeLatticeEndpointMode: (value: 'default' | 'custom') => void
     changePortfolioApiKey: (value: string) => void
     latticeEndpoint: string
-    latticeEndpointMode: string
+    latticeEndpointMode: 'default' | 'custom'
     portfolioApiKey: string
     portfolioApiKeyConfigured: boolean
     portfolioApiKeyRequired: boolean
@@ -43,7 +44,7 @@ export interface SettingsViewProps {
   onLock: () => void
   onReset: (scope: 'saved-data' | 'all-settings-data') => void
   onShowTestnetsChange: (enabled: boolean) => void
-  onUpdate: (setting: string, value: any) => void
+  onUpdate: PersistSetting
   settings: Record<string, any>
 }
 
@@ -74,23 +75,36 @@ export function SettingsView({
     : drafts.portfolioApiKeyConfigured
       ? 'Fetch portfolio tokens and balances from Zerion'
       : 'Add a Zerion API key to enable'
-  const trezorOptions = [
+  const trezorOptions: Array<{
+    text: string
+    value: Extract<SettingsUpdateInput, { setting: 'trezor-derivation' }>['value']
+  }> = [
     { text: 'Standard', value: 'standard' },
     { text: 'Legacy', value: 'legacy' },
     { text: 'Testnet', value: 'testnet' }
   ]
-  const ledgerOptions = [
+  const ledgerOptions: Array<{
+    text: string
+    value: Extract<SettingsUpdateInput, { setting: 'ledger-derivation' }>['value']
+  }> = [
     { text: 'Live', value: 'live' },
     { text: 'Legacy', value: 'legacy' },
     { text: 'Standard', value: 'standard' },
     { text: 'Testnet', value: 'testnet' }
   ]
-  const latticeOptions = [
+  const latticeOptions: Array<{
+    text: string
+    value: Extract<SettingsUpdateInput, { setting: 'lattice-derivation' }>['value']
+  }> = [
     { text: 'Standard', value: 'standard' },
     { text: 'Legacy', value: 'legacy' },
     { text: 'Live', value: 'live' }
   ]
-  const accountLimitOptions = [5, 10, 20, 40].map((value) => ({ text: String(value), value }))
+  const accountLimitOptions = ([5, 10, 20, 40] as const).map((value) => ({
+    text: String(value),
+    value
+  }))
+  type BooleanSetting = Extract<SettingsUpdateInput, { value: boolean }>['setting']
   const toggleRows = [
     ['Auto-hide', settings.autohide, 'Hide Newframe on loss of focus', 'autohide'],
     ['Run on Startup', settings.launch, 'Run Newframe when your computer starts', 'launch'],
@@ -111,7 +125,7 @@ export function SettingsView({
       'Show local account name when ENS is resolved',
       'show-local-name-with-ens'
     ]
-  ] as Array<[string, boolean, string, string]>
+  ] as Array<[string, boolean, string, BooleanSetting]>
 
   return (
     <TrayOverlay closeLabel='Back' label='Settings' onClose={onBack} title='Settings'>
@@ -135,7 +149,12 @@ export function SettingsView({
                   <Button
                     appearance='control'
                     label={settings.summonShortcut.configuring ? 'Cancel shortcut edit' : 'Edit shortcut'}
-                    onPress={() => onUpdate('shortcut-configuring', !settings.summonShortcut.configuring)}
+                    onPress={() =>
+                      onUpdate({
+                        setting: 'shortcut-configuring',
+                        value: !settings.summonShortcut.configuring
+                      })
+                    }
                     shape='pill'
                     size='small'
                   >
@@ -146,7 +165,9 @@ export function SettingsView({
                   <ToggleButton
                     appearance='switch'
                     label='Summon Shortcut'
-                    onPress={() => onUpdate('shortcut-enabled', !settings.summonShortcut.enabled)}
+                    onPress={() =>
+                      onUpdate({ setting: 'shortcut-enabled', value: !settings.summonShortcut.enabled })
+                    }
                     pressed={settings.summonShortcut.enabled}
                   />
                 </Stack>
@@ -154,7 +175,7 @@ export function SettingsView({
               <Stack gap='xsmall'>
                 <KeyboardShortcutConfigurator
                   actionText='summon Newframe'
-                  onChange={(value) => onUpdate('summon-shortcut', value)}
+                  onChange={(value) => onUpdate({ setting: 'summon-shortcut', value })}
                   platform={settings.platform}
                   shortcut={settings.summonShortcut}
                   shortcutName='summon'
@@ -175,7 +196,7 @@ export function SettingsView({
                 detail={detail}
                 label={label}
                 on={on}
-                onToggle={() => onUpdate(setting, !on)}
+                onToggle={() => onUpdate({ setting, value: !on })}
               />
             ))}
             <SettingsToggleRow
@@ -244,33 +265,33 @@ export function SettingsView({
           <SettingsSelectRow
             currentValue={settings.trezorDerivation}
             label='Trezor Derivation'
-            onChange={(value) => onUpdate('trezor-derivation', value)}
+            onChange={(value) => onUpdate({ setting: 'trezor-derivation', value })}
             options={trezorOptions}
           />
           <SettingsSelectRow
             currentValue={settings.ledgerDerivation}
             label='Ledger Derivation'
-            onChange={(value) => onUpdate('ledger-derivation', value)}
+            onChange={(value) => onUpdate({ setting: 'ledger-derivation', value })}
             options={ledgerOptions}
           />
           {settings.ledgerDerivation === 'live' ? (
             <SettingsSelectRow
               currentValue={settings.liveAccountLimit}
               label='Ledger Live Accounts'
-              onChange={(value) => onUpdate('ledger-live-account-limit', value)}
+              onChange={(value) => onUpdate({ setting: 'ledger-live-account-limit', value })}
               options={accountLimitOptions}
             />
           ) : null}
           <SettingsSelectRow
             currentValue={settings.latticeDerivation}
             label='Lattice Derivation'
-            onChange={(value) => onUpdate('lattice-derivation', value)}
+            onChange={(value) => onUpdate({ setting: 'lattice-derivation', value })}
             options={latticeOptions}
           />
           <SettingsSelectRow
             currentValue={settings.latticeAccountLimit}
             label='Lattice Accounts'
-            onChange={(value) => onUpdate('lattice-account-limit', value)}
+            onChange={(value) => onUpdate({ setting: 'lattice-account-limit', value })}
             options={accountLimitOptions}
           />
           <SettingsSelectRow

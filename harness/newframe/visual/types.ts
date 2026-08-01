@@ -52,6 +52,14 @@ export type AppBalance = {
   [key: string]: unknown
 }
 
+export type AppActivity = {
+  account?: string | null
+  hash?: string | null
+  id?: string
+  status?: 'submitted' | 'confirming' | 'succeeded' | 'reverted'
+  [key: string]: unknown
+}
+
 export type AppNetwork = {
   name?: string
   [key: string]: unknown
@@ -74,6 +82,12 @@ export type AddChain = {
 }
 
 export type AppRequest = {
+  approvalGate?:
+    | { type: 'gas-fee'; feeUSD: string; currentSymbol: string }
+    | {
+        type: 'signer-compatibility'
+        reason: 'incompatible' | 'no-signer' | 'signer-unavailable'
+      }
   chain?: AddChain
   handlerId?: string
   notice?: unknown
@@ -102,9 +116,25 @@ export type FlashOrder = {
 }
 
 export type AppState = {
+  operations?: Record<
+    string,
+    {
+      operation?: {
+        type?: string
+        status?: 'pending' | 'succeeded' | 'failed'
+        phase?: string
+        error?: { code?: string; message?: string }
+        entityRefs?: Array<{
+          id?: string
+          type?: 'account' | 'profile' | 'signer' | 'chain' | 'transaction' | 'request' | 'order' | 'token'
+        }>
+      }
+    }
+  >
   main?: {
     accounts?: Record<string, AppAccount>
     accountOrder?: string[]
+    activity?: Record<string, AppActivity>
     balances?: Record<string, AppBalance[]>
     currentAccount?: string
     networks?: { ethereum?: Record<string, AppNetwork> }

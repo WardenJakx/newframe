@@ -20,7 +20,10 @@ it('persists the latest input value instead of a stale render value', () => {
   act(() => result.current.changeLatticeEndpoint(' https://relay.example '))
   act(() => timers.advanceTimersByTime(1000))
 
-  expect(persist).toHaveBeenCalledWith('lattice-endpoint', 'https://relay.example')
+  expect(persist).toHaveBeenCalledWith({
+    setting: 'lattice-endpoint',
+    value: 'https://relay.example'
+  })
 })
 
 it('uses an already configured API key without exposing it to the renderer draft', () => {
@@ -37,7 +40,7 @@ it('uses an already configured API key without exposing it to the renderer draft
   expect(result.current.portfolioApiKey).toBe('')
   act(() => result.current.toggleAutoDiscoverTokens(false))
 
-  expect(persist).toHaveBeenCalledWith('auto-discover-tokens', { enabled: true })
+  expect(persist).toHaveBeenCalledWith({ setting: 'auto-discover-tokens', value: true })
   expect(result.current.portfolioApiKeyRequired).toBe(false)
 })
 
@@ -59,8 +62,9 @@ it('requires and writes a key before enabling discovery when no key is configure
   act(() => result.current.changePortfolioApiKey(' new-secret '))
   act(() => result.current.toggleAutoDiscoverTokens(false))
 
-  expect(persist).toHaveBeenCalledWith('auto-discover-tokens', {
-    enabled: true,
+  expect(persist).toHaveBeenCalledWith({
+    setting: 'auto-discover-tokens',
+    value: true,
     apiKey: 'new-secret'
   })
 })

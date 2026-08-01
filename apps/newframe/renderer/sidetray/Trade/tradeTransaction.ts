@@ -18,8 +18,6 @@ import {
   type FlashOrderType,
   type FlashPriceTrigger,
   type FlashQuote,
-  type FlashQuoteAction,
-  type FlashQuoteTransactionRequest,
   type FlashRuntime,
   type FlashStep,
   type FlashTradeSide
@@ -35,8 +33,6 @@ export const TRADE_MAX_DURATION_SECONDS = 2_592_000
 export const TRADE_MIN_TWAP_BUCKETS = 2
 export const TRADE_MAX_TWAP_BUCKETS = 2_560
 
-export type TradePendingAction = '' | 'quote' | FlashStep['kind']
-export type TradeReviewAction = '' | 'wrap' | 'approve' | 'sign'
 export type TradeTimeInForce = 'gtc' | 'gtt'
 
 export interface TradeOrderFields {
@@ -114,7 +110,9 @@ export function formatTradeNotional(value?: string | number | null) {
   }).format(amount)
 }
 
-export function getEstimatedTradePriceImpact(quote?: FlashQuote | null) {
+export function getEstimatedTradePriceImpact(
+  quote?: Pick<FlashQuote, 'inputNotional' | 'outputNotional' | 'from' | 'to'> | null
+) {
   const inputNotional = Number(quote?.inputNotional || quote?.from?.notional)
   const outputNotional = Number(quote?.outputNotional || quote?.to?.notional)
   if (!Number.isFinite(inputNotional) || inputNotional <= 0 || !Number.isFinite(outputNotional)) return null
@@ -164,10 +162,6 @@ export function objectRecord(value: unknown): Record<string, any> {
   return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, any>) : {}
 }
 
-export function nestedRecord(value: unknown, path: string[]) {
-  return path.reduce<unknown>((current, key) => objectRecord(current)[key], value)
-}
-
 export function tradeErrorMessage(error: unknown, fallback: string) {
   const record = objectRecord(error)
 
@@ -177,141 +171,6 @@ export function tradeErrorMessage(error: unknown, fallback: string) {
   if (typeof objectRecord(record.error).message === 'string') return objectRecord(record.error).message
 
   return fallback
-}
-
-function normalizeTradeChainId(chainId: unknown) {
-  const value =
-    typeof chainId === 'string'
-      ? Number.parseInt(chainId, chainId.toLowerCase().startsWith('0x') ? 16 : 10)
-      : Number(chainId)
-
-  if (!Number.isInteger(value) || value <= 0) throw new Error('Invalid Flash chain id')
-
-  return value
-}
-
-export function withTradeStepStatus(
-  quote: FlashQuote | null,
-  kind: FlashStep['kind'],
-  status: FlashStep['status'],
-  details: Partial<FlashStep> = {}
-) {
-  if (!quote) return quote
-
-  return {
-    ...quote,
-    steps: quote.steps.map((step) => (step.kind === kind ? { ...step, ...details, status } : step))
-  }
-}
-
-export function getTradeStepStatus(quote: FlashQuote | null, kind: FlashStep['kind']) {
-  return quote?.steps.find((step) => step.kind === kind)?.status || ''
-}
-
-export function getNextTradeAction({ quote }: { orderType?: FlashOrderType; quote: FlashQuote | null }) {
-  if (!quote) return ''
-  if (quote.actions?.wrap && getTradeStepStatus(quote, 'wrap') !== 'complete') return 'wrap'
-  if (quote.actions?.approval && getTradeStepStatus(quote, 'approve') !== 'complete') return 'approve'
-  if (getTradeStepStatus(quote, 'sign') !== 'complete') return 'sign'
-
-  return ''
-}
-
-export function getTradePrimaryLabel({
-  pendingAction,
-  quote,
-  quoteLoading,
-  submitting
-}: {
-  orderType: FlashOrderType
-  pendingAction: TradePendingAction
-  quote: FlashQuote | null
-  quoteLoading: boolean
-  submitting: boolean
-}) {
-  if (submitting || pendingAction === 'submit') return 'Submitting'
-  if (quoteLoading || pendingAction === 'quote') return 'Getting quote'
-
-  const action = pendingAction || getNextTradeAction({ quote })
-
-  if (action === 'wrap') return quote?.actions?.wrap?.label || 'Wrap'
-  if (action === 'approve') return quote?.actions?.approval?.label || 'Approve'
-  if (action === 'sign') return 'Review/sign'
-
-  return quote ? 'Review/sign' : 'Enter details'
-}
-
-export function canReviewTrade({
-  pendingAction,
-  quote,
-  quoteLoading,
-  submitting,
-  validationError = ''
-}: {
-  orderType: FlashOrderType
-  pendingAction: TradePendingAction
-  quote: FlashQuote | null
-  quoteLoading: boolean
-  submitting: boolean
-  validationError?: string
-}) {
-  return (
-    !!quote &&
-    !!getNextTradeAction({ quote }) &&
-    !pendingAction &&
-    !quoteLoading &&
-    !submitting &&
-    !validationError
-  )
-}
-
-type FlashTypedDataField = 'orderTypedData' | 'orderTypedDataRaw' | 'permitTypedData' | 'permitTypedDataRaw'
-
-function findFlashTypedData(quote: FlashQuote | null, flashPayload: unknown, field: FlashTypedDataField) {
-  const quoteRaw = objectRecord(quote?.raw)
-
-  return (
-    nestedRecord(flashPayload, ['actions', 'evm', field]) ||
-    nestedRecord(flashPayload, ['evm', field]) ||
-    nestedRecord(flashPayload, [field]) ||
-    nestedRecord(quoteRaw, ['actions', 'evm', field]) ||
-    nestedRecord(quoteRaw, ['evm', field]) ||
-    nestedRecord(quoteRaw, [field])
-  )
-}
-
-function parseFlashTypedData(typedData: unknown) {
-  if (typeof typedData !== 'string') return typedData
-
-  try {
-    return JSON.parse(typedData)
-  } catch {
-    return null
-  }
-}
-
-export function getFlashOrderTypedData(quote: FlashQuote | null, flashPayload: unknown) {
-  return parseFlashTypedData(findFlashTypedData(quote, flashPayload, 'orderTypedData'))
-}
-
-export function getFlashPermitTypedData(quote: FlashQuote | null, flashPayload: unknown) {
-  return parseFlashTypedData(findFlashTypedData(quote, flashPayload, 'permitTypedData'))
-}
-
-export function getFlashOrderTypedDataForSubmit(quote: FlashQuote | null, flashPayload: unknown) {
-  const typedData =
-    findFlashTypedData(quote, flashPayload, 'orderTypedDataRaw') ||
-    findFlashTypedData(quote, flashPayload, 'orderTypedData')
-
-  return typeof typedData === 'string' ? typedData : typedData ? JSON.stringify(typedData) : ''
-}
-
-export function getFlashPermitTypedDataForSubmit(quote: FlashQuote | null, flashPayload: unknown) {
-  const typedData =
-    findFlashTypedData(quote, flashPayload, 'permitTypedDataRaw') ||
-    findFlashTypedData(quote, flashPayload, 'permitTypedData')
-
-  return typeof typedData === 'string' ? typedData : typedData ? JSON.stringify(typedData) : ''
 }
 
 export function getMarketTradeOptionalFields({
@@ -470,7 +329,7 @@ export function getTradeQuoteValidationError({
   triggerNotionalPrice
 }: {
   orderType: FlashOrderType
-  quote: FlashQuote | null
+  quote: Pick<FlashQuote, 'targetAsset' | 'targetNotionalPrice'> | null
   triggerNotionalPrice?: string
 }) {
   if (!quote || !triggerTypeForOrder(orderType)) return ''
@@ -698,130 +557,3 @@ export function getFlashBalanceEntries(
     }
   })
 }
-
-export function buildTradeTransactionRequest({
-  accountAddress,
-  tx
-}: {
-  accountAddress: string
-  tx?: FlashQuoteTransactionRequest | null
-}) {
-  if (!accountAddress || !tx?.to) {
-    throw new Error('Flash action is missing a transaction request.')
-  }
-
-  const chainIdNumber = normalizeTradeChainId(tx.chainId)
-  const transaction = {
-    to: tx.to,
-    data: tx.data,
-    value: tx.value || '0x0'
-  }
-
-  return { chainId: chainIdNumber, transaction }
-}
-
-export function buildTradeActionRequest({
-  accountAddress,
-  action
-}: {
-  accountAddress: string
-  action?: FlashQuoteAction | null
-}) {
-  return buildTradeTransactionRequest({
-    accountAddress,
-    tx: action?.tx
-  })
-}
-
-export function buildTradeSignatureRequest({
-  accountAddress,
-  flashPayload,
-  quote
-}: {
-  accountAddress: string
-  flashPayload: unknown
-  quote: FlashQuote | null
-}) {
-  const typedData = getFlashOrderTypedData(quote, flashPayload)
-
-  if (!accountAddress || !quote || !typedData) {
-    throw new Error('Flash quote is missing order typed data.')
-  }
-
-  const typedDataDomain = objectRecord(objectRecord(typedData).domain)
-  const chainIdNumber = normalizeTradeChainId(typedDataDomain.chainId || quote.targetAsset.chainId)
-
-  return { chainId: chainIdNumber, typedData }
-}
-
-export function buildTradePermitSignatureRequest({
-  accountAddress,
-  flashPayload,
-  quote
-}: {
-  accountAddress: string
-  flashPayload: unknown
-  quote: FlashQuote | null
-}) {
-  const typedData = getFlashPermitTypedData(quote, flashPayload)
-  if (!typedData) return null
-  if (!accountAddress || !quote) throw new Error('Flash quote is missing permit typed data.')
-
-  const typedDataDomain = objectRecord(objectRecord(typedData).domain)
-  const chainIdNumber = normalizeTradeChainId(typedDataDomain.chainId || quote.targetAsset.chainId)
-
-  return { chainId: chainIdNumber, typedData }
-}
-
-export function buildTradeSubmitRequest({
-  accountAddress,
-  flashPayload,
-  permitSignature,
-  quickTrade,
-  quote,
-  signature,
-  slippage,
-  ...orderFields
-}: {
-  accountAddress: string
-  flashPayload: unknown
-  permitSignature?: string
-  quickTrade: boolean
-  quote: FlashQuote
-  signature: string
-  slippage: string
-} & TradeOrderFields) {
-  const chainId = quote.targetAsset.chainId || quote.contraAsset.chainId
-  const rawPayload = flashPayload || quote.raw || null
-  const evmPermitTypedData = getFlashPermitTypedDataForSubmit(quote, flashPayload)
-
-  if (evmPermitTypedData && !permitSignature) {
-    throw new Error('Flash quote requires a permit signature.')
-  }
-
-  return {
-    accountAddress,
-    chainId,
-    contraAsset: quote.contraAsset,
-    contraChain: chainId,
-    evmOrderTypedData: getFlashOrderTypedDataForSubmit(quote, flashPayload),
-    ...(evmPermitTypedData ? { evmPermitSignature: permitSignature, evmPermitTypedData } : {}),
-    inputAmount: quote.inputAmount,
-    orderSignature: signature,
-    orderType: quote.orderType,
-    qty: quote.inputAmount,
-    quote,
-    quoteId: quote.id || objectRecord(rawPayload).quoteId,
-    rawPayload,
-    side: quote.side,
-    signature,
-    targetAsset: quote.targetAsset,
-    targetChain: chainId,
-    ...(quote.orderType === FLASH_MARKET_ORDER_TYPE
-      ? getMarketTradeOptionalFields({ quickTrade, slippage })
-      : {}),
-    ...getOrderFields(quote.orderType, orderFields)
-  }
-}
-
-export type TradeSubmitRequest = ReturnType<typeof buildTradeSubmitRequest>

@@ -9,10 +9,11 @@ import {
   FLASH_TAKE_PROFIT_ORDER_TYPE
 } from '../../../domain/flash/constants'
 import { FLASH_NATIVE_ETH_ASSET, FLASH_USDC_ASSET, FLASH_WETH_ASSET } from '../../../domain/flash/assets'
-import { type FlashAsset, type FlashQuote } from '../../../domain/flash/schemas'
+import { type FlashAsset } from '../../../domain/flash/schemas'
+import type { FlashQuoteDisplay } from '../../../contracts/operations'
 import { NATIVE_CURRENCY } from '../../../domain/token/constants'
 
-function marketQuote(id = 'quote-1'): FlashQuote {
+function marketQuote(id = 'quote-1'): FlashQuoteDisplay {
   return {
     id,
     side: 'sell',
@@ -23,6 +24,8 @@ function marketQuote(id = 'quote-1'): FlashQuote {
     receiveAsset: FLASH_USDC_ASSET,
     inputAmount: '1',
     outputAmount: '2400',
+    nextAction: 'approve',
+    requiresPermit: false,
     steps: [
       { id: 'approve', kind: 'approve', label: 'Approve WETH', status: 'required' },
       { id: 'sign', kind: 'sign', label: 'Sign order', status: 'required' },
@@ -35,12 +38,7 @@ function marketQuote(id = 'quote-1'): FlashQuote {
         label: 'Approve WETH',
         asset: FLASH_WETH_ASSET,
         amount: '1',
-        amountRaw: '1000000000000000000',
-        tx: {
-          chainId: FLASH_WETH_ASSET.chainId,
-          to: '0xspender',
-          data: '0x'
-        }
+        amountRaw: '1000000000000000000'
       }
     }
   }
@@ -176,17 +174,17 @@ describe('tradeReducer', () => {
       type: 'quoteSucceeded',
       requestKey: 'stale',
       quote: marketQuote('stale'),
-      flashPayload: { quoteId: 'stale' }
+      quoteId: 'stale'
     })
     const succeeded = tradeReducer(stale, {
       type: 'quoteSucceeded',
       requestKey: 'fresh',
       quote: marketQuote('fresh'),
-      flashPayload: { quoteId: 'fresh' }
+      quoteId: 'fresh'
     })
 
     expect(entered.quote).toBe(null)
-    expect(requested.pendingAction).toBe('quote')
+    expect(requested.quoteLoading).toBe(true)
     expect(stale.quote).toBe(null)
     expect(succeeded.quote?.id).toBe('fresh')
     expect(succeeded.contraAmount).toBe('2400')
@@ -202,16 +200,10 @@ describe('tradeReducer', () => {
         type: 'quoteSucceeded',
         requestKey: 'fresh',
         quote: marketQuote('fresh'),
-        flashPayload: { quoteId: 'fresh' }
+        quoteId: 'fresh'
       }
     )
-    const pending = tradeReducer(ready, {
-      type: 'actionStarted',
-      actionQuoteId: 'fresh',
-      stepKind: 'approve',
-      status: 'Confirm in Newframe'
-    })
-    const changed = tradeReducer(pending, { type: 'accountChanged' })
+    const changed = tradeReducer(ready, { type: 'accountChanged' })
 
     expect(getTradeInputAmount(changed)).toBe('1')
     expect(changed.targetAsset).toBe(FLASH_WETH_ASSET)
@@ -220,41 +212,8 @@ describe('tradeReducer', () => {
       symbol: FLASH_USDC_ASSET.symbol
     })
     expect(changed.quote).toBe(null)
-    expect(changed.flashPayload).toBe(null)
-    expect(changed.actionQuoteId).toBe('')
-    expect(changed.pendingAction).toBe('quote')
-  })
-
-  it('surfaces submission failures even if the quote refreshed while submitting', () => {
-    const ready = tradeReducer(
-      tradeReducer(tradeReducer(createInitialTradeState(), { type: 'setInputAmount', inputAmount: '1' }), {
-        type: 'quoteRequested',
-        requestKey: 'quote-request'
-      }),
-      {
-        type: 'quoteSucceeded',
-        requestKey: 'quote-request',
-        quote: marketQuote('submitted-quote'),
-        flashPayload: { quoteId: 'submitted-quote' }
-      }
-    )
-    const submitting = tradeReducer(ready, {
-      type: 'submitStarted',
-      actionQuoteId: 'submitted-quote'
-    })
-    const refreshing = tradeReducer(submitting, {
-      type: 'quoteRequested',
-      requestKey: 'refreshed-quote-request'
-    })
-    const failed = tradeReducer(refreshing, {
-      type: 'submitFailed',
-      actionQuoteId: 'submitted-quote',
-      error: 'Flash API 400 Bad Request: quote expired'
-    })
-
-    expect(failed.error).toBe('Flash API 400 Bad Request: quote expired')
-    expect(failed.submitting).toBe(false)
-    expect(failed.pendingAction).toBe('')
+    expect(changed.quoteId).toBe('')
+    expect(changed.quoteLoading).toBe(true)
   })
 
   it('does not create renderer-local non-market quotes', () => {
@@ -272,7 +231,6 @@ describe('tradeReducer', () => {
     expect(limit.orderType).toBe(FLASH_LIMIT_ORDER_TYPE)
     expect(limit.quote).toBe(null)
     expect(quoted.quote).toBe(null)
-    expect(quoted.pendingAction).toBe('quote')
     expect(quoted.quoteLoading).toBe(true)
   })
 

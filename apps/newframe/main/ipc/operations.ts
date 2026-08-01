@@ -3,125 +3,26 @@ import { z } from 'zod'
 
 import type { AuthorizationContext, RendererEntrypoint, RendererRole } from './authorization.js'
 import {
-  AccountAgentAccessSetCommandSchema,
-  AccountAgentSessionsRevokeCommandSchema,
-  AccountSelectCommandSchema,
-  AccountSelectResultSchema,
-  AccountAddFromSignerCommandSchema,
-  AddressChainUsageQuerySchema,
-  AddressChainUsageResultSchema,
-  AccountCreatedResultSchema,
-  AccountPrivateKeyExportQuerySchema,
-  AccountPrivateKeyExportResultSchema,
-  AccountProfileMoveCommandSchema,
-  AccountRenameCommandSchema,
-  AccountRemoveCommandSchema,
-  AccountReorderCommandSchema,
-  AccountWatchAddCommandSchema,
-  AccessRequestResolveCommandSchema,
-  AgentAccessRequestResolveCommandSchema,
-  AddChainReviewCommandSchema,
-  AddTokenReviewCommandSchema,
-  AppQuitCommandSchema,
-  CommandBoundaryFailureSchema,
-  ClipboardWriteCommandSchema,
-  SideTrayCloseCommandSchema,
-  SideTrayContextMenuCommandSchema,
-  SideTrayOpenCommandSchema,
-  SideTrayResultSchema,
-  FlashQuoteQuerySchema,
+  commandContracts,
+  queryContracts,
+  CommandResultSchema,
   FlashQuoteResultSchema,
-  FlashOrderCancelCommandSchema,
-  FlashSubmitCommandSchema,
-  FlashSubmitResultSchema,
-  ExplorerOpenCommandSchema,
-  ExternalOpenCommandSchema,
-  ExtensionRespondCommandSchema,
-  LatticePairCommandSchema,
-  HomeCommandConsumeCommandSchema,
-  KeystoreLocateCommandSchema,
   KeystoreLocateResultSchema,
-  NameResolveQuerySchema,
-  NameResolveResultSchema,
-  NetworkRemoveCommandSchema,
-  NetworkActivationSetCommandSchema,
-  NetworkPrimaryRpcSetCommandSchema,
-  NetworkRequestResolveCommandSchema,
-  NotificationUpdateCommandSchema,
-  OriginRemoveCommandSchema,
-  PanelBackCommandSchema,
-  PanelRequestOpenCommandSchema,
-  RequestApproveCommandSchema,
-  RequestApprovalConfirmCommandSchema,
-  RequestClearOriginCommandSchema,
-  RequestRejectCommandSchema,
-  RequestTokenApprovalUpdateCommandSchema,
-  PermissionClearCommandSchema,
-  PortfolioRefreshCommandSchema,
-  ProfileCommandResultSchema,
-  ProfileCreateCommandSchema,
-  ProfileCreateResultSchema,
-  ProfileDeleteCommandSchema,
-  ProfileMovableAccountsQuerySchema,
-  ProfileMovableAccountsResultSchema,
-  ProfileRenameCommandSchema,
-  ProfileSelectCommandSchema,
   QueryBoundaryFailureSchema,
-  SecurityConfigureCommandSchema,
-  SecurityUnlockCommandSchema,
-  SecurityStatusQuerySchema,
-  SecurityStatusResultSchema,
-  SeedGenerateQuerySchema,
-  SeedGenerateResultSchema,
-  SettingsUpdateCommandSchema,
-  SignerCreatedResultSchema,
-  SignerDisconnectCommandSchema,
-  SignerImportCommandSchema,
-  SignerLedgerAccountsLoadCommandSchema,
-  SignerLatticeCreateCommandSchema,
-  SignerReloadCommandSchema,
-  SignerCompatibilityQuerySchema,
-  SignerCompatibilityResultSchema,
-  SwitchChainRequestResolveCommandSchema,
-  TokenAddCommandSchema,
-  TokenImageHydrateCommandSchema,
-  TokenLookupQuerySchema,
-  TokenLookupResultSchema,
-  TokenRemoveCommandSchema,
-  TransactionSubmitCommandSchema,
-  TransactionSubmitResultSchema,
-  TransactionFeeDefaultSetCommandSchema,
-  TransactionFeeNoticeDismissCommandSchema,
-  TransactionFeeUpdateCommandSchema,
-  TransactionNonceAdjustCommandSchema,
-  TransactionNonceResetCommandSchema,
-  TransactionReplaceCommandSchema,
-  TrayContextMenuCommandSchema,
-  TrayMouseoutCommandSchema,
-  TrezorInputCommandSchema,
-  TypedDataSignCommandSchema,
-  TypedDataSignResultSchema,
-  UpdaterRespondCommandSchema,
-  WalletCommandResultSchema,
-  WalletLockCommandSchema,
-  WalletResetCommandSchema,
-  WarningToggleCommandSchema,
-  type AccountSelectCommand,
   type AddressChainUsageQuery,
-  type ProfileMovableAccountsQuery,
   type AccountPrivateKeyExportQuery,
-  type SideTrayContextMenuCommand,
-  type FlashQuoteQuery,
-  type FlashSubmitCommand,
   type CommandMap,
+  type CommandResult,
+  type FlashQuoteQuery,
+  type KeystoreLocateQuery,
   type NameResolveQuery,
-  type SecurityStatusQuery,
-  type SignerCompatibilityQuery,
-  type SeedGenerateQuery,
-  type TokenLookupQuery,
+  type ProfileMovableAccountsQuery,
   type QueryMap,
-  type TransactionSubmitCommand,
-  type TypedDataSignCommand
+  type QueryResultMap,
+  type SecurityStatusQuery,
+  type SeedGenerateQuery,
+  type RendererContextMenuCommand,
+  type TokenLookupQuery
 } from '../../contracts/operations.js'
 import { ExecuteCommandChannel, ExecuteQueryChannel } from '../../contracts/ipc.js'
 
@@ -130,35 +31,24 @@ export interface OperationServices {
     current(): { id: string } | null | undefined
     get(accountId: string): unknown
   }
+  accountMutations: import('../features/accounts/service.js').AccountService
+  accountOnboarding: import('../features/accountOnboarding/service.js').AccountOnboardingService
+  agent: import('../agent/index.js').AgentService
+  networks: import('../features/networks/service.js').NetworkService
+  portfolio: import('../features/portfolio/service.js').PortfolioService
+  profiles: import('../features/profiles/service.js').ProfileService
+  platform: import('../features/platform/service.js').PlatformService
+  requestEdits: import('../features/requestEdits/service.js').RequestEditService
+  requests: import('../features/requests/service.js').RequestService
+  security: import('../features/security/service.js').SecurityService
+  send: import('../features/send/service.js').SendService
+  trade: import('../features/trade/service.js').TradeService
+  settings: ReturnType<typeof import('../features/settings/service.js').createSettingsService>
+  tokens: import('../features/tokens/service.js').TokenService
   authorizeRenderer(event: Electron.IpcMainInvokeEvent): AuthorizationContext | undefined
   createRendererPrincipal: typeof import('../authority.js').createRendererPrincipal
   requestTokenImage: import('../images/index.js').ImageService['requestTokenImage']
-  resolveAgentAccessRequest: ReturnType<
-    typeof import('../agent/index.js').createAgentService
-  >['resolveAgentAccessRequest']
-  revokeAgentSessions: ReturnType<
-    typeof import('../agent/index.js').createAgentService
-  >['revokeAgentSessions']
-  setAgentAccess: ReturnType<typeof import('../agent/index.js').createAgentService>['setAgentAccess']
-  closeOwnSideTray: import('../operations/sideTrayWorkflows.js').SideTrayWorkflows['closeOwnSideTray']
-  inspectOwnSideTray: import('../operations/sideTrayWorkflows.js').SideTrayWorkflows['inspectOwnSideTray']
-  quoteFlashForCurrentAccount: ReturnType<
-    typeof import('../operations/sideTrayTransactions.js').createSideTrayTransactionOperations
-  >['quoteFlashForCurrentAccount']
-  signCurrentAccountTypedData: ReturnType<
-    typeof import('../operations/sideTrayTransactions.js').createSideTrayTransactionOperations
-  >['signCurrentAccountTypedData']
-  submitCurrentAccountTransaction: ReturnType<
-    typeof import('../operations/sideTrayTransactions.js').createSideTrayTransactionOperations
-  >['submitCurrentAccountTransaction']
-  submitFlashForCurrentAccount: ReturnType<
-    typeof import('../operations/sideTrayTransactions.js').createSideTrayTransactionOperations
-  >['submitFlashForCurrentAccount']
   resolveName(name: string): Promise<string>
-  selectAccount: (accountId: string) => ReturnType<typeof import('../operations/workflows.js').selectAccount>
-  walletWorkflows: ReturnType<
-    typeof import('../operations/walletWorkflows.js').createWalletWorkflowOperations
-  >
 }
 
 export interface OperationDispatcher {
@@ -175,8 +65,6 @@ export interface IpcMainHandlerPort {
 }
 
 type OperationDefinition = {
-  schema: z.ZodType<unknown>
-  resultSchema: z.ZodType<unknown>
   roles: readonly RendererRole[]
   entrypoints?: readonly RendererEntrypoint[]
   handle(
@@ -187,19 +75,17 @@ type OperationDefinition = {
   failure: unknown
 }
 
-function defineWalletCommand<TInput>(
-  schema: z.ZodType<TInput>,
+function defineAcknowledgedCommand<TKey extends keyof CommandMap>(
+  operationType: TKey,
   handle: (
-    input: TInput,
+    input: CommandMap[TKey],
     event: Electron.IpcMainInvokeEvent,
     context: AuthorizationContext
   ) => Promise<boolean | void> | boolean | void,
   missingError: 'not_found' | 'request_not_found',
   entrypoints: readonly RendererEntrypoint[]
 ) {
-  return defineOperation({
-    schema,
-    resultSchema: WalletCommandResultSchema,
+  return defineOperation<CommandMap[TKey], unknown>({
     roles: ['wallet-ui'],
     entrypoints,
     async handle(input, event, context) {
@@ -230,11 +116,18 @@ function defineWalletCommand<TInput>(
 const IdempotencyConflict = Symbol('IdempotencyConflict')
 const maxIdempotencyEntries = 256
 
+const operationOwner = (context: AuthorizationContext) => ({
+  clientType: context.clientType,
+  windowInstanceId: context.windowInstanceId
+})
+
+const operationCommandAcknowledgement = (accepted: boolean | void) =>
+  accepted === false ? ({ ok: false, error: 'invalid_command' } as const) : ({ ok: true } as const)
+
 type OperationRegistry = Record<string, OperationDefinition>
+type ContractRegistry = Record<string, { input: z.ZodType; result: z.ZodType }>
 
 function defineOperation<TInput, TResult>(definition: {
-  schema: z.ZodType<TInput>
-  resultSchema: z.ZodType<TResult>
   roles: readonly RendererRole[]
   entrypoints?: readonly RendererEntrypoint[]
   handle(
@@ -250,23 +143,57 @@ function defineOperation<TInput, TResult>(definition: {
   }
 }
 
+function defineCommand<TKey extends keyof CommandMap>(
+  _operationType: TKey,
+  definition: {
+    roles: readonly RendererRole[]
+    entrypoints?: readonly RendererEntrypoint[]
+    handle(
+      input: CommandMap[TKey],
+      event: Electron.IpcMainInvokeEvent,
+      context: AuthorizationContext
+    ): Promise<CommandResult> | CommandResult
+    failure: CommandResult
+  }
+) {
+  return defineOperation(definition)
+}
+
+function defineQuery<TKey extends keyof QueryMap>(
+  _operationType: TKey,
+  definition: {
+    roles: readonly RendererRole[]
+    entrypoints?: readonly RendererEntrypoint[]
+    handle(
+      input: QueryMap[TKey],
+      event: Electron.IpcMainInvokeEvent,
+      context: AuthorizationContext
+    ): Promise<QueryResultMap[TKey]> | QueryResultMap[TKey]
+    failure: QueryResultMap[TKey]
+  }
+) {
+  return defineOperation(definition)
+}
+
 export function createOperationRegistry(services: OperationServices) {
   const {
-    accounts,
+    accountMutations,
+    accountOnboarding,
+    agent,
+    networks,
+    portfolio,
+    platform,
+    profiles,
+    requestEdits,
+    requests,
+    security,
+    send,
+    trade,
+    settings,
+    tokens,
     createRendererPrincipal,
     requestTokenImage,
-    resolveAgentAccessRequest,
-    revokeAgentSessions,
-    setAgentAccess,
-    closeOwnSideTray,
-    inspectOwnSideTray,
-    quoteFlashForCurrentAccount,
-    signCurrentAccountTypedData,
-    submitCurrentAccountTransaction,
-    submitFlashForCurrentAccount,
-    resolveName,
-    selectAccount,
-    walletWorkflows
+    resolveName
   } = services
   const idempotencyCache = new Map<string, { fingerprint: string; result: Promise<unknown> }>()
 
@@ -297,407 +224,387 @@ export function createOperationRegistry(services: OperationServices) {
   }
 
   const commandRegistry = {
-    'account.profile-move': defineOperation({
-      schema: AccountProfileMoveCommandSchema,
-      resultSchema: ProfileCommandResultSchema,
+    'account.profile-move': defineCommand('account.profile-move', {
       roles: ['wallet-ui'],
       entrypoints: ['tray'],
-      handle({ accountId, profileId }) {
-        return walletWorkflows.moveAccountToProfile(accountId, profileId)
+      handle(command, _event, context) {
+        return operationCommandAcknowledgement(profiles.moveAccount(command, operationOwner(context)))
       },
       failure: { ok: false, error: 'operation_failed' }
     }),
-    'account.select': defineOperation({
-      schema: AccountSelectCommandSchema,
-      resultSchema: AccountSelectResultSchema,
-      roles: ['wallet-ui'],
-      entrypoints: ['tray'],
-      async handle({ accountId }: AccountSelectCommand) {
-        if (!accounts.get(accountId)) return { ok: false, error: 'account_not_found' } as const
-
-        await selectAccount(accountId)
-        return { ok: true } as const
+    'account.select': defineAcknowledgedCommand(
+      'account.select',
+      ({ accountId }) => accountMutations.select(accountId),
+      'not_found',
+      ['tray']
+    ),
+    'send.submit': defineCommand('send.submit', {
+      roles: ['sidetray'],
+      entrypoints: ['sidetray'],
+      handle(command, _event, context) {
+        return operationCommandAcknowledgement(
+          send.submit(command, createRendererPrincipal(context), operationOwner(context))
+        )
       },
       failure: { ok: false, error: 'operation_failed' }
     }),
-    'transaction.submit': defineOperation({
-      schema: TransactionSubmitCommandSchema,
-      resultSchema: TransactionSubmitResultSchema,
+    'trade.prepare': defineCommand('trade.prepare', {
       roles: ['sidetray'],
       entrypoints: ['sidetray'],
-      async handle(command: TransactionSubmitCommand, _event, context) {
-        const accountId = accounts.current()?.id || 'no-account'
-        const result = await executeIdempotent(
-          command.type,
-          `${accountId}:${command.idempotencyKey}`,
-          command,
-          () => submitCurrentAccountTransaction(command, createRendererPrincipal(context))
+      handle(command, _event, context) {
+        return operationCommandAcknowledgement(
+          trade.prepare(command, createRendererPrincipal(context), operationOwner(context))
         )
-        return result === IdempotencyConflict
-          ? ({ ok: false, error: 'invalid_command', message: 'Idempotency key was reused.' } as const)
-          : result
       },
-      failure: { ok: false, error: 'provider_error', message: 'Transaction submission failed.' }
+      failure: { ok: false, error: 'operation_failed' }
     }),
-    'typedData.signV4': defineOperation({
-      schema: TypedDataSignCommandSchema,
-      resultSchema: TypedDataSignResultSchema,
+    'trade.submit': defineCommand('trade.submit', {
       roles: ['sidetray'],
       entrypoints: ['sidetray'],
-      handle(command: TypedDataSignCommand, _event, context) {
-        return signCurrentAccountTypedData(command, createRendererPrincipal(context))
-      },
-      failure: { ok: false, error: 'provider_error', message: 'Typed-data signing failed.' }
-    }),
-    'flash.submit': defineOperation({
-      schema: FlashSubmitCommandSchema,
-      resultSchema: FlashSubmitResultSchema,
-      roles: ['sidetray'],
-      entrypoints: ['sidetray'],
-      async handle(command: FlashSubmitCommand) {
-        const accountId = accounts.current()?.id || 'no-account'
-        const quoteId = command.order.quoteId || command.order.quote.id || 'no-quote'
-        const result = await executeIdempotent(command.type, `${accountId}:${quoteId}`, command, () =>
-          submitFlashForCurrentAccount(command.order)
+      handle(command, _event, context) {
+        return operationCommandAcknowledgement(
+          trade.submit(command, createRendererPrincipal(context), operationOwner(context))
         )
-        return result === IdempotencyConflict
-          ? ({ ok: false, error: 'invalid_command', message: 'Idempotency key was reused.' } as const)
-          : FlashSubmitResultSchema.parse(result)
       },
-      failure: { ok: false, error: 'submit_failed', message: 'Flash order submission failed.' }
+      failure: { ok: false, error: 'operation_failed' }
     }),
-    'sidetray.close': defineOperation({
-      schema: SideTrayCloseCommandSchema,
-      resultSchema: SideTrayResultSchema,
+    'trade.release': defineCommand('trade.release', {
+      roles: ['sidetray'],
+      entrypoints: ['sidetray'],
+      handle(_command, _event, context) {
+        trade.release(operationOwner(context))
+        return { ok: true }
+      },
+      failure: { ok: false, error: 'operation_failed' }
+    }),
+    'sidetray.close': defineCommand('sidetray.close', {
       roles: ['sidetray'],
       entrypoints: ['sidetray'],
       handle(_command, event) {
-        closeOwnSideTray(event)
+        platform.closeSideTray(event)
         return { ok: true } as const
       },
       failure: { ok: false, error: 'operation_failed' }
     }),
-    'sidetray.context-menu': defineOperation({
-      schema: SideTrayContextMenuCommandSchema,
-      resultSchema: SideTrayResultSchema,
-      roles: ['sidetray'],
-      entrypoints: ['sidetray'],
-      handle({ x, y }: SideTrayContextMenuCommand, event) {
-        inspectOwnSideTray(event, x, y)
+    'renderer.context-menu': defineCommand('renderer.context-menu', {
+      roles: ['wallet-ui', 'sidetray'],
+      entrypoints: ['tray', 'sidetray'],
+      handle({ x, y }: RendererContextMenuCommand, event) {
+        platform.inspectRenderer(event, x, y)
         return { ok: true } as const
       },
       failure: { ok: false, error: 'operation_failed' }
     }),
-    'home.command-consume': defineWalletCommand(
-      HomeCommandConsumeCommandSchema,
-      ({ commandId }) => walletWorkflows.consumeHomeCommand(commandId),
+    'home.command-consume': defineAcknowledgedCommand(
+      'home.command-consume',
+      ({ commandId }) => platform.consumeHomeCommand(commandId),
       'not_found',
       ['tray']
     ),
-    'profile.select': defineOperation({
-      schema: ProfileSelectCommandSchema,
-      resultSchema: ProfileCommandResultSchema,
+    'profile.select': defineCommand('profile.select', {
       roles: ['wallet-ui'],
       entrypoints: ['tray'],
-      handle({ profileId }) {
-        return walletWorkflows.selectProfile(profileId)
+      handle(command, _event, context) {
+        return operationCommandAcknowledgement(profiles.select(command, operationOwner(context)))
       },
       failure: { ok: false, error: 'operation_failed' }
     }),
-    'profile.create': defineOperation({
-      schema: ProfileCreateCommandSchema,
-      resultSchema: ProfileCreateResultSchema,
+    'profile.create': defineCommand('profile.create', {
       roles: ['wallet-ui'],
       entrypoints: ['tray'],
-      handle({ name, accountIds }) {
-        return walletWorkflows.createProfile(name, accountIds)
+      handle(command, _event, context) {
+        return operationCommandAcknowledgement(profiles.create(command, operationOwner(context)))
       },
       failure: { ok: false, error: 'operation_failed' }
     }),
-    'profile.rename': defineOperation({
-      schema: ProfileRenameCommandSchema,
-      resultSchema: ProfileCommandResultSchema,
+    'profile.rename': defineCommand('profile.rename', {
       roles: ['wallet-ui'],
       entrypoints: ['tray'],
-      handle({ profileId, name }) {
-        return walletWorkflows.renameProfile(profileId, name)
+      handle(command, _event, context) {
+        return operationCommandAcknowledgement(profiles.rename(command, operationOwner(context)))
       },
       failure: { ok: false, error: 'operation_failed' }
     }),
-    'profile.delete': defineOperation({
-      schema: ProfileDeleteCommandSchema,
-      resultSchema: ProfileCommandResultSchema,
+    'profile.delete': defineCommand('profile.delete', {
       roles: ['wallet-ui'],
       entrypoints: ['tray'],
-      handle({ profileId }) {
-        return walletWorkflows.deleteProfile(profileId)
+      handle(command, _event, context) {
+        return operationCommandAcknowledgement(profiles.delete(command, operationOwner(context)))
       },
       failure: { ok: false, error: 'operation_failed' }
     }),
-    'keystore.locate': defineOperation({
-      schema: KeystoreLocateCommandSchema,
-      resultSchema: KeystoreLocateResultSchema,
+    'security.configure': defineCommand('security.configure', {
       roles: ['wallet-ui'],
       entrypoints: ['tray'],
-      async handle() {
-        const keystore = await walletWorkflows.locateKeystore()
-        return KeystoreLocateResultSchema.parse(
-          keystore
-            ? ({ ok: true, keystore } as const)
-            : ({ ok: false, error: 'not_found', message: 'No keystore was selected.' } as const)
+      handle(command, _event, context) {
+        return operationCommandAcknowledgement(security.configure(command, operationOwner(context)))
+      },
+      failure: { ok: false, error: 'operation_failed' }
+    }),
+    'security.unlock': defineCommand('security.unlock', {
+      roles: ['wallet-ui'],
+      entrypoints: ['tray'],
+      handle(command, _event, context) {
+        return operationCommandAcknowledgement(security.unlock(command, operationOwner(context)))
+      },
+      failure: { ok: false, error: 'operation_failed' }
+    }),
+    'wallet.lock': defineCommand('wallet.lock', {
+      roles: ['wallet-ui'],
+      entrypoints: ['tray'],
+      handle(command, _event, context) {
+        return operationCommandAcknowledgement(security.lock(command, operationOwner(context)))
+      },
+      failure: { ok: false, error: 'operation_failed' }
+    }),
+    'network.primary-rpc-set': defineAcknowledgedCommand(
+      'network.primary-rpc-set',
+      ({ chainId, url }) => networks.setPrimaryRpc(chainId, url),
+      'not_found',
+      ['tray']
+    ),
+    'network.activation-set': defineAcknowledgedCommand(
+      'network.activation-set',
+      ({ chainId, enabled }) => networks.setActivation(chainId, enabled),
+      'not_found',
+      ['tray']
+    ),
+    'sidetray.open': defineAcknowledgedCommand(
+      'sidetray.open',
+      (command) => platform.openSideTray(command),
+      'not_found',
+      ['tray']
+    ),
+    'flash.order-cancel': defineAcknowledgedCommand(
+      'flash.order-cancel',
+      (command, _event, context) =>
+        trade.cancel(command, createRendererPrincipal(context), operationOwner(context)),
+      'not_found',
+      ['tray']
+    ),
+    'account.reorder': defineAcknowledgedCommand(
+      'account.reorder',
+      ({ fromAccountId, toAccountId }) => accountMutations.reorder(fromAccountId, toAccountId),
+      'not_found',
+      ['tray']
+    ),
+    'account.rename': defineAcknowledgedCommand(
+      'account.rename',
+      ({ accountId, name }) => accountMutations.rename(accountId, name),
+      'not_found',
+      ['tray']
+    ),
+    'account.agent-access-set': defineAcknowledgedCommand(
+      'account.agent-access-set',
+      ({ accountId, enabled }) => agent.setAgentAccess(accountId, enabled),
+      'not_found',
+      ['tray']
+    ),
+    'account.agent-sessions-revoke': defineAcknowledgedCommand(
+      'account.agent-sessions-revoke',
+      ({ accountId }) => agent.revokeAgentSessions(accountId),
+      'not_found',
+      ['tray']
+    ),
+    'account.add-from-signer': defineCommand('account.add-from-signer', {
+      roles: ['wallet-ui'],
+      entrypoints: ['tray'],
+      handle(command, _event, context) {
+        return operationCommandAcknowledgement(
+          accountOnboarding.addFromSigner(command, operationOwner(context))
         )
       },
-      failure: { ok: false, error: 'invalid_keystore', message: 'Could not read the keystore.' }
+      failure: { ok: false, error: 'operation_failed' }
     }),
-    'security.configure': defineWalletCommand(
-      SecurityConfigureCommandSchema,
-      (command) => walletWorkflows.configureSecurity(command),
-      'not_found',
-      ['tray']
-    ),
-    'security.unlock': defineWalletCommand(
-      SecurityUnlockCommandSchema,
-      (command) => walletWorkflows.unlockSecurity(command),
-      'not_found',
-      ['tray']
-    ),
-    'wallet.lock': defineWalletCommand(
-      WalletLockCommandSchema,
-      () => walletWorkflows.lockWallet(),
-      'not_found',
-      ['tray']
-    ),
-    'network.primary-rpc-set': defineWalletCommand(
-      NetworkPrimaryRpcSetCommandSchema,
-      ({ chainId, url }) => walletWorkflows.setNetworkPrimaryRpc(chainId, url),
-      'not_found',
-      ['tray']
-    ),
-    'network.activation-set': defineWalletCommand(
-      NetworkActivationSetCommandSchema,
-      ({ chainId, enabled }) => walletWorkflows.setNetworkActivation(chainId, enabled),
-      'not_found',
-      ['tray']
-    ),
-    'sidetray.open': defineWalletCommand(
-      SideTrayOpenCommandSchema,
-      (command) => walletWorkflows.openSideTray(command),
-      'not_found',
-      ['tray']
-    ),
-    'flash.order-cancel': defineWalletCommand(
-      FlashOrderCancelCommandSchema,
-      ({ orderId }, _event, context) =>
-        walletWorkflows.cancelFlashOrder(orderId, createRendererPrincipal(context)),
-      'not_found',
-      ['tray']
-    ),
-    'account.reorder': defineWalletCommand(
-      AccountReorderCommandSchema,
-      ({ fromAccountId, toAccountId }) => walletWorkflows.reorderAccounts(fromAccountId, toAccountId),
-      'not_found',
-      ['tray']
-    ),
-    'account.rename': defineWalletCommand(
-      AccountRenameCommandSchema,
-      ({ accountId, name }) => walletWorkflows.renameAccount(accountId, name),
-      'not_found',
-      ['tray']
-    ),
-    'account.agent-access-set': defineWalletCommand(
-      AccountAgentAccessSetCommandSchema,
-      ({ accountId, enabled }) => setAgentAccess(accountId, enabled),
-      'not_found',
-      ['tray']
-    ),
-    'account.agent-sessions-revoke': defineWalletCommand(
-      AccountAgentSessionsRevokeCommandSchema,
-      ({ accountId }) => revokeAgentSessions(accountId),
-      'not_found',
-      ['tray']
-    ),
-    'account.add-from-signer': defineOperation({
-      schema: AccountAddFromSignerCommandSchema,
-      resultSchema: AccountCreatedResultSchema,
+    'account.watch-add': defineCommand('account.watch-add', {
       roles: ['wallet-ui'],
       entrypoints: ['tray'],
-      async handle(command) {
-        const accountId = await walletWorkflows.addAccountFromSigner(command)
-        return accountId
-          ? ({ ok: true, accountId } as const)
-          : ({ ok: false, error: 'not_found', message: 'Signer account was not found.' } as const)
+      handle(command, _event, context) {
+        return operationCommandAcknowledgement(accountOnboarding.addWatch(command, operationOwner(context)))
       },
-      failure: { ok: false, error: 'operation_failed', message: 'Could not add the account.' }
+      failure: { ok: false, error: 'operation_failed' }
     }),
-    'account.watch-add': defineOperation({
-      schema: AccountWatchAddCommandSchema,
-      resultSchema: AccountCreatedResultSchema,
+    'signer.import': defineCommand('signer.import', {
       roles: ['wallet-ui'],
       entrypoints: ['tray'],
-      async handle({ addressOrName, name }) {
-        const accountId = await walletWorkflows.addWatchAccount(addressOrName, name)
-        return accountId
-          ? ({ ok: true, accountId } as const)
-          : ({ ok: false, error: 'not_found', message: 'Address or name was not found.' } as const)
+      handle(command, _event, context) {
+        return operationCommandAcknowledgement(
+          accountOnboarding.importSigner(command, operationOwner(context))
+        )
       },
-      failure: { ok: false, error: 'operation_failed', message: 'Could not add the watch account.' }
+      failure: { ok: false, error: 'operation_failed' }
     }),
-    'signer.import': defineOperation({
-      schema: SignerImportCommandSchema,
-      resultSchema: AccountCreatedResultSchema,
+    'signer.lattice-create': defineCommand('signer.lattice-create', {
       roles: ['wallet-ui'],
       entrypoints: ['tray'],
-      async handle(command) {
-        return { ok: true, accountId: await walletWorkflows.importSigner(command) } as const
+      handle(command, _event, context) {
+        return operationCommandAcknowledgement(
+          accountOnboarding.createLattice(command, operationOwner(context))
+        )
       },
-      failure: { ok: false, error: 'operation_failed', message: 'Could not import the signer.' }
+      failure: { ok: false, error: 'operation_failed' }
     }),
-    'signer.lattice-create': defineOperation({
-      schema: SignerLatticeCreateCommandSchema,
-      resultSchema: SignerCreatedResultSchema,
+    'signer.disconnect': defineCommand('signer.disconnect', {
       roles: ['wallet-ui'],
       entrypoints: ['tray'],
-      handle({ deviceId, deviceName }) {
-        return { ok: true, signerId: walletWorkflows.createLatticeSigner(deviceId, deviceName) } as const
+      handle(command, _event, context) {
+        return operationCommandAcknowledgement(accountOnboarding.disconnect(command, operationOwner(context)))
       },
-      failure: { ok: false, error: 'operation_failed', message: 'Could not create the signer.' }
+      failure: { ok: false, error: 'operation_failed' }
     }),
-    'signer.disconnect': defineWalletCommand(
-      SignerDisconnectCommandSchema,
-      ({ signerId }) => walletWorkflows.disconnectSigner(signerId),
+    'signer.hardware-session-start': defineCommand('signer.hardware-session-start', {
+      roles: ['wallet-ui'],
+      entrypoints: ['tray'],
+      handle(command, _event, context) {
+        return operationCommandAcknowledgement(
+          accountOnboarding.startHardwareSession(command, operationOwner(context))
+        )
+      },
+      failure: { ok: false, error: 'operation_failed' }
+    }),
+    'signer.hardware-session-finish': defineCommand('signer.hardware-session-finish', {
+      roles: ['wallet-ui'],
+      entrypoints: ['tray'],
+      handle(command, _event, context) {
+        return operationCommandAcknowledgement(
+          accountOnboarding.finishHardwareSession(command, operationOwner(context))
+        )
+      },
+      failure: { ok: false, error: 'operation_failed' }
+    }),
+    'signer.ledger-accounts-load': defineCommand('signer.ledger-accounts-load', {
+      roles: ['wallet-ui'],
+      entrypoints: ['tray'],
+      handle(command, _event, context) {
+        return operationCommandAcknowledgement(
+          accountOnboarding.loadLedgerAccounts(command, operationOwner(context))
+        )
+      },
+      failure: { ok: false, error: 'operation_failed' }
+    }),
+    'portfolio.refresh': defineCommand('portfolio.refresh', {
+      roles: ['wallet-ui'],
+      entrypoints: ['tray'],
+      async handle(command, _event, context) {
+        return operationCommandAcknowledgement(
+          await portfolio.refresh(command.operationId, operationOwner(context))
+        )
+      },
+      failure: { ok: false, error: 'operation_failed' }
+    }),
+    'settings.update': defineAcknowledgedCommand(
+      'settings.update',
+      (command) => settings.update(command),
       'not_found',
       ['tray']
     ),
-    'signer.ledger-accounts-load': defineWalletCommand(
-      SignerLedgerAccountsLoadCommandSchema,
-      ({ signerId, accountCount }) => walletWorkflows.loadLedgerAccounts(signerId, accountCount),
+    'wallet.reset': defineCommand('wallet.reset', {
+      roles: ['wallet-ui'],
+      entrypoints: ['tray'],
+      handle(command, _event, context) {
+        return operationCommandAcknowledgement(security.reset(command, operationOwner(context)))
+      },
+      failure: { ok: false, error: 'operation_failed' }
+    }),
+    'app.quit': defineAcknowledgedCommand('app.quit', () => platform.quitApp(), 'not_found', ['tray']),
+    'permission.clear': defineAcknowledgedCommand(
+      'permission.clear',
+      ({ accountId, originId }) => accountMutations.clearPermission(accountId, originId),
       'not_found',
       ['tray']
     ),
-    'portfolio.refresh': defineWalletCommand(
-      PortfolioRefreshCommandSchema,
-      () => walletWorkflows.refreshPortfolio(),
+    'network.request-resolve': defineAcknowledgedCommand(
+      'network.request-resolve',
+      (command) => requests.resolveNetwork(command),
+      'request_not_found',
+      ['tray']
+    ),
+    'notification.update': defineAcknowledgedCommand(
+      'notification.update',
+      ({ notificationId, action }) => platform.updateNotification(notificationId, action),
       'not_found',
       ['tray']
     ),
-    'settings.update': defineWalletCommand(
-      SettingsUpdateCommandSchema,
-      (command) => walletWorkflows.updateSettings(command),
+    'request.reject': defineAcknowledgedCommand(
+      'request.reject',
+      ({ requestId }) => requests.rejectRequest(requestId),
+      'request_not_found',
+      ['tray']
+    ),
+    'request.access-resolve': defineAcknowledgedCommand(
+      'request.access-resolve',
+      ({ requestId, approved }) => requests.resolveAccess(requestId, approved),
+      'request_not_found',
+      ['tray']
+    ),
+    'request.agent-access-resolve': defineAcknowledgedCommand(
+      'request.agent-access-resolve',
+      ({ requestId, approved }) => requests.resolveAgentAccess(requestId, approved),
+      'request_not_found',
+      ['tray']
+    ),
+    'request.switch-chain-resolve': defineAcknowledgedCommand(
+      'request.switch-chain-resolve',
+      ({ requestId, approved }) => requests.resolveSwitchChain(requestId, approved),
+      'request_not_found',
+      ['tray']
+    ),
+    'request.clear-origin': defineAcknowledgedCommand(
+      'request.clear-origin',
+      ({ accountId, originId }) => requests.clearOrigin(accountId, originId),
       'not_found',
       ['tray']
     ),
-    'wallet.reset': defineWalletCommand(
-      WalletResetCommandSchema,
-      ({ scope }) => walletWorkflows.resetWallet(scope),
-      'not_found',
-      ['tray']
-    ),
-    'app.quit': defineWalletCommand(AppQuitCommandSchema, () => walletWorkflows.quitApp(), 'not_found', [
-      'tray'
-    ]),
-    'permission.clear': defineWalletCommand(
-      PermissionClearCommandSchema,
-      ({ accountId, originId }) => walletWorkflows.clearPermission(accountId, originId),
-      'not_found',
-      ['tray']
-    ),
-    'network.request-resolve': defineWalletCommand(
-      NetworkRequestResolveCommandSchema,
-      (command) => walletWorkflows.resolveNetworkRequest(command),
+    'request.approval-confirm': defineAcknowledgedCommand(
+      'request.approval-confirm',
+      ({ requestId, approvalType }) => requests.confirmRequestApproval(requestId, approvalType),
       'request_not_found',
       ['tray']
     ),
-    'notification.update': defineWalletCommand(
-      NotificationUpdateCommandSchema,
-      ({ notificationId, action }) => walletWorkflows.updateNotification(notificationId, action),
-      'not_found',
-      ['tray']
-    ),
-    'request.reject': defineWalletCommand(
-      RequestRejectCommandSchema,
-      ({ requestId }) => walletWorkflows.rejectRequest(requestId),
+    'request.token-approval-update': defineAcknowledgedCommand(
+      'request.token-approval-update',
+      (command) => requestEdits.updateTokenApproval(command),
       'request_not_found',
       ['tray']
     ),
-    'request.access-resolve': defineWalletCommand(
-      AccessRequestResolveCommandSchema,
-      ({ requestId, approved }) => walletWorkflows.resolveAccessRequest(requestId, approved),
+    'transaction.fee-update': defineAcknowledgedCommand(
+      'transaction.fee-update',
+      ({ requestId, field, value }) => requestEdits.updateTransactionFee(requestId, field, value),
       'request_not_found',
       ['tray']
     ),
-    'request.agent-access-resolve': defineWalletCommand(
-      AgentAccessRequestResolveCommandSchema,
-      ({ requestId, approved }) => resolveAgentAccessRequest(requestId, approved),
+    'transaction.fee-default-set': defineAcknowledgedCommand(
+      'transaction.fee-default-set',
+      ({ requestId, level }) => requestEdits.setTransactionFeeDefault(requestId, level),
       'request_not_found',
       ['tray']
     ),
-    'request.switch-chain-resolve': defineWalletCommand(
-      SwitchChainRequestResolveCommandSchema,
-      ({ requestId, approved }) => walletWorkflows.resolveSwitchChainRequest(requestId, approved),
+    'transaction.nonce-adjust': defineAcknowledgedCommand(
+      'transaction.nonce-adjust',
+      ({ requestId, direction }) => requestEdits.adjustTransactionNonce(requestId, direction),
       'request_not_found',
       ['tray']
     ),
-    'request.clear-origin': defineWalletCommand(
-      RequestClearOriginCommandSchema,
-      ({ accountId, originId }) => walletWorkflows.clearOriginRequests(accountId, originId),
-      'not_found',
-      ['tray']
-    ),
-    'request.approval-confirm': defineWalletCommand(
-      RequestApprovalConfirmCommandSchema,
-      ({ requestId, approvalType }) => walletWorkflows.confirmRequestApproval(requestId, approvalType),
+    'transaction.nonce-reset': defineAcknowledgedCommand(
+      'transaction.nonce-reset',
+      ({ requestId }) => requestEdits.resetTransactionNonce(requestId),
       'request_not_found',
       ['tray']
     ),
-    'request.token-approval-update': defineWalletCommand(
-      RequestTokenApprovalUpdateCommandSchema,
-      (command) => walletWorkflows.updateTokenApproval(command),
+    'transaction.fee-notice-dismiss': defineAcknowledgedCommand(
+      'transaction.fee-notice-dismiss',
+      ({ requestId }) => requestEdits.dismissTransactionFeeNotice(requestId),
       'request_not_found',
       ['tray']
     ),
-    'transaction.fee-update': defineWalletCommand(
-      TransactionFeeUpdateCommandSchema,
-      ({ requestId, field, value }) => walletWorkflows.updateTransactionFee(requestId, field, value),
-      'request_not_found',
-      ['tray']
-    ),
-    'transaction.fee-default-set': defineWalletCommand(
-      TransactionFeeDefaultSetCommandSchema,
-      ({ requestId, level }) => walletWorkflows.setTransactionFeeDefault(requestId, level),
-      'request_not_found',
-      ['tray']
-    ),
-    'transaction.nonce-adjust': defineWalletCommand(
-      TransactionNonceAdjustCommandSchema,
-      ({ requestId, direction }) => walletWorkflows.adjustTransactionNonce(requestId, direction),
-      'request_not_found',
-      ['tray']
-    ),
-    'transaction.nonce-reset': defineWalletCommand(
-      TransactionNonceResetCommandSchema,
-      ({ requestId }) => walletWorkflows.resetTransactionNonce(requestId),
-      'request_not_found',
-      ['tray']
-    ),
-    'transaction.fee-notice-dismiss': defineWalletCommand(
-      TransactionFeeNoticeDismissCommandSchema,
-      ({ requestId }) => walletWorkflows.dismissTransactionFeeNotice(requestId),
-      'request_not_found',
-      ['tray']
-    ),
-    'transaction.replace': defineWalletCommand(
-      TransactionReplaceCommandSchema,
+    'transaction.replace': defineAcknowledgedCommand(
+      'transaction.replace',
       async (command, _event, context) => {
         const result = await executeIdempotent(
           command.type,
           `${command.requestId}:${command.idempotencyKey}`,
           command,
-          () =>
-            walletWorkflows.replaceTransaction(
-              command.requestId,
-              command.replacement,
-              createRendererPrincipal(context)
-            )
+          () => requests.replaceTransaction(command, createRendererPrincipal(context))
         )
         if (result === IdempotencyConflict) throw IdempotencyConflict
         return result
@@ -705,81 +612,75 @@ export function createOperationRegistry(services: OperationServices) {
       'request_not_found',
       ['tray']
     ),
-    'panel.request-open': defineWalletCommand(
-      PanelRequestOpenCommandSchema,
-      ({ requestId }) => walletWorkflows.openRequestPanel(requestId),
+    'panel.request-open': defineAcknowledgedCommand(
+      'panel.request-open',
+      ({ requestId }) => platform.openRequestPanel(requestId),
       'request_not_found',
       ['tray']
     ),
-    'panel.back': defineWalletCommand(
-      PanelBackCommandSchema,
-      ({ steps }) => walletWorkflows.navigatePanelBack(steps),
+    'panel.back': defineAcknowledgedCommand(
+      'panel.back',
+      ({ steps }) => platform.navigatePanelBack(steps),
       'not_found',
       ['tray']
     ),
-    'request.add-token-review': defineWalletCommand(
-      AddTokenReviewCommandSchema,
-      ({ requestId }) => walletWorkflows.reviewAddTokenRequest(requestId),
+    'request.add-token-review': defineAcknowledgedCommand(
+      'request.add-token-review',
+      ({ requestId }) => requests.reviewAddToken(requestId),
       'request_not_found',
       ['tray']
     ),
-    'request.add-chain-review': defineWalletCommand(
-      AddChainReviewCommandSchema,
-      ({ requestId }) => walletWorkflows.reviewAddChainRequest(requestId),
+    'request.add-chain-review': defineAcknowledgedCommand(
+      'request.add-chain-review',
+      ({ requestId }) => requests.reviewAddChain(requestId),
       'request_not_found',
       ['tray']
     ),
-    'extension.respond': defineWalletCommand(
-      ExtensionRespondCommandSchema,
-      ({ extensionId, approved }) => walletWorkflows.respondToExtension(extensionId, approved),
+    'extension.respond': defineAcknowledgedCommand(
+      'extension.respond',
+      ({ extensionId, approved }) => platform.respondToExtension(extensionId, approved),
       'not_found',
       ['tray']
     ),
-    'updater.respond': defineWalletCommand(
-      UpdaterRespondCommandSchema,
-      ({ action }) => walletWorkflows.respondToUpdater(action),
+    'updater.respond': defineAcknowledgedCommand(
+      'updater.respond',
+      ({ action }) => platform.respondToUpdater(action),
       'not_found',
       ['tray']
     ),
-    'tray.mouseout': defineWalletCommand(
-      TrayMouseoutCommandSchema,
-      () => walletWorkflows.handleTrayMouseout(),
+    'tray.mouseout': defineAcknowledgedCommand(
+      'tray.mouseout',
+      () => platform.handleTrayMouseout(),
       'not_found',
       ['tray']
     ),
-    'tray.context-menu': defineWalletCommand(
-      TrayContextMenuCommandSchema,
-      ({ x, y }, event) => walletWorkflows.inspectOwnTrayWindow(event, x, y),
+    'clipboard.write': defineAcknowledgedCommand(
+      'clipboard.write',
+      ({ text }) => platform.writeClipboard(text),
       'not_found',
       ['tray']
     ),
-    'clipboard.write': defineWalletCommand(
-      ClipboardWriteCommandSchema,
-      ({ text }) => walletWorkflows.writeClipboard(text),
+    'external.open': defineAcknowledgedCommand(
+      'external.open',
+      ({ url }) => platform.openExternal(url),
       'not_found',
       ['tray']
     ),
-    'external.open': defineWalletCommand(
-      ExternalOpenCommandSchema,
-      ({ url }) => walletWorkflows.openExternalUrl(url),
+    'explorer.open': defineAcknowledgedCommand(
+      'explorer.open',
+      ({ chainId, transactionHash }) => platform.openTransactionExplorer(chainId, transactionHash),
       'not_found',
       ['tray']
     ),
-    'explorer.open': defineWalletCommand(
-      ExplorerOpenCommandSchema,
-      ({ chainId, transactionHash }) => walletWorkflows.openTransactionExplorer(chainId, transactionHash),
-      'not_found',
-      ['tray']
-    ),
-    'token.add': defineWalletCommand(
-      TokenAddCommandSchema,
-      (command) => walletWorkflows.addToken(command),
-      'request_not_found',
-      ['tray']
-    ),
-    'token.image-hydrate': defineOperation({
-      schema: TokenImageHydrateCommandSchema,
-      resultSchema: WalletCommandResultSchema,
+    'token.add': defineCommand('token.add', {
+      roles: ['wallet-ui'],
+      entrypoints: ['tray'],
+      handle(command, _event, context) {
+        return operationCommandAcknowledgement(tokens.add(command, operationOwner(context)))
+      },
+      failure: { ok: false, error: 'operation_failed' }
+    }),
+    'token.image-hydrate': defineCommand('token.image-hydrate', {
       roles: ['wallet-ui', 'sidetray'],
       entrypoints: ['tray', 'sidetray'],
       handle({ tokenId }) {
@@ -788,105 +689,120 @@ export function createOperationRegistry(services: OperationServices) {
       },
       failure: { ok: false, error: 'operation_failed' }
     }),
-    'token.remove': defineWalletCommand(
-      TokenRemoveCommandSchema,
-      ({ address, chainId }) => walletWorkflows.removeToken({ address, chainId }),
+    'token.remove': defineAcknowledgedCommand(
+      'token.remove',
+      ({ address, chainId }) => tokens.remove({ address, chainId }),
       'not_found',
       ['tray']
     ),
-    'origin.remove': defineWalletCommand(
-      OriginRemoveCommandSchema,
-      ({ originId }) => walletWorkflows.removeOrigin(originId),
+    'origin.remove': defineAcknowledgedCommand(
+      'origin.remove',
+      ({ originId }) => accountMutations.removeOrigin(originId),
       'not_found',
       ['tray']
     ),
-    'warning.toggle': defineWalletCommand(
-      WarningToggleCommandSchema,
-      ({ warning }) => walletWorkflows.toggleWarning(warning),
+    'warning.toggle': defineAcknowledgedCommand(
+      'warning.toggle',
+      ({ warning }) => platform.toggleWarning(warning),
       'not_found',
       ['tray']
     ),
-    'request.approve': defineWalletCommand(
-      RequestApproveCommandSchema,
-      async (command) => {
-        const result = await executeIdempotent(command.type, command.requestId, command, () =>
-          walletWorkflows.approveRequest(command.requestId)
-        )
-        if (result === IdempotencyConflict) throw IdempotencyConflict
-        return result
-      },
+    'request.approve': defineAcknowledgedCommand(
+      'request.approve',
+      ({ requestId }) => requests.approve(requestId),
       'request_not_found',
       ['tray']
     ),
-    'network.remove': defineWalletCommand(
-      NetworkRemoveCommandSchema,
-      ({ chainId }) => walletWorkflows.removeNetwork(chainId),
+    'request.warning-confirm': defineAcknowledgedCommand(
+      'request.warning-confirm',
+      ({ requestId, gate }) => requests.confirmWarning(requestId, gate),
+      'request_not_found',
+      ['tray']
+    ),
+    'network.remove': defineAcknowledgedCommand(
+      'network.remove',
+      ({ chainId }) => networks.remove(chainId),
       'not_found',
       ['tray']
     ),
-    'signer.trezor-input': defineWalletCommand(
-      TrezorInputCommandSchema,
-      (command) => walletWorkflows.submitTrezorInput(command),
-      'not_found',
-      ['tray']
-    ),
-    'signer.lattice-pair': defineWalletCommand(
-      LatticePairCommandSchema,
-      ({ signerId, pairCode }) => walletWorkflows.pairLattice(signerId, pairCode),
-      'not_found',
-      ['tray']
-    ),
-    'account.remove': defineWalletCommand(
-      AccountRemoveCommandSchema,
-      ({ address, removeSeedSigner }) => walletWorkflows.removeAccount(address, removeSeedSigner),
-      'not_found',
-      ['tray']
-    ),
-    'signer.reload': defineWalletCommand(
-      SignerReloadCommandSchema,
-      ({ signerId }) => walletWorkflows.reloadSigner(signerId),
-      'not_found',
-      ['tray']
-    )
-  } satisfies Record<keyof CommandMap, OperationDefinition>
-
-  const queryRegistry = {
-    'profile.movable-accounts': defineOperation({
-      schema: ProfileMovableAccountsQuerySchema,
-      resultSchema: ProfileMovableAccountsResultSchema,
+    'signer.trezor-input': defineCommand('signer.trezor-input', {
       roles: ['wallet-ui'],
       entrypoints: ['tray'],
-      handle(_query: ProfileMovableAccountsQuery) {
-        return walletWorkflows.movableProfileAccounts()
+      handle(command, _event, context) {
+        return operationCommandAcknowledgement(
+          accountOnboarding.submitTrezorInput(command, operationOwner(context))
+        )
       },
       failure: { ok: false, error: 'operation_failed' }
     }),
-    'address.chain-usage': defineOperation({
-      schema: AddressChainUsageQuerySchema,
-      resultSchema: AddressChainUsageResultSchema,
+    'signer.lattice-pair': defineCommand('signer.lattice-pair', {
+      roles: ['wallet-ui'],
+      entrypoints: ['tray'],
+      handle(command, _event, context) {
+        return operationCommandAcknowledgement(
+          accountOnboarding.pairLattice(command, operationOwner(context))
+        )
+      },
+      failure: { ok: false, error: 'operation_failed' }
+    }),
+    'account.remove': defineAcknowledgedCommand(
+      'account.remove',
+      ({ address, removeSeedSigner }) => accountMutations.remove(address, removeSeedSigner),
+      'not_found',
+      ['tray']
+    ),
+    'signer.reload': defineCommand('signer.reload', {
+      roles: ['wallet-ui'],
+      entrypoints: ['tray'],
+      handle(command, _event, context) {
+        return operationCommandAcknowledgement(accountOnboarding.reload(command, operationOwner(context)))
+      },
+      failure: { ok: false, error: 'operation_failed' }
+    })
+  } satisfies Record<keyof CommandMap, OperationDefinition>
+
+  const queryRegistry = {
+    'keystore.locate': defineQuery('keystore.locate', {
+      roles: ['wallet-ui'],
+      entrypoints: ['tray'],
+      async handle(_query: KeystoreLocateQuery) {
+        const keystore = await accountOnboarding.locateKeystore()
+        return KeystoreLocateResultSchema.parse(
+          keystore
+            ? ({ ok: true, keystore } as const)
+            : ({ ok: false, error: 'not_found', message: 'No keystore was selected.' } as const)
+        )
+      },
+      failure: { ok: false, error: 'invalid_keystore', message: 'Could not read the keystore.' }
+    }),
+    'profile.movable-accounts': defineQuery('profile.movable-accounts', {
+      roles: ['wallet-ui'],
+      entrypoints: ['tray'],
+      handle(_query: ProfileMovableAccountsQuery) {
+        return profiles.movableAccounts()
+      },
+      failure: { ok: false, error: 'operation_failed' }
+    }),
+    'address.chain-usage': defineQuery('address.chain-usage', {
       roles: ['wallet-ui'],
       entrypoints: ['tray'],
       async handle({ addresses }: AddressChainUsageQuery) {
         return {
           ok: true,
-          usage: await walletWorkflows.getAddressChainUsage(addresses)
+          usage: await accountMutations.addressChainUsage(addresses)
         } as const
       },
       failure: { ok: false, error: 'lookup_failed' }
     }),
-    'flash.quote': defineOperation({
-      schema: FlashQuoteQuerySchema,
-      resultSchema: FlashQuoteResultSchema,
+    'flash.quote': defineQuery('flash.quote', {
       roles: ['sidetray'],
       entrypoints: ['sidetray'],
-      async handle({ request }: FlashQuoteQuery) {
-        return FlashQuoteResultSchema.parse(await quoteFlashForCurrentAccount(request))
+      async handle({ request }: FlashQuoteQuery, _event, context) {
+        return FlashQuoteResultSchema.parse(await trade.quote(request, operationOwner(context)))
       },
       failure: { ok: false, error: 'quote_failed', message: 'Flash quote failed.' }
     }),
-    'name.resolve': defineOperation({
-      schema: NameResolveQuerySchema,
-      resultSchema: NameResolveResultSchema,
+    'name.resolve': defineQuery('name.resolve', {
       roles: ['wallet-ui', 'sidetray'],
       entrypoints: ['tray', 'sidetray'],
       async handle({ name }: NameResolveQuery) {
@@ -895,61 +811,40 @@ export function createOperationRegistry(services: OperationServices) {
       },
       failure: { ok: false, error: 'resolution_failed' }
     }),
-    'token.lookup': defineOperation({
-      schema: TokenLookupQuerySchema,
-      resultSchema: TokenLookupResultSchema,
+    'token.lookup': defineQuery('token.lookup', {
       roles: ['wallet-ui'],
       entrypoints: ['tray'],
       async handle({ address, chainId }: TokenLookupQuery) {
-        const token = await walletWorkflows.lookupToken(address, chainId)
+        const token = await tokens.lookup(address, chainId)
         return token ? ({ ok: true, token } as const) : ({ ok: false, error: 'not_found' } as const)
       },
       failure: { ok: false, error: 'lookup_failed' }
     }),
-    'security.status': defineOperation({
-      schema: SecurityStatusQuerySchema,
-      resultSchema: SecurityStatusResultSchema,
+    'security.status': defineQuery('security.status', {
       roles: ['wallet-ui'],
       entrypoints: ['tray'],
       handle(_query: SecurityStatusQuery) {
-        return { ok: true, ...walletWorkflows.securityStatus() } as const
+        return { ok: true, ...security.status() } as const
       },
       failure: { ok: false, error: 'operation_failed', message: 'Could not read security status.' }
     }),
-    'request.signer-compatibility': defineOperation({
-      schema: SignerCompatibilityQuerySchema,
-      resultSchema: SignerCompatibilityResultSchema,
-      roles: ['wallet-ui'],
-      entrypoints: ['tray'],
-      handle({ requestId }: SignerCompatibilityQuery) {
-        return walletWorkflows.requestSignerCompatibility(requestId)
-      },
-      failure: { ok: false, error: 'operation_failed', message: 'Could not inspect signer compatibility.' }
-    }),
-    'account.private-key-export': defineOperation({
-      schema: AccountPrivateKeyExportQuerySchema,
-      resultSchema: AccountPrivateKeyExportResultSchema,
+    'account.private-key-export': defineQuery('account.private-key-export', {
       roles: ['wallet-ui'],
       entrypoints: ['tray'],
       async handle({ accountId, password }: AccountPrivateKeyExportQuery) {
-        const secret = await walletWorkflows.exportAccountPrivateKey(accountId, password)
-        if (!secret) {
+        const privateKey = await accountOnboarding.exportPrivateKey(accountId, password)
+        if (!privateKey) {
           return { ok: false, error: 'account_not_found', message: 'Account was not found.' } as const
         }
-        if (secret.type !== 'privateKey') {
-          return { ok: false, error: 'export_failed', message: 'Private key was not returned.' } as const
-        }
-        return { ok: true, privateKey: secret.value } as const
+        return { ok: true, privateKey } as const
       },
       failure: { ok: false, error: 'export_failed', message: 'Could not export the private key.' }
     }),
-    'seed.generate': defineOperation({
-      schema: SeedGenerateQuerySchema,
-      resultSchema: SeedGenerateResultSchema,
+    'seed.generate': defineQuery('seed.generate', {
       roles: ['wallet-ui'],
       entrypoints: ['tray'],
       async handle(_query: SeedGenerateQuery) {
-        return { ok: true, phrase: await walletWorkflows.generateSeedPhrase() } as const
+        return { ok: true, phrase: await accountOnboarding.generateSeedPhrase() } as const
       },
       failure: { ok: false, error: 'operation_failed', message: 'Could not generate a recovery phrase.' }
     })
@@ -964,7 +859,7 @@ function boundaryFailure(
   kind: 'command' | 'query',
   error: 'invalid_command' | 'invalid_query' | 'unauthorized'
 ) {
-  return (kind === 'command' ? CommandBoundaryFailureSchema : QueryBoundaryFailureSchema).parse({
+  return (kind === 'command' ? CommandResultSchema : QueryBoundaryFailureSchema).parse({
     ok: false,
     error
   })
@@ -975,6 +870,7 @@ async function dispatchOperation(
   event: Electron.IpcMainInvokeEvent,
   input: unknown,
   registry: OperationRegistry,
+  contracts: ContractRegistry,
   authorizeRenderer: OperationServices['authorizeRenderer']
 ) {
   const context = authorizeRenderer(event)
@@ -986,7 +882,8 @@ async function dispatchOperation(
   const operationType = OperationTypeSchema.safeParse(input)
   const type = operationType.success ? operationType.data.type : undefined
   const operation = type ? registry[type] : undefined
-  if (!operation) {
+  const contract = type ? contracts[type] : undefined
+  if (!operation || !contract) {
     log.warn(`Rejected malformed or unknown ${kind}`, {
       type,
       clientType: context.clientType
@@ -1010,7 +907,7 @@ async function dispatchOperation(
     return boundaryFailure(kind, 'unauthorized')
   }
 
-  const parsed = operation.schema.safeParse(input)
+  const parsed = contract.input.safeParse(input)
   if (!parsed.success) {
     log.warn(`Rejected invalid ${kind} payload`, {
       type,
@@ -1021,7 +918,7 @@ async function dispatchOperation(
 
   try {
     const result = await operation.handle(parsed.data, event, context)
-    const validated = operation.resultSchema.safeParse(result)
+    const validated = contract.result.safeParse(result)
     if (validated.success) return validated.data
 
     log.error(`Invalid ${kind} result`, { type })
@@ -1037,9 +934,16 @@ export function createOperationDispatcher(services: OperationServices): Operatio
 
   return {
     dispatchCommand: (event, command) =>
-      dispatchOperation('command', event, command, commandRegistry, services.authorizeRenderer),
+      dispatchOperation(
+        'command',
+        event,
+        command,
+        commandRegistry,
+        commandContracts,
+        services.authorizeRenderer
+      ),
     dispatchQuery: (event, query) =>
-      dispatchOperation('query', event, query, queryRegistry, services.authorizeRenderer)
+      dispatchOperation('query', event, query, queryRegistry, queryContracts, services.authorizeRenderer)
   }
 }
 

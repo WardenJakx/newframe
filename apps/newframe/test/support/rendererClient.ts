@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, mock } from 'bun:test'
 
 import type { NewframeHost } from '../../contracts/ipc'
-import type { AppCommand, AppQuery, ResultForCommand, ResultForQuery } from '../../contracts/operations'
+import type { AppCommand, AppQuery, CommandResult, ResultForQuery } from '../../contracts/operations'
 import type { StateConnectionResult, StateMessage } from '../../contracts/state/protocol'
 
 export function createRendererClient() {
@@ -13,8 +13,7 @@ export function createRendererClient() {
     ),
     disconnectState: mock(async (): Promise<StateConnectionResult> => ({ ok: true })),
     executeCommand: mock(
-      async <TCommand extends AppCommand>(_command: TCommand): Promise<ResultForCommand<TCommand>> =>
-        ({ ok: true }) as ResultForCommand<TCommand>
+      async <TCommand extends AppCommand>(_command: TCommand): Promise<CommandResult> => ({ ok: true })
     ),
     executeQuery: mock(
       async <TQuery extends AppQuery>(_query: TQuery): Promise<ResultForQuery<TQuery>> =>

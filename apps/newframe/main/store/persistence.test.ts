@@ -198,7 +198,23 @@ describe('canonical persistence lifecycle', () => {
 })
 
 describe('canonical persisted state contract', () => {
-  it('discards legacy rate caches and nested native USD values for versions 2 through 4', () => {
+  it('never persists runtime operations and discards legacy rate caches', () => {
+    const state = canonicalState()
+    state.operations.secret = {
+      owner: { clientType: 'wallet-ui', windowInstanceId: 'wallet-window' },
+      operation: {
+        id: 'secret',
+        type: 'vault.unlock',
+        status: 'pending',
+        startedAt: 1,
+        updatedAt: 1
+      }
+    }
+
+    const persisted = selectPersistedState(state)
+    expect(persisted).not.toHaveProperty('operations')
+    expect(mergePersistedState(persisted, canonicalState()).operations).toEqual({})
+
     for (const version of [2, 3, 4]) {
       const legacy = selectPersistedState(canonicalState()) as any
       legacy.main.rates = { legacy: { usd: { price: 2, change24hr: 0 } } }

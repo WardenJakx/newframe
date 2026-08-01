@@ -1,7 +1,6 @@
 import EventEmitter from 'events'
 import crypto from 'crypto'
 import log from 'electron-log'
-import { v4 as uuid } from 'uuid'
 import { estimateL1GasCost } from '../chains/l1GasFees.js'
 import { recoverTypedSignature, SignTypedDataVersion } from '@metamask/eth-sig-util'
 import { isAddress } from 'ethers'
@@ -68,6 +67,7 @@ import {
 
 import type { Origin, Permission } from '../store/state/index.js'
 import type { AccountRequestPort } from './accountRequestPort.js'
+import type { PromptedRequestContinuationPort } from '../features/requests/service.js'
 
 const signTypedDataV4OnlySignerTypes: SignerType[] = [SignerType.Ledger, SignerType.Trezor]
 const proxyPrincipal = createMainPrincipal('provider-proxy', ['wallet:internal-state'])
@@ -93,6 +93,7 @@ export interface ProviderDependencies {
   state: ProviderStatePort
   store: CanonicalStoreReader
   reveal: Pick<RevealService, 'resolveEntityType'>
+  requests: PromptedRequestContinuationPort
 }
 
 export class Provider extends EventEmitter {
@@ -100,7 +101,6 @@ export class Provider extends EventEmitter {
   private storeUnsubscribes: Array<() => void> = []
   private started = false
 
-  handlers: Record<string, RPCRequestCallback> = {}
   subscriptions: { [key in ProviderSubscriptionType]: Subscription[] } = {
     accountsChanged: [],
     assetsChanged: [],
@@ -115,8 +115,9 @@ export class Provider extends EventEmitter {
   private readonly state: ProviderStatePort
   private readonly store: CanonicalStoreReader
   private readonly reveal: Pick<RevealService, 'resolveEntityType'>
+  private readonly requests: PromptedRequestContinuationPort
 
-  constructor({ accounts, chains, proxy, state, store, reveal }: ProviderDependencies) {
+  constructor({ accounts, chains, proxy, state, store, reveal, requests }: ProviderDependencies) {
     super()
     this.accounts = accounts
     this.connection = chains
@@ -124,6 +125,7 @@ export class Provider extends EventEmitter {
     this.state = state
     this.store = store
     this.reveal = reveal
+    this.requests = requests
     this.getNonce = this.getNonce.bind(this)
   }
 
@@ -323,10 +325,7 @@ export class Provider extends EventEmitter {
   }
 
   approveSign(req: AccountRequest, cb: Callback<string>) {
-    const res = this.requestResponder(req.handlerId)
-
-    const payload = req.payload
-    const [address, rawMessage] = payload.params
+    const [address, rawMessage] = req.payload.params
 
     let message = rawMessage
 
@@ -340,16 +339,13 @@ export class Provider extends EventEmitter {
 
     this.accounts.signMessage(address, message, (err, signed) => {
       if (err) {
-        resError(err.message, payload, res)
         cb(err, undefined)
       } else {
         const signature = signed || ''
         this.verifySignature(signature, message, address, (err) => {
           if (err) {
-            resError(err.message, payload, res)
             cb(err)
           } else {
-            res({ id: payload.id, jsonrpc: payload.jsonrpc, result: signature })
             cb(null, signature)
           }
         })
@@ -358,14 +354,11 @@ export class Provider extends EventEmitter {
   }
 
   approveSignTypedData(req: SignTypedDataRequest, cb: Callback<string>) {
-    const res = this.requestResponder(req.handlerId)
-
-    const { payload, typedMessage } = req
-    const [address] = payload.params
+    const { typedMessage } = req
+    const [address] = req.payload.params
 
     this.accounts.signTypedData(address, typedMessage, (err, signature = '') => {
       if (err) {
-        resError(err.message, payload, res)
         cb(err)
       } else {
         try {
@@ -374,12 +367,9 @@ export class Provider extends EventEmitter {
             throw new Error('TypedData signature verification failed')
           }
 
-          res({ id: payload.id, jsonrpc: payload.jsonrpc, result: signature })
           cb(null, signature)
         } catch (e) {
           const err = e as Error
-          resError(err.message, payload, res)
-
           cb(err)
         }
       }
@@ -409,9 +399,6 @@ export class Provider extends EventEmitter {
 
   signAndSend(req: TransactionRequest, cb: Callback<string>) {
     const rawTx = req.data
-    const res = this.requestResponder(req.handlerId)
-
-    const payload = req.payload
     const maxTotalFee = maxFee(rawTx)
 
     if (feeTotalOverMax(rawTx, maxTotalFee)) {
@@ -421,13 +408,11 @@ export class Provider extends EventEmitter {
 
       const err = `Max fee is over hard limit${displayAmount}`
 
-      resError(err, payload, res)
       cb(new Error(err))
     } else {
       this.accounts.signTransaction(rawTx, (err, signedTx) => {
         // Sign Transaction
         if (err) {
-          resError(err, payload, res)
           cb(err)
         } else {
           this.accounts.setTxSigned(req.handlerId, (err) => {
@@ -446,10 +431,8 @@ export class Provider extends EventEmitter {
                   if (done) return
                   done = true
                   if (response.error) {
-                    resError(response.error, payload, res)
-                    cb(new Error(response.error.message))
+                    cb(Object.assign(new Error(response.error.message), { code: response.error.code }))
                   } else {
-                    res(response)
                     cb(null, response.result)
                   }
                 },
@@ -480,9 +463,7 @@ export class Provider extends EventEmitter {
 
     this.getNonce(req.data, (response) => {
       if (response.error) {
-        this.respondToRequest(req.handlerId, response)
-
-        return cb(new Error(response.error.message))
+        return cb(Object.assign(new Error(response.error.message), { code: response.error.code }))
       }
 
       const updatedReq = this.accounts.updateNonce(req.handlerId, response.result)
@@ -494,23 +475,6 @@ export class Provider extends EventEmitter {
         cb(new Error('could not find request'))
       }
     })
-  }
-
-  private addRequestHandler(res: RPCRequestCallback) {
-    const handlerId: string = uuid()
-    this.handlers[handlerId] = res
-
-    return handlerId
-  }
-
-  private respondToRequest(handlerId: string, response: RPCResponsePayload) {
-    const handler = this.handlers[handlerId]
-    delete this.handlers[handlerId]
-    handler?.(response)
-  }
-
-  private requestResponder(handlerId: string): RPCRequestCallback {
-    return (response) => this.respondToRequest(handlerId, response)
   }
 
   private async getGasEstimate(rawTx: TransactionData) {
@@ -664,7 +628,8 @@ export class Provider extends EventEmitter {
       }
 
       const { feesUpdated: _feesUpdated, recipientType, ...data } = transactionMetadata.tx
-      const handlerId = uuid()
+      const handlerId = this.requests.create(res)
+      const respond = (response: RPCResponsePayload) => this.requests.respond(handlerId, response)
       const unclassifiedRequest = {
         handlerId,
         type: 'transaction',
@@ -682,8 +647,8 @@ export class Provider extends EventEmitter {
         classification: classifyTransaction(unclassifiedRequest)
       } as TransactionRequest
 
-      this.accounts.routeRequest(principal, request, res, (authorizedRequest) => {
-        this.executeAgentTransaction(account, authorizedRequest as TransactionRequest, principal, res)
+      this.accounts.routeRequest(principal, request, (authorizedRequest) => {
+        this.executeAgentTransaction(account, authorizedRequest as TransactionRequest, principal, respond)
       })
     })
   }
@@ -714,8 +679,10 @@ export class Provider extends EventEmitter {
     }
 
     const normalizedPayload = { ...payload, params: [account.id, message, ...orderedParams.slice(2)] }
+    const handlerId = this.requests.create(res)
+    const respond = (response: RPCResponsePayload) => this.requests.respond(handlerId, response)
     const request: SignatureRequest = {
-      handlerId: uuid(),
+      handlerId,
       type: 'sign',
       payload: normalizedPayload,
       account: account.id,
@@ -723,19 +690,19 @@ export class Provider extends EventEmitter {
       data: { decodedMessage: decodeMessage(message) }
     }
 
-    this.accounts.routeRequest(principal, request, res, () => {
-      if (!this.requireActiveAgentSession(principal, normalizedPayload, res)) return
+    this.accounts.routeRequest(principal, request, () => {
+      if (!this.requireActiveAgentSession(principal, normalizedPayload, respond)) return
 
       account.signMessage(message, (signingError, signed) => {
-        if (!this.requireActiveAgentSession(principal, normalizedPayload, res)) return
+        if (!this.requireActiveAgentSession(principal, normalizedPayload, respond)) return
         if (signingError || !signed) {
-          return resError(signingError || 'Agent message signing failed', normalizedPayload, res)
+          return resError(signingError || 'Agent message signing failed', normalizedPayload, respond)
         }
 
         this.verifySignature(signed, message, account.id, (verificationError) => {
-          if (verificationError) return resError(verificationError, normalizedPayload, res)
-          if (!this.requireActiveAgentSession(principal, normalizedPayload, res)) return
-          res({ id: normalizedPayload.id, jsonrpc: normalizedPayload.jsonrpc, result: signed })
+          if (verificationError) return resError(verificationError, normalizedPayload, respond)
+          if (!this.requireActiveAgentSession(principal, normalizedPayload, respond)) return
+          respond({ id: normalizedPayload.id, jsonrpc: normalizedPayload.jsonrpc, result: signed })
         })
       })
     })
@@ -793,8 +760,10 @@ export class Provider extends EventEmitter {
     } as RPC.SignTypedData.Request
     const typedMessage: TypedMessage = { data: typedData, version }
     const digests = getEip712Digests(typedMessage)
+    const handlerId = this.requests.create(res)
+    const respond = (response: RPCResponsePayload) => this.requests.respond(handlerId, response)
     const request: SignTypedDataRequest = {
-      handlerId: uuid(),
+      handlerId,
       type: 'signTypedData',
       typedMessage,
       ...(digests ? { digests } : {}),
@@ -803,13 +772,13 @@ export class Provider extends EventEmitter {
       origin: 'newframe-agent'
     }
 
-    this.accounts.routeRequest(principal, request, res, () => {
-      if (!this.requireActiveAgentSession(principal, payload, res)) return
+    this.accounts.routeRequest(principal, request, () => {
+      if (!this.requireActiveAgentSession(principal, payload, respond)) return
 
       account.signTypedData(typedMessage, (signingError, signature = '') => {
-        if (!this.requireActiveAgentSession(principal, payload, res)) return
+        if (!this.requireActiveAgentSession(principal, payload, respond)) return
         if (signingError || !signature) {
-          return resError(signingError || 'Agent typed-data signing failed', payload, res)
+          return resError(signingError || 'Agent typed-data signing failed', payload, respond)
         }
 
         try {
@@ -817,9 +786,9 @@ export class Provider extends EventEmitter {
           if (recoveredAddress.toLowerCase() !== account.id) {
             throw new Error('TypedData signature verification failed')
           }
-          res({ id: payload.id, jsonrpc: payload.jsonrpc, result: signature })
+          respond({ id: payload.id, jsonrpc: payload.jsonrpc, result: signature })
         } catch (error) {
-          resError(error as Error, payload, res)
+          resError(error as Error, payload, respond)
         }
       })
     })
@@ -913,7 +882,7 @@ export class Provider extends EventEmitter {
         if (err) {
           resError(err, payload, res)
         } else {
-          const handlerId = this.addRequestHandler(res)
+          const handlerId = this.requests.create(res)
           const txMetadata = transactionMetadata as TransactionMetadata
           const { feesUpdated, recipientType, ...data } = txMetadata.tx
           const calldata = data.data
@@ -946,7 +915,7 @@ export class Provider extends EventEmitter {
             classification
           }
 
-          this.accounts.routeRequest(principal, req, this.requestResponder(handlerId))
+          this.accounts.routeRequest(principal, req)
         }
       })
     } catch (e) {
@@ -992,7 +961,7 @@ export class Provider extends EventEmitter {
       return resError('Sign request is not from currently selected account', payload, res)
     }
 
-    const handlerId = this.addRequestHandler(res)
+    const handlerId = this.requests.create(res)
 
     const req = {
       handlerId,
@@ -1005,7 +974,7 @@ export class Provider extends EventEmitter {
       }
     } as SignatureRequest
 
-    this.accounts.routeRequest(principal, req, this.requestResponder(handlerId))
+    this.accounts.routeRequest(principal, req)
   }
 
   signTypedData(
@@ -1080,7 +1049,7 @@ export class Provider extends EventEmitter {
       return resError('Lattice only supports eth_signTypedData_v3+', payload, res)
     }
 
-    const handlerId = this.addRequestHandler(res)
+    const handlerId = this.requests.create(res)
     const typedMessage: TypedMessage<typeof version> = {
       data: typedData,
       version
@@ -1137,9 +1106,9 @@ export class Provider extends EventEmitter {
         }
       }
 
-      this.accounts.routeRequest(principal, permitRequest, this.requestResponder(handlerId))
+      this.accounts.routeRequest(principal, permitRequest)
     } else {
-      this.accounts.routeRequest(principal, req, this.requestResponder(handlerId))
+      this.accounts.routeRequest(principal, req)
     }
   }
 
@@ -1352,7 +1321,7 @@ export class Provider extends EventEmitter {
       }
     }
 
-    const handlerId = this.addRequestHandler(res)
+    const handlerId = this.requests.create(res)
     const metadata = this.store.getState().main.networksMeta[type][id]
     const requestChain = existing
       ? {
@@ -1372,18 +1341,14 @@ export class Provider extends EventEmitter {
           explorer: blockExplorerUrls[0] || '',
           nativeCurrencyName: nativeCurrency.name
         }
-    this.accounts.routeRequest(
-      principal,
-      {
-        handlerId,
-        type: 'addChain',
-        chain: requestChain,
-        account: (this.accounts.getAccounts() || [])[0],
-        origin: payload._origin,
-        payload
-      } as AddChainRequest,
-      this.requestResponder(handlerId)
-    )
+    this.accounts.routeRequest(principal, {
+      handlerId,
+      type: 'addChain',
+      chain: requestChain,
+      account: (this.accounts.getAccounts() || [])[0],
+      origin: payload._origin,
+      payload
+    } as AddChainRequest)
   }
 
   private addCustomToken(
@@ -1434,20 +1399,16 @@ export class Provider extends EventEmitter {
           logoURI: tokenData.image || tokenData.logoURI || ''
         }
 
-        const handlerId = this.addRequestHandler(res)
+        const handlerId = this.requests.create(res)
 
-        this.accounts.routeRequest(
-          principal,
-          {
-            handlerId,
-            type: 'addToken',
-            token,
-            account: (this.accounts.current() as AccountHandle).id,
-            origin: payload._origin,
-            payload
-          } as AddTokenRequest,
-          this.requestResponder(handlerId)
-        )
+        this.accounts.routeRequest(principal, {
+          handlerId,
+          type: 'addToken',
+          token,
+          account: (this.accounts.current() as AccountHandle).id,
+          origin: payload._origin,
+          payload
+        } as AddTokenRequest)
       },
       targetChain
     )
