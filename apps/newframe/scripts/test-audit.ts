@@ -144,7 +144,6 @@ if (check) {
       mockCallAssertions: number
       moduleMocks: number
       noAssertionFiles: number
-      tests: number
     }
   }
 
@@ -154,8 +153,7 @@ if (check) {
     misplacedScenarioFiles: misplacedScenarios.length,
     mockCallAssertions: totals.mockCallAssertions,
     moduleMocks: totals.mockModules,
-    noAssertionFiles: suspicious.length,
-    tests: totals.tests
+    noAssertionFiles: suspicious.length
   }
   const regressions = Object.entries(measurements).flatMap(([name, actual]) => {
     const maximum = baseline.maximum[name as keyof typeof baseline.maximum]

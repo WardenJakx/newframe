@@ -31,6 +31,17 @@ describe('registrar', () => {
         })
       })
     })
+
+    it('recognizes safeTransferFrom with ERC-721 transfer data', () => {
+      const calldata = new Interface([
+        'function safeTransferFrom(address from, address to, uint256 tokenId, bytes data)'
+      ]).encodeFunctionData('safeTransferFrom', [from, to, BigInt(tokenId), '0x1234'])
+
+      expect(registrar.decode(calldata)).toStrictEqual({
+        id: 'ens:transfer',
+        data: { name: '', from, to, tokenId }
+      })
+    })
   })
 
   describe('approvals', () => {

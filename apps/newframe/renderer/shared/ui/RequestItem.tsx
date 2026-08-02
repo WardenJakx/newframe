@@ -1,4 +1,5 @@
 import { Button } from '@newframe/ui/button'
+import { Icon, type IconName } from '@newframe/ui/icon'
 import { Image } from '@newframe/ui/image'
 import { Inline } from '@newframe/ui/inline'
 import { Stack } from '@newframe/ui/stack'
@@ -9,14 +10,13 @@ import { useEffect, useState, type ReactNode } from 'react'
 import type { AccountRequest } from '../../../contracts/requests'
 import { imageSource } from '../../../domain/image'
 import link from '../link'
-import svg from '../svg'
 import { cva } from '../../../generated/styled-system/css/cva.js'
 import StatusGlyph from './StatusGlyph'
 
 type RequestItemProps = {
   req: AccountRequest
   title: string
-  svgName?: string
+  svgName?: IconName
   img?: string
   color?: string
   headerMode?: boolean
@@ -68,10 +68,7 @@ function requestTone(status?: string) {
 function RequestIcon({ img, svgName }: Pick<RequestItemProps, 'img' | 'svgName'>) {
   const source = imageSource(img)
   if (source) return <Image alt='' source={source} />
-  const icon = svgName
-    ? (svg as unknown as Record<string, ((size: number) => ReactNode) | undefined>)[svgName.toLowerCase()]
-    : undefined
-  return <>{icon ? icon(16) : svg.eth(16)}</>
+  return <Icon name={svgName ?? 'ethereum'} size='medium' />
 }
 
 export default function RequestItem({

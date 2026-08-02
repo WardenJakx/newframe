@@ -101,7 +101,7 @@ export function createAccountSelectionAdapter(
   const callbacks = createOneResultCallbackBoundary()
   const selectAccount = async (accountId: string) => {
     const previousAddresses = accounts.getSelectedAddresses()
-    const account = callbacks.run<Account>((done) => accounts.setSigner(accountId, done))
+    const account = await callbacks.run<Account>((done) => accounts.setSigner(accountId, done))
     const currentAddresses = accounts.getSelectedAddresses()
     if (!arraysEqual(previousAddresses, currentAddresses)) provider.accountsChanged(currentAddresses)
     return account

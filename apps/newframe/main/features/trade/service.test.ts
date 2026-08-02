@@ -4,11 +4,10 @@ import { FLASH_USDC_ASSET, FLASH_WETH_ASSET } from '../../../domain/flash/assets
 import { FLASH_MARKET_ORDER_TYPE } from '../../../domain/flash/constants'
 import type { FlashQuote } from '../../../domain/flash/schemas'
 import type { FlashQuoteRequest, TypedDataV4 } from '../../../contracts/operations'
-import type { OperationRecord } from '../../../domain/state/operation'
 import type { TrustedPrincipal } from '../../authority'
 import type { FlashSubmitOrderRequest } from '../../flash/contracts'
-import type { OperationService } from '../operations/service'
-import type { OperationReference } from '../operations/types'
+import { createTestStore } from '../../../test/support/createTestStore'
+import { createOperationService } from '../operations/service'
 import { createTradeService } from './service'
 
 const account = {
@@ -65,68 +64,6 @@ function quote(id = 'quote-1'): FlashQuote {
   }
 }
 
-function operationService(now: () => number) {
-  const records = new Map<string, { owner: typeof owner; operation: OperationRecord }>()
-  const key = (reference: OperationReference) => reference.id
-  const service: OperationService = {
-    start(input) {
-      if (!input.id || records.has(input.id)) throw new Error('duplicate')
-      const operation: OperationRecord = {
-        id: input.id,
-        type: input.type,
-        status: 'pending',
-        phase: input.phase,
-        entityRefs: input.entityRefs,
-        startedAt: now(),
-        updatedAt: now()
-      }
-      records.set(input.id, { owner: input.owner as typeof owner, operation })
-      return operation
-    },
-    advance(reference, update) {
-      const entry = records.get(key(reference))
-      if (!entry || entry.operation.status !== 'pending') return entry?.operation
-      entry.operation = { ...entry.operation, ...update, updatedAt: now() }
-      return entry.operation
-    },
-    complete(reference, phase) {
-      const entry = records.get(key(reference))
-      if (!entry || entry.operation.status !== 'pending') return entry?.operation
-      entry.operation = {
-        ...entry.operation,
-        status: 'succeeded',
-        phase,
-        updatedAt: now(),
-        finishedAt: now()
-      }
-      return entry.operation
-    },
-    fail(reference, error, phase) {
-      const entry = records.get(key(reference))
-      if (!entry || entry.operation.status !== 'pending') return entry?.operation
-      const candidate = error as { code?: string; message?: string }
-      entry.operation = {
-        ...entry.operation,
-        status: 'failed',
-        phase,
-        error: { code: candidate.code || 'trade_failed', message: candidate.message || 'Trade failed.' },
-        updatedAt: now(),
-        finishedAt: now()
-      }
-      return entry.operation
-    },
-    lookup(reference) {
-      const entry = records.get(key(reference))
-      return entry?.owner.clientType === reference.owner.clientType &&
-        entry.owner.windowInstanceId === reference.owner.windowInstanceId &&
-        entry.operation.type === reference.type
-        ? entry.operation
-        : undefined
-    }
-  }
-  return { records, service }
-}
-
 const flush = async () => {
   await new Promise((resolve) => setTimeout(resolve, 0))
   await new Promise((resolve) => setTimeout(resolve, 0))
@@ -148,7 +85,9 @@ it('owns private Trade execution, idempotency, revalidation, cancellation, and c
       }
     }
   }
-  const operations = operationService(() => time)
+  const testStore = createTestStore()
+  const operations = createOperationService({ store: testStore.store, clock: { now: () => time } })
+  const operation = (id: string) => testStore.getState().operations[id]?.operation
   const flashQuote = mock(
     async (_request: unknown): Promise<{ quote: FlashQuote; flash: unknown }> => ({
       quote: quote(),
@@ -184,7 +123,7 @@ it('owns private Trade execution, idempotency, revalidation, cancellation, and c
     canonical: { snapshot: () => canonical },
     clock: { now: () => time },
     flash: { quote: flashQuote, submitOrder, cancelOrder },
-    operations: operations.service,
+    operations,
     signatures: { signMessage, signTypedData },
     transactions: { submit: submitTransaction }
   })
@@ -198,6 +137,10 @@ it('owns private Trade execution, idempotency, revalidation, cancellation, and c
     startTime: '2099-01-02T03:04:00.000Z',
     targetAsset: { ...FLASH_WETH_ASSET, chainId: 1 }
   } satisfies FlashQuoteRequest
+  const prepare = (operationId: string, quoteId: string, caller = owner) =>
+    service.prepare({ type: 'trade.prepare', operationId, quoteId, action: 'approve' }, principal, caller)
+  const submit = (operationId: string, quoteId: string) =>
+    service.submit({ type: 'trade.submit', operationId, quoteId }, principal, owner)
 
   const quoted = await service.quote(request, owner)
   expect(quoted.ok).toBe(true)
@@ -211,36 +154,25 @@ it('owns private Trade execution, idempotency, revalidation, cancellation, and c
   if (!quoted.ok) throw new Error('quote failed')
   expect(quoted.quote).toMatchObject({ nextAction: 'approve', requiresPermit: true })
 
-  const prepare = {
-    type: 'trade.prepare' as const,
-    operationId: 'trade-operation',
-    quoteId: quoted.quoteId,
-    action: 'approve' as const
-  }
-  expect(service.prepare(prepare, principal, owner)).toBe(true)
-  expect(service.prepare(prepare, principal, owner)).toBe(true)
+  const operationId = 'trade-operation'
+  expect(prepare(operationId, quoted.quoteId)).toBe(true)
+  expect(prepare(operationId, quoted.quoteId)).toBe(true)
   await flush()
   expect(submitTransaction).toHaveBeenCalledTimes(1)
-  expect(operations.records.get(prepare.operationId)?.operation.phase).toBe('awaiting_submit')
-  expect(service.prepare(prepare, principal, owner)).toBe(true)
+  expect(operation(operationId)?.phase).toBe('awaiting_submit')
+  expect(prepare(operationId, quoted.quoteId)).toBe(true)
   expect((await service.quote(request, owner)).ok).toBe(false)
 
-  expect(
-    service.submit(
-      { type: 'trade.submit', operationId: prepare.operationId, quoteId: quoted.quoteId },
-      principal,
-      owner
-    )
-  ).toBe(true)
+  expect(submit(operationId, quoted.quoteId)).toBe(true)
   await flush()
   expect(signTypedData.mock.calls.map(([input]) => input!.typedData.primaryType)).toEqual(['Permit', 'Order'])
   expect(submitOrder.mock.calls[0]?.[0]).toMatchObject({
-    idempotencyKey: prepare.operationId,
+    idempotencyKey: operationId,
     orderSignature: '0xorder',
     evmPermitSignature: '0xpermit',
     startTime: request.startTime
   })
-  expect(operations.records.get(prepare.operationId)?.operation).toMatchObject({
+  expect(operation(operationId)).toMatchObject({
     status: 'succeeded',
     phase: 'submitted',
     entityRefs: expect.arrayContaining([
@@ -260,34 +192,17 @@ it('owns private Trade execution, idempotency, revalidation, cancellation, and c
 
   const second = await service.quote(request, owner)
   if (!second.ok) throw new Error('second quote failed')
-  expect(
-    service.prepare(
-      {
-        type: 'trade.prepare',
-        operationId: 'trade-stale-account',
-        quoteId: second.quoteId,
-        action: 'approve'
-      },
-      principal,
-      owner
-    )
-  ).toBe(true)
+  expect(prepare('trade-stale-account', second.quoteId)).toBe(true)
   await flush()
   let resolveSignature!: (value: { ok: true; signature: string }) => void
   signTypedData.mockImplementationOnce(() => new Promise((resolve) => (resolveSignature = resolve)))
   const staleOperation = 'trade-stale-account'
-  expect(
-    service.submit(
-      { type: 'trade.submit', operationId: staleOperation, quoteId: second.quoteId },
-      principal,
-      owner
-    )
-  ).toBe(true)
+  expect(submit(staleOperation, second.quoteId)).toBe(true)
   await flush()
   canonical.currentAccount = 'missing'
   resolveSignature({ ok: true, signature: '0xpermit' })
   await flush()
-  expect(operations.records.get(staleOperation)?.operation).toMatchObject({ status: 'failed' })
+  expect(operation(staleOperation)).toMatchObject({ status: 'failed' })
   expect(submitOrder).toHaveBeenCalledTimes(1)
 
   canonical.currentAccount = account.id
@@ -301,55 +216,22 @@ it('owns private Trade execution, idempotency, revalidation, cancellation, and c
   const crossOwner = await quoteFor('quote-cross-owner')
   const otherOwner = { ...owner, windowInstanceId: 'other-window' }
   const txCountBeforeReplay = submitTransaction.mock.calls.length
-  expect(
-    service.prepare(
-      {
-        type: 'trade.prepare',
-        operationId: 'cross-owner-replay',
-        quoteId: crossOwner.quoteId,
-        action: 'approve'
-      },
-      principal,
-      otherOwner
-    )
-  ).toBe(true)
+  expect(prepare('cross-owner-replay', crossOwner.quoteId, otherOwner)).toBe(true)
   await flush()
   expect(submitTransaction).toHaveBeenCalledTimes(txCountBeforeReplay)
-  expect(operations.records.get('cross-owner-replay')?.operation.status).toBe('failed')
+  expect(operation('cross-owner-replay')?.status).toBe('failed')
 
   const expiring = await quoteFor('quote-expired')
   time += 61_000
-  expect(
-    service.prepare(
-      {
-        type: 'trade.prepare',
-        operationId: 'expired-prepare',
-        quoteId: expiring.quoteId,
-        action: 'approve'
-      },
-      principal,
-      owner
-    )
-  ).toBe(true)
+  expect(prepare('expired-prepare', expiring.quoteId)).toBe(true)
   await flush()
-  expect(operations.records.get('expired-prepare')?.operation).toMatchObject({ status: 'failed' })
+  expect(operation('expired-prepare')).toMatchObject({ status: 'failed' })
 
   const unavailable = await quoteFor('quote-network-off')
   canonical.networks[1].on = false
-  expect(
-    service.prepare(
-      {
-        type: 'trade.prepare',
-        operationId: 'network-off-prepare',
-        quoteId: unavailable.quoteId,
-        action: 'approve'
-      },
-      principal,
-      owner
-    )
-  ).toBe(true)
+  expect(prepare('network-off-prepare', unavailable.quoteId)).toBe(true)
   await flush()
-  expect(operations.records.get('network-off-prepare')?.operation).toMatchObject({ status: 'failed' })
+  expect(operation('network-off-prepare')).toMatchObject({ status: 'failed' })
   canonical.networks[1].on = true
 
   const txFailure = await quoteFor('quote-tx-failure')
@@ -358,34 +240,12 @@ it('owns private Trade execution, idempotency, revalidation, cancellation, and c
     error: 'provider_error',
     message: 'Transaction rejected.'
   }))
-  expect(
-    service.prepare(
-      {
-        type: 'trade.prepare',
-        operationId: 'tx-failure',
-        quoteId: txFailure.quoteId,
-        action: 'approve'
-      },
-      principal,
-      owner
-    )
-  ).toBe(true)
+  expect(prepare('tx-failure', txFailure.quoteId)).toBe(true)
   await flush()
-  expect(operations.records.get('tx-failure')?.operation).toMatchObject({ status: 'failed' })
+  expect(operation('tx-failure')).toMatchObject({ status: 'failed' })
 
   const signFailure = await quoteFor('quote-sign-failure')
-  expect(
-    service.prepare(
-      {
-        type: 'trade.prepare',
-        operationId: 'sign-failure',
-        quoteId: signFailure.quoteId,
-        action: 'approve'
-      },
-      principal,
-      owner
-    )
-  ).toBe(true)
+  expect(prepare('sign-failure', signFailure.quoteId)).toBe(true)
   await flush()
   signTypedData.mockImplementationOnce(async () => ({
     ok: false as const,
@@ -393,43 +253,20 @@ it('owns private Trade execution, idempotency, revalidation, cancellation, and c
     message: 'Signing rejected.'
   }))
   const submitCountBeforeSignFailure = submitOrder.mock.calls.length
-  expect(
-    service.submit(
-      { type: 'trade.submit', operationId: 'sign-failure', quoteId: signFailure.quoteId },
-      principal,
-      owner
-    )
-  ).toBe(true)
+  expect(submit('sign-failure', signFailure.quoteId)).toBe(true)
   await flush()
   expect(submitOrder).toHaveBeenCalledTimes(submitCountBeforeSignFailure)
-  expect(operations.records.get('sign-failure')?.operation).toMatchObject({ status: 'failed' })
+  expect(operation('sign-failure')).toMatchObject({ status: 'failed' })
 
   const flashFailure = await quoteFor('quote-flash-failure')
-  expect(
-    service.prepare(
-      {
-        type: 'trade.prepare',
-        operationId: 'flash-failure',
-        quoteId: flashFailure.quoteId,
-        action: 'approve'
-      },
-      principal,
-      owner
-    )
-  ).toBe(true)
+  expect(prepare('flash-failure', flashFailure.quoteId)).toBe(true)
   await flush()
   submitOrder.mockImplementationOnce(async () => {
     throw new Error('Flash unavailable')
   })
-  expect(
-    service.submit(
-      { type: 'trade.submit', operationId: 'flash-failure', quoteId: flashFailure.quoteId },
-      principal,
-      owner
-    )
-  ).toBe(true)
+  expect(submit('flash-failure', flashFailure.quoteId)).toBe(true)
   await flush()
-  expect(operations.records.get('flash-failure')?.operation).toMatchObject({ status: 'failed' })
+  expect(operation('flash-failure')).toMatchObject({ status: 'failed' })
 
   let resolveCancelRevalidation!: (value: { ok: true; signature: string }) => void
   signMessage.mockImplementationOnce(() => new Promise((resolve) => (resolveCancelRevalidation = resolve)))
@@ -446,7 +283,7 @@ it('owns private Trade execution, idempotency, revalidation, cancellation, and c
   resolveCancelRevalidation({ ok: true, signature: '0xcancel-stale' })
   await flush()
   expect(cancelOrder).toHaveBeenCalledTimes(cancelCountBeforeStale)
-  expect(operations.records.get('cancel-stale')?.operation).toMatchObject({ status: 'failed' })
+  expect(operation('cancel-stale')).toMatchObject({ status: 'failed' })
   canonical.orders['order-cancel'].cancellable = true
 
   let resolveLateQuote!: (value: { quote: FlashQuote; flash: unknown }) => void
@@ -462,18 +299,7 @@ it('owns private Trade execution, idempotency, revalidation, cancellation, and c
   let resolveCancel!: (value: { ok: true; signature: string }) => void
   submitTransaction.mockImplementationOnce(() => new Promise((resolve) => (resolveTransaction = resolve)))
   signMessage.mockImplementationOnce(() => new Promise((resolve) => (resolveCancel = resolve)))
-  expect(
-    service.prepare(
-      {
-        type: 'trade.prepare',
-        operationId: 'pending-dispose-trade',
-        quoteId: pending.quoteId,
-        action: 'approve'
-      },
-      principal,
-      owner
-    )
-  ).toBe(true)
+  expect(prepare('pending-dispose-trade', pending.quoteId)).toBe(true)
   expect(
     service.cancel(
       { type: 'flash.order-cancel', operationId: 'pending-dispose-cancel', orderId: 'order-cancel' },
@@ -483,10 +309,10 @@ it('owns private Trade execution, idempotency, revalidation, cancellation, and c
   ).toBe(true)
   await Promise.resolve()
   service.dispose()
-  expect(operations.records.get('pending-dispose-trade')?.operation).toMatchObject({ status: 'failed' })
-  expect(operations.records.get('pending-dispose-cancel')?.operation).toMatchObject({ status: 'failed' })
+  expect(operation('pending-dispose-trade')).toMatchObject({ status: 'failed' })
+  expect(operation('pending-dispose-cancel')).toMatchObject({ status: 'failed' })
   resolveTransaction({ ok: true, transactionHash: `0x${'b'.repeat(64)}` })
   resolveCancel({ ok: true, signature: '0xcancel-after-dispose' })
   await flush()
-  expect(service.prepare(prepare, principal, owner)).toBe(false)
+  expect(prepare(operationId, quoted.quoteId)).toBe(false)
 })

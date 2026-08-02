@@ -1,4 +1,5 @@
 import { type BalanceSummary } from '../../../domain/balance'
+import type { FlashQuoteRequest } from '../../../contracts/operations'
 import {
   FLASH_LIMIT_ORDER_TYPE,
   FLASH_MARKET_ORDER_TYPE,
@@ -14,6 +15,17 @@ import {
 } from '../../../domain/flash/assets'
 import { isFlashChainSupported } from '../../../domain/flash/chains'
 import {
+  FLASH_MAX_TWAP_BUCKET_COUNT,
+  FLASH_MAX_TWAP_DURATION_SECONDS,
+  FLASH_MIN_TWAP_BUCKET_COUNT,
+  FLASH_MIN_TWAP_DURATION_SECONDS,
+  cleanFlashDecimal,
+  flashDurationSeconds,
+  flashRequestKey,
+  nonNegativeFlashInteger,
+  positiveFlashNumber
+} from '../../../domain/flash/policy'
+import {
   type FlashAsset,
   type FlashOrderType,
   type FlashPriceTrigger,
@@ -28,11 +40,6 @@ export const TRADE_DEFAULT_MAX_PRICE_IMPACT = ''
 export const TRADE_DEFAULT_DURATION_DAYS = '0'
 export const TRADE_DEFAULT_DURATION_HOURS = '1'
 export const TRADE_DEFAULT_DURATION_MINUTES = '0'
-export const TRADE_MIN_DURATION_SECONDS = 300
-export const TRADE_MAX_DURATION_SECONDS = 2_592_000
-export const TRADE_MIN_TWAP_BUCKETS = 2
-export const TRADE_MAX_TWAP_BUCKETS = 2_560
-
 export type TradeTimeInForce = 'gtc' | 'gtt'
 
 export interface TradeOrderFields {
@@ -48,56 +55,17 @@ export interface TradeOrderFields {
   twapBucketCount?: string
 }
 
-export interface TradeQuoteRequest {
+export type TradeQuoteRequest = FlashQuoteRequest & {
   accountAddress: string
-  chainId: number
-  contraAsset: FlashAsset
   contraChain: number
-  durationSeconds?: number
-  expireTime?: string
-  inputAmount: string
-  limitNotionalPrice?: string
-  maxPriceImpact?: string
-  orderType: FlashOrderType
-  qty: string
-  quickTrade?: true
-  side: FlashTradeSide
-  slippage?: string
-  startTime?: string
-  targetAsset: FlashAsset
   targetChain: number
-  triggers?: FlashPriceTrigger[]
-  twapBucketCount?: number
 }
 
 export type MarketTradeQuoteRequest = TradeQuoteRequest
 
-export function cleanTradeAmount(amount = '') {
-  return amount.trim().replace(/,/g, '')
-}
-
-export function tradeAmountNumber(amount = '') {
-  const parsed = Number(cleanTradeAmount(amount))
-
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0
-}
-
-export function tradeIntegerNumber(amount = '') {
-  const parsed = Number(cleanTradeAmount(amount))
-
-  return Number.isInteger(parsed) && parsed >= 0 ? parsed : -1
-}
-
-export function formatTradeAmount(amount: number, asset: FlashAsset) {
-  if (!Number.isFinite(amount) || amount <= 0) return ''
-
-  const decimals = asset.symbol.toUpperCase() === 'USDC' ? 2 : 6
-
-  return amount
-    .toFixed(decimals)
-    .replace(/\.?0+$/, '')
-    .replace(/^\./, '0.')
-}
+export const cleanTradeAmount = cleanFlashDecimal
+export const tradeAmountNumber = positiveFlashNumber
+export const tradeIntegerNumber = nonNegativeFlashInteger
 
 export function formatTradeNotional(value?: string | number | null) {
   const amount = Number(value)
@@ -128,37 +96,25 @@ export function getTradeTriggerDeltaPercent(triggerPrice?: string, currentPrice?
   return ((trigger - current) / current) * 100
 }
 
-export function buildVisualTradeSteps(spentAsset: FlashAsset, _orderType: FlashOrderType, hasQuote: boolean) {
+export function buildVisualTradeSteps(spentAsset: FlashAsset, hasQuote: boolean) {
   const status = hasQuote ? 'required' : 'idle'
-  const steps: FlashStep[] = []
-
-  if (spentAsset.isNative) {
-    steps.push({
-      id: 'wrap',
-      kind: 'wrap',
-      label: `Wrap ${spentAsset.symbol}`,
+  const kind = spentAsset.isNative ? 'wrap' : 'approve'
+  const steps: FlashStep[] = [
+    {
+      id: kind,
+      kind,
+      label: `${spentAsset.isNative ? 'Wrap' : 'Approve'} ${spentAsset.symbol}`,
       status,
       asset: spentAsset
-    })
-  } else {
-    steps.push({
-      id: 'approve',
-      kind: 'approve',
-      label: `Approve ${spentAsset.symbol}`,
-      status,
-      asset: spentAsset
-    })
-  }
-
-  steps.push(
+    },
     { id: 'sign', kind: 'sign', label: 'Sign order', status },
     { id: 'submit', kind: 'submit', label: 'Submit order', status }
-  )
+  ]
 
   return steps
 }
 
-export function objectRecord(value: unknown): Record<string, any> {
+function objectRecord(value: unknown): Record<string, any> {
   return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, any>) : {}
 }
 
@@ -173,13 +129,7 @@ export function tradeErrorMessage(error: unknown, fallback: string) {
   return fallback
 }
 
-export function getMarketTradeOptionalFields({
-  quickTrade,
-  slippage
-}: {
-  quickTrade: boolean
-  slippage: string
-}) {
+function getMarketTradeOptionalFields({ quickTrade, slippage }: { quickTrade: boolean; slippage: string }) {
   const optionalFields: Pick<TradeQuoteRequest, 'quickTrade' | 'slippage'> = {}
   const cleanSlippage = String(slippage || '').trim()
 
@@ -196,13 +146,7 @@ function cleanOptionalAmount(value?: string) {
 }
 
 export function getTradeDurationSeconds(fields: TradeOrderFields) {
-  const days = tradeIntegerNumber(fields.durationDays || '')
-  const hours = tradeIntegerNumber(fields.durationHours || '')
-  const minutes = tradeIntegerNumber(fields.durationMinutes || '')
-
-  if (days < 0 || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return 0
-
-  return days * 86_400 + hours * 3_600 + minutes * 60
+  return flashDurationSeconds(fields)
 }
 
 function cleanTwapBucketCount(value?: string) {
@@ -210,7 +154,7 @@ function cleanTwapBucketCount(value?: string) {
   if (!clean) return undefined
 
   const parsed = tradeIntegerNumber(clean)
-  return parsed >= TRADE_MIN_TWAP_BUCKETS && parsed <= TRADE_MAX_TWAP_BUCKETS ? parsed : undefined
+  return parsed >= FLASH_MIN_TWAP_BUCKET_COUNT && parsed <= FLASH_MAX_TWAP_BUCKET_COUNT ? parsed : undefined
 }
 
 function cleanExpireTime(value?: string) {
@@ -288,7 +232,10 @@ export function getTradeValidationError({
 
   if (orderType === FLASH_TWAP_ORDER_TYPE) {
     const durationSeconds = getTradeDurationSeconds({ durationDays, durationHours, durationMinutes })
-    if (durationSeconds < TRADE_MIN_DURATION_SECONDS || durationSeconds > TRADE_MAX_DURATION_SECONDS) {
+    if (
+      durationSeconds < FLASH_MIN_TWAP_DURATION_SECONDS ||
+      durationSeconds > FLASH_MAX_TWAP_DURATION_SECONDS
+    ) {
       return 'TWAP duration must be between 5 minutes and 30 days.'
     }
 
@@ -351,10 +298,7 @@ export function getTradeQuoteValidationError({
   return ''
 }
 
-function getOrderFields(
-  orderType: FlashOrderType,
-  fields: TradeOrderFields
-): Pick<
+type NormalizedOrderFields = Pick<
   TradeQuoteRequest,
   | 'durationSeconds'
   | 'expireTime'
@@ -363,17 +307,10 @@ function getOrderFields(
   | 'startTime'
   | 'triggers'
   | 'twapBucketCount'
-> {
-  const result: Pick<
-    TradeQuoteRequest,
-    | 'durationSeconds'
-    | 'expireTime'
-    | 'limitNotionalPrice'
-    | 'maxPriceImpact'
-    | 'startTime'
-    | 'triggers'
-    | 'twapBucketCount'
-  > = {}
+>
+
+function getOrderFields(orderType: FlashOrderType, fields: TradeOrderFields): NormalizedOrderFields {
+  const result: NormalizedOrderFields = {}
 
   if (orderType === FLASH_LIMIT_ORDER_TYPE) {
     result.limitNotionalPrice = cleanOptionalAmount(fields.limitNotionalPrice)
@@ -460,29 +397,8 @@ export function buildTradeQuoteRequest({
   }
 }
 
-export function buildMarketTradeQuoteRequest(request: any) {
-  return buildTradeQuoteRequest({ ...request, orderType: FLASH_MARKET_ORDER_TYPE })
-}
-
 export function marketTradeQuoteRequestKey(request: TradeQuoteRequest) {
-  return JSON.stringify([
-    request.accountAddress,
-    request.chainId,
-    request.side,
-    request.orderType,
-    request.targetAsset?.id,
-    request.contraAsset?.id,
-    request.qty,
-    request.slippage,
-    request.quickTrade,
-    request.limitNotionalPrice,
-    request.triggers,
-    request.durationSeconds,
-    request.startTime,
-    request.twapBucketCount,
-    request.maxPriceImpact,
-    request.expireTime
-  ])
+  return flashRequestKey(request)
 }
 
 function tradeAssetMapKey(asset: FlashAsset) {

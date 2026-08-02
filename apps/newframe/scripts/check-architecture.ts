@@ -511,6 +511,136 @@ export function checkPlatformCommandAuthority(file: string, source: string) {
   return violations
 }
 
+export function checkSource(file: string, source: string) {
+  const violations = [
+    ...checkDependencyDirection(file, source),
+    ...checkAssetRateMutationAuthority(file, source),
+    ...checkOperationContractAuthority(file, source),
+    ...checkPlatformCommandAuthority(file, source),
+    ...checkRawIpcAuthority(file, source)
+  ]
+
+  for (const rule of rules) {
+    if (!rule.files(file)) continue
+    const match = source.match(rule.pattern)
+    if (match?.index !== undefined)
+      violations.push(`${file}:${lineNumber(source, match.index)} ${rule.message}`)
+  }
+
+  if (
+    file.endsWith('.css') &&
+    (uiSource(file) ||
+      under(path.join('apps', 'newframe', 'renderer', 'tray'))(file) ||
+      under(path.join('apps', 'newframe', 'renderer', 'shared', 'ui'))(file) ||
+      under(path.join('apps', 'newframe-extension', 'src', 'settings'))(file))
+  ) {
+    violations.push(`${file}: component styles must be authored with Panda in the owning TypeScript file`)
+  }
+
+  if (migratedPilotFiles.has(file) || migratedSideTrayFiles(file) || migratedExtensionSettingsFiles(file)) {
+    const rawElement = source.match(
+      /<(?:a|button|canvas|div|footer|form|h[1-6]|header|img|input|label|main|option|output|p|section|select|small|span|strong|svg|table|textarea)\b/
+    )
+    if (rawElement?.index !== undefined) {
+      violations.push(
+        `${file}:${lineNumber(source, rawElement.index)} migrated UI must render through packages/ui`
+      )
+    }
+    const stylingEscape = source.match(/\b(?:className|style)=/)
+    if (stylingEscape?.index !== undefined) {
+      violations.push(
+        `${file}:${lineNumber(source, stylingEscape.index)} migrated UI cannot pass styling escape hatches`
+      )
+    }
+  }
+
+  if (uiSource(file)) {
+    if (under(path.join('packages', 'ui', 'src', 'components'))(file)) {
+      violations.push(
+        `${file}: packages/ui is reserved for primitives; application compositions belong to their owning app`
+      )
+    }
+
+    const applicationImport = source.match(
+      /from\s+['"][^'"]*(?:apps\/newframe|apps\/newframe-extension)['"]|from\s+['"][.]{2}\/[^'"]*apps\//
+    )
+    if (applicationImport?.index !== undefined) {
+      violations.push(
+        `${file}:${lineNumber(source, applicationImport.index)} packages/ui cannot import an application`
+      )
+    }
+
+    if (under(path.join('packages', 'ui', 'src', 'primitives'))(file)) {
+      if (path.dirname(file) !== primitiveRoot) {
+        violations.push(`${file}: UI primitives must be directly discoverable in src/primitives`)
+      }
+
+      if (file.endsWith('.css')) {
+        violations.push(`${file}: primitive styles must be colocated in the component TypeScript file`)
+      }
+
+      const componentImport = source.match(/from\s+['"][^'"]*components\//)
+      if (componentImport?.index !== undefined) {
+        violations.push(
+          `${file}:${lineNumber(source, componentImport.index)} UI primitives cannot depend on composed components`
+        )
+      }
+    }
+
+    const legacyVariantRegistry = source.match(/\b(?:AssetSelectorVariant|PanelVariant)\b/)
+    if (legacyVariantRegistry?.index !== undefined) {
+      violations.push(
+        `${file}:${lineNumber(source, legacyVariantRegistry.index)} UI primitives cannot expose application-shaped variant registries`
+      )
+    }
+
+    const inheritedNativeProps = source.match(
+      /\b(?:HTMLAttributes|ButtonHTMLAttributes|InputHTMLAttributes|SelectHTMLAttributes|ImgHTMLAttributes|AnchorHTMLAttributes)\s*</
+    )
+    if (inheritedNativeProps?.index !== undefined) {
+      violations.push(
+        `${file}:${lineNumber(source, inheritedNativeProps.index)} UI props must opt into supported behavior instead of inheriting native element props`
+      )
+    }
+
+    const legacyRecipe = source.match(/from\s+['"]class-variance-authority['"]/)
+    if (legacyRecipe?.index !== undefined) {
+      violations.push(
+        `${file}:${lineNumber(source, legacyRecipe.index)} UI recipes must use the token-aware Panda runtime`
+      )
+    }
+
+    if (
+      file.endsWith('.css') ||
+      (under(primitiveRoot)(file) && file.endsWith('.tsx') && file !== path.join(primitiveRoot, 'Icon.tsx'))
+    ) {
+      const rawUnit = source.match(/(?<![A-Za-z0-9_-])-?\d+(?:\.\d+)?(?:px|rem|em|ms|s|deg)\b/)
+      if (rawUnit?.index !== undefined) {
+        violations.push(
+          `${file}:${lineNumber(source, rawUnit.index)} UI recipes must reference typed design tokens instead of raw unit values`
+        )
+      }
+    }
+
+    const componentTypography = source.match(/\bfont(?:Family|Size|Weight)\s*:/)
+    if (
+      componentTypography?.index !== undefined &&
+      under(primitiveRoot)(file) &&
+      file !== path.join(primitiveRoot, 'Text.tsx')
+    ) {
+      violations.push(
+        `${file}:${lineNumber(source, componentTypography.index)} primitives must compose the shared Text recipe`
+      )
+    }
+  }
+
+  if (file.endsWith('.styl')) {
+    violations.push(`${file}: Stylus is forbidden; migrate the owning surface to the design system`)
+  }
+
+  return violations
+}
+
 async function main() {
   for (const removedRoot of ['app', 'resources']) {
     if (existsSync(path.join(appRoot, removedRoot))) {
@@ -523,129 +653,7 @@ async function main() {
   const violations: string[] = []
 
   for (const { file, source } of files) {
-    violations.push(...checkDependencyDirection(file, source))
-    violations.push(...checkAssetRateMutationAuthority(file, source))
-    violations.push(...checkOperationContractAuthority(file, source))
-    violations.push(...checkPlatformCommandAuthority(file, source))
-    violations.push(...checkRawIpcAuthority(file, source))
-    for (const rule of rules) {
-      if (!rule.files(file)) continue
-      const match = source.match(rule.pattern)
-      if (match?.index !== undefined)
-        violations.push(`${file}:${lineNumber(source, match.index)} ${rule.message}`)
-    }
-
-    if (
-      file.endsWith('.css') &&
-      (uiSource(file) ||
-        under(path.join('apps', 'newframe', 'renderer', 'tray'))(file) ||
-        under(path.join('apps', 'newframe', 'renderer', 'shared', 'ui'))(file) ||
-        under(path.join('apps', 'newframe-extension', 'src', 'settings'))(file))
-    ) {
-      violations.push(`${file}: component styles must be authored with Panda in the owning TypeScript file`)
-    }
-
-    if (migratedPilotFiles.has(file) || migratedSideTrayFiles(file) || migratedExtensionSettingsFiles(file)) {
-      const rawElement = source.match(
-        /<(?:a|button|canvas|div|footer|form|h[1-6]|header|img|input|label|main|option|output|p|section|select|small|span|strong|svg|table|textarea)\b/
-      )
-      if (rawElement?.index !== undefined) {
-        violations.push(
-          `${file}:${lineNumber(source, rawElement.index)} migrated UI must render through packages/ui`
-        )
-      }
-      const stylingEscape = source.match(/\b(?:className|style)=/)
-      if (stylingEscape?.index !== undefined) {
-        violations.push(
-          `${file}:${lineNumber(source, stylingEscape.index)} migrated UI cannot pass styling escape hatches`
-        )
-      }
-    }
-
-    if (uiSource(file)) {
-      if (under(path.join('packages', 'ui', 'src', 'components'))(file)) {
-        violations.push(
-          `${file}: packages/ui is reserved for primitives; application compositions belong to their owning app`
-        )
-      }
-
-      const applicationImport = source.match(
-        /from\s+['"][^'"]*(?:apps\/newframe|apps\/newframe-extension)['"]|from\s+['"][.]{2}\/[^'"]*apps\//
-      )
-      if (applicationImport?.index !== undefined) {
-        violations.push(
-          `${file}:${lineNumber(source, applicationImport.index)} packages/ui cannot import an application`
-        )
-      }
-
-      if (under(path.join('packages', 'ui', 'src', 'primitives'))(file)) {
-        if (path.dirname(file) !== primitiveRoot) {
-          violations.push(`${file}: UI primitives must be directly discoverable in src/primitives`)
-        }
-
-        if (file.endsWith('.css')) {
-          violations.push(`${file}: primitive styles must be colocated in the component TypeScript file`)
-        }
-
-        const componentImport = source.match(/from\s+['"][^'"]*components\//)
-        if (componentImport?.index !== undefined) {
-          violations.push(
-            `${file}:${lineNumber(source, componentImport.index)} UI primitives cannot depend on composed components`
-          )
-        }
-      }
-
-      const legacyVariantRegistry = source.match(/\b(?:AssetSelectorVariant|PanelVariant)\b/)
-      if (legacyVariantRegistry?.index !== undefined) {
-        violations.push(
-          `${file}:${lineNumber(source, legacyVariantRegistry.index)} UI primitives cannot expose application-shaped variant registries`
-        )
-      }
-
-      const inheritedNativeProps = source.match(
-        /\b(?:HTMLAttributes|ButtonHTMLAttributes|InputHTMLAttributes|SelectHTMLAttributes|ImgHTMLAttributes|AnchorHTMLAttributes)\s*</
-      )
-      if (inheritedNativeProps?.index !== undefined) {
-        violations.push(
-          `${file}:${lineNumber(source, inheritedNativeProps.index)} UI props must opt into supported behavior instead of inheriting native element props`
-        )
-      }
-
-      const legacyRecipe = source.match(/from\s+['"]class-variance-authority['"]/)
-      if (legacyRecipe?.index !== undefined) {
-        violations.push(
-          `${file}:${lineNumber(source, legacyRecipe.index)} UI recipes must use the token-aware Panda runtime`
-        )
-      }
-
-      if (
-        file.endsWith('.css') ||
-        (under(primitiveRoot)(file) && file.endsWith('.tsx') && file !== path.join(primitiveRoot, 'Icon.tsx'))
-      ) {
-        const rawUnit = source.match(/(?<![A-Za-z0-9_-])-?\d+(?:\.\d+)?(?:px|rem|em|ms|s|deg)\b/)
-        if (rawUnit?.index !== undefined) {
-          violations.push(
-            `${file}:${lineNumber(source, rawUnit.index)} UI recipes must reference typed design tokens instead of raw unit values`
-          )
-        }
-      }
-
-      const componentTypography = source.match(/\bfont(?:Family|Size|Weight)\s*:/)
-      if (
-        componentTypography?.index !== undefined &&
-        under(primitiveRoot)(file) &&
-        file !== path.join(primitiveRoot, 'Text.tsx')
-      ) {
-        violations.push(
-          `${file}:${lineNumber(source, componentTypography.index)} primitives must compose the shared Text recipe`
-        )
-      }
-    }
-  }
-
-  for (const { file } of files) {
-    if (!file.endsWith('.styl')) continue
-    violations.push(`${file}: Stylus is forbidden; migrate the owning surface to the design system`)
+    violations.push(...checkSource(file, source))
   }
 
   if (violations.length === 0) return

@@ -1,15 +1,17 @@
 {
   "entry": [
-    "main/index.ts",
-    "renderer/*/index.tsx",
+    "main/bootstrap.ts",
+    "renderer/tray/bootstrap.ts",
+    "renderer/sidetray/bootstrap.ts",
     "preload/index.ts",
     "main/externalData/balances/worker.ts",
     "main/signers/hot/*/worker.ts",
-    "main/windows/viewPreload.ts",
     "scripts/*.ts",
-    "build/**/*.js",
+    "build/**/*.ts",
     "{main,renderer,domain,contracts,preload,scripts}/**/*.{test,spec}.{ts,tsx}",
-    "test/e2e/**/*.ts"
+    "test/integration/**/*.{test,spec}.{ts,tsx}",
+    "test/support/electron.preload.ts",
+    "test/support/dom.preload.ts"
   ],
   "project": [
     "main/**",
@@ -21,6 +23,5 @@
     "build/**",
     "test/**"
   ],
-  "ignoreDependencies": ["node-gyp", "buffer", "events"],
-  "ignoreBinaries": ["ditto"]
+  "ignoreDependencies": ["node-gyp", "buffer", "events"]
 }

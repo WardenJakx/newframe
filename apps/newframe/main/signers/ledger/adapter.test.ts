@@ -103,79 +103,67 @@ afterAll(() => {
   log.transports.console.level = 'debug'
 })
 
-it('recognizes a connected Ledger', (done) => {
-  adapter.once('add', (ledger: any) => {
-    try {
-      expect(ledger.devicePath).toBe('nano-s-path')
-      done()
-    } catch (e) {
-      done(e)
+function nextEvent<T = any>(event: string, predicate: (value: T) => boolean = () => true) {
+  return new Promise<T>((resolve) => {
+    const listener = (value: T) => {
+      if (predicate(value)) {
+        adapter.off(event, listener)
+        resolve(value)
+      }
     }
+    adapter.on(event, listener)
   })
+}
+
+it('recognizes a connected Ledger', async () => {
+  const added = nextEvent('add')
 
   simulateLedgerConnection('nano-s-path')
   adapter.handleDeviceChanges()
+
+  expect((await added).devicePath).toBe('nano-s-path')
 })
 
-it('creates a new Ledger when one is already attached', (done) => {
+it('creates a new Ledger when one is already attached', () => {
   const addedLedgers: any = []
-
-  adapter.on('add', (ledger: any) => {
-    addedLedgers.push(ledger)
-
-    if (addedLedgers.length === 2) {
-      try {
-        expect(addedLedgers[0].devicePath).toBe('connected-nano-s-path')
-        expect(addedLedgers[1].devicePath).toBe('new-nano-s-path')
-        done()
-      } catch (e) {
-        done(e)
-      }
-    }
-  })
+  adapter.on('add', (ledger: any) => addedLedgers.push(ledger))
 
   simulateLedgerConnection('connected-nano-s-path')
   adapter.handleDeviceChanges()
-
   simulateLedgerConnection('new-nano-s-path')
   adapter.handleDeviceChanges()
+
+  expect(addedLedgers.map(({ devicePath }: any) => devicePath)).toEqual([
+    'connected-nano-s-path',
+    'new-nano-s-path'
+  ])
 })
 
-it('handles a disconnected Ledger', (done) => {
-  adapter.once('update', (ledger: any) => {
-    if (ledger.status === Status.OK) {
-      // ensure no Ledgers are added after the initial connection
-      adapter.once('add', () => done('new Ledger should not be added!'))
-
-      adapter.once('remove', (id: any) => {
-        try {
-          expect(id).toBe('88da20f4-2d91-5a86-b7ec-c86603d02ad8')
-          expect(adapter.disconnections).toHaveLength(0)
-          expect(Object.keys(adapter.knownSigners)).toHaveLength(0)
-          done()
-        } catch (e) {
-          done(e)
-        }
-      })
-
-      adapter.on('update', () => {
-        try {
-          expect(ledger.status).toBe(Status.DISCONNECTED)
-        } catch (e) {
-          done(e)
-        }
-      })
-
-      simulateLedgerDisconnection('nano-x-discon-path')
-      adapter.handleDeviceChanges()
-
-      timers.advanceTimersByTime(5000)
-    }
-  })
-
+it('handles a disconnected Ledger', async () => {
+  const connected = nextEvent<any>('update', (ledger) => ledger.status === Status.OK)
   simulateLedgerConnection('nano-x-discon-path')
   adapter.handleDeviceChanges()
-}, 200)
+  const ledger = await connected
+  const removed = nextEvent<string>('remove')
+  let additions = 0
+  adapter.on('add', () => additions++)
+
+  simulateLedgerDisconnection('nano-x-discon-path')
+  adapter.handleDeviceChanges()
+  expect(ledger.status).toBe(Status.DISCONNECTED)
+  timers.advanceTimersByTime(5000)
+
+  expect(await removed).toBe('88da20f4-2d91-5a86-b7ec-c86603d02ad8')
+  expect({
+    additions,
+    pending: adapter.disconnections.length,
+    known: Object.keys(adapter.knownSigners)
+  }).toEqual({
+    additions: 0,
+    pending: 0,
+    known: []
+  })
+})
 
 it('cancels pending disconnect removal when closed', () => {
   const ledger = new LedgerMock('closing-ledger-path', 'Nano X')
@@ -197,79 +185,50 @@ it('cancels pending disconnect removal when closed', () => {
   })
 })
 
-it('recognizes two newly connected Ledgers', (done) => {
-  // this can happen on startup
+it('deduplicates startup events for two newly connected Ledgers', () => {
   const ledgers: any = []
-
-  adapter.on('add', (ledger: any) => {
-    ledgers.push(ledger)
-
-    if (ledgers.length === 2) {
-      try {
-        expect(ledgers[0].devicePath).toBe('nano-s-path')
-        expect(ledgers[1].devicePath).toBe('nano-x-path')
-      } catch (e) {
-        done(e)
-      }
-    }
-  })
+  adapter.on('add', (ledger: any) => ledgers.push(ledger))
 
   simulateLedgerConnection('nano-s-path')
   simulateLedgerConnection('nano-x-path')
-
-  // on Windows we receive 2 events on startup, so simulate this and make
-  // sure we only ever end up with 2 ledgers
   adapter.handleDeviceChanges()
   adapter.handleDeviceChanges()
 
-  expect(ledgers).toHaveLength(2)
-  expect(ledgers[0].devicePath).toBe('nano-s-path')
-  expect(ledgers[1].devicePath).toBe('nano-x-path')
-  done()
-}, 200)
+  expect(ledgers.map(({ devicePath }: any) => devicePath)).toEqual(['nano-s-path', 'nano-x-path'])
+})
 
-const platforms = ['Linux', 'Windows']
-
-platforms.forEach((platform) => {
-  // on Linux and Mac, the Ledger will re-connect using the same path as the one
-  // that was disconnected. on Windows, it will have a different path
+for (const platform of ['Linux', 'Windows']) {
   const expectedReconnectionPath = platform === 'Linux' ? 'nano-x-eth-app-path' : 'nano-x2-eth-app-path'
 
-  it(`updates an existing Ledger when the eth app is exited on ${platform}`, (done) => {
-    let receivedDisconnect = false
-
-    adapter.once('update', (ledger: any) => {
-      if (ledger.status === Status.OK) {
-        // ensure no Ledgers are added or removed
-        adapter.once('add', () => done('new Ledger should not be added!'))
-        adapter.once('remove', () => done('new Ledger should not be removed!'))
-        adapter.on('update', (ledger: any) => {
-          if (!receivedDisconnect && ledger.status === Status.DISCONNECTED) {
-            return (receivedDisconnect = true)
-          }
-
-          try {
-            expect(receivedDisconnect).toBe(true)
-            expect(ledger.status).toBe(Status.OK)
-            expect(ledger.devicePath).toBe(expectedReconnectionPath)
-            expect(adapter.disconnections).toHaveLength(0)
-            expect(Object.keys(adapter.knownSigners)).toHaveLength(1)
-            expect(adapter.knownSigners[expectedReconnectionPath]).toBeDefined()
-            done()
-          } catch (e) {
-            done(e)
-          }
-        })
-
-        simulateLedgerDisconnection('nano-x-eth-app-path')
-        adapter.handleDeviceChanges()
-
-        simulateLedgerConnection(expectedReconnectionPath)
-        adapter.handleDeviceChanges()
-      }
-    })
-
+  it(`updates an existing Ledger when the eth app is exited on ${platform}`, async () => {
+    const connected = nextEvent<any>('update', (ledger) => ledger.status === Status.OK)
     simulateLedgerConnection('nano-x-eth-app-path')
     adapter.handleDeviceChanges()
-  }, 200)
-})
+    const ledger = await connected
+    const statuses: string[] = []
+    let additions = 0
+    let removals = 0
+    adapter.on('add', () => additions++)
+    adapter.on('remove', () => removals++)
+    adapter.on('update', (value: any) => statuses.push(value.status))
+    const reconnected = nextEvent<any>(
+      'update',
+      (value) => statuses.includes(Status.DISCONNECTED) && value.status === Status.OK
+    )
+
+    simulateLedgerDisconnection('nano-x-eth-app-path')
+    adapter.handleDeviceChanges()
+    simulateLedgerConnection(expectedReconnectionPath)
+    adapter.handleDeviceChanges()
+    await reconnected
+
+    expect({ additions, removals, statuses, path: ledger.devicePath }).toEqual({
+      additions: 0,
+      removals: 0,
+      statuses: [Status.DISCONNECTED, Status.OK],
+      path: expectedReconnectionPath
+    })
+    expect(adapter.disconnections).toHaveLength(0)
+    expect(Object.keys(adapter.knownSigners)).toEqual([expectedReconnectionPath])
+  })
+}

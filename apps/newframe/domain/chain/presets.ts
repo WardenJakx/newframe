@@ -1,31 +1,12 @@
+import { BUILT_IN_CHAINS } from './catalog.js'
+
+const chainlist = Object.fromEntries(
+  BUILT_IN_CHAINS.filter(({ rpc }) => rpc.preset === 'chainlist').map(({ id, rpc }) => [
+    id,
+    { chainlist: rpc.url }
+  ])
+)
+
 export const NETWORK_PRESETS = {
-  ethereum: {
-    default: {
-      local: 'direct'
-    },
-    1: {
-      chainlist: 'https://ethereum-rpc.publicnode.com'
-    },
-    10: {
-      chainlist: 'https://mainnet.optimism.io'
-    },
-    137: {
-      chainlist: 'https://polygon-bor-rpc.publicnode.com'
-    },
-    8453: {
-      chainlist: 'https://mainnet.base.org'
-    },
-    42161: {
-      chainlist: 'https://arb1.arbitrum.io/rpc'
-    },
-    84532: {
-      chainlist: 'https://sepolia.base.org'
-    },
-    11155111: {
-      chainlist: 'https://ethereum-sepolia-rpc.publicnode.com'
-    },
-    11155420: {
-      chainlist: 'https://sepolia.optimism.io'
-    }
-  }
+  ethereum: { default: { local: 'direct' }, ...chainlist }
 }

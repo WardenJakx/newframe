@@ -1,48 +1,21 @@
-import { createStore, type StoreApi } from 'zustand/vanilla'
+import { createStore } from 'zustand/vanilla'
 import { immer } from 'zustand/middleware/immer'
 
-import { createCanonicalActions, type CanonicalActions, type CanonicalStore } from '../../main/store/actions'
+import { createCanonicalActions, type CanonicalStore } from '../../main/store/actions'
+import createInitialState from '../../main/store/state'
 
 export function createTestStore(
   initial: Record<string, any> = {},
   onChange?: (state: CanonicalStore) => void
-): {
-  actions: CanonicalActions
-  getState: () => CanonicalStore
-  store: StoreApi<CanonicalStore>
-} {
-  const defaults: any = {
-    operations: {},
-    windows: {
-      panel: { nav: [], footer: { height: 40 } }
-    },
-    panel: {},
-    selected: {},
-    tray: {},
-    view: { notifications: {} },
-    main: {
-      networks: { ethereum: {} },
-      networksMeta: { ethereum: {} },
-      origins: {},
-      permissions: {},
-      accounts: {},
-      accountOrder: [],
-      accountsMeta: {},
-      balances: {},
-      assetRates: {},
-      activity: {},
-      orders: {},
-      tokens: { byId: {}, accountTokenIds: {} },
-      scanning: {}
-    }
-  }
+) {
+  const defaults = createInitialState()
   const data = {
     ...defaults,
     ...initial,
     windows: {
       ...defaults.windows,
       ...initial.windows,
-      panel: { ...defaults.windows.panel, ...initial.windows?.panel }
+      panel: { ...defaults.windows.panel, footer: { height: 40 }, ...initial.windows?.panel }
     },
     view: { ...defaults.view, ...initial.view },
     main: { ...defaults.main, ...initial.main }

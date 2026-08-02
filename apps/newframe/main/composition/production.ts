@@ -79,7 +79,10 @@ import {
   createFeeNoticeRemovalAdapter
 } from '../infrastructure/accounts/production.js'
 import { createTokenLookupAdapter } from '../infrastructure/tokens/production.js'
-import { createProviderRequestAdapter } from '../infrastructure/provider/production.js'
+import {
+  createProviderRequestAdapter,
+  createRequestApprovalAdapter
+} from '../infrastructure/provider/production.js'
 
 export interface ProductionMainAppDependencies {
   ipc: IpcMainHandlerPort
@@ -178,9 +181,9 @@ export function createProductionCapabilities(
     clock: { delay: (ms) => new Promise((resolve) => setTimeout(resolve, ms)) },
     network: adapters.network,
     provider: {
-      approveSign: (request, callback) => provider.approveSign(request, callback),
-      approveSignTypedData: (request, callback) => provider.approveSignTypedData(request, callback),
-      approveTransactionRequest: (request, callback) => provider.approveTransactionRequest(request, callback)
+      approveSign: (request) => requestApprovals.approveSign(request),
+      approveSignTypedData: (request) => requestApprovals.approveSignTypedData(request),
+      approveTransactionRequest: (request) => requestApprovals.approveTransactionRequest(request)
     },
     store,
     transactionPolicy: accountCapabilities.transactionPolicy.port,
@@ -198,6 +201,7 @@ export function createProductionCapabilities(
   })
   const chains = new Chains(store)
   const provider = createProductionProvider(store, accounts, chains, proxy, reveal, requestService)
+  const requestApprovals = createRequestApprovalAdapter(provider)
   const resolveName = (name: string) => nameResolution.resolveAddress(name)
   const accountSelection = createAccountSelectionAdapter(accounts, provider)
   const assetRateService = createAssetRateService({
@@ -328,6 +332,7 @@ export function createProductionCapabilities(
         adapters.accountOnboarding.dispose()
         feeNotices.dispose()
         providerRequests.dispose()
+        requestApprovals.dispose()
         adapters.security.dispose?.()
       }
     },

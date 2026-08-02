@@ -19,7 +19,6 @@ it('fails --check with an individual diagnostic for every exceeded ratchet', asy
     baselinePath,
     JSON.stringify({
       maximum: {
-        tests: -1,
         moduleMocks: -1,
         callbackTests: -1,
         mockCallAssertions: -1,
@@ -37,7 +36,6 @@ it('fails --check with an individual diagnostic for every exceeded ratchet', asy
 
   expect(exitCode).toBe(1)
   for (const metric of [
-    'tests',
     'moduleMocks',
     'callbackTests',
     'mockCallAssertions',

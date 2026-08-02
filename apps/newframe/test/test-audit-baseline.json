@@ -1,9 +1,8 @@
 {
   "maximum": {
-    "tests": 1201,
-    "moduleMocks": 47,
-    "callbackTests": 133,
-    "mockCallAssertions": 342,
+    "moduleMocks": 37,
+    "callbackTests": 66,
+    "mockCallAssertions": 305,
     "noAssertionFiles": 0,
     "misplacedScenarioFiles": 0
   }

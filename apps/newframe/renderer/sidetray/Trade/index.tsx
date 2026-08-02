@@ -59,11 +59,40 @@ import {
   getTradeTriggerDeltaPercent,
   getTradeValidationError,
   marketTradeQuoteRequestKey,
-  tradeErrorMessage
+  tradeErrorMessage,
+  type TradeOrderFields
 } from './tradeTransaction'
 
 const MARKET_QUOTE_DEBOUNCE_MS = 250
 const MARKET_QUOTE_REFRESH_MS = 15_000
+const operationStatuses: Record<string, string> = {
+  wrapping: 'Confirm in Newframe',
+  approving: 'Confirm in Newframe',
+  signing_permit: 'Review permit in Newframe',
+  signing_order: 'Review order in Newframe',
+  submitting: 'Submitting order'
+}
+const completedStepCount: Record<string, number> = {
+  awaiting_approval: 1,
+  approving: 1,
+  awaiting_submit: 2,
+  signing_permit: 2,
+  signing_order: 2,
+  submitting: 3,
+  submitted: 4
+}
+const pendingStepKinds: Record<string, string> = {
+  wrapping: 'wrap',
+  approving: 'approve',
+  signing_permit: 'sign',
+  signing_order: 'sign',
+  submitting: 'submit'
+}
+const durationInputs = [
+  ['durationDays', 'days', 'Days', '0'],
+  ['durationHours', 'hours', 'Hours', '1'],
+  ['durationMinutes', 'minutes', 'Minutes', '0']
+] as const
 
 function localDateTimeValue(date = new Date()) {
   return new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16)
@@ -136,43 +165,15 @@ export default function Trade({ assetId, chainId }: TradeProps) {
     return buildQuoteEffectRequest({
       accountAddress,
       contraAsset: state.contraAsset,
-      durationDays: state.durationDays,
-      durationHours: state.durationHours,
-      durationMinutes: state.durationMinutes,
-      expireTime: state.expireTime,
       inputAmount,
-      limitNotionalPrice: state.limitNotionalPrice,
-      maxPriceImpact: state.maxPriceImpact,
       orderType: state.orderType,
       quickTrade: state.quickTrade,
       side: state.side,
       slippage: state.slippage,
-      startTime: state.startTime,
       targetAsset: state.targetAsset,
-      timeInForce: state.timeInForce,
-      triggerNotionalPrice: state.triggerNotionalPrice,
-      twapBucketCount: state.twapBucketCount
+      ...getTradeOrderFields(state)
     })
-  }, [
-    accountAddress,
-    inputAmount,
-    state.contraAsset,
-    state.durationDays,
-    state.durationHours,
-    state.durationMinutes,
-    state.expireTime,
-    state.limitNotionalPrice,
-    state.maxPriceImpact,
-    state.orderType,
-    state.quickTrade,
-    state.side,
-    state.slippage,
-    state.startTime,
-    state.targetAsset,
-    state.timeInForce,
-    state.triggerNotionalPrice,
-    state.twapBucketCount
-  ])
+  }, [accountAddress, inputAmount, state])
   const latestQuoteEffectRequestRef = React.useRef(quoteEffectRequest)
   const ticketValidationError = React.useMemo(() => {
     if (!inputAmount) return ''
@@ -197,17 +198,7 @@ export default function Trade({ assetId, chainId }: TradeProps) {
   const tradeValidationError = ticketValidationError || quoteValidationError
   const operationError = operation?.status === 'failed' ? operation.error?.message || 'Trade failed.' : ''
   const operationStatus =
-    operation?.phase === 'wrapping' || operation?.phase === 'approving'
-      ? 'Confirm in Newframe'
-      : operation?.phase === 'signing_permit'
-        ? 'Review permit in Newframe'
-        : operation?.phase === 'signing_order'
-          ? 'Review order in Newframe'
-          : operation?.phase === 'submitting'
-            ? 'Submitting order'
-            : state.quoteLoading
-              ? 'Getting quote'
-              : ''
+    operationStatuses[operation?.phase || ''] || (state.quoteLoading ? 'Getting quote' : '')
   const invalidTradeFields = {
     amount: ticketValidationError === 'Enter an amount to trade.',
     duration: ticketValidationError.startsWith('TWAP duration'),
@@ -535,14 +526,7 @@ export default function Trade({ assetId, chainId }: TradeProps) {
     vertical = false
   }: {
     ariaLabel: string
-    field:
-      | 'durationDays'
-      | 'durationHours'
-      | 'durationMinutes'
-      | 'limitNotionalPrice'
-      | 'maxPriceImpact'
-      | 'triggerNotionalPrice'
-      | 'twapBucketCount'
+    field: Exclude<keyof TradeOrderFields, 'expireTime' | 'startTime' | 'timeInForce'>
     inputMode?: 'decimal' | 'numeric'
     invalid?: boolean
     label: string
@@ -552,7 +536,14 @@ export default function Trade({ assetId, chainId }: TradeProps) {
     vertical?: boolean
   }) => {
     return (
-      <Field invalid={invalid} label={label} required={required} suffix={suffix} vertical={vertical}>
+      <Field
+        key={field}
+        invalid={invalid}
+        label={label}
+        required={required}
+        suffix={suffix}
+        vertical={vertical}
+      >
         <Input
           align='end'
           appearance='plain'
@@ -598,33 +589,17 @@ export default function Trade({ assetId, chainId }: TradeProps) {
               </Text>
             </Text>
             <Grid columns='three' gap='medium' responsive>
-              {renderOrderInput({
-                ariaLabel: 'TWAP duration days',
-                field: 'durationDays',
-                inputMode: 'numeric',
-                invalid: invalidTradeFields.duration,
-                label: 'Days',
-                placeholder: '0',
-                vertical: true
-              })}
-              {renderOrderInput({
-                ariaLabel: 'TWAP duration hours',
-                field: 'durationHours',
-                inputMode: 'numeric',
-                invalid: invalidTradeFields.duration,
-                label: 'Hours',
-                placeholder: '1',
-                vertical: true
-              })}
-              {renderOrderInput({
-                ariaLabel: 'TWAP duration minutes',
-                field: 'durationMinutes',
-                inputMode: 'numeric',
-                invalid: invalidTradeFields.duration,
-                label: 'Minutes',
-                placeholder: '0',
-                vertical: true
-              })}
+              {durationInputs.map(([field, unit, label, placeholder]) =>
+                renderOrderInput({
+                  ariaLabel: `TWAP duration ${unit}`,
+                  field,
+                  inputMode: 'numeric',
+                  invalid: invalidTradeFields.duration,
+                  label,
+                  placeholder,
+                  vertical: true
+                })
+              )}
             </Grid>
             <Text variant='detail' tone='secondary'>
               Minimum 5 minutes · Maximum 30 days
@@ -658,105 +633,78 @@ export default function Trade({ assetId, chainId }: TradeProps) {
       )
     }
 
-    if ([FLASH_STOP_LOSS_ORDER_TYPE, FLASH_TAKE_PROFIT_ORDER_TYPE].includes(state.orderType)) {
-      const takeProfit = state.orderType === FLASH_TAKE_PROFIT_ORDER_TYPE
-      const delta = getTradeTriggerDeltaPercent(state.triggerNotionalPrice, state.quote?.targetNotionalPrice)
-
-      return (
-        <Surface border='subtle' padding='medium' radius='small' tone='card'>
-          <Stack gap='medium'>
-            <Group label='TP or SL'>
-              <Surface padding='small' radius='small' tone='subtle'>
-                <Grid columns='two' gap='small'>
-                  <ToggleButton
-                    onPress={() =>
-                      dispatch({ type: 'setOrderType', orderType: FLASH_TAKE_PROFIT_ORDER_TYPE })
-                    }
-                    pressed={takeProfit}
-                    size='small'
-                  >
-                    <Text align='center' variant='supporting'>
-                      Take profit
-                    </Text>
-                  </ToggleButton>
-                  <ToggleButton
-                    onPress={() => dispatch({ type: 'setOrderType', orderType: FLASH_STOP_LOSS_ORDER_TYPE })}
-                    pressed={!takeProfit}
-                    size='small'
-                  >
-                    <Text align='center' variant='supporting'>
-                      Stop loss
-                    </Text>
-                  </ToggleButton>
-                </Grid>
-              </Surface>
-            </Group>
-            <Grid columns='three' gap='medium' responsive>
-              {renderOrderInput({
-                ariaLabel: takeProfit ? 'Take-profit trigger price' : 'Stop-loss trigger price',
-                field: 'triggerNotionalPrice',
-                invalid: invalidTradeFields.triggerPrice,
-                label: `${takeProfit ? 'TP' : 'SL'} trigger`,
-                placeholder: '0.00',
-                required: true,
-                suffix: 'USD',
-                vertical: true
-              })}
-              {renderOrderInput({
-                ariaLabel: takeProfit ? 'Take-profit limit price' : 'Stop-loss limit price',
-                field: 'limitNotionalPrice',
-                invalid: invalidTradeFields.limitPrice,
-                label: `${takeProfit ? 'TP' : 'SL'} limit`,
-                placeholder: 'Market',
-                suffix: 'USD',
-                vertical: true
-              })}
-              <Field label={takeProfit ? 'Gain' : 'Loss'} vertical>
-                <Text as='output' align='end' variant='numeric'>
-                  {delta === null ? '—' : `${delta >= 0 ? '+' : ''}${delta.toFixed(2)}%`}
-                </Text>
-              </Field>
-            </Grid>
-            <Text variant='detail' tone='secondary'>
-              {delta === null
-                ? `Quoted against ${state.targetAsset.symbol}/USD`
-                : `${delta >= 0 ? '+' : ''}${delta.toFixed(2)}% from current price`}
-            </Text>
-          </Stack>
-        </Surface>
+    if (
+      [FLASH_STOP_ORDER_TYPE, FLASH_STOP_LOSS_ORDER_TYPE, FLASH_TAKE_PROFIT_ORDER_TYPE].includes(
+        state.orderType
       )
-    }
-
-    if (state.orderType === FLASH_STOP_ORDER_TYPE) {
+    ) {
+      const stop = state.orderType === FLASH_STOP_ORDER_TYPE
+      const takeProfit = state.orderType === FLASH_TAKE_PROFIT_ORDER_TYPE
+      const name = stop ? 'Stop' : takeProfit ? 'Take-profit' : 'Stop-loss'
+      const shortName = stop ? state.targetAsset.symbol + '/USD' : takeProfit ? 'TP' : 'SL'
       const delta = getTradeTriggerDeltaPercent(state.triggerNotionalPrice, state.quote?.targetNotionalPrice)
 
       return (
         <Surface border='subtle' padding='medium' radius='small' tone='card'>
           <Stack gap='medium'>
-            <Grid columns='two' gap='medium' responsive>
+            {!stop ? (
+              <Group label='TP or SL'>
+                <Surface padding='small' radius='small' tone='subtle'>
+                  <Grid columns='two' gap='small'>
+                    {(
+                      [
+                        ['Take profit', FLASH_TAKE_PROFIT_ORDER_TYPE],
+                        ['Stop loss', FLASH_STOP_LOSS_ORDER_TYPE]
+                      ] as const
+                    ).map(([label, orderType]) => (
+                      <ToggleButton
+                        key={orderType}
+                        onPress={() => dispatch({ type: 'setOrderType', orderType })}
+                        pressed={state.orderType === orderType}
+                        size='small'
+                      >
+                        <Text align='center' variant='supporting'>
+                          {label}
+                        </Text>
+                      </ToggleButton>
+                    ))}
+                  </Grid>
+                </Surface>
+              </Group>
+            ) : null}
+            <Grid columns={stop ? 'two' : 'three'} gap='medium' responsive>
               {renderOrderInput({
-                ariaLabel: 'Stop trigger price',
+                ariaLabel: `${name} trigger price`,
                 field: 'triggerNotionalPrice',
                 invalid: invalidTradeFields.triggerPrice,
-                label: `${state.targetAsset.symbol}/USD trigger`,
+                label: `${shortName} trigger`,
                 placeholder: '0.00',
                 required: true,
                 suffix: 'USD',
                 vertical: true
               })}
               {renderOrderInput({
-                ariaLabel: 'Stop limit price',
+                ariaLabel: `${name} limit price`,
                 field: 'limitNotionalPrice',
                 invalid: invalidTradeFields.limitPrice,
-                label: 'Limit price',
+                label: stop ? 'Limit price' : `${shortName} limit`,
                 placeholder: 'Market',
                 suffix: 'USD',
                 vertical: true
               })}
+              {!stop ? (
+                <Field label={takeProfit ? 'Gain' : 'Loss'} vertical>
+                  <Text as='output' align='end' variant='numeric'>
+                    {delta === null ? '—' : `${delta >= 0 ? '+' : ''}${delta.toFixed(2)}%`}
+                  </Text>
+                </Field>
+              ) : null}
             </Grid>
             <Text variant='detail' tone='secondary'>
               {delta === null
-                ? 'Leave limit blank for a stop-market order'
+                ? stop
+                  ? 'Leave limit blank for a stop-market order'
+                  : `Quoted against ${state.targetAsset.symbol}/USD`
                 : `${delta >= 0 ? '+' : ''}${delta.toFixed(2)}% from current price`}
             </Text>
           </Stack>
@@ -1063,37 +1011,11 @@ export default function Trade({ assetId, chainId }: TradeProps) {
 
   const renderTradeSteps = () => {
     const spentAsset = getTradeSpentAsset(state)
-    const baseSteps = state.quote?.steps || buildVisualTradeSteps(spentAsset, state.orderType, false)
+    const baseSteps = state.quote?.steps || buildVisualTradeSteps(spentAsset, false)
     const phase = operation?.phase || ''
-    const completed = new Set<string>()
-    if (
-      [
-        'awaiting_approval',
-        'approving',
-        'awaiting_submit',
-        'signing_permit',
-        'signing_order',
-        'submitting',
-        'submitted'
-      ].includes(phase)
-    ) {
-      completed.add('wrap')
-    }
-    if (['awaiting_submit', 'signing_permit', 'signing_order', 'submitting', 'submitted'].includes(phase)) {
-      completed.add('approve')
-    }
-    if (['submitting', 'submitted'].includes(phase)) completed.add('sign')
-    if (phase === 'submitted' || operation?.status === 'succeeded') completed.add('submit')
-    const pendingKind =
-      phase === 'wrapping'
-        ? 'wrap'
-        : phase === 'approving'
-          ? 'approve'
-          : phase === 'signing_permit' || phase === 'signing_order'
-            ? 'sign'
-            : phase === 'submitting'
-              ? 'submit'
-              : ''
+    const completed = new Set(['wrap', 'approve', 'sign', 'submit'].slice(0, completedStepCount[phase] || 0))
+    if (operation?.status === 'succeeded') completed.add('submit')
+    const pendingKind = pendingStepKinds[phase] || ''
     const failedKind = phase.endsWith('_failed') ? phase.slice(0, -'_failed'.length) : ''
     const steps = baseSteps.map((step) => ({
       ...step,

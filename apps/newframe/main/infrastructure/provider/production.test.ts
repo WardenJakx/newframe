@@ -1,7 +1,7 @@
 import { describe, expect, it, mock } from 'bun:test'
 
 import { createRendererPrincipal } from '../../authority'
-import { createProviderRequestAdapter } from './production'
+import { createProviderRequestAdapter, createRequestApprovalAdapter } from './production'
 
 const principal = createRendererPrincipal({
   clientType: 'sidetray',
@@ -31,5 +31,26 @@ describe('provider request infrastructure adapter', () => {
     )
     adapter.dispose()
     await expect(pending).rejects.toThrow('disposed before the operation completed')
+  })
+
+  it('makes the three callback-based approval methods promise-first and disposable', async () => {
+    const pending: Callback<string>[] = []
+    const approve = mock((_request: unknown, callback: Callback<string>) => pending.push(callback))
+    const adapter = createRequestApprovalAdapter({
+      approveSign: approve,
+      approveSignTypedData: approve,
+      approveTransactionRequest: approve
+    } as never)
+    const requests = [
+      adapter.approveSign({} as never),
+      adapter.approveSignTypedData({} as never),
+      adapter.approveTransactionRequest({} as never)
+    ]
+    pending.forEach((complete, index) => complete(null, `result-${index}`))
+    await expect(Promise.all(requests)).resolves.toEqual(['result-0', 'result-1', 'result-2'])
+
+    const disposed = adapter.approveSign({} as never)
+    adapter.dispose()
+    await expect(disposed).rejects.toThrow('disposed before the operation completed')
   })
 })

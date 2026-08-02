@@ -16,67 +16,21 @@ afterAll(() => {
 })
 
 describe('#getRawTx', () => {
-  it('leaves a valid value unchanged', () => {
-    const tx = getRawTx({ value: '0x2540be400' })
-
-    expect(tx.value).toBe('0x2540be400')
+  ;[
+    ['valid value', { value: '0x2540be400' }, 'value', '0x2540be400'],
+    ['leading-zero value', { value: '0x0a45c6' }, 'value', '0xa45c6'],
+    ['hex zero', { value: '0x0' }, 'value', '0x0'],
+    ['empty hex value', { value: '0x' }, 'value', '0x0'],
+    ['unprefixed zero', { value: '0' }, 'value', '0x0'],
+    ['missing value', { value: undefined }, 'value', '0x0'],
+    ['hex nonce', { nonce: '0x168' }, 'nonce', '0x168'],
+    ['integer nonce', { nonce: '360' }, 'nonce', '0x168'],
+    ['missing nonce', { nonce: undefined }, 'nonce', undefined]
+  ].forEach(([description, input, field, expected]) => {
+    it(`normalizes ${description}`, () => expect(getRawTx(input as any)[field as string]).toBe(expected))
   })
-
-  it('removes a leading zero from a valid value', () => {
-    const tx = getRawTx({ value: '0x0a45c6' })
-
-    expect(tx.value).toBe('0xa45c6')
-  })
-
-  it('leaves a valid zero value unchanged', () => {
-    const tx = getRawTx({ value: '0x0' })
-
-    expect(tx.value).toBe('0x0')
-  })
-
-  it('turns a zero value into the correct hex value for zero', () => {
-    const tx = getRawTx({ value: '0x' })
-
-    expect(tx.value).toBe('0x0')
-  })
-
-  it('turns an un-prefixed zero value into the correct hex value for zero', () => {
-    const tx = getRawTx({ value: '0' })
-
-    expect(tx.value).toBe('0x0')
-  })
-
-  it('turns an undefined value into the correct hex value for zero', () => {
-    const tx = getRawTx({ value: undefined })
-
-    expect(tx.value).toBe('0x0')
-  })
-
-  it('should pass through a hex nonce', () => {
-    const tx = getRawTx({ nonce: '0x168' })
-
-    expect(tx.nonce).toBe('0x168')
-  })
-
-  it('should convert a valid integer nonce into hex', () => {
-    const tx = getRawTx({ nonce: '360' })
-
-    expect(tx.nonce).toBe('0x168')
-  })
-
-  it('should pass through an undefined nonce', () => {
-    const tx = getRawTx({ nonce: undefined })
-
-    expect(tx.nonce).toBeUndefined()
-  })
-
-  const invalidNonces = [
-    { description: 'non-numeric', nonce: 'invalid' },
-    { description: 'negative integer', nonce: '-360' },
-    { description: 'non-integer numeric', nonce: '3.60' }
-  ]
-  invalidNonces.forEach(({ description, nonce }) => {
-    it(`should reject a ${description} nonce`, () => {
+  ;['invalid', '-360', '3.60'].forEach((nonce) => {
+    it(`rejects invalid nonce ${nonce}`, () => {
       expect(() => getRawTx({ nonce })).toThrow('Invalid nonce')
     })
   })

@@ -82,8 +82,8 @@ function defineAcknowledgedCommand<TKey extends keyof CommandMap>(
     event: Electron.IpcMainInvokeEvent,
     context: AuthorizationContext
   ) => Promise<boolean | void> | boolean | void,
-  missingError: 'not_found' | 'request_not_found',
-  entrypoints: readonly RendererEntrypoint[]
+  missingError: 'not_found' | 'request_not_found' = 'not_found',
+  entrypoints: readonly RendererEntrypoint[] = ['tray']
 ) {
   return defineOperation<CommandMap[TKey], unknown>({
     roles: ['wallet-ui'],
@@ -159,6 +159,20 @@ function defineCommand<TKey extends keyof CommandMap>(
   return defineOperation(definition)
 }
 
+function defineOwnedCommand<TKey extends keyof CommandMap>(
+  operationType: TKey,
+  handle: (input: CommandMap[TKey], context: AuthorizationContext) => Promise<boolean | void> | boolean | void
+) {
+  return defineCommand(operationType, {
+    roles: ['wallet-ui'],
+    entrypoints: ['tray'],
+    async handle(input, _event, context) {
+      return operationCommandAcknowledgement(await handle(input, context))
+    },
+    failure: { ok: false, error: 'operation_failed' }
+  })
+}
+
 function defineQuery<TKey extends keyof QueryMap>(
   _operationType: TKey,
   definition: {
@@ -224,19 +238,13 @@ export function createOperationRegistry(services: OperationServices) {
   }
 
   const commandRegistry = {
-    'account.profile-move': defineCommand('account.profile-move', {
-      roles: ['wallet-ui'],
-      entrypoints: ['tray'],
-      handle(command, _event, context) {
-        return operationCommandAcknowledgement(profiles.moveAccount(command, operationOwner(context)))
-      },
-      failure: { ok: false, error: 'operation_failed' }
-    }),
+    'account.profile-move': defineOwnedCommand('account.profile-move', (command, context) =>
+      profiles.moveAccount(command, operationOwner(context))
+    ),
     'account.select': defineAcknowledgedCommand(
       'account.select',
       ({ accountId }) => accountMutations.select(accountId),
-      'not_found',
-      ['tray']
+      'not_found'
     ),
     'send.submit': defineCommand('send.submit', {
       roles: ['sidetray'],
@@ -298,220 +306,88 @@ export function createOperationRegistry(services: OperationServices) {
     'home.command-consume': defineAcknowledgedCommand(
       'home.command-consume',
       ({ commandId }) => platform.consumeHomeCommand(commandId),
-      'not_found',
-      ['tray']
+      'not_found'
     ),
-    'profile.select': defineCommand('profile.select', {
-      roles: ['wallet-ui'],
-      entrypoints: ['tray'],
-      handle(command, _event, context) {
-        return operationCommandAcknowledgement(profiles.select(command, operationOwner(context)))
-      },
-      failure: { ok: false, error: 'operation_failed' }
-    }),
-    'profile.create': defineCommand('profile.create', {
-      roles: ['wallet-ui'],
-      entrypoints: ['tray'],
-      handle(command, _event, context) {
-        return operationCommandAcknowledgement(profiles.create(command, operationOwner(context)))
-      },
-      failure: { ok: false, error: 'operation_failed' }
-    }),
-    'profile.rename': defineCommand('profile.rename', {
-      roles: ['wallet-ui'],
-      entrypoints: ['tray'],
-      handle(command, _event, context) {
-        return operationCommandAcknowledgement(profiles.rename(command, operationOwner(context)))
-      },
-      failure: { ok: false, error: 'operation_failed' }
-    }),
-    'profile.delete': defineCommand('profile.delete', {
-      roles: ['wallet-ui'],
-      entrypoints: ['tray'],
-      handle(command, _event, context) {
-        return operationCommandAcknowledgement(profiles.delete(command, operationOwner(context)))
-      },
-      failure: { ok: false, error: 'operation_failed' }
-    }),
-    'security.configure': defineCommand('security.configure', {
-      roles: ['wallet-ui'],
-      entrypoints: ['tray'],
-      handle(command, _event, context) {
-        return operationCommandAcknowledgement(security.configure(command, operationOwner(context)))
-      },
-      failure: { ok: false, error: 'operation_failed' }
-    }),
-    'security.unlock': defineCommand('security.unlock', {
-      roles: ['wallet-ui'],
-      entrypoints: ['tray'],
-      handle(command, _event, context) {
-        return operationCommandAcknowledgement(security.unlock(command, operationOwner(context)))
-      },
-      failure: { ok: false, error: 'operation_failed' }
-    }),
-    'wallet.lock': defineCommand('wallet.lock', {
-      roles: ['wallet-ui'],
-      entrypoints: ['tray'],
-      handle(command, _event, context) {
-        return operationCommandAcknowledgement(security.lock(command, operationOwner(context)))
-      },
-      failure: { ok: false, error: 'operation_failed' }
-    }),
-    'network.primary-rpc-set': defineAcknowledgedCommand(
-      'network.primary-rpc-set',
-      ({ chainId, url }) => networks.setPrimaryRpc(chainId, url),
-      'not_found',
-      ['tray']
+    'profile.select': defineOwnedCommand('profile.select', (command, context) =>
+      profiles.select(command, operationOwner(context))
     ),
-    'network.activation-set': defineAcknowledgedCommand(
-      'network.activation-set',
-      ({ chainId, enabled }) => networks.setActivation(chainId, enabled),
-      'not_found',
-      ['tray']
+    'profile.create': defineOwnedCommand('profile.create', (command, context) =>
+      profiles.create(command, operationOwner(context))
     ),
-    'sidetray.open': defineAcknowledgedCommand(
-      'sidetray.open',
-      (command) => platform.openSideTray(command),
-      'not_found',
-      ['tray']
+    'profile.rename': defineOwnedCommand('profile.rename', (command, context) =>
+      profiles.rename(command, operationOwner(context))
     ),
-    'flash.order-cancel': defineAcknowledgedCommand(
-      'flash.order-cancel',
-      (command, _event, context) =>
-        trade.cancel(command, createRendererPrincipal(context), operationOwner(context)),
-      'not_found',
-      ['tray']
+    'profile.delete': defineOwnedCommand('profile.delete', (command, context) =>
+      profiles.delete(command, operationOwner(context))
     ),
-    'account.reorder': defineAcknowledgedCommand(
-      'account.reorder',
-      ({ fromAccountId, toAccountId }) => accountMutations.reorder(fromAccountId, toAccountId),
-      'not_found',
-      ['tray']
+    'security.configure': defineOwnedCommand('security.configure', (command, context) =>
+      security.configure(command, operationOwner(context))
     ),
-    'account.rename': defineAcknowledgedCommand(
-      'account.rename',
-      ({ accountId, name }) => accountMutations.rename(accountId, name),
-      'not_found',
-      ['tray']
+    'security.unlock': defineOwnedCommand('security.unlock', (command, context) =>
+      security.unlock(command, operationOwner(context))
+    ),
+    'wallet.lock': defineOwnedCommand('wallet.lock', (command, context) =>
+      security.lock(command, operationOwner(context))
+    ),
+    'network.primary-rpc-set': defineAcknowledgedCommand('network.primary-rpc-set', ({ chainId, url }) =>
+      networks.setPrimaryRpc(chainId, url)
+    ),
+    'network.activation-set': defineAcknowledgedCommand('network.activation-set', ({ chainId, enabled }) =>
+      networks.setActivation(chainId, enabled)
+    ),
+    'sidetray.open': defineAcknowledgedCommand('sidetray.open', (command) => platform.openSideTray(command)),
+    'flash.order-cancel': defineAcknowledgedCommand('flash.order-cancel', (command, _event, context) =>
+      trade.cancel(command, createRendererPrincipal(context), operationOwner(context))
+    ),
+    'account.reorder': defineAcknowledgedCommand('account.reorder', ({ fromAccountId, toAccountId }) =>
+      accountMutations.reorder(fromAccountId, toAccountId)
+    ),
+    'account.rename': defineAcknowledgedCommand('account.rename', ({ accountId, name }) =>
+      accountMutations.rename(accountId, name)
     ),
     'account.agent-access-set': defineAcknowledgedCommand(
       'account.agent-access-set',
-      ({ accountId, enabled }) => agent.setAgentAccess(accountId, enabled),
-      'not_found',
-      ['tray']
+      ({ accountId, enabled }) => agent.setAgentAccess(accountId, enabled)
     ),
     'account.agent-sessions-revoke': defineAcknowledgedCommand(
       'account.agent-sessions-revoke',
-      ({ accountId }) => agent.revokeAgentSessions(accountId),
-      'not_found',
-      ['tray']
+      ({ accountId }) => agent.revokeAgentSessions(accountId)
     ),
-    'account.add-from-signer': defineCommand('account.add-from-signer', {
-      roles: ['wallet-ui'],
-      entrypoints: ['tray'],
-      handle(command, _event, context) {
-        return operationCommandAcknowledgement(
-          accountOnboarding.addFromSigner(command, operationOwner(context))
-        )
-      },
-      failure: { ok: false, error: 'operation_failed' }
-    }),
-    'account.watch-add': defineCommand('account.watch-add', {
-      roles: ['wallet-ui'],
-      entrypoints: ['tray'],
-      handle(command, _event, context) {
-        return operationCommandAcknowledgement(accountOnboarding.addWatch(command, operationOwner(context)))
-      },
-      failure: { ok: false, error: 'operation_failed' }
-    }),
-    'signer.import': defineCommand('signer.import', {
-      roles: ['wallet-ui'],
-      entrypoints: ['tray'],
-      handle(command, _event, context) {
-        return operationCommandAcknowledgement(
-          accountOnboarding.importSigner(command, operationOwner(context))
-        )
-      },
-      failure: { ok: false, error: 'operation_failed' }
-    }),
-    'signer.lattice-create': defineCommand('signer.lattice-create', {
-      roles: ['wallet-ui'],
-      entrypoints: ['tray'],
-      handle(command, _event, context) {
-        return operationCommandAcknowledgement(
-          accountOnboarding.createLattice(command, operationOwner(context))
-        )
-      },
-      failure: { ok: false, error: 'operation_failed' }
-    }),
-    'signer.disconnect': defineCommand('signer.disconnect', {
-      roles: ['wallet-ui'],
-      entrypoints: ['tray'],
-      handle(command, _event, context) {
-        return operationCommandAcknowledgement(accountOnboarding.disconnect(command, operationOwner(context)))
-      },
-      failure: { ok: false, error: 'operation_failed' }
-    }),
-    'signer.hardware-session-start': defineCommand('signer.hardware-session-start', {
-      roles: ['wallet-ui'],
-      entrypoints: ['tray'],
-      handle(command, _event, context) {
-        return operationCommandAcknowledgement(
-          accountOnboarding.startHardwareSession(command, operationOwner(context))
-        )
-      },
-      failure: { ok: false, error: 'operation_failed' }
-    }),
-    'signer.hardware-session-finish': defineCommand('signer.hardware-session-finish', {
-      roles: ['wallet-ui'],
-      entrypoints: ['tray'],
-      handle(command, _event, context) {
-        return operationCommandAcknowledgement(
-          accountOnboarding.finishHardwareSession(command, operationOwner(context))
-        )
-      },
-      failure: { ok: false, error: 'operation_failed' }
-    }),
-    'signer.ledger-accounts-load': defineCommand('signer.ledger-accounts-load', {
-      roles: ['wallet-ui'],
-      entrypoints: ['tray'],
-      handle(command, _event, context) {
-        return operationCommandAcknowledgement(
-          accountOnboarding.loadLedgerAccounts(command, operationOwner(context))
-        )
-      },
-      failure: { ok: false, error: 'operation_failed' }
-    }),
-    'portfolio.refresh': defineCommand('portfolio.refresh', {
-      roles: ['wallet-ui'],
-      entrypoints: ['tray'],
-      async handle(command, _event, context) {
-        return operationCommandAcknowledgement(
-          await portfolio.refresh(command.operationId, operationOwner(context))
-        )
-      },
-      failure: { ok: false, error: 'operation_failed' }
-    }),
-    'settings.update': defineAcknowledgedCommand(
-      'settings.update',
-      (command) => settings.update(command),
-      'not_found',
-      ['tray']
+    'account.add-from-signer': defineOwnedCommand('account.add-from-signer', (command, context) =>
+      accountOnboarding.addFromSigner(command, operationOwner(context))
     ),
-    'wallet.reset': defineCommand('wallet.reset', {
-      roles: ['wallet-ui'],
-      entrypoints: ['tray'],
-      handle(command, _event, context) {
-        return operationCommandAcknowledgement(security.reset(command, operationOwner(context)))
-      },
-      failure: { ok: false, error: 'operation_failed' }
-    }),
-    'app.quit': defineAcknowledgedCommand('app.quit', () => platform.quitApp(), 'not_found', ['tray']),
-    'permission.clear': defineAcknowledgedCommand(
-      'permission.clear',
-      ({ accountId, originId }) => accountMutations.clearPermission(accountId, originId),
-      'not_found',
-      ['tray']
+    'account.watch-add': defineOwnedCommand('account.watch-add', (command, context) =>
+      accountOnboarding.addWatch(command, operationOwner(context))
+    ),
+    'signer.import': defineOwnedCommand('signer.import', (command, context) =>
+      accountOnboarding.importSigner(command, operationOwner(context))
+    ),
+    'signer.lattice-create': defineOwnedCommand('signer.lattice-create', (command, context) =>
+      accountOnboarding.createLattice(command, operationOwner(context))
+    ),
+    'signer.disconnect': defineOwnedCommand('signer.disconnect', (command, context) =>
+      accountOnboarding.disconnect(command, operationOwner(context))
+    ),
+    'signer.hardware-session-start': defineOwnedCommand('signer.hardware-session-start', (command, context) =>
+      accountOnboarding.startHardwareSession(command, operationOwner(context))
+    ),
+    'signer.hardware-session-finish': defineOwnedCommand(
+      'signer.hardware-session-finish',
+      (command, context) => accountOnboarding.finishHardwareSession(command, operationOwner(context))
+    ),
+    'signer.ledger-accounts-load': defineOwnedCommand('signer.ledger-accounts-load', (command, context) =>
+      accountOnboarding.loadLedgerAccounts(command, operationOwner(context))
+    ),
+    'portfolio.refresh': defineOwnedCommand('portfolio.refresh', (command, context) =>
+      portfolio.refresh(command.operationId, operationOwner(context))
+    ),
+    'settings.update': defineAcknowledgedCommand('settings.update', (command) => settings.update(command)),
+    'wallet.reset': defineOwnedCommand('wallet.reset', (command, context) =>
+      security.reset(command, operationOwner(context))
+    ),
+    'app.quit': defineAcknowledgedCommand('app.quit', () => platform.quitApp()),
+    'permission.clear': defineAcknowledgedCommand('permission.clear', ({ accountId, originId }) =>
+      accountMutations.clearPermission(accountId, originId)
     ),
     'network.request-resolve': defineAcknowledgedCommand(
       'network.request-resolve',
@@ -519,11 +395,8 @@ export function createOperationRegistry(services: OperationServices) {
       'request_not_found',
       ['tray']
     ),
-    'notification.update': defineAcknowledgedCommand(
-      'notification.update',
-      ({ notificationId, action }) => platform.updateNotification(notificationId, action),
-      'not_found',
-      ['tray']
+    'notification.update': defineAcknowledgedCommand('notification.update', ({ notificationId, action }) =>
+      platform.updateNotification(notificationId, action)
     ),
     'request.reject': defineAcknowledgedCommand(
       'request.reject',
@@ -549,11 +422,8 @@ export function createOperationRegistry(services: OperationServices) {
       'request_not_found',
       ['tray']
     ),
-    'request.clear-origin': defineAcknowledgedCommand(
-      'request.clear-origin',
-      ({ accountId, originId }) => requests.clearOrigin(accountId, originId),
-      'not_found',
-      ['tray']
+    'request.clear-origin': defineAcknowledgedCommand('request.clear-origin', ({ accountId, originId }) =>
+      requests.clearOrigin(accountId, originId)
     ),
     'request.approval-confirm': defineAcknowledgedCommand(
       'request.approval-confirm',
@@ -618,12 +488,7 @@ export function createOperationRegistry(services: OperationServices) {
       'request_not_found',
       ['tray']
     ),
-    'panel.back': defineAcknowledgedCommand(
-      'panel.back',
-      ({ steps }) => platform.navigatePanelBack(steps),
-      'not_found',
-      ['tray']
-    ),
+    'panel.back': defineAcknowledgedCommand('panel.back', ({ steps }) => platform.navigatePanelBack(steps)),
     'request.add-token-review': defineAcknowledgedCommand(
       'request.add-token-review',
       ({ requestId }) => requests.reviewAddToken(requestId),
@@ -636,17 +501,11 @@ export function createOperationRegistry(services: OperationServices) {
       'request_not_found',
       ['tray']
     ),
-    'extension.respond': defineAcknowledgedCommand(
-      'extension.respond',
-      ({ extensionId, approved }) => platform.respondToExtension(extensionId, approved),
-      'not_found',
-      ['tray']
+    'extension.respond': defineAcknowledgedCommand('extension.respond', ({ extensionId, approved }) =>
+      platform.respondToExtension(extensionId, approved)
     ),
-    'updater.respond': defineAcknowledgedCommand(
-      'updater.respond',
-      ({ action }) => platform.respondToUpdater(action),
-      'not_found',
-      ['tray']
+    'updater.respond': defineAcknowledgedCommand('updater.respond', ({ action }) =>
+      platform.respondToUpdater(action)
     ),
     'tray.mouseout': defineAcknowledgedCommand(
       'tray.mouseout',
@@ -672,14 +531,9 @@ export function createOperationRegistry(services: OperationServices) {
       'not_found',
       ['tray']
     ),
-    'token.add': defineCommand('token.add', {
-      roles: ['wallet-ui'],
-      entrypoints: ['tray'],
-      handle(command, _event, context) {
-        return operationCommandAcknowledgement(tokens.add(command, operationOwner(context)))
-      },
-      failure: { ok: false, error: 'operation_failed' }
-    }),
+    'token.add': defineOwnedCommand('token.add', (command, context) =>
+      tokens.add(command, operationOwner(context))
+    ),
     'token.image-hydrate': defineCommand('token.image-hydrate', {
       roles: ['wallet-ui', 'sidetray'],
       entrypoints: ['tray', 'sidetray'],
@@ -725,40 +579,21 @@ export function createOperationRegistry(services: OperationServices) {
       'not_found',
       ['tray']
     ),
-    'signer.trezor-input': defineCommand('signer.trezor-input', {
-      roles: ['wallet-ui'],
-      entrypoints: ['tray'],
-      handle(command, _event, context) {
-        return operationCommandAcknowledgement(
-          accountOnboarding.submitTrezorInput(command, operationOwner(context))
-        )
-      },
-      failure: { ok: false, error: 'operation_failed' }
-    }),
-    'signer.lattice-pair': defineCommand('signer.lattice-pair', {
-      roles: ['wallet-ui'],
-      entrypoints: ['tray'],
-      handle(command, _event, context) {
-        return operationCommandAcknowledgement(
-          accountOnboarding.pairLattice(command, operationOwner(context))
-        )
-      },
-      failure: { ok: false, error: 'operation_failed' }
-    }),
+    'signer.trezor-input': defineOwnedCommand('signer.trezor-input', (command, context) =>
+      accountOnboarding.submitTrezorInput(command, operationOwner(context))
+    ),
+    'signer.lattice-pair': defineOwnedCommand('signer.lattice-pair', (command, context) =>
+      accountOnboarding.pairLattice(command, operationOwner(context))
+    ),
     'account.remove': defineAcknowledgedCommand(
       'account.remove',
       ({ address, removeSeedSigner }) => accountMutations.remove(address, removeSeedSigner),
       'not_found',
       ['tray']
     ),
-    'signer.reload': defineCommand('signer.reload', {
-      roles: ['wallet-ui'],
-      entrypoints: ['tray'],
-      handle(command, _event, context) {
-        return operationCommandAcknowledgement(accountOnboarding.reload(command, operationOwner(context)))
-      },
-      failure: { ok: false, error: 'operation_failed' }
-    })
+    'signer.reload': defineOwnedCommand('signer.reload', (command, context) =>
+      accountOnboarding.reload(command, operationOwner(context))
+    )
   } satisfies Record<keyof CommandMap, OperationDefinition>
 
   const queryRegistry = {
