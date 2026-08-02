@@ -10,45 +10,24 @@ const ether = {
   decimals: 18
 }
 
+const network = (id: number, name: string, on: boolean, connected: boolean, explorer?: string) => ({
+  id,
+  name,
+  explorer,
+  connection: { primary: { connected }, secondary: { connected: false } },
+  on
+})
+
 const chains: any = {
-  1: {
-    name: 'Ethereum Mainnet',
-    id: 1,
-    explorer: 'https://etherscan.io',
-    connection: { primary: { connected: true }, secondary: { connected: false } },
-    on: true
-  },
-  137: {
-    name: 'Polygon',
-    id: 137,
-    connection: { primary: { connected: true }, secondary: { connected: false } },
-    on: false
-  },
-  11155111: {
-    name: 'Ethereum Testnet Sepolia',
-    id: 11155111,
-    explorer: 'https://sepolia.etherscan.io',
-    connection: {
-      primary: { status: 'disconnected', connected: false, on: true },
-      secondary: { status: 'disconnected', connected: false, on: true }
-    },
-    on: true
-  }
+  1: network(1, 'Ethereum Mainnet', true, true, 'https://etherscan.io'),
+  137: network(137, 'Polygon', false, true),
+  11155111: network(11155111, 'Ethereum Testnet Sepolia', true, false, 'https://sepolia.etherscan.io')
 }
 
 const chainMeta: any = {
-  1: {
-    nativeCurrency: ether,
-    primaryColor: 'accent1'
-  },
+  1: { nativeCurrency: ether, primaryColor: 'accent1' },
   137: { nativeCurrency: {}, primaryColor: 'accent6' },
-  11155111: {
-    nativeCurrency: {
-      ...ether,
-      name: 'Sepolia Ether'
-    },
-    primaryColor: 'accent2'
-  }
+  11155111: { nativeCurrency: { ...ether, name: 'Sepolia Ether' }, primaryColor: 'accent2' }
 }
 
 const selectedAddress = '0x2796317b0ff8538f253012862c06787adfb8ceb6'
@@ -75,21 +54,9 @@ describe('#getActiveChains', () => {
       networkId: 1,
       name: 'Ethereum Mainnet',
       icon: [{ url: 'https://assets.coingecko.com/coins/images/ethereum.png' }],
-      nativeCurrency: {
-        name: 'Ether',
-        symbol: 'ETH',
-        decimals: 18
-      },
-      explorers: [
-        {
-          url: 'https://etherscan.io'
-        }
-      ],
-      external: {
-        wallet: {
-          colors: [{ r: 0, g: 210, b: 190, hex: '#00d2be' }]
-        }
-      },
+      nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+      explorers: [{ url: 'https://etherscan.io' }],
+      external: { wallet: { colors: [{ r: 0, g: 210, b: 190, hex: '#00d2be' }] } },
       connected: true
     })
   })
@@ -97,6 +64,7 @@ describe('#getActiveChains', () => {
 
 describe('#createChainsObserver', () => {
   const handler = { chainsChanged: mock() }
+  const optimism = network(10, 'Optimism', true, true, 'https://optimistic.etherscan.io')
   let fireObserver: any
 
   beforeEach(() => {
@@ -111,158 +79,51 @@ describe('#createChainsObserver', () => {
   })
 
   it('invokes the handler with EVM chain objects', () => {
-    const optimism = {
-      name: 'Optimism',
-      id: 10,
-      explorer: 'https://optimistic.etherscan.io',
-      connection: { primary: { connected: true }, secondary: { connected: false } },
-      on: true
-    }
-
     setChains(
       { ...chains, 10: optimism },
       { ...chainMeta, 10: { nativeCurrency: ether, primaryColor: 'accent4' } }
     )
 
+    const expected = getActiveChains(store)
     fireObserver()
 
-    expect(handler.chainsChanged).toHaveBeenCalledWith(selectedAddress, [
-      {
-        chainId: 1,
-        networkId: 1,
-        name: 'Ethereum Mainnet',
-        icon: [{ url: 'https://assets.coingecko.com/coins/images/ethereum.png' }],
-        nativeCurrency: {
-          name: 'Ether',
-          symbol: 'ETH',
-          decimals: 18
-        },
-        explorers: [
-          {
-            url: 'https://etherscan.io'
-          }
-        ],
-        external: {
-          wallet: {
-            colors: [{ r: 0, g: 210, b: 190, hex: '#00d2be' }]
-          }
-        },
-        connected: true
-      },
-      {
-        chainId: 10,
-        networkId: 10,
-        name: 'Optimism',
-        icon: [{ url: 'https://assets.coingecko.com/coins/images/ethereum.png' }],
-        nativeCurrency: {
-          name: 'Ether',
-          symbol: 'ETH',
-          decimals: 18
-        },
-        explorers: [
-          {
-            url: 'https://optimistic.etherscan.io'
-          }
-        ],
-        external: {
-          wallet: {
-            colors: [{ r: 246, g: 36, b: 35, hex: '#f62423' }]
-          }
-        },
-        connected: true
-      },
-      {
-        chainId: 11155111,
-        networkId: 11155111,
-        name: 'Ethereum Testnet Sepolia',
-        icon: [{ url: 'https://assets.coingecko.com/coins/images/ethereum.png' }],
-        nativeCurrency: {
-          name: 'Sepolia Ether',
-          symbol: 'ETH',
-          decimals: 18
-        },
-        explorers: [
-          {
-            url: 'https://sepolia.etherscan.io'
-          }
-        ],
-        external: {
-          wallet: {
-            colors: [{ r: 255, g: 153, b: 51, hex: '#ff9933' }]
-          }
-        },
-        connected: false
-      }
-    ])
+    expect(handler.chainsChanged).toHaveBeenCalledWith(selectedAddress, expected)
   })
-
-  it('invokes the handler when a chain is added', () => {
-    const optimism = {
-      name: 'Optimism',
-      id: 10,
-      explorer: 'https://optimistic.etherscan.io',
-      connection: { primary: { connected: true }, secondary: { connected: false } },
-      on: true
+  ;[
+    {
+      description: 'added',
+      arrange: () => setChains({ ...chains, 10: optimism }, { ...chainMeta, 10: { nativeCurrency: ether } }),
+      expected: [1, 10, 11155111]
+    },
+    {
+      description: 'removed',
+      arrange: () => {
+        const { 11155111: _sepolia, ...remaining } = chains
+        setChains(remaining)
+      },
+      expected: [1]
+    },
+    {
+      description: 'activated',
+      arrange: () => setChains({ ...chains, 137: { ...chains[137], on: true } }),
+      expected: [1, 137, 11155111]
+    },
+    {
+      description: 'deactivated',
+      arrange: () => setChains({ ...chains, 11155111: { ...chains[11155111], on: false } }),
+      expected: [1]
+    },
+    {
+      description: 'renamed',
+      arrange: () => setChains({ ...chains, 11155111: { ...chains[11155111], name: 'Seppohleea' } }),
+      expected: [1, 11155111]
     }
-
-    setChains({ ...chains, 10: optimism }, { ...chainMeta, 10: { nativeCurrency: ether } })
-
-    fireObserver()
-
-    const changedChains = handler.chainsChanged.mock.calls[0][1]
-    expect(changedChains.map((c: any) => c.chainId)).toEqual([1, 10, 11155111])
-  })
-
-  it('invokes the handler when a chain is removed', () => {
-    const { 11155111: sepolia, ...remaining } = chains
-    setChains(remaining)
-
-    fireObserver()
-
-    const changedChains = handler.chainsChanged.mock.calls[0][1]
-    expect(changedChains.map((c: any) => c.chainId)).toEqual([1])
-  })
-
-  it('invokes the handler when a chain is activated', () => {
-    const {
-      137: { ...polygon }
-    } = chains
-    polygon.on = true
-
-    setChains({ ...chains, 137: polygon })
-
-    fireObserver()
-
-    const changedChains = handler.chainsChanged.mock.calls[0][1]
-    expect(changedChains.map((c: any) => c.chainId)).toEqual([1, 137, 11155111])
-  })
-
-  it('invokes the handler when a chain is deactivated', () => {
-    const {
-      11155111: { ...sepolia }
-    } = chains
-    sepolia.on = false
-
-    setChains({ ...chains, 11155111: sepolia })
-
-    fireObserver()
-
-    const changedChains = handler.chainsChanged.mock.calls[0][1]
-    expect(changedChains.map((c: any) => c.chainId)).toEqual([1])
-  })
-
-  it('invokes the handler when a chain name changes', () => {
-    const {
-      11155111: { ...sepolia }
-    } = chains
-    sepolia.name = 'Seppohleea'
-
-    setChains({ ...chains, 11155111: sepolia })
-
-    fireObserver()
-
-    const changedChains = handler.chainsChanged.mock.calls[0][1]
-    expect(changedChains.map((c: any) => c.chainId)).toEqual([1, 11155111])
+  ].forEach(({ description, arrange, expected }) => {
+    it(`invokes the handler when a chain is ${description}`, () => {
+      arrange()
+      fireObserver()
+      expect(handler.chainsChanged.mock.calls[0][1].map((chain: any) => chain.chainId)).toEqual(expected)
+    })
   })
 
   it('does not invoke the handler when no chains have changed', () => {

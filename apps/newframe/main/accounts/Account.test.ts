@@ -30,8 +30,6 @@ mock.module('../nameResolution', () => ({
   }
 }))
 
-mock.module('../windows/nav', () => ({ default: navMock, ...navMock }))
-
 let account: any
 let Account: any
 let reveal: any
@@ -89,19 +87,13 @@ beforeAll(async () => {
   store = (await import('../store')).default
 })
 
-beforeEach(() => {
-  mock.clearAllMocks()
-  account?.close()
-  requestLifecycle.pending.clear()
-  store.getState().removeAccount(accountState.address.toLowerCase())
-  account = new Account(
+function createAccount(profileActive = true) {
+  return new Account(
     accountState as any,
     accounts as any,
     store,
     providerMock as any,
-    {
-      simulateTransactionEffects: simulateTransactionEffectsMock
-    },
+    { simulateTransactionEffects: simulateTransactionEffectsMock },
     nameResolution,
     revealMock,
     {
@@ -114,8 +106,17 @@ beforeEach(() => {
       signers: signersMock,
       windows: windowsMock
     },
-    requestLifecycle
+    requestLifecycle,
+    profileActive
   )
+}
+
+beforeEach(() => {
+  mock.clearAllMocks()
+  account?.close()
+  requestLifecycle.pending.clear()
+  store.getState().removeAccount(accountState.address.toLowerCase())
+  account = createAccount()
   ;(fetchContract as any).mockResolvedValueOnce(undefined)
   simulateTransactionEffectsMock.mockResolvedValue({ status: 'success', effects: [] })
 })
@@ -267,27 +268,7 @@ describe('creation-block listener lifecycle', () => {
     store.getState().removeAccount(account.id)
     mock.clearAllMocks()
 
-    account = new Account(
-      accountState as any,
-      accounts as any,
-      store,
-      providerMock as any,
-      { simulateTransactionEffects: simulateTransactionEffectsMock },
-      nameResolution,
-      revealMock,
-      {
-        navigation: navMock,
-        now: Date.now,
-        notify: mock(),
-        openBlockExplorer: mock(),
-        persistence: { flush: mock() },
-        schedule: (callback: () => void, delay: number) => setTimeout(callback, delay),
-        signers: signersMock,
-        windows: windowsMock
-      },
-      requestLifecycle,
-      false
-    )
+    account = createAccount(false)
 
     expect(providerMock.on).not.toHaveBeenCalledWith('connect', expect.any(Function))
     expect(nameResolution.reverseLookup).not.toHaveBeenCalled()
@@ -311,26 +292,7 @@ describe('creation-block listener lifecycle', () => {
     nameResolution.reverseLookup.mockImplementationOnce(
       () => new Promise<string>((resolve) => (resolveLookup = resolve))
     )
-    account = new Account(
-      accountState as any,
-      accounts as any,
-      store,
-      providerMock as any,
-      { simulateTransactionEffects: simulateTransactionEffectsMock },
-      nameResolution,
-      revealMock,
-      {
-        navigation: navMock,
-        now: Date.now,
-        notify: mock(),
-        openBlockExplorer: mock(),
-        persistence: { flush: mock() },
-        schedule: (callback: () => void, delay: number) => setTimeout(callback, delay),
-        signers: signersMock,
-        windows: windowsMock
-      },
-      requestLifecycle
-    )
+    account = createAccount()
 
     account.setProfileActive(false)
     resolveLookup('late.frame.eth')
@@ -343,37 +305,21 @@ describe('creation-block listener lifecycle', () => {
 })
 
 describe('#clearRequest', () => {
-  it('opens the next actionable request when the current request is cleared', () => {
-    const first = {
-      handlerId: 'first',
-      type: 'transaction',
-      created: 1
-    }
-    const second = {
-      handlerId: 'second',
-      type: 'transaction',
-      created: 2
-    }
-    const newest = {
-      handlerId: 'newest',
-      type: 'transaction',
-      created: 3
-    }
-    const confirmed = {
-      handlerId: 'confirmed',
-      type: 'transaction',
-      status: 'confirmed',
-      created: 0
-    }
-    const monitoring = {
-      handlerId: 'monitoring',
-      type: 'transaction',
-      mode: 'monitor',
-      status: 'confirming',
-      created: 0
-    }
+  const pendingRequest = (handlerId: string, created: number, state = {}) => ({
+    handlerId,
+    type: 'transaction',
+    created,
+    ...state
+  })
 
-    ;[first, second, newest, confirmed, monitoring].forEach((request) => {
+  it('opens the next actionable request when the current request is cleared', () => {
+    ;[
+      pendingRequest('first', 1),
+      pendingRequest('second', 2),
+      pendingRequest('newest', 3),
+      pendingRequest('confirmed', 0, { status: 'confirmed' }),
+      pendingRequest('monitoring', 0, { mode: 'monitor', status: 'confirming' })
+    ].forEach((request) => {
       store.getState().upsertAccountRequest(account.id, request)
     })
     store.setState((state: any) => {

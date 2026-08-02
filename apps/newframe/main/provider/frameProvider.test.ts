@@ -59,37 +59,22 @@ describe('FrameProvider reconnect backoff', () => {
     sendRawPayloadMock.mockRejectedValue(new Error('offline'))
 
     const provider = createFrameProvider(['ws://offline', 'http://offline'], { interval: 1000 }) as any
+    const targets = () => createJsonRpcProviderMock.mock.calls.map(([target]) => target)
 
     await advanceTimers(0)
-
-    expect(createJsonRpcProviderMock.mock.calls.map(([target]) => target)).toEqual([
-      'ws://offline',
-      'http://offline'
-    ])
+    expect(createJsonRpcProviderMock).toHaveBeenCalledTimes(2)
 
     await advanceTimers(999)
     expect(createJsonRpcProviderMock).toHaveBeenCalledTimes(2)
 
     await advanceTimers(1)
-    expect(createJsonRpcProviderMock.mock.calls.map(([target]) => target)).toEqual([
-      'ws://offline',
-      'http://offline',
-      'ws://offline',
-      'http://offline'
-    ])
+    expect(createJsonRpcProviderMock).toHaveBeenCalledTimes(4)
 
     await advanceTimers(1999)
     expect(createJsonRpcProviderMock).toHaveBeenCalledTimes(4)
 
     await advanceTimers(1)
-    expect(createJsonRpcProviderMock.mock.calls.map(([target]) => target)).toEqual([
-      'ws://offline',
-      'http://offline',
-      'ws://offline',
-      'http://offline',
-      'ws://offline',
-      'http://offline'
-    ])
+    expect(targets()).toEqual(Array(3).fill(['ws://offline', 'http://offline']).flat())
 
     provider.close()
   })

@@ -32,13 +32,18 @@ function createRequestContinuations() {
   }
 }
 
-it('constructs without listeners and owns an idempotent start/dispose lifecycle', () => {
+function createProviderFixture(chainId?: number, start = false) {
   const connection = Object.assign(new EventEmitter(), {
     connections: {},
     refreshGasFees: async () => {},
     send: () => {}
   }) as unknown as Chains
   const store = createCanonicalStore(memoryStorage).store
+  if (chainId) {
+    store.setState((state: any) => {
+      state.main.networks.ethereum[chainId] = { ...state.main.networks.ethereum[1], id: chainId, on: true }
+    })
+  }
   const proxy = new EventEmitter()
   const requests = createRequestContinuations()
   const provider = new Provider({
@@ -50,6 +55,12 @@ it('constructs without listeners and owns an idempotent start/dispose lifecycle'
     reveal: { resolveEntityType: async () => 'unknown' },
     requests
   })
+  if (start) provider.start()
+  return { connection, provider, proxy, requests }
+}
+
+it('constructs without listeners and owns an idempotent start/dispose lifecycle', () => {
+  const { connection, provider, requests } = createProviderFixture()
 
   expect(connection.listenerCount('connect')).toBe(0)
 
@@ -83,47 +94,8 @@ it('constructs without listeners and owns an idempotent start/dispose lifecycle'
 })
 
 it('isolates listeners and state across two provider instances and disposes independently', () => {
-  const createInstance = (chainId: number) => {
-    const connection = Object.assign(new EventEmitter(), {
-      connections: {},
-      refreshGasFees: async () => {},
-      send: () => {}
-    }) as unknown as Chains
-    const proxy = new EventEmitter()
-    const requests = createRequestContinuations()
-    const store = createCanonicalStore(memoryStorage).store
-    store.setState((state) => ({
-      ...state,
-      main: {
-        ...state.main,
-        networks: {
-          ...state.main.networks,
-          ethereum: {
-            ...state.main.networks.ethereum,
-            [chainId]: {
-              ...state.main.networks.ethereum[1],
-              id: chainId,
-              on: true
-            }
-          }
-        }
-      }
-    }))
-    const provider = new Provider({
-      accounts: {} as AccountRequestPort,
-      chains: connection,
-      proxy: proxy as never,
-      state: createProviderStatePort(store),
-      store,
-      reveal: { resolveEntityType: async () => 'unknown' },
-      requests
-    })
-    provider.start()
-    return { connection, provider, proxy, store }
-  }
-
-  const first = createInstance(10)
-  const second = createInstance(137)
+  const first = createProviderFixture(10, true)
+  const second = createProviderFixture(137, true)
   const firstResponse: RPCResponsePayload[] = []
   const secondResponse: RPCResponsePayload[] = []
 

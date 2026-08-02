@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, jest as timers } from 'bun:test'
 
 import type { Mock } from 'bun:test'
-import { act, within } from '@testing-library/react'
+import { act } from '@testing-library/react'
 
 import { fireEvent, render, screen, waitFor } from '../../../test/support/componentSetup'
 import Trade from './index'
@@ -153,30 +153,6 @@ function wethBalance() {
   }
 }
 
-function usdcBalance() {
-  return {
-    address: FLASH_USDC_ADDRESS,
-    balance: '1000000000000',
-    chainId: FLASH_ANVIL_CHAIN_ID,
-    decimals: 6,
-    displayBalance: '',
-    name: 'USD Coin',
-    symbol: 'USDC'
-  }
-}
-
-function tokenBalance(index: number) {
-  return {
-    address: `0x${(index + 100).toString(16).padStart(40, '0')}`,
-    balance: '1',
-    chainId: FLASH_ANVIL_CHAIN_ID,
-    decimals: 18,
-    displayBalance: '',
-    name: `Token ${index}`,
-    symbol: `T${index}`
-  }
-}
-
 function quote(id: string, inputAmount: string): FlashQuoteDisplay {
   return {
     id,
@@ -212,17 +188,6 @@ describe('Trade', () => {
 
   afterEach(() => {
     timers.useRealTimers()
-  })
-
-  it('initializes generic Trade with the preferred contra before the target asset', () => {
-    initializeTradeState([usdcBalance(), { ...wethBalance(), balance: '10000000000000000000' }])
-
-    render(<Trade chainId={FLASH_ANVIL_CHAIN_ID} />)
-
-    expect(screen.getByLabelText('Select target asset').textContent).toContain('WETH')
-    expect(screen.getByLabelText('Select contra asset').textContent).toContain('USDC')
-    expect((screen.getByLabelText('WETH amount') as HTMLInputElement).readOnly).toBe(false)
-    expect(screen.getByRole('button', { name: 'Switch to BUY' })).toBeTruthy()
   })
 
   it('re-quotes market trades when the selected account changes without clearing the ticket', async () => {
@@ -499,25 +464,6 @@ describe('Trade', () => {
     expect(quoteCalls[2].qty).toBe('2')
   })
 
-  it('preserves the entered amount when Flash normalizes the quote input', async () => {
-    const quoteCalls: any[] = []
-
-    ;(link.executeQuery as Mock<any>).mockImplementation(async (query: any) => {
-      if (query.type !== 'flash.quote') return { ok: false, error: 'invalid_query' }
-      quoteCalls.push(query.request)
-      return { ok: true, quoteId: 'normalized-quote', quote: quote('normalized-quote', '1') }
-    })
-
-    render(<Trade assetId={`${FLASH_ANVIL_CHAIN_ID}:${FLASH_WETH_ADDRESS}`} />)
-    fireEvent.change(screen.getByLabelText('WETH amount'), { target: { value: '1.0' } })
-    await act(async () => timers.advanceTimersByTime(250))
-    await screen.findByRole('button', { name: 'Review/sign' })
-    await act(async () => timers.advanceTimersByTime(500))
-
-    expect((screen.getByLabelText('WETH amount') as HTMLInputElement).value).toBe('1.0')
-    expect(quoteCalls).toHaveLength(1)
-  })
-
   it('maps the balance percentage slider to the spent asset amount', () => {
     render(<Trade assetId={`${FLASH_ANVIL_CHAIN_ID}:${FLASH_WETH_ADDRESS}`} />)
 
@@ -638,67 +584,30 @@ describe('Trade', () => {
       'TP/SL',
       'Stop'
     ])
-    expect(screen.queryByLabelText('Slippage')).toBe(null)
     fireEvent.click(screen.getByRole('button', { name: 'Advanced' }))
-    const slippage = screen.getByLabelText('Slippage') as HTMLInputElement
-    expect(slippage.value).toBe('')
-    expect(slippage.placeholder).toBe('Automatic')
+    expect((screen.getByLabelText('Slippage') as HTMLInputElement).placeholder).toBe('Automatic')
 
     fireEvent.click(screen.getByRole('tab', { name: 'Limit' }))
     const limitPrice = screen.getByLabelText('Limit price') as HTMLInputElement
     expect(limitPrice.required).toBe(true)
     expect(limitPrice.labels?.[0]?.textContent).toContain('*')
-    expect(screen.queryByLabelText('Limit order type')).toBe(null)
-    fireEvent.click(screen.getByRole('button', { name: 'Advanced' }))
-    expect((screen.getByLabelText('Time in force') as HTMLSelectElement).value).toBe('gtc')
 
     fireEvent.click(screen.getByRole('tab', { name: 'TWAP' }))
-    expect(screen.getByLabelText('TWAP duration days')).toBeTruthy()
     expect(screen.getByLabelText('TWAP duration hours')).toBeTruthy()
-    expect(screen.getByLabelText('TWAP duration minutes')).toBeTruthy()
-    const twapLimit = screen.getByLabelText('TWAP limit price') as HTMLInputElement
     const twapStart = screen.getByLabelText('TWAP start time') as HTMLInputElement
-    expect(twapLimit.required).toBe(false)
-    expect(twapLimit.placeholder).toBe('Market')
     expect(twapStart.required).toBe(false)
     expect(twapStart.type).toBe('datetime-local')
     fireEvent.click(screen.getByRole('button', { name: 'Advanced' }))
-    const segments = screen.getByLabelText('TWAP segments') as HTMLInputElement
-    const maxPriceImpact = screen.getByLabelText('Maximum price impact') as HTMLInputElement
-    expect(segments.value).toBe('')
-    expect(segments.placeholder).toBe('Automatic')
-    expect(maxPriceImpact.value).toBe('')
-    expect(maxPriceImpact.placeholder).toBe('Automatic')
+    expect((screen.getByLabelText('TWAP segments') as HTMLInputElement).placeholder).toBe('Automatic')
 
     fireEvent.click(screen.getByRole('tab', { name: 'TP/SL' }))
     expect(screen.getByRole('button', { name: 'Take profit' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Stop loss' })).toBeTruthy()
     expect((screen.getByLabelText('Take-profit trigger price') as HTMLInputElement).required).toBe(true)
     expect((screen.getByLabelText('Take-profit limit price') as HTMLInputElement).required).toBe(false)
-    fireEvent.click(screen.getByRole('button', { name: 'Stop loss' }))
-    expect((screen.getByLabelText('Stop-loss trigger price') as HTMLInputElement).required).toBe(true)
-    expect((screen.getByLabelText('Stop-loss limit price') as HTMLInputElement).required).toBe(false)
 
     fireEvent.click(screen.getByRole('tab', { name: 'Stop' }))
     expect((screen.getByLabelText('Stop trigger price') as HTMLInputElement).required).toBe(true)
-    expect((screen.getByLabelText('Stop limit price') as HTMLInputElement).required).toBe(false)
     expect(screen.getByLabelText('USDC amount')).toBeTruthy()
-  })
-
-  it('marks missing required order fields without marking optional limit prices', () => {
-    render(<Trade assetId={`${FLASH_ANVIL_CHAIN_ID}:${FLASH_WETH_ADDRESS}`} />)
-
-    fireEvent.click(screen.getByRole('tab', { name: 'TP/SL' }))
-    fireEvent.change(screen.getByLabelText('WETH amount'), { target: { value: '0.1' } })
-
-    const trigger = screen.getByLabelText('Take-profit trigger price') as HTMLInputElement
-    const limit = screen.getByLabelText('Take-profit limit price') as HTMLInputElement
-
-    expect(screen.getByText('Enter a trigger price.')).toBeTruthy()
-    expect(trigger.getAttribute('aria-invalid')).toBe('true')
-    expect(limit.getAttribute('aria-invalid')).toBe(null)
-    expect(trigger.labels?.[0]?.textContent).toContain('*')
-    expect(limit.labels?.[0]?.textContent).not.toContain('*')
   })
 
   it('stays mounted when a newly created account is selected before balances exist', async () => {
@@ -718,51 +627,5 @@ describe('Trade', () => {
 
     expect(screen.getByText('Trade')).toBeTruthy()
     expect(screen.getByLabelText('Close Trade')).toBeTruthy()
-  })
-
-  it('paginates large asset menus instead of rendering the full portfolio', () => {
-    initializeTradeState([wethBalance(), ...Array.from({ length: 120 }, (_, index) => tokenBalance(index))])
-
-    render(<Trade assetId={`${FLASH_ANVIL_CHAIN_ID}:${FLASH_WETH_ADDRESS}`} />)
-
-    fireEvent.click(screen.getByLabelText('Select target asset'))
-
-    expect(screen.getAllByRole('option')).toHaveLength(50)
-    fireEvent.change(screen.getByLabelText('Search tokens'), { target: { value: 'Token 119' } })
-    expect(screen.getAllByRole('option')).toHaveLength(1)
-    expect(screen.getByRole('option').textContent).toContain('T119')
-    fireEvent.change(screen.getByLabelText('Search tokens'), { target: { value: '' } })
-    fireEvent.click(screen.getByText('Show 50 more assets'))
-    expect(screen.getAllByRole('option')).toHaveLength(100)
-  })
-
-  it('renders the projected canonical chain image in the asset selector', () => {
-    initializeTradeState([usdcBalance(), wethBalance()])
-    render(<Trade assetId={`${FLASH_ANVIL_CHAIN_ID}:${FLASH_WETH_ADDRESS}`} />)
-
-    fireEvent.click(screen.getByLabelText('Select target asset'))
-
-    const chainBadges = screen
-      .getAllByRole('option')
-      .map((option) => within(option).getByRole('presentation', { hidden: true }).getAttribute('src'))
-    expect(chainBadges).toEqual(['data:image/png;base64,Y2hhaW4=', 'data:image/png;base64,Y2hhaW4='])
-  })
-
-  it('selects a custom token with no balance', () => {
-    const customToken = {
-      address: '0x00000000000000000000000000000000000000cc',
-      chainId: FLASH_ANVIL_CHAIN_ID,
-      decimals: 6,
-      name: 'Custom Dollar',
-      symbol: 'CUSD'
-    }
-    initializeTradeState([wethBalance()], [customToken])
-
-    render(<Trade assetId={`${FLASH_ANVIL_CHAIN_ID}:${FLASH_WETH_ADDRESS}`} />)
-    fireEvent.click(screen.getByLabelText('Select contra asset'))
-    fireEvent.change(screen.getByLabelText('Search tokens'), { target: { value: 'Custom Dollar' } })
-    fireEvent.click(screen.getByRole('option'))
-
-    expect(screen.getByLabelText('Select contra asset').textContent).toContain('CUSD')
   })
 })

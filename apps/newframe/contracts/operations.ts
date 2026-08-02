@@ -6,6 +6,12 @@ import {
   FlashQuoteSchema as DomainFlashQuoteSchema,
   FlashTradeSideSchema
 } from '../domain/flash/schemas.js'
+import {
+  FLASH_MAX_TWAP_BUCKET_COUNT,
+  FLASH_MAX_TWAP_DURATION_SECONDS,
+  FLASH_MIN_TWAP_BUCKET_COUNT,
+  FLASH_MIN_TWAP_DURATION_SECONDS
+} from '../domain/flash/policy.js'
 
 const AddressSchema = z.string().regex(/^0x[0-9a-fA-F]{40}$/)
 const ChainIdSchema = z.number().int().positive()
@@ -59,14 +65,24 @@ export type FlashQuoteDisplay = z.infer<typeof FlashQuoteDisplaySchema>
 
 const FlashOptionalOrderFields = {
   startTime: z.string().max(128).optional(),
-  durationSeconds: z.number().int().min(300).max(2_592_000).optional(),
+  durationSeconds: z
+    .number()
+    .int()
+    .min(FLASH_MIN_TWAP_DURATION_SECONDS)
+    .max(FLASH_MAX_TWAP_DURATION_SECONDS)
+    .optional(),
   expireTime: z.string().max(128).optional(),
   limitNotionalPrice: z.string().max(128).optional(),
   maxPriceImpact: z.string().max(128).optional(),
   quickTrade: z.literal(true).optional(),
   slippage: z.string().max(128).optional(),
   triggers: z.array(FlashTriggerSchema).max(2).optional(),
-  twapBucketCount: z.number().int().min(2).max(2_560).optional()
+  twapBucketCount: z
+    .number()
+    .int()
+    .min(FLASH_MIN_TWAP_BUCKET_COUNT)
+    .max(FLASH_MAX_TWAP_BUCKET_COUNT)
+    .optional()
 }
 
 export const FlashQuoteRequestSchema = z
@@ -92,8 +108,6 @@ export const AccountSelectCommandSchema = z.strictObject({
   type: z.literal('account.select'),
   accountId: z.string().min(1).max(256)
 })
-
-export type AccountSelectCommand = z.infer<typeof AccountSelectCommandSchema>
 
 const OperationIdSchema = z.string().min(1).max(256)
 const ProfileIdSchema = z.string().min(1).max(256)
@@ -163,7 +177,6 @@ export const ProfileMovableAccountsResultSchema = z.discriminatedUnion('ok', [
     error: z.enum(['invalid_query', 'unauthorized', 'operation_failed'])
   })
 ])
-export type ProfileMovableAccountsResult = z.infer<typeof ProfileMovableAccountsResultSchema>
 
 export const SendSubmitCommandSchema = z.strictObject({
   type: z.literal('send.submit'),
@@ -197,10 +210,8 @@ export const TradeSubmitCommandSchema = z.strictObject({
 export type TradeSubmitCommand = z.infer<typeof TradeSubmitCommandSchema>
 
 export const TradeReleaseCommandSchema = z.strictObject({ type: z.literal('trade.release') })
-export type TradeReleaseCommand = z.infer<typeof TradeReleaseCommandSchema>
 
 export const SideTrayCloseCommandSchema = z.strictObject({ type: z.literal('sidetray.close') })
-export type SideTrayCloseCommand = z.infer<typeof SideTrayCloseCommandSchema>
 
 export const RendererContextMenuCommandSchema = z.strictObject({
   type: z.literal('renderer.context-menu'),
@@ -223,8 +234,6 @@ export const NameResolveResultSchema = z.discriminatedUnion('ok', [
     error: z.enum(['invalid_query', 'unauthorized', 'not_found', 'resolution_failed'])
   })
 ])
-
-export type NameResolveResult = z.infer<typeof NameResolveResultSchema>
 
 export const AddressChainUsageQuerySchema = z.strictObject({
   type: z.literal('address.chain-usage'),
@@ -249,8 +258,6 @@ export const AddressChainUsageResultSchema = z.discriminatedUnion('ok', [
     error: z.enum(['invalid_query', 'unauthorized', 'lookup_failed'])
   })
 ])
-
-export type AddressChainUsageResult = z.infer<typeof AddressChainUsageResultSchema>
 
 export const FlashQuoteQuerySchema = z.strictObject({
   type: z.literal('flash.quote'),
@@ -295,13 +302,11 @@ export const ClipboardWriteCommandSchema = z.strictObject({
   type: z.literal('clipboard.write'),
   text: z.string().min(1).max(100_000)
 })
-export type ClipboardWriteCommand = z.infer<typeof ClipboardWriteCommandSchema>
 
 export const ExternalOpenCommandSchema = z.strictObject({
   type: z.literal('external.open'),
   url: z.url({ protocol: /^https:$/ }).max(4_096)
 })
-export type ExternalOpenCommand = z.infer<typeof ExternalOpenCommandSchema>
 
 export const ExplorerOpenCommandSchema = z.strictObject({
   type: z.literal('explorer.open'),
@@ -311,7 +316,6 @@ export const ExplorerOpenCommandSchema = z.strictObject({
     .regex(/^0x[0-9a-fA-F]{64}$/)
     .optional()
 })
-export type ExplorerOpenCommand = z.infer<typeof ExplorerOpenCommandSchema>
 
 export const TokenSchema = z.strictObject({
   address: AddressSchema,
@@ -335,7 +339,6 @@ export const TokenRemoveCommandSchema = z.strictObject({
   address: AddressSchema,
   chainId: ChainIdSchema
 })
-export type TokenRemoveCommand = z.infer<typeof TokenRemoveCommandSchema>
 
 export const TokenImageHydrateCommandSchema = z.strictObject({
   type: z.literal('token.image-hydrate'),
@@ -344,13 +347,11 @@ export const TokenImageHydrateCommandSchema = z.strictObject({
     .max(128)
     .regex(/^\d+:0x[0-9a-fA-F]{40}$/)
 })
-export type TokenImageHydrateCommand = z.infer<typeof TokenImageHydrateCommandSchema>
 
 export const OriginRemoveCommandSchema = z.strictObject({
   type: z.literal('origin.remove'),
   originId: OperationIdSchema
 })
-export type OriginRemoveCommand = z.infer<typeof OriginRemoveCommandSchema>
 
 export const WarningToggleCommandSchema = z.strictObject({
   type: z.literal('warning.toggle'),
@@ -362,20 +363,17 @@ export const RequestApproveCommandSchema = z.strictObject({
   type: z.literal('request.approve'),
   requestId: OperationIdSchema
 })
-export type RequestApproveCommand = z.infer<typeof RequestApproveCommandSchema>
 
 export const RequestWarningConfirmCommandSchema = z.strictObject({
   type: z.literal('request.warning-confirm'),
   requestId: OperationIdSchema,
   gate: z.enum(['signer-compatibility', 'gas-fee'])
 })
-export type RequestWarningConfirmCommand = z.infer<typeof RequestWarningConfirmCommandSchema>
 
 export const NetworkRemoveCommandSchema = z.strictObject({
   type: z.literal('network.remove'),
   chainId: ChainIdSchema
 })
-export type NetworkRemoveCommand = z.infer<typeof NetworkRemoveCommandSchema>
 
 export const TrezorInputCommandSchema = z.discriminatedUnion('input', [
   z.strictObject({
@@ -433,7 +431,6 @@ export const AccountRemoveCommandSchema = z.strictObject({
   address: AddressSchema,
   removeSeedSigner: z.boolean().optional()
 })
-export type AccountRemoveCommand = z.infer<typeof AccountRemoveCommandSchema>
 
 export const SignerReloadCommandSchema = z.strictObject({
   type: z.literal('signer.reload'),
@@ -472,7 +469,6 @@ export const TokenLookupResultSchema = z.discriminatedUnion('ok', [
     error: z.enum(['invalid_query', 'unauthorized', 'not_found', 'lookup_failed'])
   })
 ])
-export type TokenLookupResult = z.infer<typeof TokenLookupResultSchema>
 
 const BoundedPasswordSchema = z.string().max(1_024)
 const BoundedNameSchema = z.string().trim().max(128)
@@ -485,7 +481,6 @@ export const HomeCommandConsumeCommandSchema = z.strictObject({
   type: z.literal('home.command-consume'),
   commandId: z.number().int().positive()
 })
-export type HomeCommandConsumeCommand = z.infer<typeof HomeCommandConsumeCommandSchema>
 
 export const SecurityStatusQuerySchema = z.strictObject({ type: z.literal('security.status') })
 export type SecurityStatusQuery = z.infer<typeof SecurityStatusQuerySchema>
@@ -570,14 +565,12 @@ export const NetworkPrimaryRpcSetCommandSchema = z.strictObject({
   chainId: ChainIdSchema,
   url: HttpUrlSchema
 })
-export type NetworkPrimaryRpcSetCommand = z.infer<typeof NetworkPrimaryRpcSetCommandSchema>
 
 export const NetworkActivationSetCommandSchema = z.strictObject({
   type: z.literal('network.activation-set'),
   chainId: ChainIdSchema,
   enabled: z.boolean()
 })
-export type NetworkActivationSetCommand = z.infer<typeof NetworkActivationSetCommandSchema>
 
 export const SideTrayOpenCommandSchema = z.strictObject({
   type: z.literal('sidetray.open'),
@@ -599,27 +592,23 @@ export const AccountReorderCommandSchema = z.strictObject({
   fromAccountId: AddressSchema,
   toAccountId: AddressSchema
 })
-export type AccountReorderCommand = z.infer<typeof AccountReorderCommandSchema>
 
 export const AccountRenameCommandSchema = z.strictObject({
   type: z.literal('account.rename'),
   accountId: AddressSchema,
   name: BoundedNameSchema.min(1)
 })
-export type AccountRenameCommand = z.infer<typeof AccountRenameCommandSchema>
 
 export const AccountAgentAccessSetCommandSchema = z.strictObject({
   type: z.literal('account.agent-access-set'),
   accountId: AddressSchema,
   enabled: z.boolean()
 })
-export type AccountAgentAccessSetCommand = z.infer<typeof AccountAgentAccessSetCommandSchema>
 
 export const AccountAgentSessionsRevokeCommandSchema = z.strictObject({
   type: z.literal('account.agent-sessions-revoke'),
   accountId: AddressSchema
 })
-export type AccountAgentSessionsRevokeCommand = z.infer<typeof AccountAgentSessionsRevokeCommandSchema>
 
 export const AccountPrivateKeyExportQuerySchema = z.strictObject({
   type: z.literal('account.private-key-export'),
@@ -639,7 +628,6 @@ export const AccountPrivateKeyExportResultSchema = z.discriminatedUnion('ok', [
     message: ErrorMessageSchema
   })
 ])
-export type AccountPrivateKeyExportResult = z.infer<typeof AccountPrivateKeyExportResultSchema>
 
 export const AccountAddFromSignerCommandSchema = z.strictObject({
   type: z.literal('account.add-from-signer'),
@@ -669,7 +657,6 @@ export const KeystoreLocateResultSchema = z.discriminatedUnion('ok', [
     message: ErrorMessageSchema
   })
 ])
-export type KeystoreLocateResult = z.infer<typeof KeystoreLocateResultSchema>
 
 export const SignerImportCommandSchema = z.discriminatedUnion('source', [
   z.strictObject({
@@ -809,14 +796,12 @@ export const WalletResetCommandSchema = z.strictObject({
 export type WalletResetCommand = z.infer<typeof WalletResetCommandSchema>
 
 export const AppQuitCommandSchema = z.strictObject({ type: z.literal('app.quit') })
-export type AppQuitCommand = z.infer<typeof AppQuitCommandSchema>
 
 export const PermissionClearCommandSchema = z.strictObject({
   type: z.literal('permission.clear'),
   accountId: AddressSchema,
   originId: OperationIdSchema.optional()
 })
-export type PermissionClearCommand = z.infer<typeof PermissionClearCommandSchema>
 
 export const NetworkRequestResolveCommandSchema = z
   .strictObject({
@@ -836,7 +821,6 @@ export const NotificationUpdateCommandSchema = z.strictObject({
   notificationId: OperationIdSchema,
   action: z.enum(['dismiss', 'expire'])
 })
-export type NotificationUpdateCommand = z.infer<typeof NotificationUpdateCommandSchema>
 
 export const SeedGenerateQuerySchema = z.strictObject({ type: z.literal('seed.generate') })
 export type SeedGenerateQuery = z.infer<typeof SeedGenerateQuerySchema>
@@ -849,7 +833,6 @@ export const SeedGenerateResultSchema = z.discriminatedUnion('ok', [
     message: ErrorMessageSchema
   })
 ])
-export type SeedGenerateResult = z.infer<typeof SeedGenerateResultSchema>
 
 export const SecurityUnlockCommandSchema = z.discriminatedUnion('method', [
   z.strictObject({
@@ -880,42 +863,36 @@ export const RequestRejectCommandSchema = z.strictObject({
   type: z.literal('request.reject'),
   requestId: OperationIdSchema
 })
-export type RequestRejectCommand = z.infer<typeof RequestRejectCommandSchema>
 
 export const AccessRequestResolveCommandSchema = z.strictObject({
   type: z.literal('request.access-resolve'),
   requestId: OperationIdSchema,
   approved: z.boolean()
 })
-export type AccessRequestResolveCommand = z.infer<typeof AccessRequestResolveCommandSchema>
 
 export const AgentAccessRequestResolveCommandSchema = z.strictObject({
   type: z.literal('request.agent-access-resolve'),
   requestId: OperationIdSchema,
   approved: z.boolean()
 })
-export type AgentAccessRequestResolveCommand = z.infer<typeof AgentAccessRequestResolveCommandSchema>
 
 export const SwitchChainRequestResolveCommandSchema = z.strictObject({
   type: z.literal('request.switch-chain-resolve'),
   requestId: OperationIdSchema,
   approved: z.boolean()
 })
-export type SwitchChainRequestResolveCommand = z.infer<typeof SwitchChainRequestResolveCommandSchema>
 
 export const RequestClearOriginCommandSchema = z.strictObject({
   type: z.literal('request.clear-origin'),
   accountId: AddressSchema,
   originId: OperationIdSchema
 })
-export type RequestClearOriginCommand = z.infer<typeof RequestClearOriginCommandSchema>
 
 export const RequestApprovalConfirmCommandSchema = z.strictObject({
   type: z.literal('request.approval-confirm'),
   requestId: OperationIdSchema,
   approvalType: z.enum(['approveOtherChain', 'approveGasLimit'])
 })
-export type RequestApprovalConfirmCommand = z.infer<typeof RequestApprovalConfirmCommandSchema>
 
 const TokenApprovalAmountSchema = z
   .string()
@@ -945,33 +922,28 @@ export const TransactionFeeUpdateCommandSchema = z.strictObject({
   field: z.enum(['baseFee', 'priorityFee', 'gasPrice', 'gasLimit']),
   value: HexQuantitySchema
 })
-export type TransactionFeeUpdateCommand = z.infer<typeof TransactionFeeUpdateCommandSchema>
 
 export const TransactionFeeDefaultSetCommandSchema = z.strictObject({
   type: z.literal('transaction.fee-default-set'),
   requestId: OperationIdSchema,
   level: z.enum(['asap', 'fast', 'standard', 'slow'])
 })
-export type TransactionFeeDefaultSetCommand = z.infer<typeof TransactionFeeDefaultSetCommandSchema>
 
 export const TransactionNonceAdjustCommandSchema = z.strictObject({
   type: z.literal('transaction.nonce-adjust'),
   requestId: OperationIdSchema,
   direction: z.union([z.literal(-1), z.literal(1)])
 })
-export type TransactionNonceAdjustCommand = z.infer<typeof TransactionNonceAdjustCommandSchema>
 
 export const TransactionNonceResetCommandSchema = z.strictObject({
   type: z.literal('transaction.nonce-reset'),
   requestId: OperationIdSchema
 })
-export type TransactionNonceResetCommand = z.infer<typeof TransactionNonceResetCommandSchema>
 
 export const TransactionFeeNoticeDismissCommandSchema = z.strictObject({
   type: z.literal('transaction.fee-notice-dismiss'),
   requestId: OperationIdSchema
 })
-export type TransactionFeeNoticeDismissCommand = z.infer<typeof TransactionFeeNoticeDismissCommandSchema>
 
 export const TransactionReplaceCommandSchema = z.strictObject({
   type: z.literal('transaction.replace'),
@@ -985,32 +957,27 @@ export const PanelRequestOpenCommandSchema = z.strictObject({
   type: z.literal('panel.request-open'),
   requestId: OperationIdSchema
 })
-export type PanelRequestOpenCommand = z.infer<typeof PanelRequestOpenCommandSchema>
 
 export const PanelBackCommandSchema = z.strictObject({
   type: z.literal('panel.back'),
   steps: z.number().int().min(1).max(10).default(1)
 })
-export type PanelBackCommand = z.infer<typeof PanelBackCommandSchema>
 
 export const AddTokenReviewCommandSchema = z.strictObject({
   type: z.literal('request.add-token-review'),
   requestId: OperationIdSchema
 })
-export type AddTokenReviewCommand = z.infer<typeof AddTokenReviewCommandSchema>
 
 export const AddChainReviewCommandSchema = z.strictObject({
   type: z.literal('request.add-chain-review'),
   requestId: OperationIdSchema
 })
-export type AddChainReviewCommand = z.infer<typeof AddChainReviewCommandSchema>
 
 export const ExtensionRespondCommandSchema = z.strictObject({
   type: z.literal('extension.respond'),
   extensionId: z.string().trim().min(1).max(4_096),
   approved: z.boolean()
 })
-export type ExtensionRespondCommand = z.infer<typeof ExtensionRespondCommandSchema>
 
 export const UpdaterRespondCommandSchema = z.strictObject({
   type: z.literal('updater.respond'),
@@ -1019,7 +986,6 @@ export const UpdaterRespondCommandSchema = z.strictObject({
 export type UpdaterRespondCommand = z.infer<typeof UpdaterRespondCommandSchema>
 
 export const TrayMouseoutCommandSchema = z.strictObject({ type: z.literal('tray.mouseout') })
-export type TrayMouseoutCommand = z.infer<typeof TrayMouseoutCommandSchema>
 
 type OperationContract = {
   input: z.ZodType
@@ -1032,174 +998,86 @@ function defineOperationContracts<const TContracts extends Record<string, Operat
   return contracts
 }
 
+const acknowledged = <TInput extends z.ZodType>(input: TInput) => ({
+  input,
+  result: CommandResultSchema
+})
+
 export const commandContracts = defineOperationContracts({
-  'account.agent-access-set': {
-    input: AccountAgentAccessSetCommandSchema,
-    result: CommandResultSchema
-  },
-  'account.agent-sessions-revoke': {
-    input: AccountAgentSessionsRevokeCommandSchema,
-    result: CommandResultSchema
-  },
-  'account.add-from-signer': {
-    input: AccountAddFromSignerCommandSchema,
-    result: CommandResultSchema
-  },
-  'account.profile-move': {
-    input: AccountProfileMoveCommandSchema,
-    result: CommandResultSchema
-  },
-  'account.select': { input: AccountSelectCommandSchema, result: CommandResultSchema },
-  'account.remove': { input: AccountRemoveCommandSchema, result: CommandResultSchema },
-  'account.rename': { input: AccountRenameCommandSchema, result: CommandResultSchema },
-  'account.reorder': { input: AccountReorderCommandSchema, result: CommandResultSchema },
-  'account.watch-add': { input: AccountWatchAddCommandSchema, result: CommandResultSchema },
-  'app.quit': { input: AppQuitCommandSchema, result: CommandResultSchema },
-  'clipboard.write': { input: ClipboardWriteCommandSchema, result: CommandResultSchema },
-  'sidetray.open': { input: SideTrayOpenCommandSchema, result: CommandResultSchema },
-  'sidetray.close': { input: SideTrayCloseCommandSchema, result: CommandResultSchema },
-  'renderer.context-menu': {
-    input: RendererContextMenuCommandSchema,
-    result: CommandResultSchema
-  },
-  'explorer.open': { input: ExplorerOpenCommandSchema, result: CommandResultSchema },
-  'external.open': { input: ExternalOpenCommandSchema, result: CommandResultSchema },
-  'extension.respond': { input: ExtensionRespondCommandSchema, result: CommandResultSchema },
-  'flash.order-cancel': {
-    input: FlashOrderCancelCommandSchema,
-    result: CommandResultSchema
-  },
-  'home.command-consume': {
-    input: HomeCommandConsumeCommandSchema,
-    result: CommandResultSchema
-  },
-  'network.activation-set': {
-    input: NetworkActivationSetCommandSchema,
-    result: CommandResultSchema
-  },
-  'network.primary-rpc-set': {
-    input: NetworkPrimaryRpcSetCommandSchema,
-    result: CommandResultSchema
-  },
-  'network.remove': { input: NetworkRemoveCommandSchema, result: CommandResultSchema },
-  'network.request-resolve': {
-    input: NetworkRequestResolveCommandSchema,
-    result: CommandResultSchema
-  },
-  'notification.update': {
-    input: NotificationUpdateCommandSchema,
-    result: CommandResultSchema
-  },
-  'origin.remove': { input: OriginRemoveCommandSchema, result: CommandResultSchema },
-  'panel.back': { input: PanelBackCommandSchema, result: CommandResultSchema },
-  'panel.request-open': { input: PanelRequestOpenCommandSchema, result: CommandResultSchema },
-  'permission.clear': { input: PermissionClearCommandSchema, result: CommandResultSchema },
-  'portfolio.refresh': { input: PortfolioRefreshCommandSchema, result: CommandResultSchema },
-  'profile.create': { input: ProfileCreateCommandSchema, result: CommandResultSchema },
-  'profile.delete': { input: ProfileDeleteCommandSchema, result: CommandResultSchema },
-  'profile.rename': { input: ProfileRenameCommandSchema, result: CommandResultSchema },
-  'profile.select': { input: ProfileSelectCommandSchema, result: CommandResultSchema },
-  'request.approve': { input: RequestApproveCommandSchema, result: CommandResultSchema },
-  'request.warning-confirm': {
-    input: RequestWarningConfirmCommandSchema,
-    result: CommandResultSchema
-  },
-  'request.access-resolve': {
-    input: AccessRequestResolveCommandSchema,
-    result: CommandResultSchema
-  },
-  'request.agent-access-resolve': {
-    input: AgentAccessRequestResolveCommandSchema,
-    result: CommandResultSchema
-  },
-  'request.add-chain-review': {
-    input: AddChainReviewCommandSchema,
-    result: CommandResultSchema
-  },
-  'request.add-token-review': {
-    input: AddTokenReviewCommandSchema,
-    result: CommandResultSchema
-  },
-  'request.approval-confirm': {
-    input: RequestApprovalConfirmCommandSchema,
-    result: CommandResultSchema
-  },
-  'request.clear-origin': {
-    input: RequestClearOriginCommandSchema,
-    result: CommandResultSchema
-  },
-  'request.reject': { input: RequestRejectCommandSchema, result: CommandResultSchema },
-  'request.switch-chain-resolve': {
-    input: SwitchChainRequestResolveCommandSchema,
-    result: CommandResultSchema
-  },
-  'request.token-approval-update': {
-    input: RequestTokenApprovalUpdateCommandSchema,
-    result: CommandResultSchema
-  },
-  'security.configure': { input: SecurityConfigureCommandSchema, result: CommandResultSchema },
-  'security.unlock': { input: SecurityUnlockCommandSchema, result: CommandResultSchema },
-  'send.submit': { input: SendSubmitCommandSchema, result: CommandResultSchema },
-  'trade.prepare': { input: TradePrepareCommandSchema, result: CommandResultSchema },
-  'trade.release': { input: TradeReleaseCommandSchema, result: CommandResultSchema },
-  'trade.submit': { input: TradeSubmitCommandSchema, result: CommandResultSchema },
-  'settings.update': { input: SettingsUpdateCommandSchema, result: CommandResultSchema },
-  'signer.disconnect': { input: SignerDisconnectCommandSchema, result: CommandResultSchema },
-  'signer.hardware-session-finish': {
-    input: SignerHardwareSessionFinishCommandSchema,
-    result: CommandResultSchema
-  },
-  'signer.hardware-session-start': {
-    input: SignerHardwareSessionStartCommandSchema,
-    result: CommandResultSchema
-  },
-  'signer.import': { input: SignerImportCommandSchema, result: CommandResultSchema },
-  'signer.ledger-accounts-load': {
-    input: SignerLedgerAccountsLoadCommandSchema,
-    result: CommandResultSchema
-  },
-  'signer.lattice-pair': { input: LatticePairCommandSchema, result: CommandResultSchema },
-  'signer.lattice-create': {
-    input: SignerLatticeCreateCommandSchema,
-    result: CommandResultSchema
-  },
-  'signer.reload': { input: SignerReloadCommandSchema, result: CommandResultSchema },
-  'signer.trezor-input': { input: TrezorInputCommandSchema, result: CommandResultSchema },
-  'token.add': { input: TokenAddCommandSchema, result: CommandResultSchema },
-  'token.image-hydrate': {
-    input: TokenImageHydrateCommandSchema,
-    result: CommandResultSchema
-  },
-  'token.remove': { input: TokenRemoveCommandSchema, result: CommandResultSchema },
-  'transaction.fee-default-set': {
-    input: TransactionFeeDefaultSetCommandSchema,
-    result: CommandResultSchema
-  },
-  'transaction.fee-notice-dismiss': {
-    input: TransactionFeeNoticeDismissCommandSchema,
-    result: CommandResultSchema
-  },
-  'transaction.fee-update': {
-    input: TransactionFeeUpdateCommandSchema,
-    result: CommandResultSchema
-  },
-  'transaction.nonce-adjust': {
-    input: TransactionNonceAdjustCommandSchema,
-    result: CommandResultSchema
-  },
-  'transaction.nonce-reset': {
-    input: TransactionNonceResetCommandSchema,
-    result: CommandResultSchema
-  },
-  'transaction.replace': {
-    input: TransactionReplaceCommandSchema,
-    result: CommandResultSchema
-  },
-  'tray.mouseout': { input: TrayMouseoutCommandSchema, result: CommandResultSchema },
-  'wallet.lock': { input: WalletLockCommandSchema, result: CommandResultSchema },
-  'wallet.reset': { input: WalletResetCommandSchema, result: CommandResultSchema },
-  'updater.respond': { input: UpdaterRespondCommandSchema, result: CommandResultSchema },
-  'warning.toggle': { input: WarningToggleCommandSchema, result: CommandResultSchema }
+  'account.agent-access-set': acknowledged(AccountAgentAccessSetCommandSchema),
+  'account.agent-sessions-revoke': acknowledged(AccountAgentSessionsRevokeCommandSchema),
+  'account.add-from-signer': acknowledged(AccountAddFromSignerCommandSchema),
+  'account.profile-move': acknowledged(AccountProfileMoveCommandSchema),
+  'account.select': acknowledged(AccountSelectCommandSchema),
+  'account.remove': acknowledged(AccountRemoveCommandSchema),
+  'account.rename': acknowledged(AccountRenameCommandSchema),
+  'account.reorder': acknowledged(AccountReorderCommandSchema),
+  'account.watch-add': acknowledged(AccountWatchAddCommandSchema),
+  'app.quit': acknowledged(AppQuitCommandSchema),
+  'clipboard.write': acknowledged(ClipboardWriteCommandSchema),
+  'sidetray.open': acknowledged(SideTrayOpenCommandSchema),
+  'sidetray.close': acknowledged(SideTrayCloseCommandSchema),
+  'renderer.context-menu': acknowledged(RendererContextMenuCommandSchema),
+  'explorer.open': acknowledged(ExplorerOpenCommandSchema),
+  'external.open': acknowledged(ExternalOpenCommandSchema),
+  'extension.respond': acknowledged(ExtensionRespondCommandSchema),
+  'flash.order-cancel': acknowledged(FlashOrderCancelCommandSchema),
+  'home.command-consume': acknowledged(HomeCommandConsumeCommandSchema),
+  'network.activation-set': acknowledged(NetworkActivationSetCommandSchema),
+  'network.primary-rpc-set': acknowledged(NetworkPrimaryRpcSetCommandSchema),
+  'network.remove': acknowledged(NetworkRemoveCommandSchema),
+  'network.request-resolve': acknowledged(NetworkRequestResolveCommandSchema),
+  'notification.update': acknowledged(NotificationUpdateCommandSchema),
+  'origin.remove': acknowledged(OriginRemoveCommandSchema),
+  'panel.back': acknowledged(PanelBackCommandSchema),
+  'panel.request-open': acknowledged(PanelRequestOpenCommandSchema),
+  'permission.clear': acknowledged(PermissionClearCommandSchema),
+  'portfolio.refresh': acknowledged(PortfolioRefreshCommandSchema),
+  'profile.create': acknowledged(ProfileCreateCommandSchema),
+  'profile.delete': acknowledged(ProfileDeleteCommandSchema),
+  'profile.rename': acknowledged(ProfileRenameCommandSchema),
+  'profile.select': acknowledged(ProfileSelectCommandSchema),
+  'request.approve': acknowledged(RequestApproveCommandSchema),
+  'request.warning-confirm': acknowledged(RequestWarningConfirmCommandSchema),
+  'request.access-resolve': acknowledged(AccessRequestResolveCommandSchema),
+  'request.agent-access-resolve': acknowledged(AgentAccessRequestResolveCommandSchema),
+  'request.add-chain-review': acknowledged(AddChainReviewCommandSchema),
+  'request.add-token-review': acknowledged(AddTokenReviewCommandSchema),
+  'request.approval-confirm': acknowledged(RequestApprovalConfirmCommandSchema),
+  'request.clear-origin': acknowledged(RequestClearOriginCommandSchema),
+  'request.reject': acknowledged(RequestRejectCommandSchema),
+  'request.switch-chain-resolve': acknowledged(SwitchChainRequestResolveCommandSchema),
+  'request.token-approval-update': acknowledged(RequestTokenApprovalUpdateCommandSchema),
+  'security.configure': acknowledged(SecurityConfigureCommandSchema),
+  'security.unlock': acknowledged(SecurityUnlockCommandSchema),
+  'send.submit': acknowledged(SendSubmitCommandSchema),
+  'trade.prepare': acknowledged(TradePrepareCommandSchema),
+  'trade.release': acknowledged(TradeReleaseCommandSchema),
+  'trade.submit': acknowledged(TradeSubmitCommandSchema),
+  'settings.update': acknowledged(SettingsUpdateCommandSchema),
+  'signer.disconnect': acknowledged(SignerDisconnectCommandSchema),
+  'signer.hardware-session-finish': acknowledged(SignerHardwareSessionFinishCommandSchema),
+  'signer.hardware-session-start': acknowledged(SignerHardwareSessionStartCommandSchema),
+  'signer.import': acknowledged(SignerImportCommandSchema),
+  'signer.ledger-accounts-load': acknowledged(SignerLedgerAccountsLoadCommandSchema),
+  'signer.lattice-pair': acknowledged(LatticePairCommandSchema),
+  'signer.lattice-create': acknowledged(SignerLatticeCreateCommandSchema),
+  'signer.reload': acknowledged(SignerReloadCommandSchema),
+  'signer.trezor-input': acknowledged(TrezorInputCommandSchema),
+  'token.add': acknowledged(TokenAddCommandSchema),
+  'token.image-hydrate': acknowledged(TokenImageHydrateCommandSchema),
+  'token.remove': acknowledged(TokenRemoveCommandSchema),
+  'transaction.fee-default-set': acknowledged(TransactionFeeDefaultSetCommandSchema),
+  'transaction.fee-notice-dismiss': acknowledged(TransactionFeeNoticeDismissCommandSchema),
+  'transaction.fee-update': acknowledged(TransactionFeeUpdateCommandSchema),
+  'transaction.nonce-adjust': acknowledged(TransactionNonceAdjustCommandSchema),
+  'transaction.nonce-reset': acknowledged(TransactionNonceResetCommandSchema),
+  'transaction.replace': acknowledged(TransactionReplaceCommandSchema),
+  'tray.mouseout': acknowledged(TrayMouseoutCommandSchema),
+  'wallet.lock': acknowledged(WalletLockCommandSchema),
+  'wallet.reset': acknowledged(WalletResetCommandSchema),
+  'updater.respond': acknowledged(UpdaterRespondCommandSchema),
+  'warning.toggle': acknowledged(WarningToggleCommandSchema)
 })
 
 export const queryContracts = defineOperationContracts({

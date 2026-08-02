@@ -1,17 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
+import { Icon } from '@newframe/ui/icon'
 import link from '../../../../shared/link'
-import svg from '../../../../shared/svg'
 import { useWalletSelector } from '../../../../state/useAppSelector'
 import { useHomeUiStore } from '../../state/HomeUiProvider'
 import { ReceiveView } from './ReceiveView'
-
-function signerIcon(type: string, size = 16) {
-  if ((type || '').toLowerCase() === 'address') return svg.eye(size)
-  if (type === 'ledger') return svg.ledger(size)
-  if (type === 'trezor') return svg.trezor(size)
-  if (type === 'lattice') return svg.lattice(size)
-  return svg.flame(size + 2)
-}
+import { signerIconName } from '../../../../shared/signerPresentation'
 
 export function Receive({ accountId }: { accountId: string }) {
   const account = useWalletSelector((state) => state.accounts?.[accountId])
@@ -29,7 +22,7 @@ export function Receive({ accountId }: { accountId: string }) {
     <ReceiveView
       account={account}
       copied={copied}
-      icon={type.toLowerCase() === 'address' ? svg.eye(22) : signerIcon(type, 22)}
+      icon={<Icon name={signerIconName(type)} size='large' />}
       name={name}
       onBack={closeOverlay}
       onCopy={() => {

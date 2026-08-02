@@ -6,7 +6,12 @@ import { DEFAULT_PROFILE_ID, DEFAULT_PROFILE_NAME, getProfileAccountIds } from '
 
 describe('canonical state defaults', () => {
   it('creates state that satisfies the canonical runtime schema', () => {
-    expect(CanonicalStateSchema.safeParse(createInitialState()).success).toBe(true)
+    const first = createInitialState()
+    const second = createInitialState()
+    first.main.networks.ethereum[1].name = 'Changed'
+
+    expect(CanonicalStateSchema.safeParse(first).success).toBe(true)
+    expect(second.main.networks.ethereum[1].name).toBe('Mainnet')
   })
 
   it('starts with safe wallet preferences and one selected-account fact', () => {

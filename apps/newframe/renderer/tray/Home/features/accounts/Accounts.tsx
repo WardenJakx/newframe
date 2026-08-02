@@ -19,7 +19,7 @@ import { Text } from '@newframe/ui/text'
 import { HeaderBar } from '../../../../shared/ui/HeaderBar'
 import { SidePanelHeader } from '../../../../shared/ui/SidePanel/SidePanelHeader'
 import link from '../../../../shared/link'
-import svg from '../../../../shared/svg'
+import { signerIconName, signerTypeLabel } from '../../../../shared/signerPresentation'
 import { createBalanceSummarySelector, formatUsdRate } from '../../../../../domain/balance'
 import { useWalletSelector } from '../../../../state/useAppSelector'
 import { selectOperationById } from '../../../../state/selectors/operation'
@@ -54,16 +54,6 @@ interface AccountsState {
   addingAccount: boolean
   draggingAccount: string
   dragOverAccount: string
-}
-
-const signerTypeLabels: Record<string, string> = {
-  ring: 'Hot Signer',
-  seed: 'Hot Signer',
-  address: 'Watch-only',
-  Address: 'Watch-only',
-  ledger: 'Ledger',
-  trezor: 'Trezor',
-  lattice: 'Lattice'
 }
 
 const EMPTY_ARRAY: any[] = []
@@ -236,14 +226,6 @@ export function Accounts() {
     accountMoveOperation?.status === 'succeeded' &&
     !!state.accountMoveProfileId &&
     (!movedAccount || movedAccount.profileId === state.accountMoveProfileId)
-  function signerIcon(type: string, size = 16) {
-    if ((type || '').toLowerCase() === 'address') return svg.eye(size)
-    if (type === 'ledger') return svg.ledger(size)
-    if (type === 'trezor') return svg.trezor(size)
-    if (type === 'lattice') return svg.lattice(size)
-    return svg.flame(size + 2)
-  }
-
   function getBalances(address: string) {
     const rawBalances = props.shared.balances[address] || []
     const { networks, networksMeta, assetRates, tokens } = props.shared
@@ -287,21 +269,17 @@ export function Accounts() {
     return (account?.lastSignerType || '').toString()
   }
 
-  function isWatchOnlyAccount(account: any) {
-    return accountType(account).toLowerCase() === 'address'
-  }
-
   function isHotAccount(account: any) {
     return ['ring', 'seed'].includes(accountType(account).toLowerCase())
   }
 
   function accountIcon(account: any, size = 16) {
-    return isWatchOnlyAccount(account) ? svg.eye(size) : signerIcon(account.lastSignerType, size)
+    return <Icon name={signerIconName(account.lastSignerType)} size={size > 16 ? 'large' : 'medium'} />
   }
 
   function accountTypeLabel(account: any) {
     const type = accountType(account)
-    return signerTypeLabels[type] || signerTypeLabels[type.toLowerCase()] || type || 'Account'
+    return signerTypeLabel(type)
   }
 
   function orderedAccountIds(accounts: Record<string, any>) {

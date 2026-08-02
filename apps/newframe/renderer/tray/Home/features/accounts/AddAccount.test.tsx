@@ -224,6 +224,29 @@ it('keeps drafts local and follows projected onboarding and hardware session sta
     input: 'pin',
     value: '1'
   })
+  state = {
+    ...state,
+    signers: {
+      ...state.signers,
+      'trezor-1': {
+        ...state.signers['trezor-1'],
+        capabilities: ['Capability_PassphraseEntry'],
+        status: 'enter passphrase'
+      }
+    }
+  }
+  act(() => resetStateMirrorForTests(state))
+  const passphrase = screen.getByLabelText('Trezor passphrase') as HTMLInputElement
+  await view.user.type(passphrase, 'keep-local')
+  await view.user.click(screen.getByRole('button', { name: 'Enter passphrase on Trezor' }))
+  expect(lastCommand('signer.trezor-input')).toEqual({
+    type: 'signer.trezor-input',
+    operationId: trezorSession.operationId,
+    actionId: expect.any(String),
+    signerId: 'trezor-1',
+    input: 'device-passphrase'
+  })
+  expect(passphrase.value).toBe('keep-local')
   await view.user.click(screen.getByRole('button', { name: 'Back' }))
   expect(commands()).toContainEqual({
     type: 'signer.hardware-session-finish',

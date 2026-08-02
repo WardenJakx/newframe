@@ -6,6 +6,7 @@ import type {
   AddChainRequest,
   AddTokenRequest,
   RequestApprovalGate,
+  SignTypedDataRequest,
   TransactionRequest
 } from '../../../contracts/requests.js'
 import { ReplacementType } from '../../../contracts/requests.js'
@@ -26,7 +27,6 @@ import { usesBaseFee } from '../../../domain/transaction/index.js'
 import { toBigInt } from '../../../domain/units.js'
 import type { TrustedPrincipal } from '../../authority.js'
 import type { Accounts } from '../../accounts/index.js'
-import type { Provider } from '../../provider/index.js'
 import type { AccountTransactionPolicyPort } from '../transactions/accountPolicyPort.js'
 import type { CanonicalStoreReader } from '../../store/actions.js'
 import type { Chain } from '../../store/state/index.js'
@@ -72,7 +72,11 @@ export interface RequestServicePorts {
   network: {
     rpcMatchesChain(url: unknown, chainId: number): Promise<boolean>
   }
-  provider: Pick<Provider, 'approveSign' | 'approveSignTypedData' | 'approveTransactionRequest'>
+  provider: {
+    approveSign(request: AccountRequest): Promise<string>
+    approveSignTypedData(request: SignTypedDataRequest): Promise<string>
+    approveTransactionRequest(request: TransactionRequest): Promise<string>
+  }
   store: CanonicalStoreReader
   transactionPolicy: Pick<AccountTransactionPolicyPort, 'signerCompatibility'>
   vault: { exists(): boolean; isUnlocked(): boolean }
@@ -232,22 +236,17 @@ export function createRequestService(ports: RequestServicePorts) {
     setGate(account, request.handlerId)
     ports.accounts.setRequestPending(request)
 
-    if (isTransactionRequest(request)) {
-      ports.provider.approveTransactionRequest(request, (error, result) => {
-        if (error) failApproval(request, error)
-        else completeApproval(request, result)
-      })
-    } else if (request.type === 'sign') {
-      ports.provider.approveSign(request, (error, result) => {
-        if (error) failApproval(request, error)
-        else completeApproval(request, result)
-      })
-    } else if (isTypedMessageSignatureRequest(request)) {
-      ports.provider.approveSignTypedData(request, (error, result) => {
-        if (error) failApproval(request, error)
-        else completeApproval(request, result)
-      })
-    }
+    const approval = isTransactionRequest(request)
+      ? ports.provider.approveTransactionRequest(request)
+      : request.type === 'sign'
+        ? ports.provider.approveSign(request)
+        : isTypedMessageSignatureRequest(request)
+          ? ports.provider.approveSignTypedData(request)
+          : undefined
+    void approval?.then(
+      (result) => completeApproval(request, result),
+      (error) => failApproval(request, error)
+    )
     return true
   }
 

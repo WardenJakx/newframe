@@ -1,5 +1,5 @@
 import { Button } from '@newframe/ui/button'
-import { Icon } from '@newframe/ui/icon'
+import { Icon, type IconName } from '@newframe/ui/icon'
 import { Inline } from '@newframe/ui/inline'
 import { Stack } from '@newframe/ui/stack'
 import { Surface } from '@newframe/ui/surface'
@@ -45,32 +45,32 @@ const requestsRecipe = cva({ base: { width: '100%', paddingBlockStart: '10' } })
 export function Requests(props: RequestsProps) {
   const requestCard = (req: RenderableRequest, index: number) => {
     let title = 'Request'
-    let svgName: string | undefined
+    let svgName: IconName | undefined
     let img: string | undefined
     let detail: ReactNode
 
     if (req.type === 'agentAccess') {
       title = 'Agent Access'
-      svgName = 'sign'
+      svgName = 'edit'
     } else if (req.type === 'access') {
       title = 'Account Access'
       svgName = 'accounts'
     } else if (req.type === 'sign') {
       title = 'Sign Message'
-      svgName = 'sign'
+      svgName = 'edit'
     } else if (req.type === 'signTypedData') {
       title = 'Sign Data'
-      svgName = 'sign'
+      svgName = 'edit'
     } else if (req.type === 'signErc20Permit') {
       const chainId = req.typedMessage.data.domain.chainId
       title = `${props.networks[chainId]?.name || 'Network'} Token Permit`
       img = persistedImageSource(props.networkMetadata[chainId]?.image)
     } else if (req.type === 'addChain') {
       title = 'Add Chain'
-      svgName = 'chain'
+      svgName = 'window'
     } else if (req.type === 'switchChain') {
       title = 'Switch Chain'
-      svgName = 'chain'
+      svgName = 'window'
     } else if (req.type === 'addToken') {
       title = 'Add Tokens'
       svgName = 'tokens'

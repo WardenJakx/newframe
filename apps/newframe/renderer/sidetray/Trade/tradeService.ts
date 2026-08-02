@@ -1,5 +1,4 @@
 import link from '../../shared/link'
-import type { FlashQuoteRequest } from '../../../contracts/operations'
 import type { MarketTradeQuoteRequest } from './tradeTransaction'
 
 export function closeTrade() {
@@ -15,7 +14,7 @@ export async function flashQuote(request: MarketTradeQuoteRequest) {
   } = request
   const result = await link.executeQuery({
     type: 'flash.quote',
-    request: wireRequest as FlashQuoteRequest
+    request: wireRequest
   })
   if (!result.ok) throw new Error(result.message || 'Flash quote failed.')
   return result

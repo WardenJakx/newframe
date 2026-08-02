@@ -1,6 +1,6 @@
+import { Icon, type IconName, type IconProps as UiIconProps } from '@newframe/ui/icon'
 import type { CSSProperties } from 'react'
 
-import svg from '../svg'
 import { imageSource } from '../../../domain/image'
 import { sva } from '../../../generated/styled-system/css/sva.js'
 
@@ -50,7 +50,7 @@ const ringRecipe = sva({
 })
 
 interface IconProps {
-  svgName?: string
+  svgName?: IconName
   alt?: string
   svgSize?: number
   img?: string
@@ -63,7 +63,12 @@ interface RingIconProps extends IconProps {
   noRing?: boolean
 }
 
-const Icon = ({ svgName, alt = '', svgSize = 16, img, small }: IconProps) => {
+function iconSize(svgSize: number, small?: boolean): UiIconProps['size'] {
+  if (small || svgSize <= 13) return 'small'
+  return svgSize >= 18 ? 'large' : 'medium'
+}
+
+const Glyph = ({ svgName, alt = '', svgSize = 16, img, small }: IconProps) => {
   const source = imageSource(img)
   if (source) {
     return <img src={source} alt={alt} />
@@ -72,14 +77,12 @@ const Icon = ({ svgName, alt = '', svgSize = 16, img, small }: IconProps) => {
     const iconName = svgName.toLowerCase()
     const ethChains = ['mainnet', 'görli', 'sepolia', 'ropsten', 'rinkeby', 'kovan']
     if (ethChains.includes(iconName)) {
-      return svg.eth(small ? 13 : 18)
+      return <Icon name='ethereum' size={small ? 'small' : 'large'} />
     }
-
-    const svgIcon = (svg as any)[iconName]
-    return svgIcon ? svgIcon(svgSize) : null
+    return <Icon name={svgName} size={iconSize(svgSize, small)} />
   }
 
-  return svg.eth(small ? 13 : 18)
+  return <Icon name='ethereum' size={small ? 'small' : 'large'} />
 }
 
 export default function RingIcon({ color, svgName, svgSize, img, small, block, noRing, alt }: RingIconProps) {
@@ -87,7 +90,7 @@ export default function RingIcon({ color, svgName, svgSize, img, small, block, n
   return (
     <span className={styles.root} style={{ '--ring-color': color || 'currentColor' } as CSSProperties}>
       <span className={styles.inner}>
-        <Icon svgName={svgName} svgSize={svgSize} img={img} alt={alt} small={small} />
+        <Glyph svgName={svgName} svgSize={svgSize} img={img} alt={alt} small={small} />
       </span>
     </span>
   )

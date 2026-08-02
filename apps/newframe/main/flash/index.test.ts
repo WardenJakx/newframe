@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test'
 import { EventEmitter } from 'node:events'
 import WebSocket from 'ws'
-
 import {
   buildFlashQuoteBody,
   buildFlashSubmitBody,
@@ -17,42 +16,68 @@ import type { FlashQuoteRequest } from './contracts'
 import {
   FLASH_BASE_USDC_ADDRESS,
   FLASH_BASE_WETH_ADDRESS,
-  FLASH_MARKET_ORDER_TYPE,
-  FLASH_NATIVE_ETH_TOKEN_ADDRESS
+  FLASH_MARKET_ORDER_TYPE
 } from '../../domain/flash/constants'
 import { FLASH_NATIVE_ETH_ASSET, FLASH_USDC_ASSET, FLASH_WETH_ASSET } from '../../domain/flash/assets'
 import { NATIVE_CURRENCY } from '../../domain/token/constants'
-
 const originalEnv = { ...process.env }
+const originalFetch = globalThis.fetch
 const assetRateService = { observe: mock() }
-
+const accountAddress = '0x0000000000000000000000000000000000000001'
+const services: ReturnType<typeof createFlashService>[] = []
+const baseWireFields = {
+  funderAddress: accountAddress,
+  targetChain: 'anvil',
+  contraChain: 'anvil',
+  targetAsset: FLASH_WETH_ASSET.address.toLowerCase(),
+  contraAsset: FLASH_USDC_ASSET.address.toLowerCase(),
+  side: 'sell',
+  qty: '1',
+  orderType: 'market',
+  maxSlippage: '0.005'
+}
+const jsonHeaders = { 'content-type': 'application/json' }
+const jsonResponse = (payload: unknown, status = 200, statusText?: string) =>
+  new Response(JSON.stringify(payload), { status, statusText, headers: jsonHeaders })
+const queuedJsonResponses = (payloads: unknown[]) => {
+  return async () => {
+    const payload = payloads.shift()
+    if (payload === undefined) throw new Error('Unexpected Flash request')
+    return jsonResponse(payload)
+  }
+}
+function installFetch(implementation: any) {
+  const fetchMock = mock(implementation)
+  globalThis.fetch = fetchMock as unknown as typeof fetch
+  return fetchMock
+}
+function flashWithFetch(implementation: any, overrides: Record<string, unknown> = {}) {
+  const fetchMock = installFetch(implementation)
+  const flash = createFlashService({ assetRateService, store, ...overrides })
+  services.push(flash)
+  return { fetchMock, flash }
+}
 class FakeFlashWebSocket extends EventEmitter {
   readyState: number = WebSocket.CONNECTING
-  sent: string[] = []
-
   open() {
     this.readyState = WebSocket.OPEN
     this.emit('open')
   }
-
   receive(payload: unknown) {
     this.emit('message', Buffer.from(JSON.stringify(payload)))
   }
-
-  send(message: string) {
-    this.sent.push(message)
+  send(_message: string) {
+    return
   }
-
   close() {
     if (this.readyState >= WebSocket.CLOSING) return
     this.readyState = WebSocket.CLOSED
     this.emit('close')
   }
 }
-
-function quoteRequest() {
-  return {
-    accountAddress: '0x0000000000000000000000000000000000000001',
+const quoteRequest = () =>
+  ({
+    accountAddress,
     chainId: 31337,
     contraAsset: FLASH_USDC_ASSET,
     inputAmount: '1',
@@ -61,109 +86,127 @@ function quoteRequest() {
     side: 'sell' as const,
     slippage: '0.50',
     targetAsset: FLASH_WETH_ASSET
-  } satisfies FlashQuoteRequest
-}
-
-function officialAssetRef({ address, id, name, ticker }: Record<string, string>) {
+  }) satisfies FlashQuoteRequest
+const quoteResponse = (overrides: Record<string, unknown> = {}) => ({
+  quoteId: 'quote-1',
+  from: { asset: 'target', amount: '1', notional: '2400' },
+  to: { asset: 'contra', amount: '2398.08', notional: '2398.08' },
+  fees: { estimatedFeeNotional: '1.92' },
+  ...overrides
+})
+const rateResponse = (targetAmount: string, targetNotional: string, contraNotional: string) => ({
+  from: { asset: 'target', amount: targetAmount, notional: targetNotional },
+  to: { asset: 'contra', amount: '1200', notional: contraNotional }
+})
+const normalizedQuote = (
+  response: Record<string, unknown> = {},
+  request: FlashQuoteRequest = quoteRequest()
+) => normalizeFlashQuoteResponse(quoteResponse(response), request)
+function submitFixture(
+  requestOverrides: Partial<FlashQuoteRequest>,
+  responseOverrides: Record<string, unknown>,
+  submitOverrides: Record<string, unknown> = {}
+) {
+  const request = { ...quoteRequest(), ...requestOverrides } as FlashQuoteRequest
+  const quote = normalizedQuote(responseOverrides, request)
   return {
-    id,
-    name,
-    address,
-    ticker,
-    chain: {
-      id: 'eip155:8453',
-      name: 'base',
-      namespace: 'eip155'
-    }
+    body: buildFlashSubmitBody({ ...request, orderSignature: '0xsignature', quote, ...submitOverrides }),
+    quote
   }
 }
+const orderTypedData = (quoteId?: string) =>
+  quoteId
+    ? { domain: { chainId: 31337 }, primaryType: 'Order', types: { Order: [] }, message: { quoteId } }
+    : { domain: { chainId: 31337 }, types: {}, message: {} }
+const officialAssetRef = (address: string, id: string, name: string, ticker: string) => ({
+  id,
+  name,
+  address,
+  ticker,
+  chain: { id: 'eip155:8453', name: 'base', namespace: 'eip155' }
+})
+const officialFill = (
+  targetAmount = '1',
+  contraAmount = '2398.08',
+  averagePrice = contraAmount,
+  averageNotionalPrice = '2400'
+) => ({ targetAmount, contraAmount, averagePrice, averageNotionalPrice })
+const officialOrder = (overrides: Record<string, unknown> = {}) => ({
+  orderId: '00000000-0000-4000-8000-000000000001',
+  orderType: 'limit',
+  side: 'sell',
+  status: 'ORDER_STATUS_PARTIALLY_FILLED',
+  funderAddress: accountAddress,
+  targetAsset: officialAssetRef(FLASH_BASE_WETH_ADDRESS, 'flash-base-weth', 'Wrapped Ether', 'WETH'),
+  contraAsset: officialAssetRef(FLASH_BASE_USDC_ADDRESS, 'flash-base-usdc', 'USD Coin', 'USDC'),
+  qty: '1',
+  filled: officialFill(),
+  placedAt: '2026-07-14T08:00:00.000Z',
+  acceptedAt: '2026-07-14T08:01:00.000Z',
+  closedAt: null,
+  ...overrides
+})
+const canonicalToken = (
+  asset: { address: string; decimals: number; name: string; symbol: string },
+  chainId: number
+) => ({
+  address: asset.address.toLowerCase(),
+  chainId,
+  decimals: asset.decimals,
+  name: asset.name,
+  symbol: asset.symbol
+})
+const canonicalAsset = (address: string, symbol: string, decimals: number) => ({
+  id: `8453:${address.toLowerCase()}`,
+  symbol,
+  decimals,
+  chainId: 8453
+})
+const sendOrders = (socket: FakeFlashWebSocket, type: 'snapshot' | 'update', ...orders: unknown[]) =>
+  socket.receive({ channel: 'orders', type, orders })
+const sendOfficialOrder = (
+  socket: FakeFlashWebSocket,
+  type: 'snapshot' | 'update',
+  order: Record<string, unknown>
+) => sendOrders(socket, type, officialOrder(order))
 
-function officialOrder(overrides: Record<string, unknown> = {}) {
-  return {
-    orderId: '00000000-0000-4000-8000-000000000001',
-    orderType: 'limit',
-    side: 'sell',
-    status: 'ORDER_STATUS_PARTIALLY_FILLED',
-    closeReason: null,
-    funderAddress: '0x0000000000000000000000000000000000000001',
-    targetAsset: officialAssetRef({
-      address: FLASH_BASE_WETH_ADDRESS,
-      id: 'flash-base-weth',
-      name: 'Wrapped Ether',
-      ticker: 'WETH'
-    }),
-    contraAsset: officialAssetRef({
-      address: FLASH_BASE_USDC_ADDRESS,
-      id: 'flash-base-usdc',
-      name: 'USD Coin',
-      ticker: 'USDC'
-    }),
-    qty: '1',
-    filled: {
-      targetAmount: '1',
-      contraAmount: '2398.08',
-      averagePrice: '2398.08',
-      averageNotionalPrice: '2400'
-    },
-    limitNotionalPrice: '2500',
-    trigger: null,
-    brackets: null,
-    maxPriceImpact: '0.05',
-    twapBucketCount: null,
-    placedAt: '2026-07-14T08:00:00.000Z',
-    acceptedAt: '2026-07-14T08:01:00.000Z',
-    closedAt: null,
-    ...overrides
-  }
-}
-
+const startAgentSession = (
+  flash: ReturnType<typeof createFlashService>,
+  accountAddress: string,
+  sessionId: string,
+  ttl = 60_000
+) => flash.startAgentSession({ accountAddress, expiresAt: Date.now() + ttl, sessionId })
 describe('main Flash facade helpers', () => {
   beforeEach(() => {
     assetRateService.observe.mockClear()
     process.env.FRAME_PROFILE = 'dev' as any
   })
-
   afterEach(() => {
+    for (const flash of services.splice(0)) flash.dispose()
+    globalThis.fetch = originalFetch
     process.env = { ...originalEnv }
   })
-
-  it('selects local and production endpoints by FRAME_PROFILE', () => {
-    process.env.FRAME_PROFILE = 'dev' as any
-    expect(flashBaseUrl()).toBe('http://127.0.0.1:8422/v1')
-    expect(flashWebSocketUrl()).toBe('ws://127.0.0.1:8422/v1/ws')
-
-    process.env.FRAME_PROFILE = 'prod' as any
-    expect(flashBaseUrl()).toBe('https://flash.definitive.fi/v1')
-    expect(flashWebSocketUrl()).toBe('wss://flash.definitive.fi/v1/ws')
+  it.each([
+    ['dev', 'http://127.0.0.1:8422/v1', 'ws://127.0.0.1:8422/v1/ws', undefined],
+    [
+      'prod',
+      'https://flash.definitive.fi/v1',
+      'wss://flash.definitive.fi/v1/ws',
+      'dpka_513a2bd7_57a2_46d2_927b_2a3857fe271b'
+    ]
+  ])('uses %s endpoints and packaged auth', (profile, baseUrl, webSocketUrl, apiKey) => {
+    process.env.FRAME_PROFILE = profile as any
+    expect(flashBaseUrl()).toBe(baseUrl)
+    expect(flashWebSocketUrl()).toBe(webSocketUrl)
+    expect(flashHeaders()['x-definitive-api-key'] || undefined).toBe(apiKey)
   })
-
-  it('adds packaged auth only for non-dev requests', () => {
-    process.env.FRAME_PROFILE = 'dev' as any
-    expect(flashHeaders()['x-definitive-api-key']).toBeUndefined()
-
-    process.env.FRAME_PROFILE = 'prod' as any
-    expect(flashHeaders()['x-definitive-api-key']).toBe('dpka_513a2bd7_57a2_46d2_927b_2a3857fe271b')
-  })
-
   it('maps app quote payloads to Flash REST quote bodies', () => {
     const body = buildFlashQuoteBody(quoteRequest())
-
-    expect(body).toMatchObject({
-      funderAddress: '0x0000000000000000000000000000000000000001',
-      targetChain: 'anvil',
-      contraChain: 'anvil',
-      targetAsset: FLASH_WETH_ASSET.address.toLowerCase(),
-      contraAsset: FLASH_USDC_ASSET.address.toLowerCase(),
-      side: 'sell',
-      qty: '1',
-      orderType: 'market',
-      maxSlippage: '0.005'
-    })
+    expect(body).toMatchObject(baseWireFields)
     expect(body).not.toHaveProperty('inputAmount')
     expect(body).not.toHaveProperty('slippage')
   })
-
-  it('maps advanced fields to current Flash types and trigger schema', () => {
+  it('maps advanced fields and trigger schema while preserving protection omission semantics', () => {
     const triggerBody = buildFlashQuoteBody({
       ...quoteRequest(),
       expireTime: '2026-08-01T00:00:00Z',
@@ -172,7 +215,6 @@ describe('main Flash facade helpers', () => {
       orderType: 'stop-loss',
       stopLossNotionalPrice: '1750'
     })
-
     expect(triggerBody).toMatchObject({
       expireTime: '2026-08-01T00:00:00Z',
       limitNotionalPrice: '1700',
@@ -180,7 +222,6 @@ describe('main Flash facade helpers', () => {
       triggers: [{ notionalPrice: '1750', triggerType: 'lower' }]
     })
     expect(triggerBody).not.toHaveProperty('stopLossNotionalPrice')
-
     const twapBody = buildFlashQuoteBody({
       ...quoteRequest(),
       durationSeconds: '300',
@@ -190,7 +231,6 @@ describe('main Flash facade helpers', () => {
       startTime: '2099-08-01T00:00:00Z',
       twapBucketCount: '12'
     })
-
     expect(twapBody).toMatchObject({
       durationSeconds: 300,
       limitNotionalPrice: '1700',
@@ -198,9 +238,6 @@ describe('main Flash facade helpers', () => {
       startTime: '2099-08-01T00:00:00Z',
       twapBucketCount: 12
     })
-  })
-
-  it('omits unset protections while preserving an explicit zero', () => {
     const omitted = buildFlashQuoteBody({
       ...quoteRequest(),
       limitNotionalPrice: '2500',
@@ -213,61 +250,37 @@ describe('main Flash facade helpers', () => {
       maxPriceImpact: '0',
       slippage: '0'
     })
-
     expect(omitted).not.toHaveProperty('maxSlippage')
     expect(omitted).not.toHaveProperty('maxPriceImpact')
     expect(zero).toMatchObject({ maxSlippage: '0', maxPriceImpact: '0' })
   })
-
   it('accepts mainnet when the packaged runtime has no explicit environment', () => {
     delete (process.env as Partial<NodeJS.ProcessEnv>).NODE_ENV
     delete (process.env as Partial<NodeJS.ProcessEnv>).FRAME_PROFILE
-
     const request: FlashQuoteRequest = quoteRequest()
     request.chainId = 1
     request.targetAsset = { ...FLASH_WETH_ASSET, chainId: 1, id: `1:${FLASH_WETH_ASSET.address}` }
     request.contraAsset = { ...FLASH_USDC_ASSET, chainId: 1, id: `1:${FLASH_USDC_ASSET.address}` }
-
     expect(buildFlashQuoteBody(request)).toMatchObject({
       targetChain: 'ethereum',
       contraChain: 'ethereum'
     })
   })
-
   it('maps native assets to the Flash 0xeeee sentinel', () => {
     const body = buildFlashQuoteBody({
       ...quoteRequest(),
       targetAsset: FLASH_NATIVE_ETH_ASSET
     })
-
-    expect(body.targetAsset).toBe(FLASH_NATIVE_ETH_TOKEN_ADDRESS)
     expect(body.targetAsset).toBe('0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee')
   })
-
-  it('normalizes Flash REST quote responses into renderer quote shape', () => {
-    const orderTypedData = {
-      domain: { chainId: 31337 },
-      primaryType: 'Order',
-      types: { Order: [] },
-      message: { quoteId: 'quote-1' }
-    }
-    const quote = normalizeFlashQuoteResponse(
-      {
-        quoteId: 'quote-1',
-        from: { asset: 'target', amount: '1', notional: '2400' },
-        to: { asset: 'contra', amount: '2398.08', notional: '2398.08' },
-        fees: { estimatedFeeNotional: '1.92' },
-        evm: {
-          approveTx: {
-            to: FLASH_WETH_ASSET.address,
-            data: '0x095ea7b3'
-          },
-          orderTypedData: JSON.stringify(orderTypedData)
-        }
-      },
-      quoteRequest()
-    )
-
+  it('normalizes quote responses and preserves serialized typed data through submission', () => {
+    const typedData = orderTypedData('quote-1')
+    const quote = normalizedQuote({
+      evm: {
+        approveTx: { to: FLASH_WETH_ASSET.address, data: '0x095ea7b3' },
+        orderTypedData: JSON.stringify(typedData)
+      }
+    })
     expect(quote.id).toBe('quote-1')
     expect(quote.spentAsset.symbol).toBe('WETH')
     expect(quote.receiveAsset.symbol).toBe('USDC')
@@ -278,47 +291,21 @@ describe('main Flash facade helpers', () => {
     expect(quote.fees).toEqual([{ label: 'Estimated fee (USD)', amount: '1.92' }])
     expect(quote.actions?.approval?.tx.to).toBe(FLASH_WETH_ASSET.address)
     expect(quote.steps.map((step) => step.kind)).toEqual(['approve', 'sign', 'submit'])
-    expect((quote.raw as any).evm.orderTypedData).toEqual(orderTypedData)
-    expect((quote.raw as any).evm.orderTypedDataRaw).toBe(JSON.stringify(orderTypedData))
-  })
-
-  it('echoes current trade fields and serialized EVM typed data when submitting', () => {
-    const orderTypedData = {
-      domain: { chainId: 31337 },
-      primaryType: 'Order',
-      types: { Order: [] },
-      message: { quoteId: 'submit-quote' }
-    }
-    const orderTypedDataRaw = ` ${JSON.stringify(orderTypedData)} `
-    const permitTypedDataRaw = `\n${JSON.stringify({ ...orderTypedData, primaryType: 'Permit' })}\n`
-    const request = quoteRequest()
-    const quote = normalizeFlashQuoteResponse(
+    expect((quote.raw as any).evm.orderTypedData).toEqual(typedData)
+    expect((quote.raw as any).evm.orderTypedDataRaw).toBe(JSON.stringify(typedData))
+    const submitTypedData = orderTypedData('submit-quote')
+    const orderTypedDataRaw = ` ${JSON.stringify(submitTypedData)} `
+    const permitTypedDataRaw = `\n${JSON.stringify({ ...submitTypedData, primaryType: 'Permit' })}\n`
+    const { body } = submitFixture(
+      {},
       {
         quoteId: 'submit-quote',
-        from: { asset: 'target', amount: '1', notional: '2400' },
-        to: { asset: 'contra', amount: '2398.08', notional: '2398.08' },
-        fees: { estimatedFeeNotional: '1.92' },
         evm: { orderTypedData: orderTypedDataRaw, permitTypedData: permitTypedDataRaw }
       },
-      request
+      { evmPermitSignature: '0xpermit' }
     )
-    const body = buildFlashSubmitBody({
-      ...request,
-      evmPermitSignature: '0xpermit',
-      orderSignature: '0xsignature',
-      quote
-    })
-
     expect(body).toMatchObject({
-      targetChain: 'anvil',
-      contraChain: 'anvil',
-      targetAsset: FLASH_WETH_ASSET.address.toLowerCase(),
-      contraAsset: FLASH_USDC_ASSET.address.toLowerCase(),
-      side: 'sell',
-      qty: '1',
-      orderType: 'market',
-      funderAddress: request.accountAddress,
-      maxSlippage: '0.005',
+      ...baseWireFields,
       quoteId: 'submit-quote',
       userSignature: '0xsignature',
       evmOrderTypedData: orderTypedDataRaw,
@@ -328,9 +315,8 @@ describe('main Flash facade helpers', () => {
     expect(body).not.toHaveProperty('rawQuote')
     expect(body).not.toHaveProperty('inputAmount')
   })
-
   it('omits quote-only expiry fields from limit and TWAP submits', () => {
-    const typedData = JSON.stringify({ domain: { chainId: 31337 }, types: {}, message: {} })
+    const typedData = JSON.stringify(orderTypedData())
     const limitRequest = {
       ...quoteRequest(),
       expireTime: '2030-01-02T03:04:05.000Z',
@@ -346,24 +332,12 @@ describe('main Flash facade helpers', () => {
       startTime: '2099-08-01T00:00:00Z',
       twapBucketCount: 12
     }
-    const response = {
+    const response = quoteResponse({
       quoteId: 'advanced-submit-quote',
-      from: { asset: 'target', amount: '1', notional: '2400' },
-      to: { asset: 'contra', amount: '2398.08', notional: '2398.08' },
-      fees: { estimatedFeeNotional: '1.92' },
       evm: { orderTypedData: typedData }
-    }
-    const limitBody = buildFlashSubmitBody({
-      ...limitRequest,
-      orderSignature: '0xlimit',
-      quote: normalizeFlashQuoteResponse(response, limitRequest)
     })
-    const twapBody = buildFlashSubmitBody({
-      ...twapRequest,
-      orderSignature: '0xtwap',
-      quote: normalizeFlashQuoteResponse(response, twapRequest)
-    })
-
+    const limitBody = submitFixture(limitRequest, response, { orderSignature: '0xlimit' }).body
+    const twapBody = submitFixture(twapRequest, response, { orderSignature: '0xtwap' }).body
     expect(limitBody).not.toHaveProperty('expireTime')
     expect(twapBody).not.toHaveProperty('durationSeconds')
     expect(twapBody).toMatchObject({
@@ -373,20 +347,13 @@ describe('main Flash facade helpers', () => {
       twapBucketCount: 12
     })
   })
-
   it('submits the wrapped asset when the quote spends native ETH', () => {
-    const request = {
-      ...quoteRequest(),
-      targetAsset: FLASH_NATIVE_ETH_ASSET
-    }
-    const quote = normalizeFlashQuoteResponse(
+    const { body, quote } = submitFixture(
+      { targetAsset: FLASH_NATIVE_ETH_ASSET },
       {
         quoteId: 'native-submit-quote',
         targetAsset: FLASH_WETH_ASSET.address,
         contraAsset: FLASH_USDC_ASSET.address,
-        from: { asset: 'target', amount: '1', notional: '2400' },
-        to: { asset: 'contra', amount: '2398.08', notional: '2398.08' },
-        fees: { estimatedFeeNotional: '1.92' },
         wrap: {
           nativeAsset: FLASH_NATIVE_ETH_ASSET.address,
           wrappedAsset: FLASH_WETH_ASSET.address,
@@ -394,27 +361,17 @@ describe('main Flash facade helpers', () => {
         },
         evm: {
           approveTx: { to: FLASH_WETH_ASSET.address, data: '0x095ea7b3' },
-          orderTypedData: JSON.stringify({ domain: { chainId: 31337 }, types: {}, message: {} })
+          orderTypedData: JSON.stringify(orderTypedData())
         }
-      },
-      request
+      }
     )
-    const body = buildFlashSubmitBody({
-      ...request,
-      orderSignature: '0xsignature',
-      quote
-    })
-
     expect(body.targetAsset).toBe(FLASH_WETH_ASSET.address)
     expect(body.targetAsset).not.toBe(FLASH_NATIVE_ETH_ASSET.address)
     expect(body.contraAsset).toBe(FLASH_USDC_ASSET.address)
     expect(quote.actions?.approval?.asset.symbol).toBe('WETH')
     expect(quote.actions?.approval?.label).toBe('Approve WETH')
   })
-
   it('includes the complete structured Flash error response in request errors', async () => {
-    const flash = createFlashService({ assetRateService, store })
-    const originalFetch = globalThis.fetch
     const payload = {
       error: {
         code: 'invalid_quote',
@@ -423,177 +380,81 @@ describe('main Flash facade helpers', () => {
       },
       requestId: 'request-123'
     }
-
-    globalThis.fetch = mock(async () => {
-      return new Response(JSON.stringify(payload), {
-        status: 400,
-        statusText: 'Bad Request',
-        headers: { 'content-type': 'application/json' }
-      })
-    }) as unknown as typeof fetch
-
-    try {
-      expect(flash.quote(quoteRequest())).rejects.toThrow(
-        `Flash API 400 Bad Request: ${JSON.stringify(payload)}`
-      )
-    } finally {
-      flash.dispose()
-      globalThis.fetch = originalFetch
-    }
+    const { flash } = flashWithFetch(async () => jsonResponse(payload, 400, 'Bad Request'))
+    expect(flash.quote(quoteRequest())).rejects.toThrow(
+      `Flash API 400 Bad Request: ${JSON.stringify(payload)}`
+    )
   })
-
   it('forwards every available normalized quote-leg rate in one canonical batch', async () => {
     const observe = mock()
-    const flash = createFlashService({ assetRateService: { observe }, store })
-    const originalFetch = globalThis.fetch
     const responses = [
-      {
-        from: { asset: 'target', amount: '2', notional: '4800' },
-        to: { asset: 'contra', amount: '1200', notional: '1200' }
-      },
-      {
-        from: { asset: 'target', amount: '2', notional: '4800' },
-        to: { asset: 'contra', amount: '1200', notional: '' }
-      },
-      {
-        from: { asset: 'target', amount: '0', notional: '4800' },
-        to: { asset: 'contra', amount: '1200', notional: '1200' }
-      },
-      {
-        from: { asset: 'target', amount: 'NaN', notional: '4800' },
-        to: { asset: 'contra', amount: '1200', notional: '-1' }
-      }
+      rateResponse('2', '4800', '1200'),
+      rateResponse('2', '4800', ''),
+      rateResponse('0', '4800', '1200'),
+      rateResponse('NaN', '4800', '-1')
     ]
-
-    globalThis.fetch = mock(async () => {
-      return new Response(JSON.stringify(responses.shift()), {
-        status: 200,
-        headers: { 'content-type': 'application/json' }
-      })
-    }) as unknown as typeof fetch
-
-    try {
-      const request = { ...quoteRequest(), targetAsset: FLASH_NATIVE_ETH_ASSET }
-
-      await flash.quote(request)
-      await flash.quote(request)
-      await flash.quote(request)
-      const invalidQuote = await flash.quote(request)
-
-      expect(observe).toHaveBeenNthCalledWith(1, 'flash', [
-        { chainId: 31337, address: NATIVE_CURRENCY, usdRate: 2400 },
-        { chainId: 31337, address: FLASH_USDC_ASSET.address.toLowerCase(), usdRate: 1 }
-      ])
-      expect(observe).toHaveBeenNthCalledWith(2, 'flash', [
-        { chainId: 31337, address: NATIVE_CURRENCY, usdRate: 2400 }
-      ])
-      expect(observe).toHaveBeenNthCalledWith(3, 'flash', [
-        { chainId: 31337, address: FLASH_USDC_ASSET.address.toLowerCase(), usdRate: 1 }
-      ])
-      expect(observe).toHaveBeenCalledTimes(3)
-      expect(invalidQuote.quote.inputAmount).toBe('NaN')
-    } finally {
-      flash.dispose()
-      globalThis.fetch = originalFetch
-    }
+    const nativeRate = { chainId: 31337, address: NATIVE_CURRENCY, usdRate: 2400 }
+    const usdcRate = { chainId: 31337, address: FLASH_USDC_ASSET.address.toLowerCase(), usdRate: 1 }
+    const { flash } = flashWithFetch(queuedJsonResponses(responses), { assetRateService: { observe } })
+    const request = { ...quoteRequest(), targetAsset: FLASH_NATIVE_ETH_ASSET }
+    await flash.quote(request)
+    await flash.quote(request)
+    await flash.quote(request)
+    const invalidQuote = await flash.quote(request)
+    expect(observe).toHaveBeenNthCalledWith(1, 'flash', [nativeRate, usdcRate])
+    expect(observe).toHaveBeenNthCalledWith(2, 'flash', [nativeRate])
+    expect(observe).toHaveBeenNthCalledWith(3, 'flash', [usdcRate])
+    expect(observe).toHaveBeenCalledTimes(3)
+    expect(invalidQuote.quote.inputAmount).toBe('NaN')
   })
-
   it('does not fail a successful quote when rate observation is discarded', async () => {
     const observe = mock(() => {
       throw new Error('discarded observation')
     })
-    const flash = createFlashService({ assetRateService: { observe }, store })
-    const originalFetch = globalThis.fetch
-
-    globalThis.fetch = mock(async () => {
-      return new Response(
-        JSON.stringify({
-          quoteId: 'best-effort-rate',
-          from: { asset: 'target', amount: '1', notional: '2400' },
-          to: { asset: 'contra', amount: '2398.08', notional: '2398.08' }
-        }),
-        { status: 200, headers: { 'content-type': 'application/json' } }
-      )
-    }) as unknown as typeof fetch
-
-    try {
-      const result = await flash.quote(quoteRequest())
-
-      expect(result.quote.id).toBe('best-effort-rate')
-      expect(observe).toHaveBeenCalledTimes(1)
-    } finally {
-      flash.dispose()
-      globalThis.fetch = originalFetch
-    }
+    const { flash } = flashWithFetch(
+      async () => jsonResponse(quoteResponse({ quoteId: 'best-effort-rate' })),
+      {
+        assetRateService: { observe }
+      }
+    )
+    const result = await flash.quote(quoteRequest())
+    expect(result.quote.id).toBe('best-effort-rate')
+    expect(observe).toHaveBeenCalledTimes(1)
   })
-
   it('normalizes official root order assets, qty, fills, and timestamps from list responses', async () => {
-    const flash = createFlashService({ assetRateService, store })
-    const originalFetch = globalThis.fetch
-    const fetchMock = mock(async (_input: RequestInfo | URL, _init?: RequestInit) => {
-      return new Response(JSON.stringify({ orders: [officialOrder()] }), {
-        status: 200,
-        headers: { 'content-type': 'application/json' }
-      })
+    const { flash, fetchMock } = flashWithFetch(async () => jsonResponse({ orders: [officialOrder()] }))
+    const result = await flash.listOrders({
+      accountAddress,
+      pageSize: 250,
+      status: ['partially-filled', 'ORDER_STATUS_CANCELLED']
     })
-    globalThis.fetch = fetchMock as unknown as typeof fetch
-
-    try {
-      const result = await flash.listOrders({
-        accountAddress: '0x0000000000000000000000000000000000000001',
-        pageSize: 250,
-        status: ['partially-filled', 'ORDER_STATUS_CANCELLED']
-      })
-      const order = result.orders[0]
-      const url = new URL(String(fetchMock.mock.calls[0]?.[0]))
-
-      expect(url.pathname).toBe('/v1/orders')
-      expect(url.searchParams.get('funderAddress')).toBe('0x0000000000000000000000000000000000000001')
-      expect(url.searchParams.get('statuses')).toBe('ORDER_STATUS_PARTIALLY_FILLED,ORDER_STATUS_CANCELLED')
-      expect(url.searchParams.get('pageSize')).toBe('200')
-      expect(url.searchParams.has('chain')).toBe(false)
-      expect(order).toMatchObject({
-        chainId: 8453,
-        status: 'partially-filled',
-        qty: '1',
-        spentAmount: '1',
-        outputAmount: '2398.08',
-        filledOutputAmount: '2398.08',
-        averageFillPrice: '2400',
-        createdAt: Date.parse('2026-07-14T08:00:00.000Z'),
-        updatedAt: Date.parse('2026-07-14T08:01:00.000Z'),
-        targetAsset: {
-          id: `8453:${FLASH_BASE_WETH_ADDRESS.toLowerCase()}`,
-          symbol: 'WETH',
-          decimals: 18,
-          chainId: 8453
-        },
-        contraAsset: {
-          id: `8453:${FLASH_BASE_USDC_ADDRESS.toLowerCase()}`,
-          symbol: 'USDC',
-          decimals: 6,
-          chainId: 8453
-        },
-        spentAsset: { symbol: 'WETH' },
-        receiveAsset: { symbol: 'USDC' }
-      })
-    } finally {
-      flash.dispose()
-      globalThis.fetch = originalFetch
-    }
+    const order = result.orders[0]
+    const url = new URL(String(fetchMock.mock.calls[0]?.[0]))
+    expect(url.pathname).toBe('/v1/orders')
+    expect(url.searchParams.get('funderAddress')).toBe(accountAddress)
+    expect(url.searchParams.get('statuses')).toBe('ORDER_STATUS_PARTIALLY_FILLED,ORDER_STATUS_CANCELLED')
+    expect(url.searchParams.get('pageSize')).toBe('200')
+    expect(url.searchParams.has('chain')).toBe(false)
+    expect(order).toMatchObject({
+      chainId: 8453,
+      status: 'partially-filled',
+      qty: '1',
+      spentAmount: '1',
+      outputAmount: '2398.08',
+      filledOutputAmount: '2398.08',
+      averageFillPrice: '2400',
+      createdAt: Date.parse('2026-07-14T08:00:00.000Z'),
+      updatedAt: Date.parse('2026-07-14T08:01:00.000Z'),
+      targetAsset: canonicalAsset(FLASH_BASE_WETH_ADDRESS, 'WETH', 18),
+      contraAsset: canonicalAsset(FLASH_BASE_USDC_ADDRESS, 'USDC', 6),
+      spentAsset: { symbol: 'WETH' },
+      receiveAsset: { symbol: 'USDC' }
+    })
   })
-
   it('keeps persisted orders and notifications isolated across real Flash service graphs', async () => {
-    const memoryStorage = {
-      getItem: () => null,
-      setItem: () => undefined,
-      removeItem: () => undefined
-    }
+    const memoryStorage = { getItem: () => null, setItem: () => undefined, removeItem: () => undefined }
     const firstStore = createCanonicalStore(memoryStorage).store
     const secondStore = createCanonicalStore(memoryStorage).store
-    const firstFlash = createFlashService({ assetRateService, store: firstStore })
-    const secondFlash = createFlashService({ assetRateService, store: secondStore })
-    const originalFetch = globalThis.fetch
     const firstOrderId = '00000000-0000-4000-8000-000000000011'
     const secondOrderId = '00000000-0000-4000-8000-000000000022'
     const responses = [
@@ -609,95 +470,39 @@ describe('main Flash facade helpers', () => {
         closedAt: '2026-07-14T08:03:00.000Z'
       })
     ]
-    globalThis.fetch = mock(async () => {
-      const order = responses.shift()
-      if (!order) throw new Error('Unexpected Flash request')
-      return new Response(JSON.stringify({ orders: [order] }), {
-        status: 200,
-        headers: { 'content-type': 'application/json' }
+    installFetch(queuedJsonResponses(responses.map((order) => ({ orders: [order] }))))
+    const firstFlash = createFlashService({ assetRateService, store: firstStore })
+    const secondFlash = createFlashService({ assetRateService, store: secondStore })
+    services.push(firstFlash, secondFlash)
+    await firstFlash.listOrders({ accountAddress })
+    await secondFlash.listOrders({ accountAddress: '0x0000000000000000000000000000000000000002' })
+    for (const [ownStore, ownId, ownState, status, foreignId] of [
+      [firstStore, firstOrderId, 'completed', 'filled', secondOrderId],
+      [secondStore, secondOrderId, 'failed', 'rejected', firstOrderId]
+    ] as const) {
+      expect(Object.keys(ownStore.getState().main.orders)).toEqual([ownId])
+      expect(ownStore.getState().view.notifications[`flash-order:${ownId}`]).toMatchObject({
+        state: ownState,
+        metadata: { orderId: ownId, status }
       })
-    }) as unknown as typeof fetch
-
-    try {
-      await firstFlash.listOrders({
-        accountAddress: '0x0000000000000000000000000000000000000001'
-      })
-      await secondFlash.listOrders({
-        accountAddress: '0x0000000000000000000000000000000000000002'
-      })
-
-      expect({
-        first: {
-          orders: Object.keys(firstStore.getState().main.orders),
-          notification: firstStore.getState().view.notifications[`flash-order:${firstOrderId}`],
-          foreignNotification: firstStore.getState().view.notifications[`flash-order:${secondOrderId}`]
-        },
-        second: {
-          orders: Object.keys(secondStore.getState().main.orders),
-          notification: secondStore.getState().view.notifications[`flash-order:${secondOrderId}`],
-          foreignNotification: secondStore.getState().view.notifications[`flash-order:${firstOrderId}`]
-        }
-      }).toMatchObject({
-        first: {
-          orders: [firstOrderId],
-          notification: {
-            state: 'completed',
-            metadata: { orderId: firstOrderId, status: 'filled' }
-          },
-          foreignNotification: undefined
-        },
-        second: {
-          orders: [secondOrderId],
-          notification: {
-            state: 'failed',
-            metadata: { orderId: secondOrderId, status: 'rejected' }
-          },
-          foreignNotification: undefined
-        }
-      })
-    } finally {
-      firstFlash.dispose()
-      secondFlash.dispose()
-      globalThis.fetch = originalFetch
+      expect(ownStore.getState().view.notifications[`flash-order:${foreignId}`]).toBeUndefined()
     }
   })
-
   it('treats every undocumented non-open Flash status as terminal', async () => {
-    const flash = createFlashService({ assetRateService, store })
-    const originalFetch = globalThis.fetch
-    globalThis.fetch = mock(async () => {
-      return new Response(
-        JSON.stringify({
-          orders: [
-            officialOrder({
-              orderId: 'unknown-terminal-status',
-              status: 'ORDER_STATUS_SETTLED',
-              closedAt: '2026-07-14T08:02:00.000Z'
-            })
-          ]
-        }),
-        { status: 200, headers: { 'content-type': 'application/json' } }
-      )
-    }) as unknown as typeof fetch
-
-    try {
-      const result = await flash.listOrders({
-        accountAddress: '0x0000000000000000000000000000000000000001'
-      })
-      expect(result.orders[0]).toMatchObject({
-        status: 'terminated',
-        rawStatus: 'ORDER_STATUS_SETTLED',
-        open: false
-      })
-    } finally {
-      flash.dispose()
-      globalThis.fetch = originalFetch
-    }
+    const order = officialOrder({
+      orderId: 'unknown-terminal-status',
+      status: 'ORDER_STATUS_SETTLED',
+      closedAt: '2026-07-14T08:02:00.000Z'
+    })
+    const { flash } = flashWithFetch(async () => jsonResponse({ orders: [order] }))
+    const result = await flash.listOrders({ accountAddress })
+    expect(result.orders[0]).toMatchObject({
+      status: 'terminated',
+      rawStatus: 'ORDER_STATUS_SETTLED',
+      open: false
+    })
   })
-
   it('uses official get and cancel request shapes with root order responses', async () => {
-    const flash = createFlashService({ assetRateService, store })
-    const originalFetch = globalThis.fetch
     const orderId = '00000000-0000-4000-8000-000000000002'
     const accountAddress = '0x0000000000000000000000000000000000000002'
     const responses = [
@@ -707,60 +512,36 @@ describe('main Flash facade helpers', () => {
           funderAddress: accountAddress,
           side: 'buy',
           qty: '100',
-          filled: {
-            targetAmount: '0.041',
-            contraAmount: '100',
-            averagePrice: '2439.02439',
-            averageNotionalPrice: '2439.02'
-          }
+          filled: officialFill('0.041', '100', '2439.02439', '2439.02')
         }),
         fills: []
       },
       { ok: true }
     ]
-    const fetchMock = mock(async (_input: RequestInfo | URL, _init?: RequestInit) => {
-      const payload = responses.shift()
-      if (!payload) throw new Error('Unexpected Flash request')
-
-      return new Response(JSON.stringify(payload), {
-        status: 200,
-        headers: { 'content-type': 'application/json' }
-      })
+    const { flash, fetchMock } = flashWithFetch(queuedJsonResponses(responses))
+    const detail = await flash.getOrder({ accountAddress, orderId })
+    const getUrl = new URL(String(fetchMock.mock.calls[0]?.[0]))
+    expect(getUrl.pathname).toBe(`/v1/orders/${orderId}`)
+    expect(getUrl.searchParams.get('funderAddress')).toBe(accountAddress)
+    expect(detail.order).toMatchObject({
+      side: 'buy',
+      qty: '100',
+      spentAmount: '100',
+      filledOutputAmount: '0.041',
+      averageFillPrice: '2439.02',
+      spentAsset: { symbol: 'USDC' },
+      receiveAsset: { symbol: 'WETH' }
     })
-    globalThis.fetch = fetchMock as unknown as typeof fetch
-
-    try {
-      const detail = await flash.getOrder({ accountAddress, orderId })
-      const getUrl = new URL(String(fetchMock.mock.calls[0]?.[0]))
-
-      expect(getUrl.pathname).toBe(`/v1/orders/${orderId}`)
-      expect(getUrl.searchParams.get('funderAddress')).toBe(accountAddress)
-      expect(detail.order).toMatchObject({
-        side: 'buy',
-        qty: '100',
-        spentAmount: '100',
-        filledOutputAmount: '0.041',
-        averageFillPrice: '2439.02',
-        spentAsset: { symbol: 'USDC' },
-        receiveAsset: { symbol: 'WETH' }
-      })
-
-      const cancelled = await flash.cancelOrder({ orderId, signature: '0xcancel-signature' })
-      const cancelUrl = new URL(String(fetchMock.mock.calls[1]?.[0]))
-      const cancelInit = fetchMock.mock.calls[1]?.[1] as RequestInit
-
-      expect(cancelUrl.pathname).toBe(`/v1/orders/${orderId}/cancel`)
-      expect(JSON.parse(String(cancelInit.body))).toEqual({
-        cancelMessage: `Definitive Flash v1 — Cancel Order\nOrder: ${orderId}`,
-        userSignature: '0xcancel-signature'
-      })
-      expect(cancelled.order.status).toBe('cancelled')
-    } finally {
-      flash.dispose()
-      globalThis.fetch = originalFetch
-    }
+    const cancelled = await flash.cancelOrder({ orderId, signature: '0xcancel-signature' })
+    const cancelUrl = new URL(String(fetchMock.mock.calls[1]?.[0]))
+    const cancelInit = fetchMock.mock.calls[1]?.[1] as RequestInit
+    expect(cancelUrl.pathname).toBe(`/v1/orders/${orderId}/cancel`)
+    expect(JSON.parse(String(cancelInit.body))).toEqual({
+      cancelMessage: `Definitive Flash v1 — Cancel Order\nOrder: ${orderId}`,
+      userSignature: '0xcancel-signature'
+    })
+    expect(cancelled.order.status).toBe('cancelled')
   })
-
   it('tracks submitted order assets and refreshes positions on partial fills and terminal states', async () => {
     const request = { ...quoteRequest(), orderType: 'limit' as const }
     const quote = normalizeFlashQuoteResponse(
@@ -773,19 +554,12 @@ describe('main Flash facade helpers', () => {
       request
     )
     const orderId = 'position-order'
+    const orderQuote = { ...quote, quoteId: quote.id }
     const orderResponse = (status: string, filledOutputAmount?: string) => ({
       orderId,
       status,
       filledOutputAmount,
-      quote: {
-        quoteId: quote.id,
-        side: quote.side,
-        orderType: quote.orderType,
-        targetAsset: quote.targetAsset,
-        contraAsset: quote.contraAsset,
-        inputAmount: quote.inputAmount,
-        outputAmount: quote.outputAmount
-      }
+      quote: orderQuote
     })
     const responses = [
       { orderId, status: 'accepted' },
@@ -794,85 +568,38 @@ describe('main Flash facade helpers', () => {
       orderResponse('partially_filled', '1500'),
       orderResponse('cancelled', '1500')
     ]
-    const originalFetch = globalThis.fetch
     const track = mock()
     const refresh = mock()
-
-    globalThis.fetch = mock(async () => {
-      const payload = responses.shift()
-      if (!payload) throw new Error('Unexpected Flash request')
-
-      return new Response(JSON.stringify(payload), {
-        status: 200,
-        headers: { 'content-type': 'application/json' }
-      })
-    }) as unknown as typeof fetch
-    const flash = createFlashService({ assetRateService, store, positionSync: { track, refresh } })
-
-    try {
-      await flash.submitOrder({
-        ...request,
-        accountAddress: request.accountAddress,
-        quote,
-        quoteId: quote.id,
-        idempotencyKey: quote.id,
-        signature: '0xsignature'
-      })
-
-      expect(globalThis.fetch).toHaveBeenNthCalledWith(
-        1,
-        expect.any(URL),
-        expect.objectContaining({
-          headers: expect.objectContaining({ 'Idempotency-Key': quote.id })
-        })
-      )
-
-      expect(track).toHaveBeenCalledTimes(1)
-      expect(track).toHaveBeenCalledWith({
-        address: request.accountAddress,
-        chainId: 31337,
-        tokens: [
-          {
-            address: FLASH_WETH_ASSET.address.toLowerCase(),
-            chainId: 31337,
-            decimals: 18,
-            name: 'Wrapped Ether',
-            symbol: 'WETH'
-          },
-          {
-            address: FLASH_USDC_ASSET.address.toLowerCase(),
-            chainId: 31337,
-            decimals: 6,
-            name: 'USD Coin',
-            symbol: 'USDC'
-          }
-        ]
-      })
-      expect(refresh).not.toHaveBeenCalled()
-
+    const { flash, fetchMock } = flashWithFetch(queuedJsonResponses(responses), {
+      positionSync: { track, refresh }
+    })
+    await flash.submitOrder({
+      ...request,
+      quote,
+      quoteId: quote.id,
+      idempotencyKey: quote.id,
+      signature: '0xsignature'
+    })
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      expect.any(URL),
+      expect.objectContaining({ headers: expect.objectContaining({ 'Idempotency-Key': quote.id }) })
+    )
+    expect(track).toHaveBeenCalledTimes(1)
+    expect(track).toHaveBeenCalledWith({
+      address: request.accountAddress,
+      chainId: 31337,
+      tokens: [canonicalToken(FLASH_WETH_ASSET, 31337), canonicalToken(FLASH_USDC_ASSET, 31337)]
+    })
+    expect(refresh).not.toHaveBeenCalled()
+    for (const expectedRefreshes of [1, 1, 2, 3]) {
       await flash.getOrder({ orderId })
-      expect(refresh).toHaveBeenCalledTimes(1)
-
-      await flash.getOrder({ orderId })
-      expect(refresh).toHaveBeenCalledTimes(1)
-
-      await flash.getOrder({ orderId })
-      expect(refresh).toHaveBeenCalledTimes(2)
-
-      await flash.getOrder({ orderId })
-      expect(refresh).toHaveBeenCalledTimes(3)
-      expect(refresh).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          address: request.accountAddress,
-          chainId: 31337
-        })
-      )
-    } finally {
-      flash.dispose()
-      globalThis.fetch = originalFetch
+      expect(refresh).toHaveBeenCalledTimes(expectedRefreshes)
     }
+    expect(refresh).toHaveBeenLastCalledWith(
+      expect.objectContaining({ address: request.accountAddress, chainId: 31337 })
+    )
   })
-
   it('hydrates external WebSocket orders through the canonical order, notification, and position path', async () => {
     const sockets: FakeFlashWebSocket[] = []
     const track = mock()
@@ -889,107 +616,57 @@ describe('main Flash facade helpers', () => {
       },
       positionSync: { track, refresh }
     })
-
-    try {
-      expect(
-        flash.startAgentSession({
-          accountAddress,
-          expiresAt: Date.now() + 60_000,
-          sessionId: 'agent-session-one'
-        })
-      ).toBe(true)
-      expect(sockets).toHaveLength(1)
-      expect(
-        flash.startAgentSession({
-          accountAddress,
-          expiresAt: Date.now() + 60_000,
-          sessionId: 'agent-session-two'
-        })
-      ).toBe(true)
-      expect(sockets).toHaveLength(2)
-
-      sockets[0].open()
-      sockets[0].receive({
-        channel: 'subscriptions',
-        type: 'ack',
-        subscriptions: ['orders', 'heartbeats']
-      })
-      sockets[0].receive({
-        channel: 'orders',
-        type: 'snapshot',
-        orders: [
-          officialOrder({
-            orderId,
-            funderAddress: accountAddress,
-            status: 'ORDER_STATUS_ACCEPTED',
-            filled: null
-          })
-        ]
-      })
-      await Bun.sleep(0)
-
-      expect(store.getState().main.orders[orderId]).toMatchObject({
-        accountAddress,
-        status: 'accepted',
-        open: true
-      })
-      expect(store.getState().view.notifications[`flash-order:${orderId}`]).toMatchObject({
-        state: 'pending',
-        metadata: { orderId, status: 'accepted' }
-      })
-      expect(track).toHaveBeenCalledTimes(1)
-
-      const partial = officialOrder({
-        orderId,
-        funderAddress: accountAddress,
-        status: 'ORDER_STATUS_PARTIALLY_FILLED',
-        filled: {
-          targetAmount: '0.5',
-          contraAmount: '1200',
-          averagePrice: '2400',
-          averageNotionalPrice: '2400'
-        }
-      })
-      sockets[0].receive({ channel: 'orders', type: 'update', orders: [partial] })
-      sockets[0].receive({ channel: 'orders', type: 'update', orders: [partial] })
-      await Bun.sleep(0)
-
-      expect(store.getState().main.orders[orderId]).toMatchObject({
-        status: 'partially-filled',
-        filledOutputAmount: '1200'
-      })
-      expect(refresh).toHaveBeenCalledTimes(1)
-
-      sockets[0].receive({
-        channel: 'orders',
-        type: 'update',
-        orders: [
-          officialOrder({
-            orderId,
-            funderAddress: accountAddress,
-            status: 'ORDER_STATUS_FILLED',
-            closedAt: '2026-07-14T08:02:00.000Z'
-          })
-        ]
-      })
-      await Bun.sleep(0)
-
-      expect(store.getState().main.orders[orderId]).toMatchObject({ status: 'filled', open: false })
-      expect(store.getState().view.notifications[`flash-order:${orderId}`]).toMatchObject({
-        state: 'completed',
-        metadata: { orderId, status: 'filled' }
-      })
-      expect(refresh).toHaveBeenCalledTimes(2)
-      expect(flash.stopAgentSession('agent-session-one')).toBe(true)
-      expect(sockets[0].readyState).toBe(WebSocket.CLOSED)
-      expect(sockets[1].readyState).toBe(WebSocket.CONNECTING)
-      expect(flash.stopAgentSession('agent-session-two')).toBe(true)
-      expect(sockets[1].readyState).toBe(WebSocket.CLOSED)
-    } finally {
-      flash.dispose()
+    services.push(flash)
+    for (const sessionId of ['agent-session-one', 'agent-session-two']) {
+      expect(startAgentSession(flash, accountAddress, sessionId)).toBe(true)
     }
+    expect(sockets).toHaveLength(2)
+    const socket = sockets[0]
+    const persistedOrder = () => store.getState().main.orders[orderId]
+    const notification = () => store.getState().view.notifications[`flash-order:${orderId}`]
+    socket.open()
+    socket.receive({
+      channel: 'subscriptions',
+      type: 'ack',
+      subscriptions: ['orders', 'heartbeats']
+    })
+    sendOfficialOrder(socket, 'snapshot', {
+      orderId,
+      funderAddress: accountAddress,
+      status: 'ORDER_STATUS_ACCEPTED',
+      filled: null
+    })
+    await Bun.sleep(0)
+    expect(persistedOrder()).toMatchObject({ accountAddress, status: 'accepted', open: true })
+    expect(notification()).toMatchObject({ state: 'pending', metadata: { orderId, status: 'accepted' } })
+    expect(track).toHaveBeenCalledTimes(1)
+    const partial = officialOrder({
+      orderId,
+      funderAddress: accountAddress,
+      status: 'ORDER_STATUS_PARTIALLY_FILLED',
+      filled: officialFill('0.5', '1200', '2400')
+    })
+    sendOrders(socket, 'update', partial)
+    sendOrders(socket, 'update', partial)
+    await Bun.sleep(0)
+    expect(persistedOrder()).toMatchObject({ status: 'partially-filled', filledOutputAmount: '1200' })
+    expect(refresh).toHaveBeenCalledTimes(1)
+    sendOfficialOrder(socket, 'update', {
+      orderId,
+      funderAddress: accountAddress,
+      status: 'ORDER_STATUS_FILLED',
+      closedAt: '2026-07-14T08:02:00.000Z'
+    })
+    await Bun.sleep(0)
+    expect(persistedOrder()).toMatchObject({ status: 'filled', open: false })
+    expect(notification()).toMatchObject({ state: 'completed', metadata: { orderId, status: 'filled' } })
+    expect(refresh).toHaveBeenCalledTimes(2)
+    expect(flash.stopAgentSession('agent-session-one')).toBe(true)
+    expect(sockets[0].readyState).toBe(WebSocket.CLOSED)
+    expect(sockets[1].readyState).toBe(WebSocket.CONNECTING)
+    expect(flash.stopAgentSession('agent-session-two')).toBe(true)
+    expect(sockets[1].readyState).toBe(WebSocket.CLOSED)
   })
-
   it('closes an agent order stream when its session expires', async () => {
     const socket = new FakeFlashWebSocket()
     const flash = createFlashService({
@@ -997,21 +674,12 @@ describe('main Flash facade helpers', () => {
       store,
       createWebSocket: () => socket as unknown as WebSocket
     })
-
-    try {
-      expect(
-        flash.startAgentSession({
-          accountAddress: '0x00000000000000000000000000000000000000a2',
-          expiresAt: Date.now() + 25,
-          sessionId: 'expiring-agent-session'
-        })
-      ).toBe(true)
-      await Bun.sleep(50)
-
-      expect(socket.readyState).toBe(WebSocket.CLOSED)
-      expect(flash.stopAgentSession('expiring-agent-session')).toBe(false)
-    } finally {
-      flash.dispose()
-    }
+    services.push(flash)
+    expect(
+      startAgentSession(flash, '0x00000000000000000000000000000000000000a2', 'expiring-agent-session', 25)
+    ).toBe(true)
+    await Bun.sleep(50)
+    expect(socket.readyState).toBe(WebSocket.CLOSED)
+    expect(flash.stopAgentSession('expiring-agent-session')).toBe(false)
   })
 })

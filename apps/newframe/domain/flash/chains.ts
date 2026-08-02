@@ -1,11 +1,5 @@
-import {
-  FLASH_ANVIL_CHAIN_ID,
-  FLASH_BASE_CHAIN_ID,
-  FLASH_BASE_USDC_ADDRESS,
-  FLASH_BASE_WETH_ADDRESS,
-  FLASH_USDC_ADDRESS,
-  FLASH_WETH_ADDRESS
-} from './constants.js'
+import { BUILT_IN_CHAINS } from '../chain/catalog.js'
+import { FLASH_ANVIL_CHAIN_ID, FLASH_USDC_ADDRESS, FLASH_WETH_ADDRESS } from './constants.js'
 import type { FlashRuntime } from './schemas.js'
 
 type FlashProfile = 'dev' | 'prod'
@@ -19,23 +13,15 @@ interface FlashChainConfig {
 }
 
 const FLASH_CHAIN_REGISTRY: readonly FlashChainConfig[] = [
-  { chainId: 1, slug: 'ethereum', profiles: ['prod'], weth: FLASH_WETH_ADDRESS, usdc: FLASH_USDC_ADDRESS },
-  { chainId: 10, slug: 'optimism', profiles: ['prod'] },
-  { chainId: 56, slug: 'bsc', profiles: ['prod'] },
-  { chainId: 137, slug: 'polygon', profiles: ['prod'] },
-  { chainId: 999, slug: 'hyperevm', profiles: ['prod'] },
-  {
-    chainId: FLASH_BASE_CHAIN_ID,
-    slug: 'base',
-    profiles: ['prod'],
-    weth: FLASH_BASE_WETH_ADDRESS,
-    usdc: FLASH_BASE_USDC_ADDRESS
-  },
-  { chainId: 9745, slug: 'plasma', profiles: ['prod'] },
-  { chainId: 81457, slug: 'blast', profiles: ['prod'] },
-  { chainId: 42161, slug: 'arbitrum', profiles: ['prod'] },
-  { chainId: 43114, slug: 'avalanche', profiles: ['prod'] },
-  { chainId: 143, slug: 'monad', profiles: ['prod'] },
+  ...BUILT_IN_CHAINS.filter(({ flash }) => flash)
+    .sort((left, right) => left.flash!.order - right.flash!.order)
+    .map(({ id, flash }) => ({
+      chainId: id,
+      slug: flash!.slug,
+      profiles: ['prod'] as const,
+      weth: flash!.weth,
+      usdc: flash!.usdc
+    })),
   {
     chainId: FLASH_ANVIL_CHAIN_ID,
     slug: 'anvil',
@@ -57,7 +43,6 @@ export function getFlashChainConfig(chainId: number) {
 
 export function getFlashSupportedChainIds(runtime: FlashRuntime = {}): number[] {
   const profile = flashProfile(runtime)
-
   return FLASH_CHAIN_REGISTRY.filter((config) => config.profiles.includes(profile)).map(
     (config) => config.chainId
   )
@@ -72,16 +57,13 @@ export function getFlashChainSlug(chainId: number) {
 }
 
 export function getFlashChainIdFromSlug(slug: string) {
-  const normalized = slug.trim().toLowerCase()
-  const entry = FLASH_CHAIN_REGISTRY.find((config) => config.slug === normalized)
-
-  return entry?.chainId
+  return FLASH_CHAIN_REGISTRY.find((config) => config.slug === slug.trim().toLowerCase())?.chainId
 }
 
 export function getFlashDefaultChainId(runtime: FlashRuntime = {}, availableChainIds?: readonly number[]) {
   const supported = getFlashSupportedChainIds(runtime)
   const available = (availableChainIds || [])
-    .map((chainId) => Number(chainId))
+    .map(Number)
     .filter((chainId) => Number.isInteger(chainId) && supported.includes(chainId))
 
   return available[0] || supported[0] || FLASH_ANVIL_CHAIN_ID

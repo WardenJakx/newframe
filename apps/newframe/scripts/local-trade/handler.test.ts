@@ -24,15 +24,16 @@ function quoteRequest(overrides: Record<string, unknown> = {}) {
 }
 
 async function requestQuote(overrides: Record<string, unknown> = {}) {
-  const response = await handleLocalTradeRequest(
-    new Request('http://127.0.0.1:8422/v1/quote', {
-      method: 'POST',
-      body: JSON.stringify(quoteRequest(overrides))
-    })
-  )
+  const response = await post('/v1/quote', quoteRequest(overrides))
 
   return { response, body: await json(response) }
 }
+
+const get = (path: string) => handleLocalTradeRequest(new Request(`http://127.0.0.1:8422${path}`))
+const post = (path: string, body: unknown) =>
+  handleLocalTradeRequest(
+    new Request(`http://127.0.0.1:8422${path}`, { method: 'POST', body: JSON.stringify(body) })
+  )
 
 async function json(response: Response) {
   return response.json() as Promise<Record<string, any>>
@@ -49,7 +50,7 @@ describe('local trade service handler', () => {
   afterEach(() => allowanceCall.mockRestore())
 
   it('responds to health checks', async () => {
-    const response = await handleLocalTradeRequest(new Request('http://127.0.0.1:8422/health'))
+    const response = await get('/health')
     const body = await json(response)
 
     expect(response.status).toBe(200)
@@ -58,10 +59,8 @@ describe('local trade service handler', () => {
   })
 
   it('lists service-instance orders only', async () => {
-    const missingFunder = await handleLocalTradeRequest(new Request('http://127.0.0.1:8422/v1/orders'))
-    const response = await handleLocalTradeRequest(
-      new Request(`http://127.0.0.1:8422/v1/orders?funderAddress=${FUNDER_ADDRESS}`)
-    )
+    const missingFunder = await get('/v1/orders')
+    const response = await get(`/v1/orders?funderAddress=${FUNDER_ADDRESS}`)
     const body = await json(response)
 
     expect(missingFunder.status).toBe(400)
@@ -172,18 +171,11 @@ describe('local trade service handler', () => {
       userSignature: '0xorder-signature',
       evmOrderTypedData: quoted.body.evm.orderTypedData
     }
-    const accepted = await handleLocalTradeRequest(
-      new Request('http://127.0.0.1:8422/v1/order', {
-        method: 'POST',
-        body: JSON.stringify(submitBody)
-      })
-    )
-    const mismatched = await handleLocalTradeRequest(
-      new Request('http://127.0.0.1:8422/v1/order', {
-        method: 'POST',
-        body: JSON.stringify({ ...submitBody, startTime: '2099-01-02T04:04:05.000Z' })
-      })
-    )
+    const accepted = await post('/v1/order', submitBody)
+    const mismatched = await post('/v1/order', {
+      ...submitBody,
+      startTime: '2099-01-02T04:04:05.000Z'
+    })
 
     expect(accepted.status).toBe(200)
     expect(mismatched.status).toBe(400)
@@ -275,37 +267,22 @@ describe('local trade service handler', () => {
       userSignature: '0xorder-signature',
       evmOrderTypedData: quoted.body.evm.orderTypedData
     }
-    const accepted = await handleLocalTradeRequest(
-      new Request('http://127.0.0.1:8422/v1/order', {
-        method: 'POST',
-        body: JSON.stringify(submitBody)
-      })
-    )
+    const accepted = await post('/v1/order', submitBody)
 
     expect(accepted.status).toBe(200)
 
     const mismatchedQuote = await requestQuote()
-    const mismatched = await handleLocalTradeRequest(
-      new Request('http://127.0.0.1:8422/v1/order', {
-        method: 'POST',
-        body: JSON.stringify({
-          ...submitBody,
-          quoteId: mismatchedQuote.body.quoteId,
-          evmOrderTypedData: '{}'
-        })
-      })
-    )
-    const quoteOnlyField = await handleLocalTradeRequest(
-      new Request('http://127.0.0.1:8422/v1/order', {
-        method: 'POST',
-        body: JSON.stringify({
-          ...submitBody,
-          durationSeconds: 300,
-          quoteId: mismatchedQuote.body.quoteId,
-          evmOrderTypedData: mismatchedQuote.body.evm.orderTypedData
-        })
-      })
-    )
+    const mismatched = await post('/v1/order', {
+      ...submitBody,
+      quoteId: mismatchedQuote.body.quoteId,
+      evmOrderTypedData: '{}'
+    })
+    const quoteOnlyField = await post('/v1/order', {
+      ...submitBody,
+      durationSeconds: 300,
+      quoteId: mismatchedQuote.body.quoteId,
+      evmOrderTypedData: mismatchedQuote.body.evm.orderTypedData
+    })
 
     expect(mismatched.status).toBe(400)
     expect(quoteOnlyField.status).toBe(400)
@@ -313,40 +290,24 @@ describe('local trade service handler', () => {
 
   it('mirrors official funder lookup and canonical cancellation requirements', async () => {
     const quoted = await requestQuote({ limitNotionalPrice: '2500', orderType: 'limit' })
-    const submit = await handleLocalTradeRequest(
-      new Request('http://127.0.0.1:8422/v1/order', {
-        method: 'POST',
-        body: JSON.stringify({
-          ...quoteRequest({ limitNotionalPrice: '2500', orderType: 'limit' }),
-          targetAsset: quoted.body.targetAsset,
-          contraAsset: quoted.body.contraAsset,
-          quoteId: quoted.body.quoteId,
-          userSignature: '0xorder-signature',
-          evmOrderTypedData: quoted.body.evm.orderTypedData
-        })
-      })
-    )
+    const submit = await post('/v1/order', {
+      ...quoteRequest({ limitNotionalPrice: '2500', orderType: 'limit' }),
+      targetAsset: quoted.body.targetAsset,
+      contraAsset: quoted.body.contraAsset,
+      quoteId: quoted.body.quoteId,
+      userSignature: '0xorder-signature',
+      evmOrderTypedData: quoted.body.evm.orderTypedData
+    })
     const submitted = await json(submit)
     const orderId = String(submitted.orderId)
-    const missingFunder = await handleLocalTradeRequest(
-      new Request(`http://127.0.0.1:8422/v1/orders/${orderId}`)
-    )
-    const lookup = await handleLocalTradeRequest(
-      new Request(`http://127.0.0.1:8422/v1/orders/${orderId}?funderAddress=${FUNDER_ADDRESS}`)
-    )
-    const wrongCancel = await handleLocalTradeRequest(
-      new Request(`http://127.0.0.1:8422/v1/orders/${orderId}/cancel`, {
-        method: 'POST',
-        body: JSON.stringify({ cancelMessage: orderId, userSignature: '0xcancel' })
-      })
-    )
+    const missingFunder = await get(`/v1/orders/${orderId}`)
+    const lookup = await get(`/v1/orders/${orderId}?funderAddress=${FUNDER_ADDRESS}`)
+    const wrongCancel = await post(`/v1/orders/${orderId}/cancel`, {
+      cancelMessage: orderId,
+      userSignature: '0xcancel'
+    })
     const cancelMessage = `Definitive Flash v1 — Cancel Order\nOrder: ${orderId}`
-    const cancel = await handleLocalTradeRequest(
-      new Request(`http://127.0.0.1:8422/v1/orders/${orderId}/cancel`, {
-        method: 'POST',
-        body: JSON.stringify({ cancelMessage, userSignature: '0xcancel' })
-      })
-    )
+    const cancel = await post(`/v1/orders/${orderId}/cancel`, { cancelMessage, userSignature: '0xcancel' })
 
     expect(submit.status).toBe(200)
     expect(missingFunder.status).toBe(400)
@@ -356,29 +317,19 @@ describe('local trade service handler', () => {
   })
 
   it('returns clear errors for unknown quote submits and unsupported quote assets', async () => {
-    const submit = await handleLocalTradeRequest(
-      new Request('http://127.0.0.1:8422/v1/order', {
-        method: 'POST',
-        body: JSON.stringify({ quoteId: 'missing', userSignature: '0xsig' })
-      })
-    )
+    const submit = await post('/v1/order', { quoteId: 'missing', userSignature: '0xsig' })
     const submitBody = await json(submit)
 
     expect(submit.status).toBe(404)
     expect(submitBody.message).toContain('Unknown local Flash quote')
 
-    const quote = await handleLocalTradeRequest(
-      new Request('http://127.0.0.1:8422/v1/quote', {
-        method: 'POST',
-        body: JSON.stringify({
-          contraAsset: '0x0000000000000000000000000000000000000000',
-          funderAddress: FUNDER_ADDRESS,
-          qty: '1',
-          side: 'sell',
-          targetAsset: '0x0000000000000000000000000000000000000001'
-        })
-      })
-    )
+    const quote = await post('/v1/quote', {
+      contraAsset: '0x0000000000000000000000000000000000000000',
+      funderAddress: FUNDER_ADDRESS,
+      qty: '1',
+      side: 'sell',
+      targetAsset: '0x0000000000000000000000000000000000000001'
+    })
     const quoteBody = await json(quote)
 
     expect(quote.status).toBe(500)

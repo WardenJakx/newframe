@@ -1,4 +1,5 @@
 import { Button } from '@newframe/ui/button'
+import { Icon } from '@newframe/ui/icon'
 import { Image } from '@newframe/ui/image'
 import { Inline } from '@newframe/ui/inline'
 import { Stack } from '@newframe/ui/stack'
@@ -12,7 +13,6 @@ import { DisplayCoinBalance } from '../../../../shared/ui/DisplayValue'
 import StatusGlyph from '../../../../shared/ui/StatusGlyph'
 import { imageSource, persistedImageSource } from '../../../../../domain/image'
 import { useTokenImageHydration } from '../../../../shared/hooks/useTokenImageHydration'
-import svg from '../../../../shared/svg'
 
 export type TransactionProgressData = {
   status?: string
@@ -349,7 +349,7 @@ function AssetIcon({
       {iconSource ? (
         <Image alt={`${symbol} token`} source={iconSource} />
       ) : effect.kind === 'native' && symbol.toUpperCase() === 'ETH' ? (
-        svg.eth(14)
+        <Icon name='ethereum' size='small' />
       ) : (
         <Text align='center' variant='microCode' truncate>
           {symbol}

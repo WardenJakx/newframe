@@ -1,9 +1,9 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it, setSystemTime } from 'bun:test'
+import { afterAll, beforeAll, describe, expect, it, setSystemTime } from 'bun:test'
 
 import log from 'electron-log'
 import { addHexPrefix } from '@ethereumjs/util'
 
-import { type CanonicalActions } from './actions'
+import createInitialState from './state'
 import { NATIVE_CURRENCY } from '../../domain/token/constants'
 import { toTokenId } from '../../domain/balance'
 import { customTokens, tokensForAccount } from '../../domain/token'
@@ -19,6 +19,13 @@ afterAll(() => {
 })
 
 const owner = '0xa8be0f701d0f37088600164e71bffc0ad652c251'
+const otherOwner = '0xd0e3872f5fa8ecb49f1911f605c0da90689a484e'
+const originIds = {
+  first: '91f6971d-ba85-52d7-a27e-6af206eb2433',
+  second: '8073729a-5e59-53b7-9e69-5d9bcff94087',
+  third: 'd7acc008-6411-5486-bb2d-0c0cfcddbb92',
+  fourth: '695112ec-43e2-52a8-8f69-5c36837d6d13'
+}
 
 const testTokens = {
   zrx: {
@@ -54,9 +61,16 @@ function tokenCatalog(tokens: any[], accountTokenIds: Record<string, string[]> =
   }
 }
 
+const storedBalance = (token: { address: string; chainId: number }, balance: string) => ({
+  address: token.address,
+  chainId: token.chainId,
+  balance,
+  displayBalance: ''
+})
+
 describe('#addNetwork', () => {
   const polygonNetwork = {
-    id: 137,
+    id: 123456,
     name: 'Polygon',
     type: 'ethereum',
     layer: 'sidechain',
@@ -69,17 +83,17 @@ describe('#addNetwork', () => {
 
     actions.addNetwork({
       ...polygonNetwork,
-      id: '137',
+      id: '123456',
       primaryRpc: 'https://polygon-rpc.com',
       secondaryRpc: 'https://rpc-mainnet.matic.network'
     })
 
     expect({
-      network: getState().main.networks.ethereum['137'],
-      metadata: getState().main.networksMeta.ethereum['137']
+      network: getState().main.networks.ethereum['123456'],
+      metadata: getState().main.networksMeta.ethereum['123456']
     } as unknown).toStrictEqual({
       network: {
-        id: 137,
+        id: 123456,
         type: 'ethereum',
         layer: 'sidechain',
         isTestnet: false,
@@ -155,8 +169,8 @@ describe('#addNetwork', () => {
         networks: getState().main.networks,
         metadata: getState().main.networksMeta
       }).toStrictEqual({
-        networks: { ethereum: {} },
-        metadata: { ethereum: {} }
+        networks: createInitialState().main.networks,
+        metadata: createInitialState().main.networksMeta
       })
     }
   })
@@ -165,13 +179,13 @@ describe('#addNetwork', () => {
     const existingMetadata = { name: 'Polygon metadata' }
     const { actions, getState } = createActionHarness({
       main: {
-        networks: { ethereum: { '137': polygonNetwork } },
-        networksMeta: { ethereum: { '137': existingMetadata } }
+        networks: { ethereum: { '123456': polygonNetwork } },
+        networksMeta: { ethereum: { '123456': existingMetadata } }
       }
     })
 
     actions.addNetwork({
-      id: 137,
+      id: 123456,
       type: 'ethereum',
       name: 'Matic v1',
       explorer: 'https://rpc-mainnet.maticvigil.com',
@@ -179,119 +193,60 @@ describe('#addNetwork', () => {
     })
 
     expect({
-      network: getState().main.networks.ethereum['137'],
-      metadata: getState().main.networksMeta.ethereum['137']
+      network: getState().main.networks.ethereum['123456'],
+      metadata: getState().main.networksMeta.ethereum['123456']
     } as unknown).toStrictEqual({ network: polygonNetwork, metadata: existingMetadata })
   })
 })
 
 describe('#setBalances', () => {
   it('merges new balances and replaces existing positive and zero amounts', () => {
+    const zrxAmount = addHexPrefix(BigInt(79832332).toString(16))
+    const badgerAmount = addHexPrefix(BigInt(419).toString(16))
     const { actions, getState } = createActionHarness({
       main: {
-        balances: {
-          [owner]: [
-            {
-              ...testTokens.badger,
-              balance: addHexPrefix(BigInt(305).toString(16))
-            }
-          ]
-        }
+        balances: { [owner]: [{ ...testTokens.badger, balance: addHexPrefix(BigInt(305).toString(16)) }] }
       }
     })
 
     actions.setBalances(owner, [
-      {
-        ...testTokens.zrx,
-        balance: addHexPrefix(BigInt(79832332).toString(16))
-      },
-      {
-        ...testTokens.badger,
-        balance: addHexPrefix(BigInt(419).toString(16))
-      }
+      { ...testTokens.zrx, balance: zrxAmount },
+      { ...testTokens.badger, balance: badgerAmount }
     ])
-
     expect(getState().main.balances[owner]).toStrictEqual([
-      {
-        address: testTokens.zrx.address,
-        chainId: testTokens.zrx.chainId,
-        balance: addHexPrefix(BigInt(79832332).toString(16)),
-        displayBalance: ''
-      },
-      {
-        address: testTokens.badger.address,
-        chainId: testTokens.badger.chainId,
-        balance: addHexPrefix(BigInt(419).toString(16)),
-        displayBalance: ''
-      }
+      storedBalance(testTokens.zrx, zrxAmount),
+      storedBalance(testTokens.badger, badgerAmount)
     ])
 
-    actions.setBalances(owner, [
-      {
-        address: testTokens.badger.address,
-        chainId: testTokens.badger.chainId,
-        balance: '0x0',
-        displayBalance: ''
-      }
-    ])
-
+    actions.setBalances(owner, [storedBalance(testTokens.badger, '0x0')])
     expect(getState().main.balances[owner]).toStrictEqual([
-      {
-        address: testTokens.zrx.address,
-        chainId: testTokens.zrx.chainId,
-        balance: addHexPrefix(BigInt(79832332).toString(16)),
-        displayBalance: ''
-      },
-      {
-        address: testTokens.badger.address,
-        chainId: testTokens.badger.chainId,
-        balance: '0x0',
-        displayBalance: ''
-      }
+      storedBalance(testTokens.zrx, zrxAmount),
+      storedBalance(testTokens.badger, '0x0')
     ])
   })
 })
 
 describe('#removeBalance', () => {
-  let balances: any = {
-    [owner]: [
-      {
-        ...testTokens.zrx,
-        balance: addHexPrefix(BigInt(798564).toString(16))
-      },
-      {
-        ...testTokens.badger,
-        balance: addHexPrefix(BigInt(15543).toString(16))
-      }
-    ],
-    '0xd0e3872f5fa8ecb49f1911f605c0da90689a484e': [
-      {
-        ...testTokens.zrx,
-        balance: addHexPrefix(BigInt(8201343).toString(16))
-      },
-      {
-        ...testTokens.badger,
-        balance: addHexPrefix(BigInt(101988).toString(16))
-      }
-    ]
-  }
-
-  const removeBalance = (key: any) => {
-    const { actions } = createActionHarness({ main: { balances } }, (state) => {
-      balances = state.main.balances
-    })
-    actions.removeBalance(1, key)
-  }
-
   it('removes a balance from all accounts', () => {
-    removeBalance(testTokens.zrx.address)
-
-    expect(balances[owner]).not.toContainEqual(expect.objectContaining({ address: testTokens.zrx.address }))
-    expect(balances[owner]).toHaveLength(1)
-    expect(balances['0xd0e3872f5fa8ecb49f1911f605c0da90689a484e']).not.toContainEqual(
-      expect.objectContaining({ address: testTokens.zrx.address })
+    const balances = Object.fromEntries(
+      [owner, otherOwner].map((account, index) => [
+        account,
+        [
+          { ...testTokens.zrx, balance: addHexPrefix(BigInt(798564 + index).toString(16)) },
+          { ...testTokens.badger, balance: addHexPrefix(BigInt(15543 + index).toString(16)) }
+        ]
+      ])
     )
-    expect(balances['0xd0e3872f5fa8ecb49f1911f605c0da90689a484e']).toHaveLength(1)
+    const { actions, getState } = createActionHarness({ main: { balances } })
+
+    actions.removeBalance(1, testTokens.zrx.address)
+
+    for (const account of [owner, otherOwner]) {
+      expect(getState().main.balances[account]).toHaveLength(1)
+      expect(getState().main.balances[account]).not.toContainEqual(
+        expect.objectContaining({ address: testTokens.zrx.address })
+      )
+    }
   })
 })
 
@@ -349,561 +304,241 @@ describe('#removeCustomTokens', () => {
   })
 })
 
-describe('#initOrigin', () => {
-  let actions: CanonicalActions
-  let origins: any
-  const creationDate = new Date('2022-05-24')
-
-  const initOrigin = (id: any, origin: any) => actions.initOrigin(id, origin)
-
-  beforeEach(() => {
-    origins = {}
-    setSystemTime(creationDate)
-    actions = createActionHarness({ main: { origins } }, (state) => {
-      origins = state.main.origins
-    }).actions
-  })
-
-  it('creates a new origin', () => {
-    const origin = { name: 'frame.test', chain: { id: 137, type: 'ethereum' } }
-
-    initOrigin('91f6971d-ba85-52d7-a27e-6af206eb2433', origin)
-
-    expect(origins['91f6971d-ba85-52d7-a27e-6af206eb2433']).toEqual({
-      name: 'frame.test',
-      chain: {
-        id: 137,
-        type: 'ethereum'
-      },
-      session: {
-        requests: 1,
-        startedAt: creationDate.getTime(),
-        lastUpdatedAt: creationDate.getTime()
-      }
-    })
-  })
-})
-
 describe('#clearOrigins', () => {
-  let actions: CanonicalActions
-  let origins: any
-  let permissions: any
-
-  const clearOrigins = () => actions.clearOrigins()
-
-  beforeEach(() => {
-    origins = {
-      '91f6971d-ba85-52d7-a27e-6af206eb2433': {},
-      '8073729a-5e59-53b7-9e69-5d9bcff94087': {},
-      'd7acc008-6411-5486-bb2d-0c0cfcddbb92': {}
-    }
-    permissions = {
-      '0xabc': {
-        '91f6971d-ba85-52d7-a27e-6af206eb2433': {
-          origin: 'frame.test',
-          provider: true
+  it('should clear all existing origins and attached permissions', () => {
+    const { actions, getState } = createActionHarness({
+      main: {
+        origins: { [originIds.first]: {}, [originIds.second]: {}, [originIds.third]: {} },
+        permissions: {
+          '0xabc': { [originIds.first]: { origin: 'frame.test', provider: true } }
         }
       }
-    }
-    actions = createActionHarness({ main: { origins, permissions } }, (state) => {
-      origins = state.main.origins
-      permissions = state.main.permissions
-    }).actions
-  })
+    })
+    actions.clearOrigins()
 
-  it('should clear all existing origins and attached permissions', () => {
-    clearOrigins()
-
-    expect(origins).toEqual({})
-    expect(permissions).toEqual({})
+    expect(getState().main.origins).toEqual({})
+    expect(getState().main.permissions).toEqual({})
   })
 })
 
 describe('#revokePermission', () => {
-  let actions: CanonicalActions
-  let permissions: any
-
-  const revokePermission = (address: string, originId: string) => actions.revokePermission(address, originId)
-
-  beforeEach(() => {
-    permissions = {
-      '0xabc': {
-        '8073729a-5e59-53b7-9e69-5d9bcff94087': {
-          origin: 'frame.test',
-          provider: true
-        },
-        'd7acc008-6411-5486-bb2d-0c0cfcddbb92': {
-          origin: 'keep.test',
-          provider: true
-        }
-      }
-    }
-    actions = createActionHarness({ main: { permissions } }, (state) => {
-      permissions = state.main.permissions
-    }).actions
-  })
-
   it('removes the permission entry instead of disabling it', () => {
-    revokePermission('0xabc', '8073729a-5e59-53b7-9e69-5d9bcff94087')
-
-    expect(permissions).toEqual({
-      '0xabc': {
-        'd7acc008-6411-5486-bb2d-0c0cfcddbb92': {
-          origin: 'keep.test',
-          provider: true
+    const keepPermission = { origin: 'keep.test', provider: true, handlerId: originIds.third }
+    const { actions, getState } = createActionHarness({
+      main: {
+        permissions: {
+          '0xabc': {
+            [originIds.second]: { origin: 'frame.test', provider: true, handlerId: originIds.second },
+            [originIds.third]: keepPermission
+          }
         }
       }
     })
+    actions.revokePermission('0xabc', originIds.second)
+
+    expect(getState().main.permissions).toEqual({ '0xabc': { [originIds.third]: keepPermission } })
   })
 })
 
 describe('#removeOrigin', () => {
-  let actions: CanonicalActions
-  let origins: any
-  let permissions: any
-
-  const removeOrigin = (originId: any) => actions.removeOrigin(originId)
-
-  beforeEach(() => {
-    origins = {
-      '91f6971d-ba85-52d7-a27e-6af206eb2433': {},
-      '8073729a-5e59-53b7-9e69-5d9bcff94087': {},
-      'd7acc008-6411-5486-bb2d-0c0cfcddbb92': {}
-    }
-    permissions = {
-      '0xabc': {
-        '8073729a-5e59-53b7-9e69-5d9bcff94087': {
-          origin: 'frame.test',
-          provider: true
-        },
-        'd7acc008-6411-5486-bb2d-0c0cfcddbb92': {
-          origin: 'keep.test',
-          provider: true
-        }
-      }
-    }
-    actions = createActionHarness({ main: { origins, permissions } }, (state) => {
-      origins = state.main.origins
-      permissions = state.main.permissions
-    }).actions
-  })
-
   it('should remove the specified origin and attached permissions', () => {
-    removeOrigin('8073729a-5e59-53b7-9e69-5d9bcff94087')
-
-    expect(origins).toEqual({
-      '91f6971d-ba85-52d7-a27e-6af206eb2433': {},
-      'd7acc008-6411-5486-bb2d-0c0cfcddbb92': {}
+    const keepPermission = { origin: 'keep.test', provider: true, handlerId: originIds.third }
+    const origin = (id: number) => ({
+      name: 'frame.test',
+      chain: { id, type: 'ethereum' as const },
+      session: { requests: 1, startedAt: 1, lastUpdatedAt: 1 }
     })
-    expect(permissions).toEqual({
-      '0xabc': {
-        'd7acc008-6411-5486-bb2d-0c0cfcddbb92': {
-          origin: 'keep.test',
-          provider: true
+    const { actions, getState } = createActionHarness({
+      main: {
+        origins: {
+          [originIds.first]: origin(1),
+          [originIds.second]: origin(10),
+          [originIds.third]: origin(137)
+        },
+        permissions: {
+          '0xabc': {
+            [originIds.second]: { origin: 'frame.test', provider: true, handlerId: originIds.second },
+            [originIds.third]: keepPermission
+          }
         }
       }
     })
+    actions.removeOrigin(originIds.second)
+
+    expect(getState().main.origins).toEqual({
+      [originIds.first]: origin(1),
+      [originIds.third]: origin(137)
+    })
+    expect(getState().main.permissions).toEqual({ '0xabc': { [originIds.third]: keepPermission } })
   })
 })
 
 describe('#addOriginRequest', () => {
-  let actions: CanonicalActions
-  let origins: any
-
   const creationTime = new Date('2022-05-24').getTime()
-  const updateTime = creationTime + 1000 * 60 * 60 * 24 * 2 // 2 days
-  const endTime = creationTime + 1000 * 60 * 60 * 24 * 1 // 1 day
+  const day = 1000 * 60 * 60 * 24
+  const updateTime = creationTime + day * 2
 
-  const addOriginRequest = (id: any) => actions.addOriginRequest(id)
-
-  beforeEach(() => {
+  const createHarness = () => {
     setSystemTime(updateTime)
-
-    origins = {
-      activeOrigin: {
-        chain: { id: 10, type: 'ethereum' },
-        session: {
-          requests: 3,
-          startedAt: creationTime,
-          lastUpdatedAt: creationTime
-        }
-      },
-      staleOrigin: {
-        chain: { id: 42161, type: 'ethereum' },
-        session: {
-          requests: 14,
-          startedAt: creationTime,
-          endedAt: endTime,
-          lastUpdatedAt: endTime
+    return createActionHarness({
+      main: {
+        origins: {
+          activeOrigin: {
+            chain: { id: 10, type: 'ethereum' },
+            session: { requests: 3, startedAt: creationTime, lastUpdatedAt: creationTime }
+          },
+          staleOrigin: {
+            chain: { id: 42161, type: 'ethereum' },
+            session: {
+              requests: 14,
+              startedAt: creationTime,
+              endedAt: creationTime + day,
+              lastUpdatedAt: creationTime + day
+            }
+          }
         }
       }
-    }
-    actions = createActionHarness({ main: { origins } }, (state) => {
-      origins = state.main.origins
-    }).actions
-  })
+    })
+  }
 
-  it('updates the timestamp for an existing session', () => {
-    addOriginRequest('activeOrigin')
+  it('updates an active session and restarts a previously ended session', () => {
+    const { actions, getState } = createHarness()
 
-    expect(origins.activeOrigin.session.startedAt).toBe(creationTime)
-    expect(origins.activeOrigin.session.lastUpdatedAt).toBe(updateTime)
-  })
+    actions.addOriginRequest('activeOrigin')
+    actions.addOriginRequest('staleOrigin')
 
-  it('increments the request count for an existing session', () => {
-    origins.activeOrigin.session.requests = 3
-
-    addOriginRequest('activeOrigin')
-
-    expect(origins.activeOrigin.session.requests).toBe(4)
-  })
-
-  it('handles a request for a previously ended session', () => {
-    addOriginRequest('staleOrigin')
-
-    expect(origins.staleOrigin.session.startedAt).toBe(updateTime)
-    expect(origins.staleOrigin.session.endedAt).toBe(undefined)
-    expect(origins.staleOrigin.session.lastUpdatedAt).toBe(updateTime)
-  })
-
-  it('resets the request count when starting a new session', () => {
-    addOriginRequest('staleOrigin')
-
-    expect(origins.staleOrigin.session.requests).toBe(1)
-  })
-})
-
-describe('#switchOriginChain', () => {
-  let actions: CanonicalActions
-  let origins: any = {}
-
-  beforeEach(() => {
-    origins = {
-      '91f6971d-ba85-52d7-a27e-6af206eb2433': {
-        chain: { id: 1, type: 'ethereum' }
-      }
-    }
-    actions = createActionHarness({ main: { origins } }, (state) => {
-      origins = state.main.origins
-    }).actions
-  })
-
-  const switchChain = (chainId: any, type: any) =>
-    actions.switchOriginChain('91f6971d-ba85-52d7-a27e-6af206eb2433', chainId, type)
-
-  it('should switch the chain for an origin', () => {
-    switchChain(50, 'ethereum')
-
-    expect(origins['91f6971d-ba85-52d7-a27e-6af206eb2433'].chain).toStrictEqual({ id: 50, type: 'ethereum' })
+    expect(getState().main.origins.activeOrigin.session).toEqual({
+      requests: 4,
+      startedAt: creationTime,
+      lastUpdatedAt: updateTime
+    })
+    expect(getState().main.origins.staleOrigin.session).toEqual({
+      requests: 1,
+      startedAt: updateTime,
+      lastUpdatedAt: updateTime
+    })
   })
 })
 
 describe('#removeNetwork', () => {
-  let actions: CanonicalActions
-  let main: any
-
-  beforeEach(() => {
-    main = {
-      origins: {
-        '91f6971d-ba85-52d7-a27e-6af206eb2433': {
-          chain: { id: 1, type: 'ethereum' }
-        },
-        '8073729a-5e59-53b7-9e69-5d9bcff94087': {
-          chain: { id: 4, type: 'ethereum' }
-        },
-        'd7acc008-6411-5486-bb2d-0c0cfcddbb92': {
-          chain: { id: 50, type: 'cosmos' }
-        },
-        '695112ec-43e2-52a8-8f69-5c36837d6d13': {
-          chain: { id: 4, type: 'ethereum' }
-        }
-      },
-      networks: {
-        ethereum: {
-          1: {},
-          4: {},
-          137: {}
-        },
-        cosmos: {
-          50: {}
-        }
-      },
-      networksMeta: {
-        ethereum: {
-          1: {},
-          4: {},
-          137: {}
-        },
-        cosmos: {
-          50: {}
+  const origin = (id: number) => ({
+    name: 'frame.test',
+    chain: { id, type: 'ethereum' as const },
+    session: { requests: 1, startedAt: 1, lastUpdatedAt: 1 }
+  })
+  const createHarness = () =>
+    createActionHarness({
+      main: {
+        origins: {
+          [originIds.first]: origin(1),
+          [originIds.second]: origin(10),
+          [originIds.third]: origin(137),
+          [originIds.fourth]: origin(10)
         }
       }
-    }
-    actions = createActionHarness({ main }, (state) => {
-      main = state.main
-    }).actions
-  })
-
-  const removeNetwork = (networkId: any, networkType = 'ethereum') =>
-    actions.removeNetwork({ id: networkId, type: networkType })
+    })
 
   it('deletes the network projections and redirects every affected origin to mainnet', () => {
-    removeNetwork(4)
+    const { actions, getState } = createHarness()
+    actions.removeNetwork({ id: 10, type: 'ethereum' })
+    const main = getState().main
 
-    expect({
-      networks: main.networks.ethereum,
-      metadata: main.networksMeta.ethereum,
-      origins: main.origins
-    }).toStrictEqual({
-      networks: { 1: {}, 137: {} },
-      metadata: { 1: {}, 137: {} },
-      origins: {
-        '91f6971d-ba85-52d7-a27e-6af206eb2433': {
-          chain: { id: 1, type: 'ethereum' }
-        },
-        '8073729a-5e59-53b7-9e69-5d9bcff94087': {
-          chain: { id: 1, type: 'ethereum' }
-        },
-        'd7acc008-6411-5486-bb2d-0c0cfcddbb92': {
-          chain: { id: 50, type: 'cosmos' }
-        },
-        '695112ec-43e2-52a8-8f69-5c36837d6d13': {
-          chain: { id: 1, type: 'ethereum' }
-        }
-      }
-    })
-  })
-
-  describe('when passed the last network of a given type', () => {
-    it('preserves the network projections and all origin assignments', () => {
-      removeNetwork(50, 'cosmos')
-
-      expect({
-        network: main.networks.cosmos[50],
-        metadata: main.networksMeta.cosmos[50],
-        origins: main.origins
-      }).toStrictEqual({
-        network: {},
-        metadata: {},
-        origins: {
-          '91f6971d-ba85-52d7-a27e-6af206eb2433': {
-            chain: { id: 1, type: 'ethereum' }
-          },
-          '8073729a-5e59-53b7-9e69-5d9bcff94087': {
-            chain: { id: 4, type: 'ethereum' }
-          },
-          'd7acc008-6411-5486-bb2d-0c0cfcddbb92': {
-            chain: { id: 50, type: 'cosmos' }
-          },
-          '695112ec-43e2-52a8-8f69-5c36837d6d13': {
-            chain: { id: 4, type: 'ethereum' }
-          }
-        }
-      })
-    })
+    expect(main.networks.ethereum[10]).toBeUndefined()
+    expect(main.networksMeta.ethereum[10]).toBeUndefined()
+    expect(Object.values(main.origins).map(({ chain }: any) => chain)).toStrictEqual([
+      { id: 1, type: 'ethereum' },
+      { id: 1, type: 'ethereum' },
+      { id: 137, type: 'ethereum' },
+      { id: 1, type: 'ethereum' }
+    ])
   })
 })
 
 describe('#activateNetwork', () => {
-  let actions: CanonicalActions
-  let main: any
-
-  beforeEach(() => {
-    main = {
-      networks: {
-        ethereum: {
-          137: {
-            on: false
-          }
-        }
-      },
-      origins: {
-        'frame.test': {
-          chain: {
-            id: 137
-          }
-        }
-      }
-    }
-    actions = createActionHarness({ main }, (state) => {
-      main = state.main
-    }).actions
-  })
-
-  const activateNetwork = (type: any, chainId: any, active: any) =>
-    actions.activateNetwork(type, chainId, active)
-
-  it('activates the given chain', () => {
-    main.networks.ethereum[137].on = false
-
-    activateNetwork('ethereum', 137, true)
-
-    expect(main.networks.ethereum[137].on).toBe(true)
-  })
-
-  it('switches the chain for origins from the deactivated chain to mainnet', () => {
-    main.origins['frame.test'].chain.id = 137
-
-    activateNetwork('ethereum', 137, false)
-
-    expect(main.origins['frame.test'].chain.id).toBe(1)
-  })
-})
-
-describe('#setNetworkImage', () => {
-  let actions: CanonicalActions
-  let main: any
-
-  beforeEach(() => {
-    main = {
-      networksMeta: {
-        ethereum: {
-          1: {
-            icon: '',
-            nativeCurrency: {}
-          },
-          8453: {
-            icon: 'https://frame.nyc3.cdn.digitaloceanspaces.com/baseiconcolor.png',
-            nativeCurrency: {}
-          }
-        }
-      }
-    }
-    actions = createActionHarness({ main }, (state) => {
-      main = state.main
-    }).actions
-  })
-
-  const image = {
-    base64: 'aWNvbg==',
-    contentHash: 'hash',
-    mimeType: 'image/png',
-    sourceUrl: 'https://cdn.example/base.png'
-  }
-
-  it('should update the network image and source for the expected chain', () => {
-    actions.setNetworkImage('ethereum', 8453, image.sourceUrl, image)
-
-    expect(main.networksMeta.ethereum).toStrictEqual({
-      1: { icon: '', nativeCurrency: {} },
-      8453: {
-        icon: image.sourceUrl,
-        image,
-        nativeCurrency: {}
+  it('activates the given chain and redirects its origins when deactivated', () => {
+    const { actions, getState } = createActionHarness({
+      main: {
+        networks: { ethereum: { 137: { on: false } } },
+        origins: { 'frame.test': { chain: { id: 137 } } }
       }
     })
-  })
 
-  it('should store a native currency image with its network metadata', () => {
-    actions.setNativeCurrencyImage('ethereum', 1, image)
-
-    expect(main.networksMeta.ethereum[1].nativeCurrency.image).toEqual(image)
+    actions.activateNetwork('ethereum', 137, true)
+    expect(getState().main.networks.ethereum[137].on).toBe(true)
+    actions.activateNetwork('ethereum', 137, false)
+    expect(getState().main.origins['frame.test'].chain.id).toBe(1)
   })
 })
 
 describe('#upsertAccount', () => {
-  let actions: CanonicalActions
-  let main: any
-
-  beforeEach(() => {
+  const metadataId = 'e42ee170-4601-5428-bac5-d8d92fe049e8'
+  const createHarness = () => {
     setSystemTime(new Date('2022-11-17T11:01:58.135Z'))
-
-    main = {
-      accounts: {
-        1: {
-          id: '1',
-          name: 'cool account',
-          lastSignerType: 'ledger',
-          balances: {}
-        }
-      },
-      accountsMeta: {
-        'e42ee170-4601-5428-bac5-d8d92fe049e8': {
-          name: 'cool account',
-          lastUpdated: 1568682918135
+    return createActionHarness({
+      main: {
+        accounts: {
+          1: { id: '1', name: 'cool account', lastSignerType: 'ledger', balances: {} }
+        },
+        accountsMeta: {
+          [metadataId]: { name: 'cool account', lastUpdated: 1568682918135 }
         }
       }
-    }
-    actions = createActionHarness({ main }, (state) => {
-      main = state.main
-    }).actions
-  })
-
-  const setAccount = (id: any, updatedAccount: any) => actions.upsertAccount({ ...updatedAccount, id })
+    })
+  }
 
   it('updates account-owned fields and metadata without accepting a balance overwrite', () => {
-    setAccount('1', { name: 'cool account', lastSignerType: 'seed', status: 'ok', balances: 'ignored' })
+    const { actions, getState } = createHarness()
+    actions.upsertAccount({
+      id: '1',
+      name: 'cool account',
+      lastSignerType: 'seed',
+      status: 'ok',
+      balances: 'ignored'
+    })
 
-    expect({ accounts: main.accounts, metadata: main.accountsMeta }).toStrictEqual({
-      accounts: {
-        1: {
-          id: '1',
-          profileId: DEFAULT_PROFILE_ID,
-          name: 'cool account',
-          lastSignerType: 'seed',
-          status: 'ok',
-          balances: {}
-        }
-      },
-      metadata: {
-        'e42ee170-4601-5428-bac5-d8d92fe049e8': {
-          name: 'cool account',
-          lastUpdated: 1668682918135
-        }
-      }
+    expect(getState().main.accounts[1]).toMatchObject({
+      id: '1',
+      profileId: DEFAULT_PROFILE_ID,
+      name: 'cool account',
+      lastSignerType: 'seed',
+      status: 'ok'
+    })
+    expect(getState().main.accounts[1]).toHaveProperty('balances', {})
+    expect(getState().main.accountsMeta[metadataId]).toStrictEqual({
+      name: 'cool account',
+      lastUpdated: 1668682918135
     })
   })
 
   it('creates a new account and its user-defined metadata together', () => {
-    setAccount('2', { name: 'not so cool account', lastSignerType: 'seed', status: 'ok' })
+    const { actions, getState } = createHarness()
+    actions.upsertAccount({ id: '2', name: 'not so cool account', lastSignerType: 'seed', status: 'ok' })
 
-    expect({ accounts: main.accounts, metadata: main.accountsMeta }).toStrictEqual({
-      accounts: {
-        1: {
-          id: '1',
-          profileId: DEFAULT_PROFILE_ID,
-          name: 'cool account',
-          lastSignerType: 'ledger',
-          balances: {}
-        },
-        2: {
-          id: '2',
-          profileId: DEFAULT_PROFILE_ID,
-          name: 'not so cool account',
-          lastSignerType: 'seed',
-          status: 'ok',
-          balances: {}
-        }
-      },
-      metadata: {
-        'e42ee170-4601-5428-bac5-d8d92fe049e8': {
-          name: 'cool account',
-          lastUpdated: 1568682918135
-        },
-        '0d6c930e-3495-56cc-993f-8da3a6150003': {
-          name: 'not so cool account',
-          lastUpdated: 1668682918135
-        }
+    expect(getState().main.accounts[2]).toMatchObject({
+      id: '2',
+      profileId: DEFAULT_PROFILE_ID,
+      name: 'not so cool account',
+      lastSignerType: 'seed',
+      status: 'ok'
+    })
+    expect(getState().main.accounts[2]).toHaveProperty('balances', {})
+    expect(getState().main.accountsMeta).toStrictEqual({
+      [metadataId]: { name: 'cool account', lastUpdated: 1568682918135 },
+      '0d6c930e-3495-56cc-993f-8da3a6150003': {
+        name: 'not so cool account',
+        lastUpdated: 1668682918135
       }
     })
   })
 
   it('does not persist generated default labels for new or existing accounts', () => {
     for (const id of ['1', '2']) {
-      const { actions, getState } = createActionHarness({
-        main: {
-          accounts: main.accounts,
-          accountsMeta: main.accountsMeta
-        }
-      })
+      const { actions, getState } = createHarness()
 
       actions.upsertAccount({ id, name: 'hot account', lastSignerType: 'seed', status: 'ok' })
 
       expect(getState().main.accountsMeta).toStrictEqual({
-        'e42ee170-4601-5428-bac5-d8d92fe049e8': {
-          name: 'cool account',
-          lastUpdated: 1568682918135
-        }
+        [metadataId]: { name: 'cool account', lastUpdated: 1568682918135 }
       })
     }
   })
@@ -1060,77 +695,44 @@ describe('profile actions', () => {
 })
 
 describe('#setPortfolioBalances', () => {
-  let actions: CanonicalActions
-  let main: any
-  const setPortfolioBalances = (balances: any[]) => actions.setPortfolioBalances(owner, balances)
-
-  beforeEach(() => {
-    const staleKnownToken = {
-      chainId: 42161,
-      address: '0x1111111111111111111111111111111111111111',
-      name: 'Old Token',
-      symbol: 'OLD',
-      decimals: 18
-    }
-
-    main = {
-      tokens: tokenCatalog(
-        [
-          tokenRecord(testTokens.zrx, { custom: true }),
-          tokenRecord(testTokens.badger),
-          tokenRecord(staleKnownToken)
-        ],
-        { [owner]: [toTokenId(testTokens.badger), toTokenId(staleKnownToken)] }
-      ),
-      balances: {
-        [owner]: [
-          { address: NATIVE_CURRENCY, chainId: 1, balance: '0x1', displayBalance: '' },
-          {
-            address: testTokens.zrx.address,
-            chainId: testTokens.zrx.chainId,
-            balance: '0x2',
-            displayBalance: ''
-          },
-          {
-            address: testTokens.badger.address,
-            chainId: testTokens.badger.chainId,
-            balance: '0x3',
-            displayBalance: ''
-          },
-          {
-            address: staleKnownToken.address,
-            chainId: staleKnownToken.chainId,
-            balance: '0x5',
-            displayBalance: ''
-          }
-        ]
-      }
-    }
-    actions = createActionHarness({ main }, (state) => {
-      main = state.main
-    }).actions
-  })
+  const staleToken = {
+    chainId: 42161,
+    address: '0x1111111111111111111111111111111111111111',
+    name: 'Old Token',
+    symbol: 'OLD',
+    decimals: 18
+  }
 
   it('replaces cached portfolio balances without removing custom token balances', () => {
     const nativeBalance = { address: NATIVE_CURRENCY, chainId: 1, balance: '0x6', displayBalance: '' }
     const zerionBalance = { ...testTokens.badger, balance: '0x4' }
-
-    setPortfolioBalances([nativeBalance, zerionBalance])
-
-    expect(main.balances[owner]).toStrictEqual([
-      {
-        address: testTokens.zrx.address,
-        chainId: testTokens.zrx.chainId,
-        balance: '0x2',
-        displayBalance: ''
-      },
-      nativeBalance,
-      {
-        address: testTokens.badger.address,
-        chainId: testTokens.badger.chainId,
-        balance: '0x4',
-        displayBalance: ''
+    const { actions, getState } = createActionHarness({
+      main: {
+        tokens: tokenCatalog(
+          [
+            tokenRecord(testTokens.zrx, { custom: true }),
+            tokenRecord(testTokens.badger),
+            tokenRecord(staleToken)
+          ],
+          { [owner]: [toTokenId(testTokens.badger), toTokenId(staleToken)] }
+        ),
+        balances: {
+          [owner]: [
+            storedBalance({ address: NATIVE_CURRENCY, chainId: 1 }, '0x1'),
+            storedBalance(testTokens.zrx, '0x2'),
+            storedBalance(testTokens.badger, '0x3'),
+            storedBalance(staleToken, '0x5')
+          ]
+        }
       }
+    })
+
+    actions.setPortfolioBalances(owner, [nativeBalance, zerionBalance])
+
+    expect(getState().main.balances[owner]).toStrictEqual([
+      storedBalance(testTokens.zrx, '0x2'),
+      nativeBalance,
+      storedBalance(testTokens.badger, '0x4')
     ])
   })
 })
@@ -1156,28 +758,20 @@ describe('#setAutoDiscoverTokens', () => {
 })
 
 describe('#setPortfolioApiKey', () => {
-  let actions: CanonicalActions
-  let main: any
-
-  beforeEach(() => {
-    main = { portfolioApiKey: '', autoDiscoverTokens: true }
-    actions = createActionHarness({ main }, (state) => {
-      main = state.main
-    }).actions
-  })
-
-  it('sets the persisted portfolio API key without whitespace', () => {
-    actions.setPortfolioApiKey(' zk_test \n')
-
-    expect(main.portfolioApiKey).toBe('zk_test')
-    expect(main.autoDiscoverTokens).toBe(true)
-  })
-
-  it('disables auto-discovery when the portfolio API key is cleared', () => {
-    actions.setPortfolioApiKey('')
-
-    expect(main.portfolioApiKey).toBe('')
-    expect(main.autoDiscoverTokens).toBe(false)
+  it('normalizes keys and disables discovery when a key is cleared', () => {
+    for (const [value, key, autoDiscoverTokens] of [
+      [' zk_test \n', 'zk_test', true],
+      ['', '', false]
+    ] as const) {
+      const { actions, getState } = createActionHarness({
+        main: { portfolioApiKey: '', autoDiscoverTokens: true }
+      })
+      actions.setPortfolioApiKey(value)
+      expect([getState().main.portfolioApiKey, getState().main.autoDiscoverTokens]).toEqual([
+        key,
+        autoDiscoverTokens
+      ])
+    }
   })
 })
 
@@ -1203,146 +797,73 @@ describe('#removeAccountTokens', () => {
 })
 
 describe('#resetSavedData', () => {
-  let actions: CanonicalActions
-  let main: any
-
-  beforeEach(() => {
-    main = {
-      tokens: tokenCatalog([tokenRecord(testTokens.zrx, { custom: true }), tokenRecord(testTokens.badger)], {
-        [owner]: [toTokenId(testTokens.zrx)],
-        '0xd0e3872f5fa8ecb49f1911f605c0da90689a484e': [toTokenId(testTokens.badger)]
-      }),
-      balances: {
-        [owner]: [
-          { address: testTokens.zrx.address, chainId: testTokens.zrx.chainId, balance: '0x1' },
-          { address: testTokens.badger.address, chainId: testTokens.badger.chainId, balance: '0x2' }
-        ],
-        '0xd0e3872f5fa8ecb49f1911f605c0da90689a484e': [
-          { address: testTokens.badger.address, chainId: testTokens.badger.chainId, balance: '0x3' }
-        ]
-      },
-      activity: {
-        '0xabc': {
-          id: '0xabc',
-          hash: '0xabc',
-          status: 'succeeded'
-        }
-      },
-      orders: {
-        'order-1': {
-          orderId: 'order-1',
-          status: 'open'
-        }
-      }
-    }
-    actions = createActionHarness({ main }, (state) => {
-      main = state.main
-    }).actions
-  })
-
   it('clears cached known tokens, their balances, activity, and orders without removing custom tokens', () => {
+    const { actions, getState } = createActionHarness({
+      main: {
+        tokens: tokenCatalog(
+          [tokenRecord(testTokens.zrx, { custom: true }), tokenRecord(testTokens.badger)],
+          {
+            [owner]: [toTokenId(testTokens.zrx)],
+            [otherOwner]: [toTokenId(testTokens.badger)]
+          }
+        ),
+        balances: {
+          [owner]: [storedBalance(testTokens.zrx, '0x1'), storedBalance(testTokens.badger, '0x2')],
+          [otherOwner]: [storedBalance(testTokens.badger, '0x3')]
+        },
+        activity: { '0xabc': { id: '0xabc', hash: '0xabc', status: 'succeeded' } },
+        orders: { 'order-1': { orderId: 'order-1', status: 'open' } }
+      }
+    })
     actions.resetSavedData()
+    const main = getState().main
 
     expect(customTokens(main.tokens)).toEqual([expect.objectContaining(testTokens.zrx)])
     expect(main.tokens.accountTokenIds).toStrictEqual({})
-    expect(main.balances[owner]).toStrictEqual([
-      { address: testTokens.zrx.address, chainId: testTokens.zrx.chainId, balance: '0x1' }
-    ])
-    expect(main.balances['0xd0e3872f5fa8ecb49f1911f605c0da90689a484e']).toStrictEqual([])
+    expect(main.balances[owner]).toStrictEqual([storedBalance(testTokens.zrx, '0x1')])
+    expect(main.balances[otherOwner]).toStrictEqual([])
     expect(main.activity).toStrictEqual({})
     expect(main.orders).toStrictEqual({})
   })
 })
 
 describe('#navClearReq', () => {
-  let nav: any
-
-  const clearRequest = (requestId: string, showRequestInbox = true) => {
-    const { actions } = createActionHarness({ windows: { panel: { nav } } }, (state) => {
-      nav = state.windows.panel.nav
-    })
-    actions.navClearReq(requestId, showRequestInbox)
-  }
-
-  beforeEach(() => {
-    nav = []
-  })
-
   it('should remove a specific request from the nav', () => {
-    nav = [
-      {
-        view: 'requestView',
-        data: {
-          requestId: '1a'
-        }
-      },
-      {
-        view: 'requestView',
-        data: {
-          requestId: '2b'
-        }
-      },
-      {
-        view: 'expandedModule',
-        data: {
-          id: 'requests'
-        }
-      }
+    const nav = [
+      { view: 'requestView', data: { requestId: '1a' } },
+      { view: 'requestView', data: { requestId: '2b' } },
+      { view: 'expandedModule', data: { id: 'requests' } }
     ]
-
     const [req1, , inbox] = nav
+    const { actions, getState } = createActionHarness({ windows: { panel: { nav } } })
 
-    clearRequest('2b')
+    actions.navClearReq('2b', true)
 
-    expect(nav).toStrictEqual([req1, inbox])
+    expect(getState().windows.panel.nav).toStrictEqual([req1, inbox])
   })
 
   it('should remove the request inbox when not requested', () => {
-    nav = [
-      {
-        view: 'requestView',
-        data: {
-          requestId: '1c'
-        }
-      },
-      {
-        view: 'expandedModule',
-        data: {
-          id: 'requests'
-        }
-      }
+    const nav = [
+      { view: 'requestView', data: { requestId: '1c' } },
+      { view: 'expandedModule', data: { id: 'requests' } }
     ]
+    const { actions, getState } = createActionHarness({ windows: { panel: { nav } } })
 
-    clearRequest('1c', false)
+    actions.navClearReq('1c', false)
 
-    expect(nav).toStrictEqual([])
+    expect(getState().windows.panel.nav).toStrictEqual([])
   })
 })
 
 describe('#activity actions', () => {
-  let actions: CanonicalActions
-  let activity: any
-
-  const upsertSubmittedActivity = (transaction: any) => actions.upsertSubmittedActivity(transaction)
-  const updateActivity = (id: string, update: any) => actions.updateActivity(id, update)
-  const finalizeActivity = (id: string, status: string, update: any) =>
-    actions.finalizeActivity(id, status, update)
-  const pruneActivity = (id: string) => actions.pruneActivity(id)
-
-  beforeEach(() => {
-    activity = {}
-    actions = createActionHarness({ main: { activity } }, (state) => {
-      activity = state.main.activity
-    }).actions
-  })
-
   it('tracks a transaction activity lifecycle', () => {
     const submittedAt = new Date('2024-01-01T00:00:00.000Z')
     const confirmingAt = new Date('2024-01-01T00:01:00.000Z')
     const completedAt = new Date('2024-01-01T00:02:00.000Z')
+    const { actions, getState } = createActionHarness({ main: { activity: {} } })
 
     setSystemTime(submittedAt)
-    upsertSubmittedActivity({
+    actions.upsertSubmittedActivity({
       id: 'tx-1',
       hash: '0x123',
       handlerId: 'handler-1',
@@ -1354,7 +875,7 @@ describe('#activity actions', () => {
       display: { title: 'Send ETH' }
     })
 
-    expect(activity['tx-1']).toEqual({
+    expect(getState().main.activity['tx-1']).toEqual({
       id: 'tx-1',
       hash: '0x123',
       handlerId: 'handler-1',
@@ -1371,9 +892,9 @@ describe('#activity actions', () => {
     })
 
     setSystemTime(confirmingAt)
-    updateActivity('tx-1', { status: 'confirming', confirmations: 2 })
+    actions.updateActivity('tx-1', { status: 'confirming', confirmations: 2 })
 
-    expect(activity['tx-1']).toEqual(
+    expect(getState().main.activity['tx-1']).toEqual(
       expect.objectContaining({
         status: 'confirming',
         confirmations: 2,
@@ -1382,9 +903,9 @@ describe('#activity actions', () => {
     )
 
     setSystemTime(completedAt)
-    finalizeActivity('tx-1', 'succeeded', { receipt: { status: '0x1' } })
+    actions.finalizeActivity('tx-1', 'succeeded', { receipt: { status: '0x1' } })
 
-    expect(activity['tx-1']).toEqual(
+    expect(getState().main.activity['tx-1']).toEqual(
       expect.objectContaining({
         status: 'succeeded',
         completedAt: completedAt.getTime(),
@@ -1393,44 +914,29 @@ describe('#activity actions', () => {
       })
     )
 
-    pruneActivity('tx-1')
+    actions.pruneActivity('tx-1')
 
-    expect(activity).toEqual({})
+    expect(getState().main.activity).toEqual({})
   })
 })
 
 describe('#status notification actions', () => {
-  let actions: CanonicalActions
-  let notifications: any
-
-  const upsertPendingNotification = (notification: any) => actions.upsertPendingNotification(notification)
-  const resolveNotification = (id: string, state: 'completed' | 'failed', update: any) =>
-    actions.resolveNotification(id, state, update)
-  const dismissNotification = (id: string) => actions.dismissNotification(id)
-  const expireNotification = (id: string) => actions.expireNotification(id)
-
-  beforeEach(() => {
-    notifications = {}
-    actions = createActionHarness({ view: { notifications } }, (state) => {
-      notifications = state.view.notifications
-    }).actions
-  })
-
   it('tracks a transient status notification lifecycle', () => {
     const createdAt = new Date('2024-01-01T00:00:00.000Z')
     const resolvedAt = new Date('2024-01-01T00:01:00.000Z')
     const dismissedAt = new Date('2024-01-01T00:02:00.000Z')
     const expiresAt = resolvedAt.getTime() + 5000
+    const { actions, getState } = createActionHarness({ view: { notifications: {} } })
 
     setSystemTime(createdAt)
-    upsertPendingNotification({
+    actions.upsertPendingNotification({
       id: 'notification-1',
       title: 'Transaction submitted',
       detail: 'Waiting for confirmation',
       target: { activityId: 'tx-1' }
     })
 
-    expect(notifications['notification-1']).toEqual({
+    expect(getState().view.notifications['notification-1']).toEqual({
       id: 'notification-1',
       title: 'Transaction submitted',
       detail: 'Waiting for confirmation',
@@ -1442,12 +948,12 @@ describe('#status notification actions', () => {
     })
 
     setSystemTime(resolvedAt)
-    resolveNotification('notification-1', 'completed', {
+    actions.resolveNotification('notification-1', 'completed', {
       detail: 'Confirmed',
       expiresAt
     })
 
-    expect(notifications['notification-1']).toEqual(
+    expect(getState().view.notifications['notification-1']).toEqual(
       expect.objectContaining({
         state: 'completed',
         detail: 'Confirmed',
@@ -1457,9 +963,9 @@ describe('#status notification actions', () => {
     )
 
     setSystemTime(dismissedAt)
-    dismissNotification('notification-1')
+    actions.dismissNotification('notification-1')
 
-    expect(notifications['notification-1']).toEqual(
+    expect(getState().view.notifications['notification-1']).toEqual(
       expect.objectContaining({
         hidden: true,
         dismissedAt: dismissedAt.getTime(),
@@ -1467,9 +973,9 @@ describe('#status notification actions', () => {
       })
     )
 
-    expireNotification('notification-1')
+    actions.expireNotification('notification-1')
 
-    expect(notifications).toEqual({})
+    expect(getState().view.notifications).toEqual({})
   })
 })
 

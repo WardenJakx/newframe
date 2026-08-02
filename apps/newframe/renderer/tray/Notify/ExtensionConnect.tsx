@@ -7,7 +7,7 @@ import { Text } from '@newframe/ui/text'
 
 import link from '../../shared/link'
 import { capitalize } from '../../../domain/text'
-import svg from '../../shared/svg'
+import { AppIcon } from '../../shared/appIcon'
 
 export type ExtensionConnectNotificationProps = {
   browser: string
@@ -35,7 +35,7 @@ export default function ExtensionConnectNotification({ id, browser }: ExtensionC
     <Dialog label='Extension connection request' padding='large' width='compact'>
       <Stack align='center' gap='large'>
         <Text decorative tone='accent'>
-          {svg.firefox(40)}
+          <AppIcon name='firefox' size={40} />
         </Text>
         <Text align='center'>
           {`A new ${browserName} extension is attempting to connect as “Newframe Companion”.`}

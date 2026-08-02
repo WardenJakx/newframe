@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button } from '@newframe/ui/button'
 import { Grid } from '@newframe/ui/grid'
+import { Icon } from '@newframe/ui/icon'
 import { Input } from '@newframe/ui/input'
 import { Spinner } from '@newframe/ui/spinner'
 import { Stack } from '@newframe/ui/stack'
@@ -8,7 +9,13 @@ import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
 
 import link from '../../shared/link'
-import svg from '../../shared/svg'
+import { AppIcon } from '../../shared/appIcon'
+import {
+  signerIconName,
+  signerIsLoading,
+  signerIsReady,
+  signerStatusText
+} from '../../shared/signerPresentation'
 import { useWalletSelector } from '../../state/useAppSelector'
 import type { TrayRendererState } from '../state'
 import type { TrayNotifier } from '../notification'
@@ -16,26 +23,10 @@ import type { TrayNotifier } from '../notification'
 type WalletSigner = TrayRendererState['signers'][string]
 
 function signerIcon(type: string) {
-  if (type === 'ledger') return svg.ledger(22)
-  if (type === 'trezor') return svg.trezor(22)
-  if (type === 'lattice') return svg.lattice(22)
-  return svg.logo(22)
-}
-
-function signerStatus(signer: WalletSigner) {
-  const status = signer.status.toLowerCase()
-  if (status === 'ok') return 'Connected and ready to sign'
-  if (status === 'locked') return `Unlock your ${signer.type}`
-  if (status === 'pair') return 'Pair your Lattice'
-  if (status === 'need pin') return 'Enter the PIN positions shown on your Trezor'
-  if (status === 'enter passphrase') return 'Enter your Trezor passphrase'
-  return signer.status || `Connect your ${signer.type}`
-}
-
-function isLoading(status: string) {
-  const normalized = status.toLowerCase()
-  return ['loading', 'connecting', 'addresses', 'input', 'pairing'].some((value) =>
-    normalized.includes(value)
+  return ['ledger', 'trezor', 'lattice'].includes(type) ? (
+    <Icon name={signerIconName(type)} size='large' />
+  ) : (
+    <AppIcon name='logo' size={22} />
   )
 }
 
@@ -183,7 +174,7 @@ function RecoveryActions({
     )
   }
 
-  if (isLoading(status)) return <Spinner label='Connecting hardware wallet' size='large' />
+  if (signerIsLoading(status)) return <Spinner label='Connecting hardware wallet' size='large' />
 
   const canReload = signer.type !== 'trezor' || status === 'disconnected' || status.includes('reconnect')
   return canReload ? (
@@ -271,7 +262,7 @@ export default function SignerRecovery({
   }
 
   function close() {
-    finishSession(signer?.status.toLowerCase() === 'ok' ? 'ready' : 'cancelled')
+    finishSession(signerIsReady(signer?.status) ? 'ready' : 'cancelled')
     dismiss()
   }
 
@@ -300,8 +291,8 @@ export default function SignerRecovery({
             {signerIcon(signer.type)}
           </Surface>
           <Text variant='label'>{signer.name}</Text>
-          <Text align='center' tone={signer.status.toLowerCase() === 'ok' ? 'success' : 'secondary'}>
-            {signerStatus(signer)}
+          <Text align='center' tone={signerIsReady(signer.status) ? 'success' : 'secondary'}>
+            {signerStatusText(signer)}
           </Text>
           {session?.signerId === signer.id ? (
             <RecoveryActions
@@ -311,7 +302,7 @@ export default function SignerRecovery({
               signer={signer}
             />
           ) : null}
-          {signer.status.toLowerCase() === 'ok' ? (
+          {signerIsReady(signer.status) ? (
             <Text align='center' tone='secondary'>
               Return to the request and select Sign again.
             </Text>
@@ -323,7 +314,7 @@ export default function SignerRecovery({
         </Text>
       )}
       <Button appearance='control' onPress={close} width='full'>
-        <Text variant='action'>{signer?.status.toLowerCase() === 'ok' ? 'Continue' : 'Cancel'}</Text>
+        <Text variant='action'>{signerIsReady(signer?.status) ? 'Continue' : 'Cancel'}</Text>
       </Button>
     </Stack>
   )

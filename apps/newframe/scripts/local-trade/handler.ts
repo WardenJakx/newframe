@@ -19,6 +19,14 @@ import {
 } from '../../domain/flash/assets'
 import { getReceiveAsset, getSpentAsset } from '../../domain/flash/pair'
 import {
+  FLASH_MAX_TWAP_BUCKET_COUNT,
+  FLASH_MAX_TWAP_DURATION_SECONDS,
+  FLASH_MIN_TWAP_BUCKET_COUNT,
+  FLASH_MIN_TWAP_DURATION_SECONDS,
+  cleanFlashDecimal,
+  positiveFlashNumber
+} from '../../domain/flash/policy'
+import {
   type FlashAsset,
   type FlashOrderType,
   type FlashQuote,
@@ -62,11 +70,6 @@ const GAS_PAYER_PRIVATE_KEY =
 const MARKET_FILL_DELAY_MS = 3_000
 const LOCAL_CHAIN_SLUG = 'anvil'
 const LOCAL_MOCK_FLASH_SETTLEMENT_ADDRESS = '0x0000000000000000000000000000000000005e77'
-const MIN_TWAP_DURATION_SECONDS = 300
-const MAX_TWAP_DURATION_SECONDS = 2_592_000
-const MIN_TWAP_BUCKET_COUNT = 2
-const MAX_TWAP_BUCKET_COUNT = 2_560
-
 type LocalTrigger = {
   notionalPrice: string
   triggerType: 'lower' | 'upper'
@@ -165,23 +168,11 @@ function objectRecord(value: unknown): Record<string, any> {
   return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, any>) : {}
 }
 
-function cleanAmount(amount: unknown) {
-  return String(amount || '')
-    .trim()
-    .replace(/,/g, '')
-}
-
-function amountNumber(amount: unknown) {
-  const parsed = Number(cleanAmount(amount))
-
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0
-}
-
 function cleanOptionalAmount(amount: unknown, label: string) {
   if (amount === undefined || amount === null || amount === '') return ''
 
-  const clean = cleanAmount(amount)
-  if (!amountNumber(clean)) validationError(`Local Flash ${label} must be a positive decimal`)
+  const clean = cleanFlashDecimal(amount)
+  if (!positiveFlashNumber(clean)) validationError(`Local Flash ${label} must be a positive decimal`)
 
   return clean
 }
@@ -189,7 +180,7 @@ function cleanOptionalAmount(amount: unknown, label: string) {
 function optionalProtection(value: unknown, label: string) {
   if (value === undefined || value === null || value === '') return undefined
 
-  const clean = cleanAmount(value)
+  const clean = cleanFlashDecimal(value)
   const parsed = Number(clean)
   if (!Number.isFinite(parsed) || parsed < 0 || parsed > 1) {
     validationError(`Local Flash ${label} must be a decimal from 0 to 1`)
@@ -198,21 +189,11 @@ function optionalProtection(value: unknown, label: string) {
   return clean
 }
 
-function optionalExpireTime(value: unknown) {
+function optionalTime(value: unknown, field: 'expireTime' | 'startTime') {
   if (value === undefined || value === null || value === '') return undefined
   if (typeof value !== 'string' || !value.trim() || !Number.isFinite(Date.parse(value))) {
-    validationError('Local Flash expireTime must be a valid ISO-8601 timestamp')
+    validationError(`Local Flash ${field} must be a valid ISO-8601 timestamp`)
   }
-
-  return value.trim()
-}
-
-function optionalStartTime(value: unknown) {
-  if (value === undefined || value === null || value === '') return undefined
-  if (typeof value !== 'string' || !value.trim() || !Number.isFinite(Date.parse(value))) {
-    validationError('Local Flash startTime must be a valid ISO-8601 timestamp')
-  }
-
   return value.trim()
 }
 
@@ -260,8 +241,8 @@ function validateOrderParameters(body: Record<string, any>, orderType: FlashOrde
   const limitNotionalPrice = cleanOptionalAmount(body.limitNotionalPrice, 'limitNotionalPrice')
   const maxSlippage = optionalProtection(body.maxSlippage, 'maxSlippage')
   const maxPriceImpact = optionalProtection(body.maxPriceImpact, 'maxPriceImpact')
-  const expireTime = optionalExpireTime(body.expireTime)
-  const startTime = optionalStartTime(body.startTime)
+  const expireTime = optionalTime(body.expireTime, 'expireTime')
+  const startTime = optionalTime(body.startTime, 'startTime')
   const triggers = localTriggers(body.triggers)
   let durationSeconds: number | undefined
   let twapBucketCount: number | undefined
@@ -294,15 +275,15 @@ function validateOrderParameters(body: Record<string, any>, orderType: FlashOrde
     durationSeconds = integerField(
       body.durationSeconds,
       'durationSeconds',
-      MIN_TWAP_DURATION_SECONDS,
-      MAX_TWAP_DURATION_SECONDS
+      FLASH_MIN_TWAP_DURATION_SECONDS,
+      FLASH_MAX_TWAP_DURATION_SECONDS
     )
     if (body.twapBucketCount !== undefined) {
       twapBucketCount = integerField(
         body.twapBucketCount,
         'twapBucketCount',
-        MIN_TWAP_BUCKET_COUNT,
-        MAX_TWAP_BUCKET_COUNT
+        FLASH_MIN_TWAP_BUCKET_COUNT,
+        FLASH_MAX_TWAP_BUCKET_COUNT
       )
     }
   }
@@ -342,25 +323,17 @@ function validateOrderParameters(body: Record<string, any>, orderType: FlashOrde
   }
 }
 
-function formatAmount(value: number, asset: FlashAsset) {
+function formatDecimal(value: number, decimals: number) {
   if (!Number.isFinite(value) || value <= 0) return '0'
-
-  const decimals = asset.symbol.toUpperCase() === 'USDC' ? 2 : 6
-
   return value
     .toFixed(decimals)
     .replace(/\.?0+$/, '')
     .replace(/^\./, '0.')
 }
 
-function formatNotional(value: number) {
-  if (!Number.isFinite(value) || value <= 0) return '0'
-
-  return value
-    .toFixed(6)
-    .replace(/\.?0+$/, '')
-    .replace(/^\./, '0.')
-}
+const formatAmount = (value: number, asset: FlashAsset) =>
+  formatDecimal(value, asset.symbol.toUpperCase() === 'USDC' ? 2 : 6)
+const formatNotional = (value: number) => formatDecimal(value, 6)
 
 function quantityHex(value: bigint) {
   return `0x${value.toString(16)}`
@@ -605,8 +578,8 @@ async function buildQuote(body: Record<string, any>) {
   const side = localSide(body.side)
   const orderType = localOrderType(body.orderType)
   const orderParameters = validateOrderParameters(body, orderType, side)
-  const qty = cleanAmount(body.qty || body.inputAmount)
-  const amount = amountNumber(qty)
+  const qty = cleanFlashDecimal(body.qty || body.inputAmount)
+  const amount = positiveFlashNumber(qty)
 
   if (!amount) validationError('Local Flash quote requires a positive qty')
 

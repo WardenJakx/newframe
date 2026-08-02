@@ -108,7 +108,8 @@ function fixture() {
       delete requests[request.handlerId]
     }
   }
-  const approveTransactionRequest = mock()
+  const approval = Promise.withResolvers<string>()
+  const approveTransactionRequest = mock(() => approval.promise)
   const accounts = {
     clearRequestsByOrigin: mock(),
     current: () => account,
@@ -159,7 +160,17 @@ function fixture() {
     service.bind(request)
   }
 
-  return { account, accounts, add, approveTransactionRequest, requests, service, signerCompatibility, state }
+  return {
+    account,
+    accounts,
+    add,
+    approval,
+    approveTransactionRequest,
+    requests,
+    service,
+    signerCompatibility,
+    state
+  }
 }
 
 describe('prompted request lifecycle', () => {
@@ -190,7 +201,7 @@ describe('prompted request lifecycle', () => {
     expect(test.service.pendingCount).toBe(0)
   })
 
-  it('deduplicates repeated approval while preserving the external success response', () => {
+  it('deduplicates repeated approval while preserving the external success response', async () => {
     const request = transactionRequest('request-approval')
     test.state.main.mute.gasFeeWarning = true
     const responses: RPCResponsePayload[] = []
@@ -200,9 +211,9 @@ describe('prompted request lifecycle', () => {
     expect(test.service.approve(request.handlerId)).toBe(true)
     expect(test.approveTransactionRequest.mock.calls.length).toBe(1)
 
-    const complete = test.approveTransactionRequest.mock.calls[0][1] as Callback<string>
-    complete(null, '0xhash')
-    complete(null, '0xlate')
+    test.approval.resolve('0xhash')
+    await test.approval.promise
+    await Promise.resolve()
     expect(test.service.approve(request.handlerId)).toBe(true)
     expect(test.approveTransactionRequest.mock.calls.length).toBe(1)
     expect(responses).toEqual([{ id: 7, jsonrpc: '2.0', result: '0xhash' }])

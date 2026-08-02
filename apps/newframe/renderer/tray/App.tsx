@@ -14,7 +14,7 @@ import Badge from './Badge'
 import Footer from './Footer'
 import Home from './Home/Home'
 import link from '../shared/link'
-import svg from '../shared/svg'
+import { AppIcon } from '../shared/appIcon'
 import {
   getWebAuthnBiometricSecret,
   isBiometricUserCanceledError,
@@ -262,7 +262,7 @@ export function Panel(props: PanelProps) {
       shape='pill'
       width='full'
     >
-      {svg.fingerprint(15)}
+      <AppIcon name='fingerprint' size={15} />
       <Text variant='action'>{biometricUnlocking ? 'Authenticating' : 'Unlock with Biometrics'}</Text>
     </Button>
   ) : null
@@ -270,7 +270,9 @@ export function Panel(props: PanelProps) {
   const lockBlocker = (
     <Dialog label='Unlock Newframe' padding='medium' tone='opaque' width='compact'>
       <Stack align='center' gap='medium'>
-        <span className={lockIconRecipe()}>{svg.lock(22)}</span>
+        <span className={lockIconRecipe()}>
+          <AppIcon name='lock' size={22} />
+        </span>
         <Text variant='heading'>Newframe Locked</Text>
         <Input
           align='start'

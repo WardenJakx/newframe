@@ -1,15 +1,27 @@
 import type { SideTrayRendererState, WalletRendererState } from '../../contracts/state/projections'
 
-const baseWalletState: WalletRendererState = {
+const baseProjectionState = {
   accounts: {},
   accountOrder: [],
   activity: {},
+  balances: {},
+  currentAccount: '',
+  operations: {},
+  networks: { ethereum: {} },
+  networksMeta: { ethereum: {} },
+  assetRates: {},
+  tokens: { byId: {}, accountTokenIds: {} },
+  runtime: { environment: 'test', isDev: false, profile: null }
+}
+
+const baseSideTrayState: SideTrayRendererState = baseProjectionState
+
+const baseWalletState: WalletRendererState = {
+  ...baseProjectionState,
   appLock: { locked: false, vaultExists: false },
   autoDiscoverTokens: false,
   autohide: false,
-  balances: {},
   biometricUnlock: false,
-  currentAccount: '',
   currentProfile: 'default-profile',
   instanceId: 'renderer-fixture',
   latticeSettings: {
@@ -27,9 +39,6 @@ const baseWalletState: WalletRendererState = {
     onboardingWindow: false,
     signerCompatibilityWarning: false
   },
-  networks: { ethereum: {} },
-  networksMeta: { ethereum: {} },
-  operations: {},
   orders: {},
   origins: {},
   permissions: {},
@@ -42,9 +51,7 @@ const baseWalletState: WalletRendererState = {
       cachedValue: { state: 'missing' }
     }
   ],
-  assetRates: {},
   reveal: false,
-  runtime: { environment: 'test', isDev: false, profile: null },
   shortcuts: {
     summon: {
       modifierKeys: ['Alt'],
@@ -56,27 +63,12 @@ const baseWalletState: WalletRendererState = {
   showLocalNameWithENS: false,
   showTestnets: false,
   signers: {},
-  tokens: { byId: {}, accountTokenIds: {} },
   trezor: { derivation: 'standard' },
   windows: { panel: { show: false, nav: [] } },
   view: { notify: '', notifyData: {}, notifications: {}, badge: '' },
   tray: { open: false, initial: true, homeCommand: null },
   selected: { minimized: true, open: false },
   platform: 'test'
-}
-
-const baseSideTrayState: SideTrayRendererState = {
-  accounts: {},
-  accountOrder: [],
-  activity: {},
-  balances: {},
-  currentAccount: '',
-  operations: {},
-  networks: { ethereum: {} },
-  networksMeta: { ethereum: {} },
-  assetRates: {},
-  tokens: { byId: {}, accountTokenIds: {} },
-  runtime: { environment: 'test', isDev: false, profile: null }
 }
 
 export function walletState(overrides: Partial<WalletRendererState>): WalletRendererState {
