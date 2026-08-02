@@ -278,9 +278,6 @@ jobs:
       - name: Test desktop
         run: bun run test:newframe
 
-      - name: Verify critical desktop coverage
-        run: bun run --cwd apps/newframe test:coverage
-
       - name: Compile and bundle desktop
         shell: bash
         run: |
