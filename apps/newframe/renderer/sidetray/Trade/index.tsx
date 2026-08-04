@@ -38,7 +38,7 @@ import { type FlashAsset, type FlashOrderType } from '../../../domain/flash/sche
 import { formatUnits, toBigInt } from '../../../domain/units'
 import { createSideTrayWalletSelector } from '../../state/selectors/sideTrayWallet'
 import { useSideTraySelector } from '../../state/useAppSelector'
-import { closeTrade, flashQuote, prepareTrade, releaseTrade, submitTrade } from './tradeService'
+import { closeTrade } from './tradeService'
 import {
   createInitialTradeState,
   getTradeOrderFields,
@@ -49,7 +49,6 @@ import {
 } from './tradeReducer'
 import {
   buildTradeAssetOptions,
-  buildTradeQuoteRequest,
   buildVisualTradeSteps,
   createTradeBalanceIndex,
   formatTradeNotional,
@@ -58,14 +57,14 @@ import {
   getTradeQuoteValidationError,
   getTradeTriggerDeltaPercent,
   getTradeValidationError,
-  marketTradeQuoteRequestKey,
-  tradeErrorMessage,
   type TradeOrderFields
 } from './tradeTransaction'
+import { useTradeExecution } from './useTradeExecution'
+import { useTradeQuote, useTradeQuoteRequest } from './useTradeQuote'
 
-const MARKET_QUOTE_DEBOUNCE_MS = 250
-const MARKET_QUOTE_REFRESH_MS = 15_000
 const operationStatuses: Record<string, string> = {
+  requesting: 'Starting trade',
+  validating: 'Validating trade',
   wrapping: 'Confirm in Newframe',
   approving: 'Confirm in Newframe',
   signing_permit: 'Review permit in Newframe',
@@ -103,25 +102,7 @@ interface TradeProps {
   chainId?: number
 }
 
-function buildQuoteEffectRequest(requestInput: Parameters<typeof buildTradeQuoteRequest>[0]) {
-  try {
-    const request = buildTradeQuoteRequest(requestInput)
-
-    return {
-      error: '',
-      request,
-      requestKey: request ? marketTradeQuoteRequestKey(request) : ''
-    }
-  } catch (e) {
-    return {
-      error: tradeErrorMessage(e, 'Could not build Flash quote.'),
-      request: null,
-      requestKey: ''
-    }
-  }
-}
-
-export default function Trade({ assetId, chainId }: TradeProps) {
+export default function TradeForm({ assetId, chainId }: TradeProps) {
   const selectSideTrayWallet = React.useMemo(() => createSideTrayWalletSelector(), [])
   const { balanceSummaries, currentAccount, networks, networksMeta, operations, orders, runtime } =
     useSideTraySelector(selectSideTrayWallet)
@@ -143,38 +124,22 @@ export default function Trade({ assetId, chainId }: TradeProps) {
     target: INITIAL_TOKEN_SELECTOR_ROWS,
     contra: INITIAL_TOKEN_SELECTOR_ROWS
   })
-  const mountedRef = React.useRef(false)
-  const latestStateRef = React.useRef(state)
-  const [execution, setExecution] = React.useState<{
-    operationId: string
-    quoteId: string
-    requestKey: string
-  } | null>(null)
-  const executionRef = React.useRef<{
-    operationId: string
-    quoteId: string
-    requestKey: string
-  } | null>(null)
-  const [boundaryError, setBoundaryError] = React.useState('')
-  const operation = execution ? operations[execution.operationId] : undefined
-  const operationRef = React.useRef(operation)
   const accountAddress = currentAccount?.address || ''
-  const previousAccountAddressRef = React.useRef(accountAddress)
   const inputAmount = getTradeInputAmount(state)
-  const quoteEffectRequest = React.useMemo(() => {
-    return buildQuoteEffectRequest({
-      accountAddress,
-      contraAsset: state.contraAsset,
-      inputAmount,
-      orderType: state.orderType,
-      quickTrade: state.quickTrade,
-      side: state.side,
-      slippage: state.slippage,
-      targetAsset: state.targetAsset,
-      ...getTradeOrderFields(state)
-    })
-  }, [accountAddress, inputAmount, state])
-  const latestQuoteEffectRequestRef = React.useRef(quoteEffectRequest)
+  const quoteRequest = useTradeQuoteRequest({
+    accountAddress,
+    contraAsset: state.contraAsset,
+    inputAmount,
+    orderType: state.orderType,
+    quickTrade: state.quickTrade,
+    side: state.side,
+    slippage: state.slippage,
+    targetAsset: state.targetAsset,
+    ...getTradeOrderFields(state)
+  })
+  const execution = useTradeExecution({ operations, requestKey: quoteRequest.requestKey })
+  const operation = execution.operation
+  useTradeQuote({ dispatch, paused: execution.blocksQuoteRefresh, quoteRequest })
   const ticketValidationError = React.useMemo(() => {
     if (!inputAmount) return ''
 
@@ -196,9 +161,9 @@ export default function Trade({ assetId, chainId }: TradeProps) {
     [state.orderType, state.quote, state.triggerNotionalPrice]
   )
   const tradeValidationError = ticketValidationError || quoteValidationError
-  const operationError = operation?.status === 'failed' ? operation.error?.message || 'Trade failed.' : ''
+  const operationError = execution.state.error
   const operationStatus =
-    operationStatuses[operation?.phase || ''] || (state.quoteLoading ? 'Getting quote' : '')
+    operationStatuses[execution.state.phase] || (state.quoteLoading ? 'Getting quote' : '')
   const invalidTradeFields = {
     amount: ticketValidationError === 'Enter an amount to trade.',
     duration: ticketValidationError.startsWith('TWAP duration'),
@@ -215,153 +180,12 @@ export default function Trade({ assetId, chainId }: TradeProps) {
   }
 
   React.useEffect(() => {
-    mountedRef.current = true
-
-    return () => {
-      mountedRef.current = false
-      executionRef.current = null
-      void releaseTrade()
-    }
-  }, [])
-
-  React.useEffect(() => {
-    operationRef.current = operation
-  }, [operation])
-
-  React.useEffect(() => {
-    latestStateRef.current = state
-  }, [state])
-
-  React.useEffect(() => {
-    latestQuoteEffectRequestRef.current = quoteEffectRequest
-  }, [quoteEffectRequest])
-
-  React.useEffect(() => {
     dispatch({ type: 'setAssetOptions', assets: tradeAssets, balances: flashBalanceEntries })
   }, [flashBalanceEntries, tradeAssets])
 
   React.useEffect(() => {
-    if (previousAccountAddressRef.current === accountAddress) return
-
-    previousAccountAddressRef.current = accountAddress
-    void releaseTrade()
-    executionRef.current = null
-    setExecution(null)
-    setBoundaryError('')
     dispatch({ type: 'accountChanged' })
   }, [accountAddress])
-
-  React.useEffect(() => {
-    const initialRequest = latestQuoteEffectRequestRef.current
-    const activeExecution = executionRef.current
-
-    if (activeExecution && activeExecution.requestKey !== initialRequest.requestKey) {
-      executionRef.current = null
-      operationRef.current = undefined
-      setExecution(null)
-      setBoundaryError('')
-      void releaseTrade()
-    }
-
-    if (initialRequest.error) {
-      dispatch({ type: 'quoteBuildFailed', error: initialRequest.error })
-      return
-    }
-
-    if (!initialRequest.request || !initialRequest.requestKey) {
-      if (!executionRef.current || operationRef.current?.status !== 'pending') {
-        executionRef.current = null
-        setExecution(null)
-        void releaseTrade()
-      }
-      dispatch({ type: 'quoteCleared' })
-      return
-    }
-
-    const requestKey = initialRequest.requestKey
-    let cancelled = false
-    let timer: ReturnType<typeof setTimeout> | undefined
-
-    const scheduleQuote = (delay: number) => {
-      timer = setTimeout(() => void requestQuote(), delay)
-    }
-
-    const requestQuote = () => {
-      if (cancelled) return
-
-      const currentRequest = latestQuoteEffectRequestRef.current
-      if (!currentRequest.request || currentRequest.requestKey !== requestKey) return
-
-      if (executionRef.current) {
-        scheduleQuote(MARKET_QUOTE_REFRESH_MS)
-        return
-      }
-
-      dispatch({ type: 'quoteRequested', requestKey })
-
-      void flashQuote(currentRequest.request)
-        .then((result) => {
-          if (
-            !mountedRef.current ||
-            cancelled ||
-            latestQuoteEffectRequestRef.current.requestKey !== requestKey
-          ) {
-            return
-          }
-
-          const quote = result?.quote || null
-
-          if (!quote) {
-            dispatch({
-              type: 'quoteFailed',
-              error: 'Flash quote did not return an order quote.',
-              requestKey
-            })
-            return
-          }
-
-          dispatch({
-            type: 'quoteSucceeded',
-            quoteId: result.quoteId,
-            quote,
-            requestKey
-          })
-          executionRef.current = null
-          setExecution(null)
-        })
-        .catch((e) => {
-          if (
-            !mountedRef.current ||
-            cancelled ||
-            latestQuoteEffectRequestRef.current.requestKey !== requestKey
-          ) {
-            return
-          }
-
-          dispatch({
-            type: 'quoteFailed',
-            error: tradeErrorMessage(e, 'Flash quote failed.'),
-            requestKey
-          })
-        })
-        .finally(() => {
-          if (
-            mountedRef.current &&
-            !cancelled &&
-            latestQuoteEffectRequestRef.current.requestKey === requestKey
-          ) {
-            scheduleQuote(MARKET_QUOTE_REFRESH_MS)
-          }
-        })
-    }
-
-    scheduleQuote(MARKET_QUOTE_DEBOUNCE_MS)
-
-    return () => {
-      cancelled = true
-      if (timer) clearTimeout(timer)
-    }
-  }, [quoteEffectRequest.error, quoteEffectRequest.requestKey])
 
   const getTradeDisplayBalance = React.useCallback(
     (asset: FlashAsset) => {
@@ -436,59 +260,12 @@ export default function Trade({ assetId, chainId }: TradeProps) {
   )
 
   React.useEffect(() => {
-    if (operation?.status !== 'succeeded' || !execution) return
+    if (operation?.status !== 'succeeded' || !execution.state.session) return
     const orderId = operation.entityRefs?.find((reference) => reference.type === 'order')?.id
     if (orderId && orders[orderId]) closeTrade()
-  }, [execution, operation, orders])
+  }, [execution.state.session, operation, orders])
 
-  const reviewTrade = React.useCallback(() => {
-    const quote = latestStateRef.current.quote
-    const quoteId = latestStateRef.current.quoteId
-    if (!quote || !quoteId || operation?.status === 'succeeded') return
-
-    const retrying = operation?.status === 'failed'
-    const operationId = retrying ? crypto.randomUUID() : execution?.operationId || crypto.randomUUID()
-    const nextAction =
-      operation?.phase === 'awaiting_approval'
-        ? 'approve'
-        : operation?.phase === 'awaiting_submit'
-          ? 'sign'
-          : quote.nextAction
-    const nextExecution =
-      !retrying && execution
-        ? execution
-        : { operationId, quoteId, requestKey: latestStateRef.current.quoteRequestKey }
-    executionRef.current = nextExecution
-    setExecution(nextExecution)
-    setBoundaryError('')
-
-    const request =
-      nextAction === 'sign'
-        ? submitTrade(operationId, quoteId)
-        : prepareTrade(operationId, quoteId, nextAction)
-    void request
-      .then((result) => {
-        const current = executionRef.current
-        if (
-          mountedRef.current &&
-          current?.operationId === operationId &&
-          current.quoteId === quoteId &&
-          !result.ok
-        ) {
-          setBoundaryError(result.message || 'Trade request was not accepted.')
-          executionRef.current = null
-          setExecution(null)
-        }
-      })
-      .catch((error) => {
-        const current = executionRef.current
-        if (mountedRef.current && current?.operationId === operationId && current.quoteId === quoteId) {
-          setBoundaryError(tradeErrorMessage(error, 'Trade request failed.'))
-          executionRef.current = null
-          setExecution(null)
-        }
-      })
-  }, [execution, operation])
+  const reviewTrade = () => execution.submit({ quote: state.quote, quoteId: state.quoteId })
 
   const renderTradeTabs = () => {
     const orderType = state.orderType
@@ -1044,22 +821,17 @@ export default function Trade({ assetId, chainId }: TradeProps) {
 
   const renderTradeFooter = () => {
     const nextAction =
-      operation?.phase === 'awaiting_approval'
+      execution.state.phase === 'awaiting_approval'
         ? 'approve'
-        : operation?.phase === 'awaiting_submit'
+        : execution.state.phase === 'awaiting_submit'
           ? 'sign'
           : state.quote?.nextAction
-    const operationReady =
-      !execution ||
-      operation?.status === 'failed' ||
-      operation?.phase === 'awaiting_approval' ||
-      operation?.phase === 'awaiting_submit'
     const enabled = Boolean(
-      state.quote && state.quoteId && operationReady && !state.quoteLoading && !tradeValidationError
+      state.quote && state.quoteId && execution.canSubmit && !state.quoteLoading && !tradeValidationError
     )
     const primaryLabel = state.quoteLoading
       ? 'Getting quote'
-      : operation?.phase === 'submitting'
+      : execution.state.phase === 'submitting'
         ? 'Submitting'
         : nextAction === 'wrap'
           ? state.quote?.actions?.wrap?.label || 'Wrap'
@@ -1086,8 +858,7 @@ export default function Trade({ assetId, chainId }: TradeProps) {
       footer={renderTradeFooter()}
       footerSpace='compact'
       onClose={() => {
-        executionRef.current = null
-        void releaseTrade()
+        execution.reset()
         closeTrade()
       }}
       title='Trade'
@@ -1103,9 +874,9 @@ export default function Trade({ assetId, chainId }: TradeProps) {
             {renderTradeQuoteMeta()}
           </Surface>
         ) : null}
-        {state.error || boundaryError || operationError || tradeValidationError ? (
+        {state.error || operationError || tradeValidationError ? (
           <Text align='center' variant='body' tone='danger'>
-            {state.error || boundaryError || operationError || tradeValidationError}
+            {state.error || operationError || tradeValidationError}
           </Text>
         ) : null}
         {operationStatus ? (

@@ -490,7 +490,7 @@ export function tradeReducer(state: TradeWorkflowState, action: TradeWorkflowAct
           : [FLASH_STOP_LOSS_ORDER_TYPE, FLASH_TAKE_PROFIT_ORDER_TYPE].includes(action.orderType)
             ? 'sell'
             : state.side
-      const inputAmount = side === state.side ? getTradeInputAmount(state) : state.quote?.outputAmount || ''
+      const inputAmount = side === state.side ? getTradeInputAmount(state) : ''
 
       return applyTradeInputAmount(state, inputAmount, {
         advancedOpen: false,
@@ -517,7 +517,7 @@ export function tradeReducer(state: TradeWorkflowState, action: TradeWorkflowAct
         return state
       }
 
-      return applyTradeInputAmount(state, state.quote?.outputAmount || '', {
+      return applyTradeInputAmount(state, '', {
         side: state.side === 'buy' ? 'sell' : 'buy'
       })
     default:
