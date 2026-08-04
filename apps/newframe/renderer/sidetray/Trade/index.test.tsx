@@ -190,7 +190,7 @@ describe('Trade', () => {
     timers.useRealTimers()
   })
 
-  it('re-quotes market trades when the selected account changes without clearing the ticket', async () => {
+  it('re-quotes account changes and does not promote stale output when direction changes', async () => {
     const quoteCalls: any[] = []
 
     ;(link.executeQuery as Mock<any>).mockImplementation(async (query: any) => {
@@ -238,6 +238,9 @@ describe('Trade', () => {
     expect((screen.getByLabelText('WETH amount') as HTMLInputElement).value).toBe('1')
     expect(quoteCalls).toHaveLength(2)
     expect(quoteCalls[1]).not.toHaveProperty('accountAddress')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Switch to BUY' }))
+    expect((screen.getByLabelText('USDC amount') as HTMLInputElement).value).toBe('')
   })
 
   it('pauses quote refresh for projected signing and releases a pending workflow when the ticket changes', async () => {
