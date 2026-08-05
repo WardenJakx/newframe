@@ -438,6 +438,8 @@ export function ProfileSelector({ currentProfile, profiles }: ProfileSelectorPro
       footer={footer}
       items={items}
       label='Select active profile'
+      menuAlign='center'
+      menuWidth='wide'
       onOpenChange={handleOpenChange}
       onSelect={(profileId) => void handleSelect(profileId)}
       open={displayedOpen}
