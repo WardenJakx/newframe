@@ -46,7 +46,7 @@ const StatusGlyph = ({ state, size = 'medium' }: StatusGlyphProps) => {
 
   if (state === 'pending') {
     return (
-      <span aria-hidden='true' className={glyphRecipe({ size, state })}>
+      <span aria-hidden='true' className={glyphRecipe({ size, state })} data-status-glyph={state}>
         <Spinner label='Pending' size='small' />
       </span>
     )
@@ -54,7 +54,7 @@ const StatusGlyph = ({ state, size = 'medium' }: StatusGlyphProps) => {
 
   if (state === 'completed') {
     return (
-      <span aria-hidden='true' className={glyphRecipe({ size, state })}>
+      <span aria-hidden='true' className={glyphRecipe({ size, state })} data-status-glyph={state}>
         <Icon name='check' size={iconSize} />
       </span>
     )
@@ -62,14 +62,14 @@ const StatusGlyph = ({ state, size = 'medium' }: StatusGlyphProps) => {
 
   if (state === 'failed') {
     return (
-      <span aria-hidden='true' className={glyphRecipe({ size, state })}>
+      <span aria-hidden='true' className={glyphRecipe({ size, state })} data-status-glyph={state}>
         <Icon name='close' size={iconSize} />
       </span>
     )
   }
 
   return (
-    <span aria-hidden='true' className={glyphRecipe({ size, state })}>
+    <span aria-hidden='true' className={glyphRecipe({ size, state })} data-status-glyph={state}>
       <span className={dotRecipe()} />
     </span>
   )

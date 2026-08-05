@@ -198,6 +198,37 @@ describe('canonical persistence lifecycle', () => {
 })
 
 describe('canonical persisted state contract', () => {
+  it('round-trips finalized transaction gas and balance changes', () => {
+    const durable = canonicalState()
+    const hash = `0x${'1'.repeat(64)}`
+    durable.main.activity[hash] = {
+      id: hash,
+      hash,
+      account: '0x1111111111111111111111111111111111111111',
+      chainId: 1,
+      status: 'succeeded',
+      confirmations: 3,
+      gasSpent: '0x1319718a5000',
+      balanceChanges: [
+        {
+          id: 'usdc-out',
+          kind: 'erc20',
+          direction: 'out',
+          label: 'Asset out',
+          amount: '0xf3e58',
+          decimals: 6,
+          symbol: 'USDC',
+          assetAddress: '0x0000000000000000000000000000000000000001'
+        }
+      ]
+    }
+
+    const persisted = selectPersistedState(durable)
+    const merged = mergePersistedState(persisted, canonicalState())
+
+    expect(merged.main.activity[hash]).toEqual(durable.main.activity[hash])
+  })
+
   it('never persists runtime operations and discards legacy rate caches', () => {
     const state = canonicalState()
     state.operations.secret = {

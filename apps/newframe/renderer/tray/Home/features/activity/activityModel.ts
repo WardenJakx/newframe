@@ -1,4 +1,6 @@
 import { timestamp } from '../../StatusNotifications'
+import { getPaidTransactionFee, getTransactionEffects } from '../../../../../domain/transaction'
+import { formatUnits, toBigInt } from '../../../../../domain/units'
 
 export function transactionStatusLabel(status?: string) {
   if (status === 'submitted') return 'Submitted'
@@ -36,6 +38,67 @@ export function activityRequestLike(activity: any) {
       receipt: activity.receipt
     }
   }
+}
+
+export function activityTimestampLabel(activity: any) {
+  const submittedAt = timestamp(activity.submittedAt, timestamp(activity.updatedAt, 0))
+  if (!submittedAt) return ''
+
+  return new Date(submittedAt).toLocaleString([], {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit'
+  })
+}
+
+export function activityBalanceChanges(activity: any, nativeSymbol = 'ETH') {
+  if (Array.isArray(activity.balanceChanges)) return activity.balanceChanges
+
+  return getTransactionEffects(activityRequestLike(activity), nativeSymbol).filter(
+    (effect) => effect.direction === 'in' || effect.direction === 'out'
+  )
+}
+
+export function activityGasSpent(activity: any) {
+  return activity.gasSpent || getPaidTransactionFee(activityRequestLike(activity))
+}
+
+export function activityBalanceChangeLabel(activity: any, nativeSymbol = 'ETH') {
+  const changes = activityBalanceChanges(activity, nativeSymbol)
+  if (!changes.length) return ''
+
+  const labels = changes.slice(0, 2).map((change: any) => {
+    const sign = change.direction === 'in' ? '+' : '−'
+    const amount = formatUnits(toBigInt(change.amount) ?? 0n, change.decimals ?? 18)
+    return `${sign}${amount} ${change.symbol || '?'}`
+  })
+  const remaining = changes.length - labels.length
+
+  return `${labels.join(' · ')}${remaining > 0 ? ` · +${remaining} more` : ''}`
+}
+
+export function activityGasLabel(activity: any, nativeSymbol = 'ETH') {
+  const gasSpent = activityGasSpent(activity)
+  return gasSpent ? `Gas ${formatUnits(toBigInt(gasSpent) ?? 0n, 18)} ${nativeSymbol}` : ''
+}
+
+export function activityAssetEffect(activity: any, nativeSymbol = 'ETH') {
+  const actionIds = (activity.recognizedActions || []).map((action: any) => action?.id)
+  const recognizedAssetAction = actionIds.some((id: string) =>
+    ['erc20:transfer', 'erc20:approve', 'erc20:revoke'].includes(id)
+  )
+  const decodedAssetAction = ['approve', 'transfer'].includes(activity.decodedData?.method)
+  const nativeTransfer =
+    activity.classification === 'NATIVE_TRANSFER' ||
+    (activity.display?.title || '').startsWith(`Send ${nativeSymbol}`)
+
+  if (!recognizedAssetAction && !decodedAssetAction && !nativeTransfer) return undefined
+
+  return getTransactionEffects(activityRequestLike(activity), nativeSymbol).find(
+    (effect) => effect.kind === 'erc20' || effect.kind === 'allowance' || effect.kind === 'native'
+  )
 }
 
 export function createActivityRows({
