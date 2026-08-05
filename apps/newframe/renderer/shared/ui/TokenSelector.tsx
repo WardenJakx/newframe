@@ -106,6 +106,8 @@ function TokenSelectorContent({
       }
       items={selectionItems}
       label={ariaLabel}
+      menuAlign='start'
+      menuWidth='wide'
       onOpenChange={onOpenChange}
       onSelect={onSelect}
       open={open}

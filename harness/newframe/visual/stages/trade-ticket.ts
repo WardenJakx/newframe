@@ -2,6 +2,7 @@ import { anvilChainId } from '../../core/config.ts'
 import { wethAddress } from '../driver.ts'
 import type { VisualStage } from '../types.ts'
 import type { Locator } from 'playwright-core'
+import { assertInsideViewport } from './helpers.ts'
 
 async function fieldPartsOverlap(input: Locator) {
   return input.evaluate((element) => {
@@ -22,7 +23,7 @@ async function fieldPartsOverlap(input: Locator) {
 
 export const tradeTicketStage: VisualStage = {
   name: 'trade ticket visuals',
-  async run({ driver }) {
+  async run({ driver, runtime }) {
     const tradePage = await driver.openDefaultTradeTicket()
     await driver.assertColorTokens(tradePage, 'Side tray')
     await driver.assertTradeTicketVisualControls(tradePage)
@@ -64,6 +65,11 @@ export const tradeTicketStage: VisualStage = {
         state: 'visible',
         timeout: 5_000
       })
+    await assertInsideViewport(
+      tradePage.getByRole('listbox', { name: /Select target asset/i }).locator('..'),
+      runtime,
+      'Trade target asset menu'
+    )
     await driver.screenshot(tradePage, '10c-trade-target-asset-menu.png')
 
     await tradePage.getByRole('button', { name: /Select target asset/i }).click()
@@ -75,6 +81,11 @@ export const tradeTicketStage: VisualStage = {
         state: 'visible',
         timeout: 5_000
       })
+    await assertInsideViewport(
+      tradePage.getByRole('listbox', { name: /Select contra asset/i }).locator('..'),
+      runtime,
+      'Trade contra asset menu'
+    )
     await driver.screenshot(tradePage, '10d-trade-contra-asset-menu.png')
 
     await tradePage.getByRole('button', { name: /Select contra asset/i }).click()

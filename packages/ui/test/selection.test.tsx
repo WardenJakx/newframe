@@ -6,6 +6,43 @@ import { Selection } from '../src/primitives/Selection'
 import { Text } from '../src/primitives/Text'
 
 describe('Selection', () => {
+  it('matches the trigger by default and supports an explicitly aligned wide menu', () => {
+    const selection = (
+      menuAlign?: 'start' | 'center' | 'end',
+      menuWidth?: 'trigger' | 'wide',
+      triggerSize?: 'small' | 'medium'
+    ) => (
+      <Selection
+        items={[{ content: <Text>Alpha</Text>, id: 'alpha' }]}
+        label='Assets'
+        menuAlign={menuAlign}
+        menuWidth={menuWidth}
+        onOpenChange={() => undefined}
+        onSelect={() => undefined}
+        open
+        selectedId='alpha'
+        trigger={<Text>Alpha</Text>}
+        triggerSize={triggerSize}
+      />
+    )
+    const { rerender } = render(selection())
+    const menu = screen.getByRole('listbox').parentElement as HTMLDivElement
+
+    expect(menu.classList.contains('w_100%')).toBe(true)
+    expect(menu.classList.contains('inset-s_0')).toBe(true)
+
+    rerender(selection('end', 'wide'))
+
+    expect(menu.classList.contains('w_selection-menu')).toBe(true)
+    expect(menu.classList.contains('inset-e_0')).toBe(true)
+
+    rerender(selection('center', 'wide', 'small'))
+
+    expect(menu.classList.contains('inset-s_50%')).toBe(true)
+    expect(menu.classList.contains('trf_translateX(-50%)')).toBe(true)
+    expect(menu.classList.contains('inset-bs_calc(token(sizes.button-small)_+_token(spacing.3))')).toBe(true)
+  })
+
   it('owns listbox navigation and returns semantic values', async () => {
     const onOpenChange = mock(() => undefined)
     const onSelect = mock(() => undefined)

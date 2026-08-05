@@ -1,5 +1,6 @@
 import { sleep } from '../../core/utils.ts'
 import type { VisualStage } from '../types.ts'
+import { assertInsideViewport } from './helpers.ts'
 
 export const trayOverlaysStage: VisualStage = {
   name: 'tray overlay visuals',
@@ -92,5 +93,17 @@ export const trayOverlaysStage: VisualStage = {
     await runtime.screenshot(tray, '02i-networks-overlay.png')
     await networks.getByRole('button', { name: 'Back' }).click()
     await networks.waitFor({ state: 'hidden' })
+
+    await tray.getByRole('button', { name: 'Accounts', exact: true }).click()
+    const accounts = tray.getByRole('dialog', { name: 'Accounts' })
+    await accounts.waitFor({ state: 'visible' })
+    await accounts.getByRole('button', { name: 'Select active profile' }).click()
+    const profileMenu = accounts.getByRole('listbox', { name: 'Select active profile' }).locator('..')
+    await profileMenu.waitFor({ state: 'visible' })
+    await assertInsideViewport(profileMenu, runtime, 'Profile selection menu')
+    await runtime.screenshot(tray, '02j-profile-selection-menu.png')
+    await tray.keyboard.press('Escape')
+    await accounts.getByRole('button', { name: 'Close accounts' }).click()
+    await accounts.waitFor({ state: 'hidden' })
   }
 }

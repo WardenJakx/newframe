@@ -1,6 +1,6 @@
 import { oneEthWei } from '../driver.ts'
 import type { VisualStage } from '../types.ts'
-import { requireAccounts, revealAssetDetailsButton } from './helpers.ts'
+import { assertInsideViewport, requireAccounts, revealAssetDetailsButton } from './helpers.ts'
 
 export const sendStage: VisualStage = {
   name: 'built-in send',
@@ -18,6 +18,11 @@ export const sendStage: VisualStage = {
     await sendEthButton.click()
     const sendPage = await driver.waitForElectronPage('bundle/sidetray.html')
     await sendPage.getByRole('textbox', { name: 'Recipient' }).waitFor({ state: 'visible', timeout: 15_000 })
+    await sendPage.getByRole('button', { name: 'Select send token' }).click()
+    const tokenMenu = sendPage.getByRole('listbox', { name: 'Select send token' }).locator('..')
+    await tokenMenu.waitFor({ state: 'visible' })
+    await assertInsideViewport(tokenMenu, runtime, 'Send token menu')
+    await sendPage.keyboard.press('Escape')
     await runtime.screenshot(sendPage, '11-send-open.png')
     await sendPage
       .getByRole('button', { name: /vitalik\.eth/i })

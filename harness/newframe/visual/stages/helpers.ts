@@ -1,6 +1,30 @@
-import type { Page } from 'playwright-core'
+import type { Locator, Page } from 'playwright-core'
 
+import type { VisualHarnessRuntime } from '../runtime.ts'
 import type { VisualHarnessContext } from '../types.ts'
+
+export async function assertInsideViewport(locator: Locator, runtime: VisualHarnessRuntime, label: string) {
+  const bounds = await locator.evaluate((element) => {
+    const rect = element.getBoundingClientRect()
+    return {
+      bottom: rect.bottom,
+      left: rect.left,
+      right: rect.right,
+      top: rect.top,
+      viewportHeight: window.innerHeight,
+      viewportWidth: window.innerWidth
+    }
+  })
+
+  if (
+    bounds.left < 0 ||
+    bounds.top < 0 ||
+    bounds.right > bounds.viewportWidth ||
+    bounds.bottom > bounds.viewportHeight
+  ) {
+    runtime.fail(`${label} must remain inside the viewport; found ${JSON.stringify(bounds)}`)
+  }
+}
 
 export async function requireAccounts(context: VisualHarnessContext) {
   context.accounts ||= context.driver.findHarnessAccounts(await context.driver.getAppState())

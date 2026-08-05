@@ -17,12 +17,7 @@ const selectionRecipe = sva({
     },
     menu: {
       position: 'absolute',
-      insetBlockStart: 'selection-offset',
-      insetInlineStart: '50%',
-      transform: 'translateX(-50%)',
       zIndex: 'header',
-      width: 'calc(100vw - token(spacing.7) * 2)',
-      maxWidth: 'selection-menu',
       padding: '4',
       borderRadius: 'default',
       background: 'bg.hover',
@@ -32,7 +27,35 @@ const selectionRecipe = sva({
     list: { maxHeight: 'scroll-list', overflowY: 'auto' },
     empty: { paddingBlock: '4', paddingInline: '3' },
     footer: { marginBlockStart: '2' }
-  }
+  },
+  variants: {
+    menuAlign: {
+      start: { menu: { insetInlineStart: 0 } },
+      center: {
+        menu: {
+          insetInlineStart: '50%',
+          transform: 'translateX(-50%)'
+        }
+      },
+      end: { menu: { insetInlineEnd: 0 } }
+    },
+    menuWidth: {
+      trigger: { menu: { width: '100%' } },
+      wide: {
+        menu: {
+          width: 'selection-menu',
+          maxWidth: 'calc(100vw - token(spacing.7) * 2)'
+        }
+      }
+    },
+    triggerSize: {
+      small: {
+        menu: { insetBlockStart: 'calc(token(sizes.button-small) + token(spacing.3))' }
+      },
+      medium: { menu: { insetBlockStart: 'selection-offset' } }
+    }
+  },
+  defaultVariants: { menuAlign: 'start', menuWidth: 'trigger', triggerSize: 'medium' }
 })
 
 export type SelectionItem = {
@@ -48,6 +71,8 @@ export type SelectionProps = {
   header?: ReactNode
   items: readonly SelectionItem[]
   label: string
+  menuAlign?: 'start' | 'center' | 'end'
+  menuWidth?: 'trigger' | 'wide'
   onOpenChange: (open: boolean) => void
   onSelect: (id: string) => void
   open: boolean
@@ -64,6 +89,8 @@ export function Selection({
   header,
   items,
   label,
+  menuAlign = 'start',
+  menuWidth = 'trigger',
   onOpenChange,
   onSelect,
   open,
@@ -72,7 +99,7 @@ export function Selection({
   trigger,
   triggerSize = 'medium'
 }: SelectionProps) {
-  const styles = selectionRecipe()
+  const styles = selectionRecipe({ menuAlign, menuWidth, triggerSize })
   const root = useRef<HTMLDivElement | null>(null)
   const listboxId = useId()
   const selectedIndex = items.findIndex((item) => item.id === selectedId && !item.disabled)
