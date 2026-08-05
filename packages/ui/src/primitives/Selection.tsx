@@ -18,10 +18,11 @@ const selectionRecipe = sva({
     menu: {
       position: 'absolute',
       insetBlockStart: 'selection-offset',
-      insetInlineStart: 0,
+      insetInlineStart: '50%',
+      transform: 'translateX(-50%)',
       zIndex: 'header',
-      width: 'selection-menu',
-      maxWidth: 'calc(100vw - token(sizes.field))',
+      width: 'calc(100vw - token(spacing.7) * 2)',
+      maxWidth: 'selection-menu',
       padding: '4',
       borderRadius: 'default',
       background: 'bg.hover',
@@ -53,6 +54,7 @@ export type SelectionProps = {
   placeholder?: boolean
   selectedId?: string
   trigger: ReactNode
+  triggerSize?: 'small' | 'medium'
 }
 
 export function Selection({
@@ -67,7 +69,8 @@ export function Selection({
   open,
   placeholder = false,
   selectedId,
-  trigger
+  trigger,
+  triggerSize = 'medium'
 }: SelectionProps) {
   const styles = selectionRecipe()
   const root = useRef<HTMLDivElement | null>(null)
@@ -181,6 +184,7 @@ export function Selection({
         label={label}
         onPress={() => setOpen(!open)}
         placeholder={placeholder}
+        size={triggerSize}
       >
         {trigger}
         <span aria-hidden='true' className={styles.chevron}>
