@@ -35,6 +35,7 @@ import {
   type FlashTradeSide
 } from '../../../domain/flash/schemas'
 import { getFlashAssetPairChains } from '../../../domain/flash/pair'
+import { NATIVE_CURRENCY } from '../../../domain/token/constants'
 
 export const TRADE_DEFAULT_SLIPPAGE = ''
 export const TRADE_DEFAULT_MAX_PRICE_IMPACT = ''
@@ -446,10 +447,15 @@ function networkEnabled(networks: Record<string | number, { on?: boolean }>, cha
 export function buildTradeAssetOptions({
   balances,
   networks = {},
+  networksMeta = {},
   runtime = {}
 }: {
   balances: BalanceSummary[]
   networks?: Record<string | number, { on?: boolean }>
+  networksMeta?: Record<
+    string | number,
+    { nativeCurrency?: { decimals?: number; name?: string; symbol?: string } }
+  >
   runtime?: FlashRuntime
 }) {
   const assets = new Map<string, FlashAsset>()
@@ -464,6 +470,29 @@ export function buildTradeAssetOptions({
       addAsset(balanceSummaryToFlashAsset(balance))
     } catch {
       // Ignore malformed portfolio rows; they are not valid Flash selector options.
+    }
+  })
+
+  Object.keys(networks).forEach((chainIdValue) => {
+    const chainId = Number(chainIdValue)
+    if (!Number.isInteger(chainId) || chainId <= 0) return
+
+    const nativeCurrency = (networksMeta[chainId] || networksMeta[String(chainId)])?.nativeCurrency
+    if (!nativeCurrency?.symbol) return
+
+    try {
+      addAsset(
+        balanceSummaryToFlashAsset({
+          address: NATIVE_CURRENCY,
+          balance: '0',
+          chainId,
+          decimals: nativeCurrency.decimals,
+          name: nativeCurrency.name,
+          symbol: nativeCurrency.symbol
+        })
+      )
+    } catch {
+      // Ignore malformed native-currency metadata; it cannot produce a Flash asset.
     }
   })
 
