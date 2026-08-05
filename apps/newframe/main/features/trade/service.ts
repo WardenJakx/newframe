@@ -1,4 +1,5 @@
 import { isAddress } from 'ethers'
+import { randomUUID } from 'node:crypto'
 
 import {
   FlashQuoteDisplaySchema,
@@ -12,6 +13,8 @@ import {
   type TypedDataV4
 } from '../../../contracts/operations.js'
 import type { FlashQuote, FlashQuoteAction } from '../../../domain/flash/schemas.js'
+import { FLASH_MARKET_ORDER_TYPE } from '../../../domain/flash/constants.js'
+import { getFlashAssetPairChains } from '../../../domain/flash/pair.js'
 import {
   buildFlashActionTransaction,
   buildFlashSubmitRequest,
@@ -36,9 +39,9 @@ type TradeOrder = {
   accountAddress?: string
   address?: string
   cancellable?: boolean
-  chainId?: number | string | null
   open?: boolean
   orderId?: string
+  spentAsset?: { chainId?: number | string | null }
   status?: string
 }
 
@@ -84,14 +87,17 @@ type TradeAction = TradePrepareCommand['action'] | 'submit'
 
 type PrivateQuoteRecord = {
   account: TradeAccount
-  chainId: number
+  bridgeQuoteId?: string
+  chainIds: number[]
   completedActions: Set<TradePrepareCommand['action']>
   expiresAt: number
   flash: unknown
   owner: OperationOwner
   quote: FlashQuote
   quoteId: string
+  providerQuoteId?: string
   request: RendererFlashQuoteRequest
+  spentChainId: number
   touchedAt: number
 }
 
@@ -123,8 +129,8 @@ const cancelOperationType = 'flash.order-cancel'
 const ownerKey = (owner: OperationOwner) => JSON.stringify([owner.clientType, owner.windowInstanceId])
 const referenceKey = (reference: OperationReference) =>
   JSON.stringify([reference.owner.clientType, reference.owner.windowInstanceId, reference.id])
-const quoteKey = (owner: OperationOwner, accountId: string, chainId: number, quoteId: string) =>
-  JSON.stringify([owner.clientType, owner.windowInstanceId, accountId, chainId, quoteId])
+const quoteKey = (owner: OperationOwner, accountId: string, quoteId: string) =>
+  JSON.stringify([owner.clientType, owner.windowInstanceId, accountId, quoteId])
 const sameOwner = (left: OperationOwner, right: OperationOwner) =>
   left.clientType === right.clientType && left.windowInstanceId === right.windowInstanceId
 
@@ -179,7 +185,7 @@ function quoteExpiry(quote: FlashQuote, now: number) {
 function operationRefs(record: PrivateQuoteRecord, extra: OperationEntityRef[] = []) {
   return [
     { type: 'account' as const, id: record.account.id },
-    { type: 'chain' as const, id: String(record.chainId) },
+    ...record.chainIds.map((chainId) => ({ type: 'chain' as const, id: String(chainId) })),
     ...extra
   ]
 }
@@ -243,13 +249,13 @@ export function createTradeService(ports: TradeServicePorts) {
       throw new TradeFailure('quote_unavailable', 'Flash quote is no longer available.')
     }
     if (record.expiresAt <= ports.clock.now()) {
-      quotes.delete(quoteKey(owner, record.account.id, record.chainId, record.quoteId))
+      quotes.delete(quoteKey(owner, record.account.id, record.quoteId))
       throw new TradeFailure(
         'quote_expired',
         'Flash quote expired. Review the refreshed quote and try again.'
       )
     }
-    if (!snapshot.networks[record.chainId]?.on) {
+    if (record.chainIds.some((chainId) => !snapshot.networks[chainId]?.on)) {
       throw new TradeFailure('network_unavailable', 'Chain is unavailable.')
     }
     return record
@@ -318,7 +324,7 @@ export function createTradeService(ports: TradeServicePorts) {
         throw new TradeFailure('quote_invalid', 'Flash action is missing a transaction request.')
       let request: ReturnType<typeof buildFlashActionTransaction>
       try {
-        request = buildFlashActionTransaction(action, record.chainId)
+        request = buildFlashActionTransaction(action, record.spentChainId)
       } catch {
         throw new TradeFailure('chain_mismatch', 'Flash action chain changed.')
       }
@@ -378,8 +384,10 @@ export function createTradeService(ports: TradeServicePorts) {
       const permitValue = quoteField(record, 'permitTypedData')
       if (permitValue) {
         const typedData = parseTypedData(permitValue)
-        const chainId = flashTypedDataChainId(typedData, record.chainId)
-        if (chainId !== record.chainId) throw new TradeFailure('chain_mismatch', 'Permit chain changed.')
+        const chainId = flashTypedDataChainId(typedData, record.spentChainId)
+        if (chainId !== record.spentChainId) {
+          throw new TradeFailure('chain_mismatch', 'Permit chain changed.')
+        }
         ports.operations.advance(execution.reference, {
           phase: 'signing_permit',
           entityRefs: operationRefs(record, execution.entityRefs)
@@ -395,8 +403,10 @@ export function createTradeService(ports: TradeServicePorts) {
 
       const orderValue = quoteField(record, 'orderTypedData')
       const orderTypedData = parseTypedData(orderValue)
-      const orderChainId = flashTypedDataChainId(orderTypedData, record.chainId)
-      if (orderChainId !== record.chainId) throw new TradeFailure('chain_mismatch', 'Order chain changed.')
+      const orderChainId = flashTypedDataChainId(orderTypedData, record.spentChainId)
+      if (orderChainId !== record.spentChainId) {
+        throw new TradeFailure('chain_mismatch', 'Order chain changed.')
+      }
       ports.operations.advance(execution.reference, {
         phase: 'signing_order',
         entityRefs: operationRefs(record, execution.entityRefs)
@@ -423,12 +433,13 @@ export function createTradeService(ports: TradeServicePorts) {
       const submitResult = await ports.flash.submitOrder(
         buildFlashSubmitRequest({
           accountAddress: beforeSubmit.account.address,
+          bridgeQuoteId: beforeSubmit.bridgeQuoteId,
           flashPayload: beforeSubmit.flash,
           idempotencyKey: command.operationId,
           orderSignature: signatureResult.signature,
           ...(permitSignature ? { permitSignature } : {}),
           quote: beforeSubmit.quote,
-          quoteId: beforeSubmit.quoteId,
+          quoteId: beforeSubmit.providerQuoteId,
           quoteRequest: beforeSubmit.request
         })
       )
@@ -446,7 +457,7 @@ export function createTradeService(ports: TradeServicePorts) {
       ports.operations.complete(execution.reference, 'submitted')
       idempotency.set(key, { fingerprint, reference: execution.reference, touchedAt: ports.clock.now() })
       executions.delete(key)
-      quotes.delete(quoteKey(owner, record.account.id, record.chainId, record.quoteId))
+      quotes.delete(quoteKey(owner, record.account.id, record.quoteId))
     } catch (error) {
       settleFailure(execution, key, 'submit', fingerprint, error)
     }
@@ -488,7 +499,7 @@ export function createTradeService(ports: TradeServicePorts) {
     if (!isAddress(orderAddress) || orderAddress.toLowerCase() !== account.address.toLowerCase()) {
       throw new TradeFailure('account_changed', 'Order account changed.')
     }
-    const chainId = Number(order.chainId)
+    const chainId = Number(order.spentAsset?.chainId)
     if (!Number.isInteger(chainId) || chainId <= 0 || !snapshot.networks[chainId]?.on) {
       throw new TradeFailure('network_unavailable', 'Chain is unavailable.')
     }
@@ -568,30 +579,48 @@ export function createTradeService(ports: TradeServicePorts) {
       quoteGenerations.set(ownerScope, generation)
       try {
         const { account, snapshot } = currentAccount()
-        if (!snapshot.networks[request.chainId]?.on) {
+        const chains = getFlashAssetPairChains(request)
+        const chainIds = [...new Set([chains.targetChainId, chains.contraChainId])]
+        if (chains.isCrossChain && request.orderType !== FLASH_MARKET_ORDER_TYPE) {
+          throw new TradeFailure(
+            'unsupported_order_type',
+            'Flash cross-chain trades support market orders only.'
+          )
+        }
+        if (chainIds.some((chainId) => !snapshot.networks[chainId]?.on)) {
           throw new TradeFailure('network_unavailable', 'Chain is unavailable.')
         }
         const result = await ports.flash.quote({
           ...request,
           accountAddress: account.address,
-          contraChain: request.chainId,
-          targetChain: request.chainId
+          recipientAddress: account.address,
+          contraChain: chains.contraChainId,
+          targetChain: chains.targetChainId
         })
         const current = currentAccount(account.id)
-        if (!current.snapshot.networks[request.chainId]?.on) {
+        if (chainIds.some((chainId) => !current.snapshot.networks[chainId]?.on)) {
           throw new TradeFailure('network_unavailable', 'Chain is unavailable.')
         }
         if (quoteGenerations.get(ownerScope) !== generation || disposed || activeExecution()) {
           throw new TradeFailure('quote_unavailable', 'Flash quote is no longer available.')
         }
-        const quoteId = String(result.quote.id || flashObject(result.flash).quoteId || '').trim()
-        if (!quoteId) throw new TradeFailure('quote_invalid', 'Flash quote did not return a quote id.')
+        const rawQuote = flashObject(result.quote.raw)
+        const flashPayload = flashObject(result.flash)
+        const providerQuoteId = String(
+          result.quote.id || flashPayload.quoteId || rawQuote.quoteId || ''
+        ).trim()
+        const bridgeQuoteId = String(flashPayload.bridgeQuoteId || rawQuote.bridgeQuoteId || '').trim()
+        if (!providerQuoteId && !bridgeQuoteId) {
+          throw new TradeFailure('quote_invalid', 'Flash quote did not return a quote id.')
+        }
+        const quoteId = randomUUID()
         const now = ports.clock.now()
         const expiresAt = quoteExpiry(result.quote, now)
         if (expiresAt <= now) throw new TradeFailure('quote_expired', 'Flash quote already expired.')
         const record: PrivateQuoteRecord = {
           account,
-          chainId: request.chainId,
+          ...(bridgeQuoteId ? { bridgeQuoteId } : {}),
+          chainIds,
           completedActions: new Set(
             result.quote.steps.flatMap((step) =>
               step.status === 'complete' && (step.kind === 'wrap' || step.kind === 'approve')
@@ -604,11 +633,13 @@ export function createTradeService(ports: TradeServicePorts) {
           owner,
           quote: result.quote,
           quoteId,
+          ...(providerQuoteId ? { providerQuoteId } : {}),
           request,
+          spentChainId: chains.spentChainId,
           touchedAt: now
         }
         removeOwnerQuotes(owner)
-        quotes.set(quoteKey(owner, account.id, request.chainId, quoteId), record)
+        quotes.set(quoteKey(owner, account.id, quoteId), record)
         prune()
         return { ok: true, quoteId, quote: displayQuote(record) }
       } catch (error) {

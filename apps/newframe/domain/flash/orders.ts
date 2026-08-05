@@ -16,7 +16,6 @@ export const FlashOrderStatusSchema = z.enum([
 export const FlashOrderRecordSchema = z.object({
   orderId: z.string().min(1),
   accountAddress: z.string(),
-  chainId: z.number().int().positive(),
   provider: z.literal('flash'),
   source: z.literal('flash'),
   environment: z.string(),

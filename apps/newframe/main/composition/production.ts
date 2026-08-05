@@ -253,14 +253,15 @@ export function createProductionCapabilities(
     store
   })
   const requestEditService = createRequestEditService({ accounts, feeNotices, store })
+  const flashService = createProductionFlashService(store, accounts, assetRateService)
   const portfolioService = createPortfolioService({
     accounts,
     assetRates: assetRateService,
+    flash: flashService,
     ...adapters.portfolio,
     operations: operationService,
     store
   })
-  const flashService = createProductionFlashService(store, accounts, assetRateService)
   const agentService = createAgentService(accounts, flashService, store, requestService)
   const imageService = createImageService(store, adapters.images)
   const rendererAuthorization = createRendererAuthorizationRegistry()
@@ -303,11 +304,7 @@ export function createProductionCapabilities(
       }
     },
     clock: { now: adapters.accounts.now },
-    flash: {
-      quote: (request) => flashService.quote(request),
-      submitOrder: (request) => flashService.submitOrder(request),
-      cancelOrder: (request) => flashService.cancelOrder(request)
-    },
+    flash: flashService,
     operations: operationService,
     signatures: {
       signMessage: sideTrayTransactions.signCurrentAccountMessage,

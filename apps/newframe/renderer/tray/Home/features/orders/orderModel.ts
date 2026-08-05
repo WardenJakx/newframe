@@ -159,13 +159,18 @@ export function createOrderRows({
     .map(([id, order]) => ({ ...order, orderId: order.orderId || id }))
     .filter((order) => {
       const orderAddress = String(order.accountAddress || order.account || order.address || '').toLowerCase()
-      const chainId = Number(order.chainId)
-      const chain = networks[chainId]
+      const chainIds = [Number(order.targetAsset?.chainId), Number(order.contraAsset?.chainId)].filter(
+        (chainId, index, values) =>
+          Number.isInteger(chainId) && chainId > 0 && values.indexOf(chainId) === index
+      )
+      const visibleChainIds = chainIds.filter((chainId) => {
+        const chain = networks[chainId]
+        return !!chain && (!chain.isTestnet || showTestnets)
+      })
       return (
         orderAddress === address &&
-        !!chain &&
-        (!chain.isTestnet || showTestnets) &&
-        (selectedChainId === 0 || selectedChainId === chainId)
+        visibleChainIds.length > 0 &&
+        (selectedChainId === 0 || visibleChainIds.includes(selectedChainId))
       )
     })
     .sort((a, b) => {

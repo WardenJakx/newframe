@@ -18,7 +18,7 @@ const FLASH_CHAIN_REGISTRY: readonly FlashChainConfig[] = [
     .map(({ id, flash }) => ({
       chainId: id,
       slug: flash!.slug,
-      profiles: ['prod'] as const,
+      profiles: ['dev', 'prod'] as const,
       weth: flash!.weth,
       usdc: flash!.usdc
     })),
@@ -66,5 +66,13 @@ export function getFlashDefaultChainId(runtime: FlashRuntime = {}, availableChai
     .map(Number)
     .filter((chainId) => Number.isInteger(chainId) && supported.includes(chainId))
 
-  return available[0] || supported[0] || FLASH_ANVIL_CHAIN_ID
+  if (flashProfile(runtime) === 'dev' && available.includes(FLASH_ANVIL_CHAIN_ID)) {
+    return FLASH_ANVIL_CHAIN_ID
+  }
+
+  return (
+    available[0] ||
+    (flashProfile(runtime) === 'dev' ? FLASH_ANVIL_CHAIN_ID : supported[0]) ||
+    FLASH_ANVIL_CHAIN_ID
+  )
 }

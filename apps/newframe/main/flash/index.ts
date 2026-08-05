@@ -7,7 +7,7 @@ import {
   isFlashChainSupported
 } from '../../domain/flash/chains.js'
 import { flashAssetId, getFlashAssetsForChain, toFlashApiAssetAddress } from '../../domain/flash/assets.js'
-import { getReceiveAsset, getSpentAsset } from '../../domain/flash/pair.js'
+import { getFlashAssetPairChains, getReceiveAsset, getSpentAsset } from '../../domain/flash/pair.js'
 import {
   FlashAssetSchema,
   FlashQuoteSchema,
@@ -34,7 +34,6 @@ import {
   FlashQuoteRequestSchema,
   FlashSubmitOrderRequestSchema,
   type FlashCancelOrderRequest,
-  type FlashChainInput,
   type FlashGetOrderRequest,
   type FlashListOrdersRequest,
   type FlashPriceTriggerInput,
@@ -189,28 +188,6 @@ function numberTimestamp(value: unknown, fallback = Date.now()) {
   return fallback
 }
 
-function chainIdFrom(input: FlashChainInput) {
-  if (input && typeof input === 'object') return chainIdFrom(input.chainId ?? input.id)
-
-  const parsed =
-    typeof input === 'string' && input.toLowerCase().startsWith('0x')
-      ? Number.parseInt(input, 16)
-      : Number(input)
-
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : undefined
-}
-
-function resolveChainId(request: FlashQuoteRequest) {
-  return (
-    chainIdFrom(request.chainId) ||
-    chainIdFrom(request.targetChain) ||
-    chainIdFrom(request.contraChain) ||
-    Number(objectPayload(request.targetAsset).chainId) ||
-    Number(objectPayload(request.contraAsset).chainId) ||
-    0
-  )
-}
-
 function chainIdFromSlug(input: unknown) {
   if (typeof input === 'number') return input
   if (typeof input !== 'string') return undefined
@@ -299,17 +276,18 @@ function isTerminalStatus(status: FlashOrderStatus) {
   return terminalStatuses.has(status)
 }
 
-function orderPositionTokens(record: FlashOrderRecord) {
+function orderPositionTokens(record: FlashOrderRecord, chainId?: number) {
   const tokens = new Map<string, Token>()
   const affectedAssets = [record.spentAsset, record.receiveAsset]
 
   affectedAssets.forEach((asset) => {
+    if (chainId !== undefined && asset.chainId !== chainId) return
     const address = (asset.address || '').trim().toLowerCase()
     if (asset.isNative || !/^0x[0-9a-f]{40}$/.test(address)) return
 
     const token = {
       address,
-      chainId: asset.chainId || record.chainId,
+      chainId: asset.chainId,
       decimals: asset.decimals,
       name: asset.name || asset.symbol,
       symbol: asset.symbol
@@ -321,9 +299,20 @@ function orderPositionTokens(record: FlashOrderRecord) {
   return [...tokens.values()]
 }
 
+function orderPositionUpdates(record: FlashOrderRecord) {
+  return [...new Set([record.spentAsset.chainId, record.receiveAsset.chainId])].map((chainId) => ({
+    address: record.accountAddress,
+    chainId,
+    tokens: orderPositionTokens(record, chainId)
+  }))
+}
+
 function positionTokenIds(record: FlashOrderRecord) {
-  return orderPositionTokens(record)
-    .map((token) => `${token.chainId}:${token.address}`)
+  return orderPositionUpdates(record)
+    .flatMap((update) => [
+      `chain:${update.chainId}`,
+      ...update.tokens.map((token) => `${token.chainId}:${token.address}`)
+    ])
     .sort()
     .join(',')
 }
@@ -332,7 +321,6 @@ function shouldTrackOrderPositions(previous: FlashOrderRecord | undefined, recor
   return (
     !previous ||
     previous.accountAddress !== record.accountAddress ||
-    previous.chainId !== record.chainId ||
     positionTokenIds(previous) !== positionTokenIds(record)
   )
 }
@@ -355,15 +343,11 @@ function syncOrderPositions(
 ) {
   if (!state.positionSync) return
 
-  const update = {
-    address: record.accountAddress,
-    chainId: record.chainId,
-    tokens: orderPositionTokens(record)
-  }
-
   try {
-    if (shouldTrackOrderPositions(previous, record)) state.positionSync.track(update)
-    if (shouldRefreshOrderPositions(previous, record)) state.positionSync.refresh(update)
+    for (const update of orderPositionUpdates(record)) {
+      if (shouldTrackOrderPositions(previous, record)) state.positionSync.track(update)
+      if (shouldRefreshOrderPositions(previous, record)) state.positionSync.refresh(update)
+    }
   } catch (error) {
     console.warn('could not sync positions for Flash order', { orderId: record.orderId }, error)
   }
@@ -453,10 +437,12 @@ function normalizeTriggers(request: FlashQuoteRequest, orderType: FlashOrderType
 
 export function buildFlashQuoteBody(request: FlashQuoteRequest) {
   request = FlashQuoteRequestSchema.parse(request)
-  const chainId = requireSupportedChainId(resolveChainId(request))
   const targetAsset = resolveAsset(request.targetAsset, 'target')
   const contraAsset = resolveAsset(request.contraAsset, 'contra')
   const side = requireSide(request.side)
+  const chains = getFlashAssetPairChains({ side, targetAsset, contraAsset })
+  requireSupportedChainId(chains.targetChainId)
+  requireSupportedChainId(chains.contraChainId)
   const qty = normalizeAmount(request.qty || request.inputAmount)
   const orderType = request.orderType || FLASH_MARKET_ORDER_TYPE
   const maxSlippage = normalizePercent(request.slippage)
@@ -481,11 +467,15 @@ export function buildFlashQuoteBody(request: FlashQuoteRequest) {
 
   if (!request.accountAddress) throw new Error('Flash quote requires an account address')
   if (!qty || Number(qty) <= 0) throw new Error('Flash quote requires a positive qty')
+  if (chains.isCrossChain && orderType !== FLASH_MARKET_ORDER_TYPE) {
+    throw new Error('Flash cross-chain trades support market orders only')
+  }
 
   return {
     funderAddress: request.accountAddress,
-    targetChain: getFlashChainSlug(chainId),
-    contraChain: getFlashChainSlug(chainId),
+    recipientAddress: request.accountAddress,
+    targetChain: getFlashChainSlug(chains.targetChainId),
+    contraChain: getFlashChainSlug(chains.contraChainId),
     targetAsset: toFlashApiAssetAddress(targetAsset),
     contraAsset: toFlashApiAssetAddress(contraAsset),
     side,
@@ -599,13 +589,18 @@ function serializeTypedData(value: unknown) {
 
 export function normalizeFlashQuoteResponse(raw: unknown, request: FlashQuoteRequest) {
   request = FlashQuoteRequestSchema.parse(request)
-  const chainId = requireSupportedChainId(resolveChainId(request))
   const payload = objectPayload(raw)
   const quotePayload = objectPayload(payload.quote || payload)
   const targetAsset = resolveAsset(request.targetAsset, 'target')
   const contraAsset = resolveAsset(request.contraAsset, 'contra')
   const side = requireSide(request.side)
   const orderType = (request.orderType || FLASH_MARKET_ORDER_TYPE) as FlashOrderType
+  const chains = getFlashAssetPairChains({ side, targetAsset, contraAsset })
+  requireSupportedChainId(chains.targetChainId)
+  requireSupportedChainId(chains.contraChainId)
+  if (chains.isCrossChain && orderType !== FLASH_MARKET_ORDER_TYPE) {
+    throw new Error('Flash cross-chain trades support market orders only')
+  }
   const spentAsset = getSpentAsset({ side, targetAsset, contraAsset })
   const receiveAsset = getReceiveAsset({ side, targetAsset, contraAsset })
   const fromPayload = objectPayload(quotePayload.from)
@@ -637,7 +632,16 @@ export function normalizeFlashQuoteResponse(raw: unknown, request: FlashQuoteReq
     Number.isFinite(targetAmountNumber) && targetAmountNumber > 0 && Number.isFinite(targetNotionalNumber)
       ? String(targetNotionalNumber / targetAmountNumber)
       : ''
-  const quoteId = stringValue(quotePayload.quoteId || quotePayload.id || payload.quoteId || payload.id)
+  const quoteId = stringValue(
+    quotePayload.quoteId !== undefined
+      ? quotePayload.quoteId
+      : quotePayload.id !== undefined
+        ? quotePayload.id
+        : payload.quoteId !== undefined
+          ? payload.quoteId
+          : payload.id
+  )
+  const bridgeQuoteId = stringValue(quotePayload.bridgeQuoteId || payload.bridgeQuoteId).trim()
   const wrapPayload = objectPayload(quotePayload.wrap || objectPayload(quotePayload.actions).wrap)
   const evmPayload = objectPayload(quotePayload.evm || objectPayload(quotePayload.actions).evm)
   const approvalPayload = objectPayload(
@@ -652,7 +656,7 @@ export function normalizeFlashQuoteResponse(raw: unknown, request: FlashQuoteReq
   const wrappedAssetAddress = stringValue(wrapPayload.wrappedAsset).trim()
   const approvalAsset =
     (wrappedAssetAddress
-      ? getFlashAssetsForChain(chainId).find(
+      ? getFlashAssetsForChain(chains.spentChainId).find(
           (asset) => normalizeAddress(toFlashApiAssetAddress(asset)) === normalizeAddress(wrappedAssetAddress)
         )
       : null) || spentAsset
@@ -660,7 +664,7 @@ export function normalizeFlashQuoteResponse(raw: unknown, request: FlashQuoteReq
     amount: stringValue(wrapPayload.amount || inputAmount),
     amountRaw: stringValue(wrapPayload.amountRaw || wrapPayload.amountWei || '0'),
     asset: spentAsset,
-    fallbackChainId: chainId,
+    fallbackChainId: chains.spentChainId,
     kind: 'wrap',
     label: stringValue(wrapPayload.label, `Wrap ${spentAsset.symbol}`),
     tx: wrapPayload.evmTx || wrapPayload.tx
@@ -669,7 +673,7 @@ export function normalizeFlashQuoteResponse(raw: unknown, request: FlashQuoteReq
     amount: stringValue(approvalPayload.amount || inputAmount),
     amountRaw: stringValue(approvalPayload.amountRaw || approvalPayload.amountWei || '0'),
     asset: approvalAsset,
-    fallbackChainId: chainId,
+    fallbackChainId: chains.spentChainId,
     kind: 'approve',
     label: stringValue(approvalPayload.label, `Approve ${approvalAsset.symbol}`),
     spender: stringValue(approvalPayload.spender),
@@ -738,6 +742,8 @@ export function normalizeFlashQuoteResponse(raw: unknown, request: FlashQuoteReq
     expiresAt: stringValue(quotePayload.expiresAt || quotePayload.expires_at || ''),
     raw: {
       ...quotePayload,
+      quoteId,
+      ...(bridgeQuoteId ? { bridgeQuoteId } : {}),
       from: {
         ...fromPayload,
         asset: stringValue(fromPayload.asset, side === 'buy' ? 'contra' : 'target'),
@@ -868,12 +874,16 @@ function orderNotificationDetail(record: FlashOrderRecord, status: FlashOrderSta
   return flow
 }
 
-function orderNotificationTarget(record: FlashOrderRecord) {
+function orderNotificationAsset(record: FlashOrderRecord, status: FlashOrderStatus = record.status) {
+  return status === 'filled' ? record.receiveAsset : record.spentAsset
+}
+
+function orderNotificationTarget(record: FlashOrderRecord, status: FlashOrderStatus = record.status) {
   return {
     type: 'flashOrder',
     orderId: record.orderId,
     account: record.accountAddress,
-    chainId: record.chainId,
+    chainId: orderNotificationAsset(record, status).chainId,
     chainType: 'ethereum'
   }
 }
@@ -905,7 +915,7 @@ function upsertPendingOrderNotification(
     expiresAt: now + FLASH_MARKET_ORDER_NOTIFICATION_MS,
     leadingIcon: {
       chainType: 'ethereum',
-      chainId: record.chainId
+      chainId: orderNotificationAsset(record).chainId
     },
     target: orderNotificationTarget(record),
     metadata: orderNotificationMetadata(record)
@@ -926,7 +936,11 @@ function resolveOrderNotification(state: FlashServiceState, record: FlashOrderRe
       detail: orderNotificationDetail(record, record.status),
       expiresAt: now + FLASH_RESOLVED_ORDER_NOTIFICATION_MS,
       updatedAt: now,
-      target: orderNotificationTarget(record),
+      leadingIcon: {
+        chainType: 'ethereum',
+        chainId: orderNotificationAsset(record, record.status).chainId
+      },
+      target: orderNotificationTarget(record, record.status),
       metadata: orderNotificationMetadata(record)
     })
 }
@@ -1027,7 +1041,6 @@ function recordFromQuote({
   return FlashOrderRecordSchema.parse({
     orderId,
     accountAddress: normalizeAddress(request.accountAddress),
-    chainId: quote.targetAsset.chainId || quote.contraAsset.chainId,
     provider: 'flash',
     source: 'flash',
     environment: run.environment,
@@ -1113,10 +1126,21 @@ function normalizeOrderRecord(rawOrder: unknown, fallback?: FlashOrderRecord | n
     throw new Error(`Flash order ${orderId} is missing asset metadata`)
   }
 
+  const derivedSpentAsset = getSpentAsset({ side, targetAsset, contraAsset })
+  const derivedReceiveAsset = getReceiveAsset({ side, targetAsset, contraAsset })
+  const spentAsset =
+    orderAssetFromReference(raw.spentAsset || quote.spentAsset, fallback?.spentAsset || derivedSpentAsset) ||
+    derivedSpentAsset
+  const receiveAsset =
+    orderAssetFromReference(
+      raw.receiveAsset || quote.receiveAsset,
+      fallback?.receiveAsset || derivedReceiveAsset
+    ) || derivedReceiveAsset
+
   const filled = objectPayload(raw.filled)
   const officialFilledOutputAmount = stringValue(side === 'buy' ? filled.targetAmount : filled.contraAmount)
   const officialAverageFillPrice = stringValue(filled.averageNotionalPrice || filled.averagePrice)
-  const quoteLike =
+  const quoteBase =
     fallbackQuote ||
     ({
       id: stringValue(quote.quoteId || quote.id || raw.quoteId),
@@ -1124,8 +1148,8 @@ function normalizeOrderRecord(rawOrder: unknown, fallback?: FlashOrderRecord | n
       orderType,
       targetAsset,
       contraAsset,
-      spentAsset: getSpentAsset({ side, targetAsset, contraAsset }),
-      receiveAsset: getReceiveAsset({ side, targetAsset, contraAsset }),
+      spentAsset,
+      receiveAsset,
       inputAmount: stringValue(
         quote.inputAmount || quote.qty || raw.spentAmount || raw.inputAmount || raw.qty,
         '0'
@@ -1143,6 +1167,15 @@ function normalizeOrderRecord(rawOrder: unknown, fallback?: FlashOrderRecord | n
       steps: [],
       raw: quote
     } satisfies FlashQuote)
+  const quoteLike: FlashQuote = {
+    ...quoteBase,
+    side,
+    orderType,
+    targetAsset,
+    contraAsset,
+    spentAsset,
+    receiveAsset
+  }
   const open = isOpenStatus(status)
   const filledOutputAmount = stringValue(
     raw.filledOutputAmount || raw.filledAmount || officialFilledOutputAmount || fallback?.filledOutputAmount
@@ -1166,10 +1199,6 @@ function normalizeOrderRecord(rawOrder: unknown, fallback?: FlashOrderRecord | n
     accountAddress: normalizeAddress(
       raw.accountAddress || raw.funderAddress || raw.account || fallback?.accountAddress
     ),
-    chainId:
-      chainIdFromSlug(raw.chain || raw.chainId || raw.targetChain) ||
-      quoteLike.targetAsset.chainId ||
-      quoteLike.contraAsset.chainId,
     provider: 'flash',
     source: 'flash',
     environment: fallback?.environment || runtime().environment,
@@ -1621,10 +1650,12 @@ export function buildFlashSubmitBody(request: FlashSubmitOrderRequest) {
   if (!request.quote) throw new Error('Flash order submit requires a quote')
 
   const quote = request.quote
-  const chainId = quote.targetAsset.chainId || quote.contraAsset.chainId
+  const chains = getFlashAssetPairChains(quote)
+  if (chains.isCrossChain && quote.orderType !== FLASH_MARKET_ORDER_TYPE) {
+    throw new Error('Flash cross-chain trades support market orders only')
+  }
   const quoteFields = buildFlashQuoteBody({
     ...request,
-    chainId: request.chainId || chainId,
     contraAsset: request.contraAsset || quote.contraAsset,
     orderType: quote.orderType,
     qty: request.qty || request.inputAmount || quote.inputAmount,
@@ -1640,6 +1671,7 @@ export function buildFlashSubmitBody(request: FlashSubmitOrderRequest) {
   const quoteId = request.quoteId || quote.id
   const userSignature = request.orderSignature || request.signature
   const rawQuote = objectPayload(quote.raw)
+  const bridgeQuoteId = request.bridgeQuoteId || stringValue(rawQuote.bridgeQuoteId).trim()
   const wrap = objectPayload(rawQuote.wrap)
   const quotedTargetAsset =
     typeof rawQuote.targetAsset === 'string' && rawQuote.targetAsset.trim()
@@ -1660,6 +1692,7 @@ export function buildFlashSubmitBody(request: FlashSubmitOrderRequest) {
     targetAsset,
     contraAsset,
     ...(quoteId ? { quoteId } : {}),
+    ...(bridgeQuoteId ? { bridgeQuoteId } : {}),
     ...(userSignature ? { userSignature } : {}),
     ...(evmOrderTypedData ? { evmOrderTypedData } : {}),
     ...(evmPermitTypedData ? { evmPermitTypedData } : {}),

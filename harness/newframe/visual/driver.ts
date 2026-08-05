@@ -592,6 +592,22 @@ export class NewframeDriver {
     await this.tray.locator(`[data-order-id="${orderId}"]`).waitFor({ state: 'visible', timeout: 10_000 })
   }
 
+  async beginFlashOrderCancellation(orderId: string) {
+    await this.assertFlashOrderVisible(orderId)
+    const row = this.tray.locator(`[data-order-id="${orderId}"]`)
+    await row.getByRole('button', { name: 'Cancel order' }).click()
+    return this.waitForCurrentRequest('sign', new Set(), 30_000)
+  }
+
+  async selectTradeAsset(page: Page, field: 'target' | 'contra', assetId: string) {
+    await page.getByRole('button', { name: `Select ${field} asset` }).click()
+    await page.getByRole('textbox', { name: 'Search tokens' }).fill(assetId)
+    const option = page.getByRole('option')
+    await option.waitFor({ state: 'visible', timeout: 15_000 })
+    if ((await option.count()) !== 1) this.fail(`Expected one selector option for ${assetId}`)
+    await option.click()
+  }
+
   async ensureTradeSellSide(tradePage: Page) {
     const switchToSell = tradePage.getByRole('button', { name: /Switch to SELL/i })
     if (await switchToSell.isVisible({ timeout: 1_000 }).catch(() => false)) await switchToSell.click()

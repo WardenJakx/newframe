@@ -18,7 +18,12 @@ import {
   FLASH_BASE_WETH_ADDRESS,
   FLASH_MARKET_ORDER_TYPE
 } from '../../domain/flash/constants'
-import { FLASH_NATIVE_ETH_ASSET, FLASH_USDC_ASSET, FLASH_WETH_ASSET } from '../../domain/flash/assets'
+import {
+  FLASH_NATIVE_ETH_ASSET,
+  FLASH_USDC_ASSET,
+  FLASH_WETH_ASSET,
+  getFlashAssetsForChain
+} from '../../domain/flash/assets'
 import { NATIVE_CURRENCY } from '../../domain/token/constants'
 const originalEnv = { ...process.env }
 const originalFetch = globalThis.fetch
@@ -273,6 +278,101 @@ describe('main Flash facade helpers', () => {
     })
     expect(body.targetAsset).toBe('0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee')
   })
+  it.each([
+    ['Base USDC -> Ethereum WETH', 8453, 1],
+    ['Ethereum USDC -> Base WETH', 1, 8453]
+  ])(
+    'preserves the live %s cross-chain quote and submit contract',
+    (_label, sourceChainId, targetChainId) => {
+      process.env.FRAME_PROFILE = 'prod' as any
+      const contraAsset = getFlashAssetsForChain(sourceChainId).find((asset) => asset.symbol === 'USDC')!
+      const targetAsset = getFlashAssetsForChain(targetChainId).find((asset) => asset.symbol === 'WETH')!
+      const bridgeQuoteId = `bridge-${sourceChainId}-${targetChainId}`
+      const bridgeSentinel = '0x000000000000000000000000000000000DEFdeaD'
+      const typedData = {
+        domain: { chainId: sourceChainId },
+        primaryType: 'Order',
+        types: { Order: [] },
+        message: { toToken: bridgeSentinel }
+      }
+      const request = {
+        accountAddress,
+        contraAsset,
+        inputAmount: '100',
+        orderType: FLASH_MARKET_ORDER_TYPE,
+        qty: '100',
+        side: 'buy' as const,
+        targetAsset
+      } satisfies FlashQuoteRequest
+      const raw = quoteResponse({
+        quoteId: '',
+        bridgeQuoteId,
+        targetAsset: targetAsset.address,
+        contraAsset: contraAsset.address,
+        from: { asset: 'contra', amount: '100', notional: '100' },
+        to: { asset: 'target', amount: '0.04', notional: '99' },
+        evm: {
+          approval: {
+            amount: '100',
+            amountRaw: '100000000',
+            evmTx: {
+              chainId: sourceChainId,
+              to: contraAsset.address,
+              data: '0x095ea7b3'
+            }
+          },
+          orderTypedData: JSON.stringify(typedData)
+        }
+      })
+      const quote = normalizeFlashQuoteResponse(
+        sourceChainId === 8453 ? { quote: raw, bridgeQuoteId } : raw,
+        request
+      )
+      expect(quote.id).toBe('')
+      expect(quote.actions?.approval?.tx.chainId).toBe(sourceChainId)
+      expect((quote.raw as any).evm.orderTypedData.message.toToken).toBe(bridgeSentinel)
+
+      const body = buildFlashSubmitBody({
+        ...request,
+        bridgeQuoteId,
+        evmOrderTypedData: JSON.stringify(typedData),
+        orderSignature: '0xcrosschainsignature',
+        quote
+      })
+      expect(body).toEqual({
+        funderAddress: accountAddress,
+        recipientAddress: accountAddress,
+        targetChain: targetChainId === 1 ? 'ethereum' : 'base',
+        contraChain: sourceChainId === 1 ? 'ethereum' : 'base',
+        targetAsset: targetAsset.address,
+        contraAsset: contraAsset.address,
+        side: 'buy',
+        qty: '100',
+        orderType: 'market',
+        bridgeQuoteId,
+        userSignature: '0xcrosschainsignature',
+        evmOrderTypedData: JSON.stringify(typedData)
+      })
+      expect(body).not.toHaveProperty('quoteId')
+      expect((JSON.parse(body.evmOrderTypedData!) as any).message.toToken).not.toBe(body.targetAsset)
+    }
+  )
+  it('rejects cross-chain advanced orders before contacting Flash', () => {
+    process.env.FRAME_PROFILE = 'prod' as any
+    const targetAsset = getFlashAssetsForChain(1).find((asset) => asset.symbol === 'WETH')!
+    const contraAsset = getFlashAssetsForChain(8453).find((asset) => asset.symbol === 'USDC')!
+    expect(() =>
+      buildFlashQuoteBody({
+        accountAddress,
+        targetAsset,
+        contraAsset,
+        inputAmount: '100',
+        qty: '100',
+        side: 'buy',
+        orderType: 'limit'
+      })
+    ).toThrow('market orders only')
+  })
   it('normalizes quote responses and preserves serialized typed data through submission', () => {
     const typedData = orderTypedData('quote-1')
     const quote = normalizedQuote({
@@ -436,7 +536,6 @@ describe('main Flash facade helpers', () => {
     expect(url.searchParams.get('pageSize')).toBe('200')
     expect(url.searchParams.has('chain')).toBe(false)
     expect(order).toMatchObject({
-      chainId: 8453,
       status: 'partially-filled',
       qty: '1',
       spentAmount: '1',
@@ -450,6 +549,7 @@ describe('main Flash facade helpers', () => {
       spentAsset: { symbol: 'WETH' },
       receiveAsset: { symbol: 'USDC' }
     })
+    expect(order).not.toHaveProperty('chainId')
   })
   it('keeps persisted orders and notifications isolated across real Flash service graphs', async () => {
     const memoryStorage = { getItem: () => null, setItem: () => undefined, removeItem: () => undefined }
@@ -599,6 +699,79 @@ describe('main Flash facade helpers', () => {
     expect(refresh).toHaveBeenLastCalledWith(
       expect.objectContaining({ address: request.accountAddress, chainId: 31337 })
     )
+  })
+  it('syncs each participating chain once and attributes filled notifications to the receive chain', async () => {
+    const socket = new FakeFlashWebSocket()
+    const track = mock()
+    const refresh = mock()
+    const funderAddress = '0x00000000000000000000000000000000000000c1'
+    const orderId = 'cross-chain-order'
+    const targetAsset = { ...FLASH_WETH_ASSET, id: `1:${FLASH_WETH_ASSET.address}`, chainId: 1 }
+    const contraAsset = { ...FLASH_USDC_ASSET, id: `8453:${FLASH_USDC_ASSET.address}`, chainId: 8453 }
+    const flash = createFlashService({
+      assetRateService,
+      store,
+      createWebSocket: () => socket as unknown as WebSocket,
+      positionSync: { track, refresh }
+    })
+    services.push(flash)
+    expect(startAgentSession(flash, funderAddress, 'cross-chain-session')).toBe(true)
+    socket.open()
+
+    sendOrders(
+      socket,
+      'snapshot',
+      officialOrder({
+        orderId,
+        funderAddress,
+        status: 'ORDER_STATUS_ACCEPTED',
+        targetAsset,
+        contraAsset,
+        filled: null
+      })
+    )
+    await Bun.sleep(0)
+
+    const notification = () => store.getState().view.notifications[`flash-order:${orderId}`]
+    expect(track.mock.calls).toHaveLength(2)
+    expect(track).toHaveBeenNthCalledWith(1, {
+      address: funderAddress,
+      chainId: 1,
+      tokens: [canonicalToken(targetAsset, 1)]
+    })
+    expect(track).toHaveBeenNthCalledWith(2, {
+      address: funderAddress,
+      chainId: 8453,
+      tokens: [canonicalToken(contraAsset, 8453)]
+    })
+    expect(notification()).toMatchObject({
+      state: 'pending',
+      leadingIcon: { chainId: 1 },
+      target: { chainId: 1 }
+    })
+
+    sendOrders(
+      socket,
+      'update',
+      officialOrder({
+        orderId,
+        funderAddress,
+        status: 'ORDER_STATUS_FILLED',
+        targetAsset,
+        contraAsset,
+        closedAt: '2026-07-14T08:02:00.000Z'
+      })
+    )
+    await Bun.sleep(0)
+
+    expect(refresh.mock.calls).toHaveLength(2)
+    expect(refresh.mock.calls.map(([update]) => update.chainId)).toEqual([1, 8453])
+    expect(notification()).toMatchObject({
+      state: 'completed',
+      detail: 'Filled 1 WETH -> 2398.08 USDC',
+      leadingIcon: { chainId: 8453 },
+      target: { chainId: 8453 }
+    })
   })
   it('hydrates external WebSocket orders through the canonical order, notification, and position path', async () => {
     const sockets: FakeFlashWebSocket[] = []

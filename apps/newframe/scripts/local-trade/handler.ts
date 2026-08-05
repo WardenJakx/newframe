@@ -1,4 +1,5 @@
 import { Interface, JsonRpcProvider, MaxUint256, Wallet, getAddress, isAddress, parseUnits } from 'ethers'
+import { createHash } from 'node:crypto'
 
 import {
   FLASH_ANVIL_CHAIN_ID,
@@ -13,11 +14,12 @@ import {
 } from '../../domain/flash/constants'
 import {
   FLASH_NATIVE_ETH_ASSET,
-  FLASH_USDC_ASSET,
   FLASH_WETH_ASSET,
+  getFlashAssetsForChain,
   toFlashApiAssetAddress
 } from '../../domain/flash/assets'
-import { getReceiveAsset, getSpentAsset } from '../../domain/flash/pair'
+import { getFlashChainIdFromSlug, getFlashChainSlug } from '../../domain/flash/chains'
+import { getFlashAssetPairChains, getReceiveAsset, getSpentAsset } from '../../domain/flash/pair'
 import {
   FLASH_MAX_TWAP_BUCKET_COUNT,
   FLASH_MAX_TWAP_DURATION_SECONDS,
@@ -45,9 +47,9 @@ interface LocalQuoteRecord {
 
 interface LocalOrderRecord {
   accountAddress: string
+  bridgeQuoteId?: string
   cancellable: boolean
   chain: string
-  chainId: number
   createdAt: string
   fillTransactionHash?: string | null
   filledOutputAmount?: string | null
@@ -345,11 +347,17 @@ function checksumAddress(address: string, label: string) {
   return getAddress(address)
 }
 
-function localAssetFromAddress(address: unknown, label: string) {
+function localAssetFromAddress(chain: unknown, address: unknown, label: string) {
+  const chainSlug = String(chain || LOCAL_CHAIN_SLUG)
+    .trim()
+    .toLowerCase()
+  const chainId = getFlashChainIdFromSlug(chainSlug)
+  if (!chainId) throw new Error(`Unsupported local Flash ${label} chain`)
+
   const normalized = String(address || '')
     .trim()
     .toLowerCase()
-  const asset = [FLASH_NATIVE_ETH_ASSET, FLASH_WETH_ASSET, FLASH_USDC_ASSET].find((candidate) => {
+  const asset = getFlashAssetsForChain(chainId).find((candidate) => {
     return toFlashApiAssetAddress(candidate).toLowerCase() === normalized
   })
 
@@ -382,7 +390,10 @@ function localOrderType(orderType: unknown): FlashOrderType {
 }
 
 function settlementSpentAsset(spentAsset: FlashAsset) {
-  return spentAsset.isNative ? FLASH_WETH_ASSET : spentAsset
+  return spentAsset.isNative
+    ? getFlashAssetsForChain(spentAsset.chainId).find((asset) => asset.symbol === FLASH_WETH_ASSET.symbol) ||
+        spentAsset
+    : spentAsset
 }
 
 function settlementInputToken(spentAsset: FlashAsset) {
@@ -530,6 +541,8 @@ function buildSteps({
 
 function orderTypedData({
   accountAddress,
+  chainId,
+  isCrossChain,
   orderType,
   quoteId,
   side,
@@ -537,6 +550,8 @@ function orderTypedData({
   qty
 }: {
   accountAddress: string
+  chainId: number
+  isCrossChain: boolean
   orderType: FlashOrderType
   quoteId: string
   side: FlashTradeSide
@@ -547,7 +562,7 @@ function orderTypedData({
     domain: {
       name: 'Definitive Flash Local',
       version: '1',
-      chainId: FLASH_ANVIL_CHAIN_ID
+      chainId
     },
     primaryType: 'Order',
     types: {
@@ -566,17 +581,66 @@ function orderTypedData({
       side,
       orderType,
       qty,
-      settlementAsset: settlementSpentAsset(spentAsset).symbol
+      settlementAsset: isCrossChain
+        ? LOCAL_MOCK_FLASH_SETTLEMENT_ADDRESS
+        : settlementSpentAsset(spentAsset).symbol
     }
   }
 }
 
+function localBridgeQuoteId({
+  body,
+  contraAsset,
+  targetAsset
+}: {
+  body: Record<string, any>
+  contraAsset: FlashAsset
+  targetAsset: FlashAsset
+}) {
+  const validatedFields: Record<string, unknown> = {
+    targetChain: body.targetChain,
+    contraChain: body.contraChain,
+    targetAsset: toFlashApiAssetAddress(targetAsset),
+    contraAsset: toFlashApiAssetAddress(contraAsset),
+    side: body.side,
+    qty: body.qty,
+    orderType: body.orderType,
+    funderAddress: body.funderAddress,
+    recipientAddress: body.recipientAddress,
+    quickTrade: body.quickTrade,
+    maxSlippage: body.maxSlippage,
+    maxPriceImpact: body.maxPriceImpact,
+    limitNotionalPrice: body.limitNotionalPrice,
+    startTime: body.startTime,
+    twapBucketCount: body.twapBucketCount,
+    triggers: body.triggers
+  }
+  const serialized = JSON.stringify(
+    Object.entries(validatedFields).map(([field, value]) => [
+      field,
+      value === undefined ? { defined: false } : { defined: true, value }
+    ])
+  )
+
+  return `local-bridge-${createHash('sha256').update(serialized).digest('hex')}`
+}
+
 async function buildQuote(body: Record<string, any>) {
   const accountAddress = checksumAddress(String(body.funderAddress || ''), 'funder')
-  const targetAsset = localAssetFromAddress(body.targetAsset, 'target')
-  const contraAsset = localAssetFromAddress(body.contraAsset, 'contra')
+  const recipientAddress = body.recipientAddress
+    ? checksumAddress(String(body.recipientAddress), 'recipient')
+    : accountAddress
+  if (recipientAddress !== accountAddress) {
+    validationError('Local Flash recipientAddress must match funderAddress')
+  }
+  const targetAsset = localAssetFromAddress(body.targetChain, body.targetAsset, 'target')
+  const contraAsset = localAssetFromAddress(body.contraChain, body.contraAsset, 'contra')
   const side = localSide(body.side)
   const orderType = localOrderType(body.orderType)
+  const chains = getFlashAssetPairChains({ side, targetAsset, contraAsset })
+  if (chains.isCrossChain && orderType !== FLASH_MARKET_ORDER_TYPE) {
+    validationError('Local Flash cross-chain trades support market orders only')
+  }
   const orderParameters = validateOrderParameters(body, orderType, side)
   const qty = cleanFlashDecimal(body.qty || body.inputAmount)
   const amount = positiveFlashNumber(qty)
@@ -587,15 +651,18 @@ async function buildQuote(body: Record<string, any>) {
   const receiveAsset = getReceiveAsset({ side, targetAsset, contraAsset })
   const settlementAsset = settlementSpentAsset(spentAsset)
   const inputAmountRaw = parseUnits(qty, settlementAsset.decimals)
-  const wrapAction = spentAsset.isNative
-    ? buildWrapAction({ accountAddress, amount: qty, amountRaw: inputAmountRaw })
-    : null
-  const approvalAction = await buildApprovalAction({
-    accountAddress,
-    amount: qty,
-    amountRaw: inputAmountRaw,
-    spentAsset
-  })
+  const wrapAction =
+    !chains.isCrossChain && spentAsset.isNative
+      ? buildWrapAction({ accountAddress, amount: qty, amountRaw: inputAmountRaw })
+      : null
+  const approvalAction = chains.isCrossChain
+    ? null
+    : await buildApprovalAction({
+        accountAddress,
+        amount: qty,
+        amountRaw: inputAmountRaw,
+        spentAsset
+      })
   const spentUsdRate = mockUsdRates[spentAsset.symbol] || 1
   const receiveUsdRate = mockUsdRates[receiveAsset.symbol] || 1
   const outputAmount = formatAmount((amount * spentUsdRate * 0.9992) / receiveUsdRate, receiveAsset)
@@ -603,8 +670,18 @@ async function buildQuote(body: Record<string, any>) {
   const outputNotional = formatNotional(Number(outputAmount) * receiveUsdRate)
   const estimatedFeeNotional = formatNotional(amount * spentUsdRate * 0.0008)
   const rateAmount = formatAmount(spentUsdRate / receiveUsdRate, receiveAsset)
-  const quoteId = `local-quote-${crypto.randomUUID()}`
-  const typedData = orderTypedData({ accountAddress, orderType, quoteId, qty, side, spentAsset })
+  const bridgeQuoteId = chains.isCrossChain ? localBridgeQuoteId({ body, contraAsset, targetAsset }) : ''
+  const quoteId = chains.isCrossChain ? '' : `local-quote-${crypto.randomUUID()}`
+  const typedData = orderTypedData({
+    accountAddress,
+    chainId: chains.spentChainId,
+    isCrossChain: chains.isCrossChain,
+    orderType,
+    quoteId: quoteId || bridgeQuoteId,
+    qty,
+    side,
+    spentAsset
+  })
   const expiresAt =
     orderParameters.expireTime ||
     new Date(
@@ -652,8 +729,11 @@ async function buildQuote(body: Record<string, any>) {
   const response = {
     quoteId,
     id: quoteId,
+    ...(bridgeQuoteId ? { bridgeQuoteId } : {}),
     orderType,
     side,
+    targetChain: getFlashChainSlug(targetAsset.chainId),
+    contraChain: getFlashChainSlug(contraAsset.chainId),
     targetAsset: toFlashApiAssetAddress(targetAsset),
     contraAsset: toFlashApiAssetAddress(contraAsset),
     from: {
@@ -687,12 +767,12 @@ async function buildQuote(body: Record<string, any>) {
     expiresAt: quote.expiresAt,
     local: {
       ...orderParameters,
-      chain: LOCAL_CHAIN_SLUG
+      chain: getFlashChainSlug(chains.spentChainId)
     }
   }
 
   quote.raw = response
-  quotes.set(quoteId, { body, quote, response })
+  quotes.set(quoteId || bridgeQuoteId, { body, quote, response })
 
   return response
 }
@@ -706,7 +786,12 @@ function orderResponse(order: LocalOrderRecord) {
     name: asset.name,
     address: toFlashApiAssetAddress(asset),
     ticker: asset.symbol,
-    chain: { id: LOCAL_CHAIN_SLUG, name: 'Anvil', namespace: 'eip155' }
+    chain: {
+      id: getFlashChainSlug(asset.chainId),
+      name:
+        getFlashChainSlug(asset.chainId) === LOCAL_CHAIN_SLUG ? 'Anvil' : getFlashChainSlug(asset.chainId),
+      namespace: 'eip155'
+    }
   })
 
   return {
@@ -766,6 +851,7 @@ function validateSubmitBody(quoteRecord: LocalQuoteRecord, body: Record<string, 
     qty: quoteBody.qty,
     orderType: quoteBody.orderType,
     funderAddress: quoteBody.funderAddress,
+    recipientAddress: quoteBody.recipientAddress,
     quickTrade: quoteBody.quickTrade,
     maxSlippage: quoteBody.maxSlippage,
     maxPriceImpact: quoteBody.maxPriceImpact,
@@ -773,6 +859,15 @@ function validateSubmitBody(quoteRecord: LocalQuoteRecord, body: Record<string, 
     startTime: quoteBody.startTime,
     twapBucketCount: quoteBody.twapBucketCount,
     triggers: quoteBody.triggers
+  }
+
+  const expectedQuoteId = String(quoteResponse.quoteId || '')
+  const expectedBridgeQuoteId = String(quoteResponse.bridgeQuoteId || '')
+  if (String(body.quoteId || '') !== expectedQuoteId) {
+    validationError('Local Flash submit quoteId must match the quote response')
+  }
+  if (String(body.bridgeQuoteId || '') !== expectedBridgeQuoteId) {
+    validationError('Local Flash submit bridgeQuoteId must match the quote response')
   }
 
   for (const [field, expected] of Object.entries(expectedFields)) {
@@ -805,14 +900,15 @@ function storeOrder(quoteRecord: LocalQuoteRecord, body: Record<string, any>) {
   const now = nowIso()
   const orderId = `local-order-${crypto.randomUUID()}`
   const orderType = quoteRecord.quote.orderType
+  const chains = getFlashAssetPairChains(quoteRecord.quote)
   const order: LocalOrderRecord = {
     accountAddress: checksumAddress(
       String(quoteRecord.body.funderAddress || body.funderAddress || ''),
       'funder'
     ),
-    cancellable: orderType !== FLASH_MARKET_ORDER_TYPE,
-    chain: LOCAL_CHAIN_SLUG,
-    chainId: FLASH_ANVIL_CHAIN_ID,
+    bridgeQuoteId: String(quoteRecord.response.bridgeQuoteId || '') || undefined,
+    cancellable: orderType !== FLASH_MARKET_ORDER_TYPE || chains.isCrossChain,
+    chain: getFlashChainSlug(chains.spentChainId),
     createdAt: now,
     fillTransactionHash: null,
     filledOutputAmount: null,
@@ -829,7 +925,7 @@ function storeOrder(quoteRecord: LocalQuoteRecord, body: Record<string, any>) {
 
   persistOrder(order)
 
-  if (orderType === FLASH_MARKET_ORDER_TYPE) {
+  if (orderType === FLASH_MARKET_ORDER_TYPE && !chains.isCrossChain) {
     setTimeout(() => {
       void fillMarketOrder(orderId)
     }, MARKET_FILL_DELAY_MS)
@@ -955,10 +1051,10 @@ export async function handleLocalTradeRequest(req: Request) {
 
     if (req.method === 'POST' && url.pathname === '/v1/order') {
       const body = await readJson(req)
-      const quoteId = String(body.quoteId || '')
-      const quoteRecord = quotes.get(quoteId)
+      const quoteReference = String(body.quoteId || body.bridgeQuoteId || '')
+      const quoteRecord = quotes.get(quoteReference)
 
-      if (!quoteRecord) return errorResponse(`Unknown local Flash quote: ${quoteId}`, 404)
+      if (!quoteRecord) return errorResponse(`Unknown local Flash quote: ${quoteReference}`, 404)
       if (!body.userSignature) return errorResponse('Local Flash submit requires userSignature', 400)
       validateSubmitBody(quoteRecord, body)
 

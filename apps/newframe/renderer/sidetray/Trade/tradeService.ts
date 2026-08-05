@@ -6,12 +6,7 @@ export function closeTrade() {
 }
 
 export async function flashQuote(request: MarketTradeQuoteRequest) {
-  const {
-    accountAddress: _accountAddress,
-    contraChain: _contraChain,
-    targetChain: _targetChain,
-    ...wireRequest
-  } = request
+  const { accountAddress: _accountAddress, ...wireRequest } = request
   const result = await link.executeQuery({
     type: 'flash.quote',
     request: wireRequest

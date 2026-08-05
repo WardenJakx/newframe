@@ -14,14 +14,27 @@ import {
   getFlashSupportedChainIds,
   isFlashChainSupported
 } from './chains'
-import { getDefaultContraAsset, getDefaultContraAssetForChain } from './pair'
+import { getDefaultContraAsset, getDefaultContraAssetForChain, getFlashAssetPairChains } from './pair'
 import { NATIVE_CURRENCY } from '../token/constants'
 
 describe('flash domain helpers', () => {
   it('selects dev and production supported chain sets by runtime', () => {
-    expect(getFlashSupportedChainIds({ profile: 'dev' })).toEqual([FLASH_ANVIL_CHAIN_ID])
+    expect(getFlashSupportedChainIds({ profile: 'dev' })).toEqual([
+      1,
+      10,
+      56,
+      137,
+      999,
+      FLASH_BASE_CHAIN_ID,
+      9745,
+      81457,
+      42161,
+      43114,
+      143,
+      FLASH_ANVIL_CHAIN_ID
+    ])
     expect(isFlashChainSupported(FLASH_ANVIL_CHAIN_ID, { profile: 'dev' })).toBe(true)
-    expect(isFlashChainSupported(1, { profile: 'dev' })).toBe(false)
+    expect(isFlashChainSupported(1, { profile: 'dev' })).toBe(true)
 
     expect(getFlashSupportedChainIds({ profile: 'prod' })).toEqual([
       1,
@@ -46,6 +59,24 @@ describe('flash domain helpers', () => {
       FLASH_BASE_CHAIN_ID
     )
     expect(getFlashDefaultChainId({ profile: 'dev' }, [1, FLASH_ANVIL_CHAIN_ID])).toBe(FLASH_ANVIL_CHAIN_ID)
+    expect(getFlashDefaultChainId({ profile: 'dev' })).toBe(FLASH_ANVIL_CHAIN_ID)
+  })
+
+  it('derives target, contra, spent, and receive chains from the asset pair', () => {
+    const targetAsset = { ...FLASH_WETH_ASSET, chainId: 1, id: `1:${FLASH_WETH_ASSET.address}` }
+    const contraAsset = {
+      ...FLASH_USDC_ASSET,
+      chainId: FLASH_BASE_CHAIN_ID,
+      id: `${FLASH_BASE_CHAIN_ID}:${FLASH_USDC_ASSET.address}`
+    }
+
+    expect(getFlashAssetPairChains({ side: 'buy', targetAsset, contraAsset })).toEqual({
+      targetChainId: 1,
+      contraChainId: FLASH_BASE_CHAIN_ID,
+      spentChainId: FLASH_BASE_CHAIN_ID,
+      receiveChainId: 1,
+      isCrossChain: true
+    })
   })
 
   it('converts balance summaries into canonical Flash assets', () => {

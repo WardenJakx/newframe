@@ -16,7 +16,6 @@ function order(cancellable = true) {
   return {
     orderId: 'order-1',
     accountAddress,
-    chainId: 1,
     provider: 'flash' as const,
     status: cancellable ? 'open' : 'cancelled',
     orderType: 'limit',

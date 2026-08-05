@@ -1,8 +1,8 @@
 import { expect, it } from 'bun:test'
 
-import { FLASH_USDC_ASSET, FLASH_WETH_ASSET } from './assets'
+import { FLASH_USDC_ASSET, FLASH_WETH_ASSET, getFlashAssetsForChain } from './assets'
 import { FLASH_ANVIL_CHAIN_ID, FLASH_MARKET_ORDER_TYPE } from './constants'
-import type { FlashQuote } from './schemas'
+import type { FlashQuote, FlashQuoteAction } from './schemas'
 import {
   buildFlashActionTransaction,
   buildFlashSubmitRequest,
@@ -95,4 +95,61 @@ it('builds quoted actions and signature-bearing Flash submission data only in th
     evmPermitTypedData: permitTypedDataRaw,
     orderSignature: '0xorder'
   })
+})
+
+it('derives cross-chain provider fields and every execution chain from the spent asset', () => {
+  const targetAsset = getFlashAssetsForChain(1).find((asset) => asset.symbol === 'WETH')!
+  const contraAsset = getFlashAssetsForChain(8453).find((asset) => asset.symbol === 'USDC')!
+  const typedData = {
+    domain: { chainId: 8453 },
+    message: { toToken: '0x000000000000000000000000000000000DEFdeaD' },
+    primaryType: 'Order',
+    types: { Order: [] }
+  }
+  const quote = {
+    id: '',
+    side: 'buy',
+    orderType: FLASH_MARKET_ORDER_TYPE,
+    targetAsset,
+    contraAsset,
+    spentAsset: contraAsset,
+    receiveAsset: targetAsset,
+    inputAmount: '100',
+    outputAmount: '0.04',
+    steps: [],
+    raw: { bridgeQuoteId: 'bridge-1', evm: { orderTypedData: typedData } }
+  } satisfies FlashQuote
+  expect(
+    buildFlashSubmitRequest({
+      accountAddress: '0x1111111111111111111111111111111111111111',
+      bridgeQuoteId: 'bridge-1',
+      flashPayload: quote.raw,
+      idempotencyKey: 'operation-cross-chain',
+      orderSignature: '0xorder',
+      quote,
+      quoteRequest: { recipientAddress: '0x2222222222222222222222222222222222222222' }
+    })
+  ).toMatchObject({
+    accountAddress: '0x1111111111111111111111111111111111111111',
+    recipientAddress: '0x1111111111111111111111111111111111111111',
+    targetChain: 'ethereum',
+    contraChain: 'base',
+    bridgeQuoteId: 'bridge-1',
+    evmOrderTypedData: JSON.stringify(typedData)
+  })
+
+  const baseAction = {
+    id: 'approve',
+    kind: 'approve',
+    label: 'Approve USDC',
+    asset: contraAsset,
+    amount: '100',
+    amountRaw: '100000000',
+    tx: { to: contraAsset.address, data: '0x095ea7b3' }
+  } as unknown as FlashQuoteAction
+  expect(buildFlashActionTransaction(baseAction, 8453).chainId).toBe(8453)
+  expect(() =>
+    buildFlashActionTransaction({ ...baseAction, tx: { ...baseAction.tx, chainId: 1 } }, 8453)
+  ).toThrow('Invalid Flash action chain id')
+  expect(flashTypedDataChainId(typedData, 1)).toBe(8453)
 })

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'bun:test'
 import { z } from 'zod'
 
 import {
+  FlashQuoteRequestSchema,
   commandContracts,
   queryContracts,
   type CommandMap,
@@ -22,6 +23,49 @@ function inputDiscriminants(input: z.ZodType) {
 }
 
 describe('operation contract catalogs', () => {
+  it('accepts independently chain-qualified market assets and rejects cross-chain advanced orders', () => {
+    const targetAsset = {
+      id: '8453:0x1111111111111111111111111111111111111111',
+      symbol: 'WETH',
+      name: 'Wrapped Ether',
+      decimals: 18,
+      chainId: 8453,
+      isNative: false,
+      address: '0x1111111111111111111111111111111111111111'
+    }
+    const contraAsset = {
+      id: '1:0x2222222222222222222222222222222222222222',
+      symbol: 'USDC',
+      name: 'USD Coin',
+      decimals: 6,
+      chainId: 1,
+      isNative: false,
+      address: '0x2222222222222222222222222222222222222222'
+    }
+    const request = {
+      contraAsset,
+      inputAmount: '1',
+      orderType: 'market' as const,
+      qty: '1',
+      side: 'sell' as const,
+      targetAsset
+    }
+
+    expect(FlashQuoteRequestSchema.parse(request)).toEqual(request)
+    expect(
+      FlashQuoteRequestSchema.safeParse({ ...request, chainId: targetAsset.chainId }).success
+    ).toBeFalse()
+    const advanced = FlashQuoteRequestSchema.safeParse({
+      ...request,
+      limitNotionalPrice: '2500',
+      orderType: 'limit'
+    })
+    expect(advanced.success).toBeFalse()
+    if (!advanced.success) {
+      expect(advanced.error.issues[0]?.message).toBe('Cross-chain Flash quotes only support market orders')
+    }
+  })
+
   it('owns aligned discriminants, derived result parsing, and disjoint operation keys', () => {
     expect(Object.keys(commandContracts)).toHaveLength(74)
     expect(Object.keys(queryContracts)).toHaveLength(9)

@@ -59,7 +59,6 @@ function projectOrders(
                 provider: order.provider,
                 source: order.source,
                 environment: order.environment,
-                chainId: order.chainId,
                 orderType: order.orderType,
                 side: order.side,
                 qty: order.qty

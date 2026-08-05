@@ -34,6 +34,7 @@ import {
   type FlashStep,
   type FlashTradeSide
 } from '../../../domain/flash/schemas'
+import { getFlashAssetPairChains } from '../../../domain/flash/pair'
 
 export const TRADE_DEFAULT_SLIPPAGE = ''
 export const TRADE_DEFAULT_MAX_PRICE_IMPACT = ''
@@ -57,8 +58,6 @@ export interface TradeOrderFields {
 
 export type TradeQuoteRequest = FlashQuoteRequest & {
   accountAddress: string
-  contraChain: number
-  targetChain: number
 }
 
 export type MarketTradeQuoteRequest = TradeQuoteRequest
@@ -185,6 +184,7 @@ function orderSupportsTimeInForce(orderType: FlashOrderType) {
 }
 
 export function getTradeValidationError({
+  contraAsset,
   durationDays,
   durationHours,
   durationMinutes,
@@ -196,15 +196,31 @@ export function getTradeValidationError({
   side,
   slippage,
   startTime,
+  targetAsset,
   timeInForce,
   triggerNotionalPrice,
   twapBucketCount
 }: TradeOrderFields & {
+  contraAsset?: FlashAsset
   inputAmount: string
   orderType: FlashOrderType
   side?: FlashTradeSide
   slippage?: string
+  targetAsset?: FlashAsset
 }) {
+  if (
+    targetAsset &&
+    contraAsset &&
+    getFlashAssetPairChains({
+      side: side || 'sell',
+      targetAsset,
+      contraAsset
+    }).isCrossChain &&
+    orderType !== FLASH_MARKET_ORDER_TYPE
+  ) {
+    return 'Cross-chain trades only support Market orders.'
+  }
+
   if (!tradeAmountNumber(inputAmount)) return 'Enter an amount to trade.'
 
   if (orderType === FLASH_MARKET_ORDER_TYPE) {
@@ -370,38 +386,39 @@ export function buildTradeQuoteRequest({
   const qty = cleanTradeAmount(inputAmount)
   const validationError = getTradeValidationError({
     ...orderFields,
+    contraAsset,
     inputAmount: qty,
     orderType,
     side,
-    slippage
+    slippage,
+    targetAsset
   })
 
   if (validationError) return null
   if (!accountAddress) throw new Error('Select an account to trade.')
 
-  const chainId = targetAsset.chainId || contraAsset.chainId
-
   return {
     accountAddress,
-    chainId,
     contraAsset,
-    contraChain: chainId,
     inputAmount: qty,
     orderType,
     qty,
     side,
     targetAsset,
-    targetChain: chainId,
     ...(orderType === FLASH_MARKET_ORDER_TYPE ? getMarketTradeOptionalFields({ quickTrade, slippage }) : {}),
     ...getOrderFields(orderType, orderFields)
   }
 }
 
 export function marketTradeQuoteRequestKey(request: TradeQuoteRequest) {
-  return flashRequestKey(request)
+  return flashRequestKey({
+    ...request,
+    contraAsset: { id: getTradeAssetKey(request.contraAsset) },
+    targetAsset: { id: getTradeAssetKey(request.targetAsset) }
+  })
 }
 
-function tradeAssetMapKey(asset: FlashAsset) {
+export function getTradeAssetKey(asset: FlashAsset) {
   return `${asset.chainId}:${toFlashApiAssetAddress(asset).toLowerCase()}`
 }
 
@@ -411,7 +428,7 @@ export function createTradeBalanceIndex(balances: BalanceSummary[]) {
   balances.forEach((balance) => {
     try {
       const asset = balanceSummaryToFlashAsset(balance)
-      balanceIndex.set(tradeAssetMapKey(asset), balance)
+      balanceIndex.set(getTradeAssetKey(asset), balance)
     } catch {
       // Ignore malformed portfolio rows; they cannot be indexed as Flash assets.
     }
@@ -439,7 +456,7 @@ export function buildTradeAssetOptions({
   const addAsset = (asset: FlashAsset) => {
     if (!isFlashChainSupported(asset.chainId, runtime)) return
     if (!networkEnabled(networks, asset.chainId)) return
-    assets.set(tradeAssetMapKey(asset), asset)
+    assets.set(getTradeAssetKey(asset), asset)
   }
 
   balances.forEach((balance) => {
@@ -463,11 +480,12 @@ export function getFlashBalanceEntries(
   balanceIndex = createTradeBalanceIndex(balances)
 ) {
   return assets.map((asset) => {
-    const balance = balanceIndex.get(tradeAssetMapKey(asset))
+    const assetId = getTradeAssetKey(asset)
+    const balance = balanceIndex.get(assetId)
 
     return {
-      id: asset.id,
-      assetId: asset.id,
+      id: assetId,
+      assetId,
       symbol: asset.symbol,
       balance: balance?.balance || '0'
     }

@@ -23,19 +23,17 @@ const assetPillRecipe = cva({
 
 export function OrderAssetPill({
   asset,
-  fallbackChainId,
   networks,
   networksMeta,
   prefix = ''
 }: {
   asset: any
-  fallbackChainId?: number
   networks: Record<string | number, any>
   networksMeta: Record<string | number, any>
   prefix?: string
 }) {
   const symbol = orderAssetSymbol(asset)
-  const chainId = Number(asset?.chainId || fallbackChainId || 0)
+  const chainId = Number(asset?.chainId || 0)
   const logo = asset?.logoURI || asset?.logoUrl || asset?.icon
   const logoSource = imageSource(logo)
   const art = logoSource ? (

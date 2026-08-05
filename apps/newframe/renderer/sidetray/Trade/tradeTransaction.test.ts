@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'bun:test'
 
+import type { BalanceSummary } from '../../../domain/balance'
 import { FLASH_USDC_ASSET, FLASH_WETH_ASSET } from '../../../domain/flash/assets'
 import {
-  FLASH_ANVIL_CHAIN_ID,
   FLASH_LIMIT_ORDER_TYPE,
   FLASH_MARKET_ORDER_TYPE,
   FLASH_STOP_LOSS_ORDER_TYPE,
@@ -14,8 +14,10 @@ import type { FlashQuote } from '../../../domain/flash/schemas'
 import { cleanFlashDecimal } from '../../../domain/flash/policy'
 import {
   buildTradeQuoteRequest,
+  createTradeBalanceIndex,
   getEstimatedTradePriceImpact,
   getTradeDurationSeconds,
+  getTradeAssetKey,
   getTradeQuoteValidationError,
   getTradeValidationError,
   marketTradeQuoteRequestKey
@@ -40,15 +42,12 @@ describe('tradeTransaction', () => {
     expect(cleanFlashDecimal(' 1,200.50 ')).toBe('1200.50')
     expect(market({ inputAmount: ' 1,200.50 ' })).toEqual({
       accountAddress: '0xsender',
-      chainId: FLASH_ANVIL_CHAIN_ID,
       contraAsset: FLASH_USDC_ASSET,
-      contraChain: FLASH_ANVIL_CHAIN_ID,
       inputAmount: '1200.50',
       orderType: FLASH_MARKET_ORDER_TYPE,
       qty: '1200.50',
       side: 'sell',
-      targetAsset: FLASH_WETH_ASSET,
-      targetChain: FLASH_ANVIL_CHAIN_ID
+      targetAsset: FLASH_WETH_ASSET
     })
     expect(market({ quickTrade: true, slippage: '1.00' })).toMatchObject({
       quickTrade: true,
@@ -215,5 +214,96 @@ describe('tradeTransaction', () => {
     const first = market()!
     const second = market({ accountAddress: '0xother', quickTrade: true, slippage: '1' })!
     expect(marketTradeQuoteRequestKey(first)).not.toBe(marketTradeQuoteRequestKey(second))
+  })
+
+  it('builds cross-chain Market intent without scalar chains and rejects advanced intent', () => {
+    const baseTarget = { ...FLASH_WETH_ASSET, chainId: 8453, id: `8453:${FLASH_WETH_ASSET.address}` }
+    const ethereumContra = { ...FLASH_USDC_ASSET, chainId: 1, id: `1:${FLASH_USDC_ASSET.address}` }
+    const request = market({ targetAsset: baseTarget, contraAsset: ethereumContra })
+
+    expect(request).toMatchObject({
+      targetAsset: baseTarget,
+      contraAsset: ethereumContra,
+      orderType: FLASH_MARKET_ORDER_TYPE
+    })
+    expect(request).not.toHaveProperty('chainId')
+    expect(request).not.toHaveProperty('targetChain')
+    expect(request).not.toHaveProperty('contraChain')
+    expect(
+      buildTradeQuoteRequest({
+        ...base,
+        targetAsset: baseTarget,
+        contraAsset: ethereumContra,
+        limitNotionalPrice: '2500',
+        orderType: FLASH_LIMIT_ORDER_TYPE
+      })
+    ).toBe(null)
+    expect(
+      getTradeValidationError({
+        contraAsset: ethereumContra,
+        inputAmount: '1',
+        limitNotionalPrice: '2500',
+        orderType: FLASH_LIMIT_ORDER_TYPE,
+        side: 'sell',
+        targetAsset: baseTarget
+      })
+    ).toBe('Cross-chain trades only support Market orders.')
+    expect(
+      getTradeValidationError({
+        contraAsset: ethereumContra,
+        inputAmount: '',
+        orderType: FLASH_LIMIT_ORDER_TYPE,
+        side: 'sell',
+        targetAsset: baseTarget
+      })
+    ).toBe('Cross-chain trades only support Market orders.')
+    expect(
+      buildTradeQuoteRequest({
+        ...base,
+        targetAsset: baseTarget,
+        contraAsset: ethereumContra,
+        orderType: FLASH_MARKET_ORDER_TYPE
+      })
+    ).not.toBe(null)
+  })
+
+  it('keys quote and balance identity by each asset chain and canonical address', () => {
+    const sharedId = 'shared-token'
+    const ethereumTarget = { ...FLASH_WETH_ASSET, chainId: 1, id: sharedId }
+    const baseTarget = { ...FLASH_WETH_ASSET, chainId: 8453, id: sharedId }
+    const ethereumRequest = market({ targetAsset: ethereumTarget })!
+    const baseRequest = market({ targetAsset: baseTarget })!
+    const balances = [
+      {
+        address: FLASH_WETH_ASSET.address,
+        balance: '100',
+        chainId: 1,
+        decimals: 18,
+        displayBalance: '0.0000000000000001',
+        hasPrice: false,
+        name: 'Wrapped Ether',
+        symbol: 'WETH',
+        totalValue: 0,
+        unformattedBalance: 0.0000000000000001
+      },
+      {
+        address: FLASH_WETH_ASSET.address,
+        balance: '200',
+        chainId: 8453,
+        decimals: 18,
+        displayBalance: '0.0000000000000002',
+        hasPrice: false,
+        name: 'Wrapped Ether',
+        symbol: 'WETH',
+        totalValue: 0,
+        unformattedBalance: 0.0000000000000002
+      }
+    ] satisfies BalanceSummary[]
+    const index = createTradeBalanceIndex(balances)
+
+    expect(marketTradeQuoteRequestKey(ethereumRequest)).not.toBe(marketTradeQuoteRequestKey(baseRequest))
+    expect(getTradeAssetKey(ethereumTarget)).not.toBe(getTradeAssetKey(baseTarget))
+    expect(index.get(getTradeAssetKey(ethereumTarget))?.balance).toBe('100')
+    expect(index.get(getTradeAssetKey(baseTarget))?.balance).toBe('200')
   })
 })

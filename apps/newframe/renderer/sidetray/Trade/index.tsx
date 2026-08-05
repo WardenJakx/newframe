@@ -55,6 +55,7 @@ import {
   formatTradeNotional,
   getFlashBalanceEntries,
   getEstimatedTradePriceImpact,
+  getTradeAssetKey,
   getTradeQuoteValidationError,
   getTradeTriggerDeltaPercent,
   getTradeValidationError,
@@ -176,15 +177,17 @@ export default function Trade({ assetId, chainId }: TradeProps) {
   }, [accountAddress, inputAmount, state])
   const latestQuoteEffectRequestRef = React.useRef(quoteEffectRequest)
   const ticketValidationError = React.useMemo(() => {
-    if (!inputAmount) return ''
-
-    return getTradeValidationError({
+    const validationError = getTradeValidationError({
       ...getTradeOrderFields(state),
       inputAmount,
       orderType: state.orderType,
       side: state.side,
-      slippage: state.slippage
+      slippage: state.slippage,
+      targetAsset: state.targetAsset,
+      contraAsset: state.contraAsset
     })
+
+    return !inputAmount && validationError === 'Enter an amount to trade.' ? '' : validationError
   }, [inputAmount, state])
   const quoteValidationError = React.useMemo(
     () =>
@@ -365,7 +368,7 @@ export default function Trade({ assetId, chainId }: TradeProps) {
 
   const getTradeDisplayBalance = React.useCallback(
     (asset: FlashAsset) => {
-      const balance = tradeBalanceIndex.get(asset.id)
+      const balance = tradeBalanceIndex.get(getTradeAssetKey(asset))
       if (!balance) return '0'
 
       return createDisplayBalance(balance).displayBalance
@@ -375,7 +378,7 @@ export default function Trade({ assetId, chainId }: TradeProps) {
 
   const getTradeLogoURI = React.useCallback(
     (asset: FlashAsset) => {
-      const balance = tradeBalanceIndex.get(asset.id)
+      const balance = tradeBalanceIndex.get(getTradeAssetKey(asset))
 
       return (
         balance?.logoURI ||
@@ -387,12 +390,12 @@ export default function Trade({ assetId, chainId }: TradeProps) {
 
   const createTradeSelectorItem = React.useCallback(
     (asset: FlashAsset) => {
-      const balance = tradeBalanceIndex.get(asset.id)
+      const balance = tradeBalanceIndex.get(getTradeAssetKey(asset))
 
-      if (balance) return { ...createBalanceTokenSelectorItem(balance), id: asset.id }
+      if (balance) return { ...createBalanceTokenSelectorItem(balance), id: getTradeAssetKey(asset) }
 
       return {
-        id: asset.id,
+        id: getTradeAssetKey(asset),
         symbol: asset.symbol,
         searchText: [asset.name, asset.address].filter(Boolean).join(' '),
         amountLabel: '0',
@@ -406,7 +409,7 @@ export default function Trade({ assetId, chainId }: TradeProps) {
 
   const handleSetTradeBalancePercent = React.useCallback(
     (asset: FlashAsset, percentValue: number) => {
-      const balance = tradeBalanceIndex.get(asset.id)
+      const balance = tradeBalanceIndex.get(getTradeAssetKey(asset))
       const rawBalance = toBigInt(balance?.balance || 0) || 0n
       const percent = Math.min(100, Math.max(0, Number.isFinite(percentValue) ? percentValue : 0))
       const basisPoints = BigInt(Math.round(percent * 100))
@@ -422,7 +425,7 @@ export default function Trade({ assetId, chainId }: TradeProps) {
 
   const getTradeBalancePercent = React.useCallback(
     (asset: FlashAsset, amount: string) => {
-      const balance = tradeBalanceIndex.get(asset.id)
+      const balance = tradeBalanceIndex.get(getTradeAssetKey(asset))
       const displayBalance = Number(formatUnits(toBigInt(balance?.balance || 0) || 0n, asset.decimals))
       const input = Number(String(amount || '').replace(/,/g, ''))
 
@@ -803,11 +806,11 @@ export default function Trade({ assetId, chainId }: TradeProps) {
     const open = field === 'target' ? state.targetOpen : state.contraOpen
     const options = state.assetOptions.filter((option) => !isSameFlashAsset(option, oppositeAsset))
     const { items: selectorOptions, rowsHidden } = getTokenSelectorPage({
-      getId: (option) => option.id,
+      getId: getTradeAssetKey,
       items: options,
       open,
       rowsVisible: assetRowsVisible[field],
-      selectedId: asset.id
+      selectedId: getTradeAssetKey(asset)
     })
     const items = selectorOptions.map(createTradeSelectorItem)
     const searchableItems = options.map(createTradeSelectorItem)
@@ -839,11 +842,11 @@ export default function Trade({ assetId, chainId }: TradeProps) {
         networksMeta={networksMeta}
         onOpenChange={(nextOpen) => dispatch({ type: 'setAssetOpen', field, open: nextOpen })}
         onSelect={(id) => {
-          const selected = options.find((option) => option.id === id)
+          const selected = options.find((option) => getTradeAssetKey(option) === id)
           if (selected) dispatch({ type: 'selectAsset', field, asset: selected })
         }}
         open={open}
-        selectedId={asset.id}
+        selectedId={getTradeAssetKey(asset)}
       />
     )
   }
