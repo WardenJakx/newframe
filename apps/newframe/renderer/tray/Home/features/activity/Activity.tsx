@@ -4,6 +4,7 @@ import { useWalletSelector } from '../../../../state/useAppSelector'
 import { useHomeUiStore } from '../../state/HomeUiProvider'
 import { createActivityRows } from './activityModel'
 import { ActivityView } from './ActivityView'
+import link from '../../../../shared/link'
 
 const EMPTY_RECORD: Record<string, any> = {}
 
@@ -16,6 +17,7 @@ export function Activity() {
         activity: state.activity || EMPTY_RECORD,
         networks: state.networks?.ethereum || EMPTY_RECORD,
         networksMeta: state.networksMeta?.ethereum || EMPTY_RECORD,
+        tokens: state.tokens || { byId: {}, accountTokenIds: {} },
         showTestnets: !!state.showTestnets
       }
     })
@@ -29,7 +31,16 @@ export function Activity() {
       activity={activity}
       networks={shared.networks}
       networksMeta={shared.networksMeta}
+      tokens={shared.tokens}
       onOpen={(activityId) => openOverlay({ type: 'activity', activityId })}
+      onOpenExplorer={(record) => {
+        if (!record.hash) return
+        void link.executeCommand({
+          type: 'explorer.open',
+          chainId: Number(record.chainId),
+          transactionHash: record.hash
+        })
+      }}
     />
   )
 }

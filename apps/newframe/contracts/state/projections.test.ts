@@ -131,6 +131,19 @@ describe('wallet renderer projection records', () => {
           source: 'signature',
           futureCredential: 'must-not-cross-ipc'
         },
+        gasSpent: '0x5208',
+        balanceChanges: [
+          {
+            id: 'usdc-out',
+            kind: 'erc20',
+            direction: 'out',
+            label: 'Asset out',
+            amount: '0x1',
+            decimals: 6,
+            symbol: 'USDC',
+            futureCredential: 'must-not-cross-ipc'
+          }
+        ],
         futureCredential: 'must-not-cross-ipc'
       })
     ).toEqual({
@@ -141,7 +154,19 @@ describe('wallet renderer projection records', () => {
         contractName: 'Token',
         method: 'transfer',
         source: 'signature'
-      }
+      },
+      gasSpent: '0x5208',
+      balanceChanges: [
+        {
+          id: 'usdc-out',
+          kind: 'erc20',
+          direction: 'out',
+          label: 'Asset out',
+          amount: '0x1',
+          decimals: 6,
+          symbol: 'USDC'
+        }
+      ]
     })
   })
 

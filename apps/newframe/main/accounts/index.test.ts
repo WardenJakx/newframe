@@ -15,7 +15,11 @@ import log from 'electron-log'
 import { addHexPrefix, intToHex } from '@ethereumjs/util'
 
 import store from '../store'
-import { GasFeesSource, TRANSACTION_CONFIRMATION_TARGET } from '../../domain/transaction'
+import {
+  GasFeesSource,
+  TRANSACTION_CONFIRMATION_TARGET,
+  type TransactionSimulation
+} from '../../domain/transaction'
 import { DEFAULT_PROFILE_ID } from '../../domain/state/main'
 import { gweiToHex } from '../../test/support/util'
 import { createAgentPrincipal, createRpcPrincipal } from '../authority'
@@ -106,7 +110,9 @@ const revealMock = {
   recog: mock(async () => [])
 }
 const simulationMock = {
-  simulateTransactionEffects: mock(async () => ({ status: 'success' as const, effects: [] }))
+  simulateTransactionEffects: mock(
+    async (): Promise<TransactionSimulation> => ({ status: 'success', effects: [] })
+  )
 }
 
 function createAccounts(chainRpc = providerMock) {
@@ -779,7 +785,7 @@ describe('#setTxSent', () => {
     const receiptBlock = 100
     const usdc = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'
     request.account = account.address
-    const simulation = {
+    const simulation: TransactionSimulation = {
       status: 'success',
       effects: [
         {
@@ -794,6 +800,7 @@ describe('#setTxSent', () => {
         }
       ]
     }
+    simulationMock.simulateTransactionEffects.mockResolvedValueOnce(simulation)
     store.setState((state: any) => {
       state.main.tokens.accountTokenIds[account.address] = []
       delete state.main.tokens.byId[`1:${usdc.toLowerCase()}`]
@@ -827,6 +834,7 @@ describe('#setTxSent', () => {
       expect.objectContaining(expectedToken)
     ])
     expect(storeState().main.activity[hash].positionsRefreshedAt).toEqual(expect.any(Number))
+    expect(storeState().main.activity[hash].balanceChanges).toEqual(simulation.effects)
 
     Accounts.close()
   })
@@ -847,6 +855,7 @@ describe('#setTxSent', () => {
     expect((Accounts.current().requests[request.handlerId] as any).tx.confirmations).toBe(
       TRANSACTION_CONFIRMATION_TARGET
     )
+    expect(storeState().main.activity[hash].gasSpent).toBe('0x23cfb4e356000')
 
     timers.advanceTimersByTime(2999)
     expect(clearRequest).not.toHaveBeenCalledWith(request.handlerId)

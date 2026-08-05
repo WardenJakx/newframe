@@ -15,7 +15,9 @@ import {
   GasFeesSource,
   TRANSACTION_CONFIRMATION_TARGET,
   getTransactionIntent,
-  getTransactionPositionTokens
+  getTransactionPositionTokens,
+  getTransactionEffects,
+  getPaidTransactionFee
 } from '../../domain/transaction/index.js'
 import { decideWalletAction, type TrustedPrincipal } from '../authority.js'
 
@@ -318,6 +320,14 @@ export class Accounts extends EventEmitter {
     }
   }
 
+  private getTransactionNativeSymbol(req: TransactionRequest) {
+    const chain = this.getTransactionChain(req)
+    const network = chain ? (this.store.getState().main.networks.ethereum[chain.id] as any) : undefined
+    const metadata = chain ? this.store.getState().main.networksMeta.ethereum[chain.id] : undefined
+
+    return network?.symbol || metadata?.nativeCurrency.symbol || 'ETH'
+  }
+
   private transactionActivityRecord(
     account: FrameAccount,
     handlerId: string,
@@ -557,10 +567,19 @@ export class Accounts extends EventEmitter {
     const now = this.dependencies.runtime.now()
     const notificationState = status === 'succeeded' ? 'completed' : 'failed'
     const display = this.getTransactionActivityDisplay(req, this.getTransactionChain(req))
+    const gasSpent = getPaidTransactionFee(req)
+    const balanceChanges =
+      status === 'succeeded'
+        ? getTransactionEffects(req, this.getTransactionNativeSymbol(req)).filter(
+            (effect) => effect.direction === 'in' || effect.direction === 'out'
+          )
+        : []
 
     this.store.getState().finalizeActivity(transactionActivityId(hash), status, {
       ...update,
       display,
+      gasSpent,
+      balanceChanges: cloneForActivity(balanceChanges),
       decodedData: cloneForActivity(req.decodedData),
       tokenData: cloneForActivity(req.tokenData),
       chainData: cloneForActivity(req.chainData),

@@ -66,6 +66,20 @@ export const ActivityStatusSchema = z.enum(['submitted', 'confirming', 'succeede
 
 const ActivityDateSchema = z.union([z.number(), z.string(), z.date()]).nullable().optional()
 const ActivityNumberSchema = z.union([z.number(), z.string()]).nullable().optional()
+const ActivityBalanceChangeSchema = z
+  .object({
+    id: z.string(),
+    kind: z.enum(['native', 'erc20']),
+    direction: z.enum(['out', 'in']),
+    label: z.string(),
+    amount: z.string().optional(),
+    decimals: z.number().int().nonnegative().optional(),
+    symbol: z.string(),
+    detail: z.string().optional(),
+    assetAddress: z.string().optional(),
+    logoURI: z.string().optional()
+  })
+  .strip()
 
 export const ActivityRecordSchema = z
   .object({
@@ -85,6 +99,8 @@ export const ActivityRecordSchema = z
     status: ActivityStatusSchema,
     confirmations: ActivityNumberSchema,
     receipt: z.unknown().optional(),
+    gasSpent: z.string().nullable().optional(),
+    balanceChanges: z.array(ActivityBalanceChangeSchema).optional(),
     data: z.unknown().optional(),
     payload: z.unknown().optional(),
     display: z.unknown().optional(),
