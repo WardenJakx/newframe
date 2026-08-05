@@ -34,13 +34,6 @@ type ProfileSubmission = {
   name?: string
 }
 
-const managementRecipe = cva({
-  base: {
-    width: 'selection-menu',
-    maxWidth: 'calc(100vw - token(sizes.field))'
-  }
-})
-
 const columnRecipe = cva({
   base: { display: 'flex', minWidth: 0, flexDirection: 'column' },
   variants: {
@@ -295,7 +288,7 @@ export function ProfileSelector({ currentProfile, profiles }: ProfileSelectorPro
   }))
 
   const footer = (
-    <div className={managementRecipe()} onKeyDown={(event) => event.stopPropagation()}>
+    <div onKeyDown={(event) => event.stopPropagation()}>
       <div className={columnRecipe({ gap: 'small' })}>
         {displayedMode === 'create' ? (
           <>

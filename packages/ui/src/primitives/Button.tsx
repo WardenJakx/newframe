@@ -254,6 +254,11 @@ export const buttonRecipe = cva({
       appearance: 'outlinedSelection',
       selected: true,
       css: { borderColor: 'border.focus', background: 'bg.raised', color: 'text.primary' }
+    },
+    {
+      appearance: 'selectionTrigger',
+      size: 'small',
+      css: { width: '100%', height: 'button-small', minHeight: 'button-small' }
     }
   ],
   defaultVariants: {

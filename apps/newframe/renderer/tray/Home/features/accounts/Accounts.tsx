@@ -866,6 +866,7 @@ export function Accounts() {
                                   onSelect={(profileId) => void moveAccountToProfile(id, profileId)}
                                   open={moveOpen}
                                   trigger={<Text variant='caption'>Move to profile</Text>}
+                                  triggerSize='small'
                                 />
                               ) : null}
                               {moveOpen &&
