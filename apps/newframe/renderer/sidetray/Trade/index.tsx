@@ -108,8 +108,8 @@ export default function TradeForm({ assetId, chainId }: TradeProps) {
   const { balanceSummaries, currentAccount, networks, networksMeta, operations, orders, runtime } =
     useSideTraySelector(selectSideTrayWallet)
   const tradeAssets = React.useMemo(
-    () => buildTradeAssetOptions({ balances: balanceSummaries, networks, runtime }),
-    [balanceSummaries, networks, runtime]
+    () => buildTradeAssetOptions({ balances: balanceSummaries, networks, networksMeta, runtime }),
+    [balanceSummaries, networks, networksMeta, runtime]
   )
   const tradeBalanceIndex = React.useMemo(() => createTradeBalanceIndex(balanceSummaries), [balanceSummaries])
   const flashBalanceEntries = React.useMemo(

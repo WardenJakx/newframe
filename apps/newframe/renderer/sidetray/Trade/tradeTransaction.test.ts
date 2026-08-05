@@ -5,6 +5,7 @@ import { FLASH_USDC_ASSET, FLASH_WETH_ASSET } from '../../../domain/flash/assets
 import {
   FLASH_LIMIT_ORDER_TYPE,
   FLASH_MARKET_ORDER_TYPE,
+  FLASH_NATIVE_ETH_TOKEN_ADDRESS,
   FLASH_STOP_LOSS_ORDER_TYPE,
   FLASH_STOP_ORDER_TYPE,
   FLASH_TAKE_PROFIT_ORDER_TYPE,
@@ -13,6 +14,7 @@ import {
 import type { FlashQuote } from '../../../domain/flash/schemas'
 import { cleanFlashDecimal } from '../../../domain/flash/policy'
 import {
+  buildTradeAssetOptions,
   buildTradeQuoteRequest,
   createTradeBalanceIndex,
   getEstimatedTradePriceImpact,
@@ -305,5 +307,29 @@ describe('tradeTransaction', () => {
     expect(getTradeAssetKey(ethereumTarget)).not.toBe(getTradeAssetKey(baseTarget))
     expect(index.get(getTradeAssetKey(ethereumTarget))?.balance).toBe('100')
     expect(index.get(getTradeAssetKey(baseTarget))?.balance).toBe('200')
+  })
+
+  it('includes native assets for enabled supported chains without balance rows', () => {
+    const assets = buildTradeAssetOptions({
+      balances: [],
+      networks: {
+        1: { on: true },
+        8453: { on: false }
+      },
+      networksMeta: {
+        1: { nativeCurrency: { decimals: 18, name: 'Ether', symbol: 'ETH' } },
+        8453: { nativeCurrency: { decimals: 18, name: 'Ether', symbol: 'ETH' } }
+      },
+      runtime: { profile: 'prod' }
+    })
+
+    expect(assets).toHaveLength(1)
+    expect(assets[0]).toMatchObject({
+      address: FLASH_NATIVE_ETH_TOKEN_ADDRESS,
+      chainId: 1,
+      isNative: true,
+      name: 'Ether',
+      symbol: 'ETH'
+    })
   })
 })
