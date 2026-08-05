@@ -20,6 +20,7 @@ const FlashChainInputSchema = z.union([
 
 export const FlashQuoteRequestSchema = z.object({
   accountAddress: z.string().optional(),
+  recipientAddress: z.string().optional(),
   targetChain: FlashChainInputSchema.optional(),
   contraChain: FlashChainInputSchema.optional(),
   chainId: NumberOrStringSchema.optional(),
@@ -44,6 +45,7 @@ export const FlashQuoteRequestSchema = z.object({
 })
 
 export const FlashSubmitOrderRequestSchema = FlashQuoteRequestSchema.extend({
+  bridgeQuoteId: z.string().optional(),
   evmOrderTypedData: z.unknown().optional(),
   evmPermitSignature: z.string().optional(),
   evmPermitTypedData: z.unknown().optional(),

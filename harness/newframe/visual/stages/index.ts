@@ -9,6 +9,7 @@ import { resetStateStage } from './reset-state.ts'
 import { sendStage } from './send.ts'
 import { tradeLimitStage } from './trade-limit.ts'
 import { tradeMarketStage } from './trade-market.ts'
+import { tradeCrossChainStage } from './trade-cross-chain.ts'
 import { tradeTicketStage } from './trade-ticket.ts'
 import { trayOverlaysStage } from './tray-overlays.ts'
 import { trayReadinessStage } from './tray-readiness.ts'
@@ -32,6 +33,7 @@ export const visualStages: VisualStage[] = [
   agentSessionStage,
   tradeTicketStage,
   tradeMarketStage,
+  tradeCrossChainStage,
   tradeLimitStage,
   sendStage,
   usdcIntegrationStage,

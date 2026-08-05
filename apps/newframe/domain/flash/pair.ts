@@ -11,10 +11,18 @@ export interface FlashAssetBalance {
 
 export type FlashAssetBalances = readonly FlashAssetBalance[]
 
-interface FlashAssetPair {
+export interface FlashAssetPair {
   side: FlashTradeSide
   targetAsset: FlashAsset
   contraAsset: FlashAsset
+}
+
+export interface FlashAssetPairChains {
+  targetChainId: number
+  contraChainId: number
+  spentChainId: number
+  receiveChainId: number
+  isCrossChain: boolean
 }
 
 interface FlashDefaultAssetOptions {
@@ -39,6 +47,21 @@ export function getSpentAsset({ side, targetAsset, contraAsset }: FlashAssetPair
 
 export function getReceiveAsset({ side, targetAsset, contraAsset }: FlashAssetPair): FlashAsset {
   return side === 'buy' ? targetAsset : contraAsset
+}
+
+export function getFlashAssetPairChains(pair: FlashAssetPair): FlashAssetPairChains {
+  const spentAsset = getSpentAsset(pair)
+  const receiveAsset = getReceiveAsset(pair)
+  const targetChainId = pair.targetAsset.chainId
+  const contraChainId = pair.contraAsset.chainId
+
+  return {
+    targetChainId,
+    contraChainId,
+    spentChainId: spentAsset.chainId,
+    receiveChainId: receiveAsset.chainId,
+    isCrossChain: targetChainId !== contraChainId
+  }
 }
 
 export function getDirectionLabel(side: FlashTradeSide): 'BUY' | 'SELL' {

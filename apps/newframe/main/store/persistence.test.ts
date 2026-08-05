@@ -375,6 +375,74 @@ describe('canonical persisted state contract', () => {
     )
   })
 
+  it('clears legacy scalar orders from every supported pre-v7 state', () => {
+    for (const version of [2, 3, 4, 5, 6]) {
+      const legacy = selectPersistedState(canonicalState()) as any
+      legacy.main.autohide = true
+      legacy.main.orders = {
+        [`legacy-${version}`]: {
+          orderId: `legacy-${version}`,
+          accountAddress: '0x1111111111111111111111111111111111111111',
+          chainId: 1,
+          provider: 'flash',
+          status: 'accepted',
+          orderType: 'limit',
+          side: 'sell',
+          targetAsset: 'ETH',
+          contraAsset: 'USDC',
+          qty: '1',
+          spentAsset: 'ETH',
+          receiveAsset: 'USDC',
+          spentAmount: '1',
+          outputAmount: '2',
+          estimatedOutputAmount: '2',
+          createdAt: 1,
+          updatedAt: 2
+        }
+      }
+
+      const migrated = migratePersistedState(legacy, version)
+      expect({ orders: migrated.main.orders, autohide: migrated.main.autohide }).toEqual({
+        orders: {},
+        autohide: true
+      })
+    }
+  })
+
+  it('preserves canonical asset-chain orders in v7 and migrates them idempotently', () => {
+    const current = selectPersistedState(canonicalState()) as any
+    const order = {
+      orderId: 'canonical-order',
+      accountAddress: '0x1111111111111111111111111111111111111111',
+      provider: 'flash',
+      source: 'flash',
+      environment: 'production',
+      profile: null,
+      status: 'accepted',
+      rawStatus: 'ORDER_STATUS_ACCEPTED',
+      orderType: 'limit',
+      side: 'sell',
+      targetAsset: { chainId: 1, symbol: 'TARGET' },
+      contraAsset: { chainId: 10, symbol: 'CONTRA' },
+      qty: '1',
+      spentAsset: { chainId: 42161, symbol: 'SPENT' },
+      receiveAsset: { chainId: 8453, symbol: 'RECEIVE' },
+      spentAmount: '1',
+      outputAmount: '2',
+      estimatedOutputAmount: '2',
+      createdAt: 1,
+      updatedAt: 2
+    }
+    current.main.autohide = true
+    current.main.orders = { [order.orderId]: order }
+
+    expect(PERSISTENCE_VERSION).toBe(7)
+    const migrated = migratePersistedState(current, 7)
+    expect(migrated.main.orders).toEqual({ [order.orderId]: order })
+    expect(migrated.main.autohide).toBeTrue()
+    expect(migratePersistedState(migrated)).toEqual(migrated)
+  })
+
   it('migrates every supported profile-less state into the stable default profile', () => {
     const id = '0x1111111111111111111111111111111111111111'
 
@@ -451,7 +519,7 @@ describe('canonical persisted state contract', () => {
       }
     })
     expect(Object.keys(migrated.main.accounts || {}).sort()).toEqual(['first', 'second', 'third'])
-    expect(migratePersistedState(migrated, 6)).toEqual(migrated)
+    expect(migratePersistedState(migrated)).toEqual(migrated)
   })
 
   it('preserves a valid current Account when its profile conflicts with currentProfile', () => {

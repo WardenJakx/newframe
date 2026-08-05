@@ -77,7 +77,6 @@ export function OrdersView({
   return (
     <div className={orderListRecipe()}>
       {orders.map((order) => {
-        const chainId = Number(order.chainId)
         const open = isOpenOrder(order)
         const side = normalizeOrderSide(order.side)
         const statusKey = orderStatus(order).replace(/[^a-z0-9]+/g, '-') || 'unknown'
@@ -123,12 +122,7 @@ export function OrdersView({
               </Stack>
             </div>
             <div className={orderAreaRecipe({ area: 'asset' })}>
-              <OrderAssetPill
-                asset={order.targetAsset}
-                fallbackChainId={chainId}
-                networks={networks}
-                networksMeta={networksMeta}
-              />
+              <OrderAssetPill asset={order.targetAsset} networks={networks} networksMeta={networksMeta} />
             </div>
             <div className={orderAreaRecipe({ area: 'copy' })}>
               <Stack gap='xsmall' grow>
@@ -156,7 +150,6 @@ export function OrdersView({
             <div className={orderAreaRecipe({ area: 'contra' })}>
               <OrderAssetPill
                 asset={order.contraAsset}
-                fallbackChainId={chainId}
                 networks={networks}
                 networksMeta={networksMeta}
                 prefix={side ? getContraPreposition(side) : 'with'}

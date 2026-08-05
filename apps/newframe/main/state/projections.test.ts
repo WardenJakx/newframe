@@ -104,7 +104,6 @@ it('projects safe principal-owned operations and notification presentation', () 
     'order-private': {
       orderId: 'order-private',
       accountAddress: '0x1111111111111111111111111111111111111111',
-      chainId: 1,
       provider: 'flash',
       status: 'open',
       rawStatus: 'OPEN',
@@ -135,7 +134,6 @@ it('projects safe principal-owned operations and notification presentation', () 
   expect(projectedOrder.rawPayload).toEqual({
     orderId: 'order-private',
     provider: 'flash',
-    chainId: 1,
     orderType: 'market',
     side: 'buy',
     qty: '1'

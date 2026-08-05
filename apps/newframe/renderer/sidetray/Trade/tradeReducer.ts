@@ -277,7 +277,9 @@ function tradeHasValidInput(state: TradeWorkflowState) {
       inputAmount: getTradeInputAmount(state),
       orderType: state.orderType,
       side: state.side,
-      slippage: state.slippage
+      slippage: state.slippage,
+      targetAsset: state.targetAsset,
+      contraAsset: state.contraAsset
     })
   )
 }
@@ -336,16 +338,12 @@ function selectTradeAsset(state: TradeWorkflowState, field: TradeAssetField, ass
   let targetAsset = field === 'target' ? asset : state.targetAsset
   let contraAsset = field === 'contra' ? asset : state.contraAsset
 
-  if (field === 'target' && contraAsset.chainId !== targetAsset.chainId) {
-    contraAsset = resolveContraAsset(targetAsset, null, state.assetOptions, state.side)
-  }
-
-  if (field === 'contra' && targetAsset.chainId !== contraAsset.chainId) {
-    targetAsset = defaultAssetForChain(contraAsset.chainId, state.assetOptions)
-  }
-
   if (isSameFlashAsset(targetAsset, contraAsset)) {
-    contraAsset = resolveContraAsset(targetAsset, null, state.assetOptions, state.side)
+    if (field === 'target') {
+      contraAsset = resolveContraAsset(targetAsset, null, state.assetOptions, state.side)
+    } else {
+      targetAsset = defaultAssetForChain(contraAsset.chainId, state.assetOptions)
+    }
   }
 
   return applyTradeInputAmount(state, getTradeInputAmount(state), {
@@ -391,9 +389,8 @@ function updateAssetOptions(
     defaultAssetForChain(state.targetAsset.chainId, assets)
   const targetAsset = preserveEquivalentAsset(state.targetAsset, targetCandidate)
   const contraCandidate =
-    assets.find(
-      (asset) => isSameFlashAsset(asset, state.contraAsset) && asset.chainId === targetAsset.chainId
-    ) || resolveContraAsset(targetAsset, balances, assets, state.side)
+    assets.find((asset) => isSameFlashAsset(asset, state.contraAsset)) ||
+    resolveContraAsset(targetAsset, balances, assets, state.side)
   const contraAsset = preserveEquivalentAsset(state.contraAsset, contraCandidate)
 
   if (

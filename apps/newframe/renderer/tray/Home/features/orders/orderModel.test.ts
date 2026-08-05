@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 
 import {
+  createOrderRows,
   formatOrderAmount,
   isOpenOrder,
   normalizeOrderSide,
@@ -33,5 +34,29 @@ describe('orderModel', () => {
     expect(orderPairIntent(order)).toContain('ETH')
     expect(orderPairIntent(order)).toContain('USDC')
     expect(formatOrderAmount('1.234567891')).toBe('1.234568')
+  })
+
+  it('filters orders when either participating asset matches the selected chain', () => {
+    const order = {
+      orderId: 'cross-chain-order',
+      accountAddress: '0x1111111111111111111111111111111111111111',
+      targetAsset: { symbol: 'WETH', chainId: 1 },
+      contraAsset: { symbol: 'USDC', chainId: 8453 },
+      createdAt: 1,
+      updatedAt: 1
+    }
+    const options = {
+      accountAddress: order.accountAddress,
+      networks: {
+        1: { id: 1, isTestnet: false },
+        8453: { id: 8453, isTestnet: false }
+      },
+      orders: { [order.orderId]: order },
+      showTestnets: false
+    }
+
+    expect(createOrderRows({ ...options, selectedChainId: 1 })).toHaveLength(1)
+    expect(createOrderRows({ ...options, selectedChainId: 8453 })).toHaveLength(1)
+    expect(createOrderRows({ ...options, selectedChainId: 10 })).toHaveLength(0)
   })
 })

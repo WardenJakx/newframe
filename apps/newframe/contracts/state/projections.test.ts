@@ -150,6 +150,35 @@ describe('wallet renderer projection records', () => {
       WalletOrderRecordSchema.parse({
         orderId: 'order-1',
         accountAddress: '0x1111111111111111111111111111111111111111',
+        provider: 'flash',
+        status: 'open',
+        orderType: 'market',
+        side: 'buy',
+        targetAsset: { symbol: 'ETH', chainId: 1 },
+        contraAsset: { symbol: 'USDC', chainId: 8453 },
+        qty: '1',
+        createdAt: 1,
+        updatedAt: 2,
+        futureCredential: 'must-not-cross-ipc'
+      })
+    ).toEqual({
+      orderId: 'order-1',
+      accountAddress: '0x1111111111111111111111111111111111111111',
+      provider: 'flash',
+      status: 'open',
+      orderType: 'market',
+      side: 'buy',
+      targetAsset: { symbol: 'ETH', chainId: 1 },
+      contraAsset: { symbol: 'USDC', chainId: 8453 },
+      qty: '1',
+      createdAt: 1,
+      updatedAt: 2
+    })
+
+    expect(
+      WalletOrderRecordSchema.safeParse({
+        orderId: 'scalar-only',
+        accountAddress: '0x1111111111111111111111111111111111111111',
         chainId: 1,
         provider: 'flash',
         status: 'open',
@@ -159,23 +188,9 @@ describe('wallet renderer projection records', () => {
         contraAsset: { symbol: 'USDC' },
         qty: '1',
         createdAt: 1,
-        updatedAt: 2,
-        futureCredential: 'must-not-cross-ipc'
-      })
-    ).toEqual({
-      orderId: 'order-1',
-      accountAddress: '0x1111111111111111111111111111111111111111',
-      chainId: 1,
-      provider: 'flash',
-      status: 'open',
-      orderType: 'market',
-      side: 'buy',
-      targetAsset: { symbol: 'ETH' },
-      contraAsset: { symbol: 'USDC' },
-      qty: '1',
-      createdAt: 1,
-      updatedAt: 2
-    })
+        updatedAt: 2
+      }).success
+    ).toBeFalse()
   })
 
   it('keeps notification presentation and navigation data while stripping unowned fields', () => {

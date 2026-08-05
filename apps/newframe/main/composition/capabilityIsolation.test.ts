@@ -137,7 +137,6 @@ it('releases registered handlers, account listeners, and Flash polling on dispos
       state.main.orders['open-order'] = {
         orderId: 'open-order',
         accountAddress: '0x1111111111111111111111111111111111111111',
-        chainId: 1,
         provider: 'flash',
         source: 'flash',
         environment: 'test',

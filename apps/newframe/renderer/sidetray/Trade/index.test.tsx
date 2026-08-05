@@ -225,6 +225,7 @@ describe('Trade', () => {
     expect(screen.getByText('Sign order')).toBeTruthy()
     expect(quoteCalls).toHaveLength(1)
     expect(quoteCalls[0]).not.toHaveProperty('accountAddress')
+    expect(quoteCalls[0]).not.toHaveProperty('chainId')
     expect(quoteCalls[0]).not.toHaveProperty('targetChain')
     expect(quoteCalls[0]).not.toHaveProperty('contraChain')
 
@@ -552,13 +553,14 @@ describe('Trade', () => {
           'permit-order': {
             orderId: 'permit-order',
             accountAddress: sender.address,
-            chainId: FLASH_ANVIL_CHAIN_ID,
             provider: 'flash',
             status: 'open',
             orderType: 'market',
             side: 'sell',
             targetAsset: FLASH_WETH_ASSET,
             contraAsset: FLASH_USDC_ASSET,
+            spentAsset: FLASH_WETH_ASSET,
+            receiveAsset: FLASH_USDC_ASSET,
             qty: '1',
             spentAmount: '1',
             outputAmount: '2400',

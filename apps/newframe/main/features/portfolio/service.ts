@@ -1,6 +1,7 @@
 import type { Accounts } from '../../accounts/index.js'
 import type { TokenDiscoveryProviderAccess } from '../../portfolio/index.js'
 import type { CanonicalStore } from '../../store/actions.js'
+import type { FlashService } from '../../flash/index.js'
 import type { AssetRateService } from '../assetRates/service.js'
 import type { OperationService } from '../operations/service.js'
 import type { OperationOwner, OperationReference } from '../operations/types.js'
@@ -13,6 +14,7 @@ type PortfolioState = Pick<
 export interface PortfolioServicePorts {
   accounts: Pick<Accounts, 'refreshBalances'>
   assetRates: AssetRateService
+  flash: Pick<FlashService, 'listOrders'>
   getTokenDiscoveryProvider(): TokenDiscoveryProviderAccess
   log: { warn(message: string, details?: unknown): void }
   operations: OperationService
@@ -57,6 +59,12 @@ export function createPortfolioService(ports: PortfolioServicePorts) {
         .filter((network) => network.on)
         .map((network) => network.id)
       const discovery = ports.getTokenDiscoveryProvider()
+
+      try {
+        await ports.flash.listOrders({ accountAddress: address, pageSize: 200 })
+      } catch (error) {
+        ports.log.warn(`Could not refresh Flash orders for ${address}`, error)
+      }
 
       if (discovery.ok) {
         try {

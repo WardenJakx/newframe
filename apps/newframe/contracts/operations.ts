@@ -87,7 +87,6 @@ const FlashOptionalOrderFields = {
 
 export const FlashQuoteRequestSchema = z
   .strictObject({
-    chainId: ChainIdSchema,
     contraAsset: FlashAssetSchema,
     inputAmount: z.string().min(1).max(128),
     orderType: FlashOrderTypeSchema,
@@ -97,9 +96,9 @@ export const FlashQuoteRequestSchema = z
     ...FlashOptionalOrderFields
   })
   .refine(
-    ({ chainId, contraAsset, targetAsset }) =>
-      contraAsset.chainId === chainId && targetAsset.chainId === chainId,
-    'Flash assets must match the requested chain'
+    ({ contraAsset, orderType, targetAsset }) =>
+      contraAsset.chainId === targetAsset.chainId || orderType === 'market',
+    'Cross-chain Flash quotes only support market orders'
   )
 
 export type FlashQuoteRequest = z.infer<typeof FlashQuoteRequestSchema>

@@ -1,6 +1,6 @@
 import { expect, it, mock } from 'bun:test'
 
-import { FLASH_USDC_ASSET, FLASH_WETH_ASSET } from '../../../domain/flash/assets'
+import { FLASH_USDC_ASSET, FLASH_WETH_ASSET, getFlashAssetsForChain } from '../../../domain/flash/assets'
 import { FLASH_MARKET_ORDER_TYPE } from '../../../domain/flash/constants'
 import type { FlashQuote } from '../../../domain/flash/schemas'
 import type { FlashQuoteRequest, TypedDataV4 } from '../../../contracts/operations'
@@ -74,12 +74,12 @@ it('owns private Trade execution, idempotency, revalidation, cancellation, and c
   const canonical = {
     currentAccount: account.id,
     accounts: { [account.id]: account },
-    networks: { 1: { on: true } },
+    networks: { 1: { on: true }, 8453: { on: true } },
     orders: {
       'order-cancel': {
         orderId: 'order-cancel',
         accountAddress: account.address,
-        chainId: 1,
+        spentAsset: { chainId: 8453 },
         open: true,
         cancellable: true
       }
@@ -128,7 +128,6 @@ it('owns private Trade execution, idempotency, revalidation, cancellation, and c
     transactions: { submit: submitTransaction }
   })
   const request = {
-    chainId: 1,
     contraAsset: { ...FLASH_USDC_ASSET, chainId: 1 },
     inputAmount: '1',
     orderType: FLASH_MARKET_ORDER_TYPE,
@@ -152,6 +151,7 @@ it('owns private Trade execution, idempotency, revalidation, cancellation, and c
     })
   )
   if (!quoted.ok) throw new Error('quote failed')
+  expect(quoted.quoteId).not.toBe('quote-1')
   expect(quoted.quote).toMatchObject({ nextAction: 'approve', requiresPermit: true })
 
   const operationId = 'trade-operation'
@@ -168,6 +168,7 @@ it('owns private Trade execution, idempotency, revalidation, cancellation, and c
   expect(signTypedData.mock.calls.map(([input]) => input!.typedData.primaryType)).toEqual(['Permit', 'Order'])
   expect(submitOrder.mock.calls[0]?.[0]).toMatchObject({
     idempotencyKey: operationId,
+    quoteId: 'quote-1',
     orderSignature: '0xorder',
     evmPermitSignature: '0xpermit',
     startTime: request.startTime
@@ -186,7 +187,9 @@ it('owns private Trade execution, idempotency, revalidation, cancellation, and c
   expect(service.cancel(cancel, principal, owner)).toBe(true)
   expect(service.cancel({ ...cancel, operationId: 'cancel-2' }, principal, owner)).toBe(false)
   await flush()
-  expect(signMessage).toHaveBeenCalledTimes(1)
+  expect(signMessage.mock.calls).toEqual([
+    [expect.objectContaining({ chainId: canonical.orders['order-cancel'].spentAsset.chainId }), principal]
+  ])
   expect(cancelOrder).toHaveBeenCalledWith({ orderId: cancel.orderId, signature: '0xcancel' })
   expect(service.cancel(cancel, principal, owner)).toBe(true)
 
@@ -315,4 +318,219 @@ it('owns private Trade execution, idempotency, revalidation, cancellation, and c
   resolveCancel({ ok: true, signature: '0xcancel-after-dispose' })
   await flush()
   expect(prepare(operationId, quoted.quoteId)).toBe(false)
+})
+
+it('keeps cross-chain provider state private and validates both networks and the spent chain', async () => {
+  let time = Date.parse('2099-01-01T00:00:00Z')
+  const targetAsset = getFlashAssetsForChain(1).find((asset) => asset.symbol === 'WETH')!
+  const contraAsset = getFlashAssetsForChain(8453).find((asset) => asset.symbol === 'USDC')!
+  const canonical = {
+    currentAccount: account.id,
+    accounts: { [account.id]: account },
+    networks: { 1: { on: true }, 8453: { on: true } },
+    orders: {}
+  }
+  const testStore = createTestStore()
+  const operations = createOperationService({ store: testStore.store, clock: { now: () => time } })
+  const operation = (id: string) => testStore.getState().operations[id]?.operation
+  const crossQuote = ({
+    actionChainId,
+    orderChainId = 8453
+  }: {
+    actionChainId?: number
+    orderChainId?: number
+  } = {}): FlashQuote => ({
+    id: '',
+    side: 'buy',
+    orderType: FLASH_MARKET_ORDER_TYPE,
+    targetAsset,
+    contraAsset,
+    spentAsset: contraAsset,
+    receiveAsset: targetAsset,
+    inputAmount: '100',
+    outputAmount: '0.04',
+    steps: [
+      ...(actionChainId
+        ? [{ id: 'approve', kind: 'approve' as const, label: 'Approve USDC', status: 'required' as const }]
+        : []),
+      { id: 'sign', kind: 'sign', label: 'Sign order', status: 'required' },
+      { id: 'submit', kind: 'submit', label: 'Submit trade', status: 'required' }
+    ],
+    ...(actionChainId
+      ? {
+          actions: {
+            approval: {
+              id: 'approve',
+              kind: 'approve',
+              label: 'Approve USDC',
+              asset: contraAsset,
+              amount: '100',
+              amountRaw: '100000000',
+              tx: {
+                chainId: actionChainId,
+                to: contraAsset.address,
+                data: '0x095ea7b3'
+              }
+            }
+          }
+        }
+      : {}),
+    raw: {
+      quoteId: '',
+      bridgeQuoteId: 'bridge-private',
+      evm: {
+        orderTypedData: {
+          domain: { chainId: orderChainId },
+          message: { toToken: '0x000000000000000000000000000000000DEFdeaD' },
+          primaryType: 'Order',
+          types: { Order: [] }
+        }
+      }
+    }
+  })
+  const flashQuote = mock(async () => ({ quote: crossQuote(), flash: crossQuote().raw }))
+  const submitOrder = mock(async (_request: FlashSubmitOrderRequest) => ({ orderId: 'cross-order' }))
+  const signTypedData = mock(async () => ({ ok: true as const, signature: '0xorder' }))
+  const submitTransaction = mock(async () => ({
+    ok: true as const,
+    transactionHash: `0x${'c'.repeat(64)}`
+  }))
+  const service = createTradeService({
+    canonical: { snapshot: () => canonical },
+    clock: { now: () => time },
+    flash: { quote: flashQuote, submitOrder, cancelOrder: async () => ({}) },
+    operations,
+    signatures: {
+      signMessage: async () => ({ ok: true, signature: '0xcancel' }),
+      signTypedData
+    },
+    transactions: { submit: submitTransaction }
+  })
+  const request = {
+    contraAsset,
+    inputAmount: '100',
+    orderType: FLASH_MARKET_ORDER_TYPE,
+    qty: '100',
+    side: 'buy' as const,
+    targetAsset
+  } satisfies FlashQuoteRequest
+
+  const quoted = await service.quote(
+    {
+      ...request,
+      recipientAddress: '0x9999999999999999999999999999999999999999'
+    } as FlashQuoteRequest,
+    owner
+  )
+  expect(quoted.ok).toBe(true)
+  if (!quoted.ok) throw new Error('cross-chain quote failed')
+  expect(quoted.quoteId).not.toBe('bridge-private')
+  expect(quoted.quote.id).toBe(quoted.quoteId)
+  expect(JSON.stringify(quoted)).not.toContain('bridge-private')
+  expect((flashQuote.mock.calls[0] as unknown as [unknown])[0]).toEqual({
+    ...request,
+    accountAddress: account.address,
+    recipientAddress: account.address,
+    contraChain: 8453,
+    targetChain: 1
+  })
+  expect(
+    service.submit(
+      { type: 'trade.submit', operationId: 'cross-submit', quoteId: quoted.quoteId },
+      principal,
+      owner
+    )
+  ).toBe(true)
+  await flush()
+  expect(signTypedData.mock.calls[0] as unknown[]).toEqual([
+    expect.objectContaining({ chainId: 8453 }),
+    principal
+  ])
+  expect(submitOrder.mock.calls[0]?.[0]).toEqual(
+    expect.objectContaining({
+      accountAddress: account.address,
+      recipientAddress: account.address,
+      bridgeQuoteId: 'bridge-private',
+      idempotencyKey: 'cross-submit'
+    })
+  )
+  expect(submitOrder.mock.calls[0]?.[0]).not.toHaveProperty('quoteId')
+  expect(operation('cross-submit')).toMatchObject({
+    status: 'succeeded',
+    entityRefs: expect.arrayContaining([
+      { type: 'chain', id: '1' },
+      { type: 'chain', id: '8453' }
+    ])
+  })
+
+  const unavailable = await service.quote(request, owner)
+  if (!unavailable.ok) throw new Error('unavailable quote setup failed')
+  canonical.networks[1].on = false
+  const signCount = signTypedData.mock.calls.length
+  expect(
+    service.submit(
+      { type: 'trade.submit', operationId: 'network-invalidated', quoteId: unavailable.quoteId },
+      principal,
+      owner
+    )
+  ).toBe(true)
+  await flush()
+  expect(operation('network-invalidated')).toMatchObject({ status: 'failed' })
+  expect(signTypedData.mock.calls).toHaveLength(signCount)
+  canonical.networks[1].on = true
+
+  let resolveLateQuote!: (value: { quote: FlashQuote; flash: unknown }) => void
+  flashQuote.mockImplementationOnce(() => new Promise((resolve) => (resolveLateQuote = resolve)))
+  const late = service.quote(request, owner)
+  await Promise.resolve()
+  canonical.networks[8453].on = false
+  resolveLateQuote({ quote: crossQuote(), flash: crossQuote().raw })
+  expect((await late).ok).toBe(false)
+  canonical.networks[8453].on = true
+
+  expect(
+    (await service.quote({ ...request, orderType: 'limit', limitNotionalPrice: '2400' }, owner)).ok
+  ).toBe(false)
+  expect(flashQuote.mock.calls).toHaveLength(3)
+
+  flashQuote.mockImplementationOnce(async () => ({
+    quote: crossQuote({ orderChainId: 1 }),
+    flash: crossQuote({ orderChainId: 1 }).raw
+  }))
+  const typedMismatch = await service.quote(request, owner)
+  if (!typedMismatch.ok) throw new Error('typed mismatch quote setup failed')
+  expect(
+    service.submit(
+      { type: 'trade.submit', operationId: 'typed-mismatch', quoteId: typedMismatch.quoteId },
+      principal,
+      owner
+    )
+  ).toBe(true)
+  await flush()
+  expect(operation('typed-mismatch')).toMatchObject({ status: 'failed' })
+
+  flashQuote.mockImplementationOnce(async () => ({
+    quote: crossQuote({ actionChainId: 1 }),
+    flash: crossQuote({ actionChainId: 1 }).raw
+  }))
+  const actionMismatch = await service.quote(request, owner)
+  if (!actionMismatch.ok) throw new Error('action mismatch quote setup failed')
+  const txCount = submitTransaction.mock.calls.length
+  expect(
+    service.prepare(
+      {
+        type: 'trade.prepare',
+        operationId: 'action-mismatch',
+        quoteId: actionMismatch.quoteId,
+        action: 'approve'
+      },
+      principal,
+      owner
+    )
+  ).toBe(true)
+  await flush()
+  expect(operation('action-mismatch')).toMatchObject({ status: 'failed' })
+  expect(submitTransaction.mock.calls).toHaveLength(txCount)
+  service.dispose()
+  time += 1
 })

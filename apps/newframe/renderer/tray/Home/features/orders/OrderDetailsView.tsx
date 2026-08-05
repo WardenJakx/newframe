@@ -45,9 +45,12 @@ export function OrderDetailsView({
   order: any
   orderId: string
 }) {
-  const chainId = Number(order.chainId)
-  const chain = networks[chainId] || {}
   const side = normalizeOrderSide(order.side)
+  const spentAsset = order.spentAsset || (side === 'buy' ? order.contraAsset : order.targetAsset)
+  const receiveAsset = order.receiveAsset || (side === 'buy' ? order.targetAsset : order.contraAsset)
+  const spentChainId = Number(spentAsset?.chainId)
+  const receiveChainId = Number(receiveAsset?.chainId)
+  const isCrossChain = spentChainId !== receiveChainId
   const rawPayload = orderJson(order.rawPayload)
   const rawStatusPayload = orderJson(order.rawStatusPayload)
   const detailRow = (label: string, value: React.ReactNode, monospace = false) => {
@@ -64,24 +67,30 @@ export function OrderDetailsView({
   }
   const shortAddress = (address = '') =>
     address ? `${address.substring(0, 5)}…${address.substring(address.length - 4)}` : ''
+  const chainDetail = (chainId: number) => {
+    const chain = networks[chainId] || {}
+
+    return (
+      <Stack align='center' direction='row' gap='xsmall' justify='end'>
+        <ChainIcon chainId={chainId} networks={networks} networksMeta={networksMeta} size='large' />
+        <Text truncate variant='supporting'>
+          {chain.name || `Chain ${chainId}`}
+        </Text>
+      </Stack>
+    )
+  }
 
   return (
     <TrayOverlay closeLabel='Back to orders' label='Order details' onClose={onBack} title='Order'>
       <Stack gap='medium'>
         <Stack align='center' gap='small'>
           <Stack align='center' direction='row' gap='small' justify='center'>
-            <OrderAssetPill
-              asset={order.targetAsset}
-              fallbackChainId={chainId}
-              networks={networks}
-              networksMeta={networksMeta}
-            />
+            <OrderAssetPill asset={order.targetAsset} networks={networks} networksMeta={networksMeta} />
             <Text align='center' truncate variant='label'>
               {orderPairIntent(order)}
             </Text>
             <OrderAssetPill
               asset={order.contraAsset}
-              fallbackChainId={chainId}
               networks={networks}
               networksMeta={networksMeta}
               prefix={side ? getContraPreposition(side) : 'with'}
@@ -105,14 +114,13 @@ export function OrderDetailsView({
           {detailRow('Environment', order.environment)}
           {detailRow('Profile', order.profile)}
           {detailRow('Account', shortAddress(order.accountAddress), true)}
-          {detailRow(
-            'Chain',
-            <Stack align='center' direction='row' gap='xsmall' justify='end'>
-              <ChainIcon chainId={chainId} networks={networks} networksMeta={networksMeta} size='large' />
-              <Text truncate variant='supporting'>
-                {chain.name || `Chain ${chainId}`}
-              </Text>
-            </Stack>
+          {isCrossChain ? (
+            <>
+              {detailRow('Source / spent chain', chainDetail(spentChainId))}
+              {detailRow('Destination / receive chain', chainDetail(receiveChainId))}
+            </>
+          ) : (
+            detailRow('Shared chain', chainDetail(spentChainId))
           )}
           {detailRow('Status', orderStatusLabel(order))}
           {detailRow('Raw status', order.rawStatus)}

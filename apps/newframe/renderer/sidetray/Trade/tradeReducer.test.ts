@@ -146,6 +146,73 @@ describe('tradeReducer', () => {
     expect(next.contraAsset).not.toBe(next.targetAsset)
   })
 
+  it('preserves independently selected assets across supported chains and order-type switches', () => {
+    const ethereumWeth = { ...FLASH_WETH_ASSET, chainId: 1, id: `1:${FLASH_WETH_ASSET.address}` }
+    const ethereumUsdc = { ...FLASH_USDC_ASSET, chainId: 1, id: `1:${FLASH_USDC_ASSET.address}` }
+    const baseWeth = { ...FLASH_WETH_ASSET, chainId: 8453, id: `8453:${FLASH_WETH_ASSET.address}` }
+    const baseUsdc = { ...FLASH_USDC_ASSET, chainId: 8453, id: `8453:${FLASH_USDC_ASSET.address}` }
+    const assets = [ethereumWeth, ethereumUsdc, baseWeth, baseUsdc]
+
+    const ethereumTarget = createInitialTradeState({ assetId: ethereumWeth.id, assets })
+    const ethereumToBase = tradeReducer(ethereumTarget, {
+      type: 'selectAsset',
+      field: 'contra',
+      asset: baseUsdc
+    })
+    expect(ethereumToBase.targetAsset).toBe(ethereumWeth)
+    expect(ethereumToBase.contraAsset).toBe(baseUsdc)
+
+    const baseTargetSelected = tradeReducer(ethereumTarget, {
+      type: 'selectAsset',
+      field: 'target',
+      asset: baseWeth
+    })
+    expect(baseTargetSelected.targetAsset).toBe(baseWeth)
+    expect(baseTargetSelected.contraAsset).toBe(ethereumUsdc)
+
+    const baseTarget = createInitialTradeState({ assetId: baseWeth.id, assets })
+    const baseToEthereum = tradeReducer(baseTarget, {
+      type: 'selectAsset',
+      field: 'contra',
+      asset: ethereumUsdc
+    })
+    expect(baseToEthereum.targetAsset).toBe(baseWeth)
+    expect(baseToEthereum.contraAsset).toBe(ethereumUsdc)
+
+    const withAmount = tradeReducer(baseToEthereum, { type: 'setInputAmount', inputAmount: '1' })
+    const limit = tradeReducer(withAmount, {
+      type: 'setOrderType',
+      orderType: FLASH_LIMIT_ORDER_TYPE
+    })
+    expect(limit.targetAsset).toBe(baseWeth)
+    expect(limit.contraAsset).toBe(ethereumUsdc)
+    expect(limit.quoteLoading).toBe(false)
+
+    const market = tradeReducer(limit, {
+      type: 'setOrderType',
+      orderType: FLASH_MARKET_ORDER_TYPE
+    })
+    expect(market.targetAsset).toBe(baseWeth)
+    expect(market.contraAsset).toBe(ethereumUsdc)
+    expect(getTradeInputAmount(market)).toBe('1')
+  })
+
+  it('keeps cross-chain selections when synchronized asset options refresh', () => {
+    const targetAsset = { ...FLASH_WETH_ASSET, chainId: 8453, id: `8453:${FLASH_WETH_ASSET.address}` }
+    const contraAsset = { ...FLASH_USDC_ASSET, chainId: 1, id: `1:${FLASH_USDC_ASSET.address}` }
+    const assets = [targetAsset, contraAsset]
+    const selected = tradeReducer(createInitialTradeState({ assetId: targetAsset.id, assets }), {
+      type: 'selectAsset',
+      field: 'contra',
+      asset: contraAsset
+    })
+    const refreshedAssets = assets.map((asset) => ({ ...asset }))
+    const refreshed = tradeReducer(selected, { type: 'setAssetOptions', assets: refreshedAssets })
+
+    expect(refreshed.targetAsset.chainId).toBe(8453)
+    expect(refreshed.contraAsset.chainId).toBe(1)
+  })
+
   it('preserves selected asset identity when synchronized options are equivalent', () => {
     const state = createInitialTradeState({
       assets: [FLASH_WETH_ASSET, FLASH_USDC_ASSET]

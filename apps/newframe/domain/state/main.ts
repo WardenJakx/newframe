@@ -98,12 +98,16 @@ const OrderTimestampSchema = z.union([z.number(), z.string(), z.date()])
 const OrderOptionalTimestampSchema = OrderTimestampSchema.nullable().optional()
 const OrderAmountSchema = z.union([z.number(), z.string()])
 const OrderOptionalAmountSchema = OrderAmountSchema.nullable().optional()
+const OrderAssetReferenceSchema = z
+  .object({
+    chainId: z.union([z.number().int().positive(), z.string().regex(/^[1-9]\d*$/)])
+  })
+  .passthrough()
 
 export const OrderRecordSchema = z
   .object({
     orderId: z.string(),
     accountAddress: z.string(),
-    chainId: z.union([z.number(), z.string()]),
     provider: z.string().optional(),
     source: z.string().optional(),
     environment: z.string().nullable().optional(),
@@ -112,10 +116,11 @@ export const OrderRecordSchema = z
     rawStatus: z.string().nullable().optional(),
     orderType: z.string(),
     side: z.string(),
-    targetAsset: z.unknown(),
-    contraAsset: z.unknown(),
+    targetAsset: OrderAssetReferenceSchema,
+    contraAsset: OrderAssetReferenceSchema,
     qty: OrderAmountSchema,
-    spentAsset: z.unknown().optional(),
+    spentAsset: OrderAssetReferenceSchema.optional(),
+    receiveAsset: OrderAssetReferenceSchema.optional(),
     spentAmount: OrderOptionalAmountSchema,
     outputAmount: OrderOptionalAmountSchema,
     estimatedOutputAmount: OrderOptionalAmountSchema,
@@ -132,6 +137,10 @@ export const OrderRecordSchema = z
     fillTransactionHash: z.string().nullable().optional()
   })
   .passthrough()
+  .refine((order) => !Object.prototype.hasOwnProperty.call(order, 'chainId'), {
+    message: 'Order chain must be defined by its assets',
+    path: ['chainId']
+  })
   .refine((order) => Boolean(order.provider || order.source), {
     message: 'Order record requires provider or source',
     path: ['source']

@@ -407,6 +407,7 @@ const {
   targetAsset: _targetAsset,
   contraAsset: _contraAsset,
   spentAsset: _spentAsset,
+  receiveAsset: _receiveAsset,
   ...WalletOrderRecordShape
 } = OrderRecordSchema.shape
 
@@ -414,7 +415,7 @@ const WalletOrderAssetSchema = z
   .object({
     id: z.string().optional(),
     address: z.string().optional(),
-    chainId: z.union([z.number(), z.string()]).optional(),
+    chainId: z.union([z.number().int().positive(), z.string().regex(/^[1-9]\d*$/)]),
     decimals: z.number().int().nonnegative().optional(),
     isNative: z.boolean().optional(),
     name: z.string().optional(),
@@ -427,7 +428,6 @@ const WalletOrderDiagnosticPayloadSchema = z.strictObject({
   provider: z.string().optional(),
   source: z.string().optional(),
   environment: z.string().nullable().optional(),
-  chainId: z.union([z.number(), z.string()]),
   orderType: z.string(),
   side: z.string(),
   qty: z.union([z.number(), z.string()])
@@ -453,6 +453,7 @@ export const WalletOrderRecordSchema = z
     targetAsset: WalletOrderAssetSchema,
     contraAsset: WalletOrderAssetSchema,
     spentAsset: WalletOrderAssetSchema.optional(),
+    receiveAsset: WalletOrderAssetSchema.optional(),
     rawPayload: WalletOrderDiagnosticPayloadSchema.optional(),
     rawStatusPayload: WalletOrderDiagnosticStatusSchema.optional()
   })

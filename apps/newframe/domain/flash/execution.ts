@@ -1,4 +1,6 @@
 import type { FlashQuote, FlashQuoteAction } from './schemas.js'
+import { getFlashAssetPairChains } from './pair.js'
+import { getFlashChainSlug } from './chains.js'
 
 export type FlashTypedDataField =
   | 'orderTypedData'
@@ -52,7 +54,7 @@ export function flashTypedDataChainId(typedData: unknown, fallback: number) {
 }
 
 export function buildFlashActionTransaction(action: FlashQuoteAction, expectedChainId: number) {
-  const chainId = Number(action.tx.chainId)
+  const chainId = Number(action.tx.chainId ?? expectedChainId)
   if (!Number.isInteger(chainId) || chainId <= 0 || chainId !== expectedChainId) {
     throw new Error('Invalid Flash action chain id')
   }
@@ -68,6 +70,7 @@ export function buildFlashActionTransaction(action: FlashQuoteAction, expectedCh
 
 export function buildFlashSubmitRequest<TRequest extends object>({
   accountAddress,
+  bridgeQuoteId,
   flashPayload,
   idempotencyKey,
   orderSignature,
@@ -77,15 +80,16 @@ export function buildFlashSubmitRequest<TRequest extends object>({
   quoteRequest
 }: {
   accountAddress: string
+  bridgeQuoteId?: string
   flashPayload: unknown
   idempotencyKey: string
   orderSignature: string
   permitSignature?: string
   quote: FlashQuote
-  quoteId: string
+  quoteId?: string
   quoteRequest: TRequest
 }) {
-  const chainId = quote.targetAsset.chainId || quote.contraAsset.chainId
+  const chains = getFlashAssetPairChains(quote)
   const orderTypedData = findFlashTypedData(quote, flashPayload, 'orderTypedData')
   const orderTypedDataRaw = findFlashTypedData(quote, flashPayload, 'orderTypedDataRaw') || orderTypedData
   const permitTypedData = findFlashTypedData(quote, flashPayload, 'permitTypedData')
@@ -95,11 +99,13 @@ export function buildFlashSubmitRequest<TRequest extends object>({
   return {
     ...quoteRequest,
     accountAddress,
-    chainId,
-    contraChain: chainId,
-    targetChain: chainId,
+    funderAddress: accountAddress,
+    recipientAddress: accountAddress,
+    contraChain: getFlashChainSlug(chains.contraChainId),
+    targetChain: getFlashChainSlug(chains.targetChainId),
     quote,
-    quoteId,
+    ...(quoteId ? { quoteId } : {}),
+    ...(bridgeQuoteId ? { bridgeQuoteId } : {}),
     rawPayload: flashPayload || quote.raw || null,
     evmOrderTypedData: serializeFlashTypedData(orderTypedDataRaw),
     ...(permitTypedDataRaw
