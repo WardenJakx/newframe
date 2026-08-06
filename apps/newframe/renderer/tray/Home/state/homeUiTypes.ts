@@ -40,7 +40,7 @@ export type HomeOverlay =
   | { type: 'addChain'; pending: PendingAddChain }
   | { type: 'asset'; accountId: string; asset: DisplayedBalance }
   | { type: 'activity'; activityId: string }
-  | { type: 'order'; orderId: string }
+  | { type: 'order'; orderId: string; assetImages?: { contra?: string; target?: string } }
   | { type: 'receive'; accountId: string }
 
 export interface HomeUiState {

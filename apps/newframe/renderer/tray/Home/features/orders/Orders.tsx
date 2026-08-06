@@ -6,6 +6,7 @@ import link from '../../../../shared/link'
 import { useWalletSelector } from '../../../../state/useAppSelector'
 import { useHomeUiStore } from '../../state/HomeUiProvider'
 import { createOrderRows, orderErrorMessage } from './orderModel'
+import { resolveOrderAssetImageSource } from './OrderAssetPosition'
 import { OrdersView } from './OrdersView'
 
 const EMPTY_RECORD: Record<string, any> = {}
@@ -123,7 +124,24 @@ export function Orders() {
       networks={shared.networks}
       networksMeta={shared.networksMeta}
       onCancel={cancel}
-      onOpen={(orderId) => openOverlay({ type: 'order', orderId })}
+      onOpen={(order) =>
+        openOverlay({
+          type: 'order',
+          orderId: order.orderId,
+          assetImages: {
+            target: resolveOrderAssetImageSource({
+              asset: order.targetAsset,
+              networksMeta: shared.networksMeta,
+              tokens: shared.tokens
+            }),
+            contra: resolveOrderAssetImageSource({
+              asset: order.contraAsset,
+              networksMeta: shared.networksMeta,
+              tokens: shared.tokens
+            })
+          }
+        })
+      }
       orders={orders}
       tokens={shared.tokens}
     />

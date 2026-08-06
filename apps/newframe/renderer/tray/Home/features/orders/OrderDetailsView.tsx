@@ -31,17 +31,21 @@ const payloadRecipe = cva({
 })
 
 export function OrderDetailsView({
+  assetImages,
   networks,
   networksMeta,
   onBack,
   order,
-  orderId
+  orderId,
+  tokens
 }: {
+  assetImages?: { contra?: string; target?: string }
   networks: Record<string | number, any>
   networksMeta: Record<string | number, any>
   onBack: () => void
   order: any
   orderId: string
+  tokens: any
 }) {
   const side = normalizeOrderSide(order.side)
   const spentAsset = order.spentAsset || (side === 'buy' ? order.contraAsset : order.targetAsset)
@@ -94,7 +98,13 @@ export function OrderDetailsView({
               {orderTypeLabel(order)}
             </Text>
           </Stack>
-          <OrderTradeFlow networks={networks} networksMeta={networksMeta} order={order} />
+          <OrderTradeFlow
+            assetImages={assetImages}
+            networks={networks}
+            networksMeta={networksMeta}
+            order={order}
+            tokens={tokens}
+          />
           <Stack direction='row' gap='xsmall' justify='center' wrap>
             <Text tone='muted' variant='code'>
               {orderStatusLabel(order)}

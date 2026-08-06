@@ -6,7 +6,8 @@ import { act, render, screen } from '../../../../../test/support/componentSetup'
 import { createHostFixture } from '../../../../../test/support/rendererClient'
 import { walletState } from '../../../../state/fixtures.test-support'
 import { resetStateMirrorForTests } from '../../../../state/rendererStore'
-import { HomeUiProvider } from '../../state/HomeUiProvider'
+import { HomeUiProvider, useHomeUiStore } from '../../state/HomeUiProvider'
+import { OrderDetails } from './OrderDetails'
 import { Orders } from './Orders'
 
 const link = createHostFixture()
@@ -50,6 +51,13 @@ function state(orders: Record<string, any>, operations: Record<string, Operation
     orders,
     operations
   })
+}
+
+function OrderOverlay() {
+  const overlay = useHomeUiStore((current) => current.overlay)
+  return overlay.type === 'order' ? (
+    <OrderDetails assetImages={overlay.assetImages} orderId={overlay.orderId} />
+  ) : null
 }
 
 describe('Orders cancellation', () => {
@@ -187,6 +195,44 @@ describe('Orders cancellation', () => {
 })
 
 describe('Orders display', () => {
+  it('hands the table image source to the detail overlay', async () => {
+    const address = '0x1111111111111111111111111111111111111111'
+    const iconSource = 'data:image/png;base64,d2V0aA=='
+    const orderWithImage = {
+      ...order(false),
+      targetAsset: {
+        id: 'flash-weth',
+        address,
+        chainId: 1,
+        isNative: false,
+        symbol: 'WETH'
+      }
+    }
+    const initial = state({ 'order-1': orderWithImage })
+    initial.tokens = {
+      byId: {
+        [`1:${address}`]: {
+          image: { base64: 'd2V0aA==', mimeType: 'image/png' }
+        } as any
+      },
+      accountTokenIds: {}
+    }
+    resetStateMirrorForTests(initial)
+    const { user } = render(
+      <HomeUiProvider>
+        <Orders />
+        <OrderOverlay />
+      </HomeUiProvider>
+    )
+
+    await user.click(screen.getByRole('button', { name: /order details/i }))
+    act(() => resetStateMirrorForTests(state({ 'order-1': orderWithImage })))
+
+    expect(
+      Array.from(document.querySelectorAll('img')).filter((image) => image.getAttribute('src') === iconSource)
+    ).toHaveLength(1)
+  })
+
   it('shows the OT asset with realized contra values and replaces incomplete results with a dash', () => {
     const openOrder = {
       ...order(),
