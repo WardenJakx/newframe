@@ -70,8 +70,8 @@ const orderAreaRecipe = cva({
 })
 
 export function OrdersView({
-  cancelError,
-  cancellingOrderId,
+  cancelErrors,
+  cancellingOrderIds,
   networks,
   networksMeta,
   onCancel,
@@ -79,8 +79,8 @@ export function OrdersView({
   orders,
   tokens
 }: {
-  cancelError: { message: string; orderId: string } | null
-  cancellingOrderId: string
+  cancelErrors: Record<string, string>
+  cancellingOrderIds: ReadonlySet<string>
   networks: Record<string | number, any>
   networksMeta: Record<string | number, any>
   onCancel: (order: any) => void
@@ -111,7 +111,7 @@ export function OrdersView({
           : open
             ? 'secondary'
             : 'danger'
-        const error = cancelError && cancelError.orderId === order.orderId ? cancelError.message : ''
+        const error = cancelErrors[order.orderId] || ''
 
         return (
           <div
@@ -156,7 +156,7 @@ export function OrdersView({
             <div className={orderAreaRecipe({ area: 'meta' })}>
               {open ? (
                 <IconButton
-                  disabled={cancellingOrderId === order.orderId}
+                  disabled={cancellingOrderIds.has(order.orderId)}
                   icon='close'
                   label='Cancel order'
                   onPress={(event) => {
