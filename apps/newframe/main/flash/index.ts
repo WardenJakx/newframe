@@ -1001,6 +1001,22 @@ function rawOrderQuote(raw: Record<string, any>) {
   return objectPayload(raw.quote || raw.flashQuote || raw.quotePayload)
 }
 
+function quoteTargetNotional(quote: FlashQuote) {
+  return stringValue(
+    quote.side === 'buy'
+      ? quote.outputNotional || quote.to?.notional
+      : quote.inputNotional || quote.from?.notional
+  )
+}
+
+function quoteContraNotional(quote: FlashQuote) {
+  return stringValue(
+    quote.side === 'buy'
+      ? quote.inputNotional || quote.from?.notional
+      : quote.outputNotional || quote.to?.notional
+  )
+}
+
 function fallbackQuoteFromRecord(record?: FlashOrderRecord | null): FlashQuote | null {
   if (!record) return null
 
@@ -1014,6 +1030,8 @@ function fallbackQuoteFromRecord(record?: FlashOrderRecord | null): FlashQuote |
     receiveAsset: record.receiveAsset,
     inputAmount: record.spentAmount,
     outputAmount: record.estimatedOutputAmount || record.outputAmount,
+    inputNotional: record.side === 'buy' ? record.contraNotional : record.targetNotional,
+    outputNotional: record.side === 'buy' ? record.targetNotional : record.contraNotional,
     rate: record.rate,
     fees: [],
     steps: [],
@@ -1051,11 +1069,13 @@ function recordFromQuote({
     side: quote.side,
     targetAsset: quote.targetAsset,
     contraAsset: quote.contraAsset,
-    qty: quote.inputAmount,
+    qty: quote.side === 'buy' ? quote.outputAmount : quote.inputAmount,
     spentAsset: quote.spentAsset,
     spentAmount: quote.inputAmount,
     outputAmount: quote.outputAmount,
     estimatedOutputAmount: quote.outputAmount,
+    targetNotional: quoteTargetNotional(quote),
+    contraNotional: quoteContraNotional(quote),
     filledOutputAmount: null,
     averageFillPrice: null,
     createdAt: now,
@@ -1213,9 +1233,25 @@ function normalizeOrderRecord(rawOrder: unknown, fallback?: FlashOrderRecord | n
       raw.qty || fallback?.qty || (side === 'buy' ? quoteLike.outputAmount : quoteLike.inputAmount)
     ),
     spentAsset: quoteLike.spentAsset,
-    spentAmount: stringValue(raw.spentAmount || raw.inputAmount || raw.qty || quoteLike.inputAmount),
+    spentAmount: stringValue(
+      raw.spentAmount || raw.inputAmount || (side === 'sell' ? raw.qty : undefined) || quoteLike.inputAmount
+    ),
     outputAmount: stringValue(raw.outputAmount || quoteLike.outputAmount),
     estimatedOutputAmount: stringValue(raw.estimatedOutputAmount || quoteLike.outputAmount),
+    targetNotional:
+      stringValue(
+        raw.targetNotional ||
+          raw.targetNotionalAmount ||
+          quoteTargetNotional(quoteLike) ||
+          fallback?.targetNotional
+      ) || undefined,
+    contraNotional:
+      stringValue(
+        raw.contraNotional ||
+          raw.contraNotionalAmount ||
+          quoteContraNotional(quoteLike) ||
+          fallback?.contraNotional
+      ) || undefined,
     filledOutputAmount: filledOutputAmount || null,
     averageFillPrice:
       stringValue(raw.averageFillPrice || officialAverageFillPrice || fallback?.averageFillPrice) || null,

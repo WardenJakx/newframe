@@ -6,16 +6,14 @@ import { Text } from '@newframe/ui/text'
 
 import { DetailRow } from '../../../../shared/ui/DetailRow'
 import { TrayOverlay } from '../../../../shared/ui/TrayOverlay'
-import { getContraPreposition } from '../../../../../domain/flash/pair'
 import { cva } from '../../../../../generated/styled-system/css/cva.js'
 import { ChainIcon } from '../../components/ChainIcon'
-import { OrderAssetPill } from './OrderAssetPill'
+import { OrderTradeFlow } from './OrderTradeFlow'
 import {
   formatOrderAmount,
   normalizeOrderSide,
   orderDateTime,
   orderJson,
-  orderPairIntent,
   orderSideLabel,
   orderSize,
   orderStatusLabel,
@@ -83,25 +81,23 @@ export function OrderDetailsView({
   return (
     <TrayOverlay closeLabel='Back to orders' label='Order details' onClose={onBack} title='Order'>
       <Stack gap='medium'>
-        <Stack align='center' gap='small'>
+        <Stack gap='small'>
           <Stack align='center' direction='row' gap='small' justify='center'>
-            <OrderAssetPill asset={order.targetAsset} networks={networks} networksMeta={networksMeta} />
-            <Text align='center' truncate variant='label'>
-              {orderPairIntent(order)}
+            <Text
+              align='center'
+              tone={side === 'buy' ? 'special' : side === 'sell' ? 'danger' : 'secondary'}
+              variant='label'
+            >
+              {orderSideLabel(order)}
             </Text>
-            <OrderAssetPill
-              asset={order.contraAsset}
-              networks={networks}
-              networksMeta={networksMeta}
-              prefix={side ? getContraPreposition(side) : 'with'}
-            />
+            <Text tone='secondary' variant='supporting'>
+              {orderTypeLabel(order)}
+            </Text>
           </Stack>
-          <Stack direction='row' gap='xsmall' wrap>
+          <OrderTradeFlow networks={networks} networksMeta={networksMeta} order={order} />
+          <Stack direction='row' gap='xsmall' justify='center' wrap>
             <Text tone='muted' variant='code'>
               {orderStatusLabel(order)}
-            </Text>
-            <Text tone='muted' variant='code'>
-              {orderTypeLabel(order)}
             </Text>
             <Text tone='muted' variant='code'>
               {orderSize(order)}

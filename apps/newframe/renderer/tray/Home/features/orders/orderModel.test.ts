@@ -3,9 +3,14 @@ import { describe, expect, it } from 'bun:test'
 import {
   createOrderRows,
   formatOrderAmount,
+  hasOrderFill,
   isOpenOrder,
   normalizeOrderSide,
+  orderAssetAmounts,
+  orderContraAmount,
+  orderContraNotional,
   orderPairIntent,
+  orderTargetNotional,
   orderStatusLabel
 } from './orderModel'
 
@@ -34,6 +39,46 @@ describe('orderModel', () => {
     expect(orderPairIntent(order)).toContain('ETH')
     expect(orderPairIntent(order)).toContain('USDC')
     expect(formatOrderAmount('1.234567891')).toBe('1.234568')
+  })
+
+  it('maps input and output amounts to their visible assets', () => {
+    const amounts = { spentAmount: '1', outputAmount: '2398.08', qty: '1' }
+
+    expect(orderAssetAmounts({ ...amounts, side: 'sell' })).toEqual({
+      target: '1',
+      contra: '2,398.08'
+    })
+    expect(orderAssetAmounts({ ...amounts, side: 'buy' })).toEqual({
+      target: '2,398.08',
+      contra: '1'
+    })
+  })
+
+  it('shows target notional and only treats actual fills as filled', () => {
+    expect(orderTargetNotional({ targetNotional: '2400' })).toBe('$2,400.00')
+    expect(orderTargetNotional({ targetNotional: null, contraAsset: { symbol: 'ETH' } })).toBe('—')
+    expect(
+      orderTargetNotional({
+        side: 'sell',
+        qty: '0.5',
+        averageFillPrice: '2400',
+        targetAsset: { symbol: 'WETH' },
+        contraAsset: { symbol: 'ETH' }
+      })
+    ).toBe('$1,200.00')
+    expect(hasOrderFill({ status: 'accepted', filledOutputAmount: '0' })).toBe(false)
+    expect(hasOrderFill({ status: 'cancelled', filledOutputAmount: '12' })).toBe(true)
+    expect(hasOrderFill({ status: 'filled' })).toBe(true)
+    expect(orderContraAmount({ status: 'accepted', outputAmount: '2400', side: 'sell' })).toBe('—')
+    expect(
+      orderContraNotional({
+        status: 'filled',
+        side: 'sell',
+        filledOutputAmount: '2398.08',
+        contraNotional: '2398.08',
+        contraAsset: { symbol: 'USDC' }
+      })
+    ).toBe('$2,398.08')
   })
 
   it('filters orders when either participating asset matches the selected chain', () => {

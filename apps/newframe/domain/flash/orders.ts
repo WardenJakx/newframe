@@ -31,6 +31,8 @@ export const FlashOrderRecordSchema = z.object({
   spentAmount: z.string(),
   outputAmount: z.string(),
   estimatedOutputAmount: z.string(),
+  targetNotional: z.string().optional(),
+  contraNotional: z.string().optional(),
   filledOutputAmount: z.string().nullable().optional(),
   averageFillPrice: z.string().nullable().optional(),
   createdAt: z.number(),

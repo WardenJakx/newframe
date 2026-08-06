@@ -81,11 +81,116 @@ export function orderSize(order: any) {
   return size ? `${size} ${orderAssetSymbol(order.targetAsset)}` : ''
 }
 
+function firstOrderAmount(...values: any[]) {
+  return values.find((value) => value !== undefined && value !== null && value !== '')
+}
+
+export function orderAssetAmounts(order: any) {
+  const side = normalizeOrderSide(order.side)
+  const filledOutput = Number(order.filledOutputAmount) > 0 ? order.filledOutputAmount : undefined
+  const inputAmount = formatOrderAmount(
+    firstOrderAmount(order.spentAmount, side === 'sell' ? order.qty : undefined)
+  )
+  const outputAmount = formatOrderAmount(
+    firstOrderAmount(
+      filledOutput,
+      order.outputAmount,
+      order.estimatedOutputAmount,
+      side === 'buy' ? order.qty : undefined
+    )
+  )
+
+  return {
+    target: side === 'buy' ? outputAmount : inputAmount,
+    contra: side === 'buy' ? inputAmount : outputAmount
+  }
+}
+
+export function hasOrderFill(order: any) {
+  const filledAmount = Number(order.filledOutputAmount)
+  return (
+    (Number.isFinite(filledAmount) && filledAmount > 0) ||
+    ['filled', 'complete', 'completed', 'partially-filled', 'partially_filled'].includes(orderStatus(order))
+  )
+}
+
+export function orderTargetNotional(order: any) {
+  const hasExplicitNotional =
+    order.targetNotional !== undefined && order.targetNotional !== null && order.targetNotional !== ''
+  const explicitNotional = Number(order.targetNotional)
+  if (hasExplicitNotional && Number.isFinite(explicitNotional) && explicitNotional >= 0) {
+    return formatOrderNotional(explicitNotional)
+  }
+
+  const amounts = orderAssetAmounts(order)
+  const targetAmount = Number(String(amounts.target || '').replace(/,/g, ''))
+  const averageFillPrice = Number(order.averageFillPrice)
+  if (
+    Boolean(amounts.target) &&
+    Number.isFinite(targetAmount) &&
+    targetAmount >= 0 &&
+    Number.isFinite(averageFillPrice) &&
+    averageFillPrice > 0
+  ) {
+    return formatOrderNotional(targetAmount * averageFillPrice)
+  }
+
+  const contraSymbol = orderAssetSymbol(order.contraAsset)
+  const contraAmount = Number(String(amounts.contra || '').replace(/,/g, ''))
+  if (
+    ['DAI', 'USDC', 'USDT'].includes(contraSymbol) &&
+    Boolean(amounts.contra) &&
+    Number.isFinite(contraAmount) &&
+    contraAmount >= 0
+  ) {
+    return formatOrderNotional(contraAmount)
+  }
+
+  return '—'
+}
+
+export function orderContraAmount(order: any) {
+  if (!hasOrderFill(order)) return '—'
+  return orderAssetAmounts(order).contra || '—'
+}
+
+export function orderContraNotional(order: any) {
+  if (!hasOrderFill(order)) return '—'
+
+  const hasExplicitNotional =
+    order.contraNotional !== undefined && order.contraNotional !== null && order.contraNotional !== ''
+  const explicitNotional = Number(order.contraNotional)
+  if (hasExplicitNotional && Number.isFinite(explicitNotional) && explicitNotional >= 0) {
+    return formatOrderNotional(explicitNotional)
+  }
+
+  const contraAmount = orderContraAmount(order)
+  const numericContraAmount = Number(String(contraAmount).replace(/,/g, ''))
+  if (
+    ['DAI', 'USDC', 'USDT'].includes(orderAssetSymbol(order.contraAsset)) &&
+    contraAmount !== '—' &&
+    Number.isFinite(numericContraAmount)
+  ) {
+    return formatOrderNotional(numericContraAmount)
+  }
+
+  return orderTargetNotional(order)
+}
+
+export function formatOrderNotional(value: number) {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: Math.abs(value) < 1 ? 4 : 2
+  }).format(value)
+}
+
 export function orderDate(value: any) {
   const time = timestamp(value, 0)
   if (!time) return ''
 
   return new Intl.DateTimeFormat(undefined, {
+    year: 'numeric',
     month: 'short',
     day: 'numeric',
     hour: 'numeric',
