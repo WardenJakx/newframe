@@ -24,6 +24,9 @@ export const sendStage: VisualStage = {
     await assertInsideViewport(tokenMenu, runtime, 'Send token menu')
     await sendPage.keyboard.press('Escape')
     await runtime.screenshot(sendPage, '11-send-open.png')
+
+    const recipientSelector = sendPage.getByRole('button', { name: 'Toggle recipients' })
+    await recipientSelector.click()
     await sendPage
       .getByRole('button', { name: /vitalik\.eth/i })
       .first()
