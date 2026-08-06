@@ -5,7 +5,10 @@ import { fromUtf8 } from '@ethereumjs/util'
 import * as helpersModule from './helpers'
 
 // real functions under test, exercised with partial fixtures
-const { decodeMessage, getRawTx, getSignedAddress } = helpersModule as Record<string, any>
+const { decodeMessage, encodePersonalSignMessage, getRawTx, getSignedAddress } = helpersModule as Record<
+  string,
+  any
+>
 
 beforeAll(async () => {
   log.transports.console.level = false
@@ -43,6 +46,20 @@ describe('#decodeMessage', () => {
 
   it('leaves invalid UTF-8 hex messages encoded', () => {
     expect(decodeMessage('0xc328')).toBe('0xc328')
+  })
+})
+
+describe('#encodePersonalSignMessage', () => {
+  it('preserves canonical UTF-8 bytes including newlines and a trailing zero nibble', () => {
+    const message = 'Definitive Flash v1 — Cancel Order\nOrder: 7c2fec66-26cb-4455-844a-f638f3cb8680'
+    const expected = `0x${Buffer.from(message, 'utf8').toString('hex')}`
+
+    expect(encodePersonalSignMessage(message)).toBe(expected)
+    expect(Buffer.from(expected.slice(2), 'hex').toString('utf8')).toBe(message)
+  })
+
+  it('leaves an existing hex message unchanged', () => {
+    expect(encodePersonalSignMessage('0x68656c6c6f')).toBe('0x68656c6c6f')
   })
 })
 

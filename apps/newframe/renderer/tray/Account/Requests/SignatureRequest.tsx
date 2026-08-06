@@ -2,11 +2,22 @@ import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
 
 import type { SignatureRequest } from '../../../../contracts/requests'
+import { cva } from '../../../../generated/styled-system/css/cva.js'
+
+const messageRecipe = cva({
+  base: {
+    margin: 0,
+    overflowWrap: 'anywhere',
+    whiteSpace: 'pre-wrap'
+  }
+})
 
 const Message = ({ text }: { text: string }) => {
   return (
     <Surface border='subtle' padding='medium' radius='control' tone='raised'>
-      <Text variant='code'>{text}</Text>
+      <pre aria-label='Message to sign' className={messageRecipe()}>
+        <Text variant='code'>{text}</Text>
+      </pre>
     </Surface>
   )
 }

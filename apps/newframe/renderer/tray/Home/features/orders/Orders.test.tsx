@@ -30,6 +30,10 @@ function order(cancellable = true) {
   }
 }
 
+function cancelButton(orderId: string) {
+  return document.querySelector<HTMLButtonElement>(`[data-order-id="${orderId}"] button`)
+}
+
 function state(orders: Record<string, any>, operations: Record<string, OperationRecord> = {}) {
   return walletState({
     currentAccount: 'account-1',
@@ -125,7 +129,7 @@ describe('Orders cancellation', () => {
       )
     })
 
-    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Cancel order' }).disabled).toBe(true)
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Cancel order' }).disabled).toBe(false)
 
     act(() => {
       resetStateMirrorForTests(
@@ -147,6 +151,38 @@ describe('Orders cancellation', () => {
     })
 
     expect(screen.queryByRole('button', { name: 'Cancel order' })).toBe(null)
+  })
+
+  it('allows different orders to be cancelled independently', async () => {
+    resetStateMirrorForTests(
+      state({
+        'order-1': order(),
+        'order-2': { ...order(), orderId: 'order-2' }
+      })
+    )
+    ;(link.executeCommand as Mock<any>).mockImplementation(async (command: any) =>
+      command.type === 'flash.order-cancel' ? await new Promise(() => undefined) : { ok: true }
+    )
+
+    const { user } = render(
+      <HomeUiProvider>
+        <Orders />
+      </HomeUiProvider>
+    )
+
+    await user.click(cancelButton('order-1')!)
+    expect(cancelButton('order-1')?.disabled).toBe(true)
+    expect(cancelButton('order-2')?.disabled).toBe(false)
+
+    await user.click(cancelButton('order-2')!)
+    const cancelCommands = (link.executeCommand as Mock<any>).mock.calls
+      .map(([command]) => command as { orderId?: string; type?: string })
+      .filter(
+        (command): command is { orderId: string; type: 'flash.order-cancel' } =>
+          command.type === 'flash.order-cancel' && typeof command.orderId === 'string'
+      )
+    expect(cancelCommands.map((command) => command.orderId)).toEqual(['order-1', 'order-2'])
+    expect(cancelButton('order-2')?.disabled).toBe(true)
   })
 })
 

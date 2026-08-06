@@ -1,4 +1,4 @@
-import { padToEven, unpadHex, addHexPrefix, stripHexPrefix } from '@ethereumjs/util'
+import { padToEven, unpadHex, addHexPrefix, stripHexPrefix, bytesToHex, utf8ToBytes } from '@ethereumjs/util'
 import { recoverPersonalSignature } from '@metamask/eth-sig-util'
 import log from 'electron-log'
 import { isHexString } from 'ethers'
@@ -11,6 +11,10 @@ import { getAddress } from '../../domain/address.js'
 import isUtf8 from './isUtf8.js'
 
 const permission = (date: number, method: string) => ({ parentCapability: method, date })
+
+export function encodePersonalSignMessage(rawMessage: string) {
+  return isHexString(rawMessage) ? rawMessage : bytesToHex(utf8ToBytes(rawMessage))
+}
 
 export function decodeMessage(rawMessage: string) {
   if (isHexString(rawMessage)) {

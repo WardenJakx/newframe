@@ -4,7 +4,7 @@ import log from 'electron-log'
 import { estimateL1GasCost } from '../chains/l1GasFees.js'
 import { recoverTypedSignature, SignTypedDataVersion } from '@metamask/eth-sig-util'
 import { isAddress } from 'ethers'
-import { addHexPrefix, intToHex, isHexString, fromUtf8 } from '@ethereumjs/util'
+import { addHexPrefix, intToHex } from '@ethereumjs/util'
 import { shallow } from 'zustand/shallow'
 
 import type { CanonicalStoreReader } from '../store/actions.js'
@@ -43,7 +43,8 @@ import {
   getSignedAddress,
   requestPermissions,
   resError,
-  decodeMessage
+  decodeMessage,
+  encodePersonalSignMessage
 } from './helpers.js'
 
 import {
@@ -326,16 +327,7 @@ export class Provider extends EventEmitter {
 
   approveSign(req: AccountRequest, cb: Callback<string>) {
     const [address, rawMessage] = req.payload.params
-
-    let message = rawMessage
-
-    if (isHexString(rawMessage)) {
-      if (!rawMessage.startsWith('0x')) {
-        message = addHexPrefix(rawMessage)
-      }
-    } else {
-      message = fromUtf8(rawMessage)
-    }
+    const message = encodePersonalSignMessage(rawMessage)
 
     this.accounts.signMessage(address, message, (err, signed) => {
       if (err) {
@@ -671,12 +663,7 @@ export class Provider extends EventEmitter {
       return resError('Agent session is not authorized for the sign request account', payload, res)
     }
 
-    let message = rawMessage
-    if (isHexString(rawMessage)) {
-      if (!rawMessage.startsWith('0x')) message = addHexPrefix(rawMessage)
-    } else {
-      message = fromUtf8(rawMessage)
-    }
+    const message = encodePersonalSignMessage(rawMessage)
 
     const normalizedPayload = { ...payload, params: [account.id, message, ...orderedParams.slice(2)] }
     const handlerId = this.requests.create(res)
