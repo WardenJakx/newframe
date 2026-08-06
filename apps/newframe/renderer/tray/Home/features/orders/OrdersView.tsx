@@ -2,33 +2,44 @@ import { IconButton } from '@newframe/ui/icon-button'
 import { Stack } from '@newframe/ui/stack'
 import { Text } from '@newframe/ui/text'
 
-import { getContraPreposition } from '../../../../../domain/flash/pair'
 import { cva } from '../../../../../generated/styled-system/css/cva.js'
 import { activateOnKeyboard } from '../../ui/keyboard'
-import { OrderAssetPill } from './OrderAssetPill'
+import { OrderAssetIcon } from './OrderAssetPosition'
 import {
+  hasOrderFill,
   isOpenOrder,
   normalizeOrderSide,
+  orderAssetSymbol,
+  orderContraAmount,
+  orderContraNotional,
   orderDate,
   orderPairIntent,
   orderSideLabel,
-  orderSize,
   orderStatus,
   orderStatusLabel,
   orderTypeLabel
 } from './orderModel'
 
-const orderListRecipe = cva({ base: { display: 'flex', flexDirection: 'column', gap: '2' } })
+const orderListRecipe = cva({
+  base: {
+    display: 'flex',
+    flexDirection: 'column',
+    '& > [data-order-id]:not(:last-child)': {
+      borderBlockEndWidth: 'thin',
+      borderBlockEndStyle: 'solid',
+      borderBlockEndColor: 'border.subtle'
+    }
+  }
+})
 
 const orderRowRecipe = cva({
   base: {
     minHeight: 'menu-row-min',
     display: 'grid',
-    gridTemplateColumns: '22px 70px minmax(0, 1fr) minmax(62px, auto)',
-    gridTemplateAreas: '"cancel status copy size" "cancel asset copy contra"',
+    gridTemplateColumns: 'auto minmax(0, 1fr) auto',
+    gridTemplateAreas: '"asset summary meta"',
     alignItems: 'center',
     columnGap: '4',
-    rowGap: '2',
     padding: '4',
     borderRadius: 'small',
     cursor: 'pointer',
@@ -40,12 +51,20 @@ const orderAreaRecipe = cva({
   base: { minWidth: 0 },
   variants: {
     area: {
-      asset: { gridArea: 'asset' },
-      cancel: { gridArea: 'cancel', display: 'grid', placeItems: 'center' },
-      contra: { gridArea: 'contra', maxWidth: 'selection-trigger', justifySelf: 'end' },
-      copy: { gridArea: 'copy' },
-      size: { gridArea: 'size', maxWidth: 'selection-trigger', justifySelf: 'end', overflow: 'hidden' },
-      status: { gridArea: 'status' }
+      asset: {
+        gridArea: 'asset',
+        display: 'flex',
+        alignItems: 'center'
+      },
+      meta: {
+        gridArea: 'meta',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'flex-end',
+        justifyContent: 'center',
+        gap: '1'
+      },
+      summary: { gridArea: 'summary' }
     }
   }
 })
@@ -57,7 +76,8 @@ export function OrdersView({
   networksMeta,
   onCancel,
   onOpen,
-  orders
+  orders,
+  tokens
 }: {
   cancelError: { message: string; orderId: string } | null
   cancellingOrderId: string
@@ -66,6 +86,7 @@ export function OrdersView({
   onCancel: (order: any) => void
   onOpen: (orderId: string) => void
   orders: any[]
+  tokens: any
 }) {
   if (!orders.length)
     return (
@@ -80,6 +101,16 @@ export function OrdersView({
         const open = isOpenOrder(order)
         const side = normalizeOrderSide(order.side)
         const statusKey = orderStatus(order).replace(/[^a-z0-9]+/g, '-') || 'unknown'
+        const filled = hasOrderFill(order)
+        const contraAmount = orderContraAmount(order)
+        const contraSymbol = orderAssetSymbol(order.contraAsset)
+        const resultAmount = filled && contraAmount !== '—' ? `${contraAmount} ${contraSymbol}` : ''
+        const resultNotional = filled ? orderContraNotional(order) : '—'
+        const statusTone = ['filled', 'complete', 'completed'].includes(statusKey)
+          ? 'success'
+          : open
+            ? 'secondary'
+            : 'danger'
         const error = cancelError && cancelError.orderId === order.orderId ? cancelError.message : ''
 
         return (
@@ -93,7 +124,36 @@ export function OrdersView({
             role='button'
             tabIndex={0}
           >
-            <div className={orderAreaRecipe({ area: 'cancel' })}>
+            <div className={orderAreaRecipe({ area: 'asset' })}>
+              <OrderAssetIcon
+                asset={order.targetAsset}
+                networks={networks}
+                networksMeta={networksMeta}
+                tokens={tokens}
+              />
+            </div>
+            <div className={orderAreaRecipe({ area: 'summary' })}>
+              <Stack gap='xsmall' grow>
+                <Stack align='center' direction='row' gap='xsmall'>
+                  <Text variant='label'>{orderTypeLabel(order)}</Text>
+                  <Text
+                    tone={side === 'buy' ? 'special' : side === 'sell' ? 'danger' : 'secondary'}
+                    variant='label'
+                  >
+                    {orderSideLabel(order)}
+                  </Text>
+                </Stack>
+                <Text tone='muted' variant='supporting'>
+                  {orderDate(order.createdAt)}
+                </Text>
+                {error ? (
+                  <Text tone='danger' truncate variant='caption'>
+                    {error}
+                  </Text>
+                ) : null}
+              </Stack>
+            </div>
+            <div className={orderAreaRecipe({ area: 'meta' })}>
               {open ? (
                 <IconButton
                   disabled={cancellingOrderId === order.orderId}
@@ -107,53 +167,17 @@ export function OrdersView({
                   title='Cancel order'
                 />
               ) : null}
-            </div>
-            <div className={orderAreaRecipe({ area: 'status' })}>
-              <Stack gap='xsmall'>
-                <Text
-                  tone={statusKey === 'filled' ? 'success' : statusKey === 'failed' ? 'danger' : 'secondary'}
-                  variant='supporting'
-                >
-                  {orderStatusLabel(order)}
+              <Text align='end' variant='numeric'>
+                {resultNotional}
+              </Text>
+              {resultAmount ? (
+                <Text align='end' tone='muted' variant='caption' truncate>
+                  {resultAmount}
                 </Text>
-                <Text tone='muted' variant='caption'>
-                  {orderDate(order.createdAt)}
-                </Text>
-              </Stack>
-            </div>
-            <div className={orderAreaRecipe({ area: 'asset' })}>
-              <OrderAssetPill asset={order.targetAsset} networks={networks} networksMeta={networksMeta} />
-            </div>
-            <div className={orderAreaRecipe({ area: 'copy' })}>
-              <Stack gap='xsmall' grow>
-                <Text truncate variant='label'>
-                  {orderPairIntent(order)}
-                </Text>
-                <Stack direction='row' gap='xsmall'>
-                  <Text tone='muted' variant='caption'>
-                    {orderSideLabel(order)}
-                  </Text>
-                  <Text tone='muted' variant='caption'>
-                    {orderTypeLabel(order)}
-                  </Text>
-                  {error ? (
-                    <Text tone='danger' truncate variant='caption'>
-                      {error}
-                    </Text>
-                  ) : null}
-                </Stack>
-              </Stack>
-            </div>
-            <div className={orderAreaRecipe({ area: 'size' })}>
-              <Text variant='numeric'>{orderSize(order)}</Text>
-            </div>
-            <div className={orderAreaRecipe({ area: 'contra' })}>
-              <OrderAssetPill
-                asset={order.contraAsset}
-                networks={networks}
-                networksMeta={networksMeta}
-                prefix={side ? getContraPreposition(side) : 'with'}
-              />
+              ) : null}
+              <Text align='end' tone={statusTone} variant='supporting'>
+                {orderStatusLabel(order)}
+              </Text>
             </div>
           </div>
         )

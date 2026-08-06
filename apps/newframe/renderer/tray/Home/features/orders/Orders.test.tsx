@@ -149,3 +149,59 @@ describe('Orders cancellation', () => {
     expect(screen.queryByRole('button', { name: 'Cancel order' })).toBe(null)
   })
 })
+
+describe('Orders display', () => {
+  it('shows the OT asset with realized contra values and replaces incomplete results with a dash', () => {
+    const openOrder = {
+      ...order(),
+      orderId: 'open-order',
+      spentAmount: '1',
+      outputAmount: '2400',
+      targetNotional: '2400'
+    }
+    const filledOrder = {
+      ...order(false),
+      orderId: 'filled-order',
+      status: 'filled',
+      spentAmount: '1',
+      outputAmount: '2400',
+      filledOutputAmount: '2400',
+      targetNotional: '2400'
+    }
+    const buyOrder = {
+      ...order(false),
+      orderId: 'buy-order',
+      status: 'filled',
+      side: 'buy',
+      spentAmount: '100',
+      outputAmount: '0.04',
+      filledOutputAmount: '0.04',
+      targetNotional: '99',
+      contraNotional: '100'
+    }
+
+    resetStateMirrorForTests(
+      state({ 'open-order': openOrder, 'filled-order': filledOrder, 'buy-order': buyOrder })
+    )
+    render(
+      <HomeUiProvider>
+        <Orders />
+      </HomeUiProvider>
+    )
+
+    const openRow = document.querySelector('[data-order-id="open-order"]')
+    const filledRow = document.querySelector('[data-order-id="filled-order"]')
+    const buyRow = document.querySelector('[data-order-id="buy-order"]')
+    expect(openRow?.textContent).toContain('WETH')
+    expect(openRow?.textContent).toContain('LimitSELL')
+    expect(openRow?.textContent).toContain('1970')
+    expect(openRow?.textContent?.match(/—/g)).toHaveLength(1)
+    expect(openRow?.textContent).not.toContain('2,400 USDC')
+    expect(filledRow?.textContent).toContain('$2,400.00')
+    expect(filledRow?.textContent).toContain('2,400 USDC')
+    expect(filledRow?.textContent).toContain('Filled')
+    expect(buyRow?.textContent).toContain('LimitBUY')
+    expect(buyRow?.textContent).toContain('100 USDC')
+    expect(buyRow?.textContent).not.toContain('←')
+  })
+})

@@ -140,6 +140,8 @@ export const OrderRecordSchema = z
     spentAmount: OrderOptionalAmountSchema,
     outputAmount: OrderOptionalAmountSchema,
     estimatedOutputAmount: OrderOptionalAmountSchema,
+    targetNotional: OrderOptionalAmountSchema,
+    contraNotional: OrderOptionalAmountSchema,
     filledOutputAmount: OrderOptionalAmountSchema,
     averageFillPrice: OrderOptionalAmountSchema,
     createdAt: OrderTimestampSchema,

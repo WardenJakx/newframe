@@ -20,6 +20,7 @@ export function Orders() {
         networksMeta: state.networksMeta?.ethereum || EMPTY_RECORD,
         operations: state.operations || EMPTY_RECORD,
         orders: state.orders || EMPTY_RECORD,
+        tokens: state.tokens || { byId: {}, accountTokenIds: {} },
         showTestnets: !!state.showTestnets
       }
     })
@@ -87,6 +88,7 @@ export function Orders() {
       onCancel={cancel}
       onOpen={(orderId) => openOverlay({ type: 'order', orderId })}
       orders={orders}
+      tokens={shared.tokens}
     />
   )
 }
