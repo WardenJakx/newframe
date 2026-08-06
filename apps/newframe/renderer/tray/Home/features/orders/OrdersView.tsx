@@ -84,7 +84,7 @@ export function OrdersView({
   networks: Record<string | number, any>
   networksMeta: Record<string | number, any>
   onCancel: (order: any) => void
-  onOpen: (orderId: string) => void
+  onOpen: (order: any) => void
   orders: any[]
   tokens: any
 }) {
@@ -119,8 +119,8 @@ export function OrdersView({
             aria-label={`${orderPairIntent(order)} order details`}
             className={orderRowRecipe()}
             data-order-id={order.orderId}
-            onClick={() => onOpen(order.orderId)}
-            onKeyDown={(event) => activateOnKeyboard(event, () => onOpen(order.orderId))}
+            onClick={() => onOpen(order)}
+            onKeyDown={(event) => activateOnKeyboard(event, () => onOpen(order))}
             role='button'
             tabIndex={0}
           >

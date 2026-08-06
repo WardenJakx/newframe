@@ -22,13 +22,17 @@ const tradeFlowRecipe = cva({
 })
 
 export function OrderTradeFlow({
+  assetImages,
   networks,
   networksMeta,
-  order
+  order,
+  tokens
 }: {
+  assetImages?: { contra?: string; target?: string }
   networks: Record<string | number, any>
   networksMeta: Record<string | number, any>
   order: any
+  tokens: any
 }) {
   const side = normalizeOrderSide(order.side)
   const amounts = orderAssetAmounts(order)
@@ -40,9 +44,11 @@ export function OrderTradeFlow({
         align='start'
         amount={amounts.target || '—'}
         asset={order.targetAsset}
+        imageSource={assetImages?.target}
         networks={networks}
         networksMeta={networksMeta}
         notional={orderTargetNotional(order)}
+        tokens={tokens}
       />
       <Text decorative tone='muted' variant='heading'>
         {arrow}
@@ -51,9 +57,11 @@ export function OrderTradeFlow({
         align='end'
         amount={orderContraAmount(order)}
         asset={order.contraAsset}
+        imageSource={assetImages?.contra}
         networks={networks}
         networksMeta={networksMeta}
         notional={orderContraNotional(order)}
+        tokens={tokens}
       />
     </div>
   )

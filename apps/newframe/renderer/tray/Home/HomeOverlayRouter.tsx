@@ -58,7 +58,7 @@ export function HomeOverlayRouter() {
     case 'activity':
       return <ActivityDetails activityId={overlay.activityId} />
     case 'order':
-      return <OrderDetails orderId={overlay.orderId} />
+      return <OrderDetails assetImages={overlay.assetImages} orderId={overlay.orderId} />
     case 'receive':
       return <Receive accountId={overlay.accountId} />
     default:
