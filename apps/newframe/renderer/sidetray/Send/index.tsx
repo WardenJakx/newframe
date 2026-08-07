@@ -20,16 +20,38 @@ import {
   type SideTrayWalletAccount
 } from '../../state/selectors/sideTrayWallet'
 import { useSideTraySelector } from '../../state/useAppSelector'
+import { AddressIdentity } from '../../shared/ui/AddressIdentity'
 import AccountIcon from './AccountIcon'
 import { hasSentToAddress } from './sendHistory'
 import { createInitialSendState, sendReducer, SEND_TOKEN_ROWS_INCREMENT } from './sendReducer'
 import { cleanAddress } from './sendTransaction'
 import { closeSend } from './sendService'
 import { canProceed, getAmountBaseUnits } from './sendValidation'
+import { cva } from '../../../generated/styled-system/css/cva.js'
 
 interface SendProps {
   assetId?: string | null
 }
+
+const recipientOptionRecipe = cva({
+  base: {
+    width: '100%',
+    minHeight: 'list-row',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4',
+    paddingInline: '5',
+    background: 'bg.control',
+    cursor: 'pointer',
+    _hover: { background: 'bg.hover', color: 'text.primary' },
+    _focusVisible: {
+      outlineWidth: 'focus',
+      outlineStyle: 'solid',
+      outlineColor: 'border.focus',
+      outlineOffset: 'focus-outline-offset'
+    }
+  }
+})
 
 function recipientName(account: SideTrayWalletAccount) {
   return account.ensName || account.name
@@ -262,19 +284,12 @@ export default function Send({ assetId }: SendProps) {
               {state.recipient ? (
                 <Stack gap='small'>
                   <Surface border='accent' padding='small' radius='control' tone='raised'>
-                    <Stack align='center' direction='row' gap='medium'>
+                    <Stack align='center' direction='row' gap='medium' justify='between'>
                       <AccountIcon account={state.recipient} />
-                      <Stack gap='xsmall' grow>
-                        <Text variant='heading' truncate>
-                          {recipientName(state.recipient)}
-                        </Text>
-                        <Text variant='detail' tone='secondary' truncate>
-                          {state.recipient.address}
-                        </Text>
-                      </Stack>
-                      <Text display='inline' tone='secondary'>
-                        <Icon name='copy' size='small' />
-                      </Text>
+                      <AddressIdentity
+                        address={state.recipient.address}
+                        nickname={recipientName(state.recipient)}
+                      />
                       <IconButton
                         icon='close'
                         label='Clear recipient'
@@ -325,23 +340,28 @@ export default function Send({ assetId }: SendProps) {
                             </Stack>
                           </Surface>
                           {recipientAccounts.map((account) => (
-                            <Button
-                              appearance='row'
+                            <div
+                              aria-label={`Select ${recipientName(account)}`}
+                              className={recipientOptionRecipe()}
                               key={account.id}
-                              onPress={() => handleSelectRecipient(account)}
-                              size='large'
+                              onClick={() => handleSelectRecipient(account)}
+                              onKeyDown={(event) => {
+                                if (event.target !== event.currentTarget) return
+                                if (event.key !== 'Enter' && event.key !== ' ') return
+                                event.preventDefault()
+                                handleSelectRecipient(account)
+                              }}
+                              role='button'
+                              tabIndex={0}
                             >
                               <AccountIcon account={account} />
-                              <Stack gap='xsmall' grow>
+                              <Stack align='center' direction='row' gap='small' grow justify='between'>
                                 <Text variant='heading' truncate>
                                   {recipientName(account)}
                                 </Text>
-                                <Text variant='detail' tone='secondary' truncate>
-                                  {account.address}
-                                </Text>
+                                <AddressIdentity address={account.address} />
                               </Stack>
-                              <Icon name='copy' size='small' />
-                            </Button>
+                            </div>
                           ))}
                         </Stack>
                       </ScrollArea>

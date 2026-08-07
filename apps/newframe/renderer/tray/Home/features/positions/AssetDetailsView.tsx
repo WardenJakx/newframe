@@ -6,9 +6,9 @@ import { Stack } from '@newframe/ui/stack'
 import { Text } from '@newframe/ui/text'
 
 import ChainTokenIcon from '../../../../shared/ui/ChainTokenIcon'
+import { AddressIdentity } from '../../../../shared/ui/AddressIdentity'
 import { DetailRow } from '../../../../shared/ui/DetailRow'
 import { TrayOverlay } from '../../../../shared/ui/TrayOverlay'
-import useCopiedMessage from '../../../../shared/hooks/useCopiedMessage'
 import { formatUsdRate, isNativeCurrency, type DisplayedBalance } from '../../../../../domain/balance'
 import { cva } from '../../../../../generated/styled-system/css/cva.js'
 import { ChainIcon } from '../../components/ChainIcon'
@@ -38,7 +38,6 @@ export function AssetDetailsView({
   const chain = networks[asset.chainId] || {}
   const price = Number(asset?.rate?.usdRate || 0)
   const nativeAsset = isNativeCurrency(asset.address)
-  const [addressCopied, copyAddress] = useCopiedMessage(asset.address)
   const detailRow = (label: string, value: React.ReactNode, monospace = false) => (
     <DetailRow code={monospace} label={label} value={value} />
   )
@@ -131,31 +130,7 @@ export function AssetDetailsView({
             {nativeAsset ? (
               detailRow('Contract Address', 'Native asset')
             ) : (
-              <DetailRow
-                code
-                label='Contract Address'
-                onPress={copyAddress}
-                pressLabel={`Copy ${asset.symbol} contract address`}
-                value={
-                  <Stack align='center' direction='row' gap='xsmall' justify='end'>
-                    <span aria-live='polite'>
-                      <Text
-                        align='end'
-                        display='block'
-                        tone={addressCopied ? 'accent' : 'primary'}
-                        variant={addressCopied ? 'label' : 'code'}
-                      >
-                        {addressCopied ? 'Address copied' : asset.address}
-                      </Text>
-                    </span>
-                    <Icon
-                      name={addressCopied ? 'check' : 'copy'}
-                      size='small'
-                      tone={addressCopied ? 'accent' : 'muted'}
-                    />
-                  </Stack>
-                }
-              />
+              <DetailRow code label='Contract Address' value={<AddressIdentity address={asset.address} />} />
             )}
           </Stack>
         </Stack>

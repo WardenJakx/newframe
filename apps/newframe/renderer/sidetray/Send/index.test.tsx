@@ -7,6 +7,7 @@ import { applyStateMessage, beginStateConnection, resetStateMirrorForTests } fro
 import { NATIVE_CURRENCY } from '../../../domain/token/constants'
 import { createHostFixture } from '../../../test/support/rendererClient'
 import { STATE_STREAM_SCHEMA_VERSION } from '../../../contracts/state/protocol'
+import { shortAddress } from '../../shared/ui/AddressIdentity'
 
 const link = createHostFixture()
 
@@ -186,6 +187,21 @@ describe('Send', () => {
     expect(screen.getByText('$4.00')).toBeTruthy()
   })
 
+  it('allows the send amount to be cleared and typed after selecting a recipient', async () => {
+    const { user } = render(<Send assetId={nativeAssetId} />)
+    await user.click(screen.getByText(shortAddress(recipient.address)))
+    const amountInput = screen.getByLabelText('Amount') as HTMLInputElement
+
+    expect(screen.getByText('Recipient')).toBeTruthy()
+    expect(screen.getByText(shortAddress(recipient.address))).toBeTruthy()
+    expect(screen.queryByText(recipient.address)).toBeNull()
+    expect(screen.getByRole('button', { name: 'Copy address for Recipient' })).toBeTruthy()
+    await user.clear(amountInput)
+    await user.type(amountInput, '2.5')
+
+    expect(amountInput.value).toBe('2.5')
+  })
+
   it('searches and selects a custom token with no balance', async () => {
     const customToken = {
       address: '0x00000000000000000000000000000000000000cc',
@@ -217,9 +233,28 @@ describe('Send', () => {
   it('shows the first-time warning when the sender has no activity with the recipient', async () => {
     const { user } = render(<Send assetId={nativeAssetId} />)
 
-    await user.click(screen.getByText('Recipient').closest('button') as HTMLButtonElement)
+    await user.click(screen.getByRole('button', { name: 'Select Recipient' }))
 
     expect(screen.getByText('First time sending to this address.')).toBeTruthy()
+  })
+
+  it('shows shortened recipient addresses and copies the full address from the wallet selector', async () => {
+    const { user } = render(<Send assetId={nativeAssetId} />)
+
+    expect(screen.getByText(shortAddress(recipient.address))).toBeTruthy()
+    const copyButton = screen.getByRole('button', {
+      name: `Copy address for ${shortAddress(recipient.address)}`
+    })
+    await user.click(copyButton)
+
+    expect(link.executeCommand).toHaveBeenCalledWith({
+      type: 'clipboard.write',
+      text: recipient.address
+    })
+    expect(
+      screen.getByRole('button', { name: `Address copied for ${shortAddress(recipient.address)}` })
+    ).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Select Recipient' })).toBeTruthy()
   })
 
   it('hides the first-time warning when activity contains a prior send to the recipient', async () => {
@@ -235,14 +270,14 @@ describe('Send', () => {
     })
     const { user } = render(<Send assetId={nativeAssetId} />)
 
-    await user.click(screen.getByText('Recipient').closest('button') as HTMLButtonElement)
+    await user.click(screen.getByRole('button', { name: 'Select Recipient' }))
 
     expect(screen.queryByText('First time sending to this address.')).toBeNull()
   })
 
   it('clears recipient, amount, and open menus when the current account changes', async () => {
     const { user } = render(<Send assetId={nativeAssetId} />)
-    await user.click(screen.getByText('Recipient').closest('button') as HTMLButtonElement)
+    await user.click(screen.getByRole('button', { name: 'Select Recipient' }))
     fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '4' } })
     await user.click(screen.getByRole('button', { name: 'Select send token' }))
     expect(screen.getByRole('listbox', { name: 'Select send token' })).toBeTruthy()
@@ -282,7 +317,7 @@ describe('Send', () => {
     })
 
     const { user } = render(<Send assetId={nativeAssetId} />)
-    await user.click(screen.getByText('Recipient').closest('button') as HTMLButtonElement)
+    await user.click(screen.getByRole('button', { name: 'Select Recipient' }))
     fireEvent.click(screen.getByRole('button', { name: 'Proceed' }))
     expect(screen.getByText('Confirm in Newframe')).toBeTruthy()
 
@@ -298,7 +333,7 @@ describe('Send', () => {
 
   it('submits a native transfer through the Send service flow', async () => {
     const { user } = render(<Send assetId={nativeAssetId} />)
-    const recipientButton = screen.getByText('Recipient').closest('button') as HTMLButtonElement
+    const recipientButton = screen.getByRole('button', { name: 'Select Recipient' })
 
     await user.click(recipientButton)
 

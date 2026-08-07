@@ -218,10 +218,6 @@ export function TxFeeSummary(props: TxFeeSummaryProps) {
 }
 
 export function TxReview(props: TxReviewProps) {
-  const copyAddress = (data: string) => {
-    void link.executeCommand({ type: 'clipboard.write', text: data })
-  }
-
   const { req } = props
   const chainId = parseInt(req.data.chainId, 16)
   const chain = { type: 'ethereum' as const, id: chainId }
@@ -272,13 +268,7 @@ export function TxReview(props: TxReviewProps) {
   const details: TransactionInformationDetailRow[] = [
     {
       label: 'To',
-      value: (
-        <AddressIdentity
-          address={displayTo}
-          name={toName}
-          onCopy={displayTo ? () => copyAddress(displayTo) : undefined}
-        />
-      )
+      value: <AddressIdentity address={displayTo} nickname={toName} />
     },
     { label: 'Method', value: method }
   ]
@@ -308,11 +298,7 @@ export function TxReview(props: TxReviewProps) {
             </Text>
             <Inline align='center' gap='xsmall'>
               <Icon name='wallet' size='small' tone='accent' />
-              <AddressIdentity
-                address={from}
-                name={signingAccount?.name || signingAccount?.ensName}
-                onCopy={from ? () => copyAddress(from) : undefined}
-              />
+              <AddressIdentity address={from} nickname={signingAccount?.name || signingAccount?.ensName} />
             </Inline>
           </Inline>
         </Surface>

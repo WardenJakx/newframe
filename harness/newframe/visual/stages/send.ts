@@ -2,6 +2,8 @@ import { oneEthWei } from '../driver.ts'
 import type { VisualStage } from '../types.ts'
 import { assertInsideViewport, requireAccounts, revealAssetDetailsButton } from './helpers.ts'
 
+const shortAddress = (address: string) => `${address.slice(0, 8)}...${address.slice(-6)}`
+
 export const sendStage: VisualStage = {
   name: 'built-in send',
   async run(context) {
@@ -62,6 +64,14 @@ export const sendStage: VisualStage = {
     const [sendOperationId] = sendOperation
 
     const sendRequest = await driver.waitForCurrentRequest('transaction', new Set(), 30_000)
+    const sendRequestData = sendRequest.data
+    const senderAddress =
+      typeof sendRequestData === 'object' &&
+      sendRequestData !== null &&
+      'from' in sendRequestData &&
+      typeof sendRequestData.from === 'string'
+        ? sendRequestData.from
+        : ''
     const sign = tray.getByRole('button', { name: 'Sign', exact: true })
     await sign.waitFor({ state: 'visible', timeout: 5_000 })
     const reviewLayout = await sign.evaluate((button) => {
@@ -158,9 +168,9 @@ export const sendStage: VisualStage = {
     if (
       visibleAddress.primaryDisplay !== 'none' ||
       visibleAddress.alternateDisplay === 'none' ||
-      visibleAddress.address.toLowerCase() !== vitalik.address.toLowerCase()
+      visibleAddress.address.toLowerCase() !== shortAddress(vitalik.address).toLowerCase()
     ) {
-      runtime.fail('Hovering a known name must replace it in place with the full address')
+      runtime.fail('Hovering a known name must replace it in place with the shortened address')
     }
     await runtime.screenshot(tray, '14-send-review-hover-address.png')
     await effectsTitle.hover()
@@ -197,9 +207,9 @@ export const sendStage: VisualStage = {
     if (
       visibleSignerAddress.primaryDisplay !== 'none' ||
       visibleSignerAddress.alternateDisplay === 'none' ||
-      visibleSignerAddress.address.toLowerCase() !== sendRequest.data.from?.toLowerCase()
+      visibleSignerAddress.address.toLowerCase() !== shortAddress(senderAddress).toLowerCase()
     ) {
-      runtime.fail('Signing with must replace the account name in place with its full address')
+      runtime.fail('Signing with must replace the account name in place with the shortened address')
     }
     await runtime.screenshot(tray, '14-send-review-hover-signer.png')
     await effectsTitle.hover()
