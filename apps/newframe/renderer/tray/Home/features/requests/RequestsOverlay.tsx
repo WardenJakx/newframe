@@ -4,7 +4,7 @@ import { RequestsOverlayView } from './RequestsOverlayView'
 
 export function RequestsOverlay() {
   const accountId = useWalletSelector((state) => state.currentAccount || '')
-  const openOverlay = useHomeUiStore((state) => state.openOverlay)
+  const closeOverlay = useHomeUiStore((state) => state.closeOverlay)
 
-  return <RequestsOverlayView accountId={accountId} onBack={() => openOverlay({ type: 'menu' })} />
+  return <RequestsOverlayView accountId={accountId} onBack={closeOverlay} />
 }

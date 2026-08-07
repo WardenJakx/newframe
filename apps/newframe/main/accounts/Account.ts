@@ -574,14 +574,6 @@ class FrameAccount {
           this.runtime.navigation.back('panel')
         }
 
-        this.runtime.navigation.forward('panel', {
-          view: 'expandedModule',
-          data: {
-            id: 'requests',
-            account: account
-          }
-        })
-
         const crumb = {
           view: 'requestView',
           data: {

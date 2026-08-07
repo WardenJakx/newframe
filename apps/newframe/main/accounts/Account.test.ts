@@ -160,6 +160,16 @@ describe('#addRequest', () => {
     requestLifecycle.bind(request as any)
     account.addRequest(request)
 
+    expect(nav.forward).toHaveBeenCalledTimes(1)
+    expect(nav.forward).toHaveBeenCalledWith('panel', {
+      view: 'requestView',
+      data: {
+        step: 'confirm',
+        accountId: account.id,
+        requestId: request.handlerId
+      }
+    })
+
     const renderer = Object.assign(new EventEmitter(), { id: 7 })
     const renderers = createRendererAuthorizationRegistry(() => 'wallet-window')
     renderers.registerRenderer(renderer as never, 'wallet-ui', 'tray')

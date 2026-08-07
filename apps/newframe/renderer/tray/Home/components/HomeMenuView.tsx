@@ -8,36 +8,24 @@ export function HomeMenuView({
   onClose,
   onOpenAbout,
   onOpenDapps,
-  onOpenRequests,
   onOpenSettings,
   onOpenTokens,
   onQuit,
-  requestCount,
   tokenCount
 }: {
   instanceId: string
   onClose: () => void
   onOpenAbout: () => void
   onOpenDapps: () => void
-  onOpenRequests: () => void
   onOpenSettings: () => void
   onOpenTokens: () => void
   onQuit: () => void
-  requestCount: number
   tokenCount: number
 }) {
   return (
     <MenuOverlay closeLabel='Close menu' label='Main menu' onClose={onClose} title='Menu'>
       <Stack gap='large'>
         <Stack gap='small'>
-          <MenuItem
-            badge={requestCount}
-            badgeActive={requestCount > 0}
-            detail={requestCount ? `${requestCount} pending` : 'No pending requests'}
-            icon='inbox'
-            label='Requests'
-            onPress={onOpenRequests}
-          />
           <MenuItem detail='Connected permissions' icon='window' label='Dapps' onPress={onOpenDapps} />
           <MenuItem
             detail={tokenCount ? `${tokenCount} custom` : 'No custom tokens'}

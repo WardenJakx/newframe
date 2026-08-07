@@ -13,7 +13,6 @@ export const trayOverlaysStage: VisualStage = {
     await runtime.screenshot(tray, '02a-main-menu.png')
 
     for (const [label, filename] of [
-      ['Requests', '02b-requests-overlay.png'],
       ['Dapps', '02c-dapps-overlay.png'],
       ['Custom Tokens', '02d-custom-tokens-overlay.png'],
       ['Settings', '02e-settings-overlay.png']
