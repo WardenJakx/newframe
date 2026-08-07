@@ -4,6 +4,7 @@ import { Text } from '@newframe/ui/text'
 import { useEffect, useRef, useState } from 'react'
 
 import { cva } from '../../../generated/styled-system/css/cva.js'
+import link from '../link'
 
 const addressIdentityRecipe = cva({
   base: {
@@ -31,48 +32,63 @@ export const shortAddress = (address?: string) => {
 
 export type AddressIdentityProps = {
   address?: string
-  name?: string
-  onCopy?: () => void
+  nickname?: string
+  onCopy?: (address: string) => void
+  showFullAddress?: boolean
 }
 
-export function AddressIdentity({ address, name, onCopy }: AddressIdentityProps) {
+export function AddressIdentity({
+  address,
+  nickname,
+  onCopy,
+  showFullAddress = false
+}: AddressIdentityProps) {
   const [copied, setCopied] = useState(false)
   const resetTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   useEffect(() => () => clearTimeout(resetTimer.current), [])
 
-  if (!address && !name) return null
-  const display = name || shortAddress(address)
+  if (!address && !nickname) return null
+  const addressDisplay = showFullAddress ? address || '' : shortAddress(address)
+  const display = nickname || addressDisplay
   const displayText = (
     <Text align='end' truncate variant='code'>
       {display}
     </Text>
   )
+  const addressText = showFullAddress ? (
+    <span className={fullAddressRecipe()}>
+      <Text align='end' variant='nanoCode'>
+        {addressDisplay}
+      </Text>
+    </span>
+  ) : (
+    <Text align='end' truncate variant='code'>
+      {addressDisplay}
+    </Text>
+  )
 
   return (
     <span className={addressIdentityRecipe()} data-address-identity=''>
-      {name && address ? (
-        <HoverSwapText
-          alternate={
-            <span className={fullAddressRecipe()}>
-              <Text align='end' variant='nanoCode'>
-                {address}
-              </Text>
-            </span>
-          }
-        >
-          {displayText}
-        </HoverSwapText>
-      ) : (
+      {nickname && address ? (
+        <HoverSwapText alternate={addressText}>{displayText}</HoverSwapText>
+      ) : nickname ? (
         displayText
+      ) : (
+        addressText
       )}
-      {address && onCopy ? (
+      {address ? (
         <IconButton
           appearance='ghost'
           icon={copied ? 'check' : 'copy'}
           label={copied ? `Address copied for ${display}` : `Copy address for ${display}`}
-          onPress={() => {
+          onPress={(event) => {
+            event.stopPropagation()
             clearTimeout(resetTimer.current)
-            onCopy()
+            if (onCopy) {
+              onCopy(address)
+            } else {
+              void link.executeCommand({ type: 'clipboard.write', text: address })
+            }
             setCopied(true)
             resetTimer.current = setTimeout(() => setCopied(false), 1000)
           }}

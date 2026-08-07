@@ -8,6 +8,7 @@ import { RequestViewProvider } from '../../../requestView'
 import { TxClassification } from '../../../../../contracts/requests'
 import { erc20Interface } from '../../../../../domain/evm'
 import { createHostFixture } from '../../../../../test/support/rendererClient'
+import { shortAddress } from '../../../../shared/ui/AddressIdentity'
 
 const link = createHostFixture()
 const renderRequest = (req: any) =>
@@ -198,7 +199,7 @@ describe('confirm', () => {
 
     const recipientCopy = screen.getByRole('button', { name: 'Copy address for recipient.eth' })
     expect(screen.getAllByText('recipient.eth').length).toBeGreaterThan(0)
-    expect(screen.getByText(recipientAddress)).toBeTruthy()
+    expect(screen.getByText(shortAddress(recipientAddress))).toBeTruthy()
     fireEvent.click(recipientCopy)
     expect(link.executeCommand).toHaveBeenCalledWith({
       type: 'clipboard.write',
@@ -208,7 +209,7 @@ describe('confirm', () => {
 
     expect(screen.getByRole('button', { name: 'Copy address for testname' })).toBeTruthy()
     expect(screen.getByText('testname')).toBeTruthy()
-    expect(screen.getByText(senderAddress)).toBeTruthy()
+    expect(screen.getByText(shortAddress(senderAddress))).toBeTruthy()
     expect(screen.queryByText(/hot signer/i)).toBeNull()
   })
 

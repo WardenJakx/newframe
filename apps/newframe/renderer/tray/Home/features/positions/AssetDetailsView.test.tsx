@@ -5,6 +5,7 @@ import { createHostFixture } from '../../../../../test/support/rendererClient'
 import { AssetDetailsView } from './AssetDetailsView'
 import { NATIVE_CURRENCY } from '../../../../../domain/token/constants'
 import type { DisplayedBalance } from '../../../../../domain/balance'
+import { shortAddress } from '../../../../shared/ui/AddressIdentity'
 
 const address = '0xaf88d065e77c8cc2239327c5edb3a432268e5831'
 const networks = { 42161: { name: 'Arbitrum' } }
@@ -78,23 +79,23 @@ describe('AssetDetailsView contract address', () => {
   it('copies a token contract from the row and briefly confirms the copy', async () => {
     const { user } = renderAsset()
 
-    await user.click(screen.getByRole('button', { name: 'Copy USDC contract address' }))
+    await user.click(screen.getByRole('button', { name: `Copy address for ${shortAddress(address)}` }))
 
     expect(linkMock.executeCommand).toHaveBeenCalledWith({
       type: 'clipboard.write',
       text: address
     })
-    expect(screen.getByText('Address copied')).toBeTruthy()
+    expect(screen.getByRole('button', { name: `Address copied for ${shortAddress(address)}` })).toBeTruthy()
 
     act(() => timers.advanceTimersByTime(1000))
 
-    expect(screen.getByText(address)).toBeTruthy()
+    expect(screen.getByRole('button', { name: `Copy address for ${shortAddress(address)}` })).toBeTruthy()
   })
 
   it('keeps native assets non-interactive', () => {
     renderAsset(NATIVE_CURRENCY)
 
     expect(screen.getByText('Native asset')).toBeTruthy()
-    expect(screen.queryByRole('button', { name: 'Copy USDC contract address' })).toBeNull()
+    expect(screen.queryByRole('button', { name: /Copy address/ })).toBeNull()
   })
 })
