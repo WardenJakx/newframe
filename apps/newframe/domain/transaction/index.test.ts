@@ -108,6 +108,15 @@ describe('#getTransactionIntent', () => {
     expect(getTransactionIntent(req).subtitle).toBe('USD Coin')
   })
 
+  it('uses canonical token metadata when recognized transfer metadata is incomplete', () => {
+    const req = {
+      tokenData: { decimals: 6, name: 'USD Coin', symbol: 'USDC' },
+      recognizedActions: [{ id: 'erc20:transfer', data: {} }]
+    }
+
+    expect(getTransactionIntent(req)).toEqual({ title: 'Send USDC', subtitle: 'USD Coin' })
+  })
+
   it('falls back to decoded contract calls', () => {
     const req = {
       classification: 'CONTRACT_CALL',
@@ -345,6 +354,41 @@ describe('#getTransactionEffects', () => {
         detail: 'For spender 0x000000...001337'
       }
     ])
+  })
+
+  it('replaces generic simulated token metadata with recognized transfer metadata', () => {
+    const usdc = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'
+    const effects = getTransactionEffects({
+      data: { to: usdc },
+      simulation: {
+        status: 'success',
+        effects: [
+          {
+            id: `sim-erc20-${usdc.toLowerCase()}`,
+            kind: 'erc20',
+            direction: 'out',
+            label: 'Asset out',
+            amount: '0x7ed6b40',
+            decimals: 18,
+            symbol: 'Token',
+            assetAddress: usdc.toLowerCase()
+          }
+        ]
+      },
+      recognizedActions: [
+        {
+          id: 'erc20:transfer',
+          data: {
+            amount: '0x7ed6b40',
+            decimals: 6,
+            symbol: 'USDC',
+            recipient: { address: '0x0000000000000000000000000000000000001337' }
+          }
+        }
+      ]
+    })
+
+    expect(effects[0]).toMatchObject({ decimals: 6, symbol: 'USDC' })
   })
 })
 

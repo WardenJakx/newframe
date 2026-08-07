@@ -92,4 +92,150 @@ describe('#effectsFromTrace', () => {
       }
     ])
   })
+
+  it('uses recognized USDC metadata instead of assuming 18 decimals', async () => {
+    const effects = await effectsFromTrace(
+      {
+        calls: [
+          {
+            from: account,
+            to: usdc,
+            input: erc20Interface.encodeFunctionData('transfer', [testContract, '133000000'])
+          }
+        ]
+      },
+      {
+        handlerId: 'request-2',
+        type: 'transaction',
+        account: account.toLowerCase(),
+        origin: 'example.test',
+        payload: {} as any,
+        approvals: [],
+        feesUpdatedByUser: false,
+        recipientType: 'contract',
+        classification: 'CONTRACT_CALL' as any,
+        recognizedActions: [
+          {
+            id: 'erc20:transfer',
+            data: {
+              amount: '0x7ed6b40',
+              contract: usdc,
+              decimals: 6,
+              name: 'USD Coin',
+              symbol: 'USDC'
+            }
+          }
+        ],
+        data: {
+          chainId: '0x1',
+          type: '0x2',
+          gasFeesSource: 'Frame' as any,
+          from: account,
+          to: usdc,
+          value: '0x0',
+          data: erc20Interface.encodeFunctionData('transfer', [testContract, '133000000'])
+        }
+      },
+      { symbol: 'ETH', decimals: 18 },
+      { getNativeCurrency: () => ({}), getToken: () => undefined }
+    )
+
+    expect(effects).toEqual([
+      expect.objectContaining({
+        kind: 'erc20',
+        amount: '0x7ed6b40',
+        decimals: 6,
+        symbol: 'USDC',
+        assetAddress: usdc.toLowerCase()
+      })
+    ])
+  })
+
+  it('uses canonical token metadata seeded by an internal send', async () => {
+    const effects = await effectsFromTrace(
+      {
+        calls: [
+          {
+            from: account,
+            to: usdc,
+            input: erc20Interface.encodeFunctionData('transfer', [testContract, '134553460'])
+          }
+        ]
+      },
+      {
+        handlerId: 'request-internal-send',
+        type: 'transaction',
+        account: account.toLowerCase(),
+        origin: 'newframe-internal',
+        payload: {} as any,
+        approvals: [],
+        feesUpdatedByUser: false,
+        recipientType: 'contract',
+        recognizedActions: [],
+        classification: 'CONTRACT_CALL' as any,
+        tokenData: { decimals: 6, name: 'USD Coin', symbol: 'USDC' },
+        data: {
+          chainId: '0x2105',
+          type: '0x2',
+          gasFeesSource: 'Frame' as any,
+          from: account,
+          to: usdc,
+          value: '0x0',
+          data: erc20Interface.encodeFunctionData('transfer', [testContract, '134553460'])
+        }
+      },
+      { symbol: 'ETH', decimals: 18 },
+      { getNativeCurrency: () => ({}), getToken: () => undefined }
+    )
+
+    expect(effects).toEqual([
+      expect.objectContaining({
+        kind: 'erc20',
+        amount: '0x8051f74',
+        decimals: 6,
+        symbol: 'USDC',
+        assetAddress: usdc.toLowerCase()
+      })
+    ])
+  })
+
+  it('leaves decimals unknown when token metadata is unavailable', async () => {
+    const effects = await effectsFromTrace(
+      {
+        calls: [
+          {
+            from: account,
+            to: usdc,
+            input: erc20Interface.encodeFunctionData('transfer', [testContract, '133000000'])
+          }
+        ]
+      },
+      {
+        handlerId: 'request-3',
+        type: 'transaction',
+        account: account.toLowerCase(),
+        origin: 'example.test',
+        payload: {} as any,
+        approvals: [],
+        feesUpdatedByUser: false,
+        recipientType: 'contract',
+        recognizedActions: [],
+        classification: 'CONTRACT_CALL' as any,
+        data: {
+          chainId: '0x1',
+          type: '0x2',
+          gasFeesSource: 'Frame' as any,
+          from: account,
+          to: usdc,
+          value: '0x0',
+          data: '0x'
+        }
+      },
+      { symbol: 'ETH', decimals: 18 },
+      { getNativeCurrency: () => ({}), getToken: () => undefined }
+    )
+
+    expect(effects[0]).toMatchObject({ symbol: 'Token' })
+    expect(effects[0]).not.toHaveProperty('decimals')
+  })
 })

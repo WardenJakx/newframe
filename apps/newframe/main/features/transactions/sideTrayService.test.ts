@@ -80,6 +80,27 @@ describe('side tray transaction service', () => {
     )
   })
 
+  it('passes canonical token metadata through the trusted transaction context', async () => {
+    providerSend.mockResolvedValue({ result: `0x${'a'.repeat(64)}` })
+    const tokenData = { decimals: 6, name: 'USD Coin', symbol: 'USDC' }
+
+    await service.submitCurrentAccountTransaction(
+      {
+        chainId: 1,
+        idempotencyKey: '00000000-0000-4000-8000-000000000004',
+        tokenData,
+        transaction: { to: target, data: '0x1234', value: '0x0' }
+      },
+      principal
+    )
+
+    expect(providerSend).toHaveBeenCalledWith(
+      expect.objectContaining({ method: 'eth_sendTransaction' }),
+      principal,
+      { tokenData }
+    )
+  })
+
   it('rejects unavailable chains before invoking a provider or Flash', async () => {
     chainAvailable = false
 

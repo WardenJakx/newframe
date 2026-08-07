@@ -232,6 +232,55 @@ describe('#addRequest', () => {
       expect(account.requests[request.handlerId].data.data).toBe('encoded:0x2')
       expect(account.requests[request.handlerId].recognizedActions[0].data.amount).toBe('0x2')
     })
+
+    it('waits for token recognition before simulating the transaction', async () => {
+      let resolveRecognition: (actions: any[]) => void = () => {}
+      reveal.recog.mockImplementationOnce(
+        () => new Promise<any[]>((resolve) => (resolveRecognition = resolve))
+      )
+      reveal.decode.mockResolvedValueOnce(undefined)
+
+      const request = {
+        handlerId: 'transfer-request',
+        type: 'transaction',
+        data: {
+          chainId: '0x1',
+          to: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+          data: '0xa9059cbb00000000000000000000000000000000000000000000000000000000000013370000000000000000000000000000000000000000000000000000000007ed6b40'
+        }
+      }
+
+      account.addRequest(request)
+      await Promise.resolve()
+
+      expect(simulateTransactionEffectsMock).not.toHaveBeenCalled()
+
+      resolveRecognition([
+        {
+          id: 'erc20:transfer',
+          data: {
+            amount: '0x7ed6b40',
+            contract: request.data.to,
+            decimals: 6,
+            name: 'USD Coin',
+            symbol: 'USDC'
+          }
+        }
+      ])
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+
+      expect(simulateTransactionEffectsMock).toHaveBeenCalledTimes(1)
+      expect(simulateTransactionEffectsMock.mock.calls[0][0]).toMatchObject({
+        recognizedActions: [
+          {
+            id: 'erc20:transfer',
+            data: { contract: request.data.to, decimals: 6, symbol: 'USDC' }
+          }
+        ]
+      })
+    })
   })
 })
 

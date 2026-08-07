@@ -10,13 +10,20 @@ import type { OperationOwner, OperationReference } from '../operations/types.js'
 
 type SendAccount = { id: string; address: string }
 type SendBalance = { address: string; balance: string; chainId: number }
+type SendToken = {
+  address: string
+  chainId: number
+  decimals: number
+  name: string
+  symbol: string
+}
 
 export interface SendCanonicalSnapshot {
   currentAccount: string
   accounts: Record<string, SendAccount | undefined>
   balances: Record<string, SendBalance[] | undefined>
   networks: Record<number, { on?: boolean } | undefined>
-  tokens: Record<string, { address: string; chainId: number } | undefined>
+  tokens: Record<string, SendToken | undefined>
 }
 
 export interface SendIdempotencyEntry {
@@ -42,6 +49,7 @@ export interface SendServicePorts {
       command: {
         chainId: number
         idempotencyKey: string
+        tokenData?: { decimals: number; name: string; symbol: string }
         transaction: SendTransaction
       },
       principal: TrustedPrincipal
@@ -53,6 +61,7 @@ type ValidatedSend = {
   account: SendAccount
   amount: bigint
   recipientAddress: string
+  tokenData?: { decimals: number; name: string; symbol: string }
 }
 
 class SendFailure extends Error {
@@ -121,8 +130,11 @@ function validateCanonicalIntent(
   }
   const balance = canonicalBalance(snapshot, account, command)
   if (!balance) throw new SendFailure('asset_unavailable', 'Asset is unavailable.')
-  if (asset.address !== NATIVE_CURRENCY && !snapshot.tokens[toTokenId(asset)]) {
-    throw new SendFailure('asset_unavailable', 'Asset is unavailable.')
+  let tokenData: ValidatedSend['tokenData']
+  if (asset.address !== NATIVE_CURRENCY) {
+    const token = snapshot.tokens[toTokenId(asset)]
+    if (!token) throw new SendFailure('asset_unavailable', 'Asset is unavailable.')
+    tokenData = { decimals: token.decimals, name: token.name, symbol: token.symbol }
   }
 
   let available: bigint
@@ -138,7 +150,7 @@ function validateCanonicalIntent(
     throw new SendFailure('invalid_recipient', 'Enter a valid recipient.')
   }
 
-  return { account, amount, recipientAddress: recipientAddress.toLowerCase() }
+  return { account, amount, recipientAddress: recipientAddress.toLowerCase(), tokenData }
 }
 
 export function createSendService(ports: SendServicePorts) {
@@ -198,6 +210,7 @@ export function createSendService(ports: SendServicePorts) {
         {
           chainId: command.asset.chainId,
           idempotencyKey: command.operationId,
+          ...(validated.tokenData ? { tokenData: validated.tokenData } : {}),
           transaction: buildSendTransaction({
             amount: validated.amount,
             asset: command.asset,

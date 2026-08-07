@@ -263,7 +263,7 @@ function tokenFromRequest(
     return {
       address,
       chainId,
-      decimals: matchingAction.data.decimals ?? 18,
+      decimals: matchingAction.data.decimals,
       logoURI: matchingAction.data.logoURI,
       name: matchingAction.data.name || matchingAction.data.symbol || 'Token',
       symbol: matchingAction.data.symbol || 'Token'
@@ -297,7 +297,6 @@ async function resolveTokenMetadata(
     return {
       address,
       chainId,
-      decimals: 18,
       name: 'Token',
       symbol: 'Token'
     }
@@ -313,7 +312,6 @@ async function resolveTokenMetadata(
       ...tokenData,
       address,
       chainId,
-      decimals: tokenData.decimals ?? 18,
       name: tokenData.name || tokenData.symbol || 'Token',
       symbol: tokenData.symbol || 'Token'
     }
@@ -322,7 +320,6 @@ async function resolveTokenMetadata(
     return {
       address,
       chainId,
-      decimals: 18,
       name: 'Token',
       symbol: 'Token'
     }
@@ -370,10 +367,10 @@ async function tokenEffects(
           direction,
           label: direction === 'out' ? 'Asset out' : 'Asset in',
           amount: toHexQuantity(abs(delta)),
-          decimals: metadata.decimals ?? 18,
           symbol: metadata.symbol || 'Token',
           detail: 'Simulated balance change',
           assetAddress: address,
+          ...(Number.isInteger(metadata.decimals) ? { decimals: metadata.decimals } : {}),
           ...(metadata.logoURI ? { logoURI: metadata.logoURI } : {})
         } as TransactionEffect
       })
