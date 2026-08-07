@@ -1,12 +1,6 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from 'react'
 
-export type RequestViewStep =
-  | 'confirm'
-  | 'adjustFee'
-  | 'adjustApproval'
-  | 'adjustPermit'
-  | 'viewData'
-  | 'viewRaw'
+export type RequestViewStep = 'confirm' | 'adjustFee' | 'adjustApproval' | 'adjustPermit' | 'viewRaw'
 
 export type RequestViewState = {
   step: RequestViewStep

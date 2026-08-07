@@ -1,28 +1,32 @@
 import link from '../../../../shared/link'
+import { AddressIdentity } from '../../../../shared/ui/AddressIdentity'
 import { DisplayCoinBalance } from '../../../../shared/ui/DisplayValue'
 import { Button } from '@newframe/ui/button'
 import { Inline } from '@newframe/ui/inline'
 import { Stack } from '@newframe/ui/stack'
 import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
-import {
-  getPaidTransactionFee,
-  TRANSACTION_CONFIRMATION_TARGET,
-  getTransactionEffects,
-  getTransactionIntent,
-  usesBaseFee
-} from '../../../../../domain/transaction'
+import { Icon } from '@newframe/ui/icon'
+import { useState } from 'react'
+import { getPaidTransactionFee, getTransactionEffects, usesBaseFee } from '../../../../../domain/transaction'
 import { chainUsesOptimismFees } from '../../../../../domain/chain/fees'
 import { displayValueData } from '../../../../shared/format/displayValue'
 import { getAddress } from '../../../../../domain/address'
 import { toBigInt } from '../../../../../domain/units'
 import { tokenForId, tokenImageSource } from '../../../../../domain/token'
-import TransactionInformation, { shortAddress } from './TransactionInformation'
+import TransactionInformation from './TransactionInformation'
 import type { TransactionInformationDetailRow } from './TransactionInformation'
-import { useAssetRate, useNetwork, useNetworkMetadata, useOriginName, useTokens } from '../state'
+import {
+  useAccountIdentity,
+  useAssetRate,
+  useNetwork,
+  useNetworkMetadata,
+  useOriginName,
+  useTokens
+} from '../state'
 import { NATIVE_CURRENCY } from '../../../../../domain/token/constants'
+import { persistedImageSource } from '../../../../../domain/image'
 import { useRequestView } from '../../../requestView'
-import type { RequestViewState } from '../../../requestView'
 import type { TransactionRequest } from '../../../../../contracts/requests'
 
 type NativeCurrency = {
@@ -37,7 +41,7 @@ type TxFeeSummaryProps = {
   nativeCurrency: NativeCurrency
   isTestnet: boolean
   gasPrice?: { selected?: string }
-  openRequestView(next: RequestViewState): void
+  openAdjustFee(): void
 }
 
 type TxReviewProps = {
@@ -46,16 +50,16 @@ type TxReviewProps = {
   networkMetadata: ReturnType<typeof useNetworkMetadata>
   originName: string
   tokens: ReturnType<typeof useTokens>
-  openRequestView(next: RequestViewState): void
+  openAdjustFee(): void
 }
 
 type TxReviewWithStateProps = Pick<TxReviewProps, 'req'>
 
 const FEE_WARNING_THRESHOLD_USD = 50
 const FEE_RATE_OPTIONS = [
-  { id: 'asap', label: 'Ape' },
+  { id: 'asap', label: 'Very fast' },
   { id: 'fast', label: 'Fast' },
-  { id: 'standard', label: 'Medium' },
+  { id: 'standard', label: 'Standard' },
   { id: 'slow', label: 'Slow' },
   { id: 'custom', label: 'Custom' }
 ] as const
@@ -69,7 +73,30 @@ const displayStatus = (req: TransactionRequest) => {
   return status
 }
 
+type ActionIdentity = { address?: string; ens?: string }
+type ActionData = {
+  name?: string
+  symbol?: string
+  recipient?: ActionIdentity | string
+}
+
+const actionData = (req: TransactionRequest, id: string) =>
+  (req.recognizedActions?.find((action) => action.id === id)?.data || {}) as ActionData
+
+const transferRecipient = (req: TransactionRequest): ActionIdentity | undefined => {
+  const recognized = actionData(req, 'erc20:transfer').recipient
+  if (typeof recognized === 'string') return { address: recognized }
+  if (recognized?.address) return recognized
+
+  if (req.decodedData?.method !== 'transfer' && req.decodedData?.signature !== 'transfer(address,uint256)') {
+    return undefined
+  }
+  const decoded = req.decodedData?.args?.[0]?.value
+  return typeof decoded === 'string' ? { address: decoded } : undefined
+}
+
 export function TxFeeSummary(props: TxFeeSummaryProps) {
+  const [expanded, setExpanded] = useState(false)
   const getOptimismFee = (l2Price: bigint, l2Limit: bigint, chainData?: { l1Fees?: string }) => {
     const l1DataFee = toBigInt(chainData?.l1Fees ?? '')
     if (l1DataFee === undefined) return undefined
@@ -81,7 +108,7 @@ export function TxFeeSummary(props: TxFeeSummaryProps) {
     const { req } = props
 
     if (option.id === 'custom') {
-      props.openRequestView({ step: 'adjustFee' })
+      props.openAdjustFee()
       return
     }
 
@@ -90,6 +117,7 @@ export function TxFeeSummary(props: TxFeeSummaryProps) {
       requestId: req.handlerId,
       level: option.id
     })
+    setExpanded(false)
   }
 
   const { req, chain, nativeCurrency, isTestnet } = props
@@ -116,45 +144,72 @@ export function TxFeeSummary(props: TxFeeSummaryProps) {
   const gasDisplay = displayValueData(maxFeePerGas).gwei()
   const shouldWarn = feeUSD.value > FEE_WARNING_THRESHOLD_USD
   const selectedRate = req.feesUpdatedByUser ? 'custom' : props.gasPrice?.selected || 'fast'
+  const selectedRateLabel = FEE_RATE_OPTIONS.find((option) => option.id === selectedRate)?.label || 'Fast'
   const canAdjustFee = !paidFee && !req.status
 
   return (
     <section aria-label='Network fee'>
-      <Surface padding='small' radius='card' tone='card'>
-        <Stack gap='small'>
-          <Inline align='center' gap='small' justify='between'>
-            <Stack gap='xsmall'>
+      <Surface padding='none' radius='card' tone='card'>
+        <Stack gap='none'>
+          <Button
+            appearance='disclosure'
+            expanded={expanded}
+            label={`${expanded ? 'Hide' : 'Show'} gas fee settings`}
+            onPress={() => setExpanded((current) => !current)}
+            size='medium'
+            width='full'
+          >
+            <Inline align='center' gap='small' justify='between'>
               <Text tone='secondary' variant='overline'>
-                {paidFee ? 'Paid fee' : 'Max fee'}
+                Gas fee
               </Text>
-              <Text tone={shouldWarn ? 'danger' : 'primary'} variant='control'>
-                {fee.bn === undefined ? (
-                  `? ${nativeCurrency.symbol}`
-                ) : (
-                  <DisplayCoinBalance amount={fee} symbol={nativeCurrency.symbol} />
-                )}
-              </Text>
-            </Stack>
-            <Text tone='secondary' variant='caption' shrink={false}>
-              {gasDisplay.displayValue} Gwei
-            </Text>
-          </Inline>
-          {canAdjustFee ? (
-            <Stack direction='row' equal gap='xsmall' label='Fee rate'>
-              {FEE_RATE_OPTIONS.map((option) => (
-                <Button
-                  appearance='segment'
-                  key={option.id}
-                  onPress={() => applyFeeRate(option)}
-                  pressed={selectedRate === option.id}
-                  size='small'
-                >
-                  <Text variant='caption' truncate>
-                    {option.label}
+              <Inline align='center' gap='small'>
+                <Text tone={shouldWarn ? 'danger' : 'primary'} variant='control'>
+                  {fee.bn === undefined ? (
+                    `? ${nativeCurrency.symbol}`
+                  ) : (
+                    <DisplayCoinBalance amount={fee} symbol={nativeCurrency.symbol} />
+                  )}
+                </Text>
+                {canAdjustFee ? (
+                  <Text tone='accent' variant='caption'>
+                    {selectedRateLabel}
                   </Text>
-                </Button>
-              ))}
-            </Stack>
+                ) : null}
+                <Icon name={expanded ? 'chevronUp' : 'chevronDown'} size='small' tone='muted' />
+              </Inline>
+            </Inline>
+          </Button>
+          {expanded ? (
+            <Surface padding='small' radius='none' tone='card'>
+              <Stack gap='small'>
+                <Inline align='center' gap='small' justify='between'>
+                  <Text tone='secondary' variant='caption'>
+                    {paidFee ? 'Paid network fee' : 'Maximum network fee'}
+                  </Text>
+                  <Text tone='secondary' variant='caption' shrink={false}>
+                    {gasDisplay.displayValue} Gwei
+                  </Text>
+                </Inline>
+                {canAdjustFee ? (
+                  <Stack direction='row' equal gap='xsmall' label='Fee rate'>
+                    {FEE_RATE_OPTIONS.map((option) => (
+                      <Button
+                        appearance='segment'
+                        key={option.id}
+                        onPress={() => applyFeeRate(option)}
+                        pressed={selectedRate === option.id}
+                        size='small'
+                      >
+                        <Text truncate variant='caption'>
+                          {option.label}
+                        </Text>
+                      </Button>
+                    ))}
+                  </Stack>
+                ) : null}
+              </Stack>
+            </Surface>
           ) : null}
         </Stack>
       </Surface>
@@ -175,14 +230,10 @@ export function TxReview(props: TxReviewProps) {
   const symbol = nativeCurrency.symbol || '?'
   const chainName = network.name || `Chain ${chainId}`
   const originName = props.originName || req.origin
-  const intent = getTransactionIntent(req, symbol)
   const to = req.data.to ? getAddress(req.data.to) : ''
   const from = req.data.from || req.account
   const calldata = req.data.data
   const method = req.decodedData?.method
-  const contractName = req.decodedData?.contractName
-  const source = req.decodedData?.source
-  const block = req.tx?.receipt?.blockNumber ? parseInt(req.tx.receipt.blockNumber, 16) : undefined
   const effects = getTransactionEffects(req, symbol).map((effect) => {
     if (effect.kind !== 'erc20' || !effect.assetAddress) return effect
 
@@ -203,61 +254,77 @@ export function TxReview(props: TxReviewProps) {
         : 'No direct asset changes detected'
   const notice =
     req.notice && req.notice.toLowerCase() !== (req.status || '').toLowerCase() ? req.notice : undefined
+  const signingAccount = useAccountIdentity(req.account || from)
+  const recipient = transferRecipient(req)
+  const displayTo = recipient?.address || to
+  const destinationAccount = useAccountIdentity(displayTo)
+  const tokenAction =
+    req.recognizedActions?.find((action) => ['erc20:approve', 'erc20:revoke'].includes(action.id))?.id || ''
+  const token = tokenAction ? actionData(req, tokenAction) : undefined
+  const toName = recipient
+    ? recipient.ens || destinationAccount?.name
+    : token?.name ||
+      token?.symbol ||
+      req.tokenData?.name ||
+      req.tokenData?.symbol ||
+      req.recipient ||
+      destinationAccount?.name
   const details: TransactionInformationDetailRow[] = [
-    { label: 'Origin', value: originName },
-    {
-      label: 'From',
-      value: shortAddress(from),
-      onClick: () => from && copyAddress(from)
-    },
     {
       label: 'To',
-      value: req.recipient || shortAddress(to),
-      onClick: () => to && copyAddress(to)
+      value: (
+        <AddressIdentity
+          address={displayTo}
+          name={toName}
+          onCopy={displayTo ? () => copyAddress(displayTo) : undefined}
+        />
+      )
     },
-    { label: 'Contract', value: contractName },
-    { label: 'Method', value: method },
-    { label: 'Decode source', value: source }
+    { label: 'Method', value: method }
   ]
-
-  if (calldata && calldata !== '0x') {
-    details.push({
-      label: 'Calldata digest',
-      value: req.data.calldataDigest || 'View data',
-      onClick: () => {
-        props.openRequestView({ step: 'viewData' })
-      }
-    })
-  }
 
   return (
     <TransactionInformation
+      originName={originName}
       networkName={chainName}
-      title={intent.title}
-      subtitle={intent.subtitle}
+      networkIcon={persistedImageSource(meta.image)}
       statusLabel={displayStatus(req)}
       notice={notice}
-      progress={{
-        status: req.status,
-        notice: req.notice,
-        txHash: req.tx?.hash,
-        confirmations: req.tx?.confirmations,
-        confirmationTarget: TRANSACTION_CONFIRMATION_TARGET,
-        blockNumber: block
-      }}
       effects={effects}
       effectsEmptyText={effectsEmptyText}
       details={details}
+      calldata={
+        calldata && calldata !== '0x'
+          ? { data: calldata, digest: req.data.calldataDigest || 'Digest unavailable' }
+          : undefined
+      }
       nativeCurrency={nativeCurrency}
     >
-      <TxFeeSummary
-        chain={chain}
-        gasPrice={meta.gas?.price}
-        isTestnet={Boolean(network.isTestnet)}
-        nativeCurrency={nativeCurrency}
-        openRequestView={props.openRequestView}
-        req={req}
-      />
+      <Stack gap='xsmall'>
+        <Surface padding='small' radius='card' tone='card'>
+          <Inline align='center' gap='small' justify='between'>
+            <Text tone='secondary' variant='overline'>
+              Signing with
+            </Text>
+            <Inline align='center' gap='xsmall'>
+              <Icon name='wallet' size='small' tone='accent' />
+              <AddressIdentity
+                address={from}
+                name={signingAccount?.name || signingAccount?.ensName}
+                onCopy={from ? () => copyAddress(from) : undefined}
+              />
+            </Inline>
+          </Inline>
+        </Surface>
+        <TxFeeSummary
+          chain={chain}
+          gasPrice={meta.gas?.price}
+          isTestnet={Boolean(network.isTestnet)}
+          nativeCurrency={nativeCurrency}
+          openAdjustFee={() => props.openAdjustFee()}
+          req={req}
+        />
+      </Stack>
     </TransactionInformation>
   )
 }
@@ -276,7 +343,7 @@ export default function TxReviewWithState(props: TxReviewWithStateProps) {
       networkMetadata={networkMetadata}
       originName={originName}
       tokens={tokens}
-      openRequestView={open}
+      openAdjustFee={() => open({ step: 'adjustFee' })}
     />
   )
 }

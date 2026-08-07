@@ -1,6 +1,7 @@
 export const typographyTokens = {
   'nf-font-family-body': "'MainFont', sans-serif",
   'nf-font-family-mono': "'FiraCode', monospace",
+  'nf-font-size-nano': '8px',
   'nf-font-size-micro': '9px',
   'nf-font-size-caption': '10px',
   'nf-font-size-detail': '11px',

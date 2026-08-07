@@ -1,7 +1,6 @@
 // New Tx
 import TxReview from './TxReview'
 import AdjustFee from './AdjustFee'
-import ViewData from './ViewData'
 import EditTokenSpend from '../../../../shared/ui/EditTokenSpend'
 import type { TokenSpendData } from '../../../../shared/ui/EditTokenSpend'
 import link from '../../../../shared/link'
@@ -38,7 +37,6 @@ export function TransactionRequest(props: TransactionRequestProps) {
   const transactionRequest = req as TransactionAccountRequest
 
   if (step === 'adjustFee') return <AdjustFee req={transactionRequest} />
-  if (step === 'viewData') return <ViewData req={transactionRequest} />
   if (step === 'adjustApproval') {
     if (!req || actionId !== 'erc20:approve') return null
     const approval = (req.recognizedActions || []).find((action) => action.id === actionId)

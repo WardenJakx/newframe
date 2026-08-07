@@ -37,16 +37,25 @@ export const tradeMarketStage: VisualStage = {
     const approveRequest = await driver.waitForCurrentRequest('transaction', new Set(), 30_000)
     await driver.screenshot(tray, '21b-trade-market-approve-review.png')
 
+    const gasSettings = tray.getByRole('button', { name: /Show gas fee settings/i })
+    await gasSettings.waitFor({ state: 'visible' })
+    if ((await gasSettings.getAttribute('aria-expanded')) !== 'false') {
+      driver.fail('Gas settings must default to the compact collapsed state')
+    }
+
     await tray.getByRole('button', { name: /Calldata digest/i }).click()
-    await tray.getByText('Raw Transaction', { exact: true }).waitFor({ state: 'visible' })
-    const rawDataFits = await tray.getByText('Raw Transaction', { exact: true }).evaluate(() => {
+    await tray.getByText('Full calldata', { exact: true }).waitFor({ state: 'visible' })
+    const rawDataFits = await tray.getByText('Full calldata', { exact: true }).evaluate(() => {
       const root = document.documentElement
       return root.scrollWidth <= root.clientWidth
     })
-    if (!rawDataFits) driver.fail('Raw transaction values must not overflow the tray viewport')
-    await driver.screenshot(tray, '21b1-trade-market-raw-data.png')
-    await tray.getByRole('button', { name: 'Back', exact: true }).click()
-    await tray.getByText('Transaction effects', { exact: true }).waitFor({ state: 'visible' })
+    if (!rawDataFits) driver.fail('Inline calldata must not overflow the tray viewport')
+    if (await tray.getByText('Raw Transaction', { exact: true }).isVisible()) {
+      driver.fail('Calldata disclosure must not open the removed raw transaction view')
+    }
+    await driver.screenshot(tray, '21b1-trade-market-inline-calldata.png')
+    await tray.getByRole('button', { name: /Calldata digest/i }).click()
+    await tray.getByText('Estimated changes', { exact: true }).waitFor({ state: 'visible' })
 
     await driver.signCurrentTransaction(approveRequest, '21c-trade-market-approve-submitted.png', [
       '21b-trade-market-approve-warning.png',

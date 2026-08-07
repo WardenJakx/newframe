@@ -7,7 +7,6 @@ import { resetStateMirrorForTests } from '../../../../state/rendererStore'
 import { RequestViewProvider } from '../../../requestView'
 import { TxClassification } from '../../../../../contracts/requests'
 import { erc20Interface } from '../../../../../domain/evm'
-import { TRANSACTION_CONFIRMATION_TARGET } from '../../../../../domain/transaction'
 import { createHostFixture } from '../../../../../test/support/rendererClient'
 
 const link = createHostFixture()
@@ -103,7 +102,7 @@ describe('confirm', () => {
     expect(effects.textContent).toMatch(/matic/i)
   })
 
-  it('renders vertical progress and compact fee regions', () => {
+  it('uses the request status and keeps gas settings collapsed', () => {
     const req = {
       handlerId: 'test-req',
       type: 'transaction',
@@ -124,11 +123,93 @@ describe('confirm', () => {
 
     renderRequest(req)
 
-    expect(screen.getByLabelText('Transaction progress').textContent).toMatch(/submitted/i)
-    expect(screen.getByLabelText('Transaction progress').textContent).toMatch(
-      `1/${TRANSACTION_CONFIRMATION_TARGET} confirmations`
-    )
-    expect(screen.getByLabelText('Network fee').textContent).toMatch(/max fee/i)
+    expect(screen.queryByLabelText('Transaction progress')).toBeNull()
+    expect(screen.getByRole('status').textContent).toBe('confirming')
+    expect(screen.getByRole('button', { name: /show gas fee settings/i })).toBeTruthy()
+    expect(screen.getByLabelText('Network fee').textContent).toMatch(/gas fee/i)
+  })
+
+  it('promotes request identity and resolves ERC-20 transfers to their recipient', () => {
+    const tokenAddress = '0x00000000000000000000000000000000000000aa'
+    const recipientAddress = '0x0000000000000000000000000000000000001337'
+    const senderAddress = '0x0000000000000000000000000000000000000042'
+    resetStateMirrorForTests({
+      assetRates: {},
+      accounts: {
+        account: {
+          id: 'account',
+          address: senderAddress,
+          name: 'testname',
+          signer: 'signer',
+          requests: {}
+        }
+      },
+      networks: { ethereum: { 137: { name: 'Polygon', isTestnet: false } } },
+      networksMeta: { ethereum: { 137: { nativeCurrency: { symbol: 'MATIC' } } } },
+      origins: { 'test-origin': { name: 'Test Dapp' } },
+      signers: {},
+      tokens: { byId: {}, accountTokenIds: {} },
+      windows: { panel: { nav: [] } }
+    } as any)
+    const req = {
+      handlerId: 'test-req',
+      type: 'transaction',
+      origin: 'test-origin',
+      account: senderAddress,
+      data: {
+        chainId: '0x89',
+        from: senderAddress,
+        to: tokenAddress,
+        gasLimit: '0x5208',
+        gasPrice: '0x3b9aca00',
+        type: '0x0'
+      },
+      recognizedActions: [
+        {
+          id: 'erc20:transfer',
+          data: {
+            amount: '0x17d7840',
+            decimals: 6,
+            name: 'USD Coin',
+            symbol: 'USDC',
+            recipient: { address: recipientAddress, ens: 'recipient.eth' }
+          }
+        }
+      ],
+      decodedData: {
+        contractName: 'Unknown Contract',
+        method: 'transfer',
+        source: 'Function selector registry'
+      },
+      classification: TxClassification.CONTRACT_CALL
+    }
+
+    renderRequest(req)
+
+    const summary = screen.getByLabelText('Request summary')
+    expect(summary.textContent).toMatch(/Test Dapp/i)
+    expect(summary.textContent).not.toMatch(/Polygon/i)
+    expect(screen.getByLabelText('Transaction effects').textContent).toMatch(/Estimated changes.*Polygon/i)
+    expect(screen.queryByText('Send USDC')).toBeNull()
+
+    const details = screen.getByLabelText('Transaction details')
+    expect(details.textContent).toMatch(/recipient\.eth/i)
+    expect(details.textContent).not.toMatch(/origin|chain|signer|from|contract|decode source/i)
+
+    const recipientCopy = screen.getByRole('button', { name: 'Copy address for recipient.eth' })
+    expect(screen.getAllByText('recipient.eth').length).toBeGreaterThan(0)
+    expect(screen.getByText(recipientAddress)).toBeTruthy()
+    fireEvent.click(recipientCopy)
+    expect(link.executeCommand).toHaveBeenCalledWith({
+      type: 'clipboard.write',
+      text: recipientAddress
+    })
+    expect(screen.getByRole('button', { name: 'Address copied for recipient.eth' })).toBeTruthy()
+
+    expect(screen.getByRole('button', { name: 'Copy address for testname' })).toBeTruthy()
+    expect(screen.getByText('testname')).toBeTruthy()
+    expect(screen.getByText(senderAddress)).toBeTruthy()
+    expect(screen.queryByText(/hot signer/i)).toBeNull()
   })
 
   it('renders the full token symbol in the fallback asset icon', () => {
@@ -305,10 +386,11 @@ describe('confirm', () => {
 
     renderRequest(req)
 
+    fireEvent.click(screen.getByRole('button', { name: /show gas fee settings/i }))
     const feeRate = screen.getByLabelText('Fee rate')
-    expect(feeRate.textContent).toMatch(/ape/i)
+    expect(feeRate.textContent).toMatch(/very fast/i)
     expect(feeRate.textContent).toMatch(/fast/i)
-    expect(feeRate.textContent).toMatch(/medium/i)
+    expect(feeRate.textContent).toMatch(/standard/i)
     expect(feeRate.textContent).toMatch(/slow/i)
     expect(feeRate.textContent).toMatch(/custom/i)
 
@@ -319,11 +401,12 @@ describe('confirm', () => {
       level: 'fast'
     })
 
+    fireEvent.click(screen.getByRole('button', { name: /show gas fee settings/i }))
     fireEvent.click(screen.getByRole('button', { name: 'Custom' }))
     expect(screen.getByLabelText('Gas Price (GWEI)')).toBeTruthy()
   })
 
-  it('opens raw transaction data and sends typed nonce commands', () => {
+  it('reveals full calldata inline without opening a raw transaction view', () => {
     const req = {
       handlerId: 'test-req',
       type: 'transaction',
@@ -333,6 +416,7 @@ describe('confirm', () => {
         chainId: '0x89',
         nonce: '0x2',
         data: '0x1234',
+        calldataDigest: '0xabcdef',
         gasLimit: '0x5208',
         gasPrice: '0x3b9aca00',
         type: '0x0'
@@ -341,25 +425,11 @@ describe('confirm', () => {
     }
     renderRequest(req)
 
-    fireEvent.click(screen.getByText('View data'))
-    fireEvent.click(screen.getByRole('button', { name: 'Lower nonce' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Raise nonce' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Reset nonce' }))
-
-    expect(link.executeCommand).toHaveBeenCalledWith({
-      type: 'transaction.nonce-adjust',
-      requestId: 'test-req',
-      direction: -1
-    })
-    expect(link.executeCommand).toHaveBeenCalledWith({
-      type: 'transaction.nonce-adjust',
-      requestId: 'test-req',
-      direction: 1
-    })
-    expect(link.executeCommand).toHaveBeenCalledWith({
-      type: 'transaction.nonce-reset',
-      requestId: 'test-req'
-    })
+    expect(screen.queryByText('Full calldata')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /calldata digest 0xabcdef/i }))
+    expect(screen.getByText('Full calldata')).toBeTruthy()
+    expect(screen.getByText('0x1234')).toBeTruthy()
+    expect(screen.queryByText('Raw Transaction')).toBeNull()
   })
 
   it('updates recognized token approvals through the typed command', () => {

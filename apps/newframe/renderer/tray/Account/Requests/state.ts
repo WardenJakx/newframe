@@ -70,6 +70,22 @@ export function useOriginName(originId: string) {
   return useWalletSelector(selector)
 }
 
+export function useAccountIdentity(idOrAddress?: string) {
+  const normalized = idOrAddress?.toLowerCase()
+  const selector = useMemo(
+    () => (state: WalletRendererState) => {
+      if (!idOrAddress) return undefined
+      const accounts = state.accounts || {}
+      return (
+        accounts[idOrAddress] ||
+        Object.values(accounts).find((account) => account.address.toLowerCase() === normalized)
+      )
+    },
+    [idOrAddress, normalized]
+  )
+  return useWalletSelector(selector)
+}
+
 export function useAssetRate(asset: AssetRateReference) {
   const { address, chainId, nativeTicker } = asset
   const selector = useMemo(

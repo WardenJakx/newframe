@@ -1,12 +1,9 @@
 import link from '../../../../shared/link'
 import { TrayOverlay } from '../../../../shared/ui/TrayOverlay'
 import TransactionInformation from '../../../Account/Requests/TransactionRequest/TransactionInformation'
-import {
-  getTransactionEffects,
-  getTransactionIntent,
-  TRANSACTION_CONFIRMATION_TARGET
-} from '../../../../../domain/transaction'
-import { activityRequestLike, requestStatusFromActivity, transactionStatusLabel } from './activityModel'
+import { getTransactionEffects } from '../../../../../domain/transaction'
+import { activityRequestLike, transactionStatusLabel } from './activityModel'
+import { persistedImageSource } from '../../../../../domain/image'
 
 const shortAddress = (address = '') =>
   address ? `${address.substring(0, 5)}…${address.substring(address.length - 4)}` : ''
@@ -28,7 +25,6 @@ export function ActivityDetailsView({
   const chainId = Number(activity.chainId)
   const nativeCurrency = networkMeta.nativeCurrency || { symbol: network.symbol || 'ETH' }
   const symbol = nativeCurrency.symbol || network.symbol || 'ETH'
-  const intent = getTransactionIntent(req, symbol)
   const effects = getTransactionEffects(req, symbol)
   const receiptBlock = activity.receipt?.blockNumber ? parseInt(activity.receipt.blockNumber, 16) : undefined
   const copy = (value?: string) => {
@@ -37,14 +33,11 @@ export function ActivityDetailsView({
   const from = activity.data?.from || activity.account || activity.address
   const to = activity.data?.to
   const details = [
-    { label: 'Origin', value: originName },
     { label: 'From', value: shortAddress(from), onClick: () => copy(from) },
     { label: 'To', value: activity.recipient || shortAddress(to), onClick: () => copy(to) },
     { label: 'Nonce', value: activity.nonce },
     { label: 'Hash', value: shortAddress(activity.hash), onClick: () => copy(activity.hash) },
-    { label: 'Contract', value: activity.decodedData?.contractName },
     { label: 'Method', value: activity.decodedData?.method },
-    { label: 'Decode source', value: activity.decodedData?.source },
     { label: 'Block', value: receiptBlock ? String(receiptBlock) : undefined }
   ]
 
@@ -57,24 +50,15 @@ export function ActivityDetailsView({
       title='Activity'
     >
       <TransactionInformation
+        originName={originName}
         details={details}
         effects={effects}
         effectsEmptyText='No direct asset changes detected'
-        heroVariant='elevated'
         nativeCurrency={nativeCurrency}
         networkName={network.name || `Chain ${chainId}`}
+        networkIcon={persistedImageSource(networkMeta.image)}
         notice={activity.status === 'reverted' ? 'Transaction reverted on-chain' : undefined}
-        progress={{
-          status: requestStatusFromActivity(activity.status),
-          notice: transactionStatusLabel(activity.status),
-          txHash: activity.hash,
-          confirmations: activity.confirmations || 0,
-          confirmationTarget: TRANSACTION_CONFIRMATION_TARGET,
-          blockNumber: receiptBlock
-        }}
         statusLabel={transactionStatusLabel(activity.status)}
-        subtitle={activity.display?.subtitle || intent.subtitle}
-        title={activity.display?.title || intent.title}
       />
     </TrayOverlay>
   )

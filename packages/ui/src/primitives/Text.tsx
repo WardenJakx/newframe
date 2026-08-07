@@ -22,6 +22,7 @@ export const textRecipe = cva({
         whiteSpace: 'nowrap'
       },
       code: { fontFamily: 'mono', fontSize: 'caption' },
+      nanoCode: { fontFamily: 'mono', fontSize: 'nano' },
       microCode: { fontFamily: 'mono', fontSize: 'micro' },
       title: {
         fontSize: 'label',

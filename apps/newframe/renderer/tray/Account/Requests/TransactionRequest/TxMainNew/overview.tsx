@@ -9,7 +9,6 @@ import { Cluster, ClusterRow, ClusterValue } from '../../../../../shared/ui/Clus
 import { DisplayValue } from '../../../../../shared/ui/DisplayValue'
 import RequestHeader from '../../../../../shared/ui/RequestHeader'
 import { toBigInt } from '../../../../../../domain/units'
-import { useRequestView } from '../../../../requestView'
 import type { ReactNode } from 'react'
 import type { SourceValue } from '../../../../../shared/format/displayValue'
 
@@ -155,10 +154,7 @@ function renderRecognizedActions(req: TxOverviewRequest) {
   )
 }
 
-const DataClusterValue = ({ children }: DataClusterValueProps) => {
-  const requestView = useRequestView()
-  return <ClusterValue onClick={() => requestView.open({ step: 'viewData' })}>{children}</ClusterValue>
-}
+const DataClusterValue = ({ children }: DataClusterValueProps) => <ClusterValue>{children}</ClusterValue>
 
 const TxOverview = ({
   req,

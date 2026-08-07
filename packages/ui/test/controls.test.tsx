@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event'
 import { Button } from '../src/primitives/Button'
 import { Field } from '../src/primitives/Field'
 import { IconButton } from '../src/primitives/IconButton'
+import { HoverSwapText } from '../src/primitives/HoverSwapText'
 import { Input } from '../src/primitives/Input'
 import { SearchField } from '../src/primitives/SearchField'
 import { Select } from '../src/primitives/Select'
@@ -122,6 +123,17 @@ describe('Side Panel controls', () => {
     expect(container.querySelector('strong')?.textContent).toBe('Important')
     expect(container.querySelector('output')?.textContent).toBe('42')
     expect(container.querySelector('small')?.textContent).toBe('Supporting detail')
+  })
+
+  it('provides reusable in-place hover text without duplicating accessible content', () => {
+    const { container } = render(
+      <HoverSwapText alternate='0x1234567890abcdef'>testname</HoverSwapText>
+    )
+
+    expect(screen.getByText('testname')).toBeTruthy()
+    const alternate = container.querySelector('[data-hover-swap-text="alternate"]')
+    expect(alternate?.textContent).toBe('0x1234567890abcdef')
+    expect(alternate?.getAttribute('aria-hidden')).toBe('true')
   })
 
   it('preserves field labeling, invalid state, and approved select options', async () => {
