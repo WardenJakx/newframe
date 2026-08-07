@@ -1868,17 +1868,15 @@ export class Accounts extends EventEmitter {
     const requestAccount = this.accountForRequest(handlerId)
     if (requestAccount) {
       const isTransaction = requestAccount.requests[handlerId].type === 'transaction'
+      if (!isTransaction) {
+        this.removeRequest(requestAccount, handlerId)
+        return
+      }
       requestAccount.patchRequest(handlerId, (request) => {
         request.status = RequestStatus.Success
         request.notice = 'Successful'
-        if (isTransaction) request.mode = RequestMode.Monitor
+        request.mode = RequestMode.Monitor
       })
-      if (!isTransaction) {
-        this.dependencies.runtime.schedule(
-          () => this.has(requestAccount.address) && this.removeRequest(requestAccount, handlerId),
-          3300
-        )
-      }
     }
   }
 
