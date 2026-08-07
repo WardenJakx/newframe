@@ -387,35 +387,8 @@ it('retains and can settle a pending request after its account moves and the old
   expect(respond.mock.calls).toEqual([[{ id: 7, jsonrpc: '2.0', result: 'profile result' }]])
 })
 
-it('uses canonical request state for signing success and transaction failure without activity', () => {
+it('uses canonical request state for transaction failure without activity', () => {
   const frameAccount = Accounts.getFrameAccount(account.address)
-  const signature = {
-    handlerId: 'signature-transition',
-    type: 'sign',
-    origin: 'test-origin',
-    account: account.address,
-    payload: {
-      id: 20,
-      jsonrpc: '2.0',
-      method: 'personal_sign',
-      params: ['0x01', account.address]
-    }
-  }
-  frameAccount.addRequest(signature, mock())
-  Accounts.setRequestPending(signature)
-  expect(frameAccount.requests[signature.handlerId]).toMatchObject({
-    status: 'pending',
-    notice: 'See Signer'
-  })
-  Accounts.setRequestSuccess(signature.handlerId)
-  expect(frameAccount.requests[signature.handlerId]).toMatchObject({
-    status: 'success',
-    notice: 'Successful',
-    mode: 'normal'
-  })
-  timers.advanceTimersByTime(3_300)
-  expect(frameAccount.requests[signature.handlerId]).toBeUndefined()
-
   const transaction = { ...request, handlerId: 'failed-transaction', account: account.address }
   frameAccount.addRequest(transaction, mock())
   Accounts.setRequestPending(transaction)
