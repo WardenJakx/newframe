@@ -137,7 +137,14 @@ async function recogErc20(
         const identity = await surface.identity(recipient, chainId)
         return {
           id: 'erc20:transfer',
-          data: { recipient: { address: recipient, ...identity }, amount, decimals, name, symbol }
+          data: {
+            recipient: { address: recipient, ...identity },
+            amount,
+            contract: contractAddress,
+            decimals,
+            name,
+            symbol
+          }
         } as Erc20Transfer
       }
     } catch (e) {

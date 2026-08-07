@@ -65,14 +65,20 @@ export function activityGasSpent(activity: any) {
   return activity.gasSpent || getPaidTransactionFee(activityRequestLike(activity))
 }
 
-export function activityBalanceChangeLabel(activity: any, nativeSymbol = 'ETH') {
+export function activityBalanceChangeLabel(
+  activity: any,
+  nativeSymbol = 'ETH',
+  tokenForAddress?: (address: string) => { decimals?: number; symbol?: string } | undefined
+) {
   const changes = activityBalanceChanges(activity, nativeSymbol)
   if (!changes.length) return ''
 
   const labels = changes.slice(0, 2).map((change: any) => {
     const sign = change.direction === 'in' ? '+' : '−'
-    const amount = formatUnits(toBigInt(change.amount) ?? 0n, change.decimals ?? 18)
-    return `${sign}${amount} ${change.symbol || '?'}`
+    const token = change.assetAddress ? tokenForAddress?.(change.assetAddress) : undefined
+    const decimals = Number.isInteger(token?.decimals) ? token?.decimals : change.decimals
+    const amount = Number.isInteger(decimals) ? formatUnits(toBigInt(change.amount) ?? 0n, decimals) : '?'
+    return `${sign}${amount} ${token?.symbol || change.symbol || '?'}`
   })
   const remaining = changes.length - labels.length
 
@@ -93,12 +99,45 @@ export function activityAssetEffect(activity: any, nativeSymbol = 'ETH') {
   const nativeTransfer =
     activity.classification === 'NATIVE_TRANSFER' ||
     (activity.display?.title || '').startsWith(`Send ${nativeSymbol}`)
+  const titleMatch = /^(Send|Approve|Revoke)\s+(.+?)(?:\s+allowance)?$/.exec(activity.display?.title || '')
+  const token = activity.tokenData || {}
+  const withAssetMetadata = (effect: any) => ({
+    ...effect,
+    ...(effect.kind !== 'native' && (effect.assetAddress || token.address || activity.data?.to)
+      ? { assetAddress: effect.assetAddress || token.address || activity.data?.to }
+      : {}),
+    ...(effect.logoURI || token.logoURI ? { logoURI: effect.logoURI || token.logoURI } : {})
+  })
 
-  if (!recognizedAssetAction && !decodedAssetAction && !nativeTransfer) return undefined
+  if (!recognizedAssetAction && !decodedAssetAction && !nativeTransfer && !titleMatch) return undefined
 
-  return getTransactionEffects(activityRequestLike(activity), nativeSymbol).find(
+  const effect = getTransactionEffects(activityRequestLike(activity), nativeSymbol).find(
     (effect) => effect.kind === 'erc20' || effect.kind === 'allowance' || effect.kind === 'native'
   )
+  if (effect) return withAssetMetadata(effect)
+
+  const balanceEffect = activityBalanceChanges(activity, nativeSymbol).find(
+    (change: any) => change.kind === 'erc20' || change.kind === 'native'
+  )
+  if (balanceEffect) return withAssetMetadata(balanceEffect)
+
+  if (!titleMatch) return undefined
+
+  const [, action, displaySymbol] = titleMatch
+  const symbol = token.symbol || displaySymbol
+  const isNative = action === 'Send' && symbol === nativeSymbol
+
+  return {
+    id: 'activity-display-asset',
+    kind: isNative ? 'native' : action === 'Send' ? 'erc20' : 'allowance',
+    direction: action === 'Send' ? 'out' : 'neutral',
+    label: activity.display?.title || 'Asset',
+    symbol,
+    ...(!isNative && (token.address || activity.data?.to)
+      ? { assetAddress: token.address || activity.data?.to }
+      : {}),
+    ...(token.logoURI ? { logoURI: token.logoURI } : {})
+  }
 }
 
 export function createActivityRows({

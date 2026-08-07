@@ -21,6 +21,7 @@ import type {
 import type { Chains } from '../chains/index.js'
 import type { Chain } from '../chains/index.js'
 import type { RevealService } from '../reveal.js'
+import type { TokenData } from '../contracts/erc20.js'
 import { getSignerType, Type as SignerType } from '../../domain/signer/index.js'
 import { toTokenId } from '../../domain/token/index.js'
 import { normalizeChainId, TransactionData } from '../../domain/transaction/index.js'
@@ -46,7 +47,6 @@ import {
   decodeMessage,
   encodePersonalSignMessage
 } from './helpers.js'
-
 import {
   EIP2612TypedData,
   LegacyTypedData,
@@ -69,6 +69,10 @@ import {
 import type { Origin, Permission } from '../store/state/index.js'
 import type { AccountRequestPort } from './accountRequestPort.js'
 import type { PromptedRequestContinuationPort } from '../features/requests/service.js'
+
+export interface TransactionRequestContext {
+  tokenData?: TokenData
+}
 
 const signTypedDataV4OnlySignerTypes: SignerType[] = [SignerType.Ledger, SignerType.Trezor]
 const proxyPrincipal = createMainPrincipal('provider-proxy', ['wallet:internal-state'])
@@ -834,7 +838,8 @@ export class Provider extends EventEmitter {
     payload: RPC.SendTransaction.Request,
     res: RPCRequestCallback,
     targetChain: Chain,
-    principal: TrustedPrincipal
+    principal: TrustedPrincipal,
+    context?: TransactionRequestContext
   ) {
     try {
       const txParams = payload.params[0]
@@ -858,7 +863,7 @@ export class Provider extends EventEmitter {
         if (accountId && this.accounts.get(accountId)) {
           return this.accounts.setSigner(accountId, (err) => {
             if (err) return resError(err, payload, res)
-            this.sendTransaction(payload, res, targetChain, principal)
+            this.sendTransaction(payload, res, targetChain, principal, context)
           })
         }
 
@@ -892,6 +897,7 @@ export class Provider extends EventEmitter {
             })),
             feesUpdatedByUser: false,
             recipientType,
+            ...(context?.tokenData ? { tokenData: context.tokenData } : {}),
             recognizedActions: []
           } as Omit<TransactionRequest, 'classification'>
 
@@ -1444,7 +1450,12 @@ export class Provider extends EventEmitter {
     })
   }
 
-  send(requestPayload: RPCRequestPayload, res: RPCRequestCallback = () => {}, principal?: TrustedPrincipal) {
+  send(
+    requestPayload: RPCRequestPayload,
+    res: RPCRequestCallback = () => {},
+    principal?: TrustedPrincipal,
+    context?: TransactionRequestContext
+  ) {
     // TODO: in the future this mapping will happen in the requests module so that the handler only ever
     // has to worry about one shape of request, error handling for each request type will happen
     // in the request handler for each type of request
@@ -1502,7 +1513,8 @@ export class Provider extends EventEmitter {
           payload as RPC.SendTransaction.Request,
           res,
           targetChain,
-          trustedPrincipal
+          trustedPrincipal,
+          context
         )
       return
     }

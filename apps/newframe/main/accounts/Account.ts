@@ -367,7 +367,7 @@ class FrameAccount {
           })
           if (updated) {
             this.accounts.syncTransactionActivity?.(this, updated)
-            void this.enrichErc20TokenData(updated)
+            await this.enrichErc20TokenData(updated)
           }
         }
       } catch (e) {
@@ -522,10 +522,12 @@ class FrameAccount {
     if (!req) return
 
     if (isTransactionRequest(req)) {
-      this.recipientIdentity(req)
-      this.decodeCalldata(req)
-      this.recognizeActions(req)
-      void this.simulateTransaction(req)
+      void this.recipientIdentity(req)
+      void this.decodeCalldata(req)
+      await this.recognizeActions(req)
+
+      const enrichedRequest = this.requests[req.handlerId] as TransactionRequest | undefined
+      if (enrichedRequest) await this.simulateTransaction(enrichedRequest)
       return
     }
 
@@ -549,7 +551,7 @@ class FrameAccount {
       }) as CanonicalAccountRequest
       this.store.getState().upsertAccountRequest(this.id, request)
 
-      this.revealDetails(request)
+      void this.revealDetails(request)
 
       // Display request
       const { account } = req

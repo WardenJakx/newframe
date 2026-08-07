@@ -145,16 +145,17 @@ function isDecodedErc20Transfer(req: any) {
 export function getTransactionIntent(req: any, nativeSymbol = 'ETH'): TransactionIntent {
   const action = firstRecognizedAction(req)
   const [, actionType] = (action?.id || '').split(':')
+  const token = erc20TokenData(req)
 
   if (action?.id === 'erc20:transfer') {
     return {
-      title: `Send ${action.data?.symbol || 'token'}`,
-      subtitle: action.data?.name || 'Token transfer'
+      title: `Send ${action.data?.symbol || token?.symbol || 'token'}`,
+      subtitle: action.data?.name || token?.name || 'Token transfer'
     }
   }
 
   if (action?.id === 'erc20:approve' || action?.id === 'erc20:revoke') {
-    const symbol = action.data?.symbol || 'token'
+    const symbol = action.data?.symbol || token?.symbol || 'token'
     const revoke = action?.id === 'erc20:revoke' || safeBigInt(action.data?.amount) === 0n
 
     return {
@@ -166,7 +167,6 @@ export function getTransactionIntent(req: any, nativeSymbol = 'ETH'): Transactio
   if (isDecodedErc20Approve(req)) {
     const amount = decodedArg(req, 1)
     const revoke = safeBigInt(amount) === 0n
-    const token = erc20TokenData(req)
     return {
       title: revoke ? `Revoke ${token?.symbol || 'token'} allowance` : `Approve ${token?.symbol || 'token'}`,
       subtitle: token?.name || 'Allowance change'
@@ -174,7 +174,6 @@ export function getTransactionIntent(req: any, nativeSymbol = 'ETH'): Transactio
   }
 
   if (isDecodedErc20Transfer(req)) {
-    const token = erc20TokenData(req)
     return {
       title: `Send ${token?.symbol || 'token'}`,
       subtitle: token?.name || 'Token transfer'
@@ -224,7 +223,10 @@ export function getDeterministicTransactionEffects(req: any, nativeSymbol = 'ETH
 
   ;(req?.recognizedActions || []).forEach((action: any, index: number) => {
     if (action?.id === 'erc20:transfer') {
-      const { amount, decimals, symbol, recipient } = action.data || {}
+      const { amount, recipient } = action.data || {}
+      const token = erc20TokenData(req)
+      const decimals = token?.decimals ?? action.data?.decimals
+      const symbol = action.data?.symbol || token?.symbol
 
       effects.push({
         id: `erc20-transfer-${index}`,
@@ -235,15 +237,18 @@ export function getDeterministicTransactionEffects(req: any, nativeSymbol = 'ETH
         decimals,
         symbol,
         detail: recipient?.ens || shortAddress(recipient?.address),
-        ...(action.data?.contract
-          ? { assetAddress: action.data.contract?.address || action.data.contract }
+        ...(action.data?.contract || req?.data?.to
+          ? { assetAddress: action.data?.contract?.address || action.data?.contract || req.data.to }
           : {}),
         ...(action.data?.logoURI ? { logoURI: action.data.logoURI } : {})
       })
     }
 
     if (action?.id === 'erc20:approve' || action?.id === 'erc20:revoke') {
-      const { amount, decimals, symbol, spender } = action.data || {}
+      const { amount, spender } = action.data || {}
+      const token = erc20TokenData(req)
+      const decimals = token?.decimals ?? action.data?.decimals
+      const symbol = action.data?.symbol || token?.symbol
       const revoke = action?.id === 'erc20:revoke' || safeBigInt(amount) === 0n
 
       effects.push({
@@ -257,8 +262,8 @@ export function getDeterministicTransactionEffects(req: any, nativeSymbol = 'ETH
         detail: `${revoke ? 'For' : 'For spender'} ${spender?.ens || shortAddress(spender?.address)}${
           isUnlimitedApproval(amount) ? ' (unlimited)' : ''
         }`,
-        ...(action.data?.contract
-          ? { assetAddress: action.data.contract?.address || action.data.contract }
+        ...(action.data?.contract || req?.data?.to
+          ? { assetAddress: action.data?.contract?.address || action.data?.contract || req.data.to }
           : {}),
         ...(action.data?.logoURI ? { logoURI: action.data.logoURI } : {})
       })
@@ -277,10 +282,10 @@ export function getDeterministicTransactionEffects(req: any, nativeSymbol = 'ETH
       direction: 'neutral',
       label: revoke ? 'Allowance revoked' : 'Allowance change',
       amount: addHexPrefix(safeBigInt(amount).toString(16)),
-      decimals: token?.decimals ?? 18,
       symbol: token?.symbol || 'Token',
       detail: `${revoke ? 'For' : 'For spender'} ${shortAddress(spender)}`,
-      assetAddress: req?.data?.to
+      assetAddress: req?.data?.to,
+      ...(Number.isInteger(token?.decimals) ? { decimals: token.decimals } : {})
     })
   }
 
@@ -295,10 +300,10 @@ export function getDeterministicTransactionEffects(req: any, nativeSymbol = 'ETH
       direction: 'out',
       label: 'Asset out',
       amount: addHexPrefix(safeBigInt(amount).toString(16)),
-      decimals: token?.decimals ?? 18,
       symbol: token?.symbol || 'Token',
       detail: shortAddress(recipient),
-      assetAddress: req?.data?.to
+      assetAddress: req?.data?.to,
+      ...(Number.isInteger(token?.decimals) ? { decimals: token.decimals } : {})
     })
   }
 
@@ -314,9 +319,30 @@ export function getTransactionEffects(req: any, nativeSymbol = 'ETH'): Transacti
 
   if (!simulatedEffects.length) return deterministicEffects
 
+  const simulatedWithMetadata = simulatedEffects.map((simulated: TransactionEffect) => {
+    if (simulated.kind !== 'erc20') return simulated
+
+    const address = (simulated.assetAddress || '').toLowerCase()
+    const deterministic = deterministicEffects.find(
+      (effect) =>
+        effect.kind === 'erc20' && !!address && (effect.assetAddress || '').toLowerCase() === address
+    )
+    if (!deterministic) return simulated
+
+    const genericMetadata = !simulated.symbol || simulated.symbol === 'Token'
+    return {
+      ...simulated,
+      ...((genericMetadata || !Number.isInteger(simulated.decimals)) &&
+      Number.isInteger(deterministic.decimals)
+        ? { decimals: deterministic.decimals }
+        : {}),
+      ...(genericMetadata && deterministic.symbol ? { symbol: deterministic.symbol } : {}),
+      ...(!simulated.logoURI && deterministic.logoURI ? { logoURI: deterministic.logoURI } : {})
+    }
+  })
   const deterministicNeutralEffects = deterministicEffects.filter((effect) => effect.direction === 'neutral')
 
-  return [...simulatedEffects, ...deterministicNeutralEffects]
+  return [...simulatedWithMetadata, ...deterministicNeutralEffects]
 }
 
 export function getTransactionPositionTokens(req: any): TransactionPositionToken[] {
@@ -331,7 +357,8 @@ export function getTransactionPositionTokens(req: any): TransactionPositionToken
     if (!/^0x[0-9a-f]{40}$/.test(address)) return
 
     const symbol = effect.symbol || 'Token'
-    const decimals = Number.isInteger(effect.decimals) ? Number(effect.decimals) : 18
+    if (!Number.isInteger(effect.decimals)) return
+    const decimals = Number(effect.decimals)
     const token = {
       address,
       chainId,

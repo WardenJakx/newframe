@@ -47,4 +47,40 @@ describe('activityModel', () => {
     expect(activityBalanceChangeLabel(activity)).toBe('−0.999 USDC')
     expect(activityGasLabel(activity)).toBe('Gas 0.000021 ETH')
   })
+
+  it('does not assume token decimals when metadata is unavailable', () => {
+    expect(
+      activityBalanceChangeLabel({
+        balanceChanges: [
+          {
+            kind: 'erc20',
+            direction: 'out',
+            amount: '0x7ed6b40',
+            symbol: 'Token'
+          }
+        ]
+      })
+    ).toBe('−? Token')
+  })
+
+  it('uses catalog metadata to repair a persisted generic token effect', () => {
+    expect(
+      activityBalanceChangeLabel(
+        {
+          balanceChanges: [
+            {
+              kind: 'erc20',
+              direction: 'out',
+              amount: '0x7ed6b40',
+              assetAddress: '0xusdc',
+              decimals: 18,
+              symbol: 'Token'
+            }
+          ]
+        },
+        'ETH',
+        (address) => (address === '0xusdc' ? { decimals: 6, symbol: 'USDC' } : undefined)
+      )
+    ).toBe('−133 USDC')
+  })
 })

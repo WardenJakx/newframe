@@ -17,10 +17,13 @@ describe('provider request infrastructure adapter', () => {
       respond = callback
     })
     const adapter = createProviderRequestAdapter({ send } as never)
+    const context = { tokenData: { decimals: 6, name: 'USD Coin', symbol: 'USDC' } }
     const first = adapter.request(
       { id: 1, jsonrpc: '2.0', method: 'eth_chainId', params: [], _origin: 'test-origin' },
-      principal
+      principal,
+      context
     )
+    expect(send).toHaveBeenCalledWith(expect.any(Object), expect.any(Function), principal, context)
     respond({ id: 1, jsonrpc: '2.0', result: '0x1' })
     respond({ id: 1, jsonrpc: '2.0', error: { code: -1, message: 'late' } })
     await expect(first).resolves.toMatchObject({ result: '0x1' })

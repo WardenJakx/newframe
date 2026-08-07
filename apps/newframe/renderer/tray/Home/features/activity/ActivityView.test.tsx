@@ -1,9 +1,12 @@
 import { describe, expect, it, mock } from 'bun:test'
 
 import { render, screen } from '../../../../../test/support/componentSetup'
+import { createHostFixture } from '../../../../../test/support/rendererClient'
 import { ActivityView } from './ActivityView'
 
+const link = createHostFixture()
 const hash = `0x${'1'.repeat(64)}`
+const wethAddress = '0x0000000000000000000000000000000000000002'
 const networks = { 1: { name: 'Ethereum', explorer: 'https://etherscan.io' } }
 const networksMeta = {
   1: { nativeCurrency: { name: 'Ether', symbol: 'ETH' } }
@@ -65,10 +68,65 @@ describe('ActivityView', () => {
 
     expect(onOpenExplorer).toHaveBeenCalledWith(expect.objectContaining({ hash }))
     expect(onOpen).not.toHaveBeenCalled()
+    expect(screen.getByText('0x1111…1111').closest('[data-transaction-link]')).toBeTruthy()
+    expect(screen.getByText('0x1111…1111').getAttribute('data-tone')).toBe('secondary')
     expect(screen.getByText('USDC')).toBeTruthy()
+    expect(document.querySelector('[data-status-glyph="completed"]')).toBeNull()
     expect(screen.getByText('−0.999 USDC')).toBeTruthy()
     expect(screen.getByText('Gas 0.000021 ETH')).toBeTruthy()
     expect(screen.getByText(/2026/)).toBeTruthy()
+  })
+
+  it('keeps a confirmed hash readable without an explorer and copies the full hash', async () => {
+    const { user } = render(
+      <ActivityView
+        activity={[activity()]}
+        networks={{ 1: { name: 'Ethereum', explorer: '' } }}
+        networksMeta={networksMeta}
+        onOpen={() => {}}
+        onOpenExplorer={() => {}}
+        tokens={tokens}
+      />
+    )
+
+    expect(screen.queryByRole('button', { name: `Open transaction ${hash} in explorer` })).toBeNull()
+    expect(screen.getByText('0x1111…1111').getAttribute('data-tone')).toBe('secondary')
+
+    await user.click(screen.getByRole('button', { name: `Copy transaction hash ${hash}` }))
+
+    expect(link.executeCommand).toHaveBeenCalledWith({ type: 'clipboard.write', text: hash })
+    expect(screen.getByRole('button', { name: `Transaction hash copied ${hash}` })).toBeTruthy()
+  })
+
+  it('uses the approved token icon even when an approval has no balance change', () => {
+    render(
+      <ActivityView
+        activity={[
+          activity({
+            balanceChanges: [],
+            data: { to: wethAddress },
+            display: { title: 'Approve WETH', subtitle: 'Wrapped Ether' },
+            recognizedActions: [],
+            tokenData: { symbol: 'WETH' }
+          })
+        ]}
+        networks={networks}
+        networksMeta={networksMeta}
+        onOpen={() => {}}
+        onOpenExplorer={() => {}}
+        tokens={{
+          byId: {
+            [`1:${wethAddress}`]: {
+              image: { base64: 'd2V0aA==', mimeType: 'image/png' }
+            }
+          },
+          accountTokenIds: {}
+        }}
+      />
+    )
+
+    expect(document.querySelector('img')?.getAttribute('src')).toBe('data:image/png;base64,d2V0aA==')
+    expect(document.querySelector('[data-status-glyph="completed"]')).toBeNull()
   })
 
   it('keeps pending activity wired to the transaction details panel', async () => {

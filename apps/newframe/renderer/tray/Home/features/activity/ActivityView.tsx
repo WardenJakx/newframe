@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 
 import { Button } from '@newframe/ui/button'
 import { Group } from '@newframe/ui/group'
+import { Inline } from '@newframe/ui/inline'
 import { MediaBadge } from '@newframe/ui/media-badge'
 import { Stack } from '@newframe/ui/stack'
 import { Text } from '@newframe/ui/text'
@@ -11,6 +12,7 @@ import { persistedImageSource } from '../../../../../domain/image'
 import { tokenForId, tokenImageSource } from '../../../../../domain/token'
 import StatusGlyph from '../../../../shared/ui/StatusGlyph'
 import ChainTokenIcon from '../../../../shared/ui/ChainTokenIcon'
+import { CopyButton } from '../../../../shared/ui/CopyButton'
 import { ChainIcon } from '../../components/ChainIcon'
 import {
   activityAssetEffect,
@@ -32,6 +34,10 @@ const activityRowRecipe = cva({
     padding: '4',
     borderRadius: 'compact'
   }
+})
+
+const transactionLinkRecipe = cva({
+  base: { textDecoration: 'underline' }
 })
 
 const shortHash = (hash = '') => (hash ? `${hash.substring(0, 6)}…${hash.substring(hash.length - 4)}` : '')
@@ -98,7 +104,12 @@ function ActivityRowContent({
   const nativeSymbol = networksMeta[chainId]?.nativeCurrency?.symbol || chain.symbol || 'ETH'
   const title = record.display?.title || 'Transaction'
   const subtitle = record.display?.subtitle || chain.name || `Chain ${chainId}`
-  const balanceChanges = record.status === 'succeeded' ? activityBalanceChangeLabel(record, nativeSymbol) : ''
+  const balanceChanges =
+    record.status === 'succeeded'
+      ? activityBalanceChangeLabel(record, nativeSymbol, (address) =>
+          tokenForId(tokens, `${chainId}:${address.toLowerCase()}`)
+        )
+      : ''
   const gasSpent =
     record.status === 'succeeded' || record.status === 'reverted'
       ? activityGasLabel(record, nativeSymbol)
@@ -169,18 +180,35 @@ export function ActivityView({
           const canOpenExplorer = confirmed && !!record.hash && !!networks[Number(record.chainId)]?.explorer
           const right = confirmed ? (
             <Stack align='end' gap='xsmall'>
-              <Button
-                appearance='ghost'
-                disabled={!canOpenExplorer}
-                label={`Open transaction ${record.hash || ''} in explorer`}
-                onPress={() => canOpenExplorer && onOpenExplorer(record)}
-                size='compact'
-                tone='accent'
-              >
-                <Text display='inline' tone='accent' variant='code'>
-                  {shortHash(record.hash)}
-                </Text>
-              </Button>
+              <Inline align='center' gap='none'>
+                {canOpenExplorer ? (
+                  <Button
+                    appearance='ghost'
+                    label={`Open transaction ${record.hash || ''} in explorer`}
+                    onPress={() => onOpenExplorer(record)}
+                    size='compact'
+                  >
+                    <span className={transactionLinkRecipe()} data-transaction-link=''>
+                      <Text display='inline' tone='secondary' variant='code'>
+                        {shortHash(record.hash)}
+                      </Text>
+                    </span>
+                  </Button>
+                ) : (
+                  <Text display='inline' tone='secondary' variant='code'>
+                    {shortHash(record.hash)}
+                  </Text>
+                )}
+                {record.hash ? (
+                  <CopyButton
+                    copiedLabel={`Transaction hash copied ${record.hash}`}
+                    copiedTitle='Transaction hash copied'
+                    label={`Copy transaction hash ${record.hash}`}
+                    title='Copy transaction hash'
+                    value={record.hash}
+                  />
+                ) : null}
+              </Inline>
               <Text tone='muted' variant='caption'>
                 {submitted}
               </Text>

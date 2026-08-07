@@ -745,7 +745,7 @@ describe('#send', () => {
   describe('#eth_sendTransaction', () => {
     let tx: any
 
-    const sendTransaction = (cb: any, chainId?: any) => {
+    const sendTransaction = (cb: any, chainId?: any, context?: any) => {
       const payload = {
         jsonrpc: '2.0',
         id: 7,
@@ -755,10 +755,10 @@ describe('#send', () => {
 
       if (chainId) (payload as any).chainId = chainId
 
-      provider.send({ ...payload, _origin: '8073729a-5e59-53b7-9e69-5d9bcff94087' }, cb, principal)
+      provider.send({ ...payload, _origin: '8073729a-5e59-53b7-9e69-5d9bcff94087' }, cb, principal, context)
     }
-    const sendTransactionResult = (chainId?: any) =>
-      new Promise<any>((resolve) => sendTransaction(resolve, chainId))
+    const sendTransactionResult = (chainId?: any, context?: any) =>
+      new Promise<any>((resolve) => sendTransaction(resolve, chainId, context))
 
     beforeEach(() => {
       tx = {
@@ -813,6 +813,14 @@ describe('#send', () => {
       tx.chainId = '0x89'
       await sendTransactionResult()
       expect(accountRequests[0].data.chainId).toBe('0x89')
+    })
+
+    it('seeds canonical token metadata from the trusted internal context', async () => {
+      const tokenData = { decimals: 6, name: 'USD Coin', symbol: 'USDC' }
+
+      await sendTransactionResult(undefined, { tokenData })
+
+      expect(accountRequests[0].tokenData).toEqual(tokenData)
     })
 
     it('switches to a known account matching the transaction from address', async () => {

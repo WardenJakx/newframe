@@ -1,6 +1,7 @@
 import { v5 as uuidv5 } from 'uuid'
 
 import type { TypedDataV4 } from '../../../contracts/operations.js'
+import type { TokenData } from '../../contracts/erc20.js'
 import type { TrustedPrincipal } from '../../authority.js'
 
 const internalOriginName = 'newframe-internal'
@@ -15,7 +16,11 @@ export interface SideTrayTransactionPorts {
     current(): SelectedAccount | null | undefined
   }
   provider: {
-    request(payload: RPCRequestPayload, principal: TrustedPrincipal): Promise<RPCResponsePayload>
+    request(
+      payload: RPCRequestPayload,
+      principal: TrustedPrincipal,
+      context?: { tokenData?: TokenData }
+    ): Promise<RPCResponsePayload>
   }
   store: {
     getState(): {
@@ -65,6 +70,7 @@ export function createSideTrayTransactionService(ports: SideTrayTransactionPorts
       command: {
         chainId: number
         idempotencyKey: string
+        tokenData?: TokenData
         transaction: { to: string; data?: string; value?: string }
       },
       principal: TrustedPrincipal
@@ -76,24 +82,24 @@ export function createSideTrayTransactionService(ports: SideTrayTransactionPorts
       }
 
       const chainId = chainIdHex(command.chainId)
-      const response = await ports.provider.request(
-        {
-          id: command.idempotencyKey,
-          jsonrpc: '2.0',
-          method: 'eth_sendTransaction',
-          chainId,
-          params: [
-            {
-              ...command.transaction,
-              chainId,
-              from,
-              value: command.transaction.value || '0x0'
-            }
-          ],
-          _origin: internalOriginId
-        },
-        principal
-      )
+      const payload = {
+        id: command.idempotencyKey,
+        jsonrpc: '2.0',
+        method: 'eth_sendTransaction',
+        chainId,
+        params: [
+          {
+            ...command.transaction,
+            chainId,
+            from,
+            value: command.transaction.value || '0x0'
+          }
+        ],
+        _origin: internalOriginId
+      } as RPC.SendTransaction.Request
+      const response = command.tokenData
+        ? await ports.provider.request(payload, principal, { tokenData: command.tokenData })
+        : await ports.provider.request(payload, principal)
 
       if (response.error) {
         return { ok: false, error: 'provider_error', message: errorMessage(response.error) } as const

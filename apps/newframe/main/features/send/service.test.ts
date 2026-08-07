@@ -26,7 +26,15 @@ function snapshot(): SendCanonicalSnapshot {
       ]
     },
     networks: { 1: { on: true } },
-    tokens: { [`1:${tokenAddress}`]: { address: tokenAddress, chainId: 1 } }
+    tokens: {
+      [`1:${tokenAddress}`]: {
+        address: tokenAddress,
+        chainId: 1,
+        decimals: 6,
+        name: 'Mock USD Coin',
+        symbol: 'USDC'
+      }
+    }
   }
 }
 
@@ -102,6 +110,7 @@ it('owns validated, idempotent native, token, and name sends and settles every s
     expect((submit as Mock<any>).mock.calls[0]?.[0]).toEqual({
       chainId: 1,
       idempotencyKey: 'token-name',
+      tokenData: { decimals: 6, name: 'Mock USD Coin', symbol: 'USDC' },
       transaction: {
         to: tokenAddress,
         value: '0x0',
