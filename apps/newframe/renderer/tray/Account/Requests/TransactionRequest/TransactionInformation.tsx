@@ -5,23 +5,13 @@ import { Inline } from '@newframe/ui/inline'
 import { Stack } from '@newframe/ui/stack'
 import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
-import { useRef, type Key, type ReactNode } from 'react'
+import { useRef, useState, type Key, type ReactNode } from 'react'
 
 import { cva } from '../../../../../generated/styled-system/css/cva.js'
 import { sva } from '../../../../../generated/styled-system/css/sva.js'
-import { DisplayCoinBalance } from '../../../../shared/ui/DisplayValue'
-import StatusGlyph from '../../../../shared/ui/StatusGlyph'
 import { imageSource, persistedImageSource } from '../../../../../domain/image'
 import { useTokenImageHydration } from '../../../../shared/hooks/useTokenImageHydration'
-
-export type TransactionProgressData = {
-  status?: string
-  notice?: string
-  txHash?: string
-  confirmations?: number
-  confirmationTarget?: number
-  blockNumber?: number | string
-}
+import { DisplayCoinBalance } from '../../../../shared/ui/DisplayValue'
 
 export type TransactionInformationEffect = {
   id: Key
@@ -48,29 +38,31 @@ export type TransactionInformationNativeCurrency = {
   image?: { base64?: string; mimeType?: string }
 }
 
+export type TransactionInformationCalldata = {
+  digest: string
+  data: string
+}
+
 export type TransactionInformationProps = {
+  originName: ReactNode
   networkName: ReactNode
-  title: ReactNode
-  subtitle?: ReactNode
+  networkIcon?: string
   statusLabel: ReactNode
   notice?: ReactNode
-  progress: TransactionProgressData
   effects: TransactionInformationEffect[]
   effectsEmptyText: ReactNode
   details: TransactionInformationDetailRow[]
+  calldata?: TransactionInformationCalldata
   nativeCurrency: TransactionInformationNativeCurrency
-  heroVariant?: 'default' | 'elevated'
   children?: ReactNode
-}
-
-export const shortAddress = (address?: string) => {
-  if (!address) return ''
-  return `${address.slice(0, 8)}...${address.slice(-6)}`
 }
 
 const transactionRecipe = cva({
   base: {
     width: '100%',
+    minHeight: '100%',
+    display: 'flex',
+    flexDirection: 'column',
     maxWidth: 'page-compact',
     marginInline: 'auto',
     paddingInline: '5',
@@ -78,15 +70,13 @@ const transactionRecipe = cva({
   }
 })
 
-const heroRecipe = cva({
-  base: { overflow: 'hidden', wordBreak: 'break-word' },
-  variants: {
-    elevated: {
-      true: { background: 'bg.raised' },
-      false: { background: 'bg.primary' }
-    }
-  },
-  defaultVariants: { elevated: false }
+const requestSummaryRecipe = cva({
+  base: {
+    position: 'relative',
+    minHeight: 'panel-header',
+    paddingBlock: '4',
+    paddingInline: '5'
+  }
 })
 
 const badgeRecipe = cva({
@@ -101,50 +91,39 @@ const badgeRecipe = cva({
   }
 })
 
-const progressRecipe = sva({
-  slots: ['step', 'rail', 'marker', 'copy'],
+const chainBadgeRecipe = cva({
   base: {
-    step: {
-      position: 'relative',
-      display: 'grid',
-      gridTemplateColumns: 'token(sizes.icon-button-small) minmax(0, 1fr)',
-      minHeight: 'panel-header'
-    },
-    rail: {
-      position: 'absolute',
-      insetInlineStart: '7',
-      insetBlockStart: 'token(sizes.icon-button-small)',
-      insetBlockEnd: 'calc(-1 * token(spacing.7))',
-      width: 'progress-rail',
-      background: 'border.subtle'
-    },
-    marker: {
-      position: 'relative',
-      zIndex: 'header',
-      display: 'flex',
-      justifyContent: 'center',
-      paddingBlockStart: '4'
-    },
-    copy: { minWidth: 0, paddingBlockStart: '3', paddingBlockEnd: '5', paddingInlineStart: '3' }
-  },
-  variants: {
-    state: {
-      idle: {},
-      active: { rail: { background: 'border.subtle' } },
-      complete: { rail: { background: 'action.primary' } },
-      error: { rail: { background: 'status.danger' } }
-    },
-    last: {
-      true: { step: { minHeight: 'button-large' }, rail: { display: 'none' } },
-      false: {}
-    }
-  },
-  defaultVariants: { last: false, state: 'idle' }
+    display: 'inline-flex',
+    maxWidth: '50%',
+    minHeight: 'button-compact',
+    alignItems: 'center',
+    gap: 'xsmall',
+    paddingInline: '3',
+    borderWidth: 'thin',
+    borderStyle: 'solid',
+    borderColor: 'border.subtle',
+    borderRadius: 'pill',
+    background: 'bg.control'
+  }
 })
 
-const sectionRecipe = cva({
-  base: { overflow: 'hidden' }
+const chainIconRecipe = cva({
+  base: {
+    width: 'icon-small',
+    height: 'icon-small',
+    display: 'grid',
+    flexShrink: 0,
+    placeItems: 'center',
+    overflow: 'hidden',
+    borderRadius: 'pill',
+    color: 'action.primary',
+    '& img': { width: '100%', height: '100%', objectFit: 'cover' }
+  }
 })
+
+const controlsRecipe = cva({ base: { marginBlockStart: 'auto', paddingBlockStart: '4' } })
+
+const sectionRecipe = cva({ base: { overflow: 'hidden' } })
 
 const sectionHeaderRecipe = cva({
   base: {
@@ -192,137 +171,23 @@ const effectRecipe = sva({
   },
   variants: {
     direction: {
-      in: {
-        icon: {
-          borderColor: 'action.primary.border',
-          background: 'action.primary.subtle',
-          color: 'action.primary'
-        },
-        amount: { color: 'action.primary' }
-      },
-      out: {
-        icon: {
-          borderColor: 'action.danger.border',
-          background: 'action.danger.subtle',
-          color: 'status.danger'
-        },
-        amount: { color: 'status.danger' }
-      },
+      in: { amount: { color: 'status.success' } },
+      out: { amount: { color: 'status.danger' } },
       neutral: { amount: { color: 'text.primary' } }
     }
   },
   defaultVariants: { direction: 'neutral' }
 })
 
-const statusRank = (status?: string) => {
-  switch (status) {
-    case 'pending':
-      return 1
-    case 'sending':
-    case 'sent':
-    case 'verifying':
-      return 2
-    case 'confirming':
-      return 3
-    case 'confirmed':
-      return 4
-    default:
-      return 0
+const calldataRecipe = cva({
+  base: {
+    display: 'block',
+    width: '100%',
+    overflowWrap: 'anywhere',
+    whiteSpace: 'pre-wrap',
+    wordBreak: 'break-all'
   }
-}
-
-const stepState = (status: string | undefined, index: number) => {
-  if (status === 'error' || status === 'declined') {
-    if (index < 1) return 'complete' as const
-    if (index === 1) return 'error' as const
-    return 'idle' as const
-  }
-  const rank = statusRank(status)
-  if (rank > index) return 'complete' as const
-  if (rank === index) return 'active' as const
-  return 'idle' as const
-}
-
-const confirmationDetail = (confirmations: number, confirmationTarget?: number) =>
-  confirmationTarget
-    ? `${confirmations}/${confirmationTarget} confirmations`
-    : `${confirmations} confirmations`
-
-function TransactionProgress({ progress }: { progress: TransactionProgressData }) {
-  const confirmations = progress.confirmations || 0
-  const steps = [
-    { title: 'Review', detail: progress.status ? 'Request accepted' : 'Ready to sign' },
-    {
-      title: 'Signed',
-      detail:
-        progress.status === 'pending'
-          ? progress.notice || 'Waiting for signature'
-          : statusRank(progress.status) > 1
-            ? 'Signature complete'
-            : 'Awaiting signature'
-    },
-    {
-      title: 'Submitted',
-      detail: progress.txHash
-        ? shortAddress(progress.txHash)
-        : progress.status === 'sending'
-          ? 'Broadcasting'
-          : 'Not sent'
-    },
-    {
-      title: 'Confirmed',
-      detail:
-        progress.status === 'confirmed'
-          ? progress.blockNumber
-            ? `Block ${progress.blockNumber}`
-            : 'Finalized'
-          : progress.status === 'confirming'
-            ? confirmationDetail(confirmations, progress.confirmationTarget)
-            : 'Waiting for inclusion'
-    }
-  ]
-
-  return (
-    <Stack element='section' gap='none' label='Transaction progress'>
-      {steps.map((step, index) => {
-        const state = stepState(progress.status, index)
-        const styles = progressRecipe({ last: index === steps.length - 1, state })
-        return (
-          <div className={styles.step} key={step.title}>
-            <span className={styles.rail} />
-            <span className={styles.marker}>
-              <StatusGlyph
-                size='small'
-                state={
-                  state === 'active'
-                    ? 'pending'
-                    : state === 'complete'
-                      ? 'completed'
-                      : state === 'error'
-                        ? 'failed'
-                        : 'idle'
-                }
-              />
-            </span>
-            <span className={styles.copy}>
-              <Stack gap='none'>
-                <Text
-                  tone={state === 'active' ? 'accent' : state === 'error' ? 'danger' : 'primary'}
-                  variant='control'
-                >
-                  {step.title}
-                </Text>
-                <Text tone='secondary' variant='caption'>
-                  {step.detail}
-                </Text>
-              </Stack>
-            </span>
-          </div>
-        )
-      })}
-    </Stack>
-  )
-}
+})
 
 function AssetIcon({
   effect,
@@ -351,7 +216,7 @@ function AssetIcon({
       ) : effect.kind === 'native' && symbol.toUpperCase() === 'ETH' ? (
         <Icon name='ethereum' size='small' />
       ) : (
-        <Text align='center' variant='microCode' truncate>
+        <Text align='center' truncate variant='microCode'>
           {symbol}
         </Text>
       )}
@@ -362,79 +227,104 @@ function AssetIcon({
 function TransactionEffects({
   effects,
   emptyText,
-  nativeCurrency
+  nativeCurrency,
+  networkName,
+  networkIcon
 }: {
   effects: TransactionInformationEffect[]
   emptyText: ReactNode
   nativeCurrency: TransactionInformationNativeCurrency
+  networkName: ReactNode
+  networkIcon?: string
 }) {
+  const chainIcon = imageSource(networkIcon)
+
   return (
     <Surface padding='none' radius='card' tone='card'>
       <section aria-label='Transaction effects' className={sectionRecipe()}>
         <div className={sectionHeaderRecipe()}>
-          <Text tone='secondary' variant='overline'>
-            Transaction effects
-          </Text>
+          <Inline align='center' gap='small' grow justify='between'>
+            <Text variant='sectionTitle'>Estimated changes</Text>
+            <span className={chainBadgeRecipe()}>
+              <Text shrink={false} tone='secondary' variant='caption'>
+                on
+              </Text>
+              <span className={chainIconRecipe()}>
+                {chainIcon ? <Image alt='' source={chainIcon} /> : <Icon name='ethereum' size='small' />}
+              </span>
+              <Text truncate variant='caption'>
+                {networkName}
+              </Text>
+            </span>
+          </Inline>
         </div>
-        <Stack gap='xsmall'>
-          <Surface padding='small' radius='none' tone='card'>
-            {effects.length ? (
-              <Stack gap='xsmall'>
-                {effects.map((effect) => {
-                  const direction =
-                    effect.direction === 'in' || effect.direction === 'out' ? effect.direction : 'neutral'
-                  const styles = effectRecipe({ direction })
-                  const directionLabel =
-                    direction === 'in'
-                      ? 'Incoming asset effect'
-                      : direction === 'out'
-                        ? 'Outgoing asset effect'
-                        : 'Neutral asset effect'
-                  return (
-                    <div
-                      aria-label={directionLabel}
-                      className={styles.root}
-                      data-effect-direction={direction}
-                      key={effect.id}
-                      role='group'
-                    >
-                      <AssetIcon effect={effect} nativeCurrency={nativeCurrency} />
-                      <span className={styles.meta}>
-                        <Stack gap='none'>
-                          <Text variant='control' truncate>
-                            {effect.label}
+        <Surface padding='small' radius='none' tone='card'>
+          {effects.length ? (
+            <Stack gap='xsmall'>
+              {effects.map((effect) => {
+                const direction =
+                  effect.direction === 'in' || effect.direction === 'out' ? effect.direction : 'neutral'
+                const styles = effectRecipe({ direction })
+                const directionLabel =
+                  direction === 'in'
+                    ? 'Incoming asset effect'
+                    : direction === 'out'
+                      ? 'Outgoing asset effect'
+                      : 'Neutral asset effect'
+                return (
+                  <div
+                    aria-label={directionLabel}
+                    className={styles.root}
+                    data-effect-direction={direction}
+                    key={effect.id}
+                    role='group'
+                  >
+                    <AssetIcon effect={effect} nativeCurrency={nativeCurrency} />
+                    <span className={styles.meta}>
+                      <Stack gap='none'>
+                        <Text truncate variant='control'>
+                          {effect.label}
+                        </Text>
+                        {effect.detail ? (
+                          <Text tone='secondary' variant='caption'>
+                            {effect.detail}
                           </Text>
-                          {effect.detail ? (
-                            <Text tone='secondary' variant='caption'>
-                              {effect.detail}
-                            </Text>
-                          ) : null}
-                        </Stack>
-                      </span>
-                      <span className={styles.amount}>
-                        {direction === 'out' ? <Text variant='numeric'>-</Text> : null}
-                        {direction === 'in' ? <Text variant='numeric'>+</Text> : null}
-                        <DisplayCoinBalance
-                          amount={effect.amount || '0x0'}
-                          decimals={effect.decimals}
-                          symbol={effect.symbol || '?'}
-                        />
-                      </span>
-                    </div>
-                  )
-                })}
-              </Stack>
-            ) : (
-              <Surface padding='medium' radius='small' tone='raised'>
-                <Text align='center' tone='secondary' variant='caption'>
-                  {emptyText}
-                </Text>
-              </Surface>
-            )}
-          </Surface>
-        </Stack>
+                        ) : null}
+                      </Stack>
+                    </span>
+                    <span className={styles.amount}>
+                      {direction === 'out' ? <Text variant='numeric'>-</Text> : null}
+                      {direction === 'in' ? <Text variant='numeric'>+</Text> : null}
+                      <DisplayCoinBalance
+                        amount={effect.amount || '0x0'}
+                        decimals={effect.decimals}
+                        symbol={effect.symbol || '?'}
+                      />
+                    </span>
+                  </div>
+                )
+              })}
+            </Stack>
+          ) : (
+            <Surface padding='medium' radius='small' tone='raised'>
+              <Text align='center' tone='secondary' variant='caption'>
+                {emptyText}
+              </Text>
+            </Surface>
+          )}
+        </Surface>
       </section>
     </Surface>
+  )
+}
+
+function DetailValue({ value }: { value: ReactNode }) {
+  return typeof value === 'string' || typeof value === 'number' ? (
+    <Text align='end' variant='code'>
+      {value}
+    </Text>
+  ) : (
+    value
   )
 }
 
@@ -442,16 +332,20 @@ function DetailRow({ label, value, onClick }: TransactionInformationDetailRow) {
   if (!value) return null
   const content = (
     <Inline align='center' gap='small' justify='between'>
-      <Text tone='secondary' variant='overline' shrink={false}>
+      <Text shrink={false} tone='secondary' variant='overline'>
         {label}
       </Text>
-      <Text align='end' variant='code'>
-        {value}
-      </Text>
+      <DetailValue value={value} />
     </Inline>
   )
   return onClick ? (
-    <Button appearance='row' onPress={onClick} size='medium' width='full'>
+    <Button
+      appearance='row'
+      label={`${label}: ${String(value)}`}
+      onPress={onClick}
+      size='medium'
+      width='full'
+    >
       {content}
     </Button>
   ) : (
@@ -461,39 +355,70 @@ function DetailRow({ label, value, onClick }: TransactionInformationDetailRow) {
   )
 }
 
+function CalldataDetails({ calldata }: { calldata: TransactionInformationCalldata }) {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <Stack gap='xsmall'>
+      <Button
+        appearance='row'
+        expanded={open}
+        label={`${open ? 'Hide' : 'Show'} full calldata for calldata digest ${calldata.digest}`}
+        onPress={() => setOpen((current) => !current)}
+        size='medium'
+        width='full'
+      >
+        <Stack gap='xsmall' grow>
+          <Inline align='center' gap='small' justify='between'>
+            <Text shrink={false} tone='secondary' variant='overline'>
+              Calldata digest
+            </Text>
+            <Icon name={open ? 'chevronUp' : 'chevronDown'} size='small' tone='muted' />
+          </Inline>
+          <Text as='span' variant='microCode'>
+            <code className={calldataRecipe()}>{calldata.digest}</code>
+          </Text>
+        </Stack>
+      </Button>
+      {open ? (
+        <Surface padding='small' radius='small' tone='raised'>
+          <Stack gap='xsmall'>
+            <Text tone='secondary' variant='overline'>
+              Full calldata
+            </Text>
+            <Text as='span' variant='microCode'>
+              <code className={calldataRecipe()}>{calldata.data}</code>
+            </Text>
+          </Stack>
+        </Surface>
+      ) : null}
+    </Stack>
+  )
+}
+
 export default function TransactionInformation({
+  originName,
   networkName,
-  title,
-  subtitle,
+  networkIcon,
   statusLabel,
   notice,
-  progress,
   effects,
   effectsEmptyText,
   details,
+  calldata,
   nativeCurrency,
-  heroVariant = 'default',
   children
 }: TransactionInformationProps) {
   return (
     <div className={transactionRecipe()}>
-      <Stack gap='small'>
-        <Surface border='subtle' padding='medium' radius='card' tone='card'>
-          <section className={heroRecipe({ elevated: heroVariant === 'elevated' })}>
-            <Stack gap='small'>
-              <span className={badgeRecipe()}>
-                <Text tone='accent' variant='caption'>
-                  {networkName}
-                </Text>
-              </span>
-              <Stack gap='xsmall'>
-                <Text variant='heading'>{title}</Text>
-                {subtitle ? (
-                  <Text tone='secondary' variant='supporting'>
-                    {subtitle}
-                  </Text>
-                ) : null}
-              </Stack>
+      <Stack gap='small' grow>
+        <section aria-label='Request summary' className={requestSummaryRecipe()}>
+          <Stack align='center' gap='xsmall'>
+            <Icon name='window' size='medium' tone='accent' />
+            <Text align='center' variant='sectionTitle'>
+              {originName}
+            </Text>
+            <Stack align='center' gap='xsmall'>
               <output className={badgeRecipe()}>
                 <Text tone='accent' variant='overline'>
                   {statusLabel}
@@ -507,17 +432,22 @@ export default function TransactionInformation({
                 </div>
               ) : null}
             </Stack>
-          </section>
-        </Surface>
+          </Stack>
+        </section>
 
-        <TransactionProgress progress={progress} />
-        <TransactionEffects effects={effects} emptyText={effectsEmptyText} nativeCurrency={nativeCurrency} />
+        <TransactionEffects
+          effects={effects}
+          emptyText={effectsEmptyText}
+          nativeCurrency={nativeCurrency}
+          networkIcon={networkIcon}
+          networkName={networkName}
+        />
 
         <Surface padding='none' radius='card' tone='card'>
           <section aria-label='Transaction details' className={sectionRecipe()}>
             <div className={sectionHeaderRecipe()}>
               <Text tone='secondary' variant='overline'>
-                Transaction details
+                Request details
               </Text>
             </div>
             <Surface padding='small' radius='none' tone='card'>
@@ -525,12 +455,13 @@ export default function TransactionInformation({
                 {details.map((detail, index) => (
                   <DetailRow key={`${detail.label}-${index}`} {...detail} />
                 ))}
+                {calldata ? <CalldataDetails calldata={calldata} /> : null}
               </Stack>
             </Surface>
           </section>
         </Surface>
 
-        {children}
+        {children ? <div className={controlsRecipe()}>{children}</div> : null}
       </Stack>
     </div>
   )

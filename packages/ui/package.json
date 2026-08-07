@@ -127,6 +127,11 @@
       "import": "./dist/primitives/Heading.js",
       "default": "./dist/primitives/Heading.js"
     },
+    "./hover-swap-text": {
+      "types": "./dist/primitives/HoverSwapText.d.ts",
+      "import": "./dist/primitives/HoverSwapText.js",
+      "default": "./dist/primitives/HoverSwapText.js"
+    },
     "./image": {
       "types": "./dist/primitives/Image.d.ts",
       "import": "./dist/primitives/Image.js",

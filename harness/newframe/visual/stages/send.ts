@@ -106,6 +106,104 @@ export const sendStage: VisualStage = {
     if (!outgoingDeltaApplied) {
       runtime.fail('Outgoing transaction effect must show direction on the signed delta, not the token icon')
     }
+
+    const effectsTitle = tray.getByText('Estimated changes', { exact: true })
+    const chainBadge = tray
+      .getByLabel('Transaction effects')
+      .getByText('Newframe Local Anvil', { exact: true })
+    const [effectsTitleBounds, chainBadgeBounds] = await Promise.all([
+      effectsTitle.boundingBox(),
+      chainBadge.boundingBox()
+    ])
+    if (
+      !effectsTitleBounds ||
+      !chainBadgeBounds ||
+      Math.abs(
+        effectsTitleBounds.y +
+          effectsTitleBounds.height / 2 -
+          (chainBadgeBounds.y + chainBadgeBounds.height / 2)
+      ) > 8
+    ) {
+      runtime.fail('Estimated changes and the chain badge must share one title row')
+    }
+
+    const details = tray.getByLabel('Transaction details')
+    if (await details.getByText('From', { exact: true }).count()) {
+      runtime.fail('The redundant From row must not appear in transaction details')
+    }
+
+    const signerCopy = tray.getByRole('button', { name: 'Copy address for testname', exact: true })
+    await signerCopy.waitFor({ state: 'visible' })
+    if ((await signerCopy.locator('..').textContent())?.includes('hot signer')) {
+      runtime.fail('Signing with must use the account name instead of the signer type')
+    }
+
+    const recipientIdentity = details.locator('[data-address-identity]')
+    const recipientCopy = recipientIdentity.getByRole('button', {
+      name: 'Copy address for vitalik',
+      exact: true
+    })
+    await recipientCopy.waitFor({ state: 'visible' })
+    const primaryIdentity = recipientIdentity.locator('[data-hover-swap-text="primary"]')
+    await primaryIdentity.locator('..').hover()
+    const visibleAddress = await recipientIdentity.evaluate((identity) => {
+      const primary = identity.querySelector<HTMLElement>('[data-hover-swap-text="primary"]')
+      const alternate = identity.querySelector<HTMLElement>('[data-hover-swap-text="alternate"]')
+      return {
+        primaryDisplay: primary ? getComputedStyle(primary).display : '',
+        alternateDisplay: alternate ? getComputedStyle(alternate).display : '',
+        address: alternate?.textContent || ''
+      }
+    })
+    if (
+      visibleAddress.primaryDisplay !== 'none' ||
+      visibleAddress.alternateDisplay === 'none' ||
+      visibleAddress.address.toLowerCase() !== vitalik.address.toLowerCase()
+    ) {
+      runtime.fail('Hovering a known name must replace it in place with the full address')
+    }
+    await runtime.screenshot(tray, '14-send-review-hover-address.png')
+    await effectsTitle.hover()
+    const resetIdentity = await recipientIdentity.evaluate((identity) => {
+      const primary = identity.querySelector<HTMLElement>('[data-hover-swap-text="primary"]')
+      const alternate = identity.querySelector<HTMLElement>('[data-hover-swap-text="alternate"]')
+      return {
+        primaryDisplay: primary ? getComputedStyle(primary).display : '',
+        alternateDisplay: alternate ? getComputedStyle(alternate).display : ''
+      }
+    })
+    if (resetIdentity.primaryDisplay === 'none' || resetIdentity.alternateDisplay !== 'none') {
+      runtime.fail('The known name must return after the pointer exits')
+    }
+
+    const recipientCopyButton = recipientIdentity.locator('button')
+    await recipientCopyButton.click()
+    if ((await recipientCopyButton.getAttribute('aria-label')) !== 'Address copied for vitalik') {
+      runtime.fail('Copying an address must replace the copy icon with a visible confirmation state')
+    }
+    await runtime.screenshot(tray, '14-send-review-copy-confirmation.png')
+
+    const signerIdentity = signerCopy.locator('..')
+    await signerIdentity.locator('[data-hover-swap-text="primary"]').locator('..').hover()
+    const visibleSignerAddress = await signerIdentity.evaluate((identity) => {
+      const primary = identity.querySelector<HTMLElement>('[data-hover-swap-text="primary"]')
+      const alternate = identity.querySelector<HTMLElement>('[data-hover-swap-text="alternate"]')
+      return {
+        primaryDisplay: primary ? getComputedStyle(primary).display : '',
+        alternateDisplay: alternate ? getComputedStyle(alternate).display : '',
+        address: alternate?.textContent || ''
+      }
+    })
+    if (
+      visibleSignerAddress.primaryDisplay !== 'none' ||
+      visibleSignerAddress.alternateDisplay === 'none' ||
+      visibleSignerAddress.address.toLowerCase() !== sendRequest.data.from?.toLowerCase()
+    ) {
+      runtime.fail('Signing with must replace the account name in place with its full address')
+    }
+    await runtime.screenshot(tray, '14-send-review-hover-signer.png')
+    await effectsTitle.hover()
+
     await runtime.screenshot(tray, '14-send-review.png')
 
     const reviewBack = tray.getByRole('button', { name: 'Back', exact: true })
