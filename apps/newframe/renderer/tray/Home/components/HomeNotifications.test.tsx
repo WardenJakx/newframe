@@ -2,7 +2,7 @@ import { beforeEach, expect, it } from 'bun:test'
 
 import { render, screen } from '../../../../test/support/componentSetup'
 import { STATE_STREAM_SCHEMA_VERSION } from '../../../../contracts/state/protocol'
-import type { WalletStatusNotification } from '../../../../contracts/state/projections'
+import type { WalletRendererState, WalletStatusNotification } from '../../../../contracts/state/projections'
 import { walletState } from '../../../state/fixtures.test-support'
 import {
   applyStateMessage,
@@ -95,4 +95,77 @@ it('opens the referenced transaction activity', async () => {
   expect(
     screen.getByText('{"section":"activity","overlay":{"type":"activity","activityId":"transaction:0x1234"}}')
   ).toBeTruthy()
+})
+
+it('shows normal requests as a prominent home notification and opens the request panel', async () => {
+  const accountId = '0x1111111111111111111111111111111111111111'
+  applyStateMessage({
+    schemaVersion: STATE_STREAM_SCHEMA_VERSION,
+    streamId: 'pending-requests',
+    revision: 0,
+    state: walletState({
+      accounts: {
+        [accountId]: {
+          id: accountId,
+          profileId: 'default-profile',
+          address: accountId,
+          name: 'Primary',
+          lastSignerType: 'address',
+          status: 'ok',
+          signer: 'watch',
+          requests: {
+            'request-1': { handlerId: 'request-1', mode: 'normal', type: 'access' },
+            'request-2': { handlerId: 'request-2', mode: 'normal', type: 'access' },
+            monitor: { handlerId: 'monitor', mode: 'monitor', type: 'transaction' }
+          },
+          created: '2026-01-01T00:00:00.000Z'
+        } as unknown as WalletRendererState['accounts'][string]
+      },
+      currentAccount: accountId
+    })
+  })
+
+  const { user } = render(
+    <HomeUiProvider>
+      <HomeNotifications />
+      <NavigationObserver />
+    </HomeUiProvider>
+  )
+
+  await user.click(screen.getByRole('button', { name: '2 pending requests' }))
+
+  expect(screen.getByText('{"section":"positions","overlay":{"type":"requests"}}')).toBeTruthy()
+})
+
+it('does not show a request notification when there are no actionable requests', () => {
+  const accountId = '0x1111111111111111111111111111111111111111'
+  applyStateMessage({
+    schemaVersion: STATE_STREAM_SCHEMA_VERSION,
+    streamId: 'no-pending-requests',
+    revision: 0,
+    state: walletState({
+      accounts: {
+        [accountId]: {
+          id: accountId,
+          profileId: 'default-profile',
+          address: accountId,
+          name: 'Primary',
+          lastSignerType: 'address',
+          status: 'ok',
+          signer: 'watch',
+          requests: { monitor: { handlerId: 'monitor', mode: 'monitor', type: 'transaction' } },
+          created: '2026-01-01T00:00:00.000Z'
+        } as unknown as WalletRendererState['accounts'][string]
+      },
+      currentAccount: accountId
+    })
+  })
+
+  render(
+    <HomeUiProvider>
+      <HomeNotifications />
+    </HomeUiProvider>
+  )
+
+  expect(screen.queryByLabelText('Pending requests')).toBeNull()
 })

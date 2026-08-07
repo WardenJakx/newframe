@@ -87,6 +87,21 @@ export const networkOnboardingStage: VisualStage = {
       .catch(() => undefined)
     if (accessRequest) {
       await runtime.screenshot(tray, '06-dapp-connect-request.png')
+      await tray.getByRole('button', { name: 'Back' }).click()
+
+      const pendingRequests = tray.getByRole('button', { name: '1 pending request' })
+      await pendingRequests.waitFor({ state: 'visible' })
+      await sleep(500)
+      await runtime.screenshot(tray, '06-pending-request-notification.png')
+
+      await pendingRequests.click()
+      const requests = tray.getByRole('dialog', { name: 'Requests' })
+      await requests.waitFor({ state: 'visible' })
+      await sleep(500)
+      await runtime.screenshot(tray, '06a-requests-overlay.png')
+      await requests.getByRole('button', { name: 'Back' }).click()
+      await requests.waitFor({ state: 'hidden' })
+
       await driver.approveAccessRequest(accessRequest)
     }
 
