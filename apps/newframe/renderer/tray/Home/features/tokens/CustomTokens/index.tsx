@@ -10,6 +10,7 @@ import { Text } from '@newframe/ui/text'
 
 import type { Token } from '../../../../../../domain/state/token'
 import link from '../../../../../shared/link'
+import { AddressIdentity } from '../../../../../shared/ui/AddressIdentity'
 import { customTokens, tokenImageSource } from '../../../../../../domain/token'
 import { useTokenImageHydration } from '../../../../../shared/hooks/useTokenImageHydration'
 import type { WalletRendererState } from '../../../../../../contracts/state/projections'
@@ -29,7 +30,6 @@ function CustomTokenImage({ token }: { token: Token }) {
 }
 
 function CustomTokensView({ onEdit, tokens }: CustomTokensProps) {
-  const [copiedAddress, setCopiedAddress] = useState('')
   const [expandedAddress, setExpandedAddress] = useState('')
   const sortedTokens = [...tokens].sort((a, b) => a.chainId - b.chainId)
 
@@ -67,20 +67,7 @@ function CustomTokensView({ onEdit, tokens }: CustomTokensProps) {
                   size='small'
                 />
               </Stack>
-              <Button
-                appearance='ghost'
-                label={`Copy ${token.symbol} address`}
-                onPress={() => {
-                  void link.executeCommand({ type: 'clipboard.write', text: token.address })
-                  setCopiedAddress(token.address)
-                  setTimeout(() => setCopiedAddress(''), 1000)
-                }}
-                width='full'
-              >
-                <Text tone={copiedAddress === token.address ? 'accent' : 'secondary'} truncate variant='code'>
-                  {copiedAddress === token.address ? 'Address Copied' : token.address}
-                </Text>
-              </Button>
+              <AddressIdentity address={token.address} showFullAddress />
               {expanded ? (
                 <Stack direction='row' gap='small'>
                   <Button
