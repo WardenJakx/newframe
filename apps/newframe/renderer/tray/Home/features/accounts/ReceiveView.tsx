@@ -1,10 +1,9 @@
 import React from 'react'
 
-import { Button } from '@newframe/ui/button'
-import { Icon } from '@newframe/ui/icon'
 import { Stack } from '@newframe/ui/stack'
 import { Text } from '@newframe/ui/text'
 
+import { AddressIdentity } from '../../../../shared/ui/AddressIdentity'
 import { TrayOverlay } from '../../../../shared/ui/TrayOverlay'
 import { cva } from '../../../../../generated/styled-system/css/cva.js'
 import AddressQRCode from '../../AddressQRCode'
@@ -19,18 +18,14 @@ const receiveRecipe = cva({
 
 export function ReceiveView({
   account,
-  copied,
   icon,
   name,
-  onBack,
-  onCopy
+  onBack
 }: {
   account: { address: string }
-  copied: boolean
   icon: React.ReactNode
   name: string
   onBack: () => void
-  onCopy: () => void
 }) {
   return (
     <TrayOverlay
@@ -47,18 +42,7 @@ export function ReceiveView({
             {name}
           </Text>
           <AddressQRCode address={account.address} />
-          <Button
-            appearance='control'
-            label='Copy receive address'
-            onPress={onCopy}
-            shape='pill'
-            width='full'
-          >
-            <Text truncate variant='code'>
-              {copied ? 'Address copied' : account.address}
-            </Text>
-            <Icon name='copy' size='small' />
-          </Button>
+          <AddressIdentity address={account.address} showFullAddress />
         </Stack>
       </div>
     </TrayOverlay>
