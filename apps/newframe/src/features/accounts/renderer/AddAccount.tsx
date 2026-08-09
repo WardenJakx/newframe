@@ -17,7 +17,11 @@ import { ToggleButton } from '@newframe/ui/toggle-button'
 
 import link from '../../../platform/ipc/renderer/link'
 import { AppIcon } from '../../../shared/renderer/ui/appIcon'
-import { signerIconName, signerIsLoading, signerTypeLabel } from '../../../shared/renderer/ui/signerPresentation'
+import {
+  signerIconName,
+  signerIsLoading,
+  signerTypeLabel
+} from '../../../shared/renderer/ui/signerPresentation'
 import { createBalanceSummarySelector, formatUsdRate } from '../../asset-data/domain/balance'
 import { SidePanelHeader } from '../../../shared/renderer/ui/SidePanel/SidePanelHeader'
 import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector'

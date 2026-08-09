@@ -14,7 +14,7 @@ export interface OperationClock {
   now(): number
 }
 
-export interface StartOperationInput {
+interface StartOperationInput {
   id?: string
   type: string
   owner: OperationOwner

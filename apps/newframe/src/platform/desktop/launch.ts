@@ -49,11 +49,3 @@ export const disable = () => {
     log.error('Error disabling launch on startup', e)
   }
 }
-
-export const status = (cb: (err: unknown, enabled?: boolean) => void) => {
-  try {
-    cb(null, isLinux ? linux.isEnabled() : app.getLoginItemSettings().openAtLogin)
-  } catch (e) {
-    cb(e)
-  }
-}

@@ -1,23 +1,21 @@
 import { z } from 'zod'
 
-export const AssetRateSourceSchema = z.enum(['zerion', 'flash'])
+const AssetRateSourceSchema = z.enum(['zerion', 'flash'])
 export type AssetRateSource = z.infer<typeof AssetRateSourceSchema>
 
-export const AssetRateReferenceSchema = z.object({
-  chainId: z.number(),
-  address: z.string(),
-  nativeTicker: z.string().optional()
-})
-export type AssetRateReference = z.infer<typeof AssetRateReferenceSchema>
+export type AssetRateReference = {
+  chainId: number
+  address: string
+  nativeTicker?: string
+}
 
-export const AssetRateInputSchema = AssetRateReferenceSchema.extend({
-  usdRate: z.number(),
-  change24hr: z.number().optional(),
-  observedAt: z.number().optional()
-})
-export type AssetRateInput = z.infer<typeof AssetRateInputSchema>
+export type AssetRateInput = AssetRateReference & {
+  usdRate: number
+  change24hr?: number
+  observedAt?: number
+}
 
-export const AssetRateSnapshotSchema = z.object({
+const AssetRateSnapshotSchema = z.object({
   usdRate: z.number(),
   change24hr: z.number().optional(),
   source: AssetRateSourceSchema,

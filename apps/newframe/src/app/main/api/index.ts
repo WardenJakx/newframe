@@ -16,8 +16,6 @@ import { createApiServer } from '../../../platform/local-rpc/server.js'
 import { createProductionOriginsService } from '../../../features/connections/main/origins.js'
 import type { RequestService } from '../../../features/requests/main/service.js'
 
-export { createApiServer, type ApiServer, type ApiServerDependencies } from '../../../platform/local-rpc/server.js'
-
 export function createProductionApiServer(
   provider: Provider,
   accounts: Accounts,

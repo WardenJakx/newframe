@@ -18,8 +18,15 @@ import {
   getFlashAssetsForChain,
   toFlashApiAssetAddress
 } from '../../src/features/transactions/trade/domain/assets'
-import { getFlashChainIdFromSlug, getFlashChainSlug } from '../../src/features/transactions/trade/domain/chains'
-import { getFlashAssetPairChains, getReceiveAsset, getSpentAsset } from '../../src/features/transactions/trade/domain/pair'
+import {
+  getFlashChainIdFromSlug,
+  getFlashChainSlug
+} from '../../src/features/transactions/trade/domain/chains'
+import {
+  getFlashAssetPairChains,
+  getReceiveAsset,
+  getSpentAsset
+} from '../../src/features/transactions/trade/domain/pair'
 import {
   FLASH_MAX_TWAP_BUCKET_COUNT,
   FLASH_MAX_TWAP_DURATION_SECONDS,

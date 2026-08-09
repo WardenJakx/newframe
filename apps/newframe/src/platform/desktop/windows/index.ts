@@ -17,6 +17,7 @@ import type { RendererAuthorizationRegistry } from '../../ipc/main/authorization
 type Windows = { [key: string]: BrowserWindow }
 type CanonicalStoreApi = typeof canonicalStore
 
+/** @public Used by the dynamic-import lifecycle tests. */
 export function onTrayRendererReady(webContents: Pick<WebContents, 'off' | 'once'>, ready: () => void) {
   let handled = false
   const handler = () => {

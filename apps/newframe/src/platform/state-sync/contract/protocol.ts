@@ -7,16 +7,16 @@ export const StateMessageChannel = 'newframe:state-message'
 
 export type RendererState = Record<string, unknown>
 
-export const RendererStateSchema = z.record(z.string(), z.unknown())
+const RendererStateSchema = z.record(z.string(), z.unknown())
 
-export const StateSnapshotSchema = z.strictObject({
+const StateSnapshotSchema = z.strictObject({
   schemaVersion: z.literal(STATE_STREAM_SCHEMA_VERSION),
   streamId: z.string().min(1),
   revision: z.number().int().nonnegative(),
   state: RendererStateSchema
 })
 
-export const StateUpdateBatchSchema = z
+const StateUpdateBatchSchema = z
   .strictObject({
     schemaVersion: z.literal(STATE_STREAM_SCHEMA_VERSION),
     streamId: z.string().min(1),
@@ -26,7 +26,7 @@ export const StateUpdateBatchSchema = z
   })
   .refine((batch) => batch.revision === batch.baseRevision + 1)
 
-export const StateStreamInvalidatedSchema = z.strictObject({
+const StateStreamInvalidatedSchema = z.strictObject({
   schemaVersion: z.literal(STATE_STREAM_SCHEMA_VERSION),
   streamId: z.string().min(1),
   type: z.literal('stream-invalidated')
@@ -45,7 +45,7 @@ export const StateConnectionResultSchema = z.discriminatedUnion('ok', [
 
 type ParsedStateSnapshot = z.infer<typeof StateSnapshotSchema>
 type ParsedStateUpdateBatch = z.infer<typeof StateUpdateBatchSchema>
-export type StateStreamInvalidated = z.infer<typeof StateStreamInvalidatedSchema>
+type StateStreamInvalidated = z.infer<typeof StateStreamInvalidatedSchema>
 
 export type StateSnapshot<TState extends RendererState = RendererState> = Omit<
   ParsedStateSnapshot,

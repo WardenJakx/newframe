@@ -13,7 +13,7 @@ type ProviderRequestProps = {
 
 type ProviderRequestWithStateProps = Omit<ProviderRequestProps, 'originName'>
 
-export function ProviderRequest(props: ProviderRequestProps) {
+function ProviderRequest(props: ProviderRequestProps) {
   const status = props.req.status
   const notice = props.req.notice
   const originName = props.originName

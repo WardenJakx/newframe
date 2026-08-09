@@ -8,9 +8,12 @@ import {
   resolveSendAssetFromRouteAssetId,
   toCanonicalAssetId
 } from './index'
-import { FLASH_BASE_CHAIN_ID, FLASH_BASE_USDC_ADDRESS, FLASH_BASE_WETH_ADDRESS } from '../../../features/transactions/trade/domain/constants'
 import {
-  FLASH_DEFAULT_TARGET_ASSET,
+  FLASH_BASE_CHAIN_ID,
+  FLASH_BASE_USDC_ADDRESS,
+  FLASH_BASE_WETH_ADDRESS
+} from '../../../features/transactions/trade/domain/constants'
+import {
   FLASH_NATIVE_ETH_ASSET,
   FLASH_USDC_ASSET,
   FLASH_WETH_ASSET
@@ -198,8 +201,8 @@ describe('#resolveFlashAssetFromRouteAssetId', () => {
   })
 
   it('falls back for missing, invalid, or unsupported ids', () => {
-    expect(resolveFlashAssetFromRouteAssetId()).toBe(FLASH_DEFAULT_TARGET_ASSET)
-    expect(resolveFlashAssetFromRouteAssetId('31337:not-an-address')).toBe(FLASH_DEFAULT_TARGET_ASSET)
+    expect(resolveFlashAssetFromRouteAssetId()).toBe(FLASH_WETH_ASSET)
+    expect(resolveFlashAssetFromRouteAssetId('31337:not-an-address')).toBe(FLASH_WETH_ASSET)
     expect(resolveFlashAssetFromRouteAssetId('1:0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2')).toMatchObject({
       chainId: 1,
       symbol: 'WETH'

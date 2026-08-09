@@ -1,5 +1,9 @@
 import type { TrustedPrincipal } from '../../../../access-control/main/authority.js'
-import type { AccountRequest, SignTypedDataRequest, TransactionRequest } from '../../../../requests/contract/requests.js'
+import type {
+  AccountRequest,
+  SignTypedDataRequest,
+  TransactionRequest
+} from '../../../../requests/contract/requests.js'
 import type { SideTrayTransactionPorts } from '../../../../transactions/main/sideTrayService.js'
 import type { Provider } from '../index.js'
 import { createOneResultCallbackBoundary } from '../../../../../platform/callbacks/oneResult.js'

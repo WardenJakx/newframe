@@ -3,7 +3,7 @@ import { createStore } from 'zustand/vanilla'
 import { persist, subscribeWithSelector, type PersistStorage } from 'zustand/middleware'
 import { immer } from 'zustand/middleware/immer'
 
-import createCanonicalActions, { type CanonicalStore } from './actions.js'
+import { createCanonicalActions, type CanonicalStore } from './actions.js'
 import { mergePersistedState, migratePersistedState, selectPersistedState } from './persistence.js'
 import {
   CANONICAL_STATE_STORAGE_NAME,

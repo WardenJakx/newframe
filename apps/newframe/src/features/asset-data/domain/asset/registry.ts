@@ -1,6 +1,6 @@
 import { TokenSchema } from '../../../tokens/domain/state/token.js'
 
-export type AssetLabel = 'native' | 'stablecoin' | 'token'
+type AssetLabel = 'native' | 'stablecoin' | 'token'
 
 export interface CuratedAsset {
   readonly assetId: string

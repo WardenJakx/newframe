@@ -5,12 +5,12 @@ export interface SendAssetIdentity {
   chainId: number
 }
 
-export interface NativeSendTransaction {
+interface NativeSendTransaction {
   to: string
   value: string
 }
 
-export interface TokenSendTransaction {
+interface TokenSendTransaction {
   data: string
   to: string
   value: '0x0'
@@ -18,7 +18,7 @@ export interface TokenSendTransaction {
 
 export type SendTransaction = NativeSendTransaction | TokenSendTransaction
 
-export function amountHex(amount: bigint) {
+function amountHex(amount: bigint) {
   return `0x${amount.toString(16)}`
 }
 

@@ -12,7 +12,11 @@ import TokenSelector from '../../../../shared/renderer/ui/TokenSelector'
 import link from '../../../../platform/ipc/renderer/link'
 import { SidePanel } from '../../../../shared/renderer/ui/SidePanel/SidePanel'
 import { getTokenSelectorPage } from '../../../../shared/renderer/ui/tokenSelectorModel'
-import { createBalanceTokenSelectorItem, createDisplayBalance, formatUsdRate } from '../../../asset-data/domain/balance'
+import {
+  createBalanceTokenSelectorItem,
+  createDisplayBalance,
+  formatUsdRate
+} from '../../../asset-data/domain/balance'
 import { resolveSendAssetFromRouteAssetId, toCanonicalAssetId } from '../../../../app/contracts/sidetray'
 import { formatUnits, toBigInt } from '../../../../shared/domain/units'
 import {
@@ -27,31 +31,10 @@ import { createInitialSendState, sendReducer, SEND_TOKEN_ROWS_INCREMENT } from '
 import { cleanAddress } from './sendTransaction'
 import { closeSend } from './sendService'
 import { canProceed, getAmountBaseUnits } from './sendValidation'
-import { cva } from '../../../../../generated/styled-system/css/cva.js'
 
 interface SendProps {
   assetId?: string | null
 }
-
-const recipientOptionRecipe = cva({
-  base: {
-    width: '100%',
-    minHeight: 'list-row',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '4',
-    paddingInline: '5',
-    background: 'bg.control',
-    cursor: 'pointer',
-    _hover: { background: 'bg.hover', color: 'text.primary' },
-    _focusVisible: {
-      outlineWidth: 'focus',
-      outlineStyle: 'solid',
-      outlineColor: 'border.focus',
-      outlineOffset: 'focus-outline-offset'
-    }
-  }
-})
 
 function recipientName(account: SideTrayWalletAccount) {
   return account.ensName || account.name
@@ -340,19 +323,13 @@ export default function Send({ assetId }: SendProps) {
                             </Stack>
                           </Surface>
                           {recipientAccounts.map((account) => (
-                            <div
-                              aria-label={`Select ${recipientName(account)}`}
-                              className={recipientOptionRecipe()}
+                            <Button
+                              appearance='row'
                               key={account.id}
-                              onClick={() => handleSelectRecipient(account)}
-                              onKeyDown={(event) => {
-                                if (event.target !== event.currentTarget) return
-                                if (event.key !== 'Enter' && event.key !== ' ') return
-                                event.preventDefault()
-                                handleSelectRecipient(account)
-                              }}
-                              role='button'
-                              tabIndex={0}
+                              label={`Select ${recipientName(account)}`}
+                              onPress={() => handleSelectRecipient(account)}
+                              size='list'
+                              width='full'
                             >
                               <AccountIcon account={account} />
                               <Stack align='center' direction='row' gap='small' grow justify='between'>
@@ -361,7 +338,7 @@ export default function Send({ assetId }: SendProps) {
                                 </Text>
                                 <AddressIdentity address={account.address} />
                               </Stack>
-                            </div>
+                            </Button>
                           ))}
                         </Stack>
                       </ScrollArea>

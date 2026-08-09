@@ -22,8 +22,8 @@ const stepNumberRecipe = cva({
   defaultVariants: { required: false }
 })
 
-export type ProgressStepStatus = 'complete' | 'error' | 'idle' | 'pending' | 'required' | 'skipped'
-export type ProgressStep = { id: string; label: string; status: ProgressStepStatus }
+type ProgressStepStatus = 'complete' | 'error' | 'idle' | 'pending' | 'required' | 'skipped'
+type ProgressStep = { id: string; label: string; status: ProgressStepStatus }
 export type ProgressStepsProps = { steps: readonly ProgressStep[] }
 
 export function ProgressSteps({ steps }: ProgressStepsProps) {

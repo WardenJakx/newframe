@@ -14,7 +14,7 @@ type AddTokenRequestProps = {
 
 type AddTokenRequestWithStateProps = Omit<AddTokenRequestProps, 'originName'>
 
-export function AddTokenRequest(props: AddTokenRequestProps) {
+function AddTokenRequest(props: AddTokenRequestProps) {
   const status = props.req.status
   const notice = props.req.notice
 

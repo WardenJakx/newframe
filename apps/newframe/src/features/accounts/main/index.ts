@@ -124,15 +124,7 @@ function toTransactionsByLayer(requests: Record<string, AccountRequest>, chainId
 const frameOriginId = uuidv5('newframe-internal', uuidv5.DNS)
 const CONFIRMED_REQUEST_CLOSE_MS = 3000
 
-export { RequestMode } from '../../requests/contract/requests.js'
-export type {
-  AccountRequest,
-  AccessRequest,
-  TransactionRequest,
-  SignTypedDataRequest,
-  AddChainRequest,
-  AddTokenRequest
-} from '../../requests/contract/requests.js'
+export type { AccountRequest, AccessRequest, TransactionRequest } from '../../requests/contract/requests.js'
 
 type RequestWithId = [string, TransactionRequest]
 

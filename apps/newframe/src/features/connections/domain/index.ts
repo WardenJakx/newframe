@@ -11,7 +11,7 @@ const extensionPrefixes = {
 const extensionIdentities = ['newframe-extension', 'frame-extension']
 const trustedChromeExtensionIds = ['jdlcmcidcpckmaldjiacnbjeajgnmmgj']
 
-export type Browser = 'chrome' | 'firefox' | 'safari'
+type Browser = 'chrome' | 'firefox' | 'safari'
 
 export interface FrameExtension {
   browser: Browser
@@ -22,7 +22,7 @@ export function parseOriginName(origin?: string) {
   return origin ? origin.replace(protocolRegex, '') : 'Unknown'
 }
 
-export function isValidOriginName(origin: string) {
+function isValidOriginName(origin: string) {
   return origin === origin.replace(/[^0-9a-z/:.[\]-]/gi, '')
 }
 
@@ -95,9 +95,7 @@ export function parseExtensionIdentity({
   }
 }
 
-export type OriginMutation =
-  | { type: 'initialize'; chainId: number }
-  | { type: 'touch'; switchToChainId?: number }
+type OriginMutation = { type: 'initialize'; chainId: number } | { type: 'touch'; switchToChainId?: number }
 
 export function projectOriginUpdate({
   payload,

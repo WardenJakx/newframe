@@ -31,6 +31,7 @@
     "lint": "eslint . --quiet --cache --cache-location node_modules/.cache/eslint/.eslintcache",
     "lint:warn": "eslint .",
     "lint:fix": "eslint --fix .",
+    "knip": "bun run --cwd apps/newframe knip",
     "format": "prettier --write '**/*.{yml,json,md,html,ts,tsx,js,mjs}'",
     "format:check": "prettier --check '**/*.{yml,json,md,html,ts,tsx,js,mjs}' --cache",
     "check": "bun run format:check && bun run lint && bun run typecheck && bun run test",

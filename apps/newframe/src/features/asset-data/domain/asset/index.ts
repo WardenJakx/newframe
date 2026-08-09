@@ -2,7 +2,7 @@ import { NATIVE_CURRENCY } from '../../../tokens/domain/constants.js'
 import { CURATED_ASSETS, type CuratedAsset } from './registry.js'
 import type { AssetRateMap, AssetRateReference, ResolvedAssetRate } from '../state/rate.js'
 
-export type { AssetLabel, CuratedAsset } from './registry.js'
+export type { CuratedAsset } from './registry.js'
 
 const assetsById: ReadonlyMap<string, CuratedAsset> = new Map(
   CURATED_ASSETS.map((asset) => [asset.assetId, asset])

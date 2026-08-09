@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
 
-export type TrayNotificationData = Record<string, unknown>
+type TrayNotificationData = Record<string, unknown>
 export type TrayNotifier = (type?: string, data?: TrayNotificationData) => void
 
 type TrayNotificationContextValue = {

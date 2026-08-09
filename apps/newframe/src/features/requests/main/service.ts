@@ -15,13 +15,13 @@ import type {
   TransactionReplaceCommand
 } from '../../../app/contracts/operations.js'
 import { ApprovalType } from '../domain/approval.js'
-import {
-  isSignatureRequest,
-  isTransactionRequest,
-  isTypedMessageSignatureRequest
-} from '../domain/index.js'
+import { isSignatureRequest, isTransactionRequest, isTypedMessageSignatureRequest } from '../domain/index.js'
 import { resolveAssetRate } from '../../asset-data/domain/asset/index.js'
-import { findUnavailableSigners, isHardwareSigner, isSignerReady } from '../../../platform/signing/domain/index.js'
+import {
+  findUnavailableSigners,
+  isHardwareSigner,
+  isSignerReady
+} from '../../../platform/signing/domain/index.js'
 import { NATIVE_CURRENCY } from '../../tokens/domain/constants.js'
 import { usesBaseFee } from '../../transactions/domain/index.js'
 import { toBigInt } from '../../../shared/domain/units.js'

@@ -2,7 +2,10 @@ import { v4 as generateUuid } from 'uuid'
 import { z } from 'zod'
 import log from 'electron-log'
 
-import { createBuiltInNetworkMetadata, createBuiltInNetworks } from '../../../features/networks/domain/chain/index.js'
+import {
+  createBuiltInNetworkMetadata,
+  createBuiltInNetworks
+} from '../../../features/networks/domain/chain/index.js'
 import {
   DEFAULT_PROFILE_ID,
   DEFAULT_PROFILE_NAME,
@@ -17,24 +20,11 @@ export type { ChainId, Chain, ChainMetadata } from '../../../features/networks/d
 export type { Origin } from '../../../features/connections/domain/state/origin.js'
 export type { Permission } from '../../../features/connections/domain/state/permission.js'
 export type { Balance } from '../../../features/asset-data/domain/state/balance.js'
-export type {
-  WithTokenId,
-  Token,
-  TokenCatalog,
-  TokenImage,
-  TokenRecord,
-  TokenSource
-} from '../../../features/tokens/domain/state/token.js'
+export type { Token, TokenImage, TokenRecord } from '../../../features/tokens/domain/state/token.js'
 export type { NativeCurrency } from '../../../features/networks/domain/state/nativeCurrency.js'
 export type { Gas, GasFees } from '../../../features/networks/domain/state/gas.js'
-export type { ColorwayPalette } from '../../../features/networks/domain/state/colors.js'
-export type {
-  Activity,
-  ActivityRecord,
-  ActivityStatus,
-  Orders,
-  OrderRecord
-} from '../../../app/contracts/state/main.js'
+
+export type { ActivityRecord } from '../../../app/contracts/state/main.js'
 
 const StatusNotificationSchema = z
   .object({

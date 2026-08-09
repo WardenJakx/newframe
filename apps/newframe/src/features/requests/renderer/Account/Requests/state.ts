@@ -15,7 +15,6 @@ const EMPTY_TOKENS: WalletRendererState['tokens'] = { byId: {}, accountTokenIds:
 const selectEthereumNetworks = (state: WalletRendererState) => state.networks.ethereum
 const selectEthereumNetworkMetadata = (state: WalletRendererState) => state.networksMeta.ethereum
 const selectOrigins = (state: WalletRendererState) => state.origins
-const selectPanelNavigation = (state: WalletRendererState) => state.windows.panel.nav
 const selectTokens = (state: WalletRendererState) => state.tokens || EMPTY_TOKENS
 
 export function useAccountRequests(accountId: string) {
@@ -94,8 +93,4 @@ export function useAssetRate(asset: AssetRateReference) {
     [address, chainId, nativeTicker]
   )
   return useWalletSelector(selector)
-}
-
-export function usePanelNavigation() {
-  return useWalletSelector(selectPanelNavigation)
 }

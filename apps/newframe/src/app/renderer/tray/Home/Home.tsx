@@ -27,7 +27,7 @@ function HomeContent() {
   )
 }
 
-export function Home() {
+function Home() {
   return (
     <HomeUiProvider>
       <HomeContent />

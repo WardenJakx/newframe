@@ -2,7 +2,7 @@ import type { DisplayedBalance } from '../../../../../features/asset-data/domain
 
 export type HomeSection = 'positions' | 'activity' | 'orders'
 
-export interface ProposedChain {
+interface ProposedChain {
   id?: string | number
   chainId?: string | number
   name?: string
@@ -12,13 +12,13 @@ export interface ProposedChain {
   [key: string]: unknown
 }
 
-export interface PendingAddChain {
+interface PendingAddChain {
   chain?: ProposedChain
   requestId?: string
   homeCommandId?: number
 }
 
-export interface PendingCustomToken {
+interface PendingCustomToken {
   address: string
   chainId: number
   decimals?: number
@@ -27,7 +27,7 @@ export interface PendingCustomToken {
   symbol?: string
 }
 
-export type HomeOverlay =
+type HomeOverlay =
   | { type: 'none' }
   | { type: 'menu' }
   | { type: 'accounts'; showAddAccounts?: boolean; newAccountType?: string; selectedSigner?: string }

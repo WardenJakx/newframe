@@ -3,13 +3,7 @@ import { addHexPrefix, isHexString } from '@ethereumjs/util'
 
 import { MAX_HEX } from './constants.js'
 
-export {
-  limitTransactionFee,
-  maxTotalTransactionFee,
-  totalTransactionFee,
-  type TransactionFeeField,
-  type TransactionFeeValues
-} from './fees.js'
+export { limitTransactionFee, type TransactionFeeField } from './fees.js'
 
 export enum GasFeesSource {
   Dapp = 'Dapp',
@@ -49,8 +43,8 @@ export function usesBaseFee(rawTx: TransactionData) {
   return typeSupportsBaseFee(rawTx.type)
 }
 
-export type TransactionEffectDirection = 'out' | 'in' | 'neutral'
-export type TransactionEffectKind = 'native' | 'erc20' | 'allowance'
+type TransactionEffectDirection = 'out' | 'in' | 'neutral'
+type TransactionEffectKind = 'native' | 'erc20' | 'allowance'
 
 export interface TransactionEffect {
   id: string
@@ -74,7 +68,7 @@ export interface TransactionPositionToken {
   symbol: string
 }
 
-export type TransactionSimulationStatus = 'loading' | 'success' | 'unavailable' | 'error'
+type TransactionSimulationStatus = 'loading' | 'success' | 'unavailable' | 'error'
 
 export interface TransactionSimulation {
   status: TransactionSimulationStatus
@@ -204,7 +198,7 @@ export function getTransactionIntent(req: any, nativeSymbol = 'ETH'): Transactio
   }
 }
 
-export function getDeterministicTransactionEffects(req: any, nativeSymbol = 'ETH'): TransactionEffect[] {
+function getDeterministicTransactionEffects(req: any, nativeSymbol = 'ETH'): TransactionEffect[] {
   const effects: TransactionEffect[] = []
   const nativeValue = req?.data?.value || req?.payload?.params?.[0]?.value
 

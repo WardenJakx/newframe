@@ -76,7 +76,6 @@ export const FlashCancelOrderRequestSchema = z.object({
   userSignature: z.string().optional()
 })
 
-export type FlashChainInput = z.infer<typeof FlashChainInputSchema> | undefined
 export type FlashPriceTriggerInput = z.infer<typeof FlashPriceTriggerInputSchema>
 export type FlashQuoteRequest = z.infer<typeof FlashQuoteRequestSchema>
 export type FlashSubmitOrderRequest = z.infer<typeof FlashSubmitOrderRequestSchema>

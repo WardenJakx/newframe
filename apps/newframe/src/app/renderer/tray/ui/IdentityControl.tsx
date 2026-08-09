@@ -37,7 +37,7 @@ const identityIconRecipe = cva({
   }
 })
 
-export type IdentityControlAction = {
+type IdentityControlAction = {
   icon: IconName
   label: string
   onPress: () => void

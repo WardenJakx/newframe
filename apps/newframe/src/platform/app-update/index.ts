@@ -2,11 +2,6 @@ import log from 'electron-log'
 
 import type { CanonicalStore } from '../state-store/actions.js'
 
-export interface VersionUpdate {
-  version: string
-  location: string
-}
-
 export class Updater {
   constructor(store: { getState(): CanonicalStore }) {
     void store

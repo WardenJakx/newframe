@@ -34,7 +34,7 @@ const samePath = (left: string, right: string) => {
   return normalize(left) === normalize(right)
 }
 
-export function isAllowedRendererUrl(entrypoint: RendererEntrypoint, value: string) {
+function isAllowedRendererUrl(entrypoint: RendererEntrypoint, value: string) {
   try {
     const target = new URL(value)
     if (target.username || target.password || target.search) return false

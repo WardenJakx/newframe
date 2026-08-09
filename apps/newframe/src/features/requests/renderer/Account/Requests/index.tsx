@@ -42,7 +42,7 @@ type RequestsProps = RequestsWithStateProps & {
 
 const requestsRecipe = cva({ base: { width: '100%', paddingBlockStart: '10' } })
 
-export function Requests(props: RequestsProps) {
+function Requests(props: RequestsProps) {
   const requestCard = (req: RenderableRequest, index: number) => {
     let title = 'Request'
     let svgName: IconName | undefined

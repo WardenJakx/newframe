@@ -23,11 +23,7 @@ import {
   flashTypedDataChainId,
   parseFlashTypedData
 } from '../domain/execution.js'
-import type {
-  FlashCancelOrderRequest,
-  FlashQuoteRequest,
-  FlashSubmitOrderRequest
-} from './contracts.js'
+import type { FlashCancelOrderRequest, FlashQuoteRequest, FlashSubmitOrderRequest } from './contracts.js'
 import type { TrustedPrincipal } from '../../../access-control/main/authority.js'
 import type { OperationService } from '../../../../platform/operations/service.js'
 import type { OperationEntityRef } from '../../../../platform/operations/operation.js'
@@ -45,7 +41,7 @@ type TradeOrder = {
   status?: string
 }
 
-export interface TradeCanonicalSnapshot {
+interface TradeCanonicalSnapshot {
   currentAccount: string
   accounts: Record<string, TradeAccount | undefined>
   networks: Record<number, { on?: boolean } | undefined>

@@ -1,14 +1,14 @@
 import { NATIVE_CURRENCY } from '../../../features/tokens/domain/constants.js'
 import { hasPositiveBalance } from '../../../features/asset-data/domain/balance/index.js'
 import {
-  FLASH_DEFAULT_TARGET_ASSET,
+  FLASH_WETH_ASSET,
   getFlashAssetsForChain,
   getFlashDefaultTargetAsset
 } from '../../../features/transactions/trade/domain/assets.js'
 import type { FlashAsset } from '../../../features/transactions/trade/domain/schemas.js'
 
 export const SIDE_TRAY_FRAME_ID = 'sideTray'
-export const SIDE_TRAY_NATIVE_ASSET_ADDRESS = NATIVE_CURRENCY
+const SIDE_TRAY_NATIVE_ASSET_ADDRESS = NATIVE_CURRENCY
 
 export type SideTrayRouteName = 'send' | 'trade'
 
@@ -22,13 +22,13 @@ export interface SideTrayFrame {
   route?: string
 }
 
-export interface SideTrayFrameRequestObject {
+interface SideTrayFrameRequestObject {
   id: string
   route?: string
 }
 
 /** @deprecated Use request objects with { id, route }. */
-export type LegacySideTrayFrameRequest = string
+type LegacySideTrayFrameRequest = string
 export type SideTrayFrameRequest = SideTrayFrameRequestObject | LegacySideTrayFrameRequest
 
 export function normalizeSideTrayFrameRequest(frame: SideTrayFrameRequest): SideTrayFrame | null {
@@ -65,7 +65,7 @@ export function toCanonicalAssetId(asset: { chainId?: unknown; address?: unknown
   return `${chainId}:${address}`
 }
 
-export function canonicalAssetAddress(address: unknown) {
+function canonicalAssetAddress(address: unknown) {
   const value = typeof address === 'string' ? address.trim().toLowerCase() : ''
 
   return /^0x[0-9a-f]{40}$/.test(value) ? value : ''
@@ -106,7 +106,7 @@ export function resolveFlashAssetFromRouteAssetId(
   if (!routeAsset) {
     return Number.isInteger(fallbackChainId) && Number(fallbackChainId) > 0
       ? getFlashDefaultTargetAsset(Number(fallbackChainId))
-      : FLASH_DEFAULT_TARGET_ASSET
+      : FLASH_WETH_ASSET
   }
 
   return (
@@ -116,7 +116,7 @@ export function resolveFlashAssetFromRouteAssetId(
         canonicalAssetAddress(asset.isNative ? SIDE_TRAY_NATIVE_ASSET_ADDRESS : asset.address) ===
           routeAsset.address
       )
-    }) || FLASH_DEFAULT_TARGET_ASSET
+    }) || FLASH_WETH_ASSET
   )
 }
 
@@ -131,9 +131,3 @@ export function parseCanonicalAssetId(assetId?: string | null) {
 
   return { chainId, address }
 }
-
-export function isNativeRouteAssetId(assetId?: string | null) {
-  return parseCanonicalAssetId(assetId)?.address === FLASH_NATIVE_ETH_ASSET_ADDRESS
-}
-
-const FLASH_NATIVE_ETH_ASSET_ADDRESS = SIDE_TRAY_NATIVE_ASSET_ADDRESS

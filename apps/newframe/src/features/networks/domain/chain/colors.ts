@@ -11,7 +11,7 @@ export const chainColors = {
   other: '#3c28ea'
 } as const
 
-export type ChainColorName = keyof typeof chainColors
+type ChainColorName = keyof typeof chainColors
 
 const accentChainMap: Record<keyof ColorwayPalette, ChainColorName> = {
   accent1: 'mainnet',

@@ -7,7 +7,6 @@ import { hasPrincipalCapability, type RpcPrincipal } from '../../access-control/
 import {
   chainIdFromRequest,
   decideOriginAuthorization,
-  normalizeRequestChainId,
   parseExtensionIdentity,
   parseOriginName,
   projectOriginUpdate,
@@ -173,7 +172,7 @@ export function createOriginsService(dependencies: OriginsServiceDependencies) {
 }
 
 export const parseOrigin = parseOriginName
-export { normalizeRequestChainId }
+
 export const parseRequestChainId = (req: IncomingMessage) => chainIdFromRequest(req.headers, req.url)
 
 export function createProductionOriginsService(

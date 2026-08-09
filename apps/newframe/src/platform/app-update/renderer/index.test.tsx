@@ -1,7 +1,11 @@
 import { beforeEach, describe, expect, it } from 'bun:test'
 
 import { render } from '../../../../test/support/componentSetup'
-import { applyStateMessage, beginStateConnection, resetStateMirrorForTests } from '../../state-sync/renderer/rendererStore'
+import {
+  applyStateMessage,
+  beginStateConnection,
+  resetStateMirrorForTests
+} from '../../state-sync/renderer/rendererStore'
 import Badge from './index'
 import { STATE_STREAM_SCHEMA_VERSION } from '../../state-sync/contract/protocol'
 import { walletState } from '../../state-sync/renderer/fixtures.test-support.ts'

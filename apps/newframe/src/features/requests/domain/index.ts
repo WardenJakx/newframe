@@ -5,13 +5,10 @@ import type {
   SignTypedDataRequest,
   TransactionRequest
 } from '../contract/requests.js'
-import { capitalize } from '../../../shared/domain/text.js'
 
 export const isCancelableRequest = (status: string): boolean => {
   return !['sent', 'sending', 'verifying', 'confirming', 'confirmed', 'error', 'declined'].includes(status)
 }
-
-export const getSignatureRequestClass = ({ status = '' }) => `signerRequest ${capitalize(status)}`
 
 export const isSignatureRequest = (request: AccountRequest): request is SignatureRequest => {
   return ['sign', 'signTypedData', 'signErc20Permit'].includes(request.type)

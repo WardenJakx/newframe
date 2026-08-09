@@ -5,7 +5,11 @@ import { v5 as uuidv5 } from 'uuid'
 import { NATIVE_CURRENCY } from '../../features/tokens/domain/constants.js'
 import { accountNS, isDefaultAccountName } from '../../features/accounts/domain/index.js'
 import { toTokenId } from '../../features/tokens/domain/index.js'
-import { DEFAULT_PROFILE_ID, DEFAULT_PROFILE_NAME, getProfileAccountIds } from '../../app/contracts/state/main.js'
+import {
+  DEFAULT_PROFILE_ID,
+  DEFAULT_PROFILE_NAME,
+  getProfileAccountIds
+} from '../../app/contracts/state/main.js'
 import { createPanelActions, type CanonicalGet, type CanonicalSet } from './actions.panel.js'
 import { createOperationActions } from './actions.operation.js'
 import type { CanonicalState } from './state/index.js'
@@ -1360,5 +1364,3 @@ export interface CanonicalStoreReader {
     }
   ): () => void
 }
-
-export default createCanonicalActions

@@ -1,8 +1,4 @@
-import type {
-  AccountRequest,
-  PermitSignatureRequest,
-  TransactionRequest
-} from '../../contract/requests.js'
+import type { AccountRequest, PermitSignatureRequest, TransactionRequest } from '../../contract/requests.js'
 import type { RequestTokenApprovalUpdateCommand } from '../../../../app/contracts/operations.js'
 import { usesBaseFee } from '../../../transactions/domain/index.js'
 import { toBigInt } from '../../../../shared/domain/units.js'

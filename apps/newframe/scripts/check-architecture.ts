@@ -63,10 +63,8 @@ const isTestSupportFile = (file: string) =>
   /(?:^|\/)(?:__mocks__|__tests__)(?:\/|$)/.test(file) ||
   /(?:^|\/)[^/]+\.(?:test-support|test-fixture)\./.test(file)
 const isProductionFile = (file: string) => !isTestFile(file) && !isTestSupportFile(file)
-const productionRenderer = (file: string) =>
-  isProductionFile(file) && layerFor(file) === 'renderer'
-const productionMain = (file: string) =>
-  isProductionFile(file) && layerFor(file) === 'main'
+const productionRenderer = (file: string) => isProductionFile(file) && layerFor(file) === 'renderer'
+const productionMain = (file: string) => isProductionFile(file) && layerFor(file) === 'main'
 const productionApplication = (file: string) =>
   isProductionFile(file) && under(path.join('apps', 'newframe', 'src'))(file)
 const productionMainOutsideAccountGate = (file: string) =>
@@ -78,13 +76,25 @@ const migratedPilotFiles = new Set([
 ])
 const migratedSharedSideTrayFiles = new Set([
   path.join('apps', 'newframe', 'src', 'shared', 'renderer', 'ui', 'ChainTokenIcon.tsx'),
-  path.join('apps', 'newframe', 'src', 'features', 'transactions', 'trade', 'renderer', 'ui', 'BalanceRange.tsx'),
+  path.join(
+    'apps',
+    'newframe',
+    'src',
+    'features',
+    'transactions',
+    'trade',
+    'renderer',
+    'ui',
+    'BalanceRange.tsx'
+  ),
   path.join('apps', 'newframe', 'src', 'shared', 'renderer', 'ui', 'TokenOptionRow.tsx'),
   path.join('apps', 'newframe', 'src', 'shared', 'renderer', 'ui', 'TokenSelector.tsx')
 ])
 const migratedSideTrayFiles = (file: string) =>
-  path.dirname(file) === path.join('apps', 'newframe', 'src', 'features', 'transactions', 'send', 'renderer') ||
-  path.dirname(file) === path.join('apps', 'newframe', 'src', 'features', 'transactions', 'trade', 'renderer') ||
+  path.dirname(file) ===
+    path.join('apps', 'newframe', 'src', 'features', 'transactions', 'send', 'renderer') ||
+  path.dirname(file) ===
+    path.join('apps', 'newframe', 'src', 'features', 'transactions', 'trade', 'renderer') ||
   migratedSharedSideTrayFiles.has(file)
 const extensionCompositionFiles = new Set([
   path.join('apps', 'newframe-extension', 'src', 'settings', 'ChoiceGrid.tsx'),
@@ -204,7 +214,10 @@ function layerFor(file: string): ApplicationLayer | undefined {
   if (under(path.join(sourceRoot, 'app', 'contracts'))(file) || /(?:^|[\\/])contract(?:[\\/]|$)/.test(file)) {
     return 'contracts'
   }
-  if (/(?:^|[\\/])domain(?:[\\/]|$)/.test(file) || normalizedModuleRoot(file) === path.join(sourceRoot, 'platform', 'operations', 'operation')) {
+  if (
+    /(?:^|[\\/])domain(?:[\\/]|$)/.test(file) ||
+    normalizedModuleRoot(file) === path.join(sourceRoot, 'platform', 'operations', 'operation')
+  ) {
     return 'domain'
   }
   if (under(sourceRoot)(file)) return 'main'
@@ -223,7 +236,9 @@ function importedApplicationPath(file: string, specifier: string): string | unde
     return path.normalize(normalized.slice(markerIndex))
   }
 
-  const alias = normalized.match(/^(?:@newframe\/app|@newframe-app|@newframe|#newframe|@app)\/src(?:\/(.*))?$/)
+  const alias = normalized.match(
+    /^(?:@newframe\/app|@newframe-app|@newframe|#newframe|@app)\/src(?:\/(.*))?$/
+  )
   if (alias) return path.join(sourceRoot, alias[1] || '')
 
   return undefined
@@ -355,7 +370,8 @@ export function checkAssetRateMutationAuthority(file: string, source: string) {
 
   const allowed =
     under(path.join('apps', 'newframe', 'src', 'platform', 'state-store'))(file) ||
-    file === path.join('apps', 'newframe', 'src', 'features', 'asset-data', 'main', 'assetRates', 'service.ts')
+    file ===
+      path.join('apps', 'newframe', 'src', 'features', 'asset-data', 'main', 'assetRates', 'service.ts')
 
   return allowed
     ? []

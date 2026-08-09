@@ -31,5 +31,3 @@ export const identify = ({ data }: TypedMessage<SignTypedDataVersion>): TypedSig
 
   return identified ? (identified[0] as TypedSignatureRequestType) : 'signTypedData'
 }
-
-export { isSignatureRequest } from '../../../features/requests/domain/index.js'

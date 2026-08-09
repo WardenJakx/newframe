@@ -18,10 +18,7 @@ import {
 import ensContracts from '../../../platform/chain-rpc/contracts/deployments/ens/index.js'
 import { MAX_HEX } from '../domain/constants.js'
 
-import type {
-  ApproveAction as Erc20Approval,
-  TransferAction as Erc20Transfer
-} from './actions/erc20.js'
+import type { ApproveAction as Erc20Approval, TransferAction as Erc20Transfer } from './actions/erc20.js'
 import type { Action, DecodableContract, EntityType } from './actions/index.js'
 import type { TransactionRequest } from '../../accounts/main/index.js'
 

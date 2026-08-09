@@ -23,7 +23,7 @@ type ChainRequestProps = {
 
 type ChainRequestWithStateProps = Omit<ChainRequestProps, 'originName' | 'networkName'>
 
-export function ChainRequest(props: ChainRequestProps) {
+function ChainRequest(props: ChainRequestProps) {
   const { status, notice, type, chain } = props.req
 
   const { originName, networkName } = props

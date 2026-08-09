@@ -4,7 +4,7 @@ import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
 import type { ReactNode } from 'react'
 
-export type RequestAction = {
+type RequestAction = {
   disabled?: boolean
   label: string
   onPress: () => void

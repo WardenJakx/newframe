@@ -1,7 +1,7 @@
 import type { Shortcut, ShortcutKey, ModifierKey } from '../domain/state/shortcuts'
 import { metaKeyMap, shortcutKeyMap, type Platform } from '../../../shared/domain/keyboard'
 
-export type KeyboardLayout = {
+type KeyboardLayout = {
   get: (key: string) => string
 }
 

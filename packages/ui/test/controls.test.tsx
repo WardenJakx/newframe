@@ -126,9 +126,7 @@ describe('Side Panel controls', () => {
   })
 
   it('provides reusable in-place hover text without duplicating accessible content', () => {
-    const { container } = render(
-      <HoverSwapText alternate='0x1234567890abcdef'>testname</HoverSwapText>
-    )
+    const { container } = render(<HoverSwapText alternate='0x1234567890abcdef'>testname</HoverSwapText>)
 
     expect(screen.getByText('testname')).toBeTruthy()
     const alternate = container.querySelector('[data-hover-swap-text="alternate"]')

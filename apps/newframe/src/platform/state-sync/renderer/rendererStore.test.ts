@@ -8,11 +8,7 @@ import {
   walletRendererStateStoreReadApi
 } from './rendererStore'
 import type { WalletRendererState } from '../contract/projections'
-import {
-  STATE_STREAM_SCHEMA_VERSION,
-  type StateSnapshot,
-  type StateUpdateBatch
-} from '../contract/protocol'
+import { STATE_STREAM_SCHEMA_VERSION, type StateSnapshot, type StateUpdateBatch } from '../contract/protocol'
 import { walletChanges, walletState } from './fixtures.test-support.ts'
 
 const snapshot = (

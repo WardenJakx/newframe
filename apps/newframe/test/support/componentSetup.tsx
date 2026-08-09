@@ -15,11 +15,6 @@ const runAllTimers = async () => {
   })
 }
 
-async function actAndWait(fn: any, ms = 0) {
-  await fn()
-  act(() => timers.advanceTimersByTime(ms))
-}
-
 function setupComponent(jsx: any, opts: any = {}) {
   const { advanceTimersAfterInput, ...options } = opts
   const advanceTimers =
@@ -43,4 +38,4 @@ function setupComponent(jsx: any, opts: any = {}) {
 
 export * from '@testing-library/react'
 
-export { actAndWait, setupComponent as render }
+export { setupComponent as render }

@@ -4,7 +4,11 @@ import { act, render, screen, waitFor } from '../../../../../test/support/compon
 import { STATE_STREAM_SCHEMA_VERSION } from '../../../../platform/state-sync/contract/protocol'
 import { NATIVE_CURRENCY } from '../../../../features/tokens/domain/constants'
 import { walletState } from '../../../../platform/state-sync/renderer/fixtures.test-support.ts'
-import { applyStateMessage, beginStateConnection, resetStateMirrorForTests } from '../../../../platform/state-sync/renderer/rendererStore'
+import {
+  applyStateMessage,
+  beginStateConnection,
+  resetStateMirrorForTests
+} from '../../../../platform/state-sync/renderer/rendererStore'
 import { HomeUiProvider, useHomeUiStore } from './state/HomeUiProvider'
 import type { DisplayedBalance } from '../../../../features/asset-data/domain/balance'
 

@@ -2,7 +2,10 @@ import { beforeEach, expect, it } from 'bun:test'
 
 import { render, screen } from '../../../../../../test/support/componentSetup'
 import { STATE_STREAM_SCHEMA_VERSION } from '../../../../../platform/state-sync/contract/protocol'
-import type { WalletRendererState, WalletStatusNotification } from '../../../../../platform/state-sync/contract/projections'
+import type {
+  WalletRendererState,
+  WalletStatusNotification
+} from '../../../../../platform/state-sync/contract/projections'
 import { walletState } from '../../../../../platform/state-sync/renderer/fixtures.test-support.ts'
 import {
   applyStateMessage,

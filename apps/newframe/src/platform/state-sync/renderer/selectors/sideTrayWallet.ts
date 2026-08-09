@@ -11,8 +11,8 @@ import type { Token } from '../../../../features/tokens/domain/state/token'
 import type { SideTrayRendererState } from '../../contract/projections'
 
 export type SideTrayWalletAccount = SideTrayRendererState['accounts'][string]
-export type SideTrayWalletEthereumNetwork = SideTrayRendererState['networks']['ethereum'][number]
-export type SideTrayWalletEthereumNetworkMeta = SideTrayRendererState['networksMeta']['ethereum'][number]
+type SideTrayWalletEthereumNetwork = SideTrayRendererState['networks']['ethereum'][number]
+type SideTrayWalletEthereumNetworkMeta = SideTrayRendererState['networksMeta']['ethereum'][number]
 
 export interface SideTrayWalletSelectorValue {
   accounts: SideTrayWalletAccount[]
