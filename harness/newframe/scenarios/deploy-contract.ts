@@ -1,5 +1,5 @@
 import { BrowserProvider } from 'ethers'
-import createFrameProvider from '../../../apps/newframe/main/provider/connection.ts'
+import createFrameProvider from '../../../apps/newframe/src/features/connections/main/provider/connection.ts'
 
 let frame: any
 let provider: BrowserProvider

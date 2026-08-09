@@ -8,8 +8,16 @@
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
     "noEmit": true,
-    "typeRoots": ["./node_modules/@types", "./@types"]
+    "typeRoots": ["./node_modules/@types", "./src/types"]
   },
-  "include": ["./@types/frame/index.d.ts", "./contracts/**/*.ts", "./domain/**/*.ts"],
+  "include": [
+    "./src/types/frame/index.d.ts",
+    "./src/app/contracts/**/*.ts",
+    "./src/features/**/contract/**/*.ts",
+    "./src/features/**/domain/**/*.ts",
+    "./src/platform/**/contract/**/*.ts",
+    "./src/platform/signing/domain/**/*.ts",
+    "./src/shared/domain/**/*.ts"
+  ],
   "exclude": ["**/*.test.ts", "**/*.test.tsx"]
 }

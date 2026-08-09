@@ -24,11 +24,7 @@ async function walk(directory: string): Promise<string[]> {
 
 async function sourceFiles() {
   const roots = [
-    path.join(appRoot, 'main'),
-    path.join(appRoot, 'preload'),
-    path.join(appRoot, 'renderer'),
-    path.join(appRoot, 'contracts'),
-    path.join(appRoot, 'domain'),
+    path.join(appRoot, 'src'),
     path.join(appRoot, 'test'),
     path.join(repositoryRoot, 'apps/newframe-extension/src')
   ]
@@ -39,6 +35,7 @@ async function sourceFiles() {
       (file) =>
         sourceExtensions.has(path.extname(file)) &&
         !file.includes(`${path.sep}dist${path.sep}`) &&
+        !file.startsWith(path.join(appRoot, 'src', 'types') + path.sep) &&
         !file.includes(path.join('packages', 'ui', 'src', 'styled-system')) &&
         !file.includes(path.join('apps', 'newframe', 'generated', 'styled-system')) &&
         !file.includes(path.join('apps', 'newframe-extension', 'src', 'styled-system'))
@@ -67,29 +64,28 @@ const isTestSupportFile = (file: string) =>
   /(?:^|\/)[^/]+\.(?:test-support|test-fixture)\./.test(file)
 const isProductionFile = (file: string) => !isTestFile(file) && !isTestSupportFile(file)
 const productionRenderer = (file: string) =>
-  isProductionFile(file) && under(path.join('apps', 'newframe', 'renderer'))(file)
+  isProductionFile(file) && layerFor(file) === 'renderer'
 const productionMain = (file: string) =>
-  isProductionFile(file) && under(path.join('apps', 'newframe', 'main'))(file)
+  isProductionFile(file) && layerFor(file) === 'main'
 const productionApplication = (file: string) =>
-  isProductionFile(file) &&
-  ['contracts', 'domain', 'main', 'preload', 'renderer'].some((root) =>
-    under(path.join('apps', 'newframe', root))(file)
-  )
+  isProductionFile(file) && under(path.join('apps', 'newframe', 'src'))(file)
 const productionMainOutsideAccountGate = (file: string) =>
-  productionMain(file) && !under(path.join('apps', 'newframe', 'main', 'accounts'))(file)
+  productionMain(file) && !under(path.join('apps', 'newframe', 'src', 'features', 'accounts', 'main'))(file)
 const anyFile = () => true
 const migratedPilotFiles = new Set([
-  path.join('apps', 'newframe', 'renderer', 'tray', 'Home', 'components', 'HomeHeaderView.tsx'),
-  path.join('apps', 'newframe', 'renderer', 'tray', 'Home', 'components', 'HomeMenuView.tsx')
+  path.join('apps', 'newframe', 'src', 'app', 'renderer', 'tray', 'Home', 'components', 'HomeHeaderView.tsx'),
+  path.join('apps', 'newframe', 'src', 'app', 'renderer', 'tray', 'Home', 'components', 'HomeMenuView.tsx')
 ])
 const migratedSharedSideTrayFiles = new Set([
-  path.join('apps', 'newframe', 'renderer', 'shared', 'ui', 'ChainTokenIcon.tsx'),
-  path.join('apps', 'newframe', 'renderer', 'shared', 'ui', 'BalanceRange.tsx'),
-  path.join('apps', 'newframe', 'renderer', 'shared', 'ui', 'TokenOptionRow.tsx'),
-  path.join('apps', 'newframe', 'renderer', 'shared', 'ui', 'TokenSelector.tsx')
+  path.join('apps', 'newframe', 'src', 'shared', 'renderer', 'ui', 'ChainTokenIcon.tsx'),
+  path.join('apps', 'newframe', 'src', 'features', 'transactions', 'trade', 'renderer', 'ui', 'BalanceRange.tsx'),
+  path.join('apps', 'newframe', 'src', 'shared', 'renderer', 'ui', 'TokenOptionRow.tsx'),
+  path.join('apps', 'newframe', 'src', 'shared', 'renderer', 'ui', 'TokenSelector.tsx')
 ])
 const migratedSideTrayFiles = (file: string) =>
-  under(path.join('apps', 'newframe', 'renderer', 'sidetray'))(file) || migratedSharedSideTrayFiles.has(file)
+  path.dirname(file) === path.join('apps', 'newframe', 'src', 'features', 'transactions', 'send', 'renderer') ||
+  path.dirname(file) === path.join('apps', 'newframe', 'src', 'features', 'transactions', 'trade', 'renderer') ||
+  migratedSharedSideTrayFiles.has(file)
 const extensionCompositionFiles = new Set([
   path.join('apps', 'newframe-extension', 'src', 'settings', 'ChoiceGrid.tsx'),
   path.join('apps', 'newframe-extension', 'src', 'settings', 'SettingsPanel.tsx')
@@ -157,28 +153,37 @@ function lineNumber(source: string, index: number) {
 }
 
 const applicationRoot = path.join('apps', 'newframe')
-const applicationLayers = ['contracts', 'domain', 'generated', 'main', 'preload', 'renderer'] as const
-type ApplicationLayer = (typeof applicationLayers)[number]
-const mainRoot = path.join(applicationRoot, 'main')
+type ApplicationLayer = 'contracts' | 'domain' | 'generated' | 'main' | 'preload' | 'renderer'
+const sourceRoot = path.join(applicationRoot, 'src')
 const singletonBoundaryExclusions = [
-  'composition',
-  'infrastructure',
-  'signers',
-  'store',
-  'updater',
-  'windows'
+  path.join(sourceRoot, 'app', 'main', 'composition'),
+  path.join(sourceRoot, 'features', 'connections', 'main', 'provider', 'infrastructure'),
+  path.join(sourceRoot, 'platform', 'signing'),
+  path.join(sourceRoot, 'platform', 'state-store'),
+  path.join(sourceRoot, 'platform', 'app-update'),
+  path.join(sourceRoot, 'platform', 'callbacks'),
+  path.join(sourceRoot, 'platform', 'desktop'),
+  path.join(sourceRoot, 'platform', 'persistence')
 ]
 const applicationOwnedMainModule = (file: string) =>
   productionMain(file) &&
-  file !== path.join(mainRoot, 'index.ts') &&
-  !singletonBoundaryExclusions.some((directory) => under(path.join(mainRoot, directory))(file))
-const broadProductionServiceRoots = ['biometrics', 'signers', 'store', 'updater', 'vault', 'windows'].map(
-  (module) => path.join(mainRoot, module)
-)
+  file !== path.join(sourceRoot, 'app', 'main', 'index.ts') &&
+  file !== path.join(sourceRoot, 'app', 'main', 'platform', 'production.ts') &&
+  !/(?:accounts|asset-data|networks|portfolio|security|tokens)[\\/]main[\\/]production\.ts$/.test(file) &&
+  !file.endsWith(path.join('asset-data', 'main', 'images', 'production.ts')) &&
+  !file.endsWith(path.join('main', 'accountOnboarding', 'production.ts')) &&
+  !singletonBoundaryExclusions.some((directory) => under(directory)(file))
+const broadProductionServiceRoots = [
+  path.join(sourceRoot, 'platform', 'secrets'),
+  path.join(sourceRoot, 'platform', 'signing', 'signers'),
+  path.join(sourceRoot, 'platform', 'state-store'),
+  path.join(sourceRoot, 'platform', 'app-update'),
+  path.join(sourceRoot, 'platform', 'desktop')
+]
 const narrowProductionTypeRoots = [
-  path.join(mainRoot, 'signers', 'Signer'),
-  path.join(mainRoot, 'store', 'actions'),
-  path.join(mainRoot, 'store', 'state')
+  path.join(sourceRoot, 'platform', 'signing', 'signers', 'Signer'),
+  path.join(sourceRoot, 'platform', 'state-store', 'actions'),
+  path.join(sourceRoot, 'platform', 'state-store', 'state')
 ]
 
 const isModuleOrDescendant = (target: string, root: string) =>
@@ -191,7 +196,19 @@ function isBroadProductionService(target: string) {
 }
 
 function layerFor(file: string): ApplicationLayer | undefined {
-  return applicationLayers.find((layer) => under(path.join(applicationRoot, layer))(file))
+  if (under(path.join(applicationRoot, 'generated'))(file)) return 'generated'
+  if (under(path.join(sourceRoot, 'preload'))(file)) return 'preload'
+  if (under(path.join(sourceRoot, 'renderer'))(file) || /(?:^|[\\/])renderer(?:[\\/]|$)/.test(file)) {
+    return 'renderer'
+  }
+  if (under(path.join(sourceRoot, 'app', 'contracts'))(file) || /(?:^|[\\/])contract(?:[\\/]|$)/.test(file)) {
+    return 'contracts'
+  }
+  if (/(?:^|[\\/])domain(?:[\\/]|$)/.test(file) || normalizedModuleRoot(file) === path.join(sourceRoot, 'platform', 'operations', 'operation')) {
+    return 'domain'
+  }
+  if (under(sourceRoot)(file)) return 'main'
+  return undefined
 }
 
 function importedApplicationPath(file: string, specifier: string): string | undefined {
@@ -206,10 +223,8 @@ function importedApplicationPath(file: string, specifier: string): string | unde
     return path.normalize(normalized.slice(markerIndex))
   }
 
-  const alias = normalized.match(
-    /^(?:@newframe\/app|@newframe-app|@newframe|#newframe|@app)\/(contracts|domain|generated|main|preload|renderer)(?:\/(.*))?$/
-  )
-  if (alias) return path.join(applicationRoot, alias[1], alias[2] || '')
+  const alias = normalized.match(/^(?:@newframe\/app|@newframe-app|@newframe|#newframe|@app)\/src(?:\/(.*))?$/)
+  if (alias) return path.join(sourceRoot, alias[1] || '')
 
   return undefined
 }
@@ -339,8 +354,8 @@ export function checkAssetRateMutationAuthority(file: string, source: string) {
   if (!productionMain(file) || !/(?:\.\s*|\b)setAssetRates\s*\(/.test(source)) return []
 
   const allowed =
-    under(path.join('apps', 'newframe', 'main', 'store'))(file) ||
-    file === path.join('apps', 'newframe', 'main', 'features', 'assetRates', 'service.ts')
+    under(path.join('apps', 'newframe', 'src', 'platform', 'state-store'))(file) ||
+    file === path.join('apps', 'newframe', 'src', 'features', 'asset-data', 'main', 'assetRates', 'service.ts')
 
   return allowed
     ? []
@@ -351,14 +366,14 @@ export function checkOperationContractAuthority(file: string, source: string) {
   if (!productionApplication(file)) return []
 
   const violations: string[] = []
-  const canonicalCatalog = path.join('apps', 'newframe', 'contracts', 'operations.ts')
+  const canonicalCatalog = path.join('apps', 'newframe', 'src', 'app', 'contracts', 'operations.ts')
   const duplicateCatalog = source.match(
     /\b(?:command|query)(?:Contracts|Schemas|SchemaMap)\b\s*(?::[^=\n]+)?=/i
   )
 
   if (file !== canonicalCatalog && duplicateCatalog?.index !== undefined) {
     violations.push(
-      `${file}:${lineNumber(source, duplicateCatalog.index)} command and query schema catalogs must be defined in contracts/operations.ts`
+      `${file}:${lineNumber(source, duplicateCatalog.index)} command and query schema catalogs must be defined in src/app/contracts/operations.ts`
     )
   }
 
@@ -423,8 +438,8 @@ export function checkRawIpcAuthority(file: string, source: string) {
     const rawMainIpc = source.match(/\bipcMain\.(?:addListener|emit|handle|invoke|on|once|send)\b/)
     if (rawMainIpc?.index !== undefined) {
       const allowed = new Set([
-        path.join('apps', 'newframe', 'main', 'ipc', 'operations.ts'),
-        path.join('apps', 'newframe', 'main', 'ipc', 'stateStream.ts')
+        path.join('apps', 'newframe', 'src', 'platform', 'ipc', 'main', 'operations.ts'),
+        path.join('apps', 'newframe', 'src', 'platform', 'ipc', 'main', 'stateStream.ts')
       ])
       if (!allowed.has(file)) {
         violations.push(`${file}: raw ipcMain access is restricted to typed IPC modules`)
@@ -432,7 +447,7 @@ export function checkRawIpcAuthority(file: string, source: string) {
     }
 
     if (/\bwebContents\.send\b/.test(source)) {
-      const stateStream = path.join('apps', 'newframe', 'main', 'ipc', 'stateStream.ts')
+      const stateStream = path.join('apps', 'newframe', 'src', 'platform', 'ipc', 'main', 'stateStream.ts')
       if (file !== stateStream) {
         violations.push(`${file}: webContents.send is restricted to the typed state stream`)
       }
@@ -445,8 +460,8 @@ export function checkPlatformCommandAuthority(file: string, source: string) {
   if (!productionApplication(file)) return []
 
   const violations: string[] = []
-  const tradeRenderer = path.join('apps', 'newframe', 'renderer', 'sidetray', 'Trade')
-  const sendRenderer = path.join('apps', 'newframe', 'renderer', 'sidetray', 'Send')
+  const tradeRenderer = path.join('apps', 'newframe', 'src', 'features', 'transactions', 'trade', 'renderer')
+  const sendRenderer = path.join('apps', 'newframe', 'src', 'features', 'transactions', 'send', 'renderer')
   if (productionRenderer(file)) {
     const rendererExecutionCapability = source.match(
       /type\s*:\s*['"](?:transaction\.submit|typedData\.signV4|flash\.submit)['"]|['"](?:transaction\.submit|typedData\.signV4|flash\.submit)['"]\s*:/
@@ -486,7 +501,7 @@ export function checkPlatformCommandAuthority(file: string, source: string) {
     )
   }
 
-  const walletWorkflow = path.join('apps', 'newframe', 'main', 'operations', 'walletWorkflows.ts')
+  const walletWorkflow = path.join('apps', 'newframe', 'src', 'platform', 'operations', 'walletWorkflows.ts')
   if (file === walletWorkflow) {
     const migratedForwarder = source.match(
       /\b(?:addAccountFromSigner|addToken|addWatchAccount|adjustTransactionNonce|clearPermission|configureSecurity|consumeHomeCommand|createLatticeSigner|disconnectSigner|dismissTransactionFeeNotice|handleTrayMouseout|importSigner|inspectOwnTrayWindow|loadLedgerAccounts|locateKeystore|lockWallet|navigatePanelBack|openExternalUrl|openRequestPanel|openSideTray|openTransactionExplorer|pairLattice|quitApp|refreshPortfolio|reloadSigner|removeAccount|removeToken|renameAccount|reorderAccounts|resetTransactionNonce|resetWallet|respondToExtension|respondToUpdater|securityStatus|setNetworkActivation|setNetworkPrimaryRpc|setTransactionFeeDefault|submitTrezorInput|toggleWarning|unlockSecurity|updateNotification|updateSettings|updateTokenApproval|updateTransactionFee|writeClipboard)\s*(?=[:,=(])/
@@ -498,7 +513,7 @@ export function checkPlatformCommandAuthority(file: string, source: string) {
     }
   }
 
-  const operationsIpc = path.join('apps', 'newframe', 'main', 'ipc', 'operations.ts')
+  const operationsIpc = path.join('apps', 'newframe', 'src', 'platform', 'ipc', 'main', 'operations.ts')
   if (file === operationsIpc) {
     const legacySelectionPort = source.match(/\bselectAccount\s*:/)
     if (legacySelectionPort?.index !== undefined) {
@@ -530,8 +545,7 @@ export function checkSource(file: string, source: string) {
   if (
     file.endsWith('.css') &&
     (uiSource(file) ||
-      under(path.join('apps', 'newframe', 'renderer', 'tray'))(file) ||
-      under(path.join('apps', 'newframe', 'renderer', 'shared', 'ui'))(file) ||
+      productionRenderer(file) ||
       under(path.join('apps', 'newframe-extension', 'src', 'settings'))(file))
   ) {
     violations.push(`${file}: component styles must be authored with Panda in the owning TypeScript file`)

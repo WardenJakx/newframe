@@ -13,14 +13,23 @@ import {
 const mainFiles = [
   '*.{js,mjs,ts}',
   'scripts/**/*.ts',
-  'main/**/*.{js,ts}',
+  'src/**/*.{js,ts}',
   'build/**/*.{js,ts}',
   'test/support/**/*.{ts,tsx}'
 ]
 
-const rendererFiles = ['renderer/**/*.{ts,tsx}', 'preload/**/*.ts', 'test/support/componentSetup.tsx']
+const rendererFiles = [
+  'src/renderer/**/*.{ts,tsx}',
+  'src/**/renderer/**/*.{ts,tsx}',
+  'src/preload/**/*.ts',
+  'test/support/componentSetup.tsx'
+]
 
-const reactFiles = ['renderer/**/*.{ts,tsx}', 'test/support/componentSetup.tsx']
+const reactFiles = [
+  'src/renderer/**/*.{ts,tsx}',
+  'src/**/renderer/**/*.{ts,tsx}',
+  'test/support/componentSetup.tsx'
+]
 
 export default [
   ...baseJavaScriptConfigs({
@@ -29,9 +38,9 @@ export default [
       'compiled/**/*',
       'bundle/**/*',
       'test/e2e/**/*',
-      'main/signers/**/*',
-      '!main/signers/**/*/',
-      '!main/signers/**/*.{test,spec}.{ts,tsx}'
+      'src/platform/signing/signers/**/*',
+      '!src/platform/signing/signers/**/*/',
+      '!src/platform/signing/signers/**/*.{test,spec}.{ts,tsx}'
     ]
   }),
   nodeGlobalsConfig({ files: mainFiles }),
@@ -42,7 +51,7 @@ export default [
     }
   }),
   globalsConfig({
-    files: ['renderer/*/index.tsx'],
+    files: ['src/renderer/*/index.tsx'],
     globals: {
       process: true
     }
@@ -62,10 +71,10 @@ export default [
   }),
   testingLibraryReactConfig({
     files: [
-      'renderer/**/*.{test,spec}.{ts,tsx}',
-      'renderer/shared/ui/**/*.{test,spec}.{ts,tsx}',
-      'renderer/shared/hooks/**/*.{test,spec}.{ts,tsx}',
-      'renderer/**/__mocks__/**/*.ts'
+      'src/renderer/**/*.{test,spec}.{ts,tsx}',
+      'src/**/renderer/**/*.{test,spec}.{ts,tsx}',
+      'src/**/renderer/**/__mocks__/**/*.ts',
+      'test/extension/**/*.{test,spec}.{ts,tsx}'
     ]
   }),
   prettierConfig

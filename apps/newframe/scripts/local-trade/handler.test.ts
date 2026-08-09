@@ -9,7 +9,7 @@ import {
   FLASH_BASE_WETH_ADDRESS,
   FLASH_USDC_ADDRESS,
   FLASH_WETH_ADDRESS
-} from '../../domain/flash/constants'
+} from '../../src/features/transactions/trade/domain/constants'
 
 const FUNDER_ADDRESS = '0x0000000000000000000000000000000000000001'
 const ZERO_ALLOWANCE = `0x${'0'.repeat(64)}`

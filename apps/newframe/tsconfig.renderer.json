@@ -10,16 +10,25 @@
     "allowJs": true,
     "allowImportingTsExtensions": true,
     "noEmit": true,
-    "typeRoots": ["./node_modules/@types", "./@types"]
+    "typeRoots": ["./node_modules/@types", "./src/types"]
   },
   "include": [
     "package.json",
-    "./@types/**/*.d.ts",
-    "./renderer/**/*.ts",
-    "./renderer/**/*.tsx",
-    "./renderer/**/*.jsx",
-    "./contracts/**/*.ts",
-    "./domain/**/*.ts",
+    "./src/types/**/*.d.ts",
+    "./src/renderer/**/*.ts",
+    "./src/renderer/**/*.tsx",
+    "./src/app/renderer/**/*.ts",
+    "./src/app/renderer/**/*.tsx",
+    "./src/app/contracts/**/*.ts",
+    "./src/features/**/renderer/**/*.ts",
+    "./src/features/**/renderer/**/*.tsx",
+    "./src/features/**/domain/**/*.ts",
+    "./src/features/**/contract/**/*.ts",
+    "./src/platform/**/renderer/**/*.ts",
+    "./src/platform/**/renderer/**/*.tsx",
+    "./src/platform/**/contract/**/*.ts",
+    "./src/shared/**/*.ts",
+    "./src/shared/**/*.tsx",
     "./generated/**/*.ts"
   ],
   "exclude": [

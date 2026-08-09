@@ -4,10 +4,11 @@
       "name": "authorization-and-ipc",
       "rationale": "Renderer identity, operation authorization, and cross-process validation are security boundaries.",
       "patterns": [
-        "main/authority.ts",
-        "main/ipc/authorization.ts",
-        "main/ipc/operations.ts",
-        "contracts/**/*.ts"
+        "src/features/access-control/main/authority.ts",
+        "src/platform/ipc/main/authorization.ts",
+        "src/platform/ipc/main/operations.ts",
+        "src/**/contract/**/*.ts",
+        "src/app/contracts/**/*.ts"
       ],
       "minimum": { "lines": 80, "functions": 55 }
     },
@@ -15,10 +16,10 @@
       "name": "signing-and-secrets",
       "rationale": "Digest construction, clear-signing interpretation, vault access, and agent sessions protect signatures or secret material.",
       "patterns": [
-        "main/signatures/digests.ts",
-        "main/signatures/erc7730.ts",
-        "main/vault.ts",
-        "main/agent/sessionStore.ts"
+        "src/platform/signing/signatures/digests.ts",
+        "src/platform/signing/signatures/erc7730.ts",
+        "src/platform/secrets/vault.ts",
+        "src/features/agent-access/main/sessionStore.ts"
       ],
       "minimum": { "lines": 80, "functions": 80 }
     },
@@ -26,13 +27,13 @@
       "name": "persistence",
       "rationale": "Persisted canonical state must validate, migrate, and flush without corrupting wallet state.",
       "patterns": [
-        "main/store/persistence.ts",
-        "main/store/persist/schema.ts",
-        "main/infrastructure/persistence/bindableStorage.ts",
-        "main/infrastructure/persistence/createPersistenceAdapter.ts",
-        "main/infrastructure/persistence/createPersistenceService.ts",
-        "main/infrastructure/persistence/ports.ts",
-        "main/infrastructure/persistence/production.ts"
+        "src/platform/state-store/persistence.ts",
+        "src/platform/state-store/persist/schema.ts",
+        "src/platform/persistence/bindableStorage.ts",
+        "src/platform/persistence/createPersistenceAdapter.ts",
+        "src/platform/persistence/createPersistenceService.ts",
+        "src/platform/persistence/ports.ts",
+        "src/platform/persistence/production.ts"
       ],
       "minimum": { "lines": 75, "functions": 75 }
     },
@@ -40,12 +41,12 @@
       "name": "transaction-policy-and-simulation",
       "rationale": "Fee policy, signing transformations, and simulation govern value-moving transaction construction.",
       "patterns": [
-        "main/transaction/gasMonitor.ts",
-        "main/transaction/index.ts",
-        "main/transaction/simulation.ts",
-        "domain/transaction/constants.ts",
-        "domain/transaction/fees.ts",
-        "domain/transaction/index.ts"
+        "src/features/transactions/main/gasMonitor.ts",
+        "src/features/transactions/main/index.ts",
+        "src/features/transactions/main/simulation.ts",
+        "src/features/transactions/domain/constants.ts",
+        "src/features/transactions/domain/fees.ts",
+        "src/features/transactions/domain/index.ts"
       ],
       "minimum": { "lines": 65, "functions": 80 }
     },
@@ -53,17 +54,17 @@
       "name": "transaction-submission-and-lifecycle",
       "rationale": "Focused transaction/request services and explicit provider/account capabilities own authorization-sensitive lifecycle paths.",
       "patterns": [
-        "main/features/transactions/sideTrayService.ts",
-        "main/features/requests/service.ts",
-        "main/features/accounts/service.ts",
-        "main/features/networks/service.ts",
-        "main/features/tokens/service.ts",
-        "main/features/accountOnboarding/service.ts",
-        "main/accounts/index.ts",
-        "main/accounts/providerPort.ts",
-        "main/provider/index.ts",
-        "main/features/transactions/accountPolicyPort.ts",
-        "main/store/actions.ts"
+        "src/features/transactions/main/sideTrayService.ts",
+        "src/features/requests/main/service.ts",
+        "src/features/accounts/main/service.ts",
+        "src/features/networks/main/service.ts",
+        "src/features/tokens/main/service.ts",
+        "src/features/accounts/main/accountOnboarding/service.ts",
+        "src/features/accounts/main/index.ts",
+        "src/features/accounts/main/providerPort.ts",
+        "src/features/connections/main/provider/index.ts",
+        "src/features/transactions/main/accountPolicyPort.ts",
+        "src/platform/state-store/actions.ts"
       ],
       "minimum": { "lines": 45, "functions": 50 }
     }

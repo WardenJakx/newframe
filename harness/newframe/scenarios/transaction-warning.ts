@@ -1,4 +1,4 @@
-import provider from '../../../apps/newframe/main/provider/connection.ts'
+import provider from '../../../apps/newframe/src/features/connections/main/provider/connection.ts'
 
 async function main() {
   const frame = provider('frame')

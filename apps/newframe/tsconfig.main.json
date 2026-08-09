@@ -12,16 +12,17 @@
     "rootDir": ".",
     "outDir": "./compiled",
     "noEmit": false,
-    "typeRoots": ["./node_modules/@types", "./@types"]
+    "typeRoots": ["./node_modules/@types", "./src/types"]
   },
   "include": [
     "package.json",
-    "./@types/**/*.d.ts",
-    "./main/**/*.ts",
-    "./contracts/**/*.ts",
-    "./domain/**/*.ts"
+    "./src/**/*.d.ts",
+    "./src/**/*.ts"
   ],
   "exclude": [
+    "./src/preload/**",
+    "./src/renderer/**",
+    "./src/**/renderer/**",
     "**/*.test.ts",
     "**/*.test.tsx",
     "**/*.spec.ts",

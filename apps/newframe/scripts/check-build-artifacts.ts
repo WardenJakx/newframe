@@ -10,10 +10,10 @@ const esmStatement = /^\s*(?:import(?:\s|\{|\*|["'])|export(?:\s|\{|\*))/m
 const typescriptCommonJs =
   /\b(?:__createBinding|__setModuleDefault|__importStar|__importDefault|__exportStar)\b|Object\.defineProperty\(\s*exports\s*,\s*["']__esModule["']|(?:^|\n)\s*(?:module\.exports|exports(?:\.|\[))|\brequire\s*\(/
 const workerEntrypoints = [
-  'main/externalData/balances/worker.js',
-  'main/signers/hot/HotSigner/worker.js',
-  'main/signers/hot/RingSigner/worker.js',
-  'main/signers/hot/SeedSigner/worker.js'
+  'src/features/asset-data/main/externalData/balances/worker.js',
+  'src/platform/signing/signers/hot/HotSigner/worker.js',
+  'src/platform/signing/signers/hot/RingSigner/worker.js',
+  'src/platform/signing/signers/hot/SeedSigner/worker.js'
 ]
 
 type PackageMetadata = {
@@ -53,8 +53,8 @@ function assertEsmEntrypoint(file: string, label: string) {
 function assertCompiledEsm() {
   const metadata = readPackageMetadata()
   if (metadata.type !== 'module') fail('package.json must declare "type": "module" for compiled ESM')
-  if (metadata.main !== 'compiled/main/bootstrap.js') {
-    fail('package.json main must point to compiled/main/bootstrap.js')
+  if (metadata.main !== 'compiled/src/main/bootstrap.js') {
+    fail('package.json main must point to compiled/src/main/bootstrap.js')
   }
 
   const mainEntrypoint = path.resolve(appRoot, metadata.main)

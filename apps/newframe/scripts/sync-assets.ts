@@ -6,11 +6,11 @@ const repoRoot = resolve(appRoot, '../..')
 const brandAssets = join(repoRoot, 'assets/brand/newframe')
 
 const copies: Array<[string, string]> = [
-  ['tray-icon.png', 'compiled/main/windows/Icon.png'],
-  ['tray-icon@2x.png', 'compiled/main/windows/Icon@2x.png'],
-  ['tray-icon-template.png', 'compiled/main/windows/IconTemplate.png'],
-  ['tray-icon-template@2x.png', 'compiled/main/windows/IconTemplate@2x.png'],
-  ['app-icon.png', 'compiled/main/windows/AppIcon.png'],
+  ['tray-icon.png', 'compiled/src/platform/desktop/windows/Icon.png'],
+  ['tray-icon@2x.png', 'compiled/src/platform/desktop/windows/Icon@2x.png'],
+  ['tray-icon-template.png', 'compiled/src/platform/desktop/windows/IconTemplate.png'],
+  ['tray-icon-template@2x.png', 'compiled/src/platform/desktop/windows/IconTemplate@2x.png'],
+  ['app-icon.png', 'compiled/src/platform/desktop/windows/AppIcon.png'],
   ['app-icon.png', 'build/icons/icon.png'],
   ['app-icon.png', 'build/icons/512x512.png']
 ]
