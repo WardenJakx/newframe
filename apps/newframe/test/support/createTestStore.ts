@@ -1,8 +1,8 @@
 import { createStore } from 'zustand/vanilla'
 import { immer } from 'zustand/middleware/immer'
 
-import { createCanonicalActions, type CanonicalStore } from '../../main/store/actions'
-import createInitialState from '../../main/store/state'
+import { createCanonicalActions, type CanonicalStore } from '../../src/platform/state-store/actions'
+import createInitialState from '../../src/platform/state-store/state'
 
 export function createTestStore(
   initial: Record<string, any> = {},

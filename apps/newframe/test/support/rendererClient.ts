@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, mock } from 'bun:test'
 
-import type { NewframeHost } from '../../contracts/ipc'
-import type { AppCommand, AppQuery, CommandResult, ResultForQuery } from '../../contracts/operations'
-import type { StateConnectionResult, StateMessage } from '../../contracts/state/protocol'
+import type { NewframeHost } from '../../src/platform/ipc/contract/ipc'
+import type { AppCommand, AppQuery, CommandResult, ResultForQuery } from '../../src/app/contracts/operations'
+import type { StateConnectionResult, StateMessage } from '../../src/platform/state-sync/contract/protocol'
 
 export function createRendererClient() {
   return {

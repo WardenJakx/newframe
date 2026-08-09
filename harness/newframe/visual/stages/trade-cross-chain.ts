@@ -1,7 +1,7 @@
 import {
   FLASH_BASE_CHAIN_ID,
   FLASH_BASE_USDC_ADDRESS
-} from '../../../../apps/newframe/domain/flash/constants.ts'
+} from '../../../../apps/newframe/src/features/transactions/trade/domain/constants.ts'
 import { anvilChainId } from '../../core/config.ts'
 import { sleep } from '../../core/utils.ts'
 import { wethAddress } from '../driver.ts'

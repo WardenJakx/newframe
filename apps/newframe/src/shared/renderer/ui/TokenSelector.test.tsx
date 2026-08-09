@@ -1,0 +1,302 @@
+import React from 'react'
+import { describe, expect, it, spyOn } from 'bun:test'
+
+import { fireEvent, render, screen } from '../../../../test/support/componentSetup'
+import ChainTokenIcon from './ChainTokenIcon'
+import TokenSelector from './TokenSelector'
+import type { TokenSelectorItem } from './tokenSelectorTypes'
+import { createHostFixture } from '../../../../test/support/rendererClient'
+
+const link = createHostFixture()
+const networks = {
+  1: { name: 'Mainnet' }
+}
+
+const networksMeta = {
+  1: {
+    icon: 'https://example.com/chain.png',
+    primaryColor: 'accent1'
+  }
+}
+
+const items: TokenSelectorItem[] = [
+  {
+    id: 'eth',
+    symbol: 'ETH',
+    amountLabel: '1.00',
+    notionalLabel: '$1,000.00',
+    chainId: 1
+  },
+  {
+    id: 'long',
+    symbol: 'abcDEFG',
+    searchText: 'Long Token 0x1234',
+    amountLabel: '2.00',
+    notionalLabel: '$2.00',
+    chainId: 1
+  }
+]
+
+function ControlledSelector({ initialSelectedId = 'eth' }: { initialSelectedId?: string }) {
+  const [open, setOpen] = React.useState(false)
+  const [selectedId, setSelectedId] = React.useState(initialSelectedId)
+
+  return (
+    <div>
+      <TokenSelector
+        ariaLabel='Choose token'
+        items={items}
+        networks={networks}
+        networksMeta={networksMeta}
+        onOpenChange={setOpen}
+        onSelect={setSelectedId}
+        open={open}
+        selectedId={selectedId}
+      />
+      <button type='button'>outside</button>
+    </div>
+  )
+}
+
+function ChangingTokenIcon() {
+  const [logoURI, setLogoURI] = React.useState('data:image/png;base64,YnJva2Vu')
+
+  return (
+    <>
+      <button type='button' onClick={() => setLogoURI('data:image/png;base64,cmVjb3ZlcmVk')}>
+        Change token image
+      </button>
+      <ChainTokenIcon
+        chainId={1}
+        logoURI={logoURI}
+        networks={networks}
+        networksMeta={networksMeta}
+        size='md'
+        symbol='BROKEN'
+      />
+    </>
+  )
+}
+
+describe('ChainTokenIcon', () => {
+  it('requests a missing persisted token image when the token UI mounts', () => {
+    const tokenId = '1:0x1111111111111111111111111111111111111111'
+    const originalIntersectionObserver = globalThis.IntersectionObserver
+    Object.defineProperty(globalThis, 'IntersectionObserver', {
+      configurable: true,
+      value: undefined,
+      writable: true
+    })
+
+    try {
+      render(
+        <ChainTokenIcon
+          chainId={1}
+          networks={networks}
+          networksMeta={networksMeta}
+          size='md'
+          symbol='TKN'
+          tokenId={tokenId}
+        />
+      )
+
+      expect(link.executeCommand).toHaveBeenCalledWith({ type: 'token.image-hydrate', tokenId })
+    } finally {
+      Object.defineProperty(globalThis, 'IntersectionObserver', {
+        configurable: true,
+        value: originalIntersectionObserver,
+        writable: true
+      })
+    }
+  })
+
+  it('does not request a token image that is already persisted', () => {
+    render(
+      <ChainTokenIcon
+        chainId={1}
+        logoURI='data:image/png;base64,dG9rZW4='
+        networks={networks}
+        networksMeta={networksMeta}
+        size='md'
+        symbol='TKN'
+        tokenId='1:0x1111111111111111111111111111111111111111'
+      />
+    )
+
+    expect(link.executeCommand).not.toHaveBeenCalled()
+  })
+
+  it('renders persisted chain artwork from its base64 image record', () => {
+    render(
+      <ChainTokenIcon
+        chainId={1}
+        networks={networks}
+        networksMeta={{
+          1: {
+            image: { base64: 'aWNvbg==', mimeType: 'image/png' },
+            primaryColor: 'accent1'
+          }
+        }}
+        size='md'
+        symbol='ETH'
+      />
+    )
+
+    expect(document.querySelector('img')?.getAttribute('src')).toBe('data:image/png;base64,aWNvbg==')
+  })
+
+  it('delegates fallback chain-badge color to the design-system recipe', () => {
+    render(
+      <ChainTokenIcon
+        chainId={1}
+        networks={{ 1: { name: 'Newframe Local Anvil' } }}
+        networksMeta={{ 1: { primaryColor: 'accent1' } }}
+        size='md'
+        symbol='USDC'
+      />
+    )
+
+    const dot = document.querySelector('[data-tone="accent"]') as HTMLElement
+    expect(dot).not.toBeNull()
+    expect(dot.getAttribute('style')).toBeNull()
+  })
+
+  it('uses the first 5 symbol characters as the token image fallback', () => {
+    render(
+      <ChainTokenIcon
+        chainId={1}
+        networks={networks}
+        networksMeta={networksMeta}
+        size='md'
+        symbol='abcDEFG'
+      />
+    )
+
+    expect(screen.getByText('abcDE')).toBeTruthy()
+  })
+
+  it('falls back without rendering retired image-cache references', () => {
+    render(
+      <ChainTokenIcon
+        chainId={1}
+        logoURI='frame-cache:icon:token'
+        networks={{ 1: { name: 'Newframe Local Anvil' } }}
+        networksMeta={{ 1: { icon: 'frame-cache:icon:chain', primaryColor: 'accent1' } }}
+        size='md'
+        symbol='USDC'
+      />
+    )
+
+    expect(screen.getByText('USDC')).toBeTruthy()
+    expect(document.querySelector('img')).toBeNull()
+  })
+
+  it('falls back and warns when a token image fails to load', () => {
+    const warn = spyOn(console, 'warn').mockImplementation(() => {})
+
+    render(
+      <ChainTokenIcon
+        chainId={1}
+        logoURI='data:image/png;base64,YnJva2Vu'
+        networks={networks}
+        networksMeta={networksMeta}
+        size='md'
+        symbol='BROKEN'
+      />
+    )
+
+    const tokenImage = document.querySelectorAll('img')[0] as HTMLImageElement
+    fireEvent.error(tokenImage)
+
+    expect(screen.getByText('BROKE')).toBeTruthy()
+    expect(warn).toHaveBeenCalledWith(
+      '[ChainTokenIcon] failed to load token image',
+      expect.objectContaining({ chainId: 1, symbol: 'BROKEN', url: 'data:image/png;base64,YnJva2Vu' })
+    )
+    warn.mockRestore()
+  })
+
+  it('retries rendering when a failed token image source changes', () => {
+    const warn = spyOn(console, 'warn').mockImplementation(() => {})
+    render(<ChangingTokenIcon />)
+
+    fireEvent.error(screen.getAllByRole('presentation', { hidden: true })[0])
+    expect(screen.getByText('BROKE')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Change token image' }))
+    expect(
+      screen
+        .getAllByRole('presentation', { hidden: true })
+        .some((image) => image.getAttribute('src') === 'data:image/png;base64,cmVjb3ZlcmVk')
+    ).toBe(true)
+    warn.mockRestore()
+  })
+})
+
+describe('TokenSelector', () => {
+  it('selects highlighted items with the keyboard', async () => {
+    const { user } = render(<ControlledSelector />)
+
+    await user.click(screen.getByRole('button', { name: 'Choose token' }))
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Choose token' }), { key: 'ArrowDown' })
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Choose token' }), { key: 'Enter' })
+
+    expect(screen.getByRole('button', { name: 'Choose token' }).textContent).toContain('abcDEFG')
+    expect(screen.queryByRole('listbox')).toBeNull()
+  })
+
+  it('closes when clicking outside', async () => {
+    const { user } = render(<ControlledSelector />)
+
+    await user.click(screen.getByRole('button', { name: 'Choose token' }))
+    expect(screen.getByRole('listbox')).toBeTruthy()
+
+    fireEvent.mouseDown(screen.getByRole('button', { name: 'outside' }))
+
+    expect(screen.queryByRole('listbox')).toBeNull()
+  })
+
+  it('clears its query after closing and reopening', async () => {
+    const { user } = render(<ControlledSelector />)
+
+    await user.click(screen.getByRole('button', { name: 'Choose token' }))
+    await user.type(screen.getByLabelText('Search tokens'), 'missing')
+    expect(screen.queryAllByRole('option')).toHaveLength(0)
+
+    fireEvent.mouseDown(screen.getByRole('button', { name: 'outside' }))
+    await user.click(screen.getByRole('button', { name: 'Choose token' }))
+
+    expect((screen.getByLabelText('Search tokens') as HTMLInputElement).value).toBe('')
+    expect(screen.getAllByRole('option')).toHaveLength(2)
+  })
+
+  it('filters tokens by metadata and keeps the menu open when there are no matches', async () => {
+    const { user } = render(<ControlledSelector />)
+
+    await user.click(screen.getByRole('button', { name: 'Choose token' }))
+    await user.type(screen.getByLabelText('Search tokens'), 'long token')
+
+    expect(screen.getAllByRole('option')).toHaveLength(1)
+    expect(screen.getByRole('option').textContent).toContain('abcDEFG')
+
+    await user.clear(screen.getByLabelText('Search tokens'))
+    await user.type(screen.getByLabelText('Search tokens'), 'missing')
+
+    expect(screen.getByRole('listbox')).toBeTruthy()
+    expect(screen.queryAllByRole('option')).toHaveLength(0)
+    expect(screen.getByText('No tokens found')).toBeTruthy()
+  })
+
+  it('warns and renders the placeholder when selectedId is not in items', () => {
+    const warn = spyOn(console, 'warn').mockImplementation(() => {})
+
+    render(<ControlledSelector initialSelectedId='missing' />)
+
+    expect(screen.getByRole('button', { name: 'Choose token' }).textContent).toContain('Select token')
+    expect(warn).toHaveBeenCalledWith(
+      '[TokenSelector] selectedId was not found in items',
+      expect.objectContaining({ selectedId: 'missing' })
+    )
+    warn.mockRestore()
+  })
+})

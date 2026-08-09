@@ -1,0 +1,522 @@
+import log from 'electron-log'
+import type { StoreApi } from 'zustand/vanilla'
+
+import { NATIVE_CURRENCY } from '../../../../tokens/domain/constants.js'
+import { createBalanceSummaries, isLowValueTokenBalance, toTokenId } from '../../../domain/balance/index.js'
+import { customTokens, tokensForAccount } from '../../../../tokens/domain/index.js'
+import BalancesWorkerController from './controller.js'
+import { CurrencyBalance, TokenBalance } from './scan.js'
+
+import type { CanonicalStore } from '../../../../../platform/state-store/actions.js'
+import type { AssetRateMap } from '../../../domain/state/rate.js'
+import type { Balance, Chain, ChainMetadata, Token } from '../../../../../platform/state-store/state/index.js'
+
+const RESTART_WAIT = 5 // seconds
+const POSITION_REFRESH_RETRY_MS = 5 * 1000
+
+// time to wait in between scans, in seconds
+const scanInterval = {
+  active: 60 * 5,
+  inactive: 60 * 60 * 24
+}
+
+const MAX_TOKEN_BALANCE_SCAN = 250
+
+function limitTokenScan(tokens: Token[]) {
+  return tokens.slice(0, MAX_TOKEN_BALANCE_SCAN)
+}
+
+type ManualRefreshTokenOptions = {
+  balances: Balance[]
+  customTokens: Token[]
+  knownTokens: Token[]
+  networks: Record<number, Chain>
+  networksMeta: Record<number, ChainMetadata>
+  assetRates: AssetRateMap
+}
+
+function uniqueTokens(tokens: Token[]) {
+  const unique = new Map<string, Token>()
+
+  tokens.forEach((token) => {
+    const id = toTokenId(token)
+    if (!unique.has(id)) unique.set(id, token)
+  })
+
+  return Array.from(unique.values())
+}
+
+function scanToken(token: Token): Token {
+  const { address, chainId, decimals, name, symbol } = token
+  return { address, chainId, decimals, name, symbol }
+}
+
+function isCuratedToken(token: Token, networksMeta: Record<number, ChainMetadata>) {
+  const symbol = token.symbol.trim().toUpperCase()
+  const nativeSymbol = networksMeta[token.chainId]?.nativeCurrency?.symbol?.trim().toUpperCase()
+
+  return symbol === 'USDC' || Boolean(nativeSymbol && symbol === `W${nativeSymbol}`)
+}
+
+export function selectManualRefreshTokens({
+  balances,
+  customTokens,
+  knownTokens,
+  networks,
+  networksMeta,
+  assetRates
+}: ManualRefreshTokenOptions) {
+  const tokenBalances = balances.filter((balance) => balance.address !== NATIVE_CURRENCY)
+  const nonDustTokenIds = new Set(
+    createBalanceSummaries({
+      rawBalances: tokenBalances,
+      tokens: {
+        byId: Object.fromEntries(
+          [...customTokens, ...knownTokens].map((token) => [
+            toTokenId(token),
+            {
+              ...token,
+              custom: Boolean(token.custom),
+              curated: Boolean(token.curated),
+              sources: token.sources || [],
+              updatedAt: token.updatedAt || 0
+            }
+          ])
+        ),
+        accountTokenIds: {}
+      },
+      assetRates,
+      networks,
+      networksMeta
+    })
+      .filter((balance) => balance.hasPrice && !isLowValueTokenBalance(balance))
+      .map(toTokenId)
+  )
+  const customTokenIds = new Set(customTokens.map(toTokenId))
+  const candidates = uniqueTokens([...customTokens, ...knownTokens])
+
+  return candidates.filter(
+    (token) =>
+      customTokenIds.has(toTokenId(token)) ||
+      nonDustTokenIds.has(toTokenId(token)) ||
+      isCuratedToken(token, networksMeta)
+  )
+}
+
+export default function (store: Pick<StoreApi<CanonicalStore>, 'getState'>) {
+  const storeApi = {
+    getActiveAddress: () => (store.getState().main.currentAccount || '') as Address,
+    getNetwork: (id: number) => (store.getState().main.networks.ethereum[id] || {}) as Chain,
+    getConnectedNetworks: () => {
+      const networks = Object.values(store.getState().main.networks.ethereum || {}) as Chain[]
+      return networks.filter(
+        (n) => (n.connection.primary || {}).connected || (n.connection.secondary || {}).connected
+      )
+    },
+    getCustomTokens: () => customTokens(store.getState().main.tokens).map(scanToken),
+    getKnownTokens: (address?: Address): Token[] =>
+      address
+        ? tokensForAccount(store.getState().main.tokens, address)
+            .filter((token) => !token.custom)
+            .map(scanToken)
+        : [],
+    getBalances: (address: Address) => (store.getState().main.balances[address] || []) as Balance[],
+    getNetworks: () => (store.getState().main.networks.ethereum || {}) as Record<number, Chain>,
+    getNetworksMeta: () =>
+      (store.getState().main.networksMeta.ethereum || {}) as Record<number, ChainMetadata>,
+    getAssetRates: () => store.getState().main.assetRates,
+    getCurrencyBalances: (address: Address) => {
+      return ((store.getState().main.balances[address] || []) as Balance[]).filter(
+        (balance) => balance.address === NATIVE_CURRENCY
+      )
+    },
+    getTokenBalances: (address: Address) => {
+      return ((store.getState().main.balances[address] || []) as Balance[]).filter(
+        (balance) => balance.address !== NATIVE_CURRENCY
+      )
+    }
+  }
+
+  let scan: NodeJS.Timeout | null
+  let workerController: BalancesWorkerController | null
+  let onResume: (() => void) | null
+  let restartTimer: NodeJS.Timeout | null
+  const positionRefreshRetries = new Set<NodeJS.Timeout>()
+
+  function attemptRestart() {
+    log.warn(`balances controller stopped, restarting in ${RESTART_WAIT} seconds`)
+    stop()
+
+    restartTimer = setTimeout(restart, RESTART_WAIT * 1000)
+  }
+
+  function clearRestartTimer() {
+    if (restartTimer) {
+      clearTimeout(restartTimer)
+      restartTimer = null
+    }
+  }
+
+  function clearPositionRefreshRetries() {
+    positionRefreshRetries.forEach(clearTimeout)
+    positionRefreshRetries.clear()
+  }
+
+  function handleClose() {
+    workerController = null
+    attemptRestart()
+  }
+
+  function runWhenReady(fn: () => any) {
+    if (workerController?.isRunning()) {
+      // worker is running, start the scan
+      fn()
+    } else {
+      log.verbose('worker controller not running yet, waiting for ready event')
+
+      // wait for worker to be ready
+      workerController?.once('ready', () => {
+        fn()
+      })
+    }
+  }
+
+  function start() {
+    clearRestartTimer()
+
+    if (workerController) return true
+
+    log.verbose('starting balances updates')
+
+    try {
+      workerController = new BalancesWorkerController()
+    } catch (e) {
+      log.error('could not start balances worker', e)
+      attemptRestart()
+      return false
+    }
+
+    workerController.once('close', handleClose)
+    workerController.on('chainBalances', (address, balances) => {
+      handleUpdate(address, handleChainBalanceUpdate.bind(null, balances))
+    })
+
+    workerController.on('tokenBalances', (address, balances) => {
+      handleUpdate(address, handleTokenBalanceUpdate.bind(null, balances))
+    })
+
+    return true
+  }
+
+  function restart() {
+    restartTimer = null
+    start()
+    setAddress(storeApi.getActiveAddress())
+  }
+
+  function resume() {
+    if (onResume) onResume()
+
+    onResume = null
+  }
+
+  function pause() {
+    if (stopScan()) {
+      log.debug('Pausing balances scan')
+
+      const address = storeApi.getActiveAddress()
+
+      if (address) {
+        // even when paused ensure data is updated once a day
+        resetScan(address, scanInterval.inactive)
+
+        onResume = () => {
+          log.verbose(`Resuming balances scan for address ${address}`)
+
+          startScan(address)
+        }
+      }
+    }
+  }
+
+  function stop() {
+    clearRestartTimer()
+    clearPositionRefreshRetries()
+
+    log.verbose('stopping balances updates')
+
+    stopScan()
+
+    if (workerController) {
+      // if controller is explicitly stopped, don't attempt to restart
+      workerController.off('close', handleClose)
+      workerController.close()
+      workerController = null
+    }
+  }
+
+  function startScan(address: Address) {
+    stopScan()
+
+    if (onResume) onResume = null
+
+    log.verbose(`Starting balances scan for ${address}`)
+
+    const initiateScan = () => {
+      // do an initial scan before starting the timer
+      setTimeout(() => {
+        updateActiveBalances(address)
+      }, 0)
+
+      resetScan(address, scanInterval.active)
+    }
+
+    runWhenReady(() => initiateScan())
+  }
+
+  function stopScan() {
+    if (scan) {
+      clearTimeout(scan)
+      scan = null
+
+      return true
+    }
+
+    return false
+  }
+
+  function resetScan(address: Address, interval: number) {
+    scan = setTimeout(() => {
+      if (workerController?.isRunning()) {
+        setTimeout(() => {
+          updateActiveBalances(address)
+        }, 0)
+      }
+
+      resetScan(address, interval)
+    }, interval * 1000)
+  }
+
+  function updateActiveBalances(address: Address) {
+    const activeNetworkIds = storeApi.getConnectedNetworks().map((network) => network.id)
+    updateBalances(address, activeNetworkIds)
+  }
+
+  function refresh(address: Address = storeApi.getActiveAddress()) {
+    if (!workerController) {
+      log.warn(`tried to refresh balances for ${address} but balances controller is not running`)
+      return
+    }
+
+    if (!address) return
+
+    log.verbose(`refreshing balances for ${address}`)
+    const tokens = selectManualRefreshTokens({
+      balances: storeApi.getBalances(address),
+      customTokens: storeApi.getCustomTokens(),
+      knownTokens: storeApi.getKnownTokens(address),
+      networks: storeApi.getNetworks(),
+      networksMeta: storeApi.getNetworksMeta(),
+      assetRates: storeApi.getAssetRates()
+    })
+
+    runWhenReady(() =>
+      updateBalances(
+        address,
+        storeApi.getConnectedNetworks().map((network) => network.id),
+        tokens
+      )
+    )
+  }
+
+  function refreshPositions(address: Address, chainId: number, tokens: Token[]) {
+    if (!workerController) {
+      log.warn(`tried to refresh positions for ${address} but balances controller is not running`)
+      return
+    }
+
+    if (!address || !Number.isInteger(chainId) || chainId <= 0) return
+
+    const affectedTokens = limitTokenScan(
+      tokens.filter((token) => token.chainId === chainId && token.address !== NATIVE_CURRENCY)
+    )
+
+    log.verbose(`refreshing transaction positions for ${address}`, {
+      chainId,
+      tokenCount: affectedTokens.length
+    })
+    runWhenReady(() => {
+      const refreshAffectedPositions = () => {
+        if (affectedTokens.length > 0) {
+          workerController?.updateKnownTokenBalances(address, affectedTokens)
+        }
+
+        workerController?.updateChainBalances(address, [chainId])
+      }
+
+      refreshAffectedPositions()
+
+      const retry = setTimeout(() => {
+        positionRefreshRetries.delete(retry)
+        refreshAffectedPositions()
+      }, POSITION_REFRESH_RETRY_MS)
+      positionRefreshRetries.add(retry)
+    })
+  }
+
+  function updateBalances(address: Address, chains: number[], selectedTokens?: Token[]) {
+    if (selectedTokens) {
+      const trackedTokens = selectedTokens.filter((token) => chains.includes(token.chainId))
+
+      if (trackedTokens.length > 0) {
+        workerController?.updateKnownTokenBalances(address, trackedTokens)
+      }
+
+      workerController?.updateChainBalances(address, chains)
+      return
+    }
+
+    const customTokens = storeApi.getCustomTokens()
+    const knownTokens = storeApi
+      .getKnownTokens(address)
+      .filter(
+        (token) => !customTokens.some((t) => t.address === token.address && t.chainId === token.chainId)
+      )
+
+    const trackedCustomTokens = customTokens.filter((t) => chains.includes(t.chainId))
+    const trackedKnownTokens = knownTokens.filter((t) => chains.includes(t.chainId))
+    const knownTokenCapacity = Math.max(MAX_TOKEN_BALANCE_SCAN - trackedCustomTokens.length, 0)
+    const trackedTokens = [...trackedCustomTokens, ...trackedKnownTokens.slice(0, knownTokenCapacity)]
+
+    if (trackedTokens.length > 0) {
+      workerController?.updateKnownTokenBalances(address, trackedTokens)
+    }
+
+    workerController?.updateChainBalances(address, chains)
+  }
+
+  function handleUpdate(address: Address, updateFn: (address: Address) => void) {
+    // because updates come from another process its possible to receive updates after an account
+    // has been removed but before we stop the scan, so check to make sure the account exists
+    if (store.getState().main.accounts[address]) {
+      updateFn(address)
+    }
+  }
+
+  function handleChainBalanceUpdate(balances: CurrencyBalance[], address: Address) {
+    const currentChainBalances = storeApi.getCurrencyBalances(address)
+    const networksMeta = storeApi.getNetworksMeta()
+
+    // only update balances that have changed
+    balances
+      .filter(
+        (balance) =>
+          networksMeta[balance.chainId] &&
+          (currentChainBalances.find((b) => b.chainId === balance.chainId) || {}).balance !== balance.balance
+      )
+      .forEach((balance) => {
+        const nativeCurrency = networksMeta[balance.chainId].nativeCurrency
+        store.getState().setBalance(address, {
+          ...balance,
+          name: nativeCurrency.name,
+          symbol: nativeCurrency.symbol,
+          decimals: nativeCurrency.decimals,
+          address: NATIVE_CURRENCY
+        })
+      })
+  }
+
+  function handleTokenBalanceUpdate(balances: TokenBalance[], address: Address) {
+    // only update balances if any have changed
+    const currentTokenBalances = storeApi.getTokenBalances(address)
+    const networks = storeApi.getNetworks()
+    const customTokens = new Set(storeApi.getCustomTokens().map(toTokenId))
+    const isCustomToken = (balance: Balance) => customTokens.has(toTokenId(balance))
+
+    const changedBalances = balances.filter((newBalance) => {
+      if (!networks[newBalance.chainId]) return false
+
+      const currentBalance = currentTokenBalances.find(
+        (b) => b.address === newBalance.address && b.chainId === newBalance.chainId
+      )
+
+      // do not add newly found tokens with a zero balance
+      const isNewBalance = !currentBalance && parseInt(newBalance.balance) !== 0
+      const isChangedBalance = !!currentBalance && currentBalance.balance !== newBalance.balance
+
+      return isNewBalance || isChangedBalance || isCustomToken(newBalance)
+    })
+
+    if (changedBalances.length > 0) {
+      store.getState().setBalances(address, changedBalances)
+
+      const knownTokens = new Set(storeApi.getKnownTokens(address).map(toTokenId))
+      const isKnown = (balance: TokenBalance) => knownTokens.has(toTokenId(balance))
+
+      // add any non-zero balances to the list of known tokens
+      const unknownBalances = changedBalances.filter((b) => parseInt(b.balance) > 0 && !isKnown(b))
+
+      if (unknownBalances.length > 0) {
+        store.getState().upsertTokens(unknownBalances, { account: address, source: 'onchain' })
+      }
+
+      // remove zero balances from the list of known tokens
+      const zeroBalances = changedBalances.reduce((zeroBalSet, balance) => {
+        const tokenId = toTokenId(balance)
+        if (parseInt(balance.balance) === 0 && knownTokens.has(tokenId)) {
+          zeroBalSet.add(tokenId)
+        }
+        return zeroBalSet
+      }, new Set<string>())
+
+      if (zeroBalances.size) {
+        store.getState().removeAccountTokens(address, zeroBalances)
+      }
+    }
+
+    store.getState().accountTokensUpdated(address)
+  }
+
+  function setAddress(address: Address) {
+    if (!workerController) {
+      log.warn(`tried to set address to ${address} but balances controller is not running`)
+      return
+    }
+
+    if (address) {
+      log.verbose('setting address for balances updates', address)
+      startScan(address)
+    } else {
+      log.verbose('clearing address for balances updates')
+      stopScan()
+    }
+  }
+
+  function addNetworks(address: Address, chains: number[]) {
+    if (!workerController) {
+      log.warn('tried to add networks but balances controller is not running')
+      return
+    }
+
+    log.verbose('adding balances updates', { address, chains })
+    runWhenReady(() => updateBalances(address, chains))
+  }
+
+  function addTokens(address: Address, tokens: Token[]) {
+    if (!workerController) {
+      log.warn('tried to add tokens but balances controller is not running')
+      return
+    }
+
+    const trackedTokens = limitTokenScan(tokens)
+
+    log.verbose('adding balances updates', {
+      address,
+      tokenCount: tokens.length,
+      scannedTokenCount: trackedTokens.length
+    })
+    runWhenReady(() => workerController?.updateKnownTokenBalances(address, trackedTokens))
+  }
+
+  return { start, stop, resume, pause, refresh, refreshPositions, setAddress, addNetworks, addTokens }
+}

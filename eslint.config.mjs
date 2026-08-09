@@ -21,14 +21,23 @@ const ui = 'packages/ui'
 const newframeMainFiles = [
   '*.{js,mjs,ts}',
   'scripts/**/*.ts',
-  'main/**/*.{js,ts}',
+  'src/**/*.{js,ts}',
   'build/**/*.{js,ts}',
   'test/support/**/*.{ts,tsx}'
 ]
 
-const newframeRendererFiles = ['renderer/**/*.{ts,tsx}', 'preload/**/*.ts', 'test/support/componentSetup.tsx']
+const newframeRendererFiles = [
+  'src/renderer/**/*.{ts,tsx}',
+  'src/**/renderer/**/*.{ts,tsx}',
+  'src/preload/**/*.ts',
+  'test/support/componentSetup.tsx'
+]
 
-const newframeReactFiles = ['renderer/**/*.{ts,tsx}', 'test/support/componentSetup.tsx']
+const newframeReactFiles = [
+  'src/renderer/**/*.{ts,tsx}',
+  'src/**/renderer/**/*.{ts,tsx}',
+  'test/support/componentSetup.tsx'
+]
 
 export default [
   ignoredPaths([
@@ -46,9 +55,9 @@ export default [
     'apps/newframe/dist-preview/**/*',
     'apps/newframe/build/icons/**/*',
     'apps/newframe/test/e2e/**/*',
-    'apps/newframe/main/signers/**/*',
-    '!apps/newframe/main/signers/**/*/',
-    '!apps/newframe/main/signers/**/*.{test,spec}.{ts,tsx}',
+    'apps/newframe/src/platform/signing/signers/**/*',
+    '!apps/newframe/src/platform/signing/signers/**/*/',
+    '!apps/newframe/src/platform/signing/signers/**/*.{test,spec}.{ts,tsx}',
     'apps/newframe-extension/dist/**/*',
     'apps/newframe-extension/.cache/**/*',
     'packages/ui/dist/**/*',
@@ -94,7 +103,7 @@ export default [
   }),
   globalsConfig({
     basePath: newframe,
-    files: ['renderer/*/index.tsx'],
+    files: ['src/renderer/*/index.tsx'],
     globals: {
       process: true
     }
@@ -116,7 +125,12 @@ export default [
   }),
   testingLibraryReactConfig({
     basePath: newframe,
-    files: ['renderer/**/*.{test,spec}.{ts,tsx}', 'renderer/**/__mocks__/**/*.ts']
+    files: [
+      'src/renderer/**/*.{test,spec}.{ts,tsx}',
+      'src/**/renderer/**/*.{test,spec}.{ts,tsx}',
+      'src/**/renderer/**/__mocks__/**/*.ts',
+      'test/extension/**/*.{test,spec}.{ts,tsx}'
+    ]
   }),
 
   nodeGlobalsConfig({

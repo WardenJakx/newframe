@@ -1,10 +1,10 @@
 import { expect, it } from 'bun:test'
 
-import { createOperationService } from '../../main/features/operations/service'
-import { createTokenService } from '../../main/features/tokens/service'
-import { createOperationDispatcher, type OperationServices } from '../../main/ipc/operations'
-import { projectRendererState } from '../../main/state/projections'
-import createInitialState from '../../main/store/state'
+import { createOperationService } from '../../src/platform/operations/service'
+import { createTokenService } from '../../src/features/tokens/main/service'
+import { createOperationDispatcher, type OperationServices } from '../../src/platform/ipc/main/operations'
+import { projectRendererState } from '../../src/platform/state-sync/main/projections'
+import createInitialState from '../../src/platform/state-store/state'
 import { createTestStore } from '../support/createTestStore'
 
 const owner = { clientType: 'wallet-ui', entrypoint: 'tray', windowInstanceId: 'wallet-window' } as const

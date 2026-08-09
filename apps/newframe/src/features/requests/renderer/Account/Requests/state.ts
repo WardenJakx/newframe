@@ -1,0 +1,101 @@
+import { useMemo } from 'react'
+
+import type { WalletRendererState } from '../../../../../platform/state-sync/contract/projections'
+import { resolveAssetRate } from '../../../../asset-data/domain/asset'
+import type { AssetRateReference } from '../../../../asset-data/domain/state/rate'
+import { useWalletSelector } from '../../../../../platform/state-sync/renderer/useAppSelector'
+
+type AccountRequests = WalletRendererState['accounts'][string]['requests']
+type NetworkRecord = WalletRendererState['networks']['ethereum']
+type NetworkMetadataRecord = WalletRendererState['networksMeta']['ethereum']
+const EMPTY_ACCOUNT_REQUESTS: AccountRequests = {}
+const EMPTY_NETWORK: Partial<NetworkRecord[number]> = {}
+const EMPTY_NETWORK_METADATA: Partial<NetworkMetadataRecord[number]> = {}
+const EMPTY_TOKENS: WalletRendererState['tokens'] = { byId: {}, accountTokenIds: {} }
+const selectEthereumNetworks = (state: WalletRendererState) => state.networks.ethereum
+const selectEthereumNetworkMetadata = (state: WalletRendererState) => state.networksMeta.ethereum
+const selectOrigins = (state: WalletRendererState) => state.origins
+const selectPanelNavigation = (state: WalletRendererState) => state.windows.panel.nav
+const selectTokens = (state: WalletRendererState) => state.tokens || EMPTY_TOKENS
+
+export function useAccountRequests(accountId: string) {
+  const selector = useMemo(
+    () => (state: WalletRendererState) => state.accounts[accountId]?.requests || EMPTY_ACCOUNT_REQUESTS,
+    [accountId]
+  )
+  return useWalletSelector(selector)
+}
+
+export function useNetwork(type: string, chainId: string | number) {
+  const selector = useMemo(
+    () => (state: WalletRendererState) =>
+      type === 'ethereum' ? state.networks.ethereum[Number(chainId)] || EMPTY_NETWORK : EMPTY_NETWORK,
+    [chainId, type]
+  )
+  return useWalletSelector(selector)
+}
+
+export function useNetworkMetadata(type: string, chainId: string | number) {
+  const selector = useMemo(
+    () => (state: WalletRendererState) =>
+      type === 'ethereum'
+        ? state.networksMeta.ethereum[Number(chainId)] || EMPTY_NETWORK_METADATA
+        : EMPTY_NETWORK_METADATA,
+    [chainId, type]
+  )
+  return useWalletSelector(selector)
+}
+
+export function useEthereumNetworks() {
+  return useWalletSelector(selectEthereumNetworks)
+}
+
+export function useEthereumNetworkMetadata() {
+  return useWalletSelector(selectEthereumNetworkMetadata)
+}
+
+export function useOrigins() {
+  return useWalletSelector(selectOrigins)
+}
+
+export function useTokens() {
+  return useWalletSelector(selectTokens)
+}
+
+export function useOriginName(originId: string) {
+  const selector = useMemo(
+    () => (state: WalletRendererState) => state.origins[originId]?.name || originId,
+    [originId]
+  )
+  return useWalletSelector(selector)
+}
+
+export function useAccountIdentity(idOrAddress?: string) {
+  const normalized = idOrAddress?.toLowerCase()
+  const selector = useMemo(
+    () => (state: WalletRendererState) => {
+      if (!idOrAddress) return undefined
+      const accounts = state.accounts || {}
+      return (
+        accounts[idOrAddress] ||
+        Object.values(accounts).find((account) => account.address.toLowerCase() === normalized)
+      )
+    },
+    [idOrAddress, normalized]
+  )
+  return useWalletSelector(selector)
+}
+
+export function useAssetRate(asset: AssetRateReference) {
+  const { address, chainId, nativeTicker } = asset
+  const selector = useMemo(
+    () => (state: WalletRendererState) =>
+      resolveAssetRate({ address, chainId, nativeTicker }, state.assetRates),
+    [address, chainId, nativeTicker]
+  )
+  return useWalletSelector(selector)
+}
+
+export function usePanelNavigation() {
+  return useWalletSelector(selectPanelNavigation)
+}

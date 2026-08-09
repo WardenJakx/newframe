@@ -6,26 +6,23 @@ const appRoot = path.resolve(import.meta.dirname, '..')
 const outputRoot = path.join(appRoot, 'coverage', 'critical-parts')
 const testFile = /\.(?:test|spec)\.[cm]?[jt]sx?$/
 const riskTests = [
-  /^contracts\//,
-  /^domain\/transaction\//,
-  /^main\/accounts\/index\.test\./,
-  /^main\/agent\/sessionStore\.test\./,
-  /^main\/accounts\/providerPort\.test\./,
-  /^main\/authority\.test\./,
-  /^main\/features\/transactions\/accountPolicyPort\.test\./,
-  /^main\/features\/transactions\/sideTrayService\.test\./,
-  /^main\/infrastructure\/persistence\//,
-  /^main\/ipc\//,
-  /^main\/features\/requests\/service\.test\./,
-  /^main\/features\/(?:accountOnboarding|accounts|networks|tokens)\/service\.test\./,
-  /^main\/infrastructure\/(?:accountOnboarding|accounts|networks|tokens)\//,
-  /^main\/provider\/lifecycle\.test\./,
-  /^main\/signatures\//,
-  /^main\/store\/persistence\.test\./,
-  /^main\/store\/actions\.test\./,
-  /^main\/transaction\//,
-  /^main\/vault\.test\./,
-  /^preload\//
+  /^src\/app\/contracts\//,
+  /^src\/features\/transactions\/domain\//,
+  /^src\/features\/accounts\/main\/(?:index|providerPort)\.test\./,
+  /^src\/features\/agent-access\/main\/sessionStore\.test\./,
+  /^src\/features\/access-control\/main\/authority\.test\./,
+  /^src\/features\/transactions\/main\/(?:accountPolicyPort|sideTrayService)\.test\./,
+  /^src\/platform\/persistence\//,
+  /^src\/platform\/ipc\/main\//,
+  /^src\/features\/requests\/main\/service\.test\./,
+  /^src\/features\/(?:accounts|networks|tokens)\/main\/service\.test\./,
+  /^src\/features\/accounts\/main\/accountOnboarding\//,
+  /^src\/features\/connections\/main\/provider\/lifecycle\.test\./,
+  /^src\/platform\/signing\/signatures\//,
+  /^src\/platform\/state-store\/(?:persistence|actions)\.test\./,
+  /^src\/features\/transactions\/main\//,
+  /^src\/platform\/secrets\/vault\.test\./,
+  /^src\/preload\//
 ]
 
 function walk(directory: string): string[] {
@@ -61,7 +58,7 @@ for (const [index, file] of tests.entries()) {
   const coverageDir = path.join(outputRoot, String(index).padStart(3, '0'))
   const preload = file.endsWith('.tsx')
     ? './test/support/dom.preload.ts'
-    : file.startsWith('main/')
+    : file.includes('/main/') || file.startsWith('src/platform/')
       ? './test/support/electron.preload.ts'
       : undefined
   const command = [

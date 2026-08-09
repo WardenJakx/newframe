@@ -245,7 +245,7 @@ To enable wallet portfolio discovery, add a Zerion API key in Newframe settings 
 
 ## Architecture boundaries
 
-Newframe uses one typed operation catalog in `contracts/operations.ts`. A command expresses an
+Newframe uses one typed operation catalog in `src/app/contracts/operations.ts`. A command expresses an
 intent and returns only the generic `CommandResult` acknowledgement. If a renderer needs data, it
 must issue a typed query with a query-specific result, or observe canonical projected state. Do not
 add command-specific result maps, generic renderer RPC channels, or renderer-owned mirrors of
@@ -253,10 +253,10 @@ main-process truth.
 
 Main-process handlers validate and authorize input, then delegate to a focused feature service.
 Feature services own policy and canonical mutation through narrow ports. Callback APIs, filesystem
-access, Electron APIs, RPC clients, and other runtime details belong in `main/infrastructure`; any
+access, Electron APIs, RPC clients, and other runtime details belong under `src/platform`; any
 callback-to-Promise bridge must settle once and reject pending work during shutdown. The removed
-`walletWorkflows` facade and generic `main/operations/workflows.ts` or
-`main/operations/sideTrayTransactions.ts` helpers must not be recreated or imported; cohesive
+`walletWorkflows` facade and generic `src/platform/operations/workflows.ts` or
+`src/platform/operations/sideTrayTransactions.ts` helpers must not be recreated or imported; cohesive
 orchestration belongs to its feature service or infrastructure adapter.
 
 For example, `network.remove` is a generic-acknowledgement command handled by the network service,

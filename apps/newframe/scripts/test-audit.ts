@@ -46,11 +46,12 @@ function count(source: string, expression: RegExp) {
 
 function category(relativePath: string) {
   const root = relativePath.split('/')[0]
-  if (root === 'renderer') return 'renderer'
-  if (root === 'contracts') return 'contracts'
-  if (root === 'domain') return 'domain'
-  if (root === 'preload') return 'preload'
-  if (root === 'main') return 'main'
+  if (relativePath.startsWith('src/preload/')) return 'preload'
+  if (relativePath.startsWith('test/extension/')) return 'renderer'
+  if (relativePath.includes('/renderer/')) return 'renderer'
+  if (relativePath.startsWith('src/app/contracts/') || relativePath.includes('/contract/')) return 'contracts'
+  if (relativePath.includes('/domain/') || relativePath.startsWith('src/shared/domain/')) return 'domain'
+  if (root === 'src') return 'main'
   if (root === 'scripts') return 'scripts'
   if (root === 'test') return 'test-support'
   return root

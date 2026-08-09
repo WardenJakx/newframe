@@ -5,7 +5,7 @@ import type {
   AppQuery,
   CommandResult,
   ResultForQuery
-} from '../../../apps/newframe/contracts/operations.ts'
+} from '../../../apps/newframe/src/app/contracts/operations.ts'
 import { anvilChainId } from '../core/config.ts'
 import { sleep, withTimeout } from '../core/utils.ts'
 import type { AnvilClient } from './anvil-client.ts'

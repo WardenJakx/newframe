@@ -2,9 +2,9 @@ import { readdir, readFile, stat } from 'node:fs/promises'
 import path from 'node:path'
 
 const appRoot = path.resolve(import.meta.dirname, '..')
-const sourceRoots = ['contracts', 'domain', 'main', 'preload', 'renderer']
+const sourceRoots = ['src']
 const sourceExtensions = new Set(['.css', '.js', '.jsx', '.ts', '.tsx'])
-const allowedFiles = new Set([path.join('domain', 'chain', 'colors.ts')])
+const allowedFiles = new Set([path.join('src', 'features', 'networks', 'domain', 'chain', 'colors.ts')])
 const isTestFile = (file: string) =>
   /(?:^|\/)[^/]+\.(?:test|spec|test-support|test-fixture)\.[cm]?[jt]sx?$/.test(file) ||
   /(?:^|\/)(?:__mocks__|__tests__)(?:\/|$)/.test(file)

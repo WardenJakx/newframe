@@ -11,15 +11,15 @@ import {
   FLASH_STOP_ORDER_TYPE,
   FLASH_TAKE_PROFIT_ORDER_TYPE,
   FLASH_TWAP_ORDER_TYPE
-} from '../../domain/flash/constants'
+} from '../../src/features/transactions/trade/domain/constants'
 import {
   FLASH_NATIVE_ETH_ASSET,
   FLASH_WETH_ASSET,
   getFlashAssetsForChain,
   toFlashApiAssetAddress
-} from '../../domain/flash/assets'
-import { getFlashChainIdFromSlug, getFlashChainSlug } from '../../domain/flash/chains'
-import { getFlashAssetPairChains, getReceiveAsset, getSpentAsset } from '../../domain/flash/pair'
+} from '../../src/features/transactions/trade/domain/assets'
+import { getFlashChainIdFromSlug, getFlashChainSlug } from '../../src/features/transactions/trade/domain/chains'
+import { getFlashAssetPairChains, getReceiveAsset, getSpentAsset } from '../../src/features/transactions/trade/domain/pair'
 import {
   FLASH_MAX_TWAP_BUCKET_COUNT,
   FLASH_MAX_TWAP_DURATION_SECONDS,
@@ -27,7 +27,7 @@ import {
   FLASH_MIN_TWAP_DURATION_SECONDS,
   cleanFlashDecimal,
   positiveFlashNumber
-} from '../../domain/flash/policy'
+} from '../../src/features/transactions/trade/domain/policy'
 import {
   type FlashAsset,
   type FlashOrderType,
@@ -35,7 +35,7 @@ import {
   type FlashQuoteAction,
   type FlashStep,
   type FlashTradeSide
-} from '../../domain/flash/schemas'
+} from '../../src/features/transactions/trade/domain/schemas'
 
 type LocalOrderStatus = 'accepted' | 'filled' | 'cancelled' | 'rejected'
 

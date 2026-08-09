@@ -4,7 +4,7 @@ import { createStore } from 'zustand/vanilla'
 import { subscribeWithSelector } from 'zustand/middleware'
 import { immer } from 'zustand/middleware/immer'
 
-import { createCanonicalActions } from '../../main/store/actions'
+import { createCanonicalActions } from '../../src/platform/state-store/actions'
 
 const defaultState = () => ({
   main: {

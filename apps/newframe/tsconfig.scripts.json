@@ -8,9 +8,9 @@
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
     "noEmit": true,
-    "typeRoots": ["./node_modules/@types", "./@types"]
+    "typeRoots": ["./node_modules/@types", "./src/types"]
   },
-  "include": ["./@types/**/*.d.ts", "./build/**/*.ts", "./panda.config.ts", "./scripts/**/*.ts"],
+  "include": ["./src/types/**/*.d.ts", "./build/**/*.ts", "./panda.config.ts", "./scripts/**/*.ts"],
   "exclude": [
     "**/*.test.ts",
     "**/*.test.tsx",

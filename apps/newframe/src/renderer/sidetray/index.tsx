@@ -1,0 +1,33 @@
+import { createRoot } from 'react-dom/client'
+import { UIRoot } from '@newframe/ui/root'
+
+import App from '../../app/renderer/sidetray/App'
+
+import '../../../generated/styled-system/styles.css'
+
+import link from '../../platform/ipc/renderer/link'
+import { connectRendererState } from '../../platform/state-sync/renderer/connectState'
+
+document.addEventListener('dragover', (e) => e.preventDefault())
+document.addEventListener('drop', (e) => e.preventDefault())
+
+async function start() {
+  const disconnect = await connectRendererState('sidetray')
+  window.addEventListener('beforeunload', () => void disconnect(), { once: true })
+  const root = createRoot(document.getElementById('sidetray') as HTMLElement)
+  root.render(
+    <UIRoot>
+      <App />
+    </UIRoot>
+  )
+}
+
+void start().catch((error) => console.error('Could not connect side tray state', error))
+
+document.addEventListener('contextmenu', (event) => {
+  void link.executeCommand({
+    type: 'renderer.context-menu',
+    x: event.clientX,
+    y: event.clientY
+  })
+})

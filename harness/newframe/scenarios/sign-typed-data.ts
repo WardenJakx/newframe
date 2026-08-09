@@ -1,5 +1,5 @@
 import { BrowserProvider, TypedDataEncoder, verifyTypedData } from 'ethers'
-import createFrameProvider from '../../../apps/newframe/main/provider/connection.ts'
+import createFrameProvider from '../../../apps/newframe/src/features/connections/main/provider/connection.ts'
 
 const TYPED_DATA = {
   types: {
