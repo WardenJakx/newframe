@@ -1,14 +1,14 @@
-import { expect, it, mock } from 'bun:test'
-import type { Mock } from 'bun:test'
+import { expect, it, mock, spyOn } from 'bun:test'
 
 import type { OperationRecord } from '../../../platform/operations/operation'
 import { act, cleanup, render, screen, waitFor } from '../../../../test/support/componentSetup'
-import { createHostFixture } from '../../../../test/support/rendererClient'
+import { registerTestRuntimeFixture } from '../../../../test/support/rendererClient'
 import { walletState } from '../../../platform/state-sync/renderer/fixtures.test-support.ts'
-import { resetStateMirrorForTests } from '../../../platform/state-sync/renderer/rendererStore'
 import { AddAccount } from './AddAccount'
+import { createAccountsCapabilityFake, type AccountsCapabilityFake } from './accountsCapability.test-support'
 
-const link = createHostFixture()
+const fixture = registerTestRuntimeFixture()
+let capability: AccountsCapabilityFake
 const address = (digit: string) => `0x${digit.repeat(40)}`
 const signer = (id: string, type: string, status: string, addresses: string[] = []) => ({
   addresses,
@@ -20,50 +20,26 @@ const signer = (id: string, type: string, status: string, addresses: string[] = 
   type
 })
 
-const commands = (): Array<Record<string, any>> =>
-  ((link.executeCommand as any).mock.calls as Array<[Record<string, any>]>).map(([command]) => command)
-const lastCommand = (type: string): Record<string, any> => {
-  const command = commands().findLast((candidate) => candidate.type === type)
-  if (!command) throw new Error(`Missing ${type} command`)
-  return command
-}
-
 it('keeps drafts local and follows projected onboarding and hardware session state across every add path', async () => {
   let state = walletState({})
   const reset = (overrides: Parameters<typeof walletState>[0] = {}) => {
     cleanup()
-    ;(link.executeCommand as Mock<any>).mockReset().mockResolvedValue({ ok: true })
-    ;(link.executeQuery as Mock<any>).mockReset().mockImplementation(async (query: any) => {
-      if (query.type === 'security.status') {
-        return {
-          ok: true,
-          locked: false,
-          vaultExists: true,
-          biometricUnlockEnabled: false,
-          biometricAvailable: false,
-          biometrics: { enabled: false, method: '', nativeAvailable: false }
-        }
-      }
-      if (query.type === 'address.chain-usage') {
-        return {
-          ok: true,
-          usage: query.addresses.map((entry: string) => ({
-            address: entry,
-            chainIds: [],
-            complete: true
-          }))
-        }
-      }
-      if (query.type === 'keystore.locate') return { ok: true, keystore: { version: 3, crypto: {} } }
-      if (query.type === 'seed.generate') return { ok: true, phrase: 'one two three four' }
-      return { ok: false, error: 'not_found' }
+    capability = createAccountsCapabilityFake()
+    capability.inspectAddressChainUsage.mockImplementation(async ({ addresses }) => ({
+      ok: true,
+      usage: addresses.map((entry) => ({ address: entry, chainIds: [], complete: true }))
+    }))
+    capability.locateKeystore.mockResolvedValue({
+      ok: true,
+      keystore: { version: 3, crypto: {} }
     })
+    capability.generateSeed.mockResolvedValue({ ok: true, phrase: 'one two three four' })
     state = walletState(overrides)
-    resetStateMirrorForTests(state)
+    fixture.state.reset(state)
   }
   const publish = (operation: OperationRecord) => {
     state = { ...state, operations: { ...state.operations, [operation.id]: operation } }
-    act(() => resetStateMirrorForTests(state))
+    act(() => fixture.state.reset(state))
   }
   const operation = (
     id: string,
@@ -82,24 +58,23 @@ it('keeps drafts local and follows projected onboarding and hardware session sta
 
   reset()
   let resolveStaleAcknowledgement!: (result: { ok: false; error: 'invalid_command' }) => void
-  ;(link.executeCommand as Mock<any>).mockImplementation((command: Record<string, any>) =>
-    command.type === 'account.watch-add' && command.addressOrName === 'old.eth'
+  capability.addWatchAccount.mockImplementation((input) =>
+    input.addressOrName === 'old.eth'
       ? new Promise((resolve) => {
           resolveStaleAcknowledgement = resolve
         })
       : Promise.resolve({ ok: true })
   )
   const closeWatch = mock()
-  let view = render(<AddAccount initialType='watch' onClose={closeWatch} />)
+  let view = render(<AddAccount capability={capability} initialType='watch' onClose={closeWatch} />)
   await view.user.type(screen.getByLabelText('Address or gns/ens name'), 'old.eth')
   await view.user.click(screen.getByRole('button', { name: 'Create account' }))
-  const staleWatch = lastCommand('account.watch-add')
+  const staleWatch = capability.addWatchAccount.mock.calls.at(-1)![0]
   await view.user.clear(screen.getByLabelText('Address or gns/ens name'))
   await view.user.type(screen.getByLabelText('Address or gns/ens name'), address('2'))
   await view.user.click(screen.getByRole('button', { name: 'Create account' }))
-  const currentWatch = lastCommand('account.watch-add')
+  const currentWatch = capability.addWatchAccount.mock.calls.at(-1)![0]
   expect(currentWatch).toEqual({
-    type: 'account.watch-add',
     operationId: expect.any(String),
     addressOrName: address('2'),
     name: 'Watch Account'
@@ -120,12 +95,11 @@ it('keeps drafts local and follows projected onboarding and hardware session sta
   await waitFor(() => expect(closeWatch.mock.calls).toHaveLength(1))
 
   reset()
-  view = render(<AddAccount initialType='keystore' onClose={mock()} />)
+  view = render(<AddAccount capability={capability} initialType='keystore' onClose={mock()} />)
   await view.user.click(screen.getByRole('button', { name: 'Choose JSON backup file' }))
   await view.user.type(screen.getByLabelText('JSON backup file password'), 'file-secret')
   await view.user.click(screen.getByRole('button', { name: 'Create account' }))
-  expect(lastCommand('signer.import')).toEqual({
-    type: 'signer.import',
+  expect(capability.importSigner.mock.calls.at(-1)![0]).toEqual({
     operationId: expect.any(String),
     source: 'keystore',
     keystore: { version: 3, crypto: {} },
@@ -133,18 +107,15 @@ it('keeps drafts local and follows projected onboarding and hardware session sta
     framePassword: '',
     accountName: 'Hot Account'
   })
-  expect((link.executeQuery as Mock<any>).mock.calls.map(([query]) => query)).toContainEqual({
-    type: 'keystore.locate'
-  })
+  expect(capability.locateKeystore.mock.calls).toHaveLength(1)
 
   reset()
-  view = render(<AddAccount onClose={mock()} />)
+  view = render(<AddAccount capability={capability} onClose={mock()} />)
   await view.user.click(screen.getByRole('button', { name: 'Create recovery phrase' }))
   expect(await screen.findByText('one')).toBeTruthy()
   await view.user.click(screen.getByRole('button', { name: 'Recovery phrase saved' }))
   await view.user.click(screen.getByRole('button', { name: 'Create account' }))
-  expect(lastCommand('signer.import')).toEqual({
-    type: 'signer.import',
+  expect(capability.importSigner.mock.calls.at(-1)![0]).toEqual({
     operationId: expect.any(String),
     source: 'phrase',
     phrase: 'one two three four',
@@ -153,12 +124,11 @@ it('keeps drafts local and follows projected onboarding and hardware session sta
   })
 
   reset({ signers: { 'seed-1': signer('seed-1', 'seed', 'ok', [address('1')]) } })
-  view = render(<AddAccount onClose={mock()} />)
+  view = render(<AddAccount capability={capability} onClose={mock()} />)
   await view.user.click(screen.getByRole('button', { name: 'Add from stored recovery phrases' }))
   await view.user.click(screen.getByRole('button', { name: 'Add address' }))
   await view.user.click(screen.getByRole('button', { name: 'Add Wallet 1' }))
-  expect(lastCommand('account.add-from-signer')).toEqual({
-    type: 'account.add-from-signer',
+  expect(capability.addAccountFromSigner.mock.calls.at(-1)![0]).toEqual({
     operationId: expect.any(String),
     signerId: 'seed-1',
     address: address('1'),
@@ -176,29 +146,37 @@ it('keeps drafts local and follows projected onboarding and hardware session sta
       )
     }
   })
-  view = render(<AddAccount initialSelectedSigner='ledger-1' initialType='ledger' onClose={mock()} />)
-  await waitFor(() =>
-    expect(commands().some(({ type }) => type === 'signer.hardware-session-start')).toBe(true)
+  view = render(
+    <AddAccount
+      capability={capability}
+      initialSelectedSigner='ledger-1'
+      initialType='ledger'
+      onClose={mock()}
+    />
   )
+  await waitFor(() => expect(capability.startHardwareSession.mock.calls.length).toBe(1))
   await view.user.click(screen.getByRole('button', { name: 'Next account page' }))
-  expect(lastCommand('signer.ledger-accounts-load')).toEqual({
-    type: 'signer.ledger-accounts-load',
+  expect(capability.loadLedgerAccounts.mock.calls.at(-1)![0]).toEqual({
     operationId: expect.any(String),
     signerId: 'ledger-1',
     accountCount: 10
   })
 
   reset({ signers: { 'lattice-1': signer('lattice-1', 'lattice', 'pair') } })
-  view = render(<AddAccount initialSelectedSigner='lattice-1' initialType='lattice' onClose={mock()} />)
-  await waitFor(() =>
-    expect(commands().some(({ type }) => type === 'signer.hardware-session-start')).toBe(true)
+  view = render(
+    <AddAccount
+      capability={capability}
+      initialSelectedSigner='lattice-1'
+      initialType='lattice'
+      onClose={mock()}
+    />
   )
-  const latticeSession = lastCommand('signer.hardware-session-start')
+  await waitFor(() => expect(capability.startHardwareSession.mock.calls.length).toBe(1))
+  const latticeSession = capability.startHardwareSession.mock.calls.at(-1)![0]
   await view.user.type(screen.getByLabelText('GridPlus pairing code'), 'pair-secret')
   await view.user.click(screen.getByRole('button', { name: 'Pair' }))
-  const latticePair = lastCommand('signer.lattice-pair')
+  const latticePair = capability.pairLattice.mock.calls.at(-1)![0]
   expect(latticePair).toEqual({
-    type: 'signer.lattice-pair',
     operationId: latticeSession.operationId,
     actionId: expect.any(String),
     signerId: 'lattice-1',
@@ -209,15 +187,19 @@ it('keeps drafts local and follows projected onboarding and hardware session sta
   expect(await screen.findByText('GridPlus paired')).toBeTruthy()
 
   reset({ signers: { 'trezor-1': signer('trezor-1', 'trezor', 'need pin') } })
-  view = render(<AddAccount initialSelectedSigner='trezor-1' initialType='trezor' onClose={mock()} />)
-  await waitFor(() =>
-    expect(commands().some(({ type }) => type === 'signer.hardware-session-start')).toBe(true)
+  view = render(
+    <AddAccount
+      capability={capability}
+      initialSelectedSigner='trezor-1'
+      initialType='trezor'
+      onClose={mock()}
+    />
   )
-  const trezorSession = lastCommand('signer.hardware-session-start')
+  await waitFor(() => expect(capability.startHardwareSession.mock.calls.length).toBe(1))
+  const trezorSession = capability.startHardwareSession.mock.calls.at(-1)![0]
   await view.user.click(screen.getByRole('button', { name: 'PIN position 1' }))
   await view.user.click(screen.getByRole('button', { name: 'Submit Trezor PIN' }))
-  expect(lastCommand('signer.trezor-input')).toEqual({
-    type: 'signer.trezor-input',
+  expect(capability.submitTrezorInput.mock.calls.at(-1)![0]).toEqual({
     operationId: trezorSession.operationId,
     actionId: expect.any(String),
     signerId: 'trezor-1',
@@ -235,12 +217,11 @@ it('keeps drafts local and follows projected onboarding and hardware session sta
       }
     }
   }
-  act(() => resetStateMirrorForTests(state))
+  act(() => fixture.state.reset(state))
   const passphrase = screen.getByLabelText('Trezor passphrase') as HTMLInputElement
   await view.user.type(passphrase, 'keep-local')
   await view.user.click(screen.getByRole('button', { name: 'Enter passphrase on Trezor' }))
-  expect(lastCommand('signer.trezor-input')).toEqual({
-    type: 'signer.trezor-input',
+  expect(capability.submitTrezorInput.mock.calls.at(-1)![0]).toEqual({
     operationId: trezorSession.operationId,
     actionId: expect.any(String),
     signerId: 'trezor-1',
@@ -248,11 +229,133 @@ it('keeps drafts local and follows projected onboarding and hardware session sta
   })
   expect(passphrase.value).toBe('keep-local')
   await view.user.click(screen.getByRole('button', { name: 'Back' }))
-  expect(commands()).toContainEqual({
-    type: 'signer.hardware-session-finish',
+  expect(capability.finishHardwareSession.mock.calls.map(([input]) => input)).toContainEqual({
     operationId: trezorSession.operationId,
     signerId: 'trezor-1',
     outcome: 'cancelled'
   })
-  expect(commands().some(({ type }) => type === 'signer.disconnect')).toBe(false)
+  expect(capability.disconnectSigner.mock.calls).toHaveLength(0)
 }, 2_000)
+
+it('maps direct recovery-phrase and private-key imports to focused signer commands', async () => {
+  fixture.state.reset(walletState({}))
+  capability = createAccountsCapabilityFake()
+  let view = render(<AddAccount capability={capability} initialType='seed' onClose={mock()} />)
+  await view.user.type(
+    screen.getByLabelText('Recovery phrase'),
+    'one two three four five six seven eight nine ten eleven twelve'
+  )
+  await view.user.click(screen.getByRole('button', { name: 'Create account' }))
+  expect(capability.importSigner.mock.calls.at(-1)?.[0]).toEqual({
+    operationId: expect.any(String),
+    source: 'phrase',
+    phrase: 'one two three four five six seven eight nine ten eleven twelve',
+    framePassword: '',
+    accountName: 'Hot Account'
+  })
+
+  cleanup()
+  capability = createAccountsCapabilityFake()
+  view = render(<AddAccount capability={capability} initialType='privateKey' onClose={mock()} />)
+  const privateKey = `0x${'a'.repeat(64)}`
+  await view.user.type(screen.getByLabelText('Private key'), privateKey)
+  await view.user.click(screen.getByRole('button', { name: 'Create account' }))
+  expect(capability.importSigner.mock.calls.at(-1)?.[0]).toEqual({
+    operationId: expect.any(String),
+    source: 'private-key',
+    privateKey,
+    framePassword: '',
+    accountName: 'Hot Account'
+  })
+})
+
+it('resets the generated-seed copy timer and clears the active timer on unmount', async () => {
+  const clearTimeoutSpy = spyOn(globalThis, 'clearTimeout')
+  try {
+    fixture.state.reset(walletState({}))
+    capability = createAccountsCapabilityFake()
+    capability.generateSeed.mockResolvedValue({ ok: true, phrase: 'one two three four' })
+    const view = render(<AddAccount capability={capability} onClose={mock()} />)
+    await view.user.click(screen.getByRole('button', { name: 'Create recovery phrase' }))
+    await view.user.click(await screen.findByRole('button', { name: 'Copy recovery phrase' }))
+    expect(screen.getByText('Copied')).toBeTruthy()
+    const clearsAfterFirstCopy = clearTimeoutSpy.mock.calls.length
+
+    await view.user.click(screen.getByRole('button', { name: 'Copy recovery phrase' }))
+    expect(clearTimeoutSpy.mock.calls.length).toBe(clearsAfterFirstCopy + 1)
+    const clearsAfterSecondCopy = clearTimeoutSpy.mock.calls.length
+    view.unmount()
+    expect(clearTimeoutSpy.mock.calls.length).toBe(clearsAfterSecondCopy + 1)
+    expect(capability.writeClipboard.mock.calls.map(([input]) => input.text)).toEqual([
+      'one two three four',
+      'one two three four'
+    ])
+  } finally {
+    clearTimeoutSpy.mockRestore()
+  }
+})
+
+it('queries each stable hardware address key once and ignores the prior key result', async () => {
+  const oldUsage = deferred<Awaited<ReturnType<AccountsCapabilityFake['inspectAddressChainUsage']>>>()
+  const currentUsage = deferred<Awaited<ReturnType<AccountsCapabilityFake['inspectAddressChainUsage']>>>()
+  const firstAddress = address('1')
+  const secondAddress = address('2')
+  capability = createAccountsCapabilityFake()
+  capability.inspectAddressChainUsage
+    .mockImplementationOnce(() => oldUsage.promise)
+    .mockImplementationOnce(() => currentUsage.promise)
+  let projectedState = walletState({
+    signers: { 'ledger-1': signer('ledger-1', 'ledger', 'loading', [firstAddress]) }
+  })
+  fixture.state.reset(projectedState)
+  render(
+    <AddAccount
+      capability={capability}
+      initialSelectedSigner='ledger-1'
+      initialType='ledger'
+      onClose={mock()}
+    />
+  )
+  await waitFor(() => expect(capability.inspectAddressChainUsage.mock.calls.length).toBe(1))
+  act(() => fixture.state.reset(projectedState))
+  await act(async () => {
+    await Promise.resolve()
+  })
+  expect(capability.inspectAddressChainUsage.mock.calls).toHaveLength(1)
+
+  projectedState = walletState({
+    signers: { 'ledger-1': signer('ledger-1', 'ledger', 'loading', [secondAddress]) }
+  })
+  act(() => fixture.state.reset(projectedState))
+  await waitFor(() => expect(capability.inspectAddressChainUsage.mock.calls.length).toBe(2))
+  await act(async () => {
+    currentUsage.resolve({
+      ok: true,
+      usage: [{ address: secondAddress, chainIds: [2], complete: true }]
+    })
+    await currentUsage.promise
+  })
+  expect(await screen.findByText('Used on Chain 2')).toBeTruthy()
+
+  await act(async () => {
+    oldUsage.resolve({
+      ok: true,
+      usage: [{ address: firstAddress, chainIds: [1], complete: true }]
+    })
+    await oldUsage.promise
+  })
+  expect(screen.getByText('Used on Chain 2')).toBeTruthy()
+  expect(screen.queryByText('Checking chains')).toBeNull()
+  expect(capability.inspectAddressChainUsage.mock.calls.map(([input]) => input.addresses)).toEqual([
+    [firstAddress],
+    [secondAddress]
+  ])
+})
+
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((next) => {
+    resolve = next
+  })
+  return { promise, resolve }
+}

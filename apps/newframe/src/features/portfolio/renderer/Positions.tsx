@@ -1,16 +1,23 @@
 import { useMemo, useState } from 'react'
 
+import type { DisplayedBalance } from '../../asset-data/domain/balance'
 import { useAccountBalances } from './useAccountBalances'
-import { useHomeUiStore } from '../../../app/renderer/tray/Home/state/HomeUiProvider'
 import { createPositionGroups } from './positionModel'
 import { PositionsView } from './PositionsView'
+import type { PortfolioCapability } from './portfolioCapability'
 
 const ROW_INCREMENT = 50
 
-export function Positions() {
+export function Positions({
+  capability,
+  onOpenAsset,
+  selectedChainId
+}: {
+  capability: Pick<PortfolioCapability, 'hydrateTokenImage'>
+  onOpenAsset: (asset: DisplayedBalance) => void
+  selectedChainId: number
+}) {
   const shared = useAccountBalances()
-  const selectedChainId = useHomeUiStore((state) => state.selectedChainId)
-  const openOverlay = useHomeUiStore((state) => state.openOverlay)
   const [query, setQuery] = useState('')
   const [secondaryExpanded, setSecondaryExpanded] = useState(false)
   const [dustExpanded, setDustExpanded] = useState(false)
@@ -33,12 +40,11 @@ export function Positions() {
       dustExpanded={dustExpanded}
       dustRowsVisible={dustRowsVisible}
       groups={groups}
+      imageCapability={capability}
       networks={shared.networks}
       networksMeta={shared.networksMeta}
       onChangeQuery={setQuery}
-      onOpenAsset={(asset) =>
-        shared.currentAccount && openOverlay({ type: 'asset', accountId: shared.currentAccount, asset })
-      }
+      onOpenAsset={onOpenAsset}
       onShowMoreDust={() => setDustRowsVisible((rows) => rows + ROW_INCREMENT)}
       onShowMoreSecondary={() => setSecondaryRowsVisible((rows) => rows + ROW_INCREMENT)}
       onToggleDust={() => setDustExpanded((expanded) => !expanded)}

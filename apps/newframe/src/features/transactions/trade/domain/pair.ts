@@ -72,10 +72,6 @@ export function getContraPreposition(side: FlashTradeSide): 'with' | 'for' {
   return side === 'buy' ? 'with' : 'for'
 }
 
-export function formatPairIntent({ side, targetAsset, contraAsset }: FlashAssetPair): string {
-  return `${targetAsset.symbol} ${side === 'buy' ? '<-' : '->'} ${contraAsset.symbol}`
-}
-
 export function isSameFlashAsset(a?: FlashAsset | null, b?: FlashAsset | null) {
   if (!a || !b) return false
   return (

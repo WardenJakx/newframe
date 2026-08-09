@@ -7,14 +7,20 @@ import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
 import { ToggleButton } from '@newframe/ui/toggle-button'
 
-import link from '../../../../platform/ipc/renderer/link'
 import { capitalize } from '../../../../shared/domain/text'
 import ExtensionConnectNotification from '../../../../features/connections/renderer/ExtensionConnect'
+import { connectionsCapability } from '../../capabilities/homeFeatures'
 import SignerRecovery from '../../../../features/accounts/renderer/onboarding/SignerRecovery'
+import { accountsCapability } from '../../capabilities/accounts'
 import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector'
 import type { TrayRendererState } from '../state'
 import { useTrayNotification, type TrayNotifier } from '../notification'
 import type { TransactionRequest } from '../../../../features/requests/contract/requests'
+import type {
+  RequestExternalCapability,
+  RequestReviewCapability
+} from '../../../../features/requests/renderer/requestCapabilities'
+import type { HomeCapability } from '../Home/homeCapability'
 const isNotificationData = (value: unknown): value is Record<string, unknown> =>
   !!value && typeof value === 'object' && !Array.isArray(value)
 
@@ -35,6 +41,9 @@ type NotificationProps = {
   networks: TrayRendererState['networks']
   networksMeta: TrayRendererState['networksMeta']
   assetRates: TrayRendererState['assetRates']
+  external: Pick<RequestExternalCapability, 'openExplorer'>
+  home: Pick<HomeCapability, 'toggleWarning'>
+  review: Pick<RequestReviewCapability, 'confirmWarning'>
 }
 
 function Shell({ children, dismiss }: { children: ReactNode; dismiss: TrayNotifier }) {
@@ -108,16 +117,20 @@ function WarningMute({ checked, onToggle }: { checked: boolean; onToggle: () => 
   )
 }
 
-function confirmWarning(req: { handlerId?: string } | undefined, gate: 'signer-compatibility' | 'gas-fee') {
+function confirmWarning(
+  review: Pick<RequestReviewCapability, 'confirmWarning'>,
+  req: { handlerId?: string } | undefined,
+  gate: 'signer-compatibility' | 'gas-fee'
+) {
   if (req?.handlerId) {
-    void link.executeCommand({ type: 'request.warning-confirm', requestId: req.handlerId, gate })
+    void review.confirmWarning({ requestId: req.handlerId, gate })
   }
 }
 
-function GasFeeWarning({ data, dismiss, mute }: NotificationProps) {
+function GasFeeWarning({ data, dismiss, home, mute, review }: NotificationProps) {
   const { req, feeUSD = '0.00', currentSymbol = 'ETH' } = data
   const proceed = () => {
-    confirmWarning(req, 'gas-fee')
+    confirmWarning(review, req, 'gas-fee')
     dismiss()
   }
 
@@ -140,7 +153,7 @@ function GasFeeWarning({ data, dismiss, mute }: NotificationProps) {
       <NotificationActions dismiss={dismiss} onProceed={proceed} />
       <WarningMute
         checked={mute.gasFeeWarning}
-        onToggle={() => void link.executeCommand({ type: 'warning.toggle', warning: 'gas-fee' })}
+        onToggle={() => void home.toggleWarning({ warning: 'gas-fee' })}
       />
     </Shell>
   )
@@ -161,13 +174,13 @@ function NoSignerWarning({ dismiss }: NotificationProps) {
   )
 }
 
-function SignerCompatibilityWarning({ data, dismiss, mute }: NotificationProps) {
+function SignerCompatibilityWarning({ data, dismiss, home, mute, review }: NotificationProps) {
   const { req, compatibility = {} } = data
   const { signer = '', tx = '' } = compatibility
 
   const proceed = () => {
     if (!req) return
-    confirmWarning(req, 'signer-compatibility')
+    confirmWarning(review, req, 'signer-compatibility')
     dismiss()
   }
 
@@ -192,18 +205,17 @@ function SignerCompatibilityWarning({ data, dismiss, mute }: NotificationProps) 
       <NotificationActions dismiss={dismiss} onProceed={proceed} />
       <WarningMute
         checked={mute.signerCompatibilityWarning}
-        onToggle={() => void link.executeCommand({ type: 'warning.toggle', warning: 'signer-compatibility' })}
+        onToggle={() => void home.toggleWarning({ warning: 'signer-compatibility' })}
       />
     </Shell>
   )
 }
 
-function OpenExplorer({ data, dismiss, mute, networks }: NotificationProps) {
+function OpenExplorer({ data, dismiss, external, home, mute, networks }: NotificationProps) {
   const { hash, chain = { type: 'ethereum', id: 0 } } = data
   const { name: chainName, explorer: explorerUrl } = networks[chain.type]?.[Number(chain.id)] || {}
   const proceed = () => {
-    void link.executeCommand({
-      type: 'explorer.open',
+    void external.openExplorer({
       chainId: Number(chain.id),
       ...(hash ? { transactionHash: hash } : {})
     })
@@ -226,7 +238,7 @@ function OpenExplorer({ data, dismiss, mute, networks }: NotificationProps) {
       <NotificationActions dismiss={dismiss} onProceed={proceed} />
       <WarningMute
         checked={mute.explorerWarning}
-        onToggle={() => void link.executeCommand({ type: 'warning.toggle', warning: 'explorer' })}
+        onToggle={() => void home.toggleWarning({ warning: 'explorer' })}
       />
     </Shell>
   )
@@ -243,14 +255,22 @@ const selectNotificationState = (state: TrayRendererState) => ({
   assetRates: state.assetRates
 })
 
-export default function Notification() {
+export default function Notification({
+  external,
+  home,
+  review
+}: {
+  external: Pick<RequestExternalCapability, 'openExplorer'>
+  home: Pick<HomeCapability, 'toggleWarning'>
+  review: Pick<RequestReviewCapability, 'confirmWarning'>
+}) {
   const state = useWalletSelector(useShallow(selectNotificationState))
   const local = useTrayNotification()
 
   if (state.extensionRequestData) {
     const { browser, id } = state.extensionRequestData
     if (typeof browser !== 'string' || typeof id !== 'string') return null
-    return <ExtensionConnectNotification browser={browser} id={id} />
+    return <ExtensionConnectNotification browser={browser} capability={connectionsCapability} id={id} />
   }
 
   const props: NotificationProps = {
@@ -259,7 +279,10 @@ export default function Notification() {
     mute: state.mute,
     networks: state.networks,
     networksMeta: state.networksMeta,
-    assetRates: state.assetRates
+    assetRates: state.assetRates,
+    external,
+    home,
+    review
   }
 
   if (local.type === 'gasFeeWarning') return <GasFeeWarning {...props} />
@@ -268,7 +291,11 @@ export default function Notification() {
   if (local.type === 'signerRecovery') {
     return (
       <Shell dismiss={local.notify}>
-        <SignerRecovery dismiss={local.notify} signerIds={dataSignerIds(local.data)} />
+        <SignerRecovery
+          capability={accountsCapability}
+          dismiss={local.notify}
+          signerIds={dataSignerIds(local.data)}
+        />
       </Shell>
     )
   }

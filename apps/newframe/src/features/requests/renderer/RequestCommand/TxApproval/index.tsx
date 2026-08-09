@@ -5,9 +5,10 @@ import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
 
 import { RequestActions } from '../../ui/RequestActions'
-import link from '../../../../../platform/ipc/renderer/link'
+import type { RequestReviewCapability } from '../../requestCapabilities'
 
 interface TxApprovalProps {
+  capability: Pick<RequestReviewCapability, 'confirmApproval' | 'reject'>
   req: { handlerId: string }
   approval: {
     type: 'approveOtherChain' | 'approveGasLimit'
@@ -15,7 +16,7 @@ interface TxApprovalProps {
   }
 }
 
-export default function TxApproval({ req, approval }: TxApprovalProps) {
+export default function TxApproval({ capability, req, approval }: TxApprovalProps) {
   return (
     <Surface border='danger' padding='medium' radius='card' tone='card'>
       <Stack gap='medium'>
@@ -34,15 +35,14 @@ export default function TxApproval({ req, approval }: TxApprovalProps) {
           primary={{
             label: 'Proceed',
             onPress: () =>
-              void link.executeCommand({
-                type: 'request.approval-confirm',
+              void capability.confirmApproval({
                 requestId: req.handlerId,
                 approvalType: approval.type
               })
           }}
           secondary={{
             label: 'Reject',
-            onPress: () => void link.executeCommand({ type: 'request.reject', requestId: req.handlerId })
+            onPress: () => void capability.reject({ requestId: req.handlerId })
           }}
         />
       </Stack>

@@ -1,27 +1,39 @@
-import link from '../../../platform/ipc/renderer/link'
-import { useHomeUiStore } from '../../../app/renderer/tray/Home/state/HomeUiProvider'
 import { AddChainView } from './AddChainView'
+import type { NetworksCapability } from './networksCapability'
 
-export function AddChain() {
-  const overlay = useHomeUiStore((state) => state.overlay)
-  const openOverlay = useHomeUiStore((state) => state.openOverlay)
-  const closeOverlay = useHomeUiStore((state) => state.closeOverlay)
-  if (overlay.type !== 'addChain') return null
+export interface PendingChainRequest {
+  chain?: {
+    id?: string | number
+    chainId?: string | number
+    name?: string
+    symbol?: string
+    primaryRpc?: string
+    explorer?: string
+  }
+  homeCommandId?: number
+  requestId?: string
+}
 
-  const pending = overlay.pending || {}
+export function AddChain({
+  capability,
+  onResolved,
+  pending
+}: {
+  capability: Pick<NetworksCapability, 'resolveAddChain'>
+  onResolved: (outcome: 'approved' | 'rejected') => void
+  pending: PendingChainRequest
+}) {
   const chain = pending.chain || {}
   const requestId = pending.requestId
   const homeCommandId = pending.homeCommandId
   const resolve = (approved: boolean) => {
     if (requestId || homeCommandId) {
-      void link.executeCommand({
-        type: 'network.request-resolve',
+      void capability.resolveAddChain({
         approved,
         ...(requestId ? { requestId } : { homeCommandId })
       })
     }
-    if (approved) openOverlay({ type: 'networks' })
-    else closeOverlay()
+    onResolved(approved ? 'approved' : 'rejected')
   }
   const rows = [
     ['Name', chain.name],

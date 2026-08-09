@@ -110,17 +110,18 @@ export function buildVisualTradeSteps(spentAsset: FlashAsset, hasQuote: boolean)
   return steps
 }
 
-function objectRecord(value: unknown): Record<string, any> {
-  return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, any>) : {}
+function objectRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {}
 }
 
 export function tradeErrorMessage(error: unknown, fallback: string) {
   const record = objectRecord(error)
+  const nested = objectRecord(record.error)
 
   if (!error) return fallback
   if (typeof error === 'string') return error
   if (typeof record.message === 'string') return record.message
-  if (typeof objectRecord(record.error).message === 'string') return objectRecord(record.error).message
+  if (typeof nested.message === 'string') return nested.message
 
   return fallback
 }

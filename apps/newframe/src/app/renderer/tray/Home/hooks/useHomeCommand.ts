@@ -1,11 +1,11 @@
 import { useEffect, useRef } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 
-import link from '../../../../../platform/ipc/renderer/link'
 import { useWalletSelector } from '../../../../../platform/state-sync/renderer/useAppSelector'
 import { useHomeUiStore } from '../state/HomeUiProvider'
+import type { HomeCapability } from '../homeCapability'
 
-export function useHomeCommand() {
+export function useHomeCommand(capability: Pick<HomeCapability, 'consumeCommand' | 'selectAccount'>) {
   const shared = useWalletSelector(
     useShallow((state) => ({
       accounts: state.accounts,
@@ -21,8 +21,8 @@ export function useHomeCommand() {
   useEffect(() => {
     if (shared.currentAccount && shared.selectedOpen) return
     const accountId = shared.currentAccount || Object.keys(shared.accounts || {})[0]
-    if (accountId) void link.executeCommand({ type: 'account.select', accountId })
-  }, [shared.accounts, shared.currentAccount, shared.selectedOpen])
+    if (accountId) void capability.selectAccount({ accountId })
+  }, [capability, shared.accounts, shared.currentAccount, shared.selectedOpen])
 
   useEffect(() => {
     const command = shared.homeCommand
@@ -65,7 +65,7 @@ export function useHomeCommand() {
 
     const waitsForApproval = view === 'networks' && data.newChain
     if (!waitsForApproval) {
-      void link.executeCommand({ type: 'home.command-consume', commandId: command.id })
+      void capability.consumeCommand({ commandId: command.id })
     }
-  }, [openOverlay, setSelectedChainId, shared.homeCommand])
+  }, [capability, openOverlay, setSelectedChainId, shared.homeCommand])
 }

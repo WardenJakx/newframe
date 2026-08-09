@@ -1,16 +1,26 @@
 import { beforeEach, describe, expect, it } from 'bun:test'
 
 import { act, render, screen, waitFor } from '../../../../../test/support/componentSetup'
+import { registerTestRuntimeFixture } from '../../../../../test/support/rendererClient'
 import { STATE_STREAM_SCHEMA_VERSION } from '../../../../platform/state-sync/contract/protocol'
 import { NATIVE_CURRENCY } from '../../../../features/tokens/domain/constants'
 import { walletState } from '../../../../platform/state-sync/renderer/fixtures.test-support.ts'
-import {
-  applyStateMessage,
-  beginStateConnection,
-  resetStateMirrorForTests
-} from '../../../../platform/state-sync/renderer/rendererStore'
 import { HomeUiProvider, useHomeUiStore } from './state/HomeUiProvider'
 import type { DisplayedBalance } from '../../../../features/asset-data/domain/balance'
+import { createRequestRendererCapabilitiesFake as createRequestPortsFake } from '../../../../features/requests/renderer/requestCapabilities.test-support'
+import { accountsCapability } from '../../capabilities/accounts'
+import { homeCapability } from '../../capabilities/home'
+import {
+  activityCapability,
+  connectionsCapability,
+  networksCapability,
+  ordersCapability,
+  portfolioCapability,
+  securityCapability,
+  settingsCapability,
+  tokensCapability
+} from '../../capabilities/homeFeatures'
+import type { HomeCapabilities } from './Home'
 
 Object.defineProperty(global.navigator, 'keyboard', {
   configurable: true,
@@ -18,6 +28,21 @@ Object.defineProperty(global.navigator, 'keyboard', {
 })
 
 const { HomeOverlayRouter } = await import('./HomeOverlayRouter')
+const fixture = registerTestRuntimeFixture()
+const requestCapabilities = createRequestPortsFake()
+const capabilities: HomeCapabilities = {
+  accounts: accountsCapability,
+  activity: activityCapability,
+  connections: connectionsCapability,
+  home: homeCapability,
+  networks: networksCapability,
+  orders: ordersCapability,
+  portfolio: portfolioCapability,
+  requests: requestCapabilities,
+  security: securityCapability,
+  settings: settingsCapability,
+  tokens: tokensCapability
+}
 
 const account = {
   id: 'account-a',
@@ -51,7 +76,7 @@ let revision = 0
 function updateWallet(changes: Record<string, unknown>) {
   const baseRevision = revision
   revision += 1
-  applyStateMessage({
+  fixture.state.applyStateMessage({
     schemaVersion: STATE_STREAM_SCHEMA_VERSION,
     streamId: 'asset-overlay-test',
     baseRevision,
@@ -66,8 +91,18 @@ function Harness() {
   return (
     <>
       <button onClick={() => openOverlay({ type: 'asset', accountId: account.id, asset })}>Open asset</button>
+      <button
+        onClick={() =>
+          openOverlay({
+            type: 'addChain',
+            pending: { chain: { id: 8453, name: 'Base' }, requestId: 'request-1' }
+          })
+        }
+      >
+        Open add chain
+      </button>
       <output aria-label='Overlay state'>{overlay.type}</output>
-      <HomeOverlayRouter />
+      <HomeOverlayRouter capabilities={capabilities} />
     </>
   )
 }
@@ -75,9 +110,9 @@ function Harness() {
 describe('HomeOverlayRouter asset ownership', () => {
   beforeEach(() => {
     revision = 0
-    resetStateMirrorForTests()
-    beginStateConnection('wallet-ui')
-    applyStateMessage({
+    fixture.state.reset({})
+    fixture.state.beginStateConnection('wallet-ui')
+    fixture.state.applyStateMessage({
       schemaVersion: STATE_STREAM_SCHEMA_VERSION,
       streamId: 'asset-overlay-test',
       revision,
@@ -114,5 +149,36 @@ describe('HomeOverlayRouter asset ownership', () => {
     act(() => updateWallet({ accounts: {} }))
 
     await waitFor(() => expect(screen.getByLabelText('Overlay state').textContent).toBe('none'))
+  })
+})
+
+describe('HomeOverlayRouter feature navigation', () => {
+  beforeEach(() => {
+    revision = 0
+    fixture.state.reset(walletState({}))
+  })
+
+  it('translates an approved add-chain outcome into network navigation', async () => {
+    const { user } = render(
+      <HomeUiProvider>
+        <Harness />
+      </HomeUiProvider>
+    )
+    await user.click(screen.getByRole('button', { name: 'Open add chain' }))
+    await user.click(screen.getByRole('button', { name: 'Add chain' }))
+
+    expect(screen.getByLabelText('Overlay state').textContent).toBe('networks')
+  })
+
+  it('translates a rejected add-chain outcome into closing the overlay', async () => {
+    const { user } = render(
+      <HomeUiProvider>
+        <Harness />
+      </HomeUiProvider>
+    )
+    await user.click(screen.getByRole('button', { name: 'Open add chain' }))
+    await user.click(screen.getByRole('button', { name: 'Reject chain' }))
+
+    expect(screen.getByLabelText('Overlay state').textContent).toBe('none')
   })
 })

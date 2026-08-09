@@ -7,9 +7,11 @@ import { Text } from '@newframe/ui/text'
 import { imageSource, persistedImageSource } from '../../../features/asset-data/domain/image'
 import { useTokenImageHydration } from '../hooks/useTokenImageHydration'
 import type { ChainTokenIconSize, NetworkLike, NetworkMetaLike } from './tokenSelectorTypes'
+import type { TokenImageCapability } from '../capabilities'
 
 interface ChainTokenIconProps {
   chainId: number
+  imageCapability: TokenImageCapability
   logoURI?: string
   networks: Record<string | number, NetworkLike>
   networksMeta: Record<string | number, NetworkMetaLike>
@@ -30,6 +32,7 @@ function warnImageFailure(message: string, details: Record<string, unknown>) {
 
 export default function ChainTokenIcon({
   chainId,
+  imageCapability,
   logoURI = '',
   networks,
   networksMeta,
@@ -49,7 +52,7 @@ export default function ChainTokenIcon({
   const chain = networks[chainId] || {}
   const chainName = (chain.name || '').toLowerCase()
 
-  useTokenImageHydration(tokenId, !!tokenImageSource, hydrationTarget)
+  useTokenImageHydration(imageCapability, tokenId, !!tokenImageSource, hydrationTarget)
 
   const renderChainBadge = () => {
     if (chainImageVisible) {

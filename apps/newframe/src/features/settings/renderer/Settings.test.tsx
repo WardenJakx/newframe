@@ -1,17 +1,14 @@
-import { beforeEach, describe, expect, it } from 'bun:test'
-import type { Mock } from 'bun:test'
+import { beforeEach, describe, expect, it, mock } from 'bun:test'
 
 import { act, cleanup, render, screen, waitFor } from '../../../../test/support/componentSetup'
-import { createHostFixture } from '../../../../test/support/rendererClient'
+import { registerTestRuntimeFixture } from '../../../../test/support/rendererClient'
 import { STATE_STREAM_SCHEMA_VERSION } from '../../../platform/state-sync/contract/protocol'
 import type { OperationRecord } from '../../../platform/operations/operation'
 import { walletState } from '../../../platform/state-sync/renderer/fixtures.test-support.ts'
-import {
-  applyStateMessage,
-  beginStateConnection,
-  resetStateMirrorForTests
-} from '../../../platform/state-sync/renderer/rendererStore'
-import { HomeUiProvider, useHomeUiStore } from '../../../app/renderer/tray/Home/state/HomeUiProvider'
+import { createSecurityCapability } from '../../security/renderer/securityCapability'
+import { createSettingsCapability } from './settingsCapability'
+import type { SettingsSecurityCapability } from './Settings'
+import type { AppCommand, AppQuery } from '../../../app/contracts/operations'
 
 Object.defineProperty(global.navigator, 'keyboard', {
   configurable: true,
@@ -20,15 +17,28 @@ Object.defineProperty(global.navigator, 'keyboard', {
 
 const { Settings } = await import('./Settings')
 
-const link = createHostFixture()
+const fixture = registerTestRuntimeFixture()
+const settingsCapability = createSettingsCapability({
+  executeCommand: (command) => fixture.client.executeCommand(command)
+})
+type CommandCall = [command: AppCommand]
+type QueryCall = [query: AppQuery]
+const commandCalls = () => fixture.client.executeCommand.mock.calls as CommandCall[]
+const queryCalls = () => fixture.client.executeQuery.mock.calls as QueryCall[]
+const lastCommand = () => {
+  const command = commandCalls().at(-1)?.[0]
+  if (!command) throw new Error('Expected a settings command')
+  return command
+}
 let revision = 0
 let operations: Record<string, OperationRecord> = {}
+const onPostLockNavigation = mock()
 
 function publish(changes: Record<string, unknown>) {
   const baseRevision = revision
   revision += 1
   act(() => {
-    applyStateMessage({
+    fixture.state.applyStateMessage({
       schemaVersion: STATE_STREAM_SCHEMA_VERSION,
       streamId: 'settings-security-test',
       baseRevision,
@@ -58,17 +68,22 @@ const operation = (
   ...(error ? { error } : {})
 })
 
-function OverlayState() {
-  const overlay = useHomeUiStore((state) => state.overlay)
-  return <output aria-label='Overlay state'>{overlay.type}</output>
-}
+type BiometricRuntime = Pick<
+  SettingsSecurityCapability,
+  'createWebAuthnCredential' | 'isBiometricUserCanceled' | 'isWebAuthnSupported'
+>
 
-function renderSettings(biometricRuntime: NonNullable<Parameters<typeof Settings>[0]>['biometricRuntime']) {
+function renderSettings(runtime: BiometricRuntime) {
+  const security = { ...createSecurityCapability(fixture.client), ...runtime }
   return render(
-    <HomeUiProvider>
-      <OverlayState />
-      <Settings biometricRuntime={biometricRuntime} />
-    </HomeUiProvider>
+    <Settings
+      capability={settingsCapability}
+      onBack={mock()}
+      onPostLockNavigation={onPostLockNavigation}
+      onSelectedChainChange={mock()}
+      selectedChainId={0}
+      security={security}
+    />
   )
 }
 
@@ -76,9 +91,10 @@ describe('settings security operations', () => {
   const resetHarness = () => {
     revision = 0
     operations = {}
-    resetStateMirrorForTests()
-    beginStateConnection('wallet-ui')
-    applyStateMessage({
+    onPostLockNavigation.mockClear()
+    fixture.state.reset({})
+    fixture.state.beginStateConnection('wallet-ui')
+    fixture.state.applyStateMessage({
       schemaVersion: STATE_STREAM_SCHEMA_VERSION,
       streamId: 'settings-security-test',
       revision,
@@ -88,8 +104,8 @@ describe('settings security operations', () => {
         operations: {}
       })
     })
-    ;(link.executeCommand as Mock<any>).mockReset().mockResolvedValue({ ok: true })
-    ;(link.executeQuery as Mock<any>).mockReset()
+    fixture.client.executeCommand.mockReset().mockResolvedValue({ ok: true })
+    fixture.client.executeQuery.mockReset()
   }
 
   beforeEach(resetHarness)
@@ -101,25 +117,22 @@ describe('settings security operations', () => {
         secret: 'b'.repeat(32)
       }
       const { user } = renderSettings({
-        createCredential: async () => enrollment,
-        isCanceled: () => false,
-        isSupported: async () => true
+        createWebAuthnCredential: async () => enrollment,
+        isBiometricUserCanceled: () => false,
+        isWebAuthnSupported: async () => true
       })
 
       await user.click(screen.getByRole('switch', { name: 'Biometric Login' }))
-      const command = (link.executeCommand as Mock<any>).mock.calls.at(-1)![0] as {
-        operationId: string
-        type: string
-        [key: string]: unknown
-      }
+      const command = lastCommand()
+      if (command.type !== 'security.configure') throw new Error('Expected security configure command')
       expect(command).toEqual({
         type: 'security.configure',
         operationId: expect.any(String),
         mode: 'best-available',
         browser: { status: 'enrolled', ...enrollment }
       })
-      expect((link.executeCommand as Mock<any>).mock.calls).toHaveLength(1)
-      expect((link.executeQuery as Mock<any>).mock.calls).toEqual([])
+      expect(commandCalls()).toHaveLength(1)
+      expect(queryCalls()).toEqual([])
       expect(screen.getByText('Waiting for authentication')).toBeTruthy()
 
       publishOperation(operation(command.operationId, command.type, 'succeeded'))
@@ -132,48 +145,48 @@ describe('settings security operations', () => {
 
     {
       const { user: unsupportedUser, unmount: unmountUnsupported } = renderSettings({
-        createCredential: async () => {
+        createWebAuthnCredential: async () => {
           throw new Error('unused')
         },
-        isCanceled: () => false,
-        isSupported: async () => false
+        isBiometricUserCanceled: () => false,
+        isWebAuthnSupported: async () => false
       })
       await unsupportedUser.click(screen.getByRole('switch', { name: 'Biometric Login' }))
-      expect((link.executeCommand as Mock<any>).mock.calls.at(-1)![0]).toEqual({
+      expect(lastCommand()).toEqual({
         type: 'security.configure',
         operationId: expect.any(String),
         mode: 'best-available',
         browser: { status: 'unavailable' }
       })
       unmountUnsupported()
-      ;(link.executeCommand as Mock<any>).mockClear()
+      fixture.client.executeCommand.mockClear()
       const { user: failureUser, unmount: unmountFailure } = renderSettings({
-        createCredential: async () => {
+        createWebAuthnCredential: async () => {
           throw new Error('browser internals must stay local')
         },
-        isCanceled: () => false,
-        isSupported: async () => true
+        isBiometricUserCanceled: () => false,
+        isWebAuthnSupported: async () => true
       })
       await failureUser.click(screen.getByRole('switch', { name: 'Biometric Login' }))
-      expect((link.executeCommand as Mock<any>).mock.calls.at(-1)![0]).toEqual({
+      expect(lastCommand()).toEqual({
         type: 'security.configure',
         operationId: expect.any(String),
         mode: 'best-available',
         browser: { status: 'failed' }
       })
-      expect(JSON.stringify((link.executeCommand as Mock<any>).mock.calls)).not.toContain('browser internals')
+      expect(JSON.stringify(commandCalls())).not.toContain('browser internals')
       unmountFailure()
-      ;(link.executeCommand as Mock<any>).mockClear()
+      fixture.client.executeCommand.mockClear()
       const canceled = new Error('canceled')
       const { user: cancellationUser } = renderSettings({
-        createCredential: async () => {
+        createWebAuthnCredential: async () => {
           throw canceled
         },
-        isCanceled: (error) => error === canceled,
-        isSupported: async () => true
+        isBiometricUserCanceled: (error) => error === canceled,
+        isWebAuthnSupported: async () => true
       })
       await cancellationUser.click(screen.getByRole('switch', { name: 'Biometric Login' }))
-      expect((link.executeCommand as Mock<any>).mock.calls).toEqual([])
+      expect(commandCalls()).toEqual([])
       expect(screen.queryByText(/canceled/i)).toBeNull()
     }
     cleanup()
@@ -181,17 +194,15 @@ describe('settings security operations', () => {
 
     {
       const { user } = renderSettings({
-        createCredential: async () => {
+        createWebAuthnCredential: async () => {
           throw new Error('unused')
         },
-        isCanceled: () => false,
-        isSupported: async () => false
+        isBiometricUserCanceled: () => false,
+        isWebAuthnSupported: async () => false
       })
       await user.click(screen.getByRole('switch', { name: 'Biometric Login' }))
-      const configure = (link.executeCommand as Mock<any>).mock.calls.at(-1)![0] as {
-        operationId: string
-        type: string
-      }
+      const configure = lastCommand()
+      if (configure.type !== 'security.configure') throw new Error('Expected security configure command')
       publishOperation(
         operation(configure.operationId, configure.type, 'failed', {
           code: 'biometrics_unavailable',
@@ -201,31 +212,27 @@ describe('settings security operations', () => {
       expect(await screen.findByText('Biometrics are not available on this device')).toBeTruthy()
 
       await user.click(screen.getByRole('button', { name: 'Lock Newframe' }))
-      const lock = (link.executeCommand as Mock<any>).mock.calls.at(-1)![0] as {
-        operationId: string
-        type: string
-      }
+      const lock = lastCommand()
+      if (lock.type !== 'wallet.lock') throw new Error('Expected wallet lock command')
       expect(lock).toEqual({ type: 'wallet.lock', operationId: expect.any(String) })
       publishOperation(operation(lock.operationId, lock.type, 'succeeded'))
-      expect(screen.getByLabelText('Overlay state').textContent).toBe('none')
+      expect(onPostLockNavigation).not.toHaveBeenCalled()
       publish({ appLock: { locked: true, vaultExists: true }, operations })
-      await waitFor(() => expect(screen.getByLabelText('Overlay state').textContent).toBe('menu'))
+      await waitFor(() => expect(onPostLockNavigation).toHaveBeenCalledTimes(1))
 
       await user.click(screen.getByRole('button', { name: 'Reset Saved Data' }))
-      expect((link.executeCommand as Mock<any>).mock.calls.at(-1)![0]).toEqual({
+      expect(lastCommand()).toEqual({
         type: 'wallet.reset',
         operationId: expect.any(String),
         scope: 'saved-data'
       })
-      const savedReset = (link.executeCommand as Mock<any>).mock.calls.at(-1)![0] as {
-        operationId: string
-        type: string
-      }
+      const savedReset = lastCommand()
+      if (savedReset.type !== 'wallet.reset') throw new Error('Expected wallet reset command')
       publishOperation(operation(savedReset.operationId, savedReset.type, 'succeeded'))
 
       await user.click(screen.getByRole('button', { name: 'Reset All Settings & Data' }))
       await user.click(screen.getByRole('button', { name: 'Yes' }))
-      expect((link.executeCommand as Mock<any>).mock.calls.at(-1)![0]).toEqual({
+      expect(lastCommand()).toEqual({
         type: 'wallet.reset',
         operationId: expect.any(String),
         scope: 'all-settings-data'

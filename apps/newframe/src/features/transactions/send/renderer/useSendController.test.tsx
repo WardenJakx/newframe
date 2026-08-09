@@ -1,19 +1,15 @@
 import { beforeEach, describe, expect, it } from 'bun:test'
-import type { Mock } from 'bun:test'
 
 import { act, fireEvent, render, screen, waitFor } from '../../../../../test/support/componentSetup'
 import Send from './index'
-import {
-  applyStateMessage,
-  beginStateConnection,
-  resetStateMirrorForTests
-} from '../../../../platform/state-sync/renderer/rendererStore'
 import { NATIVE_CURRENCY } from '../../../tokens/domain/constants'
-import { createHostFixture } from '../../../../../test/support/rendererClient'
+import { registerTestRuntimeFixture } from '../../../../../test/support/rendererClient'
 import { STATE_STREAM_SCHEMA_VERSION } from '../../../../platform/state-sync/contract/protocol'
 import { shortAddress } from '../../../../shared/renderer/ui/AddressIdentity'
+import { createSendCapabilityFake, type SendCapabilityFake } from './sendService.test-support'
+import type { AppCommand, AppQuery, CommandResult } from '../../../../app/contracts/operations'
 
-const link = createHostFixture()
+const fixture = registerTestRuntimeFixture()
 
 const sender = {
   id: 'sender',
@@ -31,11 +27,24 @@ const chainId = 31337
 const tokenAddress = '0x00000000000000000000000000000000000000bb'
 const nativeAssetId = `${chainId}:${NATIVE_CURRENCY}`
 let stateRevision = 0
+let send: SendCapabilityFake
+type BalanceFixture = ReturnType<typeof nativeBalance>
+type CustomTokenFixture = {
+  address: string
+  chainId: number
+  decimals: number
+  name: string
+  symbol: string
+}
+type CommandCall = [command: AppCommand]
+type QueryCall = [query: AppQuery]
+const commandCalls = () => fixture.client.executeCommand.mock.calls as CommandCall[]
+const queryCalls = () => fixture.client.executeQuery.mock.calls as QueryCall[]
 
 function updateSendState(changes: Record<string, unknown>) {
   const baseRevision = stateRevision
   stateRevision += 1
-  return applyStateMessage({
+  return fixture.state.applyStateMessage({
     schemaVersion: STATE_STREAM_SCHEMA_VERSION,
     streamId: 'send-test',
     baseRevision,
@@ -44,7 +53,10 @@ function updateSendState(changes: Record<string, unknown>) {
   })
 }
 
-function initializeSendState(balances: any[] = [nativeBalance()], customTokens: any[] = []) {
+function initializeSendState(
+  balances: BalanceFixture[] = [nativeBalance()],
+  customTokens: CustomTokenFixture[] = []
+) {
   const tokenRecords = [...balances, ...customTokens]
     .filter((token) => token.address !== NATIVE_CURRENCY && token.name && token.symbol)
     .map((token) => ({
@@ -54,10 +66,10 @@ function initializeSendState(balances: any[] = [nativeBalance()], customTokens: 
       sources: customTokens.includes(token) ? ['custom'] : ['onchain'],
       updatedAt: 0
     }))
-  resetStateMirrorForTests()
+  fixture.state.reset({})
   stateRevision = 0
-  beginStateConnection('sidetray')
-  applyStateMessage({
+  fixture.state.beginStateConnection('sidetray')
+  fixture.state.applyStateMessage({
     schemaVersion: STATE_STREAM_SCHEMA_VERSION,
     streamId: 'send-test',
     revision: 0,
@@ -148,21 +160,24 @@ function tokenBalance() {
   }
 }
 
-describe('Send', () => {
+describe('Send controller integration', () => {
   beforeEach(() => {
+    send = createSendCapabilityFake()
     initializeSendState()
   })
 
   it('renders an empty state when there are no sendable assets', () => {
     initializeSendState([])
 
-    render(<Send />)
+    render(<Send capability={send} />)
 
     expect(screen.getByText('No assets available to send.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Close Send' }))
+    expect(send.close).toHaveBeenCalledTimes(1)
   })
 
   it('falls back when the route asset is not sendable', () => {
-    render(<Send assetId={`${chainId}:${tokenAddress}`} />)
+    render(<Send assetId={`${chainId}:${tokenAddress}`} capability={send} />)
 
     expect(screen.getByRole('button', { name: 'Select send token' }).textContent).toContain('ETH')
   })
@@ -170,13 +185,13 @@ describe('Send', () => {
   it('prefers the route asset when it is sendable', () => {
     initializeSendState([nativeBalance(), tokenBalance()])
 
-    render(<Send assetId={`${chainId}:${tokenAddress}`} />)
+    render(<Send assetId={`${chainId}:${tokenAddress}`} capability={send} />)
 
     expect(screen.getByRole('button', { name: 'Select send token' }).textContent).toContain('USDC')
   })
 
   it('renders an unknown fiat value when the selected asset has no rate', () => {
-    render(<Send assetId={nativeAssetId} />)
+    render(<Send assetId={nativeAssetId} capability={send} />)
 
     expect(screen.getByText('—')).toBeTruthy()
     expect(screen.queryByText('$0.00')).toBeNull()
@@ -185,14 +200,14 @@ describe('Send', () => {
   it('renders a fiat notional when the selected asset has a resolved rate', () => {
     initializeSendState([nativeBalance(), tokenBalance()])
 
-    render(<Send assetId={`${chainId}:${tokenAddress}`} />)
+    render(<Send assetId={`${chainId}:${tokenAddress}`} capability={send} />)
     fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '2' } })
 
     expect(screen.getByText('$4.00')).toBeTruthy()
   })
 
   it('allows the send amount to be cleared and typed after selecting a recipient', async () => {
-    const { user } = render(<Send assetId={nativeAssetId} />)
+    const { user } = render(<Send assetId={nativeAssetId} capability={send} />)
     await user.click(screen.getByText(shortAddress(recipient.address)))
     const amountInput = screen.getByLabelText('Amount') as HTMLInputElement
 
@@ -216,7 +231,7 @@ describe('Send', () => {
     }
     initializeSendState([nativeBalance()], [customToken])
 
-    const { user } = render(<Send assetId={nativeAssetId} />)
+    const { user } = render(<Send assetId={nativeAssetId} capability={send} />)
     await user.click(screen.getByRole('button', { name: 'Select send token' }))
     await user.type(screen.getByLabelText('Search tokens'), 'Custom Dollar')
 
@@ -227,7 +242,7 @@ describe('Send', () => {
   })
 
   it('does not show the sending wallet as a recipient option', () => {
-    render(<Send assetId={nativeAssetId} />)
+    render(<Send assetId={nativeAssetId} capability={send} />)
 
     expect(screen.getByText('Recipient')).toBeTruthy()
     expect(screen.queryByText('Sender')).toBeNull()
@@ -235,7 +250,7 @@ describe('Send', () => {
   })
 
   it('shows the first-time warning when the sender has no activity with the recipient', async () => {
-    const { user } = render(<Send assetId={nativeAssetId} />)
+    const { user } = render(<Send assetId={nativeAssetId} capability={send} />)
 
     await user.click(screen.getByRole('button', { name: 'Select Recipient' }))
 
@@ -243,7 +258,7 @@ describe('Send', () => {
   })
 
   it('shows shortened recipient addresses and copies the full address from the wallet selector', async () => {
-    const { user } = render(<Send assetId={nativeAssetId} />)
+    const { user } = render(<Send assetId={nativeAssetId} capability={send} />)
 
     expect(screen.getByText(shortAddress(recipient.address))).toBeTruthy()
     const copyButton = screen.getByRole('button', {
@@ -251,10 +266,7 @@ describe('Send', () => {
     })
     await user.click(copyButton)
 
-    expect(link.executeCommand).toHaveBeenCalledWith({
-      type: 'clipboard.write',
-      text: recipient.address
-    })
+    expect(send.writeText).toHaveBeenCalledWith(recipient.address)
     expect(
       screen.getByRole('button', { name: `Address copied for ${shortAddress(recipient.address)}` })
     ).toBeTruthy()
@@ -272,7 +284,7 @@ describe('Send', () => {
         }
       }
     })
-    const { user } = render(<Send assetId={nativeAssetId} />)
+    const { user } = render(<Send assetId={nativeAssetId} capability={send} />)
 
     await user.click(screen.getByRole('button', { name: 'Select Recipient' }))
 
@@ -280,7 +292,7 @@ describe('Send', () => {
   })
 
   it('clears recipient, amount, and open menus when the current account changes', async () => {
-    const { user } = render(<Send assetId={nativeAssetId} />)
+    const { user } = render(<Send assetId={nativeAssetId} capability={send} />)
     await user.click(screen.getByRole('button', { name: 'Select Recipient' }))
     fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '4' } })
     await user.click(screen.getByRole('button', { name: 'Select send token' }))
@@ -299,7 +311,7 @@ describe('Send', () => {
   })
 
   it('also resets when the current account is lost', async () => {
-    render(<Send assetId={nativeAssetId} />)
+    render(<Send assetId={nativeAssetId} capability={send} />)
     fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '4' } })
 
     act(() => {
@@ -312,15 +324,14 @@ describe('Send', () => {
   })
 
   it('ignores a submission result from the previously selected account', async () => {
-    let resolveSubmission: (result: any) => void = () => undefined
-    ;(link.executeCommand as Mock<any>).mockImplementation((command: any) => {
-      if (command.type !== 'send.submit') return Promise.resolve({ ok: true })
-      return new Promise((resolve) => {
+    let resolveSubmission: (result: CommandResult) => void = () => undefined
+    send.submit.mockImplementation(() => {
+      return new Promise<CommandResult>((resolve) => {
         resolveSubmission = resolve
       })
     })
 
-    const { user } = render(<Send assetId={nativeAssetId} />)
+    const { user } = render(<Send assetId={nativeAssetId} capability={send} />)
     await user.click(screen.getByRole('button', { name: 'Select Recipient' }))
     fireEvent.click(screen.getByRole('button', { name: 'Proceed' }))
     expect(screen.getByText('Confirm in Newframe')).toBeTruthy()
@@ -336,7 +347,7 @@ describe('Send', () => {
   })
 
   it('submits a native transfer through the Send service flow', async () => {
-    const { user } = render(<Send assetId={nativeAssetId} />)
+    const { user } = render(<Send assetId={nativeAssetId} capability={send} />)
     const recipientButton = screen.getByRole('button', { name: 'Select Recipient' })
 
     await user.click(recipientButton)
@@ -346,17 +357,13 @@ describe('Send', () => {
 
     await user.click(proceedButton)
 
-    const command = (link.executeCommand as Mock<any>).mock.calls.find(
-      ([candidate]) => (candidate as { type?: string }).type === 'send.submit'
-    )?.[0] as {
-      type: 'send.submit'
+    const command = send.submit.mock.calls.at(-1)?.[0] as {
       operationId: string
       asset: { address: string; chainId: number }
       amount: string
       recipient: string
     }
     expect(command).toEqual({
-      type: 'send.submit',
       operationId: expect.any(String),
       asset: { address: NATIVE_CURRENCY, chainId },
       amount: '1000000000000000000',
@@ -402,16 +409,14 @@ describe('Send', () => {
   })
 
   it('keeps recipient resolution errors visible without sending a provider request', async () => {
-    render(<Send assetId={nativeAssetId} />)
+    render(<Send assetId={nativeAssetId} capability={send} />)
 
     fireEvent.change(screen.getByLabelText('Recipient'), {
       target: { value: 'unknown.eth' }
     })
     fireEvent.click(screen.getByRole('button', { name: 'Proceed' }))
 
-    const command = (link.executeCommand as Mock<any>).mock.calls.find(
-      ([candidate]) => (candidate as { type?: string }).type === 'send.submit'
-    )?.[0] as { operationId: string }
+    const command = send.submit.mock.calls.at(-1)?.[0] as { operationId: string }
     act(() => {
       updateSendState({
         operations: {
@@ -429,11 +434,7 @@ describe('Send', () => {
       })
     })
     expect(await screen.findByText('Could not resolve recipient.')).toBeTruthy()
-    expect((link.executeQuery as Mock<any>).mock.calls).toEqual([])
-    expect(
-      (link.executeCommand as Mock<any>).mock.calls.some(
-        ([command]) => (command as { type?: string }).type === 'transaction.submit'
-      )
-    ).toBe(false)
+    expect(queryCalls()).toEqual([])
+    expect(commandCalls()).toEqual([])
   })
 })

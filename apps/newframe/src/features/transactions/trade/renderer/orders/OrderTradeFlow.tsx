@@ -10,6 +10,8 @@ import {
   orderPairIntent,
   orderTargetNotional
 } from './orderModel'
+import type { OrderNetworkMap, OrderNetworkMetadataMap, OrderModel, OrderTokenCatalog } from './orderTypes'
+import type { TokenImageCapability } from '../../../../../shared/renderer/capabilities'
 
 const tradeFlowRecipe = cva({
   base: {
@@ -23,16 +25,18 @@ const tradeFlowRecipe = cva({
 
 export function OrderTradeFlow({
   assetImages,
+  imageCapability,
   networks,
   networksMeta,
   order,
   tokens
 }: {
   assetImages?: { contra?: string; target?: string }
-  networks: Record<string | number, any>
-  networksMeta: Record<string | number, any>
-  order: any
-  tokens: any
+  imageCapability: TokenImageCapability
+  networks: OrderNetworkMap
+  networksMeta: OrderNetworkMetadataMap
+  order: OrderModel
+  tokens: OrderTokenCatalog
 }) {
   const side = normalizeOrderSide(order.side)
   const amounts = orderAssetAmounts(order)
@@ -45,6 +49,7 @@ export function OrderTradeFlow({
         amount={amounts.target || '—'}
         asset={order.targetAsset}
         imageSource={assetImages?.target}
+        imageCapability={imageCapability}
         networks={networks}
         networksMeta={networksMeta}
         notional={orderTargetNotional(order)}
@@ -58,6 +63,7 @@ export function OrderTradeFlow({
         amount={orderContraAmount(order)}
         asset={order.contraAsset}
         imageSource={assetImages?.contra}
+        imageCapability={imageCapability}
         networks={networks}
         networksMeta={networksMeta}
         notional={orderContraNotional(order)}

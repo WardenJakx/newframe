@@ -3,23 +3,60 @@ import { beforeEach, describe, expect, it } from 'bun:test'
 import { fireEvent, screen, render } from '../../../../../../../test/support/componentSetup'
 import { within } from '@testing-library/react'
 import TxRequest, { TransactionRequest } from './index'
-import { resetStateMirrorForTests } from '../../../../../../platform/state-sync/renderer/rendererStore'
 import { RequestViewProvider } from '../../../requestView'
-import { TxClassification } from '../../../../contract/requests'
+import { RequestStatus, TxClassification } from '../../../../contract/requests'
 import { erc20Interface } from '../../../../../../shared/domain/evm'
-import { createHostFixture } from '../../../../../../../test/support/rendererClient'
+import { registerTestRuntimeFixture } from '../../../../../../../test/support/rendererClient'
 import { shortAddress } from '../../../../../../shared/renderer/ui/AddressIdentity'
+import {
+  createRequestRendererCapabilitiesFake as createRequestPortsFake,
+  type RequestRendererCapabilitiesFake
+} from '../../../requestCapabilities.test-support'
+import type { TransactionRequestView } from '../requestViewTypes'
 
-const link = createHostFixture()
-const renderRequest = (req: any) =>
+const fixture = registerTestRuntimeFixture()
+let capabilities: RequestRendererCapabilitiesFake
+type TransactionRequestFixture = Omit<
+  Partial<TransactionRequestView>,
+  'account' | 'data' | 'handlerId' | 'origin' | 'payload' | 'tx' | 'type'
+> & {
+  account?: string
+  data: Partial<TransactionRequestView['data']> & Pick<TransactionRequestView['data'], 'chainId'>
+  handlerId: string
+  origin: string
+  payload?: Partial<TransactionRequestView['payload']> & Record<string, unknown>
+  tx?: TransactionRequestView['tx'] & { confirmations?: number }
+  type: 'transaction'
+}
+
+function completeRequest(req: TransactionRequestFixture): TransactionRequestView {
+  const { account, data, payload, ...request } = req
+  const params = payload?.params ?? [{ chainId: data.chainId }]
+  return {
+    ...request,
+    account: account ?? '0x0000000000000000000000000000000000000001',
+    data: { type: '0x0', gasFeesSource: 'Frame', ...data },
+    payload: {
+      id: 1,
+      jsonrpc: '2.0',
+      method: 'eth_sendTransaction',
+      _origin: req.origin,
+      ...payload,
+      params
+    }
+  }
+}
+
+const renderRequest = (req: TransactionRequestFixture) =>
   render(
     <RequestViewProvider>
-      <TxRequest req={req} />
+      <TxRequest capabilities={capabilities} req={completeRequest(req)} />
     </RequestViewProvider>
   )
 
 beforeEach(() => {
-  resetStateMirrorForTests({
+  capabilities = createRequestPortsFake()
+  fixture.state.reset({
     assetRates: {},
     networks: {
       ethereum: {
@@ -47,13 +84,13 @@ describe('confirm', () => {
     const req = {
       handlerId: 'test-req',
       type: 'transaction',
-      status: 'confirming',
+      status: RequestStatus.Confirming,
       origin: 'test-origin',
       data: {
         chainId: '0x89'
       },
       classification: TxClassification.NATIVE_TRANSFER
-    }
+    } satisfies TransactionRequestFixture
 
     renderRequest(req)
 
@@ -65,7 +102,7 @@ describe('confirm', () => {
     const req = {
       handlerId: 'test-req',
       type: 'transaction',
-      status: 'confirming',
+      status: RequestStatus.Confirming,
       notice: 'insufficient funds for gas',
       origin: 'test-origin',
       recipientType: 'external',
@@ -73,7 +110,7 @@ describe('confirm', () => {
         chainId: '0x89'
       },
       classification: TxClassification.NATIVE_TRANSFER
-    }
+    } satisfies TransactionRequestFixture
 
     renderRequest(req)
 
@@ -94,7 +131,7 @@ describe('confirm', () => {
         type: '0x0'
       },
       classification: TxClassification.NATIVE_TRANSFER
-    }
+    } satisfies TransactionRequestFixture
 
     renderRequest(req)
 
@@ -107,7 +144,7 @@ describe('confirm', () => {
     const req = {
       handlerId: 'test-req',
       type: 'transaction',
-      status: 'confirming',
+      status: RequestStatus.Confirming,
       origin: 'test-origin',
       tx: {
         hash: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
@@ -120,7 +157,7 @@ describe('confirm', () => {
         type: '0x0'
       },
       classification: TxClassification.CONTRACT_CALL
-    }
+    } satisfies TransactionRequestFixture
 
     renderRequest(req)
 
@@ -134,7 +171,7 @@ describe('confirm', () => {
     const tokenAddress = '0x00000000000000000000000000000000000000aa'
     const recipientAddress = '0x0000000000000000000000000000000000001337'
     const senderAddress = '0x0000000000000000000000000000000000000042'
-    resetStateMirrorForTests({
+    fixture.state.reset({
       assetRates: {},
       accounts: {
         account: {
@@ -151,7 +188,7 @@ describe('confirm', () => {
       signers: {},
       tokens: { byId: {}, accountTokenIds: {} },
       windows: { panel: { nav: [] } }
-    } as any)
+    })
     const req = {
       handlerId: 'test-req',
       type: 'transaction',
@@ -178,12 +215,12 @@ describe('confirm', () => {
         }
       ],
       decodedData: {
-        contractName: 'Unknown Contract',
         method: 'transfer',
-        source: 'Function selector registry'
+        signature: 'transfer(address,uint256)',
+        args: []
       },
       classification: TxClassification.CONTRACT_CALL
-    }
+    } satisfies TransactionRequestFixture
 
     renderRequest(req)
 
@@ -201,10 +238,7 @@ describe('confirm', () => {
     expect(screen.getAllByText('recipient.eth').length).toBeGreaterThan(0)
     expect(screen.getByText(shortAddress(recipientAddress))).toBeTruthy()
     fireEvent.click(recipientCopy)
-    expect(link.executeCommand).toHaveBeenCalledWith({
-      type: 'clipboard.write',
-      text: recipientAddress
-    })
+    expect(capabilities.external.writeText).toHaveBeenCalledWith(recipientAddress)
     expect(screen.getByRole('button', { name: 'Address copied for recipient.eth' })).toBeTruthy()
 
     expect(screen.getByRole('button', { name: 'Copy address for testname' })).toBeTruthy()
@@ -241,7 +275,7 @@ describe('confirm', () => {
         ]
       },
       classification: TxClassification.CONTRACT_CALL
-    }
+    } satisfies TransactionRequestFixture
 
     renderRequest(req)
 
@@ -284,7 +318,7 @@ describe('confirm', () => {
         ]
       },
       classification: TxClassification.CONTRACT_CALL
-    }
+    } satisfies TransactionRequestFixture
 
     renderRequest(req)
     const outgoing = screen.getByRole('group', { name: 'Outgoing asset effect' })
@@ -306,7 +340,7 @@ describe('confirm', () => {
 
   it('uses the canonical persisted token image for simulated effects', () => {
     const address = '0x0000000000000000000000000000000000000001'
-    resetStateMirrorForTests({
+    fixture.state.reset({
       assetRates: {},
       networks: { ethereum: { 137: { name: 'Polygon', isTestnet: false } } },
       networksMeta: { ethereum: { 137: { nativeCurrency: { symbol: 'MATIC' } } } },
@@ -333,7 +367,7 @@ describe('confirm', () => {
         accountTokenIds: {}
       },
       windows: { panel: { nav: [] } }
-    } as any)
+    })
     const req = {
       handlerId: 'test-req',
       type: 'transaction',
@@ -360,7 +394,7 @@ describe('confirm', () => {
         ]
       },
       classification: TxClassification.CONTRACT_CALL
-    }
+    } satisfies TransactionRequestFixture
 
     renderRequest(req)
 
@@ -383,7 +417,7 @@ describe('confirm', () => {
         type: '0x0'
       },
       classification: TxClassification.CONTRACT_CALL
-    }
+    } satisfies TransactionRequestFixture
 
     renderRequest(req)
 
@@ -396,8 +430,7 @@ describe('confirm', () => {
     expect(feeRate.textContent).toMatch(/custom/i)
 
     fireEvent.click(screen.getByRole('button', { name: 'Fast' }))
-    expect(link.executeCommand).toHaveBeenCalledWith({
-      type: 'transaction.fee-default-set',
+    expect(capabilities.transaction.setDefaultFee).toHaveBeenCalledWith({
       requestId: 'test-req',
       level: 'fast'
     })
@@ -412,10 +445,8 @@ describe('confirm', () => {
       handlerId: 'test-req',
       type: 'transaction',
       origin: 'test-origin',
-      payload: { nonce: '0x1' },
       data: {
         chainId: '0x89',
-        nonce: '0x2',
         data: '0x1234',
         calldataDigest: '0xabcdef',
         gasLimit: '0x5208',
@@ -423,7 +454,7 @@ describe('confirm', () => {
         type: '0x0'
       },
       classification: TxClassification.CONTRACT_CALL
-    }
+    } satisfies TransactionRequestFixture
     renderRequest(req)
 
     expect(screen.queryByText('Full calldata')).toBeNull()
@@ -437,16 +468,31 @@ describe('confirm', () => {
     const spender = '0x9bc5baf874d2da8d216ae9f137804184ee5afef4'
     const contract = '0x1eba19f260421142AD9Bf5ba193f6d4A0825e698'
     const requestedAmount = 70_000n
-    const req = {
+    const req: TransactionRequestView = {
       handlerId: 'test-req',
       type: 'transaction',
+      account: '0x0000000000000000000000000000000000000001',
+      origin: 'test-origin',
       payload: {
+        id: 1,
+        jsonrpc: '2.0',
+        method: 'eth_sendTransaction',
+        _origin: 'test-origin',
         params: [
           {
+            chainId: '0x1',
             data: erc20Interface.encodeFunctionData('approve', [spender, requestedAmount])
           }
         ]
       },
+      data: {
+        chainId: '0x1',
+        gasFeesSource: 'Dapp',
+        type: '0x2'
+      },
+      classification: TxClassification.CONTRACT_CALL,
+      feesUpdatedByUser: false,
+      recipientType: 'contract',
       recognizedActions: [
         {
           id: 'erc20:approve',
@@ -462,11 +508,17 @@ describe('confirm', () => {
       ]
     }
 
-    render(<TransactionRequest req={req} step='adjustApproval' actionId='erc20:approve' />)
+    render(
+      <TransactionRequest
+        actionId='erc20:approve'
+        capabilities={capabilities}
+        req={req}
+        step='adjustApproval'
+      />
+    )
     fireEvent.click(screen.getByRole('tab', { name: 'Unlimited' }))
 
-    expect(link.executeCommand).toHaveBeenCalledWith({
-      type: 'request.token-approval-update',
+    expect(capabilities.review.updateTokenApproval).toHaveBeenCalledWith({
       requestKind: 'transaction',
       requestId: 'test-req',
       actionId: 'erc20:approve',

@@ -6,10 +6,18 @@ import {
 export const INITIAL_SEND_TOKEN_ROWS = INITIAL_TOKEN_SELECTOR_ROWS
 export const SEND_TOKEN_ROWS_INCREMENT = TOKEN_SELECTOR_ROWS_INCREMENT
 
+export interface SendRecipient {
+  id: string
+  address: string
+  name?: string
+  ensName?: string
+  lastSignerType?: string
+}
+
 export interface SendWorkflowState {
   amount: string
   error: string
-  recipient: any | null
+  recipient: SendRecipient | null
   recipientInput: string
   recipientOpen: boolean
   selectedAssetKey: string
@@ -21,7 +29,7 @@ export type SendWorkflowAction =
   | { type: 'accountChanged'; selectedAssetKey: string }
   | { type: 'clearRecipient' }
   | { type: 'selectAsset'; selectedAssetKey: string }
-  | { type: 'selectRecipient'; recipient: any }
+  | { type: 'selectRecipient'; recipient: SendRecipient }
   | { type: 'setAmount'; amount: string }
   | { type: 'setMaxAmount'; amount: string }
   | { type: 'setRecipientInput'; recipientInput: string }

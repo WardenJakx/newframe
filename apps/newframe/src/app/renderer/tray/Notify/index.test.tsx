@@ -1,13 +1,24 @@
 import { expect, it } from 'bun:test'
 
 import { act, render, screen, waitFor } from '../../../../../test/support/componentSetup'
-import { createHostFixture } from '../../../../../test/support/rendererClient'
+import { registerTestRuntimeFixture } from '../../../../../test/support/rendererClient'
 import { walletState } from '../../../../platform/state-sync/renderer/fixtures.test-support.ts'
-import { resetStateMirrorForTests } from '../../../../platform/state-sync/renderer/rendererStore'
 import { TrayNotificationProvider, useTrayNotification } from '../notification'
 import Notification from './index'
+import { createRequestRendererCapabilities as createRequestPorts } from '../../../../features/requests/renderer/requestCapabilities'
+import { createHomeCapability } from '../Home/homeCapability'
 
-const link = createHostFixture()
+const fixture = registerTestRuntimeFixture()
+const lazyCommandHost = {
+  executeCommand: (command: Parameters<typeof fixture.client.executeCommand>[0]) =>
+    fixture.client.executeCommand(command)
+}
+const requestPorts = createRequestPorts(lazyCommandHost)
+const notificationCapabilities = {
+  external: requestPorts.external,
+  home: createHomeCapability(lazyCommandHost),
+  review: requestPorts.review
+}
 
 function WarningFixture() {
   const { notify } = useTrayNotification()
@@ -45,15 +56,15 @@ it('keeps an extension response visible until projected notify state confirms co
     notifications: {},
     badge: ''
   }
-  resetStateMirrorForTests(walletState({ view: extensionView }))
+  fixture.state.reset(walletState({ view: extensionView }))
   const { user } = render(
     <TrayNotificationProvider>
-      <Notification />
+      <Notification {...notificationCapabilities} />
     </TrayNotificationProvider>
   )
 
   await user.click(screen.getByRole('button', { name: 'Accept' }))
-  expect(link.executeCommand).toHaveBeenCalledWith({
+  expect(fixture.client.executeCommand).toHaveBeenCalledWith({
     type: 'extension.respond',
     extensionId: 'extension-a',
     approved: true
@@ -61,7 +72,7 @@ it('keeps an extension response visible until projected notify state confirms co
   expect(screen.getByRole('dialog', { name: 'Extension connection request' })).toBeTruthy()
 
   act(() => {
-    resetStateMirrorForTests(walletState({ view: { ...extensionView, notify: '', notifyData: {} } }))
+    fixture.state.reset(walletState({ view: { ...extensionView, notify: '', notifyData: {} } }))
   })
   await waitFor(() => {
     expect(screen.queryByRole('dialog', { name: 'Extension connection request' })).toBeNull()
@@ -69,17 +80,17 @@ it('keeps an extension response visible until projected notify state confirms co
 })
 
 it('confirms only the exact warning gate projected by main', async () => {
-  resetStateMirrorForTests(walletState({}))
+  fixture.state.reset(walletState({}))
   const { user } = render(
     <TrayNotificationProvider>
       <WarningFixture />
-      <Notification />
+      <Notification {...notificationCapabilities} />
     </TrayNotificationProvider>
   )
 
   await user.click(screen.getByRole('button', { name: 'Compatibility warning' }))
   await user.click(screen.getByRole('button', { name: 'Proceed' }))
-  expect(link.executeCommand).toHaveBeenCalledWith({
+  expect(fixture.client.executeCommand).toHaveBeenCalledWith({
     type: 'request.warning-confirm',
     requestId: 'request-a',
     gate: 'signer-compatibility'
@@ -87,7 +98,7 @@ it('confirms only the exact warning gate projected by main', async () => {
 
   await user.click(screen.getByRole('button', { name: 'Gas warning' }))
   await user.click(screen.getByRole('button', { name: 'Proceed' }))
-  expect(link.executeCommand).toHaveBeenCalledWith({
+  expect(fixture.client.executeCommand).toHaveBeenCalledWith({
     type: 'request.warning-confirm',
     requestId: 'request-a',
     gate: 'gas-fee'

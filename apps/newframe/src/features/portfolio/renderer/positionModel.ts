@@ -16,7 +16,7 @@ export function createPositionGroups({
   selectedChainId
 }: {
   balances: BalanceSummary[]
-  networks: Record<string | number, any>
+  networks: Record<string | number, { name?: string }>
   query: string
   selectedChainId: number
 }): PositionGroups {

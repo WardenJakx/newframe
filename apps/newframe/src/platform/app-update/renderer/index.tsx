@@ -3,14 +3,14 @@ import { Dialog } from '@newframe/ui/dialog'
 import { Stack } from '@newframe/ui/stack'
 import { Text } from '@newframe/ui/text'
 
-import link from '../../ipc/renderer/link'
 import { useWalletSelector } from '../../state-sync/renderer/useAppSelector'
 import type { TrayRendererState } from '../../../app/renderer/tray/state'
+import type { UpdaterCapability } from './updaterCapability'
 
 const EMPTY_BADGE = {}
 const selectBadge = (state: TrayRendererState) => state.view.badge || EMPTY_BADGE
 
-export default function Badge() {
+export default function Badge({ capability }: { capability: UpdaterCapability }) {
   const badge = useWalletSelector(selectBadge) as { type?: string; version?: string }
 
   if (badge.type !== 'updateReady' && badge.type !== 'updateAvailable') return null
@@ -30,8 +30,7 @@ export default function Badge() {
         <Button
           appearance='primary'
           onPress={() =>
-            void link.executeCommand({
-              type: 'updater.respond',
+            void capability.respond({
               action: ready ? 'restart' : 'install'
             })
           }
@@ -43,8 +42,7 @@ export default function Badge() {
         <Button
           appearance='danger'
           onPress={() =>
-            void link.executeCommand({
-              type: 'updater.respond',
+            void capability.respond({
               action: ready ? 'dismiss-ready' : 'later'
             })
           }
@@ -56,7 +54,7 @@ export default function Badge() {
         {!ready ? (
           <Button
             appearance='ghost'
-            onPress={() => void link.executeCommand({ type: 'updater.respond', action: 'skip' })}
+            onPress={() => void capability.respond({ action: 'skip' })}
             shape='pill'
             width='full'
           >

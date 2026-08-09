@@ -5,6 +5,7 @@ import { Stack } from '@newframe/ui/stack'
 import { Text } from '@newframe/ui/text'
 
 import type { WalletStatusNotification } from '../../../../platform/state-sync/contract/projections'
+import { timestamp } from '../../../../shared/domain/timestamp'
 import StatusGlyph from '../../../../shared/renderer/ui/StatusGlyph'
 import { cva } from '../../../../../generated/styled-system/css/cva.js'
 
@@ -60,18 +61,6 @@ const chainRecipe = cva({
 
 const PENDING_NOTIFICATION_MS = 60 * 1000
 const RESOLVED_NOTIFICATION_MS = 3000
-
-export const timestamp = (value: any, fallback = 0) => {
-  if (typeof value === 'number') return value
-  if (value instanceof Date) return value.getTime()
-  if (typeof value === 'string') {
-    const parsed = Date.parse(value)
-    if (!Number.isNaN(parsed)) return parsed
-    const numeric = Number(value)
-    if (!Number.isNaN(numeric)) return numeric
-  }
-  return fallback
-}
 
 const notificationExpiresAt = (notification: WalletStatusNotification) => {
   const fallbackBase = timestamp(notification.updatedAt, timestamp(notification.createdAt, Date.now()))

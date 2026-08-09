@@ -7,6 +7,7 @@ import { AddressIdentity } from '../../../shared/renderer/ui/AddressIdentity'
 import { TrayOverlay } from '../../../shared/renderer/ui/TrayOverlay'
 import { cva } from '../../../../generated/styled-system/css/cva.js'
 import AddressQRCode from './AddressQRCode'
+import type { ClipboardCapability } from '../../../shared/renderer/capabilities'
 
 const receiveRecipe = cva({
   base: {
@@ -18,11 +19,13 @@ const receiveRecipe = cva({
 
 export function ReceiveView({
   account,
+  clipboard,
   icon,
   name,
   onBack
 }: {
   account: { address: string }
+  clipboard: ClipboardCapability
   icon: React.ReactNode
   name: string
   onBack: () => void
@@ -42,7 +45,7 @@ export function ReceiveView({
             {name}
           </Text>
           <AddressQRCode address={account.address} />
-          <AddressIdentity address={account.address} showFullAddress />
+          <AddressIdentity address={account.address} clipboard={clipboard} showFullAddress />
         </Stack>
       </div>
     </TrayOverlay>

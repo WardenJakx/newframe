@@ -1,32 +1,41 @@
-import link from '../../../../platform/ipc/renderer/link'
+import type {
+  CommandMap,
+  CommandResult,
+  QueryMap,
+  ResultForQuery
+} from '../../../../app/contracts/operations'
+import type { NewframeHost } from '../../../../platform/ipc/contract/ipc'
+import type { TokenImageCapability } from '../../../../shared/renderer/capabilities'
 import type { MarketTradeQuoteRequest } from './tradeTransaction'
 
-export function closeTrade() {
-  void link.executeCommand({ type: 'sidetray.close' })
+type WithoutType<TInput> = TInput extends { type: string } ? Omit<TInput, 'type'> : never
+type TradePrepareInput = WithoutType<CommandMap['trade.prepare']>
+type TradeSubmitInput = WithoutType<CommandMap['trade.submit']>
+type TradeQuoteSuccess = Extract<ResultForQuery<QueryMap['flash.quote']>, { ok: true }>
+
+export interface TradeCapability extends TokenImageCapability {
+  quote(request: MarketTradeQuoteRequest): Promise<TradeQuoteSuccess>
+  prepare(input: TradePrepareInput): Promise<CommandResult>
+  submit(input: TradeSubmitInput): Promise<CommandResult>
+  release(): Promise<CommandResult>
+  close(): Promise<CommandResult>
 }
 
-export async function flashQuote(request: MarketTradeQuoteRequest) {
-  const { accountAddress: _accountAddress, ...wireRequest } = request
-  const result = await link.executeQuery({
-    type: 'flash.quote',
-    request: wireRequest
-  })
-  if (!result.ok) throw new Error(result.message || 'Flash quote failed.')
-  return result
-}
+type TradeHost = Pick<NewframeHost, 'executeCommand' | 'executeQuery'>
 
-export function prepareTrade(operationId: string, quoteId: string, action: 'wrap' | 'approve') {
-  return link.executeCommand({ type: 'trade.prepare', operationId, quoteId, action })
-}
+export function createTradeCapability(host: TradeHost): TradeCapability {
+  return {
+    quote: async (request) => {
+      const { accountAddress: _accountAddress, ...wireRequest } = request
+      const result = await host.executeQuery({ type: 'flash.quote', request: wireRequest })
+      if (!result.ok) throw new Error(result.message || 'Flash quote failed.')
 
-export function submitTrade(operationId: string, quoteId: string) {
-  return link.executeCommand({ type: 'trade.submit', operationId, quoteId })
-}
-
-export async function releaseTrade() {
-  try {
-    await link.executeCommand({ type: 'trade.release' })
-  } catch {
-    // Owner-scoped quote cleanup is best-effort during renderer teardown.
+      return result
+    },
+    prepare: (input) => host.executeCommand({ type: 'trade.prepare', ...input }),
+    submit: (input) => host.executeCommand({ type: 'trade.submit', ...input }),
+    release: () => host.executeCommand({ type: 'trade.release' }),
+    close: () => host.executeCommand({ type: 'sidetray.close' }),
+    hydrateTokenImage: (tokenId) => host.executeCommand({ type: 'token.image-hydrate', tokenId })
   }
 }

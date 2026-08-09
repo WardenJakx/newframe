@@ -6,6 +6,7 @@ import {
   checkOperationContractAuthority,
   checkPlatformCommandAuthority,
   checkRawIpcAuthority,
+  checkRendererTransportAuthority,
   checkSource,
   extractModuleSpecifiers
 } from './check-architecture'
@@ -170,6 +171,74 @@ test('rejects every supported renderer boundary bypass form and test fixture', (
       "import 'apps/newframe/src/features/example/main/service'",
       'renderer cannot import main'
     )
+})
+
+test('rejects feature renderer dependencies on app renderer modules in production and tests', () => {
+  const sources = [
+    "import '../../../app/renderer/tray/state'",
+    "export * from 'apps/newframe/src/app/renderer/tray/notification'",
+    "void import('/workspace/apps/newframe/src/app/renderer/tray/Home/state/HomeUiProvider')",
+    "require('@newframe/src/app/renderer/tray/ui/HeaderBar')"
+  ]
+  for (const file of [renderer, 'apps/newframe/src/features/example/renderer/view.test.tsx']) {
+    for (const source of sources) {
+      rejects(checkDependencyDirection, file, source, 'feature renderers cannot import app renderer modules')
+    }
+  }
+})
+
+test('allows app renderer composition to import feature renderers', () => {
+  allows(
+    checkDependencyDirection,
+    'apps/newframe/src/app/renderer/tray/Home/HomeOverlayRouter.tsx',
+    "import { Accounts } from '../../../../features/accounts/renderer/Accounts'"
+  )
+})
+
+test('restricts raw renderer link imports to focused composition boundaries', () => {
+  const source = "import link from '@newframe/src/platform/ipc/renderer/link'"
+  for (const file of [
+    renderer,
+    'apps/newframe/src/shared/renderer/ui/CopyButton.tsx',
+    'apps/newframe/src/app/renderer/tray/Footer/index.tsx',
+    'apps/newframe/src/platform/example/renderer/production.ts'
+  ]) {
+    rejects(checkRendererTransportAuthority, file, source, 'raw renderer IPC link imports are restricted')
+  }
+
+  for (const file of [
+    'apps/newframe/src/renderer/tray/index.tsx',
+    'apps/newframe/src/app/renderer/capabilities/requests.ts',
+    'apps/newframe/src/platform/app-update/renderer/production.ts'
+  ]) {
+    allows(checkRendererTransportAuthority, file, source)
+  }
+})
+
+test('rejects explicit any throughout production renderer code', () => {
+  for (const source of [
+    'const value: any = input',
+    'const value = input as any',
+    'const values: any[] = []',
+    'const values = new Map<string, any>()',
+    'type Value = unknown | any',
+    'type DefaultValue = any'
+  ]) {
+    rejects(
+      checkRendererTransportAuthority,
+      renderer,
+      source,
+      'production renderer code cannot use explicit any'
+    )
+  }
+
+  for (const source of [
+    'const value: unknown = input',
+    "const label = 'any'",
+    '// accept any external value only after narrowing\nconst value: unknown = input'
+  ]) {
+    allows(checkRendererTransportAuthority, renderer, source)
+  }
 })
 
 test('rejects runtime dependencies from renderer and portable layers', () => {

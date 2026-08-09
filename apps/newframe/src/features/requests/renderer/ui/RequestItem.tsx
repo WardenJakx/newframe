@@ -7,14 +7,15 @@ import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
 import { useEffect, useState, type ReactNode } from 'react'
 
-import type { AccountRequest } from '../../contract/requests'
+import type { RequestItemRequestView } from '../Account/Requests/requestViewTypes'
 import { imageSource } from '../../../asset-data/domain/image'
-import link from '../../../../platform/ipc/renderer/link'
 import { cva } from '../../../../../generated/styled-system/css/cva.js'
 import StatusGlyph from '../../../../shared/renderer/ui/StatusGlyph'
+import type { RequestPanelCapability } from '../requestCapabilities'
 
 type RequestItemProps = {
-  req: AccountRequest
+  panel: Pick<RequestPanelCapability, 'openRequest'>
+  req: RequestItemRequestView
   title: string
   svgName?: IconName
   img?: string
@@ -45,7 +46,7 @@ const iconRecipe = cva({
 
 const contentRecipe = cva({ base: { width: '100%', minWidth: 0 } })
 
-const getElapsedTime = (req: AccountRequest) => {
+const getElapsedTime = (req: RequestItemRequestView) => {
   const elapsed = Date.now() - (req.created || 0)
   const secs = Math.floor(elapsed / 1000)
   const mins = Math.floor(secs / 60)
@@ -72,6 +73,7 @@ function RequestIcon({ img, svgName }: Pick<RequestItemProps, 'img' | 'svgName'>
 }
 
 export default function RequestItem({
+  panel,
   req,
   title,
   svgName,
@@ -140,7 +142,7 @@ export default function RequestItem({
     <Button
       appearance='outlinedSelection'
       label={`Open ${title}`}
-      onPress={() => void link.executeCommand({ type: 'panel.request-open', requestId: req.handlerId })}
+      onPress={() => void panel.openRequest({ requestId: req.handlerId })}
       size='list'
       width='full'
     >

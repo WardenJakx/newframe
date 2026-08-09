@@ -17,10 +17,10 @@ import type {
 } from '../../../contract/requests'
 import RequestItem from '../../ui/RequestItem'
 import { persistedImageSource } from '../../../../asset-data/domain/image'
-import link from '../../../../../platform/ipc/renderer/link'
 import { cva } from '../../../../../../generated/styled-system/css/cva.js'
 import TxOverview from './TransactionRequest/TxMainNew/overview'
 import { useAccountRequests, useEthereumNetworkMetadata, useEthereumNetworks, useOrigins } from './state'
+import type { RequestRendererCapabilities } from '../../requestCapabilities'
 
 type RenderableRequest =
   | AccessRequest
@@ -31,7 +31,12 @@ type RenderableRequest =
   | TransactionRequest
   | AccountRequest<'switchChain'>
 
-type RequestsWithStateProps = { account?: string; expanded?: boolean; moduleId?: string }
+type RequestsWithStateProps = {
+  account?: string
+  capabilities: Pick<RequestRendererCapabilities, 'panel' | 'review'>
+  expanded?: boolean
+  moduleId?: string
+}
 
 type RequestsProps = RequestsWithStateProps & {
   accountRequests: Record<string, RenderableRequest>
@@ -94,7 +99,14 @@ function Requests(props: RequestsProps) {
     }
 
     return (
-      <RequestItem img={img} key={`${req.type}-${index}`} req={req} svgName={svgName} title={title}>
+      <RequestItem
+        img={img}
+        key={`${req.type}-${index}`}
+        panel={props.capabilities.panel}
+        req={req}
+        svgName={svgName}
+        title={title}
+      >
         {detail}
       </RequestItem>
     )
@@ -131,8 +143,7 @@ function Requests(props: RequestsProps) {
                   <Button
                     appearance='ghost'
                     onPress={() =>
-                      void link.executeCommand({
-                        type: 'request.clear-origin',
+                      void props.capabilities.review.clearOrigin({
                         accountId: props.account || '',
                         originId: origin
                       })

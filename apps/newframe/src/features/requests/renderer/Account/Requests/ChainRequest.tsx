@@ -4,19 +4,10 @@ import { Text } from '@newframe/ui/text'
 
 import { RequestStatusNotice } from '../../ui/RequestStatusNotice'
 import { useNetwork, useOriginName } from './state'
-import type { AccountRequest } from '../../../contract/requests'
-
-type ChainRequestData = AccountRequest<'addChain' | 'switchChain'> & {
-  id?: string
-  chain: {
-    id: string | number
-    type: string
-    name?: string
-  }
-}
+import type { ChainRequestView } from './requestViewTypes'
 
 type ChainRequestProps = {
-  req: ChainRequestData
+  req: ChainRequestView
   originName: string
   networkName?: string
 }

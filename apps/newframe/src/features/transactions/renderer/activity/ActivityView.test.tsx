@@ -1,10 +1,15 @@
 import { describe, expect, it, mock } from 'bun:test'
 
 import { render, screen } from '../../../../../test/support/componentSetup'
-import { createHostFixture } from '../../../../../test/support/rendererClient'
+import { registerTestRuntimeFixture } from '../../../../../test/support/rendererClient'
 import { ActivityView } from './ActivityView'
+import { createRendererUtilityCapabilities as createUtilityPorts } from '../../../../shared/renderer/capabilities.test-support'
 
-const link = createHostFixture()
+const fixture = registerTestRuntimeFixture()
+const utilityPorts = createUtilityPorts({
+  executeCommand: (command) => fixture.client.executeCommand(command)
+})
+type CommandCall = [command: Parameters<typeof fixture.client.executeCommand>[0]]
 const hash = `0x${'1'.repeat(64)}`
 const wethAddress = '0x0000000000000000000000000000000000000002'
 const networks = { 1: { name: 'Ethereum', explorer: 'https://etherscan.io' } }
@@ -51,11 +56,13 @@ function activity(overrides: Record<string, unknown> = {}) {
 
 describe('ActivityView', () => {
   it('opens confirmed transactions in the explorer without opening the pending details panel', async () => {
-    const onOpen = mock()
-    const onOpenExplorer = mock()
+    const onOpen = mock((_activityId: string) => undefined)
+    const onOpenExplorer = mock((_record: ReturnType<typeof activity>) => undefined)
     const { user } = render(
       <ActivityView
         activity={[activity()]}
+        clipboard={utilityPorts}
+        imageCapability={utilityPorts}
         networks={networks}
         networksMeta={networksMeta}
         onOpen={onOpen}
@@ -66,8 +73,10 @@ describe('ActivityView', () => {
 
     await user.click(screen.getByRole('button', { name: `Open transaction ${hash} in explorer` }))
 
-    expect(onOpenExplorer).toHaveBeenCalledWith(expect.objectContaining({ hash }))
-    expect(onOpen).not.toHaveBeenCalled()
+    const explorerCalls: Array<[record: ReturnType<typeof activity>]> = onOpenExplorer.mock.calls
+    const openCalls: Array<[activityId: string]> = onOpen.mock.calls
+    expect(explorerCalls.map(([record]) => record.hash)).toEqual([hash])
+    expect(openCalls).toEqual([])
     expect(screen.getByText('0x1111…1111').closest('[data-transaction-link]')).toBeTruthy()
     expect(screen.getByText('0x1111…1111').getAttribute('data-tone')).toBe('secondary')
     expect(screen.getByText('USDC')).toBeTruthy()
@@ -81,6 +90,8 @@ describe('ActivityView', () => {
     const { user } = render(
       <ActivityView
         activity={[activity()]}
+        clipboard={utilityPorts}
+        imageCapability={utilityPorts}
         networks={{ 1: { name: 'Ethereum', explorer: '' } }}
         networksMeta={networksMeta}
         onOpen={() => {}}
@@ -94,7 +105,8 @@ describe('ActivityView', () => {
 
     await user.click(screen.getByRole('button', { name: `Copy transaction hash ${hash}` }))
 
-    expect(link.executeCommand).toHaveBeenCalledWith({ type: 'clipboard.write', text: hash })
+    const commandCalls = fixture.client.executeCommand.mock.calls as CommandCall[]
+    expect(commandCalls).toEqual([[{ type: 'clipboard.write', text: hash }]])
     expect(screen.getByRole('button', { name: `Transaction hash copied ${hash}` })).toBeTruthy()
   })
 
@@ -110,6 +122,8 @@ describe('ActivityView', () => {
             tokenData: { symbol: 'WETH' }
           })
         ]}
+        clipboard={utilityPorts}
+        imageCapability={utilityPorts}
         networks={networks}
         networksMeta={networksMeta}
         onOpen={() => {}}
@@ -117,7 +131,16 @@ describe('ActivityView', () => {
         tokens={{
           byId: {
             [`1:${wethAddress}`]: {
-              image: { base64: 'd2V0aA==', mimeType: 'image/png' }
+              address: wethAddress,
+              chainId: 1,
+              name: 'Wrapped Ether',
+              symbol: 'WETH',
+              decimals: 18,
+              image: { base64: 'd2V0aA==', contentHash: 'fixture-weth', mimeType: 'image/png' },
+              custom: false,
+              curated: true,
+              sources: ['bundled'],
+              updatedAt: 1
             }
           },
           accountTokenIds: {}
@@ -130,12 +153,14 @@ describe('ActivityView', () => {
   })
 
   it('keeps pending activity wired to the transaction details panel', async () => {
-    const onOpen = mock()
-    const onOpenExplorer = mock()
+    const onOpen = mock((_activityId: string) => undefined)
+    const onOpenExplorer = mock((_record: ReturnType<typeof activity>) => undefined)
     const pending = activity({ id: 'pending', hash: undefined, status: 'confirming' })
     const { user } = render(
       <ActivityView
         activity={[pending]}
+        clipboard={utilityPorts}
+        imageCapability={utilityPorts}
         networks={networks}
         networksMeta={networksMeta}
         onOpen={onOpen}
@@ -146,8 +171,10 @@ describe('ActivityView', () => {
 
     await user.click(screen.getByRole('button', { name: 'Send USDC Confirming' }))
 
-    expect(onOpen).toHaveBeenCalledWith('pending')
-    expect(onOpenExplorer).not.toHaveBeenCalled()
+    const openCalls: Array<[activityId: string]> = onOpen.mock.calls
+    const explorerCalls: Array<[record: ReturnType<typeof activity>]> = onOpenExplorer.mock.calls
+    expect(openCalls).toEqual([['pending']])
+    expect(explorerCalls).toEqual([])
   })
 
   it('keeps the status checkmark for unknown confirmed actions', () => {
@@ -160,6 +187,8 @@ describe('ActivityView', () => {
             balanceChanges: []
           })
         ]}
+        clipboard={utilityPorts}
+        imageCapability={utilityPorts}
         networks={networks}
         networksMeta={networksMeta}
         onOpen={() => {}}

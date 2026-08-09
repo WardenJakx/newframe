@@ -1,8 +1,8 @@
 import React from 'react'
 
-import { flashQuote } from './tradeService'
 import { buildTradeQuoteRequest, marketTradeQuoteRequestKey, tradeErrorMessage } from './tradeTransaction'
 import type { TradeWorkflowAction } from './tradeReducer'
+import type { TradeCapability } from './tradeService'
 
 const MARKET_QUOTE_DEBOUNCE_MS = 250
 const MARKET_QUOTE_REFRESH_MS = 15_000
@@ -91,10 +91,12 @@ export function useTradeQuoteRequest({
 }
 
 export function useTradeQuote({
+  capability,
   dispatch,
   paused,
   quoteRequest
 }: {
+  capability: TradeCapability
   dispatch: React.Dispatch<TradeWorkflowAction>
   paused: boolean
   quoteRequest: TradeQuoteEffectRequest
@@ -121,7 +123,8 @@ export function useTradeQuote({
       if (cancelled) return
       dispatch({ type: 'quoteRequested', requestKey })
 
-      void flashQuote(request)
+      void capability
+        .quote(request)
         .then((result) => {
           if (cancelled) return
           const quote = result?.quote || null
@@ -161,5 +164,5 @@ export function useTradeQuote({
       cancelled = true
       if (timer) clearTimeout(timer)
     }
-  }, [dispatch, paused, quoteRequest.error, quoteRequest.request, quoteRequest.requestKey])
+  }, [capability, dispatch, paused, quoteRequest.error, quoteRequest.request, quoteRequest.requestKey])
 }

@@ -3,11 +3,13 @@ import { beforeEach, describe, expect, it } from 'bun:test'
 import { useShallow } from 'zustand/react/shallow'
 
 import { act, render, screen } from '../../../../test/support/componentSetup'
-import { applyStateMessage, beginStateConnection, resetStateMirrorForTests } from './rendererStore'
+import { registerTestRuntimeFixture } from '../../../../test/support/rendererClient'
 import { useWalletSelector } from './useAppSelector'
 import type { WalletRendererState } from '../contract/projections'
 import { STATE_STREAM_SCHEMA_VERSION, type StateSnapshot, type StateUpdateBatch } from '../contract/protocol'
 import { walletChanges, walletState } from './fixtures.test-support.ts'
+
+const fixture = registerTestRuntimeFixture()
 
 const snapshot = (state: Partial<WalletRendererState>): StateSnapshot<WalletRendererState> => ({
   schemaVersion: STATE_STREAM_SCHEMA_VERSION,
@@ -29,9 +31,9 @@ const update = (
 
 describe('useWalletSelector', () => {
   beforeEach(() => {
-    resetStateMirrorForTests()
-    beginStateConnection('wallet-ui')
-    applyStateMessage(snapshot({ currentAccount: 'one' }))
+    fixture.state.reset({})
+    fixture.state.beginStateConnection('wallet-ui')
+    fixture.state.applyStateMessage(snapshot({ currentAccount: 'one' }))
   })
 
   it('reads selected values from the renderer state mirror', () => {
@@ -52,7 +54,7 @@ describe('useWalletSelector', () => {
 
     render(<CurrentAccount />)
     act(() => {
-      applyStateMessage(update({ currentAccount: 'two' }))
+      fixture.state.applyStateMessage(update({ currentAccount: 'two' }))
     })
 
     expect(screen.getByText('two')).toBeTruthy()
@@ -71,12 +73,14 @@ describe('useWalletSelector', () => {
     const firstSelection = selections[0]
 
     act(() => {
-      applyStateMessage(update({ assetRates: { token: { usdRate: 1, source: 'zerion', observedAt: 1 } } }))
+      fixture.state.applyStateMessage(
+        update({ assetRates: { token: { usdRate: 1, source: 'zerion', observedAt: 1 } } })
+      )
     })
     expect(selections).toHaveLength(1)
 
     act(() => {
-      applyStateMessage(update({ currentAccount: 'three' }, 1))
+      fixture.state.applyStateMessage(update({ currentAccount: 'three' }, 1))
     })
 
     expect(selections).toHaveLength(2)

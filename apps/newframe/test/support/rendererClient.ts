@@ -3,8 +3,10 @@ import { afterEach, beforeEach, mock } from 'bun:test'
 import type { NewframeHost } from '../../src/platform/ipc/contract/ipc'
 import type { AppCommand, AppQuery, CommandResult, ResultForQuery } from '../../src/app/contracts/operations'
 import type { StateConnectionResult, StateMessage } from '../../src/platform/state-sync/contract/protocol'
+import type { RendererStateFixtureOptions } from './rendererState'
+import { createRendererStateFixture, installRendererStateFixture } from './rendererState'
 
-function createRendererClient() {
+export function createRendererClient() {
   return {
     connectState: mock(
       async (_handler: (message: StateMessage) => void): Promise<StateConnectionResult> => ({
@@ -22,48 +24,124 @@ function createRendererClient() {
   } satisfies NewframeHost
 }
 
-export type TestRendererClient = ReturnType<typeof createRendererClient>
+type TestRendererClient = ReturnType<typeof createRendererClient>
 
-function resetRendererClient(client: TestRendererClient) {
-  client.connectState.mockReset()
-  client.connectState.mockResolvedValue({ ok: true })
-  client.disconnectState.mockReset()
-  client.disconnectState.mockResolvedValue({ ok: true })
-  client.executeCommand.mockReset()
-  client.executeCommand.mockResolvedValue({ ok: true })
-  client.executeQuery.mockReset()
-  client.executeQuery.mockResolvedValue({ ok: false, error: 'not_found' } as never)
+interface HostInstallationBase {
+  createdWindow: boolean
+  previousHost: NewframeHost | undefined
 }
 
-function installRendererClient(client: TestRendererClient) {
-  if (typeof window === 'undefined') {
+interface HostInstallation {
+  base: HostInstallationBase
+  client: TestRendererClient
+  disposed: boolean
+  previous: HostInstallation | undefined
+  window: Window
+}
+
+const activeHostInstallations = new WeakMap<Window, HostInstallation>()
+
+export function createTestRuntimeFixture(options?: RendererStateFixtureOptions) {
+  return {
+    client: createRendererClient(),
+    state: createRendererStateFixture(options)
+  }
+}
+
+export type TestRuntimeFixture = ReturnType<typeof createTestRuntimeFixture>
+
+export function registerTestRuntimeFixture(options?: RendererStateFixtureOptions): TestRuntimeFixture {
+  let runtime: TestRuntimeFixture | undefined
+  let disposeHost: (() => void) | undefined
+  let disposeState: (() => void) | undefined
+
+  beforeEach(() => {
+    runtime = createTestRuntimeFixture(options)
+    disposeHost = installRendererHost(runtime.client)
+    disposeState = installRendererStateFixture(runtime.state)
+  })
+
+  afterEach(() => {
+    disposeHost?.()
+    disposeState?.()
+    disposeHost = undefined
+    disposeState = undefined
+    runtime = undefined
+  })
+
+  const current = () => {
+    if (!runtime) throw new Error('Renderer runtime fixture is only available during a test.')
+    return runtime
+  }
+
+  return {
+    get client() {
+      return current().client
+    },
+    get state() {
+      return current().state
+    }
+  }
+}
+
+export function installRendererHost(client: TestRendererClient) {
+  const createdWindow = typeof window === 'undefined'
+
+  if (createdWindow) {
     Object.defineProperty(globalThis, 'window', {
       configurable: true,
       value: {}
     })
   }
 
-  window.__NEWFRAME_HOST__ = client
-  return client
-}
+  const installedWindow = window
+  const activeInstallation = activeHostInstallations.get(installedWindow)
+  const previous =
+    activeInstallation &&
+    !activeInstallation.disposed &&
+    installedWindow.__NEWFRAME_HOST__ === activeInstallation.client
+      ? activeInstallation
+      : undefined
+  const installation: HostInstallation = {
+    base: previous?.base ?? {
+      createdWindow,
+      previousHost: installedWindow.__NEWFRAME_HOST__
+    },
+    client,
+    disposed: false,
+    previous,
+    window: installedWindow
+  }
 
-export function createHostFixture() {
-  const client = createRendererClient()
-  let createdWindow = false
+  activeHostInstallations.set(installedWindow, installation)
+  installedWindow.__NEWFRAME_HOST__ = client
 
-  beforeEach(() => {
-    createdWindow = typeof window === 'undefined'
-    resetRendererClient(client)
-    installRendererClient(client)
-  })
+  return () => {
+    if (installation.disposed) return
+    installation.disposed = true
 
-  afterEach(() => {
-    if (createdWindow) {
-      Reflect.deleteProperty(globalThis, 'window')
-    } else if (window.__NEWFRAME_HOST__ === client) {
-      Reflect.deleteProperty(window, '__NEWFRAME_HOST__')
+    if (activeHostInstallations.get(installedWindow) !== installation) return
+    if (installedWindow.__NEWFRAME_HOST__ !== client) {
+      activeHostInstallations.delete(installedWindow)
+      return
     }
-  })
 
-  return client
+    let previousInstallation = installation.previous
+    while (previousInstallation?.disposed) previousInstallation = previousInstallation.previous
+
+    if (previousInstallation) {
+      activeHostInstallations.set(installedWindow, previousInstallation)
+      installedWindow.__NEWFRAME_HOST__ = previousInstallation.client
+      return
+    }
+
+    activeHostInstallations.delete(installedWindow)
+    if (installation.base.createdWindow) {
+      if (globalThis.window === installedWindow) Reflect.deleteProperty(globalThis, 'window')
+    } else if (installation.base.previousHost) {
+      installedWindow.__NEWFRAME_HOST__ = installation.base.previousHost
+    } else {
+      Reflect.deleteProperty(installedWindow, '__NEWFRAME_HOST__')
+    }
+  }
 }

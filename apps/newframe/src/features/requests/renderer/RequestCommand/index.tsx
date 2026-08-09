@@ -12,11 +12,10 @@ import { RequestActions } from '../ui/RequestActions'
 import StatusGlyph from '../../../../shared/renderer/ui/StatusGlyph'
 import { isCancelableRequest, isSignatureRequest } from '../../domain'
 import type { WalletRendererState } from '../../../../platform/state-sync/contract/projections'
-import link from '../../../../platform/ipc/renderer/link'
 import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector'
-import { useTrayNotification, type TrayNotifier } from '../../../../app/renderer/tray/notification'
 import { useRequestView, type RequestViewStep } from '../requestView'
 import TxApproval from './TxApproval'
+import type { RequestRendererCapabilities, RequestReviewCapability } from '../requestCapabilities'
 
 type RequestReference = { handlerId: string }
 
@@ -35,20 +34,53 @@ export type RequestCommandRequest = {
   mode?: string
 }
 
-interface RequestCommandProps {
-  notify: TrayNotifier
+export interface RequestCommandProps {
+  capabilities: Pick<RequestRendererCapabilities, 'external' | 'review' | 'transaction'>
+  notify: RequestCommandNotifier
   req: RequestCommandRequest
   shared: RequestCommandSharedState
   signingDelay?: number
 }
 
+type RequestCommandNotification =
+  | {
+      type: 'gasFeeWarning'
+      data: {
+        req: TransactionRequest | SignatureRequest
+        feeUSD: string
+        currentSymbol: string
+      }
+    }
+  | {
+      type: 'signerCompatibilityWarning'
+      data: {
+        req: TransactionRequest | SignatureRequest
+        compatibility: { signer: string; tx: string; compatible: false }
+        chain: { type: 'ethereum'; id: number }
+      }
+    }
+  | {
+      type: 'signerRecovery'
+      data: { req: TransactionRequest | SignatureRequest; signerIds: string[] }
+    }
+  | {
+      type: 'noSignerWarning'
+      data: { req: TransactionRequest | SignatureRequest }
+    }
+  | {
+      type: 'openExplorer'
+      data: { hash: string; chain: { type: 'ethereum'; id: number } }
+    }
+
+export type RequestCommandNotifier = (notification: RequestCommandNotification) => void
+
 const EMPTY_CHAIN = {}
 
-export const approveRequest = (requestId: string) =>
-  void link.executeCommand({ type: 'request.approve', requestId })
+export const approveRequest = (capability: Pick<RequestReviewCapability, 'approve'>, requestId: string) =>
+  void capability.approve({ requestId })
 
-export const declineRequest = (req: RequestReference) =>
-  void link.executeCommand({ type: 'request.reject', requestId: req.handlerId })
+export const declineRequest = (capability: Pick<RequestReviewCapability, 'reject'>, req: RequestReference) =>
+  void capability.reject({ requestId: req.handlerId })
 
 export const runWhenAppUnlocked = (appLocked: boolean, next: () => void) => {
   if (!appLocked) next()
@@ -77,21 +109,23 @@ export function RequestCommand(props: RequestCommandProps) {
     const gate = request.approvalGate
     if (!gate) return
     if (gate.type === 'gas-fee') {
-      notify('gasFeeWarning', {
-        req: request,
-        feeUSD: gate.feeUSD,
-        currentSymbol: gate.currentSymbol
+      notify({
+        type: 'gasFeeWarning',
+        data: { req: request, feeUSD: gate.feeUSD, currentSymbol: gate.currentSymbol }
       })
     } else if (gate.reason === 'incompatible') {
-      notify('signerCompatibilityWarning', {
-        req: request,
-        compatibility: { signer: gate.signer, tx: gate.tx, compatible: false },
-        chain: gate.chain
+      notify({
+        type: 'signerCompatibilityWarning',
+        data: {
+          req: request,
+          compatibility: { signer: gate.signer, tx: gate.tx, compatible: false },
+          chain: gate.chain
+        }
       })
     } else if (gate.reason === 'signer-unavailable') {
-      notify('signerRecovery', { req: request, signerIds: gate.signerIds })
+      notify({ type: 'signerRecovery', data: { req: request, signerIds: gate.signerIds } })
     } else {
-      notify('noSignerWarning', { req: request })
+      notify({ type: 'noSignerWarning', data: { req: request } })
     }
   }, [notify, request, request.approvalGate])
 
@@ -106,7 +140,7 @@ export function RequestCommand(props: RequestCommandProps) {
 
     const copyHash = () => {
       if (!hash) return
-      void link.executeCommand({ type: 'clipboard.write', text: hash })
+      void props.capabilities.external.copy({ text: hash })
       setState({ txHashCopied: true, showHashDetails: false })
       setTimeout(() => setState({ txHashCopied: false }), 3000)
     }
@@ -132,12 +166,11 @@ export function RequestCommand(props: RequestCommandProps) {
                 onPress={() => {
                   if (!hash || !props.shared.chain.explorer) return
                   if (props.shared.explorerWarningMuted) {
-                    void link.executeCommand({
-                      type: 'explorer.open',
+                    void props.capabilities.external.openExplorer({
                       chainId: chain.id,
                       transactionHash: hash
                     })
-                  } else props.notify('openExplorer', { hash, chain })
+                  } else props.notify({ type: 'openExplorer', data: { hash, chain } })
                 }}
                 size='small'
               >
@@ -153,8 +186,7 @@ export function RequestCommand(props: RequestCommandProps) {
                 appearance='danger'
                 label='Cancel transaction'
                 onPress={() =>
-                  void link.executeCommand({
-                    type: 'transaction.replace',
+                  void props.capabilities.transaction.replace({
                     requestId: req.handlerId,
                     replacement: 'cancel',
                     idempotencyKey: crypto.randomUUID()
@@ -176,8 +208,7 @@ export function RequestCommand(props: RequestCommandProps) {
                 appearance='subtle'
                 label='Speed up transaction'
                 onPress={() =>
-                  void link.executeCommand({
-                    type: 'transaction.replace',
+                  void props.capabilities.transaction.replace({
                     requestId: req.handlerId,
                     replacement: 'speed',
                     idempotencyKey: crypto.randomUUID()
@@ -191,7 +222,12 @@ export function RequestCommand(props: RequestCommandProps) {
           )
         ) : null}
         {isCancelableRequest(req.status || '') ? (
-          <Button appearance='ghost' onPress={() => declineRequest(req)} size='compact' tone='danger'>
+          <Button
+            appearance='ghost'
+            onPress={() => declineRequest(props.capabilities.review, req)}
+            size='compact'
+            tone='danger'
+          >
             <Text variant='caption'>Cancel request</Text>
           </Button>
         ) : null}
@@ -202,7 +238,9 @@ export function RequestCommand(props: RequestCommandProps) {
   function transactionActions(req: TransactionRequest) {
     const sign = () => {
       if (!state.allowInput) return
-      runWhenAppUnlocked(props.shared.appLocked, () => approveRequest(req.handlerId))
+      runWhenAppUnlocked(props.shared.appLocked, () =>
+        approveRequest(props.capabilities.review, req.handlerId)
+      )
     }
 
     return (
@@ -216,8 +254,7 @@ export function RequestCommand(props: RequestCommandProps) {
               <Button
                 appearance='subtle'
                 onPress={() =>
-                  void link.executeCommand({
-                    type: 'transaction.fee-notice-dismiss',
+                  void props.capabilities.transaction.dismissFeeNotice({
                     requestId: req.handlerId
                   })
                 }
@@ -230,7 +267,11 @@ export function RequestCommand(props: RequestCommandProps) {
         ) : null}
         <RequestActions
           primary={{ disabled: !state.allowInput, label: 'Sign', onPress: sign }}
-          secondary={{ disabled: !state.allowInput, label: 'Decline', onPress: () => declineRequest(req) }}
+          secondary={{
+            disabled: !state.allowInput,
+            label: 'Decline',
+            onPress: () => declineRequest(props.capabilities.review, req)
+          }}
         />
       </Stack>
     )
@@ -244,6 +285,7 @@ export function RequestCommand(props: RequestCommandProps) {
     if (requiredApproval) {
       return (
         <TxApproval
+          capability={props.capabilities.review}
           req={req}
           approval={
             requiredApproval as { type: 'approveOtherChain' | 'approveGasLimit'; data?: { message?: string } }
@@ -273,7 +315,12 @@ export function RequestCommand(props: RequestCommandProps) {
             {req.notice}
           </Text>
           {pending ? (
-            <Button appearance='ghost' onPress={() => declineRequest(req)} size='compact' tone='danger'>
+            <Button
+              appearance='ghost'
+              onPress={() => declineRequest(props.capabilities.review, req)}
+              size='compact'
+              tone='danger'
+            >
               <Text variant='caption'>Cancel</Text>
             </Button>
           ) : null}
@@ -288,10 +335,16 @@ export function RequestCommand(props: RequestCommandProps) {
           label: 'Sign',
           onPress: () => {
             if (!state.allowInput) return
-            runWhenAppUnlocked(props.shared.appLocked, () => approveRequest(req.handlerId))
+            runWhenAppUnlocked(props.shared.appLocked, () =>
+              approveRequest(props.capabilities.review, req.handlerId)
+            )
           }
         }}
-        secondary={{ disabled: !state.allowInput, label: 'Decline', onPress: () => declineRequest(req) }}
+        secondary={{
+          disabled: !state.allowInput,
+          label: 'Decline',
+          onPress: () => declineRequest(props.capabilities.review, req)
+        }}
       />
     )
   }
@@ -302,10 +355,9 @@ export function RequestCommand(props: RequestCommandProps) {
   return null
 }
 
-export default function RequestCommandContainer(props: Omit<RequestCommandProps, 'notify' | 'shared'>) {
+export default function RequestCommandContainer(props: Omit<RequestCommandProps, 'shared'>) {
   const request = props.req as TransactionRequest | SignatureRequest
   const chainId = request.type === 'transaction' ? parseInt(request.data.chainId || '0', 16) : 0
-  const { notify } = useTrayNotification()
   const { step } = useRequestView()
   const selector = useMemo(
     () =>
@@ -317,5 +369,5 @@ export default function RequestCommandContainer(props: Omit<RequestCommandProps,
     [chainId]
   )
   const synchronized = useWalletSelector(useShallow(selector))
-  return <RequestCommand {...props} notify={notify} shared={{ ...synchronized, step }} />
+  return <RequestCommand {...props} shared={{ ...synchronized, step }} />
 }

@@ -11,8 +11,10 @@ import { DetailRow } from '../../../shared/renderer/ui/DetailRow'
 import { TrayOverlay } from '../../../shared/renderer/ui/TrayOverlay'
 import { formatUsdRate, isNativeCurrency, type DisplayedBalance } from '../../asset-data/domain/balance'
 import { cva } from '../../../../generated/styled-system/css/cva.js'
-import { ChainIcon } from '../../../app/renderer/tray/Home/components/ChainIcon'
+import { ChainIcon } from '../../../shared/renderer/ui/ChainIcon'
 import { TRADE_DISABLED_CHAIN_LABEL } from './usePortfolioActions'
+import type { NetworkLike, NetworkMetaLike } from '../../../shared/renderer/ui/tokenSelectorTypes'
+import type { ClipboardCapability, TokenImageCapability } from '../../../shared/renderer/capabilities'
 
 const contentRecipe = cva({ base: { paddingBlockStart: '4' } })
 
@@ -20,6 +22,8 @@ export function AssetDetailsView({
   asset,
   canSend,
   canTrade,
+  clipboard,
+  imageCapability,
   networks,
   networksMeta,
   onBack,
@@ -29,8 +33,10 @@ export function AssetDetailsView({
   asset: DisplayedBalance
   canSend: boolean
   canTrade: boolean
-  networks: Record<string | number, any>
-  networksMeta: Record<string | number, any>
+  clipboard: ClipboardCapability
+  imageCapability: TokenImageCapability
+  networks: Record<string | number, NetworkLike>
+  networksMeta: Record<string | number, NetworkMetaLike>
   onBack: () => void
   onSend: () => void
   onTrade: () => void
@@ -89,6 +95,7 @@ export function AssetDetailsView({
           <Stack align='center' direction='row' gap='small'>
             <ChainTokenIcon
               chainId={asset.chainId}
+              imageCapability={imageCapability}
               logoURI={asset.logoURI}
               networks={networks}
               networksMeta={networksMeta}
@@ -130,7 +137,11 @@ export function AssetDetailsView({
             {nativeAsset ? (
               detailRow('Contract Address', 'Native asset')
             ) : (
-              <DetailRow code label='Contract Address' value={<AddressIdentity address={asset.address} />} />
+              <DetailRow
+                code
+                label='Contract Address'
+                value={<AddressIdentity address={asset.address} clipboard={clipboard} />}
+              />
             )}
           </Stack>
         </Stack>

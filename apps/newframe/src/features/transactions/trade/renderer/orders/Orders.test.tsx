@@ -1,17 +1,29 @@
 import { describe, expect, it } from 'bun:test'
 import type { Mock } from 'bun:test'
+import { useState } from 'react'
 
 import type { OperationRecord } from '../../../../../platform/operations/operation'
 import { act, render, screen } from '../../../../../../test/support/componentSetup'
-import { createHostFixture } from '../../../../../../test/support/rendererClient'
+import { registerTestRuntimeFixture } from '../../../../../../test/support/rendererClient'
 import { walletState } from '../../../../../platform/state-sync/renderer/fixtures.test-support.ts'
-import { resetStateMirrorForTests } from '../../../../../platform/state-sync/renderer/rendererStore'
-import { HomeUiProvider, useHomeUiStore } from '../../../../../app/renderer/tray/Home/state/HomeUiProvider'
 import { OrderDetails } from './OrderDetails'
-import { Orders } from './Orders'
+import { Orders as OrdersController, type OpenOrderInput } from './Orders'
+import { createOrdersCapability } from './ordersCapability'
+import type { ComponentProps } from 'react'
+import type { AppCommand, CommandMap, CommandResult } from '../../../../../app/contracts/operations'
+import type { WalletRendererState } from '../../../../../platform/state-sync/contract/projections'
 
-const link = createHostFixture()
+const fixture = registerTestRuntimeFixture()
+const ordersCapability = createOrdersCapability({
+  executeCommand: (command) => fixture.client.executeCommand(command)
+})
+const Orders = (props: Omit<ComponentProps<typeof OrdersController>, 'capability'>) => (
+  <OrdersController {...props} capability={ordersCapability} />
+)
 const accountAddress = '0x1111111111111111111111111111111111111111'
+type ExecuteCommandMock = Mock<(command: AppCommand) => Promise<CommandResult>>
+type CancelCommand = CommandMap['flash.order-cancel']
+const executeCommandMock = () => fixture.client.executeCommand as unknown as ExecuteCommandMock
 
 function order(cancellable = true) {
   return {
@@ -35,7 +47,7 @@ function cancelButton(orderId: string) {
   return document.querySelector<HTMLButtonElement>(`[data-order-id="${orderId}"] button`)
 }
 
-function state(orders: Record<string, any>, operations: Record<string, OperationRecord> = {}) {
+function state(orders: WalletRendererState['orders'], operations: Record<string, OperationRecord> = {}) {
   return walletState({
     currentAccount: 'account-1',
     accounts: {
@@ -44,43 +56,58 @@ function state(orders: Record<string, any>, operations: Record<string, Operation
         address: accountAddress,
         name: 'Account 1',
         lastSignerType: 'address'
-      } as any
+      } as WalletRendererState['accounts'][string]
     },
     accountOrder: ['account-1'],
-    networks: { ethereum: { 1: { id: 1, name: 'Ethereum', isTestnet: false, on: true } as any } },
+    networks: {
+      ethereum: {
+        1: {
+          id: 1,
+          name: 'Ethereum',
+          isTestnet: false,
+          on: true
+        } as WalletRendererState['networks']['ethereum'][number]
+      }
+    },
     orders,
     operations
   })
 }
 
 function OrderOverlay() {
-  const overlay = useHomeUiStore((current) => current.overlay)
-  return overlay.type === 'order' ? (
-    <OrderDetails assetImages={overlay.assetImages} orderId={overlay.orderId} />
-  ) : null
+  const [selected, setSelected] = useState<OpenOrderInput | null>(null)
+  return (
+    <>
+      <Orders onOpenOrder={setSelected} selectedChainId={0} />
+      {selected ? (
+        <OrderDetails
+          assetImages={selected.assetImages}
+          capability={ordersCapability}
+          onBack={() => setSelected(null)}
+          orderId={selected.orderId}
+        />
+      ) : null}
+    </>
+  )
 }
 
 describe('Orders cancellation', () => {
   it('uses projected operation and order state for failure, retry, and completion', async () => {
-    resetStateMirrorForTests(state({ 'order-1': order() }))
-    let resolveFirst!: (value: unknown) => void
+    fixture.state.reset(state({ 'order-1': order() }))
+    let resolveFirst!: (value: CommandResult) => void
     let cancelCalls = 0
-    ;(link.executeCommand as Mock<any>).mockImplementation(async (command: any) => {
+    executeCommandMock().mockImplementation(async (command) => {
       if (command.type !== 'flash.order-cancel') return { ok: true }
       cancelCalls += 1
-      if (cancelCalls === 1) return await new Promise((resolve) => (resolveFirst = resolve))
+      if (cancelCalls === 1) return await new Promise<CommandResult>((resolve) => (resolveFirst = resolve))
       return { ok: true }
     })
 
-    const { user } = render(
-      <HomeUiProvider>
-        <Orders />
-      </HomeUiProvider>
-    )
+    const { user } = render(<Orders onOpenOrder={() => {}} selectedChainId={0} />)
 
     const cancel = screen.getByRole<HTMLButtonElement>('button', { name: 'Cancel order' })
     await user.click(cancel)
-    const firstCommand: any = (link.executeCommand as Mock<any>).mock.calls.at(-1)?.[0]
+    const firstCommand = executeCommandMock().mock.calls.at(-1)?.[0] as CancelCommand
     expect(firstCommand).toEqual({
       type: 'flash.order-cancel',
       operationId: expect.any(String),
@@ -89,7 +116,7 @@ describe('Orders cancellation', () => {
     expect(cancel.disabled).toBe(true)
 
     act(() => {
-      resetStateMirrorForTests(
+      fixture.state.reset(
         state(
           { 'order-1': order() },
           {
@@ -111,7 +138,7 @@ describe('Orders cancellation', () => {
     expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Cancel order' }).disabled).toBe(false)
 
     await user.click(screen.getByRole('button', { name: 'Cancel order' }))
-    const retryCommand: any = (link.executeCommand as Mock<any>).mock.calls.at(-1)?.[0]
+    const retryCommand = executeCommandMock().mock.calls.at(-1)?.[0] as CancelCommand
     expect(retryCommand.operationId).not.toBe(firstCommand.operationId)
     resolveFirst({ ok: false, error: 'invalid_command', message: 'Stale cancel acknowledgement.' })
     await act(async () => await Promise.resolve())
@@ -119,7 +146,7 @@ describe('Orders cancellation', () => {
     expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Cancel order' }).disabled).toBe(true)
 
     act(() => {
-      resetStateMirrorForTests(
+      fixture.state.reset(
         state(
           { 'order-1': order() },
           {
@@ -140,7 +167,7 @@ describe('Orders cancellation', () => {
     expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Cancel order' }).disabled).toBe(false)
 
     act(() => {
-      resetStateMirrorForTests(
+      fixture.state.reset(
         state(
           { 'order-1': order(false) },
           {
@@ -162,29 +189,25 @@ describe('Orders cancellation', () => {
   })
 
   it('allows different orders to be cancelled independently', async () => {
-    resetStateMirrorForTests(
+    fixture.state.reset(
       state({
         'order-1': order(),
         'order-2': { ...order(), orderId: 'order-2' }
       })
     )
-    ;(link.executeCommand as Mock<any>).mockImplementation(async (command: any) =>
+    executeCommandMock().mockImplementation(async (command) =>
       command.type === 'flash.order-cancel' ? await new Promise(() => undefined) : { ok: true }
     )
 
-    const { user } = render(
-      <HomeUiProvider>
-        <Orders />
-      </HomeUiProvider>
-    )
+    const { user } = render(<Orders onOpenOrder={() => {}} selectedChainId={0} />)
 
     await user.click(cancelButton('order-1')!)
     expect(cancelButton('order-1')?.disabled).toBe(true)
     expect(cancelButton('order-2')?.disabled).toBe(false)
 
     await user.click(cancelButton('order-2')!)
-    const cancelCommands = (link.executeCommand as Mock<any>).mock.calls
-      .map(([command]) => command as { orderId?: string; type?: string })
+    const cancelCommands = executeCommandMock()
+      .mock.calls.map(([command]) => command as { orderId?: string; type?: string })
       .filter(
         (command): command is { orderId: string; type: 'flash.order-cancel' } =>
           command.type === 'flash.order-cancel' && typeof command.orderId === 'string'
@@ -213,20 +236,15 @@ describe('Orders display', () => {
       byId: {
         [`1:${address}`]: {
           image: { base64: 'd2V0aA==', mimeType: 'image/png' }
-        } as any
+        } as WalletRendererState['tokens']['byId'][string]
       },
       accountTokenIds: {}
     }
-    resetStateMirrorForTests(initial)
-    const { user } = render(
-      <HomeUiProvider>
-        <Orders />
-        <OrderOverlay />
-      </HomeUiProvider>
-    )
+    fixture.state.reset(initial)
+    const { user } = render(<OrderOverlay />)
 
     await user.click(screen.getByRole('button', { name: /order details/i }))
-    act(() => resetStateMirrorForTests(state({ 'order-1': orderWithImage })))
+    act(() => fixture.state.reset(state({ 'order-1': orderWithImage })))
 
     expect(
       Array.from(document.querySelectorAll('img')).filter((image) => image.getAttribute('src') === iconSource)
@@ -262,14 +280,10 @@ describe('Orders display', () => {
       contraNotional: '100'
     }
 
-    resetStateMirrorForTests(
+    fixture.state.reset(
       state({ 'open-order': openOrder, 'filled-order': filledOrder, 'buy-order': buyOrder })
     )
-    render(
-      <HomeUiProvider>
-        <Orders />
-      </HomeUiProvider>
-    )
+    render(<Orders onOpenOrder={() => {}} selectedChainId={0} />)
 
     const openRow = document.querySelector('[data-order-id="open-order"]')
     const filledRow = document.querySelector('[data-order-id="filled-order"]')

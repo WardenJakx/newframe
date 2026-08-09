@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 
-import { cva } from '../../../../../generated/styled-system/css/cva.js'
+import { cva } from '../../../../generated/styled-system/css/cva.js'
 
 const headerBarRecipe = cva({
   base: {

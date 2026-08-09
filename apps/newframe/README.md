@@ -265,6 +265,19 @@ visual reset harness may retain `network.remove` and `origin.remove` commands be
 real state-changing intents, not private reset shortcuts. Provider account requests depend on the
 `AccountRequestPort` interface supplied by composition; they do not use a deferred global port.
 
+Renderer dependencies flow one way from `src/app/renderer` composition into feature renderers.
+Feature renderers never import app renderer state, notification contexts, or other app modules.
+App composition constructs focused feature capabilities around the typed host; feature controllers
+receive those capabilities and pass plain models, named events, and narrowly scoped clipboard or
+image capabilities to prop-driven views. Presentational components do not import the raw renderer
+IPC link. Renderer entry points retain document-event wiring and create each window's state
+connection, while platform composition retains host-specific adapters such as updater responses.
+
+Each renderer root creates its own Zustand store with `createRendererStateStore` and supplies it via
+`RendererStateProvider`. Stores and clients are scoped instances, not resettable module singletons.
+Canonical main-process projections remain the source of shared state; renderer-local UI stores own
+only transient interaction state such as an open menu or selected section.
+
 ## Related
 
 - [Root project README](../../README.md) - overall Newframe overview and monorepo map.

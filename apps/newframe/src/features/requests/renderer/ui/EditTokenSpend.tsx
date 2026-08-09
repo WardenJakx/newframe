@@ -13,6 +13,7 @@ import useCopiedMessage from '../hooks/useCopiedMessage'
 import type { SourceValue } from '../format/displayValue'
 import { formatUnits, max, parseUnits, toBigInt } from '../../../../shared/domain/units'
 import Countdown from './Countdown'
+import type { RequestExternalCapability } from '../requestCapabilities'
 
 type SpendMode = 'custom' | 'requested' | 'unlimited'
 
@@ -32,8 +33,16 @@ const isValidInput = (value: string, decimals: number) => {
   )
 }
 
-function ApprovalParty({ address, name }: { address: string; name?: string }) {
-  const [showCopiedMessage, copyAddress] = useCopiedMessage(address)
+function ApprovalParty({
+  address,
+  capability,
+  name
+}: {
+  address: string
+  capability: Pick<RequestExternalCapability, 'copy'>
+  name?: string
+}) {
+  const [showCopiedMessage, copyAddress] = useCopiedMessage(capability, address)
 
   return (
     <Button appearance='row' label={`Copy ${name || address}`} onPress={copyAddress} width='full'>
@@ -52,16 +61,19 @@ function ApprovalParty({ address, name }: { address: string; name?: string }) {
   )
 }
 
+type TokenSpendIdentity = Pick<Identity, 'address'> & Partial<Pick<Identity, 'ens' | 'type'>>
+
 export interface TokenSpendData {
   decimals?: number
   symbol?: string
   name?: string
-  spender: Identity
-  contract: Identity
+  spender: TokenSpendIdentity
+  contract: TokenSpendIdentity
   amount: SourceValue
 }
 
 interface EditTokenSpendProps {
+  clipboard: Pick<RequestExternalCapability, 'copy'>
   data: TokenSpendData
   updateRequest: (amount: string) => void
   requestedAmount: SourceValue
@@ -70,6 +82,7 @@ interface EditTokenSpendProps {
 }
 
 export default function EditTokenSpend({
+  clipboard,
   data,
   updateRequest,
   requestedAmount,
@@ -115,11 +128,11 @@ export default function EditTokenSpend({
       </Text>
       <Surface padding='small' radius='card'>
         <Stack gap='small'>
-          <ApprovalParty address={spender.address} name={spender.ens} />
+          <ApprovalParty address={spender.address} capability={clipboard} name={spender.ens} />
           <Text align='center' tone='danger' variant='overline'>
             {isRevoke ? 'Revoke approval to spend' : 'Grant approval to spend'}
           </Text>
-          <ApprovalParty address={contract.address} name={name} />
+          <ApprovalParty address={contract.address} capability={clipboard} name={name} />
           {deadline ? <Countdown end={deadline} title='Permission Expires in' /> : null}
         </Stack>
       </Surface>

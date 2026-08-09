@@ -1,15 +1,22 @@
 import { expect, it } from 'bun:test'
 
 import { render, screen } from '../../../../../../test/support/componentSetup'
+import { registerTestRuntimeFixture } from '../../../../../../test/support/rendererClient'
 import { walletState } from '../../../../../platform/state-sync/renderer/fixtures.test-support.ts'
-import { resetStateMirrorForTests } from '../../../../../platform/state-sync/renderer/rendererStore'
-import { HomeUiProvider } from '../../../../../app/renderer/tray/Home/state/HomeUiProvider'
 import { OrderDetails } from './OrderDetails'
 import { OrderDetailsView } from './OrderDetailsView'
+import { createOrdersCapability } from './ordersCapability'
+import type { WalletRendererState } from '../../../../../platform/state-sync/contract/projections'
+
+const fixture = registerTestRuntimeFixture()
+const ordersCapability = createOrdersCapability({
+  executeCommand: (command) => fixture.client.executeCommand(command)
+})
 
 it('keeps useful sanitized diagnostic sections without rendering executable order material', () => {
   render(
     <OrderDetailsView
+      imageCapability={ordersCapability}
       networks={{ 1: { name: 'Ethereum' }, 8453: { name: 'Base' } }}
       networksMeta={{ 1: {}, 8453: {} }}
       onBack={() => {}}
@@ -53,6 +60,7 @@ it('keeps useful sanitized diagnostic sections without rendering executable orde
 it('shows one shared chain for same-chain orders', () => {
   render(
     <OrderDetailsView
+      imageCapability={ordersCapability}
       networks={{ 1: { name: 'Ethereum' } }}
       networksMeta={{ 1: {} }}
       onBack={() => {}}
@@ -79,16 +87,20 @@ it('shows one shared chain for same-chain orders', () => {
 })
 
 it('resolves catalog and native artwork from wallet state for real Flash asset identities', () => {
-  resetStateMirrorForTests(
+  fixture.state.reset(
     walletState({
-      networks: { ethereum: { 1: { id: 1, name: 'Ethereum' } as any } },
+      networks: {
+        ethereum: {
+          1: { id: 1, name: 'Ethereum' } as WalletRendererState['networks']['ethereum'][number]
+        }
+      },
       networksMeta: {
         ethereum: {
           1: {
             nativeCurrency: {
               image: { base64: 'ZXRo', mimeType: 'image/png' }
             }
-          } as any
+          } as WalletRendererState['networksMeta']['ethereum'][number]
         }
       },
       orders: {
@@ -112,24 +124,20 @@ it('resolves catalog and native artwork from wallet state for real Flash asset i
             chainId: 1
           },
           qty: '1'
-        } as any
+        } as WalletRendererState['orders'][string]
       },
       tokens: {
         byId: {
           '1:0x1111111111111111111111111111111111111111': {
             image: { base64: 'd2V0aA==', mimeType: 'image/png' }
-          } as any
+          } as WalletRendererState['tokens']['byId'][string]
         },
         accountTokenIds: {}
       }
     })
   )
 
-  render(
-    <HomeUiProvider>
-      <OrderDetails orderId='image-order' />
-    </HomeUiProvider>
-  )
+  render(<OrderDetails capability={ordersCapability} onBack={() => {}} orderId='image-order' />)
 
   expect(Array.from(document.querySelectorAll('img')).map((image) => image.getAttribute('src'))).toEqual(
     expect.arrayContaining(['data:image/png;base64,d2V0aA==', 'data:image/png;base64,ZXRo'])

@@ -1,13 +1,20 @@
 import { Icon } from '@newframe/ui/icon'
 import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector'
-import { useHomeUiStore } from '../../../app/renderer/tray/Home/state/HomeUiProvider'
 import { ReceiveView } from './ReceiveView'
 import { signerIconName } from '../../../shared/renderer/ui/signerPresentation'
+import type { AccountsCapability } from './accountsCapability'
 
-export function Receive({ accountId }: { accountId: string }) {
+export function Receive({
+  accountId,
+  capability,
+  onBack
+}: {
+  accountId: string
+  capability: Pick<AccountsCapability, 'writeText'>
+  onBack: () => void
+}) {
   const account = useWalletSelector((state) => state.accounts?.[accountId])
   const showLocalNameWithENS = useWalletSelector((state) => !!state.showLocalNameWithENS)
-  const closeOverlay = useHomeUiStore((state) => state.closeOverlay)
 
   if (!account) return null
   const name = account.ensName && !showLocalNameWithENS ? account.ensName : account.name
@@ -16,9 +23,10 @@ export function Receive({ accountId }: { accountId: string }) {
   return (
     <ReceiveView
       account={account}
+      clipboard={capability}
       icon={<Icon name={signerIconName(type)} size='large' />}
       name={name}
-      onBack={closeOverlay}
+      onBack={onBack}
     />
   )
 }

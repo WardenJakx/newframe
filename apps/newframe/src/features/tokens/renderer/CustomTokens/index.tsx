@@ -9,27 +9,34 @@ import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
 
 import type { Token } from '../../domain/state/token'
-import link from '../../../../platform/ipc/renderer/link'
 import { AddressIdentity } from '../../../../shared/renderer/ui/AddressIdentity'
 import { customTokens, tokenImageSource } from '../../domain'
 import { useTokenImageHydration } from '../../../../shared/renderer/hooks/useTokenImageHydration'
 import type { WalletRendererState } from '../../../../platform/state-sync/contract/projections'
 import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector'
+import type { TokensCapability } from '../tokensCapability'
 
 const selectCustomTokens = (state: WalletRendererState) => customTokens(state.tokens)
 
 interface CustomTokensProps {
+  capability: Pick<TokensCapability, 'hydrateTokenImage' | 'remove' | 'writeText'>
   onEdit: (token: Token) => void
   tokens: Token[]
 }
 
-function CustomTokenImage({ token }: { token: Token }) {
+function CustomTokenImage({
+  capability,
+  token
+}: {
+  capability: Pick<TokensCapability, 'hydrateTokenImage'>
+  token: Token
+}) {
   const source = tokenImageSource(token)
-  useTokenImageHydration(`${token.chainId}:${token.address.toLowerCase()}`, !!source)
+  useTokenImageHydration(capability, `${token.chainId}:${token.address.toLowerCase()}`, !!source)
   return source ? <Image alt={token.symbol.toUpperCase()} size='medium' source={source} /> : null
 }
 
-function CustomTokensView({ onEdit, tokens }: CustomTokensProps) {
+function CustomTokensView({ capability, onEdit, tokens }: CustomTokensProps) {
   const [expandedAddress, setExpandedAddress] = useState('')
   const sortedTokens = [...tokens].sort((a, b) => a.chainId - b.chainId)
 
@@ -49,7 +56,7 @@ function CustomTokensView({ onEdit, tokens }: CustomTokensProps) {
           <Surface key={`${token.chainId}:${token.address}`} padding='small' radius='card'>
             <Stack gap='small'>
               <Stack align='center' direction='row' gap='small'>
-                <CustomTokenImage token={token} />
+                <CustomTokenImage capability={capability} token={token} />
                 <Stack gap='xsmall' grow>
                   <Text truncate variant='label'>
                     {token.symbol}
@@ -67,7 +74,7 @@ function CustomTokensView({ onEdit, tokens }: CustomTokensProps) {
                   size='small'
                 />
               </Stack>
-              <AddressIdentity address={token.address} showFullAddress />
+              <AddressIdentity address={token.address} clipboard={capability} showFullAddress />
               {expanded ? (
                 <Stack direction='row' gap='small'>
                   <Button
@@ -83,8 +90,7 @@ function CustomTokensView({ onEdit, tokens }: CustomTokensProps) {
                     label={`Remove ${token.symbol}`}
                     onPress={() => {
                       setExpandedAddress('')
-                      void link.executeCommand({
-                        type: 'token.remove',
+                      void capability.remove({
                         address: token.address,
                         chainId: token.chainId
                       })
@@ -103,7 +109,13 @@ function CustomTokensView({ onEdit, tokens }: CustomTokensProps) {
   )
 }
 
-export default function CustomTokens({ onEdit }: { onEdit: (token: Token) => void }) {
+export default function CustomTokens({
+  capability,
+  onEdit
+}: {
+  capability: Pick<TokensCapability, 'hydrateTokenImage' | 'remove' | 'writeText'>
+  onEdit: (token: Token) => void
+}) {
   const tokens = useWalletSelector(useShallow(selectCustomTokens))
-  return <CustomTokensView onEdit={onEdit} tokens={tokens} />
+  return <CustomTokensView capability={capability} onEdit={onEdit} tokens={tokens} />
 }

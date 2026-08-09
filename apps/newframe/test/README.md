@@ -23,3 +23,15 @@ failure, and retry branches remain explicit behavioral tests instead of a fabric
 
 Production code must not import test files, test fixtures, or support modules. Compile and bundle
 commands verify that test-only artifacts are not included in their output.
+
+Renderer tests own their runtime. Each component, view, controller, or hook test creates or registers
+the store and typed renderer client it uses; tests must not reset a process-global renderer store or
+replace a shared client singleton. Prefer prop-driven view tests with typed models, named events, and
+focused capability fakes. Controller tests provide a fresh scoped store/client and assert semantic
+capability calls plus projected-state behavior. Integration tests may connect those pieces, but still
+own and dispose their store and client per test fixture.
+
+The same one-way dependency rule applies in tests: app renderer composition may import features,
+but feature renderer tests and fixtures may not import app renderer modules. Capability fakes stay
+with their owning feature (or in explicitly test-only shared support), and captured calls retain the
+catalog-derived input types instead of using `any`.

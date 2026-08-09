@@ -1,5 +1,10 @@
 import { matchFilter } from '../../../shared/domain/text'
 import type { BalanceSummary } from '../../asset-data/domain/balance'
+interface NetworkListItem {
+  isTestnet?: boolean
+  name: string
+  on: boolean
+}
 
 export function createNetworkRows({
   balances,
@@ -8,7 +13,7 @@ export function createNetworkRows({
   showTestnets
 }: {
   balances: BalanceSummary[]
-  networks: Record<string | number, any>
+  networks: Record<string | number, NetworkListItem>
   query: string
   showTestnets: boolean
 }) {

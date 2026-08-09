@@ -8,7 +8,7 @@ describe('sendReducer account changes', () => {
       ...createInitialSendState('old-asset'),
       amount: '42',
       error: 'Transaction failed.',
-      recipient: { id: 'recipient' },
+      recipient: { id: 'recipient', address: `0x${'2'.repeat(40)}` },
       recipientInput: 'recipient.eth',
       recipientOpen: false,
       tokenOpen: true,

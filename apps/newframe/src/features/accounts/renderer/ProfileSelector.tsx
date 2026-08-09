@@ -9,8 +9,8 @@ import { Text } from '@newframe/ui/text'
 import type { WalletRendererState } from '../../../platform/state-sync/contract/projections'
 import { formatUsdRate } from '../../asset-data/domain/balance'
 import { cva } from '../../../../generated/styled-system/css/cva.js'
-import link from '../../../platform/ipc/renderer/link'
 import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector'
+import type { AccountsCapability } from './accountsCapability'
 import {
   selectOperationById,
   selectOperationEntityId
@@ -25,6 +25,7 @@ type MovableAccount = {
 }
 
 interface ProfileSelectorProps {
+  capability: AccountsCapability
   currentProfile: string
   profiles: ProfileSummary[]
 }
@@ -69,7 +70,7 @@ function errorMessage(error: string, fallback: string) {
   return messages[error] || fallback
 }
 
-export function ProfileSelector({ currentProfile, profiles }: ProfileSelectorProps) {
+export function ProfileSelector({ capability, currentProfile, profiles }: ProfileSelectorProps) {
   const [open, setOpen] = React.useState(false)
   const [mode, setMode] = React.useState<ManagementMode>('none')
   const [name, setName] = React.useState('')
@@ -78,6 +79,7 @@ export function ProfileSelector({ currentProfile, profiles }: ProfileSelectorPro
   const [loadingAccounts, setLoadingAccounts] = React.useState(false)
   const [submission, setSubmission] = React.useState<ProfileSubmission | null>(null)
   const submissionRef = React.useRef<ProfileSubmission | null>(null)
+  const movableAccountsRequestRef = React.useRef('')
   const [error, setError] = React.useState('')
   const activeProfile = profiles.find((profile) => profile.id === currentProfile) || profiles[0]
   const trackedOperation = useWalletSelector((state) =>
@@ -112,6 +114,7 @@ export function ProfileSelector({ currentProfile, profiles }: ProfileSelectorPro
   const visibleError = submissionReflected ? '' : operationFailure || error
 
   const resetManagement = React.useCallback(() => {
+    movableAccountsRequestRef.current = ''
     setMode('none')
     setName('')
     setMovableAccounts([])
@@ -121,6 +124,14 @@ export function ProfileSelector({ currentProfile, profiles }: ProfileSelectorPro
     setSubmission(null)
     setError('')
   }, [])
+
+  React.useEffect(
+    () => () => {
+      submissionRef.current = null
+      movableAccountsRequestRef.current = ''
+    },
+    []
+  )
 
   const handleOpenChange = React.useCallback(
     (nextOpen: boolean) => {
@@ -148,7 +159,8 @@ export function ProfileSelector({ currentProfile, profiles }: ProfileSelectorPro
       setSubmission(nextSubmission)
       setOpen(true)
       setError('')
-      const result = await link.executeCommand({ type: 'profile.select', operationId, profileId })
+      const result = await capability.selectProfile({ operationId, profileId })
+      if (submissionRef.current?.operationId !== operationId) return
       if (!result.ok) {
         setError(errorMessage(result.error, 'Could not switch profiles. Try again.'))
         submissionRef.current = null
@@ -156,7 +168,7 @@ export function ProfileSelector({ currentProfile, profiles }: ProfileSelectorPro
         setOpen(true)
       }
     },
-    [currentProfile]
+    [capability, currentProfile]
   )
 
   const openCreate = React.useCallback(async () => {
@@ -168,14 +180,18 @@ export function ProfileSelector({ currentProfile, profiles }: ProfileSelectorPro
     setError('')
     setLoadingAccounts(true)
 
-    const result = await link.executeQuery({ type: 'profile.movable-accounts' })
+    const requestToken = crypto.randomUUID()
+    movableAccountsRequestRef.current = requestToken
+    const result = await capability.listMovableProfileAccounts()
+    if (movableAccountsRequestRef.current !== requestToken) return
+    movableAccountsRequestRef.current = ''
     setLoadingAccounts(false)
     if (result.ok) {
       setMovableAccounts(result.accounts)
     } else {
       setError('Could not load accounts to move. You can still create an empty profile.')
     }
-  }, [resetManagement, submissionReflected])
+  }, [capability, resetManagement, submissionReflected])
 
   const submitCreate = React.useCallback(async () => {
     const trimmedName = name.trim()
@@ -189,18 +205,18 @@ export function ProfileSelector({ currentProfile, profiles }: ProfileSelectorPro
     submissionRef.current = nextSubmission
     setSubmission(nextSubmission)
     setError('')
-    const result = await link.executeCommand({
-      type: 'profile.create',
+    const result = await capability.createProfile({
       operationId,
       name: trimmedName,
       ...(selectedAccountIds.length ? { accountIds: selectedAccountIds } : {})
     })
+    if (submissionRef.current?.operationId !== operationId) return
     if (!result.ok) {
       setError(errorMessage(result.error, 'Could not create the profile. Try again.'))
       submissionRef.current = null
       setSubmission(null)
     }
-  }, [name, selectedAccountIds])
+  }, [capability, name, selectedAccountIds])
 
   const openRename = React.useCallback(() => {
     if (!activeProfile) return
@@ -228,18 +244,18 @@ export function ProfileSelector({ currentProfile, profiles }: ProfileSelectorPro
     submissionRef.current = nextSubmission
     setSubmission(nextSubmission)
     setError('')
-    const result = await link.executeCommand({
-      type: 'profile.rename',
+    const result = await capability.renameProfile({
       operationId,
       profileId: activeProfile.id,
       name: trimmedName
     })
+    if (submissionRef.current?.operationId !== operationId) return
     if (!result.ok) {
       setError(errorMessage(result.error, 'Could not rename the profile. Try again.'))
       submissionRef.current = null
       setSubmission(null)
     }
-  }, [activeProfile, name])
+  }, [activeProfile, capability, name])
 
   const submitDelete = React.useCallback(async () => {
     if (!activeProfile || activeProfile.accountCount > 0 || profiles.length <= 1) return
@@ -252,17 +268,17 @@ export function ProfileSelector({ currentProfile, profiles }: ProfileSelectorPro
     submissionRef.current = nextSubmission
     setSubmission(nextSubmission)
     setError('')
-    const result = await link.executeCommand({
-      type: 'profile.delete',
+    const result = await capability.deleteProfile({
       operationId,
       profileId: activeProfile.id
     })
+    if (submissionRef.current?.operationId !== operationId) return
     if (!result.ok) {
       setError(errorMessage(result.error, 'Could not delete the profile. Try again.'))
       submissionRef.current = null
       setSubmission(null)
     }
-  }, [activeProfile, profiles.length])
+  }, [activeProfile, capability, profiles.length])
 
   const toggleAccount = React.useCallback((accountId: string) => {
     setSelectedAccountIds((ids) =>

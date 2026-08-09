@@ -19,6 +19,8 @@ import {
   orderStatusLabel,
   orderTypeLabel
 } from './orderModel'
+import type { OrderNetworkMap, OrderNetworkMetadataMap, OrderRow, OrderTokenCatalog } from './orderTypes'
+import type { TokenImageCapability } from '../../../../../shared/renderer/capabilities'
 
 const orderListRecipe = cva({
   base: {
@@ -72,6 +74,7 @@ const orderAreaRecipe = cva({
 export function OrdersView({
   cancelErrors,
   cancellingOrderIds,
+  imageCapability,
   networks,
   networksMeta,
   onCancel,
@@ -81,12 +84,13 @@ export function OrdersView({
 }: {
   cancelErrors: Record<string, string>
   cancellingOrderIds: ReadonlySet<string>
-  networks: Record<string | number, any>
-  networksMeta: Record<string | number, any>
-  onCancel: (order: any) => void
-  onOpen: (order: any) => void
-  orders: any[]
-  tokens: any
+  imageCapability: TokenImageCapability
+  networks: OrderNetworkMap
+  networksMeta: OrderNetworkMetadataMap
+  onCancel: (order: OrderRow) => void
+  onOpen: (order: OrderRow) => void
+  orders: OrderRow[]
+  tokens: OrderTokenCatalog
 }) {
   if (!orders.length)
     return (
@@ -127,6 +131,7 @@ export function OrdersView({
             <div className={orderAreaRecipe({ area: 'asset' })}>
               <OrderAssetIcon
                 asset={order.targetAsset}
+                imageCapability={imageCapability}
                 networks={networks}
                 networksMeta={networksMeta}
                 tokens={tokens}

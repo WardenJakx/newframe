@@ -4,10 +4,10 @@ import { Text } from '@newframe/ui/text'
 
 import { RequestStatusNotice } from '../../ui/RequestStatusNotice'
 import { useOriginName } from './state'
-import type { AccessRequest } from '../../../contract/requests'
+import type { AccessRequestView } from './requestViewTypes'
 
 type ProviderRequestProps = {
-  req: AccessRequest & { id?: string }
+  req: AccessRequestView
   originName: string
 }
 

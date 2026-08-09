@@ -2,9 +2,10 @@ import { useShallow } from 'zustand/react/shallow'
 
 import Account from './Account'
 import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector'
-import type { TrayRendererState } from '../../../../app/renderer/tray/state'
+import type { WalletRendererState } from '../../../../platform/state-sync/contract/projections'
+import type { RequestRendererCapabilities } from '../requestCapabilities'
 
-const selectCurrentAccount = (state: TrayRendererState) => {
+const selectCurrentAccount = (state: WalletRendererState) => {
   const current = state.currentAccount
 
   return {
@@ -14,10 +15,10 @@ const selectCurrentAccount = (state: TrayRendererState) => {
   }
 }
 
-export default function Main() {
+export default function Main({ capabilities }: { capabilities: RequestRendererCapabilities }) {
   const { account, current, open } = useWalletSelector(useShallow(selectCurrentAccount))
   if (!open) return null
   if (!account) return null
 
-  return <Account key={current} {...account} index={1} />
+  return <Account capabilities={capabilities} key={current} {...account} index={1} />
 }

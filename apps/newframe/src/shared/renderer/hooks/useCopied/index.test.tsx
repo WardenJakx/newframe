@@ -1,13 +1,16 @@
 import { afterEach, beforeEach, expect, it, jest as timers } from 'bun:test'
 
 import { render, screen } from '../../../../../test/support/componentSetup'
-import { createHostFixture } from '../../../../../test/support/rendererClient'
+import {
+  createRequestRendererCapabilitiesFake as createRequestPortsFake,
+  type RequestRendererCapabilitiesFake
+} from '../../../../features/requests/renderer/requestCapabilities.test-support'
 
-const link = createHostFixture()
+let capabilities: RequestRendererCapabilitiesFake
 let useCopiedMessage: typeof import('../../../../features/requests/renderer/hooks/useCopiedMessage').default
 
 const TestComponent = () => {
-  const [showCopiedMessage, copyText] = useCopiedMessage('use frame!')
+  const [showCopiedMessage, copyText] = useCopiedMessage(capabilities.external, 'use frame!')
 
   return (
     <>
@@ -19,6 +22,7 @@ const TestComponent = () => {
 
 beforeEach(async () => {
   timers.useFakeTimers()
+  capabilities = createRequestPortsFake()
   useCopiedMessage = (await import('../../../../features/requests/renderer/hooks/useCopiedMessage')).default
 })
 
@@ -56,6 +60,5 @@ it('send the copied data to the clipboard', async () => {
   const clickToCopyButton = screen.getByRole('button')
   await user.click(clickToCopyButton)
 
-  expect(link.executeCommand).toHaveBeenCalledTimes(1)
-  expect(link.executeCommand).toHaveBeenCalledWith({ type: 'clipboard.write', text: 'use frame!' })
+  expect(capabilities.external.copy).toHaveBeenCalledWith({ text: 'use frame!' })
 })

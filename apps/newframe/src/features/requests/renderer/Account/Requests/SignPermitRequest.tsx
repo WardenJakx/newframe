@@ -1,6 +1,5 @@
 import { formatUnits, isUnlimited, toBigInt } from '../../../../../shared/domain/units'
 import { chainColorValue } from '../../../../networks/domain/chain/colors'
-import link from '../../../../../platform/ipc/renderer/link'
 import { Cluster, ClusterRow, ClusterValue } from '../../ui/Cluster'
 import Countdown from '../../ui/Countdown'
 import RequestHeader from '../../ui/RequestHeader'
@@ -10,8 +9,9 @@ import { SimpleTypedData as TypedSignatureOverview } from '../../ui/SimpleTypedD
 import useCopiedMessage from '../../hooks/useCopiedMessage'
 import { useRequestView, type RequestViewState } from '../../requestView'
 import type { RequestViewStep } from '../../requestView'
-import type { PermitSignatureRequest } from '../../../contract/requests'
 import type { SourceValue } from '../../format/displayValue'
+import type { RequestRendererCapabilities } from '../../requestCapabilities'
+import type { PermitRequestView } from './requestViewTypes'
 
 type PermitChainData = {
   chainColor?: string
@@ -20,24 +20,27 @@ type PermitChainData = {
 }
 
 type PermitOverviewProps = {
-  req: PermitSignatureRequest
+  capabilities: Pick<RequestRendererCapabilities, 'external' | 'panel'>
+  req: PermitRequestView
   chainData: PermitChainData
   originName: string
   open(next: RequestViewState): void
 }
 
 type EditPermitProps = {
-  req: PermitSignatureRequest
+  capabilities: Pick<RequestRendererCapabilities, 'external' | 'review'>
+  req: PermitRequestView
 }
 
 type PermitRequestProps = {
-  req: PermitSignatureRequest & { id?: string }
+  capabilities: Pick<RequestRendererCapabilities, 'external' | 'panel' | 'review'>
+  req: PermitRequestView
   originName: string
   step: RequestViewStep
   chainData: PermitChainData
 }
 
-const PermitOverview = ({ req, chainData, originName, open }: PermitOverviewProps) => {
+const PermitOverview = ({ capabilities, req, chainData, originName, open }: PermitOverviewProps) => {
   const { chainColor = '', chainName = '', icon } = chainData
   const {
     permit: { spender, value, deadline },
@@ -45,7 +48,7 @@ const PermitOverview = ({ req, chainData, originName, open }: PermitOverviewProp
     handlerId
   } = req
 
-  const [showCopiedMessage, copySpender] = useCopiedMessage(spender.address)
+  const [showCopiedMessage, copySpender] = useCopiedMessage(capabilities.external, spender.address)
 
   const amountDisplay = isUnlimited(String(value))
     ? '~UNLIMITED'
@@ -58,6 +61,7 @@ const PermitOverview = ({ req, chainData, originName, open }: PermitOverviewProp
   return (
     <Stack gap='medium'>
       <RequestItem
+        panel={capabilities.panel}
         key={`signErc20Permit:${handlerId}`}
         req={req}
         i={0}
@@ -148,14 +152,13 @@ const PermitOverview = ({ req, chainData, originName, open }: PermitOverviewProp
   )
 }
 
-const EditPermit = ({ req }: EditPermitProps) => {
+const EditPermit = ({ capabilities, req }: EditPermitProps) => {
   const { permit, tokenData } = req
 
   const { verifyingContract: contract, spender, value: amount, deadline: deadlineInSeconds } = permit
 
   const updateRequest = (newAmt: SourceValue) => {
-    void link.executeCommand({
-      type: 'request.token-approval-update',
+    void capabilities.review.updateTokenApproval({
       requestKind: 'permit',
       requestId: req.handlerId,
       amount: String(newAmt)
@@ -174,6 +177,7 @@ const EditPermit = ({ req }: EditPermitProps) => {
 
   return (
     <EditTokenSpend
+      clipboard={capabilities.external}
       {...{
         data,
         requestedAmount,
@@ -184,18 +188,24 @@ const EditPermit = ({ req }: EditPermitProps) => {
   )
 }
 
-const PermitRequest = ({ req, originName, step, chainData }: PermitRequestProps) => {
+const PermitRequest = ({ capabilities, req, originName, step, chainData }: PermitRequestProps) => {
   const requestView = useRequestView()
 
   const renderStep = () => {
     switch (step) {
       case 'adjustPermit':
-        return <EditPermit req={req} />
+        return <EditPermit capabilities={capabilities} req={req} />
       case 'viewRaw':
         return <TypedSignatureOverview req={req} />
       default:
         return (
-          <PermitOverview originName={originName} req={req} chainData={chainData} open={requestView.open} />
+          <PermitOverview
+            capabilities={capabilities}
+            originName={originName}
+            req={req}
+            chainData={chainData}
+            open={requestView.open}
+          />
         )
     }
   }

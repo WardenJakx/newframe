@@ -6,10 +6,12 @@ import { Text } from '@newframe/ui/text'
 import ChainTokenIcon from './ChainTokenIcon'
 import TokenOptionRow from './TokenOptionRow'
 import type { NetworkLike, NetworkMetaLike, TokenSelectorItem } from './tokenSelectorTypes'
+import type { TokenImageCapability } from '../capabilities'
 
 interface TokenSelectorProps {
   ariaLabel: string
   footer?: React.ReactNode
+  imageCapability: TokenImageCapability
   items: TokenSelectorItem[]
   searchableItems?: TokenSelectorItem[]
   networks: Record<string | number, NetworkLike>
@@ -27,6 +29,7 @@ export default function TokenSelector(props: TokenSelectorProps) {
 function TokenSelectorContent({
   ariaLabel,
   footer,
+  imageCapability,
   items,
   searchableItems = items,
   networks,
@@ -62,13 +65,21 @@ function TokenSelectorContent({
     : items
   const selectionItems: SelectionItem[] = visibleItems.map((item) => ({
     id: item.id,
-    content: <TokenOptionRow item={item} networks={networks} networksMeta={networksMeta} />
+    content: (
+      <TokenOptionRow
+        imageCapability={imageCapability}
+        item={item}
+        networks={networks}
+        networksMeta={networksMeta}
+      />
+    )
   }))
 
   const trigger = selectedItem ? (
     <>
       <ChainTokenIcon
         chainId={selectedItem.chainId}
+        imageCapability={imageCapability}
         logoURI={selectedItem.logoURI}
         networks={networks}
         networksMeta={networksMeta}

@@ -2,7 +2,7 @@ import { Stack } from '@newframe/ui/stack'
 import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
 
-import type { AgentAccessRequest as AgentAccessRequestData } from '../../../contract/requests'
+import type { AgentAccessRequestView } from './requestViewTypes'
 
 function durationLabel(seconds: number) {
   if (seconds % 86_400 === 0) return `${seconds / 86_400} day${seconds === 86_400 ? '' : 's'}`
@@ -10,7 +10,7 @@ function durationLabel(seconds: number) {
   return `${Math.ceil(seconds / 60)} minutes`
 }
 
-export default function AgentAccessRequest({ req }: { req: AgentAccessRequestData }) {
+export default function AgentAccessRequest({ req }: { req: AgentAccessRequestView }) {
   return (
     <Surface padding='large' radius='card'>
       <Stack align='center' gap='medium'>

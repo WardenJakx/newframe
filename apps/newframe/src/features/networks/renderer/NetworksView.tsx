@@ -11,6 +11,9 @@ import { Text } from '@newframe/ui/text'
 import { formatUsdRate } from '../../asset-data/domain/balance'
 import { TrayOverlay } from '../../../shared/renderer/ui/TrayOverlay'
 import { cva } from '../../../../generated/styled-system/css/cva.js'
+import type { WalletRendererState } from '../../../platform/state-sync/contract/projections'
+
+type NetworkConnection = WalletRendererState['networks']['ethereum'][number]['connection']
 
 const networkRecipe = cva({
   base: { overflow: 'hidden', borderRadius: 'card', borderWidth: 'thin', borderStyle: 'solid' },
@@ -48,7 +51,7 @@ const networkDotsRecipe = cva({
 
 export interface NetworkRowViewModel {
   chainId: number
-  connection?: any
+  connection?: NetworkConnection
   icon: React.ReactNode
   isTestnet?: boolean
   name: string
@@ -80,7 +83,7 @@ export function NetworksView(props: NetworksViewProps) {
       const selected = props.selectedChainId === chain.chainId
       const kebabOpen = props.kebabChainId === chain.chainId
       const rpcValue = props.getRpcDraft(chain.chainId)
-      const primary = chain.connection?.primary || {}
+      const primary = chain.connection?.primary
 
       return (
         <div key={chain.chainId} className={networkRecipe({ selected })}>
@@ -119,11 +122,11 @@ export function NetworksView(props: NetworksViewProps) {
                       Primary RPC
                     </Text>
                     <Text tone='muted' variant='caption'>
-                      {primary.current === 'custom'
+                      {primary?.current === 'custom'
                         ? 'Custom'
-                        : primary.current === 'chainlist'
+                        : primary?.current === 'chainlist'
                           ? 'Chainlist'
-                          : primary.current || 'Default'}
+                          : primary?.current || 'Default'}
                     </Text>
                   </Stack>
                   <Stack align='center' direction='row' gap='xsmall'>

@@ -5,7 +5,8 @@ import App from '../../app/renderer/tray/App'
 
 import link from '../../platform/ipc/renderer/link'
 import { connectRendererState } from '../../platform/state-sync/renderer/connectState'
-import { walletRendererStateStoreReadApi } from '../../platform/state-sync/renderer/rendererStore'
+import { createRendererStateStore } from '../../platform/state-sync/renderer/rendererStore'
+import { RendererStateProvider } from '../../platform/state-sync/renderer/useAppSelector'
 import type { TrayRendererState } from '../../app/renderer/tray/state'
 
 import '../../../generated/styled-system/styles.css'
@@ -20,8 +21,9 @@ function updateTrayVisibility(open: boolean) {
 }
 
 async function start() {
-  const disconnectState = await connectRendererState('wallet-ui')
-  const unsubscribe = walletRendererStateStoreReadApi.subscribe((state, previous) => {
+  const state = createRendererStateStore()
+  const disconnectState = await connectRendererState('wallet-ui', state, link)
+  const unsubscribe = state.wallet.subscribe((state, previous) => {
     const open = selectTrayOpen(state)
     if (open !== selectTrayOpen(previous)) updateTrayVisibility(open)
   })
@@ -36,11 +38,13 @@ async function start() {
   )
 
   document.body.classList.add('dark')
-  updateTrayVisibility(selectTrayOpen(walletRendererStateStoreReadApi.getState()))
+  updateTrayVisibility(selectTrayOpen(state.wallet.getState()))
   const root = createRoot(document.getElementById('tray') as HTMLElement)
   root.render(
     <UIRoot>
-      <App />
+      <RendererStateProvider state={state}>
+        <App />
+      </RendererStateProvider>
     </UIRoot>
   )
 }

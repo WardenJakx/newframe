@@ -1,18 +1,21 @@
 import { describe, expect, it, jest as timers } from 'bun:test'
-import type { Mock } from 'bun:test'
 
 import { act, render, screen } from '../../../../test/support/componentSetup'
-import { createHostFixture } from '../../../../test/support/rendererClient'
-import { resetStateMirrorForTests } from '../../../platform/state-sync/renderer/rendererStore'
+import { registerTestRuntimeFixture } from '../../../../test/support/rendererClient'
 import { walletState } from '../../../platform/state-sync/renderer/fixtures.test-support.ts'
-import { HomeUiProvider } from '../../../app/renderer/tray/Home/state/HomeUiProvider'
 import { formatPortfolioValue, PortfolioHero } from './PortfolioHero'
 import { PortfolioHeroView } from './PortfolioHeroView'
 import type { OperationRecord } from '../../../platform/operations/operation'
-import type { PortfolioRefreshCommand } from '../../../app/contracts/operations'
+import type { AppCommand } from '../../../app/contracts/operations'
+import { createPortfolioCapability } from './portfolioCapability'
 
 const noop = () => {}
-const link = createHostFixture()
+const fixture = registerTestRuntimeFixture()
+const capability = createPortfolioCapability({
+  executeCommand: (command) => fixture.client.executeCommand(command)
+})
+type CommandCall = [command: AppCommand]
+const commandCalls = () => fixture.client.executeCommand.mock.calls as CommandCall[]
 
 function renderHero(displayValue: string) {
   return render(
@@ -32,22 +35,18 @@ describe('PortfolioHero', () => {
   it('uses projected terminal state for completion and bounds command rejection by the minimum dwell', async () => {
     timers.useFakeTimers()
     try {
-      resetStateMirrorForTests(walletState({}))
-      ;(link.executeCommand as Mock<any>)
-        .mockResolvedValueOnce({ ok: false, error: 'internal', message: 'Refresh unavailable.' })
+      fixture.state.reset(walletState({}))
+      fixture.client.executeCommand
+        .mockResolvedValueOnce({ ok: false, error: 'operation_failed', message: 'Refresh unavailable.' })
         .mockResolvedValue({ ok: true })
-      const { user } = render(
-        <HomeUiProvider>
-          <PortfolioHero />
-        </HomeUiProvider>,
-        { advanceTimersAfterInput: 0 }
-      )
+      const { user } = render(<PortfolioHero capability={capability} selectedChainId={0} />, {
+        advanceTimersAfterInput: 0
+      })
       const refresh = screen.getByRole<HTMLButtonElement>('button', { name: 'Refresh balances' })
 
       await user.click(refresh)
-      const rejectedCommand = (link.executeCommand as Mock<any>).mock.calls.at(
-        -1
-      )![0] as PortfolioRefreshCommand
+      const rejectedCommand = commandCalls().at(-1)?.[0]
+      if (rejectedCommand?.type !== 'portfolio.refresh') throw new Error('Expected portfolio refresh')
       expect(rejectedCommand).toEqual({ type: 'portfolio.refresh', operationId: expect.any(String) })
       expect(refresh.disabled).toBe(true)
       act(() => timers.advanceTimersByTime(500))
@@ -56,13 +55,12 @@ describe('PortfolioHero', () => {
       expect(refresh.disabled).toBe(false)
 
       await user.click(refresh)
-      const acceptedCommand = (link.executeCommand as Mock<any>).mock.calls.at(
-        -1
-      )![0] as PortfolioRefreshCommand
+      const acceptedCommand = commandCalls().at(-1)?.[0]
+      if (acceptedCommand?.type !== 'portfolio.refresh') throw new Error('Expected portfolio refresh')
       expect(acceptedCommand.operationId).not.toBe(rejectedCommand.operationId)
       expect(refresh.disabled).toBe(true)
       act(() => {
-        resetStateMirrorForTests(
+        fixture.state.reset(
           walletState({
             operations: {
               [acceptedCommand.operationId]: {

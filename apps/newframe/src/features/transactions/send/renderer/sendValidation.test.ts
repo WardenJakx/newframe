@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'bun:test'
 
-import { canProceed, getAmountBaseUnits, getRecipientAddress, validateSendRequest } from './sendValidation'
+import {
+  canProceed,
+  getAmountBaseUnits,
+  getRecipientAddress,
+  validateSendDraft,
+  validateSendRequest
+} from './sendValidation'
 
 const validAddress = '0x00000000000000000000000000000000000000aa'
 
@@ -30,6 +36,15 @@ describe('sendValidation', () => {
   })
 
   it('returns the existing submit validation messages', () => {
+    expect(
+      validateSendDraft({
+        account: { address: '0xsender' },
+        amount: 1n,
+        asset: { balance: '1', decimals: 0 },
+        balance: 1n,
+        recipient: 'vitalik.eth'
+      })
+    ).toBe('')
     expect(
       validateSendRequest({
         account: null,

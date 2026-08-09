@@ -77,3 +77,22 @@ export function validateSendRequest({
 
   return ''
 }
+
+export function validateSendDraft({
+  account,
+  amount,
+  asset,
+  balance,
+  recipient
+}: {
+  account?: SendValidationAccount | null
+  amount?: bigint
+  asset?: SendValidationAsset | null
+  balance: bigint
+  recipient: string
+}) {
+  if (!account || !asset || !amount || amount <= 0n) return 'Enter an amount to send.'
+  if (amount > balance) return 'Amount exceeds available balance.'
+  if (!recipient.trim()) return 'Enter a valid recipient.'
+  return ''
+}
