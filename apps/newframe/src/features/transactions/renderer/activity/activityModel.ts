@@ -10,7 +10,7 @@ export function transactionStatusLabel(status?: string) {
   return 'Submitted'
 }
 
-export function requestStatusFromActivity(status?: string) {
+function requestStatusFromActivity(status?: string) {
   if (status === 'submitted') return 'verifying'
   if (status === 'confirming') return 'confirming'
   if (status === 'succeeded') return 'confirmed'
@@ -53,7 +53,7 @@ export function activityTimestampLabel(activity: any) {
   })
 }
 
-export function activityBalanceChanges(activity: any, nativeSymbol = 'ETH') {
+function activityBalanceChanges(activity: any, nativeSymbol = 'ETH') {
   if (Array.isArray(activity.balanceChanges)) return activity.balanceChanges
 
   return getTransactionEffects(activityRequestLike(activity), nativeSymbol).filter(
@@ -61,7 +61,7 @@ export function activityBalanceChanges(activity: any, nativeSymbol = 'ETH') {
   )
 }
 
-export function activityGasSpent(activity: any) {
+function activityGasSpent(activity: any) {
   return activity.gasSpent || getPaidTransactionFee(activityRequestLike(activity))
 }
 

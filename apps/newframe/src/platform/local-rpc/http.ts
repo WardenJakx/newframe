@@ -3,7 +3,11 @@ import { randomUUID } from 'node:crypto'
 import log from 'electron-log'
 import { isHexString } from '@ethereumjs/util'
 
-import { parseOrigin, parseRequestChainId, type OriginsService } from '../../features/connections/main/origins.js'
+import {
+  parseOrigin,
+  parseRequestChainId,
+  type OriginsService
+} from '../../features/connections/main/origins.js'
 import validPayload from './validPayload.js'
 import protectedMethods from './protectedMethods.js'
 import { createRpcPrincipal, type TrustedPrincipal } from '../../features/access-control/main/authority.js'
@@ -23,7 +27,7 @@ interface HTTPPollingPayload extends JSONRPCRequestPayload {
   pollId?: string
 }
 
-export interface HttpProviderPort {
+interface HttpProviderPort {
   send(
     payload: RPCRequestPayload,
     respond?: (response: RPCResponsePayload) => void,
@@ -33,11 +37,11 @@ export interface HttpProviderPort {
   off(event: 'data:subscription', listener: (payload: RPC.Susbcription.Response) => void): unknown
 }
 
-export interface HttpAccountsPort {
+interface HttpAccountsPort {
   getSelectedAddresses(): string[]
 }
 
-export interface HttpStorePort {
+interface HttpStorePort {
   endOriginSession(originId: string): void
 }
 

@@ -5,7 +5,11 @@ import { Input } from '@newframe/ui/input'
 import { Stack } from '@newframe/ui/stack'
 
 import link from '../../../../../../platform/ipc/renderer/link'
-import { limitTransactionFee, type TransactionFeeField, usesBaseFee } from '../../../../../transactions/domain'
+import {
+  limitTransactionFee,
+  type TransactionFeeField,
+  usesBaseFee
+} from '../../../../../transactions/domain'
 import { formatUnits, parseUnits, toBigInt } from '../../../../../../shared/domain/units'
 import type { TransactionRequest } from '../../../../contract/requests'
 

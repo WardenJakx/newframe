@@ -8,11 +8,7 @@ import {
   FLASH_TAKE_PROFIT_ORDER_TYPE,
   FLASH_TWAP_ORDER_TYPE
 } from '../domain/constants'
-import {
-  balanceSummaryToFlashAsset,
-  getFlashAssetsForChain,
-  toFlashApiAssetAddress
-} from '../domain/assets'
+import { balanceSummaryToFlashAsset, getFlashAssetsForChain, toFlashApiAssetAddress } from '../domain/assets'
 import { isFlashChainSupported } from '../domain/chains'
 import {
   FLASH_MAX_TWAP_BUCKET_COUNT,
@@ -42,7 +38,7 @@ export const TRADE_DEFAULT_MAX_PRICE_IMPACT = ''
 export const TRADE_DEFAULT_DURATION_DAYS = '0'
 export const TRADE_DEFAULT_DURATION_HOURS = '1'
 export const TRADE_DEFAULT_DURATION_MINUTES = '0'
-export type TradeTimeInForce = 'gtc' | 'gtt'
+type TradeTimeInForce = 'gtc' | 'gtt'
 
 export interface TradeOrderFields {
   durationDays?: string
@@ -63,9 +59,9 @@ export type TradeQuoteRequest = FlashQuoteRequest & {
 
 export type MarketTradeQuoteRequest = TradeQuoteRequest
 
-export const cleanTradeAmount = cleanFlashDecimal
+const cleanTradeAmount = cleanFlashDecimal
 export const tradeAmountNumber = positiveFlashNumber
-export const tradeIntegerNumber = nonNegativeFlashInteger
+const tradeIntegerNumber = nonNegativeFlashInteger
 
 export function formatTradeNotional(value?: string | number | null) {
   const amount = Number(value)

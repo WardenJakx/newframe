@@ -129,5 +129,3 @@ export function createPanelActions(set: CanonicalSet, _get: CanonicalGet) {
     }
   }
 }
-
-export type PanelActions = ReturnType<typeof createPanelActions>

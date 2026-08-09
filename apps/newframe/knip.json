@@ -1,25 +1,36 @@
 {
   "entry": [
-    "src/main/bootstrap.ts",
-    "src/renderer/tray/bootstrap.ts",
-    "src/renderer/sidetray/bootstrap.ts",
-    "src/preload/index.ts",
-    "src/features/asset-data/main/externalData/balances/worker.ts",
-    "src/platform/signing/signers/hot/*/worker.ts",
+    "src/renderer/tray/bootstrap.ts!",
+    "src/renderer/sidetray/bootstrap.ts!",
+    "src/preload/index.ts!",
+    "src/features/asset-data/main/externalData/balances/worker.ts!",
+    "src/platform/signing/signers/hot/*/worker.ts!",
     "scripts/*.ts",
     "build/**/*.ts",
     "{src,scripts}/**/*.{test,spec}.{ts,tsx}",
     "test/extension/**/*.{test,spec}.{ts,tsx}",
     "test/integration/**/*.{test,spec}.{ts,tsx}",
-    "test/support/electron.preload.ts",
     "test/support/dom.preload.ts"
   ],
   "project": [
-    "src/**",
+    "src/**!",
     "!src/types/**",
+    "!src/**/*.{test,spec}.{ts,tsx}",
+    "!src/**/*.test-{support,fixture}.{ts,tsx}",
+    "!src/**/{__mocks__,__tests__}/**",
     "scripts/**",
     "build/**",
     "test/**"
   ],
-  "ignoreDependencies": ["node-gyp", "buffer", "events"]
+  "ignoreDependencies": [
+    "@ledgerhq/hw-app-eth",
+    "@ledgerhq/hw-transport-node-hid-noevents",
+    "@ledgerhq/hw-transport-node-hid-singleton",
+    "buffer",
+    "electron-devtools-installer",
+    "events",
+    "node-gyp",
+    "node-hid"
+  ],
+  "ignoreBinaries": ["ditto", "eslint", "prettier", "spctl"]
 }

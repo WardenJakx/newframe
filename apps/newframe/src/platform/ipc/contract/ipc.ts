@@ -1,4 +1,9 @@
-import type { AppCommand, AppQuery, CommandResult, ResultForQuery } from '../../../app/contracts/operations.js'
+import type {
+  AppCommand,
+  AppQuery,
+  CommandResult,
+  ResultForQuery
+} from '../../../app/contracts/operations.js'
 import type { StateConnectionResult, StateMessage } from '../../state-sync/contract/protocol.js'
 
 export const ExecuteCommandChannel = 'newframe:execute-command'

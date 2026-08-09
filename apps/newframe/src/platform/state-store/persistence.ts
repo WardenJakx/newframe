@@ -8,7 +8,11 @@ import {
 } from './persist/schema.js'
 import { CanonicalStatePersistenceError } from '../persistence/index.js'
 import { listCuratedAssets } from '../../features/asset-data/domain/asset/index.js'
-import { DEFAULT_PROFILE_ID, DEFAULT_PROFILE_NAME, getProfileAccountIds } from '../../app/contracts/state/main.js'
+import {
+  DEFAULT_PROFILE_ID,
+  DEFAULT_PROFILE_NAME,
+  getProfileAccountIds
+} from '../../app/contracts/state/main.js'
 
 type UnknownRecord = Record<string, any>
 

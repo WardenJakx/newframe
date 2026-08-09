@@ -1,13 +1,13 @@
 import { z } from 'zod'
 
-export const OperationStatusSchema = z.enum(['pending', 'succeeded', 'failed'])
+const OperationStatusSchema = z.enum(['pending', 'succeeded', 'failed'])
 
-export const OperationEntityRefSchema = z.strictObject({
+const OperationEntityRefSchema = z.strictObject({
   type: z.enum(['account', 'profile', 'signer', 'chain', 'transaction', 'request', 'order', 'token']),
   id: z.string().min(1).max(256)
 })
 
-export const OperationSafeErrorSchema = z.strictObject({
+const OperationSafeErrorSchema = z.strictObject({
   code: z.string().regex(/^[a-z][a-z0-9_]{0,63}$/),
   message: z.string().min(1).max(256)
 })

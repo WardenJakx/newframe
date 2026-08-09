@@ -35,7 +35,7 @@ export function isOpenOrder(order: any) {
   ].includes(status)
 }
 
-export function titleize(value = '') {
+function titleize(value = '') {
   return String(value || '')
     .replace(/[-_]+/g, ' ')
     .trim()
@@ -177,7 +177,7 @@ export function orderContraNotional(order: any) {
   return orderTargetNotional(order)
 }
 
-export function formatOrderNotional(value: number) {
+function formatOrderNotional(value: number) {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',

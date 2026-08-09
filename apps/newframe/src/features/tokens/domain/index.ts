@@ -7,7 +7,7 @@ export function toTokenId(token: WithTokenId) {
   return `${Number(token.chainId)}:${token.address.toLowerCase()}`
 }
 
-export function tokenImageDataUri(image?: TokenImage) {
+function tokenImageDataUri(image?: TokenImage) {
   return persistedImageSource(image)
 }
 

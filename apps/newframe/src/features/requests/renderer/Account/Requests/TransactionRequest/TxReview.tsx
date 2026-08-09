@@ -95,7 +95,7 @@ const transferRecipient = (req: TransactionRequest): ActionIdentity | undefined 
   return typeof decoded === 'string' ? { address: decoded } : undefined
 }
 
-export function TxFeeSummary(props: TxFeeSummaryProps) {
+function TxFeeSummary(props: TxFeeSummaryProps) {
   const [expanded, setExpanded] = useState(false)
   const getOptimismFee = (l2Price: bigint, l2Limit: bigint, chainData?: { l1Fees?: string }) => {
     const l1DataFee = toBigInt(chainData?.l1Fees ?? '')
@@ -217,7 +217,7 @@ export function TxFeeSummary(props: TxFeeSummaryProps) {
   )
 }
 
-export function TxReview(props: TxReviewProps) {
+function TxReview(props: TxReviewProps) {
   const { req } = props
   const chainId = parseInt(req.data.chainId, 16)
   const chain = { type: 'ethereum' as const, id: chainId }

@@ -58,7 +58,7 @@ function isCuratedToken(token: Token, networksMeta: Record<number, ChainMetadata
   return symbol === 'USDC' || Boolean(nativeSymbol && symbol === `W${nativeSymbol}`)
 }
 
-export function selectManualRefreshTokens({
+function selectManualRefreshTokens({
   balances,
   customTokens,
   knownTokens,

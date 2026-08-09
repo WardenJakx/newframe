@@ -2,7 +2,7 @@ import { z } from 'zod'
 
 import { FlashAssetSchema, FlashOrderTypeSchema, FlashTradeSideSchema } from './schemas.js'
 
-export const FlashOrderStatusSchema = z.enum([
+const FlashOrderStatusSchema = z.enum([
   'pending',
   'accepted',
   'partially-filled',

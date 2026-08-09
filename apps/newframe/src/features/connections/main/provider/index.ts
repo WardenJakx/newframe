@@ -25,7 +25,11 @@ import type { TokenData } from '../../../../platform/chain-rpc/contracts/erc20.j
 import { getSignerType, Type as SignerType } from '../../../../platform/signing/domain/index.js'
 import { toTokenId } from '../../../tokens/domain/index.js'
 import { normalizeChainId, TransactionData } from '../../../transactions/domain/index.js'
-import { populate as populateTransaction, maxFee, classifyTransaction } from '../../../transactions/main/index.js'
+import {
+  populate as populateTransaction,
+  maxFee,
+  classifyTransaction
+} from '../../../transactions/main/index.js'
 import { capitalize } from '../../../../shared/domain/text.js'
 import { isNonZeroHex } from '../../../../shared/domain/hex.js'
 import { ApprovalType } from '../../../requests/domain/approval.js'

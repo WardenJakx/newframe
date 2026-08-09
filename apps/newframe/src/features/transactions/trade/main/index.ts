@@ -1,11 +1,7 @@
 import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.js'
 import { getMainRuntime } from '../../../../platform/runtime/index.js'
 import { FLASH_NATIVE_ETH_TOKEN_ADDRESS, FLASH_MARKET_ORDER_TYPE } from '../domain/constants.js'
-import {
-  getFlashChainIdFromSlug,
-  getFlashChainSlug,
-  isFlashChainSupported
-} from '../domain/chains.js'
+import { getFlashChainIdFromSlug, getFlashChainSlug, isFlashChainSupported } from '../domain/chains.js'
 import { flashAssetId, getFlashAssetsForChain, toFlashApiAssetAddress } from '../domain/assets.js'
 import { getFlashAssetPairChains, getReceiveAsset, getSpentAsset } from '../domain/pair.js'
 import {
@@ -21,11 +17,7 @@ import {
   type FlashStep,
   type FlashTradeSide
 } from '../domain/schemas.js'
-import {
-  FlashOrderRecordSchema,
-  type FlashOrderRecord,
-  type FlashOrderStatus
-} from '../domain/orders.js'
+import { FlashOrderRecordSchema, type FlashOrderRecord, type FlashOrderStatus } from '../domain/orders.js'
 import { NATIVE_CURRENCY } from '../../../tokens/domain/constants.js'
 import {
   FlashCancelOrderRequestSchema,
@@ -46,7 +38,7 @@ import type { AssetRateInput } from '../../../asset-data/domain/state/rate.js'
 import type { AssetRateService } from '../../../asset-data/main/assetRates/service.js'
 import type { Token } from '../../../../platform/state-store/state/index.js'
 
-export interface FlashOrderPositionUpdate {
+interface FlashOrderPositionUpdate {
   address: string
   chainId: number
   tokens: Token[]
@@ -1659,7 +1651,7 @@ function stopAgentSessionStreamsForAccount(state: FlashServiceState, accountAddr
   return sessionIds.length
 }
 
-export async function quote(request: FlashQuoteRequest) {
+async function quote(request: FlashQuoteRequest) {
   request = FlashQuoteRequestSchema.parse(request)
   const body = buildFlashQuoteBody(request)
   const raw = await flashRequest('/quote', {

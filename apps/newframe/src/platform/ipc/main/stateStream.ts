@@ -5,7 +5,10 @@ import log from 'electron-log'
 
 import type { RendererAuthorizationRegistry, RendererRole } from './authorization.js'
 import type { CanonicalStoreReader } from '../../state-store/actions.js'
-import { projectionStateChangeSchemas, projectionStateSchemas } from '../../state-sync/contract/projections.js'
+import {
+  projectionStateChangeSchemas,
+  projectionStateSchemas
+} from '../../state-sync/contract/projections.js'
 import {
   STATE_STREAM_SCHEMA_VERSION,
   StateConnectChannel,
@@ -25,7 +28,7 @@ export interface StateStreamDependencies {
   createStreamId?: () => string
 }
 
-export interface StateStreamIpcPort {
+interface StateStreamIpcPort {
   handle(
     channel: string,
     listener: (event: Electron.IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown> | unknown

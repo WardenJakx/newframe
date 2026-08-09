@@ -2,17 +2,7 @@ import { MAX_HEX } from '../../features/transactions/domain/constants.js'
 
 export const max = BigInt(MAX_HEX)
 
-const numberRegex = /\.0+$|(\.[0-9]*[1-9])0+$/
 const decimalRegex = /^(-?)(\d*)(?:\.(\d*))?(?:[eE]([+-]?\d+))?$/
-
-const digitsLookup = [
-  { value: 1, symbol: '' },
-  { value: 1e6, symbol: 'million' },
-  { value: 1e9, symbol: 'billion' },
-  { value: 1e12, symbol: 'trillion' },
-  { value: 1e15, symbol: 'quadrillion' },
-  { value: 1e18, symbol: 'quintillion' }
-]
 
 // parses a decimal value (plain, fractional or exponent notation) into an integer
 // scaled by the given number of decimals, truncating any excess fractional digits
@@ -62,30 +52,6 @@ export function formatUnits(value: bigint, decimals = 0): string {
   return `${negative ? '-' : ''}${int}${frac ? `.${frac}` : ''}`
 }
 
-function formatNumber(n: number, digits = 4) {
-  const num = Number(n)
-  const item = digitsLookup
-    .slice()
-    .reverse()
-    .find((item) => num >= item.value) || { value: 0, symbol: '?' }
-
-  const formatted = (value: number) => {
-    const isAproximate = value.toFixed(digits) !== value.toString(10)
-    const prefix = isAproximate ? '~' : ''
-    return `${prefix}${value.toFixed(digits).replace(numberRegex, '$1')} ${item.symbol}`
-  }
-
-  return item ? formatted(num / item.value) : '0'
-}
-
 export function isUnlimited(amount: string) {
   return toBigInt(amount) === max
-}
-
-export function formatDisplayDecimal(amount: string | number, decimals: number) {
-  const value = Number(formatUnits(toBigInt(amount) ?? 0n, decimals))
-
-  if (value > 9e12) return decimals ? '~unlimited' : 'unknown'
-
-  return formatNumber(value)
 }

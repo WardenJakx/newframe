@@ -8,7 +8,9 @@ import { isHardwareSigner } from '../../../../platform/signing/domain'
 import link from '../../../../platform/ipc/renderer/link'
 import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector'
 import { useRequestView, type RequestViewStep } from '../../../../features/requests/renderer/requestView'
-import RequestCommand, { type RequestCommandRequest } from '../../../../features/requests/renderer/RequestCommand'
+import RequestCommand, {
+  type RequestCommandRequest
+} from '../../../../features/requests/renderer/RequestCommand'
 
 interface FooterSharedState {
   account?: WalletRendererState['accounts'][string]

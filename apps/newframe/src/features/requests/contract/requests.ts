@@ -7,7 +7,7 @@ import type {
 import type { Token } from '../../tokens/domain/state/token.js'
 import type { TransactionData, TransactionSimulation } from '../../transactions/domain/index.js'
 
-export interface DecodedCallData {
+interface DecodedCallData {
   contractAddress: string
   contractName: string
   source: string
@@ -21,7 +21,7 @@ export interface DecodedCallData {
   }>
 }
 
-export interface TokenData {
+interface TokenData {
   decimals?: number
   name: string
   symbol: string
@@ -46,13 +46,13 @@ export interface Erc7730Display {
   }>
 }
 
-export type Action<T> = {
+type Action<T> = {
   id: string
   data?: T
   update?: (request: AccountRequest, params: Partial<T>) => void
 }
 
-export type ChainRequestData = {
+type ChainRequestData = {
   id: number
   type: string
   name: string
@@ -103,7 +103,7 @@ interface Request {
   handlerId: string
 }
 
-export type RequestPrincipal =
+type RequestPrincipal =
   | {
       kind: 'renderer'
       role: 'wallet-ui' | 'sidetray'
@@ -186,7 +186,7 @@ export interface TransactionReceipt {
   blockNumber: string
 }
 
-export interface Approval {
+interface Approval {
   type: string
   data: any
   approved: boolean

@@ -1,6 +1,6 @@
 import type { OperationRecord } from '../../../../platform/operations/operation'
 
-export type TradeExecutionPhase =
+type TradeExecutionPhase =
   | 'idle'
   | 'requesting'
   | 'validating'

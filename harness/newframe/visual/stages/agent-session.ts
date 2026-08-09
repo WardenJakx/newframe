@@ -1,6 +1,9 @@
 import { verifyMessage, verifyTypedData } from 'ethers'
 
-import { FLASH_USDC_ADDRESS, FLASH_WETH_ADDRESS } from '../../../../apps/newframe/src/features/transactions/trade/domain/constants.ts'
+import {
+  FLASH_USDC_ADDRESS,
+  FLASH_WETH_ADDRESS
+} from '../../../../apps/newframe/src/features/transactions/trade/domain/constants.ts'
 import { anvilChainId, localTradeServiceUrl, newframeRpcUrl } from '../../core/config.ts'
 import type { VisualStage } from '../types.ts'
 import { requireAccounts } from './helpers.ts'

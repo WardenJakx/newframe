@@ -9,7 +9,7 @@ type TransactionRequestProps = {
 
 type TransactionRequestWithStateProps = Omit<TransactionRequestProps, 'originName'>
 
-export function TransactionRequest(props: TransactionRequestProps) {
+function TransactionRequest(props: TransactionRequestProps) {
   const { req, originName } = props
   return <TypedSignatureOverview key={req.id || req.handlerId} {...{ originName, req }} />
 }

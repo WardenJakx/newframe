@@ -88,14 +88,8 @@ describe('critical coverage manifest integrity', () => {
   })
 
   it('requires every production file matched by a glob to appear in LCOV', async () => {
-    const lcovPath = temporaryFile(
-      'lcov.info',
-      lcov(['src/platform/signing/signatures/digests.ts'])
-    )
-    const manifestPath = temporaryFile(
-      'manifest.json',
-      manifest(['src/platform/signing/signatures/*.ts'])
-    )
+    const lcovPath = temporaryFile('lcov.info', lcov(['src/platform/signing/signatures/digests.ts']))
+    const manifestPath = temporaryFile('manifest.json', manifest(['src/platform/signing/signatures/*.ts']))
 
     const result = await runChecker(lcovPath, manifestPath)
 
@@ -157,10 +151,7 @@ describe('critical coverage manifest integrity', () => {
   })
 
   it('accepts a manifest only when every declared pattern exists and appears in LCOV', async () => {
-    const sources = [
-      'src/features/access-control/main/authority.ts',
-      'src/platform/secrets/vault.ts'
-    ]
+    const sources = ['src/features/access-control/main/authority.ts', 'src/platform/secrets/vault.ts']
     const lcovPath = temporaryFile('lcov.info', lcov(sources))
     const manifestPath = temporaryFile('manifest.json', manifest(sources))
 

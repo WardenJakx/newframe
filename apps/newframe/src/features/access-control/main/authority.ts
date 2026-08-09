@@ -1,7 +1,11 @@
 import { randomUUID } from 'node:crypto'
 
 import type { AccountRequest, RequestAuthorization, RequestType } from '../../requests/contract/requests.js'
-import type { AuthorizationContext, RendererEntrypoint, RendererRole } from '../../../platform/ipc/main/authorization.js'
+import type {
+  AuthorizationContext,
+  RendererEntrypoint,
+  RendererRole
+} from '../../../platform/ipc/main/authorization.js'
 
 const trustedPrincipalBrand = Symbol('newframe.trusted-principal')
 
@@ -41,7 +45,7 @@ export type MainPrincipal = PrincipalBrand & {
 
 export type TrustedPrincipal = RendererPrincipal | RpcPrincipal | AgentPrincipal | MainPrincipal
 
-export type WalletAction = {
+type WalletAction = {
   readonly id: string
   readonly requestType: RequestType
   readonly account: string

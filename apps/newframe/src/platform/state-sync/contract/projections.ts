@@ -17,7 +17,7 @@ import { TokenCatalogSchema, TokenImageSchema } from '../../../features/tokens/d
 export const RendererProjectionSchema = z.enum(['wallet-ui', 'sidetray'])
 export type RendererProjection = z.infer<typeof RendererProjectionSchema>
 
-export const WalletNavigationChainSchema = z
+const WalletNavigationChainSchema = z
   .object({
     id: z.union([z.string(), z.number()]).optional(),
     chainId: z.union([z.string(), z.number()]).optional(),
@@ -464,7 +464,7 @@ export const WalletOrderRecordSchema = z
   })
 const WalletOrdersSchema = z.record(z.string(), WalletOrderRecordSchema).default({})
 
-export const WalletProfileSummarySchema = z.strictObject({
+const WalletProfileSummarySchema = z.strictObject({
   id: z.string(),
   name: z.string(),
   accountCount: z.number().int().nonnegative(),
@@ -478,7 +478,7 @@ export const WalletProfileSummarySchema = z.strictObject({
 // Wallet renderers receive explicit domain slices. Keeping canonical `main`
 // out of this schema prevents one setting change from cloning every wallet
 // domain and prevents future Electron-only fields from crossing by default.
-export const WalletRendererStateSchema = z.strictObject({
+const WalletRendererStateSchema = z.strictObject({
   accounts: z.record(z.string(), WalletAccountSchema),
   accountOrder: MainSchema.shape.accountOrder,
   activity: WalletActivitySchema,
@@ -545,7 +545,7 @@ const SideTrayNetworkMetadataSchema = z.strictObject({
 // `sidetray` is the restricted capability projection used by the bundled
 // Send/Trade renderer.
 // Origin-controlled web content must never be registered for this projection.
-export const SideTrayRendererStateSchema = z.strictObject({
+const SideTrayRendererStateSchema = z.strictObject({
   accounts: z.record(z.string(), SideTrayAccountSchema),
   accountOrder: z.array(z.string()),
   activity: SideTrayActivitySchema,
@@ -567,9 +567,7 @@ export const SideTrayRendererStateSchema = z.strictObject({
 export type WalletRendererState = z.infer<typeof WalletRendererStateSchema>
 export type WalletStatusNotification = z.infer<typeof WalletStatusNotificationSchema>
 export type SideTrayRendererState = z.infer<typeof SideTrayRendererStateSchema>
-export type WalletAccount = WalletRendererState['accounts'][string]
 export type WalletPanelNavigationEntry = z.infer<typeof WalletPanelNavigationEntrySchema>
-export type WalletHomeCommand = z.infer<typeof WalletHomeCommandSchema>
 
 export const projectionStateSchemas = {
   'wallet-ui': WalletRendererStateSchema,

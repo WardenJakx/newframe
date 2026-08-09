@@ -3,7 +3,7 @@ import { Spinner } from '@newframe/ui/spinner'
 
 import { cva } from '../../../../generated/styled-system/css/cva.js'
 
-export type StatusGlyphState = 'pending' | 'completed' | 'failed' | 'idle'
+type StatusGlyphState = 'pending' | 'completed' | 'failed' | 'idle'
 
 type StatusGlyphProps = {
   state: StatusGlyphState

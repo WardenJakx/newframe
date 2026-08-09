@@ -14,7 +14,7 @@ export const TokenImageSchema = z.strictObject({
   sourceUrl: z.string().optional()
 })
 
-export const TokenSourceSchema = z.enum(['bundled', 'custom', 'onchain', 'portfolio', 'transaction'])
+const TokenSourceSchema = z.enum(['bundled', 'custom', 'onchain', 'portfolio', 'transaction'])
 
 export const TokenSchema = TokenIdSchema.extend({
   name: z.string(),

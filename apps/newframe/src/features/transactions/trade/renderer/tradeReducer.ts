@@ -5,11 +5,7 @@ import {
   FLASH_STOP_ORDER_TYPE,
   FLASH_TAKE_PROFIT_ORDER_TYPE
 } from '../domain/constants'
-import {
-  getFlashAssetsForChain,
-  getFlashDefaultTargetAsset,
-  toFlashApiAssetAddress
-} from '../domain/assets'
+import { getFlashAssetsForChain, getFlashDefaultTargetAsset, toFlashApiAssetAddress } from '../domain/assets'
 import {
   getDefaultContraAsset,
   getDefaultSide,

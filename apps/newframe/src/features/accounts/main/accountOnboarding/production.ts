@@ -6,7 +6,10 @@ import { randomLetters } from '../../../../shared/domain/text.js'
 import type Signer from '../../../../platform/signing/signers/Signer/index.js'
 import type { AccountOnboardingPorts, OnboardingSigner } from './service.js'
 import { openFileDialog } from '../../../../platform/desktop/windows/dialog.js'
-import { createOneResultCallbackBoundary, type OneResultCallback } from '../../../../platform/callbacks/oneResult.js'
+import {
+  createOneResultCallbackBoundary,
+  type OneResultCallback
+} from '../../../../platform/callbacks/oneResult.js'
 
 export interface ProductionAccountOnboardingExternal {
   signers: {

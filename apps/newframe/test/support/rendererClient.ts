@@ -4,7 +4,7 @@ import type { NewframeHost } from '../../src/platform/ipc/contract/ipc'
 import type { AppCommand, AppQuery, CommandResult, ResultForQuery } from '../../src/app/contracts/operations'
 import type { StateConnectionResult, StateMessage } from '../../src/platform/state-sync/contract/protocol'
 
-export function createRendererClient() {
+function createRendererClient() {
   return {
     connectState: mock(
       async (_handler: (message: StateMessage) => void): Promise<StateConnectionResult> => ({
@@ -24,7 +24,7 @@ export function createRendererClient() {
 
 export type TestRendererClient = ReturnType<typeof createRendererClient>
 
-export function resetRendererClient(client: TestRendererClient) {
+function resetRendererClient(client: TestRendererClient) {
   client.connectState.mockReset()
   client.connectState.mockResolvedValue({ ok: true })
   client.disconnectState.mockReset()
@@ -35,7 +35,7 @@ export function resetRendererClient(client: TestRendererClient) {
   client.executeQuery.mockResolvedValue({ ok: false, error: 'not_found' } as never)
 }
 
-export function installRendererClient(client: TestRendererClient) {
+function installRendererClient(client: TestRendererClient) {
   if (typeof window === 'undefined') {
     Object.defineProperty(globalThis, 'window', {
       configurable: true,

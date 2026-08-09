@@ -6,7 +6,11 @@ import { createHostFixture } from '../../../../test/support/rendererClient'
 import { STATE_STREAM_SCHEMA_VERSION } from '../../../platform/state-sync/contract/protocol'
 import type { OperationRecord } from '../../../platform/operations/operation'
 import { walletState } from '../../../platform/state-sync/renderer/fixtures.test-support.ts'
-import { applyStateMessage, beginStateConnection, resetStateMirrorForTests } from '../../../platform/state-sync/renderer/rendererStore'
+import {
+  applyStateMessage,
+  beginStateConnection,
+  resetStateMirrorForTests
+} from '../../../platform/state-sync/renderer/rendererStore'
 
 Object.defineProperty(global.navigator, 'keyboard', {
   configurable: true,

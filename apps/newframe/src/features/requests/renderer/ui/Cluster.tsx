@@ -1,7 +1,6 @@
 import type { MouseEventHandler, ReactNode } from 'react'
 
 import { Stack } from '@newframe/ui/stack'
-import { Text } from '@newframe/ui/text'
 
 import { cva } from '../../../../../generated/styled-system/css/cva.js'
 
@@ -77,17 +76,6 @@ const valueRecipe = cva({
   defaultVariants: { interactive: false, interactiveChildren: false, tone: 'default' }
 })
 
-const boxRecipe = cva({
-  base: { position: 'relative' },
-  variants: {
-    offset: {
-      none: {},
-      large: { marginBlockStart: '11' }
-    }
-  },
-  defaultVariants: { offset: 'none' }
-})
-
 export type ClusterValueProps = {
   children?: ReactNode
   interactiveChildren?: boolean
@@ -131,31 +119,4 @@ export function ClusterRow({ children }: { children?: ReactNode }) {
 
 export function Cluster({ children, spacing = 'none' }: { children?: ReactNode; spacing?: 'none' | 'top' }) {
   return <div className={clusterRecipe({ spacing })}>{children}</div>
-}
-
-export function ClusterBox({
-  title,
-  subtitle,
-  children,
-  offset = 'none'
-}: {
-  title?: ReactNode
-  subtitle?: ReactNode
-  children?: ReactNode
-  offset?: 'large' | 'none'
-  animationSlot?: number
-}) {
-  return (
-    <section className={boxRecipe({ offset })}>
-      {title ? (
-        <Stack align='center' direction='row' gap='xsmall'>
-          <Text tone='muted' variant='overline'>
-            {title}
-          </Text>
-          {subtitle ? <Text tone='muted' variant='micro'>{`(${subtitle})`}</Text> : null}
-        </Stack>
-      ) : null}
-      {children}
-    </section>
-  )
 }

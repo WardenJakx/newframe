@@ -1,16 +1,29 @@
 import { Accounts } from '../../../features/accounts/main/index.js'
 import createExternalDataScanner from '../../../features/asset-data/main/externalData/index.js'
 import type { AccountsRuntime } from '../../../features/accounts/main/runtime.js'
-import { createDeferredAccountChainRpcPort, type AccountChainRpcPort } from '../../../features/accounts/main/providerPort.js'
+import {
+  createDeferredAccountChainRpcPort,
+  type AccountChainRpcPort
+} from '../../../features/accounts/main/providerPort.js'
 import { createAgentService, type AgentService } from '../../../features/agent-access/main/index.js'
 import { createRendererPrincipal } from '../../../features/access-control/main/authority.js'
 import { Chains } from '../../../features/networks/main/index.js'
 import { createProductionFlashService } from '../../../features/transactions/trade/main/instance.js'
 import type { FlashService } from '../../../features/transactions/trade/main/index.js'
-import { createProviderProxyConnection, type ProviderProxyConnection } from '../../../features/connections/main/provider/proxy.js'
-import { createProductionNameResolutionService, type NameResolutionService } from '../../../features/name-resolution/main/nameResolution.js'
+import {
+  createProviderProxyConnection,
+  type ProviderProxyConnection
+} from '../../../features/connections/main/provider/proxy.js'
+import {
+  createProductionNameResolutionService,
+  type NameResolutionService
+} from '../../../features/name-resolution/main/nameResolution.js'
 import { createRevealService, type RevealService } from '../../../features/transactions/main/reveal.js'
-import { createImageService, type ImageService, type ImageServiceAdapters } from '../../../features/asset-data/main/images/index.js'
+import {
+  createImageService,
+  type ImageService,
+  type ImageServiceAdapters
+} from '../../../features/asset-data/main/images/index.js'
 import {
   createRendererAuthorizationRegistry,
   type RendererAuthorizationRegistry
@@ -40,7 +53,11 @@ import {
 import { createMainApp, type MainApp } from './createMainApp.js'
 import { createAssetRateService } from '../../../features/asset-data/main/assetRates/service.js'
 import { createOperationService } from '../../../platform/operations/service.js'
-import { createSendService, type SendIdempotencyEntry, type SendService } from '../../../features/transactions/send/main/service.js'
+import {
+  createSendService,
+  type SendIdempotencyEntry,
+  type SendService
+} from '../../../features/transactions/send/main/service.js'
 import { createTradeService, type TradeService } from '../../../features/transactions/trade/main/service.js'
 import {
   createAccountOnboardingService,
@@ -52,7 +69,10 @@ import {
   type SecurityService,
   type SecurityServicePorts
 } from '../../../features/security/main/service.js'
-import { createProfileService, type ProfileService } from '../../../features/accounts/main/profiles/service.js'
+import {
+  createProfileService,
+  type ProfileService
+} from '../../../features/accounts/main/profiles/service.js'
 import {
   createPlatformService,
   type PlatformService,
@@ -66,7 +86,10 @@ import {
   type NetworkServicePorts
 } from '../../../features/networks/main/service.js'
 import { createTokenService, type TokenService } from '../../../features/tokens/main/service.js'
-import { createRequestEditService, type RequestEditService } from '../../../features/requests/main/requestEdits/service.js'
+import {
+  createRequestEditService,
+  type RequestEditService
+} from '../../../features/requests/main/requestEdits/service.js'
 import {
   createPortfolioService,
   type PortfolioService,
@@ -115,7 +138,7 @@ export interface ProductionMainAppDependencies {
   tradeService: TradeService
 }
 
-export interface ProductionAccountCapabilities {
+interface ProductionAccountCapabilities {
   chainRpc: ReturnType<typeof createDeferredAccountChainRpcPort>
   transactionPolicy: ReturnType<typeof createDeferredAccountTransactionPolicyPort>
   simulation: ReturnType<typeof createDeferredTransactionSimulationPort>
@@ -133,7 +156,7 @@ export interface ProductionCapabilityAdapters {
   network: Pick<NetworkServicePorts, 'rpcMatchesChain'>
 }
 
-export function createProductionProvider(
+function createProductionProvider(
   store: typeof import('../../../platform/state-store/index.js').default,
   accounts: Accounts,
   chains: Chains,
@@ -354,7 +377,7 @@ export function createProductionCapabilities(
   }
 }
 
-export function createProductionOperationServices(
+function createProductionOperationServices(
   provider: Provider,
   accounts: Accounts,
   nameResolution: NameResolutionService,

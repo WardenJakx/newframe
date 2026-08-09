@@ -62,10 +62,6 @@ function createFlashAsset({
   })
 }
 
-export const FLASH_NATIVE_ETH_ASSET_ID = flashAssetId(FLASH_ANVIL_CHAIN_ID, FLASH_NATIVE_ETH_TOKEN_ADDRESS)
-export const FLASH_WETH_ASSET_ID = flashAssetId(FLASH_ANVIL_CHAIN_ID, FLASH_WETH_ADDRESS)
-export const FLASH_USDC_ASSET_ID = flashAssetId(FLASH_ANVIL_CHAIN_ID, FLASH_USDC_ADDRESS)
-
 export const FLASH_NATIVE_ETH_ASSET = createFlashAsset({
   address: FLASH_NATIVE_ETH_TOKEN_ADDRESS,
   chainId: FLASH_ANVIL_CHAIN_ID,
@@ -92,8 +88,6 @@ export const FLASH_USDC_ASSET = createFlashAsset({
   name: 'USD Coin',
   symbol: FLASH_USDC_ASSET_SYMBOL
 })
-
-export const FLASH_DEFAULT_TARGET_ASSET = FLASH_WETH_ASSET
 
 export function toFlashApiAssetAddress(asset: FlashAsset) {
   return asset.isNative ? FLASH_NATIVE_ETH_TOKEN_ADDRESS : normalizeFlashAddress(asset.address)
@@ -171,9 +165,9 @@ export function getFlashDefaultTargetAsset(chainId = FLASH_ANVIL_CHAIN_ID) {
   return (
     assets.find((asset) => asset.symbol === FLASH_WETH_ASSET_SYMBOL) ||
     assets[0] || {
-      ...FLASH_DEFAULT_TARGET_ASSET,
+      ...FLASH_WETH_ASSET,
       chainId,
-      id: flashAssetId(chainId, toFlashApiAssetAddress(FLASH_DEFAULT_TARGET_ASSET))
+      id: flashAssetId(chainId, toFlashApiAssetAddress(FLASH_WETH_ASSET))
     }
   )
 }

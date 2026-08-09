@@ -4,7 +4,12 @@ import { v4 as uuid } from 'uuid'
 import log from 'electron-log'
 import { isHexString } from '@ethereumjs/util'
 
-import { parseOrigin, parseRequestChainId, type FrameExtension, type OriginsService } from '../../features/connections/main/origins.js'
+import {
+  parseOrigin,
+  parseRequestChainId,
+  type FrameExtension,
+  type OriginsService
+} from '../../features/connections/main/origins.js'
 import validPayload from './validPayload.js'
 import protectedMethods from './protectedMethods.js'
 import { createRpcPrincipal, type TrustedPrincipal } from '../../features/access-control/main/authority.js'
@@ -27,7 +32,7 @@ interface ExtensionPayload extends JSONRPCRequestPayload {
   __extensionConnecting?: boolean
 }
 
-export interface WebSocketProviderPort {
+interface WebSocketProviderPort {
   send(
     payload: RPCRequestPayload,
     respond?: (response: RPCResponsePayload) => void,

@@ -3,7 +3,7 @@ import type { CanonicalStoreReader } from '../../../platform/state-store/actions
 
 import type { PortfolioProvider } from './types.js'
 
-export type TokenDiscoveryProviderError = 'token_discovery_disabled' | 'missing_api_key'
+type TokenDiscoveryProviderError = 'token_discovery_disabled' | 'missing_api_key'
 
 export type TokenDiscoveryProviderAccess =
   | { ok: true; provider: PortfolioProvider }
@@ -25,5 +25,3 @@ export function getTokenDiscoveryProvider(
 
   return { ok: true, provider: new ZerionPortfolioProvider({ apiKey }) }
 }
-
-export type { PortfolioProvider } from './types.js'

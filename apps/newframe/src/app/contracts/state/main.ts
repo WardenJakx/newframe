@@ -12,12 +12,10 @@ import { TokenCatalogSchema } from '../../../features/tokens/domain/state/token.
 export const DEFAULT_PROFILE_ID = 'default-profile'
 export const DEFAULT_PROFILE_NAME = 'Profile 1'
 
-export const ProfileSchema = z.object({
+const ProfileSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1)
 })
-
-export type Profile = z.infer<typeof ProfileSchema>
 
 const ShortcutsSchema = z.object({
   summon: ShortcutSchema
@@ -34,7 +32,7 @@ export const RuntimeSchema = z.object({
   profile: z.string().nullable().optional()
 })
 
-export const AppLockSchema = z.object({
+const AppLockSchema = z.object({
   locked: z.boolean(),
   vaultExists: z.boolean()
 })
@@ -108,7 +106,7 @@ export const ActivityRecordSchema = z
   })
   .passthrough()
 
-export const ActivitySchema = z.record(z.string().describe('Activity Id'), ActivityRecordSchema).default({})
+const ActivitySchema = z.record(z.string().describe('Activity Id'), ActivityRecordSchema).default({})
 
 const OrderTimestampSchema = z.union([z.number(), z.string(), z.date()])
 const OrderOptionalTimestampSchema = OrderTimestampSchema.nullable().optional()
@@ -164,7 +162,7 @@ export const OrderRecordSchema = z
     path: ['source']
   })
 
-export const OrdersSchema = z.record(z.string().describe('Flash Order Id'), OrderRecordSchema).default({})
+const OrdersSchema = z.record(z.string().describe('Flash Order Id'), OrderRecordSchema).default({})
 
 export const MainSchema = z
   .object({
@@ -203,11 +201,7 @@ export const MainSchema = z
   .passthrough()
 
 export type Main = z.infer<typeof MainSchema>
-export type Activity = z.infer<typeof ActivitySchema>
 export type ActivityRecord = z.infer<typeof ActivityRecordSchema>
-export type ActivityStatus = z.infer<typeof ActivityStatusSchema>
-export type Orders = z.infer<typeof OrdersSchema>
-export type OrderRecord = z.infer<typeof OrderRecordSchema>
 
 export function getProfileAccountIds(
   main: Pick<Main, 'accounts' | 'accountOrder'>,

@@ -3,7 +3,11 @@ import type { Mock } from 'bun:test'
 
 import { act, fireEvent, render, screen, waitFor } from '../../../../../test/support/componentSetup'
 import Send from './index'
-import { applyStateMessage, beginStateConnection, resetStateMirrorForTests } from '../../../../platform/state-sync/renderer/rendererStore'
+import {
+  applyStateMessage,
+  beginStateConnection,
+  resetStateMirrorForTests
+} from '../../../../platform/state-sync/renderer/rendererStore'
 import { NATIVE_CURRENCY } from '../../../tokens/domain/constants'
 import { createHostFixture } from '../../../../../test/support/rendererClient'
 import { STATE_STREAM_SCHEMA_VERSION } from '../../../../platform/state-sync/contract/protocol'

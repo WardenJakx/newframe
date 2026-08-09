@@ -11,7 +11,10 @@ import { formatUsdRate } from '../../asset-data/domain/balance'
 import { cva } from '../../../../generated/styled-system/css/cva.js'
 import link from '../../../platform/ipc/renderer/link'
 import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector'
-import { selectOperationById, selectOperationEntityId } from '../../../platform/state-sync/renderer/selectors/operation'
+import {
+  selectOperationById,
+  selectOperationEntityId
+} from '../../../platform/state-sync/renderer/selectors/operation'
 
 type ProfileSummary = WalletRendererState['profiles'][number]
 type MovableAccount = {

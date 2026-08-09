@@ -37,7 +37,7 @@ export function parseFlashTypedData(value: unknown) {
   }
 }
 
-export function serializeFlashTypedData(value: unknown) {
+function serializeFlashTypedData(value: unknown) {
   if (typeof value === 'string') return value
   return value ? JSON.stringify(value) : ''
 }

@@ -13,7 +13,7 @@ import { imageSource, persistedImageSource } from '../../../../../asset-data/dom
 import { useTokenImageHydration } from '../../../../../../shared/renderer/hooks/useTokenImageHydration'
 import { DisplayCoinBalance } from '../../../ui/DisplayValue'
 
-export type TransactionInformationEffect = {
+type TransactionInformationEffect = {
   id: Key
   direction: string
   kind?: string
@@ -33,12 +33,12 @@ export type TransactionInformationDetailRow = {
   onClick?: () => void
 }
 
-export type TransactionInformationNativeCurrency = {
+type TransactionInformationNativeCurrency = {
   icon?: string
   image?: { base64?: string; mimeType?: string }
 }
 
-export type TransactionInformationCalldata = {
+type TransactionInformationCalldata = {
   digest: string
   data: string
 }
