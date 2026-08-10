@@ -1,4 +1,4 @@
-import { describe, expect, it, mock } from 'bun:test'
+import { describe, expect, it } from 'bun:test'
 import type { Mock } from 'bun:test'
 import { useState } from 'react'
 
@@ -262,8 +262,8 @@ describe('Orders display', () => {
       filledOutputAmount: '2400',
       contraNotional: '2400'
     }
-    const onCancel = mock((_order: OrderRow) => undefined)
-    const onOpen = mock((_order: OrderRow) => undefined)
+    const cancelledOrders: OrderRow[] = []
+    const openedOrders: OrderRow[] = []
     const { user } = render(
       <OrdersView
         cancelErrors={{}}
@@ -271,17 +271,19 @@ describe('Orders display', () => {
         imageCapability={ordersCapability}
         networks={{}}
         networksMeta={{}}
-        onCancel={onCancel}
-        onOpen={onOpen}
+        onCancel={(value) => cancelledOrders.push(value)}
+        onOpen={(value) => openedOrders.push(value)}
         orders={[openOrder, filledOrder]}
         tokens={{ byId: {}, accountTokenIds: {} }}
       />
     )
 
     await user.click(screen.getByRole('button', { name: 'Cancel order' }))
-    expect(onCancel.mock.calls).toEqual([[openOrder]])
-    expect(onOpen.mock.calls).toEqual([])
+    expect(cancelledOrders).toHaveLength(1)
+    expect(cancelledOrders[0]).toBe(openOrder)
+    expect(openedOrders).toHaveLength(0)
     await user.click(screen.getAllByRole('button', { name: /order details/i })[1])
-    expect(onOpen.mock.calls).toEqual([[filledOrder]])
+    expect(openedOrders).toHaveLength(1)
+    expect(openedOrders[0]).toBe(filledOrder)
   })
 })

@@ -59,12 +59,13 @@ describe('Seed signer', () => {
   }, 7_500)
 
   test('Scan for signers', async () => {
-    timers.useFakeTimers()
+    let scan!: ReturnType<typeof hot.scan>
     const found = callbackResult<any>((done) => {
-      hot.scan({ add: (value: any) => done(null, value), exists: () => false })
-      timers.runAllTimers()
+      scan = hot.scan({ add: (value: any) => done(null, value), exists: () => false })
+      scan()
     })
     const scanned = await found
+    scan.cancel()
     expect(scanned.type).toBe('seed')
     scanned.close(() => {})
   })

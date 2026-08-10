@@ -1,3 +1,6 @@
+[test]
+timeout = 5000
+
 [install]
 # Require newly resolved npm package versions to be at least 7 days old.
 minimumReleaseAge = 604800

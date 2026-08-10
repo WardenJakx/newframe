@@ -33,16 +33,16 @@
     "publish:linux:arm64": "bun run sync:assets && electron-builder -c.snap.publish=github --config=build/electron-builder-linux-arm64.ts",
     "rebuild:natives": "electron-builder install-app-deps",
     "test": "bun run test:unit",
-    "test:main": "bun test --isolate --preload ./test/support/electron.preload.ts --timeout 1000 ./src/app/main ./src/features/access-control/main ./src/features/accounts/main ./src/features/agent-access/main ./src/features/asset-data/main ./src/features/connections/main ./src/features/name-resolution/main ./src/features/networks/main ./src/features/portfolio/main ./src/features/requests/main ./src/features/security/main ./src/features/settings/main ./src/features/tokens/main ./src/features/transactions/main ./src/features/transactions/send/main ./src/features/transactions/trade/main ./src/platform/app-update/index.test.ts ./src/platform/callbacks ./src/platform/chain-rpc ./src/platform/desktop ./src/platform/ipc/main ./src/platform/local-rpc ./src/platform/operations ./src/platform/persistence ./src/platform/runtime ./src/platform/secrets ./src/platform/signing ./src/platform/state-store ./src/platform/state-sync/main",
+    "test:main": "bun test --isolate --preload ./test/support/electron.preload.ts ./src/app/main ./src/features/access-control/main ./src/features/accounts/main ./src/features/agent-access/main ./src/features/asset-data/main ./src/features/connections/main ./src/features/name-resolution/main ./src/features/networks/main ./src/features/portfolio/main ./src/features/requests/main ./src/features/security/main ./src/features/settings/main ./src/features/tokens/main ./src/features/transactions/main ./src/features/transactions/send/main ./src/features/transactions/trade/main ./src/platform/app-update/index.test.ts ./src/platform/callbacks ./src/platform/chain-rpc ./src/platform/desktop ./src/platform/ipc/main ./src/platform/local-rpc ./src/platform/operations ./src/platform/persistence ./src/platform/runtime ./src/platform/secrets ./src/platform/signing ./src/platform/state-store ./src/platform/state-sync/main",
     "test:renderer": "bun ./scripts/run-renderer-tests.ts",
-    "test:portable": "bun test --isolate --timeout 1000 ./src/app/contracts ./src/features/*/contract ./src/features/*/domain ./src/features/transactions/*/domain ./src/platform/*/contract ./src/platform/signing/domain ./src/shared/domain ./src/preload ./scripts",
+    "test:portable": "bun test --isolate ./src/app/contracts ./src/features/*/contract ./src/features/*/domain ./src/features/transactions/*/domain ./src/platform/*/contract ./src/platform/signing/domain ./src/shared/domain ./src/preload ./scripts",
     "test:unit": "bun run ui:build && bun run ui:test && bun run colors:check && bun run architecture:check && bun run test:audit && bun run test:integration && bun run test:main && bun run test:renderer && bun run test:portable",
     "test:all": "bun run test:unit",
     "test:audit": "bun ./scripts/test-audit.ts --check",
-    "test:integration": "bun test --isolate --preload ./test/support/electron.preload.ts --timeout 1000 ./test/integration/operationFlow.test.ts",
+    "test:integration": "bun test --isolate --preload ./test/support/electron.preload.ts ./test/integration/operationFlow.test.ts",
     "test:coverage": "bun ./scripts/collect-critical-coverage.ts",
     "test:coverage:report": "bun ./scripts/check-critical-coverage.ts --report-only ./coverage/critical-parts",
-    "test:usbAdapters": "bun test --isolate --preload ./test/support/electron.preload.ts --timeout 1000 ./src/platform/signing/signers/ledger/adapter.test.ts"
+    "test:usbAdapters": "bun test --isolate --preload ./test/support/electron.preload.ts ./src/platform/signing/signers/ledger/adapter.test.ts"
   },
   "author": {
     "name": "NewFrame Labs",

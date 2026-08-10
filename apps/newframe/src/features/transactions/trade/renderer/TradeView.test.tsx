@@ -1,4 +1,4 @@
-import { expect, it, mock } from 'bun:test'
+import { expect, it } from 'bun:test'
 
 import { fireEvent, render, screen } from '../../../../../test/support/componentSetup'
 import {
@@ -42,24 +42,24 @@ function asset(field: 'target' | 'contra', symbol: string, editable: boolean): T
 }
 
 function viewProps() {
-  const onOrderTypeChange = mock<TradeViewEvents['onOrderTypeChange']>(() => undefined)
-  const onInputAmountChange = mock<TradeViewEvents['onInputAmountChange']>(() => undefined)
-  const onBalancePercentChange = mock<TradeViewEvents['onBalancePercentChange']>(() => undefined)
-  const onReview = mock<TradeViewEvents['onReview']>(() => undefined)
+  const balancePercentChanges: Parameters<TradeViewEvents['onBalancePercentChange']>[] = []
+  const inputAmountChanges: Parameters<TradeViewEvents['onInputAmountChange']>[] = []
+  const orderTypeChanges: Parameters<TradeViewEvents['onOrderTypeChange']>[] = []
+  const reviewCalls: Parameters<TradeViewEvents['onReview']>[] = []
   const events: TradeViewEvents = {
-    onAssetOpenChange: mock(() => undefined),
-    onBalancePercentChange,
-    onClose: mock(() => undefined),
-    onInputAmountChange,
-    onOrderFieldChange: mock(() => undefined),
-    onOrderTypeChange,
-    onReview,
-    onSelectAsset: mock(() => undefined),
-    onShowMoreAssets: mock(() => undefined),
-    onSlippageChange: mock(() => undefined),
-    onTimeInForceChange: mock(() => undefined),
-    onToggleAdvanced: mock(() => undefined),
-    onToggleSide: mock(() => undefined)
+    onAssetOpenChange: () => undefined,
+    onBalancePercentChange: (...args) => balancePercentChanges.push(args),
+    onClose: () => undefined,
+    onInputAmountChange: (...args) => inputAmountChanges.push(args),
+    onOrderFieldChange: () => undefined,
+    onOrderTypeChange: (...args) => orderTypeChanges.push(args),
+    onReview: (...args) => reviewCalls.push(args),
+    onSelectAsset: () => undefined,
+    onShowMoreAssets: () => undefined,
+    onSlippageChange: () => undefined,
+    onTimeInForceChange: () => undefined,
+    onToggleAdvanced: () => undefined,
+    onToggleSide: () => undefined
   }
   const model: TradeViewModel = {
     action: { enabled: true, label: 'Review/sign' },
@@ -119,7 +119,7 @@ function viewProps() {
     }
   }
 
-  return { events, model, onBalancePercentChange, onInputAmountChange, onOrderTypeChange, onReview }
+  return { balancePercentChanges, events, inputAmountChanges, model, orderTypeChanges, reviewCalls }
 }
 
 it('renders semantic ticket, quote, and progress models and emits named events', () => {
@@ -135,10 +135,14 @@ it('renders semantic ticket, quote, and progress models and emits named events',
   fireEvent.click(screen.getByRole('tab', { name: 'TWAP' }))
   fireEvent.click(screen.getByRole('button', { name: 'Review/sign' }))
 
-  expect(props.onInputAmountChange.mock.calls).toEqual([['1.5']])
-  expect(props.onBalancePercentChange.mock.calls).toEqual([['target', 75]])
-  expect(props.onOrderTypeChange.mock.calls).toEqual([[FLASH_TWAP_ORDER_TYPE]])
-  expect(props.onReview.mock.calls).toEqual([[]])
+  expect(props.inputAmountChanges).toHaveLength(1)
+  expect(props.inputAmountChanges[0]?.[0]).toBe('1.5')
+  expect(props.balancePercentChanges).toHaveLength(1)
+  expect(props.balancePercentChanges[0]?.[0]).toBe('target')
+  expect(props.balancePercentChanges[0]?.[1]).toBe(75)
+  expect(props.orderTypeChanges).toHaveLength(1)
+  expect(props.orderTypeChanges[0]?.[0]).toBe(FLASH_TWAP_ORDER_TYPE)
+  expect(props.reviewCalls).toHaveLength(1)
 })
 
 it('renders each progressive order-field surface from its view model', () => {
