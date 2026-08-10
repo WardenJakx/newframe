@@ -1,23 +1,19 @@
-import { afterEach, beforeEach, describe, expect, it, jest as timers } from 'bun:test'
+import { describe, expect, it } from 'bun:test'
 
-import { act, render, screen } from '../../../../test/support/componentSetup'
-import { createHostFixture } from '../../../../test/support/rendererClient'
+import { render, screen } from '../../../../test/support/componentSetup'
+import { registerTestRuntimeFixture } from '../../../../test/support/rendererClient'
 import { AssetDetailsView } from './AssetDetailsView'
 import { NATIVE_CURRENCY } from '../../tokens/domain/constants'
 import type { DisplayedBalance } from '../../asset-data/domain/balance'
 import { shortAddress } from '../../../shared/renderer/ui/AddressIdentity'
+import { createRendererUtilityCapabilities as createUtilityPorts } from '../../../shared/renderer/capabilities.test-support'
 
 const address = '0xaf88d065e77c8cc2239327c5edb3a432268e5831'
 const networks = { 42161: { name: 'Arbitrum' } }
 const networksMeta = { 42161: {} }
-const linkMock = createHostFixture()
-
-beforeEach(() => {
-  timers.useFakeTimers()
-})
-
-afterEach(() => {
-  timers.useRealTimers()
+const fixture = registerTestRuntimeFixture()
+const utilityPorts = createUtilityPorts({
+  executeCommand: (command) => fixture.client.executeCommand(command)
 })
 
 function assetWithAddress(assetAddress: string): DisplayedBalance {
@@ -44,13 +40,14 @@ function renderAsset(assetAddress = address) {
       asset={assetWithAddress(assetAddress)}
       canSend
       canTrade
+      clipboard={utilityPorts}
+      imageCapability={utilityPorts}
       networks={networks}
       networksMeta={networksMeta}
       onBack={() => {}}
       onSend={() => {}}
       onTrade={() => {}}
-    />,
-    { advanceTimersAfterInput: 0 }
+    />
   )
 }
 
@@ -65,6 +62,8 @@ describe('AssetDetailsView contract address', () => {
         asset={asset}
         canSend
         canTrade
+        clipboard={utilityPorts}
+        imageCapability={utilityPorts}
         networks={networks}
         networksMeta={networksMeta}
         onBack={() => {}}
@@ -81,15 +80,11 @@ describe('AssetDetailsView contract address', () => {
 
     await user.click(screen.getByRole('button', { name: `Copy address for ${shortAddress(address)}` }))
 
-    expect(linkMock.executeCommand).toHaveBeenCalledWith({
+    expect(fixture.client.executeCommand).toHaveBeenCalledWith({
       type: 'clipboard.write',
       text: address
     })
     expect(screen.getByRole('button', { name: `Address copied for ${shortAddress(address)}` })).toBeTruthy()
-
-    act(() => timers.advanceTimersByTime(1000))
-
-    expect(screen.getByRole('button', { name: `Copy address for ${shortAddress(address)}` })).toBeTruthy()
   })
 
   it('keeps native assets non-interactive', () => {

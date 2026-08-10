@@ -705,7 +705,6 @@ const PortfolioRefreshCommandSchema = z.strictObject({
   type: z.literal('portfolio.refresh'),
   operationId: OperationIdSchema
 })
-export type PortfolioRefreshCommand = z.infer<typeof PortfolioRefreshCommandSchema>
 
 const SettingsBooleanSchema = z.discriminatedUnion('setting', [
   z.strictObject({

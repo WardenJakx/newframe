@@ -1,19 +1,20 @@
-import { formatPairIntent, getDirectionLabel } from '../../domain/pair'
+import { getDirectionLabel } from '../../domain/pair'
 import type { FlashTradeSide } from '../../domain/schemas'
-import { timestamp } from '../../../../../app/renderer/tray/Home/StatusNotifications'
+import { timestamp } from '../../../../../shared/domain/timestamp'
+import type { OrderAsset, OrderModel, OrderNetworkMap, OrderRow } from './orderTypes'
 
 export function normalizeOrderSide(side = ''): FlashTradeSide | '' {
   const normalized = String(side).toLowerCase()
   return normalized === 'buy' || normalized === 'sell' ? normalized : ''
 }
 
-export function orderStatus(order: any) {
+export function orderStatus(order: OrderModel) {
   return String(order.status || order.rawStatus || '')
     .trim()
     .toLowerCase()
 }
 
-export function isOpenOrder(order: any) {
+export function isOpenOrder(order: OrderModel) {
   if (order.open === true) return true
   if (order.open === false) return false
 
@@ -42,28 +43,28 @@ function titleize(value = '') {
     .replace(/\b\w/g, (letter) => letter.toUpperCase())
 }
 
-export function orderStatusLabel(order: any) {
+export function orderStatusLabel(order: OrderModel) {
   return titleize(order.status || order.rawStatus || 'Unknown')
 }
 
-export function orderTypeLabel(order: any) {
+export function orderTypeLabel(order: OrderModel) {
   return titleize(order.orderType || 'Order')
 }
 
-export function orderSideLabel(order: any) {
+export function orderSideLabel(order: OrderModel) {
   const side = normalizeOrderSide(order.side)
   return side ? getDirectionLabel(side) : titleize(order.side || 'Side')
 }
 
-export function orderAssetSymbol(asset: any) {
+export function orderAssetSymbol(asset?: OrderAsset) {
   return String(asset?.symbol || asset?.assetSymbol || asset?.ticker || asset?.id || 'Asset').toUpperCase()
 }
 
-export function orderAssetName(asset: any) {
+export function orderAssetName(asset?: OrderAsset) {
   return String(asset?.name || orderAssetSymbol(asset))
 }
 
-export function formatOrderAmount(value: any) {
+export function formatOrderAmount(value: unknown) {
   if (value === undefined || value === null || value === '') return ''
 
   const numeric = typeof value === 'number' ? value : Number(String(value).replace(/,/g, ''))
@@ -76,16 +77,16 @@ export function formatOrderAmount(value: any) {
   return String(value)
 }
 
-export function orderSize(order: any) {
+export function orderSize(order: OrderModel) {
   const size = formatOrderAmount(order.qty)
   return size ? `${size} ${orderAssetSymbol(order.targetAsset)}` : ''
 }
 
-function firstOrderAmount(...values: any[]) {
+function firstOrderAmount(...values: unknown[]) {
   return values.find((value) => value !== undefined && value !== null && value !== '')
 }
 
-export function orderAssetAmounts(order: any) {
+export function orderAssetAmounts(order: OrderModel) {
   const side = normalizeOrderSide(order.side)
   const filledOutput = Number(order.filledOutputAmount) > 0 ? order.filledOutputAmount : undefined
   const inputAmount = formatOrderAmount(
@@ -106,7 +107,7 @@ export function orderAssetAmounts(order: any) {
   }
 }
 
-export function hasOrderFill(order: any) {
+export function hasOrderFill(order: OrderModel) {
   const filledAmount = Number(order.filledOutputAmount)
   return (
     (Number.isFinite(filledAmount) && filledAmount > 0) ||
@@ -114,7 +115,7 @@ export function hasOrderFill(order: any) {
   )
 }
 
-export function orderTargetNotional(order: any) {
+export function orderTargetNotional(order: OrderModel) {
   const hasExplicitNotional =
     order.targetNotional !== undefined && order.targetNotional !== null && order.targetNotional !== ''
   const explicitNotional = Number(order.targetNotional)
@@ -149,12 +150,12 @@ export function orderTargetNotional(order: any) {
   return '—'
 }
 
-export function orderContraAmount(order: any) {
+export function orderContraAmount(order: OrderModel) {
   if (!hasOrderFill(order)) return '—'
   return orderAssetAmounts(order).contra || '—'
 }
 
-export function orderContraNotional(order: any) {
+export function orderContraNotional(order: OrderModel) {
   if (!hasOrderFill(order)) return '—'
 
   const hasExplicitNotional =
@@ -185,7 +186,7 @@ function formatOrderNotional(value: number) {
   }).format(value)
 }
 
-export function orderDate(value: any) {
+export function orderDate(value: unknown) {
   const time = timestamp(value, 0)
   if (!time) return ''
 
@@ -198,7 +199,7 @@ export function orderDate(value: any) {
   }).format(new Date(time))
 }
 
-export function orderDateTime(value: any) {
+export function orderDateTime(value: unknown) {
   const time = timestamp(value, 0)
   if (!time) return ''
 
@@ -212,21 +213,17 @@ export function orderDateTime(value: any) {
   }).format(new Date(time))
 }
 
-export function orderPairIntent(order: any) {
+export function orderPairIntent(order: OrderModel) {
   const side = normalizeOrderSide(order.side)
   const targetSymbol = orderAssetSymbol(order.targetAsset)
   const contraSymbol = orderAssetSymbol(order.contraAsset)
 
   if (!side) return `${targetSymbol} / ${contraSymbol}`
 
-  return formatPairIntent({
-    side,
-    targetAsset: { ...(order.targetAsset || {}), symbol: targetSymbol } as any,
-    contraAsset: { ...(order.contraAsset || {}), symbol: contraSymbol } as any
-  })
+  return `${targetSymbol} ${side === 'buy' ? '<-' : '->'} ${contraSymbol}`
 }
 
-export function orderJson(value: any) {
+export function orderJson(value: unknown) {
   if (value === undefined || value === null) return ''
 
   try {
@@ -236,11 +233,15 @@ export function orderJson(value: any) {
   }
 }
 
-export function orderErrorMessage(error: any, fallback: string) {
+export function orderErrorMessage(error: unknown, fallback: string) {
   if (!error) return fallback
   if (typeof error === 'string') return error
-  if (error.message) return error.message
-  if (error.error?.message) return error.error.message
+  if (typeof error === 'object') {
+    if ('message' in error && error.message) return String(error.message)
+    if ('error' in error && typeof error.error === 'object' && error.error && 'message' in error.error) {
+      return String(error.error.message)
+    }
+  }
 
   return fallback
 }
@@ -253,8 +254,8 @@ export function createOrderRows({
   showTestnets
 }: {
   accountAddress: string
-  networks: Record<string | number, any>
-  orders: Record<string, any>
+  networks: OrderNetworkMap
+  orders: Record<string, OrderModel>
   selectedChainId: number
   showTestnets: boolean
 }) {
@@ -263,7 +264,7 @@ export function createOrderRows({
   return Object.entries(orders)
     .map(([id, order]) => ({ ...order, orderId: order.orderId || id }))
     .filter((order) => {
-      const orderAddress = String(order.accountAddress || order.account || order.address || '').toLowerCase()
+      const orderAddress = String(order.accountAddress || '').toLowerCase()
       const chainIds = [Number(order.targetAsset?.chainId), Number(order.contraAsset?.chainId)].filter(
         (chainId, index, values) =>
           Number.isInteger(chainId) && chainId > 0 && values.indexOf(chainId) === index
@@ -284,5 +285,5 @@ export function createOrderRows({
       return (
         timestamp(b.createdAt, timestamp(b.updatedAt, 0)) - timestamp(a.createdAt, timestamp(a.updatedAt, 0))
       )
-    })
+    }) as OrderRow[]
 }

@@ -3,6 +3,7 @@ import { Text } from '@newframe/ui/text'
 
 import { cva } from '../../../../generated/styled-system/css/cva.js'
 import { CopyButton } from './CopyButton'
+import type { ClipboardCapability } from '../capabilities'
 
 const addressIdentityRecipe = cva({
   base: {
@@ -30,15 +31,17 @@ export const shortAddress = (address?: string) => {
 
 export type AddressIdentityProps = {
   address?: string
+  clipboard?: ClipboardCapability
   nickname?: string
-  onCopy?: (address: string) => void
+  showCopy?: boolean
   showFullAddress?: boolean
 }
 
 export function AddressIdentity({
   address,
+  clipboard,
   nickname,
-  onCopy,
+  showCopy = true,
   showFullAddress = false
 }: AddressIdentityProps) {
   if (!address && !nickname) return null
@@ -70,12 +73,12 @@ export function AddressIdentity({
       ) : (
         addressText
       )}
-      {address ? (
+      {address && showCopy && clipboard ? (
         <CopyButton
+          clipboard={clipboard}
           copiedLabel={`Address copied for ${display}`}
           copiedTitle='Address copied'
           label={`Copy address for ${display}`}
-          onCopy={onCopy}
           title='Copy address'
           value={address}
         />

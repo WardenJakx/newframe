@@ -1,14 +1,22 @@
-import { expect, it, mock } from 'bun:test'
+import { beforeEach, expect, it, mock } from 'bun:test'
 
 import { fireEvent, render, screen } from '../../../../../test/support/componentSetup'
-import { createHostFixture } from '../../../../../test/support/rendererClient'
 import { RequestCommand, approveRequest, declineRequest, runWhenAppUnlocked } from './index'
 import TxApproval from './TxApproval'
+import {
+  createRequestRendererCapabilitiesFake as createRequestPortsFake,
+  type RequestRendererCapabilitiesFake
+} from '../requestCapabilities.test-support'
 
-const link = createHostFixture()
+let capabilities: RequestRendererCapabilitiesFake
+
+beforeEach(() => {
+  capabilities = createRequestPortsFake()
+})
 
 const createProps = <const Request extends object>(appLocked: boolean, req: Request) => {
   return {
+    capabilities,
     notify: mock(),
     req,
     shared: {
@@ -31,17 +39,11 @@ it('uses synchronized lock state instead of querying Electron before signing', (
 })
 
 it('approves and rejects requests using canonical IDs', () => {
-  approveRequest('request-1')
-  declineRequest({ handlerId: 'request-2' })
+  approveRequest(capabilities.review, 'request-1')
+  declineRequest(capabilities.review, { handlerId: 'request-2' })
 
-  expect(link.executeCommand).toHaveBeenNthCalledWith(1, {
-    type: 'request.approve',
-    requestId: 'request-1'
-  })
-  expect(link.executeCommand).toHaveBeenNthCalledWith(2, {
-    type: 'request.reject',
-    requestId: 'request-2'
-  })
+  expect(capabilities.review.approve).toHaveBeenCalledWith({ requestId: 'request-1' })
+  expect(capabilities.review.reject).toHaveBeenCalledWith({ requestId: 'request-2' })
 })
 
 it('displays the main-projected signer compatibility gate without querying Electron', () => {
@@ -61,12 +63,14 @@ it('displays the main-projected signer compatibility gate without querying Elect
   const props = createProps(false, req)
   render(<RequestCommand {...props} />)
 
-  expect(props.notify).toHaveBeenCalledWith('signerCompatibilityWarning', {
-    req,
-    compatibility: { signer: 'ledger', tx: 'london', compatible: false },
-    chain: { type: 'ethereum', id: 1 }
+  expect(props.notify).toHaveBeenCalledWith({
+    type: 'signerCompatibilityWarning',
+    data: {
+      req,
+      compatibility: { signer: 'ledger', tx: 'london', compatible: false },
+      chain: { type: 'ethereum', id: 1 }
+    }
   })
-  expect(link.executeQuery.mock.calls).toEqual([])
 })
 
 it('uses renderer-generated idempotency keys for transaction replacement', () => {
@@ -83,14 +87,12 @@ it('uses renderer-generated idempotency keys for transaction replacement', () =>
   fireEvent.click(screen.getByLabelText('Cancel transaction'))
   fireEvent.click(screen.getByLabelText('Speed up transaction'))
 
-  expect(link.executeCommand).toHaveBeenNthCalledWith(1, {
-    type: 'transaction.replace',
+  expect(capabilities.transaction.replace).toHaveBeenNthCalledWith(1, {
     requestId: req.handlerId,
     replacement: 'cancel',
     idempotencyKey: expect.stringMatching(/^[0-9a-f-]{36}$/)
   })
-  expect(link.executeCommand).toHaveBeenNthCalledWith(2, {
-    type: 'transaction.replace',
+  expect(capabilities.transaction.replace).toHaveBeenNthCalledWith(2, {
     requestId: req.handlerId,
     replacement: 'speed',
     idempotencyKey: expect.stringMatching(/^[0-9a-f-]{36}$/)
@@ -109,8 +111,7 @@ it('dismisses fee notices through the typed transaction command', () => {
 
   fireEvent.click(screen.getByText('Ok'))
 
-  expect(link.executeCommand).toHaveBeenCalledWith({
-    type: 'transaction.fee-notice-dismiss',
+  expect(capabilities.transaction.dismissFeeNotice).toHaveBeenCalledWith({
     requestId: req.handlerId
   })
 })
@@ -118,18 +119,16 @@ it('dismisses fee notices through the typed transaction command', () => {
 it('uses typed request commands for required approvals', () => {
   const req = { handlerId: 'request-1' }
   const approval = { type: 'approveGasLimit' as const, data: { message: 'Estimated to fail' } }
-  render(<TxApproval req={req} approval={approval} />)
+  render(<TxApproval capability={capabilities.review} req={req} approval={approval} />)
 
   fireEvent.click(screen.getByText('Proceed'))
   fireEvent.click(screen.getByText('Reject'))
 
-  expect(link.executeCommand).toHaveBeenNthCalledWith(1, {
-    type: 'request.approval-confirm',
+  expect(capabilities.review.confirmApproval).toHaveBeenCalledWith({
     requestId: req.handlerId,
     approvalType: approval.type
   })
-  expect(link.executeCommand).toHaveBeenNthCalledWith(2, {
-    type: 'request.reject',
+  expect(capabilities.review.reject).toHaveBeenCalledWith({
     requestId: req.handlerId
   })
 })

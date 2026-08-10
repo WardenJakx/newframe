@@ -31,7 +31,7 @@ const KeyboardShortcutConfigurator = ({
   useEffect(() => {
     if (!shortcut.configuring) return
 
-    hotkeys('*', { capture: true } as any, (event: KeyboardEvent) => {
+    hotkeys('*', { capture: true }, (event: KeyboardEvent) => {
       event.preventDefault()
 
       const allowedModifierKeys = ['Meta', 'Alt', 'Control', 'Command']

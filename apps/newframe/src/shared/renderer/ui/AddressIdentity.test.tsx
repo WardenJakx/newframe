@@ -9,13 +9,14 @@ afterEach(() => timers.useRealTimers())
 
 it('shows a checkmark for one second after copying, then restores the copy button', () => {
   timers.useFakeTimers()
-  const onCopy = mock(() => undefined)
+  const onCopy = mock((_copiedAddress: string) => undefined)
+  const clipboard = { writeText: async (value: string) => onCopy(value) }
 
-  render(<AddressIdentity address={address} nickname='testname' onCopy={onCopy} />)
+  render(<AddressIdentity address={address} clipboard={clipboard} nickname='testname' />)
   fireEvent.click(screen.getByRole('button', { name: 'Copy address for testname' }))
 
-  expect(onCopy).toHaveBeenCalledTimes(1)
-  expect(onCopy).toHaveBeenCalledWith(address)
+  const copyCalls: Array<[copiedAddress: string]> = onCopy.mock.calls
+  expect(copyCalls).toEqual([[address]])
   expect(screen.getByRole('button', { name: 'Address copied for testname' })).toBeTruthy()
 
   act(() => timers.advanceTimersByTime(1000))

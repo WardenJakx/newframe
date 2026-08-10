@@ -5,19 +5,23 @@ import { Stack } from '@newframe/ui/stack'
 import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
 
-import link from '../../../platform/ipc/renderer/link'
 import { capitalize } from '../../../shared/domain/text'
 import { AppIcon } from '../../../shared/renderer/ui/appIcon'
+import type { ConnectionsCapability } from './connectionsCapability'
 
 export type ExtensionConnectNotificationProps = {
   browser: string
+  capability: Pick<ConnectionsCapability, 'copyText' | 'respondToExtension'>
   id: string
 }
 
-export default function ExtensionConnectNotification({ id, browser }: ExtensionConnectNotificationProps) {
+export default function ExtensionConnectNotification({
+  id,
+  browser,
+  capability
+}: ExtensionConnectNotificationProps) {
   const respond = (accepted: boolean) => {
-    void link.executeCommand({
-      type: 'extension.respond',
+    void capability.respondToExtension({
       extensionId: id,
       approved: accepted
     })
@@ -26,7 +30,7 @@ export default function ExtensionConnectNotification({ id, browser }: ExtensionC
   const [copyId, setCopyId] = useState(false)
 
   const copyExtensionId = () => {
-    void link.executeCommand({ type: 'clipboard.write', text: id })
+    void capability.copyText({ text: id })
     setCopyId(true)
     setTimeout(() => setCopyId(false), 2000)
   }

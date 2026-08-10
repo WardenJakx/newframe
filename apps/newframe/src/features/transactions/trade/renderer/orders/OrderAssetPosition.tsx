@@ -8,6 +8,8 @@ import { NATIVE_CURRENCY } from '../../../../tokens/domain/constants'
 import { cva } from '../../../../../../generated/styled-system/css/cva.js'
 import ChainTokenIcon from '../../../../../shared/renderer/ui/ChainTokenIcon'
 import { orderAssetName, orderAssetSymbol } from './orderModel'
+import type { OrderAsset, OrderNetworkMap, OrderNetworkMetadataMap, OrderTokenCatalog } from './orderTypes'
+import type { TokenImageCapability } from '../../../../../shared/renderer/capabilities'
 
 const assetPositionRecipe = cva({
   base: {
@@ -24,7 +26,7 @@ const assetPositionRecipe = cva({
   }
 })
 
-function orderAssetIdentity(asset: any) {
+function orderAssetIdentity(asset?: OrderAsset) {
   const chainId = Number(asset?.chainId || 0)
   const address = String(asset?.address || '')
     .trim()
@@ -44,15 +46,17 @@ function orderAssetIdentity(asset: any) {
 export function OrderAssetIcon({
   asset,
   imageSource,
+  imageCapability,
   networks,
   networksMeta,
   tokens
 }: {
-  asset: any
+  asset?: OrderAsset
   imageSource?: string
-  networks: Record<string | number, any>
-  networksMeta: Record<string | number, any>
-  tokens?: any
+  imageCapability: TokenImageCapability
+  networks: OrderNetworkMap
+  networksMeta: OrderNetworkMetadataMap
+  tokens?: OrderTokenCatalog
 }) {
   const symbol = orderAssetSymbol(asset)
   const { chainId, isNative, tokenId } = orderAssetIdentity(asset)
@@ -61,6 +65,7 @@ export function OrderAssetIcon({
   return (
     <ChainTokenIcon
       chainId={chainId}
+      imageCapability={imageCapability}
       logoURI={imageSource || resolvedImage}
       networks={networks}
       networksMeta={networksMeta}
@@ -76,9 +81,9 @@ export function resolveOrderAssetImageSource({
   networksMeta,
   tokens
 }: {
-  asset: any
-  networksMeta: Record<string | number, any>
-  tokens?: any
+  asset?: OrderAsset
+  networksMeta: OrderNetworkMetadataMap
+  tokens?: OrderTokenCatalog
 }) {
   const { chainId, isNative, tokenId } = orderAssetIdentity(asset)
   const canonicalImage = tokens ? tokenImageSource(tokenForId(tokens, tokenId)) : ''
@@ -101,6 +106,7 @@ export function OrderAssetPosition({
   amount,
   asset,
   imageSource,
+  imageCapability,
   networks,
   networksMeta,
   notional,
@@ -108,12 +114,13 @@ export function OrderAssetPosition({
 }: {
   align: 'start' | 'end'
   amount?: string
-  asset: any
+  asset?: OrderAsset
   imageSource?: string
-  networks: Record<string | number, any>
-  networksMeta: Record<string | number, any>
+  imageCapability: TokenImageCapability
+  networks: OrderNetworkMap
+  networksMeta: OrderNetworkMetadataMap
   notional?: string
-  tokens: any
+  tokens: OrderTokenCatalog
 }) {
   const symbol = orderAssetSymbol(asset)
   const amountLabel = amount && amount !== '—' ? `${amount} ${symbol}` : '—'
@@ -123,6 +130,7 @@ export function OrderAssetPosition({
       <Stack align='center' direction='row' gap='xsmall'>
         <OrderAssetIcon
           asset={asset}
+          imageCapability={imageCapability}
           imageSource={imageSource}
           networks={networks}
           networksMeta={networksMeta}

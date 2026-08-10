@@ -3,8 +3,10 @@ import { Text } from '@newframe/ui/text'
 
 import ChainTokenIcon from './ChainTokenIcon'
 import type { NetworkLike, NetworkMetaLike, TokenSelectorItem } from './tokenSelectorTypes'
+import type { TokenImageCapability } from '../capabilities'
 
 interface TokenOptionRowProps {
+  imageCapability: TokenImageCapability
   item: TokenSelectorItem
   networks: Record<string | number, NetworkLike>
   networksMeta: Record<string | number, NetworkMetaLike>
@@ -12,6 +14,7 @@ interface TokenOptionRowProps {
 }
 
 export default function TokenOptionRow({
+  imageCapability,
   item,
   networks,
   networksMeta,
@@ -23,6 +26,7 @@ export default function TokenOptionRow({
     <Stack align='center' direction='row' gap='large' grow>
       <ChainTokenIcon
         chainId={item.chainId}
+        imageCapability={imageCapability}
         logoURI={item.logoURI}
         networks={networks}
         networksMeta={networksMeta}

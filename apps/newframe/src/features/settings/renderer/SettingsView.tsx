@@ -12,6 +12,7 @@ import KeyboardShortcutConfigurator from './KeyboardShortcutConfigurator'
 import { TrayOverlay } from '../../../shared/renderer/ui/TrayOverlay'
 import { SettingsActionRow, SettingsSelectRow, SettingsToggleRow } from './SettingsRow'
 import type { PersistSetting, SettingsUpdateInput } from './types'
+import type { WalletRendererState } from '../../../platform/state-sync/contract/projections'
 
 const shortcutKeyDisplay: Record<string, string> = {
   Slash: '/',
@@ -45,10 +46,32 @@ export interface SettingsViewProps {
   onReset: (scope: 'saved-data' | 'all-settings-data') => void
   onShowTestnetsChange: (enabled: boolean) => void
   onUpdate: PersistSetting
-  settings: Record<string, any>
+  settings: SettingsViewModel
 }
 
-function shortcutLabel(platform: string, shortcut: any) {
+type SummonShortcut = WalletRendererState['shortcuts']['summon']
+
+interface SettingsViewModel {
+  autoDiscoverTokens: boolean
+  autohide: boolean
+  biometricUnlock: boolean
+  biometricsBusy: boolean
+  biometricsError: string
+  latticeAccountLimit: 5 | 10 | 20 | 40
+  latticeDerivation: 'standard' | 'legacy' | 'live'
+  launch: boolean
+  ledgerDerivation: 'live' | 'legacy' | 'standard' | 'testnet'
+  liveAccountLimit: 5 | 10 | 20 | 40
+  menubarGasPrice: boolean
+  platform: string
+  reveal: boolean
+  showLocalNameWithENS: boolean
+  showTestnets: boolean
+  summonShortcut: SummonShortcut
+  trezorDerivation: 'standard' | 'legacy' | 'testnet'
+}
+
+function shortcutLabel(platform: string, shortcut: SummonShortcut) {
   const modifiers = (shortcut.modifierKeys || []).map((key: string) => {
     if (key === 'Alt') return platform === 'darwin' ? 'Option' : 'Alt'
     if (key === 'Meta' || key === 'Super') return platform === 'darwin' ? 'Cmd' : 'Win'

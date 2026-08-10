@@ -1,26 +1,27 @@
 import { beforeEach, describe, expect, it } from 'bun:test'
 
 import { render, screen } from '../../../../../test/support/componentSetup'
-import CustomTokens from './index'
-import {
-  applyStateMessage,
-  beginStateConnection,
-  resetStateMirrorForTests
-} from '../../../../platform/state-sync/renderer/rendererStore'
-import { STATE_STREAM_SCHEMA_VERSION } from '../../../../platform/state-sync/contract/protocol'
+import { registerTestRuntimeFixture } from '../../../../../test/support/rendererClient'
+import CustomTokensController from './index'
+import { createTokensCapability } from '../tokensCapability'
+import type { ComponentProps } from 'react'
 import { walletState } from '../../../../platform/state-sync/renderer/fixtures.test-support.ts'
+
+const fixture = registerTestRuntimeFixture()
+const capability = createTokensCapability({
+  executeCommand: (command) => fixture.client.executeCommand(command),
+  executeQuery: (query) => fixture.client.executeQuery(query)
+})
+const CustomTokens = (props: Omit<ComponentProps<typeof CustomTokensController>, 'capability'>) => (
+  <CustomTokensController {...props} capability={capability} />
+)
 
 const address = '0xaf88d065e77c8cc2239327c5edb3a432268e5831'
 
 describe('CustomTokens', () => {
   beforeEach(() => {
-    resetStateMirrorForTests()
-    beginStateConnection('wallet-ui')
-    applyStateMessage({
-      schemaVersion: STATE_STREAM_SCHEMA_VERSION,
-      streamId: 'custom-token-tests',
-      revision: 0,
-      state: walletState({
+    fixture.state.reset(
+      walletState({
         tokens: {
           accountTokenIds: {},
           byId: {
@@ -44,7 +45,7 @@ describe('CustomTokens', () => {
           }
         }
       })
-    })
+    )
   })
 
   it('renders custom tokens from the canonical catalog without entering an update loop', () => {

@@ -1,11 +1,11 @@
 import { useShallow } from 'zustand/react/shallow'
 
-import link from '../../../../../platform/ipc/renderer/link'
 import { useWalletSelector } from '../../../../../platform/state-sync/renderer/useAppSelector'
 import { useHomeUiStore } from '../state/HomeUiProvider'
 import { HomeMenuView } from './HomeMenuView'
+import type { HomeCapability } from '../homeCapability'
 
-export function HomeMenu() {
+export function HomeMenu({ capability }: { capability: Pick<HomeCapability, 'quit'> }) {
   const shared = useWalletSelector(
     useShallow((state) => {
       return {
@@ -25,7 +25,7 @@ export function HomeMenu() {
       onOpenDapps={() => openOverlay({ type: 'dapps' })}
       onOpenSettings={() => openOverlay({ type: 'settings' })}
       onOpenTokens={() => openOverlay({ type: 'tokens' })}
-      onQuit={() => void link.executeCommand({ type: 'app.quit' })}
+      onQuit={() => void capability.quit()}
     />
   )
 }

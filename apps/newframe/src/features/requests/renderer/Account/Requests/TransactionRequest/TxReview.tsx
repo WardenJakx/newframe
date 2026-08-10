@@ -1,4 +1,3 @@
-import link from '../../../../../../platform/ipc/renderer/link'
 import { AddressIdentity } from '../../../../../../shared/renderer/ui/AddressIdentity'
 import { DisplayCoinBalance } from '../../../ui/DisplayValue'
 import { Button } from '@newframe/ui/button'
@@ -8,7 +7,11 @@ import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
 import { Icon } from '@newframe/ui/icon'
 import { useState } from 'react'
-import { getPaidTransactionFee, getTransactionEffects, usesBaseFee } from '../../../../../transactions/domain'
+import {
+  getPaidTransactionFee,
+  getTransactionEffects,
+  typeSupportsBaseFee
+} from '../../../../../transactions/domain'
 import { chainUsesOptimismFees } from '../../../../../networks/domain/chain/fees'
 import { displayValueData } from '../../../format/displayValue'
 import { getAddress } from '../../../../../../shared/domain/address'
@@ -27,7 +30,8 @@ import {
 import { NATIVE_CURRENCY } from '../../../../../tokens/domain/constants'
 import { persistedImageSource } from '../../../../../asset-data/domain/image'
 import { useRequestView } from '../../../requestView'
-import type { TransactionRequest } from '../../../../contract/requests'
+import type { RequestRendererCapabilities, TransactionReviewCapability } from '../../../requestCapabilities'
+import type { TransactionRequestView } from '../requestViewTypes'
 
 type NativeCurrency = {
   symbol: string
@@ -36,24 +40,30 @@ type NativeCurrency = {
 }
 
 type TxFeeSummaryProps = {
-  req: TransactionRequest
+  capability: Pick<TransactionReviewCapability, 'setDefaultFee'>
+  req: TransactionRequestView
   chain: { type: 'ethereum'; id: number }
   nativeCurrency: NativeCurrency
   isTestnet: boolean
   gasPrice?: { selected?: string }
+  nativeCurrencyRate: ReturnType<typeof useAssetRate>
   openAdjustFee(): void
 }
 
 type TxReviewProps = {
-  req: TransactionRequest
+  capabilities: Pick<RequestRendererCapabilities, 'external' | 'transaction'>
+  destinationAccount: ReturnType<typeof useAccountIdentity>
+  nativeCurrencyRate: ReturnType<typeof useAssetRate>
+  req: TransactionRequestView
   network: ReturnType<typeof useNetwork>
   networkMetadata: ReturnType<typeof useNetworkMetadata>
   originName: string
+  signingAccount: ReturnType<typeof useAccountIdentity>
   tokens: ReturnType<typeof useTokens>
   openAdjustFee(): void
 }
 
-type TxReviewWithStateProps = Pick<TxReviewProps, 'req'>
+type TxReviewWithStateProps = Pick<TxReviewProps, 'capabilities' | 'req'>
 
 const FEE_WARNING_THRESHOLD_USD = 50
 const FEE_RATE_OPTIONS = [
@@ -64,7 +74,7 @@ const FEE_RATE_OPTIONS = [
   { id: 'custom', label: 'Custom' }
 ] as const
 
-const displayStatus = (req: TransactionRequest) => {
+const displayStatus = (req: TransactionRequestView) => {
   const notice = (req.notice || '').toLowerCase()
   const status = (req.status || 'ready to sign').toLowerCase()
 
@@ -80,10 +90,31 @@ type ActionData = {
   recipient?: ActionIdentity | string
 }
 
-const actionData = (req: TransactionRequest, id: string) =>
-  (req.recognizedActions?.find((action) => action.id === id)?.data || {}) as ActionData
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value)
 
-const transferRecipient = (req: TransactionRequest): ActionIdentity | undefined => {
+const actionData = (req: TransactionRequestView, id: string): ActionData => {
+  const value = req.recognizedActions?.find((action) => action.id === id)?.data
+  if (!isRecord(value)) return {}
+
+  const recipient = value.recipient
+  const parsedRecipient =
+    typeof recipient === 'string'
+      ? recipient
+      : isRecord(recipient) &&
+          (recipient.address === undefined || typeof recipient.address === 'string') &&
+          (recipient.ens === undefined || typeof recipient.ens === 'string')
+        ? { address: recipient.address, ens: recipient.ens }
+        : undefined
+
+  return {
+    name: typeof value.name === 'string' ? value.name : undefined,
+    symbol: typeof value.symbol === 'string' ? value.symbol : undefined,
+    recipient: parsedRecipient
+  }
+}
+
+const transferRecipient = (req: TransactionRequestView): ActionIdentity | undefined => {
   const recognized = actionData(req, 'erc20:transfer').recipient
   if (typeof recognized === 'string') return { address: recognized }
   if (recognized?.address) return recognized
@@ -112,8 +143,7 @@ function TxFeeSummary(props: TxFeeSummaryProps) {
       return
     }
 
-    void link.executeCommand({
-      type: 'transaction.fee-default-set',
+    void props.capability.setDefaultFee({
       requestId: req.handlerId,
       level: option.id
     })
@@ -122,15 +152,11 @@ function TxFeeSummary(props: TxFeeSummaryProps) {
 
   const { req, chain, nativeCurrency, isTestnet } = props
   const paidFee = getPaidTransactionFee(req)
-  const resolvedNativeRate = useAssetRate({
-    chainId: chain.id,
-    address: NATIVE_CURRENCY,
-    nativeTicker: nativeCurrency.symbol
-  })
-  const nativeCurrencyRate = !isTestnet ? resolvedNativeRate : undefined
+  const nativeCurrencyRate = !isTestnet ? props.nativeCurrencyRate : undefined
 
   const maxGas = toBigInt(req.data.gasLimit) ?? 0n
-  const maxFeePerGas = toBigInt(req.data[usesBaseFee(req.data) ? 'maxFeePerGas' : 'gasPrice']) ?? 0n
+  const maxFeePerGas =
+    toBigInt(req.data[typeSupportsBaseFee(req.data.type) ? 'maxFeePerGas' : 'gasPrice']) ?? 0n
   const executionFee = maxFeePerGas * maxGas
   const maxFeeSourceValue = chainUsesOptimismFees(chain.id)
     ? getOptimismFee(maxFeePerGas, maxGas, req.chainData?.optimism)
@@ -217,7 +243,7 @@ function TxFeeSummary(props: TxFeeSummaryProps) {
   )
 }
 
-function TxReview(props: TxReviewProps) {
+function TxReviewView(props: TxReviewProps) {
   const { req } = props
   const chainId = parseInt(req.data.chainId, 16)
   const chain = { type: 'ethereum' as const, id: chainId }
@@ -250,31 +276,30 @@ function TxReview(props: TxReviewProps) {
         : 'No direct asset changes detected'
   const notice =
     req.notice && req.notice.toLowerCase() !== (req.status || '').toLowerCase() ? req.notice : undefined
-  const signingAccount = useAccountIdentity(req.account || from)
   const recipient = transferRecipient(req)
   const displayTo = recipient?.address || to
-  const destinationAccount = useAccountIdentity(displayTo)
   const tokenAction =
     req.recognizedActions?.find((action) => ['erc20:approve', 'erc20:revoke'].includes(action.id))?.id || ''
   const token = tokenAction ? actionData(req, tokenAction) : undefined
   const toName = recipient
-    ? recipient.ens || destinationAccount?.name
+    ? recipient.ens || props.destinationAccount?.name
     : token?.name ||
       token?.symbol ||
       req.tokenData?.name ||
       req.tokenData?.symbol ||
       req.recipient ||
-      destinationAccount?.name
+      props.destinationAccount?.name
   const details: TransactionInformationDetailRow[] = [
     {
       label: 'To',
-      value: <AddressIdentity address={displayTo} nickname={toName} />
+      value: <AddressIdentity address={displayTo} clipboard={props.capabilities.external} nickname={toName} />
     },
     { label: 'Method', value: method }
   ]
 
   return (
     <TransactionInformation
+      imageCapability={props.capabilities.external}
       originName={originName}
       networkName={chainName}
       networkIcon={persistedImageSource(meta.image)}
@@ -298,14 +323,20 @@ function TxReview(props: TxReviewProps) {
             </Text>
             <Inline align='center' gap='xsmall'>
               <Icon name='wallet' size='small' tone='accent' />
-              <AddressIdentity address={from} nickname={signingAccount?.name || signingAccount?.ensName} />
+              <AddressIdentity
+                address={from}
+                clipboard={props.capabilities.external}
+                nickname={props.signingAccount?.name || props.signingAccount?.ensName}
+              />
             </Inline>
           </Inline>
         </Surface>
         <TxFeeSummary
+          capability={props.capabilities.transaction}
           chain={chain}
           gasPrice={meta.gas?.price}
           isTestnet={Boolean(network.isTestnet)}
+          nativeCurrencyRate={props.nativeCurrencyRate}
           nativeCurrency={nativeCurrency}
           openAdjustFee={() => props.openAdjustFee()}
           req={req}
@@ -321,13 +352,26 @@ export default function TxReviewWithState(props: TxReviewWithStateProps) {
   const networkMetadata = useNetworkMetadata('ethereum', chainId)
   const originName = useOriginName(props.req.origin)
   const tokens = useTokens()
+  const from = props.req.data.from || props.req.account
+  const recipient = transferRecipient(props.req)
+  const to = props.req.data.to ? getAddress(props.req.data.to) : ''
+  const destinationAccount = useAccountIdentity(recipient?.address || to)
+  const signingAccount = useAccountIdentity(from)
+  const nativeCurrencyRate = useAssetRate({
+    chainId,
+    address: NATIVE_CURRENCY,
+    nativeTicker: networkMetadata.nativeCurrency?.symbol || '?'
+  })
   const { open } = useRequestView()
   return (
-    <TxReview
+    <TxReviewView
       {...props}
+      destinationAccount={destinationAccount}
+      nativeCurrencyRate={nativeCurrencyRate}
       network={network}
       networkMetadata={networkMetadata}
       originName={originName}
+      signingAccount={signingAccount}
       tokens={tokens}
       openAdjustFee={() => open({ step: 'adjustFee' })}
     />

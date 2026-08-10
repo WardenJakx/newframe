@@ -1,16 +1,11 @@
-import { beforeEach, describe, expect, it } from 'bun:test'
-import type { Mock } from 'bun:test'
+import { beforeEach, describe, expect, it, mock } from 'bun:test'
 
 import { act, cleanup, render, screen, waitFor } from '../../../../test/support/componentSetup'
-import { createHostFixture } from '../../../../test/support/rendererClient'
-import { STATE_STREAM_SCHEMA_VERSION } from '../../../platform/state-sync/contract/protocol'
+import { registerTestRuntimeFixture } from '../../../../test/support/rendererClient'
 import type { OperationRecord } from '../../../platform/operations/operation'
 import { walletState } from '../../../platform/state-sync/renderer/fixtures.test-support.ts'
-import {
-  applyStateMessage,
-  beginStateConnection,
-  resetStateMirrorForTests
-} from '../../../platform/state-sync/renderer/rendererStore'
+import { createRequestRendererCapabilitiesFake } from '../../../features/requests/renderer/requestCapabilities.test-support'
+import type { SecurityCapability } from '../../../features/security/renderer/securityCapability'
 
 Object.defineProperty(global.navigator, 'keyboard', {
   configurable: true,
@@ -20,22 +15,22 @@ Object.defineProperty(global.navigator, 'keyboard', {
 const { Panel } = await import('./App')
 const { TrayNotificationProvider } = await import('./notification')
 
-const link = createHostFixture()
-let revision = 0
+const fixture = registerTestRuntimeFixture()
+const unlock = mock<SecurityCapability['unlock']>(async () => ({ ok: true }))
+const status = mock<SecurityCapability['status']>(async () => ({
+  ok: true,
+  locked: true,
+  vaultExists: true,
+  biometricUnlockEnabled: false,
+  biometricAvailable: false,
+  biometrics: { enabled: false, method: '', nativeAvailable: false }
+}))
 let operations: Record<string, OperationRecord> = {}
 
 function publishOperation(operation: OperationRecord) {
   operations = { ...operations, [operation.id]: operation }
-  const baseRevision = revision
-  revision += 1
   act(() => {
-    applyStateMessage({
-      schemaVersion: STATE_STREAM_SCHEMA_VERSION,
-      streamId: 'app-security-test',
-      baseRevision,
-      revision,
-      changes: { operations }
-    })
+    fixture.state.reset({ ...fixture.state.getState(), operations })
   })
 }
 
@@ -57,23 +52,18 @@ const props = {
   appLocked: true,
   biometricUnlock: false,
   crumb: {},
-  initial: true
+  initial: true,
+  notifyRequest: () => {},
+  requestCapabilities: createRequestRendererCapabilitiesFake(),
+  security: { status, unlock }
 }
 
 describe('tray security operations', () => {
   const resetHarness = () => {
-    revision = 0
     operations = {}
-    resetStateMirrorForTests()
-    beginStateConnection('wallet-ui')
-    applyStateMessage({
-      schemaVersion: STATE_STREAM_SCHEMA_VERSION,
-      streamId: 'app-security-test',
-      revision,
-      state: walletState({ appLock: { locked: true, vaultExists: true }, operations: {} })
-    })
-    ;(link.executeCommand as Mock<any>).mockReset().mockResolvedValue({ ok: true })
-    ;(link.executeQuery as Mock<any>).mockReset().mockResolvedValue({
+    fixture.state.reset(walletState({ appLock: { locked: true, vaultExists: true }, operations: {} }))
+    unlock.mockReset().mockResolvedValue({ ok: true })
+    status.mockReset().mockResolvedValue({
       ok: true,
       locked: true,
       vaultExists: true,
@@ -95,13 +85,8 @@ describe('tray security operations', () => {
       await user.type(screen.getByLabelText('Newframe password'), 'secret-password')
       await user.click(screen.getByRole('button', { name: 'Unlock' }))
 
-      const command = (link.executeCommand as Mock<any>).mock.calls.at(-1)![0] as {
-        operationId: string
-        type: string
-        [key: string]: unknown
-      }
+      const command = unlock.mock.calls.at(-1)![0]
       expect(command).toEqual({
-        type: 'security.unlock',
         operationId: expect.any(String),
         method: 'password',
         password: 'secret-password'
@@ -121,7 +106,7 @@ describe('tray security operations', () => {
     resetHarness()
 
     {
-      ;(link.executeQuery as Mock<any>).mockResolvedValueOnce({
+      status.mockResolvedValueOnce({
         ok: true,
         locked: true,
         vaultExists: true,
@@ -141,21 +126,18 @@ describe('tray security operations', () => {
         />
       )
       await user.click(await screen.findByRole('button', { name: 'Unlock with biometrics' }))
-      expect((link.executeCommand as Mock<any>).mock.calls.at(-1)![0]).toEqual({
-        type: 'security.unlock',
+      expect(unlock.mock.calls.at(-1)![0]).toEqual({
         operationId: expect.any(String),
         method: 'native'
       })
-      const nativeCommand = (link.executeCommand as Mock<any>).mock.calls.at(-1)![0] as {
-        operationId: string
-      }
+      const nativeCommand = unlock.mock.calls.at(-1)![0]
       publishOperation(
         operation(nativeCommand.operationId, 'failed', {
           code: 'biometric_authentication_failed',
           message: 'Biometric authentication failed'
         })
       )
-      ;(link.executeQuery as Mock<any>).mockResolvedValueOnce({
+      status.mockResolvedValueOnce({
         ok: true,
         locked: true,
         vaultExists: true,
@@ -180,8 +162,7 @@ describe('tray security operations', () => {
         />
       )
       await user.click(await screen.findByRole('button', { name: 'Unlock with biometrics' }))
-      expect((link.executeCommand as Mock<any>).mock.calls.at(-1)![0]).toEqual({
-        type: 'security.unlock',
+      expect(unlock.mock.calls.at(-1)![0]).toEqual({
         operationId: expect.any(String),
         method: 'webauthn',
         secret: 'd'.repeat(32)
@@ -192,7 +173,7 @@ describe('tray security operations', () => {
 
     {
       const credential = { version: 1 as const, credentialId: 'ab', salt: 'c'.repeat(64) }
-      ;(link.executeQuery as Mock<any>).mockResolvedValue({
+      status.mockResolvedValue({
         ok: true,
         locked: true,
         vaultExists: true,
@@ -215,12 +196,12 @@ describe('tray security operations', () => {
         />
       )
       await user.click(await screen.findByRole('button', { name: 'Unlock with biometrics' }))
-      expect((link.executeCommand as Mock<any>).mock.calls).toEqual([])
+      expect(unlock.mock.calls).toEqual([])
       expect(screen.queryByText(/canceled/i)).toBeNull()
 
       await user.type(screen.getByLabelText('Newframe password'), 'wrong')
       await user.click(screen.getByRole('button', { name: 'Unlock' }))
-      const first = (link.executeCommand as Mock<any>).mock.calls.at(-1)![0] as { operationId: string }
+      const first = unlock.mock.calls.at(-1)![0]
       publishOperation(
         operation(first.operationId, 'failed', {
           code: 'incorrect_password',
@@ -230,7 +211,7 @@ describe('tray security operations', () => {
       expect(await screen.findByText('Incorrect password')).toBeTruthy()
 
       await user.click(screen.getByRole('button', { name: 'Unlock' }))
-      const second = (link.executeCommand as Mock<any>).mock.calls.at(-1)![0] as { operationId: string }
+      const second = unlock.mock.calls.at(-1)![0]
       expect(second.operationId).not.toBe(first.operationId)
       publishOperation(operation(second.operationId, 'pending'))
       publishOperation(

@@ -1,4 +1,4 @@
-import { afterAll, afterEach, beforeAll, describe, expect, jest as timers, mock, test } from 'bun:test'
+import { afterAll, beforeAll, describe, expect, mock, test } from 'bun:test'
 
 import crypto from 'crypto'
 import fs from 'fs'
@@ -35,7 +35,6 @@ describe('Ring signer', () => {
     vault = (await import('../../../../secrets/vault')).default
   })
 
-  afterEach(() => timers.useRealTimers())
   afterAll(async () => {
     await clean()
     if (signer.status !== 'locked') signer.close()
@@ -69,12 +68,13 @@ describe('Ring signer', () => {
   }, 7_500)
 
   test('Scans for one ring signer', async () => {
-    timers.useFakeTimers()
+    let scan!: ReturnType<typeof hot.scan>
     const found = callbackResult<any>((done) => {
-      hot.scan({ add: (value: any) => done(null, value), exists: () => false })
-      timers.runAllTimers()
+      scan = hot.scan({ add: (value: any) => done(null, value), exists: () => false })
+      scan()
     })
     const scanned = await found
+    scan.cancel()
     expect(scanned.type).toBe('ring')
     scanned.close(() => {})
   })

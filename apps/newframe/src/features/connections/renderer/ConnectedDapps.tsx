@@ -1,13 +1,19 @@
 import { useShallow } from 'zustand/react/shallow'
 
-import link from '../../../platform/ipc/renderer/link'
 import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector'
-import { useHomeUiStore } from '../../../app/renderer/tray/Home/state/HomeUiProvider'
 import { ConnectedDappsView } from './ConnectedDappsView'
+import type { ConnectionsCapability } from './connectionsCapability'
+import type { WalletRendererState } from '../../../platform/state-sync/contract/projections'
 
-const EMPTY_RECORD: Record<string, any> = {}
+const EMPTY_RECORD: WalletRendererState['permissions'][string] = {}
 
-export function ConnectedDapps() {
+export function ConnectedDapps({
+  capability,
+  onBack
+}: {
+  capability: Pick<ConnectionsCapability, 'clearPermission'>
+  onBack: () => void
+}) {
   const { accountId, permissions } = useWalletSelector(
     useShallow((state) => {
       const accountId = state.currentAccount || ''
@@ -17,7 +23,6 @@ export function ConnectedDapps() {
       }
     })
   )
-  const openOverlay = useHomeUiStore((state) => state.openOverlay)
   const dapps = Object.keys(permissions)
     .filter((id) => permissions[id]?.provider)
     .sort((a, b) => (permissions[a].origin < permissions[b].origin ? -1 : 1))
@@ -26,9 +31,9 @@ export function ConnectedDapps() {
   return (
     <ConnectedDappsView
       dapps={dapps}
-      onBack={() => openOverlay({ type: 'menu' })}
-      onClear={(originId) => void link.executeCommand({ type: 'permission.clear', accountId, originId })}
-      onClearAll={() => void link.executeCommand({ type: 'permission.clear', accountId })}
+      onBack={onBack}
+      onClear={(originId) => void capability.clearPermission({ accountId, originId })}
+      onClearAll={() => void capability.clearPermission({ accountId })}
     />
   )
 }

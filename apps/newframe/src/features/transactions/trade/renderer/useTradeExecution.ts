@@ -2,7 +2,7 @@ import React from 'react'
 
 import type { FlashQuoteDisplay } from '../../../../app/contracts/operations'
 import type { OperationCollection, OperationRecord } from '../../../../platform/operations/operation'
-import { prepareTrade, releaseTrade, submitTrade } from './tradeService'
+import type { TradeCapability } from './tradeService'
 import { tradeErrorMessage } from './tradeTransaction'
 import {
   initialTradeExecutionState,
@@ -13,9 +13,11 @@ import {
 } from './tradeExecutionMachine'
 
 export function useTradeExecution({
+  capability,
   operations,
   requestKey
 }: {
+  capability: TradeCapability
   operations: OperationCollection
   requestKey: string
 }) {
@@ -36,19 +38,22 @@ export function useTradeExecution({
   React.useEffect(() => {
     if (!state.session || state.session.requestKey === requestKey) return
     dispatch({ type: 'reset' })
-    void releaseTrade()
-  }, [requestKey, state.session])
+    void capability.release().catch(() => undefined)
+  }, [capability, requestKey, state.session])
 
   React.useEffect(() => {
     return () => {
-      void releaseTrade()
+      void capability.release().catch(() => undefined)
     }
-  }, [])
+  }, [capability])
 
-  const reset = React.useCallback((release = true) => {
-    dispatch({ type: 'reset' })
-    if (release) void releaseTrade()
-  }, [])
+  const reset = React.useCallback(
+    (release = true) => {
+      dispatch({ type: 'reset' })
+      if (release) void capability.release().catch(() => undefined)
+    },
+    [capability]
+  )
 
   const submit = React.useCallback(
     ({ quote, quoteId }: { quote: FlashQuoteDisplay | null; quoteId: string }) => {
@@ -68,8 +73,12 @@ export function useTradeExecution({
       dispatch({ type: 'begin', session })
       const command =
         nextAction === 'sign'
-          ? submitTrade(session.operationId, session.quoteId)
-          : prepareTrade(session.operationId, session.quoteId, nextAction)
+          ? capability.submit({ operationId: session.operationId, quoteId: session.quoteId })
+          : capability.prepare({
+              operationId: session.operationId,
+              quoteId: session.quoteId,
+              action: nextAction
+            })
 
       void command
         .then((result) => {
@@ -88,7 +97,7 @@ export function useTradeExecution({
           })
         })
     },
-    [requestKey, state]
+    [capability, requestKey, state]
   )
 
   return {

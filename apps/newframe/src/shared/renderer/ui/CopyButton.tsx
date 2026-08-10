@@ -1,22 +1,22 @@
 import { IconButton } from '@newframe/ui/icon-button'
 import { useEffect, useRef, useState } from 'react'
 
-import link from '../../../platform/ipc/renderer/link'
+import type { ClipboardCapability } from '../capabilities'
 
 export type CopyButtonProps = {
+  clipboard: ClipboardCapability
   copiedLabel: string
   copiedTitle?: string
   label: string
-  onCopy?: (value: string) => void
   title?: string
   value: string
 }
 
 export function CopyButton({
+  clipboard,
   copiedLabel,
   copiedTitle = 'Copied',
   label,
-  onCopy,
   title = 'Copy',
   value
 }: CopyButtonProps) {
@@ -33,11 +33,7 @@ export function CopyButton({
       onPress={(event) => {
         event.stopPropagation()
         clearTimeout(resetTimer.current)
-        if (onCopy) {
-          onCopy(value)
-        } else {
-          void link.executeCommand({ type: 'clipboard.write', text: value })
-        }
+        void clipboard.writeText(value)
         setCopied(true)
         resetTimer.current = setTimeout(() => setCopied(false), 1000)
       }}

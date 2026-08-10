@@ -1,10 +1,15 @@
 import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector'
-import { useHomeUiStore } from '../../../app/renderer/tray/Home/state/HomeUiProvider'
 import { RequestsOverlayView } from './RequestsOverlayView'
+import type { RequestRendererCapabilities } from './requestCapabilities'
 
-export function RequestsOverlay() {
+export function RequestsOverlay({
+  capabilities,
+  onBack
+}: {
+  capabilities: Pick<RequestRendererCapabilities, 'panel' | 'review'>
+  onBack: () => void
+}) {
   const accountId = useWalletSelector((state) => state.currentAccount || '')
-  const closeOverlay = useHomeUiStore((state) => state.closeOverlay)
 
-  return <RequestsOverlayView accountId={accountId} onBack={closeOverlay} />
+  return <RequestsOverlayView accountId={accountId} capabilities={capabilities} onBack={onBack} />
 }

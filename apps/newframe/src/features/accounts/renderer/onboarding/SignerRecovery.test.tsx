@@ -1,12 +1,12 @@
 import { expect, it, mock } from 'bun:test'
-import type { Mock } from 'bun:test'
 
 import { cleanup, render, screen, waitFor } from '../../../../../test/support/componentSetup'
-import { createHostFixture } from '../../../../../test/support/rendererClient'
-import { resetStateMirrorForTests } from '../../../../platform/state-sync/renderer/rendererStore'
+import { registerTestRuntimeFixture } from '../../../../../test/support/rendererClient'
 import SignerRecovery from './SignerRecovery'
+import { createAccountsCapabilityFake, type AccountsCapabilityFake } from '../accountsCapability.test-support'
 
-const link = createHostFixture()
+const fixture = registerTestRuntimeFixture()
+let capability: AccountsCapabilityFake
 const signer = (update: Record<string, unknown> = {}) => ({
   addresses: [],
   appVersion: { major: 1, minor: 0, patch: 0 },
@@ -18,64 +18,49 @@ const signer = (update: Record<string, unknown> = {}) => ({
   ...update
 })
 
-const commands = (): Array<Record<string, any>> =>
-  ((link.executeCommand as any).mock.calls as Array<[Record<string, any>]>).map(([command]) => command)
-const commandOfType = (type: string): Record<string, any> => {
-  const command = commands().find((candidate) => candidate.type === type)
-  if (!command) throw new Error(`Missing ${type} command`)
-  return command
-}
-
 it('owns hardware recovery sessions, inputs, retry, completion, and external cancellation', async () => {
-  resetStateMirrorForTests({ signers: { 'ledger-1': signer() } })
-  let view = render(<SignerRecovery dismiss={mock()} signerIds={['ledger-1']} />)
+  capability = createAccountsCapabilityFake()
+  fixture.state.reset({ signers: { 'ledger-1': signer() } })
+  let view = render(<SignerRecovery capability={capability} dismiss={mock()} signerIds={['ledger-1']} />)
 
-  await waitFor(() =>
-    expect(commands().some(({ type }) => type === 'signer.hardware-session-start')).toBe(true)
-  )
-  const firstSession = commandOfType('signer.hardware-session-start')
+  await waitFor(() => expect(capability.startHardwareSession.mock.calls.length).toBe(1))
+  const firstSession = capability.startHardwareSession.mock.calls.at(-1)![0]
   await view.user.click(screen.getByRole('button', { name: 'Retry Connection' }))
-  const reload = commandOfType('signer.reload')
+  const reload = capability.reloadSigner.mock.calls.at(-1)![0]
   expect(reload).toEqual({
-    type: 'signer.reload',
     operationId: expect.any(String),
     signerId: 'ledger-1'
   })
-  expect(commands()).toContainEqual({
-    type: 'signer.hardware-session-finish',
+  expect(capability.finishHardwareSession.mock.calls.map(([input]) => input)).toContainEqual({
     operationId: firstSession.operationId,
     signerId: 'ledger-1',
     outcome: 'cancelled'
   })
 
   view.unmount()
-  expect(commands()).toContainEqual({
-    type: 'signer.hardware-session-finish',
+  expect(capability.finishHardwareSession.mock.calls.map(([input]) => input)).toContainEqual({
     operationId: reload.operationId,
     signerId: 'ledger-1',
     outcome: 'cancelled'
   })
-  expect(commands().some(({ type }) => type === 'signer.disconnect')).toBe(false)
+  expect(capability.disconnectSigner.mock.calls).toHaveLength(0)
 
   cleanup()
-  ;(link.executeCommand as Mock<any>).mockReset().mockResolvedValue({ ok: true })
-  resetStateMirrorForTests({
+  capability = createAccountsCapabilityFake()
+  fixture.state.reset({
     signers: {
       'trezor-1': signer({ id: 'trezor-1', name: 'Trezor', status: 'need pin', type: 'trezor' })
     }
   })
-  view = render(<SignerRecovery dismiss={mock()} signerIds={['trezor-1']} />)
-  await waitFor(() =>
-    expect(commands().some(({ type }) => type === 'signer.hardware-session-start')).toBe(true)
-  )
-  const trezorSession = commandOfType('signer.hardware-session-start')
+  view = render(<SignerRecovery capability={capability} dismiss={mock()} signerIds={['trezor-1']} />)
+  await waitFor(() => expect(capability.startHardwareSession.mock.calls.length).toBe(1))
+  const trezorSession = capability.startHardwareSession.mock.calls.at(-1)![0]
 
   await view.user.click(screen.getByRole('button', { name: 'PIN position 1' }))
   await view.user.click(screen.getByRole('button', { name: 'PIN position 2' }))
   await view.user.click(screen.getByRole('button', { name: 'Submit PIN' }))
 
-  expect(commands()).toContainEqual({
-    type: 'signer.trezor-input',
+  expect(capability.submitTrezorInput.mock.calls.map(([input]) => input)).toContainEqual({
     operationId: trezorSession.operationId,
     actionId: expect.any(String),
     signerId: 'trezor-1',
@@ -85,20 +70,17 @@ it('owns hardware recovery sessions, inputs, retry, completion, and external can
 
   view.unmount()
   cleanup()
-  ;(link.executeCommand as Mock<any>).mockReset().mockResolvedValue({ ok: true })
-  resetStateMirrorForTests({ signers: { 'ledger-1': signer({ status: 'ok' }) } })
+  capability = createAccountsCapabilityFake()
+  fixture.state.reset({ signers: { 'ledger-1': signer({ status: 'ok' }) } })
   const dismiss = mock()
-  view = render(<SignerRecovery dismiss={dismiss} signerIds={['ledger-1']} />)
-  await waitFor(() =>
-    expect(commands().some(({ type }) => type === 'signer.hardware-session-start')).toBe(true)
-  )
-  const readySession = commandOfType('signer.hardware-session-start')
+  view = render(<SignerRecovery capability={capability} dismiss={dismiss} signerIds={['ledger-1']} />)
+  await waitFor(() => expect(capability.startHardwareSession.mock.calls.length).toBe(1))
+  const readySession = capability.startHardwareSession.mock.calls.at(-1)![0]
 
   expect(screen.getByText('Connected and ready to sign')).toBeTruthy()
   await view.user.click(screen.getByRole('button', { name: 'Continue' }))
 
-  expect(commands()).toContainEqual({
-    type: 'signer.hardware-session-finish',
+  expect(capability.finishHardwareSession.mock.calls.map(([input]) => input)).toContainEqual({
     operationId: readySession.operationId,
     signerId: 'ledger-1',
     outcome: 'ready'

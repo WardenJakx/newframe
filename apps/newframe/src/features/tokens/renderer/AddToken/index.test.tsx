@@ -1,18 +1,29 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test'
 
-import type { Mock } from 'bun:test'
 import { useState } from 'react'
 
 import { act, screen, render, waitFor } from '../../../../../test/support/componentSetup'
-import { createHostFixture } from '../../../../../test/support/rendererClient'
-import AddToken from './index'
-import { resetStateMirrorForTests } from '../../../../platform/state-sync/renderer/rendererStore'
+import { registerTestRuntimeFixture } from '../../../../../test/support/rendererClient'
+import AddTokenController from './index'
 import { walletState } from '../../../../platform/state-sync/renderer/fixtures.test-support.ts'
 import { toTokenId } from '../../domain'
 import type { OperationRecord } from '../../../../platform/operations/operation'
-import type { TokenAddCommand } from '../../../../app/contracts/operations'
+import type { AppCommand, AppQuery } from '../../../../app/contracts/operations'
+import { createTokensCapability } from '../tokensCapability'
+import type { ComponentProps } from 'react'
 
-const link = createHostFixture()
+const fixture = registerTestRuntimeFixture()
+const tokensCapability = createTokensCapability({
+  executeCommand: (command) => fixture.client.executeCommand(command),
+  executeQuery: (query) => fixture.client.executeQuery(query)
+})
+type CommandCall = [command: AppCommand]
+type QueryCall = [query: AppQuery]
+const commandCalls = () => fixture.client.executeCommand.mock.calls as CommandCall[]
+const queryCalls = () => fixture.client.executeQuery.mock.calls as QueryCall[]
+const AddToken = (props: Omit<ComponentProps<typeof AddTokenController>, 'capability'>) => (
+  <AddTokenController {...props} capability={tokensCapability} />
+)
 
 const networks = {
   ethereum: {
@@ -41,7 +52,7 @@ const networksMeta = {
 }
 
 beforeEach(() => {
-  resetStateMirrorForTests({ networks, networksMeta })
+  fixture.state.reset({ networks, networksMeta })
 })
 
 describe('selecting token chain', () => {
@@ -89,14 +100,7 @@ describe('setting token address', () => {
   })
 
   it('should update add token navigation when a contracts details cannot be validated on-chain', async () => {
-    ;(link.executeQuery as Mock<any>).mockImplementationOnce((query: any) => {
-      expect(query).toEqual({
-        type: 'token.lookup',
-        address: '0x3432b6a60d23ca0dfca7761b7ab56459d9c964d0',
-        chainId: 1
-      })
-      return { ok: false, error: 'not_found' }
-    })
+    fixture.client.executeQuery.mockResolvedValueOnce({ ok: false, error: 'not_found' })
 
     const onNavigate = mock()
     const { user } = render(<AddToken data={{ notifyData: { chain: { id: 1 } } }} onNavigate={onNavigate} />)
@@ -105,6 +109,12 @@ describe('setting token address', () => {
     await user.type(contractAddressLabel, '0x3432b6a60d23ca0dfca7761b7ab56459d9c964d0')
     const setAddressButton = screen.getByRole('button', { name: 'Set Address' })
     await user.click(setAddressButton)
+
+    expect(queryCalls().at(-1)?.[0]).toEqual({
+      type: 'token.lookup',
+      address: '0x3432b6a60d23ca0dfca7761b7ab56459d9c964d0',
+      chainId: 1
+    })
 
     expect(onNavigate).toHaveBeenCalledWith({
       chain: { id: 1 },
@@ -122,14 +132,7 @@ describe('setting token address', () => {
       totalSupply: '100000'
     }
 
-    ;(link.executeQuery as Mock<any>).mockImplementationOnce((query: any) => {
-      expect(query).toEqual({
-        type: 'token.lookup',
-        address: '0x3432b6a60d23ca0dfca7761b7ab56459d9c964d0',
-        chainId: 1
-      })
-      return { ok: true, token: mockTokenData }
-    })
+    fixture.client.executeQuery.mockResolvedValueOnce({ ok: true, token: mockTokenData })
 
     const onNavigate = mock()
     const { user } = render(<AddToken data={{ notifyData: { chain: { id: 1 } } }} onNavigate={onNavigate} />)
@@ -138,6 +141,12 @@ describe('setting token address', () => {
     await user.type(contractAddressLabel, '0x3432b6a60d23ca0dfca7761b7ab56459d9c964d0')
     const setAddressButton = screen.getByRole('button', { name: 'Set Address' })
     await user.click(setAddressButton)
+
+    expect(queryCalls().at(-1)?.[0]).toEqual({
+      type: 'token.lookup',
+      address: '0x3432b6a60d23ca0dfca7761b7ab56459d9c964d0',
+      chainId: 1
+    })
 
     expect(onNavigate).toHaveBeenCalledWith({
       error: null,
@@ -185,15 +194,20 @@ describe('setting token details', () => {
     const address = '0x64aa3364F17a4D01c6f1751Fd97C2BD3D7e7f1D4'
     const tokenData = { name: 'Frame Test', symbol: 'FRT', decimals: 18 }
     const onDone = mock()
-    ;(link.executeCommand as Mock<any>)
-      .mockResolvedValueOnce({ ok: false, error: 'internal', message: 'Could not submit this token.' })
+    fixture.client.executeCommand
+      .mockResolvedValueOnce({
+        ok: false,
+        error: 'operation_failed',
+        message: 'Could not submit this token.'
+      })
       .mockResolvedValue({ ok: true })
     const { user } = render(
       <AddToken data={{ notifyData: { chain: { id: 1 }, address, tokenData } }} onDone={onDone} />
     )
 
     await user.click(screen.getByRole('button', { name: 'Add Token' }))
-    const firstCommand = (link.executeCommand as Mock<any>).mock.calls.at(-1)![0] as TokenAddCommand
+    const firstCommand = commandCalls().at(-1)?.[0]
+    if (firstCommand?.type !== 'token.add') throw new Error('Expected token add command')
     expect(firstCommand).toEqual({
       type: 'token.add',
       operationId: expect.any(String),
@@ -203,7 +217,7 @@ describe('setting token details', () => {
     expect(await screen.findByText('Could not submit this token.')).toBeTruthy()
     expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Add Token' }).disabled).toBe(false)
     act(() => {
-      resetStateMirrorForTests(
+      fixture.state.reset(
         walletState({
           operations: {
             [firstCommand.operationId]: {
@@ -221,11 +235,12 @@ describe('setting token details', () => {
     expect(onDone.mock.calls.length).toBe(0)
 
     await user.click(screen.getByRole('button', { name: 'Add Token' }))
-    const secondCommand = (link.executeCommand as Mock<any>).mock.calls.at(-1)![0] as TokenAddCommand
+    const secondCommand = commandCalls().at(-1)?.[0]
+    if (secondCommand?.type !== 'token.add') throw new Error('Expected token add command')
     expect(secondCommand.operationId).not.toBe(firstCommand.operationId)
 
     act(() => {
-      resetStateMirrorForTests(
+      fixture.state.reset(
         walletState({
           operations: {
             [secondCommand.operationId]: {
@@ -245,12 +260,13 @@ describe('setting token details', () => {
     expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Add Token' }).disabled).toBe(false)
 
     await user.click(screen.getByRole('button', { name: 'Add Token' }))
-    const thirdCommand = (link.executeCommand as Mock<any>).mock.calls.at(-1)![0] as TokenAddCommand
+    const thirdCommand = commandCalls().at(-1)?.[0]
+    if (thirdCommand?.type !== 'token.add') throw new Error('Expected token add command')
     expect(thirdCommand.operationId).not.toBe(secondCommand.operationId)
     expect(onDone.mock.calls.length).toBe(0)
 
     act(() => {
-      resetStateMirrorForTests(
+      fixture.state.reset(
         walletState({
           tokens: {
             byId: {

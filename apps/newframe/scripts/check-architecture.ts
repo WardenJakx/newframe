@@ -165,6 +165,15 @@ function lineNumber(source: string, index: number) {
 const applicationRoot = path.join('apps', 'newframe')
 type ApplicationLayer = 'contracts' | 'domain' | 'generated' | 'main' | 'preload' | 'renderer'
 const sourceRoot = path.join(applicationRoot, 'src')
+const featureRendererRoot = path.join(sourceRoot, 'features')
+const appRendererRoot = path.join(sourceRoot, 'app', 'renderer')
+const rendererEntryRoot = path.join(sourceRoot, 'renderer')
+const platformRoot = path.join(sourceRoot, 'platform')
+const rawRendererLinkRoot = path.join(platformRoot, 'ipc', 'renderer', 'link')
+const appRendererCapabilityRoot = path.join(appRendererRoot, 'capabilities')
+const appUpdateRendererProduction = path.join(platformRoot, 'app-update', 'renderer', 'production.ts')
+const featureRenderer = (file: string) =>
+  under(featureRendererRoot)(file) && /(?:^|[\\/])renderer(?:[\\/]|$)/.test(file)
 const singletonBoundaryExclusions = [
   path.join(sourceRoot, 'app', 'main', 'composition'),
   path.join(sourceRoot, 'features', 'connections', 'main', 'provider', 'infrastructure'),
@@ -320,6 +329,9 @@ export function checkDependencyDirection(file: string, source: string) {
     if (sourceLayer === 'renderer' && (targetLayer === 'main' || targetLayer === 'preload')) {
       violations.push(`${file}:${line} renderer cannot import ${targetLayer}`)
     }
+    if (featureRenderer(file) && target && under(appRendererRoot)(target)) {
+      violations.push(`${file}:${line} feature renderers cannot import app renderer modules`)
+    }
     if (
       sourceLayer === 'main' &&
       (targetLayer === 'renderer' || targetLayer === 'preload' || targetLayer === 'generated')
@@ -472,6 +484,40 @@ export function checkRawIpcAuthority(file: string, source: string) {
   return violations
 }
 
+function isRendererTransportComposition(file: string) {
+  return (
+    under(rendererEntryRoot)(file) ||
+    under(appRendererCapabilityRoot)(file) ||
+    normalizedModuleRoot(file) === rawRendererLinkRoot ||
+    file === appUpdateRendererProduction
+  )
+}
+
+export function checkRendererTransportAuthority(file: string, source: string) {
+  if (!productionRenderer(file)) return []
+
+  const violations: string[] = []
+  for (const moduleSpecifier of extractModuleSpecifiers(source)) {
+    const target = importedApplicationPath(file, moduleSpecifier.specifier)
+    if (!target || normalizedModuleRoot(target) !== rawRendererLinkRoot) continue
+    if (isRendererTransportComposition(file)) continue
+    violations.push(
+      `${file}:${lineNumber(source, moduleSpecifier.index)} raw renderer IPC link imports are restricted to renderer bootstrap and focused app/platform composition adapters`
+    )
+  }
+
+  const explicitAny = source.match(
+    /(?:\bas\s+|:\s*|<\s*|,\s*|\|\s*|&\s*|\(\s*|\[\s*|=\s*)any\b|\bany\s*(?:\[\]|[>,;)=|&])/
+  )
+  if (explicitAny?.index !== undefined) {
+    violations.push(
+      `${file}:${lineNumber(source, explicitAny.index)} production renderer code cannot use explicit any; preserve boundary types or narrow unknown`
+    )
+  }
+
+  return violations
+}
+
 export function checkPlatformCommandAuthority(file: string, source: string) {
   if (!productionApplication(file)) return []
 
@@ -548,7 +594,8 @@ export function checkSource(file: string, source: string) {
     ...checkAssetRateMutationAuthority(file, source),
     ...checkOperationContractAuthority(file, source),
     ...checkPlatformCommandAuthority(file, source),
-    ...checkRawIpcAuthority(file, source)
+    ...checkRawIpcAuthority(file, source),
+    ...checkRendererTransportAuthority(file, source)
   ]
 
   for (const rule of rules) {

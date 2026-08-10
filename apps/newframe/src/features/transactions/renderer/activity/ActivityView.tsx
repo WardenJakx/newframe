@@ -13,7 +13,7 @@ import { tokenForId, tokenImageSource } from '../../../tokens/domain'
 import StatusGlyph from '../../../../shared/renderer/ui/StatusGlyph'
 import ChainTokenIcon from '../../../../shared/renderer/ui/ChainTokenIcon'
 import { CopyButton } from '../../../../shared/renderer/ui/CopyButton'
-import { ChainIcon } from '../../../../app/renderer/tray/Home/components/ChainIcon'
+import { ChainIcon } from '../../../../shared/renderer/ui/ChainIcon'
 import {
   activityAssetEffect,
   activityBalanceChangeLabel,
@@ -22,6 +22,14 @@ import {
   activityTimestampLabel,
   transactionStatusLabel
 } from './activityModel'
+import type {
+  ActivityNetworkMap,
+  ActivityNetworkMetadataMap,
+  ActivityRecord,
+  ActivityViewRecord,
+  ActivityTokenCatalog
+} from './activityTypes'
+import type { ClipboardCapability, TokenImageCapability } from '../../../../shared/renderer/capabilities'
 
 const activityRowRecipe = cva({
   base: {
@@ -40,9 +48,11 @@ const transactionLinkRecipe = cva({
   base: { textDecoration: 'underline' }
 })
 
-const shortHash = (hash = '') => (hash ? `${hash.substring(0, 6)}…${hash.substring(hash.length - 4)}` : '')
+const shortHash = (hash: string | null | undefined = '') =>
+  hash ? `${hash.substring(0, 6)}…${hash.substring(hash.length - 4)}` : ''
 
 function ActivityIcon({
+  imageCapability,
   record,
   chainId,
   nativeSymbol,
@@ -50,12 +60,13 @@ function ActivityIcon({
   networksMeta,
   tokens
 }: {
-  record: any
+  imageCapability: TokenImageCapability
+  record: ActivityRecord
   chainId: number
   nativeSymbol: string
-  networks: Record<string | number, any>
-  networksMeta: Record<string | number, any>
-  tokens: any
+  networks: ActivityNetworkMap
+  networksMeta: ActivityNetworkMetadataMap
+  tokens: ActivityTokenCatalog
 }) {
   const effect = activityAssetEffect(record, nativeSymbol)
   if (!effect) {
@@ -63,7 +74,7 @@ function ActivityIcon({
       <MediaBadge
         badge={<ChainIcon chainId={chainId} networks={networks} networksMeta={networksMeta} size='medium' />}
       >
-        <StatusGlyph state={activityGlyphState(record.status) as any} />
+        <StatusGlyph state={activityGlyphState(record.status)} />
       </MediaBadge>
     )
   }
@@ -77,6 +88,7 @@ function ActivityIcon({
   return (
     <ChainTokenIcon
       chainId={chainId}
+      imageCapability={imageCapability}
       logoURI={canonicalImage || effect.logoURI || nativeImage || nativeCurrency.icon}
       networks={networks}
       networksMeta={networksMeta}
@@ -87,17 +99,19 @@ function ActivityIcon({
 }
 
 function ActivityRowContent({
+  imageCapability,
   record,
   networks,
   networksMeta,
   right,
   tokens
 }: {
-  record: any
-  networks: Record<string | number, any>
-  networksMeta: Record<string | number, any>
+  imageCapability: TokenImageCapability
+  record: ActivityRecord
+  networks: ActivityNetworkMap
+  networksMeta: ActivityNetworkMetadataMap
   right: ReactNode
-  tokens: any
+  tokens: ActivityTokenCatalog
 }) {
   const chainId = Number(record.chainId)
   const chain = networks[chainId] || {}
@@ -119,6 +133,7 @@ function ActivityRowContent({
     <>
       <ActivityIcon
         chainId={chainId}
+        imageCapability={imageCapability}
         nativeSymbol={nativeSymbol}
         networks={networks}
         networksMeta={networksMeta}
@@ -148,20 +163,24 @@ function ActivityRowContent({
   )
 }
 
-export function ActivityView({
+export function ActivityView<TRecord extends ActivityViewRecord>({
   activity,
+  clipboard,
+  imageCapability,
   networks,
   networksMeta,
   onOpen,
   onOpenExplorer,
   tokens
 }: {
-  activity: any[]
-  networks: Record<string | number, any>
-  networksMeta: Record<string | number, any>
+  activity: TRecord[]
+  clipboard: ClipboardCapability
+  imageCapability: TokenImageCapability
+  networks: ActivityNetworkMap
+  networksMeta: ActivityNetworkMetadataMap
   onOpen: (activityId: string) => void
-  onOpenExplorer: (record: any) => void
-  tokens: any
+  onOpenExplorer: (record: TRecord) => void
+  tokens: ActivityTokenCatalog
 }) {
   if (!activity.length)
     return (
@@ -201,6 +220,7 @@ export function ActivityView({
                 )}
                 {record.hash ? (
                   <CopyButton
+                    clipboard={clipboard}
                     copiedLabel={`Transaction hash copied ${record.hash}`}
                     copiedTitle='Transaction hash copied'
                     label={`Copy transaction hash ${record.hash}`}
@@ -228,6 +248,7 @@ export function ActivityView({
             return (
               <div className={activityRowRecipe()} key={record.id}>
                 <ActivityRowContent
+                  imageCapability={imageCapability}
                   networks={networks}
                   networksMeta={networksMeta}
                   record={record}
@@ -247,6 +268,7 @@ export function ActivityView({
               width='full'
             >
               <ActivityRowContent
+                imageCapability={imageCapability}
                 networks={networks}
                 networksMeta={networksMeta}
                 record={record}

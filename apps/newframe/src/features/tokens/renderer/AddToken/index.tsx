@@ -13,7 +13,6 @@ import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
 
 import RingIcon from '../RingIcon'
-import link from '../../../../platform/ipc/renderer/link'
 import { chainColorValue } from '../../../networks/domain/chain/colors'
 import { persistedImageSource } from '../../../asset-data/domain/image'
 import { toTokenId } from '../../domain'
@@ -21,6 +20,7 @@ import { useWalletSelector } from '../../../../platform/state-sync/renderer/useA
 import { selectOperationById } from '../../../../platform/state-sync/renderer/selectors/operation'
 import type { Token } from '../../domain/state/token'
 import type { WalletRendererState } from '../../../../platform/state-sync/contract/projections'
+import type { TokensCapability } from '../tokensCapability'
 
 type TokenChain = WalletRendererState['networks']['ethereum'][number]
 type TokenChainMetadata = WalletRendererState['networksMeta']['ethereum'][number]
@@ -38,11 +38,13 @@ type TokenErrorProps = {
 }
 
 type EnterAddressProps = {
+  capability: Pick<TokensCapability, 'lookup'>
   chain: SelectedChain
   onNavigate(data: AddTokenNotifyData): void
 }
 
 type TokenDetailsFormProps = {
+  capability: Pick<TokensCapability, 'add'>
   chain: SelectedChain
   tokenData: Partial<Token> & Pick<Token, 'address'> & { totalSupply?: string }
   isEdit?: boolean
@@ -60,6 +62,7 @@ type TokenBoundaryFailure = {
 }
 
 type AddTokenProps = {
+  capability: Pick<TokensCapability, 'add' | 'lookup'>
   data?: { notifyData?: AddTokenNotifyData }
   onBack?(): void
   onDone?(): void
@@ -154,7 +157,7 @@ function SelectChain({
   )
 }
 
-const EnterAddress = ({ chain, onNavigate }: EnterAddressProps) => {
+const EnterAddress = ({ capability, chain, onNavigate }: EnterAddressProps) => {
   const [isFetching, setFetching] = useState(false)
   const [contractAddress, setAddress] = useState('')
 
@@ -163,8 +166,7 @@ const EnterAddress = ({ chain, onNavigate }: EnterAddressProps) => {
   const resolveTokenData = async () => {
     setFetching(true)
 
-    const result = await link.executeQuery({
-      type: 'token.lookup',
+    const result = await capability.lookup({
       address: contractAddress,
       chainId: chain.id
     })
@@ -228,7 +230,7 @@ const tokenDetailsDefaults = {
   logoURI: 'Logo URI'
 }
 
-const TokenDetailsForm = ({ chain, tokenData, isEdit, onDone }: TokenDetailsFormProps) => {
+const TokenDetailsForm = ({ capability, chain, tokenData, isEdit, onDone }: TokenDetailsFormProps) => {
   const tokenName = tokenData.name
   const tokenSymbol = tokenData.symbol
   const tokenDecimals = tokenData.decimals
@@ -285,8 +287,8 @@ const TokenDetailsForm = ({ chain, tokenData, isEdit, onDone }: TokenDetailsForm
     const operationId = crypto.randomUUID()
     setBoundaryFailure(null)
     setSubmission({ operationId, token })
-    void link
-      .executeCommand({ type: 'token.add', operationId, token })
+    void capability
+      .add({ operationId, token })
       .then((result) => {
         if (!result.ok) {
           setBoundaryFailure({
@@ -444,6 +446,7 @@ const TokenDetailsForm = ({ chain, tokenData, isEdit, onDone }: TokenDetailsForm
 }
 
 const AddToken = ({
+  capability,
   data,
   onBack = () => {},
   onDone = () => {},
@@ -453,7 +456,7 @@ const AddToken = ({
   const { address, chain, error, tokenData, isEdit } = (data?.notifyData || {}) as AddTokenNotifyData
 
   if (!chain) return <SelectChain onNavigate={onNavigate} onOpenNetworks={onOpenNetworks} />
-  if (!address) return <EnterAddress chain={chain} onNavigate={onNavigate} />
+  if (!address) return <EnterAddress capability={capability} chain={chain} onNavigate={onNavigate} />
   if (error) {
     return <TokenError text={error} onBack={onBack} onContinue={() => onNavigate({ address, chain })} />
   }
@@ -469,6 +472,7 @@ const AddToken = ({
 
   return (
     <TokenDetailsForm
+      capability={capability}
       key={tokenDetailsKey}
       chain={chain}
       isEdit={isEdit}

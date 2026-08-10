@@ -7,7 +7,7 @@ import { Text } from '@newframe/ui/text'
 import { DetailRow } from '../../../../../shared/renderer/ui/DetailRow'
 import { TrayOverlay } from '../../../../../shared/renderer/ui/TrayOverlay'
 import { cva } from '../../../../../../generated/styled-system/css/cva.js'
-import { ChainIcon } from '../../../../../app/renderer/tray/Home/components/ChainIcon'
+import { ChainIcon } from '../../../../../shared/renderer/ui/ChainIcon'
 import { OrderTradeFlow } from './OrderTradeFlow'
 import {
   formatOrderAmount,
@@ -19,6 +19,8 @@ import {
   orderStatusLabel,
   orderTypeLabel
 } from './orderModel'
+import type { OrderNetworkMap, OrderNetworkMetadataMap, OrderModel, OrderTokenCatalog } from './orderTypes'
+import type { TokenImageCapability } from '../../../../../shared/renderer/capabilities'
 
 const payloadRecipe = cva({
   base: {
@@ -32,6 +34,7 @@ const payloadRecipe = cva({
 
 export function OrderDetailsView({
   assetImages,
+  imageCapability,
   networks,
   networksMeta,
   onBack,
@@ -40,12 +43,13 @@ export function OrderDetailsView({
   tokens
 }: {
   assetImages?: { contra?: string; target?: string }
-  networks: Record<string | number, any>
-  networksMeta: Record<string | number, any>
+  imageCapability: TokenImageCapability
+  networks: OrderNetworkMap
+  networksMeta: OrderNetworkMetadataMap
   onBack: () => void
-  order: any
+  order: OrderModel
   orderId: string
-  tokens: any
+  tokens: OrderTokenCatalog
 }) {
   const side = normalizeOrderSide(order.side)
   const spentAsset = order.spentAsset || (side === 'buy' ? order.contraAsset : order.targetAsset)
@@ -100,6 +104,7 @@ export function OrderDetailsView({
           </Stack>
           <OrderTradeFlow
             assetImages={assetImages}
+            imageCapability={imageCapability}
             networks={networks}
             networksMeta={networksMeta}
             order={order}

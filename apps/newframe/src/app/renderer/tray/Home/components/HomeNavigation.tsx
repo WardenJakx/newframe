@@ -4,16 +4,18 @@ import { chainColorValue } from '../../../../../features/networks/domain/chain/c
 import { ChainDot } from '../../../../../features/networks/renderer/ChainDot'
 import { useWalletSelector } from '../../../../../platform/state-sync/renderer/useAppSelector'
 import { useHomeUiStore } from '../state/HomeUiProvider'
-import { ChainIcon } from './ChainIcon'
+import { ChainIcon } from '../../../../../shared/renderer/ui/ChainIcon'
 import { HomeNavigationView } from './HomeNavigationView'
+import type { WalletRendererState } from '../../../../../platform/state-sync/contract/projections'
 
-const EMPTY_RECORD: Record<string, any> = {}
+const EMPTY_NETWORKS: WalletRendererState['networks']['ethereum'] = {}
+const EMPTY_NETWORK_METADATA: WalletRendererState['networksMeta']['ethereum'] = {}
 
 export function HomeNavigation() {
   const shared = useWalletSelector(
     useShallow((state) => ({
-      networks: state.networks?.ethereum || EMPTY_RECORD,
-      networksMeta: state.networksMeta?.ethereum || EMPTY_RECORD,
+      networks: state.networks?.ethereum || EMPTY_NETWORKS,
+      networksMeta: state.networksMeta?.ethereum || EMPTY_NETWORK_METADATA,
       showTestnets: !!state.showTestnets
     }))
   )

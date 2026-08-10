@@ -1,11 +1,14 @@
 import { useState } from 'react'
-import link from '../../../../platform/ipc/renderer/link'
+import type { RequestExternalCapability } from '../requestCapabilities'
 
-const useCopiedMessage = (value: string): [boolean, () => void] => {
+const useCopiedMessage = (
+  capability: Pick<RequestExternalCapability, 'copy'>,
+  value: string
+): [boolean, () => void] => {
   const [showMessage, setShowMessage] = useState(false)
 
   const copyToClipboard = () => {
-    void link.executeCommand({ type: 'clipboard.write', text: value })
+    void capability.copy({ text: value })
     setShowMessage(true)
     setTimeout(() => setShowMessage(false), 1000)
   }

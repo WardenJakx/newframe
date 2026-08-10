@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { Button } from '@newframe/ui/button'
 import { Dialog } from '@newframe/ui/dialog'
@@ -11,9 +11,9 @@ import { cva } from '../../../../generated/styled-system/css/cva.js'
 import Account from '../../../features/requests/renderer/Account'
 import Notify from './Notify'
 import Badge from '../../../platform/app-update/renderer'
+import { updaterCapability } from '../../../platform/app-update/renderer/production'
 import Footer from './Footer'
 import Home from './Home/Home'
-import link from '../../../platform/ipc/renderer/link'
 import { AppIcon } from '../../../shared/renderer/ui/appIcon'
 import {
   getWebAuthnBiometricSecret,
@@ -24,8 +24,25 @@ import {
 import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector'
 import { selectOperationById } from '../../../platform/state-sync/renderer/selectors/operation'
 import type { TrayRendererState } from './state'
-import { TrayNotificationProvider } from './notification'
+import { TrayNotificationProvider, useTrayNotification } from './notification'
 import { RequestViewProvider } from '../../../features/requests/renderer/requestView'
+import { requestCapabilities } from '../capabilities/requests'
+import type { RequestCommandNotifier } from '../../../features/requests/renderer/RequestCommand'
+import type { RequestRendererCapabilities } from '../../../features/requests/renderer/requestCapabilities'
+import { accountsCapability } from '../capabilities/accounts'
+import {
+  activityCapability,
+  connectionsCapability,
+  networksCapability,
+  ordersCapability,
+  portfolioCapability,
+  securityCapability,
+  settingsCapability,
+  tokensCapability
+} from '../capabilities/homeFeatures'
+import { homeCapability } from '../capabilities/home'
+import type { HomeCapabilities } from './Home/Home'
+import type { SecurityCapability } from '../../../features/security/renderer/securityCapability'
 
 type BiometricsState = {
   enabled: boolean
@@ -48,6 +65,9 @@ type PanelProps = {
   biometricUnlock: boolean
   crumb: PanelCrumb
   initial: boolean
+  notifyRequest: RequestCommandNotifier
+  requestCapabilities: RequestRendererCapabilities
+  security: Pick<SecurityCapability, 'status' | 'unlock'>
 }
 type PanelState = {
   biometricAvailable: boolean
@@ -64,6 +84,20 @@ const DEFAULT_BIOMETRIC_RUNTIME = {
   isSupported: isWebAuthnBiometricsSupported
 }
 
+const HOME_CAPABILITIES: HomeCapabilities = {
+  accounts: accountsCapability,
+  activity: activityCapability,
+  connections: connectionsCapability,
+  home: homeCapability,
+  networks: networksCapability,
+  orders: ordersCapability,
+  portfolio: portfolioCapability,
+  requests: requestCapabilities,
+  security: securityCapability,
+  settings: settingsCapability,
+  tokens: tokensCapability
+}
+
 const EMPTY_CRUMB = {}
 const isAppLocked = (appLock: unknown) =>
   !!appLock && typeof appLock === 'object' && 'locked' in appLock && appLock.locked === true
@@ -77,7 +111,9 @@ const operationError = (code: string | undefined) =>
     : code === 'biometric_authentication_failed'
       ? 'Biometric authentication failed'
       : 'Could not unlock Newframe'
-const selectPanelState = (state: TrayRendererState): PanelProps => ({
+const selectPanelState = (
+  state: TrayRendererState
+): Omit<PanelProps, 'biometricRuntime' | 'notifyRequest' | 'requestCapabilities' | 'security'> => ({
   appLocked: isAppLocked(state.appLock),
   biometricUnlock: !!state.biometricUnlock,
   crumb: state.windows.panel.nav[0] || EMPTY_CRUMB,
@@ -168,8 +204,7 @@ export function Panel(props: PanelProps) {
     setState({ submission: { operationId, method: 'password' }, unlockError: '' })
 
     try {
-      const result = await link.executeCommand({
-        type: 'security.unlock',
+      const result = await props.security.unlock({
         operationId,
         method: 'password',
         password
@@ -197,8 +232,7 @@ export function Panel(props: PanelProps) {
           biometricPrompting: false,
           submission: { operationId, method: 'webauthn' }
         })
-        const result = await link.executeCommand({
-          type: 'security.unlock',
+        const result = await props.security.unlock({
           operationId,
           method: 'webauthn',
           secret
@@ -207,7 +241,7 @@ export function Panel(props: PanelProps) {
       } else if (biometrics.method === 'native') {
         const operationId = crypto.randomUUID()
         setState({ submission: { operationId, method: 'native' } })
-        const result = await link.executeCommand({ type: 'security.unlock', operationId, method: 'native' })
+        const result = await props.security.unlock({ operationId, method: 'native' })
         if (!result.ok) throw new Error(result.message || 'Could not unlock Newframe')
       } else {
         throw new Error('Biometric unlock is not configured')
@@ -226,7 +260,7 @@ export function Panel(props: PanelProps) {
 
     async function refreshBiometricsState() {
       try {
-        const status = await link.executeQuery({ type: 'security.status' })
+        const status = await props.security.status({})
         if (!status.ok) throw new Error(status.message || 'Could not read biometric configuration')
 
         const biometrics: BiometricsState = status.biometrics
@@ -252,7 +286,7 @@ export function Panel(props: PanelProps) {
     return () => {
       active = false
     }
-  }, [biometricRuntime, props.biometricUnlock])
+  }, [biometricRuntime, props.biometricUnlock, props.security])
 
   const biometricUnlockButton = state.biometricAvailable ? (
     <Button
@@ -311,26 +345,43 @@ export function Panel(props: PanelProps) {
 
   return (
     <div className={panelRecipe({ visible })} id='panel'>
-      <Badge />
-      <Notify />
-      <Home />
+      <Badge capability={updaterCapability} />
+      <Notify
+        external={props.requestCapabilities.external}
+        home={HOME_CAPABILITIES.home}
+        review={props.requestCapabilities.review}
+      />
+      <Home capabilities={{ ...HOME_CAPABILITIES, requests: props.requestCapabilities }} />
       {requestViewOpen ? (
         <RequestViewProvider key={crumb.view === 'requestView' ? crumb.data.requestId : crumb.view}>
           <div className={requestOverlayRecipe()}>
-            <Account />
+            <Account capabilities={props.requestCapabilities} />
           </div>
-          <Footer />
+          <Footer capabilities={props.requestCapabilities} notify={props.notifyRequest} />
         </RequestViewProvider>
       ) : null}
     </div>
   )
 }
 
-export default function App() {
+function ComposedPanel() {
   const panelState = useWalletSelector(useShallow(selectPanelState))
+  const { notify } = useTrayNotification()
+  const notifyRequest = useCallback<RequestCommandNotifier>(({ data, type }) => notify(type, data), [notify])
+  return (
+    <Panel
+      {...panelState}
+      notifyRequest={notifyRequest}
+      requestCapabilities={requestCapabilities}
+      security={securityCapability}
+    />
+  )
+}
+
+export default function App() {
   return (
     <TrayNotificationProvider>
-      <Panel {...panelState} />
+      <ComposedPanel />
     </TrayNotificationProvider>
   )
 }

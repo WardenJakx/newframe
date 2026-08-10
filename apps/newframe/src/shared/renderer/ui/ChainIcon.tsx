@@ -1,9 +1,11 @@
 import type { CSSProperties } from 'react'
 
 import { Icon } from '@newframe/ui/icon'
-import { persistedImageSource } from '../../../../../features/asset-data/domain/image'
-import { chainColorValue } from '../../../../../features/networks/domain/chain/colors'
-import { cva } from '../../../../../../generated/styled-system/css/cva.js'
+
+import { persistedImageSource } from '../../../features/asset-data/domain/image'
+import { chainColorValue } from '../../../features/networks/domain/chain/colors'
+import { cva } from '../../../../generated/styled-system/css/cva.js'
+import type { NetworkLike, NetworkMetaLike } from './tokenSelectorTypes'
 
 const chainIconRecipe = cva({
   base: {
@@ -32,19 +34,16 @@ const chainIconRecipe = cva({
   defaultVariants: { kind: 'art', size: 'medium' }
 })
 
-export function ChainIcon({
-  chainId,
-  networks,
-  networksMeta,
-  size = 'medium'
-}: {
+export interface ChainIconProps {
   chainId: number
-  networks: Record<string | number, any>
-  networksMeta: Record<string | number, any>
+  networks: Record<string | number, NetworkLike>
+  networksMeta: Record<string | number, NetworkMetaLike>
   size?: 'compact' | 'large' | 'medium' | 'small'
-}) {
-  const metadata = networksMeta[chainId] || {}
-  const icon = persistedImageSource(metadata.image)
+}
+
+export function ChainIcon({ chainId, networks, networksMeta, size = 'medium' }: ChainIconProps) {
+  const metadata = networksMeta[chainId]
+  const icon = persistedImageSource(metadata?.image)
   if (icon) {
     return (
       <span className={chainIconRecipe({ kind: 'art', size })}>
@@ -65,7 +64,7 @@ export function ChainIcon({
   return (
     <span
       className={chainIconRecipe({ kind: 'dot', size })}
-      style={{ '--chain-icon-color': chainColorValue(metadata.primaryColor) } as CSSProperties}
+      style={{ '--chain-icon-color': chainColorValue(metadata?.primaryColor) } as CSSProperties}
     />
   )
 }

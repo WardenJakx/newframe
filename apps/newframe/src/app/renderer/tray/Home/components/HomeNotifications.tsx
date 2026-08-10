@@ -3,13 +3,13 @@ import { Button } from '@newframe/ui/button'
 import { Icon } from '@newframe/ui/icon'
 import { Text } from '@newframe/ui/text'
 
-import link from '../../../../../platform/ipc/renderer/link'
 import type { WalletRendererState } from '../../../../../platform/state-sync/contract/projections'
 import { useWalletSelector } from '../../../../../platform/state-sync/renderer/useAppSelector'
 import StatusNotifications from '../StatusNotifications'
 import { useHomeUiStore } from '../state/HomeUiProvider'
-import { ChainIcon } from './ChainIcon'
+import { ChainIcon } from '../../../../../shared/renderer/ui/ChainIcon'
 import { cva } from '../../../../../../generated/styled-system/css/cva.js'
+import type { HomeCapability } from '../homeCapability'
 
 const EMPTY_NETWORKS: WalletRendererState['networks']['ethereum'] = {}
 const EMPTY_NETWORK_METADATA: WalletRendererState['networksMeta']['ethereum'] = {}
@@ -36,7 +36,11 @@ const requestNotificationContentRecipe = cva({
   }
 })
 
-export function HomeNotifications() {
+export function HomeNotifications({
+  capability
+}: {
+  capability: Pick<HomeCapability, 'selectAccount' | 'updateNotification'>
+}) {
   const shared = useWalletSelector(
     useShallow((state) => {
       const requests = state.accounts?.[state.currentAccount]?.requests || EMPTY_REQUESTS
@@ -77,16 +81,12 @@ export function HomeNotifications() {
       ) : null}
       <StatusNotifications
         notifications={shared.notifications}
-        onDismiss={(id) =>
-          void link.executeCommand({ type: 'notification.update', notificationId: id, action: 'dismiss' })
-        }
-        onExpire={(id) =>
-          void link.executeCommand({ type: 'notification.update', notificationId: id, action: 'expire' })
-        }
+        onDismiss={(id) => void capability.updateNotification({ notificationId: id, action: 'dismiss' })}
+        onExpire={(id) => void capability.updateNotification({ notificationId: id, action: 'expire' })}
         onOpen={(notification) => {
           const target = notification.target || {}
           if (typeof target.account === 'string' && target.account !== shared.currentAccount) {
-            void link.executeCommand({ type: 'account.select', accountId: target.account })
+            void capability.selectAccount({ accountId: target.account })
           }
 
           const orderId = target.orderId || notification.metadata?.orderId

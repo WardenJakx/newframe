@@ -1,55 +1,70 @@
 // New Tx
+import { Text } from '@newframe/ui/text'
+
 import TxReview from './TxReview'
 import AdjustFee from './AdjustFee'
 import EditTokenSpend from '../../../ui/EditTokenSpend'
 import type { TokenSpendData } from '../../../ui/EditTokenSpend'
-import link from '../../../../../../platform/ipc/renderer/link'
 import { erc20Interface } from '../../../../../../shared/domain/evm'
 import { useRequestView } from '../../../requestView'
 import type { RequestViewStep } from '../../../requestView'
-import type { TransactionRequest as TransactionAccountRequest } from '../../../../contract/requests'
-import { Text } from '@newframe/ui/text'
+import type { RequestRendererCapabilities } from '../../../requestCapabilities'
+import type { TransactionRequestView } from '../requestViewTypes'
 
 type TransactionRequestProps = {
-  req: TransactionRequestData
+  capabilities: Pick<RequestRendererCapabilities, 'external' | 'review' | 'transaction'>
+  req: TransactionRequestView
   actionId?: string
   step: RequestViewStep
 }
 
 type TransactionRequestWithStateProps = Omit<TransactionRequestProps, 'actionId' | 'step'>
 
-type TransactionRequestData = {
-  handlerId: string
-  type: string
-  payload: { params: Array<{ data?: string }> }
-  recognizedActions?: Array<{ id: string; data: unknown }>
-  status?: string
-}
-
-const decodeRequested = (req: TransactionRequestData) => {
+const decodeRequested = (req: TransactionRequestView) => {
   const calldata = req.payload.params[0]?.data || '0x'
   const [spender, amount] = erc20Interface.decodeFunctionData('approve', calldata)
   return { spender, amount: BigInt(amount) }
 }
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value)
+
+const isIdentity = (value: unknown) =>
+  isRecord(value) &&
+  typeof value.address === 'string' &&
+  (value.ens === undefined || typeof value.ens === 'string') &&
+  (value.type === undefined || typeof value.type === 'string')
+
+const isSourceValue = (value: unknown) => typeof value === 'string' || typeof value === 'number'
+
+const isTokenSpendData = (value: unknown): value is TokenSpendData =>
+  isRecord(value) &&
+  (value.decimals === undefined || typeof value.decimals === 'number') &&
+  (value.symbol === undefined || typeof value.symbol === 'string') &&
+  (value.name === undefined || typeof value.name === 'string') &&
+  isIdentity(value.spender) &&
+  isIdentity(value.contract) &&
+  isSourceValue(value.amount)
+
 export function TransactionRequest(props: TransactionRequestProps) {
   const { actionId, req, step } = props
-  const transactionRequest = req as TransactionAccountRequest
 
-  if (step === 'adjustFee') return <AdjustFee req={transactionRequest} />
+  if (step === 'adjustFee') {
+    return <AdjustFee capability={props.capabilities.transaction} req={req} />
+  }
   if (step === 'adjustApproval') {
     if (!req || actionId !== 'erc20:approve') return null
     const approval = (req.recognizedActions || []).find((action) => action.id === actionId)
-    if (!approval) return null
+    if (!isTokenSpendData(approval?.data)) return null
     const requestedAmount = decodeRequested(req).amount
 
     return (
       <EditTokenSpend
-        data={approval.data as TokenSpendData}
+        clipboard={props.capabilities.external}
+        data={approval.data}
         requestedAmount={requestedAmount}
         updateRequest={(amount: string) => {
-          void link.executeCommand({
-            type: 'request.token-approval-update',
+          void props.capabilities.review.updateTokenApproval({
             requestKind: 'transaction',
             requestId: req.handlerId,
             actionId: 'erc20:approve',
@@ -64,7 +79,7 @@ export function TransactionRequest(props: TransactionRequestProps) {
   if (!req) return null
 
   return req.type === 'transaction' ? (
-    <TxReview key={req.handlerId} req={transactionRequest} />
+    <TxReview capabilities={props.capabilities} key={req.handlerId} req={req} />
   ) : (
     <Text align='center' tone='danger' variant='label'>
       {'Unknown: ' + req.type}

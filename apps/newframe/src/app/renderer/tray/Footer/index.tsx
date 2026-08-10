@@ -5,12 +5,13 @@ import type { WalletRendererState } from '../../../../platform/state-sync/contra
 import { RequestActions } from '../../../../features/requests/renderer/ui/RequestActions'
 import { cva } from '../../../../../generated/styled-system/css/cva.js'
 import { isHardwareSigner } from '../../../../platform/signing/domain'
-import link from '../../../../platform/ipc/renderer/link'
 import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector'
 import { useRequestView, type RequestViewStep } from '../../../../features/requests/renderer/requestView'
 import RequestCommand, {
+  type RequestCommandNotifier,
   type RequestCommandRequest
 } from '../../../../features/requests/renderer/RequestCommand'
+import type { RequestRendererCapabilities } from '../../../../features/requests/renderer/requestCapabilities'
 
 interface FooterSharedState {
   account?: WalletRendererState['accounts'][string]
@@ -19,6 +20,8 @@ interface FooterSharedState {
 }
 
 interface FooterProps {
+  capabilities: Pick<RequestRendererCapabilities, 'external' | 'review' | 'transaction'>
+  notify: RequestCommandNotifier
   shared: FooterSharedState
   step: RequestViewStep
 }
@@ -53,7 +56,7 @@ const selectFooterState = (state: WalletRendererState): FooterSharedState => {
   return { account, crumb, req: requestId ? account?.requests[requestId] : undefined }
 }
 
-export function Footer({ shared, step }: FooterProps) {
+export function Footer({ capabilities, notify, shared, step }: FooterProps) {
   const footerRef = useRef<HTMLElement>(null)
   const { account, crumb, req } = shared
 
@@ -87,28 +90,33 @@ export function Footer({ shared, step }: FooterProps) {
     ['transaction', 'sign', 'signTypedData', 'signErc20Permit'].includes(req.type) &&
     step === 'confirm'
   ) {
-    content = <RequestCommand req={req} signingDelay={isHardwareSigner(account.lastSignerType) ? 0 : 1500} />
+    content = (
+      <RequestCommand
+        capabilities={capabilities}
+        notify={notify}
+        req={req}
+        signingDelay={isHardwareSigner(account.lastSignerType) ? 0 : 1500}
+      />
+    )
   }
 
   if (!req) {
     return <footer className={footerRecipe({ active: false })} ref={footerRef} />
   }
 
-  const reject = () => void link.executeCommand({ type: 'request.reject', requestId: req.handlerId })
+  const reject = () => void capabilities.review.reject({ requestId: req.handlerId })
   let primary: { label: string; onPress: () => void } | undefined
 
   if (!content && req?.type === 'access') {
     primary = {
       label: 'Approve',
-      onPress: () =>
-        void link.executeCommand({ type: 'request.access-resolve', requestId: req.handlerId, approved: true })
+      onPress: () => void capabilities.review.resolveAccess({ requestId: req.handlerId, approved: true })
     }
   } else if (!content && req?.type === 'agentAccess') {
     primary = {
       label: 'Allow autonomous access',
       onPress: () =>
-        void link.executeCommand({
-          type: 'request.agent-access-resolve',
+        void capabilities.review.resolveAgentAccess({
           requestId: req.handlerId,
           approved: true
         })
@@ -117,8 +125,7 @@ export function Footer({ shared, step }: FooterProps) {
     primary = {
       label: 'Switch',
       onPress: () =>
-        void link.executeCommand({
-          type: 'request.switch-chain-resolve',
+        void capabilities.review.resolveSwitchChain({
           requestId: req.handlerId,
           approved: true
         })
@@ -126,12 +133,12 @@ export function Footer({ shared, step }: FooterProps) {
   } else if (!content && req?.type === 'addChain') {
     primary = {
       label: 'Review',
-      onPress: () => void link.executeCommand({ type: 'request.add-chain-review', requestId: req.handlerId })
+      onPress: () => void capabilities.review.reviewAddChain({ requestId: req.handlerId })
     }
   } else if (!content && req?.type === 'addToken') {
     primary = {
       label: 'Review',
-      onPress: () => void link.executeCommand({ type: 'request.add-token-review', requestId: req.handlerId })
+      onPress: () => void capabilities.review.reviewAddToken({ requestId: req.handlerId })
     }
   }
 
@@ -140,8 +147,7 @@ export function Footer({ shared, step }: FooterProps) {
       ? {
           label: 'Decline',
           onPress: () =>
-            void link.executeCommand({
-              type: 'request.access-resolve',
+            void capabilities.review.resolveAccess({
               requestId: req.handlerId,
               approved: false
             })
@@ -150,8 +156,7 @@ export function Footer({ shared, step }: FooterProps) {
         ? {
             label: 'Decline',
             onPress: () =>
-              void link.executeCommand({
-                type: 'request.agent-access-resolve',
+              void capabilities.review.resolveAgentAccess({
                 requestId: req.handlerId,
                 approved: false
               })
@@ -160,8 +165,7 @@ export function Footer({ shared, step }: FooterProps) {
           ? {
               label: 'Decline',
               onPress: () =>
-                void link.executeCommand({
-                  type: 'request.switch-chain-resolve',
+                void capabilities.review.resolveSwitchChain({
                   requestId: req.handlerId,
                   approved: false
                 })
@@ -178,8 +182,14 @@ export function Footer({ shared, step }: FooterProps) {
   )
 }
 
-export default function FooterContainer() {
+export default function FooterContainer({
+  capabilities,
+  notify
+}: {
+  capabilities: Pick<RequestRendererCapabilities, 'external' | 'review' | 'transaction'>
+  notify: RequestCommandNotifier
+}) {
   const shared = useWalletSelector(useShallow(selectFooterState))
   const { step } = useRequestView()
-  return <Footer shared={shared} step={step} />
+  return <Footer capabilities={capabilities} notify={notify} shared={shared} step={step} />
 }

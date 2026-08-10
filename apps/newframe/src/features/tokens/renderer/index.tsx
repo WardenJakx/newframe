@@ -6,10 +6,10 @@ import { Text } from '@newframe/ui/text'
 
 import type { Token } from '../domain/state/token'
 import { TrayOverlay } from '../../../shared/renderer/ui/TrayOverlay'
-import { useHomeUiStore } from '../../../app/renderer/tray/Home/state/HomeUiProvider'
 import AddToken from './AddToken'
 import type { AddTokenNotifyData } from './AddToken'
 import CustomTokens from './CustomTokens'
+import type { TokensCapability } from './tokensCapability'
 
 interface PendingCustomToken {
   address: string
@@ -32,8 +32,17 @@ const addPage = (notifyData: AddTokenNotifyData = {}): TokenPage => ({
   notifyData
 })
 
-export default function Tokens({ initialToken }: { initialToken?: PendingCustomToken }) {
-  const openOverlay = useHomeUiStore((state) => state.openOverlay)
+export default function Tokens({
+  capability,
+  initialToken,
+  onBack,
+  onOpenNetworks
+}: {
+  capability: TokensCapability
+  initialToken?: PendingCustomToken
+  onBack: () => void
+  onOpenNetworks: () => void
+}) {
   const [pages, setPages] = useState<TokenPage[]>(() =>
     initialToken
       ? [
@@ -51,7 +60,7 @@ export default function Tokens({ initialToken }: { initialToken?: PendingCustomT
     setPages((existing) => [addPage(notifyData), ...existing])
   const back = () => {
     if (pages.length > 1) setPages((existing) => existing.slice(1))
-    else openOverlay({ type: 'menu' })
+    else onBack()
   }
   const done = () => setPages([listPage])
   const edit = (token: Token) =>
@@ -88,14 +97,15 @@ export default function Tokens({ initialToken }: { initialToken?: PendingCustomT
     >
       {current.notify === 'addToken' ? (
         <AddToken
+          capability={capability}
           data={current}
           onBack={back}
           onDone={done}
           onNavigate={navigate}
-          onOpenNetworks={() => openOverlay({ type: 'networks' })}
+          onOpenNetworks={onOpenNetworks}
         />
       ) : (
-        <CustomTokens onEdit={edit} />
+        <CustomTokens capability={capability} onEdit={edit} />
       )}
     </TrayOverlay>
   )

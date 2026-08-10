@@ -2,33 +2,30 @@ import { beforeEach, describe, expect, it } from 'bun:test'
 
 import { connectRendererState as connectState } from './connectState'
 import { sideTrayState } from './fixtures.test-support.ts'
-import { resetStateMirrorForTests } from './rendererStore'
 import { STATE_STREAM_SCHEMA_VERSION, type StateMessage } from '../contract/protocol'
-import { createHostFixture } from '../../../../test/support/rendererClient'
+import { registerTestRuntimeFixture } from '../../../../test/support/rendererClient'
 
-const linkMock = createHostFixture()
-const connection = linkMock.connectState
-const disconnect = linkMock.disconnectState
+const fixture = registerTestRuntimeFixture()
 
 describe('connectRendererState', () => {
   let handler: (message: StateMessage) => void
 
   beforeEach(() => {
-    resetStateMirrorForTests()
-    connection.mockReset()
-    disconnect.mockReset()
-    connection.mockImplementation(async (nextHandler: (message: StateMessage) => void) => {
+    fixture.state.reset({})
+    fixture.client.connectState.mockReset()
+    fixture.client.disconnectState.mockReset()
+    fixture.client.connectState.mockImplementation(async (nextHandler: (message: StateMessage) => void) => {
       handler = nextHandler
       return { ok: true }
     })
-    disconnect.mockResolvedValue({ ok: true })
+    fixture.client.disconnectState.mockResolvedValue({ ok: true })
   })
 
   it('does not resolve startup until the authorized stream snapshot arrives', async () => {
-    const connected = connectState('sidetray')
+    const connected = connectState('sidetray', fixture.state, fixture.client)
     await Promise.resolve()
 
-    expect(connection).toHaveBeenCalledTimes(1)
+    expect(fixture.client.connectState).toHaveBeenCalledTimes(1)
 
     handler({
       schemaVersion: STATE_STREAM_SCHEMA_VERSION,
@@ -39,11 +36,11 @@ describe('connectRendererState', () => {
 
     const stop = await connected
     await stop()
-    expect(disconnect).toHaveBeenCalledTimes(1)
+    expect(fixture.client.disconnectState).toHaveBeenCalledTimes(1)
   })
 
   it('reconnects with a replacement snapshot after detecting a revision gap', async () => {
-    const connected = connectState('sidetray')
+    const connected = connectState('sidetray', fixture.state, fixture.client)
     await Promise.resolve()
     handler({
       schemaVersion: STATE_STREAM_SCHEMA_VERSION,
@@ -63,8 +60,8 @@ describe('connectRendererState', () => {
     await Promise.resolve()
     await Promise.resolve()
 
-    expect(disconnect).toHaveBeenCalledTimes(1)
-    expect(connection).toHaveBeenCalledTimes(2)
+    expect(fixture.client.disconnectState).toHaveBeenCalledTimes(1)
+    expect(fixture.client.connectState).toHaveBeenCalledTimes(2)
 
     handler({
       schemaVersion: STATE_STREAM_SCHEMA_VERSION,
@@ -76,7 +73,7 @@ describe('connectRendererState', () => {
   })
 
   it('reconnects when Electron invalidates the active stream', async () => {
-    const connected = connectState('sidetray')
+    const connected = connectState('sidetray', fixture.state, fixture.client)
     await Promise.resolve()
     handler({
       schemaVersion: STATE_STREAM_SCHEMA_VERSION,
@@ -94,21 +91,21 @@ describe('connectRendererState', () => {
     await Promise.resolve()
     await Promise.resolve()
 
-    expect(disconnect).toHaveBeenCalledTimes(1)
-    expect(connection).toHaveBeenCalledTimes(2)
+    expect(fixture.client.disconnectState).toHaveBeenCalledTimes(1)
+    expect(fixture.client.connectState).toHaveBeenCalledTimes(2)
     await stop()
   })
 
   it('does not reopen a stream when cleanup races an in-flight reconnect', async () => {
     let finishReconnectDisconnect!: (result: { ok: true }) => void
-    disconnect.mockImplementationOnce(
+    fixture.client.disconnectState.mockImplementationOnce(
       () =>
         new Promise((resolve) => {
           finishReconnectDisconnect = resolve
         })
     )
 
-    const connected = connectState('sidetray')
+    const connected = connectState('sidetray', fixture.state, fixture.client)
     await Promise.resolve()
     handler({
       schemaVersion: STATE_STREAM_SCHEMA_VERSION,
@@ -132,7 +129,7 @@ describe('connectRendererState', () => {
     await stopped
     await Promise.resolve()
 
-    expect(connection).toHaveBeenCalledTimes(1)
-    expect(disconnect).toHaveBeenCalledTimes(2)
+    expect(fixture.client.connectState).toHaveBeenCalledTimes(1)
+    expect(fixture.client.disconnectState).toHaveBeenCalledTimes(2)
   })
 })

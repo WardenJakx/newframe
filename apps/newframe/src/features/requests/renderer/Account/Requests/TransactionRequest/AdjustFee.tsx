@@ -4,14 +4,14 @@ import { Field } from '@newframe/ui/field'
 import { Input } from '@newframe/ui/input'
 import { Stack } from '@newframe/ui/stack'
 
-import link from '../../../../../../platform/ipc/renderer/link'
 import {
   limitTransactionFee,
   type TransactionFeeField,
-  usesBaseFee
+  typeSupportsBaseFee
 } from '../../../../../transactions/domain'
 import { formatUnits, parseUnits, toBigInt } from '../../../../../../shared/domain/units'
-import type { TransactionRequest } from '../../../../contract/requests'
+import type { TransactionReviewCapability } from '../../../requestCapabilities'
+import type { AdjustFeeRequestView } from '../requestViewTypes'
 
 // display a wei value as a decimal amount of gwei
 function toDisplayFromWei(wei: bigint) {
@@ -45,7 +45,8 @@ type FeeOverlayInputProps = {
 type FeeInputProps = Omit<FeeOverlayInputProps, 'labelText' | 'decimals'>
 
 type TxFeeOverlayProps = {
-  req: TransactionRequest
+  capability: Pick<TransactionReviewCapability, 'updateFee'>
+  req: AdjustFeeRequestView
 }
 
 const FeeOverlayInput = ({
@@ -93,12 +94,12 @@ const FeeOverlayInput = ({
           const parsedInput = (decimals ? /[0-9.]*/ : /[0-9]*/).exec(nextValue)
           const enteredValue = parsedInput?.[0] || ''
 
+          clearTimeout(submitTimeout.current)
+
           if (enteredValue === '.' || enteredValue === '') return setValue(enteredValue)
 
           const numericValue = parseInput(nextValue, decimals)
           if (numericValue === undefined) return
-
-          clearTimeout(submitTimeout.current)
 
           // prevent decimal point being overwritten as user is typing a float
           if (enteredValue.endsWith('.')) {
@@ -202,8 +203,7 @@ export default function TxFeeOverlay(props: TxFeeOverlayProps) {
   const receiveValueHandler = (value: bigint, name: TransactionFeeField) => {
     setState((current) => ({ ...current, [name]: value }))
 
-    void link.executeCommand({
-      type: 'transaction.fee-update',
+    void props.capability.updateFee({
       requestId: handlerId,
       field: name,
       value: bnToHex(value)
@@ -212,7 +212,7 @@ export default function TxFeeOverlay(props: TxFeeOverlayProps) {
 
   return (
     <Stack gap='small'>
-      {usesBaseFee(data) ? (
+      {typeSupportsBaseFee(data.type) ? (
         <>
           <BaseFeeInput
             initialValue={displayBaseFee}

@@ -5,25 +5,22 @@ import { Inline } from '@newframe/ui/inline'
 import { Stack } from '@newframe/ui/stack'
 import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
-import { useRef, useState, type Key, type ReactNode } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 
 import { cva } from '../../../../../../../generated/styled-system/css/cva.js'
 import { sva } from '../../../../../../../generated/styled-system/css/sva.js'
 import { imageSource, persistedImageSource } from '../../../../../asset-data/domain/image'
 import { useTokenImageHydration } from '../../../../../../shared/renderer/hooks/useTokenImageHydration'
 import { DisplayCoinBalance } from '../../../ui/DisplayValue'
+import type { SourceValue } from '../../../format/displayValue'
+import type { TransactionEffect } from '../../../../../transactions/domain'
+import type { NativeCurrency } from '../../../../../networks/domain/state/nativeCurrency'
+import type { TokenImageCapability } from '../../../../../../shared/renderer/capabilities'
 
-type TransactionInformationEffect = {
-  id: Key
-  direction: string
-  kind?: string
-  logoURI?: string
-  symbol?: string
-  amount?: any
-  decimals?: number
+type TransactionInformationEffect = Omit<TransactionEffect, 'amount' | 'detail' | 'label'> & {
+  amount?: SourceValue
   label: ReactNode
   detail?: ReactNode
-  assetAddress?: string
   tokenId?: string
 }
 
@@ -33,10 +30,7 @@ export type TransactionInformationDetailRow = {
   onClick?: () => void
 }
 
-type TransactionInformationNativeCurrency = {
-  icon?: string
-  image?: { base64?: string; mimeType?: string }
-}
+type TransactionInformationNativeCurrency = Pick<NativeCurrency, 'image' | 'symbol'>
 
 type TransactionInformationCalldata = {
   digest: string
@@ -44,6 +38,7 @@ type TransactionInformationCalldata = {
 }
 
 export type TransactionInformationProps = {
+  imageCapability: TokenImageCapability
   originName: ReactNode
   networkName: ReactNode
   networkIcon?: string
@@ -191,9 +186,11 @@ const calldataRecipe = cva({
 
 function AssetIcon({
   effect,
+  imageCapability,
   nativeCurrency
 }: {
   effect: TransactionInformationEffect
+  imageCapability: TokenImageCapability
   nativeCurrency: TransactionInformationNativeCurrency
 }) {
   const hydrationTarget = useRef<HTMLSpanElement>(null)
@@ -202,7 +199,7 @@ function AssetIcon({
   const symbol = (effect.symbol || '?').trim() || '?'
   const styles = effectRecipe({ direction: 'neutral' })
 
-  useTokenImageHydration(effect.tokenId, !!iconSource, hydrationTarget)
+  useTokenImageHydration(imageCapability, effect.tokenId, !!iconSource, hydrationTarget)
 
   return (
     <span
@@ -227,12 +224,14 @@ function AssetIcon({
 function TransactionEffects({
   effects,
   emptyText,
+  imageCapability,
   nativeCurrency,
   networkName,
   networkIcon
 }: {
   effects: TransactionInformationEffect[]
   emptyText: ReactNode
+  imageCapability: TokenImageCapability
   nativeCurrency: TransactionInformationNativeCurrency
   networkName: ReactNode
   networkIcon?: string
@@ -279,7 +278,11 @@ function TransactionEffects({
                     key={effect.id}
                     role='group'
                   >
-                    <AssetIcon effect={effect} nativeCurrency={nativeCurrency} />
+                    <AssetIcon
+                      effect={effect}
+                      imageCapability={imageCapability}
+                      nativeCurrency={nativeCurrency}
+                    />
                     <span className={styles.meta}>
                       <Stack gap='none'>
                         <Text truncate variant='control'>
@@ -397,6 +400,7 @@ function CalldataDetails({ calldata }: { calldata: TransactionInformationCalldat
 }
 
 export default function TransactionInformation({
+  imageCapability,
   originName,
   networkName,
   networkIcon,
@@ -438,6 +442,7 @@ export default function TransactionInformation({
         <TransactionEffects
           effects={effects}
           emptyText={effectsEmptyText}
+          imageCapability={imageCapability}
           nativeCurrency={nativeCurrency}
           networkIcon={networkIcon}
           networkName={networkName}

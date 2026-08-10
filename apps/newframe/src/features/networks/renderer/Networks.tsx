@@ -1,19 +1,22 @@
 import { useState } from 'react'
 
-import link from '../../../platform/ipc/renderer/link'
 import { chainColorValue } from '../domain/chain/colors'
 import { ChainDot } from './ChainDot'
-import { useAccountBalances } from '../../portfolio/renderer/useAccountBalances'
-import { useHomeUiStore } from '../../../app/renderer/tray/Home/state/HomeUiProvider'
-import { ChainIcon } from '../../../app/renderer/tray/Home/components/ChainIcon'
+import { useAccountBalances } from '../../../shared/renderer/hooks/useAccountBalances'
+import { ChainIcon } from '../../../shared/renderer/ui/ChainIcon'
 import { createNetworkRows } from './networkModel'
 import { NetworksView } from './NetworksView'
+import type { NetworksCapability } from './networksCapability'
 
-export function Networks() {
+export interface NetworksProps {
+  capability: Pick<NetworksCapability, 'setNetworkActivation' | 'setPrimaryRpc'>
+  onClose: () => void
+  onSelectionChange: (chainId: number) => void
+  selectedChainId: number
+}
+
+export function Networks({ capability, onClose, onSelectionChange, selectedChainId }: NetworksProps) {
   const shared = useAccountBalances()
-  const selectedChainId = useHomeUiStore((state) => state.selectedChainId)
-  const setSelectedChainId = useHomeUiStore((state) => state.setSelectedChainId)
-  const closeOverlay = useHomeUiStore((state) => state.closeOverlay)
   const [query, setQuery] = useState('')
   const [kebabChainId, setKebabChainId] = useState(0)
   const [rpcDrafts, setRpcDrafts] = useState<Record<number, string>>({})
@@ -52,7 +55,7 @@ export function Networks() {
         rpcDrafts[chainId] ?? shared.networks[chainId]?.connection?.primary?.custom ?? ''
       }
       kebabChainId={kebabChainId}
-      onBack={closeOverlay}
+      onBack={onClose}
       onChangeQuery={setQuery}
       onChangeRpcDraft={(chainId, value) =>
         setRpcDrafts((current) => ({ ...current, [chainId]: value.replace(/\s+/g, '') }))
@@ -61,15 +64,15 @@ export function Networks() {
         const url = String(
           rpcDrafts[chainId] ?? shared.networks[chainId]?.connection?.primary?.custom ?? ''
         ).trim()
-        if (url) void link.executeCommand({ type: 'network.primary-rpc-set', chainId, url })
+        if (url) void capability.setPrimaryRpc({ chainId, url })
       }}
       onSelect={(chainId) => {
-        setSelectedChainId(chainId)
-        closeOverlay()
+        onSelectionChange(chainId)
+        onClose()
       }}
       onToggleChain={(chainId, enabled) => {
-        void link.executeCommand({ type: 'network.activation-set', chainId, enabled })
-        if (!enabled && selectedChainId === chainId) setSelectedChainId(0)
+        void capability.setNetworkActivation({ chainId, enabled })
+        if (!enabled && selectedChainId === chainId) onSelectionChange(0)
         setKebabChainId(0)
       }}
       onToggleKebab={(chainId) => setKebabChainId((current) => (current === chainId ? 0 : chainId))}

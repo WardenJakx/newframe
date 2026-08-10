@@ -4,10 +4,10 @@ import { Text } from '@newframe/ui/text'
 
 import { RequestStatusNotice } from '../../ui/RequestStatusNotice'
 import { useOriginName } from './state'
-import type { AddTokenRequest as AddTokenAccountRequest } from '../../../contract/requests'
+import type { AddTokenRequestView } from './requestViewTypes'
 
 type AddTokenRequestProps = {
-  req: AddTokenAccountRequest & { id?: string }
+  req: AddTokenRequestView
   originName: string
   pos?: number
 }

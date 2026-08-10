@@ -15,6 +15,11 @@ import {
 import { formatUsdRate } from '../../asset-data/domain/balance'
 import type { PositionGroups } from './positionModel'
 import { cva } from '../../../../generated/styled-system/css/cva.js'
+import type { NetworkLike, NetworkMetaLike } from '../../../shared/renderer/ui/tokenSelectorTypes'
+import type { TokenImageCapability } from '../../../shared/renderer/capabilities'
+
+type PortfolioNetworks = Record<string | number, NetworkLike>
+type PortfolioNetworkMetadata = Record<string | number, NetworkMetaLike>
 
 const searchRecipe = cva({ base: { flexShrink: 0, paddingInline: '5', paddingBlockEnd: '4' } })
 const listRecipe = cva({
@@ -35,8 +40,9 @@ export interface PositionsViewProps {
   dustExpanded: boolean
   dustRowsVisible: number
   groups: PositionGroups
-  networks: Record<string | number, any>
-  networksMeta: Record<string | number, any>
+  imageCapability: TokenImageCapability
+  networks: PortfolioNetworks
+  networksMeta: PortfolioNetworkMetadata
   onChangeQuery: (query: string) => void
   onOpenAsset: (asset: DisplayedBalance) => void
   onShowMoreDust: () => void
@@ -50,13 +56,15 @@ export interface PositionsViewProps {
 
 function PositionRow({
   balance,
+  imageCapability,
   networks,
   networksMeta,
   onOpen
 }: {
   balance: BalanceSummary
-  networks: Record<string | number, any>
-  networksMeta: Record<string | number, any>
+  imageCapability: TokenImageCapability
+  networks: PortfolioNetworks
+  networksMeta: PortfolioNetworkMetadata
   onOpen: (balance: DisplayedBalance) => void
 }) {
   const displayed = createDisplayBalance(balance)
@@ -78,7 +86,13 @@ function PositionRow({
       onPress={() => onOpen(displayed)}
       width='full'
     >
-      <TokenOptionRow item={item} networks={networks} networksMeta={networksMeta} showRightSubLabel />
+      <TokenOptionRow
+        imageCapability={imageCapability}
+        item={item}
+        networks={networks}
+        networksMeta={networksMeta}
+        showRightSubLabel
+      />
     </Button>
   )
 }
@@ -108,6 +122,7 @@ export function PositionsView({
   dustExpanded,
   dustRowsVisible,
   groups,
+  imageCapability,
   networks,
   networksMeta,
   onChangeQuery,
@@ -149,6 +164,7 @@ export function PositionsView({
               <PositionRow
                 key={`${balance.chainId}:${balance.address}`}
                 balance={balance}
+                imageCapability={imageCapability}
                 networks={networks}
                 networksMeta={networksMeta}
                 onOpen={onOpenAsset}
@@ -179,6 +195,7 @@ export function PositionsView({
                       <PositionRow
                         key={`${balance.chainId}:${balance.address}`}
                         balance={balance}
+                        imageCapability={imageCapability}
                         networks={networks}
                         networksMeta={networksMeta}
                         onOpen={onOpenAsset}
@@ -218,6 +235,7 @@ export function PositionsView({
                       <PositionRow
                         key={`${balance.chainId}:${balance.address}`}
                         balance={balance}
+                        imageCapability={imageCapability}
                         networks={networks}
                         networksMeta={networksMeta}
                         onOpen={onOpenAsset}

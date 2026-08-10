@@ -1,6 +1,14 @@
-import { timestamp } from '../../../../app/renderer/tray/Home/StatusNotifications'
 import { getPaidTransactionFee, getTransactionEffects } from '../../domain'
+import { timestamp } from '../../../../shared/domain/timestamp'
 import { formatUnits, toBigInt } from '../../../../shared/domain/units'
+import {
+  projectActivityRecord,
+  type ActivityNetworkMap,
+  type ActivityBalanceChange,
+  type ActivityRecord,
+  type ActivityViewRecord,
+  type WalletActivityRecord
+} from './activityTypes'
 
 export function transactionStatusLabel(status?: string) {
   if (status === 'submitted') return 'Submitted'
@@ -24,7 +32,7 @@ export function activityGlyphState(status?: string) {
   return 'pending'
 }
 
-export function activityRequestLike(activity: any) {
+export function activityRequestLike(activity: ActivityRecord) {
   return {
     ...activity,
     type: 'transaction',
@@ -40,7 +48,7 @@ export function activityRequestLike(activity: any) {
   }
 }
 
-export function activityTimestampLabel(activity: any) {
+export function activityTimestampLabel(activity: ActivityRecord) {
   const submittedAt = timestamp(activity.submittedAt, timestamp(activity.updatedAt, 0))
   if (!submittedAt) return ''
 
@@ -53,7 +61,7 @@ export function activityTimestampLabel(activity: any) {
   })
 }
 
-function activityBalanceChanges(activity: any, nativeSymbol = 'ETH') {
+function activityBalanceChanges(activity: ActivityRecord, nativeSymbol = 'ETH'): ActivityBalanceChange[] {
   if (Array.isArray(activity.balanceChanges)) return activity.balanceChanges
 
   return getTransactionEffects(activityRequestLike(activity), nativeSymbol).filter(
@@ -61,19 +69,19 @@ function activityBalanceChanges(activity: any, nativeSymbol = 'ETH') {
   )
 }
 
-function activityGasSpent(activity: any) {
+function activityGasSpent(activity: ActivityRecord) {
   return activity.gasSpent || getPaidTransactionFee(activityRequestLike(activity))
 }
 
 export function activityBalanceChangeLabel(
-  activity: any,
+  activity: ActivityRecord,
   nativeSymbol = 'ETH',
   tokenForAddress?: (address: string) => { decimals?: number; symbol?: string } | undefined
 ) {
   const changes = activityBalanceChanges(activity, nativeSymbol)
   if (!changes.length) return ''
 
-  const labels = changes.slice(0, 2).map((change: any) => {
+  const labels = changes.slice(0, 2).map((change) => {
     const sign = change.direction === 'in' ? '+' : '−'
     const token = change.assetAddress ? tokenForAddress?.(change.assetAddress) : undefined
     const decimals = Number.isInteger(token?.decimals) ? token?.decimals : change.decimals
@@ -85,23 +93,23 @@ export function activityBalanceChangeLabel(
   return `${labels.join(' · ')}${remaining > 0 ? ` · +${remaining} more` : ''}`
 }
 
-export function activityGasLabel(activity: any, nativeSymbol = 'ETH') {
+export function activityGasLabel(activity: ActivityRecord, nativeSymbol = 'ETH') {
   const gasSpent = activityGasSpent(activity)
   return gasSpent ? `Gas ${formatUnits(toBigInt(gasSpent) ?? 0n, 18)} ${nativeSymbol}` : ''
 }
 
-export function activityAssetEffect(activity: any, nativeSymbol = 'ETH') {
-  const actionIds = (activity.recognizedActions || []).map((action: any) => action?.id)
-  const recognizedAssetAction = actionIds.some((id: string) =>
-    ['erc20:transfer', 'erc20:approve', 'erc20:revoke'].includes(id)
+export function activityAssetEffect(activity: ActivityRecord, nativeSymbol = 'ETH') {
+  const actionIds = (activity.recognizedActions || []).map((action) => action.id)
+  const recognizedAssetAction = actionIds.some(
+    (id) => typeof id === 'string' && ['erc20:transfer', 'erc20:approve', 'erc20:revoke'].includes(id)
   )
-  const decodedAssetAction = ['approve', 'transfer'].includes(activity.decodedData?.method)
+  const decodedAssetAction = ['approve', 'transfer'].includes(activity.decodedData?.method || '')
   const nativeTransfer =
     activity.classification === 'NATIVE_TRANSFER' ||
     (activity.display?.title || '').startsWith(`Send ${nativeSymbol}`)
   const titleMatch = /^(Send|Approve|Revoke)\s+(.+?)(?:\s+allowance)?$/.exec(activity.display?.title || '')
   const token = activity.tokenData || {}
-  const withAssetMetadata = (effect: any) => ({
+  const withAssetMetadata = (effect: ActivityBalanceChange): ActivityBalanceChange => ({
     ...effect,
     ...(effect.kind !== 'native' && (effect.assetAddress || token.address || activity.data?.to)
       ? { assetAddress: effect.assetAddress || token.address || activity.data?.to }
@@ -117,7 +125,7 @@ export function activityAssetEffect(activity: any, nativeSymbol = 'ETH') {
   if (effect) return withAssetMetadata(effect)
 
   const balanceEffect = activityBalanceChanges(activity, nativeSymbol).find(
-    (change: any) => change.kind === 'erc20' || change.kind === 'native'
+    (change) => change.kind === 'erc20' || change.kind === 'native'
   )
   if (balanceEffect) return withAssetMetadata(balanceEffect)
 
@@ -148,18 +156,20 @@ export function createActivityRows({
   showTestnets
 }: {
   accountAddress: string
-  activity: Record<string, any>
-  networks: Record<string | number, any>
+  activity: Record<string, WalletActivityRecord | ActivityRecord>
+  networks: ActivityNetworkMap
   selectedChainId: number
   showTestnets: boolean
 }) {
   const address = accountAddress.toLowerCase()
   return Object.values(activity)
-    .filter((record) => {
+    .map(projectActivityRecord)
+    .filter((record): record is ActivityViewRecord => {
       const recordAddress = String(record.account || record.address || '').toLowerCase()
       const chainId = Number(record.chainId)
       const chain = networks[chainId]
       return (
+        Boolean(record.id) &&
         recordAddress === address &&
         !!chain &&
         (!chain.isTestnet || showTestnets) &&

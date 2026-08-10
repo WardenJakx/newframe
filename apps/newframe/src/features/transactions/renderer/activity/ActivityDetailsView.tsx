@@ -1,34 +1,37 @@
-import link from '../../../../platform/ipc/renderer/link'
 import { TrayOverlay } from '../../../../shared/renderer/ui/TrayOverlay'
 import TransactionInformation from '../../../requests/renderer/Account/Requests/TransactionRequest/TransactionInformation'
 import { getTransactionEffects } from '../../domain'
 import { activityRequestLike, transactionStatusLabel } from './activityModel'
 import { persistedImageSource } from '../../../asset-data/domain/image'
+import type { ActivityCapability } from './activityCapability'
+import type { ActivityDetailNetworkMetadata, ActivityNetworkMap, ActivityRecord } from './activityTypes'
 
-const shortAddress = (address = '') =>
+const shortAddress = (address: string | null | undefined = '') =>
   address ? `${address.substring(0, 5)}…${address.substring(address.length - 4)}` : ''
 
 export function ActivityDetailsView({
   activity,
+  capability,
   network,
   networkMeta,
   onBack,
   originName
 }: {
-  activity: any
-  network: any
-  networkMeta: any
+  activity: ActivityRecord
+  capability: Pick<ActivityCapability, 'copyText' | 'hydrateTokenImage'>
+  network: ActivityNetworkMap[number]
+  networkMeta: ActivityDetailNetworkMetadata
   onBack: () => void
   originName: string
 }) {
   const req = activityRequestLike(activity)
   const chainId = Number(activity.chainId)
-  const nativeCurrency = networkMeta.nativeCurrency || { symbol: network.symbol || 'ETH' }
-  const symbol = nativeCurrency.symbol || network.symbol || 'ETH'
+  const symbol = networkMeta.nativeCurrency?.symbol || network.symbol || 'ETH'
+  const nativeCurrency = { ...networkMeta.nativeCurrency, symbol }
   const effects = getTransactionEffects(req, symbol)
   const receiptBlock = activity.receipt?.blockNumber ? parseInt(activity.receipt.blockNumber, 16) : undefined
-  const copy = (value?: string) => {
-    if (value) void link.executeCommand({ type: 'clipboard.write', text: value })
+  const copy = (value?: string | null) => {
+    if (value) void capability.copyText({ text: value })
   }
   const from = activity.data?.from || activity.account || activity.address
   const to = activity.data?.to
@@ -50,6 +53,7 @@ export function ActivityDetailsView({
       title='Activity'
     >
       <TransactionInformation
+        imageCapability={capability}
         originName={originName}
         details={details}
         effects={effects}

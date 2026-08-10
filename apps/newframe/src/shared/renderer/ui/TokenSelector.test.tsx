@@ -5,9 +5,13 @@ import { fireEvent, render, screen } from '../../../../test/support/componentSet
 import ChainTokenIcon from './ChainTokenIcon'
 import TokenSelector from './TokenSelector'
 import type { TokenSelectorItem } from './tokenSelectorTypes'
-import { createHostFixture } from '../../../../test/support/rendererClient'
+import { registerTestRuntimeFixture } from '../../../../test/support/rendererClient'
+import { createRendererUtilityCapabilities as createUtilityPorts } from '../capabilities.test-support'
 
-const link = createHostFixture()
+const fixture = registerTestRuntimeFixture()
+const utilityPorts = createUtilityPorts({
+  executeCommand: (command) => fixture.client.executeCommand(command)
+})
 const networks = {
   1: { name: 'Mainnet' }
 }
@@ -45,6 +49,7 @@ function ControlledSelector({ initialSelectedId = 'eth' }: { initialSelectedId?:
     <div>
       <TokenSelector
         ariaLabel='Choose token'
+        imageCapability={utilityPorts}
         items={items}
         networks={networks}
         networksMeta={networksMeta}
@@ -68,6 +73,7 @@ function ChangingTokenIcon() {
       </button>
       <ChainTokenIcon
         chainId={1}
+        imageCapability={utilityPorts}
         logoURI={logoURI}
         networks={networks}
         networksMeta={networksMeta}
@@ -92,6 +98,7 @@ describe('ChainTokenIcon', () => {
       render(
         <ChainTokenIcon
           chainId={1}
+          imageCapability={utilityPorts}
           networks={networks}
           networksMeta={networksMeta}
           size='md'
@@ -100,7 +107,7 @@ describe('ChainTokenIcon', () => {
         />
       )
 
-      expect(link.executeCommand).toHaveBeenCalledWith({ type: 'token.image-hydrate', tokenId })
+      expect(fixture.client.executeCommand).toHaveBeenCalledWith({ type: 'token.image-hydrate', tokenId })
     } finally {
       Object.defineProperty(globalThis, 'IntersectionObserver', {
         configurable: true,
@@ -114,6 +121,7 @@ describe('ChainTokenIcon', () => {
     render(
       <ChainTokenIcon
         chainId={1}
+        imageCapability={utilityPorts}
         logoURI='data:image/png;base64,dG9rZW4='
         networks={networks}
         networksMeta={networksMeta}
@@ -123,13 +131,14 @@ describe('ChainTokenIcon', () => {
       />
     )
 
-    expect(link.executeCommand).not.toHaveBeenCalled()
+    expect(fixture.client.executeCommand).not.toHaveBeenCalled()
   })
 
   it('renders persisted chain artwork from its base64 image record', () => {
     render(
       <ChainTokenIcon
         chainId={1}
+        imageCapability={utilityPorts}
         networks={networks}
         networksMeta={{
           1: {
@@ -149,6 +158,7 @@ describe('ChainTokenIcon', () => {
     render(
       <ChainTokenIcon
         chainId={1}
+        imageCapability={utilityPorts}
         networks={{ 1: { name: 'Newframe Local Anvil' } }}
         networksMeta={{ 1: { primaryColor: 'accent1' } }}
         size='md'
@@ -165,6 +175,7 @@ describe('ChainTokenIcon', () => {
     render(
       <ChainTokenIcon
         chainId={1}
+        imageCapability={utilityPorts}
         networks={networks}
         networksMeta={networksMeta}
         size='md'
@@ -179,6 +190,7 @@ describe('ChainTokenIcon', () => {
     render(
       <ChainTokenIcon
         chainId={1}
+        imageCapability={utilityPorts}
         logoURI='frame-cache:icon:token'
         networks={{ 1: { name: 'Newframe Local Anvil' } }}
         networksMeta={{ 1: { icon: 'frame-cache:icon:chain', primaryColor: 'accent1' } }}
@@ -197,6 +209,7 @@ describe('ChainTokenIcon', () => {
     render(
       <ChainTokenIcon
         chainId={1}
+        imageCapability={utilityPorts}
         logoURI='data:image/png;base64,YnJva2Vu'
         networks={networks}
         networksMeta={networksMeta}

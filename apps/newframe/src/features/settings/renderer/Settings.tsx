@@ -1,20 +1,29 @@
 import { useEffect, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 
-import link from '../../../platform/ipc/renderer/link'
-import {
-  createWebAuthnBiometricCredential,
-  isBiometricUserCanceledError,
-  isWebAuthnBiometricsSupported
-} from '../../security/renderer/biometrics'
 import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector'
 import { selectOperationById } from '../../../platform/state-sync/renderer/selectors/operation'
-import { useHomeUiStore } from '../../../app/renderer/tray/Home/state/HomeUiProvider'
 import { SettingsView } from './SettingsView'
 import type { SettingsUpdateInput } from './types'
 import { useSettingsDrafts } from './useSettingsDrafts'
+import type { SettingsCapability } from './settingsCapability'
+import type { CommandMap, CommandResult } from '../../../app/contracts/operations'
 
-function operationError(result: any, fallback: string) {
+type WithoutType<T> = T extends { type: string } ? Omit<T, 'type'> : never
+
+export interface SettingsSecurityCapability {
+  configure(input: WithoutType<CommandMap['security.configure']>): Promise<CommandResult>
+  lock(input: WithoutType<CommandMap['wallet.lock']>): Promise<CommandResult>
+  reset(input: WithoutType<CommandMap['wallet.reset']>): Promise<CommandResult>
+  createWebAuthnCredential(): Promise<{
+    credential: { version: 1; credentialId: string; salt: string }
+    secret: string
+  }>
+  isBiometricUserCanceled(error: unknown): boolean
+  isWebAuthnSupported(): Promise<boolean>
+}
+
+function operationError(result: CommandResult, fallback: string) {
   return result && 'message' in result && typeof result.message === 'string' ? result.message : fallback
 }
 
@@ -31,34 +40,45 @@ const projectedOperationError = (code: string | undefined, type: SecuritySubmiss
   return 'Could not enable biometrics.'
 }
 
-interface SettingsProps {
-  biometricRuntime?: {
-    createCredential(): ReturnType<typeof createWebAuthnBiometricCredential>
-    isCanceled(error: unknown): boolean
-    isSupported(): Promise<boolean>
-  }
+const accountLimit = (value: number | undefined): 5 | 10 | 20 | 40 =>
+  value === 10 || value === 20 || value === 40 ? value : 5
+const latticeDerivation = (value: string | undefined): 'standard' | 'legacy' | 'live' =>
+  value === 'legacy' || value === 'live' ? value : 'standard'
+const ledgerDerivation = (value: string | undefined): 'live' | 'legacy' | 'standard' | 'testnet' =>
+  value === 'legacy' || value === 'standard' || value === 'testnet' ? value : 'live'
+const trezorDerivation = (value: string | undefined): 'standard' | 'legacy' | 'testnet' =>
+  value === 'legacy' || value === 'testnet' ? value : 'standard'
+
+export interface SettingsProps {
+  capability: Pick<SettingsCapability, 'update'>
+  onBack: () => void
+  onPostLockNavigation: () => void
+  onSelectedChainChange: (chainId: number) => void
+  selectedChainId: number
+  security: SettingsSecurityCapability
 }
 
 export function Settings({
-  biometricRuntime = {
-    createCredential: createWebAuthnBiometricCredential,
-    isCanceled: isBiometricUserCanceledError,
-    isSupported: isWebAuthnBiometricsSupported
-  }
-}: SettingsProps = {}) {
+  capability,
+  onBack,
+  onPostLockNavigation,
+  onSelectedChainChange,
+  selectedChainId,
+  security
+}: SettingsProps) {
   const shared = useWalletSelector(
     useShallow((state) => ({
       autoDiscoverTokens: !!state.autoDiscoverTokens,
       appLocked: !!state.appLock?.locked,
       autohide: !!state.autohide,
       biometricUnlock: !!state.biometricUnlock,
-      latticeAccountLimit: state.latticeSettings?.accountLimit,
-      latticeDerivation: state.latticeSettings?.derivation,
+      latticeAccountLimit: accountLimit(state.latticeSettings?.accountLimit),
+      latticeDerivation: latticeDerivation(state.latticeSettings?.derivation),
       latticeEndpoint: state.latticeSettings?.endpointCustom || '',
       latticeEndpointMode: state.latticeSettings?.endpointMode || 'default',
       launch: !!state.launch,
-      ledgerDerivation: state.ledger?.derivation,
-      liveAccountLimit: state.ledger?.liveAccountLimit,
+      ledgerDerivation: ledgerDerivation(state.ledger?.derivation),
+      liveAccountLimit: accountLimit(state.ledger?.liveAccountLimit),
       menubarGasPrice: !!state.menubarGasPrice,
       networks: state.networks?.ethereum || {},
       platform: state.platform || '',
@@ -67,12 +87,9 @@ export function Settings({
       showLocalNameWithENS: !!state.showLocalNameWithENS,
       showTestnets: !!state.showTestnets,
       summonShortcut: state.shortcuts?.summon,
-      trezorDerivation: state.trezor?.derivation
+      trezorDerivation: trezorDerivation(state.trezor?.derivation)
     }))
   )
-  const openOverlay = useHomeUiStore((state) => state.openOverlay)
-  const selectedChainId = useHomeUiStore((state) => state.selectedChainId)
-  const setSelectedChainId = useHomeUiStore((state) => state.setSelectedChainId)
   const [browserPrompting, setBrowserPrompting] = useState(false)
   const [submission, setSubmission] = useState<SecuritySubmission | null>(null)
   const [localSecurityError, setLocalSecurityError] = useState('')
@@ -97,14 +114,13 @@ export function Settings({
     if (submission.type === 'security.configure' && shared.biometricUnlock !== submission.enabled) return
     if (submission.type === 'wallet.lock' && !shared.appLocked) return
 
-    if (submission.type === 'wallet.lock') openOverlay({ type: 'menu' })
+    if (submission.type === 'wallet.lock') onPostLockNavigation()
     const completedOperationId = submission.operationId
     queueMicrotask(() => {
       setSubmission((current) => (current?.operationId === completedOperationId ? null : current))
     })
-  }, [openOverlay, shared.appLocked, shared.biometricUnlock, submission, trackedOperation?.status])
-  const persist = (input: SettingsUpdateInput) =>
-    void link.executeCommand({ type: 'settings.update', ...input })
+  }, [onPostLockNavigation, shared.appLocked, shared.biometricUnlock, submission, trackedOperation?.status])
+  const persist = (input: SettingsUpdateInput) => void capability.update(input)
   const drafts = useSettingsDrafts({
     initialLatticeEndpoint: shared.latticeEndpoint,
     initialLatticeEndpointMode: shared.latticeEndpointMode === 'custom' ? 'custom' : 'default',
@@ -120,8 +136,7 @@ export function Settings({
       if (!enabled) {
         const operationId = crypto.randomUUID()
         setSubmission({ type: 'security.configure', operationId, enabled: false })
-        const result = await link.executeCommand({
-          type: 'security.configure',
+        const result = await security.configure({
           operationId,
           mode: 'disabled'
         })
@@ -138,14 +153,14 @@ export function Settings({
           }
         | { status: 'unavailable' }
         | { status: 'failed' }
-      if (!(await biometricRuntime.isSupported())) {
+      if (!(await security.isWebAuthnSupported())) {
         browser = { status: 'unavailable' }
       } else {
         try {
-          const enrollment = await biometricRuntime.createCredential()
+          const enrollment = await security.createWebAuthnCredential()
           browser = { status: 'enrolled', ...enrollment }
-        } catch (error: any) {
-          if (biometricRuntime.isCanceled(error)) {
+        } catch (error: unknown) {
+          if (security.isBiometricUserCanceled(error)) {
             setBrowserPrompting(false)
             return
           }
@@ -156,17 +171,18 @@ export function Settings({
       const operationId = crypto.randomUUID()
       setBrowserPrompting(false)
       setSubmission({ type: 'security.configure', operationId, enabled: true })
-      const result = await link.executeCommand({
-        type: 'security.configure',
+      const result = await security.configure({
         operationId,
         mode: 'best-available',
         browser
       })
       if (!result.ok) throw new Error(operationError(result, 'Could not enable biometrics.'))
-    } catch (error: any) {
+    } catch (error: unknown) {
       setBrowserPrompting(false)
       setSubmission(null)
-      setLocalSecurityError(biometricRuntime.isCanceled(error) ? '' : error.message || String(error))
+      const message =
+        error && typeof error === 'object' && 'message' in error ? String(error.message) : String(error)
+      setLocalSecurityError(security.isBiometricUserCanceled(error) ? '' : message)
     }
   }
 
@@ -175,7 +191,7 @@ export function Settings({
     const operationId = crypto.randomUUID()
     setSubmission({ type: 'wallet.lock', operationId })
     setLocalSecurityError('')
-    const result = await link.executeCommand({ type: 'wallet.lock', operationId })
+    const result = await security.lock({ operationId })
     if (!result.ok) {
       setSubmission(null)
       setLocalSecurityError(operationError(result, 'Could not lock Newframe.'))
@@ -187,7 +203,7 @@ export function Settings({
     const operationId = crypto.randomUUID()
     setSubmission({ type: 'wallet.reset', operationId, scope })
     setLocalSecurityError('')
-    const result = await link.executeCommand({ type: 'wallet.reset', operationId, scope })
+    const result = await security.reset({ operationId, scope })
     if (!result.ok) {
       setSubmission(null)
       setLocalSecurityError(operationError(result, 'Could not reset Newframe.'))
@@ -196,13 +212,13 @@ export function Settings({
 
   const setShowTestnets = (enabled: boolean) => {
     persist({ setting: 'show-testnets', value: enabled })
-    if (!enabled && shared.networks[selectedChainId]?.isTestnet) setSelectedChainId(0)
+    if (!enabled && shared.networks[selectedChainId]?.isTestnet) onSelectedChainChange(0)
   }
 
   return (
     <SettingsView
       drafts={drafts}
-      onBack={() => openOverlay({ type: 'menu' })}
+      onBack={onBack}
       onBiometricUnlockChange={(enabled) => void setBiometricUnlock(enabled)}
       onLock={() => void lockWallet()}
       onReset={(scope) => void resetWallet(scope)}

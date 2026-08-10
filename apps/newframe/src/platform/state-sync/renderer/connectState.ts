@@ -1,11 +1,19 @@
-import link from '../../ipc/renderer/link'
 import type { RendererProjection } from '../contract/projections'
-import type { StateMessage } from '../contract/protocol'
-import { applyStateMessage, beginStateConnection } from './rendererStore'
+import type { StateConnectionResult, StateMessage } from '../contract/protocol'
+import type { RendererStateStore } from './rendererStore'
 
 const reconnectDelay = 250
 
-export async function connectRendererState(projection: RendererProjection) {
+export interface RendererStateConnectionClient {
+  connectState(handler: (message: StateMessage) => void): Promise<StateConnectionResult>
+  disconnectState(): Promise<StateConnectionResult>
+}
+
+export async function connectRendererState(
+  projection: RendererProjection,
+  state: RendererStateStore,
+  client: RendererStateConnectionClient
+) {
   let stopped = false
   let reconnecting = false
   let retryRequested = false
@@ -15,8 +23,8 @@ export async function connectRendererState(projection: RendererProjection) {
   })
 
   const establishConnection = async () => {
-    beginStateConnection(projection)
-    const result = await link.connectState(handleMessage)
+    state.beginStateConnection(projection)
+    const result = await client.connectState(handleMessage)
     if (!result.ok) throw new Error(`State connection failed: ${result.error}`)
   }
 
@@ -28,11 +36,11 @@ export async function connectRendererState(projection: RendererProjection) {
     while (!stopped) {
       retryRequested = false
       try {
-        await link.disconnectState()
+        await client.disconnectState()
         if (stopped) break
         await establishConnection()
         if (stopped) {
-          await link.disconnectState()
+          await client.disconnectState()
           break
         }
         if (!retryRequested) break
@@ -48,7 +56,7 @@ export async function connectRendererState(projection: RendererProjection) {
   }
 
   const handleMessage = (message: StateMessage) => {
-    const result = applyStateMessage(message)
+    const result = state.applyStateMessage(message)
     if (result.status === 'applied' && result.messageType === 'snapshot') resolveInitialSnapshot()
     if (result.status === 'reconnect-needed') void reconnect()
   }
@@ -58,6 +66,6 @@ export async function connectRendererState(projection: RendererProjection) {
 
   return async () => {
     stopped = true
-    await link.disconnectState()
+    await client.disconnectState()
   }
 }

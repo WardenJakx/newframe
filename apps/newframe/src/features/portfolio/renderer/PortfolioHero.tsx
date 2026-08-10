@@ -1,15 +1,14 @@
 import { useEffect, useState } from 'react'
 
-import link from '../../../platform/ipc/renderer/link'
 import { formatUsdRate } from '../../asset-data/domain/balance'
 import { useAccountBalances } from './useAccountBalances'
-import { useHomeUiStore } from '../../../app/renderer/tray/Home/state/HomeUiProvider'
 import { PortfolioHeroView } from './PortfolioHeroView'
 import { usePortfolioActions } from './usePortfolioActions'
 import { selectOperationById } from '../../../platform/state-sync/renderer/selectors/operation'
 import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector'
 
 import type { BalanceSummary } from '../../asset-data/domain/balance'
+import type { PortfolioCapability } from './portfolioCapability'
 
 export function formatPortfolioValue(balances: Pick<BalanceSummary, 'hasPrice' | 'totalValue'>[]) {
   if (balances.length > 0 && !balances.some((balance) => balance.hasPrice)) return '—'
@@ -20,10 +19,15 @@ export function formatPortfolioValue(balances: Pick<BalanceSummary, 'hasPrice' |
   )
 }
 
-export function PortfolioHero() {
+export function PortfolioHero({
+  capability,
+  selectedChainId
+}: {
+  capability: PortfolioCapability
+  selectedChainId: number
+}) {
   const { balances } = useAccountBalances()
-  const selectedChainId = useHomeUiStore((state) => state.selectedChainId)
-  const actions = usePortfolioActions(balances)
+  const actions = usePortfolioActions(capability, balances, selectedChainId)
   const [refreshOperationId, setRefreshOperationId] = useState('')
   const [refreshBoundaryFailureId, setRefreshBoundaryFailureId] = useState('')
   const [minimumRefreshElapsed, setMinimumRefreshElapsed] = useState(true)
@@ -57,8 +61,8 @@ export function PortfolioHero() {
         setRefreshBoundaryFailureId('')
         setMinimumRefreshElapsed(false)
         setRefreshOperationId(operationId)
-        void link
-          .executeCommand({ type: 'portfolio.refresh', operationId })
+        void capability
+          .refresh({ operationId })
           .then((result) => {
             if (!result.ok) setRefreshBoundaryFailureId(operationId)
           })

@@ -2,9 +2,12 @@ import { describe, expect, it, mock } from 'bun:test'
 
 import { render, screen } from '../../../../../test/support/componentSetup'
 import EditTokenSpend from './EditTokenSpend'
+import type { TokenSpendData } from './EditTokenSpend'
 import { max } from '../../../../shared/domain/units'
+import { createRequestRendererCapabilitiesFake } from '../requestCapabilities.test-support'
 
 const maxIntStr = max.toString(10)
+const clipboard = createRequestRendererCapabilitiesFake().external
 
 describe('changing approval amounts', () => {
   it('allows the user to set the token approval to a custom amount', async () => {
@@ -31,7 +34,12 @@ describe('changing approval amounts', () => {
     }
 
     const { user } = render(
-      <EditTokenSpend data={approval.data} requestedAmount={requestedAmount} updateRequest={onUpdate} />
+      <EditTokenSpend
+        clipboard={clipboard}
+        data={approval.data}
+        requestedAmount={requestedAmount}
+        updateRequest={onUpdate}
+      />
     )
 
     const custom = screen.queryByRole('tab', { name: 'Custom' })
@@ -70,7 +78,12 @@ describe('changing approval amounts', () => {
     }
 
     const { user } = render(
-      <EditTokenSpend data={approval.data} requestedAmount={requestedAmount} updateRequest={onUpdate} />
+      <EditTokenSpend
+        clipboard={clipboard}
+        data={approval.data}
+        requestedAmount={requestedAmount}
+        updateRequest={onUpdate}
+      />
     )
 
     const custom = screen.queryByRole('tab', { name: 'Custom' })
@@ -109,7 +122,12 @@ describe('changing approval amounts', () => {
     }
 
     const { user } = render(
-      <EditTokenSpend data={approval.data} requestedAmount={requestedAmount} updateRequest={onUpdate} />
+      <EditTokenSpend
+        clipboard={clipboard}
+        data={approval.data}
+        requestedAmount={requestedAmount}
+        updateRequest={onUpdate}
+      />
     )
 
     const custom = screen.queryByRole('tab', { name: 'Custom' })
@@ -145,7 +163,14 @@ describe('changing approval amounts', () => {
       }
     }
 
-    render(<EditTokenSpend data={approval.data} requestedAmount={requestedAmount} updateRequest={() => {}} />)
+    render(
+      <EditTokenSpend
+        clipboard={clipboard}
+        data={approval.data}
+        requestedAmount={requestedAmount}
+        updateRequest={() => {}}
+      />
+    )
 
     const custom = screen.queryByRole('tab', { name: 'Custom' })
     expect(custom).toBe(null)
@@ -168,7 +193,12 @@ describe('changing approval amounts', () => {
     }
 
     const { user } = render(
-      <EditTokenSpend data={approval.data} requestedAmount={requestedAmount} updateRequest={onUpdate} />
+      <EditTokenSpend
+        clipboard={clipboard}
+        data={approval.data}
+        requestedAmount={requestedAmount}
+        updateRequest={onUpdate}
+      />
     )
 
     const custom = screen.queryByRole('tab', { name: 'Custom' })
@@ -201,7 +231,12 @@ describe('changing approval amounts', () => {
     }
 
     const { user } = render(
-      <EditTokenSpend data={approval.data} requestedAmount={requestedAmount} updateRequest={onUpdate} />
+      <EditTokenSpend
+        clipboard={clipboard}
+        data={approval.data}
+        requestedAmount={requestedAmount}
+        updateRequest={onUpdate}
+      />
     )
 
     const setUnlimited = screen.queryByRole('tab', { name: 'Unlimited' })
@@ -238,7 +273,12 @@ describe('changing approval amounts', () => {
     }
 
     const { user } = render(
-      <EditTokenSpend data={approval.data} requestedAmount={requestedAmount} updateRequest={onUpdate} />
+      <EditTokenSpend
+        clipboard={clipboard}
+        data={approval.data}
+        requestedAmount={requestedAmount}
+        updateRequest={onUpdate}
+      />
     )
 
     const setUnlimited = screen.queryByRole('tab', { name: 'Unlimited' })
@@ -251,35 +291,35 @@ describe('changing approval amounts', () => {
     expect(onUpdate).toHaveBeenNthCalledWith(2, BigInt('0x011170').toString(10))
   })
 
-  const requiredApprovalData = ['decimals', 'symbol', 'name']
+  const requiredApprovalData = ['decimals', 'symbol', 'name'] as const
 
   requiredApprovalData.forEach((field) => {
     it(`does not allow the user to edit the amount if ${field} is not present in approval data`, async () => {
       const requestedAmountHex = '0x' + (100e6).toString(16)
-      const approval = {
-        id: 'erc20:approve',
-        data: {
-          spender: {
-            address: '0x9bc5baf874d2da8d216ae9f137804184ee5afef4',
-            ens: '',
-            type: 'external'
-          },
-          amount: requestedAmountHex,
-          decimals: 6,
-          name: 'TST',
-          symbol: 'TST',
-          contract: {
-            address: '0x1eba19f260421142AD9Bf5ba193f6d4A0825e698',
-            ens: '',
-            type: 'contract'
-          }
+      const data: TokenSpendData = {
+        spender: {
+          address: '0x9bc5baf874d2da8d216ae9f137804184ee5afef4',
+          ens: '',
+          type: 'external'
+        },
+        amount: requestedAmountHex,
+        decimals: field === 'decimals' ? undefined : 6,
+        name: field === 'name' ? undefined : 'TST',
+        symbol: field === 'symbol' ? undefined : 'TST',
+        contract: {
+          address: '0x1eba19f260421142AD9Bf5ba193f6d4A0825e698',
+          ens: '',
+          type: 'contract'
         }
       }
-
-      delete (approval.data as any)[field]
+      const approval = {
+        id: 'erc20:approve',
+        data
+      }
 
       const { user } = render(
         <EditTokenSpend
+          clipboard={clipboard}
           data={approval.data}
           requestedAmount={BigInt(requestedAmountHex)}
           updateRequest={() => {}}

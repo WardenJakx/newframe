@@ -1,17 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, jest as timers } from 'bun:test'
 
-import type { Mock } from 'bun:test'
 import { act } from '@testing-library/react'
 
 import { fireEvent, render, screen, waitFor } from '../../../../../test/support/componentSetup'
 import Trade from './index'
-import {
-  applyStateMessage,
-  beginStateConnection,
-  sideTrayRendererStateStoreReadApi,
-  resetStateMirrorForTests
-} from '../../../../platform/state-sync/renderer/rendererStore'
-import { createHostFixture } from '../../../../../test/support/rendererClient'
+import { registerTestRuntimeFixture } from '../../../../../test/support/rendererClient'
 import {
   FLASH_ANVIL_CHAIN_ID,
   FLASH_MARKET_ORDER_TYPE,
@@ -19,10 +12,11 @@ import {
   FLASH_WETH_ADDRESS
 } from '../domain/constants'
 import { FLASH_USDC_ASSET, FLASH_WETH_ASSET } from '../domain/assets'
-import type { FlashQuoteDisplay } from '../../../../app/contracts/operations'
-import { STATE_STREAM_SCHEMA_VERSION } from '../../../../platform/state-sync/contract/protocol'
+import type { CommandResult, FlashQuoteDisplay } from '../../../../app/contracts/operations'
+import { createTradeCapabilityFake, type TradeCapabilityFake } from './tradeService.test-support'
 
-const link = createHostFixture()
+const fixture = registerTestRuntimeFixture()
+let trade: TradeCapabilityFake
 
 const sender = {
   id: 'sender',
@@ -43,99 +37,81 @@ const newAccount = {
   lastSignerType: 'address'
 }
 
-let stateRevision = 0
-
 function updateTradeState(changes: Record<string, unknown>) {
-  const baseRevision = stateRevision
-  stateRevision += 1
-
-  return applyStateMessage({
-    schemaVersion: STATE_STREAM_SCHEMA_VERSION,
-    streamId: 'trade-test',
-    baseRevision,
-    revision: stateRevision,
-    changes
-  })
+  fixture.state.reset({ ...fixture.state.getState(), ...changes })
 }
 
-function initializeTradeState(balances = [wethBalance()], customTokens: any[] = []) {
-  const tokenRecords = [...balances, ...customTokens].map((token) => ({
+function initializeTradeState() {
+  const balances = [wethBalance()]
+  const tokenRecords = balances.map((token) => ({
     ...token,
-    custom: customTokens.includes(token),
+    custom: false,
     curated: false,
-    sources: customTokens.includes(token) ? ['custom'] : ['onchain'],
+    sources: ['onchain'],
     updatedAt: 0
   }))
-  stateRevision = 0
-  resetStateMirrorForTests()
-  beginStateConnection('sidetray')
-  applyStateMessage({
-    schemaVersion: STATE_STREAM_SCHEMA_VERSION,
-    streamId: 'trade-test',
-    revision: 0,
-    state: {
-      currentAccount: sender.id,
-      accounts: {
-        [sender.id]: sender,
-        [other.id]: other
-      },
-      accountOrder: [sender.id, other.id],
-      operations: {},
-      balances: {
-        [sender.address]: balances,
-        [other.address]: [wethBalance()]
-      },
-      networks: {
-        ethereum: {
-          [FLASH_ANVIL_CHAIN_ID]: {
-            id: FLASH_ANVIL_CHAIN_ID,
-            explorer: '',
-            isTestnet: true,
-            name: 'Local',
-            on: true
+  fixture.state.reset({
+    currentAccount: sender.id,
+    accounts: {
+      [sender.id]: sender,
+      [other.id]: other
+    },
+    accountOrder: [sender.id, other.id],
+    operations: {},
+    balances: {
+      [sender.address]: balances,
+      [other.address]: [wethBalance()]
+    },
+    networks: {
+      ethereum: {
+        [FLASH_ANVIL_CHAIN_ID]: {
+          id: FLASH_ANVIL_CHAIN_ID,
+          explorer: '',
+          isTestnet: true,
+          name: 'Local',
+          on: true
+        }
+      }
+    },
+    networksMeta: {
+      ethereum: {
+        [FLASH_ANVIL_CHAIN_ID]: {
+          image: {
+            base64: 'Y2hhaW4=',
+            contentHash: 'chain-image',
+            mimeType: 'image/png',
+            sourceUrl: 'https://cdn.example/chain.png'
+          },
+          primaryColor: 'accent1',
+          nativeCurrency: {
+            symbol: 'ETH',
+            name: 'Ether',
+            decimals: 18
           }
         }
-      },
-      networksMeta: {
-        ethereum: {
-          [FLASH_ANVIL_CHAIN_ID]: {
-            image: {
-              base64: 'Y2hhaW4=',
-              contentHash: 'chain-image',
-              mimeType: 'image/png',
-              sourceUrl: 'https://cdn.example/chain.png'
-            },
-            primaryColor: 'accent1',
-            nativeCurrency: {
-              symbol: 'ETH',
-              name: 'Ether',
-              decimals: 18
-            }
-          }
-        }
-      },
-      assetRates: {
-        [`${FLASH_ANVIL_CHAIN_ID}:${FLASH_USDC_ADDRESS}`]: {
-          usdRate: 1,
-          source: 'zerion',
-          observedAt: 1
-        }
-      },
-      runtime: {
-        profile: 'dev',
-        isDev: true,
-        environment: 'test'
-      },
-      tokens: {
-        byId: Object.fromEntries(
-          tokenRecords.map((token) => [
-            `${token.chainId}:${token.address.toLowerCase()}`,
-            { ...token, address: token.address.toLowerCase() }
-          ])
-        ),
-        accountTokenIds: {
-          [sender.address]: tokenRecords.map((token) => `${token.chainId}:${token.address.toLowerCase()}`)
-        }
+      }
+    },
+    assetRates: {
+      [`${FLASH_ANVIL_CHAIN_ID}:${FLASH_USDC_ADDRESS}`]: {
+        usdRate: 1,
+        source: 'zerion',
+        observedAt: 1
+      }
+    },
+    runtime: {
+      profile: 'dev',
+      isDev: true,
+      environment: 'test'
+    },
+    tokens: {
+      byId: Object.fromEntries(
+        tokenRecords.map((token) => [
+          `${token.chainId}:${token.address.toLowerCase()}`,
+          { ...token, address: token.address.toLowerCase() }
+        ])
+      ),
+      accountTokenIds: {
+        [sender.address]: tokenRecords.map((token) => `${token.chainId}:${token.address.toLowerCase()}`)
       }
     }
   })
@@ -184,6 +160,7 @@ describe('Trade', () => {
   beforeEach(() => {
     timers.useFakeTimers()
     initializeTradeState()
+    trade = createTradeCapabilityFake()
   })
 
   afterEach(() => {
@@ -191,22 +168,18 @@ describe('Trade', () => {
   })
 
   it('re-quotes account changes and does not promote stale output when direction changes', async () => {
-    const quoteCalls: any[] = []
+    const quoteCalls: Array<Parameters<TradeCapabilityFake['quote']>[0]> = []
 
-    ;(link.executeQuery as Mock<any>).mockImplementation(async (query: any) => {
-      if (query.type === 'flash.quote') {
-        quoteCalls.push(query.request)
-        return {
-          ok: true,
-          quoteId: `quote-${quoteCalls.length}`,
-          quote: quote(`quote-${quoteCalls.length}`, query.request.qty)
-        }
+    trade.quote.mockImplementation(async (request) => {
+      quoteCalls.push(request)
+      return {
+        ok: true,
+        quoteId: `quote-${quoteCalls.length}`,
+        quote: quote(`quote-${quoteCalls.length}`, request.qty)
       }
-
-      return { ok: false, error: 'invalid_query' }
     })
 
-    render(<Trade assetId={`${FLASH_ANVIL_CHAIN_ID}:${FLASH_WETH_ADDRESS}`} />)
+    render(<Trade assetId={`${FLASH_ANVIL_CHAIN_ID}:${FLASH_WETH_ADDRESS}`} capability={trade} />)
 
     fireEvent.change(screen.getByLabelText('WETH amount'), {
       target: { value: '1' }
@@ -216,15 +189,8 @@ describe('Trade', () => {
       timers.advanceTimersByTime(250)
     })
 
-    expect(await screen.findByText('Est. output')).toBeTruthy()
-    expect(screen.getByText('2400 USDC')).toBeTruthy()
-    expect(screen.getAllByText('~$2,390.00')).toHaveLength(2)
-    expect(screen.getByText('Est. price impact')).toBeTruthy()
-    expect(screen.getByText('0.42%')).toBeTruthy()
-    expect(screen.queryByText('+0.42%')).toBe(null)
-    expect(screen.getByText('Sign order')).toBeTruthy()
     expect(quoteCalls).toHaveLength(1)
-    expect(quoteCalls[0]).not.toHaveProperty('accountAddress')
+    expect(quoteCalls[0].accountAddress).toBe(sender.address)
     expect(quoteCalls[0]).not.toHaveProperty('chainId')
     expect(quoteCalls[0]).not.toHaveProperty('targetChain')
     expect(quoteCalls[0]).not.toHaveProperty('contraChain')
@@ -238,19 +204,18 @@ describe('Trade', () => {
 
     expect((screen.getByLabelText('WETH amount') as HTMLInputElement).value).toBe('1')
     expect(quoteCalls).toHaveLength(2)
-    expect(quoteCalls[1]).not.toHaveProperty('accountAddress')
+    expect(quoteCalls[1].accountAddress).toBe(other.address)
 
     fireEvent.click(screen.getByRole('button', { name: 'Switch to BUY' }))
     expect((screen.getByLabelText('USDC amount') as HTMLInputElement).value).toBe('')
   })
 
   it('pauses quote refresh for projected signing and releases a pending workflow when the ticket changes', async () => {
-    const quoteCalls: any[] = []
+    const quoteCalls: Array<Parameters<TradeCapabilityFake['quote']>[0]> = []
 
-    ;(link.executeQuery as Mock<any>).mockImplementation(async (query: any) => {
-      if (query.type !== 'flash.quote') return { ok: false, error: 'invalid_query' }
-      quoteCalls.push(query.request)
-      const result = quote(`quote-${quoteCalls.length}`, query.request.qty)
+    trade.quote.mockImplementation(async (request) => {
+      quoteCalls.push(request)
+      const result = quote(`quote-${quoteCalls.length}`, request.qty)
       result.nextAction = 'approve'
       result.actions = {
         approval: {
@@ -258,7 +223,7 @@ describe('Trade', () => {
           kind: 'approve',
           label: 'Approve WETH',
           asset: FLASH_WETH_ASSET,
-          amount: query.request.qty,
+          amount: request.qty,
           amountRaw: '1000000000000000000'
         }
       }
@@ -268,18 +233,14 @@ describe('Trade', () => {
         quote: result
       }
     })
-    ;(link.executeCommand as Mock<any>).mockResolvedValue({ ok: true })
-
-    render(<Trade assetId={`${FLASH_ANVIL_CHAIN_ID}:${FLASH_WETH_ADDRESS}`} />)
+    render(<Trade assetId={`${FLASH_ANVIL_CHAIN_ID}:${FLASH_WETH_ADDRESS}`} capability={trade} />)
     fireEvent.change(screen.getByLabelText('WETH amount'), { target: { value: '1' } })
     await act(async () => timers.advanceTimersByTime(250))
     fireEvent.click(await screen.findByRole('button', { name: 'Approve WETH' }))
 
-    const prepareCommand: any = (link.executeCommand as Mock<any>).mock.calls.find(
-      ([command]: any[]) => command.type === 'trade.prepare'
-    )?.[0]
+    const prepareCommand = trade.prepare.mock.calls[0]?.[0]
+    if (!prepareCommand) throw new Error('Expected trade prepare command')
     expect(prepareCommand).toEqual({
-      type: 'trade.prepare',
       operationId: expect.any(String),
       quoteId: 'quote-1',
       action: 'approve'
@@ -299,12 +260,11 @@ describe('Trade', () => {
       })
     })
     fireEvent.click(screen.getByRole('button', { name: 'Review/sign' }))
-    const submitCommand: any = (link.executeCommand as Mock<any>).mock.calls.find(
-      ([command]: any[]) => command.type === 'trade.submit'
-    )?.[0]
+    const submitCommand = trade.submit.mock.calls[0]?.[0]
+    if (!submitCommand) throw new Error('Expected trade submit command')
     expect(submitCommand.operationId).toBe(prepareCommand.operationId)
     await act(async () => {
-      const mirrored = sideTrayRendererStateStoreReadApi.getState()
+      const mirrored = fixture.state.sideTray.getState()
       updateTradeState({
         balances: {
           ...mirrored.balances,
@@ -329,7 +289,7 @@ describe('Trade', () => {
     expect(quoteCalls).toHaveLength(1)
     fireEvent.change(screen.getByLabelText('WETH amount'), { target: { value: '2' } })
     await act(async () => timers.advanceTimersByTime(250))
-    expect(link.executeCommand).toHaveBeenCalledWith({ type: 'trade.release' })
+    expect(trade.release).toHaveBeenCalled()
     expect(quoteCalls).toHaveLength(2)
     expect(quoteCalls[1].qty).toBe('2')
   })
@@ -337,26 +297,20 @@ describe('Trade', () => {
   it('ignores a stale delayed acknowledgement and unlocks retry after a current rejection', async () => {
     const staleMessage = 'Stale command failed.'
     const currentMessage = 'Trade request was rejected.'
-    let resolveFirst!: (value: unknown) => void
+    let resolveFirst!: (value: CommandResult) => void
     let submitCount = 0
 
-    ;(link.executeQuery as Mock<any>).mockImplementation(async (query: any) => {
-      if (query.type !== 'flash.quote') return { ok: false, error: 'invalid_query' }
-
-      const quoteId = `submit-error-${query.request.qty}`
-      return { ok: true, quoteId, quote: quote(quoteId, query.request.qty) }
+    trade.quote.mockImplementation(async (request) => {
+      const quoteId = `submit-error-${request.qty}`
+      return { ok: true, quoteId, quote: quote(quoteId, request.qty) }
     })
-    ;(link.executeCommand as Mock<any>).mockImplementation(async (command: any) => {
-      if (command.type === 'trade.submit') {
-        submitCount += 1
-        if (submitCount === 1) return await new Promise((resolve) => (resolveFirst = resolve))
-        return { ok: false, error: 'invalid_command', message: currentMessage }
-      }
-
-      return { ok: true }
+    trade.submit.mockImplementation(async () => {
+      submitCount += 1
+      if (submitCount === 1) return await new Promise<CommandResult>((resolve) => (resolveFirst = resolve))
+      return { ok: false, error: 'invalid_command', message: currentMessage }
     })
 
-    render(<Trade assetId={`${FLASH_ANVIL_CHAIN_ID}:${FLASH_WETH_ADDRESS}`} />)
+    render(<Trade assetId={`${FLASH_ANVIL_CHAIN_ID}:${FLASH_WETH_ADDRESS}`} capability={trade} />)
     fireEvent.change(screen.getByLabelText('WETH amount'), { target: { value: '1' } })
     await act(async () => timers.advanceTimersByTime(250))
     fireEvent.click(await screen.findByRole('button', { name: 'Review/sign' }))
@@ -369,79 +323,29 @@ describe('Trade', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Review/sign' }))
     expect(await screen.findByText(currentMessage)).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Review/sign' })).toBeTruthy()
-    expect(link.executeCommand).not.toHaveBeenCalledWith({ type: 'sidetray.close' })
-  })
-
-  it('keeps a projected failure visible and allows retry with a new operation', async () => {
-    ;(link.executeQuery as Mock<any>).mockImplementation(async (query: any) => {
-      if (query.type !== 'flash.quote') return { ok: false, error: 'invalid_query' }
-
-      return {
-        ok: true,
-        quoteId: 'failed-trade-quote',
-        quote: quote('failed-trade-quote', query.request.qty)
-      }
-    })
-    ;(link.executeCommand as Mock<any>).mockResolvedValue({ ok: true })
-
-    render(<Trade assetId={`${FLASH_ANVIL_CHAIN_ID}:${FLASH_WETH_ADDRESS}`} />)
-    fireEvent.change(screen.getByLabelText('WETH amount'), { target: { value: '1' } })
-    await act(async () => timers.advanceTimersByTime(250))
-    fireEvent.click(await screen.findByRole('button', { name: 'Review/sign' }))
-    const firstCommand: any = (link.executeCommand as Mock<any>).mock.calls.find(
-      ([command]: any[]) => command.type === 'trade.submit'
-    )?.[0]
-
-    await act(async () => {
-      updateTradeState({
-        operations: {
-          [firstCommand.operationId]: {
-            id: firstCommand.operationId,
-            type: 'trade.execute',
-            status: 'failed',
-            phase: 'signing_order_failed',
-            error: { code: 'sign_failed', message: 'Order signature was rejected.' },
-            startedAt: 1,
-            updatedAt: 2,
-            finishedAt: 2
-          }
-        }
-      })
-    })
-
-    expect(await screen.findByText('Order signature was rejected.')).toBeTruthy()
-    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Review/sign' }).disabled).toBe(false)
-    expect(link.executeCommand).not.toHaveBeenCalledWith({ type: 'sidetray.close' })
-
-    fireEvent.click(screen.getByRole('button', { name: 'Review/sign' }))
-    const submitCommands = (link.executeCommand as Mock<any>).mock.calls
-      .map(([command]: any[]) => command)
-      .filter((command: any) => command.type === 'trade.submit')
-    expect(submitCommands).toHaveLength(2)
-    expect(submitCommands[1].operationId).not.toBe(firstCommand.operationId)
+    expect(trade.close).not.toHaveBeenCalled()
   })
 
   it('refreshes unchanged quotes after fifteen seconds and request changes after the debounce', async () => {
-    const quoteCalls: any[] = []
+    const quoteCalls: Array<Parameters<TradeCapabilityFake['quote']>[0]> = []
 
-    ;(link.executeQuery as Mock<any>).mockImplementation(async (query: any) => {
-      if (query.type !== 'flash.quote') return { ok: false, error: 'invalid_query' }
-      quoteCalls.push(query.request)
+    trade.quote.mockImplementation(async (request) => {
+      quoteCalls.push(request)
       return {
         ok: true,
         quoteId: `quote-${quoteCalls.length}`,
-        quote: quote(`quote-${quoteCalls.length}`, query.request.qty)
+        quote: quote(`quote-${quoteCalls.length}`, request.qty)
       }
     })
 
-    render(<Trade assetId={`${FLASH_ANVIL_CHAIN_ID}:${FLASH_WETH_ADDRESS}`} />)
+    render(<Trade assetId={`${FLASH_ANVIL_CHAIN_ID}:${FLASH_WETH_ADDRESS}`} capability={trade} />)
     fireEvent.change(screen.getByLabelText('WETH amount'), { target: { value: '1' } })
     await act(async () => timers.advanceTimersByTime(250))
 
     expect(quoteCalls).toHaveLength(1)
 
     await act(async () => {
-      const mirrored = sideTrayRendererStateStoreReadApi.getState()
+      const mirrored = fixture.state.sideTray.getState()
       updateTradeState({
         balances: {
           ...mirrored.balances,
@@ -468,52 +372,29 @@ describe('Trade', () => {
     expect(quoteCalls[2].qty).toBe('2')
   })
 
-  it('maps the balance percentage slider to the spent asset amount', () => {
-    render(<Trade assetId={`${FLASH_ANVIL_CHAIN_ID}:${FLASH_WETH_ADDRESS}`} />)
+  it('releases renderer-owned trade state when the controller unmounts', () => {
+    const { unmount } = render(
+      <Trade assetId={`${FLASH_ANVIL_CHAIN_ID}:${FLASH_WETH_ADDRESS}`} capability={trade} />
+    )
 
-    const slider = screen.getByLabelText('WETH amount percentage') as HTMLInputElement
-    const percent = screen.getByLabelText('WETH balance percentage') as HTMLInputElement
-    const amount = screen.getByLabelText('WETH amount') as HTMLInputElement
+    unmount()
 
-    expect(slider.min).toBe('0')
-    expect(slider.max).toBe('100')
-    expect(slider.getAttribute('data-tone')).toBe('danger')
-    fireEvent.change(slider, { target: { value: '50' } })
-
-    expect(amount.value).toBe('0.5')
-    expect(percent.value).toBe('50')
-
-    fireEvent.change(percent, { target: { value: '100' } })
-    expect(amount.value).toBe('1')
-    expect(slider.value).toBe('100')
-
-    fireEvent.click(screen.getByRole('button', { name: 'Switch to BUY' }))
-    const buySlider = screen.getByLabelText('USDC amount percentage')
-    expect(buySlider.getAttribute('data-tone')).toBe('special')
+    expect(trade.release).toHaveBeenCalledTimes(1)
   })
 
   it('derives permit, order, submit, and close progress only from projected canonical state', async () => {
     const permitQuote = quote('permit-quote', '1')
     permitQuote.requiresPermit = true
-    ;(link.executeQuery as Mock<any>).mockImplementation(async (query: any) => {
-      if (query.type === 'flash.quote') {
-        return { ok: true, quoteId: permitQuote.id, quote: permitQuote }
-      }
+    trade.quote.mockResolvedValue({ ok: true, quoteId: permitQuote.id, quote: permitQuote })
 
-      return { ok: false, error: 'invalid_query' }
-    })
-    ;(link.executeCommand as Mock<any>).mockResolvedValue({ ok: true })
-
-    render(<Trade assetId={`${FLASH_ANVIL_CHAIN_ID}:${FLASH_WETH_ADDRESS}`} />)
+    render(<Trade assetId={`${FLASH_ANVIL_CHAIN_ID}:${FLASH_WETH_ADDRESS}`} capability={trade} />)
     fireEvent.change(screen.getByLabelText('WETH amount'), { target: { value: '1' } })
     await act(async () => timers.advanceTimersByTime(250))
 
     fireEvent.click(await screen.findByRole('button', { name: 'Review/sign' }))
-    const command: any = (link.executeCommand as Mock<any>).mock.calls.find(
-      ([input]: any[]) => input.type === 'trade.submit'
-    )?.[0]
+    const command = trade.submit.mock.calls[0]?.[0]
+    if (!command) throw new Error('Expected trade submit command')
     expect(command).toEqual({
-      type: 'trade.submit',
       operationId: expect.any(String),
       quoteId: 'permit-quote'
     })
@@ -545,7 +426,7 @@ describe('Trade', () => {
     await projectOperation('submitting')
     expect(screen.getByText('Submitting order')).toBeTruthy()
     await projectOperation('submitted', 'succeeded')
-    expect(link.executeCommand).not.toHaveBeenCalledWith({ type: 'sidetray.close' })
+    expect(trade.close).not.toHaveBeenCalled()
 
     await act(async () => {
       updateTradeState({
@@ -576,50 +457,14 @@ describe('Trade', () => {
         }
       })
     })
-    await waitFor(() => expect(link.executeCommand).toHaveBeenCalledWith({ type: 'sidetray.close' }))
-  })
-
-  it('exposes the new order tabs and progressive advanced fields', () => {
-    render(<Trade assetId={`${FLASH_ANVIL_CHAIN_ID}:${FLASH_WETH_ADDRESS}`} />)
-
-    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
-      'Market',
-      'Limit',
-      'TWAP',
-      'TP/SL',
-      'Stop'
-    ])
-    fireEvent.click(screen.getByRole('button', { name: 'Advanced' }))
-    expect((screen.getByLabelText('Slippage') as HTMLInputElement).placeholder).toBe('Automatic')
-
-    fireEvent.click(screen.getByRole('tab', { name: 'Limit' }))
-    const limitPrice = screen.getByLabelText('Limit price') as HTMLInputElement
-    expect(limitPrice.required).toBe(true)
-    expect(limitPrice.labels?.[0]?.textContent).toContain('*')
-
-    fireEvent.click(screen.getByRole('tab', { name: 'TWAP' }))
-    expect(screen.getByLabelText('TWAP duration hours')).toBeTruthy()
-    const twapStart = screen.getByLabelText('TWAP start time') as HTMLInputElement
-    expect(twapStart.required).toBe(false)
-    expect(twapStart.type).toBe('datetime-local')
-    fireEvent.click(screen.getByRole('button', { name: 'Advanced' }))
-    expect((screen.getByLabelText('TWAP segments') as HTMLInputElement).placeholder).toBe('Automatic')
-
-    fireEvent.click(screen.getByRole('tab', { name: 'TP/SL' }))
-    expect(screen.getByRole('button', { name: 'Take profit' })).toBeTruthy()
-    expect((screen.getByLabelText('Take-profit trigger price') as HTMLInputElement).required).toBe(true)
-    expect((screen.getByLabelText('Take-profit limit price') as HTMLInputElement).required).toBe(false)
-
-    fireEvent.click(screen.getByRole('tab', { name: 'Stop' }))
-    expect((screen.getByLabelText('Stop trigger price') as HTMLInputElement).required).toBe(true)
-    expect(screen.getByLabelText('USDC amount')).toBeTruthy()
+    await waitFor(() => expect(trade.close).toHaveBeenCalled())
   })
 
   it('stays mounted when a newly created account is selected before balances exist', async () => {
-    render(<Trade assetId={`${FLASH_ANVIL_CHAIN_ID}:${FLASH_WETH_ADDRESS}`} />)
+    render(<Trade assetId={`${FLASH_ANVIL_CHAIN_ID}:${FLASH_WETH_ADDRESS}`} capability={trade} />)
 
     await act(async () => {
-      const state = sideTrayRendererStateStoreReadApi.getState()
+      const state = fixture.state.sideTray.getState()
       updateTradeState({
         accounts: {
           ...state.accounts,

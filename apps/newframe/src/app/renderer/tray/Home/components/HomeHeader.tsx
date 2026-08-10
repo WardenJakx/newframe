@@ -2,10 +2,10 @@ import { useEffect, useRef, useState } from 'react'
 import type { IconName } from '@newframe/ui/icon'
 import { useShallow } from 'zustand/react/shallow'
 
-import link from '../../../../../platform/ipc/renderer/link'
 import { useWalletSelector } from '../../../../../platform/state-sync/renderer/useAppSelector'
 import { useHomeUiStore } from '../state/HomeUiProvider'
 import { HomeHeaderView } from './HomeHeaderView'
+import type { HomeCapability } from '../homeCapability'
 
 function signerIcon(type: string): IconName {
   if ((type || '').toLowerCase() === 'address') return 'eye'
@@ -13,7 +13,7 @@ function signerIcon(type: string): IconName {
   return 'flame'
 }
 
-export function HomeHeader() {
+export function HomeHeader({ capability }: { capability: Pick<HomeCapability, 'copyText'> }) {
   const { account, showLocalNameWithENS } = useWalletSelector(
     useShallow((state) => ({
       account: state.accounts?.[state.currentAccount],
@@ -44,7 +44,7 @@ export function HomeHeader() {
       onCopy={() => {
         if (!account) return
         clearTimeout(timer.current)
-        void link.executeCommand({ type: 'clipboard.write', text: account.address })
+        void capability.copyText({ text: account.address })
         setCopied(true)
         timer.current = setTimeout(() => setCopied(false), 1800)
       }}

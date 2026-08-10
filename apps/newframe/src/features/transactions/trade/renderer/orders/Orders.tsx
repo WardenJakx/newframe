@@ -2,34 +2,49 @@ import { useState } from 'react'
 import { useEffect, useRef } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 
-import link from '../../../../../platform/ipc/renderer/link'
 import { useWalletSelector } from '../../../../../platform/state-sync/renderer/useAppSelector'
-import { useHomeUiStore } from '../../../../../app/renderer/tray/Home/state/HomeUiProvider'
 import { createOrderRows, orderErrorMessage } from './orderModel'
 import { resolveOrderAssetImageSource } from './OrderAssetPosition'
 import { OrdersView } from './OrdersView'
+import type { OrdersCapability } from './ordersCapability'
+import type { WalletRendererState } from '../../../../../platform/state-sync/contract/projections'
+import type { OrderRow } from './orderTypes'
 
-const EMPTY_RECORD: Record<string, any> = {}
+const EMPTY_NETWORKS: WalletRendererState['networks']['ethereum'] = {}
+const EMPTY_NETWORK_METADATA: WalletRendererState['networksMeta']['ethereum'] = {}
+const EMPTY_OPERATIONS: WalletRendererState['operations'] = {}
+const EMPTY_ORDERS: WalletRendererState['orders'] = {}
 type CancellationByOrder = Record<string, string>
 type CancelErrorsByOrder = Record<string, string>
 
-export function Orders() {
+export interface OpenOrderInput {
+  assetImages: { contra?: string; target?: string }
+  orderId: string
+}
+
+export function Orders({
+  capability,
+  onOpenOrder,
+  selectedChainId
+}: {
+  capability: Pick<OrdersCapability, 'cancel' | 'hydrateTokenImage'>
+  onOpenOrder: (input: OpenOrderInput) => void
+  selectedChainId: number
+}) {
   const shared = useWalletSelector(
     useShallow((state) => {
       const account = state.accounts?.[state.currentAccount]
       return {
         accountAddress: account?.address || '',
-        networks: state.networks?.ethereum || EMPTY_RECORD,
-        networksMeta: state.networksMeta?.ethereum || EMPTY_RECORD,
-        operations: state.operations || EMPTY_RECORD,
-        orders: state.orders || EMPTY_RECORD,
+        networks: state.networks?.ethereum || EMPTY_NETWORKS,
+        networksMeta: state.networksMeta?.ethereum || EMPTY_NETWORK_METADATA,
+        operations: state.operations || EMPTY_OPERATIONS,
+        orders: state.orders || EMPTY_ORDERS,
         tokens: state.tokens || { byId: {}, accountTokenIds: {} },
         showTestnets: !!state.showTestnets
       }
     })
   )
-  const selectedChainId = useHomeUiStore((state) => state.selectedChainId)
-  const openOverlay = useHomeUiStore((state) => state.openOverlay)
   const [cancellations, setCancellations] = useState<CancellationByOrder>({})
   const cancellationsRef = useRef(cancellations)
   const [cancelErrors, setCancelErrors] = useState<CancelErrorsByOrder>({})
@@ -75,7 +90,7 @@ export function Orders() {
     }
   }, [cancellations, shared.operations])
 
-  const cancel = (order: any) => {
+  const cancel = (order: OrderRow) => {
     if (!order.orderId) return
     const currentOperationId = cancellationsRef.current[order.orderId]
     const currentOperation = currentOperationId ? shared.operations[currentOperationId] : undefined
@@ -91,8 +106,8 @@ export function Orders() {
       delete remaining[order.orderId]
       return remaining
     })
-    void link
-      .executeCommand({ type: 'flash.order-cancel', operationId, orderId: order.orderId })
+    void capability
+      .cancel({ operationId, orderId: order.orderId })
       .then((result) => {
         if (cancellationsRef.current[order.orderId] !== operationId || result.ok) return
         const remaining = { ...cancellationsRef.current }
@@ -121,12 +136,12 @@ export function Orders() {
     <OrdersView
       cancelErrors={projectedCancelErrors}
       cancellingOrderIds={cancellingOrderIds}
+      imageCapability={capability}
       networks={shared.networks}
       networksMeta={shared.networksMeta}
       onCancel={cancel}
       onOpen={(order) =>
-        openOverlay({
-          type: 'order',
+        onOpenOrder({
           orderId: order.orderId,
           assetImages: {
             target: resolveOrderAssetImageSource({

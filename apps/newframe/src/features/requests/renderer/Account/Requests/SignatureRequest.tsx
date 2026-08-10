@@ -1,7 +1,7 @@
 import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
 
-import type { SignatureRequest } from '../../../contract/requests'
+import type { SignRequestView } from './requestViewTypes'
 import { cva } from '../../../../../../generated/styled-system/css/cva.js'
 
 const messageRecipe = cva({
@@ -23,7 +23,7 @@ const Message = ({ text }: { text: string }) => {
 }
 
 type MessageToSignProps = {
-  req: Extract<SignatureRequest, { type: 'sign' }> & { id?: string }
+  req: SignRequestView
 }
 
 const MessageToSign = ({ req }: MessageToSignProps) => {

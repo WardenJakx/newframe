@@ -10,7 +10,7 @@ import type { Balance } from '../../../../features/asset-data/domain/state/balan
 import type { Token } from '../../../../features/tokens/domain/state/token'
 import type { SideTrayRendererState } from '../../contract/projections'
 
-export type SideTrayWalletAccount = SideTrayRendererState['accounts'][string]
+type SideTrayWalletAccount = SideTrayRendererState['accounts'][string]
 type SideTrayWalletEthereumNetwork = SideTrayRendererState['networks']['ethereum'][number]
 type SideTrayWalletEthereumNetworkMeta = SideTrayRendererState['networksMeta']['ethereum'][number]
 

@@ -1,7 +1,7 @@
 import { IconButton } from '@newframe/ui/icon-button'
 import type { IconName } from '@newframe/ui/icon'
 
-import { HeaderBar } from '../../ui/HeaderBar'
+import { HeaderBar } from '../../../../../shared/renderer/ui/HeaderBar'
 import { IdentityControl } from '../../ui/IdentityControl'
 
 export function HomeHeaderView({
