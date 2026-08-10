@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'bun:test'
+import { describe, expect, it, mock } from 'bun:test'
 import type { Mock } from 'bun:test'
 import { useState } from 'react'
 
@@ -8,7 +8,9 @@ import { registerTestRuntimeFixture } from '../../../../../../test/support/rende
 import { walletState } from '../../../../../platform/state-sync/renderer/fixtures.test-support.ts'
 import { OrderDetails } from './OrderDetails'
 import { Orders as OrdersController, type OpenOrderInput } from './Orders'
+import { OrdersView } from './OrdersView'
 import { createOrdersCapability } from './ordersCapability'
+import type { OrderRow } from './orderTypes'
 import type { ComponentProps } from 'react'
 import type { AppCommand, CommandMap, CommandResult } from '../../../../../app/contracts/operations'
 import type { WalletRendererState } from '../../../../../platform/state-sync/contract/projections'
@@ -251,53 +253,35 @@ describe('Orders display', () => {
     ).toHaveLength(1)
   })
 
-  it('shows the OT asset with realized contra values and replaces incomplete results with a dash', () => {
-    const openOrder = {
-      ...order(),
-      orderId: 'open-order',
-      spentAmount: '1',
-      outputAmount: '2400',
-      targetNotional: '2400'
-    }
+  it('renders model rows and emits row and cancellation events independently', async () => {
+    const openOrder = { ...order(), orderId: 'open-order' }
     const filledOrder = {
       ...order(false),
       orderId: 'filled-order',
       status: 'filled',
-      spentAmount: '1',
-      outputAmount: '2400',
       filledOutputAmount: '2400',
-      targetNotional: '2400'
+      contraNotional: '2400'
     }
-    const buyOrder = {
-      ...order(false),
-      orderId: 'buy-order',
-      status: 'filled',
-      side: 'buy',
-      spentAmount: '100',
-      outputAmount: '0.04',
-      filledOutputAmount: '0.04',
-      targetNotional: '99',
-      contraNotional: '100'
-    }
-
-    fixture.state.reset(
-      state({ 'open-order': openOrder, 'filled-order': filledOrder, 'buy-order': buyOrder })
+    const onCancel = mock((_order: OrderRow) => undefined)
+    const onOpen = mock((_order: OrderRow) => undefined)
+    const { user } = render(
+      <OrdersView
+        cancelErrors={{}}
+        cancellingOrderIds={new Set()}
+        imageCapability={ordersCapability}
+        networks={{}}
+        networksMeta={{}}
+        onCancel={onCancel}
+        onOpen={onOpen}
+        orders={[openOrder, filledOrder]}
+        tokens={{ byId: {}, accountTokenIds: {} }}
+      />
     )
-    render(<Orders onOpenOrder={() => {}} selectedChainId={0} />)
 
-    const openRow = document.querySelector('[data-order-id="open-order"]')
-    const filledRow = document.querySelector('[data-order-id="filled-order"]')
-    const buyRow = document.querySelector('[data-order-id="buy-order"]')
-    expect(openRow?.textContent).toContain('WETH')
-    expect(openRow?.textContent).toContain('LimitSELL')
-    expect(openRow?.textContent).toContain('1970')
-    expect(openRow?.textContent?.match(/—/g)).toHaveLength(1)
-    expect(openRow?.textContent).not.toContain('2,400 USDC')
-    expect(filledRow?.textContent).toContain('$2,400.00')
-    expect(filledRow?.textContent).toContain('2,400 USDC')
-    expect(filledRow?.textContent).toContain('Filled')
-    expect(buyRow?.textContent).toContain('LimitBUY')
-    expect(buyRow?.textContent).toContain('100 USDC')
-    expect(buyRow?.textContent).not.toContain('←')
+    await user.click(screen.getByRole('button', { name: 'Cancel order' }))
+    expect(onCancel.mock.calls).toEqual([[openOrder]])
+    expect(onOpen.mock.calls).toEqual([])
+    await user.click(screen.getAllByRole('button', { name: /order details/i })[1])
+    expect(onOpen.mock.calls).toEqual([[filledOrder]])
   })
 })

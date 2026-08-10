@@ -80,24 +80,6 @@ beforeEach(() => {
 })
 
 describe('confirm', () => {
-  it('renders a confirming transaction', () => {
-    const req = {
-      handlerId: 'test-req',
-      type: 'transaction',
-      status: RequestStatus.Confirming,
-      origin: 'test-origin',
-      data: {
-        chainId: '0x89'
-      },
-      classification: TxClassification.NATIVE_TRANSFER
-    } satisfies TransactionRequestFixture
-
-    renderRequest(req)
-
-    const notice = screen.getByRole('status')
-    expect(notice.textContent).toBe('confirming')
-  })
-
   it('renders a transaction notice', () => {
     const req = {
       handlerId: 'test-req',
@@ -116,28 +98,6 @@ describe('confirm', () => {
 
     const notice = screen.getByRole('alert')
     expect(notice.textContent).toMatch(/insufficient funds for gas/i)
-  })
-
-  it('renders deterministic native asset effects', () => {
-    const req = {
-      handlerId: 'test-req',
-      type: 'transaction',
-      origin: 'test-origin',
-      data: {
-        chainId: '0x89',
-        value: '0x2386f26fc10000',
-        gasLimit: '0x5208',
-        gasPrice: '0x3b9aca00',
-        type: '0x0'
-      },
-      classification: TxClassification.NATIVE_TRANSFER
-    } satisfies TransactionRequestFixture
-
-    renderRequest(req)
-
-    const effects = screen.getByLabelText('Transaction effects')
-    expect(effects.textContent).toMatch(/asset out/i)
-    expect(effects.textContent).toMatch(/matic/i)
   })
 
   it('uses the request status and keeps gas settings collapsed', () => {

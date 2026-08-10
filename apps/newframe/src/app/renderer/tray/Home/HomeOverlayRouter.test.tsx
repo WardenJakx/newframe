@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it } from 'bun:test'
 
 import { act, render, screen, waitFor } from '../../../../../test/support/componentSetup'
 import { registerTestRuntimeFixture } from '../../../../../test/support/rendererClient'
-import { STATE_STREAM_SCHEMA_VERSION } from '../../../../platform/state-sync/contract/protocol'
 import { NATIVE_CURRENCY } from '../../../../features/tokens/domain/constants'
 import { walletState } from '../../../../platform/state-sync/renderer/fixtures.test-support.ts'
 import { HomeUiProvider, useHomeUiStore } from './state/HomeUiProvider'
@@ -71,18 +70,8 @@ const asset: DisplayedBalance = {
   totalValue: 0
 }
 
-let revision = 0
-
 function updateWallet(changes: Record<string, unknown>) {
-  const baseRevision = revision
-  revision += 1
-  fixture.state.applyStateMessage({
-    schemaVersion: STATE_STREAM_SCHEMA_VERSION,
-    streamId: 'asset-overlay-test',
-    baseRevision,
-    revision,
-    changes
-  })
+  fixture.state.reset({ ...fixture.state.getState(), ...changes })
 }
 
 function Harness() {
@@ -109,19 +98,13 @@ function Harness() {
 
 describe('HomeOverlayRouter asset ownership', () => {
   beforeEach(() => {
-    revision = 0
-    fixture.state.reset({})
-    fixture.state.beginStateConnection('wallet-ui')
-    fixture.state.applyStateMessage({
-      schemaVersion: STATE_STREAM_SCHEMA_VERSION,
-      streamId: 'asset-overlay-test',
-      revision,
-      state: walletState({
+    fixture.state.reset(
+      walletState({
         accounts: { [account.id]: account },
         accountOrder: [account.id],
         currentAccount: account.id
       })
-    })
+    )
   })
 
   it('closes an asset overlay when another account becomes current', async () => {
@@ -154,7 +137,6 @@ describe('HomeOverlayRouter asset ownership', () => {
 
 describe('HomeOverlayRouter feature navigation', () => {
   beforeEach(() => {
-    revision = 0
     fixture.state.reset(walletState({}))
   })
 

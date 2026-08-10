@@ -30,15 +30,10 @@ afterEach(() => {
   timers.useRealTimers()
 })
 
-it('should not display the copied text by default', () => {
-  render(<TestComponent />)
-
-  expect(screen.getByTestId('iscopied').textContent).toBe('waiting for click')
-})
-
-it('should let the component know to display the copied text after the copy function is invoked', async () => {
+it('starts hidden and becomes visible after copying', async () => {
   const { user } = render(<TestComponent />, { advanceTimersAfterInput: 0 })
 
+  expect(screen.getByTestId('iscopied').textContent).toBe('waiting for click')
   const clickToCopyButton = screen.getByRole('button')
   await user.click(clickToCopyButton)
 

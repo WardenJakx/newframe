@@ -5,7 +5,6 @@ import { registerTestRuntimeFixture } from '../../../../../test/support/renderer
 import CustomTokensController from './index'
 import { createTokensCapability } from '../tokensCapability'
 import type { ComponentProps } from 'react'
-import { STATE_STREAM_SCHEMA_VERSION } from '../../../../platform/state-sync/contract/protocol'
 import { walletState } from '../../../../platform/state-sync/renderer/fixtures.test-support.ts'
 
 const fixture = registerTestRuntimeFixture()
@@ -21,13 +20,8 @@ const address = '0xaf88d065e77c8cc2239327c5edb3a432268e5831'
 
 describe('CustomTokens', () => {
   beforeEach(() => {
-    fixture.state.reset({})
-    fixture.state.beginStateConnection('wallet-ui')
-    fixture.state.applyStateMessage({
-      schemaVersion: STATE_STREAM_SCHEMA_VERSION,
-      streamId: 'custom-token-tests',
-      revision: 0,
-      state: walletState({
+    fixture.state.reset(
+      walletState({
         tokens: {
           accountTokenIds: {},
           byId: {
@@ -51,7 +45,7 @@ describe('CustomTokens', () => {
           }
         }
       })
-    })
+    )
   })
 
   it('renders custom tokens from the canonical catalog without entering an update loop', () => {

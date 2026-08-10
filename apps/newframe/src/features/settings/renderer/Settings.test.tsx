@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it, mock } from 'bun:test'
 
 import { act, cleanup, render, screen, waitFor } from '../../../../test/support/componentSetup'
 import { registerTestRuntimeFixture } from '../../../../test/support/rendererClient'
-import { STATE_STREAM_SCHEMA_VERSION } from '../../../platform/state-sync/contract/protocol'
 import type { OperationRecord } from '../../../platform/operations/operation'
 import { walletState } from '../../../platform/state-sync/renderer/fixtures.test-support.ts'
 import { createSecurityCapability } from '../../security/renderer/securityCapability'
@@ -30,21 +29,12 @@ const lastCommand = () => {
   if (!command) throw new Error('Expected a settings command')
   return command
 }
-let revision = 0
 let operations: Record<string, OperationRecord> = {}
 const onPostLockNavigation = mock()
 
 function publish(changes: Record<string, unknown>) {
-  const baseRevision = revision
-  revision += 1
   act(() => {
-    fixture.state.applyStateMessage({
-      schemaVersion: STATE_STREAM_SCHEMA_VERSION,
-      streamId: 'settings-security-test',
-      baseRevision,
-      revision,
-      changes
-    })
+    fixture.state.reset({ ...fixture.state.getState(), ...changes })
   })
 }
 
@@ -89,21 +79,15 @@ function renderSettings(runtime: BiometricRuntime) {
 
 describe('settings security operations', () => {
   const resetHarness = () => {
-    revision = 0
     operations = {}
     onPostLockNavigation.mockClear()
-    fixture.state.reset({})
-    fixture.state.beginStateConnection('wallet-ui')
-    fixture.state.applyStateMessage({
-      schemaVersion: STATE_STREAM_SCHEMA_VERSION,
-      streamId: 'settings-security-test',
-      revision,
-      state: walletState({
+    fixture.state.reset(
+      walletState({
         appLock: { locked: false, vaultExists: true },
         biometricUnlock: false,
         operations: {}
       })
-    })
+    )
     fixture.client.executeCommand.mockReset().mockResolvedValue({ ok: true })
     fixture.client.executeQuery.mockReset()
   }

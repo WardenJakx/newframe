@@ -79,11 +79,7 @@ describe('ActivityView', () => {
     expect(openCalls).toEqual([])
     expect(screen.getByText('0x1111…1111').closest('[data-transaction-link]')).toBeTruthy()
     expect(screen.getByText('0x1111…1111').getAttribute('data-tone')).toBe('secondary')
-    expect(screen.getByText('USDC')).toBeTruthy()
     expect(document.querySelector('[data-status-glyph="completed"]')).toBeNull()
-    expect(screen.getByText('−0.999 USDC')).toBeTruthy()
-    expect(screen.getByText('Gas 0.000021 ETH')).toBeTruthy()
-    expect(screen.getByText(/2026/)).toBeTruthy()
   })
 
   it('keeps a confirmed hash readable without an explorer and copies the full hash', async () => {

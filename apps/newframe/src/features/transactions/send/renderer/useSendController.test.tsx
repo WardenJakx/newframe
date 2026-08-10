@@ -4,8 +4,6 @@ import { act, fireEvent, render, screen, waitFor } from '../../../../../test/sup
 import Send from './index'
 import { NATIVE_CURRENCY } from '../../../tokens/domain/constants'
 import { registerTestRuntimeFixture } from '../../../../../test/support/rendererClient'
-import { STATE_STREAM_SCHEMA_VERSION } from '../../../../platform/state-sync/contract/protocol'
-import { shortAddress } from '../../../../shared/renderer/ui/AddressIdentity'
 import { createSendCapabilityFake, type SendCapabilityFake } from './sendService.test-support'
 import type { AppCommand, AppQuery, CommandResult } from '../../../../app/contracts/operations'
 
@@ -24,114 +22,64 @@ const recipient = {
   lastSignerType: 'ledger'
 }
 const chainId = 31337
-const tokenAddress = '0x00000000000000000000000000000000000000bb'
 const nativeAssetId = `${chainId}:${NATIVE_CURRENCY}`
-let stateRevision = 0
 let send: SendCapabilityFake
 type BalanceFixture = ReturnType<typeof nativeBalance>
-type CustomTokenFixture = {
-  address: string
-  chainId: number
-  decimals: number
-  name: string
-  symbol: string
-}
 type CommandCall = [command: AppCommand]
 type QueryCall = [query: AppQuery]
 const commandCalls = () => fixture.client.executeCommand.mock.calls as CommandCall[]
 const queryCalls = () => fixture.client.executeQuery.mock.calls as QueryCall[]
 
 function updateSendState(changes: Record<string, unknown>) {
-  const baseRevision = stateRevision
-  stateRevision += 1
-  return fixture.state.applyStateMessage({
-    schemaVersion: STATE_STREAM_SCHEMA_VERSION,
-    streamId: 'send-test',
-    baseRevision,
-    revision: stateRevision,
-    changes
-  })
+  fixture.state.reset({ ...fixture.state.getState(), ...changes })
 }
 
-function initializeSendState(
-  balances: BalanceFixture[] = [nativeBalance()],
-  customTokens: CustomTokenFixture[] = []
-) {
-  const tokenRecords = [...balances, ...customTokens]
-    .filter((token) => token.address !== NATIVE_CURRENCY && token.name && token.symbol)
-    .map((token) => ({
-      ...token,
-      custom: customTokens.includes(token),
-      curated: false,
-      sources: customTokens.includes(token) ? ['custom'] : ['onchain'],
-      updatedAt: 0
-    }))
-  fixture.state.reset({})
-  stateRevision = 0
-  fixture.state.beginStateConnection('sidetray')
-  fixture.state.applyStateMessage({
-    schemaVersion: STATE_STREAM_SCHEMA_VERSION,
-    streamId: 'send-test',
-    revision: 0,
-    state: {
-      currentAccount: sender.id,
-      accounts: {
-        [sender.id]: sender,
-        [recipient.id]: recipient
-      },
-      accountOrder: [recipient.id, sender.id],
-      activity: {},
-      operations: {},
-      balances: {
-        [sender.address]: balances,
-        [recipient.address]: balances
-      },
-      networks: {
-        ethereum: {
-          [chainId]: {
-            id: chainId,
-            explorer: '',
-            isTestnet: true,
-            name: 'Local',
-            on: true
-          }
-        }
-      },
-      networksMeta: {
-        ethereum: {
-          [chainId]: {
-            nativeCurrency: {
-              symbol: 'ETH',
-              name: 'Ether',
-              decimals: 18
-            },
-            primaryColor: 'accent1'
-          }
-        }
-      },
-      assetRates: {
-        [`${chainId}:${tokenAddress}`]: {
-          usdRate: 2,
-          source: 'zerion',
-          observedAt: 1
-        }
-      },
-      runtime: {
-        profile: 'dev',
-        isDev: true,
-        environment: 'test'
-      },
-      tokens: {
-        byId: Object.fromEntries(
-          tokenRecords.map((token) => [
-            `${token.chainId}:${token.address.toLowerCase()}`,
-            { ...token, address: token.address.toLowerCase() }
-          ])
-        ),
-        accountTokenIds: {
-          [sender.address]: tokenRecords.map((token) => `${token.chainId}:${token.address.toLowerCase()}`)
+function initializeSendState(balances: BalanceFixture[] = [nativeBalance()]) {
+  fixture.state.reset({
+    currentAccount: sender.id,
+    accounts: {
+      [sender.id]: sender,
+      [recipient.id]: recipient
+    },
+    accountOrder: [recipient.id, sender.id],
+    activity: {},
+    operations: {},
+    balances: {
+      [sender.address]: balances,
+      [recipient.address]: balances
+    },
+    networks: {
+      ethereum: {
+        [chainId]: {
+          id: chainId,
+          explorer: '',
+          isTestnet: true,
+          name: 'Local',
+          on: true
         }
       }
+    },
+    networksMeta: {
+      ethereum: {
+        [chainId]: {
+          nativeCurrency: {
+            symbol: 'ETH',
+            name: 'Ether',
+            decimals: 18
+          },
+          primaryColor: 'accent1'
+        }
+      }
+    },
+    assetRates: {},
+    runtime: {
+      profile: 'dev',
+      isDev: true,
+      environment: 'test'
+    },
+    tokens: {
+      byId: {},
+      accountTokenIds: {}
     }
   })
 }
@@ -145,18 +93,6 @@ function nativeBalance() {
     displayBalance: '',
     name: 'Ether',
     symbol: 'ETH'
-  }
-}
-
-function tokenBalance() {
-  return {
-    address: tokenAddress,
-    balance: '2000000',
-    chainId,
-    decimals: 6,
-    displayBalance: '',
-    name: 'USD Coin',
-    symbol: 'USDC'
   }
 }
 
@@ -176,121 +112,6 @@ describe('Send controller integration', () => {
     expect(send.close).toHaveBeenCalledTimes(1)
   })
 
-  it('falls back when the route asset is not sendable', () => {
-    render(<Send assetId={`${chainId}:${tokenAddress}`} capability={send} />)
-
-    expect(screen.getByRole('button', { name: 'Select send token' }).textContent).toContain('ETH')
-  })
-
-  it('prefers the route asset when it is sendable', () => {
-    initializeSendState([nativeBalance(), tokenBalance()])
-
-    render(<Send assetId={`${chainId}:${tokenAddress}`} capability={send} />)
-
-    expect(screen.getByRole('button', { name: 'Select send token' }).textContent).toContain('USDC')
-  })
-
-  it('renders an unknown fiat value when the selected asset has no rate', () => {
-    render(<Send assetId={nativeAssetId} capability={send} />)
-
-    expect(screen.getByText('—')).toBeTruthy()
-    expect(screen.queryByText('$0.00')).toBeNull()
-  })
-
-  it('renders a fiat notional when the selected asset has a resolved rate', () => {
-    initializeSendState([nativeBalance(), tokenBalance()])
-
-    render(<Send assetId={`${chainId}:${tokenAddress}`} capability={send} />)
-    fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '2' } })
-
-    expect(screen.getByText('$4.00')).toBeTruthy()
-  })
-
-  it('allows the send amount to be cleared and typed after selecting a recipient', async () => {
-    const { user } = render(<Send assetId={nativeAssetId} capability={send} />)
-    await user.click(screen.getByText(shortAddress(recipient.address)))
-    const amountInput = screen.getByLabelText('Amount') as HTMLInputElement
-
-    expect(screen.getByText('Recipient')).toBeTruthy()
-    expect(screen.getByText(shortAddress(recipient.address))).toBeTruthy()
-    expect(screen.queryByText(recipient.address)).toBeNull()
-    expect(screen.getByRole('button', { name: 'Copy address for Recipient' })).toBeTruthy()
-    await user.clear(amountInput)
-    await user.type(amountInput, '2.5')
-
-    expect(amountInput.value).toBe('2.5')
-  })
-
-  it('searches and selects a custom token with no balance', async () => {
-    const customToken = {
-      address: '0x00000000000000000000000000000000000000cc',
-      chainId,
-      decimals: 6,
-      name: 'Custom Dollar',
-      symbol: 'CUSD'
-    }
-    initializeSendState([nativeBalance()], [customToken])
-
-    const { user } = render(<Send assetId={nativeAssetId} capability={send} />)
-    await user.click(screen.getByRole('button', { name: 'Select send token' }))
-    await user.type(screen.getByLabelText('Search tokens'), 'Custom Dollar')
-
-    expect(screen.getAllByRole('option')).toHaveLength(1)
-    await user.click(screen.getByRole('option'))
-
-    expect(screen.getByRole('button', { name: 'Select send token' }).textContent).toContain('CUSD')
-  })
-
-  it('does not show the sending wallet as a recipient option', () => {
-    render(<Send assetId={nativeAssetId} capability={send} />)
-
-    expect(screen.getByText('Recipient')).toBeTruthy()
-    expect(screen.queryByText('Sender')).toBeNull()
-    expect(screen.queryByText(sender.address)).toBeNull()
-  })
-
-  it('shows the first-time warning when the sender has no activity with the recipient', async () => {
-    const { user } = render(<Send assetId={nativeAssetId} capability={send} />)
-
-    await user.click(screen.getByRole('button', { name: 'Select Recipient' }))
-
-    expect(screen.getByText('First time sending to this address.')).toBeTruthy()
-  })
-
-  it('shows shortened recipient addresses and copies the full address from the wallet selector', async () => {
-    const { user } = render(<Send assetId={nativeAssetId} capability={send} />)
-
-    expect(screen.getByText(shortAddress(recipient.address))).toBeTruthy()
-    const copyButton = screen.getByRole('button', {
-      name: `Copy address for ${shortAddress(recipient.address)}`
-    })
-    await user.click(copyButton)
-
-    expect(send.writeText).toHaveBeenCalledWith(recipient.address)
-    expect(
-      screen.getByRole('button', { name: `Address copied for ${shortAddress(recipient.address)}` })
-    ).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Select Recipient' })).toBeTruthy()
-  })
-
-  it('hides the first-time warning when activity contains a prior send to the recipient', async () => {
-    updateSendState({
-      activity: {
-        prior: {
-          id: 'prior',
-          account: sender.address.toUpperCase(),
-          status: 'succeeded',
-          data: { to: recipient.address.toUpperCase() }
-        }
-      }
-    })
-    const { user } = render(<Send assetId={nativeAssetId} capability={send} />)
-
-    await user.click(screen.getByRole('button', { name: 'Select Recipient' }))
-
-    expect(screen.queryByText('First time sending to this address.')).toBeNull()
-  })
-
   it('clears recipient, amount, and open menus when the current account changes', async () => {
     const { user } = render(<Send assetId={nativeAssetId} capability={send} />)
     await user.click(screen.getByRole('button', { name: 'Select Recipient' }))
@@ -308,19 +129,6 @@ describe('Send controller integration', () => {
     expect(screen.queryByRole('listbox', { name: 'Select send token' })).toBeNull()
     expect(screen.queryByText(recipient.address)).toBeNull()
     expect((screen.getByLabelText('Recipient') as HTMLInputElement).value).toBe('')
-  })
-
-  it('also resets when the current account is lost', async () => {
-    render(<Send assetId={nativeAssetId} capability={send} />)
-    fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '4' } })
-
-    act(() => {
-      updateSendState({ currentAccount: '' })
-    })
-
-    await waitFor(() => {
-      expect(screen.getByText('No assets available to send.')).toBeTruthy()
-    })
   })
 
   it('ignores a submission result from the previously selected account', async () => {

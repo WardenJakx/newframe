@@ -1,7 +1,13 @@
 import { expect, it, mock } from 'bun:test'
 
 import { fireEvent, render, screen } from '../../../../../test/support/componentSetup'
-import { FLASH_MARKET_ORDER_TYPE, FLASH_TWAP_ORDER_TYPE } from '../domain/constants'
+import {
+  FLASH_LIMIT_ORDER_TYPE,
+  FLASH_MARKET_ORDER_TYPE,
+  FLASH_STOP_ORDER_TYPE,
+  FLASH_TAKE_PROFIT_ORDER_TYPE,
+  FLASH_TWAP_ORDER_TYPE
+} from '../domain/constants'
 import { TradeView } from './TradeView'
 import type { TradeAssetViewModel, TradeViewEvents, TradeViewModel } from './tradeViewModel'
 import { createTradeCapabilityFake } from './tradeService.test-support'
@@ -38,10 +44,11 @@ function asset(field: 'target' | 'contra', symbol: string, editable: boolean): T
 function viewProps() {
   const onOrderTypeChange = mock<TradeViewEvents['onOrderTypeChange']>(() => undefined)
   const onInputAmountChange = mock<TradeViewEvents['onInputAmountChange']>(() => undefined)
+  const onBalancePercentChange = mock<TradeViewEvents['onBalancePercentChange']>(() => undefined)
   const onReview = mock<TradeViewEvents['onReview']>(() => undefined)
   const events: TradeViewEvents = {
     onAssetOpenChange: mock(() => undefined),
-    onBalancePercentChange: mock(() => undefined),
+    onBalancePercentChange,
     onClose: mock(() => undefined),
     onInputAmountChange,
     onOrderFieldChange: mock(() => undefined),
@@ -112,7 +119,7 @@ function viewProps() {
     }
   }
 
-  return { events, model, onInputAmountChange, onOrderTypeChange, onReview }
+  return { events, model, onBalancePercentChange, onInputAmountChange, onOrderTypeChange, onReview }
 }
 
 it('renders semantic ticket, quote, and progress models and emits named events', () => {
@@ -124,10 +131,34 @@ it('renders semantic ticket, quote, and progress models and emits named events',
   expect(screen.getByText('Sign order')).toBeTruthy()
 
   fireEvent.change(screen.getByLabelText('WETH amount'), { target: { value: '1.5' } })
+  fireEvent.change(screen.getByLabelText('WETH amount percentage'), { target: { value: '75' } })
   fireEvent.click(screen.getByRole('tab', { name: 'TWAP' }))
   fireEvent.click(screen.getByRole('button', { name: 'Review/sign' }))
 
-  expect(props.onInputAmountChange).toHaveBeenCalledWith('1.5')
-  expect(props.onOrderTypeChange).toHaveBeenCalledWith(FLASH_TWAP_ORDER_TYPE)
-  expect(props.onReview).toHaveBeenCalledTimes(1)
+  expect(props.onInputAmountChange.mock.calls).toEqual([['1.5']])
+  expect(props.onBalancePercentChange.mock.calls).toEqual([['target', 75]])
+  expect(props.onOrderTypeChange.mock.calls).toEqual([[FLASH_TWAP_ORDER_TYPE]])
+  expect(props.onReview.mock.calls).toEqual([[]])
+})
+
+it('renders each progressive order-field surface from its view model', () => {
+  const props = viewProps()
+  const { rerender } = render(
+    <TradeView capability={createTradeCapabilityFake()} events={props.events} model={props.model} />
+  )
+  const show = (orderType: TradeViewModel['ticket']['orderType']) => {
+    props.model.ticket.orderType = orderType
+    props.model.ticket.advancedOpen = true
+    rerender(<TradeView capability={createTradeCapabilityFake()} events={props.events} model={props.model} />)
+  }
+
+  show(FLASH_LIMIT_ORDER_TYPE)
+  expect(screen.getByLabelText('Limit price')).toBeTruthy()
+  show(FLASH_TWAP_ORDER_TYPE)
+  expect(screen.getByLabelText('TWAP duration hours')).toBeTruthy()
+  expect(screen.getByLabelText('TWAP segments')).toBeTruthy()
+  show(FLASH_TAKE_PROFIT_ORDER_TYPE)
+  expect(screen.getByLabelText('Take-profit trigger price')).toBeTruthy()
+  show(FLASH_STOP_ORDER_TYPE)
+  expect(screen.getByLabelText('Stop trigger price')).toBeTruthy()
 })

@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it } from 'bun:test'
 
 import { act, cleanup, render, screen, waitFor } from '../../../../test/support/componentSetup'
 import { registerTestRuntimeFixture } from '../../../../test/support/rendererClient'
-import { STATE_STREAM_SCHEMA_VERSION } from '../../../platform/state-sync/contract/protocol'
 import type { OperationRecord } from '../../../platform/operations/operation'
 import { walletState } from '../../../platform/state-sync/renderer/fixtures.test-support.ts'
 import { ProfileSelector } from './ProfileSelector'
@@ -15,8 +14,6 @@ const profiles = [
   { id: 'work', name: 'Work', accountCount: 1, cachedValue: { state: 'unpriced' as const } },
   { id: 'empty', name: 'Empty', accountCount: 0, cachedValue: { state: 'priced' as const, value: 12.5 } }
 ]
-let revision = 0
-
 function deferred<T>() {
   let resolve!: (value: T) => void
   const promise = new Promise<T>((next) => {
@@ -26,15 +23,11 @@ function deferred<T>() {
 }
 
 function publishOperation(operation: OperationRecord) {
-  const baseRevision = revision
-  revision += 1
   act(() => {
-    fixture.state.applyStateMessage({
-      schemaVersion: STATE_STREAM_SCHEMA_VERSION,
-      streamId: 'profiles-test',
-      baseRevision,
-      revision,
-      changes: { operations: { [operation.id]: operation } }
+    const state = fixture.state.wallet.getState()
+    fixture.state.reset({
+      ...state,
+      operations: { ...state.operations, [operation.id]: operation }
     })
   })
 }
@@ -53,18 +46,10 @@ function operation(id: string, type: string, status: 'pending' | 'succeeded' | '
 describe('ProfileSelector', () => {
   beforeEach(() => {
     capability = createAccountsCapabilityFake()
-    revision = 0
-    fixture.state.reset({})
-    fixture.state.beginStateConnection('wallet-ui')
-    fixture.state.applyStateMessage({
-      schemaVersion: STATE_STREAM_SCHEMA_VERSION,
-      streamId: 'profiles-test',
-      revision: 0,
-      state: walletState({ currentProfile: 'personal', profiles, operations: {} })
-    })
+    fixture.state.reset(walletState({ currentProfile: 'personal', profiles, operations: {} }))
   })
 
-  it('shows every ordered summary and supports listbox keyboard selection without a dormant query', async () => {
+  it('shows every ordered summary and selects a profile without a dormant query', async () => {
     const { rerender, user } = render(
       <ProfileSelector capability={capability} currentProfile='personal' profiles={profiles} />
     )
@@ -80,8 +65,7 @@ describe('ProfileSelector', () => {
     expect(screen.getByText('2 Accounts')).toBeTruthy()
     expect(screen.getByText('1 Account')).toBeTruthy()
 
-    trigger.focus()
-    await user.keyboard('{ArrowDown}{Enter}')
+    await user.click(screen.getByRole('option', { name: /Work/ }))
     expect(capability.selectProfile.mock.calls.at(-1)?.[0]).toEqual({
       operationId: expect.any(String),
       profileId: 'work'

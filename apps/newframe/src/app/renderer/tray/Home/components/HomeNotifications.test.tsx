@@ -2,7 +2,6 @@ import { beforeEach, expect, it } from 'bun:test'
 
 import { render, screen } from '../../../../../../test/support/componentSetup'
 import { registerTestRuntimeFixture } from '../../../../../../test/support/rendererClient'
-import { STATE_STREAM_SCHEMA_VERSION } from '../../../../../platform/state-sync/contract/protocol'
 import type {
   WalletRendererState,
   WalletStatusNotification
@@ -26,11 +25,8 @@ function NavigationObserver() {
 }
 
 function renderNotification(notification: WalletStatusNotification) {
-  fixture.state.applyStateMessage({
-    schemaVersion: STATE_STREAM_SCHEMA_VERSION,
-    streamId: `notification-${String(notification.id)}`,
-    revision: 0,
-    state: walletState({
+  fixture.state.reset(
+    walletState({
       currentAccount: '0x1111111111111111111111111111111111111111',
       view: {
         notify: '',
@@ -41,7 +37,7 @@ function renderNotification(notification: WalletStatusNotification) {
         }
       }
     })
-  })
+  )
 
   return render(
     <HomeUiProvider>
@@ -53,7 +49,6 @@ function renderNotification(notification: WalletStatusNotification) {
 
 beforeEach(() => {
   fixture.state.reset({})
-  fixture.state.beginStateConnection('wallet-ui')
 })
 
 it('shows order details and opens the referenced order', async () => {
@@ -105,11 +100,8 @@ it('opens the referenced transaction activity', async () => {
 
 it('shows normal requests as a prominent home notification and opens the request panel', async () => {
   const accountId = '0x1111111111111111111111111111111111111111'
-  fixture.state.applyStateMessage({
-    schemaVersion: STATE_STREAM_SCHEMA_VERSION,
-    streamId: 'pending-requests',
-    revision: 0,
-    state: walletState({
+  fixture.state.reset(
+    walletState({
       accounts: {
         [accountId]: {
           id: accountId,
@@ -129,7 +121,7 @@ it('shows normal requests as a prominent home notification and opens the request
       },
       currentAccount: accountId
     })
-  })
+  )
 
   const { user } = render(
     <HomeUiProvider>
@@ -145,11 +137,8 @@ it('shows normal requests as a prominent home notification and opens the request
 
 it('does not show a request notification when there are no actionable requests', () => {
   const accountId = '0x1111111111111111111111111111111111111111'
-  fixture.state.applyStateMessage({
-    schemaVersion: STATE_STREAM_SCHEMA_VERSION,
-    streamId: 'no-pending-requests',
-    revision: 0,
-    state: walletState({
+  fixture.state.reset(
+    walletState({
       accounts: {
         [accountId]: {
           id: accountId,
@@ -165,7 +154,7 @@ it('does not show a request notification when there are no actionable requests',
       },
       currentAccount: accountId
     })
-  })
+  )
 
   render(
     <HomeUiProvider>

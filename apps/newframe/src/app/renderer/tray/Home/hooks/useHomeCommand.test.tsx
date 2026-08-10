@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it } from 'bun:test'
 
 import { render, screen, waitFor } from '../../../../../../test/support/componentSetup'
 import { registerTestRuntimeFixture } from '../../../../../../test/support/rendererClient'
-import { STATE_STREAM_SCHEMA_VERSION } from '../../../../../platform/state-sync/contract/protocol'
 import { walletState } from '../../../../../platform/state-sync/renderer/fixtures.test-support.ts'
 import { HomeUiProvider, useHomeUiStore } from '../state/HomeUiProvider'
 import { useHomeCommand } from './useHomeCommand'
@@ -22,15 +21,11 @@ function CommandObserver() {
 describe('useHomeCommand', () => {
   beforeEach(() => {
     fixture.state.reset({})
-    fixture.state.beginStateConnection('wallet-ui')
   })
 
   it('opens an add-chain review from an explicit request identifier', async () => {
-    fixture.state.applyStateMessage({
-      schemaVersion: STATE_STREAM_SCHEMA_VERSION,
-      streamId: 'home-command-test',
-      revision: 0,
-      state: walletState({
+    fixture.state.reset(
+      walletState({
         tray: {
           open: true,
           initial: false,
@@ -49,7 +44,7 @@ describe('useHomeCommand', () => {
           }
         }
       })
-    })
+    )
 
     render(
       <HomeUiProvider>

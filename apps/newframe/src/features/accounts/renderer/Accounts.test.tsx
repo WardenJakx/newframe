@@ -3,7 +3,6 @@ import { within } from '@testing-library/react'
 
 import { act, render, screen, waitFor } from '../../../../test/support/componentSetup'
 import { registerTestRuntimeFixture } from '../../../../test/support/rendererClient'
-import { STATE_STREAM_SCHEMA_VERSION } from '../../../platform/state-sync/contract/protocol'
 import { walletState } from '../../../platform/state-sync/renderer/fixtures.test-support.ts'
 import { Accounts } from './Accounts'
 import { AddAccount } from './AddAccount'
@@ -27,8 +26,6 @@ const profiles = [
   { id: 'personal', name: 'Personal', accountCount: 1, cachedValue: { state: 'missing' as const } },
   { id: 'work', name: 'Work', accountCount: 0, cachedValue: { state: 'unpriced' as const } }
 ]
-let revision = 0
-
 function deferred<T>() {
   let reject!: (reason?: unknown) => void
   let resolve!: (value: T) => void
@@ -40,37 +37,23 @@ function deferred<T>() {
 }
 
 function publishChanges(changes: Record<string, unknown>) {
-  const baseRevision = revision
-  revision += 1
   act(() => {
-    fixture.state.applyStateMessage({
-      schemaVersion: STATE_STREAM_SCHEMA_VERSION,
-      streamId: 'accounts-test',
-      baseRevision,
-      revision,
-      changes
-    })
+    fixture.state.reset({ ...fixture.state.getState(), ...changes })
   })
 }
 
 describe('Accounts profile controls', () => {
   beforeEach(() => {
     capability = createAccountsCapabilityFake()
-    revision = 0
-    fixture.state.reset({})
-    fixture.state.beginStateConnection('wallet-ui')
-    fixture.state.applyStateMessage({
-      schemaVersion: STATE_STREAM_SCHEMA_VERSION,
-      streamId: 'accounts-test',
-      revision: 0,
-      state: walletState({
+    fixture.state.reset(
+      walletState({
         accounts: { [account.id]: account },
         accountOrder: [account.id],
         currentAccount: account.id,
         currentProfile: 'personal',
         profiles
       })
-    })
+    )
   })
 
   it('places the active profile selector immediately left of Close accounts', () => {

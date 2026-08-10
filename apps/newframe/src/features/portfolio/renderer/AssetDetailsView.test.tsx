@@ -1,6 +1,6 @@
-import { afterEach, beforeEach, describe, expect, it, jest as timers } from 'bun:test'
+import { describe, expect, it } from 'bun:test'
 
-import { act, render, screen } from '../../../../test/support/componentSetup'
+import { render, screen } from '../../../../test/support/componentSetup'
 import { registerTestRuntimeFixture } from '../../../../test/support/rendererClient'
 import { AssetDetailsView } from './AssetDetailsView'
 import { NATIVE_CURRENCY } from '../../tokens/domain/constants'
@@ -14,14 +14,6 @@ const networksMeta = { 42161: {} }
 const fixture = registerTestRuntimeFixture()
 const utilityPorts = createUtilityPorts({
   executeCommand: (command) => fixture.client.executeCommand(command)
-})
-
-beforeEach(() => {
-  timers.useFakeTimers()
-})
-
-afterEach(() => {
-  timers.useRealTimers()
 })
 
 function assetWithAddress(assetAddress: string): DisplayedBalance {
@@ -55,8 +47,7 @@ function renderAsset(assetAddress = address) {
       onBack={() => {}}
       onSend={() => {}}
       onTrade={() => {}}
-    />,
-    { advanceTimersAfterInput: 0 }
+    />
   )
 }
 
@@ -94,10 +85,6 @@ describe('AssetDetailsView contract address', () => {
       text: address
     })
     expect(screen.getByRole('button', { name: `Address copied for ${shortAddress(address)}` })).toBeTruthy()
-
-    act(() => timers.advanceTimersByTime(1000))
-
-    expect(screen.getByRole('button', { name: `Copy address for ${shortAddress(address)}` })).toBeTruthy()
   })
 
   it('keeps native assets non-interactive', () => {

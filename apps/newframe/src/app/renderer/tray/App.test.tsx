@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it, mock } from 'bun:test'
 
 import { act, cleanup, render, screen, waitFor } from '../../../../test/support/componentSetup'
 import { registerTestRuntimeFixture } from '../../../../test/support/rendererClient'
-import { STATE_STREAM_SCHEMA_VERSION } from '../../../platform/state-sync/contract/protocol'
 import type { OperationRecord } from '../../../platform/operations/operation'
 import { walletState } from '../../../platform/state-sync/renderer/fixtures.test-support.ts'
 import { createRequestRendererCapabilitiesFake } from '../../../features/requests/renderer/requestCapabilities.test-support'
@@ -26,21 +25,12 @@ const status = mock<SecurityCapability['status']>(async () => ({
   biometricAvailable: false,
   biometrics: { enabled: false, method: '', nativeAvailable: false }
 }))
-let revision = 0
 let operations: Record<string, OperationRecord> = {}
 
 function publishOperation(operation: OperationRecord) {
   operations = { ...operations, [operation.id]: operation }
-  const baseRevision = revision
-  revision += 1
   act(() => {
-    fixture.state.applyStateMessage({
-      schemaVersion: STATE_STREAM_SCHEMA_VERSION,
-      streamId: 'app-security-test',
-      baseRevision,
-      revision,
-      changes: { operations }
-    })
+    fixture.state.reset({ ...fixture.state.getState(), operations })
   })
 }
 
@@ -70,16 +60,8 @@ const props = {
 
 describe('tray security operations', () => {
   const resetHarness = () => {
-    revision = 0
     operations = {}
-    fixture.state.reset({})
-    fixture.state.beginStateConnection('wallet-ui')
-    fixture.state.applyStateMessage({
-      schemaVersion: STATE_STREAM_SCHEMA_VERSION,
-      streamId: 'app-security-test',
-      revision,
-      state: walletState({ appLock: { locked: true, vaultExists: true }, operations: {} })
-    })
+    fixture.state.reset(walletState({ appLock: { locked: true, vaultExists: true }, operations: {} }))
     unlock.mockReset().mockResolvedValue({ ok: true })
     status.mockReset().mockResolvedValue({
       ok: true,

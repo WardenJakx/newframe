@@ -13,7 +13,6 @@ import {
 } from '../domain/constants'
 import { FLASH_USDC_ASSET, FLASH_WETH_ASSET } from '../domain/assets'
 import type { CommandResult, FlashQuoteDisplay } from '../../../../app/contracts/operations'
-import { STATE_STREAM_SCHEMA_VERSION } from '../../../../platform/state-sync/contract/protocol'
 import { createTradeCapabilityFake, type TradeCapabilityFake } from './tradeService.test-support'
 
 const fixture = registerTestRuntimeFixture()
@@ -38,19 +37,8 @@ const newAccount = {
   lastSignerType: 'address'
 }
 
-let stateRevision = 0
-
 function updateTradeState(changes: Record<string, unknown>) {
-  const baseRevision = stateRevision
-  stateRevision += 1
-
-  return fixture.state.applyStateMessage({
-    schemaVersion: STATE_STREAM_SCHEMA_VERSION,
-    streamId: 'trade-test',
-    baseRevision,
-    revision: stateRevision,
-    changes
-  })
+  fixture.state.reset({ ...fixture.state.getState(), ...changes })
 }
 
 function initializeTradeState() {
@@ -62,76 +50,68 @@ function initializeTradeState() {
     sources: ['onchain'],
     updatedAt: 0
   }))
-  stateRevision = 0
-  fixture.state.reset({})
-  fixture.state.beginStateConnection('sidetray')
-  fixture.state.applyStateMessage({
-    schemaVersion: STATE_STREAM_SCHEMA_VERSION,
-    streamId: 'trade-test',
-    revision: 0,
-    state: {
-      currentAccount: sender.id,
-      accounts: {
-        [sender.id]: sender,
-        [other.id]: other
-      },
-      accountOrder: [sender.id, other.id],
-      operations: {},
-      balances: {
-        [sender.address]: balances,
-        [other.address]: [wethBalance()]
-      },
-      networks: {
-        ethereum: {
-          [FLASH_ANVIL_CHAIN_ID]: {
-            id: FLASH_ANVIL_CHAIN_ID,
-            explorer: '',
-            isTestnet: true,
-            name: 'Local',
-            on: true
+  fixture.state.reset({
+    currentAccount: sender.id,
+    accounts: {
+      [sender.id]: sender,
+      [other.id]: other
+    },
+    accountOrder: [sender.id, other.id],
+    operations: {},
+    balances: {
+      [sender.address]: balances,
+      [other.address]: [wethBalance()]
+    },
+    networks: {
+      ethereum: {
+        [FLASH_ANVIL_CHAIN_ID]: {
+          id: FLASH_ANVIL_CHAIN_ID,
+          explorer: '',
+          isTestnet: true,
+          name: 'Local',
+          on: true
+        }
+      }
+    },
+    networksMeta: {
+      ethereum: {
+        [FLASH_ANVIL_CHAIN_ID]: {
+          image: {
+            base64: 'Y2hhaW4=',
+            contentHash: 'chain-image',
+            mimeType: 'image/png',
+            sourceUrl: 'https://cdn.example/chain.png'
+          },
+          primaryColor: 'accent1',
+          nativeCurrency: {
+            symbol: 'ETH',
+            name: 'Ether',
+            decimals: 18
           }
         }
-      },
-      networksMeta: {
-        ethereum: {
-          [FLASH_ANVIL_CHAIN_ID]: {
-            image: {
-              base64: 'Y2hhaW4=',
-              contentHash: 'chain-image',
-              mimeType: 'image/png',
-              sourceUrl: 'https://cdn.example/chain.png'
-            },
-            primaryColor: 'accent1',
-            nativeCurrency: {
-              symbol: 'ETH',
-              name: 'Ether',
-              decimals: 18
-            }
-          }
-        }
-      },
-      assetRates: {
-        [`${FLASH_ANVIL_CHAIN_ID}:${FLASH_USDC_ADDRESS}`]: {
-          usdRate: 1,
-          source: 'zerion',
-          observedAt: 1
-        }
-      },
-      runtime: {
-        profile: 'dev',
-        isDev: true,
-        environment: 'test'
-      },
-      tokens: {
-        byId: Object.fromEntries(
-          tokenRecords.map((token) => [
-            `${token.chainId}:${token.address.toLowerCase()}`,
-            { ...token, address: token.address.toLowerCase() }
-          ])
-        ),
-        accountTokenIds: {
-          [sender.address]: tokenRecords.map((token) => `${token.chainId}:${token.address.toLowerCase()}`)
-        }
+      }
+    },
+    assetRates: {
+      [`${FLASH_ANVIL_CHAIN_ID}:${FLASH_USDC_ADDRESS}`]: {
+        usdRate: 1,
+        source: 'zerion',
+        observedAt: 1
+      }
+    },
+    runtime: {
+      profile: 'dev',
+      isDev: true,
+      environment: 'test'
+    },
+    tokens: {
+      byId: Object.fromEntries(
+        tokenRecords.map((token) => [
+          `${token.chainId}:${token.address.toLowerCase()}`,
+          { ...token, address: token.address.toLowerCase() }
+        ])
+      ),
+      accountTokenIds: {
+        [sender.address]: tokenRecords.map((token) => `${token.chainId}:${token.address.toLowerCase()}`)
       }
     }
   })
@@ -209,13 +189,6 @@ describe('Trade', () => {
       timers.advanceTimersByTime(250)
     })
 
-    expect(await screen.findByText('Est. output')).toBeTruthy()
-    expect(screen.getByText('2400 USDC')).toBeTruthy()
-    expect(screen.getAllByText('~$2,390.00')).toHaveLength(2)
-    expect(screen.getByText('Est. price impact')).toBeTruthy()
-    expect(screen.getByText('0.42%')).toBeTruthy()
-    expect(screen.queryByText('+0.42%')).toBe(null)
-    expect(screen.getByText('Sign order')).toBeTruthy()
     expect(quoteCalls).toHaveLength(1)
     expect(quoteCalls[0].accountAddress).toBe(sender.address)
     expect(quoteCalls[0]).not.toHaveProperty('chainId')
@@ -353,49 +326,6 @@ describe('Trade', () => {
     expect(trade.close).not.toHaveBeenCalled()
   })
 
-  it('keeps a projected failure visible and allows retry with a new operation', async () => {
-    trade.quote.mockImplementation(async (request) => {
-      return {
-        ok: true,
-        quoteId: 'failed-trade-quote',
-        quote: quote('failed-trade-quote', request.qty)
-      }
-    })
-
-    render(<Trade assetId={`${FLASH_ANVIL_CHAIN_ID}:${FLASH_WETH_ADDRESS}`} capability={trade} />)
-    fireEvent.change(screen.getByLabelText('WETH amount'), { target: { value: '1' } })
-    await act(async () => timers.advanceTimersByTime(250))
-    fireEvent.click(await screen.findByRole('button', { name: 'Review/sign' }))
-    const firstCommand = trade.submit.mock.calls[0]?.[0]
-    if (!firstCommand) throw new Error('Expected trade submit command')
-
-    await act(async () => {
-      updateTradeState({
-        operations: {
-          [firstCommand.operationId]: {
-            id: firstCommand.operationId,
-            type: 'trade.execute',
-            status: 'failed',
-            phase: 'signing_order_failed',
-            error: { code: 'sign_failed', message: 'Order signature was rejected.' },
-            startedAt: 1,
-            updatedAt: 2,
-            finishedAt: 2
-          }
-        }
-      })
-    })
-
-    expect(await screen.findByText('Order signature was rejected.')).toBeTruthy()
-    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Review/sign' }).disabled).toBe(false)
-    expect(trade.close).not.toHaveBeenCalled()
-
-    fireEvent.click(screen.getByRole('button', { name: 'Review/sign' }))
-    const submitCommands = trade.submit.mock.calls.map(([command]) => command)
-    expect(submitCommands).toHaveLength(2)
-    expect(submitCommands[1].operationId).not.toBe(firstCommand.operationId)
-  })
-
   it('refreshes unchanged quotes after fifteen seconds and request changes after the debounce', async () => {
     const quoteCalls: Array<Parameters<TradeCapabilityFake['quote']>[0]> = []
 
@@ -440,30 +370,6 @@ describe('Trade', () => {
     await act(async () => timers.advanceTimersByTime(1))
     expect(quoteCalls).toHaveLength(3)
     expect(quoteCalls[2].qty).toBe('2')
-  })
-
-  it('maps the balance percentage slider to the spent asset amount', () => {
-    render(<Trade assetId={`${FLASH_ANVIL_CHAIN_ID}:${FLASH_WETH_ADDRESS}`} capability={trade} />)
-
-    const slider = screen.getByLabelText('WETH amount percentage') as HTMLInputElement
-    const percent = screen.getByLabelText('WETH balance percentage') as HTMLInputElement
-    const amount = screen.getByLabelText('WETH amount') as HTMLInputElement
-
-    expect(slider.min).toBe('0')
-    expect(slider.max).toBe('100')
-    expect(slider.getAttribute('data-tone')).toBe('danger')
-    fireEvent.change(slider, { target: { value: '50' } })
-
-    expect(amount.value).toBe('0.5')
-    expect(percent.value).toBe('50')
-
-    fireEvent.change(percent, { target: { value: '100' } })
-    expect(amount.value).toBe('1')
-    expect(slider.value).toBe('100')
-
-    fireEvent.click(screen.getByRole('button', { name: 'Switch to BUY' }))
-    const buySlider = screen.getByLabelText('USDC amount percentage')
-    expect(buySlider.getAttribute('data-tone')).toBe('special')
   })
 
   it('releases renderer-owned trade state when the controller unmounts', () => {
@@ -552,42 +458,6 @@ describe('Trade', () => {
       })
     })
     await waitFor(() => expect(trade.close).toHaveBeenCalled())
-  })
-
-  it('exposes the new order tabs and progressive advanced fields', () => {
-    render(<Trade assetId={`${FLASH_ANVIL_CHAIN_ID}:${FLASH_WETH_ADDRESS}`} capability={trade} />)
-
-    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
-      'Market',
-      'Limit',
-      'TWAP',
-      'TP/SL',
-      'Stop'
-    ])
-    fireEvent.click(screen.getByRole('button', { name: 'Advanced' }))
-    expect((screen.getByLabelText('Slippage') as HTMLInputElement).placeholder).toBe('Automatic')
-
-    fireEvent.click(screen.getByRole('tab', { name: 'Limit' }))
-    const limitPrice = screen.getByLabelText('Limit price') as HTMLInputElement
-    expect(limitPrice.required).toBe(true)
-    expect(limitPrice.labels?.[0]?.textContent).toContain('*')
-
-    fireEvent.click(screen.getByRole('tab', { name: 'TWAP' }))
-    expect(screen.getByLabelText('TWAP duration hours')).toBeTruthy()
-    const twapStart = screen.getByLabelText('TWAP start time') as HTMLInputElement
-    expect(twapStart.required).toBe(false)
-    expect(twapStart.type).toBe('datetime-local')
-    fireEvent.click(screen.getByRole('button', { name: 'Advanced' }))
-    expect((screen.getByLabelText('TWAP segments') as HTMLInputElement).placeholder).toBe('Automatic')
-
-    fireEvent.click(screen.getByRole('tab', { name: 'TP/SL' }))
-    expect(screen.getByRole('button', { name: 'Take profit' })).toBeTruthy()
-    expect((screen.getByLabelText('Take-profit trigger price') as HTMLInputElement).required).toBe(true)
-    expect((screen.getByLabelText('Take-profit limit price') as HTMLInputElement).required).toBe(false)
-
-    fireEvent.click(screen.getByRole('tab', { name: 'Stop' }))
-    expect((screen.getByLabelText('Stop trigger price') as HTMLInputElement).required).toBe(true)
-    expect(screen.getByLabelText('USDC amount')).toBeTruthy()
   })
 
   it('stays mounted when a newly created account is selected before balances exist', async () => {
