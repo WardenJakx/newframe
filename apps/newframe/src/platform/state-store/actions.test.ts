@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it, setSystemTime } from 'bun:test'
+import { afterAll, afterEach, beforeAll, describe, expect, it, jest as timers, setSystemTime } from 'bun:test'
 
 import log from 'electron-log'
 import { addHexPrefix } from '@ethereumjs/util'
@@ -17,6 +17,8 @@ beforeAll(() => {
 afterAll(() => {
   log.transports.console.level = 'debug'
 })
+
+afterEach(() => timers.useRealTimers())
 
 const owner = '0xa8be0f701d0f37088600164e71bffc0ad652c251'
 const otherOwner = '0xd0e3872f5fa8ecb49f1911f605c0da90689a484e'
@@ -997,13 +999,14 @@ describe('#canonical action boundaries', () => {
     })
   })
 
-  it('clears initial tray state independently for each fresh store', async () => {
+  it('clears initial tray state independently for each fresh store', () => {
+    timers.useFakeTimers()
     const first = createActionHarness({})
     const second = createActionHarness({})
 
     first.actions.trayOpen(true)
     second.actions.trayOpen(true)
-    await new Promise((resolve) => setTimeout(resolve, 40))
+    timers.advanceTimersByTime(30)
 
     expect([
       { initial: first.getState().tray.initial, open: first.getState().tray.open },

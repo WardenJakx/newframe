@@ -87,6 +87,7 @@ async function buildRenderer(renderer: Renderer) {
     entrypoints: [entrypoint],
     outdir: tempDir,
     target: 'browser',
+    reactCompiler: true,
     minify: true,
     define: {
       global: 'globalThis',

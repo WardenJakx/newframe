@@ -1,4 +1,4 @@
-import { describe, expect, it, mock } from 'bun:test'
+import { afterEach, describe, expect, it, jest as timers, mock } from 'bun:test'
 import { EventEmitter } from 'node:events'
 import WebSocket from 'ws'
 
@@ -29,6 +29,8 @@ class FakeWebSocket extends EventEmitter {
 }
 
 describe('Flash order WebSocket stream', () => {
+  afterEach(() => timers.useRealTimers())
+
   it('subscribes to orders and heartbeats, then forwards snapshots and updates', async () => {
     const socket = new FakeWebSocket()
     const onOrders = mock()
@@ -100,7 +102,8 @@ describe('Flash order WebSocket stream', () => {
     stream.stop()
   })
 
-  it('reconnects with jittered backoff when streaming is unavailable', async () => {
+  it('reconnects with jittered backoff when streaming is unavailable', () => {
+    timers.useFakeTimers()
     const sockets: FakeWebSocket[] = []
     const onAvailabilityChange = mock()
     const stream = new FlashOrderStream({
@@ -132,7 +135,7 @@ describe('Flash order WebSocket stream', () => {
 
     expect(onAvailabilityChange).toHaveBeenNthCalledWith(1, true)
     expect(onAvailabilityChange).toHaveBeenNthCalledWith(2, false)
-    await Bun.sleep(550)
+    timers.advanceTimersByTime(500)
     expect(sockets).toHaveLength(2)
     stream.stop()
   })
