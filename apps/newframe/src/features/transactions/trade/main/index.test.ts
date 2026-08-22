@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test'
+import { afterEach, beforeEach, describe, expect, it, jest as timers, mock } from 'bun:test'
 import { EventEmitter } from 'node:events'
 import WebSocket from 'ws'
 import {
@@ -188,6 +188,7 @@ describe('main Flash facade helpers', () => {
   })
   afterEach(() => {
     for (const flash of services.splice(0)) flash.dispose()
+    timers.useRealTimers()
     globalThis.fetch = originalFetch
     process.env = { ...originalEnv }
   })
@@ -840,7 +841,8 @@ describe('main Flash facade helpers', () => {
     expect(flash.stopAgentSession('agent-session-two')).toBe(true)
     expect(sockets[1].readyState).toBe(WebSocket.CLOSED)
   })
-  it('closes an agent order stream when its session expires', async () => {
+  it('closes an agent order stream when its session expires', () => {
+    timers.useFakeTimers()
     const socket = new FakeFlashWebSocket()
     const flash = createFlashService({
       assetRateService,
@@ -851,7 +853,7 @@ describe('main Flash facade helpers', () => {
     expect(
       startAgentSession(flash, '0x00000000000000000000000000000000000000a2', 'expiring-agent-session', 25)
     ).toBe(true)
-    await Bun.sleep(50)
+    timers.advanceTimersByTime(25)
     expect(socket.readyState).toBe(WebSocket.CLOSED)
     expect(flash.stopAgentSession('expiring-agent-session')).toBe(false)
   })

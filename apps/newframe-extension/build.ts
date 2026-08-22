@@ -104,6 +104,7 @@ async function build(): Promise<boolean> {
       entrypoints: [path.join(root, entry)],
       outdir: dist,
       target: 'browser',
+      reactCompiler: true,
       format: 'iife',
       naming: `${out}.[ext]`,
       minify,

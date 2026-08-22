@@ -33,6 +33,7 @@ async function run(files: string[], preload?: string) {
   const command = [
     'bun',
     'test',
+    '--parallel=4',
     '--isolate',
     ...(preload ? ['--preload', preload] : []),
     '--timeout',

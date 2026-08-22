@@ -1,4 +1,4 @@
-import { afterAll, afterEach, beforeAll, describe, expect, it, mock } from 'bun:test'
+import { afterAll, afterEach, beforeAll, describe, expect, it, jest as timers, mock } from 'bun:test'
 
 import log from 'electron-log'
 
@@ -40,6 +40,7 @@ beforeAll(async () => {
 })
 
 afterEach(() => {
+  timers.useRealTimers()
   clearFunctionSelectorCache()
   globalThis.fetch = originalFetch
 })
@@ -82,6 +83,7 @@ describe('#fetchContract', () => {
   })
 
   it('waits for a contract from sourcify even if etherscan returns first', async () => {
+    timers.useFakeTimers()
     const sourcifyResponse = new Promise((resolve) =>
       setTimeout(() => resolve(mockContractSource('sourcify')), 40)
     )
@@ -92,7 +94,10 @@ describe('#fetchContract', () => {
     ;(fetchSourcifyContract as any).mockReturnValue(sourcifyResponse)
     ;(fetchEtherscanContract as any).mockReturnValue(etherscanResponse)
 
-    return expect(fetchContract('0x3432b6a60d23ca0dfca7761b7ab56459d9c964d0', 1)).resolves.toStrictEqual({
+    const contract = fetchContract('0x3432b6a60d23ca0dfca7761b7ab56459d9c964d0', 1)
+    timers.advanceTimersByTime(40)
+
+    return expect(contract).resolves.toStrictEqual({
       abi: JSON.stringify(mockAbi),
       name: 'mock sourcify abi',
       source: 'sourcify'

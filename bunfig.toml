@@ -4,3 +4,6 @@ timeout = 5000
 [install]
 # Require newly resolved npm package versions to be at least 7 days old.
 minimumReleaseAge = 604800
+# Bun releases its runtime declarations alongside the runtime. Keep this exact-pinned
+# toolchain package available during upgrades without weakening the age gate for dependencies.
+minimumReleaseAgeExcludes = ["@types/bun", "bun-types"]
