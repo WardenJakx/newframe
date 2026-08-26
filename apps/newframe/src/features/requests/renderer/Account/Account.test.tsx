@@ -93,6 +93,21 @@ function transactionWithParams(params: readonly unknown[]) {
   } as const
 }
 
+function accessRequest() {
+  return {
+    type: 'access',
+    handlerId: requestId,
+    origin,
+    account: accountId,
+    payload: {
+      id: 3,
+      jsonrpc: '2.0',
+      method: 'eth_accounts',
+      params: []
+    }
+  } as const
+}
+
 function resetWithRequest(input: unknown) {
   const request = WalletRequestSchema.parse(input)
   fixture.state.reset(
@@ -172,5 +187,13 @@ describe('request projection validation', () => {
 
     expect(screen.getByText('Permit to Spend TOK')).toBeTruthy()
     expect(screen.getAllByText('Token Permit').length).toBeGreaterThan(0)
+  })
+
+  it('renders an account access request whose payload stores the origin separately', () => {
+    resetWithRequest(accessRequest())
+    renderAccount()
+
+    expect(screen.getByText(origin)).toBeTruthy()
+    expect(screen.getByText('wants to connect')).toBeTruthy()
   })
 })

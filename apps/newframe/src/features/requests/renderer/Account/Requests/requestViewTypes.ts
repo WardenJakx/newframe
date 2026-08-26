@@ -12,7 +12,7 @@ type RequestRpcPayload = {
   id: string | number
   jsonrpc: '2.0'
   method: string
-  _origin: string
+  _origin?: string
   params: readonly unknown[]
 }
 
