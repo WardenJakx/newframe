@@ -6,11 +6,34 @@ import path from 'node:path'
 
 import { prepareDevelopmentProfile } from './developmentProfile'
 
+const gitLocalEnvironmentVariables = [
+  'GIT_ALTERNATE_OBJECT_DIRECTORIES',
+  'GIT_CONFIG',
+  'GIT_CONFIG_PARAMETERS',
+  'GIT_CONFIG_COUNT',
+  'GIT_OBJECT_DIRECTORY',
+  'GIT_DIR',
+  'GIT_WORK_TREE',
+  'GIT_IMPLICIT_WORK_TREE',
+  'GIT_GRAFT_FILE',
+  'GIT_INDEX_FILE',
+  'GIT_NO_REPLACE_OBJECTS',
+  'GIT_REPLACE_REF_BASE',
+  'GIT_PREFIX',
+  'GIT_SHALLOW_FILE',
+  'GIT_COMMON_DIR'
+] as const
+
 function git(cwd: string, ...arguments_: string[]): string {
+  const environment = { ...process.env }
+  for (const variable of gitLocalEnvironmentVariables) delete environment[variable]
+  environment.GIT_CONFIG_GLOBAL = path.join(cwd, '.test-gitconfig')
+  environment.GIT_CONFIG_NOSYSTEM = '1'
+
   return execFileSync('git', arguments_, {
     cwd,
     encoding: 'utf8',
-    env: { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' }
+    env: environment
   }).replace(/\r?\n$/, '')
 }
 

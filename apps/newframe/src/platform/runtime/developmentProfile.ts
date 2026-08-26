@@ -6,6 +6,23 @@ import path from 'node:path'
 
 const canonicalProfileName = 'Newframe dev'
 const durableFiles = ['config.json', 'vault.json', 'biometrics.json'] as const
+const gitLocalEnvironmentVariables = [
+  'GIT_ALTERNATE_OBJECT_DIRECTORIES',
+  'GIT_CONFIG',
+  'GIT_CONFIG_PARAMETERS',
+  'GIT_CONFIG_COUNT',
+  'GIT_OBJECT_DIRECTORY',
+  'GIT_DIR',
+  'GIT_WORK_TREE',
+  'GIT_IMPLICIT_WORK_TREE',
+  'GIT_GRAFT_FILE',
+  'GIT_INDEX_FILE',
+  'GIT_NO_REPLACE_OBJECTS',
+  'GIT_REPLACE_REF_BASE',
+  'GIT_PREFIX',
+  'GIT_SHALLOW_FILE',
+  'GIT_COMMON_DIR'
+] as const
 
 type GitCommandResult = {
   exitCode: number | null
@@ -19,8 +36,12 @@ type DevelopmentProfileDependencies = {
 
 function runGit(arguments_: readonly string[], cwd: string): Promise<GitCommandResult> {
   return new Promise((resolve, reject) => {
+    const environment = { ...process.env }
+    for (const variable of gitLocalEnvironmentVariables) delete environment[variable]
+
     const child = spawn('git', arguments_, {
       cwd,
+      env: environment,
       stdio: ['ignore', 'pipe', 'ignore'],
       windowsHide: true
     })
