@@ -4,7 +4,9 @@
 
 Use the real `apps/newframe` Electron app with the developer's existing local user state, then attach automation to the live tray renderer for visual and interaction checks.
 
-This V1 harness intentionally does not seed mock data, copy profiles, or intercept RPC traffic. It is an agent-assist workflow for local visual review, not a deterministic CI test.
+This V1 harness does not seed mock data or intercept RPC traffic. It is an agent-assist workflow for local
+visual review, not a deterministic CI test. New task checkouts start from the durable development-profile
+snapshot described below.
 
 ## Launch
 
@@ -22,7 +24,22 @@ Close any normal running Newframe instance first. The app has a single-instance 
 
 ## State Model
 
-The harness uses the existing persisted Electron user state. It reads the same profile the app normally reads through `electron.app.getPath('userData')`.
+The harness uses persisted Electron user state through `electron.app.getPath('userData')`. Development
+profiles depend on the Git checkout:
+
+- The primary checkout on attached `main` is canonical and uses `Newframe dev`.
+- Every feature branch, linked worktree, and detached checkout gets a stable task profile named from its
+  branch or detached state and worktree identity.
+- A task profile takes a one-time snapshot when it is first created. Later launches never resync it from
+  canonical, so task changes remain isolated.
+- The snapshot includes only `config.json`, `vault.json`, optional `biometrics.json`, and the complete
+  `signers/` directory. It excludes Chromium state, locks, logs, caches, sessions, backups, database
+  journals, WAL files, and every other canonical entry.
+
+Close the canonical Newframe app before the first launch in a new task checkout so its durable files stay
+unchanged during the one-time snapshot. The first snapshot fails if the canonical `Newframe dev` profile
+does not exist. Newframe builds the snapshot in a temporary directory and publishes it atomically, so a
+task profile is never visible in a partially copied state.
 
 Implications:
 
