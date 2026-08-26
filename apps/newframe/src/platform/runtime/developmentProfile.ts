@@ -5,7 +5,7 @@ import type { Stats } from 'node:fs'
 import path from 'node:path'
 
 const canonicalProfileName = 'Newframe dev'
-const durableFiles = ['config.json', 'vault.json', 'biometrics.json'] as const
+const durableFiles = ['config.json', 'vault.json'] as const
 const gitLocalEnvironmentVariables = [
   'GIT_ALTERNATE_OBJECT_DIRECTORIES',
   'GIT_CONFIG',

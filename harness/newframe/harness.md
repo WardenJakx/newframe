@@ -32,9 +32,10 @@ profiles depend on the Git checkout:
   branch or detached state and worktree identity.
 - A task profile takes a one-time snapshot when it is first created. Later launches never resync it from
   canonical, so task changes remain isolated.
-- The snapshot includes only `config.json`, `vault.json`, optional `biometrics.json`, and the complete
-  `signers/` directory. It excludes Chromium state, locks, logs, caches, sessions, backups, database
-  journals, WAL files, and every other canonical entry.
+- The snapshot includes only `config.json`, `vault.json`, and the complete `signers/` directory. It
+  excludes biometric configuration, Chromium state, locks, logs, caches, sessions, backups, database
+  journals, WAL files, and every other canonical entry. Native biometric unlock must be enabled separately
+  in each task profile.
 
 Close the canonical Newframe app before the first launch in a new task checkout so its durable files stay
 unchanged during the one-time snapshot. The first snapshot fails if the canonical `Newframe dev` profile

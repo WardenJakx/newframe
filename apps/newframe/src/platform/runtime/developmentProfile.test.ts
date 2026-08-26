@@ -198,7 +198,6 @@ describe('prepareDevelopmentProfile', () => {
     const profile = await prepareDevelopmentProfile(applicationData, repository)
 
     expect(await tree(profile)).toEqual({
-      'biometrics.json': 'biometrics',
       'config.json': 'config',
       'signers/': 'directory',
       'signers/nested/': 'directory',

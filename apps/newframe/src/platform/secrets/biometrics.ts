@@ -75,12 +75,11 @@ const nativeAvailable = () => {
   if (process.platform !== 'darwin') return false
   if (typeof systemPreferences?.canPromptTouchID !== 'function') return false
   if (typeof systemPreferences?.promptTouchID !== 'function') return false
-  if (typeof safeStorage?.isEncryptionAvailable !== 'function') return false
   if (typeof safeStorage?.encryptString !== 'function') return false
   if (typeof safeStorage?.decryptString !== 'function') return false
 
   try {
-    return systemPreferences.canPromptTouchID() && safeStorage.isEncryptionAvailable()
+    return systemPreferences.canPromptTouchID()
   } catch {
     return false
   }
