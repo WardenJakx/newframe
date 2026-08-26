@@ -240,6 +240,8 @@ function initProvider() {
     sendEvent('close')
   })
 
+  provider.on('unresponsive', () => dappConnection?.reconnect())
+
   provider.on('chainsChanged', (chains = []) => {
     if (chains[0] && typeof chains[0] === 'object') {
       setChains(chains)
@@ -459,9 +461,8 @@ async function setupClientStatusAlarm() {
 
   chrome.alarms.onAlarm.addListener((alarm) => {
     if (alarm.name === CLIENT_STATUS_ALARM_KEY) {
-      if (provider && provider.isConnected()) {
-        provider.request({ jsonrpc: '2.0', id: 1, method: 'web3_clientVersion' } as any)
-      }
+      dappConnection?.ensureConnected()
+      provider?.checkHealth()
     }
   })
 }
