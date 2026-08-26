@@ -105,6 +105,7 @@ type SimpleTypedDataInnerProps = {
 }
 
 type SimpleTypedDataProps = {
+  originName: string
   req: {
     type: string
     typedMessage: { data: unknown }
@@ -112,6 +113,18 @@ type SimpleTypedDataProps = {
     digests?: Partial<Eip712Digests>
   }
 }
+
+const RequestOrigin = ({ originName }: { originName: string }) => (
+  <Surface padding='small' radius='small' tone='subtle'>
+    <DetailRow
+      code
+      label='Request Origin'
+      labelVariant='overline'
+      value={originName}
+      valueVariant='supporting'
+    />
+  </Surface>
+)
 
 const SimpleTypedDataInner = ({ typedData }: SimpleTypedDataInnerProps) => {
   if (isRecord(typedData) && 'domain' in typedData) {
@@ -193,12 +206,13 @@ const Erc7730ClearSigning = ({ display }: { display?: Erc7730Display }) => {
   )
 }
 
-export const SimpleTypedData = ({ req }: SimpleTypedDataProps) => {
+export const SimpleTypedData = ({ originName, req }: SimpleTypedDataProps) => {
   const type = req.type
   const typedData = req.typedMessage.data || {}
 
   return type === 'signTypedData' || type === 'signErc20Permit' ? (
     <Stack gap='medium'>
+      <RequestOrigin originName={originName} />
       <Erc7730ClearSigning display={req.erc7730} />
       <DigestRows digests={req.digests} />
       <Text tone='muted' variant='sectionTitle'>
