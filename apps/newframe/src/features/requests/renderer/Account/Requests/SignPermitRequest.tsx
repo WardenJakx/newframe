@@ -196,7 +196,7 @@ const PermitRequest = ({ capabilities, req, originName, step, chainData }: Permi
       case 'adjustPermit':
         return <EditPermit capabilities={capabilities} req={req} />
       case 'viewRaw':
-        return <TypedSignatureOverview req={req} />
+        return <TypedSignatureOverview originName={originName} req={req} />
       default:
         return (
           <PermitOverview

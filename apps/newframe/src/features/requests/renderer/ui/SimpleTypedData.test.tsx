@@ -4,9 +4,25 @@ import { screen, render } from '../../../../../test/support/componentSetup'
 import { SimpleTypedData } from './SimpleTypedData'
 
 describe('SimpleTypedData', () => {
+  test('renders the request origin', () => {
+    render(
+      <SimpleTypedData
+        originName='app.hyperliquid.xyz'
+        req={{
+          type: 'signTypedData',
+          typedMessage: { data: {} }
+        }}
+      />
+    )
+
+    expect(screen.getByText('Request Origin')).toBeTruthy()
+    expect(screen.getByText('app.hyperliquid.xyz')).toBeTruthy()
+  })
+
   test('renders ERC-7730 clear signing rows with raw typed data fallback', () => {
     render(
       <SimpleTypedData
+        originName='app.hyperliquid.xyz'
         req={{
           type: 'signTypedData',
           typedMessage: {
@@ -45,6 +61,7 @@ describe('SimpleTypedData', () => {
   test('renders nested EIP-712 message leaf fields instead of empty object rows', () => {
     render(
       <SimpleTypedData
+        originName='example.test'
         req={{
           type: 'signTypedData',
           typedMessage: {
@@ -84,6 +101,7 @@ describe('SimpleTypedData', () => {
   test('does not render an empty Message section when there are no message fields', () => {
     render(
       <SimpleTypedData
+        originName='example.test'
         req={{
           type: 'signTypedData',
           typedMessage: {
