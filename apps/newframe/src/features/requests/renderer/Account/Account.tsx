@@ -46,7 +46,6 @@ const isRpcPayload = (value: unknown) =>
   isStringOrNumber(value.id) &&
   value.jsonrpc === '2.0' &&
   typeof value.method === 'string' &&
-  typeof value._origin === 'string' &&
   Array.isArray(value.params)
 
 const isRequestBase = (request: ProjectedRequest) =>
