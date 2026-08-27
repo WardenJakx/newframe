@@ -30,6 +30,11 @@ export function onTrayRendererReady(webContents: Pick<WebContents, 'off' | 'once
   return () => webContents.off('did-finish-load', handler)
 }
 
+/** @public Used by the dynamic-import lifecycle tests. */
+export function revealExtensionApproval(notification: unknown, reveal: () => void) {
+  if (notification === 'extensionConnect') reveal()
+}
+
 const events = new EventEmitter()
 let sideTrayManager: SideTrayManager
 const isDev = process.env.NODE_ENV === 'development'
@@ -401,6 +406,10 @@ const initialize = () => {
     if (homeCommand) tray.show()
   }
 
+  const updateNotification = (notification: unknown) => {
+    revealExtensionApproval(notification, () => tray.show())
+  }
+
   const updateSummonShortcut = (summonShortcut: Shortcut) => {
     const summonHandler = (accelerator: string) => {
       app.toggle()
@@ -417,10 +426,12 @@ const initialize = () => {
 
   const state = getStore().getState()
   updateHomeCommand(state.tray.homeCommand)
+  updateNotification(state.view.notify)
   updateSummonShortcut(state.main.shortcuts.summon)
 
   stateUnsubscribers = [
     getStore().subscribe((next) => next.tray.homeCommand, updateHomeCommand),
+    getStore().subscribe((next) => next.view.notify, updateNotification),
     getStore().subscribe((next) => next.main.shortcuts.summon, updateSummonShortcut)
   ]
 }

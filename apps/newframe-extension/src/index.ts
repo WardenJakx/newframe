@@ -1,6 +1,6 @@
 /* globals chrome */
 import FrameBackgroundProvider, { RawFrameConnection } from './frameConnection'
-import { frameStateStore, type AvailableChain } from './frameState'
+import { frameStateStore, type AvailableChain, type ConnectionStatus } from './frameState'
 
 type Provider = FrameBackgroundProvider
 
@@ -92,10 +92,10 @@ function updateSettingsPanel() {
 
 frameStateStore.subscribe(updateSettingsPanel)
 
-function setConnected(connected: boolean) {
-  console.debug(`Setting connected to ${connected}`)
+function setConnectionStatus(connectionStatus: ConnectionStatus) {
+  console.debug(`Setting connection status to ${connectionStatus}`)
 
-  frameStateStore.setState({ connected })
+  frameStateStore.setState({ connectionStatus })
 }
 
 function setChains(chains: AvailableChain[]) {
@@ -221,10 +221,18 @@ function initProvider() {
   provider = new FrameBackgroundProvider(`${companionUrl}&scope=internal`)
   dappConnection = new RawFrameConnection(companionUrl)
 
+  provider.connection.on('connect', () => {
+    setConnectionStatus('extension-approval-pending')
+  })
+
+  provider.connection.on('close', () => {
+    setConnectionStatus('desktop-unavailable')
+  })
+
   provider.on('connect', async () => {
     console.log('Connected to Newframe')
 
-    setConnected(true)
+    setConnectionStatus('connected')
     fetchAvailableChains()
     refreshActiveOriginStatus()
 
@@ -233,7 +241,7 @@ function initProvider() {
   })
 
   provider.on('disconnect', () => {
-    setConnected(false)
+    setConnectionStatus('desktop-unavailable')
     setOriginStatus(frameStateStore.getState().activeOrigin, false, '')
 
     setIcon('icons/icon96moon.png')

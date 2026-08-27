@@ -6,8 +6,10 @@ export interface AvailableChain {
   connected?: boolean
 }
 
+export type ConnectionStatus = 'desktop-unavailable' | 'extension-approval-pending' | 'connected'
+
 export interface FrameState {
-  connected: boolean
+  connectionStatus: ConnectionStatus
   availableChains: AvailableChain[]
   currentChain: string
   activeOrigin: string
@@ -16,7 +18,7 @@ export interface FrameState {
 }
 
 export const frameStateStore = createStore<FrameState>()(() => ({
-  connected: false,
+  connectionStatus: 'desktop-unavailable',
   availableChains: [],
   currentChain: '',
   activeOrigin: '',

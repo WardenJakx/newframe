@@ -8,7 +8,7 @@ export type SettingsConnectionActionProps = {
   imageSource: string
   label: string
   onPress: () => void
-  tone: 'success' | 'danger'
+  tone: 'success' | 'warning' | 'danger'
 }
 
 export function SettingsConnectionAction({
