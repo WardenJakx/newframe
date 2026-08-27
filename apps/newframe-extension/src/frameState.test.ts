@@ -8,11 +8,11 @@ describe('frame state store', () => {
     let notifications = 0
     const unsubscribe = frameStateStore.subscribe(() => notifications++)
 
-    frameStateStore.setState({ connected: true, currentChain: '0x1' })
+    frameStateStore.setState({ connectionStatus: 'connected', currentChain: '0x1' })
 
     expect(frameStateStore.getState()).toEqual({
       ...initialState,
-      connected: true,
+      connectionStatus: 'connected',
       currentChain: '0x1'
     })
     expect(notifications).toBe(1)

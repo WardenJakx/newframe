@@ -12,6 +12,7 @@ import { useStore } from 'zustand'
 
 import { frameStateStore, type FrameState } from '../frameState'
 import { ChoiceGrid } from './ChoiceGrid'
+import { frameConnectionPresentation, siteConnectionPresentation } from './connectionPresentation'
 import { SettingsConnectionAction } from './SettingsConnectionAction'
 import { SettingsDisclosure } from './SettingsDisclosure'
 import { SettingsMessage } from './SettingsMessage'
@@ -130,15 +131,24 @@ export class SettingsView extends React.Component<SettingsViewProps, SettingsVie
     connectionDetailsOpen: false
   }
 
-  private notConnected() {
+  private desktopUnavailable() {
     return (
       <SettingsMessage
         action={{ href: 'https://newframe.sh', label: 'Download Newframe' }}
+        detailLines={['Open the Newframe desktop app', 'on this machine to continue']}
+        title='Newframe desktop app not found'
+      />
+    )
+  }
+
+  private extensionApprovalPending() {
+    return (
+      <SettingsMessage
         detailLines={[
-          'Make sure the Newframe desktop app is running',
-          'on your machine or download it below'
+          'Newframe is open and needs your approval',
+          'Approve this extension in the desktop app'
         ]}
-        title='Unable to connect to Newframe'
+        title='Approve the browser extension'
       />
     )
   }
@@ -154,16 +164,17 @@ export class SettingsView extends React.Component<SettingsViewProps, SettingsVie
   }
 
   private frameConnected() {
-    const isConnected = this.props.settings.connected
+    const { connectionStatus } = this.props.settings
+    const presentation = frameConnectionPresentation(connectionStatus)
 
     return (
       <Surface padding='small' radius='card' tone='card'>
         <SettingsConnectionAction
-          disabled={!isConnected}
-          imageSource={isConnected ? 'icons/icon96good.png' : 'icons/icon96moon.png'}
-          label={isConnected ? 'Newframe Connected' : 'Newframe Disconnected'}
+          disabled={!presentation.connected}
+          imageSource={presentation.connected ? 'icons/icon96good.png' : 'icons/icon96moon.png'}
+          label={presentation.label}
           onPress={() => chrome.runtime.sendMessage({ method: 'frame_summon', params: [] })}
-          tone={isConnected ? 'success' : 'danger'}
+          tone={presentation.tone}
         />
       </Surface>
     )
@@ -188,17 +199,10 @@ export class SettingsView extends React.Component<SettingsViewProps, SettingsVie
 
   private siteConnection() {
     const { siteConnected: connected, currentAddress: address } = this.props.settings
-    const hasSelectedWallet = Boolean(address)
+    const presentation = siteConnectionPresentation(connected, address)
+    const value = connected ? shortAddress(presentation.value) : presentation.value
 
-    return (
-      <SettingsStatus
-        label={
-          connected ? 'Connected wallet' : hasSelectedWallet ? 'Connect in Newframe' : 'No wallet selected'
-        }
-        tone={connected || hasSelectedWallet ? 'success' : 'danger'}
-        value={hasSelectedWallet ? shortAddress(address) : 'Open Newframe to select a wallet'}
-      />
-    )
+    return <SettingsStatus label={presentation.label} tone={presentation.tone} value={value} />
   }
 
   private connectionDisclosure() {
@@ -281,13 +285,12 @@ export class SettingsView extends React.Component<SettingsViewProps, SettingsVie
   }
 
   private renderMainPanel() {
-    const isConnected = this.props.settings.connected
+    const { connectionStatus } = this.props.settings
     const { tab, isSupportedTab } = this.props
     const { protocol, origin } = parseOrigin(tab?.url)
 
-    if (!isConnected) {
-      return this.notConnected()
-    }
+    if (connectionStatus === 'desktop-unavailable') return this.desktopUnavailable()
+    if (connectionStatus === 'extension-approval-pending') return this.extensionApprovalPending()
 
     if (!isSupportedTab) {
       return this.unsupportedTab(protocol + origin)

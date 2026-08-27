@@ -4,8 +4,10 @@ import { beforeAll, expect, it } from 'bun:test'
 import { electronMock } from '../../../../test/support/electron.mock.ts'
 
 type OnTrayRendererReady = (webContents: Pick<EventEmitter, 'off' | 'once'>, ready: () => void) => () => void
+type RevealExtensionApproval = (notification: unknown, reveal: () => void) => void
 
 let onTrayRendererReady: OnTrayRendererReady
+let revealExtensionApproval: RevealExtensionApproval
 let registeredRendererReadyIpc = false
 
 beforeAll(async () => {
@@ -16,8 +18,10 @@ beforeAll(async () => {
   const implementationPath = './index.ts?lifecycle-test'
   const implementation = (await import(implementationPath)) as {
     onTrayRendererReady: OnTrayRendererReady
+    revealExtensionApproval: RevealExtensionApproval
   }
   onTrayRendererReady = implementation.onTrayRendererReady
+  revealExtensionApproval = implementation.revealExtensionApproval
   registeredRendererReadyIpc = electronMock.ipcMain.on.mock.calls.some(
     ([channel]) => channel === 'tray:ready'
   )
@@ -51,4 +55,17 @@ it('removes tray readiness when its window is destroyed before load', () => {
   webContents.emit('did-finish-load')
 
   expect(readyCount).toBe(0)
+})
+
+it('reveals the tray only for extension approval requests', () => {
+  let revealCount = 0
+  const reveal = () => {
+    revealCount += 1
+  }
+
+  revealExtensionApproval('success', reveal)
+  revealExtensionApproval('', reveal)
+  revealExtensionApproval('extensionConnect', reveal)
+
+  expect(revealCount).toBe(1)
 })
