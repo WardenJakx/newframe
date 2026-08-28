@@ -20,6 +20,7 @@ import { SettingsMode } from './SettingsMode'
 import { SettingsPanel } from './SettingsPanel'
 import { SettingsStatus } from './SettingsStatus'
 import '../styled-system/styles.css'
+import './layout.css'
 
 const APPEAR_AS_MM = '__newframeAppearAsMM__'
 const LEGACY_APPEAR_AS_MM = '__frameAppearAsMM__'
