@@ -56,6 +56,7 @@ export interface NetworkRowViewModel {
   isTestnet?: boolean
   name: string
   on: boolean
+  removable: boolean
   totalValue: number
 }
 
@@ -67,6 +68,7 @@ export interface NetworksViewProps {
   onBack: () => void
   onChangeQuery: (query: string) => void
   onChangeRpcDraft: (chainId: number, value: string) => void
+  onRemove: (chainId: number) => void
   onSaveRpc: (chainId: number) => void
   onSelect: (chainId: number) => void
   onToggleChain: (chainId: number, enabled: boolean) => void
@@ -159,6 +161,17 @@ export function NetworksView(props: NetworksViewProps) {
                     size='small'
                   >
                     <Text variant='compactAction'>{chain.on ? 'Disable Chain' : 'Enable Chain'}</Text>
+                  </Button>
+                ) : null}
+                {!chain.on && chain.removable ? (
+                  <Button
+                    appearance='danger'
+                    label={`Remove ${chain.name}`}
+                    onPress={() => props.onRemove(chain.chainId)}
+                    shape='pill'
+                    size='small'
+                  >
+                    <Text variant='compactAction'>Remove Chain</Text>
                   </Button>
                 ) : null}
                 <Button appearance='ghost' onPress={() => props.onToggleKebab(0)} shape='pill' size='small'>

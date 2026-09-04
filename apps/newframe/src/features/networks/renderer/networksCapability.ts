@@ -5,6 +5,7 @@ type Input<TType extends keyof CommandMap> = Omit<CommandMap[TType], 'type'>
 
 export interface NetworksCapability {
   resolveAddChain(input: Input<'network.request-resolve'>): Promise<CommandResult>
+  remove(input: Input<'network.remove'>): Promise<CommandResult>
   setPrimaryRpc(input: Input<'network.primary-rpc-set'>): Promise<CommandResult>
   setNetworkActivation(input: Input<'network.activation-set'>): Promise<CommandResult>
 }
@@ -12,6 +13,7 @@ export interface NetworksCapability {
 export function createNetworksCapability(host: Pick<NewframeHost, 'executeCommand'>): NetworksCapability {
   return {
     resolveAddChain: (input) => host.executeCommand({ type: 'network.request-resolve', ...input }),
+    remove: (input) => host.executeCommand({ type: 'network.remove', ...input }),
     setPrimaryRpc: (input) => host.executeCommand({ type: 'network.primary-rpc-set', ...input }),
     setNetworkActivation: (input) => host.executeCommand({ type: 'network.activation-set', ...input })
   }
