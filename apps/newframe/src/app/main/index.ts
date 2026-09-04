@@ -22,7 +22,7 @@ import { createProductionAccountsRuntime } from '../../features/accounts/main/pr
 import { createProductionImageServiceAdapters } from '../../features/asset-data/main/images/production.js'
 import { createProductionPlatformAdapters } from './platform/production.js'
 import { createProductionPortfolioAdapters } from '../../features/portfolio/main/production.js'
-import { rpcMatchesChain } from '../../features/networks/main/production.js'
+import { lookupChainlistIcon, rpcMatchesChain } from '../../features/networks/main/production.js'
 import { createProductionAccountOnboardingAdapters } from '../../features/accounts/main/accountOnboarding/production.js'
 import { createProductionSecurityAdapters } from '../../features/security/main/production.js'
 import { createProductionApiServer } from './api/index.js'
@@ -107,7 +107,7 @@ const {
     store,
     trezorBridge: TrezorBridge
   }),
-  network: { rpcMatchesChain }
+  network: { lookupChainIcon: lookupChainlistIcon, rpcMatchesChain }
 })
 const mainApp = createProductionMainApp({
   accountCapabilities,

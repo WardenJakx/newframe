@@ -43,6 +43,7 @@ const accounts: any = {}
 let connection: any
 let store: any
 let accountRequestHook: ((request: any, respond?: (response: any) => void) => void) | undefined
+const lookupChainIcon = mock(async (_chainId: number) => '')
 const requestContinuations = {
   callbacks: new Map<string, RPCRequestCallback>(),
   bind: mock(),
@@ -183,6 +184,7 @@ beforeAll(async () => {
   provider = new Provider({
     accounts,
     chains: connection,
+    lookupChainIcon,
     proxy: new EventEmitter() as any,
     state: createProviderStatePort(store),
     store,
@@ -216,6 +218,8 @@ beforeEach(() => {
 
   accountRequests = []
   accountRequestHook = undefined
+  lookupChainIcon.mockReset()
+  lookupChainIcon.mockImplementation(async () => '')
 
   connection.send = mock()
   connection.refreshGasFees = mock().mockResolvedValue(undefined)
@@ -389,11 +393,16 @@ describe('#send', () => {
       ...overrides
     })
 
-    it('should create a request to add the chain', () => {
+    it('creates an add-chain request with its Chainlist icon', async () => {
       const cb = mock()
+      lookupChainIcon.mockImplementation(
+        async () => 'https://icons.llamao.fi/icons/chains/rsz_bizarro-polygon.jpg'
+      )
       sendRequest(chainRequest(), cb)
+      await Promise.resolve()
 
       expect(accountRequests).toHaveLength(1)
+      expect(lookupChainIcon).toHaveBeenCalledWith(4660)
       expect(accountRequests[0]).toEqual(
         expect.objectContaining({
           handlerId: expect.any(String),
@@ -402,6 +411,7 @@ describe('#send', () => {
             type: 'ethereum',
             id: 4660,
             name: 'Bizarro Polygon',
+            icon: 'https://icons.llamao.fi/icons/chains/rsz_bizarro-polygon.jpg',
             symbol: 'NEW',
             nativeCurrencyName: 'New',
             primaryRpc: 'https://rpc.example.com',

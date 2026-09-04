@@ -153,13 +153,16 @@ export interface ProductionCapabilityAdapters {
   accountOnboarding: Pick<AccountOnboardingPorts, 'hardware' | 'keystore' | 'secrets' | 'signers'> & {
     dispose(): void
   }
-  network: Pick<NetworkServicePorts, 'rpcMatchesChain'>
+  network: Pick<NetworkServicePorts, 'rpcMatchesChain'> & {
+    lookupChainIcon(chainId: number): Promise<string>
+  }
 }
 
 function createProductionProvider(
   store: typeof import('../../../platform/state-store/index.js').default,
   accounts: Accounts,
   chains: Chains,
+  lookupChainIcon: (chainId: number) => Promise<string>,
   proxy: ProviderProxyConnection,
   reveal: RevealService,
   requests: RequestService
@@ -167,6 +170,7 @@ function createProductionProvider(
   return new Provider({
     accounts,
     chains,
+    lookupChainIcon,
     proxy,
     state: createProviderStatePort(store),
     store,
@@ -223,7 +227,15 @@ export function createProductionCapabilities(
     requests: requestService
   })
   const chains = new Chains(store)
-  const provider = createProductionProvider(store, accounts, chains, proxy, reveal, requestService)
+  const provider = createProductionProvider(
+    store,
+    accounts,
+    chains,
+    adapters.network.lookupChainIcon,
+    proxy,
+    reveal,
+    requestService
+  )
   const requestApprovals = createRequestApprovalAdapter(provider)
   const resolveName = (name: string) => nameResolution.resolveAddress(name)
   const accountSelection = createAccountSelectionAdapter(accounts, provider)

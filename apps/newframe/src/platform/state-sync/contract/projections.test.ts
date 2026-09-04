@@ -91,6 +91,7 @@ describe('wallet renderer projection records', () => {
         data: {
           chain: {
             id: 1,
+            icon: 'https://icons.llamao.fi/icons/chains/rsz_ethereum.jpg',
             name: 'Ethereum',
             symbol: 'ETH',
             primaryRpc: 'https://rpc.example',
@@ -110,6 +111,7 @@ describe('wallet renderer projection records', () => {
       data: {
         chain: {
           id: 1,
+          icon: 'https://icons.llamao.fi/icons/chains/rsz_ethereum.jpg',
           name: 'Ethereum',
           symbol: 'ETH',
           primaryRpc: 'https://rpc.example'

@@ -5,6 +5,7 @@ export type HomeSection = 'positions' | 'activity' | 'orders'
 interface ProposedChain {
   id?: string | number
   chainId?: string | number
+  icon?: string
   name?: string
   symbol?: string
   primaryRpc?: string
