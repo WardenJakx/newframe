@@ -73,7 +73,8 @@ export const newframePreset = definePreset({
           ...tokensWithPrefix(spacingTokens, 'nf-space-'),
           'focus-outline-offset': { value: borderTokens['nf-focus-outline-offset'] },
           'focus-outline-offset-inset': { value: borderTokens['nf-focus-outline-offset-inset'] },
-          'selection-offset': { value: sizingTokens['nf-size-selection-offset'] }
+          'selection-offset': { value: sizingTokens['nf-size-selection-offset'] },
+          'selection-menu-space': { value: sizingTokens['nf-size-selection-menu-space'] }
         },
         zIndex: tokensWithPrefix(layerTokens, 'nf-layer-')
       },

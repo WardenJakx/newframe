@@ -269,7 +269,7 @@ export class SettingsView extends React.Component<SettingsViewProps> {
     return (
       <Stack gap='small'>
         <Surface border='subtle' elevation='default' padding='small' radius='card' tone='card'>
-          <Inline align='center' gap='small' justify='between'>
+          <Inline align='start' gap='small' justify='between'>
             {this.siteConnection(origin)}
             {this.props.settings.availableChains.length > 0 ? this.chainSelect() : null}
           </Inline>

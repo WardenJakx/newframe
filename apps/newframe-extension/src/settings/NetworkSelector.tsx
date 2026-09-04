@@ -67,6 +67,7 @@ export function NetworkSelector({ label, onSelect, options }: NetworkSelectorPro
       onSelect={onSelect}
       open={open}
       placeholder={!selectedOption}
+      reserveMenuSpace
       selectedId={selectedOption?.id}
       trigger={
         selectedOption ? (

@@ -46,6 +46,7 @@ export const sizingTokens = {
   'nf-size-selection-trigger-compact': '104px',
   'nf-size-selection-offset': '54px',
   'nf-size-selection-menu': '336px',
+  'nf-size-selection-menu-space': '302px',
   'nf-size-page-popup': '360px',
   'nf-size-page-compact': '480px',
   'nf-size-dialog-compact': '292px',
