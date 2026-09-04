@@ -1,11 +1,17 @@
 /* globals chrome */
 
 import { Button } from '@newframe/ui/button'
+import { Disclosure } from '@newframe/ui/disclosure'
+import { Heading } from '@newframe/ui/heading'
 import { Icon } from '@newframe/ui/icon'
+import { Image } from '@newframe/ui/image'
+import { Inline } from '@newframe/ui/inline'
 import { UIRoot } from '@newframe/ui/root'
 import { Stack } from '@newframe/ui/stack'
+import { StatusDot } from '@newframe/ui/status-dot'
 import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
+import { ToggleButton } from '@newframe/ui/toggle-button'
 import React, { useEffect } from 'react'
 import { createRoot } from 'react-dom/client'
 import { useStore } from 'zustand'
@@ -13,12 +19,8 @@ import { useStore } from 'zustand'
 import { frameStateStore, type FrameState } from '../frameState'
 import { ChoiceGrid } from './ChoiceGrid'
 import { frameConnectionPresentation, siteConnectionPresentation } from './connectionPresentation'
-import { SettingsConnectionAction } from './SettingsConnectionAction'
-import { SettingsDisclosure } from './SettingsDisclosure'
 import { SettingsMessage } from './SettingsMessage'
-import { SettingsMode } from './SettingsMode'
 import { SettingsPanel } from './SettingsPanel'
-import { SettingsStatus } from './SettingsStatus'
 import '../styled-system/styles.css'
 
 const APPEAR_AS_MM = '__newframeAppearAsMM__'
@@ -135,7 +137,7 @@ export class SettingsView extends React.Component<SettingsViewProps, SettingsVie
     return (
       <SettingsMessage
         action={{ href: 'https://newframe.sh', label: 'Download Newframe' }}
-        detailLines={['Open the Newframe desktop app', 'on this machine to continue']}
+        detail='Open the Newframe desktop app on this machine to continue.'
         title='Newframe desktop app not found'
       />
     )
@@ -144,10 +146,7 @@ export class SettingsView extends React.Component<SettingsViewProps, SettingsVie
   private extensionApprovalPending() {
     return (
       <SettingsMessage
-        detailLines={[
-          'Newframe is open and needs your approval',
-          'Approve this extension in the desktop app'
-        ]}
+        detail='Newframe is open. Approve this extension in the desktop app.'
         title='Approve the browser extension'
       />
     )
@@ -156,8 +155,7 @@ export class SettingsView extends React.Component<SettingsViewProps, SettingsVie
   private unsupportedTab(origin: string) {
     return (
       <SettingsMessage
-        detailLines={['Newframe does not have access to', origin, 'tabs in this browser']}
-        emphasizedDetail={1}
+        detail={`Newframe cannot run on ${origin} pages in this browser.`}
         title='Unsupported tab'
       />
     )
@@ -168,32 +166,52 @@ export class SettingsView extends React.Component<SettingsViewProps, SettingsVie
     const presentation = frameConnectionPresentation(connectionStatus)
 
     return (
-      <Surface padding='small' radius='card' tone='card'>
-        <SettingsConnectionAction
+      <Surface border='subtle' padding='xsmall' radius='control' tone='card'>
+        <Button
+          appearance='ghost'
           disabled={!presentation.connected}
-          imageSource={presentation.connected ? 'icons/icon96good.png' : 'icons/icon96moon.png'}
           label={presentation.label}
           onPress={() => chrome.runtime.sendMessage({ method: 'frame_summon', params: [] })}
-          tone={presentation.tone}
-        />
+          size='large'
+          width='full'
+        >
+          <Image
+            alt=''
+            size='medium'
+            source={presentation.connected ? 'icons/icon96good.png' : 'icons/icon96moon.png'}
+          />
+          <Stack gap='none' grow>
+            <Text variant='label' tone={presentation.tone} truncate>
+              {presentation.label}
+            </Text>
+            <Text variant='caption' tone='muted'>
+              Desktop app
+            </Text>
+          </Stack>
+          <Icon name='arrowRight' size='small' tone='secondary' />
+        </Button>
       </Surface>
     )
   }
 
   private appearAsMetamaskToggle() {
-    const currentValue = this.props.mmAppear ? 'Metamask' : 'Newframe'
-    const toggleValue = this.props.mmAppear ? 'Newframe' : 'Metamask'
-
     return (
-      <SettingsMode
-        currentLabel='Injecting as'
-        currentTone={this.props.mmAppear ? 'warning' : 'success'}
-        currentValue={currentValue}
-        onToggle={() => void toggleLocalSetting(APPEAR_AS_MM)}
-        toggleLabel='Appear as'
-        toggleTone={this.props.mmAppear ? 'success' : 'warning'}
-        toggleValue={`${toggleValue} Instead`}
-      />
+      <Surface padding='small' radius='control' tone='raised'>
+        <Inline align='center' gap='small' justify='between'>
+          <Stack gap='xsmall' grow>
+            <Text variant='label'>Appear as MetaMask</Text>
+            <Text variant='caption' tone='muted'>
+              Sites currently see {this.props.mmAppear ? 'MetaMask' : 'Newframe'}
+            </Text>
+          </Stack>
+          <ToggleButton
+            appearance='switch'
+            label='Appear as MetaMask'
+            onPress={() => void toggleLocalSetting(APPEAR_AS_MM)}
+            pressed={this.props.mmAppear}
+          />
+        </Inline>
+      </Surface>
     )
   }
 
@@ -202,19 +220,20 @@ export class SettingsView extends React.Component<SettingsViewProps, SettingsVie
     const presentation = siteConnectionPresentation(connected, address)
     const value = connected ? shortAddress(presentation.value) : presentation.value
 
-    return <SettingsStatus label={presentation.label} tone={presentation.tone} value={value} />
-  }
-
-  private connectionDisclosure() {
-    const detailsOpen = this.state.connectionDetailsOpen
-
     return (
-      <SettingsDisclosure
-        description={detailsOpen ? 'Hide connection actions' : 'Network and connection'}
-        expanded={detailsOpen}
-        onPress={() => this.setState({ connectionDetailsOpen: !detailsOpen })}
-        title={this.currentChain()}
-      />
+      <Surface padding='small' radius='control' tone='raised'>
+        <Inline align='center' gap='small'>
+          <StatusDot size='medium' tone={presentation.tone} />
+          <Stack gap='xsmall' grow>
+            <Text variant='label' tone={presentation.tone} truncate>
+              {presentation.label}
+            </Text>
+            <Text variant='supporting' tone='secondary' truncate>
+              {value}
+            </Text>
+          </Stack>
+        </Inline>
+      </Surface>
     )
   }
 
@@ -230,7 +249,9 @@ export class SettingsView extends React.Component<SettingsViewProps, SettingsVie
             method: 'frame_disconnect_current_site'
           })
         }
+        shape='control'
         size='large'
+        width='full'
       >
         <Text align='center' variant='action' tone='danger'>
           Disconnect this site
@@ -299,19 +320,27 @@ export class SettingsView extends React.Component<SettingsViewProps, SettingsVie
     const detailsOpen = this.state.connectionDetailsOpen
 
     return (
-      <Surface border='subtle' elevation='default' padding='medium' radius='card' tone='secondary'>
+      <Surface border='subtle' elevation='default' padding='medium' radius='card' tone='card'>
         <Stack gap='medium'>
-          <Stack align='center' direction='row' gap='small' justify='center'>
-            <Icon name='window' size='small' />
-            <Text variant='heading'>{origin}</Text>
-          </Stack>
-          <Stack gap='xsmall'>
-            {this.siteConnection()}
-            {this.connectionDisclosure()}
-            {detailsOpen && this.props.settings.availableChains.length > 0 ? this.chainSelect() : null}
-            {detailsOpen ? this.disconnectButton() : null}
-            {this.appearAsMetamaskToggle()}
-          </Stack>
+          <Inline align='center' gap='small'>
+            <Icon name='window' size='small' tone='secondary' />
+            <Heading level={1} variant='sectionTitle' truncate>
+              {origin}
+            </Heading>
+          </Inline>
+          {this.siteConnection()}
+          <Disclosure
+            icon='settings'
+            label={`Network: ${this.currentChain()}`}
+            onToggle={() => this.setState({ connectionDetailsOpen: !detailsOpen })}
+            open={detailsOpen}
+          >
+            <Stack gap='medium'>
+              {this.props.settings.availableChains.length > 0 ? this.chainSelect() : null}
+              {this.disconnectButton()}
+            </Stack>
+          </Disclosure>
+          {this.appearAsMetamaskToggle()}
         </Stack>
       </Surface>
     )
