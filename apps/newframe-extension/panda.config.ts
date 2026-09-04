@@ -9,7 +9,7 @@ export default defineConfig({
     // Chrome sizes popups from their content. Override the shared viewport-sized,
     // clipped roots, including UIRoot's higher-priority utility-layer styles.
     'html, body, #root, .nf-root': {
-      width: 'token(sizes.page-compact) !important',
+      width: 'token(sizes.page-popup) !important',
       height: 'auto !important',
       overflow: 'visible !important'
     }
