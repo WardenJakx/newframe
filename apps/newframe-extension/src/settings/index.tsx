@@ -11,14 +11,15 @@ import { createRoot } from 'react-dom/client'
 import { useStore } from 'zustand'
 
 import { frameStateStore, type FrameState } from '../frameState'
-import { ChoiceGrid } from './ChoiceGrid'
 import { frameConnectionPresentation, siteConnectionPresentation } from './connectionPresentation'
+import { NetworkSelector } from './NetworkSelector'
 import { SettingsConnectionAction } from './SettingsConnectionAction'
 import { SettingsDisclosure } from './SettingsDisclosure'
 import { SettingsMessage } from './SettingsMessage'
 import { SettingsMode } from './SettingsMode'
 import { SettingsPanel } from './SettingsPanel'
 import { SettingsStatus } from './SettingsStatus'
+import { parseOrigin } from './siteOrigin'
 import '../styled-system/styles.css'
 
 const APPEAR_AS_MM = '__newframeAppearAsMM__'
@@ -84,22 +85,6 @@ async function toggleLocalSetting(key: string) {
     const currentValue = await getLocalSetting(activeTab.id, key)
     void setLocalSetting(activeTab.id, key, !currentValue)
     window.close()
-  }
-}
-
-const originDomainRegex = /^(?<protocol>.+:(?:\/\/)?)(?<origin>[^#/]*)/
-
-export function parseOrigin(url = ''): { protocol: string; origin: string } {
-  const match = url.match(originDomainRegex)
-
-  if (!match) {
-    console.warn(`could not parse origin: ${url}`)
-    return { protocol: '', origin: url }
-  }
-
-  return {
-    protocol: match.groups?.protocol || '',
-    origin: match.groups?.origin || url
   }
 }
 
@@ -222,20 +207,23 @@ export class SettingsView extends React.Component<SettingsViewProps, SettingsVie
     if (!this.props.settings.siteConnected) return null
 
     return (
-      <Button
-        appearance='danger'
-        onPress={() =>
-          chrome.runtime.sendMessage({
-            tab: this.props.tab,
-            method: 'frame_disconnect_current_site'
-          })
-        }
-        size='large'
-      >
-        <Text align='center' variant='action' tone='danger'>
-          Disconnect this site
-        </Text>
-      </Button>
+      <Stack align='end'>
+        <Button
+          appearance='danger'
+          onPress={() =>
+            chrome.runtime.sendMessage({
+              tab: this.props.tab,
+              method: 'frame_disconnect_current_site'
+            })
+          }
+          shape='pill'
+          size='small'
+        >
+          <Text variant='compactAction' tone='danger'>
+            Disconnect this site
+          </Text>
+        </Button>
+      </Stack>
     )
   }
 
@@ -246,7 +234,7 @@ export class SettingsView extends React.Component<SettingsViewProps, SettingsVie
     if (!tab) return null
 
     return (
-      <ChoiceGrid
+      <NetworkSelector
         label='Network'
         onSelect={(chainId) => {
           const chain = availableChains.find((candidate) => String(candidate.chainId) === chainId)
@@ -261,6 +249,7 @@ export class SettingsView extends React.Component<SettingsViewProps, SettingsVie
         }}
         options={availableChains.map((chain) => ({
           disabled: !chainConnected(chain),
+          iconUrl: chain.icon?.[0]?.url,
           id: String(chain.chainId),
           label: chain.name || String(chain.chainId),
           selected: Number(chain.chainId) === Number.parseInt(currentChain, 16)
@@ -307,9 +296,9 @@ export class SettingsView extends React.Component<SettingsViewProps, SettingsVie
           </Stack>
           <Stack gap='xsmall'>
             {this.siteConnection()}
+            {this.disconnectButton()}
             {this.connectionDisclosure()}
             {detailsOpen && this.props.settings.availableChains.length > 0 ? this.chainSelect() : null}
-            {detailsOpen ? this.disconnectButton() : null}
             {this.appearAsMetamaskToggle()}
           </Stack>
         </Stack>
@@ -364,6 +353,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const mmAppear = isInjectedTab ? await getInitialSettings(activeTab!.id!) : false
 
   if (isInjectedTab) {
+    chrome.runtime.sendMessage({ method: 'frame_refresh_chains' })
     chrome.runtime.sendMessage({ tab: activeTab, method: 'frame_refresh_origin_status' })
 
     setInterval(() => {

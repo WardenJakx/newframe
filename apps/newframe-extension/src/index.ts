@@ -366,6 +366,13 @@ function addStateListeners() {
       return
     }
 
+    if (payload.method === 'frame_refresh_chains') {
+      if (sender.tab) return
+
+      await fetchAvailableChains()
+      return
+    }
+
     if (payload.method === 'frame_summon')
       return provider!.connection.send({ jsonrpc: '2.0', id: 1, method, params })
 

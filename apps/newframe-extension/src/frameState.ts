@@ -4,6 +4,7 @@ export interface AvailableChain {
   chainId: number | string
   name?: string
   connected?: boolean
+  icon?: { url: string }[]
 }
 
 export type ConnectionStatus = 'desktop-unavailable' | 'extension-approval-pending' | 'connected'
