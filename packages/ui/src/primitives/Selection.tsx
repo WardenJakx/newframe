@@ -49,6 +49,9 @@ const selectionRecipe = sva({
       }
     },
     triggerSize: {
+      compact: {
+        menu: { insetBlockStart: 'calc(token(sizes.button-compact) + token(spacing.3))' }
+      },
       small: {
         menu: { insetBlockStart: 'calc(token(sizes.button-small) + token(spacing.3))' }
       },
@@ -79,7 +82,7 @@ export type SelectionProps = {
   placeholder?: boolean
   selectedId?: string
   trigger: ReactNode
-  triggerSize?: 'small' | 'medium'
+  triggerSize?: 'compact' | 'small' | 'medium'
 }
 
 export function Selection({

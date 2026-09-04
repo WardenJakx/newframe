@@ -14,6 +14,7 @@ const mediaIconRecipe = cva({
   },
   variants: {
     size: {
+      compact: { width: 'icon-large', height: 'icon-large' },
       small: { width: 'media-small', height: 'media-small' },
       medium: { width: 'media-medium', height: 'media-medium' }
     }

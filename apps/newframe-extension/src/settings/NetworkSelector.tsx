@@ -71,18 +71,18 @@ export function NetworkSelector({ label, onSelect, options }: NetworkSelectorPro
       trigger={
         selectedOption ? (
           <>
-            <MediaIcon source={selectedOption.iconUrl} />
-            <Text display='inline' truncate variant='control'>
+            <MediaIcon size='compact' source={selectedOption.iconUrl} />
+            <Text display='inline' truncate variant='compactAction'>
               {selectedOption.label}
             </Text>
           </>
         ) : (
-          <Text display='inline' truncate variant='control'>
+          <Text display='inline' truncate variant='compactAction'>
             {label}
           </Text>
         )
       }
-      triggerSize='small'
+      triggerSize='compact'
     />
   )
 }
