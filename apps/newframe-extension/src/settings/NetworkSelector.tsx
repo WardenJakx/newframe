@@ -1,12 +1,9 @@
-import { Button } from '@newframe/ui/button'
-import { Group } from '@newframe/ui/group'
 import { Icon } from '@newframe/ui/icon'
 import { MediaIcon } from '@newframe/ui/media-icon'
-import { ScrollArea } from '@newframe/ui/scroll-area'
 import { SearchField } from '@newframe/ui/search-field'
-import { Stack } from '@newframe/ui/stack'
+import { Selection } from '@newframe/ui/selection'
 import { Text } from '@newframe/ui/text'
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 
 export type NetworkSelectorOption = {
   disabled?: boolean
@@ -23,21 +20,22 @@ export type NetworkSelectorProps = {
 }
 
 export function NetworkSelector({ label, onSelect, options }: NetworkSelectorProps) {
+  const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
-  const selectedOption = useRef<HTMLButtonElement | null>(null)
-  const selectedId = options.find((option) => option.selected)?.id
+  const selectedOption = options.find((option) => option.selected)
   const normalizedQuery = query.trim().toLocaleLowerCase()
   const visibleOptions = normalizedQuery
     ? options.filter((option) => option.label.toLocaleLowerCase().includes(normalizedQuery))
     : options
 
-  useEffect(() => {
-    if (!query) selectedOption.current?.scrollIntoView?.({ block: 'nearest' })
-  }, [query, selectedId])
-
   return (
-    <Group label={label}>
-      <Stack gap='xsmall'>
+    <Selection
+      emptyContent={
+        <Text align='center' tone='muted' variant='supporting'>
+          No matching networks
+        </Text>
+      }
+      header={
         <SearchField
           label={`Search ${label.toLocaleLowerCase()}`}
           onChange={setQuery}
@@ -45,35 +43,46 @@ export function NetworkSelector({ label, onSelect, options }: NetworkSelectorPro
           placeholder={`Search ${label.toLocaleLowerCase()}`}
           value={query}
         />
-        <ScrollArea height='menu'>
-          <Stack gap='none'>
-            {visibleOptions.length ? (
-              visibleOptions.map((option) => (
-                <Button
-                  appearance='selectionOption'
-                  disabled={option.disabled}
-                  key={option.id}
-                  label={option.label}
-                  onPress={() => onSelect(option.id)}
-                  ref={option.selected ? selectedOption : undefined}
-                  selected={option.selected}
-                  width='full'
-                >
-                  <Icon name='check' size='small' tone='accent' visible={option.selected} />
-                  <MediaIcon source={option.iconUrl} />
-                  <Text tone={option.disabled ? 'muted' : 'primary'} truncate variant='label'>
-                    {option.label}
-                  </Text>
-                </Button>
-              ))
-            ) : (
-              <Text tone='muted' variant='supporting'>
-                No matching networks
-              </Text>
-            )}
-          </Stack>
-        </ScrollArea>
-      </Stack>
-    </Group>
+      }
+      items={visibleOptions.map((option) => ({
+        content: (
+          <>
+            <Icon name='check' size='small' tone='accent' visible={option.selected} />
+            <MediaIcon source={option.iconUrl} />
+            <Text tone={option.disabled ? 'muted' : 'primary'} truncate variant='label'>
+              {option.label}
+            </Text>
+          </>
+        ),
+        disabled: option.disabled,
+        id: option.id
+      }))}
+      label={label}
+      menuAlign='end'
+      menuWidth='wide'
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen)
+        if (!nextOpen) setQuery('')
+      }}
+      onSelect={onSelect}
+      open={open}
+      placeholder={!selectedOption}
+      selectedId={selectedOption?.id}
+      trigger={
+        selectedOption ? (
+          <>
+            <MediaIcon source={selectedOption.iconUrl} />
+            <Text display='inline' truncate variant='control'>
+              {selectedOption.label}
+            </Text>
+          </>
+        ) : (
+          <Text display='inline' truncate variant='control'>
+            {label}
+          </Text>
+        )
+      }
+      triggerSize='small'
+    />
   )
 }

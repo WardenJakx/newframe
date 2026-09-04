@@ -18,14 +18,18 @@ describe('NetworkSelector', () => {
       />
     )
 
-    const ethereum = screen.getByRole('button', { name: 'Ethereum' })
-    const optimism = screen.getByRole('button', { name: 'Optimism' })
+    const trigger = screen.getByRole('button', { name: 'Network' })
+    expect(trigger.textContent).toContain('Ethereum')
+    fireEvent.click(trigger)
+
+    const ethereum = screen.getByRole('option', { name: 'Ethereum' })
+    const optimism = screen.getByRole('option', { name: 'Optimism' })
 
     expect(ethereum.getAttribute('aria-selected')).toBe('true')
     expect((optimism as HTMLButtonElement).disabled).toBe(true)
 
-    fireEvent.click(ethereum)
     fireEvent.click(optimism)
+    fireEvent.click(ethereum)
     expect(onSelect).toHaveBeenCalledTimes(1)
     expect(onSelect).toHaveBeenCalledWith('1')
   })
@@ -42,11 +46,12 @@ describe('NetworkSelector', () => {
       />
     )
 
+    fireEvent.click(screen.getByRole('button', { name: 'Network' }))
     fireEvent.change(screen.getByRole('textbox', { name: 'Search network' }), {
       target: { value: 'opt' }
     })
 
-    expect(screen.queryByRole('button', { name: 'Ethereum' })).toBeNull()
-    expect(screen.getByRole('button', { name: 'Optimism' })).toBeTruthy()
+    expect(screen.queryByRole('option', { name: 'Ethereum' })).toBeNull()
+    expect(screen.getByRole('option', { name: 'Optimism' })).toBeTruthy()
   })
 })

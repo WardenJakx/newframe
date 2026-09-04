@@ -1,14 +1,12 @@
 /* globals chrome */
 
 import { Button } from '@newframe/ui/button'
-import { Disclosure } from '@newframe/ui/disclosure'
-import { Heading } from '@newframe/ui/heading'
 import { Icon } from '@newframe/ui/icon'
 import { Image } from '@newframe/ui/image'
 import { Inline } from '@newframe/ui/inline'
+import { MediaIcon } from '@newframe/ui/media-icon'
 import { UIRoot } from '@newframe/ui/root'
 import { Stack } from '@newframe/ui/stack'
-import { StatusDot } from '@newframe/ui/status-dot'
 import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
 import { ToggleButton } from '@newframe/ui/toggle-button'
@@ -90,11 +88,6 @@ async function toggleLocalSetting(key: string) {
   }
 }
 
-export function shortAddress(address = '') {
-  if (!address || address.length <= 14) return address
-  return `${address.slice(0, 6)}...${address.slice(-4)}`
-}
-
 const chainConnected = ({ connected }: { connected?: boolean }) => connected === undefined || connected
 
 const isInjectedUrl = (url = '') => url.startsWith('http') || url.startsWith('file')
@@ -109,15 +102,7 @@ interface SettingsViewProps extends SettingsProps {
   settings: FrameState
 }
 
-interface SettingsViewState {
-  connectionDetailsOpen: boolean
-}
-
-export class SettingsView extends React.Component<SettingsViewProps, SettingsViewState> {
-  override state = {
-    connectionDetailsOpen: false
-  }
-
+export class SettingsView extends React.Component<SettingsViewProps> {
   private desktopUnavailable() {
     return (
       <SettingsMessage
@@ -200,49 +185,41 @@ export class SettingsView extends React.Component<SettingsViewProps, SettingsVie
     )
   }
 
-  private siteConnection() {
+  private siteConnection(origin: string) {
     const { siteConnected: connected, currentAddress: address } = this.props.settings
     const presentation = siteConnectionPresentation(connected, address)
-    const value = connected ? shortAddress(presentation.value) : presentation.value
 
     return (
-      <Surface padding='small' radius='control' tone='raised'>
-        <Inline align='center' gap='small'>
-          <StatusDot size='medium' tone={presentation.tone} />
-          <Stack gap='xsmall' grow>
-            <Text variant='label' tone={presentation.tone} truncate>
-              {presentation.label}
-            </Text>
-            <Text variant='supporting' tone='secondary' truncate>
-              {value}
-            </Text>
-          </Stack>
-        </Inline>
-      </Surface>
-    )
-  }
-
-  private disconnectButton() {
-    if (!this.props.settings.siteConnected) return null
-
-    return (
-      <Stack align='end'>
-        <Button
-          appearance='danger'
-          onPress={() =>
-            chrome.runtime.sendMessage({
-              tab: this.props.tab,
-              method: 'frame_disconnect_current_site'
-            })
-          }
-          shape='pill'
-          size='small'
-        >
-          <Text variant='compactAction' tone='danger'>
-            Disconnect this site
+      <Inline align='center' gap='small' grow>
+        <MediaIcon source={this.props.tab?.favIconUrl} />
+        <Stack gap='none' grow>
+          <Text truncate variant='label'>
+            {origin}
           </Text>
-        </Button>
-      </Stack>
+          <Inline align='center' gap='xsmall'>
+            <Text tone={presentation.tone} variant='caption'>
+              {connected ? 'Connected' : presentation.label}
+            </Text>
+            {connected ? (
+              <Button
+                appearance='ghost'
+                content='icon'
+                label='Disconnect this site'
+                onPress={() =>
+                  chrome.runtime.sendMessage({
+                    tab: this.props.tab,
+                    method: 'frame_disconnect_current_site'
+                  })
+                }
+                shape='pill'
+                size='compact'
+              >
+                <Icon name='unlink' size='small' />
+              </Button>
+            ) : null}
+          </Inline>
+        </Stack>
+      </Inline>
     )
   }
 
@@ -277,21 +254,6 @@ export class SettingsView extends React.Component<SettingsViewProps, SettingsVie
     )
   }
 
-  private currentChain() {
-    try {
-      const { availableChains, currentChain } = this.props.settings
-      const currentChainId = Number.parseInt(currentChain, 16)
-      const currentChainDetails = availableChains.find(({ chainId }) => Number(chainId) === currentChainId)
-
-      if (currentChainDetails?.name) return currentChainDetails.name
-
-      const chainInteger = Number.parseInt(currentChain)
-      return Number.isNaN(chainInteger) ? '?' : chainInteger
-    } catch (error) {
-      return '?'
-    }
-  }
-
   private renderMainPanel() {
     const { connectionStatus } = this.props.settings
     const { tab, isSupportedTab } = this.props
@@ -304,30 +266,16 @@ export class SettingsView extends React.Component<SettingsViewProps, SettingsVie
       return this.unsupportedTab(protocol + origin)
     }
 
-    const detailsOpen = this.state.connectionDetailsOpen
-
     return (
-      <Surface border='subtle' elevation='default' padding='medium' radius='card' tone='card'>
-        <Stack gap='medium'>
-          <Inline align='center' gap='small'>
-            <Icon name='window' size='small' tone='secondary' />
-            <Heading level={1} variant='sectionTitle' truncate>
-              {origin}
-            </Heading>
-          </Inline>
-          {this.siteConnection()}
-          <Disclosure
-            icon='settings'
-            label={`Network: ${this.currentChain()}`}
-            onToggle={() => this.setState({ connectionDetailsOpen: !detailsOpen })}
-            open={detailsOpen}
-          >
+      <Stack gap='small'>
+        <Surface border='subtle' elevation='default' padding='small' radius='card' tone='card'>
+          <Inline align='center' gap='small' justify='between'>
+            {this.siteConnection(origin)}
             {this.props.settings.availableChains.length > 0 ? this.chainSelect() : null}
-          </Disclosure>
-          {this.disconnectButton()}
-          {this.appearAsMetamaskToggle()}
-        </Stack>
-      </Surface>
+          </Inline>
+        </Surface>
+        {this.appearAsMetamaskToggle()}
+      </Stack>
     )
   }
 
