@@ -5,32 +5,22 @@ import { Text } from '@newframe/ui/text'
 
 export type SettingsMessageProps = {
   action?: { href: string; label: string }
-  detailLines: readonly string[]
-  emphasizedDetail?: number
+  detail: string
   title: string
 }
 
-export function SettingsMessage({ action, detailLines, emphasizedDetail, title }: SettingsMessageProps) {
+export function SettingsMessage({ action, detail, title }: SettingsMessageProps) {
   return (
     <Surface border='subtle' elevation='default' padding='large' radius='card' tone='card'>
-      <Stack align='center' gap='large'>
-        <Text as='strong' align='center' variant='heading'>
+      <Stack align='center' gap='medium'>
+        <Text as='strong' align='center' variant='sectionTitle'>
           {title}
         </Text>
-        <Stack align='center' gap='xsmall'>
-          {detailLines.map((line, index) => (
-            <Text
-              align='center'
-              key={`${index}-${line}`}
-              variant='label'
-              tone={index === emphasizedDetail ? 'danger' : 'secondary'}
-            >
-              {line}
-            </Text>
-          ))}
-        </Stack>
+        <Text align='center' variant='body' tone='secondary'>
+          {detail}
+        </Text>
         {action ? (
-          <Link appearance='action' external href={action.href}>
+          <Link external href={action.href}>
             <Text display='inline' variant='action' tone='accent'>
               {action.label}
             </Text>

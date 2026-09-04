@@ -6,12 +6,12 @@ import { cva } from '../styled-system/css/cva.js'
 const settingsPanelRecipe = cva({
   base: {
     position: 'relative',
-    width: 'page-compact',
+    width: 'page-popup',
     maxHeight: 'page-max-block',
     overflowX: 'hidden',
     overflowY: 'auto',
-    padding: '5',
-    background: 'bg.secondary'
+    padding: '6',
+    background: 'bg.primary'
   }
 })
 
