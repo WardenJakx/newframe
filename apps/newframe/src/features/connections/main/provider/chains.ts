@@ -1,5 +1,6 @@
 import { isDeepStrictEqual } from 'util'
 
+import { persistedImageSource } from '../../../asset-data/domain/image/index.js'
 import { getColor } from '../../../networks/domain/chain/colors.js'
 import type { Chain, ChainMetadata, Origin } from '../../../../platform/state-store/state/index.js'
 import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.js'
@@ -81,10 +82,11 @@ function getActiveChains(store: CanonicalStoreApi): RPC.GetEthereumChains.Chain[
     .sort((a, b) => a.id - b.id)
     .map((chain) => {
       const { id, explorer, name } = chain
-      const { nativeCurrency, primaryColor } = meta[id]
-      const { icon: currencyIcon, name: currencyName, symbol, decimals } = nativeCurrency
+      const { icon, image, nativeCurrency, primaryColor } = meta[id]
+      const { name: currencyName, symbol, decimals } = nativeCurrency
 
-      const icons = currencyIcon ? [{ url: currencyIcon }] : []
+      const iconUrl = persistedImageSource(image) || icon
+      const icons = iconUrl ? [{ url: iconUrl }] : []
       const colors = primaryColor ? [getColor(primaryColor)] : []
 
       return {

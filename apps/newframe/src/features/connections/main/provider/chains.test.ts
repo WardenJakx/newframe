@@ -25,7 +25,12 @@ const chains: any = {
 }
 
 const chainMeta: any = {
-  1: { nativeCurrency: ether, primaryColor: 'accent1' },
+  1: {
+    icon: 'https://chain-icons.example/ethereum.png',
+    image: { base64: 'aWNvbg==', contentHash: 'test-icon', mimeType: 'image/png' },
+    nativeCurrency: ether,
+    primaryColor: 'accent1'
+  },
   137: { nativeCurrency: {}, primaryColor: 'accent6' },
   11155111: { nativeCurrency: { ...ether, name: 'Sepolia Ether' }, primaryColor: 'accent2' }
 }
@@ -53,12 +58,18 @@ describe('#getActiveChains', () => {
       chainId: 1,
       networkId: 1,
       name: 'Ethereum Mainnet',
-      icon: [{ url: 'https://assets.coingecko.com/coins/images/ethereum.png' }],
+      icon: [{ url: 'data:image/png;base64,aWNvbg==' }],
       nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
       explorers: [{ url: 'https://etherscan.io' }],
       external: { wallet: { colors: [{ r: 0, g: 210, b: 190, hex: '#00d2be' }] } },
       connected: true
     })
+  })
+
+  it('does not substitute native-currency art for a missing network icon', () => {
+    const sepolia = getActiveChains(store).find((chain) => chain.chainId === 11155111)
+
+    expect(sepolia?.icon).toEqual([])
   })
 })
 

@@ -142,6 +142,11 @@
       "import": "./dist/primitives/MediaBadge.js",
       "default": "./dist/primitives/MediaBadge.js"
     },
+    "./media-icon": {
+      "types": "./dist/primitives/MediaIcon.d.ts",
+      "import": "./dist/primitives/MediaIcon.js",
+      "default": "./dist/primitives/MediaIcon.js"
+    },
     "./status-dot": {
       "types": "./dist/primitives/StatusDot.d.ts",
       "import": "./dist/primitives/StatusDot.js",

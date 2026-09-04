@@ -259,6 +259,17 @@ export const buttonRecipe = cva({
       appearance: 'selectionTrigger',
       size: 'small',
       css: { width: '100%', height: 'button-small', minHeight: 'button-small' }
+    },
+    {
+      appearance: 'selectionTrigger',
+      size: 'compact',
+      css: {
+        width: 'selection-trigger-compact',
+        height: 'button-compact',
+        minHeight: 'button-compact',
+        gap: '2',
+        paddingInline: '2'
+      }
     }
   ],
   defaultVariants: {

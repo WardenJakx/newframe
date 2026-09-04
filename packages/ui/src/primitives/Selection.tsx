@@ -29,6 +29,10 @@ const selectionRecipe = sva({
     footer: { marginBlockStart: '2' }
   },
   variants: {
+    reserveMenuSpace: {
+      true: { root: { paddingBlockEnd: 'selection-menu-space' } },
+      false: {}
+    },
     menuAlign: {
       start: { menu: { insetInlineStart: 0 } },
       center: {
@@ -49,6 +53,9 @@ const selectionRecipe = sva({
       }
     },
     triggerSize: {
+      compact: {
+        menu: { insetBlockStart: 'calc(token(sizes.button-compact) + token(spacing.3))' }
+      },
       small: {
         menu: { insetBlockStart: 'calc(token(sizes.button-small) + token(spacing.3))' }
       },
@@ -77,9 +84,10 @@ export type SelectionProps = {
   onSelect: (id: string) => void
   open: boolean
   placeholder?: boolean
+  reserveMenuSpace?: boolean
   selectedId?: string
   trigger: ReactNode
-  triggerSize?: 'small' | 'medium'
+  triggerSize?: 'compact' | 'small' | 'medium'
 }
 
 export function Selection({
@@ -95,11 +103,17 @@ export function Selection({
   onSelect,
   open,
   placeholder = false,
+  reserveMenuSpace = false,
   selectedId,
   trigger,
   triggerSize = 'medium'
 }: SelectionProps) {
-  const styles = selectionRecipe({ menuAlign, menuWidth, triggerSize })
+  const styles = selectionRecipe({
+    menuAlign,
+    menuWidth,
+    reserveMenuSpace: reserveMenuSpace && open,
+    triggerSize
+  })
   const root = useRef<HTMLDivElement | null>(null)
   const listboxId = useId()
   const selectedIndex = items.findIndex((item) => item.id === selectedId && !item.disabled)

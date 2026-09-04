@@ -10,7 +10,8 @@ describe('Selection', () => {
     const selection = (
       menuAlign?: 'start' | 'center' | 'end',
       menuWidth?: 'trigger' | 'wide',
-      triggerSize?: 'small' | 'medium'
+      triggerSize?: 'compact' | 'small' | 'medium',
+      reserveMenuSpace?: boolean
     ) => (
       <Selection
         items={[{ content: <Text>Alpha</Text>, id: 'alpha' }]}
@@ -20,6 +21,7 @@ describe('Selection', () => {
         onOpenChange={() => undefined}
         onSelect={() => undefined}
         open
+        reserveMenuSpace={reserveMenuSpace}
         selectedId='alpha'
         trigger={<Text>Alpha</Text>}
         triggerSize={triggerSize}
@@ -41,6 +43,16 @@ describe('Selection', () => {
     expect(menu.classList.contains('inset-s_50%')).toBe(true)
     expect(menu.classList.contains('trf_translateX(-50%)')).toBe(true)
     expect(menu.classList.contains('inset-bs_calc(token(sizes.button-small)_+_token(spacing.3))')).toBe(true)
+
+    rerender(selection('end', 'wide', 'compact', true))
+
+    const compactTrigger = screen.getByRole('button', { name: 'Assets' })
+    expect(compactTrigger.classList.contains('w_selection-trigger-compact')).toBe(true)
+    expect(compactTrigger.classList.contains('h_button-compact')).toBe(true)
+    expect(compactTrigger.parentElement?.classList.contains('pbe_selection-menu-space')).toBe(true)
+    expect(menu.classList.contains('inset-bs_calc(token(sizes.button-compact)_+_token(spacing.3))')).toBe(
+      true
+    )
   })
 
   it('owns listbox navigation and returns semantic values', async () => {
