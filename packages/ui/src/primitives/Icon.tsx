@@ -140,6 +140,10 @@ const iconRecipe = cva({
     '& > svg': { display: 'block', width: '100%', height: '100%' }
   },
   variants: {
+    visible: {
+      true: {},
+      false: { visibility: 'hidden' }
+    },
     size: {
       small: { width: 'icon-small', height: 'icon-small' },
       medium: { width: 'icon-medium', height: 'icon-medium' },
@@ -157,17 +161,17 @@ const iconRecipe = cva({
       special: { color: 'status.special' }
     }
   },
-  defaultVariants: { size: 'medium', tone: 'inherit' }
+  defaultVariants: { size: 'medium', tone: 'inherit', visible: true }
 })
 
 export type IconProps = RecipeVariantProps<typeof iconRecipe> & {
   name: IconName
 }
 
-export function Icon({ name, size, tone }: IconProps) {
+export function Icon({ name, size, tone, visible }: IconProps) {
   const icon = icons[name]
   return (
-    <span aria-hidden='true' className={iconRecipe({ size, tone })}>
+    <span aria-hidden='true' className={iconRecipe({ size, tone, visible })}>
       <svg focusable='false' viewBox={icon.viewBox}>
         <path d={icon.path} fill='currentColor' />
       </svg>
