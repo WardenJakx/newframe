@@ -52,7 +52,7 @@ describe('#deriveAddresses', () => {
 
     expect(addresses.length).toBe(100)
     expect(addresses[0].toLowerCase()).toBe('0x46bdba9c90ea453426d0b8d4a7a8a99b8a9dade5')
-  }, 200)
+  })
 
   it('derives standard addresses', async () => {
     const replayData = `
