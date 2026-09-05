@@ -86,6 +86,7 @@ describe('#addNetwork', () => {
     actions.addNetwork({
       ...polygonNetwork,
       id: '123456',
+      icon: 'https://icons.llamao.fi/icons/chains/rsz_polygon.jpg',
       primaryRpc: 'https://polygon-rpc.com',
       secondaryRpc: 'https://rpc-mainnet.matic.network'
     })
@@ -134,7 +135,7 @@ describe('#addNetwork', () => {
       metadata: {
         name: 'Polygon',
         primaryColor: 'accent1',
-        icon: '',
+        icon: 'https://icons.llamao.fi/icons/chains/rsz_polygon.jpg',
         nativeCurrency: {
           symbol: 'MATIC',
           name: '',

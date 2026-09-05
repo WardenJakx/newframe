@@ -898,8 +898,10 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
     addNetwork: (net: any) => {
       try {
         const network = { ...net, id: validateNetworkSettings(net) }
+        const icon = network.icon || ''
         const primaryRpc = network.primaryRpc || ''
         const secondaryRpc = network.secondaryRpc || ''
+        delete network.icon
         delete network.primaryRpc
         delete network.secondaryRpc
 
@@ -942,7 +944,7 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
         const defaultMeta = {
           name: network.name,
           primaryColor: /^accent[1-8]$/.test(network.primaryColor) ? network.primaryColor : 'accent1',
-          icon: network.icon || '',
+          icon,
           nativeCurrency: {
             symbol: network.symbol,
             icon: network.nativeCurrencyIcon || '',

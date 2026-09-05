@@ -98,6 +98,7 @@ type AccountHandle = NonNullable<ReturnType<AccountRequestPort['getFrameAccount'
 export interface ProviderDependencies {
   accounts: AccountRequestPort
   chains: Chains
+  lookupChainIcon?: (chainId: number) => Promise<string>
   proxy: ProviderProxyConnection
   state: ProviderStatePort
   store: CanonicalStoreReader
@@ -120,16 +121,27 @@ export class Provider extends EventEmitter {
 
   private readonly accounts: AccountRequestPort
   readonly connection: Chains
+  private readonly lookupChainIcon?: (chainId: number) => Promise<string>
   private readonly proxy: ProviderProxyConnection
   private readonly state: ProviderStatePort
   private readonly store: CanonicalStoreReader
   private readonly reveal: Pick<RevealService, 'resolveEntityType'>
   private readonly requests: PromptedRequestContinuationPort
 
-  constructor({ accounts, chains, proxy, state, store, reveal, requests }: ProviderDependencies) {
+  constructor({
+    accounts,
+    chains,
+    lookupChainIcon,
+    proxy,
+    state,
+    store,
+    reveal,
+    requests
+  }: ProviderDependencies) {
     super()
     this.accounts = accounts
     this.connection = chains
+    this.lookupChainIcon = lookupChainIcon
     this.proxy = proxy
     this.state = state
     this.store = store
@@ -1273,7 +1285,11 @@ export class Provider extends EventEmitter {
     }
   }
 
-  private addEthereumChain(payload: RPCRequestPayload, res: RPCRequestCallback, principal: TrustedPrincipal) {
+  private async addEthereumChain(
+    payload: RPCRequestPayload,
+    res: RPCRequestCallback,
+    principal: TrustedPrincipal
+  ) {
     if (!payload.params[0]) return resError('addChain request missing params', payload, res)
 
     const type = 'ethereum'
@@ -1318,6 +1334,15 @@ export class Provider extends EventEmitter {
       }
     }
 
+    let icon = ''
+    if (!existing && this.lookupChainIcon) {
+      try {
+        icon = await this.lookupChainIcon(id)
+      } catch (error) {
+        log.warn('Could not look up Chainlist icon', { chainId: id, error })
+      }
+    }
+
     const handlerId = this.requests.create(res)
     const metadata = this.store.getState().main.networksMeta[type][id]
     const requestChain = existing
@@ -1336,7 +1361,8 @@ export class Provider extends EventEmitter {
           primaryRpc: rpcUrls[0],
           secondaryRpc: rpcUrls[1],
           explorer: blockExplorerUrls[0] || '',
-          nativeCurrencyName: nativeCurrency.name
+          nativeCurrencyName: nativeCurrency.name,
+          ...(icon ? { icon } : {})
         }
     this.accounts.routeRequest(principal, {
       handlerId,

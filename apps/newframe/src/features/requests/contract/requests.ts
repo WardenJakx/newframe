@@ -56,6 +56,7 @@ type ChainRequestData = {
   id: number
   type: string
   name: string
+  icon?: string
   symbol?: string
   explorer?: string
   primaryRpc?: string

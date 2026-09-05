@@ -21,6 +21,7 @@ const WalletNavigationChainSchema = z
   .object({
     id: z.union([z.string(), z.number()]).optional(),
     chainId: z.union([z.string(), z.number()]).optional(),
+    icon: z.string().optional(),
     name: z.string().optional(),
     symbol: z.string().optional(),
     primaryRpc: z.string().optional(),
