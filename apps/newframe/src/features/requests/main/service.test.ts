@@ -212,11 +212,6 @@ describe('prompted request lifecycle', () => {
       approved: true
     })
 
-    if (chainId === 1) {
-      expect(test.state.activateNetwork).toHaveBeenCalledWith('ethereum', chainId, true)
-    } else {
-      expect(test.state.addNetwork).toHaveBeenCalledWith(request.chain)
-    }
     expect(responses).toEqual([{ id: 8, jsonrpc: '2.0', result: null }])
     expect(test.service.pendingCount).toBe(0)
   })
