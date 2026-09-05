@@ -448,7 +448,7 @@ export function createRequestService(ports: RequestServicePorts) {
           }
           state.addNetwork(chain)
         }
-        if (request) located?.account.resolveRequest(request)
+        if (request) located?.account.resolveRequest(request, null)
       } else if (request) {
         located?.account.rejectRequest(request, { code: 4001, message: 'User rejected the request' })
       }

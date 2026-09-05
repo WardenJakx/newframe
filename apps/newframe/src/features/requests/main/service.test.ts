@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test'
 
-import type { AccountRequest, TransactionRequest } from '../contract/requests'
+import type { AccountRequest, AddChainRequest, TransactionRequest } from '../contract/requests'
 import { TxClassification } from '../contract/requests'
 import { GasFeesSource } from '../../transactions/domain'
 import { createRequestService, type RequestService } from './service'
@@ -178,6 +178,42 @@ describe('prompted request lifecycle', () => {
 
   beforeEach(() => {
     test = fixture()
+  })
+
+  it.each([1, 8453])('returns null after approving chain %i', async (chainId) => {
+    const request: AddChainRequest = {
+      handlerId: 'add-chain',
+      type: 'addChain',
+      origin: 'app.example',
+      account: accountId,
+      chain: {
+        id: chainId,
+        type: 'ethereum',
+        name: 'Test chain',
+        symbol: 'ETH',
+        primaryRpc: 'https://rpc.example'
+      },
+      payload: {
+        id: 8,
+        jsonrpc: '2.0',
+        method: 'wallet_addEthereumChain',
+        params: [{ chainId: `0x${chainId.toString(16)}` }]
+      }
+    }
+    const responses: RPCResponsePayload[] = []
+    test.add(request, (response) => responses.push(response))
+
+    test.service.reviewAddChain(request.handlerId)
+    expect(responses).toEqual([])
+
+    await test.service.resolveNetwork({
+      type: 'network.request-resolve',
+      requestId: request.handlerId,
+      approved: true
+    })
+
+    expect(responses).toEqual([{ id: 8, jsonrpc: '2.0', result: null }])
+    expect(test.service.pendingCount).toBe(0)
   })
 
   it('owns one continuation keyed by request ID and settles it exactly once', () => {
