@@ -1,0 +1,528 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["unicorn"],
+  "categories": {
+    "correctness": "off"
+  },
+  "env": {
+    "builtin": true
+  },
+  "ignorePatterns": [
+    "node_modules/**/*",
+    "**/node_modules/**/*",
+    ".husky/_/**/*",
+    ".claude/**/*",
+    ".codex/**/*",
+    ".docs/**/*",
+    ".playwright-cli/**/*",
+    "**/.playwright-cli/**/*",
+    "apps/newframe/bundle/**/*",
+    "apps/newframe/compiled/**/*",
+    "apps/newframe/dist/**/*",
+    "apps/newframe/dist-preview/**/*",
+    "apps/newframe/build/icons/**/*",
+    "apps/newframe/test/e2e/**/*",
+    "apps/newframe/src/platform/signing/signers/**/*",
+    "!apps/newframe/src/platform/signing/signers/**/*/",
+    "!apps/newframe/src/platform/signing/signers/**/*.{test,spec}.{ts,tsx}",
+    "apps/newframe-extension/dist/**/*",
+    "apps/newframe-extension/.cache/**/*",
+    "packages/ui/dist/**/*",
+    "packages/ui/src/styled-system/**/*",
+    "apps/newframe-extension/src/styled-system/**/*"
+  ],
+  "rules": {},
+  "overrides": [
+    {
+      "files": ["**/*.{js,mjs,ts,tsx}"],
+      "rules": {
+        "constructor-super": "error",
+        "for-direction": "error",
+        "getter-return": "error",
+        "no-async-promise-executor": "error",
+        "no-case-declarations": "error",
+        "no-class-assign": "error",
+        "no-compare-neg-zero": "error",
+        "no-cond-assign": "error",
+        "no-const-assign": "error",
+        "no-constant-binary-expression": "error",
+        "no-constant-condition": "error",
+        "no-control-regex": "error",
+        "no-debugger": "error",
+        "no-delete-var": "error",
+        "no-dupe-class-members": "error",
+        "no-dupe-else-if": "error",
+        "no-dupe-keys": "error",
+        "no-duplicate-case": "error",
+        "no-empty": "error",
+        "no-empty-character-class": "error",
+        "no-empty-pattern": "error",
+        "no-empty-static-block": "error",
+        "no-ex-assign": "error",
+        "no-extra-boolean-cast": "error",
+        "no-fallthrough": "error",
+        "no-func-assign": "error",
+        "no-global-assign": "error",
+        "no-import-assign": "error",
+        "no-invalid-regexp": "error",
+        "no-irregular-whitespace": "error",
+        "no-loss-of-precision": "error",
+        "no-misleading-character-class": "error",
+        "no-new-native-nonconstructor": "error",
+        "no-nonoctal-decimal-escape": "error",
+        "no-obj-calls": "error",
+        "no-prototype-builtins": "error",
+        "no-redeclare": "error",
+        "no-regex-spaces": "error",
+        "no-self-assign": "error",
+        "no-setter-return": "error",
+        "no-shadow-restricted-names": "error",
+        "no-sparse-arrays": "error",
+        "no-this-before-super": "error",
+        "no-unassigned-vars": "warn",
+        "no-undef": "error",
+        "no-unreachable": "error",
+        "no-unsafe-finally": "error",
+        "no-unsafe-negation": "error",
+        "no-unsafe-optional-chaining": "error",
+        "no-unused-labels": "error",
+        "no-unused-private-class-members": "error",
+        "no-unused-vars": [
+          "error",
+          {
+            "args": "after-used",
+            "ignoreRestSiblings": true,
+            "argsIgnorePattern": "^_",
+            "destructuredArrayIgnorePattern": "^_",
+            "caughtErrors": "none"
+          }
+        ],
+        "no-useless-assignment": "warn",
+        "no-useless-backreference": "error",
+        "no-useless-catch": "error",
+        "no-useless-escape": "error",
+        "no-with": "error",
+        "preserve-caught-error": "error",
+        "require-yield": "error",
+        "use-isnan": "error",
+        "valid-typeof": "error"
+      },
+      "env": {
+        "es2026": true
+      }
+    },
+    {
+      "files": [
+        "scripts/**/*.ts",
+        "harness/**/*.ts",
+        "packages/ui/scripts/**/*.ts",
+        "packages/ui/test/**/*.{ts,tsx}",
+        "apps/newframe/*.{js,mjs,ts}",
+        "apps/newframe/scripts/**/*.ts",
+        "apps/newframe/src/**/*.{js,ts}",
+        "apps/newframe/build/**/*.{js,ts}",
+        "apps/newframe/test/support/**/*.{ts,tsx}"
+      ],
+      "globals": {
+        "AsyncDisposableStack": "readonly",
+        "DisposableStack": "readonly",
+        "SuppressedError": "readonly"
+      },
+      "env": {
+        "node": true
+      }
+    },
+    {
+      "files": [
+        "scripts/**/*.{ts,tsx}",
+        "harness/**/*.{ts,tsx}",
+        "packages/ui/**/*.{ts,tsx}",
+        "apps/newframe/**/*.{ts,tsx}",
+        "apps/newframe-extension/**/*.{ts,tsx}"
+      ],
+      "rules": {
+        "constructor-super": "off",
+        "getter-return": "off",
+        "no-class-assign": "off",
+        "no-const-assign": "off",
+        "no-dupe-class-members": "off",
+        "no-dupe-keys": "off",
+        "no-func-assign": "off",
+        "no-import-assign": "off",
+        "no-new-native-nonconstructor": "off",
+        "no-obj-calls": "off",
+        "no-redeclare": "off",
+        "no-setter-return": "off",
+        "no-this-before-super": "off",
+        "no-undef": "off",
+        "no-unreachable": "off",
+        "no-unsafe-negation": "off",
+        "no-var": "error",
+        "no-with": "off",
+        "prefer-const": "error",
+        "prefer-rest-params": "error",
+        "prefer-spread": "error",
+        "no-array-constructor": "error",
+        "no-unused-expressions": "error",
+        "no-unused-vars": [
+          "error",
+          {
+            "args": "after-used",
+            "ignoreRestSiblings": true,
+            "argsIgnorePattern": "^_",
+            "destructuredArrayIgnorePattern": "^_",
+            "caughtErrors": "none"
+          }
+        ],
+        "typescript/ban-ts-comment": [
+          "error",
+          {
+            "ts-nocheck": "allow-with-description",
+            "ts-expect-error": "allow-with-description"
+          }
+        ],
+        "typescript/no-duplicate-enum-values": "error",
+        "typescript/no-empty-object-type": "error",
+        "typescript/no-explicit-any": "warn",
+        "typescript/no-extra-non-null-assertion": "error",
+        "typescript/no-misused-new": "error",
+        "typescript/no-namespace": [
+          "error",
+          {
+            "allowDeclarations": true
+          }
+        ],
+        "typescript/no-non-null-asserted-optional-chain": "error",
+        "typescript/no-require-imports": "error",
+        "typescript/no-this-alias": "error",
+        "typescript/no-unnecessary-type-constraint": "error",
+        "typescript/no-unsafe-declaration-merging": "error",
+        "typescript/no-unsafe-function-type": "error",
+        "typescript/no-wrapper-object-types": "error",
+        "typescript/prefer-as-const": "error",
+        "typescript/prefer-namespace-keyword": "off",
+        "typescript/triple-slash-reference": "error",
+        "no-empty-function": [
+          "error",
+          {
+            "allow": ["arrowFunctions"]
+          }
+        ]
+      },
+      "plugins": ["typescript"]
+    },
+    {
+      "files": ["test/unit/**/*.{ts,tsx}"],
+      "globals": {
+        "AsyncDisposableStack": "readonly",
+        "DisposableStack": "readonly",
+        "SuppressedError": "readonly",
+        "Bun": "readonly",
+        "afterAll": "readonly",
+        "afterEach": "readonly",
+        "beforeAll": "readonly",
+        "beforeEach": "readonly",
+        "describe": "readonly",
+        "expect": "readonly",
+        "it": "readonly",
+        "jest": "readonly",
+        "test": "readonly",
+        "xdescribe": "readonly",
+        "xit": "readonly",
+        "xtest": "readonly"
+      },
+      "env": {
+        "node": true
+      },
+      "rules": {
+        "constructor-super": "off",
+        "getter-return": "off",
+        "no-class-assign": "off",
+        "no-const-assign": "off",
+        "no-dupe-class-members": "off",
+        "no-dupe-keys": "off",
+        "no-func-assign": "off",
+        "no-import-assign": "off",
+        "no-new-native-nonconstructor": "off",
+        "no-obj-calls": "off",
+        "no-redeclare": "off",
+        "no-setter-return": "off",
+        "no-this-before-super": "off",
+        "no-undef": "off",
+        "no-unreachable": "off",
+        "no-unsafe-negation": "off",
+        "no-var": "error",
+        "no-with": "off",
+        "prefer-const": "error",
+        "prefer-rest-params": "error",
+        "prefer-spread": "error",
+        "no-array-constructor": "error",
+        "no-unused-expressions": "error",
+        "no-unused-vars": [
+          "error",
+          {
+            "args": "after-used",
+            "ignoreRestSiblings": true,
+            "argsIgnorePattern": "^_",
+            "destructuredArrayIgnorePattern": "^_",
+            "caughtErrors": "none"
+          }
+        ],
+        "typescript/ban-ts-comment": [
+          "error",
+          {
+            "ts-nocheck": "allow-with-description",
+            "ts-expect-error": "allow-with-description"
+          }
+        ],
+        "typescript/no-duplicate-enum-values": "error",
+        "typescript/no-empty-object-type": "error",
+        "typescript/no-explicit-any": "warn",
+        "typescript/no-extra-non-null-assertion": "error",
+        "typescript/no-misused-new": "error",
+        "typescript/no-namespace": [
+          "error",
+          {
+            "allowDeclarations": true
+          }
+        ],
+        "typescript/no-non-null-asserted-optional-chain": "error",
+        "typescript/no-require-imports": "error",
+        "typescript/no-this-alias": "error",
+        "typescript/no-unnecessary-type-constraint": "error",
+        "typescript/no-unsafe-declaration-merging": "error",
+        "typescript/no-unsafe-function-type": "error",
+        "typescript/no-wrapper-object-types": "error",
+        "typescript/prefer-as-const": "error",
+        "typescript/prefer-namespace-keyword": "off",
+        "typescript/triple-slash-reference": "error",
+        "no-empty-function": [
+          "error",
+          {
+            "allow": ["arrowFunctions"]
+          }
+        ]
+      },
+      "plugins": ["typescript"]
+    },
+    {
+      "files": ["packages/ui/src/**/*.{ts,tsx}"],
+      "globals": {
+        "AsyncDisposableStack": "readonly",
+        "DisposableStack": "readonly",
+        "SuppressedError": "readonly"
+      },
+      "env": {
+        "browser": true
+      }
+    },
+    {
+      "files": [
+        "packages/ui/src/**/*.tsx",
+        "packages/ui/test/**/*.tsx",
+        "apps/newframe/src/renderer/**/*.{ts,tsx}",
+        "apps/newframe/src/**/renderer/**/*.{ts,tsx}",
+        "apps/newframe/test/support/componentSetup.tsx",
+        "apps/newframe-extension/src/**/*.{ts,tsx}"
+      ],
+      "rules": {
+        "react/display-name": "error",
+        "react/jsx-key": "error",
+        "react/jsx-no-comment-textnodes": "error",
+        "react/jsx-no-duplicate-props": "error",
+        "react/jsx-no-target-blank": "error",
+        "react/jsx-no-undef": "error",
+        "react/no-children-prop": "error",
+        "react/no-danger-with-children": "error",
+        "react/no-direct-mutation-state": "error",
+        "react/no-find-dom-node": "error",
+        "react/no-is-mounted": "error",
+        "react/no-render-return-value": "error",
+        "react/no-string-refs": "error",
+        "react/no-unescaped-entities": "error",
+        "react/no-unknown-property": "error",
+        "react/no-unsafe": "off",
+        "react/react-in-jsx-scope": "off",
+        "react/require-render-return": "error",
+        "react/rules-of-hooks": "error",
+        "react/exhaustive-deps": "error",
+        "react/static-components": "error",
+        "react/use-memo": "error",
+        "react/void-use-memo": "error",
+        "react/preserve-manual-memoization": "error",
+        "react/incompatible-library": "warn",
+        "react/immutability": "error",
+        "react/globals": "error",
+        "react/refs": "error",
+        "react/set-state-in-effect": "error",
+        "react/error-boundaries": "error",
+        "react/purity": "error",
+        "react/set-state-in-render": "error",
+        "react/unsupported-syntax": "warn",
+        "react-js/no-deprecated": "error",
+        "react-hooks-js/config": "error",
+        "react-hooks-js/gating": "error"
+      },
+      "plugins": ["react"],
+      "jsPlugins": [
+        {
+          "name": "react-js",
+          "specifier": "eslint-plugin-react"
+        },
+        {
+          "name": "react-hooks-js",
+          "specifier": "eslint-plugin-react-hooks"
+        }
+      ]
+    },
+    {
+      "files": ["packages/ui/src/**/*.tsx"],
+      "rules": {
+        "react/no-multi-comp": [
+          "error",
+          {
+            "ignoreStateless": false
+          }
+        ]
+      },
+      "plugins": ["react"]
+    },
+    {
+      "files": [
+        "packages/ui/test/**/*.{ts,tsx}",
+        "apps/newframe/**/*.{test,spec}.{ts,tsx}",
+        "apps/newframe/**/*.test-support.{ts,tsx}",
+        "apps/newframe/**/*.test-fixture.{ts,tsx}",
+        "apps/newframe/test/support/**/*.{ts,tsx}",
+        "apps/newframe/**/__mocks__/**/*.ts"
+      ],
+      "globals": {
+        "afterAll": "readonly",
+        "afterEach": "readonly",
+        "beforeAll": "readonly",
+        "beforeEach": "readonly",
+        "describe": "readonly",
+        "expect": "readonly",
+        "it": "readonly",
+        "jest": "readonly",
+        "test": "readonly",
+        "xdescribe": "readonly",
+        "xit": "readonly",
+        "xtest": "readonly"
+      }
+    },
+    {
+      "files": [
+        "apps/newframe/src/renderer/**/*.{ts,tsx}",
+        "apps/newframe/src/**/renderer/**/*.{ts,tsx}",
+        "apps/newframe/src/preload/**/*.ts",
+        "apps/newframe/test/support/componentSetup.tsx"
+      ],
+      "globals": {
+        "AsyncDisposableStack": "readonly",
+        "DisposableStack": "readonly",
+        "SuppressedError": "readonly",
+        "global": "writable"
+      },
+      "env": {
+        "browser": true
+      }
+    },
+    {
+      "files": ["apps/newframe/src/renderer/*/index.tsx"],
+      "globals": {
+        "process": "writable"
+      }
+    },
+    {
+      "files": [
+        "apps/newframe/src/renderer/**/*.{test,spec}.{ts,tsx}",
+        "apps/newframe/src/**/renderer/**/*.{test,spec}.{ts,tsx}",
+        "apps/newframe/src/**/renderer/**/__mocks__/**/*.ts",
+        "apps/newframe/test/extension/**/*.{test,spec}.{ts,tsx}"
+      ],
+      "rules": {
+        "testing-library/await-async-events": [
+          "error",
+          {
+            "eventModule": "userEvent"
+          }
+        ],
+        "testing-library/await-async-queries": "error",
+        "testing-library/await-async-utils": "error",
+        "testing-library/no-await-sync-events": [
+          "error",
+          {
+            "eventModules": ["fire-event"]
+          }
+        ],
+        "testing-library/no-await-sync-queries": "error",
+        "testing-library/no-container": "error",
+        "testing-library/no-debugging-utils": "warn",
+        "testing-library/no-dom-import": ["error", "react"],
+        "testing-library/no-global-regexp-flag-in-query": "error",
+        "testing-library/no-manual-cleanup": "error",
+        "testing-library/no-node-access": "error",
+        "testing-library/no-promise-in-fire-event": "error",
+        "testing-library/no-render-in-lifecycle": "error",
+        "testing-library/no-unnecessary-act": "error",
+        "testing-library/no-wait-for-multiple-assertions": "error",
+        "testing-library/no-wait-for-side-effects": "error",
+        "testing-library/no-wait-for-snapshot": "error",
+        "testing-library/prefer-find-by": "error",
+        "testing-library/prefer-presence-queries": "error",
+        "testing-library/prefer-query-by-disappearance": "error",
+        "testing-library/prefer-screen-queries": "error",
+        "testing-library/render-result-naming-convention": "error"
+      },
+      "jsPlugins": ["eslint-plugin-testing-library"]
+    },
+    {
+      "files": ["apps/newframe-extension/*.{js,mjs,ts}", "apps/newframe-extension/build.ts"],
+      "globals": {
+        "AsyncDisposableStack": "readonly",
+        "DisposableStack": "readonly",
+        "SuppressedError": "readonly",
+        "Bun": "readonly"
+      },
+      "env": {
+        "node": true
+      }
+    },
+    {
+      "files": ["apps/newframe-extension/src/**/*.{ts,tsx}"],
+      "globals": {
+        "AsyncDisposableStack": "readonly",
+        "DisposableStack": "readonly",
+        "SuppressedError": "readonly",
+        "chrome": "readonly"
+      },
+      "env": {
+        "browser": true
+      }
+    },
+    {
+      "files": ["apps/newframe-extension/src/settings/**/*.{ts,tsx}"],
+      "plugins": ["react", "typescript"],
+      "rules": {
+        "react-js/prefer-stateless-function": "error",
+        "react-js/no-unstable-nested-components": "error",
+        "react-js/jsx-no-constructed-context-values": "error",
+        "react-js/no-array-index-key": "error",
+        "typescript/no-explicit-any": "error",
+        "typescript/no-non-null-assertion": "error"
+      },
+      "jsPlugins": [
+        {
+          "name": "react-js",
+          "specifier": "eslint-plugin-react"
+        }
+      ]
+    }
+  ],
+  "settings": {
+    "react": {
+      "version": "19.2"
+    }
+  }
+}

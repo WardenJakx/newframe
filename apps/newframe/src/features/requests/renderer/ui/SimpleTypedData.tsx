@@ -37,7 +37,7 @@ const decodeUtf8Hex = (value: string) => {
   try {
     const decoded = new TextDecoder('utf-8', { fatal: true }).decode(new Uint8Array(bytes))
     const printable = decoded.replace(/[\t\n\r]/g, '')
-    // eslint-disable-next-line no-control-regex -- reject decoded non-printable control characters.
+    // oxlint-disable-next-line no-control-regex -- reject decoded non-printable control characters.
     if (!printable || /[\x00-\x1F\x7F]/.test(printable)) return undefined
 
     return `${decoded} (${value})`

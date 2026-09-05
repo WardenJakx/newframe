@@ -31,7 +31,8 @@ mock.module('electron', () => ({
 let importCounter = 0
 
 const loadHost = async () => {
-  await import(`./index?test=${importCounter++}`)
+  const importId = importCounter++
+  await import(`./index?test=${importId}`)
 
   return contextBridge.exposeInMainWorld.mock.calls.at(-1)?.[1] as NewframeHost
 }

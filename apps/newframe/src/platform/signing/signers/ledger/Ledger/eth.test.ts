@@ -65,7 +65,7 @@ describe('#deriveAddresses', () => {
 
     expect(addresses.length).toBe(100)
     expect(addresses[5].toLowerCase()).toBe('0xe001da2733a5dc2ce5191de0534282683f05f0b8')
-  }, 200)
+  })
 
   it('derives testnet addresses', async () => {
     const replayData = `
@@ -78,7 +78,7 @@ describe('#deriveAddresses', () => {
 
     expect(addresses.length).toBe(100)
     expect(addresses[3].toLowerCase()).toBe('0xaffb4ca2ed8738dd409b7563052b3e7c7bdaabdb')
-  }, 200)
+  })
 
   it('fails to find addresses for an unknown derivation', async () => {
     const ethApp = await createEthApp()

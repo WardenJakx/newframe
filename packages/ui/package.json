@@ -195,6 +195,6 @@
     "@types/bun": "1.4.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "typescript": "6.0.3"
+    "typescript": "7.0.2"
   }
 }

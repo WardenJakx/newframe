@@ -1158,7 +1158,7 @@ export class Accounts extends EventEmitter {
                 }
 
                 const blockHeight = parseInt(res.result, 16)
-                const receiptBlock = parseInt((txRequest.tx?.receipt as TransactionReceipt).blockNumber, 16)
+                const receiptBlock = parseInt((receiptRes.result as TransactionReceipt).blockNumber, 16)
                 const confirmations = blockHeight - receiptBlock
 
                 txRequest = account.patchRequest<TransactionRequest>(id, (request) => {

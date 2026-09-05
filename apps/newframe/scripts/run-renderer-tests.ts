@@ -36,8 +36,6 @@ async function run(files: string[], preload?: string) {
     '--parallel=4',
     '--isolate',
     ...(preload ? ['--preload', preload] : []),
-    '--timeout',
-    '500',
     ...files
   ]
   const child = Bun.spawn(command, {
