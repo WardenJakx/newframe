@@ -235,7 +235,7 @@ jobs:
         run: bun run --cwd apps/newframe-extension typecheck
 
       - name: Build the extension
-        run: bun run build:newframe-extension
+        run: bun run extension:build
 
       - name: Package and verify the exact candidate
         env:

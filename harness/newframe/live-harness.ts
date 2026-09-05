@@ -5,6 +5,7 @@ import { unlockHarnessNewframe } from '../../apps/newframe/scripts/unlock-harnes
 import { HarnessRuntime, installSignalHandlers } from './core/service.ts'
 import { createAnvilService } from './services/anvil.ts'
 import { createSeedAnvilService } from './services/contracts.ts'
+import { DevelopmentAppService } from './services/development-app.ts'
 import { createElectronProcessService } from './services/electron.ts'
 import { createLocalTradeService } from './services/local-trade.ts'
 
@@ -18,7 +19,7 @@ async function runUnlock() {
   }
 }
 
-export async function runLiveHarness() {
+export async function runLiveHarness(watchMode = false) {
   const runtime = new HarnessRuntime(log)
   const removeSignalHandlers = installSignalHandlers(runtime)
 
@@ -27,8 +28,16 @@ export async function runLiveHarness() {
     const seed = await runtime.start(createSeedAnvilService())
     await runtime.watch(seed.completed)
     await runtime.start(createLocalTradeService({ stdio: 'inherit' }))
-    const frame = await runtime.watch(runtime.start(createElectronProcessService()))
-    void runUnlock()
+    const frame = await runtime.watch(
+      runtime.start(
+        watchMode
+          ? new DevelopmentAppService(() => {
+              void runUnlock()
+            })
+          : createElectronProcessService()
+      )
+    )
+    if (!watchMode) void runUnlock()
 
     return await runtime.watch(frame.exited)
   } finally {
@@ -38,5 +47,5 @@ export async function runLiveHarness() {
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(import.meta.filename)) {
-  process.exitCode = await runLiveHarness()
+  process.exitCode = await runLiveHarness(process.argv.includes('--watch'))
 }

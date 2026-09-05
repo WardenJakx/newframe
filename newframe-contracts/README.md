@@ -17,7 +17,7 @@ the configured balances before launching their workflows.
 Start the regular harness from `apps/newframe/`:
 
 ```sh
-bun run harness:newframe
+bun run dev
 ```
 
 Or start the visual harness from the repository root:

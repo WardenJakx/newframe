@@ -51,18 +51,19 @@ bun run setup
 bun run dev
 ```
 
-### Build locally
+`dev` builds the app, launches the development profile, and watches app, shared UI, and asset changes. Saving rebuilds and restarts Electron while the local chain and trade service keep running.
 
-```bash
-bun run bundle # Create the app bundle assets
-bun run build # Build Newframe for the current platform
-```
+### Build locally
 
 On macOS, you can build and install a local preview app:
 
 ```bash
 bun run install:preview
 ```
+
+This replaces `/Applications/Newframe.app` with an unsigned local build. It does not publish anything. Run it again to install updated code.
+
+The package's `compile`, `bundle`, and `build` scripts are build/release steps. Normal development only needs `dev` or `install:preview`.
 
 ## Usage
 

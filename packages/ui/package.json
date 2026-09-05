@@ -176,7 +176,7 @@
     "build": "bun run clean && bun run styles:generate && tsc --project tsconfig.build.json && bun run assets:copy",
     "artifacts:check": "bun ./scripts/check-artifacts.ts",
     "check": "bun run artifacts:check",
-    "typecheck": "bun run styles:generate && tsc --project tsconfig.json --noEmit",
+    "typecheck": "bun run build && tsc --project tsconfig.json --noEmit",
     "test": "bun test --preload ./test/setup.ts",
     "watch:types": "tsc --project tsconfig.build.json --watch --preserveWatchOutput",
     "watch:assets": "bun ./scripts/watch-assets.ts",
