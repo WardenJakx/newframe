@@ -13,7 +13,7 @@ snapshot described below.
 From `apps/newframe`:
 
 ```sh
-bun run harness:newframe
+bun run dev
 ```
 
 The live-local and visual entrypoints use the same lifecycle modules under `harness/newframe/` for

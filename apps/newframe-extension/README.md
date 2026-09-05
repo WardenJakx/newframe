@@ -58,7 +58,7 @@ Extension releases use tags named `extension-v<version>`. Remove the currently l
 git clone https://github.com/wardenjakx/newframe.git
 cd newframe
 bun install
-bun run build:newframe-extension
+bun run extension:build
 ```
 
 The built extension is written to `apps/newframe-extension/dist`. Load that directory in a Chromium browser or load its `manifest.json` temporarily in Firefox using the steps above.
@@ -68,7 +68,8 @@ The built extension is written to `apps/newframe-extension/dist`. Load that dire
 From the repo root:
 
 ```bash
-bun run build:newframe-extension
+bun run extension:build
+bun run extension:watch
 bun run test:newframe-extension
 ```
 
@@ -79,6 +80,8 @@ bun run build
 bun run watch
 bun run typecheck
 ```
+
+Watch rebuilds the extension files. Reload the extension in the browser to use the updated build.
 
 ## Related
 

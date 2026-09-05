@@ -65,14 +65,21 @@ Use Bun to install dependencies, run the desktop app, and build the browser exte
 git clone https://github.com/wardenjakx/newframe.git
 cd newframe
 bun --cwd apps/newframe run setup
-bun run dev:newframe
+bun run dev
 ```
 
-In another terminal, build the extension:
+Everyday commands, run from the repo root:
 
-```bash
-bun run build:newframe-extension
-```
+| Command                   | Purpose                                                                                            |
+| ------------------------- | -------------------------------------------------------------------------------------------------- |
+| `bun run dev`             | Build and launch the development profile; rebuild and restart on app, shared UI, or asset changes. |
+| `bun run extension:build` | Build the browser extension once.                                                                  |
+| `bun run extension:watch` | Build the browser extension and rebuild on changes. Reload it in the browser after a rebuild.      |
+| `bun run install:preview` | Build an unsigned macOS app and replace `/Applications/Newframe.app`. No publishing.               |
+
+`dev` starts the local chain and trade service. These stay running when Electron restarts. A failed build waits for the next edit and retries. Closing Electron or pressing Ctrl+C stops the development session.
+
+Shared UI builds happen inside the app commands. Package-level compile, bundle, and release scripts remain for tooling; they are not separate setup steps. `bun extension build` is equivalent to `bun run extension:build`.
 
 Load `apps/newframe-extension/dist` as an unpacked extension in Chrome, Brave, or another Chromium-based browser. For Firefox, load `apps/newframe-extension/dist/manifest.json` as a temporary add-on from `about:debugging#/runtime/this-firefox`.
 

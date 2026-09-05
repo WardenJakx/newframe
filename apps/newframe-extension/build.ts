@@ -3,6 +3,8 @@ import { Buffer } from 'node:buffer'
 import { mkdirSync, rmSync, watch } from 'node:fs'
 import path from 'node:path'
 
+import { sourceChanges } from '../../scripts/source-changes.ts'
+
 const root = import.meta.dir
 const dist = path.join(root, 'dist')
 const repoRoot = path.resolve(root, '../..')
@@ -143,22 +145,45 @@ rmSync(dist, { recursive: true, force: true })
 const ok = await build()
 
 if (watchMode) {
-  console.log('👀 Watching src/ and assets/ for changes...')
-  // fs.watch on macOS re-fires for events caused by the build itself,
-  // so ignore anything that arrives while building or right after
+  console.log('👀 Watching src/, shared UI, and assets/ for changes...')
   let building = false
-  let quietUntil = 0
+  let dirty = false
   let pending: ReturnType<typeof setTimeout> | null = null
-  for (const watchRoot of [path.join(root, 'src'), brandAssets]) {
-    watch(watchRoot, { recursive: true }, () => {
-      if (building || Date.now() < quietUntil) return
-      if (pending) clearTimeout(pending)
-      pending = setTimeout(async () => {
-        building = true
+  async function rebuild() {
+    if (building) return
+    building = true
+    try {
+      while (dirty) {
+        dirty = false
         console.log('🔁 Rebuilding...')
+        for (const script of ['ui:build', 'styles:generate']) {
+          const command = Bun.spawn(['bun', 'run', script], {
+            cwd: root,
+            stdout: 'inherit',
+            stderr: 'inherit'
+          })
+          if ((await command.exited) !== 0) throw new Error(`${script} failed`)
+        }
         await build()
-        quietUntil = Date.now() + 1000
-        building = false
+      }
+    } catch (error) {
+      console.error('Build failed. Save a file to retry.', error)
+    } finally {
+      building = false
+    }
+  }
+  const sharedUiRoot = path.join(repoRoot, 'packages/ui')
+  const ignored = new Set(['node_modules', 'dist', 'styled-system', '.cache'])
+  for (const watchRoot of [root, brandAssets, sharedUiRoot]) {
+    const changed = sourceChanges(watchRoot, ignored)
+    watch(watchRoot, { recursive: true }, (_event, filename) => {
+      if (!filename) return
+      if (filename.split(path.sep).some((part) => ignored.has(part) || part.startsWith('.'))) return
+      if (!changed(filename)) return
+      dirty = true
+      if (pending) clearTimeout(pending)
+      pending = setTimeout(() => {
+        void rebuild()
       }, 100)
     })
   }
