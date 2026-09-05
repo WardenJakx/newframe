@@ -27,16 +27,16 @@ describe('MenuOverlay', () => {
     const trigger = screen.getByRole('button', { name: 'Open' })
 
     // The browser focuses a clicked button; fireEvent intentionally does not emulate that default action.
-    // eslint-disable-next-line testing-library/no-node-access
+    // oxlint-disable-next-line testing-library/no-node-access
     trigger.focus()
     fireEvent.click(trigger)
     // Focus ownership is the behavior under test, so inspect the DOM focus target directly.
-    // eslint-disable-next-line testing-library/no-node-access
+    // oxlint-disable-next-line testing-library/no-node-access
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Close menu' }))
 
     fireEvent.keyDown(screen.getByRole('dialog', { name: 'Main menu' }), { key: 'Escape' })
     expect(screen.queryByRole('dialog', { name: 'Main menu' })).toBeNull()
-    // eslint-disable-next-line testing-library/no-node-access
+    // oxlint-disable-next-line testing-library/no-node-access
     expect(document.activeElement).toBe(trigger)
   })
 

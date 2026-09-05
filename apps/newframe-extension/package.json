@@ -10,8 +10,8 @@
   "main": "src",
   "scripts": {
     "test": "bun test && bun run lint",
-    "lint": "eslint .",
-    "lint:fix": "eslint --fix .",
+    "lint": "cd ../.. && oxlint apps/newframe-extension --report-unused-disable-directives-severity=warn",
+    "lint:fix": "cd ../.. && oxlint --fix apps/newframe-extension --report-unused-disable-directives-severity=warn",
     "format": "prettier --write '**/*.{yml,json,md,html,ts,tsx,js,mjs}' --config ../../.prettierrc.json --ignore-path ../../.prettierignore",
     "styles:generate": "panda codegen --clean && panda",
     "styles:watch": "panda --watch",
@@ -19,7 +19,7 @@
     "bundle": "bun run styles:generate && bun run build.ts",
     "bundle:watch": "bun run build.ts --watch",
     "watch": "bun run styles:generate && bun run --parallel styles:watch bundle:watch",
-    "typecheck": "bun run styles:generate && tsgo --noEmit -p tsconfig.json",
+    "typecheck": "bun run styles:generate && tsc --noEmit -p tsconfig.json",
     "release:validate": "bun run scripts/release-extension.ts validate-source",
     "release:package": "bun run scripts/release-extension.ts package",
     "release:verify": "bun run scripts/release-extension.ts verify"
@@ -32,7 +32,7 @@
     "@types/chrome": "^0.1.43",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@typescript/native-preview": "^7.0.0-dev.20260610.1"
+    "typescript": "7.0.2"
   },
   "dependencies": {
     "@newframe/ui": "workspace:*",
@@ -41,7 +41,5 @@
     "react-dom": "19.2.7",
     "zustand": "^5.0.14"
   },
-  "peerDependencies": {
-    "typescript": "^6.0.3"
-  }
+  "peerDependencies": {}
 }

@@ -290,7 +290,7 @@ export function AddAccountController({
       whenCurrent(submissionRef, operationId, () => setActiveSubmission(null))
     }
     // resetInlineAdd intentionally reads the latest local draft through the render closure.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react/exhaustive-deps
   }, [hardwareSession?.signerId, onboardingOperation, submission])
 
   useEffect(() => {
@@ -309,7 +309,7 @@ export function AddAccountController({
 
     whenCurrent(hardwareSessionRef, operationId, () => finishHardwareSession('ready'))
     // finishHardwareSession is intentionally guarded by the mutable active-session reference.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react/exhaustive-deps
   }, [hardwareSession, shared.operations, shared.signers])
 
   useEffect(() => {
@@ -317,7 +317,7 @@ export function AddAccountController({
     initialHardwareSessionStarted.current = true
     queueMicrotask(() => beginHardwareSession(initialSelectedSigner, false))
     // This mount-only bootstrap is keyed solely by the requested initial signer.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react/exhaustive-deps
   }, [initialSelectedSigner])
 
   async function selectExistingAccount(id: string) {

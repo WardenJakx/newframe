@@ -78,6 +78,24 @@ Load `apps/newframe-extension/dist` as an unpacked extension in Chrome, Brave, o
 
 To enable wallet portfolio discovery, add a Zerion API key in Newframe settings and enable token auto-discovery.
 
+### Development checks
+
+Run `bun run lint` for Oxlint, `bun run typecheck` for TypeScript 7.0.2, and
+`bun run test` for tests. `bun run lint:warn` also shows lint warnings;
+`bun run lint:fix` applies fixes. Prettier handles formatting.
+
+Oxlint's native rules cover JavaScript, TypeScript, React, and React Hooks.
+Testing Library, React's `no-deprecated` rule, the extension settings' React rules,
+and the Hooks `config` and `gating` rules use its JavaScript plugin support, which
+is currently alpha. The config preserves the previous rule scopes and ignores.
+Lint commands report unused suppression comments as warnings, visible with
+`bun run lint:warn` or the application lint commands.
+
+All workspaces depend directly on TypeScript 7.0.2 for builds and typechecks.
+Panda CSS installs its own TypeScript 6.0.2 dependency because its config loader
+uses compiler APIs such as `resolveModuleName`, which TypeScript 7 does not expose.
+Do not override that transitive dependency to TypeScript 7.
+
 ## Project surfaces
 
 - [`apps/newframe`](apps/newframe/README.md) - Electron desktop wallet and system-wide provider app.

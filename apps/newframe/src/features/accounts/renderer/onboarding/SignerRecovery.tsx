@@ -217,7 +217,7 @@ export default function SignerRecovery({
       if (sessionRef.current?.signerId !== signerId) startSession(signerId)
     })
     // The signer ID is the session bootstrap key; startSession uses the current session ref.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react/exhaustive-deps
   }, [signer?.id])
 
   function selectSigner(signerId: string) {
