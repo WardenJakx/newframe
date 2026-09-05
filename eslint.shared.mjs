@@ -143,6 +143,21 @@ export const reactConfigs = ({ basePath = '', files, version }) => [
   }
 ]
 
+export const extensionReactConfigs = ({ basePath = '' } = {}) => [
+  ...reactConfigs({ basePath, files: ['src/**/*.{ts,tsx}'], version: '19.2' }),
+  {
+    files: withBasePath(basePath, ['src/settings/**/*.{ts,tsx}']),
+    rules: {
+      'react/prefer-stateless-function': 'error',
+      'react/no-unstable-nested-components': 'error',
+      'react/jsx-no-constructed-context-values': 'error',
+      'react/no-array-index-key': 'error',
+      '@typescript-eslint/no-explicit-any': 'error',
+      '@typescript-eslint/no-non-null-assertion': 'error'
+    }
+  }
+]
+
 export const testGlobalsConfig = ({ basePath = '', files }) =>
   globalsConfig({
     basePath,

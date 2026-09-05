@@ -1,15 +1,15 @@
 import {
   baseJavaScriptConfigs,
   browserGlobalsConfig,
+  extensionReactConfigs,
   nodeGlobalsConfig,
   prettierConfig,
-  reactConfigs,
   typescriptConfigs
 } from '../../eslint.shared.mjs'
 
 export default [
   ...baseJavaScriptConfigs({
-    ignores: ['dist/**/*']
+    ignores: ['dist/**/*', 'src/styled-system/**/*']
   }),
   nodeGlobalsConfig({
     files: ['*.{js,mjs,ts}', 'build.ts'],
@@ -27,6 +27,6 @@ export default [
     tsconfigRootDir: import.meta.dirname,
     project: './tsconfig.json'
   }),
-  ...reactConfigs({ files: ['src/**/*.{tsx}'], version: '19.2' }),
+  ...extensionReactConfigs(),
   prettierConfig
 ]

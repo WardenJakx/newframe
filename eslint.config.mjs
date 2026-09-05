@@ -2,6 +2,7 @@ import { fileURLToPath } from 'node:url'
 import {
   baseJavaScriptConfigs,
   browserGlobalsConfig,
+  extensionReactConfigs,
   globalsConfig,
   ignoredPaths,
   nodeGlobalsConfig,
@@ -59,6 +60,7 @@ export default [
     '!apps/newframe/src/platform/signing/signers/**/*/',
     '!apps/newframe/src/platform/signing/signers/**/*.{test,spec}.{ts,tsx}',
     'apps/newframe-extension/dist/**/*',
+    'apps/newframe-extension/src/styled-system/**/*',
     'apps/newframe-extension/.cache/**/*',
     'packages/ui/dist/**/*',
     'packages/ui/src/styled-system/**/*'
@@ -151,7 +153,7 @@ export default [
     basePath: extension,
     tsconfigRootDir: workspacePath('./apps/newframe-extension')
   }),
-  ...reactConfigs({ basePath: extension, files: ['src/**/*.{tsx}'], version: '19.2' }),
+  ...extensionReactConfigs({ basePath: extension }),
 
   prettierConfig
 ]
