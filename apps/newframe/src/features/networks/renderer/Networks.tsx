@@ -9,7 +9,7 @@ import { NetworksView } from './NetworksView'
 import type { NetworksCapability } from './networksCapability'
 
 export interface NetworksProps {
-  capability: Pick<NetworksCapability, 'setNetworkActivation' | 'setPrimaryRpc'>
+  capability: Pick<NetworksCapability, 'remove' | 'setNetworkActivation' | 'setPrimaryRpc'>
   onClose: () => void
   onSelectionChange: (chainId: number) => void
   selectedChainId: number
@@ -65,6 +65,11 @@ export function Networks({ capability, onClose, onSelectionChange, selectedChain
           rpcDrafts[chainId] ?? shared.networks[chainId]?.connection?.primary?.custom ?? ''
         ).trim()
         if (url) void capability.setPrimaryRpc({ chainId, url })
+      }}
+      onRemove={(chainId) => {
+        void capability.remove({ chainId })
+        if (selectedChainId === chainId) onSelectionChange(0)
+        setKebabChainId(0)
       }}
       onSelect={(chainId) => {
         onSelectionChange(chainId)
