@@ -22,7 +22,7 @@
     "test:newframe": "bun run newframe test:unit",
     "test:newframe-extension": "bun run extension test",
     "test:all": "bun run test:unit",
-    "typecheck": "tsc --project tsconfig.json && bun run harness typecheck && bun run ui build && bun run ui typecheck && bun run newframe typecheck && bun run extension typecheck",
+    "typecheck": "tsc --project tsconfig.json && bun run --workspaces --sequential typecheck",
     "lint": "oxlint . --quiet --report-unused-disable-directives-severity=warn",
     "lint:warn": "oxlint . --report-unused-disable-directives-severity=warn",
     "lint:fix": "oxlint --fix . --report-unused-disable-directives-severity=warn",
