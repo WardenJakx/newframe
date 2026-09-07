@@ -163,7 +163,7 @@ export const agentSessionStage: VisualStage = {
 
     await tray.getByRole('button', { name: 'Accounts' }).click()
     const accountsDialog = tray.getByRole('dialog', { name: 'Accounts' })
-    await accountsDialog.getByText('AI Wallet', { exact: true }).waitFor({ state: 'visible' })
+    await accountsDialog.getByText('· AI Wallet', { exact: true }).waitFor({ state: 'visible' })
     await runtime.screenshot(tray, '08b-ai-wallet-tag.png')
     await accountsDialog.getByRole('button', { name: 'Close accounts' }).click()
 

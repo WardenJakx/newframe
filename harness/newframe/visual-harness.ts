@@ -4,7 +4,7 @@ import path from 'node:path'
 import { _electron as electron, type ElectronApplication } from 'playwright-core'
 
 import { appDir, electronExecutable, readHarnessPassword } from './core/config.ts'
-import { ensureCommand } from './core/process.ts'
+import { ensureCommand, runCommand } from './core/process.ts'
 import { expectSuccessfulExit, ProcessService } from './core/process-service.ts'
 import { HarnessRuntime, installSignalHandlers } from './core/service.ts'
 import { createAnvilService } from './services/anvil.ts'
@@ -115,6 +115,19 @@ export async function runVisualHarness() {
     removeSignalHandlers()
     await services.stop()
     await visual.writeSummary().catch(() => undefined)
+  }
+
+  if (process.env.NEWFRAME_HARNESS_OPEN_SCREENSHOTS === '1' && visual.summary.screenshots.length > 0) {
+    await runCommand(
+      'open screenshots in Preview',
+      'open',
+      [
+        '-a',
+        'Preview',
+        ...visual.summary.screenshots.map((name) => path.resolve(visual.screenshotDir, name))
+      ],
+      appDir
+    ).catch((err: Error) => visual.log(`could not open screenshots: ${err.message}`))
   }
 }
 

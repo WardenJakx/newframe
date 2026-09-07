@@ -159,6 +159,14 @@ the responsible stage. The source allowlist is intentionally empty by default; a
 use a narrow message pattern and document why the underlying browser diagnostic is understood and cannot
 reasonably be fixed.
 
+On macOS, open all screenshots from a successful run together in Preview after service cleanup:
+
+```sh
+NEWFRAME_HARNESS_OPEN_SCREENSHOTS=1 bun run visual:harness:newframe
+```
+
+Opening screenshots is off by default. A Preview launch failure is logged without failing the harness.
+
 Operator-driven provider scripts live under `harness/newframe/scenarios`. They may require manual wallet
 approval or mutate a running developer profile, so they are not part of the automated unit suite or the
 authoritative visual harness.
