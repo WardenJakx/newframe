@@ -44,7 +44,7 @@ test('extracts every supported static and dynamic module form', () => {
 })
 
 // One row per protected authority makes omissions and duplicates visible.
-// prettier-ignore
+// oxfmt-ignore
 const authorityCases: RejectCase[] = [
   ['asset-rate writer', checkAssetRateMutationAuthority, 'apps/newframe/src/features/connections/main/provider/rates.ts', 'store.getState().setAssetRates(batch)', 'canonical asset-rate mutation is restricted'],
   ['duplicate operation catalog', checkOperationContractAuthority, 'apps/newframe/src/features/example/contract/operations.ts', 'export const querySchemas = {}', 'schema catalogs must be defined in src/app/contracts/operations.ts'],
@@ -71,7 +71,7 @@ test.each(authorityCases)('rejects %s', (_name, check, file, source, message) =>
 
 test('allows each canonical authority', () => {
   // Each rejection family has an explicit canonical owner or safe representation.
-  // prettier-ignore
+  // oxfmt-ignore
   const cases: readonly [Check, string, string][] = [
     [checkAssetRateMutationAuthority, 'apps/newframe/src/features/asset-data/main/assetRates/service.ts', 'state.setAssetRates(batch)'],
     [checkOperationContractAuthority, 'apps/newframe/src/app/contracts/operations.ts', 'export const commandContracts = {}'],
@@ -88,7 +88,7 @@ test('allows each canonical authority', () => {
 
 type SourceCase = readonly [string, string, string, string, string, string]
 // Every per-source rule has both prohibited and canonical evidence in the same row.
-// prettier-ignore
+// oxfmt-ignore
 const sourceCases: SourceCase[] = [
   ['restore state dependency', domain, "import restore from 'react-restore'", 'Restore is not an application state dependency', domain, "import { produce } from 'immer'"],
   ['generic action channel', domain, "const channel = 'tray:action'", 'generic action and RPC channels are forbidden', domain, "const channel = 'newframe:command'"],
@@ -125,7 +125,7 @@ test.each(sourceCases)(
 )
 
 // The matrix is easier to audit with one process boundary per row.
-// prettier-ignore
+// oxfmt-ignore
 const layerCases = [
   [renderer, "import '../main/service'", 'renderer cannot import main'],
   [renderer, "export * from '../../../preload/bridge'", 'renderer cannot import preload'],
@@ -272,7 +272,7 @@ test('rejects runtime dependencies from renderer and portable layers', () => {
 
 test('rejects broad singleton access through every supported import form and service root', () => {
   const message = 'must receive canonical store and production services through capability ports'
-  // prettier-ignore
+  // oxfmt-ignore
   const sources = [
     "import store from '../../../platform/state-store'",
     "import store from '../../../platform/state-store/'",
@@ -287,7 +287,7 @@ test('rejects broad singleton access through every supported import form and ser
     "import persistence from '#newframe/src/platform/state-store/persist'"
   ]
   for (const source of sources) rejects(checkDependencyDirection, mainService, source, message)
-  // prettier-ignore
+  // oxfmt-ignore
   const cases = [
     ['apps/newframe/src/features/asset-data/main/externalData/index.ts', "import type store from '../../../../platform/state-store'"],
     ['apps/newframe/src/features/asset-data/main/images/index.ts', "import { openExternal } from '../../../../platform/desktop/windows/window'"],
@@ -303,7 +303,7 @@ test('rejects broad singleton access through every supported import form and ser
 })
 
 test('allows intended process dependencies and boundary owners', () => {
-  // prettier-ignore
+  // oxfmt-ignore
   const cases = [
     [renderer, "import type { State } from '../../../platform/state-sync/contract/projections'\nimport React from 'react'"],
     ['apps/newframe/src/features/example/main/service.ts', "import type { Command } from '../../../app/contracts/operations'\nimport path from 'node:path'"],

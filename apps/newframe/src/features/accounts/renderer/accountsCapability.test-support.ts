@@ -43,28 +43,22 @@ export function createAccountsCapabilityFake() {
         usage: []
       })
     ),
-    getSecurityStatus: mock(
-      async (): Promise<CapabilityResult<AccountsCapability['getSecurityStatus']>> => ({
-        ok: true,
-        locked: false,
-        vaultExists: true,
-        biometricUnlockEnabled: false,
-        biometricAvailable: false,
-        biometrics: { enabled: false, method: '', nativeAvailable: false }
-      })
-    ),
-    locateKeystore: mock(
-      async (): Promise<CapabilityResult<AccountsCapability['locateKeystore']>> => ({
-        ok: false,
-        error: 'not_found'
-      })
-    ),
-    generateSeed: mock(
-      async (): Promise<CapabilityResult<AccountsCapability['generateSeed']>> => ({
-        ok: false,
-        error: 'operation_failed'
-      })
-    ),
+    getSecurityStatus: mock(async (): Promise<CapabilityResult<AccountsCapability['getSecurityStatus']>> => ({
+      ok: true,
+      locked: false,
+      vaultExists: true,
+      biometricUnlockEnabled: false,
+      biometricAvailable: false,
+      biometrics: { enabled: false, method: '', nativeAvailable: false }
+    })),
+    locateKeystore: mock(async (): Promise<CapabilityResult<AccountsCapability['locateKeystore']>> => ({
+      ok: false,
+      error: 'not_found'
+    })),
+    generateSeed: mock(async (): Promise<CapabilityResult<AccountsCapability['generateSeed']>> => ({
+      ok: false,
+      error: 'operation_failed'
+    })),
     addAccountFromSigner: acknowledged<Parameters<AccountsCapability['addAccountFromSigner']>[0]>(),
     addWatchAccount: acknowledged<Parameters<AccountsCapability['addWatchAccount']>[0]>(),
     importSigner: acknowledged<Parameters<AccountsCapability['importSigner']>[0]>(),

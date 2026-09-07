@@ -21,7 +21,7 @@
     "lint:fix": "cd ../.. && oxlint --fix apps/newframe --report-unused-disable-directives-severity=warn",
     "typecheck": "bun run ui:build && bun run styles:generate && tsc --project tsconfig.portable.json && tsc --project tsconfig.main.json --noEmit && tsc --project tsconfig.renderer.json && tsc --project tsconfig.preload.json && tsc --project tsconfig.scripts.json && tsc --project tsconfig.tests.json",
     "knip": "knip --include nsExports,nsTypes --no-config-hints --treat-tag-hints-as-errors --no-progress && knip --production --strict --dependencies --files --treat-config-hints-as-errors --no-progress",
-    "format": "prettier --write '**/*.{yml,json,md,html,ts,tsx,js,mjs}' --config ../../.prettierrc.json --ignore-path ../../.prettierignore",
+    "format": "cd ../.. && oxfmt --write 'apps/newframe/**/*.{yml,json,md,html,ts,tsx,js,mjs}'",
     "compile": "bun run ui:build && bun run compile:app",
     "compile:app": "bun run styles:generate && rimraf compiled && bun run sync:assets && tsc --project tsconfig.main.json && bun ./scripts/check-build-artifacts.ts compiled",
     "build": "bun run compile && sleep 4 && bun run bundle && sleep 4 && electron-builder --config=build/electron-builder-standard.ts",

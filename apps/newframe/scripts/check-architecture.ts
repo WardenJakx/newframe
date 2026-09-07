@@ -48,12 +48,10 @@ async function sourceFiles() {
   ]
 
   return Promise.all(
-    [...files, ...manifests].map(
-      async (file): Promise<SourceFile> => ({
-        file: path.relative(repositoryRoot, file),
-        source: await readFile(file, 'utf8')
-      })
-    )
+    [...files, ...manifests].map(async (file): Promise<SourceFile> => ({
+      file: path.relative(repositoryRoot, file),
+      source: await readFile(file, 'utf8')
+    }))
   )
 }
 

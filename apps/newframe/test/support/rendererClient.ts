@@ -8,15 +8,13 @@ import { createRendererStateFixture, installRendererStateFixture } from './rende
 
 export function createRendererClient() {
   return {
-    connectState: mock(
-      async (_handler: (message: StateMessage) => void): Promise<StateConnectionResult> => ({
-        ok: true
-      })
-    ),
+    connectState: mock(async (_handler: (message: StateMessage) => void): Promise<StateConnectionResult> => ({
+      ok: true
+    })),
     disconnectState: mock(async (): Promise<StateConnectionResult> => ({ ok: true })),
-    executeCommand: mock(
-      async <TCommand extends AppCommand>(_command: TCommand): Promise<CommandResult> => ({ ok: true })
-    ),
+    executeCommand: mock(async <TCommand extends AppCommand>(_command: TCommand): Promise<CommandResult> => ({
+      ok: true
+    })),
     executeQuery: mock(
       async <TQuery extends AppQuery>(_query: TQuery): Promise<ResultForQuery<TQuery>> =>
         ({ ok: false, error: 'not_found' }) as ResultForQuery<TQuery>

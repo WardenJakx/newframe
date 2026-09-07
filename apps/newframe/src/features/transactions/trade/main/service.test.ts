@@ -88,12 +88,10 @@ it('owns private Trade execution, idempotency, revalidation, cancellation, and c
   const testStore = createTestStore()
   const operations = createOperationService({ store: testStore.store, clock: { now: () => time } })
   const operation = (id: string) => testStore.getState().operations[id]?.operation
-  const flashQuote = mock(
-    async (_request: unknown): Promise<{ quote: FlashQuote; flash: unknown }> => ({
-      quote: quote(),
-      flash: { actions: { evm: { orderTypedData: typedData, permitTypedData } }, secret: 'private' }
-    })
-  )
+  const flashQuote = mock(async (_request: unknown): Promise<{ quote: FlashQuote; flash: unknown }> => ({
+    quote: quote(),
+    flash: { actions: { evm: { orderTypedData: typedData, permitTypedData } }, secret: 'private' }
+  }))
   const submitOrder = mock(async (_request: FlashSubmitOrderRequest) => ({ orderId: 'order-1' }))
   const cancelOrder = mock(async (_request: unknown) => ({}))
   const submitTransaction = mock(

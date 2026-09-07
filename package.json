@@ -27,16 +27,16 @@
     "lint:warn": "oxlint . --report-unused-disable-directives-severity=warn",
     "lint:fix": "oxlint --fix . --report-unused-disable-directives-severity=warn",
     "knip": "bun run --cwd apps/newframe knip",
-    "format": "prettier --write '**/*.{yml,json,md,html,ts,tsx,js,mjs}'",
+    "format": "oxfmt --write '**/*.{yml,json,md,html,ts,tsx,js,mjs}'",
     "format:staged": "lint-staged",
-    "format:check": "prettier --check '**/*.{yml,json,md,html,ts,tsx,js,mjs}' --cache",
+    "format:check": "oxfmt --check '**/*.{yml,json,md,html,ts,tsx,js,mjs}'",
     "check": "bun run format:check && bun run lint && bun run typecheck && bun run test",
     "dep:report": "bun scripts/dep-report.ts",
     "visual:harness:newframe": "bun exec 'node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types harness/newframe/visual-harness.ts'",
     "scenario:newframe:provider": "bun harness/newframe/scenarios/provider-smoke.ts"
   },
   "lint-staged": {
-    "*.{yml,json,md,html,ts,tsx,js,mjs}": "prettier --write"
+    "*.{yml,json,md,html,ts,tsx,js,mjs}": "oxfmt --write"
   },
   "packageManager": "bun@1.4.0",
   "devDependencies": {
@@ -46,7 +46,7 @@
     "husky": "9.1.7",
     "lint-staged": "^17.3.0",
     "playwright-core": "^1.61.1",
-    "prettier": "^3.8.3",
+    "oxfmt": "0.65.0",
     "typescript": "7.0.2",
     "oxlint": "1.80.0",
     "eslint-plugin-react-hooks": "7.1.1"
