@@ -12,7 +12,7 @@
     "test": "bun test && bun run lint",
     "lint": "cd ../.. && oxlint apps/newframe-extension --report-unused-disable-directives-severity=warn",
     "lint:fix": "cd ../.. && oxlint --fix apps/newframe-extension --report-unused-disable-directives-severity=warn",
-    "format": "prettier --write '**/*.{yml,json,md,html,ts,tsx,js,mjs}' --config ../../.prettierrc.json --ignore-path ../../.prettierignore",
+    "format": "cd ../.. && oxfmt --write 'apps/newframe-extension/**/*.{yml,json,md,html,ts,tsx,js,mjs}'",
     "styles:generate": "panda codegen --clean && panda",
     "ui:build": "bun --cwd ../../packages/ui build",
     "build": "bun run ui:build && bun run styles:generate && bun run build.ts",

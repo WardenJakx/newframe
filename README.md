@@ -89,7 +89,8 @@ To enable wallet portfolio discovery, add a Zerion API key in Newframe settings 
 
 Run `bun run lint` for Oxlint, `bun run typecheck` for TypeScript 7.0.2, and
 `bun run test` for tests. `bun run lint:warn` also shows lint warnings;
-`bun run lint:fix` applies fixes. Prettier handles formatting.
+`bun run lint:fix` applies fixes. Oxfmt handles formatting with `bun run format`;
+`bun run format:check` checks formatting without writing files.
 
 Oxlint's native rules cover JavaScript, TypeScript, React, and React Hooks.
 Testing Library, React's `no-deprecated` rule, the extension settings' React rules,

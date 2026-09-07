@@ -255,21 +255,19 @@ function AccountActions({
         </Button>
         {otherProfiles.length ? (
           <Selection
-            items={otherProfiles.map(
-              (profile): SelectionItem => ({
-                id: profile.id,
-                content: (
-                  <Stack gap='none' grow>
-                    <Text variant='caption' truncate>
-                      {profile.name}
-                    </Text>
-                    <Text tone='muted' variant='micro'>
-                      {profile.accountCount} {profile.accountCount === 1 ? 'Account' : 'Accounts'}
-                    </Text>
-                  </Stack>
-                )
-              })
-            )}
+            items={otherProfiles.map((profile): SelectionItem => ({
+              id: profile.id,
+              content: (
+                <Stack gap='none' grow>
+                  <Text variant='caption' truncate>
+                    {profile.name}
+                  </Text>
+                  <Text tone='muted' variant='micro'>
+                    {profile.accountCount} {profile.accountCount === 1 ? 'Account' : 'Accounts'}
+                  </Text>
+                </Stack>
+              )
+            }))}
             label={`Move ${account.displayName} to profile`}
             onOpenChange={events.onMoveOpenChange}
             onSelect={events.onMoveSelect}

@@ -110,9 +110,10 @@ const revealMock = {
   recog: mock(async () => [])
 }
 const simulationMock = {
-  simulateTransactionEffects: mock(
-    async (): Promise<TransactionSimulation> => ({ status: 'success', effects: [] })
-  )
+  simulateTransactionEffects: mock(async (): Promise<TransactionSimulation> => ({
+    status: 'success',
+    effects: []
+  }))
 }
 
 function createAccounts(chainRpc = providerMock) {
