@@ -19,6 +19,7 @@ interface Signer {
 }
 
 interface Account {
+  safe?: Record<string, import('../../features/accounts/domain/safe.js').SafeDeployment>
   id: string
   name: string
   lastSignerType: SignerType

@@ -359,3 +359,53 @@ function deferred<T>() {
   })
   return { promise, resolve }
 }
+
+it('imports Safe networks independently, retains partial failure, and selects success once', async () => {
+  const capability = createAccountsCapabilityFake()
+  capability.supportedSafeNetworks.mockResolvedValue([
+    { chainId: 1, name: 'Ethereum', supported: true },
+    { chainId: 10, name: 'Optimism', supported: true },
+    { chainId: 999, name: 'Unavailable', supported: false }
+  ])
+  let closed = false
+  const onClose = () => {
+    closed = true
+  }
+  let selected = ''
+  capability.selectAccount.mockImplementation(async ({ accountId }) => {
+    selected = accountId
+    return { ok: true }
+  })
+  let state = walletState({})
+  fixture.state.reset(state)
+  const { user } = render(<AddAccount capability={capability} onClose={onClose} />)
+  await user.click(screen.getByRole('button', { name: 'Watch a Safe' }))
+  await user.type(screen.getByLabelText('Safe address'), address('9'))
+  await user.click(await screen.findByRole('button', { name: 'Ethereum' }))
+  await user.click(screen.getByRole('button', { name: 'Optimism' }))
+  expect(screen.queryByRole('button', { name: 'Unavailable' })).toBeNull()
+  await user.click(screen.getByText('Unavailable networks'))
+  expect(screen.getByText('Unavailable')).toBeTruthy()
+  await user.click(screen.getByRole('button', { name: 'Import Safe networks' }))
+  const inputs = capability.importSafe.mock.calls.map((call) => call[0])
+  expect(new Set(inputs.map((input) => input.operationId)).size).toBe(2)
+  const outcomes: OperationRecord[] = inputs.map((input) => ({
+    id: input.operationId,
+    type: 'account.safe-import',
+    startedAt: 1,
+    updatedAt: 2,
+    status: input.chainId === 1 ? 'succeeded' : 'failed',
+    ...(input.chainId === 1
+      ? { entityRefs: [{ type: 'account', id: address('9') }] }
+      : { error: { code: 'operation_failed', message: 'Safe service unavailable' } })
+  }))
+  state = { ...state, operations: Object.fromEntries(outcomes.map((outcome) => [outcome.id, outcome])) }
+  act(() => fixture.state.reset(state))
+  await screen.findByText('Safe service unavailable')
+  expect(screen.getByText('Imported · Watch-only')).toBeTruthy()
+  await waitFor(() => expect(selected).toBe(address('9')))
+  expect(closed).toBe(false)
+  act(() => fixture.state.reset({ ...state, currentProfile: 'other' }))
+  await screen.findByRole('button', { name: 'Watch a Safe' })
+  expect(screen.queryByText('Safe service unavailable')).toBeNull()
+})

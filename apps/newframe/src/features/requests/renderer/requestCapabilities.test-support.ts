@@ -7,6 +7,7 @@ const acknowledged = <TInput>() => mock(async (_input: TInput): Promise<CommandR
 
 export function createRequestRendererCapabilitiesFake() {
   return {
+    safe: { refresh: acknowledged<Parameters<RequestRendererCapabilities['safe']['refresh']>[0]>() },
     panel: {
       back: acknowledged<Parameters<RequestRendererCapabilities['panel']['back']>[0]>(),
       openRequest: acknowledged<Parameters<RequestRendererCapabilities['panel']['openRequest']>[0]>()

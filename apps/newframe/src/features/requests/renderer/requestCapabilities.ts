@@ -36,7 +36,12 @@ export interface RequestExternalCapability extends ClipboardCapability, TokenIma
   openExplorer(input: CommandInput<'explorer.open'>): Promise<CommandResult>
 }
 
+interface SafeQueueCapability {
+  refresh(input: CommandInput<'account.safe-refresh'>): Promise<CommandResult>
+}
+
 export type RequestRendererCapabilities = {
+  safe: SafeQueueCapability
   panel: RequestPanelCapability
   review: RequestReviewCapability
   transaction: TransactionReviewCapability
@@ -80,6 +85,7 @@ const createRequestExternalCapability = (host: RequestHost): RequestExternalCapa
 
 export function createRequestRendererCapabilities(host: RequestHost): RequestRendererCapabilities {
   return {
+    safe: { refresh: (input) => host.executeCommand({ type: 'account.safe-refresh', ...input }) },
     panel: createRequestPanelCapability(host),
     review: createRequestReviewCapability(host),
     transaction: createTransactionReviewCapability(host),

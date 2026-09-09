@@ -32,6 +32,7 @@ export interface OperationServices {
     get(accountId: string): unknown
   }
   accountMutations: import('../../../features/accounts/main/service.js').AccountService
+  safes: import('../../../features/accounts/main/safe.js').SafeService
   accountOnboarding: import('../../../features/accounts/main/accountOnboarding/service.js').AccountOnboardingService
   agent: import('../../../features/agent-access/main/index.js').AgentService
   networks: import('../../../features/networks/main/service.js').NetworkService
@@ -193,6 +194,7 @@ export function createOperationRegistry(services: OperationServices) {
   const {
     accountMutations,
     accountOnboarding,
+    safes,
     agent,
     networks,
     portfolio,
@@ -355,6 +357,12 @@ export function createOperationRegistry(services: OperationServices) {
     ),
     'account.add-from-signer': defineOwnedCommand('account.add-from-signer', (command, context) =>
       accountOnboarding.addFromSigner(command, operationOwner(context))
+    ),
+    'account.safe-import': defineOwnedCommand('account.safe-import', (command, context) =>
+      safes.import(command, operationOwner(context))
+    ),
+    'account.safe-refresh': defineAcknowledgedCommand('account.safe-refresh', (command) =>
+      safes.refresh(command)
     ),
     'account.watch-add': defineOwnedCommand('account.watch-add', (command, context) =>
       accountOnboarding.addWatch(command, operationOwner(context))
@@ -645,6 +653,12 @@ export function createOperationRegistry(services: OperationServices) {
         return address ? ({ ok: true, address } as const) : ({ ok: false, error: 'not_found' } as const)
       },
       failure: { ok: false, error: 'resolution_failed' }
+    }),
+    'safe.supported-networks': defineQuery('safe.supported-networks', {
+      roles: ['wallet-ui'],
+      entrypoints: ['tray'],
+      handle: () => safes.supportedNetworks(),
+      failure: []
     }),
     'token.lookup': defineQuery('token.lookup', {
       roles: ['wallet-ui'],

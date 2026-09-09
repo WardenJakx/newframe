@@ -7,6 +7,7 @@ import { createAnvilService } from './services/anvil.ts'
 import { createSeedAnvilService } from './services/contracts.ts'
 import { DevelopmentAppService } from './services/development-app.ts'
 import { createElectronProcessService } from './services/electron.ts'
+import { createLocalSafeService } from './services/local-safe.ts'
 import { createLocalTradeService } from './services/local-trade.ts'
 
 const log = (message: string) => console.log(`[harness] ${message}`)
@@ -26,7 +27,8 @@ export async function runLiveHarness(watchMode = false) {
   try {
     await runtime.start(createAnvilService())
     const seed = await runtime.start(createSeedAnvilService())
-    await runtime.watch(seed.completed)
+    const safeSeed = await runtime.watch(seed.completed)
+    await runtime.start(createLocalSafeService(safeSeed, { stdio: 'inherit' }))
     await runtime.start(createLocalTradeService({ stdio: 'inherit' }))
     const frame = await runtime.watch(
       runtime.start(

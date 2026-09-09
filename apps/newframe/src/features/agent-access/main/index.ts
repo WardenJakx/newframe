@@ -80,7 +80,7 @@ async function readJson(req: IncomingMessage) {
 
 function isHotAccount(accountId: string, accounts: Accounts) {
   const account = accounts.get(accountId)
-  return Boolean(account && ['ring', 'seed'].includes(account.lastSignerType.toLowerCase()))
+  return Boolean(account && !account.safe && ['ring', 'seed'].includes(account.lastSignerType.toLowerCase()))
 }
 
 function isReadyAgentAccount(accountId: string, accounts: Accounts, runtime: AgentRuntime) {
@@ -395,7 +395,8 @@ function setAgentAccess(
   runtime: AgentRuntime
 ) {
   const account = accounts.getFrameAccount(accountId)
-  if (!account || (enabled && !isHotAccount(accountId, accounts))) return false
+  if (!account || accounts.get(accountId)?.safe || (enabled && !isHotAccount(accountId, accounts)))
+    return false
 
   account.patch({ agentEnabled: enabled })
   if (!enabled) {

@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { SafeDeploymentSchema } from '../safe.js'
 
 export const AccountMetadataSchema = z
   .object({
@@ -17,6 +18,7 @@ export const AccountSchema = z
     status: z.string(),
     signer: z.string(),
     signerStatus: z.string().optional(),
+    safe: z.record(z.string().regex(/^[1-9][0-9]*$/), SafeDeploymentSchema).optional(),
     agentEnabled: z.boolean().optional(),
     requests: z.record(z.string(), z.unknown()),
     ensName: z.string().optional(),

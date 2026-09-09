@@ -80,11 +80,13 @@ const profiles = fakes('create', 'delete', 'moveAccount', 'movableAccounts', 're
 const security = fakes('configure', 'lock', 'reset', 'status', 'unlock')
 const send = fakes('dispose', 'submit')
 const settings = fakes('update')
+const safes = fakes('import', 'refresh', 'supportedNetworks', 'dispose')
 const tokens = fakes('add', 'lookup', 'remove')
 const trade = fakes('cancel', 'dispose', 'prepare', 'quote', 'release', 'submit')
 const servicesWithMocks = [
   accountMutations,
   accountOnboarding,
+  safes,
   agent,
   networks,
   portfolio,
@@ -126,6 +128,7 @@ function createTestServices() {
     accounts: { current: mock(), get: mock() },
     accountMutations,
     accountOnboarding,
+    safes,
     agent,
     networks,
     portfolio,
@@ -472,4 +475,25 @@ describe('typed operation dispatcher', () => {
     ])
     expect(requests.approve).toHaveBeenCalledTimes(2)
   })
+})
+
+it('authorizes Safe commands and delegates owned imports with generic acknowledgements', async () => {
+  const command = {
+    type: 'account.safe-import',
+    operationId: 'safe-import',
+    address: '0x1111111111111111111111111111111111111111',
+    chainId: 1
+  }
+  authorizeRenderer.mockReturnValue(sideTrayContext)
+  expect(await dispatcher.dispatchCommand({} as never, command)).toMatchObject({ ok: false })
+  authorizeRenderer.mockReturnValue(trayContext)
+  safes.import.mockReturnValue(true)
+  expect(await dispatcher.dispatchCommand({} as never, command)).toEqual({ ok: true })
+  safes.supportedNetworks.mockReturnValue([{ chainId: 1, name: 'Ethereum', supported: true }])
+  expect(await dispatcher.dispatchQuery({} as never, { type: 'safe.supported-networks' })).toEqual([
+    { chainId: 1, name: 'Ethereum', supported: true }
+  ])
+  safes.refresh.mockReturnValue(true)
+  const refresh = { type: 'account.safe-refresh', accountId: command.address, force: true }
+  expect(await dispatcher.dispatchCommand({} as never, refresh)).toEqual({ ok: true })
 })

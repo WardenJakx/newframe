@@ -10,6 +10,8 @@ import { HarnessRuntime, installSignalHandlers } from './core/service.ts'
 import { createAnvilService } from './services/anvil.ts'
 import { createSeedAnvilService } from './services/contracts.ts'
 import { ElectronApplicationService } from './services/electron.ts'
+import { createLocalSafeService } from './services/local-safe.ts'
+import type { SafeSeedManifest } from './services/safe-contracts.ts'
 import { createLocalTradeService } from './services/local-trade.ts'
 import { AnvilClient } from './visual/anvil-client.ts'
 import { NewframeDriver, waitForElectronPage } from './visual/driver.ts'
@@ -53,18 +55,23 @@ async function bootstrap(services: HarnessRuntime, visual: VisualHarnessRuntime)
   ])
   await services.watch(Promise.all([seed.completed, expectSuccessfulExit(compile, 'newframe compile')]))
 
+  const safeSeed = await seed.completed
+  await services.watch(services.start(createLocalSafeService(safeSeed)))
+
   const bundle = await services.start(buildCommand('newframe bundle', ['bun', 'run', 'bundle'], appDir))
   await services.watch(expectSuccessfulExit(bundle, 'newframe bundle'))
 
   visual.currentStage = 'local Flash service'
   visual.log('local Flash service')
   await services.watch(services.start(createLocalTradeService()))
+  return safeSeed
 }
 
 async function createContext(
   app: ElectronApplication,
   services: HarnessRuntime,
-  runtime: VisualHarnessRuntime
+  runtime: VisualHarnessRuntime,
+  safeSeed: SafeSeedManifest
 ): Promise<VisualHarnessContext> {
   runtime.currentStage = 'wait for tray renderer'
   runtime.log('wait for tray renderer')
@@ -73,6 +80,7 @@ async function createContext(
   const anvil = new AnvilClient()
   return {
     anvil,
+    safeSeed,
     app,
     driver: new NewframeDriver(app, tray, runtime, anvil),
     runtime,
@@ -88,14 +96,14 @@ export async function runVisualHarness() {
   let app: ElectronApplication | undefined
 
   try {
-    await bootstrap(services, visual)
+    const safeSeed = await bootstrap(services, visual)
 
     visual.currentStage = 'launch electron'
     visual.log('launch electron')
     app = await services.watch(services.start(new ElectronApplicationService(electron, visual.uiTimeoutMs)))
     visual.monitorElectron(app)
 
-    const context = await services.watch(createContext(app, services, visual))
+    const context = await services.watch(createContext(app, services, visual, safeSeed))
     visual.assertNoUnexpectedRendererErrors()
     for (const stage of visualStages) {
       await services.watch(visual.runStage(context, stage))

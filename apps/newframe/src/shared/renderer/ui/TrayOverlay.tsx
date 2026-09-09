@@ -14,6 +14,7 @@ const overlayRecipe = cva({
     minHeight: 0,
     flexDirection: 'column',
     background: 'bg.primary',
+    '& > header': { position: 'relative', zIndex: 'content', background: 'bg.primary' },
     animation: 'overlayShow token(durations.fast) token(easings.standard) both'
   }
 })

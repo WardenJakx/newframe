@@ -1,5 +1,6 @@
 import { SignTypedDataVersion, TypedDataUtils } from '@metamask/eth-sig-util'
-import { concat, getBytes, hexlify, keccak256, toBeHex, zeroPadValue } from 'ethers'
+import { hexlify } from 'ethers'
+export { getCalldataDigest } from '../../../shared/domain/calldata.js'
 
 import type { TypedData, TypedMessage } from '../../../features/requests/contract/requests.js'
 
@@ -40,11 +41,4 @@ export function getEip712Digests(typedMessage: TypedMessage): Eip712Digests | un
   } catch {
     return undefined
   }
-}
-
-export function getCalldataDigest(calldata: string) {
-  const data = getBytes(calldata)
-  const lengthPrefix = zeroPadValue(toBeHex(data.length), 32)
-
-  return keccak256(concat([lengthPrefix, data]))
 }

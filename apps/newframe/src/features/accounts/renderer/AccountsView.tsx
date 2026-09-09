@@ -281,7 +281,7 @@ function AccountActions({
             {moveError}
           </Text>
         ) : null}
-        {account.hot || account.agentEnabled ? (
+        {account.signerType !== 'safe' && (account.hot || account.agentEnabled) ? (
           <>
             <Button
               appearance='row'

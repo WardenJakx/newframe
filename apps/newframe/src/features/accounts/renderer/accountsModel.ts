@@ -38,11 +38,14 @@ export function shortAccountAddress(address = '') {
 }
 
 function accountSignerType(account: AccountProjection | undefined) {
+  if (account?.safe && Object.keys(account.safe).length) return 'safe'
   return String(account?.lastSignerType || '')
 }
 
 function accountSignerLabel(account: AccountProjection | undefined) {
-  return signerTypeLabel(accountSignerType(account))
+  return accountSignerType(account) === 'safe'
+    ? 'Safe · Watch-only'
+    : signerTypeLabel(accountSignerType(account))
 }
 
 function isHotAccount(account: AccountProjection | undefined) {
@@ -138,7 +141,7 @@ export function buildAccountListModel(input: {
       signerType: accountSignerType(account),
       signerLabel: accountSignerLabel(account),
       balanceLabel: accountBalanceLabel({ ...input, account }),
-      agentEnabled: Boolean(account.agentEnabled),
+      agentEnabled: accountSignerType(account) !== 'safe' && Boolean(account.agentEnabled),
       hot: isHotAccount(account),
       lastSeedAccount: isLastAccountForSeedPhrase(account, input.accounts, input.signers),
       profileId: account.profileId

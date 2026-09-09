@@ -164,3 +164,57 @@ it('does not show a request notification when there are no actionable requests',
 
   expect(screen.queryByLabelText('Pending requests')).toBeNull()
 })
+
+it('counts Safe proposals with RPC requests and keeps the empty Safe queue accessible', async () => {
+  const accountId = '0x1111111111111111111111111111111111111111'
+  const account = {
+    id: accountId,
+    address: accountId,
+    profileId: 'default-profile',
+    name: 'Safe',
+    lastSignerType: 'address',
+    status: 'ok',
+    signer: 'watch',
+    created: '',
+    requests: { rpc: { handlerId: 'rpc', mode: 'normal', type: 'access' } },
+    safe: {
+      '1': {
+        chainId: 1,
+        address: accountId,
+        configuration: { owners: [accountId], threshold: 1, nonce: '0' },
+        pending: [
+          {
+            safeTxHash: `0x${'a'.repeat(64)}`,
+            safe: accountId,
+            nonce: '0',
+            to: accountId,
+            value: '0',
+            operation: 0,
+            data: '0x',
+            confirmations: []
+          }
+        ]
+      }
+    }
+  } as unknown as WalletRendererState['accounts'][string]
+  fixture.state.reset(walletState({ currentAccount: accountId, accounts: { [accountId]: account } }))
+  const { user, unmount } = render(
+    <HomeUiProvider>
+      <HomeNotifications />
+      <NavigationObserver />
+    </HomeUiProvider>
+  )
+  await user.click(screen.getByRole('button', { name: '2 pending requests' }))
+  expect(screen.getByText('{"section":"positions","overlay":{"type":"requests"}}')).toBeTruthy()
+  unmount()
+  account.requests = {}
+  account.safe!['1']!.pending = []
+  account.safe!['1']!.error = 'Service unavailable'
+  fixture.state.reset(walletState({ currentAccount: accountId, accounts: { [accountId]: account } }))
+  render(
+    <HomeUiProvider>
+      <HomeNotifications />
+    </HomeUiProvider>
+  )
+  expect(screen.getByRole('button', { name: 'Requests' })).toBeTruthy()
+})

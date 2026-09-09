@@ -6,6 +6,7 @@ import { harnessAccountStage } from './harness-account.ts'
 import { lockScreenStage } from './lock-screen.ts'
 import { networkOnboardingStage } from './network-onboarding.ts'
 import { resetStateStage } from './reset-state.ts'
+import { safeWatchStage } from './safe-watch.ts'
 import { sendStage } from './send.ts'
 import { tradeLimitStage } from './trade-limit.ts'
 import { tradeMarketStage } from './trade-market.ts'
@@ -29,6 +30,7 @@ export const visualStages: VisualStage[] = [
   vitalikPositionsStage,
   harnessAccountStage,
   networkOnboardingStage,
+  safeWatchStage,
   anvilPositionsStage,
   agentSessionStage,
   tradeTicketStage,

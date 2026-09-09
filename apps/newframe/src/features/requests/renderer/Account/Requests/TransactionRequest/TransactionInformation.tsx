@@ -44,9 +44,10 @@ export type TransactionInformationProps = {
   networkIcon?: string
   statusLabel: ReactNode
   notice?: ReactNode
-  effects: TransactionInformationEffect[]
-  effectsEmptyText: ReactNode
+  effects?: TransactionInformationEffect[]
+  effectsEmptyText?: ReactNode
   details: TransactionInformationDetailRow[]
+  wrapDetailValues?: boolean
   calldata?: TransactionInformationCalldata
   nativeCurrency: TransactionInformationNativeCurrency
   children?: ReactNode
@@ -321,7 +322,15 @@ function TransactionEffects({
   )
 }
 
-function DetailValue({ value }: { value: ReactNode }) {
+const wrappedValueRecipe = cva({ base: { minWidth: 0, overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' } })
+
+function DetailValue({ value, wrap }: { value: ReactNode; wrap?: boolean }) {
+  if (wrap)
+    return (
+      <span className={wrappedValueRecipe()}>
+        <DetailValue value={value} />
+      </span>
+    )
   return typeof value === 'string' || typeof value === 'number' ? (
     <Text align='end' variant='code'>
       {value}
@@ -331,14 +340,14 @@ function DetailValue({ value }: { value: ReactNode }) {
   )
 }
 
-function DetailRow({ label, value, onClick }: TransactionInformationDetailRow) {
+function DetailRow({ label, value, onClick, wrap }: TransactionInformationDetailRow & { wrap?: boolean }) {
   if (!value) return null
   const content = (
     <Inline align='center' gap='small' justify='between'>
       <Text shrink={false} tone='secondary' variant='overline'>
         {label}
       </Text>
-      <DetailValue value={value} />
+      <DetailValue value={value} wrap={wrap} />
     </Inline>
   )
   return onClick ? (
@@ -409,6 +418,7 @@ export default function TransactionInformation({
   effects,
   effectsEmptyText,
   details,
+  wrapDetailValues,
   calldata,
   nativeCurrency,
   children
@@ -439,14 +449,16 @@ export default function TransactionInformation({
           </Stack>
         </section>
 
-        <TransactionEffects
-          effects={effects}
-          emptyText={effectsEmptyText}
-          imageCapability={imageCapability}
-          nativeCurrency={nativeCurrency}
-          networkIcon={networkIcon}
-          networkName={networkName}
-        />
+        {effects ? (
+          <TransactionEffects
+            effects={effects}
+            emptyText={effectsEmptyText}
+            imageCapability={imageCapability}
+            nativeCurrency={nativeCurrency}
+            networkIcon={networkIcon}
+            networkName={networkName}
+          />
+        ) : null}
 
         <Surface padding='none' radius='card' tone='card'>
           <section aria-label='Transaction details' className={sectionRecipe()}>
@@ -458,7 +470,7 @@ export default function TransactionInformation({
             <Surface padding='small' radius='none' tone='card'>
               <Stack gap='xsmall'>
                 {details.map((detail, index) => (
-                  <DetailRow key={`${detail.label}-${index}`} {...detail} />
+                  <DetailRow key={`${detail.label}-${index}`} {...detail} wrap={wrapDetailValues} />
                 ))}
                 {calldata ? <CalldataDetails calldata={calldata} /> : null}
               </Stack>
