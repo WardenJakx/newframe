@@ -205,7 +205,7 @@ export function createSafeClient({
         }
         if (page.next && proposals.size === before) throw new Error('Safe pagination did not progress')
         if (!page.next) break
-        const candidate = new URL(page.next, next)
+        const candidate: URL = new URL(page.next, next)
         if (
           candidate.origin !== first.origin ||
           candidate.pathname !== first.pathname ||
