@@ -654,10 +654,10 @@ export function createOperationRegistry(services: OperationServices) {
       },
       failure: { ok: false, error: 'resolution_failed' }
     }),
-    'safe.supported-networks': defineQuery('safe.supported-networks', {
+    'safe.discover': defineQuery('safe.discover', {
       roles: ['wallet-ui'],
       entrypoints: ['tray'],
-      handle: () => safes.supportedNetworks(),
+      handle: ({ address }) => safes.discoverNetworks(address),
       failure: []
     }),
     'token.lookup': defineQuery('token.lookup', {

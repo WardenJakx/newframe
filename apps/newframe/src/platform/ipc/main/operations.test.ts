@@ -80,7 +80,7 @@ const profiles = fakes('create', 'delete', 'moveAccount', 'movableAccounts', 're
 const security = fakes('configure', 'lock', 'reset', 'status', 'unlock')
 const send = fakes('dispose', 'submit')
 const settings = fakes('update')
-const safes = fakes('import', 'refresh', 'supportedNetworks', 'dispose')
+const safes = fakes('import', 'refresh', 'discoverNetworks', 'dispose')
 const tokens = fakes('add', 'lookup', 'remove')
 const trade = fakes('cancel', 'dispose', 'prepare', 'quote', 'release', 'submit')
 const servicesWithMocks = [
@@ -489,10 +489,10 @@ it('authorizes Safe commands and delegates owned imports with generic acknowledg
   authorizeRenderer.mockReturnValue(trayContext)
   safes.import.mockReturnValue(true)
   expect(await dispatcher.dispatchCommand({} as never, command)).toEqual({ ok: true })
-  safes.supportedNetworks.mockReturnValue([{ chainId: 1, name: 'Ethereum', supported: true }])
-  expect(await dispatcher.dispatchQuery({} as never, { type: 'safe.supported-networks' })).toEqual([
-    { chainId: 1, name: 'Ethereum', supported: true }
-  ])
+  safes.discoverNetworks.mockReturnValue([{ chainId: 1, name: 'Ethereum', supported: true }])
+  expect(
+    await dispatcher.dispatchQuery({} as never, { type: 'safe.discover', address: command.address })
+  ).toEqual([{ chainId: 1, name: 'Ethereum', supported: true }])
   safes.refresh.mockReturnValue(true)
   const refresh = { type: 'account.safe-refresh', accountId: command.address, force: true }
   expect(await dispatcher.dispatchCommand({} as never, refresh)).toEqual({ ok: true })

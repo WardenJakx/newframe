@@ -215,3 +215,44 @@ test('uses explicit legacy domains and binds modern hashes to the watched chain 
     )
   }
 })
+
+test('discovers contracts through the requested chain and imports configuration without a queue service', async () => {
+  const { Interface } = await import('ethers')
+  const abi = new Interface([
+    'function VERSION() view returns (string)',
+    'function getOwners() view returns (address[])',
+    'function getThreshold() view returns (uint256)',
+    'function nonce() view returns (uint256)'
+  ])
+  const calls: string[] = []
+  const client = createSafeClient({
+    request: async () => {
+      throw new Error('Discovery must not use HTTP')
+    },
+    networks: {},
+    call: async (chainId, address, data) => {
+      expect(chainId).toBe(8453)
+      expect(address).toBe(safe)
+      const method = abi.getFunction(data.slice(0, 10))!.name
+      calls.push(method)
+      return abi.encodeFunctionResult(method, [
+        method === 'VERSION' ? '1.4.1' : method === 'getOwners' ? owners : method === 'getThreshold' ? 2n : 9n
+      ])
+    }
+  })
+  expect(await client.discover(8453, safe)).toEqual({ version: '1.4.1', owners })
+  expect(calls).toEqual(['VERSION', 'getOwners'])
+  expect(await client.configuration(8453, safe)).toEqual({
+    version: '1.4.1',
+    owners,
+    threshold: 2,
+    nonce: '9'
+  })
+})
+
+test('rejects empty contract responses and bounds unresponsive chain probes', async () => {
+  const client = createSafeClient({ request: fetch, call: async () => '0x' })
+  await expect(client.discover(1, safe)).rejects.toThrow()
+  const hanging = createSafeClient({ request: fetch, timeoutMs: 5, call: () => new Promise(() => {}) })
+  await expect(hanging.discover(1, safe)).rejects.toThrow('Safe chain request timed out')
+})

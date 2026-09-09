@@ -110,6 +110,7 @@ export type AddAccountFlowModel =
       kind: 'safe'
       model: {
         address: string
+        discovering: boolean
         busy: boolean
         error: string
         networks: Array<{
@@ -865,7 +866,14 @@ export function AddAccountView({
             disabled={flow.model.busy}
           />
         </Field>
-        <Text variant='supporting'>Choose networks to watch</Text>
+        <Text variant='supporting'>
+          {flow.model.discovering ? 'Checking configured networks…' : 'Choose networks to watch'}
+        </Text>
+        {!flow.model.discovering &&
+        /^0x[0-9a-fA-F]{40}$/.test(flow.model.address.trim()) &&
+        !flow.model.networks.length ? (
+          <Text variant='supporting'>No Safe found on reachable configured networks.</Text>
+        ) : null}
         <Grid columns='one' gap='small'>
           {flow.model.networks
             .filter((network) => network.supported)
@@ -888,22 +896,6 @@ export function AddAccountView({
               </Button>
             ))}
         </Grid>
-        {flow.model.networks.some((network) => !network.supported) ? (
-          <details>
-            <summary>Unavailable networks</summary>
-            <Text variant='supporting'>Safe queue service is unavailable on these networks.</Text>
-            <Grid columns='two' gap='small'>
-              {flow.model.networks
-                .filter((network) => !network.supported)
-                .map((network) => (
-                  <Inline key={network.chainId} align='center' gap='small'>
-                    {network.icon}
-                    <Text tone='secondary'>{network.name}</Text>
-                  </Inline>
-                ))}
-            </Grid>
-          </details>
-        ) : null}
         <Feedback error={flow.model.error} status={flow.model.busy ? 'Importing Safe networks' : ''} />
         <Button
           label='Import Safe networks'

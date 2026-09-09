@@ -32,7 +32,7 @@ export interface AccountsCapability extends ClipboardCapability {
   addAccountFromSigner(input: CommandInput<'account.add-from-signer'>): Promise<CommandResult>
   addWatchAccount(input: CommandInput<'account.watch-add'>): Promise<CommandResult>
   importSafe(input: CommandInput<'account.safe-import'>): Promise<CommandResult>
-  supportedSafeNetworks(): Promise<QueryResultMap['safe.supported-networks']>
+  discoverSafeNetworks(address: string): Promise<QueryResultMap['safe.discover']>
   importSigner(input: CommandInput<'signer.import'>): Promise<CommandResult>
 
   startHardwareSession(input: CommandInput<'signer.hardware-session-start'>): Promise<CommandResult>
@@ -74,8 +74,8 @@ export function createAccountsCapability(host: AccountsHost): AccountsCapability
     addAccountFromSigner: (input) => host.executeCommand({ type: 'account.add-from-signer', ...input }),
     addWatchAccount: (input) => host.executeCommand({ type: 'account.watch-add', ...input }),
     importSafe: (input) => host.executeCommand({ type: 'account.safe-import', ...input }),
-    supportedSafeNetworks: async () => {
-      const result = await host.executeQuery({ type: 'safe.supported-networks' })
+    discoverSafeNetworks: async (address) => {
+      const result = await host.executeQuery({ type: 'safe.discover', address })
       if (!Array.isArray(result)) throw new Error(result.message || 'Could not load Safe networks')
       return result
     },

@@ -292,6 +292,23 @@ export function createProductionCapabilities(
     store,
     operations: operationService,
     client: createSafeClient({
+      call: (chainId, address, data) =>
+        new Promise<string>((resolve, reject) => {
+          chains.send(
+            {
+              id: crypto.randomUUID(),
+              jsonrpc: '2.0',
+              method: 'eth_call',
+              params: [{ to: address, data }, 'latest']
+            },
+            (response) => {
+              if (response.error) reject(new Error(response.error.message))
+              else if (typeof response.result === 'string') resolve(response.result)
+              else reject(new Error('Invalid Safe contract response'))
+            },
+            { type: 'ethereum', id: chainId }
+          )
+        }),
       decode: reveal.decode,
       request: (url, init) => safeRequests.request(url, init),
       networks: safeServiceNetworks({

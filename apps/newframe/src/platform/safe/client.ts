@@ -1,3 +1,4 @@
+import { Interface } from 'ethers'
 import { verifySafeHash, serviceCalldataMismatch } from './integrity.js'
 import { decodeCallDataWithSignature, type DecodedCallData } from '../chain-rpc/contracts/index.js'
 import { getLocalFunctionSelectorSignatures } from '../chain-rpc/contracts/selectors.js'
@@ -64,18 +65,21 @@ export function createSafeClient({
   networks = SAFE_SERVICE_NETWORKS,
   timeoutMs = 15000,
   decode,
+  call,
   now = Date.now
 }: {
   request: SafeRequest
   networks?: Readonly<Record<string, string>>
   timeoutMs?: number
   decode?: (address: string, chainId: number, data: string) => Promise<DecodedCallData | undefined>
+  call?: (chainId: number, address: string, data: string) => Promise<string>
   now?: () => number
 }) {
   const cooldowns = new Map<string, number>()
   function base(chainId: number) {
     const url = networks[chainId]
-    if (!Number.isSafeInteger(chainId) || !url) throw new Error('Unsupported Safe network')
+    if (!Number.isSafeInteger(chainId) || !url)
+      throw new Error('Safe queue service is unavailable on this network')
     return url.replace(/\/$/, '')
   }
   async function json(url: string, signal?: AbortSignal): Promise<unknown> {
@@ -112,10 +116,62 @@ export function createSafeClient({
       signal?.removeEventListener('abort', abort)
     }
   }
+  const abi = new Interface([
+    'function VERSION() view returns (string)',
+    'function getOwners() view returns (address[])',
+    'function getThreshold() view returns (uint256)',
+    'function nonce() view returns (uint256)'
+  ])
+  async function read(
+    chainId: number,
+    address: string,
+    method: string,
+    signal?: AbortSignal
+  ): Promise<unknown> {
+    if (!call) throw new Error('Safe chain provider is unavailable')
+    signal?.throwIfAborted()
+    let timer: ReturnType<typeof setTimeout> | undefined
+    try {
+      const result = await Promise.race([
+        call(chainId, address, abi.encodeFunctionData(method)),
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(() => reject(new Error('Safe chain request timed out')), timeoutMs)
+        })
+      ])
+      signal?.throwIfAborted()
+      return abi.decodeFunctionResult(method, result)[0]
+    } finally {
+      clearTimeout(timer)
+    }
+  }
+  async function discover(chainId: number, address: string, signal?: AbortSignal) {
+    const expected = safeAddressSchema.parse(address)
+    const version = z
+      .string()
+      .min(1)
+      .max(100)
+      .parse(await read(chainId, expected, 'VERSION', signal))
+    const owners = z
+      .array(safeAddressSchema)
+      .min(1)
+      .max(1000)
+      .parse(await read(chainId, expected, 'getOwners', signal))
+    return { version, owners }
+  }
   return {
-    supportedNetworks: () => Object.keys(networks).map(Number),
+    discover,
     async configuration(chainId: number, address: string, signal?: AbortSignal): Promise<SafeConfiguration> {
       const expected = safeAddressSchema.parse(address)
+      if (call) {
+        const identity = await discover(chainId, expected, signal)
+        const threshold = await read(chainId, expected, 'getThreshold', signal)
+        const nonce = await read(chainId, expected, 'nonce', signal)
+        return safeConfigurationSchema.parse({
+          ...identity,
+          threshold: Number(threshold),
+          nonce: String(nonce)
+        })
+      }
       const info = infoSchema.parse(await json(`${base(chainId)}/v1/safes/${expected}/`, signal))
       if (info.address !== expected) throw new Error('Safe service returned a different Safe')
       return safeConfigurationSchema.parse({
