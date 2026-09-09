@@ -53,6 +53,7 @@ export function PortfolioHero({
   return (
     <PortfolioHeroView
       canSend={actions.canSend()}
+      sendDisabledReason={actions.sendDisabledReason}
       canTrade={actions.canTrade()}
       displayValue={formatPortfolioValue(visibleBalances)}
       onRefresh={() => {

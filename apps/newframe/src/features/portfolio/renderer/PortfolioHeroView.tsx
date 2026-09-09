@@ -40,6 +40,7 @@ const refreshRecipe = cva({
 
 export function PortfolioHeroView({
   canSend,
+  sendDisabledReason = 'No assets available',
   canTrade,
   displayValue,
   onRefresh,
@@ -48,6 +49,7 @@ export function PortfolioHeroView({
   refreshing
 }: {
   canSend: boolean
+  sendDisabledReason?: string
   canTrade: boolean
   displayValue: string
   onRefresh: () => void
@@ -93,7 +95,7 @@ export function PortfolioHeroView({
             onPress={onSend}
             shape='pill'
             size='large'
-            title={canSend ? 'Send' : 'No assets available'}
+            title={canSend ? 'Send' : sendDisabledReason}
             width='wide'
           >
             <Icon name='send' size='small' tone='accent' />

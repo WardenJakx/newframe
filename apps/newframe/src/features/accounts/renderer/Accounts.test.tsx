@@ -292,3 +292,33 @@ describe('AddAccount existing-account selection', () => {
     await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1))
   })
 })
+
+it('keeps Safe accounts watch-only even with an associated local signer and AI flag', async () => {
+  const capability = createAccountsCapabilityFake()
+  fixture.state.reset(
+    walletState({
+      accounts: {
+        [account.id]: {
+          ...account,
+          lastSignerType: 'seed',
+          agentEnabled: true,
+          safe: {
+            '1': {
+              chainId: 1,
+              address: account.address,
+              configuration: { owners: [account.address], threshold: 1, nonce: '0' }
+            }
+          }
+        }
+      },
+      currentAccount: account.id
+    })
+  )
+  const { user } = render(<Accounts capability={capability} onClose={() => {}} />)
+  expect(screen.getByText('Safe · Watch-only')).toBeTruthy()
+  await user.click(screen.getByRole('button', { name: 'Primary account actions' }))
+  expect(screen.queryByText('Enable AI access')).toBeNull()
+  expect(screen.queryByText('Disable AI access')).toBeNull()
+  expect(screen.queryByText('Export private key')).toBeNull()
+  expect(screen.getByText('Remove account')).toBeTruthy()
+})

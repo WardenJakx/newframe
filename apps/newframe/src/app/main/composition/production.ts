@@ -1,3 +1,6 @@
+import { createSafeService, type SafeService } from '../../../features/accounts/main/safe.js'
+import { createSafeClient, safeServiceNetworks } from '../../../platform/safe/client.js'
+import ProviderRequestPolicy from '../../../features/portfolio/main/requestPolicy.js'
 import { Accounts } from '../../../features/accounts/main/index.js'
 import createExternalDataScanner from '../../../features/asset-data/main/externalData/index.js'
 import type { AccountsRuntime } from '../../../features/accounts/main/runtime.js'
@@ -129,6 +132,7 @@ export interface ProductionMainAppDependencies {
   accountService: AccountService
   networkService: NetworkService
   tokenService: TokenService
+  safeService: SafeService
   requestEditService: RequestEditService
   requestService: RequestService
   portfolioService: PortfolioService
@@ -282,6 +286,21 @@ export function createProductionCapabilities(
     store
   })
   const networkService = createNetworkService({ ...adapters.network, store })
+  const safeRequests = new ProviderRequestPolicy(fetch, { maxRetries: 0, minIntervalMs: 500 })
+  const safeService = createSafeService({
+    accounts,
+    store,
+    operations: operationService,
+    client: createSafeClient({
+      decode: reveal.decode,
+      request: (url, init) => safeRequests.request(url, init),
+      networks: safeServiceNetworks({
+        development: process.env.FRAME_PROFILE === 'dev',
+        url: process.env.NEWFRAME_SAFE_SERVICE_URL,
+        chainId: process.env.NEWFRAME_SAFE_CHAIN_ID
+      })
+    })
+  })
   const tokenService = createTokenService({
     lookup: createTokenLookupAdapter(provider),
     operations: operationService,
@@ -359,6 +378,7 @@ export function createProductionCapabilities(
     accountCapabilities,
     infrastructureCallbacks: {
       dispose() {
+        safeService.dispose()
         accountSelection.dispose()
         addressChainUsage.dispose()
         adapters.accountOnboarding.dispose()
@@ -381,6 +401,7 @@ export function createProductionCapabilities(
     accountService,
     networkService,
     tokenService,
+    safeService,
     requestEditService,
     requestService,
     portfolioService,
@@ -403,6 +424,7 @@ function createProductionOperationServices(
   accountService: AccountService,
   networkService: NetworkService,
   tokenService: TokenService,
+  safeService: SafeService,
   requestEditService: RequestEditService,
   requestService: RequestService,
   portfolioService: PortfolioService,
@@ -427,6 +449,7 @@ function createProductionOperationServices(
     trade: tradeService,
     settings: settingsService,
     tokens: tokenService,
+    safes: safeService,
     authorizeRenderer: rendererAuthorization.authorizeRenderer,
     createRendererPrincipal,
     requestTokenImage: imageService.requestTokenImage,
@@ -456,6 +479,7 @@ export function createProductionMainApp({
   accountService,
   networkService,
   tokenService,
+  safeService,
   requestEditService,
   requestService,
   portfolioService,
@@ -479,6 +503,7 @@ export function createProductionMainApp({
       accountService,
       networkService,
       tokenService,
+      safeService,
       requestEditService,
       requestService,
       portfolioService,

@@ -109,3 +109,9 @@ Do not override that transitive dependency to TypeScript 7.
 - [`apps/newframe`](apps/newframe/README.md) - Electron desktop wallet and system-wide provider app.
 - [`apps/newframe-extension`](apps/newframe-extension/README.md) - browser companion extension that injects a Newframe-connected provider.
 - `packages` - shared libraries used by the app surfaces.
+
+The Newframe harness also deploys Safe 1.5.0 contracts on Anvil and starts a local,
+read-only Safe service on port 8423. Deployment receipts supply the watched address;
+no Safe backend containers or user keys are needed. `NEWFRAME_LOCAL_SAFE_PORT`
+overrides that port. The visual harness imports the Safe, refreshes its paginated
+queue, inspects a proposal, then removes the account and restores the selection.

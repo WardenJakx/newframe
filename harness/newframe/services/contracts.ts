@@ -17,6 +17,7 @@ import { anvilChainId, anvilRpcUrl, contractsDir } from '../core/config.ts'
 import { expectSuccessfulExit, ProcessService } from '../core/process-service.ts'
 import { TaskService } from '../core/task-service.ts'
 import { waitForAnvil } from './anvil.ts'
+import { seedSafe } from './safe-contracts.ts'
 
 type ContractArtifact = {
   abi?: InterfaceAbi
@@ -233,6 +234,7 @@ async function seedAnvil(signal: AbortSignal) {
       'settlement WETH transfer'
     )
     await assertSeeded(provider, usdc, weth)
+    return await seedSafe(provider, signer, anvilChainId, harnessAccountAddress)
   } finally {
     managed.close()
   }

@@ -1,3 +1,5 @@
+import type { SafeSeedManifest } from '../services/safe-contracts.ts'
+import type { SafeDeployment } from '../../../apps/newframe/src/features/accounts/domain/safe.ts'
 import type { ElectronApplication, Page } from 'playwright-core'
 
 import type { AnvilClient } from './anvil-client.ts'
@@ -103,6 +105,7 @@ export type CurrentRequest = AppRequest & {
 }
 
 export type AppAccount = AccountInfo & {
+  safe?: Record<string, SafeDeployment>
   agentEnabled?: boolean
   requests?: Record<string, AppRequest>
 }
@@ -164,6 +167,7 @@ export type HarnessAccounts = {
 
 export type VisualHarnessContext = {
   anvil: AnvilClient
+  safeSeed: SafeSeedManifest
   app: ElectronApplication
   driver: NewframeDriver
   runtime: VisualHarnessRuntime

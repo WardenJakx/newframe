@@ -180,3 +180,29 @@ it('characterizes agent prompt timeout, disconnect, approval idempotency, and di
     timers.useRealTimers()
   }
 })
+
+it('rejects Safe AI enablement and session readiness despite a hot signer', async () => {
+  const account = {
+    id: accountId,
+    address: accountId,
+    agentEnabled: false,
+    lastSignerType: 'seed',
+    safe: {},
+    patch: (update: { agentEnabled?: boolean }) => Object.assign(account, update),
+    getSigner: () => ({ type: 'seed', status: 'ok' })
+  }
+  const accounts = { current: () => account, get: () => account, getFrameAccount: () => account }
+  const service = createAgentService(
+    accounts as never,
+    {} as never,
+    { getState: () => ({ main: { appLock: { locked: false } } }) } as never,
+    {} as never
+  )
+  expect(service.setAgentAccess(accountId, true)).toBeFalse()
+  expect(account.agentEnabled).toBeFalse()
+  account.agentEnabled = true
+  const result = response()
+  await service.createHttpHandler({} as never)(request() as never, result as never)
+  expect(result.status).toBe(403)
+  service.dispose()
+})

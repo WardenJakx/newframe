@@ -31,7 +31,7 @@ export interface HomeCapabilities {
   networks: NetworksCapability
   orders: OrdersCapability
   portfolio: PortfolioCapability
-  requests: Pick<RequestRendererCapabilities, 'panel' | 'review'>
+  requests: Pick<RequestRendererCapabilities, 'panel' | 'review' | 'safe' | 'external'>
   security: SecurityCapability
   settings: SettingsCapability
   tokens: TokensCapability

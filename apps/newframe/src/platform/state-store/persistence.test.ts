@@ -685,3 +685,39 @@ describe('canonical persistence failure boundaries', () => {
     expect([...storage.values.entries()]).toEqual([['zustand.state', corrupt]])
   })
 })
+
+it('retains Safe metadata through persistence and projects only the current profile', async () => {
+  const { projectRendererState } = await import('../state-sync/main/projections')
+  const { projectionStateSchemas } = await import('../state-sync/contract/projections')
+  const store = createTestStore()
+  const address = '0x1111111111111111111111111111111111111111'
+  const safe = {
+    '1': {
+      chainId: 1,
+      address,
+      configuration: { owners: [address], threshold: 1, nonce: '9007199254740993' },
+      pending: [],
+      refreshedAt: 42
+    }
+  }
+  store.getState().upsertAccount({
+    id: address,
+    address,
+    name: 'Treasury',
+    signer: '',
+    lastSignerType: 'Address',
+    status: 'ok',
+    requests: {},
+    created: 'new:1',
+    safe
+  })
+  store.getState().createProfile('other', 'Other')
+  const persisted = JSON.parse(JSON.stringify(selectPersistedState(store.getState())))
+  const merged = mergePersistedState(persisted, canonicalState())
+  expect(merged.main.accounts[address].safe).toEqual(safe)
+  const audience = { clientType: 'wallet-ui' as const, windowInstanceId: 'test' }
+  const projected = projectionStateSchemas['wallet-ui'].parse(projectRendererState(merged, audience))
+  expect(projected.accounts[address].safe).toEqual(safe)
+  merged.main.currentProfile = 'other'
+  expect(projectRendererState(merged, audience)).toMatchObject({ accounts: {} })
+})

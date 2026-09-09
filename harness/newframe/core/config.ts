@@ -21,6 +21,7 @@ export const ports = {
   ),
   cdp: Number(process.env.NEWFRAME_HARNESS_CDP_PORT || 9333),
   localTrade: Number(process.env.FLASH_LOCAL_TRADE_PORT || 8422),
+  localSafe: positiveInteger(process.env.NEWFRAME_LOCAL_SAFE_PORT, 8423, 'local Safe port'),
   newframeRpc: 1248
 } as const
 
@@ -42,6 +43,7 @@ export const anvilRpcUrl =
 export const newframeRpcUrl = `http://127.0.0.1:${ports.newframeRpc}`
 export const localTradeServiceUrl = `http://127.0.0.1:${ports.localTrade}`
 export const localTradeServiceHealthUrl = `${localTradeServiceUrl}/health`
+export const localSafeServiceUrl = `http://127.0.0.1:${ports.localSafe}`
 export const passwordEnvKeys = ['NEWFRAME_HARNESS_PASSWORD', 'FRAME_HARNESS_PASSWORD'] as const
 
 export function readHarnessPassword() {
@@ -70,6 +72,8 @@ export function newframeEnv(overrides: NodeJS.ProcessEnv = {}): Record<string, s
   const env = definedEnv({
     NODE_ENV: 'production',
     FRAME_PROFILE: 'dev',
+    NEWFRAME_SAFE_SERVICE_URL: `${localSafeServiceUrl}/api`,
+    NEWFRAME_SAFE_CHAIN_ID: String(anvilChainId),
     ...overrides
   })
 

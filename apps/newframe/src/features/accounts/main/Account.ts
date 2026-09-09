@@ -732,6 +732,8 @@ class FrameAccount {
   }
 
   signMessage(message: string, cb: Callback<string>) {
+    if (this.store.getState().main.accounts[this.id]?.safe)
+      return cb(new Error('Safe accounts are read-only'))
     if (!message) return cb(new Error('No message to sign'))
     if (this.signer) {
       const s = this.runtime.signers.get(this.signer)
@@ -745,6 +747,8 @@ class FrameAccount {
   }
 
   signTypedData(typedMessage: TypedMessage, cb: Callback<string>) {
+    if (this.store.getState().main.accounts[this.id]?.safe)
+      return cb(new Error('Safe accounts are read-only'))
     if (!typedMessage.data) return cb(new Error('No data to sign'))
     if (typeof typedMessage.data !== 'object') return cb(new Error('Data to sign has the wrong format'))
     if (this.signer) {
@@ -759,6 +763,8 @@ class FrameAccount {
   }
 
   signTransaction(rawTx: TransactionData, cb: Callback<string>) {
+    if (this.store.getState().main.accounts[this.id]?.safe)
+      return cb(new Error('Safe accounts are read-only'))
     // if(index === typeof 'object' && cb === typeof 'undefined' && typeof rawTx === 'function') cb = rawTx; rawTx = index; index = 0;
     this.validateTransaction(rawTx, (err) => {
       if (err) return cb(err)

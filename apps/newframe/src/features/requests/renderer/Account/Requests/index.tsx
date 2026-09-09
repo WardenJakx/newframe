@@ -1,8 +1,6 @@
+import { RequestList } from '../../ui/RequestList'
 import { Button } from '@newframe/ui/button'
 import { Icon, type IconName } from '@newframe/ui/icon'
-import { Inline } from '@newframe/ui/inline'
-import { Stack } from '@newframe/ui/stack'
-import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
 import type { ReactNode } from 'react'
 
@@ -122,45 +120,30 @@ function Requests(props: RequestsProps) {
 
   return (
     <div className={requestsRecipe()}>
-      {groups.length === 0 ? (
-        <Surface border='subtle' padding='large' radius='card' tone='card'>
-          <Text align='center' tone='secondary' variant='overline'>
-            No pending requests
-          </Text>
-        </Surface>
-      ) : (
-        <Stack gap='medium'>
-          {groups.map(([origin, originRequests]) => (
-            <Surface border='subtle' key={origin} padding='small' radius='card' tone='card'>
-              <Stack gap='small'>
-                <Inline align='center' gap='small' justify='between'>
-                  <Inline align='center' gap='small'>
-                    <Icon name='window' size='small' tone='accent' />
-                    <Text variant='label' truncate>
-                      {props.origins[origin]?.name || origin}
-                    </Text>
-                  </Inline>
-                  <Button
-                    appearance='ghost'
-                    onPress={() =>
-                      void props.capabilities.review.clearOrigin({
-                        accountId: props.account || '',
-                        originId: origin
-                      })
-                    }
-                    size='small'
-                    tone='danger'
-                  >
-                    <Icon name='close' size='small' />
-                    <Text variant='caption'>Clear all</Text>
-                  </Button>
-                </Inline>
-                <Stack gap='small'>{originRequests.map(requestCard)}</Stack>
-              </Stack>
-            </Surface>
-          ))}
-        </Stack>
-      )}
+      <RequestList
+        groups={groups.map(([origin, requests]) => ({
+          id: origin,
+          title: props.origins[origin]?.name || origin,
+          icon: <Icon name='window' size='small' tone='accent' />,
+          action: (
+            <Button
+              appearance='ghost'
+              onPress={() =>
+                void props.capabilities.review.clearOrigin({
+                  accountId: props.account || '',
+                  originId: origin
+                })
+              }
+              size='small'
+              tone='danger'
+            >
+              <Icon name='close' size='small' />
+              <Text variant='caption'>Clear all</Text>
+            </Button>
+          ),
+          items: requests.map(requestCard)
+        }))}
+      />
     </div>
   )
 }

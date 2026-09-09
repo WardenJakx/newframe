@@ -35,3 +35,11 @@ The same one-way dependency rule applies in tests: app renderer composition may 
 but feature renderer tests and fixtures may not import app renderer modules. Capability fakes stay
 with their owning feature (or in explicitly test-only shared support), and captured calls retain the
 catalog-derived input types instead of using `any`.
+
+Safe observation: `bun run test:integration` exercises the local HTTP handler,
+public observation service, renderer projection, and queue retention on failure.
+From the repo root, `bun run visual:harness:newframe` additionally deploys official
+Safe 1.5.0 artifacts on Anvil and checks import, refresh, read-only proposal details,
+and account removal through the compiled app. Use the existing harness password
+setup; the Safe owner includes the local harness account but cannot sign proposals.
+The service binds loopback port 8423 (`NEWFRAME_LOCAL_SAFE_PORT` to override).

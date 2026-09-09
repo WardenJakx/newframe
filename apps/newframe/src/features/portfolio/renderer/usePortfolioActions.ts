@@ -22,8 +22,9 @@ export function usePortfolioActions(
   balances: PortfolioActionAsset[],
   selectedChainId: number
 ) {
-  const { networks, runtime } = useWalletSelector(
+  const { networks, runtime, isSafe } = useWalletSelector(
     useShallow((state) => ({
+      isSafe: Boolean(Object.keys(state.accounts?.[state.currentAccount]?.safe || {}).length),
       networks: state.networks?.ethereum || EMPTY_NETWORKS,
       runtime: state.runtime || EMPTY_RUNTIME
     }))
@@ -47,17 +48,20 @@ export function usePortfolioActions(
   }
   const canTrade = (asset?: PortfolioActionAsset) => {
     const contextAsset = asset || firstTradeAsset
-    if (!contextAsset) return false
+    if (isSafe || !contextAsset) return false
     const chainId = tradeChainId(contextAsset)
     return chainEnabled(chainId) && isFlashChainSupported(chainId, runtime)
   }
 
   return {
+    sendDisabledReason: isSafe
+      ? 'Safe accounts are watch-only. Sending is unavailable.'
+      : 'No assets available',
     canSend: (asset?: PortfolioActionAsset) =>
-      asset ? hasPositiveBalance(asset) : balances.some(hasPositiveBalance),
+      !isSafe && (asset ? hasPositiveBalance(asset) : balances.some(hasPositiveBalance)),
     canTrade,
     openSend: (asset?: PortfolioActionAsset) => {
-      if (asset ? !hasPositiveBalance(asset) : !balances.some(hasPositiveBalance)) return
+      if (isSafe || (asset ? !hasPositiveBalance(asset) : !balances.some(hasPositiveBalance))) return
       void capability.openSideTray({ feature: 'send', assetId: toCanonicalAssetId(asset) })
     },
     openTrade: (asset?: PortfolioActionAsset) => {

@@ -1,7 +1,8 @@
+import { ChainIcon } from '../../../shared/renderer/ui/ChainIcon'
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 
-import type { CommandResult } from '../../../app/contracts/operations'
+import type { CommandResult, QueryResultMap } from '../../../app/contracts/operations'
 import { signerIsLoading, signerTypeLabel } from '../../../shared/renderer/ui/signerPresentation'
 import { createBalanceSummarySelector, formatUsdRate } from '../../asset-data/domain/balance'
 import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector'
@@ -24,7 +25,8 @@ const addOptions: Record<'root' | 'import' | 'hardware', AddAccountOption[]> = {
     { id: 'storedSeed', title: 'Add from stored recovery phrases', icon: 'flame' },
     { id: 'import', title: 'Import phrase or private key', icon: 'accounts' },
     { id: 'hardware', title: 'Connect a hardware wallet', icon: 'device' },
-    { id: 'watch', title: 'Watch an address', icon: 'eye' }
+    { id: 'watch', title: 'Watch an address', icon: 'eye' },
+    { id: 'safe', title: 'Watch a Safe', icon: 'eye' }
   ],
   import: [
     { id: 'seed', title: 'Recovery phrase', icon: 'flame' },
@@ -99,6 +101,7 @@ export function AddAccountController({
   const shared = useWalletSelector(
     useShallow((state) => ({
       accounts: state.accounts || EMPTY_ACCOUNTS,
+      currentProfile: state.currentProfile,
       currentAccount: state.currentAccount || '',
       balances: state.balances || EMPTY_BALANCES,
       ledger: state.ledger,
@@ -112,6 +115,11 @@ export function AddAccountController({
       signers: state.signers || EMPTY_SIGNERS
     }))
   )
+  const [safeNetworks, setSafeNetworks] = useState<QueryResultMap['safe.supported-networks']>([])
+  const [safeSelected, setSafeSelected] = useState<number[]>([])
+  const [safeImports, setSafeImports] = useState<Record<string, { operationId: string; error?: string }>>({})
+  const safeSelectedAccount = useRef(false)
+  const safeDraft = useRef('')
   const seedPhraseCopiedTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const initialHardwareSessionStarted = useRef(false)
   const [selectBalanceSummaries] = useState(() => createBalanceSummarySelector())
@@ -120,6 +128,98 @@ export function AddAccountController({
     { initialSelectedSigner, initialType },
     createAddAccountState
   )
+  const safeProfile = useRef(shared.currentProfile)
+  useEffect(() => {
+    if (safeProfile.current === shared.currentProfile) return
+    safeProfile.current = shared.currentProfile
+    setSafeImports({})
+    setSafeSelected([])
+    setSafeNetworks([])
+    dispatch({ type: 'flow.reset' })
+  }, [shared.currentProfile])
+  const safeScope = [shared.currentProfile, state.addAccountCategory, state.addAccountInput].join(':')
+  safeDraft.current = safeScope
+  const safeImportScope = useRef('')
+  const visibleSafeImports = safeImportScope.current === safeScope ? safeImports : {}
+  const safeOutcomes = Object.entries(visibleSafeImports).map(([chainId, item]) => ({
+    chainId: Number(chainId),
+    operation: shared.operations[item.operationId],
+    error: item.error
+  }))
+  const safeBusy = safeOutcomes.some(
+    (item) => !item.error && (!item.operation || item.operation.status === 'pending')
+  )
+  useEffect(() => {
+    if (state.addAccountCategory !== 'safe') return
+    let active = true
+    void capability
+      .supportedSafeNetworks()
+      .then((networks) => {
+        if (active) setSafeNetworks(networks)
+      })
+      .catch(() => {
+        if (active) dispatch({ type: 'feedback.changed', error: 'Could not load Safe networks', status: '' })
+      })
+    return () => {
+      active = false
+    }
+  }, [capability, state.addAccountCategory, shared.currentProfile])
+  useEffect(() => {
+    if (safeBusy || !safeOutcomes.length || safeSelectedAccount.current) return
+    const accountId = safeOutcomes
+      .find((item) => item.operation?.status === 'succeeded')
+      ?.operation?.entityRefs?.find((ref) => ref.type === 'account')?.id
+    if (!accountId) return
+    safeSelectedAccount.current = true
+    const scope = safeScope
+    void capability
+      .selectAccount({ accountId })
+      .then((result) => {
+        if (safeDraft.current === scope && safeImportScope.current === scope && !result.ok)
+          setFeedback(operationError(result, 'Could not select Safe'), '')
+      })
+      .catch(() => {
+        if (safeDraft.current === scope && safeImportScope.current === scope)
+          setFeedback('Could not select Safe', '')
+      })
+  })
+  async function importSafeNetworks() {
+    if (safeBusy || !safeSelected.length) return
+    const address = state.addAccountInput.trim()
+    if (!/^0x[0-9a-fA-F]{40}$/.test(address)) return setFeedback('Enter a valid Safe address', '')
+    const scope = safeScope
+    safeImportScope.current = scope
+    safeSelectedAccount.current = false
+    const imports = Object.fromEntries(
+      safeSelected
+        .filter((chainId) => safeNetworks.some((network) => network.chainId === chainId && network.supported))
+        .map((chainId) => [chainId, { operationId: crypto.randomUUID() }])
+    )
+    setSafeImports(imports)
+    setFeedback('', '')
+    await Promise.all(
+      Object.entries(imports).map(async ([chainId, item]) => {
+        try {
+          const result = await capability.importSafe({
+            operationId: item.operationId,
+            address,
+            chainId: Number(chainId)
+          })
+          if (!result.ok) throw new Error(operationError(result, 'Could not import Safe'))
+        } catch (error) {
+          if (safeDraft.current !== scope) return
+          setSafeImports((current) =>
+            current[chainId]?.operationId === item.operationId
+              ? {
+                  ...current,
+                  [chainId]: { ...item, error: operationError(error, 'Could not import Safe') }
+                }
+              : current
+          )
+        }
+      })
+    )
+  }
   const [hardwarePage, setHardwarePage] = useState(1)
   const [hardwarePageInput, setHardwarePageInput] = useState('1')
   const [addressChainUsageResult, setAddressChainUsageResult] = useState<{
@@ -385,7 +485,14 @@ export function AddAccountController({
     dispatch({ type: 'stored-seed.expanded', signerId })
   }
 
+  function clearSafeDraft() {
+    safeImportScope.current = ''
+    setSafeImports({})
+    setSafeSelected([])
+  }
+
   function backInlineAdd() {
+    clearSafeDraft()
     if (state.addAccountSelectedSigner) {
       finishHardwareSession('cancelled')
       dispatch({ type: 'flow.signer-cleared' })
@@ -401,6 +508,7 @@ export function AddAccountController({
   }
 
   function chooseInlineAddCategory(category: string) {
+    clearSafeDraft()
     dispatch({ type: 'flow.category-selected', category })
     if (category === 'createSeed') void generateInlineSeedPhrase()
   }
@@ -845,46 +953,83 @@ export function AddAccountController({
   }
 
   const flow: AddAccountFlowModel =
-    state.addAccountCategory === 'createSeed'
+    state.addAccountCategory === 'safe'
       ? {
-          kind: 'generated-seed',
+          kind: 'safe',
           model: {
-            backedUp: state.addGeneratedPhraseBackedUp,
-            copied: state.addGeneratedPhraseCopied,
+            address: state.addAccountInput,
+            busy: safeBusy,
             error: state.addAccountError,
-            name: state.addAccountName,
-            needsFramePassword: needsFramePassword(),
-            password: state.addAccountPassword,
-            passwordLabel: framePasswordLabel(),
-            status: displayedStatus,
-            words: state.addGeneratedPhrase.trim().split(/\s+/).filter(Boolean)
+            networks: safeNetworks.map((network) => {
+              const outcome = safeOutcomes.find((item) => item.chainId === network.chainId)
+              return {
+                ...network,
+                icon: (
+                  <ChainIcon
+                    chainId={network.chainId}
+                    networks={shared.networks}
+                    networksMeta={shared.networksMeta}
+                  />
+                ),
+                selected: safeSelected.includes(network.chainId),
+                outcome:
+                  outcome?.error ||
+                  (outcome?.operation?.status === 'failed'
+                    ? outcome.operation.error?.message || 'Import failed'
+                    : outcome?.operation?.status === 'succeeded'
+                      ? 'Imported · Watch-only'
+                      : outcome
+                        ? 'Importing'
+                        : '')
+              }
+            })
           }
         }
-      : state.addAccountCategory === 'storedSeed'
-        ? storedSeedFlow()
-        : state.addAccountCategory === 'import' && !state.addAccountType
-          ? { kind: 'methods', options: addOptions.import, selected: state.addAccountType }
-          : state.addAccountCategory === 'hardware' && !state.addAccountType
-            ? { kind: 'methods', options: addOptions.hardware, selected: state.addAccountType }
-            : state.addAccountCategory === 'hardware'
-              ? hardwareFlow()
-              : state.addAccountCategory === 'watch' || state.addAccountCategory === 'import'
-                ? {
-                    kind: 'import',
-                    model: {
-                      accountType: state.addAccountType,
-                      error: state.addAccountError,
-                      input: state.addAccountInput,
-                      keystorePassword: state.addAccountKeystorePassword,
-                      keystoreSelected: Boolean(state.addAccountKeystore),
-                      name: state.addAccountName,
-                      needsFramePassword: needsFramePassword(),
-                      password: state.addAccountPassword,
-                      passwordLabel: framePasswordLabel(),
-                      status: displayedStatus
+      : state.addAccountCategory === 'createSeed'
+        ? {
+            kind: 'generated-seed',
+            model: {
+              backedUp: state.addGeneratedPhraseBackedUp,
+              copied: state.addGeneratedPhraseCopied,
+              error: state.addAccountError,
+              name: state.addAccountName,
+              needsFramePassword: needsFramePassword(),
+              password: state.addAccountPassword,
+              passwordLabel: framePasswordLabel(),
+              status: displayedStatus,
+              words: state.addGeneratedPhrase.trim().split(/\s+/).filter(Boolean)
+            }
+          }
+        : state.addAccountCategory === 'storedSeed'
+          ? storedSeedFlow()
+          : state.addAccountCategory === 'import' && !state.addAccountType
+            ? { kind: 'methods', level: 'type', options: addOptions.import, selected: state.addAccountType }
+            : state.addAccountCategory === 'hardware' && !state.addAccountType
+              ? {
+                  kind: 'methods',
+                  level: 'type',
+                  options: addOptions.hardware,
+                  selected: state.addAccountType
+                }
+              : state.addAccountCategory === 'hardware'
+                ? hardwareFlow()
+                : state.addAccountCategory === 'watch' || state.addAccountCategory === 'import'
+                  ? {
+                      kind: 'import',
+                      model: {
+                        accountType: state.addAccountType,
+                        error: state.addAccountError,
+                        input: state.addAccountInput,
+                        keystorePassword: state.addAccountKeystorePassword,
+                        keystoreSelected: Boolean(state.addAccountKeystore),
+                        name: state.addAccountName,
+                        needsFramePassword: needsFramePassword(),
+                        password: state.addAccountPassword,
+                        passwordLabel: framePasswordLabel(),
+                        status: displayedStatus
+                      }
                     }
-                  }
-                : { kind: 'methods', options: addOptions.root, selected: state.addAccountCategory }
+                  : { kind: 'methods', options: addOptions.root, selected: state.addAccountCategory }
 
   const selectedSigner = () =>
     state.addAccountSelectedSigner ? shared.signers[state.addAccountSelectedSigner] : undefined
@@ -906,6 +1051,11 @@ export function AddAccountController({
     )
   }
   const events = {
+    onSafeNetworkToggle: (chainId: number) =>
+      setSafeSelected((current) =>
+        current.includes(chainId) ? current.filter((id) => id !== chainId) : [...current, chainId]
+      ),
+    onSafeImport: () => void importSafeNetworks(),
     onBack: backInlineAdd,
     onCategorySelect: chooseInlineAddCategory,
     onCreateGeneratedSeed: () => void createGeneratedSeedAccount(),
@@ -948,7 +1098,11 @@ export function AddAccountController({
       if (signer) submitTrezorInput(signer, hardwareInput)
     },
     onImportSeedOpen: () => dispatch({ type: 'flow.import-seed-opened' } as const),
-    onInputChange: (value: string) => dispatch({ type: 'form.input-changed', value } as const),
+    onInputChange: (value: string) => {
+      safeImportScope.current = ''
+      setSafeImports({})
+      dispatch({ type: 'form.input-changed', value })
+    },
     onKeystoreLocate: () => void locateInlineKeystore(),
     onKeystorePasswordChange: (value: string) =>
       dispatch({ type: 'form.keystore-password-changed', value } as const),

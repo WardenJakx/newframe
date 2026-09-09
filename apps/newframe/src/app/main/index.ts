@@ -83,7 +83,8 @@ const {
   sideTrayTransactions,
   settingsService,
   networkService,
-  tokenService
+  tokenService,
+  safeService
 } = createProductionCapabilities(store, {
   accounts: createProductionAccountsRuntime(store, { persistence: persist, signers, windows }),
   images: createProductionImageServiceAdapters(store),
@@ -137,7 +138,8 @@ const mainApp = createProductionMainApp({
   settingsService,
   store,
   networkService,
-  tokenService
+  tokenService,
+  safeService
 })
 const apiServer = createProductionApiServer(
   provider,

@@ -43,13 +43,18 @@ export function HomeNotifications({
 }) {
   const shared = useWalletSelector(
     useShallow((state) => {
-      const requests = state.accounts?.[state.currentAccount]?.requests || EMPTY_REQUESTS
+      const account = state.accounts?.[state.currentAccount]
+      const requests = account?.requests || EMPTY_REQUESTS
+      const deployments = Object.values(account?.safe || {})
       return {
         currentAccount: state.currentAccount || '',
         networks: state.networks?.ethereum || EMPTY_NETWORKS,
         networksMeta: state.networksMeta?.ethereum || EMPTY_NETWORK_METADATA,
         notifications: state.view?.notifications || EMPTY_NOTIFICATIONS,
-        requestCount: Object.values(requests).filter((request) => request.mode === 'normal').length
+        hasSafe: deployments.length > 0,
+        requestCount:
+          Object.values(requests).filter((request) => request.mode === 'normal').length +
+          deployments.reduce((count, deployment) => count + (deployment.pending?.length || 0), 0)
       }
     })
   )
@@ -58,12 +63,16 @@ export function HomeNotifications({
 
   return (
     <>
-      {shared.requestCount > 0 ? (
+      {shared.requestCount > 0 || shared.hasSafe ? (
         <section aria-label='Pending requests' className={requestNotificationRecipe()}>
           <Button
             appearance='primary'
             hasPopup='dialog'
-            label={`${shared.requestCount} pending ${shared.requestCount === 1 ? 'request' : 'requests'}`}
+            label={
+              shared.requestCount
+                ? `${shared.requestCount} pending ${shared.requestCount === 1 ? 'request' : 'requests'}`
+                : 'Requests'
+            }
             onPress={() => openOverlay({ type: 'requests' })}
             shape='control'
             size='large'
@@ -72,7 +81,9 @@ export function HomeNotifications({
             <span className={requestNotificationContentRecipe()}>
               <Icon name='inbox' size='medium' />
               <Text align='center' tone='inverse' variant='action'>
-                {shared.requestCount} pending {shared.requestCount === 1 ? 'request' : 'requests'}
+                {shared.requestCount
+                  ? `${shared.requestCount} pending ${shared.requestCount === 1 ? 'request' : 'requests'}`
+                  : 'Requests'}
               </Text>
               <Icon name='arrowRight' size='small' />
             </span>

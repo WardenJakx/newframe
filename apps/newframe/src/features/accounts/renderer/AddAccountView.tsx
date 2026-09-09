@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { Button } from '@newframe/ui/button'
 import { Field } from '@newframe/ui/field'
 import { Grid } from '@newframe/ui/grid'
@@ -105,13 +106,31 @@ type HardwareModel =
     }
 
 export type AddAccountFlowModel =
-  | { kind: 'methods'; options: AddAccountOption[]; selected: string }
+  | {
+      kind: 'safe'
+      model: {
+        address: string
+        busy: boolean
+        error: string
+        networks: Array<{
+          chainId: number
+          name: string
+          icon?: ReactNode
+          supported: boolean
+          selected: boolean
+          outcome: string
+        }>
+      }
+    }
+  | { kind: 'methods'; level?: 'category' | 'type'; options: AddAccountOption[]; selected: string }
   | { kind: 'import'; model: AddAccountImportModel }
   | { kind: 'stored-seed'; model: StoredSeedModel }
   | { kind: 'generated-seed'; model: GeneratedSeedModel }
   | { kind: 'hardware'; model: HardwareModel }
 
 export interface AddAccountViewEvents {
+  onSafeNetworkToggle?: (chainId: number) => void
+  onSafeImport?: () => void
   onBack: () => void
   onCategorySelect: (id: string) => void
   onCreateGeneratedSeed: () => void
@@ -178,7 +197,7 @@ function MethodView({
           key={option.id}
           label={option.title}
           onPress={() =>
-            flow.options.length === 3 ? events.onTypeSelect(option.id) : events.onCategorySelect(option.id)
+            flow.level === 'type' ? events.onTypeSelect(option.id) : events.onCategorySelect(option.id)
           }
           selected={flow.selected === option.id}
           size='list'
@@ -834,7 +853,67 @@ export function AddAccountView({
   flow: AddAccountFlowModel
 }) {
   const body =
-    flow.kind === 'methods' ? (
+    flow.kind === 'safe' ? (
+      <Stack gap='small'>
+        <Text variant='label'>Watch a Safe</Text>
+        <Text variant='supporting'>Watch-only. Import networks to view balances and pending proposals.</Text>
+        <Field label='Safe address' vertical>
+          <Input
+            label='Safe address'
+            value={flow.model.address}
+            onValueChange={events.onInputChange}
+            disabled={flow.model.busy}
+          />
+        </Field>
+        <Text variant='supporting'>Choose networks to watch</Text>
+        <Grid columns='one' gap='small'>
+          {flow.model.networks
+            .filter((network) => network.supported)
+            .map((network) => (
+              <Button
+                key={network.chainId}
+                label={network.name}
+                appearance='outlinedSelection'
+                selected={network.selected}
+                disabled={flow.model.busy}
+                onPress={() => events.onSafeNetworkToggle?.(network.chainId)}
+              >
+                <Stack gap='small'>
+                  <Inline align='center' gap='small'>
+                    {network.icon}
+                    <Text variant='label'>{network.name}</Text>
+                  </Inline>
+                  {network.outcome ? <Text variant='supporting'>{network.outcome}</Text> : null}
+                </Stack>
+              </Button>
+            ))}
+        </Grid>
+        {flow.model.networks.some((network) => !network.supported) ? (
+          <details>
+            <summary>Unavailable networks</summary>
+            <Text variant='supporting'>Safe queue service is unavailable on these networks.</Text>
+            <Grid columns='two' gap='small'>
+              {flow.model.networks
+                .filter((network) => !network.supported)
+                .map((network) => (
+                  <Inline key={network.chainId} align='center' gap='small'>
+                    {network.icon}
+                    <Text tone='secondary'>{network.name}</Text>
+                  </Inline>
+                ))}
+            </Grid>
+          </details>
+        ) : null}
+        <Feedback error={flow.model.error} status={flow.model.busy ? 'Importing Safe networks' : ''} />
+        <Button
+          label='Import Safe networks'
+          disabled={flow.model.busy || !flow.model.networks.some((network) => network.selected)}
+          onPress={events.onSafeImport}
+        >
+          Import Safe networks
+        </Button>
+      </Stack>
+    ) : flow.kind === 'methods' ? (
       <MethodView events={events} flow={flow} />
     ) : flow.kind === 'import' ? (
       <AddAccountImportView events={events} model={flow.model} />

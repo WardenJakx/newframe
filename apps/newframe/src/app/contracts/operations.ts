@@ -645,6 +645,25 @@ const AccountWatchAddCommandSchema = z.strictObject({
 })
 export type AccountWatchAddCommand = z.infer<typeof AccountWatchAddCommandSchema>
 
+const AccountSafeImportCommandSchema = z.strictObject({
+  type: z.literal('account.safe-import'),
+  operationId: OperationIdSchema,
+  address: AddressSchema,
+  chainId: ChainIdSchema
+})
+export type AccountSafeImportCommand = z.infer<typeof AccountSafeImportCommandSchema>
+const AccountSafeRefreshCommandSchema = z.strictObject({
+  type: z.literal('account.safe-refresh'),
+  accountId: AddressSchema,
+  chainId: ChainIdSchema.optional(),
+  force: z.boolean().optional()
+})
+export type AccountSafeRefreshCommand = z.infer<typeof AccountSafeRefreshCommandSchema>
+const SafeSupportedNetworksQuerySchema = z.strictObject({ type: z.literal('safe.supported-networks') })
+const SafeSupportedNetworksResultSchema = z.array(
+  z.strictObject({ chainId: ChainIdSchema, name: z.string(), supported: z.boolean() })
+)
+
 const KeystoreLocateQuerySchema = z.strictObject({ type: z.literal('keystore.locate') })
 export type KeystoreLocateQuery = z.infer<typeof KeystoreLocateQuerySchema>
 
@@ -1010,6 +1029,8 @@ export const commandContracts = defineOperationContracts({
   'account.remove': acknowledged(AccountRemoveCommandSchema),
   'account.rename': acknowledged(AccountRenameCommandSchema),
   'account.reorder': acknowledged(AccountReorderCommandSchema),
+  'account.safe-import': acknowledged(AccountSafeImportCommandSchema),
+  'account.safe-refresh': acknowledged(AccountSafeRefreshCommandSchema),
   'account.watch-add': acknowledged(AccountWatchAddCommandSchema),
   'app.quit': acknowledged(AppQuitCommandSchema),
   'clipboard.write': acknowledged(ClipboardWriteCommandSchema),
@@ -1096,6 +1117,10 @@ export const queryContracts = defineOperationContracts({
   },
   'security.status': { input: SecurityStatusQuerySchema, result: SecurityStatusResultSchema },
   'seed.generate': { input: SeedGenerateQuerySchema, result: SeedGenerateResultSchema },
+  'safe.supported-networks': {
+    input: SafeSupportedNetworksQuerySchema,
+    result: SafeSupportedNetworksResultSchema
+  },
   'token.lookup': { input: TokenLookupQuerySchema, result: TokenLookupResultSchema }
 })
 

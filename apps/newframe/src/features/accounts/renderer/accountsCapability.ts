@@ -31,6 +31,8 @@ export interface AccountsCapability extends ClipboardCapability {
   generateSeed(): Promise<QueryResultMap['seed.generate']>
   addAccountFromSigner(input: CommandInput<'account.add-from-signer'>): Promise<CommandResult>
   addWatchAccount(input: CommandInput<'account.watch-add'>): Promise<CommandResult>
+  importSafe(input: CommandInput<'account.safe-import'>): Promise<CommandResult>
+  supportedSafeNetworks(): Promise<QueryResultMap['safe.supported-networks']>
   importSigner(input: CommandInput<'signer.import'>): Promise<CommandResult>
 
   startHardwareSession(input: CommandInput<'signer.hardware-session-start'>): Promise<CommandResult>
@@ -71,6 +73,12 @@ export function createAccountsCapability(host: AccountsHost): AccountsCapability
     generateSeed: () => host.executeQuery({ type: 'seed.generate' }),
     addAccountFromSigner: (input) => host.executeCommand({ type: 'account.add-from-signer', ...input }),
     addWatchAccount: (input) => host.executeCommand({ type: 'account.watch-add', ...input }),
+    importSafe: (input) => host.executeCommand({ type: 'account.safe-import', ...input }),
+    supportedSafeNetworks: async () => {
+      const result = await host.executeQuery({ type: 'safe.supported-networks' })
+      if (!Array.isArray(result)) throw new Error(result.message || 'Could not load Safe networks')
+      return result
+    },
     importSigner: (input) => host.executeCommand({ type: 'signer.import', ...input }),
 
     startHardwareSession: (input) => host.executeCommand({ type: 'signer.hardware-session-start', ...input }),

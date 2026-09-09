@@ -1,16 +1,11 @@
-import { Button } from '@newframe/ui/button'
+import { RequestCard } from './RequestCard'
 import { Icon, type IconName } from '@newframe/ui/icon'
 import { Image } from '@newframe/ui/image'
-import { Inline } from '@newframe/ui/inline'
-import { Stack } from '@newframe/ui/stack'
-import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
 import { useEffect, useState, type ReactNode } from 'react'
 
 import type { RequestItemRequestView } from '../Account/Requests/requestViewTypes'
 import { imageSource } from '../../../asset-data/domain/image'
-import { cva } from '../../../../../generated/styled-system/css/cva.js'
-import StatusGlyph from '../../../../shared/renderer/ui/StatusGlyph'
 import type { RequestPanelCapability } from '../requestCapabilities'
 
 type RequestItemProps = {
@@ -26,25 +21,6 @@ type RequestItemProps = {
   handlerId?: string
   i?: number
 }
-
-const iconRecipe = cva({
-  base: {
-    display: 'grid',
-    width: 'icon-button-medium',
-    height: 'icon-button-medium',
-    flex: 'none',
-    placeItems: 'center',
-    overflow: 'hidden',
-    borderWidth: 'thin',
-    borderStyle: 'solid',
-    borderColor: 'border',
-    borderRadius: 'pill',
-    background: 'bg.control',
-    color: 'action.primary'
-  }
-})
-
-const contentRecipe = cva({ base: { width: '100%', minWidth: 0 } })
 
 const getElapsedTime = (req: RequestItemRequestView) => {
   const elapsed = Date.now() - (req.created || 0)
@@ -93,60 +69,29 @@ export default function RequestItem({
   const tone = requestTone(req.status)
   const inactive = ['error', 'declined', 'confirmed'].includes(req.status || '')
 
-  const content = (
-    <div className={contentRecipe()}>
-      <Stack gap='small'>
-        <Inline align='center' gap='small'>
-          <span className={iconRecipe()}>
-            <RequestIcon img={img} svgName={svgName} />
-          </span>
-          <Stack gap='xsmall' grow>
-            <Text variant='label' truncate>
-              {title}
-            </Text>
-            <Inline align='center' gap='xsmall'>
-              <StatusGlyph
-                size='small'
-                state={inactive ? (tone === 'danger' ? 'failed' : 'completed') : 'pending'}
-              />
-              <Text tone={tone} variant='caption'>
-                {status}
-              </Text>
-            </Inline>
-          </Stack>
-          <Text tone={ago === 'NEW' ? 'accent' : 'muted'} variant='caption' shrink={false}>
-            {ago}
-          </Text>
-        </Inline>
-        {children}
-        {notice && notice !== status ? (
-          <div role='alert'>
-            <Text tone={notice === 'see signer' ? 'accent' : tone} variant='caption'>
-              {notice}
-            </Text>
-          </div>
-        ) : null}
-      </Stack>
-    </div>
-  )
-
-  if (headerMode) {
-    return (
-      <Surface border='subtle' padding='small' radius='card' tone='card'>
-        {content}
-      </Surface>
-    )
-  }
-
   return (
-    <Button
-      appearance='outlinedSelection'
-      label={`Open ${title}`}
-      onPress={() => void panel.openRequest({ requestId: req.handlerId })}
-      size='list'
-      width='full'
+    <RequestCard
+      title={title}
+      icon={<RequestIcon img={img} svgName={svgName} />}
+      status={status}
+      tone={tone}
+      state={inactive ? (tone === 'danger' ? 'failed' : 'completed') : 'pending'}
+      aside={
+        <Text tone={ago === 'NEW' ? 'accent' : 'muted'} variant='caption' shrink={false}>
+          {ago}
+        </Text>
+      }
+      notice={
+        notice && notice !== status ? (
+          <Text tone={notice === 'see signer' ? 'accent' : tone} variant='caption'>
+            {notice}
+          </Text>
+        ) : undefined
+      }
+      headerMode={headerMode}
+      onOpen={() => void panel.openRequest({ requestId: req.handlerId })}
     >
-      {content}
-    </Button>
+      {children}
+    </RequestCard>
   )
 }
