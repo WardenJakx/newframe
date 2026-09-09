@@ -183,11 +183,7 @@ const zerionToFrameChainIds = Object.entries(frameToZerionChainIds).reduce(
   {} as Record<string, number>
 )
 
-export function supportsPortfolioChain(chainId: number) {
-  return Boolean(frameToZerionChainIds[chainId])
-}
-
-export function toZerionChainIds(chainIds: number[]) {
+function toZerionChainIds(chainIds: number[]) {
   return unique(
     chainIds
       .map((chainId) => frameToZerionChainIds[chainId])
