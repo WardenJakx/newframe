@@ -1,5 +1,6 @@
 import { matchFilter } from '../../../shared/domain/text'
 import type { BalanceSummary } from '../../asset-data/domain/balance'
+import { isBuiltInChain } from '../domain/chain'
 interface NetworkListItem {
   isTestnet?: boolean
   name: string
@@ -25,7 +26,11 @@ export function createNetworkRows({
   return Object.keys(networks)
     .map((id) => ({ chainId: Number(id), ...networks[id] }))
     .filter((chain) => (!chain.isTestnet || showTestnets) && matchFilter(query.trim(), [chain.name]))
-    .map((chain) => ({ ...chain, totalValue: totalByChain.get(chain.chainId) || 0 }))
+    .map((chain) => ({
+      ...chain,
+      removable: !isBuiltInChain(chain.chainId),
+      totalValue: totalByChain.get(chain.chainId) || 0
+    }))
     .sort((a, b) => {
       if (a.on !== b.on) return a.on ? -1 : 1
       return b.totalValue - a.totalValue

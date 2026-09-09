@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 
-import { BUILT_IN_CHAIN_ICON_URLS, builtInChainIconUrl } from './index'
+import { BUILT_IN_CHAIN_ICON_URLS, builtInChainIconUrl, isBuiltInChain } from './index'
 
 describe('built-in chain configuration', () => {
   it('provides HTTPS artwork for every built-in production chain', () => {
@@ -13,6 +13,8 @@ describe('built-in chain configuration', () => {
 
   it('does not invent artwork for unknown chains', () => {
     expect(builtInChainIconUrl(31337)).toBe('')
+    expect(isBuiltInChain(1)).toBeTrue()
+    expect(isBuiltInChain(31337)).toBeFalse()
     expect(Object.isFrozen(BUILT_IN_CHAIN_ICON_URLS)).toBe(true)
   })
 })
