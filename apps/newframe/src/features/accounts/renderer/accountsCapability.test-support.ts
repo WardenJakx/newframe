@@ -62,8 +62,8 @@ export function createAccountsCapabilityFake() {
     addAccountFromSigner: acknowledged<Parameters<AccountsCapability['addAccountFromSigner']>[0]>(),
     addWatchAccount: acknowledged<Parameters<AccountsCapability['addWatchAccount']>[0]>(),
     importSafe: acknowledged<Parameters<AccountsCapability['importSafe']>[0]>(),
-    supportedSafeNetworks: mock(
-      async (): Promise<CapabilityResult<AccountsCapability['supportedSafeNetworks']>> => []
+    discoverSafeNetworks: mock(
+      async (_address: string): Promise<CapabilityResult<AccountsCapability['discoverSafeNetworks']>> => []
     ),
     importSigner: acknowledged<Parameters<AccountsCapability['importSigner']>[0]>(),
     startHardwareSession: acknowledged<Parameters<AccountsCapability['startHardwareSession']>[0]>(),

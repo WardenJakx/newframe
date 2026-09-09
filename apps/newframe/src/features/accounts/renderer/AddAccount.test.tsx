@@ -1,5 +1,6 @@
 import { expect, it, mock, spyOn } from 'bun:test'
 
+import type { QueryResultMap } from '../../../app/contracts/operations'
 import type { OperationRecord } from '../../../platform/operations/operation'
 import { act, cleanup, render, screen, waitFor } from '../../../../test/support/componentSetup'
 import { registerTestRuntimeFixture } from '../../../../test/support/rendererClient'
@@ -362,10 +363,9 @@ function deferred<T>() {
 
 it('imports Safe networks independently, retains partial failure, and selects success once', async () => {
   const capability = createAccountsCapabilityFake()
-  capability.supportedSafeNetworks.mockResolvedValue([
+  capability.discoverSafeNetworks.mockResolvedValue([
     { chainId: 1, name: 'Ethereum', supported: true },
-    { chainId: 10, name: 'Optimism', supported: true },
-    { chainId: 999, name: 'Unavailable', supported: false }
+    { chainId: 10, name: 'Optimism', supported: true }
   ])
   let closed = false
   const onClose = () => {
@@ -379,13 +379,11 @@ it('imports Safe networks independently, retains partial failure, and selects su
   let state = walletState({})
   fixture.state.reset(state)
   const { user } = render(<AddAccount capability={capability} onClose={onClose} />)
-  await user.click(screen.getByRole('button', { name: 'Watch a Safe' }))
+  await user.click(screen.getByRole('button', { name: 'Safe' }))
   await user.type(screen.getByLabelText('Safe address'), address('9'))
   await user.click(await screen.findByRole('button', { name: 'Ethereum' }))
   await user.click(screen.getByRole('button', { name: 'Optimism' }))
   expect(screen.queryByRole('button', { name: 'Unavailable' })).toBeNull()
-  await user.click(screen.getByText('Unavailable networks'))
-  expect(screen.getByText('Unavailable')).toBeTruthy()
   await user.click(screen.getByRole('button', { name: 'Import Safe networks' }))
   const inputs = capability.importSafe.mock.calls.map((call) => call[0])
   expect(new Set(inputs.map((input) => input.operationId)).size).toBe(2)
@@ -406,6 +404,29 @@ it('imports Safe networks independently, retains partial failure, and selects su
   await waitFor(() => expect(selected).toBe(address('9')))
   expect(closed).toBe(false)
   act(() => fixture.state.reset({ ...state, currentProfile: 'other' }))
-  await screen.findByRole('button', { name: 'Watch a Safe' })
+  await screen.findByRole('button', { name: 'Safe' })
   expect(screen.queryByText('Safe service unavailable')).toBeNull()
+})
+
+it('discovers only complete addresses and ignores results from the previous address', async () => {
+  const capability = createAccountsCapabilityFake()
+  const first = deferred<QueryResultMap['safe.discover']>()
+  capability.discoverSafeNetworks.mockImplementation((value: string) =>
+    value === address('8')
+      ? first.promise
+      : Promise.resolve([{ chainId: 8453, name: 'Base', supported: true }])
+  )
+  fixture.state.reset(walletState({}))
+  const { user } = render(<AddAccount capability={capability} onClose={() => {}} />)
+  await user.click(screen.getByRole('button', { name: 'Safe' }))
+  expect(capability.discoverSafeNetworks).not.toHaveBeenCalled()
+  const input = screen.getByLabelText('Safe address')
+  await user.type(input, address('8'))
+  await waitFor(() => expect(capability.discoverSafeNetworks).toHaveBeenCalledWith(address('8')))
+  await user.clear(input)
+  await user.type(input, address('9'))
+  await screen.findByRole('button', { name: 'Base' })
+  await act(async () => first.resolve([{ chainId: 1, name: 'Old chain', supported: true }]))
+  expect(screen.queryByRole('button', { name: 'Old chain' })).toBeNull()
+  expect(screen.getByRole('button', { name: 'Base' })).toBeTruthy()
 })

@@ -659,8 +659,11 @@ const AccountSafeRefreshCommandSchema = z.strictObject({
   force: z.boolean().optional()
 })
 export type AccountSafeRefreshCommand = z.infer<typeof AccountSafeRefreshCommandSchema>
-const SafeSupportedNetworksQuerySchema = z.strictObject({ type: z.literal('safe.supported-networks') })
-const SafeSupportedNetworksResultSchema = z.array(
+const SafeDiscoverQuerySchema = z.strictObject({
+  type: z.literal('safe.discover'),
+  address: AddressSchema
+})
+const SafeDiscoverResultSchema = z.array(
   z.strictObject({ chainId: ChainIdSchema, name: z.string(), supported: z.boolean() })
 )
 
@@ -1117,9 +1120,9 @@ export const queryContracts = defineOperationContracts({
   },
   'security.status': { input: SecurityStatusQuerySchema, result: SecurityStatusResultSchema },
   'seed.generate': { input: SeedGenerateQuerySchema, result: SeedGenerateResultSchema },
-  'safe.supported-networks': {
-    input: SafeSupportedNetworksQuerySchema,
-    result: SafeSupportedNetworksResultSchema
+  'safe.discover': {
+    input: SafeDiscoverQuerySchema,
+    result: SafeDiscoverResultSchema
   },
   'token.lookup': { input: TokenLookupQuerySchema, result: TokenLookupResultSchema }
 })

@@ -26,7 +26,7 @@ const addOptions: Record<'root' | 'import' | 'hardware', AddAccountOption[]> = {
     { id: 'import', title: 'Import phrase or private key', icon: 'accounts' },
     { id: 'hardware', title: 'Connect a hardware wallet', icon: 'device' },
     { id: 'watch', title: 'Watch an address', icon: 'eye' },
-    { id: 'safe', title: 'Watch a Safe', icon: 'eye' }
+    { id: 'safe', title: 'Safe', icon: 'safe' }
   ],
   import: [
     { id: 'seed', title: 'Recovery phrase', icon: 'flame' },
@@ -115,7 +115,8 @@ export function AddAccountController({
       signers: state.signers || EMPTY_SIGNERS
     }))
   )
-  const [safeNetworks, setSafeNetworks] = useState<QueryResultMap['safe.supported-networks']>([])
+  const [safeNetworks, setSafeNetworks] = useState<QueryResultMap['safe.discover']>([])
+  const [safeDiscovering, setSafeDiscovering] = useState(false)
   const [safeSelected, setSafeSelected] = useState<number[]>([])
   const [safeImports, setSafeImports] = useState<Record<string, { operationId: string; error?: string }>>({})
   const safeSelectedAccount = useRef(false)
@@ -152,18 +153,31 @@ export function AddAccountController({
   useEffect(() => {
     if (state.addAccountCategory !== 'safe') return
     let active = true
-    void capability
-      .supportedSafeNetworks()
-      .then((networks) => {
-        if (active) setSafeNetworks(networks)
-      })
-      .catch(() => {
-        if (active) dispatch({ type: 'feedback.changed', error: 'Could not load Safe networks', status: '' })
-      })
+    const address = state.addAccountInput.trim()
+    setSafeNetworks([])
+    setSafeSelected([])
+    setSafeDiscovering(false)
+    if (!/^0x[0-9a-fA-F]{40}$/.test(address)) return
+    setSafeDiscovering(true)
+    const timer = setTimeout(() => {
+      void capability
+        .discoverSafeNetworks(address)
+        .then((networks) => {
+          if (active) setSafeNetworks(networks)
+        })
+        .catch(() => {
+          if (active)
+            dispatch({ type: 'feedback.changed', error: 'Could not discover Safe networks', status: '' })
+        })
+        .finally(() => {
+          if (active) setSafeDiscovering(false)
+        })
+    }, 300)
     return () => {
       active = false
+      clearTimeout(timer)
     }
-  }, [capability, state.addAccountCategory, shared.currentProfile])
+  }, [capability, state.addAccountCategory, state.addAccountInput, shared.currentProfile])
   useEffect(() => {
     if (safeBusy || !safeOutcomes.length || safeSelectedAccount.current) return
     const accountId = safeOutcomes
@@ -959,6 +973,7 @@ export function AddAccountController({
           model: {
             address: state.addAccountInput,
             busy: safeBusy,
+            discovering: safeDiscovering,
             error: state.addAccountError,
             networks: safeNetworks.map((network) => {
               const outcome = safeOutcomes.find((item) => item.chainId === network.chainId)

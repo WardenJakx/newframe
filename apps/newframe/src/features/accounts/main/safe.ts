@@ -20,7 +20,11 @@ export interface SafeServicePorts {
       configuration: SafeConfiguration,
       signal?: AbortSignal
     ): Promise<SafeProposal[]>
-    supportedNetworks(): number[]
+    discover(
+      chainId: number,
+      address: string,
+      signal?: AbortSignal
+    ): Promise<{ version: string; owners: string[] }>
   }
   now?: () => number
 }
@@ -45,15 +49,28 @@ export function createSafeService({ accounts, store, operations, client, now = D
   const invalidate = () => {
     for (const item of work.values()) item.controller.abort()
     work.clear()
+    for (const controller of discoveries) controller.abort()
   }
-  const supportedNetworks = () =>
-    Object.values(store.getState().main.networks.ethereum)
-      .filter((network) => network.on)
-      .map((network) => ({
-        chainId: network.id,
-        name: network.name,
-        supported: client.supportedNetworks().includes(network.id)
-      }))
+  const discoveries = new Set<AbortController>()
+  const discoverNetworks = async (address: string) => {
+    if (disposed) return []
+    const controller = new AbortController()
+    discoveries.add(controller)
+    const capturedProfile = store.getState().main.currentProfile
+    try {
+      const results = await Promise.allSettled(
+        Object.values(store.getState().main.networks.ethereum).map(async (network) => {
+          await client.discover(network.id, address, controller.signal)
+          return { chainId: network.id, name: network.name, supported: true }
+        })
+      )
+      if (disposed || controller.signal.aborted || capturedProfile !== store.getState().main.currentProfile)
+        return []
+      return results.flatMap((result) => (result.status === 'fulfilled' ? [result.value] : []))
+    } finally {
+      discoveries.delete(controller)
+    }
+  }
 
   const load = (
     accountId: string,
@@ -180,7 +197,7 @@ export function createSafeService({ accounts, store, operations, client, now = D
   )
   refreshSelected()
   return {
-    supportedNetworks,
+    discoverNetworks,
     refresh,
     import(command: AccountSafeImportCommand, owner: OperationOwner) {
       const reference = { id: command.operationId, type: command.type, owner }

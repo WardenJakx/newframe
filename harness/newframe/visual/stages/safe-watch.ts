@@ -11,7 +11,7 @@ export const safeWatchStage: VisualStage = {
       await tray.getByRole('button', { name: 'Accounts', exact: true }).click()
       const accounts = tray.getByRole('dialog', { name: 'Accounts' })
       await accounts.getByRole('button', { name: 'Add account', exact: true }).click()
-      await accounts.getByRole('button', { name: 'Watch a Safe', exact: true }).click()
+      await accounts.getByRole('button', { name: 'Safe', exact: true }).click()
       await accounts.getByRole('textbox', { name: 'Safe address' }).fill(safeSeed.safe)
       await accounts.getByRole('button', { name: 'Newframe Local Anvil', exact: true }).click()
       await accounts.getByRole('button', { name: 'Import Safe networks' }).click()

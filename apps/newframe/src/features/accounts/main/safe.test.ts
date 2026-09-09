@@ -157,7 +157,7 @@ it('invalidates delayed work after remove/re-add, profile switch, and disposal',
       store,
       operations,
       client: {
-        supportedNetworks: () => [1],
+        discover: async () => ({ version: '1.4.1', owners: [ownerAddress] }),
         configuration: () =>
           new Promise((resolve) => {
             release = resolve
@@ -211,4 +211,48 @@ it('imports valid configuration when the initial queue fails, leaving pending un
     error: 'Safe service HTTP 503'
   })
   expect(store.getState().main.accounts[address].safe!['1'].pending).toBeUndefined()
+})
+
+it('probes all configured chains, retains successes and discards stale discovery after disposal', async () => {
+  const { store, accounts, operations } = setup()
+  const networks = Object.values(store.getState().main.networks.ethereum)
+  expect(networks.length).toBeGreaterThan(1)
+  const found = networks[networks.length - 1]
+  const checked: number[] = []
+  let release: (() => void) | undefined
+  let delay = false
+  const service = createSafeService({
+    store,
+    accounts,
+    operations,
+    client: {
+      discover: async (chainId, requestedAddress) => {
+        checked.push(chainId)
+        expect(requestedAddress).toBe(address)
+        if (chainId !== found.id) throw new Error('Not a Safe')
+        if (delay)
+          await new Promise<void>((resolve) => {
+            release = resolve
+          })
+        return { version: '1.4.1', owners: [ownerAddress] }
+      },
+      configuration: async () => ({ version: '1.4.1', owners: [ownerAddress], threshold: 1, nonce: '0' }),
+      pending: async () => {
+        throw new Error('No queue service')
+      }
+    }
+  })
+  cleanup.push(service.dispose)
+  expect(await service.discoverNetworks(address)).toEqual([
+    { chainId: found.id, name: found.name, supported: true }
+  ])
+  expect(checked.sort((a, b) => a - b)).toEqual(networks.map((network) => network.id).sort((a, b) => a - b))
+  service.import({ type: 'account.safe-import', operationId: 'rpc-only', address, chainId: found.id }, owner)
+  await until(() => Boolean(store.getState().main.accounts[address]?.safe?.[String(found.id)]?.error))
+  expect(store.getState().main.accounts[address].safe![String(found.id)].configuration.version).toBe('1.4.1')
+  delay = true
+  const pending = service.discoverNetworks(address)
+  service.dispose()
+  release!()
+  expect(await pending).toEqual([])
 })
