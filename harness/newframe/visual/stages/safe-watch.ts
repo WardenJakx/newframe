@@ -13,8 +13,7 @@ export const safeWatchStage: VisualStage = {
       await accounts.getByRole('button', { name: 'Add account', exact: true }).click()
       await accounts.getByRole('button', { name: 'Safe', exact: true }).click()
       await accounts.getByRole('textbox', { name: 'Safe address' }).fill(safeSeed.safe)
-      await accounts.getByRole('button', { name: 'Newframe Local Anvil', exact: true }).click()
-      await accounts.getByRole('button', { name: 'Import Safe networks' }).click()
+      await accounts.getByRole('button', { name: 'Import 1 Safe network', exact: true }).click()
       await accounts.getByText('Imported · Watch-only', { exact: true }).waitFor()
       const imported = await driver.waitForState(
         (state) => Boolean(state.main?.accounts?.[id]?.safe?.[chain]?.pending?.length),

@@ -163,7 +163,9 @@ export function AddAccountController({
       void capability
         .discoverSafeNetworks(address)
         .then((networks) => {
-          if (active) setSafeNetworks(networks)
+          if (!active) return
+          setSafeNetworks(networks)
+          setSafeSelected(networks.filter((network) => network.supported).map((network) => network.chainId))
         })
         .catch(() => {
           if (active)

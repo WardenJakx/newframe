@@ -853,6 +853,11 @@ export function AddAccountView({
   events: AddAccountViewEvents
   flow: AddAccountFlowModel
 }) {
+  const selectedSafeNetworkCount =
+    flow.kind === 'safe' ? flow.model.networks.filter((network) => network.selected).length : 0
+  const safeImportLabel = selectedSafeNetworkCount
+    ? `Import ${selectedSafeNetworkCount} Safe network${selectedSafeNetworkCount === 1 ? '' : 's'}`
+    : 'Import Safe networks'
   const body =
     flow.kind === 'safe' ? (
       <Stack gap='small'>
@@ -898,11 +903,12 @@ export function AddAccountView({
         </Grid>
         <Feedback error={flow.model.error} status={flow.model.busy ? 'Importing Safe networks' : ''} />
         <Button
-          label='Import Safe networks'
+          appearance='primary'
+          label={safeImportLabel}
           disabled={flow.model.busy || !flow.model.networks.some((network) => network.selected)}
           onPress={events.onSafeImport}
         >
-          Import Safe networks
+          {safeImportLabel}
         </Button>
       </Stack>
     ) : flow.kind === 'methods' ? (

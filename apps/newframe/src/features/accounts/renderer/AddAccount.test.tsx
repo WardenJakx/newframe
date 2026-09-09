@@ -365,7 +365,8 @@ it('imports Safe networks independently, retains partial failure, and selects su
   const capability = createAccountsCapabilityFake()
   capability.discoverSafeNetworks.mockResolvedValue([
     { chainId: 1, name: 'Ethereum', supported: true },
-    { chainId: 10, name: 'Optimism', supported: true }
+    { chainId: 10, name: 'Optimism', supported: true },
+    { chainId: 100, name: 'Unavailable', supported: false }
   ])
   let closed = false
   const onClose = () => {
@@ -381,10 +382,10 @@ it('imports Safe networks independently, retains partial failure, and selects su
   const { user } = render(<AddAccount capability={capability} onClose={onClose} />)
   await user.click(screen.getByRole('button', { name: 'Safe' }))
   await user.type(screen.getByLabelText('Safe address'), address('9'))
-  await user.click(await screen.findByRole('button', { name: 'Ethereum' }))
-  await user.click(screen.getByRole('button', { name: 'Optimism' }))
+  expect((await screen.findByRole('button', { name: 'Ethereum' })).getAttribute('aria-selected')).toBe('true')
+  expect(screen.getByRole('button', { name: 'Optimism' }).getAttribute('aria-selected')).toBe('true')
   expect(screen.queryByRole('button', { name: 'Unavailable' })).toBeNull()
-  await user.click(screen.getByRole('button', { name: 'Import Safe networks' }))
+  await user.click(screen.getByRole('button', { name: 'Import 2 Safe networks' }))
   const inputs = capability.importSafe.mock.calls.map((call) => call[0])
   expect(new Set(inputs.map((input) => input.operationId)).size).toBe(2)
   const outcomes: OperationRecord[] = inputs.map((input) => ({
