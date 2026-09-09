@@ -26,7 +26,7 @@ const addOptions: Record<'root' | 'import' | 'hardware', AddAccountOption[]> = {
     { id: 'import', title: 'Import phrase or private key', icon: 'accounts' },
     { id: 'hardware', title: 'Connect a hardware wallet', icon: 'device' },
     { id: 'watch', title: 'Watch an address', icon: 'eye' },
-    { id: 'safe', title: 'Watch a Safe', icon: 'eye' }
+    { id: 'safe', title: 'Safe', icon: 'safe' }
   ],
   import: [
     { id: 'seed', title: 'Recovery phrase', icon: 'flame' },

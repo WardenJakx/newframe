@@ -855,7 +855,7 @@ export function AddAccountView({
   const body =
     flow.kind === 'safe' ? (
       <Stack gap='small'>
-        <Text variant='label'>Watch a Safe</Text>
+        <Text variant='label'>Safe</Text>
         <Text variant='supporting'>Watch-only. Import networks to view balances and pending proposals.</Text>
         <Field label='Safe address' vertical>
           <Input
