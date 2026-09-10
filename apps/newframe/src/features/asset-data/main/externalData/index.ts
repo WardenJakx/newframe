@@ -37,6 +37,10 @@ export default function createExternalDataScanner(canonicalStore: CanonicalStore
     const signerType = storeApi.getAccount(address)?.lastSignerType || ''
     return signerType.toLowerCase() !== 'address'
   }
+  const scanningAllowed = () => {
+    const { locked, vaultExists } = canonicalStore.getState().main.appLock
+    return vaultExists && !locked
+  }
   const balances = Balances(canonicalStore)
 
   let connectedChains: number[] = [],
@@ -46,7 +50,7 @@ export default function createExternalDataScanner(canonicalStore: CanonicalStore
   let systemSuspended = false
   let screenLocked = false
 
-  const isSystemInactive = () => systemSuspended || screenLocked
+  const isScannerInactive = () => systemSuspended || screenLocked || !scanningAllowed()
 
   function clearPauseScanningDelay() {
     if (pauseScanningDelay) {
@@ -60,14 +64,23 @@ export default function createExternalDataScanner(canonicalStore: CanonicalStore
   }
 
   function startBalances() {
-    if (balancesRunning || isSystemInactive()) return
+    if (balancesRunning || isScannerInactive()) return balancesRunning
 
     balancesRunning = balances.start()
-    if (balancesRunning) balances.setAddress(scannableAddress())
+    if (balancesRunning) {
+      const address = scannableAddress()
+      balances.setAddress(address)
+      if (activeAccount && !address) balances.refresh(activeAccount)
+    }
+
+    return balancesRunning
   }
 
   function stopBalances(reason: string) {
     clearPauseScanningDelay()
+    handleNetworkUpdate.cancel()
+    handleAddressUpdate.cancel()
+    handleTokensUpdate.cancel()
     balances.stop()
 
     if (!balancesRunning) return
@@ -77,8 +90,12 @@ export default function createExternalDataScanner(canonicalStore: CanonicalStore
   }
 
   function resumeBalances(reason: string) {
-    if (isSystemInactive()) {
-      log.verbose(`keeping external data stopped after system ${reason}`, { systemSuspended, screenLocked })
+    if (isScannerInactive()) {
+      log.verbose(`keeping external data stopped after ${reason}`, {
+        systemSuspended,
+        screenLocked,
+        scanningAllowed: scanningAllowed()
+      })
       return
     }
 
@@ -117,8 +134,17 @@ export default function createExternalDataScanner(canonicalStore: CanonicalStore
 
   startBalances()
 
+  const handleScanningPermissionChange = (allowed: boolean) => {
+    if (allowed) resumeBalances('wallet unlocked')
+    else stopBalances('wallet locked')
+  }
+  const unsubscribeScanningPermission = canonicalStore.subscribe(
+    (state) => state.main.appLock.vaultExists && !state.main.appLock.locked,
+    handleScanningPermissionChange
+  )
+
   const handleNetworkUpdate = debounce((newlyConnected: number[]) => {
-    if (isSystemInactive()) return
+    if (isScannerInactive()) return
 
     log.verbose('updating external data due to network update(s)', { connectedChains, newlyConnected })
 
@@ -132,7 +158,7 @@ export default function createExternalDataScanner(canonicalStore: CanonicalStore
   }, 500)
 
   const handleAddressUpdate = debounce(() => {
-    if (isSystemInactive()) return
+    if (isScannerInactive()) return
 
     log.verbose('updating external data due to address update(s)', { activeAccount })
 
@@ -145,7 +171,7 @@ export default function createExternalDataScanner(canonicalStore: CanonicalStore
   }, 800)
 
   const handleTokensUpdate = debounce((tokens: Token[]) => {
-    if (isSystemInactive()) return
+    if (isScannerInactive()) return
 
     log.verbose('updating external data due to token update(s)', { activeAccount })
 
@@ -204,7 +230,7 @@ export default function createExternalDataScanner(canonicalStore: CanonicalStore
   const handleTrayChange = () => {
     const open = canonicalStore.getState().tray.open
 
-    if (isSystemInactive()) return
+    if (isScannerInactive()) return
 
     if (!open) {
       // pause balance scanning after the tray is out of view for one minute
@@ -224,12 +250,16 @@ export default function createExternalDataScanner(canonicalStore: CanonicalStore
 
   return {
     refreshBalances: (address = activeAccount) => {
-      if (!isSystemInactive() && address) balances.refresh(address)
+      if (isScannerInactive() || !address) return
+
+      if (!balancesRunning && !startBalances()) return
+      balances.refresh(address)
     },
     refreshPositions: (address, chainId, tokens) => {
-      if (!isSystemInactive() && address && shouldScanOnChain(address)) {
-        balances.refreshPositions(address, chainId, tokens)
-      }
+      if (isScannerInactive() || !address || !shouldScanOnChain(address)) return
+
+      if (!balancesRunning && !startBalances()) return
+      balances.refreshPositions(address, chainId, tokens)
     },
     close: () => {
       handleNetworkUpdate.cancel()
@@ -240,6 +270,7 @@ export default function createExternalDataScanner(canonicalStore: CanonicalStore
       unsubscribeAccount()
       unsubscribeCustomTokens()
       unsubscribeTray()
+      unsubscribeScanningPermission()
 
       powerMonitor.off('suspend', handleSuspend)
       powerMonitor.off('resume', handleResume)

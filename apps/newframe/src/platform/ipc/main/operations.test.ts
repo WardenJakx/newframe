@@ -388,10 +388,16 @@ describe('typed operation dispatcher', () => {
     await expect(
       dispatcher.dispatchQuery(event, {
         type: 'account.private-key-export',
-        accountId,
-        password: 'secret'
+        accountId
       })
     ).resolves.toEqual({ ok: true, privateKey })
+    await expect(
+      dispatcher.dispatchQuery(event, {
+        type: 'account.private-key-export',
+        accountId,
+        password: 'obsolete'
+      } as never)
+    ).resolves.toEqual({ ok: false, error: 'invalid_query' })
     await expect(dispatcher.dispatchQuery(event, { type: 'seed.generate' })).resolves.toEqual({
       ok: true,
       phrase: 'one two three'
@@ -401,8 +407,7 @@ describe('typed operation dispatcher', () => {
     await expect(
       dispatcher.dispatchQuery(event, {
         type: 'account.private-key-export',
-        accountId,
-        password: 'secret'
+        accountId
       })
     ).resolves.toEqual({ ok: false, error: 'account_not_found', message: 'Account was not found.' })
   })

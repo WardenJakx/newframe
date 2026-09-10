@@ -119,9 +119,9 @@ it('owns account creation and authorized hardware sessions while keeping all onb
 
   expect(await service.locateKeystore()).toEqual({ version: 3 })
   accounts.set(addressA, { address: addressA })
-  expect(await service.exportPrivateKey(addressA, 'wallet-password')).toBe('0xsecret')
-  expect(await service.exportPrivateKey('missing', 'wallet-password')).toBeUndefined()
-  expect(ports.secrets.exportPrivateKey).toHaveBeenCalledWith(addressA, 'wallet-password')
+  expect(await service.exportPrivateKey(addressA)).toBe('0xsecret')
+  expect(await service.exportPrivateKey('missing')).toBeUndefined()
+  expect(ports.secrets.exportPrivateKey).toHaveBeenCalledWith(addressA)
   expect(await service.generateSeedPhrase()).toBe('seed phrase')
 
   expect(
@@ -255,11 +255,8 @@ it('owns account creation and authorized hardware sessions while keeping all onb
     createFromPrivateKey: mock(),
     createFromKeystore: mock(),
     exportAccountPrivateKey: mock(
-      (
-        _address: string,
-        _password: string,
-        done: (error: unknown, value?: { type: string; value: string }) => void
-      ) => done(null, { type: 'privateKey', value: '0xcallback-secret' })
+      (_address: string, done: (error: unknown, value?: { type: string; value: string }) => void) =>
+        done(null, { type: 'privateKey', value: '0xcallback-secret' })
     ),
     get: mock(() => undefined),
     newPhrase: mock((done: (error: unknown, value?: string) => void) => {

@@ -48,7 +48,7 @@ export interface AccountOnboardingPorts {
     remove(signerId: string): boolean
   }
   secrets: {
-    exportPrivateKey(address: string, password: string): Promise<{ type: string; value: string }>
+    exportPrivateKey(address: string): Promise<{ type: string; value: string }>
     generateSeedPhrase(): Promise<string>
   }
 }
@@ -93,7 +93,7 @@ export interface AccountOnboardingService {
   importSigner(command: SignerImportCommand, owner: OperationOwner): boolean
   loadLedgerAccounts(command: SignerLedgerAccountsLoadCommand, owner: OperationOwner): boolean
   locateKeystore(): Promise<Record<string, unknown> | undefined>
-  exportPrivateKey(accountId: string, password: string): Promise<string | undefined>
+  exportPrivateKey(accountId: string): Promise<string | undefined>
   generateSeedPhrase(): Promise<string>
   pairLattice(command: LatticePairCommand, owner: OperationOwner): boolean
   reload(command: SignerReloadCommand, owner: OperationOwner): boolean
@@ -243,10 +243,10 @@ export function createAccountOnboardingService(ports: AccountOnboardingPorts): A
   }
 
   return {
-    async exportPrivateKey(accountId, password) {
+    async exportPrivateKey(accountId) {
       const account = ports.accounts.get(accountId) as { address?: string } | undefined
       if (!account?.address) return
-      const secret = await ports.secrets.exportPrivateKey(account.address, password)
+      const secret = await ports.secrets.exportPrivateKey(account.address)
       if (secret.type !== 'privateKey') throw new Error('Private key was not returned')
       return secret.value
     },

@@ -159,32 +159,23 @@ export function useAccountsController(input: {
       void input.capability.writeClipboard({ text: state.export.secret })
       dispatch({ type: 'export.copied' })
     },
-    onExportPasswordChange: (password: string) =>
-      dispatch({ type: 'export.password-changed', password } as const),
     onExportRevealToggle: () => dispatch({ type: 'export.reveal-toggled' } as const),
-    onExportUnlock: async () => {
+    onExport: async () => {
       if (state.panel.kind !== 'export' || state.export.loading) return
-      if (!state.export.password) {
-        dispatch({ type: 'export.unlock-failed', error: 'Password required' })
-        return
-      }
       const account = input.accounts[state.panel.accountId]
       if (!account?.address) return
       const requestToken = crypto.randomUUID()
       exportRequestRef.current = requestToken
-      dispatch({ type: 'export.unlock-started' })
+      dispatch({ type: 'export.started' })
       try {
-        const result = await input.capability.exportAccountPrivateKey({
-          accountId: account.address,
-          password: state.export.password
-        })
+        const result = await input.capability.exportAccountPrivateKey({ accountId: account.address })
         if (exportRequestRef.current !== requestToken) return
         exportRequestRef.current = ''
         dispatch(
           result.ok
-            ? { type: 'export.unlock-succeeded', secret: result.privateKey }
+            ? { type: 'export.succeeded', secret: result.privateKey }
             : {
-                type: 'export.unlock-failed',
+                type: 'export.failed',
                 error: errorMessage(result, 'Could not export the private key.')
               }
         )
@@ -192,7 +183,7 @@ export function useAccountsController(input: {
         if (exportRequestRef.current !== requestToken) return
         exportRequestRef.current = ''
         dispatch({
-          type: 'export.unlock-failed',
+          type: 'export.failed',
           error: errorMessage(error, 'Could not export the private key.')
         })
       }

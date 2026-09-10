@@ -1,12 +1,10 @@
 import type { DragEvent, ReactNode, RefObject } from 'react'
 
 import { Button } from '@newframe/ui/button'
-import { Field } from '@newframe/ui/field'
 import { Heading } from '@newframe/ui/heading'
 import { Icon } from '@newframe/ui/icon'
 import { IconButton } from '@newframe/ui/icon-button'
 import { Inline } from '@newframe/ui/inline'
-import { Input } from '@newframe/ui/input'
 import { ScrollArea } from '@newframe/ui/scroll-area'
 import { SearchField } from '@newframe/ui/search-field'
 import { Selection, type SelectionItem } from '@newframe/ui/selection'
@@ -131,9 +129,8 @@ interface AccountsViewEvents {
   onClose: () => void
   onExportClose: () => void
   onExportCopy: () => void
-  onExportPasswordChange: (password: string) => void
+  onExport: () => void
   onExportRevealToggle: () => void
-  onExportUnlock: () => void
   onMoveOpenChange: (accountId: string, open: boolean) => void
   onMoveSelect: (accountId: string, profileId: string) => void
   onSearchChange: (query: string) => void
@@ -157,9 +154,8 @@ function PrivateKeyExportView({
   state: AccountsState['export']
   onClose: () => void
   onCopy: () => void
-  onPasswordChange: (password: string) => void
+  onExport: () => void
   onRevealToggle: () => void
-  onUnlock: () => void
 }) {
   const hasSecret = Boolean(state.secret)
   const keyText = hasSecret
@@ -170,19 +166,6 @@ function PrivateKeyExportView({
       <SidePanelHeader closeLabel='Back to accounts' onClose={events.onClose} title='Private key export' />
       <Surface padding='medium' radius='none' tone='transparent'>
         <Stack gap='medium'>
-          {!hasSecret ? (
-            <Field label='Newframe password' vertical>
-              <Input
-                autoFocus
-                label='Private key export password'
-                placeholder='Enter password'
-                type='password'
-                value={state.password}
-                onValueChange={events.onPasswordChange}
-                onSubmit={events.onUnlock}
-              />
-            </Field>
-          ) : null}
           <div className={secretRecipe({ revealed: hasSecret && state.revealed })}>
             <Text variant='code'>{keyText}</Text>
           </div>
@@ -194,10 +177,10 @@ function PrivateKeyExportView({
                 <Text variant='compactAction'>{state.copied ? 'Copied' : 'Copy key'}</Text>
               </Button>
             ) : (
-              <Button appearance='primary' disabled={state.loading} onPress={events.onUnlock} size='medium'>
-                {state.loading ? <Spinner label='Unlocking' size='small' /> : null}
+              <Button appearance='primary' disabled={state.loading} onPress={events.onExport} size='medium'>
+                {state.loading ? <Spinner label='Exporting' size='small' /> : null}
                 <Text variant='compactAction'>
-                  {state.loading ? 'Unlocking' : `Unlock ${account.displayName}`}
+                  {state.loading ? 'Exporting' : `Export ${account.displayName}`}
                 </Text>
               </Button>
             )}
@@ -354,9 +337,8 @@ export function AccountsView(props: AccountsViewProps) {
             state={state.export}
             onClose={props.onExportClose}
             onCopy={props.onExportCopy}
-            onPasswordChange={props.onExportPasswordChange}
+            onExport={props.onExport}
             onRevealToggle={props.onExportRevealToggle}
-            onUnlock={props.onExportUnlock}
           />
         </ScrollArea>
       ) : state.panel.kind === 'add' ? (

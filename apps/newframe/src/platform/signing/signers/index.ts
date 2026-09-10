@@ -1,17 +1,10 @@
-import log from 'electron-log'
-
 import Signer from './Signer/index.js'
 import { SignerAdapter } from './adapters.js'
-
 import LedgerAdapter from './ledger/adapter.js'
 import TrezorAdapter from './trezor/adapter.js'
 import LatticeAdapter from './lattice/adapter.js'
-
 import hot from './hot/index.js'
-import RingSigner from './hot/RingSigner/index.js'
-import SeedSigner from './hot/SeedSigner/index.js'
 import HotSigner from './hot/HotSigner/index.js'
-
 import type { BiometricUnlockPayload } from '../../secrets/biometrics.js'
 import type canonicalStore from '../../state-store/index.js'
 
@@ -24,26 +17,15 @@ const createDefaultAdapters = (store: typeof canonicalStore) => [
 interface AdapterSpec {
   [key: string]: {
     adapter: SignerAdapter
-    listeners: {
-      event: string
-      handler: (p: any) => void
-    }[]
+    listeners: { event: string; handler: (payload: any) => void }[]
   }
 }
 
 type Keystore = string | { version: number }
-
-type HotSignerListeners = {
-  lockApp: () => void
-  update: () => void
-}
-
-type SignerScan = (() => void) & { cancel?: () => void }
+type HotSignerListeners = { lockApp: () => void; update: () => void }
 
 export interface SignersDependencies {
-  biometrics: {
-    unlock(payload: BiometricUnlockPayload): Promise<string>
-  }
+  biometrics: { unlock(payload: BiometricUnlockPayload): Promise<string> }
   store: typeof canonicalStore
   vault: {
     acquireKey(password?: string): string
@@ -58,33 +40,33 @@ export interface SignersDependencies {
 }
 
 export class Signers {
-  private adapters: AdapterSpec
-  private scans: Record<string, SignerScan>
-  private handles: Record<string, Signer>
+  private adapters: AdapterSpec = {}
+  private handles: Record<string, Signer> = {}
   private hotSignerListeners = new WeakMap<HotSigner, HotSignerListeners>()
+  private started = false
   private closed = false
 
   constructor(
     private readonly dependencies: SignersDependencies,
     registeredAdapters: SignerAdapter[] = createDefaultAdapters(dependencies.store),
-    scanHotSigners: (signers: Signers) => SignerScan = hot.scan
+    private readonly loadHotSigners: (
+      signers: Signers,
+      vault: SignersDependencies['vault']
+    ) => void = hot.load
   ) {
-    this.handles = {}
-    this.adapters = {}
+    registeredAdapters.forEach((adapter) => this.addAdapter(adapter))
+  }
 
-    // TODO: convert these scans to adapters
-    this.scans = {
-      hot: scanHotSigners(this)
-    }
-
-    registeredAdapters.forEach(this.addAdapter.bind(this))
+  start() {
+    if (this.started || this.closed) return
+    this.started = true
+    Object.values(this.adapters).forEach(({ adapter }) => adapter.open())
+    this.loadHotSigners(this, this.dependencies.vault)
   }
 
   close() {
     if (this.closed) return
     this.closed = true
-
-    Object.values(this.scans).forEach((scan) => scan.cancel?.())
     Object.values(this.adapters).forEach(({ adapter, listeners }) => {
       listeners.forEach(({ event, handler }) => adapter.removeListener(event, handler))
       adapter.close()
@@ -94,33 +76,21 @@ export class Signers {
   }
 
   addAdapter(adapter: SignerAdapter) {
-    const addFn = this.add.bind(this)
-    const removeFn = this.remove.bind(this)
-    const updateFn = this.update.bind(this)
-
-    adapter.on('add', addFn)
-    adapter.on('remove', removeFn)
-    adapter.on('update', updateFn)
-
-    adapter.open()
-
+    const add = this.add.bind(this)
+    const remove = this.remove.bind(this)
+    const update = this.update.bind(this)
+    adapter.on('add', add)
+    adapter.on('remove', remove)
+    adapter.on('update', update)
     this.adapters[adapter.adapterType] = {
       adapter,
       listeners: [
-        {
-          event: 'add',
-          handler: addFn
-        },
-        {
-          event: 'remove',
-          handler: removeFn
-        },
-        {
-          event: 'update',
-          handler: updateFn
-        }
+        { event: 'add', handler: add },
+        { event: 'remove', handler: remove },
+        { event: 'update', handler: update }
       ]
     }
+    if (this.started) adapter.open()
   }
 
   exists(id: string) {
@@ -128,11 +98,8 @@ export class Signers {
   }
 
   private attach(signer: Signer) {
-    const existing = this.handles[signer.id]
-    if (existing) return
-
+    if (this.handles[signer.id]) return
     this.handles[signer.id] = signer
-
     if (signer instanceof HotSigner) {
       const listeners = {
         lockApp: () => this.lockApp(() => {}),
@@ -142,26 +109,13 @@ export class Signers {
       signer.on('update', listeners.update)
       this.hotSignerListeners.set(signer, listeners)
     }
-
-    this.publish(signer, !existing)
-
-    // while the app is unlocked, hot signers come up unlocked
-    if (signer instanceof HotSigner && signer.status === 'locked' && this.dependencies.vault.isUnlocked()) {
-      const hotSigner = signer as SeedSigner | RingSigner
-      hotSigner.unlock(this.dependencies.vault.getKey() as string, (err: Error | null) => {
-        if (err) {
-          log.error(`Failed to unlock signer ${hotSigner.id} with vault key`, err)
-          this.lockApp(() => {})
-        }
-      })
-    }
+    this.publish(signer, true)
   }
 
   private publish(signer: Signer, isNew = false) {
     const previousId = Object.keys(this.handles).find((id) => this.handles[id] === signer)
     if (!previousId) return
     if (previousId !== signer.id) return this.rekey(previousId, signer)
-
     const summary = structuredClone(signer.summary())
     if (isNew) this.dependencies.store.getState().newSigner(summary)
     else this.dependencies.store.getState().updateSigner(summary)
@@ -173,7 +127,6 @@ export class Signers {
       this.detach(signer.id, false)
       replaced.close()
     }
-
     delete this.handles[previousId]
     this.handles[signer.id] = signer
     this.dependencies.store.getState().rekeySigner(previousId, structuredClone(signer.summary()))
@@ -182,7 +135,6 @@ export class Signers {
   private detach(id: string, publish = true) {
     const signer = this.handles[id]
     if (!signer) return
-
     if (signer instanceof HotSigner) {
       const listeners = this.hotSignerListeners.get(signer)
       if (listeners) {
@@ -191,7 +143,6 @@ export class Signers {
         this.hotSignerListeners.delete(signer)
       }
     }
-
     delete this.handles[id]
     if (publish) this.dependencies.store.getState().removeSigner(id)
     return signer
@@ -203,18 +154,13 @@ export class Signers {
 
   remove(id: string) {
     const signer = this.detach(id)
-
-    if (signer) {
-      const type = signer.type === 'ring' || signer.type === 'seed' ? 'hot' : signer.type
-
-      if (type in this.adapters) {
-        this.adapters[type].adapter.remove(signer)
-      } else {
-        // backwards compatibility
-        signer.close()
-        signer.delete()
-      }
+    if (!signer) return
+    if (signer instanceof HotSigner) {
+      signer.close()
+      signer.delete()
+      return
     }
+    if (signer.type in this.adapters) this.adapters[signer.type].adapter.remove(signer)
   }
 
   update(signer: Signer) {
@@ -223,18 +169,8 @@ export class Signers {
 
   reload(id: string) {
     const signer = this.handles[id]
-
-    if (signer) {
-      const type = signer.type === 'ring' || signer.type === 'seed' ? 'hot' : signer.type
-
-      if (this.scans[type] && typeof this.scans[type] === 'function') {
-        this.detach(id)
-        signer.close()
-
-        this.scans[type]()
-      } else if (type in this.adapters) {
-        this.adapters[type].adapter.reload(signer)
-      }
+    if (signer && !(signer instanceof HotSigner) && signer.type in this.adapters) {
+      this.adapters[signer.type].adapter.reload(signer)
     }
   }
 
@@ -250,21 +186,10 @@ export class Signers {
     })
   }
 
-  // Creating a hot signer may create or unlock the vault, in which case any
-  // other locked hot signers come along for the ride
   private afterCreate(cb: Callback<Signer>): Callback<Signer> {
-    return (err, signer) => {
-      if (!err && this.dependencies.vault.isUnlocked()) {
-        this.hydrateHotSigners(this.dependencies.vault.getKey() as string, undefined, (hydrateErr) => {
-          if (hydrateErr) {
-            log.error('Failed to hydrate hot signers after creating signer', hydrateErr)
-            this.lockApp(() => {})
-          } else {
-            this.publishAppLockState()
-          }
-        })
-      }
-      cb(err, signer)
+    return (error, signer) => {
+      this.publishAppLockState()
+      cb(error, signer)
     }
   }
 
@@ -291,155 +216,29 @@ export class Signers {
     )
   }
 
-  addPrivateKey(id: string, privateKey: string, password: string, cb: Callback<Signer>) {
-    // Get signer
-    const signer = this.get(id)
-    // Make sure signer is of type 'ring'
-    if (signer.type !== 'ring') {
-      return cb(new Error('Private keys can only be added to ring signers'), undefined)
-    }
-
-    let secret
-    try {
-      secret = this.dependencies.vault.acquireKey(password)
-    } catch (e) {
-      return cb(e as Error, undefined)
-    }
-
-    // Add private key
-    ;(signer as RingSigner).addPrivateKey(privateKey, secret, cb)
-  }
-
-  removePrivateKey(id: string, index: number, password: string, cb: Callback<Signer>) {
-    // Get signer
-    const signer = this.get(id)
-
-    if (signer.type !== 'ring') {
-      return cb(new Error('Private keys can only be removed from ring signers'), undefined)
-    }
-
-    let secret
-    try {
-      secret = this.dependencies.vault.acquireKey(password)
-    } catch (e) {
-      return cb(e as Error, undefined)
-    }
-
-    ;(signer as RingSigner).removePrivateKey(index, secret, cb)
-  }
-
-  addKeystore(
-    id: string,
-    keystore: Keystore,
-    keystorePassword: string,
-    password: string,
-    cb: Callback<Signer>
-  ) {
-    // Get signer
-    const signer = this.get(id)
-
-    if (signer.type !== 'ring') {
-      return cb(new Error('Keystores can only be used with ring signers'), undefined)
-    }
-
-    let secret
-    try {
-      secret = this.dependencies.vault.acquireKey(password)
-    } catch (e) {
-      return cb(e as Error, undefined)
-    }
-
-    ;(signer as RingSigner).addKeystore(keystore, keystorePassword, secret, cb)
-  }
-
-  // Hydrates every locked hot signer with the app vault key.
-  private hydrateHotSigners(vaultKey: string, excludeId?: string, cb: Callback<boolean> = () => {}) {
-    const lockedHotSigners = Object.values(this.handles).filter(
-      (signer) => signer.id !== excludeId && signer instanceof HotSigner && signer.status === 'locked'
-    ) as Array<SeedSigner | RingSigner>
-
-    if (lockedHotSigners.length === 0) return cb(null, true)
-
-    let remaining = lockedHotSigners.length
-    let firstError: Error | null = null
-
-    lockedHotSigners.forEach((hotSigner) => {
-      hotSigner.unlock(vaultKey, (err: Error | null) => {
-        if (err) {
-          firstError = firstError || err
-          log.error(`Failed to unlock signer ${hotSigner.id} with vault key`, err)
-        }
-
-        remaining -= 1
-        if (remaining === 0) cb(firstError, firstError ? undefined : true)
-      })
-    })
-  }
-
-  exportAccountPrivateKey(address: string, password: string, cb: Callback<{ type: string; value: string }>) {
+  exportAccountPrivateKey(address: string, cb: Callback<{ type: string; value: string }>) {
     const normalized = (address || '').toLowerCase()
     const signer = Object.values(this.handles).find(
-      (signer) =>
-        signer instanceof HotSigner &&
-        signer.addresses.some((signerAddress) => signerAddress.toLowerCase() === normalized)
+      (candidate) =>
+        candidate instanceof HotSigner &&
+        candidate.addresses.some((signerAddress) => signerAddress.toLowerCase() === normalized)
     ) as HotSigner | undefined
-
     if (!signer) return cb(new Error('This account does not have an exportable hot signer'), undefined)
-    if (!password) return cb(new Error('Password required'), undefined)
-
     const index = signer.addresses.findIndex((signerAddress) => signerAddress.toLowerCase() === normalized)
-    if (index === -1) return cb(new Error('Account address was not found on this signer'), undefined)
-
-    const exportKey = () =>
-      signer.exportPrivateKey(index, (err, value) => {
-        if (err) return cb(err, undefined)
-        cb(null, { type: 'privateKey', value: value as string })
-      })
-
-    let vaultKey: string
-    try {
-      vaultKey = this.dependencies.vault.unlock(password)
-    } catch (e) {
-      return cb(e as Error, undefined)
-    }
-
-    this.hydrateHotSigners(vaultKey, signer.id, (hydrateErr) => {
-      if (hydrateErr) {
-        this.lockApp(() => {})
-        return cb(hydrateErr, undefined)
-      }
-
-      this.publishAppLockState()
-
-      if (signer.status === 'ok') return exportKey()
-      return (signer as SeedSigner | RingSigner).unlock(vaultKey, (err: Error | null) => {
-        if (err) {
-          this.lockApp(() => {})
-          return cb(err, undefined)
-        }
-        exportKey()
-      })
+    signer.exportPrivateKey(index, (error, value) => {
+      if (error) return cb(error, undefined)
+      cb(null, { type: 'privateKey', value: value as string })
     })
   }
 
-  // Unlocks the app vault and hydrates every vault-backed hot signer.
   unlockApp(password: string, cb: Callback<boolean>) {
-    let vaultKey: string
     try {
-      vaultKey = this.dependencies.vault.unlock(password)
-    } catch (e) {
-      return cb(e as Error, undefined)
-    }
-
-    this.hydrateHotSigners(vaultKey, undefined, (err) => {
-      if (err) {
-        this.lockApp(() => {})
-        return cb(err, undefined)
-      }
-
+      this.dependencies.vault.unlock(password)
       this.publishAppLockState()
       cb(null, true)
-    })
+    } catch (error) {
+      cb(error as Error, undefined)
+    }
   }
 
   unlockAppWithBiometrics(payload: BiometricUnlockPayload, cb: Callback<boolean>) {
@@ -447,29 +246,14 @@ export class Signers {
       .unlock(payload)
       .then((vaultKey) => {
         this.dependencies.vault.unlockWithKey(vaultKey)
-        this.hydrateHotSigners(vaultKey, undefined, (err) => {
-          if (err) {
-            this.lockApp(() => {})
-            return cb(err, undefined)
-          }
-
-          this.publishAppLockState()
-          cb(null, true)
-        })
+        this.publishAppLockState()
+        cb(null, true)
       })
-      .catch((e) => cb(e as Error, undefined))
+      .catch((error) => cb(error as Error, undefined))
   }
 
-  // Locks the app vault and clears every hot signer worker secret.
   lockApp(cb: Callback<boolean>) {
     this.dependencies.vault.lock()
-
-    Object.values(this.handles).forEach((signer) => {
-      if (signer instanceof HotSigner && signer.status !== 'locked') {
-        signer.lock(() => {})
-      }
-    })
-
     this.publishAppLockState()
     cb(null, true)
   }

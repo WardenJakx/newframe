@@ -1,54 +1,77 @@
-import path from 'path'
-import fs from 'fs'
+import fs from 'node:fs'
+import path from 'node:path'
 import { app } from 'electron'
 import log from 'electron-log'
-import { Mnemonic, randomBytes } from 'ethers'
-
-import crypt from '../../crypt.js'
-
-import SeedSigner from './SeedSigner/index.js'
-import RingSigner from './RingSigner/index.js'
 import { stripHexPrefix } from '@ethereumjs/util'
+import { Mnemonic, randomBytes } from 'ethers'
+import { z } from 'zod'
 
-type Callback = (err: Error | null, result?: any) => void
-type VaultPort = { acquireKey(password?: string): string }
+import RingSigner from './RingSigner/index.js'
+import SeedSigner from './SeedSigner/index.js'
+import type Signer from '../Signer/index.js'
+import type { VaultAccess } from './HotSigner/index.js'
+
+type VaultPort = VaultAccess & { acquireKey(password?: string): string }
+type SignerCollection = { add(signer: Signer): void; exists(id: string): boolean }
 
 const USER_DATA = app ? app.getPath('userData') : path.resolve(import.meta.dirname, '../.userData')
 const SIGNERS_PATH = path.resolve(USER_DATA, 'signers')
 
-const wait = async (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+const encryptedSecretSchema = (ciphertextBytes: number) =>
+  z.strictObject({
+    algorithm: z.literal('aes-256-gcm'),
+    iv: z.string().regex(/^[0-9a-fA-F]{24}$/),
+    authTag: z.string().regex(/^[0-9a-fA-F]{32}$/),
+    ciphertext: z.string().regex(new RegExp(`^[0-9a-fA-F]{${ciphertextBytes * 2}}$`))
+  })
 
-export const newPhrase = (cb: Callback) => {
+const StoredSignerBase = {
+  version: z.literal(1),
+  id: z.string().min(1),
+  addresses: z.array(z.string().min(1)),
+  network: z.string().optional()
+}
+
+export const StoredHotSignerSchema = z.discriminatedUnion('type', [
+  z.strictObject({
+    ...StoredSignerBase,
+    type: z.literal('seed'),
+    encryptedSeed: encryptedSecretSchema(64)
+  }),
+  z.strictObject({
+    ...StoredSignerBase,
+    type: z.literal('ring'),
+    encryptedKeys: z.array(encryptedSecretSchema(32))
+  })
+])
+
+export type StoredHotSigner = z.infer<typeof StoredHotSignerSchema>
+
+export const newPhrase = (cb: Callback<string>) => {
   cb(null, Mnemonic.fromEntropy(randomBytes(16)).phrase)
 }
 
-// All new hot signers are encrypted with the vault key. The password argument
-// is the Newframe master password; it creates the vault on first use, unlocks it
-// if it's locked and is ignored when the vault is already unlocked
-const acquireVaultKey = (vault: VaultPort, password: string, cb: Callback): string | undefined => {
+const acquireVaultKey = (vault: VaultPort, password: string, cb: Callback<any>) => {
   try {
     return vault.acquireKey(password)
-  } catch (e) {
-    cb(e as Error)
+  } catch (error) {
+    cb(error as Error, undefined)
   }
 }
 
 export const createFromSeed = (
   vault: VaultPort,
-  signers: any,
+  signers: SignerCollection,
   seed: string,
   password: string,
-  cb: Callback
+  cb: Callback<Signer>
 ) => {
-  if (!seed) return cb(new Error('Seed required to create hot signer'))
+  if (!seed) return cb(new Error('Seed required to create hot signer'), undefined)
   const vaultKey = acquireVaultKey(vault, password, cb)
   if (!vaultKey) return
-  const signer = new SeedSigner()
-  signer.addSeed(seed, vaultKey, (err: Error | null, result?: any) => {
-    if (err) {
-      signer.close()
-      return cb(err)
-    }
+  const signer = new SeedSigner(undefined, vault)
+  signer.addSeed(seed, vaultKey, (error) => {
+    if (error) return cb(error, undefined)
     signers.add(signer)
     cb(null, signer)
   })
@@ -56,20 +79,17 @@ export const createFromSeed = (
 
 export const createFromPhrase = (
   vault: VaultPort,
-  signers: any,
+  signers: SignerCollection,
   phrase: string,
   password: string,
-  cb: Callback
+  cb: Callback<Signer>
 ) => {
-  if (!phrase) return cb(new Error('Phrase required to create hot signer'))
+  if (!phrase) return cb(new Error('Phrase required to create hot signer'), undefined)
   const vaultKey = acquireVaultKey(vault, password, cb)
   if (!vaultKey) return
-  const signer = new SeedSigner()
-  signer.addPhrase(phrase, vaultKey, (err) => {
-    if (err) {
-      signer.close()
-      return cb(err)
-    }
+  const signer = new SeedSigner(undefined, vault)
+  signer.addPhrase(phrase, vaultKey, (error) => {
+    if (error) return cb(error, undefined)
     signers.add(signer)
     cb(null, signer)
   })
@@ -77,23 +97,18 @@ export const createFromPhrase = (
 
 export const createFromPrivateKey = (
   vault: VaultPort,
-  signers: any,
+  signers: SignerCollection,
   privateKey: string,
   password: string,
-  cb: Callback
+  cb: Callback<Signer>
 ) => {
   const privateKeyHex = stripHexPrefix(privateKey)
-
-  if (!privateKeyHex) return cb(new Error('Private key required to create hot signer'))
+  if (!privateKeyHex) return cb(new Error('Private key required to create hot signer'), undefined)
   const vaultKey = acquireVaultKey(vault, password, cb)
   if (!vaultKey) return
-  const signer = new RingSigner()
-
-  signer.addPrivateKey(privateKeyHex, vaultKey, (err) => {
-    if (err) {
-      signer.close()
-      return cb(err)
-    }
+  const signer = new RingSigner(undefined, vault)
+  signer.addPrivateKey(privateKeyHex, vaultKey, (error) => {
+    if (error) return cb(error, undefined)
     signers.add(signer)
     cb(null, signer)
   })
@@ -101,83 +116,56 @@ export const createFromPrivateKey = (
 
 export const createFromKeystore = (
   vault: VaultPort,
-  signers: any,
+  signers: SignerCollection,
   keystore: any,
   keystorePassword: string,
   password: string,
-  cb: Callback
+  cb: Callback<Signer>
 ) => {
-  if (!keystore) return cb(new Error('Keystore required'))
-  if (!keystorePassword) return cb(new Error('Keystore password required'))
+  if (!keystore) return cb(new Error('Keystore required'), undefined)
+  if (!keystorePassword) return cb(new Error('Keystore password required'), undefined)
   const vaultKey = acquireVaultKey(vault, password, cb)
   if (!vaultKey) return
-  const signer = new RingSigner()
-  signer.addKeystore(keystore, keystorePassword, vaultKey, (err) => {
-    if (err) {
-      signer.close()
-      return cb(err)
-    }
+  const signer = new RingSigner(undefined, vault)
+  signer.addKeystore(keystore, keystorePassword, vaultKey, (error) => {
+    if (error) return cb(error, undefined)
     signers.add(signer)
     cb(null, signer)
   })
 }
 
-export const scan = (signers: any) => {
-  const storedSigners: Record<string, any> = {}
-  let cancelled = false
-  let initialScanTimer: ReturnType<typeof setTimeout> | undefined
+export const load = (signers: SignerCollection, vault: VaultAccess) => {
+  fs.mkdirSync(SIGNERS_PATH, { recursive: true })
+  const files = fs.readdirSync(SIGNERS_PATH)
 
-  const scanStoredSigners = async () => {
-    if (cancelled) return
-
-    // Ensure signer directory exists
-    fs.mkdirSync(SIGNERS_PATH, { recursive: true })
-
-    // Find stored signers, read them from disk and add them to storedSigners
-    fs.readdirSync(SIGNERS_PATH).forEach((file) => {
-      try {
-        const signer = JSON.parse(fs.readFileSync(path.resolve(SIGNERS_PATH, file), 'utf8'))
-        storedSigners[signer.id] = signer
-      } catch (e) {
-        log.error(`Corrupt signer file: ${file}`)
+  for (const file of files) {
+    try {
+      const parsed = StoredHotSignerSchema.safeParse(
+        JSON.parse(fs.readFileSync(path.resolve(SIGNERS_PATH, file), 'utf8'))
+      )
+      if (!parsed.success) {
+        log.warn(`Skipping unsupported or malformed hot signer record: ${file}`)
+        continue
       }
-    })
 
-    // Add stored signers
-    for (const id of Object.keys(storedSigners)) {
-      await wait(100)
-      if (cancelled) return
-
-      const { addresses, encryptedKeys, encryptedSeed, type, network } = storedSigners[id]
-      if (addresses && addresses.length) {
-        const id = crypt.stringToKey(addresses.join()).toString('hex')
-        if (!signers.exists(id)) {
-          if (type === 'seed') {
-            signers.add(new SeedSigner({ network, addresses, encryptedSeed }))
-          } else if (type === 'ring') {
-            signers.add(new RingSigner({ network, addresses, encryptedKeys }))
-          }
-        }
+      const record = parsed.data
+      if (
+        (record.type === 'seed' && record.addresses.length !== 100) ||
+        (record.type === 'ring' && record.addresses.length !== record.encryptedKeys.length)
+      ) {
+        log.warn(`Skipping malformed hot signer record: ${file}`)
+        continue
       }
+      const signer = record.type === 'seed' ? new SeedSigner(record, vault) : new RingSigner(record, vault)
+      if (signer.fingerprint() !== record.id) {
+        log.warn(`Skipping hot signer record with an invalid fingerprint: ${file}`)
+        continue
+      }
+      if (!signers.exists(record.id)) signers.add(signer)
+    } catch {
+      log.warn(`Skipping unsupported or malformed hot signer record: ${file}`)
     }
   }
-
-  const run = () => {
-    if (!cancelled) void scanStoredSigners()
-  }
-  run.cancel = () => {
-    cancelled = true
-    if (initialScanTimer) clearTimeout(initialScanTimer)
-    initialScanTimer = undefined
-  }
-
-  // Delay creating child process until after initial load
-  initialScanTimer = setTimeout(() => {
-    initialScanTimer = undefined
-    run()
-  }, 4000)
-
-  return run
 }
 
-export default { newPhrase, createFromSeed, createFromPhrase, createFromPrivateKey, createFromKeystore, scan }
+export default { newPhrase, createFromSeed, createFromPhrase, createFromPrivateKey, createFromKeystore, load }

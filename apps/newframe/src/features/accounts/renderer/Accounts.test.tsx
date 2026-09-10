@@ -179,13 +179,11 @@ describe('Accounts profile controls', () => {
 
     await user.click(screen.getByRole('button', { name: 'Primary account actions' }))
     await user.click(screen.getByRole('button', { name: 'Export private key' }))
-    await user.type(screen.getByLabelText('Private key export password'), 'frame-password')
-    await user.click(screen.getByRole('button', { name: 'Unlock Primary' }))
+    await user.click(screen.getByRole('button', { name: 'Export Primary' }))
     await user.click(await screen.findByRole('button', { name: 'Copy key' }))
 
     expect(capability.exportAccountPrivateKey.mock.calls.at(-1)?.[0]).toEqual({
-      accountId: hotAccount.address,
-      password: 'frame-password'
+      accountId: hotAccount.address
     })
     expect(capability.writeClipboard.mock.calls.at(-1)?.[0]).toEqual({
       text: privateKey
@@ -213,8 +211,7 @@ describe('Accounts profile controls', () => {
     const { user } = render(<Accounts capability={capability} onClose={mock()} />)
     await user.click(screen.getByRole('button', { name: 'Primary account actions' }))
     await user.click(screen.getByRole('button', { name: 'Export private key' }))
-    await user.type(screen.getByLabelText('Private key export password'), 'frame-password')
-    await user.click(screen.getByRole('button', { name: 'Unlock Primary' }))
+    await user.click(screen.getByRole('button', { name: 'Export Primary' }))
     await user.click(screen.getByRole('button', { name: 'Back to accounts' }))
 
     const privateKey = `0x${'b'.repeat(64)}`

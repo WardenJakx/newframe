@@ -268,6 +268,7 @@ void app.whenReady().then(async () => {
     app.quit()
     return
   }
+  signers.start()
   accounts.start()
   const biometricUnlockEnabled = biometrics.summary().enabled
   if (store.getState().main.biometricUnlock !== biometricUnlockEnabled) {

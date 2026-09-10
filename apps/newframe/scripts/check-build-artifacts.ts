@@ -9,12 +9,7 @@ const testArtifact =
 const esmStatement = /^\s*(?:import(?:\s|\{|\*|["'])|export(?:\s|\{|\*))/m
 const typescriptCommonJs =
   /\b(?:__createBinding|__setModuleDefault|__importStar|__importDefault|__exportStar)\b|Object\.defineProperty\(\s*exports\s*,\s*["']__esModule["']|(?:^|\n)\s*(?:module\.exports|exports(?:\.|\[))|\brequire\s*\(/
-const workerEntrypoints = [
-  'src/features/asset-data/main/externalData/balances/worker.js',
-  'src/platform/signing/signers/hot/HotSigner/worker.js',
-  'src/platform/signing/signers/hot/RingSigner/worker.js',
-  'src/platform/signing/signers/hot/SeedSigner/worker.js'
-]
+const workerEntrypoints = ['src/features/asset-data/main/externalData/balances/worker.js']
 
 type PackageMetadata = {
   bridge?: string

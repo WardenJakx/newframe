@@ -142,6 +142,8 @@ export default function (store: Pick<StoreApi<CanonicalStore>, 'getState'>) {
   let onResume: (() => void) | null
   let restartTimer: NodeJS.Timeout | null
   const positionRefreshRetries = new Set<NodeJS.Timeout>()
+  const pendingScans = new Set<NodeJS.Timeout>()
+  const readyContinuations = new Map<() => void, BalancesWorkerController>()
 
   function attemptRestart() {
     log.warn(`balances controller stopped, restarting in ${RESTART_WAIT} seconds`)
@@ -162,6 +164,24 @@ export default function (store: Pick<StoreApi<CanonicalStore>, 'getState'>) {
     positionRefreshRetries.clear()
   }
 
+  function clearPendingScans() {
+    pendingScans.forEach(clearTimeout)
+    pendingScans.clear()
+  }
+
+  function clearReadyContinuations() {
+    readyContinuations.forEach((controller, continuation) => controller.off('ready', continuation))
+    readyContinuations.clear()
+  }
+
+  function queueScan(address: Address) {
+    const pendingScan = setTimeout(() => {
+      pendingScans.delete(pendingScan)
+      updateActiveBalances(address)
+    }, 0)
+    pendingScans.add(pendingScan)
+  }
+
   function handleClose() {
     workerController = null
     attemptRestart()
@@ -175,9 +195,14 @@ export default function (store: Pick<StoreApi<CanonicalStore>, 'getState'>) {
       log.verbose('worker controller not running yet, waiting for ready event')
 
       // wait for worker to be ready
-      workerController?.once('ready', () => {
+      const controller = workerController
+      if (!controller) return
+      const continuation = () => {
+        readyContinuations.delete(continuation)
         fn()
-      })
+      }
+      readyContinuations.set(continuation, controller)
+      controller.once('ready', continuation)
     }
   }
 
@@ -242,6 +267,9 @@ export default function (store: Pick<StoreApi<CanonicalStore>, 'getState'>) {
   function stop() {
     clearRestartTimer()
     clearPositionRefreshRetries()
+    clearPendingScans()
+    clearReadyContinuations()
+    onResume = null
 
     log.verbose('stopping balances updates')
 
@@ -264,9 +292,7 @@ export default function (store: Pick<StoreApi<CanonicalStore>, 'getState'>) {
 
     const initiateScan = () => {
       // do an initial scan before starting the timer
-      setTimeout(() => {
-        updateActiveBalances(address)
-      }, 0)
+      queueScan(address)
 
       resetScan(address, scanInterval.active)
     }
@@ -288,9 +314,7 @@ export default function (store: Pick<StoreApi<CanonicalStore>, 'getState'>) {
   function resetScan(address: Address, interval: number) {
     scan = setTimeout(() => {
       if (workerController?.isRunning()) {
-        setTimeout(() => {
-          updateActiveBalances(address)
-        }, 0)
+        queueScan(address)
       }
 
       resetScan(address, interval)

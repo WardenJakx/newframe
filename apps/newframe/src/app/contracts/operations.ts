@@ -611,8 +611,7 @@ const AccountAgentSessionsRevokeCommandSchema = z.strictObject({
 
 const AccountPrivateKeyExportQuerySchema = z.strictObject({
   type: z.literal('account.private-key-export'),
-  accountId: AddressSchema,
-  password: BoundedPasswordSchema.min(1)
+  accountId: AddressSchema
 })
 export type AccountPrivateKeyExportQuery = z.infer<typeof AccountPrivateKeyExportQuerySchema>
 

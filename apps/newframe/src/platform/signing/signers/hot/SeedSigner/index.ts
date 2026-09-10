@@ -1,64 +1,81 @@
-import path from 'path'
-import HotSigner from '../HotSigner/index.js'
 import { HDKey } from '@scure/bip32'
 import { stripHexPrefix } from '@ethereumjs/util'
 import { computeAddress, Mnemonic } from 'ethers'
 
-type Callback = (err: Error | null, result?: any) => void
-
-// compiled Electron forks the emitted worker.js; under Bun's test runner we run from source,
-// so fork the .ts worker directly — node 24 strips types natively
-const WORKER_EXT = import.meta.filename.endsWith('.ts') ? 'worker.ts' : 'worker.js'
-const WORKER_PATH = path.resolve(import.meta.dirname, WORKER_EXT)
+import HotSigner, { type VaultAccess } from '../HotSigner/index.js'
+import { openSecret, sealSecret, type EncryptedSecret } from '../secret.js'
 
 class SeedSigner extends HotSigner {
-  constructor(signer?: any) {
-    super(signer, WORKER_PATH)
-    this.encryptedSeed = signer && signer.encryptedSeed
+  encryptedSeed?: EncryptedSecret
+
+  constructor(
+    signer:
+      | { id?: string; addresses?: string[]; network?: string; encryptedSeed?: EncryptedSecret }
+      | undefined,
+    vault: VaultAccess
+  ) {
+    super(signer, vault)
+    this.encryptedSeed = signer?.encryptedSeed
     this.type = 'seed'
     this.model = 'phrase'
-    if (this.encryptedSeed) this.update()
   }
 
-  addSeed(seed: string, password: string, cb: Callback) {
-    if (this.encryptedSeed) return cb(new Error('This signer already has a seed'))
+  addSeed(seed: string, vaultKeyHex: string, cb: Callback<SeedSigner>) {
+    if (this.encryptedSeed) return cb(new Error('This signer already has a seed'), undefined)
 
-    this._callWorker({ method: 'encryptSeed', params: { seed, password } }, (err, encryptedSeed) => {
-      if (err) return cb(err)
-
-      // Derive addresses
-      const wallet = HDKey.fromMasterSeed(Buffer.from(seed, 'hex'))
-
-      const addresses = []
-      for (let i = 0; i < 100; i++) {
-        const publicKey = wallet.derive("m/44'/60'/0'/0/" + i).publicKey
-        const address = computeAddress('0x' + Buffer.from(publicKey!).toString('hex'))
-        addresses.push(address)
+    const seedBuffer = Buffer.from(seed, 'hex')
+    let root: HDKey | undefined
+    try {
+      root = HDKey.fromMasterSeed(seedBuffer)
+      const addresses: string[] = []
+      for (let index = 0; index < 100; index++) {
+        const child = root.derive(`m/44'/60'/0'/0/${index}`)
+        try {
+          const publicKey = child.publicKey
+          if (!publicKey) throw new Error('Unable to derive public key')
+          addresses.push(computeAddress(`0x${Buffer.from(publicKey).toString('hex')}`))
+        } finally {
+          child.wipePrivateData()
+        }
       }
 
-      // Update signer
-      this.encryptedSeed = encryptedSeed
+      this.encryptedSeed = sealSecret(seedBuffer, vaultKeyHex)
       this.addresses = addresses
       this.update()
-      this.unlock(password, cb)
-    })
+      cb(null, this)
+    } catch (error) {
+      cb(error as Error, undefined)
+    } finally {
+      root?.wipePrivateData()
+      seedBuffer.fill(0)
+    }
   }
 
-  async addPhrase(phrase: string, password: string, cb: Callback) {
-    // Validate phrase
-    if (!Mnemonic.isValidMnemonic(phrase)) return cb(new Error('Invalid mnemonic phrase'))
-    // Get seed
-    const seed = stripHexPrefix(Mnemonic.fromPhrase(phrase).computeSeed())
-    // Add seed to signer
-    this.addSeed(seed, password, cb)
+  addPhrase(phrase: string, vaultKeyHex: string, cb: Callback<SeedSigner>) {
+    if (!Mnemonic.isValidMnemonic(phrase)) return cb(new Error('Invalid mnemonic phrase'), undefined)
+    this.addSeed(stripHexPrefix(Mnemonic.fromPhrase(phrase).computeSeed()), vaultKeyHex, cb)
   }
 
-  override save() {
-    super.save({ encryptedSeed: this.encryptedSeed })
+  protected override persistedSecret() {
+    return { encryptedSeed: this.encryptedSeed }
   }
 
-  override unlock(password: string, cb: Callback) {
-    super.unlock(password, { encryptedSeed: this.encryptedSeed }, cb)
+  protected override openPrivateKey(index: number, vaultKeyHex: string) {
+    if (!this.encryptedSeed) throw new Error('Seed not found')
+    const seed = openSecret(this.encryptedSeed, vaultKeyHex)
+    let root: HDKey | undefined
+    let child: HDKey | undefined
+    try {
+      root = HDKey.fromMasterSeed(seed)
+      child = root.derive(`m/44'/60'/0'/0/${index}`)
+      const privateKey = child.privateKey
+      if (!privateKey) throw new Error('Private key not found')
+      return Buffer.from(privateKey)
+    } finally {
+      child?.wipePrivateData()
+      root?.wipePrivateData()
+      seed.fill(0)
+    }
   }
 }
 

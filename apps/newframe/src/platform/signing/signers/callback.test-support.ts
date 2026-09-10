@@ -6,12 +6,7 @@ export function callbackResult<T>(start: (done: Callback<T>) => void): Promise<T
   )
 }
 
-export async function exerciseHotSignerContract(signer: any, vaultKey: string) {
-  await callbackResult((done) => signer.lock(done))
-  expect(signer.status).toBe('locked')
-  await expect(callbackResult((done) => signer.unlock('Wrong password', done))).rejects.toBeTruthy()
-  await callbackResult((done) => signer.unlock(vaultKey, done))
-
+export async function exerciseHotSignerContract(signer: any, vault: { lock(): void }) {
   const signature = await callbackResult<string>((done) =>
     signer.signMessage(0, '0x' + Buffer.from('test').toString('hex'), done)
   )
@@ -38,7 +33,10 @@ export async function exerciseHotSignerContract(signer: any, vaultKey: string) {
     'Unable to verify address'
   )
 
-  signer.lock(() => {})
+  const exported = await callbackResult<string>((done) => signer.exportPrivateKey(0, done))
+  expect(exported).toMatch(/^0x[0-9a-f]{64}$/)
+
+  vault.lock()
   await expect(callbackResult((done) => signer.signMessage(0, 'test', done))).rejects.toThrow('Signer locked')
   signer.close()
 }

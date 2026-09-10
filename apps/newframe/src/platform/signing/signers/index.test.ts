@@ -45,14 +45,22 @@ class AdapterMock extends EventEmitter {
   }
 }
 
+const createFromPrivateKey = mock()
+
 mock.module('./hot/HotSigner', () => ({ default: HotSignerMock }))
 mock.module('./hot', () => ({
-  default: { scan: () => mock() },
+  default: {
+    load: mock(),
+    newPhrase: mock(),
+    createFromPhrase: mock(),
+    createFromPrivateKey,
+    createFromKeystore: mock()
+  },
   newPhrase: mock(),
   createFromPhrase: mock(),
-  createFromPrivateKey: mock(),
+  createFromPrivateKey,
   createFromKeystore: mock(),
-  scan: mock()
+  load: mock()
 }))
 mock.module('./ledger/adapter', () => ({ default: AdapterMock }))
 mock.module('./trezor/adapter', () => ({ default: AdapterMock }))
@@ -66,6 +74,7 @@ beforeAll(async () => {
 
 beforeEach(() => {
   adapterInstances.length = 0
+  createFromPrivateKey.mockReset()
   store.setState((state) => {
     state.main.signers = {}
   })
@@ -167,11 +176,9 @@ it('publishes hot updates, atomically rekeys, and permanently detaches removals'
   expect(handle.delete).toHaveBeenCalledTimes(1)
 })
 
-it('ignores delayed adapter events and releases every lifecycle resource on close', () => {
+it('ignores detached adapter events and releases every lifecycle resource on close', () => {
   const adapter = new AdapterMock()
-  const cancel = mock()
-  const scan = Object.assign(mock(), { cancel })
-  const signers = new Signers(dependencies(), [adapter as unknown as SignerAdapter], () => scan)
+  const signers = new Signers(dependencies(), [adapter as unknown as SignerAdapter], mock())
   const removed = new HotSignerMock('removed')
   adapter.emit('add', removed)
   signers.remove(removed.id)
@@ -187,5 +194,62 @@ it('ignores delayed adapter events and releases every lifecycle resource on clos
   expect(adapter.close).toHaveBeenCalledTimes(1)
   expect(active.close).toHaveBeenCalledTimes(1)
   expect(store.getState().main.signers[active.id]).toBeUndefined()
-  expect(cancel).toHaveBeenCalledTimes(1)
+})
+
+it('starts adapters and hot loading once, then closes once', () => {
+  const adapter = new AdapterMock()
+  const load = mock()
+  const signers = new Signers(dependencies(), [adapter as unknown as SignerAdapter], load)
+
+  expect(adapter.open).not.toHaveBeenCalled()
+  signers.start()
+  signers.start()
+  expect(adapter.open).toHaveBeenCalledTimes(1)
+  expect(load).toHaveBeenCalledTimes(1)
+
+  signers.close()
+  signers.close()
+  expect(adapter.close).toHaveBeenCalledTimes(1)
+})
+
+it('unlocks only the vault and publishes post-create vault state on success or failure', () => {
+  const deps = dependencies()
+  const signers = new Signers(deps, [], mock())
+  const handle = new HotSignerMock()
+  signers.add(handle as unknown as Signer)
+
+  let unlocked: boolean | undefined
+  signers.unlockApp('password', (error, value) => {
+    expect(error).toBeNull()
+    unlocked = value
+  })
+  expect(unlocked).toBeTrue()
+  expect(deps.vault.unlock).toHaveBeenCalledWith('password')
+  expect(handle.unlock).not.toHaveBeenCalled()
+
+  deps.vault.summary.mockReturnValue({ exists: true, unlocked: true })
+  createFromPrivateKey.mockImplementation((_vault, collection, _key, _password, done) => {
+    collection.add(handle)
+    done(null, handle)
+  })
+  signers.createFromPrivateKey('11'.repeat(32), 'password', () => {})
+  expect(store.getState().main.appLock).toEqual({ locked: false, vaultExists: true })
+
+  deps.vault.summary.mockReturnValue({ exists: true, unlocked: false })
+  deps.vault.acquireKey.mockImplementation(() => {
+    deps.vault.summary.mockReturnValue({ exists: true, unlocked: true })
+    return 'vault-key'
+  })
+  createFromPrivateKey.mockImplementation((vault, _collection, _key, password, done) => {
+    vault.acquireKey(password)
+    done(new Error('Invalid private key'))
+  })
+  let failureMessage = ''
+  signers.createFromPrivateKey('invalid', 'password', (error) => {
+    failureMessage = error?.message || ''
+  })
+  expect(failureMessage).toBe('Invalid private key')
+  expect(deps.vault.acquireKey).toHaveBeenCalledWith('password')
+  expect(store.getState().main.appLock).toEqual({ locked: false, vaultExists: true })
+  signers.close()
 })

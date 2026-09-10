@@ -10,7 +10,6 @@ interface AccountExportState {
   copied: boolean
   error: string
   loading: boolean
-  password: string
   revealed: boolean
   secret: string
 }
@@ -45,10 +44,9 @@ export type AccountsEvent =
   | { type: 'move.started'; accountId: string; operationId: string; profileId: string }
   | { type: 'move.failed'; accountId: string; error: string }
   | { type: 'move.closed' }
-  | { type: 'export.password-changed'; password: string }
-  | { type: 'export.unlock-started' }
-  | { type: 'export.unlock-succeeded'; secret: string }
-  | { type: 'export.unlock-failed'; error: string }
+  | { type: 'export.started' }
+  | { type: 'export.succeeded'; secret: string }
+  | { type: 'export.failed'; error: string }
   | { type: 'export.reveal-toggled' }
   | { type: 'export.copied' }
   | { type: 'drag.started'; accountId: string }
@@ -59,7 +57,6 @@ const emptyExport = (): AccountExportState => ({
   copied: false,
   error: '',
   loading: false,
-  password: '',
   revealed: false,
   secret: ''
 })
@@ -138,16 +135,14 @@ export function accountsReducer(state: AccountsState, event: AccountsEvent): Acc
       return { ...state, move: { kind: 'failed', accountId: event.accountId, error: event.error } }
     case 'move.closed':
       return { ...state, move: { kind: 'closed' } }
-    case 'export.password-changed':
-      return { ...state, export: { ...state.export, password: event.password } }
-    case 'export.unlock-started':
+    case 'export.started':
       return { ...state, export: { ...state.export, loading: true, error: '', copied: false } }
-    case 'export.unlock-succeeded':
+    case 'export.succeeded':
       return {
         ...state,
         export: { ...emptyExport(), secret: event.secret }
       }
-    case 'export.unlock-failed':
+    case 'export.failed':
       return {
         ...state,
         export: { ...state.export, loading: false, error: event.error, secret: '', revealed: false }

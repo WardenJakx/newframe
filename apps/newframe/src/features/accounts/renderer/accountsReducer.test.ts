@@ -21,11 +21,11 @@ describe('accounts reducer', () => {
     })
 
     state = accountsReducer(state, { type: 'panel.export-opened', accountId: 'account-1' })
-    state = accountsReducer(state, { type: 'export.password-changed', password: 'secret' })
+    state = accountsReducer(state, { type: 'export.started' })
     state = accountsReducer(state, { type: 'drag.started', accountId: 'account-1' })
     state = accountsReducer(state, { type: 'drag.entered', accountId: 'account-2' })
     expect(state.panel).toEqual({ kind: 'export', accountId: 'account-1' })
-    expect(state.export.password).toBe('secret')
+    expect(state.export.loading).toBeTrue()
     expect(state.drag).toEqual({ accountId: 'account-1', overAccountId: 'account-2' })
   })
 })
