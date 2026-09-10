@@ -44,6 +44,7 @@ export type TransactionInformationProps = {
   networkIcon?: string
   statusLabel: ReactNode
   notice?: ReactNode
+  beforeDetails?: ReactNode
   effects?: TransactionInformationEffect[]
   effectsEmptyText?: ReactNode
   details: TransactionInformationDetailRow[]
@@ -415,6 +416,7 @@ export default function TransactionInformation({
   networkIcon,
   statusLabel,
   notice,
+  beforeDetails,
   effects,
   effectsEmptyText,
   details,
@@ -459,6 +461,8 @@ export default function TransactionInformation({
             networkName={networkName}
           />
         ) : null}
+
+        {beforeDetails}
 
         <Surface padding='none' radius='card' tone='card'>
           <section aria-label='Transaction details' className={sectionRecipe()}>

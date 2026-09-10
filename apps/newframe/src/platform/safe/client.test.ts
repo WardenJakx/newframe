@@ -141,10 +141,50 @@ describe('Safe service client over HTTP', () => {
     abort.abort()
     await expect(client.configuration(31337, safe, abort.signal)).rejects.toThrow()
   })
+  test('resolves hosted services across the supported Safe networks', () => {
+    const networks = safeServiceNetworks({ development: false })
+    expect(Object.keys(networks)).toHaveLength(53)
+    expect(networks[10]).toBe('https://api.safe.global/tx-service/oeth/api')
+    expect(networks[56]).toBe('https://api.safe.global/tx-service/bnb/api')
+    expect(networks[137]).toBe('https://api.safe.global/tx-service/pol/api')
+    expect(networks[143]).toBe('https://api.safe.global/tx-service/monad/api')
+    expect(networks[999]).toBe('https://api.safe.global/tx-service/hyper/api')
+    expect(networks[8453]).toBe('https://api.safe.global/tx-service/base/api')
+    expect(networks[9745]).toBe('https://api.safe.global/tx-service/plasma/api')
+    expect(networks[42161]).toBe('https://api.safe.global/tx-service/arb1/api')
+    expect(networks[81224]).toBe('https://api.safe.global/tx-service/codex/api')
+  })
+  test('rejects an unsupported hosted chain before sending a request', async () => {
+    let requests = 0
+    const client = createSafeClient({
+      request: async () => {
+        requests += 1
+        return Response.json({})
+      }
+    })
+    await expect(
+      client.pending(999_999, safe, {
+        owners,
+        threshold: 2,
+        nonce: '0',
+        version: '1.4.1'
+      })
+    ).rejects.toThrow('Safe queue service is unavailable on this network')
+    expect(requests).toBe(0)
+  })
   test('production ignores development overrides', () => {
     expect(
       safeServiceNetworks({ development: false, url: 'http://localhost:1234/api', chainId: '31337' })[31337]
     ).toBeUndefined()
+  })
+  test('development override replaces one hosted service without dropping the others', () => {
+    const networks = safeServiceNetworks({
+      development: true,
+      url: 'http://localhost:1234/api/',
+      chainId: '8453'
+    })
+    expect(networks[8453]).toBe('http://localhost:1234/api')
+    expect(networks[1]).toBe('https://api.safe.global/tx-service/eth/api')
   })
 })
 

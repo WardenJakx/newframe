@@ -12,11 +12,72 @@ import {
   type SafeProposal
 } from '../../features/accounts/domain/safe.js'
 
-const SAFE_SERVICE_NETWORKS: Readonly<Record<string, string>> = Object.freeze({
-  1: 'https://api.safe.global/tx-service/eth/api',
-  100: 'https://api.safe.global/tx-service/gno/api',
-  11155111: 'https://api.safe.global/tx-service/sep/api'
-})
+const SAFE_TRANSACTION_SERVICE_URL = 'https://api.safe.global/tx-service'
+// Hosted Transaction Service resolver from @safe-global/api-kit@5.0.3, synced 2026-09-09.
+// Codex (81224) was added from the current upstream resolver after that release.
+const SAFE_SERVICE_NETWORK_SHORT_NAMES = Object.freeze({
+  1: 'eth',
+  10: 'oeth',
+  50: 'xdc',
+  56: 'bnb',
+  100: 'gno',
+  130: 'unichain',
+  137: 'pol',
+  143: 'monad',
+  146: 'sonic',
+  196: 'okb',
+  204: 'opbnb',
+  232: 'lens',
+  324: 'zksync',
+  480: 'wc',
+  677: 'bot',
+  988: 'stable',
+  999: 'hyper',
+  1001: 'kairos',
+  1672: 'pharos',
+  1874: 'wch-sepolia',
+  3338: 'peaq',
+  4217: 'tempo',
+  4326: 'mega',
+  4663: 'robinhood',
+  5000: 'mantle',
+  5003: 'mnt-sep',
+  5042: 'arc',
+  8217: 'kaia',
+  8453: 'base',
+  9745: 'plasma',
+  10143: 'monad-testnet',
+  10200: 'chi',
+  16661: '0g',
+  25363: 'fluent',
+  42161: 'arb1',
+  42220: 'celo',
+  42431: 'tempo-moderato',
+  43111: 'hemi',
+  43114: 'avax',
+  46630: 'robinhood-testnet',
+  57073: 'ink',
+  59144: 'linea',
+  80069: 'bep',
+  80094: 'berachain',
+  81224: 'codex',
+  84532: 'basesep',
+  102030: 'ctc',
+  534352: 'scr',
+  747474: 'katana',
+  5042002: 'arc-testnet',
+  11142220: 'celo-sep',
+  11155111: 'sep',
+  1313161554: 'aurora'
+} satisfies Readonly<Record<number, string>>)
+const SAFE_SERVICE_NETWORKS: Readonly<Record<string, string>> = Object.freeze(
+  Object.fromEntries(
+    Object.entries(SAFE_SERVICE_NETWORK_SHORT_NAMES).map(([chainId, shortName]) => [
+      chainId,
+      `${SAFE_TRANSACTION_SERVICE_URL}/${shortName}/api`
+    ])
+  )
+)
 export function safeServiceNetworks(options: {
   development: boolean
   url?: string

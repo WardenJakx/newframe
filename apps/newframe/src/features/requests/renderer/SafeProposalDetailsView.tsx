@@ -92,49 +92,49 @@ export function SafeProposalDetailsView({
 
   return (
     <section aria-label='Request review'>
-      <Stack gap='small'>
-        <Surface padding='medium' tone='raised'>
-          <div
-            aria-label='Proposal integrity'
-            role={proposal.integrity?.status === 'mismatch' ? 'alert' : 'status'}
-          >
-            <Stack gap='small'>
-              <Text
-                variant='sectionTitle'
-                tone={proposal.integrity?.status === 'mismatch' ? 'danger' : 'primary'}
-              >
-                {proposal.integrity?.status === 'mismatch' ? 'Integrity mismatch' : 'Transaction integrity'}
-              </Text>
-              <Text tone={proposal.integrity?.status === 'mismatch' ? 'danger' : 'secondary'}>
-                {proposal.integrity?.reason ??
-                  'Unable to verify this cached proposal. Refresh the Safe queue.'}
-              </Text>
-              <Text variant='supporting'>Hash calculation uses the service-reported Safe version.</Text>
-              {proposal.data !== '0x' && !proposal.localDecoded ? (
-                <Text>Unable to decode calldata locally. Inspect the raw bytes below.</Text>
-              ) : null}
-              {proposal.operation === 1 ? (
-                <Text tone='danger'>Delegatecall runs code with this Safe’s permissions.</Text>
-              ) : null}
-            </Stack>
-          </div>
-        </Surface>
-        <TransactionInformation
-          imageCapability={capabilities.external}
-          originName='Safe watch-only'
-          networkName={networkName}
-          nativeCurrency={{ symbol }}
-          statusLabel={
-            BigInt(proposal.nonce) > BigInt(deployment.configuration.nonce)
-              ? 'Waiting for earlier transactions'
-              : 'Pending proposal'
-          }
-          notice='Simulation not available for Safe proposals yet.'
-          details={details}
-          wrapDetailValues
-          calldata={{ digest: getCalldataDigest(proposal.data), data: proposal.data }}
-        />
-      </Stack>
+      <TransactionInformation
+        imageCapability={capabilities.external}
+        originName='Safe watch-only'
+        networkName={networkName}
+        nativeCurrency={{ symbol }}
+        statusLabel={
+          BigInt(proposal.nonce) > BigInt(deployment.configuration.nonce)
+            ? 'Waiting for earlier transactions'
+            : 'Pending proposal'
+        }
+        notice='Simulation not available for Safe proposals yet.'
+        beforeDetails={
+          <Surface padding='medium' tone='raised'>
+            <div
+              aria-label='Proposal integrity'
+              role={proposal.integrity?.status === 'mismatch' ? 'alert' : 'status'}
+            >
+              <Stack gap='small'>
+                <Text
+                  variant='sectionTitle'
+                  tone={proposal.integrity?.status === 'mismatch' ? 'danger' : 'primary'}
+                >
+                  {proposal.integrity?.status === 'mismatch' ? 'Integrity mismatch' : 'Transaction integrity'}
+                </Text>
+                <Text tone={proposal.integrity?.status === 'mismatch' ? 'danger' : 'secondary'}>
+                  {proposal.integrity?.reason ??
+                    'Unable to verify this cached proposal. Refresh the Safe queue.'}
+                </Text>
+                <Text variant='supporting'>Hash calculation uses the service-reported Safe version.</Text>
+                {proposal.data !== '0x' && !proposal.localDecoded ? (
+                  <Text>Unable to decode calldata locally. Inspect the raw bytes below.</Text>
+                ) : null}
+                {proposal.operation === 1 ? (
+                  <Text tone='danger'>Delegatecall runs code with this Safe’s permissions.</Text>
+                ) : null}
+              </Stack>
+            </div>
+          </Surface>
+        }
+        details={details}
+        wrapDetailValues
+        calldata={{ digest: getCalldataDigest(proposal.data), data: proposal.data }}
+      />
     </section>
   )
 }

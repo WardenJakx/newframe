@@ -165,7 +165,7 @@ it('does not show a request notification when there are no actionable requests',
   expect(screen.queryByLabelText('Pending requests')).toBeNull()
 })
 
-it('counts Safe proposals with RPC requests and keeps the empty Safe queue accessible', async () => {
+it('counts Safe proposals with RPC requests and opens failed queues from a separate warning', async () => {
   const accountId = '0x1111111111111111111111111111111111111111'
   const account = {
     id: accountId,
@@ -209,12 +209,26 @@ it('counts Safe proposals with RPC requests and keeps the empty Safe queue acces
   unmount()
   account.requests = {}
   account.safe!['1']!.pending = []
-  account.safe!['1']!.error = 'Service unavailable'
   fixture.state.reset(walletState({ currentAccount: accountId, accounts: { [accountId]: account } }))
-  render(
+  const { unmount: unmountHealthy } = render(
     <HomeUiProvider>
       <HomeNotifications />
     </HomeUiProvider>
   )
-  expect(screen.getByRole('button', { name: 'Requests' })).toBeTruthy()
+  expect(screen.queryByLabelText('Pending requests')).toBeNull()
+  expect(screen.queryByLabelText('Safe queue warning')).toBeNull()
+  unmountHealthy()
+  account.safe!['1']!.error = 'Service unavailable'
+  fixture.state.reset(walletState({ currentAccount: accountId, accounts: { [accountId]: account } }))
+  const { user: failedUser } = render(
+    <HomeUiProvider>
+      <HomeNotifications />
+      <NavigationObserver />
+    </HomeUiProvider>
+  )
+  expect(screen.queryByLabelText('Pending requests')).toBeNull()
+  expect(screen.queryByRole('button', { name: 'Requests' })).toBeNull()
+  expect(screen.getByRole('alert', { name: 'Safe queue warning' })).toBeTruthy()
+  await failedUser.click(screen.getByRole('button', { name: 'Open Safe requests' }))
+  expect(screen.getByText('{"section":"positions","overlay":{"type":"requests"}}')).toBeTruthy()
 })

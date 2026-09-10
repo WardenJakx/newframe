@@ -1,6 +1,7 @@
 import { useShallow } from 'zustand/react/shallow'
 import { Button } from '@newframe/ui/button'
 import { Icon } from '@newframe/ui/icon'
+import { Stack } from '@newframe/ui/stack'
 import { Text } from '@newframe/ui/text'
 
 import type { WalletRendererState } from '../../../../../platform/state-sync/contract/projections'
@@ -10,6 +11,7 @@ import { useHomeUiStore } from '../state/HomeUiProvider'
 import { ChainIcon } from '../../../../../shared/renderer/ui/ChainIcon'
 import { cva } from '../../../../../../generated/styled-system/css/cva.js'
 import type { HomeCapability } from '../homeCapability'
+import StatusGlyph from '../../../../../shared/renderer/ui/StatusGlyph'
 
 const EMPTY_NETWORKS: WalletRendererState['networks']['ethereum'] = {}
 const EMPTY_NETWORK_METADATA: WalletRendererState['networksMeta']['ethereum'] = {}
@@ -51,7 +53,7 @@ export function HomeNotifications({
         networks: state.networks?.ethereum || EMPTY_NETWORKS,
         networksMeta: state.networksMeta?.ethereum || EMPTY_NETWORK_METADATA,
         notifications: state.view?.notifications || EMPTY_NOTIFICATIONS,
-        hasSafe: deployments.length > 0,
+        hasSafeQueueError: deployments.some((deployment) => deployment.error),
         requestCount:
           Object.values(requests).filter((request) => request.mode === 'normal').length +
           deployments.reduce((count, deployment) => count + (deployment.pending?.length || 0), 0)
@@ -60,19 +62,16 @@ export function HomeNotifications({
   )
   const setSection = useHomeUiStore((state) => state.setSection)
   const openOverlay = useHomeUiStore((state) => state.openOverlay)
+  const requestLabel = `${shared.requestCount} pending ${shared.requestCount === 1 ? 'request' : 'requests'}`
 
   return (
     <>
-      {shared.requestCount > 0 || shared.hasSafe ? (
+      {shared.requestCount > 0 ? (
         <section aria-label='Pending requests' className={requestNotificationRecipe()}>
           <Button
             appearance='primary'
             hasPopup='dialog'
-            label={
-              shared.requestCount
-                ? `${shared.requestCount} pending ${shared.requestCount === 1 ? 'request' : 'requests'}`
-                : 'Requests'
-            }
+            label={requestLabel}
             onPress={() => openOverlay({ type: 'requests' })}
             shape='control'
             size='large'
@@ -81,10 +80,34 @@ export function HomeNotifications({
             <span className={requestNotificationContentRecipe()}>
               <Icon name='inbox' size='medium' />
               <Text align='center' tone='inverse' variant='action'>
-                {shared.requestCount
-                  ? `${shared.requestCount} pending ${shared.requestCount === 1 ? 'request' : 'requests'}`
-                  : 'Requests'}
+                {requestLabel}
               </Text>
+              <Icon name='arrowRight' size='small' />
+            </span>
+          </Button>
+        </section>
+      ) : null}
+      {shared.hasSafeQueueError ? (
+        <section aria-label='Safe queue warning' className={requestNotificationRecipe()} role='alert'>
+          <Button
+            appearance='danger'
+            hasPopup='dialog'
+            label='Open Safe requests'
+            onPress={() => openOverlay({ type: 'requests' })}
+            shape='control'
+            size='large'
+            width='full'
+          >
+            <span className={requestNotificationContentRecipe()}>
+              <StatusGlyph size='small' state='failed' />
+              <Stack gap='none'>
+                <Text align='center' variant='action'>
+                  Safe requests may be outdated
+                </Text>
+                <Text align='center' variant='caption'>
+                  Open requests to retry
+                </Text>
+              </Stack>
               <Icon name='arrowRight' size='small' />
             </span>
           </Button>
