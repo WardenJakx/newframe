@@ -201,15 +201,15 @@ it('starts adapters and hot loading once, then closes once', () => {
   const load = mock()
   const signers = new Signers(dependencies(), [adapter as unknown as SignerAdapter], load)
 
-  expect(adapter.open).not.toHaveBeenCalled()
+  expect(adapter.open.mock.calls).toHaveLength(0)
   signers.start()
   signers.start()
-  expect(adapter.open).toHaveBeenCalledTimes(1)
-  expect(load).toHaveBeenCalledTimes(1)
+  expect(adapter.open.mock.calls).toHaveLength(1)
+  expect(load.mock.calls).toHaveLength(1)
 
   signers.close()
   signers.close()
-  expect(adapter.close).toHaveBeenCalledTimes(1)
+  expect(adapter.close.mock.calls).toHaveLength(1)
 })
 
 it('unlocks only the vault and publishes post-create vault state on success or failure', () => {
@@ -224,8 +224,8 @@ it('unlocks only the vault and publishes post-create vault state on success or f
     unlocked = value
   })
   expect(unlocked).toBeTrue()
-  expect(deps.vault.unlock).toHaveBeenCalledWith('password')
-  expect(handle.unlock).not.toHaveBeenCalled()
+  expect(deps.vault.unlock.mock.calls as unknown).toEqual([['password']])
+  expect(handle.unlock.mock.calls).toHaveLength(0)
 
   deps.vault.summary.mockReturnValue({ exists: true, unlocked: true })
   createFromPrivateKey.mockImplementation((_vault, collection, _key, _password, done) => {
@@ -249,7 +249,7 @@ it('unlocks only the vault and publishes post-create vault state on success or f
     failureMessage = error?.message || ''
   })
   expect(failureMessage).toBe('Invalid private key')
-  expect(deps.vault.acquireKey).toHaveBeenCalledWith('password')
+  expect(deps.vault.acquireKey.mock.calls as unknown).toEqual([['password']])
   expect(store.getState().main.appLock).toEqual({ locked: false, vaultExists: true })
   signers.close()
 })

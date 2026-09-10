@@ -95,8 +95,8 @@ describe('wallet lock lifecycle', () => {
     const noVaultScanner = externalData(isolatedStore({ locked: false, vaultExists: false }))
     const lockedScanner = externalData(isolatedStore({ locked: true, vaultExists: true }))
 
-    expect(noVaultBalances.start).not.toHaveBeenCalled()
-    expect(lockedBalances.start).not.toHaveBeenCalled()
+    expect(noVaultBalances.start.mock.calls).toHaveLength(0)
+    expect(lockedBalances.start.mock.calls).toHaveLength(0)
 
     noVaultScanner.close()
     lockedScanner.close()
@@ -115,12 +115,12 @@ describe('wallet lock lifecycle', () => {
     normalStore.getState().setAppLock({ locked: false, vaultExists: true })
     watchStore.getState().setAppLock({ locked: false, vaultExists: true })
 
-    expect(normalBalances.start).toHaveBeenCalledTimes(1)
-    expect(normalBalances.setAddress).toHaveBeenCalledWith(normalAddress)
-    expect(normalBalances.refresh).not.toHaveBeenCalled()
-    expect(watchBalances.start).toHaveBeenCalledTimes(1)
-    expect(watchBalances.setAddress).toHaveBeenCalledWith('')
-    expect(watchBalances.refresh).toHaveBeenCalledWith(watchAddress)
+    expect(normalBalances.start.mock.calls).toHaveLength(1)
+    expect(normalBalances.setAddress.mock.calls).toEqual([[normalAddress]])
+    expect(normalBalances.refresh.mock.calls).toHaveLength(0)
+    expect(watchBalances.start.mock.calls).toHaveLength(1)
+    expect(watchBalances.setAddress.mock.calls).toEqual([['']])
+    expect(watchBalances.refresh.mock.calls).toEqual([[watchAddress]])
 
     normalScanner.close()
     watchScanner.close()
@@ -139,8 +139,8 @@ describe('wallet lock lifecycle', () => {
     scannerStore.getState().setAppLock({ locked: true, vaultExists: true })
     scannerStore.getState().setAppLock({ locked: false, vaultExists: false })
 
-    expect(balances.start).toHaveBeenCalledTimes(1)
-    expect(balances.stop).toHaveBeenCalledTimes(1)
+    expect(balances.start.mock.calls).toHaveLength(1)
+    expect(balances.stop.mock.calls).toHaveLength(1)
 
     scanner.close()
   })
@@ -153,9 +153,9 @@ describe('wallet lock lifecycle', () => {
     scanner.refreshBalances(normalAddress)
     scanner.refreshPositions(normalAddress, 1, [])
 
-    expect(balances.start).not.toHaveBeenCalled()
-    expect(balances.refresh).not.toHaveBeenCalled()
-    expect(balances.refreshPositions).not.toHaveBeenCalled()
+    expect(balances.start.mock.calls).toHaveLength(0)
+    expect(balances.refresh.mock.calls).toHaveLength(0)
+    expect(balances.refreshPositions.mock.calls).toHaveLength(0)
 
     scanner.close()
   })
@@ -169,10 +169,9 @@ describe('wallet lock lifecycle', () => {
 
     scanner.refreshBalances(normalAddress)
 
-    expect(start).toHaveBeenCalledTimes(2)
-    expect(balances.setAddress).toHaveBeenCalledWith(normalAddress)
-    expect(balances.refresh).toHaveBeenCalledTimes(1)
-    expect(balances.refresh).toHaveBeenCalledWith(normalAddress)
+    expect(start.mock.calls).toHaveLength(2)
+    expect(balances.setAddress.mock.calls).toEqual([[normalAddress]])
+    expect(balances.refresh.mock.calls).toEqual([[normalAddress]])
 
     scanner.close()
   })
@@ -186,10 +185,9 @@ describe('wallet lock lifecycle', () => {
 
     scanner.refreshPositions(normalAddress, 1, [])
 
-    expect(start).toHaveBeenCalledTimes(2)
-    expect(balances.setAddress).toHaveBeenCalledWith(normalAddress)
-    expect(balances.refreshPositions).toHaveBeenCalledTimes(1)
-    expect(balances.refreshPositions).toHaveBeenCalledWith(normalAddress, 1, [])
+    expect(start.mock.calls).toHaveLength(2)
+    expect(balances.setAddress.mock.calls).toEqual([[normalAddress]])
+    expect(balances.refreshPositions.mock.calls).toEqual([[normalAddress, 1, []]])
 
     scanner.close()
   })
@@ -215,14 +213,14 @@ describe('wallet lock lifecycle', () => {
     scannerStore.getState().setAppLock({ locked: false, vaultExists: true })
 
     expect(balances.setAddress.mock.calls).toEqual([[normalAddress]])
-    expect(balances.addNetworks).not.toHaveBeenCalled()
-    expect(balances.addTokens).not.toHaveBeenCalled()
+    expect(balances.addNetworks.mock.calls).toHaveLength(0)
+    expect(balances.addTokens.mock.calls).toHaveLength(0)
 
     timers.advanceTimersByTime(1_000)
 
-    expect(balances.addNetworks).not.toHaveBeenCalled()
-    expect(balances.addTokens).not.toHaveBeenCalled()
-    expect(balances.refresh).not.toHaveBeenCalled()
+    expect(balances.addNetworks.mock.calls).toHaveLength(0)
+    expect(balances.addTokens.mock.calls).toHaveLength(0)
+    expect(balances.refresh.mock.calls).toHaveLength(0)
     expect(balances.setAddress.mock.calls).toEqual([[normalAddress]])
 
     scanner.close()
@@ -237,8 +235,8 @@ describe('wallet lock lifecycle', () => {
     scanner.close()
     scannerStore.getState().setAppLock({ locked: false, vaultExists: true })
 
-    expect(balances.start).not.toHaveBeenCalled()
-    expect(balances.stop).toHaveBeenCalledTimes(1)
+    expect(balances.start.mock.calls).toHaveLength(0)
+    expect(balances.stop.mock.calls).toHaveLength(1)
   })
 })
 

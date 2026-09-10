@@ -145,8 +145,8 @@ it('cancels a queued ready scan when stopped', () => {
   ;(balancesController as any).emit('ready')
   timers.advanceTimersByTime(5 * 60 * 1000)
 
-  expect((balancesController as any).updateKnownTokenBalances).not.toHaveBeenCalled()
-  expect((balancesController as any).updateChainBalances).not.toHaveBeenCalled()
+  expect((balancesController as any).updateKnownTokenBalances.mock.calls).toHaveLength(0)
+  expect((balancesController as any).updateChainBalances.mock.calls).toHaveLength(0)
 })
 
 it('cancels an already queued initial scan when stopped', () => {
@@ -156,8 +156,8 @@ it('cancels an already queued initial scan when stopped', () => {
   balances.stop()
   timers.advanceTimersByTime(5 * 60 * 1000)
 
-  expect((balancesController as any).updateKnownTokenBalances).not.toHaveBeenCalled()
-  expect((balancesController as any).updateChainBalances).not.toHaveBeenCalled()
+  expect((balancesController as any).updateKnownTokenBalances.mock.calls).toHaveLength(0)
+  expect((balancesController as any).updateChainBalances.mock.calls).toHaveLength(0)
 })
 
 it('scans for balances every 10 minutes when paused', () => {
