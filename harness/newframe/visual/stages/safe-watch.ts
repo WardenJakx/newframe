@@ -30,7 +30,7 @@ export const safeWatchStage: VisualStage = {
       await runtime.screenshot(tray, '08b-safe-import.png')
       await accounts.getByRole('button', { name: 'Close accounts', exact: true }).click()
       await driver.waitForSelectedAccount({ id, address: id })
-      await tray.getByRole('button', { name: /^(Requests|\d+ pending requests)$/ }).click()
+      await tray.getByRole('button', { name: /^\d+ pending requests?$/ }).click()
       await tray.getByRole('button', { name: 'Refresh requests' }).click()
       await driver.waitForState(
         (state) =>

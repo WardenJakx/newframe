@@ -52,7 +52,8 @@ it('refreshes cached proposals, distinguishes same-nonce hashes, and removes van
   fixture.state.reset(state())
   const capabilities = createCapabilityFake()
   const { user } = render(<RequestsOverlay capabilities={capabilities} onBack={() => {}} />)
-  expect(screen.getByText('Service unavailable')).toBeTruthy()
+  expect(screen.getByText('Some Safe requests could not be refreshed.')).toBeTruthy()
+  expect(screen.queryByText('Service unavailable')).toBeNull()
   expect(screen.getAllByRole('button', { name: /^Open Safe proposal/ })).toHaveLength(2)
   expect(screen.queryByText('Approval threshold')).toBeNull()
   expect(screen.queryByText('Safe version')).toBeNull()
@@ -78,16 +79,35 @@ it('refreshes cached proposals, distinguishes same-nonce hashes, and removes van
   expect(screen.queryByRole('button', { name: /approve|sign|execute|reject/i })).toBeNull()
   await act(async () => fixture.state.reset(state({ ...deployment, pending: [] })))
   expect(screen.queryByLabelText('Request review')).toBeNull()
-  expect(screen.getByText('No pending requests')).toBeTruthy()
+  expect(screen.getByText('Pending requests unavailable')).toBeTruthy()
+  expect(screen.queryByText('Ethereum')).toBeNull()
 })
 
 it('does not report an empty queue before proposals have loaded', async () => {
   fixture.state.reset(state({ ...deployment, pending: undefined }))
   const capabilities = createCapabilityFake()
   render(<RequestsOverlay capabilities={capabilities} onBack={() => {}} />)
-  expect(screen.getByText('Loading requests')).toBeTruthy()
-  expect(screen.getByText('Service unavailable')).toBeTruthy()
+  expect(screen.getByText('Pending requests unavailable')).toBeTruthy()
+  expect(screen.getByText('Some Safe requests could not be refreshed.')).toBeTruthy()
+  expect(screen.queryByText('Loading requests')).toBeNull()
   expect(screen.queryByText('No pending requests')).toBeNull()
+  expect(screen.queryByText('Ethereum')).toBeNull()
+})
+
+it('omits unknown chain groups without claiming the queue is empty', () => {
+  render(
+    <SafeQueueView
+      deployments={[{ ...deployment, pending: undefined, error: undefined }]}
+      networkNames={{ 1: 'Ethereum' }}
+      refreshing={false}
+      onRefresh={() => {}}
+      onSelect={() => {}}
+    />
+  )
+
+  expect(screen.getByText('Checking for pending requests')).toBeTruthy()
+  expect(screen.queryByText('No pending requests')).toBeNull()
+  expect(screen.queryByText('Ethereum')).toBeNull()
 })
 
 it('omits the ordinary empty request list for a Safe and preserves it for ordinary accounts', async () => {
@@ -127,6 +147,31 @@ it('orders proposals by nonce while preserving alternatives and the snapshot', (
     `Open Safe proposal ${pending[2].safeTxHash} on chain 1`
   ])
   expect(pending.map((proposal) => proposal.nonce)).toEqual(['9007199254740993', '2', '9007199254740993'])
+})
+
+it('groups pending proposals by chain and omits chains without proposals', () => {
+  const refreshedAt = Date.UTC(2026, 8, 9, 12)
+  render(
+    <SafeQueueView
+      deployments={[
+        { ...deployment, error: undefined, refreshedAt, pending: [deployment.pending![0]] },
+        { ...deployment, chainId: 10, pending: [] },
+        { ...deployment, chainId: 137, pending: undefined, error: undefined },
+        { ...deployment, chainId: 8453, pending: [], refreshedAt, error: 'Rate limited' }
+      ]}
+      networkNames={{ 1: 'Ethereum', 10: 'Optimism', 137: 'Polygon', 8453: 'Base' }}
+      refreshing={false}
+      onRefresh={() => {}}
+      onSelect={() => {}}
+    />
+  )
+
+  expect(screen.getByText('Ethereum')).toBeTruthy()
+  expect(screen.queryByText('Optimism')).toBeNull()
+  expect(screen.queryByText('Polygon')).toBeNull()
+  expect(screen.queryByText('Base')).toBeNull()
+  expect(screen.getAllByRole('alert')).toHaveLength(1)
+  expect(screen.getByText(/Most recent successful refresh:/)).toBeTruthy()
 })
 
 it('shows a prominent mismatch, local interpretation and the shared calldata digest', async () => {
