@@ -23,6 +23,7 @@ interface RequestCommandSharedState {
   appLocked: boolean
   chain: { explorer?: string; isTestnet?: boolean }
   explorerWarningMuted: boolean
+  signerAttached: boolean
   step: RequestViewStep
 }
 
@@ -62,10 +63,6 @@ type RequestCommandNotification =
   | {
       type: 'signerRecovery'
       data: { req: TransactionRequest | SignatureRequest; signerIds: string[] }
-    }
-  | {
-      type: 'noSignerWarning'
-      data: { req: TransactionRequest | SignatureRequest }
     }
   | {
       type: 'openExplorer'
@@ -124,8 +121,6 @@ export function RequestCommand(props: RequestCommandProps) {
       })
     } else if (gate.reason === 'signer-unavailable') {
       notify({ type: 'signerRecovery', data: { req: request, signerIds: gate.signerIds } })
-    } else {
-      notify({ type: 'noSignerWarning', data: { req: request } })
     }
   }, [notify, request, request.approvalGate])
 
@@ -266,7 +261,11 @@ export function RequestCommand(props: RequestCommandProps) {
           </Surface>
         ) : null}
         <RequestActions
-          primary={{ disabled: !state.allowInput, label: 'Sign', onPress: sign }}
+          primary={{
+            disabled: !state.allowInput || !props.shared.signerAttached,
+            label: props.shared.signerAttached ? 'Sign' : 'No signer attached',
+            onPress: sign
+          }}
           secondary={{
             disabled: !state.allowInput,
             label: 'Decline',
@@ -331,8 +330,8 @@ export function RequestCommand(props: RequestCommandProps) {
     return (
       <RequestActions
         primary={{
-          disabled: !state.allowInput,
-          label: 'Sign',
+          disabled: !state.allowInput || !props.shared.signerAttached,
+          label: props.shared.signerAttached ? 'Sign' : 'No signer attached',
           onPress: () => {
             if (!state.allowInput) return
             runWhenAppUnlocked(props.shared.appLocked, () =>
@@ -358,15 +357,20 @@ export function RequestCommand(props: RequestCommandProps) {
 export default function RequestCommandContainer(props: Omit<RequestCommandProps, 'shared'>) {
   const request = props.req as TransactionRequest | SignatureRequest
   const chainId = request.type === 'transaction' ? parseInt(request.data.chainId || '0', 16) : 0
+  const accountId = request.account
   const { step } = useRequestView()
   const selector = useMemo(
     () =>
-      (state: WalletRendererState): Omit<RequestCommandSharedState, 'step'> => ({
-        appLocked: state.appLock.locked,
-        chain: state.networks.ethereum[chainId] || EMPTY_CHAIN,
-        explorerWarningMuted: !!state.mute?.explorerWarning
-      }),
-    [chainId]
+      (state: WalletRendererState): Omit<RequestCommandSharedState, 'step'> => {
+        const account = state.accounts[accountId]
+        return {
+          appLocked: state.appLock.locked,
+          chain: state.networks.ethereum[chainId] || EMPTY_CHAIN,
+          explorerWarningMuted: !!state.mute?.explorerWarning,
+          signerAttached: Boolean(account?.signer && state.signers[account.signer])
+        }
+      },
+    [accountId, chainId]
   )
   const synchronized = useWalletSelector(useShallow(selector))
   return <RequestCommand {...props} shared={{ ...synchronized, step }} />
