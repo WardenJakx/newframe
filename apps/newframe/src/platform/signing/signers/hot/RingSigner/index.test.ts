@@ -1,27 +1,54 @@
-import { afterAll, beforeAll, describe, expect, mock, test } from 'bun:test'
-
-import crypto from 'crypto'
-import fs from 'fs'
-import path from 'path'
-import { rm } from 'fs/promises'
+import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
+import crypto from 'node:crypto'
+import fs from 'node:fs'
+import path from 'node:path'
+import { rm } from 'node:fs/promises'
 import log from 'electron-log'
-import { createHotSignerChildProcessMock } from '../../../../../../test/support/bun.mocks.ts'
+import { keccak256 } from 'ethers'
+
 import { electronMock } from '../../../../../../test/support/electron.mock.ts'
 import { callbackResult, exerciseHotSignerContract } from '../../callback.test-support.ts'
 
-mock.module('child_process', () => createHotSignerChildProcessMock())
-
-const PASSWORD = 'fr@///3_password'
 const SIGNER_PATH = path.resolve(import.meta.dirname, '../.userData/signers')
-const VAULT_PATH = path.resolve(import.meta.dirname, '../.userData/vault.json')
 const FILE_PATH = path.resolve(import.meta.dirname, 'keystore.test-fixture.json')
-const addedSigners: any[] = []
-const signers = { add: (signer: any) => addedSigners.push(signer) }
 const removePath = (target: string) => rm(target, { recursive: true, force: true })
-const clean = () => Promise.all([removePath(SIGNER_PATH), removePath(VAULT_PATH)])
+const vaultKey = '34'.repeat(32)
+let unlocked = true
+const vault = {
+  acquireKey: () => {
+    unlocked = true
+    return vaultKey
+  },
+  getKey: () => (unlocked ? vaultKey : null),
+  lock: () => {
+    unlocked = false
+  }
+}
 const readKeystore = () => JSON.parse(fs.readFileSync(FILE_PATH, 'utf8'))
+const createV1Keystore = (privateKey: Buffer, password: string) => {
+  const salt = crypto.randomBytes(16)
+  const iv = crypto.randomBytes(16)
+  const derivedKey = crypto.scryptSync(password, salt, 32, { N: 1024, r: 8, p: 1 })
+  const cipherKeyMaterial = Buffer.from(keccak256(derivedKey.subarray(0, 16)).slice(2), 'hex')
+  const cipher = crypto.createCipheriv('aes-128-cbc', cipherKeyMaterial.subarray(0, 16), iv)
+  cipher.setAutoPadding(false)
+  const ciphertext = Buffer.concat([cipher.update(privateKey), cipher.final()])
+  const mac = keccak256(Buffer.concat([derivedKey.subarray(16, 32), ciphertext])).slice(2)
+  derivedKey.fill(0)
+  cipherKeyMaterial.fill(0)
+  return {
+    Version: '1',
+    Crypto: {
+      CipherText: ciphertext.toString('hex'),
+      IV: iv.toString('hex'),
+      KeyHeader: { Kdf: 'scrypt', KdfParams: { DkLen: 32, N: 1024, P: 1, R: 8 } },
+      MAC: mac,
+      Salt: salt.toString('hex')
+    }
+  }
+}
 
-let hot: any, store: any, vault: any
+let hot: typeof import('..')
 
 describe('Ring signer', () => {
   let signer: any
@@ -29,87 +56,101 @@ describe('Ring signer', () => {
   beforeAll(async () => {
     log.transports.console.level = false
     electronMock.app.getPath.mockReturnValue(path.resolve(import.meta.dirname, '../.userData'))
-    await clean()
+    await removePath(SIGNER_PATH)
     hot = await import('..')
-    store = (await import('../../../../state-store')).default
-    vault = (await import('../../../../secrets/vault')).default
   })
 
   afterAll(async () => {
-    await clean()
-    if (signer.status !== 'locked') signer.close()
+    await removePath(SIGNER_PATH)
     log.transports.console.level = 'debug'
   })
 
-  test('Rejects invalid private keys and keystores', async () => {
-    await expect(
-      callbackResult((done) => hot.createFromPrivateKey(vault, signers, 'invalid key', PASSWORD, done))
-    ).rejects.toBeTruthy()
+  test('rejects invalid private keys and keystores', async () => {
     await expect(
       callbackResult((done) =>
-        hot.createFromKeystore(vault, signers, { invalid: 'keystore' }, 'test', PASSWORD, done)
+        hot.createFromPrivateKey(vault, { add: () => {}, exists: () => false }, 'invalid', '', done)
       )
-    ).rejects.toBeTruthy()
-    expect(store.getState().main.signers).toEqual({})
+    ).rejects.toThrow('Invalid private key')
+    await expect(
+      callbackResult((done) =>
+        hot.createFromKeystore(
+          vault,
+          { add: () => {}, exists: () => false },
+          { invalid: true },
+          'test',
+          '',
+          done
+        )
+      )
+    ).rejects.toThrow('Invalid keystore version')
   })
 
-  test('Creates from a private key without persisting the legacy encryption version', async () => {
-    const privateKey = '0x' + crypto.randomBytes(32).toString('hex')
+  test('stores one envelope per address and loads without rewriting', async () => {
     signer = await callbackResult((done) =>
-      hot.createFromPrivateKey(vault, signers, privateKey, PASSWORD, done)
+      hot.createFromPrivateKey(
+        vault,
+        { add: () => {}, exists: () => false },
+        crypto.randomBytes(32).toString('hex'),
+        '',
+        done
+      )
     )
-    expect(signer).toMatchObject({ status: 'ok' })
-    expect(signer.id).toBeDefined()
-    expect(signer.addresses[0]).toBe(signer.addresses[0].toLowerCase())
-    expect(addedSigners.at(-1)).toBe(signer)
-    expect(store.getState().main.signers).toEqual({})
-    const stored = JSON.parse(fs.readFileSync(path.resolve(SIGNER_PATH, `${signer.id}.json`), 'utf8'))
-    expect(stored.encryptionVersion).toBeUndefined()
-  }, 7_500)
+    const signerFile = path.resolve(SIGNER_PATH, `${signer.id}.json`)
+    const before = fs.readFileSync(signerFile, 'utf8')
+    const stored = JSON.parse(before)
+    expect(stored).toMatchObject({ version: 1, type: 'ring' })
+    expect(stored.encryptedKeys).toHaveLength(1)
+    expect(stored.encryptedKeys[0].algorithm).toBe('aes-256-gcm')
 
-  test('Scans for one ring signer', async () => {
-    let scan!: ReturnType<typeof hot.scan>
-    const found = callbackResult<any>((done) => {
-      scan = hot.scan({ add: (value: any) => done(null, value), exists: () => false })
-      scan()
-    })
-    const scanned = await found
-    scan.cancel()
-    expect(scanned.type).toBe('ring')
-    scanned.close(() => {})
-  })
-
-  test('Closes a signer without publishing through the canonical store', () => {
-    signer.close()
-    expect(store.getState().main.signers[signer.id]).toBeUndefined()
-  })
-
-  test('Creates from a keystore', async () => {
-    signer = await callbackResult((done) =>
-      hot.createFromKeystore(vault, signers, readKeystore(), 'test', PASSWORD, done)
+    const loaded: any[] = []
+    fs.writeFileSync(
+      path.resolve(SIGNER_PATH, 'malformed-ring.json'),
+      JSON.stringify({
+        ...stored,
+        encryptedKeys: [{ ...stored.encryptedKeys[0], ciphertext: '00' }]
+      })
     )
-    expect(signer).toMatchObject({ status: 'ok' })
-    expect(signer.id).toBeDefined()
-    expect(signer.addresses[0]).toBe(signer.addresses[0].toLowerCase())
+    hot.load({ add: (value) => loaded.push(value), exists: () => false }, vault)
+    expect(loaded).toHaveLength(1)
+    expect(fs.readFileSync(signerFile, 'utf8')).toBe(before)
   })
 
-  test('Adds and removes private keys and keystores', async () => {
+  test('opens only the targeted envelope and removes without decrypting peers', async () => {
+    unlocked = true
     await callbackResult((done) =>
-      signer.addPrivateKey(crypto.randomBytes(32).toString('hex'), vault.acquireKey(PASSWORD), done)
+      signer.addPrivateKey(crypto.randomBytes(32).toString('hex'), vaultKey, done)
     )
-    expect(signer.addresses).toHaveLength(2)
-    const secondAddress = signer.addresses[1]
-    await callbackResult((done) => signer.removePrivateKey(0, vault.acquireKey(PASSWORD), done))
-    expect(signer.addresses).toEqual([secondAddress])
-    await callbackResult((done) => signer.removePrivateKey(0, vault.acquireKey(PASSWORD), done))
-    const previousLength = signer.addresses.length
-    await callbackResult((done) =>
-      signer.addKeystore(readKeystore(), 'test', vault.acquireKey(PASSWORD), done)
+    const first = signer.encryptedKeys[0]
+    signer.encryptedKeys[0] = { ...first, authTag: '00'.repeat(16) }
+    await expect(callbackResult((done) => signer.exportPrivateKey(1, done))).resolves.toMatch(
+      /^0x[0-9a-f]{64}$/
     )
-    expect(signer.addresses).toHaveLength(previousLength + 1)
+    await callbackResult((done) => signer.removePrivateKey(1, vaultKey, done))
+    expect(signer.encryptedKeys).toHaveLength(1)
+    signer.encryptedKeys[0] = first
   })
 
-  test('Implements the hot signer lifecycle contract', async () => {
-    await exerciseHotSignerContract(signer, vault.acquireKey(PASSWORD))
+  test('imports external V1 and V3 keystores', async () => {
+    unlocked = true
+    const v1 = await callbackResult<any>((done) =>
+      hot.createFromKeystore(
+        vault,
+        { add: () => {}, exists: () => false },
+        createV1Keystore(crypto.randomBytes(32), 'test'),
+        'test',
+        '',
+        done
+      )
+    )
+    const v3 = await callbackResult<any>((done) =>
+      hot.createFromKeystore(vault, { add: () => {}, exists: () => false }, readKeystore(), 'test', '', done)
+    )
+    expect(v1.addresses[0]).toBe(v1.addresses[0].toLowerCase())
+    expect(v3.addresses[0]).toBe(v3.addresses[0].toLowerCase())
+  })
+
+  test('signs and exports only while the vault is unlocked', async () => {
+    unlocked = true
+    await exerciseHotSignerContract(signer, vault)
   })
 })

@@ -23,7 +23,6 @@ export interface ProductionAccountOnboardingExternal {
     ): void
     exportAccountPrivateKey(
       address: string,
-      password: string,
       callback: OneResultCallback<{ type: string; value: string }>
     ): void
     get(id: string): Signer | undefined
@@ -135,8 +134,8 @@ export function createProductionAccountOnboardingAdapters(
       }
     },
     secrets: {
-      exportPrivateKey: (address, password) =>
-        callbacks.run((done) => external.signers.exportAccountPrivateKey(address, password, done)),
+      exportPrivateKey: (address) =>
+        callbacks.run((done) => external.signers.exportAccountPrivateKey(address, done)),
       generateSeedPhrase: () => callbacks.run((done) => external.signers.newPhrase(done))
     }
   }

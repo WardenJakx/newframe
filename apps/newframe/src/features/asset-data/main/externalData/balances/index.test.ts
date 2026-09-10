@@ -137,6 +137,29 @@ it('scans for balances as soon as the controller is ready', () => {
   expect((balancesController as any).updateKnownTokenBalances).toHaveBeenCalled()
 })
 
+it('cancels a queued ready scan when stopped', () => {
+  ;(balancesController as any).isRunning.mockReturnValue(false)
+  balances.setAddress(address)
+
+  balances.stop()
+  ;(balancesController as any).emit('ready')
+  timers.advanceTimersByTime(5 * 60 * 1000)
+
+  expect((balancesController as any).updateKnownTokenBalances.mock.calls).toHaveLength(0)
+  expect((balancesController as any).updateChainBalances.mock.calls).toHaveLength(0)
+})
+
+it('cancels an already queued initial scan when stopped', () => {
+  ;(balancesController as any).isRunning.mockReturnValue(true)
+  balances.setAddress(address)
+
+  balances.stop()
+  timers.advanceTimersByTime(5 * 60 * 1000)
+
+  expect((balancesController as any).updateKnownTokenBalances.mock.calls).toHaveLength(0)
+  expect((balancesController as any).updateChainBalances.mock.calls).toHaveLength(0)
+})
+
 it('scans for balances every 10 minutes when paused', () => {
   ;(balancesController as any).isRunning.mockReturnValue(true)
   balances.setAddress(address)

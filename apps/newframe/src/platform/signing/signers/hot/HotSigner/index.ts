@@ -1,225 +1,160 @@
-import path from 'path'
-import fs from 'fs'
-import { fork, ChildProcess } from 'child_process'
+import { randomBytes } from 'node:crypto'
+import fs from 'node:fs'
+import path from 'node:path'
 import { app } from 'electron'
 import log from 'electron-log'
-import { v4 as uuid } from 'uuid'
+import { Common, createCustomCommon, Holesky, Mainnet, Sepolia } from '@ethereumjs/common'
+import { createTx } from '@ethereumjs/tx'
+import { bytesToHex } from '@ethereumjs/util'
+import { personalSign, recoverPersonalSignature, signTypedData } from '@metamask/eth-sig-util'
 
 import Signer from '../../Signer/index.js'
+import type { TransactionData } from '../../../../../features/transactions/domain/index.js'
+import type { TypedMessage } from '../../../../../features/requests/contract/requests.js'
 
-type WorkerCallback = (err: Error | null, result?: any) => void
+export type VaultAccess = { getKey(): string | null }
 
-// Mock user data dir during tests
 const USER_DATA = app ? app.getPath('userData') : path.resolve(import.meta.dirname, '../.userData')
 const SIGNERS_PATH = path.resolve(USER_DATA, 'signers')
+const knownChains: Record<number, any> = { 1: Mainnet, 17000: Holesky, 11155111: Sepolia }
 
-class HotSigner extends Signer {
+function chainConfig(chain: number, hardfork: string) {
+  return chain in knownChains
+    ? new Common({ chain: knownChains[chain], hardfork })
+    : createCustomCommon({ chainId: chain }, Mainnet, { hardfork })
+}
+
+abstract class HotSigner extends Signer {
   network?: string
-  encryptedKeys?: string
-  encryptedSeed?: string
-  ready: boolean
-  _worker: ChildProcess
-  _token?: string
-  _closed = false
 
-  constructor(signer: any, workerPath: string) {
+  constructor(
+    signer: { id?: string; addresses?: string[]; network?: string } | undefined,
+    protected readonly vault: VaultAccess
+  ) {
     super()
-    this.status = 'locked'
-    this.addresses = (signer && signer.addresses) || []
-    this._worker = fork(workerPath)
-    this._worker.on('error', (err) => {
-      if (!this._closed) log.error('Hot signer worker error', err)
-    })
-    this._getToken()
-    this.ready = false
+    this.status = 'ok'
+    this.id = signer?.id || ''
+    this.addresses = signer?.addresses || []
+    this.network = signer?.network
   }
 
-  save(data?: any) {
-    // Construct signer
+  protected abstract openPrivateKey(index: number, vaultKeyHex: string): Buffer
+  protected abstract persistedSecret(): Record<string, unknown>
+
+  save() {
     const { id, addresses, type, network } = this
-    const signer = { id, addresses, type, network, ...data }
-
-    // Ensure signers directory exists
+    const signer = { version: 1, id, addresses, type, network, ...this.persistedSecret() }
     fs.mkdirSync(SIGNERS_PATH, { recursive: true })
-
-    // Write signer to disk
-    fs.writeFileSync(path.resolve(SIGNERS_PATH, `${id}.json`), JSON.stringify(signer), { mode: 0o600 })
-
-    // Log
+    const signerPath = path.resolve(SIGNERS_PATH, `${id}.json`)
+    fs.writeFileSync(signerPath, JSON.stringify(signer), { mode: 0o600 })
+    fs.chmodSync(signerPath, 0o600)
     log.debug('Signer saved to disk')
   }
 
   override delete() {
     const signerPath = path.resolve(SIGNERS_PATH, `${this.id}.json`)
-
-    // Overwrite file
-    fs.writeFileSync(signerPath, '00000000000000000000000000000000000000000000000000000000000000000000', {
-      mode: 0o600
-    })
-
-    // Remove file
-    fs.rmSync(signerPath, { force: true })
-
-    // Log
+    if (fs.existsSync(signerPath)) {
+      fs.writeFileSync(signerPath, '0'.repeat(72), { mode: 0o600 })
+      fs.rmSync(signerPath, { force: true })
+    }
     log.info('Signer erased from disk')
   }
 
-  lock(cb: WorkerCallback) {
-    this._callWorker({ method: 'lock' }, () => {
-      this.status = 'locked'
-      this.update()
-      log.info('Signer locked')
-      cb(null)
-    })
-  }
-
-  unlock(password: string, data: any, cb: WorkerCallback) {
-    const params = { password, ...data }
-    this._callWorker({ method: 'unlock', params }, (err) => {
-      if (err) return cb(err)
-      this.status = 'ok'
-      this.update()
-      log.info('Signer unlocked')
-      cb(null)
-    })
-  }
-
   override close() {
-    this._closed = true
-    try {
-      if (!this._worker.killed) this._worker.kill()
-    } catch (e) {
-      // Worker may already be closed by the time close is called.
-    }
     log.info('Signer closed')
   }
 
   override update() {
-    // Get derived ID
-    const derivedId = this.fingerprint()!
-
-    // On new ID ->
-    if (!this.id) {
-      // Update id
-      this.id = derivedId
-      // Write to disk
-      this.save({ encryptedKeys: this.encryptedKeys, encryptedSeed: this.encryptedSeed })
-    } else if (this.id !== derivedId) {
-      // On changed ID
-      // Erase from disk
-      this.delete()
-      // Update id
-      this.id = derivedId
-      // Write to disk
-      this.save({ encryptedKeys: this.encryptedKeys, encryptedSeed: this.encryptedSeed })
+    const derivedId = this.fingerprint()
+    if (!derivedId) {
+      if (this.id) this.save()
+      this.emit('update')
+      return
     }
-
+    if (!this.id) {
+      this.id = derivedId
+      this.save()
+    } else if (this.id !== derivedId) {
+      this.delete()
+      this.id = derivedId
+      this.save()
+    } else {
+      this.save()
+    }
     this.emit('update')
     log.info('Signer updated')
   }
 
+  private withPrivateKey<T>(index: number, cb: Callback<T>, operation: (key: Buffer) => T) {
+    const vaultKey = this.vault.getKey()
+    if (!vaultKey) return cb(new Error('Signer locked'), undefined)
+
+    let key: Buffer | undefined
+    let result: T
+    try {
+      key = this.openPrivateKey(index, vaultKey)
+      result = operation(key)
+    } catch (error) {
+      return cb(error as Error, undefined)
+    } finally {
+      key?.fill(0)
+    }
+    cb(null, result)
+  }
+
   override signMessage(index: number, message: string, cb: Callback<string>) {
-    const payload = { method: 'signMessage', params: { index, message } }
-    this._callWorker(payload, cb as WorkerCallback)
+    this.withPrivateKey(index, cb, (privateKey) => personalSign({ privateKey, data: message }))
   }
 
-  override signTypedData(index: number, typedMessage: any, cb: Callback<string>) {
-    const payload = { method: 'signTypedData', params: { index, typedMessage } }
-    this._callWorker(payload, cb as WorkerCallback)
-  }
-
-  override signTransaction(index: number, rawTx: any, cb: Callback<string>) {
-    const payload = { method: 'signTransaction', params: { index, rawTx } }
-    this._callWorker(payload, cb as WorkerCallback)
-  }
-
-  exportPrivateKey(index: number, cb: Callback<string>) {
-    const payload = { method: 'exportPrivateKey', params: { index } }
-    this._callWorker(payload, cb as WorkerCallback)
-  }
-
-  override verifyAddress(index: number, address: string, display: boolean, cb: Callback<boolean> = () => {}) {
-    const payload = { method: 'verifyAddress', params: { index, address } }
-    this._callWorker(payload, (err: Error | null, verified?: any) => {
-      if (err || !verified) {
-        if (!err) {
-          err = new Error('Unable to verify address')
-        }
-        this.emit('lockApp')
-        this.lock(() => {
-          if (err) {
-            log.error('HotSigner verifyAddress: Unable to verify address')
-          } else {
-            log.error('HotSigner verifyAddress: Address mismatch')
-          }
-          log.error(err)
-        })
-        cb(err, undefined)
-      } else {
-        log.info('Hot signer verify address matched')
-        cb(null, verified)
-      }
+  override signTypedData(index: number, typedMessage: TypedMessage, cb: Callback<string>) {
+    this.withPrivateKey(index, cb, (privateKey) => {
+      const { data, version } = typedMessage
+      return signTypedData({ privateKey, data, version })
     })
   }
 
-  _getToken() {
-    const listener = ({ type, token }: { type: string; token: string }) => {
-      if (type === 'token') {
-        this._token = token
-        this._worker.removeListener('message', listener)
-        this.ready = true
-        this.emit('ready')
-      }
-    }
-    this._worker.addListener('message', listener)
-    try {
-      if (this._canSendToWorker()) this._worker.send({ type: 'getToken' })
-    } catch (e) {
-      // Worker may have exited while the signer is being torn down.
-    }
+  override signTransaction(index: number, rawTx: TransactionData, cb: Callback<string>) {
+    this.withPrivateKey(index, cb, (privateKey) => {
+      if (!rawTx.chainId) throw new Error('could not determine chain id for transaction')
+      const chainId = Number.parseInt(String(rawTx.chainId), 16)
+      const hardfork = Number.parseInt(String(rawTx.type)) === 2 ? 'london' : 'berlin'
+      const tx = createTx(rawTx as any, { common: chainConfig(chainId, hardfork) })
+      return bytesToHex(tx.sign(privateKey).serialize())
+    })
   }
 
-  _canSendToWorker() {
-    return Boolean(this._worker && this._worker.connected && (this._worker as any).channel)
+  exportPrivateKey(index: number, cb: Callback<string>) {
+    this.withPrivateKey(index, cb, (key) => `0x${key.toString('hex')}`)
   }
 
-  _callWorker(payload: any, cb: WorkerCallback): void {
-    if (!this._worker) throw Error('Worker not running')
-    if (this._closed || !this._canSendToWorker()) return cb(new Error('Worker not running'))
-    // If token not yet received -> retry in 100 ms
-    if (!this._token) return void setTimeout(() => this._callWorker(payload, cb), 100)
-    // Generate message id
-    const id = uuid()
-    // Handle response
-    let finished = false
-    const finish = (err: Error | null, result?: any) => {
-      if (finished) return
-      finished = true
-      this._worker.removeListener('message', listener)
-      this._worker.removeListener('error', fail)
-      this._worker.removeListener('exit', exit)
-      cb(err, result)
-    }
-    const fail = (err: Error) => finish(err)
-    const exit = (code: number | null, signal: NodeJS.Signals | null) => {
-      const suffix = signal ? ` with signal ${signal}` : code === null ? '' : ` with code ${code}`
-      finish(new Error(`Worker exited${suffix}`))
-    }
-    const listener = (response: any) => {
-      if (response.type === 'rpc' && response.id === id) {
-        const error = response.error ? new Error(response.error) : null
-        finish(error, response.result)
+  override verifyAddress(
+    index: number,
+    address: string,
+    _display: boolean,
+    cb: Callback<boolean> = () => {}
+  ) {
+    this.withPrivateKey(
+      index,
+      (error, verified) => {
+        if (error || !verified) {
+          const failure = error || new Error('Unable to verify address')
+          this.emit('lockApp')
+          log.error('HotSigner verifyAddress: Unable to verify address', failure)
+          cb(failure, undefined)
+          return
+        }
+        log.info('Hot signer verify address matched')
+        cb(null, true)
+      },
+      (privateKey) => {
+        const message = `0x${randomBytes(32).toString('hex')}`
+        const signature = personalSign({ privateKey, data: message })
+        if (Buffer.from(signature.replace('0x', ''), 'hex').length !== 65) {
+          throw new Error('Newframe verifyAddress signature has incorrect length')
+        }
+        return recoverPersonalSignature({ data: message, signature }).toLowerCase() === address.toLowerCase()
       }
-    }
-    this._worker.addListener('message', listener)
-    this._worker.once('error', fail)
-    this._worker.once('exit', exit)
-    // Make RPC call
-    try {
-      this._worker.send({ id, token: this._token, ...payload })
-    } catch (e) {
-      finish(e as Error)
-    }
+    )
   }
 }
 

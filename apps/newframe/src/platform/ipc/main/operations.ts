@@ -680,8 +680,8 @@ export function createOperationRegistry(services: OperationServices) {
     'account.private-key-export': defineQuery('account.private-key-export', {
       roles: ['wallet-ui'],
       entrypoints: ['tray'],
-      async handle({ accountId, password }: AccountPrivateKeyExportQuery) {
-        const privateKey = await accountOnboarding.exportPrivateKey(accountId, password)
+      async handle({ accountId }: AccountPrivateKeyExportQuery) {
+        const privateKey = await accountOnboarding.exportPrivateKey(accountId)
         if (!privateKey) {
           return { ok: false, error: 'account_not_found', message: 'Account was not found.' } as const
         }

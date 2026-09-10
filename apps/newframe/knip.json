@@ -4,7 +4,6 @@
     "src/renderer/sidetray/bootstrap.ts!",
     "src/preload/index.ts!",
     "src/features/asset-data/main/externalData/balances/worker.ts!",
-    "src/platform/signing/signers/hot/*/worker.ts!",
     "scripts/*.ts",
     "build/**/*.ts",
     "{src,scripts}/**/*.{test,spec}.{ts,tsx}",

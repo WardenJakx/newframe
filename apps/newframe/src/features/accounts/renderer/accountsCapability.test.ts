@@ -120,7 +120,7 @@ it('maps every semantic account query to its exact catalog payload', async () =>
   const host = createTypedClient()
   const capability = createAccountsCapability(host)
 
-  await capability.exportAccountPrivateKey({ accountId: firstAddress, password: 'frame-password' })
+  await capability.exportAccountPrivateKey({ accountId: firstAddress })
   await capability.listMovableProfileAccounts()
   await capability.inspectAddressChainUsage({ addresses: [firstAddress, secondAddress] })
   await capability.getSecurityStatus()
@@ -128,7 +128,7 @@ it('maps every semantic account query to its exact catalog payload', async () =>
   await capability.generateSeed()
 
   expect(host.executeQuery.mock.calls.map(([query]) => query)).toEqual([
-    { type: 'account.private-key-export', accountId: firstAddress, password: 'frame-password' },
+    { type: 'account.private-key-export', accountId: firstAddress },
     { type: 'profile.movable-accounts' },
     { type: 'address.chain-usage', addresses: [firstAddress, secondAddress] },
     { type: 'security.status' },
