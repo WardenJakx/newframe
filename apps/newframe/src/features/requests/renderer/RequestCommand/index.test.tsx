@@ -14,7 +14,11 @@ beforeEach(() => {
   capabilities = createRequestPortsFake()
 })
 
-const createProps = <const Request extends object>(appLocked: boolean, req: Request) => {
+const createProps = <const Request extends object>(
+  appLocked: boolean,
+  req: Request,
+  signerAttached = true
+) => {
   return {
     capabilities,
     notify: mock(),
@@ -23,6 +27,7 @@ const createProps = <const Request extends object>(appLocked: boolean, req: Requ
       appLocked,
       chain: {},
       explorerWarningMuted: false,
+      signerAttached,
       step: 'confirm' as const
     }
   }
@@ -71,6 +76,29 @@ it('displays the main-projected signer compatibility gate without querying Elect
       chain: { type: 'ethereum', id: 1 }
     }
   })
+})
+
+it.each([
+  {
+    type: 'transaction',
+    approvals: [],
+    data: { chainId: '0x1', gasLimit: '0x5208', gasPrice: '0x1' },
+    approvalGate: { type: 'signer-compatibility', reason: 'no-signer' }
+  },
+  {
+    type: 'sign',
+    data: '0x1234',
+    approvalGate: { type: 'signer-compatibility', reason: 'no-signer' }
+  }
+] as const)('disables $type requests when no signer is attached', (request) => {
+  const req = { ...request, handlerId: 'request-1' }
+  const props = createProps(false, req, false)
+  render(<RequestCommand {...props} />)
+
+  expect((screen.getByRole('button', { name: 'No signer attached' }) as HTMLButtonElement).disabled).toBe(
+    true
+  )
+  expect(props.notify).not.toHaveBeenCalled()
 })
 
 it('uses renderer-generated idempotency keys for transaction replacement', () => {

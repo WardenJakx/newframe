@@ -159,21 +159,6 @@ function GasFeeWarning({ data, dismiss, home, mute, review }: NotificationProps)
   )
 }
 
-function NoSignerWarning({ dismiss }: NotificationProps) {
-  return (
-    <Shell dismiss={dismiss}>
-      <NotificationTitle>No Signer Attached</NotificationTitle>
-      <NotificationBody>
-        <Text align='center'>No signer is attached to this account.</Text>
-        <Text align='center' tone='secondary'>
-          Attach a signer that can sign for this account.
-        </Text>
-      </NotificationBody>
-      <NotificationActions dismiss={dismiss} proceedLabel='OK' />
-    </Shell>
-  )
-}
-
 function SignerCompatibilityWarning({ data, dismiss, home, mute, review }: NotificationProps) {
   const { req, compatibility = {} } = data
   const { signer = '', tx = '' } = compatibility
@@ -286,7 +271,6 @@ export default function Notification({
   }
 
   if (local.type === 'gasFeeWarning') return <GasFeeWarning {...props} />
-  if (local.type === 'noSignerWarning') return <NoSignerWarning {...props} />
   if (local.type === 'signerCompatibilityWarning') return <SignerCompatibilityWarning {...props} />
   if (local.type === 'signerRecovery') {
     return (
