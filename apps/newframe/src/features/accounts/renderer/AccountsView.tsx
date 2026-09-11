@@ -435,16 +435,20 @@ export function AccountsView(props: AccountsViewProps) {
                         <Text tone='muted' variant='code'>
                           {account.shortAddress}
                         </Text>
-                        <Inline align='center' gap='xsmall'>
-                          <Text tone='accent' variant='micro'>
-                            {account.signerLabel}
-                          </Text>
-                          {account.agentEnabled ? (
-                            <Text tone='accent' variant='micro'>
-                              · AI Wallet
-                            </Text>
-                          ) : null}
-                        </Inline>
+                        {account.signerLabel || account.agentEnabled ? (
+                          <Inline align='center' gap='xsmall'>
+                            {account.signerLabel ? (
+                              <Text tone='accent' variant='micro'>
+                                {account.signerLabel}
+                              </Text>
+                            ) : null}
+                            {account.agentEnabled ? (
+                              <Text tone='accent' variant='micro'>
+                                · AI Wallet
+                              </Text>
+                            ) : null}
+                          </Inline>
+                        ) : null}
                       </Stack>
                       <Text align='end' variant='numeric' shrink={false}>
                         {account.balanceLabel}

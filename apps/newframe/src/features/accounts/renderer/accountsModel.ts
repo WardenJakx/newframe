@@ -43,9 +43,7 @@ function accountSignerType(account: AccountProjection | undefined) {
 }
 
 function accountSignerLabel(account: AccountProjection | undefined) {
-  return accountSignerType(account) === 'safe'
-    ? 'Safe · Watch-only'
-    : signerTypeLabel(accountSignerType(account))
+  return accountSignerType(account) === 'safe' ? '' : signerTypeLabel(accountSignerType(account))
 }
 
 function isHotAccount(account: AccountProjection | undefined) {
@@ -69,7 +67,7 @@ export function orderedAccountIds(
 export function accountMatchesQuery(item: AccountListItem, query: string) {
   const normalized = query.trim().toLowerCase()
   if (!normalized) return true
-  const text = [item.displayName, item.address, item.shortAddress, item.signerLabel]
+  const text = [item.displayName, item.address, item.shortAddress, item.signerType, item.signerLabel]
     .filter(Boolean)
     .join(' ')
     .toLowerCase()
