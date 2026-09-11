@@ -1,5 +1,6 @@
 import { AddressIdentity } from '../../../shared/renderer/ui/AddressIdentity'
 import { ChainIcon } from '../../../shared/renderer/ui/ChainIcon'
+import { persistedImageSource } from '../../asset-data/domain/image'
 import { useEffect, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 
@@ -72,6 +73,7 @@ export function useSafeQueue({
   )
   const network = deployment ? networks[deployment.chainId] : undefined
   const currency = deployment ? metadata[deployment.chainId]?.nativeCurrency : undefined
+  const networkIcon = deployment ? persistedImageSource(metadata[deployment.chainId]?.image) : undefined
   return {
     hasSafe,
     review:
@@ -82,6 +84,7 @@ export function useSafeQueue({
             proposal,
             capabilities,
             networkName: network?.name || `Chain ${deployment.chainId}`,
+            networkIcon,
             symbol: currency?.symbol || network?.symbol || 'native',
             decimals: currency?.decimals ?? 18
           }
