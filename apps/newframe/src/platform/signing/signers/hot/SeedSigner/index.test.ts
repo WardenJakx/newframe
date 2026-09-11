@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
+import crypto from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
 import { rm } from 'node:fs/promises'
@@ -25,8 +26,19 @@ const vault = {
 
 let hot: typeof import('..')
 
+function sealLegacyText(value: string, key: string) {
+  const salt = Buffer.alloc(16, 1)
+  const iv = Buffer.alloc(16, 2)
+  const derivedKey = crypto.scryptSync(key, salt, 32, { N: 32768, r: 8, p: 1, maxmem: 36000000 })
+  const cipher = crypto.createCipheriv('aes-256-cbc', derivedKey, iv)
+  const ciphertext = Buffer.concat([cipher.update(value), cipher.final()])
+  derivedKey.fill(0)
+  return `${salt.toString('hex')}:${iv.toString('hex')}:${ciphertext.toString('hex')}`
+}
+
 describe('Seed signer', () => {
   let signer: any
+  let seedHex = ''
 
   beforeAll(async () => {
     log.transports.console.level = false
@@ -50,11 +62,13 @@ describe('Seed signer', () => {
 
   test('stores one versioned encrypted seed and loads it without rewriting', async () => {
     const added: any[] = []
+    const phrase = Mnemonic.fromEntropy(randomBytes(16)).phrase
+    seedHex = Mnemonic.fromPhrase(phrase).computeSeed().slice(2)
     signer = await callbackResult((done) =>
       hot.createFromPhrase(
         vault,
         { add: (value) => added.push(value), exists: () => false },
-        Mnemonic.fromEntropy(randomBytes(16)).phrase,
+        phrase,
         '',
         done
       )
@@ -82,6 +96,34 @@ describe('Seed signer', () => {
     hot.load({ add: (value) => loaded.push(value), exists: () => false }, vault)
     expect(loaded).toHaveLength(1)
     expect(fs.readFileSync(signerFile, 'utf8')).toBe(before)
+  })
+
+  test('migrates and loads a legacy seed after the vault unlocks', () => {
+    const signerFile = path.resolve(SIGNER_PATH, `${signer.id}.json`)
+    const current = JSON.parse(fs.readFileSync(signerFile, 'utf8'))
+    const legacy = {
+      id: current.id,
+      addresses: current.addresses,
+      type: 'seed',
+      encryptedSeed: sealLegacyText(seedHex, vaultKey)
+    }
+    fs.writeFileSync(signerFile, JSON.stringify(legacy), { mode: 0o600 })
+
+    unlocked = false
+    const deferred: any[] = []
+    hot.load({ add: (value) => deferred.push(value), exists: () => false }, vault)
+    expect(deferred).toHaveLength(0)
+    expect(JSON.parse(fs.readFileSync(signerFile, 'utf8'))).toEqual(legacy)
+
+    unlocked = true
+    const loaded: any[] = []
+    hot.load({ add: (value) => loaded.push(value), exists: () => false }, vault)
+    expect(loaded).toHaveLength(1)
+    signer = loaded[0]
+    const migrated = JSON.parse(fs.readFileSync(signerFile, 'utf8'))
+    expect(migrated).toMatchObject({ version: 1, id: legacy.id, addresses: legacy.addresses, type: 'seed' })
+    expect(migrated.encryptedSeed.algorithm).toBe('aes-256-gcm')
+    expect(JSON.stringify(migrated)).not.toContain(seedHex)
   })
 
   test('signs and exports only while the vault is unlocked', async () => {

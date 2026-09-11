@@ -25,6 +25,15 @@ const vault = {
   }
 }
 const readKeystore = () => JSON.parse(fs.readFileSync(FILE_PATH, 'utf8'))
+const sealLegacyText = (value: string, key: string) => {
+  const salt = Buffer.alloc(16, 3)
+  const iv = Buffer.alloc(16, 4)
+  const derivedKey = crypto.scryptSync(key, salt, 32, { N: 32768, r: 8, p: 1, maxmem: 36000000 })
+  const cipher = crypto.createCipheriv('aes-256-cbc', derivedKey, iv)
+  const ciphertext = Buffer.concat([cipher.update(value), cipher.final()])
+  derivedKey.fill(0)
+  return `${salt.toString('hex')}:${iv.toString('hex')}:${ciphertext.toString('hex')}`
+}
 const createV1Keystore = (privateKey: Buffer, password: string) => {
   const salt = crypto.randomBytes(16)
   const iv = crypto.randomBytes(16)
@@ -52,6 +61,7 @@ let hot: typeof import('..')
 
 describe('Ring signer', () => {
   let signer: any
+  let privateKey = ''
 
   beforeAll(async () => {
     log.transports.console.level = false
@@ -86,14 +96,9 @@ describe('Ring signer', () => {
   })
 
   test('stores one envelope per address and loads without rewriting', async () => {
+    privateKey = crypto.randomBytes(32).toString('hex')
     signer = await callbackResult((done) =>
-      hot.createFromPrivateKey(
-        vault,
-        { add: () => {}, exists: () => false },
-        crypto.randomBytes(32).toString('hex'),
-        '',
-        done
-      )
+      hot.createFromPrivateKey(vault, { add: () => {}, exists: () => false }, privateKey, '', done)
     )
     const signerFile = path.resolve(SIGNER_PATH, `${signer.id}.json`)
     const before = fs.readFileSync(signerFile, 'utf8')
@@ -113,6 +118,35 @@ describe('Ring signer', () => {
     hot.load({ add: (value) => loaded.push(value), exists: () => false }, vault)
     expect(loaded).toHaveLength(1)
     expect(fs.readFileSync(signerFile, 'utf8')).toBe(before)
+  })
+
+  test('migrates and loads a legacy private-key bundle after the vault unlocks', () => {
+    const signerFile = path.resolve(SIGNER_PATH, `${signer.id}.json`)
+    const current = JSON.parse(fs.readFileSync(signerFile, 'utf8'))
+    const legacy = {
+      id: current.id,
+      addresses: current.addresses,
+      type: 'ring',
+      encryptedKeys: sealLegacyText(privateKey, vaultKey)
+    }
+    fs.writeFileSync(signerFile, JSON.stringify(legacy), { mode: 0o600 })
+
+    unlocked = false
+    const deferred: any[] = []
+    hot.load({ add: (value) => deferred.push(value), exists: () => false }, vault)
+    expect(deferred).toHaveLength(0)
+    expect(JSON.parse(fs.readFileSync(signerFile, 'utf8'))).toEqual(legacy)
+
+    unlocked = true
+    const loaded: any[] = []
+    hot.load({ add: (value) => loaded.push(value), exists: () => false }, vault)
+    expect(loaded).toHaveLength(1)
+    signer = loaded[0]
+    const migrated = JSON.parse(fs.readFileSync(signerFile, 'utf8'))
+    expect(migrated).toMatchObject({ version: 1, id: legacy.id, addresses: legacy.addresses, type: 'ring' })
+    expect(migrated.encryptedKeys).toHaveLength(1)
+    expect(migrated.encryptedKeys[0].algorithm).toBe('aes-256-gcm')
+    expect(JSON.stringify(migrated)).not.toContain(privateKey)
   })
 
   test('opens only the targeted envelope and removes without decrypting peers', async () => {
