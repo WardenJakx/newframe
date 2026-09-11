@@ -42,7 +42,7 @@ type TransactionSimulationProviderPort = Pick<Provider, 'send'> & Erc20ProviderP
 export interface TransactionSimulationProjection {
   getNativeCurrency(chainId: number): NativeCurrencyLike
   getToken(address: string, chainId: number): Token | undefined
-  getProfileAccounts(
+  getProfileAccounts?(
     originatingAccountAddress: string
   ): { profileId: string; accountAddresses: string[] } | undefined
 }
@@ -552,7 +552,7 @@ export async function simulateTransactionEffects(
       provider,
       metadataByAddress
     )
-    const profile = projection.getProfileAccounts(req.account)
+    const profile = projection.getProfileAccounts?.(req.account)
     const effectsByAccount = profile
       ? Object.fromEntries(
           (

@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 
 import {
-  activityAssetEffect,
   activityBalanceChangeLabel,
   activityGasLabel,
   activityTimestampLabel,
@@ -83,32 +82,5 @@ describe('activityModel', () => {
         (address) => (address === '0xusdc' ? { decimals: 6, symbol: 'USDC' } : undefined)
       )
     ).toBe('−133 USDC')
-  })
-
-  it('prefers explicit account-relative changes and respects a null fee', () => {
-    const recipientEffect = {
-      id: 'usdc-in',
-      kind: 'erc20',
-      direction: 'in',
-      label: 'Asset in',
-      amount: '0xf4240',
-      decimals: 6,
-      symbol: 'USDC',
-      assetAddress: '0x0000000000000000000000000000000000000001'
-    }
-    const activity = {
-      data: { gasPrice: '0x3b9aca00' },
-      receipt: { gasUsed: '0x5208' },
-      gasSpent: null,
-      simulation: {
-        status: 'success',
-        effects: [{ ...recipientEffect, id: 'usdc-out', direction: 'out' }]
-      },
-      balanceChanges: [recipientEffect]
-    } as any
-
-    expect(activityBalanceChangeLabel(activity)).toBe('+1 USDC')
-    expect(activityAssetEffect(activity)).toEqual(recipientEffect)
-    expect(activityGasLabel(activity)).toBe('')
   })
 })

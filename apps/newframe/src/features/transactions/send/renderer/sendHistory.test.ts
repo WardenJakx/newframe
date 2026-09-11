@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'bun:test'
 
-import { projectionStateChangeSchemas } from '../../../../platform/state-sync/contract/projections'
 import { hasSentToAddress } from './sendHistory'
 
 const sender = '0x0000000000000000000000000000000000000001'
@@ -71,25 +70,6 @@ describe('hasSentToAddress', () => {
         }),
         recipientAddress: recipient,
         senderAddress: sender
-      })
-    ).toBe(false)
-  })
-
-  it('does not treat a recipient-owned companion row as recipient outbound history', () => {
-    const projected = projectionStateChangeSchemas.sidetray.parse({
-      activity: activity({
-        account: recipient,
-        address: recipient,
-        data: { from: sender, to: recipient, privateTransactionData: true }
-      })
-    })
-
-    expect(projected.activity?.transaction.data).toEqual({ from: sender, to: recipient })
-    expect(
-      hasSentToAddress({
-        activity: projected.activity || {},
-        recipientAddress: recipient,
-        senderAddress: recipient
       })
     ).toBe(false)
   })

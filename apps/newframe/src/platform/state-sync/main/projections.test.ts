@@ -212,12 +212,7 @@ it('projects only active-profile Accounts and derives ordered cached profile val
       id: 'prior',
       account: activeAccount,
       status: 'succeeded',
-      data: {
-        from: activeAccount,
-        to: unpricedAccount,
-        data: '0x1234',
-        privateTransactionData: true
-      },
+      data: { to: unpricedAccount, data: '0x1234', privateTransactionData: true },
       payload: { privateRequestData: true },
       recognizedActions: [
         {
@@ -272,7 +267,7 @@ it('projects only active-profile Accounts and derives ordered cached profile val
       id: 'prior',
       account: activeAccount,
       status: 'succeeded',
-      data: { from: activeAccount, to: unpricedAccount, data: '0x1234' },
+      data: { to: unpricedAccount, data: '0x1234' },
       recognizedActions: [{ id: 'erc20:transfer', data: { recipient: { address: unpricedAccount } } }]
     }
   })

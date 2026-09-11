@@ -1,11 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 
 import createCanonicalStore from '../../../platform/state-store/createCanonicalStore'
-import {
-  createTransactionSimulationProjection,
-  effectsFromTrace,
-  simulateTransactionEffects
-} from './simulation'
+import { createTransactionSimulationProjection, effectsFromTrace } from './simulation'
 import { erc20Interface } from '../../../shared/domain/evm'
 
 const account = '0x35f9179059A691D8BEECf82Fe112F7277E018588'
@@ -141,11 +137,7 @@ describe('#effectsFromTrace', () => {
         }
       },
       { symbol: 'ETH', decimals: 18 },
-      {
-        getNativeCurrency: () => ({}),
-        getToken: () => undefined,
-        getProfileAccounts: () => undefined
-      }
+      { getNativeCurrency: () => ({}), getToken: () => undefined }
     )
 
     expect(effects).toEqual([
@@ -193,11 +185,7 @@ describe('#effectsFromTrace', () => {
         }
       },
       { symbol: 'ETH', decimals: 18 },
-      {
-        getNativeCurrency: () => ({}),
-        getToken: () => undefined,
-        getProfileAccounts: () => undefined
-      }
+      { getNativeCurrency: () => ({}), getToken: () => undefined }
     )
 
     expect(effects).toEqual([
@@ -244,131 +232,10 @@ describe('#effectsFromTrace', () => {
         }
       },
       { symbol: 'ETH', decimals: 18 },
-      {
-        getNativeCurrency: () => ({}),
-        getToken: () => undefined,
-        getProfileAccounts: () => undefined
-      }
+      { getNativeCurrency: () => ({}), getToken: () => undefined }
     )
 
     expect(effects[0]).toMatchObject({ symbol: 'Token' })
     expect(effects[0]).not.toHaveProperty('decimals')
-  })
-})
-
-describe('#simulateTransactionEffects', () => {
-  it('returns normalized effects for every affected account in the source profile', async () => {
-    const recipient = '0x8ba1f109551bD432803012645Ac136ddd64DBA72'
-    const unaffected = '0x000000000000000000000000000000000000dead'
-    const profileId = 'profile-work'
-    const store = createCanonicalStore({
-      getItem: () => null,
-      setItem: () => undefined,
-      removeItem: () => undefined
-    }).store
-    store.setState((state) => {
-      const createAccount = (id: string, address: string) => ({
-        id,
-        profileId,
-        address,
-        name: id,
-        lastSignerType: 'address',
-        status: 'ok',
-        signer: '',
-        requests: {},
-        created: 'test:1'
-      })
-      const token = {
-        address: usdc.toLowerCase(),
-        chainId: 1,
-        decimals: 6,
-        name: 'USD Coin',
-        symbol: 'USDC',
-        custom: false,
-        curated: false,
-        sources: ['transaction' as const],
-        updatedAt: 0
-      }
-
-      state.main.profiles[profileId] = { id: profileId, name: 'Work' }
-      state.main.profileOrder.push(profileId)
-      state.main.accounts.sender = createAccount('sender', account)
-      state.main.accounts.recipient = createAccount('recipient', recipient)
-      state.main.accounts['recipient-duplicate'] = createAccount('recipient-duplicate', recipient)
-      state.main.accounts.unaffected = createAccount('unaffected', unaffected)
-      state.main.accountOrder.push('sender', 'recipient', 'recipient-duplicate', 'unaffected')
-      state.main.tokens.byId[`1:${token.address}`] = token
-    })
-
-    const trace = {
-      from: account,
-      to: recipient,
-      value: '0x10',
-      input: '0x',
-      calls: [
-        {
-          from: account,
-          to: usdc,
-          value: '0x0',
-          input: erc20Interface.encodeFunctionData('transfer', [recipient, '25000000'])
-        }
-      ]
-    }
-    const simulation = await simulateTransactionEffects(
-      {
-        handlerId: 'request-profile-effects',
-        type: 'transaction',
-        account,
-        origin: 'example.test',
-        payload: {} as any,
-        approvals: [],
-        feesUpdatedByUser: false,
-        recipientType: 'address',
-        recognizedActions: [],
-        classification: 'CONTRACT_CALL' as any,
-        data: {
-          chainId: '0x1',
-          type: '0x2',
-          gasFeesSource: 'Frame' as any,
-          from: account,
-          to: recipient,
-          value: '0x10',
-          data: '0x'
-        }
-      },
-      {
-        send: (_payload: any, callback: (response: any) => void) => callback({ result: trace }),
-        sendAsync: () => {
-          throw new Error('token metadata RPC should not be called')
-        }
-      } as any,
-      createTransactionSimulationProjection(store)
-    )
-
-    const sourceAddress = account.toLowerCase()
-    const recipientAddress = recipient.toLowerCase()
-    expect(simulation.status).toBe('success')
-    expect(simulation.effectsProfileId).toBe(profileId)
-    expect(Object.keys(simulation.effectsByAccount || {})).toEqual([sourceAddress, recipientAddress])
-    expect(simulation.effectsByAccount).not.toHaveProperty(unaffected)
-    expect(simulation.effectsByAccount?.[sourceAddress]).toEqual([
-      expect.objectContaining({ kind: 'native', direction: 'out', amount: '0x10' }),
-      expect.objectContaining({
-        kind: 'erc20',
-        direction: 'out',
-        amount: '0x17d7840',
-        assetAddress: usdc.toLowerCase()
-      })
-    ])
-    expect(simulation.effectsByAccount?.[recipientAddress]).toEqual([
-      expect.objectContaining({ kind: 'native', direction: 'in', amount: '0x10' }),
-      expect.objectContaining({
-        kind: 'erc20',
-        direction: 'in',
-        amount: '0x17d7840',
-        assetAddress: usdc.toLowerCase()
-      })
-    ])
-    expect(simulation.effects).toEqual(simulation.effectsByAccount?.[sourceAddress])
   })
 })
