@@ -8,6 +8,7 @@ import { Accounts } from './Accounts'
 import { AddAccount } from './AddAccount'
 import type { OperationRecord } from '../../../platform/operations/operation'
 import { createAccountsCapabilityFake, type AccountsCapabilityFake } from './accountsCapability.test-support'
+import { signerIconName } from '../../../shared/renderer/ui/signerPresentation'
 
 const fixture = registerTestRuntimeFixture()
 let capability: AccountsCapabilityFake
@@ -290,7 +291,7 @@ describe('AddAccount existing-account selection', () => {
   })
 })
 
-it('keeps Safe accounts watch-only even with an associated local signer and AI flag', async () => {
+it('uses the Safe icon without signer labels and stays read-only with a local signer and AI flag', async () => {
   const capability = createAccountsCapabilityFake()
   fixture.state.reset(
     walletState({
@@ -312,7 +313,9 @@ it('keeps Safe accounts watch-only even with an associated local signer and AI f
     })
   )
   const { user } = render(<Accounts capability={capability} onClose={() => {}} />)
-  expect(screen.getByText('Safe · Watch-only')).toBeTruthy()
+  expect(signerIconName('safe')).toBe('safe')
+  expect(screen.queryByText('Safe')).toBeNull()
+  expect(screen.queryByText('Watch-only')).toBeNull()
   await user.click(screen.getByRole('button', { name: 'Primary account actions' }))
   expect(screen.queryByText('Enable AI access')).toBeNull()
   expect(screen.queryByText('Disable AI access')).toBeNull()

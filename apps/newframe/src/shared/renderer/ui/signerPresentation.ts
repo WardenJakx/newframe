@@ -10,7 +10,7 @@ const LABELS: Record<string, string> = {
 }
 
 export const signerIconName = (type = ''): IconName =>
-  (({ address: 'eye', ledger: 'ledger', trezor: 'trezor', lattice: 'lattice' })[
+  (({ address: 'eye', ledger: 'ledger', trezor: 'trezor', lattice: 'lattice', safe: 'safe' })[
     type.toLowerCase()
   ] as IconName) || 'flame'
 
