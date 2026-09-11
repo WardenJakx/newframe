@@ -17,7 +17,8 @@ import {
   getTransactionIntent,
   getTransactionPositionTokens,
   getTransactionEffects,
-  getPaidTransactionFee
+  getPaidTransactionFee,
+  type TransactionEffect
 } from '../../transactions/domain/index.js'
 import { decideWalletAction, type TrustedPrincipal } from '../../access-control/main/authority.js'
 
@@ -73,6 +74,10 @@ function cloneForActivity(value: any) {
 
 function transactionActivityId(hash: string) {
   return hash
+}
+
+function transactionAccountActivityId(hash: string, address: string) {
+  return `${hash}:${address.toLowerCase()}`
 }
 
 function transactionNotificationId(hash: string) {
@@ -320,6 +325,72 @@ export class Accounts extends EventEmitter {
     return network?.symbol || metadata?.nativeCurrency.symbol || 'ETH'
   }
 
+  private getAccountRelativeActivityDisplay(effects: TransactionEffect[]) {
+    const incoming = effects.filter((effect) => effect.direction === 'in')
+    const outgoing = effects.filter((effect) => effect.direction === 'out')
+
+    if (incoming.length === effects.length) {
+      return effects.length === 1
+        ? { title: `Receive ${effects[0].symbol}`, subtitle: 'Incoming transfer' }
+        : { title: 'Receive assets', subtitle: 'Incoming assets' }
+    }
+
+    if (outgoing.length === effects.length) {
+      return effects.length === 1
+        ? { title: `Send ${effects[0].symbol}`, subtitle: 'Outgoing transfer' }
+        : { title: 'Send assets', subtitle: 'Outgoing assets' }
+    }
+
+    return { title: 'Asset changes', subtitle: 'Incoming and outgoing assets' }
+  }
+
+  private materializeAccountRelativeActivity(req: TransactionRequest) {
+    const hash = req.tx?.hash
+    if (!hash || req.simulation?.status !== 'success') return
+
+    const { effectsByAccount, effectsProfileId } = req.simulation
+    if (!effectsByAccount || !effectsProfileId) return
+
+    const sourceId = transactionActivityId(hash)
+    const source = this.store.getState().main.activity[sourceId] as ActivityRecord | undefined
+    if (!source || source.status !== 'succeeded') return
+
+    const sourceAddress = String(
+      source.account || source.address || req.account || req.data?.from || ''
+    ).toLowerCase()
+    const sourceEffects = effectsByAccount[sourceAddress] ?? req.simulation.effects ?? []
+    this.store.getState().updateActivity(sourceId, {
+      balanceChanges: cloneForActivity(sourceEffects),
+      updatedAt: source.updatedAt
+    })
+
+    const main = this.store.getState().main
+    const profileAccounts = new Map(
+      getProfileAccountIds(main, effectsProfileId)
+        .map((id) => main.accounts[id]?.address)
+        .filter((address): address is string => Boolean(address))
+        .map((address) => [address.toLowerCase(), address])
+    )
+
+    Object.entries(effectsByAccount).forEach(([mapAddress, effects]) => {
+      const address = mapAddress.toLowerCase()
+      if (address === sourceAddress || !effects.length || !profileAccounts.has(address)) return
+
+      const id = transactionAccountActivityId(hash, address)
+      const { positionsRefreshedAt: _positionsRefreshedAt, ...shared } = source
+      this.store.getState().finalizeActivity(id, 'succeeded', {
+        ...shared,
+        id,
+        hash,
+        account: address,
+        address,
+        balanceChanges: cloneForActivity(effects),
+        gasSpent: null,
+        display: this.getAccountRelativeActivityDisplay(effects)
+      })
+    })
+  }
+
   private transactionActivityRecord(
     account: FrameAccount,
     handlerId: string,
@@ -490,6 +561,8 @@ export class Accounts extends EventEmitter {
       updatedAt: this.dependencies.runtime.now()
     })
 
+    this.materializeAccountRelativeActivity(req)
+
     const notificationId = transactionNotificationId(hash)
     const notifications = this.store.getState().view.notifications as unknown as Record<
       string,
@@ -585,6 +658,8 @@ export class Accounts extends EventEmitter {
       completedAt: update.completedAt ?? now,
       updatedAt: update.updatedAt ?? now
     })
+
+    if (status === 'succeeded') this.materializeAccountRelativeActivity(req)
 
     this.store.getState().resolveNotification(transactionNotificationId(hash), notificationState, {
       title: display.title,

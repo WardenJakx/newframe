@@ -73,6 +73,8 @@ type TransactionSimulationStatus = 'loading' | 'success' | 'unavailable' | 'erro
 export interface TransactionSimulation {
   status: TransactionSimulationStatus
   effects?: TransactionEffect[]
+  effectsByAccount?: Record<string, TransactionEffect[]>
+  effectsProfileId?: string
   source?: string
   error?: string
   updatedAt?: number

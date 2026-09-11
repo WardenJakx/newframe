@@ -1,7 +1,6 @@
 import { TrayOverlay } from '../../../../shared/renderer/ui/TrayOverlay'
 import TransactionInformation from '../../../requests/renderer/Account/Requests/TransactionRequest/TransactionInformation'
-import { getTransactionEffects } from '../../domain'
-import { activityRequestLike, transactionStatusLabel } from './activityModel'
+import { activityBalanceChanges, transactionStatusLabel } from './activityModel'
 import { persistedImageSource } from '../../../asset-data/domain/image'
 import type { ActivityCapability } from './activityCapability'
 import type { ActivityDetailNetworkMetadata, ActivityNetworkMap, ActivityRecord } from './activityTypes'
@@ -24,11 +23,10 @@ export function ActivityDetailsView({
   onBack: () => void
   originName: string
 }) {
-  const req = activityRequestLike(activity)
   const chainId = Number(activity.chainId)
   const symbol = networkMeta.nativeCurrency?.symbol || network.symbol || 'ETH'
   const nativeCurrency = { ...networkMeta.nativeCurrency, symbol }
-  const effects = getTransactionEffects(req, symbol)
+  const effects = activityBalanceChanges(activity, symbol)
   const receiptBlock = activity.receipt?.blockNumber ? parseInt(activity.receipt.blockNumber, 16) : undefined
   const copy = (value?: string | null) => {
     if (value) void capability.copyText({ text: value })

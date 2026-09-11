@@ -1,4 +1,4 @@
-import { getPaidTransactionFee, getTransactionEffects } from '../../domain'
+import { getPaidTransactionFee, getTransactionEffects, type TransactionEffect } from '../../domain'
 import { timestamp } from '../../../../shared/domain/timestamp'
 import { formatUnits, toBigInt } from '../../../../shared/domain/units'
 import {
@@ -32,7 +32,7 @@ export function activityGlyphState(status?: string) {
   return 'pending'
 }
 
-export function activityRequestLike(activity: ActivityRecord) {
+function activityRequestLike(activity: ActivityRecord) {
   return {
     ...activity,
     type: 'transaction',
@@ -61,8 +61,8 @@ export function activityTimestampLabel(activity: ActivityRecord) {
   })
 }
 
-function activityBalanceChanges(activity: ActivityRecord, nativeSymbol = 'ETH'): ActivityBalanceChange[] {
-  if (Array.isArray(activity.balanceChanges)) return activity.balanceChanges
+export function activityBalanceChanges(activity: ActivityRecord, nativeSymbol = 'ETH'): TransactionEffect[] {
+  if (Array.isArray(activity.balanceChanges)) return activity.balanceChanges as TransactionEffect[]
 
   return getTransactionEffects(activityRequestLike(activity), nativeSymbol).filter(
     (effect) => effect.direction === 'in' || effect.direction === 'out'
@@ -70,7 +70,9 @@ function activityBalanceChanges(activity: ActivityRecord, nativeSymbol = 'ETH'):
 }
 
 function activityGasSpent(activity: ActivityRecord) {
-  return activity.gasSpent || getPaidTransactionFee(activityRequestLike(activity))
+  return activity.gasSpent !== undefined
+    ? activity.gasSpent
+    : getPaidTransactionFee(activityRequestLike(activity))
 }
 
 export function activityBalanceChangeLabel(
@@ -117,16 +119,22 @@ export function activityAssetEffect(activity: ActivityRecord, nativeSymbol = 'ET
     ...(effect.logoURI || token.logoURI ? { logoURI: effect.logoURI || token.logoURI } : {})
   })
 
-  if (!recognizedAssetAction && !decodedAssetAction && !nativeTransfer && !titleMatch) return undefined
-
-  const effect = getTransactionEffects(activityRequestLike(activity), nativeSymbol).find(
-    (effect) => effect.kind === 'erc20' || effect.kind === 'allowance' || effect.kind === 'native'
-  )
-  if (effect) return withAssetMetadata(effect)
-
   const balanceEffect = activityBalanceChanges(activity, nativeSymbol).find(
     (change) => change.kind === 'erc20' || change.kind === 'native'
   )
+  if (Array.isArray(activity.balanceChanges) && balanceEffect) {
+    return withAssetMetadata(balanceEffect)
+  }
+
+  if (!recognizedAssetAction && !decodedAssetAction && !nativeTransfer && !titleMatch) return undefined
+
+  const effect = Array.isArray(activity.balanceChanges)
+    ? undefined
+    : getTransactionEffects(activityRequestLike(activity), nativeSymbol).find(
+        (effect) => effect.kind === 'erc20' || effect.kind === 'allowance' || effect.kind === 'native'
+      )
+  if (effect) return withAssetMetadata(effect)
+
   if (balanceEffect) return withAssetMetadata(balanceEffect)
 
   if (!titleMatch) return undefined

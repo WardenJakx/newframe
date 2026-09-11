@@ -40,7 +40,10 @@ export function hasSentToAddress({
   return Object.values(activity).some((record) => {
     if (record.status === 'reverted') return false
 
-    const recordSender = normalizeAddress(record.account || record.address)
+    const recordSender =
+      typeof record.data?.from === 'string'
+        ? normalizeAddress(record.data.from)
+        : normalizeAddress(record.account || record.address)
     if (recordSender !== sender) return false
 
     const tokenRecipients = tokenTransferRecipients(record)
