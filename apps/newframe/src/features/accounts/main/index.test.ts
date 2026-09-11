@@ -813,6 +813,263 @@ describe('#setTxSent', () => {
     Accounts.close()
   })
 
+  it('materializes one account-relative activity row per affected same-profile account', () => {
+    const hash = '0xa1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1'
+    const unaffected = '0x3333333333333333333333333333333333333333'
+    const otherProfileAccount = '0x4444444444444444444444444444444444444444'
+    const otherProfileId = 'other-activity-profile'
+    const sourceEffect = {
+      id: 'usdc-out',
+      kind: 'erc20',
+      direction: 'out',
+      label: 'Asset out',
+      amount: '0xf4240',
+      decimals: 6,
+      symbol: 'USDC'
+    }
+    const recipientEffect = { ...sourceEffect, id: 'usdc-in', direction: 'in', label: 'Asset in' }
+    const otherEffect = { ...recipientEffect, id: 'other-usdc-in' }
+    const txRequest = {
+      ...request,
+      account: account.address,
+      tx: {
+        hash,
+        confirmations: TRANSACTION_CONFIRMATION_TARGET,
+        receipt: { status: '0x1', blockNumber: '0x64', gasUsed: '0x5208' }
+      },
+      simulation: {
+        status: 'success',
+        effects: [sourceEffect],
+        effectsByAccount: {
+          [account.address]: [sourceEffect],
+          [account2.address]: [recipientEffect],
+          [otherProfileAccount]: [otherEffect]
+        },
+        effectsProfileId: DEFAULT_PROFILE_ID
+      }
+    } as any
+
+    storeState().selectProfile(DEFAULT_PROFILE_ID)
+    storeState().moveAccountToProfile(account.address, DEFAULT_PROFILE_ID)
+    storeState().moveAccountToProfile(account2.address, DEFAULT_PROFILE_ID)
+    storeState().upsertAccount({ id: unaffected, address: unaffected, name: 'Unaffected' })
+    storeState().upsertAccount({
+      id: otherProfileAccount,
+      address: otherProfileAccount,
+      name: 'Other profile'
+    })
+    storeState().createProfile(otherProfileId, 'Other activity')
+    storeState().moveAccountToProfile(otherProfileAccount, otherProfileId)
+
+    try {
+      const frameAccount = Accounts.getFrameAccount(account.address)
+      ;(Accounts as any).recordSubmittedTransaction(frameAccount, request.handlerId, txRequest, hash)
+      storeState().updateActivity(hash, { positionsRefreshedAt: 123 })
+      ;(Accounts as any).finalizeTransactionActivity(txRequest, 'succeeded')
+
+      const companionId = `${hash}:${account2.address}`
+      expect(storeState().main.activity[hash]).toMatchObject({
+        id: hash,
+        hash,
+        account: account.address,
+        balanceChanges: [sourceEffect]
+      })
+      expect(storeState().main.activity[companionId]).toMatchObject({
+        id: companionId,
+        hash,
+        account: account2.address,
+        address: account2.address,
+        status: 'succeeded',
+        balanceChanges: [recipientEffect],
+        gasSpent: null,
+        display: { title: 'Receive USDC', subtitle: 'Incoming transfer' }
+      })
+      expect(storeState().main.activity[companionId].positionsRefreshedAt).toBeUndefined()
+      expect(
+        Object.values(storeState().main.activity).filter(
+          (activity: any) => activity.hash === hash && activity.account === unaffected
+        )
+      ).toEqual([])
+      expect(
+        Object.values(storeState().main.activity).filter(
+          (activity: any) => activity.hash === hash && activity.account === otherProfileAccount
+        )
+      ).toEqual([])
+      expect(
+        Object.values(storeState().view.notifications).filter(
+          (notification: any) => notification.target?.hash === hash
+        )
+      ).toHaveLength(1)
+
+      Accounts.syncTransactionActivity(frameAccount, txRequest)
+      Accounts.syncTransactionActivity(frameAccount, txRequest)
+      expect(
+        Object.values(storeState().main.activity).filter(
+          (activity: any) => activity.hash === hash && activity.account === account2.address
+        )
+      ).toHaveLength(1)
+    } finally {
+      Accounts.remove(unaffected)
+      Accounts.remove(otherProfileAccount)
+      storeState().deleteProfile(otherProfileId)
+    }
+  })
+
+  it('does not materialize a stale account map while simulation is loading', () => {
+    const hash = '0xa2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2'
+    const recipientEffect = {
+      id: 'eth-in',
+      kind: 'native',
+      direction: 'in',
+      label: 'Asset in',
+      amount: '0x1',
+      decimals: 18,
+      symbol: 'ETH'
+    }
+    const txRequest = {
+      ...request,
+      account: account.address,
+      tx: { hash, confirmations: TRANSACTION_CONFIRMATION_TARGET },
+      simulation: {
+        status: 'loading',
+        effectsByAccount: { [account2.address]: [recipientEffect] },
+        effectsProfileId: DEFAULT_PROFILE_ID
+      }
+    } as any
+    const frameAccount = Accounts.getFrameAccount(account.address)
+
+    ;(Accounts as any).recordSubmittedTransaction(frameAccount, request.handlerId, txRequest, hash)
+    ;(Accounts as any).finalizeTransactionActivity(txRequest, 'succeeded')
+
+    expect(
+      Object.values(storeState().main.activity).filter((activity: any) => activity.hash === hash)
+    ).toHaveLength(1)
+  })
+
+  it('persists an empty source delta when the successful account map omits the source', () => {
+    const hash = '0xa5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5'
+    const txRequest = {
+      ...request,
+      account: account.address,
+      data: { ...request.data, value: '0x1' },
+      tx: { hash, confirmations: TRANSACTION_CONFIRMATION_TARGET },
+      simulation: {
+        status: 'success',
+        effects: [],
+        effectsByAccount: {},
+        effectsProfileId: DEFAULT_PROFILE_ID
+      }
+    } as any
+    const frameAccount = Accounts.getFrameAccount(account.address)
+
+    ;(Accounts as any).recordSubmittedTransaction(frameAccount, request.handlerId, txRequest, hash)
+    ;(Accounts as any).finalizeTransactionActivity(txRequest, 'succeeded')
+
+    expect(storeState().main.activity[hash].balanceChanges).toEqual([])
+  })
+
+  it('materializes account-relative activity when successful simulation arrives after finalization', () => {
+    const hash = '0xa3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3'
+    const sourceEffect = {
+      id: 'eth-out',
+      kind: 'native',
+      direction: 'out',
+      label: 'Asset out',
+      amount: '0x2',
+      decimals: 18,
+      symbol: 'ETH'
+    }
+    const recipientEffect = { ...sourceEffect, id: 'eth-in', direction: 'in', label: 'Asset in' }
+    const txRequest = {
+      ...request,
+      account: account.address,
+      tx: { hash, confirmations: TRANSACTION_CONFIRMATION_TARGET },
+      simulation: { status: 'loading' }
+    } as any
+    const frameAccount = Accounts.getFrameAccount(account.address)
+
+    ;(Accounts as any).recordSubmittedTransaction(frameAccount, request.handlerId, txRequest, hash)
+    ;(Accounts as any).finalizeTransactionActivity(txRequest, 'succeeded')
+    expect(storeState().main.activity[`${hash}:${account2.address}`]).toBeUndefined()
+
+    txRequest.simulation = {
+      status: 'success',
+      effects: [sourceEffect],
+      effectsByAccount: {
+        [account.address]: [sourceEffect],
+        [account2.address]: [recipientEffect]
+      },
+      effectsProfileId: DEFAULT_PROFILE_ID
+    }
+    Accounts.syncTransactionActivity(frameAccount, txRequest)
+
+    expect(storeState().main.activity[hash].balanceChanges).toEqual([sourceEffect])
+    expect(storeState().main.activity[`${hash}:${account2.address}`].balanceChanges).toEqual([
+      recipientEffect
+    ])
+  })
+
+  it('uses the captured simulation profile after accounts move', () => {
+    const hash = '0xa4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4'
+    const movedOut = '0x5555555555555555555555555555555555555555'
+    const sourceProfileAccount = '0x6666666666666666666666666666666666666666'
+    const movedProfileId = 'moved-activity-profile'
+    const incoming = {
+      id: 'eth-in',
+      kind: 'native',
+      direction: 'in',
+      label: 'Asset in',
+      amount: '0x1',
+      decimals: 18,
+      symbol: 'ETH'
+    }
+    const txRequest = {
+      ...request,
+      account: account.address,
+      tx: { hash, confirmations: TRANSACTION_CONFIRMATION_TARGET },
+      simulation: {
+        status: 'success',
+        effects: [{ ...incoming, id: 'eth-out', direction: 'out', label: 'Asset out' }],
+        effectsByAccount: {
+          [account2.address]: [incoming],
+          [movedOut]: [{ ...incoming, id: 'moved-out-eth-in' }]
+        },
+        effectsProfileId: DEFAULT_PROFILE_ID
+      }
+    } as any
+
+    storeState().selectProfile(DEFAULT_PROFILE_ID)
+    storeState().moveAccountToProfile(account.address, DEFAULT_PROFILE_ID)
+    storeState().moveAccountToProfile(account2.address, DEFAULT_PROFILE_ID)
+    storeState().upsertAccount({ id: movedOut, address: movedOut, name: 'Moved out' })
+    storeState().upsertAccount({
+      id: sourceProfileAccount,
+      address: sourceProfileAccount,
+      name: 'Source profile peer'
+    })
+    storeState().createProfile(movedProfileId, 'Moved activity')
+    storeState().moveAccountToProfile(sourceProfileAccount, movedProfileId)
+
+    try {
+      const frameAccount = Accounts.getFrameAccount(account.address)
+      ;(Accounts as any).recordSubmittedTransaction(frameAccount, request.handlerId, txRequest, hash)
+      storeState().moveAccountToProfile(account.address, movedProfileId)
+      storeState().moveAccountToProfile(movedOut, movedProfileId)
+      ;(Accounts as any).finalizeTransactionActivity(txRequest, 'succeeded')
+
+      expect(storeState().main.activity[`${hash}:${account2.address}`]).toBeDefined()
+      expect(storeState().main.activity[`${hash}:${movedOut}`]).toBeUndefined()
+      expect(storeState().main.activity[`${hash}:${sourceProfileAccount}`]).toBeUndefined()
+    } finally {
+      storeState().moveAccountToProfile(account.address, DEFAULT_PROFILE_ID)
+      storeState().moveAccountToProfile(movedOut, DEFAULT_PROFILE_ID)
+      Accounts.remove(movedOut)
+      Accounts.remove(sourceProfileAccount)
+      storeState().deleteProfile(movedProfileId)
+      storeState().selectProfile(DEFAULT_PROFILE_ID)
+    }
+  })
+
   it('confirms after the target confirmation count and removes after the close delay', async () => {
     const hash = '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef'
     const receiptBlock = 100

@@ -372,6 +372,7 @@ const SideTrayActivitySchema = z
         status: ActivityStatusSchema,
         data: z
           .object({
+            from: z.string().optional(),
             to: z.string().optional(),
             data: z.string().optional()
           })

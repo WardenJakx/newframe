@@ -6,7 +6,8 @@ import {
   WalletOrderRecordSchema,
   WalletPanelNavigationEntrySchema,
   WalletRequestSchema,
-  WalletStatusNotificationSchema
+  WalletStatusNotificationSchema,
+  projectionStateChangeSchemas
 } from './projections'
 
 describe('wallet renderer projection records', () => {
@@ -169,6 +170,40 @@ describe('wallet renderer projection records', () => {
           symbol: 'USDC'
         }
       ]
+    })
+  })
+
+  it('keeps restricted side-tray sender data and strips private transaction fields', () => {
+    expect(
+      projectionStateChangeSchemas.sidetray.parse({
+        activity: {
+          transaction: {
+            id: 'transaction',
+            account: '0x0000000000000000000000000000000000000001',
+            status: 'succeeded',
+            data: {
+              from: '0x0000000000000000000000000000000000000001',
+              to: '0x0000000000000000000000000000000000000002',
+              data: '0x1234',
+              privateTransactionData: true
+            },
+            payload: { privateRequestData: true }
+          }
+        }
+      })
+    ).toEqual({
+      activity: {
+        transaction: {
+          id: 'transaction',
+          account: '0x0000000000000000000000000000000000000001',
+          status: 'succeeded',
+          data: {
+            from: '0x0000000000000000000000000000000000000001',
+            to: '0x0000000000000000000000000000000000000002',
+            data: '0x1234'
+          }
+        }
+      }
     })
   })
 

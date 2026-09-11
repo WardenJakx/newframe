@@ -6,6 +6,7 @@ import { NATIVE_CURRENCY } from '../../tokens/domain/constants.js'
 import { erc20Interface } from '../../../shared/domain/evm.js'
 import { persistedImageSource } from '../../asset-data/domain/image/index.js'
 import { tokenImageSource } from '../../tokens/domain/index.js'
+import { getProfileAccountIds } from '../../../app/contracts/state/main.js'
 
 import type { TransactionEffect, TransactionSimulation } from '../domain/index.js'
 import type { Erc20ProviderPort, TokenData } from '../../../platform/chain-rpc/contracts/erc20.js'
@@ -41,6 +42,9 @@ type TransactionSimulationProviderPort = Pick<Provider, 'send'> & Erc20ProviderP
 export interface TransactionSimulationProjection {
   getNativeCurrency(chainId: number): NativeCurrencyLike
   getToken(address: string, chainId: number): Token | undefined
+  getProfileAccounts(
+    originatingAccountAddress: string
+  ): { profileId: string; accountAddresses: string[] } | undefined
 }
 
 export function createTransactionSimulationProjection(
@@ -53,6 +57,28 @@ export function createTransactionSimulationProjection(
     },
     getToken(address, chainId) {
       return canonicalStore.getState().main.tokens.byId[`${chainId}:${normalizeAddress(address)}`]
+    },
+    getProfileAccounts(originatingAccountAddress) {
+      const main = canonicalStore.getState().main
+      const normalizedOrigin = normalizeAddress(originatingAccountAddress)
+      if (!normalizedOrigin) return
+
+      const originatingAccount =
+        main.accounts[originatingAccountAddress] ||
+        main.accounts[normalizedOrigin] ||
+        Object.values(main.accounts).find((account) => normalizeAddress(account.address) === normalizedOrigin)
+
+      if (!originatingAccount) return
+
+      const accountAddresses = [
+        ...new Set(
+          getProfileAccountIds(main, originatingAccount.profileId)
+            .map((id) => normalizeAddress(main.accounts[id]?.address))
+            .filter(Boolean)
+        )
+      ]
+
+      return { profileId: originatingAccount.profileId, accountAddresses }
     }
   }
 }
@@ -71,6 +97,17 @@ interface TraceCall {
     topics?: string[]
     data?: string
   }>
+}
+
+interface NativeTransfer {
+  from: string
+  to: string
+  amount: bigint
+}
+
+interface ParsedTrace {
+  nativeTransfers: NativeTransfer[]
+  tokenTransfers: TokenTransfer[]
 }
 
 function safeBigInt(value?: string | number | bigint | null) {
@@ -151,11 +188,19 @@ function walkTrace(trace: TraceCall | undefined, visit: (call: TraceCall) => voi
   ;(trace.calls || []).forEach((call) => walkTrace(call, visit))
 }
 
-function extractTransfersFromLogs(trace: TraceCall) {
-  const transfers: TokenTransfer[] = []
+function parseTrace(trace: TraceCall): ParsedTrace {
+  const nativeTransfers: NativeTransfer[] = []
+  const loggedTokenTransfers: TokenTransfer[] = []
+  const calledTokenTransfers: TokenTransfer[] = []
 
   walkTrace(trace, (call) => {
     if (call.error || call.revertReason) return
+
+    const from = normalizeAddress(call.from)
+    const to = normalizeAddress(call.to)
+    const value = safeBigInt(call.value)
+    if (from && to && value > 0n) nativeTransfers.push({ from, to, amount: value })
+
     ;(call.logs || []).forEach((event) => {
       const topics = event.topics || []
       if ((topics[0] || '').toLowerCase() !== TRANSFER_TOPIC) return
@@ -166,19 +211,9 @@ function extractTransfersFromLogs(trace: TraceCall) {
       const amount = safeBigInt(event.data || '0x0')
 
       if (token && from && to && amount > 0n) {
-        transfers.push({ token, from, to, amount })
+        loggedTokenTransfers.push({ token, from, to, amount })
       }
     })
-  })
-
-  return transfers
-}
-
-function extractTransfersFromCalls(trace: TraceCall) {
-  const transfers: TokenTransfer[] = []
-
-  walkTrace(trace, (call) => {
-    if (call.error || call.revertReason) return
 
     const token = normalizeAddress(call.to)
     const input = call.input || call.data || ''
@@ -192,7 +227,7 @@ function extractTransfersFromCalls(trace: TraceCall) {
       const to = normalizeAddress(decoded.args[0]?.toString())
       const amount = safeBigInt(decoded.args[1]?.toString())
 
-      if (from && to && amount > 0n) transfers.push({ token, from, to, amount })
+      if (from && to && amount > 0n) calledTokenTransfers.push({ token, from, to, amount })
     }
 
     if (isErc20TransferFrom(decoded)) {
@@ -200,25 +235,23 @@ function extractTransfersFromCalls(trace: TraceCall) {
       const to = normalizeAddress(decoded.args[1]?.toString())
       const amount = safeBigInt(decoded.args[2]?.toString())
 
-      if (from && to && amount > 0n) transfers.push({ token, from, to, amount })
+      if (from && to && amount > 0n) calledTokenTransfers.push({ token, from, to, amount })
     }
   })
 
-  return transfers
+  return {
+    nativeTransfers,
+    tokenTransfers: loggedTokenTransfers.length ? loggedTokenTransfers : calledTokenTransfers
+  }
 }
 
-function nativeDeltaFromTrace(trace: TraceCall, account: string) {
+function nativeDeltaFromTransfers(transfers: NativeTransfer[], account: string) {
   const accountAddress = normalizeAddress(account)
   let delta = 0n
 
-  walkTrace(trace, (call) => {
-    if (call.error || call.revertReason) return
-
-    const value = safeBigInt(call.value)
-    if (value <= 0n) return
-
-    if (sameAddress(call.from, accountAddress)) delta -= value
-    if (sameAddress(call.to, accountAddress)) delta += value
+  transfers.forEach((transfer) => {
+    if (sameAddress(transfer.from, accountAddress)) delta -= transfer.amount
+    if (sameAddress(transfer.to, accountAddress)) delta += transfer.amount
   })
 
   return delta
@@ -352,13 +385,17 @@ async function tokenEffects(
   req: TransactionRequest,
   chainId: number,
   projection: TransactionSimulationProjection,
-  provider?: Erc20ProviderPort
+  provider?: Erc20ProviderPort,
+  metadataByAddress = new Map<string, Promise<TokenMetadata>>()
 ): Promise<TransactionEffect[]> {
   const effects = await Promise.all(
     [...deltas.entries()]
       .filter(([, delta]) => delta !== 0n)
       .map(async ([address, delta]) => {
-        const metadata = await resolveTokenMetadata(req, address, chainId, projection, provider)
+        const metadataPromise =
+          metadataByAddress.get(address) || resolveTokenMetadata(req, address, chainId, projection, provider)
+        metadataByAddress.set(address, metadataPromise)
+        const metadata = await metadataPromise
         const direction = delta < 0n ? 'out' : 'in'
 
         return {
@@ -446,14 +483,24 @@ export async function effectsFromTrace(
   projection: TransactionSimulationProjection,
   provider?: Erc20ProviderPort
 ): Promise<TransactionEffect[]> {
+  return effectsFromParsedTrace(parseTrace(trace), req, nativeCurrency, projection, provider)
+}
+
+async function effectsFromParsedTrace(
+  trace: ParsedTrace,
+  req: TransactionRequest,
+  nativeCurrency: NativeCurrencyLike,
+  projection: TransactionSimulationProjection,
+  provider?: Erc20ProviderPort,
+  metadataByAddress?: Map<string, Promise<TokenMetadata>>,
+  account = req.account
+): Promise<TransactionEffect[]> {
   const chainId = parseInt(req.data.chainId, 16)
-  const nativeDelta = nativeDeltaFromTrace(trace, req.account)
-  const loggedTransfers = extractTransfersFromLogs(trace)
-  const transfers = loggedTransfers.length ? loggedTransfers : extractTransfersFromCalls(trace)
-  const tokenDeltas = tokenDeltasFromTransfers(transfers, req.account)
+  const nativeDelta = nativeDeltaFromTransfers(trace.nativeTransfers, account)
+  const tokenDeltas = tokenDeltasFromTransfers(trace.tokenTransfers, account)
   const effects = [
     nativeEffect(nativeDelta, nativeCurrency),
-    ...(await tokenEffects(tokenDeltas, req, chainId, projection, provider))
+    ...(await tokenEffects(tokenDeltas, req, chainId, projection, provider, metadataByAddress))
   ].filter(Boolean) as TransactionEffect[]
 
   return effects
@@ -495,10 +542,43 @@ export async function simulateTransactionEffects(
   }
 
   try {
+    const parsedTrace = parseTrace(trace)
+    const metadataByAddress = new Map<string, Promise<TokenMetadata>>()
+    const effects = await effectsFromParsedTrace(
+      parsedTrace,
+      req,
+      nativeCurrency,
+      projection,
+      provider,
+      metadataByAddress
+    )
+    const profile = projection.getProfileAccounts(req.account)
+    const effectsByAccount = profile
+      ? Object.fromEntries(
+          (
+            await Promise.all(
+              profile.accountAddresses.map(async (accountAddress): Promise<[string, TransactionEffect[]]> => [
+                accountAddress,
+                await effectsFromParsedTrace(
+                  parsedTrace,
+                  req,
+                  nativeCurrency,
+                  projection,
+                  provider,
+                  metadataByAddress,
+                  accountAddress
+                )
+              ])
+            )
+          ).filter(([, accountEffects]) => accountEffects.length)
+        )
+      : undefined
+
     return {
       status: 'success',
       source: 'debug_traceCall',
-      effects: await effectsFromTrace(trace, req, nativeCurrency, projection, provider),
+      effects,
+      ...(profile ? { effectsByAccount, effectsProfileId: profile.profileId } : {}),
       updatedAt: Date.now()
     }
   } catch (error) {

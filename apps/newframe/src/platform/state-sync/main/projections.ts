@@ -581,6 +581,7 @@ function projectSideTrayActivity(
 
       const rawData = objectValue(record.data)
       const data = {
+        ...(typeof rawData.from === 'string' ? { from: rawData.from } : {}),
         ...(typeof rawData.to === 'string' ? { to: rawData.to } : {}),
         ...(typeof rawData.data === 'string' ? { data: rawData.data } : {})
       }
