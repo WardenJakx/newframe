@@ -45,15 +45,17 @@ export function SafeQueueView({
         .map((proposal) => {
           const mismatch = proposal.integrity?.status === 'mismatch'
           const currency = currencies[deployment.chainId]
+          const method = proposal.localDecoded?.method
           return (
             <RequestCard
               key={proposal.safeTxHash}
               title={
-                proposal.operation === 1
+                method ??
+                (proposal.operation === 1
                   ? 'Delegatecall'
                   : proposal.data !== '0x'
                     ? 'Contract call'
-                    : 'Transfer'
+                    : 'Transfer')
               }
               icon={<Icon name={proposal.data === '0x' ? 'arrowRight' : 'ethereum'} size='medium' />}
               status={mismatch ? 'Needs review' : 'Pending'}
@@ -63,10 +65,11 @@ export function SafeQueueView({
               onOpen={() => onSelect(deployment.chainId, proposal.safeTxHash)}
             >
               <Text tone='secondary' variant='supporting'>
-                {proposal.localDecoded?.method ??
-                  (proposal.data === '0x' && currency
+                {method
+                  ? 'Contract interaction'
+                  : proposal.data === '0x' && currency
                     ? `${formatUnits(proposal.value, currency.decimals)} ${currency.symbol}`
-                    : 'Transaction')}{' '}
+                    : 'Transaction'}{' '}
                 · {shortAddress(proposal.to)}
               </Text>
             </RequestCard>

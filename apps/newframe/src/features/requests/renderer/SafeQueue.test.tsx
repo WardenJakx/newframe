@@ -65,9 +65,15 @@ it('refreshes cached proposals, distinguishes same-nonce hashes, and removes van
   expect(screen.getByText('Waiting for earlier transactions')).toBeTruthy()
   expect(screen.getByText('Delegatecall')).toBeTruthy()
   expect(screen.getByText('1.0 native')).toBeTruthy()
-  expect(screen.getByText('Approval threshold')).toBeTruthy()
-  expect(screen.getByText('Safe version')).toBeTruthy()
-  expect(screen.getByText('Owner')).toBeTruthy()
+  expect(screen.getByLabelText('Transaction effects').textContent).toContain(
+    'Simulation not available for Safe proposals yet.'
+  )
+  expect(screen.queryByText('Approval threshold')).toBeNull()
+  expect(screen.queryByText('Safe version')).toBeNull()
+  expect(screen.queryByText('Owner')).toBeNull()
+  expect(screen.queryByText('Last refreshed')).toBeNull()
+  expect(screen.queryByText('Network')).toBeNull()
+  expect(screen.getByLabelText('Transaction details').textContent?.startsWith('Request detailsTo')).toBe(true)
   expect(screen.getAllByRole('button', { name: /^Back/ })).toHaveLength(1)
   expect(screen.queryByText('Safe proposal')).toBeNull()
   await user.click(screen.getByRole('button', { name: 'Back to requests' }))
@@ -75,7 +81,7 @@ it('refreshes cached proposals, distinguishes same-nonce hashes, and removes van
   await user.click(screen.getByRole('button', { name: `Open Safe proposal ${hash} on chain 1` }))
   await user.click(screen.getByRole('button', { name: /Show full calldata/ }))
   expect(screen.getByText('0x1234')).toBeTruthy()
-  expect(screen.queryByText('Estimated changes')).toBeNull()
+  expect(screen.getByText('Estimated changes')).toBeTruthy()
   expect(screen.queryByRole('button', { name: /approve|sign|execute|reject/i })).toBeNull()
   await act(async () => fixture.state.reset(state({ ...deployment, pending: [] })))
   expect(screen.queryByLabelText('Request review')).toBeNull()
@@ -196,6 +202,8 @@ it('shows a prominent mismatch, local interpretation and the shared calldata dig
   const capabilities = createCapabilityFake()
   const { user } = render(<RequestsOverlay capabilities={capabilities} onBack={() => {}} />)
   expect(screen.queryByText('forged')).toBeNull()
+  expect(screen.getByText('transfer')).toBeTruthy()
+  expect(screen.getByText(/Contract interaction/)).toBeTruthy()
   await user.click(screen.getByRole('button', { name: `Open Safe proposal ${hash} on chain 1` }))
   expect(screen.getByRole('alert', { name: 'Proposal integrity' }).textContent).toContain(
     'Integrity mismatch'

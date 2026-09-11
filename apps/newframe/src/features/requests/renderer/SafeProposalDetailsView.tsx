@@ -14,6 +14,7 @@ export function SafeProposalDetailsView({
   deployment,
   proposal,
   networkName,
+  networkIcon,
   symbol,
   decimals = 18,
   capabilities
@@ -22,6 +23,7 @@ export function SafeProposalDetailsView({
   deployment: SafeDeployment
   proposal: SafeProposal
   networkName: string
+  networkIcon?: string
   symbol: string
   decimals?: number
   capabilities: Pick<RequestRendererCapabilities, 'external'>
@@ -30,7 +32,11 @@ export function SafeProposalDetailsView({
     void capabilities.external.copy({ text })
   }
   const details = [
-    { label: 'Network', value: networkName },
+    {
+      label: 'To',
+      value: renderAddress?.(proposal.to) ?? proposal.to,
+      onClick: renderAddress ? undefined : copy(proposal.to)
+    },
     {
       label: 'Safe',
       value: renderAddress?.(proposal.safe) ?? proposal.safe,
@@ -38,25 +44,6 @@ export function SafeProposalDetailsView({
     },
     { label: 'Nonce', value: proposal.nonce },
     { label: 'Current Safe nonce', value: deployment.configuration.nonce },
-    { label: 'Safe version', value: deployment.configuration.version ?? 'Unknown' },
-    {
-      label: 'Approval threshold',
-      value: `${deployment.configuration.threshold} of ${deployment.configuration.owners.length} owners`
-    },
-    ...deployment.configuration.owners.map((owner) => ({
-      label: 'Owner',
-      value: renderAddress?.(owner) ?? owner
-    })),
-    {
-      label: 'Last refreshed',
-      value:
-        deployment.refreshedAt === undefined ? 'Never' : new Date(deployment.refreshedAt).toLocaleString()
-    },
-    {
-      label: 'To',
-      value: renderAddress?.(proposal.to) ?? proposal.to,
-      onClick: renderAddress ? undefined : copy(proposal.to)
-    },
     { label: 'Native value', value: `${formatUnits(proposal.value, decimals)} ${symbol}` },
     { label: 'Operation', value: proposal.operation === 1 ? 'Delegatecall' : 'Call' },
     { label: 'Safe transaction hash', value: proposal.safeTxHash, onClick: copy(proposal.safeTxHash) },
@@ -96,13 +83,15 @@ export function SafeProposalDetailsView({
         imageCapability={capabilities.external}
         originName='Safe watch-only'
         networkName={networkName}
+        networkIcon={networkIcon}
         nativeCurrency={{ symbol }}
         statusLabel={
           BigInt(proposal.nonce) > BigInt(deployment.configuration.nonce)
             ? 'Waiting for earlier transactions'
             : 'Pending proposal'
         }
-        notice='Simulation not available for Safe proposals yet.'
+        effects={[]}
+        effectsEmptyText='Simulation not available for Safe proposals yet.'
         beforeDetails={
           <Surface padding='medium' tone='raised'>
             <div
