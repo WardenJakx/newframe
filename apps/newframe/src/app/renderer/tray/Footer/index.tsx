@@ -4,7 +4,6 @@ import { useShallow } from 'zustand/react/shallow'
 import type { WalletRendererState } from '../../../../platform/state-sync/contract/projections'
 import { RequestActions } from '../../../../features/requests/renderer/ui/RequestActions'
 import { cva } from '../../../../../generated/styled-system/css/cva.js'
-import { isHardwareSigner } from '../../../../platform/signing/domain'
 import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector'
 import { useRequestView, type RequestViewStep } from '../../../../features/requests/renderer/requestView'
 import RequestCommand, {
@@ -90,14 +89,7 @@ export function Footer({ capabilities, notify, shared, step }: FooterProps) {
     ['transaction', 'sign', 'signTypedData', 'signErc20Permit'].includes(req.type) &&
     step === 'confirm'
   ) {
-    content = (
-      <RequestCommand
-        capabilities={capabilities}
-        notify={notify}
-        req={req}
-        signingDelay={isHardwareSigner(account.lastSignerType) ? 0 : 1500}
-      />
-    )
+    content = <RequestCommand capabilities={capabilities} notify={notify} req={req} />
   }
 
   if (!req) {
