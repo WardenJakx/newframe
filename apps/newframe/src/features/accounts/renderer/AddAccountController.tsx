@@ -9,6 +9,8 @@ import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppS
 import type { WalletRendererState } from '../../../platform/state-sync/contract/projections'
 import { hardwarePageModel, onboardingStatusText } from './addAccountModel'
 import type { AccountsCapability } from './accountsCapability'
+import type { QrCameraCapability } from '../../../platform/desktop/renderer/camera'
+import { AirGapPairing } from './airgap/AirGapPairing'
 import { useHardwareSessionController } from './useHardwareSession'
 import { addAccountReducer, createAddAccountState } from './addAccountReducer'
 import type { AccountProjection, SignerProjection } from './accountsModel'
@@ -36,7 +38,8 @@ const addOptions: Record<'root' | 'import' | 'hardware', AddAccountOption[]> = {
   hardware: [
     { id: 'trezor', title: 'Trezor', icon: 'trezor' },
     { id: 'ledger', title: 'Ledger', icon: 'ledger' },
-    { id: 'lattice', title: 'GridPlus', icon: 'lattice' }
+    { id: 'lattice', title: 'GridPlus', icon: 'lattice' },
+    { id: 'airgap', title: 'AirGap', icon: 'qr' }
   ]
 }
 
@@ -89,11 +92,13 @@ function useSubmission(setFeedback: (error: string, status: string) => void) {
 
 export function AddAccountController({
   capability,
+  camera,
   initialSelectedSigner = '',
   initialType = '',
   onClose
 }: {
   capability: AccountsCapability
+  camera: QrCameraCapability
   initialSelectedSigner?: string
   initialType?: string
   onClose: () => void
@@ -298,7 +303,9 @@ export function AddAccountController({
   const displayedStatus = onboardingStatusText(operationStatus, state.addAccountStatus)
 
   useEffect(() => {
-    const isHardwareSigner = ['ledger', 'trezor', 'lattice'].includes(selectedHardwareSigner?.type || '')
+    const isHardwareSigner = ['ledger', 'trezor', 'lattice', 'airgap'].includes(
+      selectedHardwareSigner?.type || ''
+    )
     const addresses = visibleHardwareAddresses
 
     if (!isHardwareSigner || !addresses.length) return
@@ -431,6 +438,7 @@ export function AddAccountController({
   useEffect(() => {
     if (!initialSelectedSigner || initialHardwareSessionStarted.current) return
     initialHardwareSessionStarted.current = true
+    if (initialType === 'airgap') return
     queueMicrotask(() => beginHardwareSession(initialSelectedSigner, false))
     // This mount-only bootstrap is keyed solely by the requested initial signer.
     // oxlint-disable-next-line react/exhaustive-deps
@@ -580,7 +588,7 @@ export function AddAccountController({
     setHardwarePage(1)
     setHardwarePageInput('1')
     dispatch({ type: 'hardware.signer-selected', signerId })
-    beginHardwareSession(signerId, false)
+    if (shared.signers[signerId]?.type !== 'airgap') beginHardwareSession(signerId, false)
   }
 
   async function createLatticeSigner() {
@@ -891,7 +899,8 @@ export function AddAccountController({
 
   function hardwareFlow(): Extract<AddAccountFlowModel, { kind: 'hardware' }> {
     const type = state.addAccountType
-    const title = type === 'ledger' ? 'Ledger' : type === 'trezor' ? 'Trezor' : 'GridPlus'
+    const title =
+      type === 'airgap' ? 'AirGap' : type === 'ledger' ? 'Ledger' : type === 'trezor' ? 'Trezor' : 'GridPlus'
     const signers = Object.values(shared.signers).filter((signer) => signer.type === type)
     const signer = selectedHardwareSigner?.type === type ? selectedHardwareSigner : undefined
     if (!signer) {
@@ -1143,5 +1152,17 @@ export function AddAccountController({
     onTypeSelect: chooseInlineAddType
   }
 
-  return <AddAccountView events={events} flow={flow} />
+  return (
+    <AddAccountView
+      events={events}
+      flow={flow}
+      airgapPairing={
+        state.addAccountCategory === 'hardware' &&
+        state.addAccountType === 'airgap' &&
+        !selectedHardwareSigner ? (
+          <AirGapPairing capability={capability} camera={camera} onPaired={selectHardwareSigner} />
+        ) : undefined
+      }
+    />
+  )
 }

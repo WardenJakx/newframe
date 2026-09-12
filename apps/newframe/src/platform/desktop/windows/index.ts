@@ -11,6 +11,7 @@ import { createWindow } from './window.js'
 import { constrainTraySize, TRAY_WIDTH, trayPosition } from './trayGeometry.js'
 import { SystemTray, SystemTrayEventHandlers } from './systemTray.js'
 import { registerShortcut } from '../keyboardShortcuts.js'
+import { installCameraPermissions } from './cameraPermissions.js'
 import { Shortcut } from '../../../features/settings/domain/state/shortcuts.js'
 import type { RendererAuthorizationRegistry } from '../../ipc/main/authorization.js'
 
@@ -145,7 +146,13 @@ function initTrayWindow(rendererReady: () => void) {
   }
   const { removeRendererReady, window: trayWindow } = initWindow('tray', trayOpts, rendererReady)
 
-  trayWindow.webContents.session.setPermissionRequestHandler((webContents, permission, res) => res(false))
+  if (!rendererAuthorization) throw new Error('Renderer authorization unavailable')
+  const removeCameraPermissions = installCameraPermissions(
+    trayWindow.webContents.session,
+    rendererAuthorization
+  )
+  trayWindow.once('closed', removeCameraPermissions)
+  trayWindow.webContents.once('destroyed', removeCameraPermissions)
   trayWindow.setResizable(false)
   trayWindow.setMovable(false)
 
@@ -201,7 +208,10 @@ function initTrayWindow(rendererReady: () => void) {
     screen.on('display-metrics-changed', () => tray.hide())
   }, 30 * 1000)
 
-  return removeRendererReady
+  return () => {
+    removeRendererReady()
+    removeCameraPermissions()
+  }
 }
 
 class Tray {

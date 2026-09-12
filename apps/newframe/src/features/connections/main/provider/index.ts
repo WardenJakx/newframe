@@ -1,3 +1,4 @@
+import type { SigningUiContext } from '../../../../platform/signing/signers/Signer/index.js'
 import EventEmitter from 'events'
 import crypto from 'crypto'
 import log from 'electron-log'
@@ -78,7 +79,7 @@ export interface TransactionRequestContext {
   tokenData?: TokenData
 }
 
-const signTypedDataV4OnlySignerTypes: SignerType[] = [SignerType.Ledger, SignerType.Trezor]
+const signTypedDataV4OnlySignerTypes: SignerType[] = [SignerType.Ledger, SignerType.Trezor, SignerType.AirGap]
 const proxyPrincipal = createMainPrincipal('provider-proxy', ['wallet:internal-state'])
 
 interface RequiredApproval {
@@ -345,47 +346,57 @@ export class Provider extends EventEmitter {
     })
   }
 
-  approveSign(req: AccountRequest, cb: Callback<string>) {
+  approveSign(req: AccountRequest, cb: Callback<string>, context?: SigningUiContext) {
     const [address, rawMessage] = req.payload.params
     const message = encodePersonalSignMessage(rawMessage)
 
-    this.accounts.signMessage(address, message, (err, signed) => {
-      if (err) {
-        cb(err, undefined)
-      } else {
-        const signature = signed || ''
-        this.verifySignature(signature, message, address, (err) => {
-          if (err) {
-            cb(err)
-          } else {
-            cb(null, signature)
-          }
-        })
-      }
-    })
+    this.accounts.signMessage(
+      address,
+      message,
+      (err, signed) => {
+        if (err) {
+          cb(err, undefined)
+        } else {
+          const signature = signed || ''
+          this.verifySignature(signature, message, address, (err) => {
+            if (err) {
+              cb(err)
+            } else {
+              cb(null, signature)
+            }
+          })
+        }
+      },
+      context ? { ...context, requestId: req.handlerId } : undefined
+    )
   }
 
-  approveSignTypedData(req: SignTypedDataRequest, cb: Callback<string>) {
+  approveSignTypedData(req: SignTypedDataRequest, cb: Callback<string>, context?: SigningUiContext) {
     const { typedMessage } = req
     const [address] = req.payload.params
 
-    this.accounts.signTypedData(address, typedMessage, (err, signature = '') => {
-      if (err) {
-        cb(err)
-      } else {
-        try {
-          const recoveredAddress = recoverTypedSignature({ ...typedMessage, signature })
-          if (recoveredAddress.toLowerCase() !== address.toLowerCase()) {
-            throw new Error('TypedData signature verification failed')
-          }
-
-          cb(null, signature)
-        } catch (e) {
-          const err = e as Error
+    this.accounts.signTypedData(
+      address,
+      typedMessage,
+      (err, signature = '') => {
+        if (err) {
           cb(err)
+        } else {
+          try {
+            const recoveredAddress = recoverTypedSignature({ ...typedMessage, signature })
+            if (recoveredAddress.toLowerCase() !== address.toLowerCase()) {
+              throw new Error('TypedData signature verification failed')
+            }
+
+            cb(null, signature)
+          } catch (e) {
+            const err = e as Error
+            cb(err)
+          }
         }
-      }
-    })
+      },
+      context ? { ...context, requestId: req.handlerId } : undefined
+    )
   }
 
   async getL1GasCost(txData: TransactionData) {
@@ -409,7 +420,7 @@ export class Provider extends EventEmitter {
     return estimateL1GasCost(connectedProvider, txRequest)
   }
 
-  signAndSend(req: TransactionRequest, cb: Callback<string>) {
+  signAndSend(req: TransactionRequest, cb: Callback<string>, context?: SigningUiContext) {
     const rawTx = req.data
     const maxTotalFee = maxFee(rawTx)
 
@@ -422,51 +433,55 @@ export class Provider extends EventEmitter {
 
       cb(new Error(err))
     } else {
-      this.accounts.signTransaction(rawTx, (err, signedTx) => {
-        // Sign Transaction
-        if (err) {
-          cb(err)
-        } else {
-          this.accounts.setTxSigned(req.handlerId, (err) => {
-            if (err) return cb(err)
-            let done = false
-            const cast = () => {
-              this.connection.send(
-                {
-                  id: req.payload.id,
-                  jsonrpc: req.payload.jsonrpc,
-                  method: 'eth_sendRawTransaction',
-                  params: [signedTx]
-                },
-                (response) => {
-                  clearInterval(broadcastTimer)
-                  if (done) return
-                  done = true
-                  if (response.error) {
-                    cb(Object.assign(new Error(response.error.message), { code: response.error.code }))
-                  } else {
-                    cb(null, response.result)
+      this.accounts.signTransaction(
+        rawTx,
+        (err, signedTx) => {
+          // Sign Transaction
+          if (err) {
+            cb(err)
+          } else {
+            this.accounts.setTxSigned(req.handlerId, (err) => {
+              if (err) return cb(err)
+              let done = false
+              const cast = () => {
+                this.connection.send(
+                  {
+                    id: req.payload.id,
+                    jsonrpc: req.payload.jsonrpc,
+                    method: 'eth_sendRawTransaction',
+                    params: [signedTx]
+                  },
+                  (response) => {
+                    clearInterval(broadcastTimer)
+                    if (done) return
+                    done = true
+                    if (response.error) {
+                      cb(Object.assign(new Error(response.error.message), { code: response.error.code }))
+                    } else {
+                      cb(null, response.result)
+                    }
+                  },
+                  {
+                    type: 'ethereum',
+                    id: parseInt(req.data.chainId, 16)
                   }
-                },
-                {
-                  type: 'ethereum',
-                  id: parseInt(req.data.chainId, 16)
-                }
-              )
-            }
-            const broadcastTimer = setInterval(() => cast(), 1000)
-            cast()
-          })
-        }
-      })
+                )
+              }
+              const broadcastTimer = setInterval(() => cast(), 1000)
+              cast()
+            })
+          }
+        },
+        context ? { ...context, requestId: req.handlerId } : undefined
+      )
     }
   }
 
-  approveTransactionRequest(req: TransactionRequest, cb: Callback<string>) {
+  approveTransactionRequest(req: TransactionRequest, cb: Callback<string>, context?: SigningUiContext) {
     const signAndSend = (requestToSign: TransactionRequest) => {
       log.info('approveRequest', requestToSign)
 
-      this.signAndSend(requestToSign, cb)
+      this.signAndSend(requestToSign, cb, context)
     }
 
     this.accounts.lockRequest(req.handlerId)

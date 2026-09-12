@@ -1,4 +1,10 @@
-import type { CommandMap, CommandResult, QueryMap, QueryResultMap } from '../../../app/contracts/operations'
+import type {
+  CommandMap,
+  CommandResult,
+  QueryMap,
+  QueryResultMap,
+  ResultForQuery
+} from '../../../app/contracts/operations'
 import type { NewframeHost } from '../../../platform/ipc/contract/ipc'
 import type { ClipboardCapability } from '../../../shared/renderer/capabilities'
 
@@ -43,6 +49,14 @@ export interface AccountsCapability extends ClipboardCapability {
   submitTrezorInput(input: CommandInput<'signer.trezor-input'>): Promise<CommandResult>
   createLatticeSigner(input: CommandInput<'signer.lattice-create'>): Promise<CommandResult>
   pairLattice(input: CommandInput<'signer.lattice-pair'>): Promise<CommandResult>
+  airgapPairStart(input: CommandInput<'signer.airgap-pair-start'>): Promise<CommandResult>
+  airgapPairScan(input: CommandInput<'signer.airgap-pair-scan'>): Promise<CommandResult>
+  airgapPairCancel(input: CommandInput<'signer.airgap-pair-cancel'>): Promise<CommandResult>
+  airgapRequest(
+    input: Omit<QueryMap['signer.airgap-request'], 'type'>
+  ): Promise<ResultForQuery<QueryMap['signer.airgap-request']>>
+  airgapScan(input: CommandInput<'signer.airgap-scan'>): Promise<CommandResult>
+  airgapCancel(input: CommandInput<'signer.airgap-cancel'>): Promise<CommandResult>
 
   writeClipboard(input: CommandInput<'clipboard.write'>): Promise<CommandResult>
 }
@@ -90,6 +104,12 @@ export function createAccountsCapability(host: AccountsHost): AccountsCapability
     submitTrezorInput: (input) => host.executeCommand({ type: 'signer.trezor-input', ...input }),
     createLatticeSigner: (input) => host.executeCommand({ type: 'signer.lattice-create', ...input }),
     pairLattice: (input) => host.executeCommand({ type: 'signer.lattice-pair', ...input }),
+    airgapPairStart: (input) => host.executeCommand({ type: 'signer.airgap-pair-start', ...input }),
+    airgapPairScan: (input) => host.executeCommand({ type: 'signer.airgap-pair-scan', ...input }),
+    airgapPairCancel: (input) => host.executeCommand({ type: 'signer.airgap-pair-cancel', ...input }),
+    airgapRequest: (input) => host.executeQuery({ type: 'signer.airgap-request', ...input }),
+    airgapScan: (input) => host.executeCommand({ type: 'signer.airgap-scan', ...input }),
+    airgapCancel: (input) => host.executeCommand({ type: 'signer.airgap-cancel', ...input }),
 
     writeClipboard: (input) => host.executeCommand({ type: 'clipboard.write', ...input }),
     writeText: (text) => host.executeCommand({ type: 'clipboard.write', text })

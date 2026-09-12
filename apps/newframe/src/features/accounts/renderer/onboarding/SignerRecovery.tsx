@@ -23,7 +23,7 @@ import { useHardwareSessionController } from '../useHardwareSession'
 type WalletSigner = WalletRendererState['signers'][string]
 
 function signerIcon(type: string) {
-  return ['ledger', 'trezor', 'lattice'].includes(type) ? (
+  return ['ledger', 'trezor', 'lattice', 'airgap'].includes(type) ? (
     <Icon name={signerIconName(type)} size='large' />
   ) : (
     <AppIcon name='logo' size={22} />

@@ -1,3 +1,4 @@
+import { AirGapPublicAccountSchema } from '../../signing/domain/airgap.js'
 import { z } from 'zod'
 
 import { MainSchema } from '../../../app/contracts/state/main.js'
@@ -9,6 +10,7 @@ export const CANONICAL_STATE_STORAGE_NAME = 'canonical-wallet-state'
 const DerivationSchema = z.enum(['live', 'legacy', 'standard', 'testnet'])
 const PersistedMainSchema = z.strictObject({
   ...MainSchema.omit({ appLock: true, runtime: true }).partial().shape,
+  airgap: z.record(z.string(), AirGapPublicAccountSchema).optional(),
   lattice: z
     .record(
       z.string(),

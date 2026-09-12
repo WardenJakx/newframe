@@ -15,6 +15,7 @@ it('acknowledges a real command and projects its completion only to the owning w
   const tokens = createTokenService({ lookup: async () => undefined, operations, store: store.store })
   const services = {
     accounts: { current: () => null, get: () => undefined },
+    airgap: {} as OperationServices['airgap'],
     safes: {} as OperationServices['safes'],
     accountMutations: {} as OperationServices['accountMutations'],
     accountOnboarding: {} as OperationServices['accountOnboarding'],

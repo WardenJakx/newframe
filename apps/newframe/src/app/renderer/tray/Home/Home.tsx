@@ -9,6 +9,7 @@ import { HomeUiProvider, useHomeUiStore } from './state/HomeUiProvider'
 import { cva } from '../../../../../generated/styled-system/css/cva.js'
 import type { RequestRendererCapabilities } from '../../../../features/requests/renderer/requestCapabilities'
 import type { AccountsCapability } from '../../../../features/accounts/renderer/accountsCapability'
+import type { QrCameraCapability } from '../../../../platform/desktop/renderer/camera'
 import type { ConnectionsCapability } from '../../../../features/connections/renderer/connectionsCapability'
 import type { NetworksCapability } from '../../../../features/networks/renderer/networksCapability'
 import type { PortfolioCapability } from '../../../../features/portfolio/renderer/portfolioCapability'
@@ -25,6 +26,7 @@ const homeRecipe = cva({
 
 export interface HomeCapabilities {
   accounts: AccountsCapability
+  camera: QrCameraCapability
   activity: ActivityCapability
   connections: ConnectionsCapability
   home: HomeCapability

@@ -1,3 +1,5 @@
+import { createQrCameraFake } from '../../../../platform/desktop/renderer/camera.test-support'
+import { createAccountsCapabilityFake } from '../../../../features/accounts/renderer/accountsCapability.test-support'
 import { expect, it } from 'bun:test'
 
 import { act, render, screen, waitFor } from '../../../../../test/support/componentSetup'
@@ -17,6 +19,8 @@ const lazyCommandHost: Pick<NewframeHost, 'executeCommand' | 'executeQuery'> = {
 }
 const requestPorts = createRequestPorts(lazyCommandHost)
 const notificationCapabilities = {
+  camera: createQrCameraFake().camera,
+  accounts: createAccountsCapabilityFake(),
   external: requestPorts.external,
   home: createHomeCapability(lazyCommandHost),
   review: requestPorts.review

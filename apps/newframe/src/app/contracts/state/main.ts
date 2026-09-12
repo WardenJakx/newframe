@@ -1,3 +1,4 @@
+import { AirGapPublicAccountSchema } from '../../../platform/signing/domain/airgap.js'
 import { z } from 'zod'
 
 import { AccountMetadataSchema, AccountSchema } from '../../../features/accounts/domain/state/account.js'
@@ -166,6 +167,7 @@ const OrdersSchema = z.record(z.string().describe('Flash Order Id'), OrderRecord
 
 export const MainSchema = z
   .object({
+    airgap: z.record(z.string(), AirGapPublicAccountSchema).default({}),
     instanceId: z.string(), // TODO: uuid
     runtime: RuntimeSchema,
     networks: z.object({

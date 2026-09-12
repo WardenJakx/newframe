@@ -4,6 +4,7 @@ import { useShallow } from 'zustand/react/shallow'
 import { createBalanceSummarySelector } from '../../asset-data/domain/balance'
 import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector'
 import type { AccountsCapability } from './accountsCapability'
+import type { QrCameraCapability } from '../../../platform/desktop/renderer/camera'
 import { buildAccountListModel } from './accountsModel'
 import { AccountsView } from './AccountsView'
 import { AddAccount } from './AddAccount'
@@ -15,6 +16,7 @@ const EMPTY_RECORD = {}
 
 export interface AccountsProps {
   capability: AccountsCapability
+  camera: QrCameraCapability
   initialNewAccountType?: string
   initialSelectedSigner?: string
   initialShowAddAccounts?: boolean
@@ -23,6 +25,7 @@ export interface AccountsProps {
 
 export function Accounts({
   capability,
+  camera,
   initialNewAccountType = '',
   initialSelectedSigner = '',
   initialShowAddAccounts = false,
@@ -79,6 +82,7 @@ export function Accounts({
       addAccountView={
         <AddAccount
           capability={capability}
+          camera={camera}
           initialSelectedSigner={initialSelectedSigner}
           initialType={initialNewAccountType}
           onClose={controller.closeAddAccount}

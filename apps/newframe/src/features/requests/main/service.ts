@@ -1,3 +1,4 @@
+import type { SigningUiContext } from '../../../platform/signing/signers/Signer/index.js'
 import { randomUUID } from 'node:crypto'
 
 import type {
@@ -73,9 +74,9 @@ export interface RequestServicePorts {
     rpcMatchesChain(url: unknown, chainId: number): Promise<boolean>
   }
   provider: {
-    approveSign(request: AccountRequest): Promise<string>
-    approveSignTypedData(request: SignTypedDataRequest): Promise<string>
-    approveTransactionRequest(request: TransactionRequest): Promise<string>
+    approveSign(request: AccountRequest, context?: SigningUiContext): Promise<string>
+    approveSignTypedData(request: SignTypedDataRequest, context?: SigningUiContext): Promise<string>
+    approveTransactionRequest(request: TransactionRequest, context?: SigningUiContext): Promise<string>
   }
   store: CanonicalStoreReader
   transactionPolicy: Pick<AccountTransactionPolicyPort, 'signerCompatibility'>
@@ -230,18 +231,18 @@ export function createRequestService(ports: RequestServicePorts) {
     return { type: 'gas-fee', feeUSD, currentSymbol }
   }
 
-  const executeApproval = (account: RequestAccount, request: AccountRequest) => {
+  const executeApproval = (account: RequestAccount, request: AccountRequest, context?: SigningUiContext) => {
     if (approvalsInFlight.has(request.handlerId)) return true
     approvalsInFlight.add(request.handlerId)
     setGate(account, request.handlerId)
     ports.accounts.setRequestPending(request)
 
     const approval = isTransactionRequest(request)
-      ? ports.provider.approveTransactionRequest(request)
+      ? ports.provider.approveTransactionRequest(request, context)
       : request.type === 'sign'
-        ? ports.provider.approveSign(request)
+        ? ports.provider.approveSign(request, context)
         : isTypedMessageSignatureRequest(request)
-          ? ports.provider.approveSignTypedData(request)
+          ? ports.provider.approveSignTypedData(request, context)
           : undefined
     void approval?.then(
       (result) => completeApproval(request, result),
@@ -253,7 +254,8 @@ export function createRequestService(ports: RequestServicePorts) {
   const advanceApproval = (
     account: RequestAccount,
     request: AccountRequest,
-    confirmed: ReadonlySet<RequestApprovalGate['type']>
+    confirmed: ReadonlySet<RequestApprovalGate['type']>,
+    context?: SigningUiContext
   ) => {
     const nextSignerGate = signerGate(account, request, confirmed)
     if (nextSignerGate) {
@@ -267,7 +269,7 @@ export function createRequestService(ports: RequestServicePorts) {
         return true
       }
     }
-    return executeApproval(account, request)
+    return executeApproval(account, request, context)
   }
 
   const service = {
@@ -297,7 +299,7 @@ export function createRequestService(ports: RequestServicePorts) {
       return settle(request.handlerId, rpcError(request, error))
     },
 
-    approve(requestId: string) {
+    approve(requestId: string, context?: SigningUiContext) {
       const located = locate(requestId)
       if (!located || (!isTransactionRequest(located.request) && !isSignatureRequest(located.request))) {
         return false
@@ -323,10 +325,10 @@ export function createRequestService(ports: RequestServicePorts) {
         ports.accounts.setRequestError(requestId, new Error('Newframe locked'))
         return true
       }
-      return advanceApproval(located.account, located.request, new Set())
+      return advanceApproval(located.account, located.request, new Set(), context)
     },
 
-    confirmWarning(requestId: string, gate: RequestApprovalGate['type']) {
+    confirmWarning(requestId: string, gate: RequestApprovalGate['type'], context?: SigningUiContext) {
       const located = locate(requestId)
       const pendingGate = located?.request.approvalGate
       if (!located || !pendingGate || pendingGate.type !== gate) return false
@@ -337,7 +339,8 @@ export function createRequestService(ports: RequestServicePorts) {
       return advanceApproval(
         located.account,
         located.request,
-        gate === 'gas-fee' ? new Set(['signer-compatibility', 'gas-fee']) : new Set([gate])
+        gate === 'gas-fee' ? new Set(['signer-compatibility', 'gas-fee']) : new Set([gate]),
+        context
       )
     },
 

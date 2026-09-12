@@ -1,0 +1,58 @@
+{
+  "export": {
+    "basePath": "m/44'/60'/0'",
+    "address": "0x022b971dFF0C43305e691DEd7a14367AF19D6407",
+    "sourceFingerprint": "02b11960",
+    "ur": [
+      "ur:crypto-hdkey/1-2/lpadaocslycyqzvwcttshdfponaxhdclaxrsfnwmcnetaaleykcafwbndacmcsseiaylbdnsbsihmekobghnkimyimfloygdhdaahdcxrlpefratbeyndaasiylejklbdmvehpwmbthkrfembkcsrtlgwndleyescm",
+      "ur:crypto-hdkey/2-2/lpaoaocslycyqzvwcttshdfpndidiorlhptikiamtaaddyoeadlncsdwykcsfnykaeykaocyaopacfhnaycyeoeeeeeyaskscwfpinjpflhsjocxdpcxgdgofwgsgafxcxghfegughcxhffefxghgwgmaecffnaypf"
+    ]
+  },
+  "transactions": [
+    {
+      "type": 0,
+      "chainId": 1,
+      "signData": "e50184b2d05e0082c35094111111111111111111111111111111111111111101821234018080",
+      "signedHex": "f8650184b2d05e0082c3509411111111111111111111111111111111111111110182123425a0277bf93e729d52ed042b4cb4111803069bebb3a4e6e5fbcc76e68654452f40c1a01af55eaa48e0d1a0028bf26927aad9ba60711db302198557a8fdc507a41cd701",
+      "signature": "277bf93e729d52ed042b4cb4111803069bebb3a4e6e5fbcc76e68654452f40c11af55eaa48e0d1a0028bf26927aad9ba60711db302198557a8fdc507a41cd70125",
+      "responseFrames": [
+        "ur:eth-signature/1-2/lpadaocshkcyjsesetgohddpoeadtpdagdaeaeaeaeaeaefzaelaaeaeaeaeaeaeadaohdfpdikgytfmjpntgmweaadngsqzbycsaxamndwmqdoxvabechskhk",
+        "ur:eth-signature/2-2/lpaoaocshkcyjsesetgohddpvwzosfkovalnghfedlfzsecyykhypkfdvtttnbaoluwzindipktardhnjscaqdaocflphgpdzcskatoxcetsaddaaeckltdras"
+      ]
+    },
+    {
+      "type": 0,
+      "chainId": 137,
+      "signData": "e60184b2d05e0082c3509411111111111111111111111111111111111111110182123481898080",
+      "signedHex": "f8670184b2d05e0082c35094111111111111111111111111111111111111111101821234820136a0865b577da9e9b7269847705dcd7556abe3f3dcb7ddc844a5c63f8bd9750f6f83a05c7b8440a2dfae971218e6660a929ae93a07b6b9a7eb9b6006e475604823d127",
+      "signature": "865b577da9e9b7269847705dcd7556abe3f3dcb7ddc844a5c63f8bd9750f6f835c7b8440a2dfae971218e6660a929ae93a07b6b9a7eb9b6006e475604823d1270136",
+      "responseFrames": [
+        "ur:eth-signature/1-2/lpadaocshtcyjtdwjlhnhddpoeadtpdagdaeaeaeaeaeaefzaelaaeaeaeaeaeaeadaohdfwlnhphgkiptwlrldsmkfljohlsnkphfpyvlwfuorlutdeykbddp",
+        "ur:eth-signature/2-2/lpaoaocshtcyjtdwjlhnhddpspfyonswfhlutakpbsjllshhkglrfzoeurplmsbgcsvaiybkmonywlftatrprhoswmndhnamvekphnfdcnttdiadengdvssgtk"
+      ]
+    },
+    {
+      "type": 2,
+      "chainId": 8453,
+      "signData": "02eb82210501843b9aca0084b2d05e0082c35094111111111111111111111111111111111111111101821234c0",
+      "signedHex": "02f86e82210501843b9aca0084b2d05e0082c35094111111111111111111111111111111111111111101821234c001a09363885824c989facbaf6594c0e358598b140a574c758953a967b149a96bf91ca077b0b38e2d1473bf4054e77f36bd3b706e0894416c1050b15a293dcf3fa5385f",
+      "signature": "9363885824c989facbaf6594c0e358598b140a574c758953a967b149a96bf91c77b0b38e2d1473bf4054e77f36bd3b706e0894416c1050b15a293dcf3fa5385f01",
+      "responseFrames": [
+        "ur:eth-signature/1-2/lpadaocshkcybgtazowphddpoeadtpdagdaeaeaeaeaeaefzaelaaeaeaeaeaeaeadaohdfpmuialohddksoldzssbpeihmwrtvlhdhklubbbkhggshdwdskmw",
+        "ur:eth-signature/2-2/lpaoaocshkcybgtazowphddpkpldguptiopagaptjeytcektpfqdmndpbbjkrsfzghvdlbenryfrjojtaymwfpjzbegdpahtdtfstkfhonetheadaedpnynblp"
+      ]
+    }
+  ],
+  "messages": [
+    {
+      "name": "personal-binary",
+      "signData": "00ff80c3",
+      "signature": "a2252060db3563237186662b60fb1878b1948ce1d7ce5769eac13e156e3e960b02652923157ab6c1b89950facb5239d6a59d3778c915cbebd16ebc6ecc1189bb01"
+    },
+    {
+      "name": "typed-v4-arrays",
+      "signData": "7b227479706573223a7b22454950373132446f6d61696e223a5b7b226e616d65223a226e616d65222c2274797065223a22737472696e67227d2c7b226e616d65223a22636861696e4964222c2274797065223a2275696e74323536227d5d2c22506572736f6e223a5b7b226e616d65223a2277616c6c6574222c2274797065223a2261646472657373227d2c7b226e616d65223a226e616d65222c2274797065223a22737472696e67227d5d2c224261746368223a5b7b226e616d65223a2270656f706c65222c2274797065223a22506572736f6e5b5d227d2c7b226e616d65223a22616d6f756e7473222c2274797065223a2275696e743235365b5d227d2c7b226e616d65223a22656d707479222c2274797065223a22627974657333325b5d227d5d7d2c227072696d61727954797065223a224261746368222c22646f6d61696e223a7b226e616d65223a225075626c69632066697874757265222c22636861696e4964223a317d2c226d657373616765223a7b2270656f706c65223a5b7b2277616c6c6574223a22307830323262393731644646304334333330356536393144456437613134333637414631394436343037222c226e616d65223a22416c696365227d2c7b2277616c6c6574223a22307831313131313131313131313131313131313131313131313131313131313131313131313131313131222c226e616d65223a22426f62227d5d2c22616d6f756e7473223a5b2231222c2232225d2c22656d707479223a5b5d7d7d",
+      "signature": "474b3c319e650cbdd16f77929feb145bcea1c2dd42f1dfd50716fd3ba7facc9c0f9a971d614f00ff153c2415ae9e2cdb9549fac6a2062cc17095b696dbb4e1021c"
+    }
+  ]
+}

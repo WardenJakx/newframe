@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
 import fs from 'node:fs'
 import path from 'node:path'
+import { tmpdir } from 'node:os'
 import { rm } from 'node:fs/promises'
 import { Mnemonic, randomBytes } from 'ethers'
 import log from 'electron-log'
@@ -8,7 +9,8 @@ import log from 'electron-log'
 import { electronMock } from '../../../../../../test/support/electron.mock.ts'
 import { callbackResult, exerciseHotSignerContract } from '../../callback.test-support.ts'
 
-const SIGNER_PATH = path.resolve(import.meta.dirname, '../.userData/signers')
+const USER_DATA = fs.mkdtempSync(path.join(tmpdir(), 'newframe-seed-test-'))
+const SIGNER_PATH = path.join(USER_DATA, 'signers')
 const removePath = (target: string) => rm(target, { recursive: true, force: true })
 const vaultKey = '12'.repeat(32)
 let unlocked = true
@@ -30,13 +32,12 @@ describe('Seed signer', () => {
 
   beforeAll(async () => {
     log.transports.console.level = false
-    electronMock.app.getPath.mockReturnValue(path.resolve(import.meta.dirname, '../.userData'))
-    await removePath(SIGNER_PATH)
+    electronMock.app.getPath.mockReturnValue(USER_DATA)
     hot = await import('..')
   })
 
   afterAll(async () => {
-    await removePath(SIGNER_PATH)
+    await removePath(USER_DATA)
     log.transports.console.level = 'debug'
   })
 

@@ -9,6 +9,7 @@ import type { HomeCapability } from '../homeCapability'
 
 function signerIcon(type: string): IconName {
   if ((type || '').toLowerCase() === 'address') return 'eye'
+  if (type === 'airgap') return 'qr'
   if (type === 'ledger' || type === 'trezor' || type === 'lattice') return 'device'
   return 'flame'
 }

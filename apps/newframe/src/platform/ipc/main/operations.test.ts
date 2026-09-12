@@ -1,3 +1,5 @@
+import { EventEmitter } from 'node:events'
+import type { SigningUiContext } from '../../signing/signers/Signer/index.js'
 import { beforeEach, describe, expect, it, mock } from 'bun:test'
 
 import { commandContracts, queryContracts } from '../../../app/contracts/operations'
@@ -121,10 +123,11 @@ const sideTrayContext = {
   webContentsId: 2,
   windowInstanceId: 'side-tray-test'
 }
-const owner = { clientType: 'wallet-ui', windowInstanceId: 'tray-test' }
+const owner = { clientType: 'wallet-ui', windowInstanceId: 'tray-test' } as const
 
 function createTestServices() {
   return {
+    airgap: fakes('pairStart', 'pairScan', 'pairCancel', 'request', 'scan', 'cancel', 'dispose'),
     accounts: { current: mock(), get: mock() },
     accountMutations,
     accountOnboarding,
@@ -537,5 +540,55 @@ it('keeps Safe simulation tray-only and forwards only the canonical proposal ide
   expect(await dispatcher.dispatchQuery(event, query)).toEqual({
     status: 'unavailable',
     error: 'Safe simulation unavailable.'
+  })
+})
+
+it('binds AirGap and approval contexts to the authorized sender lifecycle', async () => {
+  const services = createTestServices()
+  const received: SigningUiContext[] = []
+  services.airgap.pairStart = (_command, context) => {
+    received.push(context)
+    return true
+  }
+  services.requests.approve = (_id, context) => {
+    received.push(context!)
+    return true
+  }
+  const dispatcher = createOperationDispatcher(services)
+  const sender = Object.assign(new EventEmitter(), {
+    destroyed: false,
+    isDestroyed() {
+      return this.destroyed
+    }
+  })
+  const liveEvent = { sender } as unknown as Electron.IpcMainInvokeEvent
+  authorizeRenderer.mockReturnValue(trayContext)
+  const start = { type: 'signer.airgap-pair-start', operationId: '00000000-0000-4000-8000-000000000001' }
+  expect(
+    await dispatcher.dispatchCommand(liveEvent, {
+      ...start,
+      owner: { clientType: 'wallet-ui', windowInstanceId: 'forged' }
+    })
+  ).toMatchObject({ ok: false })
+  expect(await dispatcher.dispatchCommand(liveEvent, start)).toEqual({ ok: true })
+  expect(
+    await dispatcher.dispatchCommand(liveEvent, { type: 'request.approve', requestId: 'request' })
+  ).toEqual({ ok: true })
+  expect(received.map((context) => context.owner)).toEqual([owner, owner])
+  const disposed: string[] = []
+  const unsubscribe = received[1].subscribeOwnerDisposed(() => disposed.push('owner'))
+  expect(received[1].isOwnerActive()).toBe(true)
+  sender.destroyed = true
+  sender.emit('destroyed')
+  expect(received[1].isOwnerActive()).toBe(false)
+  expect(disposed).toEqual(['owner'])
+  unsubscribe()
+  received[0].subscribeOwnerDisposed(() => disposed.push('already-dead'))()
+  expect(disposed).toEqual(['owner', 'already-dead'])
+  expect(sender.listenerCount('destroyed')).toBe(0)
+  authorizeRenderer.mockReturnValue(sideTrayContext)
+  expect(await dispatcher.dispatchCommand(liveEvent, start)).toMatchObject({
+    ok: false,
+    error: 'unauthorized'
   })
 })

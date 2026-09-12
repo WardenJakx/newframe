@@ -21,6 +21,11 @@ export type AuthorizationContext = Pick<RendererRegistration, 'clientType' | 'en
 
 export interface RendererAuthorizationRegistry {
   authorizeRenderer(event: IpcMainInvokeEvent): AuthorizationContext | undefined
+  authorizeMedia(input: {
+    webContents: WebContents | null
+    requestingUrl: string | undefined
+    isMainFrame: boolean
+  }): AuthorizationContext | undefined
   registerRenderer(webContents: WebContents, clientType: RendererRole, entrypoint: RendererEntrypoint): void
   dispose(): void
 }
@@ -82,6 +87,20 @@ export function createRendererAuthorizationRegistry(
         clientType: registration.clientType,
         entrypoint: registration.entrypoint,
         webContentsId: event.sender.id,
+        windowInstanceId: registration.windowInstanceId
+      }
+    },
+    authorizeMedia({ webContents, requestingUrl, isMainFrame }) {
+      if (!webContents || !isMainFrame || !requestingUrl || webContents.isDestroyed()) return
+      const registration = renderers.get(webContents.id)
+      if (!registration || registration.webContents !== webContents) return
+      const frame = webContents.mainFrame
+      if (!frame || frame.parent !== null || frame.url !== requestingUrl) return
+      if (!isAllowedRendererUrl(registration.entrypoint, requestingUrl)) return
+      return {
+        clientType: registration.clientType,
+        entrypoint: registration.entrypoint,
+        webContentsId: webContents.id,
         windowInstanceId: registration.windowInstanceId
       }
     },

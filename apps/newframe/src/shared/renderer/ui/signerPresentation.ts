@@ -5,12 +5,13 @@ const LABELS: Record<string, string> = {
   seed: 'Hot Signer',
   address: 'Watch-only',
   ledger: 'Ledger',
+  airgap: 'AirGap',
   trezor: 'Trezor',
   lattice: 'Lattice'
 }
 
 export const signerIconName = (type = ''): IconName =>
-  (({ address: 'eye', ledger: 'ledger', trezor: 'trezor', lattice: 'lattice', safe: 'safe' })[
+  (({ address: 'eye', ledger: 'ledger', trezor: 'trezor', lattice: 'lattice', safe: 'safe', airgap: 'qr' })[
     type.toLowerCase()
   ] as IconName) || 'flame'
 

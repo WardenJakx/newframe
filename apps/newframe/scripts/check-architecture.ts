@@ -189,6 +189,7 @@ const applicationOwnedMainModule = (file: string) =>
   !/(?:accounts|asset-data|networks|portfolio|security|tokens)[\\/]main[\\/]production\.ts$/.test(file) &&
   !file.endsWith(path.join('asset-data', 'main', 'images', 'production.ts')) &&
   !file.endsWith(path.join('main', 'accountOnboarding', 'production.ts')) &&
+  file !== path.join(sourceRoot, 'features', 'accounts', 'main', 'airgap', 'production.ts') &&
   !singletonBoundaryExclusions.some((directory) => under(directory)(file))
 const broadProductionServiceRoots = [
   path.join(sourceRoot, 'platform', 'secrets'),

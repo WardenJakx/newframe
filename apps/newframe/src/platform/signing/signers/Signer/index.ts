@@ -8,7 +8,18 @@ import { TransactionData } from '../../../../features/transactions/domain/index.
 import { getSignerDisplayType } from '../../domain/index.js'
 import type { TypedMessage } from '../../../../features/requests/contract/requests.js'
 
+import type { OperationOwner } from '../../../operations/types.js'
+import type { AirGapPendingSummary } from '../../domain/airgap.js'
+
+export interface SigningUiContext {
+  owner: OperationOwner
+  isOwnerActive(): boolean
+  subscribeOwnerDisposed(onDispose: () => void): () => void
+}
+export type SignerRequestContext = SigningUiContext & { requestId: string }
+
 export interface SignerSummary {
+  airgapRequest?: AirGapPendingSummary
   id: string
   name: string
   model: string
@@ -88,15 +99,25 @@ export default class Signer extends EventEmitter {
     log.warn(`Signer: ${this.type} did not implement an update method`)
   }
 
-  signMessage(index: number, message: string, cb: Callback<string>) {
+  signMessage(index: number, message: string, cb: Callback<string>, _context?: SignerRequestContext) {
     log.warn(`Signer: ${this.type} did not implement a signMessage method`)
   }
 
-  signTransaction(index: number, rawTx: TransactionData, cb: Callback<string>) {
+  signTransaction(
+    index: number,
+    rawTx: TransactionData,
+    cb: Callback<string>,
+    _context?: SignerRequestContext
+  ) {
     log.warn(`Signer: ${this.type} did not implement a signTransaction method`)
   }
 
-  signTypedData(index: number, typedMessage: TypedMessage, cb: Callback<string>) {
+  signTypedData(
+    index: number,
+    typedMessage: TypedMessage,
+    cb: Callback<string>,
+    _context?: SignerRequestContext
+  ) {
     return cb(new Error(`Signer: ${this.type} does not support eth_signTypedData`), undefined)
   }
 }

@@ -104,6 +104,7 @@ const mainState: M = {
   autohide: false,
   menubarGasPrice: false,
   biometricUnlock: false,
+  airgap: {},
   lattice: {},
   latticeSettings: {
     accountLimit: 5,

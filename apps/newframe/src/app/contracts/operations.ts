@@ -1,3 +1,4 @@
+import { AirGapRequestReferenceSchema } from '../../platform/signing/domain/airgap.js'
 import { z } from 'zod'
 import { SafeProposalSimulationSchema } from '../../features/accounts/domain/safe.js'
 
@@ -1030,6 +1031,38 @@ const acknowledged = <TInput extends z.ZodType>(input: TInput) => ({
   result: CommandResultSchema
 })
 
+const AirGapPairStartCommandSchema = z.strictObject({
+  type: z.literal('signer.airgap-pair-start'),
+  operationId: z.uuid()
+})
+const AirGapPairScanCommandSchema = z.strictObject({
+  type: z.literal('signer.airgap-pair-scan'),
+  operationId: z.uuid(),
+  frame: z.string().min(1).max(4096)
+})
+const AirGapPairCancelCommandSchema = z.strictObject({
+  type: z.literal('signer.airgap-pair-cancel'),
+  operationId: z.uuid()
+})
+const AirGapScanCommandSchema = AirGapRequestReferenceSchema.extend({
+  type: z.literal('signer.airgap-scan'),
+  frame: z.string().min(1).max(4096)
+})
+const AirGapCancelCommandSchema = AirGapRequestReferenceSchema.extend({
+  type: z.literal('signer.airgap-cancel')
+})
+const AirGapRequestQuerySchema = AirGapRequestReferenceSchema.extend({
+  type: z.literal('signer.airgap-request')
+})
+const AirGapRequestResultSchema = z.discriminatedUnion('ok', [
+  z.strictObject({ ok: z.literal(true), frames: z.array(z.string().min(1).max(4096)).min(1).max(512) }),
+  z.strictObject({
+    ok: z.literal(false),
+    error: z.enum(['not_found', 'unavailable']),
+    message: z.string().max(500).optional()
+  })
+])
+
 export const commandContracts = defineOperationContracts({
   'account.agent-access-set': acknowledged(AccountAgentAccessSetCommandSchema),
   'account.agent-sessions-revoke': acknowledged(AccountAgentSessionsRevokeCommandSchema),
@@ -1084,6 +1117,11 @@ export const commandContracts = defineOperationContracts({
   'trade.release': acknowledged(TradeReleaseCommandSchema),
   'trade.submit': acknowledged(TradeSubmitCommandSchema),
   'settings.update': acknowledged(SettingsUpdateCommandSchema),
+  'signer.airgap-pair-start': acknowledged(AirGapPairStartCommandSchema),
+  'signer.airgap-pair-scan': acknowledged(AirGapPairScanCommandSchema),
+  'signer.airgap-pair-cancel': acknowledged(AirGapPairCancelCommandSchema),
+  'signer.airgap-scan': acknowledged(AirGapScanCommandSchema),
+  'signer.airgap-cancel': acknowledged(AirGapCancelCommandSchema),
   'signer.disconnect': acknowledged(SignerDisconnectCommandSchema),
   'signer.hardware-session-finish': acknowledged(SignerHardwareSessionFinishCommandSchema),
   'signer.hardware-session-start': acknowledged(SignerHardwareSessionStartCommandSchema),
@@ -1110,6 +1148,7 @@ export const commandContracts = defineOperationContracts({
 })
 
 export const queryContracts = defineOperationContracts({
+  'signer.airgap-request': { input: AirGapRequestQuerySchema, result: AirGapRequestResultSchema },
   'account.private-key-export': {
     input: AccountPrivateKeyExportQuerySchema,
     result: AccountPrivateKeyExportResultSchema

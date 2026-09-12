@@ -1,8 +1,10 @@
 import type { AccountsCapability } from './accountsCapability'
+import type { QrCameraCapability } from '../../../platform/desktop/renderer/camera'
 import { AddAccountController } from './AddAccountController'
 
 export interface AddAccountProps {
   capability: AccountsCapability
+  camera: QrCameraCapability
   initialSelectedSigner?: string
   initialType?: string
   onClose: () => void

@@ -30,6 +30,7 @@ const { HomeOverlayRouter } = await import('./HomeOverlayRouter')
 const fixture = registerTestRuntimeFixture()
 const requestCapabilities = createRequestPortsFake()
 const capabilities: HomeCapabilities = {
+  camera: createQrCameraFake().camera,
   accounts: accountsCapability,
   activity: activityCapability,
   connections: connectionsCapability,
@@ -164,3 +165,4 @@ describe('HomeOverlayRouter feature navigation', () => {
     expect(screen.getByLabelText('Overlay state').textContent).toBe('none')
   })
 })
+import { createQrCameraFake } from '../../../../platform/desktop/renderer/camera.test-support'

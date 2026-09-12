@@ -1,3 +1,4 @@
+import { AirGapPendingSummarySchema } from '../../signing/domain/airgap.js'
 import { z } from 'zod'
 
 import { AccountSchema } from '../../../features/accounts/domain/state/account.js'
@@ -332,6 +333,7 @@ const WalletSignerSchema = z
     type: z.string(),
     addresses: z.array(z.string()),
     status: z.string(),
+    airgapRequest: AirGapPendingSummarySchema.optional(),
     capabilities: z.array(z.string()).optional(),
     liveAddressesFound: z.number().optional(),
     tag: z.string().optional(),

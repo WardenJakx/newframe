@@ -283,3 +283,27 @@ only transient interaction state such as an open menu or selected section.
 
 - [Root project README](../../README.md) - overall Newframe overview and monorepo map.
 - [Newframe Browser Extension](../newframe-extension/README.md) - browser companion extension.
+
+### Use AirGap Vault
+
+Under **Accounts > Connect a hardware wallet > AirGap**, choose **Pair AirGap**.
+In AirGap Vault, export the Ethereum public account using the MetaMask-compatible
+choice. Newframe opens the camera automatically; scan that QR, then choose an address to add.
+Newframe remembers the paired signer. Return to AirGap to pair another or open a
+paired signer and choose **Remove**.
+
+Review a transaction or message in Newframe and select **Sign**. Scan Newframe's
+request QR with Vault, review and approve it manually on the phone, then select
+**Scan signed QR** in Newframe to open the camera and scan Vault's response. If the
+camera fails, Newframe returns to the request QR so you can try again. Keep animated QRs in view
+until scanning finishes. Cancel closes the exchange. Hiding Newframe pauses the
+camera. If camera access is denied, enable Newframe in your operating system's
+camera privacy settings and retry.
+
+Initial support covers Ethereum-compatible legacy and EIP-1559 type-2 transfers and
+contract calls, `personal_sign`, and EIP-712 V4 typed data. Access-list-only and newer
+transaction types, all contract deployment, non-EVM accounts, and custom derivation
+paths are excluded.
+AirGap always requires manual approval on the phone and cannot enable AI access or
+export private keys from Newframe. Compatibility with every Vault release, EVM chain,
+and typed-message payload is not guaranteed; physical phone/camera QA is still required.

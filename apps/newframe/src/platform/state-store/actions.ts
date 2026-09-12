@@ -1,3 +1,4 @@
+import { AirGapPublicAccountSchema, type AirGapPublicAccount } from '../signing/domain/airgap.js'
 import log from 'electron-log'
 import type { Draft } from 'immer'
 import { v5 as uuidv5 } from 'uuid'
@@ -722,6 +723,7 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
       set((draft) => {
         const signers = record(mutableMain(draft).signers)
         signers[signer.id] = { ...record(signers[signer.id] || {}), ...signer }
+        if (signer.type === 'airgap' && !signer.airgapRequest) delete signers[signer.id].airgapRequest
       })
     },
 
@@ -745,6 +747,17 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
       })
     },
 
+    addAirGap: (id: string, account: AirGapPublicAccount) => {
+      const validated = AirGapPublicAccountSchema.parse(account)
+      set((draft) => {
+        draft.main.airgap[id] = validated
+      })
+    },
+    removeAirGap: (id: string) => {
+      set((draft) => {
+        delete draft.main.airgap[id]
+      })
+    },
     updateLattice: (deviceId: string, update: any) => {
       if (!deviceId || !update) return
       set((draft) => {

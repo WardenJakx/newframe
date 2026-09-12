@@ -350,6 +350,7 @@ export function mergePersistedState(persistedValue: unknown, current: CanonicalS
   const main: UnknownRecord = {
     ...currentMain,
     ...saved,
+    airgap: saved.airgap || {},
     accounts: mergeRecord(currentMain.accounts, saved.accounts),
     appLock: currentMain.appLock,
     accountsMeta: mergeRecord(currentMain.accountsMeta, saved.accountsMeta),

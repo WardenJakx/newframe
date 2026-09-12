@@ -74,6 +74,16 @@ export function createAccountsCapabilityFake() {
     submitTrezorInput: acknowledged<Parameters<AccountsCapability['submitTrezorInput']>[0]>(),
     createLatticeSigner: acknowledged<Parameters<AccountsCapability['createLatticeSigner']>[0]>(),
     pairLattice: acknowledged<Parameters<AccountsCapability['pairLattice']>[0]>(),
+    airgapPairStart: acknowledged<Parameters<AccountsCapability['airgapPairStart']>[0]>(),
+    airgapPairScan: acknowledged<Parameters<AccountsCapability['airgapPairScan']>[0]>(),
+    airgapPairCancel: acknowledged<Parameters<AccountsCapability['airgapPairCancel']>[0]>(),
+    airgapRequest: mock(
+      async (
+        _input: Parameters<AccountsCapability['airgapRequest']>[0]
+      ): Promise<CapabilityResult<AccountsCapability['airgapRequest']>> => ({ ok: false, error: 'not_found' })
+    ),
+    airgapScan: acknowledged<Parameters<AccountsCapability['airgapScan']>[0]>(),
+    airgapCancel: acknowledged<Parameters<AccountsCapability['airgapCancel']>[0]>(),
     writeClipboard: acknowledged<Parameters<AccountsCapability['writeClipboard']>[0]>(),
     writeText: mock<AccountsCapability['writeText']>(async () => ({ ok: true }))
   } satisfies AccountsCapability

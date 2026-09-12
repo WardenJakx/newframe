@@ -5,10 +5,11 @@ interface Frame {
   route?: string
 }
 
-type SignerType = 'ring' | 'seed' | 'address' | 'trezor' | 'ledger' | 'lattice'
+type SignerType = 'ring' | 'seed' | 'address' | 'trezor' | 'ledger' | 'lattice' | 'airgap'
 type AccountStatus = 'ok'
 
 interface Signer {
+  airgapRequest?: import('../../platform/signing/domain/airgap.js').AirGapPendingSummary
   id: string
   name: string
   model: string

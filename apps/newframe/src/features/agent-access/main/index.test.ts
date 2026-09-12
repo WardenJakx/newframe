@@ -181,15 +181,15 @@ it('characterizes agent prompt timeout, disconnect, approval idempotency, and di
   }
 })
 
-it('rejects Safe AI enablement and session readiness despite a hot signer', async () => {
+it.each(['safe', 'airgap'] as const)('rejects %s AI enablement and session readiness', async (kind) => {
   const account = {
     id: accountId,
     address: accountId,
     agentEnabled: false,
-    lastSignerType: 'seed',
-    safe: {},
+    lastSignerType: kind === 'safe' ? 'seed' : 'airgap',
+    safe: kind === 'safe' ? {} : undefined,
     patch: (update: { agentEnabled?: boolean }) => Object.assign(account, update),
-    getSigner: () => ({ type: 'seed', status: 'ok' })
+    getSigner: () => ({ type: kind === 'safe' ? 'seed' : 'airgap', status: 'ok' })
   }
   const accounts = { current: () => account, get: () => account, getFrameAccount: () => account }
   const service = createAgentService(

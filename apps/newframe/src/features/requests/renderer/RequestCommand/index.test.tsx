@@ -1,7 +1,16 @@
 import { beforeEach, expect, it, mock } from 'bun:test'
 
-import { fireEvent, render, screen } from '../../../../../test/support/componentSetup'
-import { RequestCommand, approveRequest, declineRequest, runWhenAppUnlocked } from './index'
+import { act, fireEvent, render, screen } from '../../../../../test/support/componentSetup'
+import RequestCommandContainer, {
+  RequestCommand,
+  approveRequest,
+  declineRequest,
+  runWhenAppUnlocked,
+  type RequestCommandNotifier
+} from './index'
+import { registerTestRuntimeFixture } from '../../../../../test/support/rendererClient'
+import { walletState } from '../../../../platform/state-sync/renderer/fixtures.test-support'
+import { RequestViewProvider } from '../requestView'
 import TxApproval from './TxApproval'
 import {
   createRequestRendererCapabilitiesFake as createRequestPortsFake,
@@ -9,6 +18,7 @@ import {
 } from '../requestCapabilities.test-support'
 
 let capabilities: RequestRendererCapabilitiesFake
+const fixture = registerTestRuntimeFixture()
 
 beforeEach(() => {
   capabilities = createRequestPortsFake()
@@ -159,4 +169,78 @@ it('uses typed request commands for required approvals', () => {
   expect(capabilities.review.reject).toHaveBeenCalledWith({
     requestId: req.handlerId
   })
+})
+
+it('keeps the connected transaction review mounted when an AirGap session appears and progresses', () => {
+  const accountId = `0x${'1'.repeat(40)}`
+  const reference = { signerId: 'airgap-1', requestId: 'request-1', sessionId: 'session-1' }
+  const req = {
+    handlerId: reference.requestId,
+    account: accountId,
+    type: 'transaction',
+    data: { chainId: '0x7a69', gasLimit: '0x5208', gasPrice: '0x1' }
+  }
+  const state = walletState({
+    currentAccount: accountId,
+    accounts: {
+      [accountId]: {
+        id: accountId,
+        address: accountId,
+        profileId: 'default-profile',
+        name: 'AirGap',
+        lastSignerType: 'airgap',
+        created: '1',
+        status: 'ok',
+        signer: reference.signerId,
+        requests: {}
+      }
+    },
+    signers: {
+      [reference.signerId]: {
+        id: reference.signerId,
+        type: 'airgap',
+        model: 'AirGap',
+        name: 'AirGap',
+        status: 'ok',
+        appVersion: { major: 1, minor: 0, patch: 0 },
+        addresses: [accountId]
+      }
+    }
+  })
+  fixture.state.reset(state)
+  const notifications: Parameters<RequestCommandNotifier>[0][] = []
+  const notify: RequestCommandNotifier = (notification) => notifications.push(notification)
+  const view = render(
+    <RequestViewProvider>
+      <RequestCommandContainer capabilities={capabilities} notify={notify} req={req} />
+    </RequestViewProvider>
+  )
+  fireEvent.click(screen.getByRole('button', { name: 'Sign' }))
+  expect(capabilities.review.approve).toHaveBeenCalledWith({ requestId: req.handlerId })
+  expect(notifications).toEqual([])
+  const pending = { ...req, status: 'pending', notice: 'See signer' }
+  view.rerender(
+    <RequestViewProvider>
+      <RequestCommandContainer capabilities={capabilities} notify={notify} req={pending} />
+    </RequestViewProvider>
+  )
+  const projected = structuredClone(state)
+  projected.signers[reference.signerId].airgapRequest = {
+    requestId: 'unrelated',
+    sessionId: reference.sessionId,
+    progress: 0
+  }
+  act(() => fixture.state.reset(projected))
+  expect(notifications).toEqual([])
+  projected.signers[reference.signerId].airgapRequest!.requestId = reference.requestId
+  act(() => fixture.state.reset(structuredClone(projected)))
+  expect(screen.getByRole('button', { name: 'Cancel request' })).toBeTruthy()
+  expect(notifications).toEqual([{ type: 'airgapSigning', data: reference }])
+  const progressed = structuredClone(projected)
+  progressed.signers[reference.signerId].airgapRequest!.progress = 0.5
+  act(() => fixture.state.reset(progressed))
+  expect(screen.getByRole('button', { name: 'Cancel request' })).toBeTruthy()
+  expect(notifications).toEqual([{ type: 'airgapSigning', data: reference }])
+  act(() => fixture.state.reset(state))
+  expect(screen.getByRole('button', { name: 'Cancel request' })).toBeTruthy()
 })
