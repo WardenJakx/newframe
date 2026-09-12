@@ -1,7 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test'
 
-import log from 'electron-log'
 import { fromUtf8 } from '@ethereumjs/util'
+import log from 'electron-log'
+
 import * as helpersModule from './helpers'
 
 // real functions under test, exercised with partial fixtures

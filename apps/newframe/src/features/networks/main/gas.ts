@@ -1,7 +1,7 @@
 import { intToHex } from '@ethereumjs/util'
-import { chainUsesOptimismFees } from '../domain/chain/fees.js'
 
 import type { GasFees } from '../../../platform/state-store/state/index.js'
+import { chainUsesOptimismFees } from '../domain/chain/fees.js'
 
 interface GasCalculator {
   calculateGas: (blocks: Block[]) => GasFees
@@ -73,15 +73,14 @@ function calculateReward(blocks: Block[], opts: CalcOpts = {}) {
         .map((block) => block.rewards[Math.min(percentileBand, block.rewards.length - 1)])
         .reduce((sum, reward) => sum + reward, 0) / eligibleRewardsBlocks.length
     )
-  } else {
-    // use the median reward from the block sample or use the fee from the last block as a last resort
-    const lastBlockFee = blocks[blocks.length - 1].rewards[0]
-    return (
-      eligibleRewardsBlocks
-        .map((block) => block.rewards[Math.min(percentileBand, block.rewards.length - 1)])
-        .sort()[Math.floor(eligibleRewardsBlocks.length / 2)] || lastBlockFee
-    )
   }
+  // use the median reward from the block sample or use the fee from the last block as a last resort
+  const lastBlockFee = blocks[blocks.length - 1].rewards[0]
+  return (
+    eligibleRewardsBlocks
+      .map((block) => block.rewards[Math.min(percentileBand, block.rewards.length - 1)])
+      .sort()[Math.floor(eligibleRewardsBlocks.length / 2)] || lastBlockFee
+  )
 }
 
 function estimateGasFees(blocks: Block[], opts: CalcOpts = {}) {

@@ -1,10 +1,12 @@
 import { createHash } from 'node:crypto'
-import { HDKey } from '@scure/bip32'
+
+import { RLP } from '@ethereumjs/rlp'
+import type { TypedTransaction } from '@ethereumjs/tx'
 import { CryptoHDKey, CryptoKeypath, PathComponent } from '@keystonehq/bc-ur-registry'
 import { DataType, EthSignRequest, ETHSignature } from '@keystonehq/bc-ur-registry-eth'
 import { URDecoder, UREncoder } from '@ngraveio/bc-ur'
-import { RLP } from '@ethereumjs/rlp'
-import type { TypedTransaction } from '@ethereumjs/tx'
+import { HDKey } from '@scure/bip32'
+
 import { AirGapPublicAccountSchema, type AirGapPublicAccount } from '../../domain/airgap.js'
 import { deriveHDAccounts } from '../Signer/derive.js'
 

@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'bun:test'
+
 import { v5 as uuidv5 } from 'uuid'
 
-import { createRpcPrincipal } from '../../access-control/main/authority'
-import { createOriginsService, type FrameExtension, type OriginsServiceDependencies } from './origins'
-
-import type { AccessRequest } from '../../requests/contract/requests'
 import type { Permission } from '../../../platform/state-store/state'
+import { createRpcPrincipal } from '../../access-control/main/authority'
+import type { AccessRequest } from '../../requests/contract/requests'
+import { createOriginsService, type FrameExtension, type OriginsServiceDependencies } from './origins'
 
 const address = '0xDAFEA492D9c6733ae3d56b7Ed1ADB60692c98Bc5'
 const principal = createRpcPrincipal({

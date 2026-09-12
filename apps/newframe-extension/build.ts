@@ -1,7 +1,8 @@
-import type { BunPlugin } from 'bun'
 import { Buffer } from 'node:buffer'
 import { mkdirSync, rmSync, watch } from 'node:fs'
 import path from 'node:path'
+
+import type { BunPlugin } from 'bun'
 
 import { sourceChanges } from '../../scripts/source-changes.ts'
 

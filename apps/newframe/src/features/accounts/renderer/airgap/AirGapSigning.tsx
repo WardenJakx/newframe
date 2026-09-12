@@ -1,14 +1,15 @@
-import { useEffect, useRef, useState } from 'react'
 import { Button } from '@newframe/ui/button'
 import { Stack } from '@newframe/ui/stack'
 import { Text } from '@newframe/ui/text'
+import { useEffect, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import type { AirGapRequestReference } from '../../../../platform/signing/domain/airgap'
+
 import type { QrCameraCapability } from '../../../../platform/desktop/renderer/camera'
+import type { AirGapRequestReference } from '../../../../platform/signing/domain/airgap'
 import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector'
 import type { AccountsCapability } from '../accountsCapability'
-import { QrScanner } from './QrScanner'
 import { QrCodeSequence } from './QrCodeSequence'
+import { QrScanner } from './QrScanner'
 
 export function AirGapSigning({
   capability,

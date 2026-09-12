@@ -1,9 +1,10 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, jest as timers, mock } from 'bun:test'
 
-import log from 'electron-log'
 import { SignTypedDataVersion } from '@metamask/eth-sig-util'
-import { Derivation } from '../Signer/derive'
+import log from 'electron-log'
+
 import { callbackResult } from '../callback.test-support.ts'
+import { Derivation } from '../Signer/derive'
 
 const ClientMock = mock()
 const gridplusConstantsMock = {
@@ -14,7 +15,7 @@ const gridplusConstantsMock = {
   }
 }
 
-mock.module('gridplus-sdk', () => ({
+await mock.module('gridplus-sdk', () => ({
   Client: ClientMock,
   Constants: gridplusConstantsMock,
   Utils: { fetchCalldataDecoder: mock() }

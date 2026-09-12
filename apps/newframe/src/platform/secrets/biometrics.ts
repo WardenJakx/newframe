@@ -1,6 +1,7 @@
-import path from 'path'
-import fs from 'fs'
 import crypto from 'crypto'
+import fs from 'fs'
+import path from 'path'
+
 import { app, safeStorage, systemPreferences } from 'electron'
 
 const USER_DATA = app ? app.getPath('userData') : path.resolve(import.meta.dirname, '../../../.userData')

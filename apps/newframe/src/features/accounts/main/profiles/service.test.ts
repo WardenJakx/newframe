@@ -1,7 +1,7 @@
 import { describe, expect, it, mock } from 'bun:test'
 
-import { DEFAULT_PROFILE_ID } from '../../../../app/contracts/state/main'
 import { createTestStore } from '../../../../../test/support/createTestStore'
+import { DEFAULT_PROFILE_ID } from '../../../../app/contracts/state/main'
 import { createOperationService } from '../../../../platform/operations/service'
 import type { OperationOwner } from '../../../../platform/operations/types'
 import { createProfileService } from './service'

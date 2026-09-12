@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 
 import { intToHex } from '@ethereumjs/util'
+
 import { createGasCalculator as createGasCalculatorTyped } from './gas'
 
 // real function under test, exercised with partial fee history fixtures

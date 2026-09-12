@@ -2,10 +2,10 @@ import { Text } from '@newframe/ui/text'
 
 import { TrayOverlay } from '../../../shared/renderer/ui/TrayOverlay'
 import Requests from './Account/Requests'
+import type { RequestRendererCapabilities } from './requestCapabilities'
+import { SafeProposalDetailsView } from './SafeProposalDetailsView'
 import { useSafeQueue } from './SafeQueue'
 import { SafeQueueView } from './SafeQueueView'
-import { SafeProposalDetailsView } from './SafeProposalDetailsView'
-import type { RequestRendererCapabilities } from './requestCapabilities'
 
 export function RequestsOverlayView({
   accountId,

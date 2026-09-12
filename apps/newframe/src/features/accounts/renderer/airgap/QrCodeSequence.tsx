@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
-import QRCode from 'qrcode'
-import { resolveSystemColor } from '@newframe/ui/tokens/colors'
-import { Text } from '@newframe/ui/text'
 import { Stack } from '@newframe/ui/stack'
+import { Text } from '@newframe/ui/text'
+import { resolveSystemColor } from '@newframe/ui/tokens/colors'
+import QRCode from 'qrcode'
+import { useEffect, useRef, useState } from 'react'
+
 import { cva } from '../../../../../generated/styled-system/css/cva.js'
 
 const canvasRecipe = cva({

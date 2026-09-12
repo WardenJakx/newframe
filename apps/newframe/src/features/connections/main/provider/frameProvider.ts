@@ -57,7 +57,8 @@ abstract class EventedRequestProvider extends EventEmitter implements Eip1193Pro
 
     this.on('newListener', (event) => {
       if (this.connected && this.shouldStartSubscription(event)) {
-        this.startProviderSubscription(event as string)
+        // Subscription failures are handled by startProviderSubscription.
+        void this.startProviderSubscription(event as string)
       }
     })
   }
@@ -203,7 +204,8 @@ abstract class EventedRequestProvider extends EventEmitter implements Eip1193Pro
   private resumeProviderSubscriptions() {
     providerEvents.forEach((event) => {
       if (this.listenerCount(event) > 0 && !this.attemptedSubscriptions.has(event)) {
-        this.startProviderSubscription(event)
+        // Subscription failures are handled by startProviderSubscription.
+        void this.startProviderSubscription(event)
       }
     })
   }

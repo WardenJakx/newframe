@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it } from 'bun:test'
 
+import { registerTestRuntimeFixture } from '../../../../test/support/rendererClient'
+import { STATE_STREAM_SCHEMA_VERSION, type StateMessage } from '../contract/protocol'
 import { connectRendererState as connectState } from './connectState'
 import { sideTrayState } from './fixtures.test-support.ts'
-import { STATE_STREAM_SCHEMA_VERSION, type StateMessage } from '../contract/protocol'
-import { registerTestRuntimeFixture } from '../../../../test/support/rendererClient'
 
 const fixture = registerTestRuntimeFixture()
 

@@ -1,13 +1,12 @@
-import { useEffect } from 'react'
-import hotkeys from 'hotkeys-js'
-
 import { Spinner } from '@newframe/ui/spinner'
 import { Stack } from '@newframe/ui/stack'
 import { Text } from '@newframe/ui/text'
+import hotkeys from 'hotkeys-js'
+import { useEffect } from 'react'
 
+import type { Platform } from '../../../shared/domain/keyboard'
 import type { Shortcut } from '../domain/state/shortcuts'
 import { getShortcutFromKeyEvent, getDisplayShortcut, isShortcutKey } from './keyboard'
-import type { Platform } from '../../../shared/domain/keyboard'
 
 interface KeyboardShortcutConfiguratorProps {
   actionText?: string

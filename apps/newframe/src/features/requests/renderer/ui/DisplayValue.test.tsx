@@ -1,9 +1,9 @@
 import { expect, it } from 'bun:test'
 
 import { render, screen } from '../../../../../test/support/componentSetup'
-import { DisplayValue } from './DisplayValue'
-import { displayValueData } from '../format/displayValue'
 import { MAX_HEX } from '../../../transactions/domain/constants'
+import { displayValueData } from '../format/displayValue'
+import { DisplayValue } from './DisplayValue'
 
 it('should render the expected content when provided with valueData', () => {
   const valueData = displayValueData(356e28)

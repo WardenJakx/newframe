@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react'
 
+import { cva } from '../../../../../generated/styled-system/css/cva.js'
 import { SidePanelBody } from './SidePanelBody.js'
 import { SidePanelFooter } from './SidePanelFooter.js'
 import { SidePanelHeader } from './SidePanelHeader.js'
-import { cva } from '../../../../../generated/styled-system/css/cva.js'
 
 const sidePanelRecipe = cva({
   base: { position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column' }

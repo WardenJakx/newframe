@@ -1,8 +1,8 @@
 import { TrayOverlay } from '../../../../shared/renderer/ui/TrayOverlay'
-import TransactionInformation from '../../../requests/renderer/Account/Requests/TransactionRequest/TransactionInformation'
-import { activityBalanceChanges, transactionStatusLabel } from './activityModel'
 import { persistedImageSource } from '../../../asset-data/domain/image'
+import TransactionInformation from '../../../requests/renderer/Account/Requests/TransactionRequest/TransactionInformation'
 import type { ActivityCapability } from './activityCapability'
+import { activityBalanceChanges, transactionStatusLabel } from './activityModel'
 import type { ActivityDetailNetworkMetadata, ActivityNetworkMap, ActivityRecord } from './activityTypes'
 
 const shortAddress = (address: string | null | undefined = '') =>

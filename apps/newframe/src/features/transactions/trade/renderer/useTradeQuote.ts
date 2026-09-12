@@ -1,8 +1,8 @@
 import React from 'react'
 
-import { buildTradeQuoteRequest, marketTradeQuoteRequestKey, tradeErrorMessage } from './tradeTransaction'
 import type { TradeWorkflowAction } from './tradeReducer'
 import type { TradeCapability } from './tradeService'
+import { buildTradeQuoteRequest, marketTradeQuoteRequestKey, tradeErrorMessage } from './tradeTransaction'
 
 const MARKET_QUOTE_DEBOUNCE_MS = 250
 const MARKET_QUOTE_REFRESH_MS = 15_000

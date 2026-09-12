@@ -1,9 +1,11 @@
-import electron, { BrowserWindow } from 'electron'
 import path from 'path'
 
-import { createWindow } from '../window.js'
-import { constrainTraySize, sideTrayPosition } from '../trayGeometry.js'
+import electron, { BrowserWindow } from 'electron'
+import log from 'electron-log'
+
 import type { RendererAuthorizationRegistry } from '../../../ipc/main/authorization.js'
+import { constrainTraySize, sideTrayPosition } from '../trayGeometry.js'
+import { createWindow } from '../window.js'
 
 const isDev = process.env.NODE_ENV === 'development'
 
@@ -38,7 +40,7 @@ const frameUrl = (frame: Frame) => {
 const load = (sideTray: SideTray, frame: Frame) => {
   sideTray.contentRoute = frame.route || ''
   placeSideTray(sideTray)
-  sideTray.loadURL(frameUrl(frame))
+  sideTray.loadURL(frameUrl(frame)).catch((error) => log.error('Could not load side tray', error))
 }
 
 const show = (sideTray: SideTray) => {

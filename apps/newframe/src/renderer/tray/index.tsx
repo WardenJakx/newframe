@@ -1,13 +1,12 @@
-import { createRoot } from 'react-dom/client'
 import { UIRoot } from '@newframe/ui/root'
+import { createRoot } from 'react-dom/client'
 
 import App from '../../app/renderer/tray/App'
-
+import type { TrayRendererState } from '../../app/renderer/tray/state'
 import link from '../../platform/ipc/renderer/link'
 import { connectRendererState } from '../../platform/state-sync/renderer/connectState'
 import { createRendererStateStore } from '../../platform/state-sync/renderer/rendererStore'
 import { RendererStateProvider } from '../../platform/state-sync/renderer/useAppSelector'
-import type { TrayRendererState } from '../../app/renderer/tray/state'
 
 import '../../../generated/styled-system/styles.css'
 

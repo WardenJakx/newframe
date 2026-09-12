@@ -16,11 +16,11 @@ const signersMock = { get: mock() }
 const windowsMock = { showTray: mock() }
 const navMock = { forward: mock(), back: mock() }
 
-mock.module('../../transactions/main/reveal', () => ({ ...revealMock }))
-mock.module('../../../platform/chain-rpc/contracts', () => ({ fetchContract: fetchContractMock }))
-mock.module('../../../platform/signing/signers', () => ({ default: signersMock }))
-mock.module('../../../platform/desktop/windows', () => ({ default: windowsMock }))
-mock.module('../../name-resolution/main/nameResolution', () => ({
+await mock.module('../../transactions/main/reveal', () => ({ ...revealMock }))
+await mock.module('../../../platform/chain-rpc/contracts', () => ({ fetchContract: fetchContractMock }))
+await mock.module('../../../platform/signing/signers', () => ({ default: signersMock }))
+await mock.module('../../../platform/desktop/windows', () => ({ default: windowsMock }))
+await mock.module('../../name-resolution/main/nameResolution', () => ({
   __esModule: true,
   default: {
     off: mock(),

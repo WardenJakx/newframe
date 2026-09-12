@@ -1,28 +1,29 @@
-import type { ReactNode } from 'react'
-import { useShallow } from 'zustand/react/shallow'
 import { Button } from '@newframe/ui/button'
 import { Dialog } from '@newframe/ui/dialog'
 import { Stack } from '@newframe/ui/stack'
 import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
 import { ToggleButton } from '@newframe/ui/toggle-button'
+import type { ReactNode } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 
-import { capitalize } from '../../../../shared/domain/text'
-import ExtensionConnectNotification from '../../../../features/connections/renderer/ExtensionConnect'
-import { connectionsCapability } from '../../capabilities/homeFeatures'
-import SignerRecovery from '../../../../features/accounts/renderer/onboarding/SignerRecovery'
 import type { AccountsCapability } from '../../../../features/accounts/renderer/accountsCapability'
-import type { QrCameraCapability } from '../../../../platform/desktop/renderer/camera'
 import { AirGapSigning } from '../../../../features/accounts/renderer/airgap/AirGapSigning'
-import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector'
-import type { TrayRendererState } from '../state'
-import { useTrayNotification, type TrayNotifier } from '../notification'
+import SignerRecovery from '../../../../features/accounts/renderer/onboarding/SignerRecovery'
+import ExtensionConnectNotification from '../../../../features/connections/renderer/ExtensionConnect'
 import type { TransactionRequest } from '../../../../features/requests/contract/requests'
 import type {
   RequestExternalCapability,
   RequestReviewCapability
 } from '../../../../features/requests/renderer/requestCapabilities'
+import type { QrCameraCapability } from '../../../../platform/desktop/renderer/camera'
+import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector'
+import { capitalize } from '../../../../shared/domain/text'
+import { connectionsCapability } from '../../capabilities/homeFeatures'
 import type { HomeCapability } from '../Home/homeCapability'
+import { useTrayNotification, type TrayNotifier } from '../notification'
+import type { TrayRendererState } from '../state'
+
 const isNotificationData = (value: unknown): value is Record<string, unknown> =>
   !!value && typeof value === 'object' && !Array.isArray(value)
 

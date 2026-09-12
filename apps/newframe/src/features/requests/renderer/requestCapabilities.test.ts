@@ -1,12 +1,12 @@
 import { expect, it, mock } from 'bun:test'
 
-import type { NewframeHost } from '../../../platform/ipc/contract/ipc'
 import type {
   CommandResult,
   QueryMap,
   QueryResultMap,
   ResultForQuery
 } from '../../../app/contracts/operations'
+import type { NewframeHost } from '../../../platform/ipc/contract/ipc'
 import { createRequestRendererCapabilities as createRequestPorts } from './requestCapabilities'
 
 it('maps each request surface to its exact host command and preserves failures', async () => {

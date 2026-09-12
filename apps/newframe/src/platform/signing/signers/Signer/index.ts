@@ -1,15 +1,15 @@
-import log from 'electron-log'
 import EventEmitter from 'events'
+
 import { addHexPrefix } from '@ethereumjs/util'
+import log from 'electron-log'
 
-import { deriveHDAccounts } from './derive.js'
-import crypt from '../../crypt.js'
-import { TransactionData } from '../../../../features/transactions/domain/index.js'
-import { getSignerDisplayType } from '../../domain/index.js'
 import type { TypedMessage } from '../../../../features/requests/contract/requests.js'
-
+import { TransactionData } from '../../../../features/transactions/domain/index.js'
 import type { OperationOwner } from '../../../operations/types.js'
+import crypt from '../../crypt.js'
 import type { AirGapPendingSummary } from '../../domain/airgap.js'
+import { getSignerDisplayType } from '../../domain/index.js'
+import { deriveHDAccounts } from './derive.js'
 
 export interface SigningUiContext {
   owner: OperationOwner

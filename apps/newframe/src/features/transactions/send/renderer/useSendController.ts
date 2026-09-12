@@ -1,15 +1,15 @@
 import React from 'react'
 
 import { resolveSendAssetFromRouteAssetId, toCanonicalAssetId } from '../../../../app/contracts/sidetray'
+import { createSideTrayWalletSelector } from '../../../../platform/state-sync/renderer/selectors/sideTrayWallet'
+import { useSideTraySelector } from '../../../../platform/state-sync/renderer/useAppSelector'
+import { formatUnits, toBigInt } from '../../../../shared/domain/units'
+import { getTokenSelectorPage } from '../../../../shared/renderer/ui/tokenSelectorModel'
 import {
   createBalanceTokenSelectorItem,
   createDisplayBalance,
   formatUsdRate
 } from '../../../asset-data/domain/balance'
-import { formatUnits, toBigInt } from '../../../../shared/domain/units'
-import { createSideTrayWalletSelector } from '../../../../platform/state-sync/renderer/selectors/sideTrayWallet'
-import { useSideTraySelector } from '../../../../platform/state-sync/renderer/useAppSelector'
-import { getTokenSelectorPage } from '../../../../shared/renderer/ui/tokenSelectorModel'
 import { hasSentToAddress } from './sendHistory'
 import { filterSendRecipients, projectSendSubmission, selectSendAsset } from './sendModel'
 import { createInitialSendState, sendReducer } from './sendReducer'

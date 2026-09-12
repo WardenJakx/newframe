@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'bun:test'
 
-import { createSideTrayWalletSelector } from './sideTrayWallet'
 import { NATIVE_CURRENCY } from '../../../../features/tokens/domain/constants'
 import type { SideTrayRendererState } from '../../contract/projections'
+import { createSideTrayWalletSelector } from './sideTrayWallet'
 
 const emptyCatalog = () => ({ byId: {}, accountTokenIds: {} })
 const globalCatalog = (token: any, source: 'custom' | 'bundled' = 'custom') => ({

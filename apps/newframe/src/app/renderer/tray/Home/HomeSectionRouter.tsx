@@ -1,12 +1,12 @@
-import { useHomeUiStore } from './state/HomeUiProvider'
+import { cva } from '../../../../../generated/styled-system/css/cva.js'
+import type { PortfolioCapability } from '../../../../features/portfolio/renderer/portfolioCapability'
 import { Positions } from '../../../../features/portfolio/renderer/Positions'
 import { Activity } from '../../../../features/transactions/renderer/activity/Activity'
-import { Orders } from '../../../../features/transactions/trade/renderer/orders/Orders'
-import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector'
-import { cva } from '../../../../../generated/styled-system/css/cva.js'
 import type { ActivityCapability } from '../../../../features/transactions/renderer/activity/activityCapability'
+import { Orders } from '../../../../features/transactions/trade/renderer/orders/Orders'
 import type { OrdersCapability } from '../../../../features/transactions/trade/renderer/orders/ordersCapability'
-import type { PortfolioCapability } from '../../../../features/portfolio/renderer/portfolioCapability'
+import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector'
+import { useHomeUiStore } from './state/HomeUiProvider'
 
 const mainRecipe = cva({
   base: {

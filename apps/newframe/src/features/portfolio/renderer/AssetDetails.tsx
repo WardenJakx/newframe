@@ -1,8 +1,8 @@
 import type { DisplayedBalance } from '../../asset-data/domain/balance'
-import { useAccountBalances } from './useAccountBalances'
 import { AssetDetailsView } from './AssetDetailsView'
-import { usePortfolioActions } from './usePortfolioActions'
 import type { PortfolioCapability } from './portfolioCapability'
+import { useAccountBalances } from './useAccountBalances'
+import { usePortfolioActions } from './usePortfolioActions'
 
 export function AssetDetails({
   asset,

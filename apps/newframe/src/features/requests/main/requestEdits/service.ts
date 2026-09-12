@@ -1,9 +1,9 @@
-import type { AccountRequest, PermitSignatureRequest, TransactionRequest } from '../../contract/requests.js'
 import type { RequestTokenApprovalUpdateCommand } from '../../../../app/contracts/operations.js'
-import { usesBaseFee } from '../../../transactions/domain/index.js'
+import type { CanonicalStore } from '../../../../platform/state-store/actions.js'
 import { toBigInt } from '../../../../shared/domain/units.js'
 import type { Accounts } from '../../../accounts/main/index.js'
-import type { CanonicalStore } from '../../../../platform/state-store/actions.js'
+import { usesBaseFee } from '../../../transactions/domain/index.js'
+import type { AccountRequest, PermitSignatureRequest, TransactionRequest } from '../../contract/requests.js'
 
 type RequestEditState = Pick<CanonicalStore, 'main' | 'setGasDefault'>
 

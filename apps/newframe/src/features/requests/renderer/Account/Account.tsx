@@ -1,31 +1,30 @@
+import { ScrollArea } from '@newframe/ui/scroll-area'
+import { Stack } from '@newframe/ui/stack'
 import type { ReactNode } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 
-import { ScrollArea } from '@newframe/ui/scroll-area'
-import { Stack } from '@newframe/ui/stack'
 import { cva } from '../../../../../generated/styled-system/css/cva.js'
+import type { WalletRendererState } from '../../../../platform/state-sync/contract/projections'
+import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector'
 import { SidePanelHeader } from '../../../../shared/renderer/ui/SidePanel/SidePanelHeader'
-
-import Requests from './Requests'
-import ProviderRequest from './Requests/ProviderRequest'
-import TransactionRequest from './Requests/TransactionRequest'
-import SignatureRequest from './Requests/SignatureRequest'
-import ChainRequest from './Requests/ChainRequest'
-import AddTokenRequest from './Requests/AddTokenRequest'
-import SignTypedDataRequest from './Requests/SignTypedDataRequest'
-import SignPermitRequest from './Requests/SignPermitRequest'
-import AgentAccessRequest from './Requests/AgentAccessRequest'
 import { persistedImageSource } from '../../../asset-data/domain/image'
 import { accountViewTitles } from '../../domain'
-import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector'
-import type { WalletRendererState } from '../../../../platform/state-sync/contract/projections'
-import { useRequestView } from '../requestView'
 import type { RequestRendererCapabilities } from '../requestCapabilities'
+import { useRequestView } from '../requestView'
+import Requests from './Requests'
+import AddTokenRequest from './Requests/AddTokenRequest'
+import AgentAccessRequest from './Requests/AgentAccessRequest'
+import ChainRequest from './Requests/ChainRequest'
+import ProviderRequest from './Requests/ProviderRequest'
 import type {
   RenderableRequestView,
   TransactionDataView,
   TransactionRequestView
 } from './Requests/requestViewTypes'
+import SignatureRequest from './Requests/SignatureRequest'
+import SignPermitRequest from './Requests/SignPermitRequest'
+import SignTypedDataRequest from './Requests/SignTypedDataRequest'
+import TransactionRequest from './Requests/TransactionRequest'
 
 type ProjectedRequest = WalletRendererState['accounts'][string]['requests'][string]
 

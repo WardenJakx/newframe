@@ -1,10 +1,10 @@
 import React from 'react'
 
-import { parseSideTrayHashRoute } from '../../contracts/sidetray'
 import Send from '../../../features/transactions/send/renderer'
-import Trade from '../../../features/transactions/trade/renderer'
 import type { SendCapability } from '../../../features/transactions/send/renderer/sendService'
+import Trade from '../../../features/transactions/trade/renderer'
 import type { TradeCapability } from '../../../features/transactions/trade/renderer/tradeService'
+import { parseSideTrayHashRoute } from '../../contracts/sidetray'
 
 function useHashRoute() {
   const [hash, setHash] = React.useState(() => window.location.hash)

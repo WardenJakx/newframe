@@ -1,5 +1,3 @@
-import type { DragEvent, ReactNode, RefObject } from 'react'
-
 import { Button } from '@newframe/ui/button'
 import { Heading } from '@newframe/ui/heading'
 import { Icon } from '@newframe/ui/icon'
@@ -12,6 +10,7 @@ import { Spinner } from '@newframe/ui/spinner'
 import { Stack } from '@newframe/ui/stack'
 import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
+import type { DragEvent, ReactNode, RefObject } from 'react'
 
 import { cva } from '../../../../generated/styled-system/css/cva.js'
 import { HeaderBar } from '../../../shared/renderer/ui/HeaderBar'

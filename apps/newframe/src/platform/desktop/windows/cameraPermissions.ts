@@ -1,4 +1,5 @@
 import type { Session } from 'electron'
+
 import type { RendererAuthorizationRegistry } from '../../ipc/main/authorization.js'
 
 type PermissionSession = Pick<Session, 'setPermissionCheckHandler' | 'setPermissionRequestHandler'>

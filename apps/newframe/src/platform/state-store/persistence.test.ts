@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'bun:test'
 
-import { builtInChainIconUrl } from '../../features/networks/domain/chain'
+import { createTestStore } from '../../../test/support/createTestStore'
 import { DEFAULT_PROFILE_ID, DEFAULT_PROFILE_NAME } from '../../app/contracts/state/main'
+import { builtInChainIconUrl } from '../../features/networks/domain/chain'
 import {
   CanonicalStatePersistenceError,
   createPersistenceAdapter,
@@ -11,14 +12,13 @@ import {
 } from '../persistence'
 import type { CanonicalStore } from './actions'
 import createCanonicalStore from './createCanonicalStore'
-import { mergePersistedState, migratePersistedState, selectPersistedState } from './persistence'
 import {
   CANONICAL_STATE_STORAGE_NAME,
   PERSISTENCE_VERSION,
   type PersistedCanonicalState
 } from './persist/schema'
+import { mergePersistedState, migratePersistedState, selectPersistedState } from './persistence'
 import createInitialState from './state'
-import { createTestStore } from '../../../test/support/createTestStore'
 
 class MemoryPersistence implements PersistenceStoragePort {
   readonly values: Map<string, unknown>

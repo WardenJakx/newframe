@@ -1,5 +1,5 @@
-import { dirname, join, relative, resolve } from 'path'
 import { copyFile, mkdir, readdir, readFile, rm, stat, writeFile } from 'fs/promises'
+import { dirname, join, relative, resolve } from 'path'
 
 type Renderer = {
   entrypoint: string

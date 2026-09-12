@@ -1,8 +1,8 @@
 import { expect, it } from 'bun:test'
 
 import { electronMock } from '../../../../test/support/electron.mock.ts'
-import { Chains } from './index'
 import store from '../../../platform/state-store'
+import { Chains } from './index'
 
 it('owns power and store listeners through an idempotent lifecycle', () => {
   const chains = new Chains(store)

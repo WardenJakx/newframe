@@ -2,8 +2,6 @@ import React from 'react'
 
 import type { FlashQuoteDisplay } from '../../../../app/contracts/operations'
 import type { OperationCollection, OperationRecord } from '../../../../platform/operations/operation'
-import type { TradeCapability } from './tradeService'
-import { tradeErrorMessage } from './tradeTransaction'
 import {
   initialTradeExecutionState,
   tradeExecutionBlocksQuotes,
@@ -11,6 +9,8 @@ import {
   tradeExecutionReducer,
   type TradeExecutionSession
 } from './tradeExecutionMachine'
+import type { TradeCapability } from './tradeService'
+import { tradeErrorMessage } from './tradeTransaction'
 
 export function useTradeExecution({
   capability,

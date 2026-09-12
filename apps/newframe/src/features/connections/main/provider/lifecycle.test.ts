@@ -1,11 +1,11 @@
-import EventEmitter from 'events'
 import { expect, it, mock } from 'bun:test'
+import EventEmitter from 'events'
 
-import type { Chains } from '../../../networks/main'
-import { Provider } from './index'
-import type { AccountRequestPort } from './accountRequestPort'
-import { createProviderStatePort } from './statePort'
 import createCanonicalStore from '../../../../platform/state-store/createCanonicalStore'
+import type { Chains } from '../../../networks/main'
+import type { AccountRequestPort } from './accountRequestPort'
+import { Provider } from './index'
+import { createProviderStatePort } from './statePort'
 
 const memoryStorage = {
   getItem: () => null,

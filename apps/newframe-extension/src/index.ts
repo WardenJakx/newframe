@@ -117,11 +117,11 @@ function setOriginStatus(origin: string, siteConnected: boolean, currentAddress 
 }
 
 function setIcon(path: string) {
-  chrome.action.setIcon({ path })
+  chrome.action.setIcon({ path }).catch(console.error)
 }
 
 function setPopup(popup: string) {
-  chrome.action.setPopup({ popup })
+  chrome.action.setPopup({ popup }).catch(console.error)
 }
 
 async function fetchAvailableChains() {
@@ -211,7 +211,7 @@ async function sendEventToTab(tabId: number, event: string, args?: any) {
 async function sendEvent(event: string, args: any[] = [], selector: chrome.tabs.QueryInfo = {}) {
   const tabs = await chrome.tabs.query(selector)
 
-  tabs.filter((tab) => !!tab.url).forEach((tab) => sendEventToTab(tab.id!, event, args))
+  await Promise.all(tabs.filter((tab) => !!tab.url).map((tab) => sendEventToTab(tab.id!, event, args)))
 }
 
 function initProvider() {
@@ -229,15 +229,15 @@ function initProvider() {
     setConnectionStatus('desktop-unavailable')
   })
 
-  provider.on('connect', async () => {
+  provider.on('connect', () => {
     console.log('Connected to Newframe')
 
     setConnectionStatus('connected')
-    fetchAvailableChains()
-    refreshActiveOriginStatus()
+    fetchAvailableChains().catch(console.error)
+    refreshActiveOriginStatus().catch(console.error)
 
     setIcon('icons/icon96good.png')
-    sendEvent('connect')
+    sendEvent('connect').catch(console.error)
   })
 
   provider.on('disconnect', () => {
@@ -245,7 +245,7 @@ function initProvider() {
     setOriginStatus(frameStateStore.getState().activeOrigin, false, '')
 
     setIcon('icons/icon96moon.png')
-    sendEvent('close')
+    sendEvent('close').catch(console.error)
   })
 
   provider.on('unresponsive', () => dappConnection?.reconnect())
@@ -257,17 +257,22 @@ function initProvider() {
   })
 
   provider.on('accountsChanged', () => {
-    refreshActiveOriginStatus()
+    refreshActiveOriginStatus().catch(console.error)
   })
 
-  dappConnection.on('payload', async (payload: any) => {
+  async function handleDappPayload(payload: any) {
     if (typeof payload.id !== 'undefined') {
       if (pending[payload.id]) {
         const { tabId, payloadId } = pending[payload.id]!
         if (pending[payload.id]!.method === 'eth_subscribe' && payload.result) {
           subs[payload.result] = {
             tabId,
-            send: (subload) => chrome.tabs.sendMessage(tabId, subload).catch(() => {}),
+            send: (subload) => {
+              chrome.tabs.sendMessage(tabId, subload).catch((error) => {
+                if ((error as Error)?.message?.includes('Receiving end does not exist')) return
+                console.error('Error sending subscription payload', error)
+              })
+            },
             type: subType(pending[payload.id]!)
           }
         } else if (pending[payload.id]!.method === 'eth_unsubscribe') {
@@ -303,6 +308,10 @@ function initProvider() {
         if (chainId) setCurrentChain(chainId)
       }
     }
+  }
+
+  dappConnection.on('payload', (payload) => {
+    handleDappPayload(payload).catch(console.error)
   })
 }
 
@@ -321,7 +330,10 @@ function addStateListeners() {
     ;(window as any).__setMediaBlob__(blobUrl, location, message)
   }
 
-  chrome.runtime.onMessage.addListener(async (extensionPayload, sender) => {
+  async function handleMessage(
+    extensionPayload: Parameters<Parameters<typeof chrome.runtime.onMessage.addListener>[0]>[0],
+    sender: chrome.runtime.MessageSender
+  ) {
     const { tab, ...payload } = extensionPayload
     const { method, params } = payload
 
@@ -338,17 +350,21 @@ function addStateListeners() {
         const blob = await res.blob()
         const blobURL = URL.createObjectURL(blob)
 
-        chrome.scripting.executeScript({
-          target: { tabId: sender.tab!.id! },
-          func: setMediaBlob,
-          args: [blobURL, location]
-        })
+        chrome.scripting
+          .executeScript({
+            target: { tabId: sender.tab!.id! },
+            func: setMediaBlob,
+            args: [blobURL, location]
+          })
+          .catch(console.error)
       } catch (e) {
-        chrome.scripting.executeScript({
-          target: { tabId: sender.tab!.id! },
-          func: setMediaBlob,
-          args: ['', location, (e as Error).message]
-        })
+        chrome.scripting
+          .executeScript({
+            target: { tabId: sender.tab!.id! },
+            func: setMediaBlob,
+            args: ['', location, (e as Error).message]
+          })
+          .catch(console.error)
       }
     }
 
@@ -396,6 +412,10 @@ function addStateListeners() {
     }
 
     dappConnection!.send(load)
+  }
+
+  chrome.runtime.onMessage.addListener((extensionPayload, sender) => {
+    handleMessage(extensionPayload, sender).catch(console.error)
   })
 
   chrome.runtime.onConnect.addListener((port) => {
@@ -409,7 +429,7 @@ function addStateListeners() {
     settingsPanel = port
     port.onDisconnect.addListener(onPortDisconnected)
     updateSettingsPanel()
-    refreshActiveOriginStatus()
+    refreshActiveOriginStatus().catch(console.error)
   })
 
   chrome.idle.onStateChanged.addListener((state) => {
@@ -427,7 +447,7 @@ async function addTabListeners() {
 
   if (activeTab?.id) {
     activeTabId = activeTab.id
-    refreshActiveOriginStatus(activeTab)
+    refreshActiveOriginStatus(activeTab).catch(console.error)
   }
 
   // Create an object to store the last known origin for each tab
@@ -446,12 +466,14 @@ async function addTabListeners() {
         tabOrigins[tabId] = origin
         unsubscribeTab(tabId)
         if (tabId === activeTabId)
-          refreshActiveOriginStatus({ id: tabId, url: changeInfo.url } as chrome.tabs.Tab)
+          refreshActiveOriginStatus({ id: tabId, url: changeInfo.url } as chrome.tabs.Tab).catch(
+            console.error
+          )
       }
     }
   })
 
-  chrome.tabs.onActivated.addListener(async ({ tabId }) => {
+  async function handleActivatedTab(tabId: number) {
     activeTabId = tabId
 
     const tab = await chrome.tabs.get(tabId)
@@ -461,7 +483,11 @@ async function addTabListeners() {
         .sendMessage(tabId, { type: 'embedded:action', action: { type: 'getChainId' } })
         .catch(() => {})
     }
-    refreshActiveOriginStatus(tab)
+    await refreshActiveOriginStatus(tab)
+  }
+
+  chrome.tabs.onActivated.addListener(({ tabId }) => {
+    handleActivatedTab(tabId).catch(console.error)
   })
 }
 
@@ -477,7 +503,7 @@ async function setupClientStatusAlarm() {
   chrome.alarms.onAlarm.addListener((alarm) => {
     if (alarm.name === CLIENT_STATUS_ALARM_KEY) {
       dappConnection?.ensureConnected()
-      provider?.checkHealth()
+      provider?.checkHealth().catch(console.error)
     }
   })
 }
@@ -486,7 +512,7 @@ async function setupClientStatusAlarm() {
 // silently breaking the page <-> background relay). Re-inject into existing tabs so
 // users don't have to refresh every tab after a reload. inject.js guards against
 // duplicating the page-world provider via a DOM marker.
-chrome.runtime.onInstalled.addListener(async () => {
+async function injectExistingTabs() {
   const tabs = await chrome.tabs.query({ url: ['http://*/*', 'https://*/*', 'file://*/*'] })
   for (const tab of tabs) {
     if (!tab.id) continue
@@ -499,12 +525,16 @@ chrome.runtime.onInstalled.addListener(async () => {
       // tabs that block injection (web store, restricted pages) — ignore
     }
   }
+}
+
+chrome.runtime.onInstalled.addListener(() => {
+  injectExistingTabs().catch(console.error)
 })
 
 setIcon('icons/icon96moon.png')
 setPopup('settings.html')
 
 addStateListeners()
-addTabListeners()
-setupClientStatusAlarm()
+addTabListeners().catch(console.error)
+setupClientStatusAlarm().catch(console.error)
 initProvider()

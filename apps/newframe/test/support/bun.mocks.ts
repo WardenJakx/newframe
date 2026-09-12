@@ -1,7 +1,8 @@
 import { mock } from 'bun:test'
-import { createStore } from 'zustand/vanilla'
+
 import { subscribeWithSelector } from 'zustand/middleware'
 import { immer } from 'zustand/middleware/immer'
+import { createStore } from 'zustand/vanilla'
 
 import { createCanonicalActions } from '../../src/platform/state-store/actions'
 

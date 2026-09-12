@@ -1,10 +1,10 @@
 // The side tray hosts internal tools. `main.frames` describes the content it loads;
 // it does not own the Electron lifecycle.
 import { shallow } from 'zustand/vanilla/shallow'
-import type canonicalStore from '../../../state-store/index.js'
 
-import sideTrayHost, { SideTray } from './window.js'
 import type { RendererAuthorizationRegistry } from '../../../ipc/main/authorization.js'
+import type canonicalStore from '../../../state-store/index.js'
+import sideTrayHost, { SideTray } from './window.js'
 
 export default class SideTrayManager {
   private sideTrays: Record<string, SideTray> = {}

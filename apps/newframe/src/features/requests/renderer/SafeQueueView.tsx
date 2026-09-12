@@ -1,13 +1,14 @@
-import type { ReactNode } from 'react'
-import { formatUnits } from 'ethers'
 import { Button } from '@newframe/ui/button'
 import { Icon } from '@newframe/ui/icon'
 import { Stack } from '@newframe/ui/stack'
 import { Text } from '@newframe/ui/text'
-import { RequestCard } from './ui/RequestCard'
-import { RequestList } from './ui/RequestList'
+import { formatUnits } from 'ethers'
+import type { ReactNode } from 'react'
+
 import { shortAddress } from '../../../shared/renderer/ui/AddressIdentity'
 import type { SafeDeployment } from '../../accounts/domain/safe'
+import { RequestCard } from './ui/RequestCard'
+import { RequestList } from './ui/RequestList'
 
 export function SafeQueueView({
   deployments,

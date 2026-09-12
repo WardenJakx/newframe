@@ -3,16 +3,16 @@ import { afterEach, beforeEach, describe, expect, it, jest as timers } from 'bun
 import { act } from '@testing-library/react'
 
 import { fireEvent, render, screen, waitFor } from '../../../../../test/support/componentSetup'
-import Trade from './index'
 import { registerTestRuntimeFixture } from '../../../../../test/support/rendererClient'
+import type { CommandResult, FlashQuoteDisplay } from '../../../../app/contracts/operations'
+import { FLASH_USDC_ASSET, FLASH_WETH_ASSET } from '../domain/assets'
 import {
   FLASH_ANVIL_CHAIN_ID,
   FLASH_MARKET_ORDER_TYPE,
   FLASH_USDC_ADDRESS,
   FLASH_WETH_ADDRESS
 } from '../domain/constants'
-import { FLASH_USDC_ASSET, FLASH_WETH_ASSET } from '../domain/assets'
-import type { CommandResult, FlashQuoteDisplay } from '../../../../app/contracts/operations'
+import Trade from './index'
 import { createTradeCapabilityFake, type TradeCapabilityFake } from './tradeService.test-support'
 
 const fixture = registerTestRuntimeFixture()

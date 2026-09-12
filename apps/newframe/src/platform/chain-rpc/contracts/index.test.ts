@@ -2,8 +2,8 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, jest as timers, m
 
 import log from 'electron-log'
 
-mock.module('./sources/sourcify', () => ({ fetchSourcifyContract: mock() }))
-mock.module('./sources/etherscan', () => ({ fetchEtherscanContract: mock() }))
+await mock.module('./sources/sourcify', () => ({ fetchSourcifyContract: mock() }))
+await mock.module('./sources/etherscan', () => ({ fetchEtherscanContract: mock() }))
 
 let fetchContract: typeof import('./index').fetchContract
 let decodeCallData: typeof import('./index').decodeCallData

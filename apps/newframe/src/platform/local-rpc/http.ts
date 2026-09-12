@@ -1,17 +1,18 @@
 import type { IncomingMessage, RequestListener, ServerResponse } from 'http'
 import { randomUUID } from 'node:crypto'
-import log from 'electron-log'
-import { isHexString } from '@ethereumjs/util'
 
+import { isHexString } from '@ethereumjs/util'
+import log from 'electron-log'
+
+import { createRpcPrincipal, type TrustedPrincipal } from '../../features/access-control/main/authority.js'
+import { isAgentHttpRequest } from '../../features/agent-access/main/index.js'
 import {
   parseOrigin,
   parseRequestChainId,
   type OriginsService
 } from '../../features/connections/main/origins.js'
-import validPayload from './validPayload.js'
 import protectedMethods from './protectedMethods.js'
-import { createRpcPrincipal, type TrustedPrincipal } from '../../features/access-control/main/authority.js'
-import { isAgentHttpRequest } from '../../features/agent-access/main/index.js'
+import validPayload from './validPayload.js'
 
 interface PendingRequest {
   send: () => void
@@ -154,19 +155,18 @@ export function createHttpRpcTransport({
     }
 
     const body: Buffer[] = []
-    req
-      .on('data', (chunk) => body.push(Buffer.from(chunk)))
-      .on('end', async () => {
-        res.on('error', (error) => log.error('HTTP response error', error))
-        const data = Buffer.concat(body).toString()
-        const rawPayload = validPayload<HTTPPollingPayload>(data)
-        if (!rawPayload) {
-          log.warn('Invalid HTTP RPC payload')
-          res.writeHead(400, { 'Content-Type': 'application/json' })
-          res.end(JSON.stringify({ error: 'Invalid Payload' }))
-          return
-        }
+    const processRequest = async () => {
+      res.on('error', (error) => log.error('HTTP response error', error))
+      const data = Buffer.concat(body).toString()
+      const rawPayload = validPayload<HTTPPollingPayload>(data)
+      if (!rawPayload) {
+        log.warn('Invalid HTTP RPC payload')
+        res.writeHead(400, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ error: 'Invalid Payload' }))
+        return
+      }
 
+      try {
         if (logTraffic) {
           log.info(
             `req -> | http | ${req.headers.origin} | ${rawPayload.method} | -> | ${JSON.stringify(
@@ -247,9 +247,10 @@ export function createHttpRpcTransport({
           return
         }
 
-        provider.send(
+        await provider.send(
           payload,
           (response) => {
+            if (res.writableEnded) return
             if (response?.result) {
               if (payload.method === 'eth_subscribe') {
                 pollSubs[String(response.result)] = {
@@ -271,6 +272,24 @@ export function createHttpRpcTransport({
           },
           principal
         )
+      } catch (error) {
+        log.error('HTTP RPC request failed', error)
+        if (res.writableEnded) return
+        if (!res.headersSent) res.writeHead(500, { 'Content-Type': 'application/json' })
+        res.end(
+          JSON.stringify({
+            id: rawPayload.id,
+            jsonrpc: rawPayload.jsonrpc,
+            error: { code: -32603, message: 'Internal error' }
+          })
+        )
+      }
+    }
+    req
+      .on('data', (chunk) => body.push(Buffer.from(chunk)))
+      .on('end', () => {
+        // Request failures are converted to HTTP responses inside processRequest.
+        void processRequest()
       })
       .on('error', (error) => log.error('HTTP request error', error))
   }

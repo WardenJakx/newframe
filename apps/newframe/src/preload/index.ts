@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
+
 import { ExecuteCommandChannel, ExecuteQueryChannel, type NewframeHost } from '../platform/ipc/contract/ipc'
 import {
   StateConnectChannel,

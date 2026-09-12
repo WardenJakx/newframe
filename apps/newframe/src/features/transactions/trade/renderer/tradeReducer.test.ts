@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'bun:test'
 
-import { createInitialTradeState, getTradeInputAmount, tradeReducer } from './tradeReducer'
+import type { FlashQuoteDisplay } from '../../../../app/contracts/operations'
+import { NATIVE_CURRENCY } from '../../../tokens/domain/constants'
+import { FLASH_NATIVE_ETH_ASSET, FLASH_USDC_ASSET, FLASH_WETH_ASSET } from '../domain/assets'
 import {
   FLASH_LIMIT_ORDER_TYPE,
   FLASH_MARKET_ORDER_TYPE,
@@ -8,10 +10,8 @@ import {
   FLASH_STOP_ORDER_TYPE,
   FLASH_TAKE_PROFIT_ORDER_TYPE
 } from '../domain/constants'
-import { FLASH_NATIVE_ETH_ASSET, FLASH_USDC_ASSET, FLASH_WETH_ASSET } from '../domain/assets'
 import { type FlashAsset } from '../domain/schemas'
-import type { FlashQuoteDisplay } from '../../../../app/contracts/operations'
-import { NATIVE_CURRENCY } from '../../../tokens/domain/constants'
+import { createInitialTradeState, getTradeInputAmount, tradeReducer } from './tradeReducer'
 
 function marketQuote(id = 'quote-1'): FlashQuoteDisplay {
   return {

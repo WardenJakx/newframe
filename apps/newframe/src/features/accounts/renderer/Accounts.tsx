@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 
-import { createBalanceSummarySelector } from '../../asset-data/domain/balance'
-import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector'
-import type { AccountsCapability } from './accountsCapability'
 import type { QrCameraCapability } from '../../../platform/desktop/renderer/camera'
+import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector'
+import { createBalanceSummarySelector } from '../../asset-data/domain/balance'
+import type { AccountsCapability } from './accountsCapability'
 import { buildAccountListModel } from './accountsModel'
 import { AccountsView } from './AccountsView'
 import { AddAccount } from './AddAccount'

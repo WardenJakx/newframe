@@ -1,25 +1,25 @@
-import { ChainIcon } from '../../../shared/renderer/ui/ChainIcon'
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 
 import type { CommandResult, QueryResultMap } from '../../../app/contracts/operations'
+import type { QrCameraCapability } from '../../../platform/desktop/renderer/camera'
+import type { WalletRendererState } from '../../../platform/state-sync/contract/projections'
+import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector'
+import { ChainIcon } from '../../../shared/renderer/ui/ChainIcon'
 import { signerIsLoading, signerTypeLabel } from '../../../shared/renderer/ui/signerPresentation'
 import { createBalanceSummarySelector, formatUsdRate } from '../../asset-data/domain/balance'
-import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector'
-import type { WalletRendererState } from '../../../platform/state-sync/contract/projections'
-import { hardwarePageModel, onboardingStatusText } from './addAccountModel'
 import type { AccountsCapability } from './accountsCapability'
-import type { QrCameraCapability } from '../../../platform/desktop/renderer/camera'
-import { AirGapPairing } from './airgap/AirGapPairing'
-import { useHardwareSessionController } from './useHardwareSession'
-import { addAccountReducer, createAddAccountState } from './addAccountReducer'
 import type { AccountProjection, SignerProjection } from './accountsModel'
+import { hardwarePageModel, onboardingStatusText } from './addAccountModel'
+import { addAccountReducer, createAddAccountState } from './addAccountReducer'
 import {
   AddAccountView,
   type AddAccountAddressRowModel,
   type AddAccountFlowModel,
   type AddAccountOption
 } from './AddAccountView'
+import { AirGapPairing } from './airgap/AirGapPairing'
+import { useHardwareSessionController } from './useHardwareSession'
 
 const addOptions: Record<'root' | 'import' | 'hardware', AddAccountOption[]> = {
   root: [

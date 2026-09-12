@@ -1,5 +1,5 @@
-import type store from '../../../platform/state-store/index.js'
 import { createBlockExplorerOpener, openExternal } from '../../../platform/desktop/windows/window.js'
+import type store from '../../../platform/state-store/index.js'
 import type { PlatformServicePorts } from './service.js'
 
 export type ProductionPlatformExternalAdapters = Pick<

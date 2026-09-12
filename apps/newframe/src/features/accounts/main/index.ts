@@ -1,28 +1,21 @@
-import type { SignerRequestContext } from '../../../platform/signing/signers/Signer/index.js'
 import EventEmitter from 'events'
-import log from 'electron-log'
+
 import { addHexPrefix, intToHex } from '@ethereumjs/util'
+import log from 'electron-log'
 import { v5 as uuidv5 } from 'uuid'
 
-import FrameAccount from './Account.js'
-import type { DataScanner } from '../../asset-data/main/externalData/index.js'
-import type { CanonicalStoreReader } from '../../../platform/state-store/actions.js'
+import { getProfileAccountIds } from '../../../app/contracts/state/main.js'
+import type { SignerRequestContext } from '../../../platform/signing/signers/Signer/index.js'
 import Signer from '../../../platform/signing/signers/Signer/index.js'
-
+import type { CanonicalStoreReader } from '../../../platform/state-store/actions.js'
+import type { ActivityRecord, StatusNotification, Token } from '../../../platform/state-store/state/index.js'
 import { weiIntToEthInt, hexToInt } from '../../../shared/domain/hex.js'
-import {
-  usesBaseFee,
-  TransactionData,
-  GasFeesSource,
-  TRANSACTION_CONFIRMATION_TARGET,
-  getTransactionIntent,
-  getTransactionPositionTokens,
-  getTransactionEffects,
-  getPaidTransactionFee,
-  type TransactionEffect
-} from '../../transactions/domain/index.js'
 import { decideWalletAction, type TrustedPrincipal } from '../../access-control/main/authority.js'
-
+import { resolveAssetRate } from '../../asset-data/domain/asset/index.js'
+import type { DataScanner } from '../../asset-data/main/externalData/index.js'
+import type { NameResolutionService } from '../../name-resolution/main/nameResolution.js'
+import { chainUsesOptimismFees } from '../../networks/domain/chain/fees.js'
+import type { Chain } from '../../networks/main/index.js'
 import {
   AccountRequest,
   AccessRequest,
@@ -34,24 +27,29 @@ import {
   TypedMessage,
   PermitSignatureRequest
 } from '../../requests/contract/requests.js'
-
-import type { Chain } from '../../networks/main/index.js'
-import { ActionType } from '../../transactions/main/actions/index.js'
 import { ApprovalType } from '../../requests/domain/approval.js'
-import { accountNS } from '../domain/index.js'
-import { tokensForAccount, toTokenId } from '../../tokens/domain/index.js'
-import { chainUsesOptimismFees } from '../../networks/domain/chain/fees.js'
-import { resolveAssetRate } from '../../asset-data/domain/asset/index.js'
-import { getProfileAccountIds } from '../../../app/contracts/state/main.js'
-import { NATIVE_CURRENCY } from '../../tokens/domain/constants.js'
-import type { ActivityRecord, StatusNotification, Token } from '../../../platform/state-store/state/index.js'
-import type { AccountChainRpcPort } from './providerPort.js'
-import type { AccountTransactionPolicyPort } from '../../transactions/main/accountPolicyPort.js'
-import type { TransactionSimulationPort } from '../../transactions/main/simulationPort.js'
-import type { NameResolutionService } from '../../name-resolution/main/nameResolution.js'
-import type { RevealService } from '../../transactions/main/reveal.js'
-import type { AccountsRuntime } from './runtime.js'
 import type { PromptedRequestLifecyclePort } from '../../requests/main/service.js'
+import { NATIVE_CURRENCY } from '../../tokens/domain/constants.js'
+import { tokensForAccount, toTokenId } from '../../tokens/domain/index.js'
+import {
+  usesBaseFee,
+  TransactionData,
+  GasFeesSource,
+  TRANSACTION_CONFIRMATION_TARGET,
+  getTransactionIntent,
+  getTransactionPositionTokens,
+  getTransactionEffects,
+  getPaidTransactionFee,
+  type TransactionEffect
+} from '../../transactions/domain/index.js'
+import type { AccountTransactionPolicyPort } from '../../transactions/main/accountPolicyPort.js'
+import { ActionType } from '../../transactions/main/actions/index.js'
+import type { RevealService } from '../../transactions/main/reveal.js'
+import type { TransactionSimulationPort } from '../../transactions/main/simulationPort.js'
+import { accountNS } from '../domain/index.js'
+import FrameAccount from './Account.js'
+import type { AccountChainRpcPort } from './providerPort.js'
+import type { AccountsRuntime } from './runtime.js'
 
 function shortHash(hash?: string) {
   if (!hash) return ''
@@ -732,7 +730,7 @@ export class Accounts extends EventEmitter {
   private toActivityRequest(activity: ActivityRecord): TransactionRequest {
     const chainId = this.activityChainId(activity)
     const data = {
-      ...((activity.data as any) || {}),
+      ...(activity.data as any),
       chainId: (activity.data as any)?.chainId || (chainId ? addHexPrefix(chainId.toString(16)) : undefined),
       nonce: (activity.data as any)?.nonce || activity.nonce
     }
@@ -930,7 +928,10 @@ export class Accounts extends EventEmitter {
       }
     }
 
-    const timer = setInterval(monitor, 15 * 1000)
+    const timer = setInterval(() => {
+      // monitor catches failures and owns its in-flight guard.
+      void monitor()
+    }, 15 * 1000)
     this.activityMonitors[activity.id] = {
       accountId,
       token,
@@ -1434,12 +1435,15 @@ export class Accounts extends EventEmitter {
                   () => this.has(account.address) && this.removeRequest(account, requestId),
                   60 * 1000
                 )
-                return
               }
             }
 
-            this.dependencies.runtime.schedule(() => monitor(), 1000)
-            const monitorTimer = setInterval(monitor, 1000)
+            const runMonitor = () => {
+              // monitor handles confirmation errors and schedules request cleanup.
+              void monitor()
+            }
+            this.dependencies.runtime.schedule(runMonitor, 1000)
+            const monitorTimer = setInterval(runMonitor, 1000)
 
             const statusHandler = (status: string) => {
               if (!isChainAvailable(status)) {
@@ -1461,7 +1465,7 @@ export class Accounts extends EventEmitter {
             const headSub = newHeadRes.result
             let stopped = false
 
-            const removeSubscription = async (requestRemoveTimeout: number) => {
+            const removeSubscription = (requestRemoveTimeout: number) => {
               this.dependencies.runtime.schedule(
                 () => this.has(account.address) && this.removeRequest(account, requestId),
                 requestRemoveTimeout
@@ -1476,7 +1480,7 @@ export class Accounts extends EventEmitter {
               }
             }
 
-            const handler = async (payload: RPCRequestPayload) => {
+            const handleHead = async (payload: RPCRequestPayload) => {
               if (!isCurrentMonitor()) return
               if (payload.method === 'eth_subscription' && (payload.params as any).subscription === headSub) {
                 // const newHead = payload.params.result
@@ -1518,6 +1522,15 @@ export class Accounts extends EventEmitter {
 
             const { type, id } = targetChain
 
+            const handler = (payload: RPCRequestPayload) => {
+              handleHead(payload).catch((error) => {
+                log.error('Could not monitor transaction subscription', error)
+                if (isCurrentMonitor()) {
+                  setTxSent()
+                  removeSubscription(60 * 1000)
+                }
+              })
+            }
             this.dependencies.chainRpc.on(`status:${type}:${id}`, statusHandler)
             this.dependencies.chainRpc.on(`data:${type}:${id}`, handler)
             installStop(() => {
@@ -1598,7 +1611,7 @@ export class Accounts extends EventEmitter {
       })
 
       if (chainId === 1) {
-        l2Transactions.forEach(async ([id, req]) => {
+        const updateL1GasCost = async ([id, req]: (typeof l2Transactions)[number]) => {
           let estimate = ''
           try {
             estimate = addHexPrefix((await this.dependencies.chainRpc.getL1GasCost(req.data)).toString(16))
@@ -1612,6 +1625,9 @@ export class Accounts extends EventEmitter {
               optimism: { l1Fees: estimate }
             }
           })
+        }
+        l2Transactions.forEach((transaction) => {
+          updateL1GasCost(transaction).catch((error) => log.error('Could not update L1 gas cost', error))
         })
       }
     }
@@ -1931,7 +1947,9 @@ export class Accounts extends EventEmitter {
       this.recordSubmittedTransaction(requestAccount, handlerId, txRequest, hash)
       this.store.getState().navClearReq(handlerId, false)
       this.openNextActionableRequest(requestAccount)
-      this.txMonitor(requestAccount, handlerId, hash)
+      this.txMonitor(requestAccount, handlerId, hash).catch((error) =>
+        log.error('Could not start transaction monitor', error)
+      )
     }
   }
 
@@ -2043,18 +2061,17 @@ export class Accounts extends EventEmitter {
         txType,
         gasPrice: 0
       }
-    } else {
-      const gasPrice = parseInt(tx.gasPrice || '0x0', 16)
-      return {
-        currentAccount,
-        inputValue,
-        gasPrice,
-        gasLimit,
-        txType,
-        currentBaseFee: 0,
-        maxPriorityFeePerGas: 0,
-        maxFeePerGas: 0
-      }
+    }
+    const gasPrice = parseInt(tx.gasPrice || '0x0', 16)
+    return {
+      currentAccount,
+      inputValue,
+      gasPrice,
+      gasLimit,
+      txType,
+      currentBaseFee: 0,
+      maxPriorityFeePerGas: 0,
+      maxFeePerGas: 0
     }
   }
 

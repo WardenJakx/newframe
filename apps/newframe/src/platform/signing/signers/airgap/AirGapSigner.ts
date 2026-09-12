@@ -1,26 +1,28 @@
 import { randomUUID } from 'node:crypto'
+
+import { bytesToHex } from '@ethereumjs/util'
 import {
   recoverPersonalSignature,
   recoverTypedSignature,
   SignTypedDataVersion,
   TypedDataUtils
 } from '@metamask/eth-sig-util'
-import { bytesToHex } from '@ethereumjs/util'
+
 import { encodePersonalSignMessage } from '../../../../features/connections/main/provider/helpers.js'
-import Signer, { type SignerRequestContext } from '../Signer/index.js'
-import type canonicalStore from '../../../state-store/index.js'
-import type { OperationOwner } from '../../../operations/types.js'
-import {
-  AirGapPublicAccountSchema,
-  type AirGapPublicAccount,
-  type AirGapRequestReference
-} from '../../domain/airgap.js'
 import type {
   TypedMessage,
   CanonicalAccountRequest
 } from '../../../../features/requests/contract/requests.js'
 import type { TransactionData } from '../../../../features/transactions/domain/index.js'
 import { sign, createUnsignedTransaction } from '../../../../features/transactions/main/index.js'
+import type { OperationOwner } from '../../../operations/types.js'
+import type canonicalStore from '../../../state-store/index.js'
+import {
+  AirGapPublicAccountSchema,
+  type AirGapPublicAccount,
+  type AirGapRequestReference
+} from '../../domain/airgap.js'
+import Signer, { type SignerRequestContext } from '../Signer/index.js'
 import {
   airGapId,
   deriveAirGapAddresses,

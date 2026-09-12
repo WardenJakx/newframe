@@ -1,4 +1,5 @@
 import log from 'electron-log'
+
 import createProvider from '../../../../connections/main/provider/connection.js'
 
 log.transports.console.format = '[scanWorker] {h}:{i}:{s}.{ms} {text}'
@@ -7,9 +8,8 @@ log.transports.file.level = ['development', 'test'].includes(process.env.NODE_EN
   ? false
   : 'verbose'
 
-import balancesLoader, { BalanceLoader } from './scan.js'
-
 import type { Token } from '../../../../../platform/state-store/state/index.js'
+import balancesLoader, { BalanceLoader } from './scan.js'
 
 interface ExternalDataWorkerMessage {
   command: string
@@ -21,7 +21,7 @@ let balances: BalanceLoader
 
 const eth = createProvider('http://127.0.0.1:1248', { origin: 'newframe-internal', name: 'scanWorker' })
 
-eth.on('connect', async () => {
+eth.on('connect', () => {
   balances = balancesLoader(eth)
 
   sendToMainProcess({ type: 'ready' })
@@ -40,9 +40,8 @@ async function getChains() {
 function sendToMainProcess(data: any) {
   if (process.send) {
     return process.send(data)
-  } else {
-    log.error(`cannot send to main process! connected: ${process.connected}`)
   }
+  log.error(`cannot send to main process! connected: ${process.connected}`)
 }
 
 async function fetchTokenBalances(address: Address, tokens: Token[]) {
@@ -81,8 +80,14 @@ function resetHeartbeat() {
 }
 
 const messageHandler: { [command: string]: (...params: any) => void } = {
-  updateChainBalance: chainBalanceScan,
-  fetchTokenBalances: fetchTokenBalances,
+  updateChainBalance: (address: string, chains?: number[]) => {
+    // Scans report their failures internally and may overlap.
+    void chainBalanceScan(address, chains)
+  },
+  fetchTokenBalances: (address: Address, tokens: Token[]) => {
+    // Token fetches report their failures internally.
+    void fetchTokenBalances(address, tokens)
+  },
   heartbeat: resetHeartbeat
 }
 

@@ -1,16 +1,16 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test'
 
 import { useState } from 'react'
+import type { ComponentProps } from 'react'
 
 import { act, screen, render, waitFor } from '../../../../../test/support/componentSetup'
 import { registerTestRuntimeFixture } from '../../../../../test/support/rendererClient'
-import AddTokenController from './index'
+import type { AppCommand, AppQuery } from '../../../../app/contracts/operations'
+import type { OperationRecord } from '../../../../platform/operations/operation'
 import { walletState } from '../../../../platform/state-sync/renderer/fixtures.test-support.ts'
 import { toTokenId } from '../../domain'
-import type { OperationRecord } from '../../../../platform/operations/operation'
-import type { AppCommand, AppQuery } from '../../../../app/contracts/operations'
 import { createTokensCapability } from '../tokensCapability'
-import type { ComponentProps } from 'react'
+import AddTokenController, { type AddTokenNotifyData } from './index'
 
 const fixture = registerTestRuntimeFixture()
 const tokensCapability = createTokensCapability({
@@ -154,6 +154,22 @@ describe('setting token address', () => {
       address: '0x3432b6a60d23ca0dfca7761b7ab56459d9c964d0',
       tokenData: mockTokenData
     })
+  })
+
+  it('shows the lookup failure when the query transport rejects', async () => {
+    fixture.client.executeQuery.mockRejectedValueOnce(new Error('IPC unavailable'))
+    const address = '0x3432b6a60d23ca0dfca7761b7ab56459d9c964d0'
+    const TokenLookup = () => {
+      const [notifyData, setNotifyData] = useState<AddTokenNotifyData>({ chain: { id: 1 } })
+      return <AddToken data={{ notifyData }} onNavigate={setNotifyData} />
+    }
+    const { user } = render(<TokenLookup />)
+
+    await user.type(screen.getByLabelText(`Enter token's address`), address)
+    await user.click(screen.getByRole('button', { name: 'Set Address' }))
+
+    expect(await screen.findByText(`COULD NOT FIND TOKEN WITH ADDRESS ${address}`)).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'ADD ANYWAY' })).toBeTruthy()
   })
 })
 

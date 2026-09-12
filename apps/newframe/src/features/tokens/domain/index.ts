@@ -1,7 +1,6 @@
-import { NATIVE_CURRENCY } from './constants.js'
 import { persistedImageSource } from '../../asset-data/domain/image/index.js'
-
-import type { Token, TokenCatalog, TokenImage, TokenRecord, WithTokenId } from './state/token.js'
+import { NATIVE_CURRENCY } from './constants.js'
+import type { TokenCatalog, TokenImage, TokenRecord, WithTokenId } from './state/token.js'
 
 export function toTokenId(token: WithTokenId) {
   return `${Number(token.chainId)}:${token.address.toLowerCase()}`
@@ -11,7 +10,7 @@ function tokenImageDataUri(image?: TokenImage) {
   return persistedImageSource(image)
 }
 
-export function tokenImageSource(token?: Pick<Token, 'image'>) {
+export function tokenImageSource(token?: Pick<TokenRecord, 'image'>) {
   return tokenImageDataUri(token?.image)
 }
 

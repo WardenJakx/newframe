@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, jest as timers, mock } from 'bun:test'
 
-import { createChainsObserver, createOriginChainObserver, getActiveChains } from './chains'
 import store from '../../../../platform/state-store'
+import { createChainsObserver, createOriginChainObserver, getActiveChains } from './chains'
 
 const ether = {
   name: 'Ether',

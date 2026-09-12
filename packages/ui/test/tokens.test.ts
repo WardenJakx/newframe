@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 
-import { typographyTokens } from '../src/tokens/typography'
 import { layerTokens } from '../src/tokens/layers'
+import { typographyTokens } from '../src/tokens/typography'
 
 describe('design tokens', () => {
   it('uses only registered font weights', () => {

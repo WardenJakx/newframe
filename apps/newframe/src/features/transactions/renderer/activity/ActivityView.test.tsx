@@ -2,8 +2,8 @@ import { describe, expect, it, mock } from 'bun:test'
 
 import { render, screen } from '../../../../../test/support/componentSetup'
 import { registerTestRuntimeFixture } from '../../../../../test/support/rendererClient'
-import { ActivityView } from './ActivityView'
 import { createRendererUtilityCapabilities as createUtilityPorts } from '../../../../shared/renderer/capabilities.test-support'
+import { ActivityView } from './ActivityView'
 
 const fixture = registerTestRuntimeFixture()
 const utilityPorts = createUtilityPorts({

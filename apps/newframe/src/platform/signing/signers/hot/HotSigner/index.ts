@@ -1,16 +1,17 @@
 import { randomBytes } from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
-import { app } from 'electron'
-import log from 'electron-log'
+
 import { Common, createCustomCommon, Holesky, Mainnet, Sepolia } from '@ethereumjs/common'
 import { createTx } from '@ethereumjs/tx'
 import { bytesToHex } from '@ethereumjs/util'
 import { personalSign, recoverPersonalSignature, signTypedData } from '@metamask/eth-sig-util'
+import { app } from 'electron'
+import log from 'electron-log'
 
-import Signer from '../../Signer/index.js'
-import type { TransactionData } from '../../../../../features/transactions/domain/index.js'
 import type { TypedMessage } from '../../../../../features/requests/contract/requests.js'
+import type { TransactionData } from '../../../../../features/transactions/domain/index.js'
+import Signer from '../../Signer/index.js'
 
 export type VaultAccess = { getKey(): string | null }
 

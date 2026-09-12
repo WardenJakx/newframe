@@ -1,16 +1,17 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
+
 import log from 'electron-log'
 import { z } from 'zod'
 
-import type { Accounts } from '../../accounts/main/index.js'
-import type { FlashService } from '../../transactions/trade/main/index.js'
-import type { Provider } from '../../connections/main/provider/index.js'
 import type { CanonicalStoreReader } from '../../../platform/state-store/actions.js'
 import { createAgentPrincipal, createRpcPrincipal } from '../../access-control/main/authority.js'
+import type { Accounts } from '../../accounts/main/index.js'
+import type { Provider } from '../../connections/main/provider/index.js'
 import type { AgentAccessRequest } from '../../requests/contract/requests.js'
+import type { PromptedRequestContinuationPort } from '../../requests/main/service.js'
+import type { FlashService } from '../../transactions/trade/main/index.js'
 import { observeResponseClose, PendingConnectionLimiter } from './connectionLifecycle.js'
 import { AgentSessionStore, type AgentDescriptor } from './sessionStore.js'
-import type { PromptedRequestContinuationPort } from '../../requests/main/service.js'
 
 const MIN_DURATION_SECONDS = 60
 const MAX_DURATION_SECONDS = 180 * 24 * 60 * 60
@@ -439,7 +440,7 @@ export function createAgentService(
     createHttpHandler: (provider: AgentProviderPort) =>
       createAgentHttpHandler(provider, accounts, flashService, requests, runtime),
     dispose() {
-      for (const pending of [...pendingConnections.values()]) {
+      for (const pending of pendingConnections.values()) {
         accounts.getFrameAccount(pending.accountId)?.rejectRequest(pending.request, {
           code: 4001,
           message: 'Agent service stopped before approval'

@@ -1,8 +1,8 @@
-import { EventEmitter } from 'node:events'
-import type { SigningUiContext } from '../../signing/signers/Signer/index.js'
 import { beforeEach, describe, expect, it, mock } from 'bun:test'
+import { EventEmitter } from 'node:events'
 
 import { commandContracts, queryContracts } from '../../../app/contracts/operations'
+import type { SigningUiContext } from '../../signing/signers/Signer/index.js'
 import { createOperationDispatcher, createOperationRegistry, type OperationServices } from './operations'
 
 const fakes = (...names: string[]) =>

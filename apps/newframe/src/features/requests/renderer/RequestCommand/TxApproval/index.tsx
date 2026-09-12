@@ -4,8 +4,8 @@ import { Stack } from '@newframe/ui/stack'
 import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
 
-import { RequestActions } from '../../ui/RequestActions'
 import type { RequestReviewCapability } from '../../requestCapabilities'
+import { RequestActions } from '../../ui/RequestActions'
 
 interface TxApprovalProps {
   capability: Pick<RequestReviewCapability, 'confirmApproval' | 'reject'>

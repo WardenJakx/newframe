@@ -1,5 +1,5 @@
-import { z } from 'zod'
 import { SigningKey } from 'ethers'
+import { z } from 'zod'
 
 const hex = (bytes: number) =>
   z

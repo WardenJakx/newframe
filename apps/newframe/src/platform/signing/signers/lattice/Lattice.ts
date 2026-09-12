@@ -1,16 +1,16 @@
-import log from 'electron-log'
 import { encode } from '@ethereumjs/rlp'
-import { Client, Utils, Constants } from 'gridplus-sdk'
-import { padToEven, addHexPrefix, bytesToHex, stripHexPrefix } from '@ethereumjs/util'
 import { TypedTransaction } from '@ethereumjs/tx'
+import { padToEven, addHexPrefix, bytesToHex, stripHexPrefix } from '@ethereumjs/util'
 import { SignTypedDataVersion } from '@metamask/eth-sig-util'
+import log from 'electron-log'
+import { Client, Utils, Constants } from 'gridplus-sdk'
 
-import Signer from '../Signer/index.js'
-import { sign, signerCompatibility, londonToLegacy } from '../../../../features/transactions/main/index.js'
-import { Derivation, getDerivationPath } from '../Signer/derive.js'
-import { hexToInt } from '../../../../shared/domain/hex.js'
 import type { TypedData, TypedMessage } from '../../../../features/requests/contract/requests.js'
 import type { TransactionData } from '../../../../features/transactions/domain/index.js'
+import { sign, signerCompatibility, londonToLegacy } from '../../../../features/transactions/main/index.js'
+import { hexToInt } from '../../../../shared/domain/hex.js'
+import { Derivation, getDerivationPath } from '../Signer/derive.js'
+import Signer from '../Signer/index.js'
 
 const ADDRESS_LIMIT = 10
 const HARDENED_OFFSET = 0x80000000

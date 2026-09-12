@@ -1,9 +1,8 @@
-import { builtInChainIconUrl } from '../../../networks/domain/chain/index.js'
-import { toTokenId } from '../../../tokens/domain/index.js'
-
-import type { getTokenDiscoveryProvider } from '../../../portfolio/main/index.js'
 import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.js'
 import type { ChainMetadata, TokenRecord } from '../../../../platform/state-store/state/index.js'
+import { builtInChainIconUrl } from '../../../networks/domain/chain/index.js'
+import type { getTokenDiscoveryProvider } from '../../../portfolio/main/index.js'
+import { toTokenId } from '../../../tokens/domain/index.js'
 import type { downloadImage } from './download.js'
 
 const MAX_CONCURRENT_HYDRATIONS = 2

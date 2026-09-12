@@ -1,10 +1,10 @@
 import { useShallow } from 'zustand/react/shallow'
 
+import type { WalletRendererState } from '../../../../platform/state-sync/contract/projections'
 import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector'
+import type { ActivityCapability } from './activityCapability'
 import { createActivityRows } from './activityModel'
 import { ActivityView } from './ActivityView'
-import type { ActivityCapability } from './activityCapability'
-import type { WalletRendererState } from '../../../../platform/state-sync/contract/projections'
 
 const EMPTY_ACTIVITY: WalletRendererState['activity'] = {}
 const EMPTY_NETWORKS: WalletRendererState['networks']['ethereum'] = {}

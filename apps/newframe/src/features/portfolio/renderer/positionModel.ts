@@ -1,5 +1,5 @@
-import { isLowValueTokenBalance, type BalanceSummary } from '../../asset-data/domain/balance'
 import { matchFilter } from '../../../shared/domain/text'
+import { isLowValueTokenBalance, type BalanceSummary } from '../../asset-data/domain/balance'
 const PORTFOLIO_IMPORTANCE_THRESHOLD = 0.01
 
 export interface PositionGroups {

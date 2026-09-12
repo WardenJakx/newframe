@@ -6,6 +6,9 @@
   "semi": false,
   "trailingComma": "none",
   "sortPackageJson": false,
+  "sortImports": {
+    "sortSideEffects": false
+  },
   "ignorePatterns": [
     "node_modules",
     "**/node_modules",

@@ -1,11 +1,11 @@
-import { AddressIdentity } from '../../../shared/renderer/ui/AddressIdentity'
-import { ChainIcon } from '../../../shared/renderer/ui/ChainIcon'
-import { persistedImageSource } from '../../asset-data/domain/image'
 import { useEffect, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 
 import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector'
+import { AddressIdentity } from '../../../shared/renderer/ui/AddressIdentity'
+import { ChainIcon } from '../../../shared/renderer/ui/ChainIcon'
 import type { SafeProposalSimulation } from '../../accounts/domain/safe'
+import { persistedImageSource } from '../../asset-data/domain/image'
 import type { RequestRendererCapabilities } from './requestCapabilities'
 import type { SafePreview } from './SafeProposalDetailsView'
 

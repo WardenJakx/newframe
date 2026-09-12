@@ -5,7 +5,10 @@ import { Spacer } from '@newframe/ui/spacer'
 import { Stack } from '@newframe/ui/stack'
 import { Text } from '@newframe/ui/text'
 
+import { cva } from '../../../../generated/styled-system/css/cva.js'
+import type { TokenImageCapability } from '../../../shared/renderer/capabilities'
 import TokenOptionRow from '../../../shared/renderer/ui/TokenOptionRow'
+import type { NetworkLike, NetworkMetaLike } from '../../../shared/renderer/ui/tokenSelectorTypes'
 import {
   createDisplayBalance,
   formatBalanceNotionalValue,
@@ -14,9 +17,6 @@ import {
 } from '../../asset-data/domain/balance'
 import { formatUsdRate } from '../../asset-data/domain/balance'
 import type { PositionGroups } from './positionModel'
-import { cva } from '../../../../generated/styled-system/css/cva.js'
-import type { NetworkLike, NetworkMetaLike } from '../../../shared/renderer/ui/tokenSelectorTypes'
-import type { TokenImageCapability } from '../../../shared/renderer/capabilities'
 
 type PortfolioNetworks = Record<string | number, NetworkLike>
 type PortfolioNetworkMetadata = Record<string | number, NetworkMetaLike>

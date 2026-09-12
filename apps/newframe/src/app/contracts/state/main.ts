@@ -1,14 +1,14 @@
-import { AirGapPublicAccountSchema } from '../../../platform/signing/domain/airgap.js'
 import { z } from 'zod'
 
 import { AccountMetadataSchema, AccountSchema } from '../../../features/accounts/domain/state/account.js'
 import { BalanceSchema } from '../../../features/asset-data/domain/state/balance.js'
-import { ChainMetadataSchema, ChainSchema } from '../../../features/networks/domain/state/chain.js'
+import { AssetRateMapSchema } from '../../../features/asset-data/domain/state/rate.js'
 import { OriginSchema } from '../../../features/connections/domain/state/origin.js'
 import { PermissionSchema } from '../../../features/connections/domain/state/permission.js'
-import { AssetRateMapSchema } from '../../../features/asset-data/domain/state/rate.js'
+import { ChainMetadataSchema, ChainSchema } from '../../../features/networks/domain/state/chain.js'
 import { ShortcutSchema } from '../../../features/settings/domain/state/shortcuts.js'
 import { TokenCatalogSchema } from '../../../features/tokens/domain/state/token.js'
+import { AirGapPublicAccountSchema } from '../../../platform/signing/domain/airgap.js'
 
 export const DEFAULT_PROFILE_ID = 'default-profile'
 export const DEFAULT_PROFILE_NAME = 'Profile 1'

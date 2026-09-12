@@ -1,10 +1,11 @@
 import { afterAll, afterEach, beforeAll, beforeEach, expect, it, mock, spyOn } from 'bun:test'
 import { EventEmitter } from 'events'
+
 import log from 'electron-log'
 
-import LatticeSignerAdapter from './adapter'
 import store from '../../../state-store'
 import createCanonicalStore from '../../../state-store/createCanonicalStore'
+import LatticeSignerAdapter from './adapter'
 
 const calls = <T extends unknown[]>(fn: unknown) => (fn as { mock: { calls: T[] } }).mock.calls
 

@@ -1,5 +1,3 @@
-import { useState } from 'react'
-
 import { Button } from '@newframe/ui/button'
 import { Icon } from '@newframe/ui/icon'
 import { Input } from '@newframe/ui/input'
@@ -7,13 +5,14 @@ import { Stack } from '@newframe/ui/stack'
 import { Surface } from '@newframe/ui/surface'
 import { Tabs } from '@newframe/ui/tabs'
 import { Text } from '@newframe/ui/text'
+import { useState } from 'react'
 
-import type { Identity } from '../../contract/requests'
-import useCopiedMessage from '../hooks/useCopiedMessage'
-import type { SourceValue } from '../format/displayValue'
 import { formatUnits, max, parseUnits, toBigInt } from '../../../../shared/domain/units'
-import Countdown from './Countdown'
+import type { Identity } from '../../contract/requests'
+import type { SourceValue } from '../format/displayValue'
+import useCopiedMessage from '../hooks/useCopiedMessage'
 import type { RequestExternalCapability } from '../requestCapabilities'
+import Countdown from './Countdown'
 
 type SpendMode = 'custom' | 'requested' | 'unlimited'
 

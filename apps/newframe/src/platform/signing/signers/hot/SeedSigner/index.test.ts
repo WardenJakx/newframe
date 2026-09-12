@@ -1,10 +1,11 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
 import fs from 'node:fs'
-import path from 'node:path'
-import { tmpdir } from 'node:os'
 import { rm } from 'node:fs/promises'
-import { Mnemonic, randomBytes } from 'ethers'
+import { tmpdir } from 'node:os'
+import path from 'node:path'
+
 import log from 'electron-log'
+import { Mnemonic, randomBytes } from 'ethers'
 
 import { electronMock } from '../../../../../../test/support/electron.mock.ts'
 import { callbackResult, exerciseHotSignerContract } from '../../callback.test-support.ts'

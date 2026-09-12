@@ -9,8 +9,8 @@ import type {
 import { anvilChainId } from '../core/config.ts'
 import { sleep, withTimeout } from '../core/utils.ts'
 import type { AnvilClient } from './anvil-client.ts'
-import type { AccountInfo, AppState, CurrentRequest, FlashOrder, HarnessAccounts } from './types.ts'
 import type { VisualHarnessRuntime } from './runtime.ts'
+import type { AccountInfo, AppState, CurrentRequest, FlashOrder, HarnessAccounts } from './types.ts'
 
 export const harnessOrigin = 'newframe-contracts.local'
 export const harnessAccountAddress = '0x35f9179059a691d8beecf82fe112f7277e018588'

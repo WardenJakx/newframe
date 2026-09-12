@@ -6,15 +6,13 @@ import { Group } from '@newframe/ui/group'
 import { IconButton } from '@newframe/ui/icon-button'
 import { Input } from '@newframe/ui/input'
 import { Select } from '@newframe/ui/select'
-import { Stack } from '@newframe/ui/stack'
 import { Spacer } from '@newframe/ui/spacer'
+import { Stack } from '@newframe/ui/stack'
 import { Surface } from '@newframe/ui/surface'
 import { Tabs } from '@newframe/ui/tabs'
 import { Text } from '@newframe/ui/text'
 import { ToggleButton } from '@newframe/ui/toggle-button'
 
-import { BalanceRange } from './ui/BalanceRange'
-import { ProgressSteps } from './ui/ProgressSteps'
 import { SidePanel } from '../../../../shared/renderer/ui/SidePanel/SidePanel'
 import TokenSelector from '../../../../shared/renderer/ui/TokenSelector'
 import { TOKEN_SELECTOR_ROWS_INCREMENT } from '../../../../shared/renderer/ui/tokenSelectorModel'
@@ -27,9 +25,11 @@ import {
   FLASH_TWAP_ORDER_TYPE
 } from '../domain/constants'
 import type { FlashOrderType } from '../domain/schemas'
+import type { TradeCapability } from './tradeService'
 import type { TradeOrderFields } from './tradeTransaction'
 import type { TradeAssetViewModel, TradeViewEvents, TradeViewModel } from './tradeViewModel'
-import type { TradeCapability } from './tradeService'
+import { BalanceRange } from './ui/BalanceRange'
+import { ProgressSteps } from './ui/ProgressSteps'
 
 const durationInputs = [
   ['durationDays', 'days', 'Days', '0'],

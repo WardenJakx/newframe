@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, jest as timers, mock } from 'bun:test'
 
-import { createObserver, loadAssets } from './assets'
 import store from '../../../../platform/state-store'
+import { createObserver, loadAssets } from './assets'
 
 const account = '0x3ba7bd5cd1c19f678d9c8edfa043de5a57570e06'
 const nativeBalance = {

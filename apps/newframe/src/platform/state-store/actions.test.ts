@@ -1,14 +1,14 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it, jest as timers, setSystemTime } from 'bun:test'
 
-import log from 'electron-log'
 import { addHexPrefix } from '@ethereumjs/util'
+import log from 'electron-log'
 
-import createInitialState from './state'
-import { NATIVE_CURRENCY } from '../../features/tokens/domain/constants'
+import { createTestStore as createActionHarness } from '../../../test/support/createTestStore'
+import { DEFAULT_PROFILE_ID } from '../../app/contracts/state/main'
 import { toTokenId } from '../../features/asset-data/domain/balance'
 import { customTokens, tokensForAccount } from '../../features/tokens/domain'
-import { DEFAULT_PROFILE_ID } from '../../app/contracts/state/main'
-import { createTestStore as createActionHarness } from '../../../test/support/createTestStore'
+import { NATIVE_CURRENCY } from '../../features/tokens/domain/constants'
+import createInitialState from './state'
 
 beforeAll(() => {
   log.transports.console.level = false

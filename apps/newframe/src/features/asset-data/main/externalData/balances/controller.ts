@@ -1,10 +1,11 @@
-import log from 'electron-log'
-import path from 'path'
 import { ChildProcess, fork } from 'child_process'
 import { EventEmitter } from 'events'
+import path from 'path'
 
-import type { CurrencyBalance, TokenBalance } from './scan.js'
+import log from 'electron-log'
+
 import type { Token } from '../../../../../platform/state-store/state/index.js'
+import type { CurrencyBalance, TokenBalance } from './scan.js'
 
 const BOOTSTRAP_TIMEOUT_SECONDS = 20
 const WORKER_EXT = import.meta.filename.endsWith('.ts') ? 'worker.ts' : 'worker.js'

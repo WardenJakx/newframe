@@ -1,5 +1,10 @@
-import { FLASH_ANVIL_CHAIN_ID, FLASH_USDC_ASSET_SYMBOL, FLASH_WETH_ASSET_SYMBOL } from './constants.js'
-import { getFlashAssetsForChain, normalizeFlashAddress, toFlashApiAssetAddress } from './assets.js'
+import {
+  FLASH_USDC_ASSET,
+  getFlashAssetsForChain,
+  normalizeFlashAddress,
+  toFlashApiAssetAddress
+} from './assets.js'
+import { FLASH_USDC_ASSET_SYMBOL, FLASH_WETH_ASSET_SYMBOL } from './constants.js'
 import type { FlashAsset, FlashTradeSide } from './schemas.js'
 
 interface FlashAssetBalance {
@@ -106,11 +111,7 @@ export function getDefaultContraAsset({
         ? sameChainOptions
         : defaultCandidates
 
-  return (
-    candidates.find((asset) => hasAssetBalance(asset, balances)) ||
-    candidates[0] ||
-    getFlashDefaultContraAssetPriority(FLASH_ANVIL_CHAIN_ID)[0]
-  )
+  return candidates.find((asset) => hasAssetBalance(asset, balances)) || candidates[0] || FLASH_USDC_ASSET
 }
 
 export function getDefaultContraAssetForChain({
@@ -131,11 +132,7 @@ export function getDefaultContraAssetForChain({
     )
   )
 
-  return (
-    candidates.find((asset) => hasAssetBalance(asset, balances)) ||
-    candidates[0] ||
-    getFlashDefaultContraAssetPriority(FLASH_ANVIL_CHAIN_ID)[0]
-  )
+  return candidates.find((asset) => hasAssetBalance(asset, balances)) || candidates[0] || FLASH_USDC_ASSET
 }
 
 export function getDefaultSide({ targetAsset, balances }: FlashDefaultAssetOptions): FlashTradeSide {

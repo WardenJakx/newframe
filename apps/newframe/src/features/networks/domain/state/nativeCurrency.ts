@@ -1,4 +1,5 @@
 import { z } from 'zod'
+
 import { TokenImageSchema } from '../../../tokens/domain/state/token.js'
 
 export const NativeCurrencySchema = z.object({

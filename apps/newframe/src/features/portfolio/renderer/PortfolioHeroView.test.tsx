@@ -2,12 +2,12 @@ import { describe, expect, it, jest as timers } from 'bun:test'
 
 import { act, render, screen } from '../../../../test/support/componentSetup'
 import { registerTestRuntimeFixture } from '../../../../test/support/rendererClient'
+import type { AppCommand } from '../../../app/contracts/operations'
+import type { OperationRecord } from '../../../platform/operations/operation'
 import { walletState } from '../../../platform/state-sync/renderer/fixtures.test-support.ts'
+import { createPortfolioCapability } from './portfolioCapability'
 import { formatPortfolioValue, PortfolioHero } from './PortfolioHero'
 import { PortfolioHeroView } from './PortfolioHeroView'
-import type { OperationRecord } from '../../../platform/operations/operation'
-import type { AppCommand } from '../../../app/contracts/operations'
-import { createPortfolioCapability } from './portfolioCapability'
 
 const noop = () => {}
 const fixture = registerTestRuntimeFixture()
@@ -49,9 +49,9 @@ describe('PortfolioHero', () => {
       if (rejectedCommand?.type !== 'portfolio.refresh') throw new Error('Expected portfolio refresh')
       expect(rejectedCommand).toEqual({ type: 'portfolio.refresh', operationId: expect.any(String) })
       expect(refresh.disabled).toBe(true)
-      act(() => timers.advanceTimersByTime(500))
+      await act(() => timers.advanceTimersByTime(500))
       expect(refresh.disabled).toBe(true)
-      act(() => timers.advanceTimersByTime(500))
+      await act(() => timers.advanceTimersByTime(500))
       expect(refresh.disabled).toBe(false)
 
       await user.click(refresh)
@@ -76,7 +76,7 @@ describe('PortfolioHero', () => {
         )
       })
       expect(refresh.disabled).toBe(true)
-      act(() => timers.advanceTimersByTime(1000))
+      await act(() => timers.advanceTimersByTime(1000))
       expect(refresh.disabled).toBe(false)
     } finally {
       timers.useRealTimers()

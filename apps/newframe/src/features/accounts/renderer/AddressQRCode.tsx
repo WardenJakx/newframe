@@ -1,7 +1,6 @@
-import { useEffect, useRef } from 'react'
-import QRCode from 'qrcode'
-
 import { resolveSystemColor } from '@newframe/ui/tokens/colors'
+import QRCode from 'qrcode'
+import { useEffect, useRef } from 'react'
 
 import { cva } from '../../../../generated/styled-system/css/cva.js'
 

@@ -138,7 +138,9 @@ export default class InjectedFrameProvider extends EventEmitter {
     this.on('connect', this.resumeSubscriptions)
     this.on('newListener', (event) => this.handleNewListener(event))
 
-    this.connection.on('connect', () => this.checkConnection(1000))
+    this.connection.on('connect', () => {
+      this.checkConnection(1000).catch(console.error)
+    })
     this.connection.on('close', () => this.handleClose())
     this.connection.on('payload', (payload) => this.handlePayload(payload))
   }
@@ -159,7 +161,9 @@ export default class InjectedFrameProvider extends EventEmitter {
       this.providerChainId = (await this.doSend('eth_chainId', [], undefined, false)) as string
       this.connected = true
     } catch (e) {
-      this.checkConnectionTimer = setTimeout(() => this.checkConnection(), retryTimeout)
+      this.checkConnectionTimer = setTimeout(() => {
+        this.checkConnection().catch(console.error)
+      }, retryTimeout)
       this.connected = false
     } finally {
       this.checkConnectionRunning = false
@@ -341,7 +345,8 @@ export default class InjectedFrameProvider extends EventEmitter {
     if (typeof event !== 'string' || !(event in this.eventHandlers)) return
 
     if (!this.attemptedSubscriptions.has(event) && this.connected) {
-      this.startSubscription(event as ProviderEvent)
+      // Subscription setup catches and logs failures internally.
+      void this.startSubscription(event as ProviderEvent)
 
       if (event === 'networkChanged') {
         console.warn('The networkChanged event is being deprecated, use chainChanged instead')
@@ -363,7 +368,10 @@ export default class InjectedFrameProvider extends EventEmitter {
 
   private resumeSubscriptions() {
     ;(Object.keys(this.eventHandlers) as ProviderEvent[]).forEach((event) => {
-      if (this.listenerCount(event) && !this.attemptedSubscriptions.has(event)) this.startSubscription(event)
+      if (this.listenerCount(event) && !this.attemptedSubscriptions.has(event)) {
+        // Subscription setup catches and logs failures internally.
+        void this.startSubscription(event)
+      }
     })
   }
 

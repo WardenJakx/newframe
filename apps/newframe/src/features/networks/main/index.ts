@@ -1,22 +1,23 @@
+import EventEmitter from 'events'
+
+import { Hardfork, Common } from '@ethereumjs/common'
+import { addHexPrefix } from '@ethereumjs/util'
 // status = Network Mismatch, Not Connected, Connected, Standby, Syncing
 import { powerMonitor } from 'electron'
-import EventEmitter from 'events'
-import { addHexPrefix } from '@ethereumjs/util'
-import { Hardfork, Common } from '@ethereumjs/common'
 import log from 'electron-log'
 import { shallow } from 'zustand/vanilla/shallow'
 
-import chainConfig from './config.js'
-import GasMonitor from '../../transactions/main/gasMonitor.js'
-import { createGasCalculator } from './gas.js'
-import { NETWORK_PRESETS } from '../domain/chain/presets.js'
+import type { CanonicalStoreReader } from '../../../platform/state-store/actions.js'
 import {
   createJsonRpcProvider,
   listenForProviderClose,
   sendRpcPayload,
   type EthersRpcProvider
 } from '../../connections/main/provider/connection.js'
-import type { CanonicalStoreReader } from '../../../platform/state-store/actions.js'
+import GasMonitor from '../../transactions/main/gasMonitor.js'
+import { NETWORK_PRESETS } from '../domain/chain/presets.js'
+import chainConfig from './config.js'
+import { createGasCalculator } from './gas.js'
 
 type CanonicalStoreApi = CanonicalStoreReader
 
@@ -159,7 +160,8 @@ class ChainConnection extends EventEmitter {
     void provider.on('error', (err) => this.handleProviderError(priority, err))
     listenForProviderClose(provider, () => this.handleProviderClose(priority, provider))
 
-    this.connectProvider(priority, provider)
+    // connectProvider updates status and emits connection failures itself.
+    void this.connectProvider(priority, provider)
   }
 
   _handleConnection(priority: Priority) {
@@ -278,12 +280,10 @@ class ChainConnection extends EventEmitter {
     log.debug('killProvider', { provider })
 
     if (provider) {
-      const removeResult = provider.removeAllListeners()
-      if (removeResult && typeof (removeResult as any).catch === 'function') {
-        ;(removeResult as Promise<unknown>).catch(() => {})
-      }
-
-      void Promise.resolve(provider.destroy()).catch(() => {})
+      Promise.resolve(provider.removeAllListeners()).catch((error) =>
+        log.error('Could not remove provider listeners', error)
+      )
+      Promise.resolve(provider.destroy()).catch((error) => log.error('Could not destroy provider', error))
     }
   }
 

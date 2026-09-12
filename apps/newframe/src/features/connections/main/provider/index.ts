@@ -1,17 +1,33 @@
-import type { SigningUiContext } from '../../../../platform/signing/signers/Signer/index.js'
-import EventEmitter from 'events'
 import crypto from 'crypto'
-import log from 'electron-log'
-import { estimateL1GasCost } from '../../../networks/main/l1GasFees.js'
-import { recoverTypedSignature, SignTypedDataVersion } from '@metamask/eth-sig-util'
-import { isAddress } from 'ethers'
+import EventEmitter from 'events'
+
 import { addHexPrefix, intToHex } from '@ethereumjs/util'
+import { recoverTypedSignature, SignTypedDataVersion } from '@metamask/eth-sig-util'
+import log from 'electron-log'
+import { isAddress } from 'ethers'
 import { shallow } from 'zustand/shallow'
 
-import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.js'
 import packageFile from '../../../../../package.json' with { type: 'json' }
-
-import type { ProviderProxyConnection } from './proxy.js'
+import type { TokenData } from '../../../../platform/chain-rpc/contracts/erc20.js'
+import { getSignerType, Type as SignerType } from '../../../../platform/signing/domain/index.js'
+import { getCalldataDigest, getEip712Digests } from '../../../../platform/signing/signatures/digests.js'
+import * as sigParser from '../../../../platform/signing/signatures/index.js'
+import type { SigningUiContext } from '../../../../platform/signing/signers/Signer/index.js'
+import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.js'
+import type { Origin, Permission } from '../../../../platform/state-store/state/index.js'
+import { isNonZeroHex } from '../../../../shared/domain/hex.js'
+import { capitalize } from '../../../../shared/domain/text.js'
+import {
+  createMainPrincipal,
+  hasPrincipalCapability,
+  isAgentPrincipalActive,
+  type AgentPrincipal,
+  type TrustedPrincipal
+} from '../../../access-control/main/authority.js'
+import { hasAddress } from '../../../accounts/domain/index.js'
+import type { Chains } from '../../../networks/main/index.js'
+import type { Chain } from '../../../networks/main/index.js'
+import { estimateL1GasCost } from '../../../networks/main/l1GasFees.js'
 import type {
   AccountRequest,
   TransactionRequest,
@@ -19,11 +35,16 @@ import type {
   AddChainRequest,
   AddTokenRequest
 } from '../../../requests/contract/requests.js'
-import type { Chains } from '../../../networks/main/index.js'
-import type { Chain } from '../../../networks/main/index.js'
-import type { RevealService } from '../../../transactions/main/reveal.js'
-import type { TokenData } from '../../../../platform/chain-rpc/contracts/erc20.js'
-import { getSignerType, Type as SignerType } from '../../../../platform/signing/domain/index.js'
+import {
+  EIP2612TypedData,
+  LegacyTypedData,
+  PermitSignatureRequest,
+  SignatureRequest,
+  TypedData,
+  TypedMessage
+} from '../../../requests/contract/requests.js'
+import { ApprovalType } from '../../../requests/domain/approval.js'
+import type { PromptedRequestContinuationPort } from '../../../requests/main/service.js'
 import { toTokenId } from '../../../tokens/domain/index.js'
 import { normalizeChainId, TransactionData } from '../../../transactions/domain/index.js'
 import {
@@ -31,14 +52,9 @@ import {
   maxFee,
   classifyTransaction
 } from '../../../transactions/main/index.js'
-import { capitalize } from '../../../../shared/domain/text.js'
-import { isNonZeroHex } from '../../../../shared/domain/hex.js'
-import { ApprovalType } from '../../../requests/domain/approval.js'
-import type { ProviderStatePort } from './statePort.js'
-import { getVersionFromTypedData } from './typedData.js'
-import { getCalldataDigest, getEip712Digests } from '../../../../platform/signing/signatures/digests.js'
-
-import { Subscription, SubscriptionType, hasSubscriptionPermission } from './subscriptions.js'
+import type { RevealService } from '../../../transactions/main/reveal.js'
+import { mapRequest } from '../requests/index.js'
+import type { AccountRequestPort } from './accountRequestPort.js'
 import {
   checkExistingNonceGas,
   ecRecover,
@@ -52,28 +68,10 @@ import {
   decodeMessage,
   encodePersonalSignMessage
 } from './helpers.js'
-import {
-  EIP2612TypedData,
-  LegacyTypedData,
-  PermitSignatureRequest,
-  SignatureRequest,
-  TypedData,
-  TypedMessage
-} from '../../../requests/contract/requests.js'
-import * as sigParser from '../../../../platform/signing/signatures/index.js'
-import { hasAddress } from '../../../accounts/domain/index.js'
-import { mapRequest } from '../requests/index.js'
-import {
-  createMainPrincipal,
-  hasPrincipalCapability,
-  isAgentPrincipalActive,
-  type AgentPrincipal,
-  type TrustedPrincipal
-} from '../../../access-control/main/authority.js'
-
-import type { Origin, Permission } from '../../../../platform/state-store/state/index.js'
-import type { AccountRequestPort } from './accountRequestPort.js'
-import type { PromptedRequestContinuationPort } from '../../../requests/main/service.js'
+import type { ProviderProxyConnection } from './proxy.js'
+import type { ProviderStatePort } from './statePort.js'
+import { Subscription, SubscriptionType, hasSubscriptionPermission } from './subscriptions.js'
+import { getVersionFromTypedData } from './typedData.js'
 
 export interface TransactionRequestContext {
   tokenData?: TokenData
@@ -180,13 +178,16 @@ export class Provider extends EventEmitter {
 
   private readonly handleProxySend = (payload: RPCRequestPayload) => {
     const { id, method } = payload
-    this.send(
-      payload,
-      ({ error, result }) => {
-        this.proxy.emit('payload', { id, method, error, result })
-      },
-      proxyPrincipal
-    )
+    let settled = false
+    const respond = ({ error, result }: RPCResponsePayload) => {
+      if (settled) return
+      settled = true
+      this.proxy.emit('payload', { id, method, error, result })
+    }
+    Promise.resolve(this.send(payload, respond, proxyPrincipal)).catch((error) => {
+      log.error('Could not handle proxy request', error)
+      resError('Internal error', payload, respond)
+    })
   }
 
   private readonly handleProxySubscribe = (payload: RPC.Subscribe.Request) => {
@@ -647,7 +648,8 @@ export class Provider extends EventEmitter {
       return resError('Agent session is not authorized for the transaction account', payload, res)
     }
 
-    this.fillTransaction({ ...normalized, from, chainId }, (error, transactionMetadata) => {
+    // fillTransaction reports preparation failures through its callback.
+    void this.fillTransaction({ ...normalized, from, chainId }, (error, transactionMetadata) => {
       if (error || !transactionMetadata)
         return resError(error || 'Could not prepare transaction', payload, res)
       if (transactionMetadata.approvals.length > 0) {
@@ -901,7 +903,8 @@ export class Provider extends EventEmitter {
         return resError('Transaction is not from currently selected account', payload, res)
       }
 
-      this.fillTransaction({ ...tx, from }, (err, transactionMetadata) => {
+      // fillTransaction reports preparation failures through its callback.
+      void this.fillTransaction({ ...tx, from }, (err, transactionMetadata) => {
         if (err) {
           resError(err, payload, res)
         } else {
@@ -1485,13 +1488,23 @@ export class Provider extends EventEmitter {
   }
 
   sendAsync(payload: RPCRequestPayload, cb: Callback<RPCResponsePayload>) {
-    this.send(payload, (res) => {
-      if (res.error) {
-        const errMessage = res.error.message || `sendAsync error did not have message`
-        cb(new Error(errMessage))
-      } else {
-        cb(null, res)
-      }
+    let settled = false
+    Promise.resolve(
+      this.send(payload, (res) => {
+        if (settled) return
+        settled = true
+        if (res.error) {
+          const errMessage = res.error.message || `sendAsync error did not have message`
+          cb(new Error(errMessage))
+        } else {
+          cb(null, res)
+        }
+      })
+    ).catch((error) => {
+      log.error('Could not send asynchronous provider request', error)
+      if (settled) return
+      settled = true
+      cb(error instanceof Error ? error : new Error(String(error)))
     })
   }
 

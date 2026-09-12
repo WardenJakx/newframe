@@ -1,9 +1,10 @@
-import { Button } from '@newframe/ui/button'
-import { Text } from '@newframe/ui/text'
 import { describe, expect, it, mock } from 'bun:test'
 
-import { SidePanel } from './SidePanel/SidePanel'
+import { Button } from '@newframe/ui/button'
+import { Text } from '@newframe/ui/text'
+
 import { fireEvent, render, screen } from '../../../../test/support/componentSetup'
+import { SidePanel } from './SidePanel/SidePanel'
 
 describe('SidePanel', () => {
   it('encapsulates its heading, body, close action, and footer composition', () => {

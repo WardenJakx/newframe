@@ -1,23 +1,23 @@
-import { AirGapPublicAccountSchema, type AirGapPublicAccount } from '../signing/domain/airgap.js'
 import log from 'electron-log'
 import type { Draft } from 'immer'
 import { v5 as uuidv5 } from 'uuid'
 
-import { NATIVE_CURRENCY } from '../../features/tokens/domain/constants.js'
-import { accountNS, isDefaultAccountName } from '../../features/accounts/domain/index.js'
-import { toTokenId } from '../../features/tokens/domain/index.js'
 import {
   DEFAULT_PROFILE_ID,
   DEFAULT_PROFILE_NAME,
   getProfileAccountIds
 } from '../../app/contracts/state/main.js'
-import { createPanelActions, type CanonicalGet, type CanonicalSet } from './actions.panel.js'
-import { createOperationActions } from './actions.operation.js'
-import type { CanonicalState } from './state/index.js'
+import { accountNS, isDefaultAccountName } from '../../features/accounts/domain/index.js'
 import type { Account } from '../../features/accounts/domain/state/account.js'
-import type { Token, TokenImage, TokenSource } from '../../features/tokens/domain/state/token.js'
 import type { CanonicalAccountRequest } from '../../features/requests/contract/requests.js'
+import { NATIVE_CURRENCY } from '../../features/tokens/domain/constants.js'
+import { toTokenId } from '../../features/tokens/domain/index.js'
+import type { Token, TokenImage, TokenSource } from '../../features/tokens/domain/state/token.js'
+import { AirGapPublicAccountSchema, type AirGapPublicAccount } from '../signing/domain/airgap.js'
 import type { SignerSummary } from '../signing/signers/Signer/index.js'
+import { createOperationActions } from './actions.operation.js'
+import { createPanelActions, type CanonicalGet, type CanonicalSet } from './actions.panel.js'
+import type { CanonicalState } from './state/index.js'
 
 type MutableRecord = Record<string, any>
 type AccountPatch = Partial<Omit<Account, 'id' | 'address' | 'profileId' | 'requests'>>

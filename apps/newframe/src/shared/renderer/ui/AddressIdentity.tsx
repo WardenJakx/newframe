@@ -2,8 +2,8 @@ import { HoverSwapText } from '@newframe/ui/hover-swap-text'
 import { Text } from '@newframe/ui/text'
 
 import { cva } from '../../../../generated/styled-system/css/cva.js'
-import { CopyButton } from './CopyButton'
 import type { ClipboardCapability } from '../capabilities'
+import { CopyButton } from './CopyButton'
 
 const addressIdentityRecipe = cva({
   base: {

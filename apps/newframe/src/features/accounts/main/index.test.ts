@@ -11,18 +11,18 @@ import {
   spyOn
 } from 'bun:test'
 
-import log from 'electron-log'
 import { addHexPrefix, intToHex } from '@ethereumjs/util'
+import log from 'electron-log'
 
+import { gweiToHex } from '../../../../test/support/util'
+import { DEFAULT_PROFILE_ID } from '../../../app/contracts/state/main'
 import store from '../../../platform/state-store'
+import { createAgentPrincipal, createRpcPrincipal } from '../../access-control/main/authority'
 import {
   GasFeesSource,
   TRANSACTION_CONFIRMATION_TARGET,
   type TransactionSimulation
 } from '../../transactions/domain'
-import { DEFAULT_PROFILE_ID } from '../../../app/contracts/state/main'
-import { gweiToHex } from '../../../../test/support/util'
-import { createAgentPrincipal, createRpcPrincipal } from '../../access-control/main/authority'
 
 const providerMock = {
   send: mock(),
@@ -77,14 +77,14 @@ const requestLifecycle = {
   }
 }
 
-mock.module('../../../platform/signing/signers', () => ({ default: signersMock, ...signersMock }))
-mock.module('../../../platform/desktop/windows', () => ({ default: windowsMock, ...windowsMock }))
-mock.module('../../asset-data/main/externalData', () => ({
+await mock.module('../../../platform/signing/signers', () => ({ default: signersMock, ...signersMock }))
+await mock.module('../../../platform/desktop/windows', () => ({ default: windowsMock, ...windowsMock }))
+await mock.module('../../asset-data/main/externalData', () => ({
   default: externalDataScannerFactoryMock,
   start: mock(),
   stop: mock()
 }))
-mock.module('../../name-resolution/main/nameResolution', () => ({
+await mock.module('../../name-resolution/main/nameResolution', () => ({
   __esModule: true,
   default: {
     ready: () => true,

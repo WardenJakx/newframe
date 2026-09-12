@@ -1,35 +1,30 @@
-import { useCallback, useEffect, useState } from 'react'
-import { useShallow } from 'zustand/react/shallow'
 import { Button } from '@newframe/ui/button'
 import { Dialog } from '@newframe/ui/dialog'
 import { Input } from '@newframe/ui/input'
 import { Stack } from '@newframe/ui/stack'
 import { Text } from '@newframe/ui/text'
+import { useCallback, useEffect, useState } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 
 import { cva } from '../../../../generated/styled-system/css/cva.js'
-
 import Account from '../../../features/requests/renderer/Account'
-import Notify from './Notify'
-import Badge from '../../../platform/app-update/renderer'
-import { updaterCapability } from '../../../platform/app-update/renderer/production'
-import Footer from './Footer'
-import Home from './Home/Home'
-import { AppIcon } from '../../../shared/renderer/ui/appIcon'
+import type { RequestRendererCapabilities } from '../../../features/requests/renderer/requestCapabilities'
+import type { RequestCommandNotifier } from '../../../features/requests/renderer/RequestCommand'
+import { RequestViewProvider } from '../../../features/requests/renderer/requestView'
 import {
   getWebAuthnBiometricSecret,
   isBiometricUserCanceledError,
   isWebAuthnBiometricsSupported,
   type StoredWebAuthnCredential
 } from '../../../features/security/renderer/biometrics'
-import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector'
+import type { SecurityCapability } from '../../../features/security/renderer/securityCapability'
+import Badge from '../../../platform/app-update/renderer'
+import { updaterCapability } from '../../../platform/app-update/renderer/production'
 import { selectOperationById } from '../../../platform/state-sync/renderer/selectors/operation'
-import type { TrayRendererState } from './state'
-import { TrayNotificationProvider, useTrayNotification } from './notification'
-import { RequestViewProvider } from '../../../features/requests/renderer/requestView'
-import { requestCapabilities } from '../capabilities/requests'
-import type { RequestCommandNotifier } from '../../../features/requests/renderer/RequestCommand'
-import type { RequestRendererCapabilities } from '../../../features/requests/renderer/requestCapabilities'
+import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector'
+import { AppIcon } from '../../../shared/renderer/ui/appIcon'
 import { accountsCapability, qrCameraCapability } from '../capabilities/accounts'
+import { homeCapability } from '../capabilities/home'
 import {
   activityCapability,
   connectionsCapability,
@@ -40,9 +35,13 @@ import {
   settingsCapability,
   tokensCapability
 } from '../capabilities/homeFeatures'
-import { homeCapability } from '../capabilities/home'
+import { requestCapabilities } from '../capabilities/requests'
+import Footer from './Footer'
+import Home from './Home/Home'
 import type { HomeCapabilities } from './Home/Home'
-import type { SecurityCapability } from '../../../features/security/renderer/securityCapability'
+import { TrayNotificationProvider, useTrayNotification } from './notification'
+import Notify from './Notify'
+import type { TrayRendererState } from './state'
 
 type BiometricsState = {
   enabled: boolean
@@ -256,6 +255,11 @@ export function Panel(props: PanelProps) {
     }
   }
 
+  const submitPasswordUnlock = () => {
+    // unlockApp reports command failures through unlockError.
+    void unlockApp()
+  }
+
   useEffect(() => {
     let active = true
 
@@ -293,7 +297,10 @@ export function Panel(props: PanelProps) {
     <Button
       appearance='control'
       label='Unlock with biometrics'
-      onPress={() => unlockWithBiometrics()}
+      onPress={() => {
+        // Biometric failures and cancellation are handled inside unlockWithBiometrics.
+        void unlockWithBiometrics()
+      }}
       shape='pill'
       width='full'
     >
@@ -313,7 +320,7 @@ export function Panel(props: PanelProps) {
           align='start'
           autoFocus
           label='Newframe password'
-          onSubmit={unlockApp}
+          onSubmit={submitPasswordUnlock}
           onValueChange={(password) => setState({ password })}
           placeholder='Newframe password'
           type='password'
@@ -324,7 +331,7 @@ export function Panel(props: PanelProps) {
             {projectedUnlockError || state.unlockError}
           </Text>
         ) : null}
-        <Button appearance='primary' label='Unlock' onPress={unlockApp} shape='pill' width='full'>
+        <Button appearance='primary' label='Unlock' onPress={submitPasswordUnlock} shape='pill' width='full'>
           <Text variant='action'>{passwordUnlocking ? 'Unlocking' : 'Unlock'}</Text>
         </Button>
         {biometricUnlockButton}

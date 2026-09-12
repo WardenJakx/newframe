@@ -57,3 +57,24 @@ describe('provider request infrastructure adapter', () => {
     await expect(disposed).rejects.toThrow('disposed before the operation completed')
   })
 })
+
+it('rejects provider promise failures and ignores failures after callback settlement', async () => {
+  let callbackFirst = false
+  const adapter = createProviderRequestAdapter({
+    send: async (payload: RPCRequestPayload, respond: (response: RPCResponsePayload) => void) => {
+      if (callbackFirst) respond({ id: payload.id, jsonrpc: '2.0', result: '0x1' })
+      throw new Error('provider unavailable')
+    }
+  } as never)
+  const payload: RPCRequestPayload = {
+    id: 1,
+    jsonrpc: '2.0',
+    method: 'eth_chainId',
+    params: [],
+    _origin: 'test'
+  }
+  await expect(adapter.request(payload, principal)).rejects.toThrow('provider unavailable')
+  callbackFirst = true
+  await expect(adapter.request(payload, principal)).resolves.toMatchObject({ result: '0x1' })
+  adapter.dispose()
+})

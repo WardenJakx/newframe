@@ -1,20 +1,19 @@
-import React from 'react'
-
 import { Button } from '@newframe/ui/button'
 import { Input } from '@newframe/ui/input'
 import { ScrollArea } from '@newframe/ui/scroll-area'
 import { Selection, type SelectionItem } from '@newframe/ui/selection'
 import { Text } from '@newframe/ui/text'
+import React from 'react'
 
-import type { WalletRendererState } from '../../../platform/state-sync/contract/projections'
-import { formatUsdRate } from '../../asset-data/domain/balance'
 import { cva } from '../../../../generated/styled-system/css/cva.js'
-import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector'
-import type { AccountsCapability } from './accountsCapability'
+import type { WalletRendererState } from '../../../platform/state-sync/contract/projections'
 import {
   selectOperationById,
   selectOperationEntityId
 } from '../../../platform/state-sync/renderer/selectors/operation'
+import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector'
+import { formatUsdRate } from '../../asset-data/domain/balance'
+import type { AccountsCapability } from './accountsCapability'
 
 type ProfileSummary = WalletRendererState['profiles'][number]
 type MovableAccount = {

@@ -1,5 +1,5 @@
-import { IconButton } from '@newframe/ui/icon-button'
 import type { IconName } from '@newframe/ui/icon'
+import { IconButton } from '@newframe/ui/icon-button'
 
 import { HeaderBar } from '../../../../../shared/renderer/ui/HeaderBar'
 import { IdentityControl } from '../../ui/IdentityControl'

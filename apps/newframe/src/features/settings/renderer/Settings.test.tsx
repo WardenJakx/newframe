@@ -2,12 +2,12 @@ import { beforeEach, describe, expect, it, mock } from 'bun:test'
 
 import { act, cleanup, render, screen, waitFor } from '../../../../test/support/componentSetup'
 import { registerTestRuntimeFixture } from '../../../../test/support/rendererClient'
+import type { AppCommand, AppQuery } from '../../../app/contracts/operations'
 import type { OperationRecord } from '../../../platform/operations/operation'
 import { walletState } from '../../../platform/state-sync/renderer/fixtures.test-support.ts'
 import { createSecurityCapability } from '../../security/renderer/securityCapability'
-import { createSettingsCapability } from './settingsCapability'
 import type { SettingsSecurityCapability } from './Settings'
-import type { AppCommand, AppQuery } from '../../../app/contracts/operations'
+import { createSettingsCapability } from './settingsCapability'
 
 Object.defineProperty(global.navigator, 'keyboard', {
   configurable: true,

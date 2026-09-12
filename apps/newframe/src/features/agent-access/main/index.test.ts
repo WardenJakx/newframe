@@ -1,6 +1,6 @@
+import { expect, it, jest as timers, mock } from 'bun:test'
 import { EventEmitter } from 'events'
 import { Readable } from 'stream'
-import { expect, it, jest as timers, mock } from 'bun:test'
 
 import { createAgentService } from './index'
 

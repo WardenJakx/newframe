@@ -1,6 +1,7 @@
 import crypto from 'crypto'
 import { lookup } from 'dns/promises'
 import { isIP } from 'net'
+
 import { net as electronNet } from 'electron'
 
 import type { TokenImage } from '../../../../platform/state-store/state/index.js'

@@ -1,5 +1,5 @@
-import type { SecurityServicePorts } from './service.js'
 import { createOneResultCallbackBoundary } from '../../../platform/callbacks/oneResult.js'
+import type { SecurityServicePorts } from './service.js'
 
 type SecurityCallback = (error: Error | null, value?: boolean) => void
 

@@ -1,20 +1,19 @@
-import React from 'react'
-
 import { Button } from '@newframe/ui/button'
 import { Icon } from '@newframe/ui/icon'
 import { Stack } from '@newframe/ui/stack'
 import { Text } from '@newframe/ui/text'
+import React from 'react'
 
-import ChainTokenIcon from '../../../shared/renderer/ui/ChainTokenIcon'
+import { cva } from '../../../../generated/styled-system/css/cva.js'
+import type { ClipboardCapability, TokenImageCapability } from '../../../shared/renderer/capabilities'
 import { AddressIdentity } from '../../../shared/renderer/ui/AddressIdentity'
+import { ChainIcon } from '../../../shared/renderer/ui/ChainIcon'
+import ChainTokenIcon from '../../../shared/renderer/ui/ChainTokenIcon'
 import { DetailRow } from '../../../shared/renderer/ui/DetailRow'
+import type { NetworkLike, NetworkMetaLike } from '../../../shared/renderer/ui/tokenSelectorTypes'
 import { TrayOverlay } from '../../../shared/renderer/ui/TrayOverlay'
 import { formatUsdRate, isNativeCurrency, type DisplayedBalance } from '../../asset-data/domain/balance'
-import { cva } from '../../../../generated/styled-system/css/cva.js'
-import { ChainIcon } from '../../../shared/renderer/ui/ChainIcon'
 import { TRADE_DISABLED_CHAIN_LABEL } from './usePortfolioActions'
-import type { NetworkLike, NetworkMetaLike } from '../../../shared/renderer/ui/tokenSelectorTypes'
-import type { ClipboardCapability, TokenImageCapability } from '../../../shared/renderer/capabilities'
 
 const contentRecipe = cva({ base: { paddingBlockStart: '4' } })
 

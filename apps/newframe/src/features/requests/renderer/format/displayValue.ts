@@ -1,5 +1,4 @@
 import { formatUnits, parseUnits, toBigInt } from '../../../../shared/domain/units'
-
 import type { ResolvedAssetRate } from '../../../asset-data/domain/state/rate'
 
 const displayUnitMapping = [

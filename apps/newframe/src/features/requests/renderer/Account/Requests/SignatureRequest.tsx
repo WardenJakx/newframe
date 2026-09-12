@@ -1,8 +1,8 @@
 import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
 
-import type { SignRequestView } from './requestViewTypes'
 import { cva } from '../../../../../../generated/styled-system/css/cva.js'
+import type { SignRequestView } from './requestViewTypes'
 
 const messageRecipe = cva({
   base: {

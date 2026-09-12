@@ -1,19 +1,20 @@
 import type { IncomingMessage, Server } from 'http'
-import type WebSocket from 'ws'
-import { v4 as uuid } from 'uuid'
-import log from 'electron-log'
-import { isHexString } from '@ethereumjs/util'
 
+import { isHexString } from '@ethereumjs/util'
+import log from 'electron-log'
+import { v4 as uuid } from 'uuid'
+import type WebSocket from 'ws'
+
+import { createRpcPrincipal, type TrustedPrincipal } from '../../features/access-control/main/authority.js'
 import {
   parseOrigin,
   parseRequestChainId,
   type FrameExtension,
   type OriginsService
 } from '../../features/connections/main/origins.js'
-import validPayload from './validPayload.js'
-import protectedMethods from './protectedMethods.js'
-import { createRpcPrincipal, type TrustedPrincipal } from '../../features/access-control/main/authority.js'
 import type { ApiTimerPort } from './http.js'
+import protectedMethods from './protectedMethods.js'
+import validPayload from './validPayload.js'
 
 interface Subscription {
   originId: string
@@ -132,125 +133,149 @@ export function createWebSocketRpcTransport({
       })
     }
 
-    const messageHandler = async (data: WebSocket.RawData) => {
+    const processMessage = async (data: WebSocket.RawData) => {
       const rawPayload = validPayload<ExtensionPayload>(data.toString())
       if (!rawPayload) {
         log.warn('Invalid WebSocket RPC payload')
         return
       }
 
-      let requestOrigin = socket.origin
-      const proxiedExtensionRequest = Boolean(socket.frameExtension && rawPayload.__frameOrigin)
-      if (socket.frameExtension) {
-        if (!(await origins.isKnownExtension(socket.frameExtension))) {
-          respond({
+      let responded = false
+      const respondOnce = (response: RPCResponsePayload) => {
+        if (responded) return
+        responded = true
+        respond(response)
+      }
+      try {
+        let requestOrigin = socket.origin
+        const proxiedExtensionRequest = Boolean(socket.frameExtension && rawPayload.__frameOrigin)
+        if (socket.frameExtension) {
+          if (!(await origins.isKnownExtension(socket.frameExtension))) {
+            respondOnce({
+              id: rawPayload.id,
+              jsonrpc: rawPayload.jsonrpc,
+              error: {
+                message: `Permission denied, approve connection from Newframe Companion with id ${socket.frameExtension.id} in Newframe to continue`,
+                code: 4001
+              }
+            })
+            return
+          }
+
+          if (rawPayload.__frameOrigin) {
+            requestOrigin = rawPayload.__frameOrigin
+            delete rawPayload.__frameOrigin
+          } else {
+            requestOrigin = 'newframe-extension'
+          }
+        }
+
+        const requestChainId = parseRequestChainId(req)
+        if (requestChainId && !rawPayload.chainId) rawPayload.chainId = requestChainId
+        const origin = parseOrigin(requestOrigin)
+
+        if (logTraffic(origin)) {
+          log.info(
+            `req -> | ${socket.frameExtension ? 'ext' : 'ws'} | ${origin} | ${
+              rawPayload.method
+            } | -> | ${rawPayload.params}`
+          )
+        }
+
+        const { payload, chainId } = origins.updateOrigin(
+          rawPayload,
+          origin,
+          rawPayload.__extensionConnecting
+        )
+        const principal = createRpcPrincipal({
+          transport: 'websocket',
+          connectionId: socket.id,
+          origin,
+          capabilities: socket.companionInternal ? ['wallet:internal-state'] : []
+        })
+
+        if (!isHexString(chainId)) {
+          respondOnce({
             id: rawPayload.id,
             jsonrpc: rawPayload.jsonrpc,
             error: {
-              message: `Permission denied, approve connection from Newframe Companion with id ${socket.frameExtension.id} in Newframe to continue`,
+              message: `Invalid chain id (${rawPayload.chainId}), chain id must be hex-prefixed string`,
+              code: -1
+            }
+          })
+          return
+        }
+
+        if (!rawPayload.__extensionConnecting) extendSession(payload._origin)
+
+        if (socket.frameExtension && !proxiedExtensionRequest) {
+          if (rawPayload.method === 'frame_summon' && socket.companionInternal) {
+            windows.toggleTray()
+            return
+          }
+
+          const { id, jsonrpc } = rawPayload
+          if (rawPayload.method === 'eth_chainId') {
+            respondOnce({ id, jsonrpc, result: chainId })
+            return
+          }
+          if (rawPayload.method === 'net_version') {
+            respondOnce({ id, jsonrpc, result: parseInt(chainId, 16) })
+            return
+          }
+        }
+
+        if (protectedMethods.includes(payload.method) && !(await origins.isTrusted(payload, principal))) {
+          respondOnce({
+            id: payload.id,
+            jsonrpc: payload.jsonrpc,
+            error: {
+              message: accounts.getSelectedAddresses()[0]
+                ? `Permission denied, approve ${origin} in Newframe to continue`
+                : 'No Newframe account selected',
               code: 4001
             }
           })
           return
         }
 
-        if (rawPayload.__frameOrigin) {
-          requestOrigin = rawPayload.__frameOrigin
-          delete rawPayload.__frameOrigin
-        } else {
-          requestOrigin = 'newframe-extension'
-        }
-      }
+        await provider.send(
+          payload,
+          (response) => {
+            if (responded) return
+            if (response?.result) {
+              if (payload.method === 'eth_subscribe') {
+                subs[String(response.result)] = { socket, originId: payload._origin }
+              } else if (payload.method === 'eth_unsubscribe') {
+                payload.params.forEach((sub) => delete subs[sub])
+              }
+            }
 
-      const requestChainId = parseRequestChainId(req)
-      if (requestChainId && !rawPayload.chainId) rawPayload.chainId = requestChainId
-      const origin = parseOrigin(requestOrigin)
-
-      if (logTraffic(origin)) {
-        log.info(
-          `req -> | ${socket.frameExtension ? 'ext' : 'ws'} | ${origin} | ${
-            rawPayload.method
-          } | -> | ${rawPayload.params}`
+            if (logTraffic(origin)) {
+              log.info(
+                `<- res | ${socket.frameExtension ? 'ext' : 'ws'} | ${origin} | ${
+                  payload.method
+                } | <- | ${JSON.stringify(response.result || response.error)}`
+              )
+            }
+            respondOnce(response)
+          },
+          principal
         )
-      }
-
-      const { payload, chainId } = origins.updateOrigin(rawPayload, origin, rawPayload.__extensionConnecting)
-      const principal = createRpcPrincipal({
-        transport: 'websocket',
-        connectionId: socket.id,
-        origin,
-        capabilities: socket.companionInternal ? ['wallet:internal-state'] : []
-      })
-
-      if (!isHexString(chainId)) {
-        respond({
+      } catch (error) {
+        log.error('WebSocket RPC request failed', error)
+        respondOnce({
           id: rawPayload.id,
           jsonrpc: rawPayload.jsonrpc,
-          error: {
-            message: `Invalid chain id (${rawPayload.chainId}), chain id must be hex-prefixed string`,
-            code: -1
-          }
+          error: { code: -32603, message: 'Internal error' }
         })
-        return
       }
-
-      if (!rawPayload.__extensionConnecting) extendSession(payload._origin)
-
-      if (socket.frameExtension && !proxiedExtensionRequest) {
-        if (rawPayload.method === 'frame_summon' && socket.companionInternal) {
-          windows.toggleTray()
-          return
-        }
-
-        const { id, jsonrpc } = rawPayload
-        if (rawPayload.method === 'eth_chainId') {
-          respond({ id, jsonrpc, result: chainId })
-          return
-        }
-        if (rawPayload.method === 'net_version') {
-          respond({ id, jsonrpc, result: parseInt(chainId, 16) })
-          return
-        }
-      }
-
-      if (protectedMethods.includes(payload.method) && !(await origins.isTrusted(payload, principal))) {
-        respond({
-          id: payload.id,
-          jsonrpc: payload.jsonrpc,
-          error: {
-            message: accounts.getSelectedAddresses()[0]
-              ? `Permission denied, approve ${origin} in Newframe to continue`
-              : 'No Newframe account selected',
-            code: 4001
-          }
-        })
-        return
-      }
-
-      provider.send(
-        payload,
-        (response) => {
-          if (response?.result) {
-            if (payload.method === 'eth_subscribe') {
-              subs[String(response.result)] = { socket, originId: payload._origin }
-            } else if (payload.method === 'eth_unsubscribe') {
-              payload.params.forEach((sub) => delete subs[sub])
-            }
-          }
-
-          if (logTraffic(origin)) {
-            log.info(
-              `<- res | ${socket.frameExtension ? 'ext' : 'ws'} | ${origin} | ${
-                payload.method
-              } | <- | ${JSON.stringify(response.result || response.error)}`
-            )
-          }
-          respond(response)
-        },
-        principal
-      )
     }
 
+    const messageHandler = (data: WebSocket.RawData) => {
+      // Message failures are converted to RPC responses inside processMessage.
+      void processMessage(data)
+    }
     const errorHandler = (error: Error) => log.error(error)
     const closeHandler = () => {
       removeSocketSubscriptions(socket)
@@ -297,7 +322,7 @@ export function createWebSocketRpcTransport({
       wsServer?.off('connection', handler)
       const subscribedSockets = new Set(Object.values(subs).map(({ socket }) => socket))
       subscribedSockets.forEach(removeSocketSubscriptions)
-      for (const disposeSocket of [...socketDisposers.values()]) disposeSocket()
+      for (const disposeSocket of socketDisposers.values()) disposeSocket()
       Object.values(connectionMonitors).forEach((timer) => timers.clearTimeout(timer))
       Object.keys(connectionMonitors).forEach((id) => delete connectionMonitors[id])
       wsServer?.close()

@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'bun:test'
-import { UR, URDecoder, UREncoder } from '@ngraveio/bc-ur'
+
 import { ETHSignature, EthSignRequest } from '@keystonehq/bc-ur-registry-eth'
+import { UR, URDecoder, UREncoder } from '@ngraveio/bc-ur'
+
+import { publicAccount, transaction, vectors } from '../../../../../test/integration/fixtures/airgap.js'
 import { createUnsignedTransaction, sign } from '../../../../features/transactions/main/index.js'
 import {
   AirGapUrAssembler,
@@ -13,7 +16,6 @@ import {
   requestFrames,
   transactionPreimage
 } from './protocol.js'
-import { publicAccount, transaction, vectors } from '../../../../../test/integration/fixtures/airgap.js'
 
 function assemble(frames: string[], type: 'crypto-hdkey' | 'eth-signature') {
   const assembler = new AirGapUrAssembler(type)

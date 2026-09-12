@@ -1,18 +1,17 @@
-import log from 'electron-log'
 import { addHexPrefix } from '@ethereumjs/util'
+import log from 'electron-log'
 import { getAddress, isAddress } from 'ethers'
 
-import { NATIVE_CURRENCY } from '../../tokens/domain/constants.js'
-import { persistedImageSource } from '../../asset-data/domain/image/index.js'
-import { tokenImageSource } from '../../tokens/domain/index.js'
 import { getProfileAccountIds } from '../../../app/contracts/state/main.js'
-
-import type { TransactionEffect, TransactionSimulation } from '../domain/index.js'
 import type { Erc20ProviderPort, TokenData } from '../../../platform/chain-rpc/contracts/erc20.js'
-import type { Provider } from '../../connections/main/provider/index.js'
-import type { TransactionRequest } from '../../requests/contract/requests.js'
 import type { CanonicalStoreReader } from '../../../platform/state-store/actions.js'
 import type { Token } from '../../../platform/state-store/state/index.js'
+import { persistedImageSource } from '../../asset-data/domain/image/index.js'
+import type { Provider } from '../../connections/main/provider/index.js'
+import type { TransactionRequest } from '../../requests/contract/requests.js'
+import { NATIVE_CURRENCY } from '../../tokens/domain/constants.js'
+import { tokenImageSource } from '../../tokens/domain/index.js'
+import type { TransactionEffect, TransactionSimulation } from '../domain/index.js'
 
 const TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'
 const APPROVAL_TOPIC = '0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925'
@@ -508,11 +507,13 @@ async function traceCall(
   } as const
 
   return new Promise<TraceCall>((resolve, reject) => {
-    provider.send(payload, (response) => {
-      if (response?.error) return reject(response.error)
-      if (!isTraceCall(response?.result)) return reject(new Error('RPC returned an invalid call trace'))
-      resolve(response.result)
-    })
+    Promise.resolve(
+      provider.send(payload, (response) => {
+        if (response?.error) return reject(response.error)
+        if (!isTraceCall(response?.result)) return reject(new Error('RPC returned an invalid call trace'))
+        resolve(response.result)
+      })
+    ).catch(reject)
   })
 }
 

@@ -4,6 +4,7 @@ import type {
   TypedDataV1,
   TypedMessage as BaseTypedMessage
 } from '@metamask/eth-sig-util'
+
 import type { Token } from '../../tokens/domain/state/token.js'
 import type { TransactionData, TransactionSimulation } from '../../transactions/domain/index.js'
 

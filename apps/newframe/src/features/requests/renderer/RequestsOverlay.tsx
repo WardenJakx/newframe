@@ -1,6 +1,6 @@
 import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector'
-import { RequestsOverlayView } from './RequestsOverlayView'
 import type { RequestRendererCapabilities } from './requestCapabilities'
+import { RequestsOverlayView } from './RequestsOverlayView'
 
 export function RequestsOverlay({
   capabilities,

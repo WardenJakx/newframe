@@ -1,14 +1,14 @@
+import type { Balance, Token } from '../../../../platform/state-store/state/index.js'
+import { formatUnits } from '../../../../shared/domain/units.js'
+import type { AssetRateInput } from '../../../asset-data/domain/state/rate.js'
+import { NATIVE_CURRENCY } from '../../../tokens/domain/constants.js'
+import ProviderRequestPolicy, { type ProviderRequestPolicyOptions } from '../requestPolicy.js'
 import type {
   PortfolioChainImage,
   PortfolioProvider,
   PortfolioRefreshOptions,
   PortfolioSnapshot
 } from '../types.js'
-import type { Balance, Token } from '../../../../platform/state-store/state/index.js'
-import type { AssetRateInput } from '../../../asset-data/domain/state/rate.js'
-import ProviderRequestPolicy, { type ProviderRequestPolicyOptions } from '../requestPolicy.js'
-import { NATIVE_CURRENCY } from '../../../tokens/domain/constants.js'
-import { formatUnits } from '../../../../shared/domain/units.js'
 
 type Fetch = typeof fetch
 

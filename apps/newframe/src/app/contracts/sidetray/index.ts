@@ -1,5 +1,5 @@
-import { NATIVE_CURRENCY } from '../../../features/tokens/domain/constants.js'
 import { hasPositiveBalance } from '../../../features/asset-data/domain/balance/index.js'
+import { NATIVE_CURRENCY } from '../../../features/tokens/domain/constants.js'
 import {
   FLASH_WETH_ASSET,
   getFlashAssetsForChain,

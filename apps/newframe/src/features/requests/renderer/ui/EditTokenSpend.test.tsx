@@ -1,10 +1,10 @@
 import { describe, expect, it, mock } from 'bun:test'
 
 import { render, screen } from '../../../../../test/support/componentSetup'
-import EditTokenSpend from './EditTokenSpend'
-import type { TokenSpendData } from './EditTokenSpend'
 import { max } from '../../../../shared/domain/units'
 import { createRequestRendererCapabilitiesFake } from '../requestCapabilities.test-support'
+import EditTokenSpend from './EditTokenSpend'
+import type { TokenSpendData } from './EditTokenSpend'
 
 const maxIntStr = max.toString(10)
 const clipboard = createRequestRendererCapabilitiesFake().external

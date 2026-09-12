@@ -2,11 +2,11 @@ import { describe, expect, it } from 'bun:test'
 
 import { render, screen } from '../../../../test/support/componentSetup'
 import { registerTestRuntimeFixture } from '../../../../test/support/rendererClient'
-import { AssetDetailsView } from './AssetDetailsView'
-import { NATIVE_CURRENCY } from '../../tokens/domain/constants'
-import type { DisplayedBalance } from '../../asset-data/domain/balance'
-import { shortAddress } from '../../../shared/renderer/ui/AddressIdentity'
 import { createRendererUtilityCapabilities as createUtilityPorts } from '../../../shared/renderer/capabilities.test-support'
+import { shortAddress } from '../../../shared/renderer/ui/AddressIdentity'
+import type { DisplayedBalance } from '../../asset-data/domain/balance'
+import { NATIVE_CURRENCY } from '../../tokens/domain/constants'
+import { AssetDetailsView } from './AssetDetailsView'
 
 const address = '0xaf88d065e77c8cc2239327c5edb3a432268e5831'
 const networks = { 42161: { name: 'Arbitrum' } }

@@ -1,6 +1,5 @@
-import ZerionPortfolioProvider from './providers/zerion.js'
 import type { CanonicalStoreReader } from '../../../platform/state-store/actions.js'
-
+import ZerionPortfolioProvider from './providers/zerion.js'
 import type { PortfolioProvider } from './types.js'
 
 type TokenDiscoveryProviderError = 'token_discovery_disabled' | 'missing_api_key'

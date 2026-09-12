@@ -23,14 +23,14 @@
     "test:newframe-extension": "bun run extension test",
     "test:all": "bun run test:unit",
     "typecheck": "tsc --project tsconfig.json && bun run --workspaces --sequential typecheck",
-    "lint": "oxlint . --quiet --report-unused-disable-directives-severity=warn",
-    "lint:warn": "oxlint . --report-unused-disable-directives-severity=warn",
-    "lint:fix": "oxlint --fix . --report-unused-disable-directives-severity=warn",
+    "lint": "oxlint . --report-unused-disable-directives-severity=error",
+    "lint:warn": "bun run lint",
+    "lint:fix": "oxlint --fix . --report-unused-disable-directives-severity=error",
     "knip": "bun run --cwd apps/newframe knip",
     "format": "oxfmt --write '**/*.{yml,json,md,html,ts,tsx,js,mjs}'",
     "format:staged": "lint-staged",
     "format:check": "oxfmt --check '**/*.{yml,json,md,html,ts,tsx,js,mjs}'",
-    "check": "bun run format:check && bun run lint && bun run typecheck && bun run test",
+    "check": "bun run format:check && bun run typecheck && bun run lint && bun run knip && bun run test",
     "dep:report": "bun scripts/dep-report.ts",
     "visual:harness:newframe": "bun exec 'node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types harness/newframe/visual-harness.ts'",
     "scenario:newframe:provider": "bun harness/newframe/scenarios/provider-smoke.ts"
@@ -49,6 +49,7 @@
     "oxfmt": "0.65.0",
     "typescript": "7.0.2",
     "oxlint": "1.80.0",
+    "oxlint-tsgolint": "7.0.2001",
     "eslint-plugin-react-hooks": "7.1.1"
   },
   "overrides": {

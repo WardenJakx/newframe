@@ -4,10 +4,10 @@ import { useShallow } from 'zustand/react/shallow'
 
 import { act, render, screen } from '../../../../test/support/componentSetup'
 import { registerTestRuntimeFixture } from '../../../../test/support/rendererClient'
-import { useWalletSelector } from './useAppSelector'
 import type { WalletRendererState } from '../contract/projections'
 import { STATE_STREAM_SCHEMA_VERSION, type StateSnapshot, type StateUpdateBatch } from '../contract/protocol'
 import { walletChanges, walletState } from './fixtures.test-support.ts'
+import { useWalletSelector } from './useAppSelector'
 
 const fixture = registerTestRuntimeFixture()
 

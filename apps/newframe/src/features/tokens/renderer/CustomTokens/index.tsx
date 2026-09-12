@@ -1,19 +1,18 @@
-import { useState } from 'react'
-import { useShallow } from 'zustand/react/shallow'
-
 import { Button } from '@newframe/ui/button'
 import { IconButton } from '@newframe/ui/icon-button'
 import { Image } from '@newframe/ui/image'
 import { Stack } from '@newframe/ui/stack'
 import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
+import { useState } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 
-import type { Token } from '../../domain/state/token'
-import { AddressIdentity } from '../../../../shared/renderer/ui/AddressIdentity'
-import { customTokens, tokenImageSource } from '../../domain'
-import { useTokenImageHydration } from '../../../../shared/renderer/hooks/useTokenImageHydration'
 import type { WalletRendererState } from '../../../../platform/state-sync/contract/projections'
 import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector'
+import { useTokenImageHydration } from '../../../../shared/renderer/hooks/useTokenImageHydration'
+import { AddressIdentity } from '../../../../shared/renderer/ui/AddressIdentity'
+import { customTokens, tokenImageSource } from '../../domain'
+import type { Token } from '../../domain/state/token'
 import type { TokensCapability } from '../tokensCapability'
 
 const selectCustomTokens = (state: WalletRendererState) => customTokens(state.tokens)

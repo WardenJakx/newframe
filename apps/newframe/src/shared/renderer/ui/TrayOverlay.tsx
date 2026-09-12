@@ -1,9 +1,8 @@
 import type { ReactNode } from 'react'
 
 import { cva } from '../../../../generated/styled-system/css/cva.js'
-
-import { SidePanelHeader } from './SidePanel/SidePanelHeader.js'
 import { SidePanelFooter } from './SidePanel/SidePanelFooter.js'
+import { SidePanelHeader } from './SidePanel/SidePanelHeader.js'
 
 const overlayRecipe = cva({
   base: {

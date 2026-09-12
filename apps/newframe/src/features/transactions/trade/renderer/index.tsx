@@ -1,5 +1,5 @@
-import { TradeView } from './TradeView'
 import type { TradeCapability } from './tradeService'
+import { TradeView } from './TradeView'
 import { useTradeController } from './useTradeController'
 
 export interface TradeProps {

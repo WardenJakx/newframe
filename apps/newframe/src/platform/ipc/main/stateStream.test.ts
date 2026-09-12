@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test'
 
-import createInitialState from '../../state-store/state'
+import { DEFAULT_PROFILE_ID } from '../../../app/contracts/state/main'
 import createCanonicalStore from '../../state-store/createCanonicalStore'
+import createInitialState from '../../state-store/state'
 import { StateMessageChannel } from '../../state-sync/contract/protocol'
 import { projectRendererState } from '../../state-sync/main/projections'
-import { DEFAULT_PROFILE_ID } from '../../../app/contracts/state/main'
 import { createStateStream, type StateStream } from './stateStream'
 
 const authorizeRenderer = mock()

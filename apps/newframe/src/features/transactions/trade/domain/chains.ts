@@ -8,8 +8,8 @@ interface FlashChainConfig {
   chainId: number
   slug: string
   profiles: readonly FlashProfile[]
-  weth?: string
-  usdc?: string
+  weth?: string | undefined
+  usdc?: string | undefined
 }
 
 const FLASH_CHAIN_REGISTRY: readonly FlashChainConfig[] = [

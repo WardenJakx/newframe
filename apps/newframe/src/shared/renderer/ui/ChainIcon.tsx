@@ -1,10 +1,9 @@
+import { Icon } from '@newframe/ui/icon'
 import type { CSSProperties } from 'react'
 
-import { Icon } from '@newframe/ui/icon'
-
+import { cva } from '../../../../generated/styled-system/css/cva.js'
 import { persistedImageSource } from '../../../features/asset-data/domain/image'
 import { chainColorValue } from '../../../features/networks/domain/chain/colors'
-import { cva } from '../../../../generated/styled-system/css/cva.js'
 import type { NetworkLike, NetworkMetaLike } from './tokenSelectorTypes'
 
 const chainIconRecipe = cva({

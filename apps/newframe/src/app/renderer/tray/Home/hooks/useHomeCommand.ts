@@ -2,8 +2,8 @@ import { useEffect, useRef } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 
 import { useWalletSelector } from '../../../../../platform/state-sync/renderer/useAppSelector'
-import { useHomeUiStore } from '../state/HomeUiProvider'
 import type { HomeCapability } from '../homeCapability'
+import { useHomeUiStore } from '../state/HomeUiProvider'
 
 export function useHomeCommand(capability: Pick<HomeCapability, 'consumeCommand' | 'selectAccount'>) {
   const shared = useWalletSelector(

@@ -5,7 +5,7 @@ import createCanonicalStore from '../../../../platform/state-store/createCanonic
 
 const mockBalancesFactory = mock(() => mockBalances)
 
-mock.module('./balances', () => ({ default: mockBalancesFactory }))
+await mock.module('./balances', () => ({ default: mockBalancesFactory }))
 
 let dataManager: any, externalData: any, mockBalances: any
 

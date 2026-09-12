@@ -1,9 +1,9 @@
-import type { FlashOrderType, FlashTradeSide } from '../domain/schemas'
 import type {
   NetworkLike,
   NetworkMetaLike,
   TokenSelectorItem
 } from '../../../../shared/renderer/ui/tokenSelectorTypes'
+import type { FlashOrderType, FlashTradeSide } from '../domain/schemas'
 import type { TradeAssetField } from './tradeReducer'
 import type { TradeOrderFields } from './tradeTransaction'
 

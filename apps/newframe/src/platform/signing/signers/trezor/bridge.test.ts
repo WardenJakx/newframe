@@ -1,6 +1,6 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, mock } from 'bun:test'
-
 import { EventEmitter } from 'events'
+
 import log from 'electron-log'
 
 const trezorEvents = new EventEmitter()
@@ -35,7 +35,7 @@ const TrezorConnectMock = {
   uiResponse: mock()
 }
 
-mock.module('@trezor/connect', () => ({
+await mock.module('@trezor/connect', () => ({
   default: TrezorConnectMock,
   DEVICE,
   DEVICE_EVENT,

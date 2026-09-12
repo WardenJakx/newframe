@@ -1,8 +1,8 @@
-import { AirGapPublicAccountSchema } from '../../signing/domain/airgap.js'
 import { z } from 'zod'
 
 import { MainSchema } from '../../../app/contracts/state/main.js'
 import { TokenCatalogSchema } from '../../../features/tokens/domain/state/token.js'
+import { AirGapPublicAccountSchema } from '../../signing/domain/airgap.js'
 
 export const PERSISTENCE_VERSION = 7
 export const CANONICAL_STATE_STORAGE_NAME = 'canonical-wallet-state'

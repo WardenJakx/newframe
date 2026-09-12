@@ -1,11 +1,12 @@
+import type { FlashQuoteDisplay } from '../../../../app/contracts/operations'
 import { parseCanonicalAssetId, resolveFlashAssetFromRouteAssetId } from '../../../../app/contracts/sidetray'
+import { getFlashAssetsForChain, getFlashDefaultTargetAsset, toFlashApiAssetAddress } from '../domain/assets'
 import {
   FLASH_MARKET_ORDER_TYPE,
   FLASH_STOP_LOSS_ORDER_TYPE,
   FLASH_STOP_ORDER_TYPE,
   FLASH_TAKE_PROFIT_ORDER_TYPE
 } from '../domain/constants'
-import { getFlashAssetsForChain, getFlashDefaultTargetAsset, toFlashApiAssetAddress } from '../domain/assets'
 import {
   getDefaultContraAsset,
   getDefaultSide,
@@ -14,7 +15,6 @@ import {
   type FlashAssetBalances
 } from '../domain/pair'
 import { type FlashAsset, type FlashOrderType, type FlashTradeSide } from '../domain/schemas'
-import type { FlashQuoteDisplay } from '../../../../app/contracts/operations'
 import {
   TRADE_DEFAULT_DURATION_DAYS,
   TRADE_DEFAULT_DURATION_HOURS,

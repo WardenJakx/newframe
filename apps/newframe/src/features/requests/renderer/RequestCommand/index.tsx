@@ -7,16 +7,16 @@ import { Text } from '@newframe/ui/text'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 
-import type { SignatureRequest, TransactionRequest } from '../../contract/requests'
-import { RequestActions } from '../ui/RequestActions'
-import StatusGlyph from '../../../../shared/renderer/ui/StatusGlyph'
-import { isCancelableRequest, isSignatureRequest } from '../../domain'
+import type { AirGapRequestReference } from '../../../../platform/signing/domain/airgap'
 import type { WalletRendererState } from '../../../../platform/state-sync/contract/projections'
 import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector'
-import { useRequestView, type RequestViewStep } from '../requestView'
-import TxApproval from './TxApproval'
+import StatusGlyph from '../../../../shared/renderer/ui/StatusGlyph'
+import type { SignatureRequest, TransactionRequest } from '../../contract/requests'
+import { isCancelableRequest, isSignatureRequest } from '../../domain'
 import type { RequestRendererCapabilities, RequestReviewCapability } from '../requestCapabilities'
-import type { AirGapRequestReference } from '../../../../platform/signing/domain/airgap'
+import { useRequestView, type RequestViewStep } from '../requestView'
+import { RequestActions } from '../ui/RequestActions'
+import TxApproval from './TxApproval'
 
 type RequestReference = { handlerId: string }
 

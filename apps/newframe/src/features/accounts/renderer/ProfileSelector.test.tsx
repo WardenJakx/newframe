@@ -4,8 +4,8 @@ import { act, cleanup, render, screen, waitFor } from '../../../../test/support/
 import { registerTestRuntimeFixture } from '../../../../test/support/rendererClient'
 import type { OperationRecord } from '../../../platform/operations/operation'
 import { walletState } from '../../../platform/state-sync/renderer/fixtures.test-support.ts'
-import { ProfileSelector } from './ProfileSelector'
 import { createAccountsCapabilityFake, type AccountsCapabilityFake } from './accountsCapability.test-support'
+import { ProfileSelector } from './ProfileSelector'
 
 const fixture = registerTestRuntimeFixture()
 let capability: AccountsCapabilityFake

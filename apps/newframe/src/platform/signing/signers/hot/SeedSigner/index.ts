@@ -1,5 +1,5 @@
-import { HDKey } from '@scure/bip32'
 import { stripHexPrefix } from '@ethereumjs/util'
+import { HDKey } from '@scure/bip32'
 import { computeAddress, Mnemonic } from 'ethers'
 
 import HotSigner, { type VaultAccess } from '../HotSigner/index.js'

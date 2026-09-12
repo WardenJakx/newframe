@@ -142,3 +142,60 @@ it('keeps an HTTP Provider continuation after the client response closes and app
   expect(JSON.parse(response.body)).toEqual({ id: 13, jsonrpc: '2.0', result: '0x10' })
   transport.dispose()
 })
+
+it.each(['trust', 'send', 'after-response'] as const)(
+  'settles HTTP requests once when %s rejects',
+  async (failure) => {
+    const provider = new FakeProvider()
+    const send = async (payload: RPCRequestPayload, respond?: (response: RPCResponsePayload) => void) => {
+      if (failure === 'after-response') respond?.({ id: payload.id, jsonrpc: '2.0', result: '0x1' })
+      throw new Error('private failure details')
+    }
+    const transport = createHttpRpcTransport({
+      provider: Object.assign(provider, { send }),
+      accounts: { getSelectedAddresses: () => [] },
+      store: { endOriginSession: () => undefined },
+      origins: {
+        updateOrigin: (payload: RPCRequestPayload) => ({ payload, chainId: '0x1' }),
+        isTrusted: async () => {
+          if (failure === 'trust') throw new Error('private failure details')
+          return true
+        }
+      } as never,
+      handleAgentRequest: async () => undefined
+    })
+    const request = Object.assign(new EventEmitter(), {
+      headers: { origin: 'https://app.example' },
+      method: 'POST'
+    })
+    const responses: string[] = []
+    const response = Object.assign(new EventEmitter(), {
+      status: 0,
+      writableEnded: false,
+      setHeader: () => undefined,
+      writeHead(status: number) {
+        this.status = status
+        return this
+      },
+      end(body: string) {
+        this.writableEnded = true
+        responses.push(body)
+        return this
+      }
+    })
+    transport.handler(request as never, response as never)
+    request.emit(
+      'data',
+      Buffer.from(JSON.stringify({ id: 21, jsonrpc: '2.0', method: 'eth_accounts', params: [] }))
+    )
+    request.emit('end')
+    await Bun.sleep(0)
+    expect(responses.map((body) => JSON.parse(body))).toEqual([
+      failure === 'after-response'
+        ? { id: 21, jsonrpc: '2.0', result: '0x1' }
+        : { id: 21, jsonrpc: '2.0', error: { code: -32603, message: 'Internal error' } }
+    ])
+    expect(response.status).toBe(failure === 'after-response' ? 200 : 500)
+    transport.dispose()
+  }
+)

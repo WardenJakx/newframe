@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test'
-import { registerTestRuntimeFixture } from '../../../../test/support/rendererClient'
 
+import { registerTestRuntimeFixture } from '../../../../test/support/rendererClient'
 import type { WalletRendererState } from '../contract/projections'
 import { STATE_STREAM_SCHEMA_VERSION, type StateSnapshot, type StateUpdateBatch } from '../contract/protocol'
 import { walletChanges, walletState } from './fixtures.test-support.ts'

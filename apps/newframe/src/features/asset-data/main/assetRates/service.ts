@@ -1,6 +1,6 @@
-import { getAssetRateKey, getCuratedAsset, resolveAssetRate, toAssetId } from '../../domain/asset/index.js'
+import type { CanonicalStore } from '../../../../platform/state-store/actions.js'
 import { NATIVE_CURRENCY } from '../../../tokens/domain/constants.js'
-
+import { getAssetRateKey, getCuratedAsset, resolveAssetRate, toAssetId } from '../../domain/asset/index.js'
 import type {
   AssetRateInput,
   AssetRateReference,
@@ -8,7 +8,6 @@ import type {
   AssetRateSource,
   ResolvedAssetRate
 } from '../../domain/state/rate.js'
-import type { CanonicalStore } from '../../../../platform/state-store/actions.js'
 
 type AssetRateStoreState = Pick<CanonicalStore, 'main' | 'setAssetRates'>
 

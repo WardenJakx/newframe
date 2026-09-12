@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react'
 
 import type { DisplayedBalance } from '../../asset-data/domain/balance'
-import { useAccountBalances } from './useAccountBalances'
+import type { PortfolioCapability } from './portfolioCapability'
 import { createPositionGroups } from './positionModel'
 import { PositionsView } from './PositionsView'
-import type { PortfolioCapability } from './portfolioCapability'
+import { useAccountBalances } from './useAccountBalances'
 
 const ROW_INCREMENT = 50
 

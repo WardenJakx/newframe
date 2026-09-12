@@ -1,10 +1,9 @@
-import type { CSSProperties, ReactNode } from 'react'
-
 import { Stack } from '@newframe/ui/stack'
 import { Text } from '@newframe/ui/text'
+import type { CSSProperties, ReactNode } from 'react'
 
-import { chainColorValue } from '../../../networks/domain/chain/colors'
 import { cva } from '../../../../../generated/styled-system/css/cva.js'
+import { chainColorValue } from '../../../networks/domain/chain/colors'
 
 const chainRecipe = cva({ base: { color: 'var(--request-chain-color)' } })
 

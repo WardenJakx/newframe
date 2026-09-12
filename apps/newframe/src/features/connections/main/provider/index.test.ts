@@ -10,19 +10,19 @@ import {
   mock,
   spyOn
 } from 'bun:test'
-
-import log from 'electron-log'
 import EventEmitter from 'events'
-import { parseUnits, toBeHex } from 'ethers'
-import { validate as validateUUID } from 'uuid'
-import { addHexPrefix, intToHex } from '@ethereumjs/util'
-import { SignTypedDataVersion } from '@metamask/eth-sig-util'
 import { randomUUID } from 'node:crypto'
 
-import chainConfig from '../../../networks/main/config'
-import { gweiToHex } from '../../../../shared/domain/hex'
+import { addHexPrefix, intToHex } from '@ethereumjs/util'
+import { SignTypedDataVersion } from '@metamask/eth-sig-util'
+import log from 'electron-log'
+import { parseUnits, toBeHex } from 'ethers'
+import { validate as validateUUID } from 'uuid'
+
 import { Type as SignerType } from '../../../../platform/signing/domain'
+import { gweiToHex } from '../../../../shared/domain/hex'
 import { createAgentPrincipal, createRpcPrincipal } from '../../../access-control/main/authority'
+import chainConfig from '../../../networks/main/config'
 
 const address = '0x22dd63c3619818fdbc262c78baee43cb61e9cccf'
 const principal = createRpcPrincipal({
@@ -86,8 +86,8 @@ const setNetwork = (id: number, network: any) => {
         explorer: '',
         ...network,
         connection: {
-          primary: { connected: false, ...(network.connection?.primary || {}) },
-          secondary: { connected: false, ...(network.connection?.secondary || {}) }
+          primary: { connected: false, ...network.connection?.primary },
+          secondary: { connected: false, ...network.connection?.secondary }
         }
       }
       state.main.networksMeta.ethereum[id] ||= {
@@ -128,18 +128,18 @@ const expectQueuedRequestRejection = (sendRequest: (callback: (response: any) =>
     sendRequest(callback)
   })
 
-mock.module('../../../networks/main', () => {
+await mock.module('../../../networks/main', () => {
   const chains = { send: mock(), syncDataEmit: mock(), on: mock(), off: mock(), refreshGasFees: mock() }
   return { default: chains, ...chains }
 })
-mock.module('../../../transactions/main/reveal', () => {
+await mock.module('../../../transactions/main/reveal', () => {
   const reveal = {
     resolveEntityType: mock().mockResolvedValue('external')
   }
   return { default: reveal, ...reveal }
 })
 
-mock.module('./subscriptions', () => ({
+await mock.module('./subscriptions', () => ({
   SubscriptionType: {
     ACCOUNTS: 'accountsChanged',
     ASSETS: 'assetsChanged',
@@ -1315,5 +1315,31 @@ describe('#signAndSend', () => {
         })
       })
     })
+  })
+})
+
+describe('sendAsync failure settlement', () => {
+  it.each([false, true])('settles once when send rejects, callback first: %s', async (callbackFirst) => {
+    const response = { id: 1, jsonrpc: '2.0' as const, result: '0x1' }
+    const failure = new Error('provider unavailable')
+    const send = spyOn(provider, 'send').mockImplementation(
+      async (_payload: RPCRequestPayload, respond: (result: RPCResponsePayload) => void) => {
+        if (callbackFirst) respond(response)
+        throw failure
+      }
+    )
+    const results: Parameters<Callback<RPCResponsePayload>>[] = []
+    try {
+      provider.sendAsync(
+        { id: 1, jsonrpc: '2.0', method: 'eth_chainId', params: [] },
+        (...result: Parameters<Callback<RPCResponsePayload>>) => {
+          results.push(result)
+        }
+      )
+      await Promise.resolve()
+      expect(results).toEqual(callbackFirst ? [[null, response]] : [[failure]])
+    } finally {
+      send.mockRestore()
+    }
   })
 })

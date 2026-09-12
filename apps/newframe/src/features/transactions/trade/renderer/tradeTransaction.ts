@@ -1,5 +1,8 @@
-import { type BalanceSummary } from '../../../asset-data/domain/balance'
 import type { FlashQuoteRequest } from '../../../../app/contracts/operations'
+import { type BalanceSummary } from '../../../asset-data/domain/balance'
+import { NATIVE_CURRENCY } from '../../../tokens/domain/constants'
+import { balanceSummaryToFlashAsset, getFlashAssetsForChain, toFlashApiAssetAddress } from '../domain/assets'
+import { isFlashChainSupported } from '../domain/chains'
 import {
   FLASH_LIMIT_ORDER_TYPE,
   FLASH_MARKET_ORDER_TYPE,
@@ -8,8 +11,7 @@ import {
   FLASH_TAKE_PROFIT_ORDER_TYPE,
   FLASH_TWAP_ORDER_TYPE
 } from '../domain/constants'
-import { balanceSummaryToFlashAsset, getFlashAssetsForChain, toFlashApiAssetAddress } from '../domain/assets'
-import { isFlashChainSupported } from '../domain/chains'
+import { getFlashAssetPairChains } from '../domain/pair'
 import {
   FLASH_MAX_TWAP_BUCKET_COUNT,
   FLASH_MAX_TWAP_DURATION_SECONDS,
@@ -30,8 +32,6 @@ import {
   type FlashStep,
   type FlashTradeSide
 } from '../domain/schemas'
-import { getFlashAssetPairChains } from '../domain/pair'
-import { NATIVE_CURRENCY } from '../../../tokens/domain/constants'
 
 export const TRADE_DEFAULT_SLIPPAGE = ''
 export const TRADE_DEFAULT_MAX_PRICE_IMPACT = ''

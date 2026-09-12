@@ -2,9 +2,9 @@ import { beforeEach, describe, expect, it } from 'bun:test'
 
 import { render } from '../../../../test/support/componentSetup'
 import { registerTestRuntimeFixture } from '../../../../test/support/rendererClient'
-import Badge from './index'
 import { STATE_STREAM_SCHEMA_VERSION } from '../../state-sync/contract/protocol'
 import { walletState } from '../../state-sync/renderer/fixtures.test-support.ts'
+import Badge from './index'
 import { createUpdaterCapability } from './updaterCapability'
 
 const fixture = registerTestRuntimeFixture()

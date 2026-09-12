@@ -1,10 +1,9 @@
-import { Interface } from 'ethers'
 import { addHexPrefix } from '@ethereumjs/util'
 import log from 'electron-log'
-
+import { Interface } from 'ethers'
 import type { BytesLike } from 'ethers'
-import type { Eip1193Provider } from '../../../features/connections/main/provider/connection.js'
 
+import type { Eip1193Provider } from '../../../features/connections/main/provider/connection.js'
 import {
   abi,
   Call,

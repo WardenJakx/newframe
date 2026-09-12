@@ -1,5 +1,5 @@
-import type { Accounts } from './index.js'
 import type { CanonicalStore } from '../../../platform/state-store/actions.js'
+import type { Accounts } from './index.js'
 
 type AccountState = Pick<
   CanonicalStore,

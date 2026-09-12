@@ -8,9 +8,9 @@ import type {
   ProfileSelectCommand
 } from '../../../../app/contracts/operations.js'
 import type { OperationEntityRef } from '../../../../platform/operations/operation.js'
-import type { CanonicalStore } from '../../../../platform/state-store/actions.js'
 import type { OperationService } from '../../../../platform/operations/service.js'
 import type { OperationOwner, OperationReference } from '../../../../platform/operations/types.js'
+import type { CanonicalStore } from '../../../../platform/state-store/actions.js'
 
 type ProfileCommand =
   | AccountProfileMoveCommand

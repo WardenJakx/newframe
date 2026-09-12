@@ -1,13 +1,13 @@
-import React from 'react'
 import { Image } from '@newframe/ui/image'
 import { MediaBadge } from '@newframe/ui/media-badge'
 import { StatusDot } from '@newframe/ui/status-dot'
 import { Text } from '@newframe/ui/text'
+import React from 'react'
 
 import { imageSource, persistedImageSource } from '../../../features/asset-data/domain/image'
+import type { TokenImageCapability } from '../capabilities'
 import { useTokenImageHydration } from '../hooks/useTokenImageHydration'
 import type { ChainTokenIconSize, NetworkLike, NetworkMetaLike } from './tokenSelectorTypes'
-import type { TokenImageCapability } from '../capabilities'
 
 interface ChainTokenIconProps {
   chainId: number

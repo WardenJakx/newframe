@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test'
 
 import { intToHex } from '@ethereumjs/util'
+
 import GasMonitor from './gasMonitor'
 
 let requestHandlers: any

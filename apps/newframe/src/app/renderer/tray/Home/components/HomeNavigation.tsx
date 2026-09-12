@@ -2,11 +2,11 @@ import { useShallow } from 'zustand/react/shallow'
 
 import { chainColorValue } from '../../../../../features/networks/domain/chain/colors'
 import { ChainDot } from '../../../../../features/networks/renderer/ChainDot'
-import { useWalletSelector } from '../../../../../platform/state-sync/renderer/useAppSelector'
-import { useHomeUiStore } from '../state/HomeUiProvider'
-import { ChainIcon } from '../../../../../shared/renderer/ui/ChainIcon'
-import { HomeNavigationView } from './HomeNavigationView'
 import type { WalletRendererState } from '../../../../../platform/state-sync/contract/projections'
+import { useWalletSelector } from '../../../../../platform/state-sync/renderer/useAppSelector'
+import { ChainIcon } from '../../../../../shared/renderer/ui/ChainIcon'
+import { useHomeUiStore } from '../state/HomeUiProvider'
+import { HomeNavigationView } from './HomeNavigationView'
 
 const EMPTY_NETWORKS: WalletRendererState['networks']['ethereum'] = {}
 const EMPTY_NETWORK_METADATA: WalletRendererState['networksMeta']['ethereum'] = {}

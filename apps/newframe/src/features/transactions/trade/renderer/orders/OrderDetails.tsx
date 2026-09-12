@@ -1,8 +1,8 @@
 import { useShallow } from 'zustand/react/shallow'
 
+import type { WalletRendererState } from '../../../../../platform/state-sync/contract/projections'
 import { useWalletSelector } from '../../../../../platform/state-sync/renderer/useAppSelector'
 import { OrderDetailsView } from './OrderDetailsView'
-import type { WalletRendererState } from '../../../../../platform/state-sync/contract/projections'
 import type { OrdersCapability } from './ordersCapability'
 
 const EMPTY_NETWORKS: WalletRendererState['networks']['ethereum'] = {}

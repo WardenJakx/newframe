@@ -1,6 +1,13 @@
 import { beforeEach, expect, it, mock } from 'bun:test'
 
 import { act, fireEvent, render, screen } from '../../../../../test/support/componentSetup'
+import { registerTestRuntimeFixture } from '../../../../../test/support/rendererClient'
+import { walletState } from '../../../../platform/state-sync/renderer/fixtures.test-support'
+import {
+  createRequestRendererCapabilitiesFake as createRequestPortsFake,
+  type RequestRendererCapabilitiesFake
+} from '../requestCapabilities.test-support'
+import { RequestViewProvider } from '../requestView'
 import RequestCommandContainer, {
   RequestCommand,
   approveRequest,
@@ -8,14 +15,7 @@ import RequestCommandContainer, {
   runWhenAppUnlocked,
   type RequestCommandNotifier
 } from './index'
-import { registerTestRuntimeFixture } from '../../../../../test/support/rendererClient'
-import { walletState } from '../../../../platform/state-sync/renderer/fixtures.test-support'
-import { RequestViewProvider } from '../requestView'
 import TxApproval from './TxApproval'
-import {
-  createRequestRendererCapabilitiesFake as createRequestPortsFake,
-  type RequestRendererCapabilitiesFake
-} from '../requestCapabilities.test-support'
 
 let capabilities: RequestRendererCapabilitiesFake
 const fixture = registerTestRuntimeFixture()

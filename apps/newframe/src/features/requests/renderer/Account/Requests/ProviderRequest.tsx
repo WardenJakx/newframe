@@ -3,8 +3,8 @@ import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
 
 import { RequestStatusNotice } from '../../ui/RequestStatusNotice'
-import { useOriginName } from './state'
 import type { AccessRequestView } from './requestViewTypes'
+import { useOriginName } from './state'
 
 type ProviderRequestProps = {
   req: AccessRequestView

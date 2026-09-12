@@ -38,7 +38,7 @@ export function normalizeRequestChainId(chainId: unknown) {
   const trimmed = value.trim()
   const caipMatch = trimmed.match(caipChainIdRegex)
 
-  if (caipMatch) return `0x${Number.parseInt(caipMatch[1], 10).toString(16)}`
+  if (caipMatch?.[1]) return `0x${Number.parseInt(caipMatch[1], 10).toString(16)}`
   if (hexChainIdRegex.test(trimmed)) return `0x${Number.parseInt(trimmed, 16).toString(16)}`
   if (decimalChainIdRegex.test(trimmed)) return `0x${Number.parseInt(trimmed, 10).toString(16)}`
 

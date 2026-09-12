@@ -2,6 +2,7 @@ import { Icon } from '@newframe/ui/icon'
 import { Stack } from '@newframe/ui/stack'
 import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
+
 import { signerIconName } from '../../../../shared/renderer/ui/signerPresentation'
 
 export default function AccountIcon({ account }: { account?: { lastSignerType?: string } | null }) {

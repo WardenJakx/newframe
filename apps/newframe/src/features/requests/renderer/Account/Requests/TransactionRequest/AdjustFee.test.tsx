@@ -1,14 +1,14 @@
 import { afterEach, beforeEach, expect, it, jest as timers } from 'bun:test'
 
-import type { TransactionRequest } from '../../../../contract/requests'
 import { act, cleanup, fireEvent, render, screen } from '../../../../../../../test/support/componentSetup'
 import { gweiToHex } from '../../../../../../../test/support/util'
-import AdjustFee from './AdjustFee'
+import type { TransactionRequest } from '../../../../contract/requests'
+import type { TransactionReviewCapability } from '../../../requestCapabilities'
 import {
   createRequestRendererCapabilitiesFake as createRequestPortsFake,
   type RequestRendererCapabilitiesFake
 } from '../../../requestCapabilities.test-support'
-import type { TransactionReviewCapability } from '../../../requestCapabilities'
+import AdjustFee from './AdjustFee'
 
 let capabilities: RequestRendererCapabilitiesFake
 
@@ -37,7 +37,7 @@ function input(label: string) {
 }
 
 function flushDebounce() {
-  act(() => timers.advanceTimersByTime(500))
+  return act(() => timers.advanceTimersByTime(500))
 }
 
 beforeEach(() => {
@@ -86,7 +86,7 @@ it('renders the legacy gas-price projection instead of EIP-1559 fields', () => {
   }).toStrictEqual({ gasPrice: '7', gasLimit: '25000', baseFeePresent: false })
 })
 
-it('normalizes decimal precision and sends one typed fee command after the debounce', () => {
+it('normalizes decimal precision and sends one typed fee command after the debounce', async () => {
   render(<AdjustFee capability={capabilities.transaction} req={request()} />)
   const baseFee = input('Base Fee (GWEI)')
 
@@ -94,7 +94,7 @@ it('normalizes decimal precision and sends one typed fee command after the debou
   expect(baseFee.value).toBe('9.222222222222222')
   expect(capabilities.transaction.updateFee).not.toHaveBeenCalled()
 
-  flushDebounce()
+  await flushDebounce()
 
   expect(baseFee.value).toBe('9.222222222')
   expect(capabilities.transaction.updateFee).toHaveBeenCalledTimes(1)
@@ -105,19 +105,19 @@ it('normalizes decimal precision and sends one typed fee command after the debou
   })
 })
 
-it('keeps incomplete decimal input local until it becomes a value', () => {
+it('keeps incomplete decimal input local until it becomes a value', async () => {
   render(<AdjustFee capability={capabilities.transaction} req={request()} />)
   const baseFee = input('Base Fee (GWEI)')
 
   fireEvent.change(baseFee, { target: { value: '' } })
   fireEvent.change(baseFee, { target: { value: '.' } })
-  flushDebounce()
+  await flushDebounce()
 
   expect(baseFee.value).toBe('.')
   expect(capabilities.transaction.updateFee).not.toHaveBeenCalled()
 })
 
-it('cancels prior EIP-1559 and legacy fee updates when their input is cleared', () => {
+it('cancels prior EIP-1559 and legacy fee updates when their input is cleared', async () => {
   const feeUpdates: Parameters<TransactionReviewCapability['updateFee']>[0][] = []
   const capability = {
     async updateFee(input: Parameters<TransactionReviewCapability['updateFee']>[0]) {
@@ -129,7 +129,7 @@ it('cancels prior EIP-1559 and legacy fee updates when their input is cleared', 
   render(<AdjustFee capability={capability} req={request()} />)
   fireEvent.change(input('Base Fee (GWEI)'), { target: { value: '5' } })
   fireEvent.change(input('Base Fee (GWEI)'), { target: { value: '' } })
-  flushDebounce()
+  await flushDebounce()
   cleanup()
 
   render(
@@ -145,17 +145,17 @@ it('cancels prior EIP-1559 and legacy fee updates when their input is cleared', 
   )
   fireEvent.change(input('Gas Price (GWEI)'), { target: { value: '8' } })
   fireEvent.change(input('Gas Price (GWEI)'), { target: { value: '' } })
-  flushDebounce()
+  await flushDebounce()
 
   expect(feeUpdates).toEqual([])
 })
 
-it('debounces fee fields independently and emits their observable commands', () => {
+it('debounces fee fields independently and emits their observable commands', async () => {
   render(<AdjustFee capability={capabilities.transaction} req={request()} />)
 
   fireEvent.change(input('Base Fee (GWEI)'), { target: { value: '5' } })
   fireEvent.change(input('Max Priority Fee (GWEI)'), { target: { value: '4' } })
-  flushDebounce()
+  await flushDebounce()
 
   expect(capabilities.transaction.updateFee.mock.calls.map(([command]) => command)).toStrictEqual([
     {
@@ -171,24 +171,24 @@ it('debounces fee fields independently and emits their observable commands', () 
   ])
 })
 
-it('cancels pending fee commands when the editor unmounts', () => {
+it('cancels pending fee commands when the editor unmounts', async () => {
   render(<AdjustFee capability={capabilities.transaction} req={request()} />)
 
   fireEvent.change(input('Base Fee (GWEI)'), { target: { value: '5' } })
   cleanup()
-  act(() => timers.runAllTimers())
+  await act(() => timers.runAllTimers())
 
   expect(capabilities.transaction.updateFee).not.toHaveBeenCalled()
 })
 
-it('steps gwei and gas-unit inputs using their user-facing increments', () => {
+it('steps gwei and gas-unit inputs using their user-facing increments', async () => {
   render(<AdjustFee capability={capabilities.transaction} req={request()} />)
   const baseFee = input('Base Fee (GWEI)')
   const gasLimit = input('Gas Limit (UNITS)')
 
   fireEvent.keyDown(baseFee, { key: 'ArrowUp' })
   fireEvent.keyDown(gasLimit, { key: 'ArrowDown' })
-  flushDebounce()
+  await flushDebounce()
 
   expect({ baseFee: baseFee.value, gasLimit: gasLimit.value }).toStrictEqual({
     baseFee: '5',

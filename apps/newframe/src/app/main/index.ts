@@ -1,31 +1,32 @@
-import { app, clipboard, ipcMain, net, protocol, powerMonitor } from 'electron'
 import path from 'path'
-import log from 'electron-log'
 import url from 'url'
 
-import windows from '../../platform/desktop/windows/index.js'
-import menu from '../../platform/desktop/menu.js'
-import store, { createCanonicalPersistenceService } from '../../platform/state-store/index.js'
-import persist from '../../platform/state-store/persist/index.js'
-import { createBundledTokenService } from '../../features/tokens/main/tokens.js'
-import * as launch from '../../platform/desktop/launch.js'
-import { Updater } from '../../platform/app-update/index.js'
-import { Signers } from '../../platform/signing/signers/index.js'
-import TrezorBridge from '../../platform/signing/signers/trezor/bridge.js'
-import biometrics from '../../platform/secrets/biometrics.js'
-import vault from '../../platform/secrets/vault.js'
-import { showUnhandledExceptionDialog } from '../../platform/desktop/windows/dialog.js'
-import { getErrorCode } from '../../platform/runtime/errors.js'
-import { createProductionCapabilities, createProductionMainApp } from './composition/index.js'
-import { createProductionPersistencePorts } from '../../platform/persistence/index.js'
+import { app, clipboard, ipcMain, net, protocol, powerMonitor } from 'electron'
+import log from 'electron-log'
+
+import { createProductionAccountOnboardingAdapters } from '../../features/accounts/main/accountOnboarding/production.js'
 import { createProductionAccountsRuntime } from '../../features/accounts/main/production.js'
 import { createProductionImageServiceAdapters } from '../../features/asset-data/main/images/production.js'
-import { createProductionPlatformAdapters } from './platform/production.js'
-import { createProductionPortfolioAdapters } from '../../features/portfolio/main/production.js'
 import { lookupChainlistIcon, rpcMatchesChain } from '../../features/networks/main/production.js'
-import { createProductionAccountOnboardingAdapters } from '../../features/accounts/main/accountOnboarding/production.js'
+import { createProductionPortfolioAdapters } from '../../features/portfolio/main/production.js'
 import { createProductionSecurityAdapters } from '../../features/security/main/production.js'
+import { createBundledTokenService } from '../../features/tokens/main/tokens.js'
+import { Updater } from '../../platform/app-update/index.js'
+import * as launch from '../../platform/desktop/launch.js'
+import menu from '../../platform/desktop/menu.js'
+import { showUnhandledExceptionDialog } from '../../platform/desktop/windows/dialog.js'
+import windows from '../../platform/desktop/windows/index.js'
+import { createProductionPersistencePorts } from '../../platform/persistence/index.js'
+import { getErrorCode } from '../../platform/runtime/errors.js'
+import biometrics from '../../platform/secrets/biometrics.js'
+import vault from '../../platform/secrets/vault.js'
+import { Signers } from '../../platform/signing/signers/index.js'
+import TrezorBridge from '../../platform/signing/signers/trezor/bridge.js'
+import store, { createCanonicalPersistenceService } from '../../platform/state-store/index.js'
+import persist from '../../platform/state-store/persist/index.js'
 import { createProductionApiServer } from './api/index.js'
+import { createProductionCapabilities, createProductionMainApp } from './composition/index.js'
+import { createProductionPlatformAdapters } from './platform/production.js'
 
 const signers = new Signers({ biometrics, store, vault })
 const updater = new Updater(store)
@@ -289,11 +290,12 @@ void app.whenReady().then(async () => {
   if (isDev) {
     const loadDev = async () => {
       const { installDevTools, startCpuMonitoring } = await import('../../platform/runtime/dev/index.js')
-      installDevTools()
+      // Installation logs failures internally; CPU monitoring starts immediately.
+      void installDevTools()
       startCpuMonitoring()
     }
 
-    void loadDev()
+    loadDev().catch((error) => log.error('Could not load development tools', error))
   }
 
   // only allow file:// access to files within the app's own directory

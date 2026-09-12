@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'bun:test'
 
-import createInitialState, { CanonicalStateSchema } from './index'
-import { builtInChainIconUrl } from '../../../features/networks/domain/chain'
 import {
   DEFAULT_PROFILE_ID,
   DEFAULT_PROFILE_NAME,
   getProfileAccountIds
 } from '../../../app/contracts/state/main'
+import { builtInChainIconUrl } from '../../../features/networks/domain/chain'
+import createInitialState, { CanonicalStateSchema } from './index'
 
 describe('canonical state defaults', () => {
   it('creates state that satisfies the canonical runtime schema', () => {

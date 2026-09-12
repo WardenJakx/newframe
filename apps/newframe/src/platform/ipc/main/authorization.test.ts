@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test'
-
 import { pathToFileURL } from 'url'
 
 import { createRendererAuthorizationRegistry, type RendererAuthorizationRegistry } from './authorization'

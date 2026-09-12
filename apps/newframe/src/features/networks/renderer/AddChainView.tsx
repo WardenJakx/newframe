@@ -1,9 +1,8 @@
-import React from 'react'
-
 import { Button } from '@newframe/ui/button'
 import { Stack } from '@newframe/ui/stack'
 import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
+import React from 'react'
 
 import { TrayOverlay } from '../../../shared/renderer/ui/TrayOverlay'
 

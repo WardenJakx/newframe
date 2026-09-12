@@ -1,15 +1,16 @@
 import fs from 'node:fs'
 import path from 'node:path'
+
+import { stripHexPrefix } from '@ethereumjs/util'
 import { app } from 'electron'
 import log from 'electron-log'
-import { stripHexPrefix } from '@ethereumjs/util'
 import { Mnemonic, randomBytes } from 'ethers'
 import { z } from 'zod'
 
-import RingSigner from './RingSigner/index.js'
-import SeedSigner from './SeedSigner/index.js'
 import type Signer from '../Signer/index.js'
 import type { VaultAccess } from './HotSigner/index.js'
+import RingSigner from './RingSigner/index.js'
+import SeedSigner from './SeedSigner/index.js'
 
 type VaultPort = VaultAccess & { acquireKey(password?: string): string }
 type SignerCollection = { add(signer: Signer): void; exists(id: string): boolean }

@@ -1,8 +1,13 @@
-import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.js'
 import { getMainRuntime } from '../../../../platform/runtime/index.js'
-import { FLASH_NATIVE_ETH_TOKEN_ADDRESS, FLASH_MARKET_ORDER_TYPE } from '../domain/constants.js'
-import { getFlashChainIdFromSlug, getFlashChainSlug, isFlashChainSupported } from '../domain/chains.js'
+import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.js'
+import type { Token } from '../../../../platform/state-store/state/index.js'
+import type { AssetRateInput } from '../../../asset-data/domain/state/rate.js'
+import type { AssetRateService } from '../../../asset-data/main/assetRates/service.js'
+import { NATIVE_CURRENCY } from '../../../tokens/domain/constants.js'
 import { flashAssetId, getFlashAssetsForChain, toFlashApiAssetAddress } from '../domain/assets.js'
+import { getFlashChainIdFromSlug, getFlashChainSlug, isFlashChainSupported } from '../domain/chains.js'
+import { FLASH_NATIVE_ETH_TOKEN_ADDRESS, FLASH_MARKET_ORDER_TYPE } from '../domain/constants.js'
+import { FlashOrderRecordSchema, type FlashOrderRecord, type FlashOrderStatus } from '../domain/orders.js'
 import { getFlashAssetPairChains, getReceiveAsset, getSpentAsset } from '../domain/pair.js'
 import {
   FlashAssetSchema,
@@ -17,8 +22,6 @@ import {
   type FlashStep,
   type FlashTradeSide
 } from '../domain/schemas.js'
-import { FlashOrderRecordSchema, type FlashOrderRecord, type FlashOrderStatus } from '../domain/orders.js'
-import { NATIVE_CURRENCY } from '../../../tokens/domain/constants.js'
 import {
   FlashCancelOrderRequestSchema,
   FlashGetOrderRequestSchema,
@@ -33,10 +36,6 @@ import {
   type FlashSubmitOrderRequest
 } from './contracts.js'
 import { FlashOrderStream, type FlashOrderFrameType, type FlashWebSocketFactory } from './websocket.js'
-
-import type { AssetRateInput } from '../../../asset-data/domain/state/rate.js'
-import type { AssetRateService } from '../../../asset-data/main/assetRates/service.js'
-import type { Token } from '../../../../platform/state-store/state/index.js'
 
 interface FlashOrderPositionUpdate {
   address: string
@@ -802,7 +801,7 @@ async function flashRequest(path: string, init: RequestInit = {}) {
     ...init,
     headers: {
       ...flashHeaders(),
-      ...(init.headers || {})
+      ...init.headers
     }
   })
   const contentType = response.headers.get('content-type') || ''
@@ -1206,7 +1205,7 @@ function normalizeOrderRecord(rawOrder: unknown, fallback?: FlashOrderRecord | n
   const closedAt = raw.closedAt ? numberTimestamp(raw.closedAt, updatedAt) : null
 
   return FlashOrderRecordSchema.parse({
-    ...(fallback || {}),
+    ...fallback,
     orderId,
     accountAddress: normalizeAddress(
       raw.accountAddress || raw.funderAddress || raw.account || fallback?.accountAddress
@@ -1845,7 +1844,7 @@ async function cancelOrder(state: FlashServiceState, request: FlashCancelOrderRe
   })
   const fallback = getRecord(state, request.orderId)
   const record = normalizeOrderRecord(
-    objectPayload(raw).order || { ...(fallback || {}), orderId: request.orderId, status: 'cancelled' },
+    objectPayload(raw).order || { ...fallback, orderId: request.orderId, status: 'cancelled' },
     fallback
   )
 

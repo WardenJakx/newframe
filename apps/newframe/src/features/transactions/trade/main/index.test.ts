@@ -1,6 +1,23 @@
 import { afterEach, beforeEach, describe, expect, it, jest as timers, mock } from 'bun:test'
 import { EventEmitter } from 'node:events'
+
 import WebSocket from 'ws'
+
+import store from '../../../../platform/state-store'
+import createCanonicalStore from '../../../../platform/state-store/createCanonicalStore'
+import { NATIVE_CURRENCY } from '../../../tokens/domain/constants'
+import {
+  FLASH_NATIVE_ETH_ASSET,
+  FLASH_USDC_ASSET,
+  FLASH_WETH_ASSET,
+  getFlashAssetsForChain
+} from '../domain/assets'
+import {
+  FLASH_BASE_USDC_ADDRESS,
+  FLASH_BASE_WETH_ADDRESS,
+  FLASH_MARKET_ORDER_TYPE
+} from '../domain/constants'
+import type { FlashQuoteRequest } from './contracts'
 import {
   buildFlashQuoteBody,
   buildFlashSubmitBody,
@@ -10,21 +27,6 @@ import {
   flashWebSocketUrl,
   normalizeFlashQuoteResponse
 } from './index'
-import store from '../../../../platform/state-store'
-import createCanonicalStore from '../../../../platform/state-store/createCanonicalStore'
-import type { FlashQuoteRequest } from './contracts'
-import {
-  FLASH_BASE_USDC_ADDRESS,
-  FLASH_BASE_WETH_ADDRESS,
-  FLASH_MARKET_ORDER_TYPE
-} from '../domain/constants'
-import {
-  FLASH_NATIVE_ETH_ASSET,
-  FLASH_USDC_ASSET,
-  FLASH_WETH_ASSET,
-  getFlashAssetsForChain
-} from '../domain/assets'
-import { NATIVE_CURRENCY } from '../../../tokens/domain/constants'
 const originalEnv = { ...process.env }
 const originalFetch = globalThis.fetch
 const assetRateService = { observe: mock() }
@@ -72,7 +74,7 @@ class FakeFlashWebSocket extends EventEmitter {
     this.emit('message', Buffer.from(JSON.stringify(payload)))
   }
   send(_message: string) {
-    return
+    // Tests inject server frames directly.
   }
   close() {
     if (this.readyState >= WebSocket.CLOSING) return

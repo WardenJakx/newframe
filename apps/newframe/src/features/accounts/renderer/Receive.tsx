@@ -1,8 +1,9 @@
 import { Icon } from '@newframe/ui/icon'
+
 import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector'
-import { ReceiveView } from './ReceiveView'
 import { signerIconName } from '../../../shared/renderer/ui/signerPresentation'
 import type { AccountsCapability } from './accountsCapability'
+import { ReceiveView } from './ReceiveView'
 
 export function Receive({
   accountId,

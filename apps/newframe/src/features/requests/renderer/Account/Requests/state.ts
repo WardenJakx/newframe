@@ -1,9 +1,9 @@
 import { useMemo } from 'react'
 
 import type { WalletRendererState } from '../../../../../platform/state-sync/contract/projections'
+import { useWalletSelector } from '../../../../../platform/state-sync/renderer/useAppSelector'
 import { resolveAssetRate } from '../../../../asset-data/domain/asset'
 import type { AssetRateReference } from '../../../../asset-data/domain/state/rate'
-import { useWalletSelector } from '../../../../../platform/state-sync/renderer/useAppSelector'
 
 type AccountRequests = WalletRendererState['accounts'][string]['requests']
 type NetworkRecord = WalletRendererState['networks']['ethereum']

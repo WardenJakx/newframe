@@ -9,13 +9,13 @@ import { useRef, useState, type ReactNode } from 'react'
 
 import { cva } from '../../../../../../../generated/styled-system/css/cva.js'
 import { sva } from '../../../../../../../generated/styled-system/css/sva.js'
-import { imageSource, persistedImageSource } from '../../../../../asset-data/domain/image'
-import { useTokenImageHydration } from '../../../../../../shared/renderer/hooks/useTokenImageHydration'
-import { DisplayCoinBalance } from '../../../ui/DisplayValue'
-import type { SourceValue } from '../../../format/displayValue'
-import type { TransactionEffect } from '../../../../../transactions/domain'
-import type { NativeCurrency } from '../../../../../networks/domain/state/nativeCurrency'
 import type { TokenImageCapability } from '../../../../../../shared/renderer/capabilities'
+import { useTokenImageHydration } from '../../../../../../shared/renderer/hooks/useTokenImageHydration'
+import { imageSource, persistedImageSource } from '../../../../../asset-data/domain/image'
+import type { NativeCurrency } from '../../../../../networks/domain/state/nativeCurrency'
+import type { TransactionEffect } from '../../../../../transactions/domain'
+import type { SourceValue } from '../../../format/displayValue'
+import { DisplayCoinBalance } from '../../../ui/DisplayValue'
 
 type TransactionInformationEffect = Omit<TransactionEffect, 'amount' | 'detail' | 'label'> & {
   amount?: SourceValue

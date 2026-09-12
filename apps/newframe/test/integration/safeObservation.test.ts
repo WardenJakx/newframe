@@ -1,6 +1,8 @@
 import { expect, it } from 'bun:test'
+
 import { subscribeWithSelector } from 'zustand/middleware'
 import { createStore } from 'zustand/vanilla'
+
 import { createSafeHandler } from '../../scripts/local-safe/handler'
 import { createSafeService } from '../../src/features/accounts/main/safe'
 import { createOperationService } from '../../src/platform/operations/service'
@@ -85,7 +87,7 @@ it('projects the paginated local Safe service through public observation capabil
   } finally {
     service.dispose()
     unsubscribe()
-    server.stop(true)
+    await server.stop(true)
   }
 })
 
@@ -169,6 +171,6 @@ it('ignores a real HTTP refresh response released after Safe removal', async () 
     release.resolve()
     service.dispose()
     unsubscribe()
-    server.stop(true)
+    await server.stop(true)
   }
 })

@@ -1,11 +1,11 @@
 import type { CommandMap, QueryResultMap } from '../../../../app/contracts/operations.js'
-import type { OperationOwner, OperationReference } from '../../../../platform/operations/types.js'
 import type { OperationService } from '../../../../platform/operations/service.js'
-import type { SigningUiContext } from '../../../../platform/signing/signers/Signer/index.js'
+import type { OperationOwner, OperationReference } from '../../../../platform/operations/types.js'
 import type {
   AirGapPublicAccount,
   AirGapRequestReference
 } from '../../../../platform/signing/domain/airgap.js'
+import type { SigningUiContext } from '../../../../platform/signing/signers/Signer/index.js'
 
 interface ScanAttempt {
   receive(frame: string): AirGapPublicAccount | undefined

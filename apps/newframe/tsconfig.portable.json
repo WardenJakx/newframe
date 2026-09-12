@@ -8,6 +8,8 @@
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
     "noEmit": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
     "typeRoots": ["./node_modules/@types", "./src/types"]
   },
   "include": [

@@ -1,11 +1,10 @@
+import type { DeviceUniquePath, Device as TrezorDevice } from '@trezor/connect'
 import log from 'electron-log'
 
-import type { DeviceUniquePath, Device as TrezorDevice } from '@trezor/connect'
-
-import { SignerAdapter } from '../adapters.js'
-import Trezor, { Status } from './Trezor.js'
 import type canonicalStore from '../../../state-store/index.js'
+import { SignerAdapter } from '../adapters.js'
 import TrezorBridge from './bridge.js'
+import Trezor, { Status } from './Trezor.js'
 
 interface KnownSigners {
   [id: string]: {

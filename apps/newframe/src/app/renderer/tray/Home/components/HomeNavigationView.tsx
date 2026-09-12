@@ -1,9 +1,9 @@
-import type { ReactNode } from 'react'
-
 import { Button } from '@newframe/ui/button'
 import { Icon } from '@newframe/ui/icon'
 import { Tabs } from '@newframe/ui/tabs'
 import { Text } from '@newframe/ui/text'
+import type { ReactNode } from 'react'
+
 import { cva } from '../../../../../../generated/styled-system/css/cva.js'
 import type { HomeSection } from '../state/homeUiTypes'
 

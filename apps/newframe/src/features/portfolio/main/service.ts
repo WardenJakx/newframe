@@ -1,10 +1,10 @@
-import type { Accounts } from '../../accounts/main/index.js'
-import type { TokenDiscoveryProviderAccess } from './index.js'
-import type { CanonicalStore } from '../../../platform/state-store/actions.js'
-import type { FlashService } from '../../transactions/trade/main/index.js'
-import type { AssetRateService } from '../../asset-data/main/assetRates/service.js'
 import type { OperationService } from '../../../platform/operations/service.js'
 import type { OperationOwner, OperationReference } from '../../../platform/operations/types.js'
+import type { CanonicalStore } from '../../../platform/state-store/actions.js'
+import type { Accounts } from '../../accounts/main/index.js'
+import type { AssetRateService } from '../../asset-data/main/assetRates/service.js'
+import type { FlashService } from '../../transactions/trade/main/index.js'
+import type { TokenDiscoveryProviderAccess } from './index.js'
 
 type PortfolioState = Pick<
   CanonicalStore,

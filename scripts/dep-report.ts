@@ -180,8 +180,8 @@ function buildPackageGraph(lock: BunLock) {
       version,
       id,
       dependencies: {
-        ...(meta.dependencies ?? {}),
-        ...(meta.optionalDependencies ?? {})
+        ...meta.dependencies,
+        ...meta.optionalDependencies
       }
     }
 

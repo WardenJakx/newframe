@@ -1,5 +1,5 @@
-import type { WalletRendererState } from '../../contract/projections'
 import type { OperationEntityRef, OperationRecord, OperationStatus } from '../../../operations/operation'
+import type { WalletRendererState } from '../../contract/projections'
 
 type OperationState = Pick<WalletRendererState, 'operations'>
 

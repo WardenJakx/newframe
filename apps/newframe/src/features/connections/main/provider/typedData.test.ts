@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'bun:test'
+
 import { SignTypedDataVersion } from '@metamask/eth-sig-util'
 
 import { getVersionFromTypedData } from './typedData'

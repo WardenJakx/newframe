@@ -1,16 +1,15 @@
-import EnsOverview from '../../Ens'
-
 import { Icon } from '@newframe/ui/icon'
 import { Stack } from '@newframe/ui/stack'
 import { Text } from '@newframe/ui/text'
+import type { ReactNode } from 'react'
 
 import { isNonZeroHex } from '../../../../../../../shared/domain/hex'
+import { toBigInt } from '../../../../../../../shared/domain/units'
+import type { SourceValue } from '../../../../format/displayValue'
 import { Cluster, ClusterRow, ClusterValue } from '../../../../ui/Cluster'
 import { DisplayValue } from '../../../../ui/DisplayValue'
 import RequestHeader from '../../../../ui/RequestHeader'
-import { toBigInt } from '../../../../../../../shared/domain/units'
-import type { ReactNode } from 'react'
-import type { SourceValue } from '../../../../format/displayValue'
+import EnsOverview from '../../Ens'
 
 type TxOverviewRequest = {
   data: {
@@ -181,70 +180,70 @@ const TxOverview = ({
         {description}
       </Stack>
     )
-  } else {
-    return (
-      <Cluster>
-        <ClusterRow>
-          <DataClusterValue>
-            <Stack align='center' gap='small'>
-              <RequestHeader chain={chainName} chainColor={chainColor}>
-                <Stack align='center' direction='row' gap='xsmall'>
-                  <Icon name='window' size='small' tone='muted' />
-                  <Text tone='muted' truncate variant='caption'>
-                    {originName}
-                  </Text>
-                </Stack>
-                <Stack align='center' gap='xsmall'>
-                  {description}
-                </Stack>
-              </RequestHeader>
-            </Stack>
-          </DataClusterValue>
-        </ClusterRow>
-        {replacementStatus?.replacement &&
-          (replacementStatus.possible ? (
-            <ClusterRow>
-              <ClusterValue>
-                <Text align='center' tone='success' variant='overline'>
-                  valid replacement
+  }
+
+  return (
+    <Cluster>
+      <ClusterRow>
+        <DataClusterValue>
+          <Stack align='center' gap='small'>
+            <RequestHeader chain={chainName} chainColor={chainColor}>
+              <Stack align='center' direction='row' gap='xsmall'>
+                <Icon name='window' size='small' tone='muted' />
+                <Text tone='muted' truncate variant='caption'>
+                  {originName}
                 </Text>
-              </ClusterValue>
-            </ClusterRow>
-          ) : (
-            <ClusterRow>
-              <ClusterValue>
-                <Text align='center' tone='danger' variant='overline'>
-                  {replacementStatus.notice || 'invalid duplicate'}
-                </Text>
-              </ClusterValue>
-            </ClusterRow>
-          ))}
-        {isNonZeroHex(calldata || '') && (
+              </Stack>
+              <Stack align='center' gap='xsmall'>
+                {description}
+              </Stack>
+            </RequestHeader>
+          </Stack>
+        </DataClusterValue>
+      </ClusterRow>
+      {replacementStatus?.replacement &&
+        (replacementStatus.possible ? (
           <ClusterRow>
             <ClusterValue>
-              <Text align='center' tone='warning' variant='overline'>
-                Transaction includes data
+              <Text align='center' tone='success' variant='overline'>
+                valid replacement
               </Text>
             </ClusterValue>
           </ClusterRow>
-        )}
-        {isNonZeroHex(calldata || '') && calldataDigest && (
+        ) : (
           <ClusterRow>
             <ClusterValue>
-              <Stack align='center' gap='xsmall'>
-                <Text tone='muted' variant='overline'>
-                  Calldata Digest
-                </Text>
-                <Text tone='secondary' truncate variant='code'>
-                  {calldataDigest}
-                </Text>
-              </Stack>
+              <Text align='center' tone='danger' variant='overline'>
+                {replacementStatus.notice || 'invalid duplicate'}
+              </Text>
             </ClusterValue>
           </ClusterRow>
-        )}
-      </Cluster>
-    )
-  }
+        ))}
+      {isNonZeroHex(calldata || '') && (
+        <ClusterRow>
+          <ClusterValue>
+            <Text align='center' tone='warning' variant='overline'>
+              Transaction includes data
+            </Text>
+          </ClusterValue>
+        </ClusterRow>
+      )}
+      {isNonZeroHex(calldata || '') && calldataDigest && (
+        <ClusterRow>
+          <ClusterValue>
+            <Stack align='center' gap='xsmall'>
+              <Text tone='muted' variant='overline'>
+                Calldata Digest
+              </Text>
+              <Text tone='secondary' truncate variant='code'>
+                {calldataDigest}
+              </Text>
+            </Stack>
+          </ClusterValue>
+        </ClusterRow>
+      )}
+    </Cluster>
+  )
 }
 
 export default TxOverview

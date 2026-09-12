@@ -1,9 +1,10 @@
 import { describe, expect, it, mock } from 'bun:test'
 
 import { app, dialog } from 'electron'
+
 import { showUnhandledExceptionDialog } from './dialog'
 
-mock.module('./', () => ({
+await mock.module('./', () => ({
   browserWindows: () => ({ panel: 'mock tray browserwindow' })
 }))
 

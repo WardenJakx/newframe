@@ -1,5 +1,5 @@
-import type { AccountsCapability } from './accountsCapability'
 import type { QrCameraCapability } from '../../../platform/desktop/renderer/camera'
+import type { AccountsCapability } from './accountsCapability'
 import { AddAccountController } from './AddAccountController'
 
 export interface AddAccountProps {

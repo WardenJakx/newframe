@@ -1,5 +1,5 @@
-import { EventEmitter } from 'events'
 import { beforeAll, expect, it } from 'bun:test'
+import { EventEmitter } from 'events'
 
 import { electronMock } from '../../../../test/support/electron.mock.ts'
 

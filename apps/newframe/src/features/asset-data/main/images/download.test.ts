@@ -1,13 +1,13 @@
 import { beforeEach, expect, it, mock } from 'bun:test'
 
-import { downloadImage } from './download'
 import { electronMock } from '../../../../../test/support/electron.mock.ts'
+import { downloadImage } from './download'
 
 const mockFetch = mock()
 const mockLookup = mock()
 const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3])
 
-mock.module('dns/promises', () => ({
+await mock.module('dns/promises', () => ({
   lookup: (...args: any[]) => mockLookup(...args)
 }))
 

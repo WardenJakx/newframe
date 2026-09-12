@@ -1,6 +1,24 @@
-import type { SigningUiContext } from '../../../platform/signing/signers/Signer/index.js'
 import { randomUUID } from 'node:crypto'
 
+import type {
+  NetworkRequestResolveCommand,
+  TransactionReplaceCommand
+} from '../../../app/contracts/operations.js'
+import {
+  findUnavailableSigners,
+  isHardwareSigner,
+  isSignerReady
+} from '../../../platform/signing/domain/index.js'
+import type { SigningUiContext } from '../../../platform/signing/signers/Signer/index.js'
+import type { CanonicalStoreReader } from '../../../platform/state-store/actions.js'
+import type { Chain } from '../../../platform/state-store/state/index.js'
+import { toBigInt } from '../../../shared/domain/units.js'
+import type { TrustedPrincipal } from '../../access-control/main/authority.js'
+import type { Accounts } from '../../accounts/main/index.js'
+import { resolveAssetRate } from '../../asset-data/domain/asset/index.js'
+import { NATIVE_CURRENCY } from '../../tokens/domain/constants.js'
+import { usesBaseFee } from '../../transactions/domain/index.js'
+import type { AccountTransactionPolicyPort } from '../../transactions/main/accountPolicyPort.js'
 import type {
   AccountRequest,
   AccessRequest,
@@ -11,26 +29,8 @@ import type {
   TransactionRequest
 } from '../contract/requests.js'
 import { ReplacementType } from '../contract/requests.js'
-import type {
-  NetworkRequestResolveCommand,
-  TransactionReplaceCommand
-} from '../../../app/contracts/operations.js'
 import { ApprovalType } from '../domain/approval.js'
 import { isSignatureRequest, isTransactionRequest, isTypedMessageSignatureRequest } from '../domain/index.js'
-import { resolveAssetRate } from '../../asset-data/domain/asset/index.js'
-import {
-  findUnavailableSigners,
-  isHardwareSigner,
-  isSignerReady
-} from '../../../platform/signing/domain/index.js'
-import { NATIVE_CURRENCY } from '../../tokens/domain/constants.js'
-import { usesBaseFee } from '../../transactions/domain/index.js'
-import { toBigInt } from '../../../shared/domain/units.js'
-import type { TrustedPrincipal } from '../../access-control/main/authority.js'
-import type { Accounts } from '../../accounts/main/index.js'
-import type { AccountTransactionPolicyPort } from '../../transactions/main/accountPolicyPort.js'
-import type { CanonicalStoreReader } from '../../../platform/state-store/actions.js'
-import type { Chain } from '../../../platform/state-store/state/index.js'
 
 const FEE_WARNING_THRESHOLD_USD = 50
 
@@ -473,7 +473,9 @@ export function createRequestService(ports: RequestServicePorts) {
 
     dispose() {
       const shutdownError = { code: 4001, message: 'Request cancelled because Newframe is shutting down' }
-      for (const [requestId, continuation] of [...continuations]) {
+      // Responding can mutate other continuations; finish the original shutdown set.
+      const pendingContinuations = Array.from(continuations)
+      for (const [requestId, continuation] of pendingContinuations) {
         const located = locate(requestId)
         if (located) located.account.rejectRequest(located.request, shutdownError)
         else if (continuation.request)

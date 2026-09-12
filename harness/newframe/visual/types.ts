@@ -1,11 +1,11 @@
-import type { SafeSeedManifest } from '../services/safe-contracts.ts'
-import type { SafeDeployment } from '../../../apps/newframe/src/features/accounts/domain/safe.ts'
 import type { ElectronApplication, Page } from 'playwright-core'
 
+import type { SafeDeployment } from '../../../apps/newframe/src/features/accounts/domain/safe.ts'
+import type { HarnessRuntime } from '../core/service.ts'
+import type { SafeSeedManifest } from '../services/safe-contracts.ts'
 import type { AnvilClient } from './anvil-client.ts'
 import type { NewframeDriver } from './driver.ts'
 import type { VisualHarnessRuntime } from './runtime.ts'
-import type { HarnessRuntime } from '../core/service.ts'
 
 export type HarnessSummary = {
   durationMs: number

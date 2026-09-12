@@ -2,11 +2,9 @@ import { watch, type FSWatcher } from 'node:fs'
 import path from 'node:path'
 
 import { sourceChanges } from '../../../scripts/source-changes.ts'
-
 import { appDir, rootDir } from '../core/config.ts'
 import { ProcessService, expectSuccessfulExit } from '../core/process-service.ts'
 import type { HarnessService } from '../core/service.ts'
-
 import { createElectronProcessService } from './electron.ts'
 
 // Build outputs must never trigger another build.

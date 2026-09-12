@@ -1,11 +1,12 @@
 import { expect, it } from 'bun:test'
 import { randomUUID } from 'node:crypto'
+
+import { publicAccount, vectors, uiContext } from '../../../../../test/integration/fixtures/airgap.js'
 import { createOperationService } from '../../../../platform/operations/service.js'
-import createCanonicalStore from '../../../../platform/state-store/createCanonicalStore.js'
 import AirGapAdapter from '../../../../platform/signing/signers/airgap/adapter.js'
 import type AirGapSigner from '../../../../platform/signing/signers/airgap/AirGapSigner.js'
+import createCanonicalStore from '../../../../platform/state-store/createCanonicalStore.js'
 import { createProductionAirGapService } from './production.js'
-import { publicAccount, vectors, uiContext } from '../../../../../test/integration/fixtures/airgap.js'
 
 function fixture() {
   const store = createCanonicalStore({

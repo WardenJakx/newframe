@@ -1,5 +1,5 @@
-import path from 'path'
 import { randomUUID } from 'node:crypto'
+import path from 'path'
 import { fileURLToPath } from 'url'
 
 import type { IpcMainInvokeEvent, WebContents } from 'electron'

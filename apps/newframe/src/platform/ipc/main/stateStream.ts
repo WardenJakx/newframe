@@ -3,7 +3,6 @@ import { randomUUID } from 'crypto'
 import type { IpcMainInvokeEvent, WebContents } from 'electron'
 import log from 'electron-log'
 
-import type { RendererAuthorizationRegistry, RendererRole } from './authorization.js'
 import type { CanonicalStoreReader } from '../../state-store/actions.js'
 import {
   projectionStateChangeSchemas,
@@ -20,6 +19,7 @@ import {
   type StateSnapshot,
   type StateUpdateBatch
 } from '../../state-sync/contract/protocol.js'
+import type { RendererAuthorizationRegistry, RendererRole } from './authorization.js'
 
 export interface StateStreamDependencies {
   store: CanonicalStoreReader

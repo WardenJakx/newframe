@@ -1,36 +1,98 @@
+import log from 'electron-log'
+
+import { createRendererPrincipal } from '../../../features/access-control/main/authority.js'
+import {
+  createAccountOnboardingService,
+  type AccountOnboardingPorts,
+  type AccountOnboardingService
+} from '../../../features/accounts/main/accountOnboarding/service.js'
 import { createProductionAirGapService } from '../../../features/accounts/main/airgap/production.js'
 import type { AirGapService } from '../../../features/accounts/main/airgap/service.js'
-import { createSafeService, type SafeService } from '../../../features/accounts/main/safe.js'
-import { createSafeClient, safeServiceNetworks } from '../../../platform/safe/client.js'
-import { createSafeSimulationRpc } from '../../../platform/safe/simulation.js'
-import { simulateSafeProposal } from '../../../features/accounts/main/safeSimulation.js'
-import ProviderRequestPolicy from '../../../features/portfolio/main/requestPolicy.js'
 import { Accounts } from '../../../features/accounts/main/index.js'
-import createExternalDataScanner from '../../../features/asset-data/main/externalData/index.js'
-import type { AccountsRuntime } from '../../../features/accounts/main/runtime.js'
+import {
+  createAccountSelectionAdapter,
+  createAddressChainUsageAdapter,
+  createFeeNoticeRemovalAdapter
+} from '../../../features/accounts/main/production.js'
+import {
+  createProfileService,
+  type ProfileService
+} from '../../../features/accounts/main/profiles/service.js'
 import {
   createDeferredAccountChainRpcPort,
   type AccountChainRpcPort
 } from '../../../features/accounts/main/providerPort.js'
+import type { AccountsRuntime } from '../../../features/accounts/main/runtime.js'
+import { createSafeService, type SafeService } from '../../../features/accounts/main/safe.js'
+import { simulateSafeProposal } from '../../../features/accounts/main/safeSimulation.js'
+import { createAccountService, type AccountService } from '../../../features/accounts/main/service.js'
 import { createAgentService, type AgentService } from '../../../features/agent-access/main/index.js'
-import { createRendererPrincipal } from '../../../features/access-control/main/authority.js'
-import { Chains } from '../../../features/networks/main/index.js'
-import { createProductionFlashService } from '../../../features/transactions/trade/main/instance.js'
-import type { FlashService } from '../../../features/transactions/trade/main/index.js'
-import {
-  createProviderProxyConnection,
-  type ProviderProxyConnection
-} from '../../../features/connections/main/provider/proxy.js'
-import {
-  createProductionNameResolutionService,
-  type NameResolutionService
-} from '../../../features/name-resolution/main/nameResolution.js'
-import { createRevealService, type RevealService } from '../../../features/transactions/main/reveal.js'
+import { createAssetRateService } from '../../../features/asset-data/main/assetRates/service.js'
+import createExternalDataScanner from '../../../features/asset-data/main/externalData/index.js'
 import {
   createImageService,
   type ImageService,
   type ImageServiceAdapters
 } from '../../../features/asset-data/main/images/index.js'
+import { Provider } from '../../../features/connections/main/provider/index.js'
+import {
+  createProviderRequestAdapter,
+  createRequestApprovalAdapter
+} from '../../../features/connections/main/provider/infrastructure/production.js'
+import {
+  createProviderProxyConnection,
+  type ProviderProxyConnection
+} from '../../../features/connections/main/provider/proxy.js'
+import { createProviderStatePort } from '../../../features/connections/main/provider/statePort.js'
+import {
+  createProductionNameResolutionService,
+  type NameResolutionService
+} from '../../../features/name-resolution/main/nameResolution.js'
+import { Chains } from '../../../features/networks/main/index.js'
+import {
+  createNetworkService,
+  type NetworkService,
+  type NetworkServicePorts
+} from '../../../features/networks/main/service.js'
+import ProviderRequestPolicy from '../../../features/portfolio/main/requestPolicy.js'
+import {
+  createPortfolioService,
+  type PortfolioService,
+  type PortfolioServiceAdapters
+} from '../../../features/portfolio/main/service.js'
+import {
+  createRequestEditService,
+  type RequestEditService
+} from '../../../features/requests/main/requestEdits/service.js'
+import { createRequestService, type RequestService } from '../../../features/requests/main/service.js'
+import {
+  createSecurityService,
+  type SecurityService,
+  type SecurityServicePorts
+} from '../../../features/security/main/service.js'
+import { createSettingsService } from '../../../features/settings/main/service.js'
+import { createTokenLookupAdapter } from '../../../features/tokens/main/production.js'
+import { createTokenService, type TokenService } from '../../../features/tokens/main/service.js'
+import { createDeferredAccountTransactionPolicyPort } from '../../../features/transactions/main/accountPolicyPort.js'
+import { maxFee, signerCompatibility } from '../../../features/transactions/main/index.js'
+import { createRevealService, type RevealService } from '../../../features/transactions/main/reveal.js'
+import {
+  createSideTrayTransactionService,
+  type SideTrayTransactionService
+} from '../../../features/transactions/main/sideTrayService.js'
+import {
+  createTransactionSimulationProjection,
+  simulateTransactionEffects
+} from '../../../features/transactions/main/simulation.js'
+import { createDeferredTransactionSimulationPort } from '../../../features/transactions/main/simulationPort.js'
+import {
+  createSendService,
+  type SendIdempotencyEntry,
+  type SendService
+} from '../../../features/transactions/send/main/service.js'
+import type { FlashService } from '../../../features/transactions/trade/main/index.js'
+import { createProductionFlashService } from '../../../features/transactions/trade/main/instance.js'
+import { createTradeService, type TradeService } from '../../../features/transactions/trade/main/service.js'
 import {
   createRendererAuthorizationRegistry,
   type RendererAuthorizationRegistry
@@ -41,78 +103,18 @@ import {
   type OperationServices
 } from '../../../platform/ipc/main/operations.js'
 import { createStateStream } from '../../../platform/ipc/main/stateStream.js'
-import {
-  createSideTrayTransactionService,
-  type SideTrayTransactionService
-} from '../../../features/transactions/main/sideTrayService.js'
-import { projectRendererState } from '../../../platform/state-sync/main/projections.js'
-import type store from '../../../platform/state-store/index.js'
-import { Provider } from '../../../features/connections/main/provider/index.js'
-import { createProviderStatePort } from '../../../features/connections/main/provider/statePort.js'
-import type { PersistenceLifecycle } from '../../../platform/persistence/ports.js'
-import { createDeferredAccountTransactionPolicyPort } from '../../../features/transactions/main/accountPolicyPort.js'
-import { createDeferredTransactionSimulationPort } from '../../../features/transactions/main/simulationPort.js'
-import { maxFee, signerCompatibility } from '../../../features/transactions/main/index.js'
-import {
-  createTransactionSimulationProjection,
-  simulateTransactionEffects
-} from '../../../features/transactions/main/simulation.js'
-import { createMainApp, type MainApp } from './createMainApp.js'
-import { createAssetRateService } from '../../../features/asset-data/main/assetRates/service.js'
 import { createOperationService } from '../../../platform/operations/service.js'
-import {
-  createSendService,
-  type SendIdempotencyEntry,
-  type SendService
-} from '../../../features/transactions/send/main/service.js'
-import { createTradeService, type TradeService } from '../../../features/transactions/trade/main/service.js'
-import {
-  createAccountOnboardingService,
-  type AccountOnboardingPorts,
-  type AccountOnboardingService
-} from '../../../features/accounts/main/accountOnboarding/service.js'
-import {
-  createSecurityService,
-  type SecurityService,
-  type SecurityServicePorts
-} from '../../../features/security/main/service.js'
-import {
-  createProfileService,
-  type ProfileService
-} from '../../../features/accounts/main/profiles/service.js'
+import type { PersistenceLifecycle } from '../../../platform/persistence/ports.js'
+import { createSafeClient, safeServiceNetworks } from '../../../platform/safe/client.js'
+import { createSafeSimulationRpc } from '../../../platform/safe/simulation.js'
+import type store from '../../../platform/state-store/index.js'
+import { projectRendererState } from '../../../platform/state-sync/main/projections.js'
 import {
   createPlatformService,
   type PlatformService,
   type PlatformServicePorts
 } from '../platform/service.js'
-import { createSettingsService } from '../../../features/settings/main/service.js'
-import { createAccountService, type AccountService } from '../../../features/accounts/main/service.js'
-import {
-  createNetworkService,
-  type NetworkService,
-  type NetworkServicePorts
-} from '../../../features/networks/main/service.js'
-import { createTokenService, type TokenService } from '../../../features/tokens/main/service.js'
-import {
-  createRequestEditService,
-  type RequestEditService
-} from '../../../features/requests/main/requestEdits/service.js'
-import {
-  createPortfolioService,
-  type PortfolioService,
-  type PortfolioServiceAdapters
-} from '../../../features/portfolio/main/service.js'
-import { createRequestService, type RequestService } from '../../../features/requests/main/service.js'
-import {
-  createAccountSelectionAdapter,
-  createAddressChainUsageAdapter,
-  createFeeNoticeRemovalAdapter
-} from '../../../features/accounts/main/production.js'
-import { createTokenLookupAdapter } from '../../../features/tokens/main/production.js'
-import {
-  createProviderRequestAdapter,
-  createRequestApprovalAdapter
-} from '../../../features/connections/main/provider/infrastructure/production.js'
+import { createMainApp, type MainApp } from './createMainApp.js'
 
 export interface ProductionMainAppDependencies {
   ipc: IpcMainHandlerPort
@@ -277,7 +279,9 @@ export function createProductionCapabilities(
   const accountOnboardingService = createAccountOnboardingService({
     ...adapters.accountOnboarding,
     accounts: {
-      add: (address, name, signer) => accounts.add(address, name, signer),
+      add: (address, name, signer) => {
+        accounts.add(address, name, signer).catch((error) => log.error('Could not add account', error))
+      },
       get: (accountId) => accounts.get(accountId),
       select: async (accountId) => {
         await accountSelection(accountId)

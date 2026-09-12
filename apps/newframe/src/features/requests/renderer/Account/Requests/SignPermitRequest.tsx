@@ -1,16 +1,16 @@
 import { formatUnits, isUnlimited, toBigInt } from '../../../../../shared/domain/units'
 import { chainColorValue } from '../../../../networks/domain/chain/colors'
-import { Cluster, ClusterRow, ClusterValue } from '../../ui/Cluster'
-import Countdown from '../../ui/Countdown'
-import RequestHeader from '../../ui/RequestHeader'
-import RequestItem from '../../ui/RequestItem'
-import EditTokenSpend from '../../ui/EditTokenSpend'
-import { SimpleTypedData as TypedSignatureOverview } from '../../ui/SimpleTypedData'
+import type { SourceValue } from '../../format/displayValue'
 import useCopiedMessage from '../../hooks/useCopiedMessage'
+import type { RequestRendererCapabilities } from '../../requestCapabilities'
 import { useRequestView, type RequestViewState } from '../../requestView'
 import type { RequestViewStep } from '../../requestView'
-import type { SourceValue } from '../../format/displayValue'
-import type { RequestRendererCapabilities } from '../../requestCapabilities'
+import { Cluster, ClusterRow, ClusterValue } from '../../ui/Cluster'
+import Countdown from '../../ui/Countdown'
+import EditTokenSpend from '../../ui/EditTokenSpend'
+import RequestHeader from '../../ui/RequestHeader'
+import RequestItem from '../../ui/RequestItem'
+import { SimpleTypedData as TypedSignatureOverview } from '../../ui/SimpleTypedData'
 import type { PermitRequestView } from './requestViewTypes'
 
 type PermitChainData = {
@@ -197,7 +197,9 @@ const PermitRequest = ({ capabilities, req, originName, step, chainData }: Permi
         return <EditPermit capabilities={capabilities} req={req} />
       case 'viewRaw':
         return <TypedSignatureOverview originName={originName} req={req} />
-      default:
+      case 'adjustApproval':
+      case 'adjustFee':
+      case 'confirm':
         return (
           <PermitOverview
             capabilities={capabilities}

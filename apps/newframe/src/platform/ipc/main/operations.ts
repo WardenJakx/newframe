@@ -1,8 +1,6 @@
-import type { SigningUiContext } from '../../signing/signers/Signer/index.js'
 import log from 'electron-log'
 import { z } from 'zod'
 
-import type { AuthorizationContext, RendererEntrypoint, RendererRole } from './authorization.js'
 import {
   commandContracts,
   queryContracts,
@@ -25,7 +23,9 @@ import {
   type RendererContextMenuCommand,
   type TokenLookupQuery
 } from '../../../app/contracts/operations.js'
+import type { SigningUiContext } from '../../signing/signers/Signer/index.js'
 import { ExecuteCommandChannel, ExecuteQueryChannel } from '../contract/ipc.js'
+import type { AuthorizationContext, RendererEntrypoint, RendererRole } from './authorization.js'
 
 export interface OperationServices {
   airgap: import('../../../features/accounts/main/airgap/service.js').AirGapService

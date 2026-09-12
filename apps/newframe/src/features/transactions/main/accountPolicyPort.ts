@@ -1,5 +1,5 @@
-import type { TransactionData } from '../domain/index.js'
 import type { SignerSummary } from '../../../platform/signing/signers/Signer/index.js'
+import type { TransactionData } from '../domain/index.js'
 import type { SignerCompatibility } from './index.js'
 
 export interface AccountTransactionPolicyPort {

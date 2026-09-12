@@ -1,7 +1,8 @@
-import log from 'electron-log'
 import { EventEmitter } from 'events'
+
 import * as TrezorConnectModule from '@trezor/connect'
 import type { CommonParams, Device, DeviceEvent, Response, UiEvent } from '@trezor/connect'
+import log from 'electron-log'
 
 const { DEVICE, DEVICE_EVENT, UI, UI_EVENT } = TrezorConnectModule
 const TrezorConnect =

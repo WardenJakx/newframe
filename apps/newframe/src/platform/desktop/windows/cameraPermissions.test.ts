@@ -1,5 +1,7 @@
 import { expect, it } from 'bun:test'
+
 import type { Session, WebContents } from 'electron'
+
 import { createRendererAuthorizationRegistry } from '../../ipc/main/authorization'
 import { installCameraPermissions } from './cameraPermissions'
 

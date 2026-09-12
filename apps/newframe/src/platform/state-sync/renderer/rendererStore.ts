@@ -1,18 +1,18 @@
 import { createStore, type StoreApi } from 'zustand/vanilla'
 
 import {
-  StateMessageSchema,
-  type RendererState,
-  type StateSnapshot,
-  type StateUpdateBatch
-} from '../contract/protocol'
-import {
   projectionStateChangeSchemas,
   projectionStateSchemas,
   type SideTrayRendererState,
   type WalletRendererState,
   type RendererProjection
 } from '../contract/projections'
+import {
+  StateMessageSchema,
+  type RendererState,
+  type StateSnapshot,
+  type StateUpdateBatch
+} from '../contract/protocol'
 
 export type { RendererState } from '../contract/protocol'
 

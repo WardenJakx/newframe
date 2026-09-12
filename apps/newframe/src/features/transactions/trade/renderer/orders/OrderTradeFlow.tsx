@@ -1,6 +1,7 @@
 import { Text } from '@newframe/ui/text'
 
 import { cva } from '../../../../../../generated/styled-system/css/cva.js'
+import type { TokenImageCapability } from '../../../../../shared/renderer/capabilities'
 import { OrderAssetPosition } from './OrderAssetPosition'
 import {
   normalizeOrderSide,
@@ -11,7 +12,6 @@ import {
   orderTargetNotional
 } from './orderModel'
 import type { OrderNetworkMap, OrderNetworkMetadataMap, OrderModel, OrderTokenCatalog } from './orderTypes'
-import type { TokenImageCapability } from '../../../../../shared/renderer/capabilities'
 
 const tradeFlowRecipe = cva({
   base: {

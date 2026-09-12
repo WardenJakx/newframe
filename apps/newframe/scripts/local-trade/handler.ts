@@ -1,6 +1,17 @@
-import { Interface, JsonRpcProvider, MaxUint256, Wallet, getAddress, isAddress, parseUnits } from 'ethers'
 import { createHash } from 'node:crypto'
 
+import { Interface, JsonRpcProvider, MaxUint256, Wallet, getAddress, isAddress, parseUnits } from 'ethers'
+
+import {
+  FLASH_NATIVE_ETH_ASSET,
+  FLASH_WETH_ASSET,
+  getFlashAssetsForChain,
+  toFlashApiAssetAddress
+} from '../../src/features/transactions/trade/domain/assets'
+import {
+  getFlashChainIdFromSlug,
+  getFlashChainSlug
+} from '../../src/features/transactions/trade/domain/chains'
 import {
   FLASH_ANVIL_CHAIN_ID,
   FLASH_BRACKET_ORDER_TYPE,
@@ -12,16 +23,6 @@ import {
   FLASH_TAKE_PROFIT_ORDER_TYPE,
   FLASH_TWAP_ORDER_TYPE
 } from '../../src/features/transactions/trade/domain/constants'
-import {
-  FLASH_NATIVE_ETH_ASSET,
-  FLASH_WETH_ASSET,
-  getFlashAssetsForChain,
-  toFlashApiAssetAddress
-} from '../../src/features/transactions/trade/domain/assets'
-import {
-  getFlashChainIdFromSlug,
-  getFlashChainSlug
-} from '../../src/features/transactions/trade/domain/chains'
 import {
   getFlashAssetPairChains,
   getReceiveAsset,
@@ -150,7 +151,7 @@ function jsonResponse(payload: unknown, status = 200, headers?: HeadersInit) {
     status,
     headers: {
       'content-type': 'application/json',
-      ...(headers || {})
+      ...headers
     }
   })
 }
