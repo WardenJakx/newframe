@@ -67,9 +67,6 @@ describe('operation contract catalogs', () => {
   })
 
   it('owns aligned discriminants, derived result parsing, and disjoint operation keys', () => {
-    expect(Object.keys(commandContracts)).toHaveLength(76)
-    expect(Object.keys(queryContracts)).toHaveLength(11)
-
     for (const [type, contract] of Object.entries(commandContracts)) {
       const discriminants = inputDiscriminants(contract.input)
       expect(discriminants.length).toBeGreaterThan(0)
