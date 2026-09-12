@@ -66,6 +66,10 @@ export function SafeProposalDetailsView({
       ? simulation.currentNonce
       : deployment.configuration.nonce
   const waiting = BigInt(proposal.nonce) > BigInt(currentNonce)
+  const confirmedOwners = new Set(proposal.confirmations.map((address) => address.toLowerCase()))
+  const hasEnoughConfirmations =
+    deployment.configuration.owners.filter((owner) => confirmedOwners.has(owner.toLowerCase())).length >=
+    deployment.configuration.threshold
   const effects =
     simulation.status === 'success' || (simulation.status === 'error' && simulation.failure === 'inner')
       ? simulation.effects
@@ -143,7 +147,13 @@ export function SafeProposalDetailsView({
         networkName={networkName}
         networkIcon={networkIcon}
         nativeCurrency={{ symbol }}
-        statusLabel={waiting ? 'Waiting for earlier transactions' : 'Pending proposal'}
+        statusLabel={
+          waiting
+            ? 'Waiting for earlier transactions'
+            : hasEnoughConfirmations
+              ? 'Awaiting execution'
+              : 'Pending proposal'
+        }
         effects={effects}
         effectsEmptyText={effectsEmptyText}
         effectsNotice={
@@ -188,7 +198,7 @@ export function SafeProposalDetailsView({
         calldata={{ digest: getCalldataDigest(proposal.data), data: proposal.data }}
       >
         <Stack gap='xsmall'>
-          <SigningAccount>
+          <SigningAccount label={hasEnoughConfirmations ? 'Executing with' : 'Signing with'}>
             <Selection
               label='Signing account'
               disabled={!hasAttachedSigner}
@@ -236,7 +246,11 @@ export function SafeProposalDetailsView({
             />
           </SigningAccount>
           <RequestActions
-            primary={{ label: 'Sign', disabled: true, onPress: () => {} }}
+            primary={{
+              label: hasEnoughConfirmations ? 'Execute' : 'Sign',
+              disabled: true,
+              onPress: () => {}
+            }}
             secondary={{ label: 'Decline', disabled: true, onPress: () => {} }}
           />
         </Stack>

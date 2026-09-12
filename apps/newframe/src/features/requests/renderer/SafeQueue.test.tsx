@@ -29,7 +29,7 @@ const deployment: SafeDeployment = {
     value: '1000000000000000000',
     operation: 1,
     data: '0x1234',
-    confirmations: [address]
+    confirmations: []
   }))
 }
 function state(safe = deployment) {
@@ -271,6 +271,47 @@ it('does not default a signer attached later and permits choosing it while locke
   expect(screen.getByLabelText('Transaction details')).toBeTruthy()
 })
 
+it('keeps confirmed owners selectable as the proposal advances to execution', async () => {
+  const first = ownerAccount('Ledger owner', { signerType: 'ledger' })
+  const second = ownerAccount('Other owner', { address: `0x${'3'.repeat(40)}` })
+  const next = structuredClone(stateWithOwners([first, second]))
+  const safe = next.accounts[address].safe!['1']!
+  safe.configuration = {
+    ...safe.configuration,
+    owners: [first.address, second.address],
+    threshold: 2,
+    nonce: '3'
+  }
+  safe.pending![0]!.confirmations = [first.address, first.address, address]
+  fixture.state.reset(next)
+  const { user } = render(<RequestsOverlay capabilities={createCapabilityFake()} onBack={() => {}} />)
+  await user.click(screen.getByRole('button', { name: `Open Safe proposal ${hash} on chain 1` }))
+  expect(screen.getByText('Signing with')).toBeTruthy()
+  expectSafeSubmissionDisabled()
+  await user.click(screen.getByRole('button', { name: 'Signing account' }))
+  await user.click(screen.getByRole('option', { name: /Ledger owner/ }))
+
+  const confirmed = structuredClone(next)
+  confirmed.accounts[address].safe!['1']!.pending![0]!.confirmations = [first.address, second.address]
+  await act(async () => fixture.state.reset(confirmed))
+  expect(screen.getByText('Awaiting execution')).toBeTruthy()
+  expect(screen.getByText('Executing with')).toBeTruthy()
+  const chooser = screen.getByRole('button', { name: 'Signing account' })
+  expect(chooser.hasAttribute('disabled')).toBe(false)
+  expect(within(chooser).getByText('Ledger owner')).toBeTruthy()
+  expect(screen.getByRole('button', { name: 'Execute' }).hasAttribute('disabled')).toBe(true)
+  expect(screen.getByRole('button', { name: 'Decline' }).hasAttribute('disabled')).toBe(true)
+  await user.click(screen.getByRole('button', { name: 'Execute' }))
+  expect(screen.getByText('Awaiting execution')).toBeTruthy()
+
+  const waiting = structuredClone(confirmed)
+  waiting.accounts[address].safe!['1']!.pending![0]!.nonce = '4'
+  await act(async () => fixture.state.reset(waiting))
+  expect(screen.getByText('Waiting for earlier transactions')).toBeTruthy()
+  expect(screen.queryByText('Awaiting execution')).toBeNull()
+  expect(screen.getByRole('button', { name: 'Execute' }).hasAttribute('disabled')).toBe(true)
+})
+
 it.each(['empty', 'watch-only', 'detached', 'locked'] as const)(
   'keeps Safe actions disabled with %s owners',
   async (kind) => {
@@ -478,7 +519,7 @@ it('invalidates signed fields and configuration, while ignoring equivalent proje
   const { user } = render(<RequestsOverlay capabilities={capabilities} onBack={() => {}} />)
   await user.click(screen.getByRole('button', { name: `Open Safe proposal ${hash} on chain 1` }))
   const confirmed = structuredClone(deployment)
-  confirmed.pending![0]!.confirmations = []
+  confirmed.pending![0]!.confirmations = [address]
   await act(async () => fixture.state.reset(state(confirmed)))
   expect(capabilities.safe.simulate).toHaveBeenCalledTimes(1)
   const changedProposal = {
