@@ -43,3 +43,10 @@ Safe 1.5.0 artifacts on Anvil and checks import, refresh, read-only proposal det
 and account removal through the compiled app. Use the existing harness password
 setup; the Safe owner includes the local harness account but cannot sign proposals.
 The service binds loopback port 8423 (`NEWFRAME_LOCAL_SAFE_PORT` to override).
+
+Unsigned Safe simulation: `bun run test:integration:safe-simulation` builds the existing
+MockUSDC fixture and starts an isolated Anvil on a free loopback port. Requires Foundry
+(`forge` and `anvil`), as does the visual harness. It deploys the existing Safe fixture,
+imports it into a profile with no owner accounts, and checks unsigned calls, MultiSend,
+configuration changes, future nonces, refunds, rollback, tracing failures, and unchanged
+live state. No external network, wallet keys, or running Newframe instance is needed.

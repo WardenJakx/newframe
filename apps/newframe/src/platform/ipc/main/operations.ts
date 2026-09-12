@@ -660,6 +660,12 @@ export function createOperationRegistry(services: OperationServices) {
       handle: ({ address }) => safes.discoverNetworks(address),
       failure: []
     }),
+    'safe.simulate': defineQuery('safe.simulate', {
+      roles: ['wallet-ui'],
+      entrypoints: ['tray'],
+      handle: (query) => safes.simulate(query),
+      failure: { status: 'unavailable', error: 'Safe simulation unavailable.' }
+    }),
     'token.lookup': defineQuery('token.lookup', {
       roles: ['wallet-ui'],
       entrypoints: ['tray'],

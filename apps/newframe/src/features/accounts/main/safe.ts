@@ -1,19 +1,32 @@
 import { getAddress } from 'ethers'
 import type {
   AccountSafeImportCommand,
-  AccountSafeRefreshCommand
+  AccountSafeRefreshCommand,
+  SafeSimulateQuery
 } from '../../../app/contracts/operations.js'
 import type { CanonicalStoreReader } from '../../../platform/state-store/actions.js'
 import type { OperationService } from '../../../platform/operations/service.js'
 import type { OperationOwner } from '../../../platform/operations/types.js'
-import type { SafeConfiguration, SafeDeployment, SafeProposal } from '../domain/safe.js'
+import {
+  SafeProposalSimulationSchema,
+  type SafeConfiguration,
+  type SafeDeployment,
+  type SafeProposal,
+  type SafeProposalSimulation
+} from '../domain/safe.js'
+import type { SafeSimulationInput } from './safeSimulation.js'
 
 export interface SafeServicePorts {
   accounts: { add(address: string, name: string, options: { type: string }): void }
   store: CanonicalStoreReader
   operations: OperationService
   client: {
-    configuration(chainId: number, address: string, signal?: AbortSignal): Promise<SafeConfiguration>
+    configuration(
+      chainId: number,
+      address: string,
+      signal?: AbortSignal,
+      blockTag?: string
+    ): Promise<SafeConfiguration>
     pending(
       chainId: number,
       address: string,
@@ -26,12 +39,20 @@ export interface SafeServicePorts {
       signal?: AbortSignal
     ): Promise<{ version: string; owners: string[] }>
   }
+  simulate?(input: SafeSimulationInput, signal: AbortSignal): Promise<SafeProposalSimulation>
   now?: () => number
 }
 
 export type SafeService = ReturnType<typeof createSafeService>
 
-export function createSafeService({ accounts, store, operations, client, now = Date.now }: SafeServicePorts) {
+export function createSafeService({
+  accounts,
+  store,
+  operations,
+  client,
+  simulate: simulateProposal,
+  now = Date.now
+}: SafeServicePorts) {
   let disposed = false
   let profile = store.getState().main.currentProfile
   let selected = store.getState().main.currentAccount
@@ -46,10 +67,111 @@ export function createSafeService({ accounts, store, operations, client, now = D
       promise: Promise<void>
     }
   >()
+  const simulations = new Map<
+    string,
+    {
+      controller: AbortController
+      query: SafeSimulateQuery
+      fingerprint: string
+      promise: Promise<SafeProposalSimulation>
+    }
+  >()
+  const simulationSnapshot = (query: SafeSimulateQuery) => {
+    const main = store.getState().main
+    const account = main.accounts[query.accountId]
+    const deployment = account?.safe?.[String(query.chainId)]
+    const proposal = deployment?.pending?.find((candidate) => candidate.safeTxHash === query.safeTxHash)
+    if (!account || account.profileId !== main.currentProfile || !deployment || !proposal) return
+    return {
+      input: { chainId: query.chainId, address: deployment.address, proposal },
+      fingerprint: JSON.stringify([
+        main.currentProfile,
+        account.profileId,
+        account.created,
+        account.address,
+        deployment.chainId,
+        deployment.address,
+        deployment.configuration,
+        main.networks.ethereum[query.chainId],
+        proposal.safeTxHash,
+        proposal.safe,
+        proposal.to,
+        proposal.value,
+        proposal.data,
+        proposal.operation,
+        proposal.nonce,
+        proposal.safeTxGas,
+        proposal.baseGas,
+        proposal.gasPrice,
+        proposal.gasToken,
+        proposal.refundReceiver
+      ])
+    }
+  }
+  const cancelled = (): SafeProposalSimulation => ({
+    status: 'unavailable',
+    error: 'Safe simulation cancelled because its account or proposal changed.'
+  })
+  const simulate = (requested: SafeSimulateQuery): Promise<SafeProposalSimulation> => {
+    const query = {
+      ...requested,
+      accountId: requested.accountId.toLowerCase(),
+      safeTxHash: requested.safeTxHash.toLowerCase()
+    }
+    const snapshot = simulationSnapshot(query)
+    if (disposed || !snapshot)
+      return Promise.resolve({
+        status: 'unavailable',
+        error: 'Safe proposal is no longer available in this profile.'
+      })
+    if (!simulateProposal)
+      return Promise.resolve({ status: 'unavailable', error: 'Safe simulation provider is unavailable.' })
+    const key = `${query.accountId}:${query.chainId}:${query.safeTxHash}`
+    const existing = simulations.get(key)
+    if (existing?.fingerprint === snapshot.fingerprint) return existing.promise
+    existing?.controller.abort()
+    const controller = new AbortController()
+    const item = {
+      controller,
+      query,
+      fingerprint: snapshot.fingerprint,
+      promise: Promise.resolve(cancelled())
+    }
+    simulations.set(key, item)
+    const active = () =>
+      !disposed &&
+      !controller.signal.aborted &&
+      simulations.get(key) === item &&
+      simulationSnapshot(query)?.fingerprint === item.fingerprint
+    let abort!: () => void
+    const aborted = new Promise<SafeProposalSimulation>((resolve) => {
+      abort = () => resolve(cancelled())
+      controller.signal.addEventListener('abort', abort, { once: true })
+    })
+    const result = Promise.resolve()
+      .then(() => {
+        if (!active()) return cancelled()
+        return simulateProposal(structuredClone(snapshot.input), controller.signal)
+      })
+      .then(
+        (value) => (active() ? SafeProposalSimulationSchema.parse(value) : cancelled()),
+        (error: unknown): SafeProposalSimulation => ({
+          status: 'unavailable',
+          error: error instanceof Error ? error.message.slice(0, 1000) : 'Safe simulation unavailable.'
+        })
+      )
+    item.promise = Promise.race([result, aborted]).finally(() => {
+      controller.signal.removeEventListener('abort', abort)
+      if (simulations.get(key) === item) simulations.delete(key)
+    })
+    return item.promise
+  }
   const invalidate = () => {
     for (const item of work.values()) item.controller.abort()
     work.clear()
     for (const controller of discoveries) controller.abort()
+    for (const item of simulations.values()) item.controller.abort()
+    simulations.clear()
   }
   const discoveries = new Set<AbortController>()
   const discoverNetworks = async (address: string) => {
@@ -172,10 +294,22 @@ export function createSafeService({ accounts, store, operations, client, now = D
     if (selected) void refresh({ type: 'account.safe-refresh', accountId: selected })
   }
   const unsubscribe = store.subscribe(
-    (state) => [state.main.currentProfile, state.main.currentAccount, state.main.accounts] as const,
+    (state) =>
+      [
+        state.main.currentProfile,
+        state.main.currentAccount,
+        state.main.accounts,
+        state.main.networks
+      ] as const,
     ([nextProfile, nextSelected, accounts]) => {
       const changed = profile !== nextProfile || selected !== nextSelected
       if (profile !== nextProfile) invalidate()
+      for (const [key, item] of simulations) {
+        if (simulationSnapshot(item.query)?.fingerprint !== item.fingerprint) {
+          item.controller.abort()
+          simulations.delete(key)
+        }
+      }
       for (const [key, item] of work) {
         const account = accounts[item.accountId]
         if (
@@ -193,11 +327,12 @@ export function createSafeService({ accounts, store, operations, client, now = D
       selected = nextSelected
       if (changed) refreshSelected()
     },
-    { equalityFn: (a, b) => a[0] === b[0] && a[1] === b[1] && a[2] === b[2] }
+    { equalityFn: (a, b) => a[0] === b[0] && a[1] === b[1] && a[2] === b[2] && a[3] === b[3] }
   )
   refreshSelected()
   return {
     discoverNetworks,
+    simulate,
     refresh,
     import(command: AccountSafeImportCommand, owner: OperationOwner) {
       const reference = { id: command.operationId, type: command.type, owner }

@@ -1,13 +1,23 @@
 import { mock } from 'bun:test'
 
-import type { CommandResult } from '../../../app/contracts/operations'
+import type { CommandResult, QueryResultMap } from '../../../app/contracts/operations'
 import type { RequestRendererCapabilities } from './requestCapabilities'
 
 const acknowledged = <TInput>() => mock(async (_input: TInput): Promise<CommandResult> => ({ ok: true }))
 
 export function createRequestRendererCapabilitiesFake() {
   return {
-    safe: { refresh: acknowledged<Parameters<RequestRendererCapabilities['safe']['refresh']>[0]>() },
+    safe: {
+      refresh: acknowledged<Parameters<RequestRendererCapabilities['safe']['refresh']>[0]>(),
+      simulate: mock(
+        async (
+          _input: Parameters<RequestRendererCapabilities['safe']['simulate']>[0]
+        ): Promise<QueryResultMap['safe.simulate']> => ({
+          status: 'unavailable',
+          error: 'Simulation unavailable'
+        })
+      )
+    },
     panel: {
       back: acknowledged<Parameters<RequestRendererCapabilities['panel']['back']>[0]>(),
       openRequest: acknowledged<Parameters<RequestRendererCapabilities['panel']['openRequest']>[0]>()

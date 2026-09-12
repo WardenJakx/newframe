@@ -5,14 +5,17 @@ import { Stack } from '@newframe/ui/stack'
 import { Text } from '@newframe/ui/text'
 import { getCalldataDigest } from '../../../shared/domain/calldata'
 
-import type { SafeDeployment, SafeProposal } from '../../accounts/domain/safe'
+import type { SafeDeployment, SafeProposal, SafeProposalSimulation } from '../../accounts/domain/safe'
 import TransactionInformation from './Account/Requests/TransactionRequest/TransactionInformation'
 import type { RequestRendererCapabilities } from './requestCapabilities'
+
+export type SafePreview = SafeProposalSimulation | { status: 'loading' }
 
 export function SafeProposalDetailsView({
   renderAddress,
   deployment,
   proposal,
+  simulation,
   networkName,
   networkIcon,
   symbol,
@@ -22,12 +25,38 @@ export function SafeProposalDetailsView({
   renderAddress?: (address: string) => ReactNode
   deployment: SafeDeployment
   proposal: SafeProposal
+  simulation: SafePreview
   networkName: string
   networkIcon?: string
   symbol: string
   decimals?: number
   capabilities: Pick<RequestRendererCapabilities, 'external'>
 }) {
+  const currentNonce =
+    simulation.status !== 'loading' && simulation.currentNonce !== undefined
+      ? simulation.currentNonce
+      : deployment.configuration.nonce
+  const waiting = BigInt(proposal.nonce) > BigInt(currentNonce)
+  const effects =
+    simulation.status === 'success' || (simulation.status === 'error' && simulation.failure === 'inner')
+      ? simulation.effects
+      : []
+  const effectsEmptyText =
+    simulation.status === 'loading'
+      ? 'Simulating…'
+      : simulation.status === 'success'
+        ? 'No supported asset or allowance changes detected. Other changes may still occur.'
+        : simulation.status === 'unavailable'
+          ? 'Simulation unavailable.'
+          : simulation.failure === 'revert'
+            ? 'Execution reverted. No changes applied.'
+            : 'No remaining asset or allowance changes detected.'
+  const effectsNotice = [
+    simulation.status === 'error' || simulation.status === 'unavailable' ? simulation.error : undefined,
+    waiting ? 'Uses current state. Earlier proposals are not included.' : undefined
+  ]
+    .filter(Boolean)
+    .join(' ')
   const copy = (text: string) => () => {
     void capabilities.external.copy({ text })
   }
@@ -43,7 +72,7 @@ export function SafeProposalDetailsView({
       onClick: renderAddress ? undefined : copy(proposal.safe)
     },
     { label: 'Nonce', value: proposal.nonce },
-    { label: 'Current Safe nonce', value: deployment.configuration.nonce },
+    { label: 'Current Safe nonce', value: currentNonce },
     { label: 'Native value', value: `${formatUnits(proposal.value, decimals)} ${symbol}` },
     { label: 'Operation', value: proposal.operation === 1 ? 'Delegatecall' : 'Call' },
     { label: 'Safe transaction hash', value: proposal.safeTxHash, onClick: copy(proposal.safeTxHash) },
@@ -85,13 +114,18 @@ export function SafeProposalDetailsView({
         networkName={networkName}
         networkIcon={networkIcon}
         nativeCurrency={{ symbol }}
-        statusLabel={
-          BigInt(proposal.nonce) > BigInt(deployment.configuration.nonce)
-            ? 'Waiting for earlier transactions'
-            : 'Pending proposal'
+        statusLabel={waiting ? 'Waiting for earlier transactions' : 'Pending proposal'}
+        effects={effects}
+        effectsEmptyText={effectsEmptyText}
+        effectsNotice={
+          effectsNotice ? (
+            <div role={simulation.status === 'error' ? 'alert' : 'status'}>
+              <Text variant='caption' tone={simulation.status === 'error' ? 'danger' : 'secondary'}>
+                {effectsNotice}
+              </Text>
+            </div>
+          ) : undefined
         }
-        effects={[]}
-        effectsEmptyText='Simulation not available for Safe proposals yet.'
         beforeDetails={
           <Surface padding='medium' tone='raised'>
             <div

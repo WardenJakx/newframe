@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { SafeProposalSimulationSchema } from '../../features/accounts/domain/safe.js'
 
 import {
   FlashAssetSchema,
@@ -665,6 +666,13 @@ const SafeDiscoverQuerySchema = z.strictObject({
 const SafeDiscoverResultSchema = z.array(
   z.strictObject({ chainId: ChainIdSchema, name: z.string(), supported: z.boolean() })
 )
+const SafeSimulateQuerySchema = z.strictObject({
+  type: z.literal('safe.simulate'),
+  accountId: AddressSchema,
+  chainId: ChainIdSchema.max(Number.MAX_SAFE_INTEGER),
+  safeTxHash: z.string().regex(/^0x[0-9a-fA-F]{64}$/)
+})
+export type SafeSimulateQuery = z.infer<typeof SafeSimulateQuerySchema>
 
 const KeystoreLocateQuerySchema = z.strictObject({ type: z.literal('keystore.locate') })
 export type KeystoreLocateQuery = z.infer<typeof KeystoreLocateQuerySchema>
@@ -1123,6 +1131,7 @@ export const queryContracts = defineOperationContracts({
     input: SafeDiscoverQuerySchema,
     result: SafeDiscoverResultSchema
   },
+  'safe.simulate': { input: SafeSimulateQuerySchema, result: SafeProposalSimulationSchema },
   'token.lookup': { input: TokenLookupQuerySchema, result: TokenLookupResultSchema }
 })
 

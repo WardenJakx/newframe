@@ -1,4 +1,4 @@
-import type { CommandMap, CommandResult } from '../../../app/contracts/operations'
+import type { CommandMap, CommandResult, QueryMap, QueryResultMap } from '../../../app/contracts/operations'
 import type { NewframeHost } from '../../../platform/ipc/contract/ipc'
 import type { ClipboardCapability, TokenImageCapability } from '../../../shared/renderer/capabilities'
 
@@ -38,6 +38,7 @@ export interface RequestExternalCapability extends ClipboardCapability, TokenIma
 
 interface SafeQueueCapability {
   refresh(input: CommandInput<'account.safe-refresh'>): Promise<CommandResult>
+  simulate(input: Omit<QueryMap['safe.simulate'], 'type'>): Promise<QueryResultMap['safe.simulate']>
 }
 
 export type RequestRendererCapabilities = {
@@ -48,7 +49,7 @@ export type RequestRendererCapabilities = {
   external: RequestExternalCapability
 }
 
-type RequestHost = Pick<NewframeHost, 'executeCommand'>
+type RequestHost = Pick<NewframeHost, 'executeCommand' | 'executeQuery'>
 
 const createRequestPanelCapability = (host: RequestHost): RequestPanelCapability => ({
   back: (input) => host.executeCommand({ type: 'panel.back', ...input }),
@@ -85,7 +86,15 @@ const createRequestExternalCapability = (host: RequestHost): RequestExternalCapa
 
 export function createRequestRendererCapabilities(host: RequestHost): RequestRendererCapabilities {
   return {
-    safe: { refresh: (input) => host.executeCommand({ type: 'account.safe-refresh', ...input }) },
+    safe: {
+      refresh: (input) => host.executeCommand({ type: 'account.safe-refresh', ...input }),
+      simulate: async (input) => {
+        const result = await host.executeQuery({ type: 'safe.simulate', ...input })
+        return 'status' in result
+          ? result
+          : { status: 'unavailable', error: result.message || 'Could not load Safe preview.' }
+      }
+    },
     panel: createRequestPanelCapability(host),
     review: createRequestReviewCapability(host),
     transaction: createTransactionReviewCapability(host),

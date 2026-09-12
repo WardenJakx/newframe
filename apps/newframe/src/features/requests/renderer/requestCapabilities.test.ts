@@ -1,12 +1,20 @@
 import { expect, it, mock } from 'bun:test'
 
 import type { NewframeHost } from '../../../platform/ipc/contract/ipc'
-import type { CommandResult } from '../../../app/contracts/operations'
+import type {
+  CommandResult,
+  QueryMap,
+  QueryResultMap,
+  ResultForQuery
+} from '../../../app/contracts/operations'
 import { createRequestRendererCapabilities as createRequestPorts } from './requestCapabilities'
 
 it('maps each request surface to its exact host command and preserves failures', async () => {
   const executeCommand = mock(async (_command: unknown): Promise<CommandResult> => ({ ok: true }))
-  const capabilities = createRequestPorts({ executeCommand } as Pick<NewframeHost, 'executeCommand'>)
+  const capabilities = createRequestPorts({
+    executeCommand,
+    executeQuery: async () => ({ ok: false, error: 'unauthorized' })
+  })
 
   await capabilities.panel.back({ steps: 1 })
   await capabilities.panel.openRequest({ requestId: 'request-1' })
@@ -94,5 +102,30 @@ it('maps each request surface to its exact host command and preserves failures',
   await expect(capabilities.review.reject({ requestId: 'request-2' })).resolves.toEqual({
     ok: false,
     error: 'operation_failed'
+  })
+})
+
+it('queries the selected Safe proposal and converts query boundary failures into unavailable previews', async () => {
+  const result: QueryResultMap['safe.simulate'] = {
+    status: 'success',
+    effects: [],
+    assumptions: [],
+    currentNonce: '3',
+    blockNumber: '100'
+  }
+  const executeQuery = mock(
+    async (_query: QueryMap['safe.simulate']): Promise<ResultForQuery<QueryMap['safe.simulate']>> => result
+  )
+  const capabilities = createRequestPorts({
+    executeCommand: async () => ({ ok: true }),
+    executeQuery: executeQuery as NewframeHost['executeQuery']
+  })
+  const input = { accountId: `0x${'1'.repeat(40)}`, chainId: 1, safeTxHash: `0x${'a'.repeat(64)}` }
+  expect(await capabilities.safe.simulate(input)).toEqual(result)
+  expect(executeQuery).toHaveBeenCalledWith({ type: 'safe.simulate', ...input })
+  executeQuery.mockResolvedValueOnce({ ok: false, error: 'unauthorized' })
+  expect(await capabilities.safe.simulate(input)).toEqual({
+    status: 'unavailable',
+    error: 'Could not load Safe preview.'
   })
 })

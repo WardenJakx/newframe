@@ -1,11 +1,12 @@
 import { expect, it } from 'bun:test'
-import { act } from '@testing-library/react'
+import { act, within } from '@testing-library/react'
 import { render, screen } from '../../../../test/support/componentSetup'
 import { registerTestRuntimeFixture } from '../../../../test/support/rendererClient'
 import { walletState } from '../../../platform/state-sync/renderer/fixtures.test-support'
-import type { SafeDeployment } from '../../accounts/domain/safe'
+import type { SafeDeployment, SafeProposalSimulation } from '../../accounts/domain/safe'
 import { SafeQueueView } from './SafeQueueView'
 import { RequestsOverlay } from './RequestsOverlay'
+import { SafeProposalDetailsView } from './SafeProposalDetailsView'
 import { createRequestRendererCapabilitiesFake as createCapabilityFake } from './requestCapabilities.test-support'
 
 const fixture = registerTestRuntimeFixture()
@@ -48,6 +49,228 @@ function state(safe = deployment) {
     }
   })
 }
+
+function deferredPreview() {
+  let resolve!: (result: SafeProposalSimulation) => void
+  const promise = new Promise<SafeProposalSimulation>((complete) => {
+    resolve = complete
+  })
+  return { promise, resolve }
+}
+
+const previewContext = {
+  currentNonce: '2',
+  blockNumber: '100',
+  assumptions: ['Owner authorization and guard checks are bypassed for this preview.']
+}
+const previewEffect = {
+  id: 'safe-native',
+  kind: 'native' as const,
+  direction: 'out' as const,
+  label: 'Asset out',
+  amount: '0x1',
+  decimals: 18,
+  symbol: 'ETH'
+}
+const success = (label = 'Asset out'): SafeProposalSimulation => ({
+  status: 'success',
+  effects: [{ ...previewEffect, label }],
+  ...previewContext
+})
+
+it('loads simulated effects into Estimated changes without owner confirmations', async () => {
+  const safe = {
+    ...deployment,
+    configuration: { ...deployment.configuration, owners: [address, `0x${'2'.repeat(40)}`], threshold: 2 },
+    pending: deployment.pending!.map((proposal) => ({ ...proposal, confirmations: [] }))
+  }
+  fixture.state.reset(state(safe))
+  const pending = deferredPreview()
+  const capabilities = createCapabilityFake()
+  capabilities.safe.simulate.mockReturnValueOnce(pending.promise)
+  const { user } = render(<RequestsOverlay capabilities={capabilities} onBack={() => {}} />)
+  await user.click(screen.getByRole('button', { name: `Open Safe proposal ${hash} on chain 1` }))
+  expect(screen.getByLabelText('Transaction effects').textContent).toContain('Simulating…')
+  expect(capabilities.safe.simulate).toHaveBeenCalledWith({
+    accountId: address,
+    chainId: 1,
+    safeTxHash: hash
+  })
+  await act(async () =>
+    pending.resolve({
+      status: 'success',
+      ...previewContext,
+      effects: [
+        previewEffect,
+        {
+          ...previewEffect,
+          id: 'safe-token',
+          kind: 'erc20',
+          direction: 'in',
+          label: 'Token received',
+          symbol: 'USDC',
+          decimals: 6
+        },
+        {
+          ...previewEffect,
+          id: 'safe-allowance',
+          kind: 'allowance',
+          direction: 'neutral',
+          label: 'Allowance change'
+        }
+      ]
+    })
+  )
+  const effects = within(screen.getByLabelText('Transaction effects'))
+  expect(effects.getByLabelText('Outgoing asset effect')).toBeTruthy()
+  expect(effects.getByLabelText('Incoming asset effect')).toBeTruthy()
+  expect(effects.getByLabelText('Neutral asset effect')).toBeTruthy()
+  expect(screen.getByText('Waiting for earlier transactions')).toBeTruthy()
+  expect(effects.getByText('Uses current state. Earlier proposals are not included.')).toBeTruthy()
+})
+
+it.each([
+  { status: 'success', effects: [], ...previewContext, currentNonce: '3' },
+  { status: 'unavailable', error: 'Provider cannot trace this call.' },
+  {
+    status: 'error',
+    failure: 'revert',
+    error: 'Safe execution reverted.',
+    effects: [previewEffect],
+    ...previewContext
+  },
+  {
+    status: 'error',
+    failure: 'inner',
+    error: 'Proposed call reverted.',
+    effects: [previewEffect],
+    ...previewContext
+  }
+] satisfies SafeProposalSimulation[])(
+  'renders $status simulation results in Estimated changes',
+  (simulation) => {
+    render(
+      <SafeProposalDetailsView
+        deployment={deployment}
+        proposal={deployment.pending![0]!}
+        simulation={simulation}
+        networkName='Ethereum'
+        symbol='ETH'
+        capabilities={createCapabilityFake()}
+      />
+    )
+    const effects = within(screen.getByLabelText('Transaction effects'))
+    if (simulation.status === 'success') {
+      expect(
+        effects.getByText('No supported asset or allowance changes detected. Other changes may still occur.')
+      ).toBeTruthy()
+      expect(screen.getByText('Pending proposal')).toBeTruthy()
+      expect(screen.queryByText('Waiting for earlier transactions')).toBeNull()
+      expect(effects.queryByText(/Earlier proposals/)).toBeNull()
+    } else {
+      expect(effects.getByText(simulation.error, { exact: false })).toBeTruthy()
+      expect(effects.queryByLabelText('Outgoing asset effect') !== null).toBe(
+        simulation.status === 'error' && simulation.failure === 'inner'
+      )
+      if (simulation.status === 'unavailable')
+        expect(effects.getByText('Simulation unavailable.')).toBeTruthy()
+      if (simulation.status === 'error' && simulation.failure === 'revert')
+        expect(effects.getByText('Execution reverted. No changes applied.')).toBeTruthy()
+    }
+  }
+)
+
+it('discards replies after selecting another proposal and returning to the first', async () => {
+  fixture.state.reset(state())
+  const first = deferredPreview(),
+    second = deferredPreview(),
+    returned = deferredPreview()
+  const capabilities = createCapabilityFake()
+  capabilities.safe.simulate
+    .mockReturnValueOnce(first.promise)
+    .mockReturnValueOnce(second.promise)
+    .mockReturnValueOnce(returned.promise)
+  const { user } = render(<RequestsOverlay capabilities={capabilities} onBack={() => {}} />)
+  const open = async (proposalHash: string) =>
+    user.click(screen.getByRole('button', { name: `Open Safe proposal ${proposalHash} on chain 1` }))
+  await open(hash)
+  await user.click(screen.getByRole('button', { name: 'Back to requests' }))
+  await open(competingHash)
+  await user.click(screen.getByRole('button', { name: 'Back to requests' }))
+  await open(hash)
+  await act(async () => {
+    first.resolve(success('Old first'))
+    second.resolve(success('Old second'))
+  })
+  expect(screen.queryByText('Old first')).toBeNull()
+  expect(screen.queryByText('Old second')).toBeNull()
+  expect(screen.getByLabelText('Transaction effects').textContent).toContain('Simulating…')
+  await act(async () => returned.resolve(success('Current preview')))
+  expect(screen.getByText('Current preview')).toBeTruthy()
+})
+
+it('invalidates signed fields and configuration, while ignoring equivalent projections and confirmations', async () => {
+  fixture.state.reset(state())
+  const first = deferredPreview(),
+    changed = deferredPreview(),
+    configured = deferredPreview(),
+    restored = deferredPreview()
+  const capabilities = createCapabilityFake()
+  capabilities.safe.simulate
+    .mockReturnValueOnce(first.promise)
+    .mockReturnValueOnce(changed.promise)
+    .mockReturnValueOnce(configured.promise)
+    .mockReturnValueOnce(restored.promise)
+  const { user } = render(<RequestsOverlay capabilities={capabilities} onBack={() => {}} />)
+  await user.click(screen.getByRole('button', { name: `Open Safe proposal ${hash} on chain 1` }))
+  const confirmed = structuredClone(deployment)
+  confirmed.pending![0]!.confirmations = []
+  await act(async () => fixture.state.reset(state(confirmed)))
+  expect(capabilities.safe.simulate).toHaveBeenCalledTimes(1)
+  const changedProposal = {
+    ...confirmed,
+    pending: confirmed.pending!.map((proposal) => ({ ...proposal, value: '2' }))
+  }
+  await act(async () => fixture.state.reset(state(changedProposal)))
+  await act(async () => first.resolve(success('Old fields')))
+  expect(screen.queryByText('Old fields')).toBeNull()
+  const changedConfig = {
+    ...changedProposal,
+    configuration: { ...changedProposal.configuration, nonce: '3' }
+  }
+  await act(async () => fixture.state.reset(state(changedConfig)))
+  await act(async () => changed.resolve(success('Old configuration')))
+  expect(screen.queryByText('Old configuration')).toBeNull()
+  await act(async () => configured.resolve(success('Configured preview')))
+  expect(screen.getByText('Configured preview')).toBeTruthy()
+  await act(async () => fixture.state.reset(state(changedProposal)))
+  expect(screen.queryByText('Configured preview')).toBeNull()
+  expect(screen.getByLabelText('Transaction effects').textContent).toContain('Simulating…')
+  await act(async () => restored.resolve(success('Restored preview')))
+  expect(screen.getByText('Restored preview')).toBeTruthy()
+})
+
+it.each(['account', 'profile'] as const)('discards previews after %s lifecycle changes', async (change) => {
+  fixture.state.reset(state())
+  const first = deferredPreview(),
+    restored = deferredPreview()
+  const capabilities = createCapabilityFake()
+  capabilities.safe.simulate.mockReturnValueOnce(first.promise).mockReturnValueOnce(restored.promise)
+  const { user } = render(<RequestsOverlay capabilities={capabilities} onBack={() => {}} />)
+  await user.click(screen.getByRole('button', { name: `Open Safe proposal ${hash} on chain 1` }))
+  const next = state()
+  if (change === 'account') next.currentAccount = ''
+  if (change === 'profile') {
+    next.currentProfile = 'other-profile'
+  }
+  await act(async () => fixture.state.reset(next))
+  await act(async () => fixture.state.reset(state()))
+  await user.click(screen.getByRole('button', { name: `Open Safe proposal ${hash} on chain 1` }))
+  await act(async () => first.resolve(success('Previous lifetime')))
+  expect(screen.queryByText('Previous lifetime')).toBeNull()
+  await act(async () => restored.resolve(success('New lifetime')))
+  expect(screen.getByText('New lifetime')).toBeTruthy()
+})
 it('refreshes cached proposals, distinguishes same-nonce hashes, and removes vanished details', async () => {
   fixture.state.reset(state())
   const capabilities = createCapabilityFake()
@@ -61,13 +284,10 @@ it('refreshes cached proposals, distinguishes same-nonce hashes, and removes van
   await user.click(screen.getByRole('button', { name: 'Refresh requests' }))
   expect(capabilities.safe.refresh).toHaveBeenLastCalledWith({ accountId: address, force: true })
   await user.click(screen.getByRole('button', { name: `Open Safe proposal ${hash} on chain 1` }))
-  expect(screen.getByText('Simulation not available for Safe proposals yet.')).toBeTruthy()
   expect(screen.getByText('Waiting for earlier transactions')).toBeTruthy()
   expect(screen.getByText('Delegatecall')).toBeTruthy()
   expect(screen.getByText('1.0 native')).toBeTruthy()
-  expect(screen.getByLabelText('Transaction effects').textContent).toContain(
-    'Simulation not available for Safe proposals yet.'
-  )
+  expect(screen.getByLabelText('Transaction effects').textContent).toContain('Simulation unavailable.')
   expect(screen.queryByText('Approval threshold')).toBeNull()
   expect(screen.queryByText('Safe version')).toBeNull()
   expect(screen.queryByText('Owner')).toBeNull()
@@ -93,7 +313,7 @@ it('does not report an empty queue before proposals have loaded', async () => {
   fixture.state.reset(state({ ...deployment, pending: undefined }))
   const capabilities = createCapabilityFake()
   render(<RequestsOverlay capabilities={capabilities} onBack={() => {}} />)
-  expect(screen.getByText('Pending requests unavailable')).toBeTruthy()
+  expect(await screen.findByText('Pending requests unavailable')).toBeTruthy()
   expect(screen.getByText('Some Safe requests could not be refreshed.')).toBeTruthy()
   expect(screen.queryByText('Loading requests')).toBeNull()
   expect(screen.queryByText('No pending requests')).toBeNull()

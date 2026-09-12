@@ -133,7 +133,13 @@ export function createSafeClient({
   networks?: Readonly<Record<string, string>>
   timeoutMs?: number
   decode?: (address: string, chainId: number, data: string) => Promise<DecodedCallData | undefined>
-  call?: (chainId: number, address: string, data: string) => Promise<string>
+  call?: (
+    chainId: number,
+    address: string,
+    data: string,
+    blockTag?: string,
+    signal?: AbortSignal
+  ) => Promise<string>
   now?: () => number
 }) {
   const cooldowns = new Map<string, number>()
@@ -187,14 +193,15 @@ export function createSafeClient({
     chainId: number,
     address: string,
     method: string,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    blockTag?: string
   ): Promise<unknown> {
     if (!call) throw new Error('Safe chain provider is unavailable')
     signal?.throwIfAborted()
     let timer: ReturnType<typeof setTimeout> | undefined
     try {
       const result = await Promise.race([
-        call(chainId, address, abi.encodeFunctionData(method)),
+        call(chainId, address, abi.encodeFunctionData(method), blockTag, signal),
         new Promise<never>((_, reject) => {
           timer = setTimeout(() => reject(new Error('Safe chain request timed out')), timeoutMs)
         })
@@ -205,28 +212,33 @@ export function createSafeClient({
       clearTimeout(timer)
     }
   }
-  async function discover(chainId: number, address: string, signal?: AbortSignal) {
+  async function discover(chainId: number, address: string, signal?: AbortSignal, blockTag?: string) {
     const expected = safeAddressSchema.parse(address)
     const version = z
       .string()
       .min(1)
       .max(100)
-      .parse(await read(chainId, expected, 'VERSION', signal))
+      .parse(await read(chainId, expected, 'VERSION', signal, blockTag))
     const owners = z
       .array(safeAddressSchema)
       .min(1)
       .max(1000)
-      .parse(await read(chainId, expected, 'getOwners', signal))
+      .parse(await read(chainId, expected, 'getOwners', signal, blockTag))
     return { version, owners }
   }
   return {
     discover,
-    async configuration(chainId: number, address: string, signal?: AbortSignal): Promise<SafeConfiguration> {
+    async configuration(
+      chainId: number,
+      address: string,
+      signal?: AbortSignal,
+      blockTag?: string
+    ): Promise<SafeConfiguration> {
       const expected = safeAddressSchema.parse(address)
       if (call) {
-        const identity = await discover(chainId, expected, signal)
-        const threshold = await read(chainId, expected, 'getThreshold', signal)
-        const nonce = await read(chainId, expected, 'nonce', signal)
+        const identity = await discover(chainId, expected, signal, blockTag)
+        const threshold = await read(chainId, expected, 'getThreshold', signal, blockTag)
+        const nonce = await read(chainId, expected, 'nonce', signal, blockTag)
         return safeConfigurationSchema.parse({
           ...identity,
           threshold: Number(threshold),

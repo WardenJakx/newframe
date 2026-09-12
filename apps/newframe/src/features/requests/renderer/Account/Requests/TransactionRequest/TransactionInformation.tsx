@@ -47,6 +47,7 @@ export type TransactionInformationProps = {
   beforeDetails?: ReactNode
   effects?: TransactionInformationEffect[]
   effectsEmptyText?: ReactNode
+  effectsNotice?: ReactNode
   details: TransactionInformationDetailRow[]
   wrapDetailValues?: boolean
   calldata?: TransactionInformationCalldata
@@ -226,6 +227,7 @@ function AssetIcon({
 function TransactionEffects({
   effects,
   emptyText,
+  notice,
   imageCapability,
   nativeCurrency,
   networkName,
@@ -233,6 +235,7 @@ function TransactionEffects({
 }: {
   effects: TransactionInformationEffect[]
   emptyText: ReactNode
+  notice?: ReactNode
   imageCapability: TokenImageCapability
   nativeCurrency: TransactionInformationNativeCurrency
   networkName: ReactNode
@@ -318,6 +321,11 @@ function TransactionEffects({
             </Surface>
           )}
         </Surface>
+        {notice ? (
+          <Surface padding='small' radius='none' tone='card'>
+            {notice}
+          </Surface>
+        ) : null}
       </section>
     </Surface>
   )
@@ -419,6 +427,7 @@ export default function TransactionInformation({
   beforeDetails,
   effects,
   effectsEmptyText,
+  effectsNotice,
   details,
   wrapDetailValues,
   calldata,
@@ -455,6 +464,7 @@ export default function TransactionInformation({
           <TransactionEffects
             effects={effects}
             emptyText={effectsEmptyText}
+            notice={effectsNotice}
             imageCapability={imageCapability}
             nativeCurrency={nativeCurrency}
             networkIcon={networkIcon}

@@ -5,7 +5,7 @@ import { createTestStore } from '../../../../test/support/createTestStore'
 import { createOperationService } from '../../../platform/operations/service'
 import { createSafeClient } from '../../../platform/safe/client'
 import { createSafeService } from './safe'
-import type { SafeConfiguration } from '../domain/safe'
+import type { SafeConfiguration, SafeProposal, SafeProposalSimulation } from '../domain/safe'
 
 const address = '0x1111111111111111111111111111111111111111'
 const ownerAddress = '0x2222222222222222222222222222222222222222'
@@ -255,4 +255,140 @@ it('probes all configured chains, retains successes and discards stale discovery
   service.dispose()
   release!()
   expect(await pending).toEqual([])
+})
+
+function simulationSetup() {
+  const context = setup()
+  const proposal: SafeProposal = {
+    safeTxHash: `0x${'a'.repeat(64)}`,
+    safe: address,
+    nonce: '0',
+    to: ownerAddress,
+    value: '123',
+    operation: 0,
+    data: '0x',
+    safeTxGas: '0',
+    baseGas: '0',
+    gasPrice: '0',
+    gasToken: address,
+    refundReceiver: ownerAddress,
+    confirmations: []
+  }
+  const configuration = { owners: [ownerAddress], threshold: 1, nonce: '0' }
+  context.store.getState().upsertAccount({
+    id: address,
+    address,
+    signer: '',
+    requests: {},
+    safe: {
+      '1': { address, chainId: 1, configuration, pending: [proposal], refreshedAt: Date.now() }
+    }
+  })
+  const client = {
+    configuration: async () => configuration,
+    pending: async () => [proposal],
+    discover: async () => ({ version: '1.5.0', owners: [ownerAddress] })
+  }
+  const query = {
+    type: 'safe.simulate' as const,
+    accountId: address,
+    chainId: 1,
+    safeTxHash: proposal.safeTxHash
+  }
+  return { ...context, client, query, proposal }
+}
+const simulated: SafeProposalSimulation = {
+  status: 'success',
+  effects: [],
+  assumptions: ['Unsigned'],
+  currentNonce: '0',
+  blockNumber: '123'
+}
+
+it('simulates the canonical unsigned proposal without a signer and coalesces equivalent concurrent queries', async () => {
+  const context = simulationSetup()
+  let calls = 0
+  let release!: (result: SafeProposalSimulation) => void
+  const service = createSafeService({
+    ...context,
+    simulate: async (input) => {
+      calls++
+      expect(input.proposal).toEqual(context.proposal)
+      return new Promise((resolve) => {
+        release = resolve
+      })
+    }
+  })
+  cleanup.push(service.dispose)
+  const first = service.simulate(context.query)
+  const duplicate = service.simulate(context.query)
+  expect(first).toBe(duplicate)
+  await Promise.resolve()
+  expect(calls).toBe(1)
+  const account = context.store.getState().main.accounts[address]
+  expect(account.signer).toBe('')
+  const deployment = account.safe!['1']
+  context.store.getState().patchAccount(address, {
+    name: 'Renamed',
+    safe: {
+      '1': {
+        ...deployment,
+        refreshedAt: Date.now() + 1,
+        pending: [
+          {
+            ...context.proposal,
+            confirmations: [ownerAddress],
+            dataDecoded: { method: 'renamed', parameters: [] }
+          }
+        ]
+      }
+    }
+  })
+  release(simulated)
+  expect(await first).toEqual(simulated)
+  expect(context.store.getState().main.accounts[address].requests).toEqual({})
+  expect(await service.simulate({ ...context.query, safeTxHash: `0x${'b'.repeat(64)}` })).toMatchObject({
+    status: 'unavailable'
+  })
+  expect(calls).toBe(1)
+})
+
+it('settles in-flight simulations on semantic proposal/configuration changes, account lifetime, profile, and disposal', async () => {
+  for (const change of ['proposal', 'configuration', 'remove', 'profile', 'dispose']) {
+    const context = simulationSetup()
+    let signal!: AbortSignal
+    const service = createSafeService({
+      ...context,
+      simulate: (_input, captured) => {
+        signal = captured
+        return new Promise(() => {})
+      }
+    })
+    cleanup.push(service.dispose)
+    const pending = service.simulate(context.query)
+    await Promise.resolve()
+    const old = context.store.getState().main.accounts[address]
+    if (change === 'proposal')
+      context.store.getState().patchAccount(address, {
+        safe: { '1': { ...old.safe!['1'], pending: [{ ...context.proposal, value: '456' }] } }
+      })
+    if (change === 'configuration')
+      context.store.getState().patchAccount(address, {
+        safe: { '1': { ...old.safe!['1'], configuration: { ...old.safe!['1'].configuration, nonce: '1' } } }
+      })
+    if (change === 'remove') {
+      context.store.getState().removeAccount(address)
+      context.store.getState().upsertAccount({ ...old, requests: {} })
+    }
+    if (change === 'profile') {
+      context.store.getState().createProfile('other', 'Other')
+      context.store.getState().selectProfile('other')
+    }
+    if (change === 'dispose') service.dispose()
+    expect(await pending).toMatchObject({
+      status: 'unavailable',
+      error: expect.stringContaining('cancelled')
+    })
+    expect(signal.aborted).toBeTrue()
+  }
 })

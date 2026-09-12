@@ -80,7 +80,7 @@ const profiles = fakes('create', 'delete', 'moveAccount', 'movableAccounts', 're
 const security = fakes('configure', 'lock', 'reset', 'status', 'unlock')
 const send = fakes('dispose', 'submit')
 const settings = fakes('update')
-const safes = fakes('import', 'refresh', 'discoverNetworks', 'dispose')
+const safes = fakes('import', 'refresh', 'discoverNetworks', 'simulate', 'dispose')
 const tokens = fakes('add', 'lookup', 'remove')
 const trade = fakes('cancel', 'dispose', 'prepare', 'quote', 'release', 'submit')
 const servicesWithMocks = [
@@ -501,4 +501,41 @@ it('authorizes Safe commands and delegates owned imports with generic acknowledg
   safes.refresh.mockReturnValue(true)
   const refresh = { type: 'account.safe-refresh', accountId: command.address, force: true }
   expect(await dispatcher.dispatchCommand({} as never, refresh)).toEqual({ ok: true })
+})
+
+it('keeps Safe simulation tray-only and forwards only the canonical proposal identity', async () => {
+  const query = {
+    type: 'safe.simulate',
+    accountId: '0x1111111111111111111111111111111111111111',
+    chainId: 1,
+    safeTxHash: `0x${'a'.repeat(64)}`
+  }
+  authorizeRenderer.mockReturnValue(sideTrayContext)
+  expect(await dispatcher.dispatchQuery(event, query)).toEqual({ ok: false, error: 'unauthorized' })
+  expect(safes.simulate).not.toHaveBeenCalled()
+  authorizeRenderer.mockReturnValue(trayContext)
+  expect(await dispatcher.dispatchQuery(event, { ...query, to: query.accountId })).toEqual({
+    ok: false,
+    error: 'invalid_query'
+  })
+  const result = {
+    status: 'success',
+    effects: [],
+    assumptions: ['Unsigned'],
+    currentNonce: '0',
+    blockNumber: '1'
+  }
+  safes.simulate.mockResolvedValue(result)
+  expect(await dispatcher.dispatchQuery(event, query)).toEqual(result)
+  expect(safes.simulate).toHaveBeenCalledWith(query)
+  safes.simulate.mockResolvedValueOnce({ status: 'success' })
+  expect(await dispatcher.dispatchQuery(event, query)).toEqual({
+    status: 'unavailable',
+    error: 'Safe simulation unavailable.'
+  })
+  safes.simulate.mockRejectedValueOnce(new Error('RPC down'))
+  expect(await dispatcher.dispatchQuery(event, query)).toEqual({
+    status: 'unavailable',
+    error: 'Safe simulation unavailable.'
+  })
 })
