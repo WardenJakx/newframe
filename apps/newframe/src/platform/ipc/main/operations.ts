@@ -1,3 +1,4 @@
+import type { SigningUiContext } from '../../signing/signers/Signer/index.js'
 import log from 'electron-log'
 import { z } from 'zod'
 
@@ -27,6 +28,7 @@ import {
 import { ExecuteCommandChannel, ExecuteQueryChannel } from '../contract/ipc.js'
 
 export interface OperationServices {
+  airgap: import('../../../features/accounts/main/airgap/service.js').AirGapService
   accounts: {
     current(): { id: string } | null | undefined
     get(accountId: string): unknown
@@ -122,6 +124,31 @@ const operationOwner = (context: AuthorizationContext) => ({
   windowInstanceId: context.windowInstanceId
 })
 
+function signingUiContext(
+  event: Electron.IpcMainInvokeEvent,
+  context: AuthorizationContext
+): SigningUiContext {
+  const sender = event.sender
+  return {
+    owner: operationOwner(context),
+    isOwnerActive: () => !sender.isDestroyed(),
+    subscribeOwnerDisposed(onDispose) {
+      if (sender.isDestroyed()) {
+        onDispose()
+        return () => {}
+      }
+      sender.once('destroyed', onDispose)
+      if (sender.isDestroyed()) {
+        sender.removeListener('destroyed', onDispose)
+        onDispose()
+      }
+      return () => {
+        sender.removeListener('destroyed', onDispose)
+      }
+    }
+  }
+}
+
 const operationCommandAcknowledgement = (accepted: boolean | void) =>
   accepted === false ? ({ ok: false, error: 'invalid_command' } as const) : ({ ok: true } as const)
 
@@ -193,6 +220,7 @@ function defineQuery<TKey extends keyof QueryMap>(
 export function createOperationRegistry(services: OperationServices) {
   const {
     accountMutations,
+    airgap,
     accountOnboarding,
     safes,
     agent,
@@ -369,6 +397,24 @@ export function createOperationRegistry(services: OperationServices) {
     ),
     'signer.import': defineOwnedCommand('signer.import', (command, context) =>
       accountOnboarding.importSigner(command, operationOwner(context))
+    ),
+    'signer.airgap-pair-start': defineAcknowledgedCommand(
+      'signer.airgap-pair-start',
+      (command, event, context) => airgap.pairStart(command, signingUiContext(event, context))
+    ),
+    'signer.airgap-pair-scan': defineAcknowledgedCommand(
+      'signer.airgap-pair-scan',
+      (command, _event, context) => airgap.pairScan(command, operationOwner(context))
+    ),
+    'signer.airgap-pair-cancel': defineAcknowledgedCommand(
+      'signer.airgap-pair-cancel',
+      (command, _event, context) => airgap.pairCancel(command, operationOwner(context))
+    ),
+    'signer.airgap-scan': defineAcknowledgedCommand('signer.airgap-scan', (command, _event, context) =>
+      airgap.scan(command, operationOwner(context))
+    ),
+    'signer.airgap-cancel': defineAcknowledgedCommand('signer.airgap-cancel', (command, _event, context) =>
+      airgap.cancel(command, operationOwner(context))
     ),
     'signer.lattice-create': defineOwnedCommand('signer.lattice-create', (command, context) =>
       accountOnboarding.createLattice(command, operationOwner(context))
@@ -571,13 +617,14 @@ export function createOperationRegistry(services: OperationServices) {
     ),
     'request.approve': defineAcknowledgedCommand(
       'request.approve',
-      ({ requestId }) => requests.approve(requestId),
+      ({ requestId }, event, context) => requests.approve(requestId, signingUiContext(event, context)),
       'request_not_found',
       ['tray']
     ),
     'request.warning-confirm': defineAcknowledgedCommand(
       'request.warning-confirm',
-      ({ requestId, gate }) => requests.confirmWarning(requestId, gate),
+      ({ requestId, gate }, event, context) =>
+        requests.confirmWarning(requestId, gate, signingUiContext(event, context)),
       'request_not_found',
       ['tray']
     ),
@@ -605,6 +652,12 @@ export function createOperationRegistry(services: OperationServices) {
   } satisfies Record<keyof CommandMap, OperationDefinition>
 
   const queryRegistry = {
+    'signer.airgap-request': defineQuery('signer.airgap-request', {
+      roles: ['wallet-ui'],
+      entrypoints: ['tray'],
+      handle: (query, _event, context) => airgap.request(query, operationOwner(context)),
+      failure: { ok: false, error: 'unavailable' }
+    }),
     'keystore.locate': defineQuery('keystore.locate', {
       roles: ['wallet-ui'],
       entrypoints: ['tray'],

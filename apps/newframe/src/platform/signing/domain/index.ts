@@ -9,7 +9,8 @@ export const Type = {
   Seed: 'seed',
   Trezor: 'trezor',
   Ledger: 'ledger',
-  Lattice: 'lattice'
+  Lattice: 'lattice',
+  AirGap: 'airgap'
 } as const
 
 export type Type = (typeof Type)[keyof typeof Type]
@@ -26,7 +27,7 @@ export function getSignerDisplayType(typeOrSigner: string | SignerSummary = '') 
 export function isHardwareSigner(typeOrSigner: string | SignerSummary = '') {
   const signerType = typeof typeOrSigner === 'string' ? typeOrSigner : typeOrSigner.type
 
-  return ['ledger', 'trezor', 'lattice'].includes(signerType.toLowerCase())
+  return ['ledger', 'trezor', 'lattice', 'airgap'].includes(signerType.toLowerCase())
 }
 
 export function isSignerReady(signer: SignerSummary) {

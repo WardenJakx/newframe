@@ -1,3 +1,4 @@
+import { createQrCameraFake } from '../../../platform/desktop/renderer/camera.test-support'
 import { beforeEach, describe, expect, it, mock } from 'bun:test'
 import { within } from '@testing-library/react'
 
@@ -58,7 +59,7 @@ describe('Accounts profile controls', () => {
   })
 
   it('places the active profile selector immediately left of Close accounts', () => {
-    render(<Accounts capability={capability} onClose={mock()} />)
+    render(<Accounts camera={createQrCameraFake().camera} capability={capability} onClose={mock()} />)
 
     const dialog = screen.getByRole('dialog', { name: 'Accounts' })
     const profile = within(dialog).getByRole('button', { name: 'Select active profile' })
@@ -69,7 +70,9 @@ describe('Accounts profile controls', () => {
   })
 
   it('keeps move failures visible and closes only after operation and account projections succeed', async () => {
-    const { user } = render(<Accounts capability={capability} onClose={mock()} />)
+    const { user } = render(
+      <Accounts camera={createQrCameraFake().camera} capability={capability} onClose={mock()} />
+    )
     await user.click(screen.getByRole('button', { name: 'Primary account actions' }))
     await user.click(screen.getByRole('button', { name: 'Move Primary to profile' }))
     await user.click(screen.getByRole('option', { name: /Work/ }))
@@ -119,7 +122,9 @@ describe('Accounts profile controls', () => {
       capability.moveAccountToProfile
         .mockImplementationOnce(() => staleMove.promise)
         .mockResolvedValueOnce({ ok: true })
-      const { user } = render(<Accounts capability={capability} onClose={mock()} />)
+      const { user } = render(
+        <Accounts camera={createQrCameraFake().camera} capability={capability} onClose={mock()} />
+      )
       await user.click(screen.getByRole('button', { name: 'Primary account actions' }))
       await user.click(screen.getByRole('button', { name: 'Move Primary to profile' }))
       await user.click(screen.getByRole('option', { name: /Work/ }))
@@ -176,7 +181,9 @@ describe('Accounts profile controls', () => {
     )
     const privateKey = `0x${'a'.repeat(64)}`
     capability.exportAccountPrivateKey.mockResolvedValueOnce({ ok: true, privateKey })
-    const { user } = render(<Accounts capability={capability} onClose={mock()} />)
+    const { user } = render(
+      <Accounts camera={createQrCameraFake().camera} capability={capability} onClose={mock()} />
+    )
 
     await user.click(screen.getByRole('button', { name: 'Primary account actions' }))
     await user.click(screen.getByRole('button', { name: 'Export private key' }))
@@ -209,7 +216,9 @@ describe('Accounts profile controls', () => {
           resolveExport = resolve
         })
     )
-    const { user } = render(<Accounts capability={capability} onClose={mock()} />)
+    const { user } = render(
+      <Accounts camera={createQrCameraFake().camera} capability={capability} onClose={mock()} />
+    )
     await user.click(screen.getByRole('button', { name: 'Primary account actions' }))
     await user.click(screen.getByRole('button', { name: 'Export private key' }))
     await user.click(screen.getByRole('button', { name: 'Export Primary' }))
@@ -260,7 +269,9 @@ describe('AddAccount existing-account selection', () => {
       .mockResolvedValueOnce({ ok: false, error: 'not_found', message: 'Account no longer exists.' })
       .mockResolvedValue({ ok: true })
     const onClose = mock()
-    const { user } = render(<AddAccount capability={capability} onClose={onClose} />)
+    const { user } = render(
+      <AddAccount camera={createQrCameraFake().camera} capability={capability} onClose={onClose} />
+    )
 
     await user.click(screen.getByRole('button', { name: 'Add from stored recovery phrases' }))
     await user.click(screen.getByRole('button', { name: 'Add address' }))
@@ -312,7 +323,9 @@ it('uses the Safe icon without signer labels and stays read-only with a local si
       currentAccount: account.id
     })
   )
-  const { user } = render(<Accounts capability={capability} onClose={() => {}} />)
+  const { user } = render(
+    <Accounts camera={createQrCameraFake().camera} capability={capability} onClose={() => {}} />
+  )
   expect(signerIconName('safe')).toBe('safe')
   expect(screen.queryByText('Safe')).toBeNull()
   expect(screen.queryByText('Watch-only')).toBeNull()
@@ -322,3 +335,23 @@ it('uses the Safe icon without signer labels and stays read-only with a local si
   expect(screen.queryByText('Export private key')).toBeNull()
   expect(screen.getByText('Remove account')).toBeTruthy()
 })
+
+it.each(['airgap', 'ledger'] as const)(
+  'keeps AI access and private-key export unavailable for %s',
+  async (type) => {
+    const capability = createAccountsCapabilityFake()
+    fixture.state.reset(
+      walletState({
+        accounts: { [account.id]: { ...account, lastSignerType: type, agentEnabled: false } },
+        currentAccount: account.id
+      })
+    )
+    const view = render(
+      <Accounts capability={capability} camera={createQrCameraFake().camera} onClose={() => {}} />
+    )
+    await view.user.click(screen.getByRole('button', { name: 'Primary account actions' }))
+    expect(screen.queryByText('Enable AI access')).toBeNull()
+    expect(screen.queryByText('Export private key')).toBeNull()
+    expect(screen.getByText('Remove account')).toBeTruthy()
+  }
+)

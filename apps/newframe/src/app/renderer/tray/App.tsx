@@ -29,7 +29,7 @@ import { RequestViewProvider } from '../../../features/requests/renderer/request
 import { requestCapabilities } from '../capabilities/requests'
 import type { RequestCommandNotifier } from '../../../features/requests/renderer/RequestCommand'
 import type { RequestRendererCapabilities } from '../../../features/requests/renderer/requestCapabilities'
-import { accountsCapability } from '../capabilities/accounts'
+import { accountsCapability, qrCameraCapability } from '../capabilities/accounts'
 import {
   activityCapability,
   connectionsCapability,
@@ -86,6 +86,7 @@ const DEFAULT_BIOMETRIC_RUNTIME = {
 
 const HOME_CAPABILITIES: HomeCapabilities = {
   accounts: accountsCapability,
+  camera: qrCameraCapability,
   activity: activityCapability,
   connections: connectionsCapability,
   home: homeCapability,
@@ -347,6 +348,8 @@ export function Panel(props: PanelProps) {
     <div className={panelRecipe({ visible })} id='panel'>
       <Badge capability={updaterCapability} />
       <Notify
+        accounts={accountsCapability}
+        camera={qrCameraCapability}
         external={props.requestCapabilities.external}
         home={HOME_CAPABILITIES.home}
         review={props.requestCapabilities.review}

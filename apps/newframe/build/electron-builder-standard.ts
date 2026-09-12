@@ -35,6 +35,10 @@ const config = {
     },
     notarize: false,
     hardenedRuntime: true,
+    extendInfo: {
+      NSCameraUsageDescription:
+        'Newframe scans public account and signed response QR codes from AirGap Vault.'
+    },
     gatekeeperAssess: false,
     entitlements: 'build/entitlements.mac.plist',
     requirements: 'build/electron-builder-requirements.txt'

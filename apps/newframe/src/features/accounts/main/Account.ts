@@ -1,3 +1,4 @@
+import type { SignerRequestContext } from '../../../platform/signing/signers/Signer/index.js'
 import log from 'electron-log'
 import { isValidAddress } from '@ethereumjs/util'
 
@@ -731,7 +732,7 @@ class FrameAccount {
     this.accountObserver()
   }
 
-  signMessage(message: string, cb: Callback<string>) {
+  signMessage(message: string, cb: Callback<string>, context?: SignerRequestContext) {
     if (this.store.getState().main.accounts[this.id]?.safe)
       return cb(new Error('Safe accounts are read-only'))
     if (!message) return cb(new Error('No message to sign'))
@@ -740,13 +741,13 @@ class FrameAccount {
       if (!s) return cb(new Error(`Cannot find signer for this account`))
       const index = s.addresses.map((a) => a.toLowerCase()).indexOf(this.address)
       if (index === -1) cb(new Error(`Signer cannot sign for this address`))
-      s.signMessage(index, message, cb)
+      s.signMessage(index, message, cb, context)
     } else {
       cb(new Error('No signer found for this account'))
     }
   }
 
-  signTypedData(typedMessage: TypedMessage, cb: Callback<string>) {
+  signTypedData(typedMessage: TypedMessage, cb: Callback<string>, context?: SignerRequestContext) {
     if (this.store.getState().main.accounts[this.id]?.safe)
       return cb(new Error('Safe accounts are read-only'))
     if (!typedMessage.data) return cb(new Error('No data to sign'))
@@ -756,13 +757,13 @@ class FrameAccount {
       if (!s) return cb(new Error(`Cannot find signer for this account`))
       const index = s.addresses.map((a) => a.toLowerCase()).indexOf(this.address)
       if (index === -1) cb(new Error(`Signer cannot sign for this address`))
-      s.signTypedData(index, typedMessage, cb)
+      s.signTypedData(index, typedMessage, cb, context)
     } else {
       cb(new Error('No signer found for this account'))
     }
   }
 
-  signTransaction(rawTx: TransactionData, cb: Callback<string>) {
+  signTransaction(rawTx: TransactionData, cb: Callback<string>, context?: SignerRequestContext) {
     if (this.store.getState().main.accounts[this.id]?.safe)
       return cb(new Error('Safe accounts are read-only'))
     // if(index === typeof 'object' && cb === typeof 'undefined' && typeof rawTx === 'function') cb = rawTx; rawTx = index; index = 0;
@@ -774,7 +775,7 @@ class FrameAccount {
 
         const index = s.addresses.map((a) => a.toLowerCase()).indexOf(this.address)
         if (index === -1) cb(new Error(`Signer cannot sign for this address`))
-        s.signTransaction(index, rawTx, cb)
+        s.signTransaction(index, rawTx, cb, context)
       } else {
         cb(new Error('No signer found for this account'))
       }

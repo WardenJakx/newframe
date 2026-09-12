@@ -11,6 +11,7 @@ import { TransactionRequest, TxClassification } from '../../requests/contract/re
 import type { Gas } from '../../../platform/state-store/state/index.js'
 
 const londonHardforkSigners: SignerCompatibilityByVersion = {
+  airgap: () => true,
   seed: () => true,
   ring: () => true,
   ledger: (version) => version.major >= 2 || (version.major >= 1 && version.minor >= 9),
@@ -162,13 +163,18 @@ function hexifySignature({ v, r, s }: Signature) {
   }
 }
 
-async function sign(rawTx: TransactionData, signingFn: (tx: TypedTransaction) => Promise<Signature>) {
+export function createUnsignedTransaction(rawTx: TransactionData) {
   const common = chainConfig(
     parseInt(rawTx.chainId, 16),
     parseInt(rawTx.type, 16) === 2 ? 'london' : 'berlin'
   )
 
-  const tx = createTx(rawTx as TypedTxData, { common })
+  return createTx(rawTx as TypedTxData, { common })
+}
+
+async function sign(rawTx: TransactionData, signingFn: (tx: TypedTransaction) => Promise<Signature>) {
+  const tx = createUnsignedTransaction(rawTx)
+  const common = tx.common
 
   return signingFn(tx).then((sig) => {
     const signature = hexifySignature(sig)

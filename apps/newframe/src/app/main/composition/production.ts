@@ -1,3 +1,5 @@
+import { createProductionAirGapService } from '../../../features/accounts/main/airgap/production.js'
+import type { AirGapService } from '../../../features/accounts/main/airgap/service.js'
 import { createSafeService, type SafeService } from '../../../features/accounts/main/safe.js'
 import { createSafeClient, safeServiceNetworks } from '../../../platform/safe/client.js'
 import { createSafeSimulationRpc } from '../../../platform/safe/simulation.js'
@@ -140,6 +142,7 @@ export interface ProductionMainAppDependencies {
   portfolioService: PortfolioService
   securityService: SecurityService
   accountOnboardingService: AccountOnboardingService
+  airgapService: AirGapService
   sendService: SendService
   tradeService: TradeService
 }
@@ -214,9 +217,10 @@ export function createProductionCapabilities(
     clock: { delay: (ms) => new Promise((resolve) => setTimeout(resolve, ms)) },
     network: adapters.network,
     provider: {
-      approveSign: (request) => requestApprovals.approveSign(request),
-      approveSignTypedData: (request) => requestApprovals.approveSignTypedData(request),
-      approveTransactionRequest: (request) => requestApprovals.approveTransactionRequest(request)
+      approveSign: (request, context) => requestApprovals.approveSign(request, context),
+      approveSignTypedData: (request, context) => requestApprovals.approveSignTypedData(request, context),
+      approveTransactionRequest: (request, context) =>
+        requestApprovals.approveTransactionRequest(request, context)
     },
     store,
     transactionPolicy: accountCapabilities.transactionPolicy.port,
@@ -253,6 +257,12 @@ export function createProductionCapabilities(
     store,
     clock: { now: adapters.accounts.now }
   })
+  const airgapService = createProductionAirGapService(
+    store,
+    adapters.accounts.signers,
+    operationService,
+    requestService
+  )
   const profileService = createProfileService({
     accounts,
     operations: operationService,
@@ -393,6 +403,7 @@ export function createProductionCapabilities(
     accountCapabilities,
     infrastructureCallbacks: {
       dispose() {
+        airgapService.dispose()
         safeService.dispose()
         safeRpc.dispose()
         accountSelection.dispose()
@@ -422,7 +433,8 @@ export function createProductionCapabilities(
     requestService,
     portfolioService,
     securityService,
-    accountOnboardingService
+    accountOnboardingService,
+    airgapService
   }
 }
 
@@ -447,10 +459,12 @@ function createProductionOperationServices(
   securityService: SecurityService,
   accountOnboardingService: AccountOnboardingService,
   sendService: SendService,
-  tradeService: TradeService
+  tradeService: TradeService,
+  airgapService: AirGapService
 ): OperationServices {
   return {
     accounts,
+    airgap: airgapService,
     accountMutations: accountService,
     agent: agentService,
     networks: networkService,
@@ -502,7 +516,8 @@ export function createProductionMainApp({
   securityService,
   accountOnboardingService,
   sendService,
-  tradeService
+  tradeService,
+  airgapService
 }: ProductionMainAppDependencies): MainApp {
   const operationDispatcher = createOperationDispatcher(
     createProductionOperationServices(
@@ -526,7 +541,8 @@ export function createProductionMainApp({
       securityService,
       accountOnboardingService,
       sendService,
-      tradeService
+      tradeService,
+      airgapService
     )
   )
   const stateStream = createStateStream({

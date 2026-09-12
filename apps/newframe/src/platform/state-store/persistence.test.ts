@@ -721,3 +721,38 @@ it('retains Safe metadata through persistence and projects only the current prof
   merged.main.currentProfile = 'other'
   expect(projectRendererState(merged, audience)).toMatchObject({ accounts: {} })
 })
+
+it('persists AirGap public records, projects progress, and never restores an exchange', async () => {
+  const { projectWalletState } = await import('../state-sync/main/projections')
+  const { signerFixture, transaction } = await import('../../../test/integration/fixtures/airgap.js')
+  const f = signerFixture()
+  try {
+    f.store.getState().addAirGap(f.signer.id, f.signer.record)
+    const data = transaction()
+    f.request('transaction', data)
+    f.signer.signTransaction(0, data, () => {}, f.owner.context)
+    const projection = projectWalletState(f.store.getState())
+    expect(projection.signers[f.signer.id].airgapRequest).toEqual(f.signer.summary().airgapRequest)
+    expect(projection).not.toHaveProperty('airgap')
+    expect(JSON.stringify(projection)).not.toContain('ur:eth-sign-request')
+    const saved = selectPersistedState(f.store.getState())
+    expect(saved.main.airgap).toEqual({ [f.signer.id]: f.signer.record })
+    expect(JSON.stringify(saved)).not.toContain(f.reference().sessionId)
+    expect(saved.main).not.toHaveProperty('signers')
+    const restored = mergePersistedState(saved, createTestStore().getState())
+    expect(restored.main.airgap).toEqual(saved.main.airgap!)
+    expect(restored.main.accounts[f.address].requests).toEqual({})
+    expect(() =>
+      migratePersistedState({
+        main: { airgap: { [f.signer.id]: { ...f.signer.record, privateKey: 'secret' } } }
+      })
+    ).toThrow()
+    expect(() =>
+      migratePersistedState({
+        main: { airgap: { [f.signer.id]: { ...f.signer.record, originPath: "m/44'/60'/2147483648'" } } }
+      })
+    ).toThrow()
+  } finally {
+    f.dispose()
+  }
+})

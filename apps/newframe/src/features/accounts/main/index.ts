@@ -1,3 +1,4 @@
+import type { SignerRequestContext } from '../../../platform/signing/signers/Signer/index.js'
 import EventEmitter from 'events'
 import log from 'electron-log'
 import { addHexPrefix, intToHex } from '@ethereumjs/util'
@@ -1658,27 +1659,32 @@ export class Accounts extends EventEmitter {
     currentAccount.getCoinbase(cb)
   }
 
-  signMessage(address: Address, message: string, cb: Callback<string>) {
+  signMessage(address: Address, message: string, cb: Callback<string>, context?: SignerRequestContext) {
     const currentAccount = this.current()
 
     if (!currentAccount) return cb(new Error('No Account Selected'))
     if (address.toLowerCase() !== currentAccount.getSelectedAddress().toLowerCase())
       return cb(new Error('signMessage: Wrong Account Selected'))
 
-    currentAccount.signMessage(message, cb)
+    currentAccount.signMessage(message, cb, context)
   }
 
-  signTypedData(address: Address, typedMessage: TypedMessage, cb: Callback<string>) {
+  signTypedData(
+    address: Address,
+    typedMessage: TypedMessage,
+    cb: Callback<string>,
+    context?: SignerRequestContext
+  ) {
     const currentAccount = this.current()
 
     if (!currentAccount) return cb(new Error('No Account Selected'))
     if (address.toLowerCase() !== currentAccount.getSelectedAddress().toLowerCase())
       return cb(new Error('signMessage: Wrong Account Selected'))
 
-    currentAccount.signTypedData(typedMessage, cb)
+    currentAccount.signTypedData(typedMessage, cb, context)
   }
 
-  signTransaction(rawTx: TransactionData, cb: Callback<string>) {
+  signTransaction(rawTx: TransactionData, cb: Callback<string>, context?: SignerRequestContext) {
     const currentAccount = this.current()
 
     if (!currentAccount) return cb(new Error('No Account Selected'))
@@ -1687,7 +1693,7 @@ export class Accounts extends EventEmitter {
       (rawTx.from || '').toLowerCase() === currentAccount.getSelectedAddress().toLowerCase()
 
     if (matchSelected) {
-      currentAccount.signTransaction(rawTx, cb)
+      currentAccount.signTransaction(rawTx, cb, context)
     } else {
       cb(new Error('signMessage: Account does not match currently selected'))
     }

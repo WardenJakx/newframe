@@ -1,3 +1,4 @@
+import type { SigningUiContext } from '../../../../../platform/signing/signers/Signer/index.js'
 import type { TrustedPrincipal } from '../../../../access-control/main/authority.js'
 import type {
   AccountRequest,
@@ -28,15 +29,17 @@ export function createRequestApprovalAdapter(
   const callbacks = createOneResultCallbackBoundary()
   const run = <TRequest extends AccountRequest>(
     request: TRequest,
-    approve: (request: TRequest, done: Callback<string>) => void
-  ) => callbacks.run<string>((done) => approve(request, done))
+    approve: (request: TRequest, done: Callback<string>, context?: SigningUiContext) => void,
+    context?: SigningUiContext
+  ) => callbacks.run<string>((done) => approve(request, done, context))
 
   return {
     dispose: callbacks.dispose,
-    approveSign: (request: AccountRequest) => run(request, provider.approveSign.bind(provider)),
-    approveSignTypedData: (request: SignTypedDataRequest) =>
-      run(request, provider.approveSignTypedData.bind(provider)),
-    approveTransactionRequest: (request: TransactionRequest) =>
-      run(request, provider.approveTransactionRequest.bind(provider))
+    approveSign: (request: AccountRequest, context?: SigningUiContext) =>
+      run(request, provider.approveSign.bind(provider), context),
+    approveSignTypedData: (request: SignTypedDataRequest, context?: SigningUiContext) =>
+      run(request, provider.approveSignTypedData.bind(provider), context),
+    approveTransactionRequest: (request: TransactionRequest, context?: SigningUiContext) =>
+      run(request, provider.approveTransactionRequest.bind(provider), context)
   }
 }

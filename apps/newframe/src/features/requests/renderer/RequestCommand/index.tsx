@@ -4,7 +4,7 @@ import { Spinner } from '@newframe/ui/spinner'
 import { Stack } from '@newframe/ui/stack'
 import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 
 import type { SignatureRequest, TransactionRequest } from '../../contract/requests'
@@ -16,10 +16,12 @@ import { useWalletSelector } from '../../../../platform/state-sync/renderer/useA
 import { useRequestView, type RequestViewStep } from '../requestView'
 import TxApproval from './TxApproval'
 import type { RequestRendererCapabilities, RequestReviewCapability } from '../requestCapabilities'
+import type { AirGapRequestReference } from '../../../../platform/signing/domain/airgap'
 
 type RequestReference = { handlerId: string }
 
 interface RequestCommandSharedState {
+  airgapSigning?: AirGapRequestReference
   appLocked: boolean
   chain: { explorer?: string; isTestnet?: boolean }
   explorerWarningMuted: boolean
@@ -43,6 +45,7 @@ export interface RequestCommandProps {
 }
 
 type RequestCommandNotification =
+  | { type: 'airgapSigning'; data: AirGapRequestReference }
   | {
       type: 'gasFeeWarning'
       data: {
@@ -85,6 +88,21 @@ export const runWhenAppUnlocked = (appLocked: boolean, next: () => void) => {
 export function RequestCommand(props: RequestCommandProps) {
   const request = props.req as TransactionRequest | SignatureRequest
   const { notify } = props
+  const notifiedSession = useRef('')
+  const airgap = props.shared.airgapSigning
+  useEffect(() => {
+    if (
+      props.shared.appLocked ||
+      request.status !== 'pending' ||
+      !airgap ||
+      airgap.requestId !== request.handlerId
+    )
+      return
+    const key = `${airgap.signerId}:${airgap.requestId}:${airgap.sessionId}`
+    if (notifiedSession.current === key) return
+    notifiedSession.current = key
+    notify({ type: 'airgapSigning', data: airgap })
+  }, [notify, airgap, request.handlerId, request.status, props.shared.appLocked])
   const [state, setCommandState] = useState({
     showHashDetails: false,
     txHashCopied: false
@@ -347,17 +365,30 @@ export default function RequestCommandContainer(props: Omit<RequestCommandProps,
   const { step } = useRequestView()
   const selector = useMemo(
     () =>
-      (state: WalletRendererState): Omit<RequestCommandSharedState, 'step'> => {
+      (
+        state: WalletRendererState
+      ): Omit<RequestCommandSharedState, 'step' | 'airgapSigning'> & Partial<AirGapRequestReference> => {
         const account = state.accounts[accountId]
+        const signer = account?.signer ? state.signers[account.signer] : undefined
+        const pending = signer?.airgapRequest
+        const matching = state.currentAccount === accountId && pending?.requestId === request.handlerId
         return {
+          signerId: matching ? signer?.id : undefined,
+          requestId: matching ? pending?.requestId : undefined,
+          sessionId: matching ? pending?.sessionId : undefined,
           appLocked: state.appLock.locked,
           chain: state.networks.ethereum[chainId] || EMPTY_CHAIN,
           explorerWarningMuted: !!state.mute?.explorerWarning,
           signerAttached: Boolean(account?.signer && state.signers[account.signer])
         }
       },
-    [accountId, chainId]
+    [accountId, chainId, request.handlerId]
   )
-  const synchronized = useWalletSelector(useShallow(selector))
-  return <RequestCommand {...props} shared={{ ...synchronized, step }} />
+  const { signerId, requestId, sessionId, ...synchronized } = useWalletSelector(useShallow(selector))
+  // A new nested object inside the store selector would invalidate every snapshot.
+  const airgapSigning = useMemo(
+    () => (signerId && requestId && sessionId ? { signerId, requestId, sessionId } : undefined),
+    [signerId, requestId, sessionId]
+  )
+  return <RequestCommand {...props} shared={{ ...synchronized, airgapSigning, step }} />
 }

@@ -1,3 +1,4 @@
+import AirGapAdapter from './airgap/adapter.js'
 import Signer from './Signer/index.js'
 import { SignerAdapter } from './adapters.js'
 import LedgerAdapter from './ledger/adapter.js'
@@ -11,7 +12,8 @@ import type canonicalStore from '../../state-store/index.js'
 const createDefaultAdapters = (store: typeof canonicalStore) => [
   new LedgerAdapter(store),
   new TrezorAdapter(store),
-  new LatticeAdapter(store)
+  new LatticeAdapter(store),
+  new AirGapAdapter(store)
 ]
 
 interface AdapterSpec {

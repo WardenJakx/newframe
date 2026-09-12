@@ -47,6 +47,7 @@ export function HomeOverlayRouter({ capabilities }: { capabilities: HomeCapabili
       return (
         <Accounts
           capability={capabilities.accounts}
+          camera={capabilities.camera}
           initialNewAccountType={overlay.newAccountType}
           initialSelectedSigner={overlay.selectedSigner}
           initialShowAddAccounts={overlay.showAddAccounts}

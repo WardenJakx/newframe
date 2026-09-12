@@ -11,7 +11,9 @@ import { capitalize } from '../../../../shared/domain/text'
 import ExtensionConnectNotification from '../../../../features/connections/renderer/ExtensionConnect'
 import { connectionsCapability } from '../../capabilities/homeFeatures'
 import SignerRecovery from '../../../../features/accounts/renderer/onboarding/SignerRecovery'
-import { accountsCapability } from '../../capabilities/accounts'
+import type { AccountsCapability } from '../../../../features/accounts/renderer/accountsCapability'
+import type { QrCameraCapability } from '../../../../platform/desktop/renderer/camera'
+import { AirGapSigning } from '../../../../features/accounts/renderer/airgap/AirGapSigning'
 import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector'
 import type { TrayRendererState } from '../state'
 import { useTrayNotification, type TrayNotifier } from '../notification'
@@ -241,10 +243,14 @@ const selectNotificationState = (state: TrayRendererState) => ({
 })
 
 export default function Notification({
+  accounts,
+  camera,
   external,
   home,
   review
 }: {
+  accounts: AccountsCapability
+  camera: QrCameraCapability
   external: Pick<RequestExternalCapability, 'openExplorer'>
   home: Pick<HomeCapability, 'toggleWarning'>
   review: Pick<RequestReviewCapability, 'confirmWarning'>
@@ -272,14 +278,26 @@ export default function Notification({
 
   if (local.type === 'gasFeeWarning') return <GasFeeWarning {...props} />
   if (local.type === 'signerCompatibilityWarning') return <SignerCompatibilityWarning {...props} />
+  if (local.type === 'airgapSigning') {
+    const { signerId, requestId, sessionId } = local.data
+    if (typeof signerId !== 'string' || typeof requestId !== 'string' || typeof sessionId !== 'string')
+      return null
+    return (
+      <Shell dismiss={local.notify}>
+        <AirGapSigning
+          key={`${signerId}:${requestId}:${sessionId}`}
+          capability={accounts}
+          camera={camera}
+          reference={{ signerId, requestId, sessionId }}
+          dismiss={local.notify}
+        />
+      </Shell>
+    )
+  }
   if (local.type === 'signerRecovery') {
     return (
       <Shell dismiss={local.notify}>
-        <SignerRecovery
-          capability={accountsCapability}
-          dismiss={local.notify}
-          signerIds={dataSignerIds(local.data)}
-        />
+        <SignerRecovery capability={accounts} dismiss={local.notify} signerIds={dataSignerIds(local.data)} />
       </Shell>
     )
   }

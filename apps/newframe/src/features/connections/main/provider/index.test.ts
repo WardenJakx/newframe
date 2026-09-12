@@ -1032,7 +1032,7 @@ describe('#send', () => {
     })
 
     // these signers only support V4+
-    const HardwareSignersSupportingV4Only = [SignerType.Ledger, SignerType.Trezor]
+    const HardwareSignersSupportingV4Only = [SignerType.Ledger, SignerType.Trezor, SignerType.AirGap]
 
     HardwareSignersSupportingV4Only.forEach((signerType) => {
       it(`does not submit a V3 request to a ${signerType}`, async () => {

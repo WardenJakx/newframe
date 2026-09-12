@@ -1,3 +1,4 @@
+import { createQrCameraFake } from '../../../platform/desktop/renderer/camera.test-support'
 import { expect, it, mock, spyOn } from 'bun:test'
 
 import type { QueryResultMap } from '../../../app/contracts/operations'
@@ -67,7 +68,14 @@ it('keeps drafts local and follows projected onboarding and hardware session sta
       : Promise.resolve({ ok: true })
   )
   const closeWatch = mock()
-  let view = render(<AddAccount capability={capability} initialType='watch' onClose={closeWatch} />)
+  let view = render(
+    <AddAccount
+      camera={createQrCameraFake().camera}
+      capability={capability}
+      initialType='watch'
+      onClose={closeWatch}
+    />
+  )
   await view.user.type(screen.getByLabelText('Address or gns/ens name'), 'old.eth')
   await view.user.click(screen.getByRole('button', { name: 'Create account' }))
   const staleWatch = capability.addWatchAccount.mock.calls.at(-1)![0]
@@ -96,7 +104,14 @@ it('keeps drafts local and follows projected onboarding and hardware session sta
   await waitFor(() => expect(closeWatch.mock.calls).toHaveLength(1))
 
   reset()
-  view = render(<AddAccount capability={capability} initialType='keystore' onClose={mock()} />)
+  view = render(
+    <AddAccount
+      camera={createQrCameraFake().camera}
+      capability={capability}
+      initialType='keystore'
+      onClose={mock()}
+    />
+  )
   await view.user.click(screen.getByRole('button', { name: 'Choose JSON backup file' }))
   await view.user.type(screen.getByLabelText('JSON backup file password'), 'file-secret')
   await view.user.click(screen.getByRole('button', { name: 'Create account' }))
@@ -111,7 +126,7 @@ it('keeps drafts local and follows projected onboarding and hardware session sta
   expect(capability.locateKeystore.mock.calls).toHaveLength(1)
 
   reset()
-  view = render(<AddAccount capability={capability} onClose={mock()} />)
+  view = render(<AddAccount camera={createQrCameraFake().camera} capability={capability} onClose={mock()} />)
   await view.user.click(screen.getByRole('button', { name: 'Create recovery phrase' }))
   expect(await screen.findByText('one')).toBeTruthy()
   await view.user.click(screen.getByRole('button', { name: 'Recovery phrase saved' }))
@@ -125,7 +140,7 @@ it('keeps drafts local and follows projected onboarding and hardware session sta
   })
 
   reset({ signers: { 'seed-1': signer('seed-1', 'seed', 'ok', [address('1')]) } })
-  view = render(<AddAccount capability={capability} onClose={mock()} />)
+  view = render(<AddAccount camera={createQrCameraFake().camera} capability={capability} onClose={mock()} />)
   await view.user.click(screen.getByRole('button', { name: 'Add from stored recovery phrases' }))
   await view.user.click(screen.getByRole('button', { name: 'Add address' }))
   await view.user.click(screen.getByRole('button', { name: 'Add Wallet 1' }))
@@ -149,6 +164,7 @@ it('keeps drafts local and follows projected onboarding and hardware session sta
   })
   view = render(
     <AddAccount
+      camera={createQrCameraFake().camera}
       capability={capability}
       initialSelectedSigner='ledger-1'
       initialType='ledger'
@@ -166,6 +182,7 @@ it('keeps drafts local and follows projected onboarding and hardware session sta
   reset({ signers: { 'lattice-1': signer('lattice-1', 'lattice', 'pair') } })
   view = render(
     <AddAccount
+      camera={createQrCameraFake().camera}
       capability={capability}
       initialSelectedSigner='lattice-1'
       initialType='lattice'
@@ -190,6 +207,7 @@ it('keeps drafts local and follows projected onboarding and hardware session sta
   reset({ signers: { 'trezor-1': signer('trezor-1', 'trezor', 'need pin') } })
   view = render(
     <AddAccount
+      camera={createQrCameraFake().camera}
       capability={capability}
       initialSelectedSigner='trezor-1'
       initialType='trezor'
@@ -241,7 +259,14 @@ it('keeps drafts local and follows projected onboarding and hardware session sta
 it('maps direct recovery-phrase and private-key imports to focused signer commands', async () => {
   fixture.state.reset(walletState({}))
   capability = createAccountsCapabilityFake()
-  let view = render(<AddAccount capability={capability} initialType='seed' onClose={mock()} />)
+  let view = render(
+    <AddAccount
+      camera={createQrCameraFake().camera}
+      capability={capability}
+      initialType='seed'
+      onClose={mock()}
+    />
+  )
   await view.user.type(
     screen.getByLabelText('Recovery phrase'),
     'one two three four five six seven eight nine ten eleven twelve'
@@ -257,7 +282,14 @@ it('maps direct recovery-phrase and private-key imports to focused signer comman
 
   cleanup()
   capability = createAccountsCapabilityFake()
-  view = render(<AddAccount capability={capability} initialType='privateKey' onClose={mock()} />)
+  view = render(
+    <AddAccount
+      camera={createQrCameraFake().camera}
+      capability={capability}
+      initialType='privateKey'
+      onClose={mock()}
+    />
+  )
   const privateKey = `0x${'a'.repeat(64)}`
   await view.user.type(screen.getByLabelText('Private key'), privateKey)
   await view.user.click(screen.getByRole('button', { name: 'Create account' }))
@@ -276,7 +308,9 @@ it('resets the generated-seed copy timer and clears the active timer on unmount'
     fixture.state.reset(walletState({}))
     capability = createAccountsCapabilityFake()
     capability.generateSeed.mockResolvedValue({ ok: true, phrase: 'one two three four' })
-    const view = render(<AddAccount capability={capability} onClose={mock()} />)
+    const view = render(
+      <AddAccount camera={createQrCameraFake().camera} capability={capability} onClose={mock()} />
+    )
     await view.user.click(screen.getByRole('button', { name: 'Create recovery phrase' }))
     await view.user.click(await screen.findByRole('button', { name: 'Copy recovery phrase' }))
     expect(screen.getByText('Copied')).toBeTruthy()
@@ -311,6 +345,7 @@ it('queries each stable hardware address key once and ignores the prior key resu
   fixture.state.reset(projectedState)
   render(
     <AddAccount
+      camera={createQrCameraFake().camera}
       capability={capability}
       initialSelectedSigner='ledger-1'
       initialType='ledger'
@@ -379,7 +414,9 @@ it('imports Safe networks independently, retains partial failure, and selects su
   })
   let state = walletState({})
   fixture.state.reset(state)
-  const { user } = render(<AddAccount capability={capability} onClose={onClose} />)
+  const { user } = render(
+    <AddAccount camera={createQrCameraFake().camera} capability={capability} onClose={onClose} />
+  )
   await user.click(screen.getByRole('button', { name: 'Safe' }))
   await user.type(screen.getByLabelText('Safe address'), address('9'))
   expect((await screen.findByRole('button', { name: 'Ethereum' })).getAttribute('aria-selected')).toBe('true')
@@ -418,7 +455,9 @@ it('discovers only complete addresses and ignores results from the previous addr
       : Promise.resolve([{ chainId: 8453, name: 'Base', supported: true }])
   )
   fixture.state.reset(walletState({}))
-  const { user } = render(<AddAccount capability={capability} onClose={() => {}} />)
+  const { user } = render(
+    <AddAccount camera={createQrCameraFake().camera} capability={capability} onClose={() => {}} />
+  )
   await user.click(screen.getByRole('button', { name: 'Safe' }))
   expect(capability.discoverSafeNetworks).not.toHaveBeenCalled()
   const input = screen.getByLabelText('Safe address')
@@ -430,4 +469,53 @@ it('discovers only complete addresses and ignores results from the previous addr
   await act(async () => first.resolve([{ chainId: 1, name: 'Old chain', supported: true }]))
   expect(screen.queryByRole('button', { name: 'Old chain' })).toBeNull()
   expect(screen.getByRole('button', { name: 'Base' })).toBeTruthy()
+})
+
+it('pairs AirGap public QR through its owned operation, then adds an address normally', async () => {
+  const camera = createQrCameraFake()
+  const capability = createAccountsCapabilityFake()
+  const nextSigner = signer('airgap-1', 'airgap', 'ok', [address('a')])
+  let state = walletState({ tray: { open: true, initial: false, homeCommand: null } })
+  fixture.state.reset(state)
+  const view = render(<AddAccount capability={capability} camera={camera.camera} onClose={() => {}} />)
+  await view.user.click(screen.getByRole('button', { name: 'Connect a hardware wallet' }))
+  await view.user.click(screen.getByRole('button', { name: 'AirGap' }))
+  await view.user.click(screen.getByRole('button', { name: 'Pair AirGap' }))
+  await waitFor(() => expect(camera.sessions).toHaveLength(1))
+  const failedId = capability.airgapPairStart.mock.calls.at(-1)![0].operationId
+  act(() => camera.sessions[0].handlers.onError(new DOMException('Busy', 'NotReadableError')))
+  expect((await screen.findByRole('alert')).textContent).toContain('Camera is busy')
+  expect(camera.sessions[0].stopped).toBe(true)
+  expect(capability.airgapPairCancel).toHaveBeenCalledWith({ operationId: failedId })
+  await view.user.click(screen.getByRole('button', { name: 'Pair AirGap' }))
+  const { operationId } = capability.airgapPairStart.mock.calls.at(-1)![0]
+  act(() => camera.sessions[1].handlers.onFrame('public account QR'))
+  await waitFor(() =>
+    expect(capability.airgapPairScan).toHaveBeenCalledWith({ operationId, frame: 'public account QR' })
+  )
+  const paired: OperationRecord = {
+    id: operationId,
+    type: 'signer.airgap-pair',
+    status: 'succeeded',
+    phase: 'paired',
+    entityRefs: [{ type: 'signer', id: nextSigner.id }],
+    startedAt: 1,
+    updatedAt: 2,
+    finishedAt: 2
+  }
+  state = { ...state, operations: { [operationId]: paired }, signers: { [nextSigner.id]: nextSigner } }
+  act(() => fixture.state.reset(state))
+  await waitFor(() => expect(screen.queryByText('Pair AirGap Vault')).toBeNull())
+  await waitFor(() => expect(camera.sessions[1].stopped).toBe(true))
+  await view.user.click(screen.getByRole('button', { name: /Add 0xaaa/ }))
+  expect(capability.addAccountFromSigner).toHaveBeenCalledWith({
+    operationId: expect.any(String),
+    signerId: nextSigner.id,
+    address: address('a'),
+    name: 'AirGap Account'
+  })
+  view.unmount()
+  expect(capability.airgapPairCancel.mock.calls.some(([input]) => input.operationId === operationId)).toBe(
+    false
+  )
 })

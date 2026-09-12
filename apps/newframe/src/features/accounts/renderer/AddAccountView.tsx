@@ -715,10 +715,12 @@ function HardwarePaginationView({
 
 function HardwareAccountSelectionView({
   events,
-  model
+  model,
+  airgapPairing
 }: {
   events: AddAccountViewEvents
   model: HardwareModel
+  airgapPairing?: ReactNode
 }) {
   if (model.mode === 'list')
     return (
@@ -748,7 +750,7 @@ function HardwareAccountSelectionView({
               </Button>
             ))}
           </Stack>
-        ) : (
+        ) : model.type !== 'airgap' ? (
           <Surface padding='large' radius='card' tone='card'>
             <Stack align='center' gap='small'>
               <Text>Unlock your {model.title} to get started</Text>
@@ -759,7 +761,8 @@ function HardwareAccountSelectionView({
               ) : null}
             </Stack>
           </Surface>
-        )}
+        ) : null}
+        {airgapPairing}
         {model.type === 'lattice' ? (
           <Stack gap='small'>
             <Field label='Device name' vertical>
@@ -823,15 +826,17 @@ function HardwareAccountSelectionView({
       {model.pagination ? <HardwarePaginationView events={events} model={model.pagination} /> : null}
       <Feedback error={model.error} status={model.status} />
       <Inline align='center' gap='small'>
-        <Button
-          appearance='control'
-          label={`Reconnect ${model.title}`}
-          onPress={events.onHardwareReload}
-          shape='pill'
-          size='small'
-        >
-          <Text variant='compactAction'>Reconnect</Text>
-        </Button>
+        {model.signer.type !== 'airgap' ? (
+          <Button
+            appearance='control'
+            label={`Reconnect ${model.title}`}
+            onPress={events.onHardwareReload}
+            shape='pill'
+            size='small'
+          >
+            <Text variant='compactAction'>Reconnect</Text>
+          </Button>
+        ) : null}
         <Button
           appearance='danger'
           label={`Remove ${model.title}`}
@@ -848,10 +853,12 @@ function HardwareAccountSelectionView({
 
 export function AddAccountView({
   events,
-  flow
+  flow,
+  airgapPairing
 }: {
   events: AddAccountViewEvents
   flow: AddAccountFlowModel
+  airgapPairing?: ReactNode
 }) {
   const selectedSafeNetworkCount =
     flow.kind === 'safe' ? flow.model.networks.filter((network) => network.selected).length : 0
@@ -920,7 +927,7 @@ export function AddAccountView({
     ) : flow.kind === 'generated-seed' ? (
       <GeneratedSeedConfirmationView events={events} model={flow.model} />
     ) : (
-      <HardwareAccountSelectionView events={events} model={flow.model} />
+      <HardwareAccountSelectionView events={events} model={flow.model} airgapPairing={airgapPairing} />
     )
   return (
     <Stack grow gap='none'>

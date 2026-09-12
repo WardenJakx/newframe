@@ -349,7 +349,7 @@ export function createAccountOnboardingService(ports: AccountOnboardingPorts): A
         'signer.hardware-session-start',
         () => {
           const signer = ports.signers.get(command.signerId)
-          if (!signer || !['ledger', 'trezor', 'lattice'].includes(signer.type)) {
+          if (!signer || !['ledger', 'trezor', 'lattice', 'airgap'].includes(signer.type)) {
             throw new Error('Hardware signer not found')
           }
           return command.signerId
