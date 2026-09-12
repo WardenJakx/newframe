@@ -1,4 +1,5 @@
 import { BrowserProvider, hexlify, toUtf8Bytes } from 'ethers'
+
 import createFrameProvider from '../../../apps/newframe/src/features/connections/main/provider/connection.ts'
 
 let frame: any

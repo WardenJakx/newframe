@@ -14,7 +14,12 @@ const server = Bun.serve({
 console.log(`Local Safe service listening on ${server.url}`)
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {
   process.on(signal, () => {
-    server.stop(true)
-    process.exit(0)
+    server.stop(true).then(
+      () => process.exit(0),
+      (error) => {
+        console.error('Could not stop local Safe service', error)
+        process.exit(1)
+      }
+    )
   })
 }

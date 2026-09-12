@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'bun:test'
 
-import { NATIVE_CURRENCY } from '../../../tokens/domain/constants'
-import { filterSendRecipients, projectSendSubmission, selectSendAsset } from './sendModel'
-import type { BalanceSummary } from '../../../asset-data/domain/balance'
 import type { OperationRecord } from '../../../../platform/operations/operation'
 import type { SideTrayRendererState } from '../../../../platform/state-sync/contract/projections'
+import type { BalanceSummary } from '../../../asset-data/domain/balance'
+import { NATIVE_CURRENCY } from '../../../tokens/domain/constants'
+import { filterSendRecipients, projectSendSubmission, selectSendAsset } from './sendModel'
 
 const sender = { id: 'sender', address: `0x${'1'.repeat(40)}`, name: 'Sender' }
 const recipient = { id: 'recipient', address: `0x${'2'.repeat(40)}`, name: 'Recipient' }

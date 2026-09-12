@@ -14,10 +14,10 @@ import type {
   TrezorInputCommand
 } from '../../../../app/contracts/operations.js'
 import type { OperationEntityRef } from '../../../../platform/operations/operation.js'
-import { getSignerDisplayType } from '../../../../platform/signing/domain/index.js'
-import { capitalize } from '../../../../shared/domain/text.js'
 import type { OperationService } from '../../../../platform/operations/service.js'
 import type { OperationOwner } from '../../../../platform/operations/types.js'
+import { getSignerDisplayType } from '../../../../platform/signing/domain/index.js'
+import { capitalize } from '../../../../shared/domain/text.js'
 
 export type OnboardingSigner = {
   id: string
@@ -128,7 +128,7 @@ export function createAccountOnboardingService(ports: AccountOnboardingPorts): A
       return false
     }
 
-    queueMicrotask(async () => {
+    const runOperation = async () => {
       try {
         const result = await execute()
         if (result.entityRefs) {
@@ -141,6 +141,10 @@ export function createAccountOnboardingService(ports: AccountOnboardingPorts): A
       } catch {
         ports.operations.fail(operationReference, safeFailure[command.type], 'failed')
       }
+    }
+    queueMicrotask(() => {
+      // Operation failures are recorded by runOperation.
+      void runOperation()
     })
     return true
   }
@@ -173,7 +177,7 @@ export function createAccountOnboardingService(ports: AccountOnboardingPorts): A
       return false
     }
 
-    queueMicrotask(async () => {
+    const runOperation = async () => {
       try {
         const resolvedSignerId = await execute()
         ports.operations.advance(session, {
@@ -183,6 +187,10 @@ export function createAccountOnboardingService(ports: AccountOnboardingPorts): A
       } catch {
         ports.operations.fail(session, safeFailure[failureType], 'failed')
       }
+    }
+    queueMicrotask(() => {
+      // Operation failures are recorded by runOperation.
+      void runOperation()
     })
     return true
   }
@@ -222,7 +230,7 @@ export function createAccountOnboardingService(ports: AccountOnboardingPorts): A
       return false
     }
 
-    queueMicrotask(async () => {
+    const runOperation = async () => {
       try {
         if (!(await execute())) throw new Error('Hardware action was rejected')
         ports.operations.advance(session, { phase })
@@ -231,6 +239,10 @@ export function createAccountOnboardingService(ports: AccountOnboardingPorts): A
         ports.operations.fail(actionReference, safeFailure[command.type], 'failed')
         ports.operations.fail(session, safeFailure[command.type], 'failed')
       }
+    }
+    queueMicrotask(() => {
+      // Operation failures are recorded by runOperation.
+      void runOperation()
     })
     return true
   }

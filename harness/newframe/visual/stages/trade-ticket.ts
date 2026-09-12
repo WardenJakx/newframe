@@ -1,7 +1,8 @@
+import type { Locator } from 'playwright-core'
+
 import { anvilChainId } from '../../core/config.ts'
 import { wethAddress } from '../driver.ts'
 import type { VisualStage } from '../types.ts'
-import type { Locator } from 'playwright-core'
 import { assertInsideViewport } from './helpers.ts'
 
 async function fieldPartsOverlap(input: Locator) {

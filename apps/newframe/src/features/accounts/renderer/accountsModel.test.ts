@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'bun:test'
 
+import type { WalletRendererState } from '../../../platform/state-sync/contract/projections'
+import { walletState } from '../../../platform/state-sync/renderer/fixtures.test-support.ts'
+import { createBalanceSummarySelector } from '../../asset-data/domain/balance'
 import type { AccountProjection, SignerProjection } from './accountsModel'
 import {
   accountBalanceLabel,
@@ -8,9 +11,6 @@ import {
   orderedAccountIds,
   shortAccountAddress
 } from './accountsModel'
-import { createBalanceSummarySelector } from '../../asset-data/domain/balance'
-import { walletState } from '../../../platform/state-sync/renderer/fixtures.test-support.ts'
-import type { WalletRendererState } from '../../../platform/state-sync/contract/projections'
 
 const account = (id: string, created: string, name = id): AccountProjection => ({
   id,

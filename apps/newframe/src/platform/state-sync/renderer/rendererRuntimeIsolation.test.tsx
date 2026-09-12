@@ -3,8 +3,8 @@ import { describe, expect, it } from 'bun:test'
 import { act, render, screen } from '../../../../test/support/componentSetup'
 import { createTestRuntimeFixture } from '../../../../test/support/rendererClient'
 import { STATE_STREAM_SCHEMA_VERSION, type StateMessage } from '../contract/protocol'
-import { walletChanges, walletState } from './fixtures.test-support.ts'
 import { connectRendererState } from './connectState'
+import { walletChanges, walletState } from './fixtures.test-support.ts'
 import { RendererStateProvider, useWalletSelector } from './useAppSelector'
 
 function Account({ label }: { label: string }) {

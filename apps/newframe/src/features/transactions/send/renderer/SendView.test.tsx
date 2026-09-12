@@ -2,9 +2,9 @@ import { expect, it, mock } from 'bun:test'
 
 import { render, screen } from '../../../../../test/support/componentSetup'
 import { registerTestRuntimeFixture } from '../../../../../test/support/rendererClient'
+import { createSendCapabilityFake } from './sendService.test-support'
 import { SendView } from './SendView'
 import type { SendViewEvents, SendViewModel } from './sendViewModel'
-import { createSendCapabilityFake } from './sendService.test-support'
 
 registerTestRuntimeFixture()
 

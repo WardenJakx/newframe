@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 
+import type { AccountRequest, RequestType } from '../../requests/contract/requests'
 import {
   createMainPrincipal,
   createAgentPrincipal,
@@ -8,8 +9,6 @@ import {
   decideWalletAction,
   hasPrincipalCapability
 } from './authority'
-
-import type { AccountRequest, RequestType } from '../../requests/contract/requests'
 
 function request(type: RequestType = 'transaction'): AccountRequest {
   return {

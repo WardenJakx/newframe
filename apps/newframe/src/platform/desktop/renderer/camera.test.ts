@@ -1,5 +1,7 @@
 import { expect, it } from 'bun:test'
+
 import QRCode from 'qrcode'
+
 import { createQrCameraCapability } from './camera'
 
 function cameraFixture() {

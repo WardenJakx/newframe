@@ -1,7 +1,12 @@
-import type { SignerRequestContext } from '../../../platform/signing/signers/Signer/index.js'
-import log from 'electron-log'
 import { isValidAddress } from '@ethereumjs/util'
+import log from 'electron-log'
 
+import Erc20Contract from '../../../platform/chain-rpc/contracts/erc20.js'
+import { Type as SignerType, getSignerType } from '../../../platform/signing/domain/index.js'
+import { getErc7730TypedDataDisplay } from '../../../platform/signing/signatures/erc7730.js'
+import type { SignerRequestContext } from '../../../platform/signing/signers/Signer/index.js'
+import type { CanonicalStoreReader } from '../../../platform/state-store/actions.js'
+import type { NameResolutionService } from '../../name-resolution/main/nameResolution.js'
 import { RequestMode } from '../../requests/contract/requests.js'
 import type {
   AccessRequest,
@@ -12,24 +17,16 @@ import type {
   TransactionRequest,
   TypedMessage
 } from '../../requests/contract/requests.js'
-import type { Accounts } from './index.js'
-import type { NameResolutionService } from '../../name-resolution/main/nameResolution.js'
-import { TransactionData } from '../../transactions/domain/index.js'
-import { Type as SignerType, getSignerType } from '../../../platform/signing/domain/index.js'
-
 import { ApprovalType } from '../../requests/domain/approval.js'
-
-import type { RevealService } from '../../transactions/main/reveal.js'
 import { isTransactionRequest, isTypedMessageSignatureRequest } from '../../requests/domain/index.js'
-import Erc20Contract from '../../../platform/chain-rpc/contracts/erc20.js'
-import { getErc7730TypedDataDisplay } from '../../../platform/signing/signatures/erc7730.js'
-import type { TransactionSimulationPort } from '../../transactions/main/simulationPort.js'
-
+import type { PromptedRequestLifecyclePort } from '../../requests/main/service.js'
+import { TransactionData } from '../../transactions/domain/index.js'
 import type { Action } from '../../transactions/main/actions/index.js'
+import type { RevealService } from '../../transactions/main/reveal.js'
+import type { TransactionSimulationPort } from '../../transactions/main/simulationPort.js'
+import type { Accounts } from './index.js'
 import type { AccountChainRpcPort } from './providerPort.js'
 import type { AccountsRuntime } from './runtime.js'
-import type { CanonicalStoreReader } from '../../../platform/state-store/actions.js'
-import type { PromptedRequestLifecyclePort } from '../../requests/main/service.js'
 
 function cloneSerializable<T>(value: T): T {
   return JSON.parse(
@@ -533,7 +530,7 @@ class FrameAccount {
     }
 
     if (isTypedMessageSignatureRequest(req)) {
-      this.decodeTypedMessage(req)
+      await this.decodeTypedMessage(req)
     }
   }
 

@@ -1,5 +1,5 @@
-import { SendView } from './SendView'
 import type { SendCapability } from './sendService'
+import { SendView } from './SendView'
 import { useSendController } from './useSendController'
 
 export interface SendProps {

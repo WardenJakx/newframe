@@ -1,5 +1,5 @@
-import type { Shortcut, ShortcutKey, ModifierKey } from '../domain/state/shortcuts'
 import { metaKeyMap, shortcutKeyMap, type Platform } from '../../../shared/domain/keyboard'
+import type { Shortcut, ShortcutKey, ModifierKey } from '../domain/state/shortcuts'
 
 type KeyboardLayout = {
   get: (key: string) => string
@@ -15,9 +15,12 @@ type KeyboardEventLike = {
 let keyboardLayout: KeyboardLayout | undefined
 
 if (global?.navigator) {
-  navigator.keyboard.getLayoutMap().then((layout) => {
-    keyboardLayout = layout
-  })
+  navigator.keyboard
+    .getLayoutMap()
+    .then((layout) => {
+      keyboardLayout = layout
+    })
+    .catch((error) => console.error('Could not load keyboard layout', error))
 
   // TODO: keyboard layoutchange event listener when Electron supports it
   // navigator.keyboard.addEventListener('layoutchange', () => { keyboardLayout = layout })

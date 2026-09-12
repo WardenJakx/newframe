@@ -1,9 +1,9 @@
 import { useShallow } from 'zustand/react/shallow'
 
+import type { WalletRendererState } from '../../../platform/state-sync/contract/projections'
 import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector'
 import { ConnectedDappsView } from './ConnectedDappsView'
 import type { ConnectionsCapability } from './connectionsCapability'
-import type { WalletRendererState } from '../../../platform/state-sync/contract/projections'
 
 const EMPTY_RECORD: WalletRendererState['permissions'][string] = {}
 

@@ -1,10 +1,10 @@
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test'
 
-import LedgerEthereumApp from './eth'
-import { Derivation } from '../../Signer/derive'
+import { openTransportReplayer, RecordStore } from '@ledgerhq/hw-transport-mocker'
 import log from 'electron-log'
 
-import { openTransportReplayer, RecordStore } from '@ledgerhq/hw-transport-mocker'
+import { Derivation } from '../../Signer/derive'
+import LedgerEthereumApp from './eth'
 
 // -------------------
 // uncomment this version of eth app creation to record interactions with the Ledger so they can be replayed.

@@ -1,9 +1,10 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
 import crypto from 'node:crypto'
 import fs from 'node:fs'
-import path from 'node:path'
-import { tmpdir } from 'node:os'
 import { rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import path from 'node:path'
+
 import log from 'electron-log'
 import { keccak256 } from 'ethers'
 

@@ -1,19 +1,21 @@
-import { app as electronApp, BrowserWindow, screen, globalShortcut, type WebContents } from 'electron'
-import path from 'path'
-import log from 'electron-log'
 import EventEmitter from 'events'
+import path from 'path'
+
+import { app as electronApp, BrowserWindow, screen, globalShortcut, type WebContents } from 'electron'
+import log from 'electron-log'
 import { shallow } from 'zustand/vanilla/shallow'
+
+import { Shortcut } from '../../../features/settings/domain/state/shortcuts.js'
 import { hexToInt, roundGwei } from '../../../shared/domain/hex.js'
+import type { RendererAuthorizationRegistry } from '../../ipc/main/authorization.js'
 import type canonicalStore from '../../state-store/index.js'
-import { closeRendererWindow } from './close.js'
-import SideTrayManager from './sidetray/index.js'
-import { createWindow } from './window.js'
-import { constrainTraySize, TRAY_WIDTH, trayPosition } from './trayGeometry.js'
-import { SystemTray, SystemTrayEventHandlers } from './systemTray.js'
 import { registerShortcut } from '../keyboardShortcuts.js'
 import { installCameraPermissions } from './cameraPermissions.js'
-import { Shortcut } from '../../../features/settings/domain/state/shortcuts.js'
-import type { RendererAuthorizationRegistry } from '../../ipc/main/authorization.js'
+import { closeRendererWindow } from './close.js'
+import SideTrayManager from './sidetray/index.js'
+import { SystemTray, SystemTrayEventHandlers } from './systemTray.js'
+import { constrainTraySize, TRAY_WIDTH, trayPosition } from './trayGeometry.js'
+import { createWindow } from './window.js'
 
 type Windows = { [key: string]: BrowserWindow }
 type CanonicalStoreApi = typeof canonicalStore
@@ -132,7 +134,7 @@ function initWindow(id: string, opts: Electron.BrowserWindowConstructorOptions, 
     if (windows[id] === window) delete windows[id]
   })
 
-  window.loadURL(url.toString())
+  window.loadURL(url.toString()).catch((error) => log.error('Could not load window', id, error))
   return { removeRendererReady, window }
 }
 

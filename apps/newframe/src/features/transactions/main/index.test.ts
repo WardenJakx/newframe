@@ -1,15 +1,15 @@
 import { describe, expect, it, mock } from 'bun:test'
 
-import { addHexPrefix, stripHexPrefix } from '@ethereumjs/util'
 import { Common, Mainnet } from '@ethereumjs/common'
+import { addHexPrefix, stripHexPrefix } from '@ethereumjs/util'
 
 import * as transactionModule from './index'
 
 // real functions under test, exercised with partial tx fixtures
 const { maxFee, londonToLegacy, signerCompatibility, populate, sign, classifyTransaction } =
   transactionModule as Record<string, any>
-import { GasFeesSource } from '../domain'
 import { TxClassification } from '../../requests/contract/requests'
+import { GasFeesSource } from '../domain'
 
 describe('#signerCompatibility', () => {
   it('accepts every signer for legacy transactions', () => {

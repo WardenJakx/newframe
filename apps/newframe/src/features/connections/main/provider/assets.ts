@@ -1,9 +1,8 @@
+import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.js'
+import type { Balance, NativeCurrency } from '../../../../platform/state-store/state/index.js'
+import { resolveAssetRate } from '../../../asset-data/domain/asset/index.js'
 import { NATIVE_CURRENCY } from '../../../tokens/domain/constants.js'
 import { toTokenId } from '../../../tokens/domain/index.js'
-import { resolveAssetRate } from '../../../asset-data/domain/asset/index.js'
-
-import type { Balance, NativeCurrency } from '../../../../platform/state-store/state/index.js'
-import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.js'
 
 type UsdRate = { usd: { price: number; change24hr?: number } }
 type CanonicalStoreApi = CanonicalStoreReader

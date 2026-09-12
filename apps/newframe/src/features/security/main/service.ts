@@ -5,9 +5,9 @@ import type {
   WalletLockCommand,
   WalletResetCommand
 } from '../../../app/contracts/operations.js'
-import type { CanonicalStore } from '../../../platform/state-store/actions.js'
 import type { OperationService } from '../../../platform/operations/service.js'
 import type { OperationOwner, OperationReference } from '../../../platform/operations/types.js'
+import type { CanonicalStore } from '../../../platform/state-store/actions.js'
 
 type BestAvailableConfigureCommand = Extract<SecurityConfigureCommand, { mode: 'best-available' }>
 type WebAuthnEnrollment = Extract<BestAvailableConfigureCommand['browser'], { status: 'enrolled' }>

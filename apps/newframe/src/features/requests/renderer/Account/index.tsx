@@ -1,9 +1,9 @@
 import { useShallow } from 'zustand/react/shallow'
 
-import Account from './Account'
-import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector'
 import type { WalletRendererState } from '../../../../platform/state-sync/contract/projections'
+import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector'
 import type { RequestRendererCapabilities } from '../requestCapabilities'
+import Account from './Account'
 
 const selectCurrentAccount = (state: WalletRendererState) => {
   const current = state.currentAccount

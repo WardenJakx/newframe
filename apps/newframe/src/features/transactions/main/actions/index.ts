@@ -1,6 +1,6 @@
-import type { ActionType as Erc20Actions } from './erc20.js'
-import type { ActionType as EnsActions } from './ens.js'
 import type { AccountRequest } from '../../../accounts/main/index.js'
+import type { ActionType as EnsActions } from './ens.js'
+import type { ActionType as Erc20Actions } from './erc20.js'
 
 export type EntityType = 'unknown' | 'contract' | 'external'
 export type ActionType = Erc20Actions | EnsActions

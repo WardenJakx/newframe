@@ -1,16 +1,16 @@
 import { useEffect, useRef } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 
-import type { WalletRendererState } from '../../../../platform/state-sync/contract/projections'
-import { RequestActions } from '../../../../features/requests/renderer/ui/RequestActions'
 import { cva } from '../../../../../generated/styled-system/css/cva.js'
-import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector'
-import { useRequestView, type RequestViewStep } from '../../../../features/requests/renderer/requestView'
+import type { RequestRendererCapabilities } from '../../../../features/requests/renderer/requestCapabilities'
 import RequestCommand, {
   type RequestCommandNotifier,
   type RequestCommandRequest
 } from '../../../../features/requests/renderer/RequestCommand'
-import type { RequestRendererCapabilities } from '../../../../features/requests/renderer/requestCapabilities'
+import { useRequestView, type RequestViewStep } from '../../../../features/requests/renderer/requestView'
+import { RequestActions } from '../../../../features/requests/renderer/ui/RequestActions'
+import type { WalletRendererState } from '../../../../platform/state-sync/contract/projections'
+import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector'
 
 interface FooterSharedState {
   account?: WalletRendererState['accounts'][string]

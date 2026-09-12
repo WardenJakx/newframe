@@ -1,12 +1,9 @@
 // Reveal details about pending transactions
 
-import log from 'electron-log'
 import { addHexPrefix } from '@ethereumjs/util'
+import log from 'electron-log'
 
-import { createProxyProvider } from '../../connections/main/provider/connection.js'
-import type { ProviderProxyConnection } from '../../connections/main/provider/proxy.js'
-import type { NameResolutionService } from '../../name-resolution/main/nameResolution.js'
-
+import ensContracts from '../../../platform/chain-rpc/contracts/deployments/ens/index.js'
 import Erc20Contract, { type Erc20ProviderPort } from '../../../platform/chain-rpc/contracts/erc20.js'
 import {
   decodeCallData,
@@ -15,12 +12,13 @@ import {
   ContractSource,
   type DecodedCallData
 } from '../../../platform/chain-rpc/contracts/index.js'
-import ensContracts from '../../../platform/chain-rpc/contracts/deployments/ens/index.js'
+import type { TransactionRequest } from '../../accounts/main/index.js'
+import { createProxyProvider } from '../../connections/main/provider/connection.js'
+import type { ProviderProxyConnection } from '../../connections/main/provider/proxy.js'
+import type { NameResolutionService } from '../../name-resolution/main/nameResolution.js'
 import { MAX_HEX } from '../domain/constants.js'
-
 import type { ApproveAction as Erc20Approval, TransferAction as Erc20Transfer } from './actions/erc20.js'
 import type { Action, DecodableContract, EntityType } from './actions/index.js'
-import type { TransactionRequest } from '../../accounts/main/index.js'
 
 // TODO: fix generic typing here
 const knownContracts: DecodableContract<unknown>[] = [...ensContracts]

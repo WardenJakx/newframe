@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { copyFile, lstat, mkdir, mkdtemp, readdir, rename, rm, stat } from 'node:fs/promises'
 import type { Stats } from 'node:fs'
+import { copyFile, lstat, mkdir, mkdtemp, readdir, rename, rm, stat } from 'node:fs/promises'
 import path from 'node:path'
 
 const canonicalProfileName = 'Newframe dev'

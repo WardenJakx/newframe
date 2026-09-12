@@ -1,12 +1,13 @@
-import React from 'react'
 import { describe, expect, it, spyOn } from 'bun:test'
 
+import React from 'react'
+
 import { fireEvent, render, screen } from '../../../../test/support/componentSetup'
+import { registerTestRuntimeFixture } from '../../../../test/support/rendererClient'
+import { createRendererUtilityCapabilities as createUtilityPorts } from '../capabilities.test-support'
 import ChainTokenIcon from './ChainTokenIcon'
 import TokenSelector from './TokenSelector'
 import type { TokenSelectorItem } from './tokenSelectorTypes'
-import { registerTestRuntimeFixture } from '../../../../test/support/rendererClient'
-import { createRendererUtilityCapabilities as createUtilityPorts } from '../capabilities.test-support'
 
 const fixture = registerTestRuntimeFixture()
 const utilityPorts = createUtilityPorts({

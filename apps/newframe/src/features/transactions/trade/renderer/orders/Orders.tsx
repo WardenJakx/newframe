@@ -2,12 +2,12 @@ import { useState } from 'react'
 import { useEffect, useRef } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 
-import { useWalletSelector } from '../../../../../platform/state-sync/renderer/useAppSelector'
-import { createOrderRows, orderErrorMessage } from './orderModel'
-import { resolveOrderAssetImageSource } from './OrderAssetPosition'
-import { OrdersView } from './OrdersView'
-import type { OrdersCapability } from './ordersCapability'
 import type { WalletRendererState } from '../../../../../platform/state-sync/contract/projections'
+import { useWalletSelector } from '../../../../../platform/state-sync/renderer/useAppSelector'
+import { resolveOrderAssetImageSource } from './OrderAssetPosition'
+import { createOrderRows, orderErrorMessage } from './orderModel'
+import type { OrdersCapability } from './ordersCapability'
+import { OrdersView } from './OrdersView'
 import type { OrderRow } from './orderTypes'
 
 const EMPTY_NETWORKS: WalletRendererState['networks']['ethereum'] = {}

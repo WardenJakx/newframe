@@ -11,8 +11,8 @@ import {
   FLASH_TAKE_PROFIT_ORDER_TYPE,
   FLASH_TWAP_ORDER_TYPE
 } from '../domain/constants'
-import type { FlashQuote } from '../domain/schemas'
 import { cleanFlashDecimal } from '../domain/policy'
+import type { FlashQuote } from '../domain/schemas'
 import {
   buildTradeAssetOptions,
   buildTradeQuoteRequest,

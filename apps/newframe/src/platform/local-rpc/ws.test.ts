@@ -1,8 +1,8 @@
 import { beforeEach, expect, it } from 'bun:test'
 import { EventEmitter } from 'events'
 
-import store from '../state-store'
 import { createProductionOriginsService } from '../../features/connections/main/origins'
+import store from '../state-store'
 import { createWebSocketRpcTransport } from './ws'
 
 class FakeProvider extends EventEmitter {
@@ -205,3 +205,48 @@ it('removes provider and socket listeners and closes its server on dispose', () 
     started: false
   })
 })
+
+it.each(['trust', 'send', 'after-response'] as const)(
+  'settles WebSocket requests once when %s rejects',
+  async (failure) => {
+    transport.dispose()
+    const send = async (payload: RPCRequestPayload, respond?: (response: RPCResponsePayload) => void) => {
+      if (failure === 'after-response') respond?.({ id: payload.id, jsonrpc: '2.0', result: '0x1' })
+      throw new Error('private failure details')
+    }
+    transport = createWebSocketRpcTransport({
+      provider: Object.assign(provider, { send }),
+      accounts: { getSelectedAddresses: () => [] },
+      store: { endOriginSession: () => undefined },
+      origins: {
+        parseFrameExtension: () => undefined,
+        updateOrigin: (payload: RPCRequestPayload) => ({ payload, chainId: '0x1' }),
+        isTrusted: async () => {
+          if (failure === 'trust') throw new Error('private failure details')
+          return true
+        }
+      } as never,
+      windows: { toggleTray: () => undefined },
+      createServer: () => server,
+      openReadyState: 1
+    })
+    transport.start({} as never)
+    connect({ headers: { origin: 'https://app.example' }, url: '/' })
+    const responses: RPCResponsePayload[] = []
+    socket.send = (response) => {
+      responses.push(JSON.parse(response))
+    }
+    socket.emit(
+      'message',
+      Buffer.from(JSON.stringify({ id: 22, jsonrpc: '2.0', method: 'eth_accounts', params: [] }))
+    )
+    await Bun.sleep(0)
+    expect(responses).toEqual([
+      failure === 'after-response'
+        ? { id: 22, jsonrpc: '2.0', result: '0x1' }
+        : { id: 22, jsonrpc: '2.0', error: { code: -32603, message: 'Internal error' } }
+    ])
+    transport.dispose()
+    expect(socket.listenerCount('message')).toBe(0)
+  }
+)

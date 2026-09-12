@@ -8,9 +8,9 @@ import {
   FLASH_TAKE_PROFIT_ORDER_TYPE,
   FLASH_TWAP_ORDER_TYPE
 } from '../domain/constants'
+import { createTradeCapabilityFake } from './tradeService.test-support'
 import { TradeView } from './TradeView'
 import type { TradeAssetViewModel, TradeViewEvents, TradeViewModel } from './tradeViewModel'
-import { createTradeCapabilityFake } from './tradeService.test-support'
 
 function asset(field: 'target' | 'contra', symbol: string, editable: boolean): TradeAssetViewModel {
   const selectorItem = {

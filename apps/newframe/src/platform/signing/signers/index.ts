@@ -1,13 +1,13 @@
-import AirGapAdapter from './airgap/adapter.js'
-import Signer from './Signer/index.js'
-import { SignerAdapter } from './adapters.js'
-import LedgerAdapter from './ledger/adapter.js'
-import TrezorAdapter from './trezor/adapter.js'
-import LatticeAdapter from './lattice/adapter.js'
-import hot from './hot/index.js'
-import HotSigner from './hot/HotSigner/index.js'
 import type { BiometricUnlockPayload } from '../../secrets/biometrics.js'
 import type canonicalStore from '../../state-store/index.js'
+import { SignerAdapter } from './adapters.js'
+import AirGapAdapter from './airgap/adapter.js'
+import HotSigner from './hot/HotSigner/index.js'
+import hot from './hot/index.js'
+import LatticeAdapter from './lattice/adapter.js'
+import LedgerAdapter from './ledger/adapter.js'
+import Signer from './Signer/index.js'
+import TrezorAdapter from './trezor/adapter.js'
 
 const createDefaultAdapters = (store: typeof canonicalStore) => [
   new LedgerAdapter(store),

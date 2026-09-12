@@ -1,8 +1,7 @@
 import log from 'electron-log'
+import type { JsonFragment } from 'ethers'
 
 import { fetchWithTimeout } from '../../network/fetchWithTimeout.js'
-
-import type { JsonFragment } from 'ethers'
 import type { ContractSource } from '../index.js'
 
 interface SourcifySourceCodeResponse {

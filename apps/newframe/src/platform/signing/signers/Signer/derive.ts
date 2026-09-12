@@ -1,6 +1,5 @@
-import { HDKey } from '@scure/bip32'
-
 import { bytesToHex, publicToAddress, toChecksumAddress } from '@ethereumjs/util'
+import { HDKey } from '@scure/bip32'
 
 export enum Derivation {
   live = 'live',

@@ -1,3 +1,4 @@
+import type { TransactionEffect } from '../../../../transactions/domain'
 import type {
   Eip712Digests,
   Erc7730Display,
@@ -6,7 +7,6 @@ import type {
   RequestStatus,
   TxClassification
 } from '../../../contract/requests'
-import type { TransactionEffect } from '../../../../transactions/domain'
 
 type RequestRpcPayload = {
   id: string | number

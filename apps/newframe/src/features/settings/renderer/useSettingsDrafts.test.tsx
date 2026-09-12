@@ -1,12 +1,12 @@
 import { afterEach, beforeEach, expect, it, jest as timers, mock } from 'bun:test'
-import { act, renderHook } from '../../../../test/support/componentSetup'
 
+import { act, renderHook } from '../../../../test/support/componentSetup'
 import { useSettingsDrafts } from './useSettingsDrafts'
 
 beforeEach(() => timers.useFakeTimers())
 afterEach(() => timers.useRealTimers())
 
-it('persists the latest input value instead of a stale render value', () => {
+it('persists the latest input value instead of a stale render value', async () => {
   const persist = mock()
   const { result } = renderHook(() =>
     useSettingsDrafts({
@@ -18,7 +18,7 @@ it('persists the latest input value instead of a stale render value', () => {
   )
 
   act(() => result.current.changeLatticeEndpoint(' https://relay.example '))
-  act(() => timers.advanceTimersByTime(1000))
+  await act(() => timers.advanceTimersByTime(1000))
 
   expect(persist).toHaveBeenCalledWith({
     setting: 'lattice-endpoint',

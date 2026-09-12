@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test'
 
+import { GasFeesSource } from '../../transactions/domain'
 import type { AccountRequest, AddChainRequest, TransactionRequest } from '../contract/requests'
 import { TxClassification } from '../contract/requests'
-import { GasFeesSource } from '../../transactions/domain'
 import { createRequestService, type RequestService } from './service'
 
 const accountId = '0x1111111111111111111111111111111111111111'

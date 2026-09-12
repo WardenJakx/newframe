@@ -1,5 +1,4 @@
 import type { NewframeHost } from '../../platform/ipc/contract/ipc'
-
 import type { ClipboardCapability, TokenImageCapability } from './capabilities'
 
 export function createRendererUtilityCapabilities(

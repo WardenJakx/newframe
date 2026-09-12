@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
-
-import path from 'path'
 import { rm } from 'fs/promises'
+import path from 'path'
+
 import { electronMock } from '../../../test/support/electron.mock.ts'
 
 const PASSWORD = 'fr@///3_password'

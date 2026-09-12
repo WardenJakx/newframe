@@ -23,8 +23,8 @@ const getDefaultAccountName = (type: string) => `${getSignerDisplayType(type)} a
 
 export function accountSort(a: NamedAccount, b: NamedAccount) {
   try {
-    const [aBlockStr, aLocalStr] = a.created.split(':')
-    const [bBlockStr, bLocalStr] = b.created.split(':')
+    const [aBlockStr = '', aLocalStr = ''] = a.created.split(':')
+    const [bBlockStr = '', bLocalStr = ''] = b.created.split(':')
 
     const aLocal = parseInt(aLocalStr)
     const bLocal = parseInt(bLocalStr)

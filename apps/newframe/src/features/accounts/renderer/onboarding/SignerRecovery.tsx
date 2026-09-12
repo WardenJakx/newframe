@@ -1,4 +1,3 @@
-import { useEffect, useMemo, useState } from 'react'
 import { Button } from '@newframe/ui/button'
 import { Grid } from '@newframe/ui/grid'
 import { Icon } from '@newframe/ui/icon'
@@ -7,7 +6,10 @@ import { Spinner } from '@newframe/ui/spinner'
 import { Stack } from '@newframe/ui/stack'
 import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
+import { useEffect, useMemo, useState } from 'react'
 
+import type { WalletRendererState } from '../../../../platform/state-sync/contract/projections'
+import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector'
 import { AppIcon } from '../../../../shared/renderer/ui/appIcon'
 import {
   signerIconName,
@@ -15,8 +17,6 @@ import {
   signerIsReady,
   signerStatusText
 } from '../../../../shared/renderer/ui/signerPresentation'
-import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector'
-import type { WalletRendererState } from '../../../../platform/state-sync/contract/projections'
 import type { AccountsCapability } from '../accountsCapability'
 import { useHardwareSessionController } from '../useHardwareSession'
 

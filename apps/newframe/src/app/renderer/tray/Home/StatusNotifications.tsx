@@ -1,13 +1,12 @@
-import React, { useEffect } from 'react'
-
 import { IconButton } from '@newframe/ui/icon-button'
 import { Stack } from '@newframe/ui/stack'
 import { Text } from '@newframe/ui/text'
+import React, { useEffect } from 'react'
 
+import { cva } from '../../../../../generated/styled-system/css/cva.js'
 import type { WalletStatusNotification } from '../../../../platform/state-sync/contract/projections'
 import { timestamp } from '../../../../shared/domain/timestamp'
 import StatusGlyph from '../../../../shared/renderer/ui/StatusGlyph'
-import { cva } from '../../../../../generated/styled-system/css/cva.js'
 
 const notificationListRecipe = cva({
   base: {

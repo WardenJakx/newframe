@@ -1,6 +1,6 @@
 import { SimpleTypedData as TypedSignatureOverview } from '../../ui/SimpleTypedData'
-import { useOriginName } from './state'
 import type { TypedDataRequestView } from './requestViewTypes'
+import { useOriginName } from './state'
 
 type TransactionRequestProps = {
   req: TypedDataRequestView

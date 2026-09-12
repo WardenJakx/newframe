@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 
+import type { OperationCollection } from '../../../operations/operation'
 import {
   createOperationByIdSelector,
   createOperationsByStatusSelector,
@@ -7,7 +8,6 @@ import {
   selectOperationEntityId,
   selectOperationError
 } from './operation'
-import type { OperationCollection } from '../../../operations/operation'
 
 const pending = {
   id: 'pending',

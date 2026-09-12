@@ -1,9 +1,10 @@
-import { RequestList } from '../../ui/RequestList'
 import { Button } from '@newframe/ui/button'
 import { Icon, type IconName } from '@newframe/ui/icon'
 import { Text } from '@newframe/ui/text'
 import type { ReactNode } from 'react'
 
+import { cva } from '../../../../../../generated/styled-system/css/cva.js'
+import { persistedImageSource } from '../../../../asset-data/domain/image'
 import type {
   AccessRequest,
   AgentAccessRequest,
@@ -13,12 +14,11 @@ import type {
   SignatureRequest,
   TransactionRequest
 } from '../../../contract/requests'
-import RequestItem from '../../ui/RequestItem'
-import { persistedImageSource } from '../../../../asset-data/domain/image'
-import { cva } from '../../../../../../generated/styled-system/css/cva.js'
-import TxOverview from './TransactionRequest/TxMainNew/overview'
-import { useAccountRequests, useEthereumNetworkMetadata, useEthereumNetworks, useOrigins } from './state'
 import type { RequestRendererCapabilities } from '../../requestCapabilities'
+import RequestItem from '../../ui/RequestItem'
+import { RequestList } from '../../ui/RequestList'
+import { useAccountRequests, useEthereumNetworkMetadata, useEthereumNetworks, useOrigins } from './state'
+import TxOverview from './TransactionRequest/TxMainNew/overview'
 
 type RenderableRequest =
   | AccessRequest

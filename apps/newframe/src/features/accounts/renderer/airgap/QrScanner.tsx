@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
 import { Stack } from '@newframe/ui/stack'
 import { Text } from '@newframe/ui/text'
-import type { QrCameraCapability } from '../../../../platform/desktop/renderer/camera'
+import { useEffect, useRef, useState } from 'react'
+
 import { cva } from '../../../../../generated/styled-system/css/cva.js'
+import type { QrCameraCapability } from '../../../../platform/desktop/renderer/camera'
 
 const previewRecipe = cva({ base: { width: '100%', maxHeight: '240px', borderRadius: 'control' } })
 

@@ -1,7 +1,6 @@
-import React from 'react'
-
 import { Stack } from '@newframe/ui/stack'
 import { Text } from '@newframe/ui/text'
+import React from 'react'
 
 import useCountdown from '../hooks/useCountdown'
 

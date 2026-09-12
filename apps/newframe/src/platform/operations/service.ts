@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
 
+import type { CanonicalStoreReader } from '../state-store/actions.js'
 import { RendererProjectionSchema } from '../state-sync/contract/projections.js'
 import {
   OperationRecordSchema,
@@ -7,7 +8,6 @@ import {
   type OperationRecord,
   type OperationSafeError
 } from './operation.js'
-import type { CanonicalStoreReader } from '../state-store/actions.js'
 import type { OperationOwner, OperationReference } from './types.js'
 
 export interface OperationClock {

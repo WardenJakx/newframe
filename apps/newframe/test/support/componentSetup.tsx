@@ -1,8 +1,9 @@
 import { jest as timers } from 'bun:test'
 
-import userEvent from '@testing-library/user-event'
 import { render, act } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import type { ReactElement } from 'react'
+
 import type { RendererStateStore } from '../../src/platform/state-sync/renderer/rendererStore'
 import { createRendererStateWrapper, getRendererStateFixtureForRender } from './rendererState'
 

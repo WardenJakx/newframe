@@ -1,5 +1,4 @@
 import { Common, createCustomCommon, Holesky, Mainnet, Sepolia } from '@ethereumjs/common'
-
 import type { ChainConfig } from '@ethereumjs/common'
 
 const knownChains: Record<number, ChainConfig> = {

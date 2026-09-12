@@ -1,12 +1,12 @@
 import { useState } from 'react'
 
-import { chainColorValue } from '../domain/chain/colors'
-import { ChainDot } from './ChainDot'
 import { useAccountBalances } from '../../../shared/renderer/hooks/useAccountBalances'
 import { ChainIcon } from '../../../shared/renderer/ui/ChainIcon'
+import { chainColorValue } from '../domain/chain/colors'
+import { ChainDot } from './ChainDot'
 import { createNetworkRows } from './networkModel'
-import { NetworksView } from './NetworksView'
 import type { NetworksCapability } from './networksCapability'
+import { NetworksView } from './NetworksView'
 
 export interface NetworksProps {
   capability: Pick<NetworksCapability, 'setNetworkActivation' | 'setPrimaryRpc'>

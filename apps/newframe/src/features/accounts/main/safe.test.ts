@@ -1,17 +1,21 @@
 import { afterEach, expect, it } from 'bun:test'
+
 import { subscribeWithSelector } from 'zustand/middleware'
 import { createStore } from 'zustand/vanilla'
+
 import { createTestStore } from '../../../../test/support/createTestStore'
 import { createOperationService } from '../../../platform/operations/service'
 import { createSafeClient } from '../../../platform/safe/client'
-import { createSafeService } from './safe'
 import type { SafeConfiguration, SafeProposal, SafeProposalSimulation } from '../domain/safe'
+import { createSafeService } from './safe'
 
 const address = '0x1111111111111111111111111111111111111111'
 const ownerAddress = '0x2222222222222222222222222222222222222222'
 const owner = { clientType: 'wallet-ui' as const, windowInstanceId: 'test' }
-const cleanup: (() => void)[] = []
-afterEach(() => cleanup.splice(0).forEach((dispose) => dispose()))
+const cleanup: (() => void | Promise<void>)[] = []
+afterEach(async () => {
+  await Promise.all(cleanup.splice(0).map((dispose) => dispose()))
+})
 function setup() {
   const base = createTestStore()
   // Canonical actions retain their real Immer store; add selector subscriptions as production does.

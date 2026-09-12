@@ -1,8 +1,8 @@
 import { expect, it } from 'bun:test'
 
+import { DEFAULT_PROFILE_ID } from '../../../app/contracts/state/main'
 import createInitialState from '../../state-store/state'
 import { projectSideTrayState, projectWalletState } from './projections'
-import { DEFAULT_PROFILE_ID } from '../../../app/contracts/state/main'
 
 const operation = (id: string) => ({
   id,

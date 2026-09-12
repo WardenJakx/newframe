@@ -1,10 +1,11 @@
 import { afterEach, beforeAll, beforeEach, expect, it, jest as timers, mock } from 'bun:test'
-
-import BalancesScanner from './index'
-import store from '../../../../../platform/state-store'
-import log from 'electron-log'
 import { EventEmitter } from 'events'
+
+import log from 'electron-log'
+
+import store from '../../../../../platform/state-store'
 import { NATIVE_CURRENCY } from '../../../../tokens/domain/constants'
+import BalancesScanner from './index'
 
 const controllerEvents = new EventEmitter()
 const balancesControllerMock = {
@@ -18,7 +19,7 @@ const balancesControllerMock = {
   updateKnownTokenBalances: mock()
 }
 
-mock.module('./controller', () => ({
+await mock.module('./controller', () => ({
   __esModule: true,
   default: mock(() => balancesControllerMock),
   ...balancesControllerMock

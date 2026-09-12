@@ -1,21 +1,23 @@
-import { GasFeesSource } from '../../../src/features/transactions/domain/index.js'
-import { EventEmitter } from 'node:events'
 import { randomUUID } from 'node:crypto'
+import { EventEmitter } from 'node:events'
+
 import { ETHSignature, EthSignRequest } from '@keystonehq/bc-ur-registry-eth'
 import { URDecoder, UREncoder } from '@ngraveio/bc-ur'
-import createCanonicalStore from '../../../src/platform/state-store/createCanonicalStore.js'
+
+import type {
+  CanonicalAccountRequest,
+  TypedMessage
+} from '../../../src/features/requests/contract/requests.js'
+import { RequestStatus } from '../../../src/features/requests/contract/requests.js'
+import { GasFeesSource } from '../../../src/features/transactions/domain/index.js'
+import type { TransactionData } from '../../../src/features/transactions/domain/index.js'
 import AirGapSigner from '../../../src/platform/signing/signers/airgap/AirGapSigner.js'
 import {
   AirGapUrAssembler,
   decodePublicAccount
 } from '../../../src/platform/signing/signers/airgap/protocol.js'
 import type { SignerRequestContext } from '../../../src/platform/signing/signers/Signer/index.js'
-import type {
-  CanonicalAccountRequest,
-  TypedMessage
-} from '../../../src/features/requests/contract/requests.js'
-import { RequestStatus } from '../../../src/features/requests/contract/requests.js'
-import type { TransactionData } from '../../../src/features/transactions/domain/index.js'
+import createCanonicalStore from '../../../src/platform/state-store/createCanonicalStore.js'
 import vectors from './airgap-vectors.json'
 
 export { vectors }

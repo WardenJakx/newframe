@@ -1,4 +1,5 @@
 import { afterEach, expect, it, jest as timers, mock } from 'bun:test'
+
 import { act, fireEvent, render, screen } from '@testing-library/react'
 
 import { AddressIdentity, shortAddress } from './AddressIdentity'
@@ -7,7 +8,7 @@ const address = '0x1234567890abcdef'
 
 afterEach(() => timers.useRealTimers())
 
-it('shows a checkmark for one second after copying, then restores the copy button', () => {
+it('shows a checkmark for one second after copying, then restores the copy button', async () => {
   timers.useFakeTimers()
   const onCopy = mock((_copiedAddress: string) => undefined)
   const clipboard = { writeText: async (value: string) => onCopy(value) }
@@ -19,7 +20,7 @@ it('shows a checkmark for one second after copying, then restores the copy butto
   expect(copyCalls).toEqual([[address]])
   expect(screen.getByRole('button', { name: 'Address copied for testname' })).toBeTruthy()
 
-  act(() => timers.advanceTimersByTime(1000))
+  await act(() => timers.advanceTimersByTime(1000))
 
   expect(screen.getByRole('button', { name: 'Copy address for testname' })).toBeTruthy()
 })

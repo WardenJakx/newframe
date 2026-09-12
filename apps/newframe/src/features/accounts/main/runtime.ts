@@ -1,5 +1,5 @@
-import type { Chain } from '../../networks/main/index.js'
 import type Signer from '../../../platform/signing/signers/Signer/index.js'
+import type { Chain } from '../../networks/main/index.js'
 
 export interface AccountsRuntime {
   navigation: {

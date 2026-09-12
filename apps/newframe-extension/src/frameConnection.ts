@@ -313,7 +313,9 @@ export default class FrameBackgroundProvider extends EventEmitter {
 
     this.connection = new RawFrameConnection(url, connectionOptions)
 
-    this.connection.on('connect', () => this.checkConnection())
+    this.connection.on('connect', () => {
+      this.checkConnection().catch(console.error)
+    })
     this.connection.on('close', () => this.handleClose())
     this.connection.on('payload', (payload) => this.handlePayload(payload))
     this.on('newListener', (event) => this.handleNewListener(event))
@@ -458,7 +460,10 @@ export default class FrameBackgroundProvider extends EventEmitter {
 
   private handleNewListener(event: string | symbol) {
     if (!this.isProviderEvent(event) || this.attemptedSubscriptions.has(event)) return
-    if (this.connected) this.startProviderSubscription(event)
+    if (this.connected) {
+      // Subscription setup catches and logs failures internally.
+      void this.startProviderSubscription(event)
+    }
   }
 
   private async startProviderSubscription(event: ProviderEvent) {
@@ -475,7 +480,8 @@ export default class FrameBackgroundProvider extends EventEmitter {
   private resumeSubscriptions() {
     providerEvents.forEach((event) => {
       if (this.listenerCount(event) && !this.attemptedSubscriptions.has(event)) {
-        this.startProviderSubscription(event)
+        // Subscription setup catches and logs failures internally.
+        void this.startProviderSubscription(event)
       }
     })
   }

@@ -1,11 +1,12 @@
 import { describe, expect, it, mock } from 'bun:test'
+
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import { Button } from '../src/primitives/Button'
 import { Field } from '../src/primitives/Field'
-import { IconButton } from '../src/primitives/IconButton'
 import { HoverSwapText } from '../src/primitives/HoverSwapText'
+import { IconButton } from '../src/primitives/IconButton'
 import { Input } from '../src/primitives/Input'
 import { SearchField } from '../src/primitives/SearchField'
 import { Select } from '../src/primitives/Select'

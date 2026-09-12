@@ -3,8 +3,8 @@ import { EventEmitter } from 'events'
 
 import store from '../../state-store'
 import createCanonicalStore from '../../state-store/createCanonicalStore'
-import type Signer from './Signer'
 import type { SignerAdapter } from './adapters'
+import type Signer from './Signer'
 
 class HotSignerMock extends EventEmitter {
   type = 'seed'
@@ -47,8 +47,8 @@ class AdapterMock extends EventEmitter {
 
 const createFromPrivateKey = mock()
 
-mock.module('./hot/HotSigner', () => ({ default: HotSignerMock }))
-mock.module('./hot', () => ({
+await mock.module('./hot/HotSigner', () => ({ default: HotSignerMock }))
+await mock.module('./hot', () => ({
   default: {
     load: mock(),
     newPhrase: mock(),
@@ -62,9 +62,9 @@ mock.module('./hot', () => ({
   createFromKeystore: mock(),
   load: mock()
 }))
-mock.module('./ledger/adapter', () => ({ default: AdapterMock }))
-mock.module('./trezor/adapter', () => ({ default: AdapterMock }))
-mock.module('./lattice/adapter', () => ({ default: AdapterMock }))
+await mock.module('./ledger/adapter', () => ({ default: AdapterMock }))
+await mock.module('./trezor/adapter', () => ({ default: AdapterMock }))
+await mock.module('./lattice/adapter', () => ({ default: AdapterMock }))
 
 let Signers: typeof import('./index').Signers
 

@@ -1,22 +1,21 @@
-import { NATIVE_CURRENCY } from '../../../tokens/domain/constants.js'
 import { formatUnits, toBigInt } from '../../../../shared/domain/units.js'
-import { persistedImageSource } from '../image/index.js'
+import { NATIVE_CURRENCY } from '../../../tokens/domain/constants.js'
 import { tokenFromBalance, tokenImageSource, toTokenId } from '../../../tokens/domain/index.js'
+import type { TokenCatalog } from '../../../tokens/domain/state/token.js'
 import { resolveAssetRate } from '../asset/index.js'
-
+import { persistedImageSource } from '../image/index.js'
 import type { Balance } from '../state/balance.js'
 import type { AssetRateMap, ResolvedAssetRate } from '../state/rate.js'
-import type { TokenCatalog } from '../../../tokens/domain/state/token.js'
 
 export interface DisplayedBalance extends Balance {
   decimals: number
   displayBalance: string
-  logoURI?: string
+  logoURI?: string | undefined
   name: string
   price: string
   priceChange: string | false
   symbol: string
-  rate?: ResolvedAssetRate
+  rate?: ResolvedAssetRate | undefined
   hasPrice: boolean
   totalValue: number
   displayValue: string
@@ -25,9 +24,9 @@ export interface DisplayedBalance extends Balance {
 export interface BalanceSummary extends Balance {
   decimals: number
   hasPrice: boolean
-  logoURI?: string
+  logoURI?: string | undefined
   name: string
-  rate?: ResolvedAssetRate
+  rate?: ResolvedAssetRate | undefined
   symbol: string
   totalValue: number
   unformattedBalance: number
@@ -118,7 +117,7 @@ export function formatUsdRate(rate: number, decimals = 2) {
 }
 
 export function createBalance(
-  rawBalance: Balance & { decimals: number; logoURI?: string; name: string; symbol: string },
+  rawBalance: Balance & { decimals: number; logoURI?: string | undefined; name: string; symbol: string },
   rate?: ResolvedAssetRate
 ): DisplayedBalance {
   const balance = balanceValue(rawBalance)

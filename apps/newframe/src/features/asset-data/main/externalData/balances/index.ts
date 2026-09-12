@@ -1,15 +1,14 @@
 import log from 'electron-log'
 import type { StoreApi } from 'zustand/vanilla'
 
+import type { CanonicalStore } from '../../../../../platform/state-store/actions.js'
+import type { Balance, Chain, ChainMetadata, Token } from '../../../../../platform/state-store/state/index.js'
 import { NATIVE_CURRENCY } from '../../../../tokens/domain/constants.js'
-import { createBalanceSummaries, isLowValueTokenBalance, toTokenId } from '../../../domain/balance/index.js'
 import { customTokens, tokensForAccount } from '../../../../tokens/domain/index.js'
+import { createBalanceSummaries, isLowValueTokenBalance, toTokenId } from '../../../domain/balance/index.js'
+import type { AssetRateMap } from '../../../domain/state/rate.js'
 import BalancesWorkerController from './controller.js'
 import { CurrencyBalance, TokenBalance } from './scan.js'
-
-import type { CanonicalStore } from '../../../../../platform/state-store/actions.js'
-import type { AssetRateMap } from '../../../domain/state/rate.js'
-import type { Balance, Chain, ChainMetadata, Token } from '../../../../../platform/state-store/state/index.js'
 
 const RESTART_WAIT = 5 // seconds
 const POSITION_REFRESH_RETRY_MS = 5 * 1000

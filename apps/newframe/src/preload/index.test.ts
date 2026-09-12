@@ -22,7 +22,7 @@ const ipcRenderer = {
   })
 }
 
-mock.module('electron', () => ({
+await mock.module('electron', () => ({
   contextBridge,
   ipcRenderer,
   default: { contextBridge, ipcRenderer }

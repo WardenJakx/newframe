@@ -1,4 +1,5 @@
 import { EventEmitter } from 'events'
+
 import { v5 as uuid } from 'uuid'
 
 const internalOriginId = uuid('newframe-internal', uuid.DNS)

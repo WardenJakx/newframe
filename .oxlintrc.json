@@ -1,6 +1,9 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
   "plugins": ["unicorn"],
+  "options": {
+    "typeAware": true
+  },
   "categories": {
     "correctness": "off"
   },
@@ -58,6 +61,7 @@
         "no-empty-character-class": "error",
         "no-empty-pattern": "error",
         "no-empty-static-block": "error",
+        "eslint/no-else-return": "error",
         "no-ex-assign": "error",
         "no-extra-boolean-cast": "error",
         "no-fallthrough": "error",
@@ -101,6 +105,9 @@
         "no-useless-backreference": "error",
         "no-useless-catch": "error",
         "no-useless-escape": "error",
+        "eslint/no-useless-return": "error",
+        "unicorn/no-useless-spread": "error",
+        "unicorn/no-useless-fallback-in-spread": "error",
         "no-with": "error",
         "preserve-caught-error": "error",
         "require-yield": "error",
@@ -185,7 +192,9 @@
         "typescript/no-empty-object-type": "error",
         "typescript/no-explicit-any": "warn",
         "typescript/no-extra-non-null-assertion": "error",
+        "typescript/no-floating-promises": "error",
         "typescript/no-misused-new": "error",
+        "typescript/no-misused-promises": "error",
         "typescript/no-namespace": [
           "error",
           {
@@ -201,6 +210,7 @@
         "typescript/no-wrapper-object-types": "error",
         "typescript/prefer-as-const": "error",
         "typescript/prefer-namespace-keyword": "off",
+        "typescript/switch-exhaustiveness-check": "error",
         "typescript/triple-slash-reference": "error",
         "no-empty-function": [
           "error",
@@ -279,7 +289,9 @@
         "typescript/no-empty-object-type": "error",
         "typescript/no-explicit-any": "warn",
         "typescript/no-extra-non-null-assertion": "error",
+        "typescript/no-floating-promises": "error",
         "typescript/no-misused-new": "error",
+        "typescript/no-misused-promises": "error",
         "typescript/no-namespace": [
           "error",
           {
@@ -295,6 +307,7 @@
         "typescript/no-wrapper-object-types": "error",
         "typescript/prefer-as-const": "error",
         "typescript/prefer-namespace-keyword": "off",
+        "typescript/switch-exhaustiveness-check": "error",
         "typescript/triple-slash-reference": "error",
         "no-empty-function": [
           "error",

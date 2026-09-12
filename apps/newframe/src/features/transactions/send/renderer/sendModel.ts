@@ -1,6 +1,6 @@
 import { resolveSendAssetFromRouteAssetId, toCanonicalAssetId } from '../../../../app/contracts/sidetray'
-import type { BalanceSummary } from '../../../asset-data/domain/balance'
 import type { SideTrayRendererState } from '../../../../platform/state-sync/contract/projections'
+import type { BalanceSummary } from '../../../asset-data/domain/balance'
 import { cleanAddress } from './sendTransaction'
 import type { SendAccountViewModel, SendSubmissionViewModel } from './sendViewModel'
 

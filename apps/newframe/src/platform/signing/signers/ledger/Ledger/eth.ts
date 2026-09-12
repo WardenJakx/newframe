@@ -1,15 +1,14 @@
-import log from 'electron-log'
 import { encode } from '@ethereumjs/rlp'
 import { addHexPrefix, bytesToHex, stripHexPrefix, padToEven } from '@ethereumjs/util'
 import { SignTypedDataVersion, TypedDataUtils } from '@metamask/eth-sig-util'
-
-import { Derivation, getDerivationPath, deriveHDAccounts } from '../../Signer/derive.js'
-import { sign } from '../../../../../features/transactions/main/index.js'
-import { DeviceError } from './index.js'
-import { LedgerEthereumApp as Eth } from '../dependencies.js'
+import log from 'electron-log'
 
 import type { TypedData } from '../../../../../features/requests/contract/requests.js'
 import type { TransactionData } from '../../../../../features/transactions/domain/index.js'
+import { sign } from '../../../../../features/transactions/main/index.js'
+import { Derivation, getDerivationPath, deriveHDAccounts } from '../../Signer/derive.js'
+import { LedgerEthereumApp as Eth } from '../dependencies.js'
+import { DeviceError } from './index.js'
 
 type EthInstance = InstanceType<(typeof import('@ledgerhq/hw-app-eth'))['default']>
 type TransportInstance = InstanceType<(typeof import('@ledgerhq/hw-transport'))['default']>

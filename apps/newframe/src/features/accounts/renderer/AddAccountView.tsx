@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react'
 import { Button } from '@newframe/ui/button'
 import { Field } from '@newframe/ui/field'
 import { Grid } from '@newframe/ui/grid'
@@ -12,6 +11,7 @@ import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
 import { TextArea } from '@newframe/ui/text-area'
 import { ToggleButton } from '@newframe/ui/toggle-button'
+import type { ReactNode } from 'react'
 
 import { AppIcon } from '../../../shared/renderer/ui/appIcon'
 import { SidePanelHeader } from '../../../shared/renderer/ui/SidePanel/SidePanelHeader'

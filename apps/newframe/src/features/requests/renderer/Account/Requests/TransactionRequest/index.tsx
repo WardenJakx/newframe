@@ -1,15 +1,15 @@
 // New Tx
 import { Text } from '@newframe/ui/text'
 
-import TxReview from './TxReview'
-import AdjustFee from './AdjustFee'
-import EditTokenSpend from '../../../ui/EditTokenSpend'
-import type { TokenSpendData } from '../../../ui/EditTokenSpend'
 import { erc20Interface } from '../../../../../../shared/domain/evm'
+import type { RequestRendererCapabilities } from '../../../requestCapabilities'
 import { useRequestView } from '../../../requestView'
 import type { RequestViewStep } from '../../../requestView'
-import type { RequestRendererCapabilities } from '../../../requestCapabilities'
+import EditTokenSpend from '../../../ui/EditTokenSpend'
+import type { TokenSpendData } from '../../../ui/EditTokenSpend'
 import type { TransactionRequestView } from '../requestViewTypes'
+import AdjustFee from './AdjustFee'
+import TxReview from './TxReview'
 
 type TransactionRequestProps = {
   capabilities: Pick<RequestRendererCapabilities, 'external' | 'review' | 'transaction'>

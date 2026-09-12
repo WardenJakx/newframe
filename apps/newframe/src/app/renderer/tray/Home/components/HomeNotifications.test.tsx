@@ -7,9 +7,9 @@ import type {
   WalletStatusNotification
 } from '../../../../../platform/state-sync/contract/projections'
 import { walletState } from '../../../../../platform/state-sync/renderer/fixtures.test-support.ts'
+import { createHomeCapability } from '../homeCapability'
 import { HomeUiProvider, useHomeUiStore } from '../state/HomeUiProvider'
 import { HomeNotifications as HomeNotificationsController } from './HomeNotifications'
-import { createHomeCapability } from '../homeCapability'
 
 const fixture = registerTestRuntimeFixture()
 const capability = createHomeCapability({

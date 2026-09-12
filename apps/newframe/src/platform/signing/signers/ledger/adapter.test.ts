@@ -1,8 +1,9 @@
 import { afterAll, afterEach, beforeAll, beforeEach, expect, it, jest as timers, mock } from 'bun:test'
-
 import EventEmitter from 'events'
+
 import log from 'electron-log'
 import { v5 as uuid } from 'uuid'
+
 import store from '../../../state-store'
 
 const ns = '3bbcee75-cecc-5b56-8031-b6641c1ed1f1'
@@ -58,12 +59,12 @@ const TransportNodeHidSingletonMock = {
 
 let connectedHids: any[] = []
 
-mock.module('./dependencies.js', () => ({
+await mock.module('./dependencies.js', () => ({
   getLedgerDevices: () => connectedHids,
   TransportNodeHidSingleton: TransportNodeHidSingletonMock
 }))
 
-mock.module('./Ledger/index.js', () => ({
+await mock.module('./Ledger/index.js', () => ({
   default: LedgerMock,
   Status
 }))

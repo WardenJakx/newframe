@@ -1,11 +1,11 @@
 import { afterAll, afterEach, beforeAll, beforeEach, expect, it, mock } from 'bun:test'
-
-import log from 'electron-log'
 import EventEmitter from 'events'
-import { addHexPrefix, intToHex } from '@ethereumjs/util'
 
-import store from '../../../platform/state-store'
+import { addHexPrefix, intToHex } from '@ethereumjs/util'
+import log from 'electron-log'
+
 import { gweiToHex } from '../../../../test/support/util'
+import store from '../../../platform/state-store'
 
 log.transports.console.level = false
 
@@ -173,13 +173,13 @@ const state = {
   }
 }
 
-mock.module('../../connections/main/provider/connection', () => ({
+await mock.module('../../connections/main/provider/connection', () => ({
   createJsonRpcProvider: (target: any) => (mockConnections as any)[target].connection,
   listenForProviderClose: mock(),
   sendRpcPayload: (provider: any, payload: any) => provider.send(payload.method, payload.params || [])
 }))
-mock.module('../../../platform/state-store/state', () => () => state)
-mock.module('../../accounts/main', () => ({ updatePendingFees: mock() }))
+await mock.module('../../../platform/state-store/state', () => () => state)
+await mock.module('../../accounts/main', () => ({ updatePendingFees: mock() }))
 
 const mockConnections = {
   'https://ethereum-sepolia-rpc.publicnode.com': {

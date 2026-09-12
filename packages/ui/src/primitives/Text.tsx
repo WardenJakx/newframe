@@ -1,6 +1,7 @@
+import type { ReactNode } from 'react'
+
 import { cva } from '../styled-system/css/cva.js'
 import type { RecipeVariantProps } from '../styled-system/types/recipe.js'
-import type { ReactNode } from 'react'
 
 export const textRecipe = cva({
   base: { minWidth: 0 },

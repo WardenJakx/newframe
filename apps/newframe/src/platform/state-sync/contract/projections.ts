@@ -1,8 +1,5 @@
-import { AirGapPendingSummarySchema } from '../../signing/domain/airgap.js'
 import { z } from 'zod'
 
-import { AccountSchema } from '../../../features/accounts/domain/state/account.js'
-import { BalanceSchema } from '../../../features/asset-data/domain/state/balance.js'
 import {
   ActivityRecordSchema,
   ActivityStatusSchema,
@@ -10,10 +7,13 @@ import {
   OrderRecordSchema,
   RuntimeSchema
 } from '../../../app/contracts/state/main.js'
-import { NativeCurrencySchema } from '../../../features/networks/domain/state/nativeCurrency.js'
-import { OperationCollectionSchema } from '../../operations/operation.js'
+import { AccountSchema } from '../../../features/accounts/domain/state/account.js'
+import { BalanceSchema } from '../../../features/asset-data/domain/state/balance.js'
 import { AssetRateMapSchema } from '../../../features/asset-data/domain/state/rate.js'
+import { NativeCurrencySchema } from '../../../features/networks/domain/state/nativeCurrency.js'
 import { TokenCatalogSchema, TokenImageSchema } from '../../../features/tokens/domain/state/token.js'
+import { OperationCollectionSchema } from '../../operations/operation.js'
+import { AirGapPendingSummarySchema } from '../../signing/domain/airgap.js'
 
 export const RendererProjectionSchema = z.enum(['wallet-ui', 'sidetray'])
 export type RendererProjection = z.infer<typeof RendererProjectionSchema>

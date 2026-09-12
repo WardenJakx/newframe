@@ -1,15 +1,14 @@
-import log from 'electron-log'
-
 import { Subscription } from '@ledgerhq/hw-transport'
+import log from 'electron-log'
 // type-only: at runtime node-hid is used solely inside the Ledger transports
 import type { Device } from 'node-hid'
 import { shallow } from 'zustand/vanilla/shallow'
 
-import { Derivation } from '../Signer/derive.js'
-import { SignerAdapter } from '../adapters.js'
-import Ledger from './Ledger/index.js'
-import { getLedgerDevices, TransportNodeHidSingleton as TransportNodeHid } from './dependencies.js'
 import type canonicalStore from '../../../state-store/index.js'
+import { SignerAdapter } from '../adapters.js'
+import { Derivation } from '../Signer/derive.js'
+import { getLedgerDevices, TransportNodeHidSingleton as TransportNodeHid } from './dependencies.js'
+import Ledger from './Ledger/index.js'
 
 function updateDerivation(
   store: typeof canonicalStore,

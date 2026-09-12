@@ -1,4 +1,5 @@
 import { TypedDataEncoder, ZeroAddress } from 'ethers'
+
 import {
   safeAddressSchema,
   safeConfigurationSchema,

@@ -1,18 +1,18 @@
 import log from 'electron-log'
 
+import {
+  DEFAULT_PROFILE_ID,
+  DEFAULT_PROFILE_NAME,
+  getProfileAccountIds
+} from '../../app/contracts/state/main.js'
+import { listCuratedAssets } from '../../features/asset-data/domain/asset/index.js'
+import { CanonicalStatePersistenceError } from '../persistence/index.js'
 import type { CanonicalStore } from './actions.js'
 import {
   PERSISTENCE_VERSION,
   PersistedCanonicalStateSchema,
   type PersistedCanonicalState
 } from './persist/schema.js'
-import { CanonicalStatePersistenceError } from '../persistence/index.js'
-import { listCuratedAssets } from '../../features/asset-data/domain/asset/index.js'
-import {
-  DEFAULT_PROFILE_ID,
-  DEFAULT_PROFILE_NAME,
-  getProfileAccountIds
-} from '../../app/contracts/state/main.js'
 
 type UnknownRecord = Record<string, any>
 

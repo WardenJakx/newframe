@@ -87,17 +87,24 @@ To enable wallet portfolio discovery, add a Zerion API key in Newframe settings 
 
 ### Development checks
 
-Run `bun run lint` for Oxlint, `bun run typecheck` for TypeScript 7.0.2, and
-`bun run test` for tests. `bun run lint:warn` also shows lint warnings;
-`bun run lint:fix` applies fixes. Oxfmt handles formatting with `bun run format`;
+Run `bun run check` after installing dependencies in a clean checkout. It checks
+formatting, generates shared UI declarations and styles during typechecking, then
+runs typed lint, Knip, and tests.
+
+Run `bun run typecheck` for TypeScript 7.0.2 and `bun run test` for tests.
+Standalone `bun run lint` needs current build/typecheck artifacts, so run
+`bun run typecheck` first when those are missing or stale. Lint shows warnings and
+reports unused suppression comments as errors. `bun run lint:warn` is an alias for
+`bun run lint`; `bun run lint:fix` applies fixes.
+Oxfmt handles formatting with `bun run format`;
 `bun run format:check` checks formatting without writing files.
 
 Oxlint's native rules cover JavaScript, TypeScript, React, and React Hooks.
 Testing Library, React's `no-deprecated` rule, the extension settings' React rules,
 and the Hooks `config` and `gating` rules use its JavaScript plugin support, which
 is currently alpha. The config preserves the previous rule scopes and ignores.
-Lint commands report unused suppression comments as warnings, visible with
-`bun run lint:warn` or the application lint commands.
+Typed rules check floating and misused promises and exhaustive switches.
+The desktop portable scope also checks indexed access and exact optional properties.
 
 All workspaces depend directly on TypeScript 7.0.2 for builds and typechecks.
 Panda CSS installs its own TypeScript 6.0.2 dependency because its config loader

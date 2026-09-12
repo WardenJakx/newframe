@@ -1,4 +1,5 @@
 import EventEmitter from 'events'
+
 import InjectedFrameProvider from './provider'
 
 declare const __NEWFRAME_EIP6963_ICON__: string
@@ -173,7 +174,7 @@ document.addEventListener('readystatechange', () => {
   }
 })
 
-window.addEventListener('message', async (event) => {
+async function handleEmbeddedAction(event: MessageEvent) {
   if (
     event &&
     event.source === window &&
@@ -195,4 +196,8 @@ window.addEventListener('message', async (event) => {
       }
     }
   }
+}
+
+window.addEventListener('message', (event) => {
+  handleEmbeddedAction(event).catch((error) => console.error('Could not process embedded action', error))
 })

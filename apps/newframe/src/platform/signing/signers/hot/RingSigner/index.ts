@@ -1,4 +1,5 @@
 import { createDecipheriv, scrypt as scryptAsync, type ScryptOptions } from 'node:crypto'
+
 import log from 'electron-log'
 import { keccak256, Wallet } from 'ethers'
 

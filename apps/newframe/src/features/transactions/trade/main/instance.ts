@@ -1,6 +1,6 @@
+import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.js'
 import type { Accounts } from '../../../accounts/main/index.js'
 import type { AssetRateService } from '../../../asset-data/main/assetRates/service.js'
-import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.js'
 import { createFlashService } from './index.js'
 
 export function createProductionFlashService(

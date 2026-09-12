@@ -1,13 +1,15 @@
 import { expect, it } from 'bun:test'
+
 import { act, within } from '@testing-library/react'
+
 import { render, screen } from '../../../../test/support/componentSetup'
 import { registerTestRuntimeFixture } from '../../../../test/support/rendererClient'
 import { walletState } from '../../../platform/state-sync/renderer/fixtures.test-support'
 import type { SafeDeployment, SafeProposalSimulation } from '../../accounts/domain/safe'
-import { SafeQueueView } from './SafeQueueView'
+import { createRequestRendererCapabilitiesFake as createCapabilityFake } from './requestCapabilities.test-support'
 import { RequestsOverlay } from './RequestsOverlay'
 import { SafeProposalDetailsView } from './SafeProposalDetailsView'
-import { createRequestRendererCapabilitiesFake as createCapabilityFake } from './requestCapabilities.test-support'
+import { SafeQueueView } from './SafeQueueView'
 
 const fixture = registerTestRuntimeFixture()
 const address = '0x1111111111111111111111111111111111111111'

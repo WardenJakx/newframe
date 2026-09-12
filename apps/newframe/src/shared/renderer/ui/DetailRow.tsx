@@ -1,6 +1,5 @@
-import type { ReactNode } from 'react'
-
 import { Text } from '@newframe/ui/text'
+import type { ReactNode } from 'react'
 
 import { cva } from '../../../../generated/styled-system/css/cva.js'
 

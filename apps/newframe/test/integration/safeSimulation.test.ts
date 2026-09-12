@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, expect, it } from 'bun:test'
 import { createRequire } from 'node:module'
 import { createServer } from 'node:net'
+
 import {
   Contract,
   ContractFactory,

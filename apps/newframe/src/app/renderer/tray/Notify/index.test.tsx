@@ -1,15 +1,15 @@
-import { createQrCameraFake } from '../../../../platform/desktop/renderer/camera.test-support'
-import { createAccountsCapabilityFake } from '../../../../features/accounts/renderer/accountsCapability.test-support'
 import { expect, it } from 'bun:test'
 
 import { act, render, screen, waitFor } from '../../../../../test/support/componentSetup'
 import { registerTestRuntimeFixture } from '../../../../../test/support/rendererClient'
+import { createAccountsCapabilityFake } from '../../../../features/accounts/renderer/accountsCapability.test-support'
+import { createRequestRendererCapabilities as createRequestPorts } from '../../../../features/requests/renderer/requestCapabilities'
+import { createQrCameraFake } from '../../../../platform/desktop/renderer/camera.test-support'
+import type { NewframeHost } from '../../../../platform/ipc/contract/ipc'
 import { walletState } from '../../../../platform/state-sync/renderer/fixtures.test-support.ts'
+import { createHomeCapability } from '../Home/homeCapability'
 import { TrayNotificationProvider, useTrayNotification } from '../notification'
 import Notification from './index'
-import { createRequestRendererCapabilities as createRequestPorts } from '../../../../features/requests/renderer/requestCapabilities'
-import { createHomeCapability } from '../Home/homeCapability'
-import type { NewframeHost } from '../../../../platform/ipc/contract/ipc'
 
 const fixture = registerTestRuntimeFixture()
 const lazyCommandHost: Pick<NewframeHost, 'executeCommand' | 'executeQuery'> = {

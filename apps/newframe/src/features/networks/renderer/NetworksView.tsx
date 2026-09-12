@@ -1,5 +1,3 @@
-import React from 'react'
-
 import { Button } from '@newframe/ui/button'
 import { IconButton } from '@newframe/ui/icon-button'
 import { Input } from '@newframe/ui/input'
@@ -7,11 +5,12 @@ import { SearchField } from '@newframe/ui/search-field'
 import { Spacer } from '@newframe/ui/spacer'
 import { Stack } from '@newframe/ui/stack'
 import { Text } from '@newframe/ui/text'
+import React from 'react'
 
-import { formatUsdRate } from '../../asset-data/domain/balance'
-import { TrayOverlay } from '../../../shared/renderer/ui/TrayOverlay'
 import { cva } from '../../../../generated/styled-system/css/cva.js'
 import type { WalletRendererState } from '../../../platform/state-sync/contract/projections'
+import { TrayOverlay } from '../../../shared/renderer/ui/TrayOverlay'
+import { formatUsdRate } from '../../asset-data/domain/balance'
 
 type NetworkConnection = WalletRendererState['networks']['ethereum'][number]['connection']
 

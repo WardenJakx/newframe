@@ -1,16 +1,16 @@
-import { createRoot } from 'react-dom/client'
 import { UIRoot } from '@newframe/ui/root'
+import { createRoot } from 'react-dom/client'
 
 import App from '../../app/renderer/sidetray/App'
 
 import '../../../generated/styled-system/styles.css'
 
+import { createSendCapability } from '../../features/transactions/send/renderer/sendService'
+import { createTradeCapability } from '../../features/transactions/trade/renderer/tradeService'
 import link from '../../platform/ipc/renderer/link'
 import { connectRendererState } from '../../platform/state-sync/renderer/connectState'
 import { createRendererStateStore } from '../../platform/state-sync/renderer/rendererStore'
 import { RendererStateProvider } from '../../platform/state-sync/renderer/useAppSelector'
-import { createSendCapability } from '../../features/transactions/send/renderer/sendService'
-import { createTradeCapability } from '../../features/transactions/trade/renderer/tradeService'
 
 document.addEventListener('dragover', (e) => e.preventDefault())
 document.addEventListener('drop', (e) => e.preventDefault())

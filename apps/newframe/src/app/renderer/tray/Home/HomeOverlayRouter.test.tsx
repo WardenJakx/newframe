@@ -2,11 +2,10 @@ import { beforeEach, describe, expect, it } from 'bun:test'
 
 import { act, render, screen, waitFor } from '../../../../../test/support/componentSetup'
 import { registerTestRuntimeFixture } from '../../../../../test/support/rendererClient'
-import { NATIVE_CURRENCY } from '../../../../features/tokens/domain/constants'
-import { walletState } from '../../../../platform/state-sync/renderer/fixtures.test-support.ts'
-import { HomeUiProvider, useHomeUiStore } from './state/HomeUiProvider'
 import type { DisplayedBalance } from '../../../../features/asset-data/domain/balance'
 import { createRequestRendererCapabilitiesFake as createRequestPortsFake } from '../../../../features/requests/renderer/requestCapabilities.test-support'
+import { NATIVE_CURRENCY } from '../../../../features/tokens/domain/constants'
+import { walletState } from '../../../../platform/state-sync/renderer/fixtures.test-support.ts'
 import { accountsCapability } from '../../capabilities/accounts'
 import { homeCapability } from '../../capabilities/home'
 import {
@@ -20,6 +19,7 @@ import {
   tokensCapability
 } from '../../capabilities/homeFeatures'
 import type { HomeCapabilities } from './Home'
+import { HomeUiProvider, useHomeUiStore } from './state/HomeUiProvider'
 
 Object.defineProperty(global.navigator, 'keyboard', {
   configurable: true,

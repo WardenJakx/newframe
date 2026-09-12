@@ -1,8 +1,8 @@
 import { Icon, type IconName, type IconProps as UiIconProps } from '@newframe/ui/icon'
 import type { CSSProperties } from 'react'
 
-import { imageSource } from '../../asset-data/domain/image'
 import { sva } from '../../../../generated/styled-system/css/sva.js'
+import { imageSource } from '../../asset-data/domain/image'
 
 const ringRecipe = sva({
   slots: ['root', 'inner'],

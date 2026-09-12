@@ -1,5 +1,6 @@
-import { app } from 'electron'
 import path from 'node:path'
+
+import { app } from 'electron'
 
 import { prepareDevelopmentProfile } from '../platform/runtime/developmentProfile.js'
 

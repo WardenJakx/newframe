@@ -1,10 +1,10 @@
 import { useShallow } from 'zustand/react/shallow'
 
-import { hasPositiveBalance } from '../../asset-data/domain/balance'
 import { toCanonicalAssetId } from '../../../app/contracts/sidetray'
-import { getFlashDefaultChainId, isFlashChainSupported } from '../../transactions/trade/domain/chains'
-import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector'
 import type { WalletRendererState } from '../../../platform/state-sync/contract/projections'
+import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector'
+import { hasPositiveBalance } from '../../asset-data/domain/balance'
+import { getFlashDefaultChainId, isFlashChainSupported } from '../../transactions/trade/domain/chains'
 import type { PortfolioCapability } from './portfolioCapability'
 
 const EMPTY_NETWORKS: WalletRendererState['networks']['ethereum'] = {}

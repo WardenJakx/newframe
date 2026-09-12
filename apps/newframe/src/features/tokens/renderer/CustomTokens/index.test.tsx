@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, it } from 'bun:test'
 
+import type { ComponentProps } from 'react'
+
 import { render, screen } from '../../../../../test/support/componentSetup'
 import { registerTestRuntimeFixture } from '../../../../../test/support/rendererClient'
-import CustomTokensController from './index'
-import { createTokensCapability } from '../tokensCapability'
-import type { ComponentProps } from 'react'
 import { walletState } from '../../../../platform/state-sync/renderer/fixtures.test-support.ts'
+import { createTokensCapability } from '../tokensCapability'
+import CustomTokensController from './index'
 
 const fixture = registerTestRuntimeFixture()
 const capability = createTokensCapability({

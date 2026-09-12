@@ -1,7 +1,4 @@
 import { isValidAddress } from '@ethereumjs/util'
-import { useEffect, useRef, useState } from 'react'
-import { useShallow } from 'zustand/react/shallow'
-
 import { Button } from '@newframe/ui/button'
 import { Field } from '@newframe/ui/field'
 import { Input } from '@newframe/ui/input'
@@ -11,15 +8,17 @@ import { Spinner } from '@newframe/ui/spinner'
 import { Stack } from '@newframe/ui/stack'
 import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
+import { useEffect, useRef, useState } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 
-import RingIcon from '../RingIcon'
-import { chainColorValue } from '../../../networks/domain/chain/colors'
-import { persistedImageSource } from '../../../asset-data/domain/image'
-import { toTokenId } from '../../domain'
-import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector'
-import { selectOperationById } from '../../../../platform/state-sync/renderer/selectors/operation'
-import type { Token } from '../../domain/state/token'
 import type { WalletRendererState } from '../../../../platform/state-sync/contract/projections'
+import { selectOperationById } from '../../../../platform/state-sync/renderer/selectors/operation'
+import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector'
+import { persistedImageSource } from '../../../asset-data/domain/image'
+import { chainColorValue } from '../../../networks/domain/chain/colors'
+import { toTokenId } from '../../domain'
+import type { Token } from '../../domain/state/token'
+import RingIcon from '../RingIcon'
 import type { TokensCapability } from '../tokensCapability'
 
 type TokenChain = WalletRendererState['networks']['ethereum'][number]
@@ -183,7 +182,14 @@ const EnterAddress = ({ capability, chain, onNavigate }: EnterAddressProps) => {
         chain
       })
 
-    resolveTokenData()
+    resolveTokenData().catch(() => {
+      onNavigate({
+        error: `${unableToVerifyError} ${contractAddress}`,
+        tokenData: {},
+        address: contractAddress,
+        chain
+      })
+    })
   }
 
   return (

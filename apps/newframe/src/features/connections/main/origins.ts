@@ -1,9 +1,13 @@
 import type { IncomingMessage } from 'http'
+
 import { v5 as uuidv5 } from 'uuid'
 
-import type { Accounts } from '../../accounts/main/index.js'
 import type { CanonicalStoreReader } from '../../../platform/state-store/actions.js'
+import type { Permission } from '../../../platform/state-store/state/index.js'
 import { hasPrincipalCapability, type RpcPrincipal } from '../../access-control/main/authority.js'
+import type { Accounts } from '../../accounts/main/index.js'
+import type { AccessRequest } from '../../requests/contract/requests.js'
+import type { PromptedRequestContinuationPort } from '../../requests/main/service.js'
 import {
   chainIdFromRequest,
   decideOriginAuthorization,
@@ -12,10 +16,6 @@ import {
   projectOriginUpdate,
   type FrameExtension
 } from '../domain/index.js'
-
-import type { Permission } from '../../../platform/state-store/state/index.js'
-import type { AccessRequest } from '../../requests/contract/requests.js'
-import type { PromptedRequestContinuationPort } from '../../requests/main/service.js'
 
 export type { FrameExtension } from '../domain/index.js'
 

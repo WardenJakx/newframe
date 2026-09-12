@@ -1,5 +1,3 @@
-import { useState } from 'react'
-
 import { Button } from '@newframe/ui/button'
 import { Group } from '@newframe/ui/group'
 import { Input } from '@newframe/ui/input'
@@ -7,12 +5,13 @@ import { Stack } from '@newframe/ui/stack'
 import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
 import { ToggleButton } from '@newframe/ui/toggle-button'
+import { useState } from 'react'
 
-import KeyboardShortcutConfigurator from './KeyboardShortcutConfigurator'
+import type { WalletRendererState } from '../../../platform/state-sync/contract/projections'
 import { TrayOverlay } from '../../../shared/renderer/ui/TrayOverlay'
+import KeyboardShortcutConfigurator from './KeyboardShortcutConfigurator'
 import { SettingsActionRow, SettingsSelectRow, SettingsToggleRow } from './SettingsRow'
 import type { PersistSetting, SettingsUpdateInput } from './types'
-import type { WalletRendererState } from '../../../platform/state-sync/contract/projections'
 
 const shortcutKeyDisplay: Record<string, string> = {
   Slash: '/',

@@ -1,7 +1,6 @@
-import { listCuratedTokenAssets } from '../../asset-data/domain/asset/index.js'
-
 import type { CanonicalStoreReader } from '../../../platform/state-store/actions.js'
 import type { Token } from '../../../platform/state-store/state/index.js'
+import { listCuratedTokenAssets } from '../../asset-data/domain/asset/index.js'
 
 export interface BundledTokenService {
   start(): void

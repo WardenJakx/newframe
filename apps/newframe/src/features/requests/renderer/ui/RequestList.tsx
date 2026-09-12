@@ -1,8 +1,8 @@
-import type { ReactNode } from 'react'
 import { Inline } from '@newframe/ui/inline'
 import { Stack } from '@newframe/ui/stack'
 import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
+import type { ReactNode } from 'react'
 
 export type RequestGroup = {
   id: string

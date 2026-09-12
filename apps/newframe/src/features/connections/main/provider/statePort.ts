@@ -1,6 +1,6 @@
+import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.js'
 import { createObserver as createAssetsObserver, loadAssets } from './assets.js'
 import { createChainsObserver, createOriginChainObserver, getActiveChains } from './chains.js'
-import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.js'
 
 type ChainsHandler = Parameters<typeof createChainsObserver>[1]
 type OriginHandler = Parameters<typeof createOriginChainObserver>[1]

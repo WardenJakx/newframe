@@ -1,12 +1,12 @@
-import { BrowserWindow, BrowserWindowConstructorOptions, shell } from 'electron'
-import log from 'electron-log'
 import path from 'path'
 
 import { resolveSemanticColor } from '@newframe/ui/tokens/colors'
+import { BrowserWindow, BrowserWindowConstructorOptions, shell } from 'electron'
+import log from 'electron-log'
 
+import type { RendererAuthorizationRegistry } from '../../ipc/main/authorization.js'
 import type { CanonicalStore } from '../../state-store/actions.js'
 import type { ChainId } from '../../state-store/state/index.js'
-import type { RendererAuthorizationRegistry } from '../../ipc/main/authorization.js'
 
 export function createWindow(
   name: string,
@@ -76,7 +76,7 @@ const isWhitelistedHost = (url: string) =>
 
 export function openExternal(url = '') {
   if (isWhitelistedHost(url) || isValidReleasePage(url)) {
-    shell.openExternal(url)
+    shell.openExternal(url).catch((error) => log.error('Could not open external URL', error))
   }
 }
 

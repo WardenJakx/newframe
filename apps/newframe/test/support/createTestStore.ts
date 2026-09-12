@@ -1,5 +1,5 @@
-import { createStore } from 'zustand/vanilla'
 import { immer } from 'zustand/middleware/immer'
+import { createStore } from 'zustand/vanilla'
 
 import { createCanonicalActions, type CanonicalStore } from '../../src/platform/state-store/actions'
 import createInitialState from '../../src/platform/state-store/state'

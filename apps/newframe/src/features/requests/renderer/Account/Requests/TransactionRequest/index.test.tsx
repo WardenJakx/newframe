@@ -1,18 +1,19 @@
 import { beforeEach, describe, expect, it } from 'bun:test'
 
-import { fireEvent, screen, render } from '../../../../../../../test/support/componentSetup'
 import { within } from '@testing-library/react'
-import TxRequest, { TransactionRequest } from './index'
-import { RequestViewProvider } from '../../../requestView'
-import { RequestStatus, TxClassification } from '../../../../contract/requests'
-import { erc20Interface } from '../../../../../../shared/domain/evm'
+
+import { fireEvent, screen, render } from '../../../../../../../test/support/componentSetup'
 import { registerTestRuntimeFixture } from '../../../../../../../test/support/rendererClient'
+import { erc20Interface } from '../../../../../../shared/domain/evm'
 import { shortAddress } from '../../../../../../shared/renderer/ui/AddressIdentity'
+import { RequestStatus, TxClassification } from '../../../../contract/requests'
 import {
   createRequestRendererCapabilitiesFake as createRequestPortsFake,
   type RequestRendererCapabilitiesFake
 } from '../../../requestCapabilities.test-support'
+import { RequestViewProvider } from '../../../requestView'
 import type { TransactionRequestView } from '../requestViewTypes'
+import TxRequest, { TransactionRequest } from './index'
 
 const fixture = registerTestRuntimeFixture()
 let capabilities: RequestRendererCapabilitiesFake

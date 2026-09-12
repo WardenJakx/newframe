@@ -1,9 +1,11 @@
 import { describe, expect, it, mock } from 'bun:test'
+
 import { Interface } from 'ethers'
 
 import createCanonicalStore from '../../../platform/state-store/createCanonicalStore'
-import { GasFeesSource } from '../domain'
+import { erc20Interface } from '../../../shared/domain/evm'
 import { TxClassification, type TransactionRequest } from '../../requests/contract/requests'
+import { GasFeesSource } from '../domain'
 import {
   createTransactionSimulationProjection,
   effectsFromTrace,
@@ -12,7 +14,6 @@ import {
   type TraceCall,
   type TransactionSimulationProjection
 } from './simulation'
-import { erc20Interface } from '../../../shared/domain/evm'
 
 const account = '0x35f9179059A691D8BEECf82Fe112F7277E018588'
 const testContract = '0x0000000000000000000000000000000000001337'

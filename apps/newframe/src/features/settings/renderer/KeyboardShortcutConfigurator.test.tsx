@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test'
-
 import type { Mock } from 'bun:test'
+
 import { render, screen } from '../../../../test/support/componentSetup'
 
 let KeyboardShortcutConfigurator: any

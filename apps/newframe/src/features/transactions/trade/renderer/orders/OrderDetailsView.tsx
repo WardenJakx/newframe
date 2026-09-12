@@ -1,14 +1,13 @@
-import React from 'react'
-
 import { Stack } from '@newframe/ui/stack'
 import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
+import React from 'react'
 
+import { cva } from '../../../../../../generated/styled-system/css/cva.js'
+import type { TokenImageCapability } from '../../../../../shared/renderer/capabilities'
+import { ChainIcon } from '../../../../../shared/renderer/ui/ChainIcon'
 import { DetailRow } from '../../../../../shared/renderer/ui/DetailRow'
 import { TrayOverlay } from '../../../../../shared/renderer/ui/TrayOverlay'
-import { cva } from '../../../../../../generated/styled-system/css/cva.js'
-import { ChainIcon } from '../../../../../shared/renderer/ui/ChainIcon'
-import { OrderTradeFlow } from './OrderTradeFlow'
 import {
   formatOrderAmount,
   normalizeOrderSide,
@@ -19,8 +18,8 @@ import {
   orderStatusLabel,
   orderTypeLabel
 } from './orderModel'
+import { OrderTradeFlow } from './OrderTradeFlow'
 import type { OrderNetworkMap, OrderNetworkMetadataMap, OrderModel, OrderTokenCatalog } from './orderTypes'
-import type { TokenImageCapability } from '../../../../../shared/renderer/capabilities'
 
 const payloadRecipe = cva({
   base: {

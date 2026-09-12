@@ -1,5 +1,6 @@
 import { SignTypedDataVersion } from '@metamask/eth-sig-util'
 import { Interface } from 'ethers'
+
 import type { SafeProposal } from '../../features/accounts/domain/safe.js'
 import { getEip712Digests } from '../signing/signatures/digests.js'
 

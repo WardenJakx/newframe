@@ -1,7 +1,7 @@
-import type { CanonicalState } from '../../state-store/state/index.js'
-import { createBalanceSummarySelector } from '../../../features/asset-data/domain/balance/index.js'
 import { getProfileAccountIds } from '../../../app/contracts/state/main.js'
+import { createBalanceSummarySelector } from '../../../features/asset-data/domain/balance/index.js'
 import { OperationRecordSchema, type OperationCollection } from '../../operations/operation.js'
+import type { CanonicalState } from '../../state-store/state/index.js'
 import {
   WalletHomeCommandSchema,
   WalletPanelNavigationEntrySchema,

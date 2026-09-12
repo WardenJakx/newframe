@@ -1,7 +1,7 @@
-import { SignerAdapter } from '../adapters.js'
 import type canonicalStore from '../../../state-store/index.js'
-import AirGapSigner from './AirGapSigner.js'
 import { AirGapPublicAccountSchema } from '../../domain/airgap.js'
+import { SignerAdapter } from '../adapters.js'
+import AirGapSigner from './AirGapSigner.js'
 import { airGapId } from './protocol.js'
 
 export default class AirGapAdapter extends SignerAdapter {

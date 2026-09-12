@@ -1,6 +1,6 @@
 import { NATIVE_CURRENCY } from '../../../tokens/domain/constants.js'
-import { CURATED_ASSETS, type CuratedAsset } from './registry.js'
 import type { AssetRateMap, AssetRateReference, ResolvedAssetRate } from '../state/rate.js'
+import { CURATED_ASSETS, type CuratedAsset } from './registry.js'
 
 export type { CuratedAsset } from './registry.js'
 

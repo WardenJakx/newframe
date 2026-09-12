@@ -3,8 +3,8 @@ import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
 
 import { RequestStatusNotice } from '../../ui/RequestStatusNotice'
-import { useNetwork, useOriginName } from './state'
 import type { ChainRequestView } from './requestViewTypes'
+import { useNetwork, useOriginName } from './state'
 
 type ChainRequestProps = {
   req: ChainRequestView

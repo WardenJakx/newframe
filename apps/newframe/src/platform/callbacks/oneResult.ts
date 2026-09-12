@@ -42,7 +42,7 @@ export function createOneResultCallbackBoundary() {
       if (disposed) return
       disposed = true
       const error = new Error('Callback boundary was disposed before the operation completed')
-      for (const reject of [...pending]) reject(error)
+      for (const reject of pending) reject(error)
       pending.clear()
     }
   }

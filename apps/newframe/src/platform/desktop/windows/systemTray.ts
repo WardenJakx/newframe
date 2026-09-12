@@ -1,5 +1,6 @@
 import fs from 'fs'
 import path from 'path'
+
 import { app, screen, BrowserWindow, Menu, KeyboardEvent, Rectangle, Tray as ElectronTray } from 'electron'
 
 import { capitalize } from '../../../shared/domain/text.js'

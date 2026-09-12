@@ -1,12 +1,12 @@
-import React from 'react'
 import { SearchField } from '@newframe/ui/search-field'
 import { Selection, type SelectionItem } from '@newframe/ui/selection'
 import { Text } from '@newframe/ui/text'
+import React from 'react'
 
+import type { TokenImageCapability } from '../capabilities'
 import ChainTokenIcon from './ChainTokenIcon'
 import TokenOptionRow from './TokenOptionRow'
 import type { NetworkLike, NetworkMetaLike, TokenSelectorItem } from './tokenSelectorTypes'
-import type { TokenImageCapability } from '../capabilities'
 
 interface TokenSelectorProps {
   ariaLabel: string

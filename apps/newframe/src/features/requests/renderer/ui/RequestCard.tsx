@@ -1,11 +1,12 @@
-import type { ReactNode } from 'react'
 import { Button } from '@newframe/ui/button'
 import { Inline } from '@newframe/ui/inline'
 import { Stack } from '@newframe/ui/stack'
 import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
-import StatusGlyph from '../../../../shared/renderer/ui/StatusGlyph'
+import type { ReactNode } from 'react'
+
 import { cva } from '../../../../../generated/styled-system/css/cva.js'
+import StatusGlyph from '../../../../shared/renderer/ui/StatusGlyph'
 
 const iconRecipe = cva({
   base: {

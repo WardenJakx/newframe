@@ -1,4 +1,4 @@
 bun run format:staged
+bun run typecheck
 bun run lint
 bun run knip
-bun run typecheck

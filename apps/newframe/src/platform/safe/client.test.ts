@@ -1,13 +1,14 @@
-import { verifySafeHash } from './integrity.js'
 import { afterEach, describe, expect, test } from 'bun:test'
+
 import { createSafeHandler } from '../../../scripts/local-safe/handler.js'
 import { createSafeClient, safeServiceNetworks } from './client.js'
+import { verifySafeHash } from './integrity.js'
 
 const safe = '0x1111111111111111111111111111111111111111'
 const owners = ['0x2222222222222222222222222222222222222222', '0x3333333333333333333333333333333333333333']
 const servers: ReturnType<typeof Bun.serve>[] = []
-afterEach(() => {
-  for (const server of servers.splice(0)) server.stop(true)
+afterEach(async () => {
+  await Promise.all(servers.splice(0).map((server) => server.stop(true)))
 })
 function setup(transform?: (request: Request, response: Response) => Promise<Response>, version = '1.4.1') {
   const handler = createSafeHandler({

@@ -1,5 +1,5 @@
-import { existsSync, mkdirSync, readdirSync, rmSync } from 'fs'
 import { spawnSync } from 'child_process'
+import { existsSync, mkdirSync, readdirSync, rmSync } from 'fs'
 import path from 'path'
 
 const appName = 'Newframe.app'

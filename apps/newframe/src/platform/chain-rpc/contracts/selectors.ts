@@ -60,7 +60,7 @@ function signatureSelector(signature: string) {
     const fragment = new Interface([`function ${normalized}`]).fragments[0]
     return fragment instanceof FunctionFragment ? fragment.selector : undefined
   } catch {
-    return
+    return undefined
   }
 }
 

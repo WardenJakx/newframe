@@ -1,19 +1,20 @@
 import { describe, expect, it } from 'bun:test'
 import type { Mock } from 'bun:test'
-import { useState } from 'react'
 
-import type { OperationRecord } from '../../../../../platform/operations/operation'
+import { useState } from 'react'
+import type { ComponentProps } from 'react'
+
 import { act, render, screen } from '../../../../../../test/support/componentSetup'
 import { registerTestRuntimeFixture } from '../../../../../../test/support/rendererClient'
+import type { AppCommand, CommandMap, CommandResult } from '../../../../../app/contracts/operations'
+import type { OperationRecord } from '../../../../../platform/operations/operation'
+import type { WalletRendererState } from '../../../../../platform/state-sync/contract/projections'
 import { walletState } from '../../../../../platform/state-sync/renderer/fixtures.test-support.ts'
 import { OrderDetails } from './OrderDetails'
 import { Orders as OrdersController, type OpenOrderInput } from './Orders'
-import { OrdersView } from './OrdersView'
 import { createOrdersCapability } from './ordersCapability'
+import { OrdersView } from './OrdersView'
 import type { OrderRow } from './orderTypes'
-import type { ComponentProps } from 'react'
-import type { AppCommand, CommandMap, CommandResult } from '../../../../../app/contracts/operations'
-import type { WalletRendererState } from '../../../../../platform/state-sync/contract/projections'
 
 const fixture = registerTestRuntimeFixture()
 const ordersCapability = createOrdersCapability({

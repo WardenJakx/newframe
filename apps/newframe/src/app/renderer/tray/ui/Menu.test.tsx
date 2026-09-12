@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'bun:test'
+
 import { useState } from 'react'
 
+import { fireEvent, render, screen } from '../../../../../test/support/componentSetup'
 import { MenuItem } from './Menu/MenuItem'
 import { MenuOverlay } from './Menu/MenuOverlay'
-import { fireEvent, render, screen } from '../../../../../test/support/componentSetup'
 
 function MenuHarness() {
   const [open, setOpen] = useState(false)
@@ -27,16 +28,13 @@ describe('MenuOverlay', () => {
     const trigger = screen.getByRole('button', { name: 'Open' })
 
     // The browser focuses a clicked button; fireEvent intentionally does not emulate that default action.
-    // oxlint-disable-next-line testing-library/no-node-access
     trigger.focus()
     fireEvent.click(trigger)
     // Focus ownership is the behavior under test, so inspect the DOM focus target directly.
-    // oxlint-disable-next-line testing-library/no-node-access
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Close menu' }))
 
     fireEvent.keyDown(screen.getByRole('dialog', { name: 'Main menu' }), { key: 'Escape' })
     expect(screen.queryByRole('dialog', { name: 'Main menu' })).toBeNull()
-    // oxlint-disable-next-line testing-library/no-node-access
     expect(document.activeElement).toBe(trigger)
   })
 

@@ -2,9 +2,9 @@ import { Stack } from '@newframe/ui/stack'
 import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
 
+import { DetailRow } from '../../../../shared/renderer/ui/DetailRow'
 import type { Erc7730Display } from '../../contract/requests'
 import type { Eip712Digests } from '../../contract/requests'
-import { DetailRow } from '../../../../shared/renderer/ui/DetailRow'
 
 type SimpleJsonRow = {
   label: string

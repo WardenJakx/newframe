@@ -1,8 +1,6 @@
 import { Interface } from 'ethers'
-import { verifySafeHash, serviceCalldataMismatch } from './integrity.js'
-import { decodeCallDataWithSignature, type DecodedCallData } from '../chain-rpc/contracts/index.js'
-import { getLocalFunctionSelectorSignatures } from '../chain-rpc/contracts/selectors.js'
 import { z } from 'zod'
+
 import {
   safeAddressSchema,
   safeConfigurationSchema,
@@ -11,6 +9,9 @@ import {
   type SafeConfiguration,
   type SafeProposal
 } from '../../features/accounts/domain/safe.js'
+import { decodeCallDataWithSignature, type DecodedCallData } from '../chain-rpc/contracts/index.js'
+import { getLocalFunctionSelectorSignatures } from '../chain-rpc/contracts/selectors.js'
+import { verifySafeHash, serviceCalldataMismatch } from './integrity.js'
 
 const SAFE_TRANSACTION_SERVICE_URL = 'https://api.safe.global/tx-service'
 // Hosted Transaction Service resolver from @safe-global/api-kit@5.0.3, synced 2026-09-09.

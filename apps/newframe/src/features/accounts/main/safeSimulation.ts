@@ -1,7 +1,8 @@
 import { Interface, concat, toBeHex } from 'ethers'
 import { z } from 'zod'
-import type { SafeSimulationRpc, SafeStateOverrides } from '../../../platform/safe/simulation.js'
+
 import type { Erc20ProviderPort } from '../../../platform/chain-rpc/contracts/erc20.js'
+import type { SafeSimulationRpc, SafeStateOverrides } from '../../../platform/safe/simulation.js'
 import {
   effectsFromTrace,
   isTraceCall,

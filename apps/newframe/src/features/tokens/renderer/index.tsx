@@ -1,11 +1,10 @@
-import { useState } from 'react'
-
 import { Button } from '@newframe/ui/button'
 import { Icon } from '@newframe/ui/icon'
 import { Text } from '@newframe/ui/text'
+import { useState } from 'react'
 
-import type { Token } from '../domain/state/token'
 import { TrayOverlay } from '../../../shared/renderer/ui/TrayOverlay'
+import type { Token } from '../domain/state/token'
 import AddToken from './AddToken'
 import type { AddTokenNotifyData } from './AddToken'
 import CustomTokens from './CustomTokens'

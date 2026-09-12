@@ -1,7 +1,6 @@
 import path from 'node:path'
 
 import { unlockHarnessNewframe } from '../../apps/newframe/scripts/unlock-harness-newframe.ts'
-
 import { HarnessRuntime, installSignalHandlers } from './core/service.ts'
 import { createAnvilService } from './services/anvil.ts'
 import { createSeedAnvilService } from './services/contracts.ts'

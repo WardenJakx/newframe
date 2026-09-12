@@ -1,3 +1,4 @@
+import type { CanonicalStore } from '../../../platform/state-store/actions.js'
 import type {
   SideTrayOpenCommand,
   UpdaterRespondCommand,
@@ -8,7 +9,6 @@ import {
   normalizeSideTrayFrameRequest,
   SIDE_TRAY_FRAME_ID
 } from '../../contracts/sidetray/index.js'
-import type { CanonicalStore } from '../../../platform/state-store/actions.js'
 
 type PlatformState = Pick<
   CanonicalStore,

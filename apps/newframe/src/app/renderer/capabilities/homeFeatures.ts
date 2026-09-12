@@ -1,4 +1,3 @@
-import link from '../../../platform/ipc/renderer/link'
 import { createConnectionsCapability } from '../../../features/connections/renderer/connectionsCapability'
 import { createNetworksCapability } from '../../../features/networks/renderer/networksCapability'
 import { createPortfolioCapability } from '../../../features/portfolio/renderer/portfolioCapability'
@@ -7,6 +6,7 @@ import { createSettingsCapability } from '../../../features/settings/renderer/se
 import { createTokensCapability } from '../../../features/tokens/renderer/tokensCapability'
 import { createActivityCapability } from '../../../features/transactions/renderer/activity/activityCapability'
 import { createOrdersCapability } from '../../../features/transactions/trade/renderer/orders/ordersCapability'
+import link from '../../../platform/ipc/renderer/link'
 
 export const connectionsCapability = createConnectionsCapability(link)
 export const networksCapability = createNetworksCapability(link)

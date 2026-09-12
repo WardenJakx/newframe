@@ -1,12 +1,12 @@
-import { RequestCard } from './RequestCard'
 import { Icon, type IconName } from '@newframe/ui/icon'
 import { Image } from '@newframe/ui/image'
 import { Text } from '@newframe/ui/text'
 import { useEffect, useState, type ReactNode } from 'react'
 
-import type { RequestItemRequestView } from '../Account/Requests/requestViewTypes'
 import { imageSource } from '../../../asset-data/domain/image'
+import type { RequestItemRequestView } from '../Account/Requests/requestViewTypes'
 import type { RequestPanelCapability } from '../requestCapabilities'
+import { RequestCard } from './RequestCard'
 
 type RequestItemProps = {
   panel: Pick<RequestPanelCapability, 'openRequest'>

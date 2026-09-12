@@ -1,9 +1,9 @@
 import { useShallow } from 'zustand/react/shallow'
 
-import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector'
-import { ActivityDetailsView } from './ActivityDetailsView'
-import type { ActivityCapability } from './activityCapability'
 import type { WalletRendererState } from '../../../../platform/state-sync/contract/projections'
+import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector'
+import type { ActivityCapability } from './activityCapability'
+import { ActivityDetailsView } from './ActivityDetailsView'
 import { projectActivityRecord } from './activityTypes'
 
 const EMPTY_NETWORKS: WalletRendererState['networks']['ethereum'] = {}

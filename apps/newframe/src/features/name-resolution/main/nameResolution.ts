@@ -1,4 +1,5 @@
 import EventEmitter from 'events'
+
 import { GNS_CONTRACT, gnsAbi, isGwei, normalizeName } from '@donnoh/gns-utils'
 import { Interface, ZeroAddress, dnsEncode, ensNormalize, getAddress, isAddress, namehash } from 'ethers'
 
@@ -61,7 +62,7 @@ export function createNameResolutionService(
     events.emit('ready')
   }
 
-  const connectHandler = async () => {
+  const checkConnectedChains = async () => {
     if (!active) return
 
     try {
@@ -72,6 +73,11 @@ export function createNameResolutionService(
     } catch {
       // Mainnet is either disabled or not connected yet; call sites handle lookup failures.
     }
+  }
+
+  const connectHandler = () => {
+    // An unavailable mainnet is handled inside checkConnectedChains.
+    void checkConnectedChains()
   }
 
   async function readMainnetContract(to: string, data: string) {

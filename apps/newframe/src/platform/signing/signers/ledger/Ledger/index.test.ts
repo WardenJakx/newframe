@@ -12,6 +12,7 @@ import {
 
 import { SignTypedDataVersion } from '@metamask/eth-sig-util'
 import log from 'electron-log'
+
 import { callbackResult } from '../../callback.test-support.ts'
 import { Derivation } from '../../Signer/derive'
 
@@ -31,8 +32,8 @@ const EthMock = mock(function (this: any) {
 })
 const TransportNodeHidMock = { open: mock(async () => ({ close: mock() })) }
 
-mock.module('./eth.js', () => ({ default: EthMock }))
-mock.module('../dependencies.js', () => ({ TransportNodeHidNoEvents: TransportNodeHidMock }))
+await mock.module('./eth.js', () => ({ default: EthMock }))
+await mock.module('../dependencies.js', () => ({ TransportNodeHidNoEvents: TransportNodeHidMock }))
 
 let Ledger: any, Status: any, Eth: any, ledger: any
 const addresses = ['0xf10326c1c6884b094e03d616cc8c7b920e3f73e0', '0xa16002db5438b5862270a9e404346e3c3b059eeb']

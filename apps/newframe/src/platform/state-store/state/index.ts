@@ -1,17 +1,17 @@
+import log from 'electron-log'
 import { v4 as generateUuid } from 'uuid'
 import { z } from 'zod'
-import log from 'electron-log'
 
-import {
-  createBuiltInNetworkMetadata,
-  createBuiltInNetworks
-} from '../../../features/networks/domain/chain/index.js'
 import {
   DEFAULT_PROFILE_ID,
   DEFAULT_PROFILE_NAME,
   MainSchema,
   type Main
 } from '../../../app/contracts/state/main.js'
+import {
+  createBuiltInNetworkMetadata,
+  createBuiltInNetworks
+} from '../../../features/networks/domain/chain/index.js'
 import { OperationRecordSchema } from '../../operations/operation.js'
 import { getMainRuntime } from '../../runtime/index.js'
 import type { OwnedOperation } from '../actions.operation.js'

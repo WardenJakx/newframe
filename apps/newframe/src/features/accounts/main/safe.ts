@@ -1,12 +1,13 @@
 import { getAddress } from 'ethers'
+
 import type {
   AccountSafeImportCommand,
   AccountSafeRefreshCommand,
   SafeSimulateQuery
 } from '../../../app/contracts/operations.js'
-import type { CanonicalStoreReader } from '../../../platform/state-store/actions.js'
 import type { OperationService } from '../../../platform/operations/service.js'
 import type { OperationOwner } from '../../../platform/operations/types.js'
+import type { CanonicalStoreReader } from '../../../platform/state-store/actions.js'
 import {
   SafeProposalSimulationSchema,
   type SafeConfiguration,

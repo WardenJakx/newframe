@@ -1,4 +1,5 @@
 import { expect, it } from 'bun:test'
+
 import { createSafeSimulationRpc } from './simulation'
 
 it('routes reads to the selected chain and rejects write methods', async () => {

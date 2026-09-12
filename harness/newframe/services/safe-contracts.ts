@@ -1,3 +1,5 @@
+import factoryArtifact from '@safe-global/safe-smart-account/build/artifacts/contracts/proxies/SafeProxyFactory.sol/SafeProxyFactory.json' with { type: 'json' }
+import safeArtifact from '@safe-global/safe-smart-account/build/artifacts/contracts/SafeL2.sol/SafeL2.json' with { type: 'json' }
 import {
   Contract,
   ContractFactory,
@@ -7,8 +9,6 @@ import {
   type JsonRpcProvider,
   type NonceManager
 } from 'ethers'
-import safeArtifact from '@safe-global/safe-smart-account/build/artifacts/contracts/SafeL2.sol/SafeL2.json' with { type: 'json' }
-import factoryArtifact from '@safe-global/safe-smart-account/build/artifacts/contracts/proxies/SafeProxyFactory.sol/SafeProxyFactory.json' with { type: 'json' }
 
 export type SafeSeedManifest = {
   chainId: number

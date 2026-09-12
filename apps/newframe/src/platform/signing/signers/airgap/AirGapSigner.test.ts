@@ -1,5 +1,7 @@
 import { expect, it } from 'bun:test'
+
 import { SignTypedDataVersion } from '@metamask/eth-sig-util'
+
 import { signerFixture, transaction, vectors } from '../../../../../test/integration/fixtures/airgap.js'
 import type { TypedMessage } from '../../../../features/requests/contract/requests.js'
 

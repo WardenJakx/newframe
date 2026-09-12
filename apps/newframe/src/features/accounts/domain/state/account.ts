@@ -1,4 +1,5 @@
 import { z } from 'zod'
+
 import { SafeDeploymentSchema } from '../safe.js'
 
 export const AccountMetadataSchema = z

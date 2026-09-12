@@ -1,7 +1,7 @@
 import { Inline } from './Inline.js'
 import { Surface } from './Surface.js'
-import { Text } from './Text.js'
 import { Tab } from './Tab.js'
+import { Text } from './Text.js'
 
 export type TabsItem<T extends string> = { active: boolean; id: T; label: string }
 

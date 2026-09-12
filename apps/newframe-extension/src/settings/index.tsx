@@ -3,9 +3,10 @@ import { createRoot } from 'react-dom/client'
 
 import { Settings } from './Settings'
 import { getMetaMaskSetting, isSupportedTab } from './tabSettings'
+
 import '../styled-system/styles.css'
 
-document.addEventListener('DOMContentLoaded', async () => {
+async function renderSettings() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
   const mmAppear = isSupportedTab(tab) && tab?.id !== undefined ? await getMetaMaskSetting(tab.id) : false
   const root = document.getElementById('root')
@@ -16,4 +17,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       <Settings tab={tab} mmAppear={mmAppear} />
     </UIRoot>
   )
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  renderSettings().catch((error) => console.error('Could not render Newframe settings', error))
 })

@@ -1,11 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
 import type { IconName } from '@newframe/ui/icon'
+import { useEffect, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 
 import { useWalletSelector } from '../../../../../platform/state-sync/renderer/useAppSelector'
+import type { HomeCapability } from '../homeCapability'
 import { useHomeUiStore } from '../state/HomeUiProvider'
 import { HomeHeaderView } from './HomeHeaderView'
-import type { HomeCapability } from '../homeCapability'
 
 function signerIcon(type: string): IconName {
   if ((type || '').toLowerCase() === 'address') return 'eye'

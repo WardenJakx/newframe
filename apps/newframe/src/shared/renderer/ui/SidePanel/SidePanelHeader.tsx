@@ -2,6 +2,7 @@ import { Heading } from '@newframe/ui/heading'
 import { IconButton } from '@newframe/ui/icon-button'
 import { Inline } from '@newframe/ui/inline'
 import type { ReactNode } from 'react'
+
 import { cva } from '../../../../../generated/styled-system/css/cva.js'
 
 const headerRecipe = cva({

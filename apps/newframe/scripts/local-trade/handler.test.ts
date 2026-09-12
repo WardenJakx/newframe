@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, jest as timers, spyOn } from 'bun:test'
+
 import { JsonRpcProvider, Wallet } from 'ethers'
 
-import { handleLocalTradeRequest, resetLocalTradeState, subscribeLocalTradeOrders } from './handler'
 import {
   FLASH_ANVIL_CHAIN_ID,
   FLASH_BASE_CHAIN_ID,
@@ -10,6 +10,7 @@ import {
   FLASH_USDC_ADDRESS,
   FLASH_WETH_ADDRESS
 } from '../../src/features/transactions/trade/domain/constants'
+import { handleLocalTradeRequest, resetLocalTradeState, subscribeLocalTradeOrders } from './handler'
 
 const FUNDER_ADDRESS = '0x0000000000000000000000000000000000000001'
 const ZERO_ALLOWANCE = `0x${'0'.repeat(64)}`

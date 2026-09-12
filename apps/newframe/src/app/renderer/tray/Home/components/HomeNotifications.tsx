@@ -1,17 +1,17 @@
-import { useShallow } from 'zustand/react/shallow'
 import { Button } from '@newframe/ui/button'
 import { Icon } from '@newframe/ui/icon'
 import { Stack } from '@newframe/ui/stack'
 import { Text } from '@newframe/ui/text'
+import { useShallow } from 'zustand/react/shallow'
 
+import { cva } from '../../../../../../generated/styled-system/css/cva.js'
 import type { WalletRendererState } from '../../../../../platform/state-sync/contract/projections'
 import { useWalletSelector } from '../../../../../platform/state-sync/renderer/useAppSelector'
-import StatusNotifications from '../StatusNotifications'
-import { useHomeUiStore } from '../state/HomeUiProvider'
 import { ChainIcon } from '../../../../../shared/renderer/ui/ChainIcon'
-import { cva } from '../../../../../../generated/styled-system/css/cva.js'
-import type { HomeCapability } from '../homeCapability'
 import StatusGlyph from '../../../../../shared/renderer/ui/StatusGlyph'
+import type { HomeCapability } from '../homeCapability'
+import { useHomeUiStore } from '../state/HomeUiProvider'
+import StatusNotifications from '../StatusNotifications'
 
 const EMPTY_NETWORKS: WalletRendererState['networks']['ethereum'] = {}
 const EMPTY_NETWORK_METADATA: WalletRendererState['networksMeta']['ethereum'] = {}

@@ -1,7 +1,7 @@
 import { describe, expect, it, mock } from 'bun:test'
 
-import { NATIVE_CURRENCY } from '../../../tokens/domain/constants'
 import { createTestStore } from '../../../../../test/support/createTestStore'
+import { NATIVE_CURRENCY } from '../../../tokens/domain/constants'
 import { createAssetRateService } from './service'
 
 const WETH_MAINNET = '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'

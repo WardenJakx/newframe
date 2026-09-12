@@ -4,7 +4,7 @@ export function randomLetters(length: number) {
 
 export function capitalize(value: string) {
   if (!value) return value
-  return value[0].toUpperCase() + value.substring(1).toLowerCase()
+  return value.charAt(0).toUpperCase() + value.substring(1).toLowerCase()
 }
 
 export const matchFilter = (filter = '', properties: string[] = []) => {

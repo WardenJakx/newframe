@@ -4,9 +4,8 @@ import {
   toTokenId,
   type BalanceSummary
 } from '../../../../features/asset-data/domain/balance'
-import { selectableTokens as selectGlobalTokens } from '../../../../features/tokens/domain'
-
 import type { Balance } from '../../../../features/asset-data/domain/state/balance'
+import { selectableTokens as selectGlobalTokens } from '../../../../features/tokens/domain'
 import type { Token } from '../../../../features/tokens/domain/state/token'
 import type { SideTrayRendererState } from '../../contract/projections'
 

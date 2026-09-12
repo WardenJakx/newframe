@@ -1,8 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
-
 import { IconButton } from '@newframe/ui/icon-button'
-import { Stack } from '@newframe/ui/stack'
 import { Input } from '@newframe/ui/input'
+import { Stack } from '@newframe/ui/stack'
+import { useEffect, useRef, useState } from 'react'
 
 interface AccountRenameInputProps {
   ariaLabel: string

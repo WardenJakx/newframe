@@ -1,8 +1,8 @@
 import { v5 as uuid } from 'uuid'
 
+import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.js'
 import type { Permission } from '../../../../platform/state-store/state/index.js'
 import type { TrustedCapability } from '../../../access-control/main/authority.js'
-import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.js'
 
 export const enum SubscriptionType {
   ACCOUNTS = 'accountsChanged',

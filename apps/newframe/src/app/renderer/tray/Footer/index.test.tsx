@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, expect, it, mock } from 'bun:test'
 
 import { render, screen } from '../../../../../test/support/componentSetup'
-import { Footer } from './index'
-import type { WalletRendererState } from '../../../../platform/state-sync/contract/projections'
 import { createRequestRendererCapabilitiesFake as createRequestPortsFake } from '../../../../features/requests/renderer/requestCapabilities.test-support'
+import type { WalletRendererState } from '../../../../platform/state-sync/contract/projections'
+import { Footer } from './index'
 
 const requestPorts = createRequestPortsFake()
 const notify = mock()

@@ -1,19 +1,19 @@
-import type { ReactNode } from 'react'
-
 import { Button } from '@newframe/ui/button'
 import { Group } from '@newframe/ui/group'
 import { Inline } from '@newframe/ui/inline'
 import { MediaBadge } from '@newframe/ui/media-badge'
 import { Stack } from '@newframe/ui/stack'
 import { Text } from '@newframe/ui/text'
+import type { ReactNode } from 'react'
 
 import { cva } from '../../../../../generated/styled-system/css/cva.js'
-import { persistedImageSource } from '../../../asset-data/domain/image'
-import { tokenForId, tokenImageSource } from '../../../tokens/domain'
-import StatusGlyph from '../../../../shared/renderer/ui/StatusGlyph'
+import type { ClipboardCapability, TokenImageCapability } from '../../../../shared/renderer/capabilities'
+import { ChainIcon } from '../../../../shared/renderer/ui/ChainIcon'
 import ChainTokenIcon from '../../../../shared/renderer/ui/ChainTokenIcon'
 import { CopyButton } from '../../../../shared/renderer/ui/CopyButton'
-import { ChainIcon } from '../../../../shared/renderer/ui/ChainIcon'
+import StatusGlyph from '../../../../shared/renderer/ui/StatusGlyph'
+import { persistedImageSource } from '../../../asset-data/domain/image'
+import { tokenForId, tokenImageSource } from '../../../tokens/domain'
 import {
   activityAssetEffect,
   activityBalanceChangeLabel,
@@ -29,7 +29,6 @@ import type {
   ActivityViewRecord,
   ActivityTokenCatalog
 } from './activityTypes'
-import type { ClipboardCapability, TokenImageCapability } from '../../../../shared/renderer/capabilities'
 
 const activityRowRecipe = cva({
   base: {

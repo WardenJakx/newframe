@@ -1,24 +1,28 @@
-import { AddressIdentity } from '../../../../../../shared/renderer/ui/AddressIdentity'
-import { DisplayCoinBalance } from '../../../ui/DisplayValue'
 import { Button } from '@newframe/ui/button'
+import { Icon } from '@newframe/ui/icon'
 import { Inline } from '@newframe/ui/inline'
 import { Stack } from '@newframe/ui/stack'
 import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
-import { Icon } from '@newframe/ui/icon'
 import { useState } from 'react'
+
+import { getAddress } from '../../../../../../shared/domain/address'
+import { toBigInt } from '../../../../../../shared/domain/units'
+import { AddressIdentity } from '../../../../../../shared/renderer/ui/AddressIdentity'
+import { persistedImageSource } from '../../../../../asset-data/domain/image'
+import { chainUsesOptimismFees } from '../../../../../networks/domain/chain/fees'
+import { tokenForId, tokenImageSource } from '../../../../../tokens/domain'
+import { NATIVE_CURRENCY } from '../../../../../tokens/domain/constants'
 import {
   getPaidTransactionFee,
   getTransactionEffects,
   typeSupportsBaseFee
 } from '../../../../../transactions/domain'
-import { chainUsesOptimismFees } from '../../../../../networks/domain/chain/fees'
 import { displayValueData } from '../../../format/displayValue'
-import { getAddress } from '../../../../../../shared/domain/address'
-import { toBigInt } from '../../../../../../shared/domain/units'
-import { tokenForId, tokenImageSource } from '../../../../../tokens/domain'
-import TransactionInformation from './TransactionInformation'
-import type { TransactionInformationDetailRow } from './TransactionInformation'
+import type { RequestRendererCapabilities, TransactionReviewCapability } from '../../../requestCapabilities'
+import { useRequestView } from '../../../requestView'
+import { DisplayCoinBalance } from '../../../ui/DisplayValue'
+import type { TransactionRequestView } from '../requestViewTypes'
 import {
   useAccountIdentity,
   useAssetRate,
@@ -27,11 +31,8 @@ import {
   useOriginName,
   useTokens
 } from '../state'
-import { NATIVE_CURRENCY } from '../../../../../tokens/domain/constants'
-import { persistedImageSource } from '../../../../../asset-data/domain/image'
-import { useRequestView } from '../../../requestView'
-import type { RequestRendererCapabilities, TransactionReviewCapability } from '../../../requestCapabilities'
-import type { TransactionRequestView } from '../requestViewTypes'
+import TransactionInformation from './TransactionInformation'
+import type { TransactionInformationDetailRow } from './TransactionInformation'
 
 type NativeCurrency = {
   symbol: string

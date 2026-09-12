@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it } from 'bun:test'
 
 import { act, fireEvent, render, screen, waitFor } from '../../../../../test/support/componentSetup'
-import Send from './index'
-import { NATIVE_CURRENCY } from '../../../tokens/domain/constants'
 import { registerTestRuntimeFixture } from '../../../../../test/support/rendererClient'
-import { createSendCapabilityFake, type SendCapabilityFake } from './sendService.test-support'
 import type { AppCommand, AppQuery, CommandResult } from '../../../../app/contracts/operations'
+import { NATIVE_CURRENCY } from '../../../tokens/domain/constants'
+import Send from './index'
+import { createSendCapabilityFake, type SendCapabilityFake } from './sendService.test-support'
 
 const fixture = registerTestRuntimeFixture()
 

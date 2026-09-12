@@ -1,13 +1,13 @@
-import { createQrCameraFake } from '../../../platform/desktop/renderer/camera.test-support'
 import { expect, it, mock, spyOn } from 'bun:test'
 
-import type { QueryResultMap } from '../../../app/contracts/operations'
-import type { OperationRecord } from '../../../platform/operations/operation'
 import { act, cleanup, render, screen, waitFor } from '../../../../test/support/componentSetup'
 import { registerTestRuntimeFixture } from '../../../../test/support/rendererClient'
+import type { QueryResultMap } from '../../../app/contracts/operations'
+import { createQrCameraFake } from '../../../platform/desktop/renderer/camera.test-support'
+import type { OperationRecord } from '../../../platform/operations/operation'
 import { walletState } from '../../../platform/state-sync/renderer/fixtures.test-support.ts'
-import { AddAccount } from './AddAccount'
 import { createAccountsCapabilityFake, type AccountsCapabilityFake } from './accountsCapability.test-support'
+import { AddAccount } from './AddAccount'
 
 const fixture = registerTestRuntimeFixture()
 let capability: AccountsCapabilityFake

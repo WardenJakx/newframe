@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 
-import { listCuratedTokenAssets } from '../../asset-data/domain/asset'
 import { createTestStore } from '../../../../test/support/createTestStore'
+import { listCuratedTokenAssets } from '../../asset-data/domain/asset'
 import { createBundledTokenService } from './tokens'
 
 function tokenProjection(store: ReturnType<typeof createTestStore>) {

@@ -1,9 +1,9 @@
 import { useShallow } from 'zustand/react/shallow'
 
 import { useWalletSelector } from '../../../../../platform/state-sync/renderer/useAppSelector'
+import type { HomeCapability } from '../homeCapability'
 import { useHomeUiStore } from '../state/HomeUiProvider'
 import { HomeMenuView } from './HomeMenuView'
-import type { HomeCapability } from '../homeCapability'
 
 export function HomeMenu({ capability }: { capability: Pick<HomeCapability, 'quit'> }) {
   const shared = useWalletSelector(

@@ -3,8 +3,8 @@ import { Dialog } from '@newframe/ui/dialog'
 import { Stack } from '@newframe/ui/stack'
 import { Text } from '@newframe/ui/text'
 
-import { useWalletSelector } from '../../state-sync/renderer/useAppSelector'
 import type { TrayRendererState } from '../../../app/renderer/tray/state'
+import { useWalletSelector } from '../../state-sync/renderer/useAppSelector'
 import type { UpdaterCapability } from './updaterCapability'
 
 const EMPTY_BADGE = {}

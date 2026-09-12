@@ -1,9 +1,9 @@
 import { Stack } from '@newframe/ui/stack'
 import { Text } from '@newframe/ui/text'
 
+import type { TokenImageCapability } from '../capabilities'
 import ChainTokenIcon from './ChainTokenIcon'
 import type { NetworkLike, NetworkMetaLike, TokenSelectorItem } from './tokenSelectorTypes'
-import type { TokenImageCapability } from '../capabilities'
 
 interface TokenOptionRowProps {
   imageCapability: TokenImageCapability

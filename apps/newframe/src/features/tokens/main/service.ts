@@ -1,8 +1,8 @@
 import type { TokenAddCommand, WalletToken } from '../../../app/contracts/operations.js'
-import { toTokenId } from '../domain/index.js'
-import type { CanonicalStore } from '../../../platform/state-store/actions.js'
 import type { OperationService } from '../../../platform/operations/service.js'
 import type { OperationOwner, OperationReference } from '../../../platform/operations/types.js'
+import type { CanonicalStore } from '../../../platform/state-store/actions.js'
+import { toTokenId } from '../domain/index.js'
 
 type TokenState = Pick<CanonicalStore, 'main' | 'removeCustomTokens' | 'upsertTokens'>
 
