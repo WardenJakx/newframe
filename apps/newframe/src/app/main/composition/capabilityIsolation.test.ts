@@ -18,7 +18,7 @@ function createAdapters(): ProductionCapabilityAdapters {
       secrets: {} as never,
       signers: {} as never
     },
-    accounts: { now: () => 42 } as never,
+    accounts: { now: () => 42, persistence: { flush: mock() } } as never,
     images: { log: { warn: mock() } } as never,
     network: {} as never,
     platform: {} as never,

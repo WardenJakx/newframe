@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'bun:test'
+import { describe, expect, it, mock } from 'bun:test'
 
 import { createTestStore } from '../../../../test/support/createTestStore'
 import { createSettingsService } from './service'
@@ -12,7 +12,7 @@ describe('settings service', () => {
         autoDiscoverTokens: false
       }
     })
-    const service = createSettingsService(store)
+    const service = createSettingsService(store, { flush: mock() })
 
     service.update({ type: 'settings.update', setting: 'autohide', value: true })
     service.update({

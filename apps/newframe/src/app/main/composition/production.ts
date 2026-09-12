@@ -291,7 +291,7 @@ export function createProductionCapabilities(
     operations: operationService
   })
   const platformService = createPlatformService({ ...adapters.platform, accounts, store })
-  const settingsService = createSettingsService(store)
+  const settingsService = createSettingsService(store, adapters.accounts.persistence)
   const addressChainUsage = createAddressChainUsageAdapter(chains, store)
   const feeNotices = createFeeNoticeRemovalAdapter(accounts)
   const accountService = createAccountService({
