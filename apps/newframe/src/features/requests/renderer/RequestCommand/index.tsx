@@ -40,7 +40,6 @@ export interface RequestCommandProps {
   notify: RequestCommandNotifier
   req: RequestCommandRequest
   shared: RequestCommandSharedState
-  signingDelay?: number
 }
 
 type RequestCommandNotification =
@@ -87,20 +86,11 @@ export function RequestCommand(props: RequestCommandProps) {
   const request = props.req as TransactionRequest | SignatureRequest
   const { notify } = props
   const [state, setCommandState] = useState({
-    allowInput: false,
     showHashDetails: false,
     txHashCopied: false
   })
   const setState = (update: Partial<typeof state>) =>
     setCommandState((current) => ({ ...current, ...update }))
-
-  useEffect(() => {
-    const timer = setTimeout(
-      () => setCommandState((current) => ({ ...current, allowInput: true })),
-      props.signingDelay || 0
-    )
-    return () => clearTimeout(timer)
-  }, [props.signingDelay])
 
   useEffect(() => {
     const gate = request.approvalGate
@@ -232,7 +222,6 @@ export function RequestCommand(props: RequestCommandProps) {
 
   function transactionActions(req: TransactionRequest) {
     const sign = () => {
-      if (!state.allowInput) return
       runWhenAppUnlocked(props.shared.appLocked, () =>
         approveRequest(props.capabilities.review, req.handlerId)
       )
@@ -262,12 +251,11 @@ export function RequestCommand(props: RequestCommandProps) {
         ) : null}
         <RequestActions
           primary={{
-            disabled: !state.allowInput || !props.shared.signerAttached,
+            disabled: !props.shared.signerAttached,
             label: props.shared.signerAttached ? 'Sign' : 'No signer attached',
             onPress: sign
           }}
           secondary={{
-            disabled: !state.allowInput,
             label: 'Decline',
             onPress: () => declineRequest(props.capabilities.review, req)
           }}
@@ -330,17 +318,15 @@ export function RequestCommand(props: RequestCommandProps) {
     return (
       <RequestActions
         primary={{
-          disabled: !state.allowInput || !props.shared.signerAttached,
+          disabled: !props.shared.signerAttached,
           label: props.shared.signerAttached ? 'Sign' : 'No signer attached',
           onPress: () => {
-            if (!state.allowInput) return
             runWhenAppUnlocked(props.shared.appLocked, () =>
               approveRequest(props.capabilities.review, req.handlerId)
             )
           }
         }}
         secondary={{
-          disabled: !state.allowInput,
           label: 'Decline',
           onPress: () => declineRequest(props.capabilities.review, req)
         }}
