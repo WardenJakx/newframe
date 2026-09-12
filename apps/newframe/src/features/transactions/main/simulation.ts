@@ -1,9 +1,8 @@
 import log from 'electron-log'
 import { addHexPrefix } from '@ethereumjs/util'
-import { getAddress, isAddress, TransactionDescription } from 'ethers'
+import { getAddress, isAddress } from 'ethers'
 
 import { NATIVE_CURRENCY } from '../../tokens/domain/constants.js'
-import { erc20Interface } from '../../../shared/domain/evm.js'
 import { persistedImageSource } from '../../asset-data/domain/image/index.js'
 import { tokenImageSource } from '../../tokens/domain/index.js'
 import { getProfileAccountIds } from '../../../app/contracts/state/main.js'
@@ -16,11 +15,36 @@ import type { CanonicalStoreReader } from '../../../platform/state-store/actions
 import type { Token } from '../../../platform/state-store/state/index.js'
 
 const TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'
+const APPROVAL_TOPIC = '0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925'
+const TRACE_TYPES = new Set([
+  'CALL',
+  'CALLCODE',
+  'DELEGATECALL',
+  'STATICCALL',
+  'CREATE',
+  'CREATE2',
+  'SELFDESTRUCT'
+])
+const VALUE_TRANSFER_TYPES = new Set(['CALL', 'CREATE', 'CREATE2', 'SELFDESTRUCT'])
+
+export interface SimulationEffectContext {
+  account: string
+  data: { chainId: string; to?: string }
+  tokenData?: TransactionRequest['tokenData']
+  recognizedActions?: TransactionRequest['recognizedActions']
+}
 
 interface TokenTransfer {
   token: string
   from: string
   to: string
+  amount: bigint
+}
+
+interface TokenApproval {
+  token: string
+  owner: string
+  spender: string
   amount: bigint
 }
 
@@ -83,11 +107,13 @@ export function createTransactionSimulationProjection(
   }
 }
 
-interface TraceCall {
+export interface TraceCall {
+  type?: string
   from?: string
   to?: string
   input?: string
   data?: string
+  output?: string
   value?: string | number | bigint
   error?: string
   revertReason?: string
@@ -99,6 +125,52 @@ interface TraceCall {
   }>
 }
 
+export function isTraceCall(value: unknown): value is TraceCall {
+  const pending: unknown[] = [value]
+  const seen = new Set<object>()
+  const bytes = (value: unknown) => typeof value === 'string' && /^0x(?:[0-9a-f]{2})*$/i.test(value)
+  while (pending.length) {
+    const item = pending.pop()
+    if (!item || typeof item !== 'object' || Array.isArray(item) || seen.has(item)) return false
+    seen.add(item)
+    const call = item as Record<string, unknown>
+    if (typeof call.type !== 'string' || !TRACE_TYPES.has(call.type.toUpperCase())) return false
+    if (typeof call.from !== 'string' || !normalizeAddress(call.from)) return false
+    if (call.to !== undefined && (typeof call.to !== 'string' || !normalizeAddress(call.to))) return false
+    if (!call.to && !call.error && !call.revertReason) return false
+    if (['input', 'data', 'output'].some((key) => call[key] !== undefined && !bytes(call[key]))) return false
+    if (['error', 'revertReason'].some((key) => call[key] !== undefined && typeof call[key] !== 'string'))
+      return false
+    if (
+      call.value !== undefined &&
+      !(typeof call.value === 'bigint' && call.value >= 0n) &&
+      !(typeof call.value === 'number' && Number.isSafeInteger(call.value) && call.value >= 0) &&
+      !(typeof call.value === 'string' && /^(?:0x[0-9a-f]+|[0-9]+)$/i.test(call.value))
+    )
+      return false
+    if (call.calls !== undefined) {
+      if (!Array.isArray(call.calls)) return false
+      for (const child of call.calls) pending.push(child)
+    }
+    if (call.logs !== undefined) {
+      if (!Array.isArray(call.logs)) return false
+      for (const event of call.logs) {
+        if (!event || typeof event !== 'object' || Array.isArray(event)) return false
+        if (typeof event.address !== 'string' || !normalizeAddress(event.address)) return false
+        if (
+          !Array.isArray(event.topics) ||
+          !event.topics.every(
+            (topic: unknown) => typeof topic === 'string' && /^0x[0-9a-f]{64}$/i.test(topic)
+          )
+        )
+          return false
+        if (!bytes(event.data)) return false
+      }
+    }
+  }
+  return true
+}
+
 interface NativeTransfer {
   from: string
   to: string
@@ -108,6 +180,7 @@ interface NativeTransfer {
 interface ParsedTrace {
   nativeTransfers: NativeTransfer[]
   tokenTransfers: TokenTransfer[]
+  tokenApprovals: TokenApproval[]
 }
 
 function safeBigInt(value?: string | number | bigint | null) {
@@ -139,7 +212,7 @@ function normalizeAddress(address?: string) {
 }
 
 function topicAddress(topic?: string) {
-  if (!topic || topic.length < 66) return ''
+  if (!topic || !/^0x0{24}[0-9a-f]{40}$/i.test(topic)) return ''
   return normalizeAddress(`0x${topic.slice(-40)}`)
 }
 
@@ -149,40 +222,8 @@ function sameAddress(a?: string, b?: string) {
   return !!left && left === right
 }
 
-function decodeErc20CallData(data: string) {
-  try {
-    return erc20Interface.parseTransaction({ data }) || undefined
-  } catch {
-    return undefined
-  }
-}
-
-function isErc20Transfer(data: TransactionDescription) {
-  return (
-    data.name === 'transfer' &&
-    data.fragment.inputs.length === 2 &&
-    (data.fragment.inputs[0].name || '').toLowerCase().endsWith('to') &&
-    data.fragment.inputs[0].type === 'address' &&
-    (data.fragment.inputs[1].name || '').toLowerCase().endsWith('value') &&
-    data.fragment.inputs[1].type === 'uint256'
-  )
-}
-
-function isErc20TransferFrom(data: TransactionDescription) {
-  return (
-    data.name === 'transferFrom' &&
-    data.fragment.inputs.length === 3 &&
-    (data.fragment.inputs[0].name || '').toLowerCase().endsWith('from') &&
-    data.fragment.inputs[0].type === 'address' &&
-    (data.fragment.inputs[1].name || '').toLowerCase().endsWith('to') &&
-    data.fragment.inputs[1].type === 'address' &&
-    (data.fragment.inputs[2].name || '').toLowerCase().endsWith('value') &&
-    data.fragment.inputs[2].type === 'uint256'
-  )
-}
-
 function walkTrace(trace: TraceCall | undefined, visit: (call: TraceCall) => void) {
-  if (!trace || typeof trace !== 'object') return
+  if (!trace || typeof trace !== 'object' || trace.error || trace.revertReason) return
 
   visit(trace)
   ;(trace.calls || []).forEach((call) => walkTrace(call, visit))
@@ -190,58 +231,37 @@ function walkTrace(trace: TraceCall | undefined, visit: (call: TraceCall) => voi
 
 function parseTrace(trace: TraceCall): ParsedTrace {
   const nativeTransfers: NativeTransfer[] = []
-  const loggedTokenTransfers: TokenTransfer[] = []
-  const calledTokenTransfers: TokenTransfer[] = []
+  const tokenTransfers: TokenTransfer[] = []
+  const tokenApprovals: TokenApproval[] = []
 
   walkTrace(trace, (call) => {
-    if (call.error || call.revertReason) return
-
     const from = normalizeAddress(call.from)
     const to = normalizeAddress(call.to)
     const value = safeBigInt(call.value)
-    if (from && to && value > 0n) nativeTransfers.push({ from, to, amount: value })
+    if (VALUE_TRANSFER_TYPES.has(call.type?.toUpperCase() || '') && from && to && value > 0n)
+      nativeTransfers.push({ from, to, amount: value })
 
     ;(call.logs || []).forEach((event) => {
       const topics = event.topics || []
-      if ((topics[0] || '').toLowerCase() !== TRANSFER_TOPIC) return
+      if (topics.length !== 3 || !/^0x[0-9a-f]{64}$/i.test(event.data || '')) return
+      const topic = topics[0]?.toLowerCase()
+      if (topic !== TRANSFER_TOPIC && topic !== APPROVAL_TOPIC) return
 
       const token = normalizeAddress(event.address)
       const from = topicAddress(topics[1])
       const to = topicAddress(topics[2])
-      const amount = safeBigInt(event.data || '0x0')
+      const amount = safeBigInt(event.data)
 
-      if (token && from && to && amount > 0n) {
-        loggedTokenTransfers.push({ token, from, to, amount })
-      }
+      if (!token || !from || !to) return
+      if (topic === TRANSFER_TOPIC && amount > 0n) tokenTransfers.push({ token, from, to, amount })
+      if (topic === APPROVAL_TOPIC) tokenApprovals.push({ token, owner: from, spender: to, amount })
     })
-
-    const token = normalizeAddress(call.to)
-    const input = call.input || call.data || ''
-    if (!token || !input || input === '0x') return
-
-    const decoded = decodeErc20CallData(input)
-    if (!decoded) return
-
-    if (isErc20Transfer(decoded)) {
-      const from = normalizeAddress(call.from)
-      const to = normalizeAddress(decoded.args[0]?.toString())
-      const amount = safeBigInt(decoded.args[1]?.toString())
-
-      if (from && to && amount > 0n) calledTokenTransfers.push({ token, from, to, amount })
-    }
-
-    if (isErc20TransferFrom(decoded)) {
-      const from = normalizeAddress(decoded.args[0]?.toString())
-      const to = normalizeAddress(decoded.args[1]?.toString())
-      const amount = safeBigInt(decoded.args[2]?.toString())
-
-      if (from && to && amount > 0n) calledTokenTransfers.push({ token, from, to, amount })
-    }
   })
 
   return {
     nativeTransfers,
-    tokenTransfers: loggedTokenTransfers.length ? loggedTokenTransfers : calledTokenTransfers
+    tokenTransfers,
+    tokenApprovals
   }
 }
 
@@ -275,7 +295,7 @@ function tokenDeltasFromTransfers(transfers: TokenTransfer[], account: string) {
 }
 
 function tokenFromRequest(
-  req: TransactionRequest,
+  req: SimulationEffectContext,
   address: string,
   chainId: number
 ): TokenMetadata | undefined {
@@ -305,7 +325,7 @@ function tokenFromRequest(
 }
 
 async function resolveTokenMetadata(
-  req: TransactionRequest,
+  req: SimulationEffectContext,
   address: string,
   chainId: number,
   projection: TransactionSimulationProjection,
@@ -382,7 +402,7 @@ function nativeEffect(delta: bigint, nativeCurrency: NativeCurrencyLike): Transa
 
 async function tokenEffects(
   deltas: Map<string, bigint>,
-  req: TransactionRequest,
+  req: SimulationEffectContext,
   chainId: number,
   projection: TransactionSimulationProjection,
   provider?: Erc20ProviderPort,
@@ -414,6 +434,41 @@ async function tokenEffects(
   )
 
   return effects
+}
+
+async function approvalEffects(
+  approvals: TokenApproval[],
+  req: SimulationEffectContext,
+  chainId: number,
+  projection: TransactionSimulationProjection,
+  provider: Erc20ProviderPort | undefined,
+  metadataByAddress: Map<string, Promise<TokenMetadata>>,
+  account: string
+): Promise<TransactionEffect[]> {
+  return Promise.all(
+    approvals
+      .filter((approval) => sameAddress(approval.owner, account))
+      .map(async (approval, index) => {
+        const metadataPromise =
+          metadataByAddress.get(approval.token) ||
+          resolveTokenMetadata(req, approval.token, chainId, projection, provider)
+        metadataByAddress.set(approval.token, metadataPromise)
+        const metadata = await metadataPromise
+        return {
+          id: `sim-allowance-${approval.token}-${approval.spender}-${index}`,
+          kind: 'allowance',
+          direction: 'neutral',
+          label: 'Observed approval',
+          amount: toHexQuantity(approval.amount),
+          symbol: metadata.symbol,
+          assetAddress: approval.token,
+          spenderAddress: approval.spender,
+          detail: `Approval event for spender ${approval.spender}`,
+          ...(Number.isInteger(metadata.decimals) ? { decimals: metadata.decimals } : {}),
+          ...(metadata.logoURI ? { logoURI: metadata.logoURI } : {})
+        }
+      })
+  )
 }
 
 function createTraceCall(req: TransactionRequest) {
@@ -455,7 +510,8 @@ async function traceCall(
   return new Promise<TraceCall>((resolve, reject) => {
     provider.send(payload, (response) => {
       if (response?.error) return reject(response.error)
-      resolve(response?.result as TraceCall)
+      if (!isTraceCall(response?.result)) return reject(new Error('RPC returned an invalid call trace'))
+      resolve(response.result)
     })
   })
 }
@@ -478,7 +534,7 @@ function simulationUnavailable(error: unknown): TransactionSimulation {
 
 export async function effectsFromTrace(
   trace: TraceCall,
-  req: TransactionRequest,
+  req: SimulationEffectContext,
   nativeCurrency: NativeCurrencyLike,
   projection: TransactionSimulationProjection,
   provider?: Erc20ProviderPort
@@ -488,11 +544,11 @@ export async function effectsFromTrace(
 
 async function effectsFromParsedTrace(
   trace: ParsedTrace,
-  req: TransactionRequest,
+  req: SimulationEffectContext,
   nativeCurrency: NativeCurrencyLike,
   projection: TransactionSimulationProjection,
   provider?: Erc20ProviderPort,
-  metadataByAddress?: Map<string, Promise<TokenMetadata>>,
+  metadataByAddress = new Map<string, Promise<TokenMetadata>>(),
   account = req.account
 ): Promise<TransactionEffect[]> {
   const chainId = parseInt(req.data.chainId, 16)
@@ -500,7 +556,16 @@ async function effectsFromParsedTrace(
   const tokenDeltas = tokenDeltasFromTransfers(trace.tokenTransfers, account)
   const effects = [
     nativeEffect(nativeDelta, nativeCurrency),
-    ...(await tokenEffects(tokenDeltas, req, chainId, projection, provider, metadataByAddress))
+    ...(await tokenEffects(tokenDeltas, req, chainId, projection, provider, metadataByAddress)),
+    ...(await approvalEffects(
+      trace.tokenApprovals,
+      req,
+      chainId,
+      projection,
+      provider,
+      metadataByAddress,
+      account
+    ))
   ].filter(Boolean) as TransactionEffect[]
 
   return effects

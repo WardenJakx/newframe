@@ -73,3 +73,44 @@ export type SafeProposal = z.infer<typeof safeProposalSchema>
 export type SafeDeployment = z.infer<typeof safeDeploymentSchema>
 
 export const SafeDeploymentSchema = safeDeploymentSchema
+
+const simulationEffectSchema = z.strictObject({
+  id: z.string(),
+  kind: z.enum(['native', 'erc20', 'allowance']),
+  direction: z.enum(['out', 'in', 'neutral']),
+  label: z.string(),
+  amount: z.string().optional(),
+  decimals: z.number().int().nonnegative().optional(),
+  symbol: z.string(),
+  detail: z.string().optional(),
+  assetAddress: z.string().optional(),
+  spenderAddress: z.string().optional(),
+  logoURI: z.string().optional()
+})
+const simulationContext = {
+  assumptions: z.array(z.string()),
+  currentNonce: safeDecimalSchema,
+  blockNumber: safeDecimalSchema
+}
+export const SafeProposalSimulationSchema = z.discriminatedUnion('status', [
+  z.strictObject({
+    status: z.literal('success'),
+    effects: z.array(simulationEffectSchema),
+    ...simulationContext
+  }),
+  z.strictObject({
+    status: z.literal('error'),
+    error: z.string(),
+    failure: z.enum(['revert', 'inner']),
+    effects: z.array(simulationEffectSchema),
+    ...simulationContext
+  }),
+  z.strictObject({
+    status: z.literal('unavailable'),
+    error: z.string(),
+    assumptions: simulationContext.assumptions.optional(),
+    currentNonce: simulationContext.currentNonce.optional(),
+    blockNumber: simulationContext.blockNumber.optional()
+  })
+])
+export type SafeProposalSimulation = z.infer<typeof SafeProposalSimulationSchema>

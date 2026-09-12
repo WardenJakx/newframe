@@ -56,6 +56,7 @@ export interface TransactionEffect {
   symbol: string
   detail?: string
   assetAddress?: string
+  spenderAddress?: string
   logoURI?: string
 }
 
@@ -261,6 +262,7 @@ function getDeterministicTransactionEffects(req: any, nativeSymbol = 'ETH'): Tra
         ...(action.data?.contract || req?.data?.to
           ? { assetAddress: action.data?.contract?.address || action.data?.contract || req.data.to }
           : {}),
+        ...(spender?.address ? { spenderAddress: spender.address } : {}),
         ...(action.data?.logoURI ? { logoURI: action.data.logoURI } : {})
       })
     }
@@ -281,6 +283,7 @@ function getDeterministicTransactionEffects(req: any, nativeSymbol = 'ETH'): Tra
       symbol: token?.symbol || 'Token',
       detail: `${revoke ? 'For' : 'For spender'} ${shortAddress(spender)}`,
       assetAddress: req?.data?.to,
+      ...(spender ? { spenderAddress: spender } : {}),
       ...(Number.isInteger(token?.decimals) ? { decimals: token.decimals } : {})
     })
   }
@@ -336,7 +339,19 @@ export function getTransactionEffects(req: any, nativeSymbol = 'ETH'): Transacti
       ...(!simulated.logoURI && deterministic.logoURI ? { logoURI: deterministic.logoURI } : {})
     }
   })
-  const deterministicNeutralEffects = deterministicEffects.filter((effect) => effect.direction === 'neutral')
+  const deterministicNeutralEffects = deterministicEffects.filter(
+    (effect) =>
+      effect.direction === 'neutral' &&
+      !simulatedEffects.some(
+        (simulated: TransactionEffect) =>
+          effect.kind === 'allowance' &&
+          simulated.kind === 'allowance' &&
+          !!effect.assetAddress &&
+          !!effect.spenderAddress &&
+          effect.assetAddress.toLowerCase() === simulated.assetAddress?.toLowerCase() &&
+          effect.spenderAddress.toLowerCase() === simulated.spenderAddress?.toLowerCase()
+      )
+  )
 
   return [...simulatedWithMetadata, ...deterministicNeutralEffects]
 }

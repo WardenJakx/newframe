@@ -37,6 +37,7 @@
     "test:all": "bun run test:unit",
     "test:audit": "bun ./scripts/test-audit.ts --check",
     "test:integration": "bun test --isolate --preload ./test/support/electron.preload.ts ./test/integration/operationFlow.test.ts ./test/integration/safeObservation.test.ts",
+    "test:integration:safe-simulation": "forge build --root ../../newframe-contracts src/MockUSDC.sol && bun test --isolate --preload ./test/support/electron.preload.ts ./test/integration/safeSimulation.test.ts",
     "test:coverage": "bun ./scripts/collect-critical-coverage.ts",
     "test:coverage:report": "bun ./scripts/check-critical-coverage.ts --report-only ./coverage/critical-parts",
     "test:usbAdapters": "bun test --isolate --preload ./test/support/electron.preload.ts ./src/platform/signing/signers/ledger/adapter.test.ts"

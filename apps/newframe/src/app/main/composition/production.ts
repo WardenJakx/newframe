@@ -1,5 +1,7 @@
 import { createSafeService, type SafeService } from '../../../features/accounts/main/safe.js'
 import { createSafeClient, safeServiceNetworks } from '../../../platform/safe/client.js'
+import { createSafeSimulationRpc } from '../../../platform/safe/simulation.js'
+import { simulateSafeProposal } from '../../../features/accounts/main/safeSimulation.js'
 import ProviderRequestPolicy from '../../../features/portfolio/main/requestPolicy.js'
 import { Accounts } from '../../../features/accounts/main/index.js'
 import createExternalDataScanner from '../../../features/asset-data/main/externalData/index.js'
@@ -287,36 +289,32 @@ export function createProductionCapabilities(
   })
   const networkService = createNetworkService({ ...adapters.network, store })
   const safeRequests = new ProviderRequestPolicy(fetch, { maxRetries: 0, minIntervalMs: 500 })
+  const safeRpc = createSafeSimulationRpc(chains)
+  const safeClient = createSafeClient({
+    call: safeRpc.call,
+    decode: reveal.decode,
+    request: (url, init) => safeRequests.request(url, init),
+    networks: safeServiceNetworks({
+      development: process.env.FRAME_PROFILE === 'dev',
+      url: process.env.NEWFRAME_SAFE_SERVICE_URL,
+      chainId: process.env.NEWFRAME_SAFE_CHAIN_ID
+    })
+  })
   const safeService = createSafeService({
     accounts,
     store,
     operations: operationService,
-    client: createSafeClient({
-      call: (chainId, address, data) =>
-        new Promise<string>((resolve, reject) => {
-          chains.send(
-            {
-              id: crypto.randomUUID(),
-              jsonrpc: '2.0',
-              method: 'eth_call',
-              params: [{ to: address, data }, 'latest']
-            },
-            (response) => {
-              if (response.error) reject(new Error(response.error.message))
-              else if (typeof response.result === 'string') resolve(response.result)
-              else reject(new Error('Invalid Safe contract response'))
-            },
-            { type: 'ethereum', id: chainId }
-          )
-        }),
-      decode: reveal.decode,
-      request: (url, init) => safeRequests.request(url, init),
-      networks: safeServiceNetworks({
-        development: process.env.FRAME_PROFILE === 'dev',
-        url: process.env.NEWFRAME_SAFE_SERVICE_URL,
-        chainId: process.env.NEWFRAME_SAFE_CHAIN_ID
-      })
-    })
+    client: safeClient,
+    simulate: (input, signal) =>
+      simulateSafeProposal(
+        input,
+        {
+          rpc: safeRpc,
+          client: safeClient,
+          projection: createTransactionSimulationProjection(store)
+        },
+        signal
+      )
   })
   const tokenService = createTokenService({
     lookup: createTokenLookupAdapter(provider),
@@ -396,6 +394,7 @@ export function createProductionCapabilities(
     infrastructureCallbacks: {
       dispose() {
         safeService.dispose()
+        safeRpc.dispose()
         accountSelection.dispose()
         addressChainUsage.dispose()
         adapters.accountOnboarding.dispose()

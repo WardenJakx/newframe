@@ -7,11 +7,13 @@ import { TrayNotificationProvider, useTrayNotification } from '../notification'
 import Notification from './index'
 import { createRequestRendererCapabilities as createRequestPorts } from '../../../../features/requests/renderer/requestCapabilities'
 import { createHomeCapability } from '../Home/homeCapability'
+import type { NewframeHost } from '../../../../platform/ipc/contract/ipc'
 
 const fixture = registerTestRuntimeFixture()
-const lazyCommandHost = {
+const lazyCommandHost: Pick<NewframeHost, 'executeCommand' | 'executeQuery'> = {
   executeCommand: (command: Parameters<typeof fixture.client.executeCommand>[0]) =>
-    fixture.client.executeCommand(command)
+    fixture.client.executeCommand(command),
+  executeQuery: (query) => fixture.client.executeQuery(query)
 }
 const requestPorts = createRequestPorts(lazyCommandHost)
 const notificationCapabilities = {

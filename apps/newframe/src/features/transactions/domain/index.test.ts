@@ -229,7 +229,8 @@ describe('#getTransactionEffects', () => {
         amount: '0x0',
         decimals: 18,
         symbol: 'DAI',
-        detail: 'For spender.eth'
+        detail: 'For spender.eth',
+        spenderAddress: '0x0000000000000000000000000000000000001337'
       }
     ])
   })
@@ -261,6 +262,7 @@ describe('#getTransactionEffects', () => {
         decimals: 6,
         symbol: 'USDC',
         detail: 'For spender 0x000000...001337',
+        spenderAddress: '0x0000000000000000000000000000000000001337',
         assetAddress: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'
       }
     ])
@@ -351,8 +353,46 @@ describe('#getTransactionEffects', () => {
         amount: '0x17d7840',
         decimals: 6,
         symbol: 'USDC',
-        detail: 'For spender 0x000000...001337'
+        detail: 'For spender 0x000000...001337',
+        spenderAddress: '0x0000000000000000000000000000000000001337'
       }
+    ])
+  })
+
+  it('replaces only matching deterministic allowances with observed approvals, retaining repeated events and other spenders', () => {
+    const token = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'
+    const spender = '0x0000000000000000000000000000000000001337'
+    const otherSpender = '0x0000000000000000000000000000000000002222'
+    const observed = {
+      id: 'observed-1',
+      kind: 'allowance',
+      direction: 'neutral',
+      label: 'Observed approval',
+      assetAddress: token.toLowerCase(),
+      spenderAddress: spender,
+      amount: '0x0',
+      symbol: 'USDC'
+    }
+    const effects = getTransactionEffects({
+      data: { to: token },
+      simulation: {
+        status: 'success',
+        effects: [observed, { ...observed, id: 'observed-2', amount: '0x5' }]
+      },
+      recognizedActions: [spender, otherSpender].map((address) => ({
+        id: 'erc20:approve',
+        data: { contract: token, spender: { address }, amount: '0x5', symbol: 'USDC' }
+      })),
+      decodedData: {
+        method: 'approve',
+        signature: 'approve(address,uint256)',
+        args: [{ value: spender }, { value: '5' }]
+      }
+    })
+    expect(effects).toEqual([
+      observed,
+      { ...observed, id: 'observed-2', amount: '0x5' },
+      expect.objectContaining({ id: 'erc20-approval-1', spenderAddress: otherSpender })
     ])
   })
 
