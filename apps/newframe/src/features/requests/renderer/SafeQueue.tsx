@@ -4,7 +4,7 @@ import { useShallow } from 'zustand/react/shallow'
 import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector'
 import { AddressIdentity } from '../../../shared/renderer/ui/AddressIdentity'
 import { ChainIcon } from '../../../shared/renderer/ui/ChainIcon'
-import type { SafeProposalSimulation } from '../../accounts/domain/safe'
+import type { SafeOwnerAccount, SafeProposalSimulation } from '../../accounts/domain/safe'
 import { persistedImageSource } from '../../asset-data/domain/image'
 import type { RequestRendererCapabilities } from './requestCapabilities'
 import type { SafePreview } from './SafeProposalDetailsView'
@@ -16,15 +16,16 @@ export function useSafeQueue({
   accountId: string
   capabilities: Pick<RequestRendererCapabilities, 'safe' | 'external'>
 }) {
-  const { safe, networks, metadata, accounts, currentProfile } = useWalletSelector(
+  const { account, networks, metadata, accounts, currentProfile } = useWalletSelector(
     useShallow((state) => ({
-      safe: state.accounts[accountId]?.safe,
+      account: state.accounts[accountId],
       accounts: state.accounts,
       currentProfile: state.currentProfile,
       networks: state.networks.ethereum,
       metadata: state.networksMeta.ethereum
     }))
   )
+  const safe = account?.profileId === currentProfile ? account.safe : undefined
   const hasSafe = !!safe && Object.keys(safe).length > 0
   const [selection, setSelection] = useState<{ chainId: number; hash: string; lifetime: number } | null>(null)
   const selectionLifetime = useRef(0)
@@ -56,6 +57,46 @@ export function useSafeQueue({
   if (selection && !proposal) setSelection(null)
   const chainId = deployment?.chainId
   const safeTxHash = proposal?.safeTxHash
+  const owners = (deployment ? (account?.safeOwners?.[String(deployment.chainId)] ?? []) : []).filter(
+    (owner) => {
+      const ownerAccount = accounts[owner.accountId]
+      return ownerAccount?.profileId === currentProfile && ownerAccount.created === owner.created
+    }
+  )
+  const ownerScope =
+    deployment && proposal
+      ? JSON.stringify([
+          accountId,
+          account.created,
+          currentProfile,
+          selection?.lifetime,
+          chainId,
+          deployment.address
+        ])
+      : ''
+  const [ownerSelection, setOwnerSelection] = useState<{
+    scope: string
+    account: Pick<SafeOwnerAccount, 'accountId' | 'created'> | null
+  }>({ scope: '', account: null })
+  const selectedOwner =
+    ownerSelection.scope === ownerScope
+      ? owners.find(
+          (owner) =>
+            owner.accountId === ownerSelection.account?.accountId &&
+            owner.created === ownerSelection.account.created &&
+            owner.status !== 'watch-only'
+        )
+      : undefined
+  if (ownerSelection.scope !== ownerScope) {
+    const attached = owners.filter((owner) => owner.signerAttached)
+    setOwnerSelection({
+      scope: ownerScope,
+      account:
+        attached.length === 1 ? { accountId: attached[0].accountId, created: attached[0].created } : null
+    })
+  } else if (ownerSelection.account && !selectedOwner) {
+    setOwnerSelection({ scope: ownerScope, account: null })
+  }
   // Projections may recreate objects without changing the transaction being reviewed.
   const scope =
     deployment && proposal
@@ -144,6 +185,16 @@ export function useSafeQueue({
             renderAddress,
             deployment,
             proposal,
+            owners,
+            selectedOwnerId: selectedOwner?.accountId,
+            onSelectOwner: (accountId: string) => {
+              const owner = owners.find((owner) => owner.accountId === accountId && owner.signerAttached)
+              if (owner)
+                setOwnerSelection({
+                  scope: ownerScope,
+                  account: { accountId: owner.accountId, created: owner.created }
+                })
+            },
             simulation: preview.scope === scope ? preview.result : { status: 'loading' as const },
             capabilities,
             networkName: network?.name || `Chain ${deployment.chainId}`,

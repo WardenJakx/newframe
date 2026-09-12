@@ -1,4 +1,5 @@
 import { getProfileAccountIds } from '../../../app/contracts/state/main.js'
+import { deriveSafeOwners } from '../../../features/accounts/main/safeOwners.js'
 import { createBalanceSummarySelector } from '../../../features/asset-data/domain/balance/index.js'
 import { OperationRecordSchema, type OperationCollection } from '../../operations/operation.js'
 import type { CanonicalState } from '../../state-store/state/index.js'
@@ -337,6 +338,8 @@ function projectWalletProfiles(main: CanonicalMain): WalletRendererState['profil
 
 let previousWalletAccountsInput: CanonicalMain['accounts'] | undefined
 let previousWalletAccountOrderInput: CanonicalMain['accountOrder'] | undefined
+let previousWalletSignersInput: CanonicalMain['signers'] | undefined
+let previousWalletAppLockInput: CanonicalMain['appLock'] | undefined
 let previousWalletCurrentProfile = ''
 let previousWalletAccounts: WalletRendererState['accounts'] | undefined
 let previousWalletAccountOrder: WalletRendererState['accountOrder'] | undefined
@@ -345,6 +348,8 @@ function projectWalletAccounts(main: CanonicalMain) {
   if (
     main.accounts === previousWalletAccountsInput &&
     main.accountOrder === previousWalletAccountOrderInput &&
+    main.signers === previousWalletSignersInput &&
+    main.appLock === previousWalletAppLockInput &&
     main.currentProfile === previousWalletCurrentProfile &&
     previousWalletAccounts &&
     previousWalletAccountOrder
@@ -355,10 +360,18 @@ function projectWalletAccounts(main: CanonicalMain) {
   const accountOrder = getProfileAccountIds(main, main.currentProfile)
   previousWalletAccountsInput = main.accounts
   previousWalletAccountOrderInput = main.accountOrder
+  previousWalletSignersInput = main.signers
+  previousWalletAppLockInput = main.appLock
   previousWalletCurrentProfile = main.currentProfile
   previousWalletAccountOrder = accountOrder
+  const profileAccounts = accountOrder.map((id) => main.accounts[id])
   previousWalletAccounts = Object.fromEntries(
-    accountOrder.map((id) => [id, main.accounts[id]])
+    profileAccounts.map((account) => [
+      account.id,
+      account.safe === undefined
+        ? account
+        : { ...account, safeOwners: deriveSafeOwners(account, profileAccounts, main.signers, main.appLock) }
+    ])
   ) as WalletRendererState['accounts']
   return { accounts: previousWalletAccounts!, accountOrder }
 }

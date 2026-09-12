@@ -74,6 +74,18 @@ export type SafeDeployment = z.infer<typeof safeDeploymentSchema>
 
 export const SafeDeploymentSchema = safeDeploymentSchema
 
+export const SafeOwnerAccountSchema = z.strictObject({
+  accountId: z.string(),
+  name: z.string(),
+  address: z.string(),
+  created: z.string(),
+  signerType: z.string(),
+  signerAttached: z.boolean(),
+  signerStatus: z.string(),
+  status: z.enum(['ready', 'unavailable', 'watch-only'])
+})
+export type SafeOwnerAccount = z.infer<typeof SafeOwnerAccountSchema>
+
 const simulationEffectSchema = z.strictObject({
   id: z.string(),
   kind: z.enum(['native', 'erc20', 'allowance']),

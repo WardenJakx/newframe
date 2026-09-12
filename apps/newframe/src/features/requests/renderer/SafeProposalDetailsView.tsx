@@ -1,13 +1,27 @@
+import { Selection } from '@newframe/ui/selection'
 import { Stack } from '@newframe/ui/stack'
 import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
 import { formatUnits } from 'ethers'
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 
 import { getCalldataDigest } from '../../../shared/domain/calldata'
-import type { SafeDeployment, SafeProposal, SafeProposalSimulation } from '../../accounts/domain/safe'
+import { AddressIdentity, shortAddress } from '../../../shared/renderer/ui/AddressIdentity'
+import {
+  signerIsReady,
+  signerStatusText,
+  signerTypeLabel
+} from '../../../shared/renderer/ui/signerPresentation'
+import type {
+  SafeDeployment,
+  SafeOwnerAccount,
+  SafeProposal,
+  SafeProposalSimulation
+} from '../../accounts/domain/safe'
 import TransactionInformation from './Account/Requests/TransactionRequest/TransactionInformation'
 import type { RequestRendererCapabilities } from './requestCapabilities'
+import { RequestActions } from './ui/RequestActions'
+import { SigningAccount } from './ui/SigningAccount'
 
 export type SafePreview = SafeProposalSimulation | { status: 'loading' }
 
@@ -15,6 +29,9 @@ export function SafeProposalDetailsView({
   renderAddress,
   deployment,
   proposal,
+  owners = [],
+  selectedOwnerId,
+  onSelectOwner,
   simulation,
   networkName,
   networkIcon,
@@ -25,6 +42,9 @@ export function SafeProposalDetailsView({
   renderAddress?: (address: string) => ReactNode
   deployment: SafeDeployment
   proposal: SafeProposal
+  owners?: SafeOwnerAccount[]
+  selectedOwnerId?: string
+  onSelectOwner?: (accountId: string) => void
   simulation: SafePreview
   networkName: string
   networkIcon?: string
@@ -32,6 +52,15 @@ export function SafeProposalDetailsView({
   decimals?: number
   capabilities: Pick<RequestRendererCapabilities, 'external'>
 }) {
+  const [ownerMenuOpen, setOwnerMenuOpen] = useState(false)
+  const selectedOwner = owners.find((owner) => owner.accountId === selectedOwnerId)
+  const hasAttachedSigner = owners.some((owner) => owner.signerAttached)
+  const ownerDescription = (owner: SafeOwnerAccount) => {
+    const type = signerTypeLabel(owner.signerType)
+    return signerIsReady(owner.signerStatus)
+      ? type
+      : `${type} · ${signerStatusText({ status: owner.signerStatus, type })}`
+  }
   const currentNonce =
     simulation.status !== 'loading' && simulation.currentNonce !== undefined
       ? simulation.currentNonce
@@ -157,7 +186,61 @@ export function SafeProposalDetailsView({
         details={details}
         wrapDetailValues
         calldata={{ digest: getCalldataDigest(proposal.data), data: proposal.data }}
-      />
+      >
+        <Stack gap='xsmall'>
+          <SigningAccount>
+            <Selection
+              label='Signing account'
+              disabled={!hasAttachedSigner}
+              menuPlacement='above'
+              menuAlign='end'
+              menuWidth='wide'
+              triggerSize='small'
+              open={ownerMenuOpen && hasAttachedSigner}
+              onOpenChange={setOwnerMenuOpen}
+              selectedId={selectedOwnerId}
+              onSelect={(id) => onSelectOwner?.(id)}
+              placeholder={hasAttachedSigner && !selectedOwner}
+              trigger={
+                hasAttachedSigner && selectedOwner ? (
+                  <AddressIdentity
+                    address={selectedOwner.address}
+                    nickname={selectedOwner.name || shortAddress(selectedOwner.address)}
+                    showCopy={false}
+                    showFullAddress
+                  />
+                ) : (
+                  <Text variant='caption' truncate={hasAttachedSigner}>
+                    {hasAttachedSigner ? 'Choose an account' : 'No attached signer for the Safe'}
+                  </Text>
+                )
+              }
+              items={owners.map((owner) => ({
+                id: owner.accountId,
+                disabled: !owner.signerAttached,
+                content: (
+                  <Stack gap='none' grow>
+                    {owner.name ? <Text truncate>{owner.name}</Text> : null}
+                    <AddressIdentity
+                      address={owner.address}
+                      nickname={shortAddress(owner.address)}
+                      showCopy={false}
+                      showFullAddress
+                    />
+                    <Text variant='caption' tone='secondary'>
+                      {ownerDescription(owner)}
+                    </Text>
+                  </Stack>
+                )
+              }))}
+            />
+          </SigningAccount>
+          <RequestActions
+            primary={{ label: 'Sign', disabled: true, onPress: () => {} }}
+            secondary={{ label: 'Decline', disabled: true, onPress: () => {} }}
+          />
+        </Stack>
+      </TransactionInformation>
     </section>
   )
 }

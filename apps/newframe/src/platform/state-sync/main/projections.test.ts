@@ -1,7 +1,9 @@
 import { expect, it } from 'bun:test'
 
 import { DEFAULT_PROFILE_ID } from '../../../app/contracts/state/main'
+import type { SafeDeployment } from '../../../features/accounts/domain/safe'
 import createInitialState from '../../state-store/state'
+import { projectionStateSchemas } from '../contract/projections'
 import { projectSideTrayState, projectWalletState } from './projections'
 
 const operation = (id: string) => ({
@@ -22,6 +24,205 @@ const account = (id: string, profileId: string) => ({
   signer: '',
   requests: {},
   created: 'test:1'
+})
+
+const safeAddress = `0x${'1'.repeat(40)}`
+const ownerAddress = `0x${'ab'.repeat(20)}`
+const otherOwnerAddress = `0x${'2'.repeat(40)}`
+const safeDeployment = (chainId: number, owners: string[]): SafeDeployment => ({
+  chainId,
+  address: safeAddress,
+  configuration: { owners, threshold: 1, nonce: '0' },
+  refreshedAt: 1,
+  error: 'Refresh failed'
+})
+const signer = (id: string, type: string, status = 'ok') => ({
+  id,
+  name: id,
+  model: type,
+  type,
+  status,
+  addresses: [ownerAddress],
+  appVersion: { major: 1, minor: 0, patch: 0 }
+})
+
+it('projects same-profile owner accounts per deployment from retained snapshots without changing identity', () => {
+  const state = createInitialState()
+  const chain10Owner = `0x${'3'.repeat(40)}`
+  state.main.appLock = { locked: false, vaultExists: true }
+  state.main.currentAccount = safeAddress
+  state.main.accounts = {
+    [safeAddress]: {
+      ...account(safeAddress, DEFAULT_PROFILE_ID),
+      signer: 'safe-watch',
+      safe: {
+        '1': safeDeployment(1, [ownerAddress, otherOwnerAddress, safeAddress]),
+        '10': safeDeployment(10, [chain10Owner])
+      }
+    },
+    [ownerAddress]: {
+      ...account(ownerAddress, DEFAULT_PROFILE_ID),
+      address: `0x${'AB'.repeat(20)}`,
+      name: 'First owner',
+      signer: 'hot'
+    },
+    [otherOwnerAddress]: { ...account(otherOwnerAddress, DEFAULT_PROFILE_ID), signer: 'hardware' },
+    [chain10Owner]: account(chain10Owner, DEFAULT_PROFILE_ID),
+    foreign: { ...account('foreign', 'other-profile'), address: ownerAddress, signer: 'hot' },
+    nested: {
+      ...account('nested', DEFAULT_PROFILE_ID),
+      address: ownerAddress,
+      signer: 'hot',
+      safe: { '1': safeDeployment(1, [otherOwnerAddress]) }
+    },
+    emptySafe: { ...account('emptySafe', DEFAULT_PROFILE_ID), address: ownerAddress, signer: 'hot', safe: {} }
+  }
+  state.main.accountOrder = [safeAddress, ownerAddress]
+  state.main.signers = {
+    hot: signer('hot', 'seed'),
+    hardware: { ...signer('hardware', 'ledger'), addresses: [otherOwnerAddress] }
+  }
+  const wallet = projectWalletState(state)
+  const owners = wallet.accounts[safeAddress].safeOwners
+  expect(owners?.['1'].map((owner) => [owner.accountId, owner.status])).toEqual([
+    [ownerAddress, 'ready'],
+    [otherOwnerAddress, 'ready']
+  ])
+  expect(owners?.['10'].map((owner) => [owner.accountId, owner.status])).toEqual([
+    [chain10Owner, 'watch-only']
+  ])
+  expect(owners?.['1'][0]).toMatchObject({
+    name: 'First owner',
+    created: 'test:1',
+    signerType: 'seed',
+    signerAttached: true
+  })
+  expect(owners?.['10'][0].signerAttached).toBe(false)
+  expect(wallet.accounts[safeAddress].safe?.['1'].error).toBe('Refresh failed')
+  expect(wallet.currentAccount).toBe(safeAddress)
+  expect(wallet.accounts[safeAddress].signer).toBe('safe-watch')
+  expect(wallet.accounts[ownerAddress] as unknown).toBe(state.main.accounts[ownerAddress])
+  expect(state.main.accounts[safeAddress]).not.toHaveProperty('safeOwners')
+  expect(
+    projectionStateSchemas['wallet-ui'].parse(JSON.parse(JSON.stringify(wallet))).accounts[safeAddress]
+      .safeOwners
+  ).toEqual(owners)
+})
+
+it('distinguishes ready signers, unavailable signing accounts, and watch-only owners', () => {
+  const cases = [
+    { id: 'seed', type: 'seed', expected: 'ready', signerAttached: true },
+    { id: 'ring', type: 'ring', expected: 'ready', signerAttached: true },
+    { id: 'ledger', type: 'Ledger', expected: 'ready', signerAttached: true },
+    { id: 'trezor', type: 'trezor', expected: 'ready', signerAttached: true },
+    { id: 'lattice', type: 'lattice', expected: 'ready', signerAttached: true },
+    { id: 'airgap', type: 'airgap', expected: 'ready', signerAttached: true },
+    { id: 'locked', type: 'seed', status: 'locked', expected: 'unavailable', signerAttached: true },
+    {
+      id: 'disconnected',
+      type: 'ledger',
+      status: 'disconnected',
+      expected: 'unavailable',
+      signerAttached: true
+    },
+    { id: 'missing', type: 'seed', attached: 'missing', expected: 'unavailable', signerAttached: false },
+    { id: 'historical', type: 'Ledger', attached: '', expected: 'unavailable', signerAttached: false },
+    { id: 'unknown', type: '', attached: '', expected: 'watch-only', signerAttached: false },
+    { id: 'watch', type: 'Address', expected: 'watch-only', signerAttached: false }
+  ]
+  const state = createInitialState()
+  state.main.appLock = { locked: false, vaultExists: true }
+  state.main.accounts = {
+    [safeAddress]: {
+      ...account(safeAddress, DEFAULT_PROFILE_ID),
+      safe: { '1': safeDeployment(1, [ownerAddress]) }
+    },
+    ...Object.fromEntries(
+      cases.map((item) => [
+        item.id,
+        {
+          ...account(item.id, DEFAULT_PROFILE_ID),
+          address: ownerAddress,
+          lastSignerType: item.type,
+          signer: item.attached ?? item.id
+        }
+      ])
+    )
+  }
+  state.main.signers = Object.fromEntries(
+    cases
+      .filter((item) => item.attached === undefined)
+      .map((item) => [item.id, signer(item.id, item.type, item.status)])
+  )
+  const owners = projectWalletState(state).accounts[safeAddress].safeOwners!['1']
+  expect(owners.map((owner) => [owner.accountId, owner.status, owner.signerAttached])).toEqual(
+    cases.map((item) => [item.id, item.expected, item.signerAttached])
+  )
+  expect(owners.find((owner) => owner.accountId === 'locked')?.signerStatus).toBe('locked')
+  expect(owners.find((owner) => owner.accountId === 'historical')?.signerType).toBe('ledger')
+  expect(owners.find((owner) => owner.accountId === 'missing')?.signerStatus).toBe('Signer unavailable')
+})
+
+it('recomputes owner readiness for signer and app-lock updates and removes invalid associations', () => {
+  const state = createInitialState()
+  state.main.appLock = { locked: false, vaultExists: true }
+  state.main.accounts = {
+    [safeAddress]: {
+      ...account(safeAddress, DEFAULT_PROFILE_ID),
+      safe: { '1': safeDeployment(1, [ownerAddress]) }
+    },
+    owner: {
+      ...account('owner', DEFAULT_PROFILE_ID),
+      address: ownerAddress,
+      signer: 'hot',
+      lastSignerType: 'seed'
+    }
+  }
+  state.main.signers = { hot: signer('hot', 'seed') }
+  const first = projectWalletState(state)
+  expect(projectWalletState(state).accounts).toBe(first.accounts)
+  state.main.appLock = { ...state.main.appLock, locked: true }
+  const locked = projectWalletState(state)
+  expect(locked.accounts[safeAddress].safeOwners?.['1'][0]).toMatchObject({
+    status: 'unavailable',
+    signerAttached: true,
+    signerStatus: 'Wallet locked'
+  })
+  expect(locked.accounts.owner).toBe(first.accounts.owner)
+  state.main.appLock = { ...state.main.appLock, locked: false }
+  expect(projectWalletState(state).accounts[safeAddress].safeOwners?.['1'][0].status).toBe('ready')
+  state.main.signers = { hot: signer('hot', 'seed', 'locked') }
+  expect(projectWalletState(state).accounts[safeAddress].safeOwners?.['1'][0]).toMatchObject({
+    status: 'unavailable',
+    signerAttached: true,
+    signerStatus: 'locked'
+  })
+  state.main.signers = {}
+  expect(projectWalletState(state).accounts[safeAddress].safeOwners?.['1'][0]).toMatchObject({
+    status: 'unavailable',
+    signerAttached: false,
+    signerStatus: 'Signer unavailable'
+  })
+  state.main.accounts = {
+    ...state.main.accounts,
+    owner: { ...state.main.accounts.owner, profileId: 'foreign' }
+  }
+  expect(projectWalletState(state).accounts[safeAddress].safeOwners?.['1']).toEqual([])
+  state.main.accounts = {
+    ...state.main.accounts,
+    owner: { ...state.main.accounts.owner, profileId: DEFAULT_PROFILE_ID }
+  }
+  expect(projectWalletState(state).accounts[safeAddress].safeOwners?.['1']).toHaveLength(1)
+  state.main.accounts = {
+    ...state.main.accounts,
+    [safeAddress]: {
+      ...state.main.accounts[safeAddress],
+      safe: { '1': safeDeployment(1, [otherOwnerAddress]) }
+    }
+  }
+  expect(projectWalletState(state).accounts[safeAddress].safeOwners?.['1']).toEqual([])
+  state.main.currentProfile = 'foreign'
+  expect(projectWalletState(state).accounts).not.toHaveProperty(safeAddress)
 })
 
 it('projects safe principal-owned operations and notification presentation', () => {

@@ -7,6 +7,7 @@ import {
   OrderRecordSchema,
   RuntimeSchema
 } from '../../../app/contracts/state/main.js'
+import { SafeOwnerAccountSchema } from '../../../features/accounts/domain/safe.js'
 import { AccountSchema } from '../../../features/accounts/domain/state/account.js'
 import { BalanceSchema } from '../../../features/asset-data/domain/state/balance.js'
 import { AssetRateMapSchema } from '../../../features/asset-data/domain/state/rate.js'
@@ -322,6 +323,7 @@ export const WalletRequestSchema = z
   .strip()
 
 const WalletAccountSchema = AccountSchema.extend({
+  safeOwners: z.record(z.string(), z.array(SafeOwnerAccountSchema)).optional(),
   requests: z.record(z.string(), WalletRequestSchema)
 }).strip()
 
