@@ -212,9 +212,10 @@ it('starts adapters and hot loading once, then closes once', () => {
   expect(adapter.close.mock.calls).toHaveLength(1)
 })
 
-it('unlocks only the vault and publishes post-create vault state on success or failure', () => {
+it('unlocks the vault, retries hot loading, and publishes post-create vault state', () => {
   const deps = dependencies()
-  const signers = new Signers(deps, [], mock())
+  const load = mock()
+  const signers = new Signers(deps, [], load)
   const handle = new HotSignerMock()
   signers.add(handle as unknown as Signer)
 
@@ -225,6 +226,7 @@ it('unlocks only the vault and publishes post-create vault state on success or f
   })
   expect(unlocked).toBeTrue()
   expect(deps.vault.unlock.mock.calls as unknown).toEqual([['password']])
+  expect(load.mock.calls).toEqual([[signers, deps.vault]])
   expect(handle.unlock.mock.calls).toHaveLength(0)
 
   deps.vault.summary.mockReturnValue({ exists: true, unlocked: true })
@@ -251,5 +253,24 @@ it('unlocks only the vault and publishes post-create vault state on success or f
   expect(failureMessage).toBe('Invalid private key')
   expect(deps.vault.acquireKey.mock.calls as unknown).toEqual([['password']])
   expect(store.getState().main.appLock).toEqual({ locked: false, vaultExists: true })
+  signers.close()
+})
+
+it('retries hot loading after biometric unlock', async () => {
+  const deps = dependencies()
+  deps.biometrics.unlock.mockResolvedValue('biometric-vault-key')
+  const load = mock()
+  const signers = new Signers(deps, [], load)
+
+  await new Promise<void>((resolve, reject) => {
+    signers.unlockAppWithBiometrics({ method: 'native' }, (error, unlocked) => {
+      if (error) return reject(error)
+      expect(unlocked).toBeTrue()
+      resolve()
+    })
+  })
+
+  expect(deps.vault.unlockWithKey.mock.calls as unknown).toEqual([['biometric-vault-key']])
+  expect(load.mock.calls).toEqual([[signers, deps.vault]])
   signers.close()
 })

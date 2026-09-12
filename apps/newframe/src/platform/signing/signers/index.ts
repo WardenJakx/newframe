@@ -234,6 +234,7 @@ export class Signers {
   unlockApp(password: string, cb: Callback<boolean>) {
     try {
       this.dependencies.vault.unlock(password)
+      this.loadHotSigners(this, this.dependencies.vault)
       this.publishAppLockState()
       cb(null, true)
     } catch (error) {
@@ -246,6 +247,7 @@ export class Signers {
       .unlock(payload)
       .then((vaultKey) => {
         this.dependencies.vault.unlockWithKey(vaultKey)
+        this.loadHotSigners(this, this.dependencies.vault)
         this.publishAppLockState()
         cb(null, true)
       })
