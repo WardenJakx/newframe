@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from 'bun:test'
 
 import { createSafeHandler } from '../../../scripts/local-safe/handler.js'
+import { abi as multicallAbi, multicallAddress } from '../chain-rpc/multicall/constants.js'
 import { createSafeClient, safeServiceNetworks } from './client.js'
 import { verifySafeHash } from './integrity.js'
 
@@ -265,6 +266,7 @@ test('discovers contracts through the requested chain and imports configuration 
     'function getThreshold() view returns (uint256)',
     'function nonce() view returns (uint256)'
   ])
+  const multicall = new Interface(multicallAbi)
   const calls: string[] = []
   const client = createSafeClient({
     request: async () => {
@@ -273,11 +275,26 @@ test('discovers contracts through the requested chain and imports configuration 
     networks: {},
     call: async (chainId, address, data) => {
       expect(chainId).toBe(8453)
-      expect(address).toBe(safe)
-      const method = abi.getFunction(data.slice(0, 10))!.name
-      calls.push(method)
-      return abi.encodeFunctionResult(method, [
-        method === 'VERSION' ? '1.4.1' : method === 'getOwners' ? owners : method === 'getThreshold' ? 2n : 9n
+      expect(address).toBe(multicallAddress)
+      const [batch] = multicall.decodeFunctionData('aggregate3', data)
+      return multicall.encodeFunctionResult('aggregate3', [
+        Array.from(batch, (entry: { target: string; callData: string }) => {
+          expect(entry.target).toBe(safe)
+          const method = abi.getFunction(entry.callData.slice(0, 10))!.name
+          calls.push(method)
+          return {
+            success: true,
+            returnData: abi.encodeFunctionResult(method, [
+              method === 'VERSION'
+                ? '1.4.1'
+                : method === 'getOwners'
+                  ? owners
+                  : method === 'getThreshold'
+                    ? 2n
+                    : 9n
+            ])
+          }
+        })
       ])
     }
   })

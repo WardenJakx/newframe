@@ -11,6 +11,8 @@ import {
 } from '../../features/accounts/domain/safe.js'
 import { decodeCallDataWithSignature, type DecodedCallData } from '../chain-rpc/contracts/index.js'
 import { getLocalFunctionSelectorSignatures } from '../chain-rpc/contracts/selectors.js'
+import { multicallAddress, type Call } from '../chain-rpc/multicall/constants.js'
+import { aggregate3 } from '../chain-rpc/multicall/index.js'
 import { verifySafeHash, serviceCalldataMismatch } from './integrity.js'
 
 const SAFE_TRANSACTION_SERVICE_URL = 'https://api.safe.global/tx-service'
@@ -184,48 +186,78 @@ export function createSafeClient({
       signal?.removeEventListener('abort', abort)
     }
   }
-  const abi = new Interface([
-    'function VERSION() view returns (string)',
-    'function getOwners() view returns (address[])',
-    'function getThreshold() view returns (uint256)',
-    'function nonce() view returns (uint256)'
-  ])
+  const signatures = {
+    VERSION: 'function VERSION() view returns (string)',
+    getOwners: 'function getOwners() view returns (address[])',
+    getThreshold: 'function getThreshold() view returns (uint256)',
+    nonce: 'function nonce() view returns (uint256)'
+  }
+  const abi = new Interface(Object.values(signatures))
+  const identitySchema = z.object({
+    version: z.string().min(1).max(100),
+    owners: z.array(safeAddressSchema).min(1).max(1000)
+  })
   async function read(
     chainId: number,
     address: string,
-    method: string,
+    data: string,
     signal?: AbortSignal,
     blockTag?: string
-  ): Promise<unknown> {
+  ): Promise<string> {
     if (!call) throw new Error('Safe chain provider is unavailable')
     signal?.throwIfAborted()
     let timer: ReturnType<typeof setTimeout> | undefined
     try {
       const result = await Promise.race([
-        call(chainId, address, abi.encodeFunctionData(method), blockTag, signal),
+        call(chainId, address, data, blockTag, signal),
         new Promise<never>((_, reject) => {
           timer = setTimeout(() => reject(new Error('Safe chain request timed out')), timeoutMs)
         })
       ])
       signal?.throwIfAborted()
-      return abi.decodeFunctionResult(method, result)[0]
+      return result
     } finally {
       clearTimeout(timer)
     }
   }
+  async function readBatch(
+    chainId: number,
+    address: string,
+    methods: (keyof typeof signatures)[],
+    signal?: AbortSignal,
+    blockTag?: string
+  ): Promise<unknown[]> {
+    const calls: Call<unknown, unknown>[] = methods.map((method) => ({
+      target: address,
+      call: [signatures[method]],
+      returns: [(value) => value]
+    }))
+    const unavailable = new Error('Multicall3 is unavailable')
+    try {
+      const results = await aggregate3(calls, async (data) => {
+        const response = await read(chainId, multicallAddress, data, signal, blockTag)
+        if (response === '0x') throw unavailable
+        return response
+      })
+      return results.map(({ success, returnValues }, index) => {
+        if (!success || returnValues[0] == null) throw new Error(`Safe ${methods[index]} call failed`)
+        return returnValues[0]
+      })
+    } catch (error) {
+      if (error !== unavailable) throw error
+      return Promise.all(
+        methods.map(async (method) => {
+          const data = abi.encodeFunctionData(method)
+          const response = await read(chainId, address, data, signal, blockTag)
+          return abi.decodeFunctionResult(method, response)[0]
+        })
+      )
+    }
+  }
   async function discover(chainId: number, address: string, signal?: AbortSignal, blockTag?: string) {
     const expected = safeAddressSchema.parse(address)
-    const version = z
-      .string()
-      .min(1)
-      .max(100)
-      .parse(await read(chainId, expected, 'VERSION', signal, blockTag))
-    const owners = z
-      .array(safeAddressSchema)
-      .min(1)
-      .max(1000)
-      .parse(await read(chainId, expected, 'getOwners', signal, blockTag))
-    return { version, owners }
+    const [version, owners] = await readBatch(chainId, expected, ['VERSION', 'getOwners'], signal, blockTag)
+    return identitySchema.parse({ version, owners })
   }
   return {
     discover,
@@ -237,11 +269,15 @@ export function createSafeClient({
     ): Promise<SafeConfiguration> {
       const expected = safeAddressSchema.parse(address)
       if (call) {
-        const identity = await discover(chainId, expected, signal, blockTag)
-        const threshold = await read(chainId, expected, 'getThreshold', signal, blockTag)
-        const nonce = await read(chainId, expected, 'nonce', signal, blockTag)
+        const [version, owners, threshold, nonce] = await readBatch(
+          chainId,
+          expected,
+          ['VERSION', 'getOwners', 'getThreshold', 'nonce'],
+          signal,
+          blockTag
+        )
         return safeConfigurationSchema.parse({
-          ...identity,
+          ...identitySchema.parse({ version, owners }),
           threshold: Number(threshold),
           nonce: String(nonce)
         })
