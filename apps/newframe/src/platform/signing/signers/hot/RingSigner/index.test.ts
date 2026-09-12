@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
 import crypto from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
+import { tmpdir } from 'node:os'
 import { rm } from 'node:fs/promises'
 import log from 'electron-log'
 import { keccak256 } from 'ethers'
@@ -9,7 +10,8 @@ import { keccak256 } from 'ethers'
 import { electronMock } from '../../../../../../test/support/electron.mock.ts'
 import { callbackResult, exerciseHotSignerContract } from '../../callback.test-support.ts'
 
-const SIGNER_PATH = path.resolve(import.meta.dirname, '../.userData/signers')
+const USER_DATA = fs.mkdtempSync(path.join(tmpdir(), 'newframe-ring-test-'))
+const SIGNER_PATH = path.join(USER_DATA, 'signers')
 const FILE_PATH = path.resolve(import.meta.dirname, 'keystore.test-fixture.json')
 const removePath = (target: string) => rm(target, { recursive: true, force: true })
 const vaultKey = '34'.repeat(32)
@@ -55,13 +57,12 @@ describe('Ring signer', () => {
 
   beforeAll(async () => {
     log.transports.console.level = false
-    electronMock.app.getPath.mockReturnValue(path.resolve(import.meta.dirname, '../.userData'))
-    await removePath(SIGNER_PATH)
+    electronMock.app.getPath.mockReturnValue(USER_DATA)
     hot = await import('..')
   })
 
   afterAll(async () => {
-    await removePath(SIGNER_PATH)
+    await removePath(USER_DATA)
     log.transports.console.level = 'debug'
   })
 
