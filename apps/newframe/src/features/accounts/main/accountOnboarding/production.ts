@@ -65,12 +65,10 @@ export function createProductionAccountOnboardingAdapters(
       },
       loadLedgerAccounts(signerId, accountCount) {
         const signer = external.signers.get(signerId) as
-          | (Signer & { accountLimit: number; derivation?: string; deriveAddresses(): void })
+          | (Signer & { loadAccounts(accountCount: number): void })
           | undefined
         if (!signer || signer.type !== 'ledger') return false
-        if (signer.derivation !== 'live' || accountCount <= signer.accountLimit) return true
-        signer.accountLimit = accountCount
-        signer.deriveAddresses()
+        signer.loadAccounts(accountCount)
         return true
       },
       async pairLattice(signerId, pairCode) {

@@ -81,6 +81,8 @@ export default class Ledger extends Signer {
 
   derivation: Derivation | undefined
   accountLimit = 5
+  private derivationGeneration = 0
+  private queuedLiveAccounts = 0
 
   // the Ledger device can only handle one request at a time; the transport will reject
   // all incoming requests while its busy, so we need to make sure requests are only executed
@@ -151,6 +153,8 @@ export default class Ledger extends Signer {
   }
 
   async disconnect() {
+    this.derivationGeneration += 1
+    this.queuedLiveAccounts = 0
     if (this.status === Status.OK) {
       this.updateStatus(Status.DISCONNECTED)
       this.emit('update')
@@ -290,6 +294,8 @@ export default class Ledger extends Signer {
   // *** request enqueuing methods *** //
 
   deriveAddresses() {
+    this.derivationGeneration += 1
+    this.queuedLiveAccounts = 0
     this.requestQueue.clear()
     this.addresses = []
 
@@ -303,23 +309,32 @@ export default class Ledger extends Signer {
     }
   }
 
+  loadAccounts(accountCount: number) {
+    if (this.derivation !== Derivation.live || accountCount <= this.accountLimit) return
+    this.accountLimit = accountCount
+    this.deriveLiveAddresses()
+  }
+
   private deriveLiveAddresses() {
+    const generation = this.derivationGeneration
     const requests = []
 
-    for (let i = 0; i < this.accountLimit; i++) {
+    for (let i = this.queuedLiveAccounts; i < this.accountLimit; i++) {
       requests.push({
         type: 'deriveAddresses',
         execute: async () => {
+          if (generation !== this.derivationGeneration) return
           try {
             if (!this.eth) throw new Error('attempted to derive Live addresses but Eth app is not connected!')
 
             const path = this.getPath(i)
+            const startedAt = Date.now()
             const { address } = await this.eth.getAddress(path, false, false)
 
-            log.verbose(`Found Ledger Live address #${i}: ${address}`)
+            log.verbose(`Found Ledger Live address #${i} in ${Date.now() - startedAt} ms: ${address}`)
 
-            if (this.derivation === Derivation.live) {
-              // don't update if the derivation was changed while this request was running
+            if (generation === this.derivationGeneration && this.derivation === Derivation.live) {
+              // Ignore responses from a previous derivation or connection.
               if (this.status === Status.DERIVING) {
                 this.updateStatus(Status.OK)
               }
@@ -329,21 +344,28 @@ export default class Ledger extends Signer {
               this.emit('update')
             }
           } catch (e) {
+            if (generation !== this.derivationGeneration) return
+            // Stop this batch so later addresses cannot take a failed account's index.
+            this.derivationGeneration += 1
+            this.queuedLiveAccounts = this.addresses.length
             this.handleError(e as DeviceError)
           }
         }
       })
     }
 
+    this.queuedLiveAccounts = this.accountLimit
     this.enqueueRequests(...requests)
   }
 
   private deriveHardwareAddresses() {
+    const generation = this.derivationGeneration
     const targetDerivation = this.derivation
 
     this.enqueueRequests({
       type: 'deriveAddresses',
       execute: async () => {
+        if (generation !== this.derivationGeneration) return
         try {
           if (!this.eth)
             throw new Error('attempted to derive hardware addresses but Eth app is not connected!')
@@ -352,7 +374,7 @@ export default class Ledger extends Signer {
 
           const addresses = await this.eth.deriveAddresses(this.derivation)
 
-          if (this.derivation === targetDerivation) {
+          if (generation === this.derivationGeneration && this.derivation === targetDerivation) {
             // don't update if the derivation was changed while this request was running
             if (this.status === Status.DERIVING) {
               this.updateStatus(Status.OK)
@@ -363,6 +385,7 @@ export default class Ledger extends Signer {
             this.emit('update')
           }
         } catch (e) {
+          if (generation !== this.derivationGeneration) return
           this.handleError(e as DeviceError)
         }
       }

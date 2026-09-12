@@ -371,7 +371,7 @@ it('queries each stable hardware address key once and ignores the prior key resu
     })
     await currentUsage.promise
   })
-  expect(await screen.findByText('Used on Chain 2')).toBeTruthy()
+  expect(await screen.findByRole('img', { name: 'Chain 2' })).toBeTruthy()
 
   await act(async () => {
     oldUsage.resolve({
@@ -380,7 +380,7 @@ it('queries each stable hardware address key once and ignores the prior key resu
     })
     await oldUsage.promise
   })
-  expect(screen.getByText('Used on Chain 2')).toBeTruthy()
+  expect(screen.getByRole('img', { name: 'Chain 2' })).toBeTruthy()
   expect(screen.queryByText('Checking chains')).toBeNull()
   expect(capability.inspectAddressChainUsage.mock.calls.map(([input]) => input.addresses)).toEqual([
     [firstAddress],

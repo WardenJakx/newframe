@@ -21,7 +21,7 @@ export type AddAccountOption = { id: string; title: string; icon: IconName | 'fi
 
 export interface AddAccountAddressRowModel {
   address: string
-  chains: string[]
+  chains: Array<{ id: number; name: string; icon: ReactNode }>
   imported: boolean
   index: number
   label: string
@@ -321,9 +321,11 @@ function AddressRow({ model, onPress }: { model: AddAccountAddressRowModel; onPr
         <Text variant='label' truncate>
           {model.label}
         </Text>
-        <Text tone='muted' variant='code'>
-          {model.shortAddress}
-        </Text>
+        {model.label !== model.shortAddress ? (
+          <Text tone='muted' variant='code' truncate>
+            {model.shortAddress}
+          </Text>
+        ) : null}
       </Stack>
       <Stack align='end' gap='none'>
         {model.usage === 'loading' ? (
@@ -332,9 +334,23 @@ function AddressRow({ model, onPress }: { model: AddAccountAddressRowModel; onPr
           </Text>
         ) : null}
         {model.usage === 'used' ? (
-          <Text tone='secondary' variant='micro'>
-            Used on {model.chains.join(', ')}
-          </Text>
+          <Stack
+            align='center'
+            direction='row'
+            gap='xsmall'
+            label={`Used on ${model.chains.map((chain) => chain.name).join(', ')}`}
+          >
+            {model.chains.slice(0, 4).map((chain) => (
+              <span key={chain.id} role='img' aria-label={chain.name}>
+                {chain.icon}
+              </span>
+            ))}
+            {model.chains.length > 4 ? (
+              <Text tone='muted' variant='caption' shrink={false}>
+                +{model.chains.length - 4}
+              </Text>
+            ) : null}
+          </Stack>
         ) : null}
         {model.usage === 'unused' ? (
           <Text tone='muted' variant='caption'>

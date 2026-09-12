@@ -834,9 +834,18 @@ export function AddAccountController({
             : 'unavailable'
     return {
       address: input.address,
-      chains: (input.chainUsage?.chainIds || []).map(
-        (chainId) => shared.networks[chainId]?.name || `Chain ${chainId}`
-      ),
+      chains: (input.chainUsage?.chainIds || []).map((chainId) => ({
+        id: chainId,
+        name: shared.networks[chainId]?.name || `Chain ${chainId}`,
+        icon: (
+          <ChainIcon
+            chainId={chainId}
+            networks={shared.networks}
+            networksMeta={shared.networksMeta}
+            size='small'
+          />
+        )
+      })),
       imported: input.imported,
       index: input.index,
       label: input.label,

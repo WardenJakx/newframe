@@ -90,7 +90,9 @@ it('renders hardware paging and address selection from focused view models', asy
           rows: [
             {
               address: hardwareAddress,
-              chains: ['Ethereum'],
+              chains: ['Ethereum', 'Optimism', 'BNB Smart Chain', 'Polygon', 'Monad', 'HyperEVM'].map(
+                (name, id) => ({ id, name, icon: <svg /> })
+              ),
               imported: false,
               index: 0,
               label: 'Wallet 1',
@@ -117,5 +119,7 @@ it('renders hardware paging and address selection from focused view models', asy
 
   expect(callbacks.onHardwareAddressSelect.mock.calls).toEqual([[hardwareAddress]])
   expect(callbacks.onPageChange.mock.calls).toEqual([[2]])
-  expect(screen.getByText('Used on Ethereum')).toBeTruthy()
+  expect(screen.getByRole('img', { name: 'Ethereum' })).toBeTruthy()
+  expect(screen.getAllByRole('img')).toHaveLength(4)
+  expect(screen.getByText('+2')).toBeTruthy()
 })
