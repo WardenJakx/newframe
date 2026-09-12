@@ -25,16 +25,12 @@ function chainConfig(chainId: number, eth: Eip1193Provider): MulticallConfig {
   }
 }
 
-async function makeCall(functionName: string, params: any[], config: MulticallConfig) {
-  const data = multicallInterface.encodeFunctionData(functionName, params)
-
-  const response: BytesLike = await config.provider.request({
+async function makeCall(data: string, config: MulticallConfig): Promise<BytesLike> {
+  return config.provider.request({
     method: 'eth_call',
     params: [{ to: multicallAddress, data }, 'latest'],
     chainId: addHexPrefix(config.chainId.toString(16))
   })
-
-  return multicallInterface.decodeFunctionResult(functionName, response)
 }
 
 function buildCallData<R, T>(calls: Call<R, T>[]) {
@@ -80,9 +76,14 @@ function getInterface(functionSignature: string) {
   return memoizedInterfaces[functionSignature]
 }
 
-async function aggregate3<R, T>(calls: Call<R, T>[], config: MulticallConfig) {
+export async function aggregate3<R, T>(
+  calls: Call<R, T>[],
+  execute: (calldata: string) => Promise<BytesLike>
+) {
   const aggData = buildCallData(calls)
-  const response = await makeCall('aggregate3', [aggData], config)
+  const data = multicallInterface.encodeFunctionData('aggregate3', [aggData])
+  const response = multicallInterface.decodeFunctionResult('aggregate3', await execute(data))
+  if (response.returnData.length !== calls.length) throw new Error('Invalid Multicall3 result count')
 
   return calls.map(({ call, returns, target }, i) => {
     const results = response.returnData[i]
@@ -106,7 +107,7 @@ export default function (chainId: number, eth: Eip1193Provider) {
   const config = chainConfig(chainId, eth)
 
   async function call<R, T>(calls: Call<R, T>[]): Promise<CallResult<T>[]> {
-    return aggregate3(calls, config)
+    return aggregate3(calls, (data) => makeCall(data, config))
   }
 
   return {

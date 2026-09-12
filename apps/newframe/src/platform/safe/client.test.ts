@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, test } from 'bun:test'
 
+import { Interface } from 'ethers'
+
 import { createSafeHandler } from '../../../scripts/local-safe/handler.js'
+import { abi as multicallAbi, multicallAddress } from '../chain-rpc/multicall/constants.js'
 import { createSafeClient, safeServiceNetworks } from './client.js'
 import { verifySafeHash } from './integrity.js'
 
@@ -257,43 +260,190 @@ test('uses explicit legacy domains and binds modern hashes to the watched chain 
   }
 })
 
-test('discovers contracts through the requested chain and imports configuration without a queue service', async () => {
-  const { Interface } = await import('ethers')
+describe('Safe chain reads', () => {
   const abi = new Interface([
     'function VERSION() view returns (string)',
     'function getOwners() view returns (address[])',
     'function getThreshold() view returns (uint256)',
     'function nonce() view returns (uint256)'
   ])
-  const calls: string[] = []
-  const client = createSafeClient({
-    request: async () => {
-      throw new Error('Discovery must not use HTTP')
-    },
-    networks: {},
-    call: async (chainId, address, data) => {
-      expect(chainId).toBe(8453)
-      expect(address).toBe(safe)
-      const method = abi.getFunction(data.slice(0, 10))!.name
-      calls.push(method)
-      return abi.encodeFunctionResult(method, [
-        method === 'VERSION' ? '1.4.1' : method === 'getOwners' ? owners : method === 'getThreshold' ? 2n : 9n
-      ])
+  const multicall = new Interface(multicallAbi)
+  const values: Record<string, unknown> = {
+    VERSION: '1.4.1',
+    getOwners: owners,
+    getThreshold: 2n,
+    nonce: 9007199254740993n
+  }
+  const methods = Object.keys(values)
+  const configuration = { version: '1.4.1', owners, threshold: 2, nonce: '9007199254740993' }
+  function result(method: string, value = values[method]) {
+    return { success: true, returnData: abi.encodeFunctionResult(method, [value]) }
+  }
+  test('batches discovery and configuration on the requested chain and block without a queue service', async () => {
+    const calls: { blockTag: string | undefined; methods: string[] }[] = []
+    const controller = new AbortController()
+    const client = createSafeClient({
+      request: async () => {
+        throw new Error('Discovery must not use HTTP')
+      },
+      networks: {},
+      call: async (chainId, address, data, blockTag, signal) => {
+        expect(chainId).toBe(8453)
+        expect(address).toBe(multicallAddress)
+        expect(signal).toBe(controller.signal)
+        const [batch] = multicall.decodeFunctionData('aggregate3', data)
+        const requested = Array.from(
+          batch,
+          (entry: { target: string; allowFailure: boolean; callData: string }) => {
+            expect(entry.target).toBe(safe)
+            expect(entry.allowFailure).toBe(true)
+            return abi.getFunction(entry.callData.slice(0, 10))!.name
+          }
+        )
+        calls.push({ blockTag, methods: requested })
+        return multicall.encodeFunctionResult('aggregate3', [requested.map((method) => result(method))])
+      }
+    })
+    expect(await client.discover(8453, safe, controller.signal, '0x123')).toEqual({
+      version: '1.4.1',
+      owners
+    })
+    expect(calls).toEqual([{ blockTag: '0x123', methods: ['VERSION', 'getOwners'] }])
+    expect(await client.configuration(8453, safe, controller.signal, '0x456')).toEqual(configuration)
+    expect(calls).toEqual([
+      { blockTag: '0x123', methods: ['VERSION', 'getOwners'] },
+      { blockTag: '0x456', methods }
+    ])
+  })
+  test('rejects failed or undecodable inner calls without direct fallback', async () => {
+    for (const method of methods) {
+      for (const failure of [
+        { success: false, returnData: '0x' },
+        { success: true, returnData: '0x' },
+        { success: true, returnData: '0x1234' }
+      ]) {
+        let calls = 0
+        const client = createSafeClient({
+          request: fetch,
+          call: async () => {
+            calls += 1
+            return multicall.encodeFunctionResult('aggregate3', [
+              methods.map((name) => (name === method ? failure : result(name)))
+            ])
+          }
+        })
+        await expect(client.configuration(8453, safe)).rejects.toThrow(`Safe ${method} call failed`)
+        expect(calls).toBe(1)
+      }
     }
   })
-  expect(await client.discover(8453, safe)).toEqual({ version: '1.4.1', owners })
-  expect(calls).toEqual(['VERSION', 'getOwners'])
-  expect(await client.configuration(8453, safe)).toEqual({
-    version: '1.4.1',
-    owners,
-    threshold: 2,
-    nonce: '9'
+  test('rejects malformed outer results and provider failures without direct fallback', async () => {
+    for (const response of [
+      '0x1234',
+      ...[0, 3, 5].map((count) =>
+        multicall.encodeFunctionResult('aggregate3', [Array(count).fill(result('VERSION'))])
+      ),
+      new Error('RPC unavailable')
+    ]) {
+      let calls = 0
+      const client = createSafeClient({
+        request: fetch,
+        call: async () => {
+          calls += 1
+          if (response instanceof Error) throw response
+          return response
+        }
+      })
+      await expect(client.configuration(8453, safe)).rejects.toThrow()
+      expect(calls).toBe(1)
+    }
   })
-})
-
-test('rejects empty contract responses and bounds unresponsive chain probes', async () => {
-  const client = createSafeClient({ request: fetch, call: async () => '0x' })
-  await expect(client.discover(1, safe)).rejects.toThrow()
-  const hanging = createSafeClient({ request: fetch, timeoutMs: 5, call: () => new Promise(() => {}) })
-  await expect(hanging.discover(1, safe)).rejects.toThrow('Safe chain request timed out')
+  test('validates decoded Safe identity and configuration', async () => {
+    for (const [method, value] of [
+      ['VERSION', ''],
+      ['getOwners', []],
+      ['getOwners', [owners[0], owners[0]]],
+      ['getThreshold', 0n],
+      ['getThreshold', 3n]
+    ] as const) {
+      const client = createSafeClient({
+        request: fetch,
+        call: async () =>
+          multicall.encodeFunctionResult('aggregate3', [
+            methods.map((name) => result(name, name === method ? value : values[name]))
+          ])
+      })
+      await expect(client.configuration(8453, safe)).rejects.toThrow()
+    }
+  })
+  test.each(['discover', 'configuration'] as const)(
+    '%s falls back concurrently only for an empty outer response',
+    async (operation) => {
+      const expectedMethods = operation === 'discover' ? methods.slice(0, 2) : methods
+      const calls: string[] = []
+      const controller = new AbortController()
+      const started = Promise.withResolvers<void>()
+      const client = createSafeClient({
+        request: fetch,
+        timeoutMs: 100,
+        call: async (chainId, address, data, blockTag, signal) => {
+          expect(chainId).toBe(31337)
+          expect(blockTag).toBe('0x123')
+          expect(signal).toBe(controller.signal)
+          if (address === multicallAddress) {
+            calls.push('aggregate3')
+            return '0x'
+          }
+          expect(address).toBe(safe)
+          const method = abi.getFunction(data.slice(0, 10))!.name
+          calls.push(method)
+          if (calls.length === expectedMethods.length + 1) started.resolve()
+          await started.promise
+          return result(method).returnData
+        }
+      })
+      expect(await client[operation](31337, safe, controller.signal, '0x123')).toEqual(
+        operation === 'discover' ? { version: '1.4.1', owners } : configuration
+      )
+      expect(calls).toEqual(['aggregate3', ...expectedMethods])
+    }
+  )
+  test.each(['discover', 'configuration'] as const)(
+    '%s rejects empty contract responses and bounds unresponsive chain probes',
+    async (operation) => {
+      const client = createSafeClient({ request: fetch, call: async () => '0x' })
+      await expect(client[operation](1, safe)).rejects.toThrow()
+      let calls = 0
+      const hanging = createSafeClient({
+        request: fetch,
+        timeoutMs: 5,
+        call: () => {
+          calls += 1
+          return new Promise(() => {})
+        }
+      })
+      await expect(hanging[operation](1, safe)).rejects.toThrow('Safe chain request timed out')
+      expect(calls).toBe(1)
+    }
+  )
+  test.each(['discover', 'configuration'] as const)(
+    '%s preserves cancellation without direct fallback',
+    async (operation) => {
+      const controller = new AbortController()
+      const reason = new Error('Cancelled Safe read')
+      let calls = 0
+      const client = createSafeClient({
+        request: fetch,
+        call: async () => {
+          calls += 1
+          controller.abort(reason)
+          return '0x'
+        }
+      })
+      await expect(client[operation](1, safe, controller.signal)).rejects.toThrow(reason.message)
+      expect(calls).toBe(1)
+      await expect(client[operation](1, safe, controller.signal)).rejects.toThrow(reason.message)
+      expect(calls).toBe(1)
+    }
+  )
 })
