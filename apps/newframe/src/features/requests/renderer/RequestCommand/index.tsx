@@ -11,6 +11,7 @@ import type { AirGapRequestReference } from '../../../../platform/signing/domain
 import type { WalletRendererState } from '../../../../platform/state-sync/contract/projections'
 import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector'
 import StatusGlyph from '../../../../shared/renderer/ui/StatusGlyph'
+import type { TransactionApprovalAdjustments } from '../../../transactions/domain/approval'
 import type { SignatureRequest, TransactionRequest } from '../../contract/requests'
 import { isCancelableRequest, isSignatureRequest } from '../../domain'
 import type { RequestRendererCapabilities, RequestReviewCapability } from '../requestCapabilities'
@@ -38,6 +39,9 @@ export type RequestCommandRequest = {
 }
 
 export interface RequestCommandProps {
+  adjustments?: TransactionApprovalAdjustments
+  feeNoticeDismissed?: boolean
+  dismissFeeNotice?(): void
   capabilities: Pick<RequestRendererCapabilities, 'external' | 'review' | 'transaction'>
   notify: RequestCommandNotifier
   req: RequestCommandRequest
@@ -86,6 +90,8 @@ export const runWhenAppUnlocked = (appLocked: boolean, next: () => void) => {
 }
 
 export function RequestCommand(props: RequestCommandProps) {
+  const [approvalError, setApprovalError] = useState('')
+  const [noticeDismissed, setNoticeDismissed] = useState(false)
   const request = props.req as TransactionRequest | SignatureRequest
   const { notify } = props
   const notifiedSession = useRef('')
@@ -240,14 +246,32 @@ export function RequestCommand(props: RequestCommandProps) {
 
   function transactionActions(req: TransactionRequest) {
     const sign = () => {
-      runWhenAppUnlocked(props.shared.appLocked, () =>
-        approveRequest(props.capabilities.review, req.handlerId)
-      )
+      runWhenAppUnlocked(props.shared.appLocked, () => {
+        setApprovalError('')
+        void props.capabilities.review
+          .approve({
+            requestId: req.handlerId,
+            ...(props.adjustments ? { adjustments: props.adjustments } : {})
+          })
+          .then(
+            (result) => {
+              if (!result.ok) setApprovalError(result.message || 'Could not approve request')
+            },
+            () => setApprovalError('Could not approve request')
+          )
+      })
     }
 
     return (
       <Stack gap='xsmall'>
-        {req.automaticFeeUpdateNotice ? (
+        {approvalError ? (
+          <div role='alert'>
+            <Text tone='danger' variant='caption'>
+              {approvalError}
+            </Text>
+          </div>
+        ) : null}
+        {req.automaticFeeUpdateNotice && !props.feeNoticeDismissed && !noticeDismissed ? (
           <Surface padding='xsmall' radius='pill' tone='card'>
             <Inline align='center' gap='small' justify='between'>
               <Text tone='accent' variant='caption'>
@@ -255,11 +279,10 @@ export function RequestCommand(props: RequestCommandProps) {
               </Text>
               <Button
                 appearance='subtle'
-                onPress={() =>
-                  void props.capabilities.transaction.dismissFeeNotice({
-                    requestId: req.handlerId
-                  })
-                }
+                onPress={() => {
+                  setNoticeDismissed(true)
+                  props.dismissFeeNotice?.()
+                }}
                 size='compact'
               >
                 <Text variant='caption'>Ok</Text>
@@ -362,7 +385,7 @@ export default function RequestCommandContainer(props: Omit<RequestCommandProps,
   const request = props.req as TransactionRequest | SignatureRequest
   const chainId = request.type === 'transaction' ? parseInt(request.data.chainId || '0', 16) : 0
   const accountId = request.account
-  const { step } = useRequestView()
+  const { step, adjustments, feeNoticeDismissed, dismissFeeNotice } = useRequestView()
   const selector = useMemo(
     () =>
       (
@@ -390,5 +413,15 @@ export default function RequestCommandContainer(props: Omit<RequestCommandProps,
     () => (signerId && requestId && sessionId ? { signerId, requestId, sessionId } : undefined),
     [signerId, requestId, sessionId]
   )
-  return <RequestCommand {...props} shared={{ ...synchronized, airgapSigning, step }} />
+  return (
+    <RequestCommand
+      {...props}
+      adjustments={
+        request.type === 'transaction' && !request.status && !request.locked ? adjustments : undefined
+      }
+      feeNoticeDismissed={feeNoticeDismissed}
+      dismissFeeNotice={dismissFeeNotice}
+      shared={{ ...synchronized, airgapSigning, step }}
+    />
+  )
 }

@@ -4,6 +4,7 @@ import type { CanonicalStore } from '../../../platform/state-store/actions.js'
 type SettingsState = Pick<
   CanonicalStore,
   | 'main'
+  | 'setGasDefault'
   | 'setAutoDiscoverTokens'
   | 'setAutohide'
   | 'setLatticeAccountLimit'
@@ -30,6 +31,13 @@ export function createSettingsService(
     const state = settingsStore.getState()
 
     switch (command.setting) {
+      case 'gas-fee-level': {
+        const value = state.main.networksMeta.ethereum[command.chainId]?.gas?.price.levels[command.value]
+        if (!state.main.networks.ethereum[command.chainId] || value === undefined) {
+          throw new Error('Fee preference unavailable for this network')
+        }
+        return state.setGasDefault('ethereum', command.chainId, command.value, value)
+      }
       case 'autohide':
         return state.setAutohide(command.value)
       case 'launch':

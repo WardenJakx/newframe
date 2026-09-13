@@ -400,8 +400,8 @@ describe('confirm', () => {
     expect(feeRate.textContent).toMatch(/custom/i)
 
     fireEvent.click(screen.getByRole('button', { name: 'Fast' }))
-    expect(capabilities.transaction.setDefaultFee).toHaveBeenCalledWith({
-      requestId: 'test-req',
+    expect(capabilities.transaction.setFeePreference).toHaveBeenCalledWith({
+      chainId: 137,
       level: 'fast'
     })
 
@@ -480,6 +480,7 @@ describe('confirm', () => {
 
     render(
       <TransactionRequest
+        onUpdateFee={() => {}}
         actionId='erc20:approve'
         capabilities={capabilities}
         req={req}

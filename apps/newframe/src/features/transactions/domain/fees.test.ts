@@ -6,6 +6,7 @@ import {
   limitTransactionFee,
   maxTotalTransactionFee,
   totalTransactionFee,
+  transactionFeePreset,
   type TransactionFeeValues
 } from './fees'
 
@@ -13,6 +14,22 @@ const GWEI = 10n ** 9n
 const ETH = 10n ** 18n
 
 describe('transaction fee policy', () => {
+  it('uses recommendations or current fee fallbacks for local presets, within chain limits', () => {
+    const legacy = { gasPrice: 100n, gasLimit: 21_000n }
+    expect(transactionFeePreset(legacy, { levels: { fast: '0xc8' } }, 'fast').gasPrice).toBe(200n)
+    expect(transactionFeePreset(legacy, { levels: { fast: 'invalid' } }, 'fast').gasPrice).toBe(125n)
+    expect(
+      transactionFeePreset({ baseFee: 100n, priorityFee: 20n, gasLimit: 21_000n }, undefined, 'slow')
+    ).toEqual({ baseFee: 85n, priorityFee: 17n, gasLimit: 21_000n })
+    const limited = transactionFeePreset(
+      { gasPrice: 1n, gasLimit: 12_500_000n },
+      { levels: { asap: '0xffffffffffff' } },
+      'asap',
+      1
+    )
+    expect(totalTransactionFee(limited)).toBeLessThanOrEqual(maxTotalTransactionFee(1))
+    expect(legacy.gasPrice).toBe(100n)
+  })
   it('assigns the maximum total fee by chain family', () => {
     const cases: Array<[string | number | undefined, bigint]> = [
       ['0x1', 2n * ETH],

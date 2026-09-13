@@ -163,6 +163,9 @@ function integrationFixture({
   if (waitForNonce) delete data.nonce
   if (ordinaryRequest) {
     const request = f.request('transaction', data)
+    f.store.getState().patchAccountRequest(f.address, request.handlerId, (pending) => {
+      delete pending.status
+    })
     service.create((response) => responses.push(response), request.handlerId)
     service.bind(request)
   }

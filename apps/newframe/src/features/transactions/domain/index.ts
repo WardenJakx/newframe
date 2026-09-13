@@ -2,8 +2,9 @@ import type { JSONTx } from '@ethereumjs/tx'
 import { addHexPrefix, isHexString } from '@ethereumjs/util'
 
 import { MAX_HEX } from './constants.js'
+import { typeSupportsBaseFee } from './fees.js'
 
-export { limitTransactionFee, type TransactionFeeField } from './fees.js'
+export { limitTransactionFee, type TransactionFeeField, typeSupportsBaseFee } from './fees.js'
 
 export enum GasFeesSource {
   Dapp = 'Dapp',
@@ -33,10 +34,6 @@ export interface TransactionData extends Omit<WidenHexFields<JSONTx>, 'chainId' 
   type: string
   gasFeesSource: GasFeesSource
   recipientType?: string
-}
-
-export function typeSupportsBaseFee(type: string) {
-  return parseInt(type || '0') === 2
 }
 
 export function usesBaseFee(rawTx: TransactionData) {

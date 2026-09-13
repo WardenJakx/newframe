@@ -46,12 +46,9 @@ export function createRequestRendererCapabilitiesFake() {
         acknowledged<Parameters<RequestRendererCapabilities['review']['updateTokenApproval']>[0]>()
     },
     transaction: {
-      updateFee: acknowledged<Parameters<RequestRendererCapabilities['transaction']['updateFee']>[0]>(),
-      setDefaultFee:
-        acknowledged<Parameters<RequestRendererCapabilities['transaction']['setDefaultFee']>[0]>(),
-      replace: acknowledged<Parameters<RequestRendererCapabilities['transaction']['replace']>[0]>(),
-      dismissFeeNotice:
-        acknowledged<Parameters<RequestRendererCapabilities['transaction']['dismissFeeNotice']>[0]>()
+      setFeePreference:
+        acknowledged<Parameters<RequestRendererCapabilities['transaction']['setFeePreference']>[0]>(),
+      replace: acknowledged<Parameters<RequestRendererCapabilities['transaction']['replace']>[0]>()
     },
     external: {
       copy: acknowledged<Parameters<RequestRendererCapabilities['external']['copy']>[0]>(),

@@ -20,6 +20,7 @@ import {
   getTransactionIntent,
   typeSupportsBaseFee
 } from '../../../../../transactions/domain'
+import type { TransactionFeeLevel } from '../../../../../transactions/domain/fees'
 import { displayValueData } from '../../../format/displayValue'
 import type { RequestRendererCapabilities, TransactionReviewCapability } from '../../../requestCapabilities'
 import { useRequestView } from '../../../requestView'
@@ -44,17 +45,21 @@ type NativeCurrency = {
 }
 
 type TxFeeSummaryProps = {
-  capability: Pick<TransactionReviewCapability, 'setDefaultFee'>
+  feeLevel?: TransactionFeeLevel | 'custom'
+  selectFeeLevel(level: TransactionFeeLevel): void
+  capability: Pick<TransactionReviewCapability, 'setFeePreference'>
   req: TransactionRequestView
   chain: { type: 'ethereum'; id: number }
   nativeCurrency: NativeCurrency
   isTestnet: boolean
-  gasPrice?: { selected?: string }
+  gasPrice?: NonNullable<ReturnType<typeof useNetworkMetadata>['gas']>['price']
   nativeCurrencyRate: ReturnType<typeof useAssetRate>
   openAdjustFee(): void
 }
 
 type TxReviewProps = {
+  feeLevel?: TransactionFeeLevel | 'custom'
+  selectFeeLevel(level: TransactionFeeLevel): void
   capabilities: Pick<RequestRendererCapabilities, 'external' | 'transaction'>
   destinationAccount: ReturnType<typeof useAccountIdentity>
   nativeCurrencyRate: ReturnType<typeof useAssetRate>
@@ -149,15 +154,14 @@ function TxFeeSummary(props: TxFeeSummaryProps) {
   }
 
   const applyFeeRate = (option: (typeof FEE_RATE_OPTIONS)[number]) => {
-    const { req } = props
-
     if (option.id === 'custom') {
       props.openAdjustFee()
       return
     }
 
-    void props.capability.setDefaultFee({
-      requestId: req.handlerId,
+    props.selectFeeLevel(option.id)
+    void props.capability.setFeePreference({
+      chainId: props.chain.id,
       level: option.id
     })
     setExpanded(false)
@@ -182,9 +186,11 @@ function TxFeeSummary(props: TxFeeSummaryProps) {
   const feeUSD = fee.fiat()
   const gasDisplay = displayValueData(maxFeePerGas).gwei()
   const shouldWarn = feeUSD.value > FEE_WARNING_THRESHOLD_USD
-  const selectedRate = req.feesUpdatedByUser ? 'custom' : props.gasPrice?.selected || 'fast'
+  const selectedRate =
+    (!req.status && !req.locked ? props.feeLevel : undefined) ||
+    (req.feesUpdatedByUser ? 'custom' : props.gasPrice?.selected || 'fast')
   const selectedRateLabel = FEE_RATE_OPTIONS.find((option) => option.id === selectedRate)?.label || 'Fast'
-  const canAdjustFee = !paidFee && !req.status
+  const canAdjustFee = !paidFee && !req.status && !req.locked
 
   return (
     <section aria-label='Network fee'>
@@ -421,6 +427,8 @@ function TxReviewView(props: TxReviewProps) {
           />
         </SigningAccount>
         <TxFeeSummary
+          feeLevel={props.feeLevel}
+          selectFeeLevel={props.selectFeeLevel}
           capability={props.capabilities.transaction}
           chain={chain}
           gasPrice={meta.gas?.price}
@@ -451,10 +459,12 @@ export default function TxReviewWithState(props: TxReviewWithStateProps) {
     address: NATIVE_CURRENCY,
     nativeTicker: networkMetadata.nativeCurrency?.symbol || '?'
   })
-  const { open } = useRequestView()
+  const { open, feeLevel, selectFeeLevel } = useRequestView()
   return (
     <TxReviewView
       {...props}
+      feeLevel={feeLevel}
+      selectFeeLevel={(level) => selectFeeLevel(props.req, level, networkMetadata.gas?.price)}
       destinationAccount={destinationAccount}
       nativeCurrencyRate={nativeCurrencyRate}
       network={network}

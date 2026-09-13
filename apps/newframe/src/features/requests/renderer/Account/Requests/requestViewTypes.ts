@@ -98,6 +98,7 @@ type TransactionParamView = {
 }
 
 export type TransactionDataView = {
+  nonce?: string
   chainId: string
   type: string
   gasFeesSource: 'Dapp' | 'Frame'
@@ -113,6 +114,7 @@ export type TransactionDataView = {
 }
 
 export type TransactionRequestView = RequestViewBase<'transaction'> & {
+  locked?: boolean
   payload: RequestRpcPayload & {
     method: 'eth_sendTransaction'
     params: readonly [TransactionParamView, ...unknown[]]

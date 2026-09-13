@@ -494,36 +494,6 @@ export function createOperationRegistry(services: OperationServices) {
       'request_not_found',
       ['tray']
     ),
-    'transaction.fee-update': defineAcknowledgedCommand(
-      'transaction.fee-update',
-      ({ requestId, field, value }) => requestEdits.updateTransactionFee(requestId, field, value),
-      'request_not_found',
-      ['tray']
-    ),
-    'transaction.fee-default-set': defineAcknowledgedCommand(
-      'transaction.fee-default-set',
-      ({ requestId, level }) => requestEdits.setTransactionFeeDefault(requestId, level),
-      'request_not_found',
-      ['tray']
-    ),
-    'transaction.nonce-adjust': defineAcknowledgedCommand(
-      'transaction.nonce-adjust',
-      ({ requestId, direction }) => requestEdits.adjustTransactionNonce(requestId, direction),
-      'request_not_found',
-      ['tray']
-    ),
-    'transaction.nonce-reset': defineAcknowledgedCommand(
-      'transaction.nonce-reset',
-      ({ requestId }) => requestEdits.resetTransactionNonce(requestId),
-      'request_not_found',
-      ['tray']
-    ),
-    'transaction.fee-notice-dismiss': defineAcknowledgedCommand(
-      'transaction.fee-notice-dismiss',
-      ({ requestId }) => requestEdits.dismissTransactionFeeNotice(requestId),
-      'request_not_found',
-      ['tray']
-    ),
     'transaction.replace': defineAcknowledgedCommand(
       'transaction.replace',
       async (command, _event, context) => {
@@ -620,7 +590,8 @@ export function createOperationRegistry(services: OperationServices) {
     ),
     'request.approve': defineAcknowledgedCommand(
       'request.approve',
-      ({ requestId }, event, context) => requests.approve(requestId, signingUiContext(event, context)),
+      ({ requestId, adjustments }, event, context) =>
+        requests.approve(requestId, signingUiContext(event, context), adjustments),
       'request_not_found',
       ['tray']
     ),

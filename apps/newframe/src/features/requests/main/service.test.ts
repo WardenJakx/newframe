@@ -142,6 +142,7 @@ function fixture() {
     })
   }
   const signerCompatibility = mock(() => ({ signer: 'ledger', tx: 'london', compatible: true }))
+  const vault = { exists: mock(() => false), isUnlocked: mock(() => true) }
   const service: RequestService = createRequestService({
     accounts: accounts as never,
     agent: { resolveAccess: mock(() => true) },
@@ -154,7 +155,7 @@ function fixture() {
     } as never,
     store: { getState: () => state } as never,
     transactionPolicy: { signerCompatibility } as never,
-    vault: { exists: () => false, isUnlocked: () => true }
+    vault
   })
 
   const add = (request: AccountRequest, respond: RPCRequestCallback) => {
@@ -164,6 +165,7 @@ function fixture() {
   }
 
   return {
+    vault,
     account,
     accounts,
     add,
@@ -181,6 +183,62 @@ describe('prompted request lifecycle', () => {
 
   beforeEach(() => {
     test = fixture()
+  })
+
+  it.each(['locked', 'pending', 'settled', 'app-locked', 'non-prompt', 'signature'] as const)(
+    'rejects new adjustments on a %s request without changing its data',
+    (condition) => {
+      const request = transactionRequest('ineligible')
+      test.add(request, mock())
+      if (condition === 'locked') request.locked = true
+      if (condition === 'pending') request.status = 'pending' as never
+      if (condition === 'settled') test.service.resolve(request, '0xhash')
+      if (condition === 'app-locked') {
+        test.vault.exists.mockReturnValue(true)
+        test.vault.isUnlocked.mockReturnValue(false)
+      }
+      if (condition === 'non-prompt') request.authorization!.decision = 'allow' as never
+      if (condition === 'signature') (request as AccountRequest).type = 'sign'
+      const original = structuredClone(request)
+      expect(test.service.approve(request.handlerId, undefined, { nonce: '0x2' })).toBeFalse()
+      expect(request).toEqual(original)
+      expect(test.approveTransactionRequest).not.toHaveBeenCalled()
+    }
+  )
+
+  it('freezes accepted equal fees while a warning is pending and signs the stored candidate', () => {
+    const request = transactionRequest('adjusted')
+    request.automaticFeeUpdateNotice = { previousFee: '0x1' } as never
+    test.add(request, mock())
+    expect(test.service.approve(request.handlerId)).toBeTrue()
+    const gate = request.approvalGate
+    expect(gate?.type).toBe('gas-fee')
+    expect(test.service.approve(request.handlerId, undefined, { gasPrice: request.data.gasPrice })).toBeTrue()
+    expect(request.feesUpdatedByUser).toBeTrue()
+    expect(request.automaticFeeUpdateNotice).toBeUndefined()
+    expect(request.approvalGate).toEqual(gate)
+    expect(test.service.confirmWarning(request.handlerId, 'gas-fee')).toBeTrue()
+    expect(test.approveTransactionRequest).toHaveBeenCalledWith(request, undefined)
+    expect(test.service.approve(request.handlerId, undefined, { nonce: '0x2' })).toBeFalse()
+    expect(request.data.nonce).toBe('0x0')
+  })
+
+  it('recomputes a warning after candidate changes and rejects invalid candidates without partial writes', () => {
+    const request = transactionRequest('adjusted')
+    test.add(request, mock())
+    test.service.approve(request.handlerId)
+    const original = structuredClone(request)
+    expect(() =>
+      test.service.approve(request.handlerId, undefined, { nonce: '0x2', gasPrice: '0xffffffffffffffff' })
+    ).toThrow()
+    expect(request).toEqual(original)
+    expect(test.approveTransactionRequest).not.toHaveBeenCalled()
+    expect(
+      test.service.approve(request.handlerId, undefined, { gasPrice: '0x3b9aca00', nonce: '0x2' })
+    ).toBeTrue()
+    expect(request.approvalGate).toBeUndefined()
+    expect(request.data.nonce).toBe('0x2')
+    expect(test.approveTransactionRequest).toHaveBeenCalledTimes(1)
   })
 
   it.each([1, 8453])('returns null after approving chain %i', async (chainId) => {

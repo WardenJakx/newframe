@@ -61,6 +61,29 @@ it('approves and rejects requests using canonical IDs', () => {
   expect(capabilities.review.reject).toHaveBeenCalledWith({ requestId: 'request-2' })
 })
 
+it('submits local adjustments and shows approval failure without modifying the canonical request', async () => {
+  const req = {
+    type: 'transaction',
+    handlerId: 'request-1',
+    approvals: [],
+    data: { chainId: '0x1', gasPrice: '0x1' }
+  }
+  capabilities.review.approve.mockResolvedValueOnce({
+    ok: false,
+    error: 'operation_failed',
+    message: 'Invalid fee'
+  })
+  render(<RequestCommand {...createProps(false, req)} adjustments={{ gasPrice: '0x2' }} />)
+  fireEvent.click(screen.getByRole('button', { name: 'Sign' }))
+  await act(() => Promise.resolve())
+  expect(capabilities.review.approve).toHaveBeenCalledWith({
+    requestId: 'request-1',
+    adjustments: { gasPrice: '0x2' }
+  })
+  expect(screen.getByRole('alert').textContent).toBe('Invalid fee')
+  expect(req.data.gasPrice).toBe('0x1')
+})
+
 it('displays the main-projected signer compatibility gate without querying Electron', () => {
   const req = {
     handlerId: 'request-1',
@@ -137,7 +160,7 @@ it('uses renderer-generated idempotency keys for transaction replacement', () =>
   })
 })
 
-it('dismisses fee notices through the typed transaction command', () => {
+it('dismisses fee notices locally', () => {
   const req = {
     type: 'transaction',
     handlerId: 'request-1',
@@ -149,9 +172,8 @@ it('dismisses fee notices through the typed transaction command', () => {
 
   fireEvent.click(screen.getByText('Ok'))
 
-  expect(capabilities.transaction.dismissFeeNotice).toHaveBeenCalledWith({
-    requestId: req.handlerId
-  })
+  expect(screen.queryByText('Fee updated')).toBeNull()
+  expect(req.automaticFeeUpdateNotice).toEqual({})
 })
 
 it('uses typed request commands for required approvals', () => {
