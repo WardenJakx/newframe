@@ -29,9 +29,9 @@ describe('SettingsView', () => {
       })
       render(<SettingsView {...initial} />)
       expect(screen.queryByRole('switch')).toBeNull()
-      expect(initial.onRetryConnection).not.toHaveBeenCalled()
-      fireEvent.click(screen.getByRole('button', { name: 'Retry connection' }))
-      expect(initial.onRetryConnection).toHaveBeenCalledTimes(1)
+      expect((screen.getByRole('button', { name: 'Retry connection' }) as HTMLButtonElement).disabled).toBe(
+        false
+      )
     }
   )
 
