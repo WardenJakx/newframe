@@ -115,3 +115,13 @@ export function createAccountsCapability(host: AccountsHost): AccountsCapability
     writeText: (text) => host.executeCommand({ type: 'clipboard.write', text })
   }
 }
+
+export function selectAccountAndClose(
+  capability: Pick<AccountsCapability, 'selectAccount'>,
+  accountId: string,
+  currentAccountId: string,
+  onClose: () => void
+) {
+  onClose()
+  if (accountId !== currentAccountId) void capability.selectAccount({ accountId }).catch(() => {})
+}

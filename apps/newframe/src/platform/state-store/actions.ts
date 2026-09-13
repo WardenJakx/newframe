@@ -1019,6 +1019,22 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
       })
     },
 
+    setOriginFavicon: (originId: string, source: string) => {
+      set((draft) => {
+        const origin = mutableMain(draft).origins[originId]
+        if (!origin || origin.faviconSource === source) return
+        origin.faviconSource = source
+        delete origin.image
+      })
+    },
+
+    setOriginImage: (originId: string, source: string, image: TokenImage) => {
+      set((draft) => {
+        const origin = mutableMain(draft).origins[originId]
+        if (origin?.faviconSource === source && image.sourceUrl === source) origin.image = image
+      })
+    },
+
     addOriginRequest: (originId: string) => {
       const now = Date.now()
       set((draft) => {

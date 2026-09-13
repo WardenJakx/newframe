@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 
 import type { WalletRendererState } from '../../../../platform/state-sync/contract/projections'
@@ -15,10 +16,24 @@ const selectCurrentAccount = (state: WalletRendererState) => {
   }
 }
 
-export default function Main({ capabilities }: { capabilities: RequestRendererCapabilities }) {
+export default function Main({
+  capabilities,
+  accountSelector
+}: {
+  capabilities: RequestRendererCapabilities
+  accountSelector?: ReactNode
+}) {
   const { account, current, open } = useWalletSelector(useShallow(selectCurrentAccount))
   if (!open) return null
   if (!account) return null
 
-  return <Account capabilities={capabilities} key={current} {...account} index={1} />
+  return (
+    <Account
+      capabilities={capabilities}
+      accountSelector={accountSelector}
+      key={current}
+      {...account}
+      index={1}
+    />
+  )
 }

@@ -1,12 +1,13 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test'
 
 import { GasFeesSource } from '../../transactions/domain'
-import type { AccountRequest, AddChainRequest, TransactionRequest } from '../contract/requests'
+import type { AccessRequest, AccountRequest, AddChainRequest, TransactionRequest } from '../contract/requests'
 import { TxClassification } from '../contract/requests'
 import { createRequestService, type RequestService } from './service'
 
 const accountId = '0x1111111111111111111111111111111111111111'
 const signerId = 'signer-1'
+const otherAccountId = '0x2222222222222222222222222222222222222222'
 
 function transactionRequest(requestId: string): TransactionRequest {
   return {
@@ -54,8 +55,10 @@ function fixture() {
   const requests: Record<string, AccountRequest> = {}
   const state = {
     main: {
+      currentAccount: accountId,
       accounts: {
-        [accountId]: { id: accountId, address: accountId, requests }
+        [accountId]: { id: accountId, address: accountId, requests },
+        [otherAccountId]: { id: otherAccountId, address: otherAccountId, requests: {} }
       },
       assetRates: { ETH: { usdRate: 2_000, source: 'test', observedAt: 1 } },
       mute: { gasFeeWarning: false, signerCompatibilityWarning: false },
@@ -103,10 +106,10 @@ function fixture() {
       service.resolve(request, result)
       delete requests[request.handlerId]
     },
-    setAccess(request: AccountRequest, approved: boolean) {
-      service.resolve(request, approved)
+    setAccess: mock((request: AccountRequest, approved: boolean, targetAddress = accountId) => {
+      service.resolve(request, approved ? targetAddress : undefined)
       delete requests[request.handlerId]
-    }
+    })
   }
   const approval = Promise.withResolvers<string>()
   const approveTransactionRequest = mock(() => approval.promise)
@@ -114,7 +117,7 @@ function fixture() {
     clearRequestsByOrigin: mock(),
     current: () => account,
     get: (id: string) => (id === accountId ? state.main.accounts[accountId] : undefined),
-    getFrameAccount: (id: string) => (id === accountId ? account : undefined),
+    getFrameAccount: (id: string) => (id === accountId || id === otherAccountId ? account : undefined),
     rejectRequest(request: AccountRequest, error: EVMError) {
       service.reject(request, error)
       delete requests[request.handlerId]
@@ -307,3 +310,31 @@ describe('prompted request lifecycle', () => {
     expect(test.service.pendingCount).toBe(0)
   })
 })
+
+it.each([
+  { method: 'eth_requestAccounts', approved: true, selected: otherAccountId, target: otherAccountId },
+  { method: 'personal_sign', approved: true, selected: otherAccountId, target: accountId },
+  { method: 'eth_requestAccounts', approved: false, selected: otherAccountId, target: undefined },
+  { method: 'eth_requestAccounts', approved: true, selected: 'missing', target: undefined }
+])(
+  'resolves $method from its original owner with selected=$selected approved=$approved',
+  ({ method, approved, selected, target }) => {
+    const test = fixture()
+    const request: AccessRequest = {
+      type: 'access',
+      handlerId: 'connect',
+      origin: 'app.example',
+      account: accountId,
+      payload: { id: 17, jsonrpc: '2.0', method, params: [] }
+    }
+    const respond = mock<RPCRequestCallback>()
+    test.add(request, respond)
+    test.state.main.currentAccount = selected
+    expect(test.service.resolveAccess(request.handlerId, approved)).toBe(true)
+    expect(respond).toHaveBeenCalledWith({ id: 17, jsonrpc: '2.0', result: target })
+    expect(test.requests[request.handlerId]).toBeUndefined()
+    if (target === otherAccountId)
+      expect(test.account.setAccess).toHaveBeenCalledWith(request, true, otherAccountId)
+    if (!target) expect(test.account.setAccess).toHaveBeenCalledWith(request, false)
+  }
+)

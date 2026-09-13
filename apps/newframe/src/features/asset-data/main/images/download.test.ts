@@ -86,3 +86,15 @@ it('rejects redirects to private image URLs', async () => {
   )
   expect(mockFetch).toHaveBeenCalledTimes(1)
 })
+
+it.each(['image/x-icon', 'image/vnd.microsoft.icon', 'application/octet-stream'])(
+  'recognizes ICO bytes with %s content type',
+  async (mimeType) => {
+    const ico = Buffer.from([0, 0, 1, 0, 1, 0, 16, 16, 0, 0])
+    mockFetch.mockResolvedValue(createResponse(ico, mimeType))
+    expect(await downloadImage('https://cdn.example/favicon.ico')).toMatchObject({
+      mimeType: 'image/x-icon',
+      base64: ico.toString('base64')
+    })
+  }
+)

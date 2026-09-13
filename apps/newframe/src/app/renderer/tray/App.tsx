@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 
 import { cva } from '../../../../generated/styled-system/css/cva.js'
+import { AccountSelector } from '../../../features/accounts/renderer/AccountSelector'
 import Account from '../../../features/requests/renderer/Account'
 import type { RequestRendererCapabilities } from '../../../features/requests/renderer/requestCapabilities'
 import type { RequestCommandNotifier } from '../../../features/requests/renderer/RequestCommand'
@@ -159,6 +160,7 @@ const requestOverlayRecipe = cva({
 })
 
 export function Panel(props: PanelProps) {
+  const [accountSelectorOpen, setAccountSelectorOpen] = useState(false)
   const biometricRuntime = props.biometricRuntime || DEFAULT_BIOMETRIC_RUNTIME
   const [state, setPanelState] = useState<PanelState>({
     password: '',
@@ -365,9 +367,16 @@ export function Panel(props: PanelProps) {
       {requestViewOpen ? (
         <RequestViewProvider key={crumb.view === 'requestView' ? crumb.data.requestId : crumb.view}>
           <div className={requestOverlayRecipe()}>
-            <Account capabilities={props.requestCapabilities} />
+            <Account
+              capabilities={props.requestCapabilities}
+              accountSelector={
+                <AccountSelector capability={accountsCapability} onOpenChange={setAccountSelectorOpen} />
+              }
+            />
           </div>
-          <Footer capabilities={props.requestCapabilities} notify={props.notifyRequest} />
+          <div hidden={accountSelectorOpen} inert={accountSelectorOpen}>
+            <Footer capabilities={props.requestCapabilities} notify={props.notifyRequest} />
+          </div>
         </RequestViewProvider>
       ) : null}
     </div>

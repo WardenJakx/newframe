@@ -357,7 +357,17 @@ export function createRequestService(ports: RequestServicePorts) {
     resolveAccess(requestId: string, approved: boolean) {
       const located = locate<AccessRequest>(requestId)
       if (located?.request.type !== 'access') return false
-      located.account.setAccess(located.request, approved)
+      if (approved && located.request.payload?.method === 'eth_requestAccounts') {
+        const { main } = ports.store.getState()
+        const selected = main.accounts[main.currentAccount]
+        if (!selected || !ports.accounts.getFrameAccount(selected.address)) {
+          located.account.setAccess(located.request, false)
+          return true
+        }
+        located.account.setAccess(located.request, true, selected.address)
+      } else {
+        located.account.setAccess(located.request, approved)
+      }
       return true
     },
 

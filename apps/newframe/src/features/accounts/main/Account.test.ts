@@ -453,3 +453,30 @@ it('rejects every Safe signing method even when an owner signer is associated', 
     ).rejects.toThrow('Safe accounts are read-only')
   }
 })
+
+it.each([true, false])(
+  'settles the original access owner and grants only the selected target, approved=%s',
+  (approved) => {
+    const ownerAccount = account as InstanceType<typeof import('./Account').default>
+    const target = '0x0000000000000000000000000000000000000002'
+    const origin = 'selected-target-test'
+    const respond = mock<RPCRequestCallback>()
+    const handlerId = requestLifecycle.create(respond)
+    const request: import('../../requests/contract/requests').AccessRequest = {
+      type: 'access',
+      handlerId,
+      origin,
+      account: ownerAccount.address,
+      payload: { id: 19, jsonrpc: '2.0', method: 'eth_requestAccounts', params: [] }
+    }
+    store.getState().initOrigin(origin, { name: 'selected-target.test', chain: { id: 1, type: 'ethereum' } })
+    store.getState().revokePermission(target, handlerId)
+    ownerAccount.addRequest(request)
+    ownerAccount.setAccess(request, approved, target)
+    expect(store.getState().main.permissions[target]?.[handlerId]?.provider).toBe(approved ? true : undefined)
+    expect(store.getState().main.permissions[ownerAccount.address]?.[handlerId]).toBeUndefined()
+    expect(ownerAccount.getRequest(handlerId)).toBeUndefined()
+    expect(respond).toHaveBeenCalledWith({ id: 19, jsonrpc: '2.0', result: approved ? target : undefined })
+    store.getState().revokePermission(target, handlerId)
+  }
+)

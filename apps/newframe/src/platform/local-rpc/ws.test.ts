@@ -320,3 +320,49 @@ it.each(['trust', 'send', 'after-response'] as const)(
     expect(socket.listenerCount('message')).toBe(0)
   }
 )
+
+it.each([
+  { source: 'https://cdn.example/favicon.ico', accepted: true },
+  { source: 'http://cdn.example/favicon.ico', accepted: false },
+  { source: 'https://user:secret@cdn.example/favicon.ico', accepted: false },
+  { source: `https://cdn.example/${'x'.repeat(4096)}`, accepted: false }
+])(
+  'accepts only bounded HTTPS favicon metadata from approved proxied extensions, accepted=$accepted',
+  async ({ source, accepted }) => {
+    const domain = `favicon-${accepted}-${source.length}.test`
+    provider.respond = (payload) => ({ id: payload.id, jsonrpc: payload.jsonrpc, result: 'ok' })
+    const payload = {
+      id: 88,
+      jsonrpc: '2.0',
+      method: 'web3_clientVersion',
+      params: [],
+      __frameOrigin: `https://${domain}`,
+      __frameFavicon: source
+    } satisfies JSONRPCRequestPayload & { __frameOrigin: string; __frameFavicon: string }
+    await request(payload)
+    expect(provider.requests.at(-1)?.payload).not.toHaveProperty('__frameFavicon')
+    expect(
+      Object.values(store.getState().main.origins).find((origin) => origin.name === domain)?.faviconSource
+    ).toBe(accepted ? source : undefined)
+    transport.dispose()
+  }
+)
+
+it('strips favicon metadata from ordinary WebSocket requests without persisting it', async () => {
+  const target = connect({ headers: { origin: 'https://ordinary-favicon.test' }, url: '/' })
+  provider.respond = (payload) => ({ id: payload.id, jsonrpc: payload.jsonrpc, result: 'ok' })
+  const payload = {
+    id: 89,
+    jsonrpc: '2.0',
+    method: 'web3_clientVersion',
+    params: [],
+    __frameFavicon: 'https://cdn.example/favicon.ico'
+  } satisfies JSONRPCRequestPayload & { __frameFavicon: string }
+  await request(payload, target)
+  expect(provider.requests.at(-1)?.payload).not.toHaveProperty('__frameFavicon')
+  expect(
+    Object.values(store.getState().main.origins).find((origin) => origin.name === 'ordinary-favicon.test')
+      ?.faviconSource
+  ).toBeUndefined()
+  transport.dispose()
+})

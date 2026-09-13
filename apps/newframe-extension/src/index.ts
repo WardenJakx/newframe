@@ -471,6 +471,7 @@ function addStateListeners() {
       jsonrpc: '2.0',
       id,
       __frameOrigin: origin,
+      __frameFavicon: sender.tab?.favIconUrl,
       __extensionConnecting: undefined
     }
 

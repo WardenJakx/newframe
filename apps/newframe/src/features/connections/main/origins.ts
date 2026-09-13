@@ -27,6 +27,7 @@ interface OriginStorePort {
   getOrigin(id: string): { name: string; chain?: { id: number } } | undefined
   getKnownEthereumChainIds(): ReadonlySet<number>
   initializeOrigin(id: string, origin: { name: string; chain: { id: number; type: 'ethereum' } }): void
+  setOriginFavicon(id: string, source: string): void
   touchOrigin(id: string): void
   switchOriginChain(id: string, chainId: number): void
   getPermission(address: Address, origin: string): Permission | undefined
@@ -51,9 +52,14 @@ export interface OriginsServiceDependencies {
 
 export function createOriginsService(dependencies: OriginsServiceDependencies) {
   const activeExtensionChecks = new Map<string, Promise<boolean>>()
-  const activePermissionChecks = new Map<string, Promise<Permission | undefined>>()
+  const activePermissionChecks = new Map<string, Promise<Address | undefined>>()
 
-  const updateOrigin = (requestPayload: JSONRPCRequestPayload, origin: string, connectionMessage = false) => {
+  const updateOrigin = (
+    requestPayload: JSONRPCRequestPayload,
+    origin: string,
+    connectionMessage = false,
+    faviconSource?: string
+  ) => {
     const originId = uuidv5(origin, uuidv5.DNS)
     const existingOrigin = dependencies.store.getOrigin(originId)
     const result = projectOriginUpdate({
@@ -76,6 +82,7 @@ export function createOriginsService(dependencies: OriginsServiceDependencies) {
       }
     }
 
+    if (faviconSource) dependencies.store.setOriginFavicon(originId, faviconSource)
     return { payload: result.payload as RPCRequestPayload, chainId: result.chainId }
   }
 
@@ -122,9 +129,9 @@ export function createOriginsService(dependencies: OriginsServiceDependencies) {
     const activeCheck = activePermissionChecks.get(permissionCheckId)
     if (activeCheck) return activeCheck
 
-    let resolveCheck!: (permission: Permission | undefined) => void
+    let resolveCheck!: (address: Address | undefined) => void
     let rejectCheck!: (error: unknown) => void
-    const result = new Promise<Permission | undefined>((resolve, reject) => {
+    const result = new Promise<Address | undefined>((resolve, reject) => {
       resolveCheck = resolve
       rejectCheck = reject
     })
@@ -138,12 +145,11 @@ export function createOriginsService(dependencies: OriginsServiceDependencies) {
     }
 
     try {
-      dependencies.requests.create(() => {
-        const originName = dependencies.store.getOrigin(originId)?.name || 'Unknown'
-        const permission = dependencies.store.getPermission(address, originName)
-
+      dependencies.requests.create((response) => {
+        const grantedAddress =
+          'result' in response && typeof response.result === 'string' ? response.result : undefined
         activePermissionChecks.delete(permissionCheckId)
-        resolveCheck(permission)
+        resolveCheck(grantedAddress)
       }, request.handlerId)
       dependencies.accounts.routeRequest(principal, request)
     } catch (error) {
@@ -171,7 +177,23 @@ export function createOriginsService(dependencies: OriginsServiceDependencies) {
     if (decision === 'allow') return true
     if (decision === 'deny' || !currentAccount) return false
 
-    return Boolean((await requestPermission(currentAccount.address, payload, principal))?.provider)
+    const grantedAddress = await requestPermission(currentAccount.address, payload, principal).catch(
+      () => undefined
+    )
+    if (!grantedAddress) return false
+    const requiredAddress = [
+      'eth_requestAccounts',
+      'eth_accounts',
+      'eth_coinbase',
+      'wallet_getEthereumAccounts'
+    ].includes(payload.method)
+      ? dependencies.accounts.current()?.address
+      : currentAccount.address
+    return Boolean(
+      requiredAddress &&
+      requiredAddress.toLowerCase() === grantedAddress.toLowerCase() &&
+      dependencies.store.getPermission(grantedAddress, originName)?.provider
+    )
   }
 
   return { isKnownExtension, isTrusted, parseFrameExtension, updateOrigin }
@@ -190,6 +212,7 @@ export function createProductionOriginsService(
     getOrigin: (id) => store.getState().main.origins[id],
     getKnownEthereumChainIds: () => new Set(Object.keys(store.getState().main.networks.ethereum).map(Number)),
     initializeOrigin: (id, origin) => store.getState().initOrigin(id, origin),
+    setOriginFavicon: (id, source) => store.getState().setOriginFavicon(id, source),
     touchOrigin: (id) => store.getState().addOriginRequest(id),
     switchOriginChain: (id, chainId) => store.getState().switchOriginChain(id, chainId, 'ethereum'),
     getPermission: (address, origin) => {

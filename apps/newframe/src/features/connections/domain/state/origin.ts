@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
 import { ChainIdSchema } from '../../../networks/domain/state/chain.js'
+import { TokenImageSchema } from '../../../tokens/domain/state/token.js'
 
 const SessionSchema = z.object({
   requests: z.number().gte(0),
@@ -12,6 +13,8 @@ const SessionSchema = z.object({
 export const OriginSchema = z.object({
   chain: ChainIdSchema,
   name: z.string(),
+  faviconSource: z.string().optional(),
+  image: TokenImageSchema.optional(),
   session: SessionSchema
 })
 

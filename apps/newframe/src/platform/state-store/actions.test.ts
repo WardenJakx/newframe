@@ -1111,3 +1111,17 @@ describe('#canonical action boundaries', () => {
     expect(publishedStates).toBe(2) // initial observation plus one atomic Zustand publication
   })
 })
+
+it('persists only an origin image matching the current favicon source', () => {
+  const { actions, getState } = createActionHarness({})
+  actions.initOrigin('favicon', { name: 'favicon.test', chain: { id: 1, type: 'ethereum' } })
+  const source = 'https://cdn.example/first.ico'
+  const image = { sourceUrl: source, base64: 'AAABAAEA', contentHash: 'first', mimeType: 'image/x-icon' }
+  actions.setOriginFavicon('favicon', source)
+  actions.setOriginImage('favicon', source, image)
+  expect(getState().main.origins.favicon.image).toEqual(image)
+  actions.setOriginFavicon('favicon', 'https://cdn.example/second.ico')
+  expect(getState().main.origins.favicon.image).toBeUndefined()
+  actions.setOriginImage('favicon', source, image)
+  expect(getState().main.origins.favicon.image).toBeUndefined()
+})

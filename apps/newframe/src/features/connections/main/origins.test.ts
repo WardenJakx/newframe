@@ -31,7 +31,12 @@ function requestPayload(overrides: Partial<RPCRequestPayload> = {}): RPCRequestP
   }
 }
 
-type StoredOrigin = { name: string; chain?: { id: number; type?: string }; touches?: number }
+type StoredOrigin = {
+  name: string
+  chain?: { id: number; type?: string }
+  touches?: number
+  faviconSource?: string
+}
 
 function createOriginHarness() {
   const origins: Record<string, StoredOrigin> = {}
@@ -47,7 +52,9 @@ function createOriginHarness() {
   const knownEthereumChainIds = new Set([1])
   let currentAccount: { address: Address } | undefined = { address }
   let development = false
-  let routeHandler: ((request: AccessRequest, complete: () => void) => void) | undefined
+  let routeHandler:
+    | ((request: AccessRequest, complete: (grantedAddress?: Address) => void) => void)
+    | undefined
 
   const dependencies: OriginsServiceDependencies = {
     store: {
@@ -55,6 +62,9 @@ function createOriginHarness() {
       getKnownEthereumChainIds: () => knownEthereumChainIds,
       initializeOrigin: (id, origin) => {
         origins[id] = origin
+      },
+      setOriginFavicon: (id, source) => {
+        origins[id].faviconSource = source
       },
       touchOrigin: (id) => {
         origins[id].touches = (origins[id].touches || 0) + 1
@@ -85,13 +95,13 @@ function createOriginHarness() {
           principal: receivedPrincipal as typeof principal,
           request
         })
-        const complete = () => {
+        const complete = (grantedAddress: Address = request.account) => {
           const continuation = continuations.get(request.handlerId)
           continuations.delete(request.handlerId)
           continuation?.({
             id: request.payload.id,
             jsonrpc: request.payload.jsonrpc,
-            result: undefined
+            result: grantedAddress
           })
         }
         routeHandler?.(request, complete)
@@ -113,6 +123,11 @@ function createOriginHarness() {
     origins,
     notifications,
     routedRequests,
+    respond(requestId: string, response: RPCResponsePayload) {
+      const continuation = continuations.get(requestId)
+      continuations.delete(requestId)
+      continuation?.(response)
+    },
     knownEthereumChainIds,
     setAccount(next?: Address) {
       currentAccount = next ? { address: next } : undefined
@@ -123,14 +138,14 @@ function createOriginHarness() {
     setOrigin(id: string, origin: StoredOrigin) {
       origins[id] = origin
     },
-    setPermission(origin: string, provider: boolean) {
-      permissions[address] = [{ origin, provider, handlerId: uuidv5(origin, uuidv5.DNS) }]
+    setPermission(origin: string, provider: boolean, accountAddress: Address = address) {
+      permissions[accountAddress] = [{ origin, provider, handlerId: uuidv5(origin, uuidv5.DNS) }]
     },
     setKnownExtension(id: string, allowed: boolean) {
       knownExtensions[id] = allowed
       for (const listener of extensionListeners.get(id) || []) listener(allowed)
     },
-    onRoute(handler: (request: AccessRequest, complete: () => void) => void) {
+    onRoute(handler: (request: AccessRequest, complete: (grantedAddress?: Address) => void) => void) {
       routeHandler = handler
     }
   }
@@ -399,3 +414,77 @@ describe('origin authorization service', () => {
     await expect(Promise.all([first, second])).resolves.toStrictEqual([true, true])
   })
 })
+
+for (const firstMethod of ['eth_requestAccounts', 'personal_sign']) {
+  it(`checks each mixed permission waiter after ${firstMethod} opens the shared prompt`, async () => {
+    const harness = createOriginHarness()
+    const originId = uuidv5('test.frame.eth', uuidv5.DNS)
+    const other = '0x0000000000000000000000000000000000000002'
+    let complete!: (grantedAddress?: Address) => void
+    harness.setOrigin(originId, { name: 'test.frame.eth' })
+    harness.onRoute((_request, done) => {
+      complete = done
+    })
+    const methods = [
+      firstMethod,
+      firstMethod === 'eth_requestAccounts' ? 'personal_sign' : 'eth_requestAccounts',
+      'eth_accounts',
+      'eth_coinbase'
+    ]
+    const pending = methods.map((method) =>
+      harness.service.isTrusted(requestPayload({ method, _origin: originId }), principal)
+    )
+    expect(harness.routedRequests).toHaveLength(1)
+    // Only a connect-owned prompt permits choosing the global account.
+    const granted = firstMethod === 'eth_requestAccounts' ? other : address
+    harness.setAccount(other)
+    harness.setPermission('test.frame.eth', true, granted)
+    complete(granted)
+    expect(await Promise.all(pending)).toEqual(
+      methods.map((method) => (method === 'personal_sign' ? granted === address : granted === other))
+    )
+  })
+}
+
+it('denies a discovery waiter if selected account changes again or the returned grant is absent', async () => {
+  for (const permissionPresent of [true, false]) {
+    const harness = createOriginHarness()
+    const originId = uuidv5('test.frame.eth', uuidv5.DNS)
+    let complete!: (grantedAddress?: Address) => void
+    harness.setOrigin(originId, { name: 'test.frame.eth' })
+    harness.onRoute((_request, done) => {
+      complete = done
+    })
+    const result = harness.service.isTrusted(
+      requestPayload({ method: 'eth_requestAccounts', _origin: originId }),
+      principal
+    )
+    if (permissionPresent) {
+      harness.setPermission('test.frame.eth', true)
+      harness.setAccount()
+    }
+    complete(address)
+    await expect(result).resolves.toBe(false)
+  }
+})
+
+it.each([false, true])(
+  'denies explicit permission rejection even if a grant appears concurrently, error=%s',
+  async (error) => {
+    const harness = createOriginHarness()
+    const originId = uuidv5('test.frame.eth', uuidv5.DNS)
+    harness.setOrigin(originId, { name: 'test.frame.eth' })
+    const result = harness.service.isTrusted(
+      requestPayload({ method: 'eth_requestAccounts', _origin: originId }),
+      principal
+    )
+    harness.setPermission('test.frame.eth', true)
+    harness.respond(
+      originId,
+      error
+        ? { id: 1, jsonrpc: '2.0', error: { code: 4001, message: 'Denied' } }
+        : { id: 1, jsonrpc: '2.0', result: undefined }
+    )
+    await expect(result).resolves.toBe(false)
+  }
+)

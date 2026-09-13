@@ -16,6 +16,22 @@ import type { ApiTimerPort } from './http.js'
 import protectedMethods from './protectedMethods.js'
 import validPayload from './validPayload.js'
 
+function faviconSource(value: unknown): string | undefined {
+  if (
+    typeof value !== 'string' ||
+    value.length > 4096 ||
+    [...value].some((character) => character.charCodeAt(0) <= 31 || character.charCodeAt(0) === 127)
+  )
+    return
+  try {
+    const url = new URL(value)
+    if (url.protocol === 'https:' && !url.username && !url.password && (!url.port || url.port === '443'))
+      return url.toString()
+  } catch {
+    return undefined
+  }
+}
+
 interface Subscription {
   originId: string
   socket: FrameWebSocket
@@ -30,6 +46,7 @@ interface FrameWebSocket extends WebSocket {
 
 interface ExtensionPayload extends JSONRPCRequestPayload {
   __frameOrigin?: string
+  __frameFavicon?: unknown
   __extensionConnecting?: boolean
 }
 
@@ -140,6 +157,8 @@ export function createWebSocketRpcTransport({
         return
       }
 
+      const faviconMetadata = rawPayload.__frameFavicon
+      delete rawPayload.__frameFavicon
       let responded = false
       const respondOnce = (response: RPCResponsePayload) => {
         if (responded) return
@@ -190,7 +209,8 @@ export function createWebSocketRpcTransport({
         const { payload, chainId } = origins.updateOrigin(
           rawPayload,
           origin,
-          rawPayload.__extensionConnecting
+          rawPayload.__extensionConnecting,
+          proxiedExtensionRequest ? faviconSource(faviconMetadata) : undefined
         )
         const principal = createRpcPrincipal({
           transport: 'websocket',
