@@ -1,5 +1,5 @@
 /* globals chrome */
-import FrameBackgroundProvider, { RawFrameConnection } from './frameConnection'
+import FrameBackgroundProvider, { RawFrameConnection, type ConnectionRetryState } from './frameConnection'
 import { frameStateStore, type AvailableChain, type ConnectionStatus } from './frameState'
 
 type Provider = FrameBackgroundProvider
@@ -17,6 +17,24 @@ const subTypes = [
 let provider: Provider | null
 let dappConnection: RawFrameConnection | null
 let settingsPanel: chrome.runtime.Port | null, activeTabId: number
+const CONNECTION_REJECTED_KEY = 'extensionConnectionRejected'
+const PRIMARY_RETRY_KEY = 'extensionConnectionRetry'
+const DAPP_RETRY_KEY = 'extensionDappRetry'
+let retryStates: Record<string, unknown> = {}
+let connectionPreferenceWrite = Promise.resolve()
+let retrying = false
+
+function retryOptions(key: typeof PRIMARY_RETRY_KEY | typeof DAPP_RETRY_KEY) {
+  return {
+    retryState: retryStates[key],
+    onRetryStateChange: (state: ConnectionRetryState) => {
+      retryStates[key] = state
+      connectionPreferenceWrite = connectionPreferenceWrite
+        .then(() => chrome.storage.local.set({ [key]: state }))
+        .catch(console.error)
+    }
+  }
+}
 
 interface PendingRequest {
   tabId: number
@@ -125,6 +143,7 @@ function setPopup(popup: string) {
 }
 
 async function fetchAvailableChains() {
+  if (!provider?.isConnected()) return
   try {
     const chains = await provider!.request<AvailableChain[]>({ method: 'wallet_getEthereumChains' })
     setChains(chains)
@@ -214,24 +233,36 @@ async function sendEvent(event: string, args: any[] = [], selector: chrome.tabs.
   await Promise.all(tabs.filter((tab) => !!tab.url).map((tab) => sendEventToTab(tab.id!, event, args)))
 }
 
-function initProvider() {
+function initProvider(requestApproval = false) {
   console.log('Initializing provider connection to Newframe')
 
   const companionUrl = 'ws://127.0.0.1:1248?identity=newframe-extension'
-  provider = new FrameBackgroundProvider(`${companionUrl}&scope=internal`)
-  dappConnection = new RawFrameConnection(companionUrl)
+  provider = new FrameBackgroundProvider(`${companionUrl}&scope=internal`, {
+    ...retryOptions(PRIMARY_RETRY_KEY),
+    requestApproval
+  })
 
   provider.connection.on('connect', () => {
     setConnectionStatus('extension-approval-pending')
   })
 
   provider.connection.on('close', () => {
+    dappConnection?.close()
+    dappConnection = null
     setConnectionStatus('desktop-unavailable')
+  })
+
+  provider.on('rejected', () => {
+    setConnectionStatus('extension-approval-rejected')
   })
 
   provider.on('connect', () => {
     console.log('Connected to Newframe')
 
+    dappConnection = new RawFrameConnection(companionUrl, retryOptions(DAPP_RETRY_KEY))
+    dappConnection.on('payload', (payload) => {
+      handleDappPayload(payload).catch(console.error)
+    })
     setConnectionStatus('connected')
     fetchAvailableChains().catch(console.error)
     refreshActiveOriginStatus().catch(console.error)
@@ -247,8 +278,6 @@ function initProvider() {
     setIcon('icons/icon96moon.png')
     sendEvent('close').catch(console.error)
   })
-
-  provider.on('unresponsive', () => dappConnection?.reconnect())
 
   provider.on('chainsChanged', (chains = []) => {
     if (chains[0] && typeof chains[0] === 'object') {
@@ -309,10 +338,6 @@ function initProvider() {
       }
     }
   }
-
-  dappConnection.on('payload', (payload) => {
-    handleDappPayload(payload).catch(console.error)
-  })
 }
 
 function destroyProvider() {
@@ -334,6 +359,7 @@ function addStateListeners() {
     extensionPayload: Parameters<Parameters<typeof chrome.runtime.onMessage.addListener>[0]>[0],
     sender: chrome.runtime.MessageSender
   ) {
+    await connectionReady
     const { tab, ...payload } = extensionPayload
     const { method, params } = payload
 
@@ -368,6 +394,28 @@ function addStateListeners() {
       }
     }
 
+    if (payload.method === 'frame_retry_connection') {
+      if (sender.tab || sender.url !== chrome.runtime.getURL('settings.html')) return
+      if (retrying || frameStateStore.getState().connectionStatus === 'connected') return
+
+      retrying = true
+      destroyProvider()
+      setConnectionStatus('extension-approval-pending')
+      try {
+        await connectionPreferenceWrite
+        await chrome.storage.local.remove([PRIMARY_RETRY_KEY, DAPP_RETRY_KEY, CONNECTION_REJECTED_KEY])
+        retryStates = {}
+        initProvider(true)
+      } catch (error) {
+        setConnectionStatus('desktop-unavailable')
+        initProvider()
+        throw error
+      } finally {
+        retrying = false
+      }
+      return
+    }
+
     if (payload.method === 'frame_disconnect_current_site') {
       if (sender.tab) return
 
@@ -390,7 +438,22 @@ function addStateListeners() {
     }
 
     if (payload.method === 'frame_summon')
-      return provider!.connection.send({ jsonrpc: '2.0', id: 1, method, params })
+      return provider?.connection.send({ jsonrpc: '2.0', id: 1, method, params })
+
+    if (!provider?.isConnected() || !dappConnection) {
+      const tabId = sender.tab?.id ?? tab?.id
+      if (tabId === undefined) return
+      const rejected = frameStateStore.getState().connectionStatus === 'extension-approval-rejected'
+      await chrome.tabs.sendMessage(tabId, {
+        type: 'eth:payload',
+        id: payload.id,
+        jsonrpc: '2.0',
+        error: rejected
+          ? { code: 4001, message: 'Connection declined. Click Retry connection in Newframe Companion.' }
+          : { code: 4900, message: 'Not connected' }
+      })
+      return
+    }
 
     const id = provider!.nextId++
     const origin = getOrigin(tab || sender)
@@ -430,13 +493,6 @@ function addStateListeners() {
     port.onDisconnect.addListener(onPortDisconnected)
     updateSettingsPanel()
     refreshActiveOriginStatus().catch(console.error)
-  })
-
-  chrome.idle.onStateChanged.addListener((state) => {
-    if (state === 'active') {
-      destroyProvider()
-      initProvider()
-    }
   })
 }
 
@@ -494,18 +550,26 @@ async function addTabListeners() {
 const CLIENT_STATUS_ALARM_KEY = 'check-client-status'
 
 async function setupClientStatusAlarm() {
-  const alarm = await chrome.alarms.get(CLIENT_STATUS_ALARM_KEY)
+  chrome.alarms.onAlarm.addListener((alarm) => {
+    if (alarm.name === CLIENT_STATUS_ALARM_KEY) {
+      connectionReady
+        .then(async () => {
+          if (retrying) return
+          if (provider?.isConnected()) {
+            dappConnection?.ensureConnected()
+            await provider.checkHealth()
+          } else {
+            provider?.connection.ensureConnected()
+          }
+        })
+        .catch(console.error)
+    }
+  })
 
+  const alarm = await chrome.alarms.get(CLIENT_STATUS_ALARM_KEY)
   if (!alarm) {
     await chrome.alarms.create(CLIENT_STATUS_ALARM_KEY, { delayInMinutes: 0, periodInMinutes: 0.5 })
   }
-
-  chrome.alarms.onAlarm.addListener((alarm) => {
-    if (alarm.name === CLIENT_STATUS_ALARM_KEY) {
-      dappConnection?.ensureConnected()
-      provider?.checkHealth().catch(console.error)
-    }
-  })
 }
 
 // extension reloads orphan content scripts in open tabs (their chrome.runtime dies,
@@ -537,4 +601,8 @@ setPopup('settings.html')
 addStateListeners()
 addTabListeners().catch(console.error)
 setupClientStatusAlarm().catch(console.error)
-initProvider()
+const connectionReady = chrome.storage.local.get([PRIMARY_RETRY_KEY, DAPP_RETRY_KEY]).then((saved) => {
+  retryStates = saved
+  initProvider()
+})
+connectionReady.catch(console.error)

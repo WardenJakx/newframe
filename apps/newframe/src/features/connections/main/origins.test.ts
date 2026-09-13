@@ -65,6 +65,9 @@ function createOriginHarness() {
       getPermission: (accountAddress, origin) =>
         permissions[accountAddress]?.find((permission) => permission.origin === origin),
       getKnownExtension: (id) => knownExtensions[id],
+      clearKnownExtension: (id) => {
+        delete knownExtensions[id]
+      },
       subscribeKnownExtension: (id, handler) => {
         const listeners = extensionListeners.get(id) || new Set()
         listeners.add(handler)
@@ -207,6 +210,23 @@ describe('origin update service', () => {
 })
 
 describe('extension trust service', () => {
+  it('reopens a declined connection only on explicit retry and shares the new decision', async () => {
+    const harness = createOriginHarness()
+    const extension: FrameExtension = { browser: 'firefox', id: 'retry-firefox' }
+    harness.setKnownExtension(extension.id, false)
+
+    await expect(harness.service.isKnownExtension(extension)).resolves.toBe(false)
+    expect(harness.notifications).toHaveLength(0)
+
+    for (const allowed of [false, true]) {
+      const retry = harness.service.isKnownExtension(extension, true)
+      const concurrent = harness.service.isKnownExtension(extension)
+      harness.setKnownExtension(extension.id, allowed)
+      await expect(Promise.all([retry, concurrent])).resolves.toEqual([allowed, allowed])
+    }
+    expect(harness.notifications).toEqual([extension, extension])
+  })
+
   it('recognizes production and development extension identities through the injected environment', () => {
     const harness = createOriginHarness()
     const safariRequest = {

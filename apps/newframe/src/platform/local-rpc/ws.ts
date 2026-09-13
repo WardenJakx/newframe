@@ -149,8 +149,13 @@ export function createWebSocketRpcTransport({
       try {
         let requestOrigin = socket.origin
         const proxiedExtensionRequest = Boolean(socket.frameExtension && rawPayload.__frameOrigin)
+        const requestExtensionConnection =
+          socket.companionInternal &&
+          !proxiedExtensionRequest &&
+          rawPayload.method === 'frame_requestExtensionConnection'
         if (socket.frameExtension) {
-          if (!(await origins.isKnownExtension(socket.frameExtension))) {
+          const allowed = await origins.isKnownExtension(socket.frameExtension, requestExtensionConnection)
+          if (!allowed) {
             respondOnce({
               id: rawPayload.id,
               jsonrpc: rawPayload.jsonrpc,
@@ -215,7 +220,7 @@ export function createWebSocketRpcTransport({
           }
 
           const { id, jsonrpc } = rawPayload
-          if (rawPayload.method === 'eth_chainId') {
+          if (rawPayload.method === 'eth_chainId' || requestExtensionConnection) {
             respondOnce({ id, jsonrpc, result: chainId })
             return
           }

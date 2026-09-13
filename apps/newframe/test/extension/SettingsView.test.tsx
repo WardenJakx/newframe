@@ -11,6 +11,7 @@ function props(overrides: Partial<SettingsViewProps> = {}): SettingsViewProps {
     isSupportedTab: true,
     mmAppear: false,
     onSummon: mock(() => {}),
+    onRetryConnection: mock(() => {}),
     onDisconnect: mock(() => {}),
     onToggleMetaMask: mock(() => {}),
     onSelectChain: mock(() => {}),
@@ -19,6 +20,21 @@ function props(overrides: Partial<SettingsViewProps> = {}): SettingsViewProps {
 }
 
 describe('SettingsView', () => {
+  it.each(['desktop-unavailable', 'extension-approval-pending', 'extension-approval-rejected'] as const)(
+    'offers an explicit retry while %s, including on unsupported tabs',
+    (connectionStatus) => {
+      const initial = props({
+        isSupportedTab: false,
+        settings: { ...frameStateStore.getState(), connectionStatus }
+      })
+      render(<SettingsView {...initial} />)
+      expect(screen.queryByRole('switch')).toBeNull()
+      expect((screen.getByRole('button', { name: 'Retry connection' }) as HTMLButtonElement).disabled).toBe(
+        false
+      )
+    }
+  )
+
   it('gates site controls on desktop connection and tab support', () => {
     const initial = props()
     const { rerender } = render(<SettingsView {...initial} />)
@@ -54,6 +70,7 @@ describe('SettingsView', () => {
       settings: { ...frameStateStore.getState(), connectionStatus: 'connected', siteConnected: true }
     })
     render(<SettingsView {...initial} />)
+    expect(screen.queryByRole('button', { name: 'Retry connection' })).toBeNull()
     expect(screen.getByText('example.com')).toBeTruthy()
     expect(screen.getByRole('switch', { name: 'Appear as MetaMask' }).getAttribute('aria-checked')).toBe(
       'true'

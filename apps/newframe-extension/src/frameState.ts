@@ -7,7 +7,11 @@ export interface AvailableChain {
   icon?: { url: string }[]
 }
 
-export type ConnectionStatus = 'desktop-unavailable' | 'extension-approval-pending' | 'connected'
+export type ConnectionStatus =
+  | 'desktop-unavailable'
+  | 'extension-approval-pending'
+  | 'extension-approval-rejected'
+  | 'connected'
 
 export interface FrameState {
   connectionStatus: ConnectionStatus

@@ -31,6 +31,7 @@ interface OriginStorePort {
   switchOriginChain(id: string, chainId: number): void
   getPermission(address: Address, origin: string): Permission | undefined
   getKnownExtension(id: string): boolean | undefined
+  clearKnownExtension(id: string): void
   subscribeKnownExtension(id: string, handler: (allowed: boolean) => void): () => void
   notifyExtension(extension: FrameExtension): void
 }
@@ -103,11 +104,16 @@ export function createOriginsService(dependencies: OriginsServiceDependencies) {
     return result
   }
 
-  const isKnownExtension = async (extension: FrameExtension) => {
+  const isKnownExtension = async (extension: FrameExtension, requestApproval = false) => {
     if (extension.browser === 'safari') return true
 
     const extensionPermission = dependencies.store.getKnownExtension(extension.id)
-    return extensionPermission ?? requestExtensionPermission(extension)
+    if (extensionPermission === true) return true
+    if (extensionPermission === false) {
+      if (!requestApproval) return false
+      dependencies.store.clearKnownExtension(extension.id)
+    }
+    return requestExtensionPermission(extension)
   }
 
   const requestPermission = (address: Address, fullPayload: RPCRequestPayload, principal: RpcPrincipal) => {
@@ -191,6 +197,7 @@ export function createProductionOriginsService(
       return Object.values(permissions).find((permission) => permission.origin === origin)
     },
     getKnownExtension: (id) => store.getState().main.knownExtensions[id] as boolean | undefined,
+    clearKnownExtension: (id) => store.getState().trustExtension(id, undefined),
     subscribeKnownExtension: (id, handler) =>
       store.subscribe(
         (state) => state.main.knownExtensions[id],
