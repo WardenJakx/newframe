@@ -55,35 +55,39 @@ function WarningFixture() {
   )
 }
 
-it('keeps an extension response visible until projected notify state confirms completion', async () => {
-  const extensionView = {
-    notify: 'extensionConnect',
-    notifyData: { id: 'extension-a', browser: 'firefox' },
-    notifications: {},
-    badge: ''
+it.each(['chrome', 'firefox'])(
+  'keeps a %s extension response visible until projected notify state confirms completion',
+  async (browser) => {
+    const extensionView = {
+      notify: 'extensionConnect',
+      notifyData: { id: 'extension-a', browser },
+      notifications: {},
+      badge: ''
+    }
+    fixture.state.reset(walletState({ view: extensionView }))
+    const { user } = render(
+      <TrayNotificationProvider>
+        <Notification {...notificationCapabilities} />
+      </TrayNotificationProvider>
+    )
+
+    expect(screen.getByText(new RegExp(`A new ${browser}`, 'i'))).toBeTruthy()
+    await user.click(screen.getByRole('button', { name: 'Accept' }))
+    expect(fixture.client.executeCommand).toHaveBeenCalledWith({
+      type: 'extension.respond',
+      extensionId: 'extension-a',
+      approved: true
+    })
+    expect(screen.getByRole('dialog', { name: 'Extension connection request' })).toBeTruthy()
+
+    act(() => {
+      fixture.state.reset(walletState({ view: { ...extensionView, notify: '', notifyData: {} } }))
+    })
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'Extension connection request' })).toBeNull()
+    })
   }
-  fixture.state.reset(walletState({ view: extensionView }))
-  const { user } = render(
-    <TrayNotificationProvider>
-      <Notification {...notificationCapabilities} />
-    </TrayNotificationProvider>
-  )
-
-  await user.click(screen.getByRole('button', { name: 'Accept' }))
-  expect(fixture.client.executeCommand).toHaveBeenCalledWith({
-    type: 'extension.respond',
-    extensionId: 'extension-a',
-    approved: true
-  })
-  expect(screen.getByRole('dialog', { name: 'Extension connection request' })).toBeTruthy()
-
-  act(() => {
-    fixture.state.reset(walletState({ view: { ...extensionView, notify: '', notifyData: {} } }))
-  })
-  await waitFor(() => {
-    expect(screen.queryByRole('dialog', { name: 'Extension connection request' })).toBeNull()
-  })
-})
+)
 
 it('confirms only the exact warning gate projected by main', async () => {
   fixture.state.reset(walletState({}))

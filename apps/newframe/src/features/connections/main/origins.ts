@@ -104,7 +104,7 @@ export function createOriginsService(dependencies: OriginsServiceDependencies) {
   }
 
   const isKnownExtension = async (extension: FrameExtension) => {
-    if (extension.browser === 'chrome' || extension.browser === 'safari') return true
+    if (extension.browser === 'safari') return true
 
     const extensionPermission = dependencies.store.getKnownExtension(extension.id)
     return extensionPermission ?? requestExtensionPermission(extension)

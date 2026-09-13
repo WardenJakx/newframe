@@ -231,35 +231,41 @@ describe('extension trust service', () => {
     })
   })
 
-  it('allows platform-trusted extensions and honors cached Firefox decisions', async () => {
+  it('allows Safari and honors cached Chrome and Firefox decisions', async () => {
     const harness = createOriginHarness()
+    harness.setKnownExtension('trusted-chrome', true)
+    harness.setKnownExtension('rejected-chrome', false)
     harness.setKnownExtension('trusted-firefox', true)
     harness.setKnownExtension('rejected-firefox', false)
 
     const results = await Promise.all([
-      harness.service.isKnownExtension({ browser: 'chrome', id: 'chrome' }),
+      harness.service.isKnownExtension({ browser: 'chrome', id: 'trusted-chrome' }),
+      harness.service.isKnownExtension({ browser: 'chrome', id: 'rejected-chrome' }),
       harness.service.isKnownExtension({ browser: 'safari', id: 'safari' }),
       harness.service.isKnownExtension({ browser: 'firefox', id: 'trusted-firefox' }),
       harness.service.isKnownExtension({ browser: 'firefox', id: 'rejected-firefox' })
     ])
 
-    expect(results).toStrictEqual([true, true, true, false])
+    expect(results).toStrictEqual([true, false, true, true, false])
     expect(harness.notifications).toStrictEqual([])
   })
 
-  it('prompts once for concurrent Firefox checks and resolves every waiter with the decision', async () => {
-    for (const allowed of [true, false]) {
-      const harness = createOriginHarness()
-      const extension: FrameExtension = { browser: 'firefox', id: `firefox-${allowed}` }
+  it.each(['chrome', 'firefox'] as const)(
+    'prompts once for concurrent %s checks and resolves every waiter with the decision',
+    async (browser) => {
+      for (const allowed of [true, false]) {
+        const harness = createOriginHarness()
+        const extension: FrameExtension = { browser, id: `${browser}-${allowed}` }
 
-      const first = harness.service.isKnownExtension(extension)
-      const second = harness.service.isKnownExtension(extension)
+        const first = harness.service.isKnownExtension(extension)
+        const second = harness.service.isKnownExtension(extension)
 
-      expect(harness.notifications).toStrictEqual([extension])
-      harness.setKnownExtension(extension.id, allowed)
-      await expect(Promise.all([first, second])).resolves.toStrictEqual([allowed, allowed])
+        expect(harness.notifications).toStrictEqual([extension])
+        harness.setKnownExtension(extension.id, allowed)
+        await expect(Promise.all([first, second])).resolves.toStrictEqual([allowed, allowed])
+      }
     }
-  })
+  )
 })
 
 describe('origin authorization service', () => {

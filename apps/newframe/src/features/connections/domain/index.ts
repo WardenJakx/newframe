@@ -76,7 +76,7 @@ export function parseExtensionIdentity({
 
   if (chromeExtensionId) return { browser: 'chrome', id: chromeExtensionId }
 
-  if (origin.startsWith(`${extensionPrefixes.chrome}://`) && development && hasExtensionIdentity) {
+  if (origin.startsWith(`${extensionPrefixes.chrome}://`) && hasExtensionIdentity) {
     return {
       browser: 'chrome',
       id: origin.substring(extensionPrefixes.chrome.length + 3)
