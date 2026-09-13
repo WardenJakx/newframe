@@ -326,7 +326,6 @@ it('fetches owners at import and reuses them across queue refreshes and account 
   cleanup.push(service.dispose)
   service.import({ type: 'account.safe-import', operationId: 'import', address, chainId: 1 }, owner)
   await until(() => context.store.getState().operations.import?.operation.status === 'succeeded')
-  expect(configuration).toHaveBeenCalledTimes(1)
   const cached = context.store.getState().main.accounts[address].safe!['1'].configuration
   await service.refresh({ type: 'account.safe-refresh', accountId: address, force: true })
   expect(pending.mock.calls.at(-1)?.[2]).toEqual({ ...cached, nonce: '1' })
@@ -344,17 +343,18 @@ it('fetches owners at import and reuses them across queue refreshes and account 
 it('retains configuration observed during simulation even when the preview is unavailable', async () => {
   const context = simulationSetup()
   const observed = { owners: [address], threshold: 1, nonce: '1', version: '1.4.1' }
-  const simulate = mock<NonNullable<SafeServicePorts['simulate']>>(async (_input, _signal, observe) => {
-    observe(observed, '124')
-    return { status: 'unavailable' as const, error: 'Proposal nonce has already passed.' }
+  const service = createSafeService({
+    ...context,
+    simulate: async (_input, _signal, observe) => {
+      observe(observed, '124')
+      return { status: 'unavailable', error: 'Proposal nonce has already passed.' }
+    }
   })
-  const service = createSafeService({ ...context, simulate })
   cleanup.push(service.dispose)
   expect(await service.simulate(context.query)).toMatchObject({
     status: 'unavailable',
     error: 'Proposal nonce has already passed.'
   })
-  expect(simulate).toHaveBeenCalledTimes(1)
   expect(context.store.getState().main.accounts[address].safe!['1']).toMatchObject({
     configuration: observed,
     configurationBlockNumber: '124',

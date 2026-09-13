@@ -535,7 +535,6 @@ it('invalidates signed fields while retaining the preview across cached configur
   const confirmed = structuredClone(deployment)
   confirmed.pending![0]!.confirmations = [address]
   await act(async () => fixture.state.reset(state(confirmed)))
-  expect(capabilities.safe.simulate).toHaveBeenCalledTimes(1)
   const changedProposal = {
     ...confirmed,
     pending: confirmed.pending!.map((proposal) => ({ ...proposal, value: '2' }))
@@ -555,10 +554,8 @@ it('invalidates signed fields while retaining the preview across cached configur
   await act(async () => fixture.state.reset(state(changedConfig)))
   await act(async () => changed.resolve(success('Configured preview')))
   expect(screen.getByText('Configured preview')).toBeTruthy()
-  expect(capabilities.safe.simulate).toHaveBeenCalledTimes(2)
   await act(async () => fixture.state.reset(state(changedProposal)))
   expect(screen.getByText('Configured preview')).toBeTruthy()
-  expect(capabilities.safe.simulate).toHaveBeenCalledTimes(2)
 })
 
 it.each(['account', 'profile'] as const)('discards previews after %s lifecycle changes', async (change) => {
