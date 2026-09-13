@@ -1,7 +1,8 @@
 import { Button } from '@newframe/ui/button'
+import { Icon } from '@newframe/ui/icon'
+import { IconButton } from '@newframe/ui/icon-button'
 import { Input } from '@newframe/ui/input'
 import { ScrollArea } from '@newframe/ui/scroll-area'
-import { Selection, type SelectionItem } from '@newframe/ui/selection'
 import { Text } from '@newframe/ui/text'
 import React from 'react'
 
@@ -24,7 +25,10 @@ type MovableAccount = {
 }
 
 interface ProfileSelectorProps {
-  capability: AccountsCapability
+  capability: Pick<
+    AccountsCapability,
+    'selectProfile' | 'createProfile' | 'updateProfile' | 'deleteProfile' | 'listMovableProfileAccounts'
+  >
   currentProfile: string
   profiles: ProfileSummary[]
 }
@@ -36,6 +40,40 @@ type ProfileSubmission = {
   profileId?: string
   name?: string
 }
+
+const selectorRecipe = cva({
+  base: { flex: '1 1 0', minWidth: 0, marginInline: '4' }
+})
+
+const menuRecipe = cva({
+  base: {
+    position: 'absolute',
+    insetInline: '7',
+    insetBlockStart: '100%',
+    marginBlockStart: '3',
+    zIndex: 'header',
+    padding: '3',
+    borderRadius: 'default',
+    background: 'bg.hover',
+    boxShadow: 'elevation-overlay',
+    maxHeight: 'calc(100vh - token(sizes.panel-header) - token(spacing.7) * 2)',
+    overflowY: 'auto'
+  }
+})
+
+const profileRowRecipe = cva({
+  base: {
+    borderRadius: 'compact',
+    paddingInlineEnd: '2',
+    '& > div > button': { minWidth: 0 },
+    '& > div > button[aria-pressed="true"]': { background: 'transparent' }
+  },
+  variants: { selected: { true: { background: 'action.primary.subtle' }, false: {} } }
+})
+
+const managementRecipe = cva({
+  base: { padding: '4' }
+})
 
 const columnRecipe = cva({
   base: { display: 'flex', minWidth: 0, flexDirection: 'column' },
@@ -71,6 +109,10 @@ function errorMessage(error: string, fallback: string) {
 
 export function ProfileSelector({ capability, currentProfile, profiles }: ProfileSelectorProps) {
   const [open, setOpen] = React.useState(false)
+  const rootRef = React.useRef<HTMLDivElement>(null)
+  const triggerRef = React.useRef<HTMLButtonElement>(null)
+  const menuId = React.useId()
+  const [managedProfileId, setManagedProfileId] = React.useState('')
   const [mode, setMode] = React.useState<ManagementMode>('none')
   const [name, setName] = React.useState('')
   const [movableAccounts, setMovableAccounts] = React.useState<MovableAccount[]>([])
@@ -81,6 +123,7 @@ export function ProfileSelector({ capability, currentProfile, profiles }: Profil
   const movableAccountsRequestRef = React.useRef('')
   const [error, setError] = React.useState('')
   const activeProfile = profiles.find((profile) => profile.id === currentProfile) || profiles[0]
+  const managedProfile = profiles.find((profile) => profile.id === managedProfileId)
   const trackedOperation = useWalletSelector((state) =>
     submission ? selectOperationById(state, submission.operationId) : undefined
   )
@@ -114,6 +157,7 @@ export function ProfileSelector({ capability, currentProfile, profiles }: Profil
 
   const resetManagement = React.useCallback(() => {
     movableAccountsRequestRef.current = ''
+    setManagedProfileId('')
     setMode('none')
     setName('')
     setMovableAccounts([])
@@ -149,9 +193,26 @@ export function ProfileSelector({ capability, currentProfile, profiles }: Profil
     [resetManagement, submissionReflected]
   )
 
+  React.useEffect(() => {
+    if (!displayedOpen) return
+    const dismiss = (event: MouseEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) handleOpenChange(false)
+    }
+    document.addEventListener('mousedown', dismiss)
+    return () => document.removeEventListener('mousedown', dismiss)
+  }, [displayedOpen, handleOpenChange])
+
+  React.useEffect(() => {
+    if (displayedOpen)
+      rootRef.current?.querySelector<HTMLButtonElement>('[data-profile-menu] button')?.focus()
+  }, [displayedOpen])
+
   const handleSelect = React.useCallback(
     async (profileId: string) => {
-      if (profileId === currentProfile) return
+      if (profileId === currentProfile) {
+        handleOpenChange(false)
+        return
+      }
       const operationId = crypto.randomUUID()
       const nextSubmission: ProfileSubmission = { operationId, type: 'profile.select', profileId }
       submissionRef.current = nextSubmission
@@ -167,7 +228,7 @@ export function ProfileSelector({ capability, currentProfile, profiles }: Profil
         setOpen(true)
       }
     },
-    [capability, currentProfile]
+    [capability, currentProfile, handleOpenChange]
   )
 
   const openCreate = React.useCallback(async () => {
@@ -217,16 +278,19 @@ export function ProfileSelector({ capability, currentProfile, profiles }: Profil
     }
   }, [capability, name, selectedAccountIds])
 
-  const openRename = React.useCallback(() => {
-    if (!activeProfile) return
-    if (submissionReflected) resetManagement()
-    setMode('rename')
-    setName(activeProfile.name)
-    setError('')
-  }, [activeProfile, resetManagement, submissionReflected])
+  const openRename = React.useCallback(
+    (profile: ProfileSummary) => {
+      if (submissionReflected) resetManagement()
+      setManagedProfileId(profile.id)
+      setMode('rename')
+      setName(profile.name)
+      setError('')
+    },
+    [resetManagement, submissionReflected]
+  )
 
   const submitRename = React.useCallback(async () => {
-    if (!activeProfile) return
+    if (!managedProfile) return
     const trimmedName = name.trim()
     if (!trimmedName || trimmedName.length > 50) {
       setError('Enter a profile name between 1 and 50 characters.')
@@ -237,7 +301,7 @@ export function ProfileSelector({ capability, currentProfile, profiles }: Profil
     const nextSubmission: ProfileSubmission = {
       operationId,
       type: 'profile.update',
-      profileId: activeProfile.id,
+      profileId: managedProfile.id,
       name: trimmedName
     }
     submissionRef.current = nextSubmission
@@ -245,7 +309,7 @@ export function ProfileSelector({ capability, currentProfile, profiles }: Profil
     setError('')
     const result = await capability.updateProfile({
       operationId,
-      profileId: activeProfile.id,
+      profileId: managedProfile.id,
       name: trimmedName
     })
     if (submissionRef.current?.operationId !== operationId) return
@@ -254,22 +318,22 @@ export function ProfileSelector({ capability, currentProfile, profiles }: Profil
       submissionRef.current = null
       setSubmission(null)
     }
-  }, [activeProfile, capability, name])
+  }, [managedProfile, capability, name])
 
   const submitDelete = React.useCallback(async () => {
-    if (!activeProfile || activeProfile.accountCount > 0 || profiles.length <= 1) return
+    if (!managedProfile || managedProfile.accountCount > 0 || profiles.length <= 1) return
     const operationId = crypto.randomUUID()
     const nextSubmission: ProfileSubmission = {
       operationId,
       type: 'profile.delete',
-      profileId: activeProfile.id
+      profileId: managedProfile.id
     }
     submissionRef.current = nextSubmission
     setSubmission(nextSubmission)
     setError('')
     const result = await capability.deleteProfile({
       operationId,
-      profileId: activeProfile.id
+      profileId: managedProfile.id
     })
     if (submissionRef.current?.operationId !== operationId) return
     if (!result.ok) {
@@ -277,7 +341,7 @@ export function ProfileSelector({ capability, currentProfile, profiles }: Profil
       submissionRef.current = null
       setSubmission(null)
     }
-  }, [activeProfile, capability, profiles.length])
+  }, [managedProfile, capability, profiles.length])
 
   const toggleAccount = React.useCallback((accountId: string) => {
     setSelectedAccountIds((ids) =>
@@ -285,28 +349,8 @@ export function ProfileSelector({ capability, currentProfile, profiles }: Profil
     )
   }, [])
 
-  const items: SelectionItem[] = profiles.map((profile) => ({
-    id: profile.id,
-    content: (
-      <div className={rowRecipe({ grow: true })}>
-        <div className={columnRecipe({ gap: 'none', grow: true })}>
-          <Text variant='label' truncate>
-            {profile.name}
-          </Text>
-          <Text tone='muted' variant='micro'>
-            {profile.accountCount} {profile.accountCount === 1 ? 'Account' : 'Accounts'}
-          </Text>
-        </div>
-        <Text align='end' variant='numeric' shrink={false}>
-          {profileValue(profile)}
-        </Text>
-        {profile.id === currentProfile ? <Text tone='accent'>✓</Text> : null}
-      </div>
-    )
-  }))
-
-  const footer = (
-    <div onKeyDown={(event) => event.stopPropagation()}>
+  const management = (
+    <div className={managementRecipe()}>
       <div className={columnRecipe({ gap: 'small' })}>
         {displayedMode === 'create' ? (
           <>
@@ -395,7 +439,7 @@ export function ProfileSelector({ capability, currentProfile, profiles }: Profil
           </>
         ) : displayedMode === 'delete' ? (
           <>
-            <Text variant='caption'>Delete {activeProfile?.name}? This cannot be undone.</Text>
+            <Text variant='caption'>Delete {managedProfile?.name}? This cannot be undone.</Text>
             <div className={rowRecipe()}>
               <Button
                 appearance='danger'
@@ -410,41 +454,10 @@ export function ProfileSelector({ capability, currentProfile, profiles }: Profil
               </Button>
             </div>
           </>
-        ) : (
-          <div className={rowRecipe()}>
-            <Button appearance='control' onPress={() => void openCreate()} size='small'>
-              <Text variant='caption'>Create</Text>
-            </Button>
-            <Button appearance='ghost' disabled={!activeProfile} onPress={openRename} size='small'>
-              <Text variant='caption'>Rename</Text>
-            </Button>
-            <Button
-              appearance='danger'
-              disabled={!activeProfile || activeProfile.accountCount > 0 || profiles.length <= 1}
-              onPress={() => {
-                if (submissionReflected) resetManagement()
-                setMode('delete')
-                setError('')
-              }}
-              size='small'
-            >
-              <Text variant='caption'>Delete</Text>
-            </Button>
-          </div>
-        )}
+        ) : null}
         {visibleError ? (
           <Text tone='danger' variant='caption'>
             {visibleError}
-          </Text>
-        ) : null}
-        {displayedMode === 'none' && activeProfile?.accountCount ? (
-          <Text tone='muted' variant='micro'>
-            Move all accounts before deleting this profile.
-          </Text>
-        ) : null}
-        {displayedMode === 'none' && profiles.length <= 1 ? (
-          <Text tone='muted' variant='micro'>
-            Keep at least one profile.
           </Text>
         ) : null}
       </div>
@@ -452,22 +465,123 @@ export function ProfileSelector({ capability, currentProfile, profiles }: Profil
   )
 
   return (
-    <Selection
-      footer={footer}
-      items={items}
-      label='Select active profile'
-      menuAlign='center'
-      menuWidth='wide'
-      onOpenChange={handleOpenChange}
-      onSelect={(profileId) => void handleSelect(profileId)}
-      open={displayedOpen}
-      placeholder={!activeProfile}
-      selectedId={currentProfile}
-      trigger={
-        <Text display='inline' variant='control' truncate>
-          {activeProfile?.name || 'Profiles'}
-        </Text>
-      }
-    />
+    <div
+      className={selectorRecipe()}
+      ref={rootRef}
+      onBlur={(event) => {
+        if (event.relatedTarget && !event.currentTarget.contains(event.relatedTarget)) handleOpenChange(false)
+      }}
+      onKeyDown={(event) => {
+        if (event.key === 'Escape' && displayedOpen) {
+          event.stopPropagation()
+          handleOpenChange(false)
+          triggerRef.current?.focus()
+        }
+      }}
+    >
+      <Button
+        appearance='control'
+        controls={displayedOpen ? menuId : undefined}
+        expanded={displayedOpen}
+        hasPopup='dialog'
+        label='Select active profile'
+        onPress={() => handleOpenChange(!displayedOpen)}
+        ref={triggerRef}
+        width='full'
+      >
+        <div className={rowRecipe({ grow: true })}>
+          <div className={columnRecipe({ grow: true })}>
+            <Text align='start' variant='control' truncate>
+              {activeProfile?.name || 'Profiles'}
+            </Text>
+          </div>
+          <Icon name={displayedOpen ? 'chevronUp' : 'chevronDown'} size='small' tone='muted' />
+        </div>
+      </Button>
+      {displayedOpen ? (
+        <div aria-label='Profiles' className={menuRecipe()} data-profile-menu id={menuId} role='dialog'>
+          <div className={columnRecipe({ gap: 'xsmall' })}>
+            {profiles.map((profile) => {
+              const selected = profile.id === currentProfile
+              const managing =
+                managedProfileId === profile.id && (displayedMode === 'rename' || displayedMode === 'delete')
+              const deleteHint =
+                profiles.length <= 1
+                  ? 'Keep at least one profile.'
+                  : profile.accountCount > 0
+                    ? 'Move all accounts before deleting this profile.'
+                    : 'Delete profile'
+              return (
+                <div key={profile.id} className={profileRowRecipe({ selected })}>
+                  <div className={rowRecipe()}>
+                    <Button
+                      appearance='selectionOption'
+                      label={'Switch to ' + profile.name}
+                      pressed={selected}
+                      onPress={() => void handleSelect(profile.id)}
+                    >
+                      <div className={columnRecipe({ gap: 'none', grow: true })}>
+                        <Text align='start' variant='label' truncate>
+                          {profile.name}
+                        </Text>
+                        <Text align='start' tone='muted' variant='micro'>
+                          {profile.accountCount} {profile.accountCount === 1 ? 'Account' : 'Accounts'}
+                        </Text>
+                      </div>
+                      <Text align='end' variant='numeric' shrink={false}>
+                        {profileValue(profile)}
+                      </Text>
+                      {selected ? <Icon name='check' size='small' tone='accent' /> : null}
+                    </Button>
+                    <div className={rowRecipe()}>
+                      <IconButton
+                        appearance='ghost'
+                        icon='edit'
+                        label={'Rename ' + profile.name}
+                        disabled={submitting}
+                        onPress={() => openRename(profile)}
+                        size='small'
+                      />
+                      <IconButton
+                        appearance='ghost'
+                        icon='trash'
+                        label={'Delete ' + profile.name}
+                        disabled={submitting || profile.accountCount > 0 || profiles.length <= 1}
+                        title={deleteHint}
+                        onPress={() => {
+                          resetManagement()
+                          setManagedProfileId(profile.id)
+                          setMode('delete')
+                        }}
+                        size='small'
+                      />
+                    </div>
+                  </div>
+                  {managing ? management : null}
+                </div>
+              )
+            })}
+            {displayedMode === 'create' ? (
+              management
+            ) : (
+              <Button
+                appearance='ghost'
+                label='Create profile'
+                onPress={() => void openCreate()}
+                size='small'
+                width='full'
+              >
+                <Icon name='plus' size='small' />
+              </Button>
+            )}
+            {displayedMode === 'none' && visibleError ? (
+              <Text tone='danger' variant='caption'>
+                {visibleError}
+              </Text>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+    </div>
   )
 }

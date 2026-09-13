@@ -97,7 +97,7 @@ export const trayOverlaysStage: VisualStage = {
     const accounts = tray.getByRole('dialog', { name: 'Accounts' })
     await accounts.waitFor({ state: 'visible' })
     await accounts.getByRole('button', { name: 'Select active profile' }).click()
-    const profileMenu = accounts.getByRole('listbox', { name: 'Select active profile' }).locator('..')
+    const profileMenu = accounts.getByRole('dialog', { name: 'Profiles', exact: true })
     await profileMenu.waitFor({ state: 'visible' })
     await assertInsideViewport(profileMenu, runtime, 'Profile selection menu')
     await runtime.screenshot(tray, '02j-profile-selection-menu.png')
