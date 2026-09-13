@@ -163,11 +163,6 @@ export default class LedgerSignerAdapter extends SignerAdapter {
 
     this.emit('add', ledger)
 
-    this.store.getState().navHome({
-      view: 'accounts',
-      data: { showAddAccounts: true, newAccountType: 'ledger', selectedSigner: ledger.id }
-    })
-
     await this.handleConnectedDevice(ledger)
   }
 

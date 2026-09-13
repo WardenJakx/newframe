@@ -90,6 +90,7 @@ beforeAll(async () => {
 
 beforeEach(() => {
   connectedHids = []
+  store.getState().clearHomeCommand()
 
   adapter = new LedgerSignerAdapter(store)
   adapter.open()
@@ -97,6 +98,7 @@ beforeEach(() => {
 
 afterEach(() => {
   adapter.close()
+  store.getState().clearHomeCommand()
 })
 
 afterAll(() => {
@@ -116,13 +118,17 @@ function nextEvent<T = any>(event: string, predicate: (value: T) => boolean = ()
   })
 }
 
-it('recognizes a connected Ledger', async () => {
-  const added = nextEvent('add')
+it('connects a Ledger after startup without changing navigation', async () => {
+  store.getState().navHome({ view: 'settings' })
+  const homeCommand = store.getState().tray.homeCommand
+  const connected = nextEvent<LedgerMock>('update', (ledger) => ledger.status === Status.OK)
 
   simulateLedgerConnection('nano-s-path')
   adapter.handleDeviceChanges()
 
-  expect((await added).devicePath).toBe('nano-s-path')
+  const ledger = await connected
+  expect(ledger.devicePath).toBe('nano-s-path')
+  expect(store.getState().tray.homeCommand).toEqual(homeCommand)
 })
 
 it('creates a new Ledger when one is already attached', () => {
@@ -186,16 +192,25 @@ it('cancels pending disconnect removal when closed', () => {
   })
 })
 
-it('deduplicates startup events for two newly connected Ledgers', () => {
-  const ledgers: any = []
-  adapter.on('add', (ledger: any) => ledgers.push(ledger))
+it('connects existing Ledgers at startup without opening account setup', async () => {
+  adapter.close()
+  const ledgers: LedgerMock[] = []
+  adapter.on('add', (ledger: LedgerMock) => ledgers.push(ledger))
+  const connected = nextEvent<LedgerMock>(
+    'update',
+    (ledger) => ledger.devicePath === 'nano-x-path' && ledger.status === Status.OK
+  )
 
   simulateLedgerConnection('nano-s-path')
   simulateLedgerConnection('nano-x-path')
+  adapter.open()
   adapter.handleDeviceChanges()
   adapter.handleDeviceChanges()
+  await connected
 
-  expect(ledgers.map(({ devicePath }: any) => devicePath)).toEqual(['nano-s-path', 'nano-x-path'])
+  expect(ledgers.map(({ devicePath }) => devicePath)).toEqual(['nano-s-path', 'nano-x-path'])
+  expect(ledgers.every((ledger) => ledger.status === Status.OK)).toBe(true)
+  expect(store.getState().tray.homeCommand).toBeNull()
 })
 
 for (const platform of ['Linux', 'Windows']) {
@@ -231,5 +246,6 @@ for (const platform of ['Linux', 'Windows']) {
     })
     expect(adapter.disconnections).toHaveLength(0)
     expect(Object.keys(adapter.knownSigners)).toEqual([expectedReconnectionPath])
+    expect(store.getState().tray.homeCommand).toBeNull()
   })
 }
