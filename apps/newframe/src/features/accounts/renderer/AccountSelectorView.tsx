@@ -24,11 +24,10 @@ const accountRowRecipe = cva({
     borderStyle: 'solid',
     borderColor: 'transparent',
     borderRadius: 'control',
-    background: 'bg.card',
-    cursor: 'pointer',
-    _hover: { background: 'bg.hover' }
+    background: 'bg.card'
   },
   variants: {
+    interactive: { true: { cursor: 'pointer', _hover: { background: 'bg.hover' } }, false: {} },
     selected: { true: { borderColor: 'border.focus' }, false: {} },
     dragging: { true: { opacity: 'disabled' }, false: {} },
     dropTarget: { true: { borderColor: 'border.focus', background: 'action.primary.subtle' }, false: {} }
@@ -71,7 +70,7 @@ export function AccountRow({
   account: AccountListItem
   selected: boolean
   opensPicker?: boolean
-  onSelect: (accountId: string) => void
+  onSelect?: (accountId: string) => void
   management?: {
     dragging: boolean
     dropTarget: boolean
@@ -87,21 +86,26 @@ export function AccountRow({
       aria-current={selected ? 'true' : undefined}
       aria-label={`${account.displayName} ${account.shortAddress}`}
       className={accountRowRecipe({
+        interactive: Boolean(onSelect),
         selected,
         dragging: management?.dragging,
         dropTarget: management?.dropTarget
       })}
       onDragOver={management?.onDragOver}
       onDrop={management?.onDrop}
-      onClick={() => onSelect(account.id)}
-      onKeyDown={(event) => {
-        if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) {
-          event.preventDefault()
-          onSelect(account.id)
-        }
-      }}
-      role='button'
-      tabIndex={0}
+      onClick={onSelect ? () => onSelect(account.id) : undefined}
+      onKeyDown={
+        onSelect
+          ? (event) => {
+              if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) {
+                event.preventDefault()
+                onSelect(account.id)
+              }
+            }
+          : undefined
+      }
+      role={onSelect ? 'button' : undefined}
+      tabIndex={onSelect ? 0 : undefined}
     >
       {management?.dragHandle}
       <span className={accountIconRecipe()}>
