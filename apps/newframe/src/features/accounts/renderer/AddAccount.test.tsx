@@ -69,13 +69,9 @@ it('keeps drafts local and follows projected onboarding and hardware session sta
   )
   const closeWatch = mock()
   let view = render(
-    <AddAccount
-      camera={createQrCameraFake().camera}
-      capability={capability}
-      initialType='watch'
-      onClose={closeWatch}
-    />
+    <AddAccount camera={createQrCameraFake().camera} capability={capability} onClose={closeWatch} />
   )
+  await view.user.click(screen.getByRole('button', { name: 'Watch an address' }))
   await view.user.type(screen.getByLabelText('Address or gns/ens name'), 'old.eth')
   await view.user.click(screen.getByRole('button', { name: 'Create account' }))
   const staleWatch = capability.addWatchAccount.mock.calls.at(-1)![0]
@@ -104,14 +100,9 @@ it('keeps drafts local and follows projected onboarding and hardware session sta
   await waitFor(() => expect(closeWatch.mock.calls).toHaveLength(1))
 
   reset()
-  view = render(
-    <AddAccount
-      camera={createQrCameraFake().camera}
-      capability={capability}
-      initialType='keystore'
-      onClose={mock()}
-    />
-  )
+  view = render(<AddAccount camera={createQrCameraFake().camera} capability={capability} onClose={mock()} />)
+  await view.user.click(screen.getByRole('button', { name: 'Import phrase or private key' }))
+  await view.user.click(screen.getByRole('button', { name: 'JSON backup file' }))
   await view.user.click(screen.getByRole('button', { name: 'Choose JSON backup file' }))
   await view.user.type(screen.getByLabelText('JSON backup file password'), 'file-secret')
   await view.user.click(screen.getByRole('button', { name: 'Create account' }))
@@ -162,15 +153,10 @@ it('keeps drafts local and follows projected onboarding and hardware session sta
       )
     }
   })
-  view = render(
-    <AddAccount
-      camera={createQrCameraFake().camera}
-      capability={capability}
-      initialSelectedSigner='ledger-1'
-      initialType='ledger'
-      onClose={mock()}
-    />
-  )
+  view = render(<AddAccount camera={createQrCameraFake().camera} capability={capability} onClose={mock()} />)
+  await view.user.click(screen.getByRole('button', { name: 'Connect a hardware wallet' }))
+  await view.user.click(screen.getByRole('button', { name: 'Ledger' }))
+  await view.user.click(screen.getByRole('button', { name: 'View Ledger accounts' }))
   await waitFor(() => expect(capability.startHardwareSession.mock.calls.length).toBe(1))
   await view.user.click(screen.getByRole('button', { name: 'Next account page' }))
   expect(capability.loadLedgerAccounts.mock.calls.at(-1)![0]).toEqual({
@@ -180,15 +166,10 @@ it('keeps drafts local and follows projected onboarding and hardware session sta
   })
 
   reset({ signers: { 'lattice-1': signer('lattice-1', 'lattice', 'pair') } })
-  view = render(
-    <AddAccount
-      camera={createQrCameraFake().camera}
-      capability={capability}
-      initialSelectedSigner='lattice-1'
-      initialType='lattice'
-      onClose={mock()}
-    />
-  )
+  view = render(<AddAccount camera={createQrCameraFake().camera} capability={capability} onClose={mock()} />)
+  await view.user.click(screen.getByRole('button', { name: 'Connect a hardware wallet' }))
+  await view.user.click(screen.getByRole('button', { name: 'GridPlus' }))
+  await view.user.click(screen.getByRole('button', { name: 'View GridPlus accounts' }))
   await waitFor(() => expect(capability.startHardwareSession.mock.calls.length).toBe(1))
   const latticeSession = capability.startHardwareSession.mock.calls.at(-1)![0]
   await view.user.type(screen.getByLabelText('GridPlus pairing code'), 'pair-secret')
@@ -205,15 +186,10 @@ it('keeps drafts local and follows projected onboarding and hardware session sta
   expect(await screen.findByText('GridPlus paired')).toBeTruthy()
 
   reset({ signers: { 'trezor-1': signer('trezor-1', 'trezor', 'need pin') } })
-  view = render(
-    <AddAccount
-      camera={createQrCameraFake().camera}
-      capability={capability}
-      initialSelectedSigner='trezor-1'
-      initialType='trezor'
-      onClose={mock()}
-    />
-  )
+  view = render(<AddAccount camera={createQrCameraFake().camera} capability={capability} onClose={mock()} />)
+  await view.user.click(screen.getByRole('button', { name: 'Connect a hardware wallet' }))
+  await view.user.click(screen.getByRole('button', { name: 'Trezor' }))
+  await view.user.click(screen.getByRole('button', { name: 'View Trezor accounts' }))
   await waitFor(() => expect(capability.startHardwareSession.mock.calls.length).toBe(1))
   const trezorSession = capability.startHardwareSession.mock.calls.at(-1)![0]
   await view.user.click(screen.getByRole('button', { name: 'PIN position 1' }))
@@ -260,13 +236,10 @@ it('maps direct recovery-phrase and private-key imports to focused signer comman
   fixture.state.reset(walletState({}))
   capability = createAccountsCapabilityFake()
   let view = render(
-    <AddAccount
-      camera={createQrCameraFake().camera}
-      capability={capability}
-      initialType='seed'
-      onClose={mock()}
-    />
+    <AddAccount camera={createQrCameraFake().camera} capability={capability} onClose={mock()} />
   )
+  await view.user.click(screen.getByRole('button', { name: 'Import phrase or private key' }))
+  await view.user.click(screen.getByRole('button', { name: 'Recovery phrase' }))
   await view.user.type(
     screen.getByLabelText('Recovery phrase'),
     'one two three four five six seven eight nine ten eleven twelve'
@@ -282,14 +255,9 @@ it('maps direct recovery-phrase and private-key imports to focused signer comman
 
   cleanup()
   capability = createAccountsCapabilityFake()
-  view = render(
-    <AddAccount
-      camera={createQrCameraFake().camera}
-      capability={capability}
-      initialType='privateKey'
-      onClose={mock()}
-    />
-  )
+  view = render(<AddAccount camera={createQrCameraFake().camera} capability={capability} onClose={mock()} />)
+  await view.user.click(screen.getByRole('button', { name: 'Import phrase or private key' }))
+  await view.user.click(screen.getByRole('button', { name: 'Private key' }))
   const privateKey = `0x${'a'.repeat(64)}`
   await view.user.type(screen.getByLabelText('Private key'), privateKey)
   await view.user.click(screen.getByRole('button', { name: 'Create account' }))
@@ -343,15 +311,12 @@ it('queries each stable hardware address key once and ignores the prior key resu
     signers: { 'ledger-1': signer('ledger-1', 'ledger', 'loading', [firstAddress]) }
   })
   fixture.state.reset(projectedState)
-  render(
-    <AddAccount
-      camera={createQrCameraFake().camera}
-      capability={capability}
-      initialSelectedSigner='ledger-1'
-      initialType='ledger'
-      onClose={mock()}
-    />
+  const view = render(
+    <AddAccount camera={createQrCameraFake().camera} capability={capability} onClose={mock()} />
   )
+  await view.user.click(screen.getByRole('button', { name: 'Connect a hardware wallet' }))
+  await view.user.click(screen.getByRole('button', { name: 'Ledger' }))
+  await view.user.click(screen.getByRole('button', { name: 'View Ledger accounts' }))
   await waitFor(() => expect(capability.inspectAddressChainUsage.mock.calls.length).toBe(1))
   act(() => fixture.state.reset(projectedState))
   await act(async () => {

@@ -254,17 +254,6 @@ class Tray {
       if (showOnReady) {
         getStore().getState().trayOpen(true)
       }
-
-      const showOnboardingWindow = !getStore().getState().main.mute.onboardingWindow
-
-      if (showOnboardingWindow) {
-        setTimeout(() => {
-          getStore()
-            .getState()
-            .navHome({ view: 'accounts', data: { showAddAccounts: true } })
-          getStore().getState().completeOnboarding()
-        }, 600)
-      }
     }
     this.removeRendererReady = initTrayWindow(this.readyHandler)
   }

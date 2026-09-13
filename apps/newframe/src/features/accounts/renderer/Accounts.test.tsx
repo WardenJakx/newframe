@@ -59,6 +59,41 @@ describe('Accounts profile controls', () => {
     )
   })
 
+  it('opens Ledger setup only through explicit account and device selections', async () => {
+    publishChanges({
+      accounts: { [account.address]: { ...account, id: account.address, lastSignerType: 'ledger' } },
+      accountOrder: [account.address],
+      currentAccount: account.address
+    })
+    const { user } = render(
+      <Accounts camera={createQrCameraFake().camera} capability={capability} onClose={mock()} />
+    )
+    const signers = {
+      'ledger-1': {
+        id: 'ledger-1',
+        type: 'ledger',
+        name: 'Ledger',
+        model: 'Nano S',
+        status: 'ok',
+        addresses: [account.address]
+      }
+    }
+    publishChanges({ signers })
+    expect(screen.getByText('Primary')).toBeTruthy()
+    expect(screen.queryByText('Connect a hardware wallet')).toBeNull()
+
+    await user.click(screen.getByRole('button', { name: 'Add account' }))
+    publishChanges({ signers: {} })
+    publishChanges({ signers })
+    expect(screen.getByRole('button', { name: 'Connect a hardware wallet' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'View Ledger accounts' })).toBeNull()
+
+    await user.click(screen.getByRole('button', { name: 'Connect a hardware wallet' }))
+    await user.click(screen.getByRole('button', { name: 'Ledger' }))
+    await user.click(screen.getByRole('button', { name: 'View Ledger accounts' }))
+    expect(screen.getByRole('button', { name: 'Select 0x000…0001' })).toBeTruthy()
+  })
+
   it('places the active profile selector immediately left of Close accounts', () => {
     render(<Accounts camera={createQrCameraFake().camera} capability={capability} onClose={mock()} />)
 

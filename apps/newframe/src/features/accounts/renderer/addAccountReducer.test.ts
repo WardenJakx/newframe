@@ -4,7 +4,8 @@ import { addAccountReducer, createAddAccountState } from './addAccountReducer'
 
 describe('add account reducer', () => {
   it('resets coupled flow drafts and preserves independent vault knowledge', () => {
-    let state = createAddAccountState({ initialSelectedSigner: '', initialType: 'watch' })
+    let state = createAddAccountState()
+    state = addAccountReducer(state, { type: 'flow.category-selected', category: 'watch' })
     state = addAccountReducer(state, {
       type: 'vault.loaded',
       vault: { exists: true, unlocked: false }
@@ -18,7 +19,7 @@ describe('add account reducer', () => {
   })
 
   it('keeps hardware input and generated-seed transitions explicit', () => {
-    let state = createAddAccountState({ initialSelectedSigner: 'trezor-1', initialType: 'trezor' })
+    let state = createAddAccountState()
     state = addAccountReducer(state, { type: 'hardware.pin-appended', digit: 1 })
     state = addAccountReducer(state, {
       type: 'hardware.input-submitted',

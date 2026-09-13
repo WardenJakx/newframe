@@ -15,15 +15,6 @@ export const emptyAddAccountDraft = {
   addHardwarePairCode: ''
 }
 
-export const normalizeAddAccountType = (type = '') =>
-  ({ keyring: 'privateKey', nonsigning: 'watch' })[type] || type
-
-export function addAccountCategoryForType(type = '') {
-  if (['seed', 'privateKey', 'keystore'].includes(type)) return 'import'
-  if (['ledger', 'trezor', 'lattice', 'airgap'].includes(type)) return 'hardware'
-  return type === 'watch' ? 'watch' : ''
-}
-
 export const onboardingStatusText = (phase = '', fallback = '') =>
   ({
     adding_account: 'Adding account',

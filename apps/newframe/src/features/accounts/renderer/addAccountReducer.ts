@@ -1,5 +1,5 @@
 import type { QueryResultMap } from '../../../app/contracts/operations'
-import { addAccountCategoryForType, emptyAddAccountDraft, normalizeAddAccountType } from './addAccountModel'
+import { emptyAddAccountDraft } from './addAccountModel'
 
 type Keystore = Extract<QueryResultMap['keystore.locate'], { ok: true }>['keystore']
 
@@ -63,18 +63,12 @@ function resetDraft(state: AddAccountState) {
   }
 }
 
-export function createAddAccountState(input: {
-  initialSelectedSigner: string
-  initialType: string
-}): AddAccountState {
-  const addAccountType = normalizeAddAccountType(input.initialType)
+export function createAddAccountState(): AddAccountState {
   return {
     ...emptyAddAccountDraft,
-    addAccountCategory: addAccountCategoryForType(addAccountType),
+    addAccountCategory: '',
     addAccountKeystore: null,
-    addAccountType,
-    addAccountName: addAccountType === 'lattice' ? 'GridPlus' : '',
-    addAccountSelectedSigner: input.initialSelectedSigner,
+    addAccountType: '',
     storedSeedExpanded: {},
     addVaultState: null
   }

@@ -181,11 +181,6 @@ export default class TrezorSignerAdapter extends SignerAdapter {
 
     this.emit('add', trezor)
 
-    this.store.getState().navHome({
-      view: 'accounts',
-      data: { showAddAccounts: true, newAccountType: 'trezor', selectedSigner: trezor.id }
-    })
-
     const initializationTimeout = setTimeout(() => {
       this.initializationTimeouts.delete(trezor.id)
       if (trezor.status === Status.INITIAL && !trezor.device) {

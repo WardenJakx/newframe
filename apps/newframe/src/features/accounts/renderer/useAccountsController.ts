@@ -30,11 +30,10 @@ export function useAccountsController(input: {
   accounts: Record<string, AccountProjection>
   capability: AccountsCapability
   currentAccountId: string
-  initialShowAddAccounts: boolean
   onClose: () => void
   operations: Record<string, OperationRecord>
 }) {
-  const [state, dispatch] = useReducer(accountsReducer, input.initialShowAddAccounts, createAccountsState)
+  const [state, dispatch] = useReducer(accountsReducer, undefined, createAccountsState)
   const accountFeedbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const accountSearchTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const accountSearchInputRef = useRef<HTMLInputElement | null>(null)

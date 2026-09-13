@@ -93,14 +93,10 @@ function useSubmission(setFeedback: (error: string, status: string) => void) {
 export function AddAccountController({
   capability,
   camera,
-  initialSelectedSigner = '',
-  initialType = '',
   onClose
 }: {
   capability: AccountsCapability
   camera: QrCameraCapability
-  initialSelectedSigner?: string
-  initialType?: string
   onClose: () => void
 }) {
   const shared = useWalletSelector(
@@ -127,13 +123,8 @@ export function AddAccountController({
   const safeSelectedAccount = useRef(false)
   const safeDraft = useRef('')
   const seedPhraseCopiedTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
-  const initialHardwareSessionStarted = useRef(false)
   const [selectBalanceSummaries] = useState(() => createBalanceSummarySelector())
-  const [state, dispatch] = useReducer(
-    addAccountReducer,
-    { initialSelectedSigner, initialType },
-    createAddAccountState
-  )
+  const [state, dispatch] = useReducer(addAccountReducer, undefined, createAddAccountState)
   const safeProfile = useRef(shared.currentProfile)
   useEffect(() => {
     if (safeProfile.current === shared.currentProfile) return
@@ -434,15 +425,6 @@ export function AddAccountController({
     // finishHardwareSession is intentionally guarded by the mutable active-session reference.
     // oxlint-disable-next-line react/exhaustive-deps
   }, [hardwareSession, shared.operations, shared.signers])
-
-  useEffect(() => {
-    if (!initialSelectedSigner || initialHardwareSessionStarted.current) return
-    initialHardwareSessionStarted.current = true
-    if (initialType === 'airgap') return
-    queueMicrotask(() => beginHardwareSession(initialSelectedSigner, false))
-    // This mount-only bootstrap is keyed solely by the requested initial signer.
-    // oxlint-disable-next-line react/exhaustive-deps
-  }, [initialSelectedSigner])
 
   async function selectExistingAccount(id: string) {
     if (pendingExistingAccount) return
