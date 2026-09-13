@@ -1,4 +1,4 @@
-import { afterEach, expect, it } from 'bun:test'
+import { afterEach, expect, it, mock } from 'bun:test'
 
 import { subscribeWithSelector } from 'zustand/middleware'
 import { createStore } from 'zustand/vanilla'
@@ -7,7 +7,7 @@ import { createTestStore } from '../../../../test/support/createTestStore'
 import { createOperationService } from '../../../platform/operations/service'
 import { createSafeClient } from '../../../platform/safe/client'
 import type { SafeConfiguration, SafeProposal, SafeProposalSimulation } from '../domain/safe'
-import { createSafeService } from './safe'
+import { createSafeService, type SafeServicePorts } from './safe'
 
 const address = '0x1111111111111111111111111111111111111111'
 const ownerAddress = '0x2222222222222222222222222222222222222222'
@@ -155,14 +155,15 @@ it('invalidates delayed work after remove/re-add, profile switch, and disposal',
     store
       .getState()
       .upsertAccount({ id: address, safe: { '1': { chainId: 1, address, configuration: config } } })
-    let release!: (value: SafeConfiguration) => void
+    let release!: (value: Pick<SafeConfiguration, 'nonce'>) => void
     const service = createSafeService({
       accounts,
       store,
       operations,
       client: {
         discover: async () => ({ version: '1.4.1', owners: [ownerAddress] }),
-        configuration: () =>
+        configuration: async () => config,
+        queueState: () =>
           new Promise((resolve) => {
             release = resolve
           }),
@@ -241,6 +242,7 @@ it('probes all configured chains, retains successes and discards stale discovery
         return { version: '1.4.1', owners: [ownerAddress] }
       },
       configuration: async () => ({ version: '1.4.1', owners: [ownerAddress], threshold: 1, nonce: '0' }),
+      queueState: async () => ({ nonce: '0' }),
       pending: async () => {
         throw new Error('No queue service')
       }
@@ -290,6 +292,7 @@ function simulationSetup() {
   })
   const client = {
     configuration: async () => configuration,
+    queueState: async () => ({ nonce: configuration.nonce }),
     pending: async () => [proposal],
     discover: async () => ({ version: '1.5.0', owners: [ownerAddress] })
   }
@@ -308,6 +311,83 @@ const simulated: SafeProposalSimulation = {
   currentNonce: '0',
   blockNumber: '123'
 }
+
+it('fetches owners at import and reuses them across queue refreshes and account selection', async () => {
+  const context = simulationSetup()
+  let now = Date.now() + 60_000
+  const configuration = mock(context.client.configuration)
+  const queueState = mock(async () => ({ nonce: '1' }))
+  const pending = mock<SafeServicePorts['client']['pending']>(context.client.pending)
+  const service = createSafeService({
+    ...context,
+    client: { ...context.client, configuration, queueState, pending },
+    now: () => now
+  })
+  cleanup.push(service.dispose)
+  service.import({ type: 'account.safe-import', operationId: 'import', address, chainId: 1 }, owner)
+  await until(() => context.store.getState().operations.import?.operation.status === 'succeeded')
+  const cached = context.store.getState().main.accounts[address].safe!['1'].configuration
+  await service.refresh({ type: 'account.safe-refresh', accountId: address, force: true })
+  expect(pending.mock.calls.at(-1)?.[2]).toEqual({ ...cached, nonce: '1' })
+  expect(context.store.getState().main.accounts[address].safe!['1'].pending).toEqual([])
+  now += 60_000
+  context.store.getState().setAccount({ id: address })
+  await until(() => queueState.mock.calls.length === 2)
+  await service.refresh({ type: 'account.safe-refresh', accountId: address })
+  expect(configuration).toHaveBeenCalledTimes(1)
+  expect(context.store.getState().main.accounts[address].safe!['1'].configuration.owners).toEqual(
+    cached.owners
+  )
+})
+
+it('retains configuration observed during simulation even when the preview is unavailable', async () => {
+  const context = simulationSetup()
+  const observed = { owners: [address], threshold: 1, nonce: '1', version: '1.4.1' }
+  const service = createSafeService({
+    ...context,
+    simulate: async (_input, _signal, observe) => {
+      observe(observed, '124')
+      return { status: 'unavailable', error: 'Proposal nonce has already passed.' }
+    }
+  })
+  cleanup.push(service.dispose)
+  expect(await service.simulate(context.query)).toMatchObject({
+    status: 'unavailable',
+    error: 'Proposal nonce has already passed.'
+  })
+  expect(context.store.getState().main.accounts[address].safe!['1']).toMatchObject({
+    configuration: observed,
+    configurationBlockNumber: '124',
+    pending: [context.proposal]
+  })
+})
+
+it('does not replace a newer configuration with an older concurrent simulation observation', async () => {
+  const context = simulationSetup()
+  const other = { ...context.proposal, safeTxHash: `0x${'b'.repeat(64)}` }
+  const deployment = context.store.getState().main.accounts[address].safe!['1']
+  context.store
+    .getState()
+    .patchAccount(address, { safe: { '1': { ...deployment, pending: [context.proposal, other] } } })
+  const observers: Array<(configuration: SafeConfiguration, block: string) => void> = []
+  const service = createSafeService({
+    ...context,
+    simulate: async (_input, _signal, observe) => {
+      observers.push(observe)
+      return new Promise(() => {})
+    }
+  })
+  cleanup.push(service.dispose)
+  const first = service.simulate(context.query)
+  const second = service.simulate({ ...context.query, safeTxHash: other.safeTxHash })
+  await Promise.resolve()
+  const newer = { owners: [address], threshold: 1, nonce: '1' }
+  observers[1](newer, '125')
+  observers[0](deployment.configuration, '124')
+  expect(context.store.getState().main.accounts[address].safe!['1'].configuration).toEqual(newer)
+  service.dispose()
+  await Promise.all([first, second])
+})
 
 it('simulates the canonical unsigned proposal without a signer and coalesces equivalent concurrent queries', async () => {
   const context = simulationSetup()
@@ -357,14 +437,16 @@ it('simulates the canonical unsigned proposal without a signer and coalesces equ
   expect(calls).toBe(1)
 })
 
-it('settles in-flight simulations on semantic proposal/configuration changes, account lifetime, profile, and disposal', async () => {
-  for (const change of ['proposal', 'configuration', 'remove', 'profile', 'dispose']) {
+it('settles in-flight simulations on semantic proposal changes, account lifetime, profile, and disposal', async () => {
+  for (const change of ['proposal', 'remove', 'profile', 'dispose']) {
     const context = simulationSetup()
     let signal!: AbortSignal
+    let observe!: (configuration: SafeConfiguration, block: string) => void
     const service = createSafeService({
       ...context,
-      simulate: (_input, captured) => {
+      simulate: (_input, captured, observation) => {
         signal = captured
+        observe = observation
         return new Promise(() => {})
       }
     })
@@ -375,10 +457,6 @@ it('settles in-flight simulations on semantic proposal/configuration changes, ac
     if (change === 'proposal')
       context.store.getState().patchAccount(address, {
         safe: { '1': { ...old.safe!['1'], pending: [{ ...context.proposal, value: '456' }] } }
-      })
-    if (change === 'configuration')
-      context.store.getState().patchAccount(address, {
-        safe: { '1': { ...old.safe!['1'], configuration: { ...old.safe!['1'].configuration, nonce: '1' } } }
       })
     if (change === 'remove') {
       context.store.getState().removeAccount(address)
@@ -394,5 +472,8 @@ it('settles in-flight simulations on semantic proposal/configuration changes, ac
       error: expect.stringContaining('cancelled')
     })
     expect(signal.aborted).toBeTrue()
+    const before = context.store.getState().main.accounts[address].safe
+    observe({ owners: [address], threshold: 1, nonce: '100' }, '999')
+    expect(context.store.getState().main.accounts[address].safe).toBe(before)
   }
 })

@@ -64,6 +64,7 @@ const safeDeploymentSchema = z.strictObject({
   chainId: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
   address: safeAddressSchema,
   configuration: safeConfigurationSchema,
+  configurationBlockNumber: safeDecimalSchema.optional(),
   pending: z.array(safeProposalSchema).optional(),
   refreshedAt: z.number().finite().nonnegative().optional(),
   error: z.string().max(2000).optional()
@@ -73,6 +74,18 @@ export type SafeProposal = z.infer<typeof safeProposalSchema>
 export type SafeDeployment = z.infer<typeof safeDeploymentSchema>
 
 export const SafeDeploymentSchema = safeDeploymentSchema
+
+export const SafeOwnerAccountSchema = z.strictObject({
+  accountId: z.string(),
+  name: z.string(),
+  address: z.string(),
+  created: z.string(),
+  signerType: z.string(),
+  signerAttached: z.boolean(),
+  signerStatus: z.string(),
+  status: z.enum(['ready', 'unavailable', 'watch-only'])
+})
+export type SafeOwnerAccount = z.infer<typeof SafeOwnerAccountSchema>
 
 const simulationEffectSchema = z.strictObject({
   id: z.string(),

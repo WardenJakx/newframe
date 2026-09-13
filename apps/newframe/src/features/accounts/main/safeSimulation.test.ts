@@ -2,7 +2,7 @@ import { expect, it } from 'bun:test'
 
 import { Interface, ZeroAddress, toBeHex } from 'ethers'
 
-import type { SafeProposal } from '../domain/safe'
+import type { SafeConfiguration, SafeProposal } from '../domain/safe'
 import { simulateSafeProposal, type SafeSimulationPorts } from './safeSimulation'
 
 const safe = '0x1111111111111111111111111111111111111111'
@@ -146,6 +146,10 @@ it('requires matching execution logs and a Safe return value, and rejects ignore
 
 it('rejects missing signed fields before RPC and stale proposals before execution', async () => {
   const { ports, calls } = setup()
+  let observed: { configuration: SafeConfiguration; blockNumber: string } | undefined
+  ports.observeConfiguration = (configuration, blockNumber) => {
+    observed = { configuration, blockNumber }
+  }
   expect(
     await simulateSafeProposal(
       { chainId: 1, address: safe, proposal: { ...proposal, gasPrice: undefined } },
@@ -153,10 +157,15 @@ it('rejects missing signed fields before RPC and stale proposals before executio
     )
   ).toMatchObject({ status: 'unavailable' })
   expect(calls).toHaveLength(0)
+  expect(observed).toBeUndefined()
   ports.client.configuration = async () => ({ owners: [owner], threshold: 1, nonce: '8' })
   expect(await simulateSafeProposal({ chainId: 1, address: safe, proposal }, ports)).toMatchObject({
     status: 'unavailable',
     currentNonce: '8'
   })
   expect(calls.some(({ method }) => method === 'debug_traceCall')).toBeFalse()
+  expect(observed).toEqual({
+    configuration: { owners: [owner], threshold: 1, nonce: '8' },
+    blockNumber: '100'
+  })
 })

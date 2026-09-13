@@ -60,9 +60,15 @@ const selectionRecipe = sva({
         menu: { insetBlockStart: 'calc(token(sizes.button-small) + token(spacing.3))' }
       },
       medium: { menu: { insetBlockStart: 'selection-offset' } }
+    },
+    menuPlacement: {
+      below: {},
+      above: {
+        menu: { insetBlockStart: 'auto', insetBlockEnd: 'calc(100% + token(spacing.3))' }
+      }
     }
   },
-  defaultVariants: { menuAlign: 'start', menuWidth: 'trigger', triggerSize: 'medium' }
+  defaultVariants: { menuAlign: 'start', menuWidth: 'trigger', triggerSize: 'medium', menuPlacement: 'below' }
 })
 
 export type SelectionItem = {
@@ -79,6 +85,7 @@ export type SelectionProps = {
   items: readonly SelectionItem[]
   label: string
   menuAlign?: 'start' | 'center' | 'end'
+  menuPlacement?: 'above' | 'below'
   menuWidth?: 'trigger' | 'wide'
   onOpenChange: (open: boolean) => void
   onSelect: (id: string) => void
@@ -98,6 +105,7 @@ export function Selection({
   items,
   label,
   menuAlign = 'start',
+  menuPlacement = 'below',
   menuWidth = 'trigger',
   onOpenChange,
   onSelect,
@@ -110,6 +118,7 @@ export function Selection({
 }: SelectionProps) {
   const styles = selectionRecipe({
     menuAlign,
+    menuPlacement,
     menuWidth,
     reserveMenuSpace: reserveMenuSpace && open,
     triggerSize

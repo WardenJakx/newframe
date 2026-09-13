@@ -22,6 +22,7 @@ import { displayValueData } from '../../../format/displayValue'
 import type { RequestRendererCapabilities, TransactionReviewCapability } from '../../../requestCapabilities'
 import { useRequestView } from '../../../requestView'
 import { DisplayCoinBalance } from '../../../ui/DisplayValue'
+import { SigningAccount } from '../../../ui/SigningAccount'
 import type { TransactionRequestView } from '../requestViewTypes'
 import {
   useAccountIdentity,
@@ -317,21 +318,13 @@ function TxReviewView(props: TxReviewProps) {
       nativeCurrency={nativeCurrency}
     >
       <Stack gap='xsmall'>
-        <Surface padding='small' radius='card' tone='card'>
-          <Inline align='center' gap='small' justify='between'>
-            <Text tone='secondary' variant='overline'>
-              Signing with
-            </Text>
-            <Inline align='center' gap='xsmall'>
-              <Icon name='wallet' size='small' tone='accent' />
-              <AddressIdentity
-                address={from}
-                clipboard={props.capabilities.external}
-                nickname={props.signingAccount?.name || props.signingAccount?.ensName}
-              />
-            </Inline>
-          </Inline>
-        </Surface>
+        <SigningAccount>
+          <AddressIdentity
+            address={from}
+            clipboard={props.capabilities.external}
+            nickname={props.signingAccount?.name || props.signingAccount?.ensName}
+          />
+        </SigningAccount>
         <TxFeeSummary
           capability={props.capabilities.transaction}
           chain={chain}

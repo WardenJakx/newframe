@@ -45,6 +45,7 @@ export interface SafeSimulationInput {
   proposal: SafeProposal
 }
 export interface SafeSimulationPorts {
+  observeConfiguration?: (configuration: SafeConfiguration, blockNumber: string) => void
   rpc: SafeSimulationRpc
   client: {
     configuration(
@@ -86,7 +87,7 @@ function executionEvents(trace: TraceCall, safe: string): Array<{ name: string; 
 /** Executes the original proposal under explicit simulation-only authorization assumptions. */
 export async function simulateSafeProposal(
   input: SafeSimulationInput,
-  { rpc, client, projection, provider }: SafeSimulationPorts,
+  { rpc, client, projection, provider, observeConfiguration }: SafeSimulationPorts,
   signal?: AbortSignal
 ): Promise<SafeProposalSimulation> {
   const assumptions = [
@@ -117,6 +118,8 @@ export async function simulateSafeProposal(
     const configuration = safeConfigurationSchema.parse(
       await client.configuration(chainId, address, signal, block.number)
     )
+    signal?.throwIfAborted()
+    observeConfiguration?.(configuration, blockNumber)
     currentNonce = configuration.nonce
     if (BigInt(proposal.nonce) < BigInt(currentNonce))
       throw new Error('Proposal nonce has already passed. Refresh the Safe queue.')
