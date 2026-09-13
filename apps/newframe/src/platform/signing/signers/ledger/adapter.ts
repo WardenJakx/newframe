@@ -8,7 +8,7 @@ import type canonicalStore from '../../../state-store/index.js'
 import { SignerAdapter } from '../adapters.js'
 import { Derivation } from '../Signer/derive.js'
 import { getLedgerDevices, TransportNodeHidSingleton as TransportNodeHid } from './dependencies.js'
-import Ledger from './Ledger/index.js'
+import Ledger, { Status } from './Ledger/index.js'
 
 function updateDerivation(
   store: typeof canonicalStore,
@@ -37,6 +37,9 @@ export default class LedgerSignerAdapter extends SignerAdapter {
   private unsubscribeDerivation?: () => void
   private usbListener: Subscription | null = null
   private opened = false
+  private reconnectTimers = new Map<Ledger, NodeJS.Timeout>()
+  private reconnectDelays = new Map<Ledger, number>()
+  private connecting = new Map<Ledger, Promise<void>>()
 
   constructor(private readonly store: typeof canonicalStore) {
     super('ledger')
@@ -91,6 +94,9 @@ export default class LedgerSignerAdapter extends SignerAdapter {
   override close() {
     if (!this.opened) return
     this.opened = false
+    this.reconnectTimers.forEach(clearTimeout)
+    this.reconnectTimers.clear()
+    this.reconnectDelays.clear()
 
     this.unsubscribeDerivation?.()
     this.unsubscribeDerivation = undefined
@@ -111,6 +117,7 @@ export default class LedgerSignerAdapter extends SignerAdapter {
       log.info(`removing Ledger ${ledger.model} attached at ${ledger.devicePath}`)
 
       delete this.knownSigners[ledger.devicePath]
+      this.resetReconnect(ledger)
 
       ledger.close()
     }
@@ -122,10 +129,8 @@ export default class LedgerSignerAdapter extends SignerAdapter {
     const signer = this.knownSigners[ledger.devicePath]
 
     if (signer) {
-      signer
-        .disconnect()
-        .then(() => signer.open())
-        .then(() => signer.connect())
+      this.resetReconnect(signer)
+      void this.handleConnectedDevice(signer)
     }
   }
 
@@ -145,7 +150,10 @@ export default class LedgerSignerAdapter extends SignerAdapter {
 
     const ledger = new Ledger(device.path, device.product)
 
-    const emitUpdate = () => this.emit('update', ledger)
+    const emitUpdate = () => {
+      this.emit('update', ledger)
+      this.scheduleReconnect(ledger)
+    }
 
     ledger.on('update', emitUpdate)
     ledger.on('error', emitUpdate)
@@ -163,14 +171,77 @@ export default class LedgerSignerAdapter extends SignerAdapter {
 
     this.emit('add', ledger)
 
+    updateDerivation(this.store, ledger)
     await this.handleConnectedDevice(ledger)
   }
 
-  private async handleConnectedDevice(ledger: Ledger) {
-    updateDerivation(this.store, ledger)
+  private handleConnectedDevice(ledger: Ledger) {
+    if (!this.opened) return
+    const pending = this.connecting.get(ledger)
+    if (pending) return pending
+    const connection = this.connectDevice(ledger).finally(() => {
+      this.connecting.delete(ledger)
+      this.scheduleReconnect(ledger)
+    })
+    this.connecting.set(ledger, connection)
+    return connection
+  }
 
-    await ledger.open()
-    await ledger.connect()
+  private resetReconnect(ledger: Ledger) {
+    clearTimeout(this.reconnectTimers.get(ledger))
+    this.reconnectTimers.delete(ledger)
+    this.reconnectDelays.delete(ledger)
+  }
+
+  private scheduleReconnect(ledger: Ledger) {
+    if (ledger.status === Status.OK) {
+      this.resetReconnect(ledger)
+      return
+    }
+    if (
+      !this.opened ||
+      this.knownSigners[ledger.devicePath] !== ledger ||
+      this.disconnections.some(({ device }) => device === ledger) ||
+      this.connecting.has(ledger) ||
+      this.reconnectTimers.has(ledger) ||
+      ![Status.WRONG_APP, Status.NEEDS_RECONNECTION].includes(ledger.status)
+    )
+      return
+
+    // A failed handshake may not produce another USB event. Back off per device.
+    const delay = this.reconnectDelays.get(ledger) ?? 2000
+    this.reconnectDelays.set(ledger, Math.min(delay * 2, 60_000))
+    this.reconnectTimers.set(
+      ledger,
+      setTimeout(() => {
+        this.reconnectTimers.delete(ledger)
+        void this.handleConnectedDevice(ledger)
+      }, delay)
+    )
+  }
+
+  private async connectDevice(ledger: Ledger) {
+    const isAttached = () =>
+      this.opened &&
+      this.knownSigners[ledger.devicePath] === ledger &&
+      !this.disconnections.some(({ device }) => device === ledger)
+
+    try {
+      await ledger.disconnect()
+      if (!isAttached()) return
+      await ledger.open()
+      if (!isAttached()) {
+        await ledger.disconnect()
+        return
+      }
+      await ledger.connect()
+    } catch (error) {
+      log.warn(`Could not connect Ledger ${ledger.model}`, error)
+      if (isAttached()) {
+        ledger.updateStatus(Status.NEEDS_RECONNECTION)
+        this.emit('update', ledger)
+      }
+    }
   }
 
   private async handleReconnectedDevice(disconnection: Disconnection) {
@@ -178,11 +249,15 @@ export default class LedgerSignerAdapter extends SignerAdapter {
 
     clearTimeout(disconnection.timeout)
 
-    this.handleConnectedDevice(disconnection.device)
+    await this.connecting.get(disconnection.device)
+    this.resetReconnect(disconnection.device)
+    updateDerivation(this.store, disconnection.device)
+    await this.handleConnectedDevice(disconnection.device)
   }
 
   handleDisconnectedDevice(ledger: Ledger) {
     log.info(`Ledger ${ledger.model} disconnected from ${ledger.devicePath}`)
+    this.resetReconnect(ledger)
 
     ledger.disconnect()
 

@@ -44,13 +44,14 @@ export function MenuOverlay({ children, closeLabel, label, onClose, title }: Men
   const overlay = useRef<HTMLDivElement | null>(null)
 
   useLayoutEffect(() => {
+    if (overlay.current?.closest('[data-overlay-focus-managed]')) return
     previousFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
     overlay.current?.querySelector<HTMLButtonElement>('button')?.focus()
     return () => previousFocus.current?.focus()
   }, [])
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (event.key !== 'Escape') return
+    if (event.defaultPrevented || event.key !== 'Escape') return
     event.preventDefault()
     onClose()
   }

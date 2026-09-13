@@ -138,6 +138,14 @@ describe('origin value rules', () => {
       ],
       [
         {
+          origin: 'chrome-extension://unpacked-id',
+          requestUrl: '/?identity=newframe-extension&scope=internal',
+          development: false
+        },
+        { browser: 'chrome', id: 'unpacked-id' }
+      ],
+      [
+        {
           origin: 'moz-extension://firefox-id',
           requestUrl: '/?identity=frame-extension',
           development: false

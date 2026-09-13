@@ -14,17 +14,17 @@ export function HomeMenu({ capability }: { capability: Pick<HomeCapability, 'qui
       }
     })
   )
-  const openOverlay = useHomeUiStore((state) => state.openOverlay)
+  const pushOverlay = useHomeUiStore((state) => state.pushOverlay)
   const closeOverlay = useHomeUiStore((state) => state.closeOverlay)
 
   return (
     <HomeMenuView
       {...shared}
       onClose={closeOverlay}
-      onOpenAbout={() => openOverlay({ type: 'about' })}
-      onOpenDapps={() => openOverlay({ type: 'dapps' })}
-      onOpenSettings={() => openOverlay({ type: 'settings' })}
-      onOpenTokens={() => openOverlay({ type: 'tokens' })}
+      onOpenAbout={() => pushOverlay({ type: 'about' })}
+      onOpenDapps={() => pushOverlay({ type: 'dapps' })}
+      onOpenSettings={() => pushOverlay({ type: 'settings' })}
+      onOpenTokens={() => pushOverlay({ type: 'tokens' })}
       onQuit={() => void capability.quit()}
     />
   )

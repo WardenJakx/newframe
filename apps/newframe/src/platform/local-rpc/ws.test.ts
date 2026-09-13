@@ -59,6 +59,7 @@ function request(payload: JSONRPCRequestPayload, target = socket) {
 }
 
 beforeEach(() => {
+  store.getState().trustExtension('jdlcmcidcpckmaldjiacnbjeajgnmmgj', true)
   provider = new FakeProvider()
   server = new FakeWebSocketServer()
   transport = createWebSocketRpcTransport({
@@ -142,6 +143,28 @@ it('does not allow website traffic to reopen a rejected extension approval', asy
   }
   transport.dispose()
 })
+
+it.each([true, false])(
+  'gates unpacked Chrome RPC behind the extension modal, approved=%s',
+  async (approved) => {
+    const id = `unpacked-chrome-${approved}`
+    const chromeSocket = connect({
+      headers: { origin: `chrome-extension://${id}` },
+      url: '/?identity=newframe-extension&scope=internal'
+    })
+    const response = request({ id: 9, jsonrpc: '2.0', method: 'eth_chainId', params: [] }, chromeSocket)
+
+    expect(store.getState().view).toMatchObject({
+      notify: 'extensionConnect',
+      notifyData: { browser: 'chrome', id }
+    })
+    expect(provider.requests).toEqual([])
+
+    store.getState().trustExtension(id, approved)
+    await expect(response).resolves.toMatchObject(approved ? { result: '0x1' } : { error: { code: 4001 } })
+    transport.dispose()
+  }
+)
 
 it('derives ordinary RPC identity from the socket instead of accepting renderer identity', async () => {
   provider.respond = (payload) => ({
