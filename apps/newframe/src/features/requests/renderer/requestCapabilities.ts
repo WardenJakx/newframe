@@ -1,4 +1,10 @@
-import type { CommandMap, CommandResult, QueryMap, QueryResultMap } from '../../../app/contracts/operations'
+import type {
+  CommandMap,
+  CommandResult,
+  QueryMap,
+  QueryResultMap,
+  SafeApprovalCommand
+} from '../../../app/contracts/operations'
 import type { NewframeHost } from '../../../platform/ipc/contract/ipc'
 import type { ClipboardCapability, TokenImageCapability } from '../../../shared/renderer/capabilities'
 
@@ -38,9 +44,9 @@ export interface RequestExternalCapability extends ClipboardCapability, TokenIma
 }
 
 interface SafeQueueCapability {
-  refresh(input: CommandInput<'account.safe-refresh'>): Promise<CommandResult>
+  refresh(input: CommandInput<'account.refresh'>): Promise<CommandResult>
   simulate(input: Omit<QueryMap['safe.simulate'], 'type'>): Promise<QueryResultMap['safe.simulate']>
-  confirm(input: CommandInput<'account.safe-confirm'>): Promise<CommandResult>
+  confirm(input: WithoutType<SafeApprovalCommand>): Promise<CommandResult>
   confirmationStatus(
     input: Omit<QueryMap['safe.confirmation-status'], 'type'>
   ): Promise<QueryResultMap['safe.confirmation-status']>
@@ -91,8 +97,8 @@ const createRequestExternalCapability = (host: RequestHost): RequestExternalCapa
 export function createRequestRendererCapabilities(host: RequestHost): RequestRendererCapabilities {
   return {
     safe: {
-      refresh: (input) => host.executeCommand({ type: 'account.safe-refresh', ...input }),
-      confirm: (input) => host.executeCommand({ type: 'account.safe-confirm', ...input }),
+      refresh: (input) => host.executeCommand({ type: 'account.refresh', ...input }),
+      confirm: (input) => host.executeCommand({ type: 'request.approve', ...input }),
       confirmationStatus: async (input) => {
         const result = await host.executeQuery({ type: 'safe.confirmation-status', ...input })
         if ('status' in result) return result

@@ -48,7 +48,7 @@ function RecoveryActions({
 
   const submitPin = () => {
     if (!trezorPin) return
-    void capability.submitTrezorInput({
+    void capability.inputSignerSession({
       operationId,
       actionId: crypto.randomUUID(),
       signerId: signer.id,
@@ -58,7 +58,7 @@ function RecoveryActions({
     setTrezorPin('')
   }
   const submitPassphrase = () => {
-    void capability.submitTrezorInput({
+    void capability.inputSignerSession({
       operationId,
       actionId: crypto.randomUUID(),
       signerId: signer.id,
@@ -67,13 +67,14 @@ function RecoveryActions({
     })
     setTrezorPassphrase('')
   }
-  const pairLattice = () => {
+  const inputSignerSession = () => {
     if (!latticePairCode) return
-    void capability.pairLattice({
+    void capability.inputSignerSession({
+      input: 'pair-code',
       operationId,
       actionId: crypto.randomUUID(),
       signerId: signer.id,
-      pairCode: latticePairCode
+      value: latticePairCode
     })
     setLatticePairCode('')
   }
@@ -139,7 +140,7 @@ function RecoveryActions({
           <Button
             appearance='control'
             onPress={() =>
-              void capability.submitTrezorInput({
+              void capability.inputSignerSession({
                 operationId,
                 actionId: crypto.randomUUID(),
                 signerId: signer.id,
@@ -161,11 +162,11 @@ function RecoveryActions({
         <Input
           autoFocus
           label='Lattice pairing code'
-          onSubmit={pairLattice}
+          onSubmit={inputSignerSession}
           onValueChange={(value) => setLatticePairCode(value.toUpperCase())}
           value={latticePairCode}
         />
-        <Button appearance='primary' disabled={!latticePairCode} onPress={pairLattice} width='full'>
+        <Button appearance='primary' disabled={!latticePairCode} onPress={inputSignerSession} width='full'>
           <Text variant='action'>Pair Lattice</Text>
         </Button>
       </Stack>
@@ -201,13 +202,13 @@ export default function SignerRecovery({
     finish: finishSession,
     session,
     sessionRef,
-    start: startHardwareSession
+    start: startSignerSession
   } = useHardwareSessionController(capability)
 
   const signer = candidates.find((candidate) => candidate.id === selectedId) || candidates[0]
 
   function startSession(signerId: string, reload = false) {
-    startHardwareSession(signerId, { reload, replaceCurrent: true })
+    startSignerSession(signerId, { reload, replaceCurrent: true })
   }
 
   useEffect(() => {

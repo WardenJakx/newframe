@@ -135,7 +135,7 @@ it('owns private Trade execution, idempotency, revalidation, cancellation, and c
     targetAsset: { ...FLASH_WETH_ASSET, chainId: 1 }
   } satisfies FlashQuoteRequest
   const prepare = (operationId: string, quoteId: string, caller = owner) =>
-    service.prepare({ type: 'trade.prepare', operationId, quoteId, action: 'approve' }, principal, caller)
+    service.prepare({ type: 'request.create', operationId, quoteId, action: 'approve' }, principal, caller)
   const submit = (operationId: string, quoteId: string) =>
     service.submit({ type: 'trade.submit', operationId, quoteId }, principal, owner)
 
@@ -291,9 +291,24 @@ it('owns private Trade execution, idempotency, revalidation, cancellation, and c
   flashQuote.mockImplementationOnce(() => new Promise((resolve) => (resolveLateQuote = resolve)))
   const pendingQuote = service.quote(request, owner)
   await Promise.resolve()
-  service.release(owner)
+  expect(service.cancelOperation({ type: 'operation.cancel', operationId }, owner)).toBe(true)
   resolveLateQuote({ quote: quote('late'), flash: {} })
-  expect((await pendingQuote).ok).toBe(false)
+  const lateQuote = await pendingQuote
+  if (!lateQuote.ok) throw new Error('late quote failed')
+  expect(prepare('cancel-target', lateQuote.quoteId)).toBe(true)
+  await flush()
+  const cancellation = { type: 'operation.cancel', operationId: 'cancel-target' } as const
+  expect(service.cancelOperation(cancellation, otherOwner)).toBe(false)
+  expect(service.cancelOperation({ ...cancellation, operationId: cancel.operationId }, owner)).toBe(false)
+  expect(service.cancelOperation({ ...cancellation, operationId: 'unknown' }, owner)).toBe(false)
+  canonical.currentAccount = 'missing'
+  expect(service.cancelOperation(cancellation, owner)).toBe(true)
+  expect(service.cancelOperation(cancellation, owner)).toBe(true)
+  expect(operation(cancellation.operationId)).toMatchObject({ status: 'failed', phase: 'cancelled' })
+  canonical.currentAccount = account.id
+  expect(prepare('cancelled-quote', lateQuote.quoteId)).toBe(true)
+  await flush()
+  expect(operation('cancelled-quote')?.error?.code).toBe('quote_unavailable')
 
   const pending = await quoteFor('quote-dispose')
   let resolveTransaction!: (value: { ok: true; transactionHash: string }) => void
@@ -517,7 +532,7 @@ it('keeps cross-chain provider state private and validates both networks and the
   expect(
     service.prepare(
       {
-        type: 'trade.prepare',
+        type: 'request.create',
         operationId: 'action-mismatch',
         quoteId: actionMismatch.quoteId,
         action: 'approve'

@@ -9,12 +9,9 @@ type CapabilityResult<TMethod extends (...args: never[]) => Promise<unknown>> = 
 
 export function createAccountsCapabilityFake() {
   return {
-    reorderAccount: acknowledged<Parameters<AccountsCapability['reorderAccount']>[0]>(),
+    updateAccount: acknowledged<Parameters<AccountsCapability['updateAccount']>[0]>(),
     selectAccount: acknowledged<Parameters<AccountsCapability['selectAccount']>[0]>(),
-    renameAccount: acknowledged<Parameters<AccountsCapability['renameAccount']>[0]>(),
     removeAccount: acknowledged<Parameters<AccountsCapability['removeAccount']>[0]>(),
-    moveAccountToProfile: acknowledged<Parameters<AccountsCapability['moveAccountToProfile']>[0]>(),
-    setAccountAgentAccess: acknowledged<Parameters<AccountsCapability['setAccountAgentAccess']>[0]>(),
     revokeAccountAgentSessions:
       acknowledged<Parameters<AccountsCapability['revokeAccountAgentSessions']>[0]>(),
     exportAccountPrivateKey: mock(
@@ -27,7 +24,7 @@ export function createAccountsCapabilityFake() {
     ),
     selectProfile: acknowledged<Parameters<AccountsCapability['selectProfile']>[0]>(),
     createProfile: acknowledged<Parameters<AccountsCapability['createProfile']>[0]>(),
-    renameProfile: acknowledged<Parameters<AccountsCapability['renameProfile']>[0]>(),
+    updateProfile: acknowledged<Parameters<AccountsCapability['updateProfile']>[0]>(),
     deleteProfile: acknowledged<Parameters<AccountsCapability['deleteProfile']>[0]>(),
     listMovableProfileAccounts: mock(
       async (): Promise<CapabilityResult<AccountsCapability['listMovableProfileAccounts']>> => ({
@@ -59,31 +56,21 @@ export function createAccountsCapabilityFake() {
       ok: false,
       error: 'operation_failed'
     })),
-    addAccountFromSigner: acknowledged<Parameters<AccountsCapability['addAccountFromSigner']>[0]>(),
-    addWatchAccount: acknowledged<Parameters<AccountsCapability['addWatchAccount']>[0]>(),
-    importSafe: acknowledged<Parameters<AccountsCapability['importSafe']>[0]>(),
+    createAccount: acknowledged<Parameters<AccountsCapability['createAccount']>[0]>(),
     discoverSafeNetworks: mock(
       async (_address: string): Promise<CapabilityResult<AccountsCapability['discoverSafeNetworks']>> => []
     ),
     importSigner: acknowledged<Parameters<AccountsCapability['importSigner']>[0]>(),
-    startHardwareSession: acknowledged<Parameters<AccountsCapability['startHardwareSession']>[0]>(),
-    finishHardwareSession: acknowledged<Parameters<AccountsCapability['finishHardwareSession']>[0]>(),
-    reloadSigner: acknowledged<Parameters<AccountsCapability['reloadSigner']>[0]>(),
+    startSignerSession: acknowledged<Parameters<AccountsCapability['startSignerSession']>[0]>(),
+    finishSignerSession: acknowledged<Parameters<AccountsCapability['finishSignerSession']>[0]>(),
+    refreshSigner: acknowledged<Parameters<AccountsCapability['refreshSigner']>[0]>(),
     disconnectSigner: acknowledged<Parameters<AccountsCapability['disconnectSigner']>[0]>(),
-    loadLedgerAccounts: acknowledged<Parameters<AccountsCapability['loadLedgerAccounts']>[0]>(),
-    submitTrezorInput: acknowledged<Parameters<AccountsCapability['submitTrezorInput']>[0]>(),
-    createLatticeSigner: acknowledged<Parameters<AccountsCapability['createLatticeSigner']>[0]>(),
-    pairLattice: acknowledged<Parameters<AccountsCapability['pairLattice']>[0]>(),
-    airgapPairStart: acknowledged<Parameters<AccountsCapability['airgapPairStart']>[0]>(),
-    airgapPairScan: acknowledged<Parameters<AccountsCapability['airgapPairScan']>[0]>(),
-    airgapPairCancel: acknowledged<Parameters<AccountsCapability['airgapPairCancel']>[0]>(),
-    airgapRequest: mock(
+    inputSignerSession: acknowledged<Parameters<AccountsCapability['inputSignerSession']>[0]>(),
+    sessionFrames: mock(
       async (
-        _input: Parameters<AccountsCapability['airgapRequest']>[0]
-      ): Promise<CapabilityResult<AccountsCapability['airgapRequest']>> => ({ ok: false, error: 'not_found' })
+        _input: Parameters<AccountsCapability['sessionFrames']>[0]
+      ): Promise<CapabilityResult<AccountsCapability['sessionFrames']>> => ({ ok: false, error: 'not_found' })
     ),
-    airgapScan: acknowledged<Parameters<AccountsCapability['airgapScan']>[0]>(),
-    airgapCancel: acknowledged<Parameters<AccountsCapability['airgapCancel']>[0]>(),
     writeClipboard: acknowledged<Parameters<AccountsCapability['writeClipboard']>[0]>(),
     writeText: mock<AccountsCapability['writeText']>(async () => ({ ok: true }))
   } satisfies AccountsCapability

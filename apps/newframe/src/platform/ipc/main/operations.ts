@@ -85,7 +85,10 @@ function defineAcknowledgedCommand<TKey extends keyof CommandMap>(
     event: Electron.IpcMainInvokeEvent,
     context: AuthorizationContext
   ) => Promise<boolean | void> | boolean | void,
-  missingError: 'not_found' | 'request_not_found' = 'not_found',
+  missingError:
+    | 'not_found'
+    | 'request_not_found'
+    | ((input: CommandMap[TKey]) => 'not_found' | 'request_not_found' | 'invalid_command') = 'not_found',
   entrypoints: readonly RendererEntrypoint[] = ['tray']
 ) {
   return defineOperation<CommandMap[TKey], unknown>({
@@ -94,7 +97,10 @@ function defineAcknowledgedCommand<TKey extends keyof CommandMap>(
     async handle(input, event, context) {
       try {
         return (await handle(input, event, context)) === false
-          ? ({ ok: false, error: missingError } as const)
+          ? ({
+              ok: false,
+              error: typeof missingError === 'function' ? missingError(input) : missingError
+            } as const)
           : ({ ok: true } as const)
       } catch (error) {
         if (error === IdempotencyConflict) {
@@ -268,30 +274,65 @@ export function createOperationRegistry(services: OperationServices) {
   }
 
   const commandRegistry = {
-    'account.profile-move': defineOwnedCommand('account.profile-move', (command, context) =>
-      profiles.moveAccount(command, operationOwner(context))
+    'account.create': defineOwnedCommand('account.create', (command, context) =>
+      command.source === 'safe'
+        ? safes.import(command, operationOwner(context))
+        : accountOnboarding.createAccount(command, operationOwner(context))
+    ),
+    'account.update': defineAcknowledgedCommand(
+      'account.update',
+      (command, _event, context) => {
+        if ('profileId' in command) return profiles.moveAccount(command, operationOwner(context))
+        return 'enabled' in command
+          ? agent.setAgentAccess(command.accountId, command.enabled)
+          : accountMutations.update(command)
+      },
+      (command) => ('profileId' in command ? 'invalid_command' : 'not_found')
+    ),
+    'signer.import': defineAcknowledgedCommand(
+      'signer.import',
+      (command, event, context) =>
+        command.source === 'airgap'
+          ? airgap.pairStart(command, signingUiContext(event, context))
+          : accountOnboarding.importSigner(command, operationOwner(context)),
+      (command) => (command.source === 'airgap' ? 'not_found' : 'invalid_command')
+    ),
+    'signer.refresh': defineOwnedCommand('signer.refresh', (command, context) =>
+      accountOnboarding.refresh(command, operationOwner(context))
+    ),
+    'signer.session-input': defineAcknowledgedCommand(
+      'signer.session-input',
+      (command, _event, context) => {
+        const owner = operationOwner(context)
+        if ('input' in command) return accountOnboarding.sessionInput(command, owner)
+        return 'requestId' in command ? airgap.scan(command, owner) : airgap.pairScan(command, owner)
+      },
+      (command) => ('input' in command ? 'invalid_command' : 'not_found')
+    ),
+    'signer.session-finish': defineAcknowledgedCommand(
+      'signer.session-finish',
+      (command, _event, context) => {
+        const owner = operationOwner(context)
+        if ('outcome' in command) return accountOnboarding.finishSession(command, owner)
+        return 'requestId' in command ? airgap.cancel(command, owner) : airgap.pairCancel(command, owner)
+      },
+      (command) => ('outcome' in command ? 'invalid_command' : 'not_found')
     ),
     'account.select': defineAcknowledgedCommand(
       'account.select',
       ({ accountId }) => accountMutations.select(accountId),
       'not_found'
     ),
-    'send.submit': defineCommand('send.submit', {
+    'request.create': defineCommand('request.create', {
       roles: ['sidetray'],
       entrypoints: ['sidetray'],
       handle(command, _event, context) {
+        const principal = createRendererPrincipal(context)
+        const owner = operationOwner(context)
         return operationCommandAcknowledgement(
-          send.submit(command, createRendererPrincipal(context), operationOwner(context))
-        )
-      },
-      failure: { ok: false, error: 'operation_failed' }
-    }),
-    'trade.prepare': defineCommand('trade.prepare', {
-      roles: ['sidetray'],
-      entrypoints: ['sidetray'],
-      handle(command, _event, context) {
-        return operationCommandAcknowledgement(
-          trade.prepare(command, createRendererPrincipal(context), operationOwner(context))
+          'quoteId' in command
+            ? trade.prepare(command, principal, owner)
+            : send.submit(command, principal, owner)
         )
       },
       failure: { ok: false, error: 'operation_failed' }
@@ -306,12 +347,11 @@ export function createOperationRegistry(services: OperationServices) {
       },
       failure: { ok: false, error: 'operation_failed' }
     }),
-    'trade.release': defineCommand('trade.release', {
+    'operation.cancel': defineCommand('operation.cancel', {
       roles: ['sidetray'],
       entrypoints: ['sidetray'],
-      handle(_command, _event, context) {
-        trade.release(operationOwner(context))
-        return { ok: true }
+      handle(command, _event, context) {
+        return operationCommandAcknowledgement(trade.cancelOperation(command, operationOwner(context)))
       },
       failure: { ok: false, error: 'operation_failed' }
     }),
@@ -344,8 +384,8 @@ export function createOperationRegistry(services: OperationServices) {
     'profile.create': defineOwnedCommand('profile.create', (command, context) =>
       profiles.create(command, operationOwner(context))
     ),
-    'profile.rename': defineOwnedCommand('profile.rename', (command, context) =>
-      profiles.rename(command, operationOwner(context))
+    'profile.update': defineOwnedCommand('profile.update', (command, context) =>
+      profiles.update(command, operationOwner(context))
     ),
     'profile.delete': defineOwnedCommand('profile.delete', (command, context) =>
       profiles.delete(command, operationOwner(context))
@@ -369,72 +409,21 @@ export function createOperationRegistry(services: OperationServices) {
     'flash.order-cancel': defineAcknowledgedCommand('flash.order-cancel', (command, _event, context) =>
       trade.cancel(command, createRendererPrincipal(context), operationOwner(context))
     ),
-    'account.reorder': defineAcknowledgedCommand('account.reorder', ({ fromAccountId, toAccountId }) =>
-      accountMutations.reorder(fromAccountId, toAccountId)
-    ),
-    'account.rename': defineAcknowledgedCommand('account.rename', ({ accountId, name }) =>
-      accountMutations.rename(accountId, name)
-    ),
-    'account.agent-access-set': defineAcknowledgedCommand(
-      'account.agent-access-set',
-      ({ accountId, enabled }) => agent.setAgentAccess(accountId, enabled)
-    ),
+
     'account.agent-sessions-revoke': defineAcknowledgedCommand(
       'account.agent-sessions-revoke',
       ({ accountId }) => agent.revokeAgentSessions(accountId)
     ),
-    'account.add-from-signer': defineOwnedCommand('account.add-from-signer', (command, context) =>
-      accountOnboarding.addFromSigner(command, operationOwner(context))
-    ),
-    'account.safe-import': defineOwnedCommand('account.safe-import', (command, context) =>
-      safes.import(command, operationOwner(context))
-    ),
-    'account.safe-confirm': defineAcknowledgedCommand('account.safe-confirm', (command, event, context) =>
-      safes.confirm(command, signingUiContext(event, context))
-    ),
-    'account.safe-refresh': defineAcknowledgedCommand('account.safe-refresh', (command) =>
-      safes.refresh(command)
-    ),
-    'account.watch-add': defineOwnedCommand('account.watch-add', (command, context) =>
-      accountOnboarding.addWatch(command, operationOwner(context))
-    ),
-    'signer.import': defineOwnedCommand('signer.import', (command, context) =>
-      accountOnboarding.importSigner(command, operationOwner(context))
-    ),
-    'signer.airgap-pair-start': defineAcknowledgedCommand(
-      'signer.airgap-pair-start',
-      (command, event, context) => airgap.pairStart(command, signingUiContext(event, context))
-    ),
-    'signer.airgap-pair-scan': defineAcknowledgedCommand(
-      'signer.airgap-pair-scan',
-      (command, _event, context) => airgap.pairScan(command, operationOwner(context))
-    ),
-    'signer.airgap-pair-cancel': defineAcknowledgedCommand(
-      'signer.airgap-pair-cancel',
-      (command, _event, context) => airgap.pairCancel(command, operationOwner(context))
-    ),
-    'signer.airgap-scan': defineAcknowledgedCommand('signer.airgap-scan', (command, _event, context) =>
-      airgap.scan(command, operationOwner(context))
-    ),
-    'signer.airgap-cancel': defineAcknowledgedCommand('signer.airgap-cancel', (command, _event, context) =>
-      airgap.cancel(command, operationOwner(context))
-    ),
-    'signer.lattice-create': defineOwnedCommand('signer.lattice-create', (command, context) =>
-      accountOnboarding.createLattice(command, operationOwner(context))
-    ),
+
+    'account.refresh': defineAcknowledgedCommand('account.refresh', (command) => safes.refresh(command)),
+
     'signer.disconnect': defineOwnedCommand('signer.disconnect', (command, context) =>
       accountOnboarding.disconnect(command, operationOwner(context))
     ),
-    'signer.hardware-session-start': defineOwnedCommand('signer.hardware-session-start', (command, context) =>
-      accountOnboarding.startHardwareSession(command, operationOwner(context))
+    'signer.session-start': defineOwnedCommand('signer.session-start', (command, context) =>
+      accountOnboarding.startSession(command, operationOwner(context))
     ),
-    'signer.hardware-session-finish': defineOwnedCommand(
-      'signer.hardware-session-finish',
-      (command, context) => accountOnboarding.finishHardwareSession(command, operationOwner(context))
-    ),
-    'signer.ledger-accounts-load': defineOwnedCommand('signer.ledger-accounts-load', (command, context) =>
-      accountOnboarding.loadLedgerAccounts(command, operationOwner(context))
-    ),
+
     'portfolio.refresh': defineOwnedCommand('portfolio.refresh', (command, context) =>
       portfolio.refresh(command.operationId, operationOwner(context))
     ),
@@ -590,9 +579,11 @@ export function createOperationRegistry(services: OperationServices) {
     ),
     'request.approve': defineAcknowledgedCommand(
       'request.approve',
-      ({ requestId, adjustments }, event, context) =>
-        requests.approve(requestId, signingUiContext(event, context), adjustments),
-      'request_not_found',
+      (command, event, context) =>
+        'safeTxHash' in command
+          ? safes.confirm(command, signingUiContext(event, context))
+          : requests.approve(command.requestId, signingUiContext(event, context), command.adjustments),
+      (command) => ('safeTxHash' in command ? 'not_found' : 'request_not_found'),
       ['tray']
     ),
     'request.warning-confirm': defineAcknowledgedCommand(
@@ -608,25 +599,17 @@ export function createOperationRegistry(services: OperationServices) {
       'not_found',
       ['tray']
     ),
-    'signer.trezor-input': defineOwnedCommand('signer.trezor-input', (command, context) =>
-      accountOnboarding.submitTrezorInput(command, operationOwner(context))
-    ),
-    'signer.lattice-pair': defineOwnedCommand('signer.lattice-pair', (command, context) =>
-      accountOnboarding.pairLattice(command, operationOwner(context))
-    ),
+
     'account.remove': defineAcknowledgedCommand(
       'account.remove',
       ({ address, removeSeedSigner }) => accountMutations.remove(address, removeSeedSigner),
       'not_found',
       ['tray']
-    ),
-    'signer.reload': defineOwnedCommand('signer.reload', (command, context) =>
-      accountOnboarding.reload(command, operationOwner(context))
     )
   } satisfies Record<keyof CommandMap, OperationDefinition>
 
   const queryRegistry = {
-    'signer.airgap-request': defineQuery('signer.airgap-request', {
+    'signer.session-frames': defineQuery('signer.session-frames', {
       roles: ['wallet-ui'],
       entrypoints: ['tray'],
       handle: (query, _event, context) => airgap.request(query, operationOwner(context)),

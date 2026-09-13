@@ -160,7 +160,7 @@ describe('ProfileSelector', () => {
     const input = screen.getByLabelText('Rename profile')
     await user.clear(input)
     await user.type(input, 'Archive{Enter}')
-    expect(capability.renameProfile.mock.calls.at(-1)?.[0]).toEqual({
+    expect(capability.updateProfile.mock.calls.at(-1)?.[0]).toEqual({
       operationId: expect.any(String),
       profileId: 'empty',
       name: 'Archive'

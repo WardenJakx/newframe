@@ -549,7 +549,7 @@ export function checkPlatformCommandAuthority(file: string, source: string) {
     )
     if (legacySendChain?.index !== undefined) {
       violations.push(
-        `${file}:${lineNumber(source, legacySendChain.index)} Send must issue one send.submit intent and observe projected operation/activity state`
+        `${file}:${lineNumber(source, legacySendChain.index)} Send must issue one request.create intent and observe projected operation/activity state`
       )
     }
   }

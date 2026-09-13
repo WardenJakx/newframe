@@ -32,7 +32,7 @@ function harness() {
     },
     hardware: {
       configureLattice: mock((deviceId: string) => `lattice-${deviceId}`),
-      loadLedgerAccounts: mock(() => true),
+      loadAccounts: mock(() => true),
       pairLattice: mock(async () => true),
       submitTrezorInput: mock(() => true)
     },
@@ -87,9 +87,10 @@ it('owns account creation and authorized hardware sessions while keeping all onb
   ])
   expect((ports.accounts.select as Mock<any>).mock.calls.at(-1)).toEqual([addressA])
 
-  service.addWatch(
+  service.createAccount(
     {
-      type: 'account.watch-add',
+      type: 'account.create',
+      source: 'watch',
       operationId: 'watch',
       addressOrName: 'alice.eth',
       name: 'Alice'
@@ -101,9 +102,10 @@ it('owns account creation and authorized hardware sessions while keeping all onb
   expect((ports.nameResolution.resolve as Mock<any>).mock.calls).toEqual([['alice.eth']])
 
   accounts.clear()
-  service.addFromSigner(
+  service.createAccount(
     {
-      type: 'account.add-from-signer',
+      type: 'account.create',
+      source: 'signer',
       operationId: 'stored-seed',
       signerId: 'seed-1',
       address: addressA
@@ -125,8 +127,8 @@ it('owns account creation and authorized hardware sessions while keeping all onb
   expect(await service.generateSeedPhrase()).toBe('seed phrase')
 
   expect(
-    service.startHardwareSession(
-      { type: 'signer.hardware-session-start', operationId: 'trezor-session', signerId: 'trezor-1' },
+    service.startSession(
+      { type: 'signer.session-start', operationId: 'trezor-session', signerId: 'trezor-1' },
       owner
     )
   ).toBeTrue()
@@ -139,16 +141,16 @@ it('owns account creation and authorized hardware sessions while keeping all onb
   })
 
   const pinCommand = {
-    type: 'signer.trezor-input' as const,
+    type: 'signer.session-input' as const,
     operationId: 'trezor-session',
     actionId: 'trezor-pin',
     signerId: 'trezor-1',
     input: 'pin' as const,
     value: '938475'
   }
-  expect(service.submitTrezorInput(pinCommand, otherOwner)).toBeFalse()
-  expect(service.submitTrezorInput({ ...pinCommand, signerId: 'ledger-1' }, owner)).toBeFalse()
-  expect(service.submitTrezorInput(pinCommand, owner)).toBeTrue()
+  expect(service.sessionInput(pinCommand, otherOwner)).toBeFalse()
+  expect(service.sessionInput({ ...pinCommand, signerId: 'ledger-1' }, owner)).toBeFalse()
+  expect(service.sessionInput(pinCommand, owner)).toBeTrue()
   await flush()
   expect((ports.hardware.submitTrezorInput as Mock<any>).mock.calls).toEqual([[pinCommand]])
   expect(operation('trezor-session')).toMatchObject({ status: 'pending', phase: 'pin_submitted' })
@@ -156,13 +158,13 @@ it('owns account creation and authorized hardware sessions while keeping all onb
   expect(
     JSON.stringify({ session: operation('trezor-session'), action: operation('trezor-pin') })
   ).not.toContain('938475')
-  expect(service.submitTrezorInput(pinCommand, owner)).toBeTrue()
+  expect(service.sessionInput(pinCommand, owner)).toBeTrue()
   await flush()
   expect((ports.hardware.submitTrezorInput as Mock<any>).mock.calls).toHaveLength(1)
   expect(
-    service.finishHardwareSession(
+    service.finishSession(
       {
-        type: 'signer.hardware-session-finish',
+        type: 'signer.session-finish',
         operationId: 'trezor-session',
         signerId: 'trezor-1',
         outcome: 'ready'
@@ -172,9 +174,9 @@ it('owns account creation and authorized hardware sessions while keeping all onb
   ).toBeFalse()
   signers.get('trezor-1')!.status = 'ok'
   expect(
-    service.finishHardwareSession(
+    service.finishSession(
       {
-        type: 'signer.hardware-session-finish',
+        type: 'signer.session-finish',
         operationId: 'trezor-session',
         signerId: 'trezor-1',
         outcome: 'ready'
@@ -184,9 +186,10 @@ it('owns account creation and authorized hardware sessions while keeping all onb
   ).toBeTrue()
   expect(operation('trezor-session')).toMatchObject({ status: 'succeeded', phase: 'ready' })
 
-  service.createLattice(
+  service.importSigner(
     {
-      type: 'signer.lattice-create',
+      type: 'signer.import',
+      source: 'lattice',
       operationId: 'lattice-session',
       deviceId: 'device-1',
       deviceName: 'GridPlus'
@@ -204,13 +207,14 @@ it('owns account creation and authorized hardware sessions while keeping all onb
     addresses: [],
     status: 'pair'
   })
-  service.pairLattice(
+  service.sessionInput(
     {
-      type: 'signer.lattice-pair',
+      type: 'signer.session-input',
+      input: 'pair-code',
       operationId: 'lattice-session',
       actionId: 'lattice-pair',
       signerId: 'lattice-device-1',
-      pairCode: 'LOCAL-PAIR-CODE'
+      value: 'LOCAL-PAIR-CODE'
     },
     owner
   )
@@ -218,9 +222,9 @@ it('owns account creation and authorized hardware sessions while keeping all onb
   expect(operation('lattice-session')).toMatchObject({ status: 'pending', phase: 'pairing' })
   expect(JSON.stringify(operation('lattice-pair'))).not.toContain('LOCAL-PAIR-CODE')
   expect(
-    service.finishHardwareSession(
+    service.finishSession(
       {
-        type: 'signer.hardware-session-finish',
+        type: 'signer.session-finish',
         operationId: 'lattice-session',
         signerId: 'lattice-device-1',
         outcome: 'cancelled'
@@ -230,9 +234,9 @@ it('owns account creation and authorized hardware sessions while keeping all onb
   ).toBeTrue()
   expect(operation('lattice-session')).toMatchObject({ status: 'succeeded', phase: 'cancelled' })
 
-  service.loadLedgerAccounts(
+  service.refresh(
     {
-      type: 'signer.ledger-accounts-load',
+      type: 'signer.refresh',
       operationId: 'ledger-load',
       signerId: 'ledger-1',
       accountCount: 10
@@ -240,7 +244,7 @@ it('owns account creation and authorized hardware sessions while keeping all onb
     owner
   )
   await flush()
-  expect((ports.hardware.loadLedgerAccounts as Mock<any>).mock.calls).toEqual([['ledger-1', 10]])
+  expect((ports.hardware.loadAccounts as Mock<any>).mock.calls).toEqual([['ledger-1', 10]])
   expect(operation('ledger-load')).toMatchObject({ status: 'succeeded', phase: 'requested' })
 
   let phraseCallback: (error: unknown, value?: string) => void = () => undefined

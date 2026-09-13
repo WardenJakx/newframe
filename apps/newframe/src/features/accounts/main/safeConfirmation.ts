@@ -1,5 +1,5 @@
 import type {
-  AccountSafeConfirmCommand,
+  SafeApprovalCommand,
   SafeConfirmationStatus,
   SafeConfirmationStatusQuery
 } from '../../../app/contracts/operations.js'
@@ -30,7 +30,7 @@ export interface SafeConfirmationPorts {
     confirm(chainId: number, hash: string, signature: string, signal?: AbortSignal): Promise<void>
   }
 }
-type Identity = Pick<AccountSafeConfirmCommand, 'accountId' | 'chainId' | 'safeTxHash' | 'ownerId'>
+type Identity = Pick<SafeApprovalCommand, 'accountId' | 'chainId' | 'safeTxHash' | 'ownerId'>
 type Terminal = Exclude<SafeConfirmationStatus['status'], 'idle' | 'signing' | 'publishing'>
 type Snapshot = { fingerprint: string; typedMessage: TypedMessage; ownerAddress: string }
 type Entry = {
@@ -381,11 +381,11 @@ export function createSafeConfirmationService({
     }
   )
   return {
-    confirm(command: AccountSafeConfirmCommand, context: SigningUiContext) {
+    confirm(command: SafeApprovalCommand, context: SigningUiContext) {
       if (disposed || context.owner.clientType !== 'wallet-ui' || !context.isOwnerActive()) return false
       const identity = normalize(command)
       const key = keyOf(identity)
-      const reference = { id: command.operationId, type: command.type, owner: context.owner }
+      const reference = { id: command.operationId, type: 'account.safe-confirm', owner: context.owner }
       const previous = entries.get(key)
       const requestKey = JSON.stringify([context.owner, command.operationId])
       if (operations.lookup(reference)) return accepted.get(requestKey) === key

@@ -1,7 +1,6 @@
 import { randomBytes } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 
-import type { SignerImportCommand, TrezorInputCommand } from '../../../../app/contracts/operations.js'
 import {
   createOneResultCallbackBoundary,
   type OneResultCallback
@@ -63,7 +62,7 @@ export function createProductionAccountOnboardingAdapters(
         })
         return `lattice-${deviceId}`
       },
-      loadLedgerAccounts(signerId, accountCount) {
+      loadAccounts(signerId, accountCount) {
         const signer = external.signers.get(signerId) as
           | (Signer & { loadAccounts(accountCount: number): void })
           | undefined
@@ -79,7 +78,7 @@ export function createProductionAccountOnboardingAdapters(
         await signer.pair(pairCode)
         return true
       },
-      submitTrezorInput(command: TrezorInputCommand) {
+      submitTrezorInput(command) {
         const signer = external.signers.get(command.signerId)
         if (signer?.type !== 'trezor') return false
         if (command.input === 'pin') external.trezorBridge.pinEntered(command.signerId, command.value)
@@ -103,7 +102,7 @@ export function createProductionAccountOnboardingAdapters(
       }
     },
     signers: {
-      create(command: SignerImportCommand): Promise<OnboardingSigner> {
+      create(command): Promise<OnboardingSigner> {
         return callbacks.run((done) => {
           if (command.source === 'phrase') {
             external.signers.createFromPhrase(command.phrase, command.framePassword, done)

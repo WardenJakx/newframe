@@ -36,13 +36,13 @@ export function AirGapPairing({
   const cancel = () => {
     const id = owned.current
     owned.current = ''
-    if (id) void capability.airgapPairCancel({ operationId: id }).catch(() => {})
+    if (id) void capability.finishSignerSession({ operationId: id }).catch(() => {})
   }
   useEffect(
     () => () => {
       const id = owned.current
       owned.current = ''
-      if (id) void capability.airgapPairCancel({ operationId: id }).catch(() => {})
+      if (id) void capability.finishSignerSession({ operationId: id }).catch(() => {})
     },
     [capability]
   )
@@ -50,7 +50,7 @@ export function AirGapPairing({
     if (locked) {
       const id = owned.current
       owned.current = ''
-      if (id) void capability.airgapPairCancel({ operationId: id }).catch(() => {})
+      if (id) void capability.finishSignerSession({ operationId: id }).catch(() => {})
       queueMicrotask(() => {
         setOperationId('')
         setReady(false)
@@ -86,7 +86,7 @@ export function AirGapPairing({
     setReady(false)
     setError('')
     try {
-      const result = await capability.airgapPairStart({ operationId: id })
+      const result = await capability.importSigner({ source: 'airgap', operationId: id })
       if (owned.current !== id) return
       if (!result.ok) throw new Error(result.message || 'Could not start pairing')
       setReady(true)
@@ -122,7 +122,7 @@ export function AirGapPairing({
           onFrame={async (frame) => {
             const id = owned.current
             if (!id) return
-            const result = await capability.airgapPairScan({ operationId: id, frame })
+            const result = await capability.inputSignerSession({ operationId: id, frame })
             if (!result.ok)
               throw new Error(result.message || 'Invalid account QR. Retry with the Vault account export.')
           }}

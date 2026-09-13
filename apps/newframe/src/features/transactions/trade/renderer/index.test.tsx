@@ -210,7 +210,7 @@ describe('Trade', () => {
     expect((screen.getByLabelText('USDC amount') as HTMLInputElement).value).toBe('')
   })
 
-  it('pauses quote refresh for projected signing and releases a pending workflow when the ticket changes', async () => {
+  it('pauses quote refresh for projected signing and cancels a pending workflow when the ticket changes', async () => {
     const quoteCalls: Array<Parameters<TradeCapabilityFake['quote']>[0]> = []
 
     trade.quote.mockImplementation(async (request) => {
@@ -289,7 +289,7 @@ describe('Trade', () => {
     expect(quoteCalls).toHaveLength(1)
     fireEvent.change(screen.getByLabelText('WETH amount'), { target: { value: '2' } })
     await act(async () => timers.advanceTimersByTime(250))
-    expect(trade.release).toHaveBeenCalled()
+    expect(trade.cancel.mock.calls).toEqual([[{ operationId: prepareCommand.operationId }]])
     expect(quoteCalls).toHaveLength(2)
     expect(quoteCalls[1].qty).toBe('2')
   })
@@ -370,16 +370,21 @@ describe('Trade', () => {
     await act(async () => timers.advanceTimersByTime(1))
     expect(quoteCalls).toHaveLength(3)
     expect(quoteCalls[2].qty).toBe('2')
+    expect(trade.cancel).not.toHaveBeenCalled()
   })
 
-  it('releases renderer-owned trade state when the controller unmounts', () => {
+  it('cancels only an execution session when the controller unmounts', async () => {
+    trade.quote.mockResolvedValue({ ok: true, quoteId: 'unmount', quote: quote('unmount', '1') })
     const { unmount } = render(
       <Trade assetId={`${FLASH_ANVIL_CHAIN_ID}:${FLASH_WETH_ADDRESS}`} capability={trade} />
     )
 
+    expect(trade.cancel).not.toHaveBeenCalled()
+    fireEvent.change(screen.getByLabelText('WETH amount'), { target: { value: '1' } })
+    await act(async () => timers.advanceTimersByTime(250))
+    fireEvent.click(await screen.findByRole('button', { name: 'Review/sign' }))
     unmount()
-
-    expect(trade.release).toHaveBeenCalledTimes(1)
+    expect(trade.cancel.mock.calls).toEqual([[{ operationId: trade.submit.mock.calls[0]?.[0].operationId }]])
   })
 
   it('derives permit, order, submit, and close progress only from projected canonical state', async () => {
