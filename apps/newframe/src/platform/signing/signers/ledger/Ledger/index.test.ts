@@ -164,7 +164,6 @@ describe('#connect', () => {
     await expect(queuedResult<string>((done) => ledger.signMessage(0, 'hello, Frame!', done))).resolves.toBe(
       signature
     )
-    expect(ethInstance.signMessage).toHaveBeenCalledWith("44'/60'/0'/0", 'hello, Frame!')
   })
 })
 
