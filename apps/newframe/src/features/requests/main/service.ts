@@ -17,6 +17,10 @@ import type { TrustedPrincipal } from '../../access-control/main/authority.js'
 import type { Accounts } from '../../accounts/main/index.js'
 import { resolveAssetRate } from '../../asset-data/domain/asset/index.js'
 import { NATIVE_CURRENCY } from '../../tokens/domain/constants.js'
+import {
+  applyTransactionAdjustments,
+  type TransactionApprovalAdjustments
+} from '../../transactions/domain/approval.js'
 import { usesBaseFee } from '../../transactions/domain/index.js'
 import type { AccountTransactionPolicyPort } from '../../transactions/main/accountPolicyPort.js'
 import type {
@@ -33,6 +37,9 @@ import type { ApprovalType } from '../domain/approval.js'
 import { isSignatureRequest, isTransactionRequest, isTypedMessageSignatureRequest } from '../domain/index.js'
 
 const FEE_WARNING_THRESHOLD_USD = 50
+
+const editable = (request: AccountRequest) =>
+  !request.status && (!isTransactionRequest(request) || (!request.locked && request.mode !== 'monitor'))
 
 type Continuation = {
   respond: RPCRequestCallback
@@ -330,18 +337,51 @@ export function createRequestService(ports: RequestServicePorts) {
       return settle(request.handlerId, rpcError(request, error))
     },
 
-    approve(requestId: string, context?: SigningUiContext) {
+    approve(requestId: string, context?: SigningUiContext, adjustments?: TransactionApprovalAdjustments) {
       const located = locate(requestId)
       if (!located || (!isTransactionRequest(located.request) && !isSignatureRequest(located.request))) {
         return false
       }
       if (located.request.authorization?.decision !== 'prompt') return false
+      if (
+        adjustments !== undefined &&
+        (!isTransactionRequest(located.request) ||
+          !editable(located.request) ||
+          approvalsInFlight.has(requestId) ||
+          !continuations.has(requestId) ||
+          (ports.vault.exists() && !ports.vault.isUnlocked()))
+      )
+        return false
       if (approvalsInFlight.has(requestId)) return true
       // Canonical success/error UI can outlive the external requester briefly.
       // Once its continuation is settled, approving the same request again must
       // acknowledge without repeating signing or broadcast side effects.
       if (!continuations.has(requestId)) return true
 
+      if (adjustments !== undefined && isTransactionRequest(located.request)) {
+        const canonical = located.request.data
+        const candidate = applyTransactionAdjustments(canonical, adjustments)
+        const changed = Object.keys(adjustments).some((key) => {
+          const field = key as keyof TransactionApprovalAdjustments
+          return candidate[field] !== canonical[field]
+        })
+        const feeOverride = Object.keys(adjustments).some(
+          (field) =>
+            field !== 'nonce' && adjustments[field as keyof TransactionApprovalAdjustments] !== undefined
+        )
+        if (changed || feeOverride) {
+          const updated = located.account.patchRequest<TransactionRequest>(requestId, (request) => {
+            request.data = candidate
+            if (feeOverride) {
+              request.feesUpdatedByUser = true
+              delete request.automaticFeeUpdateNotice
+            }
+            if (changed) delete request.approvalGate
+          })
+          if (!updated) return false
+          located.request = updated
+        }
+      }
       const pendingGate = located.request.approvalGate
       if (
         pendingGate?.type === 'gas-fee' ||
@@ -356,6 +396,7 @@ export function createRequestService(ports: RequestServicePorts) {
         ports.accounts.setRequestError(requestId, new Error('Newframe locked'))
         return true
       }
+      if (!editable(located.request)) return false
       return advanceApproval(located.account, located.request, new Set(), context)
     },
 
@@ -363,6 +404,15 @@ export function createRequestService(ports: RequestServicePorts) {
       const located = locate(requestId)
       const pendingGate = located?.request.approvalGate
       if (!located || !pendingGate || pendingGate.type !== gate) return false
+      if (
+        (!isTransactionRequest(located.request) && !isSignatureRequest(located.request)) ||
+        located.request.authorization?.decision !== 'prompt' ||
+        !editable(located.request) ||
+        !continuations.has(requestId) ||
+        approvalsInFlight.has(requestId) ||
+        (ports.vault.exists() && !ports.vault.isUnlocked())
+      )
+        return false
       if (pendingGate.type === 'signer-compatibility' && pendingGate.reason !== 'incompatible') {
         return false
       }

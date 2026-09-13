@@ -1,3 +1,5 @@
+import { toBigInt } from '../../../shared/domain/units.js'
+
 export type TransactionFeeField = 'baseFee' | 'priorityFee' | 'gasPrice' | 'gasLimit'
 
 export type TransactionFeeValues = {
@@ -5,6 +7,46 @@ export type TransactionFeeValues = {
   baseFee?: bigint
   priorityFee?: bigint
   gasLimit: bigint
+}
+
+export type TransactionFeeLevel = 'asap' | 'fast' | 'standard' | 'slow'
+
+export function transactionFeePreset(
+  current: TransactionFeeValues,
+  recommendation:
+    | {
+        levels?: Partial<Record<TransactionFeeLevel, string>>
+        fees?: { maxBaseFeePerGas?: string; maxPriorityFeePerGas?: string }
+      }
+    | undefined,
+  level: TransactionFeeLevel,
+  chainId?: string | number
+): TransactionFeeValues {
+  const scale = (value: bigint) =>
+    (value * { asap: 150n, fast: 125n, standard: 100n, slow: 85n }[level]) / 100n
+  const next = { ...current }
+  if (current.gasPrice !== undefined) {
+    next.gasPrice = limitTransactionFee(
+      'gasPrice',
+      toBigInt(recommendation?.levels?.[level]) ?? scale(current.gasPrice),
+      next,
+      chainId
+    )
+  } else {
+    next.priorityFee = limitTransactionFee(
+      'priorityFee',
+      scale(toBigInt(recommendation?.fees?.maxPriorityFeePerGas) ?? current.priorityFee ?? 0n),
+      next,
+      chainId
+    )
+    next.baseFee = limitTransactionFee(
+      'baseFee',
+      scale(toBigInt(recommendation?.fees?.maxBaseFeePerGas) ?? current.baseFee ?? 0n),
+      next,
+      chainId
+    )
+  }
+  return next
 }
 
 const ETH_FAMILY_CHAIN_IDS = new Set([1, 3, 4, 5, 6, 10, 42, 61, 62, 63, 69, 8453, 42161, 421611, 7777777])
@@ -72,4 +114,8 @@ export function limitTransactionFee(
   }
 
   return clamp(limitedValue, MAX_FEE_COMPONENT)
+}
+
+export function typeSupportsBaseFee(type: string) {
+  return parseInt(type || '0') === 2
 }

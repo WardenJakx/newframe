@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
 import { SafeProposalSimulationSchema } from '../../features/accounts/domain/safe.js'
+import { TransactionApprovalAdjustmentsSchema } from '../../features/transactions/domain/approval.js'
 import {
   FLASH_MAX_TWAP_BUCKET_COUNT,
   FLASH_MAX_TWAP_DURATION_SECONDS,
@@ -17,10 +18,6 @@ import { AirGapRequestReferenceSchema } from '../../platform/signing/domain/airg
 
 const AddressSchema = z.string().regex(/^0x[0-9a-fA-F]{40}$/)
 const ChainIdSchema = z.number().int().positive()
-const HexQuantitySchema = z
-  .string()
-  .max(66)
-  .regex(/^0x[0-9a-fA-F]+$/)
 const ErrorMessageSchema = z.string().max(1_000).optional()
 const IdempotencyKeySchema = z.uuid()
 
@@ -362,7 +359,8 @@ export type WarningToggleCommand = z.infer<typeof WarningToggleCommandSchema>
 
 const RequestApproveCommandSchema = z.strictObject({
   type: z.literal('request.approve'),
-  requestId: OperationIdSchema
+  requestId: OperationIdSchema,
+  adjustments: TransactionApprovalAdjustmentsSchema.optional()
 })
 
 const RequestWarningConfirmCommandSchema = z.strictObject({
@@ -808,6 +806,12 @@ const SettingsUpdateCommandSchema = z.discriminatedUnion('setting', [
   ...SettingsBooleanSchema.options,
   z.strictObject({
     type: z.literal('settings.update'),
+    setting: z.literal('gas-fee-level'),
+    chainId: ChainIdSchema,
+    value: z.enum(['asap', 'fast', 'standard', 'slow'])
+  }),
+  z.strictObject({
+    type: z.literal('settings.update'),
     setting: z.literal('trezor-derivation'),
     value: z.enum(['standard', 'legacy', 'testnet'])
   }),
@@ -977,35 +981,6 @@ const RequestTokenApprovalUpdateCommandSchema = z.discriminatedUnion('requestKin
 ])
 export type RequestTokenApprovalUpdateCommand = z.infer<typeof RequestTokenApprovalUpdateCommandSchema>
 
-const TransactionFeeUpdateCommandSchema = z.strictObject({
-  type: z.literal('transaction.fee-update'),
-  requestId: OperationIdSchema,
-  field: z.enum(['baseFee', 'priorityFee', 'gasPrice', 'gasLimit']),
-  value: HexQuantitySchema
-})
-
-const TransactionFeeDefaultSetCommandSchema = z.strictObject({
-  type: z.literal('transaction.fee-default-set'),
-  requestId: OperationIdSchema,
-  level: z.enum(['asap', 'fast', 'standard', 'slow'])
-})
-
-const TransactionNonceAdjustCommandSchema = z.strictObject({
-  type: z.literal('transaction.nonce-adjust'),
-  requestId: OperationIdSchema,
-  direction: z.union([z.literal(-1), z.literal(1)])
-})
-
-const TransactionNonceResetCommandSchema = z.strictObject({
-  type: z.literal('transaction.nonce-reset'),
-  requestId: OperationIdSchema
-})
-
-const TransactionFeeNoticeDismissCommandSchema = z.strictObject({
-  type: z.literal('transaction.fee-notice-dismiss'),
-  requestId: OperationIdSchema
-})
-
 const TransactionReplaceCommandSchema = z.strictObject({
   type: z.literal('transaction.replace'),
   requestId: OperationIdSchema,
@@ -1168,11 +1143,6 @@ export const commandContracts = defineOperationContracts({
   'token.add': acknowledged(TokenAddCommandSchema),
   'token.image-hydrate': acknowledged(TokenImageHydrateCommandSchema),
   'token.remove': acknowledged(TokenRemoveCommandSchema),
-  'transaction.fee-default-set': acknowledged(TransactionFeeDefaultSetCommandSchema),
-  'transaction.fee-notice-dismiss': acknowledged(TransactionFeeNoticeDismissCommandSchema),
-  'transaction.fee-update': acknowledged(TransactionFeeUpdateCommandSchema),
-  'transaction.nonce-adjust': acknowledged(TransactionNonceAdjustCommandSchema),
-  'transaction.nonce-reset': acknowledged(TransactionNonceResetCommandSchema),
   'transaction.replace': acknowledged(TransactionReplaceCommandSchema),
   'tray.mouseout': acknowledged(TrayMouseoutCommandSchema),
   'wallet.lock': acknowledged(WalletLockCommandSchema),

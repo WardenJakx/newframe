@@ -11,7 +11,7 @@ import {
   spyOn
 } from 'bun:test'
 
-import { addHexPrefix, intToHex } from '@ethereumjs/util'
+import { intToHex } from '@ethereumjs/util'
 import log from 'electron-log'
 
 import { gweiToHex } from '../../../../test/support/util'
@@ -96,7 +96,6 @@ await mock.module('../../name-resolution/main/nameResolution', () => ({
 let provider: any
 let Accounts: any
 let AccountsClass: any
-let maxFee: any
 
 const nameResolutionMock = {
   ready: () => true,
@@ -186,7 +185,6 @@ beforeAll(async () => {
   log.transports.console.level = false
 
   provider = providerMock
-  maxFee = transactionMock.maxFee
   const accountsModule = await import('./index')
   AccountsClass = accountsModule.Accounts as any
   Accounts = createAccounts()
@@ -555,7 +553,7 @@ describe('transaction fee editing', () => {
       current.locked = false
       current.feesUpdatedByUser = true
     })
-    expect(() => Accounts.setGasLimit('0x61a8', 1, false)).toThrow(/updated by user/i)
+    expect(() => Accounts.setGasPrice('0x61a8', 1, false)).toThrow(/updated by user/i)
   })
 
   it('updates each distinct fee representation and records a manual change once', () => {
@@ -575,10 +573,10 @@ describe('transaction fee editing', () => {
     Accounts.setGasPrice(gweiToHex(45), 1, false)
     expect(canonicalRequest().data.gasPrice).toBe(gweiToHex(45))
 
-    Accounts.setGasLimit('0x61a8', 1, true)
+    Accounts.setGasPrice('0x61a8', 1, true)
     expect(canonicalRequest()).toMatchObject({
       feesUpdatedByUser: true,
-      data: { gasLimit: '0x61a8' }
+      data: { gasPrice: '0x61a8' }
     })
   })
 
@@ -596,126 +594,6 @@ describe('transaction fee editing', () => {
     })
     Accounts.setGasPrice(gweiToHex(10_200), 1, false)
     expect(canonicalRequest().data.gasPrice).toBe(gweiToHex(9_999))
-
-    Accounts.setGasLimit(intToHex(13e6), 1, false)
-    expect(canonicalRequest().data.gasLimit).toBe(intToHex(12.5e6))
-  })
-
-  it('caps legacy and EIP-1559 totals at the chain budget', () => {
-    const maxTotalFee = 2e18
-    const price = 400e9
-    const maxLimit = maxTotalFee / price
-    ;(maxFee as any).mockReturnValue(maxTotalFee)
-
-    patchRequest((current) => {
-      current.data.type = '0x0'
-      current.data.gasPrice = intToHex(price)
-    })
-    Accounts.setGasLimit(intToHex(maxLimit + 1e5), 1, false)
-    expect(canonicalRequest().data.gasLimit).toBe(intToHex(maxLimit))
-
-    patchRequest((current) => {
-      current.data.type = '0x2'
-      current.data.maxFeePerGas = intToHex(price)
-    })
-    Accounts.setGasLimit(intToHex(maxLimit + 1e5), 1, false)
-    expect(canonicalRequest().data.gasLimit).toBe(intToHex(maxLimit))
-  })
-})
-
-describe('#adjustNonce', () => {
-  let onChainNonce: any
-
-  beforeEach(() => {
-    provider.send = mock((payload: any, cb: any) => {
-      expect(payload).toEqual(
-        expect.objectContaining({
-          id: 1,
-          jsonrpc: '2.0',
-          method: 'eth_getTransactionCount',
-          params: ['0x22dd63c3619818fdbc262c78baee43cb61e9cccf', 'pending']
-        })
-      )
-
-      cb({ result: onChainNonce })
-    })
-
-    onChainNonce = '0x0'
-    Accounts.current().addRequest(request, mock())
-  })
-
-  const adjustNonce = (nonceAdjust: any, requestId = 1) => Accounts.adjustNonce(requestId, nonceAdjust)
-
-  it('does not allow an invalid adjustment', () => {
-    adjustNonce(2)
-
-    expect((Accounts.current().requests[1] as any).data.nonce).toBe(request.data.nonce)
-  })
-
-  it('does not adjust a request if no account is active', () => {
-    Accounts.setSigner(undefined, mock())
-    adjustNonce(1)
-
-    expect(storeState().main.accounts[account.address].requests[1].data.nonce).toBe(request.data.nonce)
-  })
-  ;[
-    ['provided nonce up', false, 1],
-    ['provided nonce down', false, -1],
-    ['latest chain nonce', true, 1],
-    ['latest chain nonce down', true, -1]
-  ].forEach(([description, fromChain, adjustment]) => {
-    it(`adjusts the ${description}`, () => {
-      if (fromChain) {
-        onChainNonce = '0x5'
-        patchRequest((current) => delete current.data.nonce)
-      }
-      const source = fromChain ? onChainNonce : request.data.nonce
-      adjustNonce(adjustment)
-      expect(canonicalRequest().data.nonce).toBe(
-        addHexPrefix(
-          (
-            parseInt(source) + (fromChain ? Math.min(adjustment as number, 0) : (adjustment as number))
-          ).toString(16)
-        )
-      )
-    })
-  })
-})
-
-describe('#resetNonce', () => {
-  beforeEach(() => {
-    provider.send = mock((payload: any, cb: any) => {
-      expect(payload).toEqual(
-        expect.objectContaining({
-          id: 1,
-          jsonrpc: '2.0',
-          method: 'eth_getTransactionCount',
-          params: ['0x22dd63c3619818fdbc262c78baee43cb61e9cccf', 'pending']
-        })
-      )
-      cb({ result: '0x3' })
-    })
-    request.data.nonce = '0x5'
-    Accounts.current().addRequest(request, mock())
-  })
-
-  const resetNonce = (requestId = 1) => Accounts.resetNonce(requestId)
-
-  it('it will un-set the nonce when not present inside the tx request payload', () => {
-    patchRequest((request) => {
-      delete request.payload.params[0].nonce
-    })
-    resetNonce()
-    expect(canonicalRequest().data.nonce).toBe(undefined)
-  })
-
-  it('it will revert to the nonce inside the tx request payload when present', () => {
-    const initialNonce = canonicalRequest().data.nonce
-    patchRequest((request) => {
-      request.payload.params[0].nonce = '0x' + (BigInt(initialNonce) - 1n).toString(16)
-    })
-    resetNonce()
-    expect(canonicalRequest().data.nonce).toBe(canonicalRequest().payload.params[0].nonce)
   })
 })
 

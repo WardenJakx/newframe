@@ -1,7 +1,7 @@
 import { Field } from '@newframe/ui/field'
 import { Input } from '@newframe/ui/input'
 import { Stack } from '@newframe/ui/stack'
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 
 import { formatUnits, parseUnits, toBigInt } from '../../../../../../shared/domain/units'
 import {
@@ -9,16 +9,11 @@ import {
   type TransactionFeeField,
   typeSupportsBaseFee
 } from '../../../../../transactions/domain'
-import type { TransactionReviewCapability } from '../../../requestCapabilities'
 import type { AdjustFeeRequestView } from '../requestViewTypes'
 
 // display a wei value as a decimal amount of gwei
 function toDisplayFromWei(wei: bigint) {
   return formatUnits(wei, 9)
-}
-
-function bnToHex(bn: bigint) {
-  return `0x${bn.toString(16)}`
 }
 
 // value is wei for gwei-denominated inputs, integer units otherwise
@@ -44,7 +39,7 @@ type FeeOverlayInputProps = {
 type FeeInputProps = Omit<FeeOverlayInputProps, 'labelText' | 'decimals'>
 
 type TxFeeOverlayProps = {
-  capability: Pick<TransactionReviewCapability, 'updateFee'>
+  onUpdateFee(field: TransactionFeeField, value: bigint): void
   req: AdjustFeeRequestView
 }
 
@@ -57,26 +52,11 @@ const FeeOverlayInput = ({
   limiter
 }: FeeOverlayInputProps) => {
   const [value, setValue] = useState(initialValue)
-  const submitTimeout = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
-
-  useEffect(
-    () => () => {
-      clearTimeout(submitTimeout.current)
-    },
-    []
-  )
-
   // newValue is wei for gwei-denominated inputs, integer units otherwise
   const submitValue = (newValueStr: string, newValue: bigint) => {
-    setValue(newValueStr)
-
-    clearTimeout(submitTimeout.current)
-
-    submitTimeout.current = setTimeout(() => {
-      const limitedValue = limiter(newValue)
-      onReceiveValue(limitedValue)
-      setValue(formatForInput(limitedValue, decimals))
-    }, 500)
+    const limitedValue = limiter(newValue)
+    onReceiveValue(limitedValue)
+    setValue(limitedValue === newValue ? newValueStr : formatForInput(limitedValue, decimals))
   }
 
   return (
@@ -93,8 +73,6 @@ const FeeOverlayInput = ({
           const parsedInput = (decimals ? /[0-9.]*/ : /[0-9]*/).exec(nextValue)
           const enteredValue = parsedInput?.[0] || ''
 
-          clearTimeout(submitTimeout.current)
-
           if (enteredValue === '.' || enteredValue === '') return setValue(enteredValue)
 
           const numericValue = parseInput(nextValue, decimals)
@@ -102,6 +80,7 @@ const FeeOverlayInput = ({
 
           // prevent decimal point being overwritten as user is typing a float
           if (enteredValue.endsWith('.')) {
+            onReceiveValue(limiter(numericValue))
             const formattedNum = formatForInput(
               parseInput(enteredValue.slice(0, -1), decimals) ?? 0n,
               decimals
@@ -182,19 +161,19 @@ export default function TxFeeOverlay(props: TxFeeOverlayProps) {
   const initialPriorityFee = toBigInt(maxPriorityFeePerGas) ?? 0n
   const [state, setState] = useState({
     gasLimit: toBigInt(initialGasLimit) ?? 0n,
-    gasPrice: toBigInt(initialGasPrice) ?? 0n,
+    gasPrice: typeSupportsBaseFee(props.req.data.type) ? undefined : (toBigInt(initialGasPrice) ?? 0n),
     baseFee: maxFee - initialPriorityFee,
     priorityFee: initialPriorityFee
   })
 
   const {
-    req: { data, handlerId }
+    req: { data }
   } = props
   const { baseFee, gasLimit, priorityFee, gasPrice } = state
 
   const displayBaseFee = toDisplayFromWei(baseFee)
   const displayPriorityFee = toDisplayFromWei(priorityFee)
-  const displayGasPrice = toDisplayFromWei(gasPrice)
+  const displayGasPrice = toDisplayFromWei(gasPrice ?? 0n)
   const displayGasLimit = gasLimit.toString()
   const limiter = (field: TransactionFeeField) => (value: bigint) =>
     limitTransactionFee(field, value, state, data.chainId)
@@ -202,11 +181,7 @@ export default function TxFeeOverlay(props: TxFeeOverlayProps) {
   const receiveValueHandler = (value: bigint, name: TransactionFeeField) => {
     setState((current) => ({ ...current, [name]: value }))
 
-    void props.capability.updateFee({
-      requestId: handlerId,
-      field: name,
-      value: bnToHex(value)
-    })
+    props.onUpdateFee(name, value)
   }
 
   return (

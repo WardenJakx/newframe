@@ -109,15 +109,3 @@ export function createAccountSelectionAdapter(
   selectAccount.dispose = callbacks.dispose
   return selectAccount
 }
-
-export function createFeeNoticeRemovalAdapter(accounts: Pick<Accounts, 'removeFeeUpdateNotice'>) {
-  const callbacks = createOneResultCallbackBoundary()
-  return {
-    dispose: callbacks.dispose,
-    async remove(requestId: string) {
-      await callbacks.run<true>((done) =>
-        accounts.removeFeeUpdateNotice(requestId, (error) => done(error, true))
-      )
-    }
-  }
-}

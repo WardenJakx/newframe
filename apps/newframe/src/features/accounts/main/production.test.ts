@@ -1,10 +1,6 @@
 import { describe, expect, it, mock } from 'bun:test'
 
-import {
-  createAccountSelectionAdapter,
-  createAddressChainUsageAdapter,
-  createFeeNoticeRemovalAdapter
-} from './production'
+import { createAccountSelectionAdapter, createAddressChainUsageAdapter } from './production'
 
 const address = '0x1111111111111111111111111111111111111111'
 
@@ -85,24 +81,5 @@ describe('account selection infrastructure adapter', () => {
     expect(adapter('missing')).rejects.toBe(failure)
     expect(accountsChanged).not.toHaveBeenCalled()
     adapter.dispose()
-  })
-})
-
-describe('fee notice infrastructure adapter', () => {
-  it('translates fee-notice completion and disposal through the shared callback boundary', async () => {
-    let done: (error?: Error | null) => void = () => undefined
-    const adapter = createFeeNoticeRemovalAdapter({
-      removeFeeUpdateNotice: mock((_requestId: string, callback: typeof done) => {
-        done = callback
-      })
-    } as never)
-
-    const completed = adapter.remove('request-1')
-    done(null)
-    expect(completed).resolves.toBeUndefined()
-
-    const pending = adapter.remove('request-2')
-    adapter.dispose()
-    expect(pending).rejects.toThrow('disposed before the operation completed')
   })
 })

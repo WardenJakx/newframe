@@ -2,6 +2,7 @@
 import { Text } from '@newframe/ui/text'
 
 import { erc20Interface } from '../../../../../../shared/domain/evm'
+import type { TransactionFeeField } from '../../../../../transactions/domain/fees'
 import type { RequestRendererCapabilities } from '../../../requestCapabilities'
 import { useRequestView } from '../../../requestView'
 import type { RequestViewStep } from '../../../requestView'
@@ -16,9 +17,10 @@ type TransactionRequestProps = {
   req: TransactionRequestView
   actionId?: string
   step: RequestViewStep
+  onUpdateFee(field: TransactionFeeField, value: bigint): void
 }
 
-type TransactionRequestWithStateProps = Omit<TransactionRequestProps, 'actionId' | 'step'>
+type TransactionRequestWithStateProps = Omit<TransactionRequestProps, 'actionId' | 'step' | 'onUpdateFee'>
 
 const decodeRequested = (req: TransactionRequestView) => {
   const calldata = req.payload.params[0]?.data || '0x'
@@ -50,7 +52,7 @@ export function TransactionRequest(props: TransactionRequestProps) {
   const { actionId, req, step } = props
 
   if (step === 'adjustFee') {
-    return <AdjustFee capability={props.capabilities.transaction} req={req} />
+    return <AdjustFee req={req} onUpdateFee={props.onUpdateFee} />
   }
   if (step === 'adjustApproval') {
     if (!req || actionId !== 'erc20:approve') return null
@@ -88,6 +90,14 @@ export function TransactionRequest(props: TransactionRequestProps) {
 }
 
 export default function TransactionRequestWithState(props: TransactionRequestWithStateProps) {
-  const { actionId, step } = useRequestView()
-  return <TransactionRequest {...props} actionId={actionId} step={step} />
+  const { actionId, step, displayRequest, updateFee } = useRequestView()
+  return (
+    <TransactionRequest
+      {...props}
+      req={displayRequest(props.req)}
+      actionId={actionId}
+      step={step}
+      onUpdateFee={(field, value) => updateFee(props.req, field, value)}
+    />
+  )
 }

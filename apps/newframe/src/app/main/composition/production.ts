@@ -11,8 +11,7 @@ import type { AirGapService } from '../../../features/accounts/main/airgap/servi
 import { Accounts } from '../../../features/accounts/main/index.js'
 import {
   createAccountSelectionAdapter,
-  createAddressChainUsageAdapter,
-  createFeeNoticeRemovalAdapter
+  createAddressChainUsageAdapter
 } from '../../../features/accounts/main/production.js'
 import {
   createProfileService,
@@ -288,7 +287,6 @@ export function createProductionCapabilities(
   const platformService = createPlatformService({ ...adapters.platform, accounts, store })
   const settingsService = createSettingsService(store, adapters.accounts.persistence)
   const addressChainUsage = createAddressChainUsageAdapter(chains, store)
-  const feeNotices = createFeeNoticeRemovalAdapter(accounts)
   const accountService = createAccountService({
     accounts,
     addressChainUsage,
@@ -335,7 +333,7 @@ export function createProductionCapabilities(
     operations: operationService,
     store
   })
-  const requestEditService = createRequestEditService({ accounts, feeNotices, store })
+  const requestEditService = createRequestEditService({ accounts })
   const flashService = createProductionFlashService(store, accounts, assetRateService)
   const portfolioService = createPortfolioService({
     accounts,
@@ -413,7 +411,6 @@ export function createProductionCapabilities(
         accountSelection.dispose()
         addressChainUsage.dispose()
         adapters.accountOnboarding.dispose()
-        feeNotices.dispose()
         providerRequests.dispose()
         requestApprovals.dispose()
         adapters.security.dispose?.()

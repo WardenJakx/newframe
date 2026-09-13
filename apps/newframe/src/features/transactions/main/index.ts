@@ -9,6 +9,7 @@ import { isNonZeroHex } from '../../../shared/domain/hex.js'
 import chainConfig from '../../networks/main/config.js'
 import type { TransactionRequest } from '../../requests/contract/requests.js'
 import { TxClassification } from '../../requests/contract/requests.js'
+import { maxTotalTransactionFee } from '../domain/fees.js'
 import type { TransactionData } from '../domain/index.js'
 import { GasFeesSource, typeSupportsBaseFee } from '../domain/index.js'
 
@@ -77,20 +78,7 @@ function londonToLegacy(txData: TransactionData): TransactionData {
 }
 
 function maxFee(rawTx: TransactionData) {
-  const chainId = parseInt(rawTx.chainId)
-
-  // for ETH-based chains, the max fee should be 2 ETH
-  if ([1, 3, 4, 5, 6, 10, 42, 61, 62, 63, 69, 8453, 42161, 421611, 7777777].includes(chainId)) {
-    return 2 * 1e18
-  }
-
-  // for Fantom, the max fee should be 250 FTM
-  if ([250, 4002].includes(chainId)) {
-    return 250 * 1e18
-  }
-
-  // for all other chains, default to 50 of the chain's currency
-  return 50 * 1e18
+  return Number(maxTotalTransactionFee(rawTx.chainId))
 }
 
 // parses a hex string which may be missing its 0x prefix, treating empty / missing values as zero

@@ -252,6 +252,13 @@ must issue a typed query with a query-specific result, or observe canonical proj
 add command-specific result maps, generic renderer RPC channels, or renderer-owned mirrors of
 main-process truth.
 
+Transaction requests retain their original intent in main-owned canonical state. Fee edits and fee
+notice dismissal live in the existing request view provider until that view unmounts. Final
+`request.approve` carries only explicit fee or nonce adjustments; main validates the complete candidate
+before one canonical update and the existing signing flow. Warning confirmation resumes the accepted
+canonical candidate. Fee presets persist independently through `settings.update`, without editing a
+request. Automatic fee updates remain visible until the user starts a local fee draft.
+
 Main-process handlers validate and authorize input, then delegate to a focused feature service.
 Feature services own policy and canonical mutation through narrow ports. Callback APIs, filesystem
 access, Electron APIs, RPC clients, and other runtime details belong under `src/platform`; any

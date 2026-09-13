@@ -37,18 +37,12 @@ it('maps each request surface to its exact host command and preserves failures',
     actionId: 'erc20:approve',
     amount: '10'
   })
-  await capabilities.transaction.updateFee({
-    requestId: 'request-1',
-    field: 'gasLimit',
-    value: '0x5208'
-  })
-  await capabilities.transaction.setDefaultFee({ requestId: 'request-1', level: 'fast' })
+  await capabilities.transaction.setFeePreference({ chainId: 1, level: 'fast' })
   await capabilities.transaction.replace({
     requestId: 'request-1',
     replacement: 'speed',
     idempotencyKey: 'replace-1'
   })
-  await capabilities.transaction.dismissFeeNotice({ requestId: 'request-1' })
   await capabilities.external.copy({ text: '0xhash' })
   await capabilities.external.openExplorer({ chainId: 1, transactionHash: '0xhash' })
   await capabilities.external.writeText('copy text')
@@ -78,20 +72,13 @@ it('maps each request surface to its exact host command and preserves failures',
       actionId: 'erc20:approve',
       amount: '10'
     },
-    {
-      type: 'transaction.fee-update',
-      requestId: 'request-1',
-      field: 'gasLimit',
-      value: '0x5208'
-    },
-    { type: 'transaction.fee-default-set', requestId: 'request-1', level: 'fast' },
+    { type: 'settings.update', setting: 'gas-fee-level', chainId: 1, value: 'fast' },
     {
       type: 'transaction.replace',
       requestId: 'request-1',
       replacement: 'speed',
       idempotencyKey: 'replace-1'
     },
-    { type: 'transaction.fee-notice-dismiss', requestId: 'request-1' },
     { type: 'clipboard.write', text: '0xhash' },
     { type: 'explorer.open', chainId: 1, transactionHash: '0xhash' },
     { type: 'clipboard.write', text: 'copy text' },

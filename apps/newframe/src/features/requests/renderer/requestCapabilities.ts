@@ -25,10 +25,11 @@ export interface RequestReviewCapability {
 }
 
 export interface TransactionReviewCapability {
-  updateFee(input: CommandInput<'transaction.fee-update'>): Promise<CommandResult>
-  setDefaultFee(input: CommandInput<'transaction.fee-default-set'>): Promise<CommandResult>
+  setFeePreference(input: {
+    chainId: number
+    level: Extract<CommandInput<'settings.update'>, { setting: 'gas-fee-level' }>['value']
+  }): Promise<CommandResult>
   replace(input: CommandInput<'transaction.replace'>): Promise<CommandResult>
-  dismissFeeNotice(input: CommandInput<'transaction.fee-notice-dismiss'>): Promise<CommandResult>
 }
 
 export interface RequestExternalCapability extends ClipboardCapability, TokenImageCapability {
@@ -75,10 +76,9 @@ const createRequestReviewCapability = (host: RequestHost): RequestReviewCapabili
 })
 
 const createTransactionReviewCapability = (host: RequestHost): TransactionReviewCapability => ({
-  updateFee: (input) => host.executeCommand({ type: 'transaction.fee-update', ...input }),
-  setDefaultFee: (input) => host.executeCommand({ type: 'transaction.fee-default-set', ...input }),
-  replace: (input) => host.executeCommand({ type: 'transaction.replace', ...input }),
-  dismissFeeNotice: (input) => host.executeCommand({ type: 'transaction.fee-notice-dismiss', ...input })
+  setFeePreference: ({ chainId, level }) =>
+    host.executeCommand({ type: 'settings.update', setting: 'gas-fee-level', chainId, value: level }),
+  replace: (input) => host.executeCommand({ type: 'transaction.replace', ...input })
 })
 
 const createRequestExternalCapability = (host: RequestHost): RequestExternalCapability => ({

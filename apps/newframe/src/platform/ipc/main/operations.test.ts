@@ -39,14 +39,7 @@ const accountOnboarding = fakes(
 const agent = fakes('resolveAgentAccessRequest', 'revokeAgentSessions', 'setAgentAccess')
 const networks = fakes('remove', 'setActivation', 'setPrimaryRpc')
 const portfolio = fakes('refresh')
-const requestEdits = fakes(
-  'adjustTransactionNonce',
-  'dismissTransactionFeeNotice',
-  'resetTransactionNonce',
-  'setTransactionFeeDefault',
-  'updateTokenApproval',
-  'updateTransactionFee'
-)
+const requestEdits = fakes('updateTokenApproval')
 const requests = fakes(
   'approve',
   'clearOrigin',
@@ -238,11 +231,6 @@ describe('typed operation dispatcher', () => {
       { type: 'request.switch-chain-resolve', requestId: 'request-1', approved: true },
       { type: 'request.clear-origin', accountId: address, originId: 'origin-1' },
       { type: 'request.approval-confirm', requestId: 'request-1', approvalType: 'approveGasLimit' },
-      { type: 'transaction.fee-update', requestId: 'request-1', field: 'gasLimit', value: '0x1' },
-      { type: 'transaction.fee-default-set', requestId: 'request-1', level: 'standard' },
-      { type: 'transaction.nonce-adjust', requestId: 'request-1', direction: 1 },
-      { type: 'transaction.nonce-reset', requestId: 'request-1' },
-      { type: 'transaction.fee-notice-dismiss', requestId: 'request-1' },
       { type: 'panel.request-open', requestId: 'request-1' },
       { type: 'panel.back', steps: 2 },
       { type: 'request.add-token-review', requestId: 'request-1' },
@@ -262,7 +250,6 @@ describe('typed operation dispatcher', () => {
       expect(dispatcher.dispatchCommand(event, command)).resolves.toEqual({ ok: true })
     }
     expect(platform.openTransactionExplorer).toHaveBeenCalledWith(1, undefined)
-    expect(requestEdits.updateTransactionFee).toHaveBeenCalledWith('request-1', 'gasLimit', '0x1')
     expect(accountMutations.clearPermission).toHaveBeenCalledWith(address, undefined)
 
     accountMutations.select.mockReturnValueOnce(false)
