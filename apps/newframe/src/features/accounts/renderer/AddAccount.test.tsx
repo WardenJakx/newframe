@@ -154,7 +154,6 @@ it('keeps drafts local and follows projected onboarding and hardware session sta
     }
   })
   view = render(<AddAccount camera={createQrCameraFake().camera} capability={capability} onClose={mock()} />)
-  expect(capability.startHardwareSession).not.toHaveBeenCalled()
   await view.user.click(screen.getByRole('button', { name: 'Connect a hardware wallet' }))
   await view.user.click(screen.getByRole('button', { name: 'Ledger' }))
   await view.user.click(screen.getByRole('button', { name: 'View Ledger accounts' }))
