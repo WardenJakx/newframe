@@ -29,7 +29,7 @@ export default class AirGapAdapter extends SignerAdapter {
           if (this.known.has(id)) continue
           const parsed = AirGapPublicAccountSchema.safeParse(raw)
           if (!parsed.success || airGapId(parsed.data) !== id) continue
-          const signer = new AirGapSigner(parsed.data, this.store)
+          const signer = new AirGapSigner(parsed.data)
           const update = () => {
             if (this.opened && generation === this.generation && this.known.get(id)?.signer === signer)
               this.emit('update', signer)

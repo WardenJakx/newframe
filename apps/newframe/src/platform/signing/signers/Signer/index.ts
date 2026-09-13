@@ -16,7 +16,19 @@ export interface SigningUiContext {
   isOwnerActive(): boolean
   subscribeOwnerDisposed(onDispose: () => void): () => void
 }
-export type SignerRequestContext = SigningUiContext & { requestId: string }
+export interface SigningApprovalContext {
+  requestId: string
+  chainId: number
+  isActive(): boolean
+  signal?: AbortSignal
+  ui?: SigningUiContext
+}
+export type SignerRequestContext = SigningUiContext & {
+  requestId: string
+  accountId: string
+  chainId: number
+  signal: AbortSignal
+}
 
 export interface SignerSummary {
   airgapRequest?: AirGapPendingSummary

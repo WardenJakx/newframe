@@ -6,6 +6,7 @@ import {
   safeProposalSchema,
   type SafeProposal
 } from '../../src/features/accounts/domain/safe.js'
+import { verifySafeConfirmation, verifySafeHash } from '../../src/platform/safe/integrity.js'
 
 export function createSafeHandler(options: {
   chainId: number
@@ -88,6 +89,7 @@ export function createSafeHandler(options: {
   const pageSize = options.pageSize ?? 2
   if (!Number.isSafeInteger(pageSize) || pageSize < 1) throw new Error('Invalid page size')
   const requests: string[] = []
+  const confirmations = new Map<string, Map<string, string>>()
   let failure: { status: number; retryAfter?: string; offset?: number } | undefined
   const controls = {
     requests,
@@ -101,7 +103,6 @@ export function createSafeHandler(options: {
     async fetch(request: Request): Promise<Response> {
       const url = new URL(request.url)
       requests.push(url.pathname + url.search)
-      if (request.method !== 'GET') return Response.json({ error: 'Method not allowed' }, { status: 405 })
       if (
         failure &&
         (failure.offset === undefined || Number(url.searchParams.get('offset') ?? 0) === failure.offset)
@@ -116,6 +117,56 @@ export function createSafeHandler(options: {
           }
         )
       }
+      const confirmationRoute = /^\/api\/v1\/multisig-transactions\/(0x[0-9a-f]{64})\/confirmations\/$/i.exec(
+        url.pathname
+      )
+      if (confirmationRoute) {
+        const hash = confirmationRoute[1].toLowerCase()
+        const proposal = proposals.find((proposal) => proposal.safeTxHash === hash)
+        if (request.method === 'POST') {
+          if (!proposal) return Response.json({ error: 'Transaction not found' }, { status: 404 })
+          let body: unknown
+          try {
+            body = await request.json()
+          } catch {
+            return Response.json({ error: 'Invalid JSON' }, { status: 400 })
+          }
+          const signature =
+            body && typeof body === 'object' && 'signature' in body ? body.signature : undefined
+          const owner =
+            typeof signature === 'string' &&
+            configuration.owners.find((owner) => verifySafeConfirmation(hash, owner, signature))
+          if (
+            !owner ||
+            typeof signature !== 'string' ||
+            verifySafeHash(proposal, options.chainId, safe, configuration.version).status !== 'matched'
+          )
+            return Response.json({ error: 'Invalid owner signature' }, { status: 400 })
+          const stored = confirmations.get(hash) ?? new Map<string, string>()
+          if (!stored.has(owner)) stored.set(owner, signature)
+          confirmations.set(hash, stored)
+          if (!proposal.confirmations.includes(owner)) proposal.confirmations.push(owner)
+          return Response.json({ signature }, { status: 201 })
+        }
+        if (request.method === 'GET') {
+          const offset = Number(url.searchParams.get('offset') ?? 0)
+          if (!Number.isSafeInteger(offset) || offset < 0)
+            return Response.json({ error: 'Invalid query' }, { status: 400 })
+          const entries = [...(confirmations.get(hash) ?? [])].map(([owner, signature]) => ({
+            owner,
+            signature
+          }))
+          const next = new URL(url)
+          next.searchParams.set('offset', String(offset + pageSize))
+          return Response.json({
+            count: entries.length,
+            next: offset + pageSize < entries.length ? next.href : null,
+            previous: null,
+            results: entries.slice(offset, offset + pageSize)
+          })
+        }
+      }
+      if (request.method !== 'GET') return Response.json({ error: 'Method not allowed' }, { status: 405 })
       if (url.pathname === `/api/v1/safes/${safe}/`) return Response.json({ address: safe, ...configuration })
       if (url.pathname !== `/api/v2/safes/${safe}/multisig-transactions/`)
         return Response.json({ error: 'Safe not found' }, { status: 404 })

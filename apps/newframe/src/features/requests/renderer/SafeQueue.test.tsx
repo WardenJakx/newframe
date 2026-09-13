@@ -1,9 +1,10 @@
-import { expect, it } from 'bun:test'
+import { expect, it, mock } from 'bun:test'
 
-import { act, within } from '@testing-library/react'
+import { act, waitFor, within } from '@testing-library/react'
 
 import { render, screen } from '../../../../test/support/componentSetup'
 import { registerTestRuntimeFixture } from '../../../../test/support/rendererClient'
+import type { SafeConfirmationStatus } from '../../../app/contracts/operations'
 import { walletState } from '../../../platform/state-sync/renderer/fixtures.test-support'
 import type { SafeDeployment, SafeOwnerAccount, SafeProposalSimulation } from '../../accounts/domain/safe'
 import { createRequestRendererCapabilitiesFake as createCapabilityFake } from './requestCapabilities.test-support'
@@ -46,7 +47,7 @@ function state(safe = deployment) {
         signer: 'watch',
         requests: {},
         created: '',
-        safe: { '1': safe }
+        safe: { '1': structuredClone(safe) }
       }
     }
   })
@@ -62,6 +63,219 @@ const ownerAccount = (accountId: string, overrides: Partial<SafeOwnerAccount> = 
   signerStatus: 'ok',
   status: 'ready',
   ...overrides
+})
+
+it('opens owner QR for a future Safe proposal and follows publication retry without a signer', async () => {
+  const owner = ownerAccount(`0x${'2'.repeat(40)}`, { signerType: 'airgap' })
+  const initial = stateWithOwners([owner])
+  initial.accounts[address].safe!['1']!.pending![0]!.integrity = {
+    status: 'matched',
+    reason: 'Hash matches.'
+  }
+  fixture.state.reset(initial)
+  const capabilities = createCapabilityFake()
+  let status: SafeConfirmationStatus = { status: 'idle' }
+  capabilities.safe.confirmationStatus.mockImplementation(async () => status)
+  capabilities.safe.confirm.mockImplementation(async ({ operationId }) => {
+    status = { status: 'signing', operationId }
+    return { ok: true }
+  })
+  const onAirGapSigning = mock(() => {})
+  const { user } = render(
+    <RequestsOverlay capabilities={capabilities} onBack={() => {}} onAirGapSigning={onAirGapSigning} />
+  )
+  await user.click(screen.getByRole('button', { name: `Open Safe proposal ${hash} on chain 1` }))
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'Sign' }).hasAttribute('disabled')).toBe(false)
+  )
+  expect(
+    screen.getByText('Simulation failed or is unavailable. You can still sign this proposal.')
+  ).toBeTruthy()
+  expect(screen.getByText('Waiting for earlier transactions')).toBeTruthy()
+  await user.dblClick(screen.getByRole('button', { name: 'Sign' }))
+  expect(capabilities.safe.confirm).toHaveBeenCalledTimes(1)
+  const command = capabilities.safe.confirm.mock.calls[0]![0]
+  expect(command).toEqual({
+    accountId: address,
+    chainId: 1,
+    safeTxHash: hash,
+    ownerId: owner.accountId,
+    operationId: expect.any(String)
+  })
+  const progress = (phase: string, outcome: 'pending' | 'failed' | 'succeeded' = 'pending') => {
+    const current = fixture.state.wallet.getState()
+    fixture.state.reset({
+      ...current,
+      operations: {
+        ...current.operations,
+        [command.operationId]: {
+          id: command.operationId,
+          type: 'account.safe-confirm',
+          status: outcome,
+          phase,
+          startedAt: 1,
+          updatedAt: outcome === 'pending' ? 2 : 3,
+          ...(outcome !== 'pending' ? { finishedAt: 3 } : {}),
+          ...(outcome === 'failed'
+            ? {
+                error: {
+                  code: 'safe_publication_failed',
+                  message: 'Publication failed. Retry without signing again.'
+                }
+              }
+            : {})
+        }
+      }
+    })
+  }
+  await act(async () => progress('signing'))
+  const signerId = `${owner.accountId}-signer`
+  const exchange = { requestId: command.operationId, sessionId: crypto.randomUUID(), progress: 0 }
+  await act(async () => {
+    const next = structuredClone(fixture.state.wallet.getState())
+    next.signers[signerId] = {
+      id: signerId,
+      type: 'airgap',
+      name: 'AirGap',
+      model: 'AirGap Vault',
+      status: 'ok',
+      addresses: [owner.address],
+      appVersion: { major: 1, minor: 0, patch: 0 },
+      airgapRequest: exchange
+    }
+    fixture.state.reset(next)
+  })
+  expect(onAirGapSigning).toHaveBeenCalledWith({ signerId, ...exchange })
+  expect(fixture.state.wallet.getState().currentAccount).toBe(address)
+  expect(screen.getByRole('button', { name: 'Signing…' }).hasAttribute('disabled')).toBe(true)
+  await act(async () => progress('publishing'))
+  expect(onAirGapSigning).toHaveBeenCalledTimes(1)
+  expect(screen.getByRole('button', { name: 'Publishing…' }).hasAttribute('disabled')).toBe(true)
+  status = { status: 'publication_failed', operationId: command.operationId }
+  await act(async () => {
+    progress('publication_failed', 'failed')
+    const current = fixture.state.wallet.getState()
+    const detached = structuredClone(current)
+    detached.accounts[address].safeOwners!['1']![0] = {
+      ...owner,
+      signerAttached: false,
+      status: 'unavailable',
+      signerStatus: 'Signer unavailable'
+    }
+    fixture.state.reset(detached)
+  })
+  expect(screen.getByRole('button', { name: 'Retry publication' }).hasAttribute('disabled')).toBe(false)
+  await user.click(screen.getByRole('button', { name: 'Retry publication' }))
+  expect(capabilities.safe.confirm).toHaveBeenCalledTimes(2)
+  const retry = capabilities.safe.confirm.mock.calls[1]![0]
+  expect(retry.operationId).not.toBe(command.operationId)
+  status = { status: 'published', operationId: retry.operationId }
+  await act(async () => {
+    const current = fixture.state.wallet.getState()
+    const confirmed = structuredClone(current)
+    confirmed.accounts[address].safe!['1']!.pending![0]!.confirmations = [owner.address]
+    confirmed.operations[retry.operationId] = {
+      id: retry.operationId,
+      type: 'account.safe-confirm',
+      status: 'succeeded',
+      phase: 'published',
+      startedAt: 4,
+      updatedAt: 5,
+      finishedAt: 5
+    }
+    fixture.state.reset(confirmed)
+  })
+  expect(screen.getByRole('button', { name: 'Confirmation published' }).hasAttribute('disabled')).toBe(true)
+  expect(screen.getByRole('button', { name: '1 / 1 confirmations' })).toBeTruthy()
+  expect(fixture.state.wallet.getState().currentAccount).toBe(address)
+  expect(capabilities.safe.simulate).toHaveBeenCalledTimes(1)
+})
+
+it.each(['cancelled', 'signing_failed', 'validation_failed'] as const)(
+  'shows %s separately from published state',
+  async (failure) => {
+    const owner = ownerAccount(`0x${'2'.repeat(40)}`)
+    const initial = stateWithOwners([owner])
+    initial.accounts[address].safe!['1']!.pending![0]!.integrity = {
+      status: 'matched',
+      reason: 'Hash matches.'
+    }
+    fixture.state.reset(initial)
+    const capabilities = createCapabilityFake()
+    capabilities.safe.confirmationStatus.mockResolvedValue({ status: failure, message: `Result: ${failure}` })
+    const { user } = render(<RequestsOverlay capabilities={capabilities} onBack={() => {}} />)
+    await user.click(screen.getByRole('button', { name: `Open Safe proposal ${hash} on chain 1` }))
+    expect(await screen.findByText(`Result: ${failure}`)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Confirmation published' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Sign' }).hasAttribute('disabled')).toBe(false)
+  }
+)
+
+it('discards a published operation when the main confirmation context becomes invalid', async () => {
+  const owner = ownerAccount(`0x${'2'.repeat(40)}`)
+  const initial = stateWithOwners([owner])
+  initial.accounts[address].safe!['1']!.pending![0]!.integrity = {
+    status: 'matched',
+    reason: 'Hash matches.'
+  }
+  initial.operations.saved = {
+    id: 'saved',
+    type: 'account.safe-confirm',
+    status: 'succeeded',
+    phase: 'published',
+    startedAt: 1,
+    updatedAt: 2,
+    finishedAt: 2
+  }
+  fixture.state.reset(initial)
+  const capabilities = createCapabilityFake()
+  capabilities.safe.confirmationStatus.mockResolvedValue({ status: 'published', operationId: 'saved' })
+  const { user } = render(<RequestsOverlay capabilities={capabilities} onBack={() => {}} />)
+  await user.click(screen.getByRole('button', { name: `Open Safe proposal ${hash} on chain 1` }))
+  expect(await screen.findByRole('button', { name: 'Confirmation published' })).toBeTruthy()
+  capabilities.safe.confirmationStatus.mockResolvedValue({ status: 'idle' })
+  const reads = capabilities.safe.confirmationStatus.mock.calls.length
+  const changed = structuredClone(fixture.state.wallet.getState())
+  changed.networks.ethereum[1] = { ...changed.networks.ethereum[1]!, name: 'Changed network configuration' }
+  await act(async () => fixture.state.reset(changed))
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'Sign' }).hasAttribute('disabled')).toBe(false)
+  )
+  expect(screen.queryByRole('button', { name: 'Confirmation published' })).toBeNull()
+  expect(capabilities.safe.confirmationStatus.mock.calls.length).toBeGreaterThan(reads)
+})
+
+it('routes an unavailable attached owner to existing signer recovery without changing selection', async () => {
+  const owner = ownerAccount(`0x${'2'.repeat(40)}`, {
+    signerType: 'ledger',
+    signerStatus: 'disconnected',
+    status: 'unavailable'
+  })
+  const initial = stateWithOwners([owner])
+  initial.accounts[address].safe!['1']!.pending![0]!.integrity = {
+    status: 'matched',
+    reason: 'Hash matches.'
+  }
+  fixture.state.reset(initial)
+  let recovered = ''
+  const capabilities = createCapabilityFake()
+  const { user } = render(
+    <RequestsOverlay
+      capabilities={capabilities}
+      onBack={() => {}}
+      onRecoverSigner={(id) => {
+        recovered = id
+      }}
+    />
+  )
+  await user.click(screen.getByRole('button', { name: `Open Safe proposal ${hash} on chain 1` }))
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'Connect signer' }).hasAttribute('disabled')).toBe(false)
+  )
+  await user.click(screen.getByRole('button', { name: 'Connect signer' }))
+  expect(recovered).toBe(`${owner.accountId}-signer`)
+  expect(capabilities.safe.confirm).not.toHaveBeenCalled()
+  expect(fixture.state.wallet.getState().currentAccount).toBe(address)
 })
 
 function stateWithOwners(owners: SafeOwnerAccount[]) {
@@ -302,9 +516,9 @@ it('keeps confirmed owners selectable as the proposal advances to execution', as
   const chooser = screen.getByRole('button', { name: 'Signer' })
   expect(chooser.hasAttribute('disabled')).toBe(false)
   expect(within(chooser).getByText('Ledger owner')).toBeTruthy()
-  expect(screen.getByRole('button', { name: 'Execute' }).hasAttribute('disabled')).toBe(true)
+  expect(screen.getByRole('button', { name: 'Sign' }).hasAttribute('disabled')).toBe(true)
   expect(screen.getByRole('button', { name: 'Decline' }).hasAttribute('disabled')).toBe(true)
-  await user.click(screen.getByRole('button', { name: 'Execute' }))
+  await user.click(screen.getByRole('button', { name: 'Sign' }))
   expect(screen.getByText('Awaiting execution')).toBeTruthy()
 
   const disconnected = structuredClone(confirmed)
@@ -331,7 +545,7 @@ it('keeps confirmed owners selectable as the proposal advances to execution', as
   await act(async () => fixture.state.reset(waiting))
   expect(screen.getByText('Waiting for earlier transactions')).toBeTruthy()
   expect(screen.queryByText('Awaiting execution')).toBeNull()
-  expect(screen.getByRole('button', { name: 'Execute' }).hasAttribute('disabled')).toBe(true)
+  expect(screen.getByRole('button', { name: 'Sign' }).hasAttribute('disabled')).toBe(true)
 })
 
 it.each(['empty', 'watch-only', 'detached', 'locked'] as const)(
@@ -840,7 +1054,7 @@ it('keeps matching Safe checks silent and exposes raw integer arguments, confirm
   await user.click(screen.getByRole('button', { name: 'Raw transaction' }))
   await user.click(screen.getByRole('button', { name: 'Copy raw transaction' }))
   expect(capabilities.external.writeText).toHaveBeenLastCalledWith(expect.stringContaining('"nonce": "3"'))
-  expectSafeSubmissionDisabled('Execute')
+  expectSafeSubmissionDisabled()
 })
 
 it.each([

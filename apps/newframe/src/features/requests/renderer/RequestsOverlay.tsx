@@ -1,13 +1,18 @@
+import type { AirGapRequestReference } from '../../../platform/signing/domain/airgap'
 import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector'
 import type { RequestRendererCapabilities } from './requestCapabilities'
 import { RequestsOverlayView } from './RequestsOverlayView'
 
 export function RequestsOverlay({
   capabilities,
-  onBack
+  onBack,
+  onRecoverSigner,
+  onAirGapSigning
 }: {
   capabilities: Pick<RequestRendererCapabilities, 'panel' | 'review' | 'safe' | 'external'>
   onBack: () => void
+  onRecoverSigner?: (signerId: string) => void
+  onAirGapSigning?: (reference: AirGapRequestReference) => void
 }) {
   const profileId = useWalletSelector((state) => state.currentProfile)
   const accountId = useWalletSelector((state) => state.currentAccount || '')
@@ -23,6 +28,8 @@ export function RequestsOverlay({
       capabilities={capabilities}
       showRpcRequests={showRpcRequests}
       onBack={onBack}
+      onRecoverSigner={onRecoverSigner}
+      onAirGapSigning={onAirGapSigning}
     />
   )
 }

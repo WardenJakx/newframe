@@ -186,7 +186,14 @@ function OverlayRoute({
     case 'about':
       return <About capability={capabilities.settings} onBack={backToMenu} />
     case 'requests':
-      return <RequestsOverlay capabilities={capabilities.requests} onBack={closeOverlay} />
+      return (
+        <RequestsOverlay
+          capabilities={capabilities.requests}
+          onBack={closeOverlay}
+          onRecoverSigner={capabilities.recoverSigner}
+          onAirGapSigning={capabilities.airgapSigning}
+        />
+      )
     case 'dapps':
       return <ConnectedDapps capability={capabilities.connections} onBack={backToMenu} />
     case 'tokens':

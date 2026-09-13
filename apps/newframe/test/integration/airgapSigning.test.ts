@@ -1,8 +1,13 @@
 import { expect, it } from 'bun:test'
 import { EventEmitter } from 'node:events'
 
+import { HDNodeWallet, ZeroAddress } from 'ethers'
+
+import { createSafeHandler } from '../../scripts/local-safe/handler.js'
+import type { SafeProposal } from '../../src/features/accounts/domain/safe.js'
 import { createProductionAirGapService } from '../../src/features/accounts/main/airgap/production.js'
 import { Accounts } from '../../src/features/accounts/main/index.js'
+import { createSafeConfirmationService } from '../../src/features/accounts/main/safeConfirmation.js'
 import { Provider } from '../../src/features/connections/main/provider/index.js'
 import { createRequestApprovalAdapter } from '../../src/features/connections/main/provider/infrastructure/production.js'
 import { createProviderProxyConnection } from '../../src/features/connections/main/provider/proxy.js'
@@ -14,10 +19,17 @@ import { createRequestService } from '../../src/features/requests/main/service.j
 import { signerCompatibility, maxFee } from '../../src/features/transactions/main/index.js'
 import { createRevealService } from '../../src/features/transactions/main/reveal.js'
 import { createOperationService } from '../../src/platform/operations/service.js'
+import { createSafeClient } from '../../src/platform/safe/client.js'
+import { getSafeTypedMessage, verifySafeHash } from '../../src/platform/safe/integrity.js'
+import type { AirGapPublicAccount } from '../../src/platform/signing/domain/airgap.js'
 import { signerFixture, transaction, uiContext, vectors } from './fixtures/airgap.js'
 
-function integrationFixture(waitForNonce = false) {
-  const f = signerFixture()
+function integrationFixture({
+  waitForNonce = false,
+  record,
+  ordinaryRequest = true
+}: { waitForNonce?: boolean; record?: AirGapPublicAccount; ordinaryRequest?: boolean } = {}) {
+  const f = signerFixture(record)
   const broadcasts: RPCRequestPayload[] = []
   const responses: RPCResponsePayload[] = []
   let nonceReply: RPCRequestCallback | undefined
@@ -149,18 +161,20 @@ function integrationFixture(waitForNonce = false) {
   const approval = createRequestApprovalAdapter(provider)
   const data = transaction()
   if (waitForNonce) delete data.nonce
-  const request = f.request('transaction', data)
-  service.create((response) => responses.push(response), request.handlerId)
-  service.bind(request)
+  if (ordinaryRequest) {
+    const request = f.request('transaction', data)
+    service.create((response) => responses.push(response), request.handlerId)
+    service.bind(request)
+  }
   const airgap = createProductionAirGapService(
     f.store,
     { get: (id) => (id === f.signer.id ? f.signer : undefined) },
-    createOperationService({ store: f.store, clock: { now: () => 1 } }),
-    service
+    createOperationService({ store: f.store, clock: { now: () => 1 } })
   )
   return {
     ...f,
     service,
+    accounts,
     airgap,
     broadcasts,
     responses,
@@ -217,7 +231,7 @@ it('existing review approval opens AirGap, verifies its response and broadcasts 
 
 for (const phase of ['nonce', 'before-query', 'reconstruction', 'cancel', 'shutdown'] as const)
   it(`never broadcasts when cancelled at ${phase}`, async () => {
-    const f = integrationFixture(phase === 'nonce')
+    const f = integrationFixture({ waitForNonce: phase === 'nonce' })
     try {
       f.service.approve(f.owner.context.requestId, f.owner.context)
       if (phase === 'nonce') {
@@ -266,6 +280,125 @@ it('warning confirmation binds the final approving window before opening AirGap'
     expect(f.signer.summary().airgapRequest).toBeUndefined()
     expect(f.broadcasts).toEqual([])
   } finally {
+    f.dispose()
+  }
+})
+
+it('confirms an existing Safe proposal through the owner Account and verified QR exchange', async () => {
+  const master = HDNodeWallet.fromSeed(new Uint8Array(32).fill(42))
+  const origin = master.derivePath("m/44'/60'/0'")
+  const wallet = origin.derivePath('0/0')
+  const f = integrationFixture({
+    ordinaryRequest: false,
+    record: {
+      publicKey: origin.publicKey.slice(2),
+      chainCode: origin.chainCode.slice(2),
+      originPath: "m/44'/60'/0'",
+      sourceFingerprint: master.fingerprint.slice(2),
+      name: 'Safe QR test owner'
+    }
+  })
+  const safe = '0x1111111111111111111111111111111111111111'
+  const proposal: SafeProposal = {
+    safeTxHash: `0x${'00'.repeat(32)}`,
+    safe,
+    to: wallet.address,
+    nonce: '9007199254740993',
+    value: '1234',
+    operation: 0,
+    data: '0xabcd',
+    safeTxGas: '987',
+    baseGas: '654',
+    gasPrice: '321',
+    gasToken: ZeroAddress,
+    refundReceiver: wallet.address,
+    confirmations: []
+  }
+  proposal.safeTxHash = verifySafeHash(proposal, 1, safe, '1.4.1').computedHash!
+  const typed = getSafeTypedMessage(proposal, 1, safe, '1.4.1')
+  f.store.getState().upsertAccount({
+    id: safe,
+    address: safe,
+    created: 'safe:1',
+    safe: {
+      '1': {
+        chainId: 1,
+        address: safe,
+        configuration: { owners: [wallet.address], threshold: 1, nonce: proposal.nonce, version: '1.4.1' },
+        pending: [proposal]
+      }
+    }
+  })
+  f.store.setState((state) => {
+    state.main.currentAccount = safe
+    state.main.networks.ethereum[1].on = true
+  })
+  const handler = createSafeHandler({
+    chainId: 1,
+    safe,
+    owners: [wallet.address],
+    threshold: 1,
+    proposals: [proposal]
+  })
+  let posts = 0
+  const client = createSafeClient({
+    networks: { 1: 'http://safe.test/api' },
+    request(url, init) {
+      if (init.method === 'POST') posts++
+      return handler.fetch(new Request(url, init))
+    }
+  })
+  const operations = createOperationService({ store: f.store, clock: { now: Date.now } })
+  const confirmations = createSafeConfirmationService({
+    store: f.store,
+    operations,
+    accounts: f.accounts,
+    client
+  })
+  const command = {
+    type: 'account.safe-confirm',
+    operationId: f.owner.context.requestId,
+    accountId: safe,
+    ownerId: f.address,
+    chainId: 1,
+    safeTxHash: proposal.safeTxHash
+  } as const
+  const query = {
+    type: 'safe.confirmation-status',
+    accountId: safe,
+    ownerId: f.address,
+    chainId: 1,
+    safeTxHash: proposal.safeTxHash
+  } as const
+  try {
+    expect(f.address).toBe(wallet.address.toLowerCase())
+    expect(confirmations.confirm(command, f.owner.context)).toBeTrue()
+    for (let n = 0; n < 200 && !f.signer.summary().airgapRequest; n++) await Bun.sleep(1)
+    expect(confirmations.confirmationStatus(query).status).toBe('signing')
+    expect(f.store.getState().main.currentAccount).toBe(safe)
+    expect(f.store.getState().main.accounts[f.address].requests).toEqual({})
+    const envelope = f.envelope()
+    expect(envelope.getChainId()).toBe(1)
+    expect(JSON.parse(envelope.getSignData().toString('utf8'))).toEqual(typed.data)
+    const signature = wallet.signingKey.sign(proposal.safeTxHash).serialized
+    const reference = f.reference()
+    for (const frame of f.frames(signature.slice(2))) {
+      expect(
+        await f.airgap.scan({ ...reference, type: 'signer.airgap-scan', frame }, f.owner.context.owner)
+      ).toBeTrue()
+    }
+    for (let n = 0; n < 200 && confirmations.confirmationStatus(query).status !== 'published'; n++)
+      await Bun.sleep(1)
+    expect(confirmations.confirmationStatus(query).status).toBe('published')
+    expect(await client.confirmations(1, proposal.safeTxHash)).toEqual([{ owner: wallet.address, signature }])
+    expect(confirmations.confirm(command, f.owner.context)).toBeTrue()
+    expect(posts).toBe(1)
+    expect(f.store.getState().main.currentAccount).toBe(safe)
+    expect(f.store.getState().main.accounts[f.address].requests).toEqual({})
+    expect(f.broadcasts).toEqual([])
+    expect(f.signer.summary().airgapRequest).toBeUndefined()
+  } finally {
+    confirmations.dispose()
     f.dispose()
   }
 })

@@ -8,15 +8,10 @@ import {
   TypedDataUtils
 } from '@metamask/eth-sig-util'
 
-import { encodePersonalSignMessage } from '../../../../features/connections/main/provider/helpers.js'
-import type {
-  TypedMessage,
-  CanonicalAccountRequest
-} from '../../../../features/requests/contract/requests.js'
+import type { TypedMessage } from '../../../../features/requests/contract/requests.js'
 import type { TransactionData } from '../../../../features/transactions/domain/index.js'
 import { sign, createUnsignedTransaction } from '../../../../features/transactions/main/index.js'
 import type { OperationOwner } from '../../../operations/types.js'
-import type canonicalStore from '../../../state-store/index.js'
 import {
   AirGapPublicAccountSchema,
   type AirGapPublicAccount,
@@ -50,28 +45,13 @@ type Pending = {
 }
 const ownerMatches = (a: OperationOwner, b: OperationOwner) =>
   a.clientType === b.clientType && a.windowInstanceId === b.windowInstanceId
-const requestIdentity = (request: CanonicalAccountRequest) => {
-  const fields = request as CanonicalAccountRequest & { data?: unknown; typedMessage?: unknown }
-  return JSON.stringify([
-    fields.handlerId,
-    fields.type,
-    fields.account,
-    fields.payload,
-    fields.data,
-    fields.typedMessage,
-    fields.authorization
-  ])
-}
-const cancelled = () => new Error('AirGap signing cancelled')
+const cancelled = () => Object.assign(new Error('AirGap signing cancelled'), { code: 4001 })
 
 export default class AirGapSigner extends Signer {
   readonly record: AirGapPublicAccount
   private pending?: Pending
   private closed = false
-  constructor(
-    record: AirGapPublicAccount,
-    private readonly store: typeof canonicalStore
-  ) {
+  constructor(record: AirGapPublicAccount) {
     super()
     this.record = Object.freeze(AirGapPublicAccountSchema.parse(record))
     this.id = airGapId(this.record)
@@ -110,26 +90,15 @@ export default class AirGapSigner extends Signer {
   private approved(index: number, context?: SignerRequestContext) {
     if (this.closed || !context || !context.isOwnerActive() || context.owner.clientType !== 'wallet-ui')
       throw new Error('AirGap requires an active approving wallet window')
+    if (context.signal.aborted) throw cancelled()
     if (this.pending) throw new Error('AirGap already has a pending request')
     if (!Number.isInteger(index) || index < 0 || index >= this.addresses.length)
       throw new Error('Invalid AirGap address index')
-    const main = this.store.getState().main
     const address = this.addresses[index].toLowerCase()
-    const account = main.accounts[main.currentAccount]
-    const request = account?.requests[context.requestId] as CanonicalAccountRequest | undefined
-    if (
-      main.appLock.locked ||
-      !account ||
-      account.id.toLowerCase() !== address ||
-      account.profileId !== main.currentProfile ||
-      account.signer !== this.id ||
-      !main.signers[this.id] ||
-      !request ||
-      request.status !== 'pending' ||
-      request.authorization?.decision !== 'prompt'
-    )
-      throw cancelled()
-    return { context, address, account, request, profileId: main.currentProfile }
+    if (context.accountId.toLowerCase() !== address) throw new Error('Wrong signing account')
+    if (!context.requestId) throw new Error('AirGap requires an approved request identity')
+    chainNumber(context.chainId)
+    return { context, address }
   }
   private begin(
     index: number,
@@ -141,7 +110,6 @@ export default class AirGapSigner extends Signer {
     callback: Callback<string>
   ) {
     const approved = this.approved(index, context)
-    const identity = requestIdentity(approved.request)
     const sessionId = randomUUID()
     const pending: Pending = {
       sessionId,
@@ -163,24 +131,11 @@ export default class AirGapSigner extends Signer {
       cleanup: [],
       callback,
       verify: (response) => verify(response, sessionId),
-      active: () => {
-        const main = this.store.getState().main
-        const account = main.accounts[approved.account.id]
-        const request = account?.requests[approved.context.requestId] as CanonicalAccountRequest | undefined
-        return (
-          this.pending === pending &&
-          !this.closed &&
-          approved.context.isOwnerActive() &&
-          !main.appLock.locked &&
-          main.currentAccount === approved.account.id &&
-          main.currentProfile === approved.profileId &&
-          account?.profileId === approved.profileId &&
-          account?.signer === this.id &&
-          Boolean(main.signers[this.id]) &&
-          request?.status === 'pending' &&
-          requestIdentity(request) === identity
-        )
-      }
+      active: () =>
+        this.pending === pending &&
+        !this.closed &&
+        !approved.context.signal.aborted &&
+        approved.context.isOwnerActive()
     }
     this.pending = pending
     const onChange = () => {
@@ -192,10 +147,8 @@ export default class AirGapSigner extends Signer {
       disposed()
       return
     }
-    pending.cleanup.push(
-      disposed,
-      this.store.subscribe((state) => state.main, onChange)
-    )
+    approved.context.signal.addEventListener('abort', onChange, { once: true })
+    pending.cleanup.push(disposed, () => approved.context.signal.removeEventListener('abort', onChange))
     onChange()
     if (this.pending === pending) this.emit('update')
   }
@@ -272,12 +225,9 @@ export default class AirGapSigner extends Signer {
   override signMessage(index: number, message: string, cb: Callback<string>, context?: SignerRequestContext) {
     try {
       const approved = this.approved(index, context)
-      if (approved.request.type !== 'sign' || !/^0x(?:[0-9a-fA-F]{2})*$/.test(message))
-        throw new Error('Invalid AirGap personal message')
-      if (message !== encodePersonalSignMessage(approved.request.payload.params[1]))
-        throw new Error('Message differs from approved request')
+      if (!/^0x(?:[0-9a-fA-F]{2})*$/.test(message)) throw new Error('Invalid AirGap personal message')
       const frozen = message
-      const chainId = chainNumber(this.store.getState().main.origins[approved.request.origin]?.chain.id ?? 1)
+      const chainId = approved.context.chainId
       this.begin(
         index,
         context,
@@ -304,26 +254,13 @@ export default class AirGapSigner extends Signer {
   ) {
     try {
       const approved = this.approved(index, context)
-      if (
-        !['signTypedData', 'signErc20Permit'].includes(approved.request.type) ||
-        message.version !== SignTypedDataVersion.V4 ||
-        Array.isArray(message.data)
-      )
+      if (message.version !== SignTypedDataVersion.V4 || Array.isArray(message.data))
         throw new Error('AirGap supports EIP-712 V4 only')
-      if (
-        JSON.stringify(message) !==
-        JSON.stringify(
-          (approved.request as CanonicalAccountRequest & { typedMessage?: TypedMessage }).typedMessage
-        )
-      )
-        throw new Error('Typed data differs from approved request')
       const { types, primaryType, domain, message: values } = structuredClone(message.data)
       const data = { types, primaryType, domain, message: values }
       // Compute the exact digest before producing any QR, including nested/array validation.
       TypedDataUtils.eip712Hash(data, SignTypedDataVersion.V4)
-      const chainId = chainNumber(
-        domain.chainId ?? this.store.getState().main.origins[approved.request.origin]?.chain.id ?? 1
-      )
+      const chainId = approved.context.chainId
       this.begin(
         index,
         context,
@@ -353,14 +290,9 @@ export default class AirGapSigner extends Signer {
   ) {
     try {
       const approved = this.approved(index, context)
-      if (approved.request.type !== 'transaction') throw new Error('Not an approved transaction')
-      if (
-        JSON.stringify(rawTx) !==
-        JSON.stringify((approved.request as CanonicalAccountRequest & { data?: TransactionData }).data)
-      )
-        throw new Error('Transaction differs from approved request')
       const frozen = structuredClone(rawTx)
-      const chainId = chainNumber(frozen.chainId)
+      const chainId = approved.context.chainId
+      if (chainNumber(frozen.chainId) !== chainId) throw new Error('Wrong signing chain')
       if (frozen.from?.toLowerCase() !== approved.address) throw new Error('Wrong signing account')
       const tx = createUnsignedTransaction(frozen)
       const kind = tx.type === 0 ? DataType.transaction : DataType.typedTransaction

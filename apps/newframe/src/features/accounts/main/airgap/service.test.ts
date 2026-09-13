@@ -15,9 +15,7 @@ function fixture() {
     removeItem: () => undefined
   }).store
   const operations = createOperationService({ store, clock: { now: () => 1 } })
-  const service = createProductionAirGapService(store, { get: () => undefined }, operations, {
-    rejectRequest: () => false
-  })
+  const service = createProductionAirGapService(store, { get: () => undefined }, operations)
   return { store, operations, service }
 }
 

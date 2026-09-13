@@ -29,9 +29,13 @@ export function publicAccount() {
 }
 export function uiContext(requestId = randomUUID()) {
   const lifecycle = new EventEmitter()
+  const controller = new AbortController()
   let active = true
   const context: SignerRequestContext = {
     requestId,
+    accountId: vectors.export.address.toLowerCase(),
+    chainId: 1,
+    signal: controller.signal,
     owner: { clientType: 'wallet-ui', windowInstanceId: randomUUID() },
     isOwnerActive: () => active,
     subscribeOwnerDisposed(dispose) {
@@ -48,6 +52,7 @@ export function uiContext(requestId = randomUUID()) {
   return {
     context,
     listenerCount: () => lifecycle.listenerCount('disposed'),
+    abort: () => controller.abort(),
     destroy() {
       active = false
       lifecycle.emit('disposed')
@@ -70,7 +75,7 @@ export function transaction(vector = vectors.transactions[0]): TransactionData {
       : { maxPriorityFeePerGas: '0x3b9aca00', maxFeePerGas: '0xb2d05e00', accessList: [] })
   }
 }
-export function signerFixture() {
+export function signerFixture(record = publicAccount()) {
   const store = createCanonicalStore({
     getItem: () => null,
     setItem() {
@@ -80,7 +85,7 @@ export function signerFixture() {
       return undefined
     }
   }).store
-  const signer = new AirGapSigner(publicAccount(), store)
+  const signer = new AirGapSigner(record)
   store.getState().newSigner(signer.summary())
   signer.on('update', () => store.getState().updateSigner(signer.summary()))
   const address = signer.addresses[0].toLowerCase()
@@ -98,6 +103,7 @@ export function signerFixture() {
     state.main.currentAccount = address
   })
   const owner = uiContext()
+  owner.context.accountId = address
   const request = (
     type: 'sign' | 'transaction' | 'signTypedData',
     data?: TransactionData | TypedMessage | string

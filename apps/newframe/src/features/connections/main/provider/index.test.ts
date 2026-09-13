@@ -1184,6 +1184,8 @@ describe('#signAndSend', () => {
 
     request = {
       handlerId: 99,
+      account: '0x1111111111111111111111111111111111111111',
+      type: 'transaction',
       payload: { jsonrpc: '2.0', id: 2, method: 'eth_sendTransaction' },
       data: tx
     }
@@ -1309,6 +1311,7 @@ describe('#signAndSend', () => {
       })
 
       it('handles a transaction send failure', (done) => {
+        Object.assign(tx, { chainId: '0x1' })
         signAndSend((err: any) => {
           expect(err.message).toBe(errorMessage)
           done()

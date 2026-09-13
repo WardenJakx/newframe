@@ -22,6 +22,7 @@ import TransactionInformation from './Account/Requests/TransactionRequest/Transa
 import type { RequestRendererCapabilities } from './requestCapabilities'
 import { RequestActions } from './ui/RequestActions'
 import { SigningAccount } from './ui/SigningAccount'
+import type { SafeConfirmationModel } from './useSafeConfirmation'
 
 export type SafePreview = SafeProposalSimulation | { status: 'loading' }
 
@@ -32,6 +33,8 @@ export function SafeProposalDetailsView({
   owners = [],
   selectedOwnerId,
   onSelectOwner,
+  confirmation,
+  onRecoverSigner,
   simulation,
   networkName,
   networkIcon,
@@ -45,6 +48,8 @@ export function SafeProposalDetailsView({
   owners?: SafeOwnerAccount[]
   selectedOwnerId?: string
   onSelectOwner?: (accountId: string) => void
+  confirmation?: SafeConfirmationModel
+  onRecoverSigner?: () => void
   simulation: SafePreview
   networkName: string
   networkIcon?: string
@@ -56,6 +61,29 @@ export function SafeProposalDetailsView({
   const [confirmationsOpen, setConfirmationsOpen] = useState(false)
   const selectedOwner = owners.find((owner) => owner.accountId === selectedOwnerId)
   const hasSigningAccount = owners.some((owner) => owner.status !== 'watch-only')
+  const busy = confirmation?.status === 'signing' || confirmation?.status === 'publishing'
+  const published = confirmation?.status === 'published'
+  const retryPublication = confirmation?.status === 'publication_failed'
+  const appLocked = selectedOwner?.signerStatus === 'Wallet locked'
+  const recoverable =
+    !!selectedOwner?.signerAttached &&
+    selectedOwner.status === 'unavailable' &&
+    !appLocked &&
+    !!onRecoverSigner
+  const signingReady = selectedOwner?.status === 'ready'
+  const actionLabel = published
+    ? 'Confirmation published'
+    : confirmation?.status === 'publishing'
+      ? 'Publishing…'
+      : confirmation?.status === 'signing'
+        ? 'Signing…'
+        : retryPublication
+          ? 'Retry publication'
+          : selectedOwner && !selectedOwner.signerAttached
+            ? 'No signer attached'
+            : recoverable
+              ? 'Connect signer'
+              : 'Sign'
   const ownerDescription = (owner: SafeOwnerAccount) => {
     const type = signerTypeLabel(owner.signerType)
     return signerIsReady(owner.signerStatus)
@@ -246,7 +274,7 @@ export function SafeProposalDetailsView({
           <SigningAccount label='Signer'>
             <Selection
               label='Signer'
-              disabled={!hasSigningAccount}
+              disabled={!hasSigningAccount || busy}
               menuPlacement='above'
               menuAlign='end'
               menuWidth='wide'
@@ -290,16 +318,36 @@ export function SafeProposalDetailsView({
               }))}
             />
           </SigningAccount>
+          {confirmation && selectedOwner && !published && simulation.status !== 'success' ? (
+            <Text tone='secondary'>
+              {simulation.status === 'loading'
+                ? 'Simulation is still loading. You can sign before it finishes.'
+                : 'Simulation failed or is unavailable. You can still sign this proposal.'}
+            </Text>
+          ) : null}
+          {confirmation?.message ? (
+            <div role={confirmation.status.endsWith('failed') ? 'alert' : 'status'}>
+              <Text tone={confirmation.status.endsWith('failed') ? 'danger' : 'secondary'}>
+                {confirmation.message}
+              </Text>
+            </div>
+          ) : null}
           <RequestActions
             primary={{
-              label:
-                selectedOwner && !selectedOwner.signerAttached
-                  ? 'No signer attached'
-                  : hasEnoughConfirmations
-                    ? 'Execute'
-                    : 'Sign',
-              disabled: true,
-              onPress: () => {}
+              label: actionLabel,
+              disabled:
+                !confirmation ||
+                !selectedOwner ||
+                busy ||
+                published ||
+                appLocked ||
+                confirmation.status === 'loading' ||
+                proposal.integrity?.status !== 'matched' ||
+                (!retryPublication && !signingReady && !recoverable),
+              onPress: () => {
+                if (recoverable && !retryPublication) onRecoverSigner?.()
+                else confirmation?.onSign()
+              }
             }}
             secondary={{ label: 'Decline', disabled: true, onPress: () => {} }}
           />

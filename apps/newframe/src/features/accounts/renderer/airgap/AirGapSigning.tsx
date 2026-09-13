@@ -23,28 +23,18 @@ export function AirGapSigning({
   dismiss(): void
 }) {
   const { signerId, requestId, sessionId } = reference
-  const { accountId, live, active, progress } = useWalletSelector(
+  const { live, active, progress } = useWalletSelector(
     useShallow((state) => {
-      const account = state.accounts[state.currentAccount]
-      const request = account?.requests[requestId]
       const pending = state.signers[signerId]?.airgapRequest
       return {
-        accountId: state.currentAccount,
-        live:
-          !state.appLock.locked &&
-          account?.signer === signerId &&
-          request?.handlerId === requestId &&
-          request.status === 'pending' &&
-          pending?.requestId === requestId &&
-          pending.sessionId === sessionId,
+        live: !state.appLock.locked && pending?.requestId === requestId && pending.sessionId === sessionId,
         active: state.tray.open && !state.appLock.locked,
         progress: pending?.progress || 0
       }
     })
   )
-  const [initialAccount] = useState(accountId)
   const [closed, setClosed] = useState(false)
-  const stillLive = live && accountId === initialAccount && !closed
+  const stillLive = live && !closed
   const open = useRef(stillLive)
   const dismissRef = useRef(dismiss)
   useEffect(() => {

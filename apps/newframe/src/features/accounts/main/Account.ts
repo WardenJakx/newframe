@@ -1,10 +1,15 @@
 import { isValidAddress } from '@ethereumjs/util'
 import log from 'electron-log'
 
+import { createOneResultCallbackBoundary } from '../../../platform/callbacks/oneResult.js'
 import Erc20Contract from '../../../platform/chain-rpc/contracts/erc20.js'
-import { Type as SignerType, getSignerType } from '../../../platform/signing/domain/index.js'
+import { Type as SignerType, getSignerType, isSignerReady } from '../../../platform/signing/domain/index.js'
 import { getErc7730TypedDataDisplay } from '../../../platform/signing/signatures/erc7730.js'
-import type { SignerRequestContext } from '../../../platform/signing/signers/Signer/index.js'
+import type Signer from '../../../platform/signing/signers/Signer/index.js'
+import type {
+  SigningApprovalContext,
+  SignerRequestContext
+} from '../../../platform/signing/signers/Signer/index.js'
 import type { CanonicalStoreReader } from '../../../platform/state-store/actions.js'
 import type { NameResolutionService } from '../../name-resolution/main/nameResolution.js'
 import { RequestMode } from '../../requests/contract/requests.js'
@@ -58,6 +63,8 @@ class FrameAccount {
   private creationBlockLookupPending = false
   private addressLookupPending = false
   private profileActive: boolean
+  private closed = false
+  private readonly signingCancellations = new Set<() => void>()
 
   accountObserver: () => void
 
@@ -722,6 +729,8 @@ class FrameAccount {
   }
 
   close() {
+    this.closed = true
+    for (const cancel of this.signingCancellations) cancel()
     this.profileActive = false
     this.stopCreationBlockLookup()
     this.stopNameResolutionReadyLookup()
@@ -729,60 +738,158 @@ class FrameAccount {
     this.accountObserver()
   }
 
-  signMessage(message: string, cb: Callback<string>, context?: SignerRequestContext) {
-    if (this.store.getState().main.accounts[this.id]?.safe)
-      return cb(new Error('Safe accounts are read-only'))
-    if (!message) return cb(new Error('No message to sign'))
-    if (this.signer) {
-      const s = this.runtime.signers.get(this.signer)
-      if (!s) return cb(new Error(`Cannot find signer for this account`))
-      const index = s.addresses.map((a) => a.toLowerCase()).indexOf(this.address)
-      if (index === -1) cb(new Error(`Signer cannot sign for this address`))
-      s.signMessage(index, message, cb, context)
-    } else {
-      cb(new Error('No signer found for this account'))
+  private dispatchSigning<T>(
+    payload: T,
+    cb: Callback<string>,
+    approval: SigningApprovalContext | undefined,
+    invoke: (
+      signer: Signer,
+      index: number,
+      value: T,
+      done: Callback<string>,
+      context?: SignerRequestContext
+    ) => void
+  ) {
+    let signer: Signer
+    let index: number
+    let value: T
+    const captured = this.store.getState().main.accounts[this.id]
+    const cancelled = () =>
+      Object.assign(new Error('Signing cancelled because its approval is no longer active.'), { code: 4001 })
+    const validate = () => {
+      const main = this.store.getState().main
+      const owner = main.accounts[this.id]
+      if (owner?.safe) throw new Error('Safe accounts are read-only')
+      if (
+        this.closed ||
+        !captured ||
+        !owner ||
+        owner.created !== captured.created ||
+        owner.profileId !== captured.profileId ||
+        owner.profileId !== main.currentProfile ||
+        owner.address.toLowerCase() !== this.address ||
+        owner.signer !== captured.signer
+      )
+        throw cancelled()
+      if (main.appLock.locked) throw new Error('Unlock Newframe before signing.')
+      if (
+        approval &&
+        (approval.signal?.aborted || !approval.isActive() || (approval.ui && !approval.ui.isOwnerActive()))
+      )
+        throw cancelled()
+      const currentSigner = this.runtime.signers.get(owner.signer)
+      const summary = main.signers[owner.signer]
+      if (!currentSigner || !summary || !getSignerType(currentSigner.type.toLowerCase()))
+        throw new Error('No signer attached.')
+      if (!isSignerReady(currentSigner) || !isSignerReady(summary))
+        throw new Error('Connect and unlock the signer before signing.')
+      const currentIndex = currentSigner.addresses.findIndex(
+        (address) => address.toLowerCase() === this.address
+      )
+      if (
+        currentIndex < 0 ||
+        !summary.addresses.some((address: string) => address.toLowerCase() === this.address)
+      )
+        throw new Error('Signer cannot sign for this address')
+      if (signer && (signer !== currentSigner || index !== currentIndex)) throw cancelled()
+      return { signer: currentSigner, index: currentIndex }
     }
+    try {
+      ;({ signer, index } = validate())
+      value = structuredClone(payload)
+    } catch (error) {
+      cb(error as Error)
+      return
+    }
+    const boundary = createOneResultCallbackBoundary()
+    const controller = new AbortController()
+    const cancel = () => {
+      controller.abort()
+      boundary.dispose()
+    }
+    const unsubscribe = this.store.subscribe(
+      (state) => state.main,
+      () => {
+        try {
+          validate()
+        } catch {
+          cancel()
+        }
+      }
+    )
+    this.signingCancellations.add(cancel)
+    approval?.signal?.addEventListener('abort', cancel, { once: true })
+    const unsubscribeUi = approval?.ui?.subscribeOwnerDisposed(cancel)
+    const context = approval?.ui
+      ? {
+          ...approval.ui,
+          requestId: approval.requestId,
+          accountId: this.id,
+          chainId: approval.chainId,
+          signal: controller.signal
+        }
+      : undefined
+    void boundary
+      .run<string>((done) => {
+        validate()
+        if (controller.signal.aborted) throw cancelled()
+        invoke(signer, index, value, done, context)
+      })
+      .then(
+        (result) => {
+          try {
+            validate()
+            if (controller.signal.aborted) throw cancelled()
+          } catch (error) {
+            cb(error as Error)
+            return
+          }
+          cb(null, result)
+        },
+        (error: unknown) => cb(controller.signal.aborted ? cancelled() : (error as Error))
+      )
+      .finally(() => {
+        unsubscribe()
+        unsubscribeUi?.()
+        approval?.signal?.removeEventListener('abort', cancel)
+        this.signingCancellations.delete(cancel)
+        boundary.dispose()
+      })
   }
 
-  signTypedData(typedMessage: TypedMessage, cb: Callback<string>, context?: SignerRequestContext) {
-    if (this.store.getState().main.accounts[this.id]?.safe)
-      return cb(new Error('Safe accounts are read-only'))
+  signMessage(message: string, cb: Callback<string>, context?: SigningApprovalContext) {
+    if (!message) return cb(new Error('No message to sign'))
+    this.dispatchSigning(message, cb, context, (signer, index, value, done, approval) =>
+      signer.signMessage(index, value, done, approval)
+    )
+  }
+
+  signTypedData(typedMessage: TypedMessage, cb: Callback<string>, context?: SigningApprovalContext) {
     if (!typedMessage.data) return cb(new Error('No data to sign'))
     if (typeof typedMessage.data !== 'object') return cb(new Error('Data to sign has the wrong format'))
-    if (this.signer) {
-      const s = this.runtime.signers.get(this.signer)
-      if (!s) return cb(new Error(`Cannot find signer for this account`))
-      const index = s.addresses.map((a) => a.toLowerCase()).indexOf(this.address)
-      if (index === -1) cb(new Error(`Signer cannot sign for this address`))
-      s.signTypedData(index, typedMessage, cb, context)
-    } else {
-      cb(new Error('No signer found for this account'))
-    }
+    this.dispatchSigning(typedMessage, cb, context, (signer, index, value, done, approval) =>
+      signer.signTypedData(index, value, done, approval)
+    )
   }
 
-  signTransaction(rawTx: TransactionData, cb: Callback<string>, context?: SignerRequestContext) {
+  signTransaction(rawTx: TransactionData, cb: Callback<string>, context?: SigningApprovalContext) {
     if (this.store.getState().main.accounts[this.id]?.safe)
       return cb(new Error('Safe accounts are read-only'))
-    // if(index === typeof 'object' && cb === typeof 'undefined' && typeof rawTx === 'function') cb = rawTx; rawTx = index; index = 0;
     this.validateTransaction(rawTx, (err) => {
       if (err) return cb(err)
-      if (this.signer) {
-        const s = this.runtime.signers.get(this.signer)
-        if (!s) return cb(new Error(`Cannot find signer for this account`))
-
-        const index = s.addresses.map((a) => a.toLowerCase()).indexOf(this.address)
-        if (index === -1) cb(new Error(`Signer cannot sign for this address`))
-        s.signTransaction(index, rawTx, cb, context)
-      } else {
-        cb(new Error('No signer found for this account'))
-      }
+      this.dispatchSigning(rawTx, cb, context, (signer, index, value, done, approval) =>
+        signer.signTransaction(index, value, done, approval)
+      )
     })
   }
 
   private validateTransaction(rawTx: TransactionData, cb: Callback<void>) {
     // Validate 'from' address
-    if (!rawTx.from) return new Error("Missing 'from' address")
+    if (!rawTx.from) return cb(new Error("Missing 'from' address"))
     if (!isValidAddress(rawTx.from)) return cb(new Error("Invalid 'from' address"))
+
+    if (rawTx.from.toLowerCase() !== this.address)
+      return cb(new Error('Transaction belongs to another account'))
 
     // Ensure that transaction params are valid hex strings
     const enforcedKeys: Array<keyof TransactionData> = [
@@ -800,9 +907,7 @@ class FrameAccount {
     for (let i = 0; i < keys.length; i++) {
       const key = keys[i]
       if (enforcedKeys.indexOf(key) > -1 && !this.isValidHexString(rawTx[key] as string)) {
-        // Break on first error
-        cb(new Error(`Transaction parameter '${String(key)}' is not a valid hex string`))
-        break
+        return cb(new Error(`Transaction parameter '${String(key)}' is not a valid hex string`))
       }
     }
     return cb(null)

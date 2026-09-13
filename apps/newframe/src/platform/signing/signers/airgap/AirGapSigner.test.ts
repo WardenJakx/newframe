@@ -5,18 +5,19 @@ import { SignTypedDataVersion } from '@metamask/eth-sig-util'
 import { signerFixture, transaction, vectors } from '../../../../../test/integration/fixtures/airgap.js'
 import type { TypedMessage } from '../../../../features/requests/contract/requests.js'
 
-it('requires the approved payload and a valid derivation index before any exchange', () => {
+it('requires an approving account context and valid derivation index before any exchange', () => {
   const fixture = signerFixture()
-  const { signer, owner, request } = fixture
+  const { signer, owner } = fixture
   const message = '0x00ff80c3'
-  request('sign', message)
   const errors: string[] = []
   const done: Callback<string> = (error) => errors.push(error!.message)
   signer.signMessage(0, message, done)
   signer.signMessage(-1, message, done, owner.context)
   signer.signMessage(100, message, done, owner.context)
-  signer.signMessage(0, '0x00', done, owner.context)
-  expect(errors).toHaveLength(4)
+  signer.signMessage(0, message, done, { ...owner.context, accountId: '0x' + '11'.repeat(20) })
+  owner.abort()
+  signer.signMessage(0, message, done, owner.context)
+  expect(errors).toHaveLength(5)
   expect(signer.summary().airgapRequest).toBeUndefined()
   fixture.dispose()
 })
@@ -28,15 +29,15 @@ for (const vector of vectors.messages)
     const done: Callback<string> = (error, value) => results.push({ error, value })
     if (vector.name.startsWith('personal')) {
       const message = `0x${vector.signData}`
-      fixture.request('sign', message)
       fixture.signer.signMessage(0, message, done, fixture.owner.context)
     } else {
       const typedMessage: TypedMessage<SignTypedDataVersion.V4> = {
         data: JSON.parse(Buffer.from(vector.signData, 'hex').toString('utf8')),
         version: SignTypedDataVersion.V4
       }
-      fixture.request('signTypedData', typedMessage)
       fixture.signer.signTypedData(0, typedMessage, done, fixture.owner.context)
+      // The exchange verifies the approved clone even if its caller later changes the object.
+      typedMessage.data.domain = { chainId: 2 }
     }
     expect(fixture.envelope().getSignData().toString('hex')).toBe(vector.signData)
     const reference = fixture.reference()
@@ -51,7 +52,6 @@ for (const vector of vectors.messages)
 it('rejects responses for another UUID or signing key without consuming the request', async () => {
   const fixture = signerFixture()
   const data = transaction()
-  fixture.request('transaction', data)
   const results: unknown[] = []
   fixture.signer.signTransaction(
     0,
@@ -78,11 +78,10 @@ it('rejects responses for another UUID or signing key without consuming the requ
   fixture.dispose()
 })
 
-for (const change of ['account', 'profile', 'lock', 'signer', 'remove-account'] as const)
-  it(`cancels ${change} before response completion`, async () => {
+for (const change of ['abort', 'window', 'close'] as const)
+  it(`cancels the exchange on ${change} before response completion`, async () => {
     const fixture = signerFixture()
     const data = transaction()
-    fixture.request('transaction', data)
     const results: unknown[] = []
     fixture.signer.signTransaction(
       0,
@@ -91,23 +90,22 @@ for (const change of ['account', 'profile', 'lock', 'signer', 'remove-account'] 
       fixture.owner.context
     )
     const reference = fixture.reference()
-    if (change === 'account')
-      fixture.store.setState((state) => {
-        state.main.currentAccount = 'other'
-      })
-    else if (change === 'profile')
-      fixture.store.setState((state) => {
-        state.main.currentProfile = 'other'
-      })
-    else if (change === 'lock') fixture.store.getState().setAppLock({ locked: true, vaultExists: true })
-    else if (change === 'signer') fixture.store.getState().removeSigner(fixture.signer.id)
-    else if (change === 'remove-account')
-      fixture.store.setState((state) => {
-        delete state.main.accounts[fixture.address]
-      })
+    if (change === 'abort') fixture.owner.abort()
+    else if (change === 'window') fixture.owner.destroy()
+    else fixture.signer.close()
     expect(fixture.signer.getRequest(reference, fixture.owner.context.owner)).toBeUndefined()
     expect(results).toHaveLength(1)
     expect(results[0]).toBeInstanceOf(Error)
+    expect(results[0]).toMatchObject({ code: 4001 })
+    expect(fixture.owner.listenerCount()).toBe(0)
+    expect(
+      await fixture.signer.scan(
+        reference,
+        fixture.owner.context.owner,
+        fixture.frames(vectors.transactions[0].signature, reference.sessionId)[0]
+      )
+    ).toBe(false)
+    expect(results).toHaveLength(1)
     fixture.dispose()
   })
 
@@ -119,14 +117,12 @@ it('rejects unsupported transaction types, creation and typed-data versions befo
     { ...transaction(), type: '0x3' },
     { ...transaction(), to: undefined }
   ]) {
-    fixture.request('transaction', raw)
     fixture.signer.signTransaction(0, raw, (error) => errors.push(error), fixture.owner.context)
   }
   const data = {
     version: SignTypedDataVersion.V3,
     data: JSON.parse(Buffer.from(vectors.messages[1].signData, 'hex').toString())
   } as TypedMessage
-  fixture.request('signTypedData', data)
   fixture.signer.signTypedData(0, data, (error) => errors.push(error), fixture.owner.context)
   expect(errors).toHaveLength(4)
   expect(errors.every((error) => error instanceof Error)).toBe(true)

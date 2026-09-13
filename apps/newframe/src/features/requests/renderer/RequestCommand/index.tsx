@@ -64,7 +64,7 @@ type RequestCommandNotification =
     }
   | {
       type: 'signerRecovery'
-      data: { req: TransactionRequest | SignatureRequest; signerIds: string[] }
+      data: { req?: TransactionRequest | SignatureRequest; signerIds: string[] }
     }
   | {
       type: 'openExplorer'

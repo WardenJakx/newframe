@@ -1,7 +1,12 @@
 import { SignTypedDataVersion } from '@metamask/eth-sig-util'
-import { Interface } from 'ethers'
+import { getBytes, hashMessage, Interface, recoverAddress } from 'ethers'
 
-import type { SafeProposal } from '../../features/accounts/domain/safe.js'
+import {
+  safeAddressSchema,
+  safeProposalSchema,
+  type SafeProposal
+} from '../../features/accounts/domain/safe.js'
+import type { TypedMessage } from '../../features/requests/contract/requests.js'
 import { getEip712Digests } from '../signing/signatures/digests.js'
 
 const fields = [
@@ -17,22 +22,21 @@ const fields = [
   ['nonce', 'uint256']
 ] as const
 
-export function verifySafeHash(
+export function getSafeTypedMessage(
   proposal: SafeProposal,
   chainId: number,
   address: string,
   version?: string
-): NonNullable<SafeProposal['integrity']> {
-  // Unknown deployments remain inspectable without guessing their signing domain.
+): TypedMessage {
   if (!version || !['1.1.1', '1.2.0', '1.3.0', '1.4.1', '1.5.0'].includes(version))
-    return { status: 'unavailable', reason: 'Unable to verify: unsupported or missing Safe version.' }
+    throw new Error('Unable to verify: unsupported or missing Safe version.')
   if (fields.some(([name]) => proposal[name] === undefined))
-    return {
-      status: 'unavailable',
-      reason: 'Unable to verify: transaction gas or refund fields are missing.'
-    }
+    throw new Error('Unable to verify: transaction gas or refund fields are missing.')
+  safeProposalSchema.parse(proposal)
+  safeAddressSchema.parse(address)
+  if (!Number.isSafeInteger(chainId) || chainId <= 0) throw new Error('Invalid Safe chain ID')
   const domain = { verifyingContract: address, ...(['1.1.1', '1.2.0'].includes(version) ? {} : { chainId }) }
-  const computedHash = getEip712Digests({
+  return {
     version: SignTypedDataVersion.V4,
     data: {
       primaryType: 'SafeTx',
@@ -46,7 +50,22 @@ export function verifySafeHash(
       },
       message: Object.fromEntries(fields.map(([name]) => [name, proposal[name]]))
     }
-  })?.eip712Digest
+  }
+}
+
+export function verifySafeHash(
+  proposal: SafeProposal,
+  chainId: number,
+  address: string,
+  version?: string
+): NonNullable<SafeProposal['integrity']> {
+  let typedMessage: TypedMessage
+  try {
+    typedMessage = getSafeTypedMessage(proposal, chainId, address, version)
+  } catch (error) {
+    return { status: 'unavailable', reason: (error as Error).message }
+  }
+  const computedHash = getEip712Digests(typedMessage)?.eip712Digest
   if (!computedHash) return { status: 'unavailable', reason: 'Unable to compute Safe transaction hash.' }
   return computedHash === proposal.safeTxHash
     ? {
@@ -59,6 +78,20 @@ export function verifySafeHash(
         computedHash,
         reason: 'Integrity mismatch: the service hash does not match this transaction.'
       }
+}
+
+// Safe stores eth_sign recovery values as 31/32, EIP712 as 27/28.
+export function verifySafeConfirmation(hash: string, owner: string, signature: string): boolean {
+  if (!/^0x[0-9a-f]{64}$/i.test(hash) || !/^0x[0-9a-f]{130}$/i.test(signature)) return false
+  const v = Number.parseInt(signature.slice(-2), 16)
+  if (![27, 28, 31, 32].includes(v)) return false
+  try {
+    const digest = v > 30 ? hashMessage(getBytes(hash)) : hash
+    const normalized = `${signature.slice(0, -2)}${(v > 30 ? v - 4 : v).toString(16)}`
+    return recoverAddress(digest, normalized).toLowerCase() === owner.toLowerCase()
+  } catch {
+    return false
+  }
 }
 
 // Compare only lossless scalar service descriptions. Local decoding remains independent.
