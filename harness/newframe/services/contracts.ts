@@ -131,7 +131,7 @@ async function waitForTransaction(transaction: Promise<TransactionResponse>, lab
   const response = await transaction
   const receipt = await response.wait(1)
 
-  if (!receipt || receipt.status !== 1) throw new Error(`${label} transaction failed: ${response.hash}`)
+  if (receipt?.status !== 1) throw new Error(`${label} transaction failed: ${response.hash}`)
 
   return receipt
 }

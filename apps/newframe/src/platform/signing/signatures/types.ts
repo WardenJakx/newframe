@@ -1,4 +1,4 @@
-import { MessageTypeProperty } from '@metamask/eth-sig-util'
+import type { MessageTypeProperty } from '@metamask/eth-sig-util'
 
 interface LabelledSignatureType {
   domainFilter: string[]

@@ -199,8 +199,7 @@ export function createAccountOnboardingService(ports: AccountOnboardingPorts): A
     const session = sessionReference(operationId, owner)
     const operation = ports.operations.lookup(session)
     if (
-      !operation ||
-      operation.status !== 'pending' ||
+      operation?.status !== 'pending' ||
       !operation.entityRefs?.some((ref) => ref.type === 'signer' && ref.id === signerId)
     ) {
       return

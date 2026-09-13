@@ -147,12 +147,11 @@ function nowIso() {
 }
 
 function jsonResponse(payload: unknown, status = 200, headers?: HeadersInit) {
+  const responseHeaders = new Headers(headers)
+  if (!responseHeaders.has('content-type')) responseHeaders.set('content-type', 'application/json')
   return new Response(JSON.stringify(payload), {
     status,
-    headers: {
-      'content-type': 'application/json',
-      ...headers
-    }
+    headers: responseHeaders
   })
 }
 
@@ -944,7 +943,7 @@ function storeOrder(quoteRecord: LocalQuoteRecord, body: Record<string, any>) {
 
 async function fillMarketOrder(orderId: string) {
   const order = orders.get(orderId)
-  if (!order || order.status !== 'accepted' || order.orderType !== FLASH_MARKET_ORDER_TYPE) return
+  if (order?.status !== 'accepted' || order.orderType !== FLASH_MARKET_ORDER_TYPE) return
 
   try {
     const quote = order.quote

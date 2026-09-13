@@ -80,7 +80,7 @@ export function createRendererAuthorizationRegistry(
       if (!registration || registration.webContents !== event.sender || event.sender.isDestroyed()) return
 
       const frame = event.senderFrame
-      if (!frame || frame.parent !== null || event.sender.mainFrame !== frame) return
+      if (frame?.parent !== null || event.sender.mainFrame !== frame) return
       if (!isAllowedRendererUrl(registration.entrypoint, frame.url)) return
 
       return {
@@ -95,7 +95,7 @@ export function createRendererAuthorizationRegistry(
       const registration = renderers.get(webContents.id)
       if (!registration || registration.webContents !== webContents) return
       const frame = webContents.mainFrame
-      if (!frame || frame.parent !== null || frame.url !== requestingUrl) return
+      if (frame?.parent !== null || frame.url !== requestingUrl) return
       if (!isAllowedRendererUrl(registration.entrypoint, requestingUrl)) return
       return {
         clientType: registration.clientType,

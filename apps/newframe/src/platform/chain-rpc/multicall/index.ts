@@ -4,14 +4,8 @@ import { Interface } from 'ethers'
 import type { BytesLike } from 'ethers'
 
 import type { Eip1193Provider } from '../../../features/connections/main/provider/connection.js'
-import {
-  abi,
-  Call,
-  CallResult,
-  functionSignatureMatcher,
-  multicallAddress,
-  MulticallConfig
-} from './constants.js'
+import type { Call, CallResult, MulticallConfig } from './constants.js'
+import { abi, functionSignatureMatcher, multicallAddress } from './constants.js'
 
 export type { Call }
 
@@ -59,13 +53,13 @@ function getResultData(results: any, call: string[], target: string) {
 }
 
 function getFunctionNameFromSignature(signature: string) {
-  const m = signature.match(functionSignatureMatcher)
+  const name = signature.match(functionSignatureMatcher)?.groups?.signature
 
-  if (!m) {
+  if (!name) {
     throw new Error(`could not parse function name from signature: ${signature}`)
   }
 
-  return (m.groups || {}).signature
+  return name
 }
 
 function getInterface(functionSignature: string) {

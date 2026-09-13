@@ -532,9 +532,7 @@ export function AddAccountController({
   }
 
   function framePasswordLabel() {
-    return state.addVaultState && state.addVaultState.exists
-      ? 'Newframe password'
-      : 'Create Newframe password'
+    return state.addVaultState?.exists ? 'Newframe password' : 'Create Newframe password'
   }
 
   async function addSignerAddress(signer: SignerProjection, address: string, name: string, fallback: string) {

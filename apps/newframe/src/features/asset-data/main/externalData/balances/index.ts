@@ -8,7 +8,7 @@ import { customTokens, tokensForAccount } from '../../../../tokens/domain/index.
 import { createBalanceSummaries, isLowValueTokenBalance, toTokenId } from '../../../domain/balance/index.js'
 import type { AssetRateMap } from '../../../domain/state/rate.js'
 import BalancesWorkerController from './controller.js'
-import { CurrencyBalance, TokenBalance } from './scan.js'
+import type { CurrencyBalance, TokenBalance } from './scan.js'
 
 const RESTART_WAIT = 5 // seconds
 const POSITION_REFRESH_RETRY_MS = 5 * 1000
@@ -108,9 +108,7 @@ export default function (store: Pick<StoreApi<CanonicalStore>, 'getState'>) {
     getNetwork: (id: number) => (store.getState().main.networks.ethereum[id] || {}) as Chain,
     getConnectedNetworks: () => {
       const networks = Object.values(store.getState().main.networks.ethereum || {}) as Chain[]
-      return networks.filter(
-        (n) => (n.connection.primary || {}).connected || (n.connection.secondary || {}).connected
-      )
+      return networks.filter((n) => n.connection.primary?.connected || n.connection.secondary?.connected)
     },
     getCustomTokens: () => customTokens(store.getState().main.tokens).map(scanToken),
     getKnownTokens: (address?: Address): Token[] =>
@@ -435,7 +433,7 @@ export default function (store: Pick<StoreApi<CanonicalStore>, 'getState'>) {
       .filter(
         (balance) =>
           networksMeta[balance.chainId] &&
-          (currentChainBalances.find((b) => b.chainId === balance.chainId) || {}).balance !== balance.balance
+          currentChainBalances.find((b) => b.chainId === balance.chainId)?.balance !== balance.balance
       )
       .forEach((balance) => {
         const nativeCurrency = networksMeta[balance.chainId].nativeCurrency

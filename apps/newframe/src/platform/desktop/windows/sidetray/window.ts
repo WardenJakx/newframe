@@ -1,6 +1,7 @@
 import path from 'path'
 
-import electron, { BrowserWindow } from 'electron'
+import type { BrowserWindow } from 'electron'
+import electron from 'electron'
 import log from 'electron-log'
 
 import type { RendererAuthorizationRegistry } from '../../../ipc/main/authorization.js'
@@ -26,7 +27,7 @@ const placeSideTray = (sideTray: SideTray) => {
 }
 
 const routeHash = (route?: string) => {
-  return route && route.startsWith('/') ? `#${route}` : ''
+  return route?.startsWith('/') ? `#${route}` : ''
 }
 
 const frameUrl = (frame: Frame) => {

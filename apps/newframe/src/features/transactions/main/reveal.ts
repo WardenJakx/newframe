@@ -5,11 +5,11 @@ import log from 'electron-log'
 
 import ensContracts from '../../../platform/chain-rpc/contracts/deployments/ens/index.js'
 import Erc20Contract, { type Erc20ProviderPort } from '../../../platform/chain-rpc/contracts/erc20.js'
+import type { ContractSource } from '../../../platform/chain-rpc/contracts/index.js'
 import {
   decodeCallData,
   decodeCallDataWithSelectorRegistry,
   fetchContract,
-  ContractSource,
   type DecodedCallData
 } from '../../../platform/chain-rpc/contracts/index.js'
 import type { TransactionRequest } from '../../accounts/main/index.js'

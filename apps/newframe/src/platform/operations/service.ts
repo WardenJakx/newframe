@@ -133,7 +133,7 @@ export function createOperationService({
 
   const complete = (reference: OperationReference, phase?: string) => {
     const current = lookup(reference)
-    if (!current || current.status !== 'pending') return current
+    if (current?.status !== 'pending') return current
     const now = Math.max(clock.now(), current.updatedAt)
     const operation = OperationRecordSchema.parse({
       ...current,
@@ -149,7 +149,7 @@ export function createOperationService({
 
   const advance: OperationService['advance'] = (reference, update) => {
     const current = lookup(reference)
-    if (!current || current.status !== 'pending') return current
+    if (current?.status !== 'pending') return current
     const now = Math.max(clock.now(), current.updatedAt)
     const operation = OperationRecordSchema.parse({
       ...current,
@@ -163,7 +163,7 @@ export function createOperationService({
 
   const fail = (reference: OperationReference, error: unknown, phase?: string) => {
     const current = lookup(reference)
-    if (!current || current.status !== 'pending') return current
+    if (current?.status !== 'pending') return current
     const now = Math.max(clock.now(), current.updatedAt)
     const operation = OperationRecordSchema.parse({
       ...current,

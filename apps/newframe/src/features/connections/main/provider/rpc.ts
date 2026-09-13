@@ -1,6 +1,7 @@
 import EventEmitter from 'events'
 
-import { FetchRequest, JsonRpcApiProvider, JsonRpcProvider, WebSocketProvider } from 'ethers'
+import type { JsonRpcApiProvider } from 'ethers'
+import { FetchRequest, JsonRpcProvider, WebSocketProvider } from 'ethers'
 import WebSocket from 'ws'
 
 export type RpcParams = readonly unknown[] | Record<string, unknown>

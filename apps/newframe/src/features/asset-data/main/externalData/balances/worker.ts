@@ -9,7 +9,8 @@ log.transports.file.level = ['development', 'test'].includes(process.env.NODE_EN
   : 'verbose'
 
 import type { Token } from '../../../../../platform/state-store/state/index.js'
-import balancesLoader, { BalanceLoader } from './scan.js'
+import type { BalanceLoader } from './scan.js'
+import balancesLoader from './scan.js'
 
 interface ExternalDataWorkerMessage {
   command: string

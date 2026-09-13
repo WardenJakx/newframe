@@ -108,6 +108,7 @@ it('leaves deny-all active for live side trays and prevents old disposal replaci
 
 it('rejects destroyed registrations and lookalike WebContents identities', () => {
   const f = fixture()
+  // oxlint-disable-next-line typescript/no-misused-spread -- Deliberately drop the prototype to test a lookalike identity.
   expect(f.check({ ...f.wallet.webContents } as WebContents, 'media', '', f.details)).toBe(false)
   f.wallet.destroy()
   expect(f.allowed()).toBe(false)

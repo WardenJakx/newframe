@@ -1,5 +1,5 @@
 import type { EIP712MessageDomain } from '@ledgerhq/types-live'
-import { SignTypedDataVersion, MessageTypeProperty } from '@metamask/eth-sig-util'
+import type { SignTypedDataVersion, MessageTypeProperty } from '@metamask/eth-sig-util'
 
 import type { TypedMessage, TypedSignatureRequestType } from '../../../features/requests/contract/requests.js'
 import signatureTypes from './types.js'
@@ -18,7 +18,7 @@ const matchesDomainFilter = (domain: EIP712MessageDomain, domainFilter: string[]
 
 export const identify = ({ data }: TypedMessage<SignTypedDataVersion>): TypedSignatureRequestType => {
   const identified = Object.entries(signatureTypes).find(([, { domainFilter, types: requiredTypes }]) => {
-    if (!('types' in data && 'message' in data)) return
+    if (!('types' in data && 'message' in data)) return false
 
     return Object.entries(requiredTypes).every(
       ([name, properties]) =>

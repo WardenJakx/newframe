@@ -63,7 +63,7 @@ const secretToKey = (secret: string) => {
 }
 
 const validateCredential = (credential: StoredWebAuthnCredential) => {
-  if (!credential || credential.version !== 1) throw new Error('Invalid biometric credential')
+  if (credential?.version !== 1) throw new Error('Invalid biometric credential')
   if (!/^[0-9a-f]+$/i.test(normalizeHex(credential.credentialId))) {
     throw new Error('Invalid biometric credential id')
   }

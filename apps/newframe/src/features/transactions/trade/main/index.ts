@@ -797,12 +797,11 @@ function quoteAssetRateInputs(quote: FlashQuote): AssetRateInput[] {
 
 async function flashRequest(path: string, init: RequestInit = {}) {
   const url = new URL(`${flashBaseUrl()}${path}`)
+  const headers = new Headers(flashHeaders())
+  new Headers(init.headers).forEach((value, name) => headers.set(name, value))
   const response = await fetch(url, {
     ...init,
-    headers: {
-      ...flashHeaders(),
-      ...init.headers
-    }
+    headers
   })
   const contentType = response.headers.get('content-type') || ''
   const payload = contentType.includes('application/json') ? await response.json() : await response.text()
@@ -965,9 +964,7 @@ function orderAssetFromReference(value: unknown, fallback?: FlashAsset | null): 
 
   const normalizedAddress = normalizeAddress(address)
   const fallbackMatches =
-    fallback &&
-    fallback.chainId === chainId &&
-    normalizeAddress(toFlashApiAssetAddress(fallback)) === normalizedAddress
+    fallback?.chainId === chainId && normalizeAddress(toFlashApiAssetAddress(fallback)) === normalizedAddress
       ? fallback
       : null
   const knownAsset = getFlashAssetsForChain(chainId).find(

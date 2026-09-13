@@ -120,8 +120,7 @@ export function createSideTrayWalletSelector() {
     })
 
     if (
-      previousResult &&
-      previousResult.accounts === accounts &&
+      previousResult?.accounts === accounts &&
       previousResult.activity === activity &&
       previousResult.balanceSummaries === balanceSummaries &&
       previousResult.currentAccount === currentAccount &&

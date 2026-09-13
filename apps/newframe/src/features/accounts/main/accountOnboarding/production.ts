@@ -67,7 +67,7 @@ export function createProductionAccountOnboardingAdapters(
         const signer = external.signers.get(signerId) as
           | (Signer & { loadAccounts(accountCount: number): void })
           | undefined
-        if (!signer || signer.type !== 'ledger') return false
+        if (signer?.type !== 'ledger') return false
         signer.loadAccounts(accountCount)
         return true
       },
@@ -75,13 +75,13 @@ export function createProductionAccountOnboardingAdapters(
         const signer = external.signers.get(signerId) as
           | (Signer & { pair?: (value: string) => Promise<void> })
           | undefined
-        if (!signer || signer.type !== 'lattice' || typeof signer.pair !== 'function') return false
+        if (signer?.type !== 'lattice' || typeof signer.pair !== 'function') return false
         await signer.pair(pairCode)
         return true
       },
       submitTrezorInput(command: TrezorInputCommand) {
         const signer = external.signers.get(command.signerId)
-        if (!signer || signer.type !== 'trezor') return false
+        if (signer?.type !== 'trezor') return false
         if (command.input === 'pin') external.trezorBridge.pinEntered(command.signerId, command.value)
         if (command.input === 'passphrase') {
           external.trezorBridge.passphraseEntered(command.signerId, command.value)

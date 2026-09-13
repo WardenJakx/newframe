@@ -3,15 +3,16 @@ import log from 'electron-log'
 import { Interface, toBeHex } from 'ethers'
 import type { BytesLike } from 'ethers'
 
+import type { Call } from '../../../../../platform/chain-rpc/multicall/index.js'
 import multicall, {
-  Call,
   supportsChain as multicallSupportsChain
 } from '../../../../../platform/chain-rpc/multicall/index.js'
 import type { Token } from '../../../../../platform/state-store/state/index.js'
 import erc20TokenAbi from '../../../../../shared/domain/erc20-abi.js'
 import { formatUnits } from '../../../../../shared/domain/units.js'
 import type { Eip1193Provider } from '../../../../connections/main/provider/connection.js'
-import { groupByChain, TokensByChain } from './reducers.js'
+import type { TokensByChain } from './reducers.js'
+import { groupByChain } from './reducers.js'
 
 const erc20Interface = new Interface(erc20TokenAbi)
 

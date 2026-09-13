@@ -683,11 +683,9 @@ describe('main Flash facade helpers', () => {
       idempotencyKey: quote.id,
       signature: '0xsignature'
     })
-    expect(fetchMock).toHaveBeenNthCalledWith(
-      1,
-      expect.any(URL),
-      expect.objectContaining({ headers: expect.objectContaining({ 'Idempotency-Key': quote.id }) })
-    )
+    const submitInit = fetchMock.mock.calls[0]?.[1] as RequestInit
+    expect(new Headers(submitInit.headers).get('Idempotency-Key') ?? undefined).toBe(quote.id)
+    expect(new Headers(submitInit.headers).get('content-type')).toBe('application/json')
     expect(track).toHaveBeenCalledTimes(1)
     expect(track).toHaveBeenCalledWith({
       address: request.accountAddress,

@@ -253,8 +253,7 @@ async function rpc(
 
   const payload = (await readJson(req)) as JSONRPCRequestPayload
   if (
-    !payload ||
-    payload.jsonrpc !== '2.0' ||
+    payload?.jsonrpc !== '2.0' ||
     (typeof payload.id !== 'string' && typeof payload.id !== 'number') ||
     !AGENT_RPC_METHODS.has(payload.method) ||
     !Array.isArray(payload.params)
@@ -358,7 +357,7 @@ function resolveAgentAccessRequest(
 
   const account = accounts.getFrameAccount(pending.accountId)
   const request = account?.getRequest<AgentAccessRequest>(requestId)
-  if (!account || !request || request.type !== 'agentAccess') return false
+  if (!account || request?.type !== 'agentAccess') return false
   if (request.authorization?.decision !== 'prompt') return false
 
   if (!approved) {

@@ -7,7 +7,8 @@ import protectedMethods from '../../../../platform/local-rpc/protectedMethods.js
 import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.js'
 import { getAddress } from '../../../../shared/domain/address.js'
 import type { TransactionRequest } from '../../../requests/contract/requests.js'
-import { usesBaseFee, TransactionData, GasFeesSource } from '../../../transactions/domain/index.js'
+import type { TransactionData } from '../../../transactions/domain/index.js'
+import { usesBaseFee, GasFeesSource } from '../../../transactions/domain/index.js'
 import isUtf8 from './isUtf8.js'
 
 const permission = (date: number, method: string) => ({ parentCapability: method, date })

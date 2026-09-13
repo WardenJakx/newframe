@@ -6,7 +6,7 @@ import { v5 as uuidv5 } from 'uuid'
 
 import { getProfileAccountIds } from '../../../app/contracts/state/main.js'
 import type { SigningApprovalContext } from '../../../platform/signing/signers/Signer/index.js'
-import Signer from '../../../platform/signing/signers/Signer/index.js'
+import type Signer from '../../../platform/signing/signers/Signer/index.js'
 import type { CanonicalStoreReader } from '../../../platform/state-store/actions.js'
 import type { ActivityRecord, StatusNotification, Token } from '../../../platform/state-store/state/index.js'
 import { weiIntToEthInt, hexToInt } from '../../../shared/domain/hex.js'
@@ -16,24 +16,22 @@ import type { DataScanner } from '../../asset-data/main/externalData/index.js'
 import type { NameResolutionService } from '../../name-resolution/main/nameResolution.js'
 import { chainUsesOptimismFees } from '../../networks/domain/chain/fees.js'
 import type { Chain } from '../../networks/main/index.js'
-import {
+import type {
   AccountRequest,
   AccessRequest,
   TransactionRequest,
   TransactionReceipt,
-  ReplacementType,
-  RequestStatus,
-  RequestMode,
   TypedMessage,
   PermitSignatureRequest
 } from '../../requests/contract/requests.js'
-import { ApprovalType } from '../../requests/domain/approval.js'
+import { ReplacementType, RequestStatus, RequestMode } from '../../requests/contract/requests.js'
+import type { ApprovalType } from '../../requests/domain/approval.js'
 import type { PromptedRequestLifecyclePort } from '../../requests/main/service.js'
 import { NATIVE_CURRENCY } from '../../tokens/domain/constants.js'
 import { tokensForAccount, toTokenId } from '../../tokens/domain/index.js'
+import type { TransactionData } from '../../transactions/domain/index.js'
 import {
   usesBaseFee,
-  TransactionData,
   GasFeesSource,
   TRANSACTION_CONFIRMATION_TARGET,
   getTransactionIntent,
@@ -43,7 +41,7 @@ import {
   type TransactionEffect
 } from '../../transactions/domain/index.js'
 import type { AccountTransactionPolicyPort } from '../../transactions/main/accountPolicyPort.js'
-import { ActionType } from '../../transactions/main/actions/index.js'
+import type { ActionType } from '../../transactions/main/actions/index.js'
 import type { RevealService } from '../../transactions/main/reveal.js'
 import type { TransactionSimulationPort } from '../../transactions/main/simulationPort.js'
 import { accountNS } from '../domain/index.js'
@@ -352,7 +350,7 @@ export class Accounts extends EventEmitter {
 
     const sourceId = transactionActivityId(hash)
     const source = this.store.getState().main.activity[sourceId] as ActivityRecord | undefined
-    if (!source || source.status !== 'succeeded') return
+    if (source?.status !== 'succeeded') return
 
     const sourceAddress = String(
       source.account || source.address || req.account || req.data?.from || ''
@@ -1059,7 +1057,7 @@ export class Accounts extends EventEmitter {
     log.info('confirmRequestApproval', reqId, approvalType)
 
     const currentAccount = this.current()
-    if (currentAccount && currentAccount.requests[reqId]) {
+    if (currentAccount?.requests[reqId]) {
       currentAccount.approveRequest(reqId, approvalType, approvalData)
     }
   }
@@ -1094,7 +1092,7 @@ export class Accounts extends EventEmitter {
     const currentAccount = this.current()
 
     return new Promise<void>((resolve, reject) => {
-      if (!currentAccount || !currentAccount.requests[id]) return reject(new Error('Could not find request'))
+      if (!currentAccount?.requests[id]) return reject(new Error('Could not find request'))
       if (currentAccount.requests[id].type !== 'transaction')
         return reject(new Error('Request is not transaction'))
 
@@ -1213,7 +1211,7 @@ export class Accounts extends EventEmitter {
                       currentState.assetRates
                     )?.usdRate
 
-                    if (ethPrice && txRequest.tx && txRequest.tx.receipt && this.has(account.address)) {
+                    if (ethPrice && txRequest.tx?.receipt && this.has(account.address)) {
                       const { gasUsed } = txRequest.tx.receipt
 
                       const feeAtTime = (
@@ -1649,7 +1647,7 @@ export class Accounts extends EventEmitter {
 
   verifyAddress(display: boolean, cb: Callback<boolean>) {
     const currentAccount = this.current()
-    if (currentAccount && currentAccount.verifyAddress) currentAccount.verifyAddress(display, cb)
+    currentAccount?.verifyAddress?.(display, cb)
   }
 
   getSelectedAddresses() {
@@ -1745,9 +1743,7 @@ export class Accounts extends EventEmitter {
 
   resolveRequest<T>(req: AccountRequest, result?: T) {
     const currentAccount = this.current()
-    if (currentAccount && currentAccount.resolveRequest) {
-      currentAccount.resolveRequest(req, result)
-    }
+    currentAccount?.resolveRequest?.(req, result)
   }
 
   rejectRequest(req: AccountRequest, error: EVMError) {
@@ -2038,7 +2034,7 @@ export class Accounts extends EventEmitter {
     if (!currentAccount) throw new Error('No account selected while setting base fee')
 
     const request = this.getTransactionRequest(currentAccount, handlerId)
-    if (!request || request.type !== 'transaction')
+    if (request?.type !== 'transaction')
       throw new Error(`Could not find transaction request with handlerId ${handlerId}`)
     if (request.locked) throw new Error('Request has already been approved by the user')
     if (request.feesUpdatedByUser && !userUpdate) throw new Error('Fee has been updated by user')
@@ -2242,8 +2238,8 @@ export class Accounts extends EventEmitter {
 
     const txRequest = this.getTransactionRequest(currentAccount, handlerId)
 
-    if (txRequest && txRequest.type === 'transaction') {
-      const nonce = txRequest.data && txRequest.data.nonce
+    if (txRequest?.type === 'transaction') {
+      const nonce = txRequest.data?.nonce
       if (nonce) {
         let updatedNonce = parseInt(nonce, 16) + nonceAdjust
         if (updatedNonce < 0) updatedNonce = 0
@@ -2289,7 +2285,7 @@ export class Accounts extends EventEmitter {
   lockRequest(handlerId: string) {
     // When a request is approved, lock it so that no automatic updates such as fee changes can happen
     const currentAccount = this.current()
-    if (currentAccount && currentAccount.requests[handlerId]) {
+    if (currentAccount?.requests[handlerId]) {
       currentAccount.patchRequest<TransactionRequest>(handlerId, (request) => {
         request.locked = true
       })

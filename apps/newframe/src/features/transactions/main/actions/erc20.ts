@@ -1,4 +1,4 @@
-import { Identity } from '../../../requests/contract/requests.js'
+import type { Identity } from '../../../requests/contract/requests.js'
 import type { Action } from './index.js'
 
 export type ActionType = 'erc20:approve' | 'erc20:revoke' | 'erc20:transfer'
