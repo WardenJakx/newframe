@@ -33,6 +33,7 @@ import {
   useNetwork,
   useNetworkMetadata,
   useOriginName,
+  useOrigins,
   useTokens
 } from '../state'
 import TransactionInformation from './TransactionInformation'
@@ -67,6 +68,7 @@ type TxReviewProps = {
   network: ReturnType<typeof useNetwork>
   networkMetadata: ReturnType<typeof useNetworkMetadata>
   originName: string
+  favicon?: string
   signingAccount: ReturnType<typeof useAccountIdentity>
   tokens: ReturnType<typeof useTokens>
   openAdjustFee(): void
@@ -396,6 +398,7 @@ function TxReviewView(props: TxReviewProps) {
       rawTransaction={JSON.stringify(req.data, null, 2)}
       wrapDetailValues
       originName={originName}
+      favicon={props.favicon}
       networkName={chainName}
       networkIcon={persistedImageSource(meta.image)}
       statusLabel={displayStatus(req)}
@@ -448,6 +451,7 @@ export default function TxReviewWithState(props: TxReviewWithStateProps) {
   const network = useNetwork('ethereum', chainId)
   const networkMetadata = useNetworkMetadata('ethereum', chainId)
   const originName = useOriginName(props.req.origin)
+  const origins = useOrigins()
   const tokens = useTokens()
   const from = props.req.data.from || props.req.account
   const recipient = transferRecipient(props.req)
@@ -470,6 +474,7 @@ export default function TxReviewWithState(props: TxReviewWithStateProps) {
       network={network}
       networkMetadata={networkMetadata}
       originName={originName}
+      favicon={persistedImageSource(origins[props.req.origin]?.image)}
       signingAccount={signingAccount}
       tokens={tokens}
       openAdjustFee={() => open({ step: 'adjustFee' })}

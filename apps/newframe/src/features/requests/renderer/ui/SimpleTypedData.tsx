@@ -5,6 +5,7 @@ import { Text } from '@newframe/ui/text'
 import { DetailRow } from '../../../../shared/renderer/ui/DetailRow'
 import type { Erc7730Display } from '../../contract/requests'
 import type { Eip712Digests } from '../../contract/requests'
+import { RequestOrigin } from './RequestOrigin'
 
 type SimpleJsonRow = {
   label: string
@@ -106,6 +107,7 @@ type SimpleTypedDataInnerProps = {
 
 type SimpleTypedDataProps = {
   originName: string
+  favicon?: string
   req: {
     type: string
     typedMessage: { data: unknown }
@@ -113,18 +115,6 @@ type SimpleTypedDataProps = {
     digests?: Partial<Eip712Digests>
   }
 }
-
-const RequestOrigin = ({ originName }: { originName: string }) => (
-  <Surface padding='small' radius='small' tone='subtle'>
-    <DetailRow
-      code
-      label='Request Origin'
-      labelVariant='overline'
-      value={originName}
-      valueVariant='supporting'
-    />
-  </Surface>
-)
 
 const SimpleTypedDataInner = ({ typedData }: SimpleTypedDataInnerProps) => {
   if (isRecord(typedData) && 'domain' in typedData) {
@@ -206,13 +196,13 @@ const Erc7730ClearSigning = ({ display }: { display?: Erc7730Display }) => {
   )
 }
 
-export const SimpleTypedData = ({ originName, req }: SimpleTypedDataProps) => {
+export const SimpleTypedData = ({ originName, favicon, req }: SimpleTypedDataProps) => {
   const type = req.type
   const typedData = req.typedMessage.data || {}
 
   return type === 'signTypedData' || type === 'signErc20Permit' ? (
     <Stack gap='medium'>
-      <RequestOrigin originName={originName} />
+      <RequestOrigin originName={originName} favicon={favicon} description='wants you to sign data' />
       <Erc7730ClearSigning display={req.erc7730} />
       <DigestRows digests={req.digests} />
       <Text tone='muted' variant='sectionTitle'>

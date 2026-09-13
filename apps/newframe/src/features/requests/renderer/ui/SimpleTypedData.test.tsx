@@ -1,21 +1,43 @@
 import { describe, expect, test } from 'bun:test'
 
-import { screen, render } from '../../../../../test/support/componentSetup'
+import { screen, render, fireEvent } from '../../../../../test/support/componentSetup'
+import { createRendererStateFixture } from '../../../../../test/support/rendererState'
+import SignTypedDataRequest from '../Account/Requests/SignTypedDataRequest'
 import { SimpleTypedData } from './SimpleTypedData'
 
 describe('SimpleTypedData', () => {
-  test('renders the request origin', () => {
+  test('renders the stored requester and favicon, with a fallback for failed images', () => {
+    const favicon = 'data:image/png;base64,aWNvbg=='
     render(
-      <SimpleTypedData
-        originName='app.hyperliquid.xyz'
+      <SignTypedDataRequest
         req={{
           type: 'signTypedData',
-          typedMessage: { data: {} }
+          origin: 'origin-1',
+          handlerId: 'request-1',
+          account: '0x1',
+          payload: { id: 1, jsonrpc: '2.0', method: 'eth_signTypedData_v4', params: [] },
+          typedMessage: { data: { domain: { name: 'Different signed domain' } }, version: 'V4' }
         }}
-      />
+      />,
+      {
+        rendererState: createRendererStateFixture({
+          initialState: {
+            origins: {
+              'origin-1': {
+                name: 'app.hyperliquid.xyz',
+                image: { mimeType: 'image/png', base64: 'aWNvbg==' }
+              }
+            }
+          }
+        })
+      }
     )
 
-    expect(screen.getByText('Request Origin')).toBeTruthy()
+    expect(screen.getByText('app.hyperliquid.xyz')).toBeTruthy()
+    const image = screen.getByRole('presentation')
+    expect(image.getAttribute('src')).toBe(favicon)
+    fireEvent.error(image)
+    expect(screen.queryByRole('presentation')).toBeNull()
     expect(screen.getByText('app.hyperliquid.xyz')).toBeTruthy()
   })
 

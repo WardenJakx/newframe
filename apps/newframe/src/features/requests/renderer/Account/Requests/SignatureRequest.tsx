@@ -1,30 +1,17 @@
-import { Icon } from '@newframe/ui/icon'
-import { Image } from '@newframe/ui/image'
 import { Stack } from '@newframe/ui/stack'
 import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
 import { ParsedMessage } from '@spruceid/siwe-parser'
-import { useMemo, useState, type ReactNode } from 'react'
+import { useMemo, type ReactNode } from 'react'
 
 import { cva } from '../../../../../../generated/styled-system/css/cva.js'
+import { RequestOrigin } from '../../ui/RequestOrigin'
 import type { SignRequestView } from './requestViewTypes'
 
 const messageRecipe = cva({
   base: { margin: 0, overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }
 })
 const valueRecipe = cva({ base: { minWidth: 0, overflowWrap: 'anywhere' } })
-const siteIconRecipe = cva({
-  base: {
-    width: 'field',
-    height: 'field',
-    display: 'grid',
-    placeItems: 'center',
-    borderRadius: 'control',
-    overflow: 'hidden',
-    background: 'bg.control',
-    color: 'text.secondary'
-  }
-})
 const summaryRecipe = cva({ base: { cursor: 'pointer', paddingBlock: '3', color: 'text.secondary' } })
 const detailsRecipe = cva({ base: { margin: 0, display: 'grid', gap: '4' } })
 const detailValueRecipe = cva({ base: { margin: 0, overflowWrap: 'anywhere' } })
@@ -77,7 +64,6 @@ export default function MessageToSign({
 }: MessageToSignProps) {
   const message = req.data.decodedMessage
   const signIn = useMemo(() => parseSignInMessage(message), [message])
-  const [failedFavicon, setFailedFavicon] = useState('')
   const requester = originName || req.origin
   const requesterAuthority = authority(requester)
   const domainMismatch = signIn && (!requesterAuthority || requesterAuthority !== authority(signIn.domain))
@@ -112,23 +98,7 @@ export default function MessageToSign({
   return (
     <Surface padding='large' tone='transparent'>
       <Stack gap='large'>
-        <Stack align='center' gap='small'>
-          <span className={siteIconRecipe()}>
-            {favicon && failedFavicon !== favicon ? (
-              <Image alt='' source={favicon} onLoadError={() => setFailedFavicon(favicon)} />
-            ) : (
-              <Icon name='window' size='large' />
-            )}
-          </span>
-          <div className={valueRecipe()}>
-            <Text align='center' variant='heading'>
-              {requester}
-            </Text>
-          </div>
-          <Text align='center' tone='secondary' variant='supporting'>
-            wants you to sign in
-          </Text>
-        </Stack>
+        <RequestOrigin originName={requester} favicon={favicon} description='wants you to sign in' />
         <Stack gap='small'>
           <Text tone='secondary' variant='overline'>
             Signing account

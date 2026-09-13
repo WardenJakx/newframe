@@ -356,7 +356,8 @@ function AccountBody(props: AccountBodyProps) {
             capabilities={props.capabilities}
             chainData={chainData}
             key={request.handlerId}
-            originName={origins[request.origin]?.name || ''}
+            originName={origins[request.origin]?.name || request.origin}
+            favicon={persistedImageSource(origins[request.origin]?.image)}
             req={request}
             step={requestView.step}
           />
