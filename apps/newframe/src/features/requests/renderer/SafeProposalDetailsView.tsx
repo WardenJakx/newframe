@@ -54,7 +54,7 @@ export function SafeProposalDetailsView({
 }) {
   const [ownerMenuOpen, setOwnerMenuOpen] = useState(false)
   const selectedOwner = owners.find((owner) => owner.accountId === selectedOwnerId)
-  const hasAttachedSigner = owners.some((owner) => owner.signerAttached)
+  const hasSigningAccount = owners.some((owner) => owner.status !== 'watch-only')
   const ownerDescription = (owner: SafeOwnerAccount) => {
     const type = signerTypeLabel(owner.signerType)
     return signerIsReady(owner.signerStatus)
@@ -201,18 +201,18 @@ export function SafeProposalDetailsView({
           <SigningAccount label={hasEnoughConfirmations ? 'Executing with' : 'Signing with'}>
             <Selection
               label='Signing account'
-              disabled={!hasAttachedSigner}
+              disabled={!hasSigningAccount}
               menuPlacement='above'
               menuAlign='end'
               menuWidth='wide'
               triggerSize='small'
-              open={ownerMenuOpen && hasAttachedSigner}
+              open={ownerMenuOpen && hasSigningAccount}
               onOpenChange={setOwnerMenuOpen}
               selectedId={selectedOwnerId}
               onSelect={(id) => onSelectOwner?.(id)}
-              placeholder={hasAttachedSigner && !selectedOwner}
+              placeholder={hasSigningAccount && !selectedOwner}
               trigger={
-                hasAttachedSigner && selectedOwner ? (
+                hasSigningAccount && selectedOwner ? (
                   <AddressIdentity
                     address={selectedOwner.address}
                     nickname={selectedOwner.name || shortAddress(selectedOwner.address)}
@@ -220,14 +220,14 @@ export function SafeProposalDetailsView({
                     showFullAddress
                   />
                 ) : (
-                  <Text variant='caption' truncate={hasAttachedSigner}>
-                    {hasAttachedSigner ? 'Choose an account' : 'No attached signer for the Safe'}
+                  <Text variant='caption' truncate={hasSigningAccount}>
+                    {hasSigningAccount ? 'Choose an account' : 'No attached signer for the Safe'}
                   </Text>
                 )
               }
               items={owners.map((owner) => ({
                 id: owner.accountId,
-                disabled: !owner.signerAttached,
+                disabled: owner.status === 'watch-only',
                 content: (
                   <Stack gap='none' grow>
                     {owner.name ? <Text truncate>{owner.name}</Text> : null}
@@ -247,7 +247,12 @@ export function SafeProposalDetailsView({
           </SigningAccount>
           <RequestActions
             primary={{
-              label: hasEnoughConfirmations ? 'Execute' : 'Sign',
+              label:
+                selectedOwner && !selectedOwner.signerAttached
+                  ? 'No signer attached'
+                  : hasEnoughConfirmations
+                    ? 'Execute'
+                    : 'Sign',
               disabled: true,
               onPress: () => {}
             }}

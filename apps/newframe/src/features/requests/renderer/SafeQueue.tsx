@@ -88,11 +88,13 @@ export function useSafeQueue({
         )
       : undefined
   if (ownerSelection.scope !== ownerScope) {
-    const attached = owners.filter((owner) => owner.signerAttached)
+    const signingAccounts = owners.filter((owner) => owner.status !== 'watch-only')
     setOwnerSelection({
       scope: ownerScope,
       account:
-        attached.length === 1 ? { accountId: attached[0].accountId, created: attached[0].created } : null
+        signingAccounts.length === 1
+          ? { accountId: signingAccounts[0].accountId, created: signingAccounts[0].created }
+          : null
     })
   } else if (ownerSelection.account && !selectedOwner) {
     setOwnerSelection({ scope: ownerScope, account: null })
@@ -188,7 +190,9 @@ export function useSafeQueue({
             owners,
             selectedOwnerId: selectedOwner?.accountId,
             onSelectOwner: (accountId: string) => {
-              const owner = owners.find((owner) => owner.accountId === accountId && owner.signerAttached)
+              const owner = owners.find(
+                (owner) => owner.accountId === accountId && owner.status !== 'watch-only'
+              )
               if (owner)
                 setOwnerSelection({
                   scope: ownerScope,

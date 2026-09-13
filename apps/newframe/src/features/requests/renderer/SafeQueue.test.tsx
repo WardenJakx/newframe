@@ -83,13 +83,13 @@ function stateWithOwners(owners: SafeOwnerAccount[]) {
   return next
 }
 
-function expectSafeSubmissionDisabled() {
-  for (const name of ['Sign', 'Decline']) {
+function expectSafeSubmissionDisabled(primary = 'Sign') {
+  for (const name of [primary, 'Decline']) {
     expect(screen.getByRole('button', { name }).hasAttribute('disabled')).toBe(true)
   }
 }
 
-it('defaults the sole attached owner in bottom controls and preserves Safe identity and simulation', async () => {
+it('selects disconnected owners in bottom controls and preserves Safe identity and simulation', async () => {
   const hot = ownerAccount('Hot owner')
   const hardware = ownerAccount('Ledger owner', {
     signerType: 'ledger',
@@ -104,7 +104,7 @@ it('defaults the sole attached owner in bottom controls and preserves Safe ident
   capabilities.safe.simulate.mockReturnValueOnce(pending.promise)
   const { user } = render(<RequestsOverlay capabilities={capabilities} onBack={() => {}} />)
   await user.click(screen.getByRole('button', { name: `Open Safe proposal ${hash} on chain 1` }))
-  expect(screen.getByRole('button', { name: 'Signing account' }).textContent).toContain('Hot owner')
+  expect(screen.getByRole('button', { name: 'Signing account' }).textContent).toContain('Choose an account')
   expect(screen.getByText('Signing with')).toBeTruthy()
   expect(screen.queryByText('Owner account')).toBeNull()
   const details = screen.getByLabelText('Transaction details')
@@ -116,7 +116,6 @@ it('defaults the sole attached owner in bottom controls and preserves Safe ident
   ).toBeTruthy()
   expectSafeSubmissionDisabled()
   const connected = { ...hardware, signerAttached: true, signerStatus: 'ok', status: 'ready' as const }
-  await act(async () => fixture.state.reset(stateWithOwners([hot, connected])))
   await user.click(screen.getByRole('button', { name: 'Signing account' }))
   expect(within(screen.getByRole('option', { name: /Hot owner/ })).getByText('Hot Signer')).toBeTruthy()
   await user.click(screen.getByRole('option', { name: /Ledger owner/ }))
@@ -126,8 +125,7 @@ it('defaults the sole attached owner in bottom controls and preserves Safe ident
   expect(selectedState.accounts[address].address).toBe(address)
   expect(selectedState.accounts[address].signer).toBe('watch')
   expect(selectedState.accounts[hot.accountId].signer).toBe('Hot owner-signer')
-  expectSafeSubmissionDisabled()
-  await act(async () => fixture.state.reset(stateWithOwners([hot, hardware])))
+  expectSafeSubmissionDisabled('No signer attached')
   expect(screen.getByRole('button', { name: 'Signing account' }).textContent).toContain('Ledger owner')
   await user.click(screen.getByRole('button', { name: 'Signing account' }))
   expect(screen.getByText('Ledger · disconnected')).toBeTruthy()
@@ -151,10 +149,9 @@ it('defaults the sole attached owner in bottom controls and preserves Safe ident
     }))
   )
   await act(async () => fixture.state.reset(detached))
-  expect(screen.getByRole('button', { name: 'Signing account' }).textContent).toBe(
-    'No attached signer for the Safe'
-  )
-  expect(screen.getByRole('button', { name: 'Signing account' }).hasAttribute('disabled')).toBe(true)
+  expect(screen.getByRole('button', { name: 'Signing account' }).textContent).toContain('Ledger owner')
+  expect(screen.getByRole('button', { name: 'Signing account' }).hasAttribute('disabled')).toBe(false)
+  expectSafeSubmissionDisabled('No signer attached')
   await act(async () => fixture.state.reset(locked))
   expect(screen.getByRole('button', { name: 'Signing account' }).textContent).toContain('Ledger owner')
   await act(async () => pending.resolve(success('Owner-independent preview')))
@@ -162,7 +159,7 @@ it('defaults the sole attached owner in bottom controls and preserves Safe ident
   expectSafeSubmissionDisabled()
 })
 
-it('allows attached locked owners and keeps watch-only and detached owners disabled', async () => {
+it('allows locked and disconnected owners while keeping watch-only owners disabled', async () => {
   const owners = [
     ownerAccount('First owner'),
     ownerAccount('Second owner'),
@@ -186,7 +183,7 @@ it('allows attached locked owners and keeps watch-only and detached owners disab
   await user.click(screen.getByRole('button', { name: 'Signing account' }))
   const locked = screen.getByRole('option', { name: /Locked owner/ })
   expect(locked.hasAttribute('disabled')).toBe(false)
-  expect(screen.getByRole('option', { name: /Detached owner/ }).hasAttribute('disabled')).toBe(true)
+  expect(screen.getByRole('option', { name: /Detached owner/ }).hasAttribute('disabled')).toBe(false)
   expect(screen.getByRole('option', { name: /Watch owner/ }).hasAttribute('disabled')).toBe(true)
   await user.click(screen.getByRole('option', { name: /Watch owner/ }))
   expect(screen.getByRole('button', { name: 'Signing account' }).textContent).toContain('Choose an account')
@@ -194,6 +191,10 @@ it('allows attached locked owners and keeps watch-only and detached owners disab
   await user.click(locked)
   expect(screen.getByRole('button', { name: 'Signing account' }).textContent).toContain('Locked owner')
   expectSafeSubmissionDisabled()
+  await user.click(screen.getByRole('button', { name: 'Signing account' }))
+  await user.click(screen.getByRole('option', { name: /Detached owner/ }))
+  expect(screen.getByRole('button', { name: 'Signing account' }).textContent).toContain('Detached owner')
+  expectSafeSubmissionDisabled('No signer attached')
 })
 
 it.each(['account removed', 'account recreated', 'foreign profile', 'owner removed', 'watch-only'] as const)(
@@ -248,7 +249,7 @@ it('uses each deployment’s owners and starts a fresh choice after the Safe acc
   expect(screen.getByRole('button', { name: 'Signing account' }).textContent).toContain('Choose an account')
 })
 
-it('does not default a signer attached later and permits choosing it while locked', async () => {
+it('defaults a sole disconnected signing account and retains it when the signer attaches', async () => {
   const locked = ownerAccount('Locked owner', {
     signerAttached: false,
     status: 'unavailable',
@@ -257,12 +258,11 @@ it('does not default a signer attached later and permits choosing it while locke
   fixture.state.reset(stateWithOwners([locked]))
   const { user } = render(<RequestsOverlay capabilities={createCapabilityFake()} onBack={() => {}} />)
   await user.click(screen.getByRole('button', { name: `Open Safe proposal ${hash} on chain 1` }))
-  expect(screen.getByRole('button', { name: 'Signing account' }).textContent).toBe(
-    'No attached signer for the Safe'
-  )
-  expect(screen.getByRole('button', { name: 'Signing account' }).hasAttribute('disabled')).toBe(true)
+  expect(screen.getByRole('button', { name: 'Signing account' }).textContent).toContain('Locked owner')
+  expect(screen.getByRole('button', { name: 'Signing account' }).hasAttribute('disabled')).toBe(false)
+  expectSafeSubmissionDisabled('No signer attached')
   await act(async () => fixture.state.reset(stateWithOwners([{ ...locked, signerAttached: true }])))
-  expect(screen.getByRole('button', { name: 'Signing account' }).textContent).toContain('Choose an account')
+  expect(screen.getByRole('button', { name: 'Signing account' }).textContent).toContain('Locked owner')
   await user.click(screen.getByRole('button', { name: 'Signing account' }))
   expect(screen.getByText('Hot Signer · Wallet locked')).toBeTruthy()
   await user.click(screen.getByRole('option', { name: /Locked owner/ }))
@@ -304,6 +304,25 @@ it('keeps confirmed owners selectable as the proposal advances to execution', as
   await user.click(screen.getByRole('button', { name: 'Execute' }))
   expect(screen.getByText('Awaiting execution')).toBeTruthy()
 
+  const disconnected = structuredClone(confirmed)
+  disconnected.accounts[address].safeOwners!['1']![0] = {
+    ...first,
+    signerAttached: false,
+    signerStatus: 'Signer unavailable',
+    status: 'unavailable'
+  }
+  await act(async () => fixture.state.reset(disconnected))
+  expect(screen.getByText('Executing with')).toBeTruthy()
+  expect(screen.getByText('Awaiting execution')).toBeTruthy()
+  expect(within(chooser).getByText('Ledger owner')).toBeTruthy()
+  expectSafeSubmissionDisabled('No signer attached')
+  await user.click(chooser)
+  await user.click(screen.getByRole('option', { name: /Other owner/ }))
+  await user.click(chooser)
+  expect(screen.getByRole('option', { name: /Ledger owner/ }).hasAttribute('disabled')).toBe(false)
+  await user.click(screen.getByRole('option', { name: /Ledger owner/ }))
+  expectSafeSubmissionDisabled('No signer attached')
+
   const waiting = structuredClone(confirmed)
   waiting.accounts[address].safe!['1']!.pending![0]!.nonce = '4'
   await act(async () => fixture.state.reset(waiting))
@@ -330,14 +349,15 @@ it.each(['empty', 'watch-only', 'detached', 'locked'] as const)(
     const { user } = render(<RequestsOverlay capabilities={createCapabilityFake()} onBack={() => {}} />)
     await user.click(screen.getByRole('button', { name: `Open Safe proposal ${hash} on chain 1` }))
     const chooser = screen.getByRole('button', { name: 'Signing account' })
-    expect(chooser.hasAttribute('disabled')).toBe(kind !== 'locked')
-    if (kind === 'locked') {
+    expect(chooser.hasAttribute('disabled')).toBe(kind === 'empty' || kind === 'watch-only')
+    if (kind === 'locked' || kind === 'detached') {
       expect(within(chooser).getByText('Owner')).toBeTruthy()
     } else {
       expect(chooser.textContent).toBe('No attached signer for the Safe')
     }
-    expectSafeSubmissionDisabled()
-    await user.click(screen.getByRole('button', { name: 'Sign' }))
+    const primary = kind === 'detached' ? 'No signer attached' : 'Sign'
+    expectSafeSubmissionDisabled(primary)
+    await user.click(screen.getByRole('button', { name: primary }))
     await user.click(screen.getByRole('button', { name: 'Decline' }))
     expect(screen.getByLabelText('Request review')).toBeTruthy()
   }
