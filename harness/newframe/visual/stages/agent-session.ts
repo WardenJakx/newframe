@@ -91,9 +91,11 @@ async function revokeSession(credentials: AgentCredentials) {
 }
 
 async function flashRequest(path: string, init: RequestInit) {
+  const headers = new Headers(init.headers)
+  if (!headers.has('content-type')) headers.set('content-type', 'application/json')
   const response = await fetch(`${localTradeServiceUrl}${path}`, {
     ...init,
-    headers: { 'content-type': 'application/json', ...init.headers }
+    headers
   })
   const body = (await response.json()) as Record<string, any>
   if (!response.ok) throw new Error(body.message || `Local Flash request failed with ${response.status}`)

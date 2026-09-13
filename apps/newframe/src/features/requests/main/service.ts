@@ -29,7 +29,7 @@ import type {
   TransactionRequest
 } from '../contract/requests.js'
 import { ReplacementType } from '../contract/requests.js'
-import { ApprovalType } from '../domain/approval.js'
+import type { ApprovalType } from '../domain/approval.js'
 import { isSignatureRequest, isTransactionRequest, isTypedMessageSignatureRequest } from '../domain/index.js'
 
 const FEE_WARNING_THRESHOLD_USD = 50
@@ -411,7 +411,7 @@ export function createRequestService(ports: RequestServicePorts) {
       const request = located?.request as
         | (AccountRequest<'switchChain'> & { chain?: { id?: string | number; type?: string } })
         | undefined
-      if (!located || !request || request.type !== 'switchChain') return false
+      if (!located || request?.type !== 'switchChain') return false
       if (approved) {
         const state = ports.store.getState()
         const chainId = Number(request.chain?.id)

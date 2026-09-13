@@ -22,10 +22,10 @@ import type {
   TransactionRequest,
   TypedMessage
 } from '../../requests/contract/requests.js'
-import { ApprovalType } from '../../requests/domain/approval.js'
+import type { ApprovalType } from '../../requests/domain/approval.js'
 import { isTransactionRequest, isTypedMessageSignatureRequest } from '../../requests/domain/index.js'
 import type { PromptedRequestLifecyclePort } from '../../requests/main/service.js'
-import { TransactionData } from '../../transactions/domain/index.js'
+import type { TransactionData } from '../../transactions/domain/index.js'
 import type { Action } from '../../transactions/main/actions/index.js'
 import type { RevealService } from '../../transactions/main/reveal.js'
 import type { TransactionSimulationPort } from '../../transactions/main/simulationPort.js'
@@ -81,7 +81,7 @@ class FrameAccount {
     profileActive = true
   ) {
     const { lastSignerType, name, ensName, created, address, options = {} } = params
-    const formattedAddress = (address && address.toLowerCase()) || '0x'
+    const formattedAddress = address?.toLowerCase() || '0x'
     this.accounts = accounts // Parent Accounts Module
     this.id = formattedAddress // Account ID
     this.address = formattedAddress

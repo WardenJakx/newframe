@@ -1,5 +1,5 @@
-import { Fragment, Interface } from 'ethers'
-import type { JsonFragment } from 'ethers'
+import { Interface } from 'ethers'
+import type { JsonFragment, Fragment } from 'ethers'
 
 import type {
   ApproveAction as EnsApprovalAction,

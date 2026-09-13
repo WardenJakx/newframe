@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 
-import { z } from 'zod'
+import type { z } from 'zod'
 
 import {
   FlashQuoteRequestSchema,

@@ -1,13 +1,16 @@
-import { Common } from '@ethereumjs/common'
-import { createTx, TypedTransaction, TypedTxData } from '@ethereumjs/tx'
+import type { Common } from '@ethereumjs/common'
+import type { TypedTransaction, TypedTxData } from '@ethereumjs/tx'
+import { createTx } from '@ethereumjs/tx'
 import { addHexPrefix, intToHex } from '@ethereumjs/util'
 
-import { AppVersion, SignerSummary } from '../../../platform/signing/signers/Signer/index.js'
+import type { AppVersion, SignerSummary } from '../../../platform/signing/signers/Signer/index.js'
 import type { Gas } from '../../../platform/state-store/state/index.js'
 import { isNonZeroHex } from '../../../shared/domain/hex.js'
 import chainConfig from '../../networks/main/config.js'
-import { TransactionRequest, TxClassification } from '../../requests/contract/requests.js'
-import { GasFeesSource, TransactionData, typeSupportsBaseFee } from '../domain/index.js'
+import type { TransactionRequest } from '../../requests/contract/requests.js'
+import { TxClassification } from '../../requests/contract/requests.js'
+import type { TransactionData } from '../domain/index.js'
+import { GasFeesSource, typeSupportsBaseFee } from '../domain/index.js'
 
 const londonHardforkSigners: SignerCompatibilityByVersion = {
   airgap: () => true,

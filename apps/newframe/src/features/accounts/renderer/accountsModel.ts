@@ -1,6 +1,7 @@
 import type { WalletRendererState } from '../../../platform/state-sync/contract/projections'
 import { signerTypeLabel } from '../../../shared/renderer/ui/signerPresentation'
-import { createBalanceSummarySelector, formatUsdRate } from '../../asset-data/domain/balance'
+import type { createBalanceSummarySelector } from '../../asset-data/domain/balance'
+import { formatUsdRate } from '../../asset-data/domain/balance'
 
 export type AccountProjection = WalletRendererState['accounts'][string]
 export type SignerProjection = WalletRendererState['signers'][string]

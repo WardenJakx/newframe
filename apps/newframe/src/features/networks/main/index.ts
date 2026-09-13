@@ -1,6 +1,7 @@
 import EventEmitter from 'events'
 
-import { Hardfork, Common } from '@ethereumjs/common'
+import type { Common } from '@ethereumjs/common'
+import { Hardfork } from '@ethereumjs/common'
 import { addHexPrefix } from '@ethereumjs/util'
 // status = Network Mismatch, Not Connected, Connected, Standby, Syncing
 import { powerMonitor } from 'electron'
@@ -645,7 +646,7 @@ export class Chains extends EventEmitter {
       resError({ message: `Target chain did not exist for send`, code: -32601 }, payload, res)
     }
     const { type, id } = targetChain as Chain
-    if (!this.connections[type] || !this.connections[type][id]) {
+    if (!this.connections[type]?.[id]) {
       resError(
         { message: `Connection for ${type} chain with chainId ${id} did not exist for send`, code: -32601 },
         payload,

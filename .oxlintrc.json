@@ -25,9 +25,6 @@
     "apps/newframe/dist-preview/**/*",
     "apps/newframe/build/icons/**/*",
     "apps/newframe/test/e2e/**/*",
-    "apps/newframe/src/platform/signing/signers/**/*",
-    "!apps/newframe/src/platform/signing/signers/**/*/",
-    "!apps/newframe/src/platform/signing/signers/**/*.{test,spec}.{ts,tsx}",
     "apps/newframe-extension/dist/**/*",
     "apps/newframe-extension/.cache/**/*",
     "packages/ui/dist/**/*",
@@ -112,7 +109,22 @@
         "preserve-caught-error": "error",
         "require-yield": "error",
         "use-isnan": "error",
-        "valid-typeof": "error"
+        "valid-typeof": "error",
+        "array-callback-return": "error",
+        "eqeqeq": [
+          "error",
+          "always",
+          {
+            "null": "ignore"
+          }
+        ],
+        "no-eval": "error",
+        "no-implied-eval": "error",
+        "no-new-func": "error",
+        "unicorn/error-message": "error",
+        "curly": "warn",
+        "no-nested-ternary": "warn",
+        "no-script-url": "error"
       },
       "env": {
         "es2026": true
@@ -218,7 +230,29 @@
           {
             "allow": ["arrowFunctions"]
           }
-        ]
+        ],
+        "no-implied-eval": "off",
+        "typescript/no-implied-eval": "error",
+        "typescript/no-misused-spread": "error",
+        "typescript/no-base-to-string": "warn",
+        "typescript/use-unknown-in-catch-callback-variable": "warn",
+        "typescript/consistent-type-imports": [
+          "error",
+          {
+            "disallowTypeAnnotations": false
+          }
+        ],
+        "typescript/prefer-optional-chain": "error",
+        "typescript/no-unsafe-assignment": "warn",
+        "typescript/no-unsafe-argument": "warn",
+        "typescript/no-unsafe-call": "warn",
+        "typescript/no-unsafe-member-access": "warn",
+        "typescript/no-unsafe-return": "warn",
+        "typescript/unbound-method": "warn",
+        "typescript/only-throw-error": "warn",
+        "typescript/no-unnecessary-type-assertion": "warn",
+        "typescript/prefer-nullish-coalescing": "warn",
+        "typescript/no-unnecessary-condition": "warn"
       },
       "plugins": ["typescript"]
     },
@@ -316,7 +350,29 @@
           {
             "allow": ["arrowFunctions"]
           }
-        ]
+        ],
+        "no-implied-eval": "off",
+        "typescript/no-implied-eval": "error",
+        "typescript/no-misused-spread": "error",
+        "typescript/no-base-to-string": "warn",
+        "typescript/use-unknown-in-catch-callback-variable": "warn",
+        "typescript/consistent-type-imports": [
+          "error",
+          {
+            "disallowTypeAnnotations": false
+          }
+        ],
+        "typescript/prefer-optional-chain": "error",
+        "typescript/no-unsafe-assignment": "warn",
+        "typescript/no-unsafe-argument": "warn",
+        "typescript/no-unsafe-call": "warn",
+        "typescript/no-unsafe-member-access": "warn",
+        "typescript/no-unsafe-return": "warn",
+        "typescript/unbound-method": "warn",
+        "typescript/only-throw-error": "warn",
+        "typescript/no-unnecessary-type-assertion": "warn",
+        "typescript/prefer-nullish-coalescing": "warn",
+        "typescript/no-unnecessary-condition": "warn"
       },
       "plugins": ["typescript"]
     },
@@ -376,7 +432,9 @@
         "react/unsupported-syntax": "warn",
         "react-js/no-deprecated": "error",
         "react-hooks-js/config": "error",
-        "react-hooks-js/gating": "error"
+        "react-hooks-js/gating": "error",
+        "react/no-danger": "error",
+        "react/no-array-index-key": "warn"
       },
       "plugins": ["react"],
       "jsPlugins": [
@@ -533,6 +591,78 @@
           "specifier": "eslint-plugin-react"
         }
       ]
+    },
+    {
+      "files": ["**/*.{test,spec}.{ts,tsx}"],
+      "plugins": ["jest"],
+      "rules": {
+        "jest/no-focused-tests": "warn",
+        "jest/valid-expect": "warn",
+        "jest/valid-describe-callback": "warn",
+        "jest/no-identical-title": "warn",
+        "jest/no-conditional-expect": "warn",
+        "no-restricted-properties": [
+          "warn",
+          {
+            "object": "test",
+            "property": "only",
+            "message": "Remove focused tests before committing so the full suite runs."
+          },
+          {
+            "object": "it",
+            "property": "only",
+            "message": "Remove focused tests before committing so the full suite runs."
+          },
+          {
+            "object": "describe",
+            "property": "only",
+            "message": "Remove focused tests before committing so the full suite runs."
+          }
+        ]
+      }
+    },
+    {
+      "files": ["apps/newframe/src/platform/signing/signers/**/*.{ts,tsx}"],
+      "excludeFiles": ["**/*.{test,spec}.{ts,tsx}"],
+      "rules": {
+        "no-async-promise-executor": "warn",
+        "no-empty-function": [
+          "warn",
+          {
+            "allow": ["arrowFunctions"]
+          }
+        ],
+        "no-unused-vars": [
+          "warn",
+          {
+            "args": "after-used",
+            "ignoreRestSiblings": true,
+            "argsIgnorePattern": "^_",
+            "destructuredArrayIgnorePattern": "^_",
+            "caughtErrors": "none"
+          }
+        ],
+        "preserve-caught-error": "warn",
+        "typescript/await-thenable": "warn",
+        "typescript/ban-ts-comment": [
+          "warn",
+          {
+            "ts-nocheck": "allow-with-description",
+            "ts-expect-error": "allow-with-description"
+          }
+        ],
+        "typescript/consistent-type-imports": [
+          "warn",
+          {
+            "disallowTypeAnnotations": false
+          }
+        ],
+        "typescript/no-floating-promises": "warn",
+        "typescript/no-misused-promises": "warn",
+        "typescript/prefer-optional-chain": "warn",
+        "eslint/no-else-return": "warn"
+      },
+      "plugins": ["typescript"]
     }
   ],
   "settings": {

@@ -38,7 +38,7 @@ import type {
   AddChainRequest,
   AddTokenRequest
 } from '../../../requests/contract/requests.js'
-import {
+import type {
   EIP2612TypedData,
   LegacyTypedData,
   PermitSignatureRequest,
@@ -49,7 +49,8 @@ import {
 import { ApprovalType } from '../../../requests/domain/approval.js'
 import type { PromptedRequestContinuationPort } from '../../../requests/main/service.js'
 import { toTokenId } from '../../../tokens/domain/index.js'
-import { normalizeChainId, TransactionData } from '../../../transactions/domain/index.js'
+import type { TransactionData } from '../../../transactions/domain/index.js'
+import { normalizeChainId } from '../../../transactions/domain/index.js'
 import {
   populate as populateTransaction,
   maxFee,
@@ -73,7 +74,8 @@ import {
 } from './helpers.js'
 import type { ProviderProxyConnection } from './proxy.js'
 import type { ProviderStatePort } from './statePort.js'
-import { Subscription, SubscriptionType, hasSubscriptionPermission } from './subscriptions.js'
+import type { Subscription } from './subscriptions.js'
+import { SubscriptionType, hasSubscriptionPermission } from './subscriptions.js'
 import { getVersionFromTypedData } from './typedData.js'
 
 export interface TransactionRequestContext {
@@ -933,7 +935,7 @@ export class Provider extends EventEmitter {
 
       log.verbose(`sendTransaction(${JSON.stringify(tx)}`)
 
-      const from = tx.from || (currentAccount && currentAccount.id)
+      const from = tx.from || currentAccount?.id
 
       if (!currentAccount || !from || !hasAddress(currentAccount, from)) {
         const accountId = (tx.from || '').toLowerCase()
@@ -1320,7 +1322,7 @@ export class Provider extends EventEmitter {
   private switchEthereumChain(payload: RPCRequestPayload, res: RPCRequestCallback) {
     try {
       const params = payload.params
-      if (!params || !params[0]) throw new Error('Params not supplied')
+      if (!params?.[0]) throw new Error('Params not supplied')
 
       const requestedChainId = params[0].chainId
       if (typeof requestedChainId !== 'string' || !/^0x[0-9a-f]+$/i.test(requestedChainId)) {

@@ -1,7 +1,8 @@
 import path from 'path'
 
 import { resolveSemanticColor } from '@newframe/ui/tokens/colors'
-import { BrowserWindow, BrowserWindowConstructorOptions, shell } from 'electron'
+import type { BrowserWindowConstructorOptions } from 'electron'
+import { BrowserWindow, shell } from 'electron'
 import log from 'electron-log'
 
 import type { RendererAuthorizationRegistry } from '../../ipc/main/authorization.js'

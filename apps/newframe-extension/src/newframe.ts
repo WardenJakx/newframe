@@ -80,7 +80,7 @@ class Connection extends EventEmitter {
   }
 
   handleMessage(event: MessageEvent) {
-    if (event && event.source === window && event.data) {
+    if (event?.source === window && event.data) {
       const { type } = event.data
 
       if (type === 'eth:payload') {
@@ -175,13 +175,7 @@ document.addEventListener('readystatechange', () => {
 })
 
 async function handleEmbeddedAction(event: MessageEvent) {
-  if (
-    event &&
-    event.source === window &&
-    event.data &&
-    event.data.type === 'embedded:action' &&
-    window.self === window.top
-  ) {
+  if (event?.source === window && event.data?.type === 'embedded:action' && window.self === window.top) {
     if (event.data.action) {
       const action = event.data.action
       if (embedded[action.type]) {

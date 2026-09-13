@@ -1,11 +1,12 @@
 import EventEmitter from 'events'
 import path from 'path'
 
-import { app as electronApp, BrowserWindow, screen, globalShortcut, type WebContents } from 'electron'
+import type { BrowserWindow } from 'electron'
+import { app as electronApp, screen, globalShortcut, type WebContents } from 'electron'
 import log from 'electron-log'
 import { shallow } from 'zustand/vanilla/shallow'
 
-import { Shortcut } from '../../../features/settings/domain/state/shortcuts.js'
+import type { Shortcut } from '../../../features/settings/domain/state/shortcuts.js'
 import { hexToInt, roundGwei } from '../../../shared/domain/hex.js'
 import type { RendererAuthorizationRegistry } from '../../ipc/main/authorization.js'
 import type canonicalStore from '../../state-store/index.js'
@@ -13,7 +14,8 @@ import { registerShortcut } from '../keyboardShortcuts.js'
 import { installCameraPermissions } from './cameraPermissions.js'
 import { closeRendererWindow } from './close.js'
 import SideTrayManager from './sidetray/index.js'
-import { SystemTray, SystemTrayEventHandlers } from './systemTray.js'
+import type { SystemTrayEventHandlers } from './systemTray.js'
+import { SystemTray } from './systemTray.js'
 import { constrainTraySize, TRAY_WIDTH, trayPosition } from './trayGeometry.js'
 import { createWindow } from './window.js'
 
@@ -329,7 +331,7 @@ class Tray {
       windows.tray.show()
     }
     events.emit('tray:show')
-    if (windows && windows.tray && windows.tray.focus && !glide) {
+    if (windows?.tray?.focus && !glide) {
       windows.tray.focus()
     }
     windows.tray.setVisibleOnAllWorkspaces(false, {

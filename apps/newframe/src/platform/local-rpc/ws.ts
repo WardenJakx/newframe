@@ -17,12 +17,11 @@ import protectedMethods from './protectedMethods.js'
 import validPayload from './validPayload.js'
 
 function faviconSource(value: unknown): string | undefined {
-  if (
-    typeof value !== 'string' ||
-    value.length > 4096 ||
-    [...value].some((character) => character.charCodeAt(0) <= 31 || character.charCodeAt(0) === 127)
-  )
-    return
+  if (typeof value !== 'string' || value.length > 4096) return
+  for (const character of value) {
+    const code = character.charCodeAt(0)
+    if (code <= 31 || code === 127) return
+  }
   try {
     const url = new URL(value)
     if (url.protocol === 'https:' && !url.username && !url.password && (!url.port || url.port === '443'))

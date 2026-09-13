@@ -427,6 +427,7 @@ describe('#send', () => {
       const explorerResponse = mock()
 
       sendRequest(chainRequest({ rpcUrls: ['file:///tmp/rpc'] }), rpcResponse)
+      // oxlint-disable-next-line no-script-url -- Verify rejection of an executable explorer URL.
       sendRequest(chainRequest({ blockExplorerUrls: ['javascript:alert(1)'] }), explorerResponse)
 
       expect(rpcResponse.mock.calls[0][0].error.message).toMatch(/invalid rpc url/i)

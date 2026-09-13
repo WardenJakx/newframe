@@ -1,5 +1,6 @@
 import { addHexPrefix } from '@ethereumjs/util'
-import { BrowserProvider, Contract, TransactionDescription } from 'ethers'
+import type { TransactionDescription } from 'ethers'
+import { BrowserProvider, Contract } from 'ethers'
 
 import { erc20Interface } from '../../../shared/domain/evm.js'
 

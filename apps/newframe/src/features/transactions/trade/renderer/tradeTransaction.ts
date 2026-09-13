@@ -438,7 +438,7 @@ export function createTradeBalanceIndex(balances: BalanceSummary[]) {
 function networkEnabled(networks: Record<string | number, { on?: boolean }>, chainId: number) {
   const network = networks[chainId] || networks[String(chainId)]
 
-  return !network || network.on !== false
+  return network?.on !== false
 }
 
 export function buildTradeAssetOptions({

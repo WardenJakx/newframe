@@ -1,4 +1,5 @@
-import { Menu, MenuItemConstructorOptions } from 'electron'
+import type { MenuItemConstructorOptions } from 'electron'
+import { Menu } from 'electron'
 
 // const application = {
 //   label: 'Application',
