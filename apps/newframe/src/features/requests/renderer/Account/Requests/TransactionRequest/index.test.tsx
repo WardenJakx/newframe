@@ -5,7 +5,6 @@ import { within } from '@testing-library/react'
 import { fireEvent, screen, render } from '../../../../../../../test/support/componentSetup'
 import { registerTestRuntimeFixture } from '../../../../../../../test/support/rendererClient'
 import { erc20Interface } from '../../../../../../shared/domain/evm'
-import { shortAddress } from '../../../../../../shared/renderer/ui/AddressIdentity'
 import { RequestStatus, TxClassification } from '../../../../contract/requests'
 import {
   createRequestRendererCapabilitiesFake as createRequestPortsFake,
@@ -126,6 +125,8 @@ describe('confirm', () => {
     expect(screen.getByRole('status').textContent).toBe('confirming')
     expect(screen.getByRole('button', { name: /show gas fee settings/i })).toBeTruthy()
     expect(screen.getByLabelText('Network fee').textContent).toMatch(/gas fee/i)
+    fireEvent.click(screen.getByRole('button', { name: 'Copy transaction hash' }))
+    expect(capabilities.external.writeText).toHaveBeenCalledWith(req.tx.hash)
   })
 
   it('promotes request identity and resolves ERC-20 transfers to their recipient', () => {
@@ -163,12 +164,13 @@ describe('confirm', () => {
         gasPrice: '0x3b9aca00',
         type: '0x0'
       },
+      tokenData: { name: 'USD Coin', symbol: 'USDC', decimals: 6 },
       recognizedActions: [
         {
           id: 'erc20:transfer',
           data: {
             amount: '0x17d7840',
-            decimals: 6,
+            decimals: 18,
             name: 'USD Coin',
             symbol: 'USDC',
             recipient: { address: recipientAddress, ens: 'recipient.eth' }
@@ -189,22 +191,29 @@ describe('confirm', () => {
     expect(summary.textContent).toMatch(/Test Dapp/i)
     expect(summary.textContent).not.toMatch(/Polygon/i)
     expect(screen.getByLabelText('Transaction effects').textContent).toMatch(/Estimated changes.*Polygon/i)
-    expect(screen.queryByText('Send USDC')).toBeNull()
+    expect(screen.getByText('Send USDC')).toBeTruthy()
+    expect(screen.getByText('25.0 USDC')).toBeTruthy()
+    expect(within(screen.getByLabelText('Transaction effects')).getByText('25')).toBeTruthy()
 
     const details = screen.getByLabelText('Transaction details')
     expect(details.textContent).toMatch(/recipient\.eth/i)
-    expect(details.textContent).not.toMatch(/origin|chain|signer|from|contract|decode source/i)
+    expect(details.textContent).toMatch(/Token contract.*USD Coin/i)
+    expect(details.textContent).not.toMatch(/origin|chain|signer|from|decode source/i)
 
     const recipientCopy = screen.getByRole('button', { name: 'Copy address for recipient.eth' })
     expect(screen.getAllByText('recipient.eth').length).toBeGreaterThan(0)
-    expect(screen.getByText(shortAddress(recipientAddress))).toBeTruthy()
+    expect(screen.getByText(recipientAddress)).toBeTruthy()
     fireEvent.click(recipientCopy)
     expect(capabilities.external.writeText).toHaveBeenCalledWith(recipientAddress)
     expect(screen.getByRole('button', { name: 'Address copied for recipient.eth' })).toBeTruthy()
 
     expect(screen.getByRole('button', { name: 'Copy address for testname' })).toBeTruthy()
+    expect(summary.textContent).not.toContain('testname')
+    expect(
+      details.compareDocumentPosition(screen.getByText('Account')) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy()
     expect(screen.getByText('testname')).toBeTruthy()
-    expect(screen.getByText(shortAddress(senderAddress))).toBeTruthy()
+    expect(screen.getByText(senderAddress)).toBeTruthy()
     expect(screen.queryByText(/hot signer/i)).toBeNull()
   })
 
@@ -421,7 +430,7 @@ describe('confirm', () => {
     expect(screen.queryByText('Full calldata')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: /calldata digest 0xabcdef/i }))
     expect(screen.getByText('Full calldata')).toBeTruthy()
-    expect(screen.getByText('0x1234')).toBeTruthy()
+    expect(screen.getAllByText('0x1234')).toHaveLength(2)
     expect(screen.queryByText('Raw Transaction')).toBeNull()
   })
 
@@ -486,4 +495,124 @@ describe('confirm', () => {
       amount: expect.any(String)
     })
   })
+})
+
+it('keeps a single named argument visible and separates calldata verification from transaction hashes', () => {
+  const calldata = '0x60fe47b1000000000000000000000000000000000000000000000000000000000000002a'
+  const req = {
+    handlerId: 'named-arg',
+    type: 'transaction',
+    origin: 'test-origin',
+    data: {
+      chainId: '0x89',
+      to: '0x0000000000000000000000000000000000000010',
+      value: '0xde0b6b3a7640000',
+      data: calldata,
+      calldataDigest: '0xdigest'
+    },
+    decodedData: {
+      method: 'setValue',
+      signature: 'setValue(uint256)',
+      source: 'Function selector registry',
+      contractName: 'Storage',
+      args: [{ name: 'newValue', type: 'uint256', value: '42' }]
+    },
+    classification: TxClassification.CONTRACT_CALL
+  } satisfies TransactionRequestFixture
+  renderRequest(req)
+  const details = screen.getByLabelText('Transaction details')
+  expect(details.textContent).toMatch(
+    /Call setValue.*On contract.*Storage.*newValue \(uint256\).*42.*Attached value.*1.0 MATIC/
+  )
+  expect(
+    screen.getByLabelText('Transaction effects').compareDocumentPosition(details) &
+      Node.DOCUMENT_POSITION_FOLLOWING
+  ).toBeTruthy()
+  expect(screen.queryByText('ABI source')).toBeNull()
+  expect(screen.queryByText('Transaction hash')).toBeNull()
+  fireEvent.click(screen.getByRole('button', { name: 'Copy calldata digest' }))
+  expect(capabilities.external.writeText).toHaveBeenCalledWith('0xdigest')
+  fireEvent.click(screen.getByRole('button', { name: /Show full calldata/ }))
+  fireEvent.click(screen.getByRole('button', { name: 'Copy full calldata' }))
+  expect(capabilities.external.writeText).toHaveBeenCalledWith(calldata)
+  fireEvent.click(screen.getByRole('button', { name: 'Raw transaction' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Copy raw transaction' }))
+  expect(capabilities.external.writeText).toHaveBeenCalledWith(
+    JSON.stringify(completeRequest(req).data, null, 2)
+  )
+})
+
+it('shows the approval spender separately from the token contract without inventing decimals', () => {
+  const spender = '0x0000000000000000000000000000000000000011'
+  const contract = '0x0000000000000000000000000000000000000022'
+  renderRequest({
+    handlerId: 'approval',
+    type: 'transaction',
+    origin: 'test-origin',
+    data: { chainId: '0x89', to: contract },
+    recognizedActions: [
+      {
+        id: 'erc20:approve',
+        data: {
+          amount: '0xf4240',
+          symbol: 'USDC',
+          name: 'USD Coin',
+          spender: { address: spender, ens: 'spender.eth' },
+          contract: { address: contract }
+        }
+      }
+    ],
+    classification: TxClassification.CONTRACT_CALL
+  })
+  const details = screen.getByLabelText('Transaction details')
+  expect(details.textContent).toMatch(
+    /Approve USDC.*Spender.*spender.eth.*Amount.*1000000 raw units.*Token contract.*USD Coin/
+  )
+  fireEvent.click(within(details).getByRole('button', { name: 'Copy address for spender.eth' }))
+  expect(capabilities.external.writeText).toHaveBeenCalledWith(spender)
+  fireEvent.click(within(details).getByRole('button', { name: 'Copy address for USD Coin' }))
+  expect(capabilities.external.writeText).toHaveBeenCalledWith(contract)
+})
+
+it.each([
+  {
+    method: 'approve',
+    signature: 'approve(address,uint256)',
+    args: [{ name: 'tokenId', type: 'uint256', value: '42' }]
+  },
+  {
+    method: 'transfer',
+    signature: 'transfer(uint256)',
+    args: [{ name: 'item', type: 'uint256', value: '42' }]
+  }
+])('treats $signature as a generic call despite token metadata', (decodedData) => {
+  renderRequest({
+    handlerId: 'generic',
+    type: 'transaction',
+    origin: 'test-origin',
+    data: { chainId: '0x89', to: '0x0000000000000000000000000000000000000010' },
+    decodedData: { ...decodedData, args: [...decodedData.args] },
+    tokenData: { name: 'Example collection', symbol: 'NFT', decimals: 18 },
+    classification: TxClassification.CONTRACT_CALL
+  })
+  expect(screen.getByLabelText('Transaction details').textContent).toMatch(
+    new RegExp(`Call ${decodedData.method}.*On contract.*uint256.*42`)
+  )
+  expect(screen.queryByText('Spender')).toBeNull()
+  expect(screen.queryByText('Token contract')).toBeNull()
+  expect(screen.queryByText('Allowance change')).toBeNull()
+})
+
+it('shows unknown calldata and simulation failure even when value creates a visible effect', () => {
+  renderRequest({
+    handlerId: 'unknown',
+    type: 'transaction',
+    origin: 'test-origin',
+    data: { chainId: '0x89', data: '0xdeadbeef1234', value: '0x1' },
+    simulation: { status: 'error', error: 'RPC simulation failed' },
+    classification: TxClassification.CONTRACT_CALL
+  })
+  expect(screen.getByText('Cannot decode calldata. Inspect the selector and raw bytes.')).toBeTruthy()
+  expect(screen.getByText('0xdeadbeef')).toBeTruthy()
+  expect(screen.getByRole('alert').textContent).toContain('RPC simulation failed')
 })

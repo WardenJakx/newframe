@@ -4,11 +4,12 @@ import { Inline } from '@newframe/ui/inline'
 import { Stack } from '@newframe/ui/stack'
 import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
+import { formatUnits } from 'ethers'
 import { useState } from 'react'
 
 import { getAddress } from '../../../../../../shared/domain/address'
 import { toBigInt } from '../../../../../../shared/domain/units'
-import { AddressIdentity } from '../../../../../../shared/renderer/ui/AddressIdentity'
+import { AddressIdentity, shortAddress } from '../../../../../../shared/renderer/ui/AddressIdentity'
 import { persistedImageSource } from '../../../../../asset-data/domain/image'
 import { chainUsesOptimismFees } from '../../../../../networks/domain/chain/fees'
 import { tokenForId, tokenImageSource } from '../../../../../tokens/domain'
@@ -16,6 +17,7 @@ import { NATIVE_CURRENCY } from '../../../../../tokens/domain/constants'
 import {
   getPaidTransactionFee,
   getTransactionEffects,
+  getTransactionIntent,
   typeSupportsBaseFee
 } from '../../../../../transactions/domain'
 import { displayValueData } from '../../../format/displayValue'
@@ -89,7 +91,11 @@ type ActionIdentity = { address?: string; ens?: string }
 type ActionData = {
   name?: string
   symbol?: string
-  recipient?: ActionIdentity | string
+  decimals?: number
+  amount?: string
+  recipient?: ActionIdentity
+  spender?: ActionIdentity
+  contract?: ActionIdentity
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -99,29 +105,34 @@ const actionData = (req: TransactionRequestView, id: string): ActionData => {
   const value = req.recognizedActions?.find((action) => action.id === id)?.data
   if (!isRecord(value)) return {}
 
-  const recipient = value.recipient
-  const parsedRecipient =
-    typeof recipient === 'string'
-      ? recipient
-      : isRecord(recipient) &&
-          (recipient.address === undefined || typeof recipient.address === 'string') &&
-          (recipient.ens === undefined || typeof recipient.ens === 'string')
-        ? { address: recipient.address, ens: recipient.ens }
-        : undefined
+  const identity = (candidate: unknown): ActionIdentity | undefined => {
+    if (typeof candidate === 'string') return { address: candidate }
+    if (!isRecord(candidate) || typeof candidate.address !== 'string') return undefined
+    return { address: candidate.address, ens: typeof candidate.ens === 'string' ? candidate.ens : undefined }
+  }
 
   return {
     name: typeof value.name === 'string' ? value.name : undefined,
     symbol: typeof value.symbol === 'string' ? value.symbol : undefined,
-    recipient: parsedRecipient
+    decimals:
+      typeof value.decimals === 'number' &&
+      Number.isInteger(value.decimals) &&
+      value.decimals >= 0 &&
+      value.decimals <= 255
+        ? value.decimals
+        : undefined,
+    amount: typeof value.amount === 'string' ? value.amount : undefined,
+    recipient: identity(value.recipient),
+    spender: identity(value.spender),
+    contract: identity(value.contract)
   }
 }
 
 const transferRecipient = (req: TransactionRequestView): ActionIdentity | undefined => {
   const recognized = actionData(req, 'erc20:transfer').recipient
-  if (typeof recognized === 'string') return { address: recognized }
   if (recognized?.address) return recognized
 
-  if (req.decodedData?.method !== 'transfer' && req.decodedData?.signature !== 'transfer(address,uint256)') {
+  if (req.decodedData?.signature !== 'transfer(address,uint256)') {
     return undefined
   }
   const decoded = req.decodedData?.args?.[0]?.value
@@ -258,7 +269,17 @@ function TxReviewView(props: TxReviewProps) {
   const from = req.data.from || req.account
   const calldata = req.data.data
   const method = req.decodedData?.method
-  const effects = getTransactionEffects(req, symbol).map((effect) => {
+  const hasRecognizedTokenAction = req.recognizedActions?.some((action) =>
+    ['erc20:transfer', 'erc20:approve', 'erc20:revoke'].includes(action.id)
+  )
+  const ambiguousApproval =
+    req.decodedData?.signature === 'approve(address,uint256)' && !hasRecognizedTokenAction
+  const effectsRequest = ambiguousApproval ? { ...req, decodedData: undefined } : req
+  const effects = getTransactionEffects(effectsRequest, symbol).map((original) => {
+    const effect =
+      original.kind !== 'native' && !Number.isInteger(original.decimals)
+        ? { ...original, decimals: 0, symbol: 'raw units' }
+        : original
     if (effect.kind !== 'erc20' || !effect.assetAddress) return effect
 
     const tokenId = `${chainId}:${effect.assetAddress.toLowerCase()}`
@@ -274,34 +295,100 @@ function TxReviewView(props: TxReviewProps) {
     simulationStatus === 'loading'
       ? 'Checking asset changes'
       : simulationStatus === 'error' || simulationStatus === 'unavailable'
-        ? 'Simulation unavailable'
+        ? undefined
         : 'No direct asset changes detected'
   const notice =
     req.notice && req.notice.toLowerCase() !== (req.status || '').toLowerCase() ? req.notice : undefined
   const recipient = transferRecipient(req)
-  const displayTo = recipient?.address || to
-  const tokenAction =
-    req.recognizedActions?.find((action) => ['erc20:approve', 'erc20:revoke'].includes(action.id))?.id || ''
-  const token = tokenAction ? actionData(req, tokenAction) : undefined
-  const toName = recipient
-    ? recipient.ens || props.destinationAccount?.name
-    : token?.name ||
-      token?.symbol ||
-      req.tokenData?.name ||
-      req.tokenData?.symbol ||
-      req.recipient ||
-      props.destinationAccount?.name
-  const details: TransactionInformationDetailRow[] = [
-    {
-      label: 'To',
-      value: <AddressIdentity address={displayTo} clipboard={props.capabilities.external} nickname={toName} />
-    },
-    { label: 'Method', value: method }
-  ]
+  const actionId = req.recognizedActions?.find((action) =>
+    ['erc20:transfer', 'erc20:approve', 'erc20:revoke'].includes(action.id)
+  )?.id
+  const token = actionId ? actionData(req, actionId) : undefined
+  const isTransfer =
+    actionId === 'erc20:transfer' || req.decodedData?.signature === 'transfer(address,uint256)'
+  const isApproval = actionId === 'erc20:approve' || actionId === 'erc20:revoke'
+  const nativeTransfer = req.classification === 'NATIVE_TRANSFER'
+  const intent = getTransactionIntent(effectsRequest, symbol)
+  const nativeAmount = formatUnits(toBigInt(req.data.value) ?? 0n, meta.nativeCurrency?.decimals ?? 18)
+  const amount = token?.amount ?? req.decodedData?.args[1]?.value
+  const tokenDecimals = req.tokenData?.decimals ?? token?.decimals
+  const knownDecimals =
+    tokenDecimals !== undefined &&
+    Number.isInteger(tokenDecimals) &&
+    tokenDecimals >= 0 &&
+    tokenDecimals <= 255
+  const tokenSymbol = token?.symbol || req.tokenData?.symbol
+  const tokenAmount = toBigInt(amount)
+  const amountText =
+    tokenAmount === undefined
+      ? 'Amount unavailable'
+      : knownDecimals
+        ? `${formatUnits(tokenAmount, tokenDecimals)} ${tokenSymbol || 'tokens'}`
+        : `${tokenAmount.toString()} raw units`
+  const addressValue = (address: string, nickname?: string) => (
+    <AddressIdentity
+      address={address}
+      clipboard={props.capabilities.external}
+      nickname={nickname || shortAddress(address)}
+      showFullAddress
+    />
+  )
+  const contractName = token?.name || tokenSymbol || req.decodedData?.contractName || req.recipient
+  const spender = token?.spender ?? (isApproval ? { address: req.decodedData?.args[0]?.value } : undefined)
+  const details: TransactionInformationDetailRow[] = nativeTransfer
+    ? [{ label: 'To', value: addressValue(to, req.recipient || props.destinationAccount?.name) }]
+    : isTransfer || isApproval
+      ? [
+          {
+            label: isTransfer ? 'To' : 'Spender',
+            value: isTransfer
+              ? recipient?.address
+                ? addressValue(recipient.address, recipient.ens || props.destinationAccount?.name)
+                : 'Recipient unavailable'
+              : spender?.address
+                ? addressValue(spender.address, spender.ens)
+                : 'Spender unavailable'
+          },
+          { label: 'Amount', value: amountText },
+          { label: 'Token contract', value: addressValue(token?.contract?.address || to, contractName) }
+        ]
+      : [
+          { label: 'On contract', value: addressValue(to, contractName || props.destinationAccount?.name) },
+          ...(req.decodedData?.args.map((arg, index) => ({
+            label: `${arg.name || `Argument ${index + 1}`}${arg.type ? ` (${arg.type})` : ''}`,
+            value: arg.type === 'address' ? addressValue(arg.value) : arg.value
+          })) || []),
+          ...(!req.decodedData && calldata && calldata !== '0x'
+            ? [{ label: 'Selector', value: calldata.slice(0, 10) }]
+            : [])
+        ]
+  if (!nativeTransfer && (toBigInt(req.data.value) ?? 0n) > 0n) {
+    details.push({ label: 'Attached value', value: `${nativeAmount} ${symbol}` })
+  }
+  const actionTitle = nativeTransfer
+    ? `Send ${nativeAmount} ${symbol}`
+    : isTransfer || isApproval
+      ? intent.title
+      : method
+        ? `Call ${method}`
+        : intent.title
+  const transactionHash = req.tx?.hash
 
   return (
     <TransactionInformation
       imageCapability={props.capabilities.external}
+      clipboard={props.capabilities.external}
+      actionTitle={actionTitle}
+      actionNotice={
+        !req.decodedData && !actionId && calldata && calldata !== '0x' ? (
+          <Text tone='secondary' variant='caption'>
+            Cannot decode calldata. Inspect the selector and raw bytes.
+          </Text>
+        ) : undefined
+      }
+      verification={transactionHash ? [{ label: 'Transaction hash', value: transactionHash }] : undefined}
+      rawTransaction={JSON.stringify(req.data, null, 2)}
+      wrapDetailValues
       originName={originName}
       networkName={chainName}
       networkIcon={persistedImageSource(meta.image)}
@@ -309,20 +396,28 @@ function TxReviewView(props: TxReviewProps) {
       notice={notice}
       effects={effects}
       effectsEmptyText={effectsEmptyText}
+      effectsNotice={
+        simulationStatus === 'error' || simulationStatus === 'unavailable' ? (
+          <div role='alert'>
+            <Text variant='caption' tone='danger'>
+              {req.simulation?.error || 'Simulation unavailable'}
+            </Text>
+          </div>
+        ) : undefined
+      }
       details={details}
       calldata={
-        calldata && calldata !== '0x'
-          ? { data: calldata, digest: req.data.calldataDigest || 'Digest unavailable' }
-          : undefined
+        calldata && calldata !== '0x' ? { data: calldata, digest: req.data.calldataDigest } : undefined
       }
       nativeCurrency={nativeCurrency}
     >
       <Stack gap='xsmall'>
-        <SigningAccount>
+        <SigningAccount label='Account'>
           <AddressIdentity
             address={from}
             clipboard={props.capabilities.external}
-            nickname={props.signingAccount?.name || props.signingAccount?.ensName}
+            nickname={props.signingAccount?.name || props.signingAccount?.ensName || shortAddress(from)}
+            showFullAddress
           />
         </SigningAccount>
         <TxFeeSummary

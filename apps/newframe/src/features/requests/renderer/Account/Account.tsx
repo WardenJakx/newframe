@@ -127,8 +127,17 @@ const isTransactionRequest = (
       (isRecord(request.decodedData) &&
         typeof request.decodedData.method === 'string' &&
         typeof request.decodedData.signature === 'string' &&
+        (request.decodedData.source === undefined || typeof request.decodedData.source === 'string') &&
+        (request.decodedData.contractName === undefined ||
+          typeof request.decodedData.contractName === 'string') &&
         Array.isArray(request.decodedData.args) &&
-        request.decodedData.args.every((arg) => isRecord(arg) && typeof arg.value === 'string'))) &&
+        request.decodedData.args.every(
+          (arg) =>
+            isRecord(arg) &&
+            typeof arg.value === 'string' &&
+            (arg.name === undefined || typeof arg.name === 'string') &&
+            (arg.type === undefined || typeof arg.type === 'string')
+        ))) &&
     (request.tokenData === undefined ||
       (isRecord(request.tokenData) &&
         typeof request.tokenData.name === 'string' &&
@@ -142,6 +151,7 @@ const isTransactionRequest = (
     (request.simulation === undefined ||
       (isRecord(request.simulation) &&
         ['loading', 'success', 'unavailable', 'error'].includes(String(request.simulation.status)) &&
+        isOptionalString(request.simulation.error) &&
         (request.simulation.effects === undefined ||
           (Array.isArray(request.simulation.effects) &&
             request.simulation.effects.every(isTransactionEffect))))) &&
