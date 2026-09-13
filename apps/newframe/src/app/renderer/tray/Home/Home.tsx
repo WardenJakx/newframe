@@ -42,18 +42,21 @@ export interface HomeCapabilities {
 function HomeContent({ capabilities }: { capabilities: HomeCapabilities }) {
   useHomeCommand(capabilities.home)
   const selectedChainId = useHomeUiStore((state) => state.selectedChainId)
+  const overlayActive = useHomeUiStore((state) => state.overlay.type !== 'none')
 
   return (
     <main className={homeRecipe()}>
-      <HomeHeader capability={capabilities.home} />
-      <HomeNotifications capability={capabilities.home} />
-      <PortfolioHero capability={capabilities.portfolio} selectedChainId={selectedChainId} />
-      <HomeNavigation />
-      <HomeSectionRouter
-        activity={capabilities.activity}
-        orders={capabilities.orders}
-        portfolio={capabilities.portfolio}
-      />
+      <div aria-hidden={overlayActive || undefined} className={homeRecipe()} inert={overlayActive}>
+        <HomeHeader capability={capabilities.home} />
+        <HomeNotifications capability={capabilities.home} />
+        <PortfolioHero capability={capabilities.portfolio} selectedChainId={selectedChainId} />
+        <HomeNavigation />
+        <HomeSectionRouter
+          activity={capabilities.activity}
+          orders={capabilities.orders}
+          portfolio={capabilities.portfolio}
+        />
+      </div>
       <HomeOverlayRouter capabilities={capabilities} />
     </main>
   )

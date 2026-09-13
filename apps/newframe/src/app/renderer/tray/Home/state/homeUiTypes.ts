@@ -28,7 +28,7 @@ interface PendingCustomToken {
   symbol?: string
 }
 
-type HomeOverlay =
+export type HomeOverlay =
   | { type: 'none' }
   | { type: 'menu' }
   | { type: 'accounts' }
@@ -48,8 +48,10 @@ export interface HomeUiState {
   section: HomeSection
   selectedChainId: number
   overlay: HomeOverlay
+  overlayHistory: Exclude<HomeOverlay, { type: 'none' }>[]
   setSection: (section: HomeSection) => void
   setSelectedChainId: (chainId: number) => void
   openOverlay: (overlay: Exclude<HomeOverlay, { type: 'none' }>) => void
+  pushOverlay: (overlay: Exclude<HomeOverlay, { type: 'none' }>) => void
   closeOverlay: () => void
 }

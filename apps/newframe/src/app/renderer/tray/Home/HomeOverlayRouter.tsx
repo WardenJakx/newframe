@@ -1,5 +1,6 @@
-import { useEffect } from 'react'
+import { useEffect, useLayoutEffect, useRef, type KeyboardEvent, type ReactNode } from 'react'
 
+import { cva } from '../../../../../generated/styled-system/css/cva.js'
 import { Accounts } from '../../../../features/accounts/renderer/Accounts'
 import { Receive } from '../../../../features/accounts/renderer/Receive'
 import { ConnectedDapps } from '../../../../features/connections/renderer/ConnectedDapps'
@@ -16,11 +17,128 @@ import { useWalletSelector } from '../../../../platform/state-sync/renderer/useA
 import { HomeMenu } from './components/HomeMenu'
 import type { HomeCapabilities } from './Home'
 import { useHomeUiStore } from './state/HomeUiProvider'
+import type { HomeOverlay } from './state/homeUiTypes'
+
+const layersRecipe = cva({ base: { position: 'absolute', inset: 0, zIndex: 'overlay' } })
+const layerRecipe = cva({ base: { position: 'absolute', inset: 0 } })
+
+const focusableSelector =
+  'button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])'
+
+function focusableElements(layer: HTMLElement) {
+  return Array.from(layer.querySelectorAll<HTMLElement>(focusableSelector)).filter(
+    (element) => !element.closest('[inert], [hidden], [aria-hidden="true"]')
+  )
+}
+
+function OverlayLayer({ active, children, index }: { active: boolean; children: ReactNode; index: number }) {
+  const layer = useRef<HTMLDivElement>(null)
+
+  useLayoutEffect(() => {
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    return () => {
+      // Wait until React has removed inert from the layer being revealed.
+      queueMicrotask(() => {
+        if (!previousFocus?.isConnected || previousFocus.closest('[inert]')) return
+        const focusedLayer = document.activeElement?.closest('[data-overlay-focus-managed]')
+        if (focusedLayer && focusedLayer !== previousFocus.closest('[data-overlay-focus-managed]')) return
+        previousFocus.focus()
+      })
+    }
+  }, [])
+
+  useLayoutEffect(() => {
+    if (active && layer.current) (focusableElements(layer.current)[0] ?? layer.current).focus()
+  }, [active])
+
+  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (!active || event.defaultPrevented || event.key !== 'Tab' || !layer.current) return
+    const elements = focusableElements(layer.current)
+    const first = elements[0] ?? layer.current
+    const last = elements.at(-1) ?? layer.current
+    if (event.shiftKey && (document.activeElement === first || document.activeElement === layer.current)) {
+      event.preventDefault()
+      last.focus()
+    } else if (
+      !event.shiftKey &&
+      (document.activeElement === last || document.activeElement === layer.current)
+    ) {
+      event.preventDefault()
+      first.focus()
+    }
+  }
+
+  return (
+    <div
+      aria-hidden={!active || undefined}
+      className={layerRecipe()}
+      data-overlay-focus-managed
+      inert={!active}
+      onKeyDown={onKeyDown}
+      ref={layer}
+      style={{ zIndex: index }}
+      tabIndex={-1}
+    >
+      {children}
+    </div>
+  )
+}
 
 export function HomeOverlayRouter({ capabilities }: { capabilities: HomeCapabilities }) {
   const overlay = useHomeUiStore((state) => state.overlay)
-  const closeOverlay = useHomeUiStore((state) => state.closeOverlay)
-  const openOverlay = useHomeUiStore((state) => state.openOverlay)
+  const history = useHomeUiStore((state) => state.overlayHistory)
+  if (overlay.type === 'none') return null
+
+  return (
+    <div className={layersRecipe()}>
+      {[...history, overlay].map((entry, index) => (
+        <OverlayLayer active={index === history.length} index={index} key={`${index}:${entry.type}`}>
+          <OverlayRoute
+            active={index === history.length}
+            capabilities={capabilities}
+            hasHistory={index > 0}
+            hasMenuHistory={history.slice(0, index).some((item) => item.type === 'menu')}
+            overlay={entry}
+          />
+        </OverlayLayer>
+      ))}
+    </div>
+  )
+}
+
+function OverlayRoute({
+  active,
+  capabilities,
+  hasHistory,
+  hasMenuHistory,
+  overlay
+}: {
+  active: boolean
+  capabilities: HomeCapabilities
+  hasHistory: boolean
+  hasMenuHistory: boolean
+  overlay: Exclude<HomeOverlay, { type: 'none' }>
+}) {
+  const close = useHomeUiStore((state) => state.closeOverlay)
+  const open = useHomeUiStore((state) => state.openOverlay)
+  const push = useHomeUiStore((state) => state.pushOverlay)
+  const activeRef = useRef(active)
+  useLayoutEffect(() => {
+    activeRef.current = active
+    return () => {
+      activeRef.current = false
+    }
+  }, [active])
+  const closeOverlay = () => {
+    if (activeRef.current) close()
+  }
+  const openOverlay = (next: Exclude<HomeOverlay, { type: 'none' }>) => {
+    if (activeRef.current) open(next)
+  }
+  const backToMenu = () => {
+    if (hasHistory) closeOverlay()
+    else openOverlay({ type: 'menu' })
+  }
   const selectedChainId = useHomeUiStore((state) => state.selectedChainId)
   const setSelectedChainId = useHomeUiStore((state) => state.setSelectedChainId)
   const currentAccount = useWalletSelector((state) => state.currentAccount || '')
@@ -33,14 +151,12 @@ export function HomeOverlayRouter({ capabilities }: { capabilities: HomeCapabili
     (!currentAccount || !originatingAccountExists || overlay.accountId !== currentAccount)
 
   useEffect(() => {
-    if (staleAssetOverlay) closeOverlay()
-  }, [closeOverlay, staleAssetOverlay])
+    if (active && staleAssetOverlay) close()
+  }, [active, close, staleAssetOverlay])
 
   if (staleAssetOverlay) return null
 
   switch (overlay.type) {
-    case 'none':
-      return null
     case 'menu':
       return <HomeMenu capability={capabilities.home} />
     case 'accounts':
@@ -60,7 +176,7 @@ export function HomeOverlayRouter({ capabilities }: { capabilities: HomeCapabili
       return (
         <Settings
           capability={capabilities.settings}
-          onBack={() => openOverlay({ type: 'menu' })}
+          onBack={backToMenu}
           onPostLockNavigation={() => openOverlay({ type: 'menu' })}
           onSelectedChainChange={setSelectedChainId}
           selectedChainId={selectedChainId}
@@ -68,20 +184,22 @@ export function HomeOverlayRouter({ capabilities }: { capabilities: HomeCapabili
         />
       )
     case 'about':
-      return <About capability={capabilities.settings} onBack={() => openOverlay({ type: 'menu' })} />
+      return <About capability={capabilities.settings} onBack={backToMenu} />
     case 'requests':
       return <RequestsOverlay capabilities={capabilities.requests} onBack={closeOverlay} />
     case 'dapps':
-      return (
-        <ConnectedDapps capability={capabilities.connections} onBack={() => openOverlay({ type: 'menu' })} />
-      )
+      return <ConnectedDapps capability={capabilities.connections} onBack={backToMenu} />
     case 'tokens':
       return (
         <Tokens
           capability={capabilities.tokens}
           initialToken={overlay.initialToken}
-          onBack={() => openOverlay({ type: 'menu' })}
-          onOpenNetworks={() => openOverlay({ type: 'networks' })}
+          onBack={backToMenu}
+          onOpenNetworks={() => {
+            if (!activeRef.current) return
+            if (hasMenuHistory) push({ type: 'networks' })
+            else openOverlay({ type: 'networks' })
+          }}
         />
       )
     case 'addChain':
