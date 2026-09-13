@@ -147,6 +147,24 @@ describe('#connect', () => {
       expect(ledger.eth).toBeUndefined()
     })
   }
+
+  it('derives existing accounts and signs after reopening a failed connection', async () => {
+    ethInstance.getAppConfiguration.mockRejectedValue({ statusCode: 27904 })
+    await ledger.connect()
+    expect(ledger.status).toBe(Status.WRONG_APP)
+    expect(ledger.addresses).toEqual([])
+
+    await ledger.disconnect()
+    await ledger.open()
+    ethInstance.deriveAddresses.mockResolvedValue(addresses)
+    await connectEthApp()
+
+    expect(ledger.addresses).toEqual(addresses)
+    ethInstance.signMessage.mockResolvedValue(signature)
+    await expect(queuedResult<string>((done) => ledger.signMessage(0, 'hello, Frame!', done))).resolves.toBe(
+      signature
+    )
+  })
 })
 
 describe('#deriveAddress', () => {
