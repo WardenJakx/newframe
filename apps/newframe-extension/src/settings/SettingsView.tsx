@@ -21,12 +21,17 @@ export interface SettingsViewProps {
   mmAppear: boolean
   settings: FrameState
   onSummon: () => void
+  onRetryConnection: () => void
   onDisconnect: () => void
   onToggleMetaMask: () => void
   onSelectChain: (chainId: string) => void
 }
 
-function DesktopConnection({ settings, onSummon }: Pick<SettingsViewProps, 'settings' | 'onSummon'>) {
+function DesktopConnection({
+  settings,
+  onSummon,
+  onRetryConnection
+}: Pick<SettingsViewProps, 'settings' | 'onSummon' | 'onRetryConnection'>) {
   const { connectionStatus } = settings
   const presentation = frameConnectionPresentation(connectionStatus)
 
@@ -55,6 +60,11 @@ function DesktopConnection({ settings, onSummon }: Pick<SettingsViewProps, 'sett
         </Stack>
         <Icon name='arrowRight' size='small' tone='secondary' />
       </Button>
+      {!presentation.connected && (
+        <Button appearance='primary' onPress={onRetryConnection} width='full'>
+          Retry connection
+        </Button>
+      )}
     </Surface>
   )
 }
@@ -158,6 +168,15 @@ function MainPanel(props: SettingsViewProps) {
       <SettingsMessage
         detail='Newframe is open. Approve this extension in the desktop app.'
         title='Approve the browser extension'
+      />
+    )
+  }
+
+  if (connectionStatus === 'extension-approval-rejected') {
+    return (
+      <SettingsMessage
+        detail='The extension retries automatically. Click Retry connection to request approval again.'
+        title='Connection declined'
       />
     )
   }

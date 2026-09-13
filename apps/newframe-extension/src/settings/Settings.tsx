@@ -39,6 +39,7 @@ export function Settings({ tab, mmAppear }: { tab?: chrome.tabs.Tab; mmAppear: b
       mmAppear={mmAppear}
       settings={settings}
       onSummon={() => void chrome.runtime.sendMessage({ method: 'frame_summon', params: [] })}
+      onRetryConnection={() => void chrome.runtime.sendMessage({ method: 'frame_retry_connection' })}
       onDisconnect={() => void chrome.runtime.sendMessage({ tab, method: 'frame_disconnect_current_site' })}
       onToggleMetaMask={() => {
         if (tab?.id !== undefined) {

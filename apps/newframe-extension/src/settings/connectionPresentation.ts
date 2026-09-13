@@ -9,6 +9,10 @@ export function frameConnectionPresentation(connectionStatus: ConnectionStatus) 
     return { connected: false, label: 'Approval Needed', tone: 'warning' as const }
   }
 
+  if (connectionStatus === 'extension-approval-rejected') {
+    return { connected: false, label: 'Connection Declined', tone: 'warning' as const }
+  }
+
   return { connected: false, label: 'Newframe Not Running', tone: 'danger' as const }
 }
 

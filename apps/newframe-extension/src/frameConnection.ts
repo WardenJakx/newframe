@@ -37,10 +37,18 @@ export interface RawFrameConnectionOptions {
   maxReconnectInterval?: number
   connectionTimeout?: number
   createSocket?: (url: string) => WebSocket
+  resetOnOpen?: boolean
+  retryState?: unknown
+  onRetryStateChange?: (state: ConnectionRetryState) => void
+}
+
+export interface ConnectionRetryState {
+  retryAt: number
+  reconnectDelay: number
 }
 
 const DEFAULT_RECONNECT_INTERVAL = 1000
-const DEFAULT_MAX_RECONNECT_INTERVAL = 30_000
+const DEFAULT_MAX_RECONNECT_INTERVAL = 60_000
 const DEFAULT_CONNECTION_TIMEOUT = 10_000
 const HEALTH_CHECK_TIMEOUT = 5000
 
@@ -102,6 +110,7 @@ export class RawFrameConnection extends EventEmitter {
   private queue: JsonRpcPayload[] = []
   private closing = false
   private reconnectDelay: number
+  private retryAt = 0
 
   private readonly reconnectInterval: number
   private readonly maxReconnectInterval: number
@@ -113,7 +122,7 @@ export class RawFrameConnection extends EventEmitter {
 
   constructor(
     private url: string,
-    options: RawFrameConnectionOptions = {}
+    private options: RawFrameConnectionOptions = {}
   ) {
     super()
 
@@ -123,7 +132,22 @@ export class RawFrameConnection extends EventEmitter {
     this.createSocket = options.createSocket ?? ((url) => new WebSocket(url))
     this.reconnectDelay = this.reconnectInterval
 
-    this.connect()
+    const saved = options.retryState as Partial<ConnectionRetryState> | null | undefined
+    if (
+      saved &&
+      typeof saved.retryAt === 'number' &&
+      Number.isFinite(saved.retryAt) &&
+      saved.retryAt >= 0 &&
+      saved.retryAt <= Date.now() + this.maxReconnectInterval &&
+      typeof saved.reconnectDelay === 'number' &&
+      Number.isFinite(saved.reconnectDelay) &&
+      saved.reconnectDelay >= this.reconnectInterval &&
+      saved.reconnectDelay <= this.maxReconnectInterval
+    ) {
+      this.retryAt = saved.retryAt
+      this.reconnectDelay = saved.reconnectDelay
+    }
+    this.ensureConnected()
   }
 
   send(payload: JsonRpcPayload) {
@@ -155,6 +179,15 @@ export class RawFrameConnection extends EventEmitter {
     if (this.closing || this.connected || this.socket?.readyState === WebSocket.OPEN) return
     if (this.socket?.readyState === WebSocket.CONNECTING) return
 
+    if (this.retryAt > Date.now()) {
+      if (!this.reconnectTimer) {
+        this.reconnectTimer = setTimeout(() => {
+          this.reconnectTimer = undefined
+          this.ensureConnected()
+        }, this.retryAt - Date.now())
+      }
+      return
+    }
     clearTimeout(this.reconnectTimer)
     this.reconnectTimer = undefined
     this.connect()
@@ -162,6 +195,7 @@ export class RawFrameConnection extends EventEmitter {
 
   reconnect() {
     if (this.closing) return
+    if (this.retryAt) return
 
     clearTimeout(this.reconnectTimer)
     clearTimeout(this.connectionTimer)
@@ -175,7 +209,13 @@ export class RawFrameConnection extends EventEmitter {
       socket.close()
     }
 
-    this.connect()
+    this.queueReconnect()
+  }
+
+  resetRetry() {
+    this.reconnectDelay = this.reconnectInterval
+    this.retryAt = 0
+    this.saveRetryState()
   }
 
   private connect() {
@@ -185,6 +225,8 @@ export class RawFrameConnection extends EventEmitter {
     }
 
     this.closed = false
+    this.retryAt = 0
+    this.saveRetryState()
 
     let socket: WebSocket
     try {
@@ -219,7 +261,7 @@ export class RawFrameConnection extends EventEmitter {
 
     clearTimeout(this.connectionTimer)
     this.connectionTimer = undefined
-    this.reconnectDelay = this.reconnectInterval
+    if (this.options.resetOnOpen !== false) this.resetRetry()
     this.connected = true
     this.emit('connect')
     this.flushQueue()
@@ -267,14 +309,17 @@ export class RawFrameConnection extends EventEmitter {
   }
 
   private queueReconnect() {
-    if (this.closing || this.reconnectTimer) return
+    if (this.closing || this.retryAt) return
 
     const delay = this.reconnectDelay
     this.reconnectDelay = Math.min(this.reconnectDelay * 2, this.maxReconnectInterval)
-    this.reconnectTimer = setTimeout(() => {
-      this.reconnectTimer = undefined
-      this.connect()
-    }, delay)
+    this.retryAt = Date.now() + delay
+    this.saveRetryState()
+    this.ensureConnected()
+  }
+
+  private saveRetryState() {
+    this.options.onRetryStateChange?.({ retryAt: this.retryAt, reconnectDelay: this.reconnectDelay })
   }
 
   private flushQueue() {
@@ -306,12 +351,14 @@ export default class FrameBackgroundProvider extends EventEmitter {
   private attemptedSubscriptions = new Set<ProviderEvent>()
   private subscriptionEvents = new Map<string, ProviderEvent>()
   private checkConnectionRunning = false
+  private requestApproval: boolean
   private connected = false
 
-  constructor(url: string, connectionOptions?: RawFrameConnectionOptions) {
+  constructor(url: string, connectionOptions?: RawFrameConnectionOptions & { requestApproval?: boolean }) {
     super()
 
-    this.connection = new RawFrameConnection(url, connectionOptions)
+    this.requestApproval = connectionOptions?.requestApproval ?? false
+    this.connection = new RawFrameConnection(url, { ...connectionOptions, resetOnOpen: false })
 
     this.connection.on('connect', () => {
       this.checkConnection().catch(console.error)
@@ -341,7 +388,6 @@ export default class FrameBackgroundProvider extends EventEmitter {
 
   async checkHealth(timeout = HEALTH_CHECK_TIMEOUT) {
     if (!this.connected) {
-      this.connection.ensureConnected()
       return false
     }
 
@@ -367,17 +413,25 @@ export default class FrameBackgroundProvider extends EventEmitter {
     this.checkConnectionRunning = true
 
     try {
+      const method = this.requestApproval ? 'frame_requestExtensionConnection' : 'eth_chainId'
+      this.requestApproval = false
       await withTimeout(
-        this.doSend('eth_chainId', [], undefined, false),
+        this.doSend(method, [], undefined, false),
         HEALTH_CHECK_TIMEOUT,
         'Newframe connection handshake timed out'
       )
+      if (!this.connection.connected) return
+      this.connection.resetRetry()
       this.connected = true
       this.emit('connect')
       this.resumeSubscriptions()
     } catch (e) {
       this.connected = false
-      if (this.connection.connected) this.connection.reconnect()
+      if (!this.connection.connected) return
+      this.connection.reconnect()
+      if (typeof e === 'object' && e !== null && 'code' in e && e.code === 4001) {
+        this.emit('rejected')
+      }
     } finally {
       this.checkConnectionRunning = false
     }

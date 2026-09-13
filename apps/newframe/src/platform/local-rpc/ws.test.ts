@@ -96,6 +96,53 @@ it('returns extension-local chain identity without forwarding it to the provider
   })
 })
 
+it('reopens desktop approval on explicit retry and settles repeated declines', async () => {
+  const origin = 'moz-extension://retry-test'
+  const extensionId = 'retry-test'
+  store.getState().trustExtension(extensionId, false)
+  const target = connect({
+    headers: { origin },
+    url: '/?identity=newframe-extension&scope=internal'
+  })
+  const payload = { id: 30, jsonrpc: '2.0', method: 'frame_requestExtensionConnection', params: [] } as const
+
+  for (const approved of [false, true]) {
+    const response = request({ ...payload, params: [] }, target)
+    expect(store.getState().view.notify).toBe('extensionConnect')
+    expect(store.getState().main.knownExtensions[extensionId]).toBeUndefined()
+    store.getState().trustExtension(extensionId, approved)
+    if (approved) await expect(response).resolves.toMatchObject({ result: '0x1' })
+    else await expect(response).resolves.toMatchObject({ error: { code: 4001 } })
+  }
+  expect(provider.requests).toHaveLength(0)
+  transport.dispose()
+})
+
+it('does not allow website traffic to reopen a rejected extension approval', async () => {
+  const origin = 'moz-extension://blocked-retry-test'
+  const extensionId = 'blocked-retry-test'
+  store.getState().trustExtension(extensionId, false)
+  for (const internal of [false, true]) {
+    const target = connect({
+      headers: { origin },
+      url: `/?identity=newframe-extension${internal ? '&scope=internal' : ''}`
+    })
+    const response = await request(
+      {
+        id: 31,
+        jsonrpc: '2.0',
+        method: 'frame_requestExtensionConnection',
+        params: [],
+        __frameOrigin: 'https://example.com'
+      } as JSONRPCRequestPayload,
+      target
+    )
+    expect(response).toMatchObject({ error: { code: 4001 } })
+    expect(store.getState().main.knownExtensions[extensionId]).toBe(false)
+  }
+  transport.dispose()
+})
+
 it('derives ordinary RPC identity from the socket instead of accepting renderer identity', async () => {
   provider.respond = (payload) => ({
     id: payload.id,

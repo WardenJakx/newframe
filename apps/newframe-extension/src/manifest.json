@@ -39,7 +39,7 @@
       "id": "{77691beb-4c53-48de-ab20-6589a537717a}"
     }
   },
-  "permissions": ["activeTab", "alarms", "idle", "scripting"],
+  "permissions": ["activeTab", "alarms", "scripting", "storage"],
   "host_permissions": ["https://*/*", "http://*/*"],
   "icons": {
     "16": "icons/icon16.png",

@@ -1074,9 +1074,11 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
       })
     },
 
-    trustExtension: (extensionId: string, trusted: boolean) => {
+    trustExtension: (extensionId: string, trusted: boolean | undefined) => {
       set((draft) => {
-        record(mutableMain(draft).knownExtensions)[extensionId] = trusted
+        const extensions = record(mutableMain(draft).knownExtensions)
+        if (trusted === undefined) delete extensions[extensionId]
+        else extensions[extensionId] = trusted
       })
     },
 

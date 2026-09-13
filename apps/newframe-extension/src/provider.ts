@@ -161,9 +161,11 @@ export default class InjectedFrameProvider extends EventEmitter {
       this.providerChainId = (await this.doSend('eth_chainId', [], undefined, false)) as string
       this.connected = true
     } catch (e) {
-      this.checkConnectionTimer = setTimeout(() => {
-        this.checkConnection().catch(console.error)
-      }, retryTimeout)
+      if (!(typeof e === 'object' && e !== null && 'code' in e && e.code === 4001)) {
+        this.checkConnectionTimer = setTimeout(() => {
+          this.checkConnection().catch(console.error)
+        }, retryTimeout)
+      }
       this.connected = false
     } finally {
       this.checkConnectionRunning = false
