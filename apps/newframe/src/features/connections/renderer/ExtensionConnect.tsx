@@ -39,7 +39,7 @@ export default function ExtensionConnectNotification({
     <Dialog label='Extension connection request' padding='large' width='compact'>
       <Stack align='center' gap='large'>
         <Text decorative tone='accent'>
-          <AppIcon name='firefox' size={40} />
+          <AppIcon name={browser === 'chrome' ? 'chrome' : 'firefox'} size={40} />
         </Text>
         <Text align='center'>
           {`A new ${browserName} extension is attempting to connect as “Newframe Companion”.`}
