@@ -75,7 +75,7 @@ describe('tab settings', () => {
     stubGlobal('window', { close })
     expect(await getMetaMaskSetting(7)).toBe(false)
     await refreshCurrentChain(7)
-    await expect(toggleMetaMaskSetting(7)).rejects.toThrow('Cannot access this page')
+    expect(toggleMetaMaskSetting(7)).rejects.toThrow('Cannot access this page')
     expect(close).not.toHaveBeenCalled()
   })
 })

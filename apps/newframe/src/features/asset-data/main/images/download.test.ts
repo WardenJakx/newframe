@@ -65,8 +65,8 @@ it('deduplicates concurrent downloads for the same URL', async () => {
 })
 
 it('rejects non-HTTPS and local image URLs', async () => {
-  await expect(downloadImage('ipfs://bafybeihash/icon.png')).rejects.toThrow('Image URL must use HTTPS')
-  await expect(downloadImage('https://localhost/usdc.png')).rejects.toThrow(
+  expect(downloadImage('ipfs://bafybeihash/icon.png')).rejects.toThrow('Image URL must use HTTPS')
+  expect(downloadImage('https://localhost/usdc.png')).rejects.toThrow(
     'Image URL cannot target local hostnames'
   )
   expect(mockFetch).not.toHaveBeenCalled()
@@ -75,13 +75,13 @@ it('rejects non-HTTPS and local image URLs', async () => {
 it('rejects unsupported image MIME types', async () => {
   mockFetch.mockResolvedValue(createResponse(Buffer.from('<html></html>'), 'text/html'))
 
-  await expect(downloadImage('https://cdn.example/not-an-image')).rejects.toThrow('Unsupported image type')
+  expect(downloadImage('https://cdn.example/not-an-image')).rejects.toThrow('Unsupported image type')
 })
 
 it('rejects redirects to private image URLs', async () => {
   mockFetch.mockResolvedValue(createRedirect('https://127.0.0.1/usdc.png'))
 
-  await expect(downloadImage('https://cdn.example/usdc.png')).rejects.toThrow(
+  expect(downloadImage('https://cdn.example/usdc.png')).rejects.toThrow(
     'Image URL cannot target private addresses'
   )
   expect(mockFetch).toHaveBeenCalledTimes(1)

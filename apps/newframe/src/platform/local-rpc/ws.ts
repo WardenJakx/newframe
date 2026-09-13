@@ -55,7 +55,7 @@ interface WebSocketProviderPort {
     payload: RPCRequestPayload,
     respond?: (response: RPCResponsePayload) => void,
     principal?: TrustedPrincipal
-  ): void
+  ): void | Promise<void>
   on(event: 'data:subscription', listener: (payload: RPC.Susbcription.Response) => void): unknown
   off(event: 'data:subscription', listener: (payload: RPC.Susbcription.Response) => void): unknown
 }
@@ -123,13 +123,15 @@ export function createWebSocketRpcTransport({
   const removeSocketSubscriptions = (socket: FrameWebSocket) => {
     Object.keys(subs).forEach((sub) => {
       if (subs[sub].socket.id !== socket.id) return
-      provider.send({
-        jsonrpc: '2.0',
-        id: 1,
-        method: 'eth_unsubscribe',
-        _origin: subs[sub].originId,
-        params: [sub]
-      })
+      Promise.resolve(
+        provider.send({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'eth_unsubscribe',
+          _origin: subs[sub].originId,
+          params: [sub]
+        })
+      ).catch((error) => log.error('WebSocket RPC subscription cleanup failed', error))
       delete subs[sub]
     })
   }

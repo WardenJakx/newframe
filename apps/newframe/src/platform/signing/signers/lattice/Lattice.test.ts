@@ -87,7 +87,7 @@ describe('#connect', () => {
       ['Error from device: Invalid Request', 'unknown device error']
     ]) {
       connect.mockRejectedValueOnce(new Error(message))
-      await expect(lattice.connect(baseUrl, privateKey)).rejects.toThrow(message.split(': ')[1])
+      expect(lattice.connect(baseUrl, privateKey)).rejects.toThrow(message.split(': ')[1])
       expect(lattice.status.toLowerCase()).toContain(status)
     }
     expect(connected).toEqual([])
@@ -124,7 +124,7 @@ describe('#pair', () => {
   it('publishes pairing failures without a paired event', async () => {
     const paired: boolean[] = []
     lattice.on('paired', (active: boolean) => paired.push(active))
-    await expect(lattice.pair('SDFJOSJD')).rejects.toThrow('Pairing failed')
+    expect(lattice.pair('SDFJOSJD')).rejects.toThrow('Pairing failed')
     expect(lattice.status.toLowerCase()).toBe('pairing failed')
     expect(paired).toEqual([])
   })
@@ -225,13 +225,13 @@ describe('signing and verification', () => {
     lattice.accountLimit = 5
     lattice.connection = { getAddresses: mock(), getAppName: () => 'frame-test' }
     expect(await callbackResult((done) => lattice.verifyAddress(2, 'addr3', false, done))).toBeTrue()
-    await expect(callbackResult((done) => lattice.verifyAddress(2, 'addrX', false, done))).rejects.toThrow(
+    expect(callbackResult((done) => lattice.verifyAddress(2, 'addrX', false, done))).rejects.toThrow(
       'Address does not match device'
     )
 
     lattice.addresses = []
     lattice.connection.getAddresses.mockRejectedValue(new Error('error!'))
-    await expect(callbackResult((done) => lattice.verifyAddress(2, 'addr3', false, done))).rejects.toThrow(
+    expect(callbackResult((done) => lattice.verifyAddress(2, 'addr3', false, done))).rejects.toThrow(
       'Verify Address Error'
     )
   })
@@ -255,15 +255,13 @@ describe('signing and verification', () => {
     expect(await callbackResult<string>((done) => lattice.signMessage(4, 'sign this please', done))).toBe(
       '0x9af6cbabcd0401'
     )
-    await expect(
-      callbackResult((done) => lattice.signMessage(3, 'sign this please', done))
-    ).rejects.toBeTruthy()
+    expect(callbackResult((done) => lattice.signMessage(3, 'sign this please', done))).rejects.toBeTruthy()
 
     const typed = { version: SignTypedDataVersion.V4, data: 'typed data' }
     expect(await callbackResult<string>((done) => lattice.signTypedData(2, typed, done))).toBe(
       '0x3ea8cdabcd0401'
     )
-    await expect(callbackResult((done) => lattice.signTypedData(3, typed, done))).rejects.toBeTruthy()
+    expect(callbackResult((done) => lattice.signTypedData(3, typed, done))).rejects.toBeTruthy()
   })
 
   it('signs legacy and EIP-1559 transactions with their exact wire shapes', async () => {

@@ -112,8 +112,8 @@ it('reopens desktop approval on explicit retry and settles repeated declines', a
     expect(store.getState().view.notify).toBe('extensionConnect')
     expect(store.getState().main.knownExtensions[extensionId]).toBeUndefined()
     store.getState().trustExtension(extensionId, approved)
-    if (approved) await expect(response).resolves.toMatchObject({ result: '0x1' })
-    else await expect(response).resolves.toMatchObject({ error: { code: 4001 } })
+    if (approved) expect(response).resolves.toMatchObject({ result: '0x1' })
+    else expect(response).resolves.toMatchObject({ error: { code: 4001 } })
   }
   expect(provider.requests).toHaveLength(0)
   transport.dispose()
@@ -161,7 +161,7 @@ it.each([true, false])(
     expect(provider.requests).toEqual([])
 
     store.getState().trustExtension(id, approved)
-    await expect(response).resolves.toMatchObject(approved ? { result: '0x1' } : { error: { code: 4001 } })
+    expect(response).resolves.toMatchObject(approved ? { result: '0x1' } : { error: { code: 4001 } })
     transport.dispose()
   }
 )

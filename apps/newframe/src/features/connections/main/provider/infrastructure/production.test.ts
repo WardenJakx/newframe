@@ -26,14 +26,14 @@ describe('provider request infrastructure adapter', () => {
     expect(send).toHaveBeenCalledWith(expect.any(Object), expect.any(Function), principal, context)
     respond({ id: 1, jsonrpc: '2.0', result: '0x1' })
     respond({ id: 1, jsonrpc: '2.0', error: { code: -1, message: 'late' } })
-    await expect(first).resolves.toMatchObject({ result: '0x1' })
+    expect(first).resolves.toMatchObject({ result: '0x1' })
 
     const pending = adapter.request(
       { id: 2, jsonrpc: '2.0', method: 'eth_chainId', params: [], _origin: 'test-origin' },
       principal
     )
     adapter.dispose()
-    await expect(pending).rejects.toThrow('disposed before the operation completed')
+    expect(pending).rejects.toThrow('disposed before the operation completed')
   })
 
   it('makes the three callback-based approval methods promise-first and disposable', async () => {
@@ -50,11 +50,11 @@ describe('provider request infrastructure adapter', () => {
       adapter.approveTransactionRequest({} as never)
     ]
     pending.forEach((complete, index) => complete(null, `result-${index}`))
-    await expect(Promise.all(requests)).resolves.toEqual(['result-0', 'result-1', 'result-2'])
+    expect(Promise.all(requests)).resolves.toEqual(['result-0', 'result-1', 'result-2'])
 
     const disposed = adapter.approveSign({} as never)
     adapter.dispose()
-    await expect(disposed).rejects.toThrow('disposed before the operation completed')
+    expect(disposed).rejects.toThrow('disposed before the operation completed')
   })
 })
 
@@ -73,8 +73,8 @@ it('rejects provider promise failures and ignores failures after callback settle
     params: [],
     _origin: 'test'
   }
-  await expect(adapter.request(payload, principal)).rejects.toThrow('provider unavailable')
+  expect(adapter.request(payload, principal)).rejects.toThrow('provider unavailable')
   callbackFirst = true
-  await expect(adapter.request(payload, principal)).resolves.toMatchObject({ result: '0x1' })
+  expect(adapter.request(payload, principal)).resolves.toMatchObject({ result: '0x1' })
   adapter.dispose()
 })

@@ -99,7 +99,7 @@ it('maps each request surface to its exact host command and preserves failures',
   ])
 
   executeCommand.mockResolvedValueOnce({ ok: false, error: 'operation_failed' })
-  await expect(capabilities.review.reject({ requestId: 'request-2' })).resolves.toEqual({
+  expect(capabilities.review.reject({ requestId: 'request-2' })).resolves.toEqual({
     ok: false,
     error: 'operation_failed'
   })

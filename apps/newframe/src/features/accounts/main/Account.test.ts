@@ -450,7 +450,7 @@ it('rejects every Safe signing method even when an owner signer is associated', 
     (callback: any) => account.signTypedData({ data: {} }, callback),
     (callback: any) => account.signTransaction({ from: account.address }, callback)
   ]) {
-    await expect(
+    expect(
       new Promise((resolve, reject) => {
         sign((error: Error | null, result: unknown) => (error ? reject(error) : resolve(result)))
       })

@@ -26,7 +26,7 @@ it('reveals a contract identity through its graph-owned provider proxy', async (
   proxy.start()
   await new Promise<void>((resolve) => proxy.once('connect', resolve))
 
-  await expect(reveal.identity('0x1111111111111111111111111111111111111111', 10)).resolves.toEqual({
+  expect(reveal.identity('0x1111111111111111111111111111111111111111', 10)).resolves.toEqual({
     ens: 'vault.eth',
     type: 'contract'
   })

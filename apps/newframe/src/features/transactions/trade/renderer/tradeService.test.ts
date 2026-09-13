@@ -10,7 +10,7 @@ it('maps semantic trade actions to their exact catalog operations', async () => 
   const trade = createTradeCapability(host)
   host.executeQuery.mockResolvedValue({ ok: false, error: 'quote_failed', message: 'Unavailable.' })
 
-  await expect(
+  expect(
     trade.quote({
       accountAddress: '0x0000000000000000000000000000000000000001',
       contraAsset: FLASH_USDC_ASSET,

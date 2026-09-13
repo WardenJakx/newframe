@@ -59,7 +59,7 @@ describe('Safe service client over HTTP', () => {
       const { client } = setup(async (_, response) =>
         Response.json({ ...(await response.json()), ...replacement })
       )
-      await expect(client.configuration(31337, safe)).rejects.toThrow()
+      expect(client.configuration(31337, safe)).rejects.toThrow()
     }
   })
   test('rejects malformed transaction fields without a partial result', async () => {
@@ -80,7 +80,7 @@ describe('Safe service client over HTTP', () => {
         return Response.json(page)
       })
       const configuration = await client.configuration(31337, safe)
-      await expect(client.pending(31337, safe, configuration)).rejects.toThrow()
+      expect(client.pending(31337, safe, configuration)).rejects.toThrow()
     }
   })
   test('deduplicates hashes without dropping alternative proposals', async () => {
@@ -98,7 +98,7 @@ describe('Safe service client over HTTP', () => {
       new URL(request.url).searchParams.has('offset') ? Response.json({}, { status: 503 }) : response
     )
     const configuration = await client.configuration(31337, safe)
-    await expect(client.pending(31337, safe, configuration)).rejects.toThrow('HTTP 503')
+    expect(client.pending(31337, safe, configuration)).rejects.toThrow('HTTP 503')
   })
   test('rejects foreign and repeated pagination links', async () => {
     for (const foreign of [true, false]) {
@@ -110,16 +110,14 @@ describe('Safe service client over HTTP', () => {
         })
       })
       const configuration = await client.configuration(31337, safe)
-      await expect(client.pending(31337, safe, configuration)).rejects.toThrow(
-        foreign ? 'Unsafe' : 'progress'
-      )
+      expect(client.pending(31337, safe, configuration)).rejects.toThrow(foreign ? 'Unsafe' : 'progress')
     }
   })
   test('enforces Retry-After without sending another request', async () => {
     const { client, handler } = setup()
     handler.failNext(429, '30')
-    await expect(client.configuration(31337, safe)).rejects.toThrow('rate limited')
-    await expect(client.configuration(31337, safe)).rejects.toThrow('rate limited')
+    expect(client.configuration(31337, safe)).rejects.toThrow('rate limited')
+    expect(client.configuration(31337, safe)).rejects.toThrow('rate limited')
     expect(handler.requests).toHaveLength(1)
   })
   test('timeout covers a delayed body, and external cancellation stops requests', async () => {
@@ -140,10 +138,10 @@ describe('Safe service client over HTTP', () => {
           })
         )
     )
-    await expect(client.configuration(31337, safe)).rejects.toThrow()
+    expect(client.configuration(31337, safe)).rejects.toThrow()
     const abort = new AbortController()
     abort.abort()
-    await expect(client.configuration(31337, safe, abort.signal)).rejects.toThrow()
+    expect(client.configuration(31337, safe, abort.signal)).rejects.toThrow()
   })
   test('resolves hosted services across the supported Safe networks', () => {
     const networks = safeServiceNetworks({ development: false })
@@ -166,7 +164,7 @@ describe('Safe service client over HTTP', () => {
         return Response.json({})
       }
     })
-    await expect(
+    expect(
       client.pending(999_999, safe, {
         owners,
         threshold: 2,
@@ -315,9 +313,9 @@ test('discovers contracts through the requested chain and imports configuration 
 
 test('rejects empty contract responses and bounds unresponsive chain probes', async () => {
   const client = createSafeClient({ request: fetch, call: async () => '0x' })
-  await expect(client.discover(1, safe)).rejects.toThrow()
+  expect(client.discover(1, safe)).rejects.toThrow()
   const hanging = createSafeClient({ request: fetch, timeoutMs: 5, call: () => new Promise(() => {}) })
-  await expect(hanging.discover(1, safe)).rejects.toThrow('Safe chain request timed out')
+  expect(hanging.discover(1, safe)).rejects.toThrow('Safe chain request timed out')
 })
 
 test('publishes real owner signatures over HTTP and retrieves the retained bytes across pages', async () => {
@@ -346,9 +344,9 @@ test('publishes real owner signatures over HTTP and retrieves the retained bytes
     { owner: signers[0].address, signature },
     { owner: signers[1].address, signature: signers[1].signingKey.sign(proposal.safeTxHash).serialized }
   ])
-  await expect(client.confirm(31337, other.safeTxHash, signature)).rejects.toThrow('HTTP 400')
-  await expect(client.confirm(31337, `0x${'00'.repeat(32)}`, signature)).rejects.toThrow('HTTP 404')
-  await expect(
+  expect(client.confirm(31337, other.safeTxHash, signature)).rejects.toThrow('HTTP 400')
+  expect(client.confirm(31337, `0x${'00'.repeat(32)}`, signature)).rejects.toThrow('HTTP 404')
+  expect(
     client.confirm(
       31337,
       proposal.safeTxHash,
@@ -378,10 +376,10 @@ test('confirmation pagination isolates malformed entries and rejects unsafe or r
     `?offset=1#fragment`
   ]) {
     next = unsafe
-    await expect(client.confirmations(1, hash)).rejects.toThrow('Unsafe')
+    expect(client.confirmations(1, hash)).rejects.toThrow('Unsafe')
   }
   next = '?offset=1'
-  await expect(client.confirmations(1, hash)).rejects.toThrow('progress')
+  expect(client.confirmations(1, hash)).rejects.toThrow('progress')
 })
 
 test('confirmation POST shares HTTP errors, cooldown, cancellation, redirect and body timeout handling', async () => {
@@ -397,12 +395,12 @@ test('confirmation POST shares HTTP errors, cooldown, cancellation, redirect and
       return Response.json({}, { status: 429, headers: { 'Retry-After': '30' } })
     }
   })
-  await expect(client.confirm(1, hash, signature)).rejects.toThrow('rate limited')
-  await expect(client.confirmations(1, hash)).rejects.toThrow('rate limited')
+  expect(client.confirm(1, hash, signature)).rejects.toThrow('rate limited')
+  expect(client.confirmations(1, hash)).rejects.toThrow('rate limited')
   expect(count).toBe(1)
   for (const status of [401, 403, 422, 500]) {
     const failing = createSafeClient({ request: async () => Response.json({}, { status }) })
-    await expect(failing.confirm(1, hash, signature)).rejects.toThrow(`HTTP ${status}`)
+    expect(failing.confirm(1, hash, signature)).rejects.toThrow(`HTTP ${status}`)
   }
   const aborted = new AbortController()
   aborted.abort()
@@ -411,7 +409,7 @@ test('confirmation POST shares HTTP errors, cooldown, cancellation, redirect and
       throw new Error('Must not send')
     }
   })
-  await expect(unused.confirm(1, hash, signature, aborted.signal)).rejects.toThrow()
+  expect(unused.confirm(1, hash, signature, aborted.signal)).rejects.toThrow()
   const { client: delayed } = setup(
     async () =>
       new Response(
@@ -428,5 +426,5 @@ test('confirmation POST shares HTTP errors, cooldown, cancellation, redirect and
         })
       )
   )
-  await expect(delayed.confirm(31337, hash, signature)).rejects.toThrow()
+  expect(delayed.confirm(31337, hash, signature)).rejects.toThrow()
 })

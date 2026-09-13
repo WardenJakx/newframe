@@ -179,9 +179,7 @@ describe('typed operation dispatcher', () => {
 
   it('rejects unknown, unregistered, wrong-role, wrong-entrypoint, and non-strict inputs', async () => {
     authorizeRenderer.mockReturnValue(undefined)
-    await expect(
-      dispatcher.dispatchQuery(event, { type: 'name.resolve', name: 'alice.eth' })
-    ).resolves.toEqual({
+    expect(dispatcher.dispatchQuery(event, { type: 'name.resolve', name: 'alice.eth' })).resolves.toEqual({
       ok: false,
       error: 'unauthorized'
     })
@@ -192,7 +190,7 @@ describe('typed operation dispatcher', () => {
       { type: 'security.unlock', operationId: 'unlock', method: 'native' },
       { type: 'request.reject', requestId: 'request-1' }
     ]) {
-      await expect(dispatcher.dispatchCommand(event, input)).resolves.toEqual({
+      expect(dispatcher.dispatchCommand(event, input)).resolves.toEqual({
         ok: false,
         error: 'unauthorized'
       })
@@ -206,7 +204,7 @@ describe('typed operation dispatcher', () => {
       { type: 'x'.repeat(129) },
       { type: 'transaction.submit', method: 'eth_sign', originId: 'attacker' }
     ]) {
-      await expect(dispatcher.dispatchCommand(event, input)).resolves.toEqual({
+      expect(dispatcher.dispatchCommand(event, input)).resolves.toEqual({
         ok: false,
         error: input.type === 'sidetray.close' ? 'unauthorized' : 'invalid_command'
       })
@@ -261,25 +259,25 @@ describe('typed operation dispatcher', () => {
       { type: 'account.remove', address }
     ]
     for (const command of commands) {
-      await expect(dispatcher.dispatchCommand(event, command)).resolves.toEqual({ ok: true })
+      expect(dispatcher.dispatchCommand(event, command)).resolves.toEqual({ ok: true })
     }
     expect(platform.openTransactionExplorer).toHaveBeenCalledWith(1, undefined)
     expect(requestEdits.updateTransactionFee).toHaveBeenCalledWith('request-1', 'gasLimit', '0x1')
     expect(accountMutations.clearPermission).toHaveBeenCalledWith(address, undefined)
 
     accountMutations.select.mockReturnValueOnce(false)
-    await expect(
+    expect(
       dispatcher.dispatchCommand(event, { type: 'account.select', accountId: 'missing' })
     ).resolves.toEqual({ ok: false, error: 'not_found' })
     requests.rejectRequest.mockReturnValueOnce(false)
-    await expect(
+    expect(
       dispatcher.dispatchCommand(event, { type: 'request.reject', requestId: 'missing' })
     ).resolves.toEqual({ ok: false, error: 'request_not_found' })
   })
 
   it('keeps profiles explicit, canonicalizes their input, and validates projected query output', async () => {
     authorizeRenderer.mockReturnValue(trayContext)
-    await expect(
+    expect(
       dispatcher.dispatchCommand(event, {
         type: 'profile.create',
         operationId: 'create-profile',
@@ -296,7 +294,7 @@ describe('typed operation dispatcher', () => {
       ok: true,
       accounts: [{ id: 'one', address: '0x1', name: 'One', profileId: 'default', signer: 'secret' }]
     })
-    await expect(dispatcher.dispatchQuery(event, { type: 'profile.movable-accounts' })).resolves.toEqual({
+    expect(dispatcher.dispatchQuery(event, { type: 'profile.movable-accounts' })).resolves.toEqual({
       ok: false,
       error: 'operation_failed'
     })
@@ -304,7 +302,7 @@ describe('typed operation dispatcher', () => {
     profiles.create.mockImplementationOnce(() => {
       throw new Error('failed')
     })
-    await expect(
+    expect(
       dispatcher.dispatchCommand(event, { type: 'profile.create', operationId: 'fail', name: 'Work' })
     ).resolves.toEqual({ ok: false, error: 'operation_failed' })
   })
@@ -318,14 +316,14 @@ describe('typed operation dispatcher', () => {
       amount: '1',
       recipient: 'alice.eth'
     }
-    await expect(dispatcher.dispatchCommand(event, sendCommand)).resolves.toEqual({ ok: true })
+    expect(dispatcher.dispatchCommand(event, sendCommand)).resolves.toEqual({ ok: true })
     expect(send.submit).toHaveBeenCalledWith(
       sendCommand,
       expect.objectContaining({ kind: 'renderer', windowInstanceId: 'side-tray-test' }),
       { clientType: 'sidetray', windowInstanceId: 'side-tray-test' }
     )
 
-    await expect(
+    expect(
       dispatcher.dispatchCommand(event, {
         type: 'trade.prepare',
         operationId: 'trade-operation',
@@ -333,14 +331,14 @@ describe('typed operation dispatcher', () => {
         action: 'approve'
       })
     ).resolves.toEqual({ ok: true })
-    await expect(dispatcher.dispatchCommand(event, { type: 'trade.release' })).resolves.toEqual({ ok: true })
+    expect(dispatcher.dispatchCommand(event, { type: 'trade.release' })).resolves.toEqual({ ok: true })
     expect(trade.release).toHaveBeenCalledWith({
       clientType: 'sidetray',
       windowInstanceId: 'side-tray-test'
     })
 
     authorizeRenderer.mockReturnValue(trayContext)
-    await expect(
+    expect(
       dispatcher.dispatchCommand(event, {
         type: 'flash.order-cancel',
         operationId: 'cancel-operation',
@@ -369,13 +367,13 @@ describe('typed operation dispatcher', () => {
       },
       { type: 'signer.reload', operationId: 'reload', signerId: 'ledger-1' }
     ]) {
-      await expect(dispatcher.dispatchCommand(event, command)).resolves.toEqual({ ok: true })
+      expect(dispatcher.dispatchCommand(event, command)).resolves.toEqual({ ok: true })
     }
     expect(accountOnboarding.loadLedgerAccounts).toHaveBeenCalledWith(
       expect.objectContaining({ accountCount: 25 }),
       owner
     )
-    await expect(
+    expect(
       dispatcher.dispatchCommand(event, {
         type: 'security.unlock',
         operationId: 'bad',
@@ -392,30 +390,30 @@ describe('typed operation dispatcher', () => {
     const privateKey = `0x${'12'.repeat(32)}`
     accountOnboarding.exportPrivateKey.mockResolvedValue(privateKey)
     accountOnboarding.generateSeedPhrase.mockResolvedValue('one two three')
-    await expect(dispatcher.dispatchQuery(event, { type: 'keystore.locate' })).resolves.toEqual({
+    expect(dispatcher.dispatchQuery(event, { type: 'keystore.locate' })).resolves.toEqual({
       ok: true,
       keystore: { version: 3 }
     })
-    await expect(
+    expect(
       dispatcher.dispatchQuery(event, {
         type: 'account.private-key-export',
         accountId
       })
     ).resolves.toEqual({ ok: true, privateKey })
-    await expect(
+    expect(
       dispatcher.dispatchQuery(event, {
         type: 'account.private-key-export',
         accountId,
         password: 'obsolete'
       } as never)
     ).resolves.toEqual({ ok: false, error: 'invalid_query' })
-    await expect(dispatcher.dispatchQuery(event, { type: 'seed.generate' })).resolves.toEqual({
+    expect(dispatcher.dispatchQuery(event, { type: 'seed.generate' })).resolves.toEqual({
       ok: true,
       phrase: 'one two three'
     })
 
     accountOnboarding.exportPrivateKey.mockResolvedValueOnce(undefined)
-    await expect(
+    expect(
       dispatcher.dispatchQuery(event, {
         type: 'account.private-key-export',
         accountId
@@ -427,36 +425,37 @@ describe('typed operation dispatcher', () => {
     const address = '0x1111111111111111111111111111111111111111'
     authorizeRenderer.mockReturnValue(sideTrayContext)
     resolveName.mockResolvedValue(address)
-    await expect(
-      dispatcher.dispatchQuery(event, { type: 'name.resolve', name: 'alice.eth' })
-    ).resolves.toEqual({ ok: true, address })
-    await expect(
-      dispatcher.dispatchQuery(event, { type: 'token.lookup', address, chainId: 1 })
-    ).resolves.toEqual({ ok: false, error: 'unauthorized' })
+    expect(dispatcher.dispatchQuery(event, { type: 'name.resolve', name: 'alice.eth' })).resolves.toEqual({
+      ok: true,
+      address
+    })
+    expect(dispatcher.dispatchQuery(event, { type: 'token.lookup', address, chainId: 1 })).resolves.toEqual({
+      ok: false,
+      error: 'unauthorized'
+    })
 
     authorizeRenderer.mockReturnValue(trayContext)
     tokens.lookup.mockResolvedValue({ decimals: 18, name: 'Token', symbol: 'TKN', totalSupply: '100' })
     accountMutations.addressChainUsage.mockResolvedValue([{ address, chainIds: [1, 10], complete: true }])
-    await expect(
-      dispatcher.dispatchQuery(event, { type: 'token.lookup', address, chainId: 1 })
-    ).resolves.toEqual({
+    expect(dispatcher.dispatchQuery(event, { type: 'token.lookup', address, chainId: 1 })).resolves.toEqual({
       ok: true,
       token: { decimals: 18, name: 'Token', symbol: 'TKN', totalSupply: '100' }
     })
-    await expect(
+    expect(
       dispatcher.dispatchQuery(event, { type: 'address.chain-usage', addresses: [address] })
     ).resolves.toEqual({ ok: true, usage: [{ address, chainIds: [1, 10], complete: true }] })
 
     resolveName.mockRejectedValueOnce(new Error('offline'))
-    await expect(
-      dispatcher.dispatchQuery(event, { type: 'name.resolve', name: 'alice.eth' })
-    ).resolves.toEqual({ ok: false, error: 'resolution_failed' })
+    expect(dispatcher.dispatchQuery(event, { type: 'name.resolve', name: 'alice.eth' })).resolves.toEqual({
+      ok: false,
+      error: 'resolution_failed'
+    })
   })
 
   it('binds close/context-menu effects to the invoking event', async () => {
     authorizeRenderer.mockReturnValue(sideTrayContext)
-    await expect(dispatcher.dispatchCommand(event, { type: 'sidetray.close' })).resolves.toEqual({ ok: true })
-    await expect(
+    expect(dispatcher.dispatchCommand(event, { type: 'sidetray.close' })).resolves.toEqual({ ok: true })
+    expect(
       dispatcher.dispatchCommand(event, { type: 'renderer.context-menu', x: 12, y: 34 })
     ).resolves.toEqual({ ok: true })
     expect(platform.closeSideTray).toHaveBeenCalledWith(event)
@@ -472,11 +471,11 @@ describe('typed operation dispatcher', () => {
       replacement: 'speed' as const,
       idempotencyKey: '00000000-0000-4000-8000-000000000100'
     }
-    await expect(
+    expect(
       Promise.all([dispatcher.dispatchCommand(event, command), dispatcher.dispatchCommand(event, command)])
     ).resolves.toEqual([{ ok: true }, { ok: true }])
     expect(requests.replaceTransaction).toHaveBeenCalledTimes(1)
-    await expect(
+    expect(
       dispatcher.dispatchCommand(event, { ...command, replacement: 'cancel' as const })
     ).resolves.toEqual({
       ok: false,

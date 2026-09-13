@@ -15,9 +15,7 @@ it('routes reads to the selected chain and rejects write methods', async () => {
     target: { type: 'ethereum', id: 100 },
     payload: { method: 'eth_call', params: [{ data: '0xab' }, '0x123'] }
   })
-  await expect(rpc.request(100, 'eth_sendTransaction' as never, [])).rejects.toThrow(
-    'Invalid Safe simulation read'
-  )
+  expect(rpc.request(100, 'eth_sendTransaction' as never, [])).rejects.toThrow('Invalid Safe simulation read')
   expect(sent).toHaveLength(1)
   rpc.dispose()
 })
@@ -28,7 +26,7 @@ it('settles reads when the RPC times out or the caller aborts', async () => {
     const controller = new AbortController()
     const pending = rpc.request(1, 'eth_chainId', [], controller.signal)
     if (reason === 'abort') controller.abort(new Error('Cancelled'))
-    await expect(pending).rejects.toThrow(reason === 'timeout' ? 'timed out' : 'Cancelled')
+    expect(pending).rejects.toThrow(reason === 'timeout' ? 'timed out' : 'Cancelled')
     rpc.dispose()
   }
 })
@@ -58,6 +56,6 @@ it('pins metadata calls and rejects write methods through the metadata compatibi
     )
   await request('eth_call')
   expect(methods[0]).toMatchObject({ payload: { params: [{ data: '0x' }, '0x77'] }, target: { id: 10 } })
-  await expect(request('eth_sendTransaction')).rejects.toThrow('Unsupported token metadata read')
+  expect(request('eth_sendTransaction')).rejects.toThrow('Unsupported token metadata read')
   rpc.dispose()
 })

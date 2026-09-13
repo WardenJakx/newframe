@@ -417,8 +417,8 @@ describe('security lifecycle service', () => {
     failingSource.signers.unlockApp.mockImplementationOnce((_password, done) => done(new Error('failure')))
     failingSource.signers.unlockAppWithBiometrics.mockImplementationOnce((_payload, done) => done(null))
     const failingAdapters = createProductionSecurityAdapters(failingSource)
-    await expect(failingAdapters.authentication.unlockWithPassword('local-only')).rejects.toThrow('failure')
-    await expect(failingAdapters.authentication.unlockWithBiometrics({ method: 'native' })).rejects.toThrow(
+    expect(failingAdapters.authentication.unlockWithPassword('local-only')).rejects.toThrow('failure')
+    expect(failingAdapters.authentication.unlockWithBiometrics({ method: 'native' })).rejects.toThrow(
       'Operation returned no result'
     )
     adapters.dispose()
@@ -436,10 +436,10 @@ describe('security lifecycle service', () => {
     const completed = adapters.authentication.unlockWithPassword('local-only')
     complete(null, true)
     complete(new Error('late callback'))
-    await expect(completed).resolves.toBeUndefined()
+    expect(completed).resolves.toBeUndefined()
 
     const pending = adapters.authentication.unlockWithPassword('local-only')
     adapters.dispose()
-    await expect(pending).rejects.toThrow('disposed before the operation completed')
+    expect(pending).rejects.toThrow('disposed before the operation completed')
   })
 })

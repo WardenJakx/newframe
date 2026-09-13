@@ -14,7 +14,7 @@ async function walk(directory: string): Promise<string[]> {
   const entries = await readdir(directory, { withFileTypes: true })
   return (
     await Promise.all(
-      entries.map((entry) => {
+      entries.map(async (entry) => {
         const target = path.join(directory, entry.name)
         return entry.isDirectory() ? walk(target) : [target]
       })

@@ -235,7 +235,7 @@ describe('prepareDevelopmentProfile', () => {
     const nonRepository = path.join(fixtureRoot, 'not-a-repository')
     await mkdir(nonRepository)
 
-    await expect(prepareDevelopmentProfile(applicationData, nonRepository)).rejects.toThrow(
+    expect(prepareDevelopmentProfile(applicationData, nonRepository)).rejects.toThrow(
       'Unable to resolve Git checkout for development profile'
     )
     expect(await tree(applicationData)).toEqual({})
@@ -244,7 +244,7 @@ describe('prepareDevelopmentProfile', () => {
   it('fails closed for an unexpected symbolic-ref exit code', async () => {
     const runGit = async () => ({ exitCode: 128, stdout: '' })
 
-    await expect(prepareDevelopmentProfile(applicationData, repository, { runGit })).rejects.toThrow(
+    expect(prepareDevelopmentProfile(applicationData, repository, { runGit })).rejects.toThrow(
       'Unable to resolve Git checkout for development profile'
     )
     expect(await tree(applicationData)).toEqual({})
@@ -253,7 +253,7 @@ describe('prepareDevelopmentProfile', () => {
   it('fails closed when symbolic-ref is terminated by a signal', async () => {
     const runGit = async () => ({ exitCode: null, stdout: '' })
 
-    await expect(prepareDevelopmentProfile(applicationData, repository, { runGit })).rejects.toThrow(
+    expect(prepareDevelopmentProfile(applicationData, repository, { runGit })).rejects.toThrow(
       'Unable to resolve Git checkout for development profile'
     )
     expect(await tree(applicationData)).toEqual({})
@@ -267,7 +267,7 @@ describe('prepareDevelopmentProfile', () => {
     await symlink('../config.json', signerLink)
     git(repository, 'switch', '--quiet', '--create', 'feature/signer-symlink')
 
-    await expect(prepareDevelopmentProfile(applicationData, repository)).rejects.toThrow(
+    expect(prepareDevelopmentProfile(applicationData, repository)).rejects.toThrow(
       'Failed to initialize isolated development profile'
     )
 
@@ -280,7 +280,7 @@ describe('prepareDevelopmentProfile', () => {
     await write(path.join(canonical, 'config.json'), 'do not expose this')
     git(repository, 'switch', '--quiet', '--create', 'feature/copy-failure')
 
-    await expect(
+    expect(
       prepareDevelopmentProfile(applicationData, repository, {
         copyFile: async () => {
           throw new Error('copy failed with secret contents')

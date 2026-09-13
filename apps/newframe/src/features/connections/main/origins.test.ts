@@ -230,14 +230,14 @@ describe('extension trust service', () => {
     const extension: FrameExtension = { browser: 'firefox', id: 'retry-firefox' }
     harness.setKnownExtension(extension.id, false)
 
-    await expect(harness.service.isKnownExtension(extension)).resolves.toBe(false)
+    expect(harness.service.isKnownExtension(extension)).resolves.toBe(false)
     expect(harness.notifications).toHaveLength(0)
 
     for (const allowed of [false, true]) {
       const retry = harness.service.isKnownExtension(extension, true)
       const concurrent = harness.service.isKnownExtension(extension)
       harness.setKnownExtension(extension.id, allowed)
-      await expect(Promise.all([retry, concurrent])).resolves.toEqual([allowed, allowed])
+      expect(Promise.all([retry, concurrent])).resolves.toEqual([allowed, allowed])
     }
     expect(harness.notifications).toEqual([extension, extension])
   })
@@ -297,7 +297,7 @@ describe('extension trust service', () => {
 
         expect(harness.notifications).toStrictEqual([extension])
         harness.setKnownExtension(extension.id, allowed)
-        await expect(Promise.all([first, second])).resolves.toStrictEqual([allowed, allowed])
+        expect(Promise.all([first, second])).resolves.toStrictEqual([allowed, allowed])
       }
     }
   )
@@ -315,11 +315,11 @@ describe('origin authorization service', () => {
       _origin: originId
     })
 
-    await expect(harness.service.isTrusted(payload, principal)).resolves.toBe(false)
-    await expect(harness.service.isTrusted(payload, internalPrincipal)).resolves.toBe(true)
-    await expect(
-      harness.service.isTrusted(requestPayload({ _origin: originId }), internalPrincipal)
-    ).resolves.toBe(false)
+    expect(harness.service.isTrusted(payload, principal)).resolves.toBe(false)
+    expect(harness.service.isTrusted(payload, internalPrincipal)).resolves.toBe(true)
+    expect(harness.service.isTrusted(requestPayload({ _origin: originId }), internalPrincipal)).resolves.toBe(
+      false
+    )
     expect(harness.routedRequests).toHaveLength(0)
   })
 
@@ -411,7 +411,7 @@ describe('origin authorization service', () => {
     harness.setPermission('test.frame.eth', true)
     completions[0]()
 
-    await expect(Promise.all([first, second])).resolves.toStrictEqual([true, true])
+    expect(Promise.all([first, second])).resolves.toStrictEqual([true, true])
   })
 })
 
@@ -464,7 +464,7 @@ it('denies a discovery waiter if selected account changes again or the returned 
       harness.setAccount()
     }
     complete(address)
-    await expect(result).resolves.toBe(false)
+    expect(result).resolves.toBe(false)
   }
 })
 
@@ -485,6 +485,6 @@ it.each([false, true])(
         ? { id: 1, jsonrpc: '2.0', error: { code: 4001, message: 'Denied' } }
         : { id: 1, jsonrpc: '2.0', result: undefined }
     )
-    await expect(result).resolves.toBe(false)
+    expect(result).resolves.toBe(false)
   }
 )

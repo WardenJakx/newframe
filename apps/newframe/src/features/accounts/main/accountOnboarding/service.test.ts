@@ -291,5 +291,5 @@ it('owns account creation and authorized hardware sessions while keeping all onb
   const pendingPhrase = production.secrets.generateSeedPhrase()
   production.dispose()
   phraseCallback(null, 'late phrase')
-  await expect(pendingPhrase).rejects.toThrow('disposed before the operation completed')
+  expect(pendingPhrase).rejects.toThrow('disposed before the operation completed')
 })

@@ -66,7 +66,7 @@ describe('preload bridge host', () => {
     const command = { type: 'account.select', accountId: '0xabc' } as const
     ipcRenderer.invoke.mockResolvedValueOnce({ ok: true })
 
-    await expect(host.executeCommand(command)).resolves.toEqual({ ok: true })
+    expect(host.executeCommand(command)).resolves.toEqual({ ok: true })
     expect(ipcRenderer.invoke).toHaveBeenCalledWith(ExecuteCommandChannel, command)
   })
 
@@ -78,7 +78,7 @@ describe('preload bridge host', () => {
       address: '0x1111111111111111111111111111111111111111'
     })
 
-    await expect(host.executeQuery(query)).resolves.toEqual({
+    expect(host.executeQuery(query)).resolves.toEqual({
       ok: true,
       address: '0x1111111111111111111111111111111111111111'
     })
@@ -96,7 +96,7 @@ describe('preload bridge host', () => {
     }
     ipcRenderer.invoke.mockResolvedValueOnce({ ok: true })
 
-    await expect(host.connectState(handler)).resolves.toEqual({ ok: true })
+    expect(host.connectState(handler)).resolves.toEqual({ ok: true })
     emit(StateMessageChannel, { sender: 'electron' }, snapshot)
 
     expect(ipcRenderer.invoke).toHaveBeenCalledWith(StateConnectChannel)
@@ -116,7 +116,7 @@ describe('preload bridge host', () => {
 
     await host.connectState(handler)
     emit(StateMessageChannel, {}, snapshot)
-    await expect(host.disconnectState()).resolves.toEqual({ ok: true })
+    expect(host.disconnectState()).resolves.toEqual({ ok: true })
     emit(StateMessageChannel, {}, snapshot)
 
     expect(ipcRenderer.invoke).toHaveBeenLastCalledWith(StateDisconnectChannel)
@@ -127,6 +127,6 @@ describe('preload bridge host', () => {
     const host = await loadHost()
     ipcRenderer.invoke.mockResolvedValueOnce({ ok: true, unexpected: true })
 
-    await expect(host.connectState(mock())).rejects.toThrow()
+    expect(host.connectState(mock())).rejects.toThrow()
   })
 })

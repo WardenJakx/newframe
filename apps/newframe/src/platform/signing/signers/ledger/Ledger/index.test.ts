@@ -161,7 +161,7 @@ describe('#connect', () => {
 
     expect(ledger.addresses).toEqual(addresses)
     ethInstance.signMessage.mockResolvedValue(signature)
-    await expect(queuedResult<string>((done) => ledger.signMessage(0, 'hello, Frame!', done))).resolves.toBe(
+    expect(queuedResult<string>((done) => ledger.signMessage(0, 'hello, Frame!', done))).resolves.toBe(
       signature
     )
   })
@@ -213,7 +213,7 @@ describe('#verifyAddress', () => {
   it('verifies an address without changing status', async () => {
     let updates = 0
     ledger.on('update', () => updates++)
-    await expect(
+    expect(
       queuedResult<boolean>((done) => ledger.verifyAddress(9, addresses[0], false, done))
     ).resolves.toBeTrue()
     expect({ status: ledger.status, updates }).toEqual({ status: Status.OK, updates: 0 })
@@ -238,7 +238,7 @@ describe('#verifyAddress', () => {
   for (const [testCase, message, setup] of errors) {
     it(`fails if ${testCase}`, async () => {
       setup()
-      await expect(
+      expect(
         queuedResult((done) =>
           ledger.verifyAddress(1, '0xe9d6f5779cf6936de03c0bec631f3bb3e336d98d', false, done)
         )
@@ -259,9 +259,7 @@ for (const signingMethod of ['signMessage', 'signTransaction']) {
       let updates = 0
       ledger.on('update', () => updates++)
 
-      await expect(queuedResult((done) => ledger[signingMethod](3, 'hello, Frame!', done))).resolves.toBe(
-        signature
-      )
+      expect(queuedResult((done) => ledger[signingMethod](3, 'hello, Frame!', done))).resolves.toBe(signature)
       expect({ status: ledger.status, updates }).toEqual({ status: Status.OK, updates: 0 })
     })
 
@@ -272,7 +270,7 @@ for (const signingMethod of ['signMessage', 'signTransaction']) {
       ledger.on('update', () => updates++)
       ledger.on('close', () => closes++)
 
-      await expect(queuedResult((done) => ledger[signingMethod](3, 'hello, Frame!', done))).rejects.toThrow(
+      expect(queuedResult((done) => ledger[signingMethod](3, 'hello, Frame!', done))).rejects.toThrow(
         'Sign request rejected by user'
       )
       expect({ status: ledger.status, updates, closes }).toEqual({ status: Status.OK, updates: 0, closes: 0 })
@@ -288,7 +286,7 @@ for (const signingMethod of ['signMessage', 'signTransaction']) {
     ] as const) {
       it(`fails if ${testCase}`, async () => {
         setup()
-        await expect(queuedResult((done) => ledger[signingMethod](3, 'hello, Frame!', done))).rejects.toThrow(
+        expect(queuedResult((done) => ledger[signingMethod](3, 'hello, Frame!', done))).rejects.toThrow(
           `Sign ${signType} error`
         )
         expect(ledger.status).toBe(Status.NEEDS_RECONNECTION)
@@ -305,7 +303,7 @@ describe('#signTypedData', () => {
     let updates = 0
     ledger.on('update', () => updates++)
 
-    await expect(queuedResult((done) => ledger.signTypedData(5, typedData, done))).resolves.toBe(signature)
+    expect(queuedResult((done) => ledger.signTypedData(5, typedData, done))).resolves.toBe(signature)
     expect({ status: ledger.status, updates }).toEqual({ status: Status.OK, updates: 0 })
   })
 
@@ -343,7 +341,7 @@ describe('#signTypedData', () => {
   ] as const) {
     it(`fails if ${testCase}`, async () => {
       setup()
-      await expect(queuedResult((done) => ledger.signTypedData(5, typedData, done))).rejects.toThrow(message)
+      expect(queuedResult((done) => ledger.signTypedData(5, typedData, done))).rejects.toThrow(message)
       expect(ledger.status).toBe(Status[expectedStatus])
     })
   }

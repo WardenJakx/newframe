@@ -149,7 +149,7 @@ describe('name resolution', () => {
     service.start()
     proxy.start()
 
-    await expect(service.resolveAddress('alice.gwei')).resolves.toBe(getAddress(gnsAddress))
+    expect(service.resolveAddress('alice.gwei')).resolves.toBe(getAddress(gnsAddress))
 
     service.dispose()
     proxy.dispose()
@@ -158,7 +158,7 @@ describe('name resolution', () => {
   it('resolves GNS names and bare labels without querying ENS', async () => {
     mockNameRequests({ gnsRecords: { 'alice.gwei': gnsAddress } })
 
-    await expect(
+    expect(
       Promise.all([nameResolution.resolveAddress('alice.gwei'), nameResolution.resolveAddress('Alice')])
     ).resolves.toEqual([getAddress(gnsAddress), getAddress(gnsAddress)])
     expect(callsTo(GNS_CONTRACT)).toHaveLength(4)
@@ -168,7 +168,7 @@ describe('name resolution', () => {
   it('uses ENS for dotted non-GNS names', async () => {
     mockNameRequests()
 
-    await expect(nameResolution.resolveAddress('alice.eth')).resolves.toBe(getAddress(ensAddress))
+    expect(nameResolution.resolveAddress('alice.eth')).resolves.toBe(getAddress(ensAddress))
     expect(callsTo(GNS_CONTRACT)).toHaveLength(0)
     expect(callsTo(UNIVERSAL_RESOLVER_ADDRESS)).toHaveLength(1)
   })
@@ -181,7 +181,7 @@ describe('name resolution', () => {
       ensReverseName: 'alice.eth'
     })
 
-    await expect(nameResolution.reverseLookup(gnsAddress)).resolves.toBe('alice.gwei')
+    expect(nameResolution.reverseLookup(gnsAddress)).resolves.toBe('alice.gwei')
     expect(callsTo(GNS_CONTRACT)).toHaveLength(1)
     expect(callsTo(UNIVERSAL_RESOLVER_ADDRESS)).toHaveLength(0)
   })
@@ -189,7 +189,7 @@ describe('name resolution', () => {
   it('falls back to ENS reverse lookup when GNS has no primary name', async () => {
     mockNameRequests({ ensReverseName: 'alice.eth' })
 
-    await expect(nameResolution.reverseLookup(gnsAddress)).resolves.toBe('alice.eth')
+    expect(nameResolution.reverseLookup(gnsAddress)).resolves.toBe('alice.eth')
     expect(callsTo(GNS_CONTRACT)).toHaveLength(1)
     expect(callsTo(UNIVERSAL_RESOLVER_ADDRESS)).toHaveLength(1)
   })

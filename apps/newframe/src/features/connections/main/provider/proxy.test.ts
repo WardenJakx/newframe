@@ -10,7 +10,7 @@ it('owns connection and request events through an explicit lifecycle', async () 
   proxy.on('provider:subscribe', (payload) => events.push({ type: 'subscribe', payload }))
   proxy.on('close', () => events.push({ type: 'close' }))
 
-  await expect(proxy.send({ id: 0, jsonrpc: '2.0', method: 'eth_chainId', params: [] })).rejects.toThrow(
+  expect(proxy.send({ id: 0, jsonrpc: '2.0', method: 'eth_chainId', params: [] })).rejects.toThrow(
     'not started'
   )
 
