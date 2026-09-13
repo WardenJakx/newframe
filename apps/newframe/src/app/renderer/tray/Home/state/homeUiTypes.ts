@@ -31,7 +31,7 @@ interface PendingCustomToken {
 type HomeOverlay =
   | { type: 'none' }
   | { type: 'menu' }
-  | { type: 'accounts'; showAddAccounts?: boolean; newAccountType?: string; selectedSigner?: string }
+  | { type: 'accounts' }
   | { type: 'networks' }
   | { type: 'settings' }
   | { type: 'about' }

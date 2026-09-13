@@ -17,20 +17,10 @@ const EMPTY_RECORD = {}
 export interface AccountsProps {
   capability: AccountsCapability
   camera: QrCameraCapability
-  initialNewAccountType?: string
-  initialSelectedSigner?: string
-  initialShowAddAccounts?: boolean
   onClose: () => void
 }
 
-export function Accounts({
-  capability,
-  camera,
-  initialNewAccountType = '',
-  initialSelectedSigner = '',
-  initialShowAddAccounts = false,
-  onClose
-}: AccountsProps) {
+export function Accounts({ capability, camera, onClose }: AccountsProps) {
   const projection = useWalletSelector(
     useShallow((state) => ({
       accountOrder: state.accountOrder || EMPTY_ARRAY,
@@ -54,7 +44,6 @@ export function Accounts({
     accounts: projection.accounts,
     capability,
     currentAccountId: projection.currentAccount,
-    initialShowAddAccounts,
     onClose,
     operations: projection.operations
   })
@@ -80,13 +69,7 @@ export function Accounts({
       {...controller.events}
       accountSearchInputRef={controller.accountSearchInputRef}
       addAccountView={
-        <AddAccount
-          capability={capability}
-          camera={camera}
-          initialSelectedSigner={initialSelectedSigner}
-          initialType={initialNewAccountType}
-          onClose={controller.closeAddAccount}
-        />
+        <AddAccount capability={capability} camera={camera} onClose={controller.closeAddAccount} />
       }
       model={model}
       profileSelector={

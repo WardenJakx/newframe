@@ -45,14 +45,7 @@ export function HomeOverlayRouter({ capabilities }: { capabilities: HomeCapabili
       return <HomeMenu capability={capabilities.home} />
     case 'accounts':
       return (
-        <Accounts
-          capability={capabilities.accounts}
-          camera={capabilities.camera}
-          initialNewAccountType={overlay.newAccountType}
-          initialSelectedSigner={overlay.selectedSigner}
-          initialShowAddAccounts={overlay.showAddAccounts}
-          onClose={closeOverlay}
-        />
+        <Accounts capability={capabilities.accounts} camera={capabilities.camera} onClose={closeOverlay} />
       )
     case 'networks':
       return (

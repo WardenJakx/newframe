@@ -61,14 +61,14 @@ const emptyExport = (): AccountExportState => ({
   secret: ''
 })
 
-export function createAccountsState(showAddAccounts = false): AccountsState {
+export function createAccountsState(): AccountsState {
   return {
     copiedAccountId: '',
     drag: { accountId: '', overAccountId: '' },
     export: emptyExport(),
     menuAccountId: '',
     move: { kind: 'closed' },
-    panel: showAddAccounts ? { kind: 'add' } : { kind: 'list' },
+    panel: { kind: 'list' },
     query: '',
     removingAccountId: '',
     renamingAccountId: ''

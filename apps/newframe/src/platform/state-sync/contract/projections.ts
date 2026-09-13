@@ -82,19 +82,6 @@ export const WalletHomeCommandSchema = z.discriminatedUnion('view', [
   z
     .object({
       ...HomeCommandBaseSchema,
-      view: z.literal('accounts'),
-      data: z
-        .object({
-          showAddAccounts: z.boolean().optional(),
-          newAccountType: z.string().optional(),
-          selectedSigner: z.string().optional()
-        })
-        .strip()
-    })
-    .strip(),
-  z
-    .object({
-      ...HomeCommandBaseSchema,
       view: z.literal('networks'),
       data: z
         .object({

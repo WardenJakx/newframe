@@ -4,7 +4,7 @@ import { accountsReducer, createAccountsState } from './accountsReducer'
 
 describe('accounts reducer', () => {
   it('transitions coupled menu, move, export, and drag state through named events', () => {
-    let state = createAccountsState(false)
+    let state = createAccountsState()
     state = accountsReducer(state, { type: 'menu.toggled', accountId: 'account-1' })
     state = accountsReducer(state, { type: 'move.opened', accountId: 'account-1' })
     state = accountsReducer(state, {

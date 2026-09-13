@@ -1334,12 +1334,6 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
       })
     },
 
-    completeOnboarding: () => {
-      set((draft) => {
-        mutableMain(draft).mute.onboardingWindow = true
-      })
-    },
-
     setSideTray: (frame: any) => {
       set((draft) => {
         const main = mutableMain(draft)

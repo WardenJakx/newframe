@@ -31,14 +31,6 @@ export function useHomeCommand(capability: Pick<HomeCapability, 'consumeCommand'
     const { data, view } = command
 
     if (view === 'settings') openOverlay({ type: 'settings' })
-    if (view === 'accounts') {
-      openOverlay({
-        type: 'accounts',
-        showAddAccounts: !!data.showAddAccounts,
-        newAccountType: data.newAccountType,
-        selectedSigner: data.selectedSigner
-      })
-    }
     if (view === 'networks') {
       if (data.newChain && Object.keys(data.newChain).length) {
         openOverlay({
