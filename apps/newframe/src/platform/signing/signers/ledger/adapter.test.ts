@@ -34,7 +34,7 @@ class LedgerMock extends EventEmitter {
     this.id = uuid('Ledger' + this.devicePath, ns)
   }
 
-  open = mock(async () => undefined)
+  open = mock(async (): Promise<void> => undefined)
 
   connect = mock(async () => {
     this.status = Status.OK
@@ -42,8 +42,10 @@ class LedgerMock extends EventEmitter {
   })
 
   disconnect = mock(async () => {
-    this.status = Status.DISCONNECTED
-    this.emit('update')
+    if (this.status === Status.OK) {
+      this.status = Status.DISCONNECTED
+      this.emit('update')
+    }
   })
 
   close = mock(async () => {
@@ -51,6 +53,10 @@ class LedgerMock extends EventEmitter {
   })
 
   deriveAddresses = mock()
+
+  updateStatus(status: string) {
+    this.status = status
+  }
 }
 
 const TransportNodeHidSingletonMock = {
@@ -115,6 +121,167 @@ function nextEvent<T = any>(event: string, predicate: (value: T) => boolean = ()
       }
     }
     adapter.on(event, listener)
+  })
+}
+
+async function flushConnection() {
+  for (let i = 0; i < 12; i++) await Promise.resolve()
+}
+
+for (const status of [Status.WRONG_APP, Status.NEEDS_RECONNECTION]) {
+  it(`recovers from ${status} without account setup or another USB event`, async () => {
+    store.getState().navHome({ view: 'settings' })
+    const homeCommand = store.getState().tray.homeCommand
+    const added = nextEvent<LedgerMock>('add')
+    adapter.once('add', (ledger: LedgerMock) => {
+      ledger.connect.mockImplementationOnce(async () => {
+        ledger.status = status
+        ledger.emit('update')
+      })
+    })
+    simulateLedgerConnection('nano-s-path')
+    adapter.handleDeviceChanges()
+    const ledger = await added
+    await flushConnection()
+    expect(ledger.status).toBe(status)
+
+    timers.advanceTimersByTime(2000)
+    await flushConnection()
+
+    expect(ledger.status).toBe(Status.OK)
+    expect(ledger.connect).toHaveBeenCalledTimes(2)
+    expect(adapter.knownSigners['nano-s-path']).toBe(ledger)
+    expect(store.getState().tray.homeCommand).toEqual(homeCommand)
+    timers.advanceTimersByTime(2000)
+    expect(ledger.connect).toHaveBeenCalledTimes(2)
+  })
+}
+
+it('retries a failed transport open and serializes automatic and manual reconnects', async () => {
+  const added = nextEvent<LedgerMock>('add')
+  adapter.once('add', (ledger: LedgerMock) => {
+    ledger.open.mockRejectedValueOnce(new Error('Device is busy'))
+  })
+  simulateLedgerConnection('nano-s-path')
+  adapter.handleDeviceChanges()
+  const ledger = await added
+  await flushConnection()
+  expect(ledger.status).toBe(Status.NEEDS_RECONNECTION)
+
+  let finishOpen!: () => void
+  ledger.open.mockImplementationOnce(() => new Promise<void>((resolve) => (finishOpen = resolve)))
+  timers.advanceTimersByTime(2000)
+  await flushConnection()
+  adapter.reload(ledger)
+  timers.advanceTimersByTime(2000)
+  expect(ledger.open).toHaveBeenCalledTimes(2)
+  finishOpen()
+  await flushConnection()
+  expect(ledger.status).toBe(Status.OK)
+})
+
+it('backs off repeated failures to one minute and resets after a successful connection', async () => {
+  const added = nextEvent<LedgerMock>('add')
+  let fail = true
+  adapter.once('add', (ledger: LedgerMock) => {
+    ledger.connect.mockImplementation(async () => {
+      ledger.status = fail ? Status.NEEDS_RECONNECTION : Status.OK
+      ledger.emit('update')
+    })
+  })
+  simulateLedgerConnection('nano-s-path')
+  adapter.handleDeviceChanges()
+  const ledger = await added
+  await flushConnection()
+
+  let attempts = 1
+  for (const delay of [2000, 4000, 8000, 16000, 32000, 60000, 60000]) {
+    ledger.emit('update')
+    timers.advanceTimersByTime(delay - 1)
+    await flushConnection()
+    expect(ledger.connect).toHaveBeenCalledTimes(attempts)
+    timers.advanceTimersByTime(1)
+    await flushConnection()
+    expect(ledger.connect).toHaveBeenCalledTimes(++attempts)
+  }
+
+  fail = false
+  timers.advanceTimersByTime(60000)
+  await flushConnection()
+  expect(ledger.status).toBe(Status.OK)
+  attempts++
+  timers.advanceTimersByTime(120000)
+  expect(ledger.connect).toHaveBeenCalledTimes(attempts)
+
+  fail = true
+  ledger.status = Status.NEEDS_RECONNECTION
+  ledger.emit('update')
+  timers.advanceTimersByTime(1999)
+  await flushConnection()
+  expect(ledger.connect).toHaveBeenCalledTimes(attempts)
+  timers.advanceTimersByTime(1)
+  await flushConnection()
+  expect(ledger.connect).toHaveBeenCalledTimes(attempts + 1)
+})
+
+for (const trigger of ['USB reconnection', 'manual reconnect']) {
+  it(`connects immediately and resets backoff on ${trigger}`, async () => {
+    const added = nextEvent<LedgerMock>('add')
+    adapter.once('add', (ledger: LedgerMock) => {
+      ledger.connect.mockImplementation(async () => {
+        ledger.status = Status.WRONG_APP
+        ledger.emit('update')
+      })
+    })
+    simulateLedgerConnection('nano-s-path')
+    adapter.handleDeviceChanges()
+    const ledger = await added
+    await flushConnection()
+    timers.advanceTimersByTime(2000)
+    await flushConnection()
+    expect(ledger.connect).toHaveBeenCalledTimes(2)
+
+    if (trigger === 'USB reconnection') {
+      simulateLedgerDisconnection('nano-s-path')
+      adapter.handleDeviceChanges()
+      simulateLedgerConnection('nano-s-path')
+      adapter.handleDeviceChanges()
+    } else {
+      adapter.reload(ledger)
+    }
+    await flushConnection()
+    expect(ledger.connect).toHaveBeenCalledTimes(3)
+    timers.advanceTimersByTime(2000)
+    await flushConnection()
+    expect(ledger.connect).toHaveBeenCalledTimes(4)
+    timers.advanceTimersByTime(2000)
+    await flushConnection()
+    expect(ledger.connect).toHaveBeenCalledTimes(4)
+  })
+}
+
+for (const trigger of ['USB removal', 'adapter shutdown']) {
+  it(`cancels a pending retry on ${trigger}`, async () => {
+    const added = nextEvent<LedgerMock>('add')
+    adapter.once('add', (ledger: LedgerMock) => {
+      ledger.connect.mockImplementation(async () => {
+        ledger.status = Status.WRONG_APP
+        ledger.emit('update')
+      })
+    })
+    simulateLedgerConnection('nano-s-path')
+    adapter.handleDeviceChanges()
+    const ledger = await added
+    await flushConnection()
+    if (trigger === 'USB removal') {
+      simulateLedgerDisconnection('nano-s-path')
+      adapter.handleDeviceChanges()
+    } else {
+      adapter.close()
+    }
+    timers.advanceTimersByTime(2000)
+    await flushConnection()
+    expect(ledger.connect).toHaveBeenCalledTimes(1)
   })
 }
 
