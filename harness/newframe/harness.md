@@ -159,6 +159,10 @@ the responsible stage. The source allowlist is intentionally empty by default; a
 use a narrow message pattern and document why the underlying browser diagnostic is understood and cannot
 reasonably be fixed.
 
+Visual-harness windows cannot take native keyboard focus, and screenshots do not bring them to the front.
+Playwright drives them through CDP, so typing in another app cannot alter harness inputs. Regular development
+windows keep their normal focus behavior.
+
 On macOS, open all screenshots from a successful run together in Preview after service cleanup:
 
 ```sh

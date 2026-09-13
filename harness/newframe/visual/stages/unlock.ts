@@ -14,7 +14,12 @@ export const unlockStage: VisualStage = {
     const mainMenu = tray.getByRole('button', { name: 'Main menu' })
 
     try {
+      await passwordInput.click()
       await passwordInput.fill(password)
+      await passwordInput.press('Tab')
+      if ((await passwordInput.inputValue()) !== password) {
+        runtime.fail('Unlock input did not retain the configured password')
+      }
       runtime.log(`unlock input populated: ${(await passwordInput.inputValue()).length > 0}`)
       runtime.log(`unlock button enabled: ${!(await unlockButton.isDisabled())}`)
       await unlockButton.click()

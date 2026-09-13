@@ -15,12 +15,13 @@ import { intToHex } from '@ethereumjs/util'
 import log from 'electron-log'
 
 import { gweiToHex } from '../../../../test/support/util'
-import { DEFAULT_PROFILE_ID } from '../../../app/contracts/state/main'
+import { ActivityRecordSchema, DEFAULT_PROFILE_ID } from '../../../app/contracts/state/main'
 import store from '../../../platform/state-store'
 import { createAgentPrincipal, createRpcPrincipal } from '../../access-control/main/authority'
 import {
   GasFeesSource,
   TRANSACTION_CONFIRMATION_TARGET,
+  type TransactionEffect,
   type TransactionSimulation
 } from '../../transactions/domain'
 
@@ -690,6 +691,68 @@ describe('#setTxSent', () => {
 
     Accounts.close()
   })
+
+  it.each([true, false])(
+    'keeps allowance effects out of activity with recipient transfer %s',
+    async (transfer) => {
+      const hash = `0x${(transfer ? 'bc' : 'bd').repeat(32)}`
+      const outgoing = {
+        id: 'token-out',
+        kind: 'erc20',
+        direction: 'out',
+        label: 'Asset out',
+        amount: '0x1',
+        decimals: 6,
+        symbol: 'USDC'
+      } satisfies TransactionEffect
+      const incoming = {
+        ...outgoing,
+        id: 'token-in',
+        direction: 'in',
+        label: 'Asset in'
+      } satisfies TransactionEffect
+      const allowance: TransactionEffect = {
+        ...outgoing,
+        id: 'allowance',
+        kind: 'allowance',
+        direction: 'neutral',
+        label: 'Allowance change'
+      }
+      const simulation: TransactionSimulation = {
+        status: 'success',
+        effects: [outgoing, allowance],
+        effectsProfileId: DEFAULT_PROFILE_ID,
+        effectsByAccount: {
+          [account.address]: [outgoing, allowance],
+          [account2.address]: transfer ? [incoming, allowance] : [allowance]
+        }
+      }
+      simulationMock.simulateTransactionEffects.mockResolvedValueOnce(simulation)
+      mockConfirmedReceipt(100)
+      request.account = account.address
+      request.handlerId = `allowance-${transfer}`
+      Accounts.current().addRequest(request, mock())
+      patchRequest((request) => {
+        request.simulation = simulation
+      })
+      Accounts.setTxSent(request.handlerId, hash)
+      timers.advanceTimersByTime(1000)
+      await flushPromises()
+
+      const activity = store.getState().main.activity
+      expect(activity[hash].status).toBe('succeeded')
+      expect(activity[hash].balanceChanges).toEqual([outgoing])
+      ActivityRecordSchema.parse(activity[hash])
+      const recipient = activity[`${hash}:${account2.address}`]
+      if (transfer) {
+        expect(recipient.balanceChanges).toEqual([incoming])
+        expect(recipient.display).toEqual({ title: 'Receive USDC', subtitle: 'Incoming transfer' })
+        ActivityRecordSchema.parse(recipient)
+      } else {
+        expect(recipient).toBeUndefined()
+      }
+    }
+  )
 
   it('confirms after the target confirmation count and removes after the close delay', async () => {
     const hash = '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef'

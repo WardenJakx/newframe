@@ -24,10 +24,13 @@ export async function withTimeout<T>(promise: Promise<T>, label: string, timeout
 }
 
 export function isPortFree(port: number) {
-  return new Promise<boolean>((resolve) => {
+  return new Promise<boolean>((resolve, reject) => {
     const server = net.createServer()
 
-    server.once('error', () => resolve(false))
+    server.once('error', (error: NodeJS.ErrnoException) => {
+      if (error.code === 'EADDRINUSE') resolve(false)
+      else reject(error)
+    })
     server.once('listening', () => {
       server.close(() => resolve(true))
     })
