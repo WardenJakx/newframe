@@ -197,3 +197,29 @@ describe('request projection validation', () => {
     expect(screen.getByText('wants to connect')).toBeTruthy()
   })
 })
+
+it.each(['eth_requestAccounts', 'personal_sign'])(
+  'shows the injected account selector only for discovery prompts: %s',
+  (method) => {
+    resetWithRequest({
+      type: 'access',
+      handlerId: requestId,
+      origin,
+      account: accountId,
+      payload: { id: 3, jsonrpc: '2.0', method, params: [] }
+    })
+    render(
+      <RequestViewProvider>
+        <Account
+          capabilities={createRequestRendererCapabilitiesFake()}
+          id={accountId}
+          accountSelector={<button type='button'>Choose wallet</button>}
+        />
+      </RequestViewProvider>
+    )
+    expect(Boolean(screen.queryByRole('button', { name: 'Choose wallet' }))).toBe(
+      method === 'eth_requestAccounts'
+    )
+    expect(screen.getByText(origin)).toBeTruthy()
+  }
+)

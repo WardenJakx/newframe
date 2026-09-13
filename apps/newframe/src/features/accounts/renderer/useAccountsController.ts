@@ -2,7 +2,7 @@ import type { DragEvent } from 'react'
 import { useEffect, useReducer, useRef } from 'react'
 
 import type { OperationRecord } from '../../../platform/operations/operation'
-import type { AccountsCapability } from './accountsCapability'
+import { type AccountsCapability, selectAccountAndClose } from './accountsCapability'
 import type { AccountListItem, AccountProjection } from './accountsModel'
 import { accountsReducer, createAccountsState } from './accountsReducer'
 
@@ -144,8 +144,7 @@ export function useAccountsController(input: {
     onAccountRenameOpen: (accountId: string) => dispatch({ type: 'rename.opened', accountId } as const),
     onAccountSelect: (accountId: string) => {
       invalidateExportRequest()
-      input.onClose()
-      if (accountId !== input.currentAccountId) void input.capability.selectAccount({ accountId })
+      selectAccountAndClose(input.capability, accountId, input.currentAccountId, input.onClose)
     },
     onAddAccountOpen: () => dispatch({ type: 'panel.add-opened' } as const),
     onClose: input.onClose,

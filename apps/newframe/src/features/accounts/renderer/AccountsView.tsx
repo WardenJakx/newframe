@@ -15,8 +15,8 @@ import type { DragEvent, ReactNode, RefObject } from 'react'
 import { cva } from '../../../../generated/styled-system/css/cva.js'
 import { HeaderBar } from '../../../shared/renderer/ui/HeaderBar'
 import { SidePanelHeader } from '../../../shared/renderer/ui/SidePanel/SidePanelHeader'
-import { signerIconName } from '../../../shared/renderer/ui/signerPresentation'
 import AccountRenameInput from './AccountRenameInput'
+import { AccountRow } from './AccountSelectorView'
 import type { AccountListItem, AccountListModel } from './accountsModel'
 import type { AccountsState } from './accountsReducer'
 
@@ -40,43 +40,6 @@ const toolsRecipe = cva({
     gap: '4',
     padding: '4',
     '& > :first-child': { flex: '1 1 0', minWidth: 0 }
-  }
-})
-
-const accountRowRecipe = cva({
-  base: {
-    position: 'relative',
-    display: 'flex',
-    minHeight: 'menu-row-min',
-    alignItems: 'center',
-    gap: '4',
-    padding: '5 6',
-    borderWidth: 'thin',
-    borderStyle: 'solid',
-    borderColor: 'transparent',
-    borderRadius: 'control',
-    background: 'bg.card',
-    cursor: 'pointer',
-    _hover: { background: 'bg.hover' }
-  },
-  variants: {
-    selected: { true: { borderColor: 'border.focus' }, false: {} },
-    dragging: { true: { opacity: 'disabled' }, false: {} },
-    dropTarget: { true: { borderColor: 'border.focus', background: 'action.primary.subtle' }, false: {} }
-  },
-  defaultVariants: { dragging: false, dropTarget: false, selected: false }
-})
-
-const accountIconRecipe = cva({
-  base: {
-    display: 'grid',
-    width: 'icon-button-medium',
-    height: 'icon-button-medium',
-    flex: 'none',
-    placeItems: 'center',
-    borderRadius: 'pill',
-    background: 'bg.control',
-    color: 'action.primary'
   }
 })
 
@@ -372,126 +335,101 @@ export function AccountsView(props: AccountsViewProps) {
                   const renaming = state.renamingAccountId === account.id
                   const menuOpen = state.menuAccountId === account.id
                   return (
-                    <div
-                      aria-current={selected ? 'true' : undefined}
-                      aria-label={`${account.displayName} ${account.shortAddress}`}
+                    <AccountRow
                       key={account.id}
-                      className={accountRowRecipe({
+                      account={account}
+                      selected={selected}
+                      onSelect={props.onAccountSelect}
+                      management={{
                         dragging: state.drag.accountId === account.id,
                         dropTarget: state.drag.overAccountId === account.id,
-                        selected
-                      })}
-                      onDragOver={(event) => props.onAccountDragOver(event, account.id)}
-                      onDrop={(event) => props.onAccountDrop(event, account.id)}
-                      onClick={() => props.onAccountSelect(account.id)}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter' || event.key === ' ') {
-                          event.preventDefault()
-                          props.onAccountSelect(account.id)
-                        }
-                      }}
-                      role='button'
-                      tabIndex={0}
-                    >
-                      <span
-                        aria-label={`Drag ${account.displayName} to reorder`}
-                        draggable
-                        onClick={(event) => event.stopPropagation()}
-                        onDragEnd={props.onAccountDragEnd}
-                        onDragStart={(event) => props.onAccountDragStart(event, account.id)}
-                        title='Drag to reorder'
-                      >
-                        <Icon name='ellipsis' size='small' tone='muted' />
-                      </span>
-                      <span className={accountIconRecipe()}>
-                        <Icon name={signerIconName(account.signerType)} size='large' />
-                      </span>
-                      <Stack gap='none' grow>
-                        {renaming ? (
-                          <AccountRenameInput
-                            ariaLabel={`Rename ${account.displayName}`}
-                            initialName={account.displayName}
-                            onCancel={props.onAccountRenameCancel}
-                            onCommit={(name) => props.onAccountRenameCommit(account.id, name)}
-                          />
-                        ) : (
-                          <Inline align='center' gap='xsmall'>
-                            <Text variant='label' truncate>
-                              {account.displayName}
-                            </Text>
+                        onDragOver: (event) => props.onAccountDragOver(event, account.id),
+                        onDrop: (event) => props.onAccountDrop(event, account.id),
+                        dragHandle: (
+                          <span
+                            aria-label={`Drag ${account.displayName} to reorder`}
+                            draggable
+                            onClick={(event) => event.stopPropagation()}
+                            onDragEnd={props.onAccountDragEnd}
+                            onDragStart={(event) => props.onAccountDragStart(event, account.id)}
+                            title='Drag to reorder'
+                          >
+                            <Icon name='ellipsis' size='small' tone='muted' />
+                          </span>
+                        ),
+                        name: (
+                          <>
+                            {renaming ? (
+                              <AccountRenameInput
+                                ariaLabel={`Rename ${account.displayName}`}
+                                initialName={account.displayName}
+                                onCancel={props.onAccountRenameCancel}
+                                onCommit={(name) => props.onAccountRenameCommit(account.id, name)}
+                              />
+                            ) : (
+                              <Inline align='center' gap='xsmall'>
+                                <Text variant='label' truncate>
+                                  {account.displayName}
+                                </Text>
+                                <IconButton
+                                  appearance='ghost'
+                                  icon='edit'
+                                  label={`Rename ${account.displayName}`}
+                                  onPress={(event) => {
+                                    event.stopPropagation()
+                                    props.onAccountRenameOpen(account.id)
+                                  }}
+                                  size='small'
+                                />
+                              </Inline>
+                            )}
+                          </>
+                        ),
+                        actions: (
+                          <>
                             <IconButton
                               appearance='ghost'
-                              icon='edit'
-                              label={`Rename ${account.displayName}`}
+                              icon={state.copiedAccountId === account.id ? 'check' : 'copy'}
+                              label={`Copy address for ${account.displayName}`}
                               onPress={(event) => {
                                 event.stopPropagation()
-                                props.onAccountRenameOpen(account.id)
+                                props.onAccountCopy(account)
                               }}
                               size='small'
                             />
-                          </Inline>
-                        )}
-                        <Text tone='muted' variant='code'>
-                          {account.shortAddress}
-                        </Text>
-                        {account.signerLabel || account.agentEnabled ? (
-                          <Inline align='center' gap='xsmall'>
-                            {account.signerLabel ? (
-                              <Text tone='accent' variant='micro'>
-                                {account.signerLabel}
-                              </Text>
+                            <IconButton
+                              appearance='ghost'
+                              expanded={menuOpen}
+                              icon='ellipsis'
+                              label={`${account.displayName} account actions`}
+                              onPress={(event) => {
+                                event.stopPropagation()
+                                props.onAccountMenuToggle(account.id)
+                              }}
+                              size='small'
+                            />
+                            {menuOpen ? (
+                              <AccountActions
+                                account={account}
+                                model={model}
+                                state={state}
+                                onAgentAccessChange={(enabled) =>
+                                  props.onAccountAgentAccessChange(account, enabled)
+                                }
+                                onAgentSessionsRevoke={() => props.onAccountAgentSessionsRevoke(account.id)}
+                                onExportOpen={() => props.onAccountExportOpen(account.id)}
+                                onMoveOpenChange={(open) => props.onMoveOpenChange(account.id, open)}
+                                onMoveSelect={(profileId) => props.onMoveSelect(account.id, profileId)}
+                                onRemove={(removeSeed) => props.onAccountRemove(account.id, removeSeed)}
+                                onRemoveCancel={props.onAccountRemoveCancel}
+                                onRemoveOpen={() => props.onAccountRemoveOpen(account.id)}
+                                onRenameOpen={() => props.onAccountRenameOpen(account.id)}
+                              />
                             ) : null}
-                            {account.agentEnabled ? (
-                              <Text tone='accent' variant='micro'>
-                                · AI Wallet
-                              </Text>
-                            ) : null}
-                          </Inline>
-                        ) : null}
-                      </Stack>
-                      <Text align='end' variant='numeric' shrink={false}>
-                        {account.balanceLabel}
-                      </Text>
-                      <IconButton
-                        appearance='ghost'
-                        icon={state.copiedAccountId === account.id ? 'check' : 'copy'}
-                        label={`Copy address for ${account.displayName}`}
-                        onPress={(event) => {
-                          event.stopPropagation()
-                          props.onAccountCopy(account)
-                        }}
-                        size='small'
-                      />
-                      <IconButton
-                        appearance='ghost'
-                        expanded={menuOpen}
-                        icon='ellipsis'
-                        label={`${account.displayName} account actions`}
-                        onPress={(event) => {
-                          event.stopPropagation()
-                          props.onAccountMenuToggle(account.id)
-                        }}
-                        size='small'
-                      />
-                      {menuOpen ? (
-                        <AccountActions
-                          account={account}
-                          model={model}
-                          state={state}
-                          onAgentAccessChange={(enabled) =>
-                            props.onAccountAgentAccessChange(account, enabled)
-                          }
-                          onAgentSessionsRevoke={() => props.onAccountAgentSessionsRevoke(account.id)}
-                          onExportOpen={() => props.onAccountExportOpen(account.id)}
-                          onMoveOpenChange={(open) => props.onMoveOpenChange(account.id, open)}
-                          onMoveSelect={(profileId) => props.onMoveSelect(account.id, profileId)}
-                          onRemove={(removeSeed) => props.onAccountRemove(account.id, removeSeed)}
-                          onRemoveCancel={props.onAccountRemoveCancel}
-                          onRemoveOpen={() => props.onAccountRemoveOpen(account.id)}
-                          onRenameOpen={() => props.onAccountRenameOpen(account.id)}
-                        />
-                      ) : null}
-                    </div>
+                          </>
+                        )
+                      }}
+                    />
                   )
                 })}
                 {model.items.length === 0 ? (

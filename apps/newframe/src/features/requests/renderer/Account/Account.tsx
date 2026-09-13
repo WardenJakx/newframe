@@ -284,6 +284,7 @@ function AccountView({ accountViewIcon, accountViewTitle, back, children }: Acco
 interface AccountBodyProps {
   capabilities: RequestRendererCapabilities
   accountViewIcon?: ReactNode
+  accountSelector?: ReactNode
   addresses?: unknown[]
   id: string
   minimized?: boolean
@@ -339,7 +340,9 @@ function AccountBody(props: AccountBodyProps) {
       case 'agentAccess':
         return <AgentAccessRequest key={request.handlerId} req={request} />
       case 'access':
-        return <ProviderRequest key={request.handlerId} req={request} />
+        return (
+          <ProviderRequest key={request.handlerId} req={request} accountSelector={props.accountSelector} />
+        )
       case 'addChain':
       case 'switchChain':
         return <ChainRequest key={request.handlerId} req={request} />

@@ -1,5 +1,6 @@
 import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.js'
 import type { ChainMetadata, TokenRecord } from '../../../../platform/state-store/state/index.js'
+import type { Origin } from '../../../connections/domain/state/origin.js'
 import { builtInChainIconUrl } from '../../../networks/domain/chain/index.js'
 import type { getTokenDiscoveryProvider } from '../../../portfolio/main/index.js'
 import { toTokenId } from '../../../tokens/domain/index.js'
@@ -41,6 +42,7 @@ export function createImageService(
   const queuedBackground = new Map<string, () => Promise<void>>()
   let activeHydrations = 0
   let active = false
+  let unsubscribeOrigins: (() => void) | undefined
   let unsubscribeNetworks: (() => void) | undefined
 
   const drainQueue = () => {
@@ -173,6 +175,32 @@ export function createImageService(
     )
   }
 
+  const hydrateOrigins = (origins: Record<string, Origin>, previousOrigins: Record<string, Origin> = {}) => {
+    for (const [originId, origin] of Object.entries(origins)) {
+      const sourceUrl = httpsImageUrl(origin.faviconSource)
+      if (
+        !sourceUrl ||
+        sourceUrl === httpsImageUrl(previousOrigins[originId]?.faviconSource) ||
+        origin.image?.sourceUrl === sourceUrl
+      )
+        continue
+      enqueueHydration(
+        `origin:${originId}:${sourceUrl}`,
+        async () => {
+          try {
+            const current = canonicalStore.getState().main.origins[originId]
+            if (current?.faviconSource !== sourceUrl || current.image?.sourceUrl === sourceUrl) return
+            const image = await adapters.downloadImage(sourceUrl)
+            if (active) canonicalStore.getState().setOriginImage(originId, sourceUrl, image)
+          } catch (error) {
+            adapters.log.warn('Could not hydrate origin image', { originId, sourceUrl, error })
+          }
+        },
+        'visible'
+      )
+    }
+  }
+
   const hydrateNetworks = (networks: Record<number, ChainMetadata>) => {
     Object.entries(networks).forEach(([id, metadata]) => {
       const chainId = Number(id)
@@ -185,6 +213,8 @@ export function createImageService(
     start() {
       if (active) return
       active = true
+      unsubscribeOrigins = canonicalStore.subscribe((state) => state.main.origins, hydrateOrigins)
+      hydrateOrigins(canonicalStore.getState().main.origins)
       unsubscribeNetworks = canonicalStore.subscribe(
         (state) => state.main.networksMeta.ethereum,
         hydrateNetworks,
@@ -195,6 +225,8 @@ export function createImageService(
     dispose() {
       if (!active) return
       active = false
+      unsubscribeOrigins?.()
+      unsubscribeOrigins = undefined
       unsubscribeNetworks?.()
       unsubscribeNetworks = undefined
       queuedVisible.clear()

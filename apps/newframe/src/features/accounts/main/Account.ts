@@ -213,19 +213,19 @@ class FrameAccount {
     return availableSigners[0]
   }
 
-  setAccess(req: AccessRequest, access: boolean) {
+  setAccess(req: AccessRequest, access: boolean, targetAddress: Address = this.address) {
     const { handlerId, origin, account } = req
     if (account.toLowerCase() === this.address) {
       // Permissions do not live inside the account summary
       if (access) {
         const { name } = this.store.getState().main.origins[origin]
-        this.store.getState().setPermission(this.address, { handlerId, origin: name, provider: true })
+        this.store.getState().setPermission(targetAddress, { handlerId, origin: name, provider: true })
       } else {
         this.store.getState().revokePermission(this.address, handlerId)
       }
     }
 
-    this.resolveRequest(req)
+    this.resolveRequest(req, access && account.toLowerCase() === this.address ? targetAddress : undefined)
   }
 
   getRequest<T extends AccountRequest>(id: string) {

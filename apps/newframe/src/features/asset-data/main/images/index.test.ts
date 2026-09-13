@@ -57,6 +57,7 @@ it('hydrates networks in the background and tokens only when requested by the re
   }
   const state = {
     main: {
+      origins: {},
       tokens: { byId: { [`1:${token.address}`]: token } },
       networksMeta: { ethereum: { 1: metadata } }
     },
@@ -95,6 +96,7 @@ it('does not download images that already match their configured sources', async
   const sourceUrl = 'https://cdn.example/network.png'
   const state = {
     main: {
+      origins: {},
       tokens: { byId: {} },
       networksMeta: {
         ethereum: {
@@ -145,7 +147,7 @@ it('limits concurrent image work even when many visible tokens request hydration
     })
   )
   const state = {
-    main: { tokens: { byId: tokens }, networksMeta: { ethereum: {} } },
+    main: { origins: {}, tokens: { byId: tokens }, networksMeta: { ethereum: {} } },
     setNativeCurrencyImage: mock(),
     setNetworkImage: mock(),
     setTokenImage: mock()
@@ -182,5 +184,121 @@ it('limits concurrent image work even when many visible tokens request hydration
 
   expect(maxActive).toBe(2)
   expect(downloadImage).toHaveBeenCalledTimes(5)
+  images.dispose()
+})
+
+it('hydrates changed origin favicons through the shared queue and discards stale and disposed results', async () => {
+  const canonical = await createOriginImageStore()
+  const downloads = new Map<string, (image: ReturnType<typeof imageFor>) => void>()
+  const download = mock(
+    (source: string) => new Promise<ReturnType<typeof imageFor>>((resolve) => downloads.set(source, resolve))
+  )
+  const images = createImageService(canonical, {
+    downloadImage: download,
+    getTokenDiscoveryProvider: () => ({ ok: false, error: 'missing_api_key' }),
+    log: { warn: mock() }
+  })
+  canonical.getState().initOrigin('site', { name: 'site.test', chain: { id: 1, type: 'ethereum' } })
+  const first = 'https://cdn.example/first.ico'
+  const second = 'https://cdn.example/second.ico'
+  const third = 'https://cdn.example/third.ico'
+  canonical.getState().setOriginFavicon('site', first)
+  images.start()
+  canonical.getState().setOriginFavicon('site', second)
+  downloads.get(first)?.(imageFor(first))
+  await flushHydration()
+  expect(canonical.getState().main.origins.site.image).toBeUndefined()
+  downloads.get(second)?.(imageFor(second))
+  await flushHydration()
+  expect(canonical.getState().main.origins.site.image).toEqual(imageFor(second))
+  canonical.getState().setOriginFavicon('site', third)
+  images.dispose()
+  downloads.get(third)?.(imageFor(third))
+  await flushHydration()
+  expect(canonical.getState().main.origins.site.image).toBeUndefined()
+})
+
+async function createOriginImageStore() {
+  const { createStore } = await import('zustand/vanilla')
+  const { subscribeWithSelector } = await import('zustand/middleware')
+  const { immer } = await import('zustand/middleware/immer')
+  const { createCanonicalActions } = await import('../../../../platform/state-store/actions')
+  const { default: createInitialState } = await import('../../../../platform/state-store/state')
+  const canonical = createStore<import('../../../../platform/state-store/actions').CanonicalStore>()(
+    subscribeWithSelector(
+      immer((set, get) => ({ ...createInitialState(), ...createCanonicalActions(set, get) }))
+    )
+  )
+  canonical.setState(({ main }) => ({
+    main: { ...main, networksMeta: { ...main.networksMeta, ethereum: {} } }
+  }))
+  return canonical
+}
+
+it('retries failed origin images only when their source changes or the service restarts', async () => {
+  const canonical = await createOriginImageStore()
+  const download = mock(async (_source: string): Promise<ReturnType<typeof imageFor>> => {
+    throw new Error('Unavailable favicon')
+  })
+  const images = createImageService(canonical, {
+    downloadImage: download,
+    getTokenDiscoveryProvider: () => ({ ok: false, error: 'missing_api_key' }),
+    log: { warn: mock() }
+  })
+  const originIds = ['active', 'historical-a', 'historical-b']
+  for (const id of originIds) {
+    canonical.getState().initOrigin(id, { name: `${id}.test`, chain: { id: 1, type: 'ethereum' } })
+    canonical.getState().setOriginFavicon(id, `https://cdn.example/${id}.ico`)
+  }
+  images.start()
+  await flushHydration()
+  expect(download).toHaveBeenCalledTimes(3)
+
+  for (let count = 0; count < 5; count++) {
+    canonical.getState().addOriginRequest('active')
+    await flushHydration()
+  }
+  canonical.getState().initOrigin('unrelated', { name: 'unrelated.test', chain: { id: 1, type: 'ethereum' } })
+  canonical
+    .getState()
+    .setOriginImage(
+      'historical-a',
+      'https://cdn.example/historical-a.ico',
+      imageFor('https://cdn.example/historical-a.ico')
+    )
+  await flushHydration()
+  expect(download).toHaveBeenCalledTimes(3)
+
+  const changed = 'https://cdn.example/changed.ico'
+  canonical.getState().setOriginFavicon('active', changed)
+  await flushHydration()
+  expect(download.mock.calls.map(([source]) => source)).toEqual([
+    ...originIds.map((id) => `https://cdn.example/${id}.ico`),
+    changed
+  ])
+
+  // Removing an origin leaves no retry state that could suppress its later reappearance.
+  canonical.setState((state) => ({
+    main: {
+      ...state.main,
+      origins: Object.fromEntries(Object.entries(state.main.origins).filter(([id]) => id !== 'historical-b'))
+    }
+  }))
+  canonical.getState().initOrigin('historical-b', {
+    name: 'historical-b.test',
+    chain: { id: 1, type: 'ethereum' },
+    faviconSource: 'https://cdn.example/historical-b.ico'
+  })
+  await flushHydration()
+  expect(download).toHaveBeenCalledTimes(5)
+
+  images.dispose()
+  images.start()
+  await flushHydration()
+  expect(download).toHaveBeenCalledTimes(7)
+  expect(download.mock.calls.slice(-2).map(([source]) => source)).toEqual([
+    changed,
+    'https://cdn.example/historical-b.ico'
+  ])
   images.dispose()
 })
