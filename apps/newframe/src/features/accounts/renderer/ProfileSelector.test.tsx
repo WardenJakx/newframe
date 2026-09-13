@@ -58,25 +58,25 @@ describe('ProfileSelector', () => {
     const trigger = screen.getByRole('button', { name: 'Select active profile' })
     await user.click(trigger)
 
-    expect(screen.getAllByRole('option')).toHaveLength(3)
+    expect(screen.getAllByRole('button', { name: /^Switch to / })).toHaveLength(3)
     expect(screen.getByText('---')).toBeTruthy()
     expect(screen.getByText('—')).toBeTruthy()
     expect(screen.getByText('$12.50')).toBeTruthy()
     expect(screen.getByText('2 Accounts')).toBeTruthy()
     expect(screen.getByText('1 Account')).toBeTruthy()
 
-    await user.click(screen.getByRole('option', { name: /Work/ }))
+    await user.click(screen.getByRole('button', { name: 'Switch to Work' }))
     expect(capability.selectProfile.mock.calls.at(-1)?.[0]).toEqual({
       operationId: expect.any(String),
       profileId: 'work'
     })
     const command = capability.selectProfile.mock.calls.at(-1)![0]
-    expect(screen.getAllByRole('option')).toHaveLength(3)
+    expect(screen.getAllByRole('button', { name: /^Switch to / })).toHaveLength(3)
 
     publishOperation(operation(command.operationId, 'profile.select', 'succeeded'))
-    expect(screen.getAllByRole('option')).toHaveLength(3)
+    expect(screen.getAllByRole('button', { name: /^Switch to / })).toHaveLength(3)
     rerender(<ProfileSelector capability={capability} currentProfile='work' profiles={profiles} />)
-    await waitFor(() => expect(screen.queryAllByRole('option')).toHaveLength(0))
+    await waitFor(() => expect(screen.queryAllByRole('button', { name: /^Switch to / })).toHaveLength(0))
   })
 
   it('queries movable accounts only after create opens and creates with selected moves', async () => {
@@ -89,7 +89,7 @@ describe('ProfileSelector', () => {
     )
     expect(capability.listMovableProfileAccounts.mock.calls).toHaveLength(0)
     await user.click(screen.getByRole('button', { name: 'Select active profile' }))
-    await user.click(screen.getByRole('button', { name: 'Create' }))
+    await user.click(screen.getByRole('button', { name: 'Create profile' }))
 
     expect(capability.listMovableProfileAccounts.mock.calls).toHaveLength(1)
     await user.type(screen.getByLabelText('New profile name'), '  Travel  ')
@@ -132,7 +132,7 @@ describe('ProfileSelector', () => {
       <ProfileSelector capability={capability} currentProfile='personal' profiles={profiles} />
     )
     await user.click(screen.getByRole('button', { name: 'Select active profile' }))
-    await user.click(screen.getByRole('button', { name: 'Create' }))
+    await user.click(screen.getByRole('button', { name: 'Create profile' }))
     await user.click(screen.getByRole('button', { name: 'Create profile' }))
     expect(screen.getByText('Enter a profile name between 1 and 50 characters.')).toBeTruthy()
     expect(capability.createProfile.mock.calls).toHaveLength(0)
@@ -151,12 +151,13 @@ describe('ProfileSelector', () => {
     expect(await screen.findByText('A profile with that name already exists.')).toBeTruthy()
   })
 
-  it('renames on Enter and enforces deletion constraints before confirmation', async () => {
+  it('renames another profile on Enter without switching and enforces deletion constraints', async () => {
     const { user } = render(
-      <ProfileSelector capability={capability} currentProfile='empty' profiles={profiles} />
+      <ProfileSelector capability={capability} currentProfile='personal' profiles={profiles} />
     )
     await user.click(screen.getByRole('button', { name: 'Select active profile' }))
-    await user.click(screen.getByRole('button', { name: 'Rename' }))
+    await user.click(screen.getByRole('button', { name: 'Rename Empty' }))
+    expect(capability.selectProfile.mock.calls).toHaveLength(0)
     const input = screen.getByLabelText('Rename profile')
     await user.clear(input)
     await user.type(input, 'Archive{Enter}')
@@ -171,22 +172,23 @@ describe('ProfileSelector', () => {
       <ProfileSelector capability={capability} currentProfile='personal' profiles={profiles} />
     )
     await personalUser.click(screen.getByRole('button', { name: 'Select active profile' }))
-    expect((screen.getByRole('button', { name: 'Delete' }) as HTMLButtonElement).disabled).toBe(true)
+    expect((screen.getByRole('button', { name: 'Delete Personal' }) as HTMLButtonElement).disabled).toBe(true)
     cleanup()
 
     const { user: onlyProfileUser } = render(
       <ProfileSelector capability={capability} currentProfile='empty' profiles={[profiles[2]]} />
     )
     await onlyProfileUser.click(screen.getByRole('button', { name: 'Select active profile' }))
-    expect((screen.getByRole('button', { name: 'Delete' }) as HTMLButtonElement).disabled).toBe(true)
+    expect((screen.getByRole('button', { name: 'Delete Empty' }) as HTMLButtonElement).disabled).toBe(true)
   })
 
   it('requires deletion confirmation and leaves the projection responsible for removal', async () => {
     const { user } = render(
-      <ProfileSelector capability={capability} currentProfile='empty' profiles={profiles} />
+      <ProfileSelector capability={capability} currentProfile='personal' profiles={profiles} />
     )
     await user.click(screen.getByRole('button', { name: 'Select active profile' }))
-    await user.click(screen.getByRole('button', { name: 'Delete' }))
+    await user.click(screen.getByRole('button', { name: 'Delete Empty' }))
+    expect(capability.selectProfile.mock.calls).toHaveLength(0)
     expect(capability.deleteProfile.mock.calls).toHaveLength(0)
     await user.click(screen.getByRole('button', { name: 'Confirm delete' }))
 
@@ -208,8 +210,8 @@ describe('ProfileSelector', () => {
     )
 
     await user.click(screen.getByRole('button', { name: 'Select active profile' }))
-    await user.click(screen.getByRole('option', { name: /Work/ }))
-    await user.click(screen.getByRole('option', { name: /Empty/ }))
+    await user.click(screen.getByRole('button', { name: 'Switch to Work' }))
+    await user.click(screen.getByRole('button', { name: 'Switch to Empty' }))
     await act(async () => {
       oldResult.resolve({ ok: false, error: 'not_found' })
       await oldResult.promise
@@ -217,7 +219,7 @@ describe('ProfileSelector', () => {
 
     expect(capability.selectProfile.mock.calls.map(([input]) => input.profileId)).toEqual(['work', 'empty'])
     expect(screen.queryByText('Could not switch profiles. Try again.')).toBeNull()
-    expect(screen.getAllByRole('option')).toHaveLength(3)
+    expect(screen.getAllByRole('button', { name: /^Switch to / })).toHaveLength(3)
   })
 
   it('ignores an older delayed create failure after a newer create submission starts', async () => {
@@ -230,7 +232,7 @@ describe('ProfileSelector', () => {
     )
 
     await user.click(screen.getByRole('button', { name: 'Select active profile' }))
-    await user.click(screen.getByRole('button', { name: 'Create' }))
+    await user.click(screen.getByRole('button', { name: 'Create profile' }))
     await user.type(screen.getByLabelText('New profile name'), 'Travel')
     await user.click(screen.getByRole('button', { name: 'Create profile' }))
     await user.clear(screen.getByLabelText('New profile name'))
@@ -258,9 +260,9 @@ describe('ProfileSelector', () => {
     )
 
     await user.click(screen.getByRole('button', { name: 'Select active profile' }))
-    await user.click(screen.getByRole('button', { name: 'Create' }))
+    await user.click(screen.getByRole('button', { name: 'Create profile' }))
     await user.click(screen.getByRole('button', { name: 'Cancel' }))
-    await user.click(screen.getByRole('button', { name: 'Create' }))
+    await user.click(screen.getByRole('button', { name: 'Create profile' }))
     expect(await screen.findByRole('button', { name: /Newest/ })).toBeTruthy()
     await act(async () => {
       oldResult.resolve({ ok: false, error: 'operation_failed' })

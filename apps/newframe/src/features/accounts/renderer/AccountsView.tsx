@@ -32,6 +32,10 @@ const overlayRecipe = cva({
   }
 })
 
+const headerRecipe = cva({
+  base: { position: 'relative', zIndex: 'header' }
+})
+
 const toolsRecipe = cva({
   base: {
     display: 'flex',
@@ -284,13 +288,15 @@ export function AccountsView(props: AccountsViewProps) {
   return (
     <div aria-label='Accounts' className={overlayRecipe()} role='dialog'>
       {state.panel.kind !== 'export' ? (
-        <HeaderBar>
-          <Heading level={1} variant='title'>
-            Accounts
-          </Heading>
-          {props.profileSelector}
-          <IconButton icon='close' label='Close accounts' onPress={props.onClose} />
-        </HeaderBar>
+        <div className={headerRecipe()}>
+          <HeaderBar>
+            <Heading level={1} variant='title'>
+              Accounts
+            </Heading>
+            {props.profileSelector}
+            <IconButton icon='close' label='Close accounts' onPress={props.onClose} />
+          </HeaderBar>
+        </div>
       ) : null}
       {state.panel.kind === 'export' && exportedAccount ? (
         <ScrollArea height='fill'>
