@@ -83,7 +83,6 @@ export class VisualHarnessRuntime {
 
   async screenshot(page: Page, filename: string) {
     await fsp.mkdir(this.screenshotDir, { recursive: true })
-    await page.bringToFront().catch(() => undefined)
     await page.screenshot({ path: path.join(this.screenshotDir, filename) })
     this.summary.screenshots.push(filename)
     const stage = this.summary.stages.findLast((candidate) => candidate.status === 'running')

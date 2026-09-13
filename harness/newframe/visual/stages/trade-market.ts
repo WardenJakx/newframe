@@ -43,18 +43,19 @@ export const tradeMarketStage: VisualStage = {
       driver.fail('Gas settings must default to the compact collapsed state')
     }
 
-    await tray.getByRole('button', { name: /Calldata digest/i }).click()
+    await tray.getByRole('button', { name: /^Show full calldata/ }).click()
     await tray.getByText('Full calldata', { exact: true }).waitFor({ state: 'visible' })
     const rawDataFits = await tray.getByText('Full calldata', { exact: true }).evaluate(() => {
       const root = document.documentElement
       return root.scrollWidth <= root.clientWidth
     })
     if (!rawDataFits) driver.fail('Inline calldata must not overflow the tray viewport')
-    if (await tray.getByText('Raw Transaction', { exact: true }).isVisible()) {
-      driver.fail('Calldata disclosure must not open the removed raw transaction view')
+    const rawTransaction = tray.getByRole('button', { name: 'Raw transaction', exact: true })
+    if ((await rawTransaction.getAttribute('aria-expanded')) !== 'false') {
+      driver.fail('Calldata disclosure must leave the raw transaction collapsed')
     }
     await driver.screenshot(tray, '21b1-trade-market-inline-calldata.png')
-    await tray.getByRole('button', { name: /Calldata digest/i }).click()
+    await tray.getByRole('button', { name: /^Hide full calldata/ }).click()
     await tray.getByText('Estimated changes', { exact: true }).waitFor({ state: 'visible' })
 
     await driver.signCurrentTransaction(approveRequest, '21c-trade-market-approve-submitted.png', [

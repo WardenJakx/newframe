@@ -54,6 +54,13 @@ function shortHash(hash?: string) {
   return `${hash.substring(0, 6)}...${hash.substring(hash.length - 4)}`
 }
 
+function isBalanceChange(effect: TransactionEffect) {
+  return (
+    (effect.kind === 'native' || effect.kind === 'erc20') &&
+    (effect.direction === 'in' || effect.direction === 'out')
+  )
+}
+
 function cloneForActivity(value: any) {
   if (value === undefined) return undefined
 
@@ -355,7 +362,9 @@ export class Accounts extends EventEmitter {
     const sourceAddress = String(
       source.account || source.address || req.account || req.data?.from || ''
     ).toLowerCase()
-    const sourceEffects = effectsByAccount[sourceAddress] ?? req.simulation.effects ?? []
+    const sourceEffects = (effectsByAccount[sourceAddress] ?? req.simulation.effects ?? []).filter(
+      isBalanceChange
+    )
     this.store.getState().updateActivity(sourceId, {
       balanceChanges: cloneForActivity(sourceEffects),
       updatedAt: source.updatedAt
@@ -371,7 +380,8 @@ export class Accounts extends EventEmitter {
 
     Object.entries(effectsByAccount).forEach(([mapAddress, effects]) => {
       const address = mapAddress.toLowerCase()
-      if (address === sourceAddress || !effects.length || !profileAccounts.has(address)) return
+      const balanceChanges = effects.filter(isBalanceChange)
+      if (address === sourceAddress || !balanceChanges.length || !profileAccounts.has(address)) return
 
       const id = transactionAccountActivityId(hash, address)
       const { positionsRefreshedAt: _positionsRefreshedAt, ...shared } = source
@@ -381,9 +391,9 @@ export class Accounts extends EventEmitter {
         hash,
         account: address,
         address,
-        balanceChanges: cloneForActivity(effects),
+        balanceChanges: cloneForActivity(balanceChanges),
         gasSpent: null,
-        display: this.getAccountRelativeActivityDisplay(effects)
+        display: this.getAccountRelativeActivityDisplay(balanceChanges)
       })
     })
   }
@@ -632,9 +642,7 @@ export class Accounts extends EventEmitter {
     const gasSpent = getPaidTransactionFee(req)
     const balanceChanges =
       status === 'succeeded'
-        ? getTransactionEffects(req, this.getTransactionNativeSymbol(req)).filter(
-            (effect) => effect.direction === 'in' || effect.direction === 'out'
-          )
+        ? getTransactionEffects(req, this.getTransactionNativeSymbol(req)).filter(isBalanceChange)
         : []
 
     this.store.getState().finalizeActivity(transactionActivityId(hash), status, {

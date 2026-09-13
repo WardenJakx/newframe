@@ -19,6 +19,10 @@ export function createWindow(
 
   const browserWindow = new BrowserWindow({
     ...opts,
+    // CDP can drive harness windows without stealing the developer's keyboard focus.
+    ...(process.env.NEWFRAME_VISUAL_HARNESS === 'true' && process.env.FRAME_PROFILE === 'dev'
+      ? { focusable: false }
+      : {}),
     frame: false,
     acceptFirstMouse: true,
     transparent: process.platform === 'darwin',

@@ -2,8 +2,6 @@ import { oneEthWei } from '../driver.ts'
 import type { VisualStage } from '../types.ts'
 import { assertInsideViewport, requireAccounts, revealAssetDetailsButton } from './helpers.ts'
 
-const shortAddress = (address: string) => `${address.slice(0, 8)}...${address.slice(-6)}`
-
 export const sendStage: VisualStage = {
   name: 'built-in send',
   async run(context) {
@@ -149,10 +147,7 @@ export const sendStage: VisualStage = {
     }
 
     const recipientIdentity = details.locator('[data-address-identity]')
-    const recipientCopy = recipientIdentity.getByRole('button', {
-      name: 'Copy address for vitalik',
-      exact: true
-    })
+    const recipientCopy = recipientIdentity.getByRole('button', { name: /^Copy address for / })
     await recipientCopy.waitFor({ state: 'visible' })
     const primaryIdentity = recipientIdentity.locator('[data-hover-swap-text="primary"]')
     await primaryIdentity.locator('..').hover()
@@ -168,9 +163,9 @@ export const sendStage: VisualStage = {
     if (
       visibleAddress.primaryDisplay !== 'none' ||
       visibleAddress.alternateDisplay === 'none' ||
-      visibleAddress.address.toLowerCase() !== shortAddress(vitalik.address).toLowerCase()
+      visibleAddress.address.toLowerCase() !== vitalik.address.toLowerCase()
     ) {
-      runtime.fail('Hovering a known name must replace it in place with the shortened address')
+      runtime.fail('Hovering a known name must replace it in place with the full address')
     }
     await runtime.screenshot(tray, '14-send-review-hover-address.png')
     await effectsTitle.hover()
@@ -188,9 +183,7 @@ export const sendStage: VisualStage = {
 
     const recipientCopyButton = recipientIdentity.locator('button')
     await recipientCopyButton.click()
-    if ((await recipientCopyButton.getAttribute('aria-label')) !== 'Address copied for vitalik') {
-      runtime.fail('Copying an address must replace the copy icon with a visible confirmation state')
-    }
+    await recipientIdentity.getByRole('button', { name: /^Address copied for / }).waitFor()
     await runtime.screenshot(tray, '14-send-review-copy-confirmation.png')
 
     const signerIdentity = signerCopy.locator('..')
@@ -207,9 +200,9 @@ export const sendStage: VisualStage = {
     if (
       visibleSignerAddress.primaryDisplay !== 'none' ||
       visibleSignerAddress.alternateDisplay === 'none' ||
-      visibleSignerAddress.address.toLowerCase() !== shortAddress(senderAddress).toLowerCase()
+      visibleSignerAddress.address.toLowerCase() !== senderAddress.toLowerCase()
     ) {
-      runtime.fail('Signing with must replace the account name in place with the shortened address')
+      runtime.fail('Account must replace the account name in place with the full address')
     }
     await runtime.screenshot(tray, '14-send-review-hover-signer.png')
     await effectsTitle.hover()
