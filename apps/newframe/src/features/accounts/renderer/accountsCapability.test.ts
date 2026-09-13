@@ -11,24 +11,25 @@ it('maps every semantic account command to its exact catalog payload', async () 
   const host = createTypedClient()
   const capability = createAccountsCapability(host)
 
-  await capability.reorderAccount({ fromAccountId: firstAddress, toAccountId: secondAddress })
+  await capability.updateAccount({ accountId: firstAddress, toAccountId: secondAddress })
   await capability.selectAccount({ accountId: firstAddress })
-  await capability.renameAccount({ accountId: firstAddress, name: 'Primary' })
+  await capability.updateAccount({ accountId: firstAddress, name: 'Primary' })
   await capability.removeAccount({ address: firstAddress, removeSeedSigner: true })
-  await capability.moveAccountToProfile({ operationId, accountId: firstAddress, profileId: 'work' })
-  await capability.setAccountAgentAccess({ accountId: firstAddress, enabled: true })
+  await capability.updateAccount({ operationId, accountId: firstAddress, profileId: 'work' })
+  await capability.updateAccount({ accountId: firstAddress, enabled: true })
   await capability.revokeAccountAgentSessions({ accountId: firstAddress })
   await capability.selectProfile({ operationId, profileId: 'work' })
   await capability.createProfile({ operationId, name: 'Work', accountIds: [firstAddress] })
-  await capability.renameProfile({ operationId, profileId: 'work', name: 'Archive' })
+  await capability.updateProfile({ operationId, profileId: 'work', name: 'Archive' })
   await capability.deleteProfile({ operationId, profileId: 'work' })
-  await capability.addAccountFromSigner({
+  await capability.createAccount({
+    source: 'signer',
     operationId,
     signerId: 'seed-1',
     address: firstAddress,
     name: 'Primary'
   })
-  await capability.addWatchAccount({ operationId, addressOrName: 'wallet.eth', name: 'Watch' })
+  await capability.createAccount({ source: 'watch', operationId, addressOrName: 'wallet.eth', name: 'Watch' })
   await capability.importSigner({
     operationId,
     source: 'private-key',
@@ -36,52 +37,55 @@ it('maps every semantic account command to its exact catalog payload', async () 
     framePassword: 'frame-password',
     accountName: 'Imported'
   })
-  await capability.startHardwareSession({ operationId, signerId: 'ledger-1' })
-  await capability.finishHardwareSession({ operationId, signerId: 'ledger-1', outcome: 'ready' })
-  await capability.reloadSigner({ operationId, signerId: 'ledger-1' })
+  await capability.startSignerSession({ operationId, signerId: 'ledger-1' })
+  await capability.finishSignerSession({ operationId, signerId: 'ledger-1', outcome: 'ready' })
+  await capability.refreshSigner({ operationId, signerId: 'ledger-1' })
   await capability.disconnectSigner({ operationId, signerId: 'ledger-1' })
-  await capability.loadLedgerAccounts({ operationId, signerId: 'ledger-1', accountCount: 10 })
-  await capability.submitTrezorInput({
+  await capability.refreshSigner({ operationId, signerId: 'ledger-1', accountCount: 10 })
+  await capability.inputSignerSession({
     operationId,
     actionId: 'action-1',
     signerId: 'trezor-1',
     input: 'pin',
     value: '12'
   })
-  await capability.createLatticeSigner({
+  await capability.importSigner({
+    source: 'lattice',
     operationId,
     deviceId: 'device-1',
     deviceName: 'GridPlus'
   })
-  await capability.pairLattice({
+  await capability.inputSignerSession({
+    input: 'pair-code',
     operationId,
     actionId: 'action-2',
     signerId: 'lattice-1',
-    pairCode: 'PAIR'
+    value: 'PAIR'
   })
   await capability.writeClipboard({ text: 'copy me' })
   await capability.writeText('copy me again')
 
   expect(host.executeCommand.mock.calls.map(([command]) => command)).toEqual([
-    { type: 'account.reorder', fromAccountId: firstAddress, toAccountId: secondAddress },
+    { type: 'account.update', accountId: firstAddress, toAccountId: secondAddress },
     { type: 'account.select', accountId: firstAddress },
-    { type: 'account.rename', accountId: firstAddress, name: 'Primary' },
+    { type: 'account.update', accountId: firstAddress, name: 'Primary' },
     { type: 'account.remove', address: firstAddress, removeSeedSigner: true },
-    { type: 'account.profile-move', operationId, accountId: firstAddress, profileId: 'work' },
-    { type: 'account.agent-access-set', accountId: firstAddress, enabled: true },
+    { type: 'account.update', operationId, accountId: firstAddress, profileId: 'work' },
+    { type: 'account.update', accountId: firstAddress, enabled: true },
     { type: 'account.agent-sessions-revoke', accountId: firstAddress },
     { type: 'profile.select', operationId, profileId: 'work' },
     { type: 'profile.create', operationId, name: 'Work', accountIds: [firstAddress] },
-    { type: 'profile.rename', operationId, profileId: 'work', name: 'Archive' },
+    { type: 'profile.update', operationId, profileId: 'work', name: 'Archive' },
     { type: 'profile.delete', operationId, profileId: 'work' },
     {
-      type: 'account.add-from-signer',
+      type: 'account.create',
+      source: 'signer',
       operationId,
       signerId: 'seed-1',
       address: firstAddress,
       name: 'Primary'
     },
-    { type: 'account.watch-add', operationId, addressOrName: 'wallet.eth', name: 'Watch' },
+    { type: 'account.create', source: 'watch', operationId, addressOrName: 'wallet.eth', name: 'Watch' },
     {
       type: 'signer.import',
       operationId,
@@ -90,26 +94,27 @@ it('maps every semantic account command to its exact catalog payload', async () 
       framePassword: 'frame-password',
       accountName: 'Imported'
     },
-    { type: 'signer.hardware-session-start', operationId, signerId: 'ledger-1' },
-    { type: 'signer.hardware-session-finish', operationId, signerId: 'ledger-1', outcome: 'ready' },
-    { type: 'signer.reload', operationId, signerId: 'ledger-1' },
+    { type: 'signer.session-start', operationId, signerId: 'ledger-1' },
+    { type: 'signer.session-finish', operationId, signerId: 'ledger-1', outcome: 'ready' },
+    { type: 'signer.refresh', operationId, signerId: 'ledger-1' },
     { type: 'signer.disconnect', operationId, signerId: 'ledger-1' },
-    { type: 'signer.ledger-accounts-load', operationId, signerId: 'ledger-1', accountCount: 10 },
+    { type: 'signer.refresh', operationId, signerId: 'ledger-1', accountCount: 10 },
     {
-      type: 'signer.trezor-input',
+      type: 'signer.session-input',
       operationId,
       actionId: 'action-1',
       signerId: 'trezor-1',
       input: 'pin',
       value: '12'
     },
-    { type: 'signer.lattice-create', operationId, deviceId: 'device-1', deviceName: 'GridPlus' },
+    { type: 'signer.import', source: 'lattice', operationId, deviceId: 'device-1', deviceName: 'GridPlus' },
     {
-      type: 'signer.lattice-pair',
+      type: 'signer.session-input',
+      input: 'pair-code',
       operationId,
       actionId: 'action-2',
       signerId: 'lattice-1',
-      pairCode: 'PAIR'
+      value: 'PAIR'
     },
     { type: 'clipboard.write', text: 'copy me' },
     { type: 'clipboard.write', text: 'copy me again' }

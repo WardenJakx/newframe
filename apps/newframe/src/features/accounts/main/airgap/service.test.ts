@@ -23,18 +23,18 @@ it('pairs only for its owner, then restores and removes the public signer', () =
   const f = fixture()
   const owner = uiContext()
   const operationId = randomUUID()
-  const start = { type: 'signer.airgap-pair-start', operationId } as const
+  const start = { type: 'signer.import', source: 'airgap', operationId } as const
   f.service.pairStart(start, owner.context)
   f.service.pairStart(start, owner.context)
   expect(owner.listenerCount()).toBe(1)
   expect(
     f.service.pairScan(
-      { type: 'signer.airgap-pair-scan', operationId, frame: vectors.export.ur[0] },
+      { type: 'signer.session-input', operationId, frame: vectors.export.ur[0] },
       uiContext().context.owner
     )
   ).toBe(false)
   for (const frame of vectors.export.ur)
-    f.service.pairScan({ type: 'signer.airgap-pair-scan', operationId, frame }, owner.context.owner)
+    f.service.pairScan({ type: 'signer.session-input', operationId, frame }, owner.context.owner)
   const [id] = Object.keys(f.store.getState().main.airgap)
   expect(
     f.operations.lookup({ id: operationId, owner: owner.context.owner, type: 'signer.airgap-pair' })
@@ -60,8 +60,8 @@ it('restarting, window destruction and app disposal release pairing listeners', 
   const owner = uiContext()
   const first = randomUUID(),
     second = randomUUID()
-  f.service.pairStart({ type: 'signer.airgap-pair-start', operationId: first }, owner.context)
-  f.service.pairStart({ type: 'signer.airgap-pair-start', operationId: second }, owner.context)
+  f.service.pairStart({ type: 'signer.import', source: 'airgap', operationId: first }, owner.context)
+  f.service.pairStart({ type: 'signer.import', source: 'airgap', operationId: second }, owner.context)
   expect(
     f.operations.lookup({ id: first, owner: owner.context.owner, type: 'signer.airgap-pair' })?.phase
   ).toBe('cancelled')
@@ -72,7 +72,10 @@ it('restarting, window destruction and app disposal release pairing listeners', 
   ).toBe('cancelled')
   expect(owner.listenerCount()).toBe(0)
   const nextOwner = uiContext()
-  f.service.pairStart({ type: 'signer.airgap-pair-start', operationId: randomUUID() }, nextOwner.context)
+  f.service.pairStart(
+    { type: 'signer.import', source: 'airgap', operationId: randomUUID() },
+    nextOwner.context
+  )
   f.service.dispose()
   expect(nextOwner.listenerCount()).toBe(0)
 })

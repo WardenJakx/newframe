@@ -55,14 +55,14 @@ export function AirGapSigning({
   useEffect(() => {
     return () => {
       open.current = false
-      void capability.airgapCancel({ signerId, requestId, sessionId }).catch(() => {})
+      void capability.finishSignerSession({ signerId, requestId, sessionId }).catch(() => {})
     }
   }, [capability, signerId, requestId, sessionId])
   useEffect(() => {
     if (!stillLive || !open.current) return
     let current = true
     void capability
-      .airgapRequest({ signerId, requestId, sessionId })
+      .sessionFrames({ signerId, requestId, sessionId })
       .then((result) => {
         if (!current || !open.current) return
         if (!result.ok) throw new Error(result.message || 'Signing QR unavailable. Retry or cancel.')
@@ -80,7 +80,7 @@ export function AirGapSigning({
   function close() {
     open.current = false
     setClosed(true)
-    void capability.airgapCancel({ signerId, requestId, sessionId }).catch(() => {})
+    void capability.finishSignerSession({ signerId, requestId, sessionId }).catch(() => {})
     dismissRef.current()
   }
   if (!stillLive) return null
@@ -149,7 +149,7 @@ export function AirGapSigning({
               }}
               onFrame={async (frame) => {
                 if (!open.current) return
-                const result = await capability.airgapScan({ signerId, requestId, sessionId, frame })
+                const result = await capability.inputSignerSession({ signerId, requestId, sessionId, frame })
                 if (!result.ok) throw new Error(result.message || 'Invalid signature QR. Retry or cancel.')
               }}
             />

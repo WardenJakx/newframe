@@ -1,8 +1,8 @@
 import { getAddress } from 'ethers'
 
 import type {
-  AccountSafeImportCommand,
-  AccountSafeRefreshCommand,
+  AccountCreateCommand,
+  AccountRefreshCommand,
   SafeSimulateQuery
 } from '../../../app/contracts/operations.js'
 import type { OperationService } from '../../../platform/operations/service.js'
@@ -340,7 +340,7 @@ export function createSafeService({
     })()
     return item.promise
   }
-  const refresh = async (command: AccountSafeRefreshCommand) => {
+  const refresh = async (command: AccountRefreshCommand) => {
     const main = store.getState().main
     const accountId = command.accountId.toLowerCase()
     const account = main.accounts[accountId]
@@ -352,7 +352,7 @@ export function createSafeService({
     return true
   }
   const refreshSelected = () => {
-    if (selected) void refresh({ type: 'account.safe-refresh', accountId: selected })
+    if (selected) void refresh({ type: 'account.refresh', accountId: selected })
   }
   const unsubscribe = store.subscribe(
     (state) =>
@@ -397,8 +397,8 @@ export function createSafeService({
     discoverNetworks,
     simulate,
     refresh,
-    import(command: AccountSafeImportCommand, owner: OperationOwner) {
-      const reference = { id: command.operationId, type: command.type, owner }
+    import(command: Extract<AccountCreateCommand, { source: 'safe' }>, owner: OperationOwner) {
+      const reference = { id: command.operationId, type: 'account.safe-import', owner }
       if (operations.lookup(reference)) return true
       if (disposed) return false
       try {

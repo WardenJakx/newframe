@@ -5,10 +5,7 @@ import { subscribeWithSelector } from 'zustand/middleware'
 import { createStore } from 'zustand/vanilla'
 
 import { createTestStore } from '../../../../test/support/createTestStore'
-import type {
-  AccountSafeConfirmCommand,
-  SafeConfirmationStatusQuery
-} from '../../../app/contracts/operations'
+import type { SafeApprovalCommand, SafeConfirmationStatusQuery } from '../../../app/contracts/operations'
 import { createOperationService } from '../../../platform/operations/service'
 import { getSafeTypedMessage, verifySafeHash } from '../../../platform/safe/integrity'
 import type { SigningApprovalContext, SigningUiContext } from '../../../platform/signing/signers/Signer'
@@ -129,8 +126,8 @@ function setup() {
       }
     }
   }
-  const command: AccountSafeConfirmCommand = {
-    type: 'account.safe-confirm',
+  const command: SafeApprovalCommand = {
+    type: 'request.approve',
     operationId: 'confirm-1',
     accountId: safeAddress,
     ownerId,
@@ -208,7 +205,7 @@ it('coalesces clicks and projects progress to every approving window; conflictin
   expect(test.signing.sign).toHaveBeenCalledTimes(1)
   expect(test.client.confirm).toHaveBeenCalledTimes(1)
   expect(
-    test.operations.lookup({ id: 'confirm-2', owner: second.owner, type: test.command.type })?.phase
+    test.operations.lookup({ id: 'confirm-2', owner: second.owner, type: 'account.safe-confirm' })?.phase
   ).toBe('published')
 })
 
@@ -311,7 +308,7 @@ it.each(['selection', 'proposal', 'membership', 'network', 'dispose'] as const)(
       () =>
         test.operations.lookup({
           id: test.command.operationId,
-          type: test.command.type,
+          type: 'account.safe-confirm',
           owner: test.context.owner
         })?.phase === 'cancelled'
     )

@@ -27,7 +27,7 @@ type MovableAccount = {
 interface ProfileSelectorProps {
   capability: Pick<
     AccountsCapability,
-    'selectProfile' | 'createProfile' | 'renameProfile' | 'deleteProfile' | 'listMovableProfileAccounts'
+    'selectProfile' | 'createProfile' | 'updateProfile' | 'deleteProfile' | 'listMovableProfileAccounts'
   >
   currentProfile: string
   profiles: ProfileSummary[]
@@ -36,7 +36,7 @@ interface ProfileSelectorProps {
 type ManagementMode = 'none' | 'create' | 'rename' | 'delete'
 type ProfileSubmission = {
   operationId: string
-  type: 'profile.select' | 'profile.create' | 'profile.rename' | 'profile.delete'
+  type: 'profile.select' | 'profile.create' | 'profile.update' | 'profile.delete'
   profileId?: string
   name?: string
 }
@@ -146,13 +146,13 @@ export function ProfileSelector({ capability, currentProfile, profiles }: Profil
         ? !!createdProfileId &&
           currentProfile === createdProfileId &&
           profiles.some((profile) => profile.id === createdProfileId)
-        : submission.type === 'profile.rename'
+        : submission.type === 'profile.update'
           ? profiles.some(
               (profile) => profile.id === submission.profileId && profile.name === submission.name
             )
           : !profiles.some((profile) => profile.id === submission.profileId))
   const displayedMode = submissionReflected ? 'none' : mode
-  const displayedOpen = submissionReflected && submission?.type !== 'profile.rename' ? false : open
+  const displayedOpen = submissionReflected && submission?.type !== 'profile.update' ? false : open
   const visibleError = submissionReflected ? '' : operationFailure || error
 
   const resetManagement = React.useCallback(() => {
@@ -300,14 +300,14 @@ export function ProfileSelector({ capability, currentProfile, profiles }: Profil
     const operationId = crypto.randomUUID()
     const nextSubmission: ProfileSubmission = {
       operationId,
-      type: 'profile.rename',
+      type: 'profile.update',
       profileId: managedProfile.id,
       name: trimmedName
     }
     submissionRef.current = nextSubmission
     setSubmission(nextSubmission)
     setError('')
-    const result = await capability.renameProfile({
+    const result = await capability.updateProfile({
       operationId,
       profileId: managedProfile.id,
       name: trimmedName

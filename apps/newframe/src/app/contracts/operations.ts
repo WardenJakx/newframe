@@ -130,13 +130,13 @@ const ProfileCreateCommandSchema = z.strictObject({
 })
 export type ProfileCreateCommand = z.infer<typeof ProfileCreateCommandSchema>
 
-const ProfileRenameCommandSchema = z.strictObject({
-  type: z.literal('profile.rename'),
+const ProfileUpdateCommandSchema = z.strictObject({
+  type: z.literal('profile.update'),
   operationId: OperationIdSchema,
   profileId: ProfileIdSchema,
   name: ProfileNameSchema
 })
-export type ProfileRenameCommand = z.infer<typeof ProfileRenameCommandSchema>
+export type ProfileUpdateCommand = z.infer<typeof ProfileUpdateCommandSchema>
 
 const ProfileDeleteCommandSchema = z.strictObject({
   type: z.literal('profile.delete'),
@@ -144,14 +144,6 @@ const ProfileDeleteCommandSchema = z.strictObject({
   profileId: ProfileIdSchema
 })
 export type ProfileDeleteCommand = z.infer<typeof ProfileDeleteCommandSchema>
-
-const AccountProfileMoveCommandSchema = z.strictObject({
-  type: z.literal('account.profile-move'),
-  operationId: OperationIdSchema,
-  accountId: z.string().min(1).max(256),
-  profileId: ProfileIdSchema
-})
-export type AccountProfileMoveCommand = z.infer<typeof AccountProfileMoveCommandSchema>
 
 const ProfileMovableAccountsQuerySchema = z.strictObject({
   type: z.literal('profile.movable-accounts')
@@ -176,29 +168,30 @@ const ProfileMovableAccountsResultSchema = z.discriminatedUnion('ok', [
   })
 ])
 
-const SendSubmitCommandSchema = z.strictObject({
-  type: z.literal('send.submit'),
-  operationId: OperationIdSchema,
-  asset: z.strictObject({
-    address: AddressSchema,
-    chainId: ChainIdSchema
+const RequestCreateCommandSchema = z.union([
+  z.strictObject({
+    type: z.literal('request.create'),
+    operationId: OperationIdSchema,
+    asset: z.strictObject({
+      address: AddressSchema,
+      chainId: ChainIdSchema
+    }),
+    amount: z
+      .string()
+      .regex(/^[1-9][0-9]{0,77}$/)
+      .max(78),
+    recipient: z.string().trim().min(1).max(512)
   }),
-  amount: z
-    .string()
-    .regex(/^[1-9][0-9]{0,77}$/)
-    .max(78),
-  recipient: z.string().trim().min(1).max(512)
-})
-
-export type SendSubmitCommand = z.infer<typeof SendSubmitCommandSchema>
-
-const TradePrepareCommandSchema = z.strictObject({
-  type: z.literal('trade.prepare'),
-  operationId: OperationIdSchema,
-  quoteId: z.string().min(1).max(256),
-  action: z.enum(['wrap', 'approve'])
-})
-export type TradePrepareCommand = z.infer<typeof TradePrepareCommandSchema>
+  z.strictObject({
+    type: z.literal('request.create'),
+    operationId: OperationIdSchema,
+    quoteId: z.string().min(1).max(256),
+    action: z.enum(['wrap', 'approve'])
+  })
+])
+type RequestCreateCommand = z.infer<typeof RequestCreateCommandSchema>
+export type SendRequestCommand = Extract<RequestCreateCommand, { asset: unknown }>
+export type TradeRequestCommand = Extract<RequestCreateCommand, { quoteId: string }>
 
 const TradeSubmitCommandSchema = z.strictObject({
   type: z.literal('trade.submit'),
@@ -207,7 +200,11 @@ const TradeSubmitCommandSchema = z.strictObject({
 })
 export type TradeSubmitCommand = z.infer<typeof TradeSubmitCommandSchema>
 
-const TradeReleaseCommandSchema = z.strictObject({ type: z.literal('trade.release') })
+const OperationCancelCommandSchema = z.strictObject({
+  type: z.literal('operation.cancel'),
+  operationId: OperationIdSchema
+})
+export type OperationCancelCommand = z.infer<typeof OperationCancelCommandSchema>
 
 const SideTrayCloseCommandSchema = z.strictObject({ type: z.literal('sidetray.close') })
 
@@ -357,12 +354,6 @@ const WarningToggleCommandSchema = z.strictObject({
 })
 export type WarningToggleCommand = z.infer<typeof WarningToggleCommandSchema>
 
-const RequestApproveCommandSchema = z.strictObject({
-  type: z.literal('request.approve'),
-  requestId: OperationIdSchema,
-  adjustments: TransactionApprovalAdjustmentsSchema.optional()
-})
-
 const RequestWarningConfirmCommandSchema = z.strictObject({
   type: z.literal('request.warning-confirm'),
   requestId: OperationIdSchema,
@@ -374,56 +365,12 @@ const NetworkRemoveCommandSchema = z.strictObject({
   chainId: ChainIdSchema
 })
 
-const TrezorInputCommandSchema = z.discriminatedUnion('input', [
-  z.strictObject({
-    type: z.literal('signer.trezor-input'),
-    operationId: OperationIdSchema,
-    actionId: OperationIdSchema,
-    signerId: OperationIdSchema,
-    input: z.literal('pin'),
-    value: z.string().regex(/^[1-9]{1,9}$/)
-  }),
-  z.strictObject({
-    type: z.literal('signer.trezor-input'),
-    operationId: OperationIdSchema,
-    actionId: OperationIdSchema,
-    signerId: OperationIdSchema,
-    input: z.literal('passphrase'),
-    value: z.string().max(256)
-  }),
-  z.strictObject({
-    type: z.literal('signer.trezor-input'),
-    operationId: OperationIdSchema,
-    actionId: OperationIdSchema,
-    signerId: OperationIdSchema,
-    input: z.literal('device-passphrase')
-  })
-])
-export type TrezorInputCommand = z.infer<typeof TrezorInputCommandSchema>
-
-const LatticePairCommandSchema = z.strictObject({
-  type: z.literal('signer.lattice-pair'),
-  operationId: OperationIdSchema,
-  actionId: OperationIdSchema,
-  signerId: OperationIdSchema,
-  pairCode: z.string().trim().min(1).max(64)
-})
-export type LatticePairCommand = z.infer<typeof LatticePairCommandSchema>
-
-const SignerHardwareSessionStartCommandSchema = z.strictObject({
-  type: z.literal('signer.hardware-session-start'),
+const SignerSessionStartCommandSchema = z.strictObject({
+  type: z.literal('signer.session-start'),
   operationId: OperationIdSchema,
   signerId: OperationIdSchema
 })
-export type SignerHardwareSessionStartCommand = z.infer<typeof SignerHardwareSessionStartCommandSchema>
-
-const SignerHardwareSessionFinishCommandSchema = z.strictObject({
-  type: z.literal('signer.hardware-session-finish'),
-  operationId: OperationIdSchema,
-  signerId: OperationIdSchema,
-  outcome: z.enum(['ready', 'cancelled'])
-})
-export type SignerHardwareSessionFinishCommand = z.infer<typeof SignerHardwareSessionFinishCommandSchema>
+export type SignerSessionStartCommand = z.infer<typeof SignerSessionStartCommandSchema>
 
 const AccountRemoveCommandSchema = z.strictObject({
   type: z.literal('account.remove'),
@@ -431,20 +378,13 @@ const AccountRemoveCommandSchema = z.strictObject({
   removeSeedSigner: z.boolean().optional()
 })
 
-const SignerReloadCommandSchema = z.strictObject({
-  type: z.literal('signer.reload'),
-  operationId: OperationIdSchema,
-  signerId: OperationIdSchema
-})
-export type SignerReloadCommand = z.infer<typeof SignerReloadCommandSchema>
-
-const SignerLedgerAccountsLoadCommandSchema = z.strictObject({
-  type: z.literal('signer.ledger-accounts-load'),
+const SignerRefreshCommandSchema = z.strictObject({
+  type: z.literal('signer.refresh'),
   operationId: OperationIdSchema,
   signerId: OperationIdSchema,
-  accountCount: z.number().int().min(5).max(100).multipleOf(5)
+  accountCount: z.number().int().min(5).max(100).multipleOf(5).optional()
 })
-export type SignerLedgerAccountsLoadCommand = z.infer<typeof SignerLedgerAccountsLoadCommandSchema>
+export type SignerRefreshCommand = z.infer<typeof SignerRefreshCommandSchema>
 
 const TokenLookupQuerySchema = z.strictObject({
   type: z.literal('token.lookup'),
@@ -586,23 +526,30 @@ const FlashOrderCancelCommandSchema = z.strictObject({
 })
 export type FlashOrderCancelCommand = z.infer<typeof FlashOrderCancelCommandSchema>
 
-const AccountReorderCommandSchema = z.strictObject({
-  type: z.literal('account.reorder'),
-  fromAccountId: AddressSchema,
-  toAccountId: AddressSchema
-})
-
-const AccountRenameCommandSchema = z.strictObject({
-  type: z.literal('account.rename'),
-  accountId: AddressSchema,
-  name: BoundedNameSchema.min(1)
-})
-
-const AccountAgentAccessSetCommandSchema = z.strictObject({
-  type: z.literal('account.agent-access-set'),
-  accountId: AddressSchema,
-  enabled: z.boolean()
-})
+const AccountUpdateCommandSchema = z.union([
+  z.strictObject({
+    type: z.literal('account.update'),
+    operationId: OperationIdSchema,
+    accountId: z.string().min(1).max(256),
+    profileId: ProfileIdSchema
+  }),
+  z.strictObject({
+    type: z.literal('account.update'),
+    accountId: AddressSchema,
+    toAccountId: AddressSchema
+  }),
+  z.strictObject({
+    type: z.literal('account.update'),
+    accountId: AddressSchema,
+    name: BoundedNameSchema.min(1)
+  }),
+  z.strictObject({
+    type: z.literal('account.update'),
+    accountId: AddressSchema,
+    enabled: z.boolean()
+  })
+])
+export type AccountUpdateCommand = z.infer<typeof AccountUpdateCommandSchema>
 
 const AccountAgentSessionsRevokeCommandSchema = z.strictObject({
   type: z.literal('account.agent-sessions-revoke'),
@@ -627,37 +574,39 @@ const AccountPrivateKeyExportResultSchema = z.discriminatedUnion('ok', [
   })
 ])
 
-const AccountAddFromSignerCommandSchema = z.strictObject({
-  type: z.literal('account.add-from-signer'),
-  operationId: OperationIdSchema,
-  signerId: OperationIdSchema,
-  address: AddressSchema,
-  name: BoundedNameSchema.optional()
-})
-export type AccountAddFromSignerCommand = z.infer<typeof AccountAddFromSignerCommandSchema>
+const AccountCreateCommandSchema = z.discriminatedUnion('source', [
+  z.strictObject({
+    type: z.literal('account.create'),
+    source: z.literal('signer'),
+    operationId: OperationIdSchema,
+    signerId: OperationIdSchema,
+    address: AddressSchema,
+    name: BoundedNameSchema.optional()
+  }),
+  z.strictObject({
+    type: z.literal('account.create'),
+    source: z.literal('watch'),
+    operationId: OperationIdSchema,
+    addressOrName: z.string().trim().min(1).max(255),
+    name: BoundedNameSchema.optional()
+  }),
+  z.strictObject({
+    type: z.literal('account.create'),
+    source: z.literal('safe'),
+    operationId: OperationIdSchema,
+    address: AddressSchema,
+    chainId: ChainIdSchema
+  })
+])
+export type AccountCreateCommand = z.infer<typeof AccountCreateCommandSchema>
 
-const AccountWatchAddCommandSchema = z.strictObject({
-  type: z.literal('account.watch-add'),
-  operationId: OperationIdSchema,
-  addressOrName: z.string().trim().min(1).max(255),
-  name: BoundedNameSchema.optional()
-})
-export type AccountWatchAddCommand = z.infer<typeof AccountWatchAddCommandSchema>
-
-const AccountSafeImportCommandSchema = z.strictObject({
-  type: z.literal('account.safe-import'),
-  operationId: OperationIdSchema,
-  address: AddressSchema,
-  chainId: ChainIdSchema
-})
-export type AccountSafeImportCommand = z.infer<typeof AccountSafeImportCommandSchema>
-const AccountSafeRefreshCommandSchema = z.strictObject({
-  type: z.literal('account.safe-refresh'),
+const AccountRefreshCommandSchema = z.strictObject({
+  type: z.literal('account.refresh'),
   accountId: AddressSchema,
   chainId: ChainIdSchema.optional(),
   force: z.boolean().optional()
 })
-export type AccountSafeRefreshCommand = z.infer<typeof AccountSafeRefreshCommandSchema>
+export type AccountRefreshCommand = z.infer<typeof AccountRefreshCommandSchema>
 const SafeDiscoverQuerySchema = z.strictObject({
   type: z.literal('safe.discover'),
   address: AddressSchema
@@ -679,12 +628,20 @@ const SafeConfirmationIdentity = {
   safeTxHash: z.string().regex(/^0x[0-9a-fA-F]{64}$/),
   ownerId: AddressSchema
 }
-const AccountSafeConfirmCommandSchema = z.strictObject({
-  type: z.literal('account.safe-confirm'),
-  operationId: OperationIdSchema,
-  ...SafeConfirmationIdentity
-})
-export type AccountSafeConfirmCommand = z.infer<typeof AccountSafeConfirmCommandSchema>
+
+const RequestApproveCommandSchema = z.union([
+  z.strictObject({
+    type: z.literal('request.approve'),
+    requestId: OperationIdSchema,
+    adjustments: TransactionApprovalAdjustmentsSchema.optional()
+  }),
+  z.strictObject({
+    type: z.literal('request.approve'),
+    operationId: OperationIdSchema,
+    ...SafeConfirmationIdentity
+  })
+])
+export type SafeApprovalCommand = Extract<z.infer<typeof RequestApproveCommandSchema>, { safeTxHash: string }>
 const SafeConfirmationStatusQuerySchema = z.strictObject({
   type: z.literal('safe.confirmation-status'),
   ...SafeConfirmationIdentity
@@ -743,17 +700,21 @@ const SignerImportCommandSchema = z.discriminatedUnion('source', [
     keystorePassword: BoundedPasswordSchema.min(1),
     framePassword: BoundedPasswordSchema,
     accountName: BoundedNameSchema.optional()
+  }),
+  z.strictObject({
+    type: z.literal('signer.import'),
+    source: z.literal('lattice'),
+    operationId: OperationIdSchema,
+    deviceId: z.string().trim().min(1).max(128),
+    deviceName: z.string().trim().min(1).max(128)
+  }),
+  z.strictObject({
+    type: z.literal('signer.import'),
+    source: z.literal('airgap'),
+    operationId: z.uuid()
   })
 ])
 export type SignerImportCommand = z.infer<typeof SignerImportCommandSchema>
-
-const SignerLatticeCreateCommandSchema = z.strictObject({
-  type: z.literal('signer.lattice-create'),
-  operationId: OperationIdSchema,
-  deviceId: z.string().trim().min(1).max(128),
-  deviceName: z.string().trim().min(1).max(128)
-})
-export type SignerLatticeCreateCommand = z.infer<typeof SignerLatticeCreateCommandSchema>
 
 const SignerDisconnectCommandSchema = z.strictObject({
   type: z.literal('signer.disconnect'),
@@ -1039,28 +1000,48 @@ const acknowledged = <TInput extends z.ZodType>(input: TInput) => ({
   result: CommandResultSchema
 })
 
-const AirGapPairStartCommandSchema = z.strictObject({
-  type: z.literal('signer.airgap-pair-start'),
-  operationId: z.uuid()
+const HardwareInputSchema = z.strictObject({
+  type: z.literal('signer.session-input'),
+  operationId: OperationIdSchema,
+  actionId: OperationIdSchema,
+  signerId: OperationIdSchema
 })
-const AirGapPairScanCommandSchema = z.strictObject({
-  type: z.literal('signer.airgap-pair-scan'),
-  operationId: z.uuid(),
-  frame: z.string().min(1).max(4096)
-})
-const AirGapPairCancelCommandSchema = z.strictObject({
-  type: z.literal('signer.airgap-pair-cancel'),
-  operationId: z.uuid()
-})
-const AirGapScanCommandSchema = AirGapRequestReferenceSchema.extend({
-  type: z.literal('signer.airgap-scan'),
-  frame: z.string().min(1).max(4096)
-})
-const AirGapCancelCommandSchema = AirGapRequestReferenceSchema.extend({
-  type: z.literal('signer.airgap-cancel')
-})
+const SignerSessionInputCommandSchema = z.union([
+  HardwareInputSchema.extend({ input: z.literal('pin'), value: z.string().regex(/^[1-9]{1,9}$/) }),
+  HardwareInputSchema.extend({ input: z.literal('passphrase'), value: z.string().max(256) }),
+  HardwareInputSchema.extend({ input: z.literal('device-passphrase') }),
+  HardwareInputSchema.extend({ input: z.literal('pair-code'), value: z.string().trim().min(1).max(64) }),
+  z.strictObject({
+    type: z.literal('signer.session-input'),
+    operationId: z.uuid(),
+    frame: z.string().min(1).max(4096)
+  }),
+  AirGapRequestReferenceSchema.extend({
+    type: z.literal('signer.session-input'),
+    frame: z.string().min(1).max(4096)
+  })
+])
+export type SignerSessionInputCommand = z.infer<typeof SignerSessionInputCommandSchema>
+
+const SignerSessionFinishCommandSchema = z.union([
+  z.strictObject({
+    type: z.literal('signer.session-finish'),
+    operationId: OperationIdSchema,
+    signerId: OperationIdSchema,
+    outcome: z.enum(['ready', 'cancelled'])
+  }),
+  z.strictObject({
+    type: z.literal('signer.session-finish'),
+    operationId: z.uuid()
+  }),
+  AirGapRequestReferenceSchema.extend({
+    type: z.literal('signer.session-finish')
+  })
+])
+export type SignerSessionFinishCommand = z.infer<typeof SignerSessionFinishCommandSchema>
+
 const AirGapRequestQuerySchema = AirGapRequestReferenceSchema.extend({
-  type: z.literal('signer.airgap-request')
+  type: z.literal('signer.session-frames')
 })
 const AirGapRequestResultSchema = z.discriminatedUnion('ok', [
   z.strictObject({ ok: z.literal(true), frames: z.array(z.string().min(1).max(4096)).min(1).max(512) }),
@@ -1072,18 +1053,16 @@ const AirGapRequestResultSchema = z.discriminatedUnion('ok', [
 ])
 
 export const commandContracts = defineOperationContracts({
-  'account.agent-access-set': acknowledged(AccountAgentAccessSetCommandSchema),
+  'account.create': acknowledged(AccountCreateCommandSchema),
+  'account.update': acknowledged(AccountUpdateCommandSchema),
+  'request.create': acknowledged(RequestCreateCommandSchema),
+  'operation.cancel': acknowledged(OperationCancelCommandSchema),
+  'signer.session-input': acknowledged(SignerSessionInputCommandSchema),
+  'signer.session-finish': acknowledged(SignerSessionFinishCommandSchema),
   'account.agent-sessions-revoke': acknowledged(AccountAgentSessionsRevokeCommandSchema),
-  'account.add-from-signer': acknowledged(AccountAddFromSignerCommandSchema),
-  'account.profile-move': acknowledged(AccountProfileMoveCommandSchema),
   'account.select': acknowledged(AccountSelectCommandSchema),
   'account.remove': acknowledged(AccountRemoveCommandSchema),
-  'account.rename': acknowledged(AccountRenameCommandSchema),
-  'account.reorder': acknowledged(AccountReorderCommandSchema),
-  'account.safe-import': acknowledged(AccountSafeImportCommandSchema),
-  'account.safe-confirm': acknowledged(AccountSafeConfirmCommandSchema),
-  'account.safe-refresh': acknowledged(AccountSafeRefreshCommandSchema),
-  'account.watch-add': acknowledged(AccountWatchAddCommandSchema),
+  'account.refresh': acknowledged(AccountRefreshCommandSchema),
   'app.quit': acknowledged(AppQuitCommandSchema),
   'clipboard.write': acknowledged(ClipboardWriteCommandSchema),
   'sidetray.open': acknowledged(SideTrayOpenCommandSchema),
@@ -1106,7 +1085,7 @@ export const commandContracts = defineOperationContracts({
   'portfolio.refresh': acknowledged(PortfolioRefreshCommandSchema),
   'profile.create': acknowledged(ProfileCreateCommandSchema),
   'profile.delete': acknowledged(ProfileDeleteCommandSchema),
-  'profile.rename': acknowledged(ProfileRenameCommandSchema),
+  'profile.update': acknowledged(ProfileUpdateCommandSchema),
   'profile.select': acknowledged(ProfileSelectCommandSchema),
   'request.approve': acknowledged(RequestApproveCommandSchema),
   'request.warning-confirm': acknowledged(RequestWarningConfirmCommandSchema),
@@ -1121,25 +1100,12 @@ export const commandContracts = defineOperationContracts({
   'request.token-approval-update': acknowledged(RequestTokenApprovalUpdateCommandSchema),
   'security.configure': acknowledged(SecurityConfigureCommandSchema),
   'security.unlock': acknowledged(SecurityUnlockCommandSchema),
-  'send.submit': acknowledged(SendSubmitCommandSchema),
-  'trade.prepare': acknowledged(TradePrepareCommandSchema),
-  'trade.release': acknowledged(TradeReleaseCommandSchema),
   'trade.submit': acknowledged(TradeSubmitCommandSchema),
   'settings.update': acknowledged(SettingsUpdateCommandSchema),
-  'signer.airgap-pair-start': acknowledged(AirGapPairStartCommandSchema),
-  'signer.airgap-pair-scan': acknowledged(AirGapPairScanCommandSchema),
-  'signer.airgap-pair-cancel': acknowledged(AirGapPairCancelCommandSchema),
-  'signer.airgap-scan': acknowledged(AirGapScanCommandSchema),
-  'signer.airgap-cancel': acknowledged(AirGapCancelCommandSchema),
   'signer.disconnect': acknowledged(SignerDisconnectCommandSchema),
-  'signer.hardware-session-finish': acknowledged(SignerHardwareSessionFinishCommandSchema),
-  'signer.hardware-session-start': acknowledged(SignerHardwareSessionStartCommandSchema),
+  'signer.session-start': acknowledged(SignerSessionStartCommandSchema),
   'signer.import': acknowledged(SignerImportCommandSchema),
-  'signer.ledger-accounts-load': acknowledged(SignerLedgerAccountsLoadCommandSchema),
-  'signer.lattice-pair': acknowledged(LatticePairCommandSchema),
-  'signer.lattice-create': acknowledged(SignerLatticeCreateCommandSchema),
-  'signer.reload': acknowledged(SignerReloadCommandSchema),
-  'signer.trezor-input': acknowledged(TrezorInputCommandSchema),
+  'signer.refresh': acknowledged(SignerRefreshCommandSchema),
   'token.add': acknowledged(TokenAddCommandSchema),
   'token.image-hydrate': acknowledged(TokenImageHydrateCommandSchema),
   'token.remove': acknowledged(TokenRemoveCommandSchema),
@@ -1152,7 +1118,7 @@ export const commandContracts = defineOperationContracts({
 })
 
 export const queryContracts = defineOperationContracts({
-  'signer.airgap-request': { input: AirGapRequestQuerySchema, result: AirGapRequestResultSchema },
+  'signer.session-frames': { input: AirGapRequestQuerySchema, result: AirGapRequestResultSchema },
   'account.private-key-export': {
     input: AccountPrivateKeyExportQuerySchema,
     result: AccountPrivateKeyExportResultSchema

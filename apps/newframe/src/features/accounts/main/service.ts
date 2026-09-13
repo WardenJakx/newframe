@@ -1,3 +1,4 @@
+import type { AccountUpdateCommand } from '../../../app/contracts/operations.js'
 import type { CanonicalStore } from '../../../platform/state-store/actions.js'
 import type { Accounts } from './index.js'
 
@@ -53,16 +54,14 @@ export function createAccountService(ports: AccountServicePorts) {
       return true
     },
 
-    rename(accountId: string, name: string) {
-      if (!ports.accounts.get(accountId)) return false
-      ports.accounts.rename(accountId, name)
-      return true
-    },
-
-    reorder(fromAccountId: string, toAccountId: string) {
+    update(command: Extract<AccountUpdateCommand, { name: string } | { toAccountId: string }>) {
       const state = ports.store.getState()
-      if (!state.main.accounts[fromAccountId] || !state.main.accounts[toAccountId]) return false
-      state.reorderAccounts(fromAccountId, toAccountId)
+      if (!state.main.accounts[command.accountId]) return false
+      if ('name' in command) ports.accounts.rename(command.accountId, command.name)
+      else {
+        if (!state.main.accounts[command.toAccountId]) return false
+        state.reorderAccounts(command.accountId, command.toAccountId)
+      }
       return true
     },
 

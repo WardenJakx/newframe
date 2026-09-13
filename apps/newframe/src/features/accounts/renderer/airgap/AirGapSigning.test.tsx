@@ -57,13 +57,13 @@ function state(progress = 0) {
 it('keeps scanning during progress, pauses when hidden, and releases camera on completion', async () => {
   fixture.state.reset(state())
   const capability = createAccountsCapabilityFake()
-  capability.airgapRequest.mockResolvedValue({ ok: true, frames: ['request QR'] })
+  capability.sessionFrames.mockResolvedValue({ ok: true, frames: ['request QR'] })
   const f = createQrCameraFake()
   const view = render(<SigningHost capability={capability} camera={f.camera} reference={reference} />)
   await view.user.click(await screen.findByRole('button', { name: 'Scan signed QR' }))
   act(() => f.sessions[0].handlers.onFrame('response-a'))
   await waitFor(() =>
-    expect(capability.airgapScan).toHaveBeenCalledWith({ ...reference, frame: 'response-a' })
+    expect(capability.inputSignerSession).toHaveBeenCalledWith({ ...reference, frame: 'response-a' })
   )
   act(() => fixture.state.reset(state(0.5)))
   expect(screen.getByText('Receiving signature: 50%')).toBeTruthy()
@@ -84,7 +84,7 @@ it('keeps scanning during progress, pauses when hidden, and releases camera on c
   expect(screen.queryByText('Sign with AirGap Vault')).toBeNull()
   expect(f.sessions.every((session) => session.stopped)).toBe(true)
   view.unmount()
-  expect(capability.airgapCancel).toHaveBeenCalledWith(reference)
+  expect(capability.finishSignerSession).toHaveBeenCalledWith(reference)
 })
 
 it.each(['session', 'lock'] as const)(
@@ -92,8 +92,8 @@ it.each(['session', 'lock'] as const)(
   async (change) => {
     fixture.state.reset(state())
     const capability = createAccountsCapabilityFake()
-    const query = Promise.withResolvers<Awaited<ReturnType<typeof capability.airgapRequest>>>()
-    capability.airgapRequest.mockReturnValue(query.promise)
+    const query = Promise.withResolvers<Awaited<ReturnType<typeof capability.sessionFrames>>>()
+    capability.sessionFrames.mockReturnValue(query.promise)
     const view = render(
       <SigningHost capability={capability} camera={createQrCameraFake().camera} reference={reference} />
     )
@@ -105,7 +105,7 @@ it.each(['session', 'lock'] as const)(
     await act(async () => query.resolve({ ok: true, frames: ['late QR'] }))
     expect(screen.queryByRole('button', { name: 'Scan signed QR' })).toBeNull()
     view.unmount()
-    expect(capability.airgapCancel).toHaveBeenCalledWith(reference)
+    expect(capability.finishSignerSession).toHaveBeenCalledWith(reference)
   }
 )
 
@@ -114,8 +114,8 @@ it.each(['startup', 'disconnect', 'response'] as const)(
   async (failure) => {
     fixture.state.reset(state())
     const capability = createAccountsCapabilityFake()
-    capability.airgapRequest.mockResolvedValue({ ok: true, frames: ['request QR'] })
-    capability.airgapScan.mockResolvedValue({
+    capability.sessionFrames.mockResolvedValue({ ok: true, frames: ['request QR'] })
+    capability.inputSignerSession.mockResolvedValue({
       ok: false,
       error: 'operation_failed',
       message: 'Invalid signature QR'

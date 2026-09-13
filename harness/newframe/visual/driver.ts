@@ -395,7 +395,7 @@ export class NewframeDriver {
 
   async setAgentAccess(account: AccountInfo, enabled: boolean) {
     await this.executeCommand(this.tray, {
-      type: 'account.agent-access-set',
+      type: 'account.update',
       accountId: account.id,
       enabled
     })

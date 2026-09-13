@@ -1,10 +1,10 @@
 import { randomUUID } from 'node:crypto'
 
 import type {
-  AccountProfileMoveCommand,
+  AccountUpdateCommand,
   ProfileCreateCommand,
   ProfileDeleteCommand,
-  ProfileRenameCommand,
+  ProfileUpdateCommand,
   ProfileSelectCommand
 } from '../../../../app/contracts/operations.js'
 import type { OperationEntityRef } from '../../../../platform/operations/operation.js'
@@ -13,10 +13,10 @@ import type { OperationOwner, OperationReference } from '../../../../platform/op
 import type { CanonicalStore } from '../../../../platform/state-store/actions.js'
 
 type ProfileCommand =
-  | AccountProfileMoveCommand
+  | Extract<AccountUpdateCommand, { profileId: string }>
   | ProfileCreateCommand
   | ProfileDeleteCommand
-  | ProfileRenameCommand
+  | ProfileUpdateCommand
   | ProfileSelectCommand
 
 type ProfileState = Pick<
@@ -64,6 +64,11 @@ function profileNameError(name: string, state: ProfileState, excludedProfileId =
   }
 }
 
+function profileError(state: ProfileState, profileId: string) {
+  const profile = state.main.profiles[profileId]
+  return !profile ? 'profile_not_found' : profile.id !== profileId ? 'invalid_profile' : undefined
+}
+
 const failureMessages: Record<string, string> = {
   account_not_found: 'That account is no longer available.',
   duplicate_name: 'A profile with that name already exists.',
@@ -84,7 +89,11 @@ export function createProfileService(ports: ProfileServicePorts) {
     entityRefs: OperationEntityRef[],
     apply: () => string | undefined
   ) {
-    const reference: OperationReference = { owner, id: command.operationId, type: command.type }
+    const reference: OperationReference = {
+      owner,
+      id: command.operationId,
+      type: command.type === 'account.update' ? 'account.profile-move' : command.type
+    }
     if (ports.operations.lookup(reference)) return true
 
     try {
@@ -125,9 +134,8 @@ export function createProfileService(ports: ProfileServicePorts) {
     select(command: ProfileSelectCommand, owner: OperationOwner) {
       return run(command, owner, [{ type: 'profile', id: command.profileId }], () => {
         const state = ports.store.getState()
-        const profile = state.main.profiles[command.profileId]
-        if (!profile) return 'profile_not_found'
-        if (profile.id !== command.profileId) return 'invalid_profile'
+        const error = profileError(state, command.profileId)
+        if (error) return error
 
         const previousAddress = selectedAddress(ports)
         state.selectProfile(command.profileId)
@@ -158,12 +166,11 @@ export function createProfileService(ports: ProfileServicePorts) {
       })
     },
 
-    rename(command: ProfileRenameCommand, owner: OperationOwner) {
+    update(command: ProfileUpdateCommand, owner: OperationOwner) {
       return run(command, owner, [{ type: 'profile', id: command.profileId }], () => {
         const state = ports.store.getState()
-        const profile = state.main.profiles[command.profileId]
-        if (!profile) return 'profile_not_found'
-        if (profile.id !== command.profileId) return 'invalid_profile'
+        const error = profileError(state, command.profileId)
+        if (error) return error
 
         const normalizedName = normalizedProfileName(command.name)
         const nameError = profileNameError(normalizedName, state, command.profileId)
@@ -175,9 +182,8 @@ export function createProfileService(ports: ProfileServicePorts) {
     delete(command: ProfileDeleteCommand, owner: OperationOwner) {
       return run(command, owner, [{ type: 'profile', id: command.profileId }], () => {
         const state = ports.store.getState()
-        const profile = state.main.profiles[command.profileId]
-        if (!profile) return 'profile_not_found'
-        if (profile.id !== command.profileId) return 'invalid_profile'
+        const error = profileError(state, command.profileId)
+        if (error) return error
         if (state.main.profileOrder.length === 1) return 'final_profile'
         if (Object.values(state.main.accounts).some((account) => account.profileId === command.profileId)) {
           return 'profile_not_empty'
@@ -189,7 +195,7 @@ export function createProfileService(ports: ProfileServicePorts) {
       })
     },
 
-    moveAccount(command: AccountProfileMoveCommand, owner: OperationOwner) {
+    moveAccount(command: Extract<AccountUpdateCommand, { profileId: string }>, owner: OperationOwner) {
       return run(
         command,
         owner,
@@ -201,9 +207,8 @@ export function createProfileService(ports: ProfileServicePorts) {
           const state = ports.store.getState()
           const account = ports.accounts.get(command.accountId)
           if (!account) return 'account_not_found'
-          const profile = state.main.profiles[command.profileId]
-          if (!profile) return 'profile_not_found'
-          if (profile.id !== command.profileId) return 'invalid_profile'
+          const error = profileError(state, command.profileId)
+          if (error) return error
           if (state.main.accounts[command.accountId]?.profileId === command.profileId) return 'same_profile'
 
           const previousAddress = selectedAddress(ports)

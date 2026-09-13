@@ -9,7 +9,7 @@ export function createTradeCapabilityFake() {
     }),
     prepare: mock<TradeCapability['prepare']>(async () => ({ ok: true })),
     submit: mock<TradeCapability['submit']>(async () => ({ ok: true })),
-    release: mock<TradeCapability['release']>(async () => ({ ok: true })),
+    cancel: mock<TradeCapability['cancel']>(async () => ({ ok: true })),
     close: mock<TradeCapability['close']>(async () => ({ ok: true })),
     hydrateTokenImage: mock<TradeCapability['hydrateTokenImage']>(async () => ({ ok: true }))
   }

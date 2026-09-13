@@ -113,12 +113,13 @@ describe('Accounts profile controls', () => {
     await user.click(screen.getByRole('button', { name: 'Move Primary to profile' }))
     await user.click(screen.getByRole('option', { name: /Work/ }))
 
-    expect(capability.moveAccountToProfile).toHaveBeenCalledWith({
+    expect(capability.updateAccount).toHaveBeenCalledWith({
       operationId: expect.any(String),
       accountId: account.id,
       profileId: 'work'
     })
-    const failedCommand = capability.moveAccountToProfile.mock.calls.at(-1)![0]
+    const failedCommand = capability.updateAccount.mock.calls.at(-1)![0]
+    if (!('operationId' in failedCommand)) throw new Error('Expected profile move')
     publishChanges({
       operations: {
         [failedCommand.operationId]: {
@@ -134,7 +135,8 @@ describe('Accounts profile controls', () => {
     })
     expect(await screen.findByText('Could not move the account. Try again.')).toBeTruthy()
     await user.click(screen.getByRole('option', { name: /Work/ }))
-    const succeededCommand = capability.moveAccountToProfile.mock.calls.at(-1)![0]
+    const succeededCommand = capability.updateAccount.mock.calls.at(-1)![0]
+    if (!('operationId' in succeededCommand)) throw new Error('Expected profile move')
     publishChanges({
       operations: {
         [succeededCommand.operationId]: {
@@ -154,8 +156,8 @@ describe('Accounts profile controls', () => {
 
   for (const staleOutcome of ['acknowledgement failure', 'thrown rejection'] as const) {
     it(`keeps the newer overlapping profile move active after an older ${staleOutcome}`, async () => {
-      const staleMove = deferred<Awaited<ReturnType<AccountsCapabilityFake['moveAccountToProfile']>>>()
-      capability.moveAccountToProfile
+      const staleMove = deferred<Awaited<ReturnType<AccountsCapabilityFake['updateAccount']>>>()
+      capability.updateAccount
         .mockImplementationOnce(() => staleMove.promise)
         .mockResolvedValueOnce({ ok: true })
       const { user } = render(
@@ -165,8 +167,9 @@ describe('Accounts profile controls', () => {
       await user.click(screen.getByRole('button', { name: 'Move Primary to profile' }))
       await user.click(screen.getByRole('option', { name: /Work/ }))
       await user.click(screen.getByRole('option', { name: /Work/ }))
-      const moveInputs = capability.moveAccountToProfile.mock.calls.map(([input]) => input)
+      const moveInputs = capability.updateAccount.mock.calls.map(([input]) => input)
       const currentMove = moveInputs[1]!
+      if (!('operationId' in currentMove)) throw new Error('Expected profile move')
 
       await act(async () => {
         if (staleOutcome === 'acknowledgement failure') {

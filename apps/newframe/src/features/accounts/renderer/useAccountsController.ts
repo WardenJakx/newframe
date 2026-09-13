@@ -89,7 +89,7 @@ export function useAccountsController(input: {
 
   const events = {
     onAccountAgentAccessChange: (account: AccountListItem, enabled: boolean) => {
-      void input.capability.setAccountAgentAccess({ accountId: account.id, enabled })
+      void input.capability.updateAccount({ accountId: account.id, enabled })
       dispatch({ type: 'menu.closed' })
     },
     onAccountAgentSessionsRevoke: (accountId: string) => {
@@ -119,7 +119,7 @@ export function useAccountsController(input: {
       event.stopPropagation()
       const fromAccountId = event.dataTransfer.getData('text/plain') || state.drag.accountId
       if (fromAccountId && fromAccountId !== accountId) {
-        void input.capability.reorderAccount({ fromAccountId, toAccountId: accountId })
+        void input.capability.updateAccount({ accountId: fromAccountId, toAccountId: accountId })
       }
       dispatch({ type: 'drag.ended' })
     },
@@ -138,7 +138,7 @@ export function useAccountsController(input: {
     onAccountRenameCancel: () => dispatch({ type: 'rename.closed' } as const),
     onAccountRenameCommit: (accountId: string, nextName: string) => {
       const name = nextName.trim()
-      if (name) void input.capability.renameAccount({ accountId, name })
+      if (name) void input.capability.updateAccount({ accountId, name })
       dispatch({ type: 'rename.closed' })
     },
     onAccountRenameOpen: (accountId: string) => dispatch({ type: 'rename.opened', accountId } as const),
@@ -195,7 +195,7 @@ export function useAccountsController(input: {
       activeMoveOperationRef.current = operationId
       dispatch({ type: 'move.started', accountId, operationId, profileId })
       try {
-        const result = await input.capability.moveAccountToProfile({ operationId, accountId, profileId })
+        const result = await input.capability.updateAccount({ operationId, accountId, profileId })
         if (!result.ok && activeMoveOperationRef.current === operationId) {
           activeMoveOperationRef.current = ''
           dispatch({ type: 'move.failed', accountId, error: moveError(result.error) })

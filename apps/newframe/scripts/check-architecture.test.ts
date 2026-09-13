@@ -59,7 +59,7 @@ const authorityCases: RejectCase[] = [
   ['legacy account selection port', checkPlatformCommandAuthority, 'apps/newframe/src/platform/ipc/main/operations.ts', 'type OperationServices = { selectAccount: () => void }', 'account selection must be owned by the account service'],
   ['renderer execution', checkPlatformCommandAuthority, 'apps/newframe/src/features/transactions/send/renderer/index.tsx', "link.executeCommand({ type: 'transaction.submit' })", 'renderer execution capabilities are forbidden'],
   ['private Trade execution', checkPlatformCommandAuthority, 'apps/newframe/src/features/transactions/trade/renderer/tradeService.ts', 'const request = buildTradeSubmitRequest()', 'Trade renderer may retain only ticket, safe quote, review correlation'],
-  ['legacy Send chain', checkPlatformCommandAuthority, 'apps/newframe/src/features/transactions/send/renderer/sendService.ts', "link.executeQuery({ type: 'name.resolve' })", 'Send must issue one send.submit intent'],
+  ['legacy Send chain', checkPlatformCommandAuthority, 'apps/newframe/src/features/transactions/send/renderer/sendService.ts', "link.executeQuery({ type: 'name.resolve' })", 'Send must issue one request.create intent'],
   ['renderer IPC', checkRawIpcAuthority, 'apps/newframe/src/app/renderer/tray/view.ts', 'ipcRenderer.invoke(channel)', 'raw ipcRenderer is restricted to the preload bridge'],
   ['main IPC', checkRawIpcAuthority, 'apps/newframe/src/features/accounts/main/service.ts', 'ipcMain.on(channel)', 'raw ipcMain access is restricted to typed IPC modules'],
   ['state publication', checkRawIpcAuthority, 'apps/newframe/src/features/accounts/main/service.ts', 'webContents.send(channel)', 'webContents.send is restricted to the typed state stream']
@@ -78,7 +78,7 @@ test('allows each canonical authority', () => {
     [checkOperationContractAuthority, 'apps/newframe/src/features/accounts/contract/profile/schema.ts', 'export const ProfileCreateCommandSchema = z.object({})'],
     [checkPlatformCommandAuthority, 'apps/newframe/src/app/main/platform/service.ts', "command.type = 'renderer.context-menu'"],
     [checkPlatformCommandAuthority, 'apps/newframe/src/features/transactions/trade/renderer/index.tsx', 'const review = { safeQuote, operationId }'],
-    [checkPlatformCommandAuthority, 'apps/newframe/src/features/transactions/send/renderer/index.tsx', "link.executeCommand({ type: 'send.submit' })"],
+    [checkPlatformCommandAuthority, 'apps/newframe/src/features/transactions/send/renderer/index.tsx', "link.executeCommand({ type: 'request.create' })"],
     [checkRawIpcAuthority, 'apps/newframe/src/preload/index.ts', 'ipcRenderer.invoke(channel)'],
     [checkRawIpcAuthority, 'apps/newframe/src/platform/ipc/main/operations.ts', 'ipcMain.handle(channel)'],
     [checkRawIpcAuthority, 'apps/newframe/src/platform/ipc/main/stateStream.ts', 'webContents.send(channel)']

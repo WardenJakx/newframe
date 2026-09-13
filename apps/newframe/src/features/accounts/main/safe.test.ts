@@ -101,7 +101,10 @@ it('imports through real HTTP, merges chains, retains queue on later-page failur
   })
   cleanup.push(service.dispose)
   const add = (chainId: number) =>
-    service.import({ type: 'account.safe-import', operationId: `import-${chainId}`, address, chainId }, owner)
+    service.import(
+      { type: 'account.create', source: 'safe', operationId: `import-${chainId}`, address, chainId },
+      owner
+    )
   expect(add(1)).toBeTrue()
   await until(() => store.getState().operations['import-1']?.operation.status === 'succeeded')
   expect(store.getState().main.currentAccount).not.toBe(address)
@@ -115,8 +118,8 @@ it('imports through real HTTP, merges chains, retains queue on later-page failur
   fail = true
   const count = info
   await Promise.all([
-    service.refresh({ type: 'account.safe-refresh', accountId: address, chainId: 1, force: true }),
-    service.refresh({ type: 'account.safe-refresh', accountId: address, chainId: 1, force: true })
+    service.refresh({ type: 'account.refresh', accountId: address, chainId: 1, force: true }),
+    service.refresh({ type: 'account.refresh', accountId: address, chainId: 1, force: true })
   ])
   expect(info).toBe(count + 1)
   expect(store.getState().main.accounts[address].safe!['1']).toMatchObject({
@@ -139,12 +142,12 @@ it('creates nothing for invalid info and rejects cross-profile imports', async (
     client: createSafeClient({ request: fetch, networks: { '1': `${server.url}api` } })
   })
   cleanup.push(service.dispose)
-  service.import({ type: 'account.safe-import', operationId: 'bad', address, chainId: 1 }, owner)
+  service.import({ type: 'account.create', source: 'safe', operationId: 'bad', address, chainId: 1 }, owner)
   await until(() => store.getState().operations.bad?.operation.status === 'failed')
   expect(store.getState().main.accounts[address]).toBeUndefined()
   store.getState().createProfile('other', 'Other')
   store.getState().upsertAccount({ id: address, profileId: 'other', name: 'Other treasury' })
-  service.import({ type: 'account.safe-import', operationId: 'other', address, chainId: 1 }, owner)
+  service.import({ type: 'account.create', source: 'safe', operationId: 'other', address, chainId: 1 }, owner)
   await until(() => store.getState().operations.other?.operation.status === 'failed')
   expect(store.getState().main.accounts[address].profileId).toBe('other')
 })
@@ -172,7 +175,7 @@ it('invalidates delayed work after remove/re-add, profile switch, and disposal',
     })
     cleanup.push(service.dispose)
     const refreshing = service.refresh({
-      type: 'account.safe-refresh',
+      type: 'account.refresh',
       accountId: address,
       chainId: 1,
       force: true
@@ -209,7 +212,10 @@ it('imports valid configuration when the initial queue fails, leaving pending un
     client: createSafeClient({ request: fetch, networks: { '1': `${server.url}api` } })
   })
   cleanup.push(service.dispose)
-  service.import({ type: 'account.safe-import', operationId: 'partial', address, chainId: 1 }, owner)
+  service.import(
+    { type: 'account.create', source: 'safe', operationId: 'partial', address, chainId: 1 },
+    owner
+  )
   await until(() => store.getState().operations.partial?.operation.status === 'succeeded')
   expect(store.getState().main.accounts[address].safe!['1']).toMatchObject({
     configuration: { nonce: '0' },
@@ -253,7 +259,10 @@ it('probes all configured chains, retains successes and discards stale discovery
     { chainId: found.id, name: found.name, supported: true }
   ])
   expect(checked.sort((a, b) => a - b)).toEqual(networks.map((network) => network.id).sort((a, b) => a - b))
-  service.import({ type: 'account.safe-import', operationId: 'rpc-only', address, chainId: found.id }, owner)
+  service.import(
+    { type: 'account.create', source: 'safe', operationId: 'rpc-only', address, chainId: found.id },
+    owner
+  )
   await until(() => Boolean(store.getState().main.accounts[address]?.safe?.[String(found.id)]?.error))
   expect(store.getState().main.accounts[address].safe![String(found.id)].configuration.version).toBe('1.4.1')
   delay = true
@@ -324,16 +333,19 @@ it('fetches owners at import and reuses them across queue refreshes and account 
     now: () => now
   })
   cleanup.push(service.dispose)
-  service.import({ type: 'account.safe-import', operationId: 'import', address, chainId: 1 }, owner)
+  service.import(
+    { type: 'account.create', source: 'safe', operationId: 'import', address, chainId: 1 },
+    owner
+  )
   await until(() => context.store.getState().operations.import?.operation.status === 'succeeded')
   const cached = context.store.getState().main.accounts[address].safe!['1'].configuration
-  await service.refresh({ type: 'account.safe-refresh', accountId: address, force: true })
+  await service.refresh({ type: 'account.refresh', accountId: address, force: true })
   expect(pending.mock.calls.at(-1)?.[2]).toEqual({ ...cached, nonce: '1' })
   expect(context.store.getState().main.accounts[address].safe!['1'].pending).toEqual([])
   now += 60_000
   context.store.getState().setAccount({ id: address })
   await until(() => queueState.mock.calls.length === 2)
-  await service.refresh({ type: 'account.safe-refresh', accountId: address })
+  await service.refresh({ type: 'account.refresh', accountId: address })
   expect(configuration).toHaveBeenCalledTimes(1)
   expect(context.store.getState().main.accounts[address].safe!['1'].configuration.owners).toEqual(
     cached.owners

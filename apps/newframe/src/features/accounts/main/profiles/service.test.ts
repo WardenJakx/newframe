@@ -64,7 +64,7 @@ describe('profile service', () => {
       service.select({ type: 'profile.select', operationId: 'select', profileId: 'work' }, owner)
       service.moveAccount(
         {
-          type: 'account.profile-move',
+          type: 'account.update',
           operationId: 'move',
           accountId: second,
           profileId: DEFAULT_PROFILE_ID
@@ -80,8 +80,8 @@ describe('profile service', () => {
       } satisfies Parameters<typeof service.create>[0]
       service.create(createCommand, owner)
       service.create(createCommand, owner)
-      service.rename(
-        { type: 'profile.rename', operationId: 'rename', profileId: 'travel', name: 'Trips' },
+      service.update(
+        { type: 'profile.update', operationId: 'rename', profileId: 'travel', name: 'Trips' },
         owner
       )
 
@@ -111,14 +111,14 @@ describe('profile service', () => {
       const { accountsChanged, getState, operation, service } = harness()
       const before = structuredClone(getState().main)
 
-      service.rename(
-        { type: 'profile.rename', operationId: 'duplicate', profileId: 'work', name: ' personal ' },
+      service.update(
+        { type: 'profile.update', operationId: 'duplicate', profileId: 'work', name: ' personal ' },
         owner
       )
       service.delete({ type: 'profile.delete', operationId: 'nonempty', profileId: 'work' }, owner)
       service.moveAccount(
         {
-          type: 'account.profile-move',
+          type: 'account.update',
           operationId: 'same',
           accountId: second,
           profileId: 'work'
@@ -142,8 +142,8 @@ describe('profile service', () => {
       const completed = operation('stable')
       expect(service.select(command, owner)).toBeTrue()
       expect(
-        service.rename(
-          { type: 'profile.rename', operationId: 'stable', profileId: 'work', name: 'Attacker' },
+        service.update(
+          { type: 'profile.update', operationId: 'stable', profileId: 'work', name: 'Attacker' },
           { clientType: 'wallet-ui', windowInstanceId: 'wallet-two' }
         )
       ).toBeFalse()

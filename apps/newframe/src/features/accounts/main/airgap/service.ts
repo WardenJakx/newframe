@@ -38,7 +38,10 @@ export function createAirGapService(ports: AirGapServicePorts) {
     return true
   }
   return {
-    pairStart(command: CommandMap['signer.airgap-pair-start'], context: SigningUiContext) {
+    pairStart(
+      command: Extract<CommandMap['signer.import'], { source: 'airgap' }>,
+      context: SigningUiContext
+    ) {
       if (disposed || context.owner.clientType !== 'wallet-ui' || !context.isOwnerActive()) return false
       const reference = { id: command.operationId, owner: context.owner, type }
       if (ports.operations.lookup(reference)) return true
@@ -52,7 +55,10 @@ export function createAirGapService(ports: AirGapServicePorts) {
       else scan.dispose = unsubscribe
       return true
     },
-    pairScan(command: CommandMap['signer.airgap-pair-scan'], owner: OperationOwner) {
+    pairScan(
+      command: Extract<CommandMap['signer.session-input'], { operationId: string; frame: string }>,
+      owner: OperationOwner
+    ) {
       const scan = scans.get(command.operationId)
       if (!scan || !sameOwner(scan.reference.owner, owner)) return false
       let account: AirGapPublicAccount | undefined
@@ -74,18 +80,21 @@ export function createAirGapService(ports: AirGapServicePorts) {
       }
       return true
     },
-    pairCancel(command: CommandMap['signer.airgap-pair-cancel'], owner: OperationOwner) {
+    pairCancel(
+      command: Extract<CommandMap['signer.session-finish'], { operationId: string }>,
+      owner: OperationOwner
+    ) {
       return cancelPair(command.operationId, owner)
     },
     request(
       reference: AirGapRequestReference,
       owner: OperationOwner
-    ): QueryResultMap['signer.airgap-request'] {
+    ): QueryResultMap['signer.session-frames'] {
       if (disposed) return { ok: false, error: 'unavailable' }
       const frames = ports.getRequest(reference, owner)
       return frames ? { ok: true, frames } : { ok: false, error: 'not_found' }
     },
-    scan(command: CommandMap['signer.airgap-scan'], owner: OperationOwner) {
+    scan(command: Extract<CommandMap['signer.session-input'], { requestId: string }>, owner: OperationOwner) {
       return disposed ? false : ports.scan(command, owner, command.frame)
     },
     cancel(reference: AirGapRequestReference, owner: OperationOwner) {
