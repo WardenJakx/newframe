@@ -68,7 +68,16 @@ export function TrayOverlay({
   title
 }: TrayOverlayProps) {
   return (
-    <section aria-label={label} className={overlayRecipe()} role='dialog'>
+    <section
+      aria-label={label}
+      className={overlayRecipe()}
+      onKeyDown={(event) => {
+        if (event.defaultPrevented || event.key !== 'Escape') return
+        event.preventDefault()
+        onClose()
+      }}
+      role='dialog'
+    >
       <SidePanelHeader action={action} closeLabel={closeLabel} onClose={onClose} title={title} />
       <main className={bodyRecipe({ padding, placement })}>{children}</main>
       {footer ? <SidePanelFooter appearance={footerAppearance}>{footer}</SidePanelFooter> : null}
