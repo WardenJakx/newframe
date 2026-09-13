@@ -14,7 +14,7 @@ const ownerAddress = '0x2222222222222222222222222222222222222222'
 const owner = { clientType: 'wallet-ui' as const, windowInstanceId: 'test' }
 const cleanup: (() => void | Promise<void>)[] = []
 afterEach(async () => {
-  await Promise.all(cleanup.splice(0).map((dispose) => dispose()))
+  await Promise.all(cleanup.splice(0).map(async (dispose) => dispose()))
 })
 function setup() {
   const base = createTestStore()

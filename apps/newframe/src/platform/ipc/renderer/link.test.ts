@@ -45,10 +45,10 @@ describe('src/platform/ipc/renderer/link', () => {
     const host = makeHost({ executeCommand, executeQuery })
     setWindow(host)
 
-    await expect(link.executeCommand({ type: 'account.select', accountId: '0xabc' })).resolves.toEqual({
+    expect(link.executeCommand({ type: 'account.select', accountId: '0xabc' })).resolves.toEqual({
       ok: true
     })
-    await expect(link.executeQuery({ type: 'name.resolve', name: 'alice.eth' })).resolves.toEqual({
+    expect(link.executeQuery({ type: 'name.resolve', name: 'alice.eth' })).resolves.toEqual({
       ok: true,
       address: '0x1111111111111111111111111111111111111111'
     })
@@ -64,8 +64,8 @@ describe('src/platform/ipc/renderer/link', () => {
     const handler = mock()
     setWindow(host)
 
-    await expect(link.connectState(handler)).resolves.toEqual({ ok: true })
-    await expect(link.disconnectState()).resolves.toEqual({ ok: true })
+    expect(link.connectState(handler)).resolves.toEqual({ ok: true })
+    expect(link.disconnectState()).resolves.toEqual({ ok: true })
 
     expect(connectState).toHaveBeenCalledWith(handler)
     expect(disconnectState).toHaveBeenCalledWith()

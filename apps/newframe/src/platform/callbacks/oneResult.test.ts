@@ -11,7 +11,7 @@ describe('one-result callback boundary', () => {
       done(null, 'late value')
     })
 
-    await expect(result).resolves.toBe('first')
+    expect(result).resolves.toBe('first')
     boundary.dispose()
   })
 
@@ -25,7 +25,7 @@ describe('one-result callback boundary', () => {
     boundary.dispose()
     done(null, 'late value')
 
-    await expect(pending).rejects.toThrow('disposed before the operation completed')
-    await expect(boundary.run<string>(() => undefined)).rejects.toThrow('is disposed')
+    expect(pending).rejects.toThrow('disposed before the operation completed')
+    expect(boundary.run<string>(() => undefined)).rejects.toThrow('is disposed')
   })
 })

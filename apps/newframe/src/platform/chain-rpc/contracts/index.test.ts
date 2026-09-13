@@ -141,7 +141,7 @@ describe('#decodeCallDataWithSelectorRegistry', () => {
     const calldata =
       '0xa22cb4650000000000000000000000009bc5baf874d2da8d216ae9f137804184ee5afef40000000000000000000000000000000000000000000000000000000000000001'
 
-    await expect(decodeCallDataWithSelectorRegistry(calldata)).resolves.toStrictEqual({
+    expect(decodeCallDataWithSelectorRegistry(calldata)).resolves.toStrictEqual({
       selector: '0xa22cb465',
       signature: 'setApprovalForAll(address,bool)',
       method: 'setApprovalForAll',
@@ -172,7 +172,7 @@ describe('#decodeCallDataWithSelectorRegistry', () => {
       })
     })) as unknown as typeof fetch
 
-    await expect(decodeCallDataWithSelectorRegistry(calldata)).resolves.toStrictEqual({
+    expect(decodeCallDataWithSelectorRegistry(calldata)).resolves.toStrictEqual({
       selector: '0x7602886d',
       signature: 'mockCall(uint256,address)',
       method: 'mockCall',
@@ -202,7 +202,7 @@ describe('#decodeCallDataWithSelectorRegistry', () => {
       })
     })) as unknown as typeof fetch
 
-    await expect(decodeCallDataWithSelectorRegistry(calldata)).resolves.toBeUndefined()
+    expect(decodeCallDataWithSelectorRegistry(calldata)).resolves.toBeUndefined()
   })
 })
 

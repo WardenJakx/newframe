@@ -43,7 +43,7 @@ describe('side tray transaction service', () => {
   it('constructs fixed transaction RPC from the selected account', async () => {
     providerSend.mockResolvedValue({ result: `0x${'a'.repeat(64)}` })
 
-    await expect(
+    expect(
       service.submitCurrentAccountTransaction(
         {
           chainId: 1,
@@ -104,7 +104,7 @@ describe('side tray transaction service', () => {
   it('rejects unavailable chains before invoking a provider or Flash', async () => {
     chainAvailable = false
 
-    await expect(
+    expect(
       service.submitCurrentAccountTransaction(
         {
           chainId: 1,
@@ -114,7 +114,7 @@ describe('side tray transaction service', () => {
         principal
       )
     ).resolves.toEqual({ ok: false, error: 'provider_error', message: 'Chain is unavailable.' })
-    await expect(
+    expect(
       service.signCurrentAccountTypedData(
         {
           chainId: 1,
@@ -135,7 +135,7 @@ describe('side tray transaction service', () => {
     }
     providerSend.mockResolvedValue({ result: `0x${'b'.repeat(130)}` })
 
-    await expect(service.signCurrentAccountTypedData({ chainId: 1, typedData }, principal)).resolves.toEqual({
+    expect(service.signCurrentAccountTypedData({ chainId: 1, typedData }, principal)).resolves.toEqual({
       ok: true,
       signature: `0x${'b'.repeat(130)}`
     })
@@ -150,7 +150,7 @@ describe('side tray transaction service', () => {
     )
 
     providerSend.mockClear()
-    await expect(
+    expect(
       service.signCurrentAccountTypedData(
         {
           chainId: 10,

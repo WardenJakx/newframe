@@ -33,7 +33,7 @@ describe('address chain usage infrastructure adapter', () => {
     respond({ result: '0x1' })
     respond({ error: { message: 'late failure' } })
 
-    await expect(pending).resolves.toEqual([{ address, chainIds: [1], complete: true }])
+    expect(pending).resolves.toEqual([{ address, chainIds: [1], complete: true }])
     expect(send.mock.calls).toHaveLength(1)
     adapter.dispose()
   })
@@ -46,7 +46,7 @@ describe('address chain usage infrastructure adapter', () => {
 
     adapter.dispose()
 
-    await expect(pending).rejects.toThrow('disposed before the operation completed')
+    expect(pending).rejects.toThrow('disposed before the operation completed')
   })
 })
 
@@ -64,7 +64,7 @@ describe('account selection infrastructure adapter', () => {
       { accountsChanged } as never
     )
 
-    await expect(adapter('selected')).resolves.toBe(account)
+    expect(adapter('selected')).resolves.toBe(account)
     expect(setSigner).toHaveBeenCalledWith('selected', expect.any(Function))
     expect(accountsChanged).toHaveBeenCalledWith(['selected'])
     adapter.dispose()
@@ -82,7 +82,7 @@ describe('account selection infrastructure adapter', () => {
       { accountsChanged } as never
     )
 
-    await expect(adapter('missing')).rejects.toBe(failure)
+    expect(adapter('missing')).rejects.toBe(failure)
     expect(accountsChanged).not.toHaveBeenCalled()
     adapter.dispose()
   })
@@ -99,10 +99,10 @@ describe('fee notice infrastructure adapter', () => {
 
     const completed = adapter.remove('request-1')
     done(null)
-    await expect(completed).resolves.toBeUndefined()
+    expect(completed).resolves.toBeUndefined()
 
     const pending = adapter.remove('request-2')
     adapter.dispose()
-    await expect(pending).rejects.toThrow('disposed before the operation completed')
+    expect(pending).rejects.toThrow('disposed before the operation completed')
   })
 })

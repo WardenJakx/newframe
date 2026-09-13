@@ -33,7 +33,7 @@ interface HttpProviderPort {
     payload: RPCRequestPayload,
     respond?: (response: RPCResponsePayload) => void,
     principal?: TrustedPrincipal
-  ): void
+  ): void | Promise<void>
   on(event: 'data:subscription', listener: (payload: RPC.Susbcription.Response) => void): unknown
   off(event: 'data:subscription', listener: (payload: RPC.Susbcription.Response) => void): unknown
 }
@@ -110,13 +110,15 @@ export function createHttpRpcTransport({
 
     Object.keys(pollSubs).forEach((sub) => {
       if (pollSubs[sub].id !== id) return
-      provider.send({
-        jsonrpc: '2.0',
-        id: 1,
-        method: 'eth_unsubscribe',
-        params: [sub],
-        _origin: pollSubs[sub].origin
-      })
+      Promise.resolve(
+        provider.send({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'eth_unsubscribe',
+          params: [sub],
+          _origin: pollSubs[sub].origin
+        })
+      ).catch((error) => log.error('HTTP RPC subscription cleanup failed', error))
       delete pollSubs[sub]
     })
   }

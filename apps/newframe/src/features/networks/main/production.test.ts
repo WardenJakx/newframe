@@ -13,8 +13,8 @@ describe('Chainlist icon lookup', () => {
     }))
     const lookup = createChainlistIconLookup(fetchCatalog)
 
-    await expect(lookup(137)).resolves.toBe('https://icons.llamao.fi/icons/chains/rsz_polygon.jpg')
-    await expect(lookup(1)).resolves.toBe('https://icons.llamao.fi/icons/chains/rsz_ethereum.jpg')
+    expect(lookup(137)).resolves.toBe('https://icons.llamao.fi/icons/chains/rsz_polygon.jpg')
+    expect(lookup(1)).resolves.toBe('https://icons.llamao.fi/icons/chains/rsz_ethereum.jpg')
     expect(fetchCatalog).toHaveBeenCalledTimes(1)
     expect(fetchCatalog.mock.calls[0][0]).toBe('https://chainlist.org/rpcs.json')
   })
@@ -26,7 +26,7 @@ describe('Chainlist icon lookup', () => {
     }))
     const lookup = createChainlistIconLookup(fetchCatalog)
 
-    await expect(lookup(10)).resolves.toBe('https://icons.llamao.fi/icons/chains/rsz_optimism.jpg')
-    await expect(lookup(999_999)).resolves.toBe('')
+    expect(lookup(10)).resolves.toBe('https://icons.llamao.fi/icons/chains/rsz_optimism.jpg')
+    expect(lookup(999_999)).resolves.toBe('')
   })
 })

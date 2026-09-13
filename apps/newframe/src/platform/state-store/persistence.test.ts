@@ -110,7 +110,7 @@ describe('canonical persistence lifecycle', () => {
     const { scheduler, service, storage, store } = createTestRuntime()
 
     expect(scheduler.activeTasks).toBe(0)
-    await expect(service.start()).resolves.toBeUndefined()
+    expect(service.start()).resolves.toBeUndefined()
     expect({
       started: service.started,
       intervals: scheduler.intervals,
@@ -631,7 +631,7 @@ describe('canonical persistence failure boundaries', () => {
     const corrupt = envelope({ main: { lattice: 'not-an-object' } } as unknown as PersistedCanonicalState)
     const runtime = createTestRuntime([[storageKey, corrupt]])
 
-    await expect(runtime.service.start()).rejects.toBeInstanceOf(CanonicalStatePersistenceError)
+    expect(runtime.service.start()).rejects.toBeInstanceOf(CanonicalStatePersistenceError)
 
     expect([...runtime.storage.values.entries()]).toEqual([[`${storageKey}.invalid.1234`, corrupt]])
     runtime.adapter.setItem(CANONICAL_STATE_STORAGE_NAME, {
@@ -646,7 +646,7 @@ describe('canonical persistence failure boundaries', () => {
     const future = envelope({ main: {} }, PERSISTENCE_VERSION + 1)
     const runtime = createTestRuntime([[storageKey, future]])
 
-    await expect(runtime.service.start()).rejects.toThrow('created by a newer Newframe version')
+    expect(runtime.service.start()).rejects.toThrow('created by a newer Newframe version')
     runtime.adapter.setItem(CANONICAL_STATE_STORAGE_NAME, {
       state: { main: { currentAccount: 'downgrade' } },
       version: PERSISTENCE_VERSION

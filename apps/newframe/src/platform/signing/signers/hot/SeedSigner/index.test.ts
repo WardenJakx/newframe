@@ -43,7 +43,7 @@ describe('Seed signer', () => {
   })
 
   test('rejects invalid phrases', async () => {
-    await expect(
+    expect(
       callbackResult((done) =>
         hot.createFromPhrase(vault, { add: () => {}, exists: () => false }, 'invalid', '', done)
       )
@@ -146,7 +146,7 @@ describe('Seed signer', () => {
       )
       expect(signed).toBe(expected)
     }
-    await expect(callbackResult((done) => fixed.signTransaction(0, rawTx, done))).rejects.toThrow(
+    expect(callbackResult((done) => fixed.signTransaction(0, rawTx, done))).rejects.toThrow(
       'could not determine chain id for transaction'
     )
   })

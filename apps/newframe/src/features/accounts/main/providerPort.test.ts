@@ -34,9 +34,9 @@ it('delegates to the active capability and restores nested bindings on disconnec
   const disconnectFirst = deferred.connect(first)
   const disconnectSecond = deferred.connect(second)
 
-  await expect(deferred.port.getL1GasCost({} as never)).resolves.toBe(2n)
+  expect(deferred.port.getL1GasCost({} as never)).resolves.toBe(2n)
   disconnectSecond()
-  await expect(deferred.port.getL1GasCost({} as never)).resolves.toBe(1n)
+  expect(deferred.port.getL1GasCost({} as never)).resolves.toBe(1n)
   disconnectFirst()
   expect(() => deferred.port.send(payload, mock())).toThrow('Account chain RPC capability is not connected')
 })

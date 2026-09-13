@@ -61,7 +61,7 @@ it('rejects responses for another UUID or signing key without consuming the requ
   )
   const reference = fixture.reference()
   const frame = fixture.frames(vectors.transactions[0].signature)[0]
-  await expect(
+  expect(
     fixture.signer.scan(
       reference,
       fixture.owner.context.owner,
@@ -69,7 +69,7 @@ it('rejects responses for another UUID or signing key without consuming the requ
     )
   ).rejects.toThrow()
   const altered = '01'.repeat(32) + vectors.transactions[0].signature.slice(64)
-  await expect(
+  expect(
     fixture.signer.scan(reference, fixture.owner.context.owner, fixture.frames(altered)[0])
   ).rejects.toThrow()
   expect(results).toEqual([])

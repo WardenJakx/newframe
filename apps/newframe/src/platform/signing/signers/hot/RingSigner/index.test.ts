@@ -68,12 +68,12 @@ describe('Ring signer', () => {
   })
 
   test('rejects invalid private keys and keystores', async () => {
-    await expect(
+    expect(
       callbackResult((done) =>
         hot.createFromPrivateKey(vault, { add: () => {}, exists: () => false }, 'invalid', '', done)
       )
     ).rejects.toThrow('Invalid private key')
-    await expect(
+    expect(
       callbackResult((done) =>
         hot.createFromKeystore(
           vault,
@@ -124,9 +124,7 @@ describe('Ring signer', () => {
     )
     const first = signer.encryptedKeys[0]
     signer.encryptedKeys[0] = { ...first, authTag: '00'.repeat(16) }
-    await expect(callbackResult((done) => signer.exportPrivateKey(1, done))).resolves.toMatch(
-      /^0x[0-9a-f]{64}$/
-    )
+    expect(callbackResult((done) => signer.exportPrivateKey(1, done))).resolves.toMatch(/^0x[0-9a-f]{64}$/)
     await callbackResult((done) => signer.removePrivateKey(1, vaultKey, done))
     expect(signer.encryptedKeys).toHaveLength(1)
     signer.encryptedKeys[0] = first
