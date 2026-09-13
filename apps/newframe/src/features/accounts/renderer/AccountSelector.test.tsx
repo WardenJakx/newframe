@@ -8,6 +8,7 @@ import type { WalletRendererState } from '../../../platform/state-sync/contract/
 import { walletState } from '../../../platform/state-sync/renderer/fixtures.test-support'
 import { createAccountsCapabilityFake } from './accountsCapability.test-support'
 import { AccountSelector } from './AccountSelector'
+import { AccountRow } from './AccountSelectorView'
 
 const fixture = registerTestRuntimeFixture()
 const first = {
@@ -78,4 +79,35 @@ describe('AccountSelector', () => {
     await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: /Savings/ }))
     expect(screen.getByRole('button', { name: /Primary/ })).toBeTruthy()
   })
+})
+
+it('renders the shared account row without selection semantics when static', async () => {
+  const { user } = render(
+    <AccountRow
+      selected={false}
+      account={{
+        id: 'account-a',
+        address: first.address,
+        displayName: 'Primary',
+        shortAddress: '0x000…0001',
+        signerType: 'ledger',
+        signerLabel: 'Ledger',
+        balanceLabel: '$42.00',
+        agentEnabled: false,
+        hot: false,
+        lastSeedAccount: false,
+        profileId: 'personal'
+      }}
+    />
+  )
+  const row = screen.getByLabelText('Primary 0x000…0001')
+  expect(row.hasAttribute('role')).toBe(false)
+  expect(row.hasAttribute('tabindex')).toBe(false)
+  expect(screen.queryByRole('button', { name: /Primary/ })).toBeNull()
+  expect(screen.getByText('Ledger')).toBeTruthy()
+  expect(screen.getByText('$42.00')).toBeTruthy()
+  await user.click(row)
+  await user.keyboard('{Enter}')
+  expect(fixture.state.getState().currentAccount).toBe(first.id)
+  expect(screen.queryByRole('dialog')).toBeNull()
 })

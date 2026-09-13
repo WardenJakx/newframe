@@ -18,10 +18,12 @@ const selectCurrentAccount = (state: WalletRendererState) => {
 
 export default function Main({
   capabilities,
-  accountSelector
+  accountSelector,
+  renderSigningAccount
 }: {
   capabilities: RequestRendererCapabilities
   accountSelector?: ReactNode
+  renderSigningAccount?: (account: string) => ReactNode
 }) {
   const { account, current, open } = useWalletSelector(useShallow(selectCurrentAccount))
   if (!open) return null
@@ -31,6 +33,7 @@ export default function Main({
     <Account
       capabilities={capabilities}
       accountSelector={accountSelector}
+      renderSigningAccount={renderSigningAccount}
       key={current}
       {...account}
       index={1}

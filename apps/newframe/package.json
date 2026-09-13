@@ -65,6 +65,7 @@
     "@newframe/ui": "workspace:*",
     "@ngraveio/bc-ur": "1.1.6",
     "@scure/bip32": "^2.2.0",
+    "@spruceid/siwe-parser": "3.0.0",
     "@trezor/connect": "^9.7.3",
     "@zxcvbn-ts/core": "^3.0.4",
     "@zxcvbn-ts/language-common": "^3.0.4",

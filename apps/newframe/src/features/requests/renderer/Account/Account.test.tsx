@@ -110,31 +110,31 @@ function accessRequest() {
 
 function resetWithRequest(input: unknown) {
   const request = WalletRequestSchema.parse(input)
-  fixture.state.reset(
-    walletState({
-      accounts: {
-        [accountId]: {
-          id: accountId,
-          profileId: 'default-profile',
-          address: accountId,
-          name: 'Primary',
-          lastSignerType: 'address',
-          status: 'ok',
-          signer: 'watch',
-          requests: { [requestId]: request },
-          created: '2026-01-01T00:00:00.000Z'
-        }
-      },
-      accountOrder: [accountId],
-      currentAccount: accountId,
-      windows: {
-        panel: {
-          show: true,
-          nav: [{ view: 'requestView', data: { accountId, requestId } }]
-        }
+  const state = walletState({
+    accounts: {
+      [accountId]: {
+        id: accountId,
+        profileId: 'default-profile',
+        address: accountId,
+        name: 'Primary',
+        lastSignerType: 'address',
+        status: 'ok',
+        signer: 'watch',
+        requests: { [requestId]: request },
+        created: '2026-01-01T00:00:00.000Z'
       }
-    })
-  )
+    },
+    accountOrder: [accountId],
+    currentAccount: accountId,
+    windows: {
+      panel: {
+        show: true,
+        nav: [{ view: 'requestView', data: { accountId, requestId } }]
+      }
+    }
+  })
+  fixture.state.reset(state)
+  return state
 }
 
 function renderAccount() {
@@ -221,5 +221,72 @@ it.each(['eth_requestAccounts', 'personal_sign'])(
       method === 'eth_requestAccounts'
     )
     expect(screen.getByText(origin)).toBeTruthy()
+  }
+)
+
+it('renders the fixed request account rather than the current-account selector for a signature', () => {
+  resetWithRequest({
+    type: 'sign',
+    handlerId: requestId,
+    origin,
+    account: accountId,
+    payload: { id: 4, jsonrpc: '2.0', method: 'personal_sign', params: ['message'] },
+    data: { decodedMessage: 'message' }
+  })
+  const renderedAccounts: string[] = []
+  render(
+    <RequestViewProvider>
+      <Account
+        capabilities={createRequestRendererCapabilitiesFake()}
+        id={accountId}
+        accountSelector={<button type='button'>Choose wallet</button>}
+        renderSigningAccount={(account) => {
+          renderedAccounts.push(account)
+          return <div>Fixed signing wallet</div>
+        }}
+      />
+    </RequestViewProvider>
+  )
+  expect(renderedAccounts).toEqual([accountId])
+  expect(screen.getByText('Fixed signing wallet')).toBeTruthy()
+  expect(screen.queryByRole('button', { name: 'Choose wallet' })).toBeNull()
+  expect(screen.getByLabelText('Message to sign').textContent).toBe('message')
+})
+
+it.each([accountId, accountId.toUpperCase()])(
+  'resolves the signature account by ID or address independently of current selection: %s',
+  (requestAccount) => {
+    const decodedMessage = `example.test wants you to sign in with your Ethereum account:
+${accountId}
+
+Sign in.
+
+URI: https://example.test/login
+Version: 1
+Chain ID: 1
+Nonce: abcdefgh
+Issued At: 2026-09-13T12:00:00Z`
+    const state = resetWithRequest({
+      type: 'sign',
+      handlerId: requestId,
+      origin,
+      account: requestAccount,
+      payload: { id: 4, jsonrpc: '2.0', method: 'personal_sign', params: [decodedMessage] },
+      data: { decodedMessage }
+    })
+    const signingAccount = state.accounts[accountId]
+    if (!signingAccount) throw new Error('Missing fixture account')
+    fixture.state.reset({
+      ...state,
+      currentAccount: 'other-wallet',
+      accounts: {
+        ...state.accounts,
+        'other-wallet': { ...signingAccount, id: 'other-wallet', address: spenderAddress, name: 'Other' }
+      }
+    })
+    renderAccount()
+    expect(screen.getByText(accountId)).toBeTruthy()
+    expect(screen.queryByText(/differs from the signing account/)).toBeNull()
+    expect(fixture.state.getState().currentAccount).toBe('other-wallet')
   }
 )

@@ -295,6 +295,7 @@ interface AccountBodyProps {
   capabilities: RequestRendererCapabilities
   accountViewIcon?: ReactNode
   accountSelector?: ReactNode
+  renderSigningAccount?: (account: string) => ReactNode
   addresses?: unknown[]
   id: string
   minimized?: boolean
@@ -330,8 +331,23 @@ function AccountBody(props: AccountBodyProps) {
             icon: persistedImageSource(metadata?.image)
           }
     switch (request.type) {
-      case 'sign':
-        return <SignatureRequest key={request.handlerId} req={request} />
+      case 'sign': {
+        const signingAccount =
+          accounts[request.account] ||
+          Object.values(accounts).find(
+            (account) => account.address.toLowerCase() === request.account.toLowerCase()
+          )
+        return (
+          <SignatureRequest
+            key={request.handlerId}
+            req={request}
+            originName={origins[request.origin]?.name || request.origin}
+            favicon={persistedImageSource(origins[request.origin]?.image)}
+            signingAddress={signingAccount?.address || request.account}
+            signingAccount={props.renderSigningAccount?.(request.account)}
+          />
+        )
+      }
       case 'signTypedData':
         return <SignTypedDataRequest key={request.handlerId} req={request} />
       case 'signErc20Permit':
