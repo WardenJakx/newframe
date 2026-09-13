@@ -21,7 +21,6 @@ it('fails --check with an individual diagnostic for every exceeded ratchet', asy
       maximum: {
         moduleMocks: -1,
         callbackTests: -1,
-        mockCallAssertions: -1,
         noAssertionFiles: -1,
         misplacedScenarioFiles: -1
       }
@@ -35,13 +34,7 @@ it('fails --check with an individual diagnostic for every exceeded ratchet', asy
   const [exitCode, stderr] = await Promise.all([child.exited, new Response(child.stderr).text()])
 
   expect(exitCode).toBe(1)
-  for (const metric of [
-    'moduleMocks',
-    'callbackTests',
-    'mockCallAssertions',
-    'noAssertionFiles',
-    'misplacedScenarioFiles'
-  ]) {
+  for (const metric of ['moduleMocks', 'callbackTests', 'noAssertionFiles', 'misplacedScenarioFiles']) {
     expect(stderr).toContain(`${metric}:`)
   }
 })

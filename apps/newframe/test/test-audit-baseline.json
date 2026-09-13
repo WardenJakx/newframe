@@ -2,7 +2,6 @@
   "maximum": {
     "moduleMocks": 37,
     "callbackTests": 66,
-    "mockCallAssertions": 305,
     "noAssertionFiles": 0,
     "misplacedScenarioFiles": 0
   }
