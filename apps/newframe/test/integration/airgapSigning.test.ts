@@ -203,7 +203,7 @@ it('existing review approval opens AirGap, verifies its response and broadcasts 
     expect(f.service.approve(f.owner.context.requestId, f.owner.context)).toBe(true)
     const reference = f.reference()
     const frame = f.frames(vectors.transactions[0].signature)[0]
-    const scan = { ...reference, type: 'signer.airgap-scan', frame } as const
+    const scan = { ...reference, type: 'signer.session-input', frame } as const
     for (const [ref, owner] of [
       [reference, uiContext().context.owner],
       [{ ...reference, sessionId: '00000000-0000-4000-8000-000000000000' }, f.owner.context.owner]
@@ -244,7 +244,7 @@ for (const phase of ['nonce', 'before-query', 'reconstruction', 'cancel', 'shutd
       } else {
         const reference = f.reference()
         const frame = f.frames(vectors.transactions[0].signature)[0]
-        const command = { ...reference, type: 'signer.airgap-scan', frame } as const
+        const command = { ...reference, type: 'signer.session-input', frame } as const
         if (phase === 'reconstruction') {
           const scan = f.airgap.scan(command, f.owner.context.owner)
           // The signature resolved, but shared transaction reconstruction is still queued.
@@ -359,7 +359,7 @@ it('confirms an existing Safe proposal through the owner Account and verified QR
     client
   })
   const command = {
-    type: 'account.safe-confirm',
+    type: 'request.approve',
     operationId: f.owner.context.requestId,
     accountId: safe,
     ownerId: f.address,
@@ -387,7 +387,7 @@ it('confirms an existing Safe proposal through the owner Account and verified QR
     const reference = f.reference()
     for (const frame of f.frames(signature.slice(2))) {
       expect(
-        await f.airgap.scan({ ...reference, type: 'signer.airgap-scan', frame }, f.owner.context.owner)
+        await f.airgap.scan({ ...reference, type: 'signer.session-input', frame }, f.owner.context.owner)
       ).toBeTrue()
     }
     for (let n = 0; n < 200 && confirmations.confirmationStatus(query).status !== 'published'; n++)

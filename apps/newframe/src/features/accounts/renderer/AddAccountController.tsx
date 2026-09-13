@@ -212,7 +212,8 @@ export function AddAccountController({
     await Promise.all(
       Object.entries(imports).map(async ([chainId, item]) => {
         try {
-          const result = await capability.importSafe({
+          const result = await capability.createAccount({
+            source: 'safe',
             operationId: item.operationId,
             address,
             chainId: Number(chainId)
@@ -249,16 +250,15 @@ export function AddAccountController({
     submissionRef
   } = useSubmission(setFeedback)
   const {
-    start: startHardwareSession,
-    finish: finishHardwareSession,
+    start: startSignerSession,
+    finish: finishSignerSession,
     session: hardwareSession,
     sessionRef: hardwareSessionRef,
     adopt: setActiveHardwareSession
   } = useHardwareSessionController(capability, (session, type) =>
     setActiveSubmission({ operationId: session.operationId, type })
   )
-  const beginHardwareSession = (signerId: string, reload: boolean) =>
-    startHardwareSession(signerId, { reload })
+  const beginHardwareSession = (signerId: string, reload: boolean) => startSignerSession(signerId, { reload })
   const whenCurrent = (
     ref: typeof submissionRef | typeof hardwareSessionRef,
     operationId: string,
@@ -338,7 +338,7 @@ export function AddAccountController({
   ])
 
   function resetInlineAdd() {
-    finishHardwareSession('cancelled')
+    finishSignerSession('cancelled')
     dispatch({ type: 'flow.reset' })
     onClose()
   }
@@ -385,7 +385,7 @@ export function AddAccountController({
     }
 
     const signerId = onboardingOperation.entityRefs?.find((ref) => ref.type === 'signer')?.id
-    if (submission.type === 'signer.lattice-create' && signerId && hardwareSession?.signerId !== signerId) {
+    if (submission.type === 'signer.import.lattice' && signerId && hardwareSession?.signerId !== signerId) {
       whenCurrent(submissionRef, operationId, () => {
         dispatch({ type: 'hardware.lattice-created', signerId })
         setActiveHardwareSession({ operationId, signerId })
@@ -393,9 +393,17 @@ export function AddAccountController({
     }
 
     if (onboardingOperation.status !== 'succeeded') return
-    if (['account.add-from-signer', 'account.watch-add', 'signer.import'].includes(submission.type)) {
+    if (
+      [
+        'account.watch-add',
+        'account.add-from-signer',
+        'signer.import.phrase',
+        'signer.import.private-key',
+        'signer.import.keystore'
+      ].includes(submission.type)
+    ) {
       whenCurrent(submissionRef, operationId, resetInlineAdd)
-    } else if (submission.type === 'signer.lattice-pair') {
+    } else if (submission.type === 'signer.session-input.pair-code') {
       whenCurrent(submissionRef, operationId, () => {
         dispatch({ type: 'hardware.paired' })
         setActiveSubmission(null)
@@ -421,8 +429,8 @@ export function AddAccountController({
     }
     if (signer?.status?.toLowerCase() !== 'ok') return
 
-    whenCurrent(hardwareSessionRef, operationId, () => finishHardwareSession('ready'))
-    // finishHardwareSession is intentionally guarded by the mutable active-session reference.
+    whenCurrent(hardwareSessionRef, operationId, () => finishSignerSession('ready'))
+    // finishSignerSession is intentionally guarded by the mutable active-session reference.
     // oxlint-disable-next-line react/exhaustive-deps
   }, [hardwareSession, shared.operations, shared.signers])
 
@@ -500,7 +508,7 @@ export function AddAccountController({
   function backInlineAdd() {
     clearSafeDraft()
     if (state.addAccountSelectedSigner) {
-      finishHardwareSession('cancelled')
+      finishSignerSession('cancelled')
       dispatch({ type: 'flow.signer-cleared' })
       return
     }
@@ -548,7 +556,8 @@ export function AddAccountController({
 
     await runSubmission(
       'account.add-from-signer',
-      (operationId) => capability.addAccountFromSigner({ operationId, signerId: signer.id, address, name }),
+      (operationId) =>
+        capability.createAccount({ source: 'signer', operationId, signerId: signer.id, address, name }),
       fallback
     )
   }
@@ -571,15 +580,15 @@ export function AddAccountController({
     if (shared.signers[signerId]?.type !== 'airgap') beginHardwareSession(signerId, false)
   }
 
-  async function createLatticeSigner() {
+  async function importSigner() {
     const deviceId = (state.addAccountInput || '').trim()
     const deviceName = (state.addAccountName || '').trim() || 'GridPlus'
 
     if (!deviceId) return setFeedback('Device ID required', '')
 
     await runSubmission(
-      'signer.lattice-create',
-      (operationId) => capability.createLatticeSigner({ operationId, deviceId, deviceName }),
+      'signer.import.lattice',
+      (operationId) => capability.importSigner({ source: 'lattice', operationId, deviceId, deviceName }),
       'Could not create the GridPlus signer.'
     )
   }
@@ -611,14 +620,14 @@ export function AddAccountController({
     dispatch({ type: 'hardware.pin-deleted' })
   }
 
-  function submitTrezorInput(signer: SignerProjection, input: 'pin' | 'passphrase' | 'device-passphrase') {
+  function inputSignerSession(signer: SignerProjection, input: 'pin' | 'passphrase' | 'device-passphrase') {
     if (!signer?.id) return
     if (input === 'pin' && !state.addHardwarePin) return setFeedback('PIN required', '')
     if (!hardwareSession || hardwareSession.signerId !== signer.id) {
       return setFeedback('Reconnect the hardware wallet first', '')
     }
     const actionId = crypto.randomUUID()
-    setActiveSubmission({ operationId: actionId, type: 'signer.trezor-input' })
+    setActiveSubmission({ operationId: actionId, type: `signer.session-input.${input}` })
     const value = input === 'pin' ? state.addHardwarePin : state.addHardwarePhrase
     const command =
       input === 'device-passphrase'
@@ -635,7 +644,7 @@ export function AddAccountController({
             input,
             value
           }
-    void capability.submitTrezorInput(command)
+    void capability.inputSignerSession(command)
     dispatch({
       type: 'hardware.input-submitted',
       input,
@@ -655,13 +664,14 @@ export function AddAccountController({
       return setFeedback('Reconnect the hardware wallet first', '')
     }
     const actionId = crypto.randomUUID()
-    setActiveSubmission({ operationId: actionId, type: 'signer.lattice-pair' })
+    setActiveSubmission({ operationId: actionId, type: 'signer.session-input.pair-code' })
 
-    const result = await capability.pairLattice({
+    const result = await capability.inputSignerSession({
+      input: 'pair-code',
       operationId: hardwareSession.operationId,
       actionId,
       signerId: signer.id,
-      pairCode: state.addHardwarePairCode
+      value: state.addHardwarePairCode
     })
     if (!result.ok) failSubmission(actionId, result, 'Could not pair GridPlus.')
   }
@@ -687,14 +697,18 @@ export function AddAccountController({
     }
 
     const operationId = crypto.randomUUID()
-    const operationType = addAccountType === 'watch' ? 'account.watch-add' : 'signer.import'
+    const operationType =
+      addAccountType === 'watch'
+        ? 'account.watch-add'
+        : `signer.import.${addAccountType === 'seed' ? 'phrase' : addAccountType === 'keystore' ? 'keystore' : 'private-key'}`
     setActiveSubmission({ operationId, type: operationType })
     setFeedback('', '')
 
     try {
       const result =
         addAccountType === 'watch'
-          ? await capability.addWatchAccount({
+          ? await capability.createAccount({
+              source: 'watch',
               operationId,
               addressOrName: input,
               name: name || 'Watch Account'
@@ -781,7 +795,7 @@ export function AddAccountController({
     }
 
     await runSubmission(
-      'signer.import',
+      'signer.import.phrase',
       (operationId) =>
         capability.importSigner({
           operationId,
@@ -1054,9 +1068,9 @@ export function AddAccountController({
     setHardwarePageInput(String(pageModel.page))
     if (!pageModel.loading) return
     await runSubmission(
-      'signer.ledger-accounts-load',
+      'signer.accounts-load',
       (operationId) =>
-        capability.loadLedgerAccounts({
+        capability.refreshSigner({
           operationId,
           signerId: signer.id,
           accountCount: pageModel.requiredAddressCount
@@ -1074,7 +1088,7 @@ export function AddAccountController({
     onBack: backInlineAdd,
     onCategorySelect: chooseInlineAddCategory,
     onCreateGeneratedSeed: () => void createGeneratedSeedAccount(),
-    onCreateLattice: () => void createLatticeSigner(),
+    onCreateLattice: () => void importSigner(),
     onCreateSeedOpen: () => chooseInlineAddCategory('createSeed'),
     onGeneratedSeedBackupToggle: () => dispatch({ type: 'seed.backup-toggled' } as const),
     onGeneratedSeedCopy: copyGeneratedSeedPhrase,
@@ -1110,7 +1124,7 @@ export function AddAccountController({
     onHardwareSelect: selectHardwareSigner,
     onHardwareSubmit: (hardwareInput: 'pin' | 'passphrase' | 'device-passphrase') => {
       const signer = selectedSigner()
-      if (signer) submitTrezorInput(signer, hardwareInput)
+      if (signer) inputSignerSession(signer, hardwareInput)
     },
     onImportSeedOpen: () => dispatch({ type: 'flow.import-seed-opened' } as const),
     onInputChange: (value: string) => {

@@ -9,7 +9,7 @@ export interface HardwareSession {
 
 export function useHardwareSessionController(
   capability: AccountsCapability,
-  onBegin?: (session: HardwareSession, command: 'signer.hardware-session-start' | 'signer.reload') => void
+  onBegin?: (session: HardwareSession, command: 'signer.session-start' | 'signer.refresh') => void
 ) {
   const [session, setSession] = useState<HardwareSession | null>(null)
   const sessionRef = useRef<HardwareSession | null>(null)
@@ -23,7 +23,7 @@ export function useHardwareSessionController(
     const current = sessionRef.current
     if (!current) return
     adopt(null)
-    void capability.finishHardwareSession({
+    void capability.finishSignerSession({
       operationId: current.operationId,
       signerId: current.signerId,
       outcome
@@ -37,9 +37,9 @@ export function useHardwareSessionController(
     const operationId = crypto.randomUUID()
     const next = { operationId, signerId }
     adopt(next)
-    const command = options.reload ? 'signer.reload' : 'signer.hardware-session-start'
+    const command = options.reload ? 'signer.refresh' : 'signer.session-start'
     onBegin?.(next, command)
-    void (options.reload ? capability.reloadSigner(next) : capability.startHardwareSession(next))
+    void (options.reload ? capability.refreshSigner(next) : capability.startSignerSession(next))
     return next
   }
 
@@ -48,7 +48,7 @@ export function useHardwareSessionController(
       const current = sessionRef.current
       if (!current) return
       sessionRef.current = null
-      void capability.finishHardwareSession({ ...current, outcome: 'cancelled' })
+      void capability.finishSignerSession({ ...current, outcome: 'cancelled' })
     },
     [capability]
   )

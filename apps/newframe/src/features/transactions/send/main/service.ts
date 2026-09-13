@@ -1,6 +1,6 @@
 import { isAddress } from 'ethers'
 
-import type { SendSubmitCommand } from '../../../../app/contracts/operations.js'
+import type { SendRequestCommand } from '../../../../app/contracts/operations.js'
 import type { OperationService } from '../../../../platform/operations/service.js'
 import type { OperationOwner, OperationReference } from '../../../../platform/operations/types.js'
 import type { TrustedPrincipal } from '../../../access-control/main/authority.js'
@@ -77,7 +77,7 @@ const idempotencyLimit = 256
 const operationType = 'send.submit'
 
 const normalizedRecipient = (recipient: string) => recipient.trim().toLowerCase()
-const normalizedAsset = (command: SendSubmitCommand) => ({
+const normalizedAsset = (command: SendRequestCommand) => ({
   address: command.asset.address.toLowerCase(),
   chainId: command.asset.chainId
 })
@@ -86,7 +86,7 @@ function idempotencyKey(reference: OperationReference) {
   return JSON.stringify([reference.owner.clientType, reference.owner.windowInstanceId, reference.id])
 }
 
-function fingerprint(command: SendSubmitCommand) {
+function fingerprint(command: SendRequestCommand) {
   const asset = normalizedAsset(command)
   return JSON.stringify([
     asset.chainId,
@@ -96,7 +96,11 @@ function fingerprint(command: SendSubmitCommand) {
   ])
 }
 
-function canonicalBalance(snapshot: SendCanonicalSnapshot, account: SendAccount, command: SendSubmitCommand) {
+function canonicalBalance(
+  snapshot: SendCanonicalSnapshot,
+  account: SendAccount,
+  command: SendRequestCommand
+) {
   const asset = normalizedAsset(command)
   const balances =
     snapshot.balances[account.address.toLowerCase()] || snapshot.balances[account.address] || []
@@ -107,7 +111,7 @@ function canonicalBalance(snapshot: SendCanonicalSnapshot, account: SendAccount,
 
 function validateCanonicalIntent(
   snapshot: SendCanonicalSnapshot,
-  command: SendSubmitCommand,
+  command: SendRequestCommand,
   recipientAddress: string,
   expectedAccountId?: string
 ): ValidatedSend {
@@ -171,7 +175,7 @@ export function createSendService(ports: SendServicePorts) {
   }
 
   const execute = async (
-    command: SendSubmitCommand,
+    command: SendRequestCommand,
     principal: TrustedPrincipal,
     reference: OperationReference,
     key: string
@@ -245,7 +249,7 @@ export function createSendService(ports: SendServicePorts) {
   }
 
   return {
-    submit(command: SendSubmitCommand, principal: TrustedPrincipal, owner: OperationOwner) {
+    submit(command: SendRequestCommand, principal: TrustedPrincipal, owner: OperationOwner) {
       if (disposed) return false
       const reference: OperationReference = { owner, id: command.operationId, type: operationType }
       const key = idempotencyKey(reference)

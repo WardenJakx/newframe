@@ -23,7 +23,7 @@ it('maps semantic trade actions to their exact catalog operations', async () => 
   ).rejects.toThrow('Unavailable.')
   await trade.prepare({ operationId: 'operation-1', quoteId: 'quote-1', action: 'approve' })
   await trade.submit({ operationId: 'operation-1', quoteId: 'quote-1' })
-  await trade.release()
+  await trade.cancel({ operationId: 'operation-1' })
   await trade.close()
   await trade.hydrateTokenImage('1:0x1111111111111111111111111111111111111111')
 
@@ -39,9 +39,9 @@ it('maps semantic trade actions to their exact catalog operations', async () => 
     }
   })
   expect(host.executeCommand.mock.calls.map(([command]) => command)).toEqual([
-    { type: 'trade.prepare', operationId: 'operation-1', quoteId: 'quote-1', action: 'approve' },
+    { type: 'request.create', operationId: 'operation-1', quoteId: 'quote-1', action: 'approve' },
     { type: 'trade.submit', operationId: 'operation-1', quoteId: 'quote-1' },
-    { type: 'trade.release' },
+    { type: 'operation.cancel', operationId: 'operation-1' },
     { type: 'sidetray.close' },
     { type: 'token.image-hydrate', tokenId: '1:0x1111111111111111111111111111111111111111' }
   ])

@@ -60,8 +60,8 @@ it('keeps drafts local and follows projected onboarding and hardware session sta
 
   reset()
   let resolveStaleAcknowledgement!: (result: { ok: false; error: 'invalid_command' }) => void
-  capability.addWatchAccount.mockImplementation((input) =>
-    input.addressOrName === 'old.eth'
+  capability.createAccount.mockImplementation((input) =>
+    input.source === 'watch' && input.addressOrName === 'old.eth'
       ? new Promise((resolve) => {
           resolveStaleAcknowledgement = resolve
         })
@@ -74,13 +74,14 @@ it('keeps drafts local and follows projected onboarding and hardware session sta
   await view.user.click(screen.getByRole('button', { name: 'Watch an address' }))
   await view.user.type(screen.getByLabelText('Address or gns/ens name'), 'old.eth')
   await view.user.click(screen.getByRole('button', { name: 'Create account' }))
-  const staleWatch = capability.addWatchAccount.mock.calls.at(-1)![0]
+  const staleWatch = capability.createAccount.mock.calls.at(-1)![0]
   await view.user.clear(screen.getByLabelText('Address or gns/ens name'))
   await view.user.type(screen.getByLabelText('Address or gns/ens name'), address('2'))
   await view.user.click(screen.getByRole('button', { name: 'Create account' }))
-  const currentWatch = capability.addWatchAccount.mock.calls.at(-1)![0]
+  const currentWatch = capability.createAccount.mock.calls.at(-1)![0]
   expect(currentWatch).toEqual({
     operationId: expect.any(String),
+    source: 'watch',
     addressOrName: address('2'),
     name: 'Watch Account'
   })
@@ -135,8 +136,9 @@ it('keeps drafts local and follows projected onboarding and hardware session sta
   await view.user.click(screen.getByRole('button', { name: 'Add from stored recovery phrases' }))
   await view.user.click(screen.getByRole('button', { name: 'Add address' }))
   await view.user.click(screen.getByRole('button', { name: 'Add Wallet 1' }))
-  expect(capability.addAccountFromSigner.mock.calls.at(-1)![0]).toEqual({
+  expect(capability.createAccount.mock.calls.at(-1)![0]).toEqual({
     operationId: expect.any(String),
+    source: 'signer',
     signerId: 'seed-1',
     address: address('1'),
     name: 'Hot Account'
@@ -157,9 +159,9 @@ it('keeps drafts local and follows projected onboarding and hardware session sta
   await view.user.click(screen.getByRole('button', { name: 'Connect a hardware wallet' }))
   await view.user.click(screen.getByRole('button', { name: 'Ledger' }))
   await view.user.click(screen.getByRole('button', { name: 'View Ledger accounts' }))
-  await waitFor(() => expect(capability.startHardwareSession.mock.calls.length).toBe(1))
+  await waitFor(() => expect(capability.startSignerSession.mock.calls.length).toBe(1))
   await view.user.click(screen.getByRole('button', { name: 'Next account page' }))
-  expect(capability.loadLedgerAccounts.mock.calls.at(-1)![0]).toEqual({
+  expect(capability.refreshSigner.mock.calls.at(-1)![0]).toEqual({
     operationId: expect.any(String),
     signerId: 'ledger-1',
     accountCount: 10
@@ -170,19 +172,21 @@ it('keeps drafts local and follows projected onboarding and hardware session sta
   await view.user.click(screen.getByRole('button', { name: 'Connect a hardware wallet' }))
   await view.user.click(screen.getByRole('button', { name: 'GridPlus' }))
   await view.user.click(screen.getByRole('button', { name: 'View GridPlus accounts' }))
-  await waitFor(() => expect(capability.startHardwareSession.mock.calls.length).toBe(1))
-  const latticeSession = capability.startHardwareSession.mock.calls.at(-1)![0]
+  await waitFor(() => expect(capability.startSignerSession.mock.calls.length).toBe(1))
+  const latticeSession = capability.startSignerSession.mock.calls.at(-1)![0]
   await view.user.type(screen.getByLabelText('GridPlus pairing code'), 'pair-secret')
   await view.user.click(screen.getByRole('button', { name: 'Pair' }))
-  const latticePair = capability.pairLattice.mock.calls.at(-1)![0]
+  const latticePair = capability.inputSignerSession.mock.calls.at(-1)![0]
   expect(latticePair).toEqual({
     operationId: latticeSession.operationId,
     actionId: expect.any(String),
     signerId: 'lattice-1',
-    pairCode: 'PAIR-SECRET'
+    input: 'pair-code',
+    value: 'PAIR-SECRET'
   })
   expect(screen.queryByText('GridPlus paired')).toBeNull()
-  publish(operation(latticePair.actionId, 'signer.lattice-pair', 'succeeded'))
+  if (!('actionId' in latticePair)) throw new Error('Expected pairing input')
+  publish(operation(latticePair.actionId, 'signer.session-input.pair-code', 'succeeded'))
   expect(await screen.findByText('GridPlus paired')).toBeTruthy()
 
   reset({ signers: { 'trezor-1': signer('trezor-1', 'trezor', 'need pin') } })
@@ -190,11 +194,11 @@ it('keeps drafts local and follows projected onboarding and hardware session sta
   await view.user.click(screen.getByRole('button', { name: 'Connect a hardware wallet' }))
   await view.user.click(screen.getByRole('button', { name: 'Trezor' }))
   await view.user.click(screen.getByRole('button', { name: 'View Trezor accounts' }))
-  await waitFor(() => expect(capability.startHardwareSession.mock.calls.length).toBe(1))
-  const trezorSession = capability.startHardwareSession.mock.calls.at(-1)![0]
+  await waitFor(() => expect(capability.startSignerSession.mock.calls.length).toBe(1))
+  const trezorSession = capability.startSignerSession.mock.calls.at(-1)![0]
   await view.user.click(screen.getByRole('button', { name: 'PIN position 1' }))
   await view.user.click(screen.getByRole('button', { name: 'Submit Trezor PIN' }))
-  expect(capability.submitTrezorInput.mock.calls.at(-1)![0]).toEqual({
+  expect(capability.inputSignerSession.mock.calls.at(-1)![0]).toEqual({
     operationId: trezorSession.operationId,
     actionId: expect.any(String),
     signerId: 'trezor-1',
@@ -216,7 +220,7 @@ it('keeps drafts local and follows projected onboarding and hardware session sta
   const passphrase = screen.getByLabelText('Trezor passphrase') as HTMLInputElement
   await view.user.type(passphrase, 'keep-local')
   await view.user.click(screen.getByRole('button', { name: 'Enter passphrase on Trezor' }))
-  expect(capability.submitTrezorInput.mock.calls.at(-1)![0]).toEqual({
+  expect(capability.inputSignerSession.mock.calls.at(-1)![0]).toEqual({
     operationId: trezorSession.operationId,
     actionId: expect.any(String),
     signerId: 'trezor-1',
@@ -224,7 +228,7 @@ it('keeps drafts local and follows projected onboarding and hardware session sta
   })
   expect(passphrase.value).toBe('keep-local')
   await view.user.click(screen.getByRole('button', { name: 'Back' }))
-  expect(capability.finishHardwareSession.mock.calls.map(([input]) => input)).toContainEqual({
+  expect(capability.finishSignerSession.mock.calls.map(([input]) => input)).toContainEqual({
     operationId: trezorSession.operationId,
     signerId: 'trezor-1',
     outcome: 'cancelled'
@@ -388,7 +392,9 @@ it('imports Safe networks independently, retains partial failure, and selects su
   expect(screen.getByRole('button', { name: 'Optimism' }).getAttribute('aria-selected')).toBe('true')
   expect(screen.queryByRole('button', { name: 'Unavailable' })).toBeNull()
   await user.click(screen.getByRole('button', { name: 'Import 2 Safe networks' }))
-  const inputs = capability.importSafe.mock.calls.map((call) => call[0])
+  const inputs = capability.createAccount.mock.calls
+    .map((call) => call[0])
+    .filter((input) => input.source === 'safe')
   expect(new Set(inputs.map((input) => input.operationId)).size).toBe(2)
   const outcomes: OperationRecord[] = inputs.map((input) => ({
     id: input.operationId,
@@ -447,16 +453,16 @@ it('pairs AirGap public QR through its owned operation, then adds an address nor
   await view.user.click(screen.getByRole('button', { name: 'AirGap' }))
   await view.user.click(screen.getByRole('button', { name: 'Pair AirGap' }))
   await waitFor(() => expect(camera.sessions).toHaveLength(1))
-  const failedId = capability.airgapPairStart.mock.calls.at(-1)![0].operationId
+  const failedId = capability.importSigner.mock.calls.at(-1)![0].operationId
   act(() => camera.sessions[0].handlers.onError(new DOMException('Busy', 'NotReadableError')))
   expect((await screen.findByRole('alert')).textContent).toContain('Camera is busy')
   expect(camera.sessions[0].stopped).toBe(true)
-  expect(capability.airgapPairCancel).toHaveBeenCalledWith({ operationId: failedId })
+  expect(capability.finishSignerSession).toHaveBeenCalledWith({ operationId: failedId })
   await view.user.click(screen.getByRole('button', { name: 'Pair AirGap' }))
-  const { operationId } = capability.airgapPairStart.mock.calls.at(-1)![0]
+  const { operationId } = capability.importSigner.mock.calls.at(-1)![0]
   act(() => camera.sessions[1].handlers.onFrame('public account QR'))
   await waitFor(() =>
-    expect(capability.airgapPairScan).toHaveBeenCalledWith({ operationId, frame: 'public account QR' })
+    expect(capability.inputSignerSession).toHaveBeenCalledWith({ operationId, frame: 'public account QR' })
   )
   const paired: OperationRecord = {
     id: operationId,
@@ -473,14 +479,17 @@ it('pairs AirGap public QR through its owned operation, then adds an address nor
   await waitFor(() => expect(screen.queryByText('Pair AirGap Vault')).toBeNull())
   await waitFor(() => expect(camera.sessions[1].stopped).toBe(true))
   await view.user.click(screen.getByRole('button', { name: /Add 0xaaa/ }))
-  expect(capability.addAccountFromSigner).toHaveBeenCalledWith({
+  expect(capability.createAccount).toHaveBeenCalledWith({
     operationId: expect.any(String),
+    source: 'signer',
     signerId: nextSigner.id,
     address: address('a'),
     name: 'AirGap Account'
   })
   view.unmount()
-  expect(capability.airgapPairCancel.mock.calls.some(([input]) => input.operationId === operationId)).toBe(
-    false
-  )
+  expect(
+    capability.finishSignerSession.mock.calls.some(
+      ([input]) => 'operationId' in input && input.operationId === operationId
+    )
+  ).toBe(false)
 })

@@ -9,7 +9,8 @@ import {
   type FlashQuoteDisplay,
   type FlashQuoteRequest as RendererFlashQuoteRequest,
   type FlashQuoteResult,
-  type TradePrepareCommand,
+  type OperationCancelCommand,
+  type TradeRequestCommand,
   type TradeSubmitCommand,
   type TypedDataV4
 } from '../../../../app/contracts/operations.js'
@@ -80,13 +81,13 @@ export interface TradeServicePorts {
   }
 }
 
-type TradeAction = TradePrepareCommand['action'] | 'submit'
+type TradeAction = TradeRequestCommand['action'] | 'submit'
 
 type PrivateQuoteRecord = {
   account: TradeAccount
   bridgeQuoteId?: string
   chainIds: number[]
-  completedActions: Set<TradePrepareCommand['action']>
+  completedActions: Set<TradeRequestCommand['action']>
   expiresAt: number
   flash: unknown
   owner: OperationOwner
@@ -304,7 +305,7 @@ export function createTradeService(ports: TradeServicePorts) {
   }
 
   const executePrepare = async (
-    command: TradePrepareCommand,
+    command: TradeRequestCommand,
     principal: TrustedPrincipal,
     owner: OperationOwner,
     execution: TradeExecution,
@@ -461,7 +462,7 @@ export function createTradeService(ports: TradeServicePorts) {
   }
 
   const acceptTradeAction = (
-    command: TradePrepareCommand | TradeSubmitCommand,
+    command: TradeRequestCommand | TradeSubmitCommand,
     principal: TrustedPrincipal,
     owner: OperationOwner
   ) => {
@@ -469,7 +470,7 @@ export function createTradeService(ports: TradeServicePorts) {
     const started = startExecution(command.operationId, command.quoteId, owner)
     const reference: OperationReference = { owner, id: command.operationId, type: tradeOperationType }
     const key = referenceKey(reference)
-    const action: TradeAction = command.type === 'trade.prepare' ? command.action : 'submit'
+    const action: TradeAction = command.type === 'request.create' ? command.action : 'submit'
     const fingerprint = JSON.stringify([command.quoteId, action])
     if (!started) return idempotency.get(key)?.fingerprint === fingerprint
     const { execution } = started
@@ -479,7 +480,7 @@ export function createTradeService(ports: TradeServicePorts) {
 
     execution.inFlight = { action, fingerprint }
     queueMicrotask(() => {
-      if (command.type === 'trade.prepare') {
+      if (command.type === 'request.create') {
         void executePrepare(command, principal, owner, execution, key, fingerprint)
       } else {
         void executeSubmit(command, principal, owner, execution, key, fingerprint)
@@ -650,7 +651,7 @@ export function createTradeService(ports: TradeServicePorts) {
       }
     },
 
-    prepare(command: TradePrepareCommand, principal: TrustedPrincipal, owner: OperationOwner) {
+    prepare(command: TradeRequestCommand, principal: TrustedPrincipal, owner: OperationOwner) {
       return acceptTradeAction(command, principal, owner)
     },
 
@@ -686,19 +687,20 @@ export function createTradeService(ports: TradeServicePorts) {
       return true
     },
 
-    release(owner: OperationOwner) {
-      const scope = ownerKey(owner)
-      quoteGenerations.set(scope, (quoteGenerations.get(scope) || 0) + 1)
-      removeOwnerQuotes(owner)
-      for (const [key, execution] of executions) {
-        if (!sameOwner(execution.reference.owner, owner)) continue
-        ports.operations.fail(
-          execution.reference,
-          { code: 'renderer_closed', message: 'Trade was cancelled when the window closed.' },
-          'cancelled'
-        )
-        executions.delete(key)
+    cancelOperation(command: OperationCancelCommand, owner: OperationOwner) {
+      const reference = { owner, id: command.operationId, type: tradeOperationType }
+      const key = referenceKey(reference)
+      const execution = executions.get(key)
+      if (!execution) {
+        const operation = ports.operations.lookup(reference)
+        return Boolean(operation && operation.status !== 'pending')
       }
+      ports.operations.fail(reference, { code: 'cancelled', message: 'Trade was cancelled.' }, 'cancelled')
+      executions.delete(key)
+      for (const [key, record] of quotes) {
+        if (sameOwner(record.owner, owner) && record.quoteId === execution.quoteId) quotes.delete(key)
+      }
+      return true
     },
 
     dispose() {

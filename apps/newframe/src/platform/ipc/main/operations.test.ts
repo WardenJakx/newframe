@@ -16,25 +16,20 @@ const accountMutations = fakes(
   'clearPermission',
   'remove',
   'removeOrigin',
-  'rename',
-  'reorder',
+  'update',
   'select'
 )
 const accountOnboarding = fakes(
-  'addFromSigner',
-  'addWatch',
-  'createLattice',
+  'createAccount',
   'disconnect',
   'exportPrivateKey',
-  'finishHardwareSession',
+  'finishSession',
   'generateSeedPhrase',
   'importSigner',
-  'loadLedgerAccounts',
+  'refresh',
   'locateKeystore',
-  'pairLattice',
-  'reload',
-  'startHardwareSession',
-  'submitTrezorInput'
+  'startSession',
+  'sessionInput'
 )
 const agent = fakes('resolveAgentAccessRequest', 'revokeAgentSessions', 'setAgentAccess')
 const networks = fakes('remove', 'setActivation', 'setPrimaryRpc')
@@ -71,7 +66,7 @@ const platform = fakes(
   'updateNotification',
   'writeClipboard'
 )
-const profiles = fakes('create', 'delete', 'moveAccount', 'movableAccounts', 'rename', 'select')
+const profiles = fakes('create', 'delete', 'moveAccount', 'movableAccounts', 'update', 'select')
 const security = fakes('configure', 'lock', 'reset', 'status', 'unlock')
 const send = fakes('dispose', 'submit')
 const settings = fakes('update')
@@ -85,7 +80,7 @@ const safes = fakes(
   'dispose'
 )
 const tokens = fakes('add', 'lookup', 'remove')
-const trade = fakes('cancel', 'dispose', 'prepare', 'quote', 'release', 'submit')
+const trade = fakes('cancel', 'dispose', 'prepare', 'quote', 'cancelOperation', 'submit')
 const servicesWithMocks = [
   accountMutations,
   accountOnboarding,
@@ -213,12 +208,12 @@ describe('typed operation dispatcher', () => {
       { type: 'network.activation-set', chainId: 1, enabled: true },
       { type: 'sidetray.open', feature: 'trade', chainId: 1 },
       {
-        type: 'account.reorder',
-        fromAccountId: address,
+        type: 'account.update',
+        accountId: address,
         toAccountId: '0x2222222222222222222222222222222222222222'
       },
-      { type: 'account.rename', accountId: address, name: 'Primary' },
-      { type: 'account.agent-access-set', accountId: address, enabled: true },
+      { type: 'account.update', accountId: address, name: 'Primary' },
+      { type: 'account.update', accountId: address, enabled: true },
       { type: 'account.agent-sessions-revoke', accountId: address },
       { type: 'settings.update', setting: 'show-testnets', value: true },
       { type: 'app.quit' },
@@ -297,7 +292,7 @@ describe('typed operation dispatcher', () => {
   it('keeps Send and Trade main-owned and bound to side-tray identity', async () => {
     authorizeRenderer.mockReturnValue(sideTrayContext)
     const sendCommand = {
-      type: 'send.submit' as const,
+      type: 'request.create' as const,
       operationId: 'send-operation',
       asset: { address: '0x0000000000000000000000000000000000000000', chainId: 1 },
       amount: '1',
@@ -312,14 +307,15 @@ describe('typed operation dispatcher', () => {
 
     expect(
       dispatcher.dispatchCommand(event, {
-        type: 'trade.prepare',
+        type: 'request.create',
         operationId: 'trade-operation',
         quoteId: 'quote-1',
         action: 'approve'
       })
     ).resolves.toEqual({ ok: true })
-    expect(dispatcher.dispatchCommand(event, { type: 'trade.release' })).resolves.toEqual({ ok: true })
-    expect(trade.release).toHaveBeenCalledWith({
+    const cancelCommand = { type: 'operation.cancel', operationId: 'trade-operation' }
+    expect(dispatcher.dispatchCommand(event, cancelCommand)).resolves.toEqual({ ok: true })
+    expect(trade.cancelOperation).toHaveBeenCalledWith(cancelCommand, {
       clientType: 'sidetray',
       windowInstanceId: 'side-tray-test'
     })
@@ -347,16 +343,16 @@ describe('typed operation dispatcher', () => {
       { type: 'wallet.lock', operationId: 'lock' },
       { type: 'wallet.reset', operationId: 'reset', scope: 'saved-data' },
       {
-        type: 'signer.ledger-accounts-load',
+        type: 'signer.refresh',
         operationId: 'ledger',
         signerId: 'ledger-1',
         accountCount: 25
       },
-      { type: 'signer.reload', operationId: 'reload', signerId: 'ledger-1' }
+      { type: 'signer.refresh', operationId: 'reload', signerId: 'ledger-1' }
     ]) {
       expect(dispatcher.dispatchCommand(event, command)).resolves.toEqual({ ok: true })
     }
-    expect(accountOnboarding.loadLedgerAccounts).toHaveBeenCalledWith(
+    expect(accountOnboarding.refresh).toHaveBeenCalledWith(
       expect.objectContaining({ accountCount: 25 }),
       owner
     )
@@ -481,7 +477,8 @@ describe('typed operation dispatcher', () => {
 
 it('authorizes Safe commands and delegates owned imports with generic acknowledgements', async () => {
   const command = {
-    type: 'account.safe-import',
+    type: 'account.create',
+    source: 'safe',
     operationId: 'safe-import',
     address: '0x1111111111111111111111111111111111111111',
     chainId: 1
@@ -496,7 +493,7 @@ it('authorizes Safe commands and delegates owned imports with generic acknowledg
     await dispatcher.dispatchQuery({} as never, { type: 'safe.discover', address: command.address })
   ).toEqual([{ chainId: 1, name: 'Ethereum', supported: true }])
   safes.refresh.mockReturnValue(true)
-  const refresh = { type: 'account.safe-refresh', accountId: command.address, force: true }
+  const refresh = { type: 'account.refresh', accountId: command.address, force: true }
   expect(await dispatcher.dispatchCommand({} as never, refresh)).toEqual({ ok: true })
 })
 
@@ -557,7 +554,11 @@ it('binds AirGap and approval contexts to the authorized sender lifecycle', asyn
   })
   const liveEvent = { sender } as unknown as Electron.IpcMainInvokeEvent
   authorizeRenderer.mockReturnValue(trayContext)
-  const start = { type: 'signer.airgap-pair-start', operationId: '00000000-0000-4000-8000-000000000001' }
+  const start = {
+    type: 'signer.import',
+    source: 'airgap',
+    operationId: '00000000-0000-4000-8000-000000000001'
+  }
   expect(
     await dispatcher.dispatchCommand(liveEvent, {
       ...start,
@@ -589,7 +590,7 @@ it('binds AirGap and approval contexts to the authorized sender lifecycle', asyn
 
 it('authorizes strict Safe confirmation identities and binds approval/status to the calling window', async () => {
   const command = {
-    type: 'account.safe-confirm',
+    type: 'request.approve',
     operationId: 'safe-confirm',
     accountId: '0x1111111111111111111111111111111111111111',
     ownerId: '0x2222222222222222222222222222222222222222',

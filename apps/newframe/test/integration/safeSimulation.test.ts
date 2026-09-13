@@ -371,7 +371,7 @@ beforeAll(async () => {
     simulate: (input, signal) => simulateSafeProposal(input, { rpc, client, projection }, signal)
   })
   service.import(
-    { type: 'account.safe-import', operationId: 'watch-simulation', address: seed.safe, chainId },
+    { type: 'account.create', source: 'safe', operationId: 'watch-simulation', address: seed.safe, chainId },
     { clientType: 'wallet-ui', windowInstanceId: 'safe-simulation' }
   )
   for (

@@ -38,22 +38,17 @@ export function useTradeExecution({
   React.useEffect(() => {
     if (!state.session || state.session.requestKey === requestKey) return
     dispatch({ type: 'reset' })
-    void capability.release().catch(() => undefined)
-  }, [capability, requestKey, state.session])
+  }, [requestKey, state.session])
 
+  const operationId = state.session?.operationId
   React.useEffect(() => {
+    if (!operationId) return
     return () => {
-      void capability.release().catch(() => undefined)
+      void capability.cancel({ operationId }).catch(() => undefined)
     }
-  }, [capability])
+  }, [capability, operationId])
 
-  const reset = React.useCallback(
-    (release = true) => {
-      dispatch({ type: 'reset' })
-      if (release) void capability.release().catch(() => undefined)
-    },
-    [capability]
-  )
+  const reset = React.useCallback(() => dispatch({ type: 'reset' }), [])
 
   const submit = React.useCallback(
     ({ quote, quoteId }: { quote: FlashQuoteDisplay | null; quoteId: string }) => {

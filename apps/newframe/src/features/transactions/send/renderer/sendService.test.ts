@@ -20,7 +20,7 @@ it('maps semantic send actions to their exact catalog payloads', async () => {
 
   expect(host.executeCommand.mock.calls.map(([command]) => command)).toEqual([
     {
-      type: 'send.submit',
+      type: 'request.create',
       operationId: 'operation-1',
       asset: { address: NATIVE_CURRENCY, chainId: 1 },
       amount: '1000000000000000000',

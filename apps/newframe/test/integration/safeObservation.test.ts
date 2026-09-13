@@ -47,7 +47,7 @@ it('projects the paginated local Safe service through public observation capabil
   try {
     expect(
       service.import(
-        { type: 'account.safe-import', operationId: 'watch-safe', address, chainId: 31337 },
+        { type: 'account.create', source: 'safe', operationId: 'watch-safe', address, chainId: 31337 },
         owner
       )
     ).toBeTrue()
@@ -77,7 +77,7 @@ it('projects the paginated local Safe service through public observation capabil
     })
     expect(handler.requests.some((request) => request.includes('offset=2'))).toBeTrue()
     handler.failNext(503, undefined, 2)
-    await service.refresh({ type: 'account.safe-refresh', accountId: address, chainId: 31337, force: true })
+    await service.refresh({ type: 'account.refresh', accountId: address, chainId: 31337, force: true })
     const refreshed = projectRendererState(store.getState(), owner).accounts[address]
     if (!('safe' in refreshed) || !refreshed.safe) throw new Error('Wallet projection lost Safe')
     const failed = refreshed.safe['31337']
@@ -143,7 +143,7 @@ it('ignores a real HTTP refresh response released after Safe removal', async () 
   })
   try {
     service.import(
-      { type: 'account.safe-import', operationId: 'remove-safe', address, chainId: 31337 },
+      { type: 'account.create', source: 'safe', operationId: 'remove-safe', address, chainId: 31337 },
       owner
     )
     for (
@@ -155,7 +155,7 @@ it('ignores a real HTTP refresh response released after Safe removal', async () 
     expect(store.getState().operations['remove-safe'].operation.status).toBe('succeeded')
     delay = true
     const refreshing = service.refresh({
-      type: 'account.safe-refresh',
+      type: 'account.refresh',
       accountId: address,
       chainId: 31337,
       force: true

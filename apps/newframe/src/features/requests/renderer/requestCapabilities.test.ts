@@ -27,6 +27,15 @@ it('maps each request surface to its exact host command and preserves failures',
   await capabilities.review.resolveSwitchChain({ requestId: 'request-1', approved: true })
   await capabilities.review.reject({ requestId: 'request-1' })
   await capabilities.review.approve({ requestId: 'request-1' })
+  await capabilities.safe.refresh({ accountId: '0xabc' })
+  const safe = {
+    accountId: '0xabc',
+    ownerId: '0xdef',
+    chainId: 1,
+    safeTxHash: '0xhash',
+    operationId: 'safe-1'
+  }
+  await capabilities.safe.confirm(safe)
   await capabilities.review.confirmApproval({
     requestId: 'request-1',
     approvalType: 'approveGasLimit'
@@ -60,6 +69,8 @@ it('maps each request surface to its exact host command and preserves failures',
     { type: 'request.switch-chain-resolve', requestId: 'request-1', approved: true },
     { type: 'request.reject', requestId: 'request-1' },
     { type: 'request.approve', requestId: 'request-1' },
+    { type: 'account.refresh', accountId: '0xabc' },
+    { type: 'request.approve', ...safe },
     {
       type: 'request.approval-confirm',
       requestId: 'request-1',
