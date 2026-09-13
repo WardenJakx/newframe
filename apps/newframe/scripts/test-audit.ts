@@ -142,7 +142,6 @@ if (check) {
     maximum: {
       callbackTests: number
       misplacedScenarioFiles: number
-      mockCallAssertions: number
       moduleMocks: number
       noAssertionFiles: number
     }
@@ -152,7 +151,6 @@ if (check) {
   const measurements = {
     callbackTests: totals.callbackTests,
     misplacedScenarioFiles: misplacedScenarios.length,
-    mockCallAssertions: totals.mockCallAssertions,
     moduleMocks: totals.mockModules,
     noAssertionFiles: suspicious.length
   }
