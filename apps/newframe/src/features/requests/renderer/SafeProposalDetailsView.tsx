@@ -1,6 +1,6 @@
+import { Disclosure } from '@newframe/ui/disclosure'
 import { Selection } from '@newframe/ui/selection'
 import { Stack } from '@newframe/ui/stack'
-import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
 import { formatUnits } from 'ethers'
 import { useState, type ReactNode } from 'react'
@@ -53,6 +53,7 @@ export function SafeProposalDetailsView({
   capabilities: Pick<RequestRendererCapabilities, 'external'>
 }) {
   const [ownerMenuOpen, setOwnerMenuOpen] = useState(false)
+  const [confirmationsOpen, setConfirmationsOpen] = useState(false)
   const selectedOwner = owners.find((owner) => owner.accountId === selectedOwnerId)
   const hasSigningAccount = owners.some((owner) => owner.status !== 'watch-only')
   const ownerDescription = (owner: SafeOwnerAccount) => {
@@ -66,6 +67,7 @@ export function SafeProposalDetailsView({
       ? simulation.currentNonce
       : deployment.configuration.nonce
   const waiting = BigInt(proposal.nonce) > BigInt(currentNonce)
+  const stale = BigInt(proposal.nonce) < BigInt(currentNonce)
   const confirmedOwners = new Set(proposal.confirmations.map((address) => address.toLowerCase()))
   const hasEnoughConfirmations =
     deployment.configuration.owners.filter((owner) => confirmedOwners.has(owner.toLowerCase())).length >=
@@ -78,63 +80,46 @@ export function SafeProposalDetailsView({
     simulation.status === 'loading'
       ? 'Simulating…'
       : simulation.status === 'success'
-        ? 'No supported asset or allowance changes detected. Other changes may still occur.'
+        ? 'No supported asset changes detected.'
         : simulation.status === 'unavailable'
           ? 'Simulation unavailable.'
           : simulation.failure === 'revert'
             ? 'Execution reverted. No changes applied.'
             : 'No remaining asset or allowance changes detected.'
-  const effectsNotice = [
-    simulation.status === 'error' || simulation.status === 'unavailable' ? simulation.error : undefined,
-    waiting ? 'Uses current state. Earlier proposals are not included.' : undefined
-  ]
-    .filter(Boolean)
-    .join(' ')
-  const copy = (text: string) => () => {
-    void capabilities.external.copy({ text })
-  }
+  const effectsNotice =
+    simulation.status === 'error' || simulation.status === 'unavailable' ? simulation.error : undefined
+  const addressValue = (address: string) =>
+    renderAddress?.(address) ?? (
+      <AddressIdentity
+        address={address}
+        clipboard={capabilities.external}
+        nickname={shortAddress(address)}
+        showFullAddress
+      />
+    )
+  const nativeTransfer = proposal.data === '0x' && proposal.operation === 0
+  const nativeAmount = `${formatUnits(proposal.value, decimals)} ${symbol}`
   const details = [
-    {
-      label: 'To',
-      value: renderAddress?.(proposal.to) ?? proposal.to,
-      onClick: renderAddress ? undefined : copy(proposal.to)
-    },
-    {
-      label: 'Safe',
-      value: renderAddress?.(proposal.safe) ?? proposal.safe,
-      onClick: renderAddress ? undefined : copy(proposal.safe)
-    },
-    { label: 'Nonce', value: proposal.nonce },
-    { label: 'Current Safe nonce', value: currentNonce },
-    { label: 'Native value', value: `${formatUnits(proposal.value, decimals)} ${symbol}` },
-    { label: 'Operation', value: proposal.operation === 1 ? 'Delegatecall' : 'Call' },
-    { label: 'Safe transaction hash', value: proposal.safeTxHash, onClick: copy(proposal.safeTxHash) },
-    {
-      label: 'Confirmations collected',
-      value: `${proposal.confirmations.length} / ${deployment.configuration.threshold}`
-    },
+    { label: nativeTransfer ? 'To' : 'On contract', value: addressValue(proposal.to) },
+    ...(!nativeTransfer && BigInt(proposal.value) > 0n
+      ? [{ label: 'Attached value', value: nativeAmount }]
+      : []),
+    ...(proposal.localDecoded?.parameters.map((parameter) => ({
+      label: `${parameter.name} (${parameter.type})`,
+      value: parameter.type === 'address' ? addressValue(parameter.value) : parameter.value
+    })) ?? []),
+    ...(!nativeTransfer && !proposal.localDecoded
+      ? [{ label: 'Selector', value: proposal.data.slice(0, 10) }]
+      : [])
+  ]
+  const verification = [
+    { label: 'Safe transaction hash', value: proposal.safeTxHash },
     ...(proposal.integrity?.status === 'mismatch' && proposal.integrity.computedHash
       ? [
           {
             label: 'Locally computed hash',
-            value: proposal.integrity.computedHash,
-            onClick: copy(proposal.integrity.computedHash)
+            value: proposal.integrity.computedHash
           }
-        ]
-      : []),
-    ...proposal.confirmations.map((address) => ({
-      label: 'Confirmed by',
-      value: renderAddress?.(address) ?? address,
-      onClick: renderAddress ? undefined : copy(address)
-    })),
-    ...(proposal.localDecoded
-      ? [
-          { label: 'Decoded method', value: proposal.localDecoded.method },
-          { label: 'ABI source', value: proposal.localDecoded.source },
-          ...proposal.localDecoded.parameters.map((parameter) => ({
-            label: `${parameter.name} (${parameter.type})`,
-            value: parameter.value
-          }))
         ]
       : [])
   ]
@@ -143,16 +128,68 @@ export function SafeProposalDetailsView({
     <section aria-label='Request review'>
       <TransactionInformation
         imageCapability={capabilities.external}
-        originName='Safe watch-only'
+        originName='Safe proposal'
+        clipboard={capabilities.external}
+        actionTitle={
+          nativeTransfer
+            ? `Send ${nativeAmount}`
+            : proposal.localDecoded
+              ? `Call ${proposal.localDecoded.method}`
+              : 'Call contract'
+        }
+        actionNotice={
+          !nativeTransfer && !proposal.localDecoded ? (
+            <Text variant='caption' tone='secondary'>
+              Cannot decode calldata. Inspect the selector and raw bytes.
+            </Text>
+          ) : undefined
+        }
+        statusDetails={
+          <Disclosure
+            label={`${proposal.confirmations.length} / ${deployment.configuration.threshold} confirmations`}
+            open={confirmationsOpen}
+            onToggle={() => setConfirmationsOpen((open) => !open)}
+          >
+            <Stack gap='xsmall'>
+              {proposal.confirmations.length ? (
+                proposal.confirmations.map((address) => <div key={address}>{addressValue(address)}</div>)
+              ) : (
+                <Text variant='caption' tone='secondary'>
+                  No confirmations yet
+                </Text>
+              )}
+            </Stack>
+          </Disclosure>
+        }
+        verification={verification}
+        rawTransaction={JSON.stringify(
+          {
+            safe: proposal.safe,
+            to: proposal.to,
+            value: proposal.value,
+            data: proposal.data,
+            operation: proposal.operation,
+            nonce: proposal.nonce,
+            safeTxGas: proposal.safeTxGas,
+            baseGas: proposal.baseGas,
+            gasPrice: proposal.gasPrice,
+            gasToken: proposal.gasToken,
+            refundReceiver: proposal.refundReceiver
+          },
+          null,
+          2
+        )}
         networkName={networkName}
         networkIcon={networkIcon}
         nativeCurrency={{ symbol }}
         statusLabel={
-          waiting
-            ? 'Waiting for earlier transactions'
-            : hasEnoughConfirmations
-              ? 'Awaiting execution'
-              : 'Pending proposal'
+          stale
+            ? 'Stale proposal'
+            : waiting
+              ? 'Waiting for earlier transactions'
+              : hasEnoughConfirmations
+                ? 'Awaiting execution'
+                : 'Pending proposal'
         }
         effects={effects}
         effectsEmptyText={effectsEmptyText}
@@ -166,41 +203,49 @@ export function SafeProposalDetailsView({
           ) : undefined
         }
         beforeDetails={
-          <Surface padding='medium' tone='raised'>
-            <div
-              aria-label='Proposal integrity'
-              role={proposal.integrity?.status === 'mismatch' ? 'alert' : 'status'}
-            >
-              <Stack gap='small'>
-                <Text
-                  variant='sectionTitle'
-                  tone={proposal.integrity?.status === 'mismatch' ? 'danger' : 'primary'}
-                >
-                  {proposal.integrity?.status === 'mismatch' ? 'Integrity mismatch' : 'Transaction integrity'}
+          <Stack gap='small'>
+            {proposal.integrity?.status !== 'matched' ? (
+              <div aria-label='Proposal integrity' role='alert'>
+                <Stack gap='xsmall'>
+                  <Text variant='sectionTitle' tone='danger'>
+                    {proposal.integrity?.status === 'mismatch'
+                      ? 'Integrity mismatch'
+                      : 'Verification unavailable'}
+                  </Text>
+                  <Text tone='danger' variant='caption'>
+                    {proposal.integrity?.reason ??
+                      'Unable to verify this cached proposal. Refresh the Safe queue.'}
+                  </Text>
+                </Stack>
+              </div>
+            ) : null}
+            {waiting || stale ? (
+              <div role='alert' aria-label='Safe nonce warning'>
+                <Text tone='danger' variant='caption'>
+                  {waiting
+                    ? `Proposal nonce ${proposal.nonce} depends on earlier transactions. Current Safe nonce: ${currentNonce}. Simulation uses current state; earlier proposals are not included.`
+                    : `Proposal nonce ${proposal.nonce} is stale. Current Safe nonce: ${currentNonce}. This proposal can no longer execute.`}
                 </Text>
-                <Text tone={proposal.integrity?.status === 'mismatch' ? 'danger' : 'secondary'}>
-                  {proposal.integrity?.reason ??
-                    'Unable to verify this cached proposal. Refresh the Safe queue.'}
+              </div>
+            ) : null}
+            {proposal.operation === 1 ? (
+              <div role='alert' aria-label='Delegatecall warning'>
+                <Text tone='danger' variant='caption'>
+                  Delegatecall runs code with this Safe&apos;s permissions.
                 </Text>
-                <Text variant='supporting'>Hash calculation uses the service-reported Safe version.</Text>
-                {proposal.data !== '0x' && !proposal.localDecoded ? (
-                  <Text>Unable to decode calldata locally. Inspect the raw bytes below.</Text>
-                ) : null}
-                {proposal.operation === 1 ? (
-                  <Text tone='danger'>Delegatecall runs code with this Safe’s permissions.</Text>
-                ) : null}
-              </Stack>
-            </div>
-          </Surface>
+              </div>
+            ) : null}
+          </Stack>
         }
         details={details}
         wrapDetailValues
         calldata={{ digest: getCalldataDigest(proposal.data), data: proposal.data }}
       >
         <Stack gap='xsmall'>
-          <SigningAccount label={hasEnoughConfirmations ? 'Executing with' : 'Signing with'}>
+          <SigningAccount label='Account'>{addressValue(proposal.safe)}</SigningAccount>
+          <SigningAccount label='Signer'>
             <Selection
-              label='Signing account'
+              label='Signer'
               disabled={!hasSigningAccount}
               menuPlacement='above'
               menuAlign='end'

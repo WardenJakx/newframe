@@ -121,12 +121,15 @@ export type TransactionRequestView = RequestViewBase<'transaction'> & {
   decodedData?: {
     method: string
     signature: string
-    args: Array<{ value: string }>
+    source?: string
+    contractName?: string
+    args: Array<{ value: string; name?: string; type?: string }>
   }
   tokenData?: { decimals?: number; name: string; symbol: string }
   chainData?: { optimism?: { l1Fees: string } }
   simulation?: {
     status: 'loading' | 'success' | 'unavailable' | 'error'
+    error?: string
     effects?: TransactionEffect[]
   }
   tx?: {

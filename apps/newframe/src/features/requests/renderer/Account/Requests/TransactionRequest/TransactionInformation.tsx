@@ -1,4 +1,5 @@
 import { Button } from '@newframe/ui/button'
+import { Disclosure } from '@newframe/ui/disclosure'
 import { Icon } from '@newframe/ui/icon'
 import { Image } from '@newframe/ui/image'
 import { Inline } from '@newframe/ui/inline'
@@ -9,8 +10,12 @@ import { useRef, useState, type ReactNode } from 'react'
 
 import { cva } from '../../../../../../../generated/styled-system/css/cva.js'
 import { sva } from '../../../../../../../generated/styled-system/css/sva.js'
-import type { TokenImageCapability } from '../../../../../../shared/renderer/capabilities'
+import type {
+  ClipboardCapability,
+  TokenImageCapability
+} from '../../../../../../shared/renderer/capabilities'
 import { useTokenImageHydration } from '../../../../../../shared/renderer/hooks/useTokenImageHydration'
+import { CopyButton } from '../../../../../../shared/renderer/ui/CopyButton'
 import { imageSource, persistedImageSource } from '../../../../../asset-data/domain/image'
 import type { NativeCurrency } from '../../../../../networks/domain/state/nativeCurrency'
 import type { TransactionEffect } from '../../../../../transactions/domain'
@@ -33,7 +38,7 @@ export type TransactionInformationDetailRow = {
 type TransactionInformationNativeCurrency = Pick<NativeCurrency, 'image' | 'symbol'>
 
 type TransactionInformationCalldata = {
-  digest: string
+  digest?: string
   data: string
 }
 
@@ -44,6 +49,9 @@ export type TransactionInformationProps = {
   networkIcon?: string
   statusLabel: ReactNode
   notice?: ReactNode
+  statusDetails?: ReactNode
+  actionTitle?: ReactNode
+  actionNotice?: ReactNode
   beforeDetails?: ReactNode
   effects?: TransactionInformationEffect[]
   effectsEmptyText?: ReactNode
@@ -51,6 +59,9 @@ export type TransactionInformationProps = {
   details: TransactionInformationDetailRow[]
   wrapDetailValues?: boolean
   calldata?: TransactionInformationCalldata
+  clipboard?: ClipboardCapability
+  verification?: Array<{ label: string; value: string }>
+  rawTransaction?: string
   nativeCurrency: TransactionInformationNativeCurrency
   children?: ReactNode
 }
@@ -313,13 +324,11 @@ function TransactionEffects({
                 )
               })}
             </Stack>
-          ) : (
-            <Surface padding='medium' radius='small' tone='raised'>
-              <Text align='center' tone='secondary' variant='caption'>
-                {emptyText}
-              </Text>
-            </Surface>
-          )}
+          ) : emptyText ? (
+            <Text tone='secondary' variant='caption'>
+              {emptyText}
+            </Text>
+          ) : null}
         </Surface>
         {notice ? (
           <Surface padding='small' radius='none' tone='card'>
@@ -350,7 +359,7 @@ function DetailValue({ value, wrap }: { value: ReactNode; wrap?: boolean }) {
 }
 
 function DetailRow({ label, value, onClick, wrap }: TransactionInformationDetailRow & { wrap?: boolean }) {
-  if (!value) return null
+  if (value === undefined || value === null || value === '') return null
   const content = (
     <Inline align='center' gap='small' justify='between'>
       <Text shrink={false} tone='secondary' variant='overline'>
@@ -376,37 +385,63 @@ function DetailRow({ label, value, onClick, wrap }: TransactionInformationDetail
   )
 }
 
-function CalldataDetails({ calldata }: { calldata: TransactionInformationCalldata }) {
+function CalldataDetails({
+  calldata,
+  clipboard
+}: {
+  calldata: TransactionInformationCalldata
+  clipboard?: ClipboardCapability
+}) {
   const [open, setOpen] = useState(false)
 
   return (
     <Stack gap='xsmall'>
-      <Button
-        appearance='row'
-        expanded={open}
-        label={`${open ? 'Hide' : 'Show'} full calldata for calldata digest ${calldata.digest}`}
-        onPress={() => setOpen((current) => !current)}
-        size='medium'
-        width='full'
-      >
-        <Stack gap='xsmall' grow>
-          <Inline align='center' gap='small' justify='between'>
-            <Text shrink={false} tone='secondary' variant='overline'>
-              Calldata digest
+      <Inline gap='xsmall' align='center'>
+        <Button
+          appearance='row'
+          expanded={open}
+          label={`${open ? 'Hide' : 'Show'} full calldata${calldata.digest ? ` for calldata digest ${calldata.digest}` : ''}`}
+          onPress={() => setOpen((current) => !current)}
+          size='medium'
+          width='full'
+        >
+          <Stack gap='xsmall' grow>
+            <Inline align='center' gap='small' justify='between'>
+              <Text shrink={false} tone='secondary' variant='overline'>
+                Calldata digest
+              </Text>
+              <Icon name={open ? 'chevronUp' : 'chevronDown'} size='small' tone='muted' />
+            </Inline>
+            <Text as='span' variant='microCode'>
+              <code className={calldataRecipe()}>{calldata.digest || 'Digest unavailable'}</code>
             </Text>
-            <Icon name={open ? 'chevronUp' : 'chevronDown'} size='small' tone='muted' />
-          </Inline>
-          <Text as='span' variant='microCode'>
-            <code className={calldataRecipe()}>{calldata.digest}</code>
-          </Text>
-        </Stack>
-      </Button>
+          </Stack>
+        </Button>
+        {clipboard && calldata.digest ? (
+          <CopyButton
+            clipboard={clipboard}
+            value={calldata.digest}
+            label='Copy calldata digest'
+            copiedLabel='Calldata digest copied'
+          />
+        ) : null}
+      </Inline>
       {open ? (
         <Surface padding='small' radius='small' tone='raised'>
           <Stack gap='xsmall'>
-            <Text tone='secondary' variant='overline'>
-              Full calldata
-            </Text>
+            <Inline gap='xsmall' justify='between' align='center'>
+              <Text tone='secondary' variant='overline'>
+                Full calldata
+              </Text>
+              {clipboard ? (
+                <CopyButton
+                  clipboard={clipboard}
+                  value={calldata.data}
+                  label='Copy full calldata'
+                  copiedLabel='Calldata copied'
+                />
+              ) : null}
+            </Inline>
             <Text as='span' variant='microCode'>
               <code className={calldataRecipe()}>{calldata.data}</code>
             </Text>
@@ -424,6 +459,9 @@ export default function TransactionInformation({
   networkIcon,
   statusLabel,
   notice,
+  statusDetails,
+  actionTitle,
+  actionNotice,
   beforeDetails,
   effects,
   effectsEmptyText,
@@ -431,9 +469,13 @@ export default function TransactionInformation({
   details,
   wrapDetailValues,
   calldata,
+  clipboard,
+  verification,
+  rawTransaction,
   nativeCurrency,
   children
 }: TransactionInformationProps) {
+  const [rawOpen, setRawOpen] = useState(false)
   return (
     <div className={transactionRecipe()}>
       <Stack gap='small' grow>
@@ -449,6 +491,7 @@ export default function TransactionInformation({
                   {statusLabel}
                 </Text>
               </output>
+              {statusDetails}
               {notice ? (
                 <div role='alert'>
                   <Text tone='danger' variant='caption'>
@@ -477,20 +520,76 @@ export default function TransactionInformation({
         <Surface padding='none' radius='card' tone='card'>
           <section aria-label='Transaction details' className={sectionRecipe()}>
             <div className={sectionHeaderRecipe()}>
-              <Text tone='secondary' variant='overline'>
-                Request details
+              <Text variant={actionTitle ? 'sectionTitle' : 'overline'}>
+                {actionTitle || 'Request details'}
               </Text>
             </div>
             <Surface padding='small' radius='none' tone='card'>
               <Stack gap='xsmall'>
+                {actionNotice}
                 {details.map((detail, index) => (
                   <DetailRow key={`${detail.label}-${index}`} {...detail} wrap={wrapDetailValues} />
                 ))}
-                {calldata ? <CalldataDetails calldata={calldata} /> : null}
               </Stack>
             </Surface>
           </section>
         </Surface>
+
+        {calldata || verification?.length || rawTransaction ? (
+          <Surface padding='small' radius='card' tone='card'>
+            <section aria-label='Verification details'>
+              <Stack gap='xsmall'>
+                <Text tone='secondary' variant='overline'>
+                  Verification
+                </Text>
+                {verification?.map((detail, index) => (
+                  <Surface key={`${detail.label}-${index}`} padding='small' radius='small' tone='raised'>
+                    <Stack gap='xsmall'>
+                      <Inline gap='xsmall' align='center' justify='between'>
+                        <Text tone='secondary' variant='overline'>
+                          {detail.label}
+                        </Text>
+                        {clipboard ? (
+                          <CopyButton
+                            clipboard={clipboard}
+                            value={detail.value}
+                            label={`Copy ${detail.label.toLowerCase()}`}
+                            copiedLabel={`${detail.label} copied`}
+                          />
+                        ) : null}
+                      </Inline>
+                      <Text as='span' variant='microCode'>
+                        <span className={calldataRecipe()}>{detail.value}</span>
+                      </Text>
+                    </Stack>
+                  </Surface>
+                ))}
+                {calldata ? <CalldataDetails calldata={calldata} clipboard={clipboard} /> : null}
+                {rawTransaction ? (
+                  <Disclosure
+                    label='Raw transaction'
+                    open={rawOpen}
+                    onToggle={() => setRawOpen((open) => !open)}
+                  >
+                    <Stack gap='xsmall'>
+                      {clipboard ? (
+                        <CopyButton
+                          clipboard={clipboard}
+                          value={rawTransaction}
+                          label='Copy raw transaction'
+                          copiedLabel='Raw transaction copied'
+                        />
+                      ) : null}
+                      <Text as='span' variant='microCode'>
+                        <code className={calldataRecipe()}>{rawTransaction}</code>
+                      </Text>
+                    </Stack>
+                  </Disclosure>
+                ) : null}
+              </Stack>
+            </section>
+          </Surface>
+        ) : null}
 
         {children ? <div className={controlsRecipe()}>{children}</div> : null}
       </Stack>

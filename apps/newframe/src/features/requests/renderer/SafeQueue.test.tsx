@@ -104,11 +104,14 @@ it('selects disconnected owners in bottom controls and preserves Safe identity a
   capabilities.safe.simulate.mockReturnValueOnce(pending.promise)
   const { user } = render(<RequestsOverlay capabilities={capabilities} onBack={() => {}} />)
   await user.click(screen.getByRole('button', { name: `Open Safe proposal ${hash} on chain 1` }))
-  expect(screen.getByRole('button', { name: 'Signing account' }).textContent).toContain('Choose an account')
-  expect(screen.getByText('Signing with')).toBeTruthy()
+  expect(screen.getByRole('button', { name: 'Signer' }).textContent).toContain('Choose an account')
+  expect(screen.getByText('Signer')).toBeTruthy()
   expect(screen.queryByText('Owner account')).toBeNull()
   const details = screen.getByLabelText('Transaction details')
-  const chooser = screen.getByRole('button', { name: 'Signing account' })
+  const chooser = screen.getByRole('button', { name: 'Signer' })
+  const account = screen.getByText('Account')
+  expect(details.compareDocumentPosition(account) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(account.compareDocumentPosition(chooser) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   expect(details.compareDocumentPosition(chooser) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   expect(
     chooser.compareDocumentPosition(screen.getByRole('button', { name: 'Sign' })) &
@@ -116,21 +119,21 @@ it('selects disconnected owners in bottom controls and preserves Safe identity a
   ).toBeTruthy()
   expectSafeSubmissionDisabled()
   const connected = { ...hardware, signerAttached: true, signerStatus: 'ok', status: 'ready' as const }
-  await user.click(screen.getByRole('button', { name: 'Signing account' }))
+  await user.click(screen.getByRole('button', { name: 'Signer' }))
   expect(within(screen.getByRole('option', { name: /Hot owner/ })).getByText('Hot Signer')).toBeTruthy()
   await user.click(screen.getByRole('option', { name: /Ledger owner/ }))
-  expect(screen.getByRole('button', { name: 'Signing account' }).textContent).toContain('Ledger owner')
+  expect(screen.getByRole('button', { name: 'Signer' }).textContent).toContain('Ledger owner')
   const selectedState = fixture.state.wallet.getState()
   expect(selectedState.currentAccount).toBe(address)
   expect(selectedState.accounts[address].address).toBe(address)
   expect(selectedState.accounts[address].signer).toBe('watch')
   expect(selectedState.accounts[hot.accountId].signer).toBe('Hot owner-signer')
   expectSafeSubmissionDisabled('No signer attached')
-  expect(screen.getByRole('button', { name: 'Signing account' }).textContent).toContain('Ledger owner')
-  await user.click(screen.getByRole('button', { name: 'Signing account' }))
+  expect(screen.getByRole('button', { name: 'Signer' }).textContent).toContain('Ledger owner')
+  await user.click(screen.getByRole('button', { name: 'Signer' }))
   expect(screen.getByText('Ledger · disconnected')).toBeTruthy()
   await act(async () => fixture.state.reset(stateWithOwners([hot, connected])))
-  expect(screen.getByRole('button', { name: 'Signing account' }).textContent).toContain('Ledger owner')
+  expect(screen.getByRole('button', { name: 'Signer' }).textContent).toContain('Ledger owner')
   const locked = stateWithOwners(
     [hot, connected].map((owner) => ({ ...owner, status: 'unavailable', signerStatus: 'Wallet locked' }))
   )
@@ -138,7 +141,7 @@ it('selects disconnected owners in bottom controls and preserves Safe identity a
   await act(async () => fixture.state.reset(locked))
   expect(screen.getByText('Ledger · Wallet locked')).toBeTruthy()
   expect(screen.queryByText(/Connected and ready to sign/)).toBeNull()
-  await user.click(screen.getByRole('button', { name: 'Signing account' }))
+  await user.click(screen.getByRole('button', { name: 'Signer' }))
   expectSafeSubmissionDisabled()
   const detached = stateWithOwners(
     [hot, connected].map((owner) => ({
@@ -149,11 +152,11 @@ it('selects disconnected owners in bottom controls and preserves Safe identity a
     }))
   )
   await act(async () => fixture.state.reset(detached))
-  expect(screen.getByRole('button', { name: 'Signing account' }).textContent).toContain('Ledger owner')
-  expect(screen.getByRole('button', { name: 'Signing account' }).hasAttribute('disabled')).toBe(false)
+  expect(screen.getByRole('button', { name: 'Signer' }).textContent).toContain('Ledger owner')
+  expect(screen.getByRole('button', { name: 'Signer' }).hasAttribute('disabled')).toBe(false)
   expectSafeSubmissionDisabled('No signer attached')
   await act(async () => fixture.state.reset(locked))
-  expect(screen.getByRole('button', { name: 'Signing account' }).textContent).toContain('Ledger owner')
+  expect(screen.getByRole('button', { name: 'Signer' }).textContent).toContain('Ledger owner')
   await act(async () => pending.resolve(success('Owner-independent preview')))
   expect(screen.getByText('Owner-independent preview')).toBeTruthy()
   expectSafeSubmissionDisabled()
@@ -179,21 +182,21 @@ it('allows locked and disconnected owners while keeping watch-only owners disabl
   fixture.state.reset(stateWithOwners(owners))
   const { user } = render(<RequestsOverlay capabilities={createCapabilityFake()} onBack={() => {}} />)
   await user.click(screen.getByRole('button', { name: `Open Safe proposal ${hash} on chain 1` }))
-  expect(screen.getByRole('button', { name: 'Signing account' }).textContent).toContain('Choose an account')
-  await user.click(screen.getByRole('button', { name: 'Signing account' }))
+  expect(screen.getByRole('button', { name: 'Signer' }).textContent).toContain('Choose an account')
+  await user.click(screen.getByRole('button', { name: 'Signer' }))
   const locked = screen.getByRole('option', { name: /Locked owner/ })
   expect(locked.hasAttribute('disabled')).toBe(false)
   expect(screen.getByRole('option', { name: /Detached owner/ }).hasAttribute('disabled')).toBe(false)
   expect(screen.getByRole('option', { name: /Watch owner/ }).hasAttribute('disabled')).toBe(true)
   await user.click(screen.getByRole('option', { name: /Watch owner/ }))
-  expect(screen.getByRole('button', { name: 'Signing account' }).textContent).toContain('Choose an account')
+  expect(screen.getByRole('button', { name: 'Signer' }).textContent).toContain('Choose an account')
   expect(within(locked).getByText('Hot Signer · Unlock your Hot Signer')).toBeTruthy()
   await user.click(locked)
-  expect(screen.getByRole('button', { name: 'Signing account' }).textContent).toContain('Locked owner')
+  expect(screen.getByRole('button', { name: 'Signer' }).textContent).toContain('Locked owner')
   expectSafeSubmissionDisabled()
-  await user.click(screen.getByRole('button', { name: 'Signing account' }))
+  await user.click(screen.getByRole('button', { name: 'Signer' }))
   await user.click(screen.getByRole('option', { name: /Detached owner/ }))
-  expect(screen.getByRole('button', { name: 'Signing account' }).textContent).toContain('Detached owner')
+  expect(screen.getByRole('button', { name: 'Signer' }).textContent).toContain('Detached owner')
   expectSafeSubmissionDisabled('No signer attached')
 })
 
@@ -206,7 +209,7 @@ it.each(['account removed', 'account recreated', 'foreign profile', 'owner remov
     const open = () =>
       user.click(screen.getByRole('button', { name: `Open Safe proposal ${hash} on chain 1` }))
     await open()
-    expect(screen.getByRole('button', { name: 'Signing account' }).textContent).toContain('Selected owner')
+    expect(screen.getByRole('button', { name: 'Signer' }).textContent).toContain('Selected owner')
     const next = stateWithOwners([owner])
     if (change === 'account removed') delete next.accounts[owner.accountId]
     if (change === 'account recreated') {
@@ -218,14 +221,14 @@ it.each(['account removed', 'account recreated', 'foreign profile', 'owner remov
     if (change === 'watch-only')
       next.accounts[address].safeOwners = { '1': [{ ...owner, signerAttached: false, status: 'watch-only' }] }
     await act(async () => fixture.state.reset(next))
-    expect(screen.queryByRole('button', { name: 'Signing account' })?.textContent ?? '').not.toContain(
+    expect(screen.queryByRole('button', { name: 'Signer' })?.textContent ?? '').not.toContain(
       'Selected owner'
     )
     await act(async () => fixture.state.reset(stateWithOwners([ownerAccount('Selected owner')])))
-    expect(screen.getByRole('button', { name: 'Signing account' }).textContent).toContain('Choose an account')
+    expect(screen.getByRole('button', { name: 'Signer' }).textContent).toContain('Choose an account')
     await user.click(screen.getByRole('button', { name: 'Back to requests' }))
     await open()
-    expect(screen.getByRole('button', { name: 'Signing account' }).textContent).toContain('Selected owner')
+    expect(screen.getByRole('button', { name: 'Signer' }).textContent).toContain('Selected owner')
   }
 )
 
@@ -238,15 +241,15 @@ it('uses each deployment’s owners and starts a fresh choice after the Safe acc
   fixture.state.reset(next)
   const { user } = render(<RequestsOverlay capabilities={createCapabilityFake()} onBack={() => {}} />)
   await user.click(screen.getByRole('button', { name: `Open Safe proposal ${hash} on chain 1` }))
-  expect(screen.getByRole('button', { name: 'Signing account' }).textContent).toContain('Ethereum owner')
+  expect(screen.getByRole('button', { name: 'Signer' }).textContent).toContain('Ethereum owner')
   await user.click(screen.getByRole('button', { name: 'Back to requests' }))
   await user.click(screen.getByRole('button', { name: `Open Safe proposal ${hash} on chain 10` }))
-  expect(screen.getByRole('button', { name: 'Signing account' }).textContent).toContain('Optimism owner')
+  expect(screen.getByRole('button', { name: 'Signer' }).textContent).toContain('Optimism owner')
   const recreated = structuredClone(next)
   recreated.accounts[address].created = 'safe:2'
   recreated.accounts[address].safeOwners!['10'] = [first, second]
   await act(async () => fixture.state.reset(recreated))
-  expect(screen.getByRole('button', { name: 'Signing account' }).textContent).toContain('Choose an account')
+  expect(screen.getByRole('button', { name: 'Signer' }).textContent).toContain('Choose an account')
 })
 
 it('defaults a sole disconnected signing account and retains it when the signer attaches', async () => {
@@ -258,15 +261,15 @@ it('defaults a sole disconnected signing account and retains it when the signer 
   fixture.state.reset(stateWithOwners([locked]))
   const { user } = render(<RequestsOverlay capabilities={createCapabilityFake()} onBack={() => {}} />)
   await user.click(screen.getByRole('button', { name: `Open Safe proposal ${hash} on chain 1` }))
-  expect(screen.getByRole('button', { name: 'Signing account' }).textContent).toContain('Locked owner')
-  expect(screen.getByRole('button', { name: 'Signing account' }).hasAttribute('disabled')).toBe(false)
+  expect(screen.getByRole('button', { name: 'Signer' }).textContent).toContain('Locked owner')
+  expect(screen.getByRole('button', { name: 'Signer' }).hasAttribute('disabled')).toBe(false)
   expectSafeSubmissionDisabled('No signer attached')
   await act(async () => fixture.state.reset(stateWithOwners([{ ...locked, signerAttached: true }])))
-  expect(screen.getByRole('button', { name: 'Signing account' }).textContent).toContain('Locked owner')
-  await user.click(screen.getByRole('button', { name: 'Signing account' }))
+  expect(screen.getByRole('button', { name: 'Signer' }).textContent).toContain('Locked owner')
+  await user.click(screen.getByRole('button', { name: 'Signer' }))
   expect(screen.getByText('Hot Signer · Wallet locked')).toBeTruthy()
   await user.click(screen.getByRole('option', { name: /Locked owner/ }))
-  expect(screen.getByRole('button', { name: 'Signing account' }).textContent).toContain('Locked owner')
+  expect(screen.getByRole('button', { name: 'Signer' }).textContent).toContain('Locked owner')
   expectSafeSubmissionDisabled()
   expect(screen.getByLabelText('Transaction details')).toBeTruthy()
 })
@@ -286,17 +289,17 @@ it('keeps confirmed owners selectable as the proposal advances to execution', as
   fixture.state.reset(next)
   const { user } = render(<RequestsOverlay capabilities={createCapabilityFake()} onBack={() => {}} />)
   await user.click(screen.getByRole('button', { name: `Open Safe proposal ${hash} on chain 1` }))
-  expect(screen.getByText('Signing with')).toBeTruthy()
+  expect(screen.getByText('Signer')).toBeTruthy()
   expectSafeSubmissionDisabled()
-  await user.click(screen.getByRole('button', { name: 'Signing account' }))
+  await user.click(screen.getByRole('button', { name: 'Signer' }))
   await user.click(screen.getByRole('option', { name: /Ledger owner/ }))
 
   const confirmed = structuredClone(next)
   confirmed.accounts[address].safe!['1']!.pending![0]!.confirmations = [first.address, second.address]
   await act(async () => fixture.state.reset(confirmed))
   expect(screen.getByText('Awaiting execution')).toBeTruthy()
-  expect(screen.getByText('Executing with')).toBeTruthy()
-  const chooser = screen.getByRole('button', { name: 'Signing account' })
+  expect(screen.getByText('Signer')).toBeTruthy()
+  const chooser = screen.getByRole('button', { name: 'Signer' })
   expect(chooser.hasAttribute('disabled')).toBe(false)
   expect(within(chooser).getByText('Ledger owner')).toBeTruthy()
   expect(screen.getByRole('button', { name: 'Execute' }).hasAttribute('disabled')).toBe(true)
@@ -312,7 +315,7 @@ it('keeps confirmed owners selectable as the proposal advances to execution', as
     status: 'unavailable'
   }
   await act(async () => fixture.state.reset(disconnected))
-  expect(screen.getByText('Executing with')).toBeTruthy()
+  expect(screen.getByText('Signer')).toBeTruthy()
   expect(screen.getByText('Awaiting execution')).toBeTruthy()
   expect(within(chooser).getByText('Ledger owner')).toBeTruthy()
   expectSafeSubmissionDisabled('No signer attached')
@@ -348,7 +351,7 @@ it.each(['empty', 'watch-only', 'detached', 'locked'] as const)(
     fixture.state.reset(stateWithOwners(owners))
     const { user } = render(<RequestsOverlay capabilities={createCapabilityFake()} onBack={() => {}} />)
     await user.click(screen.getByRole('button', { name: `Open Safe proposal ${hash} on chain 1` }))
-    const chooser = screen.getByRole('button', { name: 'Signing account' })
+    const chooser = screen.getByRole('button', { name: 'Signer' })
     expect(chooser.hasAttribute('disabled')).toBe(kind === 'empty' || kind === 'watch-only')
     if (kind === 'locked' || kind === 'detached') {
       expect(within(chooser).getByText('Owner')).toBeTruthy()
@@ -441,7 +444,9 @@ it('loads simulated effects into Estimated changes without owner confirmations',
   expect(effects.getByLabelText('Incoming asset effect')).toBeTruthy()
   expect(effects.getByLabelText('Neutral asset effect')).toBeTruthy()
   expect(screen.getByText('Waiting for earlier transactions')).toBeTruthy()
-  expect(effects.getByText('Uses current state. Earlier proposals are not included.')).toBeTruthy()
+  expect(screen.getByRole('alert', { name: 'Safe nonce warning' }).textContent).toMatch(
+    /Simulation uses current state; earlier proposals are not included/
+  )
 })
 
 it.each([
@@ -476,9 +481,7 @@ it.each([
     )
     const effects = within(screen.getByLabelText('Transaction effects'))
     if (simulation.status === 'success') {
-      expect(
-        effects.getByText('No supported asset or allowance changes detected. Other changes may still occur.')
-      ).toBeTruthy()
+      expect(effects.getByText('No supported asset changes detected.')).toBeTruthy()
       expect(screen.getByText('Pending proposal')).toBeTruthy()
       expect(screen.queryByText('Waiting for earlier transactions')).toBeNull()
       expect(effects.queryByText(/Earlier proposals/)).toBeNull()
@@ -593,7 +596,7 @@ it('refreshes cached proposals, distinguishes same-nonce hashes, and removes van
   expect(capabilities.safe.refresh).toHaveBeenLastCalledWith({ accountId: address, force: true })
   await user.click(screen.getByRole('button', { name: `Open Safe proposal ${hash} on chain 1` }))
   expect(screen.getByText('Waiting for earlier transactions')).toBeTruthy()
-  expect(screen.getByText('Delegatecall')).toBeTruthy()
+  expect(screen.getByRole('alert', { name: 'Delegatecall warning' })).toBeTruthy()
   expect(screen.getByText('1.0 native')).toBeTruthy()
   expect(screen.getByLabelText('Transaction effects').textContent).toContain('Simulation unavailable.')
   expect(screen.queryByText('Approval threshold')).toBeNull()
@@ -601,14 +604,14 @@ it('refreshes cached proposals, distinguishes same-nonce hashes, and removes van
   expect(screen.queryByText('Owner')).toBeNull()
   expect(screen.queryByText('Last refreshed')).toBeNull()
   expect(screen.queryByText('Network')).toBeNull()
-  expect(screen.getByLabelText('Transaction details').textContent?.startsWith('Request detailsTo')).toBe(true)
+  expect(screen.getByLabelText('Transaction details').textContent).toMatch(/Call contract.*On contract/)
   expect(screen.getAllByRole('button', { name: /^Back/ })).toHaveLength(1)
-  expect(screen.queryByText('Safe proposal')).toBeNull()
+  expect(screen.getByText('Safe proposal')).toBeTruthy()
   await user.click(screen.getByRole('button', { name: 'Back to requests' }))
   expect(screen.queryByLabelText('Request review')).toBeNull()
   await user.click(screen.getByRole('button', { name: `Open Safe proposal ${hash} on chain 1` }))
   await user.click(screen.getByRole('button', { name: /Show full calldata/ }))
-  expect(screen.getByText('0x1234')).toBeTruthy()
+  expect(screen.getAllByText('0x1234')).toHaveLength(2)
   expect(screen.getByText('Estimated changes')).toBeTruthy()
   expectSafeSubmissionDisabled()
   await act(async () => fixture.state.reset(state({ ...deployment, pending: [] })))
@@ -737,8 +740,8 @@ it('shows a prominent mismatch, local interpretation and the shared calldata dig
     'Integrity mismatch'
   )
   expect(screen.getByText('Locally computed hash')).toBeTruthy()
-  expect(screen.getByText('transfer')).toBeTruthy()
-  expect(screen.getByText('Local function selector')).toBeTruthy()
+  expect(screen.getByText('Call transfer')).toBeTruthy()
+  expect(screen.queryByText('Unverified decoding')).toBeNull()
   expect(screen.queryByText('forged')).toBeNull()
   const { getCalldataDigest } = await import('../../../shared/domain/calldata')
   expect(screen.getByText(getCalldataDigest('0x1234'))).toBeTruthy()
@@ -787,3 +790,86 @@ it('keeps RPC and Safe requests together and routes the single back button throu
   await user.click(screen.getByRole('button', { name: 'Back' }))
   expect(closed).toBe(true)
 })
+
+it('keeps matching Safe checks silent and exposes raw integer arguments, confirmations and signing fields on demand', async () => {
+  const capabilities = createCapabilityFake()
+  const proposal = {
+    ...deployment.pending![0]!,
+    operation: 0 as const,
+    value: '0',
+    nonce: '3',
+    confirmations: [address],
+    integrity: { status: 'matched' as const, reason: 'Hash matches' },
+    localDecoded: {
+      method: 'approve',
+      source: 'Local function selector',
+      parameters: [{ name: 'amount', type: 'uint256', value: '1000000' }]
+    }
+  }
+  const { user } = render(
+    <SafeProposalDetailsView
+      deployment={deployment}
+      proposal={proposal}
+      simulation={{ status: 'success', effects: [], ...previewContext, currentNonce: '3' }}
+      networkName='Ethereum'
+      symbol='ETH'
+      capabilities={capabilities}
+    />
+  )
+  const summary = screen.getByLabelText('Request summary')
+  const effects = screen.getByLabelText('Transaction effects')
+  expect(summary.textContent).not.toContain('Account')
+  expect(summary.compareDocumentPosition(effects) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  const account = screen.getByText('Account')
+  expect(
+    screen.getByLabelText('Verification details').compareDocumentPosition(account) &
+      Node.DOCUMENT_POSITION_FOLLOWING
+  ).toBeTruthy()
+  expect(screen.queryByLabelText('Proposal integrity')).toBeNull()
+  expect(screen.queryByLabelText('Safe nonce warning')).toBeNull()
+  expect(screen.queryByText('Native value')).toBeNull()
+  expect(screen.queryByText('ABI source')).toBeNull()
+  expect(screen.getByLabelText('Transaction details').textContent).toMatch(
+    /Call approve.*On contract.*amount \(uint256\).*1000000/
+  )
+  expect(screen.getByLabelText('Transaction details').textContent).not.toMatch(/allowance|ETH|Nonce/i)
+  await user.click(screen.getByRole('button', { name: '1 / 1 confirmations' }))
+  expect(within(summary).getAllByText(address)).toHaveLength(1)
+  await user.click(screen.getByRole('button', { name: 'Copy safe transaction hash' }))
+  expect(capabilities.external.writeText).toHaveBeenCalledWith(hash)
+  await user.click(screen.getByRole('button', { name: 'Raw transaction' }))
+  await user.click(screen.getByRole('button', { name: 'Copy raw transaction' }))
+  expect(capabilities.external.writeText).toHaveBeenLastCalledWith(expect.stringContaining('"nonce": "3"'))
+  expectSafeSubmissionDisabled('Execute')
+})
+
+it.each([
+  {
+    nonce: '4',
+    status: 'matched' as const,
+    nonceText: /depends on earlier transactions.*Current Safe nonce: 3.*Simulation uses current state/
+  },
+  { nonce: '2', status: 'unavailable' as const, nonceText: /is stale.*Current Safe nonce: 3/ },
+  { nonce: '4', status: 'mismatch' as const, nonceText: /depends on earlier transactions/ }
+])(
+  'shows independent delegatecall, nonce and integrity warnings for $status',
+  ({ nonce, status, nonceText }) => {
+    render(
+      <SafeProposalDetailsView
+        deployment={deployment}
+        proposal={{ ...deployment.pending![0]!, nonce, integrity: { status, reason: 'Verification reason' } }}
+        simulation={{ status: 'success', effects: [], ...previewContext, currentNonce: '3' }}
+        networkName='Ethereum'
+        symbol='ETH'
+        capabilities={createCapabilityFake()}
+      />
+    )
+    expect(screen.getByRole('alert', { name: 'Delegatecall warning' })).toBeTruthy()
+    expect(screen.getByRole('alert', { name: 'Safe nonce warning' }).textContent).toMatch(nonceText)
+    expect(screen.queryByLabelText('Proposal integrity') !== null).toBe(status !== 'matched')
+    if (status !== 'matched')
+      expect(screen.getByRole('alert', { name: 'Proposal integrity' }).textContent).toContain(
+        'Verification reason'
+      )
+  }
+)
