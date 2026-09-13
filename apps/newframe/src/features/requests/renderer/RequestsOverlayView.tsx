@@ -1,5 +1,6 @@
 import { Text } from '@newframe/ui/text'
 
+import type { AirGapRequestReference } from '../../../platform/signing/domain/airgap'
 import { TrayOverlay } from '../../../shared/renderer/ui/TrayOverlay'
 import Requests from './Account/Requests'
 import type { RequestRendererCapabilities } from './requestCapabilities'
@@ -11,14 +12,18 @@ export function RequestsOverlayView({
   accountId,
   capabilities,
   showRpcRequests = true,
-  onBack
+  onBack,
+  onRecoverSigner,
+  onAirGapSigning
 }: {
   accountId: string
   showRpcRequests?: boolean
   capabilities: Pick<RequestRendererCapabilities, 'panel' | 'review' | 'safe' | 'external'>
   onBack: () => void
+  onRecoverSigner?: (signerId: string) => void
+  onAirGapSigning?: (reference: AirGapRequestReference) => void
 }) {
-  const safe = useSafeQueue({ accountId, capabilities })
+  const safe = useSafeQueue({ accountId, capabilities, onRecoverSigner, onAirGapSigning })
   return (
     <TrayOverlay
       key={safe.review ? `${safe.review.deployment.chainId}:${safe.review.proposal.safeTxHash}` : 'requests'}

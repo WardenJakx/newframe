@@ -12,7 +12,10 @@ import type { TokenData } from '../../../../platform/chain-rpc/contracts/erc20.j
 import { getSignerType, Type as SignerType } from '../../../../platform/signing/domain/index.js'
 import { getCalldataDigest, getEip712Digests } from '../../../../platform/signing/signatures/digests.js'
 import * as sigParser from '../../../../platform/signing/signatures/index.js'
-import type { SigningUiContext } from '../../../../platform/signing/signers/Signer/index.js'
+import type {
+  SigningApprovalContext,
+  SigningUiContext
+} from '../../../../platform/signing/signers/Signer/index.js'
 import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.js'
 import type { Origin, Permission } from '../../../../platform/state-store/state/index.js'
 import { isNonZeroHex } from '../../../../shared/domain/hex.js'
@@ -347,6 +350,48 @@ export class Provider extends EventEmitter {
     })
   }
 
+  private signingApproval(request: AccountRequest, ui?: SigningUiContext): SigningApprovalContext {
+    const accountId = request.account.toLowerCase()
+    const requestId = request.handlerId
+    const identity = (value: AccountRequest) =>
+      JSON.stringify(
+        [
+          value.handlerId,
+          value.type,
+          value.account.toLowerCase(),
+          value.payload,
+          'data' in value ? value.data : undefined,
+          'typedMessage' in value ? value.typedMessage : undefined,
+          value.authorization
+        ],
+        (_key, item) => (typeof item === 'function' ? undefined : item)
+      )
+    const expected = identity(request)
+    const typed = 'typedMessage' in request ? (request as SignTypedDataRequest).typedMessage : undefined
+    const chainId = Number(
+      request.type === 'transaction'
+        ? (request as TransactionRequest).data.chainId
+        : typed && !Array.isArray(typed.data)
+          ? (typed.data.domain?.chainId ?? this.store.getState().main.origins[request.origin]?.chain.id ?? 1)
+          : (this.store.getState().main.origins[request.origin]?.chain.id ?? 1)
+    )
+    return {
+      requestId,
+      chainId,
+      ...(ui ? { ui } : {}),
+      isActive: () => {
+        const main = this.store.getState().main
+        const canonical = main.accounts[accountId]?.requests[requestId] as AccountRequest | undefined
+        return (
+          main.currentAccount === accountId &&
+          canonical?.status === 'pending' &&
+          canonical.authorization?.decision === 'prompt' &&
+          identity(canonical) === expected
+        )
+      }
+    }
+  }
+
   approveSign(req: AccountRequest, cb: Callback<string>, context?: SigningUiContext) {
     const [address, rawMessage] = req.payload.params
     const message = encodePersonalSignMessage(rawMessage)
@@ -368,12 +413,12 @@ export class Provider extends EventEmitter {
           })
         }
       },
-      context ? { ...context, requestId: req.handlerId } : undefined
+      this.signingApproval(req, context)
     )
   }
 
   approveSignTypedData(req: SignTypedDataRequest, cb: Callback<string>, context?: SigningUiContext) {
-    const { typedMessage } = req
+    const typedMessage = structuredClone(req.typedMessage)
     const [address] = req.payload.params
 
     this.accounts.signTypedData(
@@ -396,7 +441,7 @@ export class Provider extends EventEmitter {
           }
         }
       },
-      context ? { ...context, requestId: req.handlerId } : undefined
+      this.signingApproval(req, context)
     )
   }
 
@@ -422,7 +467,7 @@ export class Provider extends EventEmitter {
   }
 
   signAndSend(req: TransactionRequest, cb: Callback<string>, context?: SigningUiContext) {
-    const rawTx = req.data
+    const rawTx = structuredClone(req.data)
     const maxTotalFee = maxFee(rawTx)
 
     if (feeTotalOverMax(rawTx, maxTotalFee)) {
@@ -473,7 +518,7 @@ export class Provider extends EventEmitter {
             })
           }
         },
-        context ? { ...context, requestId: req.handlerId } : undefined
+        this.signingApproval(req, context)
       )
     }
   }

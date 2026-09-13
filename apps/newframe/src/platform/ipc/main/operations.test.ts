@@ -82,7 +82,15 @@ const profiles = fakes('create', 'delete', 'moveAccount', 'movableAccounts', 're
 const security = fakes('configure', 'lock', 'reset', 'status', 'unlock')
 const send = fakes('dispose', 'submit')
 const settings = fakes('update')
-const safes = fakes('import', 'refresh', 'discoverNetworks', 'simulate', 'dispose')
+const safes = fakes(
+  'import',
+  'refresh',
+  'discoverNetworks',
+  'simulate',
+  'confirm',
+  'confirmationStatus',
+  'dispose'
+)
 const tokens = fakes('add', 'lookup', 'remove')
 const trade = fakes('cancel', 'dispose', 'prepare', 'quote', 'release', 'submit')
 const servicesWithMocks = [
@@ -550,10 +558,10 @@ it('binds AirGap and approval contexts to the authorized sender lifecycle', asyn
     received.push(context)
     return true
   }
-  services.requests.approve = (_id, context) => {
+  services.requests.approve = mock((_id, context) => {
     received.push(context!)
     return true
-  }
+  })
   const dispatcher = createOperationDispatcher(services)
   const sender = Object.assign(new EventEmitter(), {
     destroyed: false,
@@ -590,5 +598,57 @@ it('binds AirGap and approval contexts to the authorized sender lifecycle', asyn
   expect(await dispatcher.dispatchCommand(liveEvent, start)).toMatchObject({
     ok: false,
     error: 'unauthorized'
+  })
+})
+
+it('authorizes strict Safe confirmation identities and binds approval/status to the calling window', async () => {
+  const command = {
+    type: 'account.safe-confirm',
+    operationId: 'safe-confirm',
+    accountId: '0x1111111111111111111111111111111111111111',
+    ownerId: '0x2222222222222222222222222222222222222222',
+    chainId: 1,
+    safeTxHash: `0x${'a'.repeat(64)}`
+  }
+  const { operationId: _operationId, ...identity } = command
+  const query = { ...identity, type: 'safe.confirmation-status' }
+  authorizeRenderer.mockReturnValue(sideTrayContext)
+  expect(await dispatcher.dispatchCommand(event, command)).toEqual({ ok: false, error: 'unauthorized' })
+  expect(await dispatcher.dispatchQuery(event, query)).toEqual({ ok: false, error: 'unauthorized' })
+  authorizeRenderer.mockReturnValue(trayContext)
+  expect(await dispatcher.dispatchCommand(event, { ...command, signature: '0xprivate' })).toEqual({
+    ok: false,
+    error: 'invalid_command'
+  })
+  expect(await dispatcher.dispatchQuery(event, { ...query, operationId: 'forged' })).toEqual({
+    ok: false,
+    error: 'invalid_query'
+  })
+  const sender = Object.assign(new EventEmitter(), { isDestroyed: () => false })
+  safes.confirm.mockReturnValue(true)
+  expect(
+    await dispatcher.dispatchCommand({ sender } as unknown as Electron.IpcMainInvokeEvent, command)
+  ).toEqual({ ok: true })
+  const context = safes.confirm.mock.calls[0][1] as SigningUiContext
+  expect(context.owner).toEqual(owner)
+  const disposed = mock()
+  context.subscribeOwnerDisposed(disposed)
+  sender.emit('destroyed')
+  expect(disposed).toHaveBeenCalledTimes(1)
+  safes.confirmationStatus.mockReturnValue({
+    status: 'publication_failed',
+    operationId: command.operationId,
+    message: 'Try again.'
+  })
+  expect(await dispatcher.dispatchQuery(event, query)).toEqual({
+    status: 'publication_failed',
+    operationId: command.operationId,
+    message: 'Try again.'
+  })
+  expect(safes.confirmationStatus).toHaveBeenCalledWith(query, owner)
+  safes.confirmationStatus.mockReturnValue({ status: 'published', signature: '0xprivate' })
+  expect(await dispatcher.dispatchQuery(event, query)).toEqual({
+    status: 'validation_failed',
+    message: 'Safe confirmation status is unavailable.'
   })
 })

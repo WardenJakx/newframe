@@ -5,7 +5,7 @@ import log from 'electron-log'
 import { v5 as uuidv5 } from 'uuid'
 
 import { getProfileAccountIds } from '../../../app/contracts/state/main.js'
-import type { SignerRequestContext } from '../../../platform/signing/signers/Signer/index.js'
+import type { SigningApprovalContext } from '../../../platform/signing/signers/Signer/index.js'
 import Signer from '../../../platform/signing/signers/Signer/index.js'
 import type { CanonicalStoreReader } from '../../../platform/state-store/actions.js'
 import type { ActivityRecord, StatusNotification, Token } from '../../../platform/state-store/state/index.js'
@@ -1675,7 +1675,7 @@ export class Accounts extends EventEmitter {
     currentAccount.getCoinbase(cb)
   }
 
-  signMessage(address: Address, message: string, cb: Callback<string>, context?: SignerRequestContext) {
+  signMessage(address: Address, message: string, cb: Callback<string>, context?: SigningApprovalContext) {
     const currentAccount = this.current()
 
     if (!currentAccount) return cb(new Error('No Account Selected'))
@@ -1689,7 +1689,7 @@ export class Accounts extends EventEmitter {
     address: Address,
     typedMessage: TypedMessage,
     cb: Callback<string>,
-    context?: SignerRequestContext
+    context?: SigningApprovalContext
   ) {
     const currentAccount = this.current()
 
@@ -1700,7 +1700,7 @@ export class Accounts extends EventEmitter {
     currentAccount.signTypedData(typedMessage, cb, context)
   }
 
-  signTransaction(rawTx: TransactionData, cb: Callback<string>, context?: SignerRequestContext) {
+  signTransaction(rawTx: TransactionData, cb: Callback<string>, context?: SigningApprovalContext) {
     const currentAccount = this.current()
 
     if (!currentAccount) return cb(new Error('No Account Selected'))

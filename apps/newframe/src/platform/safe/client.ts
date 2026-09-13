@@ -123,6 +123,15 @@ const proposalInput = z.object({
   isExecuted: z.boolean()
 })
 const pageSchema = z.object({ next: z.string().nullable(), results: z.array(proposalInput) })
+const confirmationPageSchema = z.object({
+  next: z.string().nullable(),
+  results: z.array(z.unknown()).max(1000)
+})
+const confirmationSchema = z.object({
+  owner: safeAddressSchema,
+  signature: z.string().regex(/^0x[0-9a-f]{130}$/i)
+})
+const transactionHashSchema = z.string().regex(/^0x[0-9a-f]{64}$/i)
 
 export function createSafeClient({
   request,
@@ -152,7 +161,7 @@ export function createSafeClient({
       throw new Error('Safe queue service is unavailable on this network')
     return url.replace(/\/$/, '')
   }
-  async function json(url: string, signal?: AbortSignal): Promise<unknown> {
+  async function json(url: string, signal?: AbortSignal, signature?: string): Promise<unknown> {
     const origin = new URL(url).origin
     const remaining = (cooldowns.get(origin) ?? 0) - now()
     if (remaining > 0)
@@ -165,10 +174,14 @@ export function createSafeClient({
     try {
       controller.signal.throwIfAborted()
       const response = await request(url, {
-        method: 'GET',
+        method: signature === undefined ? 'GET' : 'POST',
         signal: controller.signal,
         redirect: 'error',
-        headers: { Accept: 'application/json' }
+        headers: {
+          Accept: 'application/json',
+          ...(signature === undefined ? {} : { 'Content-Type': 'application/json' })
+        },
+        ...(signature === undefined ? {} : { body: JSON.stringify({ signature }) })
       })
       if (response.status === 429) {
         const retry = response.headers.get('retry-after')
@@ -178,7 +191,8 @@ export function createSafeClient({
         throw new Error('Safe service rate limited')
       }
       if (!response.ok) throw new Error(`Safe service HTTP ${response.status}`)
-      const result: unknown = await response.json()
+      // Confirmation responses are acknowledgements, not evidence of stored signature bytes.
+      const result: unknown = signature === undefined ? await response.json() : await response.text()
       controller.signal.throwIfAborted()
       return result
     } finally {
@@ -271,6 +285,49 @@ export function createSafeClient({
   }
   return {
     discover,
+    async confirmations(
+      chainId: number,
+      hash: string,
+      signal?: AbortSignal
+    ): Promise<{ owner: string; signature: string }[]> {
+      const first = new URL(
+        `${base(chainId)}/v1/multisig-transactions/${transactionHashSchema.parse(hash)}/confirmations/`
+      )
+      let next: URL | undefined = first
+      const visited = new Set<string>()
+      const confirmations = new Map<string, { owner: string; signature: string }>()
+      for (let pages = 0; next; pages++) {
+        if (pages >= 100 || visited.has(next.href)) throw new Error('Safe pagination did not progress')
+        visited.add(next.href)
+        const page = confirmationPageSchema.parse(await json(next.href, signal))
+        for (const raw of page.results) {
+          const confirmation = confirmationSchema.safeParse(raw)
+          // Other owners may have contract or on-chain confirmations we cannot verify.
+          if (confirmation.success) {
+            const item = confirmation.data
+            confirmations.set(`${item.owner}:${item.signature}`, item)
+          }
+        }
+        if (!page.next) break
+        if (!page.results.length) throw new Error('Safe pagination did not progress')
+        const candidate: URL = new URL(page.next, next)
+        if (
+          candidate.origin !== first.origin ||
+          candidate.pathname !== first.pathname ||
+          candidate.username ||
+          candidate.password ||
+          candidate.hash
+        )
+          throw new Error('Unsafe Safe pagination URL')
+        next = candidate
+      }
+      return [...confirmations.values()]
+    },
+    async confirm(chainId: number, hash: string, signature: string, signal?: AbortSignal): Promise<void> {
+      transactionHashSchema.parse(hash)
+      confirmationSchema.shape.signature.parse(signature)
+      await json(`${base(chainId)}/v1/multisig-transactions/${hash}/confirmations/`, signal, signature)
+    },
     async queueState(
       chainId: number,
       address: string,

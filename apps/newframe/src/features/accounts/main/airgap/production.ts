@@ -6,15 +6,13 @@ import {
   decodePublicAccount
 } from '../../../../platform/signing/signers/airgap/protocol.js'
 import type canonicalStore from '../../../../platform/state-store/index.js'
-import type { RequestService } from '../../../requests/main/service.js'
 import type { AccountsRuntime } from '../runtime.js'
 import { createAirGapService } from './service.js'
 
 export function createProductionAirGapService(
   store: typeof canonicalStore,
   signers: AccountsRuntime['signers'],
-  operations: OperationService,
-  requests: Pick<RequestService, 'rejectRequest'>
+  operations: OperationService
 ) {
   const getSigner = (id: string) => {
     const signer = signers.get(id)
@@ -44,7 +42,6 @@ export function createProductionAirGapService(
     getRequest: (reference, owner) => getSigner(reference.signerId)?.getRequest(reference, owner),
     scan: async (reference, owner, frame) =>
       getSigner(reference.signerId)?.scan(reference, owner, frame) ?? false,
-    cancel: (reference, owner) => getSigner(reference.signerId)?.cancelRequest(reference, owner) ?? false,
-    rejectRequest: (id) => requests.rejectRequest(id)
+    cancel: (reference, owner) => getSigner(reference.signerId)?.cancelRequest(reference, owner) ?? false
   })
 }

@@ -32,19 +32,11 @@ function state(progress = 0) {
         profileId: 'default-profile',
         status: 'ok',
         address: accountId,
-        name: 'AirGap',
+        name: 'Selected Safe',
         created: '1',
         lastSignerType: 'airgap',
-        signer: reference.signerId,
-        requests: {
-          [reference.requestId]: {
-            handlerId: reference.requestId,
-            account: accountId,
-            type: 'sign',
-            status: 'pending',
-            data: '0x1234'
-          }
-        }
+        signer: '',
+        requests: {}
       }
     },
     signers: {
@@ -87,7 +79,6 @@ it('keeps scanning during progress, pauses when hidden, and releases camera on c
   await view.user.click(screen.getByRole('button', { name: 'Scan signed QR' }))
   const complete = state(1)
   delete complete.signers[reference.signerId].airgapRequest
-  complete.accounts[accountId].requests[reference.requestId].status = 'success'
   act(() => fixture.state.reset(complete))
   expect(screen.getByText('Signing closed')).toBeTruthy()
   expect(screen.queryByText('Sign with AirGap Vault')).toBeNull()
@@ -96,7 +87,7 @@ it('keeps scanning during progress, pauses when hidden, and releases camera on c
   expect(capability.airgapCancel).toHaveBeenCalledWith(reference)
 })
 
-it.each(['request', 'account', 'lock'] as const)(
+it.each(['session', 'lock'] as const)(
   'dismisses when %s changes and ignores a late QR query',
   async (change) => {
     fixture.state.reset(state())
@@ -107,8 +98,7 @@ it.each(['request', 'account', 'lock'] as const)(
       <SigningHost capability={capability} camera={createQrCameraFake().camera} reference={reference} />
     )
     const stale = state()
-    if (change === 'request') delete stale.accounts[accountId].requests[reference.requestId]
-    if (change === 'account') stale.currentAccount = 'other'
+    if (change === 'session') delete stale.signers[reference.signerId].airgapRequest
     if (change === 'lock') stale.appLock.locked = true
     act(() => fixture.state.reset(stale))
     expect(screen.getByText('Signing closed')).toBeTruthy()

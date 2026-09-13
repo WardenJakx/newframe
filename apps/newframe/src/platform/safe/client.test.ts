@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, test } from 'bun:test'
 
+import { getBytes, Wallet } from 'ethers'
+
 import { createSafeHandler } from '../../../scripts/local-safe/handler.js'
 import { abi as multicallAbi, multicallAddress } from '../chain-rpc/multicall/constants.js'
 import { createSafeClient, safeServiceNetworks } from './client.js'
@@ -316,4 +318,115 @@ test('rejects empty contract responses and bounds unresponsive chain probes', as
   await expect(client.discover(1, safe)).rejects.toThrow()
   const hanging = createSafeClient({ request: fetch, timeoutMs: 5, call: () => new Promise(() => {}) })
   await expect(hanging.discover(1, safe)).rejects.toThrow('Safe chain request timed out')
+})
+
+test('publishes real owner signatures over HTTP and retrieves the retained bytes across pages', async () => {
+  const signers = [new Wallet(`0x${'12'.repeat(32)}`), new Wallet(`0x${'34'.repeat(32)}`)]
+  const handler = createSafeHandler({
+    chainId: 31337,
+    safe,
+    owners: signers.map((wallet) => wallet.address),
+    threshold: 2,
+    pageSize: 1
+  })
+  const server = Bun.serve({ port: 0, hostname: '127.0.0.1', fetch: handler.fetch })
+  servers.push(server)
+  const client = createSafeClient({ request: fetch, networks: { 31337: `${server.url}api` } })
+  const configuration = await client.configuration(31337, safe)
+  const [proposal, other] = await client.pending(31337, safe, configuration)
+  const signature = signers[0].signingKey.sign(proposal.safeTxHash).serialized
+  expect(await client.confirmations(31337, proposal.safeTxHash)).toEqual([])
+  await client.confirm(31337, proposal.safeTxHash, signature)
+  await client.confirm(31337, proposal.safeTxHash, signature)
+  const personal = await signers[0].signMessage(getBytes(proposal.safeTxHash))
+  const alternative = `${personal.slice(0, -2)}${(Number.parseInt(personal.slice(-2), 16) + 4).toString(16)}`
+  await client.confirm(31337, proposal.safeTxHash, alternative)
+  await client.confirm(31337, proposal.safeTxHash, signers[1].signingKey.sign(proposal.safeTxHash).serialized)
+  expect(await client.confirmations(31337, proposal.safeTxHash)).toEqual([
+    { owner: signers[0].address, signature },
+    { owner: signers[1].address, signature: signers[1].signingKey.sign(proposal.safeTxHash).serialized }
+  ])
+  await expect(client.confirm(31337, other.safeTxHash, signature)).rejects.toThrow('HTTP 400')
+  await expect(client.confirm(31337, `0x${'00'.repeat(32)}`, signature)).rejects.toThrow('HTTP 404')
+  await expect(
+    client.confirm(
+      31337,
+      proposal.safeTxHash,
+      new Wallet(`0x${'56'.repeat(32)}`).signingKey.sign(proposal.safeTxHash).serialized
+    )
+  ).rejects.toThrow('HTTP 400')
+  expect((await client.pending(31337, safe, configuration))[0].confirmations).toHaveLength(2)
+})
+
+test('confirmation pagination isolates malformed entries and rejects unsafe or repeating links', async () => {
+  const hash = `0x${'11'.repeat(32)}`
+  const signature = `0x${'11'.repeat(64)}1b`
+  let next: string | null = null
+  const client = createSafeClient({
+    networks: { 1: 'https://safe.example/api' },
+    request: async () =>
+      Response.json({
+        next,
+        results: [{ owner: owners[0], signature }, { owner: owners[1], signature: null }, null]
+      })
+  })
+  expect(await client.confirmations(1, hash)).toEqual([{ owner: owners[0], signature }])
+  for (const unsafe of [
+    'https://elsewhere.example/',
+    '/api/v1/another/',
+    `https://user:pass@safe.example/api/v1/multisig-transactions/${hash}/confirmations/`,
+    `?offset=1#fragment`
+  ]) {
+    next = unsafe
+    await expect(client.confirmations(1, hash)).rejects.toThrow('Unsafe')
+  }
+  next = '?offset=1'
+  await expect(client.confirmations(1, hash)).rejects.toThrow('progress')
+})
+
+test('confirmation POST shares HTTP errors, cooldown, cancellation, redirect and body timeout handling', async () => {
+  const hash = `0x${'11'.repeat(32)}`
+  const signature = `0x${'11'.repeat(64)}1b`
+  let count = 0
+  const client = createSafeClient({
+    request: async (_url, init) => {
+      count++
+      expect(init.method).toBe('POST')
+      expect(init.redirect).toBe('error')
+      expect(JSON.parse(String(init.body))).toEqual({ signature })
+      return Response.json({}, { status: 429, headers: { 'Retry-After': '30' } })
+    }
+  })
+  await expect(client.confirm(1, hash, signature)).rejects.toThrow('rate limited')
+  await expect(client.confirmations(1, hash)).rejects.toThrow('rate limited')
+  expect(count).toBe(1)
+  for (const status of [401, 403, 422, 500]) {
+    const failing = createSafeClient({ request: async () => Response.json({}, { status }) })
+    await expect(failing.confirm(1, hash, signature)).rejects.toThrow(`HTTP ${status}`)
+  }
+  const aborted = new AbortController()
+  aborted.abort()
+  const unused = createSafeClient({
+    request: async () => {
+      throw new Error('Must not send')
+    }
+  })
+  await expect(unused.confirm(1, hash, signature, aborted.signal)).rejects.toThrow()
+  const { client: delayed } = setup(
+    async () =>
+      new Response(
+        new ReadableStream({
+          start(controller) {
+            setTimeout(() => {
+              try {
+                controller.close()
+              } catch {
+                // Timeout may already have closed the response stream.
+              }
+            }, 300)
+          }
+        })
+      )
+  )
+  await expect(delayed.confirm(31337, hash, signature)).rejects.toThrow()
 })

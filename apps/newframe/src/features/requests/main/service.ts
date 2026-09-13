@@ -145,6 +145,13 @@ export function createRequestService(ports: RequestServicePorts) {
 
   const failApproval = (request: AccountRequest, error: unknown) => {
     approvalsInFlight.delete(request.handlerId)
+    if (normalizedError(error).code === 4001) {
+      const account = ports.accounts.getFrameAccount(request.account)
+      if (account?.getRequest(request.handlerId)) {
+        account.rejectRequest(request, normalizedError(error))
+        return
+      }
+    }
     if (!settle(request.handlerId, rpcError(request, normalizedError(error)))) return
     ports.accounts.setRequestError(
       request.handlerId,
@@ -237,6 +244,24 @@ export function createRequestService(ports: RequestServicePorts) {
     setGate(account, request.handlerId)
     ports.accounts.setRequestPending(request)
 
+    const continuation = continuations.get(request.handlerId)
+    const created = ports.store.getState().main.accounts[request.account]?.created
+    const actionId = request.authorization?.actionId
+    const complete = (settleApproval: () => void) => {
+      if (continuations.get(request.handlerId) !== continuation) return
+      const currentAccount = ports.store.getState().main.accounts[request.account]
+      const currentRequest = currentAccount?.requests[request.handlerId] as AccountRequest | undefined
+      if (currentAccount?.created !== created || currentRequest?.authorization?.actionId !== actionId) {
+        approvalsInFlight.delete(request.handlerId)
+        settle(
+          request.handlerId,
+          rpcError(request, { code: 4001, message: 'Signing approval is no longer active' })
+        )
+        return
+      }
+      settleApproval()
+    }
+
     const approval = isTransactionRequest(request)
       ? ports.provider.approveTransactionRequest(request, context)
       : request.type === 'sign'
@@ -245,8 +270,8 @@ export function createRequestService(ports: RequestServicePorts) {
           ? ports.provider.approveSignTypedData(request, context)
           : undefined
     void approval?.then(
-      (result) => completeApproval(request, result),
-      (error) => failApproval(request, error)
+      (result) => complete(() => completeApproval(request, result)),
+      (error) => complete(() => failApproval(request, error))
     )
     return true
   }
@@ -279,7 +304,13 @@ export function createRequestService(ports: RequestServicePorts) {
     },
 
     cancel(requestId: string) {
-      return continuations.delete(requestId)
+      const cancelled = continuations.delete(requestId)
+      if (cancelled) {
+        const located = locate(requestId)
+        located?.account.rejectRequest(located.request, { code: 4001, message: 'Request cancelled' })
+        approvalsInFlight.delete(requestId)
+      }
+      return cancelled
     },
 
     create(respond: RPCRequestCallback, requestId: string = randomUUID()) {

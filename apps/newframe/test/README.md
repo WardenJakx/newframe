@@ -41,8 +41,15 @@ public observation service, renderer projection, and queue retention on failure.
 From the repo root, `bun run visual:harness:newframe` additionally deploys official
 Safe 1.5.0 artifacts on Anvil and checks import, refresh, read-only proposal details,
 and account removal through the compiled app. Use the existing harness password
-setup; the Safe owner includes the local harness account but cannot sign proposals.
+setup; the Safe owner includes the local harness account.
 The service binds loopback port 8423 (`NEWFRAME_LOCAL_SAFE_PORT` to override).
+
+Safe confirmations: `src/features/accounts/main/safeConfirmation.test.ts` covers
+exact proposal data, Safe scope changes, publication reconciliation, and retained-signature
+retry. Generic signing guards belong to Account tests. The AirGap integration suite
+connects Safe approval through account signing, QR response verification, and the local
+Safe client. It never submits to a production service. `src/features/requests/renderer/SafeQueue.test.tsx` covers the
+Sign controls, unavailable simulation, disconnected owners, and publication states.
 
 Unsigned Safe simulation: `bun run test:integration:safe-simulation` builds the existing
 MockUSDC fixture and starts an isolated Anvil on a free loopback port. Requires Foundry

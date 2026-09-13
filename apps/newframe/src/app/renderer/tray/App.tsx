@@ -363,7 +363,15 @@ export function Panel(props: PanelProps) {
         home={HOME_CAPABILITIES.home}
         review={props.requestCapabilities.review}
       />
-      <Home capabilities={{ ...HOME_CAPABILITIES, requests: props.requestCapabilities }} />
+      <Home
+        capabilities={{
+          ...HOME_CAPABILITIES,
+          requests: props.requestCapabilities,
+          recoverSigner: (signerId) =>
+            props.notifyRequest({ type: 'signerRecovery', data: { signerIds: [signerId] } }),
+          airgapSigning: (reference) => props.notifyRequest({ type: 'airgapSigning', data: reference })
+        }}
+      />
       {requestViewOpen ? (
         <RequestViewProvider key={crumb.view === 'requestView' ? crumb.data.requestId : crumb.view}>
           <div className={requestOverlayRecipe()}>

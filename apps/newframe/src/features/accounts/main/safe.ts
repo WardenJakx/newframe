@@ -16,6 +16,7 @@ import {
   type SafeProposal,
   type SafeProposalSimulation
 } from '../domain/safe.js'
+import { createSafeConfirmationService, type SafeConfirmationPorts } from './safeConfirmation.js'
 import type { SafeSimulationInput, SafeSimulationPorts } from './safeSimulation.js'
 
 export interface SafeServicePorts {
@@ -52,6 +53,7 @@ export interface SafeServicePorts {
     observeConfiguration: NonNullable<SafeSimulationPorts['observeConfiguration']>
   ): Promise<SafeProposalSimulation>
   now?: () => number
+  confirmations?: Pick<SafeConfirmationPorts, 'accounts' | 'client'>
 }
 
 export type SafeService = ReturnType<typeof createSafeService>
@@ -62,8 +64,20 @@ export function createSafeService({
   operations,
   client,
   simulate: simulateProposal,
+  confirmations,
   now = Date.now
 }: SafeServicePorts) {
+  const confirmationService = createSafeConfirmationService({
+    store,
+    operations,
+    accounts: confirmations?.accounts ?? {
+      getFrameAccount: () => null
+    },
+    client: confirmations?.client ?? {
+      confirmations: () => Promise.reject(new Error('Safe confirmation service is unavailable.')),
+      confirm: () => Promise.reject(new Error('Safe confirmation service is unavailable.'))
+    }
+  })
   let disposed = false
   let profile = store.getState().main.currentProfile
   let selected = store.getState().main.currentAccount
@@ -378,6 +392,8 @@ export function createSafeService({
   )
   refreshSelected()
   return {
+    confirm: confirmationService.confirm,
+    confirmationStatus: confirmationService.confirmationStatus,
     discoverNetworks,
     simulate,
     refresh,
@@ -415,6 +431,7 @@ export function createSafeService({
       return true
     },
     dispose() {
+      confirmationService.dispose()
       disposed = true
       unsubscribe()
       invalidate()

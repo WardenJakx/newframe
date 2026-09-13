@@ -39,6 +39,10 @@ export interface RequestExternalCapability extends ClipboardCapability, TokenIma
 interface SafeQueueCapability {
   refresh(input: CommandInput<'account.safe-refresh'>): Promise<CommandResult>
   simulate(input: Omit<QueryMap['safe.simulate'], 'type'>): Promise<QueryResultMap['safe.simulate']>
+  confirm(input: CommandInput<'account.safe-confirm'>): Promise<CommandResult>
+  confirmationStatus(
+    input: Omit<QueryMap['safe.confirmation-status'], 'type'>
+  ): Promise<QueryResultMap['safe.confirmation-status']>
 }
 
 export type RequestRendererCapabilities = {
@@ -88,6 +92,12 @@ export function createRequestRendererCapabilities(host: RequestHost): RequestRen
   return {
     safe: {
       refresh: (input) => host.executeCommand({ type: 'account.safe-refresh', ...input }),
+      confirm: (input) => host.executeCommand({ type: 'account.safe-confirm', ...input }),
+      confirmationStatus: async (input) => {
+        const result = await host.executeQuery({ type: 'safe.confirmation-status', ...input })
+        if ('status' in result) return result
+        throw new Error(result.message || 'Could not load confirmation status.')
+      },
       simulate: async (input) => {
         const result = await host.executeQuery({ type: 'safe.simulate', ...input })
         return 'status' in result

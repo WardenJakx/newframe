@@ -1,8 +1,12 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, mock, spyOn } from 'bun:test'
 import { EventEmitter } from 'events'
 
+import { SignTypedDataVersion } from '@metamask/eth-sig-util'
+
 import { createRendererAuthorizationRegistry } from '../../../platform/ipc/main/authorization'
+import type { SigningApprovalContext, SignerRequestContext } from '../../../platform/signing/signers/Signer'
 import { createRendererPrincipal, decideWalletAction } from '../../access-control/main/authority'
+import type { TypedMessage } from '../../requests/contract/requests'
 
 const revealMock = {
   recog: mock(),
@@ -480,3 +484,133 @@ it.each([true, false])(
     store.getState().revokePermission(target, handlerId)
   }
 )
+
+describe('account signing boundary', () => {
+  const message = (): TypedMessage => ({
+    version: SignTypedDataVersion.V4,
+    data: {
+      types: { EIP712Domain: [], Test: [{ name: 'value', type: 'uint256' }] },
+      primaryType: 'Test',
+      domain: {},
+      message: { value: '123' }
+    }
+  })
+  function signingFixture() {
+    const signer = {
+      id: 'boundary-signer',
+      type: 'ledger',
+      status: 'ok',
+      addresses: [account.address],
+      signTypedData: mock(
+        (_index: number, _value: TypedMessage, _done: Callback<string>, _context?: SignerRequestContext) => {}
+      ),
+      signMessage: mock(),
+      signTransaction: mock(),
+      verifyAddress: mock()
+    }
+    signersMock.get.mockReturnValue(signer)
+    store.setState((state: any) => {
+      state.main.currentAccount = ''
+      state.main.signers = { [signer.id]: { ...signer } }
+      state.main.appLock.locked = false
+    })
+    const controller = new AbortController()
+    let active = true
+    const approval: SigningApprovalContext = {
+      requestId: 'source-approval',
+      chainId: 1,
+      isActive: () => active,
+      signal: controller.signal
+    }
+    return {
+      signer,
+      approval,
+      controller,
+      invalidate: () => {
+        active = false
+      }
+    }
+  }
+  afterEach(() => {
+    store.setState((state: any) => {
+      state.main.signers = {}
+    })
+  })
+
+  it('signs the explicit owner without changing selection and freezes the approved payload', async () => {
+    const test = signingFixture()
+    const input = message()
+    const expected = structuredClone(input)
+    const callback = mock()
+    account.signTypedData(input, callback, test.approval)
+    if (Array.isArray(input.data)) throw new Error('Unexpected legacy data')
+    input.data.message.value = '999'
+    const [index, approved, done] = test.signer.signTypedData.mock.calls[0]
+    expect(index).toBe(0)
+    expect(approved).toEqual(expected)
+    expect(approved).not.toBe(input)
+    done(null, '0xfirst')
+    await Promise.resolve()
+    expect(callback.mock.calls).toEqual([[null, '0xfirst']])
+    expect(store.getState().main.currentAccount).toBe('')
+  })
+
+  it.each(['locked', 'foreign-profile', 'missing-signer', 'wrong-address', 'inactive-source'] as const)(
+    'rejects %s before device invocation',
+    (kind) => {
+      const test = signingFixture()
+      if (kind === 'locked')
+        store.setState((state: any) => {
+          state.main.appLock.locked = true
+        })
+      if (kind === 'foreign-profile')
+        store.setState((state: any) => {
+          state.main.accounts[account.id].profileId = 'other'
+        })
+      if (kind === 'missing-signer') signersMock.get.mockReturnValue(undefined)
+      if (kind === 'wrong-address') test.signer.addresses = []
+      if (kind === 'inactive-source') test.invalidate()
+      const callback = mock()
+      account.signTypedData(message(), callback, test.approval)
+      expect(callback.mock.calls[0][0]).toBeInstanceOf(Error)
+      expect(test.signer.signTypedData).not.toHaveBeenCalled()
+    }
+  )
+
+  it.each(['source-abort', 'source-change', 'lock', 'owner-lifetime', 'close'] as const)(
+    'cancels pending signing on %s and ignores late hardware completion',
+    async (kind) => {
+      const test = signingFixture()
+      const callback = mock()
+      account.signTypedData(message(), callback, test.approval)
+      const done = test.signer.signTypedData.mock.calls[0][2]
+      if (kind === 'source-abort') test.controller.abort()
+      if (kind === 'source-change') {
+        test.invalidate()
+        store.getState().patchAccount(account.id, { name: 'Updated' })
+      }
+      if (kind === 'lock')
+        store.setState((state: any) => {
+          state.main.appLock.locked = true
+        })
+      if (kind === 'owner-lifetime') store.getState().patchAccount(account.id, { created: 'replacement' })
+      if (kind === 'close') account.close()
+      await Promise.resolve()
+      expect(callback.mock.calls[0][0]).toMatchObject({ code: 4001 })
+      done(null, '0xlate')
+      await Promise.resolve()
+      expect(callback).toHaveBeenCalledTimes(1)
+    }
+  )
+
+  it('rejects invalid transaction fields exactly once before dispatch', () => {
+    const test = signingFixture()
+    for (const transaction of [{}, { from: account.address, value: 'not-hex' }]) {
+      const callback = mock()
+      account.signTransaction(transaction, callback, test.approval)
+      expect(callback).toHaveBeenCalledTimes(1)
+      expect(callback.mock.calls[0][0]).toBeInstanceOf(Error)
+    }
+    expect(test.signer.signTransaction).not.toHaveBeenCalled()
+  })
+})

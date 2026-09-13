@@ -9,6 +9,12 @@ export function createRequestRendererCapabilitiesFake() {
   return {
     safe: {
       refresh: acknowledged<Parameters<RequestRendererCapabilities['safe']['refresh']>[0]>(),
+      confirm: acknowledged<Parameters<RequestRendererCapabilities['safe']['confirm']>[0]>(),
+      confirmationStatus: mock(
+        async (
+          _input: Parameters<RequestRendererCapabilities['safe']['confirmationStatus']>[0]
+        ): Promise<QueryResultMap['safe.confirmation-status']> => ({ status: 'idle' })
+      ),
       simulate: mock(
         async (
           _input: Parameters<RequestRendererCapabilities['safe']['simulate']>[0]

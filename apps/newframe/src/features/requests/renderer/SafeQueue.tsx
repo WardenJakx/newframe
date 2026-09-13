@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 
+import type { AirGapRequestReference } from '../../../platform/signing/domain/airgap'
 import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector'
 import { AddressIdentity } from '../../../shared/renderer/ui/AddressIdentity'
 import { ChainIcon } from '../../../shared/renderer/ui/ChainIcon'
@@ -8,13 +9,18 @@ import type { SafeOwnerAccount, SafeProposalSimulation } from '../../accounts/do
 import { persistedImageSource } from '../../asset-data/domain/image'
 import type { RequestRendererCapabilities } from './requestCapabilities'
 import type { SafePreview } from './SafeProposalDetailsView'
+import { useSafeConfirmation } from './useSafeConfirmation'
 
 export function useSafeQueue({
   accountId,
-  capabilities
+  capabilities,
+  onRecoverSigner,
+  onAirGapSigning
 }: {
   accountId: string
   capabilities: Pick<RequestRendererCapabilities, 'safe' | 'external'>
+  onRecoverSigner?: (signerId: string) => void
+  onAirGapSigning?: (reference: AirGapRequestReference) => void
 }) {
   const { account, networks, metadata, accounts, currentProfile } = useWalletSelector(
     useShallow((state) => ({
@@ -176,6 +182,33 @@ export function useSafeQueue({
   const network = deployment ? networks[deployment.chainId] : undefined
   const currency = deployment ? metadata[deployment.chainId]?.nativeCurrency : undefined
   const networkIcon = deployment ? persistedImageSource(metadata[deployment.chainId]?.image) : undefined
+  const confirmation = useSafeConfirmation({
+    identity:
+      deployment && proposal && selectedOwner
+        ? {
+            accountId,
+            chainId: deployment.chainId,
+            safeTxHash: proposal.safeTxHash,
+            ownerId: selectedOwner.accountId
+          }
+        : undefined,
+    scope: selectedOwner
+      ? JSON.stringify([
+          scope,
+          selectedOwner.accountId,
+          selectedOwner.created,
+          accounts[selectedOwner.accountId]?.signer,
+          deployment?.configuration.version,
+          deployment?.configuration.nonce,
+          deployment?.configuration.owners,
+          deployment?.configuration.threshold,
+          network
+        ])
+      : '',
+    capability: capabilities.safe,
+    onAirGapSigning
+  })
+  const selectedSigner = selectedOwner ? accounts[selectedOwner.accountId]?.signer : undefined
   return {
     hasSafe,
     review:
@@ -186,6 +219,9 @@ export function useSafeQueue({
             proposal,
             owners,
             selectedOwnerId: selectedOwner?.accountId,
+            confirmation,
+            onRecoverSigner:
+              selectedSigner && onRecoverSigner ? () => onRecoverSigner(selectedSigner) : undefined,
             onSelectOwner: (accountId: string) => {
               const owner = owners.find(
                 (owner) => owner.accountId === accountId && owner.status !== 'watch-only'

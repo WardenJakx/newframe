@@ -11,6 +11,7 @@ import type { TokensCapability } from '../../../../features/tokens/renderer/toke
 import type { ActivityCapability } from '../../../../features/transactions/renderer/activity/activityCapability'
 import type { OrdersCapability } from '../../../../features/transactions/trade/renderer/orders/ordersCapability'
 import type { QrCameraCapability } from '../../../../platform/desktop/renderer/camera'
+import type { AirGapRequestReference } from '../../../../platform/signing/domain/airgap'
 import { HomeHeader } from './components/HomeHeader'
 import { HomeNavigation } from './components/HomeNavigation'
 import { HomeNotifications } from './components/HomeNotifications'
@@ -25,6 +26,8 @@ const homeRecipe = cva({
 })
 
 export interface HomeCapabilities {
+  recoverSigner?: (signerId: string) => void
+  airgapSigning?: (reference: AirGapRequestReference) => void
   accounts: AccountsCapability
   camera: QrCameraCapability
   activity: ActivityCapability

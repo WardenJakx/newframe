@@ -389,6 +389,9 @@ export function createOperationRegistry(services: OperationServices) {
     'account.safe-import': defineOwnedCommand('account.safe-import', (command, context) =>
       safes.import(command, operationOwner(context))
     ),
+    'account.safe-confirm': defineAcknowledgedCommand('account.safe-confirm', (command, event, context) =>
+      safes.confirm(command, signingUiContext(event, context))
+    ),
     'account.safe-refresh': defineAcknowledgedCommand('account.safe-refresh', (command) =>
       safes.refresh(command)
     ),
@@ -718,6 +721,12 @@ export function createOperationRegistry(services: OperationServices) {
       entrypoints: ['tray'],
       handle: (query) => safes.simulate(query),
       failure: { status: 'unavailable', error: 'Safe simulation unavailable.' }
+    }),
+    'safe.confirmation-status': defineQuery('safe.confirmation-status', {
+      roles: ['wallet-ui'],
+      entrypoints: ['tray'],
+      handle: (query, _event, context) => safes.confirmationStatus(query, operationOwner(context)),
+      failure: { status: 'validation_failed', message: 'Safe confirmation status is unavailable.' }
     }),
     'token.lookup': defineQuery('token.lookup', {
       roles: ['wallet-ui'],

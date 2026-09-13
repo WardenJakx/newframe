@@ -259,12 +259,7 @@ export function createProductionCapabilities(
     store,
     clock: { now: adapters.accounts.now }
   })
-  const airgapService = createProductionAirGapService(
-    store,
-    adapters.accounts.signers,
-    operationService,
-    requestService
-  )
+  const airgapService = createProductionAirGapService(store, adapters.accounts.signers, operationService)
   const profileService = createProfileService({
     accounts,
     operations: operationService,
@@ -319,6 +314,10 @@ export function createProductionCapabilities(
     store,
     operations: operationService,
     client: safeClient,
+    confirmations: {
+      client: safeClient,
+      accounts
+    },
     simulate: (input, signal, observeConfiguration) =>
       simulateSafeProposal(
         input,

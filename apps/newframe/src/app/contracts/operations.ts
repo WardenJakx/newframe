@@ -675,6 +675,39 @@ const SafeSimulateQuerySchema = z.strictObject({
 })
 export type SafeSimulateQuery = z.infer<typeof SafeSimulateQuerySchema>
 
+const SafeConfirmationIdentity = {
+  accountId: AddressSchema,
+  chainId: ChainIdSchema.max(Number.MAX_SAFE_INTEGER),
+  safeTxHash: z.string().regex(/^0x[0-9a-fA-F]{64}$/),
+  ownerId: AddressSchema
+}
+const AccountSafeConfirmCommandSchema = z.strictObject({
+  type: z.literal('account.safe-confirm'),
+  operationId: OperationIdSchema,
+  ...SafeConfirmationIdentity
+})
+export type AccountSafeConfirmCommand = z.infer<typeof AccountSafeConfirmCommandSchema>
+const SafeConfirmationStatusQuerySchema = z.strictObject({
+  type: z.literal('safe.confirmation-status'),
+  ...SafeConfirmationIdentity
+})
+export type SafeConfirmationStatusQuery = z.infer<typeof SafeConfirmationStatusQuerySchema>
+const SafeConfirmationStatusSchema = z.strictObject({
+  status: z.enum([
+    'idle',
+    'signing',
+    'publishing',
+    'published',
+    'publication_failed',
+    'cancelled',
+    'signing_failed',
+    'validation_failed'
+  ]),
+  operationId: OperationIdSchema.optional(),
+  message: z.string().max(256).optional()
+})
+export type SafeConfirmationStatus = z.infer<typeof SafeConfirmationStatusSchema>
+
 const KeystoreLocateQuerySchema = z.strictObject({ type: z.literal('keystore.locate') })
 export type KeystoreLocateQuery = z.infer<typeof KeystoreLocateQuerySchema>
 
@@ -1073,6 +1106,7 @@ export const commandContracts = defineOperationContracts({
   'account.rename': acknowledged(AccountRenameCommandSchema),
   'account.reorder': acknowledged(AccountReorderCommandSchema),
   'account.safe-import': acknowledged(AccountSafeImportCommandSchema),
+  'account.safe-confirm': acknowledged(AccountSafeConfirmCommandSchema),
   'account.safe-refresh': acknowledged(AccountSafeRefreshCommandSchema),
   'account.watch-add': acknowledged(AccountWatchAddCommandSchema),
   'app.quit': acknowledged(AppQuitCommandSchema),
@@ -1171,6 +1205,10 @@ export const queryContracts = defineOperationContracts({
     result: SafeDiscoverResultSchema
   },
   'safe.simulate': { input: SafeSimulateQuerySchema, result: SafeProposalSimulationSchema },
+  'safe.confirmation-status': {
+    input: SafeConfirmationStatusQuerySchema,
+    result: SafeConfirmationStatusSchema
+  },
   'token.lookup': { input: TokenLookupQuerySchema, result: TokenLookupResultSchema }
 })
 

@@ -17,7 +17,6 @@ export interface AirGapServicePorts {
   getRequest(reference: AirGapRequestReference, owner: OperationOwner): string[] | undefined
   scan(reference: AirGapRequestReference, owner: OperationOwner, frame: string): Promise<boolean>
   cancel(reference: AirGapRequestReference, owner: OperationOwner): boolean
-  rejectRequest(requestId: string): boolean
 }
 const type = 'signer.airgap-pair'
 const sameOwner = (a: OperationOwner, b: OperationOwner) =>
@@ -90,7 +89,7 @@ export function createAirGapService(ports: AirGapServicePorts) {
       return disposed ? false : ports.scan(command, owner, command.frame)
     },
     cancel(reference: AirGapRequestReference, owner: OperationOwner) {
-      if (!disposed && ports.cancel(reference, owner)) ports.rejectRequest(reference.requestId)
+      if (!disposed) ports.cancel(reference, owner)
       return true
     },
     dispose() {

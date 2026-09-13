@@ -240,6 +240,40 @@ describe('prompted request lifecycle', () => {
     expect(test.service.pendingCount).toBe(0)
   })
 
+  it('clears a cancelled signing source without responding or accepting its late result', async () => {
+    const request = transactionRequest('cancel-signing')
+    const respond = mock()
+    test.state.main.mute.gasFeeWarning = true
+    test.add(request, respond)
+    test.service.approve(request.handlerId)
+    expect(test.service.cancel(request.handlerId)).toBe(true)
+    expect(test.requests[request.handlerId]).toBeUndefined()
+    test.approval.resolve('0xlate')
+    await Promise.resolve()
+    expect(respond).not.toHaveBeenCalled()
+    expect(test.accounts.setTxSent).not.toHaveBeenCalled()
+  })
+
+  it('does not clear a replacement request when its previous approval is cancelled', async () => {
+    const request = transactionRequest('replaced-approval')
+    const respond = mock()
+    test.state.main.mute.gasFeeWarning = true
+    test.add(request, respond)
+    test.service.approve(request.handlerId)
+    const replacement = {
+      ...request,
+      authorization: { ...request.authorization!, actionId: 'replacement-action' }
+    }
+    test.requests[request.handlerId] = replacement
+    test.approval.reject(Object.assign(new Error('cancelled'), { code: 4001 }))
+    await Promise.resolve()
+    expect(test.requests[request.handlerId]).toBe(replacement)
+    expect(test.accounts.setRequestError).not.toHaveBeenCalled()
+    expect(respond).toHaveBeenCalledWith(
+      expect.objectContaining({ error: expect.objectContaining({ code: 4001 }) })
+    )
+  })
+
   it('deduplicates repeated approval while preserving the external success response', async () => {
     const request = transactionRequest('request-approval')
     test.state.main.mute.gasFeeWarning = true
