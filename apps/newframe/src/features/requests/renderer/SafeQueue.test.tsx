@@ -524,18 +524,12 @@ it('discards replies after selecting another proposal and returning to the first
   expect(screen.getByText('Current preview')).toBeTruthy()
 })
 
-it('invalidates signed fields and configuration, while ignoring equivalent projections and confirmations', async () => {
+it('invalidates signed fields while retaining the preview across cached configuration and confirmation updates', async () => {
   fixture.state.reset(state())
   const first = deferredPreview(),
-    changed = deferredPreview(),
-    configured = deferredPreview(),
-    restored = deferredPreview()
+    changed = deferredPreview()
   const capabilities = createCapabilityFake()
-  capabilities.safe.simulate
-    .mockReturnValueOnce(first.promise)
-    .mockReturnValueOnce(changed.promise)
-    .mockReturnValueOnce(configured.promise)
-    .mockReturnValueOnce(restored.promise)
+  capabilities.safe.simulate.mockReturnValueOnce(first.promise).mockReturnValueOnce(changed.promise)
   const { user } = render(<RequestsOverlay capabilities={capabilities} onBack={() => {}} />)
   await user.click(screen.getByRole('button', { name: `Open Safe proposal ${hash} on chain 1` }))
   const confirmed = structuredClone(deployment)
@@ -551,18 +545,20 @@ it('invalidates signed fields and configuration, while ignoring equivalent proje
   expect(screen.queryByText('Old fields')).toBeNull()
   const changedConfig = {
     ...changedProposal,
-    configuration: { ...changedProposal.configuration, nonce: '3' }
+    configuration: {
+      ...changedProposal.configuration,
+      nonce: '3',
+      owners: [address, ownerAccount('New').address],
+      threshold: 2
+    }
   }
   await act(async () => fixture.state.reset(state(changedConfig)))
-  await act(async () => changed.resolve(success('Old configuration')))
-  expect(screen.queryByText('Old configuration')).toBeNull()
-  await act(async () => configured.resolve(success('Configured preview')))
+  await act(async () => changed.resolve(success('Configured preview')))
   expect(screen.getByText('Configured preview')).toBeTruthy()
+  expect(capabilities.safe.simulate).toHaveBeenCalledTimes(2)
   await act(async () => fixture.state.reset(state(changedProposal)))
-  expect(screen.queryByText('Configured preview')).toBeNull()
-  expect(screen.getByLabelText('Transaction effects').textContent).toContain('Simulating…')
-  await act(async () => restored.resolve(success('Restored preview')))
-  expect(screen.getByText('Restored preview')).toBeTruthy()
+  expect(screen.getByText('Configured preview')).toBeTruthy()
+  expect(capabilities.safe.simulate).toHaveBeenCalledTimes(2)
 })
 
 it.each(['account', 'profile'] as const)('discards previews after %s lifecycle changes', async (change) => {

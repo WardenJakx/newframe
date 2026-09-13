@@ -306,6 +306,9 @@ test('discovers contracts through the requested chain and imports configuration 
     threshold: 2,
     nonce: '9'
   })
+  calls.length = 0
+  expect(await client.queueState(8453, safe)).toEqual({ nonce: '9' })
+  expect(calls).toEqual(['nonce'])
 })
 
 test('rejects empty contract responses and bounds unresponsive chain probes', async () => {

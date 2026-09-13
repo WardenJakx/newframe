@@ -64,6 +64,7 @@ const safeDeploymentSchema = z.strictObject({
   chainId: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
   address: safeAddressSchema,
   configuration: safeConfigurationSchema,
+  configurationBlockNumber: safeDecimalSchema.optional(),
   pending: z.array(safeProposalSchema).optional(),
   refreshedAt: z.number().finite().nonnegative().optional(),
   error: z.string().max(2000).optional()

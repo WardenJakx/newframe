@@ -100,6 +100,7 @@ export function useSafeQueue({
     setOwnerSelection({ scope: ownerScope, account: null })
   }
   // Projections may recreate objects without changing the transaction being reviewed.
+  // A simulation's configuration observation must not trigger another simulation.
   const scope =
     deployment && proposal
       ? JSON.stringify([
@@ -109,10 +110,6 @@ export function useSafeQueue({
           selection?.lifetime,
           chainId,
           deployment.address,
-          deployment.configuration.nonce,
-          deployment.configuration.threshold,
-          deployment.configuration.owners,
-          deployment.configuration.version,
           safeTxHash,
           proposal.safe,
           proposal.nonce,

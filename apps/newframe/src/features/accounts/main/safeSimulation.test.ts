@@ -1,4 +1,4 @@
-import { expect, it } from 'bun:test'
+import { expect, it, mock } from 'bun:test'
 
 import { Interface, ZeroAddress, toBeHex } from 'ethers'
 
@@ -146,6 +146,8 @@ it('requires matching execution logs and a Safe return value, and rejects ignore
 
 it('rejects missing signed fields before RPC and stale proposals before execution', async () => {
   const { ports, calls } = setup()
+  const observeConfiguration = mock(() => {})
+  ports.observeConfiguration = observeConfiguration
   expect(
     await simulateSafeProposal(
       { chainId: 1, address: safe, proposal: { ...proposal, gasPrice: undefined } },
@@ -153,10 +155,12 @@ it('rejects missing signed fields before RPC and stale proposals before executio
     )
   ).toMatchObject({ status: 'unavailable' })
   expect(calls).toHaveLength(0)
+  expect(observeConfiguration).not.toHaveBeenCalled()
   ports.client.configuration = async () => ({ owners: [owner], threshold: 1, nonce: '8' })
   expect(await simulateSafeProposal({ chainId: 1, address: safe, proposal }, ports)).toMatchObject({
     status: 'unavailable',
     currentNonce: '8'
   })
   expect(calls.some(({ method }) => method === 'debug_traceCall')).toBeFalse()
+  expect(observeConfiguration).toHaveBeenCalledWith({ owners: [owner], threshold: 1, nonce: '8' }, '100')
 })

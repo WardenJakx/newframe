@@ -696,6 +696,7 @@ it('retains Safe metadata through persistence and projects only the current prof
       chainId: 1,
       address,
       configuration: { owners: [address], threshold: 1, nonce: '9007199254740993' },
+      configurationBlockNumber: '12345678',
       pending: [],
       refreshedAt: 42
     }

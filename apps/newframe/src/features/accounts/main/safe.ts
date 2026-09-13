@@ -9,19 +9,25 @@ import type { OperationService } from '../../../platform/operations/service.js'
 import type { OperationOwner } from '../../../platform/operations/types.js'
 import type { CanonicalStoreReader } from '../../../platform/state-store/actions.js'
 import {
+  safeConfigurationSchema,
   SafeProposalSimulationSchema,
   type SafeConfiguration,
   type SafeDeployment,
   type SafeProposal,
   type SafeProposalSimulation
 } from '../domain/safe.js'
-import type { SafeSimulationInput } from './safeSimulation.js'
+import type { SafeSimulationInput, SafeSimulationPorts } from './safeSimulation.js'
 
 export interface SafeServicePorts {
   accounts: { add(address: string, name: string, options: { type: string }): void }
   store: CanonicalStoreReader
   operations: OperationService
   client: {
+    queueState(
+      chainId: number,
+      address: string,
+      signal?: AbortSignal
+    ): Promise<Pick<SafeConfiguration, 'nonce'> | SafeConfiguration>
     configuration(
       chainId: number,
       address: string,
@@ -40,7 +46,11 @@ export interface SafeServicePorts {
       signal?: AbortSignal
     ): Promise<{ version: string; owners: string[] }>
   }
-  simulate?(input: SafeSimulationInput, signal: AbortSignal): Promise<SafeProposalSimulation>
+  simulate?(
+    input: SafeSimulationInput,
+    signal: AbortSignal,
+    observeConfiguration: NonNullable<SafeSimulationPorts['observeConfiguration']>
+  ): Promise<SafeProposalSimulation>
   now?: () => number
 }
 
@@ -85,6 +95,7 @@ export function createSafeService({
     if (!account || account.profileId !== main.currentProfile || !deployment || !proposal) return
     return {
       input: { chainId: query.chainId, address: deployment.address, proposal },
+      // Simulation reads configuration at its own pinned block, independently of this cache.
       fingerprint: JSON.stringify([
         main.currentProfile,
         account.profileId,
@@ -92,7 +103,6 @@ export function createSafeService({
         account.address,
         deployment.chainId,
         deployment.address,
-        deployment.configuration,
         main.networks.ethereum[query.chainId],
         proposal.safeTxHash,
         proposal.safe,
@@ -152,7 +162,30 @@ export function createSafeService({
     const result = Promise.resolve()
       .then(() => {
         if (!active()) return cancelled()
-        return simulateProposal(structuredClone(snapshot.input), controller.signal)
+        return simulateProposal(
+          structuredClone(snapshot.input),
+          controller.signal,
+          (configuration, block) => {
+            if (!active()) return
+            const account = store.getState().main.accounts[query.accountId]
+            const deployment = account.safe![String(query.chainId)]
+            if (
+              deployment.configurationBlockNumber !== undefined &&
+              BigInt(block) < BigInt(deployment.configurationBlockNumber)
+            )
+              return
+            store.getState().patchAccount(query.accountId, {
+              safe: {
+                ...account.safe,
+                [String(query.chainId)]: {
+                  ...deployment,
+                  configuration: safeConfigurationSchema.parse(configuration),
+                  configurationBlockNumber: block
+                }
+              }
+            })
+          }
+        )
       })
       .then(
         (value) => (active() ? SafeProposalSimulationSchema.parse(value) : cancelled()),
@@ -252,16 +285,29 @@ export function createSafeService({
       let validated = false
       try {
         const address = getAddress(accountId)
-        const configuration = await client.configuration(chainId, address, controller.signal)
+        const observed = importing
+          ? await client.configuration(chainId, address, controller.signal)
+          : await client.queueState(chainId, address, controller.signal)
         assertActive()
+        const latest = store.getState().main.accounts[accountId]?.safe?.[String(chainId)]
+        const configuration =
+          !importing && latest && latest.configuration !== deployment?.configuration
+            ? latest.configuration
+            : safeConfigurationSchema.parse({ ...latest?.configuration, ...observed })
         validated = true
-        // An initial configuration is useful even when the queue service fails.
-        if (importing && !store.getState().main.accounts[accountId]?.safe?.[String(chainId)]) {
-          save({ chainId, address, configuration })
-        }
+        // Retain observed state even if the queue service fails afterward.
+        save({ ...latest, chainId, address, configuration })
         const pending = await client.pending(chainId, address, configuration, controller.signal)
         assertActive()
-        save({ chainId, address, configuration, pending, refreshedAt: now() })
+        const current = store.getState().main.accounts[accountId].safe![String(chainId)]
+        save({
+          ...current,
+          pending: pending.filter(
+            (proposal) => BigInt(proposal.nonce) >= BigInt(current.configuration.nonce)
+          ),
+          refreshedAt: now(),
+          error: undefined
+        })
       } catch (error) {
         if (active()) {
           const previous = store.getState().main.accounts[accountId]?.safe?.[String(chainId)]

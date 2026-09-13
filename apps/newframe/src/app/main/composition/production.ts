@@ -319,12 +319,13 @@ export function createProductionCapabilities(
     store,
     operations: operationService,
     client: safeClient,
-    simulate: (input, signal) =>
+    simulate: (input, signal, observeConfiguration) =>
       simulateSafeProposal(
         input,
         {
           rpc: safeRpc,
           client: safeClient,
+          observeConfiguration,
           projection: createTransactionSimulationProjection(store)
         },
         signal

@@ -259,8 +259,28 @@ export function createSafeClient({
     const [version, owners] = await readBatch(chainId, expected, ['VERSION', 'getOwners'], signal, blockTag)
     return identitySchema.parse({ version, owners })
   }
+  async function serviceConfiguration(chainId: number, expected: string, signal?: AbortSignal) {
+    const info = infoSchema.parse(await json(`${base(chainId)}/v1/safes/${expected}/`, signal))
+    if (info.address !== expected) throw new Error('Safe service returned a different Safe')
+    return safeConfigurationSchema.parse({
+      owners: info.owners,
+      threshold: info.threshold,
+      nonce: info.nonce,
+      ...(info.version === undefined ? {} : { version: info.version })
+    })
+  }
   return {
     discover,
+    async queueState(
+      chainId: number,
+      address: string,
+      signal?: AbortSignal
+    ): Promise<Pick<SafeConfiguration, 'nonce'> | SafeConfiguration> {
+      const expected = safeAddressSchema.parse(address)
+      if (!call) return serviceConfiguration(chainId, expected, signal)
+      const [nonce] = await readBatch(chainId, expected, ['nonce'], signal)
+      return { nonce: safeConfigurationSchema.shape.nonce.parse(String(nonce)) }
+    },
     async configuration(
       chainId: number,
       address: string,
@@ -282,14 +302,7 @@ export function createSafeClient({
           nonce: String(nonce)
         })
       }
-      const info = infoSchema.parse(await json(`${base(chainId)}/v1/safes/${expected}/`, signal))
-      if (info.address !== expected) throw new Error('Safe service returned a different Safe')
-      return safeConfigurationSchema.parse({
-        owners: info.owners,
-        threshold: info.threshold,
-        nonce: info.nonce,
-        ...(info.version === undefined ? {} : { version: info.version })
-      })
+      return serviceConfiguration(chainId, expected, signal)
     },
     async pending(
       chainId: number,
