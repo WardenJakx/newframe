@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 
 import { cva } from '../../../../../generated/styled-system/css/cva.js'
+import { useAccountIdentity } from '../../../../features/requests/renderer/Account/Requests/state'
 import type { RequestRendererCapabilities } from '../../../../features/requests/renderer/requestCapabilities'
 import RequestCommand, {
   type RequestCommandNotifier,
@@ -9,11 +10,11 @@ import RequestCommand, {
 } from '../../../../features/requests/renderer/RequestCommand'
 import { useRequestView, type RequestViewStep } from '../../../../features/requests/renderer/requestView'
 import { RequestActions } from '../../../../features/requests/renderer/ui/RequestActions'
+import { RequestSigningFooter } from '../../../../features/requests/renderer/ui/RequestSigningFooter'
 import type { WalletRendererState } from '../../../../platform/state-sync/contract/projections'
 import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector'
 
 interface FooterSharedState {
-  account?: WalletRendererState['accounts'][string]
   crumb: { view?: string; data?: unknown }
   req?: RequestCommandRequest
 }
@@ -23,6 +24,7 @@ interface FooterProps {
   notify: RequestCommandNotifier
   shared: FooterSharedState
   step: RequestViewStep
+  onContinue(): void
 }
 
 const footerRecipe = cva({
@@ -52,12 +54,17 @@ const selectFooterState = (state: WalletRendererState): FooterSharedState => {
   const accountId = data?.accountId
   const requestId = data?.requestId
   const account = accountId ? state.accounts[accountId] : undefined
-  return { account, crumb, req: requestId ? account?.requests[requestId] : undefined }
+  return { crumb, req: requestId ? account?.requests[requestId] : undefined }
 }
 
-export function Footer({ capabilities, notify, shared, step }: FooterProps) {
+export function Footer({ capabilities, notify, shared, step, onContinue }: FooterProps) {
   const footerRef = useRef<HTMLElement>(null)
-  const { account, crumb, req } = shared
+  const { crumb, req } = shared
+  const signingAccount = useAccountIdentity(req?.account)
+  const signing =
+    crumb.view === 'requestView' &&
+    req &&
+    ['transaction', 'sign', 'signTypedData', 'signErc20Permit'].includes(req.type)
 
   useEffect(() => {
     const updateFooterHeight = () => {
@@ -82,14 +89,18 @@ export function Footer({ capabilities, notify, shared, step }: FooterProps) {
 
   let content = null
 
-  if (
-    crumb.view === 'requestView' &&
-    req &&
-    account &&
-    ['transaction', 'sign', 'signTypedData', 'signErc20Permit'].includes(req.type) &&
-    step === 'confirm'
-  ) {
+  if (signing && step === 'confirm') {
     content = <RequestCommand capabilities={capabilities} notify={notify} req={req} />
+  } else if (signing) {
+    content = (
+      <RequestActions
+        primary={{ label: 'Continue', onPress: onContinue }}
+        secondary={{
+          label: 'Decline',
+          onPress: () => void capabilities.review.reject({ requestId: req.handlerId })
+        }}
+      />
+    )
   }
 
   if (!req) {
@@ -169,7 +180,16 @@ export function Footer({ capabilities, notify, shared, step }: FooterProps) {
 
   return (
     <footer className={footerRecipe({ active: Boolean(content) })} ref={footerRef}>
-      {content}
+      {signing ? (
+        <RequestSigningFooter
+          account={signingAccount || { address: req.account || '' }}
+          clipboard={capabilities.external}
+        >
+          {content}
+        </RequestSigningFooter>
+      ) : (
+        content
+      )}
     </footer>
   )
 }
@@ -182,6 +202,6 @@ export default function FooterContainer({
   notify: RequestCommandNotifier
 }) {
   const shared = useWalletSelector(useShallow(selectFooterState))
-  const { step } = useRequestView()
-  return <Footer capabilities={capabilities} notify={notify} shared={shared} step={step} />
+  const { step, back } = useRequestView()
+  return <Footer capabilities={capabilities} notify={notify} shared={shared} step={step} onContinue={back} />
 }

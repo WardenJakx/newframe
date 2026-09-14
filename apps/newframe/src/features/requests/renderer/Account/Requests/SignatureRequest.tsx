@@ -2,7 +2,7 @@ import { Stack } from '@newframe/ui/stack'
 import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
 import { ParsedMessage } from '@spruceid/siwe-parser'
-import { useMemo, type ReactNode } from 'react'
+import { useMemo } from 'react'
 
 import { cva } from '../../../../../../generated/styled-system/css/cva.js'
 import { RequestOrigin } from '../../ui/RequestOrigin'
@@ -51,7 +51,6 @@ type MessageToSignProps = {
   req: SignRequestView
   originName?: string
   favicon?: string
-  signingAccount?: ReactNode
   signingAddress?: string
 }
 
@@ -59,7 +58,6 @@ export default function MessageToSign({
   req,
   originName,
   favicon = '',
-  signingAccount,
   signingAddress = req.account
 }: MessageToSignProps) {
   const message = req.data.decodedMessage
@@ -73,7 +71,6 @@ export default function MessageToSign({
     return (
       <Surface padding='large' tone='transparent'>
         <Stack gap='medium'>
-          {signingAccount}
           {message.includes('wants you to sign in with your Ethereum account') ? (
             <Text tone='danger' variant='supporting'>
               This message resembles a sign-in request but has an invalid format. Review the full message.
@@ -101,9 +98,8 @@ export default function MessageToSign({
         <RequestOrigin originName={requester} favicon={favicon} description='wants you to sign in' />
         <Stack gap='small'>
           <Text tone='secondary' variant='overline'>
-            Signing account
+            Address in message
           </Text>
-          {signingAccount}
           <div className={valueRecipe()}>
             <Text variant='code'>{signIn.address}</Text>
           </div>

@@ -295,7 +295,6 @@ interface AccountBodyProps {
   capabilities: RequestRendererCapabilities
   accountViewIcon?: ReactNode
   accountSelector?: ReactNode
-  renderSigningAccount?: (account: string) => ReactNode
   addresses?: unknown[]
   id: string
   minimized?: boolean
@@ -344,7 +343,6 @@ function AccountBody(props: AccountBodyProps) {
             originName={origins[request.origin]?.name || request.origin}
             favicon={persistedImageSource(origins[request.origin]?.image)}
             signingAddress={signingAccount?.address || request.account}
-            signingAccount={props.renderSigningAccount?.(request.account)}
           />
         )
       }

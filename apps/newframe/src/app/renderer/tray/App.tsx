@@ -8,8 +8,6 @@ import { useShallow } from 'zustand/react/shallow'
 
 import { cva } from '../../../../generated/styled-system/css/cva.js'
 import { AccountSelector } from '../../../features/accounts/renderer/AccountSelector'
-import { AccountRow } from '../../../features/accounts/renderer/AccountSelectorView'
-import { useAccountList } from '../../../features/accounts/renderer/useAccountList'
 import Account from '../../../features/requests/renderer/Account'
 import type { RequestRendererCapabilities } from '../../../features/requests/renderer/requestCapabilities'
 import type { RequestCommandNotifier } from '../../../features/requests/renderer/RequestCommand'
@@ -162,7 +160,6 @@ const requestOverlayRecipe = cva({
 })
 
 export function Panel(props: PanelProps) {
-  const { model: accountList } = useAccountList()
   const [accountSelectorOpen, setAccountSelectorOpen] = useState(false)
   const biometricRuntime = props.biometricRuntime || DEFAULT_BIOMETRIC_RUNTIME
   const [state, setPanelState] = useState<PanelState>({
@@ -383,12 +380,6 @@ export function Panel(props: PanelProps) {
               accountSelector={
                 <AccountSelector capability={accountsCapability} onOpenChange={setAccountSelectorOpen} />
               }
-              renderSigningAccount={(accountRef) => {
-                const account =
-                  accountList.items.find((item) => item.id === accountRef) ||
-                  accountList.items.find((item) => item.address.toLowerCase() === accountRef.toLowerCase())
-                return account ? <AccountRow account={account} selected={false} /> : null
-              }}
             />
           </div>
           <div hidden={accountSelectorOpen} inert={accountSelectorOpen}>

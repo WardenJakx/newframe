@@ -207,13 +207,7 @@ describe('confirm', () => {
     expect(capabilities.external.writeText).toHaveBeenCalledWith(recipientAddress)
     expect(screen.getByRole('button', { name: 'Address copied for recipient.eth' })).toBeTruthy()
 
-    expect(screen.getByRole('button', { name: 'Copy address for testname' })).toBeTruthy()
     expect(summary.textContent).not.toContain('testname')
-    expect(
-      details.compareDocumentPosition(screen.getByText('Account')) & Node.DOCUMENT_POSITION_FOLLOWING
-    ).toBeTruthy()
-    expect(screen.getByText('testname')).toBeTruthy()
-    expect(screen.getByText(senderAddress)).toBeTruthy()
     expect(screen.queryByText(/hot signer/i)).toBeNull()
   })
 

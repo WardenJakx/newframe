@@ -52,11 +52,7 @@ Resources:
 - https://example.test/terms
 - ipfs://bafyexample`
   const { user } = render(
-    <SignatureRequestComponent
-      req={request(decodedMessage)}
-      originName='example.test'
-      signingAccount={<div>Primary wallet</div>}
-    />
+    <SignatureRequestComponent req={request(decodedMessage)} originName='example.test' />
   )
   expect(screen.getByText('wants you to sign in')).toBeTruthy()
   expect(screen.getByText('example.test')).toBeTruthy()

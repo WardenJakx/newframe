@@ -14,6 +14,7 @@ import StatusGlyph from '../../../../shared/renderer/ui/StatusGlyph'
 import type { TransactionApprovalAdjustments } from '../../../transactions/domain/approval'
 import type { SignatureRequest, TransactionRequest } from '../../contract/requests'
 import { isCancelableRequest, isSignatureRequest } from '../../domain'
+import { useAccountIdentity } from '../Account/Requests/state'
 import type { RequestRendererCapabilities, RequestReviewCapability } from '../requestCapabilities'
 import { useRequestView, type RequestViewStep } from '../requestView'
 import { RequestActions } from '../ui/RequestActions'
@@ -31,6 +32,7 @@ interface RequestCommandSharedState {
 }
 
 export type RequestCommandRequest = {
+  account?: string
   handlerId: string
   type: string
   status?: string
@@ -384,7 +386,8 @@ export function RequestCommand(props: RequestCommandProps) {
 export default function RequestCommandContainer(props: Omit<RequestCommandProps, 'shared'>) {
   const request = props.req as TransactionRequest | SignatureRequest
   const chainId = request.type === 'transaction' ? parseInt(request.data.chainId || '0', 16) : 0
-  const accountId = request.account
+  const signingAccount = useAccountIdentity(request.account)
+  const accountId = signingAccount?.id || request.account
   const { step, adjustments, feeNoticeDismissed, dismissFeeNotice } = useRequestView()
   const selector = useMemo(
     () =>
