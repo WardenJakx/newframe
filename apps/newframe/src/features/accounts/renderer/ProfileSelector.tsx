@@ -13,11 +13,14 @@ import {
   selectOperationEntityId
 } from '../../../platform/state-sync/renderer/selectors/operation'
 import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector'
+import { AddressAvatar } from '../../../shared/renderer/ui/AddressAvatar'
+import { shortAddress } from '../../../shared/renderer/ui/AddressIdentity'
 import { formatUsdRate } from '../../asset-data/domain/balance'
 import type { AccountsCapability } from './accountsCapability'
 
 type ProfileSummary = WalletRendererState['profiles'][number]
 type MovableAccount = {
+  accountType?: string
   id: string
   address: string
   name: string
@@ -383,12 +386,13 @@ export function ProfileSelector({ capability, currentProfile, profiles }: Profil
                         width='full'
                       >
                         <Text tone={selected ? 'accent' : 'secondary'}>{selected ? '✓' : '○'}</Text>
+                        <AddressAvatar address={account.address} accountType={account.accountType} />
                         <div className={columnRecipe({ gap: 'none', grow: true })}>
                           <Text variant='caption' truncate>
                             {account.name}
                           </Text>
                           <Text tone='muted' variant='micro' truncate>
-                            {account.address}
+                            {shortAddress(account.address)}
                           </Text>
                         </div>
                       </Button>

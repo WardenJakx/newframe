@@ -3,6 +3,7 @@ import { Text } from '@newframe/ui/text'
 
 import { cva } from '../../../../generated/styled-system/css/cva.js'
 import type { ClipboardCapability } from '../capabilities'
+import { AddressAvatar } from './AddressAvatar'
 import { CopyButton } from './CopyButton'
 
 const addressIdentityRecipe = cva({
@@ -16,6 +17,10 @@ const addressIdentityRecipe = cva({
   }
 })
 
+const addressTextRecipe = cva({
+  base: { display: 'flex', flexDirection: 'column', minWidth: 0 }
+})
+
 const fullAddressRecipe = cva({
   base: {
     minWidth: 0,
@@ -26,11 +31,12 @@ const fullAddressRecipe = cva({
 
 export const shortAddress = (address?: string) => {
   if (!address) return ''
-  return `${address.slice(0, 8)}...${address.slice(-6)}`
+  return address.length > 14 ? `${address.slice(0, 8)}...${address.slice(-6)}` : address
 }
 
 export type AddressIdentityProps = {
   address?: string
+  accountType?: string
   clipboard?: ClipboardCapability
   nickname?: string
   showCopy?: boolean
@@ -39,6 +45,7 @@ export type AddressIdentityProps = {
 
 export function AddressIdentity({
   address,
+  accountType,
   clipboard,
   nickname,
   showCopy = true,
@@ -47,6 +54,7 @@ export function AddressIdentity({
   if (!address && !nickname) return null
   const addressDisplay = showFullAddress ? address || '' : shortAddress(address)
   const display = nickname || addressDisplay
+  const hasNickname = nickname && nickname !== shortAddress(address) && nickname !== address
   const displayText = (
     <Text align='end' truncate variant='code'>
       {display}
@@ -66,13 +74,23 @@ export function AddressIdentity({
 
   return (
     <span className={addressIdentityRecipe()} data-address-identity=''>
-      {nickname && address ? (
-        <HoverSwapText alternate={addressText}>{displayText}</HoverSwapText>
-      ) : nickname ? (
-        displayText
-      ) : (
-        addressText
-      )}
+      {address ? <AddressAvatar address={address} accountType={accountType} /> : null}
+      <span className={addressTextRecipe()}>
+        {hasNickname ? displayText : null}
+        {address ? (
+          nickname && showFullAddress ? (
+            <HoverSwapText alternate={addressText}>
+              <Text align='end' truncate variant='code'>
+                {shortAddress(address)}
+              </Text>
+            </HoverSwapText>
+          ) : (
+            addressText
+          )
+        ) : !hasNickname ? (
+          displayText
+        ) : null}
+      </span>
       {address && showCopy && clipboard ? (
         <CopyButton
           clipboard={clipboard}

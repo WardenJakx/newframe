@@ -1,6 +1,9 @@
+import { AddressIdentity } from '../../../../../shared/renderer/ui/AddressIdentity'
+import type { AddressIdentities } from './state'
 const timeFormat = new Intl.DateTimeFormat('en', { dateStyle: 'medium' })
 
 type EnsOverviewProps = {
+  identities?: AddressIdentities
   type: string
   data: {
     name?: string
@@ -27,7 +30,7 @@ function formatDuration(duration: number) {
   return `until ${timeFormat.format(endDate)}`
 }
 
-const EnsOverview = ({ type, data }: EnsOverviewProps) => {
+const EnsOverview = ({ type, data, identities = {} }: EnsOverviewProps) => {
   const line = (value: string | undefined, emphasis = false) => (
     <Text
       align='center'
@@ -37,6 +40,11 @@ const EnsOverview = ({ type, data }: EnsOverviewProps) => {
       {value}
     </Text>
   )
+
+  const identity = (address?: string) =>
+    address ? (
+      <AddressIdentity address={address} {...identities[address.toLowerCase()]} showCopy={false} />
+    ) : null
 
   if (type === 'commit') {
     return line('Submitting ENS Commitment')
@@ -71,9 +79,9 @@ const EnsOverview = ({ type, data }: EnsOverviewProps) => {
         {line(`Transferring ENS Name${name ? '' : ' with token id'}`)}
         {line(display, true)}
         {line('from')}
-        {line(from)}
+        {identity(from)}
         {line('to')}
-        {line(to)}
+        {identity(to)}
       </Stack>
     )
   }
@@ -84,7 +92,7 @@ const EnsOverview = ({ type, data }: EnsOverviewProps) => {
     return (
       <Stack align='center' gap='xsmall'>
         {line('Granting approval to')}
-        {line(operator)}
+        {identity(operator)}
         {line('as an approved operator for')}
         {line(name, true)}
       </Stack>

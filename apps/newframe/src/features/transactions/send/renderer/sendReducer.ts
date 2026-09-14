@@ -12,6 +12,7 @@ export interface SendRecipient {
   name?: string
   ensName?: string
   lastSignerType?: string
+  accountType?: string
 }
 
 export interface SendWorkflowState {

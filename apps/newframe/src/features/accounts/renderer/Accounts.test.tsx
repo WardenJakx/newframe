@@ -91,7 +91,7 @@ describe('Accounts profile controls', () => {
     await user.click(screen.getByRole('button', { name: 'Connect a hardware wallet' }))
     await user.click(screen.getByRole('button', { name: 'Ledger' }))
     await user.click(screen.getByRole('button', { name: 'View Ledger accounts' }))
-    expect(screen.getByRole('button', { name: 'Select 0x000…0001' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Select 0x000000...000001' })).toBeTruthy()
   })
 
   it('places the active profile selector immediately left of Close accounts', () => {

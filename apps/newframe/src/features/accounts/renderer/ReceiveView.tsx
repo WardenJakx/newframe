@@ -1,6 +1,5 @@
 import { Stack } from '@newframe/ui/stack'
 import { Text } from '@newframe/ui/text'
-import React from 'react'
 
 import { cva } from '../../../../generated/styled-system/css/cva.js'
 import type { ClipboardCapability } from '../../../shared/renderer/capabilities'
@@ -19,13 +18,13 @@ const receiveRecipe = cva({
 export function ReceiveView({
   account,
   clipboard,
-  icon,
+  accountType,
   name,
   onBack
 }: {
   account: { address: string }
   clipboard: ClipboardCapability
-  icon: React.ReactNode
+  accountType?: string
   name: string
   onBack: () => void
 }) {
@@ -39,12 +38,16 @@ export function ReceiveView({
     >
       <div className={receiveRecipe()}>
         <Stack align='center' gap='medium'>
-          {icon}
           <Text align='center' variant='heading'>
             {name}
           </Text>
           <AddressQRCode address={account.address} />
-          <AddressIdentity address={account.address} clipboard={clipboard} showFullAddress />
+          <AddressIdentity
+            address={account.address}
+            accountType={accountType}
+            clipboard={clipboard}
+            showFullAddress
+          />
         </Stack>
       </div>
     </TrayOverlay>

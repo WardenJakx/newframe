@@ -2,13 +2,16 @@ import { Stack } from '@newframe/ui/stack'
 import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
 
+import { AddressIdentity } from '../../../../../shared/renderer/ui/AddressIdentity'
+import { accountDisplayType } from '../../../../../shared/renderer/ui/signerPresentation'
 import { RequestStatusNotice } from '../../ui/RequestStatusNotice'
 import type { AddTokenRequestView } from './requestViewTypes'
-import { useOriginName } from './state'
+import { useAccountIdentity, useOriginName } from './state'
 
 type AddTokenRequestProps = {
   req: AddTokenRequestView
   originName: string
+  accountType?: string
   pos?: number
 }
 
@@ -43,9 +46,7 @@ function AddTokenRequest(props: AddTokenRequestProps) {
               <Text tone='secondary' variant='label'>
                 {token.name}
               </Text>
-              <Text tone='muted' truncate variant='code'>
-                {token.address}
-              </Text>
+              <AddressIdentity address={token.address} accountType={props.accountType} />
             </Stack>
           </Surface>
         </Stack>
@@ -56,5 +57,6 @@ function AddTokenRequest(props: AddTokenRequestProps) {
 
 export default function AddTokenRequestWithState(props: AddTokenRequestWithStateProps) {
   const originName = useOriginName(props.req.origin)
-  return <AddTokenRequest {...props} originName={originName} />
+  const accountType = accountDisplayType(useAccountIdentity(props.req.token.address))
+  return <AddTokenRequest {...props} originName={originName} accountType={accountType} />
 }

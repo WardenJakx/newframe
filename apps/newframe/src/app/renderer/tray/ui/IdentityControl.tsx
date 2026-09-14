@@ -6,6 +6,7 @@ import { Stack } from '@newframe/ui/stack'
 import { Text } from '@newframe/ui/text'
 
 import { cva } from '../../../../../generated/styled-system/css/cva.js'
+import { AddressAvatar } from '../../../../shared/renderer/ui/AddressAvatar'
 
 const identityControlRecipe = cva({
   base: {
@@ -46,6 +47,8 @@ type IdentityControlAction = {
 
 export type IdentityControlProps = {
   actions?: readonly IdentityControlAction[]
+  address?: string
+  accountType?: string
   detail?: string
   expanded: boolean
   icon: IconName
@@ -56,6 +59,8 @@ export type IdentityControlProps = {
 
 export function IdentityControl({
   actions = [],
+  address,
+  accountType,
   detail,
   expanded,
   icon,
@@ -74,9 +79,13 @@ export function IdentityControl({
         width='full'
       >
         <Inline align='center' gap='small' grow>
-          <span className={identityIconRecipe()}>
-            <Icon name={icon} size='medium' />
-          </span>
+          {address ? (
+            <AddressAvatar address={address} accountType={accountType} />
+          ) : (
+            <span className={identityIconRecipe()}>
+              <Icon name={icon} size='medium' />
+            </span>
+          )}
           <Stack gap='none' grow>
             <Text variant='body' truncate>
               {name}

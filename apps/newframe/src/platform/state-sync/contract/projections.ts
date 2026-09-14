@@ -513,6 +513,7 @@ const WalletRendererStateSchema = z.strictObject({
 })
 
 const SideTrayAccountSchema = z.strictObject({
+  accountType: z.string().optional(),
   id: z.string(),
   address: z.string(),
   name: z.string(),

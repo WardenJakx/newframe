@@ -5,6 +5,7 @@ import React from 'react'
 
 import { cva } from '../../../../../../generated/styled-system/css/cva.js'
 import type { TokenImageCapability } from '../../../../../shared/renderer/capabilities'
+import { AddressIdentity } from '../../../../../shared/renderer/ui/AddressIdentity'
 import { ChainIcon } from '../../../../../shared/renderer/ui/ChainIcon'
 import { DetailRow } from '../../../../../shared/renderer/ui/DetailRow'
 import { TrayOverlay } from '../../../../../shared/renderer/ui/TrayOverlay'
@@ -33,6 +34,7 @@ const payloadRecipe = cva({
 
 export function OrderDetailsView({
   assetImages,
+  accountType,
   imageCapability,
   networks,
   networksMeta,
@@ -42,6 +44,7 @@ export function OrderDetailsView({
   tokens
 }: {
   assetImages?: { contra?: string; target?: string }
+  accountType?: string
   imageCapability: TokenImageCapability
   networks: OrderNetworkMap
   networksMeta: OrderNetworkMetadataMap
@@ -70,8 +73,6 @@ export function OrderDetailsView({
       />
     )
   }
-  const shortAddress = (address = '') =>
-    address ? `${address.substring(0, 5)}…${address.substring(address.length - 4)}` : ''
   const chainDetail = (chainId: number) => {
     const chain = networks[chainId] || {}
 
@@ -123,7 +124,12 @@ export function OrderDetailsView({
           {detailRow('Provider', order.provider || order.source)}
           {detailRow('Environment', order.environment)}
           {detailRow('Profile', order.profile)}
-          {detailRow('Account', shortAddress(order.accountAddress), true)}
+          {order.accountAddress
+            ? detailRow(
+                'Account',
+                <AddressIdentity address={order.accountAddress} accountType={accountType} />
+              )
+            : null}
           {isCrossChain ? (
             <>
               {detailRow('Source / spent chain', chainDetail(spentChainId))}

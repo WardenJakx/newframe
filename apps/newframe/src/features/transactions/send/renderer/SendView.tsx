@@ -7,17 +7,17 @@ import { Stack } from '@newframe/ui/stack'
 import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
 
-import { AddressIdentity } from '../../../../shared/renderer/ui/AddressIdentity'
+import { AddressIdentity, shortAddress } from '../../../../shared/renderer/ui/AddressIdentity'
 import { CopyButton } from '../../../../shared/renderer/ui/CopyButton'
 import { SidePanel } from '../../../../shared/renderer/ui/SidePanel/SidePanel'
+import { accountDisplayType } from '../../../../shared/renderer/ui/signerPresentation'
 import TokenSelector from '../../../../shared/renderer/ui/TokenSelector'
-import AccountIcon from './AccountIcon'
 import { SEND_TOKEN_ROWS_INCREMENT } from './sendReducer'
 import type { SendCapability } from './sendService'
 import type { SendAccountViewModel, SendViewEvents, SendViewModel } from './sendViewModel'
 
 function recipientName(account: SendAccountViewModel) {
-  return account.ensName || account.name || account.address
+  return account.ensName || account.name || shortAddress(account.address)
 }
 
 export function SendView({
@@ -66,9 +66,9 @@ export function SendView({
                 <Stack gap='small'>
                   <Surface border='accent' padding='small' radius='control' tone='raised'>
                     <Stack align='center' direction='row' gap='medium' justify='between'>
-                      <AccountIcon account={model.recipient} />
                       <AddressIdentity
                         address={model.recipient.address}
+                        accountType={accountDisplayType(model.recipient)}
                         clipboard={capability}
                         nickname={recipientName(model.recipient)}
                       />
@@ -131,18 +131,19 @@ export function SendView({
                                   size='list'
                                   width='full'
                                 >
-                                  <AccountIcon account={account} />
-                                  <Text variant='heading' truncate>
-                                    {recipientName(account)}
-                                  </Text>
-                                  <AddressIdentity address={account.address} showCopy={false} />
+                                  <AddressIdentity
+                                    address={account.address}
+                                    accountType={accountDisplayType(account)}
+                                    nickname={account.ensName || account.name}
+                                    showCopy={false}
+                                  />
                                 </Button>
                               </Stack>
                               <CopyButton
                                 clipboard={capability}
-                                copiedLabel={`Address copied for ${account.address.slice(0, 8)}...${account.address.slice(-6)}`}
+                                copiedLabel={`Address copied for ${shortAddress(account.address)}`}
                                 copiedTitle='Address copied'
-                                label={`Copy address for ${account.address.slice(0, 8)}...${account.address.slice(-6)}`}
+                                label={`Copy address for ${shortAddress(account.address)}`}
                                 title='Copy address'
                                 value={account.address}
                               />

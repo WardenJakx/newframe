@@ -337,6 +337,11 @@ it('selects disconnected owners in bottom controls and preserves Safe identity a
   expect(within(screen.getByRole('option', { name: /Hot owner/ })).getByText('Hot Signer')).toBeTruthy()
   await user.click(screen.getByRole('option', { name: /Ledger owner/ }))
   expect(screen.getByRole('button', { name: 'Signer' }).textContent).toContain('Ledger owner')
+  const signingAccount = screen.getByRole('button', { name: 'Signer' })
+  expect(within(signingAccount).getByRole('presentation', { hidden: true }).getAttribute('src')).toStartWith(
+    'data:image/png;base64,'
+  )
+  expect(signingAccount.innerHTML).toContain('viewBox="0 0 400 400"')
   const selectedState = fixture.state.wallet.getState()
   expect(selectedState.currentAccount).toBe(address)
   expect(selectedState.accounts[address].address).toBe(address)

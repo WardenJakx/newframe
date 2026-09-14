@@ -10,6 +10,7 @@ import { Cluster, ClusterRow, ClusterValue } from '../../../../ui/Cluster'
 import { DisplayValue } from '../../../../ui/DisplayValue'
 import RequestHeader from '../../../../ui/RequestHeader'
 import EnsOverview from '../../Ens'
+import type { AddressIdentities } from '../../state'
 
 type TxOverviewRequest = {
   data: {
@@ -37,6 +38,7 @@ type SendOverviewProps = ApproveOverviewProps & {
 }
 
 type ContractCallOverviewProps = {
+  identities?: AddressIdentities
   req: TxOverviewRequest
 }
 
@@ -45,6 +47,7 @@ type DataClusterValueProps = {
 }
 
 type TxOverviewProps = {
+  identities?: AddressIdentities
   req: TxOverviewRequest
   chainName?: string
   chainColor?: string
@@ -121,12 +124,16 @@ const DataOverview = () => (
   </Text>
 )
 
-const ContractCallOverview = ({ req }: ContractCallOverviewProps) => {
+const ContractCallOverview = ({ req, identities }: ContractCallOverviewProps) => {
   const { decodedData: { method } = {} } = req
-  return renderRecognizedActions(req) || <SimpleContractCallOverview method={method} />
+  return renderRecognizedActions(req, identities) || <SimpleContractCallOverview method={method} />
 }
 
-const renderActionOverview = (action: { id: string; data?: unknown }, index: number) => {
+const renderActionOverview = (
+  action: { id: string; data?: unknown },
+  index: number,
+  identities?: AddressIdentities
+) => {
   const { id = '', data } = action
   const key = id + index
   const [_actionClass, actionType] = id.split(':')
@@ -135,13 +142,13 @@ const renderActionOverview = (action: { id: string; data?: unknown }, index: num
   if (id === 'erc20:transfer') return <SendOverview key={key} {...(props as SendOverviewProps)} />
   if (id === 'erc20:approve') return <ApproveOverview key={key} {...(props as ApproveOverviewProps)} />
   if (id.startsWith('ens:')) {
-    return <EnsOverview key={key} type={actionType} data={props} />
+    return <EnsOverview key={key} type={actionType} data={props} identities={identities} />
   }
 
   return <SimpleContractCallOverview key={key} />
 }
 
-function renderRecognizedActions(req: TxOverviewRequest) {
+function renderRecognizedActions(req: TxOverviewRequest, identities?: AddressIdentities) {
   const { recognizedActions: actions = [] } = req
 
   return !actions.length ? (
@@ -149,7 +156,7 @@ function renderRecognizedActions(req: TxOverviewRequest) {
       Calling Contract
     </Text>
   ) : (
-    actions.map(renderActionOverview)
+    actions.map((action, index) => renderActionOverview(action, index, identities))
   )
 }
 
@@ -157,6 +164,7 @@ const DataClusterValue = ({ children }: DataClusterValueProps) => <ClusterValue>
 
 const TxOverview = ({
   req,
+  identities,
   chainName = '',
   chainColor = '',
   symbol,
@@ -169,7 +177,7 @@ const TxOverview = ({
 
   const description = (() => {
     if (classification === 'CONTRACT_DEPLOY') return <DeployContractOverview />
-    if (classification === 'CONTRACT_CALL') return <ContractCallOverview req={req} />
+    if (classification === 'CONTRACT_CALL') return <ContractCallOverview req={req} identities={identities} />
     if (classification === 'SEND_DATA') return <DataOverview />
     return <SendOverview req={req} decimals={18} symbol={symbol} />
   })()

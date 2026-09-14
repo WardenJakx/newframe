@@ -65,7 +65,7 @@ const mediaBadgeRecipe = sva({
 })
 
 export type MediaBadgeProps = RecipeVariantProps<typeof mediaBadgeRecipe> & {
-  badge: ReactNode
+  badge?: ReactNode
   children: ReactNode
   decorative?: boolean
   rootRef?: Ref<HTMLSpanElement>
@@ -76,9 +76,11 @@ export function MediaBadge({ badge, children, decorative = false, rootRef, size 
   return (
     <span ref={rootRef} aria-hidden={decorative || undefined} className={styles.root}>
       <span className={styles.media}>{children}</span>
-      <span className={styles.badge}>
-        <span className={styles.badgeContent}>{badge}</span>
-      </span>
+      {badge ? (
+        <span className={styles.badge}>
+          <span className={styles.badgeContent}>{badge}</span>
+        </span>
+      ) : null}
     </span>
   )
 }

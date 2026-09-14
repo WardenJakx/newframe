@@ -1,5 +1,7 @@
 import type { IconName } from '@newframe/ui/icon'
 
+export { accountDisplayType } from '../../../features/accounts/domain/accountDisplayType'
+
 const LABELS: Record<string, string> = {
   ring: 'Hot Signer',
   seed: 'Hot Signer',

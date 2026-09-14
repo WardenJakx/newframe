@@ -11,6 +11,7 @@ import type { OperationEntityRef } from '../../../../platform/operations/operati
 import type { OperationService } from '../../../../platform/operations/service.js'
 import type { OperationOwner, OperationReference } from '../../../../platform/operations/types.js'
 import type { CanonicalStore } from '../../../../platform/state-store/actions.js'
+import { accountDisplayType } from '../../domain/accountDisplayType.js'
 
 type ProfileCommand =
   | Extract<AccountUpdateCommand, { profileId: string }>
@@ -232,7 +233,8 @@ export function createProfileService(ports: ProfileServicePorts) {
             id: account.id,
             address: account.address,
             name: account.name,
-            profileId: canonicalAccount.profileId
+            profileId: canonicalAccount.profileId,
+            accountType: accountDisplayType(canonicalAccount)
           }
         ]
       })
