@@ -27,7 +27,7 @@ import { useRequestView } from '../../../requestView'
 import { DisplayCoinBalance } from '../../../ui/DisplayValue'
 import type { TransactionRequestView } from '../requestViewTypes'
 import {
-  useAccountIdentity,
+  useAddressIdentities,
   useAssetRate,
   useNetwork,
   useNetworkMetadata,
@@ -61,7 +61,7 @@ type TxReviewProps = {
   feeLevel?: TransactionFeeLevel | 'custom'
   selectFeeLevel(level: TransactionFeeLevel): void
   capabilities: Pick<RequestRendererCapabilities, 'external' | 'transaction'>
-  destinationAccount: ReturnType<typeof useAccountIdentity>
+  identities: ReturnType<typeof useAddressIdentities>
   nativeCurrencyRate: ReturnType<typeof useAssetRate>
   req: TransactionRequestView
   network: ReturnType<typeof useNetwork>
@@ -334,21 +334,22 @@ function TxReviewView(props: TxReviewProps) {
     <AddressIdentity
       address={address}
       clipboard={props.capabilities.external}
-      nickname={nickname || shortAddress(address)}
+      accountType={props.identities[address.toLowerCase()]?.accountType}
+      nickname={nickname || props.identities[address.toLowerCase()]?.nickname || shortAddress(address)}
       showFullAddress
     />
   )
   const contractName = token?.name || tokenSymbol || req.decodedData?.contractName || req.recipient
   const spender = token?.spender ?? (isApproval ? { address: req.decodedData?.args[0]?.value } : undefined)
   const details: TransactionInformationDetailRow[] = nativeTransfer
-    ? [{ label: 'To', value: addressValue(to, req.recipient || props.destinationAccount?.name) }]
+    ? [{ label: 'To', value: addressValue(to, req.recipient) }]
     : isTransfer || isApproval
       ? [
           {
             label: isTransfer ? 'To' : 'Spender',
             value: isTransfer
               ? recipient?.address
-                ? addressValue(recipient.address, recipient.ens || props.destinationAccount?.name)
+                ? addressValue(recipient.address, recipient.ens)
                 : 'Recipient unavailable'
               : spender?.address
                 ? addressValue(spender.address, spender.ens)
@@ -358,7 +359,7 @@ function TxReviewView(props: TxReviewProps) {
           { label: 'Token contract', value: addressValue(token?.contract?.address || to, contractName) }
         ]
       : [
-          { label: 'On contract', value: addressValue(to, contractName || props.destinationAccount?.name) },
+          { label: 'On contract', value: addressValue(to, contractName) },
           ...(req.decodedData?.args.map((arg, index) => ({
             label: `${arg.name || `Argument ${index + 1}`}${arg.type ? ` (${arg.type})` : ''}`,
             value: arg.type === 'address' ? addressValue(arg.value) : arg.value
@@ -442,9 +443,7 @@ export default function TxReviewWithState(props: TxReviewWithStateProps) {
   const originName = useOriginName(props.req.origin)
   const origins = useOrigins()
   const tokens = useTokens()
-  const recipient = transferRecipient(props.req)
-  const to = props.req.data.to ? getAddress(props.req.data.to) : ''
-  const destinationAccount = useAccountIdentity(recipient?.address || to)
+  const identities = useAddressIdentities()
   const nativeCurrencyRate = useAssetRate({
     chainId,
     address: NATIVE_CURRENCY,
@@ -456,7 +455,7 @@ export default function TxReviewWithState(props: TxReviewWithStateProps) {
       {...props}
       feeLevel={feeLevel}
       selectFeeLevel={(level) => selectFeeLevel(props.req, level, networkMetadata.gas?.price)}
-      destinationAccount={destinationAccount}
+      identities={identities}
       nativeCurrencyRate={nativeCurrencyRate}
       network={network}
       networkMetadata={networkMetadata}

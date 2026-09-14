@@ -1,18 +1,11 @@
-import type { IconName } from '@newframe/ui/icon'
 import { useEffect, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 
 import { useWalletSelector } from '../../../../../platform/state-sync/renderer/useAppSelector'
+import { accountDisplayType } from '../../../../../shared/renderer/ui/signerPresentation'
 import type { HomeCapability } from '../homeCapability'
 import { useHomeUiStore } from '../state/HomeUiProvider'
 import { HomeHeaderView } from './HomeHeaderView'
-
-function signerIcon(type: string): IconName {
-  if ((type || '').toLowerCase() === 'address') return 'eye'
-  if (type === 'airgap') return 'qr'
-  if (type === 'ledger' || type === 'trezor' || type === 'lattice') return 'device'
-  return 'flame'
-}
 
 export function HomeHeader({ capability }: { capability: Pick<HomeCapability, 'copyText'> }) {
   const { account, showLocalNameWithENS } = useWalletSelector(
@@ -27,7 +20,7 @@ export function HomeHeader({ capability }: { capability: Pick<HomeCapability, 'c
   const [copied, setCopied] = useState(false)
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   useEffect(() => () => clearTimeout(timer.current), [])
-  const type = String(account?.lastSignerType || '')
+  const type = accountDisplayType(account)
   const name = account
     ? account.ensName && !showLocalNameWithENS
       ? account.ensName
@@ -39,7 +32,8 @@ export function HomeHeader({ capability }: { capability: Pick<HomeCapability, 'c
       account={account}
       accountsOpen={overlay.type === 'accounts'}
       copied={copied}
-      icon={account ? signerIcon(type) : 'accounts'}
+      accountType={type}
+      icon='accounts'
       menuOpen={overlay.type === 'menu'}
       name={name}
       onCopy={() => {

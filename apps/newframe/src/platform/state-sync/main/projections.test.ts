@@ -458,7 +458,8 @@ it('projects only active-profile Accounts and derives ordered cached profile val
       id: activeAccount,
       address: activeAccount,
       name: activeAccount,
-      lastSignerType: 'address'
+      lastSignerType: 'address',
+      accountType: 'address'
     }
   })
   expect(sideTray.accountOrder).toEqual([activeAccount])
@@ -473,4 +474,26 @@ it('projects only active-profile Accounts and derives ordered cached profile val
     }
   })
   expect(sideTray).not.toHaveProperty('profiles')
+})
+
+it('projects Safe display type without changing signer history', () => {
+  for (const lastSignerType of ['Address', 'seed', 'ledger']) {
+    const state = createInitialState()
+    state.main.accounts = {
+      [safeAddress]: {
+        ...account(safeAddress, DEFAULT_PROFILE_ID),
+        lastSignerType,
+        safe: { '1': safeDeployment(1, [ownerAddress]) }
+      },
+      [ownerAddress]: {
+        ...account(ownerAddress, DEFAULT_PROFILE_ID),
+        lastSignerType,
+        safe: {}
+      }
+    }
+    state.main.accountOrder = [safeAddress, ownerAddress]
+    const projected = projectSideTrayState(state).accounts
+    expect(projected[safeAddress]).toMatchObject({ accountType: 'safe', lastSignerType })
+    expect(projected[ownerAddress]).toMatchObject({ accountType: lastSignerType, lastSignerType })
+  }
 })

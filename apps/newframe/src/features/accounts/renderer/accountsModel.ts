@@ -1,5 +1,6 @@
 import type { WalletRendererState } from '../../../platform/state-sync/contract/projections'
-import { signerTypeLabel } from '../../../shared/renderer/ui/signerPresentation'
+import { shortAddress } from '../../../shared/renderer/ui/AddressIdentity'
+import { accountDisplayType, signerTypeLabel } from '../../../shared/renderer/ui/signerPresentation'
 import type { createBalanceSummarySelector } from '../../asset-data/domain/balance'
 import { formatUsdRate } from '../../asset-data/domain/balance'
 
@@ -35,13 +36,10 @@ function accountDisplayName(account: AccountProjection | undefined, showLocalNam
 }
 
 export function shortAccountAddress(address = '') {
-  return address ? `${address.substring(0, 5)}…${address.substring(address.length - 4)}` : ''
+  return shortAddress(address)
 }
 
-function accountSignerType(account: AccountProjection | undefined) {
-  if (account?.safe && Object.keys(account.safe).length) return 'safe'
-  return String(account?.lastSignerType || '')
-}
+const accountSignerType = accountDisplayType
 
 function accountSignerLabel(account: AccountProjection | undefined) {
   return accountSignerType(account) === 'safe' ? '' : signerTypeLabel(accountSignerType(account))

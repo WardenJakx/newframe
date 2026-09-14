@@ -8,7 +8,9 @@ import { Text } from '@newframe/ui/text'
 import { useState } from 'react'
 
 import { formatUnits, max, parseUnits, toBigInt } from '../../../../shared/domain/units'
+import { AddressIdentity } from '../../../../shared/renderer/ui/AddressIdentity'
 import type { Identity } from '../../contract/requests'
+import type { AddressIdentities } from '../Account/Requests/state'
 import type { SourceValue } from '../format/displayValue'
 import useCopiedMessage from '../hooks/useCopiedMessage'
 import type { RequestExternalCapability } from '../requestCapabilities'
@@ -35,9 +37,11 @@ const isValidInput = (value: string, decimals: number) => {
 function ApprovalParty({
   address,
   capability,
+  accountType,
   name
 }: {
   address: string
+  accountType?: string
   capability: Pick<RequestExternalCapability, 'copy'>
   name?: string
 }) {
@@ -45,16 +49,11 @@ function ApprovalParty({
 
   return (
     <Button appearance='row' label={`Copy ${name || address}`} onPress={copyAddress} width='full'>
-      <Stack gap='xsmall' grow>
-        {name ? (
-          <Text truncate variant='label'>
-            {name}
-          </Text>
-        ) : null}
-        <Text tone={showCopiedMessage ? 'accent' : 'secondary'} truncate variant='code'>
-          {showCopiedMessage ? 'Address Copied' : address}
-        </Text>
-      </Stack>
+      {showCopiedMessage ? (
+        <Text tone='accent'>Address Copied</Text>
+      ) : (
+        <AddressIdentity address={address} accountType={accountType} nickname={name} showCopy={false} />
+      )}
       <Icon name='copy' size='small' tone='muted' />
     </Button>
   )
@@ -72,6 +71,7 @@ export interface TokenSpendData {
 }
 
 interface EditTokenSpendProps {
+  identities?: AddressIdentities
   clipboard: Pick<RequestExternalCapability, 'copy'>
   data: TokenSpendData
   updateRequest: (amount: string) => void
@@ -82,6 +82,7 @@ interface EditTokenSpendProps {
 
 export default function EditTokenSpend({
   clipboard,
+  identities = {},
   data,
   updateRequest,
   requestedAmount,
@@ -127,11 +128,21 @@ export default function EditTokenSpend({
       </Text>
       <Surface padding='small' radius='card'>
         <Stack gap='small'>
-          <ApprovalParty address={spender.address} capability={clipboard} name={spender.ens} />
+          <ApprovalParty
+            address={spender.address}
+            accountType={identities[spender.address.toLowerCase()]?.accountType}
+            capability={clipboard}
+            name={spender.ens || identities[spender.address.toLowerCase()]?.nickname}
+          />
           <Text align='center' tone='danger' variant='overline'>
             {isRevoke ? 'Revoke approval to spend' : 'Grant approval to spend'}
           </Text>
-          <ApprovalParty address={contract.address} capability={clipboard} name={name} />
+          <ApprovalParty
+            address={contract.address}
+            accountType={identities[contract.address.toLowerCase()]?.accountType}
+            capability={clipboard}
+            name={name}
+          />
           {deadline ? <Countdown end={deadline} title='Permission Expires in' /> : null}
         </Stack>
       </Surface>

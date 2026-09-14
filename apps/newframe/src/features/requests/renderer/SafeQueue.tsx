@@ -3,8 +3,9 @@ import { useShallow } from 'zustand/react/shallow'
 
 import type { AirGapRequestReference } from '../../../platform/signing/domain/airgap'
 import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector'
-import { AddressIdentity } from '../../../shared/renderer/ui/AddressIdentity'
+import { AddressIdentity, shortAddress } from '../../../shared/renderer/ui/AddressIdentity'
 import { ChainIcon } from '../../../shared/renderer/ui/ChainIcon'
+import { accountDisplayType } from '../../../shared/renderer/ui/signerPresentation'
 import type { SafeOwnerAccount, SafeProposalSimulation } from '../../accounts/domain/safe'
 import { persistedImageSource } from '../../asset-data/domain/image'
 import type { RequestRendererCapabilities } from './requestCapabilities'
@@ -158,16 +159,20 @@ export function useSafeQueue({
       active = false
     }
   }, [accountId, capabilities.safe, chainId, generation, safeTxHash, scope])
-  const renderAddress = (address: string) => (
-    <AddressIdentity
-      address={address}
-      clipboard={capabilities.external}
-      nickname={
-        Object.values(accounts).find((account) => account.address.toLowerCase() === address.toLowerCase())
-          ?.name
-      }
-    />
-  )
+  const renderAddress = (address: string) => {
+    const identity = Object.values(accounts).find(
+      (account) => account.address.toLowerCase() === address.toLowerCase()
+    )
+    return (
+      <AddressIdentity
+        address={address}
+        accountType={accountDisplayType(identity)}
+        clipboard={capabilities.external}
+        nickname={identity?.name || shortAddress(address)}
+        showFullAddress
+      />
+    )
+  }
   const networkIcons = Object.fromEntries(
     Object.values(safe ?? {}).map((deployment) => [
       deployment.chainId,
@@ -217,7 +222,10 @@ export function useSafeQueue({
             renderAddress,
             deployment,
             proposal,
-            owners,
+            owners: owners.map((owner) => ({
+              ...owner,
+              accountType: accountDisplayType(accounts[owner.accountId])
+            })),
             selectedOwnerId: selectedOwner?.accountId,
             confirmation,
             onRecoverSigner:

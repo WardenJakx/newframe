@@ -45,7 +45,7 @@ export function SafeProposalDetailsView({
   renderAddress?: (address: string) => ReactNode
   deployment: SafeDeployment
   proposal: SafeProposal
-  owners?: SafeOwnerAccount[]
+  owners?: Array<SafeOwnerAccount & { accountType?: string }>
   selectedOwnerId?: string
   onSelectOwner?: (accountId: string) => void
   confirmation?: SafeConfirmationModel
@@ -120,6 +120,7 @@ export function SafeProposalDetailsView({
     renderAddress?.(address) ?? (
       <AddressIdentity
         address={address}
+        accountType={address.toLowerCase() === proposal.safe.toLowerCase() ? 'safe' : undefined}
         clipboard={capabilities.external}
         nickname={shortAddress(address)}
         showFullAddress
@@ -288,6 +289,7 @@ export function SafeProposalDetailsView({
                 hasSigningAccount && selectedOwner ? (
                   <AddressIdentity
                     address={selectedOwner.address}
+                    accountType={selectedOwner.accountType || selectedOwner.signerType}
                     nickname={selectedOwner.name || shortAddress(selectedOwner.address)}
                     showCopy={false}
                     showFullAddress
@@ -303,10 +305,10 @@ export function SafeProposalDetailsView({
                 disabled: owner.status === 'watch-only',
                 content: (
                   <Stack gap='none' grow>
-                    {owner.name ? <Text truncate>{owner.name}</Text> : null}
                     <AddressIdentity
                       address={owner.address}
-                      nickname={shortAddress(owner.address)}
+                      accountType={owner.accountType || owner.signerType}
+                      nickname={owner.name || shortAddress(owner.address)}
                       showCopy={false}
                       showFullAddress
                     />

@@ -1,4 +1,3 @@
-import { Icon } from '@newframe/ui/icon'
 import { Inline } from '@newframe/ui/inline'
 import { Surface } from '@newframe/ui/surface'
 import { Text } from '@newframe/ui/text'
@@ -18,7 +17,6 @@ export function SigningAccount({
           {label}
         </Text>
         <Inline align='center' gap='xsmall'>
-          <Icon name='wallet' size='small' tone='accent' />
           {children}
         </Inline>
       </Inline>

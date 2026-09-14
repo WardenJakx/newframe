@@ -1,7 +1,5 @@
-import { Icon } from '@newframe/ui/icon'
-
 import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector'
-import { signerIconName } from '../../../shared/renderer/ui/signerPresentation'
+import { accountDisplayType } from '../../../shared/renderer/ui/signerPresentation'
 import type { AccountsCapability } from './accountsCapability'
 import { ReceiveView } from './ReceiveView'
 
@@ -19,15 +17,9 @@ export function Receive({
 
   if (!account) return null
   const name = account.ensName && !showLocalNameWithENS ? account.ensName : account.name
-  const type = String(account.lastSignerType || '')
+  const type = accountDisplayType(account)
 
   return (
-    <ReceiveView
-      account={account}
-      clipboard={capability}
-      icon={<Icon name={signerIconName(type)} size='large' />}
-      name={name}
-      onBack={onBack}
-    />
+    <ReceiveView account={account} clipboard={capability} accountType={type} name={name} onBack={onBack} />
   )
 }

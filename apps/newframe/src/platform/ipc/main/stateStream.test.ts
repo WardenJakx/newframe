@@ -419,6 +419,7 @@ describe('renderer state stream', () => {
       'tokens'
     ])
     expect(snapshot.state.accounts[id]).toEqual({
+      accountType: 'address',
       id,
       address: id,
       name: 'Side Tray Account',

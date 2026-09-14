@@ -5,8 +5,13 @@ import type { CommandResult, QueryResultMap } from '../../../app/contracts/opera
 import type { QrCameraCapability } from '../../../platform/desktop/renderer/camera'
 import type { WalletRendererState } from '../../../platform/state-sync/contract/projections'
 import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector'
+import { shortAddress } from '../../../shared/renderer/ui/AddressIdentity'
 import { ChainIcon } from '../../../shared/renderer/ui/ChainIcon'
-import { signerIsLoading, signerTypeLabel } from '../../../shared/renderer/ui/signerPresentation'
+import {
+  accountDisplayType,
+  signerIsLoading,
+  signerTypeLabel
+} from '../../../shared/renderer/ui/signerPresentation'
 import { createBalanceSummarySelector, formatUsdRate } from '../../asset-data/domain/balance'
 import type { AccountsCapability } from './accountsCapability'
 import type { AccountProjection, SignerProjection } from './accountsModel'
@@ -456,10 +461,6 @@ export function AddAccountController({
     return account.ensName && !shared.showLocalNameWithENS ? account.ensName : account.name
   }
 
-  function shortAddress(address = '') {
-    return address ? `${address.substring(0, 5)}…${address.substring(address.length - 4)}` : ''
-  }
-
   function accountNavValue(account: AccountProjection | undefined) {
     if (!account?.address) return '---'
     const rawBalances = shared.balances[account.address]
@@ -810,6 +811,7 @@ export function AddAccountController({
 
   function addressRowModel(input: {
     address: string
+    accountType: string
     chainUsage?: { chainIds: number[]; complete: boolean }
     imported: boolean
     index: number
@@ -828,6 +830,7 @@ export function AddAccountController({
             : 'unavailable'
     return {
       address: input.address,
+      accountType: input.accountType,
       chains: (input.chainUsage?.chainIds || []).map((chainId) => ({
         id: chainId,
         name: shared.networks[chainId]?.name || `Chain ${chainId}`,
@@ -872,6 +875,7 @@ export function AddAccountController({
               totalCount: wallets.length,
               wallets: (expanded ? imported : imported.slice(0, 3)).map((wallet) => ({
                 address: wallet.address,
+                accountType: accountDisplayType(wallet.account) || signer.type,
                 name: walletDisplayName(wallet),
                 shortAddress: shortAddress(wallet.address)
               }))
@@ -889,6 +893,7 @@ export function AddAccountController({
           const account = shared.accounts[address.toLowerCase()]
           return addressRowModel({
             address,
+            accountType: accountDisplayType(account) || selectedSigner.type,
             imported: Boolean(account),
             index,
             label: walletDisplayName({ account, index }),
@@ -945,6 +950,7 @@ export function AddAccountController({
       const account = shared.accounts[address.toLowerCase()]
       return addressRowModel({
         address,
+        accountType: accountDisplayType(account) || signer.type,
         chainUsage: addressChainUsage[address.toLowerCase()],
         imported: Boolean(account),
         index: selectedHardwarePage.start + index,

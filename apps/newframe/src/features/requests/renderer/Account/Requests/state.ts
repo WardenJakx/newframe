@@ -2,12 +2,14 @@ import { useMemo } from 'react'
 
 import type { WalletRendererState } from '../../../../../platform/state-sync/contract/projections'
 import { useWalletSelector } from '../../../../../platform/state-sync/renderer/useAppSelector'
+import { accountDisplayType } from '../../../../../shared/renderer/ui/signerPresentation'
 import { resolveAssetRate } from '../../../../asset-data/domain/asset'
 import type { AssetRateReference } from '../../../../asset-data/domain/state/rate'
 
 type AccountRequests = WalletRendererState['accounts'][string]['requests']
 type NetworkRecord = WalletRendererState['networks']['ethereum']
 type NetworkMetadataRecord = WalletRendererState['networksMeta']['ethereum']
+const EMPTY_ACCOUNTS: WalletRendererState['accounts'] = {}
 const EMPTY_ACCOUNT_REQUESTS: AccountRequests = {}
 const EMPTY_NETWORK: Partial<NetworkRecord[number]> = {}
 const EMPTY_NETWORK_METADATA: Partial<NetworkMetadataRecord[number]> = {}
@@ -93,4 +95,20 @@ export function useAssetRate(asset: AssetRateReference) {
     [address, chainId, nativeTicker]
   )
   return useWalletSelector(selector)
+}
+
+export type AddressIdentities = Record<string, { nickname?: string; accountType?: string }>
+
+export function useAddressIdentities(): AddressIdentities {
+  const accounts = useWalletSelector((state) => state.accounts || EMPTY_ACCOUNTS)
+  return useMemo(
+    () =>
+      Object.fromEntries(
+        Object.values(accounts).map((account) => [
+          account.address.toLowerCase(),
+          { nickname: account.name || account.ensName, accountType: accountDisplayType(account) }
+        ])
+      ),
+    [accounts]
+  )
 }

@@ -9,12 +9,14 @@ import type { RequestViewStep } from '../../../requestView'
 import EditTokenSpend from '../../../ui/EditTokenSpend'
 import type { TokenSpendData } from '../../../ui/EditTokenSpend'
 import type { TransactionRequestView } from '../requestViewTypes'
+import { useAddressIdentities, type AddressIdentities } from '../state'
 import AdjustFee from './AdjustFee'
 import TxReview from './TxReview'
 
 type TransactionRequestProps = {
   capabilities: Pick<RequestRendererCapabilities, 'external' | 'review' | 'transaction'>
   req: TransactionRequestView
+  identities?: AddressIdentities
   actionId?: string
   step: RequestViewStep
   onUpdateFee(field: TransactionFeeField, value: bigint): void
@@ -64,6 +66,7 @@ export function TransactionRequest(props: TransactionRequestProps) {
       <EditTokenSpend
         clipboard={props.capabilities.external}
         data={approval.data}
+        identities={props.identities}
         requestedAmount={requestedAmount}
         updateRequest={(amount: string) => {
           void props.capabilities.review.updateTokenApproval({
@@ -95,6 +98,7 @@ export default function TransactionRequestWithState(props: TransactionRequestWit
     <TransactionRequest
       {...props}
       req={displayRequest(props.req)}
+      identities={useAddressIdentities()}
       actionId={actionId}
       step={step}
       onUpdateFee={(field, value) => updateFee(props.req, field, value)}

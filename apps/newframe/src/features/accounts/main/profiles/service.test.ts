@@ -154,8 +154,8 @@ describe('profile service', () => {
       expect(service.movableAccounts()).toEqual({
         ok: true,
         accounts: [
-          { id: first, address: first, name: 'First', profileId: DEFAULT_PROFILE_ID },
-          { id: second, address: second, name: 'Second', profileId: 'work' }
+          { id: first, address: first, name: 'First', profileId: DEFAULT_PROFILE_ID, accountType: 'address' },
+          { id: second, address: second, name: 'Second', profileId: 'work', accountType: 'address' }
         ]
       })
     }

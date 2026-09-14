@@ -13,6 +13,7 @@ import { RequestActions } from '../../../../features/requests/renderer/ui/Reques
 import { RequestSigningFooter } from '../../../../features/requests/renderer/ui/RequestSigningFooter'
 import type { WalletRendererState } from '../../../../platform/state-sync/contract/projections'
 import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector'
+import { accountDisplayType } from '../../../../shared/renderer/ui/signerPresentation'
 
 interface FooterSharedState {
   crumb: { view?: string; data?: unknown }
@@ -182,7 +183,10 @@ export function Footer({ capabilities, notify, shared, step, onContinue }: Foote
     <footer className={footerRecipe({ active: Boolean(content) })} ref={footerRef}>
       {signing ? (
         <RequestSigningFooter
-          account={signingAccount || { address: req.account || '' }}
+          account={{
+            ...(signingAccount || { address: req.account || '' }),
+            accountType: accountDisplayType(signingAccount)
+          }}
           clipboard={capabilities.external}
         >
           {content}

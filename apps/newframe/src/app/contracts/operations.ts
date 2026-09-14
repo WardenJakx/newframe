@@ -151,6 +151,7 @@ const ProfileMovableAccountsQuerySchema = z.strictObject({
 export type ProfileMovableAccountsQuery = z.infer<typeof ProfileMovableAccountsQuerySchema>
 
 const ProfileMovableAccountSchema = z.strictObject({
+  accountType: z.string().optional(),
   id: z.string().min(1).max(256),
   address: z.string().min(1).max(256),
   name: z.string().max(256),

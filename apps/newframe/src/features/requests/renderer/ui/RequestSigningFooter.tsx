@@ -10,7 +10,7 @@ export function RequestSigningFooter({
   clipboard,
   children
 }: {
-  account: { address: string; name?: string; ensName?: string }
+  account: { address: string; name?: string; ensName?: string; accountType?: string }
   clipboard: ClipboardCapability
   children: ReactNode
 }) {
@@ -19,6 +19,7 @@ export function RequestSigningFooter({
       <SigningAccount>
         <AddressIdentity
           address={account.address}
+          accountType={account.accountType}
           clipboard={clipboard}
           nickname={account.name || account.ensName || shortAddress(account.address)}
           showFullAddress

@@ -19,6 +19,7 @@ const contentRecipe = cva({ base: { paddingBlockStart: '4' } })
 
 export function AssetDetailsView({
   asset,
+  accountType,
   canSend,
   canTrade,
   clipboard,
@@ -30,6 +31,7 @@ export function AssetDetailsView({
   onTrade
 }: {
   asset: DisplayedBalance
+  accountType?: string
   canSend: boolean
   canTrade: boolean
   clipboard: ClipboardCapability
@@ -139,7 +141,9 @@ export function AssetDetailsView({
               <DetailRow
                 code
                 label='Contract Address'
-                value={<AddressIdentity address={asset.address} clipboard={clipboard} />}
+                value={
+                  <AddressIdentity address={asset.address} accountType={accountType} clipboard={clipboard} />
+                }
               />
             )}
           </Stack>

@@ -13,6 +13,7 @@ import { TextArea } from '@newframe/ui/text-area'
 import { ToggleButton } from '@newframe/ui/toggle-button'
 import type { ReactNode } from 'react'
 
+import { AddressAvatar } from '../../../shared/renderer/ui/AddressAvatar'
 import { AppIcon } from '../../../shared/renderer/ui/appIcon'
 import { SidePanelHeader } from '../../../shared/renderer/ui/SidePanel/SidePanelHeader'
 import { signerIconName } from '../../../shared/renderer/ui/signerPresentation'
@@ -21,6 +22,7 @@ export type AddAccountOption = { id: string; title: string; icon: IconName | 'fi
 
 export interface AddAccountAddressRowModel {
   address: string
+  accountType?: string
   chains: Array<{ id: number; name: string; icon: ReactNode }>
   imported: boolean
   index: number
@@ -53,7 +55,7 @@ type StoredSeedModel =
         importedCount: number
         label: string
         totalCount: number
-        wallets: Array<{ address: string; name: string; shortAddress: string }>
+        wallets: Array<{ address: string; name: string; shortAddress: string; accountType?: string }>
       }>
     }
   | { mode: 'addresses'; error: string; rows: AddAccountAddressRowModel[]; status: string }
@@ -317,6 +319,7 @@ function AddressRow({ model, onPress }: { model: AddAccountAddressRowModel; onPr
       <Text tone='muted' variant='caption' shrink={false}>
         {model.index + 1}.
       </Text>
+      <AddressAvatar address={model.address} accountType={model.accountType} />
       <Stack gap='none' grow>
         <Text variant='label' truncate>
           {model.label}
@@ -427,7 +430,10 @@ function StoredSeedAccountSelectionView({
             </Inline>
             {seed.wallets.map((wallet) => (
               <Inline align='center' gap='small' justify='between' key={wallet.address}>
-                <Text variant='supporting'>{wallet.name}</Text>
+                <AddressAvatar address={wallet.address} accountType={wallet.accountType} />
+                <Text variant='supporting' truncate>
+                  {wallet.name}
+                </Text>
                 <Text tone='muted' variant='code'>
                   {wallet.shortAddress}
                 </Text>

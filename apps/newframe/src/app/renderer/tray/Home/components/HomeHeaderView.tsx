@@ -1,11 +1,13 @@
 import type { IconName } from '@newframe/ui/icon'
 import { IconButton } from '@newframe/ui/icon-button'
 
+import { shortAddress } from '../../../../../shared/renderer/ui/AddressIdentity'
 import { HeaderBar } from '../../../../../shared/renderer/ui/HeaderBar'
 import { IdentityControl } from '../../ui/IdentityControl'
 
 export function HomeHeaderView({
   account,
+  accountType,
   accountsOpen,
   copied,
   icon,
@@ -17,6 +19,7 @@ export function HomeHeaderView({
   onReceive
 }: {
   account?: { address: string }
+  accountType?: string
   accountsOpen: boolean
   copied: boolean
   icon: IconName
@@ -27,9 +30,7 @@ export function HomeHeaderView({
   onOpenMenu: () => void
   onReceive: () => void
 }) {
-  const address = account?.address
-    ? `${account.address.substring(0, 5)}…${account.address.substring(account.address.length - 4)}`
-    : ''
+  const address = shortAddress(account?.address)
 
   return (
     <HeaderBar>
@@ -52,6 +53,8 @@ export function HomeHeaderView({
               ]
             : []
         }
+        address={account?.address}
+        accountType={accountType}
         detail={address}
         expanded={accountsOpen}
         icon={icon}

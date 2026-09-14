@@ -1,4 +1,5 @@
 import { getProfileAccountIds } from '../../../app/contracts/state/main.js'
+import { accountDisplayType } from '../../../features/accounts/domain/accountDisplayType.js'
 import { deriveSafeOwners } from '../../../features/accounts/main/safeOwners.js'
 import { createBalanceSummarySelector } from '../../../features/asset-data/domain/balance/index.js'
 import { OperationRecordSchema, type OperationCollection } from '../../operations/operation.js'
@@ -460,6 +461,7 @@ function projectSideTrayAccounts(main: CanonicalMain) {
           address: account.address,
           name: account.name,
           lastSignerType: account.lastSignerType,
+          accountType: accountDisplayType(account),
           ...(account.ensName ? { ensName: account.ensName } : {})
         }
       ]

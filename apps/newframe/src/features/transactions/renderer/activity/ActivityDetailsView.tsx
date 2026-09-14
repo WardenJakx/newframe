@@ -1,3 +1,4 @@
+import { AddressIdentity, shortAddress } from '../../../../shared/renderer/ui/AddressIdentity'
 import { TrayOverlay } from '../../../../shared/renderer/ui/TrayOverlay'
 import { persistedImageSource } from '../../../asset-data/domain/image'
 import TransactionInformation from '../../../requests/renderer/Account/Requests/TransactionRequest/TransactionInformation'
@@ -5,11 +6,13 @@ import type { ActivityCapability } from './activityCapability'
 import { activityBalanceChanges, transactionStatusLabel } from './activityModel'
 import type { ActivityDetailNetworkMetadata, ActivityNetworkMap, ActivityRecord } from './activityTypes'
 
-const shortAddress = (address: string | null | undefined = '') =>
+const shortHash = (address: string | null | undefined = '') =>
   address ? `${address.substring(0, 5)}…${address.substring(address.length - 4)}` : ''
 
 export function ActivityDetailsView({
   activity,
+  fromAccountType,
+  toAccountType,
   capability,
   network,
   networkMeta,
@@ -17,6 +20,8 @@ export function ActivityDetailsView({
   originName
 }: {
   activity: ActivityRecord
+  fromAccountType?: string
+  toAccountType?: string
   capability: Pick<ActivityCapability, 'copyText' | 'hydrateTokenImage'>
   network: ActivityNetworkMap[number]
   networkMeta: ActivityDetailNetworkMetadata
@@ -34,10 +39,31 @@ export function ActivityDetailsView({
   const from = activity.data?.from || activity.account || activity.address
   const to = activity.data?.to
   const details = [
-    { label: 'From', value: shortAddress(from), onClick: () => copy(from) },
-    { label: 'To', value: activity.recipient || shortAddress(to), onClick: () => copy(to) },
+    {
+      label: 'From',
+      actionLabel: `From: ${shortAddress(from || undefined)}`,
+      value: from ? (
+        <AddressIdentity address={from} accountType={fromAccountType} showCopy={false} />
+      ) : undefined,
+      onClick: () => copy(from)
+    },
+    {
+      label: 'To',
+      actionLabel: `To: ${activity.recipient || shortAddress(to)}`,
+      value: to ? (
+        <AddressIdentity
+          address={to}
+          accountType={toAccountType}
+          nickname={activity.recipient}
+          showCopy={false}
+        />
+      ) : (
+        activity.recipient
+      ),
+      onClick: () => copy(to)
+    },
     { label: 'Nonce', value: activity.nonce },
-    { label: 'Hash', value: shortAddress(activity.hash), onClick: () => copy(activity.hash) },
+    { label: 'Hash', value: shortHash(activity.hash), onClick: () => copy(activity.hash) },
     { label: 'Method', value: activity.decodedData?.method },
     { label: 'Block', value: receiptBlock ? String(receiptBlock) : undefined }
   ]

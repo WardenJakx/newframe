@@ -8,8 +8,8 @@ import { Text } from '@newframe/ui/text'
 import { useEffect, useRef, type DragEventHandler, type ReactNode } from 'react'
 
 import { cva } from '../../../../generated/styled-system/css/cva.js'
+import { AddressAvatar } from '../../../shared/renderer/ui/AddressAvatar'
 import { SidePanelHeader } from '../../../shared/renderer/ui/SidePanel/SidePanelHeader'
-import { signerIconName } from '../../../shared/renderer/ui/signerPresentation'
 import { accountMatchesQuery, type AccountListItem, type AccountListModel } from './accountsModel'
 
 const accountRowRecipe = cva({
@@ -33,19 +33,6 @@ const accountRowRecipe = cva({
     dropTarget: { true: { borderColor: 'border.focus', background: 'action.primary.subtle' }, false: {} }
   },
   defaultVariants: { dragging: false, dropTarget: false, selected: false }
-})
-
-const accountIconRecipe = cva({
-  base: {
-    display: 'grid',
-    width: 'icon-button-medium',
-    height: 'icon-button-medium',
-    flex: 'none',
-    placeItems: 'center',
-    borderRadius: 'pill',
-    background: 'bg.control',
-    color: 'action.primary'
-  }
 })
 
 const overlayRecipe = cva({
@@ -108,9 +95,7 @@ export function AccountRow({
       tabIndex={onSelect ? 0 : undefined}
     >
       {management?.dragHandle}
-      <span className={accountIconRecipe()}>
-        <Icon name={signerIconName(account.signerType)} size='large' />
-      </span>
+      <AddressAvatar address={account.address} accountType={account.signerType} />
       <Stack gap='none' grow>
         {management?.name ?? (
           <Text variant='label' truncate>

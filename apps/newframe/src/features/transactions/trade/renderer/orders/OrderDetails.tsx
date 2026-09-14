@@ -2,6 +2,7 @@ import { useShallow } from 'zustand/react/shallow'
 
 import type { WalletRendererState } from '../../../../../platform/state-sync/contract/projections'
 import { useWalletSelector } from '../../../../../platform/state-sync/renderer/useAppSelector'
+import { accountDisplayType } from '../../../../../shared/renderer/ui/signerPresentation'
 import { OrderDetailsView } from './OrderDetailsView'
 import type { OrdersCapability } from './ordersCapability'
 
@@ -21,6 +22,12 @@ export function OrderDetails({
 }) {
   const shared = useWalletSelector(
     useShallow((state) => ({
+      accountType: accountDisplayType(
+        Object.values(state.accounts).find(
+          (account) =>
+            account.address.toLowerCase() === state.orders?.[orderId]?.accountAddress?.toLowerCase()
+        )
+      ),
       networks: state.networks?.ethereum || EMPTY_NETWORKS,
       networksMeta: state.networksMeta?.ethereum || EMPTY_NETWORK_METADATA,
       order: state.orders?.[orderId],
@@ -32,6 +39,7 @@ export function OrderDetails({
   return (
     <OrderDetailsView
       assetImages={assetImages}
+      accountType={shared.accountType}
       imageCapability={capability}
       networks={shared.networks}
       networksMeta={shared.networksMeta}

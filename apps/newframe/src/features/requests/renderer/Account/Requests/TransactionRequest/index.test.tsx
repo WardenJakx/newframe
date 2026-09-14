@@ -142,6 +142,13 @@ describe('confirm', () => {
           name: 'testname',
           signer: 'signer',
           requests: {}
+        },
+        recipient: {
+          id: 'recipient',
+          address: recipientAddress.toUpperCase(),
+          name: 'Recipient Ledger',
+          lastSignerType: 'ledger',
+          requests: {}
         }
       },
       networks: { ethereum: { 137: { name: 'Polygon', isTestnet: false } } },
@@ -201,6 +208,13 @@ describe('confirm', () => {
     expect(details.textContent).not.toMatch(/origin|chain|signer|from|decode source/i)
 
     const recipientCopy = screen.getByRole('button', { name: 'Copy address for recipient.eth' })
+    const addressImages = within(details).getAllByRole('presentation', { hidden: true })
+    expect(addressImages).toHaveLength(2)
+    for (const image of addressImages) {
+      expect(image.getAttribute('src')).toStartWith('data:image/png;base64,')
+    }
+    expect(details.innerHTML).toContain('viewBox="0 0 400 400"')
+    expect(details.innerHTML.match(/<svg /g)).toHaveLength(3) // Ledger badge and two copy controls.
     expect(screen.getAllByText('recipient.eth').length).toBeGreaterThan(0)
     expect(screen.getByText(recipientAddress)).toBeTruthy()
     fireEvent.click(recipientCopy)

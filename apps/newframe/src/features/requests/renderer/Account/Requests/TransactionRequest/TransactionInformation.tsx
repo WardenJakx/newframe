@@ -34,6 +34,7 @@ export type TransactionInformationDetailRow = {
   label: string
   value?: ReactNode
   onClick?: () => void
+  actionLabel?: string
 }
 
 type TransactionInformationNativeCurrency = Pick<NativeCurrency, 'image' | 'symbol'>
@@ -360,7 +361,13 @@ function DetailValue({ value, wrap }: { value: ReactNode; wrap?: boolean }) {
   )
 }
 
-function DetailRow({ label, value, onClick, wrap }: TransactionInformationDetailRow & { wrap?: boolean }) {
+function DetailRow({
+  label,
+  value,
+  onClick,
+  actionLabel,
+  wrap
+}: TransactionInformationDetailRow & { wrap?: boolean }) {
   if (value === undefined || value === null || value === '') return null
   const content = (
     <Inline align='center' gap='small' justify='between'>
@@ -373,7 +380,7 @@ function DetailRow({ label, value, onClick, wrap }: TransactionInformationDetail
   return onClick ? (
     <Button
       appearance='row'
-      label={`${label}: ${String(value)}`}
+      label={actionLabel || `${label}: ${String(value)}`}
       onPress={onClick}
       size='medium'
       width='full'

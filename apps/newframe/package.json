@@ -72,6 +72,7 @@
     "@zxcvbn-ts/language-en": "^3.0.2",
     "conf": "^15.1.0",
     "electron-log": "^5.4.4",
+    "ethereum-blockies-base64": "1.0.2",
     "ethers": "6.16.0",
     "gridplus-sdk": "^4.0.0",
     "hotkeys-js": "^4.0.4",

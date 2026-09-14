@@ -14,6 +14,8 @@ import { useShallow } from 'zustand/react/shallow'
 import type { WalletRendererState } from '../../../../platform/state-sync/contract/projections'
 import { selectOperationById } from '../../../../platform/state-sync/renderer/selectors/operation'
 import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector'
+import { AddressIdentity } from '../../../../shared/renderer/ui/AddressIdentity'
+import { accountDisplayType } from '../../../../shared/renderer/ui/signerPresentation'
 import { persistedImageSource } from '../../../asset-data/domain/image'
 import { chainColorValue } from '../../../networks/domain/chain/colors'
 import { toTokenId } from '../../domain'
@@ -252,6 +254,13 @@ const TokenDetailsForm = ({ capability, chain, tokenData, isEdit, onDone }: Toke
   const completionNotifiedRef = useRef('')
 
   const { address } = tokenData
+  const accountType = useWalletSelector((state) =>
+    accountDisplayType(
+      Object.values(state.accounts || {}).find(
+        (account) => account.address.toLowerCase() === address.toLowerCase()
+      )
+    )
+  )
   const { name: chainName } = chain
   const submittedToken = submission?.token
   const projectedToken = useWalletSelector((state) =>
@@ -334,7 +343,7 @@ const TokenDetailsForm = ({ capability, chain, tokenData, isEdit, onDone }: Toke
             <span data-testid='addTokenFormTitle'>{isEdit ? 'Edit Token' : 'Add New Token'}</span>
           </Text>
           <Text align='center' as='h2' variant='code'>
-            {`${address.substring(0, 10)}${address.substring(address.length - 8)}`}
+            <AddressIdentity address={address} accountType={accountType} />
           </Text>
           {chainName ? <Text tone='accent' variant='overline'>{`on ${chainName}`}</Text> : null}
         </Stack>

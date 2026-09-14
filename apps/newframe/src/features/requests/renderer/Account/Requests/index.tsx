@@ -17,7 +17,13 @@ import type {
 import type { RequestRendererCapabilities } from '../../requestCapabilities'
 import RequestItem from '../../ui/RequestItem'
 import { RequestList } from '../../ui/RequestList'
-import { useAccountRequests, useEthereumNetworkMetadata, useEthereumNetworks, useOrigins } from './state'
+import {
+  useAddressIdentities,
+  useAccountRequests,
+  useEthereumNetworkMetadata,
+  useEthereumNetworks,
+  useOrigins
+} from './state'
 import TxOverview from './TransactionRequest/TxMainNew/overview'
 
 type RenderableRequest =
@@ -37,6 +43,7 @@ type RequestsWithStateProps = {
 }
 
 type RequestsProps = RequestsWithStateProps & {
+  identities: ReturnType<typeof useAddressIdentities>
   accountRequests: Record<string, RenderableRequest>
   networks: ReturnType<typeof useEthereumNetworks>
   networkMetadata: ReturnType<typeof useEthereumNetworkMetadata>
@@ -86,6 +93,7 @@ function Requests(props: RequestsProps) {
       img = persistedImageSource(metadata?.image)
       detail = (
         <TxOverview
+          identities={props.identities}
           chainColor={metadata?.primaryColor}
           chainName={chainName}
           originName={props.origins[req.origin]?.name || req.origin}
@@ -156,6 +164,7 @@ export default function RequestsWithState(props: RequestsWithStateProps) {
   return (
     <Requests
       {...props}
+      identities={useAddressIdentities()}
       accountRequests={accountRequests}
       networkMetadata={useEthereumNetworkMetadata()}
       networks={useEthereumNetworks()}
