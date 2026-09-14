@@ -224,7 +224,7 @@ it.each(['eth_requestAccounts', 'personal_sign'])(
   }
 )
 
-it('renders the fixed request account rather than the current-account selector for a signature', () => {
+it('keeps message content separate from the account selector', () => {
   resetWithRequest({
     type: 'sign',
     handlerId: requestId,
@@ -233,22 +233,15 @@ it('renders the fixed request account rather than the current-account selector f
     payload: { id: 4, jsonrpc: '2.0', method: 'personal_sign', params: ['message'] },
     data: { decodedMessage: 'message' }
   })
-  const renderedAccounts: string[] = []
   render(
     <RequestViewProvider>
       <Account
         capabilities={createRequestRendererCapabilitiesFake()}
         id={accountId}
         accountSelector={<button type='button'>Choose wallet</button>}
-        renderSigningAccount={(account) => {
-          renderedAccounts.push(account)
-          return <div>Fixed signing wallet</div>
-        }}
       />
     </RequestViewProvider>
   )
-  expect(renderedAccounts).toEqual([accountId])
-  expect(screen.getByText('Fixed signing wallet')).toBeTruthy()
   expect(screen.queryByRole('button', { name: 'Choose wallet' })).toBeNull()
   expect(screen.getByLabelText('Message to sign').textContent).toBe('message')
 })

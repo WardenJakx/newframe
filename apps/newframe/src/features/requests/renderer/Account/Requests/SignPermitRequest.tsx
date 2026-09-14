@@ -36,6 +36,7 @@ type PermitRequestProps = {
   capabilities: Pick<RequestRendererCapabilities, 'external' | 'panel' | 'review'>
   req: PermitRequestView
   originName: string
+  favicon?: string
   step: RequestViewStep
   chainData: PermitChainData
 }
@@ -188,7 +189,7 @@ const EditPermit = ({ capabilities, req }: EditPermitProps) => {
   )
 }
 
-const PermitRequest = ({ capabilities, req, originName, step, chainData }: PermitRequestProps) => {
+const PermitRequest = ({ capabilities, req, originName, favicon, step, chainData }: PermitRequestProps) => {
   const requestView = useRequestView()
 
   const renderStep = () => {
@@ -196,7 +197,7 @@ const PermitRequest = ({ capabilities, req, originName, step, chainData }: Permi
       case 'adjustPermit':
         return <EditPermit capabilities={capabilities} req={req} />
       case 'viewRaw':
-        return <TypedSignatureOverview originName={originName} req={req} />
+        return <TypedSignatureOverview originName={originName} favicon={favicon} req={req} />
       case 'adjustApproval':
       case 'adjustFee':
       case 'confirm':

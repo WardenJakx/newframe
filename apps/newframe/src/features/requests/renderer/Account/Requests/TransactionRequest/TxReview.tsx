@@ -25,7 +25,6 @@ import { displayValueData } from '../../../format/displayValue'
 import type { RequestRendererCapabilities, TransactionReviewCapability } from '../../../requestCapabilities'
 import { useRequestView } from '../../../requestView'
 import { DisplayCoinBalance } from '../../../ui/DisplayValue'
-import { SigningAccount } from '../../../ui/SigningAccount'
 import type { TransactionRequestView } from '../requestViewTypes'
 import {
   useAccountIdentity,
@@ -33,6 +32,7 @@ import {
   useNetwork,
   useNetworkMetadata,
   useOriginName,
+  useOrigins,
   useTokens
 } from '../state'
 import TransactionInformation from './TransactionInformation'
@@ -67,7 +67,7 @@ type TxReviewProps = {
   network: ReturnType<typeof useNetwork>
   networkMetadata: ReturnType<typeof useNetworkMetadata>
   originName: string
-  signingAccount: ReturnType<typeof useAccountIdentity>
+  favicon?: string
   tokens: ReturnType<typeof useTokens>
   openAdjustFee(): void
 }
@@ -272,7 +272,6 @@ function TxReviewView(props: TxReviewProps) {
   const chainName = network.name || `Chain ${chainId}`
   const originName = props.originName || req.origin
   const to = req.data.to ? getAddress(req.data.to) : ''
-  const from = req.data.from || req.account
   const calldata = req.data.data
   const method = req.decodedData?.method
   const hasRecognizedTokenAction = req.recognizedActions?.some((action) =>
@@ -396,6 +395,7 @@ function TxReviewView(props: TxReviewProps) {
       rawTransaction={JSON.stringify(req.data, null, 2)}
       wrapDetailValues
       originName={originName}
+      favicon={props.favicon}
       networkName={chainName}
       networkIcon={persistedImageSource(meta.image)}
       statusLabel={displayStatus(req)}
@@ -418,14 +418,6 @@ function TxReviewView(props: TxReviewProps) {
       nativeCurrency={nativeCurrency}
     >
       <Stack gap='xsmall'>
-        <SigningAccount label='Account'>
-          <AddressIdentity
-            address={from}
-            clipboard={props.capabilities.external}
-            nickname={props.signingAccount?.name || props.signingAccount?.ensName || shortAddress(from)}
-            showFullAddress
-          />
-        </SigningAccount>
         <TxFeeSummary
           feeLevel={props.feeLevel}
           selectFeeLevel={props.selectFeeLevel}
@@ -448,12 +440,11 @@ export default function TxReviewWithState(props: TxReviewWithStateProps) {
   const network = useNetwork('ethereum', chainId)
   const networkMetadata = useNetworkMetadata('ethereum', chainId)
   const originName = useOriginName(props.req.origin)
+  const origins = useOrigins()
   const tokens = useTokens()
-  const from = props.req.data.from || props.req.account
   const recipient = transferRecipient(props.req)
   const to = props.req.data.to ? getAddress(props.req.data.to) : ''
   const destinationAccount = useAccountIdentity(recipient?.address || to)
-  const signingAccount = useAccountIdentity(from)
   const nativeCurrencyRate = useAssetRate({
     chainId,
     address: NATIVE_CURRENCY,
@@ -470,7 +461,7 @@ export default function TxReviewWithState(props: TxReviewWithStateProps) {
       network={network}
       networkMetadata={networkMetadata}
       originName={originName}
-      signingAccount={signingAccount}
+      favicon={persistedImageSource(origins[props.req.origin]?.image)}
       tokens={tokens}
       openAdjustFee={() => open({ step: 'adjustFee' })}
     />

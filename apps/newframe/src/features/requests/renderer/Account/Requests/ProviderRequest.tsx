@@ -1,28 +1,12 @@
-import { Icon } from '@newframe/ui/icon'
-import { Image } from '@newframe/ui/image'
 import { Stack } from '@newframe/ui/stack'
 import { Surface } from '@newframe/ui/surface'
-import { Text } from '@newframe/ui/text'
-import { useState, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
 
-import { cva } from '../../../../../../generated/styled-system/css/cva.js'
 import { persistedImageSource } from '../../../../asset-data/domain/image'
+import { RequestOrigin } from '../../ui/RequestOrigin'
 import { RequestStatusNotice } from '../../ui/RequestStatusNotice'
 import type { AccessRequestView } from './requestViewTypes'
 import { useOriginName, useOrigins } from './state'
-
-const siteIconRecipe = cva({
-  base: {
-    width: 'field',
-    height: 'field',
-    display: 'grid',
-    placeItems: 'center',
-    borderRadius: 'control',
-    overflow: 'hidden',
-    background: 'bg.control',
-    color: 'text.secondary'
-  }
-})
 
 type ProviderRequestProps = {
   req: AccessRequestView
@@ -34,7 +18,6 @@ type ProviderRequestProps = {
 type ProviderRequestWithStateProps = Omit<ProviderRequestProps, 'originName' | 'favicon'>
 
 function ProviderRequest(props: ProviderRequestProps) {
-  const [failedFavicon, setFailedFavicon] = useState('')
   const status = props.req.status
   const notice = props.req.notice
   const originName = props.originName
@@ -45,21 +28,7 @@ function ProviderRequest(props: ProviderRequestProps) {
       ) : (
         <Stack gap='large'>
           <Surface padding='large' tone='transparent'>
-            <Stack align='center' gap='medium'>
-              <span className={siteIconRecipe()}>
-                {props.favicon && failedFavicon !== props.favicon ? (
-                  <Image alt='' source={props.favicon} onLoadError={() => setFailedFavicon(props.favicon)} />
-                ) : (
-                  <Icon name='window' size='large' />
-                )}
-              </span>
-              <Text align='center' truncate variant='heading'>
-                {originName}
-              </Text>
-              <Text align='center' tone='secondary' variant='supporting'>
-                wants to connect
-              </Text>
-            </Stack>
+            <RequestOrigin originName={originName} favicon={props.favicon} description='wants to connect' />
           </Surface>
           {props.req.payload?.method === 'eth_requestAccounts' ? props.accountSelector : null}
         </Stack>

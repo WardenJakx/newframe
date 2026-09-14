@@ -21,6 +21,7 @@ import type { NativeCurrency } from '../../../../../networks/domain/state/native
 import type { TransactionEffect } from '../../../../../transactions/domain'
 import type { SourceValue } from '../../../format/displayValue'
 import { DisplayCoinBalance } from '../../../ui/DisplayValue'
+import { RequestOrigin } from '../../../ui/RequestOrigin'
 
 type TransactionInformationEffect = Omit<TransactionEffect, 'amount' | 'detail' | 'label'> & {
   amount?: SourceValue
@@ -45,6 +46,7 @@ type TransactionInformationCalldata = {
 export type TransactionInformationProps = {
   imageCapability: TokenImageCapability
   originName: ReactNode
+  favicon?: string
   networkName: ReactNode
   networkIcon?: string
   statusLabel: ReactNode
@@ -455,6 +457,7 @@ function CalldataDetails({
 export default function TransactionInformation({
   imageCapability,
   originName,
+  favicon,
   networkName,
   networkIcon,
   statusLabel,
@@ -481,10 +484,7 @@ export default function TransactionInformation({
       <Stack gap='small' grow>
         <section aria-label='Request summary' className={requestSummaryRecipe()}>
           <Stack align='center' gap='xsmall'>
-            <Icon name='window' size='medium' tone='accent' />
-            <Text align='center' variant='sectionTitle'>
-              {originName}
-            </Text>
+            <RequestOrigin originName={originName} favicon={favicon} />
             <Stack align='center' gap='xsmall'>
               <output className={badgeRecipe()}>
                 <Text tone='accent' variant='overline'>
