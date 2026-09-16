@@ -32,6 +32,8 @@ export function createRequestRendererCapabilitiesFake() {
       resolveAccess: acknowledged<Parameters<RequestRendererCapabilities['review']['resolveAccess']>[0]>(),
       resolveAgentAccess:
         acknowledged<Parameters<RequestRendererCapabilities['review']['resolveAgentAccess']>[0]>(),
+      resolveAddChain:
+        acknowledged<Parameters<RequestRendererCapabilities['review']['resolveAddChain']>[0]>(),
       reviewAddChain: acknowledged<Parameters<RequestRendererCapabilities['review']['reviewAddChain']>[0]>(),
       reviewAddToken: acknowledged<Parameters<RequestRendererCapabilities['review']['reviewAddToken']>[0]>(),
       clearOrigin: acknowledged<Parameters<RequestRendererCapabilities['review']['clearOrigin']>[0]>(),

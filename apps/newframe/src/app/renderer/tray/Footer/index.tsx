@@ -111,12 +111,12 @@ export function Footer({ capabilities, notify, shared, step, onContinue }: Foote
   const reject = () => void capabilities.review.reject({ requestId: req.handlerId })
   let primary: { label: string; onPress: () => void } | undefined
 
-  if (!content && req?.type === 'access') {
+  if (!content && req.type === 'access') {
     primary = {
       label: 'Approve',
       onPress: () => void capabilities.review.resolveAccess({ requestId: req.handlerId, approved: true })
     }
-  } else if (!content && req?.type === 'agentAccess') {
+  } else if (!content && req.type === 'agentAccess') {
     primary = {
       label: 'Allow autonomous access',
       onPress: () =>
@@ -125,7 +125,7 @@ export function Footer({ capabilities, notify, shared, step, onContinue }: Foote
           approved: true
         })
     }
-  } else if (!content && req?.type === 'switchChain') {
+  } else if (!content && req.type === 'switchChain') {
     primary = {
       label: 'Switch',
       onPress: () =>
@@ -134,50 +134,50 @@ export function Footer({ capabilities, notify, shared, step, onContinue }: Foote
           approved: true
         })
     }
-  } else if (!content && req?.type === 'addChain') {
+  } else if (!content && req.type === 'addChain') {
     primary = {
-      label: 'Review',
-      onPress: () => void capabilities.review.reviewAddChain({ requestId: req.handlerId })
+      label: 'Add chain',
+      onPress: () => void capabilities.review.resolveAddChain({ requestId: req.handlerId, approved: true })
     }
-  } else if (!content && req?.type === 'addToken') {
+  } else if (!content && req.type === 'addToken') {
     primary = {
       label: 'Review',
       onPress: () => void capabilities.review.reviewAddToken({ requestId: req.handlerId })
     }
   }
 
-  const secondary = primary
-    ? req.type === 'access'
-      ? {
-          label: 'Decline',
-          onPress: () =>
-            void capabilities.review.resolveAccess({
-              requestId: req.handlerId,
-              approved: false
-            })
-        }
-      : req.type === 'agentAccess'
-        ? {
-            label: 'Decline',
-            onPress: () =>
-              void capabilities.review.resolveAgentAccess({
-                requestId: req.handlerId,
-                approved: false
-              })
-          }
-        : req.type === 'switchChain'
-          ? {
-              label: 'Decline',
-              onPress: () =>
-                void capabilities.review.resolveSwitchChain({
-                  requestId: req.handlerId,
-                  approved: false
-                })
-            }
-          : { label: 'Decline', onPress: reject }
-    : undefined
+  let secondary: { label: string; onPress: () => void } | undefined
+  if (primary) {
+    if (req.type === 'access') {
+      secondary = {
+        label: 'Decline',
+        onPress: () => void capabilities.review.resolveAccess({ requestId: req.handlerId, approved: false })
+      }
+    } else if (req.type === 'agentAccess') {
+      secondary = {
+        label: 'Decline',
+        onPress: () =>
+          void capabilities.review.resolveAgentAccess({ requestId: req.handlerId, approved: false })
+      }
+    } else if (req.type === 'switchChain') {
+      secondary = {
+        label: 'Decline',
+        onPress: () =>
+          void capabilities.review.resolveSwitchChain({ requestId: req.handlerId, approved: false })
+      }
+    } else if (req.type === 'addChain') {
+      secondary = {
+        label: 'Decline',
+        onPress: () => void capabilities.review.resolveAddChain({ requestId: req.handlerId, approved: false })
+      }
+    } else {
+      secondary = { label: 'Decline', onPress: reject }
+    }
+  }
 
-  if (primary && secondary) content = <RequestActions primary={primary} secondary={secondary} />
+  if (primary && secondary) {
+    content = <RequestActions primary={primary} secondary={secondary} />
+  }
 
   return (
     <footer className={footerRecipe({ active: Boolean(content) })} ref={footerRef}>

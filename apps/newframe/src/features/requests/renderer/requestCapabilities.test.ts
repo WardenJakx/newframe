@@ -21,6 +21,7 @@ it('maps each request surface to its exact host command and preserves failures',
   await capabilities.review.clearOrigin({ accountId: '0xabc', originId: 'origin-1' })
   await capabilities.review.resolveAccess({ requestId: 'request-1', approved: true })
   await capabilities.review.resolveAgentAccess({ requestId: 'request-1', approved: false })
+  await capabilities.review.resolveAddChain({ requestId: 'request-1', approved: true })
   await capabilities.review.reviewAddChain({ requestId: 'request-1' })
   await capabilities.review.reviewAddToken({ requestId: 'request-1' })
   await capabilities.review.confirmWarning({ requestId: 'request-1', gate: 'gas-fee' })
@@ -63,6 +64,7 @@ it('maps each request surface to its exact host command and preserves failures',
     { type: 'request.clear-origin', accountId: '0xabc', originId: 'origin-1' },
     { type: 'request.access-resolve', requestId: 'request-1', approved: true },
     { type: 'request.agent-access-resolve', requestId: 'request-1', approved: false },
+    { type: 'network.request-resolve', requestId: 'request-1', approved: true },
     { type: 'request.add-chain-review', requestId: 'request-1' },
     { type: 'request.add-token-review', requestId: 'request-1' },
     { type: 'request.warning-confirm', requestId: 'request-1', gate: 'gas-fee' },
