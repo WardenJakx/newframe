@@ -230,7 +230,13 @@ function isRenderableRequest(request: ProjectedRequest): request is ProjectedReq
         isRecord(request.chain) &&
         typeof request.chain.id === 'number' &&
         typeof request.chain.type === 'string' &&
-        typeof request.chain.name === 'string'
+        typeof request.chain.name === 'string' &&
+        isOptionalString(request.chain.icon) &&
+        isOptionalString(request.chain.nativeCurrencyName) &&
+        isOptionalString(request.chain.symbol) &&
+        isOptionalString(request.chain.primaryRpc) &&
+        isOptionalString(request.chain.secondaryRpc) &&
+        isOptionalString(request.chain.explorer)
       )
     case 'switchChain':
       return (

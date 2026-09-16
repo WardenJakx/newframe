@@ -1,4 +1,3 @@
-import { Button } from '@newframe/ui/button'
 import { Icon } from '@newframe/ui/icon'
 import { Stack } from '@newframe/ui/stack'
 import { Surface } from '@newframe/ui/surface'
@@ -6,7 +5,6 @@ import { Text } from '@newframe/ui/text'
 import { useState } from 'react'
 
 import { cva } from '../../../../generated/styled-system/css/cva.js'
-import { TrayOverlay } from '../../../shared/renderer/ui/TrayOverlay'
 
 const chainIconRecipe = cva({
   base: {
@@ -40,7 +38,7 @@ const parameterRecipe = cva({
 
 const valueRecipe = cva({ base: { minWidth: 0, overflowWrap: 'anywhere' } })
 
-export interface AddChainViewModel {
+export interface AddChainDetailsModel {
   explorer?: string
   icon?: string
   id?: number | string
@@ -65,7 +63,7 @@ function displayChainId(value: number | string) {
   }
 }
 
-function ChainIdentity({ chain }: { chain: AddChainViewModel }) {
+function ChainIdentity({ chain, description }: { chain: AddChainDetailsModel; description: string }) {
   const [failedIcon, setFailedIcon] = useState('')
   const name = chain.name ?? 'Unknown chain'
   const showIcon = chain.icon && failedIcon !== chain.icon
@@ -84,7 +82,7 @@ function ChainIdentity({ chain }: { chain: AddChainViewModel }) {
           {name}
         </Text>
         <Text align='center' tone='secondary' variant='supporting'>
-          Review the settings before adding this chain to NewFrame.
+          {description}
         </Text>
       </Stack>
     </Stack>
@@ -106,7 +104,7 @@ function ChainParameterRow({ label, value }: ChainParameter) {
   )
 }
 
-function chainParameters(chain: AddChainViewModel): ChainParameter[] {
+function chainParameters(chain: AddChainDetailsModel): ChainParameter[] {
   const currency = [chain.nativeCurrencyName, chain.symbol ? `(${chain.symbol})` : '']
     .filter(Boolean)
     .join(' ')
@@ -122,49 +120,28 @@ function chainParameters(chain: AddChainViewModel): ChainParameter[] {
   return candidates.filter((parameter): parameter is ChainParameter => parameter !== null)
 }
 
-export function AddChainView({
+export function AddChainDetails({
   chain,
-  onApprove,
-  onReject
+  description = 'Review the settings before adding this chain to NewFrame.'
 }: {
-  chain: AddChainViewModel
-  onApprove: () => void
-  onReject: () => void
+  chain: AddChainDetailsModel
+  description?: string
 }) {
   const parameters = chainParameters(chain)
 
   return (
-    <TrayOverlay
-      closeLabel='Back'
-      footer={
-        <Stack direction='row' equal gap='xsmall' grow>
-          <Button appearance='danger' label='Reject chain' onPress={onReject} shape='pill' size='large'>
-            <Text variant='action'>Reject</Text>
-          </Button>
-          <Button appearance='primary' label='Add chain' onPress={onApprove} shape='pill' size='large'>
-            <Text tone='inverse' variant='action'>
-              Add chain
-            </Text>
-          </Button>
-        </Stack>
-      }
-      label='Add Chain'
-      onClose={onReject}
-      title='Add Chain'
-    >
-      <Stack gap='medium'>
-        <ChainIdentity chain={chain} />
-        <Stack gap='xsmall'>
-          <Text as='h3' tone='secondary' variant='sectionTitle'>
-            Network details
-          </Text>
-          <Surface border='subtle' padding='none' radius='card' tone='card'>
-            {parameters.map((parameter) => (
-              <ChainParameterRow key={parameter.label} {...parameter} />
-            ))}
-          </Surface>
-        </Stack>
+    <Stack gap='medium'>
+      <ChainIdentity chain={chain} description={description} />
+      <Stack gap='xsmall'>
+        <Text as='h3' tone='secondary' variant='sectionTitle'>
+          Network details
+        </Text>
+        <Surface border='subtle' padding='none' radius='card' tone='card'>
+          {parameters.map((parameter) => (
+            <ChainParameterRow key={parameter.label} {...parameter} />
+          ))}
+        </Surface>
       </Stack>
-    </TrayOverlay>
+    </Stack>
   )
 }

@@ -1,4 +1,9 @@
-import { AddChainView } from './AddChainView'
+import { Button } from '@newframe/ui/button'
+import { Stack } from '@newframe/ui/stack'
+import { Text } from '@newframe/ui/text'
+
+import { AddChainDetails } from '../../../shared/renderer/ui/AddChainDetails'
+import { TrayOverlay } from '../../../shared/renderer/ui/TrayOverlay'
 import type { NetworksCapability } from './networksCapability'
 
 export interface PendingChainRequest {
@@ -38,5 +43,38 @@ export function AddChain({
     }
     onResolved(approved ? 'approved' : 'rejected')
   }
-  return <AddChainView chain={chain} onApprove={() => resolve(true)} onReject={() => resolve(false)} />
+  return (
+    <TrayOverlay
+      closeLabel='Back'
+      footer={
+        <Stack direction='row' equal gap='xsmall' grow>
+          <Button
+            appearance='danger'
+            label='Reject chain'
+            onPress={() => resolve(false)}
+            shape='pill'
+            size='large'
+          >
+            <Text variant='action'>Reject</Text>
+          </Button>
+          <Button
+            appearance='primary'
+            label='Add chain'
+            onPress={() => resolve(true)}
+            shape='pill'
+            size='large'
+          >
+            <Text tone='inverse' variant='action'>
+              Add chain
+            </Text>
+          </Button>
+        </Stack>
+      }
+      label='Add Chain'
+      onClose={() => resolve(false)}
+      title='Add Chain'
+    >
+      <AddChainDetails chain={chain} />
+    </TrayOverlay>
+  )
 }

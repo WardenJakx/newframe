@@ -109,75 +109,94 @@ export function Footer({ capabilities, notify, shared, step, onContinue }: Foote
   }
 
   const reject = () => void capabilities.review.reject({ requestId: req.handlerId })
-  let primary: { label: string; onPress: () => void } | undefined
+  let actions:
+    | {
+        primary: { label: string; onPress: () => void }
+        secondary: { label: string; onPress: () => void }
+      }
+    | undefined
 
-  if (!content && req?.type === 'access') {
-    primary = {
-      label: 'Approve',
-      onPress: () => void capabilities.review.resolveAccess({ requestId: req.handlerId, approved: true })
-    }
-  } else if (!content && req?.type === 'agentAccess') {
-    primary = {
-      label: 'Allow autonomous access',
-      onPress: () =>
-        void capabilities.review.resolveAgentAccess({
-          requestId: req.handlerId,
-          approved: true
-        })
-    }
-  } else if (!content && req?.type === 'switchChain') {
-    primary = {
-      label: 'Switch',
-      onPress: () =>
-        void capabilities.review.resolveSwitchChain({
-          requestId: req.handlerId,
-          approved: true
-        })
-    }
-  } else if (!content && req?.type === 'addChain') {
-    primary = {
-      label: 'Review',
-      onPress: () => void capabilities.review.reviewAddChain({ requestId: req.handlerId })
-    }
-  } else if (!content && req?.type === 'addToken') {
-    primary = {
-      label: 'Review',
-      onPress: () => void capabilities.review.reviewAddToken({ requestId: req.handlerId })
-    }
-  }
-
-  const secondary = primary
-    ? req.type === 'access'
-      ? {
-          label: 'Decline',
-          onPress: () =>
-            void capabilities.review.resolveAccess({
-              requestId: req.handlerId,
-              approved: false
-            })
-        }
-      : req.type === 'agentAccess'
-        ? {
+  if (!content) {
+    switch (req.type) {
+      case 'access':
+        actions = {
+          primary: {
+            label: 'Approve',
+            onPress: () =>
+              void capabilities.review.resolveAccess({ requestId: req.handlerId, approved: true })
+          },
+          secondary: {
             label: 'Decline',
+            onPress: () =>
+              void capabilities.review.resolveAccess({ requestId: req.handlerId, approved: false })
+          }
+        }
+        break
+      case 'agentAccess':
+        actions = {
+          primary: {
+            label: 'Allow autonomous access',
             onPress: () =>
               void capabilities.review.resolveAgentAccess({
                 requestId: req.handlerId,
-                approved: false
+                approved: true
               })
+          },
+          secondary: {
+            label: 'Decline',
+            onPress: () =>
+              void capabilities.review.resolveAgentAccess({ requestId: req.handlerId, approved: false })
           }
-        : req.type === 'switchChain'
-          ? {
-              label: 'Decline',
-              onPress: () =>
-                void capabilities.review.resolveSwitchChain({
-                  requestId: req.handlerId,
-                  approved: false
-                })
-            }
-          : { label: 'Decline', onPress: reject }
-    : undefined
+        }
+        break
+      case 'switchChain':
+        actions = {
+          primary: {
+            label: 'Switch',
+            onPress: () =>
+              void capabilities.review.resolveSwitchChain({
+                requestId: req.handlerId,
+                approved: true
+              })
+          },
+          secondary: {
+            label: 'Decline',
+            onPress: () =>
+              void capabilities.review.resolveSwitchChain({ requestId: req.handlerId, approved: false })
+          }
+        }
+        break
+      case 'addChain':
+        actions = {
+          primary: {
+            label: 'Add chain',
+            onPress: () =>
+              void capabilities.review.resolveAddChain({ requestId: req.handlerId, approved: true })
+          },
+          secondary: {
+            label: 'Decline',
+            onPress: () =>
+              void capabilities.review.resolveAddChain({ requestId: req.handlerId, approved: false })
+          }
+        }
+        break
+      case 'addToken':
+        actions = {
+          primary: {
+            label: 'Review',
+            onPress: () => void capabilities.review.reviewAddToken({ requestId: req.handlerId })
+          },
+          secondary: { label: 'Decline', onPress: reject }
+        }
+        break
+      default:
+        break
+    }
+  }
 
-  if (primary && secondary) content = <RequestActions primary={primary} secondary={secondary} />
+  if (actions) {
+    content = <RequestActions primary={actions.primary} secondary={actions.secondary} />
+  }
 
   return (
     <footer className={footerRecipe({ active: Boolean(content) })} ref={footerRef}>

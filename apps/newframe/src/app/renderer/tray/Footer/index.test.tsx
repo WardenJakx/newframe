@@ -120,7 +120,7 @@ it('opens token review and rejects token requests through typed commands', async
   })
 })
 
-it('opens add-chain review through its canonical request ID', async () => {
+it('resolves add-chain requests directly through their canonical request ID', async () => {
   const req = { handlerId: 'chain-1', type: 'addChain' }
   const { user } = render(
     <Footer
@@ -132,9 +132,13 @@ it('opens add-chain review through its canonical request ID', async () => {
     />
   )
 
-  await user.click(screen.getByText('Review'))
+  await user.click(screen.getByText('Add chain'))
+  await user.click(screen.getByText('Decline'))
 
-  expect(requestPorts.review.reviewAddChain.mock.calls).toEqual([[{ requestId: req.handlerId }]])
+  expect(requestPorts.review.resolveAddChain.mock.calls).toEqual([
+    [{ requestId: req.handlerId, approved: true }],
+    [{ requestId: req.handlerId, approved: false }]
+  ])
 })
 
 it('uses the renderer-local request step for confirm-only commands', () => {
