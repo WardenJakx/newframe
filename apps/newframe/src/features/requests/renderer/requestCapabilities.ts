@@ -19,6 +19,7 @@ export interface RequestPanelCapability {
 export interface RequestReviewCapability {
   resolveAccess(input: CommandInput<'request.access-resolve'>): Promise<CommandResult>
   resolveAgentAccess(input: CommandInput<'request.agent-access-resolve'>): Promise<CommandResult>
+  resolveAddChain(input: CommandInput<'network.request-resolve'>): Promise<CommandResult>
   reviewAddChain(input: CommandInput<'request.add-chain-review'>): Promise<CommandResult>
   reviewAddToken(input: CommandInput<'request.add-token-review'>): Promise<CommandResult>
   clearOrigin(input: CommandInput<'request.clear-origin'>): Promise<CommandResult>
@@ -70,6 +71,7 @@ const createRequestPanelCapability = (host: RequestHost): RequestPanelCapability
 const createRequestReviewCapability = (host: RequestHost): RequestReviewCapability => ({
   resolveAccess: (input) => host.executeCommand({ type: 'request.access-resolve', ...input }),
   resolveAgentAccess: (input) => host.executeCommand({ type: 'request.agent-access-resolve', ...input }),
+  resolveAddChain: (input) => host.executeCommand({ type: 'network.request-resolve', ...input }),
   reviewAddChain: (input) => host.executeCommand({ type: 'request.add-chain-review', ...input }),
   reviewAddToken: (input) => host.executeCommand({ type: 'request.add-token-review', ...input }),
   clearOrigin: (input) => host.executeCommand({ type: 'request.clear-origin', ...input }),

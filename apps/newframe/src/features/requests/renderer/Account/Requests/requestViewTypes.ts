@@ -85,7 +85,17 @@ export type AgentAccessRequestView = RequestViewBase<'agentAccess'> & {
 }
 
 export type ChainRequestView = RequestViewBase<'addChain' | 'switchChain'> & {
-  chain: { id: string | number; type: string; name?: string }
+  chain: {
+    explorer?: string
+    icon?: string
+    id: string | number
+    name?: string
+    nativeCurrencyName?: string
+    primaryRpc?: string
+    secondaryRpc?: string
+    symbol?: string
+    type: string
+  }
 }
 
 export type AddTokenRequestView = RequestViewBase<'addToken'> & {

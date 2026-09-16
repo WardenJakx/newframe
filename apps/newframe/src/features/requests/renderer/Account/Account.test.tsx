@@ -108,6 +108,32 @@ function accessRequest() {
   } as const
 }
 
+function addChainRequest() {
+  return {
+    type: 'addChain',
+    handlerId: requestId,
+    origin,
+    account: accountId,
+    payload: {
+      id: 4,
+      jsonrpc: '2.0',
+      method: 'wallet_addEthereumChain',
+      params: [{ chainId: '0x1234' }]
+    },
+    chain: {
+      id: 4660,
+      type: 'ethereum',
+      name: 'Bizarro Polygon',
+      icon: 'https://icons.example/chain.png',
+      nativeCurrencyName: 'New',
+      symbol: 'NEW',
+      primaryRpc: 'https://rpc.example',
+      secondaryRpc: 'https://backup-rpc.example',
+      explorer: 'https://explorer.example'
+    }
+  } as const
+}
+
 function resetWithRequest(input: unknown) {
   const request = WalletRequestSchema.parse(input)
   const state = walletState({
@@ -195,6 +221,18 @@ describe('request projection validation', () => {
 
     expect(screen.getByText(origin)).toBeTruthy()
     expect(screen.getByText('wants to connect')).toBeTruthy()
+  })
+
+  it('renders add-chain identity and settings in the initial request view', () => {
+    resetWithRequest(addChainRequest())
+    renderAccount()
+
+    expect(screen.getByRole('heading', { level: 2, name: 'Bizarro Polygon' })).toBeTruthy()
+    expect(screen.getByText(`${origin} wants to add this chain.`)).toBeTruthy()
+    expect(screen.getByText('4660 (0x1234)')).toBeTruthy()
+    expect(screen.getByText('New (NEW)')).toBeTruthy()
+    expect(screen.getByText('https://rpc.example')).toBeTruthy()
+    expect(screen.queryByText('wants to add chain')).toBeNull()
   })
 })
 
