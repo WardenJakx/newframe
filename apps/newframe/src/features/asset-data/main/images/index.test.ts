@@ -218,6 +218,29 @@ it('hydrates changed origin favicons through the shared queue and discards stale
   expect(canonical.getState().main.origins.site.image).toBeUndefined()
 })
 
+it('hydrates embedded Firefox origin favicons through the shared queue', async () => {
+  const canonical = await createOriginImageStore()
+  const source = 'data:image/png;base64,iVBORw0KGgoBAgM='
+  const download = mock(async (sourceUrl: string) => imageFor(sourceUrl))
+  canonical.getState().initOrigin('firefox-site', {
+    name: 'firefox.test',
+    chain: { id: 1, type: 'ethereum' }
+  })
+  canonical.getState().setOriginFavicon('firefox-site', source)
+
+  const images = createImageService(canonical, {
+    downloadImage: download,
+    getTokenDiscoveryProvider: () => ({ ok: false, error: 'missing_api_key' }),
+    log: { warn: mock() }
+  })
+  images.start()
+  await flushHydration()
+
+  expect(download).toHaveBeenCalledWith(source)
+  expect(canonical.getState().main.origins['firefox-site']?.image).toEqual(imageFor(source))
+  images.dispose()
+})
+
 async function createOriginImageStore() {
   const { createStore } = await import('zustand/vanilla')
   const { subscribeWithSelector } = await import('zustand/middleware')

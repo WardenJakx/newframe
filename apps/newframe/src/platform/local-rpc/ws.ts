@@ -6,6 +6,7 @@ import { v4 as uuid } from 'uuid'
 import type WebSocket from 'ws'
 
 import { createRpcPrincipal, type TrustedPrincipal } from '../../features/access-control/main/authority.js'
+import { embeddedImageSource } from '../../features/asset-data/domain/image/index.js'
 import {
   parseOrigin,
   parseRequestChainId,
@@ -17,6 +18,8 @@ import protectedMethods from './protectedMethods.js'
 import validPayload from './validPayload.js'
 
 function faviconSource(value: unknown): string | undefined {
+  const embedded = embeddedImageSource(value)
+  if (embedded) return embedded
   if (typeof value !== 'string' || value.length > 4096) return
   for (const character of value) {
     const code = character.charCodeAt(0)

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 
-import { imageSource, isEmbeddedImage } from './index'
+import { embeddedImageSource, imageSource, isEmbeddedImage } from './index'
 
 describe('image sources', () => {
   it('allows only embedded images in renderers', () => {
@@ -11,5 +11,14 @@ describe('image sources', () => {
 
   it('rejects retired image-cache references', () => {
     expect(imageSource('frame-cache:icon:legacy')).toBe('')
+  })
+
+  it('accepts only bounded base64 data for supported image types', () => {
+    expect(embeddedImageSource('data:image/png;base64,iVBORw0KGgo=')).toBe(
+      'data:image/png;base64,iVBORw0KGgo='
+    )
+    expect(embeddedImageSource('data:text/html;base64,PGgxPm5vcGU8L2gxPg==')).toBe('')
+    expect(embeddedImageSource('data:image/png,not-base64')).toBe('')
+    expect(embeddedImageSource(`data:image/png;base64,${'a'.repeat(1_398_104)}`)).toBe('')
   })
 })
