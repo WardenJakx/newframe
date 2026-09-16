@@ -93,8 +93,10 @@ describe('wallet renderer projection records', () => {
             id: 1,
             icon: 'https://icons.llamao.fi/icons/chains/rsz_ethereum.jpg',
             name: 'Ethereum',
+            nativeCurrencyName: 'Ether',
             symbol: 'ETH',
             primaryRpc: 'https://rpc.example',
+            secondaryRpc: 'https://backup-rpc.example',
             authorization: { principal: { sessionId: 'secret-session' } }
           },
           requestId: 'request-1',
@@ -113,8 +115,10 @@ describe('wallet renderer projection records', () => {
           id: 1,
           icon: 'https://icons.llamao.fi/icons/chains/rsz_ethereum.jpg',
           name: 'Ethereum',
+          nativeCurrencyName: 'Ether',
           symbol: 'ETH',
-          primaryRpc: 'https://rpc.example'
+          primaryRpc: 'https://rpc.example',
+          secondaryRpc: 'https://backup-rpc.example'
         },
         requestId: 'request-1'
       }

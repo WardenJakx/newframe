@@ -7,8 +7,10 @@ export interface PendingChainRequest {
     chainId?: string | number
     icon?: string
     name?: string
+    nativeCurrencyName?: string
     symbol?: string
     primaryRpc?: string
+    secondaryRpc?: string
     explorer?: string
   }
   homeCommandId?: number
@@ -24,7 +26,7 @@ export function AddChain({
   onResolved: (outcome: 'approved' | 'rejected') => void
   pending: PendingChainRequest
 }) {
-  const chain = pending.chain || {}
+  const chain = pending.chain ?? {}
   const requestId = pending.requestId
   const homeCommandId = pending.homeCommandId
   const resolve = (approved: boolean) => {
@@ -36,15 +38,5 @@ export function AddChain({
     }
     onResolved(approved ? 'approved' : 'rejected')
   }
-  const rows = [
-    ['Name', chain.name],
-    ['Chain ID', chain.id],
-    ['Symbol', chain.symbol],
-    ['RPC', chain.primaryRpc],
-    ['Explorer', chain.explorer]
-  ].filter(
-    (row): row is [string, string | number] => row[1] !== undefined && row[1] !== null && row[1] !== ''
-  )
-
-  return <AddChainView onApprove={() => resolve(true)} onReject={() => resolve(false)} rows={rows} />
+  return <AddChainView chain={chain} onApprove={() => resolve(true)} onReject={() => resolve(false)} />
 }
