@@ -5,21 +5,16 @@ import { isIP } from 'net'
 import { net as electronNet } from 'electron'
 
 import type { TokenImage } from '../../../../platform/state-store/state/index.js'
+import {
+  embeddedImageSource,
+  isSupportedImageMimeType,
+  MAX_EMBEDDED_IMAGE_BYTES
+} from '../../domain/image/index.js'
 
 const MAX_TARGET_LENGTH = 4096
-const MAX_IMAGE_BYTES = 1024 * 1024
+const MAX_IMAGE_BYTES = MAX_EMBEDDED_IMAGE_BYTES
 const FETCH_TIMEOUT = 8000
 const MAX_REDIRECTS = 5
-
-const ALLOWED_MIME_TYPES = new Set([
-  'image/png',
-  'image/jpeg',
-  'image/webp',
-  'image/gif',
-  'image/svg+xml',
-  'image/x-icon',
-  'image/vnd.microsoft.icon'
-])
 
 const inFlightDownloads = new Map<string, Promise<TokenImage>>()
 
@@ -143,6 +138,33 @@ function isRedirect(status: number) {
   return [301, 302, 303, 307, 308].includes(status)
 }
 
+function imageFromBytes(bytes: Buffer, declared: string, sourceUrl: string): TokenImage {
+  if (bytes.length > MAX_IMAGE_BYTES) throw new Error('Image is too large')
+  const sniffed = sniffMimeType(bytes)
+  const mimeType = isSupportedImageMimeType(declared) && declared === sniffed ? declared : sniffed
+  if (!isSupportedImageMimeType(mimeType)) throw new Error('Unsupported image type')
+
+  return {
+    base64: bytes.toString('base64'),
+    contentHash: crypto.createHash('sha256').update(bytes).digest('hex'),
+    mimeType,
+    sourceUrl
+  }
+}
+
+function decodeEmbeddedImage(target: string) {
+  const sourceUrl = embeddedImageSource(target)
+  if (!sourceUrl) throw new Error('Invalid embedded image')
+  const separator = sourceUrl.indexOf(',')
+  const declared = sourceUrl.slice(5, sourceUrl.indexOf(';')).toLowerCase()
+  const encoded = sourceUrl.slice(separator + 1)
+  const bytes = Buffer.from(encoded, 'base64')
+  if (bytes.toString('base64').replace(/=+$/, '') !== encoded.replace(/=+$/, '')) {
+    throw new Error('Invalid embedded image')
+  }
+  return imageFromBytes(bytes, declared, sourceUrl)
+}
+
 async function fetchRemoteImage(target: string, signal: AbortSignal) {
   let currentUrl = await validateRemoteImageUrl(target)
   for (let redirects = 0; redirects <= MAX_REDIRECTS; redirects++) {
@@ -156,6 +178,7 @@ async function fetchRemoteImage(target: string, signal: AbortSignal) {
 }
 
 async function download(target: string): Promise<TokenImage> {
+  if (target.trimStart().startsWith('data:')) return decodeEmbeddedImage(target)
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT)
   try {
@@ -164,18 +187,8 @@ async function download(target: string): Promise<TokenImage> {
     const contentLength = Number(response.headers.get('content-length') || 0)
     if (contentLength > MAX_IMAGE_BYTES) throw new Error('Image is too large')
     const bytes = Buffer.from(await response.arrayBuffer())
-    if (bytes.length > MAX_IMAGE_BYTES) throw new Error('Image is too large')
     const declared = normalizeMimeType(response.headers.get('content-type'))
-    const sniffed = sniffMimeType(bytes)
-    const mimeType = ALLOWED_MIME_TYPES.has(declared) && declared === sniffed ? declared : sniffed
-    if (!ALLOWED_MIME_TYPES.has(mimeType)) throw new Error('Unsupported image type')
-
-    return {
-      base64: bytes.toString('base64'),
-      contentHash: crypto.createHash('sha256').update(bytes).digest('hex'),
-      mimeType,
-      sourceUrl: target
-    }
+    return imageFromBytes(bytes, declared, target)
   } finally {
     clearTimeout(timeout)
   }

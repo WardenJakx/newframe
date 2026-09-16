@@ -323,11 +323,13 @@ it.each(['trust', 'send', 'after-response'] as const)(
 
 it.each([
   { source: 'https://cdn.example/favicon.ico', accepted: true },
+  { source: 'data:image/png;base64,iVBORw0KGgoBAgM=', accepted: true },
   { source: 'http://cdn.example/favicon.ico', accepted: false },
+  { source: 'data:text/html;base64,PGgxPm5vcGU8L2gxPg==', accepted: false },
   { source: 'https://user:secret@cdn.example/favicon.ico', accepted: false },
   { source: `https://cdn.example/${'x'.repeat(4096)}`, accepted: false }
 ])(
-  'accepts only bounded HTTPS favicon metadata from approved proxied extensions, accepted=$accepted',
+  'accepts only bounded image favicon metadata from approved proxied extensions, accepted=$accepted',
   async ({ source, accepted }) => {
     const domain = `favicon-${accepted}-${source.length}.test`
     provider.respond = (payload) => ({ id: payload.id, jsonrpc: payload.jsonrpc, result: 'ok' })

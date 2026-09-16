@@ -4,6 +4,7 @@ import type { Origin } from '../../../connections/domain/state/origin.js'
 import { builtInChainIconUrl } from '../../../networks/domain/chain/index.js'
 import type { getTokenDiscoveryProvider } from '../../../portfolio/main/index.js'
 import { toTokenId } from '../../../tokens/domain/index.js'
+import { embeddedImageSource } from '../../domain/image/index.js'
 import type { downloadImage } from './download.js'
 
 const MAX_CONCURRENT_HYDRATIONS = 2
@@ -27,6 +28,10 @@ function httpsImageUrl(value: unknown) {
   } catch {
     return ''
   }
+}
+
+function originImageSource(value: unknown) {
+  return httpsImageUrl(value) || embeddedImageSource(value)
 }
 
 function configuredNetworkImageSource(chainId: number, metadata: ChainMetadata) {
@@ -177,10 +182,10 @@ export function createImageService(
 
   const hydrateOrigins = (origins: Record<string, Origin>, previousOrigins: Record<string, Origin> = {}) => {
     for (const [originId, origin] of Object.entries(origins)) {
-      const sourceUrl = httpsImageUrl(origin.faviconSource)
+      const sourceUrl = originImageSource(origin.faviconSource)
       if (
         !sourceUrl ||
-        sourceUrl === httpsImageUrl(previousOrigins[originId]?.faviconSource) ||
+        sourceUrl === originImageSource(previousOrigins[originId]?.faviconSource) ||
         origin.image?.sourceUrl === sourceUrl
       )
         continue

@@ -55,6 +55,36 @@ it('downloads and returns a persistable base64 image payload', async () => {
   })
 })
 
+it('decodes and validates embedded Firefox favicon data', async () => {
+  const sourceUrl = `data:image/png;base64,${png.toString('base64')}`
+
+  expect(await downloadImage(sourceUrl)).toEqual({
+    base64: png.toString('base64'),
+    contentHash: expect.stringMatching(/^[a-f0-9]{64}$/),
+    mimeType: 'image/png',
+    sourceUrl
+  })
+  expect(mockFetch).not.toHaveBeenCalled()
+})
+
+it('rejects malformed and oversized embedded images', () => {
+  expect(downloadImage('data:image/png;base64,not_base64')).rejects.toThrow('Invalid embedded image')
+  expect(downloadImage('data:text/html;base64,PGgxPm5vcGU8L2gxPg==')).rejects.toThrow(
+    'Invalid embedded image'
+  )
+  expect(
+    downloadImage(`data:image/png;base64,${Buffer.alloc(1024 * 1024 + 1).toString('base64')}`)
+  ).rejects.toThrow('Invalid embedded image')
+})
+
+it('uses sniffed bytes when embedded image metadata is mislabeled', async () => {
+  const svg = Buffer.from('<svg/>')
+  expect(await downloadImage(`data:image/png;base64,${svg.toString('base64')}`)).toMatchObject({
+    base64: svg.toString('base64'),
+    mimeType: 'image/svg+xml'
+  })
+})
+
 it('deduplicates concurrent downloads for the same URL', async () => {
   mockFetch.mockResolvedValue(createResponse(png, 'image/png'))
   const target = 'https://cdn.example/shared.png'
