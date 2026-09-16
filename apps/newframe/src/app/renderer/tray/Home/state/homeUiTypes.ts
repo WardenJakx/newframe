@@ -7,8 +7,10 @@ interface ProposedChain {
   chainId?: string | number
   icon?: string
   name?: string
+  nativeCurrencyName?: string
   symbol?: string
   primaryRpc?: string
+  secondaryRpc?: string
   explorer?: string
   [key: string]: unknown
 }
