@@ -37,7 +37,9 @@ export async function revealAssetDetailsButton(page: Page, symbol: string) {
     exact: true
   })
 
-  if (await assetDetails.isVisible({ timeout: 500 }).catch(() => false)) return assetDetails
+  if (await assetDetails.isVisible({ timeout: 500 }).catch(() => false)) {
+    return assetDetails
+  }
 
   const hiddenGroups = [
     page.getByRole('button', { name: /\d+ assets? below 1% hidden/i }),
@@ -45,9 +47,15 @@ export async function revealAssetDetailsButton(page: Page, symbol: string) {
   ]
 
   for (const group of hiddenGroups) {
-    if (!(await group.isVisible({ timeout: 500 }).catch(() => false))) continue
-    if ((await group.getAttribute('aria-expanded')) !== 'true') await group.click()
-    if (await assetDetails.isVisible({ timeout: 500 }).catch(() => false)) break
+    if (!(await group.isVisible({ timeout: 500 }).catch(() => false))) {
+      continue
+    }
+    if ((await group.getAttribute('aria-expanded')) !== 'true') {
+      await group.click()
+    }
+    if (await assetDetails.isVisible({ timeout: 500 }).catch(() => false)) {
+      break
+    }
   }
 
   return assetDetails

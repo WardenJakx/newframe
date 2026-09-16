@@ -23,8 +23,9 @@ function normalizeMimeType(value: string | null) {
 }
 
 function sniffMimeType(bytes: Buffer) {
-  if (bytes.length >= 6 && bytes.readUInt32LE(0) === 0x00010000 && bytes.readUInt16LE(4) > 0)
+  if (bytes.length >= 6 && bytes.readUInt32LE(0) === 0x00010000 && bytes.readUInt16LE(4) > 0) {
     return 'image/x-icon'
+  }
   if (
     bytes.length >= 8 &&
     bytes.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))
@@ -43,17 +44,23 @@ function sniffMimeType(bytes: Buffer) {
   }
   if (bytes.length >= 6) {
     const header = bytes.toString('ascii', 0, 6)
-    if (header === 'GIF87a' || header === 'GIF89a') return 'image/gif'
+    if (header === 'GIF87a' || header === 'GIF89a') {
+      return 'image/gif'
+    }
   }
   const textHeader = bytes.subarray(0, 256).toString('utf8').trimStart().toLowerCase()
-  if (textHeader.startsWith('<svg') || textHeader.startsWith('<?xml')) return 'image/svg+xml'
+  if (textHeader.startsWith('<svg') || textHeader.startsWith('<?xml')) {
+    return 'image/svg+xml'
+  }
   return ''
 }
 
 function hasControlCharacters(value: string) {
   for (let i = 0; i < value.length; i++) {
     const code = value.charCodeAt(i)
-    if (code <= 31 || code === 127) return true
+    if (code <= 31 || code === 127) {
+      return true
+    }
   }
   return false
 }
@@ -83,17 +90,27 @@ function isPrivateIPv4(address: string) {
 
 function isPrivateIPv6(address: string) {
   const normalized = address.toLowerCase()
-  if (normalized === '::' || normalized === '::1') return true
-  if (normalized.startsWith('fc') || normalized.startsWith('fd')) return true
-  if (/^fe[89ab]/.test(normalized)) return true
+  if (normalized === '::' || normalized === '::1') {
+    return true
+  }
+  if (normalized.startsWith('fc') || normalized.startsWith('fd')) {
+    return true
+  }
+  if (/^fe[89ab]/.test(normalized)) {
+    return true
+  }
   const mapped = normalized.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/)
   return mapped ? isPrivateIPv4(mapped[1]) : false
 }
 
 function isPublicIpAddress(address: string) {
   const family = isIP(address)
-  if (family === 4) return !isPrivateIPv4(address)
-  if (family === 6) return !isPrivateIPv6(address)
+  if (family === 4) {
+    return !isPrivateIPv4(address)
+  }
+  if (family === 6) {
+    return !isPrivateIPv6(address)
+  }
   return false
 }
 
@@ -109,9 +126,15 @@ async function validateRemoteImageUrl(target: string) {
   } catch {
     throw new Error('Invalid image URL')
   }
-  if (targetUrl.protocol !== 'https:') throw new Error('Image URL must use HTTPS')
-  if (targetUrl.username || targetUrl.password) throw new Error('Image URL cannot include credentials')
-  if (targetUrl.port && targetUrl.port !== '443') throw new Error('Image URL uses an unsupported port')
+  if (targetUrl.protocol !== 'https:') {
+    throw new Error('Image URL must use HTTPS')
+  }
+  if (targetUrl.username || targetUrl.password) {
+    throw new Error('Image URL cannot include credentials')
+  }
+  if (targetUrl.port && targetUrl.port !== '443') {
+    throw new Error('Image URL uses an unsupported port')
+  }
 
   const hostname = normalizeHostname(targetUrl.hostname)
   if (
@@ -123,7 +146,9 @@ async function validateRemoteImageUrl(target: string) {
     throw new Error('Image URL cannot target local hostnames')
   }
   if (isIP(hostname)) {
-    if (!isPublicIpAddress(hostname)) throw new Error('Image URL cannot target private addresses')
+    if (!isPublicIpAddress(hostname)) {
+      throw new Error('Image URL cannot target private addresses')
+    }
     return targetUrl.toString()
   }
 
@@ -139,10 +164,14 @@ function isRedirect(status: number) {
 }
 
 function imageFromBytes(bytes: Buffer, declared: string, sourceUrl: string): TokenImage {
-  if (bytes.length > MAX_IMAGE_BYTES) throw new Error('Image is too large')
+  if (bytes.length > MAX_IMAGE_BYTES) {
+    throw new Error('Image is too large')
+  }
   const sniffed = sniffMimeType(bytes)
   const mimeType = isSupportedImageMimeType(declared) && declared === sniffed ? declared : sniffed
-  if (!isSupportedImageMimeType(mimeType)) throw new Error('Unsupported image type')
+  if (!isSupportedImageMimeType(mimeType)) {
+    throw new Error('Unsupported image type')
+  }
 
   return {
     base64: bytes.toString('base64'),
@@ -154,7 +183,9 @@ function imageFromBytes(bytes: Buffer, declared: string, sourceUrl: string): Tok
 
 function decodeEmbeddedImage(target: string) {
   const sourceUrl = embeddedImageSource(target)
-  if (!sourceUrl) throw new Error('Invalid embedded image')
+  if (!sourceUrl) {
+    throw new Error('Invalid embedded image')
+  }
   const separator = sourceUrl.indexOf(',')
   const declared = sourceUrl.slice(5, sourceUrl.indexOf(';')).toLowerCase()
   const encoded = sourceUrl.slice(separator + 1)
@@ -169,23 +200,33 @@ async function fetchRemoteImage(target: string, signal: AbortSignal) {
   let currentUrl = await validateRemoteImageUrl(target)
   for (let redirects = 0; redirects <= MAX_REDIRECTS; redirects++) {
     const response = await electronNet.fetch(currentUrl, { signal, redirect: 'manual' })
-    if (!isRedirect(response.status)) return response
+    if (!isRedirect(response.status)) {
+      return response
+    }
     const location = response.headers.get('location')
-    if (!location) throw new Error('Image redirect is missing a location')
+    if (!location) {
+      throw new Error('Image redirect is missing a location')
+    }
     currentUrl = await validateRemoteImageUrl(new URL(location, currentUrl).toString())
   }
   throw new Error('Image has too many redirects')
 }
 
 async function download(target: string): Promise<TokenImage> {
-  if (target.trimStart().startsWith('data:')) return decodeEmbeddedImage(target)
+  if (target.trimStart().startsWith('data:')) {
+    return decodeEmbeddedImage(target)
+  }
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT)
   try {
     const response = await fetchRemoteImage(target, controller.signal)
-    if (!response.ok) throw new Error(`Image fetch failed with ${response.status}`)
+    if (!response.ok) {
+      throw new Error(`Image fetch failed with ${response.status}`)
+    }
     const contentLength = Number(response.headers.get('content-length') || 0)
-    if (contentLength > MAX_IMAGE_BYTES) throw new Error('Image is too large')
+    if (contentLength > MAX_IMAGE_BYTES) {
+      throw new Error('Image is too large')
+    }
     const bytes = Buffer.from(await response.arrayBuffer())
     const declared = normalizeMimeType(response.headers.get('content-type'))
     return imageFromBytes(bytes, declared, target)
@@ -196,7 +237,9 @@ async function download(target: string): Promise<TokenImage> {
 
 export async function downloadImage(target: string) {
   const existing = inFlightDownloads.get(target)
-  if (existing) return existing
+  if (existing) {
+    return existing
+  }
   const request = download(target).finally(() => inFlightDownloads.delete(target))
   inFlightDownloads.set(target, request)
   return request

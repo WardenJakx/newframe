@@ -51,7 +51,9 @@ async function copyBuildAssets(tempDir: string, generatedHtmlPath: string) {
   const files = await walkFiles(tempDir)
 
   for (const file of files) {
-    if (file === generatedHtmlPath) continue
+    if (file === generatedHtmlPath) {
+      continue
+    }
 
     const destination = resolve(bundleDir, relative(tempDir, file))
     await mkdir(dirname(destination), { recursive: true })

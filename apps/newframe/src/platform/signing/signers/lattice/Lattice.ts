@@ -1,7 +1,7 @@
 import { encode } from '@ethereumjs/rlp'
-import { TypedTransaction } from '@ethereumjs/tx'
+import type { TypedTransaction } from '@ethereumjs/tx'
 import { padToEven, addHexPrefix, bytesToHex, stripHexPrefix } from '@ethereumjs/util'
-import { SignTypedDataVersion } from '@metamask/eth-sig-util'
+import type { SignTypedDataVersion } from '@metamask/eth-sig-util'
 import log from 'electron-log'
 import { Client, Utils, Constants } from 'gridplus-sdk'
 
@@ -127,7 +127,7 @@ export default class Lattice extends Signer {
 
       this.emit('error')
 
-      throw new Error(errorMessage)
+      throw new Error(errorMessage, { cause: e })
     }
   }
 
@@ -171,7 +171,7 @@ export default class Lattice extends Signer {
 
       this.emit('error')
 
-      throw new Error(errorMessage)
+      throw new Error(errorMessage, { cause: e })
     }
   }
 
@@ -230,7 +230,7 @@ export default class Lattice extends Signer {
 
       const errorMessage = this.handleError('could not derive addresses', err)
 
-      throw new Error(errorMessage)
+      throw new Error(errorMessage, { cause: e })
     }
   }
 
@@ -302,7 +302,7 @@ export default class Lattice extends Signer {
         const signedTx = await connection.sign(signingOptions)
         const sig = signedTx?.sig as LatticeSignature | undefined
 
-        if (!sig || sig.v === undefined) {
+        if (sig?.v === undefined) {
           throw new Error('Lattice returned an incomplete signature')
         }
 
@@ -350,7 +350,7 @@ export default class Lattice extends Signer {
     const result = await connection.sign(signOpts)
     const sig = result?.sig as LatticeSignature | undefined
 
-    if (!sig || sig.v === undefined) {
+    if (sig?.v === undefined) {
       throw new Error('Lattice returned an incomplete signature')
     }
 
@@ -382,7 +382,7 @@ export default class Lattice extends Signer {
 
     optionalFields.forEach((field) => {
       if (field in txJson) {
-        // @ts-ignore
+        // @ts-expect-error
         unsignedTx[field] = hexToInt(txJson[field])
       }
     })

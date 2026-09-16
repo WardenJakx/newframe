@@ -31,7 +31,7 @@ function token(input: CuratedTokenInput): CuratedAsset {
   return Object.freeze({
     ...input,
     ...normalizedToken,
-    address: normalizedToken.address as Address,
+    address: normalizedToken.address,
     assetId: `${normalizedToken.chainId}:${normalizedToken.address}`
   })
 }
@@ -184,7 +184,9 @@ if (process.env.NODE_ENV !== 'production') {
   const assetIds = new Set<string>()
 
   entries.forEach(({ assetId }) => {
-    if (assetIds.has(assetId)) throw new Error(`Duplicate curated assetId: ${assetId}`)
+    if (assetIds.has(assetId)) {
+      throw new Error(`Duplicate curated assetId: ${assetId}`)
+    }
     assetIds.add(assetId)
   })
 }

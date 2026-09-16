@@ -34,7 +34,9 @@ export function ActivityDetailsView({
   const effects = activityBalanceChanges(activity, symbol)
   const receiptBlock = activity.receipt?.blockNumber ? parseInt(activity.receipt.blockNumber, 16) : undefined
   const copy = (value?: string | null) => {
-    if (value) void capability.copyText({ text: value })
+    if (value) {
+      void capability.copyText({ text: value })
+    }
   }
   const from = activity.data?.from || activity.account || activity.address
   const to = activity.data?.to

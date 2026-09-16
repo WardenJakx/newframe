@@ -38,7 +38,9 @@ function createSelectableBalancesSelector() {
   let previousResult: Balance[] = []
 
   return (balances: Balance[], globalTokens: Token[]) => {
-    if (balances === previousBalances && globalTokens === previousGlobalTokens) return previousResult
+    if (balances === previousBalances && globalTokens === previousGlobalTokens) {
+      return previousResult
+    }
 
     const balanceIds = new Set(balances.map(toTokenId))
     const missingGlobalBalances = globalTokens

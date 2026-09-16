@@ -15,13 +15,17 @@ export function createRequestEditService(ports: RequestEditServicePorts) {
       if (command.requestKind === 'transaction') {
         const request = currentRequest<TransactionRequest>(command.requestId)
         const action = request?.recognizedActions?.find((candidate) => candidate.id === command.actionId)
-        if (request?.type !== 'transaction' || !action) return false
+        if (request?.type !== 'transaction' || !action) {
+          return false
+        }
 
         return ports.accounts.updateRequest(command.requestId, { amount: command.amount }, command.actionId)
       }
 
       const request = currentRequest<PermitSignatureRequest>(command.requestId)
-      if (request?.type !== 'signErc20Permit') return false
+      if (request?.type !== 'signErc20Permit') {
+        return false
+      }
 
       return ports.accounts.updateRequest(
         command.requestId,

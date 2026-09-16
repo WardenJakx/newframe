@@ -129,7 +129,7 @@ function persistedNetworkMetadata(networksMeta: UnknownRecord) {
 }
 
 function unknownRecord(value: unknown): UnknownRecord {
-  return value && typeof value === 'object' && !Array.isArray(value) ? (value as UnknownRecord) : {}
+  return value && typeof value === 'object' && !Array.isArray(value) ? value : {}
 }
 
 function normalizeProfileState(main: UnknownRecord) {
@@ -141,8 +141,12 @@ function normalizeProfileState(main: UnknownRecord) {
   Object.entries(sourceProfiles).forEach(([key, candidate]) => {
     const profile = unknownRecord(candidate)
     const id = typeof profile.id === 'string' && profile.id ? profile.id : key
-    if (!id || typeof profile.name !== 'string' || !profile.name) return
-    if (!profiles[id]) profiles[id] = { id, name: profile.name }
+    if (!id || typeof profile.name !== 'string' || !profile.name) {
+      return
+    }
+    if (!profiles[id]) {
+      profiles[id] = { id, name: profile.name }
+    }
     profileAliases[key] = id
     profileAliases[id] = id
   })
@@ -273,7 +277,9 @@ export function migratePersistedState(
     })
   }
   const parsed = PersistedCanonicalStateSchema.safeParse(candidate)
-  if (parsed.success) return parsed.data
+  if (parsed.success) {
+    return parsed.data
+  }
 
   log.error('Could not migrate invalid persisted canonical state', parsed.error.issues)
   throw new CanonicalStatePersistenceError('invalid_state', 'Canonical wallet state could not be migrated.')
@@ -342,7 +348,9 @@ function mergeNetworkMetadata(current: unknown, persisted: unknown) {
 }
 
 export function mergePersistedState(persistedValue: unknown, current: CanonicalStore): CanonicalStore {
-  if (persistedValue === undefined || persistedValue === null) return current
+  if (persistedValue === undefined || persistedValue === null) {
+    return current
+  }
 
   const persisted = migratePersistedState(persistedValue)
   const saved = persisted.main as UnknownRecord

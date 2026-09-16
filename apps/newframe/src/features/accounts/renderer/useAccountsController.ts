@@ -9,7 +9,9 @@ import { accountsReducer, createAccountsState } from './accountsReducer'
 function errorMessage(error: unknown, fallback: string) {
   if (typeof error === 'object' && error !== null && 'message' in error) {
     const message = (error as { message?: unknown }).message
-    if (typeof message === 'string' && message) return message
+    if (typeof message === 'string' && message) {
+      return message
+    }
   }
   return fallback
 }
@@ -62,7 +64,9 @@ export function useAccountsController(input: {
   }, [input.currentAccountId])
 
   useEffect(() => {
-    if (state.move.kind !== 'pending') return
+    if (state.move.kind !== 'pending') {
+      return
+    }
     const operation = input.operations[state.move.operationId]
     if (operation?.status === 'failed') {
       activeMoveOperationRef.current = ''
@@ -102,11 +106,15 @@ export function useAccountsController(input: {
     },
     onAccountDragEnd: () => dispatch({ type: 'drag.ended' } as const),
     onAccountDragOver: (event: DragEvent, accountId: string) => {
-      if (!state.drag.accountId || state.drag.accountId === accountId) return
+      if (!state.drag.accountId || state.drag.accountId === accountId) {
+        return
+      }
       event.preventDefault()
       event.stopPropagation()
       event.dataTransfer.dropEffect = 'move'
-      if (state.drag.overAccountId !== accountId) dispatch({ type: 'drag.entered', accountId })
+      if (state.drag.overAccountId !== accountId) {
+        dispatch({ type: 'drag.entered', accountId })
+      }
     },
     onAccountDragStart: (event: DragEvent, accountId: string) => {
       event.stopPropagation()
@@ -138,7 +146,9 @@ export function useAccountsController(input: {
     onAccountRenameCancel: () => dispatch({ type: 'rename.closed' } as const),
     onAccountRenameCommit: (accountId: string, nextName: string) => {
       const name = nextName.trim()
-      if (name) void input.capability.updateAccount({ accountId, name })
+      if (name) {
+        void input.capability.updateAccount({ accountId, name })
+      }
       dispatch({ type: 'rename.closed' })
     },
     onAccountRenameOpen: (accountId: string) => dispatch({ type: 'rename.opened', accountId } as const),
@@ -153,21 +163,29 @@ export function useAccountsController(input: {
       dispatch({ type: 'panel.export-closed' })
     },
     onExportCopy: () => {
-      if (!state.export.secret) return
+      if (!state.export.secret) {
+        return
+      }
       void input.capability.writeClipboard({ text: state.export.secret })
       dispatch({ type: 'export.copied' })
     },
     onExportRevealToggle: () => dispatch({ type: 'export.reveal-toggled' } as const),
     onExport: async () => {
-      if (state.panel.kind !== 'export' || state.export.loading) return
+      if (state.panel.kind !== 'export' || state.export.loading) {
+        return
+      }
       const account = input.accounts[state.panel.accountId]
-      if (!account?.address) return
+      if (!account?.address) {
+        return
+      }
       const requestToken = crypto.randomUUID()
       exportRequestRef.current = requestToken
       dispatch({ type: 'export.started' })
       try {
         const result = await input.capability.exportAccountPrivateKey({ accountId: account.address })
-        if (exportRequestRef.current !== requestToken) return
+        if (exportRequestRef.current !== requestToken) {
+          return
+        }
         exportRequestRef.current = ''
         dispatch(
           result.ok
@@ -178,7 +196,9 @@ export function useAccountsController(input: {
               }
         )
       } catch (error) {
-        if (exportRequestRef.current !== requestToken) return
+        if (exportRequestRef.current !== requestToken) {
+          return
+        }
         exportRequestRef.current = ''
         dispatch({
           type: 'export.failed',
@@ -187,8 +207,11 @@ export function useAccountsController(input: {
       }
     },
     onMoveOpenChange: (accountId: string, open: boolean) => {
-      if (open) dispatch({ type: 'move.opened', accountId })
-      else if (!activeMoveOperationRef.current) dispatch({ type: 'move.closed' })
+      if (open) {
+        dispatch({ type: 'move.opened', accountId })
+      } else if (!activeMoveOperationRef.current) {
+        dispatch({ type: 'move.closed' })
+      }
     },
     onMoveSelect: async (accountId: string, profileId: string) => {
       const operationId = crypto.randomUUID()
@@ -201,7 +224,9 @@ export function useAccountsController(input: {
           dispatch({ type: 'move.failed', accountId, error: moveError(result.error) })
         }
       } catch (error) {
-        if (activeMoveOperationRef.current !== operationId) return
+        if (activeMoveOperationRef.current !== operationId) {
+          return
+        }
         activeMoveOperationRef.current = ''
         dispatch({
           type: 'move.failed',
@@ -216,7 +241,9 @@ export function useAccountsController(input: {
     },
     onSearchClear: () => {
       clearTimeout(accountSearchTimeoutRef.current)
-      if (accountSearchInputRef.current) accountSearchInputRef.current.value = ''
+      if (accountSearchInputRef.current) {
+        accountSearchInputRef.current.value = ''
+      }
       dispatch({ type: 'search.changed', query: '' })
     }
   }

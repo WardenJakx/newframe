@@ -21,7 +21,9 @@ const disposals: (() => void)[] = []
 afterEach(() => disposals.splice(0).forEach((dispose) => dispose()))
 async function until(condition: () => boolean) {
   for (let n = 0; n < 200; n++) {
-    if (condition()) return
+    if (condition()) {
+      return
+    }
     await Bun.sleep(2)
   }
   throw new Error('Timed out')
@@ -158,7 +160,9 @@ function setup() {
     },
     closeWindow: () => {
       active = false
-      for (const listener of listeners) listener()
+      for (const listener of listeners) {
+        listener()
+      }
     }
   }
 }
@@ -259,13 +263,23 @@ it.each(['tampered', 'missing-field', 'domain', 'foreign-owner', 'foreign-profil
     const test = setup()
     const account = test.store.getState().main.accounts[safeAddress]
     const deployment = structuredClone(account.safe!['1'])
-    if (kind === 'tampered') deployment.pending![0].value = '999'
-    if (kind === 'missing-field') delete deployment.pending![0].baseGas
-    if (kind === 'domain') deployment.configuration.version = '0.0.0'
-    if (kind === 'foreign-owner') deployment.configuration.owners = [zero]
-    if (kind === 'old-nonce') deployment.configuration.nonce = '8'
+    if (kind === 'tampered') {
+      deployment.pending![0].value = '999'
+    }
+    if (kind === 'missing-field') {
+      delete deployment.pending![0].baseGas
+    }
+    if (kind === 'domain') {
+      deployment.configuration.version = '0.0.0'
+    }
+    if (kind === 'foreign-owner') {
+      deployment.configuration.owners = [zero]
+    }
+    if (kind === 'old-nonce') {
+      deployment.configuration.nonce = '8'
+    }
     test.store.getState().patchAccount(safeAddress, { safe: { '1': deployment } })
-    if (kind === 'foreign-profile')
+    if (kind === 'foreign-profile') {
       test.store.setState((state) => ({
         main: {
           ...state.main,
@@ -275,6 +289,7 @@ it.each(['tampered', 'missing-field', 'domain', 'foreign-owner', 'foreign-profil
           }
         }
       }))
+    }
     test.service.confirm(test.command, test.context)
     expect(test.status().status).toBe('validation_failed')
     expect(test.signing.sign).not.toHaveBeenCalled()
@@ -290,19 +305,26 @@ it.each(['selection', 'proposal', 'membership', 'network', 'dispose'] as const)(
     test.signing.sign.mockImplementation(() => pending.promise)
     test.service.confirm(test.command, test.context)
     await until(() => test.status().status === 'signing')
-    if (kind === 'selection')
+    if (kind === 'selection') {
       test.store.setState((state) => ({ main: { ...state.main, currentAccount: ownerId } }))
+    }
     if (kind === 'proposal' || kind === 'membership') {
       const deployment = structuredClone(test.store.getState().main.accounts[safeAddress].safe!['1'])
-      if (kind === 'proposal') deployment.pending![0].data = '0xcc'
-      else deployment.configuration.owners = [zero]
+      if (kind === 'proposal') {
+        deployment.pending![0].data = '0xcc'
+      } else {
+        deployment.configuration.owners = [zero]
+      }
       test.store.getState().patchAccount(safeAddress, { safe: { '1': deployment } })
     }
-    if (kind === 'network')
+    if (kind === 'network') {
       test.store.setState((state) => ({
         main: { ...state.main, networks: { ...state.main.networks, ethereum: {} } }
       }))
-    if (kind === 'dispose') test.service.dispose()
+    }
+    if (kind === 'dispose') {
+      test.service.dispose()
+    }
     pending.resolve(test.signature)
     await until(
       () =>
@@ -393,13 +415,17 @@ it.each(['selection', 'lock', 'window'] as const)(
     test.client.confirm.mockImplementationOnce(() => pending.promise)
     test.service.confirm(test.command, test.context)
     await until(() => test.client.confirm.mock.calls.length === 1)
-    if (kind === 'selection')
+    if (kind === 'selection') {
       test.store.setState((state) => ({ main: { ...state.main, currentAccount: ownerId } }))
-    if (kind === 'lock')
+    }
+    if (kind === 'lock') {
       test.store.setState((state) => ({
         main: { ...state.main, appLock: { ...state.main.appLock, locked: true } }
       }))
-    if (kind === 'window') test.closeWindow()
+    }
+    if (kind === 'window') {
+      test.closeWindow()
+    }
     await until(() => test.status().status === 'publication_failed')
     expect(test.status().message).toContain('saved confirmation')
     pending.resolve()

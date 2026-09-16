@@ -58,7 +58,9 @@ export class AgentSessionStore {
 
   authenticate(sessionId: string, token: string): AgentSession | undefined {
     const session = this.sessions.get(sessionId)
-    if (!session || session.revokedAt || session.expiresAt <= this.now()) return
+    if (!session || session.revokedAt || session.expiresAt <= this.now()) {
+      return
+    }
 
     const presentedHash = tokenDigest(token)
     if (
@@ -83,7 +85,9 @@ export class AgentSessionStore {
 
   revoke(sessionId: string) {
     const session = this.sessions.get(sessionId)
-    if (!session || session.revokedAt) return false
+    if (!session || session.revokedAt) {
+      return false
+    }
     session.revokedAt = this.now()
     return true
   }

@@ -14,7 +14,7 @@ class ResizeObserverMock {
 
   observe(target: Element) {
     Object.defineProperty(target, 'clientHeight', { configurable: true, value: 72 })
-    this.callback([], this as unknown as ResizeObserver)
+    this.callback([], this)
   }
 
   disconnect = mock()
@@ -24,7 +24,7 @@ class ResizeObserverMock {
 const originalResizeObserver = globalThis.ResizeObserver
 
 beforeEach(() => {
-  globalThis.ResizeObserver = ResizeObserverMock as unknown as typeof ResizeObserver
+  globalThis.ResizeObserver = ResizeObserverMock
 })
 
 afterEach(() => {

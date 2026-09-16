@@ -12,9 +12,8 @@ export function createProductionFlashService(
     assetRateService,
     store: canonicalStore,
     positionSync: {
-      track: ({ address, tokens }) => accounts.trackPositionTokens(address as Address, tokens),
-      refresh: ({ address, chainId, tokens }) =>
-        accounts.refreshPositions(address as Address, chainId, tokens)
+      track: ({ address, tokens }) => accounts.trackPositionTokens(address, tokens),
+      refresh: ({ address, chainId, tokens }) => accounts.refreshPositions(address, chainId, tokens)
     }
   })
 }

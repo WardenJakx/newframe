@@ -208,7 +208,7 @@ it('counts Safe proposals with RPC requests and opens failed queues from a separ
   expect(screen.getByText('{"section":"positions","overlay":{"type":"requests"}}')).toBeTruthy()
   unmount()
   account.requests = {}
-  account.safe!['1']!.pending = []
+  account.safe!['1'].pending = []
   fixture.state.reset(walletState({ currentAccount: accountId, accounts: { [accountId]: account } }))
   const { unmount: unmountHealthy } = render(
     <HomeUiProvider>
@@ -218,7 +218,7 @@ it('counts Safe proposals with RPC requests and opens failed queues from a separ
   expect(screen.queryByLabelText('Pending requests')).toBeNull()
   expect(screen.queryByLabelText('Safe queue warning')).toBeNull()
   unmountHealthy()
-  account.safe!['1']!.error = 'Service unavailable'
+  account.safe!['1'].error = 'Service unavailable'
   fixture.state.reset(walletState({ currentAccount: accountId, accounts: { [accountId]: account } }))
   const { user: failedUser } = render(
     <HomeUiProvider>

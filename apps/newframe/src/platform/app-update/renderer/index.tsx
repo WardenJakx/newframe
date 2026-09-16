@@ -13,7 +13,9 @@ const selectBadge = (state: TrayRendererState) => state.view.badge || EMPTY_BADG
 export default function Badge({ capability }: { capability: UpdaterCapability }) {
   const badge = useWalletSelector(selectBadge) as { type?: string; version?: string }
 
-  if (badge.type !== 'updateReady' && badge.type !== 'updateAvailable') return null
+  if (badge.type !== 'updateReady' && badge.type !== 'updateAvailable') {
+    return null
+  }
 
   const ready = badge.type === 'updateReady'
   return (

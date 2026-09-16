@@ -68,7 +68,9 @@ abstract class HotSigner extends Signer {
   override update() {
     const derivedId = this.fingerprint()
     if (!derivedId) {
-      if (this.id) this.save()
+      if (this.id) {
+        this.save()
+      }
       this.emit('update')
       return
     }
@@ -88,7 +90,9 @@ abstract class HotSigner extends Signer {
 
   private withPrivateKey<T>(index: number, cb: Callback<T>, operation: (key: Buffer) => T) {
     const vaultKey = this.vault.getKey()
-    if (!vaultKey) return cb(new Error('Signer locked'), undefined)
+    if (!vaultKey) {
+      return cb(new Error('Signer locked'), undefined)
+    }
 
     let key: Buffer | undefined
     let result: T
@@ -116,7 +120,9 @@ abstract class HotSigner extends Signer {
 
   override signTransaction(index: number, rawTx: TransactionData, cb: Callback<string>) {
     this.withPrivateKey(index, cb, (privateKey) => {
-      if (!rawTx.chainId) throw new Error('could not determine chain id for transaction')
+      if (!rawTx.chainId) {
+        throw new Error('could not determine chain id for transaction')
+      }
       const chainId = Number.parseInt(String(rawTx.chainId), 16)
       const hardfork = Number.parseInt(String(rawTx.type)) === 2 ? 'london' : 'berlin'
       const tx = createTx(rawTx as any, { common: chainConfig(chainId, hardfork) })

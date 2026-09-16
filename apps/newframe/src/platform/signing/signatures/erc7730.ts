@@ -99,7 +99,9 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 }
 
 function toBigIntOrNull(value: unknown): bigint | null {
-  if (typeof value === 'bigint') return value
+  if (typeof value === 'bigint') {
+    return value
+  }
   if (typeof value === 'number' || typeof value === 'string') {
     try {
       return BigInt(value)
@@ -112,11 +114,21 @@ function toBigIntOrNull(value: unknown): bigint | null {
 }
 
 function valueToText(value: unknown): string {
-  if (typeof value === 'bigint') return value.toString()
-  if (typeof value === 'string') return value
-  if (typeof value === 'number' || typeof value === 'boolean') return String(value)
-  if (value === null) return 'null'
-  if (Array.isArray(value)) return value.map(valueToText).join(', ')
+  if (typeof value === 'bigint') {
+    return value.toString()
+  }
+  if (typeof value === 'string') {
+    return value
+  }
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return String(value)
+  }
+  if (value === null) {
+    return 'null'
+  }
+  if (Array.isArray(value)) {
+    return value.map(valueToText).join(', ')
+  }
 
   return JSON.stringify(value, (_key, nestedValue) =>
     typeof nestedValue === 'bigint' ? nestedValue.toString() : nestedValue
@@ -130,13 +142,17 @@ function getBaseType(type: string) {
 
 function encodeTypeFragment(typeName: string, types: Erc7730TypedDataTypes): string {
   const fields = types[typeName]
-  if (!fields) throw new Error(`Missing EIP-712 type ${typeName}`)
+  if (!fields) {
+    throw new Error(`Missing EIP-712 type ${typeName}`)
+  }
 
   return `${typeName}(${fields.map(({ name, type }) => `${type} ${name}`).join(',')})`
 }
 
 export function getEip712EncodeType(types: Erc7730TypedDataTypes, primaryType: string): string {
-  if (!types[primaryType]) throw new Error(`Missing primary EIP-712 type ${primaryType}`)
+  if (!types[primaryType]) {
+    throw new Error(`Missing primary EIP-712 type ${primaryType}`)
+  }
 
   const customTypeNames = new Set(Object.keys(types).filter((typeName) => typeName !== 'EIP712Domain'))
   const dependencies = new Set<string>()
@@ -144,7 +160,9 @@ export function getEip712EncodeType(types: Erc7730TypedDataTypes, primaryType: s
   const collectDependencies = (typeName: string) => {
     types[typeName]?.forEach(({ type }) => {
       const baseType = getBaseType(type)
-      if (!customTypeNames.has(baseType) || dependencies.has(baseType)) return
+      if (!customTypeNames.has(baseType) || dependencies.has(baseType)) {
+        return
+      }
 
       dependencies.add(baseType)
       collectDependencies(baseType)
@@ -168,20 +186,28 @@ function getPathSegments(path: string) {
 }
 
 function readPath(source: unknown, path: string): unknown {
-  if (!path) return source
+  if (!path) {
+    return source
+  }
 
   return getPathSegments(path).reduce<unknown>((currentValue, segment) => {
-    if (currentValue === undefined || currentValue === null) return undefined
+    if (currentValue === undefined || currentValue === null) {
+      return undefined
+    }
 
     if (segment.startsWith('[') && segment.endsWith(']')) {
       const index = Number(segment.slice(1, -1))
-      if (!Array.isArray(currentValue) || !Number.isInteger(index)) return undefined
+      if (!Array.isArray(currentValue) || !Number.isInteger(index)) {
+        return undefined
+      }
       return currentValue[index < 0 ? currentValue.length + index : index]
     }
 
     if (Array.isArray(currentValue)) {
       const index = Number(segment)
-      if (Number.isInteger(index)) return currentValue[index]
+      if (Number.isInteger(index)) {
+        return currentValue[index]
+      }
       return currentValue.map((item) => (isPlainObject(item) ? item[segment] : undefined))
     }
 
@@ -190,13 +216,27 @@ function readPath(source: unknown, path: string): unknown {
 }
 
 function resolvePath(path: string | undefined, context: FormatContext, base: unknown): unknown {
-  if (!path) return undefined
-  if (path === '#') return context.root
-  if (path.startsWith('#.')) return readPath(context.root, path.slice(2))
-  if (path === '@') return context.root['@']
-  if (path.startsWith('@.')) return readPath(context.root['@'], path.slice(2))
-  if (path === '$') return context.descriptor
-  if (path.startsWith('$.')) return readPath(context.descriptor, path.slice(2))
+  if (!path) {
+    return undefined
+  }
+  if (path === '#') {
+    return context.root
+  }
+  if (path.startsWith('#.')) {
+    return readPath(context.root, path.slice(2))
+  }
+  if (path === '@') {
+    return context.root['@']
+  }
+  if (path.startsWith('@.')) {
+    return readPath(context.root['@'], path.slice(2))
+  }
+  if (path === '$') {
+    return context.descriptor
+  }
+  if (path.startsWith('$.')) {
+    return readPath(context.descriptor, path.slice(2))
+  }
 
   const valueFromBase = readPath(base, path)
   return valueFromBase === undefined ? readPath(context.root, path) : valueFromBase
@@ -207,9 +247,15 @@ function normalizePath(path?: string) {
 }
 
 function normalizeComparableValue(value: unknown) {
-  if (typeof value === 'bigint') return value.toString()
-  if (typeof value === 'string') return value.toLowerCase()
-  if (typeof value === 'number' || typeof value === 'boolean' || value === null) return value
+  if (typeof value === 'bigint') {
+    return value.toString()
+  }
+  if (typeof value === 'string') {
+    return value.toLowerCase()
+  }
+  if (typeof value === 'number' || typeof value === 'boolean' || value === null) {
+    return value
+  }
   return valueToText(value)
 }
 
@@ -218,8 +264,12 @@ function matchesPrimitive(left: unknown, right: unknown) {
 }
 
 function getVisibility(rule: VisibleRule | undefined, value: unknown) {
-  if (!rule || rule === 'always' || rule === 'optional') return { visible: true, valid: true }
-  if (rule === 'never') return { visible: false, valid: true }
+  if (!rule || rule === 'always' || rule === 'optional') {
+    return { visible: true, valid: true }
+  }
+  if (rule === 'never') {
+    return { visible: false, valid: true }
+  }
 
   const required = rule.mustMatch || rule.mustBe
   if (required) {
@@ -234,10 +284,14 @@ function getVisibility(rule: VisibleRule | undefined, value: unknown) {
 }
 
 function resolveFieldReference(field: Field, context: FormatContext): Field {
-  if (!field.$ref) return field
+  if (!field.$ref) {
+    return field
+  }
 
   const referencedField = resolvePath(field.$ref, context, context.root)
-  if (!isPlainObject(referencedField)) return field
+  if (!isPlainObject(referencedField)) {
+    return field
+  }
 
   return {
     ...(referencedField as Field),
@@ -248,7 +302,9 @@ function resolveFieldReference(field: Field, context: FormatContext): Field {
 
 function getTokenMetadata(context: FormatContext) {
   const token = context.descriptor.metadata?.token
-  if (!token) return undefined
+  if (!token) {
+    return undefined
+  }
 
   return {
     decimals: typeof token.decimals === 'number' ? token.decimals : undefined,
@@ -258,10 +314,14 @@ function getTokenMetadata(context: FormatContext) {
 
 function getEnumValue(value: unknown, field: Field, context: FormatContext) {
   const enumRef = field.params?.$ref
-  if (typeof enumRef !== 'string') return undefined
+  if (typeof enumRef !== 'string') {
+    return undefined
+  }
 
   const enumDefinition = resolvePath(enumRef, context, context.root)
-  if (!isPlainObject(enumDefinition)) return undefined
+  if (!isPlainObject(enumDefinition)) {
+    return undefined
+  }
 
   const values = isPlainObject(enumDefinition.values) ? enumDefinition.values : enumDefinition
   const enumValue = values[valueToText(value)]
@@ -269,10 +329,14 @@ function getEnumValue(value: unknown, field: Field, context: FormatContext) {
 }
 
 function formatDate(value: unknown, field: Field) {
-  if (field.params?.encoding === 'blockheight') return `Block ${valueToText(value)}`
+  if (field.params?.encoding === 'blockheight') {
+    return `Block ${valueToText(value)}`
+  }
 
   const timestamp = toBigIntOrNull(value)
-  if (timestamp === null) return valueToText(value)
+  if (timestamp === null) {
+    return valueToText(value)
+  }
 
   const date = new Date(Number(timestamp) * 1000)
   return Number.isNaN(date.getTime()) ? valueToText(value) : date.toISOString()
@@ -280,7 +344,9 @@ function formatDate(value: unknown, field: Field) {
 
 function formatDuration(value: unknown) {
   const duration = toBigIntOrNull(value)
-  if (duration === null) return valueToText(value)
+  if (duration === null) {
+    return valueToText(value)
+  }
 
   const hours = duration / 3600n
   const minutes = (duration % 3600n) / 60n
@@ -293,7 +359,9 @@ function formatUnit(value: unknown, field: Field) {
   const amount = toBigIntOrNull(value)
   const base = typeof field.params?.base === 'string' ? field.params.base : ''
   const decimals = typeof field.params?.decimals === 'number' ? field.params.decimals : 0
-  if (amount === null) return `${valueToText(value)}${base ? ` ${base}` : ''}`
+  if (amount === null) {
+    return `${valueToText(value)}${base ? ` ${base}` : ''}`
+  }
 
   return `${formatUnits(amount, decimals)}${base ? ` ${base}` : ''}`
 }
@@ -319,14 +387,26 @@ function formatFieldValue(field: Field, value: unknown, context: FormatContext) 
 
   if (field.format === 'amount') {
     const amount = toBigIntOrNull(value)
-    if (amount !== null) return `${formatUnits(amount, 18)} ETH`
+    if (amount !== null) {
+      return `${formatUnits(amount, 18)} ETH`
+    }
   }
 
-  if (field.format === 'date') return formatDate(value, field)
-  if (field.format === 'duration') return formatDuration(value)
-  if (field.format === 'unit') return formatUnit(value, field)
-  if (field.format === 'enum') return getEnumValue(value, field, context) || valueToText(value)
-  if (typeof value === 'string' && isAddress(value)) return getAddress(value)
+  if (field.format === 'date') {
+    return formatDate(value, field)
+  }
+  if (field.format === 'duration') {
+    return formatDuration(value)
+  }
+  if (field.format === 'unit') {
+    return formatUnit(value, field)
+  }
+  if (field.format === 'enum') {
+    return getEnumValue(value, field, context) || valueToText(value)
+  }
+  if (typeof value === 'string' && isAddress(value)) {
+    return getAddress(value)
+  }
 
   return valueToText(value)
 }
@@ -342,26 +422,38 @@ function fieldToRows(
     resolvedField.value !== undefined ? resolvedField.value : resolvePath(resolvedField.path, context, base)
   const visibility = getVisibility(resolvedField.visible, value)
 
-  if (!visibility.valid) return null
-  if (!visibility.visible) return []
+  if (!visibility.valid) {
+    return null
+  }
+  if (!visibility.visible) {
+    return []
+  }
 
   if (resolvedField.fields?.length) {
     const groupedValue = value ?? base
     const groupedValues = Array.isArray(groupedValue) ? groupedValue : [groupedValue]
     return groupedValues.reduce<Erc7730DisplayRow[] | null>((rows, item) => {
-      if (!rows) return null
+      if (!rows) {
+        return null
+      }
       const nestedRows = fieldsToRows(resolvedField.fields || [], context, item, formattedByPath)
-      if (!nestedRows) return null
+      if (!nestedRows) {
+        return null
+      }
 
       rows.push(...nestedRows)
       return rows
     }, [])
   }
 
-  if (value === undefined) return resolvedField.visible === 'optional' ? [] : null
+  if (value === undefined) {
+    return resolvedField.visible === 'optional' ? [] : null
+  }
 
   const formattedValue = formatFieldValue(resolvedField, value, context)
-  if (resolvedField.path) formattedByPath.set(normalizePath(resolvedField.path), formattedValue)
+  if (resolvedField.path) {
+    formattedByPath.set(normalizePath(resolvedField.path), formattedValue)
+  }
 
   return [
     {
@@ -380,10 +472,14 @@ function fieldsToRows(
   formattedByPath: Map<string, string>
 ) {
   return fields.reduce<Erc7730DisplayRow[] | null>((rows, field) => {
-    if (!rows) return null
+    if (!rows) {
+      return null
+    }
 
     const nextRows = fieldToRows(field, context, base, formattedByPath)
-    if (!nextRows) return null
+    if (!nextRows) {
+      return null
+    }
 
     rows.push(...nextRows)
     return rows
@@ -396,16 +492,22 @@ function interpolateIntent(template: string, formattedByPath: Map<string, string
 
   while (currentIndex < template.length) {
     const openingBraceIndex = template.indexOf('{', currentIndex)
-    if (openingBraceIndex === -1) return interpolated + template.slice(currentIndex)
+    if (openingBraceIndex === -1) {
+      return interpolated + template.slice(currentIndex)
+    }
 
     const closingBraceIndex = template.indexOf('}', openingBraceIndex + 1)
-    if (closingBraceIndex === -1) return undefined
+    if (closingBraceIndex === -1) {
+      return undefined
+    }
 
     interpolated += template.slice(currentIndex, openingBraceIndex)
 
     const path = normalizePath(template.slice(openingBraceIndex + 1, closingBraceIndex).trim())
     const value = formattedByPath.get(path)
-    if (value === undefined) return undefined
+    if (value === undefined) {
+      return undefined
+    }
 
     interpolated += value
     currentIndex = closingBraceIndex + 1
@@ -424,16 +526,22 @@ function getTypedMessageFormatMatch(
   let encodeTypeHash: string | undefined
 
   try {
-    encodeType = getEip712EncodeType(typedData.types as Erc7730TypedDataTypes, primaryType)
+    encodeType = getEip712EncodeType(typedData.types, primaryType)
     encodeTypeHash = keccak256(toUtf8Bytes(encodeType)).toLowerCase()
   } catch {
     encodeType = undefined
   }
 
   const entry = Object.entries(formats).find(([formatKey]) => {
-    if (encodeType && formatKey === encodeType) return true
-    if (!formatKey.startsWith(`${primaryType}(`)) return false
-    if (!encodeTypeHash) return true
+    if (encodeType && formatKey === encodeType) {
+      return true
+    }
+    if (!formatKey.startsWith(`${primaryType}(`)) {
+      return false
+    }
+    if (!encodeTypeHash) {
+      return true
+    }
 
     return keccak256(toUtf8Bytes(formatKey)).toLowerCase() === encodeTypeHash
   })
@@ -442,7 +550,7 @@ function getTypedMessageFormatMatch(
     ? {
         formatKey: entry[0],
         format: entry[1],
-        values: typedData.message as Record<string, unknown>
+        values: typedData.message
       }
     : undefined
 }
@@ -460,14 +568,20 @@ function isDomainMatch(domain: Record<string, unknown>, constraints: Record<stri
 
 function isDescriptorBoundToTypedData(descriptor: Erc7730Descriptor, typedData: TypedData) {
   const eip712 = descriptor.context?.eip712
-  if (!eip712) return true
+  if (!eip712) {
+    return true
+  }
 
   const domain = isPlainObject(typedData.domain) ? typedData.domain : {}
-  if (eip712.domain && !isDomainMatch(domain, eip712.domain)) return false
+  if (eip712.domain && !isDomainMatch(domain, eip712.domain)) {
+    return false
+  }
 
   if (eip712.deployments?.length) {
     return eip712.deployments.some(({ chainId, address }) => {
-      if (chainId !== undefined && !matchesPrimitive(domain.chainId, chainId)) return false
+      if (chainId !== undefined && !matchesPrimitive(domain.chainId, chainId)) {
+        return false
+      }
       if (address !== undefined) {
         return (
           typeof domain.verifyingContract === 'string' &&
@@ -487,13 +601,19 @@ export function formatErc7730TypedData(
   descriptor: Erc7730Descriptor,
   descriptorPath?: string
 ): Erc7730Display | undefined {
-  if (typedMessage.version === SignTypedDataVersion.V1 || Array.isArray(typedMessage.data)) return undefined
+  if (typedMessage.version === SignTypedDataVersion.V1 || Array.isArray(typedMessage.data)) {
+    return undefined
+  }
 
   const typedData = typedMessage.data as TypedData
-  if (!isDescriptorBoundToTypedData(descriptor, typedData)) return undefined
+  if (!isDescriptorBoundToTypedData(descriptor, typedData)) {
+    return undefined
+  }
 
   const match = getTypedMessageFormatMatch(typedData, descriptor)
-  if (!match) return undefined
+  if (!match) {
+    return undefined
+  }
 
   const context: FormatContext = {
     descriptor,
@@ -508,7 +628,9 @@ export function formatErc7730TypedData(
   }
   const formattedByPath = new Map<string, string>()
   const rows = fieldsToRows(match.format.fields || [], context, match.values, formattedByPath)
-  if (!rows) return undefined
+  if (!rows) {
+    return undefined
+  }
 
   const intent = typeof match.format.intent === 'string' ? match.format.intent : match.formatKey
   const summary = match.format.interpolatedIntent
@@ -529,7 +651,9 @@ async function fetchJson<T>(url: string, fetcher: FetchLike) {
 
   try {
     const response = await fetcher(url, { signal: controller.signal })
-    if (!response.ok) throw new Error(`Failed to fetch ERC-7730 resource: ${url}`)
+    if (!response.ok) {
+      throw new Error(`Failed to fetch ERC-7730 resource: ${url}`)
+    }
     return (await response.json()) as T
   } finally {
     clearTimeout(timeout)
@@ -537,7 +661,9 @@ async function fetchJson<T>(url: string, fetcher: FetchLike) {
 }
 
 async function getEip712Index(fetcher: FetchLike) {
-  if (indexCache && Date.now() - indexCache.fetchedAt < CACHE_TTL_MS) return indexCache.value
+  if (indexCache && Date.now() - indexCache.fetchedAt < CACHE_TTL_MS) {
+    return indexCache.value
+  }
 
   const index = await fetchJson<Eip712Index>(EIP712_INDEX_URL, fetcher)
   indexCache = { value: index, fetchedAt: Date.now() }
@@ -545,8 +671,12 @@ async function getEip712Index(fetcher: FetchLike) {
 }
 
 function getDescriptorUrl(path: string, parentPath?: string): string {
-  if (path.startsWith('http://') || path.startsWith('https://')) return path
-  if (parentPath && !path.startsWith('/')) return new URL(path, getDescriptorUrl(parentPath)).toString()
+  if (path.startsWith('http://') || path.startsWith('https://')) {
+    return path
+  }
+  if (parentPath && !path.startsWith('/')) {
+    return new URL(path, getDescriptorUrl(parentPath)).toString()
+  }
 
   return `${REGISTRY_BASE_URL}/${path.replace(/^\//, '')}`
 }
@@ -577,7 +707,9 @@ async function fetchDescriptor(
 ): Promise<DescriptorResult> {
   const url = getDescriptorUrl(path, parentPath)
   const cached = descriptorCache.get(url)
-  if (cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) return { descriptor: cached.value, path }
+  if (cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
+    return { descriptor: cached.value, path }
+  }
 
   const descriptor = await fetchJson<Erc7730Descriptor>(url, fetcher)
   const includes = descriptor.includes
@@ -607,7 +739,9 @@ function getRegistryKey(chainId: unknown, verifyingContract: string) {
 }
 
 function getTypedDataRegistryLookup(typedMessage: TypedMessage) {
-  if (typedMessage.version === SignTypedDataVersion.V1 || Array.isArray(typedMessage.data)) return undefined
+  if (typedMessage.version === SignTypedDataVersion.V1 || Array.isArray(typedMessage.data)) {
+    return undefined
+  }
 
   const typedData = typedMessage.data as TypedData
   const domain = typedData.domain as Record<string, unknown>
@@ -622,10 +756,7 @@ function getTypedDataRegistryLookup(typedMessage: TypedMessage) {
     typedData,
     key: getRegistryKey(chainId, verifyingContract),
     primaryType: String(typedData.primaryType),
-    encodeTypeHash: getEip712EncodeTypeHash(
-      typedData.types as Erc7730TypedDataTypes,
-      String(typedData.primaryType)
-    )
+    encodeTypeHash: getEip712EncodeTypeHash(typedData.types, String(typedData.primaryType))
   }
 }
 
@@ -645,14 +776,20 @@ export async function getErc7730TypedDataDisplay(
 ): Promise<Erc7730Display | undefined> {
   try {
     const lookup = getTypedDataRegistryLookup(typedMessage)
-    if (!lookup) return undefined
+    if (!lookup) {
+      return undefined
+    }
 
     const index = await getEip712Index(fetcher)
     const entries = index[lookup.key]?.[lookup.primaryType]
-    if (!entries?.length) return undefined
+    if (!entries?.length) {
+      return undefined
+    }
 
     const entry = selectIndexEntry(entries, lookup.encodeTypeHash)
-    if (!entry) return undefined
+    if (!entry) {
+      return undefined
+    }
 
     const { descriptor, path } = await fetchDescriptor(entry.path, fetcher)
     return formatErc7730TypedData(typedMessage, descriptor, path)

@@ -39,20 +39,28 @@ function OverlayLayer({ active, children, index }: { active: boolean; children: 
     return () => {
       // Wait until React has removed inert from the layer being revealed.
       queueMicrotask(() => {
-        if (!previousFocus?.isConnected || previousFocus.closest('[inert]')) return
+        if (!previousFocus?.isConnected || previousFocus.closest('[inert]')) {
+          return
+        }
         const focusedLayer = document.activeElement?.closest('[data-overlay-focus-managed]')
-        if (focusedLayer && focusedLayer !== previousFocus.closest('[data-overlay-focus-managed]')) return
+        if (focusedLayer && focusedLayer !== previousFocus.closest('[data-overlay-focus-managed]')) {
+          return
+        }
         previousFocus.focus()
       })
     }
   }, [])
 
   useLayoutEffect(() => {
-    if (active && layer.current) (focusableElements(layer.current)[0] ?? layer.current).focus()
+    if (active && layer.current) {
+      ;(focusableElements(layer.current)[0] ?? layer.current).focus()
+    }
   }, [active])
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (!active || event.defaultPrevented || event.key !== 'Tab' || !layer.current) return
+    if (!active || event.defaultPrevented || event.key !== 'Tab' || !layer.current) {
+      return
+    }
     const elements = focusableElements(layer.current)
     const first = elements[0] ?? layer.current
     const last = elements.at(-1) ?? layer.current
@@ -87,7 +95,9 @@ function OverlayLayer({ active, children, index }: { active: boolean; children: 
 export function HomeOverlayRouter({ capabilities }: { capabilities: HomeCapabilities }) {
   const overlay = useHomeUiStore((state) => state.overlay)
   const history = useHomeUiStore((state) => state.overlayHistory)
-  if (overlay.type === 'none') return null
+  if (overlay.type === 'none') {
+    return null
+  }
 
   return (
     <div className={layersRecipe()}>
@@ -130,14 +140,21 @@ function OverlayRoute({
     }
   }, [active])
   const closeOverlay = () => {
-    if (activeRef.current) close()
+    if (activeRef.current) {
+      close()
+    }
   }
   const openOverlay = (next: Exclude<HomeOverlay, { type: 'none' }>) => {
-    if (activeRef.current) open(next)
+    if (activeRef.current) {
+      open(next)
+    }
   }
   const backToMenu = () => {
-    if (hasHistory) closeOverlay()
-    else openOverlay({ type: 'menu' })
+    if (hasHistory) {
+      closeOverlay()
+    } else {
+      openOverlay({ type: 'menu' })
+    }
   }
   const selectedChainId = useHomeUiStore((state) => state.selectedChainId)
   const setSelectedChainId = useHomeUiStore((state) => state.setSelectedChainId)
@@ -151,10 +168,14 @@ function OverlayRoute({
     (!currentAccount || !originatingAccountExists || overlay.accountId !== currentAccount)
 
   useEffect(() => {
-    if (active && staleAssetOverlay) close()
+    if (active && staleAssetOverlay) {
+      close()
+    }
   }, [active, close, staleAssetOverlay])
 
-  if (staleAssetOverlay) return null
+  if (staleAssetOverlay) {
+    return null
+  }
 
   switch (overlay.type) {
     case 'menu':
@@ -203,9 +224,14 @@ function OverlayRoute({
           initialToken={overlay.initialToken}
           onBack={backToMenu}
           onOpenNetworks={() => {
-            if (!activeRef.current) return
-            if (hasMenuHistory) push({ type: 'networks' })
-            else openOverlay({ type: 'networks' })
+            if (!activeRef.current) {
+              return
+            }
+            if (hasMenuHistory) {
+              push({ type: 'networks' })
+            } else {
+              openOverlay({ type: 'networks' })
+            }
           }}
         />
       )
@@ -214,8 +240,11 @@ function OverlayRoute({
         <AddChain
           capability={capabilities.networks}
           onResolved={(outcome) => {
-            if (outcome === 'approved') openOverlay({ type: 'networks' })
-            else closeOverlay()
+            if (outcome === 'approved') {
+              openOverlay({ type: 'networks' })
+            } else {
+              closeOverlay()
+            }
           }}
           pending={overlay.pending}
         />

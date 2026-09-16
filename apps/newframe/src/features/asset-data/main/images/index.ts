@@ -51,7 +51,9 @@ export function createImageService(
   let unsubscribeNetworks: (() => void) | undefined
 
   const drainQueue = () => {
-    if (!active) return
+    if (!active) {
+      return
+    }
 
     while (activeHydrations < MAX_CONCURRENT_HYDRATIONS && (queuedVisible.size || queuedBackground.size)) {
       const queue = queuedVisible.size ? queuedVisible : queuedBackground
@@ -91,20 +93,27 @@ export function createImageService(
     const tokenId = toTokenId(token)
     const sourceUrl = httpsImageUrl(token.logoURI)
     const hydrationId = `token:${tokenId}`
-    if (!sourceUrl || token.image?.sourceUrl === sourceUrl) return
+    if (!sourceUrl || token.image?.sourceUrl === sourceUrl) {
+      return
+    }
 
     enqueueHydration(
       hydrationId,
       async () => {
         try {
           const current = canonicalStore.getState().main.tokens.byId[tokenId]
-          if (httpsImageUrl(current?.logoURI) !== sourceUrl || current.image?.sourceUrl === sourceUrl) return
+          if (httpsImageUrl(current?.logoURI) !== sourceUrl || current.image?.sourceUrl === sourceUrl) {
+            return
+          }
 
           const image = await adapters.downloadImage(sourceUrl)
-          if (!active) return
+          if (!active) {
+            return
+          }
           const latest = canonicalStore.getState().main.tokens.byId[tokenId]
-          if (httpsImageUrl(latest?.logoURI) === sourceUrl)
+          if (httpsImageUrl(latest?.logoURI) === sourceUrl) {
             canonicalStore.getState().setTokenImage(tokenId, image)
+          }
         } catch (error) {
           adapters.log.warn('Could not hydrate token image', { tokenId, sourceUrl, error })
         }
@@ -115,33 +124,47 @@ export function createImageService(
 
   const requestTokenImage = (tokenId: string) => {
     const token = canonicalStore.getState().main.tokens.byId[tokenId]
-    if (token) hydrateToken(token)
+    if (token) {
+      hydrateToken(token)
+    }
   }
 
   const networkImageSource = async (chainId: number, metadata: ChainMetadata) => {
     const configured = configuredNetworkImageSource(chainId, metadata)
-    if (configured) return configured
+    if (configured) {
+      return configured
+    }
 
     const discovery = adapters.getTokenDiscoveryProvider()
-    if (!discovery.ok) return ''
+    if (!discovery.ok) {
+      return ''
+    }
     return httpsImageUrl((await discovery.provider.getChainImage(chainId))?.url)
   }
 
   const hydrateNetwork = (chainId: number, metadata: ChainMetadata) => {
     const hydrationId = `network:${chainId}`
-    if (metadata.image?.sourceUrl === configuredNetworkImageSource(chainId, metadata)) return
+    if (metadata.image?.sourceUrl === configuredNetworkImageSource(chainId, metadata)) {
+      return
+    }
 
     enqueueHydration(
       hydrationId,
       async () => {
         try {
           const sourceUrl = await networkImageSource(chainId, metadata)
-          if (!sourceUrl || metadata.image?.sourceUrl === sourceUrl) return
+          if (!sourceUrl || metadata.image?.sourceUrl === sourceUrl) {
+            return
+          }
 
           const image = await adapters.downloadImage(sourceUrl)
-          if (!active) return
+          if (!active) {
+            return
+          }
           const current = canonicalStore.getState().main.networksMeta.ethereum[chainId]
-          if (!current) return
+          if (!current) {
+            return
+          }
           const currentSource = configuredNetworkImageSource(chainId, current)
           if (!currentSource || currentSource === sourceUrl) {
             canonicalStore.getState().setNetworkImage('ethereum', chainId, sourceUrl, image)
@@ -157,17 +180,23 @@ export function createImageService(
   const hydrateNativeCurrency = (chainId: number, metadata: ChainMetadata) => {
     const sourceUrl = httpsImageUrl(metadata.nativeCurrency.icon)
     const hydrationId = `native-currency:${chainId}`
-    if (!sourceUrl || metadata.nativeCurrency.image?.sourceUrl === sourceUrl) return
+    if (!sourceUrl || metadata.nativeCurrency.image?.sourceUrl === sourceUrl) {
+      return
+    }
 
     enqueueHydration(
       hydrationId,
       async () => {
         try {
           const current = canonicalStore.getState().main.networksMeta.ethereum[chainId]?.nativeCurrency
-          if (httpsImageUrl(current?.icon) !== sourceUrl || current.image?.sourceUrl === sourceUrl) return
+          if (httpsImageUrl(current?.icon) !== sourceUrl || current.image?.sourceUrl === sourceUrl) {
+            return
+          }
 
           const image = await adapters.downloadImage(sourceUrl)
-          if (!active) return
+          if (!active) {
+            return
+          }
           const latest = canonicalStore.getState().main.networksMeta.ethereum[chainId]?.nativeCurrency
           if (httpsImageUrl(latest?.icon) === sourceUrl) {
             canonicalStore.getState().setNativeCurrencyImage('ethereum', chainId, image)
@@ -187,16 +216,21 @@ export function createImageService(
         !sourceUrl ||
         sourceUrl === originImageSource(previousOrigins[originId]?.faviconSource) ||
         origin.image?.sourceUrl === sourceUrl
-      )
+      ) {
         continue
+      }
       enqueueHydration(
         `origin:${originId}:${sourceUrl}`,
         async () => {
           try {
             const current = canonicalStore.getState().main.origins[originId]
-            if (current?.faviconSource !== sourceUrl || current.image?.sourceUrl === sourceUrl) return
+            if (current?.faviconSource !== sourceUrl || current.image?.sourceUrl === sourceUrl) {
+              return
+            }
             const image = await adapters.downloadImage(sourceUrl)
-            if (active) canonicalStore.getState().setOriginImage(originId, sourceUrl, image)
+            if (active) {
+              canonicalStore.getState().setOriginImage(originId, sourceUrl, image)
+            }
           } catch (error) {
             adapters.log.warn('Could not hydrate origin image', { originId, sourceUrl, error })
           }
@@ -216,7 +250,9 @@ export function createImageService(
 
   return {
     start() {
-      if (active) return
+      if (active) {
+        return
+      }
       active = true
       unsubscribeOrigins = canonicalStore.subscribe((state) => state.main.origins, hydrateOrigins)
       hydrateOrigins(canonicalStore.getState().main.origins)
@@ -228,7 +264,9 @@ export function createImageService(
     },
     requestTokenImage,
     dispose() {
-      if (!active) return
+      if (!active) {
+        return
+      }
       active = false
       unsubscribeOrigins?.()
       unsubscribeOrigins = undefined

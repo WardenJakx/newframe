@@ -57,7 +57,9 @@ interface AgentRuntime {
 }
 
 function sendJson(res: ServerResponse, status: number, body: unknown) {
-  if (res.writableEnded || res.destroyed) return
+  if (res.writableEnded || res.destroyed) {
+    return
+  }
   res.writeHead(status, {
     'Content-Type': 'application/json',
     'Cache-Control': 'no-store'
@@ -72,7 +74,9 @@ async function readJson(req: IncomingMessage) {
   for await (const value of req) {
     const chunk = Buffer.isBuffer(value) ? value : Buffer.from(value)
     size += chunk.length
-    if (size > MAX_BODY_BYTES) throw new Error('Request body is too large')
+    if (size > MAX_BODY_BYTES) {
+      throw new Error('Request body is too large')
+    }
     chunks.push(chunk)
   }
 
@@ -111,10 +115,14 @@ function requestedSessionId(req: IncomingMessage) {
 function authenticate(req: IncomingMessage, accounts: Accounts, runtime: AgentRuntime) {
   const sessionId = requestedSessionId(req)
   const sessionToken = authorization(req)
-  if (!sessionId || !sessionToken) return
+  if (!sessionId || !sessionToken) {
+    return
+  }
 
   const session = runtime.sessionStore.authenticate(sessionId, sessionToken)
-  if (!session || !isReadyAgentAccount(session.accountId, accounts, runtime)) return
+  if (!session || !isReadyAgentAccount(session.accountId, accounts, runtime)) {
+    return
+  }
 
   return {
     session,
@@ -131,7 +139,9 @@ function authenticate(req: IncomingMessage, accounts: Accounts, runtime: AgentRu
 
 function clearPending(requestId: string, runtime: AgentRuntime) {
   const pending = runtime.pendingConnections.get(requestId)
-  if (!pending) return
+  if (!pending) {
+    return
+  }
   clearTimeout(pending.timer)
   runtime.pendingConnections.delete(requestId)
 }
@@ -154,7 +164,9 @@ async function connect(
     runtime.pendingConnectionLimiter.release()
   }
 
-  if (!parsed.success) return sendJson(res, 400, { error: 'Invalid agent connection request' })
+  if (!parsed.success) {
+    return sendJson(res, 400, { error: 'Invalid agent connection request' })
+  }
   if (!runtime.pendingConnectionLimiter.hasCapacity()) {
     return sendJson(res, 429, { error: 'Too many pending agent connection requests' })
   }
@@ -167,7 +179,9 @@ async function connect(
   let handlerId = ''
   handlerId = requests.create((response) => {
     clearPending(handlerId, runtime)
-    if (response.error) return sendJson(res, 403, { error: response.error.message })
+    if (response.error) {
+      return sendJson(res, 403, { error: response.error.message })
+    }
     sendJson(res, 200, response.result)
   })
   const request: AgentAccessRequest = {
@@ -187,7 +201,9 @@ async function connect(
 
   const timer = setTimeout(() => {
     const pending = runtime.pendingConnections.get(handlerId)
-    if (!pending) return
+    if (!pending) {
+      return
+    }
     accounts.getFrameAccount(pending.accountId)?.rejectRequest(pending.request, {
       code: 4001,
       message: 'Agent connection request expired'
@@ -208,7 +224,9 @@ async function connect(
     () => runtime.pendingConnections.has(handlerId),
     () => {
       const pending = runtime.pendingConnections.get(handlerId)
-      if (!pending) return
+      if (!pending) {
+        return
+      }
       accounts.getFrameAccount(pending.accountId)?.rejectRequest(pending.request, {
         code: 4001,
         message: 'Agent disconnected before approval'
@@ -300,7 +318,9 @@ async function revoke(
 
   runtime.sessionStore.revoke(sessionId)
   flashService.stopAgentSession(sessionId)
-  if (!res.writableEnded) res.writeHead(204, { 'Cache-Control': 'no-store' }).end()
+  if (!res.writableEnded) {
+    res.writeHead(204, { 'Cache-Control': 'no-store' }).end()
+  }
 }
 
 export function isAgentHttpRequest(req: IncomingMessage) {
@@ -353,12 +373,18 @@ function resolveAgentAccessRequest(
   runtime: AgentRuntime
 ) {
   const pending = runtime.pendingConnections.get(requestId)
-  if (!pending) return false
+  if (!pending) {
+    return false
+  }
 
   const account = accounts.getFrameAccount(pending.accountId)
   const request = account?.getRequest<AgentAccessRequest>(requestId)
-  if (!account || request?.type !== 'agentAccess') return false
-  if (request.authorization?.decision !== 'prompt') return false
+  if (!account || request?.type !== 'agentAccess') {
+    return false
+  }
+  if (request.authorization?.decision !== 'prompt') {
+    return false
+  }
 
   if (!approved) {
     account.rejectRequest(request, { code: 4001, message: 'User rejected the agent connection' })
@@ -395,8 +421,9 @@ function setAgentAccess(
   runtime: AgentRuntime
 ) {
   const account = accounts.getFrameAccount(accountId)
-  if (!account || accounts.get(accountId)?.safe || (enabled && !isHotAccount(accountId, accounts)))
+  if (!account || accounts.get(accountId)?.safe || (enabled && !isHotAccount(accountId, accounts))) {
     return false
+  }
 
   account.patch({ agentEnabled: enabled })
   if (!enabled) {
@@ -412,7 +439,9 @@ function revokeAgentSessions(
   flashService: FlashService,
   runtime: AgentRuntime
 ) {
-  if (!accounts.get(accountId)) return false
+  if (!accounts.get(accountId)) {
+    return false
+  }
   runtime.sessionStore.revokeAccount(accountId)
   flashService.stopAgentSessionsForAccount(accountId)
   return true

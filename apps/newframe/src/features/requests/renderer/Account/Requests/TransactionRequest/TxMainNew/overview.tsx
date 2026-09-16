@@ -139,8 +139,12 @@ const renderActionOverview = (
   const [_actionClass, actionType] = id.split(':')
   const props = data && typeof data === 'object' ? data : {}
 
-  if (id === 'erc20:transfer') return <SendOverview key={key} {...(props as SendOverviewProps)} />
-  if (id === 'erc20:approve') return <ApproveOverview key={key} {...(props as ApproveOverviewProps)} />
+  if (id === 'erc20:transfer') {
+    return <SendOverview key={key} {...props} />
+  }
+  if (id === 'erc20:approve') {
+    return <ApproveOverview key={key} {...props} />
+  }
   if (id.startsWith('ens:')) {
     return <EnsOverview key={key} type={actionType} data={props} identities={identities} />
   }
@@ -176,9 +180,15 @@ const TxOverview = ({
   const { data: calldata, calldataDigest } = tx
 
   const description = (() => {
-    if (classification === 'CONTRACT_DEPLOY') return <DeployContractOverview />
-    if (classification === 'CONTRACT_CALL') return <ContractCallOverview req={req} identities={identities} />
-    if (classification === 'SEND_DATA') return <DataOverview />
+    if (classification === 'CONTRACT_DEPLOY') {
+      return <DeployContractOverview />
+    }
+    if (classification === 'CONTRACT_CALL') {
+      return <ContractCallOverview req={req} identities={identities} />
+    }
+    if (classification === 'SEND_DATA') {
+      return <DataOverview />
+    }
     return <SendOverview req={req} decimals={18} symbol={symbol} />
   })()
 

@@ -1038,7 +1038,7 @@ describe('#canonical action boundaries', () => {
       id: 'replacement-id',
       address: 'replacement-address',
       name: 'After'
-    } as any)
+    })
     harness.actions.upsertAccountRequest(accountId, {
       handlerId: 'request-1',
       type: 'access',

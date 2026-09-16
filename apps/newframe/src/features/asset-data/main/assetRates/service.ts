@@ -30,7 +30,9 @@ export function createAssetRateService({ store, clock }: AssetRateServiceDepende
 
   return {
     observe(source, rates) {
-      if (rates.length === 0) return
+      if (rates.length === 0) {
+        return
+      }
 
       const state = store.getState()
       const accepted: Record<string, AssetRateSnapshot> = {}
@@ -45,14 +47,20 @@ export function createAssetRateService({ store, clock }: AssetRateServiceDepende
         }
 
         const assetId = toAssetId(input, nativeTicker(input))
-        if (!assetId || getCuratedAsset(assetId)?.fixedUsdRate !== undefined) return
+        if (!assetId || getCuratedAsset(assetId)?.fixedUsdRate !== undefined) {
+          return
+        }
 
         const observedAt = input.observedAt ?? clock.now()
-        if (!Number.isFinite(observedAt)) return
+        if (!Number.isFinite(observedAt)) {
+          return
+        }
 
         const key = getAssetRateKey(assetId)
         const previous = accepted[key] || state.main.assetRates[key]
-        if (previous && observedAt < previous.observedAt) return
+        if (previous && observedAt < previous.observedAt) {
+          return
+        }
 
         accepted[key] = {
           usdRate: input.usdRate,
@@ -62,7 +70,9 @@ export function createAssetRateService({ store, clock }: AssetRateServiceDepende
         }
       })
 
-      if (Object.keys(accepted).length) state.setAssetRates(accepted)
+      if (Object.keys(accepted).length) {
+        state.setAssetRates(accepted)
+      }
     },
 
     get(asset) {

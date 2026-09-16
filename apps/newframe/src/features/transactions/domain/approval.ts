@@ -31,7 +31,9 @@ export function applyTransactionAdjustments<
   }
   const candidate: TransactionApprovalAdjustments = { ...canonical }
   for (const field of Object.keys(adjustments) as Array<keyof TransactionApprovalAdjustments>) {
-    if (adjustments[field] !== undefined) candidate[field] = adjustments[field]
+    if (adjustments[field] !== undefined) {
+      candidate[field] = adjustments[field]
+    }
   }
   const quantity = (value?: string) => BigInt(HexQuantitySchema.parse(value ?? '0x0'))
   const gas = quantity(candidate.gasLimit)

@@ -21,12 +21,16 @@ export function QrCodeSequence({ active, frames }: { active: boolean; frames: st
   const canvas = useRef<HTMLCanvasElement>(null)
   const [error, setError] = useState('')
   useEffect(() => {
-    if (!active || !canvas.current || !frames.length) return
+    if (!active || !canvas.current || !frames.length) {
+      return
+    }
     let current = true
     let index = 0
     let timer: ReturnType<typeof setTimeout> | undefined
     const draw = () => {
-      if (!current || document.visibilityState === 'hidden' || !canvas.current) return
+      if (!current || document.visibilityState === 'hidden' || !canvas.current) {
+        return
+      }
       void QRCode.toCanvas(canvas.current, frames[index], {
         width: 280,
         margin: 2,
@@ -34,12 +38,18 @@ export function QrCodeSequence({ active, frames }: { active: boolean; frames: st
         color: { dark: resolveSystemColor('qr-foreground'), light: resolveSystemColor('qr-background') }
       })
         .then(() => {
-          if (!current) return
+          if (!current) {
+            return
+          }
           index = (index + 1) % frames.length
-          if (frames.length > 1) timer = setTimeout(draw, 200)
+          if (frames.length > 1) {
+            timer = setTimeout(draw, 200)
+          }
         })
         .catch(() => {
-          if (current) setError('Could not display the signing QR. Cancel and try signing again.')
+          if (current) {
+            setError('Could not display the signing QR. Cancel and try signing again.')
+          }
         })
     }
     const visibility = () => {

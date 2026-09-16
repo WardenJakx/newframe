@@ -12,7 +12,9 @@ import {
 let stateHandler: ((message: StateMessage) => void) | undefined
 
 ipcRenderer.on(StateMessageChannel, (_event, message: unknown) => {
-  if (stateHandler) stateHandler(message as StateMessage)
+  if (stateHandler) {
+    stateHandler(message as StateMessage)
+  }
 })
 
 const host: NewframeHost = {

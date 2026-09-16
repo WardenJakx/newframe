@@ -92,9 +92,13 @@ export function createHttpRpcTransport({
   let disposed = false
 
   function extendSession(originId: string) {
-    if (!originId) return
+    if (!originId) {
+      return
+    }
 
-    if (connectionMonitors[originId]) timers.clearTimeout(connectionMonitors[originId])
+    if (connectionMonitors[originId]) {
+      timers.clearTimeout(connectionMonitors[originId])
+    }
     connectionMonitors[originId] = timers.setTimeout(() => {
       delete connectionMonitors[originId]
       store.endOriginSession(originId)
@@ -103,13 +107,19 @@ export function createHttpRpcTransport({
 
   const cleanup = (id: string) => {
     delete polls[id]
-    if (pending[id]) timers.clearTimeout(pending[id].timer)
+    if (pending[id]) {
+      timers.clearTimeout(pending[id].timer)
+    }
     delete pending[id]
-    if (cleanupTimers[id]) timers.clearTimeout(cleanupTimers[id])
+    if (cleanupTimers[id]) {
+      timers.clearTimeout(cleanupTimers[id])
+    }
     delete cleanupTimers[id]
 
     Object.keys(pollSubs).forEach((sub) => {
-      if (pollSubs[sub].id !== id) return
+      if (pollSubs[sub].id !== id) {
+        return
+      }
       Promise.resolve(
         provider.send({
           jsonrpc: '2.0',
@@ -125,7 +135,9 @@ export function createHttpRpcTransport({
 
   const subscriptionHandler = (payload: RPC.Susbcription.Response) => {
     const subscription = pollSubs[payload.params.subscription]
-    if (!subscription) return
+    if (!subscription) {
+      return
+    }
 
     const { id } = subscription
     polls[id] = polls[id] || []
@@ -178,7 +190,9 @@ export function createHttpRpcTransport({
         }
 
         const requestChainId = parseRequestChainId(req)
-        if (requestChainId && !rawPayload.chainId) rawPayload.chainId = requestChainId
+        if (requestChainId && !rawPayload.chainId) {
+          rawPayload.chainId = requestChainId
+        }
 
         const origin = parseOrigin(req.headers.origin)
         const { payload, chainId } = origins.updateOrigin(rawPayload, origin)
@@ -235,13 +249,17 @@ export function createHttpRpcTransport({
               }
               res.end(JSON.stringify(response))
               delete polls[id]
-              if (cleanupTimers[id]) timers.clearTimeout(cleanupTimers[id])
+              if (cleanupTimers[id]) {
+                timers.clearTimeout(cleanupTimers[id])
+              }
               cleanupTimers[id] = timers.setTimeout(() => cleanup(id), 20_000)
               return
             }
 
             const sendResponse = () => {
-              if (pending[id]) timers.clearTimeout(pending[id].timer)
+              if (pending[id]) {
+                timers.clearTimeout(pending[id].timer)
+              }
               delete pending[id]
               send(true)
             }
@@ -258,7 +276,9 @@ export function createHttpRpcTransport({
         await provider.send(
           payload,
           (response) => {
-            if (res.writableEnded) return
+            if (res.writableEnded) {
+              return
+            }
             if (response?.result) {
               if (payload.method === 'eth_subscribe') {
                 pollSubs[String(response.result)] = {
@@ -282,8 +302,12 @@ export function createHttpRpcTransport({
         )
       } catch (error) {
         log.error('HTTP RPC request failed', error)
-        if (res.writableEnded) return
-        if (!res.headersSent) res.writeHead(500, { 'Content-Type': 'application/json' })
+        if (res.writableEnded) {
+          return
+        }
+        if (!res.headersSent) {
+          res.writeHead(500, { 'Content-Type': 'application/json' })
+        }
         res.end(
           JSON.stringify({
             id: rawPayload.id,
@@ -308,12 +332,16 @@ export function createHttpRpcTransport({
       return active
     },
     start() {
-      if (active || disposed) return
+      if (active || disposed) {
+        return
+      }
       active = true
       provider.on('data:subscription', subscriptionHandler)
     },
     dispose() {
-      if (disposed) return
+      if (disposed) {
+        return
+      }
 
       disposed = true
       active = false

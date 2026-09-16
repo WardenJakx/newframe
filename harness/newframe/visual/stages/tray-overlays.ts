@@ -69,7 +69,9 @@ export const trayOverlaysStage: VisualStage = {
     await qrCode.waitFor({ state: 'visible' })
     const qrIsContained = await qrCode.evaluate((canvas) => {
       const frame = canvas.parentElement
-      if (!frame) return false
+      if (!frame) {
+        return false
+      }
       const canvasBounds = canvas.getBoundingClientRect()
       const frameBounds = frame.getBoundingClientRect()
       return (
@@ -79,7 +81,9 @@ export const trayOverlaysStage: VisualStage = {
         canvasBounds.bottom <= frameBounds.bottom
       )
     })
-    if (!qrIsContained) runtime.fail('Receive QR code must remain inside its frame')
+    if (!qrIsContained) {
+      runtime.fail('Receive QR code must remain inside its frame')
+    }
     await sleep(500)
     await runtime.screenshot(tray, '02h-receive-overlay.png')
     await receive.getByRole('button', { name: 'Back' }).click()

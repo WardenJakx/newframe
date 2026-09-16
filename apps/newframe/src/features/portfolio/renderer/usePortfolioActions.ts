@@ -41,14 +41,22 @@ export function usePortfolioActions(
   })
   const tradeChainId = (asset?: PortfolioActionAsset) => {
     const assetChainId = Number(asset?.chainId)
-    if (Number.isInteger(assetChainId) && assetChainId > 0) return assetChainId
-    if (firstTradeAsset) return Number(firstTradeAsset.chainId)
-    if (selectedChainId > 0) return selectedChainId
+    if (Number.isInteger(assetChainId) && assetChainId > 0) {
+      return assetChainId
+    }
+    if (firstTradeAsset) {
+      return Number(firstTradeAsset.chainId)
+    }
+    if (selectedChainId > 0) {
+      return selectedChainId
+    }
     return getFlashDefaultChainId(runtime)
   }
   const canTrade = (asset?: PortfolioActionAsset) => {
     const contextAsset = asset || firstTradeAsset
-    if (isSafe || !contextAsset) return false
+    if (isSafe || !contextAsset) {
+      return false
+    }
     const chainId = tradeChainId(contextAsset)
     return chainEnabled(chainId) && isFlashChainSupported(chainId, runtime)
   }
@@ -61,12 +69,16 @@ export function usePortfolioActions(
       !isSafe && (asset ? hasPositiveBalance(asset) : balances.some(hasPositiveBalance)),
     canTrade,
     openSend: (asset?: PortfolioActionAsset) => {
-      if (isSafe || (asset ? !hasPositiveBalance(asset) : !balances.some(hasPositiveBalance))) return
+      if (isSafe || (asset ? !hasPositiveBalance(asset) : !balances.some(hasPositiveBalance))) {
+        return
+      }
       void capability.openSideTray({ feature: 'send', assetId: toCanonicalAssetId(asset) })
     },
     openTrade: (asset?: PortfolioActionAsset) => {
       const contextAsset = asset || firstTradeAsset
-      if (!contextAsset || !canTrade(contextAsset)) return
+      if (!contextAsset || !canTrade(contextAsset)) {
+        return
+      }
       void capability.openSideTray({
         feature: 'trade',
         assetId: asset ? toCanonicalAssetId(asset) : '',

@@ -69,7 +69,9 @@ export function createPersistenceAdapter({
     getItem(name) {
       const key = storageKey(name)
       const stored = storage.get(key)
-      if (stored === undefined) return null
+      if (stored === undefined) {
+        return null
+      }
 
       const parsed = StoredEnvelopeSchema.safeParse(stored)
       if (!parsed.success) {
@@ -103,7 +105,9 @@ export function createPersistenceAdapter({
     },
 
     setItem(name, value) {
-      if (writesBlocked) return
+      if (writesBlocked) {
+        return
+      }
 
       const parsed = PersistedEnvelopeSchema.safeParse(value)
       if (!parsed.success) {
@@ -138,11 +142,15 @@ export function createPersistenceAdapter({
     },
 
     flush() {
-      if (hydrating || writesBlocked || !pending) return
+      if (hydrating || writesBlocked || !pending) {
+        return
+      }
 
       const write = pending
       storage.set(write.key, write.value)
-      if (pending === write) pending = undefined
+      if (pending === write) {
+        pending = undefined
+      }
     },
 
     clear() {

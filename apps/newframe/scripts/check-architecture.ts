@@ -209,13 +209,19 @@ const isModuleOrDescendant = (target: string, root: string) =>
 
 function isBroadProductionService(target: string) {
   const normalized = normalizedModuleRoot(target)
-  if (narrowProductionTypeRoots.some((root) => isModuleOrDescendant(normalized, root))) return false
+  if (narrowProductionTypeRoots.some((root) => isModuleOrDescendant(normalized, root))) {
+    return false
+  }
   return broadProductionServiceRoots.some((root) => isModuleOrDescendant(normalized, root))
 }
 
 function layerFor(file: string): ApplicationLayer | undefined {
-  if (under(path.join(applicationRoot, 'generated'))(file)) return 'generated'
-  if (under(path.join(sourceRoot, 'preload'))(file)) return 'preload'
+  if (under(path.join(applicationRoot, 'generated'))(file)) {
+    return 'generated'
+  }
+  if (under(path.join(sourceRoot, 'preload'))(file)) {
+    return 'preload'
+  }
   if (under(path.join(sourceRoot, 'renderer'))(file) || /(?:^|[\\/])renderer(?:[\\/]|$)/.test(file)) {
     return 'renderer'
   }
@@ -228,7 +234,9 @@ function layerFor(file: string): ApplicationLayer | undefined {
   ) {
     return 'domain'
   }
-  if (under(sourceRoot)(file)) return 'main'
+  if (under(sourceRoot)(file)) {
+    return 'main'
+  }
   return undefined
 }
 
@@ -247,7 +255,9 @@ function importedApplicationPath(file: string, specifier: string): string | unde
   const alias = normalized.match(
     /^(?:@newframe\/app|@newframe-app|@newframe|#newframe|@app)\/src(?:\/(.*))?$/
   )
-  if (alias) return path.join(sourceRoot, alias[1] || '')
+  if (alias) {
+    return path.join(sourceRoot, alias[1] || '')
+  }
 
   return undefined
 }
@@ -277,7 +287,9 @@ const nodePolyfillPackages = new Set([
 ])
 
 function isNodeRuntimeSpecifier(specifier: string) {
-  if (specifier.startsWith('node:')) return true
+  if (specifier.startsWith('node:')) {
+    return true
+  }
   const root = specifier.split('/')[0]
   return nodeBuiltinRoots.has(root) || nodePolyfillPackages.has(root)
 }
@@ -304,11 +316,15 @@ export function extractModuleSpecifiers(source: string): ModuleSpecifier[] {
 
 export function checkDependencyDirection(file: string, source: string) {
   const sourceLayer = layerFor(file)
-  if (!sourceLayer) return []
+  if (!sourceLayer) {
+    return []
+  }
   // Renderer tests and fixtures execute in the renderer project and must obey
   // the same process boundary as production renderer code. Otherwise a
   // test-only import can normalize or reintroduce coupling to main/preload.
-  if (!isProductionFile(file) && sourceLayer !== 'renderer') return []
+  if (!isProductionFile(file) && sourceLayer !== 'renderer') {
+    return []
+  }
   const production = isProductionFile(file)
 
   const violations: string[] = []
@@ -377,7 +393,9 @@ export function checkDependencyDirection(file: string, source: string) {
 }
 
 export function checkAssetRateMutationAuthority(file: string, source: string) {
-  if (!productionMain(file) || !/(?:\.\s*|\b)setAssetRates\s*\(/.test(source)) return []
+  if (!productionMain(file) || !/(?:\.\s*|\b)setAssetRates\s*\(/.test(source)) {
+    return []
+  }
 
   const allowed =
     under(path.join('apps', 'newframe', 'src', 'platform', 'state-store'))(file) ||
@@ -390,7 +408,9 @@ export function checkAssetRateMutationAuthority(file: string, source: string) {
 }
 
 export function checkOperationContractAuthority(file: string, source: string) {
-  if (!productionApplication(file)) return []
+  if (!productionApplication(file)) {
+    return []
+  }
 
   const violations: string[] = []
   const canonicalCatalog = path.join('apps', 'newframe', 'src', 'app', 'contracts', 'operations.ts')
@@ -493,13 +513,19 @@ function isRendererTransportComposition(file: string) {
 }
 
 export function checkRendererTransportAuthority(file: string, source: string) {
-  if (!productionRenderer(file)) return []
+  if (!productionRenderer(file)) {
+    return []
+  }
 
   const violations: string[] = []
   for (const moduleSpecifier of extractModuleSpecifiers(source)) {
     const target = importedApplicationPath(file, moduleSpecifier.specifier)
-    if (!target || normalizedModuleRoot(target) !== rawRendererLinkRoot) continue
-    if (isRendererTransportComposition(file)) continue
+    if (!target || normalizedModuleRoot(target) !== rawRendererLinkRoot) {
+      continue
+    }
+    if (isRendererTransportComposition(file)) {
+      continue
+    }
     violations.push(
       `${file}:${lineNumber(source, moduleSpecifier.index)} raw renderer IPC link imports are restricted to renderer bootstrap and focused app/platform composition adapters`
     )
@@ -518,7 +544,9 @@ export function checkRendererTransportAuthority(file: string, source: string) {
 }
 
 export function checkPlatformCommandAuthority(file: string, source: string) {
-  if (!productionApplication(file)) return []
+  if (!productionApplication(file)) {
+    return []
+  }
 
   const violations: string[] = []
   const tradeRenderer = path.join('apps', 'newframe', 'src', 'features', 'transactions', 'trade', 'renderer')
@@ -598,10 +626,13 @@ export function checkSource(file: string, source: string) {
   ]
 
   for (const rule of rules) {
-    if (!rule.files(file)) continue
+    if (!rule.files(file)) {
+      continue
+    }
     const match = source.match(rule.pattern)
-    if (match?.index !== undefined)
+    if (match?.index !== undefined) {
       violations.push(`${file}:${lineNumber(source, match.index)} ${rule.message}`)
+    }
   }
 
   if (
@@ -732,7 +763,9 @@ async function main() {
     violations.push(...checkSource(file, source))
   }
 
-  if (violations.length === 0) return
+  if (violations.length === 0) {
+    return
+  }
   console.error(`Architecture violations:\n${violations.map((violation) => `- ${violation}`).join('\n')}`)
   process.exit(1)
 }

@@ -21,7 +21,9 @@ export function useHardwareSessionController(
 
   const finish = (outcome: 'ready' | 'cancelled') => {
     const current = sessionRef.current
-    if (!current) return
+    if (!current) {
+      return
+    }
     adopt(null)
     void capability.finishSignerSession({
       operationId: current.operationId,
@@ -46,7 +48,9 @@ export function useHardwareSessionController(
   useEffect(
     () => () => {
       const current = sessionRef.current
-      if (!current) return
+      if (!current) {
+        return
+      }
       sessionRef.current = null
       void capability.finishSignerSession({ ...current, outcome: 'cancelled' })
     },

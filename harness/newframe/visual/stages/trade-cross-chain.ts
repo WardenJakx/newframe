@@ -90,7 +90,9 @@ export const tradeCrossChainStage: VisualStage = {
         entry.operation?.type === 'trade.execute' &&
         entry.operation.status === 'pending'
     )?.[0]
-    if (!tradeOperationId) return driver.fail('Cross-chain market trade operation disappeared')
+    if (!tradeOperationId) {
+      return driver.fail('Cross-chain market trade operation disappeared')
+    }
 
     const signRequest = await driver.waitForCurrentRequest('signTypedData', new Set(), 30_000)
     await driver.screenshot(tray, '21i-trade-cross-chain-sign-review.png')
@@ -108,7 +110,9 @@ export const tradeCrossChainStage: VisualStage = {
       'A newly submitted cross-chain market order was not accepted as open and cancellable'
     )
     const orderId = order.orderId || driver.fail('The cross-chain market order has no order id')
-    if ('chainId' in order) driver.fail('Cross-chain order retained a top-level chainId')
+    if ('chainId' in order) {
+      driver.fail('Cross-chain order retained a top-level chainId')
+    }
     if (
       assetChainId(order, 'targetAsset') !== anvilChainId ||
       assetChainId(order, 'contraAsset') !== FLASH_BASE_CHAIN_ID ||

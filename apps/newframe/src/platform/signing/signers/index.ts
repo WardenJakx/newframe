@@ -1,12 +1,12 @@
 import type { BiometricUnlockPayload } from '../../secrets/biometrics.js'
 import type canonicalStore from '../../state-store/index.js'
-import { SignerAdapter } from './adapters.js'
+import type { SignerAdapter } from './adapters.js'
 import AirGapAdapter from './airgap/adapter.js'
 import HotSigner from './hot/HotSigner/index.js'
 import hot from './hot/index.js'
 import LatticeAdapter from './lattice/adapter.js'
 import LedgerAdapter from './ledger/adapter.js'
-import Signer from './Signer/index.js'
+import type Signer from './Signer/index.js'
 import TrezorAdapter from './trezor/adapter.js'
 
 const createDefaultAdapters = (store: typeof canonicalStore) => [
@@ -60,14 +60,18 @@ export class Signers {
   }
 
   start() {
-    if (this.started || this.closed) return
+    if (this.started || this.closed) {
+      return
+    }
     this.started = true
     Object.values(this.adapters).forEach(({ adapter }) => adapter.open())
     this.loadHotSigners(this, this.dependencies.vault)
   }
 
   close() {
-    if (this.closed) return
+    if (this.closed) {
+      return
+    }
     this.closed = true
     Object.values(this.adapters).forEach(({ adapter, listeners }) => {
       listeners.forEach(({ event, handler }) => adapter.removeListener(event, handler))
@@ -92,7 +96,9 @@ export class Signers {
         { event: 'update', handler: update }
       ]
     }
-    if (this.started) adapter.open()
+    if (this.started) {
+      adapter.open()
+    }
   }
 
   exists(id: string) {
@@ -100,7 +106,9 @@ export class Signers {
   }
 
   private attach(signer: Signer) {
-    if (this.handles[signer.id]) return
+    if (this.handles[signer.id]) {
+      return
+    }
     this.handles[signer.id] = signer
     if (signer instanceof HotSigner) {
       const listeners = {
@@ -116,11 +124,18 @@ export class Signers {
 
   private publish(signer: Signer, isNew = false) {
     const previousId = Object.keys(this.handles).find((id) => this.handles[id] === signer)
-    if (!previousId) return
-    if (previousId !== signer.id) return this.rekey(previousId, signer)
+    if (!previousId) {
+      return
+    }
+    if (previousId !== signer.id) {
+      return this.rekey(previousId, signer)
+    }
     const summary = structuredClone(signer.summary())
-    if (isNew) this.dependencies.store.getState().newSigner(summary)
-    else this.dependencies.store.getState().updateSigner(summary)
+    if (isNew) {
+      this.dependencies.store.getState().newSigner(summary)
+    } else {
+      this.dependencies.store.getState().updateSigner(summary)
+    }
   }
 
   private rekey(previousId: string, signer: Signer) {
@@ -136,7 +151,9 @@ export class Signers {
 
   private detach(id: string, publish = true) {
     const signer = this.handles[id]
-    if (!signer) return
+    if (!signer) {
+      return
+    }
     if (signer instanceof HotSigner) {
       const listeners = this.hotSignerListeners.get(signer)
       if (listeners) {
@@ -146,7 +163,9 @@ export class Signers {
       }
     }
     delete this.handles[id]
-    if (publish) this.dependencies.store.getState().removeSigner(id)
+    if (publish) {
+      this.dependencies.store.getState().removeSigner(id)
+    }
     return signer
   }
 
@@ -156,13 +175,17 @@ export class Signers {
 
   remove(id: string) {
     const signer = this.detach(id)
-    if (!signer) return
+    if (!signer) {
+      return
+    }
     if (signer instanceof HotSigner) {
       signer.close()
       signer.delete()
       return
     }
-    if (signer.type in this.adapters) this.adapters[signer.type].adapter.remove(signer)
+    if (signer.type in this.adapters) {
+      this.adapters[signer.type].adapter.remove(signer)
+    }
   }
 
   update(signer: Signer) {
@@ -225,10 +248,14 @@ export class Signers {
         candidate instanceof HotSigner &&
         candidate.addresses.some((signerAddress) => signerAddress.toLowerCase() === normalized)
     ) as HotSigner | undefined
-    if (!signer) return cb(new Error('This account does not have an exportable hot signer'), undefined)
+    if (!signer) {
+      return cb(new Error('This account does not have an exportable hot signer'), undefined)
+    }
     const index = signer.addresses.findIndex((signerAddress) => signerAddress.toLowerCase() === normalized)
     signer.exportPrivateKey(index, (error, value) => {
-      if (error) return cb(error, undefined)
+      if (error) {
+        return cb(error, undefined)
+      }
       cb(null, { type: 'privateKey', value: value as string })
     })
   }

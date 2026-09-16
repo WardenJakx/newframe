@@ -5,8 +5,12 @@ import { Text } from '@newframe/ui/text'
 import type { AgentAccessRequestView } from './requestViewTypes'
 
 function durationLabel(seconds: number) {
-  if (seconds % 86_400 === 0) return `${seconds / 86_400} day${seconds === 86_400 ? '' : 's'}`
-  if (seconds % 3_600 === 0) return `${seconds / 3_600} hour${seconds === 3_600 ? '' : 's'}`
+  if (seconds % 86_400 === 0) {
+    return `${seconds / 86_400} day${seconds === 86_400 ? '' : 's'}`
+  }
+  if (seconds % 3_600 === 0) {
+    return `${seconds / 3_600} hour${seconds === 3_600 ? '' : 's'}`
+  }
   return `${Math.ceil(seconds / 60)} minutes`
 }
 

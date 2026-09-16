@@ -206,8 +206,12 @@ function principalMayRequest(principal: TrustedPrincipal, requestType: RequestTy
   if (principal.kind === 'agent') {
     return signingRequestTypes.has(requestType)
   }
-  if (principal.kind !== 'renderer') return true
-  if (principal.role === 'sidetray') return sideTrayRequestTypes.has(requestType)
+  if (principal.kind !== 'renderer') {
+    return true
+  }
+  if (principal.role === 'sidetray') {
+    return sideTrayRequestTypes.has(requestType)
+  }
 
   // Wallet UI requests are created by reviewed workflows such as replacement transactions.
   // Access and network requests originate at the RPC transports, never in the renderer.
@@ -221,10 +225,14 @@ function principalMayRequest(principal: TrustedPrincipal, requestType: RequestTy
  * signing requests scoped to its approved account.
  */
 export function decideWalletAction(principal: unknown, request: AccountRequest): ActionDecision {
-  if (!hasTrustedBrand(principal)) return { outcome: 'reject', reason: 'Untrusted request source' }
+  if (!hasTrustedBrand(principal)) {
+    return { outcome: 'reject', reason: 'Untrusted request source' }
+  }
 
   const action = buildAction(principal, request)
-  if (!action) return { outcome: 'reject', reason: 'Malformed wallet action' }
+  if (!action) {
+    return { outcome: 'reject', reason: 'Malformed wallet action' }
+  }
   if (!principalMayRequest(principal, request.type)) {
     return { outcome: 'reject', reason: 'Request source is not allowed to perform this action' }
   }

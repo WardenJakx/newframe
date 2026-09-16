@@ -177,12 +177,13 @@ const EnterAddress = ({ capability, chain, onNavigate }: EnterAddressProps) => {
   }
 
   const submit = () => {
-    if (!isValidAddress(contractAddress))
+    if (!isValidAddress(contractAddress)) {
       return onNavigate({
         error: invalidFormatError,
         address: contractAddress,
         chain
       })
+    }
 
     resolveTokenData().catch(() => {
       onNavigate({
@@ -353,11 +354,15 @@ const TokenDetailsForm = ({ capability, chain, tokenData, isEdit, onDone }: Toke
               <Input
                 appearance='plain'
                 onBlur={(value) => {
-                  if (value === '') setName(tokenDetailsDefaults.name)
+                  if (value === '') {
+                    setName(tokenDetailsDefaults.name)
+                  }
                   focusSubmitButton()
                 }}
                 onFocus={(value) => {
-                  if (value === tokenDetailsDefaults.name) setName('')
+                  if (value === tokenDetailsDefaults.name) {
+                    setName('')
+                  }
                 }}
                 onSubmit={newTokenReady && !savingToken ? saveAndClose : undefined}
                 onValueChange={setName}
@@ -373,11 +378,15 @@ const TokenDetailsForm = ({ capability, chain, tokenData, isEdit, onDone }: Toke
                   appearance='plain'
                   maxLength={10}
                   onBlur={(value) => {
-                    if (value === '') setSymbol(tokenDetailsDefaults.symbol)
+                    if (value === '') {
+                      setSymbol(tokenDetailsDefaults.symbol)
+                    }
                     focusSubmitButton()
                   }}
                   onFocus={(value) => {
-                    if (value === tokenDetailsDefaults.symbol) setSymbol('')
+                    if (value === tokenDetailsDefaults.symbol) {
+                      setSymbol('')
+                    }
                   }}
                   onSubmit={newTokenReady && !savingToken ? saveAndClose : undefined}
                   onValueChange={setSymbol}
@@ -393,17 +402,25 @@ const TokenDetailsForm = ({ capability, chain, tokenData, isEdit, onDone }: Toke
                   inputMode='numeric'
                   maxLength={2}
                   onBlur={(value) => {
-                    if (value === '') setDecimals(tokenDetailsDefaults.decimals)
+                    if (value === '') {
+                      setDecimals(tokenDetailsDefaults.decimals)
+                    }
                     focusSubmitButton()
                   }}
                   onFocus={(value) => {
-                    if (value === tokenDetailsDefaults.decimals) setDecimals('')
+                    if (value === tokenDetailsDefaults.decimals) {
+                      setDecimals('')
+                    }
                   }}
                   onSubmit={newTokenReady && !savingToken ? saveAndClose : undefined}
                   onValueChange={(value) => {
-                    if (!value) return setDecimals('')
+                    if (!value) {
+                      return setDecimals('')
+                    }
                     const parsed = Number.parseInt(value)
-                    if (Number.isInteger(parsed)) setDecimals(parsed)
+                    if (Number.isInteger(parsed)) {
+                      setDecimals(parsed)
+                    }
                   }}
                   placeholder={tokenDetailsDefaults.decimals}
                   spellCheck={false}
@@ -416,11 +433,15 @@ const TokenDetailsForm = ({ capability, chain, tokenData, isEdit, onDone }: Toke
               <Input
                 appearance='plain'
                 onBlur={(value) => {
-                  if (value === '') setLogoUri(tokenDetailsDefaults.logoURI)
+                  if (value === '') {
+                    setLogoUri(tokenDetailsDefaults.logoURI)
+                  }
                   focusSubmitButton()
                 }}
                 onFocus={(value) => {
-                  if (value === tokenDetailsDefaults.logoURI) setLogoUri('')
+                  if (value === tokenDetailsDefaults.logoURI) {
+                    setLogoUri('')
+                  }
                 }}
                 onSubmit={newTokenReady && !savingToken ? saveAndClose : undefined}
                 onValueChange={setLogoUri}
@@ -468,10 +489,14 @@ const AddToken = ({
   onNavigate = () => {},
   onOpenNetworks = () => {}
 }: AddTokenProps) => {
-  const { address, chain, error, tokenData, isEdit } = (data?.notifyData || {}) as AddTokenNotifyData
+  const { address, chain, error, tokenData, isEdit } = data?.notifyData || {}
 
-  if (!chain) return <SelectChain onNavigate={onNavigate} onOpenNetworks={onOpenNetworks} />
-  if (!address) return <EnterAddress capability={capability} chain={chain} onNavigate={onNavigate} />
+  if (!chain) {
+    return <SelectChain onNavigate={onNavigate} onOpenNetworks={onOpenNetworks} />
+  }
+  if (!address) {
+    return <EnterAddress capability={capability} chain={chain} onNavigate={onNavigate} />
+  }
   if (error) {
     return <TokenError text={error} onBack={onBack} onContinue={() => onNavigate({ address, chain })} />
   }

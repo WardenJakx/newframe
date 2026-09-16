@@ -74,7 +74,9 @@ describe('Safe service client over HTTP', () => {
       { operation: 2 }
     ]) {
       const { client } = setup(async (request, response) => {
-        if (!request.url.includes('/v2/')) return response
+        if (!request.url.includes('/v2/')) {
+          return response
+        }
         const page = await response.json()
         page.results[0] = { ...page.results[0], ...replacement }
         return Response.json(page)
@@ -85,7 +87,9 @@ describe('Safe service client over HTTP', () => {
   })
   test('deduplicates hashes without dropping alternative proposals', async () => {
     const { client } = setup(async (request, response) => {
-      if (!request.url.includes('/v2/')) return response
+      if (!request.url.includes('/v2/')) {
+        return response
+      }
       const page = await response.json()
       page.results.push(page.results[0])
       return Response.json(page)
@@ -103,7 +107,9 @@ describe('Safe service client over HTTP', () => {
   test('rejects foreign and repeated pagination links', async () => {
     for (const foreign of [true, false]) {
       const { client } = setup(async (request, response) => {
-        if (!request.url.includes('/v2/')) return response
+        if (!request.url.includes('/v2/')) {
+          return response
+        }
         return Response.json({
           ...(await response.json()),
           next: foreign ? 'https://example.org/api/' : request.url
@@ -214,7 +220,9 @@ test('retains offending proposals when any signed field is changed by the servic
     { nonce: '9007199254740999' }
   ]) {
     const { client } = setup(async (request, response) => {
-      if (!request.url.includes('/v2/')) return response
+      if (!request.url.includes('/v2/')) {
+        return response
+      }
       const page = await response.json()
       page.results[0] = { ...page.results[0], ...replacement }
       return Response.json(page)
@@ -229,10 +237,15 @@ test('retains offending proposals when any signed field is changed by the servic
 
 test('distinguishes missing fields and versions from inconsistent service descriptions', async () => {
   const { client } = setup(async (request, response) => {
-    if (!request.url.includes('/v2/')) return response
+    if (!request.url.includes('/v2/')) {
+      return response
+    }
     const page = await response.json()
-    if (!new URL(request.url).searchParams.has('offset')) delete page.results[0].baseGas
-    else page.results[0].dataDecoded.parameters[1].value = '2'
+    if (!new URL(request.url).searchParams.has('offset')) {
+      delete page.results[0].baseGas
+    } else {
+      page.results[0].dataDecoded.parameters[1].value = '2'
+    }
     return Response.json(page)
   })
   const configuration = await client.configuration(31337, safe)

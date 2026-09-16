@@ -346,12 +346,13 @@ function TransactionEffects({
 const wrappedValueRecipe = cva({ base: { minWidth: 0, overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' } })
 
 function DetailValue({ value, wrap }: { value: ReactNode; wrap?: boolean }) {
-  if (wrap)
+  if (wrap) {
     return (
       <span className={wrappedValueRecipe()}>
         <DetailValue value={value} />
       </span>
     )
+  }
   return typeof value === 'string' || typeof value === 'number' ? (
     <Text align='end' variant='code'>
       {value}
@@ -368,7 +369,9 @@ function DetailRow({
   actionLabel,
   wrap
 }: TransactionInformationDetailRow & { wrap?: boolean }) {
-  if (value === undefined || value === null || value === '') return null
+  if (value === undefined || value === null || value === '') {
+    return null
+  }
   const content = (
     <Inline align='center' gap='small' justify='between'>
       <Text shrink={false} tone='secondary' variant='overline'>

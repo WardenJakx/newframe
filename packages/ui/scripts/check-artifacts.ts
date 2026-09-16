@@ -26,8 +26,9 @@ for (const source of sourceFiles) {
     const stem = relative.replace(/\.tsx?$/, '')
     for (const extension of ['.js', '.js.map', '.d.ts', '.d.ts.map']) {
       const artifact = path.join(outputRoot, `${stem}${extension}`)
-      if ((await stat(artifact).catch(() => undefined)) === undefined)
+      if ((await stat(artifact).catch(() => undefined)) === undefined) {
         problems.push(path.relative(packageRoot, artifact))
+      }
     }
   } else if (
     source.endsWith('.css') ||
@@ -39,7 +40,9 @@ for (const source of sourceFiles) {
       readFile(source),
       readFile(artifact).catch(() => Buffer.from(''))
     ])
-    if (!sourceBytes.equals(artifactBytes)) problems.push(path.relative(packageRoot, artifact))
+    if (!sourceBytes.equals(artifactBytes)) {
+      problems.push(path.relative(packageRoot, artifact))
+    }
   }
 }
 

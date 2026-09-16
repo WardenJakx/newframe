@@ -39,38 +39,49 @@ export function createSafeSimulationRpc(
 ): SafeSimulationRpc & { dispose(): void } {
   const callbacks = createOneResultCallbackBoundary()
   const request: SafeSimulationRpc['request'] = (chainId, method, params, signal) => {
-    if (!Number.isSafeInteger(chainId) || chainId <= 0 || !readMethods.has(method))
+    if (!Number.isSafeInteger(chainId) || chainId <= 0 || !readMethods.has(method)) {
       return Promise.reject(new Error('Invalid Safe simulation read'))
+    }
     let timer: ReturnType<typeof setTimeout> | undefined
     let abort: (() => void) | undefined
     return callbacks
       .run<unknown>((done) => {
         abort = () => done(signal?.reason || new Error('Safe simulation cancelled'))
-        if (signal?.aborted) return abort()
+        if (signal?.aborted) {
+          return abort()
+        }
         signal?.addEventListener('abort', abort, { once: true })
         timer = setTimeout(() => done(new Error('Safe simulation RPC timed out')), timeoutMs)
         chains.send(
           { id: crypto.randomUUID(), jsonrpc: '2.0', method, params },
           (response) => {
-            if (response?.error) done(new Error(response.error.message || 'Safe simulation RPC failed'))
-            else done(null, response?.result)
+            if (response?.error) {
+              done(new Error(response.error.message || 'Safe simulation RPC failed'))
+            } else {
+              done(null, response?.result)
+            }
           },
           { type: 'ethereum', id: chainId }
         )
       })
       .finally(() => {
         clearTimeout(timer)
-        if (abort) signal?.removeEventListener('abort', abort)
+        if (abort) {
+          signal?.removeEventListener('abort', abort)
+        }
       })
   }
   return {
     request,
     async call(chainId, address, data, blockTag = 'latest', signal, overrides) {
       const params: unknown[] = [{ to: address, data }, blockTag]
-      if (overrides) params.push(overrides)
+      if (overrides) {
+        params.push(overrides)
+      }
       const result = await request(chainId, 'eth_call', params, signal)
-      if (typeof result !== 'string' || !/^0x(?:[0-9a-f]{2})*$/i.test(result))
+      if (typeof result !== 'string' || !/^0x(?:[0-9a-f]{2})*$/i.test(result)) {
         throw new Error('Invalid Safe contract response')
+      }
       return result
     },
     metadataProvider(chainId, blockTag, signal) {

@@ -53,7 +53,9 @@ export async function waitForAnvil(timeoutMs = 15_000) {
       }
 
       const chainId = Number(payload.result)
-      if (chainId === anvilChainId) return
+      if (chainId === anvilChainId) {
+        return
+      }
 
       lastError = new Error(`expected chain ID ${anvilChainId}, found ${payload.result || 'none'}`)
     } catch (err) {

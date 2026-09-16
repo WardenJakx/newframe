@@ -34,7 +34,9 @@ export interface SideTrayTransactionPorts {
 const chainIdHex = (chainId: number) => `0x${chainId.toString(16)}`
 
 function errorMessage(error: unknown) {
-  if (typeof error === 'string') return error.slice(0, 1_000)
+  if (typeof error === 'string') {
+    return error.slice(0, 1_000)
+  }
   if (error && typeof error === 'object' && 'message' in error) {
     return String(error.message).slice(0, 1_000)
   }
@@ -43,7 +45,9 @@ function errorMessage(error: unknown) {
 
 function typedDataChainId(typedData: TypedDataV4) {
   const value = typedData.domain.chainId
-  if (value === undefined || value === null || value === '') return undefined
+  if (value === undefined || value === null || value === '') {
+    return undefined
+  }
 
   const parsed =
     typeof value === 'string' && value.toLowerCase().startsWith('0x')
@@ -57,7 +61,9 @@ export function createSideTrayTransactionService(ports: SideTrayTransactionPorts
   const currentAccountAddress = () => ports.accounts.current()?.getSelectedAddress() || ''
   const initializeOrigin = (chainId: number) => {
     const state = ports.store.getState()
-    if (!state.main.networks.ethereum[chainId]?.on) return false
+    if (!state.main.networks.ethereum[chainId]?.on) {
+      return false
+    }
     state.initOrigin(internalOriginId, {
       name: internalOriginName,
       chain: { id: chainId, type: 'ethereum' }
@@ -76,7 +82,9 @@ export function createSideTrayTransactionService(ports: SideTrayTransactionPorts
       principal: TrustedPrincipal
     ) {
       const from = currentAccountAddress()
-      if (!from) return { ok: false, error: 'no_current_account' } as const
+      if (!from) {
+        return { ok: false, error: 'no_current_account' } as const
+      }
       if (!initializeOrigin(command.chainId)) {
         return { ok: false, error: 'provider_error', message: 'Chain is unavailable.' } as const
       }
@@ -115,7 +123,9 @@ export function createSideTrayTransactionService(ports: SideTrayTransactionPorts
       principal: TrustedPrincipal
     ) {
       const from = currentAccountAddress()
-      if (!from) return { ok: false, error: 'no_current_account' } as const
+      if (!from) {
+        return { ok: false, error: 'no_current_account' } as const
+      }
 
       const domainChainId = typedDataChainId(command.typedData)
       if (domainChainId !== undefined && domainChainId !== command.chainId) {
@@ -150,7 +160,9 @@ export function createSideTrayTransactionService(ports: SideTrayTransactionPorts
       principal: TrustedPrincipal
     ) {
       const from = currentAccountAddress()
-      if (!from) return { ok: false, error: 'no_current_account' } as const
+      if (!from) {
+        return { ok: false, error: 'no_current_account' } as const
+      }
       if (!initializeOrigin(command.chainId)) {
         return { ok: false, error: 'provider_error', message: 'Chain is unavailable.' } as const
       }

@@ -29,7 +29,9 @@ export function findFlashTypedData(quote: FlashQuote, flashPayload: unknown, fie
 }
 
 export function parseFlashTypedData(value: unknown) {
-  if (typeof value !== 'string') return value
+  if (typeof value !== 'string') {
+    return value
+  }
   try {
     return JSON.parse(value) as unknown
   } catch {
@@ -38,18 +40,24 @@ export function parseFlashTypedData(value: unknown) {
 }
 
 function serializeFlashTypedData(value: unknown) {
-  if (typeof value === 'string') return value
+  if (typeof value === 'string') {
+    return value
+  }
   return value ? JSON.stringify(value) : ''
 }
 
 export function flashTypedDataChainId(typedData: unknown, fallback: number) {
   const value = flashObject(flashObject(typedData).domain).chainId
-  if (value === undefined || value === null || value === '') return fallback
+  if (value === undefined || value === null || value === '') {
+    return fallback
+  }
   const parsed =
     typeof value === 'string' && value.toLowerCase().startsWith('0x')
       ? Number.parseInt(value, 16)
       : Number(value)
-  if (!Number.isInteger(parsed) || parsed <= 0) throw new Error('Invalid Flash chain id')
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    throw new Error('Invalid Flash chain id')
+  }
   return parsed
 }
 
@@ -94,7 +102,9 @@ export function buildFlashSubmitRequest<TRequest extends object>({
   const orderTypedDataRaw = findFlashTypedData(quote, flashPayload, 'orderTypedDataRaw') || orderTypedData
   const permitTypedData = findFlashTypedData(quote, flashPayload, 'permitTypedData')
   const permitTypedDataRaw = findFlashTypedData(quote, flashPayload, 'permitTypedDataRaw') || permitTypedData
-  if (permitTypedData && !permitSignature) throw new Error('Flash quote requires a permit signature.')
+  if (permitTypedData && !permitSignature) {
+    throw new Error('Flash quote requires a permit signature.')
+  }
 
   return {
     ...quoteRequest,

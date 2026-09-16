@@ -26,14 +26,18 @@ export const resetStateStage: VisualStage = {
     const originIds = new Set<string>()
 
     Object.entries(state.main?.origins || {}).forEach(([originId, origin]) => {
-      if (origin?.name === harnessOrigin) originIds.add(originId)
+      if (origin?.name === harnessOrigin) {
+        originIds.add(originId)
+      }
     })
 
     Object.values(state.main?.permissions || {}).forEach((permissions) => {
       Object.entries(permissions || {}).forEach(([permissionId, permission]) => {
         if (permission?.origin === harnessOrigin) {
           originIds.add(permissionId)
-          if (permission.handlerId) originIds.add(permission.handlerId)
+          if (permission.handlerId) {
+            originIds.add(permission.handlerId)
+          }
         }
       })
     })

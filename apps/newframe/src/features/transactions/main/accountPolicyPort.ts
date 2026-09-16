@@ -11,7 +11,9 @@ export function createDeferredAccountTransactionPolicyPort() {
   let target: AccountTransactionPolicyPort | undefined
 
   const getTarget = () => {
-    if (!target) throw new Error('Account transaction policy capability is not connected')
+    if (!target) {
+      throw new Error('Account transaction policy capability is not connected')
+    }
     return target
   }
 
@@ -28,9 +30,13 @@ export function createDeferredAccountTransactionPolicyPort() {
       let connected = true
 
       return () => {
-        if (!connected) return
+        if (!connected) {
+          return
+        }
         connected = false
-        if (target === next) target = previous
+        if (target === next) {
+          target = previous
+        }
       }
     }
   }

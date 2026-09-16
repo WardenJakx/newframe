@@ -65,7 +65,9 @@ function mockNameRequests({
 
     if (to === GNS_CONTRACT) {
       const parsed = gnsInterface.parseTransaction({ data })
-      if (!parsed) throw new Error('Unknown GNS calldata')
+      if (!parsed) {
+        throw new Error('Unknown GNS calldata')
+      }
 
       if (parsed.name === 'computeId') {
         const name = parsed.args[0] as string
@@ -93,7 +95,9 @@ function mockNameRequests({
 
     if (to === UNIVERSAL_RESOLVER_ADDRESS) {
       const parsed = universalResolverInterface.parseTransaction({ data })
-      if (!parsed) throw new Error('Unknown ENS calldata')
+      if (!parsed) {
+        throw new Error('Unknown ENS calldata')
+      }
 
       if (parsed.name === 'resolveWithGateways') {
         const result = resolverInterface.encodeFunctionResult('addr', [ensForwardAddress])

@@ -41,7 +41,9 @@ function projectOrders(
     projectedOrdersByAccount.clear()
   }
   const cached = projectedOrdersByAccount.get(cacheKey)
-  if (cached) return cached
+  if (cached) {
+    return cached
+  }
   if (filterProvided && !normalizedAccount) {
     const empty = {}
     projectedOrdersByAccount.set(cacheKey, empty)
@@ -50,7 +52,9 @@ function projectOrders(
 
   const projected = Object.fromEntries(
     Object.entries(orders).flatMap(([orderId, order]) => {
-      if (filterProvided && order.accountAddress.toLowerCase() !== normalizedAccount) return []
+      if (filterProvided && order.accountAddress.toLowerCase() !== normalizedAccount) {
+        return []
+      }
       const parsed = WalletOrderRecordSchema.safeParse({
         ...order,
         rawPayload:
@@ -99,10 +103,14 @@ function projectOperations(
   operations: CanonicalState['operations'],
   audience?: RendererProjectionAudience
 ): OperationCollection {
-  if (!audience?.windowInstanceId) return EMPTY_OPERATIONS
+  if (!audience?.windowInstanceId) {
+    return EMPTY_OPERATIONS
+  }
   const key = `${audience.clientType}:${audience.windowInstanceId}`
   const cached = operationProjectionCache.get(key)
-  if (cached?.input === operations) return cached.result
+  if (cached?.input === operations) {
+    return cached.result
+  }
 
   const result = Object.fromEntries(
     Object.entries(operations).flatMap(([id, entry]) => {
@@ -275,7 +283,9 @@ function projectWalletProfiles(main: CanonicalMain): WalletRendererState['profil
   const profiles: WalletRendererState['profiles'] = []
   main.profileOrder.forEach((profileId) => {
     const profile = main.profiles[profileId]
-    if (!profile) return
+    if (!profile) {
+      return
+    }
 
     const accountIds = getProfileAccountIds(main, profileId)
     const accountAddresses = accountIds.flatMap((id) => {
@@ -333,7 +343,9 @@ function projectWalletProfiles(main: CanonicalMain): WalletRendererState['profil
             previous.cachedValue.value === profile.cachedValue.value))
       )
     })
-  if (!unchanged) previousWalletProfiles = profiles
+  if (!unchanged) {
+    previousWalletProfiles = profiles
+  }
   return previousWalletProfiles!
 }
 
@@ -374,7 +386,7 @@ function projectWalletAccounts(main: CanonicalMain) {
         : { ...account, safeOwners: deriveSafeOwners(account, profileAccounts, main.signers, main.appLock) }
     ])
   ) as WalletRendererState['accounts']
-  return { accounts: previousWalletAccounts!, accountOrder }
+  return { accounts: previousWalletAccounts, accountOrder }
 }
 
 export function projectWalletState(
@@ -424,7 +436,9 @@ export function projectWalletState(
     platform: state.platform
   }
 
-  if (sameTopLevelReferences(previousWalletProjection, projection)) return previousWalletProjection!
+  if (sameTopLevelReferences(previousWalletProjection, projection)) {
+    return previousWalletProjection!
+  }
   previousWalletProjection = projection
   return projection
 }
@@ -518,7 +532,9 @@ function projectSideTrayNetworkMetadata(
   const ethereum = Object.fromEntries(
     Object.keys(networks.ethereum).flatMap((chainId) => {
       const chainMetadata = metadata.ethereum[Number(chainId)]
-      if (!chainMetadata) return []
+      if (!chainMetadata) {
+        return []
+      }
 
       return [
         [
@@ -592,7 +608,9 @@ function projectSideTrayActivity(
   previousSideTrayActivity = Object.fromEntries(
     Object.entries(activity).flatMap(([activityId, record]) => {
       const sender = String(record.account || record.address || '').toLowerCase()
-      if (!normalizedAccount || sender !== normalizedAccount) return []
+      if (!normalizedAccount || sender !== normalizedAccount) {
+        return []
+      }
 
       const rawData = objectValue(record.data)
       const data = {
@@ -603,11 +621,15 @@ function projectSideTrayActivity(
       const rawActions = Array.isArray(record.recognizedActions) ? record.recognizedActions : []
       const recognizedActions = rawActions.flatMap((value) => {
         const action = objectValue(value)
-        if (action.id !== 'erc20:transfer') return []
+        if (action.id !== 'erc20:transfer') {
+          return []
+        }
 
         const actionData = objectValue(action.data)
         const recipient = objectValue(actionData.recipient)
-        if (typeof recipient.address !== 'string') return []
+        if (typeof recipient.address !== 'string') {
+          return []
+        }
 
         return [
           {
@@ -695,7 +717,9 @@ export function projectSideTrayState(
     runtime: main.runtime
   }
 
-  if (sameTopLevelReferences(previousSideTrayProjection, projection)) return previousSideTrayProjection!
+  if (sameTopLevelReferences(previousSideTrayProjection, projection)) {
+    return previousSideTrayProjection!
+  }
   previousSideTrayProjection = projection
   return projection
 }

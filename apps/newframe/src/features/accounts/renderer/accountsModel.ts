@@ -31,7 +31,9 @@ export interface AccountListModel {
 }
 
 function accountDisplayName(account: AccountProjection | undefined, showLocalNameWithENS: boolean) {
-  if (!account) return ''
+  if (!account) {
+    return ''
+  }
   return account.ensName && !showLocalNameWithENS ? account.ensName : account.name
 }
 
@@ -59,13 +61,17 @@ export function orderedAccountIds(
     return leftCreated.localeCompare(rightCreated)
   })
   const ordered = projectedOrder.filter((id) => Boolean(accounts[id]))
-  for (const id of createdOrder) if (!ordered.includes(id)) ordered.push(id)
+  for (const id of createdOrder) {
+    if (!ordered.includes(id)) ordered.push(id)
+  }
   return ordered
 }
 
 export function accountMatchesQuery(item: AccountListItem, query: string) {
   const normalized = query.trim().toLowerCase()
-  if (!normalized) return true
+  if (!normalized) {
+    return true
+  }
   const text = [item.displayName, item.address, item.shortAddress, item.signerType, item.signerLabel]
     .filter(Boolean)
     .join(' ')
@@ -78,9 +84,13 @@ function isLastAccountForSeedPhrase(
   accounts: Record<string, AccountProjection>,
   signers: Record<string, SignerProjection>
 ) {
-  if (accountSignerType(account).toLowerCase() !== 'seed' || !account.signer) return false
+  if (accountSignerType(account).toLowerCase() !== 'seed' || !account.signer) {
+    return false
+  }
   const signer = signers[account.signer]
-  if (signer?.type !== 'seed') return false
+  if (signer?.type !== 'seed') {
+    return false
+  }
   return !Object.values(accounts).some(
     (candidate) => candidate.id !== account.id && candidate.signer === signer.id
   )
@@ -97,7 +107,9 @@ export function accountBalanceLabel(input: {
   tokens: WalletRendererState['tokens']
 }) {
   const rawBalances = input.balances[input.account.address]
-  if (!Array.isArray(rawBalances) || rawBalances.length === 0) return '---'
+  if (!Array.isArray(rawBalances) || rawBalances.length === 0) {
+    return '---'
+  }
   const balances = input.selectBalanceSummaries({
     rawBalances,
     assetRates: input.assetRates,
@@ -107,7 +119,9 @@ export function accountBalanceLabel(input: {
     includeChain: (chain) => (!chain.isTestnet || input.showTestnets) && Boolean(chain.on),
     cacheKey: `${input.account.address}:${input.showTestnets ? 'testnets' : 'mainnets'}`
   })
-  if (balances.length > 0 && !balances.some((balance) => balance.hasPrice)) return '—'
+  if (balances.length > 0 && !balances.some((balance) => balance.hasPrice)) {
+    return '—'
+  }
   const total = balances.reduce((sum, balance) => sum + balance.totalValue, 0)
   return `$${formatUsdRate(total, 2)}`
 }

@@ -102,7 +102,9 @@ export function useTradeQuote({
   quoteRequest: TradeQuoteEffectRequest
 }) {
   React.useEffect(() => {
-    if (paused) return
+    if (paused) {
+      return
+    }
 
     if (quoteRequest.error) {
       dispatch({ type: 'quoteBuildFailed', error: quoteRequest.error })
@@ -120,13 +122,17 @@ export function useTradeQuote({
     let timer: ReturnType<typeof setTimeout> | undefined
 
     const requestQuote = () => {
-      if (cancelled) return
+      if (cancelled) {
+        return
+      }
       dispatch({ type: 'quoteRequested', requestKey })
 
       void capability
         .quote(request)
         .then((result) => {
-          if (cancelled) return
+          if (cancelled) {
+            return
+          }
           const quote = result?.quote || null
 
           if (!quote) {
@@ -146,7 +152,9 @@ export function useTradeQuote({
           })
         })
         .catch((error) => {
-          if (cancelled) return
+          if (cancelled) {
+            return
+          }
           dispatch({
             type: 'quoteFailed',
             error: tradeErrorMessage(error, 'Flash quote failed.'),
@@ -154,7 +162,9 @@ export function useTradeQuote({
           })
         })
         .finally(() => {
-          if (!cancelled) timer = setTimeout(requestQuote, MARKET_QUOTE_REFRESH_MS)
+          if (!cancelled) {
+            timer = setTimeout(requestQuote, MARKET_QUOTE_REFRESH_MS)
+          }
         })
     }
 
@@ -162,7 +172,9 @@ export function useTradeQuote({
 
     return () => {
       cancelled = true
-      if (timer) clearTimeout(timer)
+      if (timer) {
+        clearTimeout(timer)
+      }
     }
   }, [capability, dispatch, paused, quoteRequest.error, quoteRequest.request, quoteRequest.requestKey])
 }

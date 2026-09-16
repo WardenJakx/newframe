@@ -12,7 +12,9 @@ class FakeProvider extends EventEmitter {
   send(payload: RPCRequestPayload, callback?: (response: RPCResponsePayload) => void, principal?: unknown) {
     this.requests.push({ payload, principal })
     const response = this.respond?.(payload, principal)
-    if (response && callback) callback(response)
+    if (response && callback) {
+      callback(response)
+    }
   }
 }
 
@@ -119,8 +121,11 @@ it('reopens desktop approval on explicit retry and settles repeated declines', a
     expect(store.getState().view.notify).toBe('extensionConnect')
     expect(store.getState().main.knownExtensions[extensionId]).toBeUndefined()
     store.getState().trustExtension(extensionId, approved)
-    if (approved) expect(response).resolves.toMatchObject({ result: '0x1' })
-    else expect(response).resolves.toMatchObject({ error: { code: 4001 } })
+    if (approved) {
+      expect(response).resolves.toMatchObject({ result: '0x1' })
+    } else {
+      expect(response).resolves.toMatchObject({ error: { code: 4001 } })
+    }
   }
   expect(provider.requests).toHaveLength(0)
   transport.dispose()
@@ -288,7 +293,9 @@ it.each(['trust', 'send', 'after-response'] as const)(
   async (failure) => {
     transport.dispose()
     const send = async (payload: RPCRequestPayload, respond?: (response: RPCResponsePayload) => void) => {
-      if (failure === 'after-response') respond?.({ id: payload.id, jsonrpc: '2.0', result: '0x1' })
+      if (failure === 'after-response') {
+        respond?.({ id: payload.id, jsonrpc: '2.0', result: '0x1' })
+      }
       throw new Error('private failure details')
     }
     transport = createWebSocketRpcTransport({
@@ -299,7 +306,9 @@ it.each(['trust', 'send', 'after-response'] as const)(
         parseFrameExtension: () => undefined,
         updateOrigin: (payload: RPCRequestPayload) => ({ payload, chainId: '0x1' }),
         isTrusted: async () => {
-          if (failure === 'trust') throw new Error('private failure details')
+          if (failure === 'trust') {
+            throw new Error('private failure details')
+          }
           return true
         }
       } as never,

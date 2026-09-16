@@ -268,7 +268,9 @@ Issued At: 2026-09-13T12:00:00Z`
       data: { decodedMessage }
     })
     const signingAccount = state.accounts[accountId]
-    if (!signingAccount) throw new Error('Missing fixture account')
+    if (!signingAccount) {
+      throw new Error('Missing fixture account')
+    }
     fixture.state.reset({
       ...state,
       currentAccount: 'other-wallet',

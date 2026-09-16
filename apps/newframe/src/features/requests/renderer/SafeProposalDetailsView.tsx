@@ -347,8 +347,11 @@ export function SafeProposalDetailsView({
                 proposal.integrity?.status !== 'matched' ||
                 (!retryPublication && !signingReady && !recoverable),
               onPress: () => {
-                if (recoverable && !retryPublication) onRecoverSigner?.()
-                else confirmation?.onSign()
+                if (recoverable && !retryPublication) {
+                  onRecoverSigner?.()
+                } else {
+                  confirmation?.onSign()
+                }
               }
             }}
             secondary={{ label: 'Decline', disabled: true, onPress: () => {} }}

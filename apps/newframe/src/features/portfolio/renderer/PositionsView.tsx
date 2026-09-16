@@ -106,7 +106,9 @@ function MoreRows({
   label: string
   onClick: () => void
 }) {
-  if (hiddenCount <= 0) return null
+  if (hiddenCount <= 0) {
+    return null
+  }
 
   return (
     <Button appearance='segment' label={label} onPress={onClick} size='small' width='full'>

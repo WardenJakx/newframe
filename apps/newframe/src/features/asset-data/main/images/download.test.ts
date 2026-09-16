@@ -17,8 +17,12 @@ function createResponse(body: Buffer, contentType: string, ok = true) {
     status: ok ? 200 : 404,
     headers: {
       get: (name: string) => {
-        if (name.toLowerCase() === 'content-type') return contentType
-        if (name.toLowerCase() === 'content-length') return String(body.length)
+        if (name.toLowerCase() === 'content-type') {
+          return contentType
+        }
+        if (name.toLowerCase() === 'content-length') {
+          return String(body.length)
+        }
         return null
       }
     },

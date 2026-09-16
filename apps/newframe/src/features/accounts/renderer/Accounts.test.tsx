@@ -119,7 +119,9 @@ describe('Accounts profile controls', () => {
       profileId: 'work'
     })
     const failedCommand = capability.updateAccount.mock.calls.at(-1)![0]
-    if (!('operationId' in failedCommand)) throw new Error('Expected profile move')
+    if (!('operationId' in failedCommand)) {
+      throw new Error('Expected profile move')
+    }
     publishChanges({
       operations: {
         [failedCommand.operationId]: {
@@ -136,7 +138,9 @@ describe('Accounts profile controls', () => {
     expect(await screen.findByText('Could not move the account. Try again.')).toBeTruthy()
     await user.click(screen.getByRole('option', { name: /Work/ }))
     const succeededCommand = capability.updateAccount.mock.calls.at(-1)![0]
-    if (!('operationId' in succeededCommand)) throw new Error('Expected profile move')
+    if (!('operationId' in succeededCommand)) {
+      throw new Error('Expected profile move')
+    }
     publishChanges({
       operations: {
         [succeededCommand.operationId]: {
@@ -168,8 +172,10 @@ describe('Accounts profile controls', () => {
       await user.click(screen.getByRole('option', { name: /Work/ }))
       await user.click(screen.getByRole('option', { name: /Work/ }))
       const moveInputs = capability.updateAccount.mock.calls.map(([input]) => input)
-      const currentMove = moveInputs[1]!
-      if (!('operationId' in currentMove)) throw new Error('Expected profile move')
+      const currentMove = moveInputs[1]
+      if (!('operationId' in currentMove)) {
+        throw new Error('Expected profile move')
+      }
 
       await act(async () => {
         if (staleOutcome === 'acknowledgement failure') {

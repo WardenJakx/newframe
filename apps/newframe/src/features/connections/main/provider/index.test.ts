@@ -54,7 +54,9 @@ const requestContinuations = {
   },
   respond(requestId: string, response: RPCResponsePayload) {
     const callback = this.callbacks.get(requestId)
-    if (!callback) return false
+    if (!callback) {
+      return false
+    }
     this.callbacks.delete(requestId)
     callback(response)
     return true
@@ -79,8 +81,9 @@ const setPermissions = (account: string, permissions: Record<string, any>) => {
 }
 const setNetwork = (id: number, network: any) => {
   store.setState((state: any) => {
-    if (network === undefined) delete state.main.networks.ethereum[id]
-    else {
+    if (network === undefined) {
+      delete state.main.networks.ethereum[id]
+    } else {
       state.main.networks.ethereum[id] = {
         name: `chain-${id}`,
         explorer: '',
@@ -694,7 +697,7 @@ describe('#send', () => {
     })
 
     it('returns an error if no account is selected', async () => {
-      ;(accounts.current as any).mockReturnValueOnce(undefined)
+      accounts.current.mockReturnValueOnce(undefined)
       const response = await sendResult({ method: 'wallet_getAssets', id: 21, jsonrpc: '2.0' })
       expect(response).toMatchObject({ id: 21, jsonrpc: '2.0' })
       expect(response.error.message).toMatch(/no account selected/i)
@@ -733,7 +736,7 @@ describe('#send', () => {
     let blockResult: any
 
     beforeEach(() => {
-      ;(connection.send as any).mockImplementation((payload: any, res: any, targetChain: any) => {
+      connection.send.mockImplementation((payload: any, res: any, targetChain: any) => {
         expect(targetChain.id).toBe(chain)
         expect(payload.params[0]).toBe(txHash)
 
@@ -764,7 +767,9 @@ describe('#send', () => {
         params: [tx]
       }
 
-      if (chainId) (payload as any).chainId = chainId
+      if (chainId) {
+        ;(payload as any).chainId = chainId
+      }
 
       provider.send({ ...payload, _origin: '8073729a-5e59-53b7-9e69-5d9bcff94087' }, cb, principal, context)
     }
@@ -856,7 +861,7 @@ describe('#send', () => {
     })
 
     it('pads the gas estimate from the network by 50 percent', async () => {
-      ;(connection.send as any).mockImplementationOnce((payload: any, cb: any) => {
+      connection.send.mockImplementationOnce((payload: any, cb: any) => {
         expect(payload.method).toBe('eth_estimateGas')
         cb({ result: addHexPrefix((150000).toString(16)) })
       })
@@ -868,7 +873,7 @@ describe('#send', () => {
     })
 
     it('publishes required approvals with the initial transaction request', async () => {
-      ;(connection.send as any).mockImplementationOnce((_payload: any, cb: any) => {
+      connection.send.mockImplementationOnce((_payload: any, cb: any) => {
         cb({ error: { message: 'Unable to estimate gas' } })
       })
       delete tx.gasLimit
@@ -995,7 +1000,7 @@ describe('#send', () => {
     })
 
     beforeEach(() => {
-      ;(accounts.current as any).mockReturnValue({ id: address })
+      accounts.current.mockReturnValue({ id: address })
     })
 
     it('handles typed data as a stringified json param', () => {
@@ -1023,7 +1028,7 @@ describe('#send', () => {
     })
 
     it('does not submit a request to the wrong account', async () => {
-      ;(accounts.current as any).mockReturnValueOnce({ id: '0xa4581bfe76201f3aa147cce8e360140582260441' })
+      accounts.current.mockReturnValueOnce({ id: '0xa4581bfe76201f3aa147cce8e360140582260441' })
       expect(
         (await sendResult({ method: 'eth_signTypedData_v3', params: [address, typedData] })).error
       ).toEqual({
@@ -1037,7 +1042,7 @@ describe('#send', () => {
 
     HardwareSignersSupportingV4Only.forEach((signerType) => {
       it(`does not submit a V3 request to a ${signerType}`, async () => {
-        ;(accounts.get as any).mockImplementationOnce((addr: any) => {
+        accounts.get.mockImplementationOnce((addr: any) => {
           return addr === address ? { id: address, address, lastSignerType: signerType } : {}
         })
 
@@ -1050,7 +1055,7 @@ describe('#send', () => {
     })
 
     it('should submit a V3 request to a Lattice', () => {
-      ;(accounts.get as any).mockImplementationOnce((addr: any) => {
+      accounts.get.mockImplementationOnce((addr: any) => {
         return addr === address ? { id: address, address, lastSignerType: SignerType.Lattice } : {}
       })
       const params = [address, typedData]
@@ -1198,7 +1203,7 @@ describe('#signAndSend', () => {
     ;(tx as any).type = '0x0'
     ;(tx as any).gasPrice = toBeHex(parseUnits('210', 'gwei'))
     ;(tx as any).gasLimit = addHexPrefix((1e7).toString(16))
-    ;(accounts.signTransaction as any).mockImplementation(() => done())
+    accounts.signTransaction.mockImplementation(() => done())
 
     signAndSend(done)
   })
@@ -1222,7 +1227,7 @@ describe('#signAndSend', () => {
 
   describe('#fillTransaction', () => {
     beforeEach(() => {
-      ;(connection.send as any).mockImplementationOnce((payload: any, cb: any) => {
+      connection.send.mockImplementationOnce((payload: any, cb: any) => {
         expect(payload.method).toBe('eth_estimateGas')
         cb({ result: addHexPrefix((150000).toString(16)) })
       })
@@ -1262,8 +1267,8 @@ describe('#signAndSend', () => {
     const txHash = '0x6e8b1de115105ceab599b4d99604797b961cfd1f46b85e10f23a81974baae3d5'
 
     beforeEach(() => {
-      ;(accounts.signTransaction as any).mockImplementation((_: any, cb: any) => cb(null, signedTx))
-      ;(accounts.setTxSigned as any).mockImplementation((reqId: any, cb: any) => {
+      accounts.signTransaction.mockImplementation((_: any, cb: any) => cb(null, signedTx))
+      accounts.setTxSigned.mockImplementation((reqId: any, cb: any) => {
         expect(reqId).toBe((request as any).handlerId)
         cb()
       })
@@ -1271,7 +1276,7 @@ describe('#signAndSend', () => {
 
     describe('success', () => {
       beforeEach(() => {
-        ;(connection.send as any).mockImplementation((payload: any, cb: any) => {
+        connection.send.mockImplementation((payload: any, cb: any) => {
           expect(payload).toEqual(
             expect.objectContaining({
               id: (request as any).payload.id,
@@ -1328,7 +1333,9 @@ describe('sendAsync failure settlement', () => {
     const failure = new Error('provider unavailable')
     const send = spyOn(provider, 'send').mockImplementation(
       async (_payload: RPCRequestPayload, respond: (result: RPCResponsePayload) => void) => {
-        if (callbackFirst) respond(response)
+        if (callbackFirst) {
+          respond(response)
+        }
         throw failure
       }
     )

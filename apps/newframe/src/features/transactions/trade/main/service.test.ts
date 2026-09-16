@@ -148,7 +148,9 @@ it('owns private Trade execution, idempotency, revalidation, cancellation, and c
       startTime: request.startTime
     })
   )
-  if (!quoted.ok) throw new Error('quote failed')
+  if (!quoted.ok) {
+    throw new Error('quote failed')
+  }
   expect(quoted.quoteId).not.toBe('quote-1')
   expect(quoted.quote).toMatchObject({ nextAction: 'approve', requiresPermit: true })
 
@@ -163,7 +165,7 @@ it('owns private Trade execution, idempotency, revalidation, cancellation, and c
 
   expect(submit(operationId, quoted.quoteId)).toBe(true)
   await flush()
-  expect(signTypedData.mock.calls.map(([input]) => input!.typedData.primaryType)).toEqual(['Permit', 'Order'])
+  expect(signTypedData.mock.calls.map(([input]) => input.typedData.primaryType)).toEqual(['Permit', 'Order'])
   expect(submitOrder.mock.calls[0]?.[0]).toMatchObject({
     idempotencyKey: operationId,
     quoteId: 'quote-1',
@@ -192,7 +194,9 @@ it('owns private Trade execution, idempotency, revalidation, cancellation, and c
   expect(service.cancel(cancel, principal, owner)).toBe(true)
 
   const second = await service.quote(request, owner)
-  if (!second.ok) throw new Error('second quote failed')
+  if (!second.ok) {
+    throw new Error('second quote failed')
+  }
   expect(prepare('trade-stale-account', second.quoteId)).toBe(true)
   await flush()
   let resolveSignature!: (value: { ok: true; signature: string }) => void
@@ -210,7 +214,9 @@ it('owns private Trade execution, idempotency, revalidation, cancellation, and c
   const quoteFor = async (id: string) => {
     flashQuote.mockImplementationOnce(async () => ({ quote: quote(id), flash: quote(id).raw }))
     const result = await service.quote(request, owner)
-    if (!result.ok) throw new Error(`quote failed: ${id}`)
+    if (!result.ok) {
+      throw new Error(`quote failed: ${id}`)
+    }
     return result
   }
 
@@ -294,7 +300,9 @@ it('owns private Trade execution, idempotency, revalidation, cancellation, and c
   expect(service.cancelOperation({ type: 'operation.cancel', operationId }, owner)).toBe(true)
   resolveLateQuote({ quote: quote('late'), flash: {} })
   const lateQuote = await pendingQuote
-  if (!lateQuote.ok) throw new Error('late quote failed')
+  if (!lateQuote.ok) {
+    throw new Error('late quote failed')
+  }
   expect(prepare('cancel-target', lateQuote.quoteId)).toBe(true)
   await flush()
   const cancellation = { type: 'operation.cancel', operationId: 'cancel-target' } as const
@@ -436,7 +444,9 @@ it('keeps cross-chain provider state private and validates both networks and the
     owner
   )
   expect(quoted.ok).toBe(true)
-  if (!quoted.ok) throw new Error('cross-chain quote failed')
+  if (!quoted.ok) {
+    throw new Error('cross-chain quote failed')
+  }
   expect(quoted.quoteId).not.toBe('bridge-private')
   expect(quoted.quote.id).toBe(quoted.quoteId)
   expect(JSON.stringify(quoted)).not.toContain('bridge-private')
@@ -477,7 +487,9 @@ it('keeps cross-chain provider state private and validates both networks and the
   })
 
   const unavailable = await service.quote(request, owner)
-  if (!unavailable.ok) throw new Error('unavailable quote setup failed')
+  if (!unavailable.ok) {
+    throw new Error('unavailable quote setup failed')
+  }
   canonical.networks[1].on = false
   const signCount = signTypedData.mock.calls.length
   expect(
@@ -511,7 +523,9 @@ it('keeps cross-chain provider state private and validates both networks and the
     flash: crossQuote({ orderChainId: 1 }).raw
   }))
   const typedMismatch = await service.quote(request, owner)
-  if (!typedMismatch.ok) throw new Error('typed mismatch quote setup failed')
+  if (!typedMismatch.ok) {
+    throw new Error('typed mismatch quote setup failed')
+  }
   expect(
     service.submit(
       { type: 'trade.submit', operationId: 'typed-mismatch', quoteId: typedMismatch.quoteId },
@@ -527,7 +541,9 @@ it('keeps cross-chain provider state private and validates both networks and the
     flash: crossQuote({ actionChainId: 1 }).raw
   }))
   const actionMismatch = await service.quote(request, owner)
-  if (!actionMismatch.ok) throw new Error('action mismatch quote setup failed')
+  if (!actionMismatch.ok) {
+    throw new Error('action mismatch quote setup failed')
+  }
   const txCount = submitTransaction.mock.calls.length
   expect(
     service.prepare(

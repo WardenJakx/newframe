@@ -91,7 +91,9 @@ export type SystemColorName = keyof typeof systemColors
 
 function hexToRgb(hex: string) {
   const value = hex.replace('#', '')
-  if (value.length !== 6) throw new Error(`Expected a six-digit hex color, received "${hex}"`)
+  if (value.length !== 6) {
+    throw new Error(`Expected a six-digit hex color, received "${hex}"`)
+  }
 
   return {
     r: Number.parseInt(value.slice(0, 2), 16),
@@ -103,7 +105,9 @@ function hexToRgb(hex: string) {
 export function resolveSemanticColor(name: SemanticColorName) {
   const reference: ColorReference = darkColorSemantics[name]
 
-  if (typeof reference === 'string') return colorPrimitives[reference]
+  if (typeof reference === 'string') {
+    return colorPrimitives[reference]
+  }
 
   const { r, g, b } = hexToRgb(colorPrimitives[reference.color])
   return `rgba(${r}, ${g}, ${b}, ${reference.alpha})`

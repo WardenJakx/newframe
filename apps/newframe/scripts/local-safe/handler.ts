@@ -19,7 +19,9 @@ export function createSafeHandler(options: {
   pageSize?: number
   proposals?: SafeProposal[]
 }) {
-  if (!Number.isSafeInteger(options.chainId) || options.chainId <= 0) throw new Error('Invalid Safe chain ID')
+  if (!Number.isSafeInteger(options.chainId) || options.chainId <= 0) {
+    throw new Error('Invalid Safe chain ID')
+  }
   const safe = safeAddressSchema.parse(options.safe)
   const configuration = safeConfigurationSchema.parse({
     owners: options.owners,
@@ -85,9 +87,13 @@ export function createSafeHandler(options: {
       )
     }))
   ).map((proposal) => safeProposalSchema.parse(proposal))
-  if (options.includeMismatch && !options.proposals) proposals[4].value = '123' // Deliberate payload-only tampering.
+  if (options.includeMismatch && !options.proposals) {
+    proposals[4].value = '123'
+  } // Deliberate payload-only tampering.
   const pageSize = options.pageSize ?? 2
-  if (!Number.isSafeInteger(pageSize) || pageSize < 1) throw new Error('Invalid page size')
+  if (!Number.isSafeInteger(pageSize) || pageSize < 1) {
+    throw new Error('Invalid page size')
+  }
   const requests: string[] = []
   const confirmations = new Map<string, Map<string, string>>()
   let failure: { status: number; retryAfter?: string; offset?: number } | undefined
@@ -124,7 +130,9 @@ export function createSafeHandler(options: {
         const hash = confirmationRoute[1].toLowerCase()
         const proposal = proposals.find((proposal) => proposal.safeTxHash === hash)
         if (request.method === 'POST') {
-          if (!proposal) return Response.json({ error: 'Transaction not found' }, { status: 404 })
+          if (!proposal) {
+            return Response.json({ error: 'Transaction not found' }, { status: 404 })
+          }
           let body: unknown
           try {
             body = await request.json()
@@ -140,18 +148,24 @@ export function createSafeHandler(options: {
             !owner ||
             typeof signature !== 'string' ||
             verifySafeHash(proposal, options.chainId, safe, configuration.version).status !== 'matched'
-          )
+          ) {
             return Response.json({ error: 'Invalid owner signature' }, { status: 400 })
+          }
           const stored = confirmations.get(hash) ?? new Map<string, string>()
-          if (!stored.has(owner)) stored.set(owner, signature)
+          if (!stored.has(owner)) {
+            stored.set(owner, signature)
+          }
           confirmations.set(hash, stored)
-          if (!proposal.confirmations.includes(owner)) proposal.confirmations.push(owner)
+          if (!proposal.confirmations.includes(owner)) {
+            proposal.confirmations.push(owner)
+          }
           return Response.json({ signature }, { status: 201 })
         }
         if (request.method === 'GET') {
           const offset = Number(url.searchParams.get('offset') ?? 0)
-          if (!Number.isSafeInteger(offset) || offset < 0)
+          if (!Number.isSafeInteger(offset) || offset < 0) {
             return Response.json({ error: 'Invalid query' }, { status: 400 })
+          }
           const entries = [...(confirmations.get(hash) ?? [])].map(([owner, signature]) => ({
             owner,
             signature
@@ -166,10 +180,15 @@ export function createSafeHandler(options: {
           })
         }
       }
-      if (request.method !== 'GET') return Response.json({ error: 'Method not allowed' }, { status: 405 })
-      if (url.pathname === `/api/v1/safes/${safe}/`) return Response.json({ address: safe, ...configuration })
-      if (url.pathname !== `/api/v2/safes/${safe}/multisig-transactions/`)
+      if (request.method !== 'GET') {
+        return Response.json({ error: 'Method not allowed' }, { status: 405 })
+      }
+      if (url.pathname === `/api/v1/safes/${safe}/`) {
+        return Response.json({ address: safe, ...configuration })
+      }
+      if (url.pathname !== `/api/v2/safes/${safe}/multisig-transactions/`) {
         return Response.json({ error: 'Safe not found' }, { status: 404 })
+      }
       const offset = Number(url.searchParams.get('offset') ?? 0)
       const minNonce = url.searchParams.get('nonce__gte') ?? '0'
       if (
@@ -177,8 +196,9 @@ export function createSafeHandler(options: {
         !/^\d+$/.test(minNonce) ||
         !Number.isSafeInteger(offset) ||
         offset < 0
-      )
+      ) {
         return Response.json({ error: 'Invalid query' }, { status: 400 })
+      }
       const pending = proposals.filter((proposal) => BigInt(proposal.nonce) >= BigInt(minNonce))
       const results = pending.slice(offset, offset + pageSize).map((proposal) => ({
         ...proposal,

@@ -20,7 +20,9 @@ import {
 function assemble(frames: string[], type: 'crypto-hdkey' | 'eth-signature') {
   const assembler = new AirGapUrAssembler(type)
   let result: Buffer | undefined
-  for (const frame of frames) result = assembler.receive(frame) ?? result
+  for (const frame of frames) {
+    result = assembler.receive(frame) ?? result
+  }
   return result!
 }
 const single = (hex: string, type = 'crypto-hdkey') =>
@@ -41,7 +43,7 @@ it('restores the observed public export, stable identity and standard children',
   expect(airGapId(account)).toBe(airGapId({ ...account, name: 'Renamed' }))
 })
 
-for (const vector of vectors.transactions)
+for (const vector of vectors.transactions) {
   it(`verifies source-derived type ${vector.type} chain ${vector.chainId} with full v`, async () => {
     const rawTx = transaction(vector)
     const tx = createUnsignedTransaction(rawTx)
@@ -55,6 +57,7 @@ for (const vector of vectors.transactions)
     if (vector.chainId === 137)
       expect(() => decodeSignature(cbor, sessionId, kind, vector.chainId + 1)).toThrow()
   })
+}
 
 it('encodes a fixed UUID, full derivation, source fingerprint and finite bounded frames', () => {
   const record = publicAccount()
@@ -75,7 +78,9 @@ it('encodes a fixed UUID, full derivation, source fingerprint and finite bounded
   expect(request.getSourceFingerprint().toString('hex')).toBe(record.sourceFingerprint)
   expect(request.getSignData()).toEqual(Buffer.from([0, 255, 128, 195]))
   expect(request.getChainId()).toBe(137)
-  for (const invalid of [0, -1, Number.MAX_SAFE_INTEGER + 1]) expect(() => chainNumber(invalid)).toThrow()
+  for (const invalid of [0, -1, Number.MAX_SAFE_INTEGER + 1]) {
+    expect(() => chainNumber(invalid)).toThrow()
+  }
 })
 
 const hostile = [
@@ -96,10 +101,11 @@ const hostile = [
   '990fff' + '00'.repeat(4095)
 ]
 describe('hostile declarations before registry or fountain allocation', () => {
-  for (const hex of hostile)
+  for (const hex of hostile) {
     it(`rejects ${hex.slice(0, 36)}`, () => {
       expect(() => new AirGapUrAssembler('crypto-hdkey').receive(single(hex))).toThrow()
     })
+  }
   it('rejects sequence coercions and mismatched or oversized fountain declarations', () => {
     const frame = vectors.export.ur[0]
     for (const sequence of ['01-2', '1-02', '0-2', '4294967296-2', '1-513', '1-2-3']) {
@@ -141,7 +147,9 @@ it('rejects invalid scalars and over-wide or invalid v without accepting a missi
 })
 
 function scalar(value: number, width = 0, major = 0) {
-  if (!width && value < 24) return Buffer.from([(major << 5) | value])
+  if (!width && value < 24) {
+    return Buffer.from([(major << 5) | value])
+  }
   const actual = width || (value <= 255 ? 1 : value <= 65535 ? 2 : 4)
   const buffer = Buffer.alloc(actual + 1)
   buffer[0] = (major << 5) | { 1: 24, 2: 25, 4: 26, 8: 27 }[actual]!
@@ -172,7 +180,7 @@ it('bounds padded fountain size before decoder construction', () => {
 for (const [name, count, length, fragmentLength] of [
   ['distinct frames', 512, 65536, 128],
   ['cumulative bytes', 32, 57600, 1800]
-] as const)
+] as const) {
   it(`resets a retryable attempt after exhausting ${name}`, () => {
     const decoder = new AirGapUrAssembler('crypto-hdkey')
     let exhausted = false
@@ -208,6 +216,7 @@ for (const [name, count, length, fragmentLength] of [
       vectors.export.sourceFingerprint
     )
   })
+}
 
 it('rejects an outbound near-limit request whose padded fragments exceed 64 KiB', () => {
   expect(() =>

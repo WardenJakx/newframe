@@ -1,4 +1,3 @@
-import { Subscription } from '@ledgerhq/hw-transport'
 import log from 'electron-log'
 // type-only: at runtime node-hid is used solely inside the Ledger transports
 import type { Device } from 'node-hid'
@@ -35,7 +34,7 @@ export default class LedgerSignerAdapter extends SignerAdapter {
   private disconnections: Disconnection[]
 
   private unsubscribeDerivation?: () => void
-  private usbListener: Subscription | null = null
+  private usbListener: ReturnType<typeof TransportNodeHid.listen> | null = null
   private opened = false
   private reconnectTimers = new Map<Ledger, NodeJS.Timeout>()
   private reconnectDelays = new Map<Ledger, number>()
@@ -49,7 +48,9 @@ export default class LedgerSignerAdapter extends SignerAdapter {
   }
 
   override open() {
-    if (this.opened) return
+    if (this.opened) {
+      return
+    }
     this.opened = true
 
     this.unsubscribeDerivation?.()
@@ -92,7 +93,9 @@ export default class LedgerSignerAdapter extends SignerAdapter {
   }
 
   override close() {
-    if (!this.opened) return
+    if (!this.opened) {
+      return
+    }
     this.opened = false
     this.reconnectTimers.forEach(clearTimeout)
     this.reconnectTimers.clear()
@@ -176,9 +179,13 @@ export default class LedgerSignerAdapter extends SignerAdapter {
   }
 
   private handleConnectedDevice(ledger: Ledger) {
-    if (!this.opened) return
+    if (!this.opened) {
+      return
+    }
     const pending = this.connecting.get(ledger)
-    if (pending) return pending
+    if (pending) {
+      return pending
+    }
     const connection = this.connectDevice(ledger).finally(() => {
       this.connecting.delete(ledger)
       this.scheduleReconnect(ledger)
@@ -205,8 +212,9 @@ export default class LedgerSignerAdapter extends SignerAdapter {
       this.connecting.has(ledger) ||
       this.reconnectTimers.has(ledger) ||
       ![Status.WRONG_APP, Status.NEEDS_RECONNECTION].includes(ledger.status)
-    )
+    ) {
       return
+    }
 
     // A failed handshake may not produce another USB event. Back off per device.
     const delay = this.reconnectDelays.get(ledger) ?? 2000
@@ -228,7 +236,9 @@ export default class LedgerSignerAdapter extends SignerAdapter {
 
     try {
       await ledger.disconnect()
-      if (!isAttached()) return
+      if (!isAttached()) {
+        return
+      }
       await ledger.open()
       if (!isAttached()) {
         await ledger.disconnect()
@@ -346,7 +356,9 @@ export default class LedgerSignerAdapter extends SignerAdapter {
         disconnection.device.devicePath = reconnectedDevice.path
 
         reconnections.push(disconnection)
-      } else break
+      } else {
+        break
+      }
     }
 
     return { pendingDisconnections, reconnections }

@@ -21,7 +21,9 @@ async function main() {
 
     const targetChain = chains.find((c: any) => c.chainId !== parseInt(currentChainId))
 
-    if (!targetChain) throw new Error('no available chains to switch to!')
+    if (!targetChain) {
+      throw new Error('no available chains to switch to!')
+    }
 
     return await new Promise<void>((resolve, reject) => {
       const checkChain = async (updatedChainId: any) => {

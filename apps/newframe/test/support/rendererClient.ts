@@ -68,7 +68,9 @@ export function registerTestRuntimeFixture(options?: RendererStateFixtureOptions
   })
 
   const current = () => {
-    if (!runtime) throw new Error('Renderer runtime fixture is only available during a test.')
+    if (!runtime) {
+      throw new Error('Renderer runtime fixture is only available during a test.')
+    }
     return runtime
   }
 
@@ -115,17 +117,23 @@ export function installRendererHost(client: TestRendererClient) {
   installedWindow.__NEWFRAME_HOST__ = client
 
   return () => {
-    if (installation.disposed) return
+    if (installation.disposed) {
+      return
+    }
     installation.disposed = true
 
-    if (activeHostInstallations.get(installedWindow) !== installation) return
+    if (activeHostInstallations.get(installedWindow) !== installation) {
+      return
+    }
     if (installedWindow.__NEWFRAME_HOST__ !== client) {
       activeHostInstallations.delete(installedWindow)
       return
     }
 
     let previousInstallation = installation.previous
-    while (previousInstallation?.disposed) previousInstallation = previousInstallation.previous
+    while (previousInstallation?.disposed) {
+      previousInstallation = previousInstallation.previous
+    }
 
     if (previousInstallation) {
       activeHostInstallations.set(installedWindow, previousInstallation)
@@ -135,7 +143,9 @@ export function installRendererHost(client: TestRendererClient) {
 
     activeHostInstallations.delete(installedWindow)
     if (installation.base.createdWindow) {
-      if (globalThis.window === installedWindow) Reflect.deleteProperty(globalThis, 'window')
+      if (globalThis.window === installedWindow) {
+        Reflect.deleteProperty(globalThis, 'window')
+      }
     } else if (installation.base.previousHost) {
       installedWindow.__NEWFRAME_HOST__ = installation.base.previousHost
     } else {

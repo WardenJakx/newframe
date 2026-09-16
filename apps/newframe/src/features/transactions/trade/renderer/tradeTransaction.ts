@@ -65,7 +65,9 @@ const tradeIntegerNumber = nonNegativeFlashInteger
 
 export function formatTradeNotional(value?: string | number | null) {
   const amount = Number(value)
-  if (!Number.isFinite(amount)) return '$0.00'
+  if (!Number.isFinite(amount)) {
+    return '$0.00'
+  }
 
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -79,7 +81,9 @@ export function getEstimatedTradePriceImpact(
 ) {
   const inputNotional = Number(quote?.inputNotional || quote?.from?.notional)
   const outputNotional = Number(quote?.outputNotional || quote?.to?.notional)
-  if (!Number.isFinite(inputNotional) || inputNotional <= 0 || !Number.isFinite(outputNotional)) return null
+  if (!Number.isFinite(inputNotional) || inputNotional <= 0 || !Number.isFinite(outputNotional)) {
+    return null
+  }
 
   return ((inputNotional - outputNotional) / inputNotional) * 100
 }
@@ -87,7 +91,9 @@ export function getEstimatedTradePriceImpact(
 export function getTradeTriggerDeltaPercent(triggerPrice?: string, currentPrice?: string) {
   const trigger = Number(triggerPrice)
   const current = Number(currentPrice)
-  if (!Number.isFinite(trigger) || !Number.isFinite(current) || current <= 0) return null
+  if (!Number.isFinite(trigger) || !Number.isFinite(current) || current <= 0) {
+    return null
+  }
 
   return ((trigger - current) / current) * 100
 }
@@ -118,10 +124,18 @@ export function tradeErrorMessage(error: unknown, fallback: string) {
   const record = objectRecord(error)
   const nested = objectRecord(record.error)
 
-  if (!error) return fallback
-  if (typeof error === 'string') return error
-  if (typeof record.message === 'string') return record.message
-  if (typeof nested.message === 'string') return nested.message
+  if (!error) {
+    return fallback
+  }
+  if (typeof error === 'string') {
+    return error
+  }
+  if (typeof record.message === 'string') {
+    return record.message
+  }
+  if (typeof nested.message === 'string') {
+    return nested.message
+  }
 
   return fallback
 }
@@ -130,8 +144,12 @@ function getMarketTradeOptionalFields({ quickTrade, slippage }: { quickTrade: bo
   const optionalFields: Pick<TradeQuoteRequest, 'quickTrade' | 'slippage'> = {}
   const cleanSlippage = String(slippage || '').trim()
 
-  if (quickTrade) optionalFields.quickTrade = true
-  if (cleanSlippage) optionalFields.slippage = cleanSlippage
+  if (quickTrade) {
+    optionalFields.quickTrade = true
+  }
+  if (cleanSlippage) {
+    optionalFields.slippage = cleanSlippage
+  }
 
   return optionalFields
 }
@@ -148,7 +166,9 @@ export function getTradeDurationSeconds(fields: TradeOrderFields) {
 
 function cleanTwapBucketCount(value?: string) {
   const clean = cleanTradeAmount(value || '')
-  if (!clean) return undefined
+  if (!clean) {
+    return undefined
+  }
 
   const parsed = tradeIntegerNumber(clean)
   return parsed >= FLASH_MIN_TWAP_BUCKET_COUNT && parsed <= FLASH_MAX_TWAP_BUCKET_COUNT ? parsed : undefined
@@ -161,14 +181,20 @@ function cleanExpireTime(value?: string) {
 }
 
 function cleanStartTime(value?: string) {
-  if (!String(value || '').trim()) return ''
+  if (!String(value || '').trim()) {
+    return ''
+  }
 
   return cleanExpireTime(value)
 }
 
 function triggerTypeForOrder(orderType: FlashOrderType): FlashPriceTrigger['triggerType'] | '' {
-  if (orderType === FLASH_STOP_LOSS_ORDER_TYPE) return 'lower'
-  if (orderType === FLASH_STOP_ORDER_TYPE || orderType === FLASH_TAKE_PROFIT_ORDER_TYPE) return 'upper'
+  if (orderType === FLASH_STOP_LOSS_ORDER_TYPE) {
+    return 'lower'
+  }
+  if (orderType === FLASH_STOP_ORDER_TYPE || orderType === FLASH_TAKE_PROFIT_ORDER_TYPE) {
+    return 'upper'
+  }
   return ''
 }
 
@@ -219,7 +245,9 @@ export function getTradeValidationError({
     return 'Cross-chain trades only support Market orders.'
   }
 
-  if (!tradeAmountNumber(inputAmount)) return 'Enter an amount to trade.'
+  if (!tradeAmountNumber(inputAmount)) {
+    return 'Enter an amount to trade.'
+  }
 
   if (orderType === FLASH_MARKET_ORDER_TYPE) {
     const cleanSlippage = cleanTradeAmount(slippage || '')
@@ -234,11 +262,15 @@ export function getTradeValidationError({
   }
 
   if ([FLASH_STOP_ORDER_TYPE, FLASH_STOP_LOSS_ORDER_TYPE, FLASH_TAKE_PROFIT_ORDER_TYPE].includes(orderType)) {
-    if (!cleanOptionalAmount(triggerNotionalPrice)) return 'Enter a trigger price.'
+    if (!cleanOptionalAmount(triggerNotionalPrice)) {
+      return 'Enter a trigger price.'
+    }
     if (cleanTradeAmount(limitNotionalPrice || '') && !cleanOptionalAmount(limitNotionalPrice)) {
       return 'Enter a valid limit price or leave it blank for a market order.'
     }
-    if (orderType === FLASH_STOP_ORDER_TYPE && side !== 'buy') return 'Stop orders must buy the target asset.'
+    if (orderType === FLASH_STOP_ORDER_TYPE && side !== 'buy') {
+      return 'Stop orders must buy the target asset.'
+    }
     if ([FLASH_STOP_LOSS_ORDER_TYPE, FLASH_TAKE_PROFIT_ORDER_TYPE].includes(orderType) && side !== 'sell') {
       return 'TP/SL orders must sell the target asset.'
     }
@@ -278,7 +310,9 @@ export function getTradeValidationError({
 
   if (orderSupportsTimeInForce(orderType) && timeInForce === 'gtt') {
     const timestamp = Date.parse(String(expireTime || ''))
-    if (!Number.isFinite(timestamp) || timestamp <= Date.now()) return 'Choose a future expiry time.'
+    if (!Number.isFinite(timestamp) || timestamp <= Date.now()) {
+      return 'Choose a future expiry time.'
+    }
   }
 
   return ''
@@ -293,11 +327,15 @@ export function getTradeQuoteValidationError({
   quote: Pick<FlashQuote, 'targetAsset' | 'targetNotionalPrice'> | null
   triggerNotionalPrice?: string
 }) {
-  if (!quote || !triggerTypeForOrder(orderType)) return ''
+  if (!quote || !triggerTypeForOrder(orderType)) {
+    return ''
+  }
 
   const triggerPrice = Number(triggerNotionalPrice)
   const currentPrice = Number(quote.targetNotionalPrice)
-  if (!Number.isFinite(triggerPrice) || !Number.isFinite(currentPrice) || currentPrice <= 0) return ''
+  if (!Number.isFinite(triggerPrice) || !Number.isFinite(currentPrice) || currentPrice <= 0) {
+    return ''
+  }
 
   if (orderType === FLASH_STOP_LOSS_ORDER_TYPE && triggerPrice >= currentPrice) {
     return `Stop loss must be below the current ${quote.targetAsset.symbol}/USD price.`
@@ -339,19 +377,29 @@ function getOrderFields(orderType: FlashOrderType, fields: TradeOrderFields): No
       }
     ]
     const limitPrice = cleanOptionalAmount(fields.limitNotionalPrice)
-    if (limitPrice) result.limitNotionalPrice = limitPrice
+    if (limitPrice) {
+      result.limitNotionalPrice = limitPrice
+    }
   }
 
   if (orderType === FLASH_TWAP_ORDER_TYPE) {
     result.durationSeconds = getTradeDurationSeconds(fields)
     const limitPrice = cleanOptionalAmount(fields.limitNotionalPrice)
-    if (limitPrice) result.limitNotionalPrice = limitPrice
+    if (limitPrice) {
+      result.limitNotionalPrice = limitPrice
+    }
     const startTime = cleanStartTime(fields.startTime)
-    if (startTime) result.startTime = startTime
+    if (startTime) {
+      result.startTime = startTime
+    }
     const buckets = cleanTwapBucketCount(fields.twapBucketCount)
-    if (buckets !== undefined) result.twapBucketCount = buckets
+    if (buckets !== undefined) {
+      result.twapBucketCount = buckets
+    }
     const maxPriceImpact = cleanTradeAmount(fields.maxPriceImpact || '')
-    if (maxPriceImpact) result.maxPriceImpact = maxPriceImpact
+    if (maxPriceImpact) {
+      result.maxPriceImpact = maxPriceImpact
+    }
   }
 
   if (orderSupportsTimeInForce(orderType) && fields.timeInForce === 'gtt') {
@@ -392,8 +440,12 @@ export function buildTradeQuoteRequest({
     targetAsset
   })
 
-  if (validationError) return null
-  if (!accountAddress) throw new Error('Select an account to trade.')
+  if (validationError) {
+    return null
+  }
+  if (!accountAddress) {
+    throw new Error('Select an account to trade.')
+  }
 
   return {
     accountAddress,
@@ -457,8 +509,12 @@ export function buildTradeAssetOptions({
 }) {
   const assets = new Map<string, FlashAsset>()
   const addAsset = (asset: FlashAsset) => {
-    if (!isFlashChainSupported(asset.chainId, runtime)) return
-    if (!networkEnabled(networks, asset.chainId)) return
+    if (!isFlashChainSupported(asset.chainId, runtime)) {
+      return
+    }
+    if (!networkEnabled(networks, asset.chainId)) {
+      return
+    }
     assets.set(getTradeAssetKey(asset), asset)
   }
 
@@ -472,10 +528,14 @@ export function buildTradeAssetOptions({
 
   Object.keys(networks).forEach((chainIdValue) => {
     const chainId = Number(chainIdValue)
-    if (!Number.isInteger(chainId) || chainId <= 0) return
+    if (!Number.isInteger(chainId) || chainId <= 0) {
+      return
+    }
 
     const nativeCurrency = (networksMeta[chainId] || networksMeta[String(chainId)])?.nativeCurrency
-    if (!nativeCurrency?.symbol) return
+    if (!nativeCurrency?.symbol) {
+      return
+    }
 
     try {
       addAsset(

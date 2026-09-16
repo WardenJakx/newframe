@@ -84,7 +84,9 @@ export interface TransactionIntent {
 }
 
 function safeBigInt(value?: string | number | bigint | null) {
-  if (value === undefined || value === null || value === '') return 0n
+  if (value === undefined || value === null || value === '') {
+    return 0n
+  }
 
   try {
     return BigInt(value)
@@ -94,7 +96,9 @@ function safeBigInt(value?: string | number | bigint | null) {
 }
 
 function shortAddress(address?: string) {
-  if (!address) return ''
+  if (!address) {
+    return ''
+  }
   return `${address.slice(0, 8)}...${address.slice(-6)}`
 }
 
@@ -313,17 +317,23 @@ export function getTransactionEffects(req: any, nativeSymbol = 'ETH'): Transacti
       ? req.simulation.effects
       : []
 
-  if (!simulatedEffects.length) return deterministicEffects
+  if (!simulatedEffects.length) {
+    return deterministicEffects
+  }
 
   const simulatedWithMetadata = simulatedEffects.map((simulated: TransactionEffect) => {
-    if (simulated.kind !== 'erc20') return simulated
+    if (simulated.kind !== 'erc20') {
+      return simulated
+    }
 
     const address = (simulated.assetAddress || '').toLowerCase()
     const deterministic = deterministicEffects.find(
       (effect) =>
         effect.kind === 'erc20' && !!address && (effect.assetAddress || '').toLowerCase() === address
     )
-    if (!deterministic) return simulated
+    if (!deterministic) {
+      return simulated
+    }
 
     const genericMetadata = !simulated.symbol || simulated.symbol === 'Token'
     return {
@@ -355,17 +365,25 @@ export function getTransactionEffects(req: any, nativeSymbol = 'ETH'): Transacti
 
 export function getTransactionPositionTokens(req: any): TransactionPositionToken[] {
   const chainId = parseChainId(req?.data?.chainId ?? req?.chainId)
-  if (!Number.isInteger(chainId) || chainId <= 0) return []
+  if (!Number.isInteger(chainId) || chainId <= 0) {
+    return []
+  }
 
   const tokens = new Map<string, TransactionPositionToken>()
 
   getTransactionEffects(req).forEach((effect) => {
     const address = (effect.assetAddress || '').trim().toLowerCase()
-    if (effect.kind !== 'erc20' || effect.direction === 'neutral') return
-    if (!/^0x[0-9a-f]{40}$/.test(address)) return
+    if (effect.kind !== 'erc20' || effect.direction === 'neutral') {
+      return
+    }
+    if (!/^0x[0-9a-f]{40}$/.test(address)) {
+      return
+    }
 
     const symbol = effect.symbol || 'Token'
-    if (!Number.isInteger(effect.decimals)) return
+    if (!Number.isInteger(effect.decimals)) {
+      return
+    }
     const decimals = Number(effect.decimals)
     const token = {
       address,
@@ -384,13 +402,17 @@ export function getTransactionPositionTokens(req: any): TransactionPositionToken
 
 export function getPaidTransactionFee(req: any) {
   const receipt = req?.tx?.receipt
-  if (!receipt) return undefined
+  if (!receipt) {
+    return undefined
+  }
 
   const gasUsed = safeBigInt(receipt.gasUsed)
   const paidGas = receipt.effectiveGasPrice || req?.data?.gasPrice
   const gasPrice = safeBigInt(paidGas)
 
-  if (!gasUsed || !gasPrice) return undefined
+  if (!gasUsed || !gasPrice) {
+    return undefined
+  }
 
   return addHexPrefix((gasUsed * gasPrice).toString(16))
 }
@@ -405,7 +427,9 @@ function parseChainId(chainId: string) {
 
 // TODO: move this into requests parsing module
 export function normalizeChainId(tx: RPC.SendTransaction.TxParams, targetChain?: number) {
-  if (!tx.chainId) return tx
+  if (!tx.chainId) {
+    return tx
+  }
 
   const chainId = parseChainId(tx.chainId)
 

@@ -73,10 +73,14 @@ const FeeOverlayInput = ({
           const parsedInput = (decimals ? /[0-9.]*/ : /[0-9]*/).exec(nextValue)
           const enteredValue = parsedInput?.[0] || ''
 
-          if (enteredValue === '.' || enteredValue === '') return setValue(enteredValue)
+          if (enteredValue === '.' || enteredValue === '') {
+            return setValue(enteredValue)
+          }
 
           const numericValue = parseInput(nextValue, decimals)
-          if (numericValue === undefined) return
+          if (numericValue === undefined) {
+            return
+          }
 
           // prevent decimal point being overwritten as user is typing a float
           if (enteredValue.endsWith('.')) {
@@ -93,7 +97,9 @@ const FeeOverlayInput = ({
         }}
         onStep={(direction) => {
           const parsedValue = parseInput(value, decimals)
-          if (parsedValue === undefined) return
+          if (parsedValue === undefined) {
+            return
+          }
 
           // adjust by 1 gwei for gwei-denominated inputs, 1000 units otherwise
           const step = decimals ? 1000000000n : 1000n

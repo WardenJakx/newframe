@@ -14,7 +14,9 @@ export function HomeUiProvider({ children }: PropsWithChildren) {
 
 export function useHomeUiStore<T>(selector: (state: HomeUiState) => T) {
   const store = useContext(HomeUiStoreContext)
-  if (!store) throw new Error('useHomeUiStore must be used within HomeUiProvider')
+  if (!store) {
+    throw new Error('useHomeUiStore must be used within HomeUiProvider')
+  }
 
   return useStore(store, selector)
 }

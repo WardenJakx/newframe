@@ -34,6 +34,8 @@ describe('#getTokenDiscoveryProvider', () => {
     const access = getTokenDiscoveryProvider(store)
 
     expect(access.ok).toBe(true)
-    if (access.ok) expect(access.provider).toBeDefined()
+    if (access.ok) {
+      expect(access.provider).toBeDefined()
+    }
   })
 })

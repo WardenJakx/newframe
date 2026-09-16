@@ -86,12 +86,17 @@ export function safeServiceNetworks(options: {
   url?: string
   chainId?: string
 }): Readonly<Record<string, string>> {
-  if (!options.development || !options.url || !options.chainId) return SAFE_SERVICE_NETWORKS
+  if (!options.development || !options.url || !options.chainId) {
+    return SAFE_SERVICE_NETWORKS
+  }
   const chainId = Number(options.chainId)
-  if (!Number.isSafeInteger(chainId) || chainId <= 0) throw new Error('Invalid development Safe chain ID')
+  if (!Number.isSafeInteger(chainId) || chainId <= 0) {
+    throw new Error('Invalid development Safe chain ID')
+  }
   const url = new URL(options.url)
-  if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash)
+  if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash) {
     throw new Error('Invalid development Safe URL')
+  }
   return { ...SAFE_SERVICE_NETWORKS, [chainId]: url.href.replace(/\/$/, '') }
 }
 export type SafeRequest = (url: string, init: RequestInit) => Promise<Response>
@@ -157,19 +162,24 @@ export function createSafeClient({
   const cooldowns = new Map<string, number>()
   function base(chainId: number) {
     const url = networks[chainId]
-    if (!Number.isSafeInteger(chainId) || !url)
+    if (!Number.isSafeInteger(chainId) || !url) {
       throw new Error('Safe queue service is unavailable on this network')
+    }
     return url.replace(/\/$/, '')
   }
   async function json(url: string, signal?: AbortSignal, signature?: string): Promise<unknown> {
     const origin = new URL(url).origin
     const remaining = (cooldowns.get(origin) ?? 0) - now()
-    if (remaining > 0)
+    if (remaining > 0) {
       throw new Error(`Safe service rate limited; retry in ${Math.ceil(remaining / 1000)} seconds`)
+    }
     const controller = new AbortController()
     const abort = () => controller.abort(signal?.reason)
-    if (signal?.aborted) abort()
-    else signal?.addEventListener('abort', abort, { once: true })
+    if (signal?.aborted) {
+      abort()
+    } else {
+      signal?.addEventListener('abort', abort, { once: true })
+    }
     const timer = setTimeout(() => controller.abort(new Error('Safe service request timed out')), timeoutMs)
     try {
       controller.signal.throwIfAborted()
@@ -190,7 +200,9 @@ export function createSafeClient({
         cooldowns.set(origin, now() + (Number.isFinite(seconds) && seconds > 0 ? seconds : 60000))
         throw new Error('Safe service rate limited')
       }
-      if (!response.ok) throw new Error(`Safe service HTTP ${response.status}`)
+      if (!response.ok) {
+        throw new Error(`Safe service HTTP ${response.status}`)
+      }
       // Confirmation responses are acknowledgements, not evidence of stored signature bytes.
       const result: unknown = signature === undefined ? await response.json() : await response.text()
       controller.signal.throwIfAborted()
@@ -218,7 +230,9 @@ export function createSafeClient({
     signal?: AbortSignal,
     blockTag?: string
   ): Promise<string> {
-    if (!call) throw new Error('Safe chain provider is unavailable')
+    if (!call) {
+      throw new Error('Safe chain provider is unavailable')
+    }
     signal?.throwIfAborted()
     let timer: ReturnType<typeof setTimeout> | undefined
     try {
@@ -250,15 +264,21 @@ export function createSafeClient({
     try {
       const results = await aggregate3(calls, async (data) => {
         const response = await read(chainId, multicallAddress, data, signal, blockTag)
-        if (response === '0x') throw unavailable
+        if (response === '0x') {
+          throw unavailable
+        }
         return response
       })
       return results.map(({ success, returnValues }, index) => {
-        if (!success || returnValues[0] == null) throw new Error(`Safe ${methods[index]} call failed`)
+        if (!success || returnValues[0] == null) {
+          throw new Error(`Safe ${methods[index]} call failed`)
+        }
         return returnValues[0]
       })
     } catch (error) {
-      if (error !== unavailable) throw error
+      if (error !== unavailable) {
+        throw error
+      }
       return Promise.all(
         methods.map(async (method) => {
           const data = abi.encodeFunctionData(method)
@@ -275,7 +295,9 @@ export function createSafeClient({
   }
   async function serviceConfiguration(chainId: number, expected: string, signal?: AbortSignal) {
     const info = infoSchema.parse(await json(`${base(chainId)}/v1/safes/${expected}/`, signal))
-    if (info.address !== expected) throw new Error('Safe service returned a different Safe')
+    if (info.address !== expected) {
+      throw new Error('Safe service returned a different Safe')
+    }
     return safeConfigurationSchema.parse({
       owners: info.owners,
       threshold: info.threshold,
@@ -297,7 +319,9 @@ export function createSafeClient({
       const visited = new Set<string>()
       const confirmations = new Map<string, { owner: string; signature: string }>()
       for (let pages = 0; next; pages++) {
-        if (pages >= 100 || visited.has(next.href)) throw new Error('Safe pagination did not progress')
+        if (pages >= 100 || visited.has(next.href)) {
+          throw new Error('Safe pagination did not progress')
+        }
         visited.add(next.href)
         const page = confirmationPageSchema.parse(await json(next.href, signal))
         for (const raw of page.results) {
@@ -308,8 +332,12 @@ export function createSafeClient({
             confirmations.set(`${item.owner}:${item.signature}`, item)
           }
         }
-        if (!page.next) break
-        if (!page.results.length) throw new Error('Safe pagination did not progress')
+        if (!page.next) {
+          break
+        }
+        if (!page.results.length) {
+          throw new Error('Safe pagination did not progress')
+        }
         const candidate: URL = new URL(page.next, next)
         if (
           candidate.origin !== first.origin ||
@@ -317,8 +345,9 @@ export function createSafeClient({
           candidate.username ||
           candidate.password ||
           candidate.hash
-        )
+        ) {
           throw new Error('Unsafe Safe pagination URL')
+        }
         next = candidate
       }
       return [...confirmations.values()]
@@ -334,7 +363,9 @@ export function createSafeClient({
       signal?: AbortSignal
     ): Promise<Pick<SafeConfiguration, 'nonce'> | SafeConfiguration> {
       const expected = safeAddressSchema.parse(address)
-      if (!call) return serviceConfiguration(chainId, expected, signal)
+      if (!call) {
+        return serviceConfiguration(chainId, expected, signal)
+      }
       const [nonce] = await readBatch(chainId, expected, ['nonce'], signal)
       return { nonce: safeConfigurationSchema.shape.nonce.parse(String(nonce)) }
     },
@@ -376,7 +407,9 @@ export function createSafeClient({
       const visited = new Set<string>()
       const proposals = new Map<string, SafeProposal>()
       for (let pages = 0; next; pages++) {
-        if (pages >= 1000 || visited.has(next.href)) throw new Error('Safe pagination did not progress')
+        if (pages >= 1000 || visited.has(next.href)) {
+          throw new Error('Safe pagination did not progress')
+        }
         visited.add(next.href)
         const page = pageSchema.parse(await json(next.href, signal))
         const before = proposals.size
@@ -399,15 +432,20 @@ export function createSafeClient({
             ],
             dataDecoded: safeDecodedSchema.safeParse(raw.dataDecoded).data
           })
-          if (proposal.safe !== expected) throw new Error('Safe proposal identity mismatch')
-          if (raw.isExecuted || BigInt(proposal.nonce) < BigInt(config.nonce)) continue
+          if (proposal.safe !== expected) {
+            throw new Error('Safe proposal identity mismatch')
+          }
+          if (raw.isExecuted || BigInt(proposal.nonce) < BigInt(config.nonce)) {
+            continue
+          }
           proposal.integrity = verifySafeHash(proposal, chainId, expected, config.version)
-          if (serviceCalldataMismatch(proposal))
+          if (serviceCalldataMismatch(proposal)) {
             proposal.integrity = {
               ...proposal.integrity,
               status: 'mismatch',
               reason: 'Integrity mismatch: the service description does not match the calldata.'
             }
+          }
           if (proposal.data !== '0x') {
             const local = getLocalFunctionSelectorSignatures(proposal.data.slice(0, 10))
               .map((signature) => decodeCallDataWithSignature(proposal.data, signature))
@@ -424,12 +462,13 @@ export function createSafeClient({
                       })
                     ])
                   : undefined
-              if (decoded)
+              if (decoded) {
                 proposal.localDecoded = safeDecodedSchema.extend({ source: z.string().max(200) }).safeParse({
                   method: decoded.method,
                   parameters: decoded.args,
                   source: decoded.source
                 }).data
+              }
             } catch {
               /* Raw calldata remains available when ABI lookup fails. */
             } finally {
@@ -439,8 +478,12 @@ export function createSafeClient({
           signal?.throwIfAborted()
           proposals.set(proposal.safeTxHash, proposal)
         }
-        if (page.next && proposals.size === before) throw new Error('Safe pagination did not progress')
-        if (!page.next) break
+        if (page.next && proposals.size === before) {
+          throw new Error('Safe pagination did not progress')
+        }
+        if (!page.next) {
+          break
+        }
         const candidate: URL = new URL(page.next, next)
         if (
           candidate.origin !== first.origin ||
@@ -450,8 +493,9 @@ export function createSafeClient({
           candidate.hash ||
           candidate.searchParams.get('executed') !== 'false' ||
           candidate.searchParams.get('nonce__gte') !== config.nonce
-        )
+        ) {
           throw new Error('Unsafe Safe pagination URL')
+        }
         next = candidate
       }
       return [...proposals.values()]

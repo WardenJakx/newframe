@@ -93,7 +93,9 @@ export function createSecurityService(ports: SecurityServicePorts) {
     execute: (reference: OperationReference) => Promise<void> | void
   ) {
     const reference = referenceFor(command, owner)
-    if (ports.operations.lookup(reference)) return true
+    if (ports.operations.lookup(reference)) {
+      return true
+    }
 
     try {
       ports.operations.start({ id: reference.id, type: reference.type, owner, phase })
@@ -113,7 +115,9 @@ export function createSecurityService(ports: SecurityServicePorts) {
     }
 
     const key = ports.vault.getKey()
-    if (!key) throw new Error('Unlocked vault did not provide an encryption key')
+    if (!key) {
+      throw new Error('Unlocked vault did not provide an encryption key')
+    }
 
     if (command.browser.status === 'enrolled') {
       try {

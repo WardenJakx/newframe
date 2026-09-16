@@ -32,8 +32,12 @@ export function createAirGapService(ports: AirGapServicePorts) {
   }
   const cancelPair = (id: string, owner: OperationOwner) => {
     const reference = { id, owner, type }
-    if (!ports.operations.lookup(reference)) return false
-    if (scans.get(id)?.reference.owner && sameOwner(scans.get(id)!.reference.owner, owner)) release(id)
+    if (!ports.operations.lookup(reference)) {
+      return false
+    }
+    if (scans.get(id)?.reference.owner && sameOwner(scans.get(id)!.reference.owner, owner)) {
+      release(id)
+    }
     ports.operations.complete(reference, 'cancelled')
     return true
   }
@@ -42,17 +46,25 @@ export function createAirGapService(ports: AirGapServicePorts) {
       command: Extract<CommandMap['signer.import'], { source: 'airgap' }>,
       context: SigningUiContext
     ) {
-      if (disposed || context.owner.clientType !== 'wallet-ui' || !context.isOwnerActive()) return false
+      if (disposed || context.owner.clientType !== 'wallet-ui' || !context.isOwnerActive()) {
+        return false
+      }
       const reference = { id: command.operationId, owner: context.owner, type }
-      if (ports.operations.lookup(reference)) return true
-      for (const scan of scans.values())
+      if (ports.operations.lookup(reference)) {
+        return true
+      }
+      for (const scan of scans.values()) {
         if (sameOwner(scan.reference.owner, context.owner)) cancelPair(scan.reference.id, context.owner)
+      }
       ports.operations.start({ ...reference, phase: 'scanning' })
       const scan = { reference, scanner: ports.createPairScanner(), dispose: () => {} }
       scans.set(reference.id, scan)
       const unsubscribe = context.subscribeOwnerDisposed(() => cancelPair(reference.id, context.owner))
-      if (scans.get(reference.id) !== scan) unsubscribe()
-      else scan.dispose = unsubscribe
+      if (scans.get(reference.id) !== scan) {
+        unsubscribe()
+      } else {
+        scan.dispose = unsubscribe
+      }
       return true
     },
     pairScan(
@@ -60,14 +72,18 @@ export function createAirGapService(ports: AirGapServicePorts) {
       owner: OperationOwner
     ) {
       const scan = scans.get(command.operationId)
-      if (!scan || !sameOwner(scan.reference.owner, owner)) return false
+      if (!scan || !sameOwner(scan.reference.owner, owner)) {
+        return false
+      }
       let account: AirGapPublicAccount | undefined
       try {
         account = scan.scanner.receive(command.frame)
       } catch {
         throw new Error('Invalid AirGap export. Scan the Ethereum public account QR again.')
       }
-      if (!account) return true
+      if (!account) {
+        return true
+      }
       try {
         const signerId = ports.addPublicAccount(account)
         ports.operations.advance(scan.reference, { entityRefs: [{ type: 'signer', id: signerId }] })
@@ -90,7 +106,9 @@ export function createAirGapService(ports: AirGapServicePorts) {
       reference: AirGapRequestReference,
       owner: OperationOwner
     ): QueryResultMap['signer.session-frames'] {
-      if (disposed) return { ok: false, error: 'unavailable' }
+      if (disposed) {
+        return { ok: false, error: 'unavailable' }
+      }
       const frames = ports.getRequest(reference, owner)
       return frames ? { ok: true, frames } : { ok: false, error: 'not_found' }
     },
@@ -98,13 +116,19 @@ export function createAirGapService(ports: AirGapServicePorts) {
       return disposed ? false : ports.scan(command, owner, command.frame)
     },
     cancel(reference: AirGapRequestReference, owner: OperationOwner) {
-      if (!disposed) ports.cancel(reference, owner)
+      if (!disposed) {
+        ports.cancel(reference, owner)
+      }
       return true
     },
     dispose() {
-      if (disposed) return
+      if (disposed) {
+        return
+      }
       disposed = true
-      for (const scan of scans.values()) cancelPair(scan.reference.id, scan.reference.owner)
+      for (const scan of scans.values()) {
+        cancelPair(scan.reference.id, scan.reference.owner)
+      }
     }
   }
 }

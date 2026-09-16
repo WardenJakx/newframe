@@ -53,8 +53,8 @@ export function createRequestRendererCapabilitiesFake() {
     external: {
       copy: acknowledged<Parameters<RequestRendererCapabilities['external']['copy']>[0]>(),
       openExplorer: acknowledged<Parameters<RequestRendererCapabilities['external']['openExplorer']>[0]>(),
-      writeText: mock(async (_text: string) => ({ ok: true }) as CommandResult),
-      hydrateTokenImage: mock(async (_tokenId: string) => ({ ok: true }) as CommandResult)
+      writeText: mock(async (_text: string) => ({ ok: true })),
+      hydrateTokenImage: mock(async (_tokenId: string) => ({ ok: true }))
     }
   } satisfies RequestRendererCapabilities
 }

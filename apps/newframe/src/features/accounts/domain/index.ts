@@ -29,9 +29,15 @@ export function accountSort(a: NamedAccount, b: NamedAccount) {
     const aLocal = parseInt(aLocalStr)
     const bLocal = parseInt(bLocalStr)
 
-    if (aBlockStr === 'new' && bBlockStr !== 'new') return -1
-    if (bBlockStr !== 'new' && aBlockStr === 'new') return 1
-    if (aBlockStr === 'new' && bBlockStr === 'new') return bLocal - aLocal
+    if (aBlockStr === 'new' && bBlockStr !== 'new') {
+      return -1
+    }
+    if (bBlockStr !== 'new' && aBlockStr === 'new') {
+      return 1
+    }
+    if (aBlockStr === 'new' && bBlockStr === 'new') {
+      return bLocal - aLocal
+    }
 
     const aBlock = parseInt(aBlockStr)
     const bBlock = parseInt(bBlockStr)

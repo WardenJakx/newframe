@@ -49,7 +49,9 @@ export const tradeMarketStage: VisualStage = {
       const root = document.documentElement
       return root.scrollWidth <= root.clientWidth
     })
-    if (!rawDataFits) driver.fail('Inline calldata must not overflow the tray viewport')
+    if (!rawDataFits) {
+      driver.fail('Inline calldata must not overflow the tray viewport')
+    }
     const rawTransaction = tray.getByRole('button', { name: 'Raw transaction', exact: true })
     if ((await rawTransaction.getAttribute('aria-expanded')) !== 'false') {
       driver.fail('Calldata disclosure must leave the raw transaction collapsed')
@@ -84,7 +86,9 @@ export const tradeMarketStage: VisualStage = {
       'A newly submitted market Flash order did not fill'
     )
     const orderId = order.orderId
-    if (!orderId) return driver.fail('The new market Flash order has no order id')
+    if (!orderId) {
+      return driver.fail('The new market Flash order has no order id')
+    }
     const terminalState = await driver.waitForState(
       (state) => {
         const status = state.operations?.[marketOperationId]?.operation?.status
@@ -101,7 +105,9 @@ export const tradeMarketStage: VisualStage = {
       return driver.fail('Successful market trade operation did not reference its order')
     }
     const transactionHash = operation.entityRefs.find((reference) => reference.type === 'transaction')?.id
-    if (!transactionHash) return driver.fail('Market trade operation did not retain its approval transaction')
+    if (!transactionHash) {
+      return driver.fail('Market trade operation did not retain its approval transaction')
+    }
     const activityState = await driver.waitForState(
       (state) => Boolean(state.main?.activity?.[transactionHash]),
       15_000,

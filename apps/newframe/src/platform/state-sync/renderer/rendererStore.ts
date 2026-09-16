@@ -76,10 +76,16 @@ export function createRendererStateStore(initialState: RendererState = {}): Rend
   }
 
   const applySnapshot = (message: StateSnapshot): StateMessageResult => {
-    if (!expectedProjection) return reconnectNeeded('invalid_message')
+    if (!expectedProjection) {
+      return reconnectNeeded('invalid_message')
+    }
     const projection = projectionStateSchemas[expectedProjection].safeParse(message.state)
-    if (!projection.success) return reconnectNeeded('invalid_message')
-    if (!awaitingSnapshot) return { status: 'ignored', reason: 'unexpected_snapshot' }
+    if (!projection.success) {
+      return reconnectNeeded('invalid_message')
+    }
+    if (!awaitingSnapshot) {
+      return { status: 'ignored', reason: 'unexpected_snapshot' }
+    }
     if (message.streamId === activeStream?.streamId) {
       return { status: 'ignored', reason: 'stale_stream' }
     }
@@ -92,10 +98,16 @@ export function createRendererStateStore(initialState: RendererState = {}): Rend
   }
 
   const applyUpdate = (message: StateUpdateBatch): StateMessageResult => {
-    if (!expectedProjection) return reconnectNeeded('invalid_message')
+    if (!expectedProjection) {
+      return reconnectNeeded('invalid_message')
+    }
     const changes = projectionStateChangeSchemas[expectedProjection].safeParse(message.changes)
-    if (!changes.success) return reconnectNeeded('invalid_message')
-    if (!activeStream) return reconnectNeeded('snapshot_required')
+    if (!changes.success) {
+      return reconnectNeeded('invalid_message')
+    }
+    if (!activeStream) {
+      return reconnectNeeded('snapshot_required')
+    }
 
     if (awaitingSnapshot) {
       if (message.streamId === activeStream.streamId) {
@@ -113,7 +125,9 @@ export function createRendererStateStore(initialState: RendererState = {}): Rend
       return { status: 'ignored', reason: 'stale_revision' }
     }
 
-    if (message.baseRevision > activeStream.revision) return reconnectNeeded('revision_gap')
+    if (message.baseRevision > activeStream.revision) {
+      return reconnectNeeded('revision_gap')
+    }
 
     store.setState(changes.data)
     activeStream = { streamId: message.streamId, revision: message.revision }
@@ -138,7 +152,9 @@ export function createRendererStateStore(initialState: RendererState = {}): Rend
     applyStateMessage: (message) => {
       const parsedMessage = StateMessageSchema.safeParse(message)
 
-      if (!parsedMessage.success) return reconnectNeeded('invalid_message')
+      if (!parsedMessage.success) {
+        return reconnectNeeded('invalid_message')
+      }
 
       if ('type' in parsedMessage.data) {
         if (activeStream && parsedMessage.data.streamId !== activeStream.streamId) {
@@ -146,7 +162,9 @@ export function createRendererStateStore(initialState: RendererState = {}): Rend
         }
         return reconnectNeeded('stream_invalidated')
       }
-      if ('state' in parsedMessage.data) return applySnapshot(parsedMessage.data)
+      if ('state' in parsedMessage.data) {
+        return applySnapshot(parsedMessage.data)
+      }
 
       return applyUpdate(parsedMessage.data)
     },

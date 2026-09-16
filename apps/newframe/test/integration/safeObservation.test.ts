@@ -55,12 +55,15 @@ it('projects the paginated local Safe service through public observation capabil
       let attempt = 0;
       attempt < 200 && store.getState().operations['watch-safe']?.operation.status === 'pending';
       attempt++
-    )
+    ) {
       await Bun.sleep(5)
+    }
     const projection = projectRendererState(store.getState(), owner)
     expect(projection.operations['watch-safe'].status).toBe('succeeded')
     const account = projection.accounts[address]
-    if (!('safe' in account) || !account.safe) throw new Error('Wallet projection missing Safe')
+    if (!('safe' in account) || !account.safe) {
+      throw new Error('Wallet projection missing Safe')
+    }
     const deployment = account.safe['31337']
     expect(deployment.configuration.version).toBe('1.5.0')
     expect(deployment.pending).toHaveLength(4)
@@ -79,7 +82,9 @@ it('projects the paginated local Safe service through public observation capabil
     handler.failNext(503, undefined, 2)
     await service.refresh({ type: 'account.refresh', accountId: address, chainId: 31337, force: true })
     const refreshed = projectRendererState(store.getState(), owner).accounts[address]
-    if (!('safe' in refreshed) || !refreshed.safe) throw new Error('Wallet projection lost Safe')
+    if (!('safe' in refreshed) || !refreshed.safe) {
+      throw new Error('Wallet projection lost Safe')
+    }
     const failed = refreshed.safe['31337']
     expect(failed.pending).toEqual(deployment.pending)
     expect(failed.refreshedAt).toBe(deployment.refreshedAt)
@@ -150,8 +155,9 @@ it('ignores a real HTTP refresh response released after Safe removal', async () 
       let attempt = 0;
       attempt < 200 && store.getState().operations['remove-safe']?.operation.status === 'pending';
       attempt++
-    )
+    ) {
       await Bun.sleep(5)
+    }
     expect(store.getState().operations['remove-safe'].operation.status).toBe('succeeded')
     delay = true
     const refreshing = service.refresh({

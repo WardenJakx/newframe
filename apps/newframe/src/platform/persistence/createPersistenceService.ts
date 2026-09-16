@@ -29,13 +29,19 @@ export function createPersistenceService({
     },
 
     start() {
-      if (startPromise) return startPromise
-      if (disposed) return Promise.reject(new Error('Persistence service has been disposed.'))
+      if (startPromise) {
+        return startPromise
+      }
+      if (disposed) {
+        return Promise.reject(new Error('Persistence service has been disposed.'))
+      }
 
       active = true
       startPromise = hydrate()
         .then(() => {
-          if (disposed) return
+          if (disposed) {
+            return
+          }
           cancelScheduledFlush = scheduler.scheduleEvery(flushIntervalMs, () => {
             try {
               adapter.flush()
@@ -57,7 +63,9 @@ export function createPersistenceService({
     },
 
     dispose() {
-      if (disposed) return
+      if (disposed) {
+        return
+      }
 
       disposed = true
       active = false

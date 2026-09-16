@@ -172,14 +172,14 @@ describe('ProfileSelector', () => {
       <ProfileSelector capability={capability} currentProfile='personal' profiles={profiles} />
     )
     await personalUser.click(screen.getByRole('button', { name: 'Select active profile' }))
-    expect((screen.getByRole('button', { name: 'Delete Personal' }) as HTMLButtonElement).disabled).toBe(true)
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Delete Personal' }).disabled).toBe(true)
     cleanup()
 
     const { user: onlyProfileUser } = render(
       <ProfileSelector capability={capability} currentProfile='empty' profiles={[profiles[2]]} />
     )
     await onlyProfileUser.click(screen.getByRole('button', { name: 'Select active profile' }))
-    expect((screen.getByRole('button', { name: 'Delete Empty' }) as HTMLButtonElement).disabled).toBe(true)
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Delete Empty' }).disabled).toBe(true)
   })
 
   it('requires deletion confirmation and leaves the projection responsible for removal', async () => {

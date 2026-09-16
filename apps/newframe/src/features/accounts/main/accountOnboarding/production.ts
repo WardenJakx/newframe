@@ -66,22 +66,28 @@ export function createProductionAccountOnboardingAdapters(
         const signer = external.signers.get(signerId) as
           | (Signer & { loadAccounts(accountCount: number): void })
           | undefined
-        if (signer?.type !== 'ledger') return false
+        if (signer?.type !== 'ledger') {
+          return false
+        }
         signer.loadAccounts(accountCount)
         return true
       },
       async pairLattice(signerId, pairCode) {
-        const signer = external.signers.get(signerId) as
-          | (Signer & { pair?: (value: string) => Promise<void> })
-          | undefined
-        if (signer?.type !== 'lattice' || typeof signer.pair !== 'function') return false
+        const signer = external.signers.get(signerId)
+        if (signer?.type !== 'lattice' || !('pair' in signer) || typeof signer.pair !== 'function') {
+          return false
+        }
         await signer.pair(pairCode)
         return true
       },
       submitTrezorInput(command) {
         const signer = external.signers.get(command.signerId)
-        if (signer?.type !== 'trezor') return false
-        if (command.input === 'pin') external.trezorBridge.pinEntered(command.signerId, command.value)
+        if (signer?.type !== 'trezor') {
+          return false
+        }
+        if (command.input === 'pin') {
+          external.trezorBridge.pinEntered(command.signerId, command.value)
+        }
         if (command.input === 'passphrase') {
           external.trezorBridge.passphraseEntered(command.signerId, command.value)
         }
@@ -95,9 +101,13 @@ export function createProductionAccountOnboardingAdapters(
       async locate() {
         const selection = await openFileDialog()
         const filePath = selection?.filePaths?.[0]
-        if (!filePath) return
+        if (!filePath) {
+          return
+        }
         const parsed = JSON.parse(await readFile(filePath, 'utf8')) as Record<string, unknown>
-        if (![1, 3].includes(Number(parsed.version))) throw new Error('Invalid keystore version')
+        if (![1, 3].includes(Number(parsed.version))) {
+          throw new Error('Invalid keystore version')
+        }
         return parsed
       }
     },
@@ -120,12 +130,16 @@ export function createProductionAccountOnboardingAdapters(
       },
       get: (signerId) => external.signers.get(signerId),
       reload(signerId) {
-        if (!external.signers.get(signerId)) return false
+        if (!external.signers.get(signerId)) {
+          return false
+        }
         external.signers.reload(signerId)
         return true
       },
       remove(signerId) {
-        if (!external.signers.get(signerId)) return false
+        if (!external.signers.get(signerId)) {
+          return false
+        }
         external.signers.remove(signerId)
         return true
       }

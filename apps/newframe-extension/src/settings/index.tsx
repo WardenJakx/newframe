@@ -10,7 +10,9 @@ async function renderSettings() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
   const mmAppear = isSupportedTab(tab) && tab?.id !== undefined ? await getMetaMaskSetting(tab.id) : false
   const root = document.getElementById('root')
-  if (!root) throw new Error('Settings root not found')
+  if (!root) {
+    throw new Error('Settings root not found')
+  }
 
   createRoot(root).render(
     <UIRoot>

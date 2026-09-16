@@ -151,8 +151,11 @@ export function AccountSelectorView({
   const triggerRef = useRef<HTMLDivElement>(null)
   const wasOpen = useRef(false)
   useEffect(() => {
-    if (open) searchRef.current?.focus()
-    else if (wasOpen.current) triggerRef.current?.querySelector<HTMLElement>('[role=button]')?.focus()
+    if (open) {
+      searchRef.current?.focus()
+    } else if (wasOpen.current) {
+      triggerRef.current?.querySelector<HTMLElement>('[role=button]')?.focus()
+    }
     wasOpen.current = open
   }, [open])
   const close = () => onOpenChange(false)

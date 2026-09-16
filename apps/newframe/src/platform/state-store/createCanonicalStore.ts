@@ -36,7 +36,9 @@ export default function createCanonicalStore(storage: PersistStorage<PersistedCa
           merge: mergePersistedState,
           onRehydrateStorage: () => (_state, error) => {
             hydrationError = error
-            if (error) log.error('Canonical state hydration failed', error)
+            if (error) {
+              log.error('Canonical state hydration failed', error)
+            }
           },
           skipHydration: true
         }
@@ -45,7 +47,9 @@ export default function createCanonicalStore(storage: PersistStorage<PersistedCa
   )
 
   const hydrate = () => {
-    if (hydration) return hydration
+    if (hydration) {
+      return hydration
+    }
 
     hydration = Promise.resolve(store.persist.rehydrate()).then(() => {
       if (hydrationError) {

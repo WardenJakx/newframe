@@ -34,7 +34,9 @@ const testFile = /\.(?:test|spec)\.[cm]?[jt]sx?$/
 
 function walk(directory: string): string[] {
   return readdirSync(directory).flatMap((entry) => {
-    if (ignoredDirectories.has(entry)) return []
+    if (ignoredDirectories.has(entry)) {
+      return []
+    }
     const absolute = path.join(directory, entry)
     return statSync(absolute).isDirectory() ? walk(absolute) : [absolute]
   })
@@ -46,14 +48,30 @@ function count(source: string, expression: RegExp) {
 
 function category(relativePath: string) {
   const root = relativePath.split('/')[0]
-  if (relativePath.startsWith('src/preload/')) return 'preload'
-  if (relativePath.startsWith('test/extension/')) return 'renderer'
-  if (relativePath.includes('/renderer/')) return 'renderer'
-  if (relativePath.startsWith('src/app/contracts/') || relativePath.includes('/contract/')) return 'contracts'
-  if (relativePath.includes('/domain/') || relativePath.startsWith('src/shared/domain/')) return 'domain'
-  if (root === 'src') return 'main'
-  if (root === 'scripts') return 'scripts'
-  if (root === 'test') return 'test-support'
+  if (relativePath.startsWith('src/preload/')) {
+    return 'preload'
+  }
+  if (relativePath.startsWith('test/extension/')) {
+    return 'renderer'
+  }
+  if (relativePath.includes('/renderer/')) {
+    return 'renderer'
+  }
+  if (relativePath.startsWith('src/app/contracts/') || relativePath.includes('/contract/')) {
+    return 'contracts'
+  }
+  if (relativePath.includes('/domain/') || relativePath.startsWith('src/shared/domain/')) {
+    return 'domain'
+  }
+  if (root === 'src') {
+    return 'main'
+  }
+  if (root === 'scripts') {
+    return 'scripts'
+  }
+  if (root === 'test') {
+    return 'test-support'
+  }
   return root
 }
 
@@ -135,7 +153,9 @@ if (json) {
   }
 }
 
-if (check && misplacedScenarios.length > 0) process.exitCode = 1
+if (check && misplacedScenarios.length > 0) {
+  process.exitCode = 1
+}
 
 if (check) {
   type AuditBaseline = {

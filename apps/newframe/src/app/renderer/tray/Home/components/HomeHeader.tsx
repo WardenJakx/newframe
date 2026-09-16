@@ -37,7 +37,9 @@ export function HomeHeader({ capability }: { capability: Pick<HomeCapability, 'c
       menuOpen={overlay.type === 'menu'}
       name={name}
       onCopy={() => {
-        if (!account) return
+        if (!account) {
+          return
+        }
         clearTimeout(timer.current)
         void capability.copyText({ text: account.address })
         setCopied(true)

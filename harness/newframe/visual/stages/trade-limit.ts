@@ -63,7 +63,9 @@ export const tradeLimitStage: VisualStage = {
     }
 
     const orderId = order.orderId
-    if (!orderId) return driver.fail('The new limit Flash order has no order id')
+    if (!orderId) {
+      return driver.fail('The new limit Flash order has no order id')
+    }
     const terminalState = await driver.waitForState(
       (state) => {
         const status = state.operations?.[limitOperationId]?.operation?.status

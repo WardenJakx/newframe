@@ -24,7 +24,9 @@ function createRequestContinuations() {
     },
     respond(requestId: string, response: RPCResponsePayload) {
       const callback = pending.get(requestId)
-      if (!callback) return false
+      if (!callback) {
+        return false
+      }
       pending.delete(requestId)
       callback(response)
       return true
@@ -55,7 +57,9 @@ function createProviderFixture(chainId?: number, start = false) {
     reveal: { resolveEntityType: async () => 'unknown' },
     requests
   })
-  if (start) provider.start()
+  if (start) {
+    provider.start()
+  }
   return { connection, provider, proxy, requests }
 }
 

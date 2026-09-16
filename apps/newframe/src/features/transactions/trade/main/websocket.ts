@@ -42,7 +42,9 @@ export class FlashOrderStream {
   constructor(private readonly options: FlashOrderStreamOptions) {}
 
   start() {
-    if (!this.stopped) return
+    if (!this.stopped) {
+      return
+    }
 
     this.stopped = false
     this.terminal = false
@@ -50,21 +52,29 @@ export class FlashOrderStream {
   }
 
   stop() {
-    if (this.stopped) return
+    if (this.stopped) {
+      return
+    }
 
     this.stopped = true
     this.terminal = true
-    if (this.reconnectTimer) clearTimeout(this.reconnectTimer)
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer)
+    }
     this.reconnectTimer = undefined
     this.setAvailable(false)
 
     const socket = this.socket
     this.socket = undefined
-    if (socket && socket.readyState < WebSocket.CLOSING) socket.close()
+    if (socket && socket.readyState < WebSocket.CLOSING) {
+      socket.close()
+    }
   }
 
   private connect() {
-    if (this.stopped || this.terminal) return
+    if (this.stopped || this.terminal) {
+      return
+    }
 
     let socket: WebSocket
     try {
@@ -78,7 +88,9 @@ export class FlashOrderStream {
     this.socket = socket
 
     socket.on('open', () => {
-      if (this.stopped || socket !== this.socket) return
+      if (this.stopped || socket !== this.socket) {
+        return
+      }
 
       this.attempts = 0
       socket.send(
@@ -99,7 +111,9 @@ export class FlashOrderStream {
     })
 
     socket.on('message', (message) => {
-      if (this.stopped || socket !== this.socket) return
+      if (this.stopped || socket !== this.socket) {
+        return
+      }
 
       try {
         this.handleFrame(JSON.parse(message.toString()))
@@ -113,7 +127,9 @@ export class FlashOrderStream {
     })
 
     socket.on('close', () => {
-      if (socket !== this.socket) return
+      if (socket !== this.socket) {
+        return
+      }
 
       this.socket = undefined
       this.setAvailable(false)
@@ -137,7 +153,9 @@ export class FlashOrderStream {
     ) {
       this.orderQueue = this.orderQueue
         .then(() => {
-          if (this.stopped) return
+          if (this.stopped) {
+            return
+          }
           return this.options.onOrders(frame.type, frame.orders)
         })
         .then(() => undefined)
@@ -145,7 +163,9 @@ export class FlashOrderStream {
       return
     }
 
-    if (frame.type !== 'error') return
+    if (frame.type !== 'error') {
+      return
+    }
 
     const error = new Error(
       `Flash WebSocket ${String(frame.code || 'ERROR')}: ${String(frame.message || '')}`
@@ -167,14 +187,18 @@ export class FlashOrderStream {
   }
 
   private setAvailable(available: boolean) {
-    if (this.available === available) return
+    if (this.available === available) {
+      return
+    }
 
     this.available = available
     this.options.onAvailabilityChange?.(available)
   }
 
   private scheduleReconnect() {
-    if (this.stopped || this.terminal || this.reconnectTimer) return
+    if (this.stopped || this.terminal || this.reconnectTimer) {
+      return
+    }
 
     const backoff = Math.min(RETRY_MAX_MS, RETRY_BASE_MS * 2 ** this.attempts++)
     const random = this.options.random || Math.random

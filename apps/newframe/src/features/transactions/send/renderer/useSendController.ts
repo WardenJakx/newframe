@@ -57,7 +57,9 @@ export function useSendController({
 
   React.useEffect(() => {
     const accountId = currentAccount?.id || ''
-    if (previousAccountIdRef.current === accountId) return
+    if (previousAccountIdRef.current === accountId) {
+      return
+    }
 
     previousAccountIdRef.current = accountId
     const retainedAsset =
@@ -66,7 +68,9 @@ export function useSendController({
       balanceSummaries[0] ||
       null
     queueMicrotask(() => {
-      if ((currentAccount?.id || '') !== accountId) return
+      if ((currentAccount?.id || '') !== accountId) {
+        return
+      }
       setActiveSubmission(null)
       dispatch({
         type: 'accountChanged',
@@ -107,11 +111,15 @@ export function useSendController({
         amount: amount!.toString(),
         recipient
       })
-      if (submissionRef.current?.operationId !== operationId || response.ok) return
+      if (submissionRef.current?.operationId !== operationId || response.ok) {
+        return
+      }
       setActiveSubmission(null)
       dispatch({ type: 'validationFailed', error: response.message || 'Transaction failed.' })
     } catch {
-      if (submissionRef.current?.operationId !== operationId) return
+      if (submissionRef.current?.operationId !== operationId) {
+        return
+      }
       setActiveSubmission(null)
       dispatch({ type: 'validationFailed', error: 'Transaction failed.' })
     }
@@ -199,7 +207,9 @@ export function useSendController({
     onSelectAsset: (selectedAssetKey) => dispatch({ type: 'selectAsset', selectedAssetKey }),
     onSelectRecipient: (recipient) => dispatch({ type: 'selectRecipient', recipient }),
     onSetMax: () => {
-      if (!asset) return
+      if (!asset) {
+        return
+      }
       dispatch({
         type: 'setMaxAmount',
         amount: formatUnits(toBigInt(asset.balance) || 0n, asset.decimals)

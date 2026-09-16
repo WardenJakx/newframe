@@ -25,7 +25,9 @@ it('settles reads when the RPC times out or the caller aborts', async () => {
     const rpc = createSafeSimulationRpc({ send: () => undefined }, { timeoutMs: 5 })
     const controller = new AbortController()
     const pending = rpc.request(1, 'eth_chainId', [], controller.signal)
-    if (reason === 'abort') controller.abort(new Error('Cancelled'))
+    if (reason === 'abort') {
+      controller.abort(new Error('Cancelled'))
+    }
     expect(pending).rejects.toThrow(reason === 'timeout' ? 'timed out' : 'Cancelled')
     rpc.dispose()
   }

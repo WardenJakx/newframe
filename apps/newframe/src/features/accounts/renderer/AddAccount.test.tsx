@@ -185,7 +185,9 @@ it('keeps drafts local and follows projected onboarding and hardware session sta
     value: 'PAIR-SECRET'
   })
   expect(screen.queryByText('GridPlus paired')).toBeNull()
-  if (!('actionId' in latticePair)) throw new Error('Expected pairing input')
+  if (!('actionId' in latticePair)) {
+    throw new Error('Expected pairing input')
+  }
   publish(operation(latticePair.actionId, 'signer.session-input.pair-code', 'succeeded'))
   expect(await screen.findByText('GridPlus paired')).toBeTruthy()
 

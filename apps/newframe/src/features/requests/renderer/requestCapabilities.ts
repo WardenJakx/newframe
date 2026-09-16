@@ -101,7 +101,9 @@ export function createRequestRendererCapabilities(host: RequestHost): RequestRen
       confirm: (input) => host.executeCommand({ type: 'request.approve', ...input }),
       confirmationStatus: async (input) => {
         const result = await host.executeQuery({ type: 'safe.confirmation-status', ...input })
-        if ('status' in result) return result
+        if ('status' in result) {
+          return result
+        }
         throw new Error(result.message || 'Could not load confirmation status.')
       },
       simulate: async (input) => {

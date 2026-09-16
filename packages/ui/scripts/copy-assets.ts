@@ -33,4 +33,6 @@ export async function copyAssets() {
   )
 }
 
-if (path.resolve(process.argv[1] || '') === path.resolve(import.meta.filename)) await copyAssets()
+if (path.resolve(process.argv[1] || '') === path.resolve(import.meta.filename)) {
+  await copyAssets()
+}

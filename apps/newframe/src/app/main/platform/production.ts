@@ -25,7 +25,9 @@ export function createProductionPlatformAdapters(
       close: external.windows.close,
       handleTrayMouseout: external.windows.handleTrayMouseout,
       inspect: (event, x, y) => {
-        if (process.env.NODE_ENV === 'development') event.sender.inspectElement(x, y)
+        if (process.env.NODE_ENV === 'development') {
+          event.sender.inspectElement(x, y)
+        }
       },
       refocusSideTray: external.windows.refocusSideTray
     }

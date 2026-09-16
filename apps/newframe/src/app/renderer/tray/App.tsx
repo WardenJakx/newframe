@@ -103,7 +103,9 @@ const EMPTY_CRUMB = {}
 const isAppLocked = (appLock: unknown) =>
   !!appLock && typeof appLock === 'object' && 'locked' in appLock && appLock.locked === true
 const errorMessage = (error: unknown) => {
-  if (error && typeof error === 'object' && 'message' in error) return String(error.message)
+  if (error && typeof error === 'object' && 'message' in error) {
+    return String(error.message)
+  }
   return String(error)
 }
 const operationError = (code: string | undefined) =>
@@ -199,7 +201,9 @@ export function Panel(props: PanelProps) {
   }, [props.appLocked, state.submission, unlockOperation?.status])
 
   async function unlockApp() {
-    if (passwordUnlocking) return
+    if (passwordUnlocking) {
+      return
+    }
 
     const password = state.password
     const operationId = crypto.randomUUID()
@@ -211,23 +215,31 @@ export function Panel(props: PanelProps) {
         method: 'password',
         password
       })
-      if (!result.ok) throw new Error(result.message || 'Could not unlock Newframe')
+      if (!result.ok) {
+        throw new Error(result.message || 'Could not unlock Newframe')
+      }
     } catch (error) {
       setState({ submission: null, unlockError: errorMessage(error) })
     }
   }
 
   async function unlockWithBiometrics() {
-    if (biometricUnlocking || !state.biometricAvailable) return
+    if (biometricUnlocking || !state.biometricAvailable) {
+      return
+    }
 
     const biometrics = state.biometrics
-    if (!biometrics?.enabled) return
+    if (!biometrics?.enabled) {
+      return
+    }
 
     setState({ biometricPrompting: biometrics.method === 'webauthn', unlockError: '' })
 
     try {
       if (biometrics.method === 'webauthn') {
-        if (!biometrics.credential) throw new Error('Biometric credential is unavailable')
+        if (!biometrics.credential) {
+          throw new Error('Biometric credential is unavailable')
+        }
         const secret = await biometricRuntime.getSecret(biometrics.credential)
         const operationId = crypto.randomUUID()
         setState({
@@ -239,12 +251,16 @@ export function Panel(props: PanelProps) {
           method: 'webauthn',
           secret
         })
-        if (!result.ok) throw new Error(result.message || 'Could not unlock Newframe')
+        if (!result.ok) {
+          throw new Error(result.message || 'Could not unlock Newframe')
+        }
       } else if (biometrics.method === 'native') {
         const operationId = crypto.randomUUID()
         setState({ submission: { operationId, method: 'native' } })
         const result = await props.security.unlock({ operationId, method: 'native' })
-        if (!result.ok) throw new Error(result.message || 'Could not unlock Newframe')
+        if (!result.ok) {
+          throw new Error(result.message || 'Could not unlock Newframe')
+        }
       } else {
         throw new Error('Biometric unlock is not configured')
       }
@@ -268,7 +284,9 @@ export function Panel(props: PanelProps) {
     async function refreshBiometricsState() {
       try {
         const status = await props.security.status({})
-        if (!status.ok) throw new Error(status.message || 'Could not read biometric configuration')
+        if (!status.ok) {
+          throw new Error(status.message || 'Could not read biometric configuration')
+        }
 
         const biometrics: BiometricsState = status.biometrics
         const biometricAvailable =

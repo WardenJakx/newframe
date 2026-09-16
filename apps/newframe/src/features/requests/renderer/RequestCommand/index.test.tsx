@@ -128,9 +128,7 @@ it.each([
   const props = createProps(false, req, false)
   render(<RequestCommand {...props} />)
 
-  expect((screen.getByRole('button', { name: 'No signer attached' }) as HTMLButtonElement).disabled).toBe(
-    true
-  )
+  expect(screen.getByRole<HTMLButtonElement>('button', { name: 'No signer attached' }).disabled).toBe(true)
   expect(props.notify).not.toHaveBeenCalled()
 })
 

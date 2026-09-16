@@ -20,7 +20,9 @@ export function createRendererStateFixture({
   projection
 }: RendererStateFixtureOptions = {}) {
   const state = createRendererStateStore(initialState)
-  if (projection) state.beginStateConnection(projection)
+  if (projection) {
+    state.beginStateConnection(projection)
+  }
   return state
 }
 
@@ -34,7 +36,9 @@ export function installRendererStateFixture(state: RendererStateStore) {
   const previous = installedRendererState
   installedRendererState = state
   return () => {
-    if (installedRendererState === state) installedRendererState = previous
+    if (installedRendererState === state) {
+      installedRendererState = previous
+    }
   }
 }
 

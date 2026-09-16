@@ -223,7 +223,9 @@ describe('setting token details', () => {
 
     await user.click(screen.getByRole('button', { name: 'Add Token' }))
     const firstCommand = commandCalls().at(-1)?.[0]
-    if (firstCommand?.type !== 'token.add') throw new Error('Expected token add command')
+    if (firstCommand?.type !== 'token.add') {
+      throw new Error('Expected token add command')
+    }
     expect(firstCommand).toEqual({
       type: 'token.add',
       operationId: expect.any(String),
@@ -252,7 +254,9 @@ describe('setting token details', () => {
 
     await user.click(screen.getByRole('button', { name: 'Add Token' }))
     const secondCommand = commandCalls().at(-1)?.[0]
-    if (secondCommand?.type !== 'token.add') throw new Error('Expected token add command')
+    if (secondCommand?.type !== 'token.add') {
+      throw new Error('Expected token add command')
+    }
     expect(secondCommand.operationId).not.toBe(firstCommand.operationId)
 
     act(() => {
@@ -277,7 +281,9 @@ describe('setting token details', () => {
 
     await user.click(screen.getByRole('button', { name: 'Add Token' }))
     const thirdCommand = commandCalls().at(-1)?.[0]
-    if (thirdCommand?.type !== 'token.add') throw new Error('Expected token add command')
+    if (thirdCommand?.type !== 'token.add') {
+      throw new Error('Expected token add command')
+    }
     expect(thirdCommand.operationId).not.toBe(secondCommand.operationId)
     expect(onDone.mock.calls.length).toBe(0)
 

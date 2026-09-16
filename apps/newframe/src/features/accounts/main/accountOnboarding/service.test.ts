@@ -270,7 +270,7 @@ it('owns account creation and authorized hardware sessions while keeping all onb
     remove: mock()
   }
   const production = createProductionAccountOnboardingAdapters({
-    signers: callbacks as never,
+    signers: callbacks,
     store: { getState: () => ({ updateLattice: mock() }) },
     trezorBridge: {
       pinEntered: mock(),

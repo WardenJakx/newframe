@@ -15,13 +15,17 @@ export function createNetworkService(ports: NetworkServicePorts) {
     remove(chainId: number) {
       const state = ports.store.getState()
       const network = state.main.networks.ethereum[chainId]
-      if (!network || chainId === 1) return false
+      if (!network || chainId === 1) {
+        return false
+      }
       state.removeNetwork(network)
       return true
     },
 
     async setPrimaryRpc(chainId: number, url: string) {
-      if (!ports.store.getState().main.networks.ethereum[chainId]) return false
+      if (!ports.store.getState().main.networks.ethereum[chainId]) {
+        return false
+      }
       if (!(await ports.rpcMatchesChain(url, chainId))) {
         throw new Error('The RPC endpoint returned a different chain ID.')
       }

@@ -15,7 +15,9 @@ export function Receive({
   const account = useWalletSelector((state) => state.accounts?.[accountId])
   const showLocalNameWithENS = useWalletSelector((state) => !!state.showLocalNameWithENS)
 
-  if (!account) return null
+  if (!account) {
+    return null
+  }
   const name = account.ensName && !showLocalNameWithENS ? account.ensName : account.name
   const type = accountDisplayType(account)
 

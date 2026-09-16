@@ -98,8 +98,12 @@ it.each(['session', 'lock'] as const)(
       <SigningHost capability={capability} camera={createQrCameraFake().camera} reference={reference} />
     )
     const stale = state()
-    if (change === 'session') delete stale.signers[reference.signerId].airgapRequest
-    if (change === 'lock') stale.appLock.locked = true
+    if (change === 'session') {
+      delete stale.signers[reference.signerId].airgapRequest
+    }
+    if (change === 'lock') {
+      stale.appLock.locked = true
+    }
     act(() => fixture.state.reset(stale))
     expect(screen.getByText('Signing closed')).toBeTruthy()
     await act(async () => query.resolve({ ok: true, frames: ['late QR'] }))
@@ -134,8 +138,11 @@ it.each(['startup', 'disconnect', 'response'] as const)(
       expect(f.sessions).toHaveLength(1)
     }
     act(() => {
-      if (failure === 'response') f.sessions[0].handlers.onFrame('invalid')
-      else f.sessions[0].handlers.onError(new DOMException('Denied', 'NotAllowedError'))
+      if (failure === 'response') {
+        f.sessions[0].handlers.onFrame('invalid')
+      } else {
+        f.sessions[0].handlers.onError(new DOMException('Denied', 'NotAllowedError'))
+      }
     })
     const scanMessage = failure === 'response' ? 'Invalid signature QR' : /Camera access denied/
     expect((await screen.findByText(scanMessage)).closest('[role="alert"]')).not.toBeNull()

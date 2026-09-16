@@ -38,7 +38,9 @@ export async function waitForElectronPage(
 
   while (Date.now() - started < timeoutMs) {
     const page = app.windows().find((candidate) => candidate.url().includes(urlPart))
-    if (page) return page
+    if (page) {
+      return page
+    }
 
     if (Date.now() - lastLog > 2_500) {
       lastLog = Date.now()
@@ -145,7 +147,9 @@ export class NewframeDriver {
       page.evaluate<OperationResult, unknown>(async (command) => {
         const host = (window as typeof window & { __NEWFRAME_HOST__?: HarnessHost }).__NEWFRAME_HOST__
 
-        if (!host) throw new Error('Newframe host bridge is not available')
+        if (!host) {
+          throw new Error('Newframe host bridge is not available')
+        }
         return host.executeCommand(command as AppCommand)
       }, command),
       `${command.type} command acknowledgement`,
@@ -166,7 +170,9 @@ export class NewframeDriver {
     const result = await page.evaluate<OperationResult, unknown>(async (query) => {
       const host = (window as typeof window & { __NEWFRAME_HOST__?: HarnessHost }).__NEWFRAME_HOST__
 
-      if (!host) throw new Error('Newframe host bridge is not available')
+      if (!host) {
+        throw new Error('Newframe host bridge is not available')
+      }
       return host.executeQuery(query as AppQuery)
     }, query)
 
@@ -204,7 +210,9 @@ export class NewframeDriver {
   async openSideTrayRoute(route: string) {
     const parsed = new URL(route, 'https://newframe.invalid')
     const feature = parsed.pathname.slice(1)
-    if (feature !== 'send' && feature !== 'trade') this.fail(`Unsupported side tray route: ${route}`)
+    if (feature !== 'send' && feature !== 'trade') {
+      this.fail(`Unsupported side tray route: ${route}`)
+    }
 
     const assetId = parsed.searchParams.get('assetId') || undefined
     const chainIdValue = parsed.searchParams.get('chainId')
@@ -240,13 +248,17 @@ export class NewframeDriver {
             }
           ).__NEWFRAME_VISUAL_HARNESS_GET_STATE__
 
-          if (!getState) throw new Error('Visual harness canonical-state getter is unavailable')
+          if (!getState) {
+            throw new Error('Visual harness canonical-state getter is unavailable')
+          }
           return getState()
         })
       } catch (error) {
         lastError = error
         const message = error instanceof Error ? error.message : String(error)
-        if (!message.includes('Execution context was destroyed')) throw error
+        if (!message.includes('Execution context was destroyed')) {
+          throw error
+        }
         await sleep(100)
       }
     }
@@ -264,7 +276,9 @@ export class NewframeDriver {
 
     while (Date.now() - started < timeoutMs) {
       latest = await this.getAppState()
-      if (predicate(latest)) return latest
+      if (predicate(latest)) {
+        return latest
+      }
       await sleep(250)
     }
 
@@ -273,7 +287,9 @@ export class NewframeDriver {
 
   currentRequest(state: AppState): CurrentRequest | undefined {
     const crumb = state.windows?.panel?.nav?.[0]
-    if (crumb?.view !== 'requestView') return undefined
+    if (crumb?.view !== 'requestView') {
+      return undefined
+    }
 
     const accountId = crumb.data?.accountId || ''
     const requestId = crumb.data?.requestId || ''
@@ -287,8 +303,12 @@ export class NewframeDriver {
     const state = await this.waitForState(
       (candidate) => {
         const request = this.currentRequest(candidate)
-        if (!request || request.type !== type) return false
-        if (excludeIds.has(request.handlerId)) return false
+        if (!request || request.type !== type) {
+          return false
+        }
+        if (excludeIds.has(request.handlerId)) {
+          return false
+        }
         return !finalRequestStatuses.has(String(request.status || '').toLowerCase())
       },
       timeoutMs,
@@ -296,7 +316,9 @@ export class NewframeDriver {
     )
 
     const request = this.currentRequest(state)
-    if (!request) return this.fail(`Timed out waiting for current ${type} request`)
+    if (!request) {
+      return this.fail(`Timed out waiting for current ${type} request`)
+    }
     return request
   }
 
@@ -305,7 +327,9 @@ export class NewframeDriver {
       (state) => {
         const accounts = Object.values(state.main?.accounts || {})
         const request = accounts.map((account) => account.requests?.[handlerId]).find(Boolean)
-        if (!request) return true
+        if (!request) {
+          return true
+        }
         const status = String(request.status || '').toLowerCase()
         return Boolean(request.notice || request.tx?.hash || (status && status !== 'pending'))
       },
@@ -327,8 +351,12 @@ export class NewframeDriver {
       )
     })
 
-    if (!harness) this.fail(`Reused profile is missing seeded harness account ${harnessAccountAddress}`)
-    if (!vitalik) this.fail('Reused profile is missing an account displayed as vitalik.eth')
+    if (!harness) {
+      this.fail(`Reused profile is missing seeded harness account ${harnessAccountAddress}`)
+    }
+    if (!vitalik) {
+      this.fail('Reused profile is missing an account displayed as vitalik.eth')
+    }
 
     return {
       harness: {
@@ -356,7 +384,9 @@ export class NewframeDriver {
     const row = dialog.getByRole('button', { name: new RegExp(escapedName, 'i') }).first()
     await row.waitFor({ state: 'visible', timeout: 10_000 })
 
-    if (screenshotName) await this.screenshot(this.tray, screenshotName)
+    if (screenshotName) {
+      await this.screenshot(this.tray, screenshotName)
+    }
 
     await row.click()
 
@@ -445,7 +475,9 @@ export class NewframeDriver {
 
   async maybeProceedWarning(filename: string) {
     const proceed = this.tray.getByText('Proceed', { exact: true }).last()
-    if (!(await proceed.isVisible({ timeout: 750 }).catch(() => false))) return false
+    if (!(await proceed.isVisible({ timeout: 750 }).catch(() => false))) {
+      return false
+    }
 
     await this.screenshot(this.tray, filename)
     await proceed.click()
@@ -464,7 +496,9 @@ export class NewframeDriver {
 
     // Warning policy now advances in main and projects one exact canonical gate at a time.
     for (const filename of warningScreenshots) {
-      if (!(await this.maybeProceedWarning(filename))) break
+      if (!(await this.maybeProceedWarning(filename))) {
+        break
+      }
     }
     await this.waitForRequestStatus(request.handlerId)
     await this.screenshot(this.tray, submittedScreenshot)
@@ -479,14 +513,18 @@ export class NewframeDriver {
   async clearPanelAndOverlays() {
     for (let attempt = 0; attempt < 10; attempt += 1) {
       const accountBack = this.tray.locator('.accountViewBack').first()
-      if (!(await accountBack.isVisible({ timeout: 250 }).catch(() => false))) break
+      if (!(await accountBack.isVisible({ timeout: 250 }).catch(() => false))) {
+        break
+      }
       await accountBack.click()
       await sleep(150)
     }
 
     for (let attempt = 0; attempt < 3; attempt += 1) {
       const backToPositions = this.tray.getByRole('button', { name: 'Back to positions' })
-      if (!(await backToPositions.isVisible({ timeout: 500 }).catch(() => false))) break
+      if (!(await backToPositions.isVisible({ timeout: 500 }).catch(() => false))) {
+        break
+      }
       await backToPositions.click()
       await sleep(300)
     }
@@ -568,7 +606,9 @@ export class NewframeDriver {
       }
     })
 
-    if (!colors.side) this.fail('Trade balance slider is missing its direction state')
+    if (!colors.side) {
+      this.fail('Trade balance slider is missing its direction state')
+    }
     if (!colors.accent || colors.accent !== colors.intent) {
       this.fail(
         `Trade ${colors.side} balance slider color (${colors.accent || 'missing'}) does not match its intent (${colors.intent || 'missing'})`
@@ -604,13 +644,17 @@ export class NewframeDriver {
     await page.getByRole('textbox', { name: 'Search tokens' }).fill(assetId)
     const option = page.getByRole('option')
     await option.waitFor({ state: 'visible', timeout: 15_000 })
-    if ((await option.count()) !== 1) this.fail(`Expected one selector option for ${assetId}`)
+    if ((await option.count()) !== 1) {
+      this.fail(`Expected one selector option for ${assetId}`)
+    }
     await option.click()
   }
 
   async ensureTradeSellSide(tradePage: Page) {
     const switchToSell = tradePage.getByRole('button', { name: /Switch to SELL/i })
-    if (await switchToSell.isVisible({ timeout: 1_000 }).catch(() => false)) await switchToSell.click()
+    if (await switchToSell.isVisible({ timeout: 1_000 }).catch(() => false)) {
+      await switchToSell.click()
+    }
     await tradePage.getByLabel('WETH amount', { exact: true }).waitFor({ state: 'visible', timeout: 5_000 })
   }
 }

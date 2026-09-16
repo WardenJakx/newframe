@@ -24,8 +24,12 @@ export default function Main({
   accountSelector?: ReactNode
 }) {
   const { account, current, open } = useWalletSelector(useShallow(selectCurrentAccount))
-  if (!open) return null
-  if (!account) return null
+  if (!open) {
+    return null
+  }
+  if (!account) {
+    return null
+  }
 
   return (
     <Account

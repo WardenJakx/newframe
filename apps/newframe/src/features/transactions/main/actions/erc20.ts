@@ -8,7 +8,6 @@ type Erc20Spend = {
   decimals: number
   name: string
   symbol: string
-  contract: Address
 }
 
 type Erc20Approve = Erc20Spend & {
@@ -18,6 +17,7 @@ type Erc20Approve = Erc20Spend & {
 
 type Erc20Transfer = Erc20Spend & {
   recipient: Identity
+  contract: Address
 }
 
 export type ApproveAction = Action<Erc20Approve>

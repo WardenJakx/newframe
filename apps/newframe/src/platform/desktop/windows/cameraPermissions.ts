@@ -39,7 +39,9 @@ export function installCameraPermissions(
     )
   })
   return () => {
-    if (installations.get(session) !== owner) return
+    if (installations.get(session) !== owner) {
+      return
+    }
     installations.delete(session)
     session.setPermissionCheckHandler(() => false)
     session.setPermissionRequestHandler((_contents, _permission, callback) => callback(false))

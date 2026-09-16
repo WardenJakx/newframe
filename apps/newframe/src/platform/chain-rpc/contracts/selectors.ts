@@ -54,7 +54,9 @@ function normalizeFunctionSignature(signature: string) {
 
 function signatureSelector(signature: string) {
   const normalized = normalizeFunctionSignature(signature)
-  if (!normalized) return
+  if (!normalized) {
+    return
+  }
 
   try {
     const fragment = new Interface([`function ${normalized}`]).fragments[0]
@@ -67,7 +69,9 @@ function signatureSelector(signature: string) {
 function createLocalSignatureMap() {
   return localFunctionSignatures.reduce<Record<string, string[]>>((signaturesBySelector, signature) => {
     const selector = signatureSelector(signature)
-    if (!selector) return signaturesBySelector
+    if (!selector) {
+      return signaturesBySelector
+    }
 
     signaturesBySelector[selector] = signaturesBySelector[selector] || []
     signaturesBySelector[selector].push(signature)
@@ -79,10 +83,14 @@ const localSignaturesBySelector = createLocalSignatureMap()
 
 function getCachedSelectorSignatures(selector: string) {
   const cached = selectorCache[selector]
-  if (!cached) return
+  if (!cached) {
+    return
+  }
 
   const ttl = cached.status === 'success' ? SELECTOR_CACHE_TTL : SELECTOR_ERROR_TTL
-  if (Date.now() - cached.updatedAt > ttl) return
+  if (Date.now() - cached.updatedAt > ttl) {
+    return
+  }
 
   return cached.signatures
 }
@@ -108,12 +116,16 @@ export function getLocalFunctionSelectorSignatures(selector: string) {
 export async function fetchFunctionSelectorSignatures(selector: string) {
   const normalizedSelector = normalizeSelector(selector)
   const cached = getCachedSelectorSignatures(normalizedSelector)
-  if (cached) return cached
+  if (cached) {
+    return cached
+  }
 
   try {
     const url = `${OPENCHAIN_LOOKUP_URL}?function=${normalizedSelector}`
     const response = await fetchWithTimeout(url, {}, 3000)
-    if (!response.ok) throw new Error(`OpenChain lookup failed with status ${response.status}`)
+    if (!response.ok) {
+      throw new Error(`OpenChain lookup failed with status ${response.status}`)
+    }
 
     const body = (await response.json()) as {
       result?: {

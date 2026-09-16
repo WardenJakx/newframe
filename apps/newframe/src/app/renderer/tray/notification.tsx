@@ -24,6 +24,8 @@ export function TrayNotificationProvider({ children }: { children: ReactNode }) 
 
 export function useTrayNotification() {
   const context = useContext(TrayNotificationContext)
-  if (!context) throw new Error('useTrayNotification must be used inside TrayNotificationProvider')
+  if (!context) {
+    throw new Error('useTrayNotification must be used inside TrayNotificationProvider')
+  }
   return context
 }

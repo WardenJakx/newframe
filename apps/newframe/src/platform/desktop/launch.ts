@@ -35,8 +35,11 @@ const linux = {
 
 export const enable = () => {
   try {
-    if (isLinux) linux.enable()
-    else app.setLoginItemSettings({ openAtLogin: true })
+    if (isLinux) {
+      linux.enable()
+    } else {
+      app.setLoginItemSettings({ openAtLogin: true })
+    }
   } catch (e) {
     log.error('Error enabling launch on startup', e)
   }
@@ -44,8 +47,11 @@ export const enable = () => {
 
 export const disable = () => {
   try {
-    if (isLinux) linux.disable()
-    else app.setLoginItemSettings({ openAtLogin: false })
+    if (isLinux) {
+      linux.disable()
+    } else {
+      app.setLoginItemSettings({ openAtLogin: false })
+    }
   } catch (e) {
     log.error('Error disabling launch on startup', e)
   }

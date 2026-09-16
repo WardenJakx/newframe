@@ -21,7 +21,9 @@ export function createPositionGroups({
   selectedChainId: number
 }): PositionGroups {
   const matched = balances.filter((balance) => {
-    if (selectedChainId !== 0 && balance.chainId !== selectedChainId) return false
+    if (selectedChainId !== 0 && balance.chainId !== selectedChainId) {
+      return false
+    }
     const chainName = networks[balance.chainId]?.name || ''
     return matchFilter(query, [chainName, balance.name, balance.symbol])
   })

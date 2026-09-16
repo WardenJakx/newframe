@@ -29,7 +29,9 @@ async function main() {
     frame.close()
   }
 
-  if (!rejected) throw new Error('Expected the unsafe transaction to be rejected')
+  if (!rejected) {
+    throw new Error('Expected the unsafe transaction to be rejected')
+  }
 }
 
 await main()

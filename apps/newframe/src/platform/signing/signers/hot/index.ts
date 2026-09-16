@@ -67,12 +67,18 @@ export const createFromSeed = (
   password: string,
   cb: Callback<Signer>
 ) => {
-  if (!seed) return cb(new Error('Seed required to create hot signer'), undefined)
+  if (!seed) {
+    return cb(new Error('Seed required to create hot signer'), undefined)
+  }
   const vaultKey = acquireVaultKey(vault, password, cb)
-  if (!vaultKey) return
+  if (!vaultKey) {
+    return
+  }
   const signer = new SeedSigner(undefined, vault)
   signer.addSeed(seed, vaultKey, (error) => {
-    if (error) return cb(error, undefined)
+    if (error) {
+      return cb(error, undefined)
+    }
     signers.add(signer)
     cb(null, signer)
   })
@@ -85,12 +91,18 @@ export const createFromPhrase = (
   password: string,
   cb: Callback<Signer>
 ) => {
-  if (!phrase) return cb(new Error('Phrase required to create hot signer'), undefined)
+  if (!phrase) {
+    return cb(new Error('Phrase required to create hot signer'), undefined)
+  }
   const vaultKey = acquireVaultKey(vault, password, cb)
-  if (!vaultKey) return
+  if (!vaultKey) {
+    return
+  }
   const signer = new SeedSigner(undefined, vault)
   signer.addPhrase(phrase, vaultKey, (error) => {
-    if (error) return cb(error, undefined)
+    if (error) {
+      return cb(error, undefined)
+    }
     signers.add(signer)
     cb(null, signer)
   })
@@ -104,12 +116,18 @@ export const createFromPrivateKey = (
   cb: Callback<Signer>
 ) => {
   const privateKeyHex = stripHexPrefix(privateKey)
-  if (!privateKeyHex) return cb(new Error('Private key required to create hot signer'), undefined)
+  if (!privateKeyHex) {
+    return cb(new Error('Private key required to create hot signer'), undefined)
+  }
   const vaultKey = acquireVaultKey(vault, password, cb)
-  if (!vaultKey) return
+  if (!vaultKey) {
+    return
+  }
   const signer = new RingSigner(undefined, vault)
   signer.addPrivateKey(privateKeyHex, vaultKey, (error) => {
-    if (error) return cb(error, undefined)
+    if (error) {
+      return cb(error, undefined)
+    }
     signers.add(signer)
     cb(null, signer)
   })
@@ -123,13 +141,21 @@ export const createFromKeystore = (
   password: string,
   cb: Callback<Signer>
 ) => {
-  if (!keystore) return cb(new Error('Keystore required'), undefined)
-  if (!keystorePassword) return cb(new Error('Keystore password required'), undefined)
+  if (!keystore) {
+    return cb(new Error('Keystore required'), undefined)
+  }
+  if (!keystorePassword) {
+    return cb(new Error('Keystore password required'), undefined)
+  }
   const vaultKey = acquireVaultKey(vault, password, cb)
-  if (!vaultKey) return
+  if (!vaultKey) {
+    return
+  }
   const signer = new RingSigner(undefined, vault)
   signer.addKeystore(keystore, keystorePassword, vaultKey, (error) => {
-    if (error) return cb(error, undefined)
+    if (error) {
+      return cb(error, undefined)
+    }
     signers.add(signer)
     cb(null, signer)
   })
@@ -162,7 +188,9 @@ export const load = (signers: SignerCollection, vault: VaultAccess) => {
         log.warn(`Skipping hot signer record with an invalid fingerprint: ${file}`)
         continue
       }
-      if (!signers.exists(record.id)) signers.add(signer)
+      if (!signers.exists(record.id)) {
+        signers.add(signer)
+      }
     } catch {
       log.warn(`Skipping unsupported or malformed hot signer record: ${file}`)
     }

@@ -32,7 +32,7 @@ function cameraFixture() {
   const qr = QRCode.create('public QR fixture', { errorCorrectionLevel: 'M' })
   const width = (qr.modules.size + 8) * 6
   const data = new Uint8ClampedArray(width * width * 4)
-  for (let y = 0; y < width; y++)
+  for (let y = 0; y < width; y++) {
     for (let x = 0; x < width; x++) {
       const row = Math.floor(y / 6) - 4
       const col = Math.floor(x / 6) - 4
@@ -42,6 +42,7 @@ function cameraFixture() {
       data.fill(black ? 0 : 255, offset, offset + 3)
       data[offset + 3] = 255
     }
+  }
   const canvas = {
     width: 0,
     height: 0,
@@ -87,7 +88,9 @@ function cameraFixture() {
 }
 
 const flush = async () => {
-  for (let i = 0; i < 8; i++) await Promise.resolve()
+  for (let i = 0; i < 8; i++) {
+    await Promise.resolve()
+  }
 }
 
 it('does not request permission when stopped before acquisition starts', async () => {
@@ -161,7 +164,9 @@ it.each([false, true])('waits for playback before reporting ready, cancelled=%s'
   await flush()
   expect(f.ready()).toBe(0)
   expect(f.frames).toEqual([])
-  if (cancelled) f.session.stop()
+  if (cancelled) {
+    f.session.stop()
+  }
   playing()
   await flush()
   expect(f.ready()).toBe(cancelled ? 0 : 1)

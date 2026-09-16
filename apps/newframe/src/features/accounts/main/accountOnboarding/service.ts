@@ -62,11 +62,18 @@ type OnboardingOperationCommand =
   | SignerRefreshCommand
   | HardwareInputCommand
 const operationType = (command: OnboardingOperationCommand) => {
-  if (command.type === 'account.create')
+  if (command.type === 'account.create') {
     return command.source === 'watch' ? 'account.watch-add' : 'account.add-from-signer'
-  if (command.type === 'signer.import') return `signer.import.${command.source}`
-  if (command.type === 'signer.refresh') return 'signer.accounts-load'
-  if (command.type === 'signer.session-input') return `signer.session-input.${command.input}`
+  }
+  if (command.type === 'signer.import') {
+    return `signer.import.${command.source}`
+  }
+  if (command.type === 'signer.refresh') {
+    return 'signer.accounts-load'
+  }
+  if (command.type === 'signer.session-input') {
+    return `signer.session-input.${command.input}`
+  }
   return command.type
 }
 
@@ -112,10 +119,15 @@ export function createAccountOnboardingService(ports: AccountOnboardingPorts): A
   })
 
   const failureType = (command: OnboardingOperationCommand) => {
-    if (command.type === 'account.create') return operationType(command)
-    if (command.type === 'signer.refresh') return 'signer.ledger-accounts-load'
-    if (command.type === 'signer.session-input')
+    if (command.type === 'account.create') {
+      return operationType(command)
+    }
+    if (command.type === 'signer.refresh') {
+      return 'signer.ledger-accounts-load'
+    }
+    if (command.type === 'signer.session-input') {
       return command.input === 'pair-code' ? 'signer.lattice-pair' : 'signer.trezor-input'
+    }
     return command.type
   }
   const run = (
@@ -128,7 +140,9 @@ export function createAccountOnboardingService(ports: AccountOnboardingPorts): A
     entityRefs?: OperationEntityRef[],
     keepPending = false
   ) => {
-    if (ports.operations.lookup(operationReference)) return true
+    if (ports.operations.lookup(operationReference)) {
+      return true
+    }
     try {
       ports.operations.start({ ...operationReference, phase, ...(entityRefs ? { entityRefs } : {}) })
     } catch {
@@ -137,8 +151,12 @@ export function createAccountOnboardingService(ports: AccountOnboardingPorts): A
     const runOperation = async () => {
       try {
         const result = await execute()
-        if (result.entityRefs) ports.operations.advance(operationReference, result)
-        if (!keepPending) ports.operations.complete(operationReference, result.phase)
+        if (result.entityRefs) {
+          ports.operations.advance(operationReference, result)
+        }
+        if (!keepPending) {
+          ports.operations.complete(operationReference, result.phase)
+        }
       } catch {
         ports.operations.fail(operationReference, safeFailure[failure], 'failed')
       }
@@ -194,14 +212,18 @@ export function createAccountOnboardingService(ports: AccountOnboardingPorts): A
     execute: () => Promise<boolean> | boolean
   ) => {
     const session = ownedSession(command.operationId, command.signerId, owner)
-    if (!session) return false
+    if (!session) {
+      return false
+    }
     return run(
       reference(command, owner),
       phase,
       failureType(command),
       async () => {
         try {
-          if (!(await execute())) throw new Error('Hardware action was rejected')
+          if (!(await execute())) {
+            throw new Error('Hardware action was rejected')
+          }
           ports.operations.advance(session, { phase })
           return { phase: 'accepted' }
         } catch (error) {
@@ -215,7 +237,9 @@ export function createAccountOnboardingService(ports: AccountOnboardingPorts): A
 
   const addAndSelect = async (address: string, name: string, signerType: string) => {
     const accountId = address.toLowerCase()
-    if (!ports.accounts.get(accountId)) ports.accounts.add(address, name, { type: signerType })
+    if (!ports.accounts.get(accountId)) {
+      ports.accounts.add(address, name, { type: signerType })
+    }
     await ports.accounts.select(accountId)
     return accountId
   }
@@ -223,9 +247,13 @@ export function createAccountOnboardingService(ports: AccountOnboardingPorts): A
   return {
     async exportPrivateKey(accountId) {
       const account = ports.accounts.get(accountId) as { address?: string } | undefined
-      if (!account?.address) return
+      if (!account?.address) {
+        return
+      }
       const secret = await ports.secrets.exportPrivateKey(account.address)
-      if (secret.type !== 'privateKey') throw new Error('Private key was not returned')
+      if (secret.type !== 'privateKey') {
+        throw new Error('Private key was not returned')
+      }
       return secret.value
     },
     generateSeedPhrase: () => ports.secrets.generateSeedPhrase(),
@@ -244,8 +272,9 @@ export function createAccountOnboardingService(ports: AccountOnboardingPorts): A
               : isAddress(command.addressOrName)
                 ? command.addressOrName
                 : await ports.nameResolution.resolve(command.addressOrName)
-          if (!address || !isAddress(address) || (command.source === 'signer' && !signer))
+          if (!address || !isAddress(address) || (command.source === 'signer' && !signer)) {
             throw new Error('Account not found')
+          }
           const name = signer ? `${capitalize(getSignerDisplayType(signer.type))} Account` : 'Watch Account'
           const accountId = await addAndSelect(address, command.name || name, signer?.type || 'Address')
           return {
@@ -260,13 +289,17 @@ export function createAccountOnboardingService(ports: AccountOnboardingPorts): A
     },
     disconnect(command, owner) {
       return run(reference(command, owner), 'disconnecting', failureType(command), () => {
-        if (!ports.signers.remove(command.signerId)) throw new Error('Signer not found')
+        if (!ports.signers.remove(command.signerId)) {
+          throw new Error('Signer not found')
+        }
         return { phase: 'disconnected', entityRefs: [{ type: 'signer', id: command.signerId }] }
       })
     },
     finishSession(command, owner) {
       const session = ownedSession(command.operationId, command.signerId, owner)
-      if (!session) return false
+      if (!session) {
+        return false
+      }
       if (
         command.outcome === 'ready' &&
         ports.signers.get(command.signerId)?.status?.toLowerCase() !== 'ok'
@@ -277,7 +310,7 @@ export function createAccountOnboardingService(ports: AccountOnboardingPorts): A
       return true
     },
     importSigner(command, owner) {
-      if (command.source === 'lattice')
+      if (command.source === 'lattice') {
         return startSession(
           command.operationId,
           undefined,
@@ -286,10 +319,13 @@ export function createAccountOnboardingService(ports: AccountOnboardingPorts): A
           'signer.lattice-create',
           () => ports.hardware.configureLattice(command.deviceId, command.deviceName)
         )
+      }
       return run(reference(command, owner), 'importing', failureType(command), async () => {
         const signer = await ports.signers.create(command)
         const address = signer.addresses[0]
-        if (!address) throw new Error('No account address was created')
+        if (!address) {
+          throw new Error('No account address was created')
+        }
         const accountId = await addAndSelect(address, command.accountName || 'Hot Account', signer.type)
         return {
           phase: 'selected',
@@ -301,7 +337,7 @@ export function createAccountOnboardingService(ports: AccountOnboardingPorts): A
       })
     },
     refresh(command, owner) {
-      if (command.accountCount === undefined)
+      if (command.accountCount === undefined) {
         return startSession(
           command.operationId,
           command.signerId,
@@ -313,9 +349,12 @@ export function createAccountOnboardingService(ports: AccountOnboardingPorts): A
             return command.signerId
           }
         )
+      }
       const accountCount = command.accountCount
       return run(reference(command, owner), 'deriving', failureType(command), () => {
-        if (!ports.hardware.loadAccounts(command.signerId, accountCount)) throw new Error('Signer not found')
+        if (!ports.hardware.loadAccounts(command.signerId, accountCount)) {
+          throw new Error('Signer not found')
+        }
         return { phase: 'requested', entityRefs: [{ type: 'signer', id: command.signerId }] }
       })
     },
@@ -337,10 +376,11 @@ export function createAccountOnboardingService(ports: AccountOnboardingPorts): A
       )
     },
     sessionInput(command, owner) {
-      if (command.input === 'pair-code')
+      if (command.input === 'pair-code') {
         return runHardwareAction(command, owner, 'pairing', () =>
           ports.hardware.pairLattice(command.signerId, command.value)
         )
+      }
       const phase =
         command.input === 'pin'
           ? 'pin_submitted'

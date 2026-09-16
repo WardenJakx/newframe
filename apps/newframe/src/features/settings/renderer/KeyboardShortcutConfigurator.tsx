@@ -28,7 +28,9 @@ const KeyboardShortcutConfigurator = ({
   const { modifierKeys, shortcutKey } = getDisplayShortcut(normalizedPlatform, shortcut)
 
   useEffect(() => {
-    if (!shortcut.configuring) return
+    if (!shortcut.configuring) {
+      return
+    }
 
     hotkeys('*', { capture: true }, (event: KeyboardEvent) => {
       event.preventDefault()

@@ -8,13 +8,17 @@ export function createBindablePersistenceStorage(): BindablePersistenceStorage {
   let target: PersistenceStoragePort | undefined
 
   const current = () => {
-    if (!target) throw new Error('Canonical persistence storage has not been configured.')
+    if (!target) {
+      throw new Error('Canonical persistence storage has not been configured.')
+    }
     return target
   }
 
   return {
     bind(storage) {
-      if (target) throw new Error('Canonical persistence storage has already been configured.')
+      if (target) {
+        throw new Error('Canonical persistence storage has already been configured.')
+      }
       assertPersistenceStoragePort(storage)
       target = storage
     },

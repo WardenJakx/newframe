@@ -6,12 +6,13 @@ import log from 'electron-log'
 import type { TypedData } from '../../../../../features/requests/contract/requests.js'
 import type { TransactionData } from '../../../../../features/transactions/domain/index.js'
 import { sign } from '../../../../../features/transactions/main/index.js'
-import { Derivation, getDerivationPath, deriveHDAccounts } from '../../Signer/derive.js'
+import type { Derivation } from '../../Signer/derive.js'
+import { getDerivationPath, deriveHDAccounts } from '../../Signer/derive.js'
 import { LedgerEthereumApp as Eth } from '../dependencies.js'
 import { DeviceError } from './index.js'
 
 type EthInstance = InstanceType<(typeof import('@ledgerhq/hw-app-eth'))['default']>
-type TransportInstance = InstanceType<(typeof import('@ledgerhq/hw-transport'))['default']>
+type TransportInstance = ConstructorParameters<typeof Eth>[0]
 
 export default class LedgerEthereumApp {
   private eth: EthInstance
@@ -33,7 +34,9 @@ export default class LedgerEthereumApp {
       try {
         const result = await this.getAddress(path, false, true)
         deriveHDAccounts(result.publicKey, result.chainCode || '', (err, addresses) => {
-          if (err) return reject(err)
+          if (err) {
+            return reject(err)
+          }
           resolve(addresses as string[])
         })
       } catch (err) {

@@ -85,7 +85,9 @@ function changedTopLevelSlices(previous: RendererState, current: RendererState) 
   const changes: RendererState = {}
 
   for (const [key, value] of Object.entries(current)) {
-    if (previous[key] !== value) changes[key] = value
+    if (previous[key] !== value) {
+      changes[key] = value
+    }
   }
 
   return changes
@@ -124,7 +126,9 @@ export function createStateStream({
     } catch (error) {
       connections.delete(connection.webContents.id)
       log.error('Failed to publish renderer state message', error)
-      if (!connection.webContents.isDestroyed()) connection.webContents.reload()
+      if (!connection.webContents.isDestroyed()) {
+        connection.webContents.reload()
+      }
       return false
     }
   }
@@ -141,7 +145,9 @@ export function createStateStream({
       windowInstanceId: context.windowInstanceId
     })
     const snapshotState = validatedSnapshot(context.clientType, projection)
-    if (!snapshotState) return { ok: false, error: 'state_unavailable' } as const
+    if (!snapshotState) {
+      return { ok: false, error: 'state_unavailable' } as const
+    }
 
     const connection: Connection = {
       role: context.clientType,
@@ -153,7 +159,9 @@ export function createStateStream({
     }
     connections.set(event.sender.id, connection)
     event.sender.once('destroyed', () => {
-      if (connections.get(event.sender.id) === connection) connections.delete(event.sender.id)
+      if (connections.get(event.sender.id) === connection) {
+        connections.delete(event.sender.id)
+      }
     })
 
     const snapshot: StateSnapshot = {
@@ -163,14 +171,18 @@ export function createStateStream({
       state: snapshotState
     }
 
-    if (!send(connection, snapshot)) return { ok: false, error: 'state_unavailable' } as const
+    if (!send(connection, snapshot)) {
+      return { ok: false, error: 'state_unavailable' } as const
+    }
 
     return { ok: true } as const
   }
 
   const disconnectState = (event: IpcMainInvokeEvent) => {
     const context = authorizeRenderer(event)
-    if (!context) return { ok: false, error: 'unauthorized' } as const
+    if (!context) {
+      return { ok: false, error: 'unauthorized' } as const
+    }
 
     connections.delete(context.webContentsId)
     return { ok: true } as const
@@ -181,7 +193,9 @@ export function createStateStream({
       const projection = rawProjection(connection)
 
       const rawChanges = changedTopLevelSlices(connection.projection, projection)
-      if (Object.keys(rawChanges).length === 0) continue
+      if (Object.keys(rawChanges).length === 0) {
+        continue
+      }
       const changes = validatedChanges(connection.role, rawChanges)
       if (!changes) {
         send(connection, {
@@ -224,7 +238,9 @@ export function createStateStream({
     let registered = true
 
     unregisterHandlers = () => {
-      if (!registered) return
+      if (!registered) {
+        return
+      }
       registered = false
       unsubscribe()
       ipc.removeHandler(StateConnectChannel)

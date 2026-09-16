@@ -68,7 +68,9 @@ function traceActiveFiles(files: string[], entrypoints: string[]) {
 
   while (queue.length > 0) {
     const file = queue.shift()
-    if (!file || active.has(file)) continue
+    if (!file || active.has(file)) {
+      continue
+    }
 
     active.add(file)
 
@@ -80,7 +82,9 @@ function traceActiveFiles(files: string[], entrypoints: string[]) {
     }
 
     for (const candidate of candidates) {
-      if (!active.has(candidate) && contents.includes(candidate)) queue.push(candidate)
+      if (!active.has(candidate) && contents.includes(candidate)) {
+        queue.push(candidate)
+      }
     }
   }
 

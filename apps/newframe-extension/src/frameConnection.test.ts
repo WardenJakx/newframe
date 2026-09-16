@@ -20,7 +20,9 @@ class FakeWebSocket extends EventTarget {
   }
 
   close() {
-    if (this.readyState === WebSocket.CLOSED) return
+    if (this.readyState === WebSocket.CLOSED) {
+      return
+    }
 
     this.readyState = WebSocket.CLOSED
     this.dispatchEvent(new Event('close'))
@@ -28,7 +30,9 @@ class FakeWebSocket extends EventTarget {
 }
 
 const flushPromises = async () => {
-  for (let i = 0; i < 5; i++) await Promise.resolve()
+  for (let i = 0; i < 5; i++) {
+    await Promise.resolve()
+  }
 }
 
 describe('RawFrameConnection reconnects', () => {

@@ -5,7 +5,9 @@ const useCountdown = (targetDate: string | number | Date) => {
   const [countDown, setCountDown] = useState(() => targetTime - new Date().getTime())
 
   useEffect(() => {
-    if (countDown <= 0) return
+    if (countDown <= 0) {
+      return
+    }
 
     const interval = setInterval(() => {
       setCountDown(targetTime - new Date().getTime())
@@ -18,7 +20,9 @@ const useCountdown = (targetDate: string | number | Date) => {
 }
 
 const toString = (countdown: number) => {
-  if (countdown < 1) return 'EXPIRED'
+  if (countdown < 1) {
+    return 'EXPIRED'
+  }
   const portions: string[] = []
 
   const msInHour = 1000 * 60 * 60

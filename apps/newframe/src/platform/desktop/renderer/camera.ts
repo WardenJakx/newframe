@@ -24,7 +24,9 @@ export function createQrCameraCapability(
       let stream: MediaStream | undefined
       let timer: ReturnType<typeof setTimeout> | undefined
       const stop = () => {
-        if (stopped) return
+        if (stopped) {
+          return
+        }
         stopped = true
         clearTimeout(timer)
         video.srcObject = null
@@ -34,7 +36,9 @@ export function createQrCameraCapability(
         }
       }
       const fail = (error: unknown) => {
-        if (stopped) return
+        if (stopped) {
+          return
+        }
         stop()
         handlers.onError(error instanceof Error ? error : new Error('Camera unavailable'))
       }
@@ -49,7 +53,9 @@ export function createQrCameraCapability(
               })
         )
         .then(async (media) => {
-          if (!media) return
+          if (!media) {
+            return
+          }
           if (stopped) {
             media.getTracks().forEach((track) => track.stop())
             return
@@ -58,13 +64,19 @@ export function createQrCameraCapability(
           stream.getTracks().forEach((track) => track.addEventListener('ended', ended))
           video.srcObject = stream
           await video.play()
-          if (stopped) return
+          if (stopped) {
+            return
+          }
           const canvas = browser.createCanvas()
           const context = canvas.getContext('2d', { willReadFrequently: true })
-          if (!context) throw new Error('Camera preview unavailable. Retry or cancel.')
+          if (!context) {
+            throw new Error('Camera preview unavailable. Retry or cancel.')
+          }
           handlers.onReady()
           const scan = () => {
-            if (stopped) return
+            if (stopped) {
+              return
+            }
             try {
               if (video.videoWidth && video.videoHeight) {
                 const scale = Math.min(1, 640 / Math.max(video.videoWidth, video.videoHeight))
@@ -79,12 +91,16 @@ export function createQrCameraCapability(
                 } catch {
                   /* no QR */
                 }
-                if (frame) handlers.onFrame(frame)
+                if (frame) {
+                  handlers.onFrame(frame)
+                }
               }
             } catch (error) {
               fail(error)
             }
-            if (!stopped) timer = setTimeout(scan, 200)
+            if (!stopped) {
+              timer = setTimeout(scan, 200)
+            }
           }
           scan()
         })

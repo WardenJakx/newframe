@@ -12,7 +12,9 @@ describe('renderer host installation', () => {
 
   afterEach(() => {
     Reflect.deleteProperty(globalThis, 'window')
-    if (originalWindow) Object.defineProperty(globalThis, 'window', originalWindow)
+    if (originalWindow) {
+      Object.defineProperty(globalThis, 'window', originalWindow)
+    }
   })
 
   it('removes an owned window after LIFO disposal', () => {

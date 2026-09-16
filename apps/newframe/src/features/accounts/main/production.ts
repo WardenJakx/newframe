@@ -27,7 +27,9 @@ export function createProductionAccountsRuntime(
     now: Date.now,
     notify(title, body, action) {
       const notification = new Notification({ title, body })
-      if (!notification) return
+      if (!notification) {
+        return
+      }
       notification.on('click', action)
       setTimeout(() => notification.show(), 1000)
     },
@@ -51,7 +53,9 @@ function addressHasTransactions(
         params: [address, 'latest']
       },
       (response) => {
-        if (response.error) return done(null, null)
+        if (response.error) {
+          return done(null, null)
+        }
         try {
           done(null, BigInt(response.result) > 0n)
         } catch {
@@ -103,7 +107,9 @@ export function createAccountSelectionAdapter(
     const previousAddresses = accounts.getSelectedAddresses()
     const account = await callbacks.run<Account>((done) => accounts.setSigner(accountId, done))
     const currentAddresses = accounts.getSelectedAddresses()
-    if (!arraysEqual(previousAddresses, currentAddresses)) provider.accountsChanged(currentAddresses)
+    if (!arraysEqual(previousAddresses, currentAddresses)) {
+      provider.accountsChanged(currentAddresses)
+    }
     return account
   }
   selectAccount.dispose = callbacks.dispose

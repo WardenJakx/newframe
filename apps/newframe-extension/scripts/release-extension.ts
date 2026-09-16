@@ -254,7 +254,9 @@ function option(name: string, required = true): string | undefined {
 
 function writeGitHubOutput(metadata: ReleaseMetadata): void {
   const outputPath = option('--github-output', false)
-  if (!outputPath) return
+  if (!outputPath) {
+    return
+  }
   appendFileSync(
     outputPath,
     [
@@ -282,7 +284,9 @@ async function packageExtension(): Promise<void> {
   }
 
   const files = listFiles(distPath)
-  if (files.length === 0) fail('Extension build output is empty')
+  if (files.length === 0) {
+    fail('Extension build output is empty')
+  }
   await run(['zip', '-X', '-q', artifactPath, ...files], distPath)
   const digest = sha256(artifactPath)
   writeFileSync(checksumPath, `${digest}  ${metadata.artifact}\n`)
@@ -313,7 +317,9 @@ async function verifyPackage(
   if (entries.filter((entry) => entry === 'manifest.json').length !== 1) {
     fail('Archive must contain exactly one manifest.json at its root')
   }
-  for (const entry of entries) safeRelativeFile(entry.replace(/\/$/, ''), 'archive')
+  for (const entry of entries) {
+    safeRelativeFile(entry.replace(/\/$/, ''), 'archive')
+  }
 
   const temporaryRoot = mkdtempSync(path.join(tmpdir(), 'newframe-extension-release-'))
   try {

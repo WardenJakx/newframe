@@ -75,8 +75,7 @@ export function createTransactionSimulationProjection(
 ): TransactionSimulationProjection {
   return {
     getNativeCurrency(chainId) {
-      return (canonicalStore.getState().main.networksMeta.ethereum[chainId]?.nativeCurrency ||
-        {}) as NativeCurrencyLike
+      return canonicalStore.getState().main.networksMeta.ethereum[chainId]?.nativeCurrency || {}
     },
     getToken(address, chainId) {
       return canonicalStore.getState().main.tokens.byId[`${chainId}:${normalizeAddress(address)}`]
@@ -84,14 +83,18 @@ export function createTransactionSimulationProjection(
     getProfileAccounts(originatingAccountAddress) {
       const main = canonicalStore.getState().main
       const normalizedOrigin = normalizeAddress(originatingAccountAddress)
-      if (!normalizedOrigin) return
+      if (!normalizedOrigin) {
+        return
+      }
 
       const originatingAccount =
         main.accounts[originatingAccountAddress] ||
         main.accounts[normalizedOrigin] ||
         Object.values(main.accounts).find((account) => normalizeAddress(account.address) === normalizedOrigin)
 
-      if (!originatingAccount) return
+      if (!originatingAccount) {
+        return
+      }
 
       const accountAddresses = [
         ...new Set(
@@ -130,40 +133,67 @@ export function isTraceCall(value: unknown): value is TraceCall {
   const bytes = (value: unknown) => typeof value === 'string' && /^0x(?:[0-9a-f]{2})*$/i.test(value)
   while (pending.length) {
     const item = pending.pop()
-    if (!item || typeof item !== 'object' || Array.isArray(item) || seen.has(item)) return false
+    if (!item || typeof item !== 'object' || Array.isArray(item) || seen.has(item)) {
+      return false
+    }
     seen.add(item)
     const call = item as Record<string, unknown>
-    if (typeof call.type !== 'string' || !TRACE_TYPES.has(call.type.toUpperCase())) return false
-    if (typeof call.from !== 'string' || !normalizeAddress(call.from)) return false
-    if (call.to !== undefined && (typeof call.to !== 'string' || !normalizeAddress(call.to))) return false
-    if (!call.to && !call.error && !call.revertReason) return false
-    if (['input', 'data', 'output'].some((key) => call[key] !== undefined && !bytes(call[key]))) return false
-    if (['error', 'revertReason'].some((key) => call[key] !== undefined && typeof call[key] !== 'string'))
+    if (typeof call.type !== 'string' || !TRACE_TYPES.has(call.type.toUpperCase())) {
       return false
+    }
+    if (typeof call.from !== 'string' || !normalizeAddress(call.from)) {
+      return false
+    }
+    if (call.to !== undefined && (typeof call.to !== 'string' || !normalizeAddress(call.to))) {
+      return false
+    }
+    if (!call.to && !call.error && !call.revertReason) {
+      return false
+    }
+    if (['input', 'data', 'output'].some((key) => call[key] !== undefined && !bytes(call[key]))) {
+      return false
+    }
+    if (['error', 'revertReason'].some((key) => call[key] !== undefined && typeof call[key] !== 'string')) {
+      return false
+    }
     if (
       call.value !== undefined &&
       !(typeof call.value === 'bigint' && call.value >= 0n) &&
       !(typeof call.value === 'number' && Number.isSafeInteger(call.value) && call.value >= 0) &&
       !(typeof call.value === 'string' && /^(?:0x[0-9a-f]+|[0-9]+)$/i.test(call.value))
-    )
+    ) {
       return false
+    }
     if (call.calls !== undefined) {
-      if (!Array.isArray(call.calls)) return false
-      for (const child of call.calls) pending.push(child)
+      if (!Array.isArray(call.calls)) {
+        return false
+      }
+      for (const child of call.calls) {
+        pending.push(child)
+      }
     }
     if (call.logs !== undefined) {
-      if (!Array.isArray(call.logs)) return false
+      if (!Array.isArray(call.logs)) {
+        return false
+      }
       for (const event of call.logs) {
-        if (!event || typeof event !== 'object' || Array.isArray(event)) return false
-        if (typeof event.address !== 'string' || !normalizeAddress(event.address)) return false
+        if (!event || typeof event !== 'object' || Array.isArray(event)) {
+          return false
+        }
+        if (typeof event.address !== 'string' || !normalizeAddress(event.address)) {
+          return false
+        }
         if (
           !Array.isArray(event.topics) ||
           !event.topics.every(
             (topic: unknown) => typeof topic === 'string' && /^0x[0-9a-f]{64}$/i.test(topic)
           )
-        )
+        ) {
           return false
-        if (!bytes(event.data)) return false
+        }
+        if (!bytes(event.data)) {
+          return false
+        }
       }
     }
   }
@@ -183,7 +213,9 @@ interface ParsedTrace {
 }
 
 function safeBigInt(value?: string | number | bigint | null) {
-  if (value === undefined || value === null || value === '') return 0n
+  if (value === undefined || value === null || value === '') {
+    return 0n
+  }
 
   try {
     return BigInt(value)
@@ -201,7 +233,9 @@ function abs(value: bigint) {
 }
 
 function normalizeAddress(address?: string) {
-  if (!address || !isAddress(address)) return ''
+  if (!address || !isAddress(address)) {
+    return ''
+  }
 
   try {
     return getAddress(address).toLowerCase()
@@ -211,7 +245,9 @@ function normalizeAddress(address?: string) {
 }
 
 function topicAddress(topic?: string) {
-  if (!topic || !/^0x0{24}[0-9a-f]{40}$/i.test(topic)) return ''
+  if (!topic || !/^0x0{24}[0-9a-f]{40}$/i.test(topic)) {
+    return ''
+  }
   return normalizeAddress(`0x${topic.slice(-40)}`)
 }
 
@@ -222,7 +258,9 @@ function sameAddress(a?: string, b?: string) {
 }
 
 function walkTrace(trace: TraceCall | undefined, visit: (call: TraceCall) => void) {
-  if (!trace || typeof trace !== 'object' || trace.error || trace.revertReason) return
+  if (!trace || typeof trace !== 'object' || trace.error || trace.revertReason) {
+    return
+  }
 
   visit(trace)
   ;(trace.calls || []).forEach((call) => walkTrace(call, visit))
@@ -237,23 +275,33 @@ function parseTrace(trace: TraceCall): ParsedTrace {
     const from = normalizeAddress(call.from)
     const to = normalizeAddress(call.to)
     const value = safeBigInt(call.value)
-    if (VALUE_TRANSFER_TYPES.has(call.type?.toUpperCase() || '') && from && to && value > 0n)
+    if (VALUE_TRANSFER_TYPES.has(call.type?.toUpperCase() || '') && from && to && value > 0n) {
       nativeTransfers.push({ from, to, amount: value })
-
+    }
     ;(call.logs || []).forEach((event) => {
       const topics = event.topics || []
-      if (topics.length !== 3 || !/^0x[0-9a-f]{64}$/i.test(event.data || '')) return
+      if (topics.length !== 3 || !/^0x[0-9a-f]{64}$/i.test(event.data || '')) {
+        return
+      }
       const topic = topics[0]?.toLowerCase()
-      if (topic !== TRANSFER_TOPIC && topic !== APPROVAL_TOPIC) return
+      if (topic !== TRANSFER_TOPIC && topic !== APPROVAL_TOPIC) {
+        return
+      }
 
       const token = normalizeAddress(event.address)
       const from = topicAddress(topics[1])
       const to = topicAddress(topics[2])
       const amount = safeBigInt(event.data)
 
-      if (!token || !from || !to) return
-      if (topic === TRANSFER_TOPIC && amount > 0n) tokenTransfers.push({ token, from, to, amount })
-      if (topic === APPROVAL_TOPIC) tokenApprovals.push({ token, owner: from, spender: to, amount })
+      if (!token || !from || !to) {
+        return
+      }
+      if (topic === TRANSFER_TOPIC && amount > 0n) {
+        tokenTransfers.push({ token, from, to, amount })
+      }
+      if (topic === APPROVAL_TOPIC) {
+        tokenApprovals.push({ token, owner: from, spender: to, amount })
+      }
     })
   })
 
@@ -269,8 +317,12 @@ function nativeDeltaFromTransfers(transfers: NativeTransfer[], account: string) 
   let delta = 0n
 
   transfers.forEach((transfer) => {
-    if (sameAddress(transfer.from, accountAddress)) delta -= transfer.amount
-    if (sameAddress(transfer.to, accountAddress)) delta += transfer.amount
+    if (sameAddress(transfer.from, accountAddress)) {
+      delta -= transfer.amount
+    }
+    if (sameAddress(transfer.to, accountAddress)) {
+      delta += transfer.amount
+    }
   })
 
   return delta
@@ -284,10 +336,16 @@ function tokenDeltasFromTransfers(transfers: TokenTransfer[], account: string) {
     const current = deltas.get(transfer.token) || 0n
     let next = current
 
-    if (sameAddress(transfer.from, accountAddress)) next -= transfer.amount
-    if (sameAddress(transfer.to, accountAddress)) next += transfer.amount
+    if (sameAddress(transfer.from, accountAddress)) {
+      next -= transfer.amount
+    }
+    if (sameAddress(transfer.to, accountAddress)) {
+      next += transfer.amount
+    }
 
-    if (next !== current) deltas.set(transfer.token, next)
+    if (next !== current) {
+      deltas.set(transfer.token, next)
+    }
   })
 
   return deltas
@@ -343,7 +401,9 @@ async function resolveTokenMetadata(
   }
 
   const requestToken = tokenFromRequest(req, address, chainId)
-  if (requestToken) return requestToken
+  if (requestToken) {
+    return requestToken
+  }
 
   if (!provider) {
     return {
@@ -379,7 +439,9 @@ async function resolveTokenMetadata(
 }
 
 function nativeEffect(delta: bigint, nativeCurrency: NativeCurrencyLike): TransactionEffect | undefined {
-  if (delta === 0n) return
+  if (delta === 0n) {
+    return
+  }
 
   const direction = delta < 0n ? 'out' : 'in'
 
@@ -410,7 +472,7 @@ async function tokenEffects(
   const effects = await Promise.all(
     [...deltas.entries()]
       .filter(([, delta]) => delta !== 0n)
-      .map(async ([address, delta]) => {
+      .map(async ([address, delta]): Promise<TransactionEffect> => {
         const metadataPromise =
           metadataByAddress.get(address) || resolveTokenMetadata(req, address, chainId, projection, provider)
         metadataByAddress.set(address, metadataPromise)
@@ -428,7 +490,7 @@ async function tokenEffects(
           assetAddress: address,
           ...(Number.isInteger(metadata.decimals) ? { decimals: metadata.decimals } : {}),
           ...(metadata.logoURI ? { logoURI: metadata.logoURI } : {})
-        } as TransactionEffect
+        }
       })
   )
 
@@ -509,8 +571,12 @@ async function traceCall(
   return new Promise<TraceCall>((resolve, reject) => {
     Promise.resolve(
       provider.send(payload, (response) => {
-        if (response?.error) return reject(response.error)
-        if (!isTraceCall(response?.result)) return reject(new Error('RPC returned an invalid call trace'))
+        if (response?.error) {
+          return reject(response.error)
+        }
+        if (!isTraceCall(response?.result)) {
+          return reject(new Error('RPC returned an invalid call trace'))
+        }
         resolve(response.result)
       })
     ).catch(reject)

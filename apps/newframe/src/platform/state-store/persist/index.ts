@@ -5,7 +5,9 @@ let activeAdapter: Pick<PersistenceAdapter, 'clear' | 'flush'> | undefined
 export function connectPersistenceControl(adapter: Pick<PersistenceAdapter, 'clear' | 'flush'>) {
   activeAdapter = adapter
   return () => {
-    if (activeAdapter === adapter) activeAdapter = undefined
+    if (activeAdapter === adapter) {
+      activeAdapter = undefined
+    }
   }
 }
 

@@ -26,8 +26,11 @@ export default function AccountRenameInput({
 
   const commit = () => {
     const name = draft.trim()
-    if (name) onCommit(name)
-    else onCancel()
+    if (name) {
+      onCommit(name)
+    } else {
+      onCancel()
+    }
   }
 
   return (

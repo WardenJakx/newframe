@@ -18,7 +18,7 @@ export class HarnessRuntime {
 
   async start<T>(service: HarnessService<T>) {
     this.log(`starting ${service.name}`)
-    this.services.push(service as StartedService)
+    this.services.push(service)
 
     try {
       const value = await service.start()
@@ -27,7 +27,7 @@ export class HarnessRuntime {
       return value
     } catch (err) {
       await service.stop().catch(() => undefined)
-      this.services.splice(this.services.indexOf(service as StartedService), 1)
+      this.services.splice(this.services.indexOf(service), 1)
       throw err
     }
   }
@@ -38,7 +38,9 @@ export class HarnessRuntime {
   }
 
   async stop() {
-    if (this.stopping) return
+    if (this.stopping) {
+      return
+    }
     this.stopping = true
 
     for (const service of this.services.reverse()) {

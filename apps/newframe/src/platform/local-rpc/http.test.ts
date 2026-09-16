@@ -32,9 +32,10 @@ it('owns its provider subscription and rejects unsupported HTTP methods observab
     headers: {},
     method: 'GET'
   })
+  const responseHeaders: Record<string, string> = {}
   const response = Object.assign(new EventEmitter(), {
     body: '',
-    headers: {} as Record<string, string>,
+    headers: responseHeaders,
     status: 0,
     setHeader(name: string, value: string) {
       this.headers[name] = value
@@ -145,10 +146,11 @@ it('keeps an HTTP Provider continuation after the client response closes and app
     headers: { origin: 'https://app.example' },
     method: 'POST'
   })
+  const responseHeaders: Record<string, string> = {}
   const response = Object.assign(new EventEmitter(), {
     body: '',
     destroyed: false,
-    headers: {} as Record<string, string>,
+    headers: responseHeaders,
     status: 0,
     writableEnded: false,
     setHeader(name: string, value: string) {
@@ -196,7 +198,9 @@ it.each(['trust', 'send', 'after-response'] as const)(
   async (failure) => {
     const provider = new FakeProvider()
     const send = async (payload: RPCRequestPayload, respond?: (response: RPCResponsePayload) => void) => {
-      if (failure === 'after-response') respond?.({ id: payload.id, jsonrpc: '2.0', result: '0x1' })
+      if (failure === 'after-response') {
+        respond?.({ id: payload.id, jsonrpc: '2.0', result: '0x1' })
+      }
       throw new Error('private failure details')
     }
     const transport = createHttpRpcTransport({
@@ -206,7 +210,9 @@ it.each(['trust', 'send', 'after-response'] as const)(
       origins: {
         updateOrigin: (payload: RPCRequestPayload) => ({ payload, chainId: '0x1' }),
         isTrusted: async () => {
-          if (failure === 'trust') throw new Error('private failure details')
+          if (failure === 'trust') {
+            throw new Error('private failure details')
+          }
           return true
         }
       } as never,

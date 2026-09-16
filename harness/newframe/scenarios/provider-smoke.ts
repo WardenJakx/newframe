@@ -26,7 +26,9 @@ async function main() {
   frame = createFrameProvider('frame', { origin: 'frame.test' })
   const getFirstSigner = async () => {
     const [signer] = await provider.listAccounts()
-    if (!signer) throw new Error('No account available')
+    if (!signer) {
+      throw new Error('No account available')
+    }
     return signer
   }
 
@@ -72,7 +74,9 @@ async function main() {
       value: 1_000_000_000_000n,
       to: '0x030e6af4985f111c265ee3a279e5a9f6aa124fd5'
     })
-    if (!/^0x[0-9a-fA-F]{64}$/.test(tx.hash)) throw new Error(`Invalid transaction hash: ${tx.hash}`)
+    if (!/^0x[0-9a-fA-F]{64}$/.test(tx.hash)) {
+      throw new Error(`Invalid transaction hash: ${tx.hash}`)
+    }
 
     await signPersonal()
     await signEth()

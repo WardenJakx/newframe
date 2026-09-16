@@ -23,7 +23,7 @@ describe('portfolio refresh service', () => {
       orders: []
     }))
     const service = createPortfolioService({
-      accounts: { refreshBalances } as never,
+      accounts: { refreshBalances },
       assetRates: { get: mock(), observe },
       flash: { listOrders } as never,
       getTokenDiscoveryProvider: () => ({
@@ -86,7 +86,7 @@ describe('portfolio refresh service', () => {
     const refreshBalances = mock()
     const warn = mock()
     const service = createPortfolioService({
-      accounts: { refreshBalances } as never,
+      accounts: { refreshBalances },
       assetRates: { get: mock(), observe: mock() },
       flash: { listOrders } as never,
       getTokenDiscoveryProvider: () => ({

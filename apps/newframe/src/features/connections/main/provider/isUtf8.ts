@@ -1,7 +1,9 @@
 const isContinuationByte = (byte: number | undefined) => byte !== undefined && byte >= 0x80 && byte <= 0xbf
 
 export default function isUtf8(buffer?: Buffer | Uint8Array) {
-  if (!buffer) return false
+  if (!buffer) {
+    return false
+  }
 
   let i = 0
   while (i < buffer.length) {

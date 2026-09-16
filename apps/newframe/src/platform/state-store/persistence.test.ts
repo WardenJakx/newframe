@@ -60,7 +60,9 @@ class ManualScheduler implements PersistenceSchedulerPort {
   }
 
   run() {
-    for (const task of this.tasks) task()
+    for (const task of this.tasks) {
+      task()
+    }
   }
 
   get activeTasks() {
@@ -152,7 +154,7 @@ describe('canonical persistence lifecycle', () => {
   it('migrates v2 state into a real fresh store and persists the current validated envelope', async () => {
     const id = '0x2222222222222222222222222222222222222222'
     const durable = canonicalState()
-    durable.main.accounts[id] = account(id) as never
+    durable.main.accounts[id] = account(id)
     durable.main.accountOrder = [id]
     durable.main.currentAccount = id
     durable.main.autohide = false
@@ -299,7 +301,7 @@ describe('canonical persisted state contract', () => {
   it('projects durable state and merges it while keeping runtime-owned fields fresh', () => {
     const durable = canonicalState()
     const id = '0x1111111111111111111111111111111111111111'
-    durable.main.accounts[id] = account(id, true) as never
+    durable.main.accounts[id] = account(id, true)
     durable.main.appLock = { locked: false, vaultExists: false }
     durable.main.currentAccount = id
     durable.main.balances[id] = [

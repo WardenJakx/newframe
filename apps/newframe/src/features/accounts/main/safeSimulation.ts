@@ -64,14 +64,20 @@ function message(error: unknown) {
 }
 
 function executionEvents(trace: TraceCall, safe: string): Array<{ name: string; hash: string }> {
-  if (trace.error || trace.revertReason) return []
+  if (trace.error || trace.revertReason) {
+    return []
+  }
   const events: Array<{ name: string; hash: string }> = []
   for (const log of trace.logs ?? []) {
-    if (log.address?.toLowerCase() !== safe.toLowerCase() || !log.topics || log.data === undefined) continue
+    if (log.address?.toLowerCase() !== safe.toLowerCase() || !log.topics || log.data === undefined) {
+      continue
+    }
     const name = ['ExecutionSuccess', 'ExecutionFailure'].find(
       (name) => abi.getEvent(name)?.topicHash === log.topics?.[0]?.toLowerCase()
     )
-    if (!name) continue
+    if (!name) {
+      continue
+    }
     // Safe 1.5 indexes txHash; earlier releases encode both fields in data.
     const hash =
       log.topics.length === 2 && /^0x[0-9a-f]{64}$/i.test(log.data)
@@ -79,7 +85,9 @@ function executionEvents(trace: TraceCall, safe: string): Array<{ name: string; 
         : log.topics.length === 1 && /^0x[0-9a-f]{128}$/i.test(log.data)
           ? `0x${log.data.slice(2, 66)}`
           : undefined
-    if (hash) events.push({ name, hash: hash.toLowerCase() })
+    if (hash) {
+      events.push({ name, hash: hash.toLowerCase() })
+    }
   }
   return events.concat((trace.calls ?? []).flatMap((call) => executionEvents(call, safe)))
 }
@@ -99,11 +107,16 @@ export async function simulateSafeProposal(
     signal?.throwIfAborted()
     const address = safeAddressSchema.parse(input.address)
     const proposal = safeProposalSchema.parse(input.proposal)
-    if (proposal.safe !== address) throw new Error('Safe proposal identity mismatch')
-    if (!Number.isSafeInteger(input.chainId) || input.chainId <= 0) throw new Error('Invalid Safe chain')
+    if (proposal.safe !== address) {
+      throw new Error('Safe proposal identity mismatch')
+    }
+    if (!Number.isSafeInteger(input.chainId) || input.chainId <= 0) {
+      throw new Error('Invalid Safe chain')
+    }
     const chainId = input.chainId
-    if (refundFields.some((field) => proposal[field] === undefined))
+    if (refundFields.some((field) => proposal[field] === undefined)) {
       throw new Error('Proposal gas or refund fields are missing. Refresh the Safe queue.')
+    }
     const [rawBlock, rawPrice, rawChainId] = await Promise.all([
       rpc.request(chainId, 'eth_getBlockByNumber', ['latest', false], signal),
       rpc.request(chainId, 'eth_gasPrice', [], signal),
@@ -111,9 +124,12 @@ export async function simulateSafeProposal(
     ])
     const block = blockSchema.parse(rawBlock)
     const gasPrice = hexQuantity.parse(rawPrice)
-    if (BigInt(hexQuantity.parse(rawChainId)) !== BigInt(chainId))
+    if (BigInt(hexQuantity.parse(rawChainId)) !== BigInt(chainId)) {
       throw new Error('Simulation RPC returned a different chain')
-    if (BigInt(block.gasLimit) === 0n) throw new Error('Simulation block has no gas capacity')
+    }
+    if (BigInt(block.gasLimit) === 0n) {
+      throw new Error('Simulation block has no gas capacity')
+    }
     blockNumber = BigInt(block.number).toString()
     const configuration = safeConfigurationSchema.parse(
       await client.configuration(chainId, address, signal, block.number)
@@ -121,8 +137,9 @@ export async function simulateSafeProposal(
     signal?.throwIfAborted()
     observeConfiguration?.(configuration, blockNumber)
     currentNonce = configuration.nonce
-    if (BigInt(proposal.nonce) < BigInt(currentNonce))
+    if (BigInt(proposal.nonce) < BigInt(currentNonce)) {
       throw new Error('Proposal nonce has already passed. Refresh the Safe queue.')
+    }
     const executor = configuration.owners[0]
     const [rawGuard, rawBalance] = await Promise.all([
       rpc.request(chainId, 'eth_getStorageAt', [address, guardSlot, block.number], signal),
@@ -150,8 +167,9 @@ export async function simulateSafeProposal(
     )
     const expectedHash = String(abi.decodeFunctionResult('getTransactionHash', hashResult)[0]).toLowerCase()
     const stateDiff: Record<string, string> = { [thresholdSlot]: toBeHex(1, 32) }
-    if (configuration.threshold !== 1)
+    if (configuration.threshold !== 1) {
       assumptions.push(`Owner threshold is lowered from ${configuration.threshold} to 1 for this preview.`)
+    }
     if (proposal.nonce !== currentNonce) {
       stateDiff[nonceSlot] = toBeHex(BigInt(proposal.nonce), 32)
       assumptions.push(`Nonce is set to ${proposal.nonce}; earlier queued proposals are not replayed.`)
@@ -162,7 +180,9 @@ export async function simulateSafeProposal(
     }
     const overrides: SafeStateOverrides = { [address]: { stateDiff } }
     const funding = BigInt(block.gasLimit) * BigInt(gasPrice)
-    if (funding >= 2n ** 256n) throw new Error('Simulation gas funding exceeds uint256')
+    if (funding >= 2n ** 256n) {
+      throw new Error('Simulation gas funding exceeds uint256')
+    }
     if (balance < funding) {
       overrides[executor] = { balance: toBeHex(funding) }
       assumptions.push(
@@ -183,12 +203,15 @@ export async function simulateSafeProposal(
         ],
         signal
       )
-      if (!isTraceCall(result)) throw new Error('RPC returned an incomplete call trace')
+      if (!isTraceCall(result)) {
+        throw new Error('RPC returned an incomplete call trace')
+      }
       if (
         result.to?.toLowerCase() !== address.toLowerCase() ||
         result.from?.toLowerCase() !== executor.toLowerCase()
-      )
+      ) {
         throw new Error('RPC returned a different simulation call')
+      }
       return result
     }
     // Probe tracing itself: an eth_call override alone cannot prove debug_traceCall applied it.
@@ -219,15 +242,16 @@ export async function simulateSafeProposal(
           probe.revertReason ||
           !probe.output ||
           abi.decodeFunctionResult(method, probe.output)[0] !== expected
-        )
+        ) {
           throw new Error('RPC storage overrides or Safe storage layout are unsupported')
+        }
       })
     )
     const signature = concat([toBeHex(BigInt(executor), 32), toBeHex(0, 32), '0x01'])
     const result = await trace(abi.encodeFunctionData('execTransaction', [...fields, signature]), overrides)
     signal?.throwIfAborted()
     const context = { assumptions, currentNonce, blockNumber }
-    if (result.error || result.revertReason)
+    if (result.error || result.revertReason) {
       return {
         status: 'error',
         failure: 'revert',
@@ -235,15 +259,18 @@ export async function simulateSafeProposal(
         effects: [],
         ...context
       }
-    if (!result.output || !/^0x0{63}[01]$/.test(result.output))
+    }
+    if (!result.output || !/^0x0{63}[01]$/.test(result.output)) {
       throw new Error('RPC did not return the Safe execution result')
+    }
     const success = abi.decodeFunctionResult('execTransaction', result.output)[0] === true
     const expectedEvent = success ? 'ExecutionSuccess' : 'ExecutionFailure'
     const events = executionEvents(result, address).filter((event) => event.hash === expectedHash)
-    if (events.length !== 1 || events[0].name !== expectedEvent)
+    if (events.length !== 1 || events[0].name !== expectedEvent) {
       throw new Error(
         'RPC trace lacks matching Safe execution logs; complete simulation effects are unavailable'
       )
+    }
     const effects = await effectsFromTrace(
       result,
       { account: address, data: { chainId: toBeHex(chainId), to: proposal.to } },

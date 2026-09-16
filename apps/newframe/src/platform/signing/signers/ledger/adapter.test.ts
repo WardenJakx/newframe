@@ -125,7 +125,9 @@ function nextEvent<T = any>(event: string, predicate: (value: T) => boolean = ()
 }
 
 async function flushConnection() {
-  for (let i = 0; i < 12; i++) await Promise.resolve()
+  for (let i = 0; i < 12; i++) {
+    await Promise.resolve()
+  }
 }
 
 for (const status of [Status.WRONG_APP, Status.NEEDS_RECONNECTION]) {

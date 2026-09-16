@@ -57,8 +57,9 @@ test('accepts Safe ETH_SIGN and rejects unsupported or malformed signature encod
     '0x',
     ...['00', '01', '02', '1d', '1e', '21'].map((v) => `${signature.slice(0, -2)}${v}`),
     `0x${'00'.repeat(64)}1b`
-  ])
+  ]) {
     expect(verifySafeConfirmation(hash, owner.address, invalid)).toBeFalse()
+  }
 })
 
 test('refuses to build signing requests for unknown versions or missing signed fields', () => {

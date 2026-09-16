@@ -29,7 +29,9 @@ export function createTradeCapability(host: TradeHost): TradeCapability {
     quote: async (request) => {
       const { accountAddress: _accountAddress, ...wireRequest } = request
       const result = await host.executeQuery({ type: 'flash.quote', request: wireRequest })
-      if (!result.ok) throw new Error(result.message || 'Flash quote failed.')
+      if (!result.ok) {
+        throw new Error(result.message || 'Flash quote failed.')
+      }
 
       return result
     },

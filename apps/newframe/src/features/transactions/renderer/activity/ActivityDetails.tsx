@@ -47,7 +47,9 @@ export function ActivityDetails({
       }
     })
   )
-  if (!shared.activity) return null
+  if (!shared.activity) {
+    return null
+  }
 
   return (
     <ActivityDetailsView

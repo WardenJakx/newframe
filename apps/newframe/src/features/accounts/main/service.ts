@@ -29,7 +29,9 @@ export function createAccountService(ports: AccountServicePorts) {
     addressChainUsage: ports.addressChainUsage,
 
     async select(accountId: string) {
-      if (!ports.accounts.get(accountId)) return false
+      if (!ports.accounts.get(accountId)) {
+        return false
+      }
       await ports.selectAccount(accountId)
       return true
     },
@@ -38,7 +40,9 @@ export function createAccountService(ports: AccountServicePorts) {
       const accountId = address.toLowerCase()
       const state = ports.store.getState()
       const account = state.main.accounts[accountId]
-      if (!account) return false
+      if (!account) {
+        return false
+      }
 
       let seedSignerId = ''
       if (removeSeedSigner && account.signer) {
@@ -46,20 +50,29 @@ export function createAccountService(ports: AccountServicePorts) {
         const hasAnotherAccount = Object.values(state.main.accounts).some(
           (candidate) => candidate.id !== accountId && candidate.signer === account.signer
         )
-        if (signer?.type === 'seed' && !hasAnotherAccount) seedSignerId = signer.id
+        if (signer?.type === 'seed' && !hasAnotherAccount) {
+          seedSignerId = signer.id
+        }
       }
 
       ports.accounts.remove(accountId)
-      if (seedSignerId) ports.signers.remove(seedSignerId)
+      if (seedSignerId) {
+        ports.signers.remove(seedSignerId)
+      }
       return true
     },
 
     update(command: Extract<AccountUpdateCommand, { name: string } | { toAccountId: string }>) {
       const state = ports.store.getState()
-      if (!state.main.accounts[command.accountId]) return false
-      if ('name' in command) ports.accounts.rename(command.accountId, command.name)
-      else {
-        if (!state.main.accounts[command.toAccountId]) return false
+      if (!state.main.accounts[command.accountId]) {
+        return false
+      }
+      if ('name' in command) {
+        ports.accounts.rename(command.accountId, command.name)
+      } else {
+        if (!state.main.accounts[command.toAccountId]) {
+          return false
+        }
         state.reorderAccounts(command.accountId, command.toAccountId)
       }
       return true
@@ -72,14 +85,19 @@ export function createAccountService(ports: AccountServicePorts) {
         return false
       }
 
-      if (originId) state.revokePermission(accountId, originId)
-      else state.clearPermissions(accountId)
+      if (originId) {
+        state.revokePermission(accountId, originId)
+      } else {
+        state.clearPermissions(accountId)
+      }
       return true
     },
 
     removeOrigin(originId: string) {
       const state = ports.store.getState()
-      if (!state.main.origins[originId]) return false
+      if (!state.main.origins[originId]) {
+        return false
+      }
       Object.keys(state.main.accounts).forEach((accountId) =>
         ports.accounts.clearRequestsByOrigin(accountId, originId)
       )

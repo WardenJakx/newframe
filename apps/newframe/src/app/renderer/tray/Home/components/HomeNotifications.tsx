@@ -131,7 +131,9 @@ export function HomeNotifications({
           }
 
           const activityId = target.activityId || target.hash || notification.metadata?.hash
-          if (!activityId) return
+          if (!activityId) {
+            return
+          }
           setSection('activity')
           openOverlay({ type: 'activity', activityId })
         }}

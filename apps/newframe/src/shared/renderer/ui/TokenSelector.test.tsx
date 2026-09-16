@@ -219,7 +219,7 @@ describe('ChainTokenIcon', () => {
       />
     )
 
-    const tokenImage = document.querySelectorAll('img')[0] as HTMLImageElement
+    const tokenImage = document.querySelectorAll('img')[0]
     fireEvent.error(tokenImage)
 
     expect(screen.getByText('BROKE')).toBeTruthy()
@@ -280,7 +280,7 @@ describe('TokenSelector', () => {
     fireEvent.mouseDown(screen.getByRole('button', { name: 'outside' }))
     await user.click(screen.getByRole('button', { name: 'Choose token' }))
 
-    expect((screen.getByLabelText('Search tokens') as HTMLInputElement).value).toBe('')
+    expect(screen.getByLabelText<HTMLInputElement>('Search tokens').value).toBe('')
     expect(screen.getAllByRole('option')).toHaveLength(2)
   })
 

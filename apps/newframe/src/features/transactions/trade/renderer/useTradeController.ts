@@ -129,9 +129,13 @@ export function useTradeController({ assetId, capability, chainId }: TradeContro
   }, [accountAddress])
 
   React.useEffect(() => {
-    if (operation?.status !== 'succeeded' || !execution.state.session) return
+    if (operation?.status !== 'succeeded' || !execution.state.session) {
+      return
+    }
     const orderId = operation.entityRefs?.find((reference) => reference.type === 'order')?.id
-    if (orderId && orders[orderId]) void capability.close()
+    if (orderId && orders[orderId]) {
+      void capability.close()
+    }
   }, [capability, execution.state.session, operation, orders])
 
   const ticketValidationError = React.useMemo(() => {
@@ -188,7 +192,9 @@ export function useTradeController({ assetId, capability, chainId }: TradeContro
   const createTradeSelectorItem = React.useCallback(
     (asset: FlashAsset) => {
       const balance = tradeBalanceIndex.get(getTradeAssetKey(asset))
-      if (balance) return { ...createBalanceTokenSelectorItem(balance), id: getTradeAssetKey(asset) }
+      if (balance) {
+        return { ...createBalanceTokenSelectorItem(balance), id: getTradeAssetKey(asset) }
+      }
 
       return {
         id: getTradeAssetKey(asset),
@@ -284,7 +290,9 @@ export function useTradeController({ assetId, capability, chainId }: TradeContro
   const baseSteps = state.quote?.steps || buildVisualTradeSteps(spentAsset, false)
   const phase = operation?.phase || ''
   const completed = new Set(['wrap', 'approve', 'sign', 'submit'].slice(0, completedStepCount[phase] || 0))
-  if (operation?.status === 'succeeded') completed.add('submit')
+  if (operation?.status === 'succeeded') {
+    completed.add('submit')
+  }
   const pendingKind = pendingStepKinds[phase] || ''
   const failedKind = phase.endsWith('_failed') ? phase.slice(0, -'_failed'.length) : ''
   const steps = baseSteps.map((step) => ({
@@ -397,7 +405,9 @@ export function useTradeController({ assetId, capability, chainId }: TradeContro
     onReview: () => execution.submit({ quote: state.quote, quoteId: state.quoteId }),
     onSelectAsset: (field, assetId) => {
       const asset = state.assetOptions.find((option) => getTradeAssetKey(option) === assetId)
-      if (asset) dispatch({ type: 'selectAsset', field, asset })
+      if (asset) {
+        dispatch({ type: 'selectAsset', field, asset })
+      }
     },
     onShowMoreAssets: (field) =>
       setAssetRowsVisible((rows) => ({

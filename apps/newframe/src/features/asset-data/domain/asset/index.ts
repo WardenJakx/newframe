@@ -27,11 +27,13 @@ export function toAssetId(asset: AssetRateReference, nativeTicker = asset.native
     return nativeTicker ? toNativeAssetId(asset.chainId, nativeTicker) : undefined
   }
 
-  return toErc20AssetId(asset.chainId, asset.address as Address)
+  return toErc20AssetId(asset.chainId, asset.address)
 }
 
 export function getAssetLabel(asset: AssetRateReference, nativeTicker = asset.nativeTicker) {
-  if (asset.address === NATIVE_CURRENCY) return 'native' as const
+  if (asset.address === NATIVE_CURRENCY) {
+    return 'native' as const
+  }
   const assetId = toAssetId(asset, nativeTicker)
   return assetId ? getCuratedAsset(assetId)?.assetLabel : undefined
 }
@@ -41,7 +43,9 @@ export function getCuratedAsset(assetId: string) {
 }
 
 export function getAssetRateKey(assetId: string) {
-  if (/^\d+:ETH$/.test(assetId)) return 'ETH'
+  if (/^\d+:ETH$/.test(assetId)) {
+    return 'ETH'
+  }
   return getCuratedAsset(assetId)?.commonAsset || assetId
 }
 
@@ -51,7 +55,9 @@ export function resolveAssetRate(
   nativeTicker = asset.nativeTicker
 ): ResolvedAssetRate | undefined {
   const assetId = toAssetId(asset, nativeTicker)
-  if (!assetId) return undefined
+  if (!assetId) {
+    return undefined
+  }
 
   const curated = getCuratedAsset(assetId)
   if (curated?.fixedUsdRate !== undefined) {

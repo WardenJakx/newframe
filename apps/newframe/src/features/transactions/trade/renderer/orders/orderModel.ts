@@ -15,14 +15,20 @@ export function orderStatus(order: OrderModel) {
 }
 
 export function isOpenOrder(order: OrderModel) {
-  if (order.open === true) return true
-  if (order.open === false) return false
+  if (order.open === true) {
+    return true
+  }
+  if (order.open === false) {
+    return false
+  }
 
   const status = orderStatus(order)
   if (['open', 'pending', 'submitted', 'accepted', 'active', 'working', 'created'].includes(status)) {
     return true
   }
-  if (order.terminalAt) return false
+  if (order.terminalAt) {
+    return false
+  }
 
   return ![
     'filled',
@@ -65,7 +71,9 @@ export function orderAssetName(asset?: OrderAsset) {
 }
 
 export function formatOrderAmount(value: unknown) {
-  if (value === undefined || value === null || value === '') return ''
+  if (value === undefined || value === null || value === '') {
+    return ''
+  }
 
   const numeric = typeof value === 'number' ? value : Number(String(value).replace(/,/g, ''))
   if (Number.isFinite(numeric)) {
@@ -151,12 +159,16 @@ export function orderTargetNotional(order: OrderModel) {
 }
 
 export function orderContraAmount(order: OrderModel) {
-  if (!hasOrderFill(order)) return '—'
+  if (!hasOrderFill(order)) {
+    return '—'
+  }
   return orderAssetAmounts(order).contra || '—'
 }
 
 export function orderContraNotional(order: OrderModel) {
-  if (!hasOrderFill(order)) return '—'
+  if (!hasOrderFill(order)) {
+    return '—'
+  }
 
   const hasExplicitNotional =
     order.contraNotional !== undefined && order.contraNotional !== null && order.contraNotional !== ''
@@ -188,7 +200,9 @@ function formatOrderNotional(value: number) {
 
 export function orderDate(value: unknown) {
   const time = timestamp(value, 0)
-  if (!time) return ''
+  if (!time) {
+    return ''
+  }
 
   return new Intl.DateTimeFormat(undefined, {
     year: 'numeric',
@@ -201,7 +215,9 @@ export function orderDate(value: unknown) {
 
 export function orderDateTime(value: unknown) {
   const time = timestamp(value, 0)
-  if (!time) return ''
+  if (!time) {
+    return ''
+  }
 
   return new Intl.DateTimeFormat(undefined, {
     year: 'numeric',
@@ -218,13 +234,17 @@ export function orderPairIntent(order: OrderModel) {
   const targetSymbol = orderAssetSymbol(order.targetAsset)
   const contraSymbol = orderAssetSymbol(order.contraAsset)
 
-  if (!side) return `${targetSymbol} / ${contraSymbol}`
+  if (!side) {
+    return `${targetSymbol} / ${contraSymbol}`
+  }
 
   return `${targetSymbol} ${side === 'buy' ? '<-' : '->'} ${contraSymbol}`
 }
 
 export function orderJson(value: unknown) {
-  if (value === undefined || value === null) return ''
+  if (value === undefined || value === null) {
+    return ''
+  }
 
   try {
     return JSON.stringify(value, null, 2)
@@ -234,10 +254,16 @@ export function orderJson(value: unknown) {
 }
 
 export function orderErrorMessage(error: unknown, fallback: string) {
-  if (!error) return fallback
-  if (typeof error === 'string') return error
+  if (!error) {
+    return fallback
+  }
+  if (typeof error === 'string') {
+    return error
+  }
   if (typeof error === 'object') {
-    if ('message' in error && error.message) return String(error.message)
+    if ('message' in error && error.message) {
+      return String(error.message)
+    }
     if ('error' in error && typeof error.error === 'object' && error.error && 'message' in error.error) {
       return String(error.error.message)
     }
@@ -281,7 +307,9 @@ export function createOrderRows({
     })
     .sort((a, b) => {
       const openSort = Number(!isOpenOrder(a)) - Number(!isOpenOrder(b))
-      if (openSort !== 0) return openSort
+      if (openSort !== 0) {
+        return openSort
+      }
       return (
         timestamp(b.createdAt, timestamp(b.updatedAt, 0)) - timestamp(a.createdAt, timestamp(a.updatedAt, 0))
       )

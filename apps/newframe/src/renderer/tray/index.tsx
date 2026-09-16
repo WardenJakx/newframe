@@ -24,7 +24,9 @@ async function start() {
   const disconnectState = await connectRendererState('wallet-ui', state, link)
   const unsubscribe = state.wallet.subscribe((state, previous) => {
     const open = selectTrayOpen(state)
-    if (open !== selectTrayOpen(previous)) updateTrayVisibility(open)
+    if (open !== selectTrayOpen(previous)) {
+      updateTrayVisibility(open)
+    }
   })
 
   window.addEventListener(
@@ -50,7 +52,9 @@ async function start() {
 
 void start().catch((error) => console.error('Could not connect tray state', error))
 document.addEventListener('mouseout', (e) => {
-  if (e.clientX < 0) void link.executeCommand({ type: 'tray.mouseout' })
+  if (e.clientX < 0) {
+    void link.executeCommand({ type: 'tray.mouseout' })
+  }
 })
 document.addEventListener('contextmenu', (e) => {
   void link.executeCommand({ type: 'renderer.context-menu', x: e.clientX, y: e.clientY })

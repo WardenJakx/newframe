@@ -28,23 +28,36 @@ const getElapsedTime = (req: RequestItemRequestView) => {
   const mins = Math.floor(secs / 60)
   const hrs = Math.floor(mins / 60)
   const days = Math.floor(hrs / 24)
-  if (days >= 1) return `${days}d ago`
-  if (hrs >= 1) return `${hrs}h ago`
-  if (mins >= 1) return `${mins}m ago`
-  if (secs >= 30) return `${secs}s ago`
+  if (days >= 1) {
+    return `${days}d ago`
+  }
+  if (hrs >= 1) {
+    return `${hrs}h ago`
+  }
+  if (mins >= 1) {
+    return `${mins}m ago`
+  }
+  if (secs >= 30) {
+    return `${secs}s ago`
+  }
   return 'NEW'
 }
 
 function requestTone(status?: string) {
-  if (['sent', 'sending', 'verifying', 'confirming', 'confirmed'].includes(status || ''))
+  if (['sent', 'sending', 'verifying', 'confirming', 'confirmed'].includes(status || '')) {
     return 'success' as const
-  if (['error', 'declined'].includes(status || '')) return 'danger' as const
+  }
+  if (['error', 'declined'].includes(status || '')) {
+    return 'danger' as const
+  }
   return 'accent' as const
 }
 
 function RequestIcon({ img, svgName }: Pick<RequestItemProps, 'img' | 'svgName'>) {
   const source = imageSource(img)
-  if (source) return <Image alt='' source={source} />
+  if (source) {
+    return <Image alt='' source={source} />
+  }
   return <Icon name={svgName ?? 'ethereum'} size='medium' />
 }
 

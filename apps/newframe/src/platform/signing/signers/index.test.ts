@@ -3,7 +3,6 @@ import { EventEmitter } from 'events'
 
 import store from '../../state-store'
 import createCanonicalStore from '../../state-store/createCanonicalStore'
-import type { SignerAdapter } from './adapters'
 import type Signer from './Signer'
 
 class HotSignerMock extends EventEmitter {
@@ -178,7 +177,7 @@ it('publishes hot updates, atomically rekeys, and permanently detaches removals'
 
 it('ignores detached adapter events and releases every lifecycle resource on close', () => {
   const adapter = new AdapterMock()
-  const signers = new Signers(dependencies(), [adapter as unknown as SignerAdapter], mock())
+  const signers = new Signers(dependencies(), [adapter], mock())
   const removed = new HotSignerMock('removed')
   adapter.emit('add', removed)
   signers.remove(removed.id)
@@ -199,7 +198,7 @@ it('ignores detached adapter events and releases every lifecycle resource on clo
 it('starts adapters and hot loading once, then closes once', () => {
   const adapter = new AdapterMock()
   const load = mock()
-  const signers = new Signers(dependencies(), [adapter as unknown as SignerAdapter], load)
+  const signers = new Signers(dependencies(), [adapter], load)
 
   expect(adapter.open.mock.calls).toHaveLength(0)
   signers.start()

@@ -26,7 +26,9 @@ export function createMainApp({ ipc, operationDispatcher, stateStream }: MainApp
       return active
     },
     start() {
-      if (active) return
+      if (active) {
+        return
+      }
 
       const started: Array<() => void> = []
       try {
@@ -40,7 +42,9 @@ export function createMainApp({ ipc, operationDispatcher, stateStream }: MainApp
       }
     },
     dispose() {
-      if (!active) return
+      if (!active) {
+        return
+      }
 
       disposers.reverse().forEach((dispose) => dispose())
       disposers = []

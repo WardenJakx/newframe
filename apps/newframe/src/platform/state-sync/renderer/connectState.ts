@@ -25,31 +25,41 @@ export async function connectRendererState(
   const establishConnection = async () => {
     state.beginStateConnection(projection)
     const result = await client.connectState(handleMessage)
-    if (!result.ok) throw new Error(`State connection failed: ${result.error}`)
+    if (!result.ok) {
+      throw new Error(`State connection failed: ${result.error}`)
+    }
   }
 
   const reconnect = async () => {
     retryRequested = true
-    if (reconnecting || stopped) return
+    if (reconnecting || stopped) {
+      return
+    }
     reconnecting = true
 
     while (!stopped) {
       retryRequested = false
       try {
         await client.disconnectState()
-        if (stopped) break
+        if (stopped) {
+          break
+        }
         await establishConnection()
         if (stopped) {
           await client.disconnectState()
           break
         }
-        if (!retryRequested) break
+        if (!retryRequested) {
+          break
+        }
       } catch (error) {
         console.error('Could not reconnect renderer state', error)
         retryRequested = true
       }
 
-      if (retryRequested) await new Promise((resolve) => setTimeout(resolve, reconnectDelay))
+      if (retryRequested) {
+        await new Promise((resolve) => setTimeout(resolve, reconnectDelay))
+      }
     }
 
     reconnecting = false
@@ -57,8 +67,12 @@ export async function connectRendererState(
 
   const handleMessage = (message: StateMessage) => {
     const result = state.applyStateMessage(message)
-    if (result.status === 'applied' && result.messageType === 'snapshot') resolveInitialSnapshot()
-    if (result.status === 'reconnect-needed') void reconnect()
+    if (result.status === 'applied' && result.messageType === 'snapshot') {
+      resolveInitialSnapshot()
+    }
+    if (result.status === 'reconnect-needed') {
+      void reconnect()
+    }
   }
 
   await establishConnection()

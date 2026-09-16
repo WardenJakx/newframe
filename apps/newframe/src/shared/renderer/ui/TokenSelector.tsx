@@ -47,11 +47,15 @@ function TokenSelectorContent({
   const itemIdsKey = itemIds.join('|')
 
   React.useEffect(() => {
-    if (open) searchInputRef.current?.focus()
+    if (open) {
+      searchInputRef.current?.focus()
+    }
   }, [open])
 
   React.useEffect(() => {
-    if (!invalidSelection) return
+    if (!invalidSelection) {
+      return
+    }
     console.warn('[TokenSelector] selectedId was not found in items', { selectedId, itemIds })
   }, [invalidSelection, itemIds, itemIdsKey, selectedId])
 

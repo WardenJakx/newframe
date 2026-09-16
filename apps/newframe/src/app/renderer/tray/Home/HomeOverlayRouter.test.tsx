@@ -223,10 +223,10 @@ describe('HomeOverlayRouter retained menu layers', () => {
     await user.tab({ shift: true })
     expect(document.activeElement).toBe(buttons.at(-1)!)
     await user.tab()
-    expect(document.activeElement).toBe(buttons[0]!)
+    expect(document.activeElement).toBe(buttons[0])
 
     const cancelEscape = (event: Event) => event.preventDefault()
-    buttons[0]!.addEventListener('keydown', cancelEscape, { once: true })
+    buttons[0].addEventListener('keydown', cancelEscape, { once: true })
     await user.keyboard('{Escape}')
     expect(screen.getByRole('dialog', { name: 'App Info' })).toBe(page)
     await user.keyboard('{Escape}')

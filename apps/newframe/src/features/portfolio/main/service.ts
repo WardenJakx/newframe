@@ -27,7 +27,9 @@ export function createPortfolioService(ports: PortfolioServicePorts) {
   return {
     async refresh(operationId: string, owner: OperationOwner) {
       const reference: OperationReference = { owner, id: operationId, type: 'portfolio.refresh' }
-      if (ports.operations.lookup(reference)) return true
+      if (ports.operations.lookup(reference)) {
+        return true
+      }
 
       const initialState = ports.store.getState()
       const initialAccount = initialState.main.accounts[initialState.main.currentAccount || '']
@@ -52,9 +54,11 @@ export function createPortfolioService(ports: PortfolioServicePorts) {
 
       const state = ports.store.getState()
       const account = state.main.accounts[state.main.currentAccount || '']
-      if (!account?.address) return fail('account_not_found', 'No account is selected.')
+      if (!account?.address) {
+        return fail('account_not_found', 'No account is selected.')
+      }
 
-      const address = account.address.toLowerCase() as Address
+      const address = account.address.toLowerCase()
       const chainIds = Object.values(state.main.networks.ethereum)
         .filter((network) => network.on)
         .map((network) => network.id)

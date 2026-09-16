@@ -13,16 +13,22 @@ export class ProviderProxyConnection extends EventEmitter {
   }
 
   start() {
-    if (this.active || this.disposed) return
+    if (this.active || this.disposed) {
+      return
+    }
 
     this.active = true
     process.nextTick(() => {
-      if (this.active) this.emit('connect')
+      if (this.active) {
+        this.emit('connect')
+      }
     })
   }
 
   async send(payload: JSONRPCRequestPayload) {
-    if (!this.active) throw new Error('Provider proxy is not started.')
+    if (!this.active) {
+      throw new Error('Provider proxy is not started.')
+    }
 
     if (payload.method === 'eth_subscribe') {
       this.emit('provider:subscribe', { ...payload, _origin: internalOriginId })
@@ -36,7 +42,9 @@ export class ProviderProxyConnection extends EventEmitter {
   }
 
   dispose() {
-    if (this.disposed) return
+    if (this.disposed) {
+      return
+    }
 
     this.active = false
     this.disposed = true

@@ -24,7 +24,9 @@ export { vectors }
 export function publicAccount() {
   const decoder = new AirGapUrAssembler('crypto-hdkey')
   let cbor: Buffer | undefined
-  for (const frame of vectors.export.ur) cbor = decoder.receive(frame) ?? cbor
+  for (const frame of vectors.export.ur) {
+    cbor = decoder.receive(frame) ?? cbor
+  }
   return decodePublicAccount(cbor!)
 }
 export function uiContext(requestId = randomUUID()) {

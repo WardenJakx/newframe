@@ -11,13 +11,17 @@ export class PendingConnectionLimiter {
   ) {}
 
   tryReserve() {
-    if (!this.hasCapacity()) return false
+    if (!this.hasCapacity()) {
+      return false
+    }
     this.reservations += 1
     return true
   }
 
   release() {
-    if (this.reservations > 0) this.reservations -= 1
+    if (this.reservations > 0) {
+      this.reservations -= 1
+    }
   }
 
   hasCapacity() {
@@ -31,6 +35,8 @@ export function observeResponseClose(
   disconnect: () => void
 ) {
   response.once('close', () => {
-    if (isPending()) disconnect()
+    if (isPending()) {
+      disconnect()
+    }
   })
 }

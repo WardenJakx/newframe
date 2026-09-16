@@ -76,7 +76,7 @@ describe('connect events', () => {
         done(e)
       }
     })
-    ;(TrezorConnect as any).emit(DEVICE_EVENT, {
+    TrezorConnect.emit(DEVICE_EVENT, {
       type: DEVICE.CHANGED,
       payload: { type: 'unacquired', path: '27', features: {} }
     })
@@ -91,7 +91,7 @@ describe('connect events', () => {
         done(e)
       }
     })
-    ;(TrezorConnect as any).emit(DEVICE_EVENT, {
+    TrezorConnect.emit(DEVICE_EVENT, {
       type: DEVICE.CONNECT_UNACQUIRED,
       payload: { type: 'unacquired', path: '27', features: {} }
     })
@@ -108,7 +108,7 @@ describe('connect events', () => {
         done(e)
       }
     })
-    ;(TrezorConnect as any).emit(DEVICE_EVENT, { type: DEVICE.CONNECT, payload })
+    TrezorConnect.emit(DEVICE_EVENT, { type: DEVICE.CONNECT, payload })
   })
 
   it('emits a disconnected event on device disconnected event', (done) => {
@@ -122,7 +122,7 @@ describe('connect events', () => {
         done(e)
       }
     })
-    ;(TrezorConnect as any).emit(DEVICE_EVENT, { type: DEVICE.DISCONNECT, payload })
+    TrezorConnect.emit(DEVICE_EVENT, { type: DEVICE.DISCONNECT, payload })
   })
 
   it('emits an updated event on device changed event where type is not unacquired', (done) => {
@@ -136,7 +136,7 @@ describe('connect events', () => {
         done(e)
       }
     })
-    ;(TrezorConnect as any).emit(DEVICE_EVENT, { type: DEVICE.CHANGED, payload })
+    TrezorConnect.emit(DEVICE_EVENT, { type: DEVICE.CHANGED, payload })
   })
 })
 
@@ -152,7 +152,7 @@ describe('ui events', () => {
         done(e)
       }
     })
-    ;(TrezorConnect as any).emit(UI_EVENT, { type: UI.REQUEST_PIN, payload: { device } })
+    TrezorConnect.emit(UI_EVENT, { type: UI.REQUEST_PIN, payload: { device } })
   })
 
   it('emits a needPhrase event when a passphrase is requested and entry on the device is not supported', (done) => {
@@ -167,7 +167,7 @@ describe('ui events', () => {
         done(e)
       }
     })
-    ;(TrezorConnect as any).emit(UI_EVENT, { type: UI.REQUEST_PASSPHRASE, payload })
+    TrezorConnect.emit(UI_EVENT, { type: UI.REQUEST_PASSPHRASE, payload })
   })
 })
 
@@ -175,7 +175,7 @@ describe('requests', () => {
   it('loads features for a given device', async () => {
     const features = { vendor: 'trezor.io', device_id: 'G89EDFE91829DACC6B43' }
 
-    ;(TrezorConnect.getFeatures as any).mockImplementation(async (params: any) => {
+    TrezorConnect.getFeatures.mockImplementation(async (params: any) => {
       expect(params.device.path).toBe('41')
       return { id: 1, success: true, payload: features }
     })
@@ -188,7 +188,7 @@ describe('requests', () => {
   it('gets the public key for a given device', async () => {
     const key = { chainCode: 'eth', fingerprint: 19912902490 }
 
-    ;(TrezorConnect.getPublicKey as any).mockImplementation(async (params: any) => {
+    TrezorConnect.getPublicKey.mockImplementation(async (params: any) => {
       expect(params.device.path).toBe('4')
       expect(params.path).toBe("m/44'/60'/0/1/0")
       return { id: 1, success: true, payload: key }
@@ -202,7 +202,7 @@ describe('requests', () => {
   it('gets the signature after signing a transaction', async () => {
     const tx = { chainId: '0x4', type: '0x2', value: '0x1929' }
 
-    ;(TrezorConnect.ethereumSignTransaction as any).mockImplementation(async (params: any) => {
+    TrezorConnect.ethereumSignTransaction.mockImplementation(async (params: any) => {
       expect(params.device.path).toBe('11')
       expect(params.path).toBe("m/44'/60'/0'/4/0")
       expect(params.transaction).toEqual(tx)

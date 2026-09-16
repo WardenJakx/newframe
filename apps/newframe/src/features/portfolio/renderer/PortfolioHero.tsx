@@ -10,7 +10,9 @@ import { useAccountBalances } from './useAccountBalances'
 import { usePortfolioActions } from './usePortfolioActions'
 
 export function formatPortfolioValue(balances: Pick<BalanceSummary, 'hasPrice' | 'totalValue'>[]) {
-  if (balances.length > 0 && !balances.some((balance) => balance.hasPrice)) return '—'
+  if (balances.length > 0 && !balances.some((balance) => balance.hasPrice)) {
+    return '—'
+  }
 
   return formatUsdRate(
     balances.reduce((sum, balance) => sum + balance.totalValue, 0),
@@ -43,7 +45,9 @@ export function PortfolioHero({
   )
 
   useEffect(() => {
-    if (!refreshOperationId) return
+    if (!refreshOperationId) {
+      return
+    }
 
     const timeout = setTimeout(() => setMinimumRefreshElapsed(true), 1000)
     return () => clearTimeout(timeout)
@@ -56,7 +60,9 @@ export function PortfolioHero({
       canTrade={actions.canTrade()}
       displayValue={formatPortfolioValue(visibleBalances)}
       onRefresh={() => {
-        if (refreshing) return
+        if (refreshing) {
+          return
+        }
         const operationId = crypto.randomUUID()
         setRefreshBoundaryFailureId('')
         setMinimumRefreshElapsed(false)
@@ -64,7 +70,9 @@ export function PortfolioHero({
         void capability
           .refresh({ operationId })
           .then((result) => {
-            if (!result.ok) setRefreshBoundaryFailureId(operationId)
+            if (!result.ok) {
+              setRefreshBoundaryFailureId(operationId)
+            }
           })
           .catch(() => setRefreshBoundaryFailureId(operationId))
       }}

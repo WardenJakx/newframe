@@ -78,7 +78,9 @@ export function getContraPreposition(side: FlashTradeSide): 'with' | 'for' {
 }
 
 export function isSameFlashAsset(a?: FlashAsset | null, b?: FlashAsset | null) {
-  if (!a || !b) return false
+  if (!a || !b) {
+    return false
+  }
   return (
     a.id === b.id ||
     (a.chainId === b.chainId &&
@@ -136,7 +138,9 @@ export function getDefaultContraAssetForChain({
 }
 
 export function getDefaultSide({ targetAsset, balances }: FlashDefaultAssetOptions): FlashTradeSide {
-  if (!balances) return 'sell'
+  if (!balances) {
+    return 'sell'
+  }
 
   return hasAssetBalance(targetAsset, balances) ? 'sell' : 'buy'
 }
@@ -157,9 +161,15 @@ function uniqueFlashAssets(assets: FlashAsset[]) {
 
 function sortContraCandidates(assets: FlashAsset[]) {
   const priority = (asset: FlashAsset) => {
-    if (asset.symbol.toUpperCase() === FLASH_USDC_ASSET_SYMBOL) return 0
-    if (asset.symbol.toUpperCase() === FLASH_WETH_ASSET_SYMBOL) return 1
-    if (asset.isNative) return 2
+    if (asset.symbol.toUpperCase() === FLASH_USDC_ASSET_SYMBOL) {
+      return 0
+    }
+    if (asset.symbol.toUpperCase() === FLASH_WETH_ASSET_SYMBOL) {
+      return 1
+    }
+    if (asset.isNative) {
+      return 2
+    }
     return 3
   }
 
@@ -180,11 +190,19 @@ function isAssetBalanceForAsset(balance: FlashAssetBalance, asset: FlashAsset) {
 }
 
 function hasBalanceValue(value?: string) {
-  if (!value) return false
+  if (!value) {
+    return false
+  }
   const normalized = value.trim().replace(/,/g, '')
-  if (!normalized) return false
-  if (/^0x[0-9a-f]+$/i.test(normalized)) return BigInt(normalized) > 0n
-  if (/^-?\d+$/.test(normalized)) return BigInt(normalized) > 0n
+  if (!normalized) {
+    return false
+  }
+  if (/^0x[0-9a-f]+$/i.test(normalized)) {
+    return BigInt(normalized) > 0n
+  }
+  if (/^-?\d+$/.test(normalized)) {
+    return BigInt(normalized) > 0n
+  }
 
   const parsed = Number(normalized)
   return Number.isFinite(parsed) && parsed > 0

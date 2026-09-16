@@ -181,12 +181,13 @@ export function ActivityView<TRecord extends ActivityViewRecord>({
   onOpenExplorer: (record: TRecord) => void
   tokens: ActivityTokenCatalog
 }) {
-  if (!activity.length)
+  if (!activity.length) {
     return (
       <Text align='center' tone='disabled' variant='overline'>
         No Activity Yet
       </Text>
     )
+  }
 
   return (
     <Group label='Activity list'>

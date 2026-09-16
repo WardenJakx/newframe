@@ -38,7 +38,9 @@ export function useSafeConfirmation({
   }, [scope, identity])
   const clicked = useRef('')
   const requestGeneration = useRef(0)
-  if (state.scope !== scope) setState({ scope, revision: state.revision + 1 })
+  if (state.scope !== scope) {
+    setState({ scope, revision: state.revision + 1 })
+  }
   const activeState = state.scope === scope ? state : undefined
   const operation = useWalletSelector((wallet) =>
     activeState?.operationId ? wallet.operations[activeState.operationId] : undefined
@@ -53,20 +55,28 @@ export function useSafeConfirmation({
   )
   const notified = useRef('')
   useEffect(() => {
-    if (!signerId || !exchange || exchange.requestId !== activeState?.operationId) return
-    if (notified.current === exchange.sessionId || !onAirGapSigning) return
+    if (!signerId || !exchange || exchange.requestId !== activeState?.operationId) {
+      return
+    }
+    if (notified.current === exchange.sessionId || !onAirGapSigning) {
+      return
+    }
     notified.current = exchange.sessionId
     onAirGapSigning({ signerId, ...exchange })
   }, [signerId, exchange, activeState?.operationId, onAirGapSigning])
 
   useEffect(() => {
     const selected = current.current.identity
-    if (!selected || !scope) return
+    if (!selected || !scope) {
+      return
+    }
     let active = true
     const generation = ++requestGeneration.current
     void capability.confirmationStatus(selected).then(
       (result) => {
-        if (!active || generation !== requestGeneration.current) return
+        if (!active || generation !== requestGeneration.current) {
+          return
+        }
         setState((previous) =>
           previous.scope === scope
             ? {
@@ -79,12 +89,13 @@ export function useSafeConfirmation({
         )
       },
       () => {
-        if (active && generation === requestGeneration.current)
+        if (active && generation === requestGeneration.current) {
           setState((previous) =>
             previous.scope === scope
               ? { ...previous, error: 'Could not load confirmation status. Try again.' }
               : previous
           )
+        }
       }
     )
     return () => {
@@ -120,8 +131,9 @@ export function useSafeConfirmation({
         !scope ||
         clicked.current === scope ||
         ['signing', 'publishing', 'published'].includes(status)
-      )
+      ) {
         return
+      }
       clicked.current = scope
       ++requestGeneration.current
       const operationId = crypto.randomUUID()
@@ -137,7 +149,9 @@ export function useSafeConfirmation({
         .confirm({ ...selected, operationId })
         .then(
           (result) => {
-            if (current.current.scope !== scope) return
+            if (current.current.scope !== scope) {
+              return
+            }
             setState((previous) => ({
               ...previous,
               submitting: false,
@@ -148,7 +162,9 @@ export function useSafeConfirmation({
             }))
           },
           () => {
-            if (current.current.scope !== scope) return
+            if (current.current.scope !== scope) {
+              return
+            }
             setState((previous) => ({
               ...previous,
               submitting: false,
@@ -159,7 +175,9 @@ export function useSafeConfirmation({
           }
         )
         .finally(() => {
-          if (clicked.current === scope) clicked.current = ''
+          if (clicked.current === scope) {
+            clicked.current = ''
+          }
         })
     }
   }

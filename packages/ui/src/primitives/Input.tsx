@@ -168,7 +168,9 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
               if (event.key === 'Enter' && (onSubmit || blurOnEnter)) {
                 event.preventDefault()
                 onSubmit?.()
-                if (blurOnEnter) event.currentTarget.blur()
+                if (blurOnEnter) {
+                  event.currentTarget.blur()
+                }
               } else if (event.key === 'Escape' && onCancel) {
                 event.preventDefault()
                 onCancel()

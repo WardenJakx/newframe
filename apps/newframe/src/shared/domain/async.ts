@@ -9,7 +9,9 @@ export function debounce<TArgs extends unknown[]>(
   let timer: ReturnType<typeof setTimeout> | undefined
 
   const debounced = (...args: TArgs) => {
-    if (timer) clearTimeout(timer)
+    if (timer) {
+      clearTimeout(timer)
+    }
     timer = setTimeout(() => {
       timer = undefined
       fn(...args)
@@ -17,7 +19,9 @@ export function debounce<TArgs extends unknown[]>(
   }
 
   debounced.cancel = () => {
-    if (timer) clearTimeout(timer)
+    if (timer) {
+      clearTimeout(timer)
+    }
     timer = undefined
   }
 

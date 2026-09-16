@@ -70,7 +70,9 @@ export function createPlatformService(ports: PlatformServicePorts) {
     consumeHomeCommand(commandId: number) {
       const state = ports.store.getState()
       const command = state.tray.homeCommand as { id: number } | null
-      if (!command || command.id !== commandId) return false
+      if (!command || command.id !== commandId) {
+        return false
+      }
       state.clearHomeCommand(commandId)
       return true
     },
@@ -90,7 +92,9 @@ export function createPlatformService(ports: PlatformServicePorts) {
     openRequestPanel(requestId: string) {
       const account = ports.accounts.current()
       const request = account?.getRequest(requestId)
-      if (!account || !request) return false
+      if (!account || !request) {
+        return false
+      }
 
       ports.store.getState().navForward('panel', {
         view: 'requestView',
@@ -102,7 +106,9 @@ export function createPlatformService(ports: PlatformServicePorts) {
 
     openSideTray(command: SideTrayOpenCommand) {
       const state = ports.store.getState()
-      if (command.chainId && !state.main.networks.ethereum[command.chainId]) return false
+      if (command.chainId && !state.main.networks.ethereum[command.chainId]) {
+        return false
+      }
 
       const frame = normalizeSideTrayFrameRequest({
         id: SIDE_TRAY_FRAME_ID,
@@ -114,13 +120,17 @@ export function createPlatformService(ports: PlatformServicePorts) {
       })!
       const exists = state.main.frames[frame.id]
       state.setSideTray(frame)
-      if (exists) ports.windows.refocusSideTray(frame.id)
+      if (exists) {
+        ports.windows.refocusSideTray(frame.id)
+      }
       return true
     },
 
     openTransactionExplorer(chainId: number, transactionHash?: string) {
       const chain = ports.store.getState().main.networks.ethereum[chainId]
-      if (!chain) return false
+      if (!chain) {
+        return false
+      }
       ports.openBlockExplorer({ id: chainId, type: 'ethereum' }, transactionHash)
       return true
     },
@@ -132,7 +142,9 @@ export function createPlatformService(ports: PlatformServicePorts) {
     respondToExtension(extensionId: string, approved: boolean) {
       const state = ports.store.getState()
       const pending = state.view.notifyData as { id?: string }
-      if (state.view.notify !== 'extensionConnect' || pending?.id !== extensionId) return false
+      if (state.view.notify !== 'extensionConnect' || pending?.id !== extensionId) {
+        return false
+      }
 
       state.trustExtension(extensionId, approved)
       state.notify('', {})
@@ -144,23 +156,32 @@ export function createPlatformService(ports: PlatformServicePorts) {
       const badge = state.view.badge as { type?: string; version?: string }
 
       if (action === 'restart') {
-        if (badge.type !== 'updateReady' || !ports.updater.updateReady) return false
+        if (badge.type !== 'updateReady' || !ports.updater.updateReady) {
+          return false
+        }
         state.updateBadge('', undefined)
         ports.updater.quitAndInstall()
         return true
       }
 
       if (action === 'dismiss-ready') {
-        if (badge.type !== 'updateReady') return false
+        if (badge.type !== 'updateReady') {
+          return false
+        }
         state.updateBadge('', undefined)
         return true
       }
 
-      if (badge.type !== 'updateAvailable') return false
+      if (badge.type !== 'updateAvailable') {
+        return false
+      }
       state.updateBadge('', undefined)
-      if (action === 'install') ports.updater.fetchUpdate()
-      else {
-        if (action === 'skip' && badge.version) state.dontRemind(badge.version)
+      if (action === 'install') {
+        ports.updater.fetchUpdate()
+      } else {
+        if (action === 'skip' && badge.version) {
+          state.dontRemind(badge.version)
+        }
         ports.updater.dismissUpdate()
       }
       return true
@@ -178,9 +199,14 @@ export function createPlatformService(ports: PlatformServicePorts) {
 
     updateNotification(notificationId: string, action: 'dismiss' | 'expire') {
       const state = ports.store.getState()
-      if (!state.view.notifications[notificationId]) return false
-      if (action === 'dismiss') state.dismissNotification(notificationId)
-      else state.expireNotification(notificationId)
+      if (!state.view.notifications[notificationId]) {
+        return false
+      }
+      if (action === 'dismiss') {
+        state.dismissNotification(notificationId)
+      } else {
+        state.expireNotification(notificationId)
+      }
       return true
     },
 

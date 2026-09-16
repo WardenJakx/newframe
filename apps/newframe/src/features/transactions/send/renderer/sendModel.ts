@@ -19,7 +19,9 @@ export function selectSendAsset(
 export function filterSendRecipients(accounts: SendAccountViewModel[], sender?: SendAccountViewModel | null) {
   const senderAddress = cleanAddress(sender?.address)
   return accounts.filter((account) => {
-    if (sender?.id && account.id === sender.id) return false
+    if (sender?.id && account.id === sender.id) {
+      return false
+    }
     return !senderAddress || cleanAddress(account.address) !== senderAddress
   })
 }
@@ -33,7 +35,9 @@ export function projectSendSubmission({
   operationId?: string
   operations: SideTrayRendererState['operations']
 }): SendSubmissionViewModel {
-  if (!operationId) return { error: '', status: '', submitting: false }
+  if (!operationId) {
+    return { error: '', status: '', submitting: false }
+  }
 
   const operation = operations[operationId]
   const transactionId = operation?.entityRefs?.find((reference) => reference.type === 'transaction')?.id

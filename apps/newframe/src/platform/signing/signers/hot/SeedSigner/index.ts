@@ -21,7 +21,9 @@ class SeedSigner extends HotSigner {
   }
 
   addSeed(seed: string, vaultKeyHex: string, cb: Callback<SeedSigner>) {
-    if (this.encryptedSeed) return cb(new Error('This signer already has a seed'), undefined)
+    if (this.encryptedSeed) {
+      return cb(new Error('This signer already has a seed'), undefined)
+    }
 
     const seedBuffer = Buffer.from(seed, 'hex')
     let root: HDKey | undefined
@@ -32,7 +34,9 @@ class SeedSigner extends HotSigner {
         const child = root.derive(`m/44'/60'/0'/0/${index}`)
         try {
           const publicKey = child.publicKey
-          if (!publicKey) throw new Error('Unable to derive public key')
+          if (!publicKey) {
+            throw new Error('Unable to derive public key')
+          }
           addresses.push(computeAddress(`0x${Buffer.from(publicKey).toString('hex')}`))
         } finally {
           child.wipePrivateData()
@@ -52,7 +56,9 @@ class SeedSigner extends HotSigner {
   }
 
   addPhrase(phrase: string, vaultKeyHex: string, cb: Callback<SeedSigner>) {
-    if (!Mnemonic.isValidMnemonic(phrase)) return cb(new Error('Invalid mnemonic phrase'), undefined)
+    if (!Mnemonic.isValidMnemonic(phrase)) {
+      return cb(new Error('Invalid mnemonic phrase'), undefined)
+    }
     this.addSeed(stripHexPrefix(Mnemonic.fromPhrase(phrase).computeSeed()), vaultKeyHex, cb)
   }
 
@@ -61,7 +67,9 @@ class SeedSigner extends HotSigner {
   }
 
   protected override openPrivateKey(index: number, vaultKeyHex: string) {
-    if (!this.encryptedSeed) throw new Error('Seed not found')
+    if (!this.encryptedSeed) {
+      throw new Error('Seed not found')
+    }
     const seed = openSecret(this.encryptedSeed, vaultKeyHex)
     let root: HDKey | undefined
     let child: HDKey | undefined
@@ -69,7 +77,9 @@ class SeedSigner extends HotSigner {
       root = HDKey.fromMasterSeed(seed)
       child = root.derive(`m/44'/60'/0'/0/${index}`)
       const privateKey = child.privateKey
-      if (!privateKey) throw new Error('Private key not found')
+      if (!privateKey) {
+        throw new Error('Private key not found')
+      }
       return Buffer.from(privateKey)
     } finally {
       child?.wipePrivateData()

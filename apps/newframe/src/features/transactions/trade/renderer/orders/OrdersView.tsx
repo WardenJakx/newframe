@@ -92,12 +92,13 @@ export function OrdersView({
   orders: OrderRow[]
   tokens: OrderTokenCatalog
 }) {
-  if (!orders.length)
+  if (!orders.length) {
     return (
       <Text align='center' tone='disabled' variant='overline'>
         No Orders Yet
       </Text>
     )
+  }
 
   return (
     <div className={orderListRecipe()}>

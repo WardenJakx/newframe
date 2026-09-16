@@ -34,7 +34,9 @@ export function OrderDetails({
       tokens: state.tokens || { byId: {}, accountTokenIds: {} }
     }))
   )
-  if (!shared.order) return null
+  if (!shared.order) {
+    return null
+  }
 
   return (
     <OrderDetailsView

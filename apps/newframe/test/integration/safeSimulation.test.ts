@@ -130,12 +130,16 @@ async function preview(name: string) {
 
 async function executed(name: string) {
   const result = await preview(name)
-  if (result.status === 'unavailable') throw new Error(result.error)
+  if (result.status === 'unavailable') {
+    throw new Error(result.error)
+  }
   return result
 }
 
 function logs(trace: TraceCall): NonNullable<TraceCall['logs']> {
-  if (trace.error || trace.revertReason) return []
+  if (trace.error || trace.revertReason) {
+    return []
+  }
   return [...(trace.logs ?? []), ...(trace.calls ?? []).flatMap(logs)]
 }
 
@@ -146,7 +150,9 @@ beforeAll(async () => {
     listener.listen(0, '127.0.0.1', resolve)
   })
   const address = listener.address()
-  if (!address || typeof address === 'string') throw new Error('Unable to reserve Anvil port')
+  if (!address || typeof address === 'string') {
+    throw new Error('Unable to reserve Anvil port')
+  }
   await new Promise<void>((resolve, reject) => listener.close((error) => (error ? reject(error) : resolve())))
   anvil = Bun.spawn(
     [
@@ -171,13 +177,17 @@ beforeAll(async () => {
         body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_chainId', params: [] })
       })
       ready = Number(((await response.json()) as { result: string }).result) === chainId
-      if (ready) break
+      if (ready) {
+        break
+      }
     } catch {
       /* Anvil is starting. */
     }
     await Bun.sleep(25)
   }
-  if (!ready) throw new Error('Local Anvil did not start')
+  if (!ready) {
+    throw new Error('Local Anvil did not start')
+  }
   provider = new JsonRpcProvider(url, chainId, {
     staticNetwork: true,
     batchMaxCount: 1,
@@ -336,7 +346,9 @@ beforeAll(async () => {
       }
       void provider.send(payload.method, params).then(
         (result: unknown) => {
-          if (payload.method === 'debug_traceCall') traces.push(result as TraceCall)
+          if (payload.method === 'debug_traceCall') {
+            traces.push(result as TraceCall)
+          }
           callback({ id: payload.id, jsonrpc: '2.0', result })
         },
         (error: Error) =>
@@ -378,8 +390,9 @@ beforeAll(async () => {
     let attempt = 0;
     attempt < 100 && store.getState().operations['watch-simulation']?.operation.status === 'pending';
     attempt++
-  )
+  ) {
     await Bun.sleep(10)
+  }
   expect(store.getState().operations['watch-simulation']?.operation.status).toBe('succeeded')
 }, 30_000)
 

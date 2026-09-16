@@ -1,4 +1,4 @@
-import { TypedTransaction } from '@ethereumjs/tx'
+import type { TypedTransaction } from '@ethereumjs/tx'
 import { padToEven, stripHexPrefix, addHexPrefix, bytesToHex } from '@ethereumjs/util'
 import { SignTypedDataVersion, TypedDataUtils } from '@metamask/eth-sig-util'
 import type { Device as TrezorDevice } from '@trezor/connect'
@@ -6,10 +6,11 @@ import log from 'electron-log'
 import { v5 as uuid } from 'uuid'
 
 import type { TypedMessage } from '../../../../features/requests/contract/requests.js'
-import { TransactionData } from '../../../../features/transactions/domain/index.js'
+import type { TransactionData } from '../../../../features/transactions/domain/index.js'
 import { sign, londonToLegacy, signerCompatibility } from '../../../../features/transactions/main/index.js'
 import { hexToInt } from '../../../../shared/domain/hex.js'
-import { Derivation, getDerivationPath } from '../Signer/derive.js'
+import type { Derivation } from '../Signer/derive.js'
+import { getDerivationPath } from '../Signer/derive.js'
 import Signer from '../Signer/index.js'
 import TrezorBridge, { DeviceError } from './bridge.js'
 
@@ -321,7 +322,7 @@ export default class Trezor extends Signer {
             ? `Turn off strict Trezor safety checks in order to use the ${this.derivation} derivation path on this chain`
             : err.message
 
-          throw new Error(errMsg)
+          throw new Error(errMsg, { cause: e })
         }
       })
 
@@ -355,10 +356,10 @@ export default class Trezor extends Signer {
     const optionalFields = ['gasPrice', 'maxFeePerGas', 'maxPriorityFeePerGas']
 
     optionalFields.forEach((field) => {
-      // @ts-ignore
+      // @ts-expect-error
       const val: string = txJson[field]
       if (val) {
-        // @ts-ignore
+        // @ts-expect-error
         unsignedTx[field] = this.normalize(val)
       }
     })

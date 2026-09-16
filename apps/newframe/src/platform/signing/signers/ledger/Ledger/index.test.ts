@@ -46,7 +46,9 @@ const runNextRequest = () => timers.advanceTimersByTime(200)
 async function runQueuedRequests(count: number) {
   for (let request = 0; request < count; request++) {
     runNextRequest()
-    for (let microtask = 0; microtask < 6; microtask++) await Promise.resolve()
+    for (let microtask = 0; microtask < 6; microtask++) {
+      await Promise.resolve()
+    }
   }
 }
 
@@ -86,7 +88,7 @@ beforeAll(async () => {
 })
 
 beforeEach(async () => {
-  ;(Eth as any).mockClear()
+  Eth.mockClear()
   ledger = new Ledger('usb-path')
   ledger.derivation = Derivation.legacy
   await ledger.open()
@@ -174,7 +176,9 @@ describe('#deriveAddress', () => {
     const statuses: any[] = []
     ledger.on('update', () => {
       statuses.push(ledger.status)
-      if (ledger.status === Status.DERIVING) expect(ledger.addresses).toHaveLength(0)
+      if (ledger.status === Status.DERIVING) {
+        expect(ledger.addresses).toHaveLength(0)
+      }
     })
     const derived = waitForEvent('update', () => ledger.status === Status.OK)
 

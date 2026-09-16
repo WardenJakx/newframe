@@ -64,7 +64,9 @@ interface OriginStatus {
 
 // helper functions
 const originFromUrl = (url?: string) => {
-  if (!url) return ''
+  if (!url) {
+    return ''
+  }
   const path = url.split('/')
   return `${path[0]}//${path[2]}`
 }
@@ -82,7 +84,9 @@ const subType = (pendingPayload: PendingRequest) => {
 
 const unsubscribeTab = (tabId: number) => {
   Object.keys(pending).forEach((id) => {
-    if (pending[id]!.tabId === tabId) delete pending[id]
+    if (pending[id]!.tabId === tabId) {
+      delete pending[id]
+    }
   })
   Object.keys(subs).forEach((sub) => {
     if (subs[sub]!.tabId === tabId) {
@@ -99,12 +103,16 @@ const unsubscribeTab = (tabId: number) => {
 
 function updateSettingsPanel() {
   const panel = settingsPanel
-  if (!panel) return
+  if (!panel) {
+    return
+  }
 
   try {
     panel.postMessage(frameStateStore.getState())
   } catch {
-    if (settingsPanel === panel) settingsPanel = null
+    if (settingsPanel === panel) {
+      settingsPanel = null
+    }
   }
 }
 
@@ -143,9 +151,11 @@ function setPopup(popup: string) {
 }
 
 async function fetchAvailableChains() {
-  if (!provider?.isConnected()) return
+  if (!provider?.isConnected()) {
+    return
+  }
   try {
-    const chains = await provider!.request<AvailableChain[]>({ method: 'wallet_getEthereumChains' })
+    const chains = await provider.request<AvailableChain[]>({ method: 'wallet_getEthereumChains' })
     setChains(chains)
   } catch (e) {
     console.error('Error fetching chains', e)
@@ -188,7 +198,9 @@ async function refreshActiveOriginStatus(tab?: chrome.tabs.Tab) {
     })
 
     setOriginStatus(status.origin || origin, status.connected, status.address || status.selectedAddress || '')
-    if (status.chainId) setCurrentChain(status.chainId)
+    if (status.chainId) {
+      setCurrentChain(status.chainId)
+    }
   } catch (e) {
     console.error('Error fetching origin status', e)
     setOriginStatus(origin, false, '')
@@ -222,7 +234,9 @@ async function sendEventToTab(tabId: number, event: string, args?: any) {
     return await chrome.tabs.sendMessage(tabId, { type: 'eth:event', event, args })
   } catch (e) {
     // tabs without our content script (chrome:// pages, stale tabs) can't receive — expected
-    if ((e as Error)?.message?.includes('Receiving end does not exist')) return
+    if ((e as Error)?.message?.includes('Receiving end does not exist')) {
+      return
+    }
     console.error(`Error sending event "${event}"`, e)
   }
 }
@@ -298,7 +312,9 @@ function initProvider(requestApproval = false) {
             tabId,
             send: (subload) => {
               chrome.tabs.sendMessage(tabId, subload).catch((error) => {
-                if ((error as Error)?.message?.includes('Receiving end does not exist')) return
+                if ((error as Error)?.message?.includes('Receiving end does not exist')) {
+                  return
+                }
                 console.error('Error sending subscription payload', error)
               })
             },
@@ -317,7 +333,9 @@ function initProvider(requestApproval = false) {
           const activeTabOrigin = originFromUrl(activeTab.url)
           if (activeTabOrigin === payloadOrigin) {
             const chainId = payload.result
-            if (chainId) setCurrentChain(chainId)
+            if (chainId) {
+              setCurrentChain(chainId)
+            }
           }
         }
 
@@ -334,7 +352,9 @@ function initProvider(requestApproval = false) {
       sub.send(payload)
       if (sub.type === 'chainChanged' && sub.tabId === activeTabId) {
         const chainId = payload.params?.result
-        if (chainId) setCurrentChain(chainId)
+        if (chainId) {
+          setCurrentChain(chainId)
+        }
       }
     }
   }
@@ -345,7 +365,7 @@ function destroyProvider() {
   dappConnection = null
 
   if (provider) {
-    provider.close!()
+    provider.close()
     provider = null
   }
 }
@@ -367,7 +387,9 @@ function addStateListeners() {
 
     if (payload.method === 'embedded_action_res') {
       const [action, res] = params
-      if (action.type === 'getChainId' && res.chainId) return setCurrentChain(res.chainId)
+      if (action.type === 'getChainId' && res.chainId) {
+        return setCurrentChain(res.chainId)
+      }
     } else if (payload.method === 'media_blob') {
       const location = payload.location
 
@@ -395,8 +417,12 @@ function addStateListeners() {
     }
 
     if (payload.method === 'frame_retry_connection') {
-      if (sender.tab || sender.url !== chrome.runtime.getURL('settings.html')) return
-      if (retrying || frameStateStore.getState().connectionStatus === 'connected') return
+      if (sender.tab || sender.url !== chrome.runtime.getURL('settings.html')) {
+        return
+      }
+      if (retrying || frameStateStore.getState().connectionStatus === 'connected') {
+        return
+      }
 
       retrying = true
       destroyProvider()
@@ -417,32 +443,41 @@ function addStateListeners() {
     }
 
     if (payload.method === 'frame_disconnect_current_site') {
-      if (sender.tab) return
+      if (sender.tab) {
+        return
+      }
 
       await disconnectActiveOrigin(tab)
       return
     }
 
     if (payload.method === 'frame_refresh_origin_status') {
-      if (sender.tab) return
+      if (sender.tab) {
+        return
+      }
 
       await refreshActiveOriginStatus(tab)
       return
     }
 
     if (payload.method === 'frame_refresh_chains') {
-      if (sender.tab) return
+      if (sender.tab) {
+        return
+      }
 
       await fetchAvailableChains()
       return
     }
 
-    if (payload.method === 'frame_summon')
+    if (payload.method === 'frame_summon') {
       return provider?.connection.send({ jsonrpc: '2.0', id: 1, method, params })
+    }
 
     if (!provider?.isConnected() || !dappConnection) {
       const tabId = sender.tab?.id ?? tab?.id
-      if (tabId === undefined) return
+      if (tabId === undefined) {
+        return
+      }
       const rejected = frameStateStore.getState().connectionStatus === 'extension-approval-rejected'
       await chrome.tabs.sendMessage(tabId, {
         type: 'eth:payload',
@@ -455,9 +490,11 @@ function addStateListeners() {
       return
     }
 
-    const id = provider!.nextId++
+    const id = provider.nextId++
     const origin = getOrigin(tab || sender)
-    if (!origin) return console.error('No origin found for sender')
+    if (!origin) {
+      return console.error('No origin found for sender')
+    }
     pending[id] = {
       tabId: sender?.tab?.id || tab.id,
       payloadId: payload.id,
@@ -475,7 +512,7 @@ function addStateListeners() {
       __extensionConnecting: undefined
     }
 
-    dappConnection!.send(load)
+    dappConnection.send(load)
   }
 
   chrome.runtime.onMessage.addListener((extensionPayload, sender) => {
@@ -483,10 +520,14 @@ function addStateListeners() {
   })
 
   chrome.runtime.onConnect.addListener((port) => {
-    if (port.name !== 'frame_connect') return
+    if (port.name !== 'frame_connect') {
+      return
+    }
 
     const onPortDisconnected = () => {
-      if (settingsPanel === port) settingsPanel = null
+      if (settingsPanel === port) {
+        settingsPanel = null
+      }
       port.onDisconnect.removeListener(onPortDisconnected)
     }
 
@@ -522,10 +563,11 @@ async function addTabListeners() {
       if (tabOrigin !== origin) {
         tabOrigins[tabId] = origin
         unsubscribeTab(tabId)
-        if (tabId === activeTabId)
+        if (tabId === activeTabId) {
           refreshActiveOriginStatus({ id: tabId, url: changeInfo.url } as chrome.tabs.Tab).catch(
             console.error
           )
+        }
       }
     }
   })
@@ -555,7 +597,9 @@ async function setupClientStatusAlarm() {
     if (alarm.name === CLIENT_STATUS_ALARM_KEY) {
       connectionReady
         .then(async () => {
-          if (retrying) return
+          if (retrying) {
+            return
+          }
           if (provider?.isConnected()) {
             dappConnection?.ensureConnected()
             await provider.checkHealth()
@@ -580,7 +624,9 @@ async function setupClientStatusAlarm() {
 async function injectExistingTabs() {
   const tabs = await chrome.tabs.query({ url: ['http://*/*', 'https://*/*', 'file://*/*'] })
   for (const tab of tabs) {
-    if (!tab.id) continue
+    if (!tab.id) {
+      continue
+    }
     try {
       await chrome.scripting.executeScript({
         target: { tabId: tab.id, allFrames: true },

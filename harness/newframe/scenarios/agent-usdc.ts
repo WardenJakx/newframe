@@ -94,8 +94,12 @@ async function newframeRpc<T>(method: string, params: unknown[]) {
   })
   const body = await responseJson<JsonRpcResponse<T>>(response)
 
-  if (body.error) throw new Error(body.error.message || `${method} failed`)
-  if (body.result === undefined) throw new Error(`${method} returned no result`)
+  if (body.error) {
+    throw new Error(body.error.message || `${method} failed`)
+  }
+  if (body.result === undefined) {
+    throw new Error(`${method} returned no result`)
+  }
   return body.result
 }
 
@@ -117,8 +121,12 @@ async function agentRpc<T>(credentials: AgentCredentials, method: string, params
   })
   const body = await responseJson<JsonRpcResponse<T>>(response)
 
-  if (body.error) throw new Error(body.error.message || `${method} failed`)
-  if (body.result === undefined) throw new Error(`${method} returned no result`)
+  if (body.error) {
+    throw new Error(body.error.message || `${method} failed`)
+  }
+  if (body.result === undefined) {
+    throw new Error(`${method} returned no result`)
+  }
   return body.result
 }
 
@@ -137,7 +145,9 @@ async function waitForReceipt(transactionHash: string) {
     const receipt = await newframeRpc<TransactionReceipt | null>('eth_getTransactionReceipt', [
       transactionHash
     ])
-    if (receipt) return receipt
+    if (receipt) {
+      return receipt
+    }
     await new Promise((resolve) => setTimeout(resolve, 250))
   }
 
@@ -165,7 +175,9 @@ async function main() {
     if (!/^0x[0-9a-fA-F]{64}$/.test(transactionHash)) {
       throw new Error(`Invalid transaction hash: ${transactionHash}`)
     }
-    if (receipt.status !== '0x1') throw new Error(`Transaction reverted: ${transactionHash}`)
+    if (receipt.status !== '0x1') {
+      throw new Error(`Transaction reverted: ${transactionHash}`)
+    }
     if (balanceAfter - balanceBefore !== TRANSFER_AMOUNT) {
       throw new Error(
         `Recipient balance changed by ${balanceAfter - balanceBefore}; expected ${TRANSFER_AMOUNT}`

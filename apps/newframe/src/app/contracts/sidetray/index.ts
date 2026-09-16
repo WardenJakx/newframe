@@ -35,7 +35,9 @@ export function normalizeSideTrayFrameRequest(frame: SideTrayFrameRequest): Side
   if (typeof frame === 'string') {
     return frame ? { id: SIDE_TRAY_FRAME_ID } : null
   }
-  if (!frame || typeof frame !== 'object' || typeof frame.id !== 'string' || !frame.id) return null
+  if (!frame || typeof frame !== 'object' || typeof frame.id !== 'string' || !frame.id) {
+    return null
+  }
 
   return {
     id: SIDE_TRAY_FRAME_ID,
@@ -49,18 +51,24 @@ export function parseSideTrayHashRoute(hash = ''): SideTrayRoute {
   const [pathname = '', search = ''] = routePath.split('?')
   const searchParams = new URLSearchParams(search)
 
-  if (pathname === '/trade') return { name: 'trade', searchParams }
+  if (pathname === '/trade') {
+    return { name: 'trade', searchParams }
+  }
 
   return { name: 'send', searchParams }
 }
 
 export function toCanonicalAssetId(asset: { chainId?: unknown; address?: unknown } | null | undefined) {
-  if (!asset) return ''
+  if (!asset) {
+    return ''
+  }
 
   const chainId = Number(asset.chainId)
   const address = canonicalAssetAddress(asset.address)
 
-  if (!Number.isInteger(chainId) || chainId <= 0 || !address) return ''
+  if (!Number.isInteger(chainId) || chainId <= 0 || !address) {
+    return ''
+  }
 
   return `${chainId}:${address}`
 }
@@ -74,8 +82,12 @@ function canonicalAssetAddress(address: unknown) {
 export function buildSideTrayRoute(route: SideTrayRouteName, assetId = '', chainId?: number) {
   const searchParams = new URLSearchParams()
 
-  if (assetId) searchParams.set('assetId', assetId)
-  if (Number.isInteger(chainId) && Number(chainId) > 0) searchParams.set('chainId', String(chainId))
+  if (assetId) {
+    searchParams.set('assetId', assetId)
+  }
+  if (Number.isInteger(chainId) && Number(chainId) > 0) {
+    searchParams.set('chainId', String(chainId))
+  }
 
   const search = searchParams.toString()
 
@@ -91,7 +103,9 @@ export function resolveSendAssetFromRouteAssetId<
   if (routeAsset) {
     const routeAssetId = `${routeAsset.chainId}:${routeAsset.address}`
     const selectedAsset = sendableAssets.find((asset) => toCanonicalAssetId(asset) === routeAssetId)
-    if (selectedAsset) return selectedAsset
+    if (selectedAsset) {
+      return selectedAsset
+    }
   }
 
   return sendableAssets[0] || null
@@ -121,13 +135,17 @@ export function resolveFlashAssetFromRouteAssetId(
 }
 
 export function parseCanonicalAssetId(assetId?: string | null) {
-  if (!assetId) return null
+  if (!assetId) {
+    return null
+  }
 
   const [chainIdValue, addressValue, ...extra] = assetId.split(':')
   const chainId = Number(chainIdValue)
   const address = canonicalAssetAddress(addressValue)
 
-  if (extra.length > 0 || !Number.isInteger(chainId) || chainId <= 0 || !address) return null
+  if (extra.length > 0 || !Number.isInteger(chainId) || chainId <= 0 || !address) {
+    return null
+  }
 
   return { chainId, address }
 }

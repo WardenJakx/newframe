@@ -10,7 +10,9 @@ import {
 } from '../format/displayValue'
 
 function isDisplayValueData(obj: unknown): obj is DisplayValueData {
-  if (!obj || typeof obj !== 'object') return false
+  if (!obj || typeof obj !== 'object') {
+    return false
+  }
   const candidate = obj as Partial<DisplayValueData>
   return Boolean(candidate.fiat && candidate.ether && candidate.gwei && candidate.wei && 'bn' in candidate)
 }

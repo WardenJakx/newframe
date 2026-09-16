@@ -1,12 +1,6 @@
 import { Interface } from 'ethers'
 import type { JsonFragment, Fragment } from 'ethers'
 
-import type {
-  ApproveAction as EnsApprovalAction,
-  TransferAction as EnsTransferAction,
-  RegisterAction as EnsRegistrationAction,
-  RenewAction as EnsRenewalAction
-} from '../../../../../features/transactions/main/actions/ens.js'
 import type { DecodableContract } from '../../../../../features/transactions/main/actions/index.js'
 import { registrar as registrarAbi, registrarController as registrarControllerAbi } from './abi.js'
 
@@ -48,7 +42,9 @@ function decode(abi: ReadonlyArray<Fragment | JsonFragment | string>, calldata: 
   const contractApi = new Interface(abi)
   const decoded = contractApi.parseTransaction({ data: calldata })
   // ethers v6 returns null instead of throwing when no fragment matches
-  if (!decoded) throw new Error('could not decode calldata')
+  if (!decoded) {
+    throw new Error('could not decode calldata')
+  }
   return decoded
 }
 
@@ -77,7 +73,7 @@ const registrar = ({ name = 'ENS Registrar', address, chainId }: DeploymentLocat
             to,
             tokenId: token
           }
-        } as EnsTransferAction
+        }
       }
 
       if (name === 'approve') {
@@ -87,7 +83,7 @@ const registrar = ({ name = 'ENS Registrar', address, chainId }: DeploymentLocat
         return {
           id: 'ens:approve',
           data: { name: '', operator: to, tokenId: token }
-        } as EnsApprovalAction
+        }
       }
     }
   }
@@ -117,7 +113,7 @@ const registarController = ({
         return {
           id: 'ens:register',
           data: { address: owner, name: ethName(name), duration: Number(duration) }
-        } as EnsRegistrationAction
+        }
       }
 
       if (name === 'renew') {
@@ -126,7 +122,7 @@ const registarController = ({
         return {
           id: 'ens:renew',
           data: { name: ethName(name), duration: Number(duration) }
-        } as EnsRenewalAction
+        }
       }
     }
   }

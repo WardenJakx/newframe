@@ -10,10 +10,11 @@ export function createQrCameraFake(autoReady = true) {
     start(video, handlers) {
       const session = { video, handlers, stopped: false }
       sessions.push(session)
-      if (autoReady)
+      if (autoReady) {
         queueMicrotask(() => {
           if (!session.stopped) handlers.onReady()
         })
+      }
       return {
         stop() {
           session.stopped = true

@@ -1,15 +1,16 @@
-import { SignTypedDataVersion } from '@metamask/eth-sig-util'
+import type { SignTypedDataVersion } from '@metamask/eth-sig-util'
 import log from 'electron-log'
 import { v5 as uuid } from 'uuid'
 
 import type { TypedMessage } from '../../../../../features/requests/contract/requests.js'
-import { TransactionData } from '../../../../../features/transactions/domain/index.js'
+import type { TransactionData } from '../../../../../features/transactions/domain/index.js'
 import { signerCompatibility, londonToLegacy } from '../../../../../features/transactions/main/index.js'
 import { Derivation, getDerivationPath } from '../../Signer/derive.js'
 import Signer from '../../Signer/index.js'
 import { TransportNodeHidNoEvents as TransportNodeHid } from '../dependencies.js'
 import LedgerEthereumApp from './eth.js'
-import { Request, RequestQueue } from './requestQueue.js'
+import type { Request } from './requestQueue.js'
+import { RequestQueue } from './requestQueue.js'
 
 const ns = '3bbcee75-cecc-5b56-8031-b6641c1ed1f1'
 
@@ -260,7 +261,7 @@ export default class Ledger extends Signer {
       const lastRequest = this.requestQueue.peekBack()
 
       // prevent spamming eth app checks
-      if (!lastRequest || lastRequest.type !== 'checkDeviceStatus') {
+      if (lastRequest?.type !== 'checkDeviceStatus') {
         this.enqueueRequests({
           type: 'checkDeviceStatus',
           execute: async () => {
@@ -310,7 +311,9 @@ export default class Ledger extends Signer {
   }
 
   loadAccounts(accountCount: number) {
-    if (this.derivation !== Derivation.live || accountCount <= this.accountLimit) return
+    if (this.derivation !== Derivation.live || accountCount <= this.accountLimit) {
+      return
+    }
     this.accountLimit = accountCount
     this.deriveLiveAddresses()
   }
@@ -323,9 +326,13 @@ export default class Ledger extends Signer {
       requests.push({
         type: 'deriveAddresses',
         execute: async () => {
-          if (generation !== this.derivationGeneration) return
+          if (generation !== this.derivationGeneration) {
+            return
+          }
           try {
-            if (!this.eth) throw new Error('attempted to derive Live addresses but Eth app is not connected!')
+            if (!this.eth) {
+              throw new Error('attempted to derive Live addresses but Eth app is not connected!')
+            }
 
             const path = this.getPath(i)
             const startedAt = Date.now()
@@ -344,7 +351,9 @@ export default class Ledger extends Signer {
               this.emit('update')
             }
           } catch (e) {
-            if (generation !== this.derivationGeneration) return
+            if (generation !== this.derivationGeneration) {
+              return
+            }
             // Stop this batch so later addresses cannot take a failed account's index.
             this.derivationGeneration += 1
             this.queuedLiveAccounts = this.addresses.length
@@ -365,12 +374,16 @@ export default class Ledger extends Signer {
     this.enqueueRequests({
       type: 'deriveAddresses',
       execute: async () => {
-        if (generation !== this.derivationGeneration) return
+        if (generation !== this.derivationGeneration) {
+          return
+        }
         try {
-          if (!this.eth)
+          if (!this.eth) {
             throw new Error('attempted to derive hardware addresses but Eth app is not connected!')
-          if (!this.derivation)
+          }
+          if (!this.derivation) {
             throw new Error('attempted to derive hardware addresses for unknown derivation!')
+          }
 
           const addresses = await this.eth.deriveAddresses(this.derivation)
 
@@ -385,7 +398,9 @@ export default class Ledger extends Signer {
             this.emit('update')
           }
         } catch (e) {
-          if (generation !== this.derivationGeneration) return
+          if (generation !== this.derivationGeneration) {
+            return
+          }
           this.handleError(e as DeviceError)
         }
       }
@@ -397,8 +412,12 @@ export default class Ledger extends Signer {
       type: 'verifyAddress',
       execute: async () => {
         try {
-          if (!this.eth) throw new Error('attempted to verify address but Eth app is not connected!')
-          if (!this.derivation) throw new Error('attempted to verify address with unknown derivation!')
+          if (!this.eth) {
+            throw new Error('attempted to verify address but Eth app is not connected!')
+          }
+          if (!this.derivation) {
+            throw new Error('attempted to verify address with unknown derivation!')
+          }
 
           const path = this.getPath(index)
           const result = await this.getAddress(path, display, true)
@@ -436,8 +455,12 @@ export default class Ledger extends Signer {
       type: 'signMessage',
       execute: async () => {
         try {
-          if (!this.eth) throw new Error('attempted to sign message but Eth app is not connected!')
-          if (!this.derivation) throw new Error('attempted to sign message with unknown derivation!')
+          if (!this.eth) {
+            throw new Error('attempted to sign message but Eth app is not connected!')
+          }
+          if (!this.derivation) {
+            throw new Error('attempted to sign message with unknown derivation!')
+          }
 
           const path = this.getPath(index)
           const signedMessage = await this.eth.signMessage(path, message)
@@ -467,8 +490,12 @@ export default class Ledger extends Signer {
       type: 'signTypedData',
       execute: async () => {
         try {
-          if (!this.eth) throw new Error('attempted to sign typed data but Eth app is not connected!')
-          if (!this.derivation) throw new Error('attempted to sign typed data with unknown derivation!')
+          if (!this.eth) {
+            throw new Error('attempted to sign typed data but Eth app is not connected!')
+          }
+          if (!this.derivation) {
+            throw new Error('attempted to sign typed data with unknown derivation!')
+          }
 
           const path = this.getPath(index)
           const signedData = await this.eth.signTypedData(path, typedMessage.data)
@@ -499,8 +526,12 @@ export default class Ledger extends Signer {
       type: 'signTransaction',
       execute: async () => {
         try {
-          if (!this.eth) throw new Error('attempted to sign transaction but Eth app is not connected!')
-          if (!this.derivation) throw new Error('attempted to sign transaction with unknown derivation!')
+          if (!this.eth) {
+            throw new Error('attempted to sign transaction but Eth app is not connected!')
+          }
+          if (!this.derivation) {
+            throw new Error('attempted to sign transaction with unknown derivation!')
+          }
 
           const path = this.getPath(index)
           const signedTx = await this.eth.signTransaction(path, ledgerTx)

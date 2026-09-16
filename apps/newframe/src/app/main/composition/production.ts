@@ -568,7 +568,9 @@ export function createProductionMainApp({
       return app.started
     },
     start() {
-      if (app.started) return
+      if (app.started) {
+        return
+      }
 
       try {
         // Startup awaits the same idempotent promise when Electron becomes ready.

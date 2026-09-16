@@ -12,7 +12,9 @@ describe('displayValueData', () => {
       [displayValueData(0).gwei(), { displayValue: '0', value: 0 }]
     ]
 
-    for (const [actual, expected] of cases) expect(actual).toStrictEqual(expected)
+    for (const [actual, expected] of cases) {
+      expect(actual).toStrictEqual(expected)
+    }
   })
 
   it('does not expose a fiat amount without a usable production rate', () => {
@@ -21,7 +23,9 @@ describe('displayValueData', () => {
       displayValueData(356e24, { currencyRate: { usdRate: 1.3 }, isTestnet: true }).fiat()
     ]
 
-    for (const actual of cases) expect(actual).toStrictEqual({ displayValue: '?', value: 0 })
+    for (const actual of cases) {
+      expect(actual).toStrictEqual({ displayValue: '?', value: 0 })
+    }
   })
 
   it('formats fiat values with fixed cents and lower-bound approximation', () => {
@@ -37,7 +41,9 @@ describe('displayValueData', () => {
       [displayValueData(0, { currencyRate: { usdRate: 1.3 } }).fiat(), { displayValue: '0.00', value: 0 }]
     ]
 
-    for (const [actual, expected] of cases) expect(actual).toStrictEqual(expected)
+    for (const [actual, expected] of cases) {
+      expect(actual).toStrictEqual(expected)
+    }
   })
 
   it('formats fiat and ether values without decimals when requested', () => {
@@ -65,7 +71,9 @@ describe('displayValueData', () => {
       [displayValueData(0).ether({ displayDecimals: false }), { displayValue: '0', value: 0 }]
     ]
 
-    for (const [actual, expected] of cases) expect(actual).toStrictEqual(expected)
+    for (const [actual, expected] of cases) {
+      expect(actual).toStrictEqual(expected)
+    }
   })
 
   it('adapts ether precision across whole and fractional equivalence classes', () => {

@@ -1,7 +1,6 @@
 import { v5 as uuid } from 'uuid'
 
 import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.js'
-import type { Permission } from '../../../../platform/state-store/state/index.js'
 import type { TrustedCapability } from '../../../access-control/main/authority.js'
 
 export const enum SubscriptionType {
@@ -34,10 +33,7 @@ export function hasSubscriptionPermission(
     return false
   }
 
-  const permissions = (canonicalStore.getState().main.permissions[address] || {}) as Record<
-    string,
-    Permission
-  >
+  const permissions = canonicalStore.getState().main.permissions[address] || {}
   const permission = Object.values(permissions).find(({ origin }) => {
     return uuid(origin, uuid.DNS) === subscription.originId
   })

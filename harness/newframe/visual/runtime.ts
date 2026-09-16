@@ -86,7 +86,9 @@ export class VisualHarnessRuntime {
     await page.screenshot({ path: path.join(this.screenshotDir, filename) })
     this.summary.screenshots.push(filename)
     const stage = this.summary.stages.findLast((candidate) => candidate.status === 'running')
-    if (stage) stage.screenshots.push(filename)
+    if (stage) {
+      stage.screenshots.push(filename)
+    }
     await this.writeSummary()
   }
 
@@ -120,7 +122,9 @@ export class VisualHarnessRuntime {
     const entry = { label, stage: this.currentStage, value }
     this.summary.evidence.push(entry)
     const stage = this.summary.stages.findLast((candidate) => candidate.status === 'running')
-    if (stage) stage.evidence.push(entry)
+    if (stage) {
+      stage.evidence.push(entry)
+    }
   }
 
   monitorElectron(app: ElectronApplication) {
@@ -128,10 +132,14 @@ export class VisualHarnessRuntime {
     this.electronOutput = commandOutputCollector(child)
 
     const monitorPage = (page: Page) => {
-      if (this.monitoredPages.has(page)) return
+      if (this.monitoredPages.has(page)) {
+        return
+      }
       this.monitoredPages.add(page)
       page.on('console', (message) => {
-        if (message.type() !== 'error') return
+        if (message.type() !== 'error') {
+          return
+        }
         const location = message.location()
         const source = location.url
           ? `${location.url}:${location.lineNumber + 1}:${location.columnNumber + 1}`
@@ -148,7 +156,9 @@ export class VisualHarnessRuntime {
 
   assertNoUnexpectedRendererErrors() {
     const unexpected = this.summary.rendererErrors.filter((error) => !error.allowed)
-    if (unexpected.length === 0) return
+    if (unexpected.length === 0) {
+      return
+    }
 
     this.fail(
       `Unexpected renderer errors: ${unexpected
@@ -163,7 +173,9 @@ export class VisualHarnessRuntime {
     })
 
     const output = this.electronOutput()
-    if (output) this.log(`Electron process output before failure:\n${tail(output)}`)
+    if (output) {
+      this.log(`Electron process output before failure:\n${tail(output)}`)
+    }
 
     for (const [index, page] of app.windows().entries()) {
       await withTimeout(

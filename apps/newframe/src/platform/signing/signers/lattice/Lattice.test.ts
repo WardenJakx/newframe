@@ -50,7 +50,9 @@ describe('#connect', () => {
 
   beforeEach(() => {
     connect = mock(async (deviceId: string) => {
-      if (deviceId === 'L8geF2') return false
+      if (deviceId === 'L8geF2') {
+        return false
+      }
       throw new Error('connection error!')
     })
     Client.mockImplementation((options: any) => {
@@ -100,7 +102,9 @@ describe('#pair', () => {
   beforeEach(() => {
     lattice.connection = {
       pair: mock(async (code: string) => {
-        if (code === pairingCode) return true
+        if (code === pairingCode) {
+          return true
+        }
         throw new Error('Error from device: Pairing failed')
       })
     }
@@ -193,7 +197,9 @@ describe('#deriveAddresses', () => {
     let errors = 0
     lattice.on('error', () => errors++)
     lattice.connection.getAddresses.mockImplementation(async () => {
-      if (++requests === 1) throw new Error('Error from device: Getting addresses failed')
+      if (++requests === 1) {
+        throw new Error('Error from device: Getting addresses failed')
+      }
       return ['addr1', 'addr2', 'addr3', 'addr4', 'addr5']
     })
     const deriving = lattice.deriveAddresses()

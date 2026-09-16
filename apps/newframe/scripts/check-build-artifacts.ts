@@ -34,7 +34,9 @@ function readPackageMetadata(): PackageMetadata {
 }
 
 function assertEsmEntrypoint(file: string, label: string) {
-  if (!existsSync(file)) fail(`${label} does not exist: ${path.relative(appRoot, file)}`)
+  if (!existsSync(file)) {
+    fail(`${label} does not exist: ${path.relative(appRoot, file)}`)
+  }
 
   const source = readFileSync(file, 'utf8')
   if (!esmStatement.test(source)) {
@@ -47,7 +49,9 @@ function assertEsmEntrypoint(file: string, label: string) {
 
 function assertCompiledEsm() {
   const metadata = readPackageMetadata()
-  if (metadata.type !== 'module') fail('package.json must declare "type": "module" for compiled ESM')
+  if (metadata.type !== 'module') {
+    fail('package.json must declare "type": "module" for compiled ESM')
+  }
   if (metadata.main !== 'compiled/src/main/bootstrap.js') {
     fail('package.json main must point to compiled/src/main/bootstrap.js')
   }
@@ -84,8 +88,12 @@ function assertBundlePreloadBoundary() {
   if (metadata.bridge !== './bundle/bridge.cjs') {
     fail('package.json bridge must point to ./bundle/bridge.cjs')
   }
-  if (!existsSync(bridge)) fail('Bundled preload does not exist: bundle/bridge.cjs')
-  if (existsSync(legacyBridge)) fail('Legacy preload must not be emitted: bundle/bridge.js')
+  if (!existsSync(bridge)) {
+    fail('Bundled preload does not exist: bundle/bridge.cjs')
+  }
+  if (existsSync(legacyBridge)) {
+    fail('Legacy preload must not be emitted: bundle/bridge.js')
+  }
 }
 
 const requestedRoots = process.argv.slice(2)
@@ -96,8 +104,12 @@ if (requestedRoots.length === 0) {
 }
 
 const resolvedRoots = requestedRoots.map((root) => path.resolve(appRoot, root))
-if (resolvedRoots.includes(compiledRoot)) assertCompiledEsm()
-if (resolvedRoots.includes(bundleRoot)) assertBundlePreloadBoundary()
+if (resolvedRoots.includes(compiledRoot)) {
+  assertCompiledEsm()
+}
+if (resolvedRoots.includes(bundleRoot)) {
+  assertBundlePreloadBoundary()
+}
 
 const artifacts = requestedRoots.flatMap((root) => {
   const outputRoot = path.resolve(appRoot, root)

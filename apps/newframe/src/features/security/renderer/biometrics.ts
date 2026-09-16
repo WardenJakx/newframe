@@ -61,28 +61,40 @@ const bufferValue = (value: unknown) =>
   value instanceof ArrayBuffer || value instanceof Uint8Array ? value : undefined
 
 const getHmacSecretOutput = (results: unknown) => {
-  if (!isRecord(results)) return null
+  if (!isRecord(results)) {
+    return null
+  }
   const prf = isRecord(results.prf) ? results.prf : undefined
   const prfResults = prf && isRecord(prf.results) ? prf.results : undefined
   const prfResult = bufferValue(prfResults?.first)
-  if (prfResult) return toUint8Array(prfResult)
+  if (prfResult) {
+    return toUint8Array(prfResult)
+  }
 
   const hmac = isRecord(results.hmacGetSecret) ? results.hmacGetSecret : undefined
   const hmacSecretResult = bufferValue(hmac?.output1)
-  if (hmacSecretResult) return toUint8Array(hmacSecretResult)
+  if (hmacSecretResult) {
+    return toUint8Array(hmacSecretResult)
+  }
 
   return null
 }
 
 export const getCredentialExtensionResults = (credential: unknown): Record<string, unknown> => {
-  if (!isRecord(credential)) return {}
+  if (!isRecord(credential)) {
+    return {}
+  }
 
   const readResults = credential.getClientExtensionResults
-  if (typeof readResults !== 'function') return {}
+  if (typeof readResults !== 'function') {
+    return {}
+  }
 
   try {
     const results: unknown = Reflect.apply(readResults, credential, [])
-    if (!isRecord(results)) return {}
+    if (!isRecord(results)) {
+      return {}
+    }
 
     // This boundary only consumes the PRF and legacy hmac-secret outputs.
     // Empty, partial, and unrelated extension results retain the existing
@@ -118,10 +130,14 @@ const getSecretFromAssertion = async (storedCredential: StoredWebAuthnCredential
     }
   } as CredentialRequestOptions)
 
-  if (!credential) throw new Error('Biometric unlock canceled')
+  if (!credential) {
+    throw new Error('Biometric unlock canceled')
+  }
 
   const extensionSecret = getHmacSecretOutput(getCredentialExtensionResults(credential))
-  if (extensionSecret) return extensionSecret
+  if (extensionSecret) {
+    return extensionSecret
+  }
 
   const response = isRecord(credential) ? credential.response : undefined
   if (
@@ -194,12 +210,16 @@ export const createWebAuthnBiometricCredential = async (): Promise<WebAuthnEnrol
         hmacCreateSecret: true
       }
     }
-  } as CredentialCreationOptions)
+  })
 
-  if (!credential) throw new Error('Biometric unlock canceled')
+  if (!credential) {
+    throw new Error('Biometric unlock canceled')
+  }
 
   const rawId = isRecord(credential) ? bufferValue(credential.rawId) : undefined
-  if (!rawId) throw new Error('Biometric credential did not return a usable identifier')
+  if (!rawId) {
+    throw new Error('Biometric credential did not return a usable identifier')
+  }
 
   const storedCredential = {
     version: 1 as const,

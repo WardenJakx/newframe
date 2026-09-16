@@ -53,11 +53,21 @@ function setup({ indexed = false, wrongHash = false, ignoredOverrides = false, m
       },
       request: async (_chain, method, params) => {
         calls.push({ method, params })
-        if (method === 'eth_chainId') return '0x1'
-        if (method === 'eth_getBlockByNumber') return { number: '0x64', gasLimit: '0x7a120' }
-        if (method === 'eth_gasPrice') return '0x64'
-        if (method === 'eth_getBalance' || method === 'eth_getStorageAt') return '0x0'
-        if (method !== 'debug_traceCall') throw Error('Unexpected method')
+        if (method === 'eth_chainId') {
+          return '0x1'
+        }
+        if (method === 'eth_getBlockByNumber') {
+          return { number: '0x64', gasLimit: '0x7a120' }
+        }
+        if (method === 'eth_gasPrice') {
+          return '0x64'
+        }
+        if (method === 'eth_getBalance' || method === 'eth_getStorageAt') {
+          return '0x0'
+        }
+        if (method !== 'debug_traceCall') {
+          throw Error('Unexpected method')
+        }
         const [call, , options] = params as [
           { data: string },
           string,

@@ -92,7 +92,7 @@ function createOriginHarness() {
       current: () => currentAccount,
       routeRequest: (receivedPrincipal, request) => {
         routedRequests.push({
-          principal: receivedPrincipal as typeof principal,
+          principal: receivedPrincipal,
           request
         })
         const complete = (grantedAddress: Address = request.account) => {
@@ -143,7 +143,9 @@ function createOriginHarness() {
     },
     setKnownExtension(id: string, allowed: boolean) {
       knownExtensions[id] = allowed
-      for (const listener of extensionListeners.get(id) || []) listener(allowed)
+      for (const listener of extensionListeners.get(id) || []) {
+        listener(allowed)
+      }
     },
     onRoute(handler: (request: AccessRequest, complete: (grantedAddress?: Address) => void) => void) {
       routeHandler = handler
@@ -465,7 +467,9 @@ for (const firstMethod of ['eth_requestAccounts', 'personal_sign']) {
     complete(granted)
     expect(await Promise.all(pending)).toEqual(
       methods.map((method) => {
-        if (method === 'eth_accounts') return false
+        if (method === 'eth_accounts') {
+          return false
+        }
         return method === 'personal_sign' ? granted === address : granted === other
       })
     )

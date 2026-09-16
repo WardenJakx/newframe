@@ -58,8 +58,12 @@ function sameSession(left: TradeExecutionSession | null, right: TradeExecutionSe
 }
 
 function projectedPhase(operation: OperationRecord): TradeExecutionPhase {
-  if (operation.status === 'failed') return 'failed'
-  if (operation.status === 'succeeded') return 'submitted'
+  if (operation.status === 'failed') {
+    return 'failed'
+  }
+  if (operation.status === 'succeeded') {
+    return 'submitted'
+  }
 
   const phase = operation.phase as TradeExecutionPhase | undefined
   return phase && pendingPhases.has(phase) ? phase : 'validating'
@@ -73,14 +77,20 @@ export function tradeExecutionReducer(
     case 'begin':
       return { error: '', phase: 'requesting', session: action.session }
     case 'commandRejected':
-      if (!sameSession(state.session, action.session)) return state
+      if (!sameSession(state.session, action.session)) {
+        return state
+      }
       return { error: action.error, phase: 'idle', session: null }
     case 'projectOperation': {
-      if (state.session?.operationId !== action.operationId) return state
+      if (state.session?.operationId !== action.operationId) {
+        return state
+      }
 
       const phase = projectedPhase(action.operation)
       const error = phase === 'failed' ? action.operation.error?.message || 'Trade failed.' : ''
-      if (state.phase === phase && state.error === error) return state
+      if (state.phase === phase && state.error === error) {
+        return state
+      }
 
       return { ...state, error, phase }
     }

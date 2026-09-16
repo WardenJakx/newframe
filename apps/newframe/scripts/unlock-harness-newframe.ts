@@ -43,10 +43,14 @@ class CdpClient {
   private constructor(private socket: WebSocket) {
     socket.on('message', (data) => {
       const message = JSON.parse(data.toString())
-      if (!message.id) return
+      if (!message.id) {
+        return
+      }
 
       const pending = this.pending.get(message.id)
-      if (!pending) return
+      if (!pending) {
+        return
+      }
 
       this.pending.delete(message.id)
       if (message.error) {
@@ -79,7 +83,9 @@ class CdpClient {
     return new Promise<T>((resolve, reject) => {
       this.pending.set(id, { resolve, reject })
       this.socket.send(payload, (err) => {
-        if (!err) return
+        if (!err) {
+          return
+        }
 
         this.pending.delete(id)
         reject(err)
@@ -98,7 +104,9 @@ function sleep(ms: number) {
 
 async function fetchJson<T>(url: string): Promise<T> {
   const response = await fetch(url)
-  if (!response.ok) throw new Error(`CDP request failed: ${response.status} ${response.statusText}`)
+  if (!response.ok) {
+    throw new Error(`CDP request failed: ${response.status} ${response.statusText}`)
+  }
   return response.json() as Promise<T>
 }
 
@@ -113,7 +121,9 @@ async function waitForTrayTarget(timeoutMs: number) {
         return candidate.type === 'page' && candidate.url.includes('bundle/tray.html')
       })
 
-      if (target?.webSocketDebuggerUrl) return target
+      if (target?.webSocketDebuggerUrl) {
+        return target
+      }
     } catch {
       // Electron may not have opened the debugging endpoint yet.
     }
@@ -136,21 +146,29 @@ function parseEnvValue(value: string) {
 }
 
 function readEnvFile(filePath: string) {
-  if (!fs.existsSync(filePath)) return {}
+  if (!fs.existsSync(filePath)) {
+    return {}
+  }
 
   return fs
     .readFileSync(filePath, 'utf8')
     .split(/\r?\n/)
     .reduce<Record<string, string>>((env, rawLine) => {
       const line = rawLine.trim()
-      if (!line || line.startsWith('#')) return env
+      if (!line || line.startsWith('#')) {
+        return env
+      }
 
       const normalizedLine = line.startsWith('export ') ? line.slice('export '.length).trim() : line
       const separator = normalizedLine.indexOf('=')
-      if (separator === -1) return env
+      if (separator === -1) {
+        return env
+      }
 
       const key = normalizedLine.slice(0, separator).trim()
-      if (!key) return env
+      if (!key) {
+        return env
+      }
 
       env[key] = parseEnvValue(normalizedLine.slice(separator + 1))
       return env
@@ -160,7 +178,9 @@ function readEnvFile(filePath: string) {
 function readHarnessPassword() {
   for (const key of PASSWORD_ENV_KEYS) {
     const value = process.env[key]
-    if (value) return value
+    if (value) {
+      return value
+    }
   }
 
   for (const file of ENV_FILES) {
@@ -168,7 +188,9 @@ function readHarnessPassword() {
 
     for (const key of PASSWORD_ENV_KEYS) {
       const value = values[key]
-      if (value) return value
+      if (value) {
+        return value
+      }
     }
   }
 
@@ -252,7 +274,9 @@ async function waitForLockState(client: CdpClient, timeoutMs: number) {
 
   while (Date.now() - started < timeoutMs) {
     latest = await evaluate<LockState>(client, lockStateExpression())
-    if (latest.status === 'locked' || latest.status === 'unlocked') return latest
+    if (latest.status === 'locked' || latest.status === 'unlocked') {
+      return latest
+    }
     await sleep(250)
   }
 
@@ -265,8 +289,12 @@ async function waitForUnlock(client: CdpClient, timeoutMs: number) {
 
   while (Date.now() - started < timeoutMs) {
     latest = await evaluate<LockState>(client, lockStateExpression())
-    if (latest.status === 'unlocked') return latest
-    if (latest.status === 'locked' && latest.error) throw new Error(`Unlock failed: ${latest.error}`)
+    if (latest.status === 'unlocked') {
+      return latest
+    }
+    if (latest.status === 'locked' && latest.error) {
+      throw new Error(`Unlock failed: ${latest.error}`)
+    }
     await sleep(250)
   }
 
@@ -299,7 +327,9 @@ export async function unlockHarnessNewframe(options: { optional?: boolean } = {}
     }
 
     const submit = await evaluate<{ status: string }>(client, submitPasswordExpression(password))
-    if (submit.status !== 'submitted') throw new Error(`Could not submit Newframe password: ${submit.status}`)
+    if (submit.status !== 'submitted') {
+      throw new Error(`Could not submit Newframe password: ${submit.status}`)
+    }
 
     await waitForUnlock(client, 15_000)
     console.log('[harness] Newframe unlocked')

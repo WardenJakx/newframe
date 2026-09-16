@@ -25,7 +25,9 @@ export function createProductionAirGapService(
       return {
         receive(frame) {
           const cbor = decoder.receive(frame)
-          if (!cbor) return
+          if (!cbor) {
+            return
+          }
           try {
             return decodePublicAccount(cbor)
           } finally {

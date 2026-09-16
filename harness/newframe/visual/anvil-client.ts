@@ -55,7 +55,9 @@ export class AnvilClient {
     const promise = (async () => {
       while (!stopped) {
         await sleep(intervalMs)
-        if (!stopped) await this.mineBlocks(1).catch(() => undefined)
+        if (!stopped) {
+          await this.mineBlocks(1).catch(() => undefined)
+        }
       }
     })()
 
@@ -70,7 +72,9 @@ export class AnvilClient {
 
     while (Date.now() - started < 45_000) {
       const current = await this.balance(address)
-      if (current === expected) return
+      if (current === expected) {
+        return
+      }
       await sleep(500)
     }
 

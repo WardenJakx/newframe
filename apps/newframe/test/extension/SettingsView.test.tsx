@@ -29,9 +29,7 @@ describe('SettingsView', () => {
       })
       render(<SettingsView {...initial} />)
       expect(screen.queryByRole('switch')).toBeNull()
-      expect((screen.getByRole('button', { name: 'Retry connection' }) as HTMLButtonElement).disabled).toBe(
-        false
-      )
+      expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Retry connection' }).disabled).toBe(false)
     }
   )
 
@@ -40,7 +38,7 @@ describe('SettingsView', () => {
     const { rerender } = render(<SettingsView {...initial} />)
     expect(screen.getByText('Newframe desktop app not found')).toBeTruthy()
     expect(screen.queryByRole('switch')).toBeNull()
-    expect((screen.getByRole('button', { name: 'Newframe Not Running' }) as HTMLButtonElement).disabled).toBe(
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Newframe Not Running' }).disabled).toBe(
       true
     )
 

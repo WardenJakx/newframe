@@ -21,7 +21,7 @@ export function RequestList({
   groups: RequestGroup[]
   emptyText?: string
 }) {
-  if (!groups.length)
+  if (!groups.length) {
     return (
       <Surface border='subtle' padding='large' radius='card' tone='card'>
         <Text align='center' tone='secondary' variant='overline'>
@@ -29,6 +29,7 @@ export function RequestList({
         </Text>
       </Surface>
     )
+  }
   return (
     <Stack gap='medium'>
       {groups.map((group) => (

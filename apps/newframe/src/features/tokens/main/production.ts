@@ -7,8 +7,10 @@ import type { TokenServicePorts } from './service.js'
 export function createTokenLookupAdapter(provider: Provider): TokenServicePorts['lookup'] {
   return async (address, chainId) => {
     try {
-      const token = await new Erc20Contract(address as Address, chainId, provider).getTokenData()
-      if (!token.totalSupply || token.decimals === undefined) return
+      const token = await new Erc20Contract(address, chainId, provider).getTokenData()
+      if (!token.totalSupply || token.decimals === undefined) {
+        return
+      }
       return {
         decimals: token.decimals,
         name: token.name,

@@ -72,7 +72,9 @@ function normalizeSource(source: string) {
 }
 
 function coverageReports(input: string): string[] {
-  if (!statSync(input).isDirectory()) return [input]
+  if (!statSync(input).isDirectory()) {
+    return [input]
+  }
   return readdirSync(input).flatMap((entry) => {
     const child = path.join(input, entry)
     return statSync(child).isDirectory() ? coverageReports(child) : entry === 'lcov.info' ? [child] : []
@@ -87,7 +89,9 @@ function sourceFiles(directory: string): string[] {
       return []
     }
     const child = path.join(directory, entry)
-    if (statSync(child).isDirectory()) return sourceFiles(child)
+    if (statSync(child).isDirectory()) {
+      return sourceFiles(child)
+    }
     const name = normalizeSource(child)
     if (!/\.[cm]?[jt]sx?$/.test(name) || /\.(?:test|spec|test-support|test-fixture)\./.test(name)) {
       return []
@@ -103,9 +107,13 @@ function parseLcov(reports: string[]) {
     const source = readFileSync(report, 'utf8')
     for (const record of source.split(/\nend_of_record\s*\n?/)) {
       const sourceLine = record.match(/^SF:(.+)$/m)?.[1]
-      if (!sourceLine) continue
+      if (!sourceLine) {
+        continue
+      }
       const name = normalizeSource(sourceLine)
-      if (/\.(?:test|spec|test-support|test-fixture)\./.test(name)) continue
+      if (/\.(?:test|spec|test-support|test-fixture)\./.test(name)) {
+        continue
+      }
       const raw: RawCoverage = {
         branches: new Map<string, number>(),
         functionHits: 0,
@@ -258,7 +266,9 @@ console.table(rows)
 if (failures.length > 0) {
   const label = reportOnly ? 'Coverage observations' : 'Critical coverage gate failed'
   console.error(`${label}:\n- ${failures.join('\n- ')}`)
-  if (!reportOnly) process.exitCode = 1
+  if (!reportOnly) {
+    process.exitCode = 1
+  }
 } else {
   console.log('Critical risk coverage gates passed.')
 }

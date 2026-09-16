@@ -33,10 +33,18 @@ type SecuritySubmission =
   | { operationId: string; type: 'wallet.reset'; scope: 'saved-data' | 'all-settings-data' }
 
 const projectedOperationError = (code: string | undefined, type: SecuritySubmission['type']) => {
-  if (code === 'wallet_locked') return 'Unlock Newframe before enabling biometric login'
-  if (code === 'biometrics_unavailable') return 'Biometrics are not available on this device'
-  if (type === 'wallet.lock') return 'Could not lock Newframe.'
-  if (type === 'wallet.reset') return 'Could not reset Newframe.'
+  if (code === 'wallet_locked') {
+    return 'Unlock Newframe before enabling biometric login'
+  }
+  if (code === 'biometrics_unavailable') {
+    return 'Biometrics are not available on this device'
+  }
+  if (type === 'wallet.lock') {
+    return 'Could not lock Newframe.'
+  }
+  if (type === 'wallet.reset') {
+    return 'Could not reset Newframe.'
+  }
   return 'Could not enable biometrics.'
 }
 
@@ -110,11 +118,19 @@ export function Settings({
       : localSecurityError
 
   useEffect(() => {
-    if (!submission || trackedOperation?.status !== 'succeeded') return
-    if (submission.type === 'security.configure' && shared.biometricUnlock !== submission.enabled) return
-    if (submission.type === 'wallet.lock' && !shared.appLocked) return
+    if (!submission || trackedOperation?.status !== 'succeeded') {
+      return
+    }
+    if (submission.type === 'security.configure' && shared.biometricUnlock !== submission.enabled) {
+      return
+    }
+    if (submission.type === 'wallet.lock' && !shared.appLocked) {
+      return
+    }
 
-    if (submission.type === 'wallet.lock') onPostLockNavigation()
+    if (submission.type === 'wallet.lock') {
+      onPostLockNavigation()
+    }
     const completedOperationId = submission.operationId
     queueMicrotask(() => {
       setSubmission((current) => (current?.operationId === completedOperationId ? null : current))
@@ -129,7 +145,9 @@ export function Settings({
   })
 
   const setBiometricUnlock = async (enabled: boolean) => {
-    if (biometricsBusy) return
+    if (biometricsBusy) {
+      return
+    }
     setLocalSecurityError('')
 
     try {
@@ -140,7 +158,9 @@ export function Settings({
           operationId,
           mode: 'disabled'
         })
-        if (!result.ok) throw new Error(operationError(result, 'Could not disable biometrics.'))
+        if (!result.ok) {
+          throw new Error(operationError(result, 'Could not disable biometrics.'))
+        }
         return
       }
 
@@ -176,7 +196,9 @@ export function Settings({
         mode: 'best-available',
         browser
       })
-      if (!result.ok) throw new Error(operationError(result, 'Could not enable biometrics.'))
+      if (!result.ok) {
+        throw new Error(operationError(result, 'Could not enable biometrics.'))
+      }
     } catch (error: unknown) {
       setBrowserPrompting(false)
       setSubmission(null)
@@ -187,7 +209,9 @@ export function Settings({
   }
 
   const lockWallet = async () => {
-    if (operationInFlight) return
+    if (operationInFlight) {
+      return
+    }
     const operationId = crypto.randomUUID()
     setSubmission({ type: 'wallet.lock', operationId })
     setLocalSecurityError('')
@@ -199,7 +223,9 @@ export function Settings({
   }
 
   const resetWallet = async (scope: 'saved-data' | 'all-settings-data') => {
-    if (operationInFlight) return
+    if (operationInFlight) {
+      return
+    }
     const operationId = crypto.randomUUID()
     setSubmission({ type: 'wallet.reset', operationId, scope })
     setLocalSecurityError('')
@@ -212,7 +238,9 @@ export function Settings({
 
   const setShowTestnets = (enabled: boolean) => {
     persist({ setting: 'show-testnets', value: enabled })
-    if (!enabled && shared.networks[selectedChainId]?.isTestnet) onSelectedChainChange(0)
+    if (!enabled && shared.networks[selectedChainId]?.isTestnet) {
+      onSelectedChainChange(0)
+    }
   }
 
   return (

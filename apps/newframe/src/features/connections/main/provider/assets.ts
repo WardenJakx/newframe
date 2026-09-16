@@ -46,7 +46,7 @@ function createObserver(store: CanonicalStoreApi, handler: AssetsChangedHandler)
   let debouncedAssets: { accountId: string; assets: RPC.GetAssets.Assets } | null = null
 
   return function () {
-    const currentAccountId = store.getState().main.currentAccount as string
+    const currentAccountId = store.getState().main.currentAccount
 
     if (currentAccountId) {
       const assets = fetchAssets(store, currentAccountId)
@@ -59,7 +59,9 @@ function createObserver(store: CanonicalStoreApi, handler: AssetsChangedHandler)
           setTimeout(() => {
             const pending = debouncedAssets
             debouncedAssets = null
-            if (!pending || store.getState().main.currentAccount !== pending.accountId) return
+            if (!pending || store.getState().main.currentAccount !== pending.accountId) {
+              return
+            }
 
             handler.assetsChanged(pending.accountId, pending.assets)
           }, 800)
@@ -72,7 +74,9 @@ function createObserver(store: CanonicalStoreApi, handler: AssetsChangedHandler)
 }
 
 function loadAssets(store: CanonicalStoreApi, accountId: string) {
-  if (isScanning(store, accountId)) throw new Error('assets not known for account')
+  if (isScanning(store, accountId)) {
+    throw new Error('assets not known for account')
+  }
 
   return fetchAssets(store, accountId)
 }
@@ -89,7 +93,9 @@ function fetchAssets(store: CanonicalStoreApi, accountId: string) {
   return balances.reduce((assets, balance) => {
     if (balance.address === NATIVE_CURRENCY) {
       const currency = storeApi.getNativeCurrency(balance.chainId)
-      if (!currency) return assets
+      if (!currency) {
+        return assets
+      }
 
       assets.nativeCurrency.push({
         ...balance,
@@ -101,7 +107,9 @@ function fetchAssets(store: CanonicalStoreApi, accountId: string) {
     } else {
       const usdRate = storeApi.getUsdRate(balance)
       const token = storeApi.getToken(balance)
-      if (!token) return assets
+      if (!token) {
+        return assets
+      }
 
       assets.erc20.push({
         ...balance,

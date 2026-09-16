@@ -76,14 +76,18 @@ export async function ensureCommand(command: string, args = ['--version']) {
 }
 
 export async function stopProcess(child: ChildProcess | undefined, signal: NodeJS.Signals = 'SIGTERM') {
-  if (!child || child.killed || child.exitCode !== null) return
+  if (!child || child.killed || child.exitCode !== null) {
+    return
+  }
 
   child.kill(signal)
 
   await Promise.race([
     new Promise((resolve) => child.once('exit', resolve)),
     sleep(5_000).then(() => {
-      if (child.exitCode === null) child.kill('SIGKILL')
+      if (child.exitCode === null) {
+        child.kill('SIGKILL')
+      }
     })
   ])
 }

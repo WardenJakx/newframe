@@ -25,7 +25,9 @@ export default function AddressQRCode({ address }: { address: string }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
 
   useEffect(() => {
-    if (!canvasRef.current || !address) return
+    if (!canvasRef.current || !address) {
+      return
+    }
 
     QRCode.toCanvas(canvasRef.current, address, {
       errorCorrectionLevel: 'M',

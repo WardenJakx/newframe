@@ -154,13 +154,17 @@ function objectPayload(value: unknown): Record<string, any> {
 }
 
 function stringValue(value: unknown, fallback = '') {
-  if (value === undefined || value === null) return fallback
+  if (value === undefined || value === null) {
+    return fallback
+  }
 
   return String(value)
 }
 
 function formatFlashErrorPayload(payload: unknown, fallback: string) {
-  if (typeof payload === 'string') return payload || fallback
+  if (typeof payload === 'string') {
+    return payload || fallback
+  }
 
   try {
     return JSON.stringify(payload) || fallback
@@ -170,25 +174,37 @@ function formatFlashErrorPayload(payload: unknown, fallback: string) {
 }
 
 function numberTimestamp(value: unknown, fallback = Date.now()) {
-  if (typeof value === 'number' && Number.isFinite(value)) return value
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value
+  }
   if (typeof value === 'string') {
     const parsed = Date.parse(value)
-    if (Number.isFinite(parsed)) return parsed
+    if (Number.isFinite(parsed)) {
+      return parsed
+    }
   }
 
   return fallback
 }
 
 function chainIdFromSlug(input: unknown) {
-  if (typeof input === 'number') return input
-  if (typeof input !== 'string') return undefined
+  if (typeof input === 'number') {
+    return input
+  }
+  if (typeof input !== 'string') {
+    return undefined
+  }
 
   const normalized = input.trim().toLowerCase()
   const registeredChainId = getFlashChainIdFromSlug(normalized)
-  if (registeredChainId) return registeredChainId
+  if (registeredChainId) {
+    return registeredChainId
+  }
 
   const parsed = Number(normalized)
-  if (Number.isInteger(parsed) && parsed > 0) return parsed
+  if (Number.isInteger(parsed) && parsed > 0) {
+    return parsed
+  }
 
   const caipChainId = normalized.match(/(?:^|:)(\d+)$/)?.[1]
   const caipParsed = Number(caipChainId)
@@ -205,14 +221,18 @@ function requireSupportedChainId(chainId: number) {
 }
 
 function requireSide(side?: FlashTradeSide) {
-  if (side !== 'buy' && side !== 'sell') throw new Error('Unsupported Flash trade side')
+  if (side !== 'buy' && side !== 'sell') {
+    throw new Error('Unsupported Flash trade side')
+  }
 
   return side
 }
 
 function resolveAsset(input: unknown, label: string): FlashAsset {
   const parsed = FlashAssetSchema.safeParse(input)
-  if (parsed.success) return parsed.data
+  if (parsed.success) {
+    return parsed.data
+  }
 
   throw new Error(`Unsupported Flash ${label} asset`)
 }
@@ -236,7 +256,9 @@ function normalizeStatus(status: unknown): FlashOrderStatus {
     .replace(/^order_status_/, '')
     .replace(/_/g, '-')
 
-  if (normalized === 'canceled') return 'cancelled'
+  if (normalized === 'canceled') {
+    return 'cancelled'
+  }
   if (
     normalized === 'open' ||
     normalized === 'active' ||
@@ -272,9 +294,13 @@ function orderPositionTokens(record: FlashOrderRecord, chainId?: number) {
   const affectedAssets = [record.spentAsset, record.receiveAsset]
 
   affectedAssets.forEach((asset) => {
-    if (chainId !== undefined && asset.chainId !== chainId) return
+    if (chainId !== undefined && asset.chainId !== chainId) {
+      return
+    }
     const address = (asset.address || '').trim().toLowerCase()
-    if (asset.isNative || !/^0x[0-9a-f]{40}$/.test(address)) return
+    if (asset.isNative || !/^0x[0-9a-f]{40}$/.test(address)) {
+      return
+    }
 
     const token = {
       address,
@@ -317,8 +343,12 @@ function shouldTrackOrderPositions(previous: FlashOrderRecord | undefined, recor
 }
 
 function shouldRefreshOrderPositions(previous: FlashOrderRecord | undefined, record: FlashOrderRecord) {
-  if (record.status !== 'partially-filled' && !isTerminalStatus(record.status)) return false
-  if (!previous || previous.status !== record.status) return true
+  if (record.status !== 'partially-filled' && !isTerminalStatus(record.status)) {
+    return false
+  }
+  if (!previous || previous.status !== record.status) {
+    return true
+  }
 
   return (
     previous.filledOutputAmount !== record.filledOutputAmount ||
@@ -332,12 +362,18 @@ function syncOrderPositions(
   previous: FlashOrderRecord | undefined,
   record: FlashOrderRecord
 ) {
-  if (!state.positionSync) return
+  if (!state.positionSync) {
+    return
+  }
 
   try {
     for (const update of orderPositionUpdates(record)) {
-      if (shouldTrackOrderPositions(previous, record)) state.positionSync.track(update)
-      if (shouldRefreshOrderPositions(previous, record)) state.positionSync.refresh(update)
+      if (shouldTrackOrderPositions(previous, record)) {
+        state.positionSync.track(update)
+      }
+      if (shouldRefreshOrderPositions(previous, record)) {
+        state.positionSync.refresh(update)
+      }
     }
   } catch (error) {
     console.warn('could not sync positions for Flash order', { orderId: record.orderId }, error)
@@ -345,11 +381,15 @@ function syncOrderPositions(
 }
 
 function normalizePercent(value?: string | number) {
-  if (value === undefined || value === null || String(value).trim() === '') return undefined
+  if (value === undefined || value === null || String(value).trim() === '') {
+    return undefined
+  }
 
   const parsed = Number(normalizeAmount(value))
 
-  if (!Number.isFinite(parsed) || parsed < 0) return undefined
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return undefined
+  }
 
   return (parsed / 100).toString()
 }
@@ -361,7 +401,9 @@ function optionalString(value: unknown) {
 }
 
 function optionalInteger(value: unknown, label: string, { max, min }: { max?: number; min?: number } = {}) {
-  if (value === undefined || value === null || String(value).trim() === '') return undefined
+  if (value === undefined || value === null || String(value).trim() === '') {
+    return undefined
+  }
 
   const parsed = Number(normalizeAmount(value as string | number))
   if (
@@ -388,7 +430,9 @@ function normalizeTrigger(trigger: FlashPriceTriggerInput) {
 
 function normalizeTriggers(request: FlashQuoteRequest, orderType: FlashOrderType) {
   if (request.triggers) {
-    if (request.triggers.length > 2) throw new Error('Flash supports at most two price triggers')
+    if (request.triggers.length > 2) {
+      throw new Error('Flash supports at most two price triggers')
+    }
 
     return request.triggers.map(normalizeTrigger)
   }
@@ -456,8 +500,12 @@ export function buildFlashQuoteBody(request: FlashQuoteRequest) {
     orderType === 'stop-loss' ||
     orderType === 'take-profit'
 
-  if (!request.accountAddress) throw new Error('Flash quote requires an account address')
-  if (!qty || Number(qty) <= 0) throw new Error('Flash quote requires a positive qty')
+  if (!request.accountAddress) {
+    throw new Error('Flash quote requires an account address')
+  }
+  if (!qty || Number(qty) <= 0) {
+    throw new Error('Flash quote requires a positive qty')
+  }
   if (chains.isCrossChain && orderType !== FLASH_MARKET_ORDER_TYPE) {
     throw new Error('Flash cross-chain trades support market orders only')
   }
@@ -491,7 +539,9 @@ function normalizeTx(tx: unknown, fallbackChainId: number): FlashQuoteTransactio
   const to = stringValue(record.to)
   const data = stringValue(record.data, '0x')
 
-  if (!to) return null
+  if (!to) {
+    return null
+  }
 
   return {
     chainId: chainIdFromSlug(record.chainId) || fallbackChainId,
@@ -522,7 +572,9 @@ function quoteAction({
   tx: unknown
 }): FlashQuoteAction | null {
   const normalizedTx = normalizeTx(tx, fallbackChainId)
-  if (!normalizedTx) return null
+  if (!normalizedTx) {
+    return null
+  }
 
   return {
     id: kind,
@@ -557,10 +609,14 @@ function normalizeFees(rawFees: unknown, spentAsset: FlashAsset) {
 }
 
 function parseTypedData(value: unknown) {
-  if (typeof value !== 'string') return value || null
+  if (typeof value !== 'string') {
+    return value || null
+  }
 
   const clean = value.trim()
-  if (!clean) return null
+  if (!clean) {
+    return null
+  }
 
   try {
     const parsed = JSON.parse(clean)
@@ -572,8 +628,12 @@ function parseTypedData(value: unknown) {
 }
 
 function serializeTypedData(value: unknown) {
-  if (typeof value === 'string') return value.trim() ? value : undefined
-  if (!value || typeof value !== 'object') return undefined
+  if (typeof value === 'string') {
+    return value.trim() ? value : undefined
+  }
+  if (!value || typeof value !== 'object') {
+    return undefined
+  }
 
   return JSON.stringify(value)
 }
@@ -585,7 +645,7 @@ export function normalizeFlashQuoteResponse(raw: unknown, request: FlashQuoteReq
   const targetAsset = resolveAsset(request.targetAsset, 'target')
   const contraAsset = resolveAsset(request.contraAsset, 'contra')
   const side = requireSide(request.side)
-  const orderType = (request.orderType || FLASH_MARKET_ORDER_TYPE) as FlashOrderType
+  const orderType = request.orderType || FLASH_MARKET_ORDER_TYPE
   const chains = getFlashAssetPairChains({ side, targetAsset, contraAsset })
   requireSupportedChainId(chains.targetChainId)
   requireSupportedChainId(chains.contraChainId)
@@ -672,8 +732,9 @@ export function normalizeFlashQuoteResponse(raw: unknown, request: FlashQuoteReq
   })
   const steps: FlashStep[] = []
 
-  if (wrapAction)
+  if (wrapAction) {
     steps.push({ id: 'wrap', kind: 'wrap', label: wrapAction.label, status: 'required', asset: spentAsset })
+  }
   if (approvalAction) {
     steps.push({
       id: 'approve',
@@ -818,7 +879,9 @@ function storeOrders(state: FlashServiceState) {
   return Object.entries(state.store.getState().main.orders || {}).reduce<Record<string, FlashOrderRecord>>(
     (records, [orderId, order]) => {
       const parsed = FlashOrderRecordSchema.safeParse(order)
-      if (parsed.success) records[orderId] = parsed.data
+      if (parsed.success) {
+        records[orderId] = parsed.data
+      }
       return records
     },
     {}
@@ -855,11 +918,21 @@ function orderNotificationDetail(record: FlashOrderRecord, status: FlashOrderSta
     record.receiveAsset
   )}`
 
-  if (status === 'filled') return `Filled ${flow}`
-  if (status === 'cancelled') return `Cancelled ${flow}`
-  if (status === 'rejected') return `Rejected ${flow}`
-  if (status === 'expired') return `Expired ${flow}`
-  if (status === 'terminated') return `Terminated ${flow}`
+  if (status === 'filled') {
+    return `Filled ${flow}`
+  }
+  if (status === 'cancelled') {
+    return `Cancelled ${flow}`
+  }
+  if (status === 'rejected') {
+    return `Rejected ${flow}`
+  }
+  if (status === 'expired') {
+    return `Expired ${flow}`
+  }
+  if (status === 'terminated') {
+    return `Terminated ${flow}`
+  }
 
   return flow
 }
@@ -917,7 +990,9 @@ function terminalOrderNotificationState(record: FlashOrderRecord) {
 }
 
 function resolveOrderNotification(state: FlashServiceState, record: FlashOrderRecord, now = Date.now()) {
-  if (!isTerminalStatus(record.status)) return
+  if (!isTerminalStatus(record.status)) {
+    return
+  }
 
   state.store
     .getState()
@@ -949,7 +1024,9 @@ function orderAssetFromReference(value: unknown, fallback?: FlashAsset | null): 
     Number.isInteger(Number(asset.decimals))
   ) {
     const parsed = FlashAssetSchema.safeParse(asset)
-    if (parsed.success) return parsed.data
+    if (parsed.success) {
+      return parsed.data
+    }
   }
 
   const chain = objectPayload(asset.chain)
@@ -960,7 +1037,9 @@ function orderAssetFromReference(value: unknown, fallback?: FlashAsset | null): 
     fallback?.chainId
   const address = stringValue(asset.address || fallback?.address).trim()
 
-  if (!chainId || !address) return fallback || null
+  if (!chainId || !address) {
+    return fallback || null
+  }
 
   const normalizedAddress = normalizeAddress(address)
   const fallbackMatches =
@@ -1006,12 +1085,14 @@ function quoteContraNotional(quote: FlashQuote) {
 }
 
 function fallbackQuoteFromRecord(record?: FlashOrderRecord | null): FlashQuote | null {
-  if (!record) return null
+  if (!record) {
+    return null
+  }
 
   return FlashQuoteSchema.parse({
     id: record.quoteId,
-    side: record.side as FlashTradeSide,
-    orderType: record.orderType as FlashOrderType,
+    side: record.side,
+    orderType: record.orderType,
     targetAsset: record.targetAsset,
     contraAsset: record.contraAsset,
     spentAsset: record.spentAsset,
@@ -1089,7 +1170,9 @@ function recordFromQuote({
 function normalizeOrderRecord(rawOrder: unknown, fallback?: FlashOrderRecord | null) {
   const raw = objectPayload(rawOrder)
   const orderId = stringValue(raw.orderId || raw.id || fallback?.orderId)
-  if (!orderId) throw new Error('Flash order response did not include an order id')
+  if (!orderId) {
+    throw new Error('Flash order response did not include an order id')
+  }
 
   const now = Date.now()
   const status = normalizeStatus(raw.normalizedStatus || raw.status || fallback?.status)
@@ -1290,11 +1373,15 @@ function hydrateOrderNotification(
   previous: FlashOrderRecord | undefined,
   record: FlashOrderRecord
 ) {
-  if (!orderEventChanged(previous, record)) return
+  if (!orderEventChanged(previous, record)) {
+    return
+  }
 
   const now = Date.now()
   upsertPendingOrderNotification(state, record, now)
-  if (isTerminalStatus(record.status)) resolveOrderNotification(state, record, now)
+  if (isTerminalStatus(record.status)) {
+    resolveOrderNotification(state, record, now)
+  }
 }
 
 function hasStreamingSessionForFunder(state: FlashServiceState, accountAddress: string) {
@@ -1329,12 +1416,16 @@ function hasOrdersRequiringPolling(state: FlashServiceState) {
 
 function stopMarketOrderPolling(state: FlashServiceState, orderId: string) {
   const poller = state.marketOrderPollers.get(orderId)
-  if (poller?.timer) clearTimeout(poller.timer)
+  if (poller?.timer) {
+    clearTimeout(poller.timer)
+  }
   state.marketOrderPollers.delete(orderId)
 }
 
 function scheduleMarketOrderPoll(state: FlashServiceState, orderId: string, poller: FlashMarketOrderPoller) {
-  if (!state.marketOrderPollers.has(orderId)) return
+  if (!state.marketOrderPollers.has(orderId)) {
+    return
+  }
 
   poller.timer = setTimeout(() => {
     void pollMarketOrder(state, orderId, poller)
@@ -1395,8 +1486,12 @@ async function pollMarketOrder(state: FlashServiceState, orderId: string, poller
 }
 
 function startMarketOrderPolling(state: FlashServiceState, record: FlashOrderRecord) {
-  if (record.orderType !== FLASH_MARKET_ORDER_TYPE) return
-  if (hasStreamingSessionForFunder(state, record.accountAddress)) return
+  if (record.orderType !== FLASH_MARKET_ORDER_TYPE) {
+    return
+  }
+  if (hasStreamingSessionForFunder(state, record.accountAddress)) {
+    return
+  }
 
   const now = Date.now()
 
@@ -1404,7 +1499,9 @@ function startMarketOrderPolling(state: FlashServiceState, record: FlashOrderRec
     return
   }
 
-  if (state.marketOrderPollers.has(record.orderId)) return
+  if (state.marketOrderPollers.has(record.orderId)) {
+    return
+  }
 
   const poller = {
     deadline: (record.createdAt || now) + FLASH_MARKET_ORDER_NOTIFICATION_MS
@@ -1415,7 +1512,9 @@ function startMarketOrderPolling(state: FlashServiceState, record: FlashOrderRec
 }
 
 function stopOpenOrderPolling(state: FlashServiceState) {
-  if (!state.openOrderPoller) return
+  if (!state.openOrderPoller) {
+    return
+  }
 
   clearInterval(state.openOrderPoller)
   state.openOrderPoller = null
@@ -1427,7 +1526,9 @@ function ensureOpenOrderPolling(state: FlashServiceState) {
     return
   }
 
-  if (state.openOrderPoller) return
+  if (state.openOrderPoller) {
+    return
+  }
 
   state.openOrderPoller = setInterval(() => {
     void refreshOpenOrders(state)
@@ -1441,7 +1542,9 @@ function ensureOpenOrderPolling(state: FlashServiceState) {
 }
 
 function sortOrders(a: FlashOrderRecord, b: FlashOrderRecord) {
-  if (a.open !== b.open) return a.open ? -1 : 1
+  if (a.open !== b.open) {
+    return a.open ? -1 : 1
+  }
 
   return Number(b.createdAt || 0) - Number(a.createdAt || 0)
 }
@@ -1455,7 +1558,9 @@ async function fetchOrderRecord(state: FlashServiceState, fallback: FlashOrderRe
 }
 
 function refreshOpenOrders(state: FlashServiceState) {
-  if (state.openOrderRefresh) return state.openOrderRefresh
+  if (state.openOrderRefresh) {
+    return state.openOrderRefresh
+  }
 
   const openOrders = Object.values(storeOrders(state)).filter(
     (order) => isOpenStatus(order.status) && !hasStreamingSessionForFunder(state, order.accountAddress)
@@ -1490,17 +1595,23 @@ async function applyWebSocketOrders(
     try {
       const raw = objectPayload(rawOrder)
       const orderId = stringValue(raw.orderId || raw.id)
-      if (orderId) receivedOrderIds.add(orderId)
+      if (orderId) {
+        receivedOrderIds.add(orderId)
+      }
 
       const record = normalizeOrderRecord(rawOrder, orderId ? getRecord(state, orderId) : null)
-      if (record.accountAddress !== address) continue
+      if (record.accountAddress !== address) {
+        continue
+      }
       applyOrderRecord(state, record)
     } catch (error) {
       console.warn('could not apply Flash WebSocket order update', error)
     }
   }
 
-  if (type !== 'snapshot') return
+  if (type !== 'snapshot') {
+    return
+  }
 
   const missingOpenOrders = Object.values(storeOrders(state)).filter(
     (order) =>
@@ -1519,7 +1630,9 @@ async function applyWebSocketOrders(
 }
 
 function stopAgentSessionFallback(session: FlashAgentSessionStream) {
-  if (session.fallbackTimer) clearTimeout(session.fallbackTimer)
+  if (session.fallbackTimer) {
+    clearTimeout(session.fallbackTimer)
+  }
   session.fallbackTimer = undefined
 }
 
@@ -1529,13 +1642,17 @@ function scheduleAgentSessionFallback(
   delay = FLASH_STREAM_FALLBACK_POLL_MS
 ) {
   const session = state.agentSessionStreams.get(sessionId)
-  if (!session || session.streaming || hasStreamingSessionForFunder(state, session.accountAddress)) return
+  if (!session || session.streaming || hasStreamingSessionForFunder(state, session.accountAddress)) {
+    return
+  }
 
   stopAgentSessionFallback(session)
   session.fallbackTimer = setTimeout(() => {
     session.fallbackTimer = undefined
     const current = state.agentSessionStreams.get(sessionId)
-    if (!current || current.streaming || hasStreamingSessionForFunder(state, current.accountAddress)) return
+    if (!current || current.streaming || hasStreamingSessionForFunder(state, current.accountAddress)) {
+      return
+    }
 
     void listOrders(state, {
       accountAddress: current.accountAddress,
@@ -1549,14 +1666,18 @@ function scheduleAgentSessionFallback(
 
 function setAgentSessionStreaming(state: FlashServiceState, sessionId: string, streaming: boolean) {
   const session = state.agentSessionStreams.get(sessionId)
-  if (!session || session.streaming === streaming) return
+  if (!session || session.streaming === streaming) {
+    return
+  }
 
   session.streaming = streaming
   if (streaming) {
     stopAgentSessionFallback(session)
     for (const [orderId] of state.marketOrderPollers) {
       const order = getRecord(state, orderId)
-      if (order?.accountAddress === session.accountAddress) stopMarketOrderPolling(state, orderId)
+      if (order?.accountAddress === session.accountAddress) {
+        stopMarketOrderPolling(state, orderId)
+      }
     }
   } else {
     scheduleAgentSessionFallback(state, sessionId, 0)
@@ -1570,10 +1691,14 @@ function setAgentSessionStreaming(state: FlashServiceState, sessionId: string, s
 
 function stopAgentSessionStream(state: FlashServiceState, sessionId: string) {
   const session = state.agentSessionStreams.get(sessionId)
-  if (!session) return false
+  if (!session) {
+    return false
+  }
 
   state.agentSessionStreams.delete(sessionId)
-  if (session.expirationTimer) clearTimeout(session.expirationTimer)
+  if (session.expirationTimer) {
+    clearTimeout(session.expirationTimer)
+  }
   stopAgentSessionFallback(session)
   session.stream.stop()
 
@@ -1586,9 +1711,13 @@ function stopAgentSessionStream(state: FlashServiceState, sessionId: string) {
 
 function scheduleAgentSessionExpiration(state: FlashServiceState, sessionId: string) {
   const session = state.agentSessionStreams.get(sessionId)
-  if (!session) return
+  if (!session) {
+    return
+  }
 
-  if (session.expirationTimer) clearTimeout(session.expirationTimer)
+  if (session.expirationTimer) {
+    clearTimeout(session.expirationTimer)
+  }
   const remaining = session.expiresAt - Date.now()
   if (remaining <= 0) {
     stopAgentSessionStream(state, sessionId)
@@ -1608,7 +1737,9 @@ function startAgentSessionStream(
   stopAgentSessionStream(state, sessionId)
 
   const address = normalizeAddress(accountAddress)
-  if (!sessionId || !/^0x[0-9a-f]{40}$/.test(address) || expiresAt <= Date.now()) return false
+  if (!sessionId || !/^0x[0-9a-f]{40}$/.test(address) || expiresAt <= Date.now()) {
+    return false
+  }
 
   const stream = new FlashOrderStream({
     apiKey: FLASH_API_KEY,
@@ -1619,7 +1750,9 @@ function startAgentSessionStream(
     onError: (error) => console.warn('Flash WebSocket error', { sessionId, accountAddress: address }, error),
     onTerminalError: () => {
       const current = state.agentSessionStreams.get(sessionId)
-      if (current) stopAgentSessionFallback(current)
+      if (current) {
+        stopAgentSessionFallback(current)
+      }
     },
     onOrders: (type, orders) => applyWebSocketOrders(state, address, type, orders)
   })
@@ -1671,7 +1804,9 @@ function quoteTypedData(quote: FlashQuote, field: 'orderTypedData' | 'permitType
 
 export function buildFlashSubmitBody(request: FlashSubmitOrderRequest) {
   request = FlashSubmitOrderRequestSchema.parse(request)
-  if (!request.quote) throw new Error('Flash order submit requires a quote')
+  if (!request.quote) {
+    throw new Error('Flash order submit requires a quote')
+  }
 
   const quote = request.quote
   const chains = getFlashAssetPairChains(quote)
@@ -1726,7 +1861,9 @@ export function buildFlashSubmitBody(request: FlashSubmitOrderRequest) {
 
 async function submitOrder(state: FlashServiceState, request: FlashSubmitOrderRequest) {
   request = FlashSubmitOrderRequestSchema.parse(request)
-  if (!request.quote) throw new Error('Flash order submit requires a quote')
+  if (!request.quote) {
+    throw new Error('Flash order submit requires a quote')
+  }
 
   const body = buildFlashSubmitBody(request)
   const raw = await flashRequest('/order', {
@@ -1737,7 +1874,9 @@ async function submitOrder(state: FlashServiceState, request: FlashSubmitOrderRe
   const payload = objectPayload(raw)
   const orderId = stringValue(payload.orderId || objectPayload(payload.order).orderId || payload.id)
 
-  if (!orderId) throw new Error('Flash order submit did not return an order id')
+  if (!orderId) {
+    throw new Error('Flash order submit did not return an order id')
+  }
 
   const fallback = recordFromQuote({
     orderId,
@@ -1762,7 +1901,9 @@ async function listOrders(state: FlashServiceState, request: FlashListOrdersRequ
   const params = new URLSearchParams()
   const accountAddress = request.accountAddress?.trim()
 
-  if (!accountAddress) throw new Error('Flash order list requires an account address')
+  if (!accountAddress) {
+    throw new Error('Flash order list requires an account address')
+  }
 
   params.set('funderAddress', accountAddress)
   if (request.status) {
@@ -1810,7 +1951,9 @@ async function getOrder(state: FlashServiceState, request: FlashGetOrderRequest)
   const fallback = getRecord(state, request.orderId)
   const accountAddress = request.accountAddress?.trim() || fallback?.accountAddress
 
-  if (!accountAddress) throw new Error('Flash order lookup requires an account address')
+  if (!accountAddress) {
+    throw new Error('Flash order lookup requires an account address')
+  }
 
   const params = new URLSearchParams({ funderAddress: accountAddress })
   const raw = await flashRequest(`/orders/${encodeURIComponent(request.orderId)}?${params}`)
@@ -1896,9 +2039,13 @@ export function createFlashService({
     stopAgentSessionsForAccount: (accountAddress: string) =>
       stopAgentSessionStreamsForAccount(state, accountAddress),
     dispose: () => {
-      for (const sessionId of state.agentSessionStreams.keys()) stopAgentSessionStream(state, sessionId)
+      for (const sessionId of state.agentSessionStreams.keys()) {
+        stopAgentSessionStream(state, sessionId)
+      }
       stopOpenOrderPolling(state)
-      for (const orderId of state.marketOrderPollers.keys()) stopMarketOrderPolling(state, orderId)
+      for (const orderId of state.marketOrderPollers.keys()) {
+        stopMarketOrderPolling(state, orderId)
+      }
     }
   }
 }
