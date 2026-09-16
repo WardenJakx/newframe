@@ -97,6 +97,13 @@ it('returns extension-local chain identity without forwarding it to the provider
   })
 })
 
+it('returns an empty account list without forwarding an unauthorized WebSocket lookup', async () => {
+  const response = await request({ id: 12, jsonrpc: '2.0', method: 'eth_accounts', params: [] })
+
+  expect(response).toEqual({ id: 12, jsonrpc: '2.0', result: [] })
+  expect(provider.requests).toEqual([])
+})
+
 it('reopens desktop approval on explicit retry and settles repeated declines', async () => {
   const origin = 'moz-extension://retry-test'
   const extensionId = 'retry-test'

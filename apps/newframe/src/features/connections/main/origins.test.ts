@@ -355,6 +355,24 @@ describe('origin authorization service', () => {
     expect(results).toStrictEqual([true, false])
   })
 
+  it('denies passive account lookup without prompting or accepting another account grant', async () => {
+    const ungrantedHarness = createOriginHarness()
+    ungrantedHarness.setOrigin(originId, { name: 'test.frame.eth' })
+    const otherAccountHarness = createOriginHarness()
+    otherAccountHarness.setOrigin(originId, { name: 'test.frame.eth' })
+    otherAccountHarness.setPermission('test.frame.eth', true, '0x0000000000000000000000000000000000000002')
+
+    const results = await Promise.all([
+      ungrantedHarness.service.isTrusted(requestPayload({ _origin: originId }), principal),
+      otherAccountHarness.service.isTrusted(requestPayload({ _origin: originId }), principal)
+    ])
+
+    expect(results).toStrictEqual([false, false])
+    expect([ungrantedHarness.routedRequests.length, otherAccountHarness.routedRequests.length]).toEqual([
+      0, 0
+    ])
+  })
+
   it('routes one canonical access request and returns the user permission outcome', async () => {
     for (const provider of [true, false]) {
       const harness = createOriginHarness()
@@ -364,7 +382,10 @@ describe('origin authorization service', () => {
         complete()
       })
 
-      const result = await harness.service.isTrusted(requestPayload({ _origin: originId }), principal)
+      const result = await harness.service.isTrusted(
+        requestPayload({ method: 'eth_requestAccounts', _origin: originId }),
+        principal
+      )
 
       expect({
         result,
@@ -385,7 +406,7 @@ describe('origin authorization service', () => {
               payload: {
                 jsonrpc: '2.0',
                 id: 1,
-                method: 'eth_accounts',
+                method: 'eth_requestAccounts',
                 params: []
               }
             }
@@ -402,10 +423,13 @@ describe('origin authorization service', () => {
     harness.onRoute((_request, complete) => completions.push(complete))
 
     const first = harness.service.isTrusted(
-      requestPayload({ method: 'wallet_getEthereumAccounts', _origin: originId }),
+      requestPayload({ method: 'personal_sign', _origin: originId }),
       principal
     )
-    const second = harness.service.isTrusted(requestPayload({ _origin: originId }), principal)
+    const second = harness.service.isTrusted(
+      requestPayload({ method: 'eth_requestAccounts', _origin: originId }),
+      principal
+    )
 
     expect(harness.routedRequests).toHaveLength(1)
     harness.setPermission('test.frame.eth', true)
@@ -428,8 +452,7 @@ for (const firstMethod of ['eth_requestAccounts', 'personal_sign']) {
     const methods = [
       firstMethod,
       firstMethod === 'eth_requestAccounts' ? 'personal_sign' : 'eth_requestAccounts',
-      'eth_accounts',
-      'eth_coinbase'
+      'eth_accounts'
     ]
     const pending = methods.map((method) =>
       harness.service.isTrusted(requestPayload({ method, _origin: originId }), principal)
@@ -441,7 +464,10 @@ for (const firstMethod of ['eth_requestAccounts', 'personal_sign']) {
     harness.setPermission('test.frame.eth', true, granted)
     complete(granted)
     expect(await Promise.all(pending)).toEqual(
-      methods.map((method) => (method === 'personal_sign' ? granted === address : granted === other))
+      methods.map((method) => {
+        if (method === 'eth_accounts') return false
+        return method === 'personal_sign' ? granted === address : granted === other
+      })
     )
   })
 }

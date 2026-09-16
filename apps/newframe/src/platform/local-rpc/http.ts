@@ -200,6 +200,12 @@ export function createHttpRpcTransport({
         }
 
         if (protectedMethods.includes(payload.method) && !(await origins.isTrusted(payload, principal))) {
+          if (payload.method === 'eth_accounts') {
+            res.writeHead(200, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ id: payload.id, jsonrpc: payload.jsonrpc, result: [] }))
+            return
+          }
+
           const error = {
             message: accounts.getSelectedAddresses()[0]
               ? `Permission denied, approve ${origin} in Newframe to continue`
