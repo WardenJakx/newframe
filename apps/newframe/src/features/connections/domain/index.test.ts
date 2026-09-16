@@ -207,7 +207,9 @@ describe('origin authorization rule', () => {
       [{ ...base, accountSelected: false }, 'deny'],
       [{ ...base, providerPermission: true }, 'allow'],
       [{ ...base, providerPermission: false }, 'deny'],
-      [base, 'prompt']
+      [base, 'deny'],
+      [{ ...base, method: 'eth_requestAccounts' }, 'prompt'],
+      [{ ...base, method: 'personal_sign' }, 'prompt']
     ] as const
 
     for (const [request, expected] of cases) {

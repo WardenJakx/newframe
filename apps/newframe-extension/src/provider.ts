@@ -176,7 +176,7 @@ export default class InjectedFrameProvider extends EventEmitter {
   }
 
   async enable() {
-    const accounts = (await this.doSend('eth_accounts')) as string[]
+    const accounts = (await this.doSend('eth_requestAccounts')) as string[]
 
     if (accounts.length > 0) {
       this.accounts = accounts

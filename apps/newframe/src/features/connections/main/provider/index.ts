@@ -1596,14 +1596,6 @@ export class Provider extends EventEmitter {
       })
     }
 
-    const getCoinbase = (payload: RPCRequestPayload, res: RPCRequestCallback) => {
-      this.accounts.getAccounts((err, accounts) => {
-        if (err) return resError(`signTransaction Error: ${JSON.stringify(err)}`, payload, res)
-        res({ id: payload.id, jsonrpc: payload.jsonrpc, result: (accounts || [])[0] })
-      })
-    }
-
-    if (method === 'eth_coinbase') return getCoinbase(payload, res)
     if (method === 'eth_accounts') return getAccounts(payload, res)
     if (method === 'eth_requestAccounts') return getAccounts(payload, res)
     const requirePrincipal = () => {

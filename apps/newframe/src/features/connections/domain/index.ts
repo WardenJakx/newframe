@@ -158,6 +158,7 @@ export function decideOriginAuthorization({
 }): OriginAuthorizationDecision {
   if (method === 'wallet_getEthereumChains' && hasInternalStateCapability) return 'allow'
   if (!isValidOriginName(originName) || !accountSelected) return 'deny'
+  if (method === 'eth_accounts' && providerPermission !== true) return 'deny'
   if (providerPermission === undefined) return 'prompt'
   return providerPermission ? 'allow' : 'deny'
 }

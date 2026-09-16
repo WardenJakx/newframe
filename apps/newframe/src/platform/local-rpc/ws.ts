@@ -255,6 +255,11 @@ export function createWebSocketRpcTransport({
         }
 
         if (protectedMethods.includes(payload.method) && !(await origins.isTrusted(payload, principal))) {
+          if (payload.method === 'eth_accounts') {
+            respondOnce({ id: payload.id, jsonrpc: payload.jsonrpc, result: [] })
+            return
+          }
+
           respondOnce({
             id: payload.id,
             jsonrpc: payload.jsonrpc,

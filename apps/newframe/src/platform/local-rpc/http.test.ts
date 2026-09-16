@@ -77,6 +77,54 @@ it('owns its provider subscription and rejects unsupported HTTP methods observab
   })
 })
 
+it('returns an empty account list without forwarding an unauthorized HTTP lookup', async () => {
+  const provider = new FakeProvider()
+  const transport = createHttpRpcTransport({
+    provider,
+    accounts: { getSelectedAddresses: () => [] },
+    store: { endOriginSession: () => undefined },
+    origins: {
+      updateOrigin: (payload: RPCRequestPayload) => ({ payload, chainId: '0x1' }),
+      isTrusted: async () => false
+    } as never,
+    handleAgentRequest: async () => undefined
+  })
+  const request = Object.assign(new EventEmitter(), {
+    headers: { origin: 'https://app.example' },
+    method: 'POST'
+  })
+  const responses: string[] = []
+  const response = Object.assign(new EventEmitter(), {
+    status: 0,
+    writableEnded: false,
+    setHeader: () => undefined,
+    writeHead(status: number) {
+      this.status = status
+      return this
+    },
+    end(body: string) {
+      this.writableEnded = true
+      responses.push(body)
+      return this
+    }
+  })
+
+  transport.handler(request as never, response as never)
+  request.emit(
+    'data',
+    Buffer.from(JSON.stringify({ id: 12, jsonrpc: '2.0', method: 'eth_accounts', params: [] }))
+  )
+  request.emit('end')
+  await Bun.sleep(0)
+
+  expect({ status: response.status, responses: responses.map((body) => JSON.parse(body)) }).toEqual({
+    status: 200,
+    responses: [{ id: 12, jsonrpc: '2.0', result: [] }]
+  })
+  expect(provider.requests).toEqual([])
+  transport.dispose()
+})
+
 it('keeps an HTTP Provider continuation after the client response closes and applies a late result', async () => {
   const provider = new FakeProvider()
   const transport = createHttpRpcTransport({

@@ -181,12 +181,7 @@ export function createOriginsService(dependencies: OriginsServiceDependencies) {
       () => undefined
     )
     if (!grantedAddress) return false
-    const requiredAddress = [
-      'eth_requestAccounts',
-      'eth_accounts',
-      'eth_coinbase',
-      'wallet_getEthereumAccounts'
-    ].includes(payload.method)
+    const requiredAddress = ['eth_requestAccounts', 'eth_accounts'].includes(payload.method)
       ? dependencies.accounts.current()?.address
       : currentAccount.address
     return Boolean(
