@@ -9,6 +9,7 @@ import type { Provider } from '../../../features/connections/main/provider/index
 import type { RequestService } from '../../../features/requests/main/service.js'
 import type { FlashService } from '../../../features/transactions/trade/main/index.js'
 import { createHttpRpcTransport } from '../../../platform/local-rpc/http.js'
+import { createRpcRequestHandler } from '../../../platform/local-rpc/request.js'
 import { createApiServer } from '../../../platform/local-rpc/server.js'
 import {
   createWebSocketRpcTransport,
@@ -29,18 +30,18 @@ export function createProductionApiServer(
   const storePort = {
     endOriginSession: (originId: string) => canonicalStore.getState().endOriginSession(originId)
   }
+  const requestHandler = createRpcRequestHandler({ provider, accounts, origins })
   const httpTransport = createHttpRpcTransport({
     provider,
-    accounts,
     store: storePort,
-    origins,
+    requestHandler,
     handleAgentRequest: agentService.createHttpHandler(provider)
   })
   const wsTransport = createWebSocketRpcTransport({
     provider,
-    accounts,
     store: storePort,
     origins,
+    requestHandler,
     windows,
     createServer: (server) => new WebSocketServer({ server }),
     openReadyState: WebSocket.OPEN

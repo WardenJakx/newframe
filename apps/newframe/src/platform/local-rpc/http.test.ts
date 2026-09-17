@@ -2,100 +2,35 @@ import { expect, it } from 'bun:test'
 import { EventEmitter } from 'events'
 
 import { createHttpRpcTransport } from './http'
+import type { RpcRequestDescription } from './request'
 
 class FakeProvider extends EventEmitter {
-  readonly requests: RPCRequestPayload[] = []
-  callback?: (response: RPCResponsePayload) => void
-  principal?: unknown
-
-  send(payload: RPCRequestPayload, callback?: (response: RPCResponsePayload) => void, principal?: unknown) {
-    this.requests.push(payload)
-    this.callback = callback
-    this.principal = principal
+  send() {
+    return undefined
   }
 }
 
-it('owns its provider subscription and rejects unsupported HTTP methods observably', () => {
-  const provider = new FakeProvider()
+it('adapts an HTTP exchange to the shared request contract', async () => {
+  let captured: RpcRequestDescription | undefined
   const transport = createHttpRpcTransport({
-    provider,
-    accounts: { getSelectedAddresses: () => [] },
+    provider: new FakeProvider(),
     store: { endOriginSession: () => undefined },
-    origins: {
-      updateOrigin: (payload: RPCRequestPayload) => ({ payload, chainId: 1 }),
-      isTrusted: async () => true
-    } as never,
+    requestHandler: async (request) => {
+      captured = request
+    },
     handleAgentRequest: async () => undefined,
     createConnectionId: () => 'http-connection'
   })
   const request = Object.assign(new EventEmitter(), {
-    headers: {},
-    method: 'GET'
+    headers: {
+      origin: 'https://app.example',
+      'x-newframe-chain-id': '5'
+    },
+    method: 'POST',
+    url: '/'
   })
-  const responseHeaders: Record<string, string> = {}
   const response = Object.assign(new EventEmitter(), {
     body: '',
-    headers: responseHeaders,
-    status: 0,
-    setHeader(name: string, value: string) {
-      this.headers[name] = value
-    },
-    writeHead(status: number) {
-      this.status = status
-      return this
-    },
-    end(body = '') {
-      this.body = body
-      return this
-    }
-  })
-
-  expect(provider.listenerCount('data:subscription')).toBe(0)
-  transport.start()
-  transport.start()
-  transport.handler(request as never, response as never)
-
-  expect({
-    body: JSON.parse(response.body),
-    providerRequests: provider.requests,
-    status: response.status,
-    subscriptionListeners: provider.listenerCount('data:subscription')
-  }).toEqual({
-    body: { error: 'Permission Denied' },
-    providerRequests: [],
-    status: 401,
-    subscriptionListeners: 1
-  })
-
-  transport.dispose()
-  transport.dispose()
-  expect({
-    started: transport.started,
-    subscriptionListeners: provider.listenerCount('data:subscription')
-  }).toEqual({
-    started: false,
-    subscriptionListeners: 0
-  })
-})
-
-it('returns an empty account list without forwarding an unauthorized HTTP lookup', async () => {
-  const provider = new FakeProvider()
-  const transport = createHttpRpcTransport({
-    provider,
-    accounts: { getSelectedAddresses: () => [] },
-    store: { endOriginSession: () => undefined },
-    origins: {
-      updateOrigin: (payload: RPCRequestPayload) => ({ payload, chainId: '0x1' }),
-      isTrusted: async () => false
-    } as never,
-    handleAgentRequest: async () => undefined
-  })
-  const request = Object.assign(new EventEmitter(), {
-    headers: { origin: 'https://app.example' },
-    method: 'POST'
-  })
-  const responses: string[] = []
-  const response = Object.assign(new EventEmitter(), {
     status: 0,
     writableEnded: false,
     setHeader: () => undefined,
@@ -103,153 +38,41 @@ it('returns an empty account list without forwarding an unauthorized HTTP lookup
       this.status = status
       return this
     },
-    end(body: string) {
-      this.writableEnded = true
-      responses.push(body)
-      return this
-    }
-  })
-
-  transport.handler(request as never, response as never)
-  request.emit(
-    'data',
-    Buffer.from(JSON.stringify({ id: 12, jsonrpc: '2.0', method: 'eth_accounts', params: [] }))
-  )
-  request.emit('end')
-  await Bun.sleep(0)
-
-  expect({ status: response.status, responses: responses.map((body) => JSON.parse(body)) }).toEqual({
-    status: 200,
-    responses: [{ id: 12, jsonrpc: '2.0', result: [] }]
-  })
-  expect(provider.requests).toEqual([])
-  transport.dispose()
-})
-
-it('keeps an HTTP Provider continuation after the client response closes and applies a late result', async () => {
-  const provider = new FakeProvider()
-  const transport = createHttpRpcTransport({
-    provider,
-    accounts: { getSelectedAddresses: () => ['0x1111111111111111111111111111111111111111'] },
-    store: { endOriginSession: () => undefined },
-    origins: {
-      updateOrigin: (payload: RPCRequestPayload) => ({
-        payload: { ...payload, _origin: 'http-origin' },
-        chainId: '0x1'
-      }),
-      isTrusted: async () => true
-    } as never,
-    handleAgentRequest: async () => undefined,
-    createConnectionId: () => 'http-connection'
-  })
-  const request = Object.assign(new EventEmitter(), {
-    headers: { origin: 'https://app.example' },
-    method: 'POST'
-  })
-  const responseHeaders: Record<string, string> = {}
-  const response = Object.assign(new EventEmitter(), {
-    body: '',
-    destroyed: false,
-    headers: responseHeaders,
-    status: 0,
-    writableEnded: false,
-    setHeader(name: string, value: string) {
-      this.headers[name] = value
-    },
-    writeHead(status: number) {
-      this.status = status
-      return this
-    },
     end(body = '') {
       this.body = body
       this.writableEnded = true
       return this
     }
   })
+  const payload = { id: 1, jsonrpc: '2.0', method: 'eth_blockNumber', params: [] } as const
 
-  transport.start()
   transport.handler(request as never, response as never)
-  request.emit(
-    'data',
-    Buffer.from(JSON.stringify({ id: 13, jsonrpc: '2.0', method: 'eth_blockNumber', params: [] }))
-  )
+  request.emit('data', Buffer.from(JSON.stringify(payload)))
   request.emit('end')
-  await Promise.resolve()
-  await Promise.resolve()
+  await Bun.sleep(0)
 
-  expect(provider.callback).toEqual(expect.any(Function))
-  expect(provider.principal).toMatchObject({
-    kind: 'rpc',
-    transport: 'http',
+  const normalized = captured as unknown as RpcRequestDescription
+  expect(normalized).toMatchObject({
+    rawPayload: payload,
     origin: 'app.example',
-    connectionId: 'http-connection'
+    chainHint: '0x5',
+    identity: {
+      transport: 'http',
+      connectionId: 'http-connection',
+      origin: 'app.example'
+    },
+    session: { refresh: 'before-validation' }
   })
-  response.destroyed = true
-  response.emit('close')
-  provider.callback?.({ id: 13, jsonrpc: '2.0', result: '0x10' })
+  expect(normalized.acceptsProviderResponse()).toBe(true)
 
-  expect(response.status).toBe(200)
-  expect(JSON.parse(response.body)).toEqual({ id: 13, jsonrpc: '2.0', result: '0x10' })
-  transport.dispose()
+  normalized.writeResponse(
+    { id: payload.id, jsonrpc: payload.jsonrpc, error: { code: 4001, message: 'denied' } },
+    'permission-denied'
+  )
+
+  expect({ body: JSON.parse(response.body) as RPCResponsePayload, status: response.status }).toEqual({
+    body: { id: 1, jsonrpc: '2.0', error: { code: 4001, message: 'denied' } },
+    status: 401
+  })
+  expect(normalized.acceptsProviderResponse()).toBe(false)
 })
-
-it.each(['trust', 'send', 'after-response'] as const)(
-  'settles HTTP requests once when %s rejects',
-  async (failure) => {
-    const provider = new FakeProvider()
-    const send = async (payload: RPCRequestPayload, respond?: (response: RPCResponsePayload) => void) => {
-      if (failure === 'after-response') {
-        respond?.({ id: payload.id, jsonrpc: '2.0', result: '0x1' })
-      }
-      throw new Error('private failure details')
-    }
-    const transport = createHttpRpcTransport({
-      provider: Object.assign(provider, { send }),
-      accounts: { getSelectedAddresses: () => [] },
-      store: { endOriginSession: () => undefined },
-      origins: {
-        updateOrigin: (payload: RPCRequestPayload) => ({ payload, chainId: '0x1' }),
-        isTrusted: async () => {
-          if (failure === 'trust') {
-            throw new Error('private failure details')
-          }
-          return true
-        }
-      } as never,
-      handleAgentRequest: async () => undefined
-    })
-    const request = Object.assign(new EventEmitter(), {
-      headers: { origin: 'https://app.example' },
-      method: 'POST'
-    })
-    const responses: string[] = []
-    const response = Object.assign(new EventEmitter(), {
-      status: 0,
-      writableEnded: false,
-      setHeader: () => undefined,
-      writeHead(status: number) {
-        this.status = status
-        return this
-      },
-      end(body: string) {
-        this.writableEnded = true
-        responses.push(body)
-        return this
-      }
-    })
-    transport.handler(request as never, response as never)
-    request.emit(
-      'data',
-      Buffer.from(JSON.stringify({ id: 21, jsonrpc: '2.0', method: 'eth_accounts', params: [] }))
-    )
-    request.emit('end')
-    await Bun.sleep(0)
-    expect(responses.map((body) => JSON.parse(body))).toEqual([
-      failure === 'after-response'
-        ? { id: 21, jsonrpc: '2.0', result: '0x1' }
-        : { id: 21, jsonrpc: '2.0', error: { code: -32603, message: 'Internal error' } }
-    ])
-    expect(response.status).toBe(failure === 'after-response' ? 200 : 500)
-    transport.dispose()
-  }
-)

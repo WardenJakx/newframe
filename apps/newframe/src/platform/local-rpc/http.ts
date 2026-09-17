@@ -1,17 +1,17 @@
 import type { IncomingMessage, RequestListener, ServerResponse } from 'http'
 import { randomUUID } from 'node:crypto'
 
-import { isHexString } from '@ethereumjs/util'
 import log from 'electron-log'
 
-import { createRpcPrincipal, type TrustedPrincipal } from '../../features/access-control/main/authority.js'
 import { isAgentHttpRequest } from '../../features/agent-access/main/index.js'
+import { parseOrigin, parseRequestChainId } from '../../features/connections/main/origins.js'
 import {
-  parseOrigin,
-  parseRequestChainId,
-  type OriginsService
-} from '../../features/connections/main/origins.js'
-import protectedMethods from './protectedMethods.js'
+  createOriginSessionMonitor,
+  type ApiTimerPort,
+  type RpcProviderSendPort,
+  type RpcRequestHandler,
+  type RpcResponseReason
+} from './request.js'
 import validPayload from './validPayload.js'
 
 interface PendingRequest {
@@ -28,27 +28,13 @@ interface HTTPPollingPayload extends JSONRPCRequestPayload {
   pollId?: string
 }
 
-interface HttpProviderPort {
-  send(
-    payload: RPCRequestPayload,
-    respond?: (response: RPCResponsePayload) => void,
-    principal?: TrustedPrincipal
-  ): void | Promise<void>
+interface HttpProviderPort extends RpcProviderSendPort {
   on(event: 'data:subscription', listener: (payload: RPC.Susbcription.Response) => void): unknown
   off(event: 'data:subscription', listener: (payload: RPC.Susbcription.Response) => void): unknown
 }
 
-interface HttpAccountsPort {
-  getSelectedAddresses(): string[]
-}
-
 interface HttpStorePort {
   endOriginSession(originId: string): void
-}
-
-export interface ApiTimerPort {
-  setTimeout(task: () => void, delayMs: number): ReturnType<typeof setTimeout>
-  clearTimeout(timer: ReturnType<typeof setTimeout>): void
 }
 
 export interface HttpRpcTransport {
@@ -60,9 +46,8 @@ export interface HttpRpcTransport {
 
 export interface HttpRpcTransportDependencies {
   provider: HttpProviderPort
-  accounts: HttpAccountsPort
   store: HttpStorePort
-  origins: OriginsService
+  requestHandler: RpcRequestHandler
   handleAgentRequest: (req: IncomingMessage, res: ServerResponse) => Promise<unknown>
   timers?: ApiTimerPort
   createConnectionId?: () => string
@@ -75,9 +60,8 @@ const systemTimers: ApiTimerPort = {
 
 export function createHttpRpcTransport({
   provider,
-  accounts,
   store,
-  origins,
+  requestHandler,
   handleAgentRequest,
   timers = systemTimers,
   createConnectionId = randomUUID
@@ -86,24 +70,10 @@ export function createHttpRpcTransport({
   const pollSubs: Record<string, Subscription> = {}
   const pending: Record<string, PendingRequest> = {}
   const cleanupTimers: Record<string, ReturnType<typeof setTimeout>> = {}
-  const connectionMonitors: Record<string, ReturnType<typeof setTimeout>> = {}
+  const sessionMonitor = createOriginSessionMonitor({ store, timers })
   const logTraffic = process.env.LOG_TRAFFIC
   let active = false
   let disposed = false
-
-  function extendSession(originId: string) {
-    if (!originId) {
-      return
-    }
-
-    if (connectionMonitors[originId]) {
-      timers.clearTimeout(connectionMonitors[originId])
-    }
-    connectionMonitors[originId] = timers.setTimeout(() => {
-      delete connectionMonitors[originId]
-      store.endOriginSession(originId)
-    }, 60_000)
-  }
 
   const cleanup = (id: string) => {
     delete polls[id]
@@ -180,63 +150,52 @@ export function createHttpRpcTransport({
         return
       }
 
-      try {
-        if (logTraffic) {
-          log.info(
-            `req -> | http | ${req.headers.origin} | ${rawPayload.method} | -> | ${JSON.stringify(
-              rawPayload.params
-            )}`
-          )
-        }
+      if (logTraffic) {
+        log.info(
+          `req -> | http | ${req.headers.origin} | ${rawPayload.method} | -> | ${JSON.stringify(
+            rawPayload.params
+          )}`
+        )
+      }
 
-        const requestChainId = parseRequestChainId(req)
-        if (requestChainId && !rawPayload.chainId) {
-          rawPayload.chainId = requestChainId
+      const origin = parseOrigin(req.headers.origin)
+      const writeResponse = (response: RPCResponsePayload, reason: RpcResponseReason) => {
+        if (res.writableEnded) {
+          return
         }
+        let status = 200
+        if (reason === 'internal-error') {
+          status = 500
+        } else if (reason === 'invalid-chain' || reason === 'permission-denied') {
+          status = 401
+        }
+        if (!res.headersSent) {
+          res.writeHead(status, { 'Content-Type': 'application/json' })
+        }
+        res.end(JSON.stringify(response))
+      }
 
-        const origin = parseOrigin(req.headers.origin)
-        const { payload, chainId } = origins.updateOrigin(rawPayload, origin)
-        const principal = createRpcPrincipal({
+      await requestHandler({
+        rawPayload,
+        origin,
+        chainHint: parseRequestChainId(req),
+        identity: {
           transport: 'http',
           connectionId: createConnectionId(),
           origin
-        })
-        extendSession(payload._origin)
-
-        if (!isHexString(chainId)) {
-          const error = {
-            message: `Invalid chain id (${rawPayload.chainId}), chain id must be hex-prefixed string`,
-            code: -1
+        },
+        session: { monitor: sessionMonitor, refresh: 'before-validation' },
+        acceptsProviderResponse: () => !res.writableEnded,
+        writeResponse,
+        postValidationInterceptor: ({ payload }) => {
+          if (payload.method !== 'eth_pollSubscriptions') {
+            return false
           }
-          res.writeHead(401, { 'Content-Type': 'application/json' })
-          res.end(JSON.stringify({ id: payload.id, jsonrpc: payload.jsonrpc, error }))
-          return
-        }
-
-        if (protectedMethods.includes(payload.method) && !(await origins.isTrusted(payload, principal))) {
-          if (payload.method === 'eth_accounts') {
-            res.writeHead(200, { 'Content-Type': 'application/json' })
-            res.end(JSON.stringify({ id: payload.id, jsonrpc: payload.jsonrpc, result: [] }))
-            return
-          }
-
-          const error = {
-            message: accounts.getSelectedAddresses()[0]
-              ? `Permission denied, approve ${origin} in Newframe to continue`
-              : 'No Newframe account selected',
-            code: 4001
-          }
-          res.writeHead(401, { 'Content-Type': 'application/json' })
-          res.end(JSON.stringify({ id: payload.id, jsonrpc: payload.jsonrpc, error }))
-          return
-        }
-
-        if (payload.method === 'eth_pollSubscriptions') {
           const id = payload.params[0]
           if (typeof id !== 'string') {
             res.writeHead(401, { 'Content-Type': 'application/json' })
             res.end(JSON.stringify({ error: 'Invalid Client ID' }))
-            return
+            return true
           }
 
           const send = (force: boolean) => {
@@ -270,52 +229,23 @@ export function createHttpRpcTransport({
           }
 
           send(false)
-          return
-        }
-
-        await provider.send(
-          payload,
-          (response) => {
-            if (res.writableEnded) {
-              return
-            }
-            if (response?.result) {
-              if (payload.method === 'eth_subscribe') {
-                pollSubs[String(response.result)] = {
-                  id: rawPayload.pollId || '',
-                  origin: payload._origin
-                }
-              } else if (payload.method === 'eth_unsubscribe') {
-                payload.params.forEach((sub) => delete pollSubs[sub])
-              }
-            }
-
-            if (logTraffic) {
-              log.info(
-                `<- res | http | ${req.headers.origin} | ${payload.method} | <- | ${JSON.stringify(response)}`
-              )
-            }
-            res.writeHead(200, { 'Content-Type': 'application/json' })
-            res.end(JSON.stringify(response))
-          },
-          principal
-        )
-      } catch (error) {
-        log.error('HTTP RPC request failed', error)
-        if (res.writableEnded) {
-          return
-        }
-        if (!res.headersSent) {
-          res.writeHead(500, { 'Content-Type': 'application/json' })
-        }
-        res.end(
-          JSON.stringify({
-            id: rawPayload.id,
-            jsonrpc: rawPayload.jsonrpc,
-            error: { code: -32603, message: 'Internal error' }
-          })
-        )
-      }
+          return true
+        },
+        observeProviderResponse: (response, payload) => {
+          if (logTraffic) {
+            log.info(
+              `<- res | http | ${req.headers.origin} | ${payload.method} | <- | ${JSON.stringify(response)}`
+            )
+          }
+        },
+        onSubscriptionOpen: (subscriptionId, originId) => {
+          pollSubs[subscriptionId] = { id: rawPayload.pollId || '', origin: originId }
+        },
+        onSubscriptionClose: (subscriptionIds) => {
+          subscriptionIds.forEach((subscriptionId) => delete pollSubs[String(subscriptionId)])
+        },
+        onError: (error) => log.error('HTTP RPC request failed', error)
+      })
     }
     req
       .on('data', (chunk) => body.push(Buffer.from(chunk)))
@@ -353,8 +283,7 @@ export function createHttpRpcTransport({
         ...Object.values(pollSubs).map(({ id }) => id)
       ])
       pollIds.forEach(cleanup)
-      Object.values(connectionMonitors).forEach((timer) => timers.clearTimeout(timer))
-      Object.keys(connectionMonitors).forEach((id) => delete connectionMonitors[id])
+      sessionMonitor.dispose()
     }
   }
 }
