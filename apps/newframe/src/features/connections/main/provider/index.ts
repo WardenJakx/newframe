@@ -1452,8 +1452,9 @@ export class Provider extends EventEmitter {
       }
     }
 
-    let icon = ''
-    if (!existing && this.lookupChainIcon) {
+    const metadata = this.store.getState().main.networksMeta[type][id]
+    let icon = typeof metadata?.icon === 'string' ? metadata.icon.trim() : ''
+    if (!icon && this.lookupChainIcon) {
       try {
         icon = await this.lookupChainIcon(id)
       } catch (error) {
@@ -1462,14 +1463,14 @@ export class Provider extends EventEmitter {
     }
 
     const handlerId = this.requests.create(res)
-    const metadata = this.store.getState().main.networksMeta[type][id]
     const requestChain = existing
       ? {
           id,
           type,
           name: existing.name,
           symbol: metadata?.nativeCurrency.symbol || existing.symbol || '',
-          explorer: existing.explorer
+          explorer: existing.explorer,
+          ...(icon ? { icon } : {})
         }
       : {
           type,
