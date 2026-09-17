@@ -465,7 +465,7 @@ describe('#send', () => {
       )
     })
 
-    it('requires approval to reactivate a chain and ignores requested RPC replacements', () => {
+    it('enriches a disabled chain with its Chainlist icon and ignores requested RPC replacements', async () => {
       setNetwork(31337, {
         id: 31337,
         on: false,
@@ -480,6 +480,9 @@ describe('#send', () => {
       setOrigin('8073729a-5e59-53b7-9e69-5d9bcff94087', {
         chain: { id: 1, type: 'ethereum' }
       })
+      lookupChainIcon.mockImplementation(
+        async () => 'https://icons.llamao.fi/icons/chains/rsz_newframe-local-anvil.jpg'
+      )
 
       const cb = mock()
 
@@ -492,12 +495,17 @@ describe('#send', () => {
         }),
         cb
       )
+      await Promise.resolve()
 
       expect(accountRequests).toHaveLength(1)
+      expect(lookupChainIcon).toHaveBeenCalledWith(31337)
       const network = storeState().main.networks.ethereum[31337]
       expect(network.on).toBe(false)
       expect(network.connection.primary.on).toBe(false)
       expect(network.connection.primary.custom).toBe('')
+      expect(accountRequests[0].chain.icon).toBe(
+        'https://icons.llamao.fi/icons/chains/rsz_newframe-local-anvil.jpg'
+      )
       expect(accountRequests[0].chain).not.toHaveProperty('primaryRpc')
     })
   })
