@@ -178,7 +178,9 @@ abstract class EventedRequestProvider extends EventEmitter implements Eip1193Pro
       this.emit('networkChanged', (this as any).networkVersion)
     } else if (event === 'chainChanged') {
       this.providerChainId = result as string
-      if (!this.manualChainId) this.emit('chainChanged', result)
+      if (!this.manualChainId) {
+        this.emit('chainChanged', result)
+      }
     } else {
       this.emit(event, result)
     }
@@ -246,10 +248,14 @@ class FrameProxyProvider extends EventedRequestProvider {
       return
     }
 
-    if (!('id' in payload) || typeof payload.id === 'undefined') return
+    if (!('id' in payload) || typeof payload.id === 'undefined') {
+      return
+    }
 
     const promise = this.promises[payload.id]
-    if (!promise) return
+    if (!promise) {
+      return
+    }
 
     delete this.promises[payload.id]
 
@@ -296,13 +302,17 @@ class FrameProvider extends EventedRequestProvider {
   }
 
   protected async sendPayload<T = unknown>(payload: RpcPayload) {
-    if (!this.currentProvider) throw new Error('Not connected')
+    if (!this.currentProvider) {
+      throw new Error('Not connected')
+    }
 
     return sendRawPayload<T>(this.currentProvider, payload)
   }
 
   private connect(index = 0) {
-    if (this.closing || !this.targets.length) return
+    if (this.closing || !this.targets.length) {
+      return
+    }
 
     const attempt = ++this.connectAttempt
     const provider = createJsonRpcProvider(this.targets[index], this.options)
@@ -316,13 +326,17 @@ class FrameProvider extends EventedRequestProvider {
       'Not connected'
     )
       .then((chainId) => {
-        if (attempt !== this.connectAttempt || this.closing || this.currentProvider !== provider) return
+        if (attempt !== this.connectAttempt || this.closing || this.currentProvider !== provider) {
+          return
+        }
 
         this.markConnected(chainId)
         this.resetReconnectBackoff()
       })
       .catch((error) => {
-        if (attempt !== this.connectAttempt || this.closing) return
+        if (attempt !== this.connectAttempt || this.closing) {
+          return
+        }
 
         void Promise.resolve(provider.destroy()).catch(() => {})
 
@@ -368,7 +382,9 @@ class FrameProvider extends EventedRequestProvider {
   }
 
   private scheduleReconnect() {
-    if (this.closing) return
+    if (this.closing) {
+      return
+    }
 
     clearTimeout(this.connectTimer)
     const delay = this.reconnectDelay

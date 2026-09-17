@@ -84,7 +84,9 @@ const server = Bun.serve<LocalFlashSocketData>({
   port,
   fetch(req, server) {
     const url = new URL(req.url)
-    if (url.pathname !== '/v1/ws') return handleLocalTradeRequest(req)
+    if (url.pathname !== '/v1/ws') {
+      return handleLocalTradeRequest(req)
+    }
 
     const upgraded = server.upgrade(req, {
       data: {
@@ -131,7 +133,9 @@ const server = Bun.serve<LocalFlashSocketData>({
 subscribeLocalTradeOrders((order) => {
   const funderAddress = String(order.funderAddress || order.accountAddress || '').toLowerCase()
   for (const socket of sockets) {
-    if (!socket.data.subscriptions.has('orders') || socket.data.funderAddress !== funderAddress) continue
+    if (!socket.data.subscriptions.has('orders') || socket.data.funderAddress !== funderAddress) {
+      continue
+    }
     send(socket, { channel: 'orders', type: 'update', orders: [order] })
   }
 })
@@ -139,7 +143,9 @@ subscribeLocalTradeOrders((order) => {
 setInterval(() => {
   const timestamp = new Date().toISOString()
   for (const socket of sockets) {
-    if (!socket.data.subscriptions.has('heartbeats')) continue
+    if (!socket.data.subscriptions.has('heartbeats')) {
+      continue
+    }
     socket.data.counter += 1
     send(socket, {
       channel: 'heartbeats',

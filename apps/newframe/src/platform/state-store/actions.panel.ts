@@ -31,7 +31,9 @@ export function createPanelActions(set: CanonicalSet, _get: CanonicalGet) {
 
     upsertPendingNotification: (notification: any) => {
       const id = notification?.id
-      if (!id) return
+      if (!id) {
+        return
+      }
 
       const now = Date.now()
 
@@ -48,20 +50,26 @@ export function createPanelActions(set: CanonicalSet, _get: CanonicalGet) {
           hidden: notification.hidden ?? false
         }
 
-        if (notification.dismissedAt === undefined) delete pendingNotification.dismissedAt
+        if (notification.dismissedAt === undefined) {
+          delete pendingNotification.dismissedAt
+        }
         notifications[id] = pendingNotification
       })
     },
 
     resolveNotification: (id: string, state: Exclude<NotificationState, 'pending'>, update: any = {}) => {
-      if (!id || !resolvedNotificationStates.has(state)) return
+      if (!id || !resolvedNotificationStates.has(state)) {
+        return
+      }
 
       const now = Date.now()
 
       set((draft) => {
         const notifications = mutable(draft).view.notifications
         const notification = notifications[id]
-        if (!notification) return
+        if (!notification) {
+          return
+        }
 
         const resolvedNotification = {
           ...notification,
@@ -72,13 +80,17 @@ export function createPanelActions(set: CanonicalSet, _get: CanonicalGet) {
           updatedAt: update.updatedAt ?? now
         }
 
-        if (update.dismissedAt === undefined) delete resolvedNotification.dismissedAt
+        if (update.dismissedAt === undefined) {
+          delete resolvedNotification.dismissedAt
+        }
         notifications[id] = resolvedNotification
       })
     },
 
     dismissNotification: (id: string, update: any = {}) => {
-      if (!id) return
+      if (!id) {
+        return
+      }
 
       const dismissedAt = update.dismissedAt ?? Date.now()
 
@@ -98,7 +110,9 @@ export function createPanelActions(set: CanonicalSet, _get: CanonicalGet) {
     },
 
     expireNotification: (id: string) => {
-      if (!id) return
+      if (!id) {
+        return
+      }
 
       set((draft) => {
         delete mutable(draft).view.notifications[id]
@@ -113,7 +127,9 @@ export function createPanelActions(set: CanonicalSet, _get: CanonicalGet) {
 
     trayOpen: (open: boolean) => {
       const clearInitial = open && trayInitial
-      if (clearInitial) trayInitial = false
+      if (clearInitial) {
+        trayInitial = false
+      }
 
       set((draft) => {
         mutable(draft).tray.open = open

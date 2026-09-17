@@ -41,7 +41,9 @@ function setup() {
 }
 async function until(condition: () => boolean) {
   for (let n = 0; n < 200; n++) {
-    if (condition()) return
+    if (condition()) {
+      return
+    }
     await Bun.sleep(5)
   }
   throw new Error('Timed out')
@@ -75,13 +77,14 @@ it('imports through real HTTP, merges chains, retains queue on later-page failur
         info++
         return Response.json(configuration)
       }
-      if (url.searchParams.has('page'))
+      if (url.searchParams.has('page')) {
         return fail
           ? new Response('failed', { status: 500 })
           : Response.json({
               next: null,
               results: [{ ...proposal, safeTxHash: `0x${'b'.repeat(64)}`, nonce: '9007199254740994' }]
             })
+      }
       return Response.json({
         next: `${url.origin}${url.pathname}?executed=false&nonce__gte=9007199254740993&page=2`,
         results: [proposal, proposal]
@@ -188,7 +191,9 @@ it('invalidates delayed work after remove/re-add, profile switch, and disposal',
       store.getState().createProfile('other', 'Other')
       store.getState().selectProfile('other')
     }
-    if (change === 'dispose') service.dispose()
+    if (change === 'dispose') {
+      service.dispose()
+    }
     release(config)
     await refreshing
     expect(store.getState().main.accounts[address].safe?.['1'].refreshedAt).toBeUndefined()
@@ -240,11 +245,14 @@ it('probes all configured chains, retains successes and discards stale discovery
       discover: async (chainId, requestedAddress) => {
         checked.push(chainId)
         expect(requestedAddress).toBe(address)
-        if (chainId !== found.id) throw new Error('Not a Safe')
-        if (delay)
+        if (chainId !== found.id) {
+          throw new Error('Not a Safe')
+        }
+        if (delay) {
           await new Promise<void>((resolve) => {
             release = resolve
           })
+        }
         return { version: '1.4.1', owners: [ownerAddress] }
       },
       configuration: async () => ({ version: '1.4.1', owners: [ownerAddress], threshold: 1, nonce: '0' }),
@@ -466,10 +474,11 @@ it('settles in-flight simulations on semantic proposal changes, account lifetime
     const pending = service.simulate(context.query)
     await Promise.resolve()
     const old = context.store.getState().main.accounts[address]
-    if (change === 'proposal')
+    if (change === 'proposal') {
       context.store.getState().patchAccount(address, {
         safe: { '1': { ...old.safe!['1'], pending: [{ ...context.proposal, value: '456' }] } }
       })
+    }
     if (change === 'remove') {
       context.store.getState().removeAccount(address)
       context.store.getState().upsertAccount({ ...old, requests: {} })
@@ -478,7 +487,9 @@ it('settles in-flight simulations on semantic proposal changes, account lifetime
       context.store.getState().createProfile('other', 'Other')
       context.store.getState().selectProfile('other')
     }
-    if (change === 'dispose') service.dispose()
+    if (change === 'dispose') {
+      service.dispose()
+    }
     expect(await pending).toMatchObject({
       status: 'unavailable',
       error: expect.stringContaining('cancelled')

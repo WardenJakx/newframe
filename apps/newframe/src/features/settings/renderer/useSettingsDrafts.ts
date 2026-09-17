@@ -49,10 +49,14 @@ export function useSettingsDrafts({
   }
 
   const toggleAutoDiscoverTokens = (enabled: boolean) => {
-    if (enabled) return persist({ setting: 'auto-discover-tokens', value: false })
+    if (enabled) {
+      return persist({ setting: 'auto-discover-tokens', value: false })
+    }
 
     const apiKey = portfolioApiKey.trim()
-    if (!apiKey && !initialPortfolioApiKeyConfigured) return setPortfolioApiKeyRequired(true)
+    if (!apiKey && !initialPortfolioApiKeyConfigured) {
+      return setPortfolioApiKeyRequired(true)
+    }
 
     clearTimeout(portfolioTimer.current)
     persist({
@@ -60,7 +64,9 @@ export function useSettingsDrafts({
       value: true,
       ...(apiKey ? { apiKey } : {})
     })
-    if (apiKey) setPortfolioApiKey(apiKey)
+    if (apiKey) {
+      setPortfolioApiKey(apiKey)
+    }
     setPortfolioApiKeyRequired(false)
   }
 

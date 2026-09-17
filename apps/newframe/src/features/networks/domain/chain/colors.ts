@@ -52,7 +52,9 @@ const legacyChainColorNames: Record<string, ChainColorName> = {
 }
 
 export function chainColorValue(name?: string) {
-  if (name?.startsWith('var(') || name?.startsWith('#') || name?.startsWith('rgb')) return name
+  if (name?.startsWith('var(') || name?.startsWith('#') || name?.startsWith('rgb')) {
+    return name
+  }
 
   return chainColors[legacyChainColorNames[name || ''] || 'other']
 }

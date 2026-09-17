@@ -22,7 +22,7 @@ it('requires an approving account context and valid derivation index before any 
   fixture.dispose()
 })
 
-for (const vector of vectors.messages)
+for (const vector of vectors.messages) {
   it(`recovers ${vector.name} against exact approved data`, async () => {
     const fixture = signerFixture()
     const results: Array<{ error: Error | null | undefined; value?: string }> = []
@@ -48,6 +48,7 @@ for (const vector of vectors.messages)
     expect(results[0].value?.slice(-2)).toBe('1c')
     fixture.dispose()
   })
+}
 
 it('rejects responses for another UUID or signing key without consuming the request', async () => {
   const fixture = signerFixture()
@@ -78,7 +79,7 @@ it('rejects responses for another UUID or signing key without consuming the requ
   fixture.dispose()
 })
 
-for (const change of ['abort', 'window', 'close'] as const)
+for (const change of ['abort', 'window', 'close'] as const) {
   it(`cancels the exchange on ${change} before response completion`, async () => {
     const fixture = signerFixture()
     const data = transaction()
@@ -108,6 +109,7 @@ for (const change of ['abort', 'window', 'close'] as const)
     expect(results).toHaveLength(1)
     fixture.dispose()
   })
+}
 
 it('rejects unsupported transaction types, creation and typed-data versions before QR', () => {
   const fixture = signerFixture()

@@ -23,23 +23,33 @@ const formatLabel = (path: string) =>
     .trim()
 
 const decodeUtf8Hex = (value: string) => {
-  if (!/^0x([0-9a-fA-F]{2})+$/.test(value)) return undefined
+  if (!/^0x([0-9a-fA-F]{2})+$/.test(value)) {
+    return undefined
+  }
 
   const bytes = value
     .slice(2)
     .match(/.{2}/g)
     ?.map((byte) => parseInt(byte, 16))
 
-  if (!bytes?.length) return undefined
+  if (!bytes?.length) {
+    return undefined
+  }
 
-  while (bytes[bytes.length - 1] === 0) bytes.pop()
-  if (!bytes.length) return undefined
+  while (bytes[bytes.length - 1] === 0) {
+    bytes.pop()
+  }
+  if (!bytes.length) {
+    return undefined
+  }
 
   try {
     const decoded = new TextDecoder('utf-8', { fatal: true }).decode(new Uint8Array(bytes))
     const printable = decoded.replace(/[\t\n\r]/g, '')
     // oxlint-disable-next-line no-control-regex -- reject decoded non-printable control characters.
-    if (!printable || /[\x00-\x1F\x7F]/.test(printable)) return undefined
+    if (!printable || /[\x00-\x1F\x7F]/.test(printable)) {
+      return undefined
+    }
 
     return `${decoded} (${value})`
   } catch {
@@ -48,11 +58,18 @@ const decodeUtf8Hex = (value: string) => {
 }
 
 const formatValue = (value: unknown): string | undefined => {
-  if (value === undefined) return undefined
-  if (value === null) return 'null'
-  if (typeof value === 'string') return decodeUtf8Hex(value) || value
-  if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint')
+  if (value === undefined) {
+    return undefined
+  }
+  if (value === null) {
+    return 'null'
+  }
+  if (typeof value === 'string') {
+    return decodeUtf8Hex(value) || value
+  }
+  if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') {
     return String(value)
+  }
 
   return undefined
 }
@@ -132,7 +149,9 @@ const SimpleTypedDataInner = ({ typedData }: SimpleTypedDataInnerProps) => {
   const legacyRows = Array.isArray(typedData)
     ? flattenJsonRows(
         typedData.reduce((data: Record<string, unknown>, elem) => {
-          if (isRecord(elem) && typeof elem.name === 'string') data[elem.name] = elem.value
+          if (isRecord(elem) && typeof elem.name === 'string') {
+            data[elem.name] = elem.value
+          }
           return data
         }, {})
       )
@@ -164,7 +183,9 @@ const DigestRows = ({ digests }: { digests?: Partial<Eip712Digests> }) => {
 }
 
 const Erc7730ClearSigning = ({ display }: { display?: Erc7730Display }) => {
-  if (!display) return null
+  if (!display) {
+    return null
+  }
 
   return (
     <Stack gap='xsmall'>

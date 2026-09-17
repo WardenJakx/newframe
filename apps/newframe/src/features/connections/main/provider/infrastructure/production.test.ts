@@ -16,7 +16,7 @@ describe('provider request infrastructure adapter', () => {
     const send = mock((_payload: unknown, callback: typeof respond) => {
       respond = callback
     })
-    const adapter = createProviderRequestAdapter({ send } as never)
+    const adapter = createProviderRequestAdapter({ send })
     const context = { tokenData: { decimals: 6, name: 'USD Coin', symbol: 'USDC' } }
     const first = adapter.request(
       { id: 1, jsonrpc: '2.0', method: 'eth_chainId', params: [], _origin: 'test-origin' },
@@ -43,7 +43,7 @@ describe('provider request infrastructure adapter', () => {
       approveSign: approve,
       approveSignTypedData: approve,
       approveTransactionRequest: approve
-    } as never)
+    })
     const requests = [
       adapter.approveSign({} as never),
       adapter.approveSignTypedData({} as never),
@@ -62,10 +62,12 @@ it('rejects provider promise failures and ignores failures after callback settle
   let callbackFirst = false
   const adapter = createProviderRequestAdapter({
     send: async (payload: RPCRequestPayload, respond: (response: RPCResponsePayload) => void) => {
-      if (callbackFirst) respond({ id: payload.id, jsonrpc: '2.0', result: '0x1' })
+      if (callbackFirst) {
+        respond({ id: payload.id, jsonrpc: '2.0', result: '0x1' })
+      }
       throw new Error('provider unavailable')
     }
-  } as never)
+  })
   const payload: RPCRequestPayload = {
     id: 1,
     jsonrpc: '2.0',

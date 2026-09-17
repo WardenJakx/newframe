@@ -140,10 +140,14 @@ export function Selection({
   const canOpen = enabled || !!header
 
   useEffect(() => {
-    if (!open) return
+    if (!open) {
+      return
+    }
 
     const handleDocumentMouseDown = (event: MouseEvent) => {
-      if (root.current?.contains(event.target as Node)) return
+      if (root.current?.contains(event.target as Node)) {
+        return
+      }
       onOpenChange(false)
     }
 
@@ -153,8 +157,12 @@ export function Selection({
 
   const setOpen = useCallback(
     (nextOpen: boolean) => {
-      if (nextOpen && (!canOpen || disabled)) return
-      if (nextOpen) setHighlightedId(defaultHighlightedId)
+      if (nextOpen && (!canOpen || disabled)) {
+        return
+      }
+      if (nextOpen) {
+        setHighlightedId(defaultHighlightedId)
+      }
       onOpenChange(nextOpen)
     },
     [canOpen, defaultHighlightedId, disabled, onOpenChange]
@@ -170,14 +178,18 @@ export function Selection({
 
   const moveHighlight = useCallback(
     (direction: 1 | -1) => {
-      if (!enabled) return
+      if (!enabled) {
+        return
+      }
 
       setHighlightedId((currentId) => {
         const currentIndex = items.findIndex((item) => item.id === currentId && !item.disabled)
         let next = currentIndex >= 0 ? currentIndex : direction === 1 ? -1 : 0
         for (let index = 0; index < items.length; index += 1) {
           next = (next + direction + items.length) % items.length
-          if (!items[next]?.disabled) return items[next].id
+          if (!items[next]?.disabled) {
+            return items[next].id
+          }
         }
         return currentId
       })
@@ -194,9 +206,13 @@ export function Selection({
       return
     }
 
-    if (fromTextInput && !['ArrowDown', 'ArrowUp', 'Enter'].includes(event.key)) return
+    if (fromTextInput && !['ArrowDown', 'ArrowUp', 'Enter'].includes(event.key)) {
+      return
+    }
 
-    if (!enabled || disabled) return
+    if (!enabled || disabled) {
+      return
+    }
 
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       event.preventDefault()
@@ -215,7 +231,9 @@ export function Selection({
         return
       }
       const highlighted = items[highlightedIndex]
-      if (highlighted && !highlighted.disabled) select(highlighted.id)
+      if (highlighted && !highlighted.disabled) {
+        select(highlighted.id)
+      }
     }
   }
 

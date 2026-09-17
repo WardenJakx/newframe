@@ -19,7 +19,9 @@ export class TaskService<T> implements HarnessService<TaskHandle<T>> {
   }
 
   async start() {
-    if (this.handle) return this.handle
+    if (this.handle) {
+      return this.handle
+    }
 
     this.controller = new AbortController()
     const completed = Promise.resolve().then(() => this.run(this.controller!.signal))
@@ -27,7 +29,9 @@ export class TaskService<T> implements HarnessService<TaskHandle<T>> {
 
     this.failure = new Promise<never>((_, reject) => {
       completed.catch((error) => {
-        if (!this.stopping) reject(error)
+        if (!this.stopping) {
+          reject(error)
+        }
       })
     })
     this.failure.catch(() => undefined)

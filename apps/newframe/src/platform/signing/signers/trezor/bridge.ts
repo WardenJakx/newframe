@@ -36,7 +36,9 @@ const config = {
 async function handleResponse<T>(p: Response<T>) {
   const response = await p
 
-  if (response.success) return response.payload
+  if (response.success) {
+    return response.payload
+  }
   const responseError = new Error(response.payload.error) as NodeJS.ErrnoException
   responseError.code = response.payload.code
   throw responseError
@@ -183,7 +185,7 @@ class TrezorBridge extends EventEmitter {
       return result
     } catch (e: unknown) {
       if (retries === 0) {
-        throw new Error('Trezor unreachable, please try again')
+        throw new Error('Trezor unreachable, please try again', { cause: e })
       }
 
       const err = e as DeviceError
@@ -195,9 +197,8 @@ class TrezorBridge extends EventEmitter {
             resolve(this.makeRequest(fn, retries - 1))
           }, 400)
         })
-      } else {
-        throw err
       }
+      throw err
     }
   }
 

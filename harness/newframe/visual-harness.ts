@@ -41,7 +41,9 @@ async function bootstrap(services: HarnessRuntime, visual: VisualHarnessRuntime)
 
   const password = readHarnessPassword()
   visual.log(`unlock password configured: ${password.length > 0}`)
-  if (!password) visual.fail('Newframe unlock password is not configured')
+  if (!password) {
+    visual.fail('Newframe unlock password is not configured')
+  }
 
   await Promise.all([ensureCommand('bun'), ensureCommand('anvil'), ensureCommand('forge')])
 
@@ -116,7 +118,9 @@ export async function runVisualHarness() {
   } catch (err) {
     visual.summary.ok = false
     visual.summary.failedStage = visual.currentStage
-    if (app) await visual.captureElectronFailureArtifacts(app)
+    if (app) {
+      await visual.captureElectronFailureArtifacts(app)
+    }
     await visual.writeSummary().catch(() => undefined)
     throw err
   } finally {

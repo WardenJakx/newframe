@@ -101,7 +101,7 @@ function populate(rawTx: TransactionData, chainConfig: Common, gas: Gas): Transa
     const useFrameGasPrice = !rawTx.gasPrice || isNaN(parseInt(rawTx.gasPrice, 16))
     if (useFrameGasPrice) {
       // no valid dapp-supplied value for gasPrice so we use the Newframe-supplied value
-      const gasPrice = hexToBigInt(gas.price.levels.fast as string).toString(16)
+      const gasPrice = hexToBigInt(gas.price.levels.fast).toString(16)
       txData.gasPrice = addHexPrefix(gasPrice)
       txData.gasFeesSource = GasFeesSource.Frame
     }
@@ -185,9 +185,15 @@ function classifyTransaction({
 }: Omit<TransactionRequest, 'classification'>): TxClassification {
   const { to, data = '0x' } = params[0]
 
-  if (!to) return TxClassification.CONTRACT_DEPLOY
-  if (recipientType === 'external' && data.length > 2) return TxClassification.SEND_DATA
-  if (isNonZeroHex(data) && recipientType !== 'external') return TxClassification.CONTRACT_CALL
+  if (!to) {
+    return TxClassification.CONTRACT_DEPLOY
+  }
+  if (recipientType === 'external' && data.length > 2) {
+    return TxClassification.SEND_DATA
+  }
+  if (isNonZeroHex(data) && recipientType !== 'external') {
+    return TxClassification.CONTRACT_CALL
+  }
   return TxClassification.NATIVE_TRANSFER
 }
 

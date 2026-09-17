@@ -139,12 +139,16 @@ function quoteField(record: PrivateQuoteRecord, field: string) {
 function parseTypedData(value: unknown) {
   const parsed = parseFlashTypedData(value)
   const result = TypedDataV4Schema.safeParse(parsed)
-  if (!result.success) throw new TradeFailure('quote_invalid', 'Flash quote is missing typed data.')
+  if (!result.success) {
+    throw new TradeFailure('quote_invalid', 'Flash quote is missing typed data.')
+  }
   return result.data
 }
 
 function safeAction(action?: FlashQuoteAction | null) {
-  if (!action) return action
+  if (!action) {
+    return action
+  }
   return {
     id: action.id,
     kind: action.kind,
@@ -156,8 +160,12 @@ function safeAction(action?: FlashQuoteAction | null) {
 }
 
 function nextAction(record: PrivateQuoteRecord): TradeAction {
-  if (record.quote.actions?.wrap && !record.completedActions.has('wrap')) return 'wrap'
-  if (record.quote.actions?.approval && !record.completedActions.has('approve')) return 'approve'
+  if (record.quote.actions?.wrap && !record.completedActions.has('wrap')) {
+    return 'wrap'
+  }
+  if (record.quote.actions?.approval && !record.completedActions.has('approve')) {
+    return 'approve'
+  }
   return 'submit'
 }
 
@@ -199,7 +207,9 @@ export function createTradeService(ports: TradeServicePorts) {
   const prune = () => {
     const now = ports.clock.now()
     for (const [key, record] of quotes) {
-      if (record.expiresAt <= now) quotes.delete(key)
+      if (record.expiresAt <= now) {
+        quotes.delete(key)
+      }
     }
     const orderedQuotes = [...quotes.entries()].sort(
       ([leftKey, left], [rightKey, right]) =>
@@ -210,7 +220,9 @@ export function createTradeService(ports: TradeServicePorts) {
     }
 
     for (const [key, entry] of idempotency) {
-      if (!ports.operations.lookup(entry.reference)) idempotency.delete(key)
+      if (!ports.operations.lookup(entry.reference)) {
+        idempotency.delete(key)
+      }
     }
     const orderedEntries = [...idempotency.entries()].sort(
       ([leftKey, left], [rightKey, right]) =>
@@ -223,7 +235,9 @@ export function createTradeService(ports: TradeServicePorts) {
 
   const removeOwnerQuotes = (owner: OperationOwner) => {
     for (const [key, record] of quotes) {
-      if (sameOwner(record.owner, owner)) quotes.delete(key)
+      if (sameOwner(record.owner, owner)) {
+        quotes.delete(key)
+      }
     }
   }
 
@@ -263,8 +277,12 @@ export function createTradeService(ports: TradeServicePorts) {
     const reference: OperationReference = { owner, id: operationId, type: tradeOperationType }
     const key = referenceKey(reference)
     let execution = executions.get(key)
-    if (execution) return { execution, key }
-    if (ports.operations.lookup(reference)) return null
+    if (execution) {
+      return { execution, key }
+    }
+    if (ports.operations.lookup(reference)) {
+      return null
+    }
 
     let record: PrivateQuoteRecord | undefined
     try {
@@ -318,8 +336,9 @@ export function createTradeService(ports: TradeServicePorts) {
         throw new TradeFailure('action_mismatch', 'Trade preparation step is no longer required.')
       }
       const action = command.action === 'wrap' ? record.quote.actions?.wrap : record.quote.actions?.approval
-      if (!action?.tx)
+      if (!action?.tx) {
         throw new TradeFailure('quote_invalid', 'Flash action is missing a transaction request.')
+      }
       let request: ReturnType<typeof buildFlashActionTransaction>
       try {
         request = buildFlashActionTransaction(action, record.spentChainId)
@@ -340,9 +359,13 @@ export function createTradeService(ports: TradeServicePorts) {
         },
         principal
       )
-      if (!result.ok) throw new TradeFailure('provider_error', result.message || 'Transaction failed.')
+      if (!result.ok) {
+        throw new TradeFailure('provider_error', result.message || 'Transaction failed.')
+      }
       validatedQuote(owner, command.quoteId, record)
-      if (disposed) throw new TradeFailure('application_shutdown', 'Trade was cancelled during shutdown.')
+      if (disposed) {
+        throw new TradeFailure('application_shutdown', 'Trade was cancelled during shutdown.')
+      }
 
       record.completedActions.add(command.action)
       if (
@@ -421,7 +444,9 @@ export function createTradeService(ports: TradeServicePorts) {
         )
       }
       validatedQuote(owner, command.quoteId, record)
-      if (disposed) throw new TradeFailure('application_shutdown', 'Trade was cancelled during shutdown.')
+      if (disposed) {
+        throw new TradeFailure('application_shutdown', 'Trade was cancelled during shutdown.')
+      }
 
       ports.operations.advance(execution.reference, {
         phase: 'submitting',
@@ -466,17 +491,27 @@ export function createTradeService(ports: TradeServicePorts) {
     principal: TrustedPrincipal,
     owner: OperationOwner
   ) => {
-    if (disposed) return false
+    if (disposed) {
+      return false
+    }
     const started = startExecution(command.operationId, command.quoteId, owner)
     const reference: OperationReference = { owner, id: command.operationId, type: tradeOperationType }
     const key = referenceKey(reference)
     const action: TradeAction = command.type === 'request.create' ? command.action : 'submit'
     const fingerprint = JSON.stringify([command.quoteId, action])
-    if (!started) return idempotency.get(key)?.fingerprint === fingerprint
+    if (!started) {
+      return idempotency.get(key)?.fingerprint === fingerprint
+    }
     const { execution } = started
-    if (execution.quoteId !== command.quoteId) return false
-    if (execution.completedFingerprints.has(fingerprint)) return true
-    if (execution.inFlight) return execution.inFlight.fingerprint === fingerprint
+    if (execution.quoteId !== command.quoteId) {
+      return false
+    }
+    if (execution.completedFingerprints.has(fingerprint)) {
+      return true
+    }
+    if (execution.inFlight) {
+      return execution.inFlight.fingerprint === fingerprint
+    }
 
     execution.inFlight = { action, fingerprint }
     queueMicrotask(() => {
@@ -492,7 +527,9 @@ export function createTradeService(ports: TradeServicePorts) {
   const validatedCancel = (orderId: string, expectedAccountId?: string) => {
     const { account, snapshot } = currentAccount(expectedAccountId)
     const order = snapshot.orders[orderId]
-    if (!order) throw new TradeFailure('order_not_found', 'Order was not found.')
+    if (!order) {
+      throw new TradeFailure('order_not_found', 'Order was not found.')
+    }
     const orderAddress = order.accountAddress || order.account || order.address || ''
     if (!isAddress(orderAddress) || orderAddress.toLowerCase() !== account.address.toLowerCase()) {
       throw new TradeFailure('account_changed', 'Order account changed.')
@@ -536,7 +573,9 @@ export function createTradeService(ports: TradeServicePorts) {
         throw new TradeFailure('provider_error', signature.message || 'Cancel signature was not returned.')
       }
       validatedCancel(command.orderId, initial.account.id)
-      if (disposed) throw new TradeFailure('application_shutdown', 'Cancellation stopped during shutdown.')
+      if (disposed) {
+        throw new TradeFailure('application_shutdown', 'Cancellation stopped during shutdown.')
+      }
       ports.operations.advance(reference, {
         phase: 'cancelling',
         entityRefs: [
@@ -561,7 +600,9 @@ export function createTradeService(ports: TradeServicePorts) {
 
   return {
     async quote(request: RendererFlashQuoteRequest, owner: OperationOwner): Promise<FlashQuoteResult> {
-      if (disposed) return { ok: false, error: 'quote_failed', message: 'Trade service is unavailable.' }
+      if (disposed) {
+        return { ok: false, error: 'quote_failed', message: 'Trade service is unavailable.' }
+      }
       prune()
       const ownerScope = ownerKey(owner)
       const activeExecution = () =>
@@ -614,7 +655,9 @@ export function createTradeService(ports: TradeServicePorts) {
         const quoteId = randomUUID()
         const now = ports.clock.now()
         const expiresAt = quoteExpiry(result.quote, now)
-        if (expiresAt <= now) throw new TradeFailure('quote_expired', 'Flash quote already expired.')
+        if (expiresAt <= now) {
+          throw new TradeFailure('quote_expired', 'Flash quote already expired.')
+        }
         const record: PrivateQuoteRecord = {
           account,
           ...(bridgeQuoteId ? { bridgeQuoteId } : {}),
@@ -660,13 +703,19 @@ export function createTradeService(ports: TradeServicePorts) {
     },
 
     cancel(command: FlashOrderCancelCommand, principal: TrustedPrincipal, owner: OperationOwner) {
-      if (disposed) return false
+      if (disposed) {
+        return false
+      }
       const reference: OperationReference = { owner, id: command.operationId, type: cancelOperationType }
       const key = referenceKey(reference)
       const fingerprint = command.orderId
-      if (ports.operations.lookup(reference)) return idempotency.get(key)?.fingerprint === fingerprint
+      if (ports.operations.lookup(reference)) {
+        return idempotency.get(key)?.fingerprint === fingerprint
+      }
       const ownerOrderKey = JSON.stringify([owner.clientType, owner.windowInstanceId, command.orderId])
-      if (cancelByOwnerOrder.has(ownerOrderKey)) return false
+      if (cancelByOwnerOrder.has(ownerOrderKey)) {
+        return false
+      }
       try {
         ports.operations.start({
           id: command.operationId,
@@ -698,13 +747,17 @@ export function createTradeService(ports: TradeServicePorts) {
       ports.operations.fail(reference, { code: 'cancelled', message: 'Trade was cancelled.' }, 'cancelled')
       executions.delete(key)
       for (const [key, record] of quotes) {
-        if (sameOwner(record.owner, owner) && record.quoteId === execution.quoteId) quotes.delete(key)
+        if (sameOwner(record.owner, owner) && record.quoteId === execution.quoteId) {
+          quotes.delete(key)
+        }
       }
       return true
     },
 
     dispose() {
-      if (disposed) return
+      if (disposed) {
+        return
+      }
       disposed = true
       for (const execution of executions.values()) {
         ports.operations.fail(

@@ -46,7 +46,9 @@ describe('PortfolioHero', () => {
 
       await user.click(refresh)
       const rejectedCommand = commandCalls().at(-1)?.[0]
-      if (rejectedCommand?.type !== 'portfolio.refresh') throw new Error('Expected portfolio refresh')
+      if (rejectedCommand?.type !== 'portfolio.refresh') {
+        throw new Error('Expected portfolio refresh')
+      }
       expect(rejectedCommand).toEqual({ type: 'portfolio.refresh', operationId: expect.any(String) })
       expect(refresh.disabled).toBe(true)
       await act(() => timers.advanceTimersByTime(500))
@@ -56,7 +58,9 @@ describe('PortfolioHero', () => {
 
       await user.click(refresh)
       const acceptedCommand = commandCalls().at(-1)?.[0]
-      if (acceptedCommand?.type !== 'portfolio.refresh') throw new Error('Expected portfolio refresh')
+      if (acceptedCommand?.type !== 'portfolio.refresh') {
+        throw new Error('Expected portfolio refresh')
+      }
       expect(acceptedCommand.operationId).not.toBe(rejectedCommand.operationId)
       expect(refresh.disabled).toBe(true)
       act(() => {

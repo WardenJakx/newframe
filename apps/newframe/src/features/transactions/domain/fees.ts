@@ -58,8 +58,12 @@ export const MAX_GAS_LIMIT = 12_500_000n
 export function maxTotalTransactionFee(chainId?: string | number) {
   const parsedChainId = Number.parseInt(String(chainId ?? ''))
 
-  if (ETH_FAMILY_CHAIN_IDS.has(parsedChainId)) return 2n * 10n ** 18n
-  if (FANTOM_CHAIN_IDS.has(parsedChainId)) return 250n * 10n ** 18n
+  if (ETH_FAMILY_CHAIN_IDS.has(parsedChainId)) {
+    return 2n * 10n ** 18n
+  }
+  if (FANTOM_CHAIN_IDS.has(parsedChainId)) {
+    return 250n * 10n ** 18n
+  }
   return 50n * 10n ** 18n
 }
 
@@ -73,8 +77,12 @@ export function totalTransactionFee({
 }
 
 function clamp(value: bigint, maximum: bigint) {
-  if (value < 0n) return 0n
-  if (value > maximum) return maximum
+  if (value < 0n) {
+    return 0n
+  }
+  if (value > maximum) {
+    return maximum
+  }
   return value
 }
 

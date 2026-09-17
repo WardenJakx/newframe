@@ -62,7 +62,9 @@ export function OrderDetailsView({
   const rawPayload = orderJson(order.rawPayload)
   const rawStatusPayload = orderJson(order.rawStatusPayload)
   const detailRow = (label: string, value: React.ReactNode, monospace = false) => {
-    if (value === undefined || value === null || value === '') return null
+    if (value === undefined || value === null || value === '') {
+      return null
+    }
     return (
       <DetailRow
         code={monospace}

@@ -99,7 +99,9 @@ function balanceValue({ balance, decimals }: { balance?: string; decimals: numbe
 }
 
 function formatBalance(balance: number, totalValue: number, decimals = 8) {
-  if (balance !== 0 && balance < 0.001 && totalValue < 1) return '<0.001'
+  if (balance !== 0 && balance < 0.001 && totalValue < 1) {
+    return '<0.001'
+  }
 
   return new Intl.NumberFormat('us-US', {
     minimumFractionDigits: 2,
@@ -317,14 +319,20 @@ function getNativeCurrencyIcon(nativeCurrency: {
 }
 
 export function isLowValueTokenBalance(balance: { totalValue: number; hasPrice?: boolean }) {
-  if (balance.hasPrice === false) return false
+  if (balance.hasPrice === false) {
+    return false
+  }
 
   return formatUsdRate(balance.totalValue, 2) === '0.00'
 }
 
 export function formatBalanceNotionalValue(balance: { totalValue: number; hasPrice?: boolean }) {
-  if (balance.hasPrice === false) return '—'
-  if (isLowValueTokenBalance(balance)) return '<$0.01'
+  if (balance.hasPrice === false) {
+    return '—'
+  }
+  if (isLowValueTokenBalance(balance)) {
+    return '<$0.01'
+  }
 
   return `$${formatUsdRate(balance.totalValue, 2)}`
 }

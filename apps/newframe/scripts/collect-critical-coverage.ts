@@ -74,7 +74,9 @@ for (const [index, file] of tests.entries()) {
   ]
   console.log(`[critical-coverage] ${file}`)
   const child = Bun.spawn(command, { cwd: appRoot, stderr: 'inherit', stdout: 'inherit' })
-  if ((await child.exited) !== 0) failures.push(file)
+  if ((await child.exited) !== 0) {
+    failures.push(file)
+  }
 }
 
 if (failures.length > 0) {

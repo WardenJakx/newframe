@@ -29,7 +29,9 @@ export function createTestStore(
   )
 
   onChange?.(store.getState())
-  if (onChange) store.subscribe(onChange)
+  if (onChange) {
+    store.subscribe(onChange)
+  }
 
   return { actions: store.getState(), getState: store.getState, store }
 }

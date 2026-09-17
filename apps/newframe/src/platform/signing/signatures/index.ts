@@ -18,7 +18,9 @@ const matchesDomainFilter = (domain: EIP712MessageDomain, domainFilter: string[]
 
 export const identify = ({ data }: TypedMessage<SignTypedDataVersion>): TypedSignatureRequestType => {
   const identified = Object.entries(signatureTypes).find(([, { domainFilter, types: requiredTypes }]) => {
-    if (!('types' in data && 'message' in data)) return false
+    if (!('types' in data && 'message' in data)) {
+      return false
+    }
 
     return Object.entries(requiredTypes).every(
       ([name, properties]) =>

@@ -14,6 +14,7 @@ import {
 } from '../../../features/networks/domain/chain/index.js'
 import { OperationRecordSchema } from '../../operations/operation.js'
 import { getMainRuntime } from '../../runtime/index.js'
+import type { SignerSummary } from '../../signing/signers/Signer/index.js'
 import type { OwnedOperation } from '../actions.operation.js'
 
 export type { ChainId, Chain, ChainMetadata } from '../../../features/networks/domain/state/chain.js'
@@ -65,7 +66,7 @@ export const CanonicalStateSchema = z
   })
   .passthrough()
 
-export type StatusNotification = z.infer<typeof StatusNotificationSchema>
+type StatusNotification = z.infer<typeof StatusNotificationSchema>
 
 // TODO: remove pieces of this as they're added to the main state definition
 type M = Main & {
@@ -74,7 +75,7 @@ type M = Main & {
   latticeSettings: any
   ledger: any
   trezor: any
-  signers: any
+  signers: Record<string, SignerSummary & Record<string, unknown>>
   frames: any
 }
 
@@ -171,5 +172,5 @@ export default function createInitialState(): CanonicalState {
     log.warn(`Found ${result.error.issues.length} issues while parsing saved state`, result.error.issues)
   }
 
-  return state as CanonicalState
+  return state
 }

@@ -6,7 +6,9 @@ export const unlockStage: VisualStage = {
   async run({ runtime, tray }) {
     const password = readHarnessPassword()
     runtime.log(`unlock attempt has password: ${password.length > 0}`)
-    if (!password) runtime.fail('Newframe unlock password is not configured')
+    if (!password) {
+      runtime.fail('Newframe unlock password is not configured')
+    }
 
     const dialog = tray.getByRole('dialog', { name: 'Unlock Newframe' })
     const passwordInput = dialog.getByRole('textbox', { name: 'Newframe password' })

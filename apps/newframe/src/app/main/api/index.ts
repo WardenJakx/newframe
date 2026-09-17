@@ -12,8 +12,7 @@ import { createHttpRpcTransport } from '../../../platform/local-rpc/http.js'
 import { createApiServer } from '../../../platform/local-rpc/server.js'
 import {
   createWebSocketRpcTransport,
-  type WebSocketRpcTransportDependencies,
-  type WebSocketServerPort
+  type WebSocketRpcTransportDependencies
 } from '../../../platform/local-rpc/ws.js'
 import type { CanonicalStoreReader } from '../../../platform/state-store/actions.js'
 
@@ -43,7 +42,7 @@ export function createProductionApiServer(
     store: storePort,
     origins,
     windows,
-    createServer: (server) => new WebSocketServer({ server }) as WebSocketServerPort,
+    createServer: (server) => new WebSocketServer({ server }),
     openReadyState: WebSocket.OPEN
   })
 

@@ -9,7 +9,9 @@ export type RequestStatusNoticeProps = {
 }
 
 export function RequestStatusNotice({ notice, status }: RequestStatusNoticeProps) {
-  if (!notice) return null
+  if (!notice) {
+    return null
+  }
 
   const state =
     status === 'success' || status === 'confirmed'

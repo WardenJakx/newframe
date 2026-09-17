@@ -82,7 +82,9 @@ export function createOriginsService(dependencies: OriginsServiceDependencies) {
       }
     }
 
-    if (faviconSource) dependencies.store.setOriginFavicon(originId, faviconSource)
+    if (faviconSource) {
+      dependencies.store.setOriginFavicon(originId, faviconSource)
+    }
     return { payload: result.payload as RPCRequestPayload, chainId: result.chainId }
   }
 
@@ -95,11 +97,15 @@ export function createOriginsService(dependencies: OriginsServiceDependencies) {
 
   const requestExtensionPermission = (extension: FrameExtension) => {
     const activeCheck = activeExtensionChecks.get(extension.id)
-    if (activeCheck) return activeCheck
+    if (activeCheck) {
+      return activeCheck
+    }
 
     const result = new Promise<boolean>((resolve) => {
       const unsubscribe = dependencies.store.subscribeKnownExtension(extension.id, (isAllowed) => {
-        if (!activeExtensionChecks.has(extension.id)) return
+        if (!activeExtensionChecks.has(extension.id)) {
+          return
+        }
         activeExtensionChecks.delete(extension.id)
         unsubscribe()
         resolve(isAllowed)
@@ -112,12 +118,18 @@ export function createOriginsService(dependencies: OriginsServiceDependencies) {
   }
 
   const isKnownExtension = async (extension: FrameExtension, requestApproval = false) => {
-    if (extension.browser === 'safari') return true
+    if (extension.browser === 'safari') {
+      return true
+    }
 
     const extensionPermission = dependencies.store.getKnownExtension(extension.id)
-    if (extensionPermission === true) return true
+    if (extensionPermission === true) {
+      return true
+    }
     if (extensionPermission === false) {
-      if (!requestApproval) return false
+      if (!requestApproval) {
+        return false
+      }
       dependencies.store.clearKnownExtension(extension.id)
     }
     return requestExtensionPermission(extension)
@@ -127,7 +139,9 @@ export function createOriginsService(dependencies: OriginsServiceDependencies) {
     const { _origin: originId, ...payload } = fullPayload
     const permissionCheckId = `${address}:${originId}`
     const activeCheck = activePermissionChecks.get(permissionCheckId)
-    if (activeCheck) return activeCheck
+    if (activeCheck) {
+      return activeCheck
+    }
 
     let resolveCheck!: (address: Address | undefined) => void
     let rejectCheck!: (error: unknown) => void
@@ -174,13 +188,19 @@ export function createOriginsService(dependencies: OriginsServiceDependencies) {
       hasInternalStateCapability: dependencies.hasInternalStateCapability(principal)
     })
 
-    if (decision === 'allow') return true
-    if (decision === 'deny' || !currentAccount) return false
+    if (decision === 'allow') {
+      return true
+    }
+    if (decision === 'deny' || !currentAccount) {
+      return false
+    }
 
     const grantedAddress = await requestPermission(currentAccount.address, payload, principal).catch(
       () => undefined
     )
-    if (!grantedAddress) return false
+    if (!grantedAddress) {
+      return false
+    }
     const requiredAddress = ['eth_requestAccounts', 'eth_accounts'].includes(payload.method)
       ? dependencies.accounts.current()?.address
       : currentAccount.address
@@ -214,13 +234,15 @@ export function createProductionOriginsService(
       const permissions: Record<string, Permission> = store.getState().main.permissions[address] || {}
       return Object.values(permissions).find((permission) => permission.origin === origin)
     },
-    getKnownExtension: (id) => store.getState().main.knownExtensions[id] as boolean | undefined,
+    getKnownExtension: (id) => store.getState().main.knownExtensions[id],
     clearKnownExtension: (id) => store.getState().trustExtension(id, undefined),
     subscribeKnownExtension: (id, handler) =>
       store.subscribe(
         (state) => state.main.knownExtensions[id],
         (allowed) => {
-          if (typeof allowed !== 'undefined') handler(allowed)
+          if (typeof allowed !== 'undefined') {
+            handler(allowed)
+          }
         }
       ),
     notifyExtension: (extension) => store.getState().notify('extensionConnect', extension)

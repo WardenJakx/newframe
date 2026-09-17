@@ -13,7 +13,9 @@ export function createDeferredAccountChainRpcPort() {
   let target: AccountChainRpcPort | undefined
 
   const getTarget = () => {
-    if (!target) throw new Error('Account chain RPC capability is not connected')
+    if (!target) {
+      throw new Error('Account chain RPC capability is not connected')
+    }
     return target
   }
 
@@ -33,9 +35,13 @@ export function createDeferredAccountChainRpcPort() {
       let connected = true
 
       return () => {
-        if (!connected) return
+        if (!connected) {
+          return
+        }
         connected = false
-        if (target === next) target = previous
+        if (target === next) {
+          target = previous
+        }
       }
     }
   }

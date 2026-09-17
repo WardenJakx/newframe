@@ -38,7 +38,9 @@ export async function runLiveHarness(watchMode = false) {
           : createElectronProcessService()
       )
     )
-    if (!watchMode) void runUnlock()
+    if (!watchMode) {
+      void runUnlock()
+    }
 
     return await runtime.watch(frame.exited)
   } finally {

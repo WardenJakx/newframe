@@ -69,25 +69,35 @@ const notificationExpiresAt = (notification: WalletStatusNotification) => {
 }
 
 const notificationLabel = (state?: string) => {
-  if (state === 'completed') return 'Confirmed'
-  if (state === 'failed') return 'Failed'
+  if (state === 'completed') {
+    return 'Confirmed'
+  }
+  if (state === 'failed') {
+    return 'Failed'
+  }
   return 'Pending'
 }
 
 const shortHash = (hash?: string) => {
-  if (!hash) return ''
+  if (!hash) {
+    return ''
+  }
   return `${hash.substring(0, 6)}...${hash.substring(hash.length - 4)}`
 }
 
 const notificationMetadata = (notification: WalletStatusNotification, label: string) => {
   const detail = String(notification.detail || '').trim()
-  if (detail && detail.toLowerCase() !== label.toLowerCase()) return detail
+  if (detail && detail.toLowerCase() !== label.toLowerCase()) {
+    return detail
+  }
   return shortHash(notification.target?.hash || notification.metadata?.hash)
 }
 
 const notificationTimestamp = (notification: WalletStatusNotification) => {
   const shownAt = timestamp(notification.createdAt, timestamp(notification.updatedAt, 0))
-  if (!shownAt) return ''
+  if (!shownAt) {
+    return ''
+  }
 
   return new Intl.DateTimeFormat(undefined, {
     hour: 'numeric',
@@ -130,7 +140,9 @@ export default function StatusNotifications({
     )
     .slice(0, 3)
 
-  if (!visible.length) return null
+  if (!visible.length) {
+    return null
+  }
 
   return (
     <section aria-label='Status notifications' className={notificationListRecipe()}>
@@ -144,7 +156,7 @@ export default function StatusNotifications({
           <div
             key={notification.id}
             aria-label={`${label} ${notification.title || ''}`}
-            className={notificationRecipe({ state: state as 'completed' | 'failed' | 'pending' })}
+            className={notificationRecipe({ state: state })}
             onClick={() => onOpen(notification)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {

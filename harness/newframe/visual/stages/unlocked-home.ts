@@ -14,33 +14,41 @@ export const unlockedHomeStage: VisualStage = {
     const restingOpacity = Number(
       await refreshWrapper.evaluate((element) => getComputedStyle(element).opacity)
     )
-    if (restingOpacity !== 0) runtime.fail('Portfolio refresh must be hidden until hover or focus')
+    if (restingOpacity !== 0) {
+      runtime.fail('Portfolio refresh must be hidden until hover or focus')
+    }
 
     await portfolioValue.hover()
     await sleep(200)
     const hoverOpacity = Number(await refreshWrapper.evaluate((element) => getComputedStyle(element).opacity))
-    if (hoverOpacity !== 1) runtime.fail('Portfolio refresh must become visible when the value is hovered')
+    if (hoverOpacity !== 1) {
+      runtime.fail('Portfolio refresh must become visible when the value is hovered')
+    }
 
     const [valueHoverBounds, refreshBounds] = await Promise.all([
       portfolioValue.boundingBox(),
       refreshWrapper.boundingBox()
     ])
-    if (!valueHoverBounds || !refreshBounds)
+    if (!valueHoverBounds || !refreshBounds) {
       return runtime.fail('Portfolio refresh hover targets must be measurable')
+    }
     const valueEdge = valueHoverBounds.x + valueHoverBounds.width
     await tray.mouse.move((valueEdge + refreshBounds.x) / 2, refreshBounds.y + refreshBounds.height / 2)
     await sleep(200)
     const bridgeOpacity = Number(
       await refreshWrapper.evaluate((element) => getComputedStyle(element).opacity)
     )
-    if (bridgeOpacity !== 1) runtime.fail('Portfolio refresh hover target must bridge the gap from the value')
+    if (bridgeOpacity !== 1) {
+      runtime.fail('Portfolio refresh hover target must bridge the gap from the value')
+    }
     await refresh.hover()
     await sleep(200)
     const controlOpacity = Number(
       await refreshWrapper.evaluate((element) => getComputedStyle(element).opacity)
     )
-    if (controlOpacity !== 1)
+    if (controlOpacity !== 1) {
       runtime.fail('Portfolio refresh must remain visible while its button is hovered')
+    }
 
     const [accountBounds, valueBounds, sendBounds, navigationBounds] = await Promise.all([
       accountSelector.boundingBox(),
@@ -60,7 +68,9 @@ export const unlockedHomeStage: VisualStage = {
     const departedOpacity = Number(
       await refreshWrapper.evaluate((element) => getComputedStyle(element).opacity)
     )
-    if (departedOpacity !== 0) runtime.fail('Portfolio refresh must hide after the value loses hover')
+    if (departedOpacity !== 0) {
+      runtime.fail('Portfolio refresh must hide after the value loses hover')
+    }
     await runtime.screenshot(tray, '02-unlocked-home.png')
   }
 }

@@ -14,11 +14,15 @@ function fixture() {
   let request!: NonNullable<Parameters<Session['setPermissionRequestHandler']>[0]>
   const session: PermissionSession = {
     setPermissionCheckHandler: (handler) => {
-      if (!handler) throw new Error('Must deny explicitly')
+      if (!handler) {
+        throw new Error('Must deny explicitly')
+      }
       check = handler
     },
     setPermissionRequestHandler: (handler) => {
-      if (!handler) throw new Error('Must deny explicitly')
+      if (!handler) {
+        throw new Error('Must deny explicitly')
+      }
       request = handler
     }
   }
@@ -71,10 +75,12 @@ it('allows only registered tray main-document video checks and requests', () => 
   const f = fixture()
   expect(f.allowed()).toBe(true)
   expect(f.requested(['video'])).toBe(true)
-  for (const mediaType of ['audio', 'unknown', undefined] as const)
+  for (const mediaType of ['audio', 'unknown', undefined] as const) {
     expect(f.check(f.wallet.webContents, 'media', '', { ...f.details, mediaType })).toBe(false)
-  for (const mediaTypes of [['audio'], ['video', 'audio'], [], undefined] as const)
+  }
+  for (const mediaTypes of [['audio'], ['video', 'audio'], [], undefined] as const) {
     expect(f.requested(mediaTypes ? [...mediaTypes] : undefined)).toBe(false)
+  }
   for (const override of [
     { isMainFrame: false },
     { requestingUrl: undefined },

@@ -27,7 +27,9 @@ export function useTradeExecution({
     : undefined
 
   React.useEffect(() => {
-    if (!operation || !state.session) return
+    if (!operation || !state.session) {
+      return
+    }
     dispatch({
       type: 'projectOperation',
       operation,
@@ -36,13 +38,17 @@ export function useTradeExecution({
   }, [operation, state.phase, state.session])
 
   React.useEffect(() => {
-    if (!state.session || state.session.requestKey === requestKey) return
+    if (!state.session || state.session.requestKey === requestKey) {
+      return
+    }
     dispatch({ type: 'reset' })
   }, [requestKey, state.session])
 
   const operationId = state.session?.operationId
   React.useEffect(() => {
-    if (!operationId) return
+    if (!operationId) {
+      return
+    }
     return () => {
       void capability.cancel({ operationId }).catch(() => undefined)
     }
@@ -52,7 +58,9 @@ export function useTradeExecution({
 
   const submit = React.useCallback(
     ({ quote, quoteId }: { quote: FlashQuoteDisplay | null; quoteId: string }) => {
-      if (!quote || !quoteId || !tradeExecutionCanSubmit(state)) return
+      if (!quote || !quoteId || !tradeExecutionCanSubmit(state)) {
+        return
+      }
 
       const nextAction =
         state.phase === 'awaiting_approval'
@@ -77,7 +85,9 @@ export function useTradeExecution({
 
       void command
         .then((result) => {
-          if (result.ok) return
+          if (result.ok) {
+            return
+          }
           dispatch({
             type: 'commandRejected',
             error: result.message || 'Trade request was not accepted.',

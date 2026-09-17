@@ -44,10 +44,18 @@ function normalizeHex(data: string) {
 }
 
 function displayValue(value: unknown): string {
-  if (typeof value === 'bigint') return value.toString()
-  if (value instanceof Uint8Array) return hexlify(value)
-  if (Array.isArray(value)) return value.map(displayValue).join(',')
-  if (value === null || value === undefined) return ''
+  if (typeof value === 'bigint') {
+    return value.toString()
+  }
+  if (value instanceof Uint8Array) {
+    return hexlify(value)
+  }
+  if (Array.isArray(value)) {
+    return value.map(displayValue).join(',')
+  }
+  if (value === null || value === undefined) {
+    return ''
+  }
   return value.toString()
 }
 
@@ -88,7 +96,9 @@ export function decodeCallData(calldata: string, abi: string) {
     try {
       const abiMethod = contractInterface.getFunction(sighash)
       // ethers v6 returns null instead of throwing when no fragment matches
-      if (!abiMethod) throw new Error('no matching ABI method')
+      if (!abiMethod) {
+        throw new Error('no matching ABI method')
+      }
       return decodeWithFragment(calldata, contractInterface, abiMethod)
     } catch (e) {
       log.warn('unknown ABI method for signature', sighash)
@@ -97,14 +107,18 @@ export function decodeCallData(calldata: string, abi: string) {
 }
 
 export function decodeCallDataWithSignature(calldata: string, signature: string) {
-  if (calldata.length < 10) return
+  if (calldata.length < 10) {
+    return
+  }
 
   const contractInterface = interfaceFromSignature(signature)
   const fragment = contractInterface?.fragments[0]
 
   if (contractInterface && fragment instanceof FunctionFragment) {
     try {
-      if (fragment.selector.toLowerCase() !== calldata.slice(0, 10).toLowerCase()) return
+      if (fragment.selector.toLowerCase() !== calldata.slice(0, 10).toLowerCase()) {
+        return
+      }
       return decodeWithFragment(calldata, contractInterface, fragment)
     } catch (e) {
       log.verbose('unable to decode calldata with function selector signature', {
@@ -116,14 +130,18 @@ export function decodeCallDataWithSignature(calldata: string, signature: string)
 }
 
 export async function decodeCallDataWithSelectorRegistry(calldata: string) {
-  if (calldata.length < 10) return
+  if (calldata.length < 10) {
+    return
+  }
 
   const selector = calldata.slice(0, 10)
   const localSignatures = getLocalFunctionSelectorSignatures(selector)
 
   for (const signature of localSignatures) {
     const decoded = decodeCallDataWithSignature(calldata, signature)
-    if (decoded) return decoded
+    if (decoded) {
+      return decoded
+    }
   }
 
   const fetchedSignatures = await fetchFunctionSelectorSignatures(selector)
@@ -131,7 +149,9 @@ export async function decodeCallDataWithSelectorRegistry(calldata: string) {
 
   for (const signature of signatures) {
     const decoded = decodeCallDataWithSignature(calldata, signature)
-    if (decoded) return decoded
+    if (decoded) {
+      return decoded
+    }
   }
 }
 

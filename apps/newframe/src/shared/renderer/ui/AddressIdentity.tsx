@@ -30,7 +30,9 @@ const fullAddressRecipe = cva({
 })
 
 export const shortAddress = (address?: string) => {
-  if (!address) return ''
+  if (!address) {
+    return ''
+  }
   return address.length > 14 ? `${address.slice(0, 8)}...${address.slice(-6)}` : address
 }
 
@@ -51,7 +53,9 @@ export function AddressIdentity({
   showCopy = true,
   showFullAddress = false
 }: AddressIdentityProps) {
-  if (!address && !nickname) return null
+  if (!address && !nickname) {
+    return null
+  }
   const addressDisplay = showFullAddress ? address || '' : shortAddress(address)
   const display = nickname || addressDisplay
   const hasNickname = nickname && nickname !== shortAddress(address) && nickname !== address

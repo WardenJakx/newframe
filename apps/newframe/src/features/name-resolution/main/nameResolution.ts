@@ -55,7 +55,9 @@ export function createNameResolutionService(
     !!chains.find((chain) => chain.chainId === 1)?.connected
 
   const readyHandler = (chains: RPC.GetEthereumChains.Chain[]) => {
-    if (!active || !isMainnetConnected(chains)) return
+    if (!active || !isMainnetConnected(chains)) {
+      return
+    }
 
     getProvider().off('chainsChanged', readyHandler)
     isReady = true
@@ -63,7 +65,9 @@ export function createNameResolutionService(
   }
 
   const checkConnectedChains = async () => {
-    if (!active) return
+    if (!active) {
+      return
+    }
 
     try {
       const activeChains = await getProvider().request<RPC.GetEthereumChains.Chain[]>({
@@ -113,7 +117,9 @@ export function createNameResolutionService(
   async function resolveGnsAddress(name: string) {
     try {
       const [tokenId] = await readGns('computeId', [normalizeName(name)])
-      if (tokenId === 0n) return ''
+      if (tokenId === 0n) {
+        return ''
+      }
 
       const [address] = await readGns('resolve', [tokenId])
       return address === ZeroAddress ? '' : getAddress(address)
@@ -138,13 +144,17 @@ export function createNameResolutionService(
 
   async function resolveAddress(name: string) {
     const input = name.trim()
-    if (!input) return ''
+    if (!input) {
+      return ''
+    }
     return isGnsName(input) ? resolveGnsAddress(input) : resolveEnsAddress(input)
   }
 
   async function reverseGnsLookup(address: string) {
     try {
-      if (!isAddress(address)) return ''
+      if (!isAddress(address)) {
+        return ''
+      }
       const [primary] = await readGns('reverseResolve', [getAddress(address)])
       return primary || ''
     } catch {
@@ -153,7 +163,9 @@ export function createNameResolutionService(
   }
 
   async function reverseEnsLookup(address: string) {
-    if (!isAddress(address)) return ''
+    if (!isAddress(address)) {
+      return ''
+    }
     const [primary] = await readUniversalResolver('reverseWithGateways', [
       getAddress(address),
       ETH_COIN_TYPE,
@@ -172,7 +184,9 @@ export function createNameResolutionService(
       return active
     },
     start() {
-      if (active || disposed) return
+      if (active || disposed) {
+        return
+      }
 
       active = true
       const activeProvider = getProvider()
@@ -181,7 +195,9 @@ export function createNameResolutionService(
       activeProvider.once('connect', connectHandler)
     },
     dispose() {
-      if (disposed) return
+      if (disposed) {
+        return
+      }
 
       active = false
       disposed = true

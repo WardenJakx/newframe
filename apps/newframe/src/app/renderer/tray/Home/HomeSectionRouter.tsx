@@ -40,7 +40,9 @@ export function HomeSectionRouter({
       <Positions
         capability={portfolio}
         onOpenAsset={(asset) => {
-          if (currentAccount) openOverlay({ type: 'asset', accountId: currentAccount, asset })
+          if (currentAccount) {
+            openOverlay({ type: 'asset', accountId: currentAccount, asset })
+          }
         }}
         selectedChainId={selectedChainId}
       />

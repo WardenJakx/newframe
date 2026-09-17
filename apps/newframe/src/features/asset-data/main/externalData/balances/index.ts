@@ -39,7 +39,9 @@ function uniqueTokens(tokens: Token[]) {
 
   tokens.forEach((token) => {
     const id = toTokenId(token)
-    if (!unique.has(id)) unique.set(id, token)
+    if (!unique.has(id)) {
+      unique.set(id, token)
+    }
   })
 
   return Array.from(unique.values())
@@ -104,10 +106,10 @@ function selectManualRefreshTokens({
 
 export default function (store: Pick<StoreApi<CanonicalStore>, 'getState'>) {
   const storeApi = {
-    getActiveAddress: () => (store.getState().main.currentAccount || '') as Address,
-    getNetwork: (id: number) => (store.getState().main.networks.ethereum[id] || {}) as Chain,
+    getActiveAddress: () => store.getState().main.currentAccount || '',
+    getNetwork: (id: number) => store.getState().main.networks.ethereum[id] || {},
     getConnectedNetworks: () => {
-      const networks = Object.values(store.getState().main.networks.ethereum || {}) as Chain[]
+      const networks = Object.values(store.getState().main.networks.ethereum || {})
       return networks.filter((n) => n.connection.primary?.connected || n.connection.secondary?.connected)
     },
     getCustomTokens: () => customTokens(store.getState().main.tokens).map(scanToken),
@@ -117,18 +119,17 @@ export default function (store: Pick<StoreApi<CanonicalStore>, 'getState'>) {
             .filter((token) => !token.custom)
             .map(scanToken)
         : [],
-    getBalances: (address: Address) => (store.getState().main.balances[address] || []) as Balance[],
-    getNetworks: () => (store.getState().main.networks.ethereum || {}) as Record<number, Chain>,
-    getNetworksMeta: () =>
-      (store.getState().main.networksMeta.ethereum || {}) as Record<number, ChainMetadata>,
+    getBalances: (address: Address) => store.getState().main.balances[address] || [],
+    getNetworks: () => store.getState().main.networks.ethereum || {},
+    getNetworksMeta: () => store.getState().main.networksMeta.ethereum || {},
     getAssetRates: () => store.getState().main.assetRates,
     getCurrencyBalances: (address: Address) => {
-      return ((store.getState().main.balances[address] || []) as Balance[]).filter(
+      return (store.getState().main.balances[address] || []).filter(
         (balance) => balance.address === NATIVE_CURRENCY
       )
     },
     getTokenBalances: (address: Address) => {
-      return ((store.getState().main.balances[address] || []) as Balance[]).filter(
+      return (store.getState().main.balances[address] || []).filter(
         (balance) => balance.address !== NATIVE_CURRENCY
       )
     }
@@ -193,7 +194,9 @@ export default function (store: Pick<StoreApi<CanonicalStore>, 'getState'>) {
 
       // wait for worker to be ready
       const controller = workerController
-      if (!controller) return
+      if (!controller) {
+        return
+      }
       const continuation = () => {
         readyContinuations.delete(continuation)
         fn()
@@ -206,7 +209,9 @@ export default function (store: Pick<StoreApi<CanonicalStore>, 'getState'>) {
   function start() {
     clearRestartTimer()
 
-    if (workerController) return true
+    if (workerController) {
+      return true
+    }
 
     log.verbose('starting balances updates')
 
@@ -237,7 +242,9 @@ export default function (store: Pick<StoreApi<CanonicalStore>, 'getState'>) {
   }
 
   function resume() {
-    if (onResume) onResume()
+    if (onResume) {
+      onResume()
+    }
 
     onResume = null
   }
@@ -283,7 +290,9 @@ export default function (store: Pick<StoreApi<CanonicalStore>, 'getState'>) {
   function startScan(address: Address) {
     stopScan()
 
-    if (onResume) onResume = null
+    if (onResume) {
+      onResume = null
+    }
 
     log.verbose(`Starting balances scan for ${address}`)
 
@@ -329,7 +338,9 @@ export default function (store: Pick<StoreApi<CanonicalStore>, 'getState'>) {
       return
     }
 
-    if (!address) return
+    if (!address) {
+      return
+    }
 
     log.verbose(`refreshing balances for ${address}`)
     const tokens = selectManualRefreshTokens({
@@ -356,7 +367,9 @@ export default function (store: Pick<StoreApi<CanonicalStore>, 'getState'>) {
       return
     }
 
-    if (!address || !Number.isInteger(chainId) || chainId <= 0) return
+    if (!address || !Number.isInteger(chainId) || chainId <= 0) {
+      return
+    }
 
     const affectedTokens = limitTokenScan(
       tokens.filter((token) => token.chainId === chainId && token.address !== NATIVE_CURRENCY)
@@ -455,7 +468,9 @@ export default function (store: Pick<StoreApi<CanonicalStore>, 'getState'>) {
     const isCustomToken = (balance: Balance) => customTokens.has(toTokenId(balance))
 
     const changedBalances = balances.filter((newBalance) => {
-      if (!networks[newBalance.chainId]) return false
+      if (!networks[newBalance.chainId]) {
+        return false
+      }
 
       const currentBalance = currentTokenBalances.find(
         (b) => b.address === newBalance.address && b.chainId === newBalance.chainId

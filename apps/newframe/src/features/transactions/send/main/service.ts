@@ -126,18 +126,24 @@ function validateCanonicalIntent(
   } catch {
     throw new SendFailure('invalid_amount', 'Enter an amount to send.')
   }
-  if (amount <= 0n) throw new SendFailure('invalid_amount', 'Enter an amount to send.')
+  if (amount <= 0n) {
+    throw new SendFailure('invalid_amount', 'Enter an amount to send.')
+  }
 
   const asset = normalizedAsset(command)
   if (!snapshot.networks[asset.chainId]?.on) {
     throw new SendFailure('network_unavailable', 'Chain is unavailable.')
   }
   const balance = canonicalBalance(snapshot, account, command)
-  if (!balance) throw new SendFailure('asset_unavailable', 'Asset is unavailable.')
+  if (!balance) {
+    throw new SendFailure('asset_unavailable', 'Asset is unavailable.')
+  }
   let tokenData: ValidatedSend['tokenData']
   if (asset.address !== NATIVE_CURRENCY) {
     const token = snapshot.tokens[toTokenId(asset)]
-    if (!token) throw new SendFailure('asset_unavailable', 'Asset is unavailable.')
+    if (!token) {
+      throw new SendFailure('asset_unavailable', 'Asset is unavailable.')
+    }
     tokenData = { decimals: token.decimals, name: token.name, symbol: token.symbol }
   }
 
@@ -163,7 +169,9 @@ export function createSendService(ports: SendServicePorts) {
 
   const pruneIdempotency = () => {
     for (const [key, entry] of ports.idempotency.entries()) {
-      if (!ports.operations.lookup(entry.reference)) ports.idempotency.delete(key)
+      if (!ports.operations.lookup(entry.reference)) {
+        ports.idempotency.delete(key)
+      }
     }
     const entries = [...ports.idempotency.entries()].sort(
       ([leftKey, left], [rightKey, right]) =>
@@ -206,8 +214,9 @@ export function createSendService(ports: SendServicePorts) {
         recipientAddress,
         initial.account.id
       )
-      if (disposed)
+      if (disposed) {
         throw new SendFailure('application_shutdown', 'Transaction was cancelled during shutdown.')
+      }
 
       ports.operations.advance(reference, { phase: 'submitting' })
       const result = await ports.transactions.submit(
@@ -250,12 +259,16 @@ export function createSendService(ports: SendServicePorts) {
 
   return {
     submit(command: SendRequestCommand, principal: TrustedPrincipal, owner: OperationOwner) {
-      if (disposed) return false
+      if (disposed) {
+        return false
+      }
       const reference: OperationReference = { owner, id: command.operationId, type: operationType }
       const key = idempotencyKey(reference)
       const requestFingerprint = fingerprint(command)
       const existing = ports.operations.lookup(reference)
-      if (existing) return ports.idempotency.get(key)?.fingerprint === requestFingerprint
+      if (existing) {
+        return ports.idempotency.get(key)?.fingerprint === requestFingerprint
+      }
 
       pruneIdempotency()
       try {
@@ -283,7 +296,9 @@ export function createSendService(ports: SendServicePorts) {
     },
 
     dispose() {
-      if (disposed) return
+      if (disposed) {
+        return
+      }
       disposed = true
       for (const reference of pending.values()) {
         ports.operations.fail(

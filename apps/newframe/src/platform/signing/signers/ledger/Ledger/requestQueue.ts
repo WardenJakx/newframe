@@ -16,9 +16,13 @@ export class RequestQueue {
   }
 
   private async runNext() {
-    if (!this.running || this.processing) return
+    if (!this.running || this.processing) {
+      return
+    }
     const request = this.requestQueue.shift()
-    if (!request) return
+    if (!request) {
+      return
+    }
 
     this.processing = true
     try {

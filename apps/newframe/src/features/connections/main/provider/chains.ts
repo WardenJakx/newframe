@@ -41,7 +41,7 @@ function createChainsObserver(store: CanonicalStoreApi, handler: ChainsChangedHa
       availableChains = currentChains
 
       setTimeout(() => {
-        const currentAccount = store.getState().main.currentAccount as string
+        const currentAccount = store.getState().main.currentAccount
         handler.chainsChanged(currentAccount, availableChains)
       }, 0)
     }

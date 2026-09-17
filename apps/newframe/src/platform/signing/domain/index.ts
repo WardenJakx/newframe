@@ -38,7 +38,9 @@ export function findUnavailableSigners<TSigner extends SignerSummary>(
   signerTypeValue: string,
   signers: TSigner[]
 ): TSigner[] {
-  if (!isHardwareSigner(signerTypeValue)) return []
+  if (!isHardwareSigner(signerTypeValue)) {
+    return []
+  }
 
   return signers.filter((signer) => signer.type === signerTypeValue && !isSignerReady(signer))
 }

@@ -54,7 +54,9 @@ export function Orders({
 
   Object.entries(cancellations).forEach(([orderId, operationId]) => {
     const operation = shared.operations[operationId]
-    if (!operation || operation.status === 'pending') cancellingOrderIds.add(orderId)
+    if (!operation || operation.status === 'pending') {
+      cancellingOrderIds.add(orderId)
+    }
     if (operation?.status === 'failed') {
       projectedCancelErrors[orderId] = operation.error?.message || 'Cancel failed.'
     }
@@ -65,14 +67,18 @@ export function Orders({
       const status = shared.operations[operationId]?.status
       return status === 'failed' || status === 'succeeded'
     })
-    if (!terminal.length) return
+    if (!terminal.length) {
+      return
+    }
 
     const next = { ...cancellationsRef.current }
     const failures: CancelErrorsByOrder = {}
     let changed = false
 
     terminal.forEach(([orderId, operationId]) => {
-      if (next[orderId] !== operationId) return
+      if (next[orderId] !== operationId) {
+        return
+      }
       const operation = shared.operations[operationId]
       if (operation?.status === 'failed') {
         failures[orderId] = operation.error?.message || 'Cancel failed.'
@@ -91,17 +97,23 @@ export function Orders({
   }, [cancellations, shared.operations])
 
   const cancel = (order: OrderRow) => {
-    if (!order.orderId) return
+    if (!order.orderId) {
+      return
+    }
     const currentOperationId = cancellationsRef.current[order.orderId]
     const currentOperation = currentOperationId ? shared.operations[currentOperationId] : undefined
-    if (currentOperationId && (!currentOperation || currentOperation.status === 'pending')) return
+    if (currentOperationId && (!currentOperation || currentOperation.status === 'pending')) {
+      return
+    }
 
     const operationId = crypto.randomUUID()
     const next = { ...cancellationsRef.current, [order.orderId]: operationId }
     cancellationsRef.current = next
     setCancellations(next)
     setCancelErrors((current) => {
-      if (!(order.orderId in current)) return current
+      if (!(order.orderId in current)) {
+        return current
+      }
       const remaining = { ...current }
       delete remaining[order.orderId]
       return remaining
@@ -109,7 +121,9 @@ export function Orders({
     void capability
       .cancel({ operationId, orderId: order.orderId })
       .then((result) => {
-        if (cancellationsRef.current[order.orderId] !== operationId || result.ok) return
+        if (cancellationsRef.current[order.orderId] !== operationId || result.ok) {
+          return
+        }
         const remaining = { ...cancellationsRef.current }
         delete remaining[order.orderId]
         cancellationsRef.current = remaining
@@ -120,7 +134,9 @@ export function Orders({
         }))
       })
       .catch((error) => {
-        if (cancellationsRef.current[order.orderId] !== operationId) return
+        if (cancellationsRef.current[order.orderId] !== operationId) {
+          return
+        }
         const remaining = { ...cancellationsRef.current }
         delete remaining[order.orderId]
         cancellationsRef.current = remaining

@@ -14,7 +14,9 @@ export function createOneResultCallbackBoundary() {
 
         let settled = false
         const settle = (complete: () => void) => {
-          if (settled) return
+          if (settled) {
+            return
+          }
           settled = true
           pending.delete(shutdown)
           complete()
@@ -39,10 +41,14 @@ export function createOneResultCallbackBoundary() {
     },
 
     dispose() {
-      if (disposed) return
+      if (disposed) {
+        return
+      }
       disposed = true
       const error = new Error('Callback boundary was disposed before the operation completed')
-      for (const reject of pending) reject(error)
+      for (const reject of pending) {
+        reject(error)
+      }
       pending.clear()
     }
   }

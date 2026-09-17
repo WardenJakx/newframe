@@ -35,7 +35,9 @@ export class ProcessService implements HarnessService<ProcessHandle> {
   }
 
   async start() {
-    if (this.handle) return this.handle
+    if (this.handle) {
+      return this.handle
+    }
 
     await this.options.beforeStart?.()
 
@@ -47,8 +49,11 @@ export class ProcessService implements HarnessService<ProcessHandle> {
         reject(new Error(`${this.name} failed to start: ${err.message}`, { cause: err }))
       )
       child.once('exit', (code, signal) => {
-        if (signal) reject(new Error(`${this.name} exited with ${signal}`))
-        else resolve(code ?? 0)
+        if (signal) {
+          reject(new Error(`${this.name} exited with ${signal}`))
+        } else {
+          resolve(code ?? 0)
+        }
       })
     })
     exited.catch(() => undefined)
@@ -56,7 +61,9 @@ export class ProcessService implements HarnessService<ProcessHandle> {
     this.failure = new Promise<never>((_, reject) => {
       child.once('error', (err) => reject(new Error(`${this.name} failed: ${err.message}`, { cause: err })))
       child.once('exit', (code, signal) => {
-        if (this.stopping || this.options.exitIsFailure === false) return
+        if (this.stopping || this.options.exitIsFailure === false) {
+          return
+        }
         reject(
           new Error(
             `${this.name} exited unexpectedly with ${signal || `code ${code ?? 'unknown'}`}${
@@ -69,7 +76,9 @@ export class ProcessService implements HarnessService<ProcessHandle> {
     this.failure.catch(() => undefined)
     this.handle = { child, output, exited }
 
-    if (this.options.ready) await Promise.race([this.options.ready(child), this.failure])
+    if (this.options.ready) {
+      await Promise.race([this.options.ready(child), this.failure])
+    }
 
     return this.handle
   }

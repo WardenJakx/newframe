@@ -44,7 +44,9 @@ export function Activity({
       tokens={shared.tokens}
       onOpen={onOpenActivity}
       onOpenExplorer={(record) => {
-        if (!record.hash) return
+        if (!record.hash) {
+          return
+        }
         void capability.openExplorer({
           chainId: Number(record.chainId),
           transactionHash: record.hash

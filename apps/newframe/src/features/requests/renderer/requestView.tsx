@@ -89,7 +89,9 @@ export function RequestViewProvider({ children }: { children: ReactNode }) {
           : request
       },
       updateFee(request, field, value) {
-        if (!editable(request)) return
+        if (!editable(request)) {
+          return
+        }
         const current = latestFees(request)
         saveFees(
           { ...current, [field]: limitTransactionFee(field, value, current, request.data.chainId) },
@@ -97,14 +99,18 @@ export function RequestViewProvider({ children }: { children: ReactNode }) {
         )
       },
       selectFeeLevel(request, level, recommendation) {
-        if (!editable(request)) return
+        if (!editable(request)) {
+          return
+        }
         saveFees(
           transactionFeePreset(latestFees(request), recommendation, level, request.data.chainId),
           level
         )
       },
       back() {
-        if (history.length === 1) return false
+        if (history.length === 1) {
+          return false
+        }
         setHistory((views) => views.slice(0, -1))
         return true
       },
@@ -120,6 +126,8 @@ export function RequestViewProvider({ children }: { children: ReactNode }) {
 
 export function useRequestView() {
   const context = useContext(RequestViewContext)
-  if (!context) throw new Error('useRequestView must be used inside RequestViewProvider')
+  if (!context) {
+    throw new Error('useRequestView must be used inside RequestViewProvider')
+  }
   return context
 }

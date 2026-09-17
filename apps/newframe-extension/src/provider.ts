@@ -58,7 +58,9 @@ function createPayload(method: string, params: JsonRpcParams = [], id: number, t
     payload.chainId = targetChain
   }
 
-  if (method !== 'eth_sendTransaction') return payload
+  if (method !== 'eth_sendTransaction') {
+    return payload
+  }
 
   const tx = payload.params?.[0]
   const txParams = isRecord(tx) ? tx : {}
@@ -125,7 +127,9 @@ export default class InjectedFrameProvider extends EventEmitter {
       },
       chainChanged: (chainId) => {
         this.providerChainId = chainId
-        if (!this.manualChainId) this.emit('chainChanged', chainId)
+        if (!this.manualChainId) {
+          this.emit('chainChanged', chainId)
+        }
       },
       chainsChanged: (chains) => this.emit('chainsChanged', chains),
       accountsChanged: (accounts) => {
@@ -150,7 +154,9 @@ export default class InjectedFrameProvider extends EventEmitter {
   }
 
   async checkConnection(retryTimeout = 4000) {
-    if (this.checkConnectionRunning || this.connected) return
+    if (this.checkConnectionRunning || this.connected) {
+      return
+    }
 
     clearTimeout(this.checkConnectionTimer)
     this.checkConnectionTimer = undefined
@@ -247,7 +253,7 @@ export default class InjectedFrameProvider extends EventEmitter {
     }
 
     if (methodOrPayload && typeof methodOrPayload === 'object' && typeof callbackOrArgs === 'function') {
-      return this.sendAsync(methodOrPayload, callbackOrArgs as JsonRpcCallback)
+      return this.sendAsync(methodOrPayload, callbackOrArgs)
     }
 
     return this.request(methodOrPayload as JsonRpcPayload)
@@ -270,14 +276,17 @@ export default class InjectedFrameProvider extends EventEmitter {
   }
 
   async sendAsync(rawPayload: JsonRpcPayload | JsonRpcPayload[], cb: JsonRpcCallback) {
-    if (!cb || typeof cb !== 'function')
+    if (!cb || typeof cb !== 'function') {
       return new Error('Invalid or undefined callback provided to sendAsync')
-    if (!rawPayload) return cb(new Error('Invalid Payload'))
+    }
+    if (!rawPayload) {
+      return cb(new Error('Invalid Payload'))
+    }
 
     if (Array.isArray(rawPayload)) {
       return this.sendAsyncBatch(
         rawPayload.map((payload) => ({ ...payload, jsonrpc: '2.0' })),
-        cb as JsonRpcCallback<JsonRpcResponse[]>
+        cb
       )
     }
 
@@ -344,7 +353,9 @@ export default class InjectedFrameProvider extends EventEmitter {
   }
 
   private handleNewListener(event: string | symbol) {
-    if (typeof event !== 'string' || !(event in this.eventHandlers)) return
+    if (typeof event !== 'string' || !(event in this.eventHandlers)) {
+      return
+    }
 
     if (!this.attemptedSubscriptions.has(event) && this.connected) {
       // Subscription setup catches and logs failures internally.
@@ -380,7 +391,9 @@ export default class InjectedFrameProvider extends EventEmitter {
   private handlePayload(payload: JsonRpcResponse | SubscriptionPayload) {
     if ('id' in payload && typeof payload.id !== 'undefined') {
       const pending = this.promises[payload.id as number]
-      if (!pending) return
+      if (!pending) {
+        return
+      }
 
       if (['eth_accounts', 'eth_requestAccounts'].includes(pending.method)) {
         const accounts = (payload.result || []) as string[]
@@ -398,7 +411,9 @@ export default class InjectedFrameProvider extends EventEmitter {
       return
     }
 
-    if (!('method' in payload) || !payload.method.includes('_subscription')) return
+    if (!('method' in payload) || !payload.method.includes('_subscription')) {
+      return
+    }
 
     this.emit(payload.params.subscription, payload.params.result)
     this.emit(payload.method, payload.params)

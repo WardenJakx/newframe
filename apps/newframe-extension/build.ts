@@ -121,7 +121,9 @@ async function build(): Promise<boolean> {
     if (!result.success) {
       ok = false
       console.error(`❌ ${entry} failed:`)
-      for (const log of result.logs) console.error(log)
+      for (const log of result.logs) {
+        console.error(log)
+      }
     } else {
       console.log(`✅ ${entry} -> dist/${out}.js`)
     }
@@ -151,7 +153,9 @@ if (watchMode) {
   let dirty = false
   let pending: ReturnType<typeof setTimeout> | null = null
   async function rebuild() {
-    if (building) return
+    if (building) {
+      return
+    }
     building = true
     try {
       while (dirty) {
@@ -163,7 +167,9 @@ if (watchMode) {
             stdout: 'inherit',
             stderr: 'inherit'
           })
-          if ((await command.exited) !== 0) throw new Error(`${script} failed`)
+          if ((await command.exited) !== 0) {
+            throw new Error(`${script} failed`)
+          }
         }
         await build()
       }
@@ -178,11 +184,19 @@ if (watchMode) {
   for (const watchRoot of [root, brandAssets, sharedUiRoot]) {
     const changed = sourceChanges(watchRoot, ignored)
     watch(watchRoot, { recursive: true }, (_event, filename) => {
-      if (!filename) return
-      if (filename.split(path.sep).some((part) => ignored.has(part) || part.startsWith('.'))) return
-      if (!changed(filename)) return
+      if (!filename) {
+        return
+      }
+      if (filename.split(path.sep).some((part) => ignored.has(part) || part.startsWith('.'))) {
+        return
+      }
+      if (!changed(filename)) {
+        return
+      }
       dirty = true
-      if (pending) clearTimeout(pending)
+      if (pending) {
+        clearTimeout(pending)
+      }
       pending = setTimeout(() => {
         void rebuild()
       }, 100)

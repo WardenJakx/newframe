@@ -7,15 +7,21 @@ import type { AfterPackContext } from 'electron-builder'
 
 function requiredEnvironmentVariable(name: string) {
   const value = process.env[name]
-  if (!value) throw new Error(`Missing required notarization environment variable: ${name}`)
+  if (!value) {
+    throw new Error(`Missing required notarization environment variable: ${name}`)
+  }
   return value
 }
 
 export default async function notarizeApp(params: AfterPackContext) {
-  if (process.platform !== 'darwin') return // Only notarize the app on macOS
+  if (process.platform !== 'darwin') {
+    return
+  } // Only notarize the app on macOS
   const appId = 'sh.newframe.app' // Same appId in electron-builder
   const appPath = path.join(params.appOutDir, `${params.packager.appInfo.productFilename}.app`)
-  if (!existsSync(appPath)) throw new Error(`Cannot find application at: ${appPath}`)
+  if (!existsSync(appPath)) {
+    throw new Error(`Cannot find application at: ${appPath}`)
+  }
 
   console.log(`Notarizing ${appId} found at ${appPath}`)
 

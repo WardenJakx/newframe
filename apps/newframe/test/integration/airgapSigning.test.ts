@@ -39,7 +39,9 @@ function integrationFixture({
         nonceReply = callback
         return
       }
-      if (payload.method === 'eth_sendRawTransaction') broadcasts.push(payload)
+      if (payload.method === 'eth_sendRawTransaction') {
+        broadcasts.push(payload)
+      }
       callback({
         id: payload.id,
         jsonrpc: '2.0',
@@ -160,7 +162,9 @@ function integrationFixture({
   })
   const approval = createRequestApprovalAdapter(provider)
   const data = transaction()
-  if (waitForNonce) delete data.nonce
+  if (waitForNonce) {
+    delete data.nonce
+  }
   if (ordinaryRequest) {
     const request = f.request('transaction', data)
     f.store.getState().patchAccountRequest(f.address, request.handlerId, (pending) => {
@@ -232,7 +236,7 @@ it('existing review approval opens AirGap, verifies its response and broadcasts 
   }
 })
 
-for (const phase of ['nonce', 'before-query', 'reconstruction', 'cancel', 'shutdown'] as const)
+for (const phase of ['nonce', 'before-query', 'reconstruction', 'cancel', 'shutdown'] as const) {
   it(`never broadcasts when cancelled at ${phase}`, async () => {
     const f = integrationFixture({ waitForNonce: phase === 'nonce' })
     try {
@@ -268,6 +272,7 @@ for (const phase of ['nonce', 'before-query', 'reconstruction', 'cancel', 'shutd
       f.dispose()
     }
   })
+}
 
 it('warning confirmation binds the final approving window before opening AirGap', () => {
   const f = integrationFixture()
@@ -347,7 +352,9 @@ it('confirms an existing Safe proposal through the owner Account and verified QR
   const client = createSafeClient({
     networks: { 1: 'http://safe.test/api' },
     request(url, init) {
-      if (init.method === 'POST') posts++
+      if (init.method === 'POST') {
+        posts++
+      }
       return handler.fetch(new Request(url, init))
     }
   })
@@ -376,7 +383,9 @@ it('confirms an existing Safe proposal through the owner Account and verified QR
   try {
     expect(f.address).toBe(wallet.address.toLowerCase())
     expect(confirmations.confirm(command, f.owner.context)).toBeTrue()
-    for (let n = 0; n < 200 && !f.signer.summary().airgapRequest; n++) await Bun.sleep(1)
+    for (let n = 0; n < 200 && !f.signer.summary().airgapRequest; n++) {
+      await Bun.sleep(1)
+    }
     expect(confirmations.confirmationStatus(query).status).toBe('signing')
     expect(f.store.getState().main.currentAccount).toBe(safe)
     expect(f.store.getState().main.accounts[f.address].requests).toEqual({})
@@ -390,8 +399,9 @@ it('confirms an existing Safe proposal through the owner Account and verified QR
         await f.airgap.scan({ ...reference, type: 'signer.session-input', frame }, f.owner.context.owner)
       ).toBeTrue()
     }
-    for (let n = 0; n < 200 && confirmations.confirmationStatus(query).status !== 'published'; n++)
+    for (let n = 0; n < 200 && confirmations.confirmationStatus(query).status !== 'published'; n++) {
       await Bun.sleep(1)
+    }
     expect(confirmations.confirmationStatus(query).status).toBe('published')
     expect(await client.confirmations(1, proposal.safeTxHash)).toEqual([{ owner: wallet.address, signature }])
     expect(confirmations.confirm(command, f.owner.context)).toBeTrue()

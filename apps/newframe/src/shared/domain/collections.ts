@@ -3,6 +3,8 @@ export function arraysMatch<T>(left: T[] = [], right: T[] = []) {
 }
 
 export function arraysEqual<T>(left: T[] = [], right: T[] = []) {
-  if (left.length !== right.length) return false
+  if (left.length !== right.length) {
+    return false
+  }
   return arraysMatch(left.sort(), right.sort())
 }

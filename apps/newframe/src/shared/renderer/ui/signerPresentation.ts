@@ -29,10 +29,20 @@ export const signerIsLoading = (status = '') =>
 
 export function signerStatusText({ status = '', type = '' }: { status?: string; type?: string }) {
   const normalized = status.toLowerCase()
-  if (signerIsReady(normalized)) return 'Connected and ready to sign'
-  if (normalized === 'locked') return `Unlock your ${type}`
-  if (normalized === 'pair') return 'Pair your Lattice'
-  if (normalized === 'need pin') return 'Enter the PIN positions shown on your Trezor'
-  if (normalized === 'enter passphrase') return 'Enter your Trezor passphrase'
+  if (signerIsReady(normalized)) {
+    return 'Connected and ready to sign'
+  }
+  if (normalized === 'locked') {
+    return `Unlock your ${type}`
+  }
+  if (normalized === 'pair') {
+    return 'Pair your Lattice'
+  }
+  if (normalized === 'need pin') {
+    return 'Enter the PIN positions shown on your Trezor'
+  }
+  if (normalized === 'enter passphrase') {
+    return 'Enter your Trezor passphrase'
+  }
   return status || `Connect your ${type}`
 }

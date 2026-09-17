@@ -27,7 +27,9 @@ const usdcFlowMemo = process.env.USDC_FLOW_MEMO || 'Newframe USDC integration fl
 
 function usdcFlowAmount() {
   const value = process.env.USDC_FLOW_AMOUNT
-  if (!value) return 25_000_000n
+  if (!value) {
+    return 25_000_000n
+  }
 
   try {
     return BigInt(value)
@@ -40,7 +42,9 @@ async function artifactInterface(relativePath: string) {
   const artifactPath = path.join(contractsDir, 'out', relativePath)
   const artifact = JSON.parse(await readFile(artifactPath, 'utf8')) as ContractArtifact
 
-  if (!artifact.abi) throw new Error(`Artifact has no ABI: ${artifactPath}`)
+  if (!artifact.abi) {
+    throw new Error(`Artifact has no ABI: ${artifactPath}`)
+  }
   return new Interface(artifact.abi)
 }
 
@@ -48,11 +52,15 @@ async function waitForTransaction(transaction: Promise<TransactionResponse>, lab
   const response = await transaction
   const receipt = await response.wait(1)
 
-  if (receipt?.status !== 1) throw new Error(`${label} transaction failed: ${response.hash}`)
+  if (receipt?.status !== 1) {
+    throw new Error(`${label} transaction failed: ${response.hash}`)
+  }
 }
 
 async function runUsdcIntegration(signal: AbortSignal) {
-  if (signal.aborted) throw new Error('USDC integration was cancelled')
+  if (signal.aborted) {
+    throw new Error('USDC integration was cancelled')
+  }
 
   const [usdcInterface, testContractInterface] = await Promise.all([
     artifactInterface('MockUSDC.sol/MockUSDC.json'),

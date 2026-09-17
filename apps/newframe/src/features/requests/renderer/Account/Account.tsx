@@ -112,7 +112,9 @@ const isTransactionEffect = (value: unknown) =>
 const isTransactionRequest = (
   request: ProjectedRequest
 ): request is ProjectedRequest & TransactionRequestView => {
-  if (!isRecord(request.payload) || request.payload.method !== 'eth_sendTransaction') return false
+  if (!isRecord(request.payload) || request.payload.method !== 'eth_sendTransaction') {
+    return false
+  }
   const firstParam = Array.isArray(request.payload.params) ? request.payload.params[0] : undefined
   if (!isRecord(firstParam) || typeof firstParam.chainId !== 'string' || !isOptionalString(firstParam.data)) {
     return false
@@ -169,7 +171,9 @@ const isTransactionRequest = (
 }
 
 function isRenderableRequest(request: ProjectedRequest): request is ProjectedRequest & RenderableRequestView {
-  if (!isRequestBase(request)) return false
+  if (!isRequestBase(request)) {
+    return false
+  }
 
   switch (request.type) {
     case 'sign':
@@ -320,7 +324,9 @@ function AccountBody(props: AccountBodyProps) {
     }))
   )
   const back = () => {
-    if (!requestView.back()) void props.capabilities.panel.back({ steps: 1 })
+    if (!requestView.back()) {
+      void props.capabilities.panel.back({ steps: 1 })
+    }
   }
 
   const renderRequest = (request: RenderableRequestView) => {

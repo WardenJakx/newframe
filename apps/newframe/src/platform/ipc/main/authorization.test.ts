@@ -21,7 +21,9 @@ function renderer(
     isDestroyed: mock(() => false),
     mainFrame: frame,
     once: mock((event: string, handler: () => void) => {
-      if (event === 'destroyed') destroyed = handler
+      if (event === 'destroyed') {
+        destroyed = handler
+      }
     })
   }
 

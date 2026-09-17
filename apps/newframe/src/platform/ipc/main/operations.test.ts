@@ -154,7 +154,9 @@ beforeEach(() => {
   resolveName.mockReset()
   requestTokenImage.mockReset()
   createRendererPrincipal.mockClear()
-  for (const service of servicesWithMocks) Object.values(service).forEach((fn) => fn.mockReset())
+  for (const service of servicesWithMocks) {
+    Object.values(service).forEach((fn) => fn.mockReset())
+  }
   dispatcher = createOperationDispatcher(createTestServices())
 })
 
@@ -388,7 +390,7 @@ describe('typed operation dispatcher', () => {
         type: 'account.private-key-export',
         accountId,
         password: 'obsolete'
-      } as never)
+      })
     ).resolves.toEqual({ ok: false, error: 'invalid_query' })
     expect(dispatcher.dispatchQuery(event, { type: 'seed.generate' })).resolves.toEqual({
       ok: true,
@@ -542,7 +544,7 @@ it('binds AirGap and approval contexts to the authorized sender lifecycle', asyn
     return true
   }
   services.requests.approve = mock((_id, context) => {
-    received.push(context!)
+    received.push(context)
     return true
   })
   const dispatcher = createOperationDispatcher(services)

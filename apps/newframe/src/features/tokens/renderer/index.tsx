@@ -58,8 +58,11 @@ export default function Tokens({
   const navigate = (notifyData: AddTokenNotifyData) =>
     setPages((existing) => [addPage(notifyData), ...existing])
   const back = () => {
-    if (pages.length > 1) setPages((existing) => existing.slice(1))
-    else onBack()
+    if (pages.length > 1) {
+      setPages((existing) => existing.slice(1))
+    } else {
+      onBack()
+    }
   }
   const done = () => setPages([listPage])
   const edit = (token: Token) =>

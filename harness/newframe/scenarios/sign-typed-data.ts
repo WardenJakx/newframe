@@ -50,7 +50,9 @@ let provider: BrowserProvider
 
 const waitForFrameConnect = () =>
   new Promise<void>((resolve, reject) => {
-    if (frame.connected) return resolve()
+    if (frame.connected) {
+      return resolve()
+    }
 
     const timeout = setTimeout(
       () => reject(new Error('Timed out waiting for Frame provider connection')),
@@ -82,7 +84,9 @@ async function main() {
 
     const signature = await signaturePromise
     const recovered = verifyTypedData(TYPED_DATA.domain, TYPED_TYPES, TYPED_DATA.message, signature)
-    if (!/^0x[0-9a-fA-F]{130}$/.test(signature)) throw new Error('Invalid typed-data signature')
+    if (!/^0x[0-9a-fA-F]{130}$/.test(signature)) {
+      throw new Error('Invalid typed-data signature')
+    }
     if (recovered.toLowerCase() !== address.toLowerCase()) {
       throw new Error(`Signature recovered ${recovered}; expected ${address}`)
     }

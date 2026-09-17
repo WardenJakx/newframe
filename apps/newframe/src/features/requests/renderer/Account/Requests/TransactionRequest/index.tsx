@@ -57,9 +57,13 @@ export function TransactionRequest(props: TransactionRequestProps) {
     return <AdjustFee req={req} onUpdateFee={props.onUpdateFee} />
   }
   if (step === 'adjustApproval') {
-    if (!req || actionId !== 'erc20:approve') return null
+    if (!req || actionId !== 'erc20:approve') {
+      return null
+    }
     const approval = (req.recognizedActions || []).find((action) => action.id === actionId)
-    if (!isTokenSpendData(approval?.data)) return null
+    if (!isTokenSpendData(approval?.data)) {
+      return null
+    }
     const requestedAmount = decodeRequested(req).amount
 
     return (
@@ -80,8 +84,12 @@ export function TransactionRequest(props: TransactionRequestProps) {
       />
     )
   }
-  if (step !== 'confirm') return step
-  if (!req) return null
+  if (step !== 'confirm') {
+    return step
+  }
+  if (!req) {
+    return null
+  }
 
   return req.type === 'transaction' ? (
     <TxReview capabilities={props.capabilities} key={req.handlerId} req={req} />

@@ -28,7 +28,9 @@ const unitTests = rendererTests.filter((file) => file.endsWith('.test.ts')).map(
 const domTests = rendererTests.filter((file) => file.endsWith('.test.tsx')).map(relative)
 
 async function run(files: string[], preload?: string) {
-  if (files.length === 0) return 0
+  if (files.length === 0) {
+    return 0
+  }
 
   const command = [
     'bun',

@@ -7,7 +7,9 @@ export default function <T extends JSONRPCRequestPayload>(data: string): T | fal
     const payload = (JSON.parse(data) as T) || {}
 
     if (has(payload.id) && has(payload.method)) {
-      if (!payload.params) payload.params = []
+      if (!payload.params) {
+        payload.params = []
+      }
 
       return (
         !!(

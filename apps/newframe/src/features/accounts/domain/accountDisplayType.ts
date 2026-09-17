@@ -4,6 +4,8 @@ export function accountDisplayType(account?: {
   safe?: Record<string, unknown>
   accountType?: string
 }) {
-  if (account?.safe && Object.keys(account.safe).length) return 'safe'
+  if (account?.safe && Object.keys(account.safe).length) {
+    return 'safe'
+  }
   return account?.accountType || account?.lastSignerType || ''
 }

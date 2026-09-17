@@ -25,7 +25,9 @@ export function createOperationsByStatusSelector(status: OperationStatus) {
   let previousResult: OperationRecord[] = []
 
   return (state: OperationState) => {
-    if (state.operations === previousOperations) return previousResult
+    if (state.operations === previousOperations) {
+      return previousResult
+    }
 
     previousOperations = state.operations
     previousResult = Object.values(state.operations || {}).filter((operation) => operation.status === status)

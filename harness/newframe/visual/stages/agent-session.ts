@@ -30,7 +30,9 @@ async function connectAgent() {
     })
   })
   const body = (await response.json()) as AgentCredentials & { error?: string }
-  if (!response.ok) throw new Error(body.error || `Agent connection failed with ${response.status}`)
+  if (!response.ok) {
+    throw new Error(body.error || `Agent connection failed with ${response.status}`)
+  }
   return body
 }
 
@@ -87,18 +89,24 @@ async function revokeSession(credentials: AgentCredentials) {
       'x-newframe-agent-session': credentials.sessionId
     }
   })
-  if (response.status !== 204) throw new Error(`Agent session revocation failed with ${response.status}`)
+  if (response.status !== 204) {
+    throw new Error(`Agent session revocation failed with ${response.status}`)
+  }
 }
 
 async function flashRequest(path: string, init: RequestInit) {
   const headers = new Headers(init.headers)
-  if (!headers.has('content-type')) headers.set('content-type', 'application/json')
+  if (!headers.has('content-type')) {
+    headers.set('content-type', 'application/json')
+  }
   const response = await fetch(`${localTradeServiceUrl}${path}`, {
     ...init,
     headers
   })
   const body = (await response.json()) as Record<string, any>
-  if (!response.ok) throw new Error(body.message || `Local Flash request failed with ${response.status}`)
+  if (!response.ok) {
+    throw new Error(body.message || `Local Flash request failed with ${response.status}`)
+  }
   return body
 }
 
@@ -121,7 +129,9 @@ async function submitExternalFlashOrder(credentials: AgentCredentials) {
     body: JSON.stringify(quoteRequest)
   })
   const evmOrderTypedData = String(quote.evm?.orderTypedData || '')
-  if (!evmOrderTypedData) throw new Error('Local Flash quote omitted its order typed data')
+  if (!evmOrderTypedData) {
+    throw new Error('Local Flash quote omitted its order typed data')
+  }
 
   const userSignature = await agentRpc(credentials, {
     id: 'visual-agent-flash-order-sign',
@@ -141,7 +151,9 @@ async function submitExternalFlashOrder(credentials: AgentCredentials) {
     })
   })
   const orderId = String(submitted.orderId || '')
-  if (!orderId) throw new Error('Local Flash submit omitted its order id')
+  if (!orderId) {
+    throw new Error('Local Flash submit omitted its order id')
+  }
   return orderId
 }
 
@@ -256,7 +268,9 @@ export const agentSessionStage: VisualStage = {
           candidate.type === 'sign' || candidate.type === 'signTypedData' || candidate.type === 'transaction'
       )
     )
-    if (promptedAutonomousAction) runtime.fail('Autonomous agent action created a signing prompt')
+    if (promptedAutonomousAction) {
+      runtime.fail('Autonomous agent action created a signing prompt')
+    }
 
     const externalOrderId = await submitExternalFlashOrder(credentials)
     await driver.waitForFlashOrder(

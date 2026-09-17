@@ -230,7 +230,9 @@ function startUpdater() {
 let domainServicesStarted = false
 
 function startDomainServices() {
-  if (domainServicesStarted) return
+  if (domainServicesStarted) {
+    return
+  }
 
   store.subscribe(
     (state) => state.main.launch,
@@ -240,7 +242,9 @@ function startDomainServices() {
   apiServer.start()
   bundledTokens.start()
   accounts.startDataScanner()
-  if (!isDev) startUpdater()
+  if (!isDev) {
+    startUpdater()
+  }
 
   domainServicesStarted = true
 }
@@ -248,8 +252,12 @@ function startDomainServices() {
 function configureWebAuthn() {
   const keychainAccessGroup = process.env.FRAME_WEBAUTHN_KEYCHAIN_ACCESS_GROUP
 
-  if (process.platform !== 'darwin' || !keychainAccessGroup) return
-  if (typeof app.configureWebAuthn !== 'function') return
+  if (process.platform !== 'darwin' || !keychainAccessGroup) {
+    return
+  }
+  if (typeof app.configureWebAuthn !== 'function') {
+    return
+  }
 
   try {
     app.configureWebAuthn({
@@ -286,7 +294,9 @@ void app.whenReady().then(async () => {
   startDomainServices()
   menu()
   windows.init(rendererAuthorization, store)
-  if (app.dock) app.dock.hide()
+  if (app.dock) {
+    app.dock.hide()
+  }
   if (isDev) {
     const loadDev = async () => {
       const { installDevTools, startCpuMonitoring } = await import('../../platform/runtime/dev/index.js')
@@ -334,5 +344,7 @@ app.on('quit', () => {
 })
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit()
+  if (process.platform !== 'darwin') {
+    app.quit()
+  }
 })

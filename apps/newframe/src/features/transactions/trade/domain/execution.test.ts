@@ -57,7 +57,7 @@ it('builds quoted actions and signature-bearing Flash submission data only in th
     }
   } satisfies FlashQuote
 
-  expect(buildFlashActionTransaction(quote.actions.approval!, FLASH_ANVIL_CHAIN_ID)).toEqual({
+  expect(buildFlashActionTransaction(quote.actions.approval, FLASH_ANVIL_CHAIN_ID)).toEqual({
     chainId: FLASH_ANVIL_CHAIN_ID,
     transaction: {
       to: '0x0000000000000000000000000000000000000001',

@@ -33,8 +33,9 @@ it('pairs only for its owner, then restores and removes the public signer', () =
       uiContext().context.owner
     )
   ).toBe(false)
-  for (const frame of vectors.export.ur)
+  for (const frame of vectors.export.ur) {
     f.service.pairScan({ type: 'signer.session-input', operationId, frame }, owner.context.owner)
+  }
   const [id] = Object.keys(f.store.getState().main.airgap)
   expect(
     f.operations.lookup({ id: operationId, owner: owner.context.owner, type: 'signer.airgap-pair' })

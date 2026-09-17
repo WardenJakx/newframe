@@ -25,7 +25,9 @@ export function normalizeFlashAddress(address?: unknown) {
 
   // Portfolio balances use the wallet-wide zero-address sentinel, while Flash's
   // wire format represents native assets with the 0xeeee... sentinel.
-  if (value === NATIVE_CURRENCY) return FLASH_NATIVE_ETH_TOKEN_ADDRESS
+  if (value === NATIVE_CURRENCY) {
+    return FLASH_NATIVE_ETH_TOKEN_ADDRESS
+  }
 
   return /^0x[0-9a-f]{40}$/.test(value) ? value : FLASH_NATIVE_ETH_TOKEN_ADDRESS
 }
@@ -95,12 +97,16 @@ export function toFlashApiAssetAddress(asset: FlashAsset) {
 
 export function balanceSummaryToFlashAsset(balance: FlashBalanceSummaryLike): FlashAsset {
   const chainId = Number(balance.chainId)
-  if (!Number.isInteger(chainId) || chainId <= 0) throw new Error('Invalid Flash balance chain id')
+  if (!Number.isInteger(chainId) || chainId <= 0) {
+    throw new Error('Invalid Flash balance chain id')
+  }
 
   const address = normalizeFlashAddress(balance.address)
   const isNative = address === FLASH_NATIVE_ETH_TOKEN_ADDRESS
   const symbol = String(balance.symbol || (isNative ? FLASH_NATIVE_ETH_ASSET_SYMBOL : '')).trim()
-  if (!symbol) throw new Error('Invalid Flash balance symbol')
+  if (!symbol) {
+    throw new Error('Invalid Flash balance symbol')
+  }
 
   const decimals = Number(balance.decimals)
 

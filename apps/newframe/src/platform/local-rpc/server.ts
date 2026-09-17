@@ -40,7 +40,9 @@ export function createApiServer({
       return active
     },
     start() {
-      if (active || disposed) return
+      if (active || disposed) {
+        return
+      }
 
       const nextServer = createServer(httpTransport.handler)
       try {
@@ -58,13 +60,17 @@ export function createApiServer({
       }
     },
     dispose() {
-      if (disposed) return
+      if (disposed) {
+        return
+      }
 
       disposed = true
       active = false
       ws.dispose()
       httpTransport.dispose()
-      if (server) closeServer(server)
+      if (server) {
+        closeServer(server)
+      }
       server = undefined
     }
   }

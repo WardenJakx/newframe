@@ -72,9 +72,15 @@ interface SettingsViewModel {
 
 function shortcutLabel(platform: string, shortcut: SummonShortcut) {
   const modifiers = (shortcut.modifierKeys || []).map((key: string) => {
-    if (key === 'Alt') return platform === 'darwin' ? 'Option' : 'Alt'
-    if (key === 'Meta' || key === 'Super') return platform === 'darwin' ? 'Cmd' : 'Win'
-    if (key === 'Control' || key === 'CommandOrControl') return 'Ctrl'
+    if (key === 'Alt') {
+      return platform === 'darwin' ? 'Option' : 'Alt'
+    }
+    if (key === 'Meta' || key === 'Super') {
+      return platform === 'darwin' ? 'Cmd' : 'Win'
+    }
+    if (key === 'Control' || key === 'CommandOrControl') {
+      return 'Ctrl'
+    }
     return key
   })
   const key = shortcutKeyDisplay[shortcut.shortcutKey] || shortcut.shortcutKey

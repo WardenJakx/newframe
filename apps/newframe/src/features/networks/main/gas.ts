@@ -61,7 +61,9 @@ function calculateReward(blocks: Block[], opts: CalcOpts = {}) {
         (block) => block.gasUsedRatio > strategy.minRatio && block.gasUsedRatio <= strategy.maxRatio
       )
 
-      if (eligibleBlocks.length > 0) return eligibleBlocks
+      if (eligibleBlocks.length > 0) {
+        return eligibleBlocks
+      }
     }
 
     return foundBlocks

@@ -33,13 +33,17 @@ export function QrScanner({
     return () => document.removeEventListener('visibilitychange', update)
   }, [])
   useEffect(() => {
-    if (!active || !visible || !video.current) return
+    if (!active || !visible || !video.current) {
+      return
+    }
     let current = true
     let ready = false
     let lastFrame = ''
     let session: ReturnType<QrCameraCapability['start']> | undefined
     const fail = (reason: Error) => {
-      if (!current) return
+      if (!current) {
+        return
+      }
       current = false
       session?.stop()
       callbacks.current.onError(
@@ -56,17 +60,23 @@ export function QrScanner({
       session = camera.start(video.current, {
         onError: fail,
         onReady: () => {
-          if (!current) return
+          if (!current) {
+            return
+          }
           ready = true
           callbacks.current.onReady?.()
         },
         onFrame: (frame) => {
-          if (!current || !ready || inFlight.current || frame === lastFrame) return
+          if (!current || !ready || inFlight.current || frame === lastFrame) {
+            return
+          }
           lastFrame = frame
           inFlight.current = true
           void Promise.resolve()
             .then(() => {
-              if (current) return callbacks.current.onFrame(frame)
+              if (current) {
+                return callbacks.current.onFrame(frame)
+              }
             })
             .catch(fail)
             .finally(() => {
@@ -74,7 +84,9 @@ export function QrScanner({
             })
         }
       })
-      if (!current) session.stop()
+      if (!current) {
+        session.stop()
+      }
     } catch (reason) {
       fail(reason instanceof Error ? reason : new Error('Camera unavailable'))
     }

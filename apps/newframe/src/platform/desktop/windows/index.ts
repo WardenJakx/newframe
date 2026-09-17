@@ -26,7 +26,9 @@ type CanonicalStoreApi = typeof canonicalStore
 export function onTrayRendererReady(webContents: Pick<WebContents, 'off' | 'once'>, ready: () => void) {
   let handled = false
   const handler = () => {
-    if (handled) return
+    if (handled) {
+      return
+    }
     handled = true
     ready()
   }
@@ -37,7 +39,9 @@ export function onTrayRendererReady(webContents: Pick<WebContents, 'off' | 'once
 
 /** @public Used by the dynamic-import lifecycle tests. */
 export function revealExtensionApproval(notification: unknown, reveal: () => void) {
-  if (notification === 'extensionConnect') reveal()
+  if (notification === 'extensionConnect') {
+    reveal()
+  }
 }
 
 const events = new EventEmitter()
@@ -58,7 +62,9 @@ let rendererAuthorization: RendererAuthorizationRegistry | undefined
 let activeStore: CanonicalStoreApi | undefined
 
 const getStore = () => {
-  if (!activeStore) throw new Error('Canonical store must be configured before using application windows')
+  if (!activeStore) {
+    throw new Error('Canonical store must be configured before using application windows')
+  }
   return activeStore
 }
 
@@ -133,7 +139,9 @@ function initWindow(id: string, opts: Electron.BrowserWindowConstructorOptions, 
 
   window.once('closed', () => {
     removeRendererReady()
-    if (windows[id] === window) delete windows[id]
+    if (windows[id] === window) {
+      delete windows[id]
+    }
   })
 
   window.loadURL(url.toString()).catch((error) => log.error('Could not load window', id, error))
@@ -150,7 +158,9 @@ function initTrayWindow(rendererReady: () => void) {
   }
   const { removeRendererReady, window: trayWindow } = initWindow('tray', trayOpts, rendererReady)
 
-  if (!rendererAuthorization) throw new Error('Renderer authorization unavailable')
+  if (!rendererAuthorization) {
+    throw new Error('Renderer authorization unavailable')
+  }
   const removeCameraPermissions = installCameraPermissions(
     trayWindow.webContents.session,
     rendererAuthorization
@@ -231,7 +241,9 @@ class Tray {
       let title = ''
       if (getStore().getState().platform === 'darwin' && getStore().getState().main.menubarGasPrice) {
         const gasPrice = getStore().getState().main.networksMeta.ethereum[1].gas.price.levels.fast
-        if (!gasPrice) return
+        if (!gasPrice) {
+          return
+        }
         const gasDisplay = roundGwei(hexToInt(gasPrice) / 1e9).toString()
         title = gasDisplay // ɢ 🄶 Ⓖ ᴳᵂᴱᴵ
       }
@@ -249,7 +261,9 @@ class Tray {
       { equalityFn: shallow }
     )
     this.readyHandler = () => {
-      if (this.ready || !windows.tray || windows.tray.isDestroyed()) return
+      if (this.ready || !windows.tray || windows.tray.isDestroyed()) {
+        return
+      }
       this.ready = true
       systemTray.init(windows.tray)
       systemTray.setContextMenu('hide', { displaySummonShortcut: getDisplaySummonShortcut() })
@@ -265,7 +279,7 @@ class Tray {
   }
 
   isVisible() {
-    return (windows.tray as BrowserWindow).isVisible()
+    return windows.tray.isVisible()
   }
 
   canAutoHide() {
@@ -341,7 +355,9 @@ class Tray {
   }
 
   toggle() {
-    if (!this.isReady()) return
+    if (!this.isReady()) {
+      return
+    }
 
     if (this.isVisible()) {
       this.hide()
@@ -387,7 +403,9 @@ let stateUnsubscribers: Array<() => void> = []
 let sideTrayManagerStarted = false
 
 const initialize = () => {
-  if (tray && windows.tray && !windows.tray.isDestroyed()) return
+  if (tray && windows.tray && !windows.tray.isDestroyed()) {
+    return
+  }
 
   if (!sideTrayManagerStarted) {
     if (!rendererAuthorization) {
@@ -406,7 +424,9 @@ const initialize = () => {
   stateUnsubscribers.forEach((unsubscribe) => unsubscribe())
 
   const updateHomeCommand = (homeCommand: unknown) => {
-    if (homeCommand) tray.show()
+    if (homeCommand) {
+      tray.show()
+    }
   }
 
   const updateNotification = (notification: unknown) => {

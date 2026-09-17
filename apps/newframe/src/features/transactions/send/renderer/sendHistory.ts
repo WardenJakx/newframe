@@ -35,19 +35,27 @@ export function hasSentToAddress({
 }) {
   const recipient = normalizeAddress(recipientAddress)
   const sender = normalizeAddress(senderAddress)
-  if (!recipient || !sender) return false
+  if (!recipient || !sender) {
+    return false
+  }
 
   return Object.values(activity).some((record) => {
-    if (record.status === 'reverted') return false
+    if (record.status === 'reverted') {
+      return false
+    }
 
     const recordSender =
       typeof record.data?.from === 'string'
         ? normalizeAddress(record.data.from)
         : normalizeAddress(record.account || record.address)
-    if (recordSender !== sender) return false
+    if (recordSender !== sender) {
+      return false
+    }
 
     const tokenRecipients = tokenTransferRecipients(record)
-    if (tokenRecipients.length) return tokenRecipients.includes(recipient)
+    if (tokenRecipients.length) {
+      return tokenRecipients.includes(recipient)
+    }
 
     return normalizeAddress(record.data?.to) === recipient
   })

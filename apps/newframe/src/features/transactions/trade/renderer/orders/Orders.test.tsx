@@ -100,9 +100,13 @@ describe('Orders cancellation', () => {
     let resolveFirst!: (value: CommandResult) => void
     let cancelCalls = 0
     executeCommandMock().mockImplementation(async (command) => {
-      if (command.type !== 'flash.order-cancel') return { ok: true }
+      if (command.type !== 'flash.order-cancel') {
+        return { ok: true }
+      }
       cancelCalls += 1
-      if (cancelCalls === 1) return await new Promise<CommandResult>((resolve) => (resolveFirst = resolve))
+      if (cancelCalls === 1) {
+        return await new Promise<CommandResult>((resolve) => (resolveFirst = resolve))
+      }
       return { ok: true }
     })
 

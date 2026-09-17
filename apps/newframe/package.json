@@ -58,7 +58,6 @@
     "@keystonehq/bc-ur-registry": "0.6.3",
     "@keystonehq/bc-ur-registry-eth": "0.19.1",
     "@ledgerhq/hw-app-eth": "^7.8.5",
-    "@ledgerhq/hw-transport": "6.35.3",
     "@ledgerhq/hw-transport-node-hid-noevents": "6.35.3",
     "@ledgerhq/hw-transport-node-hid-singleton": "6.35.3",
     "@metamask/eth-sig-util": "^8.2.0",

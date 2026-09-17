@@ -2,7 +2,7 @@ import log from 'electron-log'
 
 import type canonicalStore from '../../../state-store/index.js'
 import { SignerAdapter } from '../adapters.js'
-import { Derivation } from '../Signer/derive.js'
+import type { Derivation } from '../Signer/derive.js'
 import Lattice from './Lattice.js'
 
 interface GlobalLatticeSettings {
@@ -59,7 +59,9 @@ export default class LatticeAdapter extends SignerAdapter {
   }
 
   override open() {
-    if (this.opened) return
+    if (this.opened) {
+      return
+    }
     this.opened = true
     const generation = ++this.lifecycleGeneration
 
@@ -70,7 +72,9 @@ export default class LatticeAdapter extends SignerAdapter {
         const { baseUrl, derivation, accountLimit } = getGlobalLatticeSettings(this.store)
 
         Object.values(this.knownSigners).forEach((lattice) => {
-          if (!lattice.connection) return
+          if (!lattice.connection) {
+            return
+          }
 
           let needsUpdate = false,
             reloadAddresses = false
@@ -106,7 +110,9 @@ export default class LatticeAdapter extends SignerAdapter {
       (state) => state.main.lattice as { [id: string]: LatticeSettings },
       (devices) => {
         Object.entries(devices).forEach(([deviceId, device]) => {
-          if (deviceId in this.knownSigners) return
+          if (deviceId in this.knownSigners) {
+            return
+          }
 
           log.info('Initializing Lattice device', { deviceId })
 
@@ -116,13 +122,17 @@ export default class LatticeAdapter extends SignerAdapter {
           lattice.accountLimit = accountLimit
 
           const emitUpdate = () => {
-            if (this.isActive(generation, deviceId, lattice)) this.emit('update', lattice)
+            if (this.isActive(generation, deviceId, lattice)) {
+              this.emit('update', lattice)
+            }
           }
 
           lattice.on('update', emitUpdate)
 
           lattice.on('connect', (paired: boolean) => {
-            if (!this.isActive(generation, deviceId, lattice)) return
+            if (!this.isActive(generation, deviceId, lattice)) {
+              return
+            }
             this.store.getState().updateLattice(deviceId, { paired })
 
             if (paired) {
@@ -135,7 +145,9 @@ export default class LatticeAdapter extends SignerAdapter {
           })
 
           lattice.on('paired', (hasActiveWallet: boolean) => {
-            if (!this.isActive(generation, deviceId, lattice)) return
+            if (!this.isActive(generation, deviceId, lattice)) {
+              return
+            }
             this.store.getState().updateLattice(deviceId, { paired: true })
 
             if (hasActiveWallet) {
@@ -145,7 +157,9 @@ export default class LatticeAdapter extends SignerAdapter {
           })
 
           lattice.on('error', () => {
-            if (!this.isActive(generation, deviceId, lattice)) return
+            if (!this.isActive(generation, deviceId, lattice)) {
+              return
+            }
             if (lattice.connection && !lattice.connection.isPaired) {
               this.store.getState().updateLattice(deviceId, { paired: false })
             }
@@ -156,7 +170,9 @@ export default class LatticeAdapter extends SignerAdapter {
           })
 
           lattice.on('close', () => {
-            if (!this.isActive(generation, deviceId, lattice)) return
+            if (!this.isActive(generation, deviceId, lattice)) {
+              return
+            }
             delete this.knownSigners[deviceId]
 
             this.emit('remove', lattice.id)
@@ -181,7 +197,9 @@ export default class LatticeAdapter extends SignerAdapter {
   }
 
   override close() {
-    if (!this.opened) return
+    if (!this.opened) {
+      return
+    }
     this.opened = false
     this.lifecycleGeneration += 1
 

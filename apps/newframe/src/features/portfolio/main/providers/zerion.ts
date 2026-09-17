@@ -201,7 +201,9 @@ function getPositionChainId(
   zerionToFrameChainIds: Record<string, number>
 ) {
   const zerionChainId = position.relationships?.chain?.data?.id
-  if (!zerionChainId || !allowedChains.has(zerionChainId)) return undefined
+  if (!zerionChainId || !allowedChains.has(zerionChainId)) {
+    return undefined
+  }
 
   return zerionToFrameChainIds[zerionChainId]
 }
@@ -213,7 +215,9 @@ function getPositionImplementation(position: ZerionPosition) {
 
 function hasPositiveQuantity(position: ZerionPosition) {
   const quantity = position.attributes?.quantity?.int
-  if (quantity === undefined) return true
+  if (quantity === undefined) {
+    return true
+  }
 
   try {
     return BigInt(quantity) > 0n
@@ -227,10 +231,14 @@ function getPositionToken(
   allowedChains: Set<string>,
   zerionToFrameChainIds: Record<string, number>
 ): Token | undefined {
-  if (!hasPositiveQuantity(position)) return undefined
+  if (!hasPositiveQuantity(position)) {
+    return undefined
+  }
 
   const chainId = getPositionChainId(position, allowedChains, zerionToFrameChainIds)
-  if (!chainId) return undefined
+  if (!chainId) {
+    return undefined
+  }
 
   const fungible = position.attributes?.fungible_info
   const implementation = getPositionImplementation(position)
@@ -261,7 +269,9 @@ function getPositionToken(
 
 function quantityInt(position: ZerionPosition) {
   const rawQuantity = position.attributes?.quantity?.int
-  if (rawQuantity === undefined) return undefined
+  if (rawQuantity === undefined) {
+    return undefined
+  }
 
   try {
     const quantity = BigInt(rawQuantity)
@@ -280,20 +290,30 @@ function getPositionNativeBalance(
   allowedChains: Set<string>,
   zerionToFrameChainIds: Record<string, number>
 ): Balance | undefined {
-  if (!hasPositiveQuantity(position)) return undefined
+  if (!hasPositiveQuantity(position)) {
+    return undefined
+  }
 
   const chainId = getPositionChainId(position, allowedChains, zerionToFrameChainIds)
-  if (!chainId) return undefined
+  if (!chainId) {
+    return undefined
+  }
 
   const implementation = getPositionImplementation(position)
   const implementations = position.attributes?.fungible_info?.implementations || []
   const implementationAddress = implementation?.address?.toLowerCase()
 
-  if (!implementation && implementations.length > 0) return undefined
-  if (isEvmAddress(implementationAddress) && implementationAddress !== NATIVE_CURRENCY) return undefined
+  if (!implementation && implementations.length > 0) {
+    return undefined
+  }
+  if (isEvmAddress(implementationAddress) && implementationAddress !== NATIVE_CURRENCY) {
+    return undefined
+  }
 
   const quantity = quantityInt(position)
-  if (quantity === undefined) return undefined
+  if (quantity === undefined) {
+    return undefined
+  }
 
   const nativeDecimals = position.attributes?.quantity?.decimals
   const decimals = typeof nativeDecimals === 'number' && nativeDecimals > 0 ? nativeDecimals : 18
@@ -314,8 +334,12 @@ function getPositionBalance(
   const token = getPositionToken(position, allowedChains, zerionToFrameChainIds)
   const quantity = quantityInt(position)
 
-  if (!token) return getPositionNativeBalance(position, allowedChains, zerionToFrameChainIds)
-  if (quantity === undefined) return undefined
+  if (!token) {
+    return getPositionNativeBalance(position, allowedChains, zerionToFrameChainIds)
+  }
+  if (quantity === undefined) {
+    return undefined
+  }
 
   return {
     address: token.address,
@@ -327,7 +351,9 @@ function getPositionBalance(
 
 function getPositionRate(position: ZerionPosition) {
   const price = position.attributes?.price
-  if (typeof price !== 'number') return undefined
+  if (typeof price !== 'number') {
+    return undefined
+  }
   const change24hr =
     position.attributes?.changes?.percent_1d ??
     position.attributes?.fungible_info?.market_data?.changes?.percent_1d
@@ -385,7 +411,9 @@ function extractAssetRates(
   positions.forEach((position) => {
     const chainId = getPositionChainId(position, allowedChains, zerionToFrameChainIds)
     const rate = getPositionRate(position)
-    if (!chainId || !rate) return
+    if (!chainId || !rate) {
+      return
+    }
 
     const implementationAddress = getPositionImplementation(position)?.address?.toLowerCase()
     const address =
@@ -407,10 +435,14 @@ function mapChainValues(
 
   return Object.entries(distribution).reduce(
     (values, [zerionChainId, value]) => {
-      if (!allowedChains.has(zerionChainId)) return values
+      if (!allowedChains.has(zerionChainId)) {
+        return values
+      }
 
       const chainId = zerionToFrameChainIds[zerionChainId]
-      if (chainId) values[chainId] = value
+      if (chainId) {
+        values[chainId] = value
+      }
       return values
     },
     {} as Record<number, number>
@@ -441,7 +473,9 @@ export default class ZerionPortfolioProvider implements PortfolioProvider {
     requestPolicy,
     requestPolicyOptions
   }: ZerionProviderOptions) {
-    if (!apiKey) throw new Error('Zerion API key is required')
+    if (!apiKey) {
+      throw new Error('Zerion API key is required')
+    }
 
     this.apiKey = apiKey
     this.baseUrl = baseUrl.replace(/\/+$/, '')
@@ -458,7 +492,9 @@ export default class ZerionPortfolioProvider implements PortfolioProvider {
     options: PortfolioRefreshOptions = {}
   ): Promise<PortfolioSnapshot> {
     const zerionChainIds = toZerionChainIds(chainIds)
-    if (zerionChainIds.length === 0) return emptyPortfolioSnapshot()
+    if (zerionChainIds.length === 0) {
+      return emptyPortfolioSnapshot()
+    }
 
     const portfolio = await this.fetchPortfolio(address, options)
     const positions = await this.fetchPositions(address, zerionChainIds, options)
@@ -483,7 +519,9 @@ export default class ZerionPortfolioProvider implements PortfolioProvider {
 
   async getChainImage(chainId: number): Promise<PortfolioChainImage | undefined> {
     const zerionChainId = frameToZerionChainIds[chainId]
-    if (!zerionChainId) return undefined
+    if (!zerionChainId) {
+      return undefined
+    }
 
     const chain = await this.request<ZerionChainResponse>(`/chains/${encodeURIComponent(zerionChainId)}`, {})
     const imageUrl = chain.data?.attributes?.icon?.url
@@ -526,7 +564,9 @@ export default class ZerionPortfolioProvider implements PortfolioProvider {
     const url = new URL(`${this.baseUrl}${path}`)
 
     Object.entries(params).forEach(([key, value]) => {
-      if (value) url.searchParams.set(key, value)
+      if (value) {
+        url.searchParams.set(key, value)
+      }
     })
 
     return this.requestUrl<T>(url.toString())

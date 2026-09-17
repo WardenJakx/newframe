@@ -97,8 +97,9 @@ describe('tradeTransaction', () => {
         { durationSeconds: 93_780, limitNotionalPrice: '2300', maxPriceImpact: '4.5', twapBucketCount: 12 }
       ]
     ] as const
-    for (const [input, expected] of requests)
+    for (const [input, expected] of requests) {
       expect(buildTradeQuoteRequest({ ...base, ...input })).toMatchObject(expected)
+    }
     expect(
       buildTradeQuoteRequest({
         ...base,
@@ -169,7 +170,9 @@ describe('tradeTransaction', () => {
         'TP/SL orders must sell the target asset.'
       ]
     ]
-    for (const [fields, error] of cases) expect(validate(fields)).toBe(error)
+    for (const [fields, error] of cases) {
+      expect(validate(fields)).toBe(error)
+    }
     expect(validate({ orderType: FLASH_MARKET_ORDER_TYPE })).toBe('')
     expect(
       validate({

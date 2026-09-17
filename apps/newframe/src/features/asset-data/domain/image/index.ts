@@ -18,17 +18,28 @@ export function isSupportedImageMimeType(value: string) {
 }
 
 export function embeddedImageSource(value: unknown) {
-  if (typeof value !== 'string') return ''
+  if (typeof value !== 'string') {
+    return ''
+  }
   const source = value.trim()
-  if (source.length > maxEmbeddedImageSourceLength) return ''
+  if (source.length > maxEmbeddedImageSourceLength) {
+    return ''
+  }
   const match = source.match(embeddedImagePattern)
-  if (!match?.[1] || match[2] === undefined || !isSupportedImageMimeType(match[1])) return ''
+  if (!match?.[1] || match[2] === undefined || !isSupportedImageMimeType(match[1])) {
+    return ''
+  }
 
   const base64 = match[2]
-  if (base64.length % 4 === 1) return ''
+  if (base64.length % 4 === 1) {
+    return ''
+  }
   let padding = 0
-  if (base64.endsWith('==')) padding = 2
-  else if (base64.endsWith('=')) padding = 1
+  if (base64.endsWith('==')) {
+    padding = 2
+  } else if (base64.endsWith('=')) {
+    padding = 1
+  }
   const decodedBytes = Math.floor((base64.length * 3) / 4) - padding
   return decodedBytes <= MAX_EMBEDDED_IMAGE_BYTES ? source : ''
 }

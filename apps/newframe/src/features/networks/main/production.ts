@@ -17,7 +17,9 @@ export function createChainlistIconLookup(fetchCatalog: ChainlistFetch = fetch) 
     const response = await fetchCatalog(CHAINLIST_CATALOG_URL, {
       signal: AbortSignal.timeout(CHAINLIST_TIMEOUT_MS)
     })
-    if (!response.ok) throw new Error('Chainlist catalog request failed')
+    if (!response.ok) {
+      throw new Error('Chainlist catalog request failed')
+    }
 
     const catalog: unknown = await response.json()
     return Array.isArray(catalog) ? (catalog as ChainlistEntry[]) : []
@@ -41,7 +43,9 @@ export function createChainlistIconLookup(fetchCatalog: ChainlistFetch = fetch) 
 export const lookupChainlistIcon = createChainlistIconLookup()
 
 export async function rpcMatchesChain(url: unknown, chainId: number) {
-  if (typeof url !== 'string') return false
+  if (typeof url !== 'string') {
+    return false
+  }
 
   try {
     const response = await fetch(url, {
@@ -50,7 +54,9 @@ export async function rpcMatchesChain(url: unknown, chainId: number) {
       body: JSON.stringify({ id: 1, jsonrpc: '2.0', method: 'eth_chainId', params: [] }),
       signal: AbortSignal.timeout(10_000)
     })
-    if (!response.ok) return false
+    if (!response.ok) {
+      return false
+    }
 
     const payload = (await response.json()) as { result?: unknown }
     return (

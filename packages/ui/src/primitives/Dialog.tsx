@@ -58,7 +58,9 @@ export type DialogProps = RecipeVariantProps<typeof dialogRecipe> & {
 export function Dialog({ children, label, onDismiss, padding, placement, tone, width }: DialogProps) {
   const styles = dialogRecipe({ padding, placement, tone, width })
   const dismiss = (event: MouseEvent<HTMLDivElement>) => {
-    if (event.currentTarget === event.target) onDismiss?.()
+    if (event.currentTarget === event.target) {
+      onDismiss?.()
+    }
   }
 
   return (

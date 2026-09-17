@@ -59,19 +59,28 @@ export function AirGapSigning({
     }
   }, [capability, signerId, requestId, sessionId])
   useEffect(() => {
-    if (!stillLive || !open.current) return
+    if (!stillLive || !open.current) {
+      return
+    }
     let current = true
     void capability
       .sessionFrames({ signerId, requestId, sessionId })
       .then((result) => {
-        if (!current || !open.current) return
-        if (!result.ok) throw new Error(result.message || 'Signing QR unavailable. Retry or cancel.')
-        if (!result.frames.length) throw new Error('Signing QR unavailable. Retry or cancel.')
+        if (!current || !open.current) {
+          return
+        }
+        if (!result.ok) {
+          throw new Error(result.message || 'Signing QR unavailable. Retry or cancel.')
+        }
+        if (!result.frames.length) {
+          throw new Error('Signing QR unavailable. Retry or cancel.')
+        }
         setFrames(result.frames)
       })
       .catch((reason: unknown) => {
-        if (current && open.current)
+        if (current && open.current) {
           setError(reason instanceof Error ? reason.message : 'Could not load signing QR')
+        }
       })
     return () => {
       current = false
@@ -83,7 +92,9 @@ export function AirGapSigning({
     void capability.finishSignerSession({ signerId, requestId, sessionId }).catch(() => {})
     dismissRef.current()
   }
-  if (!stillLive) return null
+  if (!stillLive) {
+    return null
+  }
   return (
     <Stack gap='medium'>
       <Text align='center' variant='heading'>
@@ -140,17 +151,25 @@ export function AirGapSigning({
               active={active}
               camera={camera}
               onReady={() => {
-                if (open.current) setScanStage('scanning')
+                if (open.current) {
+                  setScanStage('scanning')
+                }
               }}
               onError={(message) => {
-                if (!open.current) return
+                if (!open.current) {
+                  return
+                }
                 setScanError(message)
                 setScanStage('qr')
               }}
               onFrame={async (frame) => {
-                if (!open.current) return
+                if (!open.current) {
+                  return
+                }
                 const result = await capability.inputSignerSession({ signerId, requestId, sessionId, frame })
-                if (!result.ok) throw new Error(result.message || 'Invalid signature QR. Retry or cancel.')
+                if (!result.ok) {
+                  throw new Error(result.message || 'Invalid signature QR. Retry or cancel.')
+                }
               }}
             />
             <Text aria-live='polite' variant='supporting'>

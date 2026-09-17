@@ -49,12 +49,16 @@ export interface SubscriptionPayload {
 export type EthersRpcProvider = JsonRpcApiProvider
 
 function normalizeParams(params?: RpcParams) {
-  if (Array.isArray(params)) return [...params]
+  if (Array.isArray(params)) {
+    return [...params]
+  }
   return params || []
 }
 
 export function createError(error: RpcResult['error'] | Error | unknown) {
-  if (error instanceof Error) return error
+  if (error instanceof Error) {
+    return error
+  }
 
   const message =
     error && typeof error === 'object' && 'message' in error
@@ -63,8 +67,12 @@ export function createError(error: RpcResult['error'] | Error | unknown) {
   const err = new Error(message) as Error & { code?: number; data?: unknown }
 
   if (error && typeof error === 'object') {
-    if ('code' in error && typeof error.code === 'number') err.code = error.code
-    if ('data' in error) err.data = error.data
+    if ('code' in error && typeof error.code === 'number') {
+      err.code = error.code
+    }
+    if ('data' in error) {
+      err.data = error.data
+    }
   }
 
   return err
@@ -128,7 +136,7 @@ export function createJsonRpcProvider(target: string, options: ProviderOptions =
         const socketOptions = options.origin ? { origin: options.origin } : undefined
         const socket = new WebSocket(target, [], socketOptions)
         socket.on('error', () => {})
-        return socket as any
+        return socket
       },
       undefined,
       providerOptions
@@ -146,7 +154,9 @@ export function createJsonRpcProvider(target: string, options: ProviderOptions =
 }
 
 export function listenForProviderClose(provider: EthersRpcProvider, onClose: () => void) {
-  if (!(provider instanceof WebSocketProvider)) return
+  if (!(provider instanceof WebSocketProvider)) {
+    return
+  }
 
   try {
     const socket = provider.websocket as any

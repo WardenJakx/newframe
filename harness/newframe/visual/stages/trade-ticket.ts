@@ -9,7 +9,9 @@ async function fieldPartsOverlap(input: Locator) {
   return input.evaluate((element) => {
     const field = element.closest('label')
     const label = field?.firstElementChild
-    if (!field || !label) return true
+    if (!field || !label) {
+      return true
+    }
 
     const inputBounds = element.getBoundingClientRect()
     const labelBounds = label.getBoundingClientRect()
@@ -42,11 +44,15 @@ export const tradeTicketStage: VisualStage = {
     await tradePage.getByRole('button', { name: /Advanced/ }).click()
     const slippage = tradePage.getByLabel('Slippage')
     await slippage.waitFor({ state: 'visible', timeout: 5_000 })
-    if ((await slippage.inputValue()) !== '') driver.fail('Automatic market slippage should start empty')
+    if ((await slippage.inputValue()) !== '') {
+      driver.fail('Automatic market slippage should start empty')
+    }
     if ((await slippage.getAttribute('placeholder')) !== 'Automatic') {
       driver.fail('Automatic market slippage placeholder is missing')
     }
-    if (await fieldPartsOverlap(slippage)) driver.fail('Max slippage label overlaps its input')
+    if (await fieldPartsOverlap(slippage)) {
+      driver.fail('Max slippage label overlaps its input')
+    }
     await driver.screenshot(tradePage, '10a1-trade-market-advanced-automatic.png')
     await tradePage.getByRole('button', { name: /Advanced/ }).click()
 
@@ -96,7 +102,9 @@ export const tradeTicketStage: VisualStage = {
     if ((await limitPrice.getAttribute('aria-required')) !== 'true') {
       driver.fail('Standalone limit price is not marked required')
     }
-    if (await fieldPartsOverlap(limitPrice)) driver.fail('Limit price label overlaps its input')
+    if (await fieldPartsOverlap(limitPrice)) {
+      driver.fail('Limit price label overlaps its input')
+    }
 
     if ((await tradePage.getByLabel('Limit order type').count()) > 0) {
       driver.fail('Trade ticket still exposes the removed limit subtype selector')
@@ -104,7 +112,9 @@ export const tradeTicketStage: VisualStage = {
     await tradePage.getByRole('button', { name: /Advanced/ }).click()
     const timeInForce = tradePage.getByLabel('Time in force')
     await timeInForce.waitFor({ state: 'visible', timeout: 5_000 })
-    if ((await timeInForce.inputValue()) !== 'gtc') driver.fail('Time in force should default to GTC')
+    if ((await timeInForce.inputValue()) !== 'gtc') {
+      driver.fail('Time in force should default to GTC')
+    }
     await driver.screenshot(tradePage, '10e-trade-limit-advanced.png')
 
     await tradePage.getByRole('tab', { name: 'TP/SL' }).click()
@@ -129,13 +139,17 @@ export const tradeTicketStage: VisualStage = {
       ['Take-profit trigger', takeProfitTrigger],
       ['Take-profit limit', takeProfitLimit]
     ] as const) {
-      if (await fieldPartsOverlap(input)) driver.fail(`${name} label overlaps its input`)
+      if (await fieldPartsOverlap(input)) {
+        driver.fail(`${name} label overlaps its input`)
+      }
     }
     const triggerHasInnerOutline = await takeProfitTrigger.evaluate((input) => {
       const style = getComputedStyle(input)
       return Number.parseFloat(style.borderTopWidth) > 0 || style.boxShadow !== 'none'
     })
-    if (triggerHasInnerOutline) driver.fail('Invalid trigger input duplicates the Field error outline')
+    if (triggerHasInnerOutline) {
+      driver.fail('Invalid trigger input duplicates the Field error outline')
+    }
     await driver.screenshot(tradePage, '10f-trade-tp-sl.png')
 
     await tradePage.getByRole('tab', { name: 'Stop' }).click()
@@ -143,8 +157,12 @@ export const tradeTicketStage: VisualStage = {
     const stopLimit = tradePage.getByLabel('Stop limit price')
     await stopTrigger.waitFor({ state: 'visible', timeout: 5_000 })
     await stopLimit.waitFor({ state: 'visible', timeout: 5_000 })
-    if (await fieldPartsOverlap(stopTrigger)) driver.fail('Stop trigger label overlaps its input')
-    if (await fieldPartsOverlap(stopLimit)) driver.fail('Stop limit label overlaps its input')
+    if (await fieldPartsOverlap(stopTrigger)) {
+      driver.fail('Stop trigger label overlaps its input')
+    }
+    if (await fieldPartsOverlap(stopLimit)) {
+      driver.fail('Stop limit label overlaps its input')
+    }
     await driver.screenshot(tradePage, '10g-trade-stop.png')
 
     await tradePage.getByRole('tab', { name: 'TWAP' }).click()
@@ -165,7 +183,9 @@ export const tradeTicketStage: VisualStage = {
       ['TWAP limit', twapLimit],
       ['TWAP start', twapStart]
     ] as const) {
-      if (await fieldPartsOverlap(input)) driver.fail(`${name} label overlaps its input`)
+      if (await fieldPartsOverlap(input)) {
+        driver.fail(`${name} label overlaps its input`)
+      }
     }
     if ((await twapLimit.getAttribute('placeholder')) !== 'Market') {
       driver.fail('Optional TWAP limit should communicate market execution')
@@ -179,7 +199,9 @@ export const tradeTicketStage: VisualStage = {
       ['Segments', segments],
       ['Maximum price impact', maxPriceImpact]
     ] as const) {
-      if ((await input.inputValue()) !== '') driver.fail(`${name} should start empty for Automatic`)
+      if ((await input.inputValue()) !== '') {
+        driver.fail(`${name} should start empty for Automatic`)
+      }
       if ((await input.getAttribute('placeholder')) !== 'Automatic') {
         driver.fail(`${name} Automatic placeholder is missing`)
       }
@@ -190,7 +212,9 @@ export const tradeTicketStage: VisualStage = {
     await driver.waitForSideTrayRoute(tradePage, 'send')
     await tradePage.getByRole('textbox', { name: 'Recipient' }).waitFor({ state: 'visible', timeout: 15_000 })
     const resetSendAmount = await tradePage.getByRole('textbox', { name: 'Amount' }).inputValue()
-    if (resetSendAmount !== '1') driver.fail(`Send relaunch did not reset amount; found "${resetSendAmount}"`)
+    if (resetSendAmount !== '1') {
+      driver.fail(`Send relaunch did not reset amount; found "${resetSendAmount}"`)
+    }
     await driver.screenshot(tradePage, '10i-relaunch-send-reset.png')
 
     await driver.openSideTrayRoute(

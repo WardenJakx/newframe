@@ -30,7 +30,9 @@ export interface Chain {
 type Priority = 'primary' | 'secondary'
 
 const selectConnectionSettings = (chain: any) => {
-  if (!chain) return null
+  if (!chain) {
+    return null
+  }
 
   const { primary, secondary } = chain.connection
   return [
@@ -62,9 +64,12 @@ interface ConnectionState {
 const legacyChains = [250, 4002]
 
 const normalizeRpcError = (error: any) => {
-  if (typeof error === 'string') return { message: error, code: -1 }
-  if (error instanceof Error)
+  if (typeof error === 'string') {
+    return { message: error, code: -1 }
+  }
+  if (error instanceof Error) {
     return { message: error.message, code: (error as any).code || -1, data: (error as any).data }
+  }
   return error
 }
 
@@ -100,7 +105,7 @@ class ChainConnection extends EventEmitter {
     this.chainConfig = chainConfig(parseInt(this.chainId), 'istanbul')
 
     // TODO: maybe this can be tied into chain config somehow
-    this.gasCalculator = createGasCalculator(this.chainId as any)
+    this.gasCalculator = createGasCalculator(this.chainId)
 
     this.primary = {
       status: 'off',
@@ -139,7 +144,9 @@ class ChainConnection extends EventEmitter {
       do {
         this.reconcilePending = false
         const chain = this.store.getState().main.networks[this.type][Number(this.chainId)]
-        if (chain) this.connect(chain)
+        if (chain) {
+          this.connect(chain)
+        }
       } while (this.reconcilePending)
     } finally {
       this.reconciling = false
@@ -174,7 +181,9 @@ class ChainConnection extends EventEmitter {
     try {
       const chainId = await provider.send('eth_chainId', [])
 
-      if (this[priority].provider !== provider) return
+      if (this[priority].provider !== provider) {
+        return
+      }
 
       this[priority].network =
         typeof chainId === 'string' && chainId.startsWith('0x')
@@ -191,7 +200,9 @@ class ChainConnection extends EventEmitter {
         this._handleConnection(priority)
       }
     } catch (err) {
-      if (this[priority].provider !== provider) return
+      if (this[priority].provider !== provider) {
+        return
+      }
 
       this[priority].connected = false
       this[priority].type = ''
@@ -208,7 +219,9 @@ class ChainConnection extends EventEmitter {
   }
 
   private handleProviderClose(priority: Priority, provider?: EthersRpcProvider | null) {
-    if (provider && this[priority].provider !== provider) return
+    if (provider && this[priority].provider !== provider) {
+      return
+    }
 
     this[priority].connected = false
     this[priority].type = ''
@@ -399,14 +412,20 @@ class ChainConnection extends EventEmitter {
   }
 
   private getActiveProvider() {
-    if (this.primary.provider && this.primary.connected) return this.primary.provider
-    if (this.secondary.provider && this.secondary.connected) return this.secondary.provider
+    if (this.primary.provider && this.primary.connected) {
+      return this.primary.provider
+    }
+    if (this.secondary.provider && this.secondary.connected) {
+      return this.secondary.provider
+    }
     return null
   }
 
   async refreshGasFees() {
     const provider = this.getActiveProvider()
-    if (!provider) throw new Error(`No active provider for chain ${this.chainId}`)
+    if (!provider) {
+      throw new Error(`No active provider for chain ${this.chainId}`)
+    }
 
     const chainId = parseInt(this.chainId)
     const gasMonitor = new GasMonitor(provider)
@@ -465,7 +484,9 @@ export class Chains extends EventEmitter {
     const markConnectionInactive = (chainId: string, type: Chain['type'] = 'ethereum') => {
       const numericChainId = Number(chainId)
       const network = this.store.getState().main.networks[type][numericChainId]
-      if (!network) return
+      if (!network) {
+        return
+      }
 
       this.store.getState().setPrimary(type, numericChainId, {
         status: network.connection.primary.on ? 'disconnected' : 'off',
@@ -623,7 +644,9 @@ export class Chains extends EventEmitter {
   }
 
   start() {
-    if (this.started) return
+    if (this.started) {
+      return
+    }
     this.started = true
     try {
       this.startRuntime()

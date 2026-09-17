@@ -49,12 +49,16 @@ function selectedAddress(ports: ProfileServicePorts) {
 
 function publishSelectedAddressChange(previousAddress: string, ports: ProfileServicePorts) {
   const nextAddress = selectedAddress(ports)
-  if (nextAddress !== previousAddress) ports.provider.accountsChanged(nextAddress ? [nextAddress] : [])
+  if (nextAddress !== previousAddress) {
+    ports.provider.accountsChanged(nextAddress ? [nextAddress] : [])
+  }
 }
 
 function profileNameError(name: string, state: ProfileState, excludedProfileId = '') {
   const normalized = normalizedProfileName(name)
-  if (!normalized || normalized.length > 50) return 'invalid_name'
+  if (!normalized || normalized.length > 50) {
+    return 'invalid_name'
+  }
   if (
     Object.values(state.main.profiles).some(
       (profile) =>
@@ -95,7 +99,9 @@ export function createProfileService(ports: ProfileServicePorts) {
       id: command.operationId,
       type: command.type === 'account.update' ? 'account.profile-move' : command.type
     }
-    if (ports.operations.lookup(reference)) return true
+    if (ports.operations.lookup(reference)) {
+      return true
+    }
 
     try {
       ports.operations.start({
@@ -136,7 +142,9 @@ export function createProfileService(ports: ProfileServicePorts) {
       return run(command, owner, [{ type: 'profile', id: command.profileId }], () => {
         const state = ports.store.getState()
         const error = profileError(state, command.profileId)
-        if (error) return error
+        if (error) {
+          return error
+        }
 
         const previousAddress = selectedAddress(ports)
         state.selectProfile(command.profileId)
@@ -146,20 +154,28 @@ export function createProfileService(ports: ProfileServicePorts) {
 
     create(command: ProfileCreateCommand, owner: OperationOwner) {
       const reference: OperationReference = { owner, id: command.operationId, type: command.type }
-      if (ports.operations.lookup(reference)) return
+      if (ports.operations.lookup(reference)) {
+        return
+      }
 
       const state = ports.store.getState()
       let profileId = createProfileId()
-      while (state.main.profiles[profileId]) profileId = createProfileId()
+      while (state.main.profiles[profileId]) {
+        profileId = createProfileId()
+      }
 
       return run(command, owner, [{ type: 'profile', id: profileId }], () => {
         const current = ports.store.getState()
         const normalizedName = normalizedProfileName(command.name)
         const nameError = profileNameError(normalizedName, current)
-        if (nameError) return nameError
+        if (nameError) {
+          return nameError
+        }
 
         const accountIds = command.accountIds || []
-        if (accountIds.some((accountId) => !ports.accounts.get(accountId))) return 'account_not_found'
+        if (accountIds.some((accountId) => !ports.accounts.get(accountId))) {
+          return 'account_not_found'
+        }
 
         const previousAddress = selectedAddress(ports)
         current.createProfile(profileId, normalizedName, accountIds)
@@ -171,11 +187,15 @@ export function createProfileService(ports: ProfileServicePorts) {
       return run(command, owner, [{ type: 'profile', id: command.profileId }], () => {
         const state = ports.store.getState()
         const error = profileError(state, command.profileId)
-        if (error) return error
+        if (error) {
+          return error
+        }
 
         const normalizedName = normalizedProfileName(command.name)
         const nameError = profileNameError(normalizedName, state, command.profileId)
-        if (nameError) return nameError
+        if (nameError) {
+          return nameError
+        }
         state.renameProfile(command.profileId, normalizedName)
       })
     },
@@ -184,8 +204,12 @@ export function createProfileService(ports: ProfileServicePorts) {
       return run(command, owner, [{ type: 'profile', id: command.profileId }], () => {
         const state = ports.store.getState()
         const error = profileError(state, command.profileId)
-        if (error) return error
-        if (state.main.profileOrder.length === 1) return 'final_profile'
+        if (error) {
+          return error
+        }
+        if (state.main.profileOrder.length === 1) {
+          return 'final_profile'
+        }
         if (Object.values(state.main.accounts).some((account) => account.profileId === command.profileId)) {
           return 'profile_not_empty'
         }
@@ -207,10 +231,16 @@ export function createProfileService(ports: ProfileServicePorts) {
         () => {
           const state = ports.store.getState()
           const account = ports.accounts.get(command.accountId)
-          if (!account) return 'account_not_found'
+          if (!account) {
+            return 'account_not_found'
+          }
           const error = profileError(state, command.profileId)
-          if (error) return error
-          if (state.main.accounts[command.accountId]?.profileId === command.profileId) return 'same_profile'
+          if (error) {
+            return error
+          }
+          if (state.main.accounts[command.accountId]?.profileId === command.profileId) {
+            return 'same_profile'
+          }
 
           const previousAddress = selectedAddress(ports)
           state.moveAccountToProfile(command.accountId, command.profileId)
@@ -223,10 +253,14 @@ export function createProfileService(ports: ProfileServicePorts) {
       const { main } = ports.store.getState()
       const seen = new Set<string>()
       const accounts = [...main.accountOrder, ...Object.keys(main.accounts)].flatMap((id) => {
-        if (seen.has(id)) return []
+        if (seen.has(id)) {
+          return []
+        }
         const account = ports.accounts.get(id)
         const canonicalAccount = main.accounts[id]
-        if (!account || !canonicalAccount) return []
+        if (!account || !canonicalAccount) {
+          return []
+        }
         seen.add(id)
         return [
           {

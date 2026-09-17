@@ -33,14 +33,22 @@ export function normalizeRequestChainId(chainId: unknown) {
     return `0x${value.toString(16)}`
   }
 
-  if (typeof value !== 'string' || !value) return undefined
+  if (typeof value !== 'string' || !value) {
+    return undefined
+  }
 
   const trimmed = value.trim()
   const caipMatch = trimmed.match(caipChainIdRegex)
 
-  if (caipMatch?.[1]) return `0x${Number.parseInt(caipMatch[1], 10).toString(16)}`
-  if (hexChainIdRegex.test(trimmed)) return `0x${Number.parseInt(trimmed, 16).toString(16)}`
-  if (decimalChainIdRegex.test(trimmed)) return `0x${Number.parseInt(trimmed, 10).toString(16)}`
+  if (caipMatch?.[1]) {
+    return `0x${Number.parseInt(caipMatch[1], 10).toString(16)}`
+  }
+  if (hexChainIdRegex.test(trimmed)) {
+    return `0x${Number.parseInt(trimmed, 16).toString(16)}`
+  }
+  if (decimalChainIdRegex.test(trimmed)) {
+    return `0x${Number.parseInt(trimmed, 10).toString(16)}`
+  }
 
   return trimmed
 }
@@ -49,7 +57,9 @@ type RequestHeaders = Record<string, string | string[] | undefined>
 
 export function chainIdFromRequest(headers: RequestHeaders, requestUrl = '/') {
   const headerChainId = normalizeRequestChainId(headers['x-newframe-chain-id'] || headers['x-frame-chain-id'])
-  if (headerChainId) return headerChainId
+  if (headerChainId) {
+    return headerChainId
+  }
 
   try {
     const url = new URL(requestUrl, 'http://127.0.0.1')
@@ -74,7 +84,9 @@ export function parseExtensionIdentity({
     (id) => origin === `${extensionPrefixes.chrome}://${id}`
   )
 
-  if (chromeExtensionId) return { browser: 'chrome', id: chromeExtensionId }
+  if (chromeExtensionId) {
+    return { browser: 'chrome', id: chromeExtensionId }
+  }
 
   if (origin.startsWith(`${extensionPrefixes.chrome}://`) && hasExtensionIdentity) {
     return {
@@ -123,7 +135,9 @@ export function projectOriginUpdate({
   const chainId = requestedChainId || `0x${defaultChainId.toString(16)}`
   const projectedPayload = { ...payload, _origin: originId }
 
-  if (payload.chainId || connectionMessage) projectedPayload.chainId = chainId
+  if (payload.chainId || connectionMessage) {
+    projectedPayload.chainId = chainId
+  }
 
   let mutation: OriginMutation | undefined
   if (!connectionMessage) {
@@ -156,9 +170,17 @@ export function decideOriginAuthorization({
   providerPermission?: boolean
   hasInternalStateCapability: boolean
 }): OriginAuthorizationDecision {
-  if (method === 'wallet_getEthereumChains' && hasInternalStateCapability) return 'allow'
-  if (!isValidOriginName(originName) || !accountSelected) return 'deny'
-  if (method === 'eth_accounts' && providerPermission !== true) return 'deny'
-  if (providerPermission === undefined) return 'prompt'
+  if (method === 'wallet_getEthereumChains' && hasInternalStateCapability) {
+    return 'allow'
+  }
+  if (!isValidOriginName(originName) || !accountSelected) {
+    return 'deny'
+  }
+  if (method === 'eth_accounts' && providerPermission !== true) {
+    return 'deny'
+  }
+  if (providerPermission === undefined) {
+    return 'prompt'
+  }
   return providerPermission ? 'allow' : 'deny'
 }

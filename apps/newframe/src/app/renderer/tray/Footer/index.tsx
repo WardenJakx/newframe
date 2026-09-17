@@ -80,7 +80,9 @@ export function Footer({ capabilities, notify, shared, step, onContinue }: Foote
       typeof ResizeObserver !== 'undefined' && footerRef.current
         ? new ResizeObserver(updateFooterHeight)
         : undefined
-    if (footerRef.current) observer?.observe(footerRef.current)
+    if (footerRef.current) {
+      observer?.observe(footerRef.current)
+    }
 
     return () => {
       observer?.disconnect()

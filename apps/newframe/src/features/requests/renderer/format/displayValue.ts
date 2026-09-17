@@ -114,12 +114,7 @@ export function displayValueData(
   sourceValue: SourceValue,
   params?: DisplayValueDataParams
 ): DisplayValueData {
-  const {
-    currencyRate,
-    decimals = 18,
-    isTestnet = false,
-    displayFullValue = false
-  } = (params || {}) as DisplayValueDataParams
+  const { currencyRate, decimals = 18, isTestnet = false, displayFullValue = false } = params || {}
 
   const bn = sourceValue === undefined || sourceValue === null ? undefined : toBigInt(sourceValue)
 
@@ -161,7 +156,9 @@ export function displayValueData(
       }
 
       const getDisplayedDecimals = () => {
-        if (!displayDecimals) return 0
+        if (!displayDecimals) {
+          return 0
+        }
 
         const numNonDecimals = (bn / 10n ** BigInt(decimals)).toString().replace('-', '').length
         const isFraction = bn / 10n ** BigInt(decimals) === 0n

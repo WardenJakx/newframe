@@ -148,7 +148,9 @@ function nowIso() {
 
 function jsonResponse(payload: unknown, status = 200, headers?: HeadersInit) {
   const responseHeaders = new Headers(headers)
-  if (!responseHeaders.has('content-type')) responseHeaders.set('content-type', 'application/json')
+  if (!responseHeaders.has('content-type')) {
+    responseHeaders.set('content-type', 'application/json')
+  }
   return new Response(JSON.stringify(payload), {
     status,
     headers: responseHeaders
@@ -178,16 +180,22 @@ function objectRecord(value: unknown): Record<string, any> {
 }
 
 function cleanOptionalAmount(amount: unknown, label: string) {
-  if (amount === undefined || amount === null || amount === '') return ''
+  if (amount === undefined || amount === null || amount === '') {
+    return ''
+  }
 
   const clean = cleanFlashDecimal(amount)
-  if (!positiveFlashNumber(clean)) validationError(`Local Flash ${label} must be a positive decimal`)
+  if (!positiveFlashNumber(clean)) {
+    validationError(`Local Flash ${label} must be a positive decimal`)
+  }
 
   return clean
 }
 
 function optionalProtection(value: unknown, label: string) {
-  if (value === undefined || value === null || value === '') return undefined
+  if (value === undefined || value === null || value === '') {
+    return undefined
+  }
 
   const clean = cleanFlashDecimal(value)
   const parsed = Number(clean)
@@ -199,7 +207,9 @@ function optionalProtection(value: unknown, label: string) {
 }
 
 function optionalTime(value: unknown, field: 'expireTime' | 'startTime') {
-  if (value === undefined || value === null || value === '') return undefined
+  if (value === undefined || value === null || value === '') {
+    return undefined
+  }
   if (typeof value !== 'string' || !value.trim() || !Number.isFinite(Date.parse(value))) {
     validationError(`Local Flash ${field} must be a valid ISO-8601 timestamp`)
   }
@@ -219,15 +229,21 @@ function integerField(value: unknown, label: string, minimum: number, maximum?: 
 }
 
 function localTriggers(value: unknown): LocalTrigger[] {
-  if (value === undefined || value === null) return []
-  if (!Array.isArray(value)) validationError('Local Flash triggers must be an array')
+  if (value === undefined || value === null) {
+    return []
+  }
+  if (!Array.isArray(value)) {
+    validationError('Local Flash triggers must be an array')
+  }
 
   return value.map((trigger, index) => {
     const record = objectRecord(trigger)
     const notionalPrice = cleanOptionalAmount(record.notionalPrice, `triggers[${index}].notionalPrice`)
     const triggerType = record.triggerType
 
-    if (!notionalPrice) validationError(`Local Flash triggers[${index}].notionalPrice is required`)
+    if (!notionalPrice) {
+      validationError(`Local Flash triggers[${index}].notionalPrice is required`)
+    }
     if (triggerType !== 'lower' && triggerType !== 'upper') {
       validationError(`Local Flash triggers[${index}].triggerType must be lower or upper`)
     }
@@ -237,7 +253,9 @@ function localTriggers(value: unknown): LocalTrigger[] {
 }
 
 function ensureNoTriggers(triggers: LocalTrigger[], orderType: FlashOrderType) {
-  if (triggers.length) validationError(`Local Flash triggers are not allowed for ${orderType}`)
+  if (triggers.length) {
+    validationError(`Local Flash triggers are not allowed for ${orderType}`)
+  }
 }
 
 function ensureNoTwapFields(body: Record<string, any>, orderType: FlashOrderType) {
@@ -263,21 +281,33 @@ function validateOrderParameters(body: Record<string, any>, orderType: FlashOrde
   if (orderType === FLASH_MARKET_ORDER_TYPE) {
     ensureNoTriggers(triggers, orderType)
     ensureNoTwapFields(body, orderType)
-    if (limitNotionalPrice) validationError('Local Flash limitNotionalPrice is not allowed for market')
-    if (expireTime) validationError('Local Flash expireTime is not allowed for market')
-    if (startTime) validationError('Local Flash startTime is not allowed for market')
+    if (limitNotionalPrice) {
+      validationError('Local Flash limitNotionalPrice is not allowed for market')
+    }
+    if (expireTime) {
+      validationError('Local Flash expireTime is not allowed for market')
+    }
+    if (startTime) {
+      validationError('Local Flash startTime is not allowed for market')
+    }
   }
 
   if (orderType === FLASH_LIMIT_ORDER_TYPE) {
     ensureNoTriggers(triggers, orderType)
     ensureNoTwapFields(body, orderType)
-    if (!limitNotionalPrice) validationError('Local Flash limitNotionalPrice is required for limit')
-    if (startTime) validationError('Local Flash startTime is not allowed for limit')
+    if (!limitNotionalPrice) {
+      validationError('Local Flash limitNotionalPrice is required for limit')
+    }
+    if (startTime) {
+      validationError('Local Flash startTime is not allowed for limit')
+    }
   }
 
   if (orderType === FLASH_TWAP_ORDER_TYPE) {
     ensureNoTriggers(triggers, orderType)
-    if (expireTime) validationError('Local Flash expireTime is not allowed for TWAP')
+    if (expireTime) {
+      validationError('Local Flash expireTime is not allowed for TWAP')
+    }
     if (startTime && Date.parse(startTime) <= Date.now()) {
       validationError('Local Flash startTime must be in the future')
     }
@@ -303,8 +333,12 @@ function validateOrderParameters(body: Record<string, any>, orderType: FlashOrde
     orderType === FLASH_TAKE_PROFIT_ORDER_TYPE
   ) {
     ensureNoTwapFields(body, orderType)
-    if (startTime) validationError(`Local Flash startTime is not allowed for ${orderType}`)
-    if (triggers.length !== 1) validationError(`Local Flash ${orderType} requires exactly one trigger`)
+    if (startTime) {
+      validationError(`Local Flash startTime is not allowed for ${orderType}`)
+    }
+    if (triggers.length !== 1) {
+      validationError(`Local Flash ${orderType} requires exactly one trigger`)
+    }
 
     const expected =
       orderType === FLASH_STOP_ORDER_TYPE
@@ -333,7 +367,9 @@ function validateOrderParameters(body: Record<string, any>, orderType: FlashOrde
 }
 
 function formatDecimal(value: number, decimals: number) {
-  if (!Number.isFinite(value) || value <= 0) return '0'
+  if (!Number.isFinite(value) || value <= 0) {
+    return '0'
+  }
   return value
     .toFixed(decimals)
     .replace(/\.?0+$/, '')
@@ -349,7 +385,9 @@ function quantityHex(value: bigint) {
 }
 
 function checksumAddress(address: string, label: string) {
-  if (!isAddress(address)) throw new Error(`Invalid ${label} address`)
+  if (!isAddress(address)) {
+    throw new Error(`Invalid ${label} address`)
+  }
 
   return getAddress(address)
 }
@@ -359,7 +397,9 @@ function localAssetFromAddress(chain: unknown, address: unknown, label: string) 
     .trim()
     .toLowerCase()
   const chainId = getFlashChainIdFromSlug(chainSlug)
-  if (!chainId) throw new Error(`Unsupported local Flash ${label} chain`)
+  if (!chainId) {
+    throw new Error(`Unsupported local Flash ${label} chain`)
+  }
 
   const normalized = String(address || '')
     .trim()
@@ -368,13 +408,17 @@ function localAssetFromAddress(chain: unknown, address: unknown, label: string) 
     return toFlashApiAssetAddress(candidate).toLowerCase() === normalized
   })
 
-  if (!asset) throw new Error(`Unsupported local Flash ${label} asset`)
+  if (!asset) {
+    throw new Error(`Unsupported local Flash ${label} asset`)
+  }
 
   return asset
 }
 
 function localSide(side: unknown): FlashTradeSide {
-  if (side === 'buy' || side === 'sell') return side
+  if (side === 'buy' || side === 'sell') {
+    return side
+  }
 
   throw new Error('Unsupported local Flash trade side')
 }
@@ -391,7 +435,9 @@ function localOrderType(orderType: unknown): FlashOrderType {
     FLASH_BRACKET_ORDER_TYPE
   ]
 
-  if (supported.includes(value as FlashOrderType)) return value as FlashOrderType
+  if (supported.includes(value)) {
+    return value as FlashOrderType
+  }
 
   throw new Error('Unsupported local Flash order type')
 }
@@ -406,20 +452,28 @@ function settlementSpentAsset(spentAsset: FlashAsset) {
 function settlementInputToken(spentAsset: FlashAsset) {
   const asset = settlementSpentAsset(spentAsset)
 
-  if (!asset.address) throw new Error(`Cannot settle unsupported input asset ${asset.symbol}`)
+  if (!asset.address) {
+    throw new Error(`Cannot settle unsupported input asset ${asset.symbol}`)
+  }
 
   return checksumAddress(asset.address, `${asset.symbol} token`)
 }
 
 function settlementOutputToken(receiveAsset: FlashAsset) {
-  if (receiveAsset.isNative) return FLASH_NATIVE_ETH_TOKEN_ADDRESS
-  if (!receiveAsset.address) throw new Error(`Cannot settle unsupported output asset ${receiveAsset.symbol}`)
+  if (receiveAsset.isNative) {
+    return FLASH_NATIVE_ETH_TOKEN_ADDRESS
+  }
+  if (!receiveAsset.address) {
+    throw new Error(`Cannot settle unsupported output asset ${receiveAsset.symbol}`)
+  }
 
   return checksumAddress(receiveAsset.address, `${receiveAsset.symbol} token`)
 }
 
 async function readAllowance(asset: FlashAsset, owner: string, spender: string) {
-  if (!asset.address) throw new Error(`Cannot check allowance for ${asset.symbol}`)
+  if (!asset.address) {
+    throw new Error(`Cannot check allowance for ${asset.symbol}`)
+  }
 
   try {
     const result = await provider().call({
@@ -475,13 +529,17 @@ async function buildApprovalAction({
   spentAsset: FlashAsset
 }): Promise<FlashQuoteAction | null> {
   const settlementAsset = settlementSpentAsset(spentAsset)
-  if (settlementAsset.isNative || !settlementAsset.address) return null
+  if (settlementAsset.isNative || !settlementAsset.address) {
+    return null
+  }
 
   const owner = checksumAddress(accountAddress, 'funder')
   const spender = checksumAddress(LOCAL_MOCK_FLASH_SETTLEMENT_ADDRESS, 'settlement')
   const allowance = await readAllowance(settlementAsset, owner, spender)
 
-  if (allowance >= amountRaw) return null
+  if (allowance >= amountRaw) {
+    return null
+  }
 
   return {
     id: 'approval',
@@ -652,7 +710,9 @@ async function buildQuote(body: Record<string, any>) {
   const qty = cleanFlashDecimal(body.qty || body.inputAmount)
   const amount = positiveFlashNumber(qty)
 
-  if (!amount) validationError('Local Flash quote requires a positive qty')
+  if (!amount) {
+    validationError('Local Flash quote requires a positive qty')
+  }
 
   const spentAsset = getSpentAsset({ side, targetAsset, contraAsset })
   const receiveAsset = getReceiveAsset({ side, targetAsset, contraAsset })
@@ -878,7 +938,9 @@ function validateSubmitBody(quoteRecord: LocalQuoteRecord, body: Record<string, 
   }
 
   for (const [field, expected] of Object.entries(expectedFields)) {
-    if (expected === undefined && body[field] === undefined) continue
+    if (expected === undefined && body[field] === undefined) {
+      continue
+    }
     if (JSON.stringify(body[field]) !== JSON.stringify(expected)) {
       validationError(`Local Flash submit ${field} must match the quote request`)
     }
@@ -943,7 +1005,9 @@ function storeOrder(quoteRecord: LocalQuoteRecord, body: Record<string, any>) {
 
 async function fillMarketOrder(orderId: string) {
   const order = orders.get(orderId)
-  if (order?.status !== 'accepted' || order.orderType !== FLASH_MARKET_ORDER_TYPE) return
+  if (order?.status !== 'accepted' || order.orderType !== FLASH_MARKET_ORDER_TYPE) {
+    return
+  }
 
   try {
     const quote = order.quote
@@ -968,7 +1032,9 @@ async function fillMarketOrder(orderId: string) {
     })
     const receipt = await tx.wait(1)
 
-    if (receipt?.status !== 1) throw new Error(`Local Flash settlement failed: ${tx.hash}`)
+    if (receipt?.status !== 1) {
+      throw new Error(`Local Flash settlement failed: ${tx.hash}`)
+    }
 
     persistOrder({
       ...order,
@@ -994,7 +1060,9 @@ async function fillMarketOrder(orderId: string) {
 function parseOrderRoute(pathname: string) {
   const match = pathname.match(/^\/v1\/orders\/([^/]+)(?:\/(cancel))?$/)
 
-  if (!match) return null
+  if (!match) {
+    return null
+  }
 
   return {
     orderId: decodeURIComponent(match[1]),
@@ -1006,7 +1074,9 @@ function filterOrders(url: URL) {
   const funder = String(url.searchParams.get('funderAddress') || '')
     .trim()
     .toLowerCase()
-  if (!funder) validationError('Local Flash order list requires funderAddress')
+  if (!funder) {
+    validationError('Local Flash order list requires funderAddress')
+  }
 
   const statuses = new Set(
     String(url.searchParams.get('statuses') || '')
@@ -1024,8 +1094,12 @@ function filterOrders(url: URL) {
 
   return Array.from(orders.values())
     .filter((order) => {
-      if (funder && order.accountAddress.toLowerCase() !== funder) return false
-      if (statuses.size && !statuses.has(order.status)) return false
+      if (funder && order.accountAddress.toLowerCase() !== funder) {
+        return false
+      }
+      if (statuses.size && !statuses.has(order.status)) {
+        return false
+      }
       return true
     })
     .slice(0, pageSize)
@@ -1061,8 +1135,12 @@ export async function handleLocalTradeRequest(req: Request) {
       const quoteReference = String(body.quoteId || body.bridgeQuoteId || '')
       const quoteRecord = quotes.get(quoteReference)
 
-      if (!quoteRecord) return errorResponse(`Unknown local Flash quote: ${quoteReference}`, 404)
-      if (!body.userSignature) return errorResponse('Local Flash submit requires userSignature', 400)
+      if (!quoteRecord) {
+        return errorResponse(`Unknown local Flash quote: ${quoteReference}`, 404)
+      }
+      if (!body.userSignature) {
+        return errorResponse('Local Flash submit requires userSignature', 400)
+      }
       validateSubmitBody(quoteRecord, body)
 
       const order = storeOrder(quoteRecord, body)
@@ -1084,8 +1162,12 @@ export async function handleLocalTradeRequest(req: Request) {
         .trim()
         .toLowerCase()
 
-      if (!order) return errorResponse(`Unknown local Flash order: ${orderRoute.orderId}`, 404)
-      if (!funderAddress) return errorResponse('Local Flash order lookup requires funderAddress', 400)
+      if (!order) {
+        return errorResponse(`Unknown local Flash order: ${orderRoute.orderId}`, 404)
+      }
+      if (!funderAddress) {
+        return errorResponse('Local Flash order lookup requires funderAddress', 400)
+      }
       if (order.accountAddress.toLowerCase() !== funderAddress) {
         return errorResponse(`Unknown local Flash order: ${orderRoute.orderId}`, 404)
       }
@@ -1098,14 +1180,21 @@ export async function handleLocalTradeRequest(req: Request) {
       const body = await readJson(req)
       const cancelMessage = `Definitive Flash v1 — Cancel Order\nOrder: ${orderRoute.orderId}`
 
-      if (!order) return errorResponse(`Unknown local Flash order: ${orderRoute.orderId}`, 404)
+      if (!order) {
+        return errorResponse(`Unknown local Flash order: ${orderRoute.orderId}`, 404)
+      }
       if (body.cancelMessage !== cancelMessage) {
         return errorResponse('Local Flash cancelMessage does not match the canonical order message', 400)
       }
-      if (!body.userSignature) return errorResponse('Local Flash cancel requires userSignature', 400)
-      if (order.status === 'cancelled')
+      if (!body.userSignature) {
+        return errorResponse('Local Flash cancel requires userSignature', 400)
+      }
+      if (order.status === 'cancelled') {
         return jsonResponse({ orderId: order.orderId, order: orderResponse(order) })
-      if (!order.open || !order.cancellable) return errorResponse('Local Flash order is not cancellable', 409)
+      }
+      if (!order.open || !order.cancellable) {
+        return errorResponse('Local Flash order is not cancellable', 409)
+      }
 
       const nextOrder: LocalOrderRecord = {
         ...order,

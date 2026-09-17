@@ -47,7 +47,9 @@ function RecoveryActions({
   const status = signer.status.toLowerCase()
 
   const submitPin = () => {
-    if (!trezorPin) return
+    if (!trezorPin) {
+      return
+    }
     void capability.inputSignerSession({
       operationId,
       actionId: crypto.randomUUID(),
@@ -68,7 +70,9 @@ function RecoveryActions({
     setTrezorPassphrase('')
   }
   const inputSignerSession = () => {
-    if (!latticePairCode) return
+    if (!latticePairCode) {
+      return
+    }
     void capability.inputSignerSession({
       input: 'pair-code',
       operationId,
@@ -79,7 +83,9 @@ function RecoveryActions({
     setLatticePairCode('')
   }
 
-  if (status === 'ok') return null
+  if (status === 'ok') {
+    return null
+  }
 
   if (signer.type === 'trezor' && status === 'need pin') {
     return (
@@ -173,7 +179,9 @@ function RecoveryActions({
     )
   }
 
-  if (signerIsLoading(status)) return <Spinner label='Connecting hardware wallet' size='large' />
+  if (signerIsLoading(status)) {
+    return <Spinner label='Connecting hardware wallet' size='large' />
+  }
 
   const canReload = signer.type !== 'trezor' || status === 'disconnected' || status.includes('reconnect')
   return canReload ? (
@@ -212,17 +220,23 @@ export default function SignerRecovery({
   }
 
   useEffect(() => {
-    if (!signer || sessionRef.current?.signerId === signer.id) return
+    if (!signer || sessionRef.current?.signerId === signer.id) {
+      return
+    }
     const signerId = signer.id
     queueMicrotask(() => {
-      if (sessionRef.current?.signerId !== signerId) startSession(signerId)
+      if (sessionRef.current?.signerId !== signerId) {
+        startSession(signerId)
+      }
     })
     // The signer ID is the session bootstrap key; startSession uses the current session ref.
     // oxlint-disable-next-line react/exhaustive-deps
   }, [signer?.id])
 
   function selectSigner(signerId: string) {
-    if (signerId === signer?.id) return
+    if (signerId === signer?.id) {
+      return
+    }
     startSession(signerId)
     setSelectedId(signerId)
   }

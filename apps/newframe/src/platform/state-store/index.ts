@@ -41,7 +41,9 @@ export interface CanonicalPersistenceDependencies {
 let persistenceService: PersistenceLifecycle | undefined
 
 export function createCanonicalPersistenceService({ storage, scheduler }: CanonicalPersistenceDependencies) {
-  if (persistenceService) throw new Error('Canonical persistence has already been configured.')
+  if (persistenceService) {
+    throw new Error('Canonical persistence has already been configured.')
+  }
 
   persistenceStorage.bind(storage)
   persistenceService = createPersistenceService({

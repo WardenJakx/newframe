@@ -31,7 +31,9 @@ describe('origin value rules', () => {
       [undefined, 'Unknown']
     ] as const
 
-    for (const [origin, expected] of cases) expect(parseOriginName(origin)).toBe(expected)
+    for (const [origin, expected] of cases) {
+      expect(parseOriginName(origin)).toBe(expected)
+    }
   })
 
   it('normalizes numeric chain-id representations while preserving invalid values for rejection', () => {

@@ -41,18 +41,26 @@ export function useSafeQueue({
   const refreshScope = useRef<object | null>(null)
   useEffect(() => {
     refreshScope.current = {}
-    if (!hasSafe) return
+    if (!hasSafe) {
+      return
+    }
     let active = true
     void capabilities.safe
       .refresh({ accountId })
       .then((result) => {
-        if (active && !result.ok) setRefreshError(result.message || 'Could not refresh Safe queue')
+        if (active && !result.ok) {
+          setRefreshError(result.message || 'Could not refresh Safe queue')
+        }
       })
       .catch((error: unknown) => {
-        if (active) setRefreshError(error instanceof Error ? error.message : 'Could not refresh Safe queue')
+        if (active) {
+          setRefreshError(error instanceof Error ? error.message : 'Could not refresh Safe queue')
+        }
       })
       .finally(() => {
-        if (active) setRefreshing(false)
+        if (active) {
+          setRefreshing(false)
+        }
       })
     return () => {
       active = false
@@ -61,7 +69,9 @@ export function useSafeQueue({
   }, [accountId, capabilities.safe, hasSafe])
   const deployment = selection ? safe?.[String(selection.chainId)] : undefined
   const proposal = deployment?.pending?.find((item) => item.safeTxHash === selection?.hash)
-  if (selection && !proposal) setSelection(null)
+  if (selection && !proposal) {
+    setSelection(null)
+  }
   const chainId = deployment?.chainId
   const safeTxHash = proposal?.safeTxHash
   const owners = (deployment ? (account?.safeOwners?.[String(deployment.chainId)] ?? []) : []).filter(
@@ -141,13 +151,16 @@ export function useSafeQueue({
   }
   const generation = preview.generation
   useEffect(() => {
-    if (!scope || chainId === undefined || !safeTxHash) return
+    if (!scope || chainId === undefined || !safeTxHash) {
+      return
+    }
     let active = true
     const receive = (result: SafeProposalSimulation) => {
-      if (active)
+      if (active) {
         setPreview((current) =>
           current.scope === scope && current.generation === generation ? { ...current, result } : current
         )
+      }
     }
     void capabilities.safe.simulate({ accountId, chainId, safeTxHash }).then(receive, (error: unknown) => {
       receive({
@@ -234,11 +247,12 @@ export function useSafeQueue({
               const owner = owners.find(
                 (owner) => owner.accountId === accountId && owner.status !== 'watch-only'
               )
-              if (owner)
+              if (owner) {
                 setOwnerSelection({
                   scope: ownerScope,
                   account: { accountId: owner.accountId, created: owner.created }
                 })
+              }
             },
             simulation: preview.scope === scope ? preview.result : { status: 'loading' as const },
             capabilities,
@@ -273,15 +287,19 @@ export function useSafeQueue({
         void capabilities.safe
           .refresh({ accountId, force: true })
           .then((result) => {
-            if (scope === refreshScope.current && !result.ok)
+            if (scope === refreshScope.current && !result.ok) {
               setRefreshError(result.message || 'Could not refresh requests')
+            }
           })
           .catch((error: unknown) => {
-            if (scope === refreshScope.current)
+            if (scope === refreshScope.current) {
               setRefreshError(error instanceof Error ? error.message : 'Could not refresh requests')
+            }
           })
           .finally(() => {
-            if (scope === refreshScope.current) setRefreshing(false)
+            if (scope === refreshScope.current) {
+              setRefreshing(false)
+            }
           })
       }
     }

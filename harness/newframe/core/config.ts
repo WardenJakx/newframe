@@ -8,7 +8,9 @@ export const contractsDir = path.join(rootDir, 'newframe-contracts')
 
 function positiveInteger(value: string | undefined, fallback: number, label: string) {
   const parsed = Number(value || fallback)
-  if (!Number.isInteger(parsed) || parsed <= 0) throw new Error(`Invalid ${label}: ${value}`)
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    throw new Error(`Invalid ${label}: ${value}`)
+  }
 
   return parsed
 }
@@ -49,7 +51,9 @@ export const passwordEnvKeys = ['NEWFRAME_HARNESS_PASSWORD', 'FRAME_HARNESS_PASS
 export function readHarnessPassword() {
   for (const key of passwordEnvKeys) {
     const value = process.env[key]
-    if (value) return value
+    if (value) {
+      return value
+    }
   }
 
   return ''
@@ -78,7 +82,9 @@ export function newframeEnv(overrides: NodeJS.ProcessEnv = {}): Record<string, s
   })
 
   delete env.ELECTRON_RUN_AS_NODE
-  for (const key of passwordEnvKeys) delete env[key]
+  for (const key of passwordEnvKeys) {
+    delete env[key]
+  }
 
   return env
 }

@@ -10,8 +10,11 @@ function stubGlobal(name: string, value: unknown) {
 
 afterEach(() => {
   for (const [name, descriptor] of originals) {
-    if (descriptor) Object.defineProperty(globalThis, name, descriptor)
-    else Reflect.deleteProperty(globalThis, name)
+    if (descriptor) {
+      Object.defineProperty(globalThis, name, descriptor)
+    } else {
+      Reflect.deleteProperty(globalThis, name)
+    }
   }
   originals.clear()
 })

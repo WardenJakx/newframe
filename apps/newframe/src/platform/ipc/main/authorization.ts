@@ -42,13 +42,17 @@ const samePath = (left: string, right: string) => {
 function isAllowedRendererUrl(entrypoint: RendererEntrypoint, value: string) {
   try {
     const target = new URL(value)
-    if (target.username || target.password || target.search) return false
+    if (target.username || target.password || target.search) {
+      return false
+    }
 
     if (target.protocol === 'http:' && process.env.NODE_ENV === 'development') {
       return target.origin === 'http://localhost:1234' && target.pathname === `/${entrypoint}/index.dev.html`
     }
 
-    if (target.protocol !== 'file:' || !process.env.BUNDLE_LOCATION) return false
+    if (target.protocol !== 'file:' || !process.env.BUNDLE_LOCATION) {
+      return false
+    }
 
     return samePath(fileURLToPath(target), path.join(process.env.BUNDLE_LOCATION, `${entrypoint}.html`))
   } catch {
@@ -72,16 +76,24 @@ export function createRendererAuthorizationRegistry(
       renderers.set(webContents.id, registration)
 
       webContents.once('destroyed', () => {
-        if (renderers.get(webContents.id) === registration) renderers.delete(webContents.id)
+        if (renderers.get(webContents.id) === registration) {
+          renderers.delete(webContents.id)
+        }
       })
     },
     authorizeRenderer(event) {
       const registration = renderers.get(event.sender.id)
-      if (!registration || registration.webContents !== event.sender || event.sender.isDestroyed()) return
+      if (!registration || registration.webContents !== event.sender || event.sender.isDestroyed()) {
+        return
+      }
 
       const frame = event.senderFrame
-      if (frame?.parent !== null || event.sender.mainFrame !== frame) return
-      if (!isAllowedRendererUrl(registration.entrypoint, frame.url)) return
+      if (frame?.parent !== null || event.sender.mainFrame !== frame) {
+        return
+      }
+      if (!isAllowedRendererUrl(registration.entrypoint, frame.url)) {
+        return
+      }
 
       return {
         clientType: registration.clientType,
@@ -91,12 +103,20 @@ export function createRendererAuthorizationRegistry(
       }
     },
     authorizeMedia({ webContents, requestingUrl, isMainFrame }) {
-      if (!webContents || !isMainFrame || !requestingUrl || webContents.isDestroyed()) return
+      if (!webContents || !isMainFrame || !requestingUrl || webContents.isDestroyed()) {
+        return
+      }
       const registration = renderers.get(webContents.id)
-      if (!registration || registration.webContents !== webContents) return
+      if (!registration || registration.webContents !== webContents) {
+        return
+      }
       const frame = webContents.mainFrame
-      if (frame?.parent !== null || frame.url !== requestingUrl) return
-      if (!isAllowedRendererUrl(registration.entrypoint, requestingUrl)) return
+      if (frame?.parent !== null || frame.url !== requestingUrl) {
+        return
+      }
+      if (!isAllowedRendererUrl(registration.entrypoint, requestingUrl)) {
+        return
+      }
       return {
         clientType: registration.clientType,
         entrypoint: registration.entrypoint,

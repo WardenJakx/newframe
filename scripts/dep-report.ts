@@ -124,8 +124,12 @@ if (args.why.length > 0) {
 
     const stdout = new TextDecoder().decode(why.stdout).trim()
     const stderr = new TextDecoder().decode(why.stderr).trim()
-    if (stdout) console.log(stdout)
-    if (stderr) console.error(stderr)
+    if (stdout) {
+      console.log(stdout)
+    }
+    if (stderr) {
+      console.error(stderr)
+    }
   }
 }
 
@@ -140,17 +144,22 @@ function parseArgs(argv: string[]) {
 
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index]
-    if (arg === '--help' || arg === '-h') parsed.help = true
-    else if (arg === '--json') parsed.json = true
-    else if (arg === '--no-size') parsed.skipSize = true
-    else if (arg === '--top') {
+    if (arg === '--help' || arg === '-h') {
+      parsed.help = true
+    } else if (arg === '--json') {
+      parsed.json = true
+    } else if (arg === '--no-size') {
+      parsed.skipSize = true
+    } else if (arg === '--top') {
       const value = argv[index + 1]
       index += 1
       parsed.top = parsePositiveInteger(value, '--top')
     } else if (arg === '--why') {
       const value = argv[index + 1]
       index += 1
-      if (!value) throw new Error('--why requires a package name')
+      if (!value) {
+        throw new Error('--why requires a package name')
+      }
       parsed.why.push(value)
     } else {
       throw new Error(`Unknown argument: ${arg}`)
@@ -185,7 +194,9 @@ function buildPackageGraph(lock: BunLock) {
       }
     }
 
-    if (!packageById.has(id)) packageById.set(id, node)
+    if (!packageById.has(id)) {
+      packageById.set(id, node)
+    }
     const namedPackages = packagesByName.get(name) ?? []
     namedPackages.push(node)
     packagesByName.set(name, namedPackages)
@@ -206,7 +217,9 @@ function collectDirectDependencies(
     for (const kind of kinds) {
       for (const [name, range] of Object.entries(workspace[kind] ?? {})) {
         const node = resolveDependency(packagesByName, name, range)
-        if (!node) continue
+        if (!node) {
+          continue
+        }
 
         const transitive = collectTransitiveDependencies(node, packagesByName)
         const approxBytes =
@@ -235,12 +248,16 @@ function collectTransitiveDependencies(node: PackageNode, packagesByName: Map<st
 
   while (stack.length > 0) {
     const current = stack.pop()
-    if (!current || seen.has(current.id)) continue
+    if (!current || seen.has(current.id)) {
+      continue
+    }
 
     seen.add(current.id)
     for (const [name, range] of Object.entries(current.dependencies)) {
       const next = resolveDependency(packagesByName, name, range)
-      if (next && !seen.has(next.id)) stack.push(next)
+      if (next && !seen.has(next.id)) {
+        stack.push(next)
+      }
     }
   }
 
@@ -282,10 +299,14 @@ async function readBunStore(storeRoot: string) {
   }
 
   for (const entry of entries) {
-    if (!entry.isDirectory() || entry.name === 'node_modules') continue
+    if (!entry.isDirectory() || entry.name === 'node_modules') {
+      continue
+    }
 
     const parsed = parseStoreDirectoryName(entry.name)
-    if (!parsed) continue
+    if (!parsed) {
+      continue
+    }
 
     const packageJsonPath = packageJsonPathForStorePackage(storeRoot, entry.name, parsed.name)
     const fromPackageJson = await readPackageIdentity(packageJsonPath)
@@ -341,8 +362,11 @@ async function directorySize(path: string): Promise<number> {
     const childPath = join(path, entry.name)
     try {
       const stat = await lstat(childPath)
-      if (stat.isDirectory()) total += await directorySize(childPath)
-      else total += stat.size
+      if (stat.isDirectory()) {
+        total += await directorySize(childPath)
+      } else {
+        total += stat.size
+      }
     } catch {
       // Ignore packages disappearing during an install.
     }
@@ -362,7 +386,9 @@ function splitPackageSpec(spec: string) {
 
 function parseStoreDirectoryName(directoryName: string) {
   const versionSeparator = directoryName.lastIndexOf('@')
-  if (versionSeparator <= 0) return null
+  if (versionSeparator <= 0) {
+    return null
+  }
 
   const encodedName = directoryName.slice(0, versionSeparator)
   const versionAndPeerHash = directoryName.slice(versionSeparator + 1)
@@ -388,15 +414,21 @@ function packageJsonPathForStorePackage(storeRoot: string, directoryName: string
 }
 
 function resolveDependency(packagesByName: Map<string, PackageNode[]>, name: string, range: string) {
-  if (range.startsWith('workspace:')) return null
+  if (range.startsWith('workspace:')) {
+    return null
+  }
 
   const candidates = packagesByName.get(name) ?? []
-  if (candidates.length === 0) return null
+  if (candidates.length === 0) {
+    return null
+  }
 
   const exact = candidates.find(
     (candidate) => candidate.version === range || candidate.id === `${name}@${range}`
   )
-  if (exact) return exact
+  if (exact) {
+    return exact
+  }
 
   const satisfying = candidates.filter((candidate) => satisfiesRange(candidate.version, range))
   const pool = satisfying.length > 0 ? satisfying : candidates
@@ -405,21 +437,37 @@ function resolveDependency(packagesByName: Map<string, PackageNode[]>, name: str
 }
 
 function satisfiesRange(version: string, range: string) {
-  if (!range || range === '*' || range === 'latest') return true
+  if (!range || range === '*' || range === 'latest') {
+    return true
+  }
 
   return range.split('||').some((rawPart) => {
     const part = rawPart.trim()
-    if (!part) return false
-    if (part.startsWith('^')) return satisfiesCaret(version, part.slice(1))
-    if (part.startsWith('~')) return satisfiesTilde(version, part.slice(1))
-    if (/^\d+(\.\d+)?(\.\d+)?$/.test(part)) return versionStartsWith(version, part)
+    if (!part) {
+      return false
+    }
+    if (part.startsWith('^')) {
+      return satisfiesCaret(version, part.slice(1))
+    }
+    if (part.startsWith('~')) {
+      return satisfiesTilde(version, part.slice(1))
+    }
+    if (/^\d+(\.\d+)?(\.\d+)?$/.test(part)) {
+      return versionStartsWith(version, part)
+    }
 
     const comparator = part.match(/^(>=|>|<=|<)\s*(.+)$/)
     if (comparator) {
       const comparison = compareVersions(version, comparator[2])
-      if (comparator[1] === '>=') return comparison >= 0
-      if (comparator[1] === '>') return comparison > 0
-      if (comparator[1] === '<=') return comparison <= 0
+      if (comparator[1] === '>=') {
+        return comparison >= 0
+      }
+      if (comparator[1] === '>') {
+        return comparison > 0
+      }
+      if (comparator[1] === '<=') {
+        return comparison <= 0
+      }
       return comparison < 0
     }
 
@@ -430,10 +478,16 @@ function satisfiesRange(version: string, range: string) {
 function satisfiesCaret(version: string, base: string) {
   const baseParts = numericVersionParts(base)
   const versionParts = numericVersionParts(version)
-  if (compareVersions(version, base) < 0) return false
+  if (compareVersions(version, base) < 0) {
+    return false
+  }
 
-  if (baseParts[0] > 0) return versionParts[0] === baseParts[0]
-  if (baseParts[1] > 0) return versionParts[0] === 0 && versionParts[1] === baseParts[1]
+  if (baseParts[0] > 0) {
+    return versionParts[0] === baseParts[0]
+  }
+  if (baseParts[1] > 0) {
+    return versionParts[0] === 0 && versionParts[1] === baseParts[1]
+  }
   return versionParts[0] === 0 && versionParts[1] === 0 && versionParts[2] === baseParts[2]
 }
 
@@ -477,7 +531,9 @@ function compareVersions(a: string, b: string) {
       return Number(aPart) - Number(bPart)
     }
 
-    if (aPart !== bPart) return aPart.localeCompare(bPart)
+    if (aPart !== bPart) {
+      return aPart.localeCompare(bPart)
+    }
   }
 
   return 0
@@ -501,7 +557,9 @@ function parsePositiveInteger(value: string | undefined, flag: string) {
 }
 
 function formatSize(bytes: number) {
-  if (bytes === 0) return 'n/a'
+  if (bytes === 0) {
+    return 'n/a'
+  }
   const units = ['B', 'KB', 'MB', 'GB']
   let value = bytes
   let unitIndex = 0

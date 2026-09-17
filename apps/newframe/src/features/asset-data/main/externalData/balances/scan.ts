@@ -143,5 +143,5 @@ export default function (eth: Eip1193Provider) {
 
       return ([] as TokenBalance[]).concat(...tokenBalances)
     }
-  } as BalanceLoader
+  }
 }

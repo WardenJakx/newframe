@@ -37,7 +37,9 @@ type DevelopmentProfileDependencies = {
 function runGit(arguments_: readonly string[], cwd: string): Promise<GitCommandResult> {
   return new Promise((resolve, reject) => {
     const environment = { ...process.env }
-    for (const variable of gitLocalEnvironmentVariables) delete environment[variable]
+    for (const variable of gitLocalEnvironmentVariables) {
+      delete environment[variable]
+    }
 
     const child = spawn('git', arguments_, {
       cwd,
@@ -59,7 +61,9 @@ function runGit(arguments_: readonly string[], cwd: string): Promise<GitCommandR
 }
 
 function commandOutput(result: GitCommandResult): string | undefined {
-  if (result.exitCode !== 0) return undefined
+  if (result.exitCode !== 0) {
+    return undefined
+  }
 
   const output = result.stdout.replace(/\r?\n$/, '')
   return output.length > 0 ? output : undefined
@@ -85,7 +89,9 @@ async function exists(target: string): Promise<boolean> {
     await lstat(target)
     return true
   } catch (error) {
-    if (isMissing(error)) return false
+    if (isMissing(error)) {
+      return false
+    }
     throw error
   }
 }
@@ -95,7 +101,9 @@ async function copyOptionalFile(
   destination: string,
   copy: (source: string, destination: string) => Promise<void>
 ): Promise<void> {
-  if (!(await exists(source))) return
+  if (!(await exists(source))) {
+    return
+  }
   await copy(source, destination)
 }
 
@@ -105,7 +113,9 @@ async function copyDirectory(
   copy: (source: string, destination: string) => Promise<void>,
   sourceStats: Stats
 ): Promise<void> {
-  if (!sourceStats.isDirectory()) throw new Error('Signer entry is not a directory')
+  if (!sourceStats.isDirectory()) {
+    throw new Error('Signer entry is not a directory')
+  }
 
   await mkdir(destination)
 
@@ -134,7 +144,9 @@ async function copyOptionalDirectory(
   try {
     sourceStats = await lstat(source)
   } catch (error) {
-    if (isMissing(error)) return
+    if (isMissing(error)) {
+      return
+    }
     throw error
   }
 
@@ -162,7 +174,9 @@ export async function prepareDevelopmentProfile(
     )
     if (branchResult.exitCode === 0) {
       branch = commandOutput(branchResult)
-      if (!branch) throw new Error('Git returned an empty branch')
+      if (!branch) {
+        throw new Error('Git returned an empty branch')
+      }
     } else if (branchResult.exitCode !== 1) {
       throw new Error('Git could not resolve HEAD')
     }
@@ -207,11 +221,15 @@ export async function prepareDevelopmentProfile(
     `${canonicalProfileName}--${label}-${identity}`
   )
 
-  if (await exists(profileDirectory)) return profileDirectory
+  if (await exists(profileDirectory)) {
+    return profileDirectory
+  }
 
   try {
     const canonicalStats = await stat(canonicalProfileDirectory)
-    if (!canonicalStats.isDirectory()) throw new Error('Canonical profile is not a directory')
+    if (!canonicalStats.isDirectory()) {
+      throw new Error('Canonical profile is not a directory')
+    }
   } catch {
     throw new Error(
       'Canonical development profile is missing; launch canonical main once before this checkout'

@@ -27,7 +27,9 @@ function tokensWithPrefix(tokens: Record<string, string>, prefix: string) {
 function semanticColor(name: SemanticColorName) {
   const reference = darkColorSemantics[name]
 
-  if (typeof reference === 'string') return { value: `{colors.${reference}}` }
+  if (typeof reference === 'string') {
+    return { value: `{colors.${reference}}` }
+  }
 
   return {
     value: `color-mix(in srgb, {colors.${reference.color}} ${reference.alpha * 100}%, transparent)`

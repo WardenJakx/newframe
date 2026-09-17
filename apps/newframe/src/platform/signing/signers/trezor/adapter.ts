@@ -30,7 +30,9 @@ export default class TrezorSignerAdapter extends SignerAdapter {
   }
 
   override open() {
-    if (this.opened) return
+    if (this.opened) {
+      return
+    }
     this.opened = true
 
     this.unsubscribeDerivation?.()
@@ -74,10 +76,14 @@ export default class TrezorSignerAdapter extends SignerAdapter {
         log.info(`Trezor ${trezor.id} connected: ${trezor.model}, firmware v${version}`)
 
         // arbitrary delay to attempt to minimize message conflicts on first connection
-        if (!this.opened) return
+        if (!this.opened) {
+          return
+        }
         const derivationTimeout = setTimeout(() => {
           this.derivationTimeouts.delete(derivationTimeout)
-          if (this.opened) trezor.deriveAddresses()
+          if (this.opened) {
+            trezor.deriveAddresses()
+          }
         }, 200)
         this.derivationTimeouts.add(derivationTimeout)
       } catch (e) {
@@ -195,7 +201,9 @@ export default class TrezorSignerAdapter extends SignerAdapter {
   }
 
   override close() {
-    if (!this.opened) return
+    if (!this.opened) {
+      return
+    }
     this.opened = false
 
     this.unsubscribeDerivation?.()
@@ -213,7 +221,9 @@ export default class TrezorSignerAdapter extends SignerAdapter {
 
   override remove(trezor: Trezor) {
     const initializationTimeout = this.initializationTimeouts.get(trezor.id)
-    if (initializationTimeout) clearTimeout(initializationTimeout)
+    if (initializationTimeout) {
+      clearTimeout(initializationTimeout)
+    }
     this.initializationTimeouts.delete(trezor.id)
 
     if (trezor.id in this.knownSigners) {
@@ -256,6 +266,8 @@ export default class TrezorSignerAdapter extends SignerAdapter {
   private withSigner(device: TrezorDevice, fn: (signer: Trezor) => void) {
     const signer = this.knownSigners[Trezor.generateId(device.path)]?.signer
 
-    if (signer) fn(signer)
+    if (signer) {
+      fn(signer)
+    }
   }
 }

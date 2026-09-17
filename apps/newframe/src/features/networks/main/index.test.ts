@@ -37,7 +37,9 @@ class MockConnection extends EventEmitter {
         } else if (method === 'eth_gasPrice') {
           return resolve(gasPrice)
         } else if (method === 'eth_feeHistory') {
-          if (feeHistoryError) return reject(feeHistoryError)
+          if (feeHistoryError) {
+            return reject(feeHistoryError)
+          }
 
           return resolve({
             baseFeePerGas: [gweiToHex(15), gweiToHex(8), gweiToHex(9), gweiToHex(8), gweiToHex(7)],

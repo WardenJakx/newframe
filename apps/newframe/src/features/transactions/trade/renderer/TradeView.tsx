@@ -119,7 +119,9 @@ export function TradeView({
   }
 
   const renderTradeOrderFields = () => {
-    if (state.orderType === FLASH_MARKET_ORDER_TYPE) return null
+    if (state.orderType === FLASH_MARKET_ORDER_TYPE) {
+      return null
+    }
 
     if (state.orderType === FLASH_LIMIT_ORDER_TYPE) {
       return (
@@ -451,7 +453,9 @@ export function TradeView({
 
   const renderTradeQuoteMeta = () => {
     const quote = model.quote
-    if (!quote) return null
+    if (!quote) {
+      return null
+    }
 
     return (
       <Stack gap='large'>

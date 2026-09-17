@@ -94,7 +94,9 @@ function fixture() {
     getRequest: <T extends AccountRequest>(requestId: string) => requests[requestId] as T,
     patchRequest(requestId: string, update: (request: AccountRequest) => void) {
       const request = requests[requestId]
-      if (!request) return
+      if (!request) {
+        return
+      }
       update(request)
       return request
     },
@@ -152,9 +154,9 @@ function fixture() {
       approveSign: mock(),
       approveSignTypedData: mock(),
       approveTransactionRequest
-    } as never,
+    },
     store: { getState: () => state } as never,
-    transactionPolicy: { signerCompatibility } as never,
+    transactionPolicy: { signerCompatibility },
     vault
   })
 
@@ -190,15 +192,25 @@ describe('prompted request lifecycle', () => {
     (condition) => {
       const request = transactionRequest('ineligible')
       test.add(request, mock())
-      if (condition === 'locked') request.locked = true
-      if (condition === 'pending') request.status = 'pending' as never
-      if (condition === 'settled') test.service.resolve(request, '0xhash')
+      if (condition === 'locked') {
+        request.locked = true
+      }
+      if (condition === 'pending') {
+        request.status = 'pending' as never
+      }
+      if (condition === 'settled') {
+        test.service.resolve(request, '0xhash')
+      }
       if (condition === 'app-locked') {
         test.vault.exists.mockReturnValue(true)
         test.vault.isUnlocked.mockReturnValue(false)
       }
-      if (condition === 'non-prompt') request.authorization!.decision = 'allow' as never
-      if (condition === 'signature') (request as AccountRequest).type = 'sign'
+      if (condition === 'non-prompt') {
+        request.authorization!.decision = 'allow' as never
+      }
+      if (condition === 'signature') {
+        ;(request as AccountRequest).type = 'sign'
+      }
       const original = structuredClone(request)
       expect(test.service.approve(request.handlerId, undefined, { nonce: '0x2' })).toBeFalse()
       expect(request).toEqual(original)
@@ -208,7 +220,7 @@ describe('prompted request lifecycle', () => {
 
   it('freezes accepted equal fees while a warning is pending and signs the stored candidate', () => {
     const request = transactionRequest('adjusted')
-    request.automaticFeeUpdateNotice = { previousFee: '0x1' } as never
+    request.automaticFeeUpdateNotice = { previousFee: '0x1' }
     test.add(request, mock())
     expect(test.service.approve(request.handlerId)).toBeTrue()
     const gate = request.approvalGate
@@ -425,8 +437,11 @@ it.each([
     expect(test.service.resolveAccess(request.handlerId, approved)).toBe(true)
     expect(respond).toHaveBeenCalledWith({ id: 17, jsonrpc: '2.0', result: target })
     expect(test.requests[request.handlerId]).toBeUndefined()
-    if (target === otherAccountId)
+    if (target === otherAccountId) {
       expect(test.account.setAccess).toHaveBeenCalledWith(request, true, otherAccountId)
-    if (!target) expect(test.account.setAccess).toHaveBeenCalledWith(request, false)
+    }
+    if (!target) {
+      expect(test.account.setAccess).toHaveBeenCalledWith(request, false)
+    }
   }
 )

@@ -167,7 +167,9 @@ function SignerCompatibilityWarning({ data, dismiss, home, mute, review }: Notif
   const { signer = '', tx = '' } = compatibility
 
   const proceed = () => {
-    if (!req) return
+    if (!req) {
+      return
+    }
     confirmWarning(review, req, 'signer-compatibility')
     dismiss()
   }
@@ -261,12 +263,14 @@ export default function Notification({
 
   if (state.extensionRequestData) {
     const { browser, id } = state.extensionRequestData
-    if (typeof browser !== 'string' || typeof id !== 'string') return null
+    if (typeof browser !== 'string' || typeof id !== 'string') {
+      return null
+    }
     return <ExtensionConnectNotification browser={browser} capability={connectionsCapability} id={id} />
   }
 
   const props: NotificationProps = {
-    data: local.data as NotificationData,
+    data: local.data,
     dismiss: local.notify,
     mute: state.mute,
     networks: state.networks,
@@ -277,12 +281,17 @@ export default function Notification({
     review
   }
 
-  if (local.type === 'gasFeeWarning') return <GasFeeWarning {...props} />
-  if (local.type === 'signerCompatibilityWarning') return <SignerCompatibilityWarning {...props} />
+  if (local.type === 'gasFeeWarning') {
+    return <GasFeeWarning {...props} />
+  }
+  if (local.type === 'signerCompatibilityWarning') {
+    return <SignerCompatibilityWarning {...props} />
+  }
   if (local.type === 'airgapSigning') {
     const { signerId, requestId, sessionId } = local.data
-    if (typeof signerId !== 'string' || typeof requestId !== 'string' || typeof sessionId !== 'string')
+    if (typeof signerId !== 'string' || typeof requestId !== 'string' || typeof sessionId !== 'string') {
       return null
+    }
     return (
       <Shell dismiss={local.notify}>
         <AirGapSigning
@@ -302,7 +311,9 @@ export default function Notification({
       </Shell>
     )
   }
-  if (local.type === 'openExplorer') return <OpenExplorer {...props} />
+  if (local.type === 'openExplorer') {
+    return <OpenExplorer {...props} />
+  }
   return null
 }
 

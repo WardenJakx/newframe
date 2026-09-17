@@ -1,5 +1,3 @@
-import type { ChildProcess } from 'node:child_process'
-
 import type { Electron, ElectronApplication } from 'playwright-core'
 
 import { appDir, electronExecutable, newframeEnv, ports } from '../core/config.ts'
@@ -14,7 +12,9 @@ type ElectronLaunchSettings = {
 
 export function electronLaunchSettings(options: ElectronLaunchSettings = {}) {
   const args = ['./compiled/src/main/bootstrap.js']
-  if (options.remoteDebugging) args.unshift(`--remote-debugging-port=${ports.cdp}`)
+  if (options.remoteDebugging) {
+    args.unshift(`--remote-debugging-port=${ports.cdp}`)
+  }
 
   return {
     args,
@@ -61,7 +61,9 @@ export class ElectronApplicationService implements HarnessService<ElectronApplic
   }
 
   async start() {
-    if (this.app) return this.app
+    if (this.app) {
+      return this.app
+    }
 
     await assertPortFree(ports.newframeRpc, 'Newframe RPC')
 
@@ -77,7 +79,9 @@ export class ElectronApplicationService implements HarnessService<ElectronApplic
 
     this.failure = new Promise<never>((_, reject) => {
       app.once('close', () => {
-        if (!this.stopping) reject(new Error('Newframe Electron closed unexpectedly'))
+        if (!this.stopping) {
+          reject(new Error('Newframe Electron closed unexpectedly'))
+        }
       })
     })
     this.failure.catch(() => undefined)
@@ -86,16 +90,20 @@ export class ElectronApplicationService implements HarnessService<ElectronApplic
   }
 
   async stop() {
-    if (!this.app) return
+    if (!this.app) {
+      return
+    }
     this.stopping = true
     const app = this.app
     this.app = undefined
-    const child = app.process() as ChildProcess
+    const child = app.process()
 
     await Promise.race([
       app.close().catch(() => undefined),
       sleep(3_000).then(() => {
-        if (child.exitCode === null) child.kill('SIGKILL')
+        if (child.exitCode === null) {
+          child.kill('SIGKILL')
+        }
       })
     ])
   }

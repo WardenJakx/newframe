@@ -26,7 +26,9 @@ const commandCalls = () => fixture.client.executeCommand.mock.calls as CommandCa
 const queryCalls = () => fixture.client.executeQuery.mock.calls as QueryCall[]
 const lastCommand = () => {
   const command = commandCalls().at(-1)?.[0]
-  if (!command) throw new Error('Expected a settings command')
+  if (!command) {
+    throw new Error('Expected a settings command')
+  }
   return command
 }
 let operations: Record<string, OperationRecord> = {}
@@ -108,7 +110,9 @@ describe('settings security operations', () => {
 
       await user.click(screen.getByRole('switch', { name: 'Biometric Login' }))
       const command = lastCommand()
-      if (command.type !== 'security.configure') throw new Error('Expected security configure command')
+      if (command.type !== 'security.configure') {
+        throw new Error('Expected security configure command')
+      }
       expect(command).toEqual({
         type: 'security.configure',
         operationId: expect.any(String),
@@ -186,7 +190,9 @@ describe('settings security operations', () => {
       })
       await user.click(screen.getByRole('switch', { name: 'Biometric Login' }))
       const configure = lastCommand()
-      if (configure.type !== 'security.configure') throw new Error('Expected security configure command')
+      if (configure.type !== 'security.configure') {
+        throw new Error('Expected security configure command')
+      }
       publishOperation(
         operation(configure.operationId, configure.type, 'failed', {
           code: 'biometrics_unavailable',
@@ -197,7 +203,9 @@ describe('settings security operations', () => {
 
       await user.click(screen.getByRole('button', { name: 'Lock Newframe' }))
       const lock = lastCommand()
-      if (lock.type !== 'wallet.lock') throw new Error('Expected wallet lock command')
+      if (lock.type !== 'wallet.lock') {
+        throw new Error('Expected wallet lock command')
+      }
       expect(lock).toEqual({ type: 'wallet.lock', operationId: expect.any(String) })
       publishOperation(operation(lock.operationId, lock.type, 'succeeded'))
       expect(onPostLockNavigation).not.toHaveBeenCalled()
@@ -211,7 +219,9 @@ describe('settings security operations', () => {
         scope: 'saved-data'
       })
       const savedReset = lastCommand()
-      if (savedReset.type !== 'wallet.reset') throw new Error('Expected wallet reset command')
+      if (savedReset.type !== 'wallet.reset') {
+        throw new Error('Expected wallet reset command')
+      }
       publishOperation(operation(savedReset.operationId, savedReset.type, 'succeeded'))
 
       await user.click(screen.getByRole('button', { name: 'Reset All Settings & Data' }))

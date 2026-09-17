@@ -68,7 +68,7 @@ const ownerAccount = (accountId: string, overrides: Partial<SafeOwnerAccount> = 
 it('opens owner QR for a future Safe proposal and follows publication retry without a signer', async () => {
   const owner = ownerAccount(`0x${'2'.repeat(40)}`, { signerType: 'airgap' })
   const initial = stateWithOwners([owner])
-  initial.accounts[address].safe!['1']!.pending![0]!.integrity = {
+  initial.accounts[address].safe!['1'].pending![0].integrity = {
     status: 'matched',
     reason: 'Hash matches.'
   }
@@ -94,7 +94,7 @@ it('opens owner QR for a future Safe proposal and follows publication retry with
   expect(screen.getByText('Waiting for earlier transactions')).toBeTruthy()
   await user.dblClick(screen.getByRole('button', { name: 'Sign' }))
   expect(capabilities.safe.confirm).toHaveBeenCalledTimes(1)
-  const command = capabilities.safe.confirm.mock.calls[0]![0]
+  const command = capabilities.safe.confirm.mock.calls[0][0]
   expect(command).toEqual({
     accountId: address,
     chainId: 1,
@@ -156,7 +156,7 @@ it('opens owner QR for a future Safe proposal and follows publication retry with
     progress('publication_failed', 'failed')
     const current = fixture.state.wallet.getState()
     const detached = structuredClone(current)
-    detached.accounts[address].safeOwners!['1']![0] = {
+    detached.accounts[address].safeOwners!['1'][0] = {
       ...owner,
       signerAttached: false,
       status: 'unavailable',
@@ -167,13 +167,13 @@ it('opens owner QR for a future Safe proposal and follows publication retry with
   expect(screen.getByRole('button', { name: 'Retry publication' }).hasAttribute('disabled')).toBe(false)
   await user.click(screen.getByRole('button', { name: 'Retry publication' }))
   expect(capabilities.safe.confirm).toHaveBeenCalledTimes(2)
-  const retry = capabilities.safe.confirm.mock.calls[1]![0]
+  const retry = capabilities.safe.confirm.mock.calls[1][0]
   expect(retry.operationId).not.toBe(command.operationId)
   status = { status: 'published', operationId: retry.operationId }
   await act(async () => {
     const current = fixture.state.wallet.getState()
     const confirmed = structuredClone(current)
-    confirmed.accounts[address].safe!['1']!.pending![0]!.confirmations = [owner.address]
+    confirmed.accounts[address].safe!['1'].pending![0].confirmations = [owner.address]
     confirmed.operations[retry.operationId] = {
       id: retry.operationId,
       type: 'account.safe-confirm',
@@ -196,7 +196,7 @@ it.each(['cancelled', 'signing_failed', 'validation_failed'] as const)(
   async (failure) => {
     const owner = ownerAccount(`0x${'2'.repeat(40)}`)
     const initial = stateWithOwners([owner])
-    initial.accounts[address].safe!['1']!.pending![0]!.integrity = {
+    initial.accounts[address].safe!['1'].pending![0].integrity = {
       status: 'matched',
       reason: 'Hash matches.'
     }
@@ -214,7 +214,7 @@ it.each(['cancelled', 'signing_failed', 'validation_failed'] as const)(
 it('discards a published operation when the main confirmation context becomes invalid', async () => {
   const owner = ownerAccount(`0x${'2'.repeat(40)}`)
   const initial = stateWithOwners([owner])
-  initial.accounts[address].safe!['1']!.pending![0]!.integrity = {
+  initial.accounts[address].safe!['1'].pending![0].integrity = {
     status: 'matched',
     reason: 'Hash matches.'
   }
@@ -236,7 +236,7 @@ it('discards a published operation when the main confirmation context becomes in
   capabilities.safe.confirmationStatus.mockResolvedValue({ status: 'idle' })
   const reads = capabilities.safe.confirmationStatus.mock.calls.length
   const changed = structuredClone(fixture.state.wallet.getState())
-  changed.networks.ethereum[1] = { ...changed.networks.ethereum[1]!, name: 'Changed network configuration' }
+  changed.networks.ethereum[1] = { ...changed.networks.ethereum[1], name: 'Changed network configuration' }
   await act(async () => fixture.state.reset(changed))
   await waitFor(() =>
     expect(screen.getByRole('button', { name: 'Sign' }).hasAttribute('disabled')).toBe(false)
@@ -252,7 +252,7 @@ it('routes an unavailable attached owner to existing signer recovery without cha
     status: 'unavailable'
   })
   const initial = stateWithOwners([owner])
-  initial.accounts[address].safe!['1']!.pending![0]!.integrity = {
+  initial.accounts[address].safe!['1'].pending![0].integrity = {
     status: 'matched',
     reason: 'Hash matches.'
   }
@@ -430,15 +430,22 @@ it.each(['account removed', 'account recreated', 'foreign profile', 'owner remov
     await open()
     expect(screen.getByRole('button', { name: 'Signer' }).textContent).toContain('Selected owner')
     const next = stateWithOwners([owner])
-    if (change === 'account removed') delete next.accounts[owner.accountId]
+    if (change === 'account removed') {
+      delete next.accounts[owner.accountId]
+    }
     if (change === 'account recreated') {
       next.accounts[owner.accountId].created = 'owner:2'
       next.accounts[address].safeOwners!['1'][0].created = 'owner:2'
     }
-    if (change === 'foreign profile') next.accounts[owner.accountId].profileId = 'other-profile'
-    if (change === 'owner removed') next.accounts[address].safeOwners = { '1': [] }
-    if (change === 'watch-only')
+    if (change === 'foreign profile') {
+      next.accounts[owner.accountId].profileId = 'other-profile'
+    }
+    if (change === 'owner removed') {
+      next.accounts[address].safeOwners = { '1': [] }
+    }
+    if (change === 'watch-only') {
       next.accounts[address].safeOwners = { '1': [{ ...owner, signerAttached: false, status: 'watch-only' }] }
+    }
     await act(async () => fixture.state.reset(next))
     expect(screen.queryByRole('button', { name: 'Signer' })?.textContent ?? '').not.toContain(
       'Selected owner'
@@ -497,14 +504,14 @@ it('keeps confirmed owners selectable as the proposal advances to execution', as
   const first = ownerAccount('Ledger owner', { signerType: 'ledger' })
   const second = ownerAccount('Other owner', { address: `0x${'3'.repeat(40)}` })
   const next = structuredClone(stateWithOwners([first, second]))
-  const safe = next.accounts[address].safe!['1']!
+  const safe = next.accounts[address].safe!['1']
   safe.configuration = {
     ...safe.configuration,
     owners: [first.address, second.address],
     threshold: 2,
     nonce: '3'
   }
-  safe.pending![0]!.confirmations = [first.address, first.address, address]
+  safe.pending![0].confirmations = [first.address, first.address, address]
   fixture.state.reset(next)
   const { user } = render(<RequestsOverlay capabilities={createCapabilityFake()} onBack={() => {}} />)
   await user.click(screen.getByRole('button', { name: `Open Safe proposal ${hash} on chain 1` }))
@@ -514,7 +521,7 @@ it('keeps confirmed owners selectable as the proposal advances to execution', as
   await user.click(screen.getByRole('option', { name: /Ledger owner/ }))
 
   const confirmed = structuredClone(next)
-  confirmed.accounts[address].safe!['1']!.pending![0]!.confirmations = [first.address, second.address]
+  confirmed.accounts[address].safe!['1'].pending![0].confirmations = [first.address, second.address]
   await act(async () => fixture.state.reset(confirmed))
   expect(screen.getByText('Awaiting execution')).toBeTruthy()
   expect(screen.getByText('Signer')).toBeTruthy()
@@ -527,7 +534,7 @@ it('keeps confirmed owners selectable as the proposal advances to execution', as
   expect(screen.getByText('Awaiting execution')).toBeTruthy()
 
   const disconnected = structuredClone(confirmed)
-  disconnected.accounts[address].safeOwners!['1']![0] = {
+  disconnected.accounts[address].safeOwners!['1'][0] = {
     ...first,
     signerAttached: false,
     signerStatus: 'Signer unavailable',
@@ -546,7 +553,7 @@ it('keeps confirmed owners selectable as the proposal advances to execution', as
   expectSafeSubmissionDisabled('No signer attached')
 
   const waiting = structuredClone(confirmed)
-  waiting.accounts[address].safe!['1']!.pending![0]!.nonce = '4'
+  waiting.accounts[address].safe!['1'].pending![0].nonce = '4'
   await act(async () => fixture.state.reset(waiting))
   expect(screen.getByText('Waiting for earlier transactions')).toBeTruthy()
   expect(screen.queryByText('Awaiting execution')).toBeNull()
@@ -691,7 +698,7 @@ it.each([
     render(
       <SafeProposalDetailsView
         deployment={deployment}
-        proposal={deployment.pending![0]!}
+        proposal={deployment.pending![0]}
         simulation={simulation}
         networkName='Ethereum'
         symbol='ETH'
@@ -709,10 +716,12 @@ it.each([
       expect(effects.queryByLabelText('Outgoing asset effect') !== null).toBe(
         simulation.status === 'error' && simulation.failure === 'inner'
       )
-      if (simulation.status === 'unavailable')
+      if (simulation.status === 'unavailable') {
         expect(effects.getByText('Simulation unavailable.')).toBeTruthy()
-      if (simulation.status === 'error' && simulation.failure === 'revert')
+      }
+      if (simulation.status === 'error' && simulation.failure === 'revert') {
         expect(effects.getByText('Execution reverted. No changes applied.')).toBeTruthy()
+      }
     }
   }
 )
@@ -755,7 +764,7 @@ it('invalidates signed fields while retaining the preview across cached configur
   const { user } = render(<RequestsOverlay capabilities={capabilities} onBack={() => {}} />)
   await user.click(screen.getByRole('button', { name: `Open Safe proposal ${hash} on chain 1` }))
   const confirmed = structuredClone(deployment)
-  confirmed.pending![0]!.confirmations = [address]
+  confirmed.pending![0].confirmations = [address]
   await act(async () => fixture.state.reset(state(confirmed)))
   const changedProposal = {
     ...confirmed,
@@ -789,7 +798,9 @@ it.each(['account', 'profile'] as const)('discards previews after %s lifecycle c
   const { user } = render(<RequestsOverlay capabilities={capabilities} onBack={() => {}} />)
   await user.click(screen.getByRole('button', { name: `Open Safe proposal ${hash} on chain 1` }))
   const next = state()
-  if (change === 'account') next.currentAccount = ''
+  if (change === 'account') {
+    next.currentAccount = ''
+  }
   if (change === 'profile') {
     next.currentProfile = 'other-profile'
   }
@@ -1013,7 +1024,7 @@ it('keeps RPC and Safe requests together and routes the single back button throu
 it('keeps matching Safe checks silent and exposes raw integer arguments, confirmations and signing fields on demand', async () => {
   const capabilities = createCapabilityFake()
   const proposal = {
-    ...deployment.pending![0]!,
+    ...deployment.pending![0],
     operation: 0 as const,
     value: '0',
     nonce: '3',
@@ -1076,7 +1087,7 @@ it.each([
     render(
       <SafeProposalDetailsView
         deployment={deployment}
-        proposal={{ ...deployment.pending![0]!, nonce, integrity: { status, reason: 'Verification reason' } }}
+        proposal={{ ...deployment.pending![0], nonce, integrity: { status, reason: 'Verification reason' } }}
         simulation={{ status: 'success', effects: [], ...previewContext, currentNonce: '3' }}
         networkName='Ethereum'
         symbol='ETH'
@@ -1086,9 +1097,10 @@ it.each([
     expect(screen.getByRole('alert', { name: 'Delegatecall warning' })).toBeTruthy()
     expect(screen.getByRole('alert', { name: 'Safe nonce warning' }).textContent).toMatch(nonceText)
     expect(screen.queryByLabelText('Proposal integrity') !== null).toBe(status !== 'matched')
-    if (status !== 'matched')
+    if (status !== 'matched') {
       expect(screen.getByRole('alert', { name: 'Proposal integrity' }).textContent).toContain(
         'Verification reason'
       )
+    }
   }
 )

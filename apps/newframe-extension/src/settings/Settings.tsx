@@ -20,7 +20,9 @@ export function Settings({ tab, mmAppear }: { tab?: chrome.tabs.Tab; mmAppear: b
   }, [])
 
   useEffect(() => {
-    if (!supported || tab?.id === undefined) return
+    if (!supported || tab?.id === undefined) {
+      return
+    }
     const tabId = tab.id
     const refresh = () => {
       void refreshCurrentChain(tabId)
@@ -48,7 +50,9 @@ export function Settings({ tab, mmAppear }: { tab?: chrome.tabs.Tab; mmAppear: b
       }}
       onSelectChain={(chainId) => {
         const chain = settings.availableChains.find((candidate) => String(candidate.chainId) === chainId)
-        if (!tab || !chain || chain.connected === false) return
+        if (!tab || !chain || chain.connected === false) {
+          return
+        }
         void chrome.runtime.sendMessage({
           tab,
           method: 'wallet_switchEthereumChain',

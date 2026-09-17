@@ -124,11 +124,11 @@ describe('Send controller integration', () => {
     })
 
     await waitFor(() => {
-      expect((screen.getByLabelText('Amount') as HTMLInputElement).value).toBe('')
+      expect(screen.getByLabelText<HTMLInputElement>('Amount').value).toBe('')
     })
     expect(screen.queryByRole('listbox', { name: 'Select send token' })).toBeNull()
     expect(screen.queryByText(recipient.address)).toBeNull()
-    expect((screen.getByLabelText('Recipient') as HTMLInputElement).value).toBe('')
+    expect(screen.getByLabelText<HTMLInputElement>('Recipient').value).toBe('')
   })
 
   it('ignores a submission result from the previously selected account', async () => {

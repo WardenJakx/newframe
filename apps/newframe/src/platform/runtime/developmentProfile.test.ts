@@ -26,7 +26,9 @@ const gitLocalEnvironmentVariables = [
 
 function git(cwd: string, ...arguments_: string[]): string {
   const environment = { ...process.env }
-  for (const variable of gitLocalEnvironmentVariables) delete environment[variable]
+  for (const variable of gitLocalEnvironmentVariables) {
+    delete environment[variable]
+  }
   environment.GIT_CONFIG_GLOBAL = path.join(cwd, '.test-gitconfig')
   environment.GIT_CONFIG_NOSYSTEM = '1'
 

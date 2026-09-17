@@ -16,7 +16,9 @@ export function deriveHDAccounts(publicKey: string, chainCode: string, cb: Callb
     })
     const derive = (index: number) => {
       const derivedKey = hdk.derive(`m/${index}`)
-      if (!derivedKey.publicKey) throw new Error(`could not derive public key for m/${index}`)
+      if (!derivedKey.publicKey) {
+        throw new Error(`could not derive public key for m/${index}`)
+      }
       const address = publicToAddress(derivedKey.publicKey, true)
       return toChecksumAddress(bytesToHex(address))
     }

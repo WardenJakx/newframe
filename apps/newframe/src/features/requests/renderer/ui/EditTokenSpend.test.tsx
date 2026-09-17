@@ -49,7 +49,7 @@ describe('changing approval amounts', () => {
     await user.type(enterAmount!, '50')
 
     const updateCustom = screen.getByRole('button', { name: 'Update approval amount' })
-    await user.click(updateCustom!)
+    await user.click(updateCustom)
 
     expect(onUpdate).toHaveBeenCalledWith('500000')
   })
@@ -93,7 +93,7 @@ describe('changing approval amounts', () => {
     await user.type(enterAmount!, '50.1')
 
     const updateCustom = screen.getByRole('button', { name: 'Update approval amount' })
-    await user.click(updateCustom!)
+    await user.click(updateCustom)
 
     expect(onUpdate).toHaveBeenCalledWith('501000')
   })
@@ -137,7 +137,7 @@ describe('changing approval amounts', () => {
     await user.type(enterAmount!, '50.00001')
 
     const updateCustom = screen.getByRole('button', { name: 'Update approval amount' })
-    await user.click(updateCustom!)
+    await user.click(updateCustom)
 
     expect(onUpdate).toHaveBeenCalledWith('500000')
   })
@@ -330,7 +330,7 @@ describe('changing approval amounts', () => {
       expect(custom).toBeNull()
 
       const requestedAmount = screen.queryByRole('button', { name: 'Enter custom approval amount' })
-      const displayedContent = requestedAmount!.textContent!.trim()
+      const displayedContent = requestedAmount!.textContent.trim()
       expect(displayedContent).toBe(approval.data.decimals ? '100' : '100000000')
 
       // ensure click on requested amount textbox doesn't allow user to enter a custom amount

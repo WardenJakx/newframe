@@ -41,7 +41,9 @@ export function createTokenService(ports: TokenServicePorts) {
       }
 
       for (const [storedKey, storedRequest] of requestFingerprints) {
-        if (!ports.operations.lookup(storedRequest.reference)) requestFingerprints.delete(storedKey)
+        if (!ports.operations.lookup(storedRequest.reference)) {
+          requestFingerprints.delete(storedKey)
+        }
       }
 
       try {
@@ -72,7 +74,9 @@ export function createTokenService(ports: TokenServicePorts) {
     remove(token: Pick<WalletToken, 'address' | 'chainId'>) {
       const state = ports.store.getState()
       const canonicalToken = state.main.tokens.byId[toTokenId(token)]
-      if (!canonicalToken) return false
+      if (!canonicalToken) {
+        return false
+      }
 
       state.removeCustomTokens([canonicalToken])
       return true

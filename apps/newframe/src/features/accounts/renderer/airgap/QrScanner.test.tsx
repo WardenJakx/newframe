@@ -52,8 +52,11 @@ it('stops on document hiding and resumes automatically when visible', async () =
     await act(() => document.dispatchEvent(new Event('visibilitychange')))
     expect(f.sessions.at(-1)?.stopped).toBe(true)
   } finally {
-    if (original) Object.defineProperty(document, 'visibilityState', original)
-    else Reflect.deleteProperty(document, 'visibilityState')
+    if (original) {
+      Object.defineProperty(document, 'visibilityState', original)
+    } else {
+      Reflect.deleteProperty(document, 'visibilityState')
+    }
     await act(() => document.dispatchEvent(new Event('visibilitychange')))
   }
   expect(f.sessions).toHaveLength(2)

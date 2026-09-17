@@ -267,7 +267,9 @@ export function createOperationRegistry(services: OperationServices) {
     idempotencyCache.set(cacheKey, { fingerprint, result })
     if (idempotencyCache.size > maxIdempotencyEntries) {
       const oldest = idempotencyCache.keys().next().value
-      if (oldest) idempotencyCache.delete(oldest)
+      if (oldest) {
+        idempotencyCache.delete(oldest)
+      }
     }
 
     return result
@@ -282,7 +284,9 @@ export function createOperationRegistry(services: OperationServices) {
     'account.update': defineAcknowledgedCommand(
       'account.update',
       (command, _event, context) => {
-        if ('profileId' in command) return profiles.moveAccount(command, operationOwner(context))
+        if ('profileId' in command) {
+          return profiles.moveAccount(command, operationOwner(context))
+        }
         return 'enabled' in command
           ? agent.setAgentAccess(command.accountId, command.enabled)
           : accountMutations.update(command)
@@ -304,7 +308,9 @@ export function createOperationRegistry(services: OperationServices) {
       'signer.session-input',
       (command, _event, context) => {
         const owner = operationOwner(context)
-        if ('input' in command) return accountOnboarding.sessionInput(command, owner)
+        if ('input' in command) {
+          return accountOnboarding.sessionInput(command, owner)
+        }
         return 'requestId' in command ? airgap.scan(command, owner) : airgap.pairScan(command, owner)
       },
       (command) => ('input' in command ? 'invalid_command' : 'not_found')
@@ -313,7 +319,9 @@ export function createOperationRegistry(services: OperationServices) {
       'signer.session-finish',
       (command, _event, context) => {
         const owner = operationOwner(context)
-        if ('outcome' in command) return accountOnboarding.finishSession(command, owner)
+        if ('outcome' in command) {
+          return accountOnboarding.finishSession(command, owner)
+        }
         return 'requestId' in command ? airgap.cancel(command, owner) : airgap.pairCancel(command, owner)
       },
       (command) => ('outcome' in command ? 'invalid_command' : 'not_found')
@@ -492,7 +500,9 @@ export function createOperationRegistry(services: OperationServices) {
           command,
           () => requests.replaceTransaction(command, createRendererPrincipal(context))
         )
-        if (result === IdempotencyConflict) throw IdempotencyConflict
+        if (result === IdempotencyConflict) {
+          throw IdempotencyConflict
+        }
         return result
       },
       'request_not_found',
@@ -790,7 +800,9 @@ async function dispatchOperation(
   try {
     const result = await operation.handle(parsed.data, event, context)
     const validated = contract.result.safeParse(result)
-    if (validated.success) return validated.data
+    if (validated.success) {
+      return validated.data
+    }
 
     log.error(`Invalid ${kind} result`, { type })
   } catch (error) {

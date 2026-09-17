@@ -56,12 +56,16 @@ function ensureProfileState(main: MutableMain) {
   })
   main.profileOrder = profileOrder
 
-  if (!profiles[main.currentProfile]) main.currentProfile = profileOrder[0]
+  if (!profiles[main.currentProfile]) {
+    main.currentProfile = profileOrder[0]
+  }
 
   const accounts = record(main.accounts || {})
   Object.values(accounts).forEach((candidate) => {
     const account = record(candidate)
-    if (account.id && !profiles[account.profileId]) account.profileId = main.currentProfile
+    if (account.id && !profiles[account.profileId]) {
+      account.profileId = main.currentProfile
+    }
   })
   main.accountOrder = [
     ...new Set([...(main.accountOrder || []).filter((id) => accounts[id]), ...Object.keys(accounts)])
@@ -76,7 +80,7 @@ function ensureProfileState(main: MutableMain) {
 }
 
 function profileAccountIds(main: MutableMain, profileId: string) {
-  return getProfileAccountIds(main as unknown as CanonicalState['main'], profileId)
+  return getProfileAccountIds(main, profileId)
 }
 
 function selectProfileFallback(main: MutableMain, profileId = main.currentProfile) {
@@ -95,7 +99,9 @@ function switchChainForOrigins(origins: MutableRecord, oldChainId: number, newCh
 function validateNetworkSettings(network: any) {
   const networkId = parseInt(network.id)
   const validHttpUrl = (value: unknown, optional = false) => {
-    if (optional && !value) return true
+    if (optional && !value) {
+      return true
+    }
     try {
       const parsed = new URL(String(value))
       return ['http:', 'https:'].includes(parsed.protocol) && !parsed.username && !parsed.password
@@ -166,7 +172,9 @@ function upsertTokenRecords(
 
   tokens.forEach((input) => {
     const token = tokenFromValue(input)
-    if (!token) return
+    if (!token) {
+      return
+    }
     const id = toTokenId(token)
     const existing = record(byId[id] || {})
     const preserveCustomMetadata = existing.custom && !options.custom
@@ -191,10 +199,14 @@ function upsertTokenRecords(
       updatedAt: Date.now()
     }
 
-    if (account) accountIds.add(id)
+    if (account) {
+      accountIds.add(id)
+    }
   })
 
-  if (account) accountTokenIds[account] = [...accountIds]
+  if (account) {
+    accountTokenIds[account] = [...accountIds]
+  }
 }
 
 function stripRequestCapabilities(request: MutableRecord) {
@@ -232,14 +244,18 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
     },
 
     setPrimaryCustom: (netType: string, netId: number, target: any) => {
-      if (!netType || !netId) return
+      if (!netType || !netId) {
+        return
+      }
       set((draft) => {
         record(record(record(mutableMain(draft).networks)[netType])[netId].connection).primary.custom = target
       })
     },
 
     setSecondaryCustom: (netType: string, netId: number, target: any) => {
-      if (!netType || !netId) return
+      if (!netType || !netId) {
+        return
+      }
       set((draft) => {
         record(record(record(mutableMain(draft).networks)[netType])[netId].connection).secondary.custom =
           target
@@ -303,7 +319,9 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
       set((draft) => {
         const main = mutableMain(draft)
         main.portfolioApiKey = apiKey
-        if (!apiKey) main.autoDiscoverTokens = false
+        if (!apiKey) {
+          main.autoDiscoverTokens = false
+        }
       })
     },
 
@@ -328,7 +346,9 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
     },
 
     revokePermission: (address: string, handlerId: string) => {
-      if (!address || !handlerId) return
+      if (!address || !handlerId) {
+        return
+      }
 
       set((draft) => {
         const accountPermissions = record(record(mutableMain(draft).permissions)[address] || {})
@@ -345,7 +365,9 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
     dontRemind: (version: string) => {
       set((draft) => {
         const dontRemind = mutableMain(draft).updater.dontRemind
-        if (!dontRemind.includes(version)) dontRemind.push(version)
+        if (!dontRemind.includes(version)) {
+          dontRemind.push(version)
+        }
       })
     },
 
@@ -357,7 +379,9 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
 
     upsertSubmittedActivity: (activity: any) => {
       const id = activity?.id
-      if (!id) return
+      if (!id) {
+        return
+      }
       const now = Date.now()
 
       set((draft) => {
@@ -373,13 +397,17 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
           confirmations: activity.confirmations ?? existingActivity.confirmations ?? 0
         }
 
-        if (activity.completedAt === undefined) delete submittedActivity.completedAt
+        if (activity.completedAt === undefined) {
+          delete submittedActivity.completedAt
+        }
         activities[id] = submittedActivity
       })
     },
 
     updateActivity: (id: string, update: any = {}) => {
-      if (!id) return
+      if (!id) {
+        return
+      }
       const now = Date.now()
 
       set((draft) => {
@@ -396,7 +424,9 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
     },
 
     finalizeActivity: (id: string, status: string, update: any = {}) => {
-      if (!id) return
+      if (!id) {
+        return
+      }
       if (!completedActivityStatuses.has(status)) {
         log.warn(`Invalid finalized activity status: ${status}`)
         return
@@ -420,7 +450,9 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
     },
 
     pruneActivity: (id: string) => {
-      if (!id) return
+      if (!id) {
+        return
+      }
       set((draft) => {
         delete record(mutableMain(draft).activity)[id]
       })
@@ -428,7 +460,9 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
 
     upsertOrder: (order: any) => {
       const orderId = order?.orderId
-      if (!orderId) return
+      if (!orderId) {
+        return
+      }
       const now = Date.now()
 
       set((draft) => {
@@ -452,13 +486,17 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
     },
 
     updateOrder: (orderId: string, update: any = {}) => {
-      if (!orderId) return
+      if (!orderId) {
+        return
+      }
       const now = Date.now()
 
       set((draft) => {
         const orders = record(mutableMain(draft).orders)
         const existingOrder = orders[orderId]
-        if (!existingOrder) return
+        if (!existingOrder) {
+          return
+        }
 
         const existing = record(existingOrder)
         const source = update.source ?? update.provider ?? existing.source ?? existing.provider ?? 'flash'
@@ -476,13 +514,17 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
     },
 
     createProfile: (id: string, name: string, accountIds?: string[]) => {
-      if (!id || typeof name !== 'string' || !name.trim()) return
+      if (!id || typeof name !== 'string' || !name.trim()) {
+        return
+      }
 
       set((draft) => {
         const main = mutableMain(draft)
         ensureProfileState(main)
         const profiles = record(main.profiles)
-        if (profiles[id]) return
+        if (profiles[id]) {
+          return
+        }
 
         profiles[id] = { id, name }
         main.profileOrder.push(id)
@@ -490,7 +532,9 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
         if (accountIds) {
           accountIds.forEach((accountId) => {
             const account = record(record(main.accounts)[accountId] || {})
-            if (account.id) account.profileId = id
+            if (account.id) {
+              account.profileId = id
+            }
           })
           main.currentProfile = id
           selectProfileFallback(main, id)
@@ -499,12 +543,16 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
     },
 
     selectProfile: (id: string) => {
-      if (!id) return
+      if (!id) {
+        return
+      }
 
       set((draft) => {
         const main = mutableMain(draft)
         ensureProfileState(main)
-        if (!record(main.profiles)[id]) return
+        if (!record(main.profiles)[id]) {
+          return
+        }
 
         if (main.currentProfile !== id) {
           main.currentProfile = id
@@ -514,26 +562,36 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
     },
 
     renameProfile: (id: string, name: string) => {
-      if (!id || typeof name !== 'string' || !name.trim()) return
+      if (!id || typeof name !== 'string' || !name.trim()) {
+        return
+      }
 
       set((draft) => {
         const main = mutableMain(draft)
         ensureProfileState(main)
         const profile = record(record(main.profiles)[id] || {})
-        if (!profile.id) return
+        if (!profile.id) {
+          return
+        }
         profile.name = name
       })
     },
 
     deleteProfile: (id: string) => {
-      if (!id) return
+      if (!id) {
+        return
+      }
 
       set((draft) => {
         const main = mutableMain(draft)
         ensureProfileState(main)
         const profiles = record(main.profiles)
-        if (!profiles[id] || main.profileOrder.length === 1) return
-        if (profileAccountIds(main, id).length > 0) return
+        if (!profiles[id] || main.profileOrder.length === 1) {
+          return
+        }
+        if (profileAccountIds(main, id).length > 0) {
+          return
+        }
 
         const deletedIndex = main.profileOrder.indexOf(id)
         const nextProfile = main.profileOrder[deletedIndex + 1] || main.profileOrder[deletedIndex - 1]
@@ -548,13 +606,17 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
     },
 
     moveAccountToProfile: (accountId: string, profileId: string) => {
-      if (!accountId || !profileId) return
+      if (!accountId || !profileId) {
+        return
+      }
 
       set((draft) => {
         const main = mutableMain(draft)
         ensureProfileState(main)
         const account = record(record(main.accounts)[accountId] || {})
-        if (!account.id || !record(main.profiles)[profileId] || account.profileId === profileId) return
+        if (!account.id || !record(main.profiles)[profileId] || account.profileId === profileId) {
+          return
+        }
 
         account.profileId = profileId
         if (main.currentAccount === accountId && main.currentProfile !== profileId) {
@@ -569,7 +631,9 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
         const main = mutableMain(draft)
         ensureProfileState(main)
         const selectedAccount = record(record(main.accounts)[account?.id] || {})
-        if (!selectedAccount.id || !record(main.profiles)[selectedAccount.profileId]) return
+        if (!selectedAccount.id || !record(main.profiles)[selectedAccount.profileId]) {
+          return
+        }
         main.currentProfile = selectedAccount.profileId
         main.currentAccount = selectedAccount.id
         state.selected.minimized = false
@@ -594,12 +658,16 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
         const account = record(accounts[id] || {})
         const accountUpdate = record({ ...updatedAccount })
         const profileId = account.profileId || accountUpdate.profileId || main.currentProfile
-        if (!record(main.profiles)[profileId]) return
+        if (!record(main.profiles)[profileId]) {
+          return
+        }
         Object.values(record(accountUpdate.requests || {})).forEach(stripRequestCapabilities)
         accounts[id] = { ...accountUpdate, profileId, balances: account.balances || {} }
 
         main.accountOrder = [...new Set(main.accountOrder.filter((accountId) => accounts[accountId]))]
-        if (!main.accountOrder.includes(id)) main.accountOrder.push(id)
+        if (!main.accountOrder.includes(id)) {
+          main.accountOrder.push(id)
+        }
 
         if (name && !isDefaultAccountName({ ...updatedAccount, name } as any)) {
           const accountMetaId = uuidv5(id, accountNS)
@@ -614,12 +682,16 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
     },
 
     patchAccount: (id: string, update: AccountPatch) => {
-      if (!id || !update) return
+      if (!id || !update) {
+        return
+      }
 
       set((draft) => {
         const main = mutableMain(draft)
         const account = record(record(main.accounts)[id])
-        if (!account.id) return
+        if (!account.id) {
+          return
+        }
         const {
           id: _id,
           address: _address,
@@ -642,11 +714,15 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
     },
 
     upsertAccountRequest: (accountId: string, request: CanonicalAccountRequest) => {
-      if (!accountId || !request?.handlerId) return
+      if (!accountId || !request?.handlerId) {
+        return
+      }
 
       set((draft) => {
         const account = record(record(mutableMain(draft).accounts)[accountId])
-        if (!account.id) return
+        if (!account.id) {
+          return
+        }
         const canonicalRequest = record({ ...request })
         stripRequestCapabilities(canonicalRequest)
         record(account.requests)[request.handlerId] = canonicalRequest
@@ -658,7 +734,9 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
       requestId: string,
       update: (request: Draft<CanonicalAccountRequest>) => void
     ) => {
-      if (!accountId || !requestId || !update) return
+      if (!accountId || !requestId || !update) {
+        return
+      }
 
       set((draft) => {
         const account = record(record(mutableMain(draft).accounts)[accountId])
@@ -671,11 +749,15 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
     },
 
     removeAccountRequest: (accountId: string, requestId: string) => {
-      if (!accountId || !requestId) return
+      if (!accountId || !requestId) {
+        return
+      }
 
       set((draft) => {
         const account = record(record(mutableMain(draft).accounts)[accountId])
-        if (account.id) delete record(account.requests)[requestId]
+        if (account.id) {
+          delete record(account.requests)[requestId]
+        }
       })
     },
 
@@ -685,12 +767,16 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
         ensureProfileState(main)
         delete record(main.accounts)[id]
         main.accountOrder = main.accountOrder.filter((accountId) => accountId !== id)
-        if (main.currentAccount === id) selectProfileFallback(main)
+        if (main.currentAccount === id) {
+          selectProfileFallback(main)
+        }
       })
     },
 
     reorderAccounts: (fromId: string, toId: string) => {
-      if (!fromId || !toId || fromId === toId) return
+      if (!fromId || !toId || fromId === toId) {
+        return
+      }
 
       set((draft) => {
         const main = mutableMain(draft)
@@ -699,12 +785,16 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
         const ordered = [...new Set(main.accountOrder.filter((id) => accounts[id]))]
 
         Object.keys(accounts).forEach((id) => {
-          if (!ordered.includes(id)) ordered.push(id)
+          if (!ordered.includes(id)) {
+            ordered.push(id)
+          }
         })
 
         const fromIndex = ordered.indexOf(fromId)
         const toIndex = ordered.indexOf(toId)
-        if (fromIndex === -1 || toIndex === -1) return
+        if (fromIndex === -1 || toIndex === -1) {
+          return
+        }
 
         const [moved] = ordered.splice(fromIndex, 1)
         ordered.splice(toIndex, 0, moved)
@@ -719,11 +809,15 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
     },
 
     updateSigner: (signer: SignerSummary) => {
-      if (!signer.id) return
+      if (!signer.id) {
+        return
+      }
       set((draft) => {
         const signers = record(mutableMain(draft).signers)
         signers[signer.id] = { ...record(signers[signer.id] || {}), ...signer }
-        if (signer.type === 'airgap' && !signer.airgapRequest) delete signers[signer.id].airgapRequest
+        if (signer.type === 'airgap' && !signer.airgapRequest) {
+          delete signers[signer.id].airgapRequest
+        }
       })
     },
 
@@ -734,11 +828,15 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
     },
 
     rekeySigner: (previousId: string, signer: SignerSummary) => {
-      if (!previousId || !signer.id) return
+      if (!previousId || !signer.id) {
+        return
+      }
       set((draft) => {
         const signers = record(mutableMain(draft).signers)
         const previous = record(signers[previousId] || {})
-        if (previousId !== signer.id) delete signers[previousId]
+        if (previousId !== signer.id) {
+          delete signers[previousId]
+        }
         signers[signer.id] = {
           ...previous,
           ...record(signers[signer.id] || {}),
@@ -759,7 +857,9 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
       })
     },
     updateLattice: (deviceId: string, update: any) => {
-      if (!deviceId || !update) return
+      if (!deviceId || !update) {
+        return
+      }
       set((draft) => {
         const lattice = record(mutableMain(draft).lattice)
         lattice[deviceId] = { ...record(lattice[deviceId] || {}), ...update }
@@ -767,7 +867,9 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
     },
 
     removeLattice: (deviceId: string) => {
-      if (!deviceId) return
+      if (!deviceId) {
+        return
+      }
       set((draft) => {
         delete record(mutableMain(draft).lattice)[deviceId]
       })
@@ -978,7 +1080,9 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
           const networksMeta = record(main.networksMeta)
           networks[network.type] ||= {}
           networksMeta[network.type] ||= {}
-          if (networks[network.type][network.id]) return
+          if (networks[network.type][network.id]) {
+            return
+          }
 
           networks[network.type][network.id] = { ...defaultNetwork, ...network }
           networksMeta[network.type][network.id] = defaultMeta
@@ -991,14 +1095,20 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
     removeNetwork: (net: any) => {
       try {
         const networkId = parseInt(net.id)
-        if (!Number.isInteger(networkId)) throw new Error('Invalid chain id')
-        if (net.type === 'ethereum' && networkId === 1) throw new Error('Cannot remove mainnet')
+        if (!Number.isInteger(networkId)) {
+          throw new Error('Invalid chain id')
+        }
+        if (net.type === 'ethereum' && networkId === 1) {
+          throw new Error('Cannot remove mainnet')
+        }
 
         set((draft) => {
           const main = mutableMain(draft)
           const networks = record(main.networks)
           const typeNetworks = record(networks[net.type])
-          if (Object.keys(typeNetworks).length <= 1) return
+          if (Object.keys(typeNetworks).length <= 1) {
+            return
+          }
 
           switchChainForOrigins(record(main.origins), networkId, 1)
           delete typeNetworks[networkId]
@@ -1022,7 +1132,9 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
     setOriginFavicon: (originId: string, source: string) => {
       set((draft) => {
         const origin = mutableMain(draft).origins[originId]
-        if (!origin || origin.faviconSource === source) return
+        if (!origin || origin.faviconSource === source) {
+          return
+        }
         origin.faviconSource = source
         delete origin.image
       })
@@ -1031,7 +1143,9 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
     setOriginImage: (originId: string, source: string, image: TokenImage) => {
       set((draft) => {
         const origin = mutableMain(draft).origins[originId]
-        if (origin?.faviconSource === source && image.sourceUrl === source) origin.image = image
+        if (origin?.faviconSource === source && image.sourceUrl === source) {
+          origin.image = image
+        }
       })
     },
 
@@ -1053,14 +1167,18 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
     endOriginSession: (originId: string) => {
       set((draft) => {
         const origin = record(record(mutableMain(draft).origins)[originId])
-        if (!origin) return
+        if (!origin) {
+          return
+        }
         const now = Date.now()
         origin.session = { ...record(origin.session), endedAt: now, lastUpdatedAt: now }
       })
     },
 
     switchOriginChain: (originId: string, chainId: number, type: string) => {
-      if (!originId || typeof chainId !== 'number' || type !== 'ethereum') return
+      if (!originId || typeof chainId !== 'number' || type !== 'ethereum') {
+        return
+      }
       set((draft) => {
         record(record(mutableMain(draft).origins)[originId]).chain = { id: chainId, type }
       })
@@ -1093,8 +1211,11 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
     trustExtension: (extensionId: string, trusted: boolean | undefined) => {
       set((draft) => {
         const extensions = record(mutableMain(draft).knownExtensions)
-        if (trusted === undefined) delete extensions[extensionId]
-        else extensions[extensionId] = trusted
+        if (trusted === undefined) {
+          delete extensions[extensionId]
+        } else {
+          extensions[extensionId] = trusted
+        }
       })
     },
 
@@ -1131,7 +1252,9 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
       set((draft) => {
         const main = mutableMain(draft)
         const token = tokenFromValue(balance)
-        if (token) upsertTokenRecords(main, [token], { account: address, source: 'onchain' })
+        if (token) {
+          upsertTokenRecords(main, [token], { account: address, source: 'onchain' })
+        }
         const normalizedBalance = balanceFromValue(balance)
         const balances = record(main.balances)
         const accountBalances = ((balances[address] || []) as any[]).map(balanceFromValue)
@@ -1185,9 +1308,15 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
         const existingBalances = ((balances[address] || []) as any[]).map(balanceFromValue)
         const preservedBalances = existingBalances.filter((balance) => {
           const balanceId = toTokenId(balance)
-          if (customTokenIds.has(balanceId)) return true
-          if (portfolioBalanceIds.has(balanceId)) return false
-          if (balance.address === NATIVE_CURRENCY) return true
+          if (customTokenIds.has(balanceId)) {
+            return true
+          }
+          if (portfolioBalanceIds.has(balanceId)) {
+            return false
+          }
+          if (balance.address === NATIVE_CURRENCY) {
+            return true
+          }
           return !portfolioChains.has(balance.chainId)
         })
 
@@ -1205,7 +1334,9 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
           const index = accountBalances.findIndex((balance) => {
             return balance.chainId === chainId && balance.address.toLowerCase() === key
           })
-          if (index > -1) accountBalances.splice(index, 1)
+          if (index > -1) {
+            accountBalances.splice(index, 1)
+          }
         })
       })
     },
@@ -1223,7 +1354,9 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
     setTokenImage: (tokenId: string, image: TokenImage) => {
       set((draft) => {
         const token = record(record(mutableMain(draft).tokens).byId)[tokenId]
-        if (!token) return
+        if (!token) {
+          return
+        }
         token.image = image
         token.updatedAt = Date.now()
       })
@@ -1236,7 +1369,9 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
         const main = mutableMain(draft)
         const byId = record(record(main.tokens).byId)
         tokenIds.forEach((id) => {
-          if (byId[id]) byId[id].custom = false
+          if (byId[id]) {
+            byId[id].custom = false
+          }
         })
       })
     },
@@ -1289,7 +1424,9 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
     clearHomeCommand: (id?: number) => {
       set((draft) => {
         const tray = record(draft.tray)
-        if (!id || tray.homeCommand?.id === id) tray.homeCommand = null
+        if (!id || tray.homeCommand?.id === id) {
+          tray.homeCommand = null
+        }
       })
     },
 
@@ -1302,7 +1439,9 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
       set((draft) => {
         const window = windowState(draft, windowId)
         const nav = window.nav as any[]
-        if (JSON.stringify(nav[0]) !== JSON.stringify(crumb)) nav.unshift(crumb)
+        if (JSON.stringify(nav[0]) !== JSON.stringify(crumb)) {
+          nav.unshift(crumb)
+        }
         window.show = true
       })
     },
@@ -1322,10 +1461,15 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
         }
 
         if (JSON.stringify(nav[0]) !== JSON.stringify(updatedNavItem)) {
-          if (navigate) nav.unshift(updatedNavItem)
-          else nav[0] = updatedNavItem
+          if (navigate) {
+            nav.unshift(updatedNavItem)
+          } else {
+            nav[0] = updatedNavItem
+          }
         }
-        if (navigate) window.show = true
+        if (navigate) {
+          window.show = true
+        }
       })
     },
 

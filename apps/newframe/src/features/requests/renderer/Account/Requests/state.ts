@@ -75,7 +75,9 @@ export function useAccountIdentity(idOrAddress?: string) {
   const normalized = idOrAddress?.toLowerCase()
   const selector = useMemo(
     () => (state: WalletRendererState) => {
-      if (!idOrAddress) return undefined
+      if (!idOrAddress) {
+        return undefined
+      }
       const accounts = state.accounts || {}
       return (
         accounts[idOrAddress] ||

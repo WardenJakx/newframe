@@ -39,13 +39,23 @@ export class DevelopmentAppService implements HarnessService<{ exited: Promise<n
     for (const directory of [appDir, path.join(rootDir, 'packages/ui'), path.join(rootDir, 'assets')]) {
       const changed = sourceChanges(directory, ignoredDirectories)
       const watcher = watch(directory, { recursive: true }, (_event, filename) => {
-        if (!filename) return
+        if (!filename) {
+          return
+        }
         const parts = filename.split(path.sep)
-        if (parts.some((part) => ignoredDirectories.has(part) || part.startsWith('.'))) return
-        if (filename.endsWith('.tsbuildinfo')) return
-        if (!changed(filename)) return
+        if (parts.some((part) => ignoredDirectories.has(part) || part.startsWith('.'))) {
+          return
+        }
+        if (filename.endsWith('.tsbuildinfo')) {
+          return
+        }
+        if (!changed(filename)) {
+          return
+        }
         this.pending = true
-        if (this.timer) clearTimeout(this.timer)
+        if (this.timer) {
+          clearTimeout(this.timer)
+        }
         this.timer = setTimeout(() => {
           void this.rebuild().catch((error: unknown) => this.completion.reject(error))
         }, 250)
@@ -59,7 +69,9 @@ export class DevelopmentAppService implements HarnessService<{ exited: Promise<n
   }
 
   private async rebuild() {
-    if (this.rebuilding || this.stopping) return
+    if (this.rebuilding || this.stopping) {
+      return
+    }
     this.rebuilding = true
     try {
       while (this.pending && !this.stopping) {
@@ -67,12 +79,16 @@ export class DevelopmentAppService implements HarnessService<{ exited: Promise<n
         const previous = this.current
         this.current = undefined
         await previous?.stop()
-        if (this.stopping) return
+        if (this.stopping) {
+          return
+        }
 
         console.log('[dev] Building shared UI and app…')
         try {
           for (const script of ['compile', 'bundle:app']) {
-            if (this.stopping) return
+            if (this.stopping) {
+              return
+            }
             const build = new ProcessService({
               name: script,
               command: 'bun',
@@ -83,11 +99,15 @@ export class DevelopmentAppService implements HarnessService<{ exited: Promise<n
             await expectSuccessfulExit(await build.start(), script)
           }
         } catch (error) {
-          if (this.stopping) return
+          if (this.stopping) {
+            return
+          }
           console.error('[dev] Build failed. Fix the source and save to retry.', error)
           continue
         }
-        if (this.stopping || this.pending) continue
+        if (this.stopping || this.pending) {
+          continue
+        }
 
         const electron = createElectronProcessService()
         this.current = electron
@@ -98,10 +118,14 @@ export class DevelopmentAppService implements HarnessService<{ exited: Promise<n
         }
         handle.exited.then(
           (code) => {
-            if (this.current === electron && !this.stopping) this.completion.resolve(code)
+            if (this.current === electron && !this.stopping) {
+              this.completion.resolve(code)
+            }
           },
           (error: unknown) => {
-            if (this.current === electron && !this.stopping) this.completion.reject(error)
+            if (this.current === electron && !this.stopping) {
+              this.completion.reject(error)
+            }
           }
         )
         this.onLaunch()
@@ -114,7 +138,9 @@ export class DevelopmentAppService implements HarnessService<{ exited: Promise<n
 
   async stop() {
     this.stopping = true
-    if (this.timer) clearTimeout(this.timer)
+    if (this.timer) {
+      clearTimeout(this.timer)
+    }
     this.watchers.forEach((watcher) => watcher.close())
     await this.current?.stop()
     this.completion.resolve(0)

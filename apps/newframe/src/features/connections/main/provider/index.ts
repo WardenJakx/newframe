@@ -17,7 +17,7 @@ import type {
   SigningUiContext
 } from '../../../../platform/signing/signers/Signer/index.js'
 import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.js'
-import type { Origin, Permission } from '../../../../platform/state-store/state/index.js'
+import type { Permission } from '../../../../platform/state-store/state/index.js'
 import { isNonZeroHex } from '../../../../shared/domain/hex.js'
 import { capitalize } from '../../../../shared/domain/text.js'
 import {
@@ -185,7 +185,9 @@ export class Provider extends EventEmitter {
     const { id, method } = payload
     let settled = false
     const respond = ({ error, result }: RPCResponsePayload) => {
-      if (settled) return
+      if (settled) {
+        return
+      }
       settled = true
       this.proxy.emit('payload', { id, method, error, result })
     }
@@ -203,7 +205,9 @@ export class Provider extends EventEmitter {
   }
 
   start() {
-    if (this.started) return
+    if (this.started) {
+      return
+    }
 
     this.started = true
     try {
@@ -222,7 +226,9 @@ export class Provider extends EventEmitter {
   }
 
   dispose() {
-    if (!this.started) return
+    if (!this.started) {
+      return
+    }
 
     this.closeStoreSubscriptions()
     this.connection.off('connect', this.handleConnectionConnect)
@@ -272,7 +278,7 @@ export class Provider extends EventEmitter {
   }
 
   private getPayloadOrigin({ _origin }: RPCRequestPayload) {
-    return this.store.getState().main.origins[_origin] as Origin
+    return this.store.getState().main.origins[_origin]
   }
 
   accountsChanged(accounts: string[]) {
@@ -345,9 +351,12 @@ export class Provider extends EventEmitter {
 
   verifySignature(signed: string, message: string, address: string, cb: Callback<boolean>) {
     getSignedAddress(signed, message, (err, verifiedAddress) => {
-      if (err) return cb(err)
-      if ((verifiedAddress || '').toLowerCase() !== address.toLowerCase())
+      if (err) {
+        return cb(err)
+      }
+      if ((verifiedAddress || '').toLowerCase() !== address.toLowerCase()) {
         return cb(new Error('Newframe verifySignature: Failed ecRecover check'))
+      }
       cb(null, true)
     })
   }
@@ -489,7 +498,9 @@ export class Provider extends EventEmitter {
             cb(err)
           } else {
             this.accounts.setTxSigned(req.handlerId, (err) => {
-              if (err) return cb(err)
+              if (err) {
+                return cb(err)
+              }
               let done = false
               const cast = () => {
                 this.connection.send(
@@ -501,7 +512,9 @@ export class Provider extends EventEmitter {
                   },
                   (response) => {
                     clearInterval(broadcastTimer)
-                    if (done) return
+                    if (done) {
+                      return
+                    }
                     done = true
                     if (response.error) {
                       cb(Object.assign(new Error(response.error.message), { code: response.error.code }))
@@ -534,7 +547,9 @@ export class Provider extends EventEmitter {
 
     this.accounts.lockRequest(req.handlerId)
 
-    if (req.data.nonce) return signAndSend(req)
+    if (req.data.nonce) {
+      return signAndSend(req)
+    }
 
     this.getNonce(req.data, (response) => {
       if (response.error) {
@@ -665,7 +680,9 @@ export class Provider extends EventEmitter {
     payload: RPCRequestPayload,
     res: RPCRequestCallback
   ) {
-    if (isAgentPrincipalActive(principal)) return true
+    if (isAgentPrincipalActive(principal)) {
+      return true
+    }
     resError('Agent session is revoked or unavailable', payload, res)
     return false
   }
@@ -675,7 +692,9 @@ export class Provider extends EventEmitter {
     principal: AgentPrincipal,
     res: RPCRequestCallback
   ) {
-    if (!this.requireActiveAgentSession(principal, payload, res)) return
+    if (!this.requireActiveAgentSession(principal, payload, res)) {
+      return
+    }
 
     const account = this.accounts.getFrameAccount(principal.accountId)
     const txParams = payload.params?.[0]
@@ -697,8 +716,9 @@ export class Provider extends EventEmitter {
 
     // fillTransaction reports preparation failures through its callback.
     void this.fillTransaction({ ...normalized, from, chainId }, (error, transactionMetadata) => {
-      if (error || !transactionMetadata)
+      if (error || !transactionMetadata) {
         return resError(error || 'Could not prepare transaction', payload, res)
+      }
       if (transactionMetadata.approvals.length > 0) {
         return resError('Agent transaction requires an explicit user approval', payload, res)
       }
@@ -730,7 +750,9 @@ export class Provider extends EventEmitter {
   }
 
   sendAgentPersonalSign(payload: RPCRequestPayload, principal: AgentPrincipal, res: RPCRequestCallback) {
-    if (!this.requireActiveAgentSession(principal, payload, res)) return
+    if (!this.requireActiveAgentSession(principal, payload, res)) {
+      return
+    }
 
     const account = this.accounts.getFrameAccount(principal.accountId)
     const params = payload.params || []
@@ -762,17 +784,25 @@ export class Provider extends EventEmitter {
     }
 
     this.accounts.routeRequest(principal, request, () => {
-      if (!this.requireActiveAgentSession(principal, normalizedPayload, respond)) return
+      if (!this.requireActiveAgentSession(principal, normalizedPayload, respond)) {
+        return
+      }
 
       account.signMessage(message, (signingError, signed) => {
-        if (!this.requireActiveAgentSession(principal, normalizedPayload, respond)) return
+        if (!this.requireActiveAgentSession(principal, normalizedPayload, respond)) {
+          return
+        }
         if (signingError || !signed) {
           return resError(signingError || 'Agent message signing failed', normalizedPayload, respond)
         }
 
         this.verifySignature(signed, message, account.id, (verificationError) => {
-          if (verificationError) return resError(verificationError, normalizedPayload, respond)
-          if (!this.requireActiveAgentSession(principal, normalizedPayload, respond)) return
+          if (verificationError) {
+            return resError(verificationError, normalizedPayload, respond)
+          }
+          if (!this.requireActiveAgentSession(principal, normalizedPayload, respond)) {
+            return
+          }
           respond({ id: normalizedPayload.id, jsonrpc: normalizedPayload.jsonrpc, result: signed })
         })
       })
@@ -784,7 +814,9 @@ export class Provider extends EventEmitter {
     principal: AgentPrincipal,
     res: RPCRequestCallback
   ) {
-    if (!this.requireActiveAgentSession(principal, rawPayload, res)) return
+    if (!this.requireActiveAgentSession(principal, rawPayload, res)) {
+      return
+    }
 
     const account = this.accounts.getFrameAccount(principal.accountId)
     const orderedParams =
@@ -844,10 +876,14 @@ export class Provider extends EventEmitter {
     }
 
     this.accounts.routeRequest(principal, request, () => {
-      if (!this.requireActiveAgentSession(principal, payload, respond)) return
+      if (!this.requireActiveAgentSession(principal, payload, respond)) {
+        return
+      }
 
       account.signTypedData(typedMessage, (signingError, signature = '') => {
-        if (!this.requireActiveAgentSession(principal, payload, respond)) return
+        if (!this.requireActiveAgentSession(principal, payload, respond)) {
+          return
+        }
         if (signingError || !signature) {
           return resError(signingError || 'Agent typed-data signing failed', payload, respond)
         }
@@ -872,7 +908,9 @@ export class Provider extends EventEmitter {
     res: RPCRequestCallback
   ) {
     const signAndBroadcast = (data: TransactionData) => {
-      if (!this.requireActiveAgentSession(principal, request.payload, res)) return
+      if (!this.requireActiveAgentSession(principal, request.payload, res)) {
+        return
+      }
 
       const maxTotalFee = maxFee(data)
       if (feeTotalOverMax(data, maxTotalFee)) {
@@ -880,7 +918,9 @@ export class Provider extends EventEmitter {
       }
 
       account.signTransaction(data, (signingError, signedTransaction) => {
-        if (!this.requireActiveAgentSession(principal, request.payload, res)) return
+        if (!this.requireActiveAgentSession(principal, request.payload, res)) {
+          return
+        }
         if (signingError || !signedTransaction) {
           return resError(signingError || 'Agent transaction signing failed', request.payload, res)
         }
@@ -904,7 +944,9 @@ export class Provider extends EventEmitter {
       })
     }
 
-    if (request.data.nonce) return signAndBroadcast(request.data)
+    if (request.data.nonce) {
+      return signAndBroadcast(request.data)
+    }
 
     this.getNonce(request.data, (response) => {
       if (response.error || typeof response.result !== 'string') {
@@ -942,7 +984,9 @@ export class Provider extends EventEmitter {
 
         if (accountId && this.accounts.get(accountId)) {
           return this.accounts.setSigner(accountId, (err) => {
-            if (err) return resError(err, payload, res)
+            if (err) {
+              return resError(err, payload, res)
+            }
             this.sendTransaction(payload, res, targetChain, principal, context)
           })
         }
@@ -969,7 +1013,7 @@ export class Provider extends EventEmitter {
               ...(calldataDigest ? { calldataDigest } : {})
             },
             payload,
-            account: (currentAccount as AccountHandle).id,
+            account: currentAccount.id,
             origin: payload._origin,
             approvals: txMetadata.approvals.map(({ type, data }) => ({
               type,
@@ -1041,7 +1085,7 @@ export class Provider extends EventEmitter {
       handlerId,
       type: 'sign',
       payload,
-      account: (currentAccount as AccountHandle).getAccounts()[0],
+      account: currentAccount.getAccounts()[0],
       origin: payload._origin,
       data: {
         decodedMessage: decodeMessage(message)
@@ -1224,7 +1268,7 @@ export class Provider extends EventEmitter {
 
   private getOriginConnection(payload: RPCRequestPayload) {
     const originId = payload._origin
-    const origin = this.store.getState().main.origins[originId] as Origin
+    const origin = this.store.getState().main.origins[originId]
     const currentAccount = this.accounts.current() as any
     const rawAddress = currentAccount?.address || currentAccount?.id || ''
     const address = rawAddress ? rawAddress.toLowerCase() : ''
@@ -1237,10 +1281,7 @@ export class Provider extends EventEmitter {
     let permission: Permission | undefined
 
     for (const candidate of permissionAddresses) {
-      const permissions = (this.store.getState().main.permissions[candidate] || {}) as Record<
-        string,
-        Permission
-      >
+      const permissions = this.store.getState().main.permissions[candidate] || {}
       const permissionEntry = Object.entries(permissions).find(([id, p]) => {
         return id === originId || p.handlerId === originId || p.origin === origin?.name
       })
@@ -1322,14 +1363,18 @@ export class Provider extends EventEmitter {
   private switchEthereumChain(payload: RPCRequestPayload, res: RPCRequestCallback) {
     try {
       const params = payload.params
-      if (!params?.[0]) throw new Error('Params not supplied')
+      if (!params?.[0]) {
+        throw new Error('Params not supplied')
+      }
 
       const requestedChainId = params[0].chainId
       if (typeof requestedChainId !== 'string' || !/^0x[0-9a-f]+$/i.test(requestedChainId)) {
         throw new Error('Invalid chain id')
       }
       const chainId = Number(BigInt(requestedChainId))
-      if (!Number.isSafeInteger(chainId) || chainId <= 0) throw new Error('Invalid chain id')
+      if (!Number.isSafeInteger(chainId) || chainId <= 0) {
+        throw new Error('Invalid chain id')
+      }
 
       // Check if chain exists
       const exists = Boolean(this.store.getState().main.networks.ethereum[chainId]?.on)
@@ -1355,21 +1400,29 @@ export class Provider extends EventEmitter {
     res: RPCRequestCallback,
     principal: TrustedPrincipal
   ) {
-    if (!payload.params[0]) return resError('addChain request missing params', payload, res)
+    if (!payload.params[0]) {
+      return resError('addChain request missing params', payload, res)
+    }
 
     const type = 'ethereum'
     const { chainId, chainName, nativeCurrency, rpcUrls = [], blockExplorerUrls = [] } = payload.params[0]
 
-    if (!chainId) return resError('addChain request missing chainId', payload, res)
+    if (!chainId) {
+      return resError('addChain request missing chainId', payload, res)
+    }
     if (typeof chainId !== 'string' || !/^0x[0-9a-f]+$/i.test(chainId)) {
       return resError('Invalid chain id', payload, res)
     }
 
     const id = Number(BigInt(chainId))
-    if (!Number.isSafeInteger(id) || id <= 0) return resError('Invalid chain id', payload, res)
+    if (!Number.isSafeInteger(id) || id <= 0) {
+      return resError('Invalid chain id', payload, res)
+    }
 
     const existing = this.store.getState().main.networks[type][id]
-    if (existing?.on) return this.switchEthereumChain(payload, res)
+    if (existing?.on) {
+      return this.switchEthereumChain(payload, res)
+    }
 
     const validHttpUrl = (value: unknown) => {
       try {
@@ -1468,7 +1521,9 @@ export class Provider extends EventEmitter {
         }
 
         const res: RPCRequestCallback = (response) => {
-          if (response?.error) return cb(response)
+          if (response?.error) {
+            return cb(response)
+          }
           cb({ id: payload.id, jsonrpc: '2.0', result: true })
         }
 
@@ -1522,7 +1577,9 @@ export class Provider extends EventEmitter {
     currentAccount: AccountHandle | null,
     cb: RPCCallback<RPC.GetAssets.Response>
   ) {
-    if (!currentAccount) return resError('no account selected', payload, cb)
+    if (!currentAccount) {
+      return resError('no account selected', payload, cb)
+    }
 
     try {
       const { nativeCurrency, erc20 } = this.state.loadAssets(currentAccount.id)
@@ -1538,7 +1595,9 @@ export class Provider extends EventEmitter {
     let settled = false
     Promise.resolve(
       this.send(payload, (res) => {
-        if (settled) return
+        if (settled) {
+          return
+        }
         settled = true
         if (res.error) {
           const errMessage = res.error.message || `sendAsync error did not have message`
@@ -1549,7 +1608,9 @@ export class Provider extends EventEmitter {
       })
     ).catch((error) => {
       log.error('Could not send asynchronous provider request', error)
-      if (settled) return
+      if (settled) {
+        return
+      }
       settled = true
       cb(error instanceof Error ? error : new Error(String(error)))
     })
@@ -1575,11 +1636,16 @@ export class Provider extends EventEmitter {
     const method = payload.method || ''
 
     // method handlers that are not chain-specific can go here, before parsing the target chain
-    if (method === 'eth_unsubscribe' && this.ifSubRemove(payload.params[0]))
-      return res({ id: payload.id, jsonrpc: '2.0', result: true }) // Subscription was ours
+    if (method === 'eth_unsubscribe' && this.ifSubRemove(payload.params[0])) {
+      return res({ id: payload.id, jsonrpc: '2.0', result: true })
+    } // Subscription was ours
 
-    if (method === 'frame_getOriginStatus') return this.getOriginStatus(payload, res, principal)
-    if (method === 'frame_disconnectOrigin') return this.disconnectOrigin(payload, res)
+    if (method === 'frame_getOriginStatus') {
+      return this.getOriginStatus(payload, res, principal)
+    }
+    if (method === 'frame_disconnectOrigin') {
+      return this.disconnectOrigin(payload, res)
+    }
 
     const targetChain = this.parseTargetChain(payload)
 
@@ -1596,16 +1662,22 @@ export class Provider extends EventEmitter {
       })
     }
 
-    if (method === 'eth_accounts') return getAccounts(payload, res)
-    if (method === 'eth_requestAccounts') return getAccounts(payload, res)
+    if (method === 'eth_accounts') {
+      return getAccounts(payload, res)
+    }
+    if (method === 'eth_requestAccounts') {
+      return getAccounts(payload, res)
+    }
     const requirePrincipal = () => {
-      if (principal) return principal
+      if (principal) {
+        return principal
+      }
       resError({ message: 'Wallet action is missing a trusted request source', code: 4100 }, payload, res)
     }
 
     if (method === 'eth_sendTransaction') {
       const trustedPrincipal = requirePrincipal()
-      if (trustedPrincipal)
+      if (trustedPrincipal) {
         return this.sendTransaction(
           payload as RPC.SendTransaction.Request,
           res,
@@ -1613,11 +1685,18 @@ export class Provider extends EventEmitter {
           trustedPrincipal,
           context
         )
+      }
       return
     }
-    if (method === 'eth_getTransactionByHash') return this.getTransactionByHash(payload, res, targetChain)
-    if (method === 'personal_ecRecover') return ecRecover(payload, res)
-    if (method === 'web3_clientVersion') return this.clientVersion(payload, res)
+    if (method === 'eth_getTransactionByHash') {
+      return this.getTransactionByHash(payload, res, targetChain)
+    }
+    if (method === 'personal_ecRecover') {
+      return ecRecover(payload, res)
+    }
+    if (method === 'web3_clientVersion') {
+      return this.clientVersion(payload, res)
+    }
     if (method === 'eth_subscribe' && payload.params[0] in this.subscriptions) {
       return this.subscribe(payload as RPC.Subscribe.Request, res, principal)
     }
@@ -1641,13 +1720,9 @@ export class Provider extends EventEmitter {
         underscoreIndex > 3 ? method.substring(underscoreIndex + 1).toUpperCase() : undefined
       ) as SignTypedDataVersion
       const trustedPrincipal = requirePrincipal()
-      if (trustedPrincipal)
-        return this.signTypedData(
-          payload as RPC.SignTypedData.Request,
-          version,
-          res as RPCCallback<RPC.SignTypedData.Response>,
-          trustedPrincipal
-        )
+      if (trustedPrincipal) {
+        return this.signTypedData(payload as RPC.SignTypedData.Request, version, res, trustedPrincipal)
+      }
       return
     }
 
@@ -1655,24 +1730,33 @@ export class Provider extends EventEmitter {
       const trustedPrincipal = requirePrincipal()
       return trustedPrincipal ? this.addEthereumChain(payload, res, trustedPrincipal) : undefined
     }
-    if (method === 'wallet_switchEthereumChain') return this.switchEthereumChain(payload, res)
-    if (method === 'wallet_getPermissions') return getPermissions(payload, res)
-    if (method === 'wallet_requestPermissions') return requestPermissions(payload, res)
+    if (method === 'wallet_switchEthereumChain') {
+      return this.switchEthereumChain(payload, res)
+    }
+    if (method === 'wallet_getPermissions') {
+      return getPermissions(payload, res)
+    }
+    if (method === 'wallet_requestPermissions') {
+      return requestPermissions(payload, res)
+    }
     if (method === 'wallet_watchAsset') {
       const trustedPrincipal = requirePrincipal()
       return trustedPrincipal ? this.addCustomToken(payload, res, targetChain, trustedPrincipal) : undefined
     }
-    if (method === 'wallet_getEthereumChains') return this.getChains(payload, res)
-    if (method === 'wallet_getAssets')
-      return this.getAssets(
-        payload as RPC.GetAssets.Request,
-        this.accounts.current(),
-        res as RPCCallback<RPC.GetAssets.Response>
-      )
+    if (method === 'wallet_getEthereumChains') {
+      return this.getChains(payload, res)
+    }
+    if (method === 'wallet_getAssets') {
+      return this.getAssets(payload as RPC.GetAssets.Request, this.accounts.current(), res)
+    }
 
     // Connection dependent methods need to pass targetChain
-    if (method === 'net_version') return this.getNetVersion(payload, res, targetChain)
-    if (method === 'eth_chainId') return this.getChainId(payload, res, targetChain)
+    if (method === 'net_version') {
+      return this.getNetVersion(payload, res, targetChain)
+    }
+    if (method === 'eth_chainId') {
+      return this.getChainId(payload, res, targetChain)
+    }
 
     // remove custom data
     const { _origin, chainId, ...rpcPayload } = payload

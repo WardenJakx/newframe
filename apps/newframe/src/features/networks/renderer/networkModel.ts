@@ -27,7 +27,9 @@ export function createNetworkRows({
     .filter((chain) => (!chain.isTestnet || showTestnets) && matchFilter(query.trim(), [chain.name]))
     .map((chain) => ({ ...chain, totalValue: totalByChain.get(chain.chainId) || 0 }))
     .sort((a, b) => {
-      if (a.on !== b.on) return a.on ? -1 : 1
+      if (a.on !== b.on) {
+        return a.on ? -1 : 1
+      }
       return b.totalValue - a.totalValue
     })
 }

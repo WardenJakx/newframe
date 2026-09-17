@@ -94,8 +94,12 @@ const rowRecipe = cva({
 })
 
 function profileValue(profile: ProfileSummary) {
-  if (profile.cachedValue.state === 'missing') return '---'
-  if (profile.cachedValue.state === 'unpriced') return '—'
+  if (profile.cachedValue.state === 'missing') {
+    return '---'
+  }
+  if (profile.cachedValue.state === 'unpriced') {
+    return '—'
+  }
   return `$${formatUsdRate(profile.cachedValue.value, 2)}`
 }
 
@@ -191,23 +195,30 @@ export function ProfileSelector({ capability, currentProfile, profiles }: Profil
         setOpen(true)
         return
       }
-      if (!nextOpen) resetManagement()
+      if (!nextOpen) {
+        resetManagement()
+      }
     },
     [resetManagement, submissionReflected]
   )
 
   React.useEffect(() => {
-    if (!displayedOpen) return
+    if (!displayedOpen) {
+      return
+    }
     const dismiss = (event: MouseEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) handleOpenChange(false)
+      if (!rootRef.current?.contains(event.target as Node)) {
+        handleOpenChange(false)
+      }
     }
     document.addEventListener('mousedown', dismiss)
     return () => document.removeEventListener('mousedown', dismiss)
   }, [displayedOpen, handleOpenChange])
 
   React.useEffect(() => {
-    if (displayedOpen)
+    if (displayedOpen) {
       rootRef.current?.querySelector<HTMLButtonElement>('[data-profile-menu] button')?.focus()
+    }
   }, [displayedOpen])
 
   const handleSelect = React.useCallback(
@@ -223,7 +234,9 @@ export function ProfileSelector({ capability, currentProfile, profiles }: Profil
       setOpen(true)
       setError('')
       const result = await capability.selectProfile({ operationId, profileId })
-      if (submissionRef.current?.operationId !== operationId) return
+      if (submissionRef.current?.operationId !== operationId) {
+        return
+      }
       if (!result.ok) {
         setError(errorMessage(result.error, 'Could not switch profiles. Try again.'))
         submissionRef.current = null
@@ -235,7 +248,9 @@ export function ProfileSelector({ capability, currentProfile, profiles }: Profil
   )
 
   const openCreate = React.useCallback(async () => {
-    if (submissionReflected) resetManagement()
+    if (submissionReflected) {
+      resetManagement()
+    }
     setMode('create')
     setName('')
     setMovableAccounts([])
@@ -246,7 +261,9 @@ export function ProfileSelector({ capability, currentProfile, profiles }: Profil
     const requestToken = crypto.randomUUID()
     movableAccountsRequestRef.current = requestToken
     const result = await capability.listMovableProfileAccounts()
-    if (movableAccountsRequestRef.current !== requestToken) return
+    if (movableAccountsRequestRef.current !== requestToken) {
+      return
+    }
     movableAccountsRequestRef.current = ''
     setLoadingAccounts(false)
     if (result.ok) {
@@ -273,7 +290,9 @@ export function ProfileSelector({ capability, currentProfile, profiles }: Profil
       name: trimmedName,
       ...(selectedAccountIds.length ? { accountIds: selectedAccountIds } : {})
     })
-    if (submissionRef.current?.operationId !== operationId) return
+    if (submissionRef.current?.operationId !== operationId) {
+      return
+    }
     if (!result.ok) {
       setError(errorMessage(result.error, 'Could not create the profile. Try again.'))
       submissionRef.current = null
@@ -283,7 +302,9 @@ export function ProfileSelector({ capability, currentProfile, profiles }: Profil
 
   const openRename = React.useCallback(
     (profile: ProfileSummary) => {
-      if (submissionReflected) resetManagement()
+      if (submissionReflected) {
+        resetManagement()
+      }
       setManagedProfileId(profile.id)
       setMode('rename')
       setName(profile.name)
@@ -293,7 +314,9 @@ export function ProfileSelector({ capability, currentProfile, profiles }: Profil
   )
 
   const submitRename = React.useCallback(async () => {
-    if (!managedProfile) return
+    if (!managedProfile) {
+      return
+    }
     const trimmedName = name.trim()
     if (!trimmedName || trimmedName.length > 50) {
       setError('Enter a profile name between 1 and 50 characters.')
@@ -315,7 +338,9 @@ export function ProfileSelector({ capability, currentProfile, profiles }: Profil
       profileId: managedProfile.id,
       name: trimmedName
     })
-    if (submissionRef.current?.operationId !== operationId) return
+    if (submissionRef.current?.operationId !== operationId) {
+      return
+    }
     if (!result.ok) {
       setError(errorMessage(result.error, 'Could not rename the profile. Try again.'))
       submissionRef.current = null
@@ -324,7 +349,9 @@ export function ProfileSelector({ capability, currentProfile, profiles }: Profil
   }, [managedProfile, capability, name])
 
   const submitDelete = React.useCallback(async () => {
-    if (!managedProfile || managedProfile.accountCount > 0 || profiles.length <= 1) return
+    if (!managedProfile || managedProfile.accountCount > 0 || profiles.length <= 1) {
+      return
+    }
     const operationId = crypto.randomUUID()
     const nextSubmission: ProfileSubmission = {
       operationId,
@@ -338,7 +365,9 @@ export function ProfileSelector({ capability, currentProfile, profiles }: Profil
       operationId,
       profileId: managedProfile.id
     })
-    if (submissionRef.current?.operationId !== operationId) return
+    if (submissionRef.current?.operationId !== operationId) {
+      return
+    }
     if (!result.ok) {
       setError(errorMessage(result.error, 'Could not delete the profile. Try again.'))
       submissionRef.current = null
@@ -473,7 +502,9 @@ export function ProfileSelector({ capability, currentProfile, profiles }: Profil
       className={selectorRecipe()}
       ref={rootRef}
       onBlur={(event) => {
-        if (event.relatedTarget && !event.currentTarget.contains(event.relatedTarget)) handleOpenChange(false)
+        if (event.relatedTarget && !event.currentTarget.contains(event.relatedTarget)) {
+          handleOpenChange(false)
+        }
       }}
       onKeyDown={(event) => {
         if (event.key === 'Escape' && displayedOpen) {

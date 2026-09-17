@@ -11,24 +11,44 @@ import {
 } from './activityTypes'
 
 export function transactionStatusLabel(status?: string) {
-  if (status === 'submitted') return 'Submitted'
-  if (status === 'confirming') return 'Confirming'
-  if (status === 'succeeded') return 'Confirmed'
-  if (status === 'reverted') return 'Reverted'
+  if (status === 'submitted') {
+    return 'Submitted'
+  }
+  if (status === 'confirming') {
+    return 'Confirming'
+  }
+  if (status === 'succeeded') {
+    return 'Confirmed'
+  }
+  if (status === 'reverted') {
+    return 'Reverted'
+  }
   return 'Submitted'
 }
 
 function requestStatusFromActivity(status?: string) {
-  if (status === 'submitted') return 'verifying'
-  if (status === 'confirming') return 'confirming'
-  if (status === 'succeeded') return 'confirmed'
-  if (status === 'reverted') return 'error'
+  if (status === 'submitted') {
+    return 'verifying'
+  }
+  if (status === 'confirming') {
+    return 'confirming'
+  }
+  if (status === 'succeeded') {
+    return 'confirmed'
+  }
+  if (status === 'reverted') {
+    return 'error'
+  }
   return 'verifying'
 }
 
 export function activityGlyphState(status?: string) {
-  if (status === 'succeeded') return 'completed'
-  if (status === 'reverted') return 'failed'
+  if (status === 'succeeded') {
+    return 'completed'
+  }
+  if (status === 'reverted') {
+    return 'failed'
+  }
   return 'pending'
 }
 
@@ -50,7 +70,9 @@ function activityRequestLike(activity: ActivityRecord) {
 
 export function activityTimestampLabel(activity: ActivityRecord) {
   const submittedAt = timestamp(activity.submittedAt, timestamp(activity.updatedAt, 0))
-  if (!submittedAt) return ''
+  if (!submittedAt) {
+    return ''
+  }
 
   return new Date(submittedAt).toLocaleString([], {
     year: 'numeric',
@@ -62,7 +84,9 @@ export function activityTimestampLabel(activity: ActivityRecord) {
 }
 
 export function activityBalanceChanges(activity: ActivityRecord, nativeSymbol = 'ETH'): TransactionEffect[] {
-  if (Array.isArray(activity.balanceChanges)) return activity.balanceChanges as TransactionEffect[]
+  if (Array.isArray(activity.balanceChanges)) {
+    return activity.balanceChanges as TransactionEffect[]
+  }
 
   return getTransactionEffects(activityRequestLike(activity), nativeSymbol).filter(
     (effect) => effect.direction === 'in' || effect.direction === 'out'
@@ -81,7 +105,9 @@ export function activityBalanceChangeLabel(
   tokenForAddress?: (address: string) => { decimals?: number; symbol?: string } | undefined
 ) {
   const changes = activityBalanceChanges(activity, nativeSymbol)
-  if (!changes.length) return ''
+  if (!changes.length) {
+    return ''
+  }
 
   const labels = changes.slice(0, 2).map((change) => {
     const sign = change.direction === 'in' ? '+' : '−'
@@ -126,18 +152,26 @@ export function activityAssetEffect(activity: ActivityRecord, nativeSymbol = 'ET
     return withAssetMetadata(balanceEffect)
   }
 
-  if (!recognizedAssetAction && !decodedAssetAction && !nativeTransfer && !titleMatch) return undefined
+  if (!recognizedAssetAction && !decodedAssetAction && !nativeTransfer && !titleMatch) {
+    return undefined
+  }
 
   const effect = Array.isArray(activity.balanceChanges)
     ? undefined
     : getTransactionEffects(activityRequestLike(activity), nativeSymbol).find(
         (effect) => effect.kind === 'erc20' || effect.kind === 'allowance' || effect.kind === 'native'
       )
-  if (effect) return withAssetMetadata(effect)
+  if (effect) {
+    return withAssetMetadata(effect)
+  }
 
-  if (balanceEffect) return withAssetMetadata(balanceEffect)
+  if (balanceEffect) {
+    return withAssetMetadata(balanceEffect)
+  }
 
-  if (!titleMatch) return undefined
+  if (!titleMatch) {
+    return undefined
+  }
 
   const [, action, displaySymbol] = titleMatch
   const symbol = token.symbol || displaySymbol

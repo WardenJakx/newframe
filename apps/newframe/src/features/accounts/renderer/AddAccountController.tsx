@@ -57,7 +57,9 @@ const EMPTY_RATES: WalletRendererState['assetRates'] = {}
 const EMPTY_SIGNERS: WalletRendererState['signers'] = {}
 
 function operationError(result: unknown, fallback: string) {
-  if (typeof result !== 'object' || result === null || !('message' in result)) return fallback
+  if (typeof result !== 'object' || result === null || !('message' in result)) {
+    return fallback
+  }
   return typeof result.message === 'string' && result.message ? result.message : fallback
 }
 
@@ -71,7 +73,9 @@ function useSubmission(setFeedback: (error: string, status: string) => void) {
     setSubmission(next)
   }
   const fail = (operationId: string, error: unknown, fallback: string) => {
-    if (submissionRef.current?.operationId !== operationId) return false
+    if (submissionRef.current?.operationId !== operationId) {
+      return false
+    }
     setActive(null)
     setFeedback(operationError(error, fallback), '')
     return true
@@ -84,10 +88,14 @@ function useSubmission(setFeedback: (error: string, status: string) => void) {
   ) => {
     const operationId = crypto.randomUUID()
     setActive({ operationId, type })
-    if (clearFeedback) setFeedback('', '')
+    if (clearFeedback) {
+      setFeedback('', '')
+    }
     try {
       const result = await command(operationId)
-      if (!result.ok) fail(operationId, result, fallback)
+      if (!result.ok) {
+        fail(operationId, result, fallback)
+      }
     } catch (error) {
       fail(operationId, error, fallback)
     }
@@ -132,7 +140,9 @@ export function AddAccountController({
   const [state, dispatch] = useReducer(addAccountReducer, undefined, createAddAccountState)
   const safeProfile = useRef(shared.currentProfile)
   useEffect(() => {
-    if (safeProfile.current === shared.currentProfile) return
+    if (safeProfile.current === shared.currentProfile) {
+      return
+    }
     safeProfile.current = shared.currentProfile
     setSafeImports({})
     setSafeSelected([])
@@ -152,28 +162,37 @@ export function AddAccountController({
     (item) => !item.error && (!item.operation || item.operation.status === 'pending')
   )
   useEffect(() => {
-    if (state.addAccountCategory !== 'safe') return
+    if (state.addAccountCategory !== 'safe') {
+      return
+    }
     let active = true
     const address = state.addAccountInput.trim()
     setSafeNetworks([])
     setSafeSelected([])
     setSafeDiscovering(false)
-    if (!/^0x[0-9a-fA-F]{40}$/.test(address)) return
+    if (!/^0x[0-9a-fA-F]{40}$/.test(address)) {
+      return
+    }
     setSafeDiscovering(true)
     const timer = setTimeout(() => {
       void capability
         .discoverSafeNetworks(address)
         .then((networks) => {
-          if (!active) return
+          if (!active) {
+            return
+          }
           setSafeNetworks(networks)
           setSafeSelected(networks.filter((network) => network.supported).map((network) => network.chainId))
         })
         .catch(() => {
-          if (active)
+          if (active) {
             dispatch({ type: 'feedback.changed', error: 'Could not discover Safe networks', status: '' })
+          }
         })
         .finally(() => {
-          if (active) setSafeDiscovering(false)
+          if (active) {
+            setSafeDiscovering(false)
+          }
         })
     }, 300)
     return () => {
@@ -182,28 +201,38 @@ export function AddAccountController({
     }
   }, [capability, state.addAccountCategory, state.addAccountInput, shared.currentProfile])
   useEffect(() => {
-    if (safeBusy || !safeOutcomes.length || safeSelectedAccount.current) return
+    if (safeBusy || !safeOutcomes.length || safeSelectedAccount.current) {
+      return
+    }
     const accountId = safeOutcomes
       .find((item) => item.operation?.status === 'succeeded')
       ?.operation?.entityRefs?.find((ref) => ref.type === 'account')?.id
-    if (!accountId) return
+    if (!accountId) {
+      return
+    }
     safeSelectedAccount.current = true
     const scope = safeScope
     void capability
       .selectAccount({ accountId })
       .then((result) => {
-        if (safeDraft.current === scope && safeImportScope.current === scope && !result.ok)
+        if (safeDraft.current === scope && safeImportScope.current === scope && !result.ok) {
           setFeedback(operationError(result, 'Could not select Safe'), '')
+        }
       })
       .catch(() => {
-        if (safeDraft.current === scope && safeImportScope.current === scope)
+        if (safeDraft.current === scope && safeImportScope.current === scope) {
           setFeedback('Could not select Safe', '')
+        }
       })
   })
   async function importSafeNetworks() {
-    if (safeBusy || !safeSelected.length) return
+    if (safeBusy || !safeSelected.length) {
+      return
+    }
     const address = state.addAccountInput.trim()
-    if (!/^0x[0-9a-fA-F]{40}$/.test(address)) return setFeedback('Enter a valid Safe address', '')
+    if (!/^0x[0-9a-fA-F]{40}$/.test(address)) {
+      return setFeedback('Enter a valid Safe address', '')
+    }
     const scope = safeScope
     safeImportScope.current = scope
     safeSelectedAccount.current = false
@@ -223,9 +252,13 @@ export function AddAccountController({
             address,
             chainId: Number(chainId)
           })
-          if (!result.ok) throw new Error(operationError(result, 'Could not import Safe'))
+          if (!result.ok) {
+            throw new Error(operationError(result, 'Could not import Safe'))
+          }
         } catch (error) {
-          if (safeDraft.current !== scope) return
+          if (safeDraft.current !== scope) {
+            return
+          }
           setSafeImports((current) =>
             current[chainId]?.operationId === item.operationId
               ? {
@@ -304,14 +337,18 @@ export function AddAccountController({
     )
     const addresses = visibleHardwareAddresses
 
-    if (!isHardwareSigner || !addresses.length) return
+    if (!isHardwareSigner || !addresses.length) {
+      return
+    }
 
     const requestId = ++addressChainUsageRequest.current
 
     void capability
       .inspectAddressChainUsage({ addresses })
       .then((result) => {
-        if (requestId !== addressChainUsageRequest.current) return
+        if (requestId !== addressChainUsageRequest.current) {
+          return
+        }
 
         setAddressChainUsageResult({
           key: addressChainUsageKey,
@@ -332,7 +369,9 @@ export function AddAccountController({
       })
 
     return () => {
-      if (addressChainUsageRequest.current === requestId) addressChainUsageRequest.current += 1
+      if (addressChainUsageRequest.current === requestId) {
+        addressChainUsageRequest.current += 1
+      }
     }
   }, [
     capability,
@@ -354,7 +393,9 @@ export function AddAccountController({
     async function refreshAddVaultState() {
       try {
         const status = await capability.getSecurityStatus()
-        if (!active) return
+        if (!active) {
+          return
+        }
 
         dispatch({
           type: 'vault.loaded',
@@ -363,7 +404,9 @@ export function AddAccountController({
             : { exists: false, unlocked: false }
         })
       } catch {
-        if (active) dispatch({ type: 'vault.loaded', vault: { exists: false, unlocked: false } })
+        if (active) {
+          dispatch({ type: 'vault.loaded', vault: { exists: false, unlocked: false } })
+        }
       }
     }
 
@@ -375,12 +418,16 @@ export function AddAccountController({
   }, [capability])
 
   useEffect(() => {
-    if (!pendingExistingAccount || shared.currentAccount.toLowerCase() !== pendingExistingAccount) return
+    if (!pendingExistingAccount || shared.currentAccount.toLowerCase() !== pendingExistingAccount) {
+      return
+    }
     onClose()
   }, [onClose, pendingExistingAccount, shared.currentAccount])
 
   useEffect(() => {
-    if (!submission || !onboardingOperation) return
+    if (!submission || !onboardingOperation) {
+      return
+    }
     const operationId = submission.operationId
     if (onboardingOperation.status === 'failed') {
       whenCurrent(submissionRef, operationId, () =>
@@ -397,7 +444,9 @@ export function AddAccountController({
       })
     }
 
-    if (onboardingOperation.status !== 'succeeded') return
+    if (onboardingOperation.status !== 'succeeded') {
+      return
+    }
     if (
       [
         'account.watch-add',
@@ -421,7 +470,9 @@ export function AddAccountController({
   }, [hardwareSession?.signerId, onboardingOperation, submission])
 
   useEffect(() => {
-    if (!hardwareSession) return
+    if (!hardwareSession) {
+      return
+    }
     const signer = shared.signers[hardwareSession.signerId]
     const session = shared.operations[hardwareSession.operationId]
     const operationId = hardwareSession.operationId
@@ -432,7 +483,9 @@ export function AddAccountController({
       })
       return
     }
-    if (signer?.status?.toLowerCase() !== 'ok') return
+    if (signer?.status?.toLowerCase() !== 'ok') {
+      return
+    }
 
     whenCurrent(hardwareSessionRef, operationId, () => finishSignerSession('ready'))
     // finishSignerSession is intentionally guarded by the mutable active-session reference.
@@ -440,13 +493,17 @@ export function AddAccountController({
   }, [hardwareSession, shared.operations, shared.signers])
 
   async function selectExistingAccount(id: string) {
-    if (pendingExistingAccount) return
+    if (pendingExistingAccount) {
+      return
+    }
     setPendingExistingAccount(id)
     setFeedback('', 'Selecting account')
 
     try {
       const result = await capability.selectAccount({ accountId: id })
-      if (result.ok) return
+      if (result.ok) {
+        return
+      }
 
       setPendingExistingAccount('')
       setFeedback(operationError(result, 'Could not select account'), '')
@@ -457,14 +514,20 @@ export function AddAccountController({
   }
 
   function accountDisplayName(account: AccountProjection | undefined) {
-    if (!account) return ''
+    if (!account) {
+      return ''
+    }
     return account.ensName && !shared.showLocalNameWithENS ? account.ensName : account.name
   }
 
   function accountNavValue(account: AccountProjection | undefined) {
-    if (!account?.address) return '---'
+    if (!account?.address) {
+      return '---'
+    }
     const rawBalances = shared.balances[account.address]
-    if (!Array.isArray(rawBalances) || rawBalances.length === 0) return '---'
+    if (!Array.isArray(rawBalances) || rawBalances.length === 0) {
+      return '---'
+    }
     const balances = selectBalanceSummaries({
       rawBalances,
       assetRates: shared.assetRates,
@@ -474,7 +537,9 @@ export function AddAccountController({
       includeChain: (chain) => (!chain.isTestnet || shared.showTestnets) && !!chain.on,
       cacheKey: account.address
     })
-    if (balances.length > 0 && !balances.some((balance) => balance.hasPrice)) return '—'
+    if (balances.length > 0 && !balances.some((balance) => balance.hasPrice)) {
+      return '—'
+    }
     const total = balances.reduce((sum, balance) => sum + balance.totalValue, 0)
     return `$${formatUsdRate(total, 2)}`
   }
@@ -525,7 +590,9 @@ export function AddAccountController({
   function chooseInlineAddCategory(category: string) {
     clearSafeDraft()
     dispatch({ type: 'flow.category-selected', category })
-    if (category === 'createSeed') void generateInlineSeedPhrase()
+    if (category === 'createSeed') {
+      void generateInlineSeedPhrase()
+    }
   }
 
   function chooseInlineAddType(type: string) {
@@ -545,12 +612,16 @@ export function AddAccountController({
   }
 
   async function addSignerAddress(signer: SignerProjection, address: string, name: string, fallback: string) {
-    if (!signer?.id || !address) return
+    if (!signer?.id || !address) {
+      return
+    }
     const accounts = shared.accounts
     const id = address.toLowerCase()
 
     if (accounts[id]) {
-      if (shared.currentAccount.toLowerCase() === id) return resetInlineAdd()
+      if (shared.currentAccount.toLowerCase() === id) {
+        return resetInlineAdd()
+      }
       void selectExistingAccount(id)
       return
     }
@@ -578,14 +649,18 @@ export function AddAccountController({
     setHardwarePage(1)
     setHardwarePageInput('1')
     dispatch({ type: 'hardware.signer-selected', signerId })
-    if (shared.signers[signerId]?.type !== 'airgap') beginHardwareSession(signerId, false)
+    if (shared.signers[signerId]?.type !== 'airgap') {
+      beginHardwareSession(signerId, false)
+    }
   }
 
   async function importSigner() {
     const deviceId = (state.addAccountInput || '').trim()
     const deviceName = (state.addAccountName || '').trim() || 'GridPlus'
 
-    if (!deviceId) return setFeedback('Device ID required', '')
+    if (!deviceId) {
+      return setFeedback('Device ID required', '')
+    }
 
     await runSubmission(
       'signer.import.lattice',
@@ -600,13 +675,17 @@ export function AddAccountController({
   }
 
   function reloadHardwareSigner(signer: SignerProjection) {
-    if (!signer?.id) return
+    if (!signer?.id) {
+      return
+    }
     beginHardwareSession(signer.id, true)
     setFeedback('', '')
   }
 
   function removeHardwareSigner(signer: SignerProjection) {
-    if (!signer?.id) return
+    if (!signer?.id) {
+      return
+    }
     const operationId = crypto.randomUUID()
     setActiveSubmission({ operationId, type: 'signer.disconnect' })
     void capability.disconnectSigner({ operationId, signerId: signer.id })
@@ -622,8 +701,12 @@ export function AddAccountController({
   }
 
   function inputSignerSession(signer: SignerProjection, input: 'pin' | 'passphrase' | 'device-passphrase') {
-    if (!signer?.id) return
-    if (input === 'pin' && !state.addHardwarePin) return setFeedback('PIN required', '')
+    if (!signer?.id) {
+      return
+    }
+    if (input === 'pin' && !state.addHardwarePin) {
+      return setFeedback('PIN required', '')
+    }
     if (!hardwareSession || hardwareSession.signerId !== signer.id) {
       return setFeedback('Reconnect the hardware wallet first', '')
     }
@@ -659,8 +742,12 @@ export function AddAccountController({
   }
 
   async function pairHardwareLattice(signer: SignerProjection) {
-    if (!signer?.id) return
-    if (!state.addHardwarePairCode) return setFeedback('Pairing code required', '')
+    if (!signer?.id) {
+      return
+    }
+    if (!state.addHardwarePairCode) {
+      return setFeedback('Pairing code required', '')
+    }
     if (!hardwareSession || hardwareSession.signerId !== signer.id) {
       return setFeedback('Reconnect the hardware wallet first', '')
     }
@@ -674,7 +761,9 @@ export function AddAccountController({
       signerId: signer.id,
       value: state.addHardwarePairCode
     })
-    if (!result.ok) failSubmission(actionId, result, 'Could not pair GridPlus.')
+    if (!result.ok) {
+      failSubmission(actionId, result, 'Could not pair GridPlus.')
+    }
   }
 
   async function createInlineAccount() {
@@ -689,7 +778,9 @@ export function AddAccountController({
     const input = (addAccountInput || '').trim()
     const name = (addAccountName || '').trim()
 
-    if (!addAccountType) return setFeedback('Choose an account type', '')
+    if (!addAccountType) {
+      return setFeedback('Choose an account type', '')
+    }
     if (addAccountType !== 'keystore' && !input) {
       return setFeedback('Account input required', '')
     }
@@ -749,7 +840,9 @@ export function AddAccountController({
           : 'Choose a JSON backup file'
         return void failSubmission(operationId, { message }, message)
       }
-      if (!result.ok) throw new Error(operationError(result, 'Could not add the account.'))
+      if (!result.ok) {
+        throw new Error(operationError(result, 'Could not add the account.'))
+      }
     } catch (err: unknown) {
       failSubmission(operationId, err, 'Could not add the account.')
     }
@@ -771,7 +864,9 @@ export function AddAccountController({
 
   function copyGeneratedSeedPhrase() {
     const phrase = state.addGeneratedPhrase
-    if (!phrase) return
+    if (!phrase) {
+      return
+    }
 
     clearTimeout(seedPhraseCopiedTimeoutRef.current)
     void capability.writeClipboard({ text: phrase })
@@ -787,7 +882,9 @@ export function AddAccountController({
     const name = (state.addAccountName || '').trim()
     const password = state.addAccountPassword || ''
 
-    if (!phrase) return setFeedback('Generate a recovery phrase first', '')
+    if (!phrase) {
+      return setFeedback('Generate a recovery phrase first', '')
+    }
     if (!state.addGeneratedPhraseBackedUp) {
       return setFeedback('Confirm that you saved the recovery phrase', '')
     }
@@ -857,7 +954,9 @@ export function AddAccountController({
     const selectedSigner = state.addAccountSelectedSigner
       ? shared.signers[state.addAccountSelectedSigner]
       : undefined
-    if (!signers.length) return { kind: 'stored-seed', model: { mode: 'empty' } }
+    if (!signers.length) {
+      return { kind: 'stored-seed', model: { mode: 'empty' } }
+    }
     if (!selectedSigner) {
       return {
         kind: 'stored-seed',
@@ -1072,7 +1171,9 @@ export function AddAccountController({
     const pageModel = hardwarePageModel(signer, requestedPage, shared.ledger?.derivation === 'live')
     setHardwarePage(pageModel.page)
     setHardwarePageInput(String(pageModel.page))
-    if (!pageModel.loading) return
+    if (!pageModel.loading) {
+      return
+    }
     await runSubmission(
       'signer.accounts-load',
       (operationId) =>
@@ -1101,17 +1202,20 @@ export function AddAccountController({
     onGeneratedSeedRegenerate: () => void generateInlineSeedPhrase(),
     onHardwareAddressSelect: (address: string) => {
       const signer = selectedSigner()
-      if (signer)
+      if (signer) {
         void addSignerAddress(
           signer,
           address,
           hardwareAccountName(signer),
           'Could not add the hardware account.'
         )
+      }
     },
     onHardwarePair: () => {
       const signer = selectedSigner()
-      if (signer) void pairHardwareLattice(signer)
+      if (signer) {
+        void pairHardwareLattice(signer)
+      }
     },
     onHardwarePairCodeChange: (value: string) =>
       dispatch({ type: 'hardware.pair-code-changed', value } as const),
@@ -1121,16 +1225,22 @@ export function AddAccountController({
     onHardwarePinDelete: backspaceHardwarePin,
     onHardwareReload: () => {
       const signer = selectedSigner()
-      if (signer) reloadHardwareSigner(signer)
+      if (signer) {
+        reloadHardwareSigner(signer)
+      }
     },
     onHardwareRemove: () => {
       const signer = selectedSigner()
-      if (signer) removeHardwareSigner(signer)
+      if (signer) {
+        removeHardwareSigner(signer)
+      }
     },
     onHardwareSelect: selectHardwareSigner,
     onHardwareSubmit: (hardwareInput: 'pin' | 'passphrase' | 'device-passphrase') => {
       const signer = selectedSigner()
-      if (signer) inputSignerSession(signer, hardwareInput)
+      if (signer) {
+        inputSignerSession(signer, hardwareInput)
+      }
     },
     onImportSeedOpen: () => dispatch({ type: 'flow.import-seed-opened' } as const),
     onInputChange: (value: string) => {
@@ -1146,13 +1256,17 @@ export function AddAccountController({
     onNameChange: (value: string) => dispatch({ type: 'form.name-changed', value } as const),
     onPageChange: (page: number) => {
       const signer = selectedSigner()
-      if (signer) void selectHardwarePage(signer, page)
+      if (signer) {
+        void selectHardwarePage(signer, page)
+      }
     },
     onPageInputChange: setHardwarePageInput,
     onPasswordChange: (value: string) => dispatch({ type: 'form.password-changed', value } as const),
     onStoredSeedAddressSelect: (address: string) => {
       const signer = selectedSigner()
-      if (signer) void addSignerAddress(signer, address, 'Hot Account', 'Could not add the account.')
+      if (signer) {
+        void addSignerAddress(signer, address, 'Hot Account', 'Could not add the account.')
+      }
     },
     onStoredSeedExpand: expandStoredSeed,
     onStoredSeedSelect: (signerId: string) =>

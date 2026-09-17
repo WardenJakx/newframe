@@ -93,7 +93,9 @@ function assetAddress(asset: FlashAsset) {
 
 function findAssetByRouteId(assetId: string | null | undefined, assets: readonly FlashAsset[]) {
   const routeAsset = parseCanonicalAssetId(assetId)
-  if (!routeAsset) return null
+  if (!routeAsset) {
+    return null
+  }
 
   return (
     assets.find((asset) => {
@@ -123,14 +125,18 @@ function resolveTargetAsset({
   chainId?: number | null
 }) {
   const routeAsset = findAssetByRouteId(assetId, assets)
-  if (routeAsset) return routeAsset
+  if (routeAsset) {
+    return routeAsset
+  }
 
   const parsedRoute = parseCanonicalAssetId(assetId)
   const fallbackChainId = parsedRoute?.chainId || chainId
 
   if (Number.isInteger(fallbackChainId) && Number(fallbackChainId) > 0) {
     const asset = defaultAssetForChain(Number(fallbackChainId), assets)
-    if (asset) return asset
+    if (asset) {
+      return asset
+    }
   }
 
   return resolveFlashAssetFromRouteAssetId(assetId, chainId)
@@ -318,7 +324,9 @@ function clearQuoteIfNeeded(state: TradeWorkflowState): TradeWorkflowState {
 }
 
 function withQuoteRefresh(state: TradeWorkflowState): TradeWorkflowState {
-  if (!tradeHasValidInput(state)) return clearQuoteIfNeeded(state)
+  if (!tradeHasValidInput(state)) {
+    return clearQuoteIfNeeded(state)
+  }
 
   return {
     ...state,
@@ -425,7 +433,9 @@ export function tradeReducer(state: TradeWorkflowState, action: TradeWorkflowAct
     case 'quoteCleared':
       return clearQuoteIfNeeded(state)
     case 'quoteFailed':
-      if (state.quoteRequestKey !== action.requestKey) return state
+      if (state.quoteRequestKey !== action.requestKey) {
+        return state
+      }
 
       return {
         ...state,
@@ -441,7 +451,9 @@ export function tradeReducer(state: TradeWorkflowState, action: TradeWorkflowAct
         quoteRequestKey: action.requestKey
       }
     case 'quoteSucceeded':
-      if (state.quoteRequestKey !== action.requestKey) return state
+      if (state.quoteRequestKey !== action.requestKey) {
+        return state
+      }
 
       return {
         ...state,
@@ -473,9 +485,11 @@ export function tradeReducer(state: TradeWorkflowState, action: TradeWorkflowAct
     case 'setOrderField':
       return refreshForSettings(state, {
         [action.field]: action.value
-      } as Partial<TradeWorkflowState>)
+      })
     case 'setOrderType': {
-      if (action.orderType === state.orderType) return state
+      if (action.orderType === state.orderType) {
+        return state
+      }
 
       const side =
         action.orderType === FLASH_STOP_ORDER_TYPE

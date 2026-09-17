@@ -57,7 +57,9 @@ const requestLifecycle = {
   },
   respond(requestId: string, response: RPCResponsePayload) {
     const callback = this.pending.get(requestId)
-    if (!callback) return false
+    if (!callback) {
+      return false
+    }
     this.pending.delete(requestId)
     callback(response)
     return true
@@ -139,15 +141,19 @@ function createAccounts(chainRpc = providerMock) {
 }
 
 const storeState = () => store.getState() as any
-const canonicalRequest = (id: string | number = request.handlerId) => Accounts.current().requests[id] as any
+const canonicalRequest = (id: string | number = request.handlerId) => Accounts.current().requests[id]
 const patchRequest = (update: (request: any) => void, id: string | number = request.handlerId) =>
   Accounts.current().patchRequest(id, update)
 const flushPromises = async (count = 4) => {
-  while (count-- > 0) await Promise.resolve()
+  while (count-- > 0) {
+    await Promise.resolve()
+  }
 }
 function mockConfirmedReceipt(receiptBlock: number) {
   provider.send = mock((payload: any, cb: any) => {
-    if (payload.method === 'eth_subscribe') return cb({ error: { code: -32601, message: 'unsupported' } })
+    if (payload.method === 'eth_subscribe') {
+      return cb({ error: { code: -32601, message: 'unsupported' } })
+    }
     if (payload.method === 'eth_blockNumber') {
       return cb({ result: intToHex(receiptBlock + TRANSACTION_CONFIRMATION_TARGET) })
     }
@@ -623,7 +629,9 @@ describe('#setTxSent', () => {
     expect(storeState().main.activity[hash]).toMatchObject({ status: 'submitted', hash })
 
     timers.advanceTimersByTime(1_000)
-    for (let index = 0; index < 6; index += 1) await Promise.resolve()
+    for (let index = 0; index < 6; index += 1) {
+      await Promise.resolve()
+    }
 
     expect(canonicalRequest()).toMatchObject({ status: 'sent', notice: 'Sent' })
     expect(storeState().main.activity[hash].status).toBe('submitted')
@@ -766,8 +774,8 @@ describe('#setTxSent', () => {
     timers.advanceTimersByTime(1000)
     await flushPromises()
 
-    expect((Accounts.current().requests[request.handlerId] as any).status).toBe('confirmed')
-    expect((Accounts.current().requests[request.handlerId] as any).tx.confirmations).toBe(
+    expect(Accounts.current().requests[request.handlerId].status).toBe('confirmed')
+    expect(Accounts.current().requests[request.handlerId].tx.confirmations).toBe(
       TRANSACTION_CONFIRMATION_TARGET
     )
     expect(storeState().main.activity[hash].gasSpent).toBe('0x23cfb4e356000')
@@ -808,7 +816,7 @@ describe('#setTxSent', () => {
     timers.advanceTimersByTime(1000)
     await flushPromises()
 
-    expect((Accounts.current().requests[otherChainRequest.handlerId] as any).status).toBe('verifying')
+    expect(Accounts.current().requests[otherChainRequest.handlerId].status).toBe('verifying')
   })
 
   it('opens a queued request after popping the submitted transaction request', () => {
@@ -869,8 +877,9 @@ describe('#setTxSent', () => {
           }
         })
       }
-      if (payload.method === 'eth_blockNumber')
+      if (payload.method === 'eth_blockNumber') {
         return cb({ result: intToHex(receiptBlock + TRANSACTION_CONFIRMATION_TARGET) })
+      }
 
       cb({ result: null })
     })
@@ -960,8 +969,11 @@ describe('#setTxSent', () => {
     storeState().selectProfile(DEFAULT_PROFILE_ID)
     provider.send = mock((payload: any, cb: any) => {
       methods.push(payload.method)
-      if (payload.method === 'eth_subscribe') cb({ result: 'head-subscription' })
-      else if (payload.method === 'eth_unsubscribe') cb({ result: true })
+      if (payload.method === 'eth_subscribe') {
+        cb({ result: 'head-subscription' })
+      } else if (payload.method === 'eth_unsubscribe') {
+        cb({ result: true })
+      }
     })
 
     try {

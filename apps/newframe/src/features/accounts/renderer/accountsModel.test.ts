@@ -62,7 +62,7 @@ describe('accounts model', () => {
 
     expect(model.items.map((item) => item.id)).toEqual([first.id])
     expect(model.items[0]?.shortAddress).toBe(shortAccountAddress(first.address))
-    expect(accountMatchesQuery(model.items[0]!, '0x000')).toBe(true)
+    expect(accountMatchesQuery(model.items[0], '0x000')).toBe(true)
   })
 
   it('models missing, unpriced, and priced balance labels from focused projection inputs', () => {

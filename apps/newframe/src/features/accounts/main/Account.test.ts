@@ -57,7 +57,9 @@ const requestLifecycle = {
   },
   respond(requestId: string, response: RPCResponsePayload) {
     const callback = this.pending.get(requestId)
-    if (!callback) return false
+    if (!callback) {
+      return false
+    }
     this.pending.delete(requestId)
     callback(response)
     return true
@@ -121,7 +123,7 @@ beforeEach(() => {
   requestLifecycle.pending.clear()
   store.getState().removeAccount(accountState.address.toLowerCase())
   account = createAccount()
-  ;(fetchContract as any).mockResolvedValueOnce(undefined)
+  fetchContract.mockResolvedValueOnce(undefined)
   simulateTransactionEffectsMock.mockResolvedValue({ status: 'success', effects: [] })
 })
 
@@ -158,7 +160,9 @@ describe('#addRequest', () => {
       windowInstanceId: 'wallet-window'
     })
     const decision = decideWalletAction(rendererPrincipal, request as any)
-    if (decision.outcome !== 'prompt') throw new Error('renderer request was not prompt-authorized')
+    if (decision.outcome !== 'prompt') {
+      throw new Error('renderer request was not prompt-authorized')
+    }
     ;(request as any).authorization = decision.authorization
 
     requestLifecycle.bind(request as any)
@@ -204,7 +208,7 @@ describe('#addRequest', () => {
     account.rejectRequest(request, { code: 4001, message: 'late rejection' })
     expect(externalResponse.mock.calls).toEqual([[{ id: 1, jsonrpc: '2.0', result: 'ok' }]])
     expect(account.requests[request.handlerId]).toBeUndefined()
-    expect((account as any).actionUpdateHandlers.size).toBe(0)
+    expect(account.actionUpdateHandlers.size).toBe(0)
     expect(requestLifecycle.pending.has(handlerId)).toBe(false)
     renderers.dispose()
   })
@@ -222,7 +226,7 @@ describe('#addRequest', () => {
         }
       }
 
-      ;(reveal.recog as any).mockResolvedValue([
+      reveal.recog.mockResolvedValue([
         {
           id: 'erc20:approve',
           data: actionData,
@@ -543,7 +547,9 @@ describe('account signing boundary', () => {
     const expected = structuredClone(input)
     const callback = mock()
     account.signTypedData(input, callback, test.approval)
-    if (Array.isArray(input.data)) throw new Error('Unexpected legacy data')
+    if (Array.isArray(input.data)) {
+      throw new Error('Unexpected legacy data')
+    }
     input.data.message.value = '999'
     const [index, approved, done] = test.signer.signTypedData.mock.calls[0]
     expect(index).toBe(0)
@@ -559,17 +565,25 @@ describe('account signing boundary', () => {
     'rejects %s before device invocation',
     (kind) => {
       const test = signingFixture()
-      if (kind === 'locked')
+      if (kind === 'locked') {
         store.setState((state: any) => {
           state.main.appLock.locked = true
         })
-      if (kind === 'foreign-profile')
+      }
+      if (kind === 'foreign-profile') {
         store.setState((state: any) => {
           state.main.accounts[account.id].profileId = 'other'
         })
-      if (kind === 'missing-signer') signersMock.get.mockReturnValue(undefined)
-      if (kind === 'wrong-address') test.signer.addresses = []
-      if (kind === 'inactive-source') test.invalidate()
+      }
+      if (kind === 'missing-signer') {
+        signersMock.get.mockReturnValue(undefined)
+      }
+      if (kind === 'wrong-address') {
+        test.signer.addresses = []
+      }
+      if (kind === 'inactive-source') {
+        test.invalidate()
+      }
       const callback = mock()
       account.signTypedData(message(), callback, test.approval)
       expect(callback.mock.calls[0][0]).toBeInstanceOf(Error)
@@ -584,17 +598,24 @@ describe('account signing boundary', () => {
       const callback = mock()
       account.signTypedData(message(), callback, test.approval)
       const done = test.signer.signTypedData.mock.calls[0][2]
-      if (kind === 'source-abort') test.controller.abort()
+      if (kind === 'source-abort') {
+        test.controller.abort()
+      }
       if (kind === 'source-change') {
         test.invalidate()
         store.getState().patchAccount(account.id, { name: 'Updated' })
       }
-      if (kind === 'lock')
+      if (kind === 'lock') {
         store.setState((state: any) => {
           state.main.appLock.locked = true
         })
-      if (kind === 'owner-lifetime') store.getState().patchAccount(account.id, { created: 'replacement' })
-      if (kind === 'close') account.close()
+      }
+      if (kind === 'owner-lifetime') {
+        store.getState().patchAccount(account.id, { created: 'replacement' })
+      }
+      if (kind === 'close') {
+        account.close()
+      }
       await Promise.resolve()
       expect(callback.mock.calls[0][0]).toMatchObject({ code: 4001 })
       done(null, '0xlate')

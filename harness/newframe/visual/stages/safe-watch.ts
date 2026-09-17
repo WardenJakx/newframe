@@ -38,8 +38,9 @@ export const safeWatchStage: VisualStage = {
         deployment.configuration.threshold !== safeSeed.threshold ||
         deployment.configuration.version !== safeSeed.version ||
         deployment.configuration.owners.join().toLowerCase() !== safeSeed.owners.join().toLowerCase()
-      )
+      ) {
         runtime.fail('Safe configuration differs from deployed contract')
+      }
       await runtime.screenshot(tray, '08b-safe-import.png')
       await accounts.getByRole('button', { name: 'Close accounts', exact: true }).click()
       await driver.waitForSelectedAccount({ id, address: id })
@@ -51,10 +52,12 @@ export const safeWatchStage: VisualStage = {
         15_000,
         'Safe refresh did not complete'
       )
-      if (!deployment.pending?.some((proposal) => proposal.integrity?.status === 'matched'))
+      if (!deployment.pending?.some((proposal) => proposal.integrity?.status === 'matched')) {
         runtime.fail('No locally matched Safe hashes')
-      if (!deployment.pending?.some((proposal) => proposal.localDecoded?.method === 'transfer'))
+      }
+      if (!deployment.pending?.some((proposal) => proposal.localDecoded?.method === 'transfer')) {
         runtime.fail('Safe calldata was not locally decoded')
+      }
       await runtime.screenshot(tray, '08c-safe-queue.png')
       const proposal = deployment.pending!.find(
         (proposal) =>
@@ -63,7 +66,9 @@ export const safeWatchStage: VisualStage = {
           proposal.value === '0' &&
           proposal.integrity?.status === 'matched'
       )
-      if (!proposal) return runtime.fail('Seed has no matched zero-value native proposal')
+      if (!proposal) {
+        return runtime.fail('Seed has no matched zero-value native proposal')
+      }
       const hash = proposal.safeTxHash
       await tray.getByRole('button', { name: `Open Safe proposal ${hash} on chain ${chain}` }).click()
       const details = tray.getByRole('dialog', { name: 'Requests' })
@@ -77,15 +82,20 @@ export const safeWatchStage: VisualStage = {
           const bounds = headers[0]?.getBoundingClientRect()
           return headers.length === 1 && !!bounds && bounds.top >= 0 && bounds.bottom <= innerHeight
         })
-        if (!headerVisible) runtime.fail('Request review must keep its only header visible after scrolling')
+        if (!headerVisible) {
+          runtime.fail('Request review must keep its only header visible after scrolling')
+        }
         await runtime.screenshot(tray, filename)
       }
-      if ((await details.locator('header').count()) !== 1) runtime.fail('Request review must have one header')
+      if ((await details.locator('header').count()) !== 1) {
+        runtime.fail('Request review must have one header')
+      }
       const effects = details.getByLabel('Transaction effects', { exact: true })
       await effects.getByText('No supported asset changes detected.', { exact: true }).waitFor()
       await effects.getByText('Newframe Local Anvil', { exact: true }).waitFor()
-      for (const label of ['To', 'Account', 'Signer', 'Safe transaction hash'])
+      for (const label of ['To', 'Account', 'Signer', 'Safe transaction hash']) {
         await details.getByText(label, { exact: true }).first().waitFor()
+      }
       await details
         .getByRole('button', {
           name: `${proposal.confirmations.length} / ${deployment.configuration.threshold} confirmations`,
@@ -111,8 +121,9 @@ export const safeWatchStage: VisualStage = {
           gasToken: proposal.gasToken,
           refundReceiver: proposal.refundReceiver
         })
-      )
+      ) {
         runtime.fail('Raw Safe transaction differs from the canonical proposal')
+      }
       await details.getByRole('button', { name: 'Raw transaction', exact: true }).click()
       const hashValue = details.getByText(hash, { exact: true })
       await hashValue.waitFor()
@@ -125,13 +136,16 @@ export const safeWatchStage: VisualStage = {
           (rect) => rect.left >= bounds.left && rect.right <= bounds.right
         )
       })
-      if (!hashFits) runtime.fail('Safe transaction hash extends outside proposal details')
+      if (!hashFits) {
+        runtime.fail('Safe transaction hash extends outside proposal details')
+      }
       runtime.evidence('safeHashFits', hashFits)
       await details.getByRole('button', { name: /Show full calldata/ }).click()
       await details.getByText('Full calldata', { exact: true }).waitFor()
       await details.getByText('0x', { exact: true }).waitFor()
-      if (await details.getByRole('button', { name: /^(Approve|Execute|Reject|Replace|Submit)$/i }).count())
+      if (await details.getByRole('button', { name: /^(Approve|Execute|Reject|Replace|Submit)$/i }).count()) {
         runtime.fail('Safe proposal exposes unsupported execution controls')
+      }
       await details.getByRole('button', { name: 'Sign', exact: true }).click({ trial: true })
       await captureReview('08d-safe-proposal.png')
       runtime.evidence('safeAddress', safeSeed.safe)
@@ -141,7 +155,9 @@ export const safeWatchStage: VisualStage = {
       runtime.evidence('safeOwnerCanSign', true)
       await details.getByRole('button', { name: 'Back to requests' }).click()
       const delegate = deployment.pending!.find((proposal) => proposal.operation === 1)
-      if (!delegate) return runtime.fail('Seed has no delegate proposal')
+      if (!delegate) {
+        return runtime.fail('Seed has no delegate proposal')
+      }
       await tray
         .getByRole('button', { name: `Open Safe proposal ${delegate.safeTxHash} on chain ${chain}` })
         .click()
@@ -150,21 +166,29 @@ export const safeWatchStage: VisualStage = {
       await details.getByText('Waiting for earlier transactions', { exact: true }).waitFor()
       await details.getByRole('button', { name: /Show full calldata/ }).click()
       await details.getByText(delegate.data, { exact: true }).waitFor()
-      if ((await details.getByText(/^Call transfer$/).count()) || (await effects.getByRole('group').count()))
+      if (
+        (await details.getByText(/^Call transfer$/).count()) ||
+        (await effects.getByRole('group').count())
+      ) {
         runtime.fail('Unknown delegate proposal fabricates decoded or simulated effects')
-      if (await details.getByRole('button', { name: /^(Approve|Execute|Reject|Replace|Submit)$/i }).count())
+      }
+      if (await details.getByRole('button', { name: /^(Approve|Execute|Reject|Replace|Submit)$/i }).count()) {
         runtime.fail('Delegate proposal exposes unsupported execution controls')
+      }
       await captureReview('08e-safe-delegate-raw.png')
       runtime.evidence('safeDelegateRaw', delegate.data)
       await details.getByRole('button', { name: 'Back to requests' }).click()
       const mismatch = deployment.pending!.find((proposal) => proposal.integrity?.status === 'mismatch')
-      if (!mismatch) return runtime.fail('Seed has no integrity mismatch')
+      if (!mismatch) {
+        return runtime.fail('Seed has no integrity mismatch')
+      }
       await tray
         .getByRole('button', { name: `Open Safe proposal ${mismatch.safeTxHash} on chain ${chain}` })
         .click()
       await details.getByRole('alert', { name: 'Proposal integrity' }).waitFor()
-      if (!(await details.getByRole('button', { name: 'Sign', exact: true }).isDisabled()))
+      if (!(await details.getByRole('button', { name: 'Sign', exact: true }).isDisabled())) {
         runtime.fail('Integrity mismatch must disable Safe signing')
+      }
       await details.getByText('Locally computed hash', { exact: true }).waitFor()
       await details.evaluate(async (element) => {
         await Promise.all(element.getAnimations({ subtree: true }).map((animation) => animation.finished))
@@ -198,9 +222,12 @@ export const safeWatchStage: VisualStage = {
       await runtime.screenshot(tray, 'debug-safe-review.png').catch(() => undefined)
       throw error
     } finally {
-      if ((await driver.getAppState()).main?.accounts?.[id])
+      if ((await driver.getAppState()).main?.accounts?.[id]) {
         await driver.executeCommand(tray, { type: 'account.remove', address: id })
-      if (selected) await driver.setSelectedAccount(selected)
+      }
+      if (selected) {
+        await driver.setSelectedAccount(selected)
+      }
     }
   }
 }

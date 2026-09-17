@@ -34,7 +34,9 @@ async function hasNewframeAnvilChain(provider: JsonRpcProvider, signal: AbortSig
   try {
     return Number(await provider.send('eth_chainId', [])) === anvilChainId
   } catch (error) {
-    if (signal.aborted) throw error
+    if (signal.aborted) {
+      throw error
+    }
     return false
   }
 }
@@ -46,7 +48,9 @@ async function ensureNewframeAnvilChain(signal: AbortSignal) {
 
   try {
     await base.provider.send('eth_chainId', [])
-    if (await hasNewframeAnvilChain(target.provider, signal)) return
+    if (await hasNewframeAnvilChain(target.provider, signal)) {
+      return
+    }
 
     await base.provider.send('wallet_addEthereumChain', [
       {
@@ -60,7 +64,9 @@ async function ensureNewframeAnvilChain(signal: AbortSignal) {
 
     const started = Date.now()
     while (Date.now() - started < 60_000) {
-      if (await hasNewframeAnvilChain(target.provider, signal)) return
+      if (await hasNewframeAnvilChain(target.provider, signal)) {
+        return
+      }
       await sleep(500)
     }
 

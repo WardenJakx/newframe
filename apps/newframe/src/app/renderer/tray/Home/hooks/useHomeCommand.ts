@@ -19,18 +19,26 @@ export function useHomeCommand(capability: Pick<HomeCapability, 'consumeCommand'
   const lastCommandId = useRef(0)
 
   useEffect(() => {
-    if (shared.currentAccount && shared.selectedOpen) return
+    if (shared.currentAccount && shared.selectedOpen) {
+      return
+    }
     const accountId = shared.currentAccount || Object.keys(shared.accounts || {})[0]
-    if (accountId) void capability.selectAccount({ accountId })
+    if (accountId) {
+      void capability.selectAccount({ accountId })
+    }
   }, [capability, shared.accounts, shared.currentAccount, shared.selectedOpen])
 
   useEffect(() => {
     const command = shared.homeCommand
-    if (!command || command.id === lastCommandId.current) return
+    if (!command || command.id === lastCommandId.current) {
+      return
+    }
     lastCommandId.current = command.id
     const { data, view } = command
 
-    if (view === 'settings') openOverlay({ type: 'settings' })
+    if (view === 'settings') {
+      openOverlay({ type: 'settings' })
+    }
     if (view === 'networks') {
       if (data.newChain && Object.keys(data.newChain).length) {
         openOverlay({
@@ -53,7 +61,9 @@ export function useHomeCommand(capability: Pick<HomeCapability, 'consumeCommand'
         }
       })
     }
-    if (view === 'tokens') openOverlay({ type: 'tokens', initialToken: data.token })
+    if (view === 'tokens') {
+      openOverlay({ type: 'tokens', initialToken: data.token })
+    }
 
     const waitsForApproval = view === 'networks' && data.newChain
     if (!waitsForApproval) {

@@ -561,7 +561,7 @@ function GeneratedSeedConfirmationView({
 }
 
 function HardwareInputView({ events, model }: { events: AddAccountViewEvents; model: HardwareInputModel }) {
-  if (model.kind === 'pin')
+  if (model.kind === 'pin') {
     return (
       <Surface padding='medium' radius='card' tone='card'>
         <Stack gap='small'>
@@ -604,7 +604,8 @@ function HardwareInputView({ events, model }: { events: AddAccountViewEvents; mo
         </Stack>
       </Surface>
     )
-  if (model.kind === 'passphrase')
+  }
+  if (model.kind === 'passphrase') {
     return (
       <Surface padding='medium' radius='card' tone='card'>
         <Stack gap='small'>
@@ -643,7 +644,8 @@ function HardwareInputView({ events, model }: { events: AddAccountViewEvents; mo
         </Stack>
       </Surface>
     )
-  if (model.kind === 'pair')
+  }
+  if (model.kind === 'pair') {
     return (
       <Surface padding='medium' radius='card' tone='card'>
         <Stack gap='small'>
@@ -663,6 +665,7 @@ function HardwareInputView({ events, model }: { events: AddAccountViewEvents; mo
         </Stack>
       </Surface>
     )
+  }
   return null
 }
 
@@ -744,7 +747,7 @@ function HardwareAccountSelectionView({
   model: HardwareModel
   airgapPairing?: ReactNode
 }) {
-  if (model.mode === 'list')
+  if (model.mode === 'list') {
     return (
       <Stack gap='small'>
         {model.signers.length ? (
@@ -813,6 +816,7 @@ function HardwareAccountSelectionView({
         ) : null}
       </Stack>
     )
+  }
   return (
     <Stack gap='small'>
       <Surface border='subtle' padding='small' radius='card' tone='card'>

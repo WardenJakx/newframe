@@ -55,10 +55,7 @@ describe('account selection infrastructure adapter', () => {
       done(null, account)
     )
     const accountsChanged = mock(() => undefined)
-    const adapter = createAccountSelectionAdapter(
-      { getSelectedAddresses, setSigner } as never,
-      { accountsChanged } as never
-    )
+    const adapter = createAccountSelectionAdapter({ getSelectedAddresses, setSigner }, { accountsChanged })
 
     expect(adapter('selected')).resolves.toBe(account)
     expect(setSigner).toHaveBeenCalledWith('selected', expect.any(Function))
@@ -74,8 +71,8 @@ describe('account selection infrastructure adapter', () => {
       {
         getSelectedAddresses,
         setSigner: mock((_id: string, done: (error: Error) => void) => done(failure))
-      } as never,
-      { accountsChanged } as never
+      },
+      { accountsChanged }
     )
 
     expect(adapter('missing')).rejects.toBe(failure)

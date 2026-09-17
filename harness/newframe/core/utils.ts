@@ -19,7 +19,9 @@ export async function withTimeout<T>(promise: Promise<T>, label: string, timeout
       })
     ])
   } finally {
-    if (timer) clearTimeout(timer)
+    if (timer) {
+      clearTimeout(timer)
+    }
   }
 }
 
@@ -28,8 +30,11 @@ export function isPortFree(port: number) {
     const server = net.createServer()
 
     server.once('error', (error: NodeJS.ErrnoException) => {
-      if (error.code === 'EADDRINUSE') resolve(false)
-      else reject(error)
+      if (error.code === 'EADDRINUSE') {
+        resolve(false)
+      } else {
+        reject(error)
+      }
     })
     server.once('listening', () => {
       server.close(() => resolve(true))
@@ -39,7 +44,9 @@ export function isPortFree(port: number) {
 }
 
 export async function assertPortFree(port: number, label: string) {
-  if (!(await isPortFree(port))) throw new Error(`${label} port ${port} is already in use`)
+  if (!(await isPortFree(port))) {
+    throw new Error(`${label} port ${port} is already in use`)
+  }
 }
 
 export async function waitForHttpOk(url: string, label: string, timeoutMs = 15_000) {
@@ -49,7 +56,9 @@ export async function waitForHttpOk(url: string, label: string, timeoutMs = 15_0
   while (Date.now() - started < timeoutMs) {
     try {
       const response = await fetch(url)
-      if (response.ok) return
+      if (response.ok) {
+        return
+      }
       lastError = new Error(`${label} returned HTTP ${response.status}`)
     } catch (err) {
       lastError = err

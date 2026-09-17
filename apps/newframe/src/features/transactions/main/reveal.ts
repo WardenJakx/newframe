@@ -30,8 +30,12 @@ type RecognitionContext = {
 }
 
 function toHexAmount(value: any) {
-  if (typeof value === 'bigint') return addHexPrefix(value.toString(16))
-  if (value?.toHexString) return value.toHexString()
+  if (typeof value === 'bigint') {
+    return addHexPrefix(value.toString(16))
+  }
+  if (value?.toHexString) {
+    return value.toHexString()
+  }
   return addHexPrefix(BigInt(value || 0).toString(16))
 }
 
@@ -40,7 +44,9 @@ async function resolveEntityType(
   address: string,
   chainId: number
 ): Promise<EntityType> {
-  if (!address || !chainId) return 'unknown'
+  if (!address || !chainId) {
+    return 'unknown'
+  }
   try {
     const payload: JSONRPCRequestPayload = {
       method: 'eth_getCode',
@@ -80,7 +86,7 @@ async function recogErc20(
     try {
       const contract = new Erc20Contract(contractAddress, chainId, erc20Provider)
 
-      const { decimals, name, symbol } = await contract.getTokenData()
+      const { decimals = 0, name, symbol } = await contract.getTokenData()
       if (Erc20Contract.isApproval(decoded)) {
         const spenderAddress = decoded.args[0].toLowerCase()
         const amount = toHexAmount(decoded.args[1])
@@ -105,7 +111,7 @@ async function recogErc20(
           }
         }
 
-        return {
+        const action: Erc20Approval = {
           id: 'erc20:approve',
           data,
           update: (request, { amount }) => {
@@ -125,12 +131,13 @@ async function recogErc20(
               txRequest.decodedData.args[1].value = amount === MAX_HEX ? 'unlimited' : approvedAmount
             }
           }
-        } as Erc20Approval
+        }
+        return action
       } else if (Erc20Contract.isTransfer(decoded)) {
         const recipient = decoded.args[0].toLowerCase()
         const amount = toHexAmount(decoded.args[1])
         const identity = await surface.identity(recipient, chainId)
-        return {
+        const action: Erc20Transfer = {
           id: 'erc20:transfer',
           data: {
             recipient: { address: recipient, ...identity },
@@ -140,7 +147,8 @@ async function recogErc20(
             name,
             symbol
           }
-        } as Erc20Transfer
+        }
+        return action
       }
     } catch (e) {
       log.warn(e)

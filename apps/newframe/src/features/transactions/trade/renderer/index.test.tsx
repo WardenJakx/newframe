@@ -202,12 +202,12 @@ describe('Trade', () => {
       timers.advanceTimersByTime(250)
     })
 
-    expect((screen.getByLabelText('WETH amount') as HTMLInputElement).value).toBe('1')
+    expect(screen.getByLabelText<HTMLInputElement>('WETH amount').value).toBe('1')
     expect(quoteCalls).toHaveLength(2)
     expect(quoteCalls[1].accountAddress).toBe(other.address)
 
     fireEvent.click(screen.getByRole('button', { name: 'Switch to BUY' }))
-    expect((screen.getByLabelText('USDC amount') as HTMLInputElement).value).toBe('')
+    expect(screen.getByLabelText<HTMLInputElement>('USDC amount').value).toBe('')
   })
 
   it('pauses quote refresh for projected signing and cancels a pending workflow when the ticket changes', async () => {
@@ -239,7 +239,9 @@ describe('Trade', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Approve WETH' }))
 
     const prepareCommand = trade.prepare.mock.calls[0]?.[0]
-    if (!prepareCommand) throw new Error('Expected trade prepare command')
+    if (!prepareCommand) {
+      throw new Error('Expected trade prepare command')
+    }
     expect(prepareCommand).toEqual({
       operationId: expect.any(String),
       quoteId: 'quote-1',
@@ -261,7 +263,9 @@ describe('Trade', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: 'Review/sign' }))
     const submitCommand = trade.submit.mock.calls[0]?.[0]
-    if (!submitCommand) throw new Error('Expected trade submit command')
+    if (!submitCommand) {
+      throw new Error('Expected trade submit command')
+    }
     expect(submitCommand.operationId).toBe(prepareCommand.operationId)
     await act(async () => {
       const mirrored = fixture.state.sideTray.getState()
@@ -306,7 +310,9 @@ describe('Trade', () => {
     })
     trade.submit.mockImplementation(async () => {
       submitCount += 1
-      if (submitCount === 1) return await new Promise<CommandResult>((resolve) => (resolveFirst = resolve))
+      if (submitCount === 1) {
+        return await new Promise<CommandResult>((resolve) => (resolveFirst = resolve))
+      }
       return { ok: false, error: 'invalid_command', message: currentMessage }
     })
 
@@ -398,7 +404,9 @@ describe('Trade', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'Review/sign' }))
     const command = trade.submit.mock.calls[0]?.[0]
-    if (!command) throw new Error('Expected trade submit command')
+    if (!command) {
+      throw new Error('Expected trade submit command')
+    }
     expect(command).toEqual({
       operationId: expect.any(String),
       quoteId: 'permit-quote'

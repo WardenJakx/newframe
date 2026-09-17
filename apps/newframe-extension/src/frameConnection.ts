@@ -176,8 +176,12 @@ export class RawFrameConnection extends EventEmitter {
   }
 
   ensureConnected() {
-    if (this.closing || this.connected || this.socket?.readyState === WebSocket.OPEN) return
-    if (this.socket?.readyState === WebSocket.CONNECTING) return
+    if (this.closing || this.connected || this.socket?.readyState === WebSocket.OPEN) {
+      return
+    }
+    if (this.socket?.readyState === WebSocket.CONNECTING) {
+      return
+    }
 
     if (this.retryAt > Date.now()) {
       if (!this.reconnectTimer) {
@@ -194,8 +198,12 @@ export class RawFrameConnection extends EventEmitter {
   }
 
   reconnect() {
-    if (this.closing) return
-    if (this.retryAt) return
+    if (this.closing) {
+      return
+    }
+    if (this.retryAt) {
+      return
+    }
 
     clearTimeout(this.reconnectTimer)
     clearTimeout(this.connectionTimer)
@@ -219,7 +227,9 @@ export class RawFrameConnection extends EventEmitter {
   }
 
   private connect() {
-    if (this.closing) return
+    if (this.closing) {
+      return
+    }
     if (this.socket?.readyState === WebSocket.OPEN || this.socket?.readyState === WebSocket.CONNECTING) {
       return
     }
@@ -245,7 +255,9 @@ export class RawFrameConnection extends EventEmitter {
 
     clearTimeout(this.connectionTimer)
     this.connectionTimer = setTimeout(() => {
-      if (this.socket !== socket || socket.readyState !== WebSocket.CONNECTING) return
+      if (this.socket !== socket || socket.readyState !== WebSocket.CONNECTING) {
+        return
+      }
 
       this.handleError(new Error(`WebSocket connection timed out after ${this.connectionTimeout}ms`))
       this.finishDisconnect(socket)
@@ -261,15 +273,21 @@ export class RawFrameConnection extends EventEmitter {
 
     clearTimeout(this.connectionTimer)
     this.connectionTimer = undefined
-    if (this.options.resetOnOpen !== false) this.resetRetry()
+    if (this.options.resetOnOpen !== false) {
+      this.resetRetry()
+    }
     this.connected = true
     this.emit('connect')
     this.flushQueue()
   }
 
   private handleMessage(socket: WebSocket, message: MessageEvent) {
-    if (this.socket !== socket) return
-    if (typeof message.data !== 'string') return
+    if (this.socket !== socket) {
+      return
+    }
+    if (typeof message.data !== 'string') {
+      return
+    }
 
     try {
       const payload = JSON.parse(message.data)
@@ -282,7 +300,9 @@ export class RawFrameConnection extends EventEmitter {
   }
 
   private finishDisconnect(socket?: WebSocket, shouldReconnect = true) {
-    if (socket && this.socket !== socket) return
+    if (socket && this.socket !== socket) {
+      return
+    }
 
     const wasConnected = this.connected || !this.closed
 
@@ -309,7 +329,9 @@ export class RawFrameConnection extends EventEmitter {
   }
 
   private queueReconnect() {
-    if (this.closing || this.retryAt) return
+    if (this.closing || this.retryAt) {
+      return
+    }
 
     const delay = this.reconnectDelay
     this.reconnectDelay = Math.min(this.reconnectDelay * 2, this.maxReconnectInterval)
@@ -408,7 +430,9 @@ export default class FrameBackgroundProvider extends EventEmitter {
   }
 
   private async checkConnection() {
-    if (this.checkConnectionRunning || this.connected) return
+    if (this.checkConnectionRunning || this.connected) {
+      return
+    }
 
     this.checkConnectionRunning = true
 
@@ -420,14 +444,18 @@ export default class FrameBackgroundProvider extends EventEmitter {
         HEALTH_CHECK_TIMEOUT,
         'Newframe connection handshake timed out'
       )
-      if (!this.connection.connected) return
+      if (!this.connection.connected) {
+        return
+      }
       this.connection.resetRetry()
       this.connected = true
       this.emit('connect')
       this.resumeSubscriptions()
     } catch (e) {
       this.connected = false
-      if (!this.connection.connected) return
+      if (!this.connection.connected) {
+        return
+      }
       this.connection.reconnect()
       if (typeof e === 'object' && e !== null && 'code' in e && e.code === 4001) {
         this.emit('rejected')
@@ -480,7 +508,9 @@ export default class FrameBackgroundProvider extends EventEmitter {
   private handlePayload(payload: JsonRpcResponse) {
     if (typeof payload.id !== 'undefined') {
       const pending = this.promises[payload.id as number]
-      if (!pending) return
+      if (!pending) {
+        return
+      }
 
       delete this.promises[payload.id as number]
       if (payload.error) {
@@ -491,10 +521,14 @@ export default class FrameBackgroundProvider extends EventEmitter {
       return
     }
 
-    if (!payload.method?.includes('_subscription') || !payload.params) return
+    if (!payload.method?.includes('_subscription') || !payload.params) {
+      return
+    }
 
     const event = this.subscriptionEvents.get(payload.params.subscription)
-    if (!event) return
+    if (!event) {
+      return
+    }
 
     this.handleProviderEvent(event, payload.params.result)
   }
@@ -513,7 +547,9 @@ export default class FrameBackgroundProvider extends EventEmitter {
   }
 
   private handleNewListener(event: string | symbol) {
-    if (!this.isProviderEvent(event) || this.attemptedSubscriptions.has(event)) return
+    if (!this.isProviderEvent(event) || this.attemptedSubscriptions.has(event)) {
+      return
+    }
     if (this.connected) {
       // Subscription setup catches and logs failures internally.
       void this.startProviderSubscription(event)

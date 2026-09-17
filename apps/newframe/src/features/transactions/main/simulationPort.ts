@@ -10,7 +10,9 @@ export function createDeferredTransactionSimulationPort() {
 
   const port: TransactionSimulationPort = {
     simulateTransactionEffects: (request) => {
-      if (!target) throw new Error('Transaction simulation capability is not connected')
+      if (!target) {
+        throw new Error('Transaction simulation capability is not connected')
+      }
       return target.simulateTransactionEffects(request)
     }
   }
@@ -22,9 +24,13 @@ export function createDeferredTransactionSimulationPort() {
       target = next
       let connected = true
       return () => {
-        if (!connected) return
+        if (!connected) {
+          return
+        }
         connected = false
-        if (target === next) target = previous
+        if (target === next) {
+          target = previous
+        }
       }
     }
   }

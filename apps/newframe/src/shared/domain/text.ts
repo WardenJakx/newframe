@@ -3,12 +3,16 @@ export function randomLetters(length: number) {
 }
 
 export function capitalize(value: string) {
-  if (!value) return value
+  if (!value) {
+    return value
+  }
   return value.charAt(0).toUpperCase() + value.substring(1).toLowerCase()
 }
 
 export const matchFilter = (filter = '', properties: string[] = []) => {
-  if (!filter) return true
+  if (!filter) {
+    return true
+  }
 
   const filterItems = filter.split(' ')
   const matchableProperties = properties.filter(Boolean).map((property) => property.toLowerCase())

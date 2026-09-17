@@ -16,13 +16,19 @@ function defaultSleep(ms: number) {
 }
 
 function parseRetryAfter(value: string | null) {
-  if (!value) return undefined
+  if (!value) {
+    return undefined
+  }
 
   const seconds = Number(value)
-  if (Number.isFinite(seconds)) return Math.max(0, seconds * 1000)
+  if (Number.isFinite(seconds)) {
+    return Math.max(0, seconds * 1000)
+  }
 
   const date = Date.parse(value)
-  if (!Number.isNaN(date)) return Math.max(0, date - Date.now())
+  if (!Number.isNaN(date)) {
+    return Math.max(0, date - Date.now())
+  }
 
   return undefined
 }
@@ -82,7 +88,9 @@ export default class ProviderRequestPolicy {
         await this.sleep(this.retryDelay(response, attempt))
       } catch (e) {
         lastError = e
-        if (attempt === this.maxRetries) throw e
+        if (attempt === this.maxRetries) {
+          throw e
+        }
 
         await this.sleep(this.retryDelay(undefined, attempt))
       }
@@ -94,7 +102,9 @@ export default class ProviderRequestPolicy {
   private async waitForAttemptSlot() {
     if (this.lastAttemptAt !== undefined) {
       const waitMs = this.lastAttemptAt + this.minIntervalMs - this.now()
-      if (waitMs > 0) await this.sleep(waitMs)
+      if (waitMs > 0) {
+        await this.sleep(waitMs)
+      }
     }
 
     this.lastAttemptAt = this.now()
@@ -102,7 +112,9 @@ export default class ProviderRequestPolicy {
 
   private retryDelay(response: Response | undefined, attempt: number) {
     const retryAfter = parseRetryAfter(response?.headers.get('retry-after') || null)
-    if (retryAfter !== undefined) return retryAfter
+    if (retryAfter !== undefined) {
+      return retryAfter
+    }
 
     return Math.min(this.retryBaseDelayMs * 2 ** attempt, this.maxRetryDelayMs)
   }

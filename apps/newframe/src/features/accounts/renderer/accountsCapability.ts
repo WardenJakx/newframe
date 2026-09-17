@@ -72,7 +72,9 @@ export function createAccountsCapability(host: AccountsHost): AccountsCapability
     createAccount: (input) => host.executeCommand({ type: 'account.create', ...input }),
     discoverSafeNetworks: async (address) => {
       const result = await host.executeQuery({ type: 'safe.discover', address })
-      if (!Array.isArray(result)) throw new Error(result.message || 'Could not load Safe networks')
+      if (!Array.isArray(result)) {
+        throw new Error(result.message || 'Could not load Safe networks')
+      }
       return result
     },
     importSigner: (input) => host.executeCommand({ type: 'signer.import', ...input }),
@@ -96,5 +98,7 @@ export function selectAccountAndClose(
   onClose: () => void
 ) {
   onClose()
-  if (accountId !== currentAccountId) void capability.selectAccount({ accountId }).catch(() => {})
+  if (accountId !== currentAccountId) {
+    void capability.selectAccount({ accountId }).catch(() => {})
+  }
 }

@@ -4,7 +4,7 @@ import { addHexPrefix } from '@ethereumjs/util'
 import log from 'electron-log'
 
 import type { TypedMessage } from '../../../../features/requests/contract/requests.js'
-import { TransactionData } from '../../../../features/transactions/domain/index.js'
+import type { TransactionData } from '../../../../features/transactions/domain/index.js'
 import type { OperationOwner } from '../../../operations/types.js'
 import crypt from '../../crypt.js'
 import type { AirGapPendingSummary } from '../../domain/airgap.js'
@@ -69,8 +69,9 @@ export default class Signer extends EventEmitter {
   }
 
   fingerprint() {
-    if (this.addresses && this.addresses.length)
+    if (this.addresses && this.addresses.length) {
       return crypt.stringToKey(this.addresses.join()).toString('hex')
+    }
   }
 
   getCoinbase(cb: Callback<string>) {

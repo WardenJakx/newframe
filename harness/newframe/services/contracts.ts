@@ -51,7 +51,9 @@ const anvilDeployerPrivateKey =
 
 function bigintEnv(key: string, fallback: bigint) {
   const value = process.env[key]
-  if (!value) return fallback
+  if (!value) {
+    return fallback
+  }
 
   try {
     return BigInt(value)
@@ -67,7 +69,9 @@ const settlementUsdcLiquidity = bigintEnv('MOCK_FLASH_SETTLEMENT_USDC_LIQUIDITY'
 const settlementWethLiquidity = bigintEnv('MOCK_FLASH_SETTLEMENT_WETH_LIQUIDITY', 100n * WeiPerEther)
 
 function throwIfAborted(signal: AbortSignal, label: string) {
-  if (signal.aborted) throw new Error(`${label} was cancelled`)
+  if (signal.aborted) {
+    throw new Error(`${label} was cancelled`)
+  }
 }
 
 function createProvider(signal: AbortSignal) {
@@ -118,8 +122,12 @@ async function contractArtifact(relativePath: string) {
   const artifact = JSON.parse(await readFile(artifactPath, 'utf8')) as ContractArtifact
   const bytecode = artifact.deployedBytecode?.object
 
-  if (!artifact.abi) throw new Error(`Artifact has no ABI: ${artifactPath}`)
-  if (!bytecode || bytecode === '0x') throw new Error(`Artifact has no deployed bytecode: ${artifactPath}`)
+  if (!artifact.abi) {
+    throw new Error(`Artifact has no ABI: ${artifactPath}`)
+  }
+  if (!bytecode || bytecode === '0x') {
+    throw new Error(`Artifact has no deployed bytecode: ${artifactPath}`)
+  }
 
   return {
     bytecode,
@@ -131,7 +139,9 @@ async function waitForTransaction(transaction: Promise<TransactionResponse>, lab
   const response = await transaction
   const receipt = await response.wait(1)
 
-  if (receipt?.status !== 1) throw new Error(`${label} transaction failed: ${response.hash}`)
+  if (receipt?.status !== 1) {
+    throw new Error(`${label} transaction failed: ${response.hash}`)
+  }
 
   return receipt
 }
@@ -185,7 +195,9 @@ async function assertSeeded(provider: JsonRpcProvider, usdc: Contract, weth: Con
     provider.getCode(mockFlashSettlementAddress)
   ])
   codes.forEach((code, index) => {
-    if (code === '0x') throw new Error(`Anvil seed contract ${index} has no code`)
+    if (code === '0x') {
+      throw new Error(`Anvil seed contract ${index} has no code`)
+    }
   })
 }
 

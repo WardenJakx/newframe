@@ -32,7 +32,9 @@ export async function seedSafe(
   async function deploy(artifact: typeof safeArtifact) {
     const contract = await new ContractFactory(artifact.abi, artifact.bytecode, signer).deploy()
     const receipt = await contract.deploymentTransaction()!.wait(1)
-    if (receipt?.status !== 1 || !receipt.contractAddress) throw new Error('Safe contract deployment failed')
+    if (receipt?.status !== 1 || !receipt.contractAddress) {
+      throw new Error('Safe contract deployment failed')
+    }
     return receipt.contractAddress
   }
   const singleton = await deploy(safeArtifact)
@@ -50,14 +52,22 @@ export async function seedSafe(
   ])
   const proxyFactory = new Contract(factory, factoryArtifact.abi, signer)
   const receipt = await (await proxyFactory.createProxyWithNonce(singleton, initializer, 20260908)).wait(1)
-  if (receipt?.status !== 1) throw new Error('Safe proxy creation failed')
+  if (receipt?.status !== 1) {
+    throw new Error('Safe proxy creation failed')
+  }
   let safe: string | undefined
   for (const log of receipt.logs) {
-    if (log.address.toLowerCase() !== factory.toLowerCase()) continue
+    if (log.address.toLowerCase() !== factory.toLowerCase()) {
+      continue
+    }
     const event = proxyFactory.interface.parseLog(log)
-    if (event?.name === 'ProxyCreation') safe = getAddress(event.args.proxy)
+    if (event?.name === 'ProxyCreation') {
+      safe = getAddress(event.args.proxy)
+    }
   }
-  if (!safe) throw new Error('Safe proxy receipt missing ProxyCreation')
+  if (!safe) {
+    throw new Error('Safe proxy receipt missing ProxyCreation')
+  }
   const contract = new Contract(safe, abi, provider)
   const [actualOwners, actualThreshold, nonce, version, codes] = await Promise.all([
     contract.getOwners() as Promise<string[]>,
@@ -72,7 +82,8 @@ export async function seedSafe(
     actualThreshold !== 2n ||
     nonce !== 0n ||
     version !== '1.5.0'
-  )
+  ) {
     throw new Error('Safe seed verification failed')
+  }
   return { chainId, safe, singleton, factory, owners, threshold, nonce: nonce.toString(), version }
 }

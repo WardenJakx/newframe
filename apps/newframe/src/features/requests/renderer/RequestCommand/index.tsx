@@ -88,7 +88,9 @@ export const declineRequest = (capability: Pick<RequestReviewCapability, 'reject
   void capability.reject({ requestId: req.handlerId })
 
 export const runWhenAppUnlocked = (appLocked: boolean, next: () => void) => {
-  if (!appLocked) next()
+  if (!appLocked) {
+    next()
+  }
 }
 
 export function RequestCommand(props: RequestCommandProps) {
@@ -104,10 +106,13 @@ export function RequestCommand(props: RequestCommandProps) {
       request.status !== 'pending' ||
       !airgap ||
       airgap.requestId !== request.handlerId
-    )
+    ) {
       return
+    }
     const key = `${airgap.signerId}:${airgap.requestId}:${airgap.sessionId}`
-    if (notifiedSession.current === key) return
+    if (notifiedSession.current === key) {
+      return
+    }
     notifiedSession.current = key
     notify({ type: 'airgapSigning', data: airgap })
   }, [notify, airgap, request.handlerId, request.status, props.shared.appLocked])
@@ -120,7 +125,9 @@ export function RequestCommand(props: RequestCommandProps) {
 
   useEffect(() => {
     const gate = request.approvalGate
-    if (!gate) return
+    if (!gate) {
+      return
+    }
     if (gate.type === 'gas-fee') {
       notify({
         type: 'gasFeeWarning',
@@ -144,13 +151,17 @@ export function RequestCommand(props: RequestCommandProps) {
     const chain = { type: 'ethereum' as const, id: parseInt(req.data.chainId, 16) }
     const displayNotice = (req.notice || '').toLowerCase()
     let displayStatus = (req.status || 'pending').toLowerCase()
-    if (displayStatus === 'pending' && displayNotice === 'see signer')
+    if (displayStatus === 'pending' && displayNotice === 'see signer') {
       displayStatus = 'waiting for device signature'
-    else if (displayStatus === 'verifying') displayStatus = 'waiting for block'
+    } else if (displayStatus === 'verifying') {
+      displayStatus = 'waiting for block'
+    }
     const hash = req.tx?.hash
 
     const copyHash = () => {
-      if (!hash) return
+      if (!hash) {
+        return
+      }
       void props.capabilities.external.copy({ text: hash })
       setState({ txHashCopied: true, showHashDetails: false })
       setTimeout(() => setState({ txHashCopied: false }), 3000)
@@ -175,13 +186,17 @@ export function RequestCommand(props: RequestCommandProps) {
                 disabled={!props.shared.chain.explorer}
                 label='Open transaction explorer'
                 onPress={() => {
-                  if (!hash || !props.shared.chain.explorer) return
+                  if (!hash || !props.shared.chain.explorer) {
+                    return
+                  }
                   if (props.shared.explorerWarningMuted) {
                     void props.capabilities.external.openExplorer({
                       chainId: chain.id,
                       transactionHash: hash
                     })
-                  } else props.notify({ type: 'openExplorer', data: { hash, chain } })
+                  } else {
+                    props.notify({ type: 'openExplorer', data: { hash, chain } })
+                  }
                 }}
                 size='small'
               >
@@ -257,7 +272,9 @@ export function RequestCommand(props: RequestCommandProps) {
           })
           .then(
             (result) => {
-              if (!result.ok) setApprovalError(result.message || 'Could not approve request')
+              if (!result.ok) {
+                setApprovalError(result.message || 'Could not approve request')
+              }
             },
             () => setApprovalError('Could not approve request')
           )
@@ -377,9 +394,15 @@ export function RequestCommand(props: RequestCommandProps) {
     )
   }
 
-  if (!request) return null
-  if (request.type === 'transaction' && props.shared.step === 'confirm') return transactionCommand(request)
-  if (isSignatureRequest(request)) return signatureCommand(request)
+  if (!request) {
+    return null
+  }
+  if (request.type === 'transaction' && props.shared.step === 'confirm') {
+    return transactionCommand(request)
+  }
+  if (isSignatureRequest(request)) {
+    return signatureCommand(request)
+  }
   return null
 }
 

@@ -41,15 +41,21 @@ export function createSettingsService(
       case 'autohide':
         return state.setAutohide(command.value)
       case 'launch':
-        if (state.main.launch !== command.value) state.toggleLaunch()
+        if (state.main.launch !== command.value) {
+          state.toggleLaunch()
+        }
         return
       case 'reveal':
-        if (state.main.reveal !== command.value) state.toggleReveal()
+        if (state.main.reveal !== command.value) {
+          state.toggleReveal()
+        }
         return
       case 'menubar-gas-price':
         return state.setMenubarGasPrice(command.value)
       case 'show-local-name-with-ens':
-        if (state.main.showLocalNameWithENS !== command.value) state.toggleShowLocalNameWithENS()
+        if (state.main.showLocalNameWithENS !== command.value) {
+          state.toggleShowLocalNameWithENS()
+        }
         return
       case 'show-testnets':
         return state.setShowTestnets(command.value)
@@ -58,7 +64,9 @@ export function createSettingsService(
       case 'shortcut-configuring':
         return state.setShortcut('summon', { configuring: command.value })
       case 'auto-discover-tokens':
-        if (command.apiKey !== undefined) state.setPortfolioApiKey(command.apiKey)
+        if (command.apiKey !== undefined) {
+          state.setPortfolioApiKey(command.apiKey)
+        }
         return state.setAutoDiscoverTokens(command.value)
       case 'trezor-derivation':
         return state.setTrezorDerivation(command.value)

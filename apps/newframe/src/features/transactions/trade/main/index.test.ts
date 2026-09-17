@@ -49,7 +49,9 @@ const jsonResponse = (payload: unknown, status = 200, statusText?: string) =>
 const queuedJsonResponses = (payloads: unknown[]) => {
   return async () => {
     const payload = payloads.shift()
-    if (payload === undefined) throw new Error('Unexpected Flash request')
+    if (payload === undefined) {
+      throw new Error('Unexpected Flash request')
+    }
     return jsonResponse(payload)
   }
 }
@@ -77,7 +79,9 @@ class FakeFlashWebSocket extends EventEmitter {
     // Tests inject server frames directly.
   }
   close() {
-    if (this.readyState >= WebSocket.CLOSING) return
+    if (this.readyState >= WebSocket.CLOSING) {
+      return
+    }
     this.readyState = WebSocket.CLOSED
     this.emit('close')
   }
@@ -186,10 +190,12 @@ const startAgentSession = (
 describe('main Flash facade helpers', () => {
   beforeEach(() => {
     assetRateService.observe.mockClear()
-    process.env.FRAME_PROFILE = 'dev' as any
+    process.env.FRAME_PROFILE = 'dev'
   })
   afterEach(() => {
-    for (const flash of services.splice(0)) flash.dispose()
+    for (const flash of services.splice(0)) {
+      flash.dispose()
+    }
     timers.useRealTimers()
     globalThis.fetch = originalFetch
     process.env = { ...originalEnv }
@@ -357,7 +363,7 @@ describe('main Flash facade helpers', () => {
         evmOrderTypedData: JSON.stringify(typedData)
       })
       expect(body).not.toHaveProperty('quoteId')
-      expect((JSON.parse(body.evmOrderTypedData!) as any).message.toToken).not.toBe(body.targetAsset)
+      expect(JSON.parse(body.evmOrderTypedData!).message.toToken).not.toBe(body.targetAsset)
     }
   )
   it('rejects cross-chain advanced orders before contacting Flash', () => {

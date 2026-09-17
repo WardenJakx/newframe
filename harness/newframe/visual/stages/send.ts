@@ -79,7 +79,9 @@ export const sendStage: VisualStage = {
       while (scroller && !['auto', 'scroll'].includes(getComputedStyle(scroller).overflowY)) {
         scroller = scroller.parentElement
       }
-      if (!footer || !scroller) return null
+      if (!footer || !scroller) {
+        return null
+      }
       const footerBounds = footer.getBoundingClientRect()
       const scrollBounds = scroller.getBoundingClientRect()
       return {
@@ -102,7 +104,9 @@ export const sendStage: VisualStage = {
     const outgoingDeltaApplied = await outgoingEffect.evaluate((root) => {
       const icon = root.querySelector<HTMLElement>('[data-effect-icon-direction="neutral"]')
       const amount = root.lastElementChild
-      if (!icon || !amount) return false
+      if (!icon || !amount) {
+        return false
+      }
       const iconStyle = getComputedStyle(icon)
       const amountStyle = getComputedStyle(amount)
       return (
@@ -249,7 +253,9 @@ export const sendStage: VisualStage = {
     const sendActivity =
       activityState.main?.activity?.[sendTransactionHash] ||
       runtime.fail('Submitted send transaction did not project canonical activity')
-    if (sendActivity.status === 'reverted') runtime.fail('Submitted send transaction reverted')
+    if (sendActivity.status === 'reverted') {
+      runtime.fail('Submitted send transaction reverted')
+    }
     await anvil.waitForBalance(vitalik.address, vitalikBalanceBefore + oneEthWei)
     runtime.evidence('sendOperationId', sendOperationId)
     runtime.evidence('sendTransactionHash', sendTransactionHash)

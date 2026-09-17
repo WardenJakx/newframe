@@ -23,9 +23,15 @@ interface VaultFile {
 }
 
 const validatePassword = (password: string) => {
-  if (!password) return new Error('Password required')
-  if (password.length < 12) return new Error('Password is too short, must be 12 or more characters')
-  if (zxcvbn(password).score < 3) return new Error('Password is too weak')
+  if (!password) {
+    return new Error('Password required')
+  }
+  if (password.length < 12) {
+    return new Error('Password is too short, must be 12 or more characters')
+  }
+  if (zxcvbn(password).score < 3) {
+    return new Error('Password is too weak')
+  }
 }
 
 const deriveKey = (password: string, salt: Buffer) => crypto.scryptSync(password, salt, 32, KDF_PARAMS)
@@ -51,10 +57,14 @@ class Vault {
   }
 
   create(password: string) {
-    if (this.exists()) throw new Error('Vault already exists')
+    if (this.exists()) {
+      throw new Error('Vault already exists')
+    }
 
     const err = validatePassword(password)
-    if (err) throw err
+    if (err) {
+      throw err
+    }
 
     const vaultKey = crypto.randomBytes(32)
     this.write(vaultKey, password)
@@ -65,7 +75,9 @@ class Vault {
   }
 
   unlock(password: string) {
-    if (!password) throw new Error('Password required')
+    if (!password) {
+      throw new Error('Password required')
+    }
 
     const vault = this.read()
     const derivedKey = deriveKey(password, Buffer.from(vault.salt, 'hex'))
@@ -79,7 +91,9 @@ class Vault {
     }
 
     // CBC padding can occasionally pass with the wrong key, verify against stored hash
-    if (hashKey(vaultKey) !== vault.keyHash) throw new Error('Incorrect password')
+    if (hashKey(vaultKey) !== vault.keyHash) {
+      throw new Error('Incorrect password')
+    }
 
     this.key = vaultKey.toString('hex')
     log.info('Vault unlocked')
@@ -87,10 +101,14 @@ class Vault {
   }
 
   unlockWithKey(vaultKeyHex: string) {
-    if (!vaultKeyHex) throw new Error('Vault key required')
+    if (!vaultKeyHex) {
+      throw new Error('Vault key required')
+    }
 
     const vaultKey = Buffer.from(vaultKeyHex, 'hex')
-    if (vaultKey.length !== 32) throw new Error('Invalid vault key')
+    if (vaultKey.length !== 32) {
+      throw new Error('Invalid vault key')
+    }
 
     const vault = this.read()
     if (hashKey(vaultKey) !== vault.keyHash) {
@@ -110,14 +128,20 @@ class Vault {
   // Returns the vault key, creating or unlocking the vault with the given
   // password as needed
   acquireKey(password?: string) {
-    if (this.isUnlocked()) return this.key as string
-    if (this.exists()) return this.unlock(password || '')
+    if (this.isUnlocked()) {
+      return this.key as string
+    }
+    if (this.exists()) {
+      return this.unlock(password || '')
+    }
     return this.create(password || '')
   }
 
   changePassword(oldPassword: string, newPassword: string) {
     const err = validatePassword(newPassword)
-    if (err) throw err
+    if (err) {
+      throw err
+    }
 
     const vaultKey = Buffer.from(this.unlock(oldPassword), 'hex')
     this.write(vaultKey, newPassword)
@@ -151,7 +175,9 @@ class Vault {
   }
 
   private read(): VaultFile {
-    if (!this.exists()) throw new Error('No vault found')
+    if (!this.exists()) {
+      throw new Error('No vault found')
+    }
     return JSON.parse(fs.readFileSync(VAULT_PATH, 'utf8'))
   }
 }

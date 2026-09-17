@@ -11,8 +11,12 @@ export function parseUnits(
   value: string | number | bigint | undefined | null,
   decimals = 0
 ): bigint | undefined {
-  if (value === undefined || value === null) return undefined
-  if (typeof value === 'bigint') return value * 10n ** BigInt(decimals)
+  if (value === undefined || value === null) {
+    return undefined
+  }
+  if (typeof value === 'bigint') {
+    return value * 10n ** BigInt(decimals)
+  }
 
   const str = typeof value === 'number' ? String(value) : value.trim()
 
@@ -25,7 +29,9 @@ export function parseUnits(
   }
 
   const match = str.match(decimalRegex)
-  if (!match || (!match[2] && !match[3])) return undefined
+  if (!match || (!match[2] && !match[3])) {
+    return undefined
+  }
 
   const [, sign, int = '', frac = '', exp = '0'] = match
   const digits = `${int}${frac}`

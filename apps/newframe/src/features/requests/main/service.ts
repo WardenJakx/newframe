@@ -129,7 +129,9 @@ export function createRequestService(ports: RequestServicePorts) {
     const accountState = Object.values(ports.store.getState().main.accounts).find(
       (account) => account.requests?.[requestId]
     )
-    if (!accountState) return
+    if (!accountState) {
+      return
+    }
     const account = ports.accounts.getFrameAccount(accountState.id)
     const request = account?.getRequest<T>(requestId)
     return account && request ? { account, request } : undefined
@@ -137,14 +139,19 @@ export function createRequestService(ports: RequestServicePorts) {
 
   const setGate = (account: RequestAccount, requestId: string, gate?: RequestApprovalGate) => {
     account.patchRequest(requestId, (request) => {
-      if (gate) request.approvalGate = gate
-      else delete request.approvalGate
+      if (gate) {
+        request.approvalGate = gate
+      } else {
+        delete request.approvalGate
+      }
     })
   }
 
   const settle = (requestId: string, response: RPCResponsePayload) => {
     const continuation = continuations.get(requestId)
-    if (!continuation) return false
+    if (!continuation) {
+      return false
+    }
     continuations.delete(requestId)
     continuation.respond(response)
     return true
@@ -159,7 +166,9 @@ export function createRequestService(ports: RequestServicePorts) {
         return
       }
     }
-    if (!settle(request.handlerId, rpcError(request, normalizedError(error)))) return
+    if (!settle(request.handlerId, rpcError(request, normalizedError(error)))) {
+      return
+    }
     ports.accounts.setRequestError(
       request.handlerId,
       error instanceof Error ? error : new Error(String(error))
@@ -168,9 +177,14 @@ export function createRequestService(ports: RequestServicePorts) {
 
   const completeApproval = (request: AccountRequest, result: unknown) => {
     approvalsInFlight.delete(request.handlerId)
-    if (!settle(request.handlerId, rpcSuccess(request, result))) return
-    if (isTransactionRequest(request)) ports.accounts.setTxSent(request.handlerId, result as string)
-    else ports.accounts.setRequestSuccess(request.handlerId)
+    if (!settle(request.handlerId, rpcSuccess(request, result))) {
+      return
+    }
+    if (isTransactionRequest(request)) {
+      ports.accounts.setTxSent(request.handlerId, result as string)
+    } else {
+      ports.accounts.setRequestSuccess(request.handlerId)
+    }
   }
 
   const signerGate = (
@@ -181,10 +195,7 @@ export function createRequestService(ports: RequestServicePorts) {
     const signerSummaries = ports.store.getState().main.signers || {}
     const signer = account.signer ? signerSummaries[account.signer] : undefined
     if (!signer) {
-      const unavailable = findUnavailableSigners(
-        account.lastSignerType,
-        Object.values(signerSummaries) as Signer[]
-      )
+      const unavailable = findUnavailableSigners(account.lastSignerType, Object.values(signerSummaries))
       return unavailable.length
         ? {
             type: 'signer-compatibility',
@@ -200,7 +211,9 @@ export function createRequestService(ports: RequestServicePorts) {
         : undefined
     }
 
-    if (!isTransactionRequest(request)) return
+    if (!isTransactionRequest(request)) {
+      return
+    }
     const compatibility = ports.transactionPolicy.signerCompatibility(request.data, signer)
     if (
       !compatibility.compatible &&
@@ -222,7 +235,9 @@ export function createRequestService(ports: RequestServicePorts) {
     confirmed: ReadonlySet<RequestApprovalGate['type']>
   ): RequestApprovalGate | undefined => {
     const state = ports.store.getState().main
-    if (state.mute.gasFeeWarning || confirmed.has('gas-fee')) return
+    if (state.mute.gasFeeWarning || confirmed.has('gas-fee')) {
+      return
+    }
 
     const chainId = parseInt(request.data.chainId, 16)
     const network = state.networks.ethereum[chainId]
@@ -234,19 +249,25 @@ export function createRequestService(ports: RequestServicePorts) {
           state.assetRates
         )?.usdRate
       : undefined
-    if (typeof nativeUSD !== 'number') return
+    if (typeof nativeUSD !== 'number') {
+      return
+    }
 
     const gasLimit = toBigInt(request.data.gasLimit) ?? 0n
     const maxFeePerGas =
       toBigInt(usesBaseFee(request.data) ? request.data.maxFeePerGas : request.data.gasPrice) ?? 0n
     const feeUSD = displayUSD((Number(maxFeePerGas * gasLimit) / 1e18) * nativeUSD)
-    if (Number(feeUSD) <= FEE_WARNING_THRESHOLD_USD && feeUSD !== '0.00') return
+    if (Number(feeUSD) <= FEE_WARNING_THRESHOLD_USD && feeUSD !== '0.00') {
+      return
+    }
 
     return { type: 'gas-fee', feeUSD, currentSymbol }
   }
 
   const executeApproval = (account: RequestAccount, request: AccountRequest, context?: SigningUiContext) => {
-    if (approvalsInFlight.has(request.handlerId)) return true
+    if (approvalsInFlight.has(request.handlerId)) {
+      return true
+    }
     approvalsInFlight.add(request.handlerId)
     setGate(account, request.handlerId)
     ports.accounts.setRequestPending(request)
@@ -255,7 +276,9 @@ export function createRequestService(ports: RequestServicePorts) {
     const created = ports.store.getState().main.accounts[request.account]?.created
     const actionId = request.authorization?.actionId
     const complete = (settleApproval: () => void) => {
-      if (continuations.get(request.handlerId) !== continuation) return
+      if (continuations.get(request.handlerId) !== continuation) {
+        return
+      }
       const currentAccount = ports.store.getState().main.accounts[request.account]
       const currentRequest = currentAccount?.requests[request.handlerId] as AccountRequest | undefined
       if (currentAccount?.created !== created || currentRequest?.authorization?.actionId !== actionId) {
@@ -307,7 +330,9 @@ export function createRequestService(ports: RequestServicePorts) {
   const service = {
     bind(request: AccountRequest) {
       const continuation = continuations.get(request.handlerId)
-      if (continuation) continuation.request = request
+      if (continuation) {
+        continuation.request = request
+      }
     },
 
     cancel(requestId: string) {
@@ -321,7 +346,9 @@ export function createRequestService(ports: RequestServicePorts) {
     },
 
     create(respond: RPCRequestCallback, requestId: string = randomUUID()) {
-      if (continuations.has(requestId)) throw new Error(`Request continuation already exists: ${requestId}`)
+      if (continuations.has(requestId)) {
+        throw new Error(`Request continuation already exists: ${requestId}`)
+      }
       continuations.set(requestId, { respond })
       return requestId
     },
@@ -342,7 +369,9 @@ export function createRequestService(ports: RequestServicePorts) {
       if (!located || (!isTransactionRequest(located.request) && !isSignatureRequest(located.request))) {
         return false
       }
-      if (located.request.authorization?.decision !== 'prompt') return false
+      if (located.request.authorization?.decision !== 'prompt') {
+        return false
+      }
       if (
         adjustments !== undefined &&
         (!isTransactionRequest(located.request) ||
@@ -350,13 +379,18 @@ export function createRequestService(ports: RequestServicePorts) {
           approvalsInFlight.has(requestId) ||
           !continuations.has(requestId) ||
           (ports.vault.exists() && !ports.vault.isUnlocked()))
-      )
+      ) {
         return false
-      if (approvalsInFlight.has(requestId)) return true
+      }
+      if (approvalsInFlight.has(requestId)) {
+        return true
+      }
       // Canonical success/error UI can outlive the external requester briefly.
       // Once its continuation is settled, approving the same request again must
       // acknowledge without repeating signing or broadcast side effects.
-      if (!continuations.has(requestId)) return true
+      if (!continuations.has(requestId)) {
+        return true
+      }
 
       if (adjustments !== undefined && isTransactionRequest(located.request)) {
         const canonical = located.request.data
@@ -376,9 +410,13 @@ export function createRequestService(ports: RequestServicePorts) {
               request.feesUpdatedByUser = true
               delete request.automaticFeeUpdateNotice
             }
-            if (changed) delete request.approvalGate
+            if (changed) {
+              delete request.approvalGate
+            }
           })
-          if (!updated) return false
+          if (!updated) {
+            return false
+          }
           located.request = updated
         }
       }
@@ -396,14 +434,18 @@ export function createRequestService(ports: RequestServicePorts) {
         ports.accounts.setRequestError(requestId, new Error('Newframe locked'))
         return true
       }
-      if (!editable(located.request)) return false
+      if (!editable(located.request)) {
+        return false
+      }
       return advanceApproval(located.account, located.request, new Set(), context)
     },
 
     confirmWarning(requestId: string, gate: RequestApprovalGate['type'], context?: SigningUiContext) {
       const located = locate(requestId)
       const pendingGate = located?.request.approvalGate
-      if (!located || !pendingGate || pendingGate.type !== gate) return false
+      if (!located || !pendingGate || pendingGate.type !== gate) {
+        return false
+      }
       if (
         (!isTransactionRequest(located.request) && !isSignatureRequest(located.request)) ||
         located.request.authorization?.decision !== 'prompt' ||
@@ -411,8 +453,9 @@ export function createRequestService(ports: RequestServicePorts) {
         !continuations.has(requestId) ||
         approvalsInFlight.has(requestId) ||
         (ports.vault.exists() && !ports.vault.isUnlocked())
-      )
+      ) {
         return false
+      }
       if (pendingGate.type === 'signer-compatibility' && pendingGate.reason !== 'incompatible') {
         return false
       }
@@ -427,7 +470,9 @@ export function createRequestService(ports: RequestServicePorts) {
 
     rejectRequest(requestId: string) {
       const located = locate(requestId)
-      if (!located) return false
+      if (!located) {
+        return false
+      }
       located.account.rejectRequest(located.request, {
         code: 4001,
         message: 'User rejected the request'
@@ -437,7 +482,9 @@ export function createRequestService(ports: RequestServicePorts) {
 
     resolveAccess(requestId: string, approved: boolean) {
       const located = locate<AccessRequest>(requestId)
-      if (located?.request.type !== 'access') return false
+      if (located?.request.type !== 'access') {
+        return false
+      }
       if (approved && located.request.payload?.method === 'eth_requestAccounts') {
         const { main } = ports.store.getState()
         const selected = main.accounts[main.currentAccount]
@@ -461,7 +508,9 @@ export function createRequestService(ports: RequestServicePorts) {
       const request = located?.request as
         | (AccountRequest<'switchChain'> & { chain?: { id?: string | number; type?: string } })
         | undefined
-      if (!located || request?.type !== 'switchChain') return false
+      if (!located || request?.type !== 'switchChain') {
+        return false
+      }
       if (approved) {
         const state = ports.store.getState()
         const chainId = Number(request.chain?.id)
@@ -480,22 +529,30 @@ export function createRequestService(ports: RequestServicePorts) {
     },
 
     clearOrigin(accountId: string, originId: string) {
-      if (!ports.accounts.get(accountId)) return false
+      if (!ports.accounts.get(accountId)) {
+        return false
+      }
       ports.accounts.clearRequestsByOrigin(accountId, originId)
       return true
     },
 
     confirmRequestApproval(requestId: string, approvalType: 'approveOtherChain' | 'approveGasLimit') {
       const located = locate<TransactionRequest>(requestId)
-      if (located?.request.type !== 'transaction') return false
+      if (located?.request.type !== 'transaction') {
+        return false
+      }
       const approval = located.request.approvals?.find((candidate) => candidate.type === approvalType)
-      if (!approval || approval.approved) return false
+      if (!approval || approval.approved) {
+        return false
+      }
       return located.account.approveRequest(requestId, approvalType as ApprovalType, {})
     },
 
     reviewAddChain(requestId: string) {
       const located = locate<AddChainRequest>(requestId)
-      if (located?.request.type !== 'addChain') return false
+      if (located?.request.type !== 'addChain') {
+        return false
+      }
       ports.store.getState().navHome({
         view: 'addChain',
         data: { chain: located.request.chain, requestId: located.request.handlerId }
@@ -505,7 +562,9 @@ export function createRequestService(ports: RequestServicePorts) {
 
     reviewAddToken(requestId: string) {
       const located = locate<AddTokenRequest>(requestId)
-      if (located?.request.type !== 'addToken') return false
+      if (located?.request.type !== 'addToken') {
+        return false
+      }
       const { address, symbol, decimals, logoURI, name, chainId } = located.request.token
       located.account.resolveRequest(located.request, null)
       ports.store.getState().navHome({
@@ -525,13 +584,16 @@ export function createRequestService(ports: RequestServicePorts) {
       } | null
       const homeCommand = command.homeCommandId === currentHomeCommand?.id ? currentHomeCommand : undefined
       const chain = request?.chain || homeCommand?.data?.newChain || homeCommand?.data?.chain
-      if (!chain) return false
+      if (!chain) {
+        return false
+      }
 
       if (command.approved) {
         const chainId = Number(chain.id)
         const existing = state.main.networks.ethereum[chainId]
-        if (existing) state.activateNetwork('ethereum', chainId, true)
-        else {
+        if (existing) {
+          state.activateNetwork('ethereum', chainId, true)
+        } else {
           if (
             !(await ports.network.rpcMatchesChain(
               (chain as Chain & { primaryRpc?: string }).primaryRpc,
@@ -542,16 +604,22 @@ export function createRequestService(ports: RequestServicePorts) {
           }
           state.addNetwork(chain)
         }
-        if (request) located?.account.resolveRequest(request, null)
+        if (request) {
+          located?.account.resolveRequest(request, null)
+        }
       } else if (request) {
         located?.account.rejectRequest(request, { code: 4001, message: 'User rejected the request' })
       }
-      if (homeCommand) state.clearHomeCommand(homeCommand.id)
+      if (homeCommand) {
+        state.clearHomeCommand(homeCommand.id)
+      }
       return true
     },
 
     async replaceTransaction(command: TransactionReplaceCommand, principal: TrustedPrincipal) {
-      if (locate(command.requestId)?.request.type !== 'transaction') return false
+      if (locate(command.requestId)?.request.type !== 'transaction') {
+        return false
+      }
       ports.store.getState().navBack('panel')
       await ports.clock.delay(1_000)
       await ports.accounts.replaceTx(
@@ -568,10 +636,13 @@ export function createRequestService(ports: RequestServicePorts) {
       const pendingContinuations = Array.from(continuations)
       for (const [requestId, continuation] of pendingContinuations) {
         const located = locate(requestId)
-        if (located) located.account.rejectRequest(located.request, shutdownError)
-        else if (continuation.request)
+        if (located) {
+          located.account.rejectRequest(located.request, shutdownError)
+        } else if (continuation.request) {
           settle(requestId, rpcError(continuation.request as AccountRequest, shutdownError))
-        else continuations.delete(requestId)
+        } else {
+          continuations.delete(requestId)
+        }
       }
       approvalsInFlight.clear()
     },

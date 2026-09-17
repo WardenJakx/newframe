@@ -19,16 +19,23 @@ import validPayload from './validPayload.js'
 
 function faviconSource(value: unknown): string | undefined {
   const embedded = embeddedImageSource(value)
-  if (embedded) return embedded
-  if (typeof value !== 'string' || value.length > 4096) return
+  if (embedded) {
+    return embedded
+  }
+  if (typeof value !== 'string' || value.length > 4096) {
+    return
+  }
   for (const character of value) {
     const code = character.charCodeAt(0)
-    if (code <= 31 || code === 127) return
+    if (code <= 31 || code === 127) {
+      return
+    }
   }
   try {
     const url = new URL(value)
-    if (url.protocol === 'https:' && !url.username && !url.password && (!url.port || url.port === '443'))
+    if (url.protocol === 'https:' && !url.username && !url.password && (!url.port || url.port === '443')) {
       return url.toString()
+    }
   } catch {
     return undefined
   }
@@ -62,7 +69,7 @@ interface WebSocketProviderPort {
   off(event: 'data:subscription', listener: (payload: RPC.Susbcription.Response) => void): unknown
 }
 
-export interface WebSocketServerPort {
+interface WebSocketServerPort {
   on(event: 'connection', listener: (socket: FrameWebSocket, req: IncomingMessage) => void): unknown
   off(event: 'connection', listener: (socket: FrameWebSocket, req: IncomingMessage) => void): unknown
   close(): void
@@ -113,9 +120,13 @@ export function createWebSocketRpcTransport({
     process.env.LOG_TRAFFIC === 'true' || process.env.LOG_TRAFFIC === origin
 
   function extendSession(originId: string) {
-    if (!originId) return
+    if (!originId) {
+      return
+    }
 
-    if (connectionMonitors[originId]) timers.clearTimeout(connectionMonitors[originId])
+    if (connectionMonitors[originId]) {
+      timers.clearTimeout(connectionMonitors[originId])
+    }
     connectionMonitors[originId] = timers.setTimeout(() => {
       delete connectionMonitors[originId]
       store.endOriginSession(originId)
@@ -124,7 +135,9 @@ export function createWebSocketRpcTransport({
 
   const removeSocketSubscriptions = (socket: FrameWebSocket) => {
     Object.keys(subs).forEach((sub) => {
-      if (subs[sub].socket.id !== socket.id) return
+      if (subs[sub].socket.id !== socket.id) {
+        return
+      }
       Promise.resolve(
         provider.send({
           jsonrpc: '2.0',
@@ -148,9 +161,13 @@ export function createWebSocketRpcTransport({
     )
 
     const respond = (payload: RPCResponsePayload) => {
-      if (socket.readyState !== openReadyState) return
+      if (socket.readyState !== openReadyState) {
+        return
+      }
       socket.send(JSON.stringify(payload), (error) => {
-        if (error) log.info(error)
+        if (error) {
+          log.info(error)
+        }
       })
     }
 
@@ -165,7 +182,9 @@ export function createWebSocketRpcTransport({
       delete rawPayload.__frameFavicon
       let responded = false
       const respondOnce = (response: RPCResponsePayload) => {
-        if (responded) return
+        if (responded) {
+          return
+        }
         responded = true
         respond(response)
       }
@@ -199,7 +218,9 @@ export function createWebSocketRpcTransport({
         }
 
         const requestChainId = parseRequestChainId(req)
-        if (requestChainId && !rawPayload.chainId) rawPayload.chainId = requestChainId
+        if (requestChainId && !rawPayload.chainId) {
+          rawPayload.chainId = requestChainId
+        }
         const origin = parseOrigin(requestOrigin)
 
         if (logTraffic(origin)) {
@@ -235,7 +256,9 @@ export function createWebSocketRpcTransport({
           return
         }
 
-        if (!rawPayload.__extensionConnecting) extendSession(payload._origin)
+        if (!rawPayload.__extensionConnecting) {
+          extendSession(payload._origin)
+        }
 
         if (socket.frameExtension && !proxiedExtensionRequest) {
           if (rawPayload.method === 'frame_summon' && socket.companionInternal) {
@@ -276,7 +299,9 @@ export function createWebSocketRpcTransport({
         await provider.send(
           payload,
           (response) => {
-            if (responded) return
+            if (responded) {
+              return
+            }
             if (response?.result) {
               if (payload.method === 'eth_subscribe') {
                 subs[String(response.result)] = { socket, originId: payload._origin }
@@ -340,7 +365,9 @@ export function createWebSocketRpcTransport({
       return active
     },
     start(server) {
-      if (active || disposed) return
+      if (active || disposed) {
+        return
+      }
 
       wsServer = createServer(server)
       wsServer.on('connection', handler)
@@ -348,7 +375,9 @@ export function createWebSocketRpcTransport({
       active = true
     },
     dispose() {
-      if (disposed) return
+      if (disposed) {
+        return
+      }
 
       disposed = true
       active = false
@@ -356,7 +385,9 @@ export function createWebSocketRpcTransport({
       wsServer?.off('connection', handler)
       const subscribedSockets = new Set(Object.values(subs).map(({ socket }) => socket))
       subscribedSockets.forEach(removeSocketSubscriptions)
-      for (const disposeSocket of socketDisposers.values()) disposeSocket()
+      for (const disposeSocket of socketDisposers.values()) {
+        disposeSocket()
+      }
       Object.values(connectionMonitors).forEach((timer) => timers.clearTimeout(timer))
       Object.keys(connectionMonitors).forEach((id) => delete connectionMonitors[id])
       wsServer?.close()

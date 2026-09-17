@@ -11,7 +11,9 @@ export function createRequestMatcher<T extends z.ZodType>(method: string, params
 
 export function generateError(err: ZodError<any>) {
   const issue = err.issues[0]
-  if (!issue) return new Error('Invalid request parameters')
+  if (!issue) {
+    return new Error('Invalid request parameters')
+  }
 
   // zod 4 reports a missing required field as an invalid_type issue with an undefined input
   const isMissingField = issue.code === 'invalid_type' && issue.message.endsWith('received undefined')

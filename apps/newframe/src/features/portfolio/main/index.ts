@@ -20,7 +20,9 @@ export function getTokenDiscoveryProvider(
   const configuredApiKey = canonicalStore.getState().main.portfolioApiKey
   const apiKey = typeof configuredApiKey === 'string' ? configuredApiKey.trim() : ''
 
-  if (!apiKey) return { ok: false, error: 'missing_api_key' }
+  if (!apiKey) {
+    return { ok: false, error: 'missing_api_key' }
+  }
 
   return { ok: true, provider: new ZerionPortfolioProvider({ apiKey }) }
 }

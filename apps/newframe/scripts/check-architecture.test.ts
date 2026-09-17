@@ -83,7 +83,9 @@ test('allows each canonical authority', () => {
     [checkRawIpcAuthority, 'apps/newframe/src/platform/ipc/main/operations.ts', 'ipcMain.handle(channel)'],
     [checkRawIpcAuthority, 'apps/newframe/src/platform/ipc/main/stateStream.ts', 'webContents.send(channel)']
   ]
-  for (const [check, file, source] of cases) allows(check, file, source)
+  for (const [check, file, source] of cases) {
+    allows(check, file, source)
+  }
 })
 
 type SourceCase = readonly [string, string, string, string, string, string]
@@ -153,24 +155,26 @@ test('rejects every supported renderer boundary bypass form and test fixture', (
     "import '/workspace/apps/newframe/src/preload/bridge'",
     "import '@newframe/src/features/example/main/service'",
     "import '#newframe/src/preload/bridge'"
-  ])
+  ]) {
     rejects(
       checkDependencyDirection,
       renderer,
       source,
       source.includes('preload') ? 'renderer cannot import preload' : 'renderer cannot import main'
     )
+  }
   for (const file of [
     'apps/newframe/src/features/example/renderer/view.test.ts',
     'apps/newframe/src/platform/state-sync/renderer/fixtures.test-support.ts',
     'apps/newframe/src/features/example/renderer/__tests__/view.ts'
-  ])
+  ]) {
     rejects(
       checkDependencyDirection,
       file,
       "import 'apps/newframe/src/features/example/main/service'",
       'renderer cannot import main'
     )
+  }
 })
 
 test('rejects feature renderer dependencies on app renderer modules in production and tests', () => {
@@ -244,13 +248,14 @@ test('rejects explicit any throughout production renderer code', () => {
 test('rejects runtime dependencies from renderer and portable layers', () => {
   for (const specifier of 'electron node:crypto fs/promises path os util crypto buffer events process process/browser stream path-browserify crypto-browserify'.split(
     ' '
-  ))
+  )) {
     rejects(
       checkDependencyDirection,
       renderer,
       `import '${specifier}'`,
       `renderer cannot import runtime dependency ${specifier}`
     )
+  }
   for (const [file, specifier] of [
     [contracts, 'react'],
     [contracts, 'zustand'],
@@ -261,13 +266,14 @@ test('rejects runtime dependencies from renderer and portable layers', () => {
     [domain, 'crypto'],
     [domain, 'events'],
     [domain, 'stream-browserify']
-  ])
+  ]) {
     rejects(
       checkDependencyDirection,
       file,
       `export * from '${specifier}'`,
       'cannot import runtime dependency'
     )
+  }
 })
 
 test('rejects broad singleton access through every supported import form and service root', () => {
@@ -286,7 +292,9 @@ test('rejects broad singleton access through every supported import form and ser
     "import biometrics from '@newframe/src/platform/secrets/biometrics'",
     "import persistence from '#newframe/src/platform/state-store/persist'"
   ]
-  for (const source of sources) rejects(checkDependencyDirection, mainService, source, message)
+  for (const source of sources) {
+    rejects(checkDependencyDirection, mainService, source, message)
+  }
   // oxfmt-ignore
   const cases = [
     ['apps/newframe/src/features/asset-data/main/externalData/index.ts', "import type store from '../../../../platform/state-store'"],
@@ -299,7 +307,9 @@ test('rejects broad singleton access through every supported import form and ser
     ['apps/newframe/src/features/name-resolution/main/nameResolution.ts', "export * from '../../../platform/desktop/windows/window'"],
     ['apps/newframe/src/features/brand-new/main/service.ts', "import windows from '../../../platform/desktop/windows/window'"]
   ] as const
-  for (const [file, source] of cases) rejects(checkDependencyDirection, file, source, message)
+  for (const [file, source] of cases) {
+    rejects(checkDependencyDirection, file, source, message)
+  }
 })
 
 test('allows intended process dependencies and boundary owners', () => {
@@ -316,5 +326,7 @@ test('allows intended process dependencies and boundary owners', () => {
     ['apps/newframe/src/app/main/index.ts', "import store from '../../platform/state-store'\nimport { openFileDialog } from '../../platform/desktop/windows/dialog'"],
     ['apps/newframe/src/platform/signing/signers/ledger/adapter.ts', "import type store from '../../../state-store'\nimport windows from '../../../desktop/windows'"]
   ] as const
-  for (const [file, source] of cases) allows(checkDependencyDirection, file, source)
+  for (const [file, source] of cases) {
+    allows(checkDependencyDirection, file, source)
+  }
 })

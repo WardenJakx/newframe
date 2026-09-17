@@ -72,7 +72,9 @@ export function TrayOverlay({
       aria-label={label}
       className={overlayRecipe()}
       onKeyDown={(event) => {
-        if (event.defaultPrevented || event.key !== 'Escape') return
+        if (event.defaultPrevented || event.key !== 'Escape') {
+          return
+        }
         event.preventDefault()
         onClose()
       }}

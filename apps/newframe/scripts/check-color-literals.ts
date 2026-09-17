@@ -64,8 +64,9 @@ export async function findApplicationColorLiterals() {
       !sourceExtensions.has(path.extname(file)) ||
       isTestFile(relativePath) ||
       allowedFiles.has(relativePath)
-    )
+    ) {
       continue
+    }
 
     const violations = findColorLiteralViolations(await readFile(file, 'utf8'))
     results.push(...violations.map((violation) => ({ file: relativePath, ...violation })))
@@ -76,7 +77,9 @@ export async function findApplicationColorLiterals() {
 
 async function main() {
   const violations = await findApplicationColorLiterals()
-  if (violations.length === 0) return
+  if (violations.length === 0) {
+    return
+  }
 
   console.error('Color literals must be defined in @newframe/ui tokens or application-owned color metadata:')
   violations.forEach(({ file, line, column, literal }) => {

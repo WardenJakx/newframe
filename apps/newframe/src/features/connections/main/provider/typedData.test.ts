@@ -34,7 +34,7 @@ describe('#getVersionFromTypedData', () => {
     ['malformed EIP-712 data', { ...typedData, primaryType: 'missing' }, SignTypedDataVersion.V4]
   ].forEach(([description, data, version]) => {
     it(`returns ${version} for ${description}`, () => {
-      expect(getVersionFromTypedData(data as any)).toBe(version)
+      expect(getVersionFromTypedData(data)).toBe(version)
     })
   })
 })

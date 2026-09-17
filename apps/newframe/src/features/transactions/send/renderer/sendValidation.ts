@@ -25,8 +25,12 @@ export function getRecipientAddress({ recipient, recipientInput = '' }: SendReci
   const selectedRecipient = recipient?.address || ''
   const input = recipientInput.trim()
 
-  if (selectedRecipient) return cleanAddress(selectedRecipient)
-  if (isAddress(input)) return cleanAddress(input)
+  if (selectedRecipient) {
+    return cleanAddress(selectedRecipient)
+  }
+  if (isAddress(input)) {
+    return cleanAddress(input)
+  }
 
   return ''
 }
@@ -91,8 +95,14 @@ export function validateSendDraft({
   balance: bigint
   recipient: string
 }) {
-  if (!account || !asset || !amount || amount <= 0n) return 'Enter an amount to send.'
-  if (amount > balance) return 'Amount exceeds available balance.'
-  if (!recipient.trim()) return 'Enter a valid recipient.'
+  if (!account || !asset || !amount || amount <= 0n) {
+    return 'Enter an amount to send.'
+  }
+  if (amount > balance) {
+    return 'Amount exceeds available balance.'
+  }
+  if (!recipient.trim()) {
+    return 'Enter a valid recipient.'
+  }
   return ''
 }

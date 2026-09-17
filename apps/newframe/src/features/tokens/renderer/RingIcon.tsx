@@ -64,7 +64,9 @@ interface RingIconProps extends IconProps {
 }
 
 function iconSize(svgSize: number, small?: boolean): UiIconProps['size'] {
-  if (small || svgSize <= 13) return 'small'
+  if (small || svgSize <= 13) {
+    return 'small'
+  }
   return svgSize >= 18 ? 'large' : 'medium'
 }
 

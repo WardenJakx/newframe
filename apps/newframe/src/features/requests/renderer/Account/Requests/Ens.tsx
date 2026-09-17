@@ -20,9 +20,15 @@ function formatTime(amount: number, unit: string) {
 }
 
 function formatDuration(duration: number) {
-  if (duration < 60) return 'for < 1 minute'
-  if (duration < 3600) return formatTime(Math.floor(duration / 60), 'minute')
-  if (duration < 3600 * 24) return formatTime(Math.floor(duration / 3600), 'hour')
+  if (duration < 60) {
+    return 'for < 1 minute'
+  }
+  if (duration < 3600) {
+    return formatTime(Math.floor(duration / 60), 'minute')
+  }
+  if (duration < 3600 * 24) {
+    return formatTime(Math.floor(duration / 3600), 'hour')
+  }
 
   const endDate = new Date()
   endDate.setSeconds(endDate.getSeconds() + duration)

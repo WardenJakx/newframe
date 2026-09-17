@@ -64,7 +64,9 @@ export function Networks({ capability, onClose, onSelectionChange, selectedChain
         const url = String(
           rpcDrafts[chainId] ?? shared.networks[chainId]?.connection?.primary?.custom ?? ''
         ).trim()
-        if (url) void capability.setPrimaryRpc({ chainId, url })
+        if (url) {
+          void capability.setPrimaryRpc({ chainId, url })
+        }
       }}
       onSelect={(chainId) => {
         onSelectionChange(chainId)
@@ -72,7 +74,9 @@ export function Networks({ capability, onClose, onSelectionChange, selectedChain
       }}
       onToggleChain={(chainId, enabled) => {
         void capability.setNetworkActivation({ chainId, enabled })
-        if (!enabled && selectedChainId === chainId) onSelectionChange(0)
+        if (!enabled && selectedChainId === chainId) {
+          onSelectionChange(0)
+        }
         setKebabChainId(0)
       }}
       onToggleKebab={(chainId) => setKebabChainId((current) => (current === chainId ? 0 : chainId))}

@@ -119,67 +119,67 @@ afterEach(() => {
 })
 
 it('scans for balances when setting an address if the controller is ready', () => {
-  ;(balancesController as any).isRunning.mockReturnValue(true)
+  balancesController.isRunning.mockReturnValue(true)
   balances.setAddress(address)
 
   timers.advanceTimersByTime(0)
 
-  expect((balancesController as any).updateKnownTokenBalances).toHaveBeenCalled()
+  expect(balancesController.updateKnownTokenBalances).toHaveBeenCalled()
 })
 
 it('scans for balances as soon as the controller is ready', () => {
-  ;(balancesController as any).isRunning.mockReturnValue(false)
+  balancesController.isRunning.mockReturnValue(false)
   balances.setAddress(address)
 
-  expect((balancesController as any).updateKnownTokenBalances).not.toHaveBeenCalled()
-  ;(balancesController as any).emit('ready')
+  expect(balancesController.updateKnownTokenBalances).not.toHaveBeenCalled()
+  balancesController.emit('ready')
   timers.advanceTimersByTime(0)
 
-  expect((balancesController as any).updateKnownTokenBalances).toHaveBeenCalled()
+  expect(balancesController.updateKnownTokenBalances).toHaveBeenCalled()
 })
 
 it('cancels a queued ready scan when stopped', () => {
-  ;(balancesController as any).isRunning.mockReturnValue(false)
+  balancesController.isRunning.mockReturnValue(false)
   balances.setAddress(address)
 
   balances.stop()
-  ;(balancesController as any).emit('ready')
+  balancesController.emit('ready')
   timers.advanceTimersByTime(5 * 60 * 1000)
 
-  expect((balancesController as any).updateKnownTokenBalances.mock.calls).toHaveLength(0)
-  expect((balancesController as any).updateChainBalances.mock.calls).toHaveLength(0)
+  expect(balancesController.updateKnownTokenBalances.mock.calls).toHaveLength(0)
+  expect(balancesController.updateChainBalances.mock.calls).toHaveLength(0)
 })
 
 it('cancels an already queued initial scan when stopped', () => {
-  ;(balancesController as any).isRunning.mockReturnValue(true)
+  balancesController.isRunning.mockReturnValue(true)
   balances.setAddress(address)
 
   balances.stop()
   timers.advanceTimersByTime(5 * 60 * 1000)
 
-  expect((balancesController as any).updateKnownTokenBalances.mock.calls).toHaveLength(0)
-  expect((balancesController as any).updateChainBalances.mock.calls).toHaveLength(0)
+  expect(balancesController.updateKnownTokenBalances.mock.calls).toHaveLength(0)
+  expect(balancesController.updateChainBalances.mock.calls).toHaveLength(0)
 })
 
 it('scans for balances every 10 minutes when paused', () => {
-  ;(balancesController as any).isRunning.mockReturnValue(true)
+  balancesController.isRunning.mockReturnValue(true)
   balances.setAddress(address)
 
   balances.pause()
 
   timers.advanceTimersByTime(10 * 60 * 1000)
 
-  expect((balancesController as any).updateKnownTokenBalances).toHaveBeenCalledTimes(1)
+  expect(balancesController.updateKnownTokenBalances).toHaveBeenCalledTimes(1)
 })
 
 it('refreshes balances on demand', () => {
-  ;(balancesController as any).isRunning.mockReturnValue(true)
+  balancesController.isRunning.mockReturnValue(true)
 
   balances.refresh(address)
   timers.advanceTimersByTime(0)
 
-  expect((balancesController as any).updateKnownTokenBalances).toHaveBeenCalledWith(address, knownTokens)
-  expect((balancesController as any).updateChainBalances).toHaveBeenCalledWith(address, [10])
+  expect(balancesController.updateKnownTokenBalances).toHaveBeenCalledWith(address, knownTokens)
+  expect(balancesController.updateChainBalances).toHaveBeenCalledWith(address, [10])
 })
 
 it('only manually refreshes non-dust valued tokens and curated blue chips', () => {
@@ -216,17 +216,17 @@ it('only manually refreshes non-dust valued tokens and curated blue chips', () =
       observedAt: 1
     }
   })
-  ;(balancesController as any).isRunning.mockReturnValue(true)
+  balancesController.isRunning.mockReturnValue(true)
 
   balances.refresh(address)
 
-  expect((balancesController as any).updateKnownTokenBalances).toHaveBeenCalledWith(address, [
+  expect(balancesController.updateKnownTokenBalances).toHaveBeenCalledWith(address, [
     custom,
     valuable,
     weth,
     usdc
   ])
-  expect((balancesController as any).updateChainBalances).toHaveBeenCalledWith(address, [10])
+  expect(balancesController.updateChainBalances).toHaveBeenCalledWith(address, [10])
 })
 
 it('manually refreshes every custom token without applying the discovery scan cap', () => {
@@ -240,48 +240,44 @@ it('manually refreshes every custom token without applying the discovery scan ca
     state.main.tokens = catalogFor([], customTokens)
     state.main.balances[address] = []
   })
-  ;(balancesController as any).isRunning.mockReturnValue(true)
+  balancesController.isRunning.mockReturnValue(true)
 
   balances.refresh(address)
 
-  expect((balancesController as any).updateKnownTokenBalances).toHaveBeenCalledWith(address, customTokens)
+  expect(balancesController.updateKnownTokenBalances).toHaveBeenCalledWith(address, customTokens)
 })
 
 it('refreshes affected tokens and the native balance immediately and again after five seconds', () => {
   const affectedTokens = [token(1, 10), token(2, 1)]
-  ;(balancesController as any).isRunning.mockReturnValue(true)
+  balancesController.isRunning.mockReturnValue(true)
 
   balances.refreshPositions(address, 10, affectedTokens)
 
-  expect((balancesController as any).updateKnownTokenBalances).toHaveBeenCalledWith(address, [
-    affectedTokens[0]
-  ])
-  expect((balancesController as any).updateChainBalances).toHaveBeenCalledWith(address, [10])
+  expect(balancesController.updateKnownTokenBalances).toHaveBeenCalledWith(address, [affectedTokens[0]])
+  expect(balancesController.updateChainBalances).toHaveBeenCalledWith(address, [10])
 
   timers.advanceTimersByTime(4999)
 
-  expect((balancesController as any).updateKnownTokenBalances).toHaveBeenCalledTimes(1)
-  expect((balancesController as any).updateChainBalances).toHaveBeenCalledTimes(1)
+  expect(balancesController.updateKnownTokenBalances).toHaveBeenCalledTimes(1)
+  expect(balancesController.updateChainBalances).toHaveBeenCalledTimes(1)
 
   timers.advanceTimersByTime(1)
 
-  expect((balancesController as any).updateKnownTokenBalances).toHaveBeenCalledTimes(2)
-  expect((balancesController as any).updateKnownTokenBalances).toHaveBeenLastCalledWith(address, [
-    affectedTokens[0]
-  ])
-  expect((balancesController as any).updateChainBalances).toHaveBeenCalledTimes(2)
-  expect((balancesController as any).updateChainBalances).toHaveBeenLastCalledWith(address, [10])
+  expect(balancesController.updateKnownTokenBalances).toHaveBeenCalledTimes(2)
+  expect(balancesController.updateKnownTokenBalances).toHaveBeenLastCalledWith(address, [affectedTokens[0]])
+  expect(balancesController.updateChainBalances).toHaveBeenCalledTimes(2)
+  expect(balancesController.updateChainBalances).toHaveBeenLastCalledWith(address, [10])
 })
 
 it('cancels delayed position refreshes when the balance scanner stops', () => {
-  ;(balancesController as any).isRunning.mockReturnValue(true)
+  balancesController.isRunning.mockReturnValue(true)
 
   balances.refreshPositions(address, 10, [token(1, 10)])
   balances.stop()
   timers.advanceTimersByTime(5 * 1000)
 
-  expect((balancesController as any).updateKnownTokenBalances).toHaveBeenCalledTimes(1)
-  expect((balancesController as any).updateChainBalances).toHaveBeenCalledTimes(1)
+  expect(balancesController.updateKnownTokenBalances).toHaveBeenCalledTimes(1)
+  expect(balancesController.updateChainBalances).toHaveBeenCalledTimes(1)
 })
 
 it('caps large known token scans while preserving custom tokens', () => {
@@ -291,28 +287,28 @@ it('caps large known token scans while preserving custom tokens', () => {
   store.setState((state) => {
     state.main.tokens = catalogFor(discoveredTokens, customTokens)
   })
-  ;(balancesController as any).isRunning.mockReturnValue(true)
+  balancesController.isRunning.mockReturnValue(true)
 
   balances.setAddress(address)
   timers.advanceTimersByTime(0)
 
-  expect((balancesController as any).updateKnownTokenBalances).toHaveBeenCalledWith(
+  expect(balancesController.updateKnownTokenBalances).toHaveBeenCalledWith(
     address,
     expect.arrayContaining(customTokens)
   )
 
-  const scannedTokens = (balancesController as any).updateKnownTokenBalances.mock.calls[0][1]
+  const scannedTokens = balancesController.updateKnownTokenBalances.mock.calls[0][1]
   expect(scannedTokens).toHaveLength(250)
   expect(scannedTokens.slice(0, customTokens.length)).toEqual(customTokens)
 })
 
 it('caps direct token update scans', () => {
   const discoveredTokens = Array.from({ length: 300 }, (_, i) => token(i + 1))
-  ;(balancesController as any).isRunning.mockReturnValue(true)
+  balancesController.isRunning.mockReturnValue(true)
 
   balances.addTokens(address, discoveredTokens)
 
-  const scannedTokens = (balancesController as any).updateKnownTokenBalances.mock.calls[0][1]
+  const scannedTokens = balancesController.updateKnownTokenBalances.mock.calls[0][1]
   expect(scannedTokens).toHaveLength(250)
   expect(scannedTokens).toEqual(discoveredTokens.slice(0, 250))
 })

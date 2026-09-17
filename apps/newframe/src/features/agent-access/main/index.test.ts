@@ -48,7 +48,9 @@ it('characterizes agent prompt timeout, disconnect, approval idempotency, and di
       },
       respond(requestId: string, payload: RPCResponsePayload) {
         const respond = continuations.get(requestId)
-        if (!respond) return false
+        if (!respond) {
+          return false
+        }
         continuations.delete(requestId)
         respond(payload)
         return true

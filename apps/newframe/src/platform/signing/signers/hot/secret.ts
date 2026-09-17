@@ -45,7 +45,7 @@ export function sealSecret(secret: Buffer, vaultKeyHex: string): EncryptedSecret
 }
 
 export function openSecret(envelope: EncryptedSecret, vaultKeyHex: string): Buffer {
-  if (!envelope || envelope.algorithm !== 'aes-256-gcm') {
+  if (envelope?.algorithm !== 'aes-256-gcm') {
     throw new Error('Unsupported encrypted secret')
   }
 

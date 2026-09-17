@@ -26,14 +26,21 @@ const hexToBuffer = (value: string) => Buffer.from(stripHexPrefix(value), 'hex')
 const deriveScryptKey = (password: string, salt: Buffer, keylen: number, options: ScryptOptions) =>
   new Promise<Buffer>((resolve, reject) => {
     scryptAsync(password, salt, keylen, options, (err, derivedKey) => {
-      if (err) reject(err)
-      else resolve(derivedKey)
+      if (err) {
+        reject(err)
+      } else {
+        resolve(derivedKey)
+      }
     })
   })
 
 async function decryptV1Keystore(keystore: V1Keystore, password: string) {
-  if (keystore.Version !== '1') throw new Error('Not a V1 wallet')
-  if (keystore.Crypto.KeyHeader.Kdf !== 'scrypt') throw new Error('Unsupported key derivation scheme')
+  if (keystore.Version !== '1') {
+    throw new Error('Not a V1 wallet')
+  }
+  if (keystore.Crypto.KeyHeader.Kdf !== 'scrypt') {
+    throw new Error('Unsupported key derivation scheme')
+  }
 
   const { DkLen, N, P, R } = keystore.Crypto.KeyHeader.KdfParams
   const ciphertext = hexToBuffer(keystore.Crypto.CipherText)
@@ -90,7 +97,9 @@ class RingSigner extends HotSigner {
 
   protected override openPrivateKey(index: number, vaultKeyHex: string) {
     const envelope = this.encryptedKeys[index]
-    if (!envelope) throw new Error('Private key not found')
+    if (!envelope) {
+      throw new Error('Private key not found')
+    }
     return openSecret(envelope, vaultKeyHex)
   }
 
@@ -122,7 +131,9 @@ class RingSigner extends HotSigner {
   }
 
   removePrivateKey(index: number, _vaultKeyHex: string, cb: Callback<RingSigner>) {
-    if (!this.encryptedKeys[index]) return cb(new Error('Private key not found'), undefined)
+    if (!this.encryptedKeys[index]) {
+      return cb(new Error('Private key not found'), undefined)
+    }
     this.addresses = this.addresses.filter((_, keyIndex) => keyIndex !== index)
     this.encryptedKeys = this.encryptedKeys.filter((_, keyIndex) => keyIndex !== index)
     log.info('Private key removed from signer', this.id)
@@ -134,8 +145,9 @@ class RingSigner extends HotSigner {
     let privateKey: Buffer | undefined
     try {
       const version = keystore.version ?? Number(keystore.Version)
-      if (version === 1) privateKey = await decryptV1Keystore(keystore, keystorePassword)
-      else if (version === 3) {
+      if (version === 1) {
+        privateKey = await decryptV1Keystore(keystore, keystorePassword)
+      } else if (version === 3) {
         const wallet = await Wallet.fromEncryptedJson(JSON.stringify(keystore), keystorePassword)
         privateKey = hexToBuffer(wallet.privateKey)
       } else {

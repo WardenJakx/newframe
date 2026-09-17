@@ -94,7 +94,9 @@ export function createBlockExplorerOpener(
     const explorer = (canonicalStore.getState().main.networks[type][id]?.explorer || '').replace(/\/+$/, '')
 
     try {
-      if (!['http:', 'https:'].includes(new URL(explorer).protocol)) return
+      if (!['http:', 'https:'].includes(new URL(explorer).protocol)) {
+        return
+      }
     } catch {
       return
     }

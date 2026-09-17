@@ -21,7 +21,9 @@ type SpendMode = 'custom' | 'requested' | 'unlimited'
 const isMax = (value: SourceValue) => toBigInt(value) === max
 
 const getMode = (requestedAmount: SourceValue, amount: SourceValue): SpendMode => {
-  if (requestedAmount === toBigInt(amount)) return 'requested'
+  if (requestedAmount === toBigInt(amount)) {
+    return 'requested'
+  }
   return isMax(amount) ? 'unlimited' : 'custom'
 }
 
@@ -112,13 +114,20 @@ export default function EditTokenSpend({
     setCustom('')
   }
   const submitCustom = () => {
-    if (!custom) applyRequested()
-    else updateRequest(fromDecimal(custom))
+    if (!custom) {
+      applyRequested()
+    } else {
+      updateRequest(fromDecimal(custom))
+    }
   }
   const selectMode = (next: SpendMode) => {
-    if (next === 'requested') applyRequested()
-    else if (next === 'unlimited') applyUnlimited()
-    else applyCustom()
+    if (next === 'requested') {
+      applyRequested()
+    } else if (next === 'unlimited') {
+      applyUnlimited()
+    } else {
+      applyCustom()
+    }
   }
 
   return (
@@ -160,8 +169,11 @@ export default function EditTokenSpend({
                 label='Custom Amount'
                 onSubmit={submitCustom}
                 onValueChange={(value) => {
-                  if (!value) setCustom('')
-                  else if (isValidInput(value, decimals)) setCustom(value)
+                  if (!value) {
+                    setCustom('')
+                  } else if (isValidInput(value, decimals)) {
+                    setCustom(value)
+                  }
                 }}
                 value={custom}
               />

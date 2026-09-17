@@ -28,13 +28,17 @@ export function getSafeTypedMessage(
   address: string,
   version?: string
 ): TypedMessage {
-  if (!version || !['1.1.1', '1.2.0', '1.3.0', '1.4.1', '1.5.0'].includes(version))
+  if (!version || !['1.1.1', '1.2.0', '1.3.0', '1.4.1', '1.5.0'].includes(version)) {
     throw new Error('Unable to verify: unsupported or missing Safe version.')
-  if (fields.some(([name]) => proposal[name] === undefined))
+  }
+  if (fields.some(([name]) => proposal[name] === undefined)) {
     throw new Error('Unable to verify: transaction gas or refund fields are missing.')
+  }
   safeProposalSchema.parse(proposal)
   safeAddressSchema.parse(address)
-  if (!Number.isSafeInteger(chainId) || chainId <= 0) throw new Error('Invalid Safe chain ID')
+  if (!Number.isSafeInteger(chainId) || chainId <= 0) {
+    throw new Error('Invalid Safe chain ID')
+  }
   const domain = { verifyingContract: address, ...(['1.1.1', '1.2.0'].includes(version) ? {} : { chainId }) }
   return {
     version: SignTypedDataVersion.V4,
@@ -66,7 +70,9 @@ export function verifySafeHash(
     return { status: 'unavailable', reason: (error as Error).message }
   }
   const computedHash = getEip712Digests(typedMessage)?.eip712Digest
-  if (!computedHash) return { status: 'unavailable', reason: 'Unable to compute Safe transaction hash.' }
+  if (!computedHash) {
+    return { status: 'unavailable', reason: 'Unable to compute Safe transaction hash.' }
+  }
   return computedHash === proposal.safeTxHash
     ? {
         status: 'matched',
@@ -82,9 +88,13 @@ export function verifySafeHash(
 
 // Safe stores eth_sign recovery values as 31/32, EIP712 as 27/28.
 export function verifySafeConfirmation(hash: string, owner: string, signature: string): boolean {
-  if (!/^0x[0-9a-f]{64}$/i.test(hash) || !/^0x[0-9a-f]{130}$/i.test(signature)) return false
+  if (!/^0x[0-9a-f]{64}$/i.test(hash) || !/^0x[0-9a-f]{130}$/i.test(signature)) {
+    return false
+  }
   const v = Number.parseInt(signature.slice(-2), 16)
-  if (![27, 28, 31, 32].includes(v)) return false
+  if (![27, 28, 31, 32].includes(v)) {
+    return false
+  }
   try {
     const digest = v > 30 ? hashMessage(getBytes(hash)) : hash
     const normalized = `${signature.slice(0, -2)}${(v > 30 ? v - 4 : v).toString(16)}`
@@ -103,8 +113,9 @@ export function serviceCalldataMismatch(proposal: SafeProposal): boolean {
     decoded.parameters.some(
       ({ type }) => !/^(address|bool|string|bytes([1-9]|[12][0-9]|3[0-2])?|u?int([0-9]+)?)$/.test(type)
     )
-  )
+  ) {
     return false
+  }
   try {
     const abi = new Interface([
       `function ${decoded.method}(${decoded.parameters.map((p) => p.type).join(',')})`
@@ -113,8 +124,9 @@ export function serviceCalldataMismatch(proposal: SafeProposal): boolean {
       p.type === 'bool' ? (p.value === 'true' ? true : p.value === 'false' ? false : p.value) : p.value
     )
     // Ethers coerces arbitrary strings to bool, so reject anything but literal booleans.
-    if (decoded.parameters.some((p) => p.type === 'bool' && !['true', 'false'].includes(p.value)))
+    if (decoded.parameters.some((p) => p.type === 'bool' && !['true', 'false'].includes(p.value))) {
       return false
+    }
     return abi.encodeFunctionData(decoded.method, values).toLowerCase() !== proposal.data.toLowerCase()
   } catch {
     return false

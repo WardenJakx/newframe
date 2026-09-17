@@ -11,7 +11,9 @@ export function useTokenImageHydration(
   targetRef?: RefObject<Element | null>
 ) {
   useEffect(() => {
-    if (hasPersistedImage || !tokenId || !TOKEN_ID.test(tokenId)) return
+    if (hasPersistedImage || !tokenId || !TOKEN_ID.test(tokenId)) {
+      return
+    }
 
     const request = () => {
       void capability.hydrateTokenImage(tokenId).catch(() => {})
@@ -23,7 +25,9 @@ export function useTokenImageHydration(
     }
 
     const observer = new IntersectionObserver((entries) => {
-      if (!entries.some((entry) => entry.isIntersecting)) return
+      if (!entries.some((entry) => entry.isIntersecting)) {
+        return
+      }
       observer.disconnect()
       request()
     })

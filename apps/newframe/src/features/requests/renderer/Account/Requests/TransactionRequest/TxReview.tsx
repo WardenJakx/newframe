@@ -87,8 +87,12 @@ const displayStatus = (req: TransactionRequestView) => {
   const notice = (req.notice || '').toLowerCase()
   const status = (req.status || 'ready to sign').toLowerCase()
 
-  if (status === 'pending' && notice === 'see signer') return 'waiting for device signature'
-  if (status === 'verifying') return 'waiting for block'
+  if (status === 'pending' && notice === 'see signer') {
+    return 'waiting for device signature'
+  }
+  if (status === 'verifying') {
+    return 'waiting for block'
+  }
   return status
 }
 
@@ -108,11 +112,17 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 
 const actionData = (req: TransactionRequestView, id: string): ActionData => {
   const value = req.recognizedActions?.find((action) => action.id === id)?.data
-  if (!isRecord(value)) return {}
+  if (!isRecord(value)) {
+    return {}
+  }
 
   const identity = (candidate: unknown): ActionIdentity | undefined => {
-    if (typeof candidate === 'string') return { address: candidate }
-    if (!isRecord(candidate) || typeof candidate.address !== 'string') return undefined
+    if (typeof candidate === 'string') {
+      return { address: candidate }
+    }
+    if (!isRecord(candidate) || typeof candidate.address !== 'string') {
+      return undefined
+    }
     return { address: candidate.address, ens: typeof candidate.ens === 'string' ? candidate.ens : undefined }
   }
 
@@ -135,7 +145,9 @@ const actionData = (req: TransactionRequestView, id: string): ActionData => {
 
 const transferRecipient = (req: TransactionRequestView): ActionIdentity | undefined => {
   const recognized = actionData(req, 'erc20:transfer').recipient
-  if (recognized?.address) return recognized
+  if (recognized?.address) {
+    return recognized
+  }
 
   if (req.decodedData?.signature !== 'transfer(address,uint256)') {
     return undefined
@@ -148,7 +160,9 @@ function TxFeeSummary(props: TxFeeSummaryProps) {
   const [expanded, setExpanded] = useState(false)
   const getOptimismFee = (l2Price: bigint, l2Limit: bigint, chainData?: { l1Fees?: string }) => {
     const l1DataFee = toBigInt(chainData?.l1Fees ?? '')
-    if (l1DataFee === undefined) return undefined
+    if (l1DataFee === undefined) {
+      return undefined
+    }
 
     return l2Price * l2Limit + l1DataFee
   }
@@ -285,7 +299,9 @@ function TxReviewView(props: TxReviewProps) {
       original.kind !== 'native' && !Number.isInteger(original.decimals)
         ? { ...original, decimals: 0, symbol: 'raw units' }
         : original
-    if (effect.kind !== 'erc20' || !effect.assetAddress) return effect
+    if (effect.kind !== 'erc20' || !effect.assetAddress) {
+      return effect
+    }
 
     const tokenId = `${chainId}:${effect.assetAddress.toLowerCase()}`
     const canonicalImage = tokenImageSource(tokenForId(props.tokens, tokenId))
