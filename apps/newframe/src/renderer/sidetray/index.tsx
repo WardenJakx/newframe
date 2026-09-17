@@ -31,7 +31,7 @@ async function start() {
   )
 }
 
-void start().catch((error) => console.error('Could not connect side tray state', error))
+void start().catch((error: unknown) => console.error('Could not connect side tray state', error))
 
 document.addEventListener('contextmenu', (event) => {
   void link.executeCommand({

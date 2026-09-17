@@ -41,7 +41,7 @@ const frameUrl = (frame: Frame) => {
 const load = (sideTray: SideTray, frame: Frame) => {
   sideTray.contentRoute = frame.route || ''
   placeSideTray(sideTray)
-  sideTray.loadURL(frameUrl(frame)).catch((error) => log.error('Could not load side tray', error))
+  sideTray.loadURL(frameUrl(frame)).catch((error: unknown) => log.error('Could not load side tray', error))
 }
 
 const show = (sideTray: SideTray) => {

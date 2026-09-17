@@ -28,7 +28,7 @@ export class TaskService<T> implements HarnessService<TaskHandle<T>> {
     completed.catch(() => undefined)
 
     this.failure = new Promise<never>((_, reject) => {
-      completed.catch((error) => {
+      completed.catch((error: unknown) => {
         if (!this.stopping) {
           reject(error)
         }

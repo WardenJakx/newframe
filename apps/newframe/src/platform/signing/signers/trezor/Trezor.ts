@@ -356,10 +356,10 @@ export default class Trezor extends Signer {
     const optionalFields = ['gasPrice', 'maxFeePerGas', 'maxPriorityFeePerGas']
 
     optionalFields.forEach((field) => {
-      // @ts-expect-error
+      // @ts-expect-error: Transaction JSON optional fee fields are indexed dynamically.
       const val: string = txJson[field]
       if (val) {
-        // @ts-expect-error
+        // @ts-expect-error: The normalized transaction adds optional fee fields dynamically.
         unsignedTx[field] = this.normalize(val)
       }
     })

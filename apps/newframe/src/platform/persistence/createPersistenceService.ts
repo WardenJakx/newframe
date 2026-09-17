@@ -50,7 +50,7 @@ export function createPersistenceService({
             }
           })
         })
-        .catch((error) => {
+        .catch((error: unknown) => {
           active = false
           throw error
         })

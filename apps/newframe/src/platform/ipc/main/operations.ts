@@ -103,7 +103,7 @@ function defineAcknowledgedCommand<TKey extends keyof CommandMap>(
             } as const)
           : ({ ok: true } as const)
       } catch (error) {
-        if (error === IdempotencyConflict) {
+        if (isIdempotencyConflict(error)) {
           return {
             ok: false,
             error: 'invalid_command',
@@ -122,7 +122,9 @@ function defineAcknowledgedCommand<TKey extends keyof CommandMap>(
   })
 }
 
-const IdempotencyConflict = Symbol('IdempotencyConflict')
+const IdempotencyConflict = new Error('Idempotency conflict')
+const isIdempotencyConflict = (value: unknown): value is typeof IdempotencyConflict =>
+  value === IdempotencyConflict
 const maxIdempotencyEntries = 256
 
 const operationOwner = (context: AuthorizationContext) => ({
@@ -500,7 +502,7 @@ export function createOperationRegistry(services: OperationServices) {
           command,
           () => requests.replaceTransaction(command, createRendererPrincipal(context))
         )
-        if (result === IdempotencyConflict) {
+        if (isIdempotencyConflict(result)) {
           throw IdempotencyConflict
         }
         return result

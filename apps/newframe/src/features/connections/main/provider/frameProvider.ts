@@ -333,7 +333,7 @@ class FrameProvider extends EventedRequestProvider {
         this.markConnected(chainId)
         this.resetReconnectBackoff()
       })
-      .catch((error) => {
+      .catch((error: unknown) => {
         if (attempt !== this.connectAttempt || this.closing) {
           return
         }

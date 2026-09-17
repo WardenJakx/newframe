@@ -129,7 +129,7 @@ export function createWebSocketRpcTransport({
           _origin: subs[sub].originId,
           params: [sub]
         })
-      ).catch((error) => log.error('WebSocket RPC subscription cleanup failed', error))
+      ).catch((error: unknown) => log.error('WebSocket RPC subscription cleanup failed', error))
       delete subs[sub]
     })
   }

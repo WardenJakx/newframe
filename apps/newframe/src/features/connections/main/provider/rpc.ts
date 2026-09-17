@@ -87,7 +87,7 @@ export function withTimeout<T>(promise: Promise<T>, timeout: number, message: st
         clearTimeout(timer)
         resolve(value)
       })
-      .catch((error) => {
+      .catch((error: unknown) => {
         clearTimeout(timer)
         reject(error)
       })

@@ -105,7 +105,7 @@ export function createSecurityService(ports: SecurityServicePorts) {
 
     void Promise.resolve()
       .then(() => execute(reference))
-      .catch((error) => ports.operations.fail(reference, safeFailure(command, error)))
+      .catch((error: unknown) => ports.operations.fail(reference, safeFailure(command, error)))
     return true
   }
 

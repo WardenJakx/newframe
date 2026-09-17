@@ -137,7 +137,7 @@ async function main() {
   await rm(tempRoot, { recursive: true, force: true })
 }
 
-main().catch((err) => {
+main().catch((err: unknown) => {
   console.error(err)
   process.exit(1)
 })

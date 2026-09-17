@@ -20,7 +20,7 @@ for (const signal of ['SIGINT', 'SIGTERM'] as const) {
   process.on(signal, () => {
     server.stop(true).then(
       () => process.exit(0),
-      (error) => {
+      (error: unknown) => {
         console.error('Could not stop local Safe service', error)
         process.exit(1)
       }

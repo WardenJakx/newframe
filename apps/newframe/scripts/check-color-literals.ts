@@ -89,7 +89,7 @@ async function main() {
 }
 
 if (import.meta.main) {
-  main().catch((err) => {
+  main().catch((err: unknown) => {
     console.error(err)
     process.exit(1)
   })

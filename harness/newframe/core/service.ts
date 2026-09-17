@@ -44,7 +44,7 @@ export class HarnessRuntime {
     this.stopping = true
 
     for (const service of this.services.reverse()) {
-      await service.stop().catch((err) => {
+      await service.stop().catch((err: unknown) => {
         this.log(`could not stop ${service.name}: ${err instanceof Error ? err.message : String(err)}`)
       })
       this.log(`stopped ${service.name}`)

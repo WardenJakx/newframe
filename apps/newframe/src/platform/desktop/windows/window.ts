@@ -81,7 +81,7 @@ const isWhitelistedHost = (url: string) =>
 
 export function openExternal(url = '') {
   if (isWhitelistedHost(url) || isValidReleasePage(url)) {
-    shell.openExternal(url).catch((error) => log.error('Could not open external URL', error))
+    shell.openExternal(url).catch((error: unknown) => log.error('Could not open external URL', error))
   }
 }
 

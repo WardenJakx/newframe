@@ -1532,7 +1532,7 @@ function ensureOpenOrderPolling(state: FlashServiceState) {
 
   state.openOrderPoller = setInterval(() => {
     void refreshOpenOrders(state)
-      .catch((error) => {
+      .catch((error: unknown) => {
         console.error('error refreshing Flash open orders', error)
       })
       .finally(() => {
@@ -1659,7 +1659,9 @@ function scheduleAgentSessionFallback(
       pageSize: 200,
       status: ['pending', 'accepted', 'partially-filled']
     })
-      .catch((error) => console.warn('could not poll Flash orders while WebSocket was unavailable', error))
+      .catch((error: unknown) =>
+        console.warn('could not poll Flash orders while WebSocket was unavailable', error)
+      )
       .finally(() => scheduleAgentSessionFallback(state, sessionId))
   }, delay)
 }

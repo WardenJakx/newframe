@@ -37,7 +37,7 @@ export default function AddressQRCode({ address }: { address: string }) {
         dark: resolveSystemColor('qr-foreground'),
         light: resolveSystemColor('qr-background')
       }
-    }).catch((err) => console.error('Unable to render QR code', err))
+    }).catch((err: unknown) => console.error('Unable to render QR code', err))
   }, [address])
 
   return (

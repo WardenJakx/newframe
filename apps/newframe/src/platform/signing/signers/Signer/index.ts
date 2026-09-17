@@ -69,7 +69,7 @@ export default class Signer extends EventEmitter {
   }
 
   fingerprint() {
-    if (this.addresses && this.addresses.length) {
+    if (this.addresses.length) {
       return crypt.stringToKey(this.addresses.join()).toString('hex')
     }
   }
@@ -96,7 +96,7 @@ export default class Signer extends EventEmitter {
     }
   }
 
-  open(device?: any) {
+  open(_device?: any) {
     log.warn(`Signer: ${this.type} did not implement an open method`)
   }
 
@@ -108,18 +108,18 @@ export default class Signer extends EventEmitter {
     log.warn(`Signer: ${this.type} did not implement a delete method`)
   }
 
-  update(options = {}) {
+  update(_options = {}) {
     log.warn(`Signer: ${this.type} did not implement an update method`)
   }
 
-  signMessage(index: number, message: string, cb: Callback<string>, _context?: SignerRequestContext) {
+  signMessage(_index: number, _message: string, _cb: Callback<string>, _context?: SignerRequestContext) {
     log.warn(`Signer: ${this.type} did not implement a signMessage method`)
   }
 
   signTransaction(
-    index: number,
-    rawTx: TransactionData,
-    cb: Callback<string>,
+    _index: number,
+    _rawTx: TransactionData,
+    _cb: Callback<string>,
     _context?: SignerRequestContext
   ) {
     log.warn(`Signer: ${this.type} did not implement a signTransaction method`)

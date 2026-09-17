@@ -182,7 +182,7 @@ export function createRevealService(proxy: ProviderProxyConnection, nameResoluti
       void provider
         .request(payload)
         .then((result) => callback(null, { id: payload.id, jsonrpc: payload.jsonrpc, result }))
-        .catch((error) => callback(error as Error))
+        .catch((error: unknown) => callback(error as Error))
     }
   }
 

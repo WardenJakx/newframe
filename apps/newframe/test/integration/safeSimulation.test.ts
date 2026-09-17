@@ -351,8 +351,12 @@ beforeAll(async () => {
           }
           callback({ id: payload.id, jsonrpc: '2.0', result })
         },
-        (error: Error) =>
-          callback({ id: payload.id, jsonrpc: '2.0', error: { code: -32000, message: error.message } })
+        (error: unknown) =>
+          callback({
+            id: payload.id,
+            jsonrpc: '2.0',
+            error: { code: -32000, message: error instanceof Error ? error.message : String(error) }
+          })
       )
     }
   })

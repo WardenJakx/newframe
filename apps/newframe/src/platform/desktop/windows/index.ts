@@ -144,7 +144,7 @@ function initWindow(id: string, opts: Electron.BrowserWindowConstructorOptions, 
     }
   })
 
-  window.loadURL(url.toString()).catch((error) => log.error('Could not load window', id, error))
+  window.loadURL(url.toString()).catch((error: unknown) => log.error('Could not load window', id, error))
   return { removeRendererReady, window }
 }
 

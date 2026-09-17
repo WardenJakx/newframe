@@ -139,7 +139,9 @@ export async function runVisualHarness() {
         ...visual.summary.screenshots.map((name) => path.resolve(visual.screenshotDir, name))
       ],
       appDir
-    ).catch((err: Error) => visual.log(`could not open screenshots: ${err.message}`))
+    ).catch((err: unknown) =>
+      visual.log(`could not open screenshots: ${err instanceof Error ? err.message : String(err)}`)
+    )
   }
 }
 

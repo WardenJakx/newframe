@@ -222,17 +222,15 @@ export default class Ledger extends Signer {
   }
 
   private async checkDeviceStatus() {
-    const check = new Promise(async (resolve: (err: DeviceError | undefined) => void) => {
+    const check = new Promise((resolve: (err: DeviceError | undefined) => void) => {
       setTimeout(() => {
         resolve(new DeviceError('status check timed out'))
       }, 3000)
 
-      try {
-        await this.eth?.getAddress("44'/60'/0'/0", false, false)
-        resolve(undefined)
-      } catch (e) {
-        resolve(e as DeviceError)
-      }
+      Promise.resolve()
+        .then(() => this.eth?.getAddress("44'/60'/0'/0", false, false))
+        .then(() => resolve(undefined))
+        .catch((error: unknown) => resolve(error as DeviceError))
     })
 
     return check.then((err) => {

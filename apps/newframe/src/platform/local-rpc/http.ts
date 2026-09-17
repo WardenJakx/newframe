@@ -98,7 +98,7 @@ export function createHttpRpcTransport({
           params: [sub],
           _origin: pollSubs[sub].origin
         })
-      ).catch((error) => log.error('HTTP RPC subscription cleanup failed', error))
+      ).catch((error: unknown) => log.error('HTTP RPC subscription cleanup failed', error))
       delete pollSubs[sub]
     })
   }

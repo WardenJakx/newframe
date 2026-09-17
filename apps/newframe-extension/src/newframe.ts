@@ -193,5 +193,7 @@ async function handleEmbeddedAction(event: MessageEvent) {
 }
 
 window.addEventListener('message', (event) => {
-  handleEmbeddedAction(event).catch((error) => console.error('Could not process embedded action', error))
+  handleEmbeddedAction(event).catch((error: unknown) =>
+    console.error('Could not process embedded action', error)
+  )
 })
