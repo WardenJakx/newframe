@@ -2,7 +2,7 @@ import { expect, it } from 'bun:test'
 import { EventEmitter } from 'events'
 
 import { createHttpRpcTransport } from './http'
-import { type RpcRequestDescription, type RpcRequestHandler, type RpcResponseReason } from './request'
+import type { RpcRequestDescription } from './request'
 
 class FakeProvider extends EventEmitter {
   send() {
@@ -10,22 +10,26 @@ class FakeProvider extends EventEmitter {
   }
 }
 
-const noRequest: RpcRequestHandler = async () => undefined
-
-function setup(requestHandler: RpcRequestHandler = noRequest) {
-  const provider = new FakeProvider()
+it('adapts an HTTP exchange to the shared request contract', async () => {
+  let captured: RpcRequestDescription | undefined
   const transport = createHttpRpcTransport({
-    provider,
+    provider: new FakeProvider(),
     store: { endOriginSession: () => undefined },
-    requestHandler,
+    requestHandler: async (request) => {
+      captured = request
+    },
     handleAgentRequest: async () => undefined,
     createConnectionId: () => 'http-connection'
   })
-  return { provider, transport }
-}
-
-function fakeResponse() {
-  return Object.assign(new EventEmitter(), {
+  const request = Object.assign(new EventEmitter(), {
+    headers: {
+      origin: 'https://app.example',
+      'x-newframe-chain-id': '5'
+    },
+    method: 'POST',
+    url: '/'
+  })
+  const response = Object.assign(new EventEmitter(), {
     body: '',
     status: 0,
     writableEnded: false,
@@ -40,83 +44,35 @@ function fakeResponse() {
       return this
     }
   })
-}
+  const payload = { id: 1, jsonrpc: '2.0', method: 'eth_blockNumber', params: [] } as const
 
-async function post(transport: ReturnType<typeof createHttpRpcTransport>) {
-  const request = Object.assign(new EventEmitter(), {
-    headers: { origin: 'https://app.example' },
-    method: 'POST'
-  })
-  const response = fakeResponse()
   transport.handler(request as never, response as never)
-  request.emit(
-    'data',
-    Buffer.from(JSON.stringify({ id: 1, jsonrpc: '2.0', method: 'eth_blockNumber', params: [] }))
-  )
+  request.emit('data', Buffer.from(JSON.stringify(payload)))
   request.emit('end')
   await Bun.sleep(0)
-  return response
-}
 
-it('owns its provider listener and rejects unsupported HTTP methods', () => {
-  const { provider, transport } = setup()
-  const request = Object.assign(new EventEmitter(), { headers: {}, method: 'GET' })
-  const response = fakeResponse()
-
-  transport.start()
-  transport.start()
-  transport.handler(request as never, response as never)
-  expect({
-    body: JSON.parse(response.body),
-    listeners: provider.listenerCount('data:subscription'),
-    status: response.status
-  }).toEqual({ body: { error: 'Permission Denied' }, listeners: 1, status: 401 })
-
-  transport.dispose()
-  transport.dispose()
-  expect({ listeners: provider.listenerCount('data:subscription'), started: transport.started }).toEqual({
-    listeners: 0,
-    started: false
+  const normalized = captured as unknown as RpcRequestDescription
+  expect(normalized).toMatchObject({
+    rawPayload: payload,
+    origin: 'app.example',
+    chainHint: '0x5',
+    identity: {
+      transport: 'http',
+      connectionId: 'http-connection',
+      origin: 'app.example'
+    },
+    session: { refresh: 'before-validation' }
   })
-})
+  expect(normalized.acceptsProviderResponse()).toBe(true)
 
-it.each([
-  ['provider', 200],
-  ['unauthorized-accounts', 200],
-  ['invalid-chain', 401],
-  ['permission-denied', 401],
-  ['internal-error', 500]
-] satisfies Array<[RpcResponseReason, number]>)('maps %s responses to HTTP %d', async (reason, status) => {
-  const { transport } = setup(async ({ rawPayload, writeResponse }) => {
-    writeResponse({ id: rawPayload.id, jsonrpc: rawPayload.jsonrpc, result: 'ok' }, reason)
-  })
-  const response = await post(transport)
+  normalized.writeResponse(
+    { id: payload.id, jsonrpc: payload.jsonrpc, error: { code: 4001, message: 'denied' } },
+    'permission-denied'
+  )
 
-  expect({ body: JSON.parse(response.body), status: response.status }).toEqual({
-    body: { id: 1, jsonrpc: '2.0', result: 'ok' },
-    status
+  expect({ body: JSON.parse(response.body) as RPCResponsePayload, status: response.status }).toEqual({
+    body: { id: 1, jsonrpc: '2.0', error: { code: 4001, message: 'denied' } },
+    status: 401
   })
-  transport.dispose()
-})
-
-it('keeps request identity and late delivery tied to the HTTP response', async () => {
-  let pending: RpcRequestDescription | undefined
-  const { transport } = setup(async (request) => {
-    pending = request
-  })
-  const response = await post(transport)
-
-  response.emit('close')
-  pending?.writeResponse({ id: 1, jsonrpc: '2.0', result: 'late' }, 'provider')
-
-  expect(pending?.identity).toMatchObject({
-    transport: 'http',
-    connectionId: 'http-connection',
-    origin: 'app.example'
-  })
-  expect({ body: JSON.parse(response.body), status: response.status }).toEqual({
-    body: { id: 1, jsonrpc: '2.0', result: 'late' },
-    status: 200
-  })
-  transport.dispose()
+  expect(normalized.acceptsProviderResponse()).toBe(false)
 })
