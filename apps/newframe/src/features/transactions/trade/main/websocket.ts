@@ -159,7 +159,7 @@ export class FlashOrderStream {
           return this.options.onOrders(frame.type, frame.orders)
         })
         .then(() => undefined)
-        .catch((error) => this.options.onError?.(error))
+        .catch((error: unknown) => this.options.onError?.(error))
       return
     }
 

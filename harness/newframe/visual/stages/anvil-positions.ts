@@ -16,7 +16,7 @@ export const anvilPositionsStage: VisualStage = {
       'Anvil ETH did not appear for the seeded harness account'
     )
     const ethAssetDetails = await revealAssetDetailsButton(tray, 'ETH')
-    await ethAssetDetails.waitFor({ state: 'visible', timeout: 5_000 }).catch(async (err) => {
+    await ethAssetDetails.waitFor({ state: 'visible', timeout: 5_000 }).catch(async (err: unknown) => {
       await runtime.screenshot(tray, '09-anvil-network-positions.png')
       throw err
     })

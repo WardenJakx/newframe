@@ -301,7 +301,7 @@ export function createRequestService(ports: RequestServicePorts) {
           : undefined
     void approval?.then(
       (result) => complete(() => completeApproval(request, result)),
-      (error) => complete(() => failApproval(request, error))
+      (error: unknown) => complete(() => failApproval(request, error))
     )
     return true
   }

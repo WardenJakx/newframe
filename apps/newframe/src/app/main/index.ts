@@ -305,7 +305,7 @@ void app.whenReady().then(async () => {
       startCpuMonitoring()
     }
 
-    loadDev().catch((error) => log.error('Could not load development tools', error))
+    loadDev().catch((error: unknown) => log.error('Could not load development tools', error))
   }
 
   // only allow file:// access to files within the app's own directory

@@ -29,7 +29,7 @@ export async function exerciseHotSignerContract(signer: any, vault: { lock(): vo
   expect(transaction).toStartWith('0x')
   expect(transaction.length).toBeGreaterThan(2)
   expect(await callbackResult((done) => signer.verifyAddress(0, signer.addresses[0], false, done))).toBeTrue()
-  await expect(callbackResult((done) => signer.verifyAddress(0, '0xabcdef', false, done))).rejects.toThrow(
+  expect(callbackResult((done) => signer.verifyAddress(0, '0xabcdef', false, done))).rejects.toThrow(
     'Unable to verify address'
   )
 
@@ -37,6 +37,6 @@ export async function exerciseHotSignerContract(signer: any, vault: { lock(): vo
   expect(exported).toMatch(/^0x[0-9a-f]{64}$/)
 
   vault.lock()
-  await expect(callbackResult((done) => signer.signMessage(0, 'test', done))).rejects.toThrow('Signer locked')
+  expect(callbackResult((done) => signer.signMessage(0, 'test', done))).rejects.toThrow('Signer locked')
   signer.close()
 }

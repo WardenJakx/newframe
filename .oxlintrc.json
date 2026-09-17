@@ -55,6 +55,12 @@
         "no-dupe-keys": "error",
         "no-duplicate-case": "error",
         "no-empty": "error",
+        "no-empty-function": [
+          "error",
+          {
+            "allow": ["arrowFunctions"]
+          }
+        ],
         "no-empty-character-class": "error",
         "no-empty-pattern": "error",
         "no-empty-static-block": "error",
@@ -225,17 +231,11 @@
         "typescript/prefer-namespace-keyword": "off",
         "typescript/switch-exhaustiveness-check": "error",
         "typescript/triple-slash-reference": "error",
-        "no-empty-function": [
-          "error",
-          {
-            "allow": ["arrowFunctions"]
-          }
-        ],
         "no-implied-eval": "off",
         "typescript/no-implied-eval": "error",
         "typescript/no-misused-spread": "error",
         "typescript/no-base-to-string": "warn",
-        "typescript/use-unknown-in-catch-callback-variable": "warn",
+        "typescript/use-unknown-in-catch-callback-variable": "error",
         "typescript/consistent-type-imports": [
           "error",
           {
@@ -249,7 +249,7 @@
         "typescript/no-unsafe-member-access": "warn",
         "typescript/no-unsafe-return": "warn",
         "typescript/unbound-method": "warn",
-        "typescript/only-throw-error": "warn",
+        "typescript/only-throw-error": "error",
         "typescript/no-unnecessary-type-assertion": "error",
         "typescript/prefer-nullish-coalescing": "warn",
         "typescript/no-unnecessary-condition": "warn"
@@ -345,17 +345,11 @@
         "typescript/prefer-namespace-keyword": "off",
         "typescript/switch-exhaustiveness-check": "error",
         "typescript/triple-slash-reference": "error",
-        "no-empty-function": [
-          "error",
-          {
-            "allow": ["arrowFunctions"]
-          }
-        ],
         "no-implied-eval": "off",
         "typescript/no-implied-eval": "error",
         "typescript/no-misused-spread": "error",
         "typescript/no-base-to-string": "warn",
-        "typescript/use-unknown-in-catch-callback-variable": "warn",
+        "typescript/use-unknown-in-catch-callback-variable": "error",
         "typescript/consistent-type-imports": [
           "error",
           {
@@ -369,7 +363,7 @@
         "typescript/no-unsafe-member-access": "warn",
         "typescript/no-unsafe-return": "warn",
         "typescript/unbound-method": "warn",
-        "typescript/only-throw-error": "warn",
+        "typescript/only-throw-error": "error",
         "typescript/no-unnecessary-type-assertion": "error",
         "typescript/prefer-nullish-coalescing": "warn",
         "typescript/no-unnecessary-condition": "warn"
@@ -625,32 +619,7 @@
       "files": ["apps/newframe/src/platform/signing/signers/**/*.{ts,tsx}"],
       "excludeFiles": ["**/*.{test,spec}.{ts,tsx}"],
       "rules": {
-        "no-async-promise-executor": "warn",
-        "no-empty-function": [
-          "warn",
-          {
-            "allow": ["arrowFunctions"]
-          }
-        ],
-        "no-unused-vars": [
-          "warn",
-          {
-            "args": "after-used",
-            "ignoreRestSiblings": true,
-            "argsIgnorePattern": "^_",
-            "destructuredArrayIgnorePattern": "^_",
-            "caughtErrors": "none"
-          }
-        ],
         "preserve-caught-error": "error",
-        "typescript/await-thenable": "warn",
-        "typescript/ban-ts-comment": [
-          "warn",
-          {
-            "ts-nocheck": "allow-with-description",
-            "ts-expect-error": "allow-with-description"
-          }
-        ],
         "typescript/consistent-type-imports": [
           "error",
           {
@@ -659,7 +628,6 @@
         ],
         "typescript/no-floating-promises": "warn",
         "typescript/no-misused-promises": "warn",
-        "typescript/prefer-optional-chain": "warn",
         "eslint/no-else-return": "error"
       },
       "plugins": ["typescript"]

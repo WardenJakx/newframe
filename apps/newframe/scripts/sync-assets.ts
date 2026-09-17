@@ -28,7 +28,7 @@ async function main() {
   console.log('Synced Newframe assets')
 }
 
-main().catch((err) => {
+main().catch((err: unknown) => {
   console.error(err)
   process.exit(1)
 })

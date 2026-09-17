@@ -11,8 +11,16 @@ export class SignerAdapter extends EventEmitter {
     this.adapterType = type
   }
 
-  open() {}
-  close() {}
-  remove(signer: Signer) {}
-  reload(signer: Signer) {}
+  open() {
+    // Optional lifecycle hook for adapters that manage a connection.
+  }
+  close() {
+    // Optional lifecycle hook for adapters that manage a connection.
+  }
+  remove(_signer: Signer) {
+    // Optional hook for adapters that track signer removal.
+  }
+  reload(_signer: Signer) {
+    // Optional hook for adapters that can refresh signer state.
+  }
 }

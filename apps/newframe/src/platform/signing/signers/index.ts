@@ -278,7 +278,7 @@ export class Signers {
         this.publishAppLockState()
         cb(null, true)
       })
-      .catch((error) => cb(error as Error, undefined))
+      .catch((error: unknown) => cb(error as Error, undefined))
   }
 
   lockApp(cb: Callback<boolean>) {

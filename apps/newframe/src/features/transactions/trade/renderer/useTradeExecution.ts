@@ -94,7 +94,7 @@ export function useTradeExecution({
             session
           })
         })
-        .catch((error) => {
+        .catch((error: unknown) => {
           dispatch({
             type: 'commandRejected',
             error: tradeErrorMessage(error, 'Trade request failed.'),

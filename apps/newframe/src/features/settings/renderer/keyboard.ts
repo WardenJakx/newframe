@@ -20,7 +20,7 @@ if (global?.navigator) {
     .then((layout) => {
       keyboardLayout = layout
     })
-    .catch((error) => console.error('Could not load keyboard layout', error))
+    .catch((error: unknown) => console.error('Could not load keyboard layout', error))
 
   // TODO: keyboard layoutchange event listener when Electron supports it
   // navigator.keyboard.addEventListener('layoutchange', () => { keyboardLayout = layout })

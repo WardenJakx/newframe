@@ -70,8 +70,9 @@ export async function runCommand(label: string, command: string, args: string[],
 }
 
 export async function ensureCommand(command: string, args = ['--version']) {
-  await startCommand(`check ${command}`, command, args, rootDir).promise.catch((err: Error) => {
-    throw new Error(`Required command is missing or not runnable: ${command}\n${err.message}`)
+  await startCommand(`check ${command}`, command, args, rootDir).promise.catch((err: unknown) => {
+    const cause = err instanceof Error ? err : new Error(String(err))
+    throw new Error(`Required command is missing or not runnable: ${command}\n${cause.message}`)
   })
 }
 

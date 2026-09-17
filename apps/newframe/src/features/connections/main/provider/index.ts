@@ -191,7 +191,7 @@ export class Provider extends EventEmitter {
       settled = true
       this.proxy.emit('payload', { id, method, error, result })
     }
-    Promise.resolve(this.send(payload, respond, proxyPrincipal)).catch((error) => {
+    Promise.resolve(this.send(payload, respond, proxyPrincipal)).catch((error: unknown) => {
       log.error('Could not handle proxy request', error)
       resError('Internal error', payload, respond)
     })
@@ -1607,7 +1607,7 @@ export class Provider extends EventEmitter {
           cb(null, res)
         }
       })
-    ).catch((error) => {
+    ).catch((error: unknown) => {
       log.error('Could not send asynchronous provider request', error)
       if (settled) {
         return

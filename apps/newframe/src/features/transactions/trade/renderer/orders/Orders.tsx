@@ -133,7 +133,7 @@ export function Orders({
           [order.orderId]: result.message || 'Cancel failed.'
         }))
       })
-      .catch((error) => {
+      .catch((error: unknown) => {
         if (cancellationsRef.current[order.orderId] !== operationId) {
           return
         }

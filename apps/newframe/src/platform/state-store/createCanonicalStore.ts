@@ -54,7 +54,9 @@ export default function createCanonicalStore(storage: PersistStorage<PersistedCa
     hydration = Promise.resolve(store.persist.rehydrate()).then(() => {
       if (hydrationError) {
         finishHydration(false)
-        throw hydrationError
+        throw hydrationError instanceof Error
+          ? hydrationError
+          : new Error('Canonical state hydration failed', { cause: hydrationError })
       }
 
       finishHydration(true)

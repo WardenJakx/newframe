@@ -22,5 +22,5 @@ async function renderSettings() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  renderSettings().catch((error) => console.error('Could not render Newframe settings', error))
+  renderSettings().catch((error: unknown) => console.error('Could not render Newframe settings', error))
 })

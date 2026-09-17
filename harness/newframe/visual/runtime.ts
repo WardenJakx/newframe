@@ -168,9 +168,13 @@ export class VisualHarnessRuntime {
   }
 
   async captureElectronFailureArtifacts(app: ElectronApplication) {
-    await this.logElectronDiagnostics(app, `failure at stage "${this.currentStage}"`).catch((err) => {
-      this.log(`could not collect Electron diagnostics: ${err instanceof Error ? err.message : String(err)}`)
-    })
+    await this.logElectronDiagnostics(app, `failure at stage "${this.currentStage}"`).catch(
+      (err: unknown) => {
+        this.log(
+          `could not collect Electron diagnostics: ${err instanceof Error ? err.message : String(err)}`
+        )
+      }
+    )
 
     const output = this.electronOutput()
     if (output) {
@@ -182,7 +186,7 @@ export class VisualHarnessRuntime {
         this.screenshot(page, `debug-failure-renderer-${index}.png`),
         `failure screenshot for renderer ${index}`,
         5_000
-      ).catch((err) => {
+      ).catch((err: unknown) => {
         this.log(`could not capture renderer ${index}: ${err instanceof Error ? err.message : String(err)}`)
       })
     }
@@ -209,7 +213,7 @@ export class VisualHarnessRuntime {
       }),
       `${label} main-process diagnostics`,
       2_000
-    ).catch((err) => ({ diagnosticError: err instanceof Error ? err.message : String(err) }))
+    ).catch((err: unknown) => ({ diagnosticError: err instanceof Error ? err.message : String(err) }))
 
     this.log(`${label}: ${JSON.stringify({ diagnostics, rendererPages })}`)
   }

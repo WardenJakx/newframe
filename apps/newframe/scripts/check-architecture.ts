@@ -771,7 +771,7 @@ async function main() {
 }
 
 if (import.meta.main) {
-  void main().catch((error) => {
+  void main().catch((error: unknown) => {
     console.error(error)
     process.exit(1)
   })

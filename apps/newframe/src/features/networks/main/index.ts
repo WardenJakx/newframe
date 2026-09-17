@@ -294,10 +294,12 @@ class ChainConnection extends EventEmitter {
     log.debug('killProvider', { provider })
 
     if (provider) {
-      Promise.resolve(provider.removeAllListeners()).catch((error) =>
+      Promise.resolve(provider.removeAllListeners()).catch((error: unknown) =>
         log.error('Could not remove provider listeners', error)
       )
-      Promise.resolve(provider.destroy()).catch((error) => log.error('Could not destroy provider', error))
+      Promise.resolve(provider.destroy()).catch((error: unknown) =>
+        log.error('Could not destroy provider', error)
+      )
     }
   }
 
@@ -401,11 +403,11 @@ class ChainConnection extends EventEmitter {
     if (this.primary.provider && this.primary.connected) {
       sendRpcPayload(this.primary.provider, payload)
         .then((result) => res({ id: payload.id, jsonrpc: payload.jsonrpc || '2.0', result }))
-        .catch((err) => resError(err, payload, res))
+        .catch((err: unknown) => resError(err, payload, res))
     } else if (this.secondary.provider && this.secondary.connected) {
       sendRpcPayload(this.secondary.provider, payload)
         .then((result) => res({ id: payload.id, jsonrpc: payload.jsonrpc || '2.0', result }))
-        .catch((err) => resError(err, payload, res))
+        .catch((err: unknown) => resError(err, payload, res))
     } else {
       resError('Not connected to Ethereum network', payload, res)
     }

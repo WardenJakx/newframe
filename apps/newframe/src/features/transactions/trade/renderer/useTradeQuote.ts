@@ -151,7 +151,7 @@ export function useTradeQuote({
             requestKey
           })
         })
-        .catch((error) => {
+        .catch((error: unknown) => {
           if (cancelled) {
             return
           }

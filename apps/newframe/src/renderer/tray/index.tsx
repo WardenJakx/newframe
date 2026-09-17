@@ -50,7 +50,7 @@ async function start() {
   )
 }
 
-void start().catch((error) => console.error('Could not connect tray state', error))
+void start().catch((error: unknown) => console.error('Could not connect tray state', error))
 document.addEventListener('mouseout', (e) => {
   if (e.clientX < 0) {
     void link.executeCommand({ type: 'tray.mouseout' })

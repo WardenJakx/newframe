@@ -382,7 +382,7 @@ export default class Lattice extends Signer {
 
     optionalFields.forEach((field) => {
       if (field in txJson) {
-        // @ts-expect-error
+        // @ts-expect-error: Transaction JSON optional fee fields are indexed dynamically.
         unsignedTx[field] = hexToInt(txJson[field])
       }
     })

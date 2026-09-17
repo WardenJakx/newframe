@@ -1669,7 +1669,7 @@ export class Accounts extends EventEmitter {
             const { type, id } = targetChain
 
             const handler = (payload: RPCRequestPayload) => {
-              handleHead(payload).catch((error) => {
+              handleHead(payload).catch((error: unknown) => {
                 log.error('Could not monitor transaction subscription', error)
                 if (isCurrentMonitor()) {
                   setTxSent()
@@ -1782,7 +1782,9 @@ export class Accounts extends EventEmitter {
           })
         }
         l2Transactions.forEach((transaction) => {
-          updateL1GasCost(transaction).catch((error) => log.error('Could not update L1 gas cost', error))
+          updateL1GasCost(transaction).catch((error: unknown) =>
+            log.error('Could not update L1 gas cost', error)
+          )
         })
       }
     }
@@ -2120,7 +2122,7 @@ export class Accounts extends EventEmitter {
       this.recordSubmittedTransaction(requestAccount, handlerId, txRequest, hash)
       this.store.getState().navClearReq(handlerId, false)
       this.openNextActionableRequest(requestAccount)
-      this.txMonitor(requestAccount, handlerId, hash).catch((error) =>
+      this.txMonitor(requestAccount, handlerId, hash).catch((error: unknown) =>
         log.error('Could not start transaction monitor', error)
       )
     }

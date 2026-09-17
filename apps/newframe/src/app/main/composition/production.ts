@@ -274,7 +274,9 @@ export function createProductionCapabilities(
     ...adapters.accountOnboarding,
     accounts: {
       add: (address, name, signer) => {
-        accounts.add(address, name, signer).catch((error) => log.error('Could not add account', error))
+        accounts
+          .add(address, name, signer)
+          .catch((error: unknown) => log.error('Could not add account', error))
       },
       get: (accountId) => accounts.get(accountId),
       select: async (accountId) => {

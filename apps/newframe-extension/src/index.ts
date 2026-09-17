@@ -311,7 +311,7 @@ function initProvider(requestApproval = false) {
           subs[payload.result] = {
             tabId,
             send: (subload) => {
-              chrome.tabs.sendMessage(tabId, subload).catch((error) => {
+              chrome.tabs.sendMessage(tabId, subload).catch((error: unknown) => {
                 if ((error as Error)?.message?.includes('Receiving end does not exist')) {
                   return
                 }
