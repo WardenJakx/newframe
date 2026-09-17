@@ -54,7 +54,9 @@ export function createAirGapService(ports: AirGapServicePorts) {
         return true
       }
       for (const scan of scans.values()) {
-        if (sameOwner(scan.reference.owner, context.owner)) cancelPair(scan.reference.id, context.owner)
+        if (sameOwner(scan.reference.owner, context.owner)) {
+          cancelPair(scan.reference.id, context.owner)
+        }
       }
       ports.operations.start({ ...reference, phase: 'scanning' })
       const scan = { reference, scanner: ports.createPairScanner(), dispose: () => {} }

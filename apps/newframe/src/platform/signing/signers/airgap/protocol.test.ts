@@ -54,8 +54,9 @@ for (const vector of vectors.transactions) {
     const signed = await sign(rawTx, async () => signature)
     expect(Buffer.from(signed.serialize()).toString('hex')).toBe(vector.signedHex)
     expect(String(signed.getSenderAddress())).toBe(vectors.export.address.toLowerCase())
-    if (vector.chainId === 137)
+    if (vector.chainId === 137) {
       expect(() => decodeSignature(cbor, sessionId, kind, vector.chainId + 1)).toThrow()
+    }
   })
 }
 
@@ -185,11 +186,11 @@ for (const [name, count, length, fragmentLength] of [
     const decoder = new AirGapUrAssembler('crypto-hdkey')
     let exhausted = false
     let accepted = 0
-    outer: for (const root of [0, 1, 2, 4, 8])
-      for (const sequence of [0, 1, 2, 4, 8])
-        for (const countWidth of [2, 4, 8])
-          for (const lengthWidth of [4, 8])
-            for (const checksum of [0, 1, 2, 4, 8])
+    outer: for (const root of [0, 1, 2, 4, 8]) {
+      for (const sequence of [0, 1, 2, 4, 8]) {
+        for (const countWidth of [2, 4, 8]) {
+          for (const lengthWidth of [4, 8]) {
+            for (const checksum of [0, 1, 2, 4, 8]) {
               for (const fragmentWidth of [2, 4, 8]) {
                 try {
                   decoder.receive(
@@ -209,6 +210,11 @@ for (const [name, count, length, fragmentLength] of [
                   break outer
                 }
               }
+            }
+          }
+        }
+      }
+    }
     expect(exhausted).toBe(true)
     expect(accepted).toBe(name === 'distinct frames' ? 1024 : Math.floor(1_048_576 / fragmentLength))
     expect(decoder.receive(vectors.export.ur[0])).toBeUndefined()

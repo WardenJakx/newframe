@@ -62,7 +62,9 @@ export function orderedAccountIds(
   })
   const ordered = projectedOrder.filter((id) => Boolean(accounts[id]))
   for (const id of createdOrder) {
-    if (!ordered.includes(id)) ordered.push(id)
+    if (!ordered.includes(id)) {
+      ordered.push(id)
+    }
   }
   return ordered
 }

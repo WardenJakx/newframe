@@ -256,9 +256,13 @@ for (const phase of ['nonce', 'before-query', 'reconstruction', 'cancel', 'shutd
           f.owner.destroy()
           await scan
         } else {
-          if (phase === 'before-query') f.owner.destroy()
-          else if (phase === 'shutdown') f.service.dispose()
-          else f.airgap.cancel(reference, f.owner.context.owner)
+          if (phase === 'before-query') {
+            f.owner.destroy()
+          } else if (phase === 'shutdown') {
+            f.service.dispose()
+          } else {
+            f.airgap.cancel(reference, f.owner.context.owner)
+          }
           expect(await f.airgap.scan(command, f.owner.context.owner)).toBe(false)
         }
       }

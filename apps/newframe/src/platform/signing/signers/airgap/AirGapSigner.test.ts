@@ -42,7 +42,9 @@ for (const vector of vectors.messages) {
     expect(fixture.envelope().getSignData().toString('hex')).toBe(vector.signData)
     const reference = fixture.reference()
     const frames = fixture.frames(vector.signature)
-    for (const frame of frames) await fixture.signer.scan(reference, fixture.owner.context.owner, frame)
+    for (const frame of frames) {
+      await fixture.signer.scan(reference, fixture.owner.context.owner, frame)
+    }
     expect(results).toHaveLength(1)
     expect(results[0].error).toBeNull()
     expect(results[0].value?.slice(-2)).toBe('1c')
@@ -91,9 +93,13 @@ for (const change of ['abort', 'window', 'close'] as const) {
       fixture.owner.context
     )
     const reference = fixture.reference()
-    if (change === 'abort') fixture.owner.abort()
-    else if (change === 'window') fixture.owner.destroy()
-    else fixture.signer.close()
+    if (change === 'abort') {
+      fixture.owner.abort()
+    } else if (change === 'window') {
+      fixture.owner.destroy()
+    } else {
+      fixture.signer.close()
+    }
     expect(fixture.signer.getRequest(reference, fixture.owner.context.owner)).toBeUndefined()
     expect(results).toHaveLength(1)
     expect(results[0]).toBeInstanceOf(Error)
