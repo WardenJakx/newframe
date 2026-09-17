@@ -250,7 +250,7 @@
         "typescript/no-unsafe-return": "warn",
         "typescript/unbound-method": "warn",
         "typescript/only-throw-error": "warn",
-        "typescript/no-unnecessary-type-assertion": "warn",
+        "typescript/no-unnecessary-type-assertion": "error",
         "typescript/prefer-nullish-coalescing": "warn",
         "typescript/no-unnecessary-condition": "warn"
       },
@@ -370,7 +370,7 @@
         "typescript/no-unsafe-return": "warn",
         "typescript/unbound-method": "warn",
         "typescript/only-throw-error": "warn",
-        "typescript/no-unnecessary-type-assertion": "warn",
+        "typescript/no-unnecessary-type-assertion": "error",
         "typescript/prefer-nullish-coalescing": "warn",
         "typescript/no-unnecessary-condition": "warn"
       },
@@ -642,7 +642,7 @@
             "caughtErrors": "none"
           }
         ],
-        "preserve-caught-error": "warn",
+        "preserve-caught-error": "error",
         "typescript/await-thenable": "warn",
         "typescript/ban-ts-comment": [
           "warn",
@@ -652,7 +652,7 @@
           }
         ],
         "typescript/consistent-type-imports": [
-          "warn",
+          "error",
           {
             "disallowTypeAnnotations": false
           }
@@ -660,7 +660,7 @@
         "typescript/no-floating-promises": "warn",
         "typescript/no-misused-promises": "warn",
         "typescript/prefer-optional-chain": "warn",
-        "eslint/no-else-return": "warn"
+        "eslint/no-else-return": "error"
       },
       "plugins": ["typescript"]
     }
