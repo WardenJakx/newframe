@@ -345,7 +345,9 @@ export function createAccountOnboardingService(ports: AccountOnboardingPorts): A
           'connecting',
           'signer.reload',
           () => {
-            if (!ports.signers.reload(command.signerId)) throw new Error('Signer not found')
+            if (!ports.signers.reload(command.signerId)) {
+              throw new Error('Signer not found')
+            }
             return command.signerId
           }
         )

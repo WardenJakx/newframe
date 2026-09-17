@@ -178,7 +178,9 @@ function inspectProfile(cbor: Buffer, type: 'crypto-hdkey' | 'eth-signature') {
     return record
   }
   for (const field of [1, 2]) {
-    if (record.has(field) && record.get(field) !== false) throw invalid()
+    if (record.has(field) && record.get(field) !== false) {
+      throw invalid()
+    }
   }
   byteString(record.get(3), 33)
   byteString(record.get(4), 32)
@@ -196,7 +198,9 @@ function inspectProfile(cbor: Buffer, type: 'crypto-hdkey' | 'eth-signature') {
     uint(record.get(8))
   }
   for (const key of [9, 10]) {
-    if (record.has(key) && typeof record.get(key) !== 'string') throw invalid()
+    if (record.has(key) && typeof record.get(key) !== 'string') {
+      throw invalid()
+    }
   }
   return record
 }

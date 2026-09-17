@@ -12,7 +12,9 @@ export function createQrCameraFake(autoReady = true) {
       sessions.push(session)
       if (autoReady) {
         queueMicrotask(() => {
-          if (!session.stopped) handlers.onReady()
+          if (!session.stopped) {
+            handlers.onReady()
+          }
         })
       }
       return {
