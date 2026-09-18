@@ -684,12 +684,10 @@ export function createTradeService(ports: TradeServicePorts) {
         prune()
         return { ok: true, quoteId, quote: displayQuote(record) }
       } catch (error) {
-        const message =
-          error instanceof TradeFailure
-            ? error.message
-            : error instanceof Error
-              ? error.message
-              : 'Flash quote failed.'
+        let message = 'Flash quote failed.'
+        if (error instanceof TradeFailure || error instanceof Error) {
+          message = error.message
+        }
         return { ok: false, error: 'quote_failed', message: message.slice(0, 1_000) }
       }
     },

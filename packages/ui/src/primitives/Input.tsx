@@ -63,14 +63,14 @@ export type InputRecipeProps = RecipeVariantProps<typeof inputRecipe>
 
 export function inputClasses(props: InputRecipeProps) {
   const appearance = props?.appearance
-  const variant =
-    appearance === 'amount'
-      ? 'amount'
-      : appearance === 'numeric'
-        ? 'numeric'
-        : appearance === 'code'
-          ? 'code'
-          : 'supporting'
+  let variant: 'amount' | 'code' | 'numeric' | 'supporting' = 'supporting'
+  if (appearance === 'amount') {
+    variant = 'amount'
+  } else if (appearance === 'numeric') {
+    variant = 'numeric'
+  } else if (appearance === 'code') {
+    variant = 'code'
+  }
   return cx(inputRecipe(props), textRecipe({ variant }))
 }
 

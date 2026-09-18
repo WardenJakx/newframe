@@ -21,7 +21,13 @@ function formatScaled(value: bigint, scale: number, dp: number, fixedDecimals: b
   const floored = scale >= dp ? value / 10n ** BigInt(scale - dp) : value * 10n ** BigInt(dp - scale)
   const digits = floored.toString().padStart(dp + 1, '0')
   const int = withCommas(digits.slice(0, digits.length - dp))
-  const frac = dp ? (fixedDecimals ? digits.slice(-dp) : digits.slice(-dp).replace(/0+$/, '')) : ''
+  let frac = ''
+  if (dp) {
+    frac = digits.slice(-dp)
+    if (!fixedDecimals) {
+      frac = frac.replace(/0+$/, '')
+    }
+  }
 
   return frac ? `${int}.${frac}` : int
 }

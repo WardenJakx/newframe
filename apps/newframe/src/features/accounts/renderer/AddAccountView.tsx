@@ -69,7 +69,7 @@ interface GeneratedSeedModel {
   password: string
   passwordLabel: string
   status: string
-  words: string[]
+  words: Array<{ position: number; value: string }>
 }
 
 type HardwareInputModel =
@@ -225,12 +225,12 @@ function AddAccountImportView({
   events: AddAccountViewEvents
   model: AddAccountImportModel
 }) {
-  const inputLabel =
-    model.accountType === 'watch'
-      ? 'Address or gns/ens name'
-      : model.accountType === 'seed'
-        ? 'Recovery phrase'
-        : 'Private key'
+  let inputLabel = 'Private key'
+  if (model.accountType === 'watch') {
+    inputLabel = 'Address or gns/ens name'
+  } else if (model.accountType === 'seed') {
+    inputLabel = 'Recovery phrase'
+  }
   return (
     <Stack gap='small'>
       {model.accountType !== 'keystore' ? (
@@ -479,14 +479,14 @@ function GeneratedSeedConfirmationView({
       </Surface>
       {model.words.length ? (
         <Grid columns='three' gap='small'>
-          {model.words.map((word, index) => (
-            <Surface key={`${word}-${index}`} padding='small' radius='small' tone='raised'>
+          {model.words.map((word) => (
+            <Surface key={`${word.position}-${word.value}`} padding='small' radius='small' tone='raised'>
               <Inline align='center' gap='xsmall'>
                 <Text tone='muted' variant='caption'>
-                  {index + 1}
+                  {word.position}
                 </Text>
                 <Text as='strong' variant='supporting'>
-                  {word}
+                  {word.value}
                 </Text>
               </Inline>
             </Surface>
@@ -748,45 +748,51 @@ function HardwareAccountSelectionView({
   airgapPairing?: ReactNode
 }) {
   if (model.mode === 'list') {
+    let signerList: ReactNode = null
+    if (model.signers.length) {
+      signerList = (
+        <Stack gap='xsmall'>
+          {model.signers.map((signer) => (
+            <Button
+              appearance='row'
+              key={signer.id}
+              label={`View ${signer.name} accounts`}
+              onPress={() => events.onHardwareSelect(signer.id)}
+              size='list'
+              width='full'
+            >
+              <Icon name={signerIconName(signer.type)} size='medium' />
+              <Stack gap='none' grow>
+                <Text variant='label'>{signer.name}</Text>
+                <Text tone='secondary' variant='caption'>
+                  {signer.status}
+                </Text>
+              </Stack>
+              <Text tone='accent' variant='caption'>
+                {signer.addressCount} accounts
+              </Text>
+              <Icon name='arrowRight' size='small' tone='muted' />
+            </Button>
+          ))}
+        </Stack>
+      )
+    } else if (model.type !== 'airgap') {
+      signerList = (
+        <Surface padding='large' radius='card' tone='card'>
+          <Stack align='center' gap='small'>
+            <Text>Unlock your {model.title} to get started</Text>
+            {model.type !== 'lattice' ? (
+              <Text tone='secondary' variant='supporting'>
+                {model.title} will appear here when detected
+              </Text>
+            ) : null}
+          </Stack>
+        </Surface>
+      )
+    }
     return (
       <Stack gap='small'>
-        {model.signers.length ? (
-          <Stack gap='xsmall'>
-            {model.signers.map((signer) => (
-              <Button
-                appearance='row'
-                key={signer.id}
-                label={`View ${signer.name} accounts`}
-                onPress={() => events.onHardwareSelect(signer.id)}
-                size='list'
-                width='full'
-              >
-                <Icon name={signerIconName(signer.type)} size='medium' />
-                <Stack gap='none' grow>
-                  <Text variant='label'>{signer.name}</Text>
-                  <Text tone='secondary' variant='caption'>
-                    {signer.status}
-                  </Text>
-                </Stack>
-                <Text tone='accent' variant='caption'>
-                  {signer.addressCount} accounts
-                </Text>
-                <Icon name='arrowRight' size='small' tone='muted' />
-              </Button>
-            ))}
-          </Stack>
-        ) : model.type !== 'airgap' ? (
-          <Surface padding='large' radius='card' tone='card'>
-            <Stack align='center' gap='small'>
-              <Text>Unlock your {model.title} to get started</Text>
-              {model.type !== 'lattice' ? (
-                <Text tone='secondary' variant='supporting'>
-                  {model.title} will appear here when detected
-                </Text>
-              ) : null}
-            </Stack>
-          </Surface>
-        ) : null}
+        {signerList}
         {airgapPairing}
         {model.type === 'lattice' ? (
           <Stack gap='small'>
@@ -891,8 +897,9 @@ export function AddAccountView({
   const safeImportLabel = selectedSafeNetworkCount
     ? `Import ${selectedSafeNetworkCount} Safe network${selectedSafeNetworkCount === 1 ? '' : 's'}`
     : 'Import Safe networks'
-  const body =
-    flow.kind === 'safe' ? (
+  let body: ReactNode
+  if (flow.kind === 'safe') {
+    body = (
       <Stack gap='small'>
         <Text variant='label'>Safe</Text>
         <Text variant='supporting'>Watch-only. Import networks to view balances and pending proposals.</Text>
@@ -944,17 +951,18 @@ export function AddAccountView({
           {safeImportLabel}
         </Button>
       </Stack>
-    ) : flow.kind === 'methods' ? (
-      <MethodView events={events} flow={flow} />
-    ) : flow.kind === 'import' ? (
-      <AddAccountImportView events={events} model={flow.model} />
-    ) : flow.kind === 'stored-seed' ? (
-      <StoredSeedAccountSelectionView events={events} model={flow.model} />
-    ) : flow.kind === 'generated-seed' ? (
-      <GeneratedSeedConfirmationView events={events} model={flow.model} />
-    ) : (
-      <HardwareAccountSelectionView events={events} model={flow.model} airgapPairing={airgapPairing} />
     )
+  } else if (flow.kind === 'methods') {
+    body = <MethodView events={events} flow={flow} />
+  } else if (flow.kind === 'import') {
+    body = <AddAccountImportView events={events} model={flow.model} />
+  } else if (flow.kind === 'stored-seed') {
+    body = <StoredSeedAccountSelectionView events={events} model={flow.model} />
+  } else if (flow.kind === 'generated-seed') {
+    body = <GeneratedSeedConfirmationView events={events} model={flow.model} />
+  } else {
+    body = <HardwareAccountSelectionView events={events} model={flow.model} airgapPairing={airgapPairing} />
+  }
   return (
     <Stack grow gap='none'>
       <SidePanelHeader closeLabel='Back' onClose={events.onBack} title='Add account' />

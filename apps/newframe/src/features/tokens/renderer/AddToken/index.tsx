@@ -336,6 +336,15 @@ const TokenDetailsForm = ({ capability, chain, tokenData, isEdit, onDone }: Toke
     onDone()
   }, [onDone, submission, tokenReflected])
 
+  let submitLabel = isEdit ? 'Save' : 'Add Token'
+  if (savingToken) {
+    submitLabel = 'Saving Token'
+  }
+  const errorMessage =
+    operation?.status === 'failed'
+      ? operation.error?.message || 'Could not update the custom token.'
+      : activeBoundaryFailure?.message
+
   return (
     <ScrollArea height='fill'>
       <Stack gap='medium'>
@@ -458,20 +467,16 @@ const TokenDetailsForm = ({ capability, chain, tokenData, isEdit, onDone }: Toke
                 onPress={saveAndClose}
                 width='full'
               >
-                <Text variant='action'>{savingToken ? 'Saving Token' : isEdit ? 'Save' : 'Add Token'}</Text>
+                <Text variant='action'>{submitLabel}</Text>
               </Button>
             ) : (
               <Button disabled appearance='primary' width='full'>
                 <Text variant='action'>Fill in Token Details</Text>
               </Button>
             )}
-            {operation?.status === 'failed' ? (
+            {errorMessage ? (
               <Text tone='danger' variant='caption'>
-                {operation.error?.message || 'Could not update the custom token.'}
-              </Text>
-            ) : activeBoundaryFailure ? (
-              <Text tone='danger' variant='caption'>
-                {activeBoundaryFailure.message}
+                {errorMessage}
               </Text>
             ) : null}
           </Stack>

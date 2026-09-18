@@ -215,6 +215,16 @@ function AssetIcon({
   const iconSource = imageSource(icon)
   const symbol = (effect.symbol || '?').trim() || '?'
   const styles = effectRecipe({ direction: 'neutral' })
+  let iconContent: ReactNode = (
+    <Text align='center' truncate variant='microCode'>
+      {symbol}
+    </Text>
+  )
+  if (iconSource) {
+    iconContent = <Image alt={`${symbol} token`} source={iconSource} />
+  } else if (effect.kind === 'native' && symbol.toUpperCase() === 'ETH') {
+    iconContent = <Icon name='ethereum' size='small' />
+  }
 
   useTokenImageHydration(imageCapability, effect.tokenId, !!iconSource, hydrationTarget)
 
@@ -225,15 +235,7 @@ function AssetIcon({
       data-testid='asset-icon'
       ref={hydrationTarget}
     >
-      {iconSource ? (
-        <Image alt={`${symbol} token`} source={iconSource} />
-      ) : effect.kind === 'native' && symbol.toUpperCase() === 'ETH' ? (
-        <Icon name='ethereum' size='small' />
-      ) : (
-        <Text align='center' truncate variant='microCode'>
-          {symbol}
-        </Text>
-      )}
+      {iconContent}
     </span>
   )
 }
@@ -256,6 +258,62 @@ function TransactionEffects({
   networkIcon?: string
 }) {
   const chainIcon = imageSource(networkIcon)
+  let effectsContent: ReactNode = null
+  if (effects.length) {
+    effectsContent = (
+      <Stack gap='xsmall'>
+        {effects.map((effect) => {
+          const direction =
+            effect.direction === 'in' || effect.direction === 'out' ? effect.direction : 'neutral'
+          const styles = effectRecipe({ direction })
+          let directionLabel = 'Neutral asset effect'
+          if (direction === 'in') {
+            directionLabel = 'Incoming asset effect'
+          } else if (direction === 'out') {
+            directionLabel = 'Outgoing asset effect'
+          }
+          return (
+            <div
+              aria-label={directionLabel}
+              className={styles.root}
+              data-effect-direction={direction}
+              key={effect.id}
+              role='group'
+            >
+              <AssetIcon effect={effect} imageCapability={imageCapability} nativeCurrency={nativeCurrency} />
+              <span className={styles.meta}>
+                <Stack gap='none'>
+                  <Text truncate variant='control'>
+                    {effect.label}
+                  </Text>
+                  {effect.detail ? (
+                    <Text tone='secondary' variant='caption'>
+                      {effect.detail}
+                    </Text>
+                  ) : null}
+                </Stack>
+              </span>
+              <span className={styles.amount}>
+                {direction === 'out' ? <Text variant='numeric'>-</Text> : null}
+                {direction === 'in' ? <Text variant='numeric'>+</Text> : null}
+                <DisplayCoinBalance
+                  amount={effect.amount || '0x0'}
+                  decimals={effect.decimals}
+                  symbol={effect.symbol || '?'}
+                />
+              </span>
+            </div>
+          )
+        })}
+      </Stack>
+    )
+  } else if (emptyText) {
+    effectsContent = (
+      <Text tone='secondary' variant='caption'>
+        {emptyText}
+      </Text>
+    )
+  }
 
   return (
     <Surface padding='none' radius='card' tone='card'>
@@ -277,61 +335,7 @@ function TransactionEffects({
           </Inline>
         </div>
         <Surface padding='small' radius='none' tone='card'>
-          {effects.length ? (
-            <Stack gap='xsmall'>
-              {effects.map((effect) => {
-                const direction =
-                  effect.direction === 'in' || effect.direction === 'out' ? effect.direction : 'neutral'
-                const styles = effectRecipe({ direction })
-                const directionLabel =
-                  direction === 'in'
-                    ? 'Incoming asset effect'
-                    : direction === 'out'
-                      ? 'Outgoing asset effect'
-                      : 'Neutral asset effect'
-                return (
-                  <div
-                    aria-label={directionLabel}
-                    className={styles.root}
-                    data-effect-direction={direction}
-                    key={effect.id}
-                    role='group'
-                  >
-                    <AssetIcon
-                      effect={effect}
-                      imageCapability={imageCapability}
-                      nativeCurrency={nativeCurrency}
-                    />
-                    <span className={styles.meta}>
-                      <Stack gap='none'>
-                        <Text truncate variant='control'>
-                          {effect.label}
-                        </Text>
-                        {effect.detail ? (
-                          <Text tone='secondary' variant='caption'>
-                            {effect.detail}
-                          </Text>
-                        ) : null}
-                      </Stack>
-                    </span>
-                    <span className={styles.amount}>
-                      {direction === 'out' ? <Text variant='numeric'>-</Text> : null}
-                      {direction === 'in' ? <Text variant='numeric'>+</Text> : null}
-                      <DisplayCoinBalance
-                        amount={effect.amount || '0x0'}
-                        decimals={effect.decimals}
-                        symbol={effect.symbol || '?'}
-                      />
-                    </span>
-                  </div>
-                )
-              })}
-            </Stack>
-          ) : emptyText ? (
-            <Text tone='secondary' variant='caption'>
-              {emptyText}
-            </Text>
-          ) : null}
+          {effectsContent}
         </Surface>
         {notice ? (
           <Surface padding='small' radius='none' tone='card'>
@@ -489,6 +493,14 @@ export default function TransactionInformation({
   children
 }: TransactionInformationProps) {
   const [rawOpen, setRawOpen] = useState(false)
+  const keyedDetails = details.map((detail, position) => ({
+    detail,
+    path: `${detail.label}-${position}`
+  }))
+  const keyedVerification = verification?.map((detail, position) => ({
+    detail,
+    path: `${detail.label}-${position}`
+  }))
   return (
     <div className={transactionRecipe()}>
       <Stack gap='small' grow>
@@ -537,8 +549,8 @@ export default function TransactionInformation({
             <Surface padding='small' radius='none' tone='card'>
               <Stack gap='xsmall'>
                 {actionNotice}
-                {details.map((detail, index) => (
-                  <DetailRow key={`${detail.label}-${index}`} {...detail} wrap={wrapDetailValues} />
+                {keyedDetails.map(({ detail, path }) => (
+                  <DetailRow key={path} {...detail} wrap={wrapDetailValues} />
                 ))}
               </Stack>
             </Surface>
@@ -552,8 +564,8 @@ export default function TransactionInformation({
                 <Text tone='secondary' variant='overline'>
                   Verification
                 </Text>
-                {verification?.map((detail, index) => (
-                  <Surface key={`${detail.label}-${index}`} padding='small' radius='small' tone='raised'>
+                {keyedVerification?.map(({ detail, path }) => (
+                  <Surface key={path} padding='small' radius='small' tone='raised'>
                     <Stack gap='xsmall'>
                       <Inline gap='xsmall' align='center' justify='between'>
                         <Text tone='secondary' variant='overline'>

@@ -176,10 +176,16 @@ export function activityAssetEffect(activity: ActivityRecord, nativeSymbol = 'ET
   const [, action, displaySymbol] = titleMatch
   const symbol = token.symbol || displaySymbol
   const isNative = action === 'Send' && symbol === nativeSymbol
+  let kind: 'allowance' | 'erc20' | 'native' = 'allowance'
+  if (isNative) {
+    kind = 'native'
+  } else if (action === 'Send') {
+    kind = 'erc20'
+  }
 
   return {
     id: 'activity-display-asset',
-    kind: isNative ? 'native' : action === 'Send' ? 'erc20' : 'allowance',
+    kind,
     direction: action === 'Send' ? 'out' : 'neutral',
     label: activity.display?.title || 'Asset',
     symbol,

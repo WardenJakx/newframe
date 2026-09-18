@@ -448,8 +448,12 @@ export function decodeSignature(cbor: Buffer, sessionId: string, kind: DataType,
   if (kind === DataType.personalMessage && (rawV === 0n || rawV === 1n)) {
     rawV += 27n
   }
-  const base =
-    kind === DataType.transaction ? BigInt(chainId) * 2n + 35n : kind === DataType.typedTransaction ? 0n : 27n
+  let base = 27n
+  if (kind === DataType.transaction) {
+    base = BigInt(chainId) * 2n + 35n
+  } else if (kind === DataType.typedTransaction) {
+    base = 0n
+  }
   const parity = rawV - base
   if (parity !== 0n && parity !== 1n) {
     throw new Error('AirGap response has the wrong chain or signature parity')

@@ -584,12 +584,12 @@ async function traceCall(
 }
 
 function simulationUnavailable(error: unknown): TransactionSimulation {
-  const message =
-    typeof error === 'string'
-      ? error
-      : error && typeof error === 'object' && 'message' in error
-        ? String((error as { message?: unknown }).message)
-        : 'Transaction simulation unavailable'
+  let message = 'Transaction simulation unavailable'
+  if (typeof error === 'string') {
+    message = error
+  } else if (error && typeof error === 'object' && 'message' in error) {
+    message = String((error as { message?: unknown }).message)
+  }
 
   return {
     status: 'unavailable',

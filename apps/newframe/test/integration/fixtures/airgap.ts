@@ -110,6 +110,18 @@ export function signerFixture(record = publicAccount()) {
     type: 'sign' | 'transaction' | 'signTypedData',
     data?: TransactionData | TypedMessage | string
   ) => {
+    let method = 'eth_signTypedData_v4'
+    if (type === 'transaction') {
+      method = 'eth_sendTransaction'
+    } else if (type === 'sign') {
+      method = 'personal_sign'
+    }
+    let requestData = {}
+    if (type === 'transaction') {
+      requestData = { data }
+    } else if (type === 'signTypedData') {
+      requestData = { typedMessage: data as TypedMessage }
+    }
     const record: CanonicalAccountRequest & { data?: unknown; typedMessage?: TypedMessage } = {
       handlerId: owner.context.requestId,
       type,
@@ -119,12 +131,7 @@ export function signerFixture(record = publicAccount()) {
       payload: {
         id: 'test',
         jsonrpc: '2.0',
-        method:
-          type === 'transaction'
-            ? 'eth_sendTransaction'
-            : type === 'sign'
-              ? 'personal_sign'
-              : 'eth_signTypedData_v4',
+        method,
         params: type === 'transaction' ? [data] : [address, data]
       },
       authorization: {
@@ -134,11 +141,7 @@ export function signerFixture(record = publicAccount()) {
         principal: { kind: 'main', component: 'airgap-test' },
         intent: { account: address, method: 'test', requestType: type }
       },
-      ...(type === 'transaction'
-        ? { data }
-        : type === 'signTypedData'
-          ? { typedMessage: data as TypedMessage }
-          : {})
+      ...requestData
     }
     store.getState().upsertAccountRequest(address, record)
     return record

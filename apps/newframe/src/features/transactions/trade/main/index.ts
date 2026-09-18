@@ -683,15 +683,15 @@ export function normalizeFlashQuoteResponse(raw: unknown, request: FlashQuoteReq
     Number.isFinite(targetAmountNumber) && targetAmountNumber > 0 && Number.isFinite(targetNotionalNumber)
       ? String(targetNotionalNumber / targetAmountNumber)
       : ''
-  const quoteId = stringValue(
-    quotePayload.quoteId !== undefined
-      ? quotePayload.quoteId
-      : quotePayload.id !== undefined
-        ? quotePayload.id
-        : payload.quoteId !== undefined
-          ? payload.quoteId
-          : payload.id
-  )
+  let rawQuoteId = payload.id
+  if (quotePayload.quoteId !== undefined) {
+    rawQuoteId = quotePayload.quoteId
+  } else if (quotePayload.id !== undefined) {
+    rawQuoteId = quotePayload.id
+  } else if (payload.quoteId !== undefined) {
+    rawQuoteId = payload.quoteId
+  }
+  const quoteId = stringValue(rawQuoteId)
   const bridgeQuoteId = stringValue(quotePayload.bridgeQuoteId || payload.bridgeQuoteId).trim()
   const wrapPayload = objectPayload(quotePayload.wrap || objectPayload(quotePayload.actions).wrap)
   const evmPayload = objectPayload(quotePayload.evm || objectPayload(quotePayload.actions).evm)
@@ -1929,7 +1929,12 @@ async function listOrders(state: FlashServiceState, request: FlashListOrdersRequ
   const search = params.toString()
   const raw = await flashRequest(`/orders${search ? `?${search}` : ''}`)
   const payload = objectPayload(raw)
-  const rawOrders = Array.isArray(payload.orders) ? payload.orders : Array.isArray(raw) ? raw : []
+  let rawOrders: unknown[] = []
+  if (Array.isArray(payload.orders)) {
+    rawOrders = payload.orders
+  } else if (Array.isArray(raw)) {
+    rawOrders = raw
+  }
   const orders = rawOrders
     .map((order) => {
       const orderId = stringValue(objectPayload(order).orderId || objectPayload(order).id)

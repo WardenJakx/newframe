@@ -292,13 +292,19 @@ export function createRequestService(ports: RequestServicePorts) {
       settleApproval()
     }
 
-    const approval = isTransactionRequest(request)
-      ? ports.provider.approveTransactionRequest(request, context)
-      : request.type === 'sign'
-        ? ports.provider.approveSign(request, context)
-        : isTypedMessageSignatureRequest(request)
-          ? ports.provider.approveSignTypedData(request, context)
-          : undefined
+    const approveRequest = () => {
+      if (isTransactionRequest(request)) {
+        return ports.provider.approveTransactionRequest(request, context)
+      }
+      if (request.type === 'sign') {
+        return ports.provider.approveSign(request, context)
+      }
+      if (isTypedMessageSignatureRequest(request)) {
+        return ports.provider.approveSignTypedData(request, context)
+      }
+      return undefined
+    }
+    const approval = approveRequest()
     void approval?.then(
       (result) => complete(() => completeApproval(request, result)),
       (error: unknown) => complete(() => failApproval(request, error))

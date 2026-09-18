@@ -452,16 +452,15 @@ export function createSafeClient({
               .find(Boolean)
             let timer: ReturnType<typeof setTimeout> | undefined
             try {
-              const decoded = local
-                ? { ...local, source: 'Local function selector' }
-                : decode
-                  ? await Promise.race([
-                      decode(proposal.to, chainId, proposal.data),
-                      new Promise<undefined>((resolve) => {
-                        timer = setTimeout(() => resolve(undefined), 5000)
-                      })
-                    ])
-                  : undefined
+              let decoded = local ? { ...local, source: 'Local function selector' } : undefined
+              if (!decoded && decode) {
+                decoded = await Promise.race([
+                  decode(proposal.to, chainId, proposal.data),
+                  new Promise<undefined>((resolve) => {
+                    timer = setTimeout(() => resolve(undefined), 5000)
+                  })
+                ])
+              }
               if (decoded) {
                 proposal.localDecoded = safeDecodedSchema.extend({ source: z.string().max(200) }).safeParse({
                   method: decoded.method,

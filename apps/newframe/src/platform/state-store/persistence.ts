@@ -179,11 +179,12 @@ function normalizeProfileState(main: UnknownRecord) {
   const requestedAccountProfile = profileAliases[unknownRecord(sourceAccounts[requestedAccount]).profileId]
   const requestedProfile =
     typeof main.currentProfile === 'string' ? profileAliases[main.currentProfile] || main.currentProfile : ''
-  const currentProfile = profiles[requestedAccountProfile]
-    ? requestedAccountProfile
-    : profiles[requestedProfile]
-      ? requestedProfile
-      : profileOrder[0]
+  let currentProfile = profileOrder[0]
+  if (profiles[requestedAccountProfile]) {
+    currentProfile = requestedAccountProfile
+  } else if (profiles[requestedProfile]) {
+    currentProfile = requestedProfile
+  }
 
   const accounts = Object.fromEntries(
     Object.entries(sourceAccounts).map(([id, candidate]) => {

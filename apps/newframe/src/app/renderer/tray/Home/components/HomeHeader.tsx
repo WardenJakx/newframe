@@ -21,11 +21,10 @@ export function HomeHeader({ capability }: { capability: Pick<HomeCapability, 'c
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   useEffect(() => () => clearTimeout(timer.current), [])
   const type = accountDisplayType(account)
-  const name = account
-    ? account.ensName && !showLocalNameWithENS
-      ? account.ensName
-      : account.name
-    : 'Add Account'
+  let name = 'Add Account'
+  if (account) {
+    name = account.ensName && !showLocalNameWithENS ? account.ensName : account.name
+  }
 
   return (
     <HomeHeaderView

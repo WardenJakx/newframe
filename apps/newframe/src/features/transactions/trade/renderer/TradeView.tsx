@@ -201,8 +201,15 @@ export function TradeView({
     ) {
       const stop = state.orderType === FLASH_STOP_ORDER_TYPE
       const takeProfit = state.orderType === FLASH_TAKE_PROFIT_ORDER_TYPE
-      const name = stop ? 'Stop' : takeProfit ? 'Take-profit' : 'Stop-loss'
-      const shortName = stop ? state.target.symbol + '/USD' : takeProfit ? 'TP' : 'SL'
+      let name = 'Stop-loss'
+      let shortName = 'SL'
+      if (stop) {
+        name = 'Stop'
+        shortName = state.target.symbol + '/USD'
+      } else if (takeProfit) {
+        name = 'Take-profit'
+        shortName = 'TP'
+      }
 
       return (
         <Surface border='subtle' padding='medium' radius='small' tone='card'>

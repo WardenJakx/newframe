@@ -62,12 +62,12 @@ export function useTradeExecution({
         return
       }
 
-      const nextAction =
-        state.phase === 'awaiting_approval'
-          ? 'approve'
-          : state.phase === 'awaiting_submit'
-            ? 'sign'
-            : quote.nextAction
+      let nextAction = quote.nextAction
+      if (state.phase === 'awaiting_approval') {
+        nextAction = 'approve'
+      } else if (state.phase === 'awaiting_submit') {
+        nextAction = 'sign'
+      }
       const session: TradeExecutionSession =
         state.session && ['awaiting_approval', 'awaiting_submit'].includes(state.phase)
           ? state.session

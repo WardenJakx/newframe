@@ -87,17 +87,19 @@ export function OrderDetailsView({
       </Stack>
     )
   }
+  let sideTone: 'danger' | 'secondary' | 'special' = 'secondary'
+  if (side === 'buy') {
+    sideTone = 'special'
+  } else if (side === 'sell') {
+    sideTone = 'danger'
+  }
 
   return (
     <TrayOverlay closeLabel='Back to orders' label='Order details' onClose={onBack} title='Order'>
       <Stack gap='medium'>
         <Stack gap='small'>
           <Stack align='center' direction='row' gap='small' justify='center'>
-            <Text
-              align='center'
-              tone={side === 'buy' ? 'special' : side === 'sell' ? 'danger' : 'secondary'}
-              variant='label'
-            >
+            <Text align='center' tone={sideTone} variant='label'>
               {orderSideLabel(order)}
             </Text>
             <Text tone='secondary' variant='supporting'>

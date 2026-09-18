@@ -81,6 +81,10 @@ export function AssetDetailsView({
       </Button>
     </Stack>
   )
+  let priceLabel = '—'
+  if (asset.hasPrice) {
+    priceLabel = price > 0 ? `$${formatUsdRate(price, 2)}` : '$0.00'
+  }
 
   return (
     <TrayOverlay
@@ -119,7 +123,7 @@ export function AssetDetailsView({
             </Stack>
           </Stack>
           <Stack gap='none'>
-            {detailRow('Price', asset.hasPrice ? (price > 0 ? `$${formatUsdRate(price, 2)}` : '$0.00') : '—')}
+            {detailRow('Price', priceLabel)}
             {detailRow('Balance', `${asset.displayBalance} ${asset.symbol}`)}
             {detailRow(
               'Chain',

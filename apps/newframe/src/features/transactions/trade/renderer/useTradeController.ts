@@ -242,24 +242,29 @@ export function useTradeController({ assetId, capability, chainId }: TradeContro
         FLASH_STOP_LOSS_ORDER_TYPE,
         FLASH_TAKE_PROFIT_ORDER_TYPE
       ].includes(state.orderType)
+      let border: TradeAssetViewModel['border'] = 'subtle'
+      if (editable && invalidFields.amount) {
+        border = 'danger'
+      } else if (editable && state.side === 'buy') {
+        border = 'special'
+      } else if (editable && state.side === 'sell') {
+        border = 'danger'
+      }
+      let intentTone: TradeAssetViewModel['intentTone'] = 'primary'
+      if (isTarget) {
+        intentTone = state.side === 'buy' ? 'special' : 'danger'
+      }
 
       return {
         amount,
         balanceLabel: `Balance ${displayBalance} ${asset.symbol}`,
         balancePercent,
-        border:
-          editable && invalidFields.amount
-            ? 'danger'
-            : editable && state.side === 'buy'
-              ? 'special'
-              : editable && state.side === 'sell'
-                ? 'danger'
-                : 'subtle',
+        border,
         canSwitchDirection: isTarget && !sideLocked,
         editable,
         field,
         intent: isTarget ? getDirectionLabel(state.side) : getContraPreposition(state.side).toUpperCase(),
-        intentTone: isTarget ? (state.side === 'buy' ? 'special' : 'danger') : 'primary',
+        intentTone,
         open,
         outputNotionalLabel: state.quote?.outputNotional
           ? `~${formatTradeNotional(state.quote.outputNotional)}`
@@ -279,12 +284,12 @@ export function useTradeController({ assetId, capability, chainId }: TradeContro
   const delta = getTradeTriggerDeltaPercent(state.triggerNotionalPrice, state.quote?.targetNotionalPrice)
   const stop = state.orderType === FLASH_STOP_ORDER_TYPE
   const triggerDeltaLabel = delta === null ? '—' : `${delta >= 0 ? '+' : ''}${delta.toFixed(2)}%`
-  const triggerHelp =
-    delta === null
-      ? stop
-        ? 'Leave limit blank for a stop-market order'
-        : `Quoted against ${state.targetAsset.symbol}/USD`
-      : `${triggerDeltaLabel} from current price`
+  let triggerHelp = `${triggerDeltaLabel} from current price`
+  if (delta === null) {
+    triggerHelp = stop
+      ? 'Leave limit blank for a stop-market order'
+      : `Quoted against ${state.targetAsset.symbol}/USD`
+  }
 
   const spentAsset = getTradeSpentAsset(state)
   const baseSteps = state.quote?.steps || buildVisualTradeSteps(spentAsset, false)
@@ -295,38 +300,37 @@ export function useTradeController({ assetId, capability, chainId }: TradeContro
   }
   const pendingKind = pendingStepKinds[phase] || ''
   const failedKind = phase.endsWith('_failed') ? phase.slice(0, -'_failed'.length) : ''
-  const steps = baseSteps.map((step) => ({
-    id: step.id,
-    label: step.label,
-    status: completed.has(step.kind)
-      ? ('complete' as const)
-      : pendingKind === step.kind
-        ? ('pending' as const)
-        : failedKind === step.kind
-          ? ('error' as const)
-          : step.status
-  }))
+  const steps = baseSteps.map((step) => {
+    let status = step.status
+    if (completed.has(step.kind)) {
+      status = 'complete'
+    } else if (pendingKind === step.kind) {
+      status = 'pending'
+    } else if (failedKind === step.kind) {
+      status = 'error'
+    }
+    return { id: step.id, label: step.label, status }
+  })
 
-  const nextAction =
-    execution.state.phase === 'awaiting_approval'
-      ? 'approve'
-      : execution.state.phase === 'awaiting_submit'
-        ? 'sign'
-        : state.quote?.nextAction
+  let nextAction = state.quote?.nextAction
+  if (execution.state.phase === 'awaiting_approval') {
+    nextAction = 'approve'
+  } else if (execution.state.phase === 'awaiting_submit') {
+    nextAction = 'sign'
+  }
   const actionEnabled = Boolean(
     state.quote && state.quoteId && execution.canSubmit && !state.quoteLoading && !tradeValidationError
   )
-  const actionLabel = state.quoteLoading
-    ? 'Getting quote'
-    : execution.state.phase === 'submitting'
-      ? 'Submitting'
-      : nextAction === 'wrap'
-        ? state.quote?.actions?.wrap?.label || 'Wrap'
-        : nextAction === 'approve'
-          ? state.quote?.actions?.approval?.label || 'Approve'
-          : state.quote
-            ? 'Review/sign'
-            : 'Enter details'
+  let actionLabel = state.quote ? 'Review/sign' : 'Enter details'
+  if (state.quoteLoading) {
+    actionLabel = 'Getting quote'
+  } else if (execution.state.phase === 'submitting') {
+    actionLabel = 'Submitting'
+  } else if (nextAction === 'wrap') {
+    actionLabel = state.quote?.actions?.wrap?.label || 'Wrap'
+  } else if (nextAction === 'approve') {
+    actionLabel = state.quote?.actions?.approval?.label || 'Approve'
+  }
   const quote = state.quote
   const estimatedImpact = getEstimatedTradePriceImpact(quote)
 

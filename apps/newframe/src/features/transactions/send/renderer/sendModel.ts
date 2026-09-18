@@ -44,15 +44,16 @@ export function projectSendSubmission({
   const projectedActivity = transactionId ? activity[transactionId] : undefined
   const submitting =
     !operation || operation.status === 'pending' || (operation.status === 'succeeded' && !projectedActivity)
+  let status = ''
+  if (operation?.status === 'succeeded' && projectedActivity) {
+    status = 'Transaction submitted'
+  } else if (submitting) {
+    status = 'Confirm in Newframe'
+  }
 
   return {
     error: operation?.status === 'failed' ? operation.error?.message || '' : '',
-    status:
-      operation?.status === 'succeeded' && projectedActivity
-        ? 'Transaction submitted'
-        : submitting
-          ? 'Confirm in Newframe'
-          : '',
+    status,
     submitting
   }
 }

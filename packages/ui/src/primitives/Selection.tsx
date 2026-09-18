@@ -130,12 +130,12 @@ export function Selection({
   const defaultHighlightedId = items[selectedIndex >= 0 ? selectedIndex : firstEnabledIndex]?.id || ''
   const [highlightedId, setHighlightedId] = useState(defaultHighlightedId)
   const storedHighlightedIndex = items.findIndex((item) => item.id === highlightedId && !item.disabled)
-  const highlightedIndex =
-    storedHighlightedIndex >= 0
-      ? storedHighlightedIndex
-      : selectedIndex >= 0
-        ? selectedIndex
-        : firstEnabledIndex
+  let highlightedIndex = firstEnabledIndex
+  if (storedHighlightedIndex >= 0) {
+    highlightedIndex = storedHighlightedIndex
+  } else if (selectedIndex >= 0) {
+    highlightedIndex = selectedIndex
+  }
   const enabled = firstEnabledIndex >= 0
   const canOpen = enabled || !!header
 
@@ -184,7 +184,10 @@ export function Selection({
 
       setHighlightedId((currentId) => {
         const currentIndex = items.findIndex((item) => item.id === currentId && !item.disabled)
-        let next = currentIndex >= 0 ? currentIndex : direction === 1 ? -1 : 0
+        let next = currentIndex
+        if (currentIndex < 0) {
+          next = direction === 1 ? -1 : 0
+        }
         for (let index = 0; index < items.length; index += 1) {
           next = (next + direction + items.length) % items.length
           if (!items[next]?.disabled) {
@@ -239,6 +242,27 @@ export function Selection({
 
   const activeOption = open ? items[highlightedIndex] : undefined
   const activeOptionId = activeOption ? `${listboxId}-${activeOption.id}` : undefined
+  let menuContent: ReactNode = null
+  if (items.length) {
+    menuContent = items.map((item, index) => (
+      <Button
+        appearance='selectionOption'
+        ariaSelected={item.id === selectedId}
+        disabled={item.disabled}
+        elementRole='option'
+        highlighted={index === highlightedIndex}
+        id={`${listboxId}-${item.id}`}
+        key={item.id}
+        onPointerEnter={() => setHighlightedId(item.id)}
+        onPress={() => select(item.id)}
+        tabIndex={-1}
+      >
+        {item.content}
+      </Button>
+    ))
+  } else if (emptyContent) {
+    menuContent = <div className={styles.empty}>{emptyContent}</div>
+  }
 
   return (
     <div className={styles.root} onKeyDown={handleKeyDown} ref={root}>
@@ -263,26 +287,7 @@ export function Selection({
         <div className={styles.menu}>
           {header ? <div className={styles.header}>{header}</div> : null}
           <div aria-label={label} className={styles.list} id={listboxId} role='listbox'>
-            {items.length ? (
-              items.map((item, index) => (
-                <Button
-                  appearance='selectionOption'
-                  ariaSelected={item.id === selectedId}
-                  disabled={item.disabled}
-                  elementRole='option'
-                  highlighted={index === highlightedIndex}
-                  id={`${listboxId}-${item.id}`}
-                  key={item.id}
-                  onPointerEnter={() => setHighlightedId(item.id)}
-                  onPress={() => select(item.id)}
-                  tabIndex={-1}
-                >
-                  {item.content}
-                </Button>
-              ))
-            ) : emptyContent ? (
-              <div className={styles.empty}>{emptyContent}</div>
-            ) : null}
+            {menuContent}
           </div>
           {footer ? <footer className={styles.footer}>{footer}</footer> : null}
         </div>

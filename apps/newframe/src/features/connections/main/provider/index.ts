@@ -379,13 +379,13 @@ export class Provider extends EventEmitter {
       )
     const expected = identity(request)
     const typed = 'typedMessage' in request ? (request as SignTypedDataRequest).typedMessage : undefined
-    const chainId = Number(
-      request.type === 'transaction'
-        ? (request as TransactionRequest).data.chainId
-        : typed && !Array.isArray(typed.data)
-          ? (typed.data.domain?.chainId ?? this.store.getState().main.origins[request.origin]?.chain.id ?? 1)
-          : (this.store.getState().main.origins[request.origin]?.chain.id ?? 1)
-    )
+    let chainIdValue: unknown = this.store.getState().main.origins[request.origin]?.chain.id ?? 1
+    if (request.type === 'transaction') {
+      chainIdValue = (request as TransactionRequest).data.chainId
+    } else if (typed && !Array.isArray(typed.data)) {
+      chainIdValue = typed.data.domain?.chainId ?? chainIdValue
+    }
+    const chainId = Number(chainIdValue)
     return {
       requestId,
       chainId,
@@ -847,11 +847,12 @@ export class Provider extends EventEmitter {
       return resError('Typed data missing message', rawPayload, res)
     }
 
-    const explicitVersion = rawPayload.method.endsWith('_v3')
-      ? SignTypedDataVersion.V3
-      : rawPayload.method.endsWith('_v4')
-        ? SignTypedDataVersion.V4
-        : undefined
+    let explicitVersion: SignTypedDataVersion | undefined
+    if (rawPayload.method.endsWith('_v3')) {
+      explicitVersion = SignTypedDataVersion.V3
+    } else if (rawPayload.method.endsWith('_v4')) {
+      explicitVersion = SignTypedDataVersion.V4
+    }
     const version = explicitVersion || getVersionFromTypedData(typedData)
     if (![SignTypedDataVersion.V3, SignTypedDataVersion.V4].includes(version)) {
       return resError('Agent typed-data signing supports only v3 and v4', rawPayload, res)

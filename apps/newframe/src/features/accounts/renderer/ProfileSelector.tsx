@@ -144,20 +144,23 @@ export function ProfileSelector({ capability, currentProfile, profiles }: Profil
     trackedOperation?.status === 'failed'
       ? errorMessage(trackedOperation.error?.code || '', 'Profile operation failed. Try again.')
       : ''
+  let submissionMatchesState = false
+  if (submission?.type === 'profile.select') {
+    submissionMatchesState = currentProfile === submission.profileId
+  } else if (submission?.type === 'profile.create') {
+    submissionMatchesState =
+      !!createdProfileId &&
+      currentProfile === createdProfileId &&
+      profiles.some((profile) => profile.id === createdProfileId)
+  } else if (submission?.type === 'profile.update') {
+    submissionMatchesState = profiles.some(
+      (profile) => profile.id === submission.profileId && profile.name === submission.name
+    )
+  } else if (submission?.type === 'profile.delete') {
+    submissionMatchesState = !profiles.some((profile) => profile.id === submission.profileId)
+  }
   const submissionReflected =
-    !!submission &&
-    trackedOperation?.status === 'succeeded' &&
-    (submission.type === 'profile.select'
-      ? currentProfile === submission.profileId
-      : submission.type === 'profile.create'
-        ? !!createdProfileId &&
-          currentProfile === createdProfileId &&
-          profiles.some((profile) => profile.id === createdProfileId)
-        : submission.type === 'profile.update'
-          ? profiles.some(
-              (profile) => profile.id === submission.profileId && profile.name === submission.name
-            )
-          : !profiles.some((profile) => profile.id === submission.profileId))
+    !!submission && trackedOperation?.status === 'succeeded' && submissionMatchesState
   const displayedMode = submissionReflected ? 'none' : mode
   const displayedOpen = submissionReflected && submission?.type !== 'profile.update' ? false : open
   const visibleError = submissionReflected ? '' : operationFailure || error
@@ -381,113 +384,107 @@ export function ProfileSelector({ capability, currentProfile, profiles }: Profil
     )
   }, [])
 
+  let managementFields: React.ReactNode = null
+  if (displayedMode === 'create') {
+    managementFields = (
+      <>
+        <Input
+          autoFocus
+          invalid={!!visibleError && (!name.trim() || name.trim().length > 50)}
+          label='New profile name'
+          maxLength={50}
+          onCancel={resetManagement}
+          onSubmit={() => void submitCreate()}
+          onValueChange={setName}
+          placeholder='Profile name'
+          value={name}
+        />
+        {loadingAccounts ? <Text tone='secondary'>Loading accounts…</Text> : null}
+        {!loadingAccounts && movableAccounts.length ? (
+          <ScrollArea height='menu'>
+            <div className={columnRecipe({ gap: 'xsmall' })}>
+              <Text tone='secondary' variant='caption'>
+                Move accounts into this profile (optional)
+              </Text>
+              {movableAccounts.map((account) => {
+                const selected = selectedAccountIds.includes(account.id)
+                return (
+                  <Button
+                    appearance={selected ? 'subtle' : 'row'}
+                    key={account.id}
+                    onPress={() => toggleAccount(account.id)}
+                    size='small'
+                    width='full'
+                  >
+                    <Text tone={selected ? 'accent' : 'secondary'}>{selected ? '✓' : '○'}</Text>
+                    <AddressAvatar address={account.address} accountType={account.accountType} />
+                    <div className={columnRecipe({ gap: 'none', grow: true })}>
+                      <Text variant='caption' truncate>
+                        {account.name}
+                      </Text>
+                      <Text tone='muted' variant='micro' truncate>
+                        {shortAddress(account.address)}
+                      </Text>
+                    </div>
+                  </Button>
+                )
+              })}
+            </div>
+          </ScrollArea>
+        ) : null}
+        <div className={rowRecipe()}>
+          <Button appearance='primary' disabled={submitting} onPress={() => void submitCreate()} size='small'>
+            <Text variant='caption'>Create profile</Text>
+          </Button>
+          <Button appearance='ghost' onPress={resetManagement} size='small'>
+            <Text variant='caption'>Cancel</Text>
+          </Button>
+        </div>
+      </>
+    )
+  } else if (displayedMode === 'rename') {
+    managementFields = (
+      <>
+        <Input
+          autoFocus
+          invalid={!!visibleError && (!name.trim() || name.trim().length > 50)}
+          label='Rename profile'
+          maxLength={50}
+          onCancel={resetManagement}
+          onSubmit={() => void submitRename()}
+          onValueChange={setName}
+          value={name}
+        />
+        <div className={rowRecipe()}>
+          <Button appearance='primary' disabled={submitting} onPress={() => void submitRename()} size='small'>
+            <Text variant='caption'>Save</Text>
+          </Button>
+          <Button appearance='ghost' onPress={resetManagement} size='small'>
+            <Text variant='caption'>Cancel</Text>
+          </Button>
+        </div>
+      </>
+    )
+  } else if (displayedMode === 'delete') {
+    managementFields = (
+      <>
+        <Text variant='caption'>Delete {managedProfile?.name}? This cannot be undone.</Text>
+        <div className={rowRecipe()}>
+          <Button appearance='danger' disabled={submitting} onPress={() => void submitDelete()} size='small'>
+            <Text variant='caption'>Confirm delete</Text>
+          </Button>
+          <Button appearance='ghost' onPress={resetManagement} size='small'>
+            <Text variant='caption'>Cancel</Text>
+          </Button>
+        </div>
+      </>
+    )
+  }
+
   const management = (
     <div className={managementRecipe()}>
       <div className={columnRecipe({ gap: 'small' })}>
-        {displayedMode === 'create' ? (
-          <>
-            <Input
-              autoFocus
-              invalid={!!visibleError && (!name.trim() || name.trim().length > 50)}
-              label='New profile name'
-              maxLength={50}
-              onCancel={resetManagement}
-              onSubmit={() => void submitCreate()}
-              onValueChange={setName}
-              placeholder='Profile name'
-              value={name}
-            />
-            {loadingAccounts ? <Text tone='secondary'>Loading accounts…</Text> : null}
-            {!loadingAccounts && movableAccounts.length ? (
-              <ScrollArea height='menu'>
-                <div className={columnRecipe({ gap: 'xsmall' })}>
-                  <Text tone='secondary' variant='caption'>
-                    Move accounts into this profile (optional)
-                  </Text>
-                  {movableAccounts.map((account) => {
-                    const selected = selectedAccountIds.includes(account.id)
-                    return (
-                      <Button
-                        appearance={selected ? 'subtle' : 'row'}
-                        key={account.id}
-                        onPress={() => toggleAccount(account.id)}
-                        size='small'
-                        width='full'
-                      >
-                        <Text tone={selected ? 'accent' : 'secondary'}>{selected ? '✓' : '○'}</Text>
-                        <AddressAvatar address={account.address} accountType={account.accountType} />
-                        <div className={columnRecipe({ gap: 'none', grow: true })}>
-                          <Text variant='caption' truncate>
-                            {account.name}
-                          </Text>
-                          <Text tone='muted' variant='micro' truncate>
-                            {shortAddress(account.address)}
-                          </Text>
-                        </div>
-                      </Button>
-                    )
-                  })}
-                </div>
-              </ScrollArea>
-            ) : null}
-            <div className={rowRecipe()}>
-              <Button
-                appearance='primary'
-                disabled={submitting}
-                onPress={() => void submitCreate()}
-                size='small'
-              >
-                <Text variant='caption'>Create profile</Text>
-              </Button>
-              <Button appearance='ghost' onPress={resetManagement} size='small'>
-                <Text variant='caption'>Cancel</Text>
-              </Button>
-            </div>
-          </>
-        ) : displayedMode === 'rename' ? (
-          <>
-            <Input
-              autoFocus
-              invalid={!!visibleError && (!name.trim() || name.trim().length > 50)}
-              label='Rename profile'
-              maxLength={50}
-              onCancel={resetManagement}
-              onSubmit={() => void submitRename()}
-              onValueChange={setName}
-              value={name}
-            />
-            <div className={rowRecipe()}>
-              <Button
-                appearance='primary'
-                disabled={submitting}
-                onPress={() => void submitRename()}
-                size='small'
-              >
-                <Text variant='caption'>Save</Text>
-              </Button>
-              <Button appearance='ghost' onPress={resetManagement} size='small'>
-                <Text variant='caption'>Cancel</Text>
-              </Button>
-            </div>
-          </>
-        ) : displayedMode === 'delete' ? (
-          <>
-            <Text variant='caption'>Delete {managedProfile?.name}? This cannot be undone.</Text>
-            <div className={rowRecipe()}>
-              <Button
-                appearance='danger'
-                disabled={submitting}
-                onPress={() => void submitDelete()}
-                size='small'
-              >
-                <Text variant='caption'>Confirm delete</Text>
-              </Button>
-              <Button appearance='ghost' onPress={resetManagement} size='small'>
-                <Text variant='caption'>Cancel</Text>
-              </Button>
-            </div>
-          </>
-        ) : null}
+        {managementFields}
         {visibleError ? (
           <Text tone='danger' variant='caption'>
             {visibleError}
@@ -540,12 +537,12 @@ export function ProfileSelector({ capability, currentProfile, profiles }: Profil
               const selected = profile.id === currentProfile
               const managing =
                 managedProfileId === profile.id && (displayedMode === 'rename' || displayedMode === 'delete')
-              const deleteHint =
-                profiles.length <= 1
-                  ? 'Keep at least one profile.'
-                  : profile.accountCount > 0
-                    ? 'Move all accounts before deleting this profile.'
-                    : 'Delete profile'
+              let deleteHint = 'Delete profile'
+              if (profiles.length <= 1) {
+                deleteHint = 'Keep at least one profile.'
+              } else if (profile.accountCount > 0) {
+                deleteHint = 'Move all accounts before deleting this profile.'
+              }
               return (
                 <div key={profile.id} className={profileRowRecipe({ selected })}>
                   <div className={rowRecipe()}>

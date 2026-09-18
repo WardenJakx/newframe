@@ -373,15 +373,15 @@ export function createSafeConfirmationService({
         )
         return
       }
-      finish(
-        entry,
-        signingFailure ? 'signing_failed' : 'publication_failed',
-        signingFailure
-          ? error instanceof Error && error.message.length <= 256
+      let failureMessage =
+        'Could not verify the stored confirmation. Try again; any completed signing will be reused.'
+      if (signingFailure) {
+        failureMessage =
+          error instanceof Error && error.message.length <= 256
             ? error.message
             : 'Owner wallet could not confirm. Try again.'
-          : 'Could not verify the stored confirmation. Try again; any completed signing will be reused.'
-      )
+      }
+      finish(entry, signingFailure ? 'signing_failed' : 'publication_failed', failureMessage)
     }
   }
   const addReference = (entry: Entry, reference: OperationReference) => {

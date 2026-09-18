@@ -151,7 +151,13 @@ function scalar(value: number, width = 0, major = 0) {
   if (!width && value < 24) {
     return Buffer.from([(major << 5) | value])
   }
-  const actual = width || (value <= 255 ? 1 : value <= 65535 ? 2 : 4)
+  let inferredWidth = 4
+  if (value <= 255) {
+    inferredWidth = 1
+  } else if (value <= 65535) {
+    inferredWidth = 2
+  }
+  const actual = width || inferredWidth
   const buffer = Buffer.alloc(actual + 1)
   buffer[0] = (major << 5) | { 1: 24, 2: 25, 4: 26, 8: 27 }[actual]!
   let remaining = BigInt(value)

@@ -77,7 +77,10 @@ function coverageReports(input: string): string[] {
   }
   return readdirSync(input).flatMap((entry) => {
     const child = path.join(input, entry)
-    return statSync(child).isDirectory() ? coverageReports(child) : entry === 'lcov.info' ? [child] : []
+    if (statSync(child).isDirectory()) {
+      return coverageReports(child)
+    }
+    return entry === 'lcov.info' ? [child] : []
   })
 }
 

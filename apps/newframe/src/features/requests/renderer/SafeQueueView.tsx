@@ -42,22 +42,37 @@ export function SafeQueueView({
       title: networkNames[deployment.chainId] || `Chain ${deployment.chainId}`,
       icon: networkIcons?.[deployment.chainId],
       items: [...deployment.pending!]
-        .sort((a, b) => (BigInt(a.nonce) < BigInt(b.nonce) ? -1 : BigInt(a.nonce) > BigInt(b.nonce) ? 1 : 0))
+        .sort((a, b) => {
+          if (BigInt(a.nonce) < BigInt(b.nonce)) {
+            return -1
+          }
+          if (BigInt(a.nonce) > BigInt(b.nonce)) {
+            return 1
+          }
+          return 0
+        })
         .map((proposal) => {
           const mismatch = proposal.integrity?.status === 'mismatch'
           const currency = currencies[deployment.chainId]
           const method = proposal.localDecoded?.method
+          let title = 'Transfer'
+          if (method !== undefined) {
+            title = method
+          } else if (proposal.operation === 1) {
+            title = 'Delegatecall'
+          } else if (proposal.data !== '0x') {
+            title = 'Contract call'
+          }
+          let description = 'Transaction'
+          if (method) {
+            description = 'Contract interaction'
+          } else if (proposal.data === '0x' && currency) {
+            description = `${formatUnits(proposal.value, currency.decimals)} ${currency.symbol}`
+          }
           return (
             <RequestCard
               key={proposal.safeTxHash}
-              title={
-                method ??
-                (proposal.operation === 1
-                  ? 'Delegatecall'
-                  : proposal.data !== '0x'
-                    ? 'Contract call'
-                    : 'Transfer')
-              }
+              title={title}
               icon={<Icon name={proposal.data === '0x' ? 'arrowRight' : 'ethereum'} size='medium' />}
               status={mismatch ? 'Needs review' : 'Pending'}
               tone={mismatch ? 'danger' : 'accent'}
@@ -66,12 +81,7 @@ export function SafeQueueView({
               onOpen={() => onSelect(deployment.chainId, proposal.safeTxHash)}
             >
               <Text tone='secondary' variant='supporting'>
-                {method
-                  ? 'Contract interaction'
-                  : proposal.data === '0x' && currency
-                    ? `${formatUnits(proposal.value, currency.decimals)} ${currency.symbol}`
-                    : 'Transaction'}{' '}
-                · {shortAddress(proposal.to)}
+                {description} · {shortAddress(proposal.to)}
               </Text>
             </RequestCard>
           )
@@ -80,11 +90,12 @@ export function SafeQueueView({
   const hasUnknownQueue = deployments.some(
     (deployment) => deployment.pending === undefined && !deployment.error
   )
-  const emptyText = hasQueueError
-    ? 'Pending requests unavailable'
-    : refreshing || hasUnknownQueue
-      ? 'Checking for pending requests'
-      : 'No pending requests'
+  let emptyText = 'No pending requests'
+  if (hasQueueError) {
+    emptyText = 'Pending requests unavailable'
+  } else if (refreshing || hasUnknownQueue) {
+    emptyText = 'Checking for pending requests'
+  }
 
   return (
     <section aria-label='Account requests'>

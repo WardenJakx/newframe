@@ -6,14 +6,16 @@ export const hexToInt = (hex: string) => parseInt(hex, 16)
 export const weiIntToEthInt = (wei: number) => wei / 1e18
 
 export function roundGwei(gwei: number) {
-  const rounded =
-    gwei >= 10
-      ? Math.round(gwei)
-      : gwei >= 5
-        ? Math.round(gwei * 10) / 10
-        : gwei >= 1
-          ? Math.round(gwei * 100) / 100
-          : Math.round(gwei * 1000) / 1000
+  let rounded: number
+  if (gwei >= 10) {
+    rounded = Math.round(gwei)
+  } else if (gwei >= 5) {
+    rounded = Math.round(gwei * 10) / 10
+  } else if (gwei >= 1) {
+    rounded = Math.round(gwei * 100) / 100
+  } else {
+    rounded = Math.round(gwei * 1000) / 1000
+  }
 
   return parseFloat(rounded.toString())
 }

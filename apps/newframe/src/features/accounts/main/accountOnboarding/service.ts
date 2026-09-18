@@ -264,14 +264,16 @@ export function createAccountOnboardingService(ports: AccountOnboardingPorts): A
         failureType(command),
         async () => {
           const signer = command.source === 'signer' ? ports.signers.get(command.signerId) : undefined
-          const address =
-            command.source === 'signer'
-              ? signer?.addresses.find(
-                  (candidate) => candidate.toLowerCase() === command.address.toLowerCase()
-                )
-              : isAddress(command.addressOrName)
-                ? command.addressOrName
-                : await ports.nameResolution.resolve(command.addressOrName)
+          let address: string | undefined
+          if (command.source === 'signer') {
+            address = signer?.addresses.find(
+              (candidate) => candidate.toLowerCase() === command.address.toLowerCase()
+            )
+          } else if (isAddress(command.addressOrName)) {
+            address = command.addressOrName
+          } else {
+            address = await ports.nameResolution.resolve(command.addressOrName)
+          }
           if (!address || !isAddress(address) || (command.source === 'signer' && !signer)) {
             throw new Error('Account not found')
           }
@@ -383,12 +385,12 @@ export function createAccountOnboardingService(ports: AccountOnboardingPorts): A
           ports.hardware.pairLattice(command.signerId, command.value)
         )
       }
-      const phase =
-        command.input === 'pin'
-          ? 'pin_submitted'
-          : command.input === 'passphrase'
-            ? 'passphrase_submitted'
-            : 'device_passphrase_selected'
+      let phase = 'device_passphrase_selected'
+      if (command.input === 'pin') {
+        phase = 'pin_submitted'
+      } else if (command.input === 'passphrase') {
+        phase = 'passphrase_submitted'
+      }
       return runHardwareAction(command, owner, phase, () => ports.hardware.submitTrezorInput(command))
     }
   }
