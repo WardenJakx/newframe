@@ -84,10 +84,16 @@ export function addAccountReducer(state: AddAccountState, event: AddAccountEvent
       return { ...resetDraft(state), addAccountCategory: '', addAccountType: '', addVaultState: null }
     case 'flow.category-selected': {
       const reset = resetDraft(state)
+      let addAccountType = ''
+      if (event.category === 'watch') {
+        addAccountType = 'watch'
+      } else if (event.category === 'createSeed') {
+        addAccountType = 'seed'
+      }
       return {
         ...reset,
         addAccountCategory: event.category,
-        addAccountType: event.category === 'watch' ? 'watch' : event.category === 'createSeed' ? 'seed' : ''
+        addAccountType
       }
     }
     case 'flow.type-selected':

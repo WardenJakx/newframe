@@ -104,14 +104,14 @@ export function getDefaultContraAsset({
       (asset) => asset.chainId === targetAsset.chainId && !isSameFlashAsset(asset, targetAsset)
     )
   )
-  const candidates =
-    side === 'sell'
-      ? uniqueFlashAssets(
-          sortContraCandidates([...sameChainOptions, ...defaultCandidates].filter(isPreferredSellContraAsset))
-        )
-      : sameChainOptions.length
-        ? sameChainOptions
-        : defaultCandidates
+  let candidates = defaultCandidates
+  if (side === 'sell') {
+    candidates = uniqueFlashAssets(
+      sortContraCandidates([...sameChainOptions, ...defaultCandidates].filter(isPreferredSellContraAsset))
+    )
+  } else if (sameChainOptions.length) {
+    candidates = sameChainOptions
+  }
 
   return candidates.find((asset) => hasAssetBalance(asset, balances)) ?? candidates[0] ?? FLASH_USDC_ASSET
 }

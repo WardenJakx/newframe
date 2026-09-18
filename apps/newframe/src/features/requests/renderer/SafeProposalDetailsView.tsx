@@ -71,19 +71,20 @@ export function SafeProposalDetailsView({
     !appLocked &&
     !!onRecoverSigner
   const signingReady = selectedOwner?.status === 'ready'
-  const actionLabel = published
-    ? 'Confirmation published'
-    : confirmation?.status === 'publishing'
-      ? 'Publishing…'
-      : confirmation?.status === 'signing'
-        ? 'Signing…'
-        : retryPublication
-          ? 'Retry publication'
-          : selectedOwner && !selectedOwner.signerAttached
-            ? 'No signer attached'
-            : recoverable
-              ? 'Connect signer'
-              : 'Sign'
+  let actionLabel = 'Sign'
+  if (published) {
+    actionLabel = 'Confirmation published'
+  } else if (confirmation?.status === 'publishing') {
+    actionLabel = 'Publishing…'
+  } else if (confirmation?.status === 'signing') {
+    actionLabel = 'Signing…'
+  } else if (retryPublication) {
+    actionLabel = 'Retry publication'
+  } else if (selectedOwner && !selectedOwner.signerAttached) {
+    actionLabel = 'No signer attached'
+  } else if (recoverable) {
+    actionLabel = 'Connect signer'
+  }
   const ownerDescription = (owner: SafeOwnerAccount) => {
     const type = signerTypeLabel(owner.signerType)
     return signerIsReady(owner.signerStatus)
@@ -104,16 +105,16 @@ export function SafeProposalDetailsView({
     simulation.status === 'success' || (simulation.status === 'error' && simulation.failure === 'inner')
       ? simulation.effects
       : []
-  const effectsEmptyText =
-    simulation.status === 'loading'
-      ? 'Simulating…'
-      : simulation.status === 'success'
-        ? 'No supported asset changes detected.'
-        : simulation.status === 'unavailable'
-          ? 'Simulation unavailable.'
-          : simulation.failure === 'revert'
-            ? 'Execution reverted. No changes applied.'
-            : 'No remaining asset or allowance changes detected.'
+  let effectsEmptyText = 'No remaining asset or allowance changes detected.'
+  if (simulation.status === 'loading') {
+    effectsEmptyText = 'Simulating…'
+  } else if (simulation.status === 'success') {
+    effectsEmptyText = 'No supported asset changes detected.'
+  } else if (simulation.status === 'unavailable') {
+    effectsEmptyText = 'Simulation unavailable.'
+  } else if (simulation.failure === 'revert') {
+    effectsEmptyText = 'Execution reverted. No changes applied.'
+  }
   const effectsNotice =
     simulation.status === 'error' || simulation.status === 'unavailable' ? simulation.error : undefined
   const addressValue = (address: string) =>
@@ -152,6 +153,20 @@ export function SafeProposalDetailsView({
         ]
       : [])
   ]
+  let actionTitle = 'Call contract'
+  if (nativeTransfer) {
+    actionTitle = `Send ${nativeAmount}`
+  } else if (proposal.localDecoded) {
+    actionTitle = `Call ${proposal.localDecoded.method}`
+  }
+  let statusLabel = 'Pending proposal'
+  if (stale) {
+    statusLabel = 'Stale proposal'
+  } else if (waiting) {
+    statusLabel = 'Waiting for earlier transactions'
+  } else if (hasEnoughConfirmations) {
+    statusLabel = 'Awaiting execution'
+  }
 
   return (
     <section aria-label='Request review'>
@@ -159,13 +174,7 @@ export function SafeProposalDetailsView({
         imageCapability={capabilities.external}
         originName='Safe proposal'
         clipboard={capabilities.external}
-        actionTitle={
-          nativeTransfer
-            ? `Send ${nativeAmount}`
-            : proposal.localDecoded
-              ? `Call ${proposal.localDecoded.method}`
-              : 'Call contract'
-        }
+        actionTitle={actionTitle}
         actionNotice={
           !nativeTransfer && !proposal.localDecoded ? (
             <Text variant='caption' tone='secondary'>
@@ -211,15 +220,7 @@ export function SafeProposalDetailsView({
         networkName={networkName}
         networkIcon={networkIcon}
         nativeCurrency={{ symbol }}
-        statusLabel={
-          stale
-            ? 'Stale proposal'
-            : waiting
-              ? 'Waiting for earlier transactions'
-              : hasEnoughConfirmations
-                ? 'Awaiting execution'
-                : 'Pending proposal'
-        }
+        statusLabel={statusLabel}
         effects={effects}
         effectsEmptyText={effectsEmptyText}
         effectsNotice={

@@ -593,8 +593,18 @@ export class NewframeDriver {
         'input[type="range"][aria-label$=" amount percentage"]'
       )
       const tone = slider?.dataset.tone ?? ''
-      const side = tone === 'special' ? 'buy' : tone === 'danger' ? 'sell' : ''
-      const intentLabel = side === 'buy' ? 'BUY' : side === 'sell' ? 'SELL' : ''
+      let side = ''
+      if (tone === 'special') {
+        side = 'buy'
+      } else if (tone === 'danger') {
+        side = 'sell'
+      }
+      let intentLabel = ''
+      if (side === 'buy') {
+        intentLabel = 'BUY'
+      } else if (side === 'sell') {
+        intentLabel = 'SELL'
+      }
       const intent = Array.from(document.querySelectorAll<HTMLElement>('[data-tone]')).find(
         (element) => element.textContent?.trim() === intentLabel
       )

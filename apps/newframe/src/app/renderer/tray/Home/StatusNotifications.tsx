@@ -152,6 +152,11 @@ export default function StatusNotifications({
         const metadata = notificationMetadata(notification, label)
         const shownAt = notificationTimestamp(notification)
 
+        let glyphState: 'completed' | 'failed' | 'pending' = 'pending'
+        if (state === 'completed' || state === 'failed') {
+          glyphState = state
+        }
+
         return (
           <div
             key={notification.id}
@@ -167,9 +172,7 @@ export default function StatusNotifications({
             role='button'
             tabIndex={0}
           >
-            <StatusGlyph
-              state={state === 'completed' ? 'completed' : state === 'failed' ? 'failed' : 'pending'}
-            />
+            <StatusGlyph state={glyphState} />
             <span className={chainRecipe()}>{renderChainIcon(notification)}</span>
             <Stack gap='xsmall' grow>
               <Stack direction='row' gap='xsmall'>

@@ -81,6 +81,10 @@ export default function RequestItem({
   const notice = (req.notice ?? '').toLowerCase()
   const tone = requestTone(req.status)
   const inactive = ['error', 'declined', 'confirmed'].includes(req.status ?? '')
+  let state: 'failed' | 'completed' | 'pending' = 'pending'
+  if (inactive) {
+    state = tone === 'danger' ? 'failed' : 'completed'
+  }
 
   return (
     <RequestCard
@@ -88,7 +92,7 @@ export default function RequestItem({
       icon={<RequestIcon img={img} svgName={svgName} />}
       status={status}
       tone={tone}
-      state={inactive ? (tone === 'danger' ? 'failed' : 'completed') : 'pending'}
+      state={state}
       aside={
         <Text tone={ago === 'NEW' ? 'accent' : 'muted'} variant='caption' shrink={false}>
           {ago}

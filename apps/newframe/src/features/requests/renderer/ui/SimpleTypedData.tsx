@@ -8,6 +8,7 @@ import type { Eip712Digests } from '../../contract/requests'
 import { RequestOrigin } from './RequestOrigin'
 
 type SimpleJsonRow = {
+  path: string
   label: string
   value: string
 }
@@ -86,16 +87,16 @@ const flattenJsonRows = (json: unknown, prefix = ''): SimpleJsonRow[] => {
   }
 
   const value = formatValue(json)
-  return value === undefined || !prefix ? [] : [{ label: formatLabel(prefix), value }]
+  return value === undefined || !prefix ? [] : [{ path: prefix, label: formatLabel(prefix), value }]
 }
 
 const SimpleJSON = ({ rows }: { rows: SimpleJsonRow[] }) => {
   return (
     <Stack gap='none'>
-      {rows.map((row, index) => (
+      {rows.map((row) => (
         <DetailRow
           code
-          key={`${row.label}:${index}`}
+          key={row.path}
           label={row.label}
           labelVariant='overline'
           value={row.value}

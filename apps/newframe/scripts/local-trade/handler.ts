@@ -340,12 +340,12 @@ function validateOrderParameters(body: Record<string, any>, orderType: FlashOrde
       validationError(`Local Flash ${orderType} requires exactly one trigger`)
     }
 
-    const expected =
-      orderType === FLASH_STOP_ORDER_TYPE
-        ? { side: 'buy', triggerType: 'upper' }
-        : orderType === FLASH_STOP_LOSS_ORDER_TYPE
-          ? { side: 'sell', triggerType: 'lower' }
-          : { side: 'sell', triggerType: 'upper' }
+    let expected = { side: 'sell', triggerType: 'upper' }
+    if (orderType === FLASH_STOP_ORDER_TYPE) {
+      expected = { side: 'buy', triggerType: 'upper' }
+    } else if (orderType === FLASH_STOP_LOSS_ORDER_TYPE) {
+      expected = { side: 'sell', triggerType: 'lower' }
+    }
 
     if (side !== expected.side || triggers[0]?.triggerType !== expected.triggerType) {
       validationError(
@@ -848,6 +848,12 @@ function orderResponse(order: LocalOrderRecord) {
   const localParameters = objectRecord(order.quote.raw).local
   const targetAmount = order.side === 'sell' ? order.quote.inputAmount : order.quote.outputAmount
   const contraAmount = order.side === 'buy' ? order.quote.inputAmount : order.quote.outputAmount
+  let closeReason: string | null = 'REASON_FULLY_FILLED'
+  if (order.open) {
+    closeReason = null
+  } else if (order.status === 'cancelled') {
+    closeReason = 'REASON_USER_REQUESTED'
+  }
   const assetRef = (asset: FlashAsset) => ({
     id: asset.id,
     name: asset.name,
@@ -865,11 +871,7 @@ function orderResponse(order: LocalOrderRecord) {
     ...order,
     normalizedStatus: order.status,
     status: `ORDER_STATUS_${order.status.toUpperCase()}`,
-    closeReason: order.open
-      ? null
-      : order.status === 'cancelled'
-        ? 'REASON_USER_REQUESTED'
-        : 'REASON_FULLY_FILLED',
+    closeReason,
     funderAddress: order.accountAddress,
     targetAsset: assetRef(order.quote.targetAsset),
     contraAsset: assetRef(order.quote.contraAsset),

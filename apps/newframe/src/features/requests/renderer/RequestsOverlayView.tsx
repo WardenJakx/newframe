@@ -24,6 +24,23 @@ export function RequestsOverlayView({
   onAirGapSigning?: (reference: AirGapRequestReference) => void
 }) {
   const safe = useSafeQueue({ accountId, capabilities, onRecoverSigner, onAirGapSigning })
+  let content = (
+    <Text align='center' tone='disabled' variant='label'>
+      No Pending Requests
+    </Text>
+  )
+  if (safe.review) {
+    content = <SafeProposalDetailsView {...safe.review} />
+  } else if (accountId) {
+    content = (
+      <>
+        {safe.hasSafe ? <SafeQueueView {...safe.queue} /> : null}
+        {showRpcRequests ? (
+          <Requests capabilities={capabilities} expanded account={accountId} moduleId='requests' />
+        ) : null}
+      </>
+    )
+  }
   return (
     <TrayOverlay
       key={safe.review ? `${safe.review.deployment.chainId}:${safe.review.proposal.safeTxHash}` : 'requests'}
@@ -33,20 +50,7 @@ export function RequestsOverlayView({
       padding='small'
       title='Requests'
     >
-      {safe.review ? (
-        <SafeProposalDetailsView {...safe.review} />
-      ) : accountId ? (
-        <>
-          {safe.hasSafe ? <SafeQueueView {...safe.queue} /> : null}
-          {showRpcRequests ? (
-            <Requests capabilities={capabilities} expanded account={accountId} moduleId='requests' />
-          ) : null}
-        </>
-      ) : (
-        <Text align='center' tone='disabled' variant='label'>
-          No Pending Requests
-        </Text>
-      )}
+      {content}
     </TrayOverlay>
   )
 }

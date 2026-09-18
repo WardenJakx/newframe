@@ -312,12 +312,12 @@ function TxReviewView(props: TxReviewProps) {
     }
   })
   const simulationStatus = req.simulation?.status
-  const effectsEmptyText =
-    simulationStatus === 'loading'
-      ? 'Checking asset changes'
-      : simulationStatus === 'error' || simulationStatus === 'unavailable'
-        ? undefined
-        : 'No direct asset changes detected'
+  let effectsEmptyText: string | undefined = 'No direct asset changes detected'
+  if (simulationStatus === 'loading') {
+    effectsEmptyText = 'Checking asset changes'
+  } else if (simulationStatus === 'error' || simulationStatus === 'unavailable') {
+    effectsEmptyText = undefined
+  }
   const notice =
     req.notice && req.notice.toLowerCase() !== (req.status ?? '').toLowerCase() ? req.notice : undefined
   const recipient = transferRecipient(req)
@@ -340,12 +340,12 @@ function TxReviewView(props: TxReviewProps) {
     tokenDecimals <= 255
   const tokenSymbol = token?.symbol ?? req.tokenData?.symbol
   const tokenAmount = toBigInt(amount)
-  const amountText =
-    tokenAmount === undefined
-      ? 'Amount unavailable'
-      : knownDecimals
-        ? `${formatUnits(tokenAmount, tokenDecimals)} ${tokenSymbol ?? 'tokens'}`
-        : `${tokenAmount.toString()} raw units`
+  let amountText = 'Amount unavailable'
+  if (tokenAmount !== undefined) {
+    amountText = knownDecimals
+      ? `${formatUnits(tokenAmount, tokenDecimals)} ${tokenSymbol ?? 'tokens'}`
+      : `${tokenAmount.toString()} raw units`
+  }
   const addressValue = (address: string, nickname?: string) => (
     <AddressIdentity
       address={address}
@@ -357,43 +357,47 @@ function TxReviewView(props: TxReviewProps) {
   )
   const contractName = token?.name ?? tokenSymbol ?? req.decodedData?.contractName ?? req.recipient
   const spender = token?.spender ?? (isApproval ? { address: req.decodedData?.args[0]?.value } : undefined)
-  const details: TransactionInformationDetailRow[] = nativeTransfer
-    ? [{ label: 'To', value: addressValue(to, req.recipient) }]
-    : isTransfer || isApproval
-      ? [
-          {
-            label: isTransfer ? 'To' : 'Spender',
-            value: isTransfer
-              ? recipient?.address
-                ? addressValue(recipient.address, recipient.ens)
-                : 'Recipient unavailable'
-              : spender?.address
-                ? addressValue(spender.address, spender.ens)
-                : 'Spender unavailable'
-          },
-          { label: 'Amount', value: amountText },
-          { label: 'Token contract', value: addressValue(token?.contract?.address ?? to, contractName) }
-        ]
-      : [
-          { label: 'On contract', value: addressValue(to, contractName) },
-          ...(req.decodedData?.args.map((arg, index) => ({
-            label: `${arg.name ?? `Argument ${index + 1}`}${arg.type ? ` (${arg.type})` : ''}`,
-            value: arg.type === 'address' ? addressValue(arg.value) : arg.value
-          })) ?? []),
-          ...(!req.decodedData && calldata && calldata !== '0x'
-            ? [{ label: 'Selector', value: calldata.slice(0, 10) }]
-            : [])
-        ]
+  let details: TransactionInformationDetailRow[]
+  if (nativeTransfer) {
+    details = [{ label: 'To', value: addressValue(to, req.recipient) }]
+  } else if (isTransfer || isApproval) {
+    let counterparty: TransactionInformationDetailRow['value'] = 'Spender unavailable'
+    if (isTransfer) {
+      counterparty = recipient?.address
+        ? addressValue(recipient.address, recipient.ens)
+        : 'Recipient unavailable'
+    } else if (spender?.address) {
+      counterparty = addressValue(spender.address, spender.ens)
+    }
+    details = [
+      {
+        label: isTransfer ? 'To' : 'Spender',
+        value: counterparty
+      },
+      { label: 'Amount', value: amountText },
+      { label: 'Token contract', value: addressValue(token?.contract?.address ?? to, contractName) }
+    ]
+  } else {
+    details = [
+      { label: 'On contract', value: addressValue(to, contractName) },
+      ...(req.decodedData?.args.map((arg, index) => ({
+        label: `${arg.name ?? `Argument ${index + 1}`}${arg.type ? ` (${arg.type})` : ''}`,
+        value: arg.type === 'address' ? addressValue(arg.value) : arg.value
+      })) ?? []),
+      ...(!req.decodedData && calldata && calldata !== '0x'
+        ? [{ label: 'Selector', value: calldata.slice(0, 10) }]
+        : [])
+    ]
+  }
   if (!nativeTransfer && (toBigInt(req.data.value) ?? 0n) > 0n) {
     details.push({ label: 'Attached value', value: `${nativeAmount} ${symbol}` })
   }
-  const actionTitle = nativeTransfer
-    ? `Send ${nativeAmount} ${symbol}`
-    : isTransfer || isApproval
-      ? intent.title
-      : method
-        ? `Call ${method}`
-        : intent.title
+  let actionTitle = intent.title
+  if (nativeTransfer) {
+    actionTitle = `Send ${nativeAmount} ${symbol}`
+  } else if (!isTransfer && !isApproval && method) {
+    actionTitle = `Call ${method}`
+  }
   const transactionHash = req.tx?.hash
 
   return (

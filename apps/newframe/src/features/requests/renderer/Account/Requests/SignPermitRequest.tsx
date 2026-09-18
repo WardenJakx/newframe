@@ -62,11 +62,12 @@ const PermitOverview = ({
 
   const [showCopiedMessage, copySpender] = useCopiedMessage(capabilities.external, spender.address)
 
-  const amountDisplay = isUnlimited(String(value))
-    ? '~UNLIMITED'
-    : tokenData.decimals
-      ? formatUnits(toBigInt(value) ?? 0n, tokenData.decimals)
-      : 'UNKNOWN AMOUNT'
+  let amountDisplay = 'UNKNOWN AMOUNT'
+  if (isUnlimited(String(value))) {
+    amountDisplay = '~UNLIMITED'
+  } else if (tokenData.decimals) {
+    amountDisplay = formatUnits(toBigInt(value) ?? 0n, tokenData.decimals)
+  }
 
   const amountSuffix = tokenData.symbol || 'UNKNOWN TOKEN'
 

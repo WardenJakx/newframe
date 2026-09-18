@@ -30,13 +30,13 @@ const runAllTimers = async () => {
 
 function setupComponent(jsx: ReactElement, opts: ComponentRenderOptions = {}) {
   const { advanceTimersAfterInput, rendererState, wrapper, ...options } = opts
-  const advanceTimers =
-    options.advanceTimers ??
-    (advanceTimersAfterInput === true
-      ? runAllTimers
-      : advanceTimersAfterInput !== undefined && advanceTimersAfterInput !== false
-        ? () => advanceTimersByTime(advanceTimersAfterInput)
-        : undefined)
+  let advanceTimers = options.advanceTimers
+  if (!advanceTimers && advanceTimersAfterInput === true) {
+    advanceTimers = runAllTimers
+  } else if (!advanceTimers && typeof advanceTimersAfterInput === 'number') {
+    const delay = advanceTimersAfterInput
+    advanceTimers = () => advanceTimersByTime(delay)
+  }
 
   const state = rendererState ?? getRendererStateFixtureForRender()
   const RendererStateWrapper = createRendererStateWrapper(state)

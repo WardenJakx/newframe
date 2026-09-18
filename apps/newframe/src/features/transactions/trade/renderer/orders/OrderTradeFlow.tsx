@@ -40,7 +40,12 @@ export function OrderTradeFlow({
 }) {
   const side = normalizeOrderSide(order.side)
   const amounts = orderAssetAmounts(order)
-  const arrow = side === 'buy' ? '←' : side === 'sell' ? '→' : '↔'
+  let arrow = '↔'
+  if (side === 'buy') {
+    arrow = '←'
+  } else if (side === 'sell') {
+    arrow = '→'
+  }
 
   return (
     <div aria-label={orderPairIntent(order)} className={tradeFlowRecipe()}>

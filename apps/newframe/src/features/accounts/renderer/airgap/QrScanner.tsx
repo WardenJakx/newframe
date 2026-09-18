@@ -5,6 +5,19 @@ import { useEffect, useRef, useState } from 'react'
 import { cva } from '../../../../../generated/styled-system/css/cva.js'
 import type { QrCameraCapability } from '../../../../platform/desktop/renderer/camera'
 
+function cameraErrorMessage(reason: Error) {
+  if (reason.name === 'NotAllowedError' || reason.name === 'SecurityError') {
+    return 'Camera access denied. Allow Newframe in system Settings > Privacy & Security > Camera, then retry.'
+  }
+  if (reason.name === 'NotFoundError' || reason.name === 'TypeError') {
+    return 'No camera available. Connect a camera and retry, or cancel.'
+  }
+  if (reason.name === 'NotReadableError') {
+    return 'Camera is busy or unavailable. Close other camera apps and retry.'
+  }
+  return reason.message || 'Could not scan this QR. Retry or cancel.'
+}
+
 const previewRecipe = cva({ base: { width: '100%', maxHeight: '240px', borderRadius: 'control' } })
 
 export function QrScanner({
@@ -46,15 +59,7 @@ export function QrScanner({
       }
       current = false
       session?.stop()
-      callbacks.current.onError(
-        reason.name === 'NotAllowedError' || reason.name === 'SecurityError'
-          ? 'Camera access denied. Allow Newframe in system Settings > Privacy & Security > Camera, then retry.'
-          : reason.name === 'NotFoundError' || reason.name === 'TypeError'
-            ? 'No camera available. Connect a camera and retry, or cancel.'
-            : reason.name === 'NotReadableError'
-              ? 'Camera is busy or unavailable. Close other camera apps and retry.'
-              : reason.message || 'Could not scan this QR. Retry or cancel.'
-      )
+      callbacks.current.onError(cameraErrorMessage(reason))
     }
     try {
       session = camera.start(video.current, {

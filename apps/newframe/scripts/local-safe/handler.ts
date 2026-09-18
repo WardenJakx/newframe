@@ -31,38 +31,42 @@ export function createSafeHandler(options: {
   })
   const proposals = (
     options.proposals ??
-    Array.from({ length: options.includeMismatch ? 5 : 4 }, (_, index) => ({
-      safeTxHash: `0x${'0'.repeat(64)}`,
-      safeTxGas: '0',
-      baseGas: '0',
-      gasPrice: '0',
-      gasToken: ZeroAddress,
-      refundReceiver: ZeroAddress,
-      safe,
-      nonce: (BigInt(configuration.nonce) + BigInt(index > 1 ? index - 1 : 0)).toString(),
-      to: configuration.owners[0],
-      value: index === 0 ? '1000000000000000000' : '0',
-      operation: index === 3 ? 1 : 0,
-      data:
-        index === 3
-          ? '0xdeadbeef00112233'
-          : index === 2
-            ? `0xa9059cbb${configuration.owners[0].slice(2).toLowerCase().padStart(64, '0')}${'1'.padStart(64, '0')}`
-            : '0x',
-      ...(index === 2
-        ? {
-            dataDecoded: {
-              method: 'transfer',
-              parameters: [
-                { name: 'to', type: 'address', value: configuration.owners[0] },
-                { name: 'value', type: 'uint256', value: '1' }
-              ]
+    Array.from({ length: options.includeMismatch ? 5 : 4 }, (_, index) => {
+      let data = '0x'
+      if (index === 3) {
+        data = '0xdeadbeef00112233'
+      } else if (index === 2) {
+        data = `0xa9059cbb${configuration.owners[0].slice(2).toLowerCase().padStart(64, '0')}${'1'.padStart(64, '0')}`
+      }
+
+      return {
+        safeTxHash: `0x${'0'.repeat(64)}`,
+        safeTxGas: '0',
+        baseGas: '0',
+        gasPrice: '0',
+        gasToken: ZeroAddress,
+        refundReceiver: ZeroAddress,
+        safe,
+        nonce: (BigInt(configuration.nonce) + BigInt(index > 1 ? index - 1 : 0)).toString(),
+        to: configuration.owners[0],
+        value: index === 0 ? '1000000000000000000' : '0',
+        operation: index === 3 ? 1 : 0,
+        data,
+        ...(index === 2
+          ? {
+              dataDecoded: {
+                method: 'transfer',
+                parameters: [
+                  { name: 'to', type: 'address', value: configuration.owners[0] },
+                  { name: 'value', type: 'uint256', value: '1' }
+                ]
+              }
             }
-          }
-        : {}),
-      confirmations:
-        index === 0 ? [] : configuration.owners.slice(0, index === 1 ? configuration.threshold : 1)
-    })).map((proposal) => ({
+          : {}),
+        confirmations:
+          index === 0 ? [] : configuration.owners.slice(0, index === 1 ? configuration.threshold : 1)
+      }
+    }).map((proposal) => ({
       ...proposal,
       safeTxHash: TypedDataEncoder.hash(
         {

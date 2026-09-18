@@ -129,7 +129,7 @@
         "no-new-func": "error",
         "unicorn/error-message": "error",
         "curly": "error",
-        "no-nested-ternary": "warn",
+        "no-nested-ternary": "error",
         "no-script-url": "error"
       },
       "env": {
@@ -428,7 +428,7 @@
         "react-hooks-js/config": "error",
         "react-hooks-js/gating": "error",
         "react/no-danger": "error",
-        "react/no-array-index-key": "warn"
+        "react/no-array-index-key": "error"
       },
       "plugins": ["react"],
       "jsPlugins": [

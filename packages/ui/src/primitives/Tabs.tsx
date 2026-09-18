@@ -15,17 +15,24 @@ export type TabsProps<T extends string> = {
 export function Tabs<T extends string>({ appearance = 'segmented', label, items, onSelect }: TabsProps<T>) {
   const tabs = (
     <Inline gap={appearance === 'underline' ? 'large' : 'xsmall'}>
-      {items.map((item) => (
-        <Tab appearance={appearance} key={item.id} onSelect={() => onSelect(item.id)} selected={item.active}>
-          <Text
-            align='center'
-            variant={appearance === 'underline' ? 'label' : 'action'}
-            tone={item.active ? (appearance === 'underline' ? 'primary' : 'accent') : 'secondary'}
+      {items.map((item) => {
+        let tone: 'accent' | 'primary' | 'secondary' = 'secondary'
+        if (item.active) {
+          tone = appearance === 'underline' ? 'primary' : 'accent'
+        }
+        return (
+          <Tab
+            appearance={appearance}
+            key={item.id}
+            onSelect={() => onSelect(item.id)}
+            selected={item.active}
           >
-            {item.label}
-          </Text>
-        </Tab>
-      ))}
+            <Text align='center' variant={appearance === 'underline' ? 'label' : 'action'} tone={tone}>
+              {item.label}
+            </Text>
+          </Tab>
+        )
+      })}
     </Inline>
   )
 

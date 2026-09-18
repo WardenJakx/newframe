@@ -83,6 +83,12 @@ export function NetworksView(props: NetworksViewProps) {
       const kebabOpen = props.kebabChainId === chain.chainId
       const rpcValue = props.getRpcDraft(chain.chainId)
       const primary = chain.connection?.primary
+      let primaryLabel = primary?.current ?? 'Default'
+      if (primary?.current === 'custom') {
+        primaryLabel = 'Custom'
+      } else if (primary?.current === 'chainlist') {
+        primaryLabel = 'Chainlist'
+      }
 
       return (
         <div key={chain.chainId} className={networkRecipe({ selected })}>
@@ -121,11 +127,7 @@ export function NetworksView(props: NetworksViewProps) {
                       Primary RPC
                     </Text>
                     <Text tone='muted' variant='caption'>
-                      {primary?.current === 'custom'
-                        ? 'Custom'
-                        : primary?.current === 'chainlist'
-                          ? 'Chainlist'
-                          : (primary?.current ?? 'Default')}
+                      {primaryLabel}
                     </Text>
                   </Stack>
                   <Stack align='center' direction='row' gap='xsmall'>

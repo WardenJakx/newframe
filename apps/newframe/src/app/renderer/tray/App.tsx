@@ -108,12 +108,15 @@ const errorMessage = (error: unknown) => {
   }
   return String(error)
 }
-const operationError = (code: string | undefined) =>
-  code === 'incorrect_password'
-    ? 'Incorrect password'
-    : code === 'biometric_authentication_failed'
-      ? 'Biometric authentication failed'
-      : 'Could not unlock Newframe'
+const operationError = (code: string | undefined) => {
+  if (code === 'incorrect_password') {
+    return 'Incorrect password'
+  }
+  if (code === 'biometric_authentication_failed') {
+    return 'Biometric authentication failed'
+  }
+  return 'Could not unlock Newframe'
+}
 const selectPanelState = (
   state: TrayRendererState
 ): Omit<PanelProps, 'biometricRuntime' | 'notifyRequest' | 'requestCapabilities' | 'security'> => ({

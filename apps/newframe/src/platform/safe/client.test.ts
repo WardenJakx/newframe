@@ -295,17 +295,17 @@ test('discovers contracts through the requested chain and imports configuration 
           expect(entry.target).toBe(safe)
           const method = abi.getFunction(entry.callData.slice(0, 10))!.name
           calls.push(method)
+          let result: bigint | string | string[] = 9n
+          if (method === 'VERSION') {
+            result = '1.4.1'
+          } else if (method === 'getOwners') {
+            result = owners
+          } else if (method === 'getThreshold') {
+            result = 2n
+          }
           return {
             success: true,
-            returnData: abi.encodeFunctionResult(method, [
-              method === 'VERSION'
-                ? '1.4.1'
-                : method === 'getOwners'
-                  ? owners
-                  : method === 'getThreshold'
-                    ? 2n
-                    : 9n
-            ])
+            returnData: abi.encodeFunctionResult(method, [result])
           }
         })
       ])

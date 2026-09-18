@@ -71,7 +71,12 @@ function profileNameError(name: string, state: ProfileState, excludedProfileId =
 
 function profileError(state: ProfileState, profileId: string) {
   const profile = state.main.profiles[profileId]
-  return !profile ? 'profile_not_found' : profile.id !== profileId ? 'invalid_profile' : undefined
+  if (!profile) {
+    return 'profile_not_found'
+  }
+  if (profile.id !== profileId) {
+    return 'invalid_profile'
+  }
 }
 
 const failureMessages: Record<string, string> = {

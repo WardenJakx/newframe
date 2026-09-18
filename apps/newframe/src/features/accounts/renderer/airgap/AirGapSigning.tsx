@@ -95,6 +95,27 @@ export function AirGapSigning({
   if (!stillLive) {
     return null
   }
+  let requestQr = <Text>Loading signing QR</Text>
+  if (error) {
+    requestQr = (
+      <>
+        <div role='alert'>
+          <Text tone='danger'>{error}</Text>
+        </div>
+        <Button
+          appearance='control'
+          onPress={() => {
+            setError('')
+            setAttempt((value) => value + 1)
+          }}
+        >
+          Retry QR
+        </Button>
+      </>
+    )
+  } else if (frames.length) {
+    requestQr = <QrCodeSequence active={active} frames={frames} />
+  }
   return (
     <Stack gap='medium'>
       <Text align='center' variant='heading'>
@@ -106,26 +127,7 @@ export function AirGapSigning({
             Scan this request in Vault. Review and approve it manually on your phone, then show Newframe the
             signed QR.
           </Text>
-          {error ? (
-            <>
-              <div role='alert'>
-                <Text tone='danger'>{error}</Text>
-              </div>
-              <Button
-                appearance='control'
-                onPress={() => {
-                  setError('')
-                  setAttempt((value) => value + 1)
-                }}
-              >
-                Retry QR
-              </Button>
-            </>
-          ) : frames.length ? (
-            <QrCodeSequence active={active} frames={frames} />
-          ) : (
-            <Text>Loading signing QR</Text>
-          )}
+          {requestQr}
           {scanError ? (
             <div role='alert'>
               <Text tone='danger'>{scanError}</Text>

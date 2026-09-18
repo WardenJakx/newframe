@@ -166,87 +166,97 @@ export function RequestCommand(props: RequestCommandProps) {
       setState({ txHashCopied: true, showHashDetails: false })
       setTimeout(() => setState({ txHashCopied: false }), 3000)
     }
+    const hashActions = () => {
+      if (!hash) {
+        return null
+      }
+      if (state.txHashCopied) {
+        return (
+          <Surface padding='small' radius='pill' tone='raised'>
+            <Text align='center' variant='caption'>
+              Transaction hash copied
+            </Text>
+          </Surface>
+        )
+      }
+      if (state.showHashDetails || req.status === 'confirming' || req.status === 'confirmed') {
+        return (
+          <Stack direction='row' equal gap='xsmall'>
+            <Button
+              appearance='control'
+              disabled={!props.shared.chain.explorer}
+              label='Open transaction explorer'
+              onPress={() => {
+                if (!props.shared.chain.explorer) {
+                  return
+                }
+                if (props.shared.explorerWarningMuted) {
+                  void props.capabilities.external.openExplorer({
+                    chainId: chain.id,
+                    transactionHash: hash
+                  })
+                } else {
+                  props.notify({ type: 'openExplorer', data: { hash, chain } })
+                }
+              }}
+              size='small'
+            >
+              <Text variant='caption'>Open explorer</Text>
+            </Button>
+            <Button appearance='control' label='Copy transaction hash' onPress={copyHash} size='small'>
+              <Text variant='caption'>Copy hash</Text>
+            </Button>
+          </Stack>
+        )
+      }
+      return (
+        <Stack direction='row' equal gap='xsmall'>
+          <Button
+            appearance='danger'
+            label='Cancel transaction'
+            onPress={() =>
+              void props.capabilities.transaction.replace({
+                requestId: req.handlerId,
+                replacement: 'cancel',
+                idempotencyKey: crypto.randomUUID()
+              })
+            }
+            size='small'
+          >
+            <Text variant='caption'>Cancel</Text>
+          </Button>
+          <Button
+            appearance='control'
+            label='View transaction details'
+            onPress={() => setState({ showHashDetails: true })}
+            size='small'
+          >
+            <Text variant='caption'>Details</Text>
+          </Button>
+          <Button
+            appearance='subtle'
+            label='Speed up transaction'
+            onPress={() =>
+              void props.capabilities.transaction.replace({
+                requestId: req.handlerId,
+                replacement: 'speed',
+                idempotencyKey: crypto.randomUUID()
+              })
+            }
+            size='small'
+          >
+            <Text variant='caption'>Speed up</Text>
+          </Button>
+        </Stack>
+      )
+    }
 
     return (
       <Stack align='center' gap='small'>
         <Text align='center' tone='accent' variant='overline'>
           {displayStatus}
         </Text>
-        {hash ? (
-          state.txHashCopied ? (
-            <Surface padding='small' radius='pill' tone='raised'>
-              <Text align='center' variant='caption'>
-                Transaction hash copied
-              </Text>
-            </Surface>
-          ) : state.showHashDetails || req.status === 'confirming' || req.status === 'confirmed' ? (
-            <Stack direction='row' equal gap='xsmall'>
-              <Button
-                appearance='control'
-                disabled={!props.shared.chain.explorer}
-                label='Open transaction explorer'
-                onPress={() => {
-                  if (!hash || !props.shared.chain.explorer) {
-                    return
-                  }
-                  if (props.shared.explorerWarningMuted) {
-                    void props.capabilities.external.openExplorer({
-                      chainId: chain.id,
-                      transactionHash: hash
-                    })
-                  } else {
-                    props.notify({ type: 'openExplorer', data: { hash, chain } })
-                  }
-                }}
-                size='small'
-              >
-                <Text variant='caption'>Open explorer</Text>
-              </Button>
-              <Button appearance='control' label='Copy transaction hash' onPress={copyHash} size='small'>
-                <Text variant='caption'>Copy hash</Text>
-              </Button>
-            </Stack>
-          ) : (
-            <Stack direction='row' equal gap='xsmall'>
-              <Button
-                appearance='danger'
-                label='Cancel transaction'
-                onPress={() =>
-                  void props.capabilities.transaction.replace({
-                    requestId: req.handlerId,
-                    replacement: 'cancel',
-                    idempotencyKey: crypto.randomUUID()
-                  })
-                }
-                size='small'
-              >
-                <Text variant='caption'>Cancel</Text>
-              </Button>
-              <Button
-                appearance='control'
-                label='View transaction details'
-                onPress={() => setState({ showHashDetails: true })}
-                size='small'
-              >
-                <Text variant='caption'>Details</Text>
-              </Button>
-              <Button
-                appearance='subtle'
-                label='Speed up transaction'
-                onPress={() =>
-                  void props.capabilities.transaction.replace({
-                    requestId: req.handlerId,
-                    replacement: 'speed',
-                    idempotencyKey: crypto.randomUUID()
-                  })
-                }
-                size='small'
-              >
-                <Text variant='caption'>Speed up</Text>
-              </Button>
-            </Stack>
-          )
-        ) : null}
+        {hashActions()}
         {isCancelableRequest(req.status ?? '') ? (
           <Button
             appearance='ghost'
@@ -347,18 +357,23 @@ export function RequestCommand(props: RequestCommandProps) {
     if (req.notice) {
       const pending = req.status === 'pending'
       const failed = req.status === 'error' || req.status === 'declined'
+      let statusState: 'failed' | 'completed' | 'idle' = 'idle'
+      let noticeTone: 'danger' | 'success' | 'primary' = 'primary'
+      if (failed) {
+        statusState = 'failed'
+        noticeTone = 'danger'
+      } else if (req.status === 'success') {
+        statusState = 'completed'
+        noticeTone = 'success'
+      }
       return (
         <Stack align='center' gap='small'>
           {pending ? (
             <Spinner label='Waiting for signer' size='large' />
           ) : (
-            <StatusGlyph state={failed ? 'failed' : req.status === 'success' ? 'completed' : 'idle'} />
+            <StatusGlyph state={statusState} />
           )}
-          <Text
-            align='center'
-            tone={failed ? 'danger' : req.status === 'success' ? 'success' : 'primary'}
-            variant='overline'
-          >
+          <Text align='center' tone={noticeTone} variant='overline'>
             {req.notice}
           </Text>
           {pending ? (

@@ -196,6 +196,35 @@ function AccountActions({
     state.move.kind === 'failed' && state.move.accountId === account.id ? state.move.error : ''
   const otherProfiles = model.profiles.filter((profile) => profile.id !== account.profileId)
   const confirmingRemove = state.removingAccountId === account.id
+  let removeAction: ReactNode
+  if (confirmingRemove && account.lastSeedAccount) {
+    removeAction = (
+      <Stack gap='xsmall'>
+        <Text variant='caption'>This is the last account using this seed phrase.</Text>
+        <Button appearance='control' onPress={() => events.onRemove(false)} size='small'>
+          <Text variant='caption'>Keep seed phrase</Text>
+        </Button>
+        <Button appearance='danger' onPress={() => events.onRemove(true)} size='small'>
+          <Text variant='caption'>Delete seed phrase</Text>
+        </Button>
+        <Button appearance='ghost' onPress={events.onRemoveCancel} size='small'>
+          <Text variant='caption'>Cancel</Text>
+        </Button>
+      </Stack>
+    )
+  } else if (confirmingRemove) {
+    removeAction = (
+      <Button appearance='danger' onPress={() => events.onRemove(false)} size='small'>
+        <Text variant='caption'>Confirm remove</Text>
+      </Button>
+    )
+  } else {
+    removeAction = (
+      <Button appearance='danger' onPress={events.onRemoveOpen} size='small'>
+        <Text variant='caption'>Remove account</Text>
+      </Button>
+    )
+  }
   return (
     <div className={actionsMenuRecipe()} onClick={(event) => event.stopPropagation()}>
       <Stack gap='xsmall'>
@@ -252,28 +281,7 @@ function AccountActions({
             ) : null}
           </>
         ) : null}
-        {confirmingRemove && account.lastSeedAccount ? (
-          <Stack gap='xsmall'>
-            <Text variant='caption'>This is the last account using this seed phrase.</Text>
-            <Button appearance='control' onPress={() => events.onRemove(false)} size='small'>
-              <Text variant='caption'>Keep seed phrase</Text>
-            </Button>
-            <Button appearance='danger' onPress={() => events.onRemove(true)} size='small'>
-              <Text variant='caption'>Delete seed phrase</Text>
-            </Button>
-            <Button appearance='ghost' onPress={events.onRemoveCancel} size='small'>
-              <Text variant='caption'>Cancel</Text>
-            </Button>
-          </Stack>
-        ) : confirmingRemove ? (
-          <Button appearance='danger' onPress={() => events.onRemove(false)} size='small'>
-            <Text variant='caption'>Confirm remove</Text>
-          </Button>
-        ) : (
-          <Button appearance='danger' onPress={events.onRemoveOpen} size='small'>
-            <Text variant='caption'>Remove account</Text>
-          </Button>
-        )}
+        {removeAction}
       </Stack>
     </div>
   )
@@ -309,9 +317,11 @@ export function AccountsView(props: AccountsViewProps) {
             onRevealToggle={props.onExportRevealToggle}
           />
         </ScrollArea>
-      ) : state.panel.kind === 'add' ? (
-        props.addAccountView
-      ) : (
+      ) : null}
+      {!(state.panel.kind === 'export' && exportedAccount) && state.panel.kind === 'add'
+        ? props.addAccountView
+        : null}
+      {!(state.panel.kind === 'export' && exportedAccount) && state.panel.kind !== 'add' ? (
         <>
           <div className={toolsRecipe()}>
             <SearchField
@@ -447,7 +457,7 @@ export function AccountsView(props: AccountsViewProps) {
             </Surface>
           </ScrollArea>
         </>
-      )}
+      ) : null}
     </div>
   )
 }

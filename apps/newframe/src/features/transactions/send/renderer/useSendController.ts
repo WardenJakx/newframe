@@ -158,15 +158,14 @@ export function useSendController({
         symbol: asset.symbol
       }
     : null
+  let fiatValue = '—'
+  if (typeof price === 'number') {
+    fiatValue = amountValue > 0 ? `$${formatUsdRate(amountValue * price, 2)}` : '$0.00'
+  }
 
   const model: SendViewModel = {
     amount: state.amount,
-    fiatValue:
-      typeof price !== 'number'
-        ? '—'
-        : amountValue > 0
-          ? `$${formatUsdRate(amountValue * price, 2)}`
-          : '$0.00',
+    fiatValue,
     firstTimeRecipient:
       !!state.recipient &&
       !hasSentToAddress({

@@ -13,12 +13,12 @@ export function RequestStatusNotice({ notice, status }: RequestStatusNoticeProps
     return null
   }
 
-  const state =
-    status === 'success' || status === 'confirmed'
-      ? 'completed'
-      : status === 'error' || status === 'declined'
-        ? 'failed'
-        : 'pending'
+  let state: 'completed' | 'failed' | 'pending' = 'pending'
+  if (status === 'success' || status === 'confirmed') {
+    state = 'completed'
+  } else if (status === 'error' || status === 'declined') {
+    state = 'failed'
+  }
 
   return (
     <Stack align='center' gap='small' justify='center'>

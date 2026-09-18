@@ -491,12 +491,12 @@ export function tradeReducer(state: TradeWorkflowState, action: TradeWorkflowAct
         return state
       }
 
-      const side =
-        action.orderType === FLASH_STOP_ORDER_TYPE
-          ? 'buy'
-          : [FLASH_STOP_LOSS_ORDER_TYPE, FLASH_TAKE_PROFIT_ORDER_TYPE].includes(action.orderType)
-            ? 'sell'
-            : state.side
+      let side = state.side
+      if (action.orderType === FLASH_STOP_ORDER_TYPE) {
+        side = 'buy'
+      } else if ([FLASH_STOP_LOSS_ORDER_TYPE, FLASH_TAKE_PROFIT_ORDER_TYPE].includes(action.orderType)) {
+        side = 'sell'
+      }
       const inputAmount = side === state.side ? getTradeInputAmount(state) : ''
 
       return applyTradeInputAmount(state, inputAmount, {

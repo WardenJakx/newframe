@@ -98,16 +98,23 @@ export function HomeOverlayRouter({ capabilities }: { capabilities: HomeCapabili
   if (overlay.type === 'none') {
     return null
   }
+  const layers = [...history, overlay].map((entry, position) => ({
+    active: position === history.length,
+    entry,
+    hasHistory: position > 0,
+    hasMenuHistory: history.slice(0, position).some((item) => item.type === 'menu'),
+    path: `overlay[${position}]:${entry.type}`
+  }))
 
   return (
     <div className={layersRecipe()}>
-      {[...history, overlay].map((entry, index) => (
-        <OverlayLayer active={index === history.length} index={index} key={`${index}:${entry.type}`}>
+      {layers.map(({ active, entry, hasHistory, hasMenuHistory, path }, position) => (
+        <OverlayLayer active={active} index={position} key={path}>
           <OverlayRoute
-            active={index === history.length}
+            active={active}
             capabilities={capabilities}
-            hasHistory={index > 0}
-            hasMenuHistory={history.slice(0, index).some((item) => item.type === 'menu')}
+            hasHistory={hasHistory}
+            hasMenuHistory={hasMenuHistory}
             overlay={entry}
           />
         </OverlayLayer>

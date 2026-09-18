@@ -120,9 +120,15 @@ export function serviceCalldataMismatch(proposal: SafeProposal): boolean {
     const abi = new Interface([
       `function ${decoded.method}(${decoded.parameters.map((p) => p.type).join(',')})`
     ])
-    const values = decoded.parameters.map((p) =>
-      p.type === 'bool' ? (p.value === 'true' ? true : p.value === 'false' ? false : p.value) : p.value
-    )
+    const values = decoded.parameters.map((p) => {
+      if (p.type !== 'bool') {
+        return p.value
+      }
+      if (p.value === 'true') {
+        return true
+      }
+      return p.value === 'false' ? false : p.value
+    })
     // Ethers coerces arbitrary strings to bool, so reject anything but literal booleans.
     if (decoded.parameters.some((p) => p.type === 'bool' && !['true', 'false'].includes(p.value))) {
       return false

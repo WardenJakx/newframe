@@ -79,12 +79,12 @@ function executionEvents(trace: TraceCall, safe: string): Array<{ name: string; 
       continue
     }
     // Safe 1.5 indexes txHash; earlier releases encode both fields in data.
-    const hash =
-      log.topics.length === 2 && /^0x[0-9a-f]{64}$/i.test(log.data)
-        ? log.topics[1]
-        : log.topics.length === 1 && /^0x[0-9a-f]{128}$/i.test(log.data)
-          ? `0x${log.data.slice(2, 66)}`
-          : undefined
+    let hash: string | undefined
+    if (log.topics.length === 2 && /^0x[0-9a-f]{64}$/i.test(log.data)) {
+      hash = log.topics[1]
+    } else if (log.topics.length === 1 && /^0x[0-9a-f]{128}$/i.test(log.data)) {
+      hash = `0x${log.data.slice(2, 66)}`
+    }
     if (hash) {
       events.push({ name, hash: hash.toLowerCase() })
     }

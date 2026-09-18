@@ -712,11 +712,10 @@ async function fetchDescriptor(
   }
 
   const descriptor = await fetchJson<Erc7730Descriptor>(url, fetcher)
-  const includes = descriptor.includes
-    ? Array.isArray(descriptor.includes)
-      ? descriptor.includes
-      : [descriptor.includes]
-    : []
+  let includes: string[] = []
+  if (descriptor.includes) {
+    includes = Array.isArray(descriptor.includes) ? descriptor.includes : [descriptor.includes]
+  }
 
   const included =
     includes.length && depth < MAX_INCLUDE_DEPTH

@@ -111,11 +111,18 @@ export function OrdersView({
         const contraSymbol = orderAssetSymbol(order.contraAsset)
         const resultAmount = filled && contraAmount !== '—' ? `${contraAmount} ${contraSymbol}` : ''
         const resultNotional = filled ? orderContraNotional(order) : '—'
-        const statusTone = ['filled', 'complete', 'completed'].includes(statusKey)
-          ? 'success'
-          : open
-            ? 'secondary'
-            : 'danger'
+        let statusTone: 'danger' | 'secondary' | 'success' = 'danger'
+        if (['filled', 'complete', 'completed'].includes(statusKey)) {
+          statusTone = 'success'
+        } else if (open) {
+          statusTone = 'secondary'
+        }
+        let sideTone: 'danger' | 'secondary' | 'special' = 'secondary'
+        if (side === 'buy') {
+          sideTone = 'special'
+        } else if (side === 'sell') {
+          sideTone = 'danger'
+        }
         const error = cancelErrors[order.orderId] || ''
 
         return (
@@ -142,10 +149,7 @@ export function OrdersView({
               <Stack gap='xsmall' grow>
                 <Stack align='center' direction='row' gap='xsmall'>
                   <Text variant='label'>{orderTypeLabel(order)}</Text>
-                  <Text
-                    tone={side === 'buy' ? 'special' : side === 'sell' ? 'danger' : 'secondary'}
-                    variant='label'
-                  >
+                  <Text tone={sideTone} variant='label'>
                     {orderSideLabel(order)}
                   </Text>
                 </Stack>

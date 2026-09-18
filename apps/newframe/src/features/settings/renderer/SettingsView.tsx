@@ -98,11 +98,12 @@ export function SettingsView({
   settings
 }: SettingsViewProps) {
   const [resetConfirm, setResetConfirm] = useState(false)
-  const portfolioApiKeyDetail = drafts.portfolioApiKeyRequired
-    ? 'Enter a Zerion API key before enabling'
-    : drafts.portfolioApiKeyConfigured
-      ? 'Fetch portfolio tokens and balances from Zerion'
-      : 'Add a Zerion API key to enable'
+  let portfolioApiKeyDetail = 'Add a Zerion API key to enable'
+  if (drafts.portfolioApiKeyRequired) {
+    portfolioApiKeyDetail = 'Enter a Zerion API key before enabling'
+  } else if (drafts.portfolioApiKeyConfigured) {
+    portfolioApiKeyDetail = 'Fetch portfolio tokens and balances from Zerion'
+  }
   const trezorOptions: Array<{
     text: string
     value: Extract<SettingsUpdateInput, { setting: 'trezor-derivation' }>['value']

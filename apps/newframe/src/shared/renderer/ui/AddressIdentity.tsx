@@ -75,25 +75,26 @@ export function AddressIdentity({
       {addressDisplay}
     </Text>
   )
+  let identityText = hasNickname ? null : displayText
+  if (address) {
+    identityText = addressText
+    if (nickname && showFullAddress) {
+      identityText = (
+        <HoverSwapText alternate={addressText}>
+          <Text align='end' truncate variant='code'>
+            {shortAddress(address)}
+          </Text>
+        </HoverSwapText>
+      )
+    }
+  }
 
   return (
     <span className={addressIdentityRecipe()} data-address-identity=''>
       {address ? <AddressAvatar address={address} accountType={accountType} /> : null}
       <span className={addressTextRecipe()}>
         {hasNickname ? displayText : null}
-        {address ? (
-          nickname && showFullAddress ? (
-            <HoverSwapText alternate={addressText}>
-              <Text align='end' truncate variant='code'>
-                {shortAddress(address)}
-              </Text>
-            </HoverSwapText>
-          ) : (
-            addressText
-          )
-        ) : !hasNickname ? (
-          displayText
-        ) : null}
+        {identityText}
       </span>
       {address && showCopy && clipboard ? (
         <CopyButton

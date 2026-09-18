@@ -91,6 +91,10 @@ export default function MessageToSign({
     ['Not before', signIn.notBefore],
     ['Request ID', signIn.requestId]
   ]
+  const resources = signIn.resources?.map((value, position) => ({
+    path: `${position}:${value}`,
+    value
+  }))
 
   return (
     <Surface padding='large' tone='transparent'>
@@ -136,14 +140,14 @@ export default function MessageToSign({
               </Text>
             ) : null}
             {signIn.statement ? <Text variant='body'>{signIn.statement}</Text> : null}
-            {signIn.resources?.length ? (
+            {resources?.length ? (
               <Stack gap='small'>
                 <Text tone='secondary' variant='overline'>
                   Resources
                 </Text>
-                {signIn.resources.map((resource, index) => (
-                  <div className={valueRecipe()} key={`${index}:${resource}`}>
-                    <Text variant='code'>{resource}</Text>
+                {resources.map((resource) => (
+                  <div className={valueRecipe()} key={resource.path}>
+                    <Text variant='code'>{resource.value}</Text>
                   </div>
                 ))}
               </Stack>

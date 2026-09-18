@@ -2047,12 +2047,12 @@ export class Accounts extends EventEmitter {
       } else if (errorMessage.includes('insufficient funds')) {
         notice = errorMessage.includes('for gas') ? 'insufficient funds for gas' : 'insufficient funds'
       } else {
-        notice =
-          err && typeof err === 'string'
-            ? err
-            : err && typeof err === 'object' && err.message && typeof err.message === 'string'
-              ? err.message
-              : 'Unknown Error' // TODO: Update to normalize input type
+        notice = 'Unknown Error' // TODO: Update to normalize input type
+        if (err && typeof err === 'string') {
+          notice = err
+        } else if (err && typeof err === 'object' && err.message && typeof err.message === 'string') {
+          notice = err.message
+        }
       }
 
       requestAccount.patchRequest(handlerId, (request) => {

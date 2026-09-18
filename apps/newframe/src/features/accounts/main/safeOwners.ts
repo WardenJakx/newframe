@@ -23,11 +23,20 @@ export function deriveSafeOwners(
           const historicalType = getSignerType(account.lastSignerType.toLowerCase())
           const watchOnly =
             !signingType && !historicalType && (!account.signer || signer?.type.toLowerCase() === 'address')
-          const status = watchOnly
-            ? 'watch-only'
-            : signer && signingType && isSignerReady(signer) && !appLock.locked
-              ? 'ready'
-              : 'unavailable'
+          let status: SafeOwnerAccount['status'] = 'unavailable'
+          if (watchOnly) {
+            status = 'watch-only'
+          } else if (signer && signingType && isSignerReady(signer) && !appLock.locked) {
+            status = 'ready'
+          }
+          let signerStatus = signer?.status || 'Signer unavailable'
+          if (status === 'watch-only') {
+            signerStatus = 'Watch-only account'
+          } else if (appLock.locked) {
+            signerStatus = 'Wallet locked'
+          } else if (status === 'unavailable' && (!signer || isSignerReady(signer))) {
+            signerStatus = 'Signer unavailable'
+          }
           return {
             accountId: account.id,
             name: account.name,
@@ -35,14 +44,7 @@ export function deriveSafeOwners(
             created: account.created,
             signerType,
             signerAttached: Boolean(signer && signingType),
-            signerStatus:
-              status === 'watch-only'
-                ? 'Watch-only account'
-                : appLock.locked
-                  ? 'Wallet locked'
-                  : status === 'unavailable' && (!signer || isSignerReady(signer))
-                    ? 'Signer unavailable'
-                    : signer?.status || 'Signer unavailable',
+            signerStatus,
             status
           }
         })

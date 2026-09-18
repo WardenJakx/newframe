@@ -103,23 +103,27 @@ export function useSafeConfirmation({
     }
   }, [capability, scope, terminal, revision])
 
-  const status: SafeConfirmationModel['status'] = activeState?.submitting
-    ? 'signing'
-    : operation?.status === 'pending'
-      ? operation.phase === 'signing'
-        ? 'signing'
-        : 'publishing'
-      : operation?.status === 'succeeded'
-        ? 'published'
-        : operation?.status === 'failed'
-          ? operation.phase === 'publication_failed'
-            ? 'publication_failed'
-            : operation.phase === 'cancelled'
-              ? 'cancelled'
-              : operation.phase === 'validation_failed'
-                ? 'validation_failed'
-                : 'signing_failed'
-          : (activeState?.result?.status ?? (activeState?.error ? 'idle' : 'loading'))
+  let status: SafeConfirmationModel['status'] = activeState?.result?.status ?? 'loading'
+  if (activeState?.error && !activeState.result?.status) {
+    status = 'idle'
+  }
+  if (operation?.status === 'failed') {
+    status = 'signing_failed'
+    if (operation.phase === 'publication_failed') {
+      status = 'publication_failed'
+    } else if (operation.phase === 'cancelled') {
+      status = 'cancelled'
+    } else if (operation.phase === 'validation_failed') {
+      status = 'validation_failed'
+    }
+  } else if (operation?.status === 'succeeded') {
+    status = 'published'
+  } else if (operation?.status === 'pending') {
+    status = operation.phase === 'signing' ? 'signing' : 'publishing'
+  }
+  if (activeState?.submitting) {
+    status = 'signing'
+  }
 
   return {
     status,

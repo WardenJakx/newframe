@@ -713,6 +713,12 @@ export function AddAccountController({
     const actionId = crypto.randomUUID()
     setActiveSubmission({ operationId: actionId, type: `signer.session-input.${input}` })
     const value = input === 'pin' ? state.addHardwarePin : state.addHardwarePhrase
+    let status = 'Continue on device'
+    if (input === 'pin') {
+      status = 'PIN submitted'
+    } else if (input === 'passphrase') {
+      status = 'Passphrase submitted'
+    }
     const command =
       input === 'device-passphrase'
         ? {
@@ -732,12 +738,7 @@ export function AddAccountController({
     dispatch({
       type: 'hardware.input-submitted',
       input,
-      status:
-        input === 'pin'
-          ? 'PIN submitted'
-          : input === 'passphrase'
-            ? 'Passphrase submitted'
-            : 'Continue on device'
+      status
     })
   }
 
@@ -789,50 +790,57 @@ export function AddAccountController({
     }
 
     const operationId = crypto.randomUUID()
-    const operationType =
-      addAccountType === 'watch'
-        ? 'account.watch-add'
-        : `signer.import.${addAccountType === 'seed' ? 'phrase' : addAccountType === 'keystore' ? 'keystore' : 'private-key'}`
+    let operationType = 'account.watch-add'
+    if (addAccountType !== 'watch') {
+      let importType = 'private-key'
+      if (addAccountType === 'seed') {
+        importType = 'phrase'
+      } else if (addAccountType === 'keystore') {
+        importType = 'keystore'
+      }
+      operationType = `signer.import.${importType}`
+    }
     setActiveSubmission({ operationId, type: operationType })
     setFeedback('', '')
 
     try {
-      const result =
-        addAccountType === 'watch'
-          ? await capability.createAccount({
-              source: 'watch',
-              operationId,
-              addressOrName: input,
-              name: name || 'Watch Account'
-            })
-          : addAccountType === 'keystore'
-            ? addAccountKeystore && addAccountKeystorePassword
-              ? await capability.importSigner({
-                  operationId,
-                  source: 'keystore',
-                  keystore: addAccountKeystore,
-                  keystorePassword: addAccountKeystorePassword,
-                  framePassword: addAccountPassword,
-                  accountName: name || 'Hot Account'
-                })
-              : null
-            : await capability.importSigner(
-                addAccountType === 'seed'
-                  ? {
-                      operationId,
-                      source: 'phrase',
-                      phrase: input,
-                      framePassword: addAccountPassword,
-                      accountName: name || 'Hot Account'
-                    }
-                  : {
-                      operationId,
-                      source: 'private-key',
-                      privateKey: input,
-                      framePassword: addAccountPassword,
-                      accountName: name || 'Hot Account'
-                    }
-              )
+      let result
+      if (addAccountType === 'watch') {
+        result = await capability.createAccount({
+          source: 'watch',
+          operationId,
+          addressOrName: input,
+          name: name || 'Watch Account'
+        })
+      } else if (addAccountType === 'keystore') {
+        result =
+          addAccountKeystore && addAccountKeystorePassword
+            ? await capability.importSigner({
+                operationId,
+                source: 'keystore',
+                keystore: addAccountKeystore,
+                keystorePassword: addAccountKeystorePassword,
+                framePassword: addAccountPassword,
+                accountName: name || 'Hot Account'
+              })
+            : null
+      } else if (addAccountType === 'seed') {
+        result = await capability.importSigner({
+          operationId,
+          source: 'phrase',
+          phrase: input,
+          framePassword: addAccountPassword,
+          accountName: name || 'Hot Account'
+        })
+      } else {
+        result = await capability.importSigner({
+          operationId,
+          source: 'private-key',
+          privateKey: input,
+          framePassword: addAccountPassword,
+          accountName: name || 'Hot Account'
+        })
+      }
 
       if (!result) {
         const message = addAccountKeystore
@@ -916,15 +924,16 @@ export function AddAccountController({
     usageLoading?: boolean
     value?: string
   }): AddAccountAddressRowModel {
-    const usage = input.usageLoading
-      ? 'loading'
-      : input.chainUsage?.chainIds.length
-        ? 'used'
-        : input.chainUsage?.complete
-          ? 'unused'
-          : input.value
-            ? 'value'
-            : 'unavailable'
+    let usage: AddAccountAddressRowModel['usage'] = 'unavailable'
+    if (input.usageLoading) {
+      usage = 'loading'
+    } else if (input.chainUsage?.chainIds.length) {
+      usage = 'used'
+    } else if (input.chainUsage?.complete) {
+      usage = 'unused'
+    } else if (input.value) {
+      usage = 'value'
+    }
     return {
       address: input.address,
       accountType: input.accountType,
@@ -1006,8 +1015,14 @@ export function AddAccountController({
 
   function hardwareFlow(): Extract<AddAccountFlowModel, { kind: 'hardware' }> {
     const type = state.addAccountType
-    const title =
-      type === 'airgap' ? 'AirGap' : type === 'ledger' ? 'Ledger' : type === 'trezor' ? 'Trezor' : 'GridPlus'
+    let title = 'GridPlus'
+    if (type === 'airgap') {
+      title = 'AirGap'
+    } else if (type === 'ledger') {
+      title = 'Ledger'
+    } else if (type === 'trezor') {
+      title = 'Trezor'
+    }
     const signers = Object.values(shared.signers).filter((signer) => signer.type === type)
     const signer = selectedHardwareSigner?.type === type ? selectedHardwareSigner : undefined
     if (!signer) {
@@ -1033,18 +1048,21 @@ export function AddAccountController({
     }
     const status = signer.status.toLowerCase()
     const loading = signerIsLoading(status)
-    const input =
-      signer.type === 'trezor' && status === 'need pin'
-        ? { kind: 'pin' as const, length: state.addHardwarePin.length }
-        : signer.type === 'trezor' && status === 'enter passphrase'
-          ? {
-              kind: 'passphrase' as const,
-              allowsDeviceEntry: (signer.capabilities ?? []).includes('Capability_PassphraseEntry'),
-              value: state.addHardwarePhrase
-            }
-          : signer.type === 'lattice' && status === 'pair'
-            ? { kind: 'pair' as const, value: state.addHardwarePairCode }
-            : { kind: 'none' as const }
+    let input: Extract<
+      Extract<AddAccountFlowModel, { kind: 'hardware' }>['model'],
+      { mode: 'details' }
+    >['input'] = { kind: 'none' }
+    if (signer.type === 'trezor' && status === 'need pin') {
+      input = { kind: 'pin', length: state.addHardwarePin.length }
+    } else if (signer.type === 'trezor' && status === 'enter passphrase') {
+      input = {
+        kind: 'passphrase',
+        allowsDeviceEntry: (signer.capabilities ?? []).includes('Capability_PassphraseEntry'),
+        value: state.addHardwarePhrase
+      }
+    } else if (signer.type === 'lattice' && status === 'pair') {
+      input = { kind: 'pair', value: state.addHardwarePairCode }
+    }
     const rows = selectedHardwarePage.addresses.map((address, index) => {
       const account = shared.accounts[address.toLowerCase()]
       return addressRowModel({
@@ -1085,85 +1103,99 @@ export function AddAccountController({
     }
   }
 
-  const flow: AddAccountFlowModel =
-    state.addAccountCategory === 'safe'
-      ? {
-          kind: 'safe',
-          model: {
-            address: state.addAccountInput,
-            busy: safeBusy,
-            discovering: safeDiscovering,
-            error: state.addAccountError,
-            networks: safeNetworks.map((network) => {
-              const outcome = safeOutcomes.find((item) => item.chainId === network.chainId)
-              return {
-                ...network,
-                icon: (
-                  <ChainIcon
-                    chainId={network.chainId}
-                    networks={shared.networks}
-                    networksMeta={shared.networksMeta}
-                  />
-                ),
-                selected: safeSelected.includes(network.chainId),
-                outcome:
-                  outcome?.error ??
-                  (outcome?.operation?.status === 'failed'
-                    ? (outcome.operation.error?.message ?? 'Import failed')
-                    : outcome?.operation?.status === 'succeeded'
-                      ? 'Imported · Watch-only'
-                      : outcome
-                        ? 'Importing'
-                        : '')
-              }
-            })
-          }
-        }
-      : state.addAccountCategory === 'createSeed'
-        ? {
-            kind: 'generated-seed',
-            model: {
-              backedUp: state.addGeneratedPhraseBackedUp,
-              copied: state.addGeneratedPhraseCopied,
-              error: state.addAccountError,
-              name: state.addAccountName,
-              needsFramePassword: needsFramePassword(),
-              password: state.addAccountPassword,
-              passwordLabel: framePasswordLabel(),
-              status: displayedStatus,
-              words: state.addGeneratedPhrase.trim().split(/\s+/).filter(Boolean)
+  function currentFlow(): AddAccountFlowModel {
+    if (state.addAccountCategory === 'safe') {
+      return {
+        kind: 'safe',
+        model: {
+          address: state.addAccountInput,
+          busy: safeBusy,
+          discovering: safeDiscovering,
+          error: state.addAccountError,
+          networks: safeNetworks.map((network) => {
+            const outcome = safeOutcomes.find((item) => item.chainId === network.chainId)
+            let outcomeMessage = outcome?.error ?? ''
+            if (!outcomeMessage && outcome?.operation?.status === 'failed') {
+              outcomeMessage = outcome.operation.error?.message ?? 'Import failed'
+            } else if (!outcomeMessage && outcome?.operation?.status === 'succeeded') {
+              outcomeMessage = 'Imported · Watch-only'
+            } else if (!outcomeMessage && outcome) {
+              outcomeMessage = 'Importing'
             }
-          }
-        : state.addAccountCategory === 'storedSeed'
-          ? storedSeedFlow()
-          : state.addAccountCategory === 'import' && !state.addAccountType
-            ? { kind: 'methods', level: 'type', options: addOptions.import, selected: state.addAccountType }
-            : state.addAccountCategory === 'hardware' && !state.addAccountType
-              ? {
-                  kind: 'methods',
-                  level: 'type',
-                  options: addOptions.hardware,
-                  selected: state.addAccountType
-                }
-              : state.addAccountCategory === 'hardware'
-                ? hardwareFlow()
-                : state.addAccountCategory === 'watch' || state.addAccountCategory === 'import'
-                  ? {
-                      kind: 'import',
-                      model: {
-                        accountType: state.addAccountType,
-                        error: state.addAccountError,
-                        input: state.addAccountInput,
-                        keystorePassword: state.addAccountKeystorePassword,
-                        keystoreSelected: Boolean(state.addAccountKeystore),
-                        name: state.addAccountName,
-                        needsFramePassword: needsFramePassword(),
-                        password: state.addAccountPassword,
-                        passwordLabel: framePasswordLabel(),
-                        status: displayedStatus
-                      }
-                    }
-                  : { kind: 'methods', options: addOptions.root, selected: state.addAccountCategory }
+            return {
+              ...network,
+              icon: (
+                <ChainIcon
+                  chainId={network.chainId}
+                  networks={shared.networks}
+                  networksMeta={shared.networksMeta}
+                />
+              ),
+              selected: safeSelected.includes(network.chainId),
+              outcome: outcomeMessage
+            }
+          })
+        }
+      }
+    }
+    if (state.addAccountCategory === 'createSeed') {
+      return {
+        kind: 'generated-seed',
+        model: {
+          backedUp: state.addGeneratedPhraseBackedUp,
+          copied: state.addGeneratedPhraseCopied,
+          error: state.addAccountError,
+          name: state.addAccountName,
+          needsFramePassword: needsFramePassword(),
+          password: state.addAccountPassword,
+          passwordLabel: framePasswordLabel(),
+          status: displayedStatus,
+          words: state.addGeneratedPhrase
+            .trim()
+            .split(/\s+/)
+            .filter(Boolean)
+            .map((value, index) => ({ position: index + 1, value }))
+        }
+      }
+    }
+    if (state.addAccountCategory === 'storedSeed') {
+      return storedSeedFlow()
+    }
+    if (state.addAccountCategory === 'import' && !state.addAccountType) {
+      return { kind: 'methods', level: 'type', options: addOptions.import, selected: state.addAccountType }
+    }
+    if (state.addAccountCategory === 'hardware' && !state.addAccountType) {
+      return {
+        kind: 'methods',
+        level: 'type',
+        options: addOptions.hardware,
+        selected: state.addAccountType
+      }
+    }
+    if (state.addAccountCategory === 'hardware') {
+      return hardwareFlow()
+    }
+    if (state.addAccountCategory === 'watch' || state.addAccountCategory === 'import') {
+      return {
+        kind: 'import',
+        model: {
+          accountType: state.addAccountType,
+          error: state.addAccountError,
+          input: state.addAccountInput,
+          keystorePassword: state.addAccountKeystorePassword,
+          keystoreSelected: Boolean(state.addAccountKeystore),
+          name: state.addAccountName,
+          needsFramePassword: needsFramePassword(),
+          password: state.addAccountPassword,
+          passwordLabel: framePasswordLabel(),
+          status: displayedStatus
+        }
+      }
+    }
+    return { kind: 'methods', options: addOptions.root, selected: state.addAccountCategory }
+  }
+
+  const flow = currentFlow()
 
   const selectedSigner = () =>
     state.addAccountSelectedSigner ? shared.signers[state.addAccountSelectedSigner] : undefined

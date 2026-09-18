@@ -18,9 +18,13 @@ export function getTokenSelectorPage<T>({
   const selectedItem = items.find((item) => getId(item) === selectedId)
   const selectedIsVisible = selectedItem ? visibleItems.some((item) => getId(item) === selectedId) : false
   const menuItems = selectedItem && !selectedIsVisible ? [selectedItem, ...visibleItems] : visibleItems
+  let closedItems: T[] = []
+  if (selectedItem) {
+    closedItems = [selectedItem]
+  }
 
   return {
-    items: open ? menuItems : selectedItem ? [selectedItem] : [],
+    items: open ? menuItems : closedItems,
     rowsHidden: Math.max(items.length - rowsVisible, 0)
   }
 }
