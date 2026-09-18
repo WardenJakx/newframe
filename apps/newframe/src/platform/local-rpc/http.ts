@@ -239,7 +239,7 @@ export function createHttpRpcTransport({
           }
         },
         onSubscriptionOpen: (subscriptionId, originId) => {
-          pollSubs[subscriptionId] = { id: rawPayload.pollId || '', origin: originId }
+          pollSubs[subscriptionId] = { id: rawPayload.pollId ?? '', origin: originId }
         },
         onSubscriptionClose: (subscriptionIds) => {
           subscriptionIds.forEach((subscriptionId) => delete pollSubs[String(subscriptionId)])

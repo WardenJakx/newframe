@@ -50,7 +50,7 @@ function ApprovalParty({
   const [showCopiedMessage, copyAddress] = useCopiedMessage(capability, address)
 
   return (
-    <Button appearance='row' label={`Copy ${name || address}`} onPress={copyAddress} width='full'>
+    <Button appearance='row' label={`Copy ${name ?? address}`} onPress={copyAddress} width='full'>
       {showCopiedMessage ? (
         <Text tone='accent'>Address Copied</Text>
       ) : (
@@ -141,7 +141,7 @@ export default function EditTokenSpend({
             address={spender.address}
             accountType={identities[spender.address.toLowerCase()]?.accountType}
             capability={clipboard}
-            name={spender.ens || identities[spender.address.toLowerCase()]?.nickname}
+            name={spender.ens ?? identities[spender.address.toLowerCase()]?.nickname}
           />
           <Text align='center' tone='danger' variant='overline'>
             {isRevoke ? 'Revoke approval to spend' : 'Grant approval to spend'}

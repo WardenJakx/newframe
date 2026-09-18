@@ -19,7 +19,7 @@ beforeEach(async () => {
     const keyMap: any = {
       Slash: '/'
     }
-    return keyMap[key] || key
+    return keyMap[key] ?? key
   })
 })
 

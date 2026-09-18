@@ -18,7 +18,7 @@ export function createLocalSafeService(
         NEWFRAME_SAFE_SEED: JSON.stringify({ ...seed, includeMismatch: true }),
         NEWFRAME_LOCAL_SAFE_PORT: String(ports.localSafe)
       },
-      stdio: options.stdio || ['ignore', 'pipe', 'pipe']
+      stdio: options.stdio ?? ['ignore', 'pipe', 'pipe']
     },
     beforeStart: () => assertPortFree(ports.localSafe, 'Local Safe service'),
     ready: () => waitForHttpOk(`${localSafeServiceUrl}/health`, 'local Safe service')

@@ -67,7 +67,7 @@ function createOriginHarness() {
         origins[id].faviconSource = source
       },
       touchOrigin: (id) => {
-        origins[id].touches = (origins[id].touches || 0) + 1
+        origins[id].touches = (origins[id].touches ?? 0) + 1
       },
       switchOriginChain: (id, chainId) => {
         origins[id].chain = { id: chainId, type: 'ethereum' }
@@ -79,7 +79,7 @@ function createOriginHarness() {
         delete knownExtensions[id]
       },
       subscribeKnownExtension: (id, handler) => {
-        const listeners = extensionListeners.get(id) || new Set()
+        const listeners = extensionListeners.get(id) ?? new Set()
         listeners.add(handler)
         extensionListeners.set(id, listeners)
         return () => listeners.delete(handler)
@@ -143,7 +143,7 @@ function createOriginHarness() {
     },
     setKnownExtension(id: string, allowed: boolean) {
       knownExtensions[id] = allowed
-      for (const listener of extensionListeners.get(id) || []) {
+      for (const listener of extensionListeners.get(id) ?? []) {
         listener(allowed)
       }
     },

@@ -19,11 +19,11 @@ function nestedValue(value: unknown, path: string[]) {
 export function findFlashTypedData(quote: FlashQuote, flashPayload: unknown, field: FlashTypedDataField) {
   const quoteRaw = flashObject(quote.raw)
   return (
-    nestedValue(flashPayload, ['actions', 'evm', field]) ||
-    nestedValue(flashPayload, ['evm', field]) ||
-    nestedValue(flashPayload, [field]) ||
-    nestedValue(quoteRaw, ['actions', 'evm', field]) ||
-    nestedValue(quoteRaw, ['evm', field]) ||
+    nestedValue(flashPayload, ['actions', 'evm', field]) ??
+    nestedValue(flashPayload, ['evm', field]) ??
+    nestedValue(flashPayload, [field]) ??
+    nestedValue(quoteRaw, ['actions', 'evm', field]) ??
+    nestedValue(quoteRaw, ['evm', field]) ??
     nestedValue(quoteRaw, [field])
   )
 }
@@ -71,7 +71,7 @@ export function buildFlashActionTransaction(action: FlashQuoteAction, expectedCh
     transaction: {
       to: action.tx.to,
       data: action.tx.data,
-      value: action.tx.value || '0x0'
+      value: action.tx.value ?? '0x0'
     }
   }
 }
@@ -99,9 +99,9 @@ export function buildFlashSubmitRequest<TRequest extends object>({
 }) {
   const chains = getFlashAssetPairChains(quote)
   const orderTypedData = findFlashTypedData(quote, flashPayload, 'orderTypedData')
-  const orderTypedDataRaw = findFlashTypedData(quote, flashPayload, 'orderTypedDataRaw') || orderTypedData
+  const orderTypedDataRaw = findFlashTypedData(quote, flashPayload, 'orderTypedDataRaw') ?? orderTypedData
   const permitTypedData = findFlashTypedData(quote, flashPayload, 'permitTypedData')
-  const permitTypedDataRaw = findFlashTypedData(quote, flashPayload, 'permitTypedDataRaw') || permitTypedData
+  const permitTypedDataRaw = findFlashTypedData(quote, flashPayload, 'permitTypedDataRaw') ?? permitTypedData
   if (permitTypedData && !permitSignature) {
     throw new Error('Flash quote requires a permit signature.')
   }
@@ -116,7 +116,7 @@ export function buildFlashSubmitRequest<TRequest extends object>({
     quote,
     ...(quoteId ? { quoteId } : {}),
     ...(bridgeQuoteId ? { bridgeQuoteId } : {}),
-    rawPayload: flashPayload || quote.raw || null,
+    rawPayload: flashPayload ?? quote.raw ?? null,
     evmOrderTypedData: serializeFlashTypedData(orderTypedDataRaw),
     ...(permitTypedDataRaw
       ? {

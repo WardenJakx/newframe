@@ -178,7 +178,7 @@ const state = {
 await mock.module('../../connections/main/provider/connection', () => ({
   createJsonRpcProvider: (target: any) => (mockConnections as any)[target].connection,
   listenForProviderClose: mock(),
-  sendRpcPayload: (provider: any, payload: any) => provider.send(payload.method, payload.params || [])
+  sendRpcPayload: (provider: any, payload: any) => provider.send(payload.method, payload.params ?? [])
 }))
 await mock.module('../../../platform/state-store/state', () => () => state)
 await mock.module('../../accounts/main', () => ({ updatePendingFees: mock() }))

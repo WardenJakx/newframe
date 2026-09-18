@@ -177,10 +177,10 @@ async function getActiveTab() {
 }
 
 async function refreshActiveOriginStatus(tab?: chrome.tabs.Tab) {
-  const activeTab = tab || (await getActiveTab())
+  const activeTab = tab ?? (await getActiveTab())
   const origin = originFromUrl(activeTab?.url)
 
-  if (!activeTab?.id || !isInjectedUrl(activeTab.url || '') || !origin) {
+  if (!activeTab?.id || !isInjectedUrl(activeTab.url ?? '') || !origin) {
     setOriginStatus(origin, false, '')
     return
   }
@@ -197,7 +197,11 @@ async function refreshActiveOriginStatus(tab?: chrome.tabs.Tab) {
       __extensionConnecting: true
     })
 
-    setOriginStatus(status.origin || origin, status.connected, status.address || status.selectedAddress || '')
+    setOriginStatus(
+      status.origin || origin,
+      status.connected,
+      (status.address || status.selectedAddress) ?? ''
+    )
     if (status.chainId) {
       setCurrentChain(status.chainId)
     }
@@ -208,10 +212,10 @@ async function refreshActiveOriginStatus(tab?: chrome.tabs.Tab) {
 }
 
 async function disconnectActiveOrigin(tab?: chrome.tabs.Tab) {
-  const activeTab = tab || (await getActiveTab())
+  const activeTab = tab ?? (await getActiveTab())
   const origin = originFromUrl(activeTab?.url)
 
-  if (!activeTab?.id || !isInjectedUrl(activeTab.url || '') || !origin || !provider?.isConnected()) {
+  if (!activeTab?.id || !isInjectedUrl(activeTab.url ?? '') || !origin || !provider?.isConnected()) {
     return
   }
 
@@ -491,12 +495,12 @@ function addStateListeners() {
     }
 
     const id = provider.nextId++
-    const origin = getOrigin(tab || sender)
+    const origin = getOrigin(tab ?? sender)
     if (!origin) {
       return console.error('No origin found for sender')
     }
     pending[id] = {
-      tabId: sender?.tab?.id || tab.id,
+      tabId: sender?.tab?.id ?? tab.id,
       payloadId: payload.id,
       method,
       params,

@@ -94,7 +94,7 @@ export function DetailRow({
 
   return onPress ? (
     <button
-      aria-label={pressLabel || label}
+      aria-label={pressLabel ?? label}
       className={rowRecipe({ code, interactive: true })}
       onClick={onPress}
       type='button'

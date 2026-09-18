@@ -551,7 +551,7 @@ describe('canonical persisted state contract', () => {
         third: { id: 'third', profileId: 'alpha' }
       }
     })
-    expect(Object.keys(migrated.main.accounts || {}).sort()).toEqual(['first', 'second', 'third'])
+    expect(Object.keys(migrated.main.accounts ?? {}).sort()).toEqual(['first', 'second', 'third'])
     expect(migratePersistedState(migrated)).toEqual(migrated)
   })
 

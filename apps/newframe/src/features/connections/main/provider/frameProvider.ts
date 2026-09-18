@@ -64,7 +64,7 @@ abstract class EventedRequestProvider extends EventEmitter implements Eip1193Pro
   }
 
   get chainId() {
-    return this.manualChainId || this.providerChainId
+    return this.manualChainId ?? this.providerChainId
   }
 
   setChain(chainId: string | number) {
@@ -165,7 +165,7 @@ abstract class EventedRequestProvider extends EventEmitter implements Eip1193Pro
     if (method === 'eth_chainId' && typeof result === 'string') {
       this.providerChainId = result
     } else if (['eth_accounts', 'eth_requestAccounts'].includes(method)) {
-      const accounts = (result || []) as string[]
+      const accounts = (result ?? []) as string[]
       ;(this as any).accounts = accounts
       ;(this as any).selectedAddress = accounts[0]
       ;(this as any).coinbase = accounts[0]
@@ -374,7 +374,7 @@ class FrameProvider extends EventedRequestProvider {
   }
 
   private baseReconnectInterval() {
-    return this.options.interval || DEFAULT_RECONNECT_INTERVAL
+    return this.options.interval ?? DEFAULT_RECONNECT_INTERVAL
   }
 
   private resetReconnectBackoff() {

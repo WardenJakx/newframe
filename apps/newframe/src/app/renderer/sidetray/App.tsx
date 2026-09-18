@@ -32,12 +32,12 @@ function App({ send, trade }: { send: SendCapability; trade: TradeCapability }) 
         assetId={assetId}
         capability={trade}
         chainId={chainId}
-        key={`trade:${assetId || ''}:${chainId || ''}`}
+        key={`trade:${assetId ?? ''}:${chainId ?? ''}`}
       />
     )
   }
 
-  return <Send assetId={assetId} capability={send} key={`send:${assetId || ''}`} />
+  return <Send assetId={assetId} capability={send} key={`send:${assetId ?? ''}`} />
 }
 
 export default App

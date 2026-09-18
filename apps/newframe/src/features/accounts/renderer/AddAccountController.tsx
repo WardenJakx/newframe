@@ -319,7 +319,7 @@ export function AddAccountController({
     .sort((a: number, b: number) => a - b)
     .join(',')
   const addressChainUsageKey = [
-    selectedHardwareSigner?.id || '',
+    selectedHardwareSigner?.id ?? '',
     enabledChainKey,
     visibleHardwareAddressKey
   ].join(':')
@@ -328,12 +328,12 @@ export function AddAccountController({
   const addressChainUsageLoading =
     visibleHardwareAddresses.length > 0 && addressChainUsageResult.key !== addressChainUsageKey
   const onboardingOperation = submission ? shared.operations[submission.operationId] : undefined
-  const operationStatus = onboardingOperation?.status === 'pending' ? onboardingOperation.phase || '' : ''
+  const operationStatus = onboardingOperation?.status === 'pending' ? (onboardingOperation.phase ?? '') : ''
   const displayedStatus = onboardingStatusText(operationStatus, state.addAccountStatus)
 
   useEffect(() => {
     const isHardwareSigner = ['ledger', 'trezor', 'lattice', 'airgap'].includes(
-      selectedHardwareSigner?.type || ''
+      selectedHardwareSigner?.type ?? ''
     )
     const addresses = visibleHardwareAddresses
 
@@ -478,7 +478,7 @@ export function AddAccountController({
     const operationId = hardwareSession.operationId
     if (session?.status === 'failed') {
       whenCurrent(hardwareSessionRef, operationId, () => {
-        setFeedback(session.error?.message || 'Could not complete the hardware operation.', '')
+        setFeedback(session.error?.message ?? 'Could not complete the hardware operation.', '')
         setActiveHardwareSession(null)
       })
       return
@@ -928,7 +928,7 @@ export function AddAccountController({
     return {
       address: input.address,
       accountType: input.accountType,
-      chains: (input.chainUsage?.chainIds || []).map((chainId) => ({
+      chains: (input.chainUsage?.chainIds ?? []).map((chainId) => ({
         id: chainId,
         name: shared.networks[chainId]?.name || `Chain ${chainId}`,
         icon: (
@@ -1039,7 +1039,7 @@ export function AddAccountController({
         : signer.type === 'trezor' && status === 'enter passphrase'
           ? {
               kind: 'passphrase' as const,
-              allowsDeviceEntry: (signer.capabilities || []).includes('Capability_PassphraseEntry'),
+              allowsDeviceEntry: (signer.capabilities ?? []).includes('Capability_PassphraseEntry'),
               value: state.addHardwarePhrase
             }
           : signer.type === 'lattice' && status === 'pair'
@@ -1107,9 +1107,9 @@ export function AddAccountController({
                 ),
                 selected: safeSelected.includes(network.chainId),
                 outcome:
-                  outcome?.error ||
+                  outcome?.error ??
                   (outcome?.operation?.status === 'failed'
-                    ? outcome.operation.error?.message || 'Import failed'
+                    ? (outcome.operation.error?.message ?? 'Import failed')
                     : outcome?.operation?.status === 'succeeded'
                       ? 'Imported · Watch-only'
                       : outcome

@@ -125,15 +125,15 @@ function parseLcov(reports: string[]) {
       for (const line of record.split('\n')) {
         if (line.startsWith('DA:')) {
           const [lineNumber, hits] = line.slice(3).split(',')
-          raw.lines.set(lineNumber, Math.max(raw.lines.get(lineNumber) || 0, Number(hits)))
+          raw.lines.set(lineNumber, Math.max(raw.lines.get(lineNumber) ?? 0, Number(hits)))
         } else if (line.startsWith('BRDA:')) {
           const [lineNumber, block, branch, hits] = line.slice(5).split(',')
           const key = `${lineNumber},${block},${branch}`
           const hitCount = hits === '-' ? 0 : Number(hits)
-          raw.branches.set(key, Math.max(raw.branches.get(key) || 0, hitCount))
+          raw.branches.set(key, Math.max(raw.branches.get(key) ?? 0, hitCount))
         } else if (line.startsWith('FNDA:')) {
           const [hits, functionName] = line.slice(5).split(',')
-          raw.functions.set(functionName, Math.max(raw.functions.get(functionName) || 0, Number(hits)))
+          raw.functions.set(functionName, Math.max(raw.functions.get(functionName) ?? 0, Number(hits)))
         } else if (line.startsWith('FNF:')) {
           raw.functionTotal = Math.max(raw.functionTotal, Number(line.slice(4)))
         } else if (line.startsWith('FNH:')) {

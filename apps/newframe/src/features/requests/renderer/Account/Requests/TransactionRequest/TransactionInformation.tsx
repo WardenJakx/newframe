@@ -211,7 +211,7 @@ function AssetIcon({
   nativeCurrency: TransactionInformationNativeCurrency
 }) {
   const hydrationTarget = useRef<HTMLSpanElement>(null)
-  const icon = effect.logoURI || (effect.kind === 'native' ? persistedImageSource(nativeCurrency.image) : '')
+  const icon = effect.logoURI ?? (effect.kind === 'native' ? persistedImageSource(nativeCurrency.image) : '')
   const iconSource = imageSource(icon)
   const symbol = (effect.symbol || '?').trim() || '?'
   const styles = effectRecipe({ direction: 'neutral' })
@@ -318,7 +318,7 @@ function TransactionEffects({
                       {direction === 'out' ? <Text variant='numeric'>-</Text> : null}
                       {direction === 'in' ? <Text variant='numeric'>+</Text> : null}
                       <DisplayCoinBalance
-                        amount={effect.amount || '0x0'}
+                        amount={effect.amount ?? '0x0'}
                         decimals={effect.decimals}
                         symbol={effect.symbol || '?'}
                       />
@@ -383,7 +383,7 @@ function DetailRow({
   return onClick ? (
     <Button
       appearance='row'
-      label={actionLabel || `${label}: ${String(value)}`}
+      label={actionLabel ?? `${label}: ${String(value)}`}
       onPress={onClick}
       size='medium'
       width='full'
@@ -425,7 +425,7 @@ function CalldataDetails({
               <Icon name={open ? 'chevronUp' : 'chevronDown'} size='small' tone='muted' />
             </Inline>
             <Text as='span' variant='microCode'>
-              <code className={calldataRecipe()}>{calldata.digest || 'Digest unavailable'}</code>
+              <code className={calldataRecipe()}>{calldata.digest ?? 'Digest unavailable'}</code>
             </Text>
           </Stack>
         </Button>
@@ -531,7 +531,7 @@ export default function TransactionInformation({
           <section aria-label='Transaction details' className={sectionRecipe()}>
             <div className={sectionHeaderRecipe()}>
               <Text variant={actionTitle ? 'sectionTitle' : 'overline'}>
-                {actionTitle || 'Request details'}
+                {actionTitle ?? 'Request details'}
               </Text>
             </div>
             <Surface padding='small' radius='none' tone='card'>

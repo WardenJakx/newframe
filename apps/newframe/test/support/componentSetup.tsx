@@ -31,7 +31,7 @@ const runAllTimers = async () => {
 function setupComponent(jsx: ReactElement, opts: ComponentRenderOptions = {}) {
   const { advanceTimersAfterInput, rendererState, wrapper, ...options } = opts
   const advanceTimers =
-    options.advanceTimers ||
+    options.advanceTimers ??
     (advanceTimersAfterInput === true
       ? runAllTimers
       : advanceTimersAfterInput !== undefined && advanceTimersAfterInput !== false

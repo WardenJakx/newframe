@@ -12,7 +12,7 @@ const desktopEntryPath = () => path.join(app.getPath('appData'), 'autostart', 'N
 
 // when running as an AppImage the mounted executable path is temporary,
 // so the persistent image path must be used instead
-const execPath = () => process.env.APPIMAGE || process.execPath
+const execPath = () => process.env.APPIMAGE ?? process.execPath
 
 const desktopEntry = () =>
   [

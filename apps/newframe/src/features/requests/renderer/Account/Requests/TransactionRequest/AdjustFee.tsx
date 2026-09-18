@@ -71,7 +71,7 @@ const FeeOverlayInput = ({
         value={value}
         onValueChange={(nextValue) => {
           const parsedInput = (decimals ? /[0-9.]*/ : /[0-9]*/).exec(nextValue)
-          const enteredValue = parsedInput?.[0] || ''
+          const enteredValue = parsedInput?.[0] ?? ''
 
           if (enteredValue === '.' || enteredValue === '') {
             return setValue(enteredValue)

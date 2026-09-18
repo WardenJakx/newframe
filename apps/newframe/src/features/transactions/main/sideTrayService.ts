@@ -58,7 +58,7 @@ function typedDataChainId(typedData: TypedDataV4) {
 }
 
 export function createSideTrayTransactionService(ports: SideTrayTransactionPorts) {
-  const currentAccountAddress = () => ports.accounts.current()?.getSelectedAddress() || ''
+  const currentAccountAddress = () => ports.accounts.current()?.getSelectedAddress() ?? ''
   const initializeOrigin = (chainId: number) => {
     const state = ports.store.getState()
     if (!state.main.networks.ethereum[chainId]?.on) {
@@ -100,7 +100,7 @@ export function createSideTrayTransactionService(ports: SideTrayTransactionPorts
             ...command.transaction,
             chainId,
             from,
-            value: command.transaction.value || '0x0'
+            value: command.transaction.value ?? '0x0'
           }
         ],
         _origin: internalOriginId

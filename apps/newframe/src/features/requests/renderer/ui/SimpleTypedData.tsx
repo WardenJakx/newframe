@@ -65,7 +65,7 @@ const formatValue = (value: unknown): string | undefined => {
     return 'null'
   }
   if (typeof value === 'string') {
-    return decodeUtf8Hex(value) || value
+    return decodeUtf8Hex(value) ?? value
   }
   if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') {
     return String(value)
@@ -194,7 +194,7 @@ const Erc7730ClearSigning = ({ display }: { display?: Erc7730Display }) => {
       </Text>
       <Surface border='accent' padding='small' radius='control'>
         <Stack gap='small'>
-          <Text variant='label'>{display.summary || display.title}</Text>
+          <Text variant='label'>{display.summary ?? display.title}</Text>
           {display.summary && display.title !== display.summary ? (
             <Text tone='secondary' variant='supporting'>
               {display.title}
@@ -204,7 +204,7 @@ const Erc7730ClearSigning = ({ display }: { display?: Erc7730Display }) => {
             {display.rows.map((row) => (
               <DetailRow
                 code
-                key={`${row.path || row.label}:${row.value}`}
+                key={`${row.path ?? row.label}:${row.value}`}
                 label={row.label}
                 value={row.value}
                 valueVariant='supporting'
@@ -219,7 +219,7 @@ const Erc7730ClearSigning = ({ display }: { display?: Erc7730Display }) => {
 
 export const SimpleTypedData = ({ originName, favicon, req }: SimpleTypedDataProps) => {
   const type = req.type
-  const typedData = req.typedMessage.data || {}
+  const typedData = req.typedMessage.data ?? {}
 
   return type === 'signTypedData' || type === 'signErc20Permit' ? (
     <Stack gap='medium'>

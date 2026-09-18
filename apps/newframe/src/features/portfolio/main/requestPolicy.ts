@@ -111,7 +111,7 @@ export default class ProviderRequestPolicy {
   }
 
   private retryDelay(response: Response | undefined, attempt: number) {
-    const retryAfter = parseRetryAfter(response?.headers.get('retry-after') || null)
+    const retryAfter = parseRetryAfter(response?.headers.get('retry-after') ?? null)
     if (retryAfter !== undefined) {
       return retryAfter
     }

@@ -56,5 +56,5 @@ export function chainColorValue(name?: string) {
     return name
   }
 
-  return chainColors[legacyChainColorNames[name || ''] || 'other']
+  return chainColors[legacyChainColorNames[name ?? ''] ?? 'other']
 }

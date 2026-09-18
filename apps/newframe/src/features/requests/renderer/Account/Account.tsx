@@ -291,7 +291,7 @@ function AccountView({ accountViewIcon, accountViewTitle, back, children }: Acco
       <SidePanelHeader
         closeLabel='Back'
         onClose={back}
-        title={accountViewTitle || ''}
+        title={accountViewTitle ?? ''}
         titleLeading={accountViewIcon}
       />
       <div className={accountMainRecipe()}>

@@ -24,7 +24,7 @@ export function createPositionGroups({
     if (selectedChainId !== 0 && balance.chainId !== selectedChainId) {
       return false
     }
-    const chainName = networks[balance.chainId]?.name || ''
+    const chainName = networks[balance.chainId]?.name ?? ''
     return matchFilter(query, [chainName, balance.name, balance.symbol])
   })
   const matchedTotal = matched.reduce((sum, balance) => sum + balance.totalValue, 0)

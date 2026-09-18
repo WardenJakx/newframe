@@ -7,5 +7,5 @@ export function accountDisplayType(account?: {
   if (account?.safe && Object.keys(account.safe).length) {
     return 'safe'
   }
-  return account?.accountType || account?.lastSignerType || ''
+  return account?.accountType ?? account?.lastSignerType ?? ''
 }

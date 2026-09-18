@@ -25,7 +25,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
     <select
       aria-invalid={invalid || undefined}
       aria-label={label}
-      aria-required={required || undefined}
+      aria-required={required ?? undefined}
       className={inputClasses({ appearance: 'control', invalid })}
       defaultValue={defaultValue}
       disabled={disabled}

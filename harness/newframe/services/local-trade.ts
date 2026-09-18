@@ -18,7 +18,7 @@ export function createLocalTradeService(options: LocalTradeServiceOptions = {}) 
         ANVIL_RPC_URL: anvilRpcUrl,
         FLASH_LOCAL_TRADE_PORT: String(ports.localTrade)
       },
-      stdio: options.stdio || ['ignore', 'pipe', 'pipe']
+      stdio: options.stdio ?? ['ignore', 'pipe', 'pipe']
     },
     beforeStart: () => assertPortFree(ports.localTrade, 'Local Flash service'),
     ready: () => waitForHttpOk(localTradeServiceHealthUrl, 'local Flash service')

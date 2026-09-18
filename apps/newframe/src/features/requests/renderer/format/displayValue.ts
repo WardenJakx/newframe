@@ -114,7 +114,7 @@ export function displayValueData(
   sourceValue: SourceValue,
   params?: DisplayValueDataParams
 ): DisplayValueData {
-  const { currencyRate, decimals = 18, isTestnet = false, displayFullValue = false } = params || {}
+  const { currencyRate, decimals = 18, isTestnet = false, displayFullValue = false } = params ?? {}
 
   const bn = sourceValue === undefined || sourceValue === null ? undefined : toBigInt(sourceValue)
 

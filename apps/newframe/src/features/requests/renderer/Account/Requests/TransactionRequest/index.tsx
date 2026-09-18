@@ -25,7 +25,7 @@ type TransactionRequestProps = {
 type TransactionRequestWithStateProps = Omit<TransactionRequestProps, 'actionId' | 'step' | 'onUpdateFee'>
 
 const decodeRequested = (req: TransactionRequestView) => {
-  const calldata = req.payload.params[0]?.data || '0x'
+  const calldata = req.payload.params[0]?.data ?? '0x'
   const [spender, amount] = erc20Interface.decodeFunctionData('approve', calldata)
   return { spender, amount: BigInt(amount) }
 }
@@ -60,7 +60,7 @@ export function TransactionRequest(props: TransactionRequestProps) {
     if (!req || actionId !== 'erc20:approve') {
       return null
     }
-    const approval = (req.recognizedActions || []).find((action) => action.id === actionId)
+    const approval = (req.recognizedActions ?? []).find((action) => action.id === actionId)
     if (!isTokenSpendData(approval?.data)) {
       return null
     }

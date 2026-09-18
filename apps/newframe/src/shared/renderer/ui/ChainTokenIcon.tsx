@@ -50,7 +50,7 @@ export default function ChainTokenIcon({
   const tokenImageVisible = !!tokenImageSource && failedTokenUrl !== logoURI
   const chainImageVisible = !!chainImageSource && failedChainUrl !== chainIconUrl
   const chain = networks[chainId] || {}
-  const chainName = (chain.name || '').toLowerCase()
+  const chainName = (chain.name ?? '').toLowerCase()
 
   useTokenImageHydration(imageCapability, tokenId, !!tokenImageSource, hydrationTarget)
 

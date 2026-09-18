@@ -28,9 +28,9 @@ export async function estimateL1GasCost(provider: RpcProvider, txData: L1TxParam
     data,
     type: 2,
     chainId: typeof chainId === 'string' ? parseInt(chainId) : chainId,
-    value: value || 0,
-    gasLimit: gasLimit || 0,
-    nonce: typeof nonce === 'string' ? parseInt(nonce) : nonce || 0
+    value: value ?? 0,
+    gasLimit: gasLimit ?? 0,
+    nonce: typeof nonce === 'string' ? parseInt(nonce) : (nonce ?? 0)
   })
 
   const calldata = oracleInterface.encodeFunctionData('getL1Fee', [tx.unsignedSerialized])

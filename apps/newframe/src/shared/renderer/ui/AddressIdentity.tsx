@@ -56,8 +56,8 @@ export function AddressIdentity({
   if (!address && !nickname) {
     return null
   }
-  const addressDisplay = showFullAddress ? address || '' : shortAddress(address)
-  const display = nickname || addressDisplay
+  const addressDisplay = showFullAddress ? (address ?? '') : shortAddress(address)
+  const display = nickname ?? addressDisplay
   const hasNickname = nickname && nickname !== shortAddress(address) && nickname !== address
   const displayText = (
     <Text align='end' truncate variant='code'>

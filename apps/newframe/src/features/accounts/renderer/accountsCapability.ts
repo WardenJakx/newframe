@@ -73,7 +73,7 @@ export function createAccountsCapability(host: AccountsHost): AccountsCapability
     discoverSafeNetworks: async (address) => {
       const result = await host.executeQuery({ type: 'safe.discover', address })
       if (!Array.isArray(result)) {
-        throw new Error(result.message || 'Could not load Safe networks')
+        throw new Error(result.message ?? 'Could not load Safe networks')
       }
       return result
     },

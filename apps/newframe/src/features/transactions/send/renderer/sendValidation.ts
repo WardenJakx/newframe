@@ -18,11 +18,11 @@ interface SendRecipientState {
 }
 
 export function getAmountBaseUnits(amount: string, asset?: SendValidationAsset | null) {
-  return parseUnits(amount, asset?.decimals || 18)
+  return parseUnits(amount, asset?.decimals ?? 18)
 }
 
 export function getRecipientAddress({ recipient, recipientInput = '' }: SendRecipientState) {
-  const selectedRecipient = recipient?.address || ''
+  const selectedRecipient = recipient?.address ?? ''
   const input = recipientInput.trim()
 
   if (selectedRecipient) {
@@ -47,7 +47,7 @@ export function canProceed({
   recipientInput?: string
 }) {
   const amountBaseUnits = asset && getAmountBaseUnits(amount, asset)
-  const balance = asset ? toBigInt(asset.balance || 0) || 0n : 0n
+  const balance = asset ? (toBigInt(asset.balance ?? 0) ?? 0n) : 0n
   const hasRecipient =
     !!getRecipientAddress({ recipient, recipientInput }) || shouldResolveName(recipientInput)
 

@@ -33,7 +33,7 @@ export default class LedgerEthereumApp {
     const executor = async (resolve: (addresses: string[]) => void, reject: (err?: Error) => void) => {
       try {
         const result = await this.getAddress(path, false, true)
-        deriveHDAccounts(result.publicKey, result.chainCode || '', (err, addresses) => {
+        deriveHDAccounts(result.publicKey, result.chainCode ?? '', (err, addresses) => {
           if (err) {
             return reject(err)
           }

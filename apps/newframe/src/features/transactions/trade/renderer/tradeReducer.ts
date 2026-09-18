@@ -100,7 +100,7 @@ function findAssetByRouteId(assetId: string | null | undefined, assets: readonly
   return (
     assets.find((asset) => {
       return asset.chainId === routeAsset.chainId && assetAddress(asset) === routeAsset.address
-    }) || null
+    }) ?? null
   )
 }
 
@@ -108,9 +108,9 @@ function defaultAssetForChain(chainId: number, assets: readonly FlashAsset[]) {
   const sameChain = assets.filter((asset) => asset.chainId === chainId)
 
   return (
-    sameChain.find((asset) => asset.symbol.toUpperCase() === 'WETH') ||
-    sameChain.find((asset) => !asset.isNative) ||
-    sameChain[0] ||
+    (sameChain.find((asset) => asset.symbol.toUpperCase() === 'WETH') ??
+      sameChain.find((asset) => !asset.isNative) ??
+      sameChain[0]) ||
     getFlashDefaultTargetAsset(chainId)
   )
 }
@@ -130,7 +130,7 @@ function resolveTargetAsset({
   }
 
   const parsedRoute = parseCanonicalAssetId(assetId)
-  const fallbackChainId = parsedRoute?.chainId || chainId
+  const fallbackChainId = parsedRoute?.chainId ?? chainId
 
   if (Number.isInteger(fallbackChainId) && Number(fallbackChainId) > 0) {
     const asset = defaultAssetForChain(Number(fallbackChainId), assets)
@@ -166,7 +166,7 @@ function resolveContraAsset(
   }
 
   return (
-    sameChainAssetOptions(targetAsset, assets).find((option) => !isSameFlashAsset(option, targetAsset)) ||
+    sameChainAssetOptions(targetAsset, assets).find((option) => !isSameFlashAsset(option, targetAsset)) ??
     contraAsset
   )
 }
@@ -389,11 +389,11 @@ function updateAssetOptions(
   balances?: FlashAssetBalances | null
 ) {
   const targetCandidate =
-    assets.find((asset) => isSameFlashAsset(asset, state.targetAsset)) ||
+    assets.find((asset) => isSameFlashAsset(asset, state.targetAsset)) ??
     defaultAssetForChain(state.targetAsset.chainId, assets)
   const targetAsset = preserveEquivalentAsset(state.targetAsset, targetCandidate)
   const contraCandidate =
-    assets.find((asset) => isSameFlashAsset(asset, state.contraAsset)) ||
+    assets.find((asset) => isSameFlashAsset(asset, state.contraAsset)) ??
     resolveContraAsset(targetAsset, balances, assets, state.side)
   const contraAsset = preserveEquivalentAsset(state.contraAsset, contraCandidate)
 

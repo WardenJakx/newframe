@@ -24,7 +24,7 @@ export function usePortfolioActions(
 ) {
   const { networks, runtime, isSafe } = useWalletSelector(
     useShallow((state) => ({
-      isSafe: Boolean(Object.keys(state.accounts?.[state.currentAccount]?.safe || {}).length),
+      isSafe: Boolean(Object.keys(state.accounts?.[state.currentAccount]?.safe ?? {}).length),
       networks: state.networks?.ethereum || EMPTY_NETWORKS,
       runtime: state.runtime || EMPTY_RUNTIME
     }))
@@ -53,7 +53,7 @@ export function usePortfolioActions(
     return getFlashDefaultChainId(runtime)
   }
   const canTrade = (asset?: PortfolioActionAsset) => {
-    const contextAsset = asset || firstTradeAsset
+    const contextAsset = asset ?? firstTradeAsset
     if (isSafe || !contextAsset) {
       return false
     }
@@ -75,7 +75,7 @@ export function usePortfolioActions(
       void capability.openSideTray({ feature: 'send', assetId: toCanonicalAssetId(asset) })
     },
     openTrade: (asset?: PortfolioActionAsset) => {
-      const contextAsset = asset || firstTradeAsset
+      const contextAsset = asset ?? firstTradeAsset
       if (!contextAsset || !canTrade(contextAsset)) {
         return
       }

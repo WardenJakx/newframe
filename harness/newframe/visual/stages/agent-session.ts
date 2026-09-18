@@ -31,7 +31,7 @@ async function connectAgent() {
   })
   const body = (await response.json()) as AgentCredentials & { error?: string }
   if (!response.ok) {
-    throw new Error(body.error || `Agent connection failed with ${response.status}`)
+    throw new Error(body.error ?? `Agent connection failed with ${response.status}`)
   }
   return body
 }
@@ -51,7 +51,7 @@ async function agentRpc(credentials: AgentCredentials, payload: Record<string, u
     error?: { message?: string }
   }
   if (!response.ok || body.error || !body.result) {
-    throw new Error(body.error?.message || `Agent request failed with ${response.status}`)
+    throw new Error(body.error?.message ?? `Agent request failed with ${response.status}`)
   }
   return body.result
 }
@@ -105,7 +105,7 @@ async function flashRequest(path: string, init: RequestInit) {
   })
   const body = (await response.json()) as Record<string, any>
   if (!response.ok) {
-    throw new Error(body.message || `Local Flash request failed with ${response.status}`)
+    throw new Error(body.message ?? `Local Flash request failed with ${response.status}`)
   }
   return body
 }
@@ -128,7 +128,7 @@ async function submitExternalFlashOrder(credentials: AgentCredentials) {
     method: 'POST',
     body: JSON.stringify(quoteRequest)
   })
-  const evmOrderTypedData = String(quote.evm?.orderTypedData || '')
+  const evmOrderTypedData = String(quote.evm?.orderTypedData ?? '')
   if (!evmOrderTypedData) {
     throw new Error('Local Flash quote omitted its order typed data')
   }
@@ -150,7 +150,7 @@ async function submitExternalFlashOrder(credentials: AgentCredentials) {
       evmOrderTypedData
     })
   })
-  const orderId = String(submitted.orderId || '')
+  const orderId = String(submitted.orderId ?? '')
   if (!orderId) {
     throw new Error('Local Flash submit omitted its order id')
   }
@@ -248,11 +248,11 @@ export const agentSessionStage: VisualStage = {
     }
 
     const balanceBefore = await anvil.balance(recipient)
-    const selectedBefore = String((await driver.getAppState()).main?.currentAccount || '').toLowerCase()
+    const selectedBefore = String((await driver.getAppState()).main?.currentAccount ?? '').toLowerCase()
     const transactionHash = await autonomousSend(credentials)
     await anvil.waitForBalance(recipient, balanceBefore + 1n)
     const stateAfter = await driver.getAppState()
-    const selectedAfter = String(stateAfter.main?.currentAccount || '').toLowerCase()
+    const selectedAfter = String(stateAfter.main?.currentAccount ?? '').toLowerCase()
 
     if (!/^0x[0-9a-fA-F]{64}$/.test(transactionHash)) {
       runtime.fail(`Agent send returned an invalid transaction hash: ${transactionHash}`)
@@ -262,8 +262,8 @@ export const agentSessionStage: VisualStage = {
     if (selectedAfter !== selectedBefore) {
       runtime.fail('Autonomous agent send changed the wallet selected in the UI')
     }
-    const promptedAutonomousAction = Object.values(stateAfter.main?.accounts || {}).some((account) =>
-      Object.values(account.requests || {}).some(
+    const promptedAutonomousAction = Object.values(stateAfter.main?.accounts ?? {}).some((account) =>
+      Object.values(account.requests ?? {}).some(
         (candidate) =>
           candidate.type === 'sign' || candidate.type === 'signTypedData' || candidate.type === 'transaction'
       )

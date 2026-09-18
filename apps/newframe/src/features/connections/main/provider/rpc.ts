@@ -52,7 +52,7 @@ function normalizeParams(params?: RpcParams) {
   if (Array.isArray(params)) {
     return [...params]
   }
-  return params || []
+  return params ?? []
 }
 
 export function createError(error: RpcResult['error'] | Error | unknown) {

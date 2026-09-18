@@ -7,7 +7,7 @@ if (!raw) {
 const handler = createSafeHandler(JSON.parse(raw))
 const server = Bun.serve({
   hostname: '127.0.0.1',
-  port: Number(process.env.NEWFRAME_LOCAL_SAFE_PORT || 8423),
+  port: Number(process.env.NEWFRAME_LOCAL_SAFE_PORT ?? 8423),
   fetch(request) {
     if (new URL(request.url).pathname === '/health') {
       return Response.json({ ok: true })

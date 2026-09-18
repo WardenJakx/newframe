@@ -222,7 +222,7 @@ function OpenExplorer({ data, dismiss, external, home, mute, networks }: Notific
             : `Newframe will open the ${chainName || 'network'} block explorer:`}
         </Text>
         <Text align='center' variant='code'>
-          {hash || explorerUrl || 'Unknown explorer'}
+          {(hash ?? explorerUrl) || 'Unknown explorer'}
         </Text>
       </NotificationBody>
       <NotificationActions dismiss={dismiss} onProceed={proceed} />

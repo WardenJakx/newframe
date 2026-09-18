@@ -103,7 +103,7 @@ export function balanceSummaryToFlashAsset(balance: FlashBalanceSummaryLike): Fl
 
   const address = normalizeFlashAddress(balance.address)
   const isNative = address === FLASH_NATIVE_ETH_TOKEN_ADDRESS
-  const symbol = String(balance.symbol || (isNative ? FLASH_NATIVE_ETH_ASSET_SYMBOL : '')).trim()
+  const symbol = String(balance.symbol ?? (isNative ? FLASH_NATIVE_ETH_ASSET_SYMBOL : '')).trim()
   if (!symbol) {
     throw new Error('Invalid Flash balance symbol')
   }
@@ -115,7 +115,7 @@ export function balanceSummaryToFlashAsset(balance: FlashBalanceSummaryLike): Fl
     chainId,
     decimals: Number.isInteger(decimals) && decimals >= 0 ? decimals : 18,
     isNative,
-    name: String(balance.name || symbol),
+    name: String(balance.name ?? symbol),
     symbol
   })
 }
@@ -169,8 +169,8 @@ export function getFlashDefaultTargetAsset(chainId = FLASH_ANVIL_CHAIN_ID) {
   const assets = getFlashAssetsForChain(chainId)
 
   return (
-    assets.find((asset) => asset.symbol === FLASH_WETH_ASSET_SYMBOL) ||
-    assets[0] || {
+    assets.find((asset) => asset.symbol === FLASH_WETH_ASSET_SYMBOL) ??
+    assets[0] ?? {
       ...FLASH_WETH_ASSET,
       chainId,
       id: flashAssetId(chainId, toFlashApiAssetAddress(FLASH_WETH_ASSET))

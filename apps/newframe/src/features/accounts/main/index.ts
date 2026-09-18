@@ -310,8 +310,8 @@ export class Accounts extends EventEmitter {
     const value = req.data?.value
     const network = chain ? (this.store.getState().main.networks.ethereum[chain.id] as any) : undefined
     const chainSymbol =
-      network?.symbol ||
-      (chain ? this.store.getState().main.networksMeta.ethereum[chain.id].nativeCurrency.symbol : '') ||
+      network?.symbol ??
+      (chain ? this.store.getState().main.networksMeta.ethereum[chain.id].nativeCurrency.symbol : '') ??
       'ETH'
     const intent = getTransactionIntent(req, chainSymbol)
 
@@ -344,7 +344,7 @@ export class Accounts extends EventEmitter {
     const network = chain ? (this.store.getState().main.networks.ethereum[chain.id] as any) : undefined
     const metadata = chain ? this.store.getState().main.networksMeta.ethereum[chain.id] : undefined
 
-    return network?.symbol || metadata?.nativeCurrency.symbol || 'ETH'
+    return network?.symbol ?? metadata?.nativeCurrency.symbol ?? 'ETH'
   }
 
   private getAccountRelativeActivityDisplay(effects: TransactionEffect[]) {
@@ -384,7 +384,7 @@ export class Accounts extends EventEmitter {
     }
 
     const sourceAddress = String(
-      source.account || source.address || req.account || req.data?.from || ''
+      ((source.account ?? source.address ?? req.account) || req.data?.from) ?? ''
     ).toLowerCase()
     const sourceEffects = (effectsByAccount[sourceAddress] ?? req.simulation.effects ?? []).filter(
       isBalanceChange
@@ -440,13 +440,13 @@ export class Accounts extends EventEmitter {
       account: account.address,
       address: account.address,
       chainId: chain?.id,
-      chainType: chain?.type || 'ethereum',
+      chainType: chain?.type ?? 'ethereum',
       nonce: req.data?.nonce,
       origin: req.origin,
       submittedAt: this.dependencies.runtime.now(),
       updatedAt: this.dependencies.runtime.now(),
       status: 'submitted' as const,
-      confirmations: req.tx?.confirmations || 0,
+      confirmations: req.tx?.confirmations ?? 0,
       receipt: cloneForActivity(req.tx?.receipt),
       data: cloneForActivity(req.data),
       payload: cloneForActivity(req.payload),
@@ -482,7 +482,7 @@ export class Accounts extends EventEmitter {
         hash,
         account: account.address,
         chainId: chain?.id,
-        chainType: chain?.type || 'ethereum'
+        chainType: chain?.type ?? 'ethereum'
       }
     })
   }
@@ -544,7 +544,7 @@ export class Accounts extends EventEmitter {
   private refreshTransactionPositions(req: TransactionRequest) {
     const hash = req.tx?.hash
     const chainId = this.transactionChainId(req)
-    const address = (req.account || req.data?.from || '').toLowerCase()
+    const address = ((req.account || req.data?.from) ?? '').toLowerCase()
     if (!hash || !chainId || !address || !req.tx?.receipt) {
       return
     }
@@ -559,8 +559,8 @@ export class Accounts extends EventEmitter {
     const requestTokens = this.transactionPositionTokens(req)
     const tokens = requestTokens.length
       ? requestTokens
-      : this.transactionPositionTokensByHash.get(hash) ||
-        (activity ? this.transactionPositionTokens(activity as unknown as TransactionRequest) : [])
+      : (this.transactionPositionTokensByHash.get(hash) ??
+        (activity ? this.transactionPositionTokens(activity as unknown as TransactionRequest) : []))
     if (!this.refreshPositions(address, chainId, tokens)) {
       this.pendingPositionRefreshes.set(hash, req)
       return
@@ -759,7 +759,7 @@ export class Accounts extends EventEmitter {
   }
 
   private activityAccount(activity: ActivityRecord) {
-    return (activity.account || activity.address || (activity.data as any)?.from || '').toLowerCase()
+    return (activity.account ?? activity.address ?? (activity.data as any)?.from ?? '').toLowerCase()
   }
 
   private isNonTerminalActivity(activity?: ActivityRecord) {
@@ -782,13 +782,13 @@ export class Accounts extends EventEmitter {
     const chainId = this.activityChainId(activity)
     const data = {
       ...(activity.data as any),
-      chainId: (activity.data as any)?.chainId || (chainId ? addHexPrefix(chainId.toString(16)) : undefined),
-      nonce: (activity.data as any)?.nonce || activity.nonce
+      chainId: (activity.data as any)?.chainId ?? (chainId ? addHexPrefix(chainId.toString(16)) : undefined),
+      nonce: (activity.data as any)?.nonce ?? activity.nonce
     }
 
     return {
       type: 'transaction',
-      handlerId: activity.handlerId || activity.id,
+      handlerId: activity.handlerId ?? activity.id,
       origin: (activity.origin as string) || frameOriginId,
       account: this.activityAccount(activity),
       payload:
@@ -805,9 +805,9 @@ export class Accounts extends EventEmitter {
       chainData: activity.chainData,
       simulation: activity.simulation,
       tx: {
-        hash: activity.hash || undefined,
+        hash: activity.hash ?? undefined,
         receipt: activity.receipt as TransactionReceipt,
-        confirmations: Number(activity.confirmations || 0)
+        confirmations: Number(activity.confirmations ?? 0)
       },
       approvals: [],
       status: activity.status === 'confirming' ? RequestStatus.Confirming : RequestStatus.Verifying,
@@ -815,8 +815,8 @@ export class Accounts extends EventEmitter {
       notice: activity.status === 'confirming' ? 'Confirming' : 'Verifying',
       feesUpdatedByUser: false,
       recipient: activity.recipient,
-      recipientType: activity.recipientType || '',
-      recognizedActions: activity.recognizedActions || [],
+      recipientType: activity.recipientType ?? '',
+      recognizedActions: activity.recognizedActions ?? [],
       classification: activity.classification
     } as unknown as TransactionRequest
   }
@@ -846,7 +846,7 @@ export class Accounts extends EventEmitter {
 
             const receipt = receiptRes.result as TransactionReceipt | undefined
             if (!receipt) {
-              return resolve({ confirmations: Number(activity.confirmations || 0) })
+              return resolve({ confirmations: Number(activity.confirmations ?? 0) })
             }
 
             this.sendRequest(
@@ -875,7 +875,7 @@ export class Accounts extends EventEmitter {
   }
 
   private pruneSameNonceActivityLosers(winningActivity: ActivityRecord) {
-    const winnerHash = (winningActivity.hash || '').toLowerCase()
+    const winnerHash = (winningActivity.hash ?? '').toLowerCase()
     const winnerAccount = this.activityAccount(winningActivity)
     const winnerChainId = this.activityChainId(winningActivity)
     const winnerNonce = this.activityNonce(winningActivity)
@@ -889,7 +889,7 @@ export class Accounts extends EventEmitter {
       if (!this.isNonTerminalActivity(candidate)) {
         return
       }
-      if ((candidate.hash || '').toLowerCase() === winnerHash) {
+      if ((candidate.hash ?? '').toLowerCase() === winnerHash) {
         return
       }
       if (this.activityAccount(candidate) !== winnerAccount) {
@@ -1041,9 +1041,9 @@ export class Accounts extends EventEmitter {
       .filter(
         (req) =>
           req.mode !== RequestMode.Monitor &&
-          !['confirmed', 'declined', 'error', 'success'].includes(req.status || '')
+          !['confirmed', 'declined', 'error', 'success'].includes(req.status ?? '')
       )
-      .sort((a, b) => (a.created || 0) - (b.created || 0))[0]
+      .sort((a, b) => (a.created ?? 0) - (b.created ?? 0))[0]
 
     if (!nextRequest) {
       return
@@ -1086,7 +1086,7 @@ export class Accounts extends EventEmitter {
       account = this.accounts[address]
     }
 
-    return cb(null, account || undefined)
+    return cb(null, account ?? undefined)
   }
 
   rename(id: string, name: string) {
@@ -1117,7 +1117,7 @@ export class Accounts extends EventEmitter {
       .find(Boolean)
 
     const fallbackId = Object.keys(this.storeApi.getAccounts()).find((id) => id !== address)
-    return orderedAccount || (fallbackId ? this.handle(fallbackId) : null)
+    return orderedAccount ?? (fallbackId ? this.handle(fallbackId) : null)
   }
 
   startDataScanner() {
@@ -1129,7 +1129,7 @@ export class Accounts extends EventEmitter {
 
   refreshBalances(address?: Address) {
     const currentAddress = this.current()?.address
-    const targetAddress = address || currentAddress
+    const targetAddress = address ?? currentAddress
 
     if (targetAddress) {
       this.dataScanner?.refreshBalances(targetAddress)
@@ -1310,7 +1310,7 @@ export class Accounts extends EventEmitter {
                   request.tx = {
                     ...request.tx,
                     receipt: receiptRes.result,
-                    confirmations: request.tx?.confirmations || 0
+                    confirmations: request.tx?.confirmations ?? 0
                   }
                 })
                 if (!txRequest) {
@@ -1338,7 +1338,7 @@ export class Accounts extends EventEmitter {
                       const feeAtTime = (
                         Math.round(
                           weiIntToEthInt(
-                            hexToInt(gasUsed) * hexToInt(txRequest.data.gasPrice || '0x0') * res.result.ethusd
+                            hexToInt(gasUsed) * hexToInt(txRequest.data.gasPrice ?? '0x0') * res.result.ethusd
                           ) * 100
                         ) / 100
                       ).toFixed(2)
@@ -1416,7 +1416,7 @@ export class Accounts extends EventEmitter {
                     request.notice = 'Confirming'
                     request.completed = this.dependencies.runtime.now()
                   })
-                  const hash = txRequest.tx?.hash || ''
+                  const hash = txRequest.tx?.hash ?? ''
                   const body = `Transaction ${shortHash(hash)} successful! \n Click for details`
 
                   // If Newframe is hidden, trigger native notification
@@ -1747,7 +1747,7 @@ export class Accounts extends EventEmitter {
           const gas = this.store.getState().main.networksMeta.ethereum[chain.id].gas
 
           if (usesBaseFee(tx)) {
-            const { maxBaseFeePerGas, maxPriorityFeePerGas } = gas.price.fees || {}
+            const { maxBaseFeePerGas, maxPriorityFeePerGas } = gas.price.fees ?? {}
             if (!maxBaseFeePerGas || !maxPriorityFeePerGas) {
               throw new Error('Gas fee data unavailable')
             }
@@ -1877,7 +1877,7 @@ export class Accounts extends EventEmitter {
     }
 
     const matchSelected =
-      (rawTx.from || '').toLowerCase() === currentAccount.getSelectedAddress().toLowerCase()
+      (rawTx.from ?? '').toLowerCase() === currentAccount.getSelectedAddress().toLowerCase()
 
     if (matchSelected) {
       currentAccount.signTransaction(rawTx, cb, context)
@@ -2238,12 +2238,12 @@ export class Accounts extends EventEmitter {
     }
 
     const tx = request.data
-    const gasLimit = parseInt(tx.gasLimit || '0x0', 16)
+    const gasLimit = parseInt(tx.gasLimit ?? '0x0', 16)
     const txType = tx.type
 
     if (usesBaseFee(tx)) {
-      const maxFeePerGas = parseInt(tx.maxFeePerGas || '0x0', 16)
-      const maxPriorityFeePerGas = parseInt(tx.maxPriorityFeePerGas || '0x0', 16)
+      const maxFeePerGas = parseInt(tx.maxFeePerGas ?? '0x0', 16)
+      const maxPriorityFeePerGas = parseInt(tx.maxPriorityFeePerGas ?? '0x0', 16)
       const currentBaseFee = maxFeePerGas - maxPriorityFeePerGas
       return {
         currentAccount,
@@ -2256,7 +2256,7 @@ export class Accounts extends EventEmitter {
         gasPrice: 0
       }
     }
-    const gasPrice = parseInt(tx.gasPrice || '0x0', 16)
+    const gasPrice = parseInt(tx.gasPrice ?? '0x0', 16)
     return {
       currentAccount,
       inputValue,

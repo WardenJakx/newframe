@@ -184,12 +184,10 @@ export class RawFrameConnection extends EventEmitter {
     }
 
     if (this.retryAt > Date.now()) {
-      if (!this.reconnectTimer) {
-        this.reconnectTimer = setTimeout(() => {
-          this.reconnectTimer = undefined
-          this.ensureConnected()
-        }, this.retryAt - Date.now())
-      }
+      this.reconnectTimer ??= setTimeout(() => {
+        this.reconnectTimer = undefined
+        this.ensureConnected()
+      }, this.retryAt - Date.now())
       return
     }
     clearTimeout(this.reconnectTimer)

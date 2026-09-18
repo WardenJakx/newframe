@@ -39,9 +39,9 @@ type ElectronDiagnostics = {
 }
 
 export class VisualHarnessRuntime {
-  readonly outputDir = process.env.NEWFRAME_HARNESS_OUTPUT_DIR || '/tmp/newframe-visual-harness'
+  readonly outputDir = process.env.NEWFRAME_HARNESS_OUTPUT_DIR ?? '/tmp/newframe-visual-harness'
   readonly screenshotDir = path.join(this.outputDir, 'screenshots')
-  readonly uiTimeoutMs = Number(process.env.NEWFRAME_HARNESS_UI_TIMEOUT_MS || 10_000)
+  readonly uiTimeoutMs = Number(process.env.NEWFRAME_HARNESS_UI_TIMEOUT_MS ?? 10_000)
   readonly startedAt = Date.now()
   readonly summary: HarnessSummary = {
     durationMs: 0,

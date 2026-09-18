@@ -184,14 +184,14 @@ export function createSafeConfirmationService({
       } else {
         operations.fail(
           reference,
-          { code: status, message: message || 'Could not confirm this proposal.' },
+          { code: status, message: message ?? 'Could not confirm this proposal.' },
           status
         )
       }
     }
     if (status !== 'published' && entry.references[0]) {
       entry.message =
-        operations.lookup(entry.references[0])?.error?.message || 'Could not confirm this proposal.'
+        operations.lookup(entry.references[0])?.error?.message ?? 'Could not confirm this proposal.'
     }
   }
   const cancel = (entry: Entry, discard = false) => {
@@ -407,7 +407,7 @@ export function createSafeConfirmationService({
       } else {
         operations.fail(
           reference,
-          { code: entry.status, message: entry.message || 'Could not confirm this proposal.' },
+          { code: entry.status, message: entry.message ?? 'Could not confirm this proposal.' },
           entry.status
         )
       }

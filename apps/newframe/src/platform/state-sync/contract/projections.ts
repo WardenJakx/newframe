@@ -453,7 +453,7 @@ export const WalletOrderRecordSchema = z
     rawStatusPayload: WalletOrderDiagnosticStatusSchema.optional()
   })
   .strip()
-  .refine((order) => Boolean(order.provider || order.source), {
+  .refine((order) => Boolean(order.provider ?? order.source), {
     message: 'Order record requires provider or source',
     path: ['source']
   })

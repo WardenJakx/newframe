@@ -103,7 +103,7 @@ class Connection extends EventEmitter {
 }
 
 let mmAppear: any =
-  window.localStorage.getItem('__newframeAppearAsMM__') || window.localStorage.getItem('__frameAppearAsMM__')
+  window.localStorage.getItem('__newframeAppearAsMM__') ?? window.localStorage.getItem('__frameAppearAsMM__')
 
 try {
   mmAppear = JSON.parse(mmAppear)

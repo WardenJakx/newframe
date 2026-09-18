@@ -103,7 +103,7 @@ function isReadyAgentAccount(accountId: string, accounts: Accounts, runtime: Age
 }
 
 function authorization(req: IncomingMessage) {
-  const value = req.headers.authorization || ''
+  const value = req.headers.authorization ?? ''
   return value.startsWith('Bearer ') ? value.slice('Bearer '.length) : ''
 }
 
@@ -324,7 +324,7 @@ async function revoke(
 }
 
 export function isAgentHttpRequest(req: IncomingMessage) {
-  return new URL(req.url || '/', 'http://127.0.0.1').pathname.startsWith('/agent/')
+  return new URL(req.url ?? '/', 'http://127.0.0.1').pathname.startsWith('/agent/')
 }
 
 function createAgentHttpHandler(
@@ -339,7 +339,7 @@ function createAgentHttpHandler(
       if (req.headers.origin) {
         return sendJson(res, 403, { error: 'Agent API does not accept browser-originated requests' })
       }
-      const pathname = new URL(req.url || '/', 'http://127.0.0.1').pathname
+      const pathname = new URL(req.url ?? '/', 'http://127.0.0.1').pathname
       if (req.method === 'POST' && pathname === '/agent/session') {
         return await connect(req, res, accounts, requests, runtime)
       }

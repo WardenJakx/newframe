@@ -78,7 +78,7 @@ export class FlashOrderStream {
 
     let socket: WebSocket
     try {
-      socket = (this.options.createSocket || ((url) => new WebSocket(url)))(this.options.url)
+      socket = (this.options.createSocket ?? ((url) => new WebSocket(url)))(this.options.url)
     } catch (error) {
       this.options.onError?.(error)
       this.scheduleReconnect()
@@ -168,7 +168,7 @@ export class FlashOrderStream {
     }
 
     const error = new Error(
-      `Flash WebSocket ${String(frame.code || 'ERROR')}: ${String(frame.message || '')}`
+      `Flash WebSocket ${String(frame.code ?? 'ERROR')}: ${String(frame.message ?? '')}`
     )
     this.options.onError?.(error)
 
@@ -180,7 +180,7 @@ export class FlashOrderStream {
       return
     }
 
-    if (retryableErrorCodes.has(String(frame.code || ''))) {
+    if (retryableErrorCodes.has(String(frame.code ?? ''))) {
       this.setAvailable(false)
       this.socket?.close()
     }
@@ -201,7 +201,7 @@ export class FlashOrderStream {
     }
 
     const backoff = Math.min(RETRY_MAX_MS, RETRY_BASE_MS * 2 ** this.attempts++)
-    const random = this.options.random || Math.random
+    const random = this.options.random ?? Math.random
     const delay = backoff / 2 + random() * (backoff / 2)
 
     this.reconnectTimer = setTimeout(() => {

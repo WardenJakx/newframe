@@ -156,7 +156,7 @@ export function createNameResolutionService(
         return ''
       }
       const [primary] = await readGns('reverseResolve', [getAddress(address)])
-      return primary || ''
+      return primary ?? ''
     } catch {
       return ''
     }
@@ -176,7 +176,10 @@ export function createNameResolutionService(
 
   async function reverseLookup(address: string) {
     const gnsName = await reverseGnsLookup(address)
-    return gnsName || reverseEnsLookup(address)
+    if (gnsName) {
+      return gnsName
+    }
+    return reverseEnsLookup(address)
   }
 
   return {

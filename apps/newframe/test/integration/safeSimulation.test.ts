@@ -454,7 +454,7 @@ it('executes MultiSend and undecoded configuration changes in Safe context witho
         (event) =>
           event.address?.toLowerCase() === seed.safe.toLowerCase() &&
           event.topics?.[0] === id('AddedOwner(address)') &&
-          (event.data?.toLowerCase().includes(newOwner.slice(2)) ||
+          (event.data?.toLowerCase().includes(newOwner.slice(2)) ??
             event.topics.some((topic) => topic.toLowerCase().endsWith(newOwner.slice(2))))
       )
   ).toBe(true)

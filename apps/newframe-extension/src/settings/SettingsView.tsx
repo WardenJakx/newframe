@@ -142,7 +142,7 @@ function ChainSelect({ settings, onSelectChain }: Pick<SettingsViewProps, 'setti
         disabled: chain.connected === false,
         iconUrl: chain.icon?.[0]?.url,
         id: String(chain.chainId),
-        label: chain.name || String(chain.chainId),
+        label: chain.name ?? String(chain.chainId),
         selected: Number(chain.chainId) === Number.parseInt(currentChain, 16)
       }))}
     />

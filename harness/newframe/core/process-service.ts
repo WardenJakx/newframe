@@ -66,7 +66,7 @@ export class ProcessService implements HarnessService<ProcessHandle> {
         }
         reject(
           new Error(
-            `${this.name} exited unexpectedly with ${signal || `code ${code ?? 'unknown'}`}${
+            `${this.name} exited unexpectedly with ${signal ?? `code ${code ?? 'unknown'}`}${
               output() ? `\n\n${tail(output())}` : ''
             }`
           )

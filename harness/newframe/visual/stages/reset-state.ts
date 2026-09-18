@@ -21,17 +21,17 @@ export const resetStateStage: VisualStage = {
     )
     const resetOperation = state.operations?.[operationId]?.operation
     if (resetOperation?.status === 'failed') {
-      driver.fail(resetOperation.error?.message || 'Saved-data reset failed')
+      driver.fail(resetOperation.error?.message ?? 'Saved-data reset failed')
     }
     const originIds = new Set<string>()
 
-    Object.entries(state.main?.origins || {}).forEach(([originId, origin]) => {
+    Object.entries(state.main?.origins ?? {}).forEach(([originId, origin]) => {
       if (origin?.name === harnessOrigin) {
         originIds.add(originId)
       }
     })
 
-    Object.values(state.main?.permissions || {}).forEach((permissions) => {
+    Object.values(state.main?.permissions ?? {}).forEach((permissions) => {
       Object.entries(permissions || {}).forEach(([permissionId, permission]) => {
         if (permission?.origin === harnessOrigin) {
           originIds.add(permissionId)
@@ -54,8 +54,8 @@ export const resetStateStage: VisualStage = {
     await driver.setShowTestnets(true)
     await driver.waitForState(
       (candidate) => {
-        const networks = candidate.main?.networks?.ethereum || {}
-        const orders = candidate.main?.orders || {}
+        const networks = candidate.main?.networks?.ethereum ?? {}
+        const orders = candidate.main?.orders ?? {}
         return !networks[String(anvilChainId)] && Object.keys(orders).length === 0
       },
       5_000,

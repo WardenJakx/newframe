@@ -31,12 +31,12 @@ const artifacts = {
   weth: 'WETH9.sol/WETH9.json'
 } as const
 
-const harnessAccountAddress = process.env.HARNESS_ACCOUNT || '0x35f9179059a691d8beecf82fe112f7277e018588'
-const usdcAddress = process.env.USDC_ADDRESS || '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'
-const wethAddress = process.env.WETH_ADDRESS || '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2'
+const harnessAccountAddress = process.env.HARNESS_ACCOUNT ?? '0x35f9179059a691d8beecf82fe112f7277e018588'
+const usdcAddress = process.env.USDC_ADDRESS ?? '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'
+const wethAddress = process.env.WETH_ADDRESS ?? '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2'
 const mockFlashSettlementAddress =
-  process.env.MOCK_FLASH_SETTLEMENT_ADDRESS || '0x0000000000000000000000000000000000005e77'
-const testContractAddress = process.env.TEST_CONTRACT_ADDRESS || '0x0000000000000000000000000000000000001337'
+  process.env.MOCK_FLASH_SETTLEMENT_ADDRESS ?? '0x0000000000000000000000000000000000005e77'
+const testContractAddress = process.env.TEST_CONTRACT_ADDRESS ?? '0x0000000000000000000000000000000000001337'
 const multicall3Address = '0xcA11bde05977b3631167028862bE2a173976CA11'
 const multicall3DeployerAddress = '0x05f32b3cc3888453ff71b01135b34ff8e41263f2'
 const multicall3SignedTransactionPath = path.join(
@@ -46,7 +46,7 @@ const multicall3SignedTransactionPath = path.join(
   'multicall3-signed-transaction.txt'
 )
 const anvilDeployerPrivateKey =
-  process.env.ANVIL_DEPLOYER_PRIVATE_KEY ||
+  process.env.ANVIL_DEPLOYER_PRIVATE_KEY ??
   '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80'
 
 function bigintEnv(key: string, fallback: bigint) {
@@ -160,7 +160,7 @@ async function deployMulticall3(provider: JsonRpcProvider, signer: NonceManager)
 
   if (receipt.contractAddress?.toLowerCase() !== multicall3Address.toLowerCase()) {
     throw new Error(
-      `Multicall3 deployed at ${receipt.contractAddress || 'no address'}, expected ${multicall3Address}`
+      `Multicall3 deployed at ${receipt.contractAddress ?? 'no address'}, expected ${multicall3Address}`
     )
   }
 }

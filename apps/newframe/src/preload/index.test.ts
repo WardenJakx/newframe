@@ -17,7 +17,7 @@ const contextBridge = {
 const ipcRenderer = {
   invoke: mock(),
   on: mock((channel: string, listener: Listener) => {
-    listeners.set(channel, [...(listeners.get(channel) || []), listener])
+    listeners.set(channel, [...(listeners.get(channel) ?? []), listener])
     return ipcRenderer
   })
 }
@@ -38,7 +38,7 @@ const loadHost = async () => {
 }
 
 const emit = (channel: string, ...args: unknown[]) => {
-  ;(listeners.get(channel) || []).forEach((listener) => listener(...args))
+  ;(listeners.get(channel) ?? []).forEach((listener) => listener(...args))
 }
 
 beforeEach(() => {

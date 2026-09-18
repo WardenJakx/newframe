@@ -51,7 +51,7 @@ export function ChainIcon({ chainId, networks, networksMeta, size = 'medium' }: 
     )
   }
 
-  const name = String(networks[chainId]?.name || '').toLowerCase()
+  const name = String(networks[chainId]?.name ?? '').toLowerCase()
   if (['mainnet', 'görli', 'goerli', 'sepolia', 'ropsten', 'rinkeby', 'kovan'].includes(name)) {
     return (
       <span className={chainIconRecipe({ kind: 'glyph', size })}>

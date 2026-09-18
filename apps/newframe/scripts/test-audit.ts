@@ -19,7 +19,7 @@ const check = process.argv.includes('--check')
 const baselineArgument = process.argv.find((value) => value.startsWith('--baseline='))
 const baselinePath = path.resolve(
   appRoot,
-  baselineArgument?.slice('--baseline='.length) || 'test/test-audit-baseline.json'
+  baselineArgument?.slice('--baseline='.length) ?? 'test/test-audit-baseline.json'
 )
 const ignoredDirectories = new Set([
   'bundle',
@@ -43,7 +43,7 @@ function walk(directory: string): string[] {
 }
 
 function count(source: string, expression: RegExp) {
-  return source.match(expression)?.length || 0
+  return source.match(expression)?.length ?? 0
 }
 
 function category(relativePath: string) {

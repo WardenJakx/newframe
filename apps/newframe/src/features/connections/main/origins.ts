@@ -175,7 +175,7 @@ export function createOriginsService(dependencies: OriginsServiceDependencies) {
   }
 
   const isTrusted = async (payload: RPCRequestPayload, principal: RpcPrincipal) => {
-    const originName = dependencies.store.getOrigin(payload._origin)?.name || 'Unknown'
+    const originName = dependencies.store.getOrigin(payload._origin)?.name ?? 'Unknown'
     const currentAccount = dependencies.accounts.current()
     const permission = currentAccount
       ? dependencies.store.getPermission(currentAccount.address, originName)

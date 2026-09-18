@@ -56,14 +56,14 @@ export function normalizeRequestChainId(chainId: unknown) {
 type RequestHeaders = Record<string, string | string[] | undefined>
 
 export function chainIdFromRequest(headers: RequestHeaders, requestUrl = '/') {
-  const headerChainId = normalizeRequestChainId(headers['x-newframe-chain-id'] || headers['x-frame-chain-id'])
+  const headerChainId = normalizeRequestChainId(headers['x-newframe-chain-id'] ?? headers['x-frame-chain-id'])
   if (headerChainId) {
     return headerChainId
   }
 
   try {
     const url = new URL(requestUrl, 'http://127.0.0.1')
-    return normalizeRequestChainId(url.searchParams.get('chainId') || url.searchParams.get('chain'))
+    return normalizeRequestChainId(url.searchParams.get('chainId') ?? url.searchParams.get('chain'))
   } catch {
     return undefined
   }
@@ -79,7 +79,7 @@ export function parseExtensionIdentity({
   development: boolean
 }): FrameExtension | undefined {
   const query = new URLSearchParams(requestUrl.replace('/', ''))
-  const hasExtensionIdentity = extensionIdentities.includes(query.get('identity') || '')
+  const hasExtensionIdentity = extensionIdentities.includes(query.get('identity') ?? '')
   const chromeExtensionId = trustedChromeExtensionIds.find(
     (id) => origin === `${extensionPrefixes.chrome}://${id}`
   )
@@ -131,8 +131,8 @@ export function projectOriginUpdate({
     parsedRequestedChainId !== undefined && knownEthereumChainIds.has(parsedRequestedChainId)
       ? parsedRequestedChainId
       : undefined
-  const defaultChainId = knownRequestedChainId || existingChainId || 1
-  const chainId = requestedChainId || `0x${defaultChainId.toString(16)}`
+  const defaultChainId = knownRequestedChainId ?? existingChainId ?? 1
+  const chainId = requestedChainId ?? `0x${defaultChainId.toString(16)}`
   const projectedPayload = { ...payload, _origin: originId }
 
   if (payload.chainId || connectionMessage) {

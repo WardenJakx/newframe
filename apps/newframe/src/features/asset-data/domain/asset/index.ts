@@ -46,7 +46,7 @@ export function getAssetRateKey(assetId: string) {
   if (/^\d+:ETH$/.test(assetId)) {
     return 'ETH'
   }
-  return getCuratedAsset(assetId)?.commonAsset || assetId
+  return getCuratedAsset(assetId)?.commonAsset ?? assetId
 }
 
 export function resolveAssetRate(

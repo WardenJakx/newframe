@@ -45,12 +45,12 @@ export function embeddedImageSource(value: unknown) {
 }
 
 export function imageSource(target?: string) {
-  const source = target?.trim() || ''
+  const source = target?.trim() ?? ''
   return isEmbeddedImage(source) ? source : ''
 }
 
 export function isEmbeddedImage(target?: string) {
-  return /^data:image\/[a-z0-9.+-]+;base64,/i.test(target || '')
+  return /^data:image\/[a-z0-9.+-]+;base64,/i.test(target ?? '')
 }
 
 export function persistedImageSource(image?: { base64?: string; mimeType?: string }) {

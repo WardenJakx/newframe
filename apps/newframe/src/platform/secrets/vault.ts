@@ -132,9 +132,9 @@ class Vault {
       return this.key as string
     }
     if (this.exists()) {
-      return this.unlock(password || '')
+      return this.unlock(password ?? '')
     }
-    return this.create(password || '')
+    return this.create(password ?? '')
   }
 
   changePassword(oldPassword: string, newPassword: string) {

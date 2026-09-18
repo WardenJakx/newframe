@@ -33,7 +33,7 @@ export function checkExistingNonceGas(
 ) {
   const { from, nonce } = tx
 
-  const account = canonicalStore.getState().main.accounts[(from || '').toLowerCase()]
+  const account = canonicalStore.getState().main.accounts[(from ?? '').toLowerCase()]
   const reqs = (account?.requests || {}) as Record<string, TransactionRequest>
 
   const requests = Object.keys(reqs || {}).map((key) => reqs[key])
@@ -43,8 +43,8 @@ export function checkExistingNonceGas(
 
   if (existing.length > 0) {
     if (tx.maxPriorityFeePerGas && tx.maxFeePerGas) {
-      const existingFee = Math.max(...existing.map((r) => Number(r.data.maxPriorityFeePerGas || 0)))
-      const existingMax = Math.max(...existing.map((r) => Number(r.data.maxFeePerGas || 0)))
+      const existingFee = Math.max(...existing.map((r) => Number(r.data.maxPriorityFeePerGas ?? 0)))
+      const existingMax = Math.max(...existing.map((r) => Number(r.data.maxFeePerGas ?? 0)))
       const feeInt = parseInt(tx.maxPriorityFeePerGas)
       const maxInt = parseInt(tx.maxFeePerGas)
       if (existingFee * 1.1 >= feeInt || existingMax * 1.1 >= maxInt) {
@@ -57,7 +57,7 @@ export function checkExistingNonceGas(
         tx.feesUpdated = true
       }
     } else if (tx.gasPrice) {
-      const existingPrice = Math.max(...existing.map((r) => Number(r.data.gasPrice || 0)))
+      const existingPrice = Math.max(...existing.map((r) => Number(r.data.gasPrice ?? 0)))
       const priceInt = parseInt(tx.gasPrice)
       if (existingPrice >= priceInt) {
         // Bump price by 10%
@@ -74,9 +74,9 @@ export function checkExistingNonceGas(
 
 export function feeTotalOverMax(rawTx: TransactionData, maxTotalFee: number) {
   const maxFeePerGas = usesBaseFee(rawTx)
-    ? parseInt(rawTx.maxFeePerGas || '', 16)
-    : parseInt(rawTx.gasPrice || '', 16)
-  const gasLimit = parseInt(rawTx.gasLimit || '', 16)
+    ? parseInt(rawTx.maxFeePerGas ?? '', 16)
+    : parseInt(rawTx.gasPrice ?? '', 16)
+  const gasLimit = parseInt(rawTx.gasLimit ?? '', 16)
   const totalFee = maxFeePerGas * gasLimit
   return totalFee > maxTotalFee
 }
@@ -107,8 +107,8 @@ export function getRawTx(newTx: RPC.SendTransaction.TxParams): TransactionData {
     ...(to && { to: getAddress(to) }),
     type: '0x0',
     value: parseValue(value),
-    data: addHexPrefix(padToEven(stripHexPrefix(data || '0x'))),
-    gasLimit: gasLimit || gas,
+    data: addHexPrefix(padToEven(stripHexPrefix(data ?? '0x'))),
+    gasLimit: gasLimit ?? gas,
     chainId: rawTx.chainId,
     nonce: getNonce(),
     gasFeesSource: GasFeesSource.Dapp
@@ -125,7 +125,7 @@ export function resError(errorData: string | EVMError, request: RPCId, res: RPCE
   const error =
     typeof errorData === 'string'
       ? { message: errorData, code: -1 }
-      : { message: errorData.message, code: errorData.code || -1 }
+      : { message: errorData.message, code: errorData.code ?? -1 }
 
   log.warn(error)
   res({ id: request.id, jsonrpc: request.jsonrpc, error })

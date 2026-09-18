@@ -248,7 +248,7 @@ export default class Ledger extends Signer {
         this.handleError(err)
       }
 
-      return err?.statusCode || 0
+      return err?.statusCode ?? 0
     })
   }
 

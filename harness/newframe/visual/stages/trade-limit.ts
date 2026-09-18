@@ -15,13 +15,13 @@ export const tradeLimitStage: VisualStage = {
       .waitFor({ state: 'visible', timeout: 20_000 })
     await driver.screenshot(tradePage, '22a-trade-limit-quoted.png')
     const beforeSubmit = await driver.getAppState()
-    const existingOrderIds = new Set(Object.keys(beforeSubmit.main?.orders || {}))
-    const priorOperationIds = new Set(Object.keys(beforeSubmit.operations || {}))
+    const existingOrderIds = new Set(Object.keys(beforeSubmit.main?.orders ?? {}))
+    const priorOperationIds = new Set(Object.keys(beforeSubmit.operations ?? {}))
     await tradePage.getByRole('button', { name: /Review\/sign/i }).click()
 
     const pendingState = await driver.waitForState(
       (state) =>
-        Object.entries(state.operations || {}).some(
+        Object.entries(state.operations ?? {}).some(
           ([operationId, entry]) =>
             !priorOperationIds.has(operationId) &&
             entry.operation?.type === 'trade.execute' &&
@@ -30,14 +30,14 @@ export const tradeLimitStage: VisualStage = {
       5_000,
       'Limit trade did not publish a pending canonical operation'
     )
-    const limitOperationEntry = Object.entries(pendingState.operations || {}).find(
+    const limitOperationEntry = Object.entries(pendingState.operations ?? {}).find(
       ([operationId, entry]) =>
         !priorOperationIds.has(operationId) &&
         entry.operation?.type === 'trade.execute' &&
         entry.operation.status === 'pending'
     )
     const limitOperationId =
-      limitOperationEntry?.[0] || driver.fail('Pending limit trade operation disappeared')
+      limitOperationEntry?.[0] ?? driver.fail('Pending limit trade operation disappeared')
 
     const signRequest = await driver.waitForCurrentRequest('signTypedData', new Set(), 30_000)
     await driver.screenshot(tray, '22b-trade-limit-sign-review.png')
@@ -49,7 +49,7 @@ export const tradeLimitStage: VisualStage = {
         candidate.status === 'accepted' &&
         Boolean(candidate.open) &&
         Boolean(candidate.orderId) &&
-        !existingOrderIds.has(candidate.orderId || ''),
+        !existingOrderIds.has(candidate.orderId ?? ''),
       15_000,
       'A newly submitted limit Flash order was not accepted as open'
     )
@@ -76,7 +76,7 @@ export const tradeLimitStage: VisualStage = {
     )
     const operation = terminalState.operations?.[limitOperationId]?.operation
     if (operation?.status === 'failed') {
-      return driver.fail(operation.error?.message || 'Canonical limit trade operation failed')
+      return driver.fail(operation.error?.message ?? 'Canonical limit trade operation failed')
     }
     if (!operation?.entityRefs?.some((reference) => reference.type === 'order' && reference.id === orderId)) {
       return driver.fail('Successful limit trade operation did not reference its order')

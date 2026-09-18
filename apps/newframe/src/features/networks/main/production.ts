@@ -27,7 +27,7 @@ export function createChainlistIconLookup(fetchCatalog: ChainlistFetch = fetch) 
 
   return async (chainId: number) => {
     try {
-      catalogRequest ||= loadCatalog()
+      catalogRequest ??= loadCatalog()
       const chain = (await catalogRequest).find((entry) => entry.chainId === chainId)
       const chainSlug = typeof chain?.chainSlug === 'string' ? chain.chainSlug.trim() : ''
       const icon = typeof chain?.icon === 'string' ? chain.icon.trim() : ''

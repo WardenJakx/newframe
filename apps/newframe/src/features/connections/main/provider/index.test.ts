@@ -93,7 +93,7 @@ const setNetwork = (id: number, network: any) => {
           secondary: { connected: false, ...network.connection?.secondary }
         }
       }
-      state.main.networksMeta.ethereum[id] ||= {
+      state.main.networksMeta.ethereum[id] ??= {
         primaryColor: 'accent1',
         nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18, icon: '' }
       }
@@ -102,7 +102,7 @@ const setNetwork = (id: number, network: any) => {
 }
 const setNetworkGas = (id: number, gas: any) => {
   store.setState((state: any) => {
-    state.main.networksMeta.ethereum[id] ||= {}
+    state.main.networksMeta.ethereum[id] ??= {}
     state.main.networksMeta.ethereum[id].gas = gas
   })
 }
@@ -155,7 +155,7 @@ beforeAll(async () => {
   log.transports.console.level = false
 
   const connectionModule = (await import('../../../networks/main')) as any
-  connection = connectionModule.default || connectionModule
+  connection = connectionModule.default ?? connectionModule
   store = (await import('../../../../platform/state-store')).default as any
   accounts.getAccounts = () => [address]
   accounts.current = () => ({ id: address, getAccounts: () => [address] })
@@ -163,7 +163,7 @@ beforeAll(async () => {
   accounts.routeRequest = (receivedPrincipal: unknown, req: any, executeAutonomously: any) => {
     expect(receivedPrincipal).toBe(principal)
     store.setState((state: any) => {
-      state.main.accounts[req.account] ||= {}
+      state.main.accounts[req.account] ??= {}
       state.main.accounts[req.account].requests = { [req.handlerId]: req }
     })
     accountRequests.push(req)

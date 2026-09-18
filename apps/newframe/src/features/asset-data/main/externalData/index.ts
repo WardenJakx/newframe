@@ -32,7 +32,7 @@ export default function createExternalDataScanner(canonicalStore: CanonicalStore
     }
   }
   const shouldScanOnChain = (address: Address) => {
-    const signerType = storeApi.getAccount(address)?.lastSignerType || ''
+    const signerType = storeApi.getAccount(address)?.lastSignerType ?? ''
     return signerType.toLowerCase() !== 'address'
   }
   const scanningAllowed = () => {
@@ -249,9 +249,7 @@ export default function createExternalDataScanner(canonicalStore: CanonicalStore
 
     if (!open) {
       // pause balance scanning after the tray is out of view for one minute
-      if (!pauseScanningDelay) {
-        pauseScanningDelay = setTimeout(balances.pause, 1000)
-      }
+      pauseScanningDelay ??= setTimeout(balances.pause, 1000)
     } else {
       if (pauseScanningDelay) {
         clearPauseScanningDelay()
