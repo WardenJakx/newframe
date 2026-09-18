@@ -227,9 +227,9 @@ createRoot(document.getElementById('preview')).render(<Preview />)
     await page.locator('html[data-preview-ready="true"]').waitFor({ state: 'attached' })
     assertHealthy()
     if (values.check) {
-      const check: { default?: (page: Page) => Promise<void> } = await import(
-        pathToFileURL(values.check).href
-      )
+      const check = (await import(pathToFileURL(values.check).href)) as unknown as {
+        default?: (page: Page) => Promise<void>
+      }
       if (typeof check.default !== 'function') {
         throw new Error('--check must default-export an async (page: Page) => void function')
       }

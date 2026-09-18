@@ -195,7 +195,7 @@ export function createHttpRpcTransport({
           if (payload.method !== 'eth_pollSubscriptions') {
             return false
           }
-          const id = payload.params[0]
+          const id: unknown = payload.params[0]
           if (typeof id !== 'string') {
             res.writeHead(401, { 'Content-Type': 'application/json' })
             res.end(JSON.stringify({ error: 'Invalid Client ID' }))

@@ -115,7 +115,7 @@ const isTransactionRequest = (
   if (!isRecord(request.payload) || request.payload.method !== 'eth_sendTransaction') {
     return false
   }
-  const firstParam = Array.isArray(request.payload.params) ? request.payload.params[0] : undefined
+  const firstParam: unknown = Array.isArray(request.payload.params) ? request.payload.params[0] : undefined
   if (!isRecord(firstParam) || typeof firstParam.chainId !== 'string' || !isOptionalString(firstParam.data)) {
     return false
   }

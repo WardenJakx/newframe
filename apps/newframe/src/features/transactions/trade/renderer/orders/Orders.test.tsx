@@ -117,7 +117,7 @@ describe('Orders cancellation', () => {
     const firstCommand = executeCommandMock().mock.calls.at(-1)?.[0] as CancelCommand
     expect(firstCommand).toEqual({
       type: 'flash.order-cancel',
-      operationId: expect.any(String),
+      operationId: expect.any(String) as string,
       orderId: 'order-1'
     })
     expect(cancel.disabled).toBe(true)

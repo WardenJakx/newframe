@@ -53,7 +53,7 @@ it('downloads and returns a persistable base64 image payload', async () => {
 
   expect(image).toEqual({
     base64: png.toString('base64'),
-    contentHash: expect.stringMatching(/^[a-f0-9]{64}$/),
+    contentHash: expect.stringMatching(/^[a-f0-9]{64}$/) as string,
     mimeType: 'image/png',
     sourceUrl: 'https://cdn.example/usdc.png'
   })
@@ -64,7 +64,7 @@ it('decodes and validates embedded Firefox favicon data', async () => {
 
   expect(await downloadImage(sourceUrl)).toEqual({
     base64: png.toString('base64'),
-    contentHash: expect.stringMatching(/^[a-f0-9]{64}$/),
+    contentHash: expect.stringMatching(/^[a-f0-9]{64}$/) as string,
     mimeType: 'image/png',
     sourceUrl
   })

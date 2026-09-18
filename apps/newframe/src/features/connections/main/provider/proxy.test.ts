@@ -4,7 +4,7 @@ import { createProviderProxyConnection } from './proxy'
 
 it('owns connection and request events through an explicit lifecycle', async () => {
   const proxy = createProviderProxyConnection()
-  const events: Array<{ type: string; payload?: RPCRequestPayload }> = []
+  const events: Array<{ type: string; payload?: unknown }> = []
   proxy.on('connect', () => events.push({ type: 'connect' }))
   proxy.on('provider:send', (payload) => events.push({ type: 'send', payload }))
   proxy.on('provider:subscribe', (payload) => events.push({ type: 'subscribe', payload }))
@@ -29,16 +29,16 @@ it('owns connection and request events through an explicit lifecycle', async () 
       payload: expect.objectContaining({
         id: 1,
         method: 'eth_chainId',
-        _origin: expect.any(String)
-      })
+        _origin: expect.any(String) as unknown
+      }) as unknown
     },
     {
       type: 'subscribe',
       payload: expect.objectContaining({
         id: 2,
         method: 'eth_subscribe',
-        _origin: expect.any(String)
-      })
+        _origin: expect.any(String) as unknown
+      }) as unknown
     },
     { type: 'close' }
   ])

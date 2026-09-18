@@ -55,14 +55,16 @@ function shortHash(hash?: string) {
   return `${hash.substring(0, 6)}...${hash.substring(hash.length - 4)}`
 }
 
-function isBalanceChange(effect: TransactionEffect) {
+function isBalanceChange(
+  effect: TransactionEffect
+): effect is TransactionEffect & { kind: 'native' | 'erc20'; direction: 'in' | 'out' } {
   return (
     (effect.kind === 'native' || effect.kind === 'erc20') &&
     (effect.direction === 'in' || effect.direction === 'out')
   )
 }
 
-function cloneForActivity(value: any) {
+function cloneForActivity<T>(value: T): T | undefined {
   if (value === undefined) {
     return undefined
   }
@@ -75,7 +77,7 @@ function cloneForActivity(value: any) {
         }
         return nextValue
       })
-    )
+    ) as T
   } catch {
     return undefined
   }
@@ -83,6 +85,20 @@ function cloneForActivity(value: any) {
 
 function unknownRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {}
+}
+
+function transactionReceiptValue(value: unknown): TransactionReceipt | undefined {
+  const receipt = unknownRecord(value)
+  if (typeof receipt.gasUsed !== 'string' || typeof receipt.blockNumber !== 'string') {
+    return undefined
+  }
+  if (receipt.status !== undefined && typeof receipt.status !== 'string') {
+    return undefined
+  }
+  if (receipt.effectiveGasPrice !== undefined && typeof receipt.effectiveGasPrice !== 'string') {
+    return undefined
+  }
+  return receipt as unknown as TransactionReceipt
 }
 
 function transactionActivityId(hash: string) {
@@ -647,7 +663,7 @@ export class Accounts extends EventEmitter {
     }
 
     const receipt = cloneForActivity(req.tx?.receipt)
-    const receiptStatus = unknownRecord(req.tx?.receipt).status
+    const receiptStatus = req.tx?.receipt?.status
 
     if (receiptStatus === '0x0') {
       return this.finalizeTransactionActivity(req, 'reverted', {
@@ -1175,7 +1191,7 @@ export class Accounts extends EventEmitter {
     }
   }
 
-  confirmRequestApproval(reqId: string, approvalType: ApprovalType, approvalData: any) {
+  confirmRequestApproval(reqId: string, approvalType: ApprovalType, approvalData: unknown) {
     log.info('confirmRequestApproval', reqId, approvalType)
 
     const currentAccount = this.current()
@@ -1185,7 +1201,7 @@ export class Accounts extends EventEmitter {
   }
 
   // TODO: can we make this typed for the action type?
-  updateRequest(reqId: string, data: any, actionId: ActionType) {
+  updateRequest(reqId: string, data: unknown, actionId: ActionType) {
     log.verbose('updateRequest', { reqId, actionId, data })
 
     const currentAccount = this.current()
@@ -1228,7 +1244,7 @@ export class Accounts extends EventEmitter {
       const txRequest = this.getTransactionRequest(currentAccount, id)
 
       const data = JSON.parse(JSON.stringify(txRequest.data)) as TransactionData
-      const targetChain = { type: 'ethereum', id: parseInt(data.chainId, 16) }
+      const targetChain: Chain = { type: 'ethereum', id: parseInt(data.chainId, 16) }
       const { levels } = this.store.getState().main.networksMeta.ethereum[targetChain.id].gas.price
 
       // Set the gas default to asap
@@ -1332,11 +1348,12 @@ export class Accounts extends EventEmitter {
                 return reject(new Error('account closed'))
               }
 
-              if (receiptRes.result && account.requests[id]) {
+              const receipt = transactionReceiptValue(receiptRes.result)
+              if (receipt && account.requests[id]) {
                 let txRequest = account.patchRequest<TransactionRequest>(id, (request) => {
                   request.tx = {
                     ...request.tx,
-                    receipt: receiptRes.result,
+                    receipt,
                     confirmations: request.tx?.confirmations ?? 0
                   }
                 })
@@ -1383,7 +1400,7 @@ export class Accounts extends EventEmitter {
                 }
 
                 const blockHeight = parseInt(res.result, 16)
-                const receiptBlock = parseInt((receiptRes.result as TransactionReceipt).blockNumber, 16)
+                const receiptBlock = parseInt(receipt.blockNumber, 16)
                 const confirmations = blockHeight - receiptBlock
 
                 txRequest = account.patchRequest<TransactionRequest>(id, (request) => {
@@ -1631,7 +1648,7 @@ export class Accounts extends EventEmitter {
             }
             installStop(clear)
           } else if (newHeadRes.result) {
-            const headSub = newHeadRes.result
+            const headSub: unknown = newHeadRes.result
             let stopped = false
 
             const removeSubscription = (requestRemoveTimeout: number) => {
@@ -2305,7 +2322,7 @@ export class Accounts extends EventEmitter {
     currentAccount: FrameAccount,
     handlerId: string,
     userUpdate: boolean,
-    previousFee: any,
+    previousFee: unknown,
     data: TransactionData
   ) {
     currentAccount.patchRequest<TransactionRequest>(handlerId, (request) => {

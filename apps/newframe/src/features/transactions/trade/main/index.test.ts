@@ -219,7 +219,7 @@ describe('main Flash facade helpers', () => {
       'dpka_513a2bd7_57a2_46d2_927b_2a3857fe271b'
     ]
   ])('uses %s endpoints and packaged auth', (profile, baseUrl, webSocketUrl, apiKey) => {
-    process.env.FRAME_PROFILE = profile as any
+    Object.assign(process.env, { FRAME_PROFILE: profile })
     expect(flashBaseUrl()).toBe(baseUrl)
     expect(flashWebSocketUrl()).toBe(webSocketUrl)
     expect(flashHeaders()['x-definitive-api-key'] || undefined).toBe(apiKey)
@@ -303,7 +303,7 @@ describe('main Flash facade helpers', () => {
   ])(
     'preserves the live %s cross-chain quote and submit contract',
     (_label, sourceChainId, targetChainId) => {
-      process.env.FRAME_PROFILE = 'prod' as any
+      Object.assign(process.env, { FRAME_PROFILE: 'prod' })
       const contraAsset = getFlashAssetsForChain(sourceChainId).find((asset) => asset.symbol === 'USDC')!
       const targetAsset = getFlashAssetsForChain(targetChainId).find((asset) => asset.symbol === 'WETH')!
       const bridgeQuoteId = `bridge-${sourceChainId}-${targetChainId}`
@@ -378,7 +378,7 @@ describe('main Flash facade helpers', () => {
     }
   )
   it('rejects cross-chain advanced orders before contacting Flash', () => {
-    process.env.FRAME_PROFILE = 'prod' as any
+    Object.assign(process.env, { FRAME_PROFILE: 'prod' })
     const targetAsset = getFlashAssetsForChain(1).find((asset) => asset.symbol === 'WETH')!
     const contraAsset = getFlashAssetsForChain(8453).find((asset) => asset.symbol === 'USDC')!
     expect(() =>

@@ -5,12 +5,15 @@ import { createSettingsService } from './service'
 
 describe('settings service', () => {
   it('persists an available fee preference without modifying requests', () => {
-    const store = createTestStore({
-      main: {
-        accounts: { account: { requests: { request: { data: { gasPrice: '0x1' } } } } },
-        networks: { ethereum: { 1: { id: 1 } } },
-        networksMeta: { ethereum: { 1: { gas: { price: { selected: 'slow', levels: { fast: '0x5' } } } } } }
+    const store = createTestStore()
+    store.store.setState((state) => {
+      const metadata = state.main.networksMeta.ethereum[1]
+      if (!metadata) {
+        throw new Error('Expected built-in mainnet metadata')
       }
+      metadata.gas.price.selected = 'slow'
+      metadata.gas.price.levels.fast = '0x5'
+      Reflect.deleteProperty(metadata.gas.price.levels, 'asap')
     })
     const flush = mock()
     const service = createSettingsService(store, { flush })

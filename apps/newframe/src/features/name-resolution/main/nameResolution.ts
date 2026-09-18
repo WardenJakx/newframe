@@ -175,9 +175,9 @@ export function createNameResolutionService(
   }
 
   async function reverseLookup(address: string) {
-    const gnsName = await reverseGnsLookup(address)
+    const gnsName: unknown = await reverseGnsLookup(address)
     if (gnsName) {
-      return gnsName
+      return typeof gnsName === 'string' ? gnsName : ''
     }
     return reverseEnsLookup(address)
   }

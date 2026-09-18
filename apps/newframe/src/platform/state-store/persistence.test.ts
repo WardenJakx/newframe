@@ -16,6 +16,7 @@ import createCanonicalStore from './createCanonicalStore'
 import {
   CANONICAL_STATE_STORAGE_NAME,
   PERSISTENCE_VERSION,
+  PersistedCanonicalStateSchema,
   type PersistedCanonicalState
 } from './persist/schema'
 import { mergePersistedState, migratePersistedState, selectPersistedState } from './persistence'
@@ -737,7 +738,10 @@ it('retains Safe metadata through persistence and projects only the current prof
     safe
   })
   store.getState().createProfile('other', 'Other')
-  const persisted = JSON.parse(JSON.stringify(selectPersistedState(store.getState())))
+  const persisted = PersistedCanonicalStateSchema.parse(
+    JSON.parse(JSON.stringify(selectPersistedState(store.getState()))),
+    { reportInput: true }
+  )
   const merged = mergePersistedState(persisted, canonicalState())
   expect(merged.main.accounts[address].safe).toEqual(safe)
   const audience = { clientType: 'wallet-ui' as const, windowInstanceId: 'test' }

@@ -132,7 +132,7 @@ it('characterizes agent prompt timeout, disconnect, approval idempotency, and di
     })
     timers.advanceTimersByTime(1)
     expect({
-      body: JSON.parse(timedOut.body),
+      body: JSON.parse(timedOut.body) as unknown,
       lateApproval: service.resolveAgentAccessRequest(timedOutId, true),
       pending: Boolean(requests[timedOutId]),
       status: timedOut.status
@@ -148,7 +148,7 @@ it('characterizes agent prompt timeout, disconnect, approval idempotency, and di
     const disconnectedId = Object.keys(requests)[0]
     disconnected.emit('close')
     expect({
-      body: JSON.parse(disconnected.body),
+      body: JSON.parse(disconnected.body) as unknown,
       lateApproval: service.resolveAgentAccessRequest(disconnectedId, true),
       pending: Boolean(requests[disconnectedId])
     }).toEqual({

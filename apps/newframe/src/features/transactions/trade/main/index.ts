@@ -149,8 +149,8 @@ function normalizeAmount(amount?: string | number) {
     .replace(/,/g, '')
 }
 
-function objectPayload(value: unknown): Record<string, any> {
-  return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, any>) : {}
+function objectPayload(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {}
 }
 
 function stringValue(value: unknown, fallback = '') {
@@ -608,7 +608,7 @@ function normalizeFees(rawFees: unknown, spentAsset: FlashAsset) {
   })
 }
 
-function parseTypedData(value: unknown) {
+function parseTypedData(value: unknown): unknown {
   if (typeof value !== 'string') {
     return value ?? null
   }
@@ -619,7 +619,7 @@ function parseTypedData(value: unknown) {
   }
 
   try {
-    const parsed = JSON.parse(clean)
+    const parsed: unknown = JSON.parse(clean)
 
     return parsed && typeof parsed === 'object' ? parsed : value
   } catch {
@@ -1288,7 +1288,7 @@ function normalizeOrderRecord(rawOrder: unknown, fallback?: FlashOrderRecord | n
     ...fallback,
     orderId,
     accountAddress: normalizeAddress(
-      raw.accountAddress ?? raw.funderAddress ?? raw.account ?? fallback?.accountAddress
+      stringValue(raw.accountAddress ?? raw.funderAddress ?? raw.account ?? fallback?.accountAddress)
     ),
     provider: 'flash',
     source: 'flash',

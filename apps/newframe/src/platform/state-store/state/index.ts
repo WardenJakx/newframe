@@ -14,6 +14,7 @@ import {
 } from '../../../features/networks/domain/chain/index.js'
 import { OperationRecordSchema } from '../../operations/operation.js'
 import { getMainRuntime } from '../../runtime/index.js'
+import { Derivation } from '../../signing/signers/Signer/derive.js'
 import type { SignerSummary } from '../../signing/signers/Signer/index.js'
 import type { OwnedOperation } from '../actions.operation.js'
 
@@ -70,13 +71,30 @@ type StatusNotification = z.infer<typeof StatusNotificationSchema>
 
 // TODO: remove pieces of this as they're added to the main state definition
 type M = Main & {
-  shortcuts: any
-  lattice: any
-  latticeSettings: any
-  ledger: any
-  trezor: any
+  shortcuts: Main['shortcuts'] & { altSlash?: boolean }
+  lattice: Record<
+    string,
+    {
+      deviceId?: string
+      deviceName: string
+      tag: string
+      privKey: string
+      paired: boolean
+      baseUrl?: string
+      endpointMode?: 'default' | 'custom'
+    }
+  >
+  latticeSettings: {
+    accountLimit: number
+    derivation: Derivation
+    endpointMode: 'default' | 'custom'
+    endpointCustom: string
+  }
+  ledger: { derivation: Derivation; liveAccountLimit: number }
+  trezor: { derivation: Derivation }
   signers: Record<string, SignerSummary & Record<string, unknown>>
-  frames: any
+  frames: Record<string, Frame>
+  focusedFrame: string
 }
 
 const mainState: M = {
@@ -109,12 +127,12 @@ const mainState: M = {
   lattice: {},
   latticeSettings: {
     accountLimit: 5,
-    derivation: 'standard',
+    derivation: Derivation.standard,
     endpointMode: 'default',
     endpointCustom: ''
   },
-  ledger: { derivation: 'live', liveAccountLimit: 5 },
-  trezor: { derivation: 'standard' },
+  ledger: { derivation: Derivation.live, liveAccountLimit: 5 },
+  trezor: { derivation: Derivation.standard },
   origins: {},
   knownExtensions: {},
   accounts: {},
@@ -135,7 +153,8 @@ const mainState: M = {
   updater: { dontRemind: [], lastChecked: 0 },
   networks: { ethereum: createBuiltInNetworks() },
   networksMeta: { ethereum: createBuiltInNetworkMetadata() },
-  frames: {}
+  frames: {},
+  focusedFrame: ''
 }
 
 const initial = {
@@ -148,20 +167,26 @@ const initial = {
   main: mainState
 }
 
-type NavigationEntry = { view: string; data: Record<string, any> }
+export type NavigationEntry = {
+  view: string
+  data: Record<string, unknown>
+  [key: string]: unknown
+}
 type WindowState = {
   show: boolean
   nav: NavigationEntry[]
-  [key: string]: any
+  [key: string]: unknown
 }
 
 export type CanonicalState = Omit<typeof initial, 'main' | 'operations' | 'view' | 'windows'> & {
   main: M
   operations: Record<string, OwnedOperation>
-  view: Omit<typeof initial.view, 'notifications'> & {
+  view: Omit<typeof initial.view, 'notifications' | 'notifyData' | 'badge'> & {
+    notifyData: unknown
+    badge: unknown
     notifications: Record<string, StatusNotification>
   }
-  windows: { panel: WindowState }
+  windows: Record<string, WindowState> & { panel: WindowState }
 }
 
 export default function createInitialState(): CanonicalState {

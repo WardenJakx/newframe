@@ -228,7 +228,7 @@ describe('setting token details', () => {
     }
     expect(firstCommand).toEqual({
       type: 'token.add',
-      operationId: expect.any(String),
+      operationId: expect.any(String) as string,
       token: { ...tokenData, address, chainId: 1, logoURI: '' }
     })
     expect(onDone.mock.calls.length).toBe(0)

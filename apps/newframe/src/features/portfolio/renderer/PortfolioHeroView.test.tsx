@@ -49,7 +49,10 @@ describe('PortfolioHero', () => {
       if (rejectedCommand?.type !== 'portfolio.refresh') {
         throw new Error('Expected portfolio refresh')
       }
-      expect(rejectedCommand).toEqual({ type: 'portfolio.refresh', operationId: expect.any(String) })
+      expect(rejectedCommand).toEqual({
+        type: 'portfolio.refresh',
+        operationId: expect.any(String) as string
+      })
       expect(refresh.disabled).toBe(true)
       await act(() => timers.advanceTimersByTime(500))
       expect(refresh.disabled).toBe(true)

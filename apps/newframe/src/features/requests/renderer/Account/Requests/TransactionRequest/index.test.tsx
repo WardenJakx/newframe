@@ -501,7 +501,7 @@ describe('confirm', () => {
       requestKind: 'transaction',
       requestId: 'test-req',
       actionId: 'erc20:approve',
-      amount: expect.any(String)
+      amount: expect.any(String) as unknown
     })
   })
 })

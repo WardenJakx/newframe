@@ -31,7 +31,15 @@ interface PublicKeyParams {
 interface TransactionParams {
   device: DevicePath
   path: string
-  transaction: { chainId: string; type: string; value: string }
+  transaction: {
+    to: string | null
+    value: string
+    gasLimit: string
+    nonce: string
+    chainId: number
+    maxFeePerGas: string
+    maxPriorityFeePerGas: string
+  }
 }
 const TrezorConnectMock = {
   dispose: mock(),
@@ -213,7 +221,15 @@ describe('requests', () => {
   })
 
   it('gets the signature after signing a transaction', async () => {
-    const tx = { chainId: '0x4', type: '0x2', value: '0x1929' }
+    const tx = {
+      to: null,
+      value: '0x1929',
+      gasLimit: '0x5208',
+      nonce: '0x0',
+      chainId: 4,
+      maxFeePerGas: '0x1',
+      maxPriorityFeePerGas: '0x1'
+    }
 
     TrezorConnectMock.ethereumSignTransaction.mockImplementation(async (params: TransactionParams) => {
       expect(params.device.path).toBe('11')

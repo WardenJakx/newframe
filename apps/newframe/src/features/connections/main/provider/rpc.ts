@@ -1,6 +1,6 @@
 import EventEmitter from 'events'
 
-import type { JsonRpcApiProvider } from 'ethers'
+import type { JsonRpcApiProvider, JsonRpcPayload } from 'ethers'
 import { FetchRequest, JsonRpcProvider, WebSocketProvider } from 'ethers'
 import WebSocket from 'ws'
 
@@ -50,7 +50,7 @@ export type EthersRpcProvider = JsonRpcApiProvider
 
 function normalizeParams(params?: RpcParams) {
   if (Array.isArray(params)) {
-    return [...params]
+    return Array.from(params as readonly unknown[])
   }
   return params ?? []
 }
@@ -184,9 +184,9 @@ export function sendRpcPayload<T = unknown>(provider: EthersRpcProvider, payload
 }
 
 export async function sendRawPayload<T = unknown>(provider: EthersRpcProvider, payload: RpcPayload) {
-  const [response] = (await provider._send(payload as any)) as RpcResult[]
+  const [response] = await provider._send(payload as unknown as JsonRpcPayload)
 
-  if (response.error) {
+  if ('error' in response) {
     throw createError(response.error)
   }
 

@@ -120,7 +120,7 @@ export default class Lattice extends Signer {
     })
 
     try {
-      const paired = await this.connection.connect(this.deviceId)
+      const paired = Boolean(await this.connection.connect(this.deviceId))
 
       const { fix: patch, minor, major } = this.connection.getFwVersion() || { fix: 0, major: 0, minor: 0 }
 
@@ -175,7 +175,7 @@ export default class Lattice extends Signer {
 
     try {
       const connection = this.connection as Client
-      const hasActiveWallet = await connection.pair(pairingCode)
+      const hasActiveWallet = Boolean(await connection.pair(pairingCode))
 
       log.info(`successfully paired to Lattice ${this.deviceId}`)
 
