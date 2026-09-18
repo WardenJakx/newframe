@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test'
 import { pathToFileURL } from 'url'
 
+import type { IpcMainInvokeEvent, WebContents } from 'electron'
+
 import { createRendererAuthorizationRegistry, type RendererAuthorizationRegistry } from './authorization'
 
 let nextId = 1
@@ -11,12 +13,12 @@ function renderer(
   clientType: 'wallet-ui' | 'sidetray',
   registry = authorization
 ) {
-  const frame: any = {
+  const frame: { parent: object | null; url: string } = {
     parent: null,
     url: pathToFileURL(`/app/bundle/${entrypoint}.html`).toString()
   }
   let destroyed: (() => void) | undefined
-  const webContents: any = {
+  const webContents = {
     id: nextId++,
     isDestroyed: mock(() => false),
     mainFrame: frame,
@@ -27,11 +29,11 @@ function renderer(
     })
   }
 
-  registry.registerRenderer(webContents, clientType, entrypoint)
+  registry.registerRenderer(webContents as unknown as WebContents, clientType, entrypoint)
 
   return {
     destroy: () => destroyed?.(),
-    event: { sender: webContents, senderFrame: frame } as any,
+    event: { sender: webContents, senderFrame: frame } as unknown as IpcMainInvokeEvent,
     frame,
     webContents
   }

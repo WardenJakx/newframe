@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, jest as timers, spyOn } from 'bun:test'
+import { afterEach, beforeEach, describe, expect, it, jest as timers, spyOn, type Mock } from 'bun:test'
 
 import { JsonRpcProvider, Wallet } from 'ethers'
 
@@ -14,6 +14,67 @@ import { handleLocalTradeRequest, resetLocalTradeState, subscribeLocalTradeOrder
 
 const FUNDER_ADDRESS = '0x0000000000000000000000000000000000000001'
 const ZERO_ALLOWANCE = `0x${'0'.repeat(64)}`
+
+interface OrderView {
+  cancellable: boolean
+  contraAsset: { chain: { id: string } }
+  normalizedStatus: string
+  open: boolean
+  quoteId: string
+  targetAsset: { chain: { id: string } }
+}
+
+interface JsonBody {
+  actions: { approval: { kind: string } | null; wrap: unknown }
+  bridgeQuoteId: string
+  chainId: number
+  contraAsset: string
+  count: number
+  evm: { approveTx: unknown; orderTypedData: string }
+  expiresAt: string
+  fillTransactionHash: string
+  from: { asset: string }
+  local: Record<string, unknown>
+  message: string
+  ok: boolean
+  order: OrderView
+  orderId: string
+  orders: OrderView[]
+  quoteId: string
+  receiveAsset: { chainId: number }
+  spentAsset: { chainId: number }
+  steps: Array<{ kind: string; label?: string }>
+  targetAsset: string
+  to: { asset: string }
+  wrap: unknown
+}
+
+interface OrderTypedDataJson {
+  domain: { chainId: number }
+  message: { quoteId?: string; settlementAsset: string }
+}
+
+function parseOrderTypedData(value: string): OrderTypedDataJson {
+  const parsed: unknown = JSON.parse(value)
+  if (!parsed || typeof parsed !== 'object' || !('domain' in parsed) || !('message' in parsed)) {
+    throw new Error('Expected order typed data')
+  }
+  const { domain, message } = parsed
+  if (!domain || typeof domain !== 'object' || !message || typeof message !== 'object') {
+    throw new Error('Expected order typed data domain and message')
+  }
+  const chainId = 'chainId' in domain ? domain.chainId : undefined
+  const quoteId = 'quoteId' in message ? message.quoteId : undefined
+  const settlementAsset = 'settlementAsset' in message ? message.settlementAsset : undefined
+  if (
+    typeof chainId !== 'number' ||
+    (quoteId !== undefined && typeof quoteId !== 'string') ||
+    typeof settlementAsset !== 'string'
+  ) {
+    throw new Error('Expected typed order fields')
+  }
+  return { domain: { chainId }, message: { quoteId, settlementAsset } }
+}
 
 function quoteRequest(overrides: Record<string, unknown> = {}) {
   return {
@@ -44,12 +105,12 @@ const post = (path: string, body: unknown) =>
   )
 
 async function json(response: Response) {
-  return response.json() as Promise<Record<string, any>>
+  return response.json() as Promise<JsonBody>
 }
 
 describe('local trade service handler', () => {
-  let allowanceCall: ReturnType<typeof spyOn>
-  let sendTransaction: ReturnType<typeof spyOn>
+  let allowanceCall: Mock<typeof JsonRpcProvider.prototype.call>
+  let sendTransaction: Mock<typeof Wallet.prototype.sendTransaction>
 
   beforeEach(() => {
     timers.useFakeTimers()
@@ -109,9 +170,9 @@ describe('local trade service handler', () => {
     })
     expect(String(body.quoteId).startsWith('local-quote-')).toBe(true)
     expect(typeof body.evm.orderTypedData).toBe('string')
-    expect(JSON.parse(body.evm.orderTypedData).message.quoteId).toBe(body.quoteId)
+    expect(parseOrderTypedData(body.evm.orderTypedData).message.quoteId).toBe(body.quoteId)
     expect(body.evm.approveTx).toBeTruthy()
-    expect(body.actions.approval.kind).toBe('approve')
+    expect(body.actions.approval?.kind).toBe('approve')
     expect(body.steps.find((step: Record<string, unknown>) => step.kind === 'sign')?.label).toBe('Sign order')
   })
 
@@ -357,7 +418,7 @@ describe('local trade service handler', () => {
     }
   ]) {
     it(`keeps a ${direction.name} market order accepted until signed cancellation`, async () => {
-      const published: Record<string, any>[] = []
+      const published: Record<string, unknown>[] = []
       const unsubscribe = subscribeLocalTradeOrders((order) => published.push(order))
       const request = quoteRequest({
         contraAsset: direction.contraAsset,
@@ -369,7 +430,7 @@ describe('local trade service handler', () => {
       })
       const quoteResponse = await post('/v1/quote', request)
       const quote = await json(quoteResponse)
-      const typedData = JSON.parse(quote.evm.orderTypedData)
+      const typedData = parseOrderTypedData(quote.evm.orderTypedData)
 
       expect(quoteResponse.status).toBe(200)
       expect(quote.quoteId).toBe('')

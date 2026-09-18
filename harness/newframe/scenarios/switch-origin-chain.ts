@@ -19,14 +19,14 @@ async function main() {
       frame.request({ method: 'eth_chainId' })
     ])) as [{ chainId: number }[], string]
 
-    const targetChain = chains.find((c: any) => c.chainId !== parseInt(currentChainId))
+    const targetChain = chains.find((chain) => chain.chainId !== parseInt(currentChainId))
 
     if (!targetChain) {
       throw new Error('no available chains to switch to!')
     }
 
     return await new Promise<void>((resolve, reject) => {
-      const checkChain = async (updatedChainId: any) => {
+      const checkChain = async (updatedChainId: string) => {
         if (parseInt(updatedChainId) !== targetChain.chainId) {
           throw new Error(`chainChanged emitted ${updatedChainId}; expected ${targetChain.chainId}`)
         }

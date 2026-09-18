@@ -115,7 +115,8 @@ it('ignores a stale connection failure after close and reopen', async () => {
   await Promise.resolve()
   expect(first.connect).toHaveBeenCalledTimes(1)
   expect(reopened.connect).toHaveBeenCalledTimes(1)
-  expect(freshStore.getState().main.lattice['fresh-device'].paired).toBeTrue()
+  const devices = freshStore.getState().main.lattice as Record<string, { paired: boolean }>
+  expect(devices['fresh-device']?.paired).toBeTrue()
   freshAdapter.close()
 })
 

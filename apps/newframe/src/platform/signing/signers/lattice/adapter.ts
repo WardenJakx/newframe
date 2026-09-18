@@ -22,19 +22,26 @@ type CreateLattice = (deviceId: string, deviceName: string, tag: string) => Latt
 
 function getLatticeSettings(store: typeof canonicalStore, deviceId: string): LatticeSettings {
   const { baseUrl, derivation, accountLimit } = getGlobalLatticeSettings(store)
-  const device = store.getState().main.lattice[deviceId]
+  const devices = store.getState().main.lattice as Record<
+    string,
+    Omit<LatticeSettings, keyof GlobalLatticeSettings>
+  >
+  const device = devices[deviceId]
 
   return { ...device, baseUrl, derivation, accountLimit }
 }
 
 function getGlobalLatticeSettings(store: typeof canonicalStore): GlobalLatticeSettings {
-  const accountLimit = store.getState().main.latticeSettings.accountLimit
-  const derivation = store.getState().main.latticeSettings.derivation
-  const endpointMode = store.getState().main.latticeSettings.endpointMode
-  const baseUrl =
-    endpointMode === 'custom'
-      ? store.getState().main.latticeSettings.endpointCustom
-      : 'https://signing.gridpl.us'
+  const settings = store.getState().main.latticeSettings as {
+    accountLimit: number
+    derivation: Derivation
+    endpointCustom: string
+    endpointMode: string
+  }
+  const accountLimit = settings.accountLimit
+  const derivation = settings.derivation
+  const endpointMode = settings.endpointMode
+  const baseUrl = endpointMode === 'custom' ? settings.endpointCustom : 'https://signing.gridpl.us'
 
   return { baseUrl, derivation, accountLimit }
 }
