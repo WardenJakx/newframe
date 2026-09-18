@@ -167,7 +167,7 @@ export default class LedgerSignerAdapter extends SignerAdapter {
     })
 
     ledger.on('unlock', () => {
-      ledger.connect()
+      void ledger.connect()
     })
 
     this.knownSigners[ledger.devicePath] = ledger
@@ -269,7 +269,7 @@ export default class LedgerSignerAdapter extends SignerAdapter {
     log.info(`Ledger ${ledger.model} disconnected from ${ledger.devicePath}`)
     this.resetReconnect(ledger)
 
-    ledger.disconnect()
+    void ledger.disconnect()
 
     // when a user exits the eth app, it takes a few seconds for the
     // main ledger to reconnect via USB, so attempt to wait for this event

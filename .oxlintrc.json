@@ -626,7 +626,7 @@
             "disallowTypeAnnotations": false
           }
         ],
-        "typescript/no-floating-promises": "warn",
+        "typescript/no-floating-promises": "error",
         "typescript/no-misused-promises": "warn",
         "eslint/no-else-return": "error"
       },
