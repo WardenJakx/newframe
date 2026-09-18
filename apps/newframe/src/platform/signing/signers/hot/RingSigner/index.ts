@@ -96,7 +96,7 @@ class RingSigner extends HotSigner {
   }
 
   protected override openPrivateKey(index: number, vaultKeyHex: string) {
-    const envelope = this.encryptedKeys[index]
+    const envelope = this.encryptedKeys.at(index)
     if (!envelope) {
       throw new Error('Private key not found')
     }

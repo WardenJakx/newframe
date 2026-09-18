@@ -39,7 +39,7 @@ const windowState = (state: Draft<CanonicalState>, windowId: string) =>
   record(record(state.windows)[windowId])
 
 function ensureProfileState(main: MutableMain) {
-  const profiles = record(main.profiles || {})
+  const profiles = record(main.profiles)
   main.profiles = profiles
 
   if (Object.keys(profiles).length === 0) {
@@ -48,7 +48,7 @@ function ensureProfileState(main: MutableMain) {
 
   const profileOrder: string[] = []
   const seen = new Set<string>()
-  ;[...(main.profileOrder || []), ...Object.keys(profiles)].forEach((id) => {
+  ;[...main.profileOrder, ...Object.keys(profiles)].forEach((id) => {
     if (profiles[id] && !seen.has(id)) {
       seen.add(id)
       profileOrder.push(id)
@@ -60,7 +60,7 @@ function ensureProfileState(main: MutableMain) {
     main.currentProfile = profileOrder[0]
   }
 
-  const accounts = record(main.accounts || {})
+  const accounts = record(main.accounts)
   Object.values(accounts).forEach((candidate) => {
     const account = record(candidate)
     if (account.id && !profiles[account.profileId]) {
@@ -68,7 +68,7 @@ function ensureProfileState(main: MutableMain) {
     }
   })
   main.accountOrder = [
-    ...new Set([...(main.accountOrder || []).filter((id) => accounts[id]), ...Object.keys(accounts)])
+    ...new Set([...main.accountOrder.filter((id) => accounts[id]), ...Object.keys(accounts)])
   ]
 
   if (
@@ -682,7 +682,7 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
     },
 
     patchAccount: (id: string, update: AccountPatch) => {
-      if (!id || !update) {
+      if (!id) {
         return
       }
 
@@ -714,7 +714,7 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
     },
 
     upsertAccountRequest: (accountId: string, request: CanonicalAccountRequest) => {
-      if (!accountId || !request?.handlerId) {
+      if (!accountId || !request.handlerId) {
         return
       }
 
@@ -734,7 +734,7 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
       requestId: string,
       update: (request: Draft<CanonicalAccountRequest>) => void
     ) => {
-      if (!accountId || !requestId || !update) {
+      if (!accountId || !requestId) {
         return
       }
 
@@ -1131,7 +1131,9 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
 
     setOriginFavicon: (originId: string, source: string) => {
       set((draft) => {
-        const origin = mutableMain(draft).origins[originId]
+        const origin = (mutableMain(draft).origins as unknown as Record<string, MutableRecord | undefined>)[
+          originId
+        ]
         if (!origin || origin.faviconSource === source) {
           return
         }
@@ -1142,7 +1144,9 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
 
     setOriginImage: (originId: string, source: string, image: TokenImage) => {
       set((draft) => {
-        const origin = mutableMain(draft).origins[originId]
+        const origin = (mutableMain(draft).origins as unknown as Record<string, MutableRecord | undefined>)[
+          originId
+        ]
         if (origin?.faviconSource === source && image.sourceUrl === source) {
           origin.image = image
         }
@@ -1166,7 +1170,9 @@ export function createCanonicalActions(set: CanonicalSet, get: CanonicalGet) {
 
     endOriginSession: (originId: string) => {
       set((draft) => {
-        const origin = record(record(mutableMain(draft).origins)[originId])
+        const origin = (mutableMain(draft).origins as unknown as Record<string, MutableRecord | undefined>)[
+          originId
+        ]
         if (!origin) {
           return
         }

@@ -94,7 +94,7 @@ function traceActiveFiles(files: string[], entrypoints: string[]) {
 function byExtension(files: string[]) {
   return files.reduce<Record<string, SizeGroup>>((groups, file) => {
     const extension = path.extname(file) || '[none]'
-    const group = groups[extension] || { bytes: 0, files: 0 }
+    const group: SizeGroup = groups[extension] ?? { bytes: 0, files: 0 }
 
     group.bytes += statSync(path.join(bundleDir, file)).size
     group.files += 1

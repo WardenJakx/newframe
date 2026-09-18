@@ -113,7 +113,7 @@ function ActivityRowContent({
   tokens: ActivityTokenCatalog
 }) {
   const chainId = Number(record.chainId)
-  const chain = networks[chainId] || {}
+  const chain = (networks as Partial<typeof networks>)[chainId] ?? {}
   const nativeSymbol = networksMeta[chainId]?.nativeCurrency?.symbol ?? chain.symbol ?? 'ETH'
   const title = record.display?.title ?? 'Transaction'
   const subtitle = record.display?.subtitle ?? chain.name ?? `Chain ${chainId}`

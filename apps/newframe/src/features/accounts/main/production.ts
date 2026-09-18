@@ -27,9 +27,6 @@ export function createProductionAccountsRuntime(
     now: Date.now,
     notify(title, body, action) {
       const notification = new Notification({ title, body })
-      if (!notification) {
-        return
-      }
       notification.on('click', action)
       setTimeout(() => notification.show(), 1000)
     },

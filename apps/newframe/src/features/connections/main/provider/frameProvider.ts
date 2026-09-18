@@ -214,7 +214,10 @@ abstract class EventedRequestProvider extends EventEmitter implements Eip1193Pro
 }
 
 class FrameProxyProvider extends EventedRequestProvider {
-  private promises: Record<string, { resolve: (value: unknown) => void; reject: (err: Error) => void }> = {}
+  private promises: Record<
+    string,
+    { resolve: (value: unknown) => void; reject: (err: Error) => void } | undefined
+  > = {}
 
   constructor(private connection: ProxyConnection) {
     super()
@@ -243,7 +246,7 @@ class FrameProxyProvider extends EventedRequestProvider {
   }
 
   private handlePayload(payload: RpcResult | SubscriptionPayload) {
-    if ('method' in payload && payload.method === 'eth_subscription') {
+    if ('method' in payload) {
       this.handleSubscriptionPayload(payload)
       return
     }

@@ -401,10 +401,10 @@ beforeAll(async () => {
 }, 30_000)
 
 afterAll(async () => {
-  service?.dispose()
-  rpc?.dispose()
-  unsubscribe?.()
-  provider?.destroy()
+  service.dispose()
+  rpc.dispose()
+  unsubscribe()
+  provider.destroy()
   if (anvil) {
     anvil.kill()
     await anvil.exited
@@ -414,13 +414,14 @@ afterAll(async () => {
 it('previews zero and partial confirmations in a profile containing only the watched Safe', async () => {
   expect(Object.keys(store.getState().main.accounts)).toEqual([seed.safe.toLowerCase()])
   expect(store.getState().main.accounts[seed.safe.toLowerCase()].signer).toBe('')
-  expect(seed.owners.every((owner) => !store.getState().main.accounts[owner.toLowerCase()])).toBe(true)
+  const accounts = store.getState().main.accounts as Record<string, unknown>
+  expect(seed.owners.every((owner) => !accounts[owner.toLowerCase()])).toBe(true)
   const native = await executed('native')
   expect(native.status).toBe('success')
   expect(native.effects).toContainEqual(
     expect.objectContaining({ kind: 'native', direction: 'out', amount: '0x2710' })
   )
-  expect(native.assumptions?.join(' ')).toMatch(/guard/i)
+  expect(native.assumptions.join(' ')).toMatch(/guard/i)
   const erc20 = await executed('token')
   expect(erc20.status).toBe('success')
   expect(erc20.effects).toContainEqual(
@@ -439,7 +440,7 @@ it('previews zero and partial confirmations in a profile containing only the wat
 it('executes MultiSend and undecoded configuration changes in Safe context without double-counting delegatecall value', async () => {
   const result = await executed('batch')
   expect(result.status).toBe('success')
-  expect(result.effects?.filter((effect) => effect.kind === 'native')).toEqual([
+  expect(result.effects.filter((effect) => effect.kind === 'native')).toEqual([
     expect.objectContaining({ amount: '0x19', direction: 'out' })
   ])
   expect(result.effects).toContainEqual(
@@ -486,21 +487,21 @@ it('uses the future proposal nonce against current state without replaying a que
 it('preserves refunds, distinguishes inner failure from full revert, and discards rolled-back batch effects', async () => {
   const refund = await executed('refund')
   expect(refund.status).toBe('success')
-  expect(
-    refund.effects?.some((effect) => effect.kind === 'native' && BigInt(effect.amount ?? '0') > 0n)
-  ).toBe(true)
+  expect(refund.effects.some((effect) => effect.kind === 'native' && BigInt(effect.amount ?? '0') > 0n)).toBe(
+    true
+  )
   const tokenRefund = await executed('tokenRefund')
   expect(tokenRefund.status).toBe('success')
-  expect(tokenRefund.effects?.filter((effect) => effect.kind === 'erc20')).toHaveLength(1)
+  expect(tokenRefund.effects.filter((effect) => effect.kind === 'erc20')).toHaveLength(1)
   expect(
-    BigInt(tokenRefund.effects?.find((effect) => effect.kind === 'erc20')?.amount ?? '0')
+    BigInt(tokenRefund.effects.find((effect) => effect.kind === 'erc20')?.amount ?? '0')
   ).toBeGreaterThan(100n)
   const failed = await executed('innerFailure')
   expect(failed).toMatchObject({ status: 'error', failure: 'inner' })
-  expect(
-    failed.effects?.some((effect) => effect.kind === 'native' && BigInt(effect.amount ?? '0') > 0n)
-  ).toBe(true)
-  expect(failed.effects?.some((effect) => effect.kind === 'erc20')).toBe(false)
+  expect(failed.effects.some((effect) => effect.kind === 'native' && BigInt(effect.amount ?? '0') > 0n)).toBe(
+    true
+  )
+  expect(failed.effects.some((effect) => effect.kind === 'erc20')).toBe(false)
   const rollback = await executed('rollback')
   expect(rollback).toMatchObject({ status: 'error', failure: 'inner' })
   expect(rollback.effects).toEqual([])

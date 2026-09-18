@@ -24,7 +24,7 @@ export interface SettingsSecurityCapability {
 }
 
 function operationError(result: CommandResult, fallback: string) {
-  return result && 'message' in result && typeof result.message === 'string' ? result.message : fallback
+  return 'message' in result && typeof result.message === 'string' ? result.message : fallback
 }
 
 type SecuritySubmission =
@@ -77,25 +77,25 @@ export function Settings({
   const shared = useWalletSelector(
     useShallow((state) => ({
       autoDiscoverTokens: !!state.autoDiscoverTokens,
-      appLocked: !!state.appLock?.locked,
+      appLocked: !!state.appLock.locked,
       autohide: !!state.autohide,
       biometricUnlock: !!state.biometricUnlock,
-      latticeAccountLimit: accountLimit(state.latticeSettings?.accountLimit),
-      latticeDerivation: latticeDerivation(state.latticeSettings?.derivation),
-      latticeEndpoint: state.latticeSettings?.endpointCustom || '',
-      latticeEndpointMode: state.latticeSettings?.endpointMode || 'default',
+      latticeAccountLimit: accountLimit(state.latticeSettings.accountLimit),
+      latticeDerivation: latticeDerivation(state.latticeSettings.derivation),
+      latticeEndpoint: state.latticeSettings.endpointCustom || '',
+      latticeEndpointMode: state.latticeSettings.endpointMode || 'default',
       launch: !!state.launch,
-      ledgerDerivation: ledgerDerivation(state.ledger?.derivation),
-      liveAccountLimit: accountLimit(state.ledger?.liveAccountLimit),
+      ledgerDerivation: ledgerDerivation(state.ledger.derivation),
+      liveAccountLimit: accountLimit(state.ledger.liveAccountLimit),
       menubarGasPrice: !!state.menubarGasPrice,
-      networks: state.networks?.ethereum || {},
+      networks: state.networks.ethereum,
       platform: state.platform || '',
       portfolioApiKeyConfigured: !!state.portfolioApiKeyConfigured,
       reveal: !!state.reveal,
       showLocalNameWithENS: !!state.showLocalNameWithENS,
       showTestnets: !!state.showTestnets,
-      summonShortcut: state.shortcuts?.summon,
-      trezorDerivation: trezorDerivation(state.trezor?.derivation)
+      summonShortcut: state.shortcuts.summon,
+      trezorDerivation: trezorDerivation(state.trezor.derivation)
     }))
   )
   const [browserPrompting, setBrowserPrompting] = useState(false)
@@ -111,7 +111,7 @@ export function Settings({
       (trackedOperation.status === 'succeeded' &&
         ((submission.type === 'security.configure' && shared.biometricUnlock !== submission.enabled) ||
           (submission.type === 'wallet.lock' && !shared.appLocked))))
-  const biometricsBusy = browserPrompting || (operationInFlight && submission?.type === 'security.configure')
+  const biometricsBusy = browserPrompting || (operationInFlight && submission.type === 'security.configure')
   const biometricsError =
     trackedOperation?.status === 'failed' && submission
       ? projectedOperationError(trackedOperation.error?.code, submission.type)

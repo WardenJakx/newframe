@@ -9,19 +9,18 @@ import type { AssetRateReference } from '../../../../asset-data/domain/state/rat
 type AccountRequests = WalletRendererState['accounts'][string]['requests']
 type NetworkRecord = WalletRendererState['networks']['ethereum']
 type NetworkMetadataRecord = WalletRendererState['networksMeta']['ethereum']
-const EMPTY_ACCOUNTS: WalletRendererState['accounts'] = {}
 const EMPTY_ACCOUNT_REQUESTS: AccountRequests = {}
 const EMPTY_NETWORK: Partial<NetworkRecord[number]> = {}
 const EMPTY_NETWORK_METADATA: Partial<NetworkMetadataRecord[number]> = {}
-const EMPTY_TOKENS: WalletRendererState['tokens'] = { byId: {}, accountTokenIds: {} }
 const selectEthereumNetworks = (state: WalletRendererState) => state.networks.ethereum
 const selectEthereumNetworkMetadata = (state: WalletRendererState) => state.networksMeta.ethereum
 const selectOrigins = (state: WalletRendererState) => state.origins
-const selectTokens = (state: WalletRendererState) => state.tokens || EMPTY_TOKENS
+const selectTokens = (state: WalletRendererState) => state.tokens
 
 export function useAccountRequests(accountId: string) {
   const selector = useMemo(
-    () => (state: WalletRendererState) => state.accounts[accountId]?.requests || EMPTY_ACCOUNT_REQUESTS,
+    () => (state: WalletRendererState) =>
+      (state.accounts as Partial<typeof state.accounts>)[accountId]?.requests ?? EMPTY_ACCOUNT_REQUESTS,
     [accountId]
   )
   return useWalletSelector(selector)
@@ -30,7 +29,10 @@ export function useAccountRequests(accountId: string) {
 export function useNetwork(type: string, chainId: string | number) {
   const selector = useMemo(
     () => (state: WalletRendererState) =>
-      type === 'ethereum' ? state.networks.ethereum[Number(chainId)] || EMPTY_NETWORK : EMPTY_NETWORK,
+      type === 'ethereum'
+        ? ((state.networks.ethereum as Partial<typeof state.networks.ethereum>)[Number(chainId)] ??
+          EMPTY_NETWORK)
+        : EMPTY_NETWORK,
     [chainId, type]
   )
   return useWalletSelector(selector)
@@ -40,7 +42,8 @@ export function useNetworkMetadata(type: string, chainId: string | number) {
   const selector = useMemo(
     () => (state: WalletRendererState) =>
       type === 'ethereum'
-        ? state.networksMeta.ethereum[Number(chainId)] || EMPTY_NETWORK_METADATA
+        ? ((state.networksMeta.ethereum as Partial<typeof state.networksMeta.ethereum>)[Number(chainId)] ??
+          EMPTY_NETWORK_METADATA)
         : EMPTY_NETWORK_METADATA,
     [chainId, type]
   )
@@ -78,9 +81,10 @@ export function useAccountIdentity(idOrAddress?: string) {
       if (!idOrAddress) {
         return undefined
       }
-      const accounts = state.accounts || {}
+      const accounts = state.accounts
+      const sparseAccounts: Record<string, (typeof accounts)[string] | undefined> = accounts
       return (
-        accounts[idOrAddress] ||
+        sparseAccounts[idOrAddress] ??
         Object.values(accounts).find((account) => account.address.toLowerCase() === normalized)
       )
     },
@@ -102,7 +106,7 @@ export function useAssetRate(asset: AssetRateReference) {
 export type AddressIdentities = Record<string, { nickname?: string; accountType?: string }>
 
 export function useAddressIdentities(): AddressIdentities {
-  const accounts = useWalletSelector((state) => state.accounts || EMPTY_ACCOUNTS)
+  const accounts = useWalletSelector((state) => state.accounts)
   return useMemo(
     () =>
       Object.fromEntries(

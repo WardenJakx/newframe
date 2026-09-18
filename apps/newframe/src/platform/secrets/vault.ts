@@ -8,7 +8,10 @@ import log from 'electron-log'
 import zxcvbn from '../../features/security/domain/passwordStrength.js'
 
 // Mock user data dir during tests
-const USER_DATA = app ? app.getPath('userData') : path.resolve(import.meta.dirname, '../../../.userData')
+const electronApp = app as typeof app | undefined
+const USER_DATA = electronApp
+  ? electronApp.getPath('userData')
+  : path.resolve(import.meta.dirname, '../../../.userData')
 const VAULT_PATH = path.resolve(USER_DATA, 'vault.json')
 
 const KDF_PARAMS = { N: 32768, r: 8, p: 1, maxmem: 36000000 }

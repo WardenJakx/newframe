@@ -31,7 +31,9 @@ async function main() {
     })
     await provider.send('eth_accounts', [])
 
-    const [signer] = await provider.listAccounts()
+    const signer: Awaited<ReturnType<BrowserProvider['listAccounts']>>[number] | undefined = (
+      await provider.listAccounts()
+    ).at(0)
     if (!signer) {
       throw new Error('No account available')
     }

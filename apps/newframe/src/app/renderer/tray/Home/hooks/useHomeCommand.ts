@@ -10,8 +10,8 @@ export function useHomeCommand(capability: Pick<HomeCapability, 'consumeCommand'
     useShallow((state) => ({
       accounts: state.accounts,
       currentAccount: state.currentAccount || '',
-      homeCommand: state.tray?.homeCommand,
-      selectedOpen: !!state.selected?.open
+      homeCommand: state.tray.homeCommand,
+      selectedOpen: !!state.selected.open
     }))
   )
   const openOverlay = useHomeUiStore((state) => state.openOverlay)
@@ -22,7 +22,7 @@ export function useHomeCommand(capability: Pick<HomeCapability, 'consumeCommand'
     if (shared.currentAccount && shared.selectedOpen) {
       return
     }
-    const accountId = shared.currentAccount || Object.keys(shared.accounts || {})[0]
+    const accountId = shared.currentAccount || Object.keys(shared.accounts)[0]
     if (accountId) {
       void capability.selectAccount({ accountId })
     }

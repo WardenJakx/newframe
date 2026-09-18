@@ -48,6 +48,13 @@ async function until(condition: () => boolean) {
   }
   throw new Error('Timed out')
 }
+
+function operationStatus(
+  state: { operations: Record<string, { operation: { status: string } } | undefined> },
+  operationId: string
+) {
+  return state.operations[operationId]?.operation.status
+}
 it('imports through real HTTP, merges chains, retains queue on later-page failure, coalesces and refreshes selection', async () => {
   let fail = false
   let info = 0
@@ -146,12 +153,12 @@ it('creates nothing for invalid info and rejects cross-profile imports', async (
   })
   cleanup.push(service.dispose)
   service.import({ type: 'account.create', source: 'safe', operationId: 'bad', address, chainId: 1 }, owner)
-  await until(() => store.getState().operations.bad?.operation.status === 'failed')
+  await until(() => operationStatus(store.getState(), 'bad') === 'failed')
   expect(store.getState().main.accounts[address]).toBeUndefined()
   store.getState().createProfile('other', 'Other')
   store.getState().upsertAccount({ id: address, profileId: 'other', name: 'Other treasury' })
   service.import({ type: 'account.create', source: 'safe', operationId: 'other', address, chainId: 1 }, owner)
-  await until(() => store.getState().operations.other?.operation.status === 'failed')
+  await until(() => operationStatus(store.getState(), 'other') === 'failed')
   expect(store.getState().main.accounts[address].profileId).toBe('other')
 })
 it('invalidates delayed work after remove/re-add, profile switch, and disposal', async () => {
@@ -221,7 +228,7 @@ it('imports valid configuration when the initial queue fails, leaving pending un
     { type: 'account.create', source: 'safe', operationId: 'partial', address, chainId: 1 },
     owner
   )
-  await until(() => store.getState().operations.partial?.operation.status === 'succeeded')
+  await until(() => operationStatus(store.getState(), 'partial') === 'succeeded')
   expect(store.getState().main.accounts[address].safe!['1']).toMatchObject({
     configuration: { nonce: '0' },
     error: 'Safe service HTTP 503'
@@ -345,7 +352,7 @@ it('fetches owners at import and reuses them across queue refreshes and account 
     { type: 'account.create', source: 'safe', operationId: 'import', address, chainId: 1 },
     owner
   )
-  await until(() => context.store.getState().operations.import?.operation.status === 'succeeded')
+  await until(() => operationStatus(context.store.getState(), 'import') === 'succeeded')
   const cached = context.store.getState().main.accounts[address].safe!['1'].configuration
   await service.refresh({ type: 'account.refresh', accountId: address, force: true })
   expect(pending.mock.calls.at(-1)?.[2]).toEqual({ ...cached, nonce: '1' })

@@ -205,7 +205,7 @@ describe('wallet lock lifecycle', () => {
     scannerStore.setState((state) => {
       state.main.accounts[normalAddress] = { address: normalAddress, lastSignerType: 'ledger' } as any
       state.main.currentAccount = normalAddress
-      const network = Object.values(state.main.networks.ethereum)[0]
+      const network = Object.values(state.main.networks.ethereum).at(0)
       if (network) {
         network.connection.primary.connected = true
       }
@@ -346,7 +346,7 @@ it('cancels pending store-driven scans when closed', () => {
   store.setState((state) => {
     state.main.accounts[address] = { address, lastSignerType: 'ledger' } as any
     state.main.currentAccount = address
-    const network = Object.values(state.main.networks.ethereum)[0]
+    const network = Object.values(state.main.networks.ethereum).at(0)
     if (network) {
       network.connection.primary.connected = true
     }

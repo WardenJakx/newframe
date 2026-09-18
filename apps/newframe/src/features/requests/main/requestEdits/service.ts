@@ -14,7 +14,7 @@ export function createRequestEditService(ports: RequestEditServicePorts) {
     updateTokenApproval(command: RequestTokenApprovalUpdateCommand) {
       if (command.requestKind === 'transaction') {
         const request = currentRequest<TransactionRequest>(command.requestId)
-        const action = request?.recognizedActions?.find((candidate) => candidate.id === command.actionId)
+        const action = request?.recognizedActions.find((candidate) => candidate.id === command.actionId)
         if (request?.type !== 'transaction' || !action) {
           return false
         }

@@ -7,7 +7,7 @@ import type {
 } from '../../../app/contracts/operations.js'
 import type { OperationService } from '../../../platform/operations/service.js'
 import type { OperationOwner } from '../../../platform/operations/types.js'
-import type { CanonicalStoreReader } from '../../../platform/state-store/actions.js'
+import type { CanonicalStore, CanonicalStoreReader } from '../../../platform/state-store/actions.js'
 import {
   safeConfigurationSchema,
   SafeProposalSimulationSchema,
@@ -78,7 +78,12 @@ export function createSafeService({
       confirm: () => Promise.reject(new Error('Safe confirmation service is unavailable.'))
     }
   })
-  let disposed = false
+  const lifecycle = { disposed: false }
+  const isDisposed = () => lifecycle.disposed
+  const accountState = (accountId: string) =>
+    (
+      store.getState().main.accounts as Record<string, CanonicalStore['main']['accounts'][string] | undefined>
+    )[accountId]
   let profile = store.getState().main.currentProfile
   let selected = store.getState().main.currentAccount
   const work = new Map<
@@ -103,7 +108,7 @@ export function createSafeService({
   >()
   const simulationSnapshot = (query: SafeSimulateQuery) => {
     const main = store.getState().main
-    const account = main.accounts[query.accountId]
+    const account = accountState(query.accountId)
     const deployment = account?.safe?.[String(query.chainId)]
     const proposal = deployment?.pending?.find((candidate) => candidate.safeTxHash === query.safeTxHash)
     if (!account || account.profileId !== main.currentProfile || !deployment || !proposal) {
@@ -146,7 +151,7 @@ export function createSafeService({
       safeTxHash: requested.safeTxHash.toLowerCase()
     }
     const snapshot = simulationSnapshot(query)
-    if (disposed || !snapshot) {
+    if (lifecycle.disposed || !snapshot) {
       return Promise.resolve({
         status: 'unavailable',
         error: 'Safe proposal is no longer available in this profile.'
@@ -170,7 +175,7 @@ export function createSafeService({
     }
     simulations.set(key, item)
     const active = () =>
-      !disposed &&
+      !lifecycle.disposed &&
       !controller.signal.aborted &&
       simulations.get(key) === item &&
       simulationSnapshot(query)?.fingerprint === item.fingerprint
@@ -191,8 +196,11 @@ export function createSafeService({
             if (!active()) {
               return
             }
-            const account = store.getState().main.accounts[query.accountId]
-            const deployment = account.safe![String(query.chainId)]
+            const account = accountState(query.accountId)
+            const deployment = account?.safe?.[String(query.chainId)]
+            if (!account || !deployment) {
+              return
+            }
             if (
               deployment.configurationBlockNumber !== undefined &&
               BigInt(block) < BigInt(deployment.configurationBlockNumber)
@@ -242,7 +250,7 @@ export function createSafeService({
   }
   const discoveries = new Set<AbortController>()
   const discoverNetworks = async (address: string) => {
-    if (disposed) {
+    if (lifecycle.disposed) {
       return []
     }
     const controller = new AbortController()
@@ -255,7 +263,11 @@ export function createSafeService({
           return { chainId: network.id, name: network.name, supported: true }
         })
       )
-      if (disposed || controller.signal.aborted || capturedProfile !== store.getState().main.currentProfile) {
+      if (
+        isDisposed() ||
+        controller.signal.aborted ||
+        capturedProfile !== store.getState().main.currentProfile
+      ) {
         return []
       }
       return results.flatMap((result) => (result.status === 'fulfilled' ? [result.value] : []))
@@ -271,10 +283,10 @@ export function createSafeService({
     force: boolean,
     capturedProfile: string
   ) => {
-    if (disposed || capturedProfile !== store.getState().main.currentProfile) {
+    if (lifecycle.disposed || capturedProfile !== store.getState().main.currentProfile) {
       return Promise.reject(new Error('Safe observation was cancelled'))
     }
-    const account = store.getState().main.accounts[accountId]
+    const account = accountState(accountId)
     if (account && account.profileId !== capturedProfile) {
       return Promise.reject(new Error('Account belongs to another profile'))
     }
@@ -300,7 +312,7 @@ export function createSafeService({
       promise: Promise.resolve()
     }
     const active = () =>
-      !disposed &&
+      !lifecycle.disposed &&
       !controller.signal.aborted &&
       work.get(key) === item &&
       store.getState().main.currentProfile === capturedProfile
@@ -308,17 +320,17 @@ export function createSafeService({
       if (!active()) {
         throw new Error('Safe observation was cancelled')
       }
-      const latest = store.getState().main.accounts[accountId]
+      const latest = accountState(accountId)
       if (latest && latest.profileId !== capturedProfile) {
         throw new Error('Account belongs to another profile')
       }
     }
     const save = (next: SafeDeployment) => {
       assertActive()
-      if (!store.getState().main.accounts[accountId]) {
+      if (!accountState(accountId)) {
         accounts.add(accountId, 'Safe Account', { type: 'Address' })
       }
-      const latest = store.getState().main.accounts[accountId]
+      const latest = accountState(accountId)
       item.attached = true
       if (latest) {
         store.getState().patchAccount(accountId, { safe: { ...latest.safe, [String(chainId)]: next } })
@@ -336,7 +348,7 @@ export function createSafeService({
           ? await client.configuration(chainId, address, controller.signal)
           : await client.queueState(chainId, address, controller.signal)
         assertActive()
-        const latest = store.getState().main.accounts[accountId]?.safe?.[String(chainId)]
+        const latest = accountState(accountId)?.safe?.[String(chainId)]
         const configuration =
           !importing && latest && latest.configuration !== deployment?.configuration
             ? latest.configuration
@@ -346,7 +358,10 @@ export function createSafeService({
         save({ ...latest, chainId, address, configuration })
         const pending = await client.pending(chainId, address, configuration, controller.signal)
         assertActive()
-        const current = store.getState().main.accounts[accountId].safe![String(chainId)]
+        const current = accountState(accountId)?.safe?.[String(chainId)]
+        if (!current) {
+          throw new Error('Safe deployment was removed during refresh')
+        }
         save({
           ...current,
           pending: pending.filter(
@@ -357,7 +372,7 @@ export function createSafeService({
         })
       } catch (error) {
         if (active()) {
-          const previous = store.getState().main.accounts[accountId]?.safe?.[String(chainId)]
+          const previous = accountState(accountId)?.safe?.[String(chainId)]
           if (previous) {
             save({
               ...previous,
@@ -380,8 +395,8 @@ export function createSafeService({
   const refresh = async (command: AccountRefreshCommand) => {
     const main = store.getState().main
     const accountId = command.accountId.toLowerCase()
-    const account = main.accounts[accountId]
-    if (disposed || !account?.safe || account.profileId !== main.currentProfile) {
+    const account = accountState(accountId)
+    if (lifecycle.disposed || !account?.safe || account.profileId !== main.currentProfile) {
       return false
     }
     const chainIds = command.chainId === undefined ? Object.keys(account.safe).map(Number) : [command.chainId]
@@ -415,7 +430,7 @@ export function createSafeService({
         }
       }
       for (const [key, item] of work) {
-        const account = accounts[item.accountId]
+        const account = (accounts as Record<string, (typeof accounts)[string] | undefined>)[item.accountId]
         if (
           item.existed &&
           (!account ||
@@ -449,7 +464,7 @@ export function createSafeService({
       if (operations.lookup(reference)) {
         return true
       }
-      if (disposed) {
+      if (lifecycle.disposed) {
         return false
       }
       try {
@@ -483,7 +498,7 @@ export function createSafeService({
     },
     dispose() {
       confirmationService.dispose()
-      disposed = true
+      lifecycle.disposed = true
       unsubscribe()
       invalidate()
     }

@@ -1,14 +1,11 @@
 import { useShallow } from 'zustand/react/shallow'
 
 import { toCanonicalAssetId } from '../../../app/contracts/sidetray'
-import type { WalletRendererState } from '../../../platform/state-sync/contract/projections'
 import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector'
 import { hasPositiveBalance } from '../../asset-data/domain/balance'
 import { getFlashDefaultChainId, isFlashChainSupported } from '../../transactions/trade/domain/chains'
 import type { PortfolioCapability } from './portfolioCapability'
 
-const EMPTY_NETWORKS: WalletRendererState['networks']['ethereum'] = {}
-const EMPTY_RUNTIME: WalletRendererState['runtime'] = {}
 export const TRADE_DISABLED_CHAIN_LABEL = 'Trade unavailable on this chain'
 
 type PortfolioActionAsset = {
@@ -24,14 +21,17 @@ export function usePortfolioActions(
 ) {
   const { networks, runtime, isSafe } = useWalletSelector(
     useShallow((state) => ({
-      isSafe: Boolean(Object.keys(state.accounts?.[state.currentAccount]?.safe ?? {}).length),
-      networks: state.networks?.ethereum || EMPTY_NETWORKS,
-      runtime: state.runtime || EMPTY_RUNTIME
+      isSafe: Boolean(
+        Object.keys((state.accounts as Partial<typeof state.accounts>)[state.currentAccount]?.safe ?? {})
+          .length
+      ),
+      networks: state.networks.ethereum,
+      runtime: state.runtime
     }))
   )
   const chainEnabled = (chainId: number) => !!networks[chainId]?.on
   const firstTradeAsset = balances.find((balance) => {
-    const chainId = Number(balance?.chainId)
+    const chainId = Number(balance.chainId)
     return (
       hasPositiveBalance(balance) &&
       Number.isInteger(chainId) &&

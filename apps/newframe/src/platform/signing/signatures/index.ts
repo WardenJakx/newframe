@@ -21,11 +21,12 @@ export const identify = ({ data }: TypedMessage<SignTypedDataVersion>): TypedSig
     if (!('types' in data && 'message' in data)) {
       return false
     }
+    const dataTypes = data.types as Record<string, MessageTypeProperty[] | undefined>
 
     return Object.entries(requiredTypes).every(
       ([name, properties]) =>
-        data.types[name] &&
-        matchesMsgType(data.types[name], properties) &&
+        dataTypes[name] &&
+        matchesMsgType(dataTypes[name], properties) &&
         matchesMessage(data.message, properties) &&
         matchesDomainFilter(data.domain as EIP712MessageDomain, domainFilter)
     )

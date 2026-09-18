@@ -15,7 +15,10 @@ import Signer from '../../Signer/index.js'
 
 export type VaultAccess = { getKey(): string | null }
 
-const USER_DATA = app ? app.getPath('userData') : path.resolve(import.meta.dirname, '../.userData')
+const electronApp = app as typeof app | undefined
+const USER_DATA = electronApp
+  ? electronApp.getPath('userData')
+  : path.resolve(import.meta.dirname, '../.userData')
 const SIGNERS_PATH = path.resolve(USER_DATA, 'signers')
 const knownChains: Record<number, any> = { 1: Mainnet, 17000: Holesky, 11155111: Sepolia }
 

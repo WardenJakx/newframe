@@ -4,8 +4,17 @@ import type { Accounts } from './index.js'
 
 type AccountState = Pick<
   CanonicalStore,
-  'clearPermissions' | 'main' | 'removeOrigin' | 'reorderAccounts' | 'revokePermission'
->
+  'clearPermissions' | 'removeOrigin' | 'reorderAccounts' | 'revokePermission'
+> & {
+  main: Omit<CanonicalStore['main'], 'accounts' | 'origins' | 'permissions'> & {
+    accounts: Record<string, CanonicalStore['main']['accounts'][string] | undefined>
+    origins: Record<string, CanonicalStore['main']['origins'][string] | undefined>
+    permissions: Record<
+      string,
+      Record<string, CanonicalStore['main']['permissions'][string][string] | undefined> | undefined
+    >
+  }
+}
 
 type AddressChainUsage = {
   address: string
@@ -14,7 +23,9 @@ type AddressChainUsage = {
 }
 
 export interface AccountServicePorts {
-  accounts: Pick<Accounts, 'clearRequestsByOrigin' | 'get' | 'remove' | 'rename'>
+  accounts: Omit<Pick<Accounts, 'clearRequestsByOrigin' | 'get' | 'remove' | 'rename'>, 'get'> & {
+    get(accountId: string): ReturnType<Accounts['get']> | undefined
+  }
   addressChainUsage(addresses: string[]): Promise<AddressChainUsage[]>
   selectAccount(accountId: string): Promise<unknown>
   signers: {
@@ -48,7 +59,7 @@ export function createAccountService(ports: AccountServicePorts) {
       if (removeSeedSigner && account.signer) {
         const signer = ports.signers.get(account.signer)
         const hasAnotherAccount = Object.values(state.main.accounts).some(
-          (candidate) => candidate.id !== accountId && candidate.signer === account.signer
+          (candidate) => candidate?.id !== accountId && candidate?.signer === account.signer
         )
         if (signer?.type === 'seed' && !hasAnotherAccount) {
           seedSignerId = signer.id

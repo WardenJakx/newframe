@@ -4,7 +4,8 @@ import type { WalletRendererState } from '../../contract/projections'
 type OperationState = Pick<WalletRendererState, 'operations'>
 
 export function selectOperationById(state: OperationState, id: string): OperationRecord | undefined {
-  return state.operations?.[id]
+  const operations: Record<string, OperationRecord | undefined> = state.operations
+  return operations[id]
 }
 
 export function selectOperationError(state: OperationState, id: string) {
@@ -30,7 +31,7 @@ export function createOperationsByStatusSelector(status: OperationStatus) {
     }
 
     previousOperations = state.operations
-    previousResult = Object.values(state.operations || {}).filter((operation) => operation.status === status)
+    previousResult = Object.values(state.operations).filter((operation) => operation.status === status)
     return previousResult
   }
 }

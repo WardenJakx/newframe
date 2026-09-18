@@ -1,6 +1,4 @@
 // New Tx
-import { Text } from '@newframe/ui/text'
-
 import { erc20Interface } from '../../../../../../shared/domain/evm'
 import type { TransactionFeeField } from '../../../../../transactions/domain/fees'
 import type { RequestRendererCapabilities } from '../../../requestCapabilities'
@@ -57,7 +55,7 @@ export function TransactionRequest(props: TransactionRequestProps) {
     return <AdjustFee req={req} onUpdateFee={props.onUpdateFee} />
   }
   if (step === 'adjustApproval') {
-    if (!req || actionId !== 'erc20:approve') {
+    if (actionId !== 'erc20:approve') {
       return null
     }
     const approval = (req.recognizedActions ?? []).find((action) => action.id === actionId)
@@ -87,17 +85,7 @@ export function TransactionRequest(props: TransactionRequestProps) {
   if (step !== 'confirm') {
     return step
   }
-  if (!req) {
-    return null
-  }
-
-  return req.type === 'transaction' ? (
-    <TxReview capabilities={props.capabilities} key={req.handlerId} req={req} />
-  ) : (
-    <Text align='center' tone='danger' variant='label'>
-      {'Unknown: ' + req.type}
-    </Text>
-  )
+  return <TxReview capabilities={props.capabilities} key={req.handlerId} req={req} />
 }
 
 export default function TransactionRequestWithState(props: TransactionRequestWithStateProps) {

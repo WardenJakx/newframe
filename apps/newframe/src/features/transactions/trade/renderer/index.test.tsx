@@ -238,7 +238,7 @@ describe('Trade', () => {
     await act(async () => timers.advanceTimersByTime(250))
     fireEvent.click(await screen.findByRole('button', { name: 'Approve WETH' }))
 
-    const prepareCommand = trade.prepare.mock.calls[0]?.[0]
+    const prepareCommand = trade.prepare.mock.calls.at(0)?.[0]
     if (!prepareCommand) {
       throw new Error('Expected trade prepare command')
     }
@@ -262,7 +262,7 @@ describe('Trade', () => {
       })
     })
     fireEvent.click(screen.getByRole('button', { name: 'Review/sign' }))
-    const submitCommand = trade.submit.mock.calls[0]?.[0]
+    const submitCommand = trade.submit.mock.calls.at(0)?.[0]
     if (!submitCommand) {
       throw new Error('Expected trade submit command')
     }
@@ -403,7 +403,7 @@ describe('Trade', () => {
     await act(async () => timers.advanceTimersByTime(250))
 
     fireEvent.click(await screen.findByRole('button', { name: 'Review/sign' }))
-    const command = trade.submit.mock.calls[0]?.[0]
+    const command = trade.submit.mock.calls.at(0)?.[0]
     if (!command) {
       throw new Error('Expected trade submit command')
     }

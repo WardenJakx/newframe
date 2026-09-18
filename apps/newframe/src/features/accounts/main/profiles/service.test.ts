@@ -2,6 +2,7 @@ import { describe, expect, it, mock } from 'bun:test'
 
 import { createTestStore } from '../../../../../test/support/createTestStore'
 import { DEFAULT_PROFILE_ID } from '../../../../app/contracts/state/main'
+import type { OperationRecord } from '../../../../platform/operations/operation'
 import { createOperationService } from '../../../../platform/operations/service'
 import type { OperationOwner } from '../../../../platform/operations/types'
 import { createProfileService } from './service'
@@ -52,7 +53,9 @@ function harness() {
     store: testStore.store,
     createProfileId: () => 'travel'
   })
-  const operation = (id: string) => testStore.getState().operations[id]?.operation
+  const operation = (id: string): OperationRecord | undefined =>
+    (testStore.getState().operations as Record<string, { operation: OperationRecord } | undefined>)[id]
+      ?.operation
   return { ...testStore, accountsChanged, operation, service }
 }
 

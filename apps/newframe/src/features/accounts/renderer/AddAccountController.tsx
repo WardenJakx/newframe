@@ -48,14 +48,6 @@ const addOptions: Record<'root' | 'import' | 'hardware', AddAccountOption[]> = {
   ]
 }
 
-const EMPTY_ACCOUNTS: WalletRendererState['accounts'] = {}
-const EMPTY_BALANCES: WalletRendererState['balances'] = {}
-const EMPTY_NETWORKS: WalletRendererState['networks']['ethereum'] = {}
-const EMPTY_NETWORK_METADATA: WalletRendererState['networksMeta']['ethereum'] = {}
-const EMPTY_OPERATIONS: WalletRendererState['operations'] = {}
-const EMPTY_RATES: WalletRendererState['assetRates'] = {}
-const EMPTY_SIGNERS: WalletRendererState['signers'] = {}
-
 function operationError(result: unknown, fallback: string) {
   if (typeof result !== 'object' || result === null || !('message' in result)) {
     return fallback
@@ -114,19 +106,19 @@ export function AddAccountController({
 }) {
   const shared = useWalletSelector(
     useShallow((state) => ({
-      accounts: state.accounts || EMPTY_ACCOUNTS,
+      accounts: state.accounts as Record<string, AccountProjection | undefined>,
       currentProfile: state.currentProfile,
-      currentAccount: state.currentAccount || '',
-      balances: state.balances || EMPTY_BALANCES,
+      currentAccount: state.currentAccount,
+      balances: state.balances,
       ledger: state.ledger,
-      networks: state.networks?.ethereum || EMPTY_NETWORKS,
-      networksMeta: state.networksMeta?.ethereum || EMPTY_NETWORK_METADATA,
-      operations: state.operations || EMPTY_OPERATIONS,
-      assetRates: state.assetRates || EMPTY_RATES,
+      networks: state.networks.ethereum,
+      networksMeta: state.networksMeta.ethereum,
+      operations: state.operations as Record<string, WalletRendererState['operations'][string] | undefined>,
+      assetRates: state.assetRates,
       tokens: state.tokens,
       showLocalNameWithENS: !!state.showLocalNameWithENS,
       showTestnets: !!state.showTestnets,
-      signers: state.signers || EMPTY_SIGNERS
+      signers: state.signers as Record<string, SignerProjection | undefined>
     }))
   )
   const [safeNetworks, setSafeNetworks] = useState<QueryResultMap['safe.discover']>([])
@@ -306,8 +298,8 @@ export function AddAccountController({
     ? shared.signers[state.addAccountSelectedSigner]
     : null
   const selectedHardwarePage = useMemo(
-    () => hardwarePageModel(selectedHardwareSigner, hardwarePage, shared.ledger?.derivation === 'live'),
-    [hardwarePage, selectedHardwareSigner, shared.ledger?.derivation]
+    () => hardwarePageModel(selectedHardwareSigner, hardwarePage, shared.ledger.derivation === 'live'),
+    [hardwarePage, selectedHardwareSigner, shared.ledger.derivation]
   )
   const visibleHardwareAddresses = selectedHardwarePage.addresses
   const visibleHardwareAddressKey = visibleHardwareAddresses
@@ -483,7 +475,7 @@ export function AddAccountController({
       })
       return
     }
-    if (signer?.status?.toLowerCase() !== 'ok') {
+    if (signer?.status.toLowerCase() !== 'ok') {
       return
     }
 
@@ -548,8 +540,8 @@ export function AddAccountController({
     return `Seed Phrase ${index + 1}`
   }
 
-  function seedWallets(signer: SignerProjection, accounts: Record<string, AccountProjection>) {
-    const addresses = Array.isArray(signer?.addresses) ? signer.addresses : []
+  function seedWallets(signer: SignerProjection, accounts: Record<string, AccountProjection | undefined>) {
+    const addresses = Array.isArray(signer.addresses) ? signer.addresses : []
 
     return addresses.map((address: string, index: number) => {
       const id = address.toLowerCase()
@@ -612,7 +604,7 @@ export function AddAccountController({
   }
 
   async function addSignerAddress(signer: SignerProjection, address: string, name: string, fallback: string) {
-    if (!signer?.id || !address) {
+    if (!signer.id || !address) {
       return
     }
     const accounts = shared.accounts
@@ -670,12 +662,12 @@ export function AddAccountController({
   }
 
   function hardwareAccountName(signer: SignerProjection) {
-    const label = signerTypeLabel(signer?.type, 'Hardware')
+    const label = signerTypeLabel(signer.type, 'Hardware')
     return `${label} Account`
   }
 
   function reloadHardwareSigner(signer: SignerProjection) {
-    if (!signer?.id) {
+    if (!signer.id) {
       return
     }
     beginHardwareSession(signer.id, true)
@@ -683,7 +675,7 @@ export function AddAccountController({
   }
 
   function removeHardwareSigner(signer: SignerProjection) {
-    if (!signer?.id) {
+    if (!signer.id) {
       return
     }
     const operationId = crypto.randomUUID()
@@ -701,7 +693,7 @@ export function AddAccountController({
   }
 
   function inputSignerSession(signer: SignerProjection, input: 'pin' | 'passphrase' | 'device-passphrase') {
-    if (!signer?.id) {
+    if (!signer.id) {
       return
     }
     if (input === 'pin' && !state.addHardwarePin) {
@@ -743,7 +735,7 @@ export function AddAccountController({
   }
 
   async function pairHardwareLattice(signer: SignerProjection) {
-    if (!signer?.id) {
+    if (!signer.id) {
       return
     }
     if (!state.addHardwarePairCode) {
@@ -959,7 +951,9 @@ export function AddAccountController({
   }
 
   function storedSeedFlow(): Extract<AddAccountFlowModel, { kind: 'stored-seed' }> {
-    const signers = Object.values(shared.signers).filter((signer) => signer.type === 'seed')
+    const signers = Object.values(shared.signers).filter(
+      (signer): signer is SignerProjection => signer?.type === 'seed'
+    )
     const selectedSigner = state.addAccountSelectedSigner
       ? shared.signers[state.addAccountSelectedSigner]
       : undefined
@@ -1023,7 +1017,9 @@ export function AddAccountController({
     } else if (type === 'trezor') {
       title = 'Trezor'
     }
-    const signers = Object.values(shared.signers).filter((signer) => signer.type === type)
+    const signers = Object.values(shared.signers).filter(
+      (signer): signer is SignerProjection => signer?.type === type
+    )
     const signer = selectedHardwareSigner?.type === type ? selectedHardwareSigner : undefined
     if (!signer) {
       return {
@@ -1200,7 +1196,7 @@ export function AddAccountController({
   const selectedSigner = () =>
     state.addAccountSelectedSigner ? shared.signers[state.addAccountSelectedSigner] : undefined
   const selectHardwarePage = async (signer: SignerProjection, requestedPage: number) => {
-    const pageModel = hardwarePageModel(signer, requestedPage, shared.ledger?.derivation === 'live')
+    const pageModel = hardwarePageModel(signer, requestedPage, shared.ledger.derivation === 'live')
     setHardwarePage(pageModel.page)
     setHardwarePageInput(String(pageModel.page))
     if (!pageModel.loading) {

@@ -1,6 +1,6 @@
 import React from 'react'
 
-import { resolveSendAssetFromRouteAssetId, toCanonicalAssetId } from '../../../../app/contracts/sidetray'
+import { toCanonicalAssetId } from '../../../../app/contracts/sidetray'
 import { createSideTrayWalletSelector } from '../../../../platform/state-sync/renderer/selectors/sideTrayWallet'
 import { useSideTraySelector } from '../../../../platform/state-sync/renderer/useAppSelector'
 import { formatUnits, toBigInt } from '../../../../shared/domain/units'
@@ -11,7 +11,12 @@ import {
   formatUsdRate
 } from '../../../asset-data/domain/balance'
 import { hasSentToAddress } from './sendHistory'
-import { filterSendRecipients, projectSendSubmission, selectSendAsset } from './sendModel'
+import {
+  filterSendRecipients,
+  projectSendSubmission,
+  resolveSendRouteAsset,
+  selectSendAsset
+} from './sendModel'
 import { createInitialSendState, sendReducer } from './sendReducer'
 import type { SendCapability } from './sendService'
 import { canProceed, getAmountBaseUnits, validateSendDraft } from './sendValidation'
@@ -63,9 +68,9 @@ export function useSendController({
 
     previousAccountIdRef.current = accountId
     const retainedAsset =
-      (balanceSummaries.find((balance) => toCanonicalAssetId(balance) === state.selectedAssetKey) ??
-        resolveSendAssetFromRouteAssetId(assetId, balanceSummaries)) ||
-      balanceSummaries[0] ||
+      balanceSummaries.find((balance) => toCanonicalAssetId(balance) === state.selectedAssetKey) ??
+      resolveSendRouteAsset(assetId, balanceSummaries) ??
+      balanceSummaries.at(0) ??
       null
     queueMicrotask(() => {
       if ((currentAccount?.id ?? '') !== accountId) {

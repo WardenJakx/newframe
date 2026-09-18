@@ -315,10 +315,10 @@ export function createSafeClient({
       const first = new URL(
         `${base(chainId)}/v1/multisig-transactions/${transactionHashSchema.parse(hash)}/confirmations/`
       )
-      let next: URL | undefined = first
+      let next = first
       const visited = new Set<string>()
       const confirmations = new Map<string, { owner: string; signature: string }>()
-      for (let pages = 0; next; pages++) {
+      for (let pages = 0; ; pages++) {
         if (pages >= 100 || visited.has(next.href)) {
           throw new Error('Safe pagination did not progress')
         }
@@ -403,10 +403,10 @@ export function createSafeClient({
       const first = new URL(
         `${base(chainId)}/v2/safes/${expected}/multisig-transactions/?executed=false&nonce__gte=${config.nonce}`
       )
-      let next: URL | undefined = first
+      let next = first
       const visited = new Set<string>()
       const proposals = new Map<string, SafeProposal>()
-      for (let pages = 0; next; pages++) {
+      for (let pages = 0; ; pages++) {
         if (pages >= 1000 || visited.has(next.href)) {
           throw new Error('Safe pagination did not progress')
         }

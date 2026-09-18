@@ -32,7 +32,11 @@ export function createPortfolioService(ports: PortfolioServicePorts) {
       }
 
       const initialState = ports.store.getState()
-      const initialAccount = initialState.main.accounts[initialState.main.currentAccount || '']
+      const initialAccounts = initialState.main.accounts as Record<
+        string,
+        (typeof initialState.main.accounts)[string] | undefined
+      >
+      const initialAccount = initialAccounts[initialState.main.currentAccount || '']
       try {
         ports.operations.start({
           id: reference.id,
@@ -53,7 +57,8 @@ export function createPortfolioService(ports: PortfolioServicePorts) {
       }
 
       const state = ports.store.getState()
-      const account = state.main.accounts[state.main.currentAccount || '']
+      const accounts = state.main.accounts as Record<string, (typeof state.main.accounts)[string] | undefined>
+      const account = accounts[state.main.currentAccount || '']
       if (!account?.address) {
         return fail('account_not_found', 'No account is selected.')
       }

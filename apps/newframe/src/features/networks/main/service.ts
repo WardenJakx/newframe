@@ -14,7 +14,11 @@ export function createNetworkService(ports: NetworkServicePorts) {
   return {
     remove(chainId: number) {
       const state = ports.store.getState()
-      const network = state.main.networks.ethereum[chainId]
+      const networks = state.main.networks.ethereum as Record<
+        number,
+        (typeof state.main.networks.ethereum)[number] | undefined
+      >
+      const network = networks[chainId]
       if (!network || chainId === 1) {
         return false
       }
@@ -23,14 +27,18 @@ export function createNetworkService(ports: NetworkServicePorts) {
     },
 
     async setPrimaryRpc(chainId: number, url: string) {
-      if (!ports.store.getState().main.networks.ethereum[chainId]) {
+      const state = ports.store.getState()
+      const networks = state.main.networks.ethereum as Record<
+        number,
+        (typeof state.main.networks.ethereum)[number] | undefined
+      >
+      if (!networks[chainId]) {
         return false
       }
       if (!(await ports.rpcMatchesChain(url, chainId))) {
         throw new Error('The RPC endpoint returned a different chain ID.')
       }
 
-      const state = ports.store.getState()
       state.setPrimaryCustom('ethereum', chainId, url)
       state.selectPrimary('ethereum', chainId, 'custom')
       state.toggleConnection('ethereum', chainId, 'primary', true)
@@ -38,10 +46,15 @@ export function createNetworkService(ports: NetworkServicePorts) {
     },
 
     setActivation(chainId: number, enabled: boolean) {
-      if (!ports.store.getState().main.networks.ethereum[chainId] || (chainId === 1 && !enabled)) {
+      const state = ports.store.getState()
+      const networks = state.main.networks.ethereum as Record<
+        number,
+        (typeof state.main.networks.ethereum)[number] | undefined
+      >
+      if (!networks[chainId] || (chainId === 1 && !enabled)) {
         return false
       }
-      ports.store.getState().activateNetwork('ethereum', chainId, enabled)
+      state.activateNetwork('ethereum', chainId, enabled)
       return true
     }
   }

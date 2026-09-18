@@ -107,9 +107,14 @@ export class FrameWebSocketProvider extends WebSocketProvider {
 
   override async _processMessage(message: string) {
     try {
-      const payload = JSON.parse(message) as SubscriptionPayload
+      const payload: unknown = JSON.parse(message)
 
-      if (payload?.method === 'eth_subscription') {
+      if (
+        typeof payload === 'object' &&
+        payload !== null &&
+        'method' in payload &&
+        payload.method === 'eth_subscription'
+      ) {
         this.frameEvents.emit('subscription', payload)
       }
     } catch {

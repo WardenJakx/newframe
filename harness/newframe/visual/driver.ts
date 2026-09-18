@@ -606,7 +606,7 @@ export class NewframeDriver {
         intentLabel = 'SELL'
       }
       const intent = Array.from(document.querySelectorAll<HTMLElement>('[data-tone]')).find(
-        (element) => element.textContent?.trim() === intentLabel
+        (element) => element.textContent.trim() === intentLabel
       )
 
       return {

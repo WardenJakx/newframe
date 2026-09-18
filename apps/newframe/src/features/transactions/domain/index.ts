@@ -107,7 +107,7 @@ function firstRecognizedAction(req: any) {
 }
 
 function isUnlimitedApproval(amount?: string) {
-  return amount?.toLowerCase?.() === MAX_HEX.toLowerCase()
+  return amount?.toLowerCase() === MAX_HEX.toLowerCase()
 }
 
 function erc20TokenData(req: any) {

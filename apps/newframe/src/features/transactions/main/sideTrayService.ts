@@ -44,7 +44,7 @@ function errorMessage(error: unknown) {
 }
 
 function typedDataChainId(typedData: TypedDataV4) {
-  const value = typedData.domain.chainId
+  const value: unknown = typedData.domain.chainId
   if (value === undefined || value === null || value === '') {
     return undefined
   }

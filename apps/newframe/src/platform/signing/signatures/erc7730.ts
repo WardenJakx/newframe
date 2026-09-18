@@ -10,7 +10,7 @@ const FETCH_TIMEOUT_MS = 4000
 const MAX_INCLUDE_DEPTH = 5
 
 type JsonPrimitive = string | number | boolean | null
-type Erc7730TypedDataTypes = Record<string, Array<{ name: string; type: string }>>
+type Erc7730TypedDataTypes = Record<string, Array<{ name: string; type: string }> | undefined>
 
 type VisibleRule =
   | 'always'
@@ -621,8 +621,8 @@ export function formatErc7730TypedData(
       ...match.values,
       '@': {
         domain: typedData.domain,
-        chainId: (typedData.domain as Record<string, unknown>)?.chainId,
-        verifyingContract: (typedData.domain as Record<string, unknown>)?.verifyingContract
+        chainId: (typedData.domain as Record<string, unknown>).chainId,
+        verifyingContract: (typedData.domain as Record<string, unknown>).verifyingContract
       }
     }
   }
@@ -744,8 +744,8 @@ function getTypedDataRegistryLookup(typedMessage: TypedMessage) {
 
   const typedData = typedMessage.data as TypedData
   const domain = typedData.domain as Record<string, unknown>
-  const verifyingContract = domain?.verifyingContract
-  const chainId = domain?.chainId
+  const verifyingContract = domain.verifyingContract
+  const chainId = domain.chainId
 
   if (typeof verifyingContract !== 'string' || !isAddress(verifyingContract) || chainId === undefined) {
     return undefined
@@ -780,15 +780,14 @@ export async function getErc7730TypedDataDisplay(
     }
 
     const index = await getEip712Index(fetcher)
-    const entries = index[lookup.key]?.[lookup.primaryType]
+    const entries = (index as Record<string, Eip712Index[string] | undefined>)[lookup.key]?.[
+      lookup.primaryType
+    ]
     if (!entries?.length) {
       return undefined
     }
 
     const entry = selectIndexEntry(entries, lookup.encodeTypeHash)
-    if (!entry) {
-      return undefined
-    }
 
     const { descriptor, path } = await fetchDescriptor(entry.path, fetcher)
     return formatErc7730TypedData(typedMessage, descriptor, path)

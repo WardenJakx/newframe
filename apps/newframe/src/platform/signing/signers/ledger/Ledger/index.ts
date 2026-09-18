@@ -256,7 +256,9 @@ export default class Ledger extends Signer {
     const lastStatus = this.status
 
     this.statusPoller = setTimeout(() => {
-      const lastRequest = this.requestQueue.peekBack()
+      const lastRequest = this.requestQueue.peekBack() as
+        | ReturnType<typeof this.requestQueue.peekBack>
+        | undefined
 
       // prevent spamming eth app checks
       if (lastRequest?.type !== 'checkDeviceStatus') {

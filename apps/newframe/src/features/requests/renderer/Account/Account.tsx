@@ -328,6 +328,7 @@ function AccountBody(props: AccountBodyProps) {
       void props.capabilities.panel.back({ steps: 1 })
     }
   }
+  const accountsById: Partial<typeof accounts> = accounts
 
   const renderRequest = (request: RenderableRequestView) => {
     const chainId = request.type === 'signErc20Permit' ? request.typedMessage.data.domain.chainId : undefined
@@ -344,7 +345,7 @@ function AccountBody(props: AccountBodyProps) {
     switch (request.type) {
       case 'sign': {
         const signingAccount =
-          accounts[request.account] ||
+          accountsById[request.account] ??
           Object.values(accounts).find(
             (account) => account.address.toLowerCase() === request.account.toLowerCase()
           )
@@ -354,7 +355,7 @@ function AccountBody(props: AccountBodyProps) {
             req={request}
             originName={origins[request.origin]?.name || request.origin}
             favicon={persistedImageSource(origins[request.origin]?.image)}
-            signingAddress={signingAccount?.address || request.account}
+            signingAddress={signingAccount?.address ?? request.account}
           />
         )
       }
@@ -390,9 +391,9 @@ function AccountBody(props: AccountBodyProps) {
     }
   }
 
-  if (crumb?.view === 'requestView') {
+  if (crumb.view === 'requestView') {
     const { accountId, requestId } = crumb.data
-    const projectedRequest = accountId && requestId ? accounts[accountId]?.requests[requestId] : undefined
+    const projectedRequest = accountId && requestId ? accountsById[accountId]?.requests[requestId] : undefined
     const request = projectedRequest && isRenderableRequest(projectedRequest) ? projectedRequest : undefined
     const accountViewTitle = request ? accountViewTitles[request.type] : ''
 
@@ -403,22 +404,20 @@ function AccountBody(props: AccountBodyProps) {
     )
   }
 
-  if (crumb?.view === 'expandedModule' && crumb.data?.id === 'requests') {
-    return (
-      <AccountView back={back} accountViewIcon={props.accountViewIcon} accountViewTitle={crumb.data.id}>
-        <Stack grow>
-          <div onMouseDown={(event) => event.stopPropagation()}>
-            <Requests
-              account={crumb.data.account}
-              capabilities={props.capabilities}
-              expanded={true}
-              moduleId='requests'
-            />
-          </div>
-        </Stack>
-      </AccountView>
-    )
-  }
+  return (
+    <AccountView back={back} accountViewIcon={props.accountViewIcon} accountViewTitle={crumb.data.id}>
+      <Stack grow>
+        <div onMouseDown={(event) => event.stopPropagation()}>
+          <Requests
+            account={crumb.data.account}
+            capabilities={props.capabilities}
+            expanded={true}
+            moduleId='requests'
+          />
+        </div>
+      </Stack>
+    </AccountView>
+  )
 
   return null
 }

@@ -200,12 +200,15 @@ export default function SignerRecovery({
   dismiss: () => void
   signerIds: string[]
 }) {
-  const signers = useWalletSelector((state: WalletRendererState) => state.signers)
+  const signers = useWalletSelector(
+    (state: WalletRendererState) =>
+      state.signers as Record<string, WalletRendererState['signers'][string] | undefined>
+  )
   const candidates = useMemo(
     () => signerIds.map((id) => signers[id]).filter((signer): signer is WalletSigner => Boolean(signer)),
     [signerIds, signers]
   )
-  const [selectedId, setSelectedId] = useState(candidates[0]?.id || '')
+  const [selectedId, setSelectedId] = useState(candidates.at(0)?.id ?? '')
   const {
     finish: finishSession,
     session,
@@ -213,7 +216,7 @@ export default function SignerRecovery({
     start: startSignerSession
   } = useHardwareSessionController(capability)
 
-  const signer = candidates.find((candidate) => candidate.id === selectedId) ?? candidates[0]
+  const signer = candidates.find((candidate) => candidate.id === selectedId) ?? candidates.at(0)
 
   function startSession(signerId: string, reload = false) {
     startSignerSession(signerId, { reload, replaceCurrent: true })

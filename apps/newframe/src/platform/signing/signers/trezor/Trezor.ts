@@ -1,7 +1,7 @@
 import type { TypedTransaction } from '@ethereumjs/tx'
 import { padToEven, stripHexPrefix, addHexPrefix, bytesToHex } from '@ethereumjs/util'
 import { SignTypedDataVersion, TypedDataUtils } from '@metamask/eth-sig-util'
-import type { Device as TrezorDevice } from '@trezor/connect'
+import type { Device as TrezorDevice, Features } from '@trezor/connect'
 import log from 'electron-log'
 import { v5 as uuid } from 'uuid'
 
@@ -64,13 +64,13 @@ export default class Trezor extends Signer {
     this.emit('update')
 
     try {
-      const features = await TrezorBridge.getFeatures({ device })
+      const features = (await TrezorBridge.getFeatures({ device })) as Features | undefined
 
       const defaultVersion = features?.model === 'T' ? defaultTrezorTVersion : defaultTrezorOneVersion
-      const { major_version: major, minor_version: minor, patch_version: patch } = features || defaultVersion
+      const { major_version: major, minor_version: minor, patch_version: patch } = features ?? defaultVersion
       this.appVersion = { major, minor, patch }
 
-      const model = (features?.model || '').toString() === '1' ? 'One' : features?.model
+      const model = (features?.model ?? '').toString() === '1' ? 'One' : features?.model
       this.model = ['Trezor', model].join(' ').trim()
     } catch (e) {
       this.handleUnrecoverableError()

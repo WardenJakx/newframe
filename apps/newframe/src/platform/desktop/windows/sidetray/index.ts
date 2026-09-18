@@ -8,32 +8,35 @@ import type { SideTray } from './window.js'
 import sideTrayHost from './window.js'
 
 export default class SideTrayManager {
-  private sideTrays: Record<string, SideTray> = {}
+  private sideTrays: Record<string, SideTray | undefined> = {}
   private registerRenderer?: RendererAuthorizationRegistry['registerRenderer']
 
   constructor(private readonly store: typeof canonicalStore) {}
 
-  private getFrames(): Record<string, Frame> {
-    return this.store.getState().main.frames
+  private getFrames(): Record<string, Frame | undefined> {
+    return this.store.getState().main.frames as Record<string, Frame | undefined>
   }
 
   start(registerRenderer: RendererAuthorizationRegistry['registerRenderer']) {
     this.registerRenderer = registerRenderer
-    const manageCurrentFrames = ([frames, inFocus]: [Record<string, Frame>, string]) => {
+    const manageCurrentFrames = ([frames, inFocus]: [Record<string, Frame | undefined>, string]) => {
       this.manageFrames(frames, inFocus)
     }
     const selectFrames = () =>
-      [this.getFrames(), this.store.getState().main.focusedFrame] as [Record<string, Frame>, string]
+      [this.getFrames(), this.store.getState().main.focusedFrame] as [
+        Record<string, Frame | undefined>,
+        string
+      ]
 
     manageCurrentFrames(selectFrames())
     this.store.subscribe(
-      (state) => [state.main.frames, state.main.focusedFrame] as [Record<string, Frame>, string],
+      (state) => [state.main.frames, state.main.focusedFrame] as [Record<string, Frame | undefined>, string],
       manageCurrentFrames,
       { equalityFn: shallow }
     )
   }
 
-  manageFrames(frames: Record<string, Frame>, inFocus: string) {
+  manageFrames(frames: Record<string, Frame | undefined>, inFocus: string) {
     const frameIds = Object.keys(frames)
     const instanceIds = Object.keys(this.sideTrays)
 
@@ -41,10 +44,14 @@ export default class SideTrayManager {
     frameIds
       .filter((frameId) => !instanceIds.includes(frameId))
       .forEach((frameId) => {
+        const frame = frames[frameId]
+        if (!frame) {
+          return
+        }
         if (!this.registerRenderer) {
           throw new Error('Renderer authorization must be configured before creating a side tray')
         }
-        const sideTray = sideTrayHost.create(frames[frameId], this.registerRenderer)
+        const sideTray = sideTrayHost.create(frame, this.registerRenderer)
 
         this.sideTrays[frameId] = sideTray
 
@@ -60,10 +67,14 @@ export default class SideTrayManager {
       .filter((frameId) => instanceIds.includes(frameId))
       .forEach((frameId) => {
         const sideTray = this.sideTrays[frameId]
-        const route = frames[frameId].route ?? ''
+        const frame = frames[frameId]
+        if (!frame) {
+          return
+        }
+        const route = frame.route ?? ''
 
         if (sideTray && !sideTray.isDestroyed() && sideTray.contentRoute !== route) {
-          sideTrayHost.load(sideTray, frames[frameId])
+          sideTrayHost.load(sideTray, frame)
         }
       })
 
@@ -79,9 +90,9 @@ export default class SideTrayManager {
       })
 
     if (inFocus) {
-      const focusedSideTray = this.sideTrays[inFocus] || { isFocused: () => true }
+      const focusedSideTray = this.sideTrays[inFocus]
 
-      if (!focusedSideTray.isFocused()) {
+      if (focusedSideTray && !focusedSideTray.isFocused()) {
         focusedSideTray.show()
         focusedSideTray.focus()
       }
@@ -145,6 +156,6 @@ export default class SideTrayManager {
   }
 
   isShowing() {
-    return Object.keys(this.sideTrays).some((id) => this.sideTrays[id].isVisible())
+    return Object.keys(this.sideTrays).some((id) => this.sideTrays[id]?.isVisible() ?? false)
   }
 }

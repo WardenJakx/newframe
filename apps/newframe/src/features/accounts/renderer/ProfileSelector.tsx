@@ -44,6 +44,10 @@ type ProfileSubmission = {
   name?: string
 }
 
+function isCurrentSubmission(ref: React.RefObject<ProfileSubmission | null>, operationId: string) {
+  return ref.current?.operationId === operationId
+}
+
 const selectorRecipe = cva({
   base: { flex: '1 1 0', minWidth: 0, marginInline: '4' }
 })
@@ -129,7 +133,7 @@ export function ProfileSelector({ capability, currentProfile, profiles }: Profil
   const submissionRef = React.useRef<ProfileSubmission | null>(null)
   const movableAccountsRequestRef = React.useRef('')
   const [error, setError] = React.useState('')
-  const activeProfile = profiles.find((profile) => profile.id === currentProfile) ?? profiles[0]
+  const activeProfile = profiles.find((profile) => profile.id === currentProfile) ?? profiles.at(0)
   const managedProfile = profiles.find((profile) => profile.id === managedProfileId)
   const trackedOperation = useWalletSelector((state) =>
     submission ? selectOperationById(state, submission.operationId) : undefined
@@ -162,7 +166,7 @@ export function ProfileSelector({ capability, currentProfile, profiles }: Profil
   const submissionReflected =
     !!submission && trackedOperation?.status === 'succeeded' && submissionMatchesState
   const displayedMode = submissionReflected ? 'none' : mode
-  const displayedOpen = submissionReflected && submission?.type !== 'profile.update' ? false : open
+  const displayedOpen = submissionReflected && submission.type !== 'profile.update' ? false : open
   const visibleError = submissionReflected ? '' : operationFailure || error
 
   const resetManagement = React.useCallback(() => {
@@ -237,7 +241,7 @@ export function ProfileSelector({ capability, currentProfile, profiles }: Profil
       setOpen(true)
       setError('')
       const result = await capability.selectProfile({ operationId, profileId })
-      if (submissionRef.current?.operationId !== operationId) {
+      if (!isCurrentSubmission(submissionRef, operationId)) {
         return
       }
       if (!result.ok) {
@@ -293,7 +297,7 @@ export function ProfileSelector({ capability, currentProfile, profiles }: Profil
       name: trimmedName,
       ...(selectedAccountIds.length ? { accountIds: selectedAccountIds } : {})
     })
-    if (submissionRef.current?.operationId !== operationId) {
+    if (!isCurrentSubmission(submissionRef, operationId)) {
       return
     }
     if (!result.ok) {
@@ -341,7 +345,7 @@ export function ProfileSelector({ capability, currentProfile, profiles }: Profil
       profileId: managedProfile.id,
       name: trimmedName
     })
-    if (submissionRef.current?.operationId !== operationId) {
+    if (!isCurrentSubmission(submissionRef, operationId)) {
       return
     }
     if (!result.ok) {
@@ -368,7 +372,7 @@ export function ProfileSelector({ capability, currentProfile, profiles }: Profil
       operationId,
       profileId: managedProfile.id
     })
-    if (submissionRef.current?.operationId !== operationId) {
+    if (!isCurrentSubmission(submissionRef, operationId)) {
       return
     }
     if (!result.ok) {
@@ -524,7 +528,7 @@ export function ProfileSelector({ capability, currentProfile, profiles }: Profil
         <div className={rowRecipe({ grow: true })}>
           <div className={columnRecipe({ grow: true })}>
             <Text align='start' variant='control' truncate>
-              {activeProfile?.name || 'Profiles'}
+              {activeProfile?.name ?? 'Profiles'}
             </Text>
           </div>
           <Icon name={displayedOpen ? 'chevronUp' : 'chevronDown'} size='small' tone='muted' />

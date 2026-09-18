@@ -174,7 +174,7 @@ export function releaseTagsFromRemoteOutput(
     .map((line) => {
       const ref = line.split(/\s+/)[1]
       const refPrefix = `refs/tags/${prefix}-v`
-      if (!ref?.startsWith(refPrefix)) {
+      if (!ref.startsWith(refPrefix)) {
         fail(`Unexpected ${product} tag ref from origin: ${ref || line}`)
       }
       return ref.slice('refs/tags/'.length)

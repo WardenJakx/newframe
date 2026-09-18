@@ -52,7 +52,7 @@ function transactionRequest(requestId: string): TransactionRequest {
 }
 
 function fixture() {
-  const requests: Record<string, AccountRequest> = {}
+  const requests: Record<string, AccountRequest | undefined> = {}
   const state = {
     main: {
       currentAccount: accountId,
@@ -91,7 +91,7 @@ function fixture() {
     signer: signerId,
     lastSignerType: 'ledger',
     requests,
-    getRequest: <T extends AccountRequest>(requestId: string) => requests[requestId] as T,
+    getRequest: <T extends AccountRequest>(requestId: string) => requests[requestId] as T | undefined,
     patchRequest(requestId: string, update: (request: AccountRequest) => void) {
       const request = requests[requestId]
       if (!request) {
@@ -131,16 +131,16 @@ function fixture() {
     },
     setAccess: mock(),
     setRequestError: mock((requestId: string, error: Error) => {
-      Object.assign(requests[requestId] || {}, { status: 'error', notice: error.message })
+      Object.assign(requests[requestId] ?? {}, { status: 'error', notice: error.message })
     }),
     setRequestPending: mock((request: AccountRequest) => {
-      Object.assign(requests[request.handlerId] || {}, { status: 'pending' })
+      Object.assign(requests[request.handlerId] ?? {}, { status: 'pending' })
     }),
     setRequestSuccess: mock((requestId: string) => {
-      Object.assign(requests[requestId] || {}, { status: 'success' })
+      Object.assign(requests[requestId] ?? {}, { status: 'success' })
     }),
     setTxSent: mock((requestId: string, hash: string) => {
-      Object.assign(requests[requestId] || {}, { status: 'verifying', tx: { hash, confirmations: 0 } })
+      Object.assign(requests[requestId] ?? {}, { status: 'verifying', tx: { hash, confirmations: 0 } })
     })
   }
   const signerCompatibility = mock(() => ({ signer: 'ledger', tx: 'london', compatible: true }))
@@ -373,13 +373,13 @@ describe('prompted request lifecycle', () => {
     test.add(request, mock())
 
     expect(test.service.approve(request.handlerId)).toBe(true)
-    expect(test.requests[request.handlerId].approvalGate).toMatchObject({
+    expect(test.requests[request.handlerId]!.approvalGate).toMatchObject({
       type: 'signer-compatibility',
       reason: 'incompatible'
     })
     expect(test.service.confirmWarning(request.handlerId, 'gas-fee')).toBe(false)
     expect(test.service.confirmWarning(request.handlerId, 'signer-compatibility')).toBe(true)
-    expect(test.requests[request.handlerId].approvalGate).toEqual({
+    expect(test.requests[request.handlerId]!.approvalGate).toEqual({
       type: 'gas-fee',
       feeUSD: '84.00',
       currentSymbol: 'ETH'

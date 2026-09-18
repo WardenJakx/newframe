@@ -2,10 +2,19 @@ import { getSignerType, isSignerReady } from '../../../platform/signing/domain/i
 import type { SafeOwnerAccount } from '../domain/safe.js'
 import type { Account } from '../domain/state/account.js'
 
+function firstNonEmpty(...values: Array<string | undefined>): string {
+  for (const value of values) {
+    if (value) {
+      return value
+    }
+  }
+  return ''
+}
+
 export function deriveSafeOwners(
   safeAccount: Account,
   accounts: Account[],
-  signers: Record<string, { type: string; status: string }>,
+  signers: Record<string, { type: string; status: string } | undefined>,
   appLock: { locked: boolean }
 ): Record<string, SafeOwnerAccount[]> {
   const candidates = accounts.filter(
@@ -18,7 +27,7 @@ export function deriveSafeOwners(
         .filter((account) => owners.has(account.address.toLowerCase()))
         .map((account): SafeOwnerAccount => {
           const signer = signers[account.signer]
-          const signerType = (signer?.type || account.lastSignerType || 'address').toLowerCase()
+          const signerType = firstNonEmpty(signer?.type, account.lastSignerType, 'address').toLowerCase()
           const signingType = getSignerType(signer?.type.toLowerCase() ?? '')
           const historicalType = getSignerType(account.lastSignerType.toLowerCase())
           const watchOnly =
@@ -29,7 +38,10 @@ export function deriveSafeOwners(
           } else if (signer && signingType && isSignerReady(signer) && !appLock.locked) {
             status = 'ready'
           }
-          let signerStatus = signer?.status || 'Signer unavailable'
+          let signerStatus = 'Signer unavailable'
+          if (signer?.status) {
+            signerStatus = signer.status
+          }
           if (status === 'watch-only') {
             signerStatus = 'Watch-only account'
           } else if (appLock.locked) {

@@ -1,3 +1,4 @@
+import type { WalletRendererState } from '../../../platform/state-sync/contract/projections'
 import { useWalletSelector } from '../../../platform/state-sync/renderer/useAppSelector'
 import { accountDisplayType } from '../../../shared/renderer/ui/signerPresentation'
 import type { AccountsCapability } from './accountsCapability'
@@ -12,7 +13,10 @@ export function Receive({
   capability: Pick<AccountsCapability, 'writeText'>
   onBack: () => void
 }) {
-  const account = useWalletSelector((state) => state.accounts?.[accountId])
+  const account = useWalletSelector(
+    (state) =>
+      (state.accounts as Record<string, WalletRendererState['accounts'][string] | undefined>)[accountId]
+  )
   const showLocalNameWithENS = useWalletSelector((state) => !!state.showLocalNameWithENS)
 
   if (!account) {

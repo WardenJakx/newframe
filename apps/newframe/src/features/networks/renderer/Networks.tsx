@@ -17,9 +17,11 @@ export interface NetworksProps {
 
 export function Networks({ capability, onClose, onSelectionChange, selectedChainId }: NetworksProps) {
   const shared = useAccountBalances()
+  const networks: Partial<typeof shared.networks> = shared.networks
+  const getNetwork = (chainId: number): (typeof shared.networks)[number] | undefined => networks[chainId]
   const [query, setQuery] = useState('')
   const [kebabChainId, setKebabChainId] = useState(0)
-  const [rpcDrafts, setRpcDrafts] = useState<Record<number, string>>({})
+  const [rpcDrafts, setRpcDrafts] = useState<Record<number, string | undefined>>({})
   const rows = createNetworkRows({
     balances: shared.balances,
     networks: shared.networks,
@@ -51,9 +53,7 @@ export function Networks({ capability, onClose, onSelectionChange, selectedChain
             color={chainColorValue(shared.networksMeta[chain.chainId]?.primaryColor)}
           />
         ))}
-      getRpcDraft={(chainId) =>
-        rpcDrafts[chainId] ?? shared.networks[chainId]?.connection?.primary?.custom ?? ''
-      }
+      getRpcDraft={(chainId) => rpcDrafts[chainId] ?? getNetwork(chainId)?.connection.primary.custom ?? ''}
       kebabChainId={kebabChainId}
       onBack={onClose}
       onChangeQuery={setQuery}
@@ -61,9 +61,7 @@ export function Networks({ capability, onClose, onSelectionChange, selectedChain
         setRpcDrafts((current) => ({ ...current, [chainId]: value.replace(/\s+/g, '') }))
       }
       onSaveRpc={(chainId) => {
-        const url = String(
-          rpcDrafts[chainId] ?? shared.networks[chainId]?.connection?.primary?.custom ?? ''
-        ).trim()
+        const url = String(rpcDrafts[chainId] ?? getNetwork(chainId)?.connection.primary.custom ?? '').trim()
         if (url) {
           void capability.setPrimaryRpc({ chainId, url })
         }

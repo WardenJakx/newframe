@@ -9,14 +9,14 @@ export interface EncryptedSecret {
 
 const hex = /^[0-9a-f]+$/i
 
-function vaultKey(vaultKeyHex: string) {
+function vaultKey(vaultKeyHex: unknown) {
   if (typeof vaultKeyHex !== 'string' || vaultKeyHex.length !== 64 || !hex.test(vaultKeyHex)) {
     throw new Error('Vault key must be 32 bytes encoded as hex')
   }
   return Buffer.from(vaultKeyHex, 'hex')
 }
 
-function decode(value: string, bytes: number | undefined, field: string) {
+function decode(value: unknown, bytes: number | undefined, field: string) {
   if (typeof value !== 'string' || value.length % 2 !== 0 || (value.length > 0 && !hex.test(value))) {
     throw new Error(`Invalid encrypted secret ${field}`)
   }
@@ -44,8 +44,17 @@ export function sealSecret(secret: Buffer, vaultKeyHex: string): EncryptedSecret
   }
 }
 
-export function openSecret(envelope: EncryptedSecret, vaultKeyHex: string): Buffer {
-  if (envelope?.algorithm !== 'aes-256-gcm') {
+export function openSecret(envelope: EncryptedSecret, vaultKeyHex: string): Buffer
+export function openSecret(envelope: unknown, vaultKeyHex: string): Buffer {
+  if (
+    typeof envelope !== 'object' ||
+    envelope === null ||
+    !('algorithm' in envelope) ||
+    envelope.algorithm !== 'aes-256-gcm' ||
+    !('iv' in envelope) ||
+    !('authTag' in envelope) ||
+    !('ciphertext' in envelope)
+  ) {
     throw new Error('Unsupported encrypted secret')
   }
 

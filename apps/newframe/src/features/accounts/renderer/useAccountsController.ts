@@ -29,11 +29,11 @@ function moveError(code: string) {
 }
 
 export function useAccountsController(input: {
-  accounts: Record<string, AccountProjection>
+  accounts: Record<string, AccountProjection | undefined>
   capability: AccountsCapability
   currentAccountId: string
   onClose: () => void
-  operations: Record<string, OperationRecord>
+  operations: Record<string, OperationRecord | undefined>
 }) {
   const [state, dispatch] = useReducer(accountsReducer, undefined, createAccountsState)
   const accountFeedbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)

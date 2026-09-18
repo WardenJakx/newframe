@@ -198,6 +198,7 @@ it('keeps the connected transaction review mounted when an AirGap session appear
     handlerId: reference.requestId,
     account: accountId,
     type: 'transaction',
+    approvals: [],
     data: { chainId: '0x7a69', gasLimit: '0x5208', gasPrice: '0x1' }
   }
   const state = walletState({

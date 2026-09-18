@@ -23,7 +23,7 @@ export function SafeQueueView({
   deployments: SafeDeployment[]
   networkNames: Record<number, string>
   networkIcons?: Record<number, ReactNode>
-  currencies?: Record<number, { symbol: string; decimals: number }>
+  currencies?: Partial<Record<number, { symbol: string; decimals: number }>>
   refreshing: boolean
   refreshError?: string
   onRefresh: () => void

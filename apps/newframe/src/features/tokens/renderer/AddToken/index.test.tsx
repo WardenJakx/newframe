@@ -52,7 +52,13 @@ const networksMeta = {
 }
 
 beforeEach(() => {
-  fixture.state.reset({ networks, networksMeta })
+  fixture.state.reset({
+    accounts: {},
+    networks,
+    networksMeta,
+    operations: {},
+    tokens: { byId: {}, accountTokenIds: {} }
+  })
 })
 
 describe('selecting token chain', () => {

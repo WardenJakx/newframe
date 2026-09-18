@@ -30,7 +30,7 @@ function ProviderRequest(props: ProviderRequestProps) {
           <Surface padding='large' tone='transparent'>
             <RequestOrigin originName={originName} favicon={props.favicon} description='wants to connect' />
           </Surface>
-          {props.req.payload?.method === 'eth_requestAccounts' ? props.accountSelector : null}
+          {props.req.payload.method === 'eth_requestAccounts' ? props.accountSelector : null}
         </Stack>
       )}
     </Surface>

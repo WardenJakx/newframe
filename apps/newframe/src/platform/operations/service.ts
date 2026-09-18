@@ -82,7 +82,11 @@ export function createOperationService({
   }
 
   const lookup = ({ id, owner, type }: OperationReference) => {
-    const entry = store.getState().operations[id]
+    const operations = store.getState().operations as Record<
+      string,
+      ReturnType<typeof store.getState>['operations'][string] | undefined
+    >
+    const entry = operations[id]
     if (
       !entry ||
       entry.operation.type !== type ||
@@ -114,7 +118,11 @@ export function createOperationService({
 
   const start = (input: StartOperationInput) => {
     const id = input.id ?? createId()
-    if (store.getState().operations[id]) {
+    const operations = store.getState().operations as Record<
+      string,
+      ReturnType<typeof store.getState>['operations'][string] | undefined
+    >
+    if (operations[id]) {
       throw new Error(`Operation already exists: ${id}`)
     }
     const now = clock.now()

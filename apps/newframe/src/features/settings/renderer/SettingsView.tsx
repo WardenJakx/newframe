@@ -71,7 +71,7 @@ interface SettingsViewModel {
 }
 
 function shortcutLabel(platform: string, shortcut: SummonShortcut) {
-  const modifiers = (shortcut.modifierKeys || []).map((key: string) => {
+  const modifiers = shortcut.modifierKeys.map((key: string) => {
     if (key === 'Alt') {
       return platform === 'darwin' ? 'Option' : 'Alt'
     }

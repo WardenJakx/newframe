@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { useEffect, useRef } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 
-import type { WalletRendererState } from '../../../../../platform/state-sync/contract/projections'
 import { useWalletSelector } from '../../../../../platform/state-sync/renderer/useAppSelector'
 import { resolveOrderAssetImageSource } from './OrderAssetPosition'
 import { createOrderRows, orderErrorMessage } from './orderModel'
@@ -10,12 +9,8 @@ import type { OrdersCapability } from './ordersCapability'
 import { OrdersView } from './OrdersView'
 import type { OrderRow } from './orderTypes'
 
-const EMPTY_NETWORKS: WalletRendererState['networks']['ethereum'] = {}
-const EMPTY_NETWORK_METADATA: WalletRendererState['networksMeta']['ethereum'] = {}
-const EMPTY_OPERATIONS: WalletRendererState['operations'] = {}
-const EMPTY_ORDERS: WalletRendererState['orders'] = {}
-type CancellationByOrder = Record<string, string>
-type CancelErrorsByOrder = Record<string, string>
+type CancellationByOrder = Record<string, string | undefined>
+type CancelErrorsByOrder = Record<string, string | undefined>
 
 export interface OpenOrderInput {
   assetImages: { contra?: string; target?: string }
@@ -33,14 +28,15 @@ export function Orders({
 }) {
   const shared = useWalletSelector(
     useShallow((state) => {
-      const account = state.accounts?.[state.currentAccount]
+      const account = (state.accounts as Partial<typeof state.accounts>)[state.currentAccount]
+      const operations: Record<string, (typeof state.operations)[string] | undefined> = state.operations
       return {
-        accountAddress: account?.address || '',
-        networks: state.networks?.ethereum || EMPTY_NETWORKS,
-        networksMeta: state.networksMeta?.ethereum || EMPTY_NETWORK_METADATA,
-        operations: state.operations || EMPTY_OPERATIONS,
-        orders: state.orders || EMPTY_ORDERS,
-        tokens: state.tokens || { byId: {}, accountTokenIds: {} },
+        accountAddress: account?.address ?? '',
+        networks: state.networks.ethereum,
+        networksMeta: state.networksMeta.ethereum,
+        operations,
+        orders: state.orders,
+        tokens: state.tokens,
         showTestnets: !!state.showTestnets
       }
     })
@@ -49,10 +45,15 @@ export function Orders({
   const cancellationsRef = useRef(cancellations)
   const [cancelErrors, setCancelErrors] = useState<CancelErrorsByOrder>({})
   const orders = createOrderRows({ ...shared, selectedChainId })
-  const projectedCancelErrors = { ...cancelErrors }
+  const projectedCancelErrors = Object.fromEntries(
+    Object.entries(cancelErrors).filter((entry): entry is [string, string] => entry[1] !== undefined)
+  )
   const cancellingOrderIds = new Set<string>()
+  const cancellationEntries = Object.entries(cancellations).filter(
+    (entry): entry is [string, string] => entry[1] !== undefined
+  )
 
-  Object.entries(cancellations).forEach(([orderId, operationId]) => {
+  cancellationEntries.forEach(([orderId, operationId]) => {
     const operation = shared.operations[operationId]
     if (!operation || operation.status === 'pending') {
       cancellingOrderIds.add(orderId)
@@ -63,10 +64,12 @@ export function Orders({
   })
 
   useEffect(() => {
-    const terminal = Object.entries(cancellations).filter(([, operationId]) => {
-      const status = shared.operations[operationId]?.status
-      return status === 'failed' || status === 'succeeded'
-    })
+    const terminal = Object.entries(cancellations)
+      .filter((entry): entry is [string, string] => entry[1] !== undefined)
+      .filter(([, operationId]) => {
+        const status = shared.operations[operationId]?.status
+        return status === 'failed' || status === 'succeeded'
+      })
     if (!terminal.length) {
       return
     }
@@ -75,9 +78,9 @@ export function Orders({
     const failures: CancelErrorsByOrder = {}
     let changed = false
 
-    terminal.forEach(([orderId, operationId]) => {
+    for (const [orderId, operationId] of terminal) {
       if (next[orderId] !== operationId) {
-        return
+        continue
       }
       const operation = shared.operations[operationId]
       if (operation?.status === 'failed') {
@@ -85,7 +88,7 @@ export function Orders({
       }
       delete next[orderId]
       changed = true
-    })
+    }
 
     if (changed) {
       cancellationsRef.current = next

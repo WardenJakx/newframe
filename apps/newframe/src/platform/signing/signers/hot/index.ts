@@ -15,7 +15,10 @@ import SeedSigner from './SeedSigner/index.js'
 type VaultPort = VaultAccess & { acquireKey(password?: string): string }
 type SignerCollection = { add(signer: Signer): void; exists(id: string): boolean }
 
-const USER_DATA = app ? app.getPath('userData') : path.resolve(import.meta.dirname, '../.userData')
+const electronApp = app as typeof app | undefined
+const USER_DATA = electronApp
+  ? electronApp.getPath('userData')
+  : path.resolve(import.meta.dirname, '../.userData')
 const SIGNERS_PATH = path.resolve(USER_DATA, 'signers')
 
 const encryptedSecretSchema = (ciphertextBytes: number) =>

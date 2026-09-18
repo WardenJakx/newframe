@@ -133,7 +133,7 @@ export function useTradeController({ assetId, capability, chainId }: TradeContro
       return
     }
     const orderId = operation.entityRefs?.find((reference) => reference.type === 'order')?.id
-    if (orderId && orders[orderId]) {
+    if (orderId && (orders as Partial<typeof orders>)[orderId]) {
       void capability.close()
     }
   }, [capability, execution.state.session, operation, orders])

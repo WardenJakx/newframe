@@ -29,7 +29,7 @@ export function ActivityDetailsView({
   originName: string
 }) {
   const chainId = Number(activity.chainId)
-  const symbol = (networkMeta.nativeCurrency?.symbol || network.symbol) ?? 'ETH'
+  const symbol = [networkMeta.nativeCurrency.symbol, network.symbol].find(Boolean) ?? 'ETH'
   const nativeCurrency = { ...networkMeta.nativeCurrency, symbol }
   const effects = activityBalanceChanges(activity, symbol)
   const receiptBlock = activity.receipt?.blockNumber ? parseInt(activity.receipt.blockNumber, 16) : undefined

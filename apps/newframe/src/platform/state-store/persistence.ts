@@ -190,7 +190,7 @@ function normalizeProfileState(main: UnknownRecord) {
       const profileId = profileAliases[account.profileId] || account.profileId
       return [id, { ...account, profileId: profiles[profileId] ? profileId : currentProfile }]
     })
-  )
+  ) as Record<string, UnknownRecord | undefined>
   const accountOrder: string[] = []
   const seenAccounts = new Set<string>()
   ;[...(Array.isArray(main.accountOrder) ? main.accountOrder : []), ...Object.keys(accounts)].forEach(
@@ -303,8 +303,8 @@ function matchingPersistedImage(value: unknown, sourceUrl: string) {
 }
 
 function mergeNetworkMetadata(current: unknown, persisted: unknown) {
-  const currentEthereum = (current as UnknownRecord)?.ethereum ?? {}
-  const persistedEthereum = (persisted as UnknownRecord)?.ethereum ?? {}
+  const currentEthereum = unknownRecord(current).ethereum ?? {}
+  const persistedEthereum = unknownRecord(persisted).ethereum ?? {}
   const ethereum = mergeRecord(currentEthereum, persistedEthereum)
 
   Object.entries(persistedEthereum).forEach(([id, value]) => {

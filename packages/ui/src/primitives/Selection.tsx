@@ -233,7 +233,7 @@ export function Selection({
         setOpen(true)
         return
       }
-      const highlighted = items[highlightedIndex]
+      const highlighted = items.at(highlightedIndex)
       if (highlighted && !highlighted.disabled) {
         select(highlighted.id)
       }

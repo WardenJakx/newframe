@@ -12,7 +12,7 @@ import {
   verifySafeHash
 } from '../../../platform/safe/integrity.js'
 import type { SigningUiContext } from '../../../platform/signing/signers/Signer/index.js'
-import type { CanonicalStoreReader } from '../../../platform/state-store/actions.js'
+import type { CanonicalStore, CanonicalStoreReader } from '../../../platform/state-store/actions.js'
 import type { TypedMessage } from '../../requests/contract/requests.js'
 import { safeConfigurationSchema, safeProposalSchema } from '../domain/safe.js'
 import type FrameAccount from './Account.js'
@@ -74,18 +74,22 @@ export function createSafeConfirmationService({
   const entries = new Map<string, Entry>()
   const accepted = new Map<string, string>()
   let disposed = false
+  const accountState = (accountId: string) =>
+    (
+      store.getState().main.accounts as Record<string, CanonicalStore['main']['accounts'][string] | undefined>
+    )[accountId]
   const anchor = (identity: Identity) => {
     const main = store.getState().main
     return JSON.stringify([
       main.currentProfile,
-      main.accounts[identity.accountId]?.created,
-      main.accounts[identity.ownerId]?.created
+      accountState(identity.accountId)?.created,
+      accountState(identity.ownerId)?.created
     ])
   }
   const snapshot = (identity: Identity): Snapshot => {
     const main = store.getState().main
-    const safe = main.accounts[identity.accountId]
-    const owner = main.accounts[identity.ownerId]
+    const safe = accountState(identity.accountId)
+    const owner = accountState(identity.ownerId)
     const deployment = safe?.safe?.[String(identity.chainId)]
     if (!safe || safe.profileId !== main.currentProfile || !deployment) {
       throw new Error('Safe deployment is unavailable in this profile.')
@@ -103,7 +107,12 @@ export function createSafeConfirmationService({
     if (!configuration.owners.some((address) => address.toLowerCase() === owner.address.toLowerCase())) {
       throw new Error('Selected account is not an owner of this Safe on this chain.')
     }
-    const network = main.networks.ethereum[identity.chainId]
+    const network = (
+      main.networks.ethereum as Record<
+        number,
+        CanonicalStore['main']['networks']['ethereum'][number] | undefined
+      >
+    )[identity.chainId]
     if (!network?.on) {
       throw new Error('Chain is unavailable.')
     }
@@ -258,13 +267,24 @@ export function createSafeConfirmationService({
   const published = (entry: Entry) => {
     assertActive(entry)
     // Only a verified service read can add the owner to the cached queue display.
-    const main = store.getState().main
-    const account = main.accounts[entry.identity.accountId]
-    const deployment = account.safe![String(entry.identity.chainId)]
+    const account = accountState(entry.identity.accountId)
+    if (!account) {
+      throw new Error('Safe account is unavailable.')
+    }
+    const safe = account.safe
+    if (!safe) {
+      throw new Error('Safe deployment is unavailable.')
+    }
+    const deployment = (safe as Record<string, (typeof safe)[string] | undefined>)[
+      String(entry.identity.chainId)
+    ]
+    if (!deployment) {
+      throw new Error('Safe deployment is unavailable.')
+    }
     const address = entry.snapshot!.ownerAddress
     store.getState().patchAccount(entry.identity.accountId, {
       safe: {
-        ...account.safe,
+        ...safe,
         [String(entry.identity.chainId)]: {
           ...deployment,
           pending: deployment.pending?.map((proposal) =>

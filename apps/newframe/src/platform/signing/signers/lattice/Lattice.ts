@@ -106,7 +106,8 @@ export default class Lattice extends Signer {
     try {
       const paired = await this.connection.connect(this.deviceId)
 
-      const { fix: patch, minor, major } = this.connection.getFwVersion() || { fix: 0, major: 0, minor: 0 }
+      const firmware = this.connection.getFwVersion() as ReturnType<Client['getFwVersion']> | undefined
+      const { fix: patch, minor, major } = firmware ?? { fix: 0, major: 0, minor: 0 }
 
       log.info(
         `Connected to Lattice with deviceId=${this.deviceId} paired=${paired}, firmware v${major}.${minor}.${patch}`
@@ -299,7 +300,9 @@ export default class Lattice extends Signer {
         const unsignedTx = this.createTransaction(index, rawTx.type, latticeTx.chainId, tx)
         const signingOptions = await this.createTransactionSigningOptions(tx, unsignedTx)
 
-        const signedTx = await connection.sign(signingOptions)
+        const signedTx = (await connection.sign(signingOptions)) as
+          | Awaited<ReturnType<Client['sign']>>
+          | undefined
         const sig = signedTx?.sig as LatticeSignature | undefined
 
         if (sig?.v === undefined) {
@@ -347,7 +350,7 @@ export default class Lattice extends Signer {
       data: data
     }
 
-    const result = await connection.sign(signOpts)
+    const result = (await connection.sign(signOpts)) as Awaited<ReturnType<Client['sign']>> | undefined
     const sig = result?.sig as LatticeSignature | undefined
 
     if (sig?.v === undefined) {
@@ -391,7 +394,9 @@ export default class Lattice extends Signer {
   }
 
   private async createTransactionSigningOptions(tx: TypedTransaction, unsignedTx: any) {
-    const fwVersion = (this.connection as Client).getFwVersion()
+    const fwVersion = (this.connection as Client).getFwVersion() as
+      | ReturnType<Client['getFwVersion']>
+      | undefined
 
     if (fwVersion && (fwVersion.major > 0 || fwVersion.minor >= 15)) {
       const payload = tx.type ? tx.getMessageToSign() : encode(tx.getMessageToSign())

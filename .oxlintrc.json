@@ -252,7 +252,7 @@
         "typescript/only-throw-error": "error",
         "typescript/no-unnecessary-type-assertion": "error",
         "typescript/prefer-nullish-coalescing": "error",
-        "typescript/no-unnecessary-condition": "warn"
+        "typescript/no-unnecessary-condition": "error"
       },
       "plugins": ["typescript"]
     },
@@ -366,7 +366,7 @@
         "typescript/only-throw-error": "error",
         "typescript/no-unnecessary-type-assertion": "error",
         "typescript/prefer-nullish-coalescing": "warn",
-        "typescript/no-unnecessary-condition": "warn"
+        "typescript/no-unnecessary-condition": "error"
       },
       "plugins": ["typescript"]
     },

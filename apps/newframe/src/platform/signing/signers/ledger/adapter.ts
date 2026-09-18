@@ -129,7 +129,7 @@ export default class LedgerSignerAdapter extends SignerAdapter {
   override reload(ledger: Ledger) {
     log.info(`reloading  Ledger ${ledger.model} attached at ${ledger.devicePath}`)
 
-    const signer = this.knownSigners[ledger.devicePath]
+    const signer = (this.knownSigners as Record<string, Ledger | undefined>)[ledger.devicePath]
 
     if (signer) {
       this.resetReconnect(signer)
@@ -345,7 +345,8 @@ export default class LedgerSignerAdapter extends SignerAdapter {
     while (pendingDisconnections.length > 0) {
       const reconnectedDevice = connectedDevices.find(
         (device) =>
-          !reconnections.some((r) => r.device.devicePath === device.path) && !this.knownSigners[device.path]
+          !reconnections.some((r) => r.device.devicePath === device.path) &&
+          !(this.knownSigners as Record<string, Ledger | undefined>)[device.path]
       )
 
       if (reconnectedDevice) {

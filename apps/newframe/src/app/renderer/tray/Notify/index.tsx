@@ -203,7 +203,8 @@ function SignerCompatibilityWarning({ data, dismiss, home, mute, review }: Notif
 
 function OpenExplorer({ data, dismiss, external, home, mute, networks }: NotificationProps) {
   const { hash, chain = { type: 'ethereum', id: 0 } } = data
-  const { name: chainName, explorer: explorerUrl } = networks[chain.type]?.[Number(chain.id)] || {}
+  const ethereum: Partial<typeof networks.ethereum> = networks.ethereum
+  const { name: chainName, explorer: explorerUrl } = ethereum[Number(chain.id)] ?? {}
   const proceed = () => {
     void external.openExplorer({
       chainId: Number(chain.id),
@@ -219,10 +220,10 @@ function OpenExplorer({ data, dismiss, external, home, mute, networks }: Notific
         <Text align='center' tone='secondary'>
           {hash
             ? 'Newframe will open a block explorer for this transaction:'
-            : `Newframe will open the ${chainName || 'network'} block explorer:`}
+            : `Newframe will open the ${chainName ?? 'network'} block explorer:`}
         </Text>
         <Text align='center' variant='code'>
-          {(hash ?? explorerUrl) || 'Unknown explorer'}
+          {hash ?? explorerUrl ?? 'Unknown explorer'}
         </Text>
       </NotificationBody>
       <NotificationActions dismiss={dismiss} onProceed={proceed} />

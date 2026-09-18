@@ -10,7 +10,7 @@ interface KnownSigners {
   [id: string]: {
     signer: Trezor
     eventHandlers: {
-      [event: string]: (...args: any) => void
+      [event: string]: ((...args: any) => void) | undefined
     }
   }
 }
@@ -27,6 +27,10 @@ export default class TrezorSignerAdapter extends SignerAdapter {
     private readonly bridge: typeof TrezorBridge = TrezorBridge
   ) {
     super('trezor')
+  }
+
+  private knownSigner(id: string) {
+    return (this.knownSigners as Record<string, KnownSigners[string] | undefined>)[id]
   }
 
   override open() {
@@ -58,14 +62,14 @@ export default class TrezorSignerAdapter extends SignerAdapter {
       // until a connect event with an active device is received
       const id = Trezor.generateId(path)
 
-      if (!this.knownSigners[id]) {
+      if (!this.knownSigner(id)) {
         this.initTrezor(path)
       }
     })
 
     this.bridge.on('trezor:connect', async (device: TrezorDevice) => {
       const id = Trezor.generateId(device.path)
-      const trezor = this.knownSigners[id]?.signer || this.initTrezor(device.path)
+      const trezor = this.knownSigner(id)?.signer ?? this.initTrezor(device.path)
 
       trezor.derivation = this.store.getState().main.trezor.derivation
 
@@ -252,19 +256,27 @@ export default class TrezorSignerAdapter extends SignerAdapter {
   }
 
   private addEventHandler(signer: Trezor, event: string, handler: (device: TrezorDevice) => void) {
-    this.knownSigners[signer.id].eventHandlers[event] = handler
+    const entry = this.knownSigner(signer.id)
+    if (!entry) {
+      return
+    }
+    entry.eventHandlers[event] = handler
   }
 
   private handleEvent(signerId: string, event: string, ...args: any) {
-    const action = this.knownSigners[signerId]?.eventHandlers[event] || (() => {})
+    const entry = this.knownSigner(signerId)
+    const action = entry?.eventHandlers[event]
 
-    delete this.knownSigners[signerId].eventHandlers[event]
+    if (!entry || !action) {
+      return
+    }
+    delete entry.eventHandlers[event]
 
     action(args)
   }
 
   private withSigner(device: TrezorDevice, fn: (signer: Trezor) => void) {
-    const signer = this.knownSigners[Trezor.generateId(device.path)]?.signer
+    const signer = this.knownSigner(Trezor.generateId(device.path))?.signer
 
     if (signer) {
       fn(signer)

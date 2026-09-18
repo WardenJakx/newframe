@@ -125,8 +125,7 @@ const DataOverview = () => (
 )
 
 const ContractCallOverview = ({ req, identities }: ContractCallOverviewProps) => {
-  const { decodedData: { method } = {} } = req
-  return renderRecognizedActions(req, identities) || <SimpleContractCallOverview method={method} />
+  return renderRecognizedActions(req, identities)
 }
 
 const renderActionOverview = (

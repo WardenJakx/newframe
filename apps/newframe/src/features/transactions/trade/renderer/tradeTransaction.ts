@@ -488,7 +488,8 @@ export function createTradeBalanceIndex(balances: BalanceSummary[]) {
 }
 
 function networkEnabled(networks: Record<string | number, { on?: boolean }>, chainId: number) {
-  const network = networks[chainId] || networks[String(chainId)]
+  const sparseNetworks: Partial<typeof networks> = networks
+  const network = sparseNetworks[chainId] ?? sparseNetworks[String(chainId)]
 
   return network?.on !== false
 }
@@ -532,7 +533,8 @@ export function buildTradeAssetOptions({
       return
     }
 
-    const nativeCurrency = (networksMeta[chainId] || networksMeta[String(chainId)])?.nativeCurrency
+    const sparseMetadata: Partial<typeof networksMeta> = networksMeta
+    const nativeCurrency = (sparseMetadata[chainId] ?? sparseMetadata[String(chainId)])?.nativeCurrency
     if (!nativeCurrency?.symbol) {
       return
     }

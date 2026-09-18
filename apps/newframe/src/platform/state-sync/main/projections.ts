@@ -219,21 +219,23 @@ function projectWalletSelected(selected: CanonicalState['selected']): WalletRend
   return previousWalletSelected
 }
 
-let previousWalletTrayInput: CanonicalState['tray'] | undefined
+type ProjectedTrayInput = Omit<CanonicalState['tray'], 'homeCommand'> & { homeCommand: unknown }
+let previousWalletTrayInput: ProjectedTrayInput | undefined
 let previousWalletTray: WalletRendererState['tray'] | undefined
 
 function projectWalletTray(tray: CanonicalState['tray']): WalletRendererState['tray'] {
+  const input: ProjectedTrayInput = tray
   if (
-    previousWalletTrayInput?.open === tray.open &&
-    previousWalletTrayInput.initial === tray.initial &&
-    previousWalletTrayInput.homeCommand === tray.homeCommand &&
+    previousWalletTrayInput?.open === input.open &&
+    previousWalletTrayInput.initial === input.initial &&
+    previousWalletTrayInput.homeCommand === input.homeCommand &&
     previousWalletTray
   ) {
     return previousWalletTray
   }
 
-  previousWalletTrayInput = tray
-  const homeCommand = WalletHomeCommandSchema.safeParse(tray.homeCommand)
+  previousWalletTrayInput = input
+  const homeCommand = WalletHomeCommandSchema.safeParse(input.homeCommand)
   previousWalletTray = {
     open: tray.open,
     initial: tray.initial,
@@ -282,14 +284,16 @@ function projectWalletProfiles(main: CanonicalMain): WalletRendererState['profil
   previousWalletProfileInputs = inputs
   const profiles: WalletRendererState['profiles'] = []
   main.profileOrder.forEach((profileId) => {
-    const profile = main.profiles[profileId]
+    const profilesById = main.profiles as Record<string, (typeof main.profiles)[string] | undefined>
+    const profile = profilesById[profileId]
     if (!profile) {
       return
     }
 
     const accountIds = getProfileAccountIds(main, profileId)
     const accountAddresses = accountIds.flatMap((id) => {
-      const address = main.accounts[id]?.address
+      const accountsById = main.accounts as Record<string, (typeof main.accounts)[string] | undefined>
+      const address = accountsById[id]?.address
       return address ? [address] : []
     })
     const cachedAddresses = accountAddresses.filter((address) =>
@@ -310,8 +314,9 @@ function projectWalletProfiles(main: CanonicalMain): WalletRendererState['profil
       selectBalanceSummaries = createBalanceSummarySelector()
       walletProfileBalanceSelectors.set(profileId, selectBalanceSummaries)
     }
+    const balancesByAddress = main.balances as Record<string, (typeof main.balances)[string] | undefined>
     const summaries = selectBalanceSummaries({
-      rawBalances: cachedAddresses.flatMap((address) => main.balances[address] || []),
+      rawBalances: cachedAddresses.flatMap((address) => balancesByAddress[address] ?? []),
       assetRates: main.assetRates,
       networks: main.networks.ethereum,
       networksMeta: main.networksMeta.ethereum,
@@ -531,7 +536,11 @@ function projectSideTrayNetworkMetadata(
 
   const ethereum = Object.fromEntries(
     Object.keys(networks.ethereum).flatMap((chainId) => {
-      const chainMetadata = metadata.ethereum[Number(chainId)]
+      const metadataByChain = metadata.ethereum as Record<
+        number,
+        (typeof metadata.ethereum)[number] | undefined
+      >
+      const chainMetadata = metadataByChain[Number(chainId)]
       if (!chainMetadata) {
         return []
       }
@@ -541,7 +550,7 @@ function projectSideTrayNetworkMetadata(
           chainId,
           {
             image: chainMetadata.image,
-            primaryColor: chainMetadata.primaryColor || 'accent1',
+            primaryColor: chainMetadata.primaryColor,
             nativeCurrency: chainMetadata.nativeCurrency
           }
         ]
@@ -574,11 +583,15 @@ function projectSideTrayBalances(
     return previousSideTrayBalances
   }
 
-  const currentAddress = accounts[currentAccount]?.address || ''
+  const accountsById = accounts as Record<string, (typeof accounts)[string] | undefined>
+  const balancesByAddress = balances as Record<string, (typeof balances)[string] | undefined>
+  const currentAddress = accountsById[currentAccount]?.address ?? ''
   previousSideTrayBalancesInput = balances
   previousSideTrayBalancesAccount = currentAccount
   previousSideTrayBalancesAccounts = accounts
-  previousSideTrayBalances = currentAddress ? { [currentAddress]: balances[currentAddress] || [] } : {}
+  previousSideTrayBalances = currentAddress
+    ? { [currentAddress]: balancesByAddress[currentAddress] ?? [] }
+    : {}
   return previousSideTrayBalances
 }
 
@@ -675,7 +688,12 @@ function projectSideTrayTokens(
     return previousSideTrayTokens
   }
 
-  const accountIds = tokens.accountTokenIds[account] || []
+  const accountTokenIds = tokens.accountTokenIds as Record<
+    string,
+    (typeof tokens.accountTokenIds)[string] | undefined
+  >
+  const tokensById = tokens.byId as Record<string, (typeof tokens.byId)[string] | undefined>
+  const accountIds = accountTokenIds[account] ?? []
   const visibleIds = new Set([
     ...accountIds,
     ...Object.entries(tokens.byId)
@@ -687,7 +705,7 @@ function projectSideTrayTokens(
   previousSideTrayTokensAccount = account
   previousSideTrayTokens = {
     byId: Object.fromEntries(
-      [...visibleIds].flatMap((tokenId) => (tokens.byId[tokenId] ? [[tokenId, tokens.byId[tokenId]]] : []))
+      [...visibleIds].flatMap((tokenId) => (tokensById[tokenId] ? [[tokenId, tokensById[tokenId]]] : []))
     ),
     accountTokenIds: account ? { [account]: accountIds } : {}
   }

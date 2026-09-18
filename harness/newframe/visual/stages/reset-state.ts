@@ -26,14 +26,14 @@ export const resetStateStage: VisualStage = {
     const originIds = new Set<string>()
 
     Object.entries(state.main?.origins ?? {}).forEach(([originId, origin]) => {
-      if (origin?.name === harnessOrigin) {
+      if (origin.name === harnessOrigin) {
         originIds.add(originId)
       }
     })
 
     Object.values(state.main?.permissions ?? {}).forEach((permissions) => {
-      Object.entries(permissions || {}).forEach(([permissionId, permission]) => {
-        if (permission?.origin === harnessOrigin) {
+      Object.entries(permissions).forEach(([permissionId, permission]) => {
+        if (permission.origin === harnessOrigin) {
           originIds.add(permissionId)
           if (permission.handlerId) {
             originIds.add(permission.handlerId)
@@ -54,7 +54,7 @@ export const resetStateStage: VisualStage = {
     await driver.setShowTestnets(true)
     await driver.waitForState(
       (candidate) => {
-        const networks = candidate.main?.networks?.ethereum ?? {}
+        const networks = (candidate.main?.networks?.ethereum ?? {}) as Record<string, unknown>
         const orders = candidate.main?.orders ?? {}
         return !networks[String(anvilChainId)] && Object.keys(orders).length === 0
       },

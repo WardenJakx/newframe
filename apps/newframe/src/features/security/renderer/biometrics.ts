@@ -155,10 +155,12 @@ export const isWebAuthnBiometricsSupported = async () => {
   if (
     typeof window === 'undefined' ||
     !window.isSecureContext ||
-    typeof PublicKeyCredential === 'undefined' ||
-    !navigator.credentials?.create ||
-    !navigator.credentials?.get
+    typeof PublicKeyCredential === 'undefined'
   ) {
+    return false
+  }
+  const credentials: Partial<Pick<CredentialsContainer, 'create' | 'get'>> = navigator.credentials
+  if (!credentials.create || !credentials.get) {
     return false
   }
 

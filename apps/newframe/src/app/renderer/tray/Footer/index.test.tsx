@@ -177,6 +177,7 @@ const signingState = () =>
       },
       signers: { 'signer-1': { id: 'signer-1' } },
       appLock: { locked: false },
+      mute: { explorerWarning: false },
       networks: { ethereum: {} }
     }
   })
@@ -189,6 +190,7 @@ it.each(['transaction', 'sign', 'signTypedData', 'signErc20Permit'])(
       handlerId: 'signing-1',
       type,
       account: signingAddress.toUpperCase(),
+      ...(type === 'transaction' ? { approvals: [] } : {}),
       data: { chainId: '0x1' }
     }
     const { user } = render(

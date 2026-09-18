@@ -1,14 +1,9 @@
 import { useShallow } from 'zustand/react/shallow'
 
-import type { WalletRendererState } from '../../../../platform/state-sync/contract/projections'
 import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector'
 import type { ActivityCapability } from './activityCapability'
 import { createActivityRows } from './activityModel'
 import { ActivityView } from './ActivityView'
-
-const EMPTY_ACTIVITY: WalletRendererState['activity'] = {}
-const EMPTY_NETWORKS: WalletRendererState['networks']['ethereum'] = {}
-const EMPTY_NETWORK_METADATA: WalletRendererState['networksMeta']['ethereum'] = {}
 
 export function Activity({
   capability,
@@ -21,13 +16,13 @@ export function Activity({
 }) {
   const shared = useWalletSelector(
     useShallow((state) => {
-      const account = state.accounts?.[state.currentAccount]
+      const account = (state.accounts as Partial<typeof state.accounts>)[state.currentAccount]
       return {
-        accountAddress: account?.address || '',
-        activity: state.activity || EMPTY_ACTIVITY,
-        networks: state.networks?.ethereum || EMPTY_NETWORKS,
-        networksMeta: state.networksMeta?.ethereum || EMPTY_NETWORK_METADATA,
-        tokens: state.tokens || { byId: {}, accountTokenIds: {} },
+        accountAddress: account?.address ?? '',
+        activity: state.activity,
+        networks: state.networks.ethereum,
+        networksMeta: state.networksMeta.ethereum,
+        tokens: state.tokens,
         showTestnets: !!state.showTestnets
       }
     })

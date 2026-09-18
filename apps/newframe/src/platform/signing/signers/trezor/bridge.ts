@@ -1,16 +1,22 @@
 import { EventEmitter } from 'events'
 
 import * as TrezorConnectModule from '@trezor/connect'
-import type { CommonParams, Device, DeviceEvent, Response, UiEvent } from '@trezor/connect'
+import type {
+  CommonParams,
+  Device,
+  DeviceEvent,
+  Response,
+  TrezorConnect as TrezorConnectApi,
+  UiEvent
+} from '@trezor/connect'
 import log from 'electron-log'
 
 const { DEVICE, DEVICE_EVENT, UI, UI_EVENT } = TrezorConnectModule
-const TrezorConnect =
-  (
-    TrezorConnectModule.default as typeof TrezorConnectModule.default & {
-      default?: typeof TrezorConnectModule.default
-    }
-  ).default || TrezorConnectModule.default
+function unwrapTrezorConnect(value: unknown): TrezorConnectApi {
+  const nested = (value as { default?: TrezorConnectApi }).default
+  return nested ?? (value as TrezorConnectApi)
+}
+const TrezorConnect = unwrapTrezorConnect(TrezorConnectModule.default)
 
 export class DeviceError extends Error {
   readonly code

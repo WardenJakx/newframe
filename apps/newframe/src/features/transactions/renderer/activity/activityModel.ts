@@ -158,9 +158,7 @@ export function activityAssetEffect(activity: ActivityRecord, nativeSymbol = 'ET
 
   const effect = Array.isArray(activity.balanceChanges)
     ? undefined
-    : getTransactionEffects(activityRequestLike(activity), nativeSymbol).find(
-        (effect) => effect.kind === 'erc20' || effect.kind === 'allowance' || effect.kind === 'native'
-      )
+    : getTransactionEffects(activityRequestLike(activity), nativeSymbol).at(0)
   if (effect) {
     return withAssetMetadata(effect)
   }
@@ -215,11 +213,11 @@ export function createActivityRows({
     .filter((record): record is ActivityViewRecord => {
       const recordAddress = String(record.account ?? record.address ?? '').toLowerCase()
       const chainId = Number(record.chainId)
-      const chain = networks[chainId]
+      const chain = (networks as Partial<typeof networks>)[chainId]
       return (
         Boolean(record.id) &&
         recordAddress === address &&
-        !!chain &&
+        chain !== undefined &&
         (!chain.isTestnet || showTestnets) &&
         (selectedChainId === 0 || selectedChainId === chainId)
       )

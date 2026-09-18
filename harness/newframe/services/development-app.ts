@@ -34,6 +34,14 @@ export class DevelopmentAppService implements HarnessService<{ exited: Promise<n
 
   constructor(private readonly onLaunch: () => void) {}
 
+  private isStopping() {
+    return this.stopping
+  }
+
+  private hasPendingBuild() {
+    return this.pending
+  }
+
   async start() {
     this.completion.promise.catch(() => undefined)
     for (const directory of [appDir, path.join(rootDir, 'packages/ui'), path.join(rootDir, 'assets')]) {
@@ -74,19 +82,19 @@ export class DevelopmentAppService implements HarnessService<{ exited: Promise<n
     }
     this.rebuilding = true
     try {
-      while (this.pending && !this.stopping) {
+      while (this.hasPendingBuild() && !this.isStopping()) {
         this.pending = false
         const previous = this.current
         this.current = undefined
         await previous?.stop()
-        if (this.stopping) {
+        if (this.isStopping()) {
           return
         }
 
         console.log('[dev] Building shared UI and app…')
         try {
           for (const script of ['compile', 'bundle:app']) {
-            if (this.stopping) {
+            if (this.isStopping()) {
               return
             }
             const build = new ProcessService({
@@ -99,20 +107,20 @@ export class DevelopmentAppService implements HarnessService<{ exited: Promise<n
             await expectSuccessfulExit(await build.start(), script)
           }
         } catch (error) {
-          if (this.stopping) {
+          if (this.isStopping()) {
             return
           }
           console.error('[dev] Build failed. Fix the source and save to retry.', error)
           continue
         }
-        if (this.stopping || this.pending) {
+        if (this.isStopping() || this.hasPendingBuild()) {
           continue
         }
 
         const electron = createElectronProcessService()
         this.current = electron
         const handle = await electron.start()
-        if (this.stopping) {
+        if (this.isStopping()) {
           await electron.stop()
           return
         }

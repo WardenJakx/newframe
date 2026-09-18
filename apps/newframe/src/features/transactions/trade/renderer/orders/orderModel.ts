@@ -296,8 +296,8 @@ export function createOrderRows({
           Number.isInteger(chainId) && chainId > 0 && values.indexOf(chainId) === index
       )
       const visibleChainIds = chainIds.filter((chainId) => {
-        const chain = networks[chainId]
-        return !!chain && (!chain.isTestnet || showTestnets)
+        const chain = (networks as Partial<typeof networks>)[chainId]
+        return chain !== undefined && (!chain.isTestnet || showTestnets)
       })
       return (
         orderAddress === address &&

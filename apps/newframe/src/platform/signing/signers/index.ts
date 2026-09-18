@@ -43,7 +43,7 @@ export interface SignersDependencies {
 
 export class Signers {
   private adapters: AdapterSpec = {}
-  private handles: Record<string, Signer> = {}
+  private handles: Record<string, Signer | undefined> = {}
   private hotSignerListeners = new WeakMap<HotSigner, HotSignerListeners>()
   private started = false
   private closed = false

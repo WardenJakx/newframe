@@ -4,7 +4,12 @@ import path from 'path'
 
 import { app, safeStorage, systemPreferences } from 'electron'
 
-const USER_DATA = app ? app.getPath('userData') : path.resolve(import.meta.dirname, '../../../.userData')
+const electronApp = app as typeof app | undefined
+const electronSafeStorage = safeStorage as typeof safeStorage | undefined
+const electronSystemPreferences = systemPreferences as typeof systemPreferences | undefined
+const USER_DATA = electronApp
+  ? electronApp.getPath('userData')
+  : path.resolve(import.meta.dirname, '../../../.userData')
 const BIOMETRICS_PATH = path.resolve(USER_DATA, 'biometrics.json')
 
 interface StoredWebAuthnCredential {
@@ -49,8 +54,8 @@ const assertVaultKey = (vaultKey: string) => {
   return normalized
 }
 
-const secretToKey = (secret: string) => {
-  const normalized = normalizeHex(secret || '')
+const secretToKey = (secret: unknown) => {
+  const normalized = normalizeHex(typeof secret === 'string' ? secret : '')
   if (!/^[0-9a-f]+$/i.test(normalized) || normalized.length < 32) {
     throw new Error('Invalid biometric secret')
   }
@@ -62,14 +67,27 @@ const secretToKey = (secret: string) => {
     .digest()
 }
 
-const validateCredential = (credential: StoredWebAuthnCredential) => {
-  if (credential?.version !== 1) {
+function validateCredential(credential: unknown): asserts credential is StoredWebAuthnCredential {
+  if (
+    typeof credential !== 'object' ||
+    credential === null ||
+    !('version' in credential) ||
+    credential.version !== 1
+  ) {
     throw new Error('Invalid biometric credential')
   }
-  if (!/^[0-9a-f]+$/i.test(normalizeHex(credential.credentialId))) {
+  if (
+    !('credentialId' in credential) ||
+    typeof credential.credentialId !== 'string' ||
+    !/^[0-9a-f]+$/i.test(normalizeHex(credential.credentialId))
+  ) {
     throw new Error('Invalid biometric credential id')
   }
-  if (!/^[0-9a-f]{64}$/i.test(normalizeHex(credential.salt))) {
+  if (
+    !('salt' in credential) ||
+    typeof credential.salt !== 'string' ||
+    !/^[0-9a-f]{64}$/i.test(normalizeHex(credential.salt))
+  ) {
     throw new Error('Invalid biometric credential salt')
   }
 }
@@ -78,21 +96,21 @@ const nativeAvailable = () => {
   if (process.platform !== 'darwin') {
     return false
   }
-  if (typeof systemPreferences?.canPromptTouchID !== 'function') {
+  if (typeof electronSystemPreferences?.canPromptTouchID !== 'function') {
     return false
   }
-  if (typeof systemPreferences?.promptTouchID !== 'function') {
+  if (typeof electronSystemPreferences.promptTouchID !== 'function') {
     return false
   }
-  if (typeof safeStorage?.encryptString !== 'function') {
+  if (typeof electronSafeStorage?.encryptString !== 'function') {
     return false
   }
-  if (typeof safeStorage?.decryptString !== 'function') {
+  if (typeof electronSafeStorage.decryptString !== 'function') {
     return false
   }
 
   try {
-    return systemPreferences.canPromptTouchID()
+    return electronSystemPreferences.canPromptTouchID()
   } catch {
     return false
   }
@@ -104,7 +122,7 @@ const promptTouchID = async (reason: string) => {
   }
 
   try {
-    await systemPreferences.promptTouchID(reason)
+    await electronSystemPreferences!.promptTouchID(reason)
   } catch (e) {
     throw new Error('Biometric authentication failed', { cause: e })
   }
@@ -153,7 +171,7 @@ class Biometrics {
     const key = assertVaultKey(vaultKey)
     await promptTouchID('enable biometric unlock for Newframe')
 
-    const encryptedKey = safeStorage.encryptString(key).toString('base64')
+    const encryptedKey = electronSafeStorage!.encryptString(key).toString('base64')
 
     this.write({
       version: 1,
@@ -174,7 +192,7 @@ class Biometrics {
         throw new Error('Biometric unlock method mismatch')
       }
       await promptTouchID('unlock Newframe')
-      return safeStorage.decryptString(Buffer.from(biometric.encryptedKey, 'base64'))
+      return electronSafeStorage!.decryptString(Buffer.from(biometric.encryptedKey, 'base64'))
     }
 
     if (biometric.method !== 'webauthn') {
@@ -209,18 +227,29 @@ class Biometrics {
       throw new Error('Biometric unlock is not enabled')
     }
 
-    const biometric = JSON.parse(fs.readFileSync(BIOMETRICS_PATH, 'utf8')) as BiometricsFile
-    if (biometric.version !== 1) {
+    const biometric: unknown = JSON.parse(fs.readFileSync(BIOMETRICS_PATH, 'utf8'))
+    if (
+      typeof biometric !== 'object' ||
+      biometric === null ||
+      !('version' in biometric) ||
+      biometric.version !== 1
+    ) {
       throw new Error('Unsupported biometric unlock data')
     }
+    if (!('method' in biometric)) {
+      throw new Error('Unsupported biometric unlock method')
+    }
     if (biometric.method === 'webauthn') {
+      if (!('credential' in biometric)) {
+        throw new Error('Invalid biometric credential')
+      }
       validateCredential(biometric.credential)
     }
     if (biometric.method !== 'webauthn' && biometric.method !== 'native') {
       throw new Error('Unsupported biometric unlock method')
     }
 
-    return biometric
+    return biometric as BiometricsFile
   }
 
   private safeRead() {

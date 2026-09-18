@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 
 import type { QrCameraCapability } from '../../../../platform/desktop/renderer/camera'
+import type { OperationRecord } from '../../../../platform/operations/operation'
 import { useWalletSelector } from '../../../../platform/state-sync/renderer/useAppSelector'
 import type { AccountsCapability } from '../accountsCapability'
 import { QrScanner } from './QrScanner'
@@ -28,7 +29,7 @@ export function AirGapPairing({
   }, [onPaired])
   const { operation, active, locked } = useWalletSelector(
     useShallow((state) => ({
-      operation: state.operations[operationId],
+      operation: (state.operations as Record<string, OperationRecord | undefined>)[operationId],
       active: state.tray.open && !state.appLock.locked,
       locked: state.appLock.locked
     }))

@@ -124,6 +124,8 @@ beforeEach(() => {
   store.getState().removeAccount(accountState.address.toLowerCase())
   account = createAccount()
   fetchContract.mockResolvedValueOnce(undefined)
+  revealMock.identity.mockResolvedValue({ type: '', ens: '' })
+  revealMock.recog.mockResolvedValue([])
   simulateTransactionEffectsMock.mockResolvedValue({ status: 'success', effects: [] })
 })
 
@@ -149,7 +151,7 @@ describe('#addRequest', () => {
       account: account.id,
       origin: 'test',
       payload: { id: 1, jsonrpc: '2.0', method: 'eth_sendTransaction', params: [] },
-      data: { data: 'encoded:0x1' },
+      data: { chainId: '0x1', data: 'encoded:0x1', gasFeesSource: 'Dapp', type: '0x2' },
       approvals: [{ type: 'approveGasLimit', approved: false, data: {} }],
       recognizedActions: [{ id: 'erc20:approve', data: actionData, update }]
     }

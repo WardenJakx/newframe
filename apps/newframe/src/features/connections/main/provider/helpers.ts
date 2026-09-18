@@ -33,10 +33,14 @@ export function checkExistingNonceGas(
 ) {
   const { from, nonce } = tx
 
-  const account = canonicalStore.getState().main.accounts[(from ?? '').toLowerCase()]
-  const reqs = (account?.requests || {}) as Record<string, TransactionRequest>
+  const accounts = canonicalStore.getState().main.accounts as Record<
+    string,
+    ReturnType<typeof canonicalStore.getState>['main']['accounts'][string] | undefined
+  >
+  const account = accounts[(from ?? '').toLowerCase()]
+  const reqs = (account?.requests ?? {}) as Record<string, TransactionRequest>
 
-  const requests = Object.keys(reqs || {}).map((key) => reqs[key])
+  const requests = Object.keys(reqs).map((key) => reqs[key])
   const existing = requests.filter(
     (r) => r.mode === 'monitor' && r.status !== 'error' && r.data.nonce === nonce
   )
@@ -163,7 +167,8 @@ export function requestPermissions(payload: JSONRPCRequestPayload, res: RPCReque
   // we already require the user to grant permission to call this method so
   // we just need to return permission objects for the requested operations
   const now = new Date().getTime()
-  const requestedOperations = (payload.params || []).map((param) => permission(now, Object.keys(param)[0]))
+  const params = (payload as { params?: JSONRPCRequestPayload['params'] }).params ?? []
+  const requestedOperations = params.map((param) => permission(now, Object.keys(param)[0]))
 
   res({ id: payload.id, jsonrpc: '2.0', result: requestedOperations })
 }

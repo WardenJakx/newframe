@@ -128,10 +128,7 @@ export default function CustomTokens({
   const accountTypes = useMemo(
     () =>
       Object.fromEntries(
-        Object.values(accounts || {}).map((account) => [
-          account.address.toLowerCase(),
-          accountDisplayType(account)
-        ])
+        Object.values(accounts).map((account) => [account.address.toLowerCase(), accountDisplayType(account)])
       ),
     [accounts]
   )

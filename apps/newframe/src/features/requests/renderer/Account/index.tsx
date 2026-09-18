@@ -10,7 +10,7 @@ const selectCurrentAccount = (state: WalletRendererState) => {
   const current = state.currentAccount
 
   return {
-    account: state.accounts[current],
+    account: (state.accounts as Partial<typeof state.accounts>)[current],
     current,
     open: state.selected.open
   }

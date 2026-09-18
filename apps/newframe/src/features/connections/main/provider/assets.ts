@@ -1,5 +1,5 @@
 import type { CanonicalStoreReader } from '../../../../platform/state-store/actions.js'
-import type { Balance, NativeCurrency } from '../../../../platform/state-store/state/index.js'
+import type { Balance, NativeCurrency, Token } from '../../../../platform/state-store/state/index.js'
 import { resolveAssetRate } from '../../../asset-data/domain/asset/index.js'
 import { NATIVE_CURRENCY } from '../../../tokens/domain/constants.js'
 import { toTokenId } from '../../../tokens/domain/index.js'
@@ -14,11 +14,15 @@ interface AssetsChangedHandler {
 // typed access to state
 const createStoreApi = (store: CanonicalStoreApi) => ({
   getBalances: (account: Address): Balance[] => {
-    return store.getState().main.balances[account] || []
+    const balances = store.getState().main.balances as Record<string, Balance[] | undefined>
+    return balances[account] ?? []
   },
   getNativeCurrency: (chainId: number): NativeCurrency | undefined =>
     store.getState().main.networksMeta.ethereum[chainId]?.nativeCurrency,
-  getToken: (balance: Balance) => store.getState().main.tokens.byId[toTokenId(balance)],
+  getToken: (balance: Balance): Token | undefined => {
+    const tokens = store.getState().main.tokens.byId as Record<string, Token | undefined>
+    return tokens[toTokenId(balance)]
+  },
   getUsdRate: (balance: Balance, nativeTicker?: string): UsdRate | undefined => {
     const rate = resolveAssetRate(
       { chainId: balance.chainId, address: balance.address, nativeTicker },
@@ -35,9 +39,9 @@ const createStoreApi = (store: CanonicalStoreApi) => ({
       : undefined
   },
   getLastUpdated: (account: Address): number => {
-    const accountState = store.getState().main.accounts[account] as unknown as {
-      balances?: { lastUpdated?: number }
-    }
+    const accountState = store.getState().main.accounts[account] as unknown as
+      | { balances?: { lastUpdated?: number } }
+      | undefined
     return accountState?.balances?.lastUpdated ?? 0
   }
 })

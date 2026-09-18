@@ -14,8 +14,10 @@ type KeyboardEventLike = {
 
 let keyboardLayout: KeyboardLayout | undefined
 
-if (global?.navigator) {
-  navigator.keyboard
+const runtimeGlobal: { navigator?: Navigator } = globalThis
+
+if (runtimeGlobal.navigator) {
+  runtimeGlobal.navigator.keyboard
     .getLayoutMap()
     .then((layout) => {
       keyboardLayout = layout
@@ -39,21 +41,25 @@ function getModifierKey(key: ModifierKey, platform: Platform) {
     return isMacOS ? 'Control' : 'Ctrl'
   }
 
-  if (key === 'Meta' || key === 'Super') {
-    return metaKeyMap[platform]
+  switch (key) {
+    case 'Meta':
+    case 'Super':
+      return metaKeyMap[platform]
   }
 
   return key
 }
 
 export const getDisplayShortcut = (platform: Platform, shortcut: Shortcut) => {
-  const key = (keyboardLayout?.get(shortcut.shortcutKey) as ShortcutKey) || shortcut.shortcutKey
+  const mappedKey = keyboardLayout?.get(shortcut.shortcutKey)
+  const key = mappedKey ? (mappedKey as ShortcutKey) : shortcut.shortcutKey
 
   const shortcutKey =
     key.length === 1 && key.charCodeAt(0) >= 65 && key.charCodeAt(0) <= 122 ? key.toLocaleUpperCase() : key
-  const modifierKeys = shortcut.modifierKeys.map((key) =>
-    getModifierKey((keyboardLayout?.get(key) as ModifierKey) || key, platform)
-  )
+  const modifierKeys = shortcut.modifierKeys.map((key) => {
+    const mappedKey = keyboardLayout?.get(key)
+    return getModifierKey(mappedKey ? (mappedKey as ModifierKey) : key, platform)
+  })
 
   return { modifierKeys, shortcutKey }
 }
