@@ -17,7 +17,7 @@ import type { SendCapability } from './sendService'
 import type { SendAccountViewModel, SendViewEvents, SendViewModel } from './sendViewModel'
 
 function recipientName(account: SendAccountViewModel) {
-  return account.ensName || account.name || shortAddress(account.address)
+  return account.ensName ?? account.name ?? shortAddress(account.address)
 }
 
 export function SendView({
@@ -134,7 +134,7 @@ export function SendView({
                                   <AddressIdentity
                                     address={account.address}
                                     accountType={accountDisplayType(account)}
-                                    nickname={account.ensName || account.name}
+                                    nickname={account.ensName ?? account.name}
                                     showCopy={false}
                                   />
                                 </Button>

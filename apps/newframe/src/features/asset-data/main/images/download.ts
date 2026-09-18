@@ -19,7 +19,7 @@ const MAX_REDIRECTS = 5
 const inFlightDownloads = new Map<string, Promise<TokenImage>>()
 
 function normalizeMimeType(value: string | null) {
-  return (value || '').split(';')[0].trim().toLowerCase()
+  return (value ?? '').split(';')[0].trim().toLowerCase()
 }
 
 function sniffMimeType(bytes: Buffer) {
@@ -223,7 +223,7 @@ async function download(target: string): Promise<TokenImage> {
     if (!response.ok) {
       throw new Error(`Image fetch failed with ${response.status}`)
     }
-    const contentLength = Number(response.headers.get('content-length') || 0)
+    const contentLength = Number(response.headers.get('content-length') ?? 0)
     if (contentLength > MAX_IMAGE_BYTES) {
       throw new Error('Image is too large')
     }

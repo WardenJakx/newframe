@@ -103,7 +103,7 @@ function shortAddress(address?: string) {
 }
 
 function firstRecognizedAction(req: any) {
-  return (req?.recognizedActions || [])[0]
+  return (req?.recognizedActions ?? [])[0]
 }
 
 function isUnlimitedApproval(amount?: string) {
@@ -119,7 +119,7 @@ function decodedArg(req: any, index: number) {
 }
 
 function hasRecognizedErc20Action(req: any) {
-  return (req?.recognizedActions || []).some((action: any) =>
+  return (req?.recognizedActions ?? []).some((action: any) =>
     ['erc20:transfer', 'erc20:approve', 'erc20:revoke'].includes(action?.id)
   )
 }
@@ -142,18 +142,18 @@ function isDecodedErc20Transfer(req: any) {
 
 export function getTransactionIntent(req: any, nativeSymbol = 'ETH'): TransactionIntent {
   const action = firstRecognizedAction(req)
-  const [, actionType] = (action?.id || '').split(':')
+  const [, actionType] = (action?.id ?? '').split(':')
   const token = erc20TokenData(req)
 
   if (action?.id === 'erc20:transfer') {
     return {
-      title: `Send ${action.data?.symbol || token?.symbol || 'token'}`,
-      subtitle: action.data?.name || token?.name || 'Token transfer'
+      title: `Send ${action.data?.symbol ?? token?.symbol ?? 'token'}`,
+      subtitle: action.data?.name ?? token?.name ?? 'Token transfer'
     }
   }
 
   if (action?.id === 'erc20:approve' || action?.id === 'erc20:revoke') {
-    const symbol = action.data?.symbol || token?.symbol || 'token'
+    const symbol = action.data?.symbol ?? token?.symbol ?? 'token'
     const revoke = action?.id === 'erc20:revoke' || safeBigInt(action.data?.amount) === 0n
 
     return {
@@ -166,15 +166,15 @@ export function getTransactionIntent(req: any, nativeSymbol = 'ETH'): Transactio
     const amount = decodedArg(req, 1)
     const revoke = safeBigInt(amount) === 0n
     return {
-      title: revoke ? `Revoke ${token?.symbol || 'token'} allowance` : `Approve ${token?.symbol || 'token'}`,
-      subtitle: token?.name || 'Allowance change'
+      title: revoke ? `Revoke ${token?.symbol ?? 'token'} allowance` : `Approve ${token?.symbol ?? 'token'}`,
+      subtitle: token?.name ?? 'Allowance change'
     }
   }
 
   if (isDecodedErc20Transfer(req)) {
     return {
-      title: `Send ${token?.symbol || 'token'}`,
-      subtitle: token?.name || 'Token transfer'
+      title: `Send ${token?.symbol ?? 'token'}`,
+      subtitle: token?.name ?? 'Token transfer'
     }
   }
 
@@ -190,8 +190,8 @@ export function getTransactionIntent(req: any, nativeSymbol = 'ETH'): Transactio
       return { title: 'Deploy contract', subtitle: 'Contract creation' }
     case 'CONTRACT_CALL':
       return {
-        title: req?.decodedData?.method || 'Call contract',
-        subtitle: req?.decodedData?.contractName || 'Contract interaction'
+        title: req?.decodedData?.method ?? 'Call contract',
+        subtitle: req?.decodedData?.contractName ?? 'Contract interaction'
       }
     case 'SEND_DATA':
       return { title: 'Send data', subtitle: 'Data transaction' }
@@ -204,7 +204,7 @@ export function getTransactionIntent(req: any, nativeSymbol = 'ETH'): Transactio
 
 function getDeterministicTransactionEffects(req: any, nativeSymbol = 'ETH'): TransactionEffect[] {
   const effects: TransactionEffect[] = []
-  const nativeValue = req?.data?.value || req?.payload?.params?.[0]?.value
+  const nativeValue = req?.data?.value ?? req?.payload?.params?.[0]?.value
 
   if (safeBigInt(nativeValue) > 0n) {
     effects.push({
@@ -219,12 +219,12 @@ function getDeterministicTransactionEffects(req: any, nativeSymbol = 'ETH'): Tra
     })
   }
 
-  ;(req?.recognizedActions || []).forEach((action: any, index: number) => {
+  ;(req?.recognizedActions ?? []).forEach((action: any, index: number) => {
     if (action?.id === 'erc20:transfer') {
-      const { amount, recipient } = action.data || {}
+      const { amount, recipient } = action.data ?? {}
       const token = erc20TokenData(req)
       const decimals = token?.decimals ?? action.data?.decimals
-      const symbol = action.data?.symbol || token?.symbol
+      const symbol = action.data?.symbol ?? token?.symbol
 
       effects.push({
         id: `erc20-transfer-${index}`,
@@ -234,19 +234,19 @@ function getDeterministicTransactionEffects(req: any, nativeSymbol = 'ETH'): Tra
         amount,
         decimals,
         symbol,
-        detail: recipient?.ens || shortAddress(recipient?.address),
+        detail: recipient?.ens ?? shortAddress(recipient?.address),
         ...(action.data?.contract || req?.data?.to
-          ? { assetAddress: action.data?.contract?.address || action.data?.contract || req.data.to }
+          ? { assetAddress: action.data?.contract?.address ?? action.data?.contract ?? req.data.to }
           : {}),
         ...(action.data?.logoURI ? { logoURI: action.data.logoURI } : {})
       })
     }
 
     if (action?.id === 'erc20:approve' || action?.id === 'erc20:revoke') {
-      const { amount, spender } = action.data || {}
+      const { amount, spender } = action.data ?? {}
       const token = erc20TokenData(req)
       const decimals = token?.decimals ?? action.data?.decimals
-      const symbol = action.data?.symbol || token?.symbol
+      const symbol = action.data?.symbol ?? token?.symbol
       const revoke = action?.id === 'erc20:revoke' || safeBigInt(amount) === 0n
 
       effects.push({
@@ -257,11 +257,11 @@ function getDeterministicTransactionEffects(req: any, nativeSymbol = 'ETH'): Tra
         amount,
         decimals,
         symbol,
-        detail: `${revoke ? 'For' : 'For spender'} ${spender?.ens || shortAddress(spender?.address)}${
+        detail: `${revoke ? 'For' : 'For spender'} ${spender?.ens ?? shortAddress(spender?.address)}${
           isUnlimitedApproval(amount) ? ' (unlimited)' : ''
         }`,
         ...(action.data?.contract || req?.data?.to
-          ? { assetAddress: action.data?.contract?.address || action.data?.contract || req.data.to }
+          ? { assetAddress: action.data?.contract?.address ?? action.data?.contract ?? req.data.to }
           : {}),
         ...(spender?.address ? { spenderAddress: spender.address } : {}),
         ...(action.data?.logoURI ? { logoURI: action.data.logoURI } : {})
@@ -281,7 +281,7 @@ function getDeterministicTransactionEffects(req: any, nativeSymbol = 'ETH'): Tra
       direction: 'neutral',
       label: revoke ? 'Allowance revoked' : 'Allowance change',
       amount: addHexPrefix(safeBigInt(amount).toString(16)),
-      symbol: token?.symbol || 'Token',
+      symbol: token?.symbol ?? 'Token',
       detail: `${revoke ? 'For' : 'For spender'} ${shortAddress(spender)}`,
       assetAddress: req?.data?.to,
       ...(spender ? { spenderAddress: spender } : {}),
@@ -300,7 +300,7 @@ function getDeterministicTransactionEffects(req: any, nativeSymbol = 'ETH'): Tra
       direction: 'out',
       label: 'Asset out',
       amount: addHexPrefix(safeBigInt(amount).toString(16)),
-      symbol: token?.symbol || 'Token',
+      symbol: token?.symbol ?? 'Token',
       detail: shortAddress(recipient),
       assetAddress: req?.data?.to,
       ...(Number.isInteger(token?.decimals) ? { decimals: token.decimals } : {})
@@ -326,10 +326,10 @@ export function getTransactionEffects(req: any, nativeSymbol = 'ETH'): Transacti
       return simulated
     }
 
-    const address = (simulated.assetAddress || '').toLowerCase()
+    const address = (simulated.assetAddress ?? '').toLowerCase()
     const deterministic = deterministicEffects.find(
       (effect) =>
-        effect.kind === 'erc20' && !!address && (effect.assetAddress || '').toLowerCase() === address
+        effect.kind === 'erc20' && !!address && (effect.assetAddress ?? '').toLowerCase() === address
     )
     if (!deterministic) {
       return simulated
@@ -372,7 +372,7 @@ export function getTransactionPositionTokens(req: any): TransactionPositionToken
   const tokens = new Map<string, TransactionPositionToken>()
 
   getTransactionEffects(req).forEach((effect) => {
-    const address = (effect.assetAddress || '').trim().toLowerCase()
+    const address = (effect.assetAddress ?? '').trim().toLowerCase()
     if (effect.kind !== 'erc20' || effect.direction === 'neutral') {
       return
     }
@@ -407,7 +407,7 @@ export function getPaidTransactionFee(req: any) {
   }
 
   const gasUsed = safeBigInt(receipt.gasUsed)
-  const paidGas = receipt.effectiveGasPrice || req?.data?.gasPrice
+  const paidGas = receipt.effectiveGasPrice ?? req?.data?.gasPrice
   const gasPrice = safeBigInt(paidGas)
 
   if (!gasUsed || !gasPrice) {

@@ -47,7 +47,7 @@ export function useHomeCommand(capability: Pick<HomeCapability, 'consumeCommand'
         })
       } else {
         if (data.selectedChain) {
-          setSelectedChainId(Number(data.selectedChain.id || data.selectedChain.chainId))
+          setSelectedChainId(Number(data.selectedChain.id ?? data.selectedChain.chainId))
         }
         openOverlay({ type: 'networks' })
       }

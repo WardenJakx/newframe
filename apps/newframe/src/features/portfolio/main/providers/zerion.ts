@@ -40,9 +40,7 @@ interface ZerionPortfolioResponse {
 let sharedRequestPolicy: ProviderRequestPolicy | undefined
 
 function getSharedRequestPolicy(fetchImpl: Fetch) {
-  if (!sharedRequestPolicy) {
-    sharedRequestPolicy = new ProviderRequestPolicy(fetchImpl)
-  }
+  sharedRequestPolicy ??= new ProviderRequestPolicy(fetchImpl)
 
   return sharedRequestPolicy
 }
@@ -254,8 +252,8 @@ function getPositionToken(
     return undefined
   }
 
-  const symbol = fungible?.symbol || address
-  const name = fungible?.name || symbol
+  const symbol = fungible?.symbol ?? address
+  const name = fungible?.name ?? symbol
 
   return {
     address,
@@ -263,7 +261,7 @@ function getPositionToken(
     name,
     symbol,
     decimals,
-    logoURI: fungible?.icon?.url || ''
+    logoURI: fungible?.icon?.url ?? ''
   }
 }
 
@@ -300,7 +298,7 @@ function getPositionNativeBalance(
   }
 
   const implementation = getPositionImplementation(position)
-  const implementations = position.attributes?.fungible_info?.implementations || []
+  const implementations = position.attributes?.fungible_info?.implementations ?? []
   const implementationAddress = implementation?.address?.toLowerCase()
 
   if (!implementation && implementations.length > 0) {
@@ -322,7 +320,7 @@ function getPositionNativeBalance(
     address: NATIVE_CURRENCY,
     chainId,
     balance: quantityHex(quantity),
-    displayBalance: position.attributes?.quantity?.numeric || formatUnits(quantity, decimals)
+    displayBalance: position.attributes?.quantity?.numeric ?? formatUnits(quantity, decimals)
   }
 }
 
@@ -345,7 +343,7 @@ function getPositionBalance(
     address: token.address,
     chainId: token.chainId,
     balance: quantityHex(quantity),
-    displayBalance: position.attributes?.quantity?.numeric || formatUnits(quantity, token.decimals)
+    displayBalance: position.attributes?.quantity?.numeric ?? formatUnits(quantity, token.decimals)
   }
 }
 
@@ -480,7 +478,7 @@ export default class ZerionPortfolioProvider implements PortfolioProvider {
     this.apiKey = apiKey
     this.baseUrl = baseUrl.replace(/\/+$/, '')
     this.requestPolicy =
-      requestPolicy ||
+      requestPolicy ??
       (fetchImpl === fetch
         ? getSharedRequestPolicy(fetchImpl)
         : new ProviderRequestPolicy(fetchImpl, requestPolicyOptions))
@@ -499,13 +497,13 @@ export default class ZerionPortfolioProvider implements PortfolioProvider {
     const portfolio = await this.fetchPortfolio(address, options)
     const positions = await this.fetchPositions(address, zerionChainIds, options)
 
-    const attributes = portfolio.data?.attributes || {}
-    const changes = attributes.changes || {}
+    const attributes = portfolio.data?.attributes ?? {}
+    const changes = attributes.changes ?? {}
 
     return {
-      totalValue: attributes.total?.positions || 0,
-      absoluteChange1d: changes.absolute_1d || 0,
-      percentChange1d: changes.percent_1d || 0,
+      totalValue: attributes.total?.positions ?? 0,
+      absoluteChange1d: changes.absolute_1d ?? 0,
+      percentChange1d: changes.percent_1d ?? 0,
       chainValues: mapChainValues(
         attributes.positions_distribution_by_chain,
         zerionChainIds,
@@ -553,8 +551,8 @@ export default class ZerionPortfolioProvider implements PortfolioProvider {
             sync: options.sync ? 'true' : 'false'
           })
 
-      positions.push(...(response.data || []))
-      nextUrl = response.links?.next || undefined
+      positions.push(...(response.data ?? []))
+      nextUrl = response.links?.next ?? undefined
     } while (nextUrl)
 
     return positions

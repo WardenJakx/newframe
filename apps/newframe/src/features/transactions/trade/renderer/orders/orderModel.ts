@@ -9,7 +9,7 @@ export function normalizeOrderSide(side = ''): FlashTradeSide | '' {
 }
 
 export function orderStatus(order: OrderModel) {
-  return String(order.status || order.rawStatus || '')
+  return String(order.status ?? order.rawStatus ?? '')
     .trim()
     .toLowerCase()
 }
@@ -50,24 +50,24 @@ function titleize(value = '') {
 }
 
 export function orderStatusLabel(order: OrderModel) {
-  return titleize(order.status || order.rawStatus || 'Unknown')
+  return titleize(order.status ?? order.rawStatus ?? 'Unknown')
 }
 
 export function orderTypeLabel(order: OrderModel) {
-  return titleize(order.orderType || 'Order')
+  return titleize(order.orderType ?? 'Order')
 }
 
 export function orderSideLabel(order: OrderModel) {
   const side = normalizeOrderSide(order.side)
-  return side ? getDirectionLabel(side) : titleize(order.side || 'Side')
+  return side ? getDirectionLabel(side) : titleize(order.side ?? 'Side')
 }
 
 export function orderAssetSymbol(asset?: OrderAsset) {
-  return String(asset?.symbol || asset?.assetSymbol || asset?.ticker || asset?.id || 'Asset').toUpperCase()
+  return String(asset?.symbol ?? asset?.assetSymbol ?? asset?.ticker ?? asset?.id ?? 'Asset').toUpperCase()
 }
 
 export function orderAssetName(asset?: OrderAsset) {
-  return String(asset?.name || orderAssetSymbol(asset))
+  return String(asset?.name ?? orderAssetSymbol(asset))
 }
 
 export function formatOrderAmount(value: unknown) {
@@ -288,9 +288,9 @@ export function createOrderRows({
   const address = accountAddress.toLowerCase()
 
   return Object.entries(orders)
-    .map(([id, order]) => ({ ...order, orderId: order.orderId || id }))
+    .map(([id, order]) => ({ ...order, orderId: order.orderId ?? id }))
     .filter((order) => {
-      const orderAddress = String(order.accountAddress || '').toLowerCase()
+      const orderAddress = String(order.accountAddress ?? '').toLowerCase()
       const chainIds = [Number(order.targetAsset?.chainId), Number(order.contraAsset?.chainId)].filter(
         (chainId, index, values) =>
           Number.isInteger(chainId) && chainId > 0 && values.indexOf(chainId) === index

@@ -227,7 +227,7 @@ export const BUILT_IN_CHAIN_ICON_URLS: Readonly<Record<number, string>> = Object
 )
 
 export function builtInChainIconUrl(chainId: number) {
-  return BUILT_IN_CHAIN_ICON_URLS[chainId] || ''
+  return BUILT_IN_CHAIN_ICON_URLS[chainId] ?? ''
 }
 const gasPrice = () => ({
   selected: 'standard' as const,

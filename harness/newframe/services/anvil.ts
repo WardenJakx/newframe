@@ -49,7 +49,7 @@ export async function waitForAnvil(timeoutMs = 15_000) {
       const payload = (await response.json()) as { error?: { message?: string }; result?: string }
 
       if (!response.ok || payload.error) {
-        throw new Error(payload.error?.message || `HTTP ${response.status}`)
+        throw new Error(payload.error?.message ?? `HTTP ${response.status}`)
       }
 
       const chainId = Number(payload.result)
@@ -57,7 +57,7 @@ export async function waitForAnvil(timeoutMs = 15_000) {
         return
       }
 
-      lastError = new Error(`expected chain ID ${anvilChainId}, found ${payload.result || 'none'}`)
+      lastError = new Error(`expected chain ID ${anvilChainId}, found ${payload.result ?? 'none'}`)
     } catch (err) {
       lastError = err
     }
@@ -78,7 +78,7 @@ export function createAnvilService(options: AnvilServiceOptions = {}) {
     spawn: {
       cwd: contractsDir,
       env: process.env,
-      stdio: options.stdio || ['ignore', 'pipe', 'pipe']
+      stdio: options.stdio ?? ['ignore', 'pipe', 'pipe']
     },
     beforeStart: async () => {
       assertAnvilSpawnConfig()

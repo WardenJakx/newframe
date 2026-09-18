@@ -36,7 +36,7 @@ function toHexAmount(value: any) {
   if (value?.toHexString) {
     return value.toHexString()
   }
-  return addHexPrefix(BigInt(value || 0).toString(16))
+  return addHexPrefix(BigInt(value ?? 0).toString(16))
 }
 
 async function resolveEntityType(
@@ -116,7 +116,7 @@ async function recogErc20(
           data,
           update: (request, { amount }) => {
             // amount is a hex string
-            const approvedAmount = BigInt(amount || '0x0').toString()
+            const approvedAmount = BigInt(amount ?? '0x0').toString()
 
             log.verbose(
               `Updating Erc20 approve amount to ${approvedAmount} for contract ${contractAddress} and spender ${spenderAddress}`
@@ -242,8 +242,8 @@ export function createRevealService(proxy: ProviderProxyConnection, nameResoluti
     recog: async (calldata: string, context: RecognitionContext) => {
       // Recognize actions from standard tx types
       const actions = ([] as Action<unknown>[]).concat(
-        (await recogErc20(erc20Provider, surface, context.contractAddress, context.chainId, calldata)) || [],
-        identifyKnownContractActions(calldata, context) || []
+        (await recogErc20(erc20Provider, surface, context.contractAddress, context.chainId, calldata)) ?? [],
+        identifyKnownContractActions(calldata, context) ?? []
       )
 
       return actions

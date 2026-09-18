@@ -95,7 +95,7 @@ async function newframeRpc<T>(method: string, params: unknown[]) {
   const body = await responseJson<JsonRpcResponse<T>>(response)
 
   if (body.error) {
-    throw new Error(body.error.message || `${method} failed`)
+    throw new Error(body.error.message ?? `${method} failed`)
   }
   if (body.result === undefined) {
     throw new Error(`${method} returned no result`)
@@ -122,7 +122,7 @@ async function agentRpc<T>(credentials: AgentCredentials, method: string, params
   const body = await responseJson<JsonRpcResponse<T>>(response)
 
   if (body.error) {
-    throw new Error(body.error.message || `${method} failed`)
+    throw new Error(body.error.message ?? `${method} failed`)
   }
   if (body.result === undefined) {
     throw new Error(`${method} returned no result`)

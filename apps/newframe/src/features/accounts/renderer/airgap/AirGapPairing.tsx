@@ -80,7 +80,7 @@ export function AirGapPairing({
         setOperationId('')
         setReady(false)
         if (operation.status === 'failed') {
-          setError(operation.error?.message || 'Pairing failed. Try again.')
+          setError(operation.error?.message ?? 'Pairing failed. Try again.')
         }
       }
     })
@@ -101,7 +101,7 @@ export function AirGapPairing({
         return
       }
       if (!result.ok) {
-        throw new Error(result.message || 'Could not start pairing')
+        throw new Error(result.message ?? 'Could not start pairing')
       }
       setReady(true)
     } catch (reason) {
@@ -142,7 +142,7 @@ export function AirGapPairing({
             }
             const result = await capability.inputSignerSession({ operationId: id, frame })
             if (!result.ok) {
-              throw new Error(result.message || 'Invalid account QR. Retry with the Vault account export.')
+              throw new Error(result.message ?? 'Invalid account QR. Retry with the Vault account export.')
             }
           }}
         />

@@ -65,7 +65,7 @@ function createOrderedAccountsSelector() {
       return previousOrderedAccounts
     }
 
-    const order = accountOrder || Object.keys(accountsById)
+    const order = accountOrder ?? Object.keys(accountsById)
     const ordered = order.map((id) => accountsById[id]).filter(Boolean)
     const missing = Object.keys(accountsById)
       .filter((id) => !order.includes(id))
@@ -105,7 +105,7 @@ export function createSideTrayWalletSelector() {
     const networks = state.networks.ethereum || EMPTY_NETWORKS
     const networksMeta = state.networksMeta.ethereum || EMPTY_NETWORKS_META
     const operations = state.operations
-    const orders = state.orders || EMPTY_ORDERS
+    const orders = state.orders ?? EMPTY_ORDERS
     const assetRates = state.assetRates || EMPTY_ASSET_RATES
     const activity = state.activity
     const tokens = state.tokens

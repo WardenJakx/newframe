@@ -79,8 +79,8 @@ function selectManualRefreshTokens({
               ...token,
               custom: Boolean(token.custom),
               curated: Boolean(token.curated),
-              sources: token.sources || [],
-              updatedAt: token.updatedAt || 0
+              sources: token.sources ?? [],
+              updatedAt: token.updatedAt ?? 0
             }
           ])
         ),

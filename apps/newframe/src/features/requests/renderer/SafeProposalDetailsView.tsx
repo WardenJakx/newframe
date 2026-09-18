@@ -289,7 +289,7 @@ export function SafeProposalDetailsView({
                 hasSigningAccount && selectedOwner ? (
                   <AddressIdentity
                     address={selectedOwner.address}
-                    accountType={selectedOwner.accountType || selectedOwner.signerType}
+                    accountType={selectedOwner.accountType ?? selectedOwner.signerType}
                     nickname={selectedOwner.name || shortAddress(selectedOwner.address)}
                     showCopy={false}
                     showFullAddress
@@ -307,7 +307,7 @@ export function SafeProposalDetailsView({
                   <Stack gap='none' grow>
                     <AddressIdentity
                       address={owner.address}
-                      accountType={owner.accountType || owner.signerType}
+                      accountType={owner.accountType ?? owner.signerType}
                       nickname={owner.name || shortAddress(owner.address)}
                       showCopy={false}
                       showFullAddress

@@ -18,7 +18,7 @@ export function RequestsOverlay({
   const accountId = useWalletSelector((state) => state.currentAccount || '')
   const showRpcRequests = useWalletSelector((state) => {
     const account = state.accounts[state.currentAccount]
-    return !Object.keys(account?.safe || {}).length || Object.keys(account?.requests || {}).length > 0
+    return !Object.keys(account?.safe ?? {}).length || Object.keys(account?.requests || {}).length > 0
   })
 
   return (

@@ -244,10 +244,10 @@ const TokenDetailsForm = ({ capability, chain, tokenData, isEdit, onDone }: Toke
   const tokenSymbol = tokenData.symbol
   const tokenDecimals = tokenData.decimals
   const tokenLogoUri = tokenData.logoURI
-  const [name, setName] = useState(tokenName || tokenDetailsDefaults.name)
-  const [symbol, setSymbol] = useState(tokenSymbol || tokenDetailsDefaults.symbol)
-  const [decimals, setDecimals] = useState(tokenDecimals || tokenDetailsDefaults.decimals)
-  const [logoUri, setLogoUri] = useState(tokenLogoUri || tokenDetailsDefaults.logoURI)
+  const [name, setName] = useState(tokenName ?? tokenDetailsDefaults.name)
+  const [symbol, setSymbol] = useState(tokenSymbol ?? tokenDetailsDefaults.symbol)
+  const [decimals, setDecimals] = useState(tokenDecimals ?? tokenDetailsDefaults.decimals)
+  const [logoUri, setLogoUri] = useState(tokenLogoUri ?? tokenDetailsDefaults.logoURI)
   const [submission, setSubmission] = useState<TokenSubmission | null>(null)
   const [boundaryFailure, setBoundaryFailure] = useState<TokenBoundaryFailure | null>(null)
 
@@ -276,7 +276,7 @@ const TokenDetailsForm = ({ capability, chain, tokenData, isEdit, onDone }: Toke
     projectedToken.name === submittedToken.name &&
     projectedToken.symbol === submittedToken.symbol &&
     projectedToken.decimals === submittedToken.decimals &&
-    (projectedToken.logoURI || '') === (submittedToken.logoURI || '')
+    (projectedToken.logoURI ?? '') === (submittedToken.logoURI ?? '')
   )
 
   const newTokenReady =
@@ -309,7 +309,7 @@ const TokenDetailsForm = ({ capability, chain, tokenData, isEdit, onDone }: Toke
         if (!result.ok) {
           setBoundaryFailure({
             operationId,
-            message: result.message || 'Could not submit the token update.'
+            message: result.message ?? 'Could not submit the token update.'
           })
         }
       })
@@ -467,7 +467,7 @@ const TokenDetailsForm = ({ capability, chain, tokenData, isEdit, onDone }: Toke
             )}
             {operation?.status === 'failed' ? (
               <Text tone='danger' variant='caption'>
-                {operation.error?.message || 'Could not update the custom token.'}
+                {operation.error?.message ?? 'Could not update the custom token.'}
               </Text>
             ) : activeBoundaryFailure ? (
               <Text tone='danger' variant='caption'>
@@ -489,7 +489,7 @@ const AddToken = ({
   onNavigate = () => {},
   onOpenNetworks = () => {}
 }: AddTokenProps) => {
-  const { address, chain, error, tokenData, isEdit } = data?.notifyData || {}
+  const { address, chain, error, tokenData, isEdit } = data?.notifyData ?? {}
 
   if (!chain) {
     return <SelectChain onNavigate={onNavigate} onOpenNetworks={onOpenNetworks} />
@@ -504,10 +504,10 @@ const AddToken = ({
   const tokenDetailsKey = [
     chain.id,
     address,
-    tokenData?.name || '',
-    tokenData?.symbol || '',
+    tokenData?.name ?? '',
+    tokenData?.symbol ?? '',
     tokenData?.decimals ?? '',
-    tokenData?.logoURI || ''
+    tokenData?.logoURI ?? ''
   ].join(':')
 
   return (

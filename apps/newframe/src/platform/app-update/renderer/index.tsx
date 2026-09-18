@@ -8,7 +8,7 @@ import { useWalletSelector } from '../../state-sync/renderer/useAppSelector'
 import type { UpdaterCapability } from './updaterCapability'
 
 const EMPTY_BADGE = {}
-const selectBadge = (state: TrayRendererState) => state.view.badge || EMPTY_BADGE
+const selectBadge = (state: TrayRendererState) => state.view.badge ?? EMPTY_BADGE
 
 export default function Badge({ capability }: { capability: UpdaterCapability }) {
   const badge = useWalletSelector(selectBadge) as { type?: string; version?: string }
@@ -27,7 +27,7 @@ export default function Badge({ capability }: { capability: UpdaterCapability })
         <Text align='center' tone='secondary'>
           {ready
             ? 'Restart Newframe to switch to the downloaded update.'
-            : `Version ${badge.version || ''} is available. Would you like to install it?`}
+            : `Version ${badge.version ?? ''} is available. Would you like to install it?`}
         </Text>
         <Button
           appearance='primary'

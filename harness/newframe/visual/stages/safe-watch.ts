@@ -8,7 +8,7 @@ export const safeWatchStage: VisualStage = {
   name: 'watch Safe and inspect proposal',
   async run({ driver, runtime, tray, safeSeed }) {
     const original = await driver.getAppState()
-    const selected = original.main?.accounts?.[original.main.currentAccount || '']
+    const selected = original.main?.accounts?.[original.main.currentAccount ?? '']
     const id = safeSeed.safe.toLowerCase()
     const chain = String(safeSeed.chainId)
     try {
@@ -48,7 +48,7 @@ export const safeWatchStage: VisualStage = {
       await tray.getByRole('button', { name: 'Refresh requests' }).click()
       await driver.waitForState(
         (state) =>
-          (state.main?.accounts?.[id]?.safe?.[chain]?.refreshedAt || 0) > (deployment.refreshedAt || 0),
+          (state.main?.accounts?.[id]?.safe?.[chain]?.refreshedAt ?? 0) > (deployment.refreshedAt ?? 0),
         15_000,
         'Safe refresh did not complete'
       )

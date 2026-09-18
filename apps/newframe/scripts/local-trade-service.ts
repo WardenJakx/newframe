@@ -6,8 +6,8 @@ import {
   subscribeLocalTradeOrders
 } from './local-trade/handler'
 
-const hostname = process.env.FLASH_LOCAL_TRADE_HOST || '127.0.0.1'
-const port = Number(process.env.FLASH_LOCAL_TRADE_PORT || 8422)
+const hostname = process.env.FLASH_LOCAL_TRADE_HOST ?? '127.0.0.1'
+const port = Number(process.env.FLASH_LOCAL_TRADE_PORT ?? 8422)
 
 if (!Number.isInteger(port) || port <= 0) {
   throw new Error(`Invalid FLASH_LOCAL_TRADE_PORT: ${process.env.FLASH_LOCAL_TRADE_PORT}`)
@@ -39,7 +39,7 @@ function sendError(socket: ServerWebSocket<LocalFlashSocketData>, code: string, 
 }
 
 function subscribe(socket: ServerWebSocket<LocalFlashSocketData>, frame: Record<string, any>) {
-  const apiKey = String(frame.apiKey || '').trim()
+  const apiKey = String(frame.apiKey ?? '').trim()
   if (!apiKey || (socket.data.apiKey && socket.data.apiKey !== apiKey)) {
     sendError(socket, 'UNAUTHORIZED', 'apiKey does not match this connection')
     return
@@ -47,7 +47,7 @@ function subscribe(socket: ServerWebSocket<LocalFlashSocketData>, frame: Record<
   socket.data.apiKey = apiKey
 
   if (frame.channel === 'orders') {
-    const funderAddress = String(frame.funderAddress || '')
+    const funderAddress = String(frame.funderAddress ?? '')
       .trim()
       .toLowerCase()
     if (!funderAddress) {
@@ -76,7 +76,7 @@ function subscribe(socket: ServerWebSocket<LocalFlashSocketData>, frame: Record<
     return
   }
 
-  sendError(socket, 'UNKNOWN_CHANNEL', `unknown channel: ${String(frame.channel || '')}`)
+  sendError(socket, 'UNKNOWN_CHANNEL', `unknown channel: ${String(frame.channel ?? '')}`)
 }
 
 const server = Bun.serve<LocalFlashSocketData>({
@@ -117,12 +117,12 @@ const server = Bun.serve<LocalFlashSocketData>({
         return
       }
       if (frame.type === 'unsubscribe') {
-        socket.data.subscriptions.delete(String(frame.channel || ''))
+        socket.data.subscriptions.delete(String(frame.channel ?? ''))
         acknowledge(socket)
         return
       }
 
-      sendError(socket, 'UNKNOWN_TYPE', `unknown message type: ${String(frame.type || '')}`)
+      sendError(socket, 'UNKNOWN_TYPE', `unknown message type: ${String(frame.type ?? '')}`)
     },
     close(socket) {
       sockets.delete(socket)
@@ -131,7 +131,7 @@ const server = Bun.serve<LocalFlashSocketData>({
 })
 
 subscribeLocalTradeOrders((order) => {
-  const funderAddress = String(order.funderAddress || order.accountAddress || '').toLowerCase()
+  const funderAddress = String(order.funderAddress ?? order.accountAddress ?? '').toLowerCase()
   for (const socket of sockets) {
     if (!socket.data.subscriptions.has('orders') || socket.data.funderAddress !== funderAddress) {
       continue

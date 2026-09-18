@@ -71,7 +71,7 @@ export function HomeNavigationView({
           <span className={networkDotsRecipe()}>{enabledChainDots}</span>
         )}
         <Text display='inline' variant='supporting'>
-          {selectedChain?.name || 'All Networks'}
+          {selectedChain?.name ?? 'All Networks'}
         </Text>
         <Icon name='chevronDown' size='small' tone='muted' />
       </Button>

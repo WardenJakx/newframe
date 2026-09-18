@@ -78,7 +78,7 @@ function ActivityIcon({
     )
   }
 
-  const nativeCurrency = networksMeta[chainId]?.nativeCurrency || {}
+  const nativeCurrency = networksMeta[chainId]?.nativeCurrency ?? {}
   const address = effect.assetAddress?.toLowerCase()
   const tokenId = address ? `${chainId}:${address}` : undefined
   const canonicalImage = tokenId ? tokenImageSource(tokenForId(tokens, tokenId)) : ''
@@ -88,10 +88,10 @@ function ActivityIcon({
     <ChainTokenIcon
       chainId={chainId}
       imageCapability={imageCapability}
-      logoURI={canonicalImage || effect.logoURI || nativeImage || nativeCurrency.icon}
+      logoURI={canonicalImage || (effect.logoURI ?? nativeImage) || nativeCurrency.icon}
       networks={networks}
       networksMeta={networksMeta}
-      symbol={effect.symbol || nativeSymbol}
+      symbol={effect.symbol ?? nativeSymbol}
       tokenId={tokenId}
     />
   )
@@ -114,9 +114,9 @@ function ActivityRowContent({
 }) {
   const chainId = Number(record.chainId)
   const chain = networks[chainId] || {}
-  const nativeSymbol = networksMeta[chainId]?.nativeCurrency?.symbol || chain.symbol || 'ETH'
-  const title = record.display?.title || 'Transaction'
-  const subtitle = record.display?.subtitle || chain.name || `Chain ${chainId}`
+  const nativeSymbol = networksMeta[chainId]?.nativeCurrency?.symbol ?? chain.symbol ?? 'ETH'
+  const title = record.display?.title ?? 'Transaction'
+  const subtitle = record.display?.subtitle ?? chain.name ?? `Chain ${chainId}`
   const balanceChanges =
     record.status === 'succeeded'
       ? activityBalanceChangeLabel(record, nativeSymbol, (address) =>
@@ -203,7 +203,7 @@ export function ActivityView<TRecord extends ActivityViewRecord>({
                 {canOpenExplorer ? (
                   <Button
                     appearance='ghost'
-                    label={`Open transaction ${record.hash || ''} in explorer`}
+                    label={`Open transaction ${record.hash ?? ''} in explorer`}
                     onPress={() => onOpenExplorer(record)}
                     size='compact'
                   >
@@ -263,7 +263,7 @@ export function ActivityView<TRecord extends ActivityViewRecord>({
             <Button
               key={record.id}
               appearance='selectionOption'
-              label={`${record.display?.title || 'Transaction'} ${status}`}
+              label={`${record.display?.title ?? 'Transaction'} ${status}`}
               onPress={() => onOpen(record.id)}
               width='full'
             >

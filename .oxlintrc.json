@@ -251,7 +251,7 @@
         "typescript/unbound-method": "warn",
         "typescript/only-throw-error": "error",
         "typescript/no-unnecessary-type-assertion": "error",
-        "typescript/prefer-nullish-coalescing": "warn",
+        "typescript/prefer-nullish-coalescing": "error",
         "typescript/no-unnecessary-condition": "warn"
       },
       "plugins": ["typescript"]

@@ -103,7 +103,7 @@ function canonicalBalance(
 ) {
   const asset = normalizedAsset(command)
   const balances =
-    snapshot.balances[account.address.toLowerCase()] || snapshot.balances[account.address] || []
+    snapshot.balances[account.address.toLowerCase()] ?? snapshot.balances[account.address] ?? []
   return balances.find(
     (balance) => Number(balance.chainId) === asset.chainId && balance.address.toLowerCase() === asset.address
   )
@@ -202,7 +202,7 @@ export function createSendService(ports: SendServicePorts) {
           throw new SendFailure('invalid_recipient', 'Enter a valid recipient.')
         }
         ports.operations.advance(reference, { phase: 'resolving_recipient' })
-        recipientAddress = (await ports.names.resolve(recipientInput)) || ''
+        recipientAddress = (await ports.names.resolve(recipientInput)) ?? ''
         if (!isAddress(recipientAddress)) {
           throw new SendFailure('recipient_not_found', 'Could not resolve recipient.')
         }
@@ -233,7 +233,7 @@ export function createSendService(ports: SendServicePorts) {
         principal
       )
       if (!result.ok) {
-        throw new SendFailure('provider_error', result.message || 'Transaction failed.')
+        throw new SendFailure('provider_error', result.message ?? 'Transaction failed.')
       }
 
       ports.operations.advance(reference, {

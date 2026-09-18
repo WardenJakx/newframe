@@ -21,7 +21,7 @@ export function RequestSigningFooter({
           address={account.address}
           accountType={account.accountType}
           clipboard={clipboard}
-          nickname={account.name || account.ensName || shortAddress(account.address)}
+          nickname={account.name ?? account.ensName ?? shortAddress(account.address)}
           showFullAddress
         />
       </SigningAccount>

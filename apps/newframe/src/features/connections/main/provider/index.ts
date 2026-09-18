@@ -164,7 +164,7 @@ export class Provider extends EventEmitter {
   }
 
   private readonly handleConnectionData = (chain: Chain, ...args: unknown[]) => {
-    if (((args[0] || {}) as { method?: string }).method === 'eth_subscription') {
+    if (((args[0] ?? {}) as { method?: string }).method === 'eth_subscription') {
       this.emit('data:subscription', ...args)
     }
 
@@ -354,7 +354,7 @@ export class Provider extends EventEmitter {
       if (err) {
         return cb(err)
       }
-      if ((verifiedAddress || '').toLowerCase() !== address.toLowerCase()) {
+      if ((verifiedAddress ?? '').toLowerCase() !== address.toLowerCase()) {
         return cb(new Error('Newframe verifySignature: Failed ecRecover check'))
       }
       cb(null, true)
@@ -414,7 +414,7 @@ export class Provider extends EventEmitter {
         if (err) {
           cb(err, undefined)
         } else {
-          const signature = signed || ''
+          const signature = signed ?? ''
           this.verifySignature(signature, message, address, (err) => {
             if (err) {
               cb(err)
@@ -709,7 +709,7 @@ export class Provider extends EventEmitter {
       return resError('Agent transaction requires a valid chainId', payload, res)
     }
 
-    const from = (normalized.from || account.id).toLowerCase()
+    const from = (normalized.from ?? account.id).toLowerCase()
     if (from !== principal.accountId || from !== account.id) {
       return resError('Agent session is not authorized for the transaction account', payload, res)
     }
@@ -717,7 +717,7 @@ export class Provider extends EventEmitter {
     // fillTransaction reports preparation failures through its callback.
     void this.fillTransaction({ ...normalized, from, chainId }, (error, transactionMetadata) => {
       if (error || !transactionMetadata) {
-        return resError(error || 'Could not prepare transaction', payload, res)
+        return resError(error ?? 'Could not prepare transaction', payload, res)
       }
       if (transactionMetadata.approvals.length > 0) {
         return resError('Agent transaction requires an explicit user approval', payload, res)
@@ -793,7 +793,7 @@ export class Provider extends EventEmitter {
           return
         }
         if (signingError || !signed) {
-          return resError(signingError || 'Agent message signing failed', normalizedPayload, respond)
+          return resError(signingError ?? 'Agent message signing failed', normalizedPayload, respond)
         }
 
         this.verifySignature(signed, message, account.id, (verificationError) => {
@@ -852,7 +852,7 @@ export class Provider extends EventEmitter {
       : rawPayload.method.endsWith('_v4')
         ? SignTypedDataVersion.V4
         : undefined
-    const version = explicitVersion || getVersionFromTypedData(typedData)
+    const version = explicitVersion ?? getVersionFromTypedData(typedData)
     if (![SignTypedDataVersion.V3, SignTypedDataVersion.V4].includes(version)) {
       return resError('Agent typed-data signing supports only v3 and v4', rawPayload, res)
     }
@@ -885,7 +885,7 @@ export class Provider extends EventEmitter {
           return
         }
         if (signingError || !signature) {
-          return resError(signingError || 'Agent typed-data signing failed', payload, respond)
+          return resError(signingError ?? 'Agent typed-data signing failed', payload, respond)
         }
 
         try {
@@ -922,7 +922,7 @@ export class Provider extends EventEmitter {
           return
         }
         if (signingError || !signedTransaction) {
-          return resError(signingError || 'Agent transaction signing failed', request.payload, res)
+          return resError(signingError ?? 'Agent transaction signing failed', request.payload, res)
         }
 
         this.connection.send(
@@ -950,7 +950,7 @@ export class Provider extends EventEmitter {
 
     this.getNonce(request.data, (response) => {
       if (response.error || typeof response.result !== 'string') {
-        return resError(response.error || 'Could not determine transaction nonce', request.payload, res)
+        return resError(response.error ?? 'Could not determine transaction nonce', request.payload, res)
       }
       signAndBroadcast({ ...request.data, nonce: response.result })
     })
@@ -970,17 +970,17 @@ export class Provider extends EventEmitter {
       const normalizedTx = normalizeChainId(txParams, payloadChain ? parseInt(payloadChain, 16) : undefined)
       const tx = {
         ...normalizedTx,
-        chainId: normalizedTx.chainId || payloadChain || addHexPrefix(targetChain.id.toString(16))
+        chainId: (normalizedTx.chainId || payloadChain) ?? addHexPrefix(targetChain.id.toString(16))
       }
 
       const currentAccount = this.accounts.current()
 
       log.verbose(`sendTransaction(${JSON.stringify(tx)}`)
 
-      const from = tx.from || currentAccount?.id
+      const from = tx.from ?? currentAccount?.id
 
       if (!currentAccount || !from || !hasAddress(currentAccount, from)) {
-        const accountId = (tx.from || '').toLowerCase()
+        const accountId = (tx.from ?? '').toLowerCase()
 
         if (accountId && this.accounts.get(accountId)) {
           return this.accounts.setSigner(accountId, (err) => {
@@ -1270,7 +1270,7 @@ export class Provider extends EventEmitter {
     const originId = payload._origin
     const origin = this.store.getState().main.origins[originId]
     const currentAccount = this.accounts.current() as any
-    const rawAddress = currentAccount?.address || currentAccount?.id || ''
+    const rawAddress = currentAccount?.address ?? currentAccount?.id ?? ''
     const address = rawAddress ? rawAddress.toLowerCase() : ''
     const permissionAddresses = Array.from(
       new Set([rawAddress, address].filter(Boolean).map((candidate) => candidate.toString()))
@@ -1468,7 +1468,7 @@ export class Provider extends EventEmitter {
           id,
           type,
           name: existing.name,
-          symbol: metadata?.nativeCurrency.symbol || existing.symbol || '',
+          symbol: (metadata?.nativeCurrency.symbol || existing.symbol) ?? '',
           explorer: existing.explorer,
           ...(icon ? { icon } : {})
         }
@@ -1479,7 +1479,7 @@ export class Provider extends EventEmitter {
           symbol: nativeCurrency.symbol,
           primaryRpc: rpcUrls[0],
           secondaryRpc: rpcUrls[1],
-          explorer: blockExplorerUrls[0] || '',
+          explorer: blockExplorerUrls[0] ?? '',
           nativeCurrencyName: nativeCurrency.name,
           ...(icon ? { icon } : {})
         }
@@ -1487,7 +1487,7 @@ export class Provider extends EventEmitter {
       handlerId,
       type: 'addChain',
       chain: requestChain,
-      account: (this.accounts.getAccounts() || [])[0],
+      account: (this.accounts.getAccounts() ?? [])[0],
       origin: payload._origin,
       payload
     } as AddChainRequest)
@@ -1501,7 +1501,7 @@ export class Provider extends EventEmitter {
   ) {
     const { type, options: tokenData } = (payload.params || {}) as any
 
-    if ((type || '').toLowerCase() !== 'erc20') {
+    if ((type ?? '').toLowerCase() !== 'erc20') {
       return resError('only ERC-20 tokens are supported', payload, cb)
     }
 
@@ -1513,9 +1513,9 @@ export class Provider extends EventEmitter {
         }
 
         const chainId = parseInt(resp.result)
-        const address = (tokenData.address || '').toLowerCase()
-        const symbol = (tokenData.symbol || '').toUpperCase()
-        const decimals = parseInt(tokenData.decimals || '1')
+        const address = (tokenData.address ?? '').toLowerCase()
+        const symbol = (tokenData.symbol ?? '').toUpperCase()
+        const decimals = parseInt(tokenData.decimals ?? '1')
 
         if (!address) {
           return resError('tokens must define an address', payload, cb)
@@ -1536,11 +1536,11 @@ export class Provider extends EventEmitter {
 
         const token = {
           chainId,
-          name: tokenData.name || capitalize(symbol),
+          name: tokenData.name ?? capitalize(symbol),
           address,
           symbol,
           decimals,
-          logoURI: tokenData.image || tokenData.logoURI || ''
+          logoURI: tokenData.image ?? tokenData.logoURI ?? ''
         }
 
         const handlerId = this.requests.create(res)
@@ -1560,7 +1560,7 @@ export class Provider extends EventEmitter {
 
   private parseTargetChain(payload: RPCRequestPayload): Chain {
     if ('chainId' in payload) {
-      const chainId = parseInt(payload.chainId || '', 16)
+      const chainId = parseInt(payload.chainId ?? '', 16)
       const chainConnection = this.connection.connections['ethereum'][chainId] || {}
 
       return chainConnection.chainConfig && { type: 'ethereum', id: chainId }

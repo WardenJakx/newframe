@@ -117,7 +117,7 @@ class Biometrics {
 
   summary() {
     const biometric = this.safeRead()
-    const method: BiometricsFile['method'] | '' = biometric?.method || ''
+    const method: BiometricsFile['method'] | '' = biometric?.method ?? ''
 
     return {
       enabled: !!biometric,

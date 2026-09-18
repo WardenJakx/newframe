@@ -38,7 +38,7 @@ const createStoreApi = (store: CanonicalStoreApi) => ({
     const accountState = store.getState().main.accounts[account] as unknown as {
       balances?: { lastUpdated?: number }
     }
-    return accountState?.balances?.lastUpdated || 0
+    return accountState?.balances?.lastUpdated ?? 0
   }
 })
 

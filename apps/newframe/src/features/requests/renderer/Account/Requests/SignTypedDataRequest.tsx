@@ -8,7 +8,7 @@ export default function SignTypedDataRequest({ req }: { req: TypedDataRequestVie
   const origins = useOrigins()
   return (
     <SimpleTypedData
-      key={req.id || req.handlerId}
+      key={req.id ?? req.handlerId}
       originName={originName}
       favicon={persistedImageSource(origins[req.origin]?.image)}
       req={req}

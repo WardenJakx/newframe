@@ -139,12 +139,12 @@ export async function fetchFunctionSelectorSignatures(selector: string) {
       }
     }
 
-    const records = body.result?.function?.[normalizedSelector] || []
+    const records = body.result?.function?.[normalizedSelector] ?? []
     const signatures = [
       ...new Set(
         records
           .filter((record) => !record.filtered && record.name)
-          .map((record) => normalizeFunctionSignature(record.name || ''))
+          .map((record) => normalizeFunctionSignature(record.name ?? ''))
           .filter((signature): signature is string => Boolean(signature))
       )
     ]

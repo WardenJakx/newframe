@@ -90,7 +90,7 @@ export function useTradeExecution({
           }
           dispatch({
             type: 'commandRejected',
-            error: result.message || 'Trade request was not accepted.',
+            error: result.message ?? 'Trade request was not accepted.',
             session
           })
         })

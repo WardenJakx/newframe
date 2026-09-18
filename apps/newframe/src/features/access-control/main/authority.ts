@@ -136,7 +136,7 @@ export function createRpcPrincipal(input: {
     transport: input.transport,
     connectionId: input.connectionId,
     origin: input.origin,
-    capabilities: Object.freeze([...(input.capabilities || [])])
+    capabilities: Object.freeze([...(input.capabilities ?? [])])
   })
 }
 

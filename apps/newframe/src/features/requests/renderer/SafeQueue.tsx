@@ -49,7 +49,7 @@ export function useSafeQueue({
       .refresh({ accountId })
       .then((result) => {
         if (active && !result.ok) {
-          setRefreshError(result.message || 'Could not refresh Safe queue')
+          setRefreshError(result.message ?? 'Could not refresh Safe queue')
         }
       })
       .catch((error: unknown) => {
@@ -181,7 +181,7 @@ export function useSafeQueue({
         address={address}
         accountType={accountDisplayType(identity)}
         clipboard={capabilities.external}
-        nickname={identity?.name || shortAddress(address)}
+        nickname={identity?.name ?? shortAddress(address)}
         showFullAddress
       />
     )
@@ -256,9 +256,9 @@ export function useSafeQueue({
             },
             simulation: preview.scope === scope ? preview.result : { status: 'loading' as const },
             capabilities,
-            networkName: network?.name || `Chain ${deployment.chainId}`,
+            networkName: network?.name ?? `Chain ${deployment.chainId}`,
             networkIcon,
-            symbol: currency?.symbol || network?.symbol || 'native',
+            symbol: currency?.symbol ?? network?.symbol ?? 'native',
             decimals: currency?.decimals ?? 18
           }
         : undefined,
@@ -271,7 +271,7 @@ export function useSafeQueue({
         Object.entries(networks).map(([id, network]) => [
           id,
           {
-            symbol: metadata[Number(id)]?.nativeCurrency?.symbol || network.symbol || 'native',
+            symbol: (metadata[Number(id)]?.nativeCurrency?.symbol || network.symbol) ?? 'native',
             decimals: metadata[Number(id)]?.nativeCurrency?.decimals ?? 18
           }
         ])
@@ -288,7 +288,7 @@ export function useSafeQueue({
           .refresh({ accountId, force: true })
           .then((result) => {
             if (scope === refreshScope.current && !result.ok) {
-              setRefreshError(result.message || 'Could not refresh requests')
+              setRefreshError(result.message ?? 'Could not refresh requests')
             }
           })
           .catch((error: unknown) => {

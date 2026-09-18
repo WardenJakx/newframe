@@ -22,7 +22,7 @@ export const onboardingStatusText = (phase = '', fallback = '') =>
     resolving_address: 'Resolving address',
     connecting: 'Connecting hardware wallet',
     deriving: 'Loading accounts'
-  })[phase] || fallback
+  })[phase] ?? fallback
 
 export function hardwarePageModel(
   signer: { type?: string; status?: string; addresses?: string[] } | null | undefined,

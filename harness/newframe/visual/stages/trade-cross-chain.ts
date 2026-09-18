@@ -51,7 +51,7 @@ export const tradeCrossChainStage: VisualStage = {
     )
     const tokenOperation = tokenState.operations?.[tokenOperationId]?.operation
     if (tokenOperation?.status === 'failed') {
-      return driver.fail(tokenOperation.error?.message || 'Base USDC token add operation failed')
+      return driver.fail(tokenOperation.error?.message ?? 'Base USDC token add operation failed')
     }
 
     const tradePage = await driver.openTradeTicket()
@@ -69,13 +69,13 @@ export const tradeCrossChainStage: VisualStage = {
     await driver.screenshot(tradePage, '21h-trade-cross-chain-quoted.png')
 
     const beforeSubmit = await driver.getAppState()
-    const existingOrderIds = new Set(Object.keys(beforeSubmit.main?.orders || {}))
-    const priorOperationIds = new Set(Object.keys(beforeSubmit.operations || {}))
+    const existingOrderIds = new Set(Object.keys(beforeSubmit.main?.orders ?? {}))
+    const priorOperationIds = new Set(Object.keys(beforeSubmit.operations ?? {}))
     await tradePage.getByRole('button', { name: /Review\/sign/i }).click()
 
     const pendingState = await driver.waitForState(
       (state) =>
-        Object.entries(state.operations || {}).some(
+        Object.entries(state.operations ?? {}).some(
           ([operationId, entry]) =>
             !priorOperationIds.has(operationId) &&
             entry.operation?.type === 'trade.execute' &&
@@ -84,7 +84,7 @@ export const tradeCrossChainStage: VisualStage = {
       5_000,
       'Cross-chain market trade did not publish a pending canonical operation'
     )
-    const tradeOperationId = Object.entries(pendingState.operations || {}).find(
+    const tradeOperationId = Object.entries(pendingState.operations ?? {}).find(
       ([operationId, entry]) =>
         !priorOperationIds.has(operationId) &&
         entry.operation?.type === 'trade.execute' &&
@@ -105,11 +105,11 @@ export const tradeCrossChainStage: VisualStage = {
         candidate.open === true &&
         candidate.cancellable === true &&
         Boolean(candidate.orderId) &&
-        !existingOrderIds.has(candidate.orderId || ''),
+        !existingOrderIds.has(candidate.orderId ?? ''),
       15_000,
       'A newly submitted cross-chain market order was not accepted as open and cancellable'
     )
-    const orderId = order.orderId || driver.fail('The cross-chain market order has no order id')
+    const orderId = order.orderId ?? driver.fail('The cross-chain market order has no order id')
     if ('chainId' in order) {
       driver.fail('Cross-chain order retained a top-level chainId')
     }

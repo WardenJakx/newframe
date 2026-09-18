@@ -114,7 +114,7 @@ export function createPlatformService(ports: PlatformServicePorts) {
         id: SIDE_TRAY_FRAME_ID,
         route: buildSideTrayRoute(
           command.feature,
-          command.assetId || '',
+          command.assetId ?? '',
           command.feature === 'trade' ? command.chainId : undefined
         )
       })!

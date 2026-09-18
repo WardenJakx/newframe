@@ -125,7 +125,7 @@ export function NetworksView(props: NetworksViewProps) {
                         ? 'Custom'
                         : primary?.current === 'chainlist'
                           ? 'Chainlist'
-                          : primary?.current || 'Default'}
+                          : (primary?.current ?? 'Default')}
                     </Text>
                   </Stack>
                   <Stack align='center' direction='row' gap='xsmall'>

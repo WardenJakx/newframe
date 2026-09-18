@@ -69,7 +69,7 @@ function createPayload(method: string, params: JsonRpcParams = [], id: number, t
       ? txParams.chainId
       : undefined
 
-  if (txChainId && parseInt(String(txChainId)) !== parseInt(payload.chainId || String(txChainId))) {
+  if (txChainId && parseInt(String(txChainId)) !== parseInt(payload.chainId ?? String(txChainId))) {
     throw new Error(
       `Payload chainId (${txChainId}) inconsistent with specified target chainId: ${targetChain}`
     )
@@ -77,7 +77,7 @@ function createPayload(method: string, params: JsonRpcParams = [], id: number, t
 
   return {
     ...payload,
-    params: [{ ...txParams, chainId: txChainId || payload.chainId }, ...(payload.params || []).slice(1)]
+    params: [{ ...txParams, chainId: txChainId ?? payload.chainId }, ...(payload.params ?? []).slice(1)]
   }
 }
 
@@ -150,7 +150,7 @@ export default class InjectedFrameProvider extends EventEmitter {
   }
 
   get chainId() {
-    return this.manualChainId || this.providerChainId
+    return this.manualChainId ?? this.providerChainId
   }
 
   async checkConnection(retryTimeout = 4000) {
@@ -207,8 +207,8 @@ export default class InjectedFrameProvider extends EventEmitter {
   ) {
     const send = (resolve: (value: unknown) => void, reject: (error: unknown) => void) => {
       const method = typeof rawPayload === 'object' ? rawPayload.method : rawPayload
-      const params = typeof rawPayload === 'object' ? rawPayload.params || [] : rawParams
-      const chainTarget = (typeof rawPayload === 'object' && rawPayload.chainId) || targetChain
+      const params = typeof rawPayload === 'object' ? (rawPayload.params ?? []) : rawParams
+      const chainTarget = typeof rawPayload === 'object' ? (rawPayload.chainId ?? targetChain) : targetChain
 
       if (!method) {
         reject(new Error('Method is not a valid string.'))
@@ -396,7 +396,7 @@ export default class InjectedFrameProvider extends EventEmitter {
       }
 
       if (['eth_accounts', 'eth_requestAccounts'].includes(pending.method)) {
-        const accounts = (payload.result || []) as string[]
+        const accounts = (payload.result ?? []) as string[]
         this.accounts = accounts
         this.selectedAddress = accounts[0]
         this.coinbase = accounts[0]

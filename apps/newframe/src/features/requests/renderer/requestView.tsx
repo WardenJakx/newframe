@@ -76,7 +76,7 @@ export function RequestViewProvider({ children }: { children: ReactNode }) {
     draftRef.current = { adjustments: adjustmentsFor(values), feeLevel }
     setDraft(draftRef.current)
   }
-  const current = history.at(-1) || initialView
+  const current = history.at(-1) ?? initialView
   const value = useMemo<RequestViewContextValue>(
     () => ({
       ...current,

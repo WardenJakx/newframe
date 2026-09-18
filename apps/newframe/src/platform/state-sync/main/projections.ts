@@ -34,7 +34,7 @@ function projectOrders(
   accountAddress?: string
 ): WalletRendererState['orders'] {
   const filterProvided = accountAddress !== undefined
-  const normalizedAccount = accountAddress?.toLowerCase() || ''
+  const normalizedAccount = accountAddress?.toLowerCase() ?? ''
   const cacheKey = filterProvided ? `account:${normalizedAccount}` : '*'
   if (orders !== previousProjectedOrdersInput) {
     previousProjectedOrdersInput = orders
@@ -607,7 +607,7 @@ function projectSideTrayActivity(
   previousSideTrayActivityAccount = account
   previousSideTrayActivity = Object.fromEntries(
     Object.entries(activity).flatMap(([activityId, record]) => {
-      const sender = String(record.account || record.address || '').toLowerCase()
+      const sender = String(record.account ?? record.address ?? '').toLowerCase()
       if (!normalizedAccount || sender !== normalizedAccount) {
         return []
       }

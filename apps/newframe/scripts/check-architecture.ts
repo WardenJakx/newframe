@@ -449,7 +449,7 @@ export function checkOperationContractAuthority(file: string, source: string) {
     /(?:^|\/)(?:operations|infrastructure)\/walletWorkflows(?:\/production)?\.ts$/.test(file)
   if (legacyFacadeFile || legacyFacadePath?.index !== undefined) {
     violations.push(
-      `${file}:${lineNumber(source, legacyFacadePath?.index || 0)} walletWorkflows facade imports and definitions are forbidden; route through focused feature services and infrastructure ports`
+      `${file}:${lineNumber(source, legacyFacadePath?.index ?? 0)} walletWorkflows facade imports and definitions are forbidden; route through focused feature services and infrastructure ports`
     )
   }
 
@@ -459,7 +459,7 @@ export function checkOperationContractAuthority(file: string, source: string) {
   const genericWorkflowFile = /(?:^|\/)operations\/(?:workflows|sideTrayTransactions)\.ts$/.test(file)
   if (genericWorkflowFile || genericWorkflowPath?.index !== undefined) {
     violations.push(
-      `${file}:${lineNumber(source, genericWorkflowPath?.index || 0)} generic operation workflow helpers are forbidden; move orchestration to a focused feature service or infrastructure adapter`
+      `${file}:${lineNumber(source, genericWorkflowPath?.index ?? 0)} generic operation workflow helpers are forbidden; move orchestration to a focused feature service or infrastructure adapter`
     )
   }
 

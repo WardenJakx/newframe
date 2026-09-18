@@ -118,7 +118,7 @@ function Requests(props: RequestsProps) {
     )
   }
 
-  const requests = Object.values(props.accountRequests).sort((a, b) => (b.created || 0) - (a.created || 0))
+  const requests = Object.values(props.accountRequests).sort((a, b) => (b.created ?? 0) - (a.created ?? 0))
   const originSortedRequests = requests.reduce<Record<string, RenderableRequest[]>>((groups, request) => {
     groups[request.origin] = groups[request.origin] || []
     groups[request.origin].push(request)
@@ -138,7 +138,7 @@ function Requests(props: RequestsProps) {
               appearance='ghost'
               onPress={() =>
                 void props.capabilities.review.clearOrigin({
-                  accountId: props.account || '',
+                  accountId: props.account ?? '',
                   originId: origin
                 })
               }
@@ -157,7 +157,7 @@ function Requests(props: RequestsProps) {
 }
 
 export default function RequestsWithState(props: RequestsWithStateProps) {
-  const accountRequests = useAccountRequests(props.account || '') as unknown as Record<
+  const accountRequests = useAccountRequests(props.account ?? '') as unknown as Record<
     string,
     RenderableRequest
   >

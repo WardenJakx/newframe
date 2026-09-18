@@ -33,7 +33,7 @@ export function ActivityDetails({
           Object.values(state.accounts).find(
             (account) =>
               account.address.toLowerCase() ===
-              (projected?.data?.from || projected?.account || projected?.address)?.toLowerCase()
+              (projected?.data?.from ?? projected?.account ?? projected?.address)?.toLowerCase()
           )
         ),
         toAccountType: accountDisplayType(

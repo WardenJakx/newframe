@@ -44,7 +44,7 @@ const profileNameKey = (name: string) => normalizedProfileName(name).toLowerCase
 
 function selectedAddress(ports: ProfileServicePorts) {
   const currentAccount = ports.store.getState().main.currentAccount
-  return ports.accounts.get(currentAccount)?.address || ''
+  return ports.accounts.get(currentAccount)?.address ?? ''
 }
 
 function publishSelectedAddressChange(previousAddress: string, ports: ProfileServicePorts) {
@@ -172,7 +172,7 @@ export function createProfileService(ports: ProfileServicePorts) {
           return nameError
         }
 
-        const accountIds = command.accountIds || []
+        const accountIds = command.accountIds ?? []
         if (accountIds.some((accountId) => !ports.accounts.get(accountId))) {
           return 'account_not_found'
         }

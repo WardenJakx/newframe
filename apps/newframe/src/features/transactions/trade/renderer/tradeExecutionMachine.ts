@@ -87,7 +87,7 @@ export function tradeExecutionReducer(
       }
 
       const phase = projectedPhase(action.operation)
-      const error = phase === 'failed' ? action.operation.error?.message || 'Trade failed.' : ''
+      const error = phase === 'failed' ? (action.operation.error?.message ?? 'Trade failed.') : ''
       if (state.phase === phase && state.error === error) {
         return state
       }

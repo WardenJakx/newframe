@@ -205,7 +205,7 @@ export function Footer({ capabilities, notify, shared, step, onContinue }: Foote
       {signing ? (
         <RequestSigningFooter
           account={{
-            ...(signingAccount || { address: req.account || '' }),
+            ...(signingAccount ?? { address: req.account ?? '' }),
             accountType: accountDisplayType(signingAccount)
           }}
           clipboard={capabilities.external}

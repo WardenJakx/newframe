@@ -20,7 +20,7 @@ type InputWithDiscriminants = {
 
 function inputDiscriminants(input: z.ZodType) {
   const schema = input as InputWithDiscriminants
-  return schema.shape ? [schema.shape.type] : (schema.options || []).map((option) => option.shape.type)
+  return schema.shape ? [schema.shape.type] : (schema.options ?? []).map((option) => option.shape.type)
 }
 
 describe('operation contract catalogs', () => {

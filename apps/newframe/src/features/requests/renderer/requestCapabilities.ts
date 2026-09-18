@@ -106,13 +106,13 @@ export function createRequestRendererCapabilities(host: RequestHost): RequestRen
         if ('status' in result) {
           return result
         }
-        throw new Error(result.message || 'Could not load confirmation status.')
+        throw new Error(result.message ?? 'Could not load confirmation status.')
       },
       simulate: async (input) => {
         const result = await host.executeQuery({ type: 'safe.simulate', ...input })
         return 'status' in result
           ? result
-          : { status: 'unavailable', error: result.message || 'Could not load Safe preview.' }
+          : { status: 'unavailable', error: result.message ?? 'Could not load Safe preview.' }
       }
     },
     panel: createRequestPanelCapability(host),

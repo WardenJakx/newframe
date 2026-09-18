@@ -3,8 +3,8 @@ import path from 'path'
 
 import WebSocket from 'ws'
 
-const CDP_HOST = process.env.NEWFRAME_HARNESS_CDP_HOST || '127.0.0.1'
-const CDP_PORT = Number(process.env.NEWFRAME_HARNESS_CDP_PORT || '9333')
+const CDP_HOST = process.env.NEWFRAME_HARNESS_CDP_HOST ?? '127.0.0.1'
+const CDP_PORT = Number(process.env.NEWFRAME_HARNESS_CDP_PORT ?? '9333')
 const PASSWORD_ENV_KEYS = ['NEWFRAME_HARNESS_PASSWORD', 'FRAME_HARNESS_PASSWORD']
 const ENV_FILES = ['.env.harness.local', '.env.harness', '.env.local', '.env']
 
@@ -54,7 +54,7 @@ class CdpClient {
 
       this.pending.delete(message.id)
       if (message.error) {
-        pending.reject(new Error(message.error.message || JSON.stringify(message.error)))
+        pending.reject(new Error(message.error.message ?? JSON.stringify(message.error)))
       } else {
         pending.resolve(message.result)
       }
@@ -206,9 +206,9 @@ async function evaluate<T>(client: CdpClient, expression: string) {
 
   if (response.exceptionDetails) {
     throw new Error(
-      response.exceptionDetails.exception?.description ||
-        response.exceptionDetails.text ||
-        response.result?.description ||
+      response.exceptionDetails.exception?.description ??
+        response.exceptionDetails.text ??
+        response.result?.description ??
         'CDP Runtime.evaluate failed'
     )
   }

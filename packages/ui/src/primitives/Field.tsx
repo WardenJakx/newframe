@@ -69,7 +69,7 @@ export type FieldProps = RecipeVariantProps<typeof fieldRecipe> & {
 export function Field({ children, invalid, label, required = false, suffix, vertical }: FieldProps) {
   const styles = fieldRecipe({ invalid, vertical })
   return (
-    <label className={styles.root} data-invalid={invalid || undefined}>
+    <label className={styles.root} data-invalid={invalid ?? undefined}>
       <Text display='inline' variant='fieldLabel' tone='secondary'>
         {label}
         {required ? (

@@ -24,7 +24,7 @@ function AddTokenRequest(props: AddTokenRequestProps) {
   const originName = props.originName
   const token = props.req.token
   return (
-    <Surface key={props.req.id || props.req.handlerId} padding='large' radius='card'>
+    <Surface key={props.req.id ?? props.req.handlerId} padding='large' radius='card'>
       {notice ? (
         <RequestStatusNotice notice={notice} status={status} />
       ) : (

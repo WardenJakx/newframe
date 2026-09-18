@@ -276,7 +276,7 @@ export function createAccountOnboardingService(ports: AccountOnboardingPorts): A
             throw new Error('Account not found')
           }
           const name = signer ? `${capitalize(getSignerDisplayType(signer.type))} Account` : 'Watch Account'
-          const accountId = await addAndSelect(address, command.name || name, signer?.type || 'Address')
+          const accountId = await addAndSelect(address, command.name ?? name, signer?.type ?? 'Address')
           return {
             phase: 'selected',
             entityRefs: [
@@ -326,7 +326,7 @@ export function createAccountOnboardingService(ports: AccountOnboardingPorts): A
         if (!address) {
           throw new Error('No account address was created')
         }
-        const accountId = await addAndSelect(address, command.accountName || 'Hot Account', signer.type)
+        const accountId = await addAndSelect(address, command.accountName ?? 'Hot Account', signer.type)
         return {
           phase: 'selected',
           entityRefs: [

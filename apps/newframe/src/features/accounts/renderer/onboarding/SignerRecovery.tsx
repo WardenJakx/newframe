@@ -128,7 +128,7 @@ function RecoveryActions({
   }
 
   if (signer.type === 'trezor' && status === 'enter passphrase') {
-    const allowsDeviceEntry = (signer.capabilities || []).includes('Capability_PassphraseEntry')
+    const allowsDeviceEntry = (signer.capabilities ?? []).includes('Capability_PassphraseEntry')
     return (
       <Stack gap='small'>
         <Input
@@ -213,7 +213,7 @@ export default function SignerRecovery({
     start: startSignerSession
   } = useHardwareSessionController(capability)
 
-  const signer = candidates.find((candidate) => candidate.id === selectedId) || candidates[0]
+  const signer = candidates.find((candidate) => candidate.id === selectedId) ?? candidates[0]
 
   function startSession(signerId: string, reload = false) {
     startSignerSession(signerId, { reload, replaceCurrent: true })

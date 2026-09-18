@@ -8,7 +8,7 @@ import { harnessOrigin } from '../driver.ts'
 import type { VisualStage } from '../types.ts'
 import { requireAccounts } from './helpers.ts'
 
-const harnessOriginUrl = process.env.NEWFRAME_ORIGIN || 'http://newframe-contracts.local'
+const harnessOriginUrl = process.env.NEWFRAME_ORIGIN ?? 'http://newframe-contracts.local'
 
 function createProvider(url: string, signal: AbortSignal, chainId?: number) {
   const request = new FetchRequest(url)

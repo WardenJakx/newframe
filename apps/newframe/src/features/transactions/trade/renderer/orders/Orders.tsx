@@ -58,7 +58,7 @@ export function Orders({
       cancellingOrderIds.add(orderId)
     }
     if (operation?.status === 'failed') {
-      projectedCancelErrors[orderId] = operation.error?.message || 'Cancel failed.'
+      projectedCancelErrors[orderId] = operation.error?.message ?? 'Cancel failed.'
     }
   })
 
@@ -81,7 +81,7 @@ export function Orders({
       }
       const operation = shared.operations[operationId]
       if (operation?.status === 'failed') {
-        failures[orderId] = operation.error?.message || 'Cancel failed.'
+        failures[orderId] = operation.error?.message ?? 'Cancel failed.'
       }
       delete next[orderId]
       changed = true
@@ -130,7 +130,7 @@ export function Orders({
         setCancellations(remaining)
         setCancelErrors((current) => ({
           ...current,
-          [order.orderId]: result.message || 'Cancel failed.'
+          [order.orderId]: result.message ?? 'Cancel failed.'
         }))
       })
       .catch((error: unknown) => {

@@ -47,7 +47,7 @@ function getResultData(results: any, call: string[], target: string) {
     return callInterface.decodeFunctionResult(fnName, results)
   } catch (e) {
     log.warn(`Failed to decode ${fnName},`, { target, results })
-    const outputs = callInterface.getFunction(fnName)?.outputs || []
+    const outputs = callInterface.getFunction(fnName)?.outputs ?? []
     return outputs.map(() => null)
   }
 }

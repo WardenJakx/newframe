@@ -95,7 +95,7 @@ function floorTo(value: number, decimals: number) {
 }
 
 function balanceValue({ balance, decimals }: { balance?: string; decimals: number }) {
-  return Number(formatUnits(toBigInt(balance || 0) ?? 0n, decimals))
+  return Number(formatUnits(toBigInt(balance ?? 0) ?? 0n, decimals))
 }
 
 function formatBalance(balance: number, totalValue: number, decimals = 8) {
@@ -125,7 +125,7 @@ export function createBalance(
   const balance = balanceValue(rawBalance)
   const hasPrice = typeof rate?.usdRate === 'number' && !isNaN(rate.usdRate)
   const usdRate = hasPrice ? rate.usdRate : NaN
-  const change24hr = rate?.change24hr || 0
+  const change24hr = rate?.change24hr ?? 0
 
   const totalValue = balance * usdRate
   const balanceDecimals = hasPrice ? Math.max(2, Math.trunc(usdRate * 10).toString().length) : 8
@@ -155,9 +155,9 @@ function createBalanceSummary({
   networksMeta?: NetworkMetaMap
   tokens?: TokenCatalog
 }): BalanceSummary {
-  const chain = networks[rawBalance.chainId] || {}
+  const chain = networks[rawBalance.chainId] ?? {}
   const isNative = isNativeCurrency(rawBalance.address)
-  const nativeCurrencyInfo = networksMeta[rawBalance.chainId]?.nativeCurrency || {}
+  const nativeCurrencyInfo = networksMeta[rawBalance.chainId]?.nativeCurrency ?? {}
   const token = tokenFromBalance(tokens, rawBalance, nativeCurrencyInfo)
   const decimals = token?.decimals ?? rawBalance.decimals ?? 18
   const resolvedRate = resolveAssetRate(
@@ -178,12 +178,12 @@ function createBalanceSummary({
     balance: rawBalance.balance,
     chainId: rawBalance.chainId,
     decimals,
-    displayBalance: rawBalance.displayBalance || '',
+    displayBalance: rawBalance.displayBalance ?? '',
     hasPrice,
     logoURI: tokenImageSource(token) || (isNative ? getNativeCurrencyIcon(nativeCurrencyInfo) : undefined),
-    name: token?.name || (isNative ? chain.name || '' : rawBalance.name || ''),
+    name: token?.name ?? (isNative ? (chain.name ?? '') : (rawBalance.name ?? '')),
     rate: resolvedRate,
-    symbol: token?.symbol || rawBalance.symbol || '',
+    symbol: token?.symbol ?? rawBalance.symbol ?? '',
     totalValue: isNaN(totalValue) ? 0 : totalValue,
     unformattedBalance
   }
@@ -286,7 +286,7 @@ export function createBalanceTokenSelectorItem(balance: BalanceSummary) {
 }
 
 export function hasPositiveBalance(balance: { balance?: string }) {
-  return (toBigInt(balance.balance || 0) ?? 0n) > 0n
+  return (toBigInt(balance.balance ?? 0) ?? 0n) > 0n
 }
 
 export const sortByTotalValue = (a: DisplayedBalance, b: DisplayedBalance) => {

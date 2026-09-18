@@ -86,11 +86,11 @@ const shortHash = (hash?: string) => {
 }
 
 const notificationMetadata = (notification: WalletStatusNotification, label: string) => {
-  const detail = String(notification.detail || '').trim()
+  const detail = String(notification.detail ?? '').trim()
   if (detail && detail.toLowerCase() !== label.toLowerCase()) {
     return detail
   }
-  return shortHash(notification.target?.hash || notification.metadata?.hash)
+  return shortHash(notification.target?.hash ?? notification.metadata?.hash)
 }
 
 const notificationTimestamp = (notification: WalletStatusNotification) => {
@@ -155,7 +155,7 @@ export default function StatusNotifications({
         return (
           <div
             key={notification.id}
-            aria-label={`${label} ${notification.title || ''}`}
+            aria-label={`${label} ${notification.title ?? ''}`}
             className={notificationRecipe({ state: state })}
             onClick={() => onOpen(notification)}
             onKeyDown={(e) => {

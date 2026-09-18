@@ -11,12 +11,12 @@ export const tradeMarketStage: VisualStage = {
       .getByRole('button', { name: /Approve WETH/i })
       .waitFor({ state: 'visible', timeout: 20_000 })
     await driver.screenshot(tradePage, '21a-trade-market-quoted.png')
-    const priorOperationIds = new Set(Object.keys((await driver.getAppState()).operations || {}))
+    const priorOperationIds = new Set(Object.keys((await driver.getAppState()).operations ?? {}))
     await tradePage.getByRole('button', { name: /Approve WETH/i }).click()
 
     const pendingState = await driver.waitForState(
       (state) =>
-        Object.entries(state.operations || {}).some(
+        Object.entries(state.operations ?? {}).some(
           ([operationId, entry]) =>
             !priorOperationIds.has(operationId) &&
             entry.operation?.type === 'trade.execute' &&
@@ -25,14 +25,14 @@ export const tradeMarketStage: VisualStage = {
       5_000,
       'Market trade did not publish a pending canonical operation'
     )
-    const marketOperationEntry = Object.entries(pendingState.operations || {}).find(
+    const marketOperationEntry = Object.entries(pendingState.operations ?? {}).find(
       ([operationId, entry]) =>
         !priorOperationIds.has(operationId) &&
         entry.operation?.type === 'trade.execute' &&
         entry.operation.status === 'pending'
     )
     const marketOperationId =
-      marketOperationEntry?.[0] || driver.fail('Pending market trade operation disappeared')
+      marketOperationEntry?.[0] ?? driver.fail('Pending market trade operation disappeared')
 
     const approveRequest = await driver.waitForCurrentRequest('transaction', new Set(), 30_000)
     await driver.screenshot(tray, '21b-trade-market-approve-review.png')
@@ -69,7 +69,7 @@ export const tradeMarketStage: VisualStage = {
       .getByRole('button', { name: /Review\/sign/i })
       .waitFor({ state: 'visible', timeout: 20_000 })
     await driver.screenshot(tradePage, '21d-trade-market-ready-to-sign.png')
-    const existingOrderIds = new Set(Object.keys((await driver.getAppState()).main?.orders || {}))
+    const existingOrderIds = new Set(Object.keys((await driver.getAppState()).main?.orders ?? {}))
     await tradePage.getByRole('button', { name: /Review\/sign/i }).click()
 
     const signRequest = await driver.waitForCurrentRequest('signTypedData', new Set(), 30_000)
@@ -81,7 +81,7 @@ export const tradeMarketStage: VisualStage = {
         order.orderType === 'market' &&
         order.status === 'filled' &&
         Boolean(order.orderId) &&
-        !existingOrderIds.has(order.orderId || ''),
+        !existingOrderIds.has(order.orderId ?? ''),
       30_000,
       'A newly submitted market Flash order did not fill'
     )
@@ -99,7 +99,7 @@ export const tradeMarketStage: VisualStage = {
     )
     const operation = terminalState.operations?.[marketOperationId]?.operation
     if (operation?.status === 'failed') {
-      return driver.fail(operation.error?.message || 'Canonical market trade operation failed')
+      return driver.fail(operation.error?.message ?? 'Canonical market trade operation failed')
     }
     if (!operation?.entityRefs?.some((reference) => reference.type === 'order' && reference.id === orderId)) {
       return driver.fail('Successful market trade operation did not reference its order')
@@ -121,7 +121,7 @@ export const tradeMarketStage: VisualStage = {
     runtime.evidence('marketOrderId', orderId)
     runtime.evidence('marketOrderStatus', String(order.status))
     runtime.evidence('marketApprovalTransactionHash', transactionHash)
-    runtime.evidence('marketApprovalActivityStatus', activity.status || null)
+    runtime.evidence('marketApprovalActivityStatus', activity.status ?? null)
     await driver.assertFlashOrderVisible(orderId)
     await driver.screenshot(tray, '21g-trade-market-filled.png')
     await driver.clearPanelAndOverlays()

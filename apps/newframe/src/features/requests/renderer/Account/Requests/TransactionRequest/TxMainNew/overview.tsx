@@ -96,7 +96,7 @@ const ApproveOverview = ({ amount = 0, decimals, symbol = '?' }: ApproveOverview
 }
 
 const SendOverview = ({ req, symbol = '?', decimals, amount: ammt }: SendOverviewProps) => {
-  const amount = ammt || req?.data.value || 0
+  const amount = ammt ?? req?.data.value ?? 0
   return (
     <Stack align='center' gap='xsmall'>
       <Text align='center' variant='supporting'>
@@ -232,12 +232,12 @@ const TxOverview = ({
           <ClusterRow>
             <ClusterValue>
               <Text align='center' tone='danger' variant='overline'>
-                {replacementStatus.notice || 'invalid duplicate'}
+                {replacementStatus.notice ?? 'invalid duplicate'}
               </Text>
             </ClusterValue>
           </ClusterRow>
         ))}
-      {isNonZeroHex(calldata || '') && (
+      {isNonZeroHex(calldata ?? '') && (
         <ClusterRow>
           <ClusterValue>
             <Text align='center' tone='warning' variant='overline'>
@@ -246,7 +246,7 @@ const TxOverview = ({
           </ClusterValue>
         </ClusterRow>
       )}
-      {isNonZeroHex(calldata || '') && calldataDigest && (
+      {isNonZeroHex(calldata ?? '') && calldataDigest && (
         <ClusterRow>
           <ClusterValue>
             <Stack align='center' gap='xsmall'>

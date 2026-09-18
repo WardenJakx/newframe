@@ -19,7 +19,7 @@ const londonHardforkSigners: SignerCompatibilityByVersion = {
   ring: () => true,
   ledger: (version) => version.major >= 2 || (version.major >= 1 && version.minor >= 9),
   trezor: (version, model) => {
-    if ((model || '').toLowerCase() === 'trezor one') {
+    if ((model ?? '').toLowerCase() === 'trezor one') {
       return (
         version.major >= 2 ||
         (version.major >= 1 && (version.minor > 10 || (version.minor === 10 && version.patch >= 4)))

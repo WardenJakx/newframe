@@ -47,7 +47,7 @@ export function HomeNotifications({
     useShallow((state) => {
       const account = state.accounts?.[state.currentAccount]
       const requests = account?.requests || EMPTY_REQUESTS
-      const deployments = Object.values(account?.safe || {})
+      const deployments = Object.values(account?.safe ?? {})
       return {
         currentAccount: state.currentAccount || '',
         networks: state.networks?.ethereum || EMPTY_NETWORKS,
@@ -56,7 +56,7 @@ export function HomeNotifications({
         hasSafeQueueError: deployments.some((deployment) => deployment.error),
         requestCount:
           Object.values(requests).filter((request) => request.mode === 'normal').length +
-          deployments.reduce((count, deployment) => count + (deployment.pending?.length || 0), 0)
+          deployments.reduce((count, deployment) => count + (deployment.pending?.length ?? 0), 0)
       }
     })
   )
@@ -118,19 +118,19 @@ export function HomeNotifications({
         onDismiss={(id) => void capability.updateNotification({ notificationId: id, action: 'dismiss' })}
         onExpire={(id) => void capability.updateNotification({ notificationId: id, action: 'expire' })}
         onOpen={(notification) => {
-          const target = notification.target || {}
+          const target = notification.target ?? {}
           if (typeof target.account === 'string' && target.account !== shared.currentAccount) {
             void capability.selectAccount({ accountId: target.account })
           }
 
-          const orderId = target.orderId || notification.metadata?.orderId
+          const orderId = target.orderId ?? notification.metadata?.orderId
           if (orderId) {
             setSection('orders')
             openOverlay({ type: 'order', orderId })
             return
           }
 
-          const activityId = target.activityId || target.hash || notification.metadata?.hash
+          const activityId = target.activityId ?? target.hash ?? notification.metadata?.hash
           if (!activityId) {
             return
           }
@@ -138,7 +138,7 @@ export function HomeNotifications({
           openOverlay({ type: 'activity', activityId })
         }}
         renderChainIcon={(notification) => {
-          const chainId = Number(notification.leadingIcon?.chainId || notification.target?.chainId)
+          const chainId = Number(notification.leadingIcon?.chainId ?? notification.target?.chainId)
           return chainId ? (
             <ChainIcon
               chainId={chainId}

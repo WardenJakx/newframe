@@ -30,7 +30,7 @@ export function createQrCameraCapability(
         stopped = true
         clearTimeout(timer)
         video.srcObject = null
-        for (const track of stream?.getTracks() || []) {
+        for (const track of stream?.getTracks() ?? []) {
           track.removeEventListener('ended', ended)
           track.stop()
         }
